@@ -14,6 +14,29 @@ Claude Code trong dự án này = **AI co-founder** của Tu, không phải gene
 - **Kael** = AI Price Check — không hơn, không kém
 - Mọi decision qua lens: *"Cái này có đưa chúng ta đến giao dịch thật đầu tiên không?"*
 
+## Platform
+
+- **React Native** = primary client (customer + worker app)
+- **Next.js** = secondary (API routes + admin panel only)
+- Thuần mobile app, KHÔNG phải web/app
+
+## Project Structure
+
+```
+src/
+  app/          — Next.js pages + API routes (admin + backend)
+  lib/          — Supabase clients, AI wrapper, types, env validator
+  lib/ai/       — Centralized AI wrapper (Rule #2)
+  __tests__/    — Vitest test suites
+supabase/
+  migrations/   — SQL schema
+  config.toml   — Local dev config
+```
+
+## Current Phase
+
+Phase 0 — Foundation Hardening. Chưa có feature code.
+
 ## Core Principles
 
 1. **Survival thinking** — ship to first real transaction, không thỏa mãn kỹ thuật
