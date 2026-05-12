@@ -1,14 +1,14 @@
 type EnvConfig = {
-  required: string[]
-  serverOnly: string[]
+  client: string[]
+  server: string[]
 }
 
 const config: EnvConfig = {
-  required: [
+  client: [
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   ],
-  serverOnly: [
+  server: [
     'SUPABASE_SERVICE_ROLE_KEY',
     'ANTHROPIC_API_KEY',
     'PERPLEXITY_API_KEY',
@@ -16,10 +16,14 @@ const config: EnvConfig = {
   ],
 }
 
-function validateEnv() {
+const isBuildTime = process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_SUPABASE_URL
+
+function validateClientEnv() {
+  if (isBuildTime) return
+
   const missing: string[] = []
 
-  for (const key of config.required) {
+  for (const key of config.client) {
     if (!process.env[key]) {
       missing.push(key)
     }
@@ -27,30 +31,56 @@ function validateEnv() {
 
   if (missing.length > 0) {
     throw new Error(
-      `Missing required environment variables:\n${missing.map((k) => `  - ${k}`).join('\n')}\n\nCheck your .env.local file.`
+      `Missing required client environment variables:\n${missing.map((k) => `  - ${k}`).join('\n')}\n\nCheck your .env.local file.`
     )
   }
 }
 
+function requireServerKey(key: string, label: string): string {
+  const value = process.env[key]
+  if (!value) {
+    throw new Error(`${label} not configured. Set ${key} in .env.local`)
+  }
+  return value
+}
+
 export const env = {
-  get supabaseUrl() {
+  get supabaseUrl(): string {
     return process.env.NEXT_PUBLIC_SUPABASE_URL!
   },
-  get supabasePublishableKey() {
+  get supabasePublishableKey(): string {
     return process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
   },
-  get supabaseServiceRoleKey() {
-    return process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  get supabaseServiceRoleKey(): string {
+    return requireServerKey('SUPABASE_SERVICE_ROLE_KEY', 'Supabase service role key')
   },
-  get anthropicApiKey() {
-    return process.env.ANTHROPIC_API_KEY ?? ''
+  get anthropicApiKey(): string {
+    return requireServerKey('ANTHROPIC_API_KEY', 'Anthropic API key')
   },
-  get perplexityApiKey() {
-    return process.env.PERPLEXITY_API_KEY ?? ''
+  get perplexityApiKey(): string {
+    return requireServerKey('PERPLEXITY_API_KEY', 'Perplexity API key')
   },
-  get deepseekApiKey() {
-    return process.env.DEEPSEEK_API_KEY ?? ''
+  get deepseekApiKey(): string {
+    return requireServerKey('DEEPSEEK_API_KEY', 'DeepSeek API key')
   },
 } as const
 
-validateEnv()
+validateClientEnv()
+
+export function ensureServerEnv() {
+  if (typeof window !== 'undefined') return
+
+  const missing: string[] = []
+
+  for (const key of config.server) {
+    if (!process.env[key]) {
+      missing.push(key)
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required server environment variables:\n${missing.map((k) => `  - ${k}`).join('\n')}\n\nCheck your .env.local file.`
+    )
+  }
+}

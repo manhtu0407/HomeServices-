@@ -1,8 +1,9 @@
 import type { AIRequest, AIResponse } from '../types'
+import { AIProviderError } from '../types'
+import { env } from '../../env'
 
 export async function callPerplexity(request: AIRequest): Promise<AIResponse> {
-  const apiKey = process.env.PERPLEXITY_API_KEY
-  if (!apiKey) throw new Error('PERPLEXITY_API_KEY not configured')
+  const apiKey = env.perplexityApiKey
 
   const start = Date.now()
 
@@ -27,7 +28,7 @@ export async function callPerplexity(request: AIRequest): Promise<AIResponse> {
 
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`Perplexity API ${res.status}: ${body}`)
+    throw new AIProviderError('perplexity', res.status, body)
   }
 
   const data = await res.json()

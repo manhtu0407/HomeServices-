@@ -1,8 +1,9 @@
 import type { AIRequest, AIResponse } from '../types'
+import { AIProviderError } from '../types'
+import { env } from '../../env'
 
 export async function callDeepSeek(request: AIRequest): Promise<AIResponse> {
-  const apiKey = process.env.DEEPSEEK_API_KEY
-  if (!apiKey) throw new Error('DEEPSEEK_API_KEY not configured')
+  const apiKey = env.deepseekApiKey
 
   const start = Date.now()
 
@@ -27,7 +28,7 @@ export async function callDeepSeek(request: AIRequest): Promise<AIResponse> {
 
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`DeepSeek API ${res.status}: ${body}`)
+    throw new AIProviderError('deepseek', res.status, body)
   }
 
   const data = await res.json()

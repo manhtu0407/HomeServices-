@@ -1,5 +1,5 @@
 import type { AIRequest, AIResult, AIResponse, AIProvider } from './types'
-import { TIMEOUT_MS, MAX_RETRIES } from './types'
+import { TIMEOUT_MS, MAX_RETRIES, AIProviderError } from './types'
 import { callAnthropic } from './providers/anthropic'
 import { callPerplexity } from './providers/perplexity'
 import { callDeepSeek } from './providers/deepseek'
@@ -24,11 +24,8 @@ function backoffMs(attempt: number): number {
 }
 
 function isRetryable(error: unknown): boolean {
-  if (error instanceof Error) {
-    const msg = error.message
-    if (msg.includes('429') || msg.includes('500') || msg.includes('502') || msg.includes('503')) return true
-    if (msg.includes('Timeout')) return true
-  }
+  if (error instanceof AIProviderError) return error.retryable
+  if (error instanceof Error && error.message.includes('Timeout')) return true
   return false
 }
 
@@ -73,18 +70,23 @@ export async function callAI(request: AIRequest): Promise<AIResult> {
 
   const errorMessage =
     lastError instanceof Error ? lastError.message : 'Unknown error'
+  const errorCode =
+    lastError instanceof AIProviderError
+      ? `HTTP_${lastError.statusCode}`
+      : 'AI_CALL_FAILED'
 
   console.error('AI call failed', {
     provider: request.provider,
     model: request.model,
     error: errorMessage,
+    code: errorCode,
     retriesExhausted: true,
   })
 
   return {
     provider: request.provider,
     error: errorMessage,
-    code: 'AI_CALL_FAILED',
+    code: errorCode,
     retryable: false,
     success: false,
   }

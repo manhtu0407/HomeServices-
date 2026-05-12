@@ -43,3 +43,18 @@ export const TIMEOUT_MS: Record<AIProvider, number> = {
 }
 
 export const MAX_RETRIES = 2
+
+export class AIProviderError extends Error {
+  constructor(
+    public readonly provider: AIProvider,
+    public readonly statusCode: number,
+    public readonly responseBody: string,
+  ) {
+    super(`${provider} API ${statusCode}`)
+    this.name = 'AIProviderError'
+  }
+
+  get retryable(): boolean {
+    return this.statusCode === 429 || this.statusCode >= 500
+  }
+}
