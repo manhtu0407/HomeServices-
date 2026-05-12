@@ -1,8 +1,9 @@
 import type { AIRequest, AIResponse } from '../types'
+import { AIProviderError } from '../types'
+import { env } from '../../env'
 
 export async function callAnthropic(request: AIRequest): Promise<AIResponse> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured')
+  const apiKey = env.anthropicApiKey
 
   const start = Date.now()
 
@@ -28,7 +29,7 @@ export async function callAnthropic(request: AIRequest): Promise<AIResponse> {
 
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`Anthropic API ${res.status}: ${body}`)
+    throw new AIProviderError('anthropic', res.status, body)
   }
 
   const data = await res.json()

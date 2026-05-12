@@ -1,0 +1,151 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
+describe('env module', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    vi.unstubAllEnvs()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  describe('validateClientEnv', () => {
+    it('throws when NEXT_PUBLIC vars are missing', async () => {
+      vi.stubEnv('NODE_ENV', 'development')
+      await expect(import('@/lib/env')).rejects.toThrow(
+        'Missing required client environment variables'
+      )
+    })
+
+    it('error message lists each missing var', async () => {
+      vi.stubEnv('NODE_ENV', 'development')
+      await expect(import('@/lib/env')).rejects.toThrow(
+        'NEXT_PUBLIC_SUPABASE_URL'
+      )
+    })
+
+    it('passes when all client vars are set', async () => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost:54321')
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'test-anon-key')
+      const mod = await import('@/lib/env')
+      expect(mod.env).toBeDefined()
+    })
+
+    it('skips validation at build time (production without vars)', async () => {
+      vi.stubEnv('NODE_ENV', 'production')
+      const mod = await import('@/lib/env')
+      expect(mod.env).toBeDefined()
+    })
+  })
+
+  describe('requireServerKey (via env getters)', () => {
+    beforeEach(() => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost:54321')
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'test-anon-key')
+    })
+
+    it('env.anthropicApiKey throws when missing', async () => {
+      const mod = await import('@/lib/env')
+      expect(() => mod.env.anthropicApiKey).toThrow('Anthropic API key not configured')
+    })
+
+    it('env.perplexityApiKey throws when missing', async () => {
+      const mod = await import('@/lib/env')
+      expect(() => mod.env.perplexityApiKey).toThrow('Perplexity API key not configured')
+    })
+
+    it('env.deepseekApiKey throws when missing', async () => {
+      const mod = await import('@/lib/env')
+      expect(() => mod.env.deepseekApiKey).toThrow('DeepSeek API key not configured')
+    })
+
+    it('env.supabaseServiceRoleKey throws when missing', async () => {
+      const mod = await import('@/lib/env')
+      expect(() => mod.env.supabaseServiceRoleKey).toThrow(
+        'Supabase service role key not configured'
+      )
+    })
+
+    it('returns value when server key is set', async () => {
+      vi.stubEnv('ANTHROPIC_API_KEY', 'sk-test-anthropic')
+      const mod = await import('@/lib/env')
+      expect(mod.env.anthropicApiKey).toBe('sk-test-anthropic')
+    })
+
+    it('each server key getter works independently', async () => {
+      vi.stubEnv('PERPLEXITY_API_KEY', 'pplx-test')
+      vi.stubEnv('DEEPSEEK_API_KEY', 'ds-test')
+      const mod = await import('@/lib/env')
+      expect(mod.env.perplexityApiKey).toBe('pplx-test')
+      expect(mod.env.deepseekApiKey).toBe('ds-test')
+    })
+  })
+
+  describe('client env getters', () => {
+    it('env.supabaseUrl returns correct value', async () => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://my-project.supabase.co')
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'test-key')
+      const mod = await import('@/lib/env')
+      expect(mod.env.supabaseUrl).toBe('http://my-project.supabase.co')
+    })
+
+    it('env.supabasePublishableKey returns correct value', async () => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost')
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'eyJ-test-key')
+      const mod = await import('@/lib/env')
+      expect(mod.env.supabasePublishableKey).toBe('eyJ-test-key')
+    })
+  })
+
+  describe('ensureServerEnv', () => {
+    beforeEach(() => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost:54321')
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'test-anon-key')
+    })
+
+    it('throws when any server key is missing', async () => {
+      const mod = await import('@/lib/env')
+      expect(() => mod.ensureServerEnv()).toThrow(
+        'Missing required server environment variables'
+      )
+    })
+
+    it('error lists all missing server vars', async () => {
+      const mod = await import('@/lib/env')
+      let errorMsg = ''
+      try {
+        mod.ensureServerEnv()
+      } catch (e) {
+        errorMsg = (e as Error).message
+      }
+      expect(errorMsg).toContain('SUPABASE_SERVICE_ROLE_KEY')
+      expect(errorMsg).toContain('ANTHROPIC_API_KEY')
+      expect(errorMsg).toContain('PERPLEXITY_API_KEY')
+      expect(errorMsg).toContain('DEEPSEEK_API_KEY')
+    })
+
+    it('passes when all server keys are set', async () => {
+      vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test')
+      vi.stubEnv('ANTHROPIC_API_KEY', 'test')
+      vi.stubEnv('PERPLEXITY_API_KEY', 'test')
+      vi.stubEnv('DEEPSEEK_API_KEY', 'test')
+      const mod = await import('@/lib/env')
+      expect(() => mod.ensureServerEnv()).not.toThrow()
+    })
+
+    it('does not throw if only some server keys are set', async () => {
+      vi.stubEnv('ANTHROPIC_API_KEY', 'test')
+      const mod = await import('@/lib/env')
+      expect(() => mod.ensureServerEnv()).toThrow()
+      let errorMsg = ''
+      try {
+        mod.ensureServerEnv()
+      } catch (e) {
+        errorMsg = (e as Error).message
+      }
+      expect(errorMsg).not.toContain('ANTHROPIC_API_KEY')
+      expect(errorMsg).toContain('SUPABASE_SERVICE_ROLE_KEY')
+    })
+  })
+})

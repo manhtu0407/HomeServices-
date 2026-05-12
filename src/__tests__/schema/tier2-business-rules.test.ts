@@ -54,7 +54,7 @@ describe('job_status matches workflow from STRUCTURES.md 3A-3B', () => {
     ['scope_change', 'A11 scope change'],
     ['completed', 'B5 worker completion'],
     ['confirmed', 'A12 customer confirm'],
-  ] as const)('includes "%s" for %s', (status) => {
+  ] as const)('includes "%s" for %s', (status, _label) => {
     expect(Constants.public.Enums.job_status).toContain(status)
   })
 })
