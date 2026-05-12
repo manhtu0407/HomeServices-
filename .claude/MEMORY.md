@@ -5,6 +5,85 @@ Mỗi session mới: đọc file này trước, sau đó update khi kết thúc.
 
 ---
 
+## Session 4 — 2026-05-12
+
+**Branch**: `claude/nostalgic-borg-dcb1f3` → pushed to GitHub
+**Người làm**: Claude Opus 4.6 + Tu
+
+### Làm gì
+
+Session dài nhất — cover toàn bộ Phase 0 Foundation Hardening: verify PRs, audit, build 6 items, tạo PR#4, viết 103 tests.
+
+**1. Verify 3 PRs đã merged**
+- PR#1 — Project setup (Next.js, Supabase, Tailwind, TypeScript)
+- PR#2 — Claude Code infrastructure (CLAUDE.md, RULES.md, STRUCTURES.md, settings.json, commands)
+- PR#3 — Database schema (9 tables, 7 enums, RLS, Realtime, Storage, 177 tests)
+
+**2. Foundation Audit — phát hiện 6 gaps**
+Khoảng cách giữa docs (excellent) và executable code (thiếu):
+1. Không có env validator (RULES.md Rule #1)
+2. Supabase clients thiếu `Database` generic (không type safety)
+3. Không có AI wrapper (RULES.md Rule #2)
+4. CLAUDE.md thiếu platform/structure/phase info
+5. settings.json thiếu routine commands trong allowlist
+6. layout.tsx còn scaffolding text + lang="en"
+
+**3. Clarification: RN là primary**
+Tu xác nhận: Home Services là thuần app mobile (React Native). Next.js chỉ support (API routes + admin panel).
+
+**4. Execute Foundation Hardening — 6 items, 2 tầng**
+
+Tầng 1 — Blocking:
+- `src/lib/env.ts` — Env validator, crash nếu thiếu required vars
+- `src/lib/server.ts`, `client.ts`, `middleware.ts` — Thêm `<Database>` generic
+- `src/lib/ai/types.ts` — AIProvider, AIRequest, AIResponse, AIError, AIResult, TIMEOUT_MS, MAX_RETRIES
+- `src/lib/ai/client.ts` — `callAI()` với timeout per provider, retry 2x backoff, logging Rule#9
+- `src/lib/ai/providers/anthropic.ts` — system message extraction, cost calc Sonnet/Haiku
+- `src/lib/ai/providers/perplexity.ts` — OpenAI-compatible, default temp 0.2
+- `src/lib/ai/providers/deepseek.ts` — OpenAI-compatible, cheapest pricing
+
+Tầng 2 — Claude Code Concentration:
+- `CLAUDE.md` — Thêm Platform (RN-primary), Project Structure, Current Phase
+- `.claude/settings.json` — Thêm git/gh/vitest vào allowlist
+- `src/app/layout.tsx` — lang="vi", title="Home Services"
+
+**5. PR#4 merged**
+
+**6. Viết 103 Foundation Tests — 5 tiers, chained**
+
+| Tier | File | Cases | Verifies |
+|------|------|-------|----------|
+| 1 | `tier1-types-constants.test.ts` | 19 | TIMEOUT_MS, MAX_RETRIES, AI types |
+| 2 | `tier2-env-validator.test.ts` | 13 | env.ts throws, error messages, getters |
+| 3 | `tier3-providers.test.ts` | 20 | 3 providers: endpoints, headers, body, cost, errors |
+| 4 | `tier4-ai-client.test.ts` | 23 | callAI() routing, timeout, retry, backoff, logging |
+| 5 | `tier5-integration.test.ts` | 28 | Database generic, layout Rule#5, file structure, chain |
+
+**7. Kết quả: 280/280 PASSED, ~45s (0 failures)**
+
+### Commits trên branch
+
+```
+aefe1e6  feat: foundation hardening — env validator, AI wrapper, type-safe Supabase, DX improvements
+baee288  test: add 103 foundation tests for PR#4 — 5 tiers, 280/280 total passed
+```
+
+### Key Lessons
+
+- **Scope creep**: Plan đầu gộp foundation + features → Tu bắt lỗi → viết lại foundation-only
+- **Test honesty**: Tu hỏi "test thật hay chỉ report?" → dẫn đến viết 103 tests thật
+- **Memory location**: Tất cả memory lưu trong `.claude/MEMORY.md` (repo), không tạo file riêng
+
+### Tình trạng cuối session
+
+- ✅ Phase 0 Foundation Hardening DONE (6/6 items)
+- ✅ 280/280 tests passing (177 schema + 103 foundation)
+- ✅ AI wrapper sẵn sàng: `callAI()` với 3 providers
+- ✅ Env validator + type-safe Supabase
+- ⏳ Feature implementation plan chưa tạo — cần plan riêng cho Phase 1+
+
+---
+
 ## Session 3 — 2026-05-11
 
 **Branch**: `claude/vibrant-jennings-d0bc85` → pushed to `main`
@@ -74,20 +153,31 @@ Xem commit `13f16be` và `6920481` trên main.
 
 ---
 
-## Cấu trúc hiện tại (đầu session tiếp theo)
+## Cấu trúc hiện tại (sau Session 4)
 
 ```
 src/
-  __tests__/schema/     ← 4 test files, 177 tests
-  app/                  ← Next.js pages (chỉ có boilerplate)
+  __tests__/
+    schema/             ← 4 test files, 177 tests (PR#3)
+    foundation/         ← 5 test files, 103 tests (PR#4)
+  app/
+    layout.tsx          ← lang="vi", title="Home Services"
   lib/
-    client.ts           ← Supabase browser client
-    server.ts           ← Supabase server client
-    middleware.ts       ← Auth middleware
+    ai/
+      client.ts         ← callAI() — main entry point
+      types.ts          ← AIProvider, AIRequest, AIResult, constants
+      providers/
+        anthropic.ts    ← Anthropic API wrapper
+        perplexity.ts   ← Perplexity API wrapper
+        deepseek.ts     ← DeepSeek API wrapper
+    client.ts           ← Supabase browser client (type-safe)
+    server.ts           ← Supabase server client (type-safe)
+    middleware.ts       ← Auth middleware (type-safe)
+    env.ts              ← Env validator (crash on missing vars)
     database.types.ts   ← Auto-generated types (9 tables, 7 enums)
 supabase/
   migrations/
-    20260511000000_init_schema.sql  ← Phase 1 schema
+    20260511000000_init_schema.sql
 docs/
   test-logs/
     INDEX.md
@@ -95,4 +185,5 @@ docs/
 .claude/
   commands/             ← 7 custom slash commands
   MEMORY.md             ← file này
+  settings.json         ← permissions + allowlist
 ```
