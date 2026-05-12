@@ -13,3 +13,24 @@
 - **Result**: 6/6 items done. `npm run build` pass, 177/177 tests pass. Files: `src/lib/env.ts`, `src/lib/ai/` (client + types + 3 providers), `server.ts`/`client.ts`/`middleware.ts` type-safe, CLAUDE.md thêm Platform/Structure/Phase, settings.json mở rộng, layout.tsx lang=vi
 - **Next**: Feature implementation plan (riêng) — bắt đầu từ Auth (A0/B0)
 - **Blockers**: None
+
+### 2026-05-12 — PR#5: Full Audit Remediation + 417 Tests
+
+- **Task**: Audit toàn bộ PR#1-4 với góc nhìn senior engineer (Anthropic/OpenAI), fix critical bugs, viết comprehensive test suite multi-layer
+- **Audit verdict**: 65-70% solid. Schema tốt, nhưng 4 critical bugs + 4 gaps + 3 design issues
+- **Critical bugs fixed**:
+  - C1: Next.js 16 proxy wiring — `src/proxy.ts` (middleware.ts deprecated, dùng `export function proxy()`)
+  - C2: Role escalation — `handle_new_user()` force `'customer'` always (trước đây user có thể pass `{ role: 'admin' }`)
+  - C3: Env validator — server keys giờ throw khi missing (trước đây return empty string)
+  - C4: Admin RLS — 12 policies cho all 9 tables (trước đó admin không query được gì)
+- **Gaps filled**: Zod validation (`validation.ts`), rate limiter (`rate-limit.ts`), health check (`/api/health`), seed.sql, SMS signup enabled
+- **Bug found in testing**: `scopeChangeSchema` cho phép `new_price_min > new_price_max` — fixed với `.refine()`
+- **Test suite**: 240 new tests across 8 files + 177 existing = **417/417 PASSED**
+  - Unit (5 files): env, ai-types, ai-client, validation, rate-limit
+  - Wiring (1 file): proxy, providers, supabase clients, health route, env structure
+  - SQL (2 files): security hardening migration, seed validation
+- **Verification**: `npm test` 417 pass, `tsc --noEmit` 0 errors, `npm run build` success
+- **Testing guidelines**: Viết vào `.claude/commands/test-log.md` — 5 sections, anti-patterns, checklists
+- **PR**: [#5](https://github.com/manhtu0407/HomeServices-/pull/5)
+- **Next**: Feature implementation plan — Auth (A0/B0) → Kael Price Check → Worker matching
+- **Blockers**: None
