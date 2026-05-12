@@ -5,11 +5,17 @@
       "Bash(npm install *)",
       "Bash(npx supabase *)",
       "Bash(npx next *)",
+      "Bash(npx vitest*)",
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
       "Bash(git add *)",
-      "Bash(git branch*)"
+      "Bash(git branch*)",
+      "Bash(git commit*)",
+      "Bash(git checkout*)",
+      "Bash(git merge*)",
+      "Bash(gh pr *)",
+      "Bash(gh pr view*)"
     ],
     "deny": [
       "Bash(git push --force*)",
