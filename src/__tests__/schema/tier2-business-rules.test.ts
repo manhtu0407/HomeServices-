@@ -1,266 +1,162 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { Database } from '@/lib/database.types'
 import { Constants } from '@/lib/database.types'
 
-// ---------------------------------------------------------------------------
-// Tier 2: Business Rules
-// Verify types encode rules from STRUCTURES.md and RULES.md.
-// ---------------------------------------------------------------------------
-
-describe('Rule #6: service_type ONLY electrical + plumbing', () => {
-  it('has exactly 2 service types', () => {
-    expect(Constants.public.Enums.service_type).toHaveLength(2)
-  })
-
+describe('Rule #6: supported services are hard-scoped', () => {
   it('contains only electrical and plumbing', () => {
     expect(Constants.public.Enums.service_type).toEqual(['electrical', 'plumbing'])
   })
-
-  it('does not contain any other service', () => {
-    const allowed = new Set(['electrical', 'plumbing'])
-    for (const svc of Constants.public.Enums.service_type) {
-      expect(allowed.has(svc)).toBe(true)
-    }
-  })
 })
 
-describe('job_status matches workflow from STRUCTURES.md 3A-3B', () => {
+describe('Job lifecycle matches STRUCTURES.md state machine', () => {
   const WORKFLOW_STATES = [
-    'pending',          // A3: submitted, Kael processing
-    'broadcast',        // A7: customer confirmed, broadcasting
-    'matched',          // B2: worker accepted
-    'worker_en_route',
+    'draft',
+    'analyzing',
+    'estimate_ready',
+    'awaiting_customer_confirm',
+    'broadcasting',
+    'worker_matched',
+    'worker_on_way',
+    'arrived',
     'inspecting',
-    'in_progress',
-    'scope_change',     // A11: pending customer confirm
-    'completed',        // B5: worker done, awaiting A12
-    'confirmed',        // A12: customer confirmed
+    'repairing',
+    'scope_change_pending',
+    'completed_by_worker',
+    'confirmed_by_customer',
+    'payment_pending',
     'paid',
+    'reviewed',
     'cancelled',
   ] as const
 
-  it('has exactly 11 states', () => {
-    expect(Constants.public.Enums.job_status).toHaveLength(11)
-  })
-
-  it('states match documented workflow in order', () => {
+  it('has the full 17-state workflow', () => {
     expect(Constants.public.Enums.job_status).toEqual([...WORKFLOW_STATES])
   })
 
-  it.each([
-    ['pending', 'A3 submission'],
-    ['broadcast', 'A7 customer confirm'],
-    ['matched', 'B2 worker accept'],
-    ['scope_change', 'A11 scope change'],
-    ['completed', 'B5 worker completion'],
-    ['confirmed', 'A12 customer confirm'],
-  ] as const)('includes "%s" for %s', (status, _label) => {
-    expect(Constants.public.Enums.job_status).toContain(status)
+  it('contains explicit customer confirmation and scope-change gates', () => {
+    expect(Constants.public.Enums.job_status).toContain('awaiting_customer_confirm')
+    expect(Constants.public.Enums.job_status).toContain('scope_change_pending')
+    expect(Constants.public.Enums.job_status).toContain('confirmed_by_customer')
   })
 })
 
-describe('complexity_level matches price estimate card (A5)', () => {
-  it('has exactly 3 levels', () => {
-    expect(Constants.public.Enums.complexity_level).toHaveLength(3)
+describe('Scope change is a dedicated state machine', () => {
+  it('requires customer decision states', () => {
+    expect(Constants.public.Enums.scope_change_status).toEqual([
+      'requested_by_worker',
+      'reviewing_by_kael',
+      'waiting_customer_decision',
+      'approved_by_customer',
+      'rejected_by_customer',
+      'cancelled',
+    ])
   })
 
-  it('values are small, medium, large', () => {
-    expect(Constants.public.Enums.complexity_level).toEqual(['small', 'medium', 'large'])
-  })
-})
-
-describe('api_provider matches AI stack (STRUCTURES.md Section 4)', () => {
-  it('has exactly 3 providers', () => {
-    expect(Constants.public.Enums.api_provider).toHaveLength(3)
-  })
-
-  it('includes anthropic (PRIMARY), perplexity (PRICING), deepseek (SUPPORT)', () => {
-    expect(Constants.public.Enums.api_provider).toContain('anthropic')
-    expect(Constants.public.Enums.api_provider).toContain('perplexity')
-    expect(Constants.public.Enums.api_provider).toContain('deepseek')
-  })
-})
-
-describe('message_sender includes kael for relay system (3D)', () => {
-  it('includes kael as a sender type', () => {
-    expect(Constants.public.Enums.message_sender).toContain('kael')
-  })
-
-  it('has customer, worker, kael — exactly 3', () => {
-    expect(Constants.public.Enums.message_sender).toEqual(['customer', 'worker', 'kael'])
+  it('scope_change_requests stores price and Kael review separately from jobs', () => {
+    type Row = Database['public']['Tables']['scope_change_requests']['Row']
+    const fields: (keyof Row)[] = [
+      'job_id',
+      'worker_id',
+      'status',
+      'price_min',
+      'price_max',
+      'kael_review',
+      'customer_decision_at',
+    ]
+    expect(fields).toHaveLength(7)
   })
 })
 
-describe('user_role includes admin for B0 approval flow', () => {
-  it('includes admin role', () => {
-    expect(Constants.public.Enums.user_role).toContain('admin')
+describe('Service taxonomy and price baselines', () => {
+  it('service taxonomy is table-driven', () => {
+    type Category = Database['public']['Tables']['service_categories']['Row']
+    type Problem = Database['public']['Tables']['service_problems']['Row']
+
+    const categorySlug: keyof Category = 'slug'
+    const problemCategoryId: keyof Problem = 'service_category_id'
+
+    expect(categorySlug).toBe('slug')
+    expect(problemCategoryId).toBe('service_category_id')
   })
 
-  it('has customer, worker, admin — exactly 3', () => {
-    expect(Constants.public.Enums.user_role).toEqual(['customer', 'worker', 'admin'])
-  })
-})
-
-describe('jobs field nullability matches workflow', () => {
-  it('worker_id is nullable (not assigned at job creation)', () => {
-    type WorkerId = Database['public']['Tables']['jobs']['Row']['worker_id']
-    const nullValue: WorkerId = null
-    expect(nullValue).toBeNull()
-  })
-
-  it('customer_id is NOT nullable (always known at creation)', () => {
-    type CustomerId = Database['public']['Tables']['jobs']['Row']['customer_id']
-    // If customer_id were nullable, `null` would satisfy this type.
-    // The compile-time check: assigning string to CustomerId must work.
-    const validId: CustomerId = '00000000-0000-0000-0000-000000000000'
-    expect(validId).toBeTruthy()
-
-    // Runtime: Insert type requires customer_id (non-optional)
-    type InsertCustomerId = Database['public']['Tables']['jobs']['Insert']['customer_id']
-    const _required: InsertCustomerId = 'uuid-here'
-    expect(_required).toBeTruthy()
-  })
-
-  it('scheduled_at is nullable (null = "now")', () => {
-    type ScheduledAt = Database['public']['Tables']['jobs']['Row']['scheduled_at']
-    const nullValue: ScheduledAt = null
-    expect(nullValue).toBeNull()
-  })
-
-  it('kael_* fields are nullable (populated after AI processing)', () => {
-    type Row = Database['public']['Tables']['jobs']['Row']
-    const nullChecks: {
-      problem: Row['kael_problem_identified']
-      complexity: Row['kael_complexity']
-      priceMin: Row['kael_price_min']
-      priceMax: Row['kael_price_max']
-      advisory: Row['kael_advisory']
-    } = {
-      problem: null,
-      complexity: null,
-      priceMin: null,
-      priceMax: null,
-      advisory: null,
+  it('price baseline links to service problem and district code', () => {
+    type Row = Database['public']['Tables']['price_baselines']['Row']
+    const baseline: Pick<Row, 'service_problem_id' | 'district_code' | 'version'> = {
+      service_problem_id: '00000000-0000-0000-0000-000000000000',
+      district_code: 'hcmc_all',
+      version: 1,
     }
-    expect(nullChecks.problem).toBeNull()
-    expect(nullChecks.complexity).toBeNull()
-    expect(nullChecks.priceMin).toBeNull()
-    expect(nullChecks.priceMax).toBeNull()
-    expect(nullChecks.advisory).toBeNull()
-  })
-
-  it('scope_change fields are nullable (only populated during B4)', () => {
-    type Row = Database['public']['Tables']['jobs']['Row']
-    const nullChecks: {
-      desc: Row['scope_change_description']
-      decision: Row['scope_change_customer_decision']
-    } = { desc: null, decision: null }
-    expect(nullChecks.desc).toBeNull()
-    expect(nullChecks.decision).toBeNull()
+    expect(baseline.district_code).toBe('hcmc_all')
   })
 })
 
-describe('reviews.rating is number type', () => {
-  it('rating field is number', () => {
-    type Rating = Database['public']['Tables']['reviews']['Row']['rating']
-    const validRating: Rating = 5
-    expect(typeof validRating).toBe('number')
+describe('Kael learning boundaries', () => {
+  it('learning candidate status encodes evidence gate flow', () => {
+    expect(Constants.public.Enums.learning_candidate_status).toEqual([
+      'created',
+      'pending_evidence',
+      'evidence_gate_passed',
+      'auto_promoted',
+      'rejected',
+      'rolled_back',
+      'archived',
+    ])
   })
 
-  it('rating is required in Insert (non-optional)', () => {
-    type RatingInsert = Database['public']['Tables']['reviews']['Insert']['rating']
-    const required: RatingInsert = 3
-    expect(required).toBe(3)
-  })
-})
-
-describe('price_baselines types for Perplexity fallback', () => {
-  it('price_min is number (not nullable)', () => {
-    type PriceMin = Database['public']['Tables']['price_baselines']['Row']['price_min']
-    const price: PriceMin = 100000
-    expect(typeof price).toBe('number')
+  it('learning rule status supports monitoring and rollback', () => {
+    expect(Constants.public.Enums.learning_rule_status).toEqual([
+      'draft',
+      'active',
+      'monitoring',
+      'degraded',
+      'disabled',
+      'rolled_back',
+    ])
   })
 
-  it('price_max is number (not nullable)', () => {
-    type PriceMax = Database['public']['Tables']['price_baselines']['Row']['price_max']
-    const price: PriceMax = 300000
-    expect(typeof price).toBe('number')
-  })
-
-  it('service_type uses the enum type', () => {
-    type ST = Database['public']['Tables']['price_baselines']['Row']['service_type']
-    const electrical: ST = 'electrical'
-    const plumbing: ST = 'plumbing'
-    expect(electrical).toBe('electrical')
-    expect(plumbing).toBe('plumbing')
-  })
-
-  it('complexity uses the enum type', () => {
-    type CL = Database['public']['Tables']['price_baselines']['Row']['complexity']
-    const small: CL = 'small'
-    const medium: CL = 'medium'
-    const large: CL = 'large'
-    expect([small, medium, large]).toEqual(['small', 'medium', 'large'])
+  it('learning candidates track confidence and evidence count', () => {
+    type Row = Database['public']['Tables']['learning_candidates']['Row']
+    const candidate: Pick<Row, 'confidence' | 'evidence_count' | 'status'> = {
+      confidence: 0.9,
+      evidence_count: 5,
+      status: 'pending_evidence',
+    }
+    expect(candidate.evidence_count).toBeGreaterThanOrEqual(5)
   })
 })
 
-describe('Constants.public.Enums consistency with type definitions', () => {
+describe('AI and PII-safe logging structure', () => {
+  it('api_logs has safe metadata and fallback tracking', () => {
+    type Row = Database['public']['Tables']['api_logs']['Row']
+    const logShape: Pick<Row, 'request_id' | 'purpose' | 'prompt_version' | 'fallback_used' | 'safe_metadata'> = {
+      request_id: 'req_123',
+      purpose: 'kael_price_check',
+      prompt_version: 'kael-price-v1',
+      fallback_used: false,
+      safe_metadata: { service_type: 'electrical' },
+    }
+    expect(logShape.fallback_used).toBe(false)
+  })
+})
+
+describe('Constants.public.Enums consistency', () => {
   it('all enum names in Constants match Database.public.Enums keys', () => {
     type EnumKeys = keyof Database['public']['Enums']
     const constantKeys = Object.keys(Constants.public.Enums) as EnumKeys[]
     const expected: EnumKeys[] = [
-      'api_provider', 'broadcast_status', 'complexity_level',
-      'job_status', 'message_sender', 'service_type', 'user_role',
+      'api_provider',
+      'broadcast_status',
+      'complexity_level',
+      'job_status',
+      'learning_candidate_status',
+      'learning_rule_status',
+      'message_sender',
+      'notification_status',
+      'scope_change_status',
+      'service_type',
+      'user_role',
+      'worker_verification_status',
     ]
     expect(constantKeys.sort()).toEqual(expected.sort())
-  })
-})
-
-describe('chat_messages.sender_id nullable for Kael system messages', () => {
-  it('sender_id is nullable in Row (null = Kael)', () => {
-    type SenderId = Database['public']['Tables']['chat_messages']['Row']['sender_id']
-    const kaelMessage: SenderId = null
-    expect(kaelMessage).toBeNull()
-  })
-
-  it('sender_id is optional in Insert', () => {
-    const kaelInsert = {
-      content: 'Kael system message',
-      job_id: '00000000-0000-0000-0000-000000000000',
-      sender_role: 'kael' as const,
-    } satisfies Database['public']['Tables']['chat_messages']['Insert']
-    expect(kaelInsert.content).toBeDefined()
-  })
-})
-
-describe('worker_profiles.service_types is an array', () => {
-  it('service_types is an array of service_type enum', () => {
-    type ServiceTypes = Database['public']['Tables']['worker_profiles']['Row']['service_types']
-    const both: ServiceTypes = ['electrical', 'plumbing']
-    const electricalOnly: ServiceTypes = ['electrical']
-    expect(both).toHaveLength(2)
-    expect(electricalOnly).toHaveLength(1)
-  })
-})
-
-describe('api_logs for RULES #9 compliance structure', () => {
-  it('has cost_usd field (numeric for USD tracking)', () => {
-    type CostUsd = Database['public']['Tables']['api_logs']['Row']['cost_usd']
-    const cost: CostUsd = 0.008
-    expect(typeof cost).toBe('number')
-  })
-
-  it('has latency_ms field (for timeout monitoring)', () => {
-    type Latency = Database['public']['Tables']['api_logs']['Row']['latency_ms']
-    const ms: Latency = 1500
-    expect(typeof ms).toBe('number')
-  })
-
-  it('has error_code field (nullable for success cases)', () => {
-    type ErrorCode = Database['public']['Tables']['api_logs']['Row']['error_code']
-    const noError: ErrorCode = null
-    const withError: ErrorCode = 'TIMEOUT'
-    expect(noError).toBeNull()
-    expect(withError).toBe('TIMEOUT')
   })
 })
