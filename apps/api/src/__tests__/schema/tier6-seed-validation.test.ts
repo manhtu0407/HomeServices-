@@ -3,7 +3,7 @@ import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
 const SEED = readFileSync(
-  resolve(__dirname, '../../../supabase/seed.sql'),
+  resolve(__dirname, '../../../../../supabase/seed.sql'),
   'utf-8'
 )
 

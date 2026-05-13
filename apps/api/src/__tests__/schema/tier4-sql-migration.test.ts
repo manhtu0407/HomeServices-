@@ -9,7 +9,7 @@ import { resolve } from 'path'
 // ---------------------------------------------------------------------------
 
 const SQL = readFileSync(
-  resolve(__dirname, '../../../supabase/migrations/20260511000000_init_schema.sql'),
+  resolve(__dirname, '../../../../../supabase/migrations/20260511000000_init_schema.sql'),
   'utf-8'
 )
 
