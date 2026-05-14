@@ -83,8 +83,8 @@ describe('Sample jobs seed', () => {
     expect(SEED).toContain("'paid'")
   })
 
-  it('includes a pending job (active workflow test)', () => {
-    expect(SEED).toContain("'pending'")
+  it('includes an analyzing job (active workflow test)', () => {
+    expect(SEED).toContain("'analyzing'")
   })
 
   it('paid job has complete timeline', () => {

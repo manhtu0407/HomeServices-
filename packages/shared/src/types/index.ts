@@ -1,4 +1,12 @@
-export type { Database } from './database.types'
+export type {
+  CompositeTypes,
+  Database,
+  Enums,
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+} from './database.types'
+export { Constants } from './database.types'
 export type {
   AIProvider,
   AIMessage,

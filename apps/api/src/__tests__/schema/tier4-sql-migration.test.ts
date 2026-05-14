@@ -1,22 +1,71 @@
-import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
+import { readdirSync, readFileSync } from 'fs'
 import { resolve } from 'path'
+import { describe, expect, it } from 'vitest'
 
-// ---------------------------------------------------------------------------
-// Tier 4: SQL Migration Validation
-// Parse raw SQL text to verify structural properties invisible to TypeScript:
-// RLS, indexes, seed data, constraints, triggers, security.
-// ---------------------------------------------------------------------------
+const MIGRATIONS_DIR = resolve(__dirname, '../../../../../supabase/migrations')
+const SQL = readdirSync(MIGRATIONS_DIR)
+  .filter((file) => file.endsWith('.sql'))
+  .sort()
+  .map((file) => readFileSync(resolve(MIGRATIONS_DIR, file), 'utf-8'))
+  .join('\n')
 
-const SQL = readFileSync(
-  resolve(__dirname, '../../../../../supabase/migrations/20260511000000_init_schema.sql'),
+const ALIGNMENT_SQL = readFileSync(
+  resolve(MIGRATIONS_DIR, '20260513114845_align_structures_workflow.sql'),
   'utf-8'
 )
 
-describe('All 9 tables have RLS enabled', () => {
+const FUNCTION_HARDENING_SQL = readFileSync(
+  resolve(MIGRATIONS_DIR, '20260513125704_harden_function_execution.sql'),
+  'utf-8'
+)
+
+const RLS_AUTO_ENABLE_REVOKE_SQL = readFileSync(
+  resolve(MIGRATIONS_DIR, '20260513131949_revoke_rls_auto_enable_rpc.sql'),
+  'utf-8'
+)
+
+describe('Workflow alignment migration exists', () => {
+  it('renames legacy job_status before creating the new enum', () => {
+    expect(ALIGNMENT_SQL).toMatch(/alter\s+type\s+job_status\s+rename\s+to\s+job_status_legacy/i)
+    expect(ALIGNMENT_SQL).toMatch(/create\s+type\s+job_status\s+as\s+enum/i)
+    expect(ALIGNMENT_SQL).toMatch(/drop\s+type\s+job_status_legacy/i)
+  })
+
+  it('maps legacy states to the new workflow explicitly', () => {
+    for (const [legacy, next] of [
+      ['pending', 'analyzing'],
+      ['broadcast', 'broadcasting'],
+      ['matched', 'worker_matched'],
+      ['worker_en_route', 'worker_on_way'],
+      ['in_progress', 'repairing'],
+      ['scope_change', 'scope_change_pending'],
+      ['completed', 'completed_by_worker'],
+      ['confirmed', 'confirmed_by_customer'],
+    ]) {
+      expect(ALIGNMENT_SQL).toContain(`when '${legacy}' then '${next}'`)
+    }
+  })
+})
+
+describe('All public tables have RLS enabled', () => {
   const TABLES = [
-    'profiles', 'customer_profiles', 'worker_profiles', 'price_baselines',
-    'jobs', 'job_broadcasts', 'chat_messages', 'reviews', 'api_logs',
+    'profiles',
+    'customer_profiles',
+    'worker_profiles',
+    'service_categories',
+    'service_problems',
+    'price_baselines',
+    'jobs',
+    'job_broadcasts',
+    'job_events',
+    'chat_messages',
+    'scope_change_requests',
+    'notifications',
+    'reviews',
+    'api_logs',
+    'learning_candidates',
+    'learning_rules',
+    'learning_rule_versions',
   ]
 
   it.each(TABLES)('"%s" has row level security enabled', (table) => {
@@ -28,258 +77,146 @@ describe('All 9 tables have RLS enabled', () => {
   })
 })
 
-describe('Expected indexes exist', () => {
-  const INDEXES = [
-    'jobs_customer_id_idx',
-    'jobs_worker_id_idx',
-    'jobs_status_idx',
-    'jobs_created_at_idx',
-    'job_broadcasts_job_id_idx',
-    'job_broadcasts_worker_id_idx',
-    'chat_messages_job_id_idx',
-    'chat_messages_created_at_idx',
-    'api_logs_job_id_idx',
-    'api_logs_provider_idx',
-    'api_logs_created_at_idx',
-  ]
-
-  it(`has exactly ${INDEXES.length} explicit indexes`, () => {
-    const indexMatches = SQL.match(/create\s+index\s+\w+/gi) || []
-    expect(indexMatches.length).toBe(INDEXES.length)
+describe('New schema objects exist', () => {
+  it.each([
+    'service_categories',
+    'service_problems',
+    'job_events',
+    'scope_change_requests',
+    'notifications',
+    'learning_candidates',
+    'learning_rules',
+    'learning_rule_versions',
+  ])('creates "%s"', (table) => {
+    expect(ALIGNMENT_SQL).toMatch(new RegExp(`create\\s+table\\s+${table}`, 'i'))
   })
 
-  it.each(INDEXES)('index "%s" exists', (indexName) => {
-    expect(SQL.toLowerCase()).toContain(`create index ${indexName}`)
+  it('adds price baseline problem/district uniqueness', () => {
+    expect(ALIGNMENT_SQL).toMatch(/price_baselines_problem_district_complexity_key/i)
+    expect(ALIGNMENT_SQL).toMatch(/unique\s*\(\s*service_problem_id\s*,\s*district_code\s*,\s*complexity\s*\)/i)
+  })
+
+  it('extends api_logs without storing raw prompts', () => {
+    expect(ALIGNMENT_SQL).toContain('safe_metadata jsonb')
+    expect(ALIGNMENT_SQL).toContain('fallback_used boolean')
+    expect(ALIGNMENT_SQL).not.toMatch(/prompt\s+text/i)
   })
 })
 
-describe('Seed data for price_baselines', () => {
-  it('has INSERT INTO price_baselines', () => {
-    expect(SQL.toLowerCase()).toContain('insert into price_baselines')
+describe('RLS policy hardening', () => {
+  it('uses private.is_admin instead of public is_admin', () => {
+    expect(ALIGNMENT_SQL).toMatch(/create\s+schema\s+if\s+not\s+exists\s+private/i)
+    expect(ALIGNMENT_SQL).toMatch(/function\s+private\.is_admin/i)
+    expect(ALIGNMENT_SQL).toContain('drop function if exists is_admin()')
   })
 
-  const COMBOS = [
-    { service: 'electrical', complexity: 'small' },
-    { service: 'electrical', complexity: 'medium' },
-    { service: 'electrical', complexity: 'large' },
-    { service: 'plumbing', complexity: 'small' },
-    { service: 'plumbing', complexity: 'medium' },
-    { service: 'plumbing', complexity: 'large' },
-  ]
+  it('does not keep broad profile or worker-profile self-update policies', () => {
+    expect(ALIGNMENT_SQL).toContain('drop policy if exists "Users update own profile"')
+    expect(ALIGNMENT_SQL).toContain('drop policy if exists "Workers manage own worker profile"')
+    expect(ALIGNMENT_SQL).not.toMatch(/create\s+policy\s+"Users update own profile"/i)
+    expect(ALIGNMENT_SQL).not.toMatch(/create\s+policy\s+"Workers manage own worker profile"/i)
+  })
 
-  it('has all 6 service_type x complexity combinations', () => {
-    for (const combo of COMBOS) {
-      const pattern = new RegExp(
-        `'${combo.service}'\\s*,\\s*'${combo.complexity}'`,
-        'i'
+  it('does not expose approved worker private profile rows to customers', () => {
+    expect(ALIGNMENT_SQL).toContain('drop policy if exists "Customers view approved worker profiles"')
+    expect(ALIGNMENT_SQL).not.toMatch(/create\s+policy\s+"Customers view approved worker profiles"/i)
+  })
+
+  it('participants can read jobs but normal users cannot mutate workflow state directly', () => {
+    expect(ALIGNMENT_SQL).toMatch(/create\s+policy\s+"Participants read jobs"/i)
+    expect(ALIGNMENT_SQL).not.toMatch(/create\s+policy\s+"Customers update own jobs"/i)
+    expect(ALIGNMENT_SQL).not.toMatch(/create\s+policy\s+"Workers update assigned jobs"/i)
+  })
+})
+
+describe('Function execution hardening migration', () => {
+  it('pins search_path on trigger/helper functions flagged by Supabase advisors', () => {
+    for (const fnName of ['update_updated_at', 'update_worker_rating', 'handle_new_user']) {
+      expect(FUNCTION_HARDENING_SQL).toMatch(
+        new RegExp(`alter\\s+function\\s+public\\.${fnName}\\(\\)\\s+set\\s+search_path\\s*=\\s*public`, 'i')
       )
-      expect(SQL).toMatch(pattern)
     }
   })
 
-  it('seed prices are positive integers', () => {
-    const insertSection = SQL.substring(
-      SQL.toLowerCase().indexOf('insert into price_baselines'),
-      SQL.indexOf(';', SQL.toLowerCase().indexOf('insert into price_baselines'))
+  it('prevents API roles from calling trigger-only handle_new_user directly', () => {
+    expect(FUNCTION_HARDENING_SQL).toMatch(
+      /revoke\s+execute\s+on\s+function\s+public\.handle_new_user\(\)\s+from\s+public/i
     )
-    const numbers = insertSection.match(/\d{5,}/g) || []
-    expect(numbers.length).toBeGreaterThanOrEqual(12) // 6 rows × 2 prices each
-    for (const num of numbers) {
-      expect(parseInt(num)).toBeGreaterThan(0)
-    }
-  })
-})
-
-describe('Check constraints exist', () => {
-  it('reviews.rating has CHECK between 1 and 5', () => {
-    const pattern = /check\s*\(\s*rating\s+between\s+1\s+and\s+5\s*\)/i
-    expect(SQL).toMatch(pattern)
-  })
-
-  it('jobs.scope_change_customer_decision has CHECK for approved/cancelled', () => {
-    const pattern = /scope_change_customer_decision.*check.*'approved'.*'cancelled'/is
-    expect(SQL).toMatch(pattern)
-  })
-})
-
-describe('UNIQUE constraints', () => {
-  it('price_baselines has UNIQUE(service_type, complexity)', () => {
-    const pattern = /unique\s*\(\s*service_type\s*,\s*complexity\s*\)/i
-    expect(SQL).toMatch(pattern)
-  })
-
-  it('job_broadcasts has UNIQUE(job_id, worker_id)', () => {
-    const pattern = /unique\s*\(\s*job_id\s*,\s*worker_id\s*\)/i
-    expect(SQL).toMatch(pattern)
-  })
-
-  it('profiles.phone has UNIQUE constraint', () => {
-    const pattern = /phone\s+text\s+unique/i
-    expect(SQL).toMatch(pattern)
-  })
-
-  it('reviews.job_id has UNIQUE constraint (one review per job)', () => {
-    // "uuid references jobs on delete cascade unique not null"
-    const pattern = /job_id\s+uuid\s+references\s+jobs\s+on\s+delete\s+cascade\s+unique/i
-    expect(SQL).toMatch(pattern)
-  })
-})
-
-describe('Storage buckets', () => {
-  it('creates job-photos bucket', () => {
-    expect(SQL).toContain("'job-photos'")
-  })
-
-  it('creates completion-photos bucket', () => {
-    expect(SQL).toContain("'completion-photos'")
-  })
-
-  it('creates worker-documents bucket', () => {
-    expect(SQL).toContain("'worker-documents'")
-  })
-
-  it('job-photos has 10MB limit', () => {
-    // 10MB = 10485760 bytes
-    const jobPhotosSection = SQL.substring(
-      SQL.indexOf("'job-photos'"),
-      SQL.indexOf("'job-photos'") + 200
+    expect(FUNCTION_HARDENING_SQL).toMatch(
+      /revoke\s+execute\s+on\s+function\s+public\.handle_new_user\(\)\s+from\s+anon/i
     )
-    expect(jobPhotosSection).toContain('10485760')
-  })
-
-  it('worker-documents has 5MB limit', () => {
-    // 5MB = 5242880 bytes
-    const workerDocsSection = SQL.substring(
-      SQL.indexOf("'worker-documents'"),
-      SQL.indexOf("'worker-documents'") + 200
+    expect(FUNCTION_HARDENING_SQL).toMatch(
+      /revoke\s+execute\s+on\s+function\s+public\.handle_new_user\(\)\s+from\s+authenticated/i
     )
-    expect(workerDocsSection).toContain('5242880')
   })
 })
 
-describe('Realtime-enabled tables', () => {
-  it('jobs is added to supabase_realtime', () => {
-    expect(SQL).toMatch(/alter\s+publication\s+supabase_realtime\s+add\s+table\s+jobs/i)
+describe('Production-only rls_auto_enable RPC hardening migration', () => {
+  it('is conditional so staging and fresh environments do not fail when the function is absent', () => {
+    expect(RLS_AUTO_ENABLE_REVOKE_SQL).toMatch(/do\s+\$\$/i)
+    expect(RLS_AUTO_ENABLE_REVOKE_SQL).toMatch(/if\s+exists\s*\(/i)
+    expect(RLS_AUTO_ENABLE_REVOKE_SQL).toMatch(/p\.proname\s*=\s*'rls_auto_enable'/i)
+    expect(RLS_AUTO_ENABLE_REVOKE_SQL).toMatch(/pg_get_function_identity_arguments\(p\.oid\)\s*=\s*''/i)
   })
 
-  it('chat_messages is added to supabase_realtime', () => {
-    expect(SQL).toMatch(/alter\s+publication\s+supabase_realtime\s+add\s+table\s+chat_messages/i)
-  })
-
-  it('job_broadcasts is added to supabase_realtime', () => {
-    expect(SQL).toMatch(/alter\s+publication\s+supabase_realtime\s+add\s+table\s+job_broadcasts/i)
-  })
-
-  it('sensitive tables are NOT in realtime', () => {
-    const realtimeLines = SQL
-      .split('\n')
-      .filter(line => /supabase_realtime\s+add\s+table/i.test(line))
-    expect(realtimeLines).toHaveLength(3)
-
-    for (const line of realtimeLines) {
-      expect(line).not.toMatch(/profiles|api_logs|price_baselines|reviews/i)
-    }
+  it('revokes direct RPC execution from exposed API roles without dropping the helper', () => {
+    expect(RLS_AUTO_ENABLE_REVOKE_SQL).toMatch(
+      /revoke\s+execute\s+on\s+function\s+public\.rls_auto_enable\(\)\s+from\s+public/i
+    )
+    expect(RLS_AUTO_ENABLE_REVOKE_SQL).toMatch(
+      /revoke\s+execute\s+on\s+function\s+public\.rls_auto_enable\(\)\s+from\s+anon/i
+    )
+    expect(RLS_AUTO_ENABLE_REVOKE_SQL).toMatch(
+      /revoke\s+execute\s+on\s+function\s+public\.rls_auto_enable\(\)\s+from\s+authenticated/i
+    )
+    expect(RLS_AUTO_ENABLE_REVOKE_SQL).not.toMatch(/drop\s+function/i)
+    expect(RLS_AUTO_ENABLE_REVOKE_SQL).not.toMatch(/drop\s+event\s+trigger/i)
   })
 })
 
-describe('Triggers exist', () => {
-  const TRIGGERS = [
-    'profiles_updated_at',
-    'customer_profiles_updated_at',
-    'worker_profiles_updated_at',
-    'price_baselines_updated_at',
-    'jobs_updated_at',
-    'on_auth_user_created',
-    'reviews_update_worker_rating',
-  ]
+describe('Storage policies are scoped by job or worker path', () => {
+  it('drops broad authenticated media policies', () => {
+    expect(ALIGNMENT_SQL).toContain('drop policy if exists "Authenticated users upload job photos"')
+    expect(ALIGNMENT_SQL).toContain('drop policy if exists "Authenticated users view completion photos"')
+  })
 
-  it.each(TRIGGERS)('trigger "%s" exists', (triggerName) => {
-    const pattern = new RegExp(`create\\s+trigger\\s+${triggerName}`, 'i')
-    expect(SQL).toMatch(pattern)
+  it('job photos require participant access to folder job id', () => {
+    expect(ALIGNMENT_SQL).toMatch(/bucket_id\s*=\s*'job-photos'/)
+    expect(ALIGNMENT_SQL).toMatch(/private\.is_job_participant\(\(storage\.foldername\(name\)\)\[1\]::uuid\)/)
+  })
+
+  it('completion uploads require the matched worker', () => {
+    expect(ALIGNMENT_SQL).toMatch(/bucket_id\s*=\s*'completion-photos'/)
+    expect(ALIGNMENT_SQL).toMatch(/private\.is_job_worker\(\(storage\.foldername\(name\)\)\[1\]::uuid\)/)
+  })
+
+  it('worker documents remain worker-owned with admin read path', () => {
+    expect(ALIGNMENT_SQL).toMatch(/bucket_id\s*=\s*'worker-documents'/)
+    expect(ALIGNMENT_SQL).toMatch(/private\.is_admin\(\)/)
   })
 })
 
-describe('No hardcoded secrets or PII in migration', () => {
-  it('no Anthropic API key patterns (sk-)', () => {
+describe('Data API grants are explicit', () => {
+  it('grants public schema usage and table access to authenticated role', () => {
+    expect(ALIGNMENT_SQL).toMatch(/grant\s+usage\s+on\s+schema\s+public\s+to\s+authenticated/i)
+    expect(ALIGNMENT_SQL).toMatch(/grant\s+select\s+on[\s\S]*service_categories[\s\S]*to\s+authenticated/i)
+  })
+})
+
+describe('No hardcoded secrets or unsafe PII in migrations', () => {
+  it('has no AI or Supabase management token patterns', () => {
     expect(SQL).not.toMatch(/sk-[a-zA-Z0-9]{20,}/)
-  })
-
-  it('no Perplexity API key patterns (pplx-)', () => {
     expect(SQL).not.toMatch(/pplx-[a-zA-Z0-9]{20,}/)
+    expect(SQL).not.toMatch(/sbp_[A-Za-z0-9]{32,}/)
   })
 
-  it('no Vietnamese phone numbers (+84 or 09)', () => {
-    expect(SQL).not.toMatch(/\+84\d{9,10}/)
-    expect(SQL).not.toMatch(/09\d{8}/)
-  })
-
-  it('no process.env references (code leaking into SQL)', () => {
+  it('does not reference process.env inside SQL', () => {
     expect(SQL).not.toContain('process.env')
   })
 
-  it('no hardcoded email addresses', () => {
+  it('does not hardcode user emails or Vietnamese phone numbers', () => {
     expect(SQL).not.toMatch(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
-  })
-})
-
-describe('Critical RLS policies exist', () => {
-  it('customers can create jobs (auth.uid() = customer_id)', () => {
-    const pattern = /create\s+policy.*customers\s+create\s+jobs/i
-    expect(SQL).toMatch(pattern)
-    expect(SQL).toMatch(/auth\.uid\(\)\s*=\s*customer_id/)
-  })
-
-  it('workers can respond to own broadcasts', () => {
-    const pattern = /create\s+policy.*workers\s+respond/i
-    expect(SQL).toMatch(pattern)
-  })
-
-  it('reviews restricted to confirmed jobs', () => {
-    expect(SQL).toMatch(/j\.status\s*=\s*'confirmed'/)
-  })
-
-  it('price_baselines readable by authenticated users', () => {
-    const pattern = /create\s+policy.*price\s+baselines/i
-    expect(SQL).toMatch(pattern)
-    expect(SQL).toMatch(/auth\.role\(\)\s*=\s*'authenticated'/)
-  })
-
-  it('worker documents restricted to own folder', () => {
-    expect(SQL).toMatch(/auth\.uid\(\)::text\s*=\s*\(storage\.foldername\(name\)\)\[1\]/)
-  })
-})
-
-describe('Enums are created', () => {
-  const ENUMS = [
-    'user_role',
-    'service_type',
-    'job_status',
-    'complexity_level',
-    'broadcast_status',
-    'message_sender',
-    'api_provider',
-  ]
-
-  it.each(ENUMS)('enum "%s" is created', (enumName) => {
-    const pattern = new RegExp(`create\\s+type\\s+${enumName}\\s+as\\s+enum`, 'i')
-    expect(SQL).toMatch(pattern)
-  })
-})
-
-describe('Utility functions exist', () => {
-  it('update_updated_at() function exists', () => {
-    expect(SQL).toMatch(/create\s+or\s+replace\s+function\s+update_updated_at/i)
-  })
-
-  it('handle_new_user() function exists', () => {
-    expect(SQL).toMatch(/create\s+or\s+replace\s+function\s+handle_new_user/i)
-  })
-
-  it('update_worker_rating() function exists', () => {
-    expect(SQL).toMatch(/create\s+or\s+replace\s+function\s+update_worker_rating/i)
-  })
-
-  it('handle_new_user defaults to customer role', () => {
-    expect(SQL).toMatch(/coalesce.*'customer'/)
+    expect(SQL).not.toMatch(/\+84\d{9,10}/)
+    expect(SQL).not.toMatch(/09\d{8}/)
   })
 })

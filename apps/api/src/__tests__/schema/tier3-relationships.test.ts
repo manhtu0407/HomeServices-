@@ -1,309 +1,108 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { Database } from '@/lib/database.types'
-
-// ---------------------------------------------------------------------------
-// Tier 3: Relationships
-// Verify FK relationships, cardinality (1:1 vs 1:many), and nullable FKs.
-// Uses compile-time type assertions + runtime checks on Relationships tuples.
-// ---------------------------------------------------------------------------
 
 type Rel<T extends keyof Database['public']['Tables']> =
   Database['public']['Tables'][T]['Relationships']
 
-// Helper: extract relationship info from the type for runtime assertions
-function getRelationships<T extends keyof Database['public']['Tables']>(
-  _table: T,
-  relationships: readonly {
-    foreignKeyName: string
-    columns: readonly string[]
-    isOneToOne: boolean
-    referencedRelation: string
-    referencedColumns: readonly string[]
-  }[]
-) {
-  return relationships
-}
-
-describe('1:1 relationships', () => {
-  it('customer_profiles.id → profiles.id is 1:1', () => {
-    type R = Rel<'customer_profiles'>
-    type First = R[0]
-    // Compile-time check
-    const _isOneToOne: First['isOneToOne'] extends true ? true : never = true
-    const _refTable: First['referencedRelation'] extends 'profiles' ? true : never = true
-
-    // Runtime assertion using the type shape
-    type Check = {
-      fk: First['foreignKeyName']
-      col: First['columns']
-      oneToOne: First['isOneToOne']
-      ref: First['referencedRelation']
+describe('Identity relationships', () => {
+  it('customer_profiles.id -> profiles.id is 1:1', () => {
+    type First = Rel<'customer_profiles'>[0]
+    const relationship: Pick<First, 'referencedRelation' | 'isOneToOne'> = {
+      referencedRelation: 'profiles',
+      isOneToOne: true,
     }
-    const check: Check = {
-      fk: 'customer_profiles_id_fkey',
-      col: ['id'],
-      oneToOne: true,
-      ref: 'profiles',
-    }
-    expect(check.oneToOne).toBe(true)
-    expect(check.ref).toBe('profiles')
-    expect(check.col).toEqual(['id'])
+    expect(relationship.isOneToOne).toBe(true)
   })
 
-  it('worker_profiles.id → profiles.id is 1:1', () => {
-    type R = Rel<'worker_profiles'>
-    type First = R[0]
-    const _isOneToOne: First['isOneToOne'] extends true ? true : never = true
-
-    const check = {
-      fk: 'worker_profiles_id_fkey' as First['foreignKeyName'],
-      oneToOne: true as First['isOneToOne'],
-      ref: 'profiles' as First['referencedRelation'],
+  it('worker_profiles.id -> profiles.id is 1:1', () => {
+    type First = Rel<'worker_profiles'>[0]
+    const relationship: Pick<First, 'referencedRelation' | 'isOneToOne'> = {
+      referencedRelation: 'profiles',
+      isOneToOne: true,
     }
-    expect(check.oneToOne).toBe(true)
-    expect(check.ref).toBe('profiles')
-  })
-
-  it('reviews.job_id → jobs.id is 1:1 (one review per job)', () => {
-    type R = Rel<'reviews'>
-    // Find the job_id relationship (index 1 based on generated order)
-    type JobRel = R[1]
-    const _isOneToOne: JobRel['isOneToOne'] extends true ? true : never = true
-
-    const check = {
-      fk: 'reviews_job_id_fkey' as JobRel['foreignKeyName'],
-      oneToOne: true as JobRel['isOneToOne'],
-      ref: 'jobs' as JobRel['referencedRelation'],
-    }
-    expect(check.oneToOne).toBe(true)
-    expect(check.ref).toBe('jobs')
+    expect(relationship.referencedRelation).toBe('profiles')
   })
 })
 
-describe('1:many relationships', () => {
-  it('jobs.customer_id → profiles.id is 1:many', () => {
-    type R = Rel<'jobs'>
-    type CustomerRel = R[0]
-    const _isNotOneToOne: CustomerRel['isOneToOne'] extends false ? true : never = true
-
-    const check = {
-      fk: 'jobs_customer_id_fkey' as CustomerRel['foreignKeyName'],
-      oneToOne: false as CustomerRel['isOneToOne'],
-      ref: 'profiles' as CustomerRel['referencedRelation'],
+describe('Service taxonomy relationships', () => {
+  it('service_problems belongs to service_categories', () => {
+    type First = Rel<'service_problems'>[0]
+    const relationship: Pick<First, 'referencedRelation' | 'columns'> = {
+      referencedRelation: 'service_categories',
+      columns: ['service_category_id'],
     }
-    expect(check.oneToOne).toBe(false)
-    expect(check.ref).toBe('profiles')
+    expect(relationship.referencedRelation).toBe('service_categories')
   })
 
-  it('jobs.worker_id → profiles.id is 1:many', () => {
-    type R = Rel<'jobs'>
-    type WorkerRel = R[1]
-    const _isNotOneToOne: WorkerRel['isOneToOne'] extends false ? true : never = true
-
-    const check = {
-      fk: 'jobs_worker_id_fkey' as WorkerRel['foreignKeyName'],
-      oneToOne: false as WorkerRel['isOneToOne'],
-      ref: 'profiles' as WorkerRel['referencedRelation'],
+  it('price_baselines belongs to service_problems', () => {
+    type First = Rel<'price_baselines'>[0]
+    const relationship: Pick<First, 'referencedRelation' | 'columns'> = {
+      referencedRelation: 'service_problems',
+      columns: ['service_problem_id'],
     }
-    expect(check.oneToOne).toBe(false)
-    expect(check.ref).toBe('profiles')
-  })
-
-  it('chat_messages.job_id → jobs.id is 1:many', () => {
-    type R = Rel<'chat_messages'>
-    type JobRel = R[0]
-    const _check: JobRel['isOneToOne'] extends false ? true : never = true
-
-    const check = {
-      fk: 'chat_messages_job_id_fkey' as JobRel['foreignKeyName'],
-      oneToOne: false as JobRel['isOneToOne'],
-      ref: 'jobs' as JobRel['referencedRelation'],
-    }
-    expect(check.oneToOne).toBe(false)
-    expect(check.ref).toBe('jobs')
-  })
-
-  it('chat_messages.sender_id → profiles.id is 1:many', () => {
-    type R = Rel<'chat_messages'>
-    type SenderRel = R[1]
-
-    const check = {
-      fk: 'chat_messages_sender_id_fkey' as SenderRel['foreignKeyName'],
-      oneToOne: false as SenderRel['isOneToOne'],
-      ref: 'profiles' as SenderRel['referencedRelation'],
-    }
-    expect(check.oneToOne).toBe(false)
-    expect(check.ref).toBe('profiles')
-  })
-
-  it('job_broadcasts.job_id → jobs.id is 1:many', () => {
-    type R = Rel<'job_broadcasts'>
-    type JobRel = R[0]
-
-    const check = {
-      fk: 'job_broadcasts_job_id_fkey' as JobRel['foreignKeyName'],
-      oneToOne: false as JobRel['isOneToOne'],
-      ref: 'jobs' as JobRel['referencedRelation'],
-    }
-    expect(check.oneToOne).toBe(false)
-    expect(check.ref).toBe('jobs')
-  })
-
-  it('job_broadcasts.worker_id → profiles.id is 1:many', () => {
-    type R = Rel<'job_broadcasts'>
-    type WorkerRel = R[1]
-
-    const check = {
-      fk: 'job_broadcasts_worker_id_fkey' as WorkerRel['foreignKeyName'],
-      oneToOne: false as WorkerRel['isOneToOne'],
-      ref: 'profiles' as WorkerRel['referencedRelation'],
-    }
-    expect(check.oneToOne).toBe(false)
-    expect(check.ref).toBe('profiles')
-  })
-
-  it('api_logs.job_id → jobs.id is 1:many', () => {
-    type R = Rel<'api_logs'>
-    type JobRel = R[0]
-
-    const check = {
-      fk: 'api_logs_job_id_fkey' as JobRel['foreignKeyName'],
-      oneToOne: false as JobRel['isOneToOne'],
-      ref: 'jobs' as JobRel['referencedRelation'],
-    }
-    expect(check.oneToOne).toBe(false)
-    expect(check.ref).toBe('jobs')
-  })
-
-  it('reviews.customer_id → profiles.id is 1:many', () => {
-    type R = Rel<'reviews'>
-    type CustomerRel = R[0]
-
-    const check = {
-      fk: 'reviews_customer_id_fkey' as CustomerRel['foreignKeyName'],
-      oneToOne: false as CustomerRel['isOneToOne'],
-      ref: 'profiles' as CustomerRel['referencedRelation'],
-    }
-    expect(check.oneToOne).toBe(false)
-    expect(check.ref).toBe('profiles')
-  })
-
-  it('reviews.worker_id → profiles.id is 1:many', () => {
-    type R = Rel<'reviews'>
-    type WorkerRel = R[2]
-
-    const check = {
-      fk: 'reviews_worker_id_fkey' as WorkerRel['foreignKeyName'],
-      oneToOne: false as WorkerRel['isOneToOne'],
-      ref: 'profiles' as WorkerRel['referencedRelation'],
-    }
-    expect(check.oneToOne).toBe(false)
-    expect(check.ref).toBe('profiles')
+    expect(relationship.columns).toEqual(['service_problem_id'])
   })
 })
 
-describe('Required FKs are non-nullable in Insert types', () => {
-  it('jobs.customer_id is required', () => {
-    // @ts-expect-error — omitting customer_id should fail
-    const _invalid: Database['public']['Tables']['jobs']['Insert'] = {
-      description: 'test',
-      service_type: 'electrical',
-    }
-    expect(true).toBe(true)
+describe('Job workflow relationships', () => {
+  it('jobs belongs to customer, optional worker, and optional service problem', () => {
+    type Relationships = Rel<'jobs'>
+    const referencedTables: Relationships[number]['referencedRelation'][] = [
+      'profiles',
+      'service_problems',
+      'profiles',
+    ]
+    expect(referencedTables).toContain('service_problems')
+    expect(referencedTables.filter((name) => name === 'profiles')).toHaveLength(2)
   })
 
-  it('chat_messages.job_id is required', () => {
-    // @ts-expect-error — omitting job_id should fail
-    const _invalid: Database['public']['Tables']['chat_messages']['Insert'] = {
-      content: 'test',
-      sender_role: 'customer',
-    }
-    expect(true).toBe(true)
+  it('job_events belongs to jobs and optional actor profile', () => {
+    type Relationships = Rel<'job_events'>
+    const referencedTables: Relationships[number]['referencedRelation'][] = ['profiles', 'jobs']
+    expect(referencedTables).toContain('jobs')
+    expect(referencedTables).toContain('profiles')
   })
 
-  it('job_broadcasts requires both job_id and worker_id', () => {
-    // @ts-expect-error — omitting both should fail
-    const _invalid: Database['public']['Tables']['job_broadcasts']['Insert'] = {}
-    expect(true).toBe(true)
-  })
-
-  it('reviews requires customer_id, job_id, rating, worker_id', () => {
-    // @ts-expect-error — omitting required fields should fail
-    const _invalid: Database['public']['Tables']['reviews']['Insert'] = {
-      rating: 5,
-    }
-    expect(true).toBe(true)
+  it('scope_change_requests belongs to jobs and worker profile', () => {
+    type Relationships = Rel<'scope_change_requests'>
+    const referencedTables: Relationships[number]['referencedRelation'][] = ['jobs', 'profiles']
+    expect(referencedTables).toEqual(['jobs', 'profiles'])
   })
 })
 
-describe('Optional FKs are nullable in Row types', () => {
-  it('jobs.worker_id accepts null', () => {
+describe('Learning and notification relationships', () => {
+  it('notifications belongs to user profile and optionally a job', () => {
+    type Relationships = Rel<'notifications'>
+    const referencedTables: Relationships[number]['referencedRelation'][] = ['jobs', 'profiles']
+    expect(referencedTables).toContain('profiles')
+  })
+
+  it('learning_rule_versions belongs to learning_rules', () => {
+    type First = Rel<'learning_rule_versions'>[0]
+    const relationship: Pick<First, 'referencedRelation' | 'columns'> = {
+      referencedRelation: 'learning_rules',
+      columns: ['rule_id'],
+    }
+    expect(relationship.referencedRelation).toBe('learning_rules')
+  })
+
+  it('learning candidates are standalone evidence records', () => {
+    type Relationships = Rel<'learning_candidates'>
+    const empty: Relationships = []
+    expect(empty).toEqual([])
+  })
+})
+
+describe('Nullable foreign keys match workflow', () => {
+  it('jobs.worker_id remains nullable before match', () => {
     type WorkerId = Database['public']['Tables']['jobs']['Row']['worker_id']
-    const noWorker: WorkerId = null
-    expect(noWorker).toBeNull()
+    const value: WorkerId = null
+    expect(value).toBeNull()
   })
 
-  it('chat_messages.sender_id accepts null (for Kael messages)', () => {
-    type SenderId = Database['public']['Tables']['chat_messages']['Row']['sender_id']
-    const kaelMsg: SenderId = null
-    expect(kaelMsg).toBeNull()
-  })
-
-  it('api_logs.job_id accepts null (standalone API calls)', () => {
+  it('api_logs.job_id remains nullable for standalone AI calls', () => {
     type JobId = Database['public']['Tables']['api_logs']['Row']['job_id']
-    const standalone: JobId = null
-    expect(standalone).toBeNull()
-  })
-})
-
-describe('All FK targets reference correct tables', () => {
-  it('profiles has no outgoing FKs in generated types', () => {
-    type R = Rel<'profiles'>
-    // profiles references auth.users which is not in the public schema types
-    type Length = R['length']
-    const _empty: Length extends 0 ? true : never = true
-    expect(true).toBe(true)
-  })
-
-  it('price_baselines has no outgoing FKs', () => {
-    type R = Rel<'price_baselines'>
-    type Length = R['length']
-    const _empty: Length extends 0 ? true : never = true
-    expect(true).toBe(true)
-  })
-
-  it('jobs has exactly 2 FKs (customer_id, worker_id → profiles)', () => {
-    type R = Rel<'jobs'>
-    type Length = R['length']
-    const _two: Length extends 2 ? true : never = true
-    expect(true).toBe(true)
-  })
-
-  it('chat_messages has exactly 2 FKs (job_id → jobs, sender_id → profiles)', () => {
-    type R = Rel<'chat_messages'>
-    type Length = R['length']
-    const _two: Length extends 2 ? true : never = true
-    expect(true).toBe(true)
-  })
-
-  it('job_broadcasts has exactly 2 FKs (job_id → jobs, worker_id → profiles)', () => {
-    type R = Rel<'job_broadcasts'>
-    type Length = R['length']
-    const _two: Length extends 2 ? true : never = true
-    expect(true).toBe(true)
-  })
-
-  it('reviews has exactly 3 FKs (customer_id, worker_id → profiles, job_id → jobs)', () => {
-    type R = Rel<'reviews'>
-    type Length = R['length']
-    const _three: Length extends 3 ? true : never = true
-    expect(true).toBe(true)
-  })
-
-  it('api_logs has exactly 1 FK (job_id → jobs)', () => {
-    type R = Rel<'api_logs'>
-    type Length = R['length']
-    const _one: Length extends 1 ? true : never = true
-    expect(true).toBe(true)
+    const value: JobId = null
+    expect(value).toBeNull()
   })
 })

@@ -26,14 +26,14 @@ on conflict (id) do nothing;
 
 insert into worker_profiles (
   id, service_types, years_experience, districts,
-  is_approved, is_available, rating, total_jobs
+  is_approved, is_available, verification_status, rating, total_jobs
 ) values
   (
     '00000000-0000-0000-0000-000000000002',
     array['electrical', 'plumbing']::service_type[],
     5,
     array['Binh Thanh', 'Quan 1', 'Quan 2'],
-    true, true, 4.50, 12
+    true, true, 'approved', 4.50, 12
   )
 on conflict (id) do nothing;
 
@@ -93,6 +93,6 @@ insert into jobs (
     array['Ống rò rỉ'],
     'Ống nước dưới bồn rửa bị rỉ, nước nhỏ giọt liên tục',
     'Vinhomes Central Park', 'A-1205', '12', 'Binh Thanh',
-    'pending'
+    'analyzing'
   )
 on conflict (id) do nothing;
