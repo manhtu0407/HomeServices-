@@ -278,6 +278,11 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
     // ?? '' ensures createClient gets string, not undefined
     expect(src).toContain("?? ''")
   })
+
+  it('does NOT create a Supabase client when mobile config is missing', () => {
+    expect(src).toContain('isSupabaseConfigured')
+    expect(src).toContain(': null')
+  })
 })
 
 // ===================================================================
@@ -330,6 +335,11 @@ describe('auth-provider.tsx', () => {
 
   it('resets role to null on sign out', () => {
     expect(src).toContain('setRole(null)')
+  })
+
+  it('renders children instead of crashing when Supabase config is missing', () => {
+    expect(src).toContain('if (!supabase)')
+    expect(src).toContain('setLoading(false)')
   })
 })
 
@@ -415,6 +425,26 @@ describe('app.json configuration', () => {
   })
 })
 
+describe('web preview dependencies', () => {
+  const mobilePackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'package.json'), 'utf-8'))
+
+  it('declares react-dom for Expo web rendering', () => {
+    expect(mobilePackage.dependencies['react-dom']).toBe('19.1.0')
+  })
+
+  it('declares react-native-web for Expo web rendering', () => {
+    expect(mobilePackage.dependencies['react-native-web']).toBe('~0.21.2')
+  })
+
+  it('declares react-native-svg for prototype-quality icon rendering', () => {
+    expect(mobilePackage.dependencies['react-native-svg']).toBe('15.12.1')
+  })
+
+  it('declares react-native-reanimated for visible motion prototyping', () => {
+    expect(mobilePackage.dependencies['react-native-reanimated']).toBe('~4.1.7')
+  })
+})
+
 // ===================================================================
 // colors.ts — design consistency
 // ===================================================================
@@ -432,5 +462,321 @@ describe('constants/colors.ts', () => {
   it('has primary color', () => {
     const src = read('constants/colors.ts')
     expect(src).toContain('primary')
+  })
+})
+
+// ===================================================================
+// Client Price Check prototype — isolated UI review surface
+// ===================================================================
+
+describe('client price check prototype', () => {
+  const route = read('app/prototype/client-price-check.tsx')
+  const layout = read('app/prototype/_layout.tsx')
+  const component = read('components/client-price-check/client-price-check-prototype.tsx')
+  const customerLayout = read('app/(customer)/_layout.tsx')
+
+  it('adds a dedicated prototype route outside production customer tabs', () => {
+    expect(exists('app/prototype/client-price-check.tsx')).toBe(true)
+    expect(exists('app/prototype/_layout.tsx')).toBe(true)
+    expect(route).toContain('ClientPriceCheckPrototype')
+    expect(layout).toContain('Prototype kiểm tra giá')
+    expect(customerLayout).not.toContain('client-price-check')
+  })
+
+  it('keeps the prototype implementation outside the app route tree', () => {
+    expect(exists('components/client-price-check/client-price-check-prototype.tsx')).toBe(true)
+    expect(route).toContain('@/components/client-price-check/client-price-check-prototype')
+  })
+
+  it('covers the required local review states', () => {
+    expect(component).toContain("'service'")
+    expect(component).toContain("'details'")
+    expect(component).toContain("'loading'")
+    expect(component).toContain("'clarification'")
+    expect(component).toContain("'estimate'")
+    expect(component).toContain("'fallback'")
+  })
+
+  it('uses a multi-step mobile flow instead of a single presentation screen', () => {
+    expect(component).toContain('multi-step-price-check')
+    expect(component).toContain('goNext')
+    expect(component).toContain('goBack')
+    expect(component).toContain('Bạn cần sửa gì?')
+    expect(component).toContain('Mô tả hiện trạng')
+    expect(component).toContain('Kael hỏi thêm')
+    expect(component).toContain('Ước tính minh bạch')
+  })
+
+  it('keeps the revised UI direction light, varied, and Anthropic-like', () => {
+    expect(component).toContain('#F8FCFA')
+    expect(component).toContain('#EEF9F5')
+    expect(component).toContain('#CFF3F4')
+    expect(component).toContain('#4ABDC0')
+    expect(component).toContain('Aptos, Inter, Geist, Manrope')
+    expect(component).toContain('letterSpacing: 0')
+  })
+
+  it('keeps v3 visual direction markers in the prototype', () => {
+    expect(component).toContain('Animated.loop')
+    expect(component).toContain('backgroundWash')
+    expect(component).toContain('ServiceIcon')
+    expect(component).toContain('ChipGlyph')
+    expect(component).toContain('pressMotion')
+  })
+
+  it('keeps the v4 icon and animation prototype explicit', () => {
+    expect(component).toContain('outletPlate')
+    expect(component).toContain('faucetIcon')
+    expect(component).toContain('iconPulseRing')
+    expect(component).toContain('statusOrbit')
+    expect(component).toContain('screenMotion')
+    expect(component).toContain('ctaPulse')
+  })
+
+  it('uses v5 SVG icons and interaction-driven motion markers', () => {
+    expect(component).toContain("from 'react-native-svg'")
+    expect(component).toContain('OutletSvgIcon')
+    expect(component).toContain('FaucetSvgIcon')
+    expect(component).toContain('interactionPulse')
+    expect(component).toContain('serviceTileSweep')
+    expect(component).toContain('chipActionSheen')
+  })
+
+  it('adds a v8 motion lab with interaction-triggered choreography', () => {
+    expect(component).toContain("from 'react-native-reanimated'")
+    expect(component).toContain('motion-lab-v8')
+    expect(component).toContain('MotionShowcase')
+    expect(component).toContain('MotionMode')
+    expect(component).toContain('MotionModeSelector')
+    expect(component).toContain('DistributedMotionRail')
+    expect(component).toContain('MotionDetailCard')
+    expect(component).toContain('PlugSocketHeroIcon')
+    expect(component).toContain('PipeValveHeroIcon')
+    expect(component).toContain('KaelScanCard')
+    expect(component).toContain('EstimateRevealCard')
+    expect(component).toContain('interpolateColor')
+    expect(component).toContain('mintStrong')
+    expect(component).toContain('mintVivid')
+    expect(component).toContain('onPressIn')
+    expect(component).toContain('onHoverIn')
+    expect(component).toContain('revealAccent')
+    expect(component).not.toContain('withRepeat')
+  })
+
+  it('adds a v11 signature material color system for the prototype', () => {
+    expect(component).toContain('color-signature-v11')
+    expect(component).toContain('ColorSignaturePanel')
+    expect(component).toContain('surfaceWarm')
+    expect(component).toContain('priceWash')
+    expect(component).toContain('priceGold')
+    expect(component).toContain('mistMint')
+    expect(component).toContain('jadeSoft')
+    expect(component).toContain('forest')
+    expect(component).toContain('leafVeil')
+    expect(component).toContain('mineralMist')
+    expect(component).toContain('mossLine')
+    expect(component).toContain('copperVeil')
+    expect(component).toContain('electricTint')
+    expect(component).toContain('electricGlow')
+    expect(component).toContain('waterTint')
+    expect(component).toContain('waterGlow')
+    expect(component).toContain('deepMint')
+    expect(component).toContain('backgroundMintField')
+    expect(component).toContain('backgroundWarmField')
+    expect(component).toContain('backgroundJadeThread')
+    expect(component).toContain('backgroundCopperThread')
+    expect(component).toContain('colorSignatureDepthRail')
+    expect(component).toContain('colorMaterialStack')
+    expect(component).toContain('contextMaterialRail')
+    expect(component).toContain('serviceTileActiveElectric')
+    expect(component).toContain('serviceTileActiveWater')
+    expect(component).toContain('serviceTileAccentElectric')
+    expect(component).toContain('serviceTileInnerLayer')
+    expect(component).toContain('motionServiceInset')
+    expect(component).toContain('problemChipSelectedElectric')
+  })
+
+  it('communicates prototype-only scope in Vietnamese', () => {
+    expect(component).toContain('Dữ liệu mẫu')
+    expect(component).toContain('chưa gọi backend')
+    expect(component).toContain('chưa ghi Supabase')
+    expect(component).toContain('Không tạo booking')
+    expect(component).toContain('chưa broadcast tìm thợ')
+  })
+
+  it('shows the required price disclaimer on estimate/fallback states', () => {
+    expect(component).toContain(
+      'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
+    )
+  })
+
+  it('does not call backend, Supabase, or AI providers from the prototype', () => {
+    expect(component).not.toContain('fetch(')
+    expect(component).not.toContain('createClient')
+    expect(component).not.toContain('supabase.')
+    expect(component).not.toContain("from('@supabase")
+    expect(component).not.toContain('callAI')
+    expect(component).not.toContain('ANTHROPIC_API_KEY')
+    expect(component).not.toContain('PERPLEXITY_API_KEY')
+    expect(component).not.toContain('DEEPSEEK_API_KEY')
+  })
+
+  it('does not introduce unsupported services into the client prototype', () => {
+    expect(component).toContain("'electrical'")
+    expect(component).toContain("'plumbing'")
+    expect(component).not.toMatch(/cleaning|ac repair|appliance|handyman/i)
+  })
+})
+
+// ===================================================================
+// Client Price Check production UI — customer Đặt lịch A2-A5 slice
+// ===================================================================
+
+describe('client price check production UI', () => {
+  const bookingRoute = read('app/(customer)/booking.tsx')
+  const productionComponentPath = 'components/client-price-check/client-price-check-flow.tsx'
+
+  it('wires the customer booking tab to a production price-check component', () => {
+    expect(exists(productionComponentPath)).toBe(true)
+    expect(bookingRoute).toContain('ClientPriceCheckFlow')
+    expect(bookingRoute).toContain('@/components/client-price-check/client-price-check-flow')
+    expect(bookingRoute).not.toContain('ClientPriceCheckPrototype')
+    expect(bookingRoute).not.toContain('client-price-check-prototype')
+  })
+
+  it('keeps production A2-A5 UI separate from the prototype implementation', () => {
+    const component = read(productionComponentPath)
+    expect(component).toContain('production-price-check-flow')
+    expect(component).toContain('services-hub-clean')
+    expect(component).toContain('HomeServicesScene')
+    expect(component).toContain('HubStep')
+    expect(component).toContain('ProblemStep')
+    expect(component).toContain('PriceCheckUiStep')
+    expect(component).toContain('PriceCheckUiStatus')
+    expect(component).not.toContain('prototype-only')
+    expect(component).not.toContain('motion-lab-v8')
+    expect(component).not.toContain('color-signature-v11')
+    expect(component).not.toContain('Production backend')
+    expect(component).not.toContain('chưa gọi backend')
+    expect(component).not.toContain('chưa ghi Supabase')
+  })
+
+  it('covers the A2-A5 production flow states', () => {
+    const component = read(productionComponentPath)
+    expect(component).toContain("'hub'")
+    expect(component).toContain("'problem'")
+    expect(component).toContain("'details'")
+    expect(component).toContain("'clarification'")
+    expect(component).toContain("'estimate'")
+    expect(component).toContain("'loading'")
+    expect(component).toContain("'fallback'")
+    expect(component).toContain("'error'")
+    expect(component).toContain('retryPriceCheck')
+  })
+
+  it('uses electrical/plumbing shared scope and Vietnamese production copy', () => {
+    const component = read(productionComponentPath)
+    expect(component).toContain('PROBLEM_CHIPS')
+    expect(component).toContain('ServiceType')
+    expect(component).toContain("'electrical'")
+    expect(component).toContain("'plumbing'")
+    expect(component).toContain('startServiceFlow')
+    expect(component).toContain('Đặt lịch sửa chữa')
+    expect(component).toContain('Chung cư')
+    expect(component).toContain('Sửa điện')
+    expect(component).toContain('Sửa nước')
+    expect(component).not.toMatch(/cleaning|ac repair|appliance|handyman/i)
+  })
+
+  it('keeps price honesty and the required disclaimer visible', () => {
+    const component = read(productionComponentPath)
+    expect(component).toContain('Đây là ước tính dựa trên thị trường')
+    expect(component).toContain('Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu')
+    expect(component).toContain('baseline_fallback')
+    expect(component).not.toContain('giá chính xác')
+    expect(component).not.toContain('cam kết giá')
+  })
+
+  it('uses interaction-triggered motion without decorative auto loops', () => {
+    const component = read(productionComponentPath)
+    expect(component).toContain('onPressIn')
+    expect(component).toContain('Animated.sequence')
+    expect(component).toContain('pressMotion')
+    expect(component).toContain('scenePressScale')
+    expect(component).not.toContain('Animated.loop')
+    expect(component).not.toContain('withRepeat')
+  })
+
+  it('spreads light interaction motion across the production flow', () => {
+    const component = read(productionComponentPath)
+    expect(component).toContain('MotionPressable')
+    expect(component).toContain('runTapMotion')
+    expect(component).toContain('tapScale')
+    expect(component).toContain('tapTranslateY')
+    expect(component).toContain('tapSweepTranslate')
+    expect(component).toContain('tapInsetOpacity')
+    expect(component).toContain('deferPressMs')
+    expect(component).toContain('pressTimeoutRef')
+    expect(component).toContain('clearTimeout')
+    expect(component).toContain('motionServiceInset')
+    expect(component).toContain('serviceTileSweep')
+    expect(component).toContain('chipActionSheen')
+    expect(component).toContain('motionRole')
+    expect(component).toContain("'service'")
+    expect(component).toContain("'chip'")
+    expect(component).toContain("'answer'")
+    expect(component).toContain("'cta'")
+    expect(component).toContain("'retry'")
+    expect(component).not.toContain('motionPressableOverlay')
+    expect(component).not.toContain('onHoverIn')
+    expect(component).not.toContain('tapOverlayScale')
+    expect(component).not.toContain('motionAccentBar')
+  })
+
+  it('uses one-shot state transition motion for loading and estimate reveal', () => {
+    const component = read(productionComponentPath)
+    expect(component).toContain('StateReveal')
+    expect(component).toContain('stateMotion')
+    expect(component).toContain('Animated.parallel')
+    expect(component).toContain('stateRevealAccent')
+    expect(component).toContain('stateAccentScale')
+    expect(component).toContain('loadingRevealStyle')
+    expect(component).toContain('estimateRevealStyle')
+    expect(component).toContain("'loading'")
+    expect(component).toContain("'estimate'")
+    expect(component).toContain("'fallback'")
+  })
+
+  it('has responsive guards for compact iOS and Android store builds', () => {
+    const component = read(productionComponentPath)
+    expect(component).toContain('const { width, height } = useWindowDimensions()')
+    expect(component).toContain('isShortScreen')
+    expect(component).toContain('hubFirstViewport')
+    expect(component).toContain('compactHeroHeight')
+    expect(component).toContain('compactServiceCardHeight')
+    expect(component).toContain('minimumTouchTarget')
+    expect(component).toContain('hubShellCompact')
+    expect(component).toContain('hubServiceCardCompact')
+  })
+
+  it('does not call backend, Supabase mutations, or AI providers from production mobile UI', () => {
+    const component = read(productionComponentPath)
+    expect(component).not.toContain('fetch(')
+    expect(component).not.toContain('createClient')
+    expect(component).not.toContain('supabase.')
+    expect(component).not.toMatch(/\.(insert|update|upsert|delete)\(/)
+    expect(component).not.toContain('callAI')
+    expect(component).not.toContain('ANTHROPIC_API_KEY')
+    expect(component).not.toContain('PERPLEXITY_API_KEY')
+    expect(component).not.toContain('DEEPSEEK_API_KEY')
+  })
+
+  it('does not build booking broadcast, matching, payment, or scope-change flows in this slice', () => {
+    const component = read(productionComponentPath)
+    expect(component).not.toContain('broadcasting')
+    expect(component).not.toContain('worker_matched')
+    expect(component).not.toContain('payment_pending')
+    expect(component).not.toContain('scope_change_pending')
+    expect(component).not.toContain('customer_confirmed_booking_search')
   })
 })

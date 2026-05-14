@@ -1,5 +1,54 @@
 # Home Services — Progress Log
 
+### 2026-05-15 — Client Price Check Production UI Standard Baseline
+
+- **Task**: Build customer-side `Đặt lịch` production UI from the approved Client Price Check prototype direction, then document the handoff for the next Codex/Claude session.
+- **Scope**: Frontend-only mobile UI. No backend, no Supabase migration, no Kael backend module, no API routes, no booking broadcast, no worker matching, no payment, no scope change, no Kael learning.
+- **Prototype-first work**:
+  - Added isolated review route `apps/mobile/app/prototype/client-price-check.tsx` with layout `apps/mobile/app/prototype/_layout.tsx`.
+  - Added prototype implementation `apps/mobile/components/client-price-check/client-price-check-prototype.tsx`.
+  - Prototype kept local fixtures/state only and stayed detached from production customer tabs.
+- **Design decisions accepted by Tu**:
+  - Warm/trust/natural green direction with V11-style material color layers.
+  - Medium visual complexity: not flat mint, not overly complex.
+  - Light, Anthropic Sans-like typography direction.
+  - Icons accepted at prototype quality; can be refined in later production enhancement.
+  - Motion must be interaction-triggered only, distributed lightly, and not decorative auto-loop.
+  - Layout should be multi-step and spacious, not a PowerPoint-like one-section dump.
+- **Prep artifact**: Added `docs/product/client-price-check-production-ui-prep.md` with production surface, visual, architecture, and safety contracts for the later build.
+- **Production UI result**:
+  - `apps/mobile/app/(customer)/booking.tsx` now renders `ClientPriceCheckFlow`.
+  - New production component: `apps/mobile/components/client-price-check/client-price-check-flow.tsx`.
+  - First screen is a clean HomeServices services hub with app bar, compact banner scene, address card, service cards for `Sửa điện`/`Sửa nước`, and small honesty info tiles.
+  - Flow states: `hub` → `problem` → `details` → `clarification` → `estimate`.
+  - Status states cover default/editing/loading/clarification/estimate/fallback/error.
+  - Every estimate/fallback keeps the required Vietnamese price disclaimer.
+- **Motion final standard**:
+  - Final accepted baseline uses `MotionPressable` + `StateReveal`.
+  - Service cards use subtle `motionServiceInset` + `serviceTileSweep`.
+  - Chips/CTA/retry use small `chipActionSheen`.
+  - Service-card navigation uses `deferPressMs={150}` so the motion appears before the step transition.
+  - Explicitly removed heavy full-card overlays, hover-triggered animation, and decorative idle/auto-loop animation.
+- **Responsive work**:
+  - Added compact guards with `useWindowDimensions()`, `isShortScreen`, `hubFirstViewport`, `compactHeroHeight`, `compactServiceCardHeight`, and `minimumTouchTarget`.
+  - Added safe-area-aware bottom bar and long-Vietnamese-copy constraints.
+- **Mobile preview support**:
+  - Added Expo web dependencies: `react-dom`, `react-native-web`, `react-native-svg`, `react-native-reanimated`.
+  - Added missing-config Supabase fallback so local web preview can render without real mobile env config: `isSupabaseConfigured`, nullable `supabase`, and `AuthProvider` graceful fallback.
+- **Tests/contracts**:
+  - Expanded `packages/shared/src/__tests__/mobile-wiring.test.ts` to lock prototype isolation, production route wiring, supported service scope, disclaimer copy, no backend/AI/Supabase mutation leakage, no future workflow leakage, motion contract, and compact iOS/Android guards.
+- **Verification**:
+  - `corepack pnpm --filter @home-services/mobile type-check` passed.
+  - `corepack pnpm --filter @home-services/shared test -- src/__tests__/mobile-wiring.test.ts` passed.
+  - `corepack pnpm type-check` passed.
+  - `corepack pnpm test` passed.
+  - `corepack pnpm lint` passed.
+  - `corepack pnpm build` passed.
+  - `http://localhost:8083/booking` returned HTTP 200.
+- **Accepted quality**: Tu accepted this as **Standard** production UI baseline. It is not final enhanced polish.
+- **Next**: Tu said there are 4 more parts to build and then enhance. Do not assume the exact order. At the next session, ask Tu which of the four parts to start, then create a short plan before coding.
+- **Handoff details**: See `.claude/MEMORY.md` Session 16 for full context, decisions, rejected motion approaches, file list, and future cautions.
+
 ### 2026-05-11 — PR#3 Schema Tests
 
 - **Task**: Viết 177 test cases cho database schema PR#3 (4 files, Vitest)
