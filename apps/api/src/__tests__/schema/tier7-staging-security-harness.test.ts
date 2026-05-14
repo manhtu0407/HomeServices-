@@ -3,7 +3,7 @@ import { resolve } from 'path'
 import { describe, expect, it } from 'vitest'
 
 const HARNESS_SQL = readFileSync(
-  resolve(__dirname, '../../../supabase/tests/staging_security_verification.sql'),
+  resolve(__dirname, '../../../../../supabase/tests/staging_security_verification.sql'),
   'utf-8'
 )
 

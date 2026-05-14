@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest'
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
 import { extname, resolve } from 'path'
+import { describe, expect, it } from 'vitest'
 
-const ROOT = resolve(__dirname, '../../..')
+const ROOT = resolve(__dirname, '../../../../../')
 
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8')
 
@@ -14,19 +14,19 @@ describe('Mission 3 pre-app build contract', () => {
     expect(existsSync(resolve(ROOT, contractPath))).toBe(true)
   })
 
-  it('defines the mission boundary and explicitly blocks feature work', () => {
+  it('defines the mission boundary and explicitly blocks feature runtime work', () => {
     expect(contract).toContain('Prepared foundation only')
     expect(contract).toContain('Do not build now')
-    expect(contract).toContain('customer booking screens')
+    expect(contract).toContain('functional customer booking screens')
     expect(contract).toContain('Kael runtime orchestration')
     expect(contract).toContain('remote production schema changes')
   })
 
-  it('locks the target repo topology without moving the current Next app', () => {
+  it('matches the current monorepo topology', () => {
     expect(contract).toContain('apps/mobile')
-    expect(contract).toContain('apps/admin')
+    expect(contract).toContain('apps/api')
     expect(contract).toContain('packages/shared')
-    expect(contract).toContain('The current root Next.js app stays in place for now.')
+    expect(contract).toContain('Do not recreate a root src/ application tree.')
   })
 
   it('defines mobile, backend, Supabase, Kael, and testing contracts', () => {
@@ -49,16 +49,18 @@ describe('Mission 3 pre-app build contract', () => {
   })
 })
 
-describe('Build foundation stays offline-capable and project-root scoped', () => {
-  it('sets Turbopack root to the project cwd', () => {
-    const config = read('next.config.ts')
+describe('Build foundation stays offline-capable and app-scoped', () => {
+  it('sets Turbopack root to the pnpm workspace root', () => {
+    const config = read('apps/api/next.config.ts')
 
     expect(config).toContain('turbopack')
-    expect(config).toContain('root: process.cwd()')
+    expect(config).toContain('fileURLToPath(import.meta.url)')
+    expect(config).toContain('resolve(appRoot, "../..")')
+    expect(config).toContain('root: workspaceRoot')
   })
 
   it('does not depend on Google Fonts during build', () => {
-    const layout = read('src/app/layout.tsx')
+    const layout = read('apps/api/src/app/layout.tsx')
 
     expect(layout).not.toContain('next/font/google')
     expect(layout).not.toContain('Geist')
@@ -113,7 +115,8 @@ describe('Secret hygiene baseline', () => {
 })
 
 const scanRoots = [
-  'src',
+  'apps',
+  'packages',
   'supabase',
   'docs',
   '.claude',
@@ -123,7 +126,8 @@ const scanRoots = [
   'STRUCTURES.md',
   'critical.md',
   'package.json',
-  'next.config.ts',
+  'pnpm-workspace.yaml',
+  'turbo.json',
   '.env.example',
   '.gitignore',
 ]
@@ -139,6 +143,7 @@ const textExtensions = new Set([
   '.toml',
   '.ts',
   '.tsx',
+  '.yaml',
 ])
 
 function collectRepoTextFiles() {
@@ -166,7 +171,17 @@ function collect(path: string, files: string[]) {
   if (!stat.isDirectory()) return
 
   for (const entry of readdirSync(path)) {
-    if (entry === 'settings.local.json' || entry === 'worktrees') continue
+    if (
+      entry === 'node_modules' ||
+      entry === '.next' ||
+      entry === '.expo' ||
+      entry === '.turbo' ||
+      entry === 'dist' ||
+      entry === 'settings.local.json' ||
+      entry === 'worktrees'
+    ) {
+      continue
+    }
     collect(resolve(path, entry), files)
   }
 }

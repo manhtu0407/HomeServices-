@@ -12,7 +12,7 @@ Current mission:
 Prepared foundation only
 -
 |- repair red local gates
-|- define repo topology before mobile scaffold
+|- preserve repo topology after the monorepo scaffold
 |- define mobile foundation contract
 |- define backend API contract
 |- audit Supabase schema drift against STRUCTURES.md
@@ -25,8 +25,8 @@ Do not build in this mission:
 ```text
 Do not build now
 -
-|- customer booking screens
-|- worker app screens
+|- functional customer booking screens
+|- functional worker app screens
 |- admin dashboards
 |- Kael runtime orchestration
 |- payment logic
@@ -76,10 +76,10 @@ home-services
 |  |- no direct AI provider calls
 |  |- no server secrets
 |
-|- apps/admin
+|- apps/api
 |  -
-|  |- future Next.js admin surface
-|  |- current root Next.js app remains active until migration is explicitly approved
+|  |- Next.js API/admin/prototype support surface
+|  |- server-side AI/API boundaries
 |
 |- packages/shared
 |  -
@@ -92,7 +92,7 @@ home-services
 |  -
 |  |- migrations
 |  |- seed data
-|  |- generated database types
+|  |- generated database types source
 |
 |- docs
    -
@@ -103,13 +103,14 @@ home-services
 Important default:
 
 ```text
-The current root Next.js app stays in place for now.
-Do not move it to apps/admin until Tu explicitly approves the migration.
+The root package is the workspace orchestrator only.
+Do not recreate a root src/ application tree.
+Generated database types are shared through packages/shared and re-exported by apps/api when needed.
 ```
 
 ## 4. Mobile Foundation Contract
 
-When mobile scaffold is approved, use:
+The mobile scaffold lives in `apps/mobile`. Future feature work must preserve:
 
 ```text
 Mobile stack
@@ -130,8 +131,8 @@ Mobile routes must map to `STRUCTURES.md` workflow steps:
 Mobile route groups
 -
 |- app/(auth)
-|- app/(customer-tabs)
-|- app/(worker-tabs)
+|- app/(customer)
+|- app/(worker)
 |- app/job/[id]
 |- app/chat/[jobId]
 |- app/scope-change/[jobId]
@@ -230,22 +231,18 @@ Standard error shape:
 
 ## 6. Supabase Schema Alignment Audit
 
-Current schema is useful but behind the new `STRUCTURES.md` blueprint. Before feature implementation, prepare migrations for these gaps:
+Schema alignment now exists in migrations. Future schema work must preserve these prepared foundations:
 
 ```text
-Known schema drift
+Prepared schema foundations
 -
-|- job_status enum does not match the new full workflow state machine
-|- service taxonomy is implicit, not table-driven
-|- price_baselines are service_type plus complexity only
-|- price_baselines do not support district/problem/category granularity
-|- learning_candidates table does not exist
-|- learning_rules table does not exist
-|- learning rule versions/audit/rollback storage does not exist
-|- notification/event table does not exist
-|- scope changes are embedded in jobs instead of event-like records
-|- chat/evidence permissions need stronger review before mobile launch
-|- storage policies need role-specific review before media upload launch
+|- job_status enum matches the full workflow state machine
+|- service taxonomy is table-driven
+|- price_baselines support service problem, district, and complexity
+|- learning_candidates, learning_rules, and learning_rule_versions exist
+|- job_events, notifications, and scope_change_requests exist
+|- chat/evidence permissions have RLS coverage
+|- storage policies are scoped by job/worker path
 ```
 
 Required Supabase work rules:
@@ -320,9 +317,9 @@ Foundation gates:
 ```text
 Foundation gates
 -
-|- npm run test
-|- npm run lint
-|- npm run build
+|- corepack pnpm test
+|- corepack pnpm lint
+|- corepack pnpm build
 ```
 
 Required future test groups:
@@ -364,9 +361,7 @@ Recommended next task after this mission:
 ```text
 Next sequence
 -
-|- design Supabase schema alignment migration
 |- design shared state machine package
-|- scaffold Expo mobile app
 |- build mobile auth shell
 |- build backend profile/service-catalog endpoints
 |- build Kael Price Check backend after schemas are ready

@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'fs'
 import { resolve } from 'path'
+import { describe, expect, it } from 'vitest'
 
-const MIGRATIONS_DIR = resolve(__dirname, '../../../supabase/migrations')
+const MIGRATIONS_DIR = resolve(__dirname, '../../../../../supabase/migrations')
 const SQL = readdirSync(MIGRATIONS_DIR)
   .filter((file) => file.endsWith('.sql'))
   .sort()
@@ -212,5 +212,11 @@ describe('No hardcoded secrets or unsafe PII in migrations', () => {
 
   it('does not reference process.env inside SQL', () => {
     expect(SQL).not.toContain('process.env')
+  })
+
+  it('does not hardcode user emails or Vietnamese phone numbers', () => {
+    expect(SQL).not.toMatch(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
+    expect(SQL).not.toMatch(/\+84\d{9,10}/)
+    expect(SQL).not.toMatch(/09\d{8}/)
   })
 })

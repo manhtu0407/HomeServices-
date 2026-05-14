@@ -32,6 +32,26 @@
 - **Verification**: `npm test` 417 pass, `tsc --noEmit` 0 errors, `npm run build` success
 - **Testing guidelines**: Viết vào `.claude/commands/test-log.md` — 5 sections, anti-patterns, checklists
 - **PR**: [#5](https://github.com/manhtu0407/HomeServices-/pull/5)
+- **Next**: Monorepo setup + RN skeleton
+- **Blockers**: None
+
+### 2026-05-13 — PR#6: Monorepo + Expo RN Skeleton + 255 Adversarial Tests
+
+- **Task**: Audit PR#1→5 stability, setup Turborepo monorepo, create Expo RN app skeleton, write adversarial tests
+- **Audit**: Foundation stable. 6 non-blocking issues (dead code migration #1, in-memory rate limiter, missing AI content validation, missing region column, no proxy test, fragile isBuildTime). No blockers.
+- **Monorepo**: Turborepo + pnpm workspaces — `apps/api/` (Next.js 16 moved from root), `apps/mobile/` (Expo SDK 54, RN 0.81.5, Expo Router 6), `packages/shared/` (constants, validation, types)
+- **RN Skeleton**: Auth stack (login → verify-otp → onboard), Customer 5-tab (Trang chủ | Đặt lịch | Kael | Lịch sử | Hồ sơ), Worker 5-tab (Trang chủ | Công việc | Chat | Thu nhập | Hồ sơ), Auth provider (role-based routing), Supabase client (AsyncStorage, no secrets)
+- **Bugs found & fixed**:
+  - `as const` arrays mutable at runtime — added `Object.freeze()` to all constants
+  - SQL enum parser broke on inline comments with commas — fixed by stripping comments before splitting
+- **Test suite**: 255 new tests across 5 files + 417 existing = **672/672 PASSED**
+  - constants.test.ts (28): enum cross-check against SQL, business rules, immutability
+  - validation.test.ts (48): boundary values, Rule #6, sanitizeForLLM edge cases
+  - exports.test.ts (17): barrel export completeness, package.json export map
+  - monorepo-wiring.test.ts (42): workspace structure, turbo pipeline, dependency consistency
+  - mobile-wiring.test.ts (120): navigation vs STRUCTURES.md, Rule #1 sweep, auth wiring
+- **Verification**: `turbo test` 672 pass, `tsc --noEmit` 0 errors on api + shared + mobile
+- **PR**: [#6](https://github.com/manhtu0407/HomeServices-/pull/6)
 - **Next**: Feature implementation plan — Auth (A0/B0) → Kael Price Check → Worker matching
 - **Blockers**: None
 
