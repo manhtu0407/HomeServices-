@@ -5,6 +5,263 @@ Mỗi session mới: đọc file này trước, sau đó update khi kết thúc.
 
 ---
 
+## Session 16 - 2026-05-15
+
+**Branch**: `codex-foundation-supabase-workflow-setup`
+**Worker**: Codex + Tu
+
+### Mission
+
+Begin the customer-side mobile frontend build with a strict prototype-first process, then absorb only the approved slice into the production `Dat lich` customer tab. Backend, Supabase workflow mutations, provider AI calls, worker matching, booking broadcast, payment, scope change, and Kael learning were intentionally kept out of scope because Tu is separately prototyping backend work with Claude Code.
+
+### Source-of-truth files re-read during the work
+
+- `critical.md`
+- `STRUCTURES.md`
+- `RULES.md`
+- `CLAUDE.md`
+- `README.md`
+- `.claude/MEMORY.md`
+
+### Approved slice
+
+Customer A1-A5 Price Check for electrical/plumbing only:
+
+- Services hub entry.
+- Choose `Sua dien` or `Sua nuoc`.
+- Choose problem chips from shared `PROBLEM_CHIPS`.
+- Describe the problem.
+- Local Kael-style clarification/loading/estimate/fallback UI.
+- Every estimate/fallback shows the required price disclaimer.
+
+No future services, no fake guaranteed price, no client AI provider call, no RN secret, no direct client workflow-table mutation.
+
+### Prototype phase
+
+Created isolated Expo prototype route and component:
+
+- `apps/mobile/app/prototype/_layout.tsx`
+- `apps/mobile/app/prototype/client-price-check.tsx`
+- `apps/mobile/components/client-price-check/client-price-check-prototype.tsx`
+
+Prototype stayed detached from production customer tabs and used local fixtures/state only.
+
+Key prototype decisions Tu approved after iteration:
+
+- Visual direction: warm/trust/natural green, not one-note flat mint.
+- Color baseline: V11 material layers, medium complexity, not too complex for production.
+- Typography: light, Anthropic Sans-like direction; avoid heavy bold feel.
+- Icons: outline/baseline icon language acceptable for prototype, can refine in production.
+- Motion: interaction-triggered only; no decorative auto-loop. Motion should be distributed lightly across UI, not focused on one point.
+- Layout: multi-step, more spacious than prototype, avoid cramming every function into one section.
+
+### Production UI prep artifact
+
+Created:
+
+- `docs/product/client-price-check-production-ui-prep.md`
+
+It defines the production contract for:
+
+- `Dat lich`: primary A2-A5 flow.
+- `Trang chu`: light entry/dashboard only later.
+- `Kael` tab: read/entry auxiliary later, not generic chatbot.
+- Future shared/API contracts proposed only, not implemented in this PR.
+
+### Production UI implementation
+
+Production customer booking tab now renders:
+
+- `apps/mobile/app/(customer)/booking.tsx`
+- `apps/mobile/components/client-price-check/client-price-check-flow.tsx`
+
+Main component markers and contract:
+
+- `ClientPriceCheckFlow`
+- `production-price-check-flow`
+- `services-hub-clean`
+- `HubStep`
+- `ProblemStep`
+- `StateReveal`
+- `MotionPressable`
+
+Production states:
+
+- `hub`
+- `problem`
+- `details`
+- `clarification`
+- `estimate`
+
+Production status states:
+
+- `idle`
+- `editing`
+- `loading`
+- `needs_clarification`
+- `estimate_ready`
+- `baseline_fallback`
+- `fallback`
+- `error`
+
+The first screen was rebuilt as a clean HomeServices services hub:
+
+- App bar with `HomeServices`.
+- Compact visual banner via `HomeServicesScene`.
+- Address card.
+- Two service cards only: electrical/plumbing.
+- Info tiles for price-check honesty and no automatic booking.
+
+### Motion history and final standard
+
+There were several motion iterations:
+
+1. Initial production UI had almost no visible motion.
+2. A heavier overlay-based motion made the card feel disconnected and visually heavy.
+3. That was rejected because it did not match the accepted prototype language.
+4. Final standard kept motion subtle and material-integrated:
+   - no full-card overlay
+   - no `onHoverIn`
+   - no auto-loop
+   - service cards use `motionServiceInset` plus `serviceTileSweep`
+   - chips/CTA/retry use small `chipActionSheen`
+   - service-card navigation uses `deferPressMs={150}` so the motion is visible before the screen transitions
+   - `StateReveal` handles one-shot loading/estimate/fallback reveal
+
+Important future note: do not reintroduce heavy full-card mint overlays or decorative idle animation. If enhancing motion later, keep it action-driven and integrated with card/material layers.
+
+### Responsive/app-store readiness work
+
+The UI was tightened for iOS/Android app-store-style constraints:
+
+- `useWindowDimensions()` reads both width and height.
+- `isShortScreen` and `hubFirstViewport` guard compact layouts.
+- `compactHeroHeight`, `roomyHeroHeight`, `compactServiceCardHeight`, and `minimumTouchTarget` define sizing.
+- Hub attempts to keep app bar + banner + two service cards usable in the first viewport, while still allowing scroll.
+- Text uses `numberOfLines` where needed for long Vietnamese copy.
+- Bottom action bar accounts for safe-area inset.
+
+### Shared/mobile test contract updates
+
+Updated `packages/shared/src/__tests__/mobile-wiring.test.ts` with static guard coverage for:
+
+- prototype route isolation
+- production `Dat lich` wiring
+- no production dependency on prototype component
+- service scope restricted to `electrical` and `plumbing`
+- Vietnamese production copy
+- required price disclaimer
+- no backend/fetch, Supabase mutation, AI provider secret/call from production mobile UI
+- no booking broadcast/matching/payment/scope-change state in this slice
+- interaction-triggered motion without `Animated.loop` or `withRepeat`
+- final subtle motion markers: `MotionPressable`, `StateReveal`, `motionServiceInset`, `serviceTileSweep`, `chipActionSheen`, `deferPressMs`, `pressTimeoutRef`, `clearTimeout`
+- compact iOS/Android responsive guards
+
+### Web preview dependency/safety fixes
+
+Mobile web preview needed additional Expo web dependencies and safe Supabase fallback:
+
+- `apps/mobile/package.json`
+  - added `react-dom`
+  - added `react-native-web`
+  - added `react-native-svg`
+  - added `react-native-reanimated`
+- `pnpm-lock.yaml` updated.
+- `apps/mobile/lib/supabase.ts`
+  - now exports `isSupabaseConfigured`
+  - returns `supabase = null` when Expo config is missing instead of creating a broken client with empty strings.
+- `apps/mobile/lib/auth-provider.tsx`
+  - handles missing Supabase config gracefully by rendering children and setting loading false.
+
+This was needed so `http://localhost:8083/booking` can render the UI in local web preview without real mobile env config.
+
+### Current accepted quality level
+
+Tu accepted the production UI/motion as **Standard**. This means acceptable as the first production UI baseline, not final enhanced polish.
+
+### Verification run during this session
+
+Commands repeatedly run while iterating:
+
+- `corepack pnpm --filter @home-services/mobile type-check`
+- `corepack pnpm --filter @home-services/shared test -- src/__tests__/mobile-wiring.test.ts`
+- `corepack pnpm type-check`
+- `corepack pnpm test`
+- `corepack pnpm lint`
+- `corepack pnpm build`
+- `Invoke-WebRequest http://localhost:8083/booking`
+- static sweeps for backend/AI/Supabase/future workflow leakage in production mobile UI
+
+Latest verified state before memory update:
+
+- `corepack pnpm type-check`: pass
+- `corepack pnpm test`: pass, shared 281 tests + api 367 tests
+- `corepack pnpm lint`: pass
+- `corepack pnpm build`: pass
+- `/booking`: HTTP 200
+
+After updating memory/docs for PR, rerun gates before commit/PR.
+
+### Files expected in this PR
+
+Modified:
+
+- `README.md`
+- `.claude/MEMORY.md`
+- `apps/mobile/app/(customer)/booking.tsx`
+- `apps/mobile/constants/colors.ts`
+- `apps/mobile/lib/auth-provider.tsx`
+- `apps/mobile/lib/supabase.ts`
+- `apps/mobile/package.json`
+- `apps/mobile/tsconfig.json`
+- `packages/shared/src/__tests__/mobile-wiring.test.ts`
+- `pnpm-lock.yaml`
+
+New:
+
+- `apps/mobile/app/prototype/_layout.tsx`
+- `apps/mobile/app/prototype/client-price-check.tsx`
+- `apps/mobile/components/client-price-check/client-price-check-prototype.tsx`
+- `apps/mobile/components/client-price-check/client-price-check-flow.tsx`
+- `docs/product/client-price-check-production-ui-prep.md`
+
+### Explicit non-goals preserved
+
+- No `GET /api/service-catalog`.
+- No `POST /api/price-checks`.
+- No Kael backend module.
+- No Supabase migration for this UI slice.
+- No RN direct workflow-table mutation.
+- No booking broadcast.
+- No worker matching.
+- No worker flow.
+- No payment.
+- No scope-change.
+- No Kael learning.
+- No future services beyond electrical/plumbing.
+
+### Next work for future sessions
+
+Tu said there are **4 more parts** to build and then enhance. The exact four parts were not finalized in this session. Based on the project plan, likely upcoming work should be planned explicitly before coding:
+
+1. Production UI enhancement for the remaining customer surfaces (`Trang chu`, `Kael`, history/profile entry surfaces).
+2. Backend/API contract integration for service catalog + price-check draft/estimate.
+3. Kael price-check module integration behind the backend boundary.
+4. Worker/matching/booking lifecycle UI and backend slices.
+
+Do not assume this ordering without Tu approval. Start next session by asking which of the four parts Tu wants to build next, then write/approve a short plan.
+
+### Handoff cautions
+
+- Keep RN as primary surface.
+- Keep `critical.md`, `RULES.md`, and `STRUCTURES.md` in force.
+- Keep prototype as visual reference, but do not copy throwaway prototype state directly into production.
+- If motion is enhanced, compare against the accepted prototype direction and avoid heavy overlay/auto-loop behavior.
+- If backend work appears in parallel from Claude Code, do not overwrite or duplicate it; coordinate contracts only.
+- Before claiming done or creating PR, run fresh verification and report actual results.
+
+---
+
 ## Session 8 - 2026-05-13
 
 **Branch**: current working tree

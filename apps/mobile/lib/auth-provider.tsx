@@ -21,6 +21,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!supabase) {
+      setSession(null)
+      setRole(null)
+      setLoading(false)
+      return
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       if (session?.user) {
@@ -46,6 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   async function fetchRole(userId: string) {
+    if (!supabase) {
+      setRole(null)
+      setLoading(false)
+      return
+    }
+
     const { data } = await supabase
       .from('profiles')
       .select('role')
