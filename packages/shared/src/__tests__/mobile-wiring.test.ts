@@ -112,9 +112,351 @@ describe('customer tab labels (STRUCTURES.md A1)', () => {
 })
 
 // ===================================================================
-// Worker tabs — STRUCTURES.md B1: Trang chủ | Công việc | Chat | Thu nhập | Hồ sơ
+// Customer frontend shell — production static/local surfaces around Price Check
 // ===================================================================
 
+describe('customer frontend shell surfaces', () => {
+  const shellPath = 'components/customer/customer-surfaces.tsx'
+  const shell = () => (exists(shellPath) ? read(shellPath) : '')
+  const customerLayout = () => read('app/(customer)/_layout.tsx')
+  const customerRoutes = [
+    ['home', 'CustomerHomeSurface'],
+    ['kael', 'CustomerKaelSurface'],
+    ['history', 'CustomerHistorySurface'],
+    ['profile', 'CustomerProfileSurface'],
+  ] as const
+
+  it('defines the four public customer shell surface exports', () => {
+    const src = shell()
+    expect(exists(shellPath)).toBe(true)
+    expect(src).toContain('export function CustomerHomeSurface')
+    expect(src).toContain('export function CustomerKaelSurface')
+    expect(src).toContain('export function CustomerHistorySurface')
+    expect(src).toContain('export function CustomerProfileSurface')
+  })
+
+  it.each(customerRoutes)('wires (customer)/%s to %s', (route, exportName) => {
+    const src = read(`app/(customer)/${route}.tsx`)
+    expect(src).toContain(exportName)
+    expect(src).toContain('@/components/customer/customer-surfaces')
+    expect(src).not.toContain('ClientPriceCheckPrototype')
+    expect(src).not.toContain('client-price-check-prototype')
+  })
+
+  it('keeps booking as the only full production price-check flow route', () => {
+    const bookingRoute = read('app/(customer)/booking.tsx')
+    const src = shell()
+    expect(bookingRoute).toContain('ClientPriceCheckFlow')
+    expect(bookingRoute).toContain('@/components/client-price-check/client-price-check-flow')
+    expect(src).not.toContain('ClientPriceCheckFlow')
+    expect(src).not.toContain('production-price-check-flow')
+  })
+
+  it('keeps customer shell frontend-only with no backend, AI, or workflow mutations', () => {
+    const files = [
+      shellPath,
+      'app/(customer)/home.tsx',
+      'app/(customer)/kael.tsx',
+      'app/(customer)/history.tsx',
+      'app/(customer)/profile.tsx',
+    ]
+
+    for (const file of files) {
+      const src = exists(file) ? read(file) : ''
+      expect(src).not.toContain('fetch(')
+      expect(src).not.toContain('createClient')
+      expect(src).not.toContain('supabase.')
+      expect(src).not.toMatch(/\.(insert|update|upsert|delete)\(/)
+      expect(src).not.toContain('callAI')
+      expect(src).not.toContain('ANTHROPIC_API_KEY')
+      expect(src).not.toContain('PERPLEXITY_API_KEY')
+      expect(src).not.toContain('DEEPSEEK_API_KEY')
+      expect(src).not.toContain('broadcasting')
+      expect(src).not.toContain('worker_matched')
+      expect(src).not.toContain('payment_pending')
+      expect(src).not.toContain('scope_change_pending')
+      expect(src).not.toContain('customer_confirmed_booking_search')
+    }
+  })
+
+  it('limits active customer services to electrical and plumbing entries', () => {
+    const src = shell()
+    expect(src).toContain('customer-shell-service-electrical')
+    expect(src).toContain('customer-shell-service-plumbing')
+    expect(src).toContain('customer-home-other-services-message')
+    expect(src).toContain('Các dịch vụ khác sẽ được cập nhật sớm nhất.')
+    expect(src).not.toMatch(/cleaning|ac repair|appliance|handyman|dọn dẹp|máy lạnh/i)
+  })
+
+  it('implements the V12 customer quality system markers', () => {
+    const src = shell()
+    expect(src).toContain('CUSTOMER_SHELL_V12_SOURCE_OF_TRUTH')
+    expect(src).toContain('CUSTOMER_SIGNATURE_PRODUCTION_V15')
+    expect(src).toContain('CUSTOMER_HOME_SIGNATURE_V2_LOCK')
+    expect(src).toContain('CUSTOMER_DOCK_MAIN_A')
+    expect(src).toContain('CUSTOMER_SHARED_THEME_STORE')
+    expect(src).toContain('CUSTOMER_DARK_DOCK_LAYER_MATCH')
+    expect(src).toContain('KAEL_TICKET_COMPOSER_V3')
+    expect(src).toContain('CUSTOMER_LAYER_ECOLOGY_V14')
+    expect(src).toContain('SEMANTIC_LAYER_SWITCH_V14')
+    expect(src).toContain('CUSTOMER_TYPE_RHYTHM')
+    expect(src).toContain('LAYERED_SURFACE_ROLES')
+    expect(src).toContain('CUSTOMER_THEME_TOKENS')
+    expect(src).toContain('useSyncExternalStore')
+    expect(src).toContain('setCustomerThemeMode')
+    expect(src).toContain('subscribeCustomerThemeMode')
+    expect(src).toContain('getCustomerThemeTokens')
+    expect(src).toContain('getLayerSurface')
+    expect(src).toContain('depthSurface')
+    expect(src).toContain('customer-theme-layer-switch')
+    expect(src).toContain('customer-dark-layer-ecology')
+    expect(src).toContain('customer-dark-mode-toggle')
+    expect(src).toContain('lightLayer')
+    expect(src).toContain('darkLayer')
+  })
+
+  it('restores the accepted V12 dark layer palette instead of a flat dim theme', () => {
+    const src = shell()
+    const layout = customerLayout()
+    expect(src).toContain('CUSTOMER_DARK_LAYER_RESTORE_V12')
+    expect(src).toContain('customer-dark-hero-composite')
+    expect(src).toContain('customer-dark-kael-canvas')
+    expect(src).toContain('customer-dark-layer-depth-contrast')
+    expect(src).toContain("canvas: '#071312'")
+    expect(src).toContain("base: '#10201F'")
+    expect(src).toContain("raised: '#162B28'")
+    expect(src).toContain("service: '#173B35'")
+    expect(src).toContain("water: '#15363A'")
+    expect(src).toContain("warm: '#3B291B'")
+    expect(src).toContain("borderStrong: '#3B6A62'")
+    expect(src).toContain("primary: '#69DEC6'")
+    expect(src).toContain("copper: '#E0A06B'")
+    expect(src).toContain('homeHeroDark')
+    expect(src).toContain('kaelConversationFeedDark')
+    expect(src).toContain('boxShadow')
+    expect(layout).toContain('CUSTOMER_DARK_LAYER_RESTORE_V12')
+    expect(layout).toContain('customer-dock-shadow-layer')
+    expect(layout).toContain("boxShadow: tokens.mode === 'dark'")
+    expect(layout).toContain('tabBarActiveBackgroundColor: tokens.service')
+  })
+
+  it('preserves accepted V6-V12 section-level figures beyond static wiring', () => {
+    const src = shell()
+    expect(src).toContain('customer-home-layered-hero')
+    expect(src).toContain('customer-home-layer-stack')
+    expect(src).toContain('customer-home-signature-v2')
+    expect(src).toContain('customer-home-hero-depth-grid')
+    expect(src).toContain('customer-home-coupon-strip')
+    expect(src).toContain('customer-home-relaxed-stage')
+    expect(src).toContain('customer-home-ticket-decor')
+    expect(src).toContain('customer-kael-full-screen-chat')
+    expect(src).toContain('customer-kael-conversation-feed')
+    expect(src).toContain('customer-kael-ticket-reveal-after-info')
+    expect(src).toContain('customer-kael-empty-ticket-state')
+    expect(src).toContain('hasEnoughKaelInfo')
+    expect(src).toContain('latestAnswer.trim().length >= 16')
+    expect(src).toContain('customer-kael-ticket-composer')
+    expect(src).toContain('customer-kael-active-question')
+    expect(src).toContain('customer-kael-repair-ticket')
+    expect(src).toContain('customer-kael-ticket-field-service')
+    expect(src).toContain('customer-kael-ticket-field-problem')
+    expect(src).toContain('customer-kael-ticket-field-location')
+    expect(src).toContain('customer-kael-ticket-field-media')
+    expect(src).toContain('customer-kael-ticket-progress')
+    expect(src).toContain('customer-kael-ticket-booking-cta')
+    expect(src).toContain('customer-kael-composer-dock')
+    expect(src).toContain('customer-kael-local-chat-input')
+    expect(src).toContain('customer-history-stage-map')
+    expect(src).toContain('customer-history-filter-shell')
+    expect(src).toContain('customer-profile-checklist')
+    expect(src).toContain('customer-profile-privacy-shell')
+    expect(src).toContain('customer-profile-evidence-shell')
+  })
+
+  it('keeps Kael as a local price-check chatbox without backend or AI calls', () => {
+    const src = shell()
+    expect(src).toContain('KAEL_CHATBOX_SCREEN_CONTRACT')
+    expect(src).toContain('KAEL_TICKET_COMPOSER_V3')
+    expect(src).toContain('customer-kael-companion')
+    expect(src).toContain('customer-kael-chatbox')
+    expect(src).toContain('customer-kael-full-screen-chat')
+    expect(src).toContain('customer-kael-ticket-reveal-after-info')
+    expect(src).toContain('customer-kael-ticket-composer')
+    expect(src).toContain('customer-kael-repair-ticket')
+    expect(src).toContain('customer-kael-worker-placeholder')
+    expect(src).toContain('submitKaelLocalDraft')
+    expect(src).toContain('TextInput')
+    expect(src).toContain('AI Price Check')
+    expect(src).toContain('điện và nước')
+    expect(src).not.toContain('TransactionIntentCard')
+    expect(src).not.toContain('sendMessage')
+    expect(src).not.toContain('Nhập tin nhắn')
+    expect(src).not.toContain('Draft Price Check')
+    expect(src).not.toContain('customer-kael-conversation-phone')
+    expect(src).not.toContain('kaelPhone')
+    expect(src).not.toContain('callAI')
+    expect(src).not.toContain('fetch(')
+  })
+
+  it('uses a custom customer tab icon set instead of default tab indicators', () => {
+    const src = customerLayout()
+    expect(src).toContain('CUSTOMER_DOCK_MAIN_A')
+    expect(src).toContain('CUSTOMER_DARK_DOCK_LAYER_MATCH')
+    expect(src).toContain('customer-tab-dock-main-a')
+    expect(src).toContain('customer-tab-dock-active-surface')
+    expect(src).toContain('customer-tab-dark-layer-match')
+    expect(src).toContain('customerDockHeight = 82')
+    expect(src).toContain('customerDockBottomMargin = 10')
+    expect(src).toContain('useCustomerThemeMode')
+    expect(src).toContain('getCustomerThemeTokens')
+    expect(src).toContain('tabBarActiveTintColor: tokens.primary')
+    expect(src).toContain('tabBarInactiveTintColor: tokens.subtleText')
+    expect(src).toContain('backgroundColor: tokens.base')
+    expect(src).toContain('CustomerTabIcon')
+    expect(src).toContain('customer-tab-icon-home')
+    expect(src).toContain('customer-tab-icon-booking')
+    expect(src).toContain('customer-tab-icon-kael')
+    expect(src).toContain('customer-tab-icon-history')
+    expect(src).toContain('customer-tab-icon-profile')
+    expect(src).toContain('tabBarIcon')
+    expect(src).toContain('react-native-svg')
+  })
+
+  it('keeps customer shell visible copy compact and structure-first', () => {
+    const src = shell()
+    expect(src).toContain('COPY_DENSITY_COMPACT')
+    expect(src).toContain('customer-profile-checklist')
+    expect(src).not.toContain('Chỉ lưu ngữ cảnh chung')
+    expect(src).not.toContain('Giá thực tế do thợ xác nhận trước khi bắt đầu.')
+    expect(src).not.toContain('Name/building/floor')
+    expect(src).not.toContain('KhÃ´ng bá»‹a ngÃ y')
+    expect(src).not.toContain('ChÆ°a lÆ°u backend')
+    expect(src).not.toContain('KhÃ´ng fake worker')
+    expect(src).not.toContain('Bá»™ lá»c sáº½ má»Ÿ')
+    expect(src).not.toContain('KhÃ´ng Ä‘Ã¡nh dáº¥u Ä‘Ã£ thanh toÃ¡n')
+  })
+
+  it('uses mobile production shell markers and interaction-only motion', () => {
+    const src = shell()
+    expect(src).toContain('customer-shell-screen')
+    expect(src).toContain('customer-shell-touch-target')
+    expect(src).toContain('CUSTOMER_DOCK_SCROLL_CLEARANCE')
+    expect(src).toContain('customerDockBottomClearance')
+    expect(src).toContain('paddingBottom: Math.max(insets.bottom + customerDockBottomClearance')
+    expect(src).toContain('minimumTouchTarget = 44')
+    expect(src).toContain('SafeAreaView')
+    expect(src).toContain('useSafeAreaInsets')
+    expect(src).toContain('ScrollView')
+    expect(src).toContain('Pressable')
+    expect(src).toContain('numberOfLines')
+    expect(src).toContain('Animated.sequence')
+    expect(src).toContain('Animated.parallel')
+    expect(src).toContain('useInteractionMotion')
+    expect(src).toContain('customer-shell-motion-field')
+    expect(src).not.toContain('Animated.loop')
+    expect(src).not.toContain('withRepeat')
+    expect(src).not.toContain('onHoverIn')
+  })
+
+  it('uses V12 utility and transaction shell placeholders without fabricated backend state', () => {
+    const src = shell()
+    expect(src).toContain('customer-utility-notification-center')
+    expect(src).toContain('customer-utility-ticket-wallet')
+    expect(src).toContain('customer-utility-support-entry')
+    expect(src).toContain('customer-profile-payment-placeholder')
+    expect(src).toContain('customer-profile-review-placeholder')
+    expect(src).toContain('customer-profile-checklist')
+    expect(src).toContain('customer-history-evidence-timeline')
+    expect(src).toContain('customer-history-scope-change-placeholder')
+    expect(src).toContain('customer-history-completion-placeholder')
+    expect(src).not.toContain('paid_success')
+    expect(src).not.toContain('review_submitted')
+    expect(src).not.toContain('workerAccepted')
+  })
+
+  it('uses honest empty states without fabricated transactions or profile data', () => {
+    const src = shell()
+    expect(src).toContain('customer-history-empty-state')
+    expect(src).toContain('customer-profile-empty-state')
+    expect(src).toContain('customer-shell-no-fake-history-data')
+    expect(src).toContain('customer-shell-no-fake-profile-save')
+    expect(src).not.toMatch(/090\d{7}|0\d{9}/)
+    expect(src).not.toMatch(/\d{1,3}\.\d{3}\s?đ/)
+  })
+
+  it('routes customer shell entry points back to the booking tab', () => {
+    const src = shell()
+    expect(src).toContain('useRouter')
+    expect(src).toContain('openBookingFlow')
+    expect(src).toContain('/(customer)/booking')
+  })
+})
+
+// ===================================================================
+// Prototype runtime cleanup — store-build guard
+// ===================================================================
+
+const removedPrototypeRuntimePaths = [
+  'app/prototype',
+  'app/prototype/_layout.tsx',
+  'app/prototype/client-price-check.tsx',
+  'app/prototype/client-frontier.tsx',
+  'app/prototype/fleets.tsx',
+  'components/client-price-check/client-price-check-prototype.tsx',
+  'components/customer/client-frontier-prototype.tsx',
+  'components/fleets/fleets-prototype.tsx',
+]
+
+const removedMobilePublicMockups = [
+  'public',
+  'public/visionary-reset-v1.html',
+  'public/reset-board-v1.html',
+  'public/personal-homecare-prototype-v1.html',
+  'public/homeservices-asker-v2-board.svg',
+  'public/homebee-product-system-v1.html',
+  'public/homebee-clickable-prototype-v1.html',
+  'public/hammer-dock-v3.html',
+  'public/hammer-dock-v2.html',
+  'public/hammer-dock-v1.html',
+  'public/client-btaskee-inspired-v1.html',
+]
+
+describe('prototype runtime cleanup', () => {
+  it.each(removedPrototypeRuntimePaths)('removes %s from the mobile runtime', (file) => {
+    expect(exists(file)).toBe(false)
+  })
+
+  it.each(removedMobilePublicMockups)('removes throwaway public mockup artifact %s', (file) => {
+    expect(exists(file)).toBe(false)
+  })
+
+  it('keeps production customer routes free from prototype imports', () => {
+    const productionRoutes = [
+      'app/(customer)/home.tsx',
+      'app/(customer)/booking.tsx',
+      'app/(customer)/kael.tsx',
+      'app/(customer)/history.tsx',
+      'app/(customer)/profile.tsx',
+    ]
+
+    for (const file of productionRoutes) {
+      const src = read(file)
+      expect(src).not.toContain('ClientPriceCheckPrototype')
+      expect(src).not.toContain('ClientFrontierPrototype')
+      expect(src).not.toContain('FleetWorkerPrototype')
+      expect(src).not.toContain('client-price-check-prototype')
+      expect(src).not.toContain('client-frontier-prototype')
+      expect(src).not.toContain('fleets-prototype')
+      expect(src).not.toContain('@/components/client-price-check/client-price-check-prototype')
+      expect(src).not.toContain('@/components/customer/client-frontier-prototype')
+      expect(src).not.toContain('@/components/fleets/fleets-prototype')
+    }
+  })
+})
+
+// ===================================================================
+// Worker tabs — STRUCTURES.md B1: Trang chủ | Công việc | Chat | Thu nhập | Hồ sơ
+// ===================================================================
 describe('worker tab labels (STRUCTURES.md B1)', () => {
   const src = read('app/(worker)/_layout.tsx')
 
@@ -436,11 +778,11 @@ describe('web preview dependencies', () => {
     expect(mobilePackage.dependencies['react-native-web']).toBe('~0.21.2')
   })
 
-  it('declares react-native-svg for prototype-quality icon rendering', () => {
+  it('declares react-native-svg for mobile icon rendering', () => {
     expect(mobilePackage.dependencies['react-native-svg']).toBe('15.12.1')
   })
 
-  it('declares react-native-reanimated for visible motion prototyping', () => {
+  it('declares react-native-reanimated for visible mobile motion', () => {
     expect(mobilePackage.dependencies['react-native-reanimated']).toBe('~4.1.7')
   })
 })
@@ -466,169 +808,6 @@ describe('constants/colors.ts', () => {
 })
 
 // ===================================================================
-// Client Price Check prototype — isolated UI review surface
-// ===================================================================
-
-describe('client price check prototype', () => {
-  const route = read('app/prototype/client-price-check.tsx')
-  const layout = read('app/prototype/_layout.tsx')
-  const component = read('components/client-price-check/client-price-check-prototype.tsx')
-  const customerLayout = read('app/(customer)/_layout.tsx')
-
-  it('adds a dedicated prototype route outside production customer tabs', () => {
-    expect(exists('app/prototype/client-price-check.tsx')).toBe(true)
-    expect(exists('app/prototype/_layout.tsx')).toBe(true)
-    expect(route).toContain('ClientPriceCheckPrototype')
-    expect(layout).toContain('Prototype kiểm tra giá')
-    expect(customerLayout).not.toContain('client-price-check')
-  })
-
-  it('keeps the prototype implementation outside the app route tree', () => {
-    expect(exists('components/client-price-check/client-price-check-prototype.tsx')).toBe(true)
-    expect(route).toContain('@/components/client-price-check/client-price-check-prototype')
-  })
-
-  it('covers the required local review states', () => {
-    expect(component).toContain("'service'")
-    expect(component).toContain("'details'")
-    expect(component).toContain("'loading'")
-    expect(component).toContain("'clarification'")
-    expect(component).toContain("'estimate'")
-    expect(component).toContain("'fallback'")
-  })
-
-  it('uses a multi-step mobile flow instead of a single presentation screen', () => {
-    expect(component).toContain('multi-step-price-check')
-    expect(component).toContain('goNext')
-    expect(component).toContain('goBack')
-    expect(component).toContain('Bạn cần sửa gì?')
-    expect(component).toContain('Mô tả hiện trạng')
-    expect(component).toContain('Kael hỏi thêm')
-    expect(component).toContain('Ước tính minh bạch')
-  })
-
-  it('keeps the revised UI direction light, varied, and Anthropic-like', () => {
-    expect(component).toContain('#F8FCFA')
-    expect(component).toContain('#EEF9F5')
-    expect(component).toContain('#CFF3F4')
-    expect(component).toContain('#4ABDC0')
-    expect(component).toContain('Aptos, Inter, Geist, Manrope')
-    expect(component).toContain('letterSpacing: 0')
-  })
-
-  it('keeps v3 visual direction markers in the prototype', () => {
-    expect(component).toContain('Animated.loop')
-    expect(component).toContain('backgroundWash')
-    expect(component).toContain('ServiceIcon')
-    expect(component).toContain('ChipGlyph')
-    expect(component).toContain('pressMotion')
-  })
-
-  it('keeps the v4 icon and animation prototype explicit', () => {
-    expect(component).toContain('outletPlate')
-    expect(component).toContain('faucetIcon')
-    expect(component).toContain('iconPulseRing')
-    expect(component).toContain('statusOrbit')
-    expect(component).toContain('screenMotion')
-    expect(component).toContain('ctaPulse')
-  })
-
-  it('uses v5 SVG icons and interaction-driven motion markers', () => {
-    expect(component).toContain("from 'react-native-svg'")
-    expect(component).toContain('OutletSvgIcon')
-    expect(component).toContain('FaucetSvgIcon')
-    expect(component).toContain('interactionPulse')
-    expect(component).toContain('serviceTileSweep')
-    expect(component).toContain('chipActionSheen')
-  })
-
-  it('adds a v8 motion lab with interaction-triggered choreography', () => {
-    expect(component).toContain("from 'react-native-reanimated'")
-    expect(component).toContain('motion-lab-v8')
-    expect(component).toContain('MotionShowcase')
-    expect(component).toContain('MotionMode')
-    expect(component).toContain('MotionModeSelector')
-    expect(component).toContain('DistributedMotionRail')
-    expect(component).toContain('MotionDetailCard')
-    expect(component).toContain('PlugSocketHeroIcon')
-    expect(component).toContain('PipeValveHeroIcon')
-    expect(component).toContain('KaelScanCard')
-    expect(component).toContain('EstimateRevealCard')
-    expect(component).toContain('interpolateColor')
-    expect(component).toContain('mintStrong')
-    expect(component).toContain('mintVivid')
-    expect(component).toContain('onPressIn')
-    expect(component).toContain('onHoverIn')
-    expect(component).toContain('revealAccent')
-    expect(component).not.toContain('withRepeat')
-  })
-
-  it('adds a v11 signature material color system for the prototype', () => {
-    expect(component).toContain('color-signature-v11')
-    expect(component).toContain('ColorSignaturePanel')
-    expect(component).toContain('surfaceWarm')
-    expect(component).toContain('priceWash')
-    expect(component).toContain('priceGold')
-    expect(component).toContain('mistMint')
-    expect(component).toContain('jadeSoft')
-    expect(component).toContain('forest')
-    expect(component).toContain('leafVeil')
-    expect(component).toContain('mineralMist')
-    expect(component).toContain('mossLine')
-    expect(component).toContain('copperVeil')
-    expect(component).toContain('electricTint')
-    expect(component).toContain('electricGlow')
-    expect(component).toContain('waterTint')
-    expect(component).toContain('waterGlow')
-    expect(component).toContain('deepMint')
-    expect(component).toContain('backgroundMintField')
-    expect(component).toContain('backgroundWarmField')
-    expect(component).toContain('backgroundJadeThread')
-    expect(component).toContain('backgroundCopperThread')
-    expect(component).toContain('colorSignatureDepthRail')
-    expect(component).toContain('colorMaterialStack')
-    expect(component).toContain('contextMaterialRail')
-    expect(component).toContain('serviceTileActiveElectric')
-    expect(component).toContain('serviceTileActiveWater')
-    expect(component).toContain('serviceTileAccentElectric')
-    expect(component).toContain('serviceTileInnerLayer')
-    expect(component).toContain('motionServiceInset')
-    expect(component).toContain('problemChipSelectedElectric')
-  })
-
-  it('communicates prototype-only scope in Vietnamese', () => {
-    expect(component).toContain('Dữ liệu mẫu')
-    expect(component).toContain('chưa gọi backend')
-    expect(component).toContain('chưa ghi Supabase')
-    expect(component).toContain('Không tạo booking')
-    expect(component).toContain('chưa broadcast tìm thợ')
-  })
-
-  it('shows the required price disclaimer on estimate/fallback states', () => {
-    expect(component).toContain(
-      'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
-    )
-  })
-
-  it('does not call backend, Supabase, or AI providers from the prototype', () => {
-    expect(component).not.toContain('fetch(')
-    expect(component).not.toContain('createClient')
-    expect(component).not.toContain('supabase.')
-    expect(component).not.toContain("from('@supabase")
-    expect(component).not.toContain('callAI')
-    expect(component).not.toContain('ANTHROPIC_API_KEY')
-    expect(component).not.toContain('PERPLEXITY_API_KEY')
-    expect(component).not.toContain('DEEPSEEK_API_KEY')
-  })
-
-  it('does not introduce unsupported services into the client prototype', () => {
-    expect(component).toContain("'electrical'")
-    expect(component).toContain("'plumbing'")
-    expect(component).not.toMatch(/cleaning|ac repair|appliance|handyman/i)
-  })
-})
-
-// ===================================================================
 // Client Price Check production UI — customer Đặt lịch A2-A5 slice
 // ===================================================================
 
@@ -647,12 +826,20 @@ describe('client price check production UI', () => {
   it('keeps production A2-A5 UI separate from the prototype implementation', () => {
     const component = read(productionComponentPath)
     expect(component).toContain('production-price-check-flow')
-    expect(component).toContain('services-hub-clean')
-    expect(component).toContain('HomeServicesScene')
-    expect(component).toContain('HubStep')
-    expect(component).toContain('ProblemStep')
+    expect(component).toContain('booking-form-first-shell')
+    expect(component).toContain('BOOKING_FORM_FIRST_CONTRACT')
+    expect(component).toContain('BOOKING_LAYER_SWITCH_V14')
+    expect(component).toContain('bookingLayerTokens')
+    expect(component).toContain('BookingFormSurface')
+    expect(component).toContain('FormServiceSegment')
+    expect(component).toContain('ProblemChipField')
+    expect(component).toContain('EvidenceDraftSlots')
+    expect(component).toContain('KaelEstimatePanel')
     expect(component).toContain('PriceCheckUiStep')
     expect(component).toContain('PriceCheckUiStatus')
+    expect(component).not.toContain('function HubStep')
+    expect(component).not.toContain('function ProblemStep')
+    expect(component).not.toContain('HomeServicesScene')
     expect(component).not.toContain('prototype-only')
     expect(component).not.toContain('motion-lab-v8')
     expect(component).not.toContain('color-signature-v11')
@@ -663,9 +850,7 @@ describe('client price check production UI', () => {
 
   it('covers the A2-A5 production flow states', () => {
     const component = read(productionComponentPath)
-    expect(component).toContain("'hub'")
-    expect(component).toContain("'problem'")
-    expect(component).toContain("'details'")
+    expect(component).toContain("'form'")
     expect(component).toContain("'clarification'")
     expect(component).toContain("'estimate'")
     expect(component).toContain("'loading'")
@@ -688,6 +873,16 @@ describe('client price check production UI', () => {
     expect(component).not.toMatch(/cleaning|ac repair|appliance|handyman/i)
   })
 
+  it('harmonizes booking colors and typography with the customer shell legacy', () => {
+    const component = read(productionComponentPath)
+    expect(component).toContain('BOOKING_TYPE_RHYTHM')
+    expect(component).toContain('bookingLayerTokens')
+    expect(component).toContain('bookingFormCard')
+    expect(component).toContain('bookingCompactCopy')
+    expect(component).toContain("fontWeight: '700'")
+    expect(component).not.toContain("fontWeight: '900'")
+  })
+
   it('keeps price honesty and the required disclaimer visible', () => {
     const component = read(productionComponentPath)
     expect(component).toContain('Đây là ước tính dựa trên thị trường')
@@ -702,7 +897,7 @@ describe('client price check production UI', () => {
     expect(component).toContain('onPressIn')
     expect(component).toContain('Animated.sequence')
     expect(component).toContain('pressMotion')
-    expect(component).toContain('scenePressScale')
+    expect(component).toContain('fieldFocusMotion')
     expect(component).not.toContain('Animated.loop')
     expect(component).not.toContain('withRepeat')
   })
@@ -714,7 +909,8 @@ describe('client price check production UI', () => {
     expect(component).toContain('tapScale')
     expect(component).toContain('tapTranslateY')
     expect(component).toContain('tapSweepTranslate')
-    expect(component).toContain('tapInsetOpacity')
+    expect(component).toContain('fieldFocusMotion')
+    expect(component).toContain('booking-form-field-focus')
     expect(component).toContain('deferPressMs')
     expect(component).toContain('pressTimeoutRef')
     expect(component).toContain('clearTimeout')
@@ -751,12 +947,12 @@ describe('client price check production UI', () => {
     const component = read(productionComponentPath)
     expect(component).toContain('const { width, height } = useWindowDimensions()')
     expect(component).toContain('isShortScreen')
-    expect(component).toContain('hubFirstViewport')
-    expect(component).toContain('compactHeroHeight')
+    expect(component).toContain('formFirstViewport')
+    expect(component).toContain('compactFormHeroHeight')
     expect(component).toContain('compactServiceCardHeight')
     expect(component).toContain('minimumTouchTarget')
-    expect(component).toContain('hubShellCompact')
-    expect(component).toContain('hubServiceCardCompact')
+    expect(component).toContain('bookingFormCompact')
+    expect(component).toContain('formServiceCardCompact')
   })
 
   it('does not call backend, Supabase mutations, or AI providers from production mobile UI', () => {
