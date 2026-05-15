@@ -1,0 +1,122 @@
+import { callAI } from '@/lib/ai/client'
+import { buildPricingMessages } from './prompts'
+import { marketPriceResultSchema, type MarketPriceResult } from './schemas'
+import { safeParseJSON } from './parsing'
+import { sanitizeForLLM } from '@home-services/shared'
+
+export type PriceSearchResult =
+  | { success: true; market: MarketPriceResult }
+  | { success: false }
+
+export async function searchMarketPrice(
+  serviceType: string,
+  problem: string,
+  complexity: string,
+  district: string,
+): Promise<PriceSearchResult> {
+  const messages = buildPricingMessages(
+    sanitizeForLLM(serviceType),
+    sanitizeForLLM(problem),
+    sanitizeForLLM(complexity),
+    sanitizeForLLM(district),
+  )
+
+  const result = await callAI({
+    provider: 'perplexity',
+    model: 'sonar',
+    messages,
+    maxTokens: 300,
+    temperature: 0.1,
+  })
+
+  if (!result.success) {
+    return { success: false }
+  }
+
+  const parsed = safeParseJSON(result.content)
+  if (!parsed) {
+    return { success: false }
+  }
+
+  const validated = marketPriceResultSchema.safeParse(parsed)
+  if (!validated.success) {
+    return { success: false }
+  }
+
+  if (validated.data.market_range_max < validated.data.market_range_min) {
+    return { success: false }
+  }
+
+  return { success: true, market: validated.data }
+}
+
+export type PriceSynthesisInput = {
+  baselineMin: number
+  baselineMax: number
+  market: MarketPriceResult | null
+  complexityHint: 'small' | 'medium' | 'large'
+}
+
+export type SynthesizedPrice = {
+  price_min: number
+  price_max: number
+  confidence: number
+  source: 'market_weighted' | 'baseline_only'
+}
+
+export function synthesizePrice(input: PriceSynthesisInput): SynthesizedPrice {
+  const { baselineMin, baselineMax, market, complexityHint } = input
+
+  if (!market) {
+    return {
+      price_min: baselineMin,
+      price_max: baselineMax,
+      confidence: 0.4,
+      source: 'baseline_only',
+    }
+  }
+
+  const MARKET_WEIGHT = 0.6
+  const BASELINE_WEIGHT = 0.4
+
+  let priceMin = Math.round(
+    market.market_range_min * MARKET_WEIGHT + baselineMin * BASELINE_WEIGHT,
+  )
+  let priceMax = Math.round(
+    market.market_range_max * MARKET_WEIGHT + baselineMax * BASELINE_WEIGHT,
+  )
+
+  const complexityMultiplier =
+    complexityHint === 'large' ? 1.2 : complexityHint === 'small' ? 0.85 : 1.0
+
+  priceMin = Math.round(priceMin * complexityMultiplier)
+  priceMax = Math.round(priceMax * complexityMultiplier)
+
+  if (priceMax < priceMin) {
+    priceMax = priceMin
+  }
+
+  priceMin = roundToThousand(priceMin)
+  priceMax = roundToThousand(priceMax)
+
+  if (priceMax <= priceMin) {
+    priceMax = priceMin + 50_000
+  }
+
+  const confidence = Math.min(
+    0.85,
+    (market.confidence + 0.5) / 2,
+  )
+
+  return {
+    price_min: priceMin,
+    price_max: priceMax,
+    confidence: Math.round(confidence * 100) / 100,
+    source: 'market_weighted',
+  }
+}
+
+function roundToThousand(n: number): number {
+  return Math.round(n / 1000) * 1000
+}
+
