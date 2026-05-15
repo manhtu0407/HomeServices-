@@ -2,10 +2,12 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  esbuild: true
   sharp: true
   supabase: true
   unrs-resolver: true
 onlyBuiltDependencies:
+  - esbuild
   - sharp
   - supabase
   - unrs-resolver

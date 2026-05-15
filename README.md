@@ -1,5 +1,21 @@
 # Home Services — Progress Log
 
+### 2026-05-15 — Prototype Runtime Cleanup
+
+- **Task**: Remove mobile runtime prototype artifacts after the accepted production UI baseline.
+- **Scope**: Cleanup-only. Production React Native UI, customer shell surfaces, booking flow, backend, and Supabase were preserved.
+- **Removed**:
+  - `apps/mobile/app/prototype/`
+  - `apps/mobile/components/client-price-check/client-price-check-prototype.tsx`
+  - `apps/mobile/components/customer/client-frontier-prototype.tsx`
+  - `apps/mobile/components/fleets/fleets-prototype.tsx`
+  - `apps/mobile/public/` static mockup artifacts
+  - Remotion/prototype scratch artifacts: `apps/remotion/`, `.superpowers/`, `docs/superpowers/`, the old scratch `design.md`, and `packages/shared/src/__tests__/remotion-wiring.test.ts`
+  - Follow-up note: root `design.md` was later recreated intentionally as the locked Home Services design operating system; do not treat the new file as a scratch artifact.
+- **Tests/contracts**: `packages/shared/src/__tests__/mobile-wiring.test.ts` now guards that prototype runtime routes/components/public mockups are absent and production customer tabs do not import prototype components.
+- **Lessons**: Durable cleanup lessons are captured in `docs/agent-lessons.md`.
+- **Next**: Keep production UI work in `apps/mobile/app/(customer)` and production components only; do not reintroduce `/prototype` routes before store builds.
+
 ### 2026-05-15 — Client Price Check Production UI Standard Baseline
 
 - **Task**: Build customer-side `Đặt lịch` production UI from the approved Client Price Check prototype direction, then document the handoff for the next Codex/Claude session.
@@ -8,6 +24,7 @@
   - Added isolated review route `apps/mobile/app/prototype/client-price-check.tsx` with layout `apps/mobile/app/prototype/_layout.tsx`.
   - Added prototype implementation `apps/mobile/components/client-price-check/client-price-check-prototype.tsx`.
   - Prototype kept local fixtures/state only and stayed detached from production customer tabs.
+  - Cleanup note: these runtime prototype files were removed later in the Prototype Runtime Cleanup entry above. Keep only the decisions, not the throwaway files.
 - **Design decisions accepted by Tu**:
   - Warm/trust/natural green direction with V11-style material color layers.
   - Medium visual complexity: not flat mint, not overly complex.

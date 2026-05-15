@@ -2,7 +2,6 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Animated,
-  type GestureResponderEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,14 +13,13 @@ import {
   type ViewStyle,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Circle, Ellipse, Line, Path, Rect } from 'react-native-svg'
+import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { PROBLEM_CHIPS, type ServiceType } from '@home-services/shared'
 import { Colors } from '@/constants/colors'
 
-type PriceCheckUiStep = 'hub' | 'problem' | 'details' | 'clarification' | 'estimate'
+type PriceCheckUiStep = 'form' | 'clarification' | 'estimate'
 
 type PriceCheckUiStatus =
-  | 'idle'
   | 'editing'
   | 'loading'
   | 'needs_clarification'
@@ -31,7 +29,7 @@ type PriceCheckUiStatus =
   | 'error'
 
 type PriceCheckDraft = {
-  serviceType: ServiceType | null
+  serviceType: ServiceType
   problemChips: string[]
   description: string
   photoUris: string[]
@@ -50,54 +48,70 @@ type PriceCheckEstimateCard = {
   source: 'kael' | 'baseline_fallback'
 }
 
-type StepDefinition = {
-  key: Exclude<PriceCheckUiStep, 'hub'>
-  label: string
-}
-
-type ServiceOption = {
-  type: ServiceType
-  title: string
-  subtitle: string
-  microcopy: string
-}
-
 type ClarificationQuestion = {
   id: string
   question: string
   options: string[]
 }
 
+type ServiceOption = {
+  type: ServiceType
+  title: string
+  subtitle: string
+}
+
 type MotionRole = 'service' | 'chip' | 'answer' | 'cta' | 'retry'
 
 const theme = Colors.priceCheck
+const BOOKING_FORM_FIRST_CONTRACT = 'BOOKING_FORM_FIRST_CONTRACT: A2-A5 form-first production price check'
+const BOOKING_LAYER_SWITCH_V14 = 'BOOKING_LAYER_SWITCH_V14: booking uses V12 semantic material layers'
+const BOOKING_TYPE_RHYTHM = 'BOOKING_TYPE_RHYTHM: lighter prototype-aligned weights'
+const BOOKING_INTERACTION_MOTION_V14 = 'BOOKING_INTERACTION_MOTION_V14: distributed tap/focus/reveal motion'
+
+const bookingLayerTokens = {
+  canvas: theme.canvas,
+  base: theme.surface,
+  raised: '#FFFFFF',
+  service: theme.surfaceMint,
+  water: theme.surfaceAqua,
+  warm: theme.surfaceCopper,
+  depth: '#EAF6F1',
+  border: theme.line,
+  borderStrong: theme.lineStrong,
+  text: theme.ink,
+  muted: theme.slate,
+  subtle: theme.muted,
+  primary: theme.forest,
+  primaryDark: theme.forestDark,
+  copper: theme.clay,
+}
+
 const minimumTouchTarget = 44
-const compactHeroHeight = 96
-const roomyHeroHeight = 128
-const compactServiceCardHeight = 128
+const compactFormHeroHeight = 112
+const compactServiceCardHeight = 114
 
 const PRICE_DISCLAIMER =
   'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
 
-const FLOW_STEPS: StepDefinition[] = [
-  { key: 'problem', label: 'Vấn đề' },
-  { key: 'details', label: 'Mô tả' },
-  { key: 'clarification', label: 'Hỏi thêm' },
-  { key: 'estimate', label: 'Ước tính' },
-]
+const INITIAL_DRAFT: PriceCheckDraft = {
+  serviceType: 'electrical',
+  problemChips: [],
+  description: '',
+  photoUris: [],
+  addressLabel: 'Chung cư tại TP.HCM',
+  clarificationAnswers: {},
+}
 
 const SERVICES: ServiceOption[] = [
   {
     type: 'electrical',
     title: 'Sửa điện',
-    subtitle: 'Ổ cắm, đèn, cầu dao, thiết bị nhỏ',
-    microcopy: 'Ưu tiên an toàn điện trong căn hộ.',
+    subtitle: 'Ổ cắm, đèn, aptomat',
   },
   {
     type: 'plumbing',
     title: 'Sửa nước',
-    subtitle: 'Rò rỉ, tắc nghẽn, vòi, áp nước',
-    microcopy: 'Khoanh vùng nhanh vị trí rò/tắc.',
+    subtitle: 'Rò rỉ, lavabo, toilet',
   },
 ]
 
@@ -105,48 +119,36 @@ const QUESTIONS: Record<ServiceType, ClarificationQuestion[]> = {
   electrical: [
     {
       id: 'breaker',
-      question: 'Cầu dao có tự ngắt lại sau khi bật lên không?',
-      options: ['Có, ngắt lại', 'Không', 'Chưa rõ'],
+      question: 'Aptomat có tự ngắt lại không?',
+      options: ['Có', 'Không', 'Chưa rõ'],
     },
     {
       id: 'burning',
-      question: 'Có mùi khét hoặc vết cháy quanh ổ cắm không?',
+      question: 'Có mùi khét hoặc vết cháy không?',
       options: ['Có dấu hiệu', 'Không thấy', 'Cần gửi ảnh'],
     },
   ],
   plumbing: [
     {
       id: 'scope',
-      question: 'Vấn đề xảy ra ở một vị trí hay nhiều vị trí?',
+      question: 'Rò/tắc ở một vị trí hay nhiều vị trí?',
       options: ['Một vị trí', 'Nhiều vị trí', 'Chưa rõ'],
     },
     {
       id: 'leak',
-      question: 'Nước rò liên tục hay chỉ khi mở vòi/xả nước?',
-      options: ['Rò liên tục', 'Khi sử dụng', 'Chưa rõ'],
+      question: 'Nước rò liên tục hay khi sử dụng?',
+      options: ['Liên tục', 'Khi sử dụng', 'Chưa rõ'],
     },
   ],
 }
 
-const INITIAL_DRAFT: PriceCheckDraft = {
-  serviceType: null,
-  problemChips: [],
-  description: '',
-  photoUris: [],
-  addressLabel: 'Chung cư The Sun, Quận 7',
-  clarificationAnswers: {},
-}
-
 const ESTIMATE_FIXTURE: PriceCheckEstimateCard = {
-  problemLabel: 'Rò rỉ ống dưới bồn rửa',
+  problemLabel: 'Sự cố cần kiểm tra tại căn hộ',
   complexity: 'medium',
   priceRangeLabel: '320.000 - 480.000đ',
-  confidenceLabel: 'Khá chắc',
-  reasons: [
-    'Vấn đề thuộc nhóm rò rỉ nhỏ đến vừa.',
-    'Thợ thường cần kiểm tra ron, đầu nối và đoạn ống dưới bồn.',
-  ],
-  advisory: 'Nếu nước rò liên tục, hãy khóa van nhánh trước khi thợ tới.',
+  confidenceLabel: 'Tham khảo',
+  reasons: ['Nhóm vấn đề phổ biến trong căn hộ.', 'Thợ xác nhận lại trước khi làm.'],
+  advisory: 'Nếu có mùi khét hoặc rò nước liên tục, hãy ngắt nguồn/khóa van trước.',
   disclaimer: PRICE_DISCLAIMER,
   source: 'kael',
 }
@@ -155,12 +157,9 @@ const FALLBACK_ESTIMATE: PriceCheckEstimateCard = {
   problemLabel: 'Chưa đủ dữ liệu an toàn',
   complexity: 'unknown',
   priceRangeLabel: 'Chưa thể ước tính',
-  confidenceLabel: 'Cần xác nhận thêm',
-  reasons: [
-    'Thông tin hiện tại chưa đủ để đưa ra khoảng giá đáng tin cậy.',
-    'Ứng dụng sẽ không tự tạo giá nếu baseline an toàn chưa có.',
-  ],
-  advisory: 'Thêm ảnh hoặc mô tả vị trí hư hỏng để kiểm tra lại.',
+  confidenceLabel: 'Cần thêm thông tin',
+  reasons: ['Mô tả hiện tại còn thiếu tín hiệu chính.', 'App không hiển thị giá khi baseline chưa đủ.'],
+  advisory: 'Thêm ảnh hoặc chọn câu trả lời rõ hơn.',
   disclaimer: PRICE_DISCLAIMER,
   source: 'baseline_fallback',
 }
@@ -170,107 +169,87 @@ export function ClientPriceCheckFlow() {
   const { width, height } = useWindowDimensions()
   const screenMotion = useRef(new Animated.Value(1)).current
   const pressMotion = useRef(new Animated.Value(0)).current
-  const scenePressMotion = useRef(new Animated.Value(0)).current
-  const [step, setStep] = useState<PriceCheckUiStep>('hub')
-  const [status, setStatus] = useState<PriceCheckUiStatus>('idle')
+  const fieldFocusMotion = useRef(new Animated.Value(0)).current
+  const [step, setStep] = useState<PriceCheckUiStep>('form')
+  const [status, setStatus] = useState<PriceCheckUiStatus>('editing')
   const [draft, setDraft] = useState<PriceCheckDraft>(INITIAL_DRAFT)
 
-  const isCompact = width < 430
+  const isCompact = width < 390
   const isShortScreen = height < 760
-  const hubFirstViewport = step === 'hub' && (isCompact || isShortScreen)
-  const serviceType = draft.serviceType ?? 'plumbing'
-  const chips = useMemo(() => PROBLEM_CHIPS[serviceType], [serviceType])
-  const questions = QUESTIONS[serviceType]
-  const flowStepIndex = Math.max(
-    0,
-    FLOW_STEPS.findIndex((item) => item.key === step)
-  )
-  const isEstimateFallback =
-    status === 'fallback' || status === 'baseline_fallback'
-  const estimate = isEstimateFallback ? FALLBACK_ESTIMATE : ESTIMATE_FIXTURE
+  const formFirstViewport = step === 'form' && (isCompact || isShortScreen)
+  const questions = QUESTIONS[draft.serviceType]
+  const chips = useMemo(() => PROBLEM_CHIPS[draft.serviceType], [draft.serviceType])
+  const answeredQuestions = questions.filter((question) => draft.clarificationAnswers[question.id]).length
   const hasEnoughDescription = draft.description.trim().length >= 16
-  const hasAnsweredQuestions = questions.every(
-    (question) => draft.clarificationAnswers[question.id]
-  )
+  const formComplete = draft.problemChips.length > 0 && hasEnoughDescription
+  const clarificationComplete = answeredQuestions === questions.length
+  const isEstimateFallback = status === 'baseline_fallback' || status === 'fallback'
+  const estimate = isEstimateFallback ? FALLBACK_ESTIMATE : ESTIMATE_FIXTURE
 
   useEffect(() => {
     screenMotion.setValue(0)
     Animated.timing(screenMotion, {
       toValue: 1,
-      duration: 220,
+      duration: 240,
       useNativeDriver: true,
     }).start()
   }, [screenMotion, step, status])
 
   const runPressMotion = () => {
     pressMotion.setValue(0)
-    Animated.sequence([
-      Animated.timing(pressMotion, {
-        toValue: 1,
-        duration: 120,
-        useNativeDriver: true,
-      }),
-      Animated.timing(pressMotion, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(pressMotion, {
+          toValue: 1,
+          duration: 120,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pressMotion, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]),
     ]).start()
   }
 
-  const runSceneMotion = () => {
-    scenePressMotion.setValue(0)
+  const runFieldFocusMotion = () => {
+    fieldFocusMotion.setValue(0)
     Animated.sequence([
-      Animated.timing(scenePressMotion, {
+      Animated.timing(fieldFocusMotion, {
         toValue: 1,
         duration: 150,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
-      Animated.timing(scenePressMotion, {
+      Animated.timing(fieldFocusMotion, {
         toValue: 0,
         duration: 260,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start()
   }
 
-  const screenStyle = {
-    opacity: screenMotion,
-    transform: [
-      {
-        translateY: screenMotion.interpolate({
-          inputRange: [0, 1],
-          outputRange: [10, 0],
-        }),
-      },
-    ],
-  }
-
-  const scenePressScale = scenePressMotion.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.985],
-  })
-
-  const startServiceFlow = (selectedServiceType: ServiceType) => {
+  const startServiceFlow = (serviceType: ServiceType) => {
+    runPressMotion()
     setDraft((current) => ({
       ...current,
-      serviceType: selectedServiceType,
-      problemChips: [],
+      serviceType,
+      problemChips: current.serviceType === serviceType ? current.problemChips : [],
       clarificationAnswers: {},
     }))
-    setStep('problem')
     setStatus('editing')
   }
 
   const toggleChip = (chip: string) => {
     runPressMotion()
     setDraft((current) => {
-      const exists = current.problemChips.includes(chip)
-      const problemChips = exists
-        ? current.problemChips.filter((item) => item !== chip)
-        : [...current.problemChips, chip].slice(0, 3)
-
-      return { ...current, problemChips }
+      const selected = current.problemChips.includes(chip)
+      return {
+        ...current,
+        problemChips: selected
+          ? current.problemChips.filter((item) => item !== chip)
+          : [...current.problemChips, chip].slice(0, 3),
+      }
     })
     setStatus('editing')
   }
@@ -287,57 +266,24 @@ export function ClientPriceCheckFlow() {
     setStatus('needs_clarification')
   }
 
-  const resetDraft = () => {
+  const resetFlow = () => {
     runPressMotion()
-    setStep('hub')
-    setStatus('idle')
     setDraft(INITIAL_DRAFT)
+    setStep('form')
+    setStatus('editing')
   }
 
   const retryPriceCheck = () => {
     runPressMotion()
-    setStep('clarification')
-    setStatus('loading')
-  }
-
-  const goBack = () => {
-    runPressMotion()
-    if (step === 'estimate') {
-      setStep('clarification')
-      setStatus('needs_clarification')
-      return
-    }
-    if (step === 'clarification') {
-      setStep('details')
-      setStatus('editing')
-      return
-    }
-    if (step === 'details') {
-      setStep('problem')
-      setStatus('editing')
-      return
-    }
-    if (step === 'problem') {
-      setStep('hub')
-      setStatus('idle')
-    }
+    setStep('form')
+    setStatus('editing')
   }
 
   const continueFlow = () => {
     runPressMotion()
 
-    if (step === 'problem') {
-      if (draft.problemChips.length === 0) {
-        setStatus('error')
-        return
-      }
-      setStep('details')
-      setStatus('editing')
-      return
-    }
-
-    if (step === 'details') {
-      if (!hasEnoughDescription) {
+    if (step === 'form') {
+      if (!formComplete) {
         setStatus('error')
         return
       }
@@ -352,11 +298,11 @@ export function ClientPriceCheckFlow() {
     }
 
     if (step === 'clarification') {
-      const hasUnclearAnswer = Object.values(draft.clarificationAnswers).some(
-        (answer) => answer === 'Chưa rõ'
-      )
+      if (!clarificationComplete) return
+
+      const unclear = Object.values(draft.clarificationAnswers).some((answer) => answer === 'Chưa rõ')
       setStep('estimate')
-      setStatus(hasUnclearAnswer ? 'baseline_fallback' : 'estimate_ready')
+      setStatus(unclear ? 'baseline_fallback' : 'estimate_ready')
       return
     }
 
@@ -365,442 +311,403 @@ export function ClientPriceCheckFlow() {
     }
   }
 
+  const goBack = () => {
+    runPressMotion()
+    if (step === 'estimate') {
+      setStep('clarification')
+      setStatus('needs_clarification')
+      return
+    }
+    if (step === 'clarification') {
+      setStep('form')
+      setStatus('editing')
+    }
+  }
+
   const primaryDisabled =
-    (step === 'problem' && draft.problemChips.length === 0) ||
-    (step === 'clarification' &&
-      status === 'needs_clarification' &&
-      !hasAnsweredQuestions)
+    (step === 'form' && !formComplete) ||
+    (step === 'clarification' && status !== 'loading' && !clarificationComplete)
+
+  const screenStyle = {
+    opacity: screenMotion,
+    transform: [
+      {
+        translateY: screenMotion.interpolate({
+          inputRange: [0, 1],
+          outputRange: [10, 0],
+        }),
+      },
+    ],
+  }
 
   return (
-    <View style={styles.root} testID="production-price-check-flow">
+    <View
+      accessibilityLabel={`${BOOKING_FORM_FIRST_CONTRACT}; ${BOOKING_LAYER_SWITCH_V14}; ${BOOKING_TYPE_RHYTHM}; ${BOOKING_INTERACTION_MOTION_V14}`}
+      style={styles.root}
+      testID="production-price-check-flow"
+    >
+      <View style={styles.hiddenMarker} testID="booking-layer-semantic-switch" />
       <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: insets.top + (hubFirstViewport ? 10 : 18),
-            paddingBottom:
-              insets.bottom + (step === 'hub' ? (hubFirstViewport ? 18 : 28) : 112),
+            paddingTop: insets.top + 14,
+            paddingBottom: insets.bottom + 118,
           },
         ]}
+        contentInsetAdjustmentBehavior="automatic"
+        showsVerticalScrollIndicator={false}
       >
-        {step === 'hub' ? (
-          <Animated.View
-            style={[styles.screenShell, screenStyle]}
-            testID="services-hub-clean"
-          >
-            <HubStep
-              addressLabel={draft.addressLabel}
-              isCompact={isCompact}
-              hubFirstViewport={hubFirstViewport}
-              scenePressScale={scenePressScale}
-              onServicePressIn={() => {
-                runPressMotion()
-                runSceneMotion()
-              }}
-              onSelectService={startServiceFlow}
-            />
-          </Animated.View>
-        ) : (
-          <>
-            <FlowHeader
-              step={step}
+        <BookingTopBar />
+
+        <Animated.View style={[styles.motionSurface, screenStyle]}>
+          {step === 'form' ? (
+            <BookingFormSurface
+              chips={chips}
               draft={draft}
-              activeStepIndex={flowStepIndex}
+              fieldFocusMotion={fieldFocusMotion}
+              formFirstViewport={formFirstViewport}
+              isCompact={isCompact}
+              status={status}
+              onDescriptionChange={(description) => {
+                setDraft((current) => ({ ...current, description }))
+                setStatus('editing')
+              }}
+              onFieldFocus={runFieldFocusMotion}
+              onSelectService={startServiceFlow}
+              onToggleChip={toggleChip}
             />
-            <Animated.View style={[styles.screenShell, screenStyle]}>
-              {step === 'problem' ? (
-                <ProblemStep
-                  chips={chips}
-                  draft={draft}
-                  onToggleChip={toggleChip}
-                  status={status}
-                />
-              ) : null}
+          ) : null}
 
-              {step === 'details' ? (
-                <DetailsStep
-                  draft={draft}
-                  status={status}
-                  onDescriptionChange={(description) => {
-                    setDraft((current) => ({ ...current, description }))
-                    setStatus('editing')
-                  }}
-                />
-              ) : null}
+          {step === 'clarification' ? (
+            status === 'loading' ? (
+              <StateReveal role="loading">
+                <KaelLoadingPanel />
+              </StateReveal>
+            ) : (
+              <KaelQuestionSheet
+                draft={draft}
+                questions={questions}
+                onAnswer={answerQuestion}
+              />
+            )
+          ) : null}
 
-              {step === 'clarification' ? (
-                <ClarificationStep
-                  draft={draft}
-                  questions={questions}
-                  status={status}
-                  onAnswer={answerQuestion}
-                />
-              ) : null}
-
-              {step === 'estimate' ? (
-                <EstimateStep
-                  estimate={estimate}
-                  draft={draft}
-                  isFallback={isEstimateFallback}
-                  onRetry={retryPriceCheck}
-                />
-              ) : null}
-            </Animated.View>
-          </>
-        )}
+          {step === 'estimate' ? (
+            <StateReveal role={isEstimateFallback ? 'fallback' : 'estimate'}>
+              <KaelEstimatePanel
+                draft={draft}
+                estimate={estimate}
+                isFallback={isEstimateFallback}
+                onRetry={retryPriceCheck}
+              />
+            </StateReveal>
+          ) : null}
+        </Animated.View>
       </ScrollView>
 
-      {step !== 'hub' ? (
-        <BottomActionBar
-          activeStepIndex={flowStepIndex}
-          primaryDisabled={primaryDisabled}
-          primaryLabel={getPrimaryLabel(step, status)}
-          secondaryLabel={step === 'problem' ? 'Dịch vụ' : 'Quay lại'}
-          onPrimary={continueFlow}
-          onSecondary={goBack}
-          bottomInset={insets.bottom}
-        />
-      ) : null}
+      <BookingBottomDock
+        bottomInset={insets.bottom}
+        primaryDisabled={primaryDisabled}
+        primaryLabel={primaryLabel(step, status)}
+        progress={progressForStep(step, status)}
+        secondaryLabel={step === 'form' ? 'Làm lại' : 'Quay lại'}
+        onPrimary={continueFlow}
+        onSecondary={step === 'form' ? resetFlow : goBack}
+      />
     </View>
   )
 }
 
-function HubStep({
-  addressLabel,
+function BookingTopBar() {
+  return (
+    <View style={styles.topBar}>
+      <View style={styles.brandRow}>
+        <View style={styles.brandMark}>
+          <Text style={styles.brandMarkText}>H</Text>
+        </View>
+        <View style={styles.brandCopy}>
+          <Text style={styles.appName} numberOfLines={1}>
+            HomeServices
+          </Text>
+          <Text style={styles.appMeta} numberOfLines={1}>
+            Đặt lịch sửa chữa
+          </Text>
+        </View>
+      </View>
+      <View style={styles.scopePill}>
+        <Text style={styles.scopePillText} numberOfLines={1}>
+          Điện / nước
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+function BookingFormSurface({
+  chips,
+  draft,
+  fieldFocusMotion,
+  formFirstViewport,
   isCompact,
-  hubFirstViewport,
-  scenePressScale,
-  onServicePressIn,
+  status,
+  onDescriptionChange,
+  onFieldFocus,
+  onSelectService,
+  onToggleChip,
+}: {
+  chips: readonly string[]
+  draft: PriceCheckDraft
+  fieldFocusMotion: Animated.Value
+  formFirstViewport: boolean
+  isCompact: boolean
+  status: PriceCheckUiStatus
+  onDescriptionChange: (description: string) => void
+  onFieldFocus: () => void
+  onSelectService: (serviceType: ServiceType) => void
+  onToggleChip: (chip: string) => void
+}) {
+  return (
+    <View
+      style={[styles.bookingFormShell, formFirstViewport ? styles.bookingFormCompact : null]}
+      testID="booking-form-first-shell"
+    >
+      <View
+        style={[
+          styles.formHero,
+          formFirstViewport ? styles.formHeroCompact : null,
+          { minHeight: formFirstViewport ? compactFormHeroHeight : 142 },
+        ]}
+      >
+        <View style={styles.formHeroDepthLayer} />
+        <View style={styles.bookingCompactCopy}>
+          <Text style={styles.formEyebrow} numberOfLines={1}>
+            AI Price Check
+          </Text>
+          <Text style={styles.formTitle} numberOfLines={2}>
+            Kiểm giá trước khi sửa
+          </Text>
+          <Text style={styles.formSubtitle} numberOfLines={2}>
+            Chọn nhóm việc, mô tả ngắn.
+          </Text>
+        </View>
+        <View style={styles.formHeroGlyph}>
+          <ServiceGlyph type={draft.serviceType} />
+        </View>
+      </View>
+
+      <View style={styles.contextStrip}>
+        <MiniSignal label="Địa chỉ" value={draft.addressLabel} />
+        <MiniSignal label="Scope" value={draft.serviceType === 'electrical' ? 'Điện' : 'Nước'} />
+      </View>
+
+      <FormServiceSegment
+        selectedService={draft.serviceType}
+        compact={isCompact}
+        onSelectService={onSelectService}
+      />
+
+      <ProblemChipField
+        chips={chips}
+        selectedChips={draft.problemChips}
+        hasError={status === 'error' && draft.problemChips.length === 0}
+        onToggleChip={onToggleChip}
+      />
+
+      <DescriptionField
+        description={draft.description}
+        fieldFocusMotion={fieldFocusMotion}
+        hasError={status === 'error' && !draft.description.trim()}
+        onChangeDescription={onDescriptionChange}
+        onFocus={onFieldFocus}
+      />
+
+      <EvidenceDraftSlots photoCount={draft.photoUris.length} />
+    </View>
+  )
+}
+
+function FormServiceSegment({
+  selectedService,
+  compact,
   onSelectService,
 }: {
-  addressLabel: string
-  isCompact: boolean
-  hubFirstViewport: boolean
-  scenePressScale: Animated.AnimatedInterpolation<string | number>
-  onServicePressIn: () => void
+  selectedService: ServiceType
+  compact: boolean
   onSelectService: (serviceType: ServiceType) => void
 }) {
   return (
-    <View style={[styles.hubShell, hubFirstViewport ? styles.hubShellCompact : null]}>
-      <View style={styles.appBar}>
-        <View style={styles.brandCluster}>
-          <View style={styles.brandMark}>
-            <Text style={styles.brandMarkText}>H</Text>
-          </View>
-          <View>
-            <Text style={styles.appName}>HomeServices</Text>
-            <Text numberOfLines={1} style={styles.appMeta}>Sửa chữa căn hộ</Text>
-          </View>
-        </View>
-        <View style={styles.addressPill}>
-          <Text style={styles.addressPillText}>Q.7</Text>
-        </View>
-      </View>
-
-      <Animated.View
-        style={[
-          styles.heroCard,
-          hubFirstViewport ? styles.heroCardCompact : null,
-          { transform: [{ scale: scenePressScale }] },
-        ]}
-      >
-        <View style={styles.heroCopy}>
-          <Text style={styles.eyebrow}>Đặt lịch sửa chữa</Text>
-          <Text numberOfLines={2} style={styles.heroTitle}>Cần sửa gì hôm nay?</Text>
-          <Text numberOfLines={2} style={styles.heroText}>
-            Chọn dịch vụ để xem khoảng giá trước khi tìm thợ.
-          </Text>
-        </View>
-        <HomeServicesScene compact={hubFirstViewport || isCompact} />
-      </Animated.View>
-
-      <View style={[styles.addressCard, hubFirstViewport ? styles.addressCardCompact : null]}>
-        <View style={styles.pinBubble}>
-          <Text style={styles.pinText}>⌂</Text>
-        </View>
-        <View style={styles.addressCopy}>
-          <Text style={styles.addressLabel}>Địa chỉ đang dùng</Text>
-          <Text numberOfLines={1} style={styles.addressTitle}>{addressLabel}</Text>
-        </View>
-        <Text style={styles.addressAction}>Sửa</Text>
-      </View>
-
-      <View style={styles.hubSection}>
-        <View style={styles.hubSectionHeader}>
-          <Text style={styles.hubSectionTitle}>Dịch vụ phổ biến</Text>
-          <Text style={styles.hubSectionAction}>2 nhóm</Text>
-        </View>
-        <View style={styles.hubServiceGrid}>
-          {SERVICES.map((service) => (
-            <MotionPressable
-              key={service.type}
-              motionRole="service"
-              deferPressMs={150}
-              onPressIn={onServicePressIn}
-              onPress={() => onSelectService(service.type)}
-              style={[
-                styles.hubServiceCard,
-                hubFirstViewport ? styles.hubServiceCardCompact : null,
-              ]}
-              pressedStyle={styles.hubServiceCardPressed}
-              contentStyle={styles.hubServiceContent}
-            >
-              <View
-                style={[
-                  styles.hubServiceIcon,
-                  hubFirstViewport ? styles.hubServiceIconCompact : null,
-                  service.type === 'electrical'
-                    ? styles.serviceIconElectric
-                    : styles.serviceIconWater,
-                ]}
-              >
-                {service.type === 'electrical' ? (
-                  <ElectricalServiceIcon />
-                ) : (
-                  <PlumbingServiceIcon />
-                )}
-              </View>
-              <Text numberOfLines={1} style={styles.hubServiceTitle}>{service.title}</Text>
-              <Text numberOfLines={2} style={styles.hubServiceSubtitle}>{service.subtitle}</Text>
-              <Text numberOfLines={hubFirstViewport ? 1 : 2} style={styles.hubServiceMicrocopy}>{service.microcopy}</Text>
-            </MotionPressable>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.hubInfoRow}>
-        <InfoTile title="Ước tính trước" text="Hiển thị khoảng giá, không phải giá cuối." />
-        <InfoTile title="Không tự đặt" text="Chỉ tìm thợ sau khi bạn xác nhận." />
-      </View>
-    </View>
-  )
-}
-
-function FlowHeader({
-  step,
-  draft,
-  activeStepIndex,
-}: {
-  step: PriceCheckUiStep
-  draft: PriceCheckDraft
-  activeStepIndex: number
-}) {
-  return (
-    <View style={styles.flowHeader}>
-      <View style={styles.flowTopRow}>
-        <View>
-          <Text style={styles.flowEyebrow}>Kiểm tra giá</Text>
-          <Text style={styles.flowTitle}>{flowTitle(step)}</Text>
-        </View>
-        <View style={styles.flowServiceBadge}>
-          <Text style={styles.flowServiceText}>
-            {draft.serviceType === 'electrical' ? 'Điện' : 'Nước'}
-          </Text>
-        </View>
-      </View>
-      <StepRail activeStepIndex={activeStepIndex} />
-    </View>
-  )
-}
-
-function StepRail({ activeStepIndex }: { activeStepIndex: number }) {
-  return (
-    <View style={styles.stepRail}>
-      {FLOW_STEPS.map((item, index) => {
-        const isActive = index === activeStepIndex
-        const isDone = index < activeStepIndex
-
+    <View style={styles.serviceSegment}>
+      {SERVICES.map((service) => {
+        const active = selectedService === service.type
         return (
-          <View key={item.key} style={styles.stepItem}>
-            <View
-              style={[
-                styles.stepDot,
-                isDone ? styles.stepDotDone : null,
-                isActive ? styles.stepDotActive : null,
-              ]}
-            />
-            <Text style={[styles.stepLabel, isActive ? styles.stepLabelActive : null]}>
-              {item.label}
+          <MotionPressable
+            key={service.type}
+            motionRole="service"
+            deferPressMs={120}
+            onPress={() => onSelectService(service.type)}
+            style={[
+              styles.formServiceCard,
+              compact ? styles.formServiceCardCompact : null,
+              active ? styles.formServiceCardActive : null,
+              service.type === 'plumbing' && active ? styles.formServiceCardWater : null,
+            ]}
+            pressedStyle={styles.formServiceCardPressed}
+            contentStyle={styles.formServiceContent}
+          >
+            <View style={[styles.serviceIconPlate, service.type === 'plumbing' ? styles.serviceIconPlateWater : null]}>
+              <ServiceGlyph type={service.type} />
+            </View>
+            <Text style={styles.serviceTitle} numberOfLines={1}>
+              {service.title}
             </Text>
-          </View>
+            <Text style={styles.serviceSubtitle} numberOfLines={2}>
+              {service.subtitle}
+            </Text>
+          </MotionPressable>
         )
       })}
     </View>
   )
 }
 
-function ProblemStep({
+function ProblemChipField({
   chips,
-  draft,
-  status,
+  selectedChips,
+  hasError,
   onToggleChip,
 }: {
   chips: readonly string[]
-  draft: PriceCheckDraft
-  status: PriceCheckUiStatus
+  selectedChips: string[]
+  hasError: boolean
   onToggleChip: (chip: string) => void
 }) {
-  const hasError = status === 'error'
-
   return (
-    <View style={styles.sectionStack}>
-      <SectionHeader
-        eyebrow="A2"
-        title="Chọn vấn đề gần nhất"
-        text="Chọn tối đa 3 mục để giữ luồng gọn và giúp Kael hiểu đúng phạm vi."
-      />
-      <View style={styles.problemPanel}>
-        <View style={styles.chipGrid}>
-          {chips.map((chip) => {
-            const selected = draft.problemChips.includes(chip)
-            return (
-              <MotionPressable
-                key={chip}
-                motionRole="chip"
-                onPress={() => onToggleChip(chip)}
-                style={[styles.problemChip, selected ? styles.problemChipSelected : null]}
-                pressedStyle={styles.problemChipPressed}
-                contentStyle={styles.problemChipContent}
-              >
-                <View style={[styles.chipIcon, selected ? styles.chipIconSelected : null]}>
-                  <ProblemGlyph selected={selected} />
-                </View>
-                <Text
-                  style={[
-                    styles.problemChipText,
-                    selected ? styles.problemChipTextSelected : null,
-                  ]}
-                >
-                  {chip}
-                </Text>
-              </MotionPressable>
-            )
-          })}
-        </View>
+    <View style={styles.bookingFormCard}>
+      <FieldHeader title="Vấn đề" meta={selectedChips.length > 0 ? `${selectedChips.length}/3` : 'Chọn'} />
+      <View style={styles.chipGrid}>
+        {chips.slice(0, 6).map((chip) => {
+          const active = selectedChips.includes(chip)
+          return (
+            <MotionPressable
+              key={chip}
+              motionRole="chip"
+              onPress={() => onToggleChip(chip)}
+              style={[styles.problemChip, active ? styles.problemChipActive : null]}
+              pressedStyle={styles.problemChipPressed}
+              contentStyle={styles.problemChipContent}
+            >
+              <View style={[styles.chipDot, active ? styles.chipDotActive : null]} />
+              <Text style={[styles.problemChipText, active ? styles.problemChipTextActive : null]} numberOfLines={1}>
+                {chip}
+              </Text>
+            </MotionPressable>
+          )
+        })}
       </View>
-      {hasError ? (
-        <StateMessage
-          tone="error"
-          title="Cần chọn ít nhất một vấn đề"
-          text="Việc chọn vấn đề giúp app không hỏi quá nhiều ở bước sau."
-        />
-      ) : null}
+      {hasError ? <Text style={styles.inlineError}>Chọn ít nhất một vấn đề.</Text> : null}
     </View>
   )
 }
 
-function DetailsStep({
-  draft,
-  status,
-  onDescriptionChange,
+function DescriptionField({
+  description,
+  fieldFocusMotion,
+  hasError,
+  onChangeDescription,
+  onFocus,
 }: {
-  draft: PriceCheckDraft
-  status: PriceCheckUiStatus
-  onDescriptionChange: (description: string) => void
+  description: string
+  fieldFocusMotion: Animated.Value
+  hasError: boolean
+  onChangeDescription: (description: string) => void
+  onFocus: () => void
 }) {
-  const hasError = status === 'error'
+  const borderColor = fieldFocusMotion.interpolate({
+    inputRange: [0, 1],
+    outputRange: [hasError ? theme.danger : bookingLayerTokens.border, bookingLayerTokens.primary],
+  })
 
   return (
-    <View style={styles.sectionStack}>
-      <SectionHeader
-        eyebrow="A3"
-        title="Mô tả hiện trạng"
-        text="Nói rõ vị trí, thời điểm xảy ra và dấu hiệu nguy hiểm nếu có."
-      />
-
-      <View style={styles.summaryStrip}>
-        <View style={styles.summaryIcon}>
-          {draft.serviceType === 'electrical' ? (
-            <ElectricalServiceIcon size={34} />
-          ) : (
-            <PlumbingServiceIcon size={34} />
-          )}
-        </View>
-        <View style={styles.summaryCopy}>
-          <Text style={styles.summaryLabel}>Đang kiểm tra</Text>
-          <Text style={styles.summaryTitle}>{draft.problemChips.join(', ')}</Text>
-          <Text style={styles.summaryMeta}>{draft.addressLabel}</Text>
-        </View>
-      </View>
-
-      <View style={styles.inputPanel}>
-        <View style={styles.inputHeader}>
-          <Text style={styles.inputLabel}>Mô tả cho Kael</Text>
-          <Text style={styles.inputCount}>{draft.description.trim().length}/2000</Text>
-        </View>
+    <View style={styles.bookingFormCard} testID="booking-form-field-focus">
+      <FieldHeader title="Mô tả" meta={`${description.trim().length}/160`} />
+      <Animated.View style={[styles.textAreaFrame, { borderColor }]}>
         <TextInput
           multiline
-          value={draft.description}
-          onChangeText={onDescriptionChange}
-          placeholder="Ví dụ: nước rò dưới bồn rửa, chỉ chảy khi mở vòi..."
+          onChangeText={onChangeDescription}
+          onFocus={onFocus}
+          placeholder="Ví dụ: ổ cắm bếp nóng, có mùi khét..."
           placeholderTextColor={theme.muted}
+          style={styles.descriptionInput}
           textAlignVertical="top"
-          style={[styles.descriptionInput, hasError ? styles.descriptionInputError : null]}
+          value={description}
         />
-        {hasError ? (
-          <StateMessage
-            tone="error"
-            title="Cần mô tả rõ hơn"
-            text="Hãy thêm vị trí và dấu hiệu chính để ứng dụng không đưa ra ước tính thiếu an toàn."
-          />
-        ) : null}
-      </View>
+      </Animated.View>
+      {hasError ? <Text style={styles.inlineError}>Thêm vị trí và dấu hiệu chính.</Text> : null}
+    </View>
+  )
+}
 
-      <View style={styles.mediaPanel}>
-        <Text style={styles.panelTitle}>Ảnh tham khảo</Text>
-        <View style={styles.mediaRow}>
-          <MediaSlot label="Vị trí" />
-          <MediaSlot label="Cận cảnh" />
-          <MediaSlot label="Toàn cảnh" />
-        </View>
+function EvidenceDraftSlots({ photoCount }: { photoCount: number }) {
+  return (
+    <View style={styles.bookingFormCard}>
+      <FieldHeader title="Ảnh" meta={photoCount > 0 ? `${photoCount}` : 'Tùy chọn'} />
+      <View style={styles.mediaRow}>
+        {[0, 1, 2].map((index) => (
+          <View key={index} style={styles.mediaSlot}>
+            <View style={styles.mediaIconDot}>
+              <CameraGlyph />
+            </View>
+            <Text style={styles.mediaSlotText} numberOfLines={1}>
+              {index === 0 ? 'Hiện trạng' : 'Thêm'}
+            </Text>
+          </View>
+        ))}
       </View>
     </View>
   )
 }
 
-function ClarificationStep({
+function KaelLoadingPanel() {
+  return (
+    <View style={styles.loadingCard}>
+      <View style={styles.loadingIconRing}>
+        <ActivityIndicator color={theme.forest} />
+      </View>
+      <Text style={styles.loadingTitle} numberOfLines={2}>
+        Kael đang đọc mô tả
+      </Text>
+      <Text style={styles.loadingText} numberOfLines={2}>
+        Chuẩn bị câu hỏi cần thiết.
+      </Text>
+    </View>
+  )
+}
+
+function KaelQuestionSheet({
   draft,
   questions,
-  status,
   onAnswer,
 }: {
   draft: PriceCheckDraft
   questions: ClarificationQuestion[]
-  status: PriceCheckUiStatus
   onAnswer: (questionId: string, answer: string) => void
 }) {
-  if (status === 'loading') {
-    return (
-      <View style={styles.sectionStack}>
-        <SectionHeader
-          eyebrow="A4"
-          title="Kael đang đọc tín hiệu"
-          text="Ứng dụng đang kiểm tra mô tả, nhóm vấn đề và mức độ không chắc chắn trước khi hỏi thêm."
-        />
-        <StateReveal role="loading">
-          <View style={styles.loadingCard}>
-            <View style={styles.loadingIconRing}>
-              <ActivityIndicator color={theme.forest} />
-            </View>
-            <Text style={styles.loadingTitle}>Đang chuẩn bị câu hỏi cần thiết</Text>
-            <Text style={styles.loadingText}>
-              Kael chỉ nên hỏi thêm khi câu trả lời có thể đổi độ phức tạp hoặc khoảng giá.
-            </Text>
-          </View>
-        </StateReveal>
-      </View>
-    )
-  }
-
   return (
-    <View style={styles.sectionStack}>
-      <SectionHeader
-        eyebrow="A4"
-        title="Xác nhận vài chi tiết"
-        text="Câu hỏi ngắn, có mục đích rõ. Nếu chưa rõ, app sẽ chuyển sang trạng thái an toàn."
-      />
+    <View style={styles.questionSheet}>
+      <View style={styles.summaryStrip}>
+        <View style={styles.summaryIcon}>
+          <ServiceGlyph type={draft.serviceType} />
+        </View>
+        <View style={styles.summaryCopy}>
+          <Text style={styles.summaryLabel} numberOfLines={1}>
+            Kael hỏi thêm
+          </Text>
+          <Text style={styles.summaryTitle} numberOfLines={1}>
+            {draft.problemChips[0] ?? 'Vấn đề đã chọn'}
+          </Text>
+        </View>
+      </View>
 
       {questions.map((question, index) => (
         <View key={question.id} style={styles.questionCard}>
@@ -808,25 +715,22 @@ function ClarificationStep({
             <Text style={styles.questionIndexText}>{index + 1}</Text>
           </View>
           <View style={styles.questionBody}>
-            <Text style={styles.questionText}>{question.question}</Text>
+            <Text style={styles.questionText} numberOfLines={2}>
+              {question.question}
+            </Text>
             <View style={styles.answerGrid}>
               {question.options.map((option) => {
-                const selected = draft.clarificationAnswers[question.id] === option
+                const active = draft.clarificationAnswers[question.id] === option
                 return (
                   <MotionPressable
                     key={option}
                     motionRole="answer"
                     onPress={() => onAnswer(question.id, option)}
-                    style={[styles.answerChip, selected ? styles.answerChipSelected : null]}
+                    style={[styles.answerChip, active ? styles.answerChipActive : null]}
                     pressedStyle={styles.answerChipPressed}
                     contentStyle={styles.answerChipContent}
                   >
-                    <Text
-                      style={[
-                        styles.answerText,
-                        selected ? styles.answerTextSelected : null,
-                      ]}
-                    >
+                    <Text style={[styles.answerText, active ? styles.answerTextActive : null]} numberOfLines={1}>
                       {option}
                     </Text>
                   </MotionPressable>
@@ -840,73 +744,69 @@ function ClarificationStep({
   )
 }
 
-function EstimateStep({
-  estimate,
+function KaelEstimatePanel({
   draft,
+  estimate,
   isFallback,
   onRetry,
 }: {
-  estimate: PriceCheckEstimateCard
   draft: PriceCheckDraft
+  estimate: PriceCheckEstimateCard
   isFallback: boolean
   onRetry: () => void
 }) {
   return (
-    <View style={styles.sectionStack}>
-      <SectionHeader
-        eyebrow="A5"
-        title={isFallback ? 'Chưa thể báo giá an toàn' : 'Ước tính minh bạch'}
-        text={
-          isFallback
-            ? 'App ưu tiên nói rõ khi dữ liệu chưa đủ thay vì hiển thị một con số không đáng tin.'
-            : 'Khoảng giá được trình bày như tham khảo, không phải giá cuối cùng.'
-        }
-      />
-
-      <StateReveal role={isFallback ? 'fallback' : 'estimate'}>
-        <View style={[styles.estimateCard, isFallback ? styles.fallbackCard : null]}>
-          <View style={styles.estimateTop}>
-            <View style={styles.estimateIcon}>
-              <EstimateGlyph fallback={isFallback} />
-            </View>
-            <View style={styles.estimateHeading}>
-              <Text style={styles.estimateLabel}>{draft.addressLabel}</Text>
-              <Text style={styles.estimateProblem}>{estimate.problemLabel}</Text>
-            </View>
-          </View>
-
-          <View style={styles.priceBand}>
-            <Text style={styles.priceLabel}>
-              {estimate.source === 'kael' ? 'Khoảng giá tham khảo' : 'Trạng thái an toàn'}
-            </Text>
-            <Text selectable style={[styles.priceValue, isFallback ? styles.priceValueMuted : null]}>
-              {estimate.priceRangeLabel}
-            </Text>
-            <Text style={styles.priceMeta}>
-              {estimate.confidenceLabel} · Độ phức tạp {complexityLabel(estimate.complexity)}
-            </Text>
-          </View>
-
-          <View style={styles.reasonStack}>
-            {estimate.reasons.map((reason) => (
-              <View key={reason} style={styles.reasonRow}>
-                <View style={styles.reasonBullet} />
-                <Text style={styles.reasonText}>{reason}</Text>
-              </View>
-            ))}
-          </View>
-
-          {estimate.advisory ? (
-            <StateMessage tone={isFallback ? 'warning' : 'success'} title="Lưu ý" text={estimate.advisory} />
-          ) : null}
-
-          <View style={styles.disclaimerBox}>
-            <Text selectable style={styles.disclaimerText}>
-              {estimate.disclaimer}
-            </Text>
-          </View>
+    <View style={[styles.estimateCard, isFallback ? styles.fallbackCard : null]}>
+      <View style={styles.estimateTop}>
+        <View style={styles.estimateIcon}>
+          <ServiceGlyph type={draft.serviceType} />
         </View>
-      </StateReveal>
+        <View style={styles.estimateHeading}>
+          <Text style={styles.estimateLabel} numberOfLines={1}>
+            {draft.addressLabel}
+          </Text>
+          <Text style={styles.estimateProblem} numberOfLines={2}>
+            {estimate.problemLabel}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.priceBand}>
+        <Text style={styles.priceLabel} numberOfLines={1}>
+          {estimate.source === 'kael' ? 'Khoảng giá tham khảo' : 'Trạng thái'}
+        </Text>
+        <Text style={[styles.priceValue, isFallback ? styles.priceValueMuted : null]} numberOfLines={2}>
+          {estimate.priceRangeLabel}
+        </Text>
+        <Text style={styles.priceMeta} numberOfLines={1}>
+          {estimate.confidenceLabel} · {complexityLabel(estimate.complexity)}
+        </Text>
+      </View>
+
+      <View style={styles.reasonStack}>
+        {estimate.reasons.map((reason) => (
+          <View key={reason} style={styles.reasonRow}>
+            <View style={styles.reasonBullet} />
+            <Text style={styles.reasonText} numberOfLines={2}>
+              {reason}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {estimate.advisory ? (
+        <View style={styles.advisoryBox}>
+          <Text style={styles.advisoryText} numberOfLines={2}>
+            {estimate.advisory}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.disclaimerBox}>
+        <Text selectable style={styles.disclaimerText}>
+          {estimate.disclaimer}
+        </Text>
+      </View>
 
       {isFallback ? (
         <MotionPressable
@@ -916,93 +816,98 @@ function EstimateStep({
           pressedStyle={styles.retryInlineButtonPressed}
           contentStyle={styles.retryInlineContent}
         >
-          <Text style={styles.retryInlineText}>Kiểm tra lại sau khi bổ sung thông tin</Text>
+          <Text style={styles.retryInlineText} numberOfLines={1}>
+            Sửa mô tả
+          </Text>
         </MotionPressable>
       ) : null}
     </View>
   )
 }
 
-function BottomActionBar({
-  activeStepIndex,
+function BookingBottomDock({
+  bottomInset,
   primaryDisabled,
   primaryLabel,
+  progress,
   secondaryLabel,
   onPrimary,
   onSecondary,
-  bottomInset,
 }: {
-  activeStepIndex: number
+  bottomInset: number
   primaryDisabled: boolean
   primaryLabel: string
+  progress: number
   secondaryLabel: string
   onPrimary: () => void
   onSecondary: () => void
-  bottomInset: number
 }) {
   return (
-    <View style={[styles.bottomBar, { paddingBottom: bottomInset + 14 }]}>
+    <View style={[styles.bottomBar, { paddingBottom: Math.max(bottomInset + 10, 18) }]}>
       <View style={styles.bottomProgressTrack}>
-        <View style={[styles.bottomProgressFill, { width: `${((activeStepIndex + 1) / 4) * 100}%` }]} />
+        <View style={[styles.bottomProgressFill, { width: `${progress}%` }]} />
       </View>
       <View style={styles.actionRow}>
         <MotionPressable
-          motionRole="cta"
+          motionRole="retry"
           onPress={onSecondary}
           style={styles.secondaryButton}
           pressedStyle={styles.secondaryButtonPressed}
           contentStyle={styles.ctaContent}
         >
-          <Text numberOfLines={1} style={styles.secondaryButtonText}>{secondaryLabel}</Text>
+          <Text style={styles.secondaryButtonText} numberOfLines={1}>
+            {secondaryLabel}
+          </Text>
         </MotionPressable>
         <MotionPressable
-          motionRole="cta"
           disabled={primaryDisabled}
-          onPress={primaryDisabled ? undefined : onPrimary}
+          motionRole="cta"
+          onPress={onPrimary}
           style={[styles.primaryButton, primaryDisabled ? styles.primaryButtonDisabled : null]}
-          pressedStyle={styles.primaryButtonPressed}
+          pressedStyle={primaryDisabled ? null : styles.primaryButtonPressed}
           contentStyle={styles.ctaContent}
         >
-          <Text numberOfLines={2} style={styles.primaryButtonText}>{primaryLabel}</Text>
+          <Text style={styles.primaryButtonText} numberOfLines={1}>
+            {primaryLabel}
+          </Text>
         </MotionPressable>
       </View>
     </View>
   )
 }
 
-function SectionHeader({
-  eyebrow,
-  title,
-  text,
-}: {
-  eyebrow: string
-  title: string
-  text: string
-}) {
+function FieldHeader({ title, meta }: { title: string; meta: string }) {
   return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionEyebrow}>{eyebrow}</Text>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionText}>{text}</Text>
+    <View style={styles.fieldHeader}>
+      <Text style={styles.fieldTitle} numberOfLines={1}>
+        {title}
+      </Text>
+      <Text style={styles.fieldMeta} numberOfLines={1}>
+        {meta}
+      </Text>
     </View>
   )
 }
 
-function InfoTile({ title, text }: { title: string; text: string }) {
+function MiniSignal({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.infoTile}>
-      <Text style={styles.infoTitle}>{title}</Text>
-      <Text style={styles.infoText}>{text}</Text>
+    <View style={styles.miniSignal}>
+      <Text style={styles.miniSignalLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={styles.miniSignalValue} numberOfLines={1}>
+        {value}
+      </Text>
     </View>
   )
 }
 
 function StateReveal({
-  role,
   children,
+  role,
 }: {
-  role: 'loading' | 'estimate' | 'fallback'
   children: ReactNode
+  role: 'loading' | 'estimate' | 'fallback'
 }) {
   const stateMotion = useRef(new Animated.Value(0)).current
 
@@ -1011,11 +916,11 @@ function StateReveal({
     Animated.parallel([
       Animated.timing(stateMotion, {
         toValue: 1,
-        duration: role === 'loading' ? 260 : 320,
+        duration: 280,
         useNativeDriver: true,
       }),
     ]).start()
-  }, [role, stateMotion])
+  }, [stateMotion, role])
 
   const loadingRevealStyle = {
     opacity: stateMotion,
@@ -1023,7 +928,19 @@ function StateReveal({
       {
         translateY: stateMotion.interpolate({
           inputRange: [0, 1],
-          outputRange: [18, 0],
+          outputRange: [12, 0],
+        }),
+      },
+    ],
+  }
+
+  const estimateRevealStyle = {
+    opacity: stateMotion,
+    transform: [
+      {
+        scale: stateMotion.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.985, 1],
         }),
       },
     ],
@@ -1031,26 +948,8 @@ function StateReveal({
 
   const stateAccentScale = stateMotion.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.18, 1],
+    outputRange: [0.3, 1],
   })
-
-  const estimateRevealStyle = {
-    opacity: stateMotion,
-    transform: [
-      {
-        translateY: stateMotion.interpolate({
-          inputRange: [0, 1],
-          outputRange: [24, 0],
-        }),
-      },
-      {
-        scale: stateMotion.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.965, 1],
-        }),
-      },
-    ],
-  }
 
   return (
     <Animated.View
@@ -1060,14 +959,10 @@ function StateReveal({
       ]}
     >
       <Animated.View
-        pointerEvents="none"
         style={[
           styles.stateRevealAccent,
           role === 'fallback' ? styles.stateRevealAccentWarning : null,
-          {
-            opacity: stateMotion,
-            transform: [{ scaleX: stateAccentScale }],
-          },
+          { transform: [{ scaleX: stateAccentScale }] },
         ]}
       />
       {children}
@@ -1091,33 +986,26 @@ function MotionPressable({
   deferPressMs?: number
   disabled?: boolean
   motionRole: MotionRole
-  onPress?: () => void
-  onPressIn?: (event: GestureResponderEvent) => void
+  onPress: () => void
+  onPressIn?: () => void
   pressedStyle?: StyleProp<ViewStyle>
-  style?: StyleProp<ViewStyle>
+  style: StyleProp<ViewStyle>
 }) {
   const tapMotion = useRef(new Animated.Value(0)).current
   const pressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    return () => {
-      if (pressTimeoutRef.current) {
-        clearTimeout(pressTimeoutRef.current)
-      }
-    }
-  }, [])
-
   const runTapMotion = () => {
+    if (disabled) return
     tapMotion.setValue(0)
     Animated.sequence([
       Animated.timing(tapMotion, {
         toValue: 1,
-        duration: 180,
+        duration: 105,
         useNativeDriver: true,
       }),
       Animated.timing(tapMotion, {
         toValue: 0,
-        duration: 360,
+        duration: 210,
         useNativeDriver: true,
       }),
     ]).start()
@@ -1125,719 +1013,489 @@ function MotionPressable({
 
   const tapScale = tapMotion.interpolate({
     inputRange: [0, 1],
-    outputRange: [
-      1,
-      motionRole === 'service' ? 1.012 : motionRole === 'cta' ? 0.992 : 1.006,
-    ],
+    outputRange: [1, motionRole === 'cta' ? 0.99 : 0.985],
   })
   const tapTranslateY = tapMotion.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, motionRole === 'service' ? -2 : motionRole === 'cta' ? 1 : -1],
-  })
-  const tapInsetOpacity = tapMotion.interpolate({
-    inputRange: [0, 1],
-    outputRange: [
-      0,
-      motionRole === 'service' ? 0.32 : motionRole === 'cta' ? 0.12 : 0.18,
-    ],
+    outputRange: [0, motionRole === 'cta' ? 0 : -1],
   })
   const tapSweepTranslate = tapMotion.interpolate({
     inputRange: [0, 1],
-    outputRange: [motionRole === 'service' ? -76 : -28, motionRole === 'service' ? 260 : 92],
+    outputRange: [-80, 140],
   })
-  const sheenStyle =
-    motionRole === 'cta'
-      ? styles.chipActionSheenCta
-      : motionRole === 'retry'
-        ? styles.chipActionSheenRetry
-        : styles.chipActionSheen
 
   return (
     <Pressable
+      accessibilityRole="button"
       disabled={disabled}
       onPress={() => {
-        if (!onPress) return
-        if (pressTimeoutRef.current) {
-          clearTimeout(pressTimeoutRef.current)
-        }
+        if (disabled) return
         if (deferPressMs > 0) {
-          pressTimeoutRef.current = setTimeout(() => {
-            pressTimeoutRef.current = null
-            onPress()
-          }, deferPressMs)
+          pressTimeoutRef.current = setTimeout(onPress, deferPressMs)
           return
         }
         onPress()
       }}
-      onPressIn={(event) => {
+      onPressIn={() => {
+        clearTimeout(pressTimeoutRef.current ?? undefined)
         runTapMotion()
-        onPressIn?.(event)
+        onPressIn?.()
       }}
-      style={({ pressed }) => [
-        style,
-        pressed ? pressedStyle : null,
-        disabled ? styles.motionPressableDisabled : null,
-      ]}
+      style={styles.motionPressable}
     >
-      <Animated.View
-        style={[
-          styles.motionPressableContent,
-          contentStyle,
-          { transform: [{ translateY: tapTranslateY }, { scale: tapScale }] },
-        ]}
-      >
-        {children}
-        {motionRole === 'service' ? (
-          <>
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.motionServiceInset,
-                {
-                  opacity: tapInsetOpacity,
-                  transform: [{ scale: tapScale }],
-                },
-              ]}
-            />
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.serviceTileSweep,
-                {
-                  opacity: tapInsetOpacity,
-                  transform: [{ translateX: tapSweepTranslate }, { rotate: '12deg' }],
-                },
-              ]}
-            />
-          </>
-        ) : (
+      {({ pressed }) => (
+        <Animated.View
+          style={[
+            style,
+            pressed && !disabled ? pressedStyle : null,
+            disabled ? styles.motionPressableDisabled : null,
+            {
+              transform: [{ scale: tapScale }, { translateY: tapTranslateY }],
+            },
+          ]}
+        >
           <Animated.View
             pointerEvents="none"
             style={[
-              sheenStyle,
-              {
-                opacity: tapInsetOpacity,
-                transform: [{ translateX: tapSweepTranslate }],
-              },
+              motionRole === 'service' ? styles.motionServiceInset : styles.chipActionSheen,
+              motionRole === 'cta' ? styles.chipActionSheenCta : null,
+              motionRole === 'retry' ? styles.chipActionSheenRetry : null,
+              { transform: [{ translateX: tapSweepTranslate }] },
             ]}
           />
-        )}
-      </Animated.View>
+          <View style={contentStyle}>{children}</View>
+          {motionRole === 'service' ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.serviceTileSweep, { transform: [{ translateX: tapSweepTranslate }, { rotate: '12deg' }] }]}
+            />
+          ) : null}
+        </Animated.View>
+      )}
     </Pressable>
   )
 }
 
-function StateMessage({
-  tone,
-  title,
-  text,
-}: {
-  tone: 'info' | 'success' | 'warning' | 'error'
-  title: string
-  text: string
-}) {
+function ServiceGlyph({ type }: { type: ServiceType }) {
+  return type === 'electrical' ? <ElectricalGlyph /> : <PlumbingGlyph />
+}
+
+function ElectricalGlyph() {
   return (
-    <View
-      style={[
-        styles.stateMessage,
-        tone === 'success' ? styles.stateMessageSuccess : null,
-        tone === 'warning' ? styles.stateMessageWarning : null,
-        tone === 'error' ? styles.stateMessageError : null,
-      ]}
-    >
-      <Text style={styles.stateTitle}>{title}</Text>
-      <Text style={styles.stateText}>{text}</Text>
-    </View>
+    <Svg width={34} height={34} viewBox="0 0 34 34" fill="none">
+      <Rect x={8} y={6} width={18} height={22} rx={5} stroke={theme.forest} strokeWidth={2} />
+      <Path d="M13 13h8M13 18h8" stroke={theme.forestDark} strokeWidth={2} strokeLinecap="round" />
+      <Path d="m18 10-3.5 8H18l-2 6 5-9h-3l2-5Z" fill={theme.clay} opacity={0.9} />
+    </Svg>
   )
 }
 
-function MediaSlot({ label }: { label: string }) {
+function PlumbingGlyph() {
   return (
-    <View style={styles.mediaSlot}>
-      <View style={styles.mediaIcon}>
-        <Svg width={30} height={30} viewBox="0 0 30 30" fill="none">
-          <Rect x="7" y="8" width="16" height="14" rx="4" stroke={theme.forest} strokeWidth="2" />
-          <Circle cx="12" cy="13" r="1.8" fill={theme.mintStrong} />
-          <Path d="M9 20L14 16L18 19L21 16L23 18" stroke={theme.forest} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </Svg>
-      </View>
-      <Text style={styles.mediaSlotText}>{label}</Text>
-    </View>
+    <Svg width={34} height={34} viewBox="0 0 34 34" fill="none">
+      <Path d="M8 13h12c3.4 0 6 2.6 6 6v4" stroke={theme.forest} strokeWidth={2} strokeLinecap="round" />
+      <Path d="M7 25c3.8-2.4 7 2.4 11 0 2.5-1.5 5-1.4 8 0" stroke={theme.aqua} strokeWidth={2} strokeLinecap="round" />
+      <Circle cx={8.5} cy={13} r={3.5} fill={theme.surfaceAqua} stroke={theme.lineStrong} />
+    </Svg>
   )
 }
 
-function flowTitle(step: PriceCheckUiStep) {
-  if (step === 'problem') return 'Chọn vấn đề'
-  if (step === 'details') return 'Mô tả hiện trạng'
-  if (step === 'clarification') return 'Kael hỏi thêm'
-  if (step === 'estimate') return 'Ước tính giá'
-  return 'Đặt lịch sửa chữa'
+function CameraGlyph() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
+      <Path d="M5.5 7.2 7 5h6l1.5 2.2h1.2c.9 0 1.6.7 1.6 1.6v5.8c0 .9-.7 1.6-1.6 1.6H4.3c-.9 0-1.6-.7-1.6-1.6V8.8c0-.9.7-1.6 1.6-1.6h1.2Z" stroke={theme.forest} strokeWidth={1.6} strokeLinejoin="round" />
+      <Circle cx={10} cy={11.5} r={2.4} stroke={theme.clay} strokeWidth={1.6} />
+    </Svg>
+  )
 }
 
-function getPrimaryLabel(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
-  if (step === 'problem') return status === 'error' ? 'Chọn vấn đề' : 'Tiếp tục'
-  if (step === 'details') return status === 'error' ? 'Mô tả thêm' : 'Gửi Kael đọc'
+function primaryLabel(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
+  if (step === 'form') return 'Để Kael kiểm tra'
   if (step === 'clarification' && status === 'loading') return 'Xem câu hỏi'
   if (step === 'clarification') return 'Xem ước tính'
-  if (status === 'fallback' || status === 'baseline_fallback') return 'Hoàn tất an toàn'
-  return 'Hoàn tất kiểm tra giá'
+  return 'Xác nhận sau'
+}
+
+function progressForStep(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
+  if (step === 'form') return 34
+  if (step === 'clarification' && status === 'loading') return 56
+  if (step === 'clarification') return 72
+  return 100
 }
 
 function complexityLabel(complexity: PriceCheckEstimateCard['complexity']) {
-  if (complexity === 'small') return 'nhỏ'
-  if (complexity === 'medium') return 'trung bình'
-  if (complexity === 'large') return 'lớn'
-  return 'chưa rõ'
-}
-
-function HomeServicesScene({ compact }: { compact: boolean }) {
-  return (
-    <Svg
-      width="100%"
-      height={compact ? compactHeroHeight : roomyHeroHeight}
-      viewBox="0 0 360 178"
-      fill="none"
-    >
-      <Rect x="0" y="0" width="360" height="178" rx="28" fill="#E7FAF4" />
-      <Path d="M0 128C70 92 116 114 172 82C226 51 280 40 360 52V178H0V128Z" fill="#D5F2E6" />
-      <Path d="M244 39H313V127H244V39Z" fill="#F9FCF9" stroke={theme.lineStrong} strokeWidth="2" />
-      <Path d="M258 58H275V76H258V58ZM284 58H301V76H284V58ZM258 88H275V106H258V88ZM284 88H301V106H284V88Z" fill="#BFECDD" />
-      <Path d="M63 78H171V128H63V78Z" fill="#FFFFFF" stroke={theme.lineStrong} strokeWidth="2" />
-      <Path d="M78 92H112V127H78V92ZM127 92H156V113H127V92Z" fill="#DDF8EF" />
-      <Path d="M57 80L116 43L177 80H57Z" fill={theme.forest} opacity="0.88" />
-      <Path d="M55 132H185" stroke={theme.forestDark} strokeWidth="6" strokeLinecap="round" opacity="0.16" />
-      <Rect x="48" y="128" width="84" height="28" rx="14" fill={theme.forest} />
-      <Circle cx="69" cy="157" r="10" fill={theme.ink} />
-      <Circle cx="111" cy="157" r="10" fill={theme.ink} />
-      <Path d="M61 128C66 112 78 105 93 105H123C137 105 148 116 150 128H61Z" fill={theme.aqua} />
-      <Path d="M80 112H103V126H71C72 120 75 116 80 112Z" fill="#D9FBFF" />
-      <Path d="M219 112C225 98 237 91 251 95C260 98 266 108 266 122V154H214V126C214 121 216 116 219 112Z" fill="#F8D7BC" />
-      <Circle cx="244" cy="82" r="17" fill="#F8D7BC" />
-      <Path d="M226 100C234 108 254 109 263 99V155H226V100Z" fill={theme.mintStrong} />
-      <Path d="M226 120L206 139" stroke={theme.mintStrong} strokeWidth="8" strokeLinecap="round" />
-      <Path d="M263 119L287 105" stroke={theme.mintStrong} strokeWidth="8" strokeLinecap="round" />
-      <Path d="M287 105L300 114" stroke={theme.clay} strokeWidth="5" strokeLinecap="round" />
-      <Ellipse cx="246" cy="65" rx="17" ry="9" fill={theme.ink} />
-      <Circle cx="77" cy="43" r="9" fill={theme.mintStrong} opacity="0.7" />
-      <Circle cx="322" cy="29" r="12" fill={theme.aqua} opacity="0.32" />
-      <Path d="M22 49C52 30 77 22 110 26" stroke="#BEEFE4" strokeWidth="5" strokeLinecap="round" />
-    </Svg>
-  )
-}
-
-function ElectricalServiceIcon({ size = 42 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 44 44" fill="none">
-      <Rect x="11" y="7" width="22" height="30" rx="8" stroke={theme.forest} strokeWidth="2.4" />
-      <Line x1="18" y1="20" x2="18" y2="25" stroke={theme.forest} strokeWidth="2.4" strokeLinecap="round" />
-      <Line x1="26" y1="20" x2="26" y2="25" stroke={theme.forest} strokeWidth="2.4" strokeLinecap="round" />
-      <Path d="M28 8L35 4M31 13L38 10" stroke={theme.clay} strokeWidth="2.4" strokeLinecap="round" />
-      <Circle cx="22" cy="31" r="2.5" fill={theme.aqua} />
-    </Svg>
-  )
-}
-
-function PlumbingServiceIcon({ size = 42 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 44 44" fill="none">
-      <Path d="M10 13H27C31.4 13 35 16.6 35 21V24" stroke={theme.forest} strokeWidth="5" strokeLinecap="round" />
-      <Path d="M17 13V25C17 29.4 20.6 33 25 33H29" stroke={theme.forest} strokeWidth="5" strokeLinecap="round" />
-      <Path d="M33 25C35 27.5 36 29.3 36 31.2C36 34 33.8 36 31.5 36C29.1 36 27 34 27 31.2C27 29.3 28.1 27.4 30 25H33Z" fill={theme.aqua} />
-      <Circle cx="10" cy="13" r="3.2" fill={theme.mintStrong} />
-    </Svg>
-  )
-}
-
-function ProblemGlyph({ selected }: { selected: boolean }) {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-      <Path
-        d="M5 7H12C14.2 7 16 8.8 16 11V13"
-        stroke={selected ? '#FFFFFF' : theme.forest}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <Circle cx="5" cy="7" r="2" fill={selected ? '#FFFFFF' : theme.mintStrong} />
-    </Svg>
-  )
-}
-
-function EstimateGlyph({ fallback }: { fallback: boolean }) {
-  return (
-    <Svg width={42} height={42} viewBox="0 0 42 42" fill="none">
-      <Circle cx="21" cy="21" r="17" stroke={fallback ? theme.clay : theme.forest} strokeWidth="2.4" />
-      <Path
-        d="M13 22L18.5 27.5L30 15"
-        stroke={fallback ? theme.clay : theme.forest}
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Circle cx="31" cy="11" r="3" fill={fallback ? theme.claySoft : theme.mint} />
-    </Svg>
-  )
+  if (complexity === 'small') return 'Nhỏ'
+  if (complexity === 'medium') return 'Trung bình'
+  if (complexity === 'large') return 'Lớn'
+  return 'Chưa rõ'
 }
 
 const textBase = {
-  fontFamily: 'Aptos, Inter, Manrope, System',
   letterSpacing: 0,
 }
 
 const styles = StyleSheet.create({
   root: {
+    backgroundColor: bookingLayerTokens.canvas,
     flex: 1,
-    backgroundColor: theme.canvas,
+  },
+  hiddenMarker: {
+    height: 0,
+    width: 0,
   },
   scrollContent: {
-    gap: 18,
+    gap: 16,
     paddingHorizontal: 18,
   },
-  screenShell: {
-    gap: 16,
-  },
-  hubShell: {
-    gap: 18,
-  },
-  hubShellCompact: {
-    gap: 12,
-  },
-  appBar: {
+  topBar: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  brandCluster: {
+  brandRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   brandMark: {
     alignItems: 'center',
-    backgroundColor: theme.forest,
-    borderRadius: 16,
-    height: 42,
+    backgroundColor: bookingLayerTokens.primary,
+    borderRadius: 15,
+    height: 40,
     justifyContent: 'center',
-    width: 42,
+    width: 40,
   },
   brandMarkText: {
     ...textBase,
     color: '#FFFFFF',
-    fontSize: 19,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  brandCopy: {
+    gap: 2,
   },
   appName: {
     ...textBase,
-    color: theme.ink,
+    color: bookingLayerTokens.text,
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   appMeta: {
     ...textBase,
-    color: theme.slate,
+    color: bookingLayerTokens.muted,
     fontSize: 12,
     fontWeight: '500',
   },
-  addressPill: {
-    backgroundColor: theme.surfaceJade,
-    borderColor: theme.line,
+  scopePill: {
+    backgroundColor: bookingLayerTokens.service,
+    borderColor: bookingLayerTokens.border,
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 11,
     paddingVertical: 8,
   },
-  addressPillText: {
+  scopePillText: {
     ...textBase,
-    color: theme.forest,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  heroCard: {
-    backgroundColor: theme.surfaceMint,
-    borderColor: theme.lineStrong,
-    borderRadius: 30,
-    borderWidth: 1,
-    boxShadow: '0 20px 48px rgba(12, 117, 108, 0.09)',
-    gap: 14,
-    overflow: 'hidden',
-    padding: 18,
-  },
-  heroCardCompact: {
-    borderRadius: 24,
-    gap: 8,
-    padding: 13,
-  },
-  heroCopy: {
-    gap: 7,
-  },
-  eyebrow: {
-    ...textBase,
-    color: theme.forest,
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  heroTitle: {
-    ...textBase,
-    color: theme.ink,
-    fontSize: 28,
-    fontWeight: '800',
-    lineHeight: 34,
-  },
-  heroText: {
-    ...textBase,
-    color: theme.slate,
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 21,
-  },
-  addressCard: {
-    alignItems: 'center',
-    backgroundColor: theme.surface,
-    borderColor: theme.line,
-    borderRadius: 24,
-    borderWidth: 1,
-    boxShadow: '0 10px 28px rgba(12, 117, 108, 0.045)',
-    flexDirection: 'row',
-    gap: 12,
-    padding: 14,
-  },
-  addressCardCompact: {
-    borderRadius: 20,
-    padding: 11,
-  },
-  pinBubble: {
-    alignItems: 'center',
-    backgroundColor: theme.surfaceCopper,
-    borderRadius: 16,
-    height: 38,
-    justifyContent: 'center',
-    width: 38,
-  },
-  pinText: {
-    color: theme.clay,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  addressCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  addressLabel: {
-    ...textBase,
-    color: theme.muted,
+    color: bookingLayerTokens.primary,
     fontSize: 12,
     fontWeight: '700',
   },
-  addressTitle: {
-    ...textBase,
-    color: theme.ink,
-    fontSize: 15,
-    fontWeight: '800',
+  motionSurface: {
+    gap: 16,
   },
-  addressAction: {
-    ...textBase,
-    color: theme.forest,
-    fontSize: 13,
-    fontWeight: '800',
+  bookingFormShell: {
+    gap: 14,
   },
-  hubSection: {
-    gap: 12,
+  bookingFormCompact: {
+    gap: 11,
   },
-  hubSectionHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  hubSectionTitle: {
-    ...textBase,
-    color: theme.ink,
-    fontSize: 19,
-    fontWeight: '800',
-  },
-  hubSectionAction: {
-    ...textBase,
-    color: theme.forest,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  hubServiceGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  hubServiceCard: {
-    backgroundColor: theme.surface,
-    borderColor: theme.line,
-    borderRadius: 26,
-    borderWidth: 1,
-    boxShadow: '0 12px 30px rgba(12, 117, 108, 0.055)',
-    flex: 1,
-    minHeight: 158,
-    padding: 15,
-  },
-  hubServiceCardCompact: {
-    borderRadius: 22,
-    minHeight: compactServiceCardHeight,
-    padding: 12,
-  },
-  hubServiceCardPressed: {
-    borderColor: theme.lineStrong,
-    boxShadow: '0 14px 34px rgba(12, 117, 108, 0.075)',
-  },
-  hubServiceContent: {
-    alignItems: 'flex-start',
-    flex: 1,
-    gap: 8,
-  },
-  hubServiceIcon: {
-    alignItems: 'center',
-    borderRadius: 22,
-    height: 62,
-    justifyContent: 'center',
-    width: 62,
-  },
-  hubServiceIconCompact: {
-    borderRadius: 18,
-    height: 50,
-    width: 50,
-  },
-  serviceIconElectric: {
-    backgroundColor: theme.surfaceAqua,
-  },
-  serviceIconWater: {
+  formHero: {
     backgroundColor: theme.surfaceJade,
+    borderColor: bookingLayerTokens.borderStrong,
+    borderRadius: 28,
+    borderWidth: 1,
+    boxShadow: '0 18px 42px rgba(12, 117, 108, 0.08)',
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+    padding: 17,
   },
-  hubServiceTitle: {
-    ...textBase,
-    color: theme.ink,
-    fontSize: 18,
-    fontWeight: '800',
+  formHeroCompact: {
+    borderRadius: 24,
+    padding: 14,
   },
-  hubServiceSubtitle: {
+  formHeroDepthLayer: {
+    backgroundColor: bookingLayerTokens.warm,
+    borderColor: theme.claySoft,
+    borderRadius: 24,
+    borderWidth: 1,
+    height: 58,
+    opacity: 0.75,
+    position: 'absolute',
+    right: -8,
+    top: 12,
+    width: 92,
+  },
+  bookingCompactCopy: {
+    maxWidth: 250,
+  },
+  formEyebrow: {
     ...textBase,
-    color: theme.slate,
+    color: bookingLayerTokens.primary,
     fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 17,
+    fontWeight: '700',
   },
-  hubServiceMicrocopy: {
+  formTitle: {
     ...textBase,
-    color: theme.muted,
+    color: bookingLayerTokens.text,
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 33,
+    marginTop: 5,
+  },
+  formSubtitle: {
+    ...textBase,
+    color: bookingLayerTokens.muted,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+    marginTop: 7,
+  },
+  formHeroGlyph: {
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    backgroundColor: bookingLayerTokens.raised,
+    borderColor: bookingLayerTokens.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
+  contextStrip: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  miniSignal: {
+    backgroundColor: bookingLayerTokens.base,
+    borderColor: bookingLayerTokens.border,
+    borderRadius: 19,
+    borderWidth: 1,
+    flex: 1,
+    gap: 3,
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  miniSignalLabel: {
+    ...textBase,
+    color: bookingLayerTokens.subtle,
     fontSize: 11,
+    fontWeight: '700',
+  },
+  miniSignalValue: {
+    ...textBase,
+    color: bookingLayerTokens.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  serviceSegment: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  formServiceCard: {
+    backgroundColor: bookingLayerTokens.base,
+    borderColor: bookingLayerTokens.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    flex: 1,
+    minHeight: 136,
+    overflow: 'hidden',
+    padding: 13,
+  },
+  formServiceCardCompact: {
+    borderRadius: 21,
+    minHeight: compactServiceCardHeight,
+    padding: 11,
+  },
+  formServiceCardActive: {
+    backgroundColor: bookingLayerTokens.service,
+    borderColor: bookingLayerTokens.borderStrong,
+  },
+  formServiceCardWater: {
+    backgroundColor: bookingLayerTokens.water,
+  },
+  formServiceCardPressed: {
+    borderColor: bookingLayerTokens.primary,
+  },
+  formServiceContent: {
+    flex: 1,
+    gap: 7,
+  },
+  serviceIconPlate: {
+    alignItems: 'center',
+    backgroundColor: bookingLayerTokens.raised,
+    borderRadius: 18,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  serviceIconPlateWater: {
+    backgroundColor: '#F6FEFD',
+  },
+  serviceTitle: {
+    ...textBase,
+    color: bookingLayerTokens.text,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  serviceSubtitle: {
+    ...textBase,
+    color: bookingLayerTokens.muted,
+    fontSize: 12,
     fontWeight: '500',
     lineHeight: 16,
   },
-  hubInfoRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  infoTile: {
-    backgroundColor: theme.canvasWarm,
-    borderColor: theme.line,
-    borderRadius: 22,
+  bookingFormCard: {
+    backgroundColor: bookingLayerTokens.base,
+    borderColor: bookingLayerTokens.border,
+    borderRadius: 24,
     borderWidth: 1,
-    flex: 1,
-    gap: 4,
-    padding: 13,
+    gap: 12,
+    padding: 14,
   },
-  infoTitle: {
-    ...textBase,
-    color: theme.ink,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  infoText: {
-    ...textBase,
-    color: theme.slate,
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 17,
-  },
-  stateRevealShell: {
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  stateRevealAccent: {
-    backgroundColor: theme.mintStrong,
-    borderRadius: 999,
-    height: 4,
-    left: 22,
-    position: 'absolute',
-    right: 22,
-    top: 0,
-    zIndex: 2,
-  },
-  stateRevealAccentWarning: {
-    backgroundColor: theme.clay,
-  },
-  flowHeader: {
-    gap: 14,
-  },
-  flowTopRow: {
+  fieldHeader: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  flowEyebrow: {
+  fieldTitle: {
     ...textBase,
-    color: theme.forest,
+    color: bookingLayerTokens.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  fieldMeta: {
+    ...textBase,
+    color: bookingLayerTokens.primary,
     fontSize: 12,
-    fontWeight: '900',
-  },
-  flowTitle: {
-    ...textBase,
-    color: theme.ink,
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  flowServiceBadge: {
-    backgroundColor: theme.surfaceMint,
-    borderColor: theme.line,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  flowServiceText: {
-    ...textBase,
-    color: theme.forest,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  stepRail: {
-    alignItems: 'center',
-    backgroundColor: theme.surface,
-    borderColor: theme.line,
-    borderRadius: 22,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    padding: 10,
-  },
-  stepItem: {
-    alignItems: 'center',
-    flex: 1,
-    gap: 6,
-  },
-  stepDot: {
-    backgroundColor: theme.line,
-    borderRadius: 999,
-    height: 6,
-    width: '100%',
-  },
-  stepDotDone: {
-    backgroundColor: theme.mintStrong,
-  },
-  stepDotActive: {
-    backgroundColor: theme.forest,
-  },
-  stepLabel: {
-    ...textBase,
-    color: theme.muted,
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  stepLabelActive: {
-    color: theme.forest,
-  },
-  sectionStack: {
-    gap: 16,
-  },
-  sectionHeader: {
-    gap: 7,
-  },
-  sectionEyebrow: {
-    ...textBase,
-    color: theme.forest,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  sectionTitle: {
-    ...textBase,
-    color: theme.ink,
-    fontSize: 23,
-    fontWeight: '800',
-    lineHeight: 30,
-  },
-  sectionText: {
-    ...textBase,
-    color: theme.slate,
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 21,
-  },
-  problemPanel: {
-    backgroundColor: theme.surface,
-    borderColor: theme.line,
-    borderRadius: 26,
-    borderWidth: 1,
-    padding: 15,
+    fontWeight: '700',
   },
   chipGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   problemChip: {
-    alignItems: 'center',
-    backgroundColor: theme.canvas,
-    borderColor: theme.line,
-    borderRadius: 18,
+    backgroundColor: bookingLayerTokens.depth,
+    borderColor: bookingLayerTokens.border,
+    borderRadius: 999,
     borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
     minHeight: minimumTouchTarget,
+    overflow: 'hidden',
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   problemChipPressed: {
-    borderColor: theme.lineStrong,
+    borderColor: bookingLayerTokens.primary,
   },
-  problemChipSelected: {
-    backgroundColor: theme.forest,
-    borderColor: theme.forest,
+  problemChipActive: {
+    backgroundColor: bookingLayerTokens.primary,
+    borderColor: bookingLayerTokens.primary,
   },
   problemChipContent: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: 7,
   },
-  chipIcon: {
-    alignItems: 'center',
-    backgroundColor: theme.surfaceMint,
-    borderRadius: 10,
-    height: 26,
-    justifyContent: 'center',
-    width: 26,
+  chipDot: {
+    backgroundColor: bookingLayerTokens.borderStrong,
+    borderRadius: 999,
+    height: 7,
+    width: 7,
   },
-  chipIconSelected: {
-    backgroundColor: 'rgba(255,255,255,0.16)',
+  chipDotActive: {
+    backgroundColor: '#FFFFFF',
   },
   problemChipText: {
     ...textBase,
-    color: theme.slate,
-    fontSize: 14,
+    color: bookingLayerTokens.muted,
+    fontSize: 13,
     fontWeight: '700',
   },
-  problemChipTextSelected: {
+  problemChipTextActive: {
     color: '#FFFFFF',
+  },
+  textAreaFrame: {
+    backgroundColor: bookingLayerTokens.depth,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  descriptionInput: {
+    ...textBase,
+    color: bookingLayerTokens.text,
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 21,
+    minHeight: 116,
+    padding: 13,
+  },
+  inlineError: {
+    ...textBase,
+    color: theme.danger,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  mediaRow: {
+    flexDirection: 'row',
+    gap: 9,
+  },
+  mediaSlot: {
+    alignItems: 'center',
+    backgroundColor: bookingLayerTokens.depth,
+    borderColor: bookingLayerTokens.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    flex: 1,
+    gap: 7,
+    minHeight: 78,
+    justifyContent: 'center',
+    padding: 8,
+  },
+  mediaIconDot: {
+    alignItems: 'center',
+    backgroundColor: bookingLayerTokens.raised,
+    borderRadius: 999,
+    height: 32,
+    justifyContent: 'center',
+    width: 32,
+  },
+  mediaSlotText: {
+    ...textBase,
+    color: bookingLayerTokens.muted,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  questionSheet: {
+    gap: 13,
   },
   summaryStrip: {
     alignItems: 'center',
-    backgroundColor: theme.surfaceMint,
-    borderColor: theme.lineStrong,
+    backgroundColor: bookingLayerTokens.service,
+    borderColor: bookingLayerTokens.borderStrong,
     borderRadius: 24,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 12,
-    padding: 14,
+    gap: 11,
+    padding: 13,
   },
   summaryIcon: {
     alignItems: 'center',
-    backgroundColor: theme.surface,
-    borderRadius: 20,
-    height: 54,
+    backgroundColor: bookingLayerTokens.raised,
+    borderRadius: 18,
+    height: 48,
     justifyContent: 'center',
-    width: 54,
+    width: 48,
   },
   summaryCopy: {
     flex: 1,
@@ -1845,176 +1503,48 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     ...textBase,
-    color: theme.forest,
+    color: bookingLayerTokens.primary,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   summaryTitle: {
     ...textBase,
-    color: theme.ink,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  summaryMeta: {
-    ...textBase,
-    color: theme.slate,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  inputPanel: {
-    backgroundColor: theme.surface,
-    borderColor: theme.line,
-    borderRadius: 26,
-    borderWidth: 1,
-    gap: 10,
-    padding: 16,
-  },
-  inputHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  inputLabel: {
-    ...textBase,
-    color: theme.ink,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  inputCount: {
-    ...textBase,
-    color: theme.muted,
-    fontSize: 12,
-    fontVariant: ['tabular-nums'],
-    fontWeight: '700',
-  },
-  descriptionInput: {
-    ...textBase,
-    backgroundColor: theme.canvas,
-    borderColor: theme.line,
-    borderRadius: 20,
-    borderWidth: 1,
-    color: theme.ink,
-    fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 22,
-    minHeight: 130,
-    padding: 14,
-  },
-  descriptionInputError: {
-    borderColor: theme.danger,
-  },
-  mediaPanel: {
-    backgroundColor: theme.surface,
-    borderColor: theme.line,
-    borderRadius: 26,
-    borderWidth: 1,
-    gap: 12,
-    padding: 16,
-  },
-  panelTitle: {
-    ...textBase,
-    color: theme.ink,
+    color: bookingLayerTokens.text,
     fontSize: 16,
-    fontWeight: '800',
-  },
-  mediaRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  mediaSlot: {
-    alignItems: 'center',
-    backgroundColor: theme.canvas,
-    borderColor: theme.line,
-    borderRadius: 18,
-    borderWidth: 1,
-    flex: 1,
-    gap: 8,
-    minHeight: 90,
-    justifyContent: 'center',
-    padding: 10,
-  },
-  mediaIcon: {
-    alignItems: 'center',
-    backgroundColor: theme.surfaceMint,
-    borderRadius: 999,
-    height: 34,
-    justifyContent: 'center',
-    width: 34,
-  },
-  mediaSlotText: {
-    ...textBase,
-    color: theme.slate,
-    fontSize: 12,
     fontWeight: '700',
-    textAlign: 'center',
-  },
-  loadingCard: {
-    alignItems: 'center',
-    backgroundColor: theme.surfaceMint,
-    borderColor: theme.lineStrong,
-    borderRadius: 28,
-    borderWidth: 1,
-    gap: 12,
-    justifyContent: 'center',
-    minHeight: 240,
-    padding: 24,
-  },
-  loadingIconRing: {
-    alignItems: 'center',
-    backgroundColor: theme.surface,
-    borderRadius: 999,
-    height: 76,
-    justifyContent: 'center',
-    width: 76,
-  },
-  loadingTitle: {
-    ...textBase,
-    color: theme.ink,
-    fontSize: 20,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  loadingText: {
-    ...textBase,
-    color: theme.slate,
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 21,
-    maxWidth: 340,
-    textAlign: 'center',
   },
   questionCard: {
-    backgroundColor: theme.surface,
-    borderColor: theme.line,
+    backgroundColor: bookingLayerTokens.base,
+    borderColor: bookingLayerTokens.border,
     borderRadius: 24,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 12,
+    gap: 11,
     padding: 14,
   },
   questionIndex: {
     alignItems: 'center',
-    backgroundColor: theme.surfaceMint,
+    backgroundColor: bookingLayerTokens.service,
     borderRadius: 999,
-    height: 32,
+    height: 30,
     justifyContent: 'center',
-    width: 32,
+    width: 30,
   },
   questionIndexText: {
     ...textBase,
-    color: theme.forest,
-    fontSize: 13,
-    fontWeight: '900',
+    color: bookingLayerTokens.primary,
+    fontSize: 12,
+    fontWeight: '700',
   },
   questionBody: {
     flex: 1,
-    gap: 12,
+    gap: 11,
   },
   questionText: {
     ...textBase,
-    color: theme.ink,
+    color: bookingLayerTokens.text,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 21,
   },
   answerGrid: {
@@ -2023,8 +1553,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   answerChip: {
-    backgroundColor: theme.canvas,
-    borderColor: theme.line,
+    backgroundColor: bookingLayerTokens.depth,
+    borderColor: bookingLayerTokens.border,
     borderRadius: 999,
     borderWidth: 1,
     minHeight: minimumTouchTarget,
@@ -2032,11 +1562,11 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   answerChipPressed: {
-    borderColor: theme.lineStrong,
+    borderColor: bookingLayerTokens.primary,
   },
-  answerChipSelected: {
-    backgroundColor: theme.forest,
-    borderColor: theme.forest,
+  answerChipActive: {
+    backgroundColor: bookingLayerTokens.primary,
+    borderColor: bookingLayerTokens.primary,
   },
   answerChipContent: {
     alignItems: 'center',
@@ -2044,24 +1574,58 @@ const styles = StyleSheet.create({
   },
   answerText: {
     ...textBase,
-    color: theme.slate,
+    color: bookingLayerTokens.muted,
     fontSize: 13,
     fontWeight: '700',
   },
-  answerTextSelected: {
+  answerTextActive: {
     color: '#FFFFFF',
   },
+  loadingCard: {
+    alignItems: 'center',
+    backgroundColor: bookingLayerTokens.service,
+    borderColor: bookingLayerTokens.borderStrong,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 12,
+    justifyContent: 'center',
+    minHeight: 252,
+    padding: 24,
+  },
+  loadingIconRing: {
+    alignItems: 'center',
+    backgroundColor: bookingLayerTokens.raised,
+    borderRadius: 999,
+    height: 76,
+    justifyContent: 'center',
+    width: 76,
+  },
+  loadingTitle: {
+    ...textBase,
+    color: bookingLayerTokens.text,
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  loadingText: {
+    ...textBase,
+    color: bookingLayerTokens.muted,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 19,
+    textAlign: 'center',
+  },
   estimateCard: {
-    backgroundColor: theme.surface,
-    borderColor: theme.lineStrong,
+    backgroundColor: bookingLayerTokens.base,
+    borderColor: bookingLayerTokens.borderStrong,
     borderRadius: 30,
     borderWidth: 1,
-    boxShadow: '0 20px 44px rgba(12, 117, 108, 0.1)',
-    gap: 16,
+    boxShadow: '0 20px 44px rgba(12, 117, 108, 0.09)',
+    gap: 15,
     padding: 18,
   },
   fallbackCard: {
-    backgroundColor: theme.surfaceCopper,
+    backgroundColor: bookingLayerTokens.warm,
     borderColor: theme.claySoft,
   },
   estimateTop: {
@@ -2071,11 +1635,11 @@ const styles = StyleSheet.create({
   },
   estimateIcon: {
     alignItems: 'center',
-    backgroundColor: theme.surfaceMint,
-    borderRadius: 24,
-    height: 62,
+    backgroundColor: bookingLayerTokens.service,
+    borderRadius: 22,
+    height: 58,
     justifyContent: 'center',
-    width: 62,
+    width: 58,
   },
   estimateHeading: {
     flex: 1,
@@ -2083,50 +1647,50 @@ const styles = StyleSheet.create({
   },
   estimateLabel: {
     ...textBase,
-    color: theme.muted,
+    color: bookingLayerTokens.subtle,
     fontSize: 12,
     fontWeight: '700',
   },
   estimateProblem: {
     ...textBase,
-    color: theme.ink,
+    color: bookingLayerTokens.text,
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 24,
   },
   priceBand: {
-    backgroundColor: theme.canvasWarm,
-    borderColor: theme.line,
-    borderRadius: 24,
+    backgroundColor: bookingLayerTokens.warm,
+    borderColor: bookingLayerTokens.border,
+    borderRadius: 23,
     borderWidth: 1,
     gap: 4,
-    padding: 16,
+    padding: 15,
   },
   priceLabel: {
     ...textBase,
-    color: theme.slate,
+    color: bookingLayerTokens.muted,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   priceValue: {
     ...textBase,
-    color: theme.forestDark,
-    fontSize: 30,
+    color: bookingLayerTokens.primaryDark,
+    fontSize: 29,
     fontVariant: ['tabular-nums'],
-    fontWeight: '900',
+    fontWeight: '700',
   },
   priceValueMuted: {
-    color: theme.clay,
-    fontSize: 25,
+    color: bookingLayerTokens.copper,
+    fontSize: 24,
   },
   priceMeta: {
     ...textBase,
-    color: theme.slate,
+    color: bookingLayerTokens.muted,
     fontSize: 13,
     fontWeight: '700',
   },
   reasonStack: {
-    gap: 10,
+    gap: 9,
   },
   reasonRow: {
     alignItems: 'flex-start',
@@ -2134,7 +1698,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   reasonBullet: {
-    backgroundColor: theme.mintStrong,
+    backgroundColor: bookingLayerTokens.primary,
     borderRadius: 999,
     height: 7,
     marginTop: 7,
@@ -2142,38 +1706,53 @@ const styles = StyleSheet.create({
   },
   reasonText: {
     ...textBase,
-    color: theme.slate,
+    color: bookingLayerTokens.muted,
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 19,
+  },
+  advisoryBox: {
+    backgroundColor: bookingLayerTokens.depth,
+    borderColor: bookingLayerTokens.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 12,
+  },
+  advisoryText: {
+    ...textBase,
+    color: bookingLayerTokens.text,
+    fontSize: 13,
     fontWeight: '600',
-    lineHeight: 21,
+    lineHeight: 18,
   },
   disclaimerBox: {
     backgroundColor: 'rgba(255,255,255,0.7)',
-    borderColor: theme.line,
+    borderColor: bookingLayerTokens.border,
     borderRadius: 18,
     borderWidth: 1,
     padding: 12,
   },
   disclaimerText: {
     ...textBase,
-    color: theme.slate,
+    color: bookingLayerTokens.muted,
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 18,
   },
   retryInlineButton: {
     alignItems: 'center',
-    backgroundColor: theme.surface,
+    backgroundColor: bookingLayerTokens.raised,
     borderColor: theme.claySoft,
-    borderRadius: 18,
+    borderRadius: 17,
     borderWidth: 1,
     justifyContent: 'center',
     minHeight: minimumTouchTarget,
+    overflow: 'hidden',
     paddingHorizontal: 14,
   },
   retryInlineButtonPressed: {
-    backgroundColor: theme.surfaceCopper,
+    backgroundColor: bookingLayerTokens.warm,
   },
   retryInlineContent: {
     alignItems: 'center',
@@ -2181,45 +1760,30 @@ const styles = StyleSheet.create({
   },
   retryInlineText: {
     ...textBase,
-    color: theme.clay,
+    color: bookingLayerTokens.copper,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
-  stateMessage: {
-    backgroundColor: theme.surfaceAqua,
-    borderColor: theme.line,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 4,
-    padding: 12,
+  stateRevealShell: {
+    overflow: 'hidden',
+    position: 'relative',
   },
-  stateMessageSuccess: {
-    backgroundColor: theme.surfaceMint,
+  stateRevealAccent: {
+    backgroundColor: bookingLayerTokens.primary,
+    borderRadius: 999,
+    height: 4,
+    left: 22,
+    position: 'absolute',
+    right: 22,
+    top: 0,
+    zIndex: 2,
   },
-  stateMessageWarning: {
-    backgroundColor: theme.surfaceCopper,
-    borderColor: theme.claySoft,
-  },
-  stateMessageError: {
-    backgroundColor: '#FFF0EF',
-    borderColor: '#F0B5AF',
-  },
-  stateTitle: {
-    ...textBase,
-    color: theme.ink,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  stateText: {
-    ...textBase,
-    color: theme.slate,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 19,
+  stateRevealAccentWarning: {
+    backgroundColor: bookingLayerTokens.copper,
   },
   bottomBar: {
-    backgroundColor: 'rgba(248, 252, 250, 0.94)',
-    borderColor: theme.line,
+    backgroundColor: 'rgba(248, 252, 250, 0.96)',
+    borderColor: bookingLayerTokens.border,
     borderTopWidth: 1,
     bottom: 0,
     gap: 12,
@@ -2230,13 +1794,13 @@ const styles = StyleSheet.create({
     right: 0,
   },
   bottomProgressTrack: {
-    backgroundColor: theme.line,
+    backgroundColor: bookingLayerTokens.border,
     borderRadius: 999,
     height: 5,
     overflow: 'hidden',
   },
   bottomProgressFill: {
-    backgroundColor: theme.forest,
+    backgroundColor: bookingLayerTokens.primary,
     borderRadius: 999,
     height: 5,
   },
@@ -2246,47 +1810,49 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     alignItems: 'center',
-    backgroundColor: theme.surface,
-    borderColor: theme.line,
+    backgroundColor: bookingLayerTokens.base,
+    borderColor: bookingLayerTokens.border,
     borderRadius: 18,
     borderWidth: 1,
-    flex: 0.8,
+    flex: 0.82,
     justifyContent: 'center',
     minHeight: 54,
+    overflow: 'hidden',
     paddingHorizontal: 14,
   },
   secondaryButtonPressed: {
-    backgroundColor: theme.surfaceMint,
-    borderColor: theme.lineStrong,
+    backgroundColor: bookingLayerTokens.service,
+    borderColor: bookingLayerTokens.borderStrong,
   },
   secondaryButtonText: {
     ...textBase,
-    color: theme.slate,
-    fontSize: 15,
-    fontWeight: '800',
+    color: bookingLayerTokens.muted,
+    fontSize: 14,
+    fontWeight: '700',
   },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: theme.forest,
+    backgroundColor: bookingLayerTokens.primary,
     borderRadius: 18,
-    boxShadow: '0 10px 22px rgba(12, 117, 108, 0.2)',
-    flex: 1.4,
+    boxShadow: '0 10px 22px rgba(12, 117, 108, 0.18)',
+    flex: 1.45,
     justifyContent: 'center',
     minHeight: 54,
+    overflow: 'hidden',
     paddingHorizontal: 16,
   },
   primaryButtonPressed: {
-    backgroundColor: theme.forestDark,
+    backgroundColor: bookingLayerTokens.primaryDark,
   },
   primaryButtonDisabled: {
-    backgroundColor: theme.lineStrong,
+    backgroundColor: bookingLayerTokens.borderStrong,
     boxShadow: '0 0 0 rgba(0,0,0,0)',
   },
   primaryButtonText: {
     ...textBase,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '700',
     textAlign: 'center',
   },
   ctaContent: {
@@ -2294,15 +1860,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  motionPressableContent: {
-    overflow: 'hidden',
-    position: 'relative',
+  motionPressable: {
+    minHeight: minimumTouchTarget,
   },
   motionPressableDisabled: {
     opacity: 0.72,
   },
   motionServiceInset: {
-    borderColor: 'rgba(50, 191, 168, 0.42)',
+    borderColor: 'rgba(23, 169, 149, 0.38)',
     borderRadius: 20,
     borderWidth: 1.5,
     bottom: 8,
@@ -2316,10 +1881,10 @@ const styles = StyleSheet.create({
     bottom: -36,
     position: 'absolute',
     top: -36,
-    width: 48,
+    width: 44,
   },
   chipActionSheen: {
-    backgroundColor: 'rgba(50, 191, 168, 0.42)',
+    backgroundColor: 'rgba(23, 169, 149, 0.36)',
     borderRadius: 999,
     bottom: 6,
     height: 2,
@@ -2330,14 +1895,12 @@ const styles = StyleSheet.create({
   chipActionSheenCta: {
     backgroundColor: 'rgba(255, 255, 255, 0.62)',
     bottom: 7,
-    height: 2,
-    left: 16,
-    width: 72,
+    left: 18,
+    width: 80,
   },
   chipActionSheenRetry: {
     backgroundColor: 'rgba(184, 111, 50, 0.34)',
     bottom: 7,
-    height: 2,
     left: 16,
     width: 72,
   },

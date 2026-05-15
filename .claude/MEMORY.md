@@ -5,6 +5,57 @@ Mỗi session mới: đọc file này trước, sau đó update khi kết thúc.
 
 ---
 
+## Session 17 - 2026-05-15
+
+**Branch**: `codex-foundation-supabase-workflow-setup`
+**Worker**: Codex + Tu
+
+### Mission
+
+Remove mobile prototype runtime artifacts after the accepted production UI baseline, then preserve the useful process lessons in docs instead of keeping throwaway code in the app.
+
+### Cleanup scope
+
+Removed runtime/review artifacts:
+
+- `apps/mobile/app/prototype/`
+- `apps/mobile/components/client-price-check/client-price-check-prototype.tsx`
+- `apps/mobile/components/customer/client-frontier-prototype.tsx`
+- `apps/mobile/components/fleets/fleets-prototype.tsx`
+- `apps/mobile/public/`
+
+Preserved:
+
+- production `ClientPriceCheckFlow`
+- customer shell production surfaces
+- auth/customer/worker route skeletons
+- backend/Supabase state
+
+Follow-up cleanup in the same worktree removed Remotion/prototype scratch artifacts after Tu clarified they were also junk and production must not be touched:
+
+- `apps/remotion/`
+- `packages/shared/src/__tests__/remotion-wiring.test.ts`
+- `.superpowers/`
+- `docs/superpowers/`
+- the old scratch `design.md`
+
+Later in the same session, Tu approved recreating root `design.md` as the locked Home Services design operating system. Future agents must treat the new `design.md` as durable design authority, not as the old scratch artifact.
+
+### Test/context update
+
+`packages/shared/src/__tests__/mobile-wiring.test.ts` no longer asserts prototype routes/components exist. It now asserts the prototype runtime paths and mobile public mockup artifacts are absent, while keeping production customer route negative tests against prototype imports.
+
+Durable lessons were moved to `docs/agent-lessons.md`.
+
+### Lessons
+
+- Prototype code should be deleted after the approved production slice absorbs the useful decisions.
+- Production routes must not depend on prototype components, public mockups, or reference-code artifacts.
+- Test contracts must flip from "prototype exists" to "prototype is absent from runtime" before store-bound builds.
+- Design lineage belongs in product contracts and lessons docs, not in throwaway runtime files.
+
+---
+
 ## Session 16 - 2026-05-15
 
 **Branch**: `codex-foundation-supabase-workflow-setup`
@@ -45,6 +96,8 @@ Created isolated Expo prototype route and component:
 - `apps/mobile/components/client-price-check/client-price-check-prototype.tsx`
 
 Prototype stayed detached from production customer tabs and used local fixtures/state only.
+
+Cleanup status: these runtime prototype files were removed in Session 17. Future agents should use `docs/product/client-price-check-production-ui-prep.md` and `docs/agent-lessons.md` as durable context instead of trying to reuse deleted prototype source.
 
 Key prototype decisions Tu approved after iteration:
 
@@ -157,6 +210,8 @@ Updated `packages/shared/src/__tests__/mobile-wiring.test.ts` with static guard 
 - final subtle motion markers: `MotionPressable`, `StateReveal`, `motionServiceInset`, `serviceTileSweep`, `chipActionSheen`, `deferPressMs`, `pressTimeoutRef`, `clearTimeout`
 - compact iOS/Android responsive guards
 
+Session 17 cleanup note: this test contract now guards that prototype runtime files are absent rather than requiring prototype routes/components to exist.
+
 ### Web preview dependency/safety fixes
 
 Mobile web preview needed additional Expo web dependencies and safe Supabase fallback:
@@ -225,6 +280,8 @@ New:
 - `apps/mobile/components/client-price-check/client-price-check-flow.tsx`
 - `docs/product/client-price-check-production-ui-prep.md`
 
+Session 17 cleanup note: the prototype route/component entries in this historical list were deleted before store-bound cleanup; `ClientPriceCheckFlow` and prep docs remain.
+
 ### Explicit non-goals preserved
 
 - No `GET /api/service-catalog`.
@@ -255,7 +312,7 @@ Do not assume this ordering without Tu approval. Start next session by asking wh
 
 - Keep RN as primary surface.
 - Keep `critical.md`, `RULES.md`, and `STRUCTURES.md` in force.
-- Keep prototype as visual reference, but do not copy throwaway prototype state directly into production.
+- Keep durable docs as visual/process reference; runtime prototype files were removed and should not be restored as production reference code.
 - If motion is enhanced, compare against the accepted prototype direction and avoid heavy overlay/auto-loop behavior.
 - If backend work appears in parallel from Claude Code, do not overwrite or duplicate it; coordinate contracts only.
 - Before claiming done or creating PR, run fresh verification and report actual results.
