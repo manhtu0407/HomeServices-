@@ -1,5 +1,23 @@
 # Home Services — Progress Log
 
+### 2026-05-17 — Kael Two Supporting Services (MarketMemory + CaseReview)
+
+- **Task**: Build Kael's two supporting services per STRUCTURES.md §10A/§10B. Real working loop end-to-end, not just code that looks pretty.
+- **Scope chosen** (Tu): Tier 2 Phase 1 — both services, evidence gate, auto-promote opt-in, rule application in `fetchBaseline` + complexity raise in pipeline.
+- **What landed**:
+  - New `apps/api/src/lib/learning/` (7 files): `types.ts`, `evidence-gate.ts`, `market-memory.ts`, `case-review.ts`, `apply-price-rule.ts`, `apply-complexity-rule.ts`, `hook.ts`.
+  - Wired into review route (fire-and-forget), `fetchBaseline` (parallel rule query), pipeline stage 2.5 (`applyLearnedComplexityRule`).
+  - Two env flags default false: `LEARNING_ENABLED` (read path) + `LEARNING_AUTOPROMOTE_ENABLED` (write path).
+  - Evidence gate: MIN_EVIDENCE=5, CONFIDENCE_THRESHOLD=0.6, CONTRADICTION_MAX_RATIO=0.2. IQR-based confidence formula, capped at 0.95.
+  - PricePriorPayload (price drift detection) + AnalysisRulePayload (raise_complexity_prior suggestion kind). Rule #9 audit: no PII in payloads.
+- **Bug caught by integration test**: hook was rewriting `status='pending_evidence'` when `evidence_count < MIN_EVIDENCE` — fixed so observe() owns created↔pending_evidence transition by count.
+- **Test count**: 800 local / 859 staging pass (+80 unit + 5 integration). 0 fail.
+- **Verification**:
+  - `corepack pnpm --filter @home-services/api test` → 800 pass / 59 skip / 0 fail.
+  - Staging integration (5 tests, real Supabase): 4-job evidence floor, 5-job + autopromote on → rule active + version v1, fetchBaseline returns learned range, autopromote-off path, null final_price graceful skip.
+- **Known gap (Tu caught)**: backend has NO deployment config — `vercel.json` / `netlify.toml` / `Dockerfile` absent. Production has 0 Supabase Edge Functions. Backend buildable but not hosted. Tu to decide Path A (deploy Next.js) vs Path B (migrate to Edge Functions) vs Path C (refactor — violates RULES #1/#2).
+- **Next**: Decide deployment path. After frontend (PR#8) finishes, audit Clients + Fleets sections and wire backend.
+
 ### 2026-05-16 — Real Backend Build (Customer + Worker) + 3-Tier Quality Pass
 
 - **Task**: Build real backend per STRUCTURES.md (Customer A2-A14 + Worker B0-B8) on top of monorepo. Then 3-tier audit + enhancement pass to lift quality > 10%.
@@ -51,6 +69,22 @@
 - **Next**: After frontend (PR#8) finishes, audit Clients + Fleets sections and wire backend.
 - **Supabase access**: Tu's management token (`sbp_a0ab...5305`) used for staging RPC verification + production migration push. Tu may revoke.
 
+### 2026-05-15 — Prototype Runtime Cleanup
+
+- **Task**: Remove mobile runtime prototype artifacts after the accepted production UI baseline.
+- **Scope**: Cleanup-only. Production React Native UI, customer shell surfaces, booking flow, backend, and Supabase were preserved.
+- **Removed**:
+  - `apps/mobile/app/prototype/`
+  - `apps/mobile/components/client-price-check/client-price-check-prototype.tsx`
+  - `apps/mobile/components/customer/client-frontier-prototype.tsx`
+  - `apps/mobile/components/fleets/fleets-prototype.tsx`
+  - `apps/mobile/public/` static mockup artifacts
+  - Remotion/prototype scratch artifacts: `apps/remotion/`, `.superpowers/`, `docs/superpowers/`, the old scratch `design.md`, and `packages/shared/src/__tests__/remotion-wiring.test.ts`
+  - Follow-up note: root `design.md` was later recreated intentionally as the locked Home Services design operating system; do not treat the new file as a scratch artifact.
+- **Tests/contracts**: `packages/shared/src/__tests__/mobile-wiring.test.ts` now guards that prototype runtime routes/components/public mockups are absent and production customer tabs do not import prototype components.
+- **Lessons**: Durable cleanup lessons are captured in `docs/agent-lessons.md`.
+- **Next**: Keep production UI work in `apps/mobile/app/(customer)` and production components only; do not reintroduce `/prototype` routes before store builds.
+
 ### 2026-05-15 — Client Price Check Production UI Standard Baseline
 
 - **Task**: Build customer-side `Đặt lịch` production UI from the approved Client Price Check prototype direction, then document the handoff for the next Codex/Claude session.
@@ -59,6 +93,7 @@
   - Added isolated review route `apps/mobile/app/prototype/client-price-check.tsx` with layout `apps/mobile/app/prototype/_layout.tsx`.
   - Added prototype implementation `apps/mobile/components/client-price-check/client-price-check-prototype.tsx`.
   - Prototype kept local fixtures/state only and stayed detached from production customer tabs.
+  - Cleanup note: these runtime prototype files were removed later in the Prototype Runtime Cleanup entry above. Keep only the decisions, not the throwaway files.
 - **Design decisions accepted by Tu**:
   - Warm/trust/natural green direction with V11-style material color layers.
   - Medium visual complexity: not flat mint, not overly complex.

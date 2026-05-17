@@ -13,6 +13,9 @@ import type { Database } from '@home-services/shared'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
+type JobStatus = Database['public']['Enums']['job_status']
+type JobUpdate = Database['public']['Tables']['jobs']['Update']
+
 function loadEnvFile(): Record<string, string> {
   const envPath = resolve(__dirname, '../../../../../.env.local')
   try {
@@ -380,7 +383,7 @@ describeReal('Real Supabase — full job lifecycle', () => {
   it('Step 7: worker status updates — on_way → arrived → inspecting → repairing', async () => {
     expect(testJobId).not.toBeNull()
 
-    const transitions: Array<{ status: string; tsCol?: string }> = [
+    const transitions: Array<{ status: JobStatus; tsCol?: 'arrived_at' }> = [
       { status: 'worker_on_way' },
       { status: 'arrived', tsCol: 'arrived_at' },
       { status: 'inspecting' },
@@ -388,7 +391,7 @@ describeReal('Real Supabase — full job lifecycle', () => {
     ]
 
     for (const t of transitions) {
-      const update: Record<string, unknown> = { status: t.status }
+      const update: JobUpdate = { status: t.status }
       if (t.tsCol) update[t.tsCol] = new Date().toISOString()
 
       const { error } = await supabase

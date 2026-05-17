@@ -2,7 +2,7 @@
 
 This file is a mandatory execution contract for AI coding agents working on Home Services.
 
-It exists to help Codex, Claude Code, and any future AI coding tool execute with discipline. `CLAUDE.md`, `RULES.md`, and `STRUCTURES.md` provide project context and hard product/security rules. This file provides the operating skills, execution protocols, quality gates, and anti-patterns that agents MUST use while changing the codebase.
+It exists to help Codex, Claude Code, and any future AI coding tool execute with discipline. `design.md` provides the design execution contract for UI work. `CLAUDE.md`, `RULES.md`, and `STRUCTURES.md` provide project context and hard product/security rules. This file provides the operating skills, execution protocols, quality gates, and anti-patterns that agents MUST use while changing the codebase.
 
 This file is locked. AI agents MUST NOT edit `critical.md` unless Tu explicitly requests that edit in the current conversation.
 
@@ -15,13 +15,14 @@ Every coding task, including small changes, MUST pass through this contract.
 Before editing files, the agent MUST:
 
 1. Read `critical.md`.
-2. Read `RULES.md`.
-3. Read `STRUCTURES.md`.
-4. Read `CLAUDE.md` when the task is ambiguous, strategic, cross-cutting, or may conflict with project identity.
-5. Read the relevant code and tests before proposing or making changes.
-6. Classify the task.
-7. Select the smallest sufficient protocol set.
-8. State the selected protocols before editing.
+2. Read `design.md` when the task touches UI, frontend, prototype, visual design, motion, mascot, layout, design tokens, or component styling.
+3. Read `RULES.md`.
+4. Read `STRUCTURES.md`.
+5. Read `CLAUDE.md` when the task is ambiguous, strategic, cross-cutting, or may conflict with project identity.
+6. Read the relevant code and tests before proposing or making changes.
+7. Classify the task.
+8. Select the smallest sufficient protocol set.
+9. State the selected protocols before editing.
 
 The agent MUST distinguish:
 
@@ -32,7 +33,7 @@ If the asked task and real goal diverge, the agent MUST say so before implementa
 
 ### Conflict Rule
 
-If `critical.md` conflicts with `CLAUDE.md`, `RULES.md`, `STRUCTURES.md`, existing code, or Tu's current request, the agent MUST stop and explain:
+If `critical.md` conflicts with `design.md`, `CLAUDE.md`, `RULES.md`, `STRUCTURES.md`, existing code, or Tu's current request, the agent MUST stop and explain:
 
 - the current task,
 - the conflicting instructions,
@@ -82,7 +83,7 @@ Use this index when deciding what to run.
 | Any coding change | `kael-preflight`, relevant primary protocol, `kael-review` |
 | Bug, failing test, build failure, runtime failure | `kael-preflight`, `kael-diagnose`, `kael-tdd`, `kael-review` |
 | Feature work | `kael-preflight`, `kael-architecture-deepening`, `kael-tdd`, `kael-review` |
-| UI-only small change | `kael-preflight`, `kael-ui-rn-execution`, test-after or visual verification, `kael-review` |
+| UI-only small change | `kael-preflight`, read `design.md`, `kael-ui-rn-execution`, test-after or visual verification, `kael-review` |
 | Refactor | `kael-preflight`, `kael-architecture-deepening`, `kael-tdd` when behavior may change, `kael-review` |
 | Supabase, Auth, SQL, RLS, migrations, generated types | `kael-preflight`, `kael-supabase`, `kael-tdd`, `kael-security-sweep`, `kael-review` |
 | AI provider, prompt, LLM output, price synthesis, worker brief | `kael-preflight`, `kael-ai-boundary`, `kael-tdd`, `kael-security-sweep`, `kael-review` |
@@ -92,7 +93,7 @@ Use this index when deciding what to run.
 | PRD/spec creation | `kael-to-prd`, `kael-clarify-with-docs` when missing decisions |
 | Issue breakdown | `kael-issue-slicing` |
 | Issue triage | `kael-triage` |
-| Prototype | `kael-prototype`, `kael-review` before absorbing into production |
+| Prototype | read `design.md` when visual/UI-related, `kael-prototype`, `kael-review` before absorbing into production |
 | Long session or tool handoff | `kael-handoff` |
 | Technical documentation | `kael-docs-execution` |
 | Agent context setup missing | propose `kael-agent-context-setup` |
@@ -105,7 +106,7 @@ Classify every task before edits.
 |---|---|---|
 | `bugfix` | broken behavior, failing tests, build failure | `kael-diagnose` |
 | `feature` | new user-visible or internal capability | `kael-architecture-deepening` + `kael-tdd` |
-| `ui` | screen, component, layout, copy, visual state | `kael-ui-rn-execution` |
+| `ui` | screen, component, layout, copy, visual state | read `design.md` + `kael-ui-rn-execution` |
 | `refactor` | behavior-preserving structure change | `kael-architecture-deepening` |
 | `test` | adding/fixing tests, test infra | `kael-tdd` |
 | `infra` | config, scripts, build, lint, env | `kael-preflight` + relevant protocol |
@@ -898,16 +899,20 @@ Use for UI work in Next.js support/admin/prototype surfaces and future React Nat
 - Copy requirements.
 - Confirmation requirements.
 - Verification method.
+- `design.md` when the task touches visual design, layout, motion, mascot, design tokens, frontend styling, or prototype UI.
 
 ### Workflow
 
 1. Confirm the surface is not turning Next.js into a consumer web product.
-2. Use Vietnamese for all user-facing text.
-3. Use terms from `STRUCTURES.md`.
-4. Preserve explicit confirmation for booking/payment/scope changes.
-5. Verify UI impact across related screens/components.
-6. For small UI tasks, use test-after or visual/manual verification.
-7. For future RN work, check mobile constraints.
+2. Apply `design.md` before choosing visual direction, layout, tokens, motion, mascot treatment, or prototype structure.
+3. For major screens or visual systems, run the `design.md` design lab before production build.
+4. State skill adaptations from `design.md` before using generic design/frontend skills.
+5. Use Vietnamese for all user-facing text.
+6. Use terms from `STRUCTURES.md`.
+7. Preserve explicit confirmation for booking/payment/scope changes.
+8. Verify UI impact across related screens/components.
+9. For small UI tasks, use test-after or visual/manual verification.
+10. For future RN work, check mobile constraints.
 
 ### Current Product Workflow Reference
 
@@ -986,6 +991,8 @@ Surface:
 Workflow step:
 User-facing copy:
 Confirmation states:
+design.md impact:
+Skill adaptation:
 Verification:
 Related UI risk:
 ```
@@ -993,6 +1000,7 @@ Related UI risk:
 ### Failure Modes
 
 - English user-facing copy.
+- Generic SaaS/Bento/web design default instead of `design.md`.
 - Next.js becomes consumer web product.
 - Auto-confirming money-impacting actions.
 - UI change verified only in one narrow state.
@@ -1000,6 +1008,7 @@ Related UI risk:
 ### Anti-Patterns
 
 - Marketing landing page instead of functional app surface.
+- Using XanhSM as a copy target instead of a reference system.
 - Hidden booking/payment side effects.
 - Greyed future services behaving as active services.
 
@@ -1179,8 +1188,9 @@ These files require explicit permission during active work:
 - `STRUCTURES.md`
 - `README.md`
 - `critical.md`
+- `design.md`
 
-README may be updated only at session end for progress logging. `critical.md` may be edited only when Tu explicitly requests it.
+README may be updated only at session end for progress logging. `critical.md` and `design.md` may be edited only when Tu explicitly requests the specific edit.
 
 ### Output Format
 
@@ -1524,6 +1534,7 @@ Before saying a coding task is complete, the agent MUST verify:
 [ ] Preflight was run.
 [ ] Protocols were selected before edits.
 [ ] Relevant code and tests were read.
+[ ] `design.md` was read for UI, frontend, prototype, visual, motion, mascot, layout, token, or component-styling work.
 [ ] Scope and survival test passed or Tu approved exception.
 [ ] RULES.md impact was checked.
 [ ] Security/PII/AI/Supabase impact was checked when relevant.

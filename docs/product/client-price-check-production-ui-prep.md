@@ -6,7 +6,7 @@ Surface: Expo React Native customer app
 
 ## Purpose
 
-This document converts the approved Client Price Check prototype learnings into a production UI contract. It is a preparation artifact only. It does not absorb the prototype into the customer app, change runtime behavior, add APIs, mutate Supabase, or implement Kael.
+This document converts the approved Client Price Check prototype learnings into a production UI contract. It is a preparation artifact only. The throwaway runtime prototype files were removed after the production slice was accepted; keep the decisions here, not in runtime reference code.
 
 The next implementation plan should use this as the decision baseline for the customer A2-A5 production UI slice:
 
@@ -24,11 +24,11 @@ The repo is ready for a production UI planning pass, not for direct production a
 - `apps/mobile/app/(customer)/booking.tsx` is still a placeholder and should become the primary A2-A5 surface.
 - `apps/mobile/app/(customer)/home.tsx` is still a placeholder and should remain a light entry/dashboard surface.
 - `apps/mobile/app/(customer)/kael.tsx` is still a placeholder and should stay a read/entry-support surface, not a generic chatbot.
-- `apps/mobile/app/prototype/client-price-check.tsx` and `apps/mobile/components/client-price-check/client-price-check-prototype.tsx` are prototype-only reference surfaces.
+- The former client price-check prototype route/component have been deleted. Treat this document and `docs/agent-lessons.md` as the durable context.
 - `packages/shared/src/constants.ts` and `packages/shared/src/validation.ts` already enforce electrical/plumbing scope at the shared layer.
 - `apps/mobile/constants/colors.ts` is still default blue/slate and should be replaced or extended by production price-check tokens in the next UI build.
 
-Existing dirty worktree note: prototype-related mobile files are already modified/untracked from the prototype phase. The production prep phase should add only this document.
+Cleanup note: mobile prototype runtime artifacts should not be reintroduced before store-bound builds.
 
 ## Production Surface Contract
 
@@ -46,8 +46,8 @@ Supporting surfaces:
 
 Future production component boundary:
 
-- Keep production components separate from `client-price-check-prototype.tsx`.
-- Use the prototype as a design reference, not as production source of truth.
+- Keep production components free from prototype imports or reference-code dependencies.
+- Use this document as the design reference, not deleted prototype source.
 - Prefer focused components with small interfaces: service selector, problem chip group, detail input, clarification block, estimate card, fallback/error card, and bottom action bar.
 - Keep local UI state in the component layer until backend contracts are implemented; do not create fake persistence.
 

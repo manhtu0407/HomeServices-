@@ -220,6 +220,10 @@ describe('apps/mobile/package.json', () => {
     expect(pkg.dependencies['expo-secure-store']).toBeDefined()
   })
 
+  it('has expo-image-picker for local customer media selection', () => {
+    expect(pkg.dependencies['expo-image-picker']).toBeDefined()
+  })
+
   it('main entry is expo-router/entry', () => {
     expect(pkg.main).toBe('expo-router/entry')
   })

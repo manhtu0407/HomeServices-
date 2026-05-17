@@ -9,11 +9,15 @@ export type ApiResult<T> =
   | { success: false; error: string; code: string; status: number }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession()
-  const token = data.session?.access_token
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
+  if (!supabase) {
+    return headers
+  }
+
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
