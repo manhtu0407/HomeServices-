@@ -1,11 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@home-services/shared'
-import type { ComplexityLevel, ServiceType } from '@home-services/shared'
-import { classifyIntent } from './intent'
-import { analyzeDescription } from './vision'
-import { searchMarketPrice, synthesizePrice } from './pricing'
+import type { Database, ServiceType } from '@home-services/shared'
+import { classifyIntent as defaultClassifyIntent } from './intent'
+import { analyzeDescription as defaultAnalyzeDescription } from './vision'
+import { searchMarketPrice as defaultSearchMarketPrice, synthesizePrice } from './pricing'
+import { fetchBaseline } from './baseline'
 import { PRICE_DISCLAIMER, UNSUPPORTED_SERVICE_MESSAGE } from './schemas'
-import { getFallbackBaseline, hasHighSeverity, SEVERITY_ADVISORY } from './defaults'
+import { hasHighSeverity, SEVERITY_ADVISORY } from './defaults'
+import { applyLearnedComplexityRule } from '@/lib/learning/apply-complexity-rule'
 import type { KaelEstimate } from './schemas'
 
 export type PipelineInput = {
@@ -15,70 +16,154 @@ export type PipelineInput = {
   district: string
 }
 
+export type PipelineProviders = {
+  classifyIntent?: typeof defaultClassifyIntent
+  analyzeDescription?: typeof defaultAnalyzeDescription
+  searchMarketPrice?: typeof defaultSearchMarketPrice
+}
+
+export type PipelineStageLog = {
+  stage: 'intent' | 'vision' | 'baseline' | 'market' | 'synthesis'
+  latencyMs: number
+  success: boolean
+  failureReason?: string
+  fallbackUsed: boolean
+}
+
 export type PipelineResult =
-  | { success: true; estimate: KaelEstimate; fallbackUsed: boolean }
-  | { success: false; error: string; code: string }
+  | { success: true; estimate: KaelEstimate; fallbackUsed: boolean; stageLogs: PipelineStageLog[] }
+  | { success: false; error: string; code: string; stageLogs: PipelineStageLog[] }
+
+function timed<T>(fn: () => Promise<T>): Promise<{ result: T; ms: number }> {
+  const start = Date.now()
+  return fn().then((result) => ({ result, ms: Date.now() - start }))
+}
 
 export async function runKaelPipeline(
   input: PipelineInput,
   supabase: SupabaseClient<Database>,
+  providers?: PipelineProviders,
 ): Promise<PipelineResult> {
   const { serviceType, problemChips, description, district } = input
+  const classifyIntent = providers?.classifyIntent ?? defaultClassifyIntent
+  const analyzeDescription = providers?.analyzeDescription ?? defaultAnalyzeDescription
+  const searchMarketPrice = providers?.searchMarketPrice ?? defaultSearchMarketPrice
 
-  // Step 1: Intent classification
-  const intentResult = await classifyIntent(serviceType, problemChips, description)
+  const stageLogs: PipelineStageLog[] = []
+  let fallbackUsed = false
+
+  // Stage 1: Intent classification
+  const { result: intentResult, ms: intentMs } = await timed(() =>
+    classifyIntent(serviceType, problemChips, description),
+  )
   const intent = intentResult.success ? intentResult.intent : intentResult.fallback
-  let fallbackUsed = !intentResult.success
+  if (!intentResult.success) fallbackUsed = true
+
+  stageLogs.push({
+    stage: 'intent',
+    latencyMs: intentMs,
+    success: intentResult.success,
+    failureReason: intentResult.success ? undefined : intentResult.failureReason,
+    fallbackUsed: !intentResult.success,
+  })
 
   if (intent.service_type === 'unsupported') {
     return {
       success: false,
       error: UNSUPPORTED_SERVICE_MESSAGE,
       code: 'UNSUPPORTED',
+      stageLogs,
     }
   }
 
-  // Step 2: Problem analysis (text-only for prototype)
-  const visionResult = await analyzeDescription(
-    description,
-    `${intent.service_type}: ${intent.problem_slug}`,
+  const validServiceType = intent.service_type as ServiceType
+
+  // Stage 2: Problem analysis
+  const { result: visionResult, ms: visionMs } = await timed(() =>
+    analyzeDescription(description, `${validServiceType}: ${intent.problem_slug}`),
   )
-  const analysis = visionResult.success
-    ? visionResult.analysis
-    : visionResult.fallback
+  const analysis = visionResult.success ? visionResult.analysis : visionResult.fallback
   if (!visionResult.success) fallbackUsed = true
 
-  // Step 3: Fetch baseline from DB
-  const baseline = await fetchBaseline(
+  stageLogs.push({
+    stage: 'vision',
+    latencyMs: visionMs,
+    success: visionResult.success,
+    failureReason: visionResult.success ? undefined : visionResult.failureReason,
+    fallbackUsed: !visionResult.success,
+  })
+
+  // Stage 2.5 (optional): apply learned complexity rule if one exists.
+  // No-op when LEARNING_ENABLED=false. Cannot lower complexity, only raise.
+  const learnedComplexity = await applyLearnedComplexityRule(
     supabase,
-    intent.service_type,
+    validServiceType,
     intent.problem_slug,
-    analysis.complexity_hint,
     district,
+    analysis.complexity_hint,
+  )
+  const effectiveComplexity = learnedComplexity?.newComplexity ?? analysis.complexity_hint
+
+  // Stage 3: Fetch baseline from DB (uses effective complexity).
+  const { result: baselineResult, ms: baselineMs } = await timed(() =>
+    fetchBaseline(supabase, validServiceType, intent.problem_slug, effectiveComplexity, district),
   )
 
-  // Step 4: Market price search
-  const marketResult = await searchMarketPrice(
-    intent.service_type,
-    intent.problem_slug,
-    analysis.complexity_hint,
-    district,
+  stageLogs.push({
+    stage: 'baseline',
+    latencyMs: baselineMs,
+    success: baselineResult.success,
+    failureReason: baselineResult.success ? undefined : baselineResult.error,
+    fallbackUsed: false,
+  })
+
+  if (!baselineResult.success) {
+    return {
+      success: false,
+      error: 'Không có dữ liệu giá tham khảo cho dịch vụ này. Vui lòng thử lại sau.',
+      code: 'NO_BASELINE',
+      stageLogs,
+    }
+  }
+
+  // Stage 4: Market price search (use effective complexity so search reflects
+  // any learned complexity raise).
+  const { result: marketResult, ms: marketMs } = await timed(() =>
+    searchMarketPrice(validServiceType, intent.problem_slug, effectiveComplexity, district),
   )
   if (!marketResult.success) fallbackUsed = true
 
-  // Step 5: Price synthesis (pure logic, no AI call)
+  stageLogs.push({
+    stage: 'market',
+    latencyMs: marketMs,
+    success: marketResult.success,
+    failureReason: marketResult.success ? undefined : marketResult.failureReason,
+    fallbackUsed: !marketResult.success,
+  })
+
+  // Stage 5: Price synthesis (pure logic). Uses effectiveComplexity so
+  // complexity multipliers reflect the learned raise.
+  const synthStart = Date.now()
   const synthesized = synthesizePrice({
-    baselineMin: baseline.priceMin,
-    baselineMax: baseline.priceMax,
+    baselineMin: baselineResult.priceMin,
+    baselineMax: baselineResult.priceMax,
     market: marketResult.success ? marketResult.market : null,
-    complexityHint: analysis.complexity_hint,
+    complexityHint: effectiveComplexity,
+  })
+  const synthMs = Date.now() - synthStart
+
+  stageLogs.push({
+    stage: 'synthesis',
+    latencyMs: synthMs,
+    success: true,
+    fallbackUsed: false,
   })
 
   const estimate: KaelEstimate = {
-    service_type: intent.service_type,
+    service_type: validServiceType,
     problem_category: intent.problem_slug,
     problem_summary: analysis.problem_identified,
-    complexity: analysis.complexity_hint,
+    complexity: effectiveComplexity,
     price_min: synthesized.price_min,
     price_max: synthesized.price_max,
     confidence: synthesized.confidence,
@@ -86,52 +171,7 @@ export async function runKaelPipeline(
     disclaimer: PRICE_DISCLAIMER,
   }
 
-  return { success: true, estimate, fallbackUsed }
-}
-
-type BaselineResult = { priceMin: number; priceMax: number }
-
-async function fetchBaseline(
-  supabase: SupabaseClient<Database>,
-  serviceType: ServiceType,
-  problemSlug: string,
-  complexity: ComplexityLevel,
-  district: string,
-): Promise<BaselineResult> {
-  const { data, error } = await supabase
-    .from('price_baselines')
-    .select('price_min, price_max')
-    .eq('service_type', serviceType)
-    .eq('complexity', complexity)
-    .eq('district_code', district)
-    .limit(1)
-    .single()
-
-  if (error) {
-    console.warn('Baseline district query failed', { serviceType, complexity, district, errorCode: error.code })
-  }
-
-  if (data) {
-    return { priceMin: data.price_min, priceMax: data.price_max }
-  }
-
-  const { data: fallback, error: fallbackError } = await supabase
-    .from('price_baselines')
-    .select('price_min, price_max')
-    .eq('service_type', serviceType)
-    .eq('complexity', complexity)
-    .limit(1)
-    .single()
-
-  if (fallbackError) {
-    console.warn('Baseline fallback query failed', { serviceType, complexity, errorCode: fallbackError.code })
-  }
-
-  if (fallback) {
-    return { priceMin: fallback.price_min, priceMax: fallback.price_max }
-  }
-
-  return getFallbackBaseline(complexity)
+  return { success: true, estimate, fallbackUsed, stageLogs }
 }
 
 function buildAdvisory(severityIndicators: string[]): string | null {

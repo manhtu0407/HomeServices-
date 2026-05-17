@@ -74,11 +74,18 @@ describe('callAI', () => {
       expect(mockAnthropic).toHaveBeenCalledTimes(1)
     })
 
-    it('passes request to provider function', async () => {
+    it('passes request to provider function with AbortSignal injected', async () => {
       mockAnthropic.mockResolvedValueOnce(successResponse)
       const req = makeRequest()
       await callAI(req)
-      expect(mockAnthropic).toHaveBeenCalledWith(req)
+      // callAI augments request with a signal from its internal AbortController
+      // so the provider's fetch can be cancelled on timeout.
+      expect(mockAnthropic).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...req,
+          signal: expect.any(AbortSignal),
+        }),
+      )
     })
 
     it('logs success with usage metrics', async () => {
@@ -157,6 +164,29 @@ describe('callAI', () => {
 
       expect(result.success).toBe(true)
       expect(mockAnthropic).toHaveBeenCalledTimes(2)
+    })
+
+    it('aborts signal when timeout fires (cancels in-flight fetch)', async () => {
+      // Capture the signal from the first call; subsequent retries get fresh signals.
+      let firstSignal: AbortSignal | undefined
+      mockAnthropic.mockImplementation(async (req: { signal?: AbortSignal }) => {
+        if (firstSignal === undefined) firstSignal = req.signal
+        // Slow provider that resolves to an error when signal aborts.
+        return new Promise((_, reject) => {
+          req.signal?.addEventListener('abort', () => reject(new Error('aborted')))
+        }) as never
+      })
+
+      const promise = callAI(makeRequest())
+      // Anthropic timeout = 20s. Advance enough for ALL retries + backoffs:
+      // 20s × 3 attempts + ~3s total backoff = ~63s. Round to 70s.
+      await vi.advanceTimersByTimeAsync(70_000)
+      const result = await promise
+
+      expect(result.success).toBe(false)
+      // The first signal must have been aborted when its 20s timer fired.
+      expect(firstSignal).toBeDefined()
+      expect(firstSignal?.aborted).toBe(true)
     })
 
     it('logs retry attempts', async () => {

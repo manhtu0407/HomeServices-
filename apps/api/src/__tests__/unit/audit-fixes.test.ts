@@ -117,7 +117,7 @@ describe('logJobEvent — error handling', () => {
     const { logJobEvent } = await import('@/lib/jobs/event-log')
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    await logJobEvent(supabase, 'job-1', 'test_event', 'user-1', 'customer', 'draft', 'analyzing')
+    await logJobEvent(supabase, 'job-1', 'test_event', { id: 'user-1', role: 'customer' }, 'draft', 'analyzing')
     warnSpy.mockRestore()
   })
 
@@ -131,7 +131,7 @@ describe('logJobEvent — error handling', () => {
     const { logJobEvent } = await import('@/lib/jobs/event-log')
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    await logJobEvent(supabase, 'job-1', 'test_event', 'user-1', 'worker', null, null)
+    await logJobEvent(supabase, 'job-1', 'test_event', { id: 'user-1', role: 'worker' }, null, null)
     warnSpy.mockRestore()
   })
 })
@@ -275,8 +275,10 @@ describe('lifecycle — estimate_ready transition', () => {
     expect(canTransition('estimate_ready', 'awaiting_customer_confirm')).toBe(true)
   })
 
-  it('analyzing → awaiting_customer_confirm is NOT valid (must go through estimate_ready)', () => {
-    expect(canTransition('analyzing', 'awaiting_customer_confirm')).toBe(false)
+  it('analyzing → awaiting_customer_confirm is now valid (Audit Tier A: skip transient estimate_ready)', () => {
+    // create-job.ts collapses the transient estimate_ready waypoint into one
+    // UPDATE for perf. Both paths remain valid in the state machine.
+    expect(canTransition('analyzing', 'awaiting_customer_confirm')).toBe(true)
   })
 
   it('estimate_ready has timestamp column', () => {
@@ -318,27 +320,7 @@ describe('lifecycle — confirm-completion chain', () => {
 
 // ─── defaults — severity advisory ───────────────────────────────
 
-import { getFallbackBaseline, hasHighSeverity, SEVERITY_ADVISORY } from '@/lib/kael/defaults'
-
-describe('kael defaults — fallback baselines', () => {
-  it('returns correct range for small complexity', () => {
-    const result = getFallbackBaseline('small')
-    expect(result.priceMin).toBe(150_000)
-    expect(result.priceMax).toBe(350_000)
-  })
-
-  it('returns correct range for medium complexity', () => {
-    const result = getFallbackBaseline('medium')
-    expect(result.priceMin).toBe(250_000)
-    expect(result.priceMax).toBe(700_000)
-  })
-
-  it('returns correct range for large complexity', () => {
-    const result = getFallbackBaseline('large')
-    expect(result.priceMin).toBe(500_000)
-    expect(result.priceMax).toBe(1_500_000)
-  })
-})
+import { hasHighSeverity, SEVERITY_ADVISORY } from '@/lib/kael/defaults'
 
 describe('kael defaults — severity detection', () => {
   it('detects high severity keywords', () => {

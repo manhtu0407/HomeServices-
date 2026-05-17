@@ -27,6 +27,12 @@ describe('lifecycle — canTransition', () => {
     expect(canTransition('analyzing', 'estimate_ready')).toBe(true)
   })
 
+  // E9: analyzing → cancelled allows clean termination on pipeline failure
+  // instead of leaving orphan draft jobs invisible to customer.
+  it('allows analyzing → cancelled (E9: orphan draft cleanup)', () => {
+    expect(canTransition('analyzing', 'cancelled')).toBe(true)
+  })
+
   it('allows analyzing → draft (fallback on failure)', () => {
     expect(canTransition('analyzing', 'draft')).toBe(true)
   })

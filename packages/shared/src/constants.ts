@@ -124,3 +124,92 @@ export const REVIEW_TAGS = Object.freeze([
   'Giải thích rõ',
   'Giá hợp lý',
 ] as const)
+
+// =============================================================================
+// HCMC district canonical slugs
+//
+// Both customer (address_district on jobs) and worker (districts[] on
+// worker_profiles) MUST store these snake_case slugs. The matching layer
+// (broadcast.ts) compares slugs exactly — without normalization, "Quận 1"
+// vs "q1" would silently produce zero-match.
+//
+// Use normalizeDistrict() at the API boundary (job create, worker register)
+// to convert customer/worker-typed input to canonical form.
+// =============================================================================
+
+export const HCMC_DISTRICTS = Object.freeze({
+  hcmc_all: 'Toàn TP.HCM',
+  q1: 'Quận 1',
+  q3: 'Quận 3',
+  q4: 'Quận 4',
+  q5: 'Quận 5',
+  q6: 'Quận 6',
+  q7: 'Quận 7',
+  q8: 'Quận 8',
+  q10: 'Quận 10',
+  q11: 'Quận 11',
+  q12: 'Quận 12',
+  binh_thanh: 'Bình Thạnh',
+  thu_duc: 'Thủ Đức',
+  tan_binh: 'Tân Bình',
+  go_vap: 'Gò Vấp',
+  phu_nhuan: 'Phú Nhuận',
+  binh_tan: 'Bình Tân',
+  tan_phu: 'Tân Phú',
+  hoc_mon: 'Hóc Môn',
+  binh_chanh: 'Bình Chánh',
+  cu_chi: 'Củ Chi',
+  nha_be: 'Nhà Bè',
+  can_gio: 'Cần Giờ',
+} as const)
+
+export type DistrictSlug = keyof typeof HCMC_DISTRICTS
+
+export const DEFAULT_DISTRICT: DistrictSlug = 'hcmc_all'
+
+/**
+ * Map free-form district input to canonical slug.
+ *
+ * Matching order:
+ *   1. Exact slug ("q1")
+ *   2. Case-insensitive slug ("Q1" → "q1")
+ *   3. Exact Vietnamese label match ("Quận 1" → "q1")
+ *   4. Numbered district patterns ("Quận 1", "Q.1", "quan 1" → "q1")
+ *   5. Fallback: DEFAULT_DISTRICT ("hcmc_all") — never lies about location
+ *
+ * Diacritic-insensitive matching is deliberately NOT supported in phase 1;
+ * frontend should send either canonical slug or exact VI label.
+ */
+export function normalizeDistrict(input: string | null | undefined): DistrictSlug {
+  if (!input) return DEFAULT_DISTRICT
+  const trimmed = input.trim()
+  if (!trimmed) return DEFAULT_DISTRICT
+
+  // 1. Exact slug
+  if (Object.prototype.hasOwnProperty.call(HCMC_DISTRICTS, trimmed)) {
+    return trimmed as DistrictSlug
+  }
+
+  // 2. Case-insensitive slug
+  const lower = trimmed.toLowerCase()
+  if (Object.prototype.hasOwnProperty.call(HCMC_DISTRICTS, lower)) {
+    return lower as DistrictSlug
+  }
+
+  // 3. Vietnamese label (case-insensitive)
+  for (const [slug, label] of Object.entries(HCMC_DISTRICTS)) {
+    if (label.toLowerCase() === lower) return slug as DistrictSlug
+  }
+
+  // 4. Numbered district: "quận 1", "Q.1", "q 1", "quan 1"
+  // Match leading "qu(ận|an|.)?" then digits.
+  const numMatch = lower.match(/^(?:qu[aâă]n|q)[\s\.]*(\d+)$/i)
+  if (numMatch) {
+    const slug = `q${numMatch[1]}`
+    if (Object.prototype.hasOwnProperty.call(HCMC_DISTRICTS, slug)) {
+      return slug as DistrictSlug
+    }
+  }
+
+  return DEFAULT_DISTRICT
+}

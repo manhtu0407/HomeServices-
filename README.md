@@ -1,5 +1,74 @@
 # Home Services — Progress Log
 
+### 2026-05-17 — Kael Two Supporting Services (MarketMemory + CaseReview)
+
+- **Task**: Build Kael's two supporting services per STRUCTURES.md §10A/§10B. Real working loop end-to-end, not just code that looks pretty.
+- **Scope chosen** (Tu): Tier 2 Phase 1 — both services, evidence gate, auto-promote opt-in, rule application in `fetchBaseline` + complexity raise in pipeline.
+- **What landed**:
+  - New `apps/api/src/lib/learning/` (7 files): `types.ts`, `evidence-gate.ts`, `market-memory.ts`, `case-review.ts`, `apply-price-rule.ts`, `apply-complexity-rule.ts`, `hook.ts`.
+  - Wired into review route (fire-and-forget), `fetchBaseline` (parallel rule query), pipeline stage 2.5 (`applyLearnedComplexityRule`).
+  - Two env flags default false: `LEARNING_ENABLED` (read path) + `LEARNING_AUTOPROMOTE_ENABLED` (write path).
+  - Evidence gate: MIN_EVIDENCE=5, CONFIDENCE_THRESHOLD=0.6, CONTRADICTION_MAX_RATIO=0.2. IQR-based confidence formula, capped at 0.95.
+  - PricePriorPayload (price drift detection) + AnalysisRulePayload (raise_complexity_prior suggestion kind). Rule #9 audit: no PII in payloads.
+- **Bug caught by integration test**: hook was rewriting `status='pending_evidence'` when `evidence_count < MIN_EVIDENCE` — fixed so observe() owns created↔pending_evidence transition by count.
+- **Test count**: 800 local / 859 staging pass (+80 unit + 5 integration). 0 fail.
+- **Verification**:
+  - `corepack pnpm --filter @home-services/api test` → 800 pass / 59 skip / 0 fail.
+  - Staging integration (5 tests, real Supabase): 4-job evidence floor, 5-job + autopromote on → rule active + version v1, fetchBaseline returns learned range, autopromote-off path, null final_price graceful skip.
+- **Known gap (Tu caught)**: backend has NO deployment config — `vercel.json` / `netlify.toml` / `Dockerfile` absent. Production has 0 Supabase Edge Functions. Backend buildable but not hosted. Tu to decide Path A (deploy Next.js) vs Path B (migrate to Edge Functions) vs Path C (refactor — violates RULES #1/#2).
+- **Next**: Decide deployment path. After frontend (PR#8) finishes, audit Clients + Fleets sections and wire backend.
+
+### 2026-05-16 — Real Backend Build (Customer + Worker) + 3-Tier Quality Pass
+
+- **Task**: Build real backend per STRUCTURES.md (Customer A2-A14 + Worker B0-B8) on top of monorepo. Then 3-tier audit + enhancement pass to lift quality > 10%.
+- **Scope chosen**: Tu approved full customer + worker + Supabase audit. No mobile changes (Codex builds frontend separately).
+- **Backend build (Phases A-F)**:
+  - Foundation: brace-counting JSON parser, `withDbTimeout` (15s), typed `EventActor` event log, canonical shared types, DB taxonomy seed (14 problems × 3 complexities = 42 baselines), worker registration fields migration.
+  - Kael pipeline rewrite: stage logs, DI providers, honest `NO_BASELINE` error, no fabricated VND.
+  - 7 customer routes (A2-A14) hardened: optimistic concurrency, admin bypass via `assertOwnership`, `scope_change_pending` blocking, no auto-pay on A12.
+  - 10 worker routes (B0-B8): registration, availability, broadcasts inbox, accept/decline (race-safe atomic claim), jobs list, earnings, scope change request, customer scope decision.
+  - 678 tests at end of build pass.
+- **Tier 1 audit + 16 quality fixes** (cumulative): district normalization (`HCMC_DISTRICTS` + `normalizeDistrict`), `PLATFORM_FEE_WORKER` constant, type cast removal, `withDbTimeout` timer cleanup, dead code removal (`scopeChangeSchema` old, `acceptBroadcastSchema`, dup `apps/api/src/lib/validation.ts`), blank worker profile helper, baseline OR-query (2 → 1 roundtrip), earnings date filter, JSON parser depth + length guards, orphan draft cleanup (analyzing → cancelled on AI fail), DOB real-date validation, optimistic concurrency on confirm-search (with `current_status` in 409), `broadcast_expired` event logging, FK indexes migration to production.
+- **Tier 2 (real integration tests + observability)**:
+  - Synced staging Supabase (xyylanuyflrjzbjzhqfl) with 3 missing migrations.
+  - E12: 22 security negative tests (cross-role 403, ownership 404, admin bypass).
+  - E13: `request_id` correlation IDs propagated through pipeline → `api_logs.request_id`.
+  - E11: 12-test integration suite for B0-B8 worker flow against real staging Supabase (creates real auth users, walks register → approve → availability → broadcast → accept → status chain → complete → confirm → review → earnings, cleans up).
+  - Fixed env.test.ts isolation (shell env pollution from integration runs).
+  - **773 pass with staging env / 719 pass local with proper skips**.
+- **Tier 3 (atomic RPC functions — race condition fixes)**:
+  - Migration `20260516144400_atomic_rpc_functions.sql` applied to **production** and staging.
+  - 3 plpgsql functions: `accept_broadcast_atomic`, `request_scope_change_atomic`, `decide_scope_change_atomic`. All SECURITY DEFINER with pinned search_path. EXECUTE granted **only to service_role** (eliminates the authenticated_security_definer_function_executable advisor warnings).
+  - Refactored `accept-broadcast.ts` and `scope-change.ts` to call RPCs. Each operation now runs as a single Postgres transaction — partial-fail orphan rows can no longer happen.
+  - Updated 32 unit tests to mock `.rpc()` pattern.
+- **Overall audit + Tier-organized enhancement**:
+  - A1: Batched `logApiCall` (3 INSERTs → 1) via new `logApiCalls` array-input variant.
+  - A2: Skip transient 'draft' state in `create-job.ts` — INSERT directly as 'analyzing'.
+  - A3: Removed redundant `validateTransition` calls inside `create-job` (fixed internal sequence; state machine validation reserved for cross-boundary worker updates).
+  - Collapsed estimate_ready → awaiting_customer_confirm into single UPDATE+event. Added `analyzing → awaiting_customer_confirm` to state machine as valid alternative.
+  - **Result: POST /api/jobs went from ~10 DB roundtrips → ~5 (50% reduction on hot path).**
+  - B1: Removed weird `awaiting_customer_confirm: 'estimate_ready_at'` from `STATUS_TIMESTAMP_MAP`.
+  - B2: Updated stale comment in accept-broadcast.ts.
+- **Production state (`iwevizmsedyqozxlawwl`)**:
+  - 9 migrations applied (init → taxonomy → worker fields → FK indexes → atomic RPC).
+  - 17 public tables, all RLS-enabled, 35 policies.
+  - 16 service_problems, 48 price_baselines (city-wide), 0 workers (clean for first registrations).
+  - 3 atomic RPC functions, service_role only execute.
+  - Security advisors: **0** warnings.
+  - Performance advisors: 17 multiple_permissive_policies (pre-existing design), 0 unindexed_foreign_keys, 22 unused_index (auto-resolves with traffic).
+- **Final verification**:
+  - `corepack pnpm --filter @home-services/shared exec tsc --noEmit` clean.
+  - `corepack pnpm --filter @home-services/api exec tsc --noEmit` clean.
+  - `corepack pnpm --filter @home-services/api build` ✅ Next.js 16, 18 routes.
+  - Local test: **719 pass / 54 skipped / 0 fail** (32 test files).
+  - Staging test (with env): **773 pass / 0 fail / 0 skip** (34 files including 12 integration B0-B8 + 42 real-supabase RLS).
+- **Known limitations**:
+  - Mock-heavy tests still ~90%; integration coverage now ~7% (better than ~1% pre-audit). Bug #10 partially addressed.
+  - Multiple permissive RLS policies (admin + role-specific for same action) — pre-existing design; optimization requires touching all RLS policies, deferred.
+  - No cron for stale broadcast expiry — broadcasts expire on read; phase 1 OK.
+- **Next**: After frontend (PR#8) finishes, audit Clients + Fleets sections and wire backend.
+- **Supabase access**: Tu's management token (`sbp_a0ab...5305`) used for staging RPC verification + production migration push. Tu may revoke.
+
 ### 2026-05-15 — Prototype Runtime Cleanup
 
 - **Task**: Remove mobile runtime prototype artifacts after the accepted production UI baseline.

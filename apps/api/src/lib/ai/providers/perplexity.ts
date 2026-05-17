@@ -22,6 +22,7 @@ export async function callPerplexity(request: AIRequest): Promise<AIResponse> {
         content: m.content,
       })),
     }),
+    signal: request.signal,
   })
 
   const latencyMs = Date.now() - start

@@ -2,7 +2,11 @@ import type { JobStatus } from '@home-services/shared'
 
 const VALID_TRANSITIONS: Record<JobStatus, readonly JobStatus[]> = {
   draft: ['analyzing', 'cancelled'],
-  analyzing: ['estimate_ready', 'draft'],
+  // 'cancelled' added so AI pipeline failure terminates cleanly instead of
+  // reverting to 'draft' and leaving an invisible orphan.
+  // 'awaiting_customer_confirm' added so create-job can collapse the transient
+  // estimate_ready waypoint into a single UPDATE (saves 1 round trip).
+  analyzing: ['estimate_ready', 'awaiting_customer_confirm', 'draft', 'cancelled'],
   estimate_ready: ['awaiting_customer_confirm'],
   awaiting_customer_confirm: ['broadcasting', 'cancelled'],
   broadcasting: ['worker_matched', 'cancelled'],
@@ -30,7 +34,8 @@ const STATUS_TIMESTAMP_MAP: Partial<Record<JobStatus, string>> = {
   cancelled: 'cancelled_at',
   reviewed: 'reviewed_at',
   estimate_ready: 'estimate_ready_at',
-  awaiting_customer_confirm: 'estimate_ready_at',
+  // awaiting_customer_confirm intentionally omitted: it has no dedicated
+  // timestamp column. estimate_ready_at is set by create-job in the same UPDATE.
 }
 
 export function canTransition(from: JobStatus, to: JobStatus): boolean {

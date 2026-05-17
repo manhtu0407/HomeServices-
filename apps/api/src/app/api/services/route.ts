@@ -1,4 +1,5 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
+import { withDbTimeout } from '@/lib/db/query'
 
 export async function GET(request: Request) {
   const auth = await authenticateRequest(request)
@@ -6,31 +7,45 @@ export async function GET(request: Request) {
     return apiError('AUTH_MISSING', auth.error, auth.status)
   }
 
-  const { data: categories, error: catError } = await auth.supabase
-    .from('service_categories')
-    .select('id, service_type, slug, label_vi, sort_order, is_active')
-    .eq('is_active', true)
-    .order('sort_order')
+  // Parallelize the 3 catalog reads — they are independent. Single round-trip
+  // latency now equals the slowest query (~100ms) instead of the sum (~300ms).
+  const [catResult, probResult, baseResult] = await Promise.all([
+    withDbTimeout(
+      auth.supabase
+        .from('service_categories')
+        .select('id, service_type, slug, label_vi, sort_order, is_active')
+        .eq('is_active', true)
+        .order('sort_order'),
+    ),
+    withDbTimeout(
+      auth.supabase
+        .from('service_problems')
+        .select('id, slug, label_vi, default_complexity, service_category_id, service_type, sort_order, is_active')
+        .eq('is_active', true)
+        .order('sort_order'),
+    ),
+    withDbTimeout(
+      auth.supabase
+        .from('price_baselines')
+        .select('service_type, complexity, district_code, price_min, price_max, service_problem_id'),
+    ),
+  ])
+
+  const { data: categories, error: catError } = catResult
+  const { data: problems, error: probError } = probResult
+  const { data: baselines, error: baseError } = baseResult
 
   if (catError) {
     return apiError('DB_ERROR', 'Không thể tải danh mục dịch vụ', 500)
   }
 
-  const { data: problems, error: probError } = await auth.supabase
-    .from('service_problems')
-    .select('id, slug, label_vi, default_complexity, service_category_id, service_type, sort_order, is_active')
-    .eq('is_active', true)
-    .order('sort_order')
-
   if (probError) {
     return apiError('DB_ERROR', 'Không thể tải danh sách vấn đề', 500)
   }
 
-  const { data: baselines, error: baseError } = await auth.supabase
-    .from('price_baselines')
-    .select('service_type, complexity, district_code, price_min, price_max, service_problem_id')
-
   if (baseError) {
+    // Baselines are non-critical for the catalog response — log and continue
+    // with empty baselines rather than failing the entire request.
     console.warn('Failed to fetch baselines', { errorCode: baseError.code })
   }
 

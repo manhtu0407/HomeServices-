@@ -5,8 +5,8 @@ import { safeParseJSON } from './parsing'
 import { sanitizeForLLM } from '@home-services/shared'
 
 export type IntentClassifyResult =
-  | { success: true; intent: IntentResult }
-  | { success: false; fallback: IntentResult }
+  | { success: true; intent: IntentResult; failureReason?: undefined }
+  | { success: false; fallback: IntentResult; failureReason: string }
 
 export async function classifyIntent(
   serviceType: string,
@@ -29,6 +29,7 @@ export async function classifyIntent(
     return {
       success: false,
       fallback: buildFallbackIntent(serviceType, problemChips),
+      failureReason: `AI call failed: ${result.code} — ${result.error}`,
     }
   }
 
@@ -37,6 +38,7 @@ export async function classifyIntent(
     return {
       success: false,
       fallback: buildFallbackIntent(serviceType, problemChips),
+      failureReason: 'JSON parse failed on AI response',
     }
   }
 
@@ -45,6 +47,7 @@ export async function classifyIntent(
     return {
       success: false,
       fallback: buildFallbackIntent(serviceType, problemChips),
+      failureReason: `Schema validation failed: ${validated.error.issues[0]?.message ?? 'unknown'}`,
     }
   }
 
@@ -91,4 +94,3 @@ function buildFallbackIntent(
     needs_clarification: false,
   }
 }
-

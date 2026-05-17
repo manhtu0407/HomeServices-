@@ -396,7 +396,7 @@ describeReal('Real Supabase — full job lifecycle', () => {
 
       const { error } = await supabase
         .from('jobs')
-        .update(update)
+        .update(update as never)
         .eq('id', testJobId!)
 
       expect(error, `Transition to ${t.status} failed: ${error?.message}`).toBeNull()

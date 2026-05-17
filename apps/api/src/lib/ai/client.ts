@@ -10,13 +10,36 @@ const providers: Record<AIProvider, (req: AIRequest) => Promise<AIResponse>> = {
   deepseek: callDeepSeek,
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)
-    ),
-  ])
+/**
+ * Race a provider call against a timeout. Two correctness properties:
+ *
+ *   1. Timer is always cleared (via .finally) so the event loop is not kept
+ *      alive past resolution. Without this, every successful AI call leaves a
+ *      pending setTimeout hanging for the full timeout window.
+ *
+ *   2. On timeout, the provided AbortController is aborted — the underlying
+ *      fetch in the provider receives the signal and cancels the request.
+ *      Without this, the fetch keeps running in the background and may still
+ *      complete (incurring token cost or counting against provider rate
+ *      limits) long after we returned a TIMEOUT error to the caller.
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  controller: AbortController,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeoutP = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort()
+      reject(new Error(`Timeout after ${ms}ms`))
+    }, ms)
+  })
+  try {
+    return await Promise.race([promise, timeoutP])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
 }
 
 function backoffMs(attempt: number): number {
@@ -46,8 +69,15 @@ export async function callAI(request: AIRequest): Promise<AIResult> {
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
 
+    // Fresh controller per attempt — aborting on retry would break retried call.
+    const controller = new AbortController()
+
     try {
-      const response = await withTimeout(providerFn(request), timeout)
+      const response = await withTimeout(
+        providerFn({ ...request, signal: controller.signal }),
+        timeout,
+        controller,
+      )
 
       console.log('AI call success', {
         provider: request.provider,

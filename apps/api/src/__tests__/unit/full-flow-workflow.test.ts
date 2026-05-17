@@ -79,14 +79,39 @@ function createMockSupabase(currentUserId: string) {
   function jobsOps() {
     let pendingInsert: JobRow | null = null
     let pendingUpdate: Partial<JobRow> | null = null
-    let filters: Record<string, unknown> = {}
-    let selectFields: string | null = null
+    const filters: Record<string, unknown> = {}
+
+    // Apply pendingUpdate against jobsTable, respecting optimistic-concurrency filters.
+    // Returns the updated row, or null if filters didn't match.
+    const applyUpdate = (): JobRow | null => {
+      if (!pendingUpdate) return null
+      const id = filters['id'] as string | undefined
+      if (!id) return null
+      const existing = jobsTable.get(id)
+      if (!existing) return null
+      const statusFilter = filters['status']
+      if (statusFilter !== undefined && existing.status !== statusFilter) return null
+      const updated = { ...existing, ...pendingUpdate, updated_at: new Date().toISOString() }
+      jobsTable.set(id, updated)
+      return updated
+    }
 
     const chain: any = {
       insert: (data: JobRow) => { pendingInsert = data; return chain },
       update: (data: Partial<JobRow>) => { pendingUpdate = data; return chain },
-      select: (fields?: string) => { selectFields = fields ?? '*'; return chain },
-      eq: (col: string, val: unknown) => { filters[col] = val; return chain },
+      select: (_fields?: string) => chain,
+      eq: (col: string, val: unknown) => {
+        filters[col] = val
+        // If this is a write op with no further .select(), Supabase resolves
+        // on `await chain` directly. Make chain thenable to support that.
+        if (pendingUpdate) {
+          chain.then = (onFulfilled: (v: { data: null; error: null }) => unknown) => {
+            applyUpdate()
+            return Promise.resolve({ data: null, error: null }).then(onFulfilled)
+          }
+        }
+        return chain
+      },
       limit: (_n: number) => chain,
       single: async () => {
         if (pendingInsert) {
@@ -96,52 +121,24 @@ function createMockSupabase(currentUserId: string) {
           return { data: { id }, error: null }
         }
         if (pendingUpdate) {
-          const id = filters['id'] as string
-          const statusFilter = filters['status']
-          const existing = jobsTable.get(id)
-          if (!existing) return { data: null, error: { message: 'not found' } }
-          if (statusFilter && existing.status !== statusFilter) return { data: null, error: { message: 'status mismatch' } }
-          const updated = { ...existing, ...pendingUpdate, updated_at: new Date().toISOString() }
-          jobsTable.set(id, updated)
+          const updated = applyUpdate()
+          if (!updated) return { data: null, error: { message: 'no match' } }
           return { data: updated, error: null }
         }
-        // Select single
         const id = filters['id'] as string
         const job = jobsTable.get(id)
         if (!job) return { data: null, error: { message: 'not found' } }
         return { data: job, error: null }
       },
-    }
-
-    // For update().eq() without single()
-    const origEq = chain.eq
-    chain.eq = (col: string, val: unknown) => {
-      filters[col] = val
-      const enhanced = { ...chain }
-      // If it's an update, resolve immediately when last eq is called
-      if (pendingUpdate && !selectFields) {
-        enhanced.eq = (col2: string, val2: unknown) => {
-          filters[col2] = val2
-          const id = (filters['id'] ?? col === 'id' ? val : filters['id']) as string
-          const existing = jobsTable.get(id)
-          if (existing) {
-            const statusFilter = filters['status']
-            if (!statusFilter || existing.status === statusFilter) {
-              jobsTable.set(id, { ...existing, ...pendingUpdate!, updated_at: new Date().toISOString() })
-            }
-          }
-          return { data: null, error: null }
+      maybeSingle: async () => {
+        if (pendingUpdate) {
+          const updated = applyUpdate()
+          return { data: updated, error: null }
         }
-        // Also support direct resolution
-        const id2 = filters['id'] as string
-        if (id2 && pendingUpdate) {
-          const existing2 = jobsTable.get(id2)
-          if (existing2) {
-            jobsTable.set(id2, { ...existing2, ...pendingUpdate, updated_at: new Date().toISOString() })
-          }
-        }
-      }
-      return enhanced
+        const id = filters['id'] as string
+        const job = jobsTable.get(id)
+        return { data: job ?? null, error: null }
+      },
     }
 
     return chain
@@ -227,16 +224,18 @@ function createMockSupabase(currentUserId: string) {
   }
 
   function baselinesOps() {
-    let filters: Record<string, unknown> = {}
+    // baseline.ts now uses .in() then awaits without .single() — returns row array.
     return {
       select: (_fields: string) => {
         const chain: any = {
-          eq: (col: string, val: unknown) => { filters[col] = val; return chain },
-          limit: (_n: number) => chain,
-          single: async () => ({
-            data: { price_min: 200000, price_max: 500000 },
-            error: null,
-          }),
+          eq: (_col: string, _val: unknown) => chain,
+          in: (_col: string, _vals: unknown[]) => chain,
+          // Thenable: `await chain` resolves to data array
+          then: (onFulfilled: (v: { data: unknown[]; error: null }) => unknown) =>
+            Promise.resolve({
+              data: [{ price_min: 200000, price_max: 500000, district_code: 'hcmc_all' }],
+              error: null,
+            }).then(onFulfilled),
         }
         return chain
       },
@@ -645,10 +644,10 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     const confirmBody = await confirmRes.json()
 
     expect(confirmRes.status).toBe(200)
-    expect(confirmBody.status).toBe('paid')
+    expect(confirmBody.status).toBe('confirmed_by_customer')
     expect(confirmBody.final_price).toBe(280000)
 
-    console.log(`Step 6 ✓ A12 confirmed — payment auto-completed (prototype)`)
+    console.log(`Step 6 ✓ A12 confirmed — no auto-pay (Bug #3 fix)`)
 
     // ── Step 7: Customer submits review ──
 
@@ -667,7 +666,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     console.log(`\n══════ WORKFLOW COMPLETE ══════`)
     console.log(`  7/7 steps passed`)
     console.log(`  Job: ${jobId}`)
-    console.log(`  Flow: draft → analyzing → estimate → A7 → broadcasting → matched → on_way → arrived → inspecting → repairing → completed → A12 → paid → reviewed`)
+    console.log(`  Flow: draft → analyzing → estimate → A7 → broadcasting → matched → on_way → arrived → inspecting → repairing → completed → A12 → confirmed → reviewed`)
   })
 
   describe('State machine enforcement', () => {

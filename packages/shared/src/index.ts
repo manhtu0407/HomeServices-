@@ -1,16 +1,41 @@
 export * from './types'
 export * from './constants'
+export type {
+  KaelEstimate,
+  ServiceCatalogResponse,
+  CreateJobResponse,
+  JobDetailResponse,
+  ConfirmSearchResponse,
+  StatusUpdateResponse,
+  ConfirmCompletionResponse,
+  ReviewResponse,
+  WorkerProfileResponse,
+  WorkerRegisterResponse,
+  AvailabilityToggleResponse,
+  BroadcastListResponse,
+  AcceptBroadcastResponse,
+  WorkerScopeChangeResponse,
+  CustomerScopeDecisionResponse,
+  WorkerJobListResponse,
+  EarningsResponse,
+} from './types/api-responses'
 export {
   serviceTypeSchema,
   jobCreateSchema,
-  scopeChangeSchema,
   reviewSchema,
   chatMessageSchema,
+  workerRegisterSchema,
+  availabilityToggleSchema,
+  workerScopeChangeSchema,
+  customerScopeDecisionSchema,
   sanitizeForLLM,
 } from './validation'
 export type {
   JobCreateInput,
-  ScopeChangeInput,
   ReviewInput,
   ChatMessageInput,
+  WorkerRegisterInput,
+  AvailabilityToggleInput,
+  WorkerScopeChangeInput,
+  CustomerScopeDecisionInput,
 } from './validation'
