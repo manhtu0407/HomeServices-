@@ -5,6 +5,96 @@ Mỗi session mới: đọc file này trước, sau đó update khi kết thúc.
 
 ---
 
+## Session 18 - 2026-05-17
+
+**Branch**: `codex/worker-login-production-ui`
+**PR**: [#13](https://github.com/manhtu0407/HomeServices-/pull/13)
+**Worker**: Codex + Tu
+
+### Mission
+
+Promote the accepted Worker prototype and Login role gate into production mobile UI surfaces after PR#11 merged the Clients section. Remove Onboarding from the production app flow and preserve the design decisions in durable memory/contracts instead of runtime prototype artifacts.
+
+### Source-of-truth files re-read during the work
+
+- `critical.md`
+- `design.md`
+- `RULES.md`
+- `STRUCTURES.md`
+- `CLAUDE.md`
+- `.claude/MEMORY.md`
+- `docs/agent-lessons.md`
+- `docs/product/client-price-check-production-ui-prep.md`
+- former `docs/design/worker-prototype-contract.md`
+
+### Implementation result
+
+- Removed `apps/mobile/app/(auth)/onboard.tsx`.
+- Updated auth stack and root redirect so unauthenticated users go to `/(auth)/login`.
+- Added production Login role gate:
+  - `apps/mobile/components/auth/auth-surfaces.tsx`
+  - role cards for Khach and Tho
+  - production marker `auth-role-gate-glass`
+- Added production Worker surfaces:
+  - `apps/mobile/components/worker/worker-surfaces.tsx`
+  - five Worker tabs wired to production surfaces: Home, Jobs, Chat, Earnings, Profile
+  - XanhSM/client-V4 aligned map shell, mint/cream/cyan material system, glassmorphism motion layer, liquid dock, theme/language toggles, empty Kael chat composer, and local-only Worker UI states
+- Added durable production contract:
+  - `docs/design/worker-production-contract.md`
+- Updated static tests in `packages/shared/src/__tests__/mobile-wiring.test.ts` so production now guards against:
+  - restored Onboarding route
+  - `auth-surfaces-v2`
+  - `worker-surfaces-v3`
+  - `worker-v2` / `worker-v3` runtime markers
+  - Worker prototype contract/lab references
+  - backend, Supabase, AI provider, and mutation leakage in Worker/Login UI
+
+### Client section safety
+
+PR#13 was created from current `origin/main` after PR#11 was already merged. This avoids reusing the old `codex-foundation-supabase-workflow-setup` PR branch and reduces the risk that merging Worker/Login work removes the already-merged Clients section.
+
+Customer/Clients code was not rebuilt in this PR. The only customer-surface changes carried forward were the accepted refinements from the same local iteration:
+
+- smaller customer dock
+- Kael chatbox height/composer refinements
+- liquid dock wake motion
+- removal of production source reference to `.tmp/design-lab`
+
+### Scope boundaries
+
+This is production UI/frontend surface work only. It does not implement real Worker backend workflow, Supabase mutations, matching, payment, booking broadcast, AI calls, or persistence from the Worker mobile UI.
+
+Worker UI remains local-only and must not be treated as backend production workflow until API/Supabase integration is explicitly planned and implemented.
+
+### Verification
+
+Passed:
+
+- `corepack pnpm --filter @home-services/mobile type-check`
+- `corepack pnpm --filter @home-services/shared test -- src/__tests__/mobile-wiring.test.ts`
+- `corepack pnpm type-check`
+- `corepack pnpm test`
+- `corepack pnpm build`
+- `git diff --check`
+- static sweep for Onboarding/prototype/lab runtime refs in `apps/mobile/app` and `apps/mobile/components`
+- static sweep for Worker/Login backend, Supabase, AI provider, secret, and workflow mutation leakage
+- local HTTP smoke for `/login`, `/home`, `/chat`, and `/profile`
+- Worker CDP screenshot smoke for home, jobs, chat, earnings, profile, and dark home
+
+Known existing limitation:
+
+- `corepack pnpm lint` fails in pre-existing `apps/api` test/backend files outside PR#13 scope, mostly `no-explicit-any`, unused variables, and `prefer-as-const`. PR#13 did not modify those API files.
+- Mobile/shared do not currently expose package-level lint scripts.
+
+### Lessons
+
+- After a prototype is accepted, production routes should import stable production components, not files named by prototype version.
+- Design-lab paths can remain as local review artifacts, but production source should reference durable contracts and standards instead.
+- When an already-used PR branch has merged multiple PRs, create a fresh branch from current `origin/main` before publishing a new PR to avoid merge-history confusion.
+- For Worker UI, keep the distinction clear: production UI surface is not the same as production backend workflow.
+
+---
+
 ## Session 17 - 2026-05-15
 
 **Branch**: `codex-foundation-supabase-workflow-setup`
