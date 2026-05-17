@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   serviceTypeSchema,
   jobCreateSchema,
-  scopeChangeSchema,
+  workerScopeChangeSchema,
   reviewSchema,
   chatMessageSchema,
   sanitizeForLLM,
@@ -162,25 +162,28 @@ describe('jobCreateSchema', () => {
 })
 
 // ===================================================================
-// scopeChangeSchema — STRUCTURES.md A11/B4
+// workerScopeChangeSchema — STRUCTURES.md A11/B6
 // ===================================================================
 
-describe('scopeChangeSchema', () => {
+describe('workerScopeChangeSchema', () => {
   const validScope = {
-    job_id: UUID,
-    description: 'Phạm vi thay đổi do ống chính bị hỏng',
+    new_description: 'Phạm vi thay đổi do ống chính bị hỏng',
     new_price_min: 200000,
     new_price_max: 400000,
     reason: 'Phát hiện ống chính rỉ nước nghiêm trọng',
   }
 
   it('accepts valid scope change', () => {
-    expect(() => scopeChangeSchema.parse(validScope)).not.toThrow()
+    expect(() => workerScopeChangeSchema.parse(validScope)).not.toThrow()
+  })
+
+  it('does NOT require job_id in body (comes from URL params)', () => {
+    expect(workerScopeChangeSchema.safeParse(validScope).success).toBe(true)
   })
 
   it('rejects price_max < price_min', () => {
     expect(() =>
-      scopeChangeSchema.parse({
+      workerScopeChangeSchema.parse({
         ...validScope,
         new_price_min: 500000,
         new_price_max: 200000,
@@ -190,7 +193,7 @@ describe('scopeChangeSchema', () => {
 
   it('accepts price_max === price_min', () => {
     expect(() =>
-      scopeChangeSchema.parse({
+      workerScopeChangeSchema.parse({
         ...validScope,
         new_price_min: 300000,
         new_price_max: 300000,
@@ -200,7 +203,7 @@ describe('scopeChangeSchema', () => {
 
   it('rejects negative prices', () => {
     expect(() =>
-      scopeChangeSchema.parse({
+      workerScopeChangeSchema.parse({
         ...validScope,
         new_price_min: -100,
         new_price_max: 200000,
@@ -210,7 +213,7 @@ describe('scopeChangeSchema', () => {
 
   it('rejects zero price', () => {
     expect(() =>
-      scopeChangeSchema.parse({
+      workerScopeChangeSchema.parse({
         ...validScope,
         new_price_min: 0,
         new_price_max: 200000,
@@ -220,7 +223,7 @@ describe('scopeChangeSchema', () => {
 
   it('rejects fractional prices (must be integer VND)', () => {
     expect(() =>
-      scopeChangeSchema.parse({
+      workerScopeChangeSchema.parse({
         ...validScope,
         new_price_min: 199999.5,
         new_price_max: 400000,
@@ -228,21 +231,15 @@ describe('scopeChangeSchema', () => {
     ).toThrow()
   })
 
-  it('rejects invalid UUID for job_id', () => {
+  it('rejects short new_description', () => {
     expect(() =>
-      scopeChangeSchema.parse({ ...validScope, job_id: 'not-a-uuid' })
-    ).toThrow()
-  })
-
-  it('rejects short description', () => {
-    expect(() =>
-      scopeChangeSchema.parse({ ...validScope, description: 'short' })
+      workerScopeChangeSchema.parse({ ...validScope, new_description: 'short' })
     ).toThrow()
   })
 
   it('rejects short reason', () => {
     expect(() =>
-      scopeChangeSchema.parse({ ...validScope, reason: 'short' })
+      workerScopeChangeSchema.parse({ ...validScope, reason: 'short' })
     ).toThrow()
   })
 })

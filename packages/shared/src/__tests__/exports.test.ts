@@ -27,7 +27,7 @@ describe('packages/shared barrel export completeness', () => {
     // Named exports are safer — prevent re-export collisions
     expect(indexSrc).toContain('serviceTypeSchema')
     expect(indexSrc).toContain('jobCreateSchema')
-    expect(indexSrc).toContain('scopeChangeSchema')
+    expect(indexSrc).toContain('workerScopeChangeSchema')
     expect(indexSrc).toContain('reviewSchema')
     expect(indexSrc).toContain('chatMessageSchema')
     expect(indexSrc).toContain('sanitizeForLLM')
@@ -35,7 +35,7 @@ describe('packages/shared barrel export completeness', () => {
 
   it('re-exports validation types', () => {
     expect(indexSrc).toContain('JobCreateInput')
-    expect(indexSrc).toContain('ScopeChangeInput')
+    expect(indexSrc).toContain('WorkerScopeChangeInput')
     expect(indexSrc).toContain('ReviewInput')
     expect(indexSrc).toContain('ChatMessageInput')
   })

@@ -38,7 +38,7 @@ export const kaelEstimateSchema = z.object({
   disclaimer: z.string().min(1),
 })
 
-export type KaelEstimate = z.infer<typeof kaelEstimateSchema>
+export type { KaelEstimate } from '@home-services/shared'
 
 export const workerPrebriefSchema = z.object({
   job_id: z.string().uuid(),

@@ -5,8 +5,8 @@ import { safeParseJSON } from './parsing'
 import { sanitizeForLLM } from '@home-services/shared'
 
 export type VisionAnalysisResult =
-  | { success: true; analysis: VisionResult }
-  | { success: false; fallback: VisionResult }
+  | { success: true; analysis: VisionResult; failureReason?: undefined }
+  | { success: false; fallback: VisionResult; failureReason: string }
 
 export async function analyzeDescription(
   description: string,
@@ -27,6 +27,7 @@ export async function analyzeDescription(
     return {
       success: false,
       fallback: buildFallbackVision(intentContext),
+      failureReason: `AI call failed: ${result.code} — ${result.error}`,
     }
   }
 
@@ -35,6 +36,7 @@ export async function analyzeDescription(
     return {
       success: false,
       fallback: buildFallbackVision(intentContext),
+      failureReason: 'JSON parse failed on AI response',
     }
   }
 
@@ -43,6 +45,7 @@ export async function analyzeDescription(
     return {
       success: false,
       fallback: buildFallbackVision(intentContext),
+      failureReason: `Schema validation failed: ${validated.error.issues[0]?.message ?? 'unknown'}`,
     }
   }
 
@@ -56,4 +59,3 @@ function buildFallbackVision(intentContext: string): VisionResult {
     complexity_hint: 'medium',
   }
 }
-

@@ -4,6 +4,14 @@ describe('env module', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.unstubAllEnvs()
+    // Clear vars that integration runs (e.g., real-supabase env injection)
+    // may have set in process.env — unstubAllEnvs doesn't touch shell vars.
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '')
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', '')
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '')
+    vi.stubEnv('ANTHROPIC_API_KEY', '')
+    vi.stubEnv('PERPLEXITY_API_KEY', '')
+    vi.stubEnv('DEEPSEEK_API_KEY', '')
   })
 
   afterEach(() => {
@@ -100,8 +108,14 @@ describe('env module', () => {
 
   describe('ensureServerEnv', () => {
     beforeEach(() => {
+      // Isolate from shell env — tests assert behavior when specific vars are
+      // missing; CI/integration runs may set these globally and pollute tests.
       vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost:54321')
       vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'test-anon-key')
+      vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '')
+      vi.stubEnv('ANTHROPIC_API_KEY', '')
+      vi.stubEnv('PERPLEXITY_API_KEY', '')
+      vi.stubEnv('DEEPSEEK_API_KEY', '')
     })
 
     it('throws when any server key is missing', async () => {

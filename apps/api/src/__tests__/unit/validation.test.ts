@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest'
 import {
   serviceTypeSchema,
   jobCreateSchema,
-  scopeChangeSchema,
+  workerScopeChangeSchema,
   reviewSchema,
   chatMessageSchema,
   sanitizeForLLM,
-} from '@/lib/validation'
+} from '@home-services/shared'
 
 describe('serviceTypeSchema (Rule #6: only electrical + plumbing)', () => {
   it('accepts "electrical"', () => {
@@ -132,46 +132,45 @@ describe('jobCreateSchema', () => {
   })
 })
 
-describe('scopeChangeSchema', () => {
+describe('workerScopeChangeSchema (B6 — worker requests scope change)', () => {
   const validScope = {
-    job_id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-    description: 'Phát hiện thêm ống nước bị rỉ ở bếp',
+    new_description: 'Phát hiện thêm ống nước bị rỉ ở bếp, cần thay đoạn lớn hơn',
     new_price_min: 300000,
     new_price_max: 500000,
     reason: 'Ống nước bếp cũ, cần thay mới toàn bộ',
   }
 
   it('accepts valid scope change', () => {
-    expect(() => scopeChangeSchema.parse(validScope)).not.toThrow()
+    expect(() => workerScopeChangeSchema.parse(validScope)).not.toThrow()
   })
 
-  it('rejects non-UUID job_id', () => {
-    expect(() =>
-      scopeChangeSchema.parse({ ...validScope, job_id: 'not-a-uuid' })
-    ).toThrow()
+  it('does NOT include job_id (comes from URL, not body)', () => {
+    // The schema should not require job_id — it's derived from URL params
+    const result = workerScopeChangeSchema.safeParse(validScope)
+    expect(result.success).toBe(true)
   })
 
   it('rejects negative price', () => {
     expect(() =>
-      scopeChangeSchema.parse({ ...validScope, new_price_min: -100000 })
+      workerScopeChangeSchema.parse({ ...validScope, new_price_min: -100000 })
     ).toThrow()
   })
 
   it('rejects zero price', () => {
     expect(() =>
-      scopeChangeSchema.parse({ ...validScope, new_price_max: 0 })
+      workerScopeChangeSchema.parse({ ...validScope, new_price_max: 0 })
     ).toThrow()
   })
 
   it('rejects float price (prices are integer VND)', () => {
     expect(() =>
-      scopeChangeSchema.parse({ ...validScope, new_price_min: 150000.5 })
+      workerScopeChangeSchema.parse({ ...validScope, new_price_min: 150000.5 })
     ).toThrow()
   })
 
   it('rejects min > max', () => {
     expect(() =>
-      scopeChangeSchema.parse({
+      workerScopeChangeSchema.parse({
         ...validScope,
         new_price_min: 600000,
         new_price_max: 300000,
@@ -181,7 +180,7 @@ describe('scopeChangeSchema', () => {
 
   it('accepts min == max (fixed price)', () => {
     expect(() =>
-      scopeChangeSchema.parse({
+      workerScopeChangeSchema.parse({
         ...validScope,
         new_price_min: 400000,
         new_price_max: 400000,
@@ -189,15 +188,15 @@ describe('scopeChangeSchema', () => {
     ).not.toThrow()
   })
 
-  it('rejects short description', () => {
+  it('rejects short new_description', () => {
     expect(() =>
-      scopeChangeSchema.parse({ ...validScope, description: 'short' })
+      workerScopeChangeSchema.parse({ ...validScope, new_description: 'short' })
     ).toThrow()
   })
 
   it('rejects short reason', () => {
     expect(() =>
-      scopeChangeSchema.parse({ ...validScope, reason: 'too short' })
+      workerScopeChangeSchema.parse({ ...validScope, reason: 'too short' })
     ).toThrow()
   })
 })

@@ -23,6 +23,7 @@ export async function callAnthropic(request: AIRequest): Promise<AIResponse> {
         .map((m) => ({ role: m.role, content: m.content })),
       system: request.messages.find((m) => m.role === 'system')?.content,
     }),
+    signal: request.signal,
   })
 
   const latencyMs = Date.now() - start

@@ -5,8 +5,8 @@ import { safeParseJSON } from './parsing'
 import { sanitizeForLLM } from '@home-services/shared'
 
 export type PriceSearchResult =
-  | { success: true; market: MarketPriceResult }
-  | { success: false }
+  | { success: true; market: MarketPriceResult; failureReason?: undefined }
+  | { success: false; failureReason: string }
 
 export async function searchMarketPrice(
   serviceType: string,
@@ -30,21 +30,24 @@ export async function searchMarketPrice(
   })
 
   if (!result.success) {
-    return { success: false }
+    return { success: false, failureReason: `AI call failed: ${result.code} — ${result.error}` }
   }
 
   const parsed = safeParseJSON(result.content)
   if (!parsed) {
-    return { success: false }
+    return { success: false, failureReason: 'JSON parse failed on AI response' }
   }
 
   const validated = marketPriceResultSchema.safeParse(parsed)
   if (!validated.success) {
-    return { success: false }
+    return {
+      success: false,
+      failureReason: `Schema validation failed: ${validated.error.issues[0]?.message ?? 'unknown'}`,
+    }
   }
 
   if (validated.data.market_range_max < validated.data.market_range_min) {
-    return { success: false }
+    return { success: false, failureReason: 'market_range_max < market_range_min' }
   }
 
   return { success: true, market: validated.data }
@@ -119,4 +122,3 @@ export function synthesizePrice(input: PriceSynthesisInput): SynthesizedPrice {
 function roundToThousand(n: number): number {
   return Math.round(n / 1000) * 1000
 }
-
