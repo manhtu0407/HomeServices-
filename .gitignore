@@ -21,6 +21,7 @@ dist/
 
 # turbo
 .turbo
+.tmp/
 
 # expo
 .expo/

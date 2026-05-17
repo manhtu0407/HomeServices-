@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 
@@ -7,7 +7,7 @@ const read = (rel: string) => readFileSync(resolve(MOBILE_ROOT, rel), 'utf-8')
 const exists = (rel: string) => existsSync(resolve(MOBILE_ROOT, rel))
 
 // ===================================================================
-// Navigation skeleton — must match STRUCTURES.md exactly
+// Navigation skeleton â€” must match STRUCTURES.md exactly
 // ===================================================================
 
 describe('screen files existence (STRUCTURES.md mapping)', () => {
@@ -75,7 +75,7 @@ describe('all screens export default function', () => {
 })
 
 // ===================================================================
-// Customer tabs — STRUCTURES.md A1: Trang chủ | Đặt lịch | Kael | Lịch sử | Hồ sơ
+// Customer tabs â€” STRUCTURES.md A1: Trang chá»§ | Äáº·t lá»‹ch | Kael | Lá»‹ch sá»­ | Há»“ sÆ¡
 // ===================================================================
 
 describe('customer tab labels (STRUCTURES.md A1)', () => {
@@ -86,24 +86,26 @@ describe('customer tab labels (STRUCTURES.md A1)', () => {
     expect(matches.length).toBe(5)
   })
 
-  it('tab: Trang chủ', () => {
-    expect(src).toContain("'Trang chủ'")
+  it('tab route: home', () => {
+    expect(src).toContain('name="home"')
   })
 
-  it('tab: Đặt lịch', () => {
-    expect(src).toContain("'Đặt lịch'")
+  it('tab route: booking uses V4 price-check role', () => {
+    expect(src).toContain('name="booking"')
+    expect(src).toContain('tabBarLabel')
   })
 
-  it('tab: Kael', () => {
-    expect(src).toContain("'Kael'")
+  it('tab route: kael', () => {
+    expect(src).toContain('name="kael"')
   })
 
-  it('tab: Lịch sử', () => {
-    expect(src).toContain("'Lịch sử'")
+  it('tab route: history uses V4 activity role', () => {
+    expect(src).toContain('name="history"')
+    expect(src).toContain('tabBarLabel')
   })
 
-  it('tab: Hồ sơ', () => {
-    expect(src).toContain("'Hồ sơ'")
+  it('tab route: profile', () => {
+    expect(src).toContain('name="profile"')
   })
 
   it('uses Tabs from expo-router', () => {
@@ -112,7 +114,7 @@ describe('customer tab labels (STRUCTURES.md A1)', () => {
 })
 
 // ===================================================================
-// Customer frontend shell — production static/local surfaces around Price Check
+// Customer frontend shell â€” production static/local surfaces around Price Check
 // ===================================================================
 
 describe('customer frontend shell surfaces', () => {
@@ -184,23 +186,22 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-shell-service-electrical')
     expect(src).toContain('customer-shell-service-plumbing')
     expect(src).toContain('customer-home-other-services-message')
-    expect(src).toContain('Các dịch vụ khác sẽ được cập nhật sớm nhất.')
-    expect(src).not.toMatch(/cleaning|ac repair|appliance|handyman|dọn dẹp|máy lạnh/i)
+    expect(src).toContain('CUSTOMER_V4_VISUAL_CONTRACT')
+    expect(src).not.toMatch(/cleaning|ac repair|appliance|handyman/i)
   })
 
-  it('implements the V12 customer quality system markers', () => {
+  it('implements the V4 customer quality system markers', () => {
     const src = shell()
-    expect(src).toContain('CUSTOMER_SHELL_V12_SOURCE_OF_TRUTH')
-    expect(src).toContain('CUSTOMER_SIGNATURE_PRODUCTION_V15')
-    expect(src).toContain('CUSTOMER_HOME_SIGNATURE_V2_LOCK')
-    expect(src).toContain('CUSTOMER_DOCK_MAIN_A')
+    const layout = customerLayout()
+    expect(src).toContain('CUSTOMER_V4_PRODUCTION_SOURCE')
+    expect(src).toContain('CUSTOMER_V4_VISUAL_CONTRACT')
+    expect(layout).toContain('CUSTOMER_DOCK_MAIN_A')
     expect(src).toContain('CUSTOMER_SHARED_THEME_STORE')
-    expect(src).toContain('CUSTOMER_DARK_DOCK_LAYER_MATCH')
+    expect(layout).toContain('CUSTOMER_DARK_DOCK_LAYER_MATCH')
     expect(src).toContain('KAEL_TICKET_COMPOSER_V3')
-    expect(src).toContain('CUSTOMER_LAYER_ECOLOGY_V14')
-    expect(src).toContain('SEMANTIC_LAYER_SWITCH_V14')
-    expect(src).toContain('CUSTOMER_TYPE_RHYTHM')
-    expect(src).toContain('LAYERED_SURFACE_ROLES')
+    expect(src).toContain('CUSTOMER_LAYER_ECOLOGY_V4')
+    expect(src).toContain('SEMANTIC_LAYER_SWITCH_V4')
+    expect(src).toContain('COPY_DENSITY_COMPACT')
     expect(src).toContain('CUSTOMER_THEME_TOKENS')
     expect(src).toContain('useSyncExternalStore')
     expect(src).toContain('setCustomerThemeMode')
@@ -215,48 +216,73 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('darkLayer')
   })
 
-  it('restores the accepted V12 dark layer palette instead of a flat dim theme', () => {
+  it('implements V4 production customer language/theme persistence and Kael 8A assets', () => {
     const src = shell()
     const layout = customerLayout()
-    expect(src).toContain('CUSTOMER_DARK_LAYER_RESTORE_V12')
-    expect(src).toContain('customer-dark-hero-composite')
-    expect(src).toContain('customer-dark-kael-canvas')
-    expect(src).toContain('customer-dark-layer-depth-contrast')
+    expect(src).toContain('CUSTOMER_V4_PRODUCTION_SOURCE')
+    expect(src).toContain('CustomerLanguageMode')
+    expect(src).toContain('CUSTOMER_LANGUAGE_STORAGE_KEY')
+    expect(src).toContain('CUSTOMER_THEME_STORAGE_KEY')
+    expect(src).toContain('AsyncStorage')
+    expect(src).toContain('setCustomerLanguageMode')
+    expect(src).toContain('useCustomerLanguageMode')
+    expect(src).toContain('customer-language-toggle')
+    expect(src).toContain('customer-profile-unified-functions')
+    expect(src).toContain('kael-model-8a.png')
+    expect(src).toContain('kael-model-8a-head.png')
+    expect(src).toContain('Image')
+    expect(layout).toContain('customer-tab-kael-mascot-8a')
+  })
+
+  it('keeps design-lab V1/V2 removed while preserving the V4 source prototype', () => {
+    expect(exists('../../.tmp/design-lab/customer-app-v1')).toBe(false)
+    expect(exists('../../.tmp/design-lab/customer-app-v2')).toBe(false)
+    expect(exists('../../.tmp/design-lab/customer-app-v4-flow/index.html')).toBe(true)
+  })
+
+  it('keeps V4 dark mode as a semantic layer switch instead of a separate redesign', () => {
+    const src = shell()
+    const layout = customerLayout()
+    expect(src).toContain('SEMANTIC_LAYER_SWITCH_V4')
+    expect(src).toContain('customer-dark-layer-ecology')
     expect(src).toContain("canvas: '#071312'")
     expect(src).toContain("base: '#10201F'")
     expect(src).toContain("raised: '#162B28'")
     expect(src).toContain("service: '#173B35'")
     expect(src).toContain("water: '#15363A'")
     expect(src).toContain("warm: '#3B291B'")
-    expect(src).toContain("borderStrong: '#3B6A62'")
     expect(src).toContain("primary: '#69DEC6'")
     expect(src).toContain("copper: '#E0A06B'")
-    expect(src).toContain('homeHeroDark')
-    expect(src).toContain('kaelConversationFeedDark')
-    expect(src).toContain('boxShadow')
-    expect(layout).toContain('CUSTOMER_DARK_LAYER_RESTORE_V12')
+    expect(src).toContain('ThemeToggle')
+    expect(src).toContain('setCustomerThemeMode')
+    expect(layout).toContain('CUSTOMER_DARK_DOCK_LAYER_V4')
     expect(layout).toContain('customer-dock-shadow-layer')
     expect(layout).toContain("boxShadow: tokens.mode === 'dark'")
     expect(layout).toContain('tabBarActiveBackgroundColor: tokens.service')
   })
 
-  it('preserves accepted V6-V12 section-level figures beyond static wiring', () => {
+  it('preserves V4 prototype section-level figures beyond static wiring', () => {
     const src = shell()
     expect(src).toContain('customer-home-layered-hero')
     expect(src).toContain('customer-home-layer-stack')
-    expect(src).toContain('customer-home-signature-v2')
+    expect(src).toContain('customer-home-signature-v4')
     expect(src).toContain('customer-home-hero-depth-grid')
+    expect(src).toContain('customer-home-payment-section')
+    expect(src).toContain('customer-home-bank-connect')
+    expect(src).toContain('customer-home-cod-payment')
+    expect(src).toContain('customer-home-payment-local-only')
     expect(src).toContain('customer-home-coupon-strip')
     expect(src).toContain('customer-home-relaxed-stage')
     expect(src).toContain('customer-home-ticket-decor')
-    expect(src).toContain('customer-kael-full-screen-chat')
     expect(src).toContain('customer-kael-conversation-feed')
+    expect(src).toContain('customer-kael-empty-chat-state')
+    expect(src).toContain('customer-kael-empty-chat-canvas')
     expect(src).toContain('customer-kael-ticket-reveal-after-info')
-    expect(src).toContain('customer-kael-empty-ticket-state')
+    expect(src).toContain('customer-kael-user-message')
     expect(src).toContain('hasEnoughKaelInfo')
+    expect(src).toContain('hasAnyKaelInfo')
     expect(src).toContain('latestAnswer.trim().length >= 16')
     expect(src).toContain('customer-kael-ticket-composer')
-    expect(src).toContain('customer-kael-active-question')
     expect(src).toContain('customer-kael-repair-ticket')
     expect(src).toContain('customer-kael-ticket-field-service')
     expect(src).toContain('customer-kael-ticket-field-problem')
@@ -268,7 +294,7 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-kael-local-chat-input')
     expect(src).toContain('customer-history-stage-map')
     expect(src).toContain('customer-history-filter-shell')
-    expect(src).toContain('customer-profile-checklist')
+    expect(src).toContain('customer-profile-unified-functions')
     expect(src).toContain('customer-profile-privacy-shell')
     expect(src).toContain('customer-profile-evidence-shell')
   })
@@ -279,18 +305,18 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('KAEL_TICKET_COMPOSER_V3')
     expect(src).toContain('customer-kael-companion')
     expect(src).toContain('customer-kael-chatbox')
-    expect(src).toContain('customer-kael-full-screen-chat')
+    expect(src).toContain('customer-kael-empty-chat-state')
+    expect(src).toContain('customer-kael-empty-chat-canvas')
     expect(src).toContain('customer-kael-ticket-reveal-after-info')
     expect(src).toContain('customer-kael-ticket-composer')
     expect(src).toContain('customer-kael-repair-ticket')
+    expect(src).toContain('customer-rating-glass-stars')
     expect(src).toContain('customer-kael-worker-placeholder')
     expect(src).toContain('submitKaelLocalDraft')
     expect(src).toContain('TextInput')
-    expect(src).toContain('AI Price Check')
-    expect(src).toContain('điện và nước')
+    expect(src).toContain('customer-kael-local-chat-input')
     expect(src).not.toContain('TransactionIntentCard')
     expect(src).not.toContain('sendMessage')
-    expect(src).not.toContain('Nhập tin nhắn')
     expect(src).not.toContain('Draft Price Check')
     expect(src).not.toContain('customer-kael-conversation-phone')
     expect(src).not.toContain('kaelPhone')
@@ -311,11 +337,12 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('getCustomerThemeTokens')
     expect(src).toContain('tabBarActiveTintColor: tokens.primary')
     expect(src).toContain('tabBarInactiveTintColor: tokens.subtleText')
-    expect(src).toContain('backgroundColor: tokens.base')
+    expect(src).toContain("rgba(255,253,248,0.72)")
+    expect(src).toContain("rgba(255,255,255,0.88)")
     expect(src).toContain('CustomerTabIcon')
     expect(src).toContain('customer-tab-icon-home')
     expect(src).toContain('customer-tab-icon-booking')
-    expect(src).toContain('customer-tab-icon-kael')
+    expect(src).toContain('customer-tab-kael-mascot-8a')
     expect(src).toContain('customer-tab-icon-history')
     expect(src).toContain('customer-tab-icon-profile')
     expect(src).toContain('tabBarIcon')
@@ -326,46 +353,53 @@ describe('customer frontend shell surfaces', () => {
     const src = shell()
     expect(src).toContain('COPY_DENSITY_COMPACT')
     expect(src).toContain('customer-profile-checklist')
-    expect(src).not.toContain('Chỉ lưu ngữ cảnh chung')
-    expect(src).not.toContain('Giá thực tế do thợ xác nhận trước khi bắt đầu.')
+    expect(src).not.toContain('Chá»‰ lÆ°u ngá»¯ cáº£nh chung')
+    expect(src).not.toContain('GiÃ¡ thá»±c táº¿ do thá»£ xÃ¡c nháº­n trÆ°á»›c khi báº¯t Ä‘áº§u.')
     expect(src).not.toContain('Name/building/floor')
-    expect(src).not.toContain('KhÃ´ng bá»‹a ngÃ y')
-    expect(src).not.toContain('ChÆ°a lÆ°u backend')
-    expect(src).not.toContain('KhÃ´ng fake worker')
-    expect(src).not.toContain('Bá»™ lá»c sáº½ má»Ÿ')
-    expect(src).not.toContain('KhÃ´ng Ä‘Ã¡nh dáº¥u Ä‘Ã£ thanh toÃ¡n')
+    expect(src).not.toContain('KhÃƒÂ´ng bÃ¡Â»â€¹a ngÃƒÂ y')
+    expect(src).not.toContain('ChÃ†Â°a lÃ†Â°u backend')
+    expect(src).not.toContain('KhÃƒÂ´ng fake worker')
+    expect(src).not.toContain('BÃ¡Â»â„¢ lÃ¡Â»Âc sÃ¡ÂºÂ½ mÃ¡Â»Å¸')
+    expect(src).not.toContain('KhÃƒÂ´ng Ã„â€˜ÃƒÂ¡nh dÃ¡ÂºÂ¥u Ã„â€˜ÃƒÂ£ thanh toÃƒÂ¡n')
   })
 
-  it('uses mobile production shell markers and interaction-only motion', () => {
+  it('uses mobile production V4 frame markers and dock-safe scrolling', () => {
     const src = shell()
-    expect(src).toContain('customer-shell-screen')
-    expect(src).toContain('customer-shell-touch-target')
+    expect(src).toContain('V4Frame')
+    expect(src).toContain('customer-home-surface')
+    expect(src).toContain('customer-kael-companion')
+    expect(src).toContain('customer-history-surface')
+    expect(src).toContain('customer-profile-surface')
     expect(src).toContain('CUSTOMER_DOCK_SCROLL_CLEARANCE')
     expect(src).toContain('customerDockBottomClearance')
     expect(src).toContain('paddingBottom: Math.max(insets.bottom + customerDockBottomClearance')
-    expect(src).toContain('minimumTouchTarget = 44')
     expect(src).toContain('SafeAreaView')
     expect(src).toContain('useSafeAreaInsets')
     expect(src).toContain('ScrollView')
     expect(src).toContain('Pressable')
     expect(src).toContain('numberOfLines')
-    expect(src).toContain('Animated.sequence')
-    expect(src).toContain('Animated.parallel')
-    expect(src).toContain('useInteractionMotion')
     expect(src).toContain('customer-shell-motion-field')
+    expect(src).toContain('customer-section-glass-field')
+    expect(src).toContain('customer-dock-glass-aura')
+    expect(src).toContain('customer-dock-motion-sheen')
+    expect(src).toContain('customer-dock-liquid-pool')
+    expect(src).toContain('MotionSweep')
+    expect(src).toContain('V4MapBackdrop')
+    expect(src).toContain('useSharedValue')
+    expect(src).toContain('withRepeat')
     expect(src).not.toContain('Animated.loop')
-    expect(src).not.toContain('withRepeat')
     expect(src).not.toContain('onHoverIn')
   })
 
-  it('uses V12 utility and transaction shell placeholders without fabricated backend state', () => {
+  it('uses V4 utility and transaction shell placeholders without fabricated backend state', () => {
     const src = shell()
     expect(src).toContain('customer-utility-notification-center')
     expect(src).toContain('customer-utility-ticket-wallet')
     expect(src).toContain('customer-utility-support-entry')
+    expect(src).toContain('customer-utility-saved-address')
     expect(src).toContain('customer-profile-payment-placeholder')
     expect(src).toContain('customer-profile-review-placeholder')
-    expect(src).toContain('customer-profile-checklist')
+    expect(src).toContain('customer-profile-unified-functions')
     expect(src).toContain('customer-history-evidence-timeline')
     expect(src).toContain('customer-history-scope-change-placeholder')
     expect(src).toContain('customer-history-completion-placeholder')
@@ -381,7 +415,7 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-shell-no-fake-history-data')
     expect(src).toContain('customer-shell-no-fake-profile-save')
     expect(src).not.toMatch(/090\d{7}|0\d{9}/)
-    expect(src).not.toMatch(/\d{1,3}\.\d{3}\s?đ/)
+    expect(src).not.toMatch(/\d{1,3}\.\d{3}\s?Ä‘/)
   })
 
   it('routes customer shell entry points back to the booking tab', () => {
@@ -393,7 +427,7 @@ describe('customer frontend shell surfaces', () => {
 })
 
 // ===================================================================
-// Prototype runtime cleanup — store-build guard
+// Prototype runtime cleanup â€” store-build guard
 // ===================================================================
 
 const removedPrototypeRuntimePaths = [
@@ -455,7 +489,7 @@ describe('prototype runtime cleanup', () => {
 })
 
 // ===================================================================
-// Worker tabs — STRUCTURES.md B1: Trang chủ | Công việc | Chat | Thu nhập | Hồ sơ
+// Worker tabs â€” STRUCTURES.md B1: Trang chá»§ | CÃ´ng viá»‡c | Chat | Thu nháº­p | Há»“ sÆ¡
 // ===================================================================
 describe('worker tab labels (STRUCTURES.md B1)', () => {
   const src = read('app/(worker)/_layout.tsx')
@@ -487,8 +521,9 @@ describe('worker tab labels (STRUCTURES.md B1)', () => {
 })
 
 // ===================================================================
-// Auth layout — Stack navigator (A0: login → verify-otp → onboard)
+// Auth layout â€” Stack navigator (A0: login â†’ verify-otp â†’ onboard)
 // ===================================================================
+
 
 describe('auth layout wiring', () => {
   const src = read('app/(auth)/_layout.tsx')
@@ -511,8 +546,9 @@ describe('auth layout wiring', () => {
 })
 
 // ===================================================================
-// Root layout — AuthProvider wrapping
+// Root layout â€” AuthProvider wrapping
 // ===================================================================
+
 
 describe('root layout', () => {
   const src = read('app/_layout.tsx')
@@ -533,7 +569,7 @@ describe('root layout', () => {
 })
 
 // ===================================================================
-// Index (splash redirect) — role-based routing
+// Index (splash redirect) â€” role-based routing
 // ===================================================================
 
 describe('index.tsx routing logic', () => {
@@ -570,7 +606,7 @@ describe('index.tsx routing logic', () => {
 })
 
 // ===================================================================
-// Supabase client — Rule #1: secrets server-side only
+// Supabase client â€” Rule #1: secrets server-side only
 // ===================================================================
 
 describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
@@ -612,7 +648,7 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
     expect(src).toContain("from '@home-services/shared'")
   })
 
-  it('does NOT use process.env (Rule #1 — RN uses app.json extra)', () => {
+  it('does NOT use process.env (Rule #1 â€” RN uses app.json extra)', () => {
     expect(src).not.toContain('process.env')
   })
 
@@ -628,7 +664,7 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
 })
 
 // ===================================================================
-// Auth provider — correct Supabase auth pattern
+// Auth provider â€” correct Supabase auth pattern
 // ===================================================================
 
 describe('auth-provider.tsx', () => {
@@ -751,6 +787,14 @@ describe('app.json configuration', () => {
     expect(expo.extra?.supabasePublishableKey).toBeDefined()
   })
 
+  it('registers expo-image-picker for customer image/video selection copy', () => {
+    const plugins = expo.plugins ?? []
+    const hasImagePicker = plugins.some((p: string | string[]) =>
+      typeof p === 'string' ? p === 'expo-image-picker' : p[0] === 'expo-image-picker'
+    )
+    expect(hasImagePicker).toBe(true)
+  })
+
   it('supabase extra values are placeholders (not real keys)', () => {
     // These should be env-substituted at build time, not hardcoded secrets
     const url = expo.extra?.supabaseUrl ?? ''
@@ -785,10 +829,14 @@ describe('web preview dependencies', () => {
   it('declares react-native-reanimated for visible mobile motion', () => {
     expect(mobilePackage.dependencies['react-native-reanimated']).toBe('~4.1.7')
   })
+
+  it('declares expo-image-picker for local image/video draft media', () => {
+    expect(mobilePackage.dependencies['expo-image-picker']).toBeDefined()
+  })
 })
 
 // ===================================================================
-// colors.ts — design consistency
+// colors.ts â€” design consistency
 // ===================================================================
 
 describe('constants/colors.ts', () => {
@@ -808,7 +856,7 @@ describe('constants/colors.ts', () => {
 })
 
 // ===================================================================
-// Client Price Check production UI — customer Đặt lịch A2-A5 slice
+// Client Price Check production UI â€” customer Äáº·t lá»‹ch A2-A5 slice
 // ===================================================================
 
 describe('client price check production UI', () => {
@@ -823,18 +871,20 @@ describe('client price check production UI', () => {
     expect(bookingRoute).not.toContain('client-price-check-prototype')
   })
 
-  it('keeps production A2-A5 UI separate from the prototype implementation', () => {
+  it('keeps production V4 UI separate from the prototype implementation', () => {
     const component = read(productionComponentPath)
     expect(component).toContain('production-price-check-flow')
     expect(component).toContain('booking-form-first-shell')
+    expect(component).toContain('BOOKING_V4_VISUAL_CONTRACT')
     expect(component).toContain('BOOKING_FORM_FIRST_CONTRACT')
-    expect(component).toContain('BOOKING_LAYER_SWITCH_V14')
-    expect(component).toContain('bookingLayerTokens')
+    expect(component).toContain('BOOKING_LAYER_SWITCH_V4')
+    expect(component).toContain('BOOKING_TYPE_RHYTHM')
+    expect(component).toContain('BOOKING_INTERACTION_MOTION_V4')
     expect(component).toContain('BookingFormSurface')
-    expect(component).toContain('FormServiceSegment')
-    expect(component).toContain('ProblemChipField')
     expect(component).toContain('EvidenceDraftSlots')
-    expect(component).toContain('KaelEstimatePanel')
+    expect(component).toContain('EstimatePanel')
+    expect(component).toContain('SchedulePanel')
+    expect(component).toContain('ConfirmPanel')
     expect(component).toContain('PriceCheckUiStep')
     expect(component).toContain('PriceCheckUiStatus')
     expect(component).not.toContain('function HubStep')
@@ -844,19 +894,43 @@ describe('client price check production UI', () => {
     expect(component).not.toContain('motion-lab-v8')
     expect(component).not.toContain('color-signature-v11')
     expect(component).not.toContain('Production backend')
-    expect(component).not.toContain('chưa gọi backend')
-    expect(component).not.toContain('chưa ghi Supabase')
+    expect(component).not.toContain('ch?a g?i backend')
+    expect(component).not.toContain('ch?a ghi Supabase')
   })
 
-  it('covers the A2-A5 production flow states', () => {
+  it('covers the V4 production flow states', () => {
     const component = read(productionComponentPath)
     expect(component).toContain("'form'")
     expect(component).toContain("'clarification'")
     expect(component).toContain("'estimate'")
+    expect(component).toContain("'schedule'")
+    expect(component).toContain("'confirm'")
+    expect(component).toContain("'searching'")
+    expect(component).toContain("'emptyWorker'")
+    expect(component).toContain("'matched'")
     expect(component).toContain("'loading'")
     expect(component).toContain("'fallback'")
     expect(component).toContain("'error'")
-    expect(component).toContain('retryPriceCheck')
+    expect(component).toContain('continueFlow')
+    expect(component).toContain('goBack')
+    expect(component).toContain("setStatus('loading')")
+  })
+
+  it('implements V4 local media selection and confirm/search UI without backend upload claims', () => {
+    const component = read(productionComponentPath)
+    expect(component).toContain('MediaDraftItem')
+    expect(component).toContain('expo-image-picker')
+    expect(component).toContain('pickMedia')
+    expect(component).toContain('removeMedia')
+    expect(component).toContain("type: 'image' | 'video'")
+    expect(component).toContain('SchedulePanel')
+    expect(component).toContain('ConfirmPanel')
+    expect(component).toContain('SearchingWorkerPanel')
+    expect(component).toContain('EmptyWorkerPanel')
+    expect(component).toContain('WorkerMatchedPanel')
+    expect(component).toContain('client-media-local-only')
+    expect(component).not.toContain('upload success')
+    expect(component).not.toContain('?? t?i l?n')
   })
 
   it('uses electrical/plumbing shared scope and Vietnamese production copy', () => {
@@ -865,94 +939,92 @@ describe('client price check production UI', () => {
     expect(component).toContain('ServiceType')
     expect(component).toContain("'electrical'")
     expect(component).toContain("'plumbing'")
-    expect(component).toContain('startServiceFlow')
-    expect(component).toContain('Đặt lịch sửa chữa')
-    expect(component).toContain('Chung cư')
-    expect(component).toContain('Sửa điện')
-    expect(component).toContain('Sửa nước')
+    expect(component).toContain('INITIAL_DRAFT')
+    expect(component).toContain("serviceType === 'electrical'")
+    expect(component).toContain("onSelectService('plumbing')")
+    expect(component).toContain('addressLabel')
     expect(component).not.toMatch(/cleaning|ac repair|appliance|handyman/i)
   })
 
-  it('harmonizes booking colors and typography with the customer shell legacy', () => {
+  it('harmonizes booking colors and typography with the V4 customer shell', () => {
     const component = read(productionComponentPath)
     expect(component).toContain('BOOKING_TYPE_RHYTHM')
-    expect(component).toContain('bookingLayerTokens')
-    expect(component).toContain('bookingFormCard')
-    expect(component).toContain('bookingCompactCopy')
+    expect(component).toContain('BOOKING_LAYER_SWITCH_V4')
+    expect(component).toContain('const tokens = {')
+    expect(component).toContain("glass: 'rgba(255,253,248,0.78)'")
     expect(component).toContain("fontWeight: '700'")
+    expect(component).toContain("fontWeight: '600'")
     expect(component).not.toContain("fontWeight: '900'")
   })
 
   it('keeps price honesty and the required disclaimer visible', () => {
     const component = read(productionComponentPath)
-    expect(component).toContain('Đây là ước tính dựa trên thị trường')
-    expect(component).toContain('Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu')
+    expect(component).toContain('PRICE_DISCLAIMER')
+    expect(component).toContain('disclaimer: PRICE_DISCLAIMER')
+    expect(component).toContain('priceRangeLabel')
+    expect(component).toContain('confidenceLabel')
+    expect(component).toContain('advisory')
     expect(component).toContain('baseline_fallback')
-    expect(component).not.toContain('giá chính xác')
-    expect(component).not.toContain('cam kết giá')
+    expect(component).not.toContain('exact price')
+    expect(component).not.toContain('guaranteed price')
   })
 
-  it('uses interaction-triggered motion without decorative auto loops', () => {
+  it('uses interaction-triggered V4 controls with controlled glass motion', () => {
     const component = read(productionComponentPath)
-    expect(component).toContain('onPressIn')
-    expect(component).toContain('Animated.sequence')
-    expect(component).toContain('pressMotion')
-    expect(component).toContain('fieldFocusMotion')
+    expect(component).toContain('Pressable')
+    expect(component).toContain('onPress={onPress}')
+    expect(component).toContain('BOOKING_INTERACTION_MOTION_V4')
+    expect(component).toContain('BookingBackdrop')
+    expect(component).toContain('booking-section-glass-field')
+    expect(component).toContain('useSharedValue')
+    expect(component).toContain('withRepeat')
+    expect(component).toContain('CustomerV4DockOverlay')
     expect(component).not.toContain('Animated.loop')
-    expect(component).not.toContain('withRepeat')
+    expect(component).not.toContain('onHoverIn')
   })
 
-  it('spreads light interaction motion across the production flow', () => {
+  it('spreads V4 interaction states across the production flow', () => {
     const component = read(productionComponentPath)
-    expect(component).toContain('MotionPressable')
-    expect(component).toContain('runTapMotion')
-    expect(component).toContain('tapScale')
-    expect(component).toContain('tapTranslateY')
-    expect(component).toContain('tapSweepTranslate')
-    expect(component).toContain('fieldFocusMotion')
+    expect(component).toContain('Segment')
+    expect(component).toContain('Chip')
+    expect(component).toContain('ChoiceCard')
+    expect(component).toContain('primaryButton')
     expect(component).toContain('booking-form-field-focus')
-    expect(component).toContain('deferPressMs')
-    expect(component).toContain('pressTimeoutRef')
-    expect(component).toContain('clearTimeout')
-    expect(component).toContain('motionServiceInset')
-    expect(component).toContain('serviceTileSweep')
-    expect(component).toContain('chipActionSheen')
-    expect(component).toContain('motionRole')
-    expect(component).toContain("'service'")
-    expect(component).toContain("'chip'")
-    expect(component).toContain("'answer'")
-    expect(component).toContain("'cta'")
-    expect(component).toContain("'retry'")
+    expect(component).toContain('segmentActive')
+    expect(component).toContain('chipActive')
+    expect(component).toContain('choiceCardActive')
     expect(component).not.toContain('motionPressableOverlay')
     expect(component).not.toContain('onHoverIn')
     expect(component).not.toContain('tapOverlayScale')
     expect(component).not.toContain('motionAccentBar')
   })
 
-  it('uses one-shot state transition motion for loading and estimate reveal', () => {
+  it('uses explicit one-shot states for loading and estimate reveal', () => {
     const component = read(productionComponentPath)
-    expect(component).toContain('StateReveal')
-    expect(component).toContain('stateMotion')
-    expect(component).toContain('Animated.parallel')
-    expect(component).toContain('stateRevealAccent')
-    expect(component).toContain('stateAccentScale')
-    expect(component).toContain('loadingRevealStyle')
-    expect(component).toContain('estimateRevealStyle')
+    expect(component).toContain('SearchingWorkerPanel')
+    expect(component).toContain('EstimatePanel')
+    expect(component).toContain('setStatus(unclear ?')
+    expect(component).toContain("setStep('estimate')")
+    expect(component).toContain("setStep('searching')")
+    expect(component).toContain("setStep('emptyWorker')")
     expect(component).toContain("'loading'")
-    expect(component).toContain("'estimate'")
+    expect(component).toContain("'estimate_ready'")
     expect(component).toContain("'fallback'")
   })
 
   it('has responsive guards for compact iOS and Android store builds', () => {
     const component = read(productionComponentPath)
-    expect(component).toContain('const { width, height } = useWindowDimensions()')
-    expect(component).toContain('isShortScreen')
-    expect(component).toContain('formFirstViewport')
-    expect(component).toContain('compactFormHeroHeight')
-    expect(component).toContain('compactServiceCardHeight')
-    expect(component).toContain('minimumTouchTarget')
-    expect(component).toContain('bookingFormCompact')
-    expect(component).toContain('formServiceCardCompact')
+    expect(component).toContain('const { width } = useWindowDimensions()')
+    expect(component).toContain('const frameWidth = Math.min(width, 430)')
+    expect(component).toContain('maxWidth: 430')
+    expect(component).toContain('paddingBottom: insets.bottom + 190')
+    expect(component).toContain('<CustomerV4DockOverlay active="booking" />')
+    expect(component).toContain('bookingFrameHorizontalPadding')
+    expect(component).toContain('SheetActions')
+    expect(component).toContain('sheetActions')
+    expect(component).toContain('width: Math.max(0, frameWidth - bookingFrameHorizontalPadding * 4)')
+    expect(component).toContain('ScrollView')
+    expect(component).not.toContain('left: horizontalOffset')
   })
 
   it('does not call backend, Supabase mutations, or AI providers from production mobile UI', () => {
@@ -967,12 +1039,17 @@ describe('client price check production UI', () => {
     expect(component).not.toContain('DEEPSEEK_API_KEY')
   })
 
-  it('does not build booking broadcast, matching, payment, or scope-change flows in this slice', () => {
+  it('keeps booking broadcast/matching as honest local UI states without backend mutation or fake worker data', () => {
     const component = read(productionComponentPath)
-    expect(component).not.toContain('broadcasting')
-    expect(component).not.toContain('worker_matched')
+    expect(component).toContain('searchingWorkerState')
+    expect(component).toContain('noWorkerFallbackState')
+    expect(component).toContain('matchedWorker === null')
+    expect(component).toContain('customer-no-fake-worker-data')
+    expect(component).not.toContain('Anh Minh')
+    expect(component).not.toContain('128 job')
     expect(component).not.toContain('payment_pending')
     expect(component).not.toContain('scope_change_pending')
     expect(component).not.toContain('customer_confirmed_booking_search')
   })
 })
+

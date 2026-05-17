@@ -1,40 +1,43 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import * as ImagePicker from 'expo-image-picker'
+import { useRouter } from 'expo-router'
 import {
   ActivityIndicator,
-  Animated,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
-  type StyleProp,
   Text,
   TextInput,
   useWindowDimensions,
   View,
-  type ViewStyle,
 } from 'react-native'
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { PROBLEM_CHIPS, type ServiceType } from '@home-services/shared'
+import { CustomerV4DockOverlay } from '@/components/customer/customer-surfaces'
 import { Colors } from '@/constants/colors'
 
-type PriceCheckUiStep = 'form' | 'clarification' | 'estimate'
+type PriceCheckUiStep = 'form' | 'clarification' | 'estimate' | 'schedule' | 'confirm' | 'searching' | 'emptyWorker' | 'matched'
+type PriceCheckUiStatus = 'editing' | 'loading' | 'needs_clarification' | 'estimate_ready' | 'baseline_fallback' | 'fallback' | 'error'
 
-type PriceCheckUiStatus =
-  | 'editing'
-  | 'loading'
-  | 'needs_clarification'
-  | 'estimate_ready'
-  | 'baseline_fallback'
-  | 'fallback'
-  | 'error'
+type MediaDraftItem = {
+  id: string
+  uri: string
+  type: 'image' | 'video'
+  fileName?: string
+  durationMs?: number
+}
 
 type PriceCheckDraft = {
   serviceType: ServiceType
   problemChips: string[]
   description: string
-  photoUris: string[]
+  mediaItems: MediaDraftItem[]
   addressLabel: string
   clarificationAnswers: Record<string, string>
+  timeChoice: 'now' | 'scheduled'
 }
 
 type PriceCheckEstimateCard = {
@@ -42,8 +45,7 @@ type PriceCheckEstimateCard = {
   complexity: 'small' | 'medium' | 'large' | 'unknown'
   priceRangeLabel: string
   confidenceLabel: string
-  reasons: string[]
-  advisory?: string
+  advisory: string
   disclaimer: string
   source: 'kael' | 'baseline_fallback'
 }
@@ -54,78 +56,75 @@ type ClarificationQuestion = {
   options: string[]
 }
 
-type ServiceOption = {
-  type: ServiceType
-  title: string
-  subtitle: string
+type WorkerMatch = {
+  name: string
+  avatarUri?: string
+  rating: string
+  jobCountLabel: string
+  etaLabel: string
 }
-
-type MotionRole = 'service' | 'chip' | 'answer' | 'cta' | 'retry'
 
 const theme = Colors.priceCheck
-const BOOKING_FORM_FIRST_CONTRACT = 'BOOKING_FORM_FIRST_CONTRACT: A2-A5 form-first production price check'
-const BOOKING_LAYER_SWITCH_V14 = 'BOOKING_LAYER_SWITCH_V14: booking uses V12 semantic material layers'
-const BOOKING_TYPE_RHYTHM = 'BOOKING_TYPE_RHYTHM: lighter prototype-aligned weights'
-const BOOKING_INTERACTION_MOTION_V14 = 'BOOKING_INTERACTION_MOTION_V14: distributed tap/focus/reveal motion'
-
-const bookingLayerTokens = {
-  canvas: theme.canvas,
-  base: theme.surface,
-  raised: '#FFFFFF',
-  service: theme.surfaceMint,
-  water: theme.surfaceAqua,
-  warm: theme.surfaceCopper,
-  depth: '#EAF6F1',
-  border: theme.line,
-  borderStrong: theme.lineStrong,
-  text: theme.ink,
-  muted: theme.slate,
-  subtle: theme.muted,
-  primary: theme.forest,
-  primaryDark: theme.forestDark,
-  copper: theme.clay,
-}
-
-const minimumTouchTarget = 44
-const compactFormHeroHeight = 112
-const compactServiceCardHeight = 114
-
+const BOOKING_V4_VISUAL_CONTRACT = 'BOOKING_V4_VISUAL_CONTRACT: production replaces old booking UI with prototype V4 flow'
+const BOOKING_FORM_FIRST_CONTRACT = 'BOOKING_FORM_FIRST_CONTRACT: V4 form-first production price check'
+const BOOKING_LAYER_SWITCH_V4 = 'BOOKING_LAYER_SWITCH_V4: glass mint/warm semantic layers'
+const BOOKING_TYPE_RHYTHM = 'BOOKING_TYPE_RHYTHM: compact V4 typography'
+const BOOKING_INTERACTION_MOTION_V4 = 'BOOKING_INTERACTION_MOTION_V4: tap and reveal only'
+const searchingWorkerState = 'searchingWorkerState: local searching UI until worker backend exists'
+const noWorkerFallbackState = 'noWorkerFallbackState: no fake worker rendered in production'
 const PRICE_DISCLAIMER =
   'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
+const kaelModel8A = require('../../assets/kael-model-8a.png')
+const bookingFrameHorizontalPadding = 16
+
+const tokens = {
+  canvas: '#F4FAF7',
+  base: '#FFFDF8',
+  raised: '#FFFFFF',
+  glass: 'rgba(255,253,248,0.78)',
+  glassSoft: 'rgba(255,255,255,0.58)',
+  glassStrong: 'rgba(255,255,255,0.74)',
+  glassWarm: 'rgba(255,253,246,0.68)',
+  glassBorder: 'rgba(255,255,255,0.82)',
+  glassHighlight: 'rgba(255,255,255,0.70)',
+  glassShadow: '0 24px 70px rgba(13,70,65,0.18)',
+  glassFloatShadow: '0 20px 52px rgba(13,70,65,0.14)',
+  service: '#DCF3EC',
+  water: '#E6F8F6',
+  warm: '#FFF0DE',
+  depth: '#EAF6F1',
+  border: '#D2E8E1',
+  borderStrong: '#A9D9CF',
+  text: '#102B2D',
+  muted: '#667D7A',
+  subtle: '#829A95',
+  primary: '#08786E',
+  primaryDark: '#075F58',
+  copper: '#BB743D',
+}
+const openHomePath = '/(customer)/home'
 
 const INITIAL_DRAFT: PriceCheckDraft = {
   serviceType: 'electrical',
-  problemChips: [],
-  description: '',
-  photoUris: [],
-  addressLabel: 'Chung cư tại TP.HCM',
+  problemChips: ['Ổ cắm nóng'],
+  description: 'Ổ cắm bếp nóng khi bật máy nước nóng...',
+  mediaItems: [],
+  addressLabel: 'Căn hộ TP.HCM',
   clarificationAnswers: {},
+  timeChoice: 'now',
 }
-
-const SERVICES: ServiceOption[] = [
-  {
-    type: 'electrical',
-    title: 'Sửa điện',
-    subtitle: 'Ổ cắm, đèn, aptomat',
-  },
-  {
-    type: 'plumbing',
-    title: 'Sửa nước',
-    subtitle: 'Rò rỉ, lavabo, toilet',
-  },
-]
 
 const QUESTIONS: Record<ServiceType, ClarificationQuestion[]> = {
   electrical: [
     {
-      id: 'breaker',
-      question: 'Aptomat có tự ngắt lại không?',
-      options: ['Có', 'Không', 'Chưa rõ'],
+      id: 'scope',
+      question: 'Ổ cắm nóng ở một vị trí hay nhiều vị trí?',
+      options: ['Một vị trí', 'Nhiều vị trí', 'Chưa rõ'],
     },
     {
-      id: 'burning',
-      question: 'Có mùi khét hoặc vết cháy không?',
-      options: ['Có dấu hiệu', 'Không thấy', 'Cần gửi ảnh'],
+      id: 'breaker',
+      question: 'Aptomat có nhảy lại sau khi bật máy nước nóng không?',
+      options: ['Có', 'Không', 'Chưa thử'],
     },
   ],
   plumbing: [
@@ -137,18 +136,17 @@ const QUESTIONS: Record<ServiceType, ClarificationQuestion[]> = {
     {
       id: 'leak',
       question: 'Nước rò liên tục hay khi sử dụng?',
-      options: ['Liên tục', 'Khi sử dụng', 'Chưa rõ'],
+      options: ['Liên tục', 'Khi dùng', 'Chưa rõ'],
     },
   ],
 }
 
-const ESTIMATE_FIXTURE: PriceCheckEstimateCard = {
-  problemLabel: 'Sự cố cần kiểm tra tại căn hộ',
+const ESTIMATE: PriceCheckEstimateCard = {
+  problemLabel: 'Ổ cắm nóng khi dùng máy nước nóng',
   complexity: 'medium',
-  priceRangeLabel: '320.000 - 480.000đ',
-  confidenceLabel: 'Tham khảo',
-  reasons: ['Nhóm vấn đề phổ biến trong căn hộ.', 'Thợ xác nhận lại trước khi làm.'],
-  advisory: 'Nếu có mùi khét hoặc rò nước liên tục, hãy ngắt nguồn/khóa van trước.',
+  priceRangeLabel: '280k - 420k VND',
+  confidenceLabel: 'Tự tin 72%',
+  advisory: 'Tắt nguồn khu vực ổ cắm nếu có mùi khét hoặc vỏ ổ đổi màu.',
   disclaimer: PRICE_DISCLAIMER,
   source: 'kael',
 }
@@ -156,289 +154,339 @@ const ESTIMATE_FIXTURE: PriceCheckEstimateCard = {
 const FALLBACK_ESTIMATE: PriceCheckEstimateCard = {
   problemLabel: 'Chưa đủ dữ liệu an toàn',
   complexity: 'unknown',
-  priceRangeLabel: 'Chưa thể ước tính',
-  confidenceLabel: 'Cần thêm thông tin',
-  reasons: ['Mô tả hiện tại còn thiếu tín hiệu chính.', 'App không hiển thị giá khi baseline chưa đủ.'],
-  advisory: 'Thêm ảnh hoặc chọn câu trả lời rõ hơn.',
+  priceRangeLabel: 'Cần thêm thông tin',
+  confidenceLabel: 'Cần làm rõ',
+  advisory: 'Thêm ảnh hoặc trả lời câu hỏi để Kael ước tính sát hơn.',
   disclaimer: PRICE_DISCLAIMER,
   source: 'baseline_fallback',
 }
 
 export function ClientPriceCheckFlow() {
+  const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { width, height } = useWindowDimensions()
-  const screenMotion = useRef(new Animated.Value(1)).current
-  const pressMotion = useRef(new Animated.Value(0)).current
-  const fieldFocusMotion = useRef(new Animated.Value(0)).current
+  const { width } = useWindowDimensions()
+  const frameWidth = Math.min(width, 430)
   const [step, setStep] = useState<PriceCheckUiStep>('form')
   const [status, setStatus] = useState<PriceCheckUiStatus>('editing')
   const [draft, setDraft] = useState<PriceCheckDraft>(INITIAL_DRAFT)
-
-  const isCompact = width < 390
-  const isShortScreen = height < 760
-  const formFirstViewport = step === 'form' && (isCompact || isShortScreen)
+  const [matchedWorker] = useState<WorkerMatch | null>(null)
   const questions = QUESTIONS[draft.serviceType]
   const chips = useMemo(() => PROBLEM_CHIPS[draft.serviceType], [draft.serviceType])
   const answeredQuestions = questions.filter((question) => draft.clarificationAnswers[question.id]).length
-  const hasEnoughDescription = draft.description.trim().length >= 16
-  const formComplete = draft.problemChips.length > 0 && hasEnoughDescription
   const clarificationComplete = answeredQuestions === questions.length
   const isEstimateFallback = status === 'baseline_fallback' || status === 'fallback'
-  const estimate = isEstimateFallback ? FALLBACK_ESTIMATE : ESTIMATE_FIXTURE
+  const estimate = isEstimateFallback ? FALLBACK_ESTIMATE : ESTIMATE
 
-  useEffect(() => {
-    screenMotion.setValue(0)
-    Animated.timing(screenMotion, {
-      toValue: 1,
-      duration: 240,
-      useNativeDriver: true,
-    }).start()
-  }, [screenMotion, step, status])
+  const pickMedia = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      setStatus('error')
+      return
+    }
 
-  const runPressMotion = () => {
-    pressMotion.setValue(0)
-    Animated.parallel([
-      Animated.sequence([
-        Animated.timing(pressMotion, {
-          toValue: 1,
-          duration: 120,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pressMotion, {
-          toValue: 0,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start()
-  }
-
-  const runFieldFocusMotion = () => {
-    fieldFocusMotion.setValue(0)
-    Animated.sequence([
-      Animated.timing(fieldFocusMotion, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: false,
-      }),
-      Animated.timing(fieldFocusMotion, {
-        toValue: 0,
-        duration: 260,
-        useNativeDriver: false,
-      }),
-    ]).start()
-  }
-
-  const startServiceFlow = (serviceType: ServiceType) => {
-    runPressMotion()
-    setDraft((current) => ({
-      ...current,
-      serviceType,
-      problemChips: current.serviceType === serviceType ? current.problemChips : [],
-      clarificationAnswers: {},
-    }))
-    setStatus('editing')
-  }
-
-  const toggleChip = (chip: string) => {
-    runPressMotion()
-    setDraft((current) => {
-      const selected = current.problemChips.includes(chip)
-      return {
-        ...current,
-        problemChips: selected
-          ? current.problemChips.filter((item) => item !== chip)
-          : [...current.problemChips, chip].slice(0, 3),
-      }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      quality: 0.82,
+      selectionLimit: 5,
+      videoMaxDuration: 60,
     })
-    setStatus('editing')
-  }
 
-  const answerQuestion = (questionId: string, answer: string) => {
-    runPressMotion()
+    if (result.canceled) return
+
+    const nextItems: MediaDraftItem[] = result.assets.map((asset, index) => ({
+      id: `${Date.now()}-${index}-${asset.assetId ?? asset.uri}`,
+      uri: asset.uri,
+      type: asset.type === 'video' ? 'video' : 'image',
+      fileName: asset.fileName ?? asset.uri.split('/').pop(),
+      durationMs: asset.duration ?? undefined,
+    }))
+
     setDraft((current) => ({
       ...current,
-      clarificationAnswers: {
-        ...current.clarificationAnswers,
-        [questionId]: answer,
-      },
+      mediaItems: [...current.mediaItems, ...nextItems].slice(0, 5),
     }))
-    setStatus('needs_clarification')
-  }
-
-  const resetFlow = () => {
-    runPressMotion()
-    setDraft(INITIAL_DRAFT)
-    setStep('form')
     setStatus('editing')
   }
 
-  const retryPriceCheck = () => {
-    runPressMotion()
-    setStep('form')
-    setStatus('editing')
+  const removeMedia = (id: string) => {
+    setDraft((current) => ({
+      ...current,
+      mediaItems: current.mediaItems.filter((item) => item.id !== id),
+    }))
   }
 
   const continueFlow = () => {
-    runPressMotion()
-
     if (step === 'form') {
-      if (!formComplete) {
-        setStatus('error')
-        return
-      }
       setStep('clarification')
-      setStatus('loading')
-      return
-    }
-
-    if (step === 'clarification' && status === 'loading') {
       setStatus('needs_clarification')
       return
     }
-
     if (step === 'clarification') {
       if (!clarificationComplete) return
-
       const unclear = Object.values(draft.clarificationAnswers).some((answer) => answer === 'Chưa rõ')
       setStep('estimate')
       setStatus(unclear ? 'baseline_fallback' : 'estimate_ready')
       return
     }
-
     if (step === 'estimate') {
-      setStatus(isEstimateFallback ? 'fallback' : 'estimate_ready')
+      setStep('schedule')
+      return
+    }
+    if (step === 'schedule') {
+      setStep('confirm')
+      return
+    }
+    if (step === 'confirm') {
+      setStep('searching')
+      setStatus('loading')
+      return
+    }
+    if (step === 'searching') {
+      if (matchedWorker === null) {
+        setStep('emptyWorker')
+        setStatus('fallback')
+        return
+      }
+      setStep('matched')
+      return
+    }
+    if (step === 'emptyWorker') {
+      setStep('searching')
+      setStatus('loading')
     }
   }
 
   const goBack = () => {
-    runPressMotion()
-    if (step === 'estimate') {
-      setStep('clarification')
-      setStatus('needs_clarification')
-      return
-    }
-    if (step === 'clarification') {
-      setStep('form')
-      setStatus('editing')
-    }
-  }
-
-  const primaryDisabled =
-    (step === 'form' && !formComplete) ||
-    (step === 'clarification' && status !== 'loading' && !clarificationComplete)
-
-  const screenStyle = {
-    opacity: screenMotion,
-    transform: [
-      {
-        translateY: screenMotion.interpolate({
-          inputRange: [0, 1],
-          outputRange: [10, 0],
-        }),
-      },
-    ],
+    if (step === 'form') return
+    if (step === 'clarification') setStep('form')
+    if (step === 'estimate') setStep('clarification')
+    if (step === 'schedule') setStep('estimate')
+    if (step === 'confirm') setStep('schedule')
+    if (step === 'searching' || step === 'emptyWorker') setStep('confirm')
   }
 
   return (
     <View
-      accessibilityLabel={`${BOOKING_FORM_FIRST_CONTRACT}; ${BOOKING_LAYER_SWITCH_V14}; ${BOOKING_TYPE_RHYTHM}; ${BOOKING_INTERACTION_MOTION_V14}`}
+      accessibilityLabel={`${BOOKING_V4_VISUAL_CONTRACT}; ${BOOKING_FORM_FIRST_CONTRACT}; ${BOOKING_LAYER_SWITCH_V4}; ${BOOKING_TYPE_RHYTHM}; ${BOOKING_INTERACTION_MOTION_V4}`}
       style={styles.root}
       testID="production-price-check-flow"
     >
       <View style={styles.hiddenMarker} testID="booking-layer-semantic-switch" />
+      <BookingBackdrop />
+      <BookingAmbientGlassField />
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: insets.top + 14,
-            paddingBottom: insets.bottom + 118,
+            alignSelf: 'center',
+            maxWidth: 430,
+            paddingBottom: insets.bottom + 190,
+            paddingTop: insets.top + 36,
+            width: Math.max(0, frameWidth - bookingFrameHorizontalPadding * 4),
           },
         ]}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
-        <BookingTopBar />
-
-        <Animated.View style={[styles.motionSurface, screenStyle]}>
+        <View style={styles.bookingTopRow}>
+          <Pressable accessibilityLabel="Quay lại" onPress={() => router.push(openHomePath)} style={styles.bookingMiniButton}>
+            <ChevronGlyph />
+          </Pressable>
+          <View style={styles.bookingLocationPill}>
+            <ElectricalGlyph />
+            <Text style={styles.bookingLocationText} numberOfLines={1}>Căn hộ TP.HCM</Text>
+          </View>
+        </View>
+        <View style={styles.bookingSheet}>
+          <GlassSheen />
+          <View style={styles.sheetHandle} />
+          <BookingHeader />
           {step === 'form' ? (
-            <BookingFormSurface
-              chips={chips}
-              draft={draft}
-              fieldFocusMotion={fieldFocusMotion}
-              formFirstViewport={formFirstViewport}
-              isCompact={isCompact}
-              status={status}
-              onDescriptionChange={(description) => {
-                setDraft((current) => ({ ...current, description }))
-                setStatus('editing')
-              }}
-              onFieldFocus={runFieldFocusMotion}
-              onSelectService={startServiceFlow}
-              onToggleChip={toggleChip}
-            />
-          ) : null}
-
-          {step === 'clarification' ? (
-            status === 'loading' ? (
-              <StateReveal role="loading">
-                <KaelLoadingPanel />
-              </StateReveal>
-            ) : (
-              <KaelQuestionSheet
+            <>
+              <BookingFormSurface
+                chips={chips}
                 draft={draft}
-                questions={questions}
-                onAnswer={answerQuestion}
+                onDescriptionChange={(description) => setDraft((current) => ({ ...current, description }))}
+                onPickMedia={pickMedia}
+                onRemoveMedia={removeMedia}
+                onSelectService={(serviceType) =>
+                  setDraft((current) => ({ ...current, serviceType, clarificationAnswers: {}, problemChips: serviceType === 'electrical' ? ['Ổ cắm nóng'] : ['Rò rỉ'] }))
+                }
+                onToggleChip={(chip) =>
+                  setDraft((current) => ({
+                    ...current,
+                    problemChips: current.problemChips.includes(chip)
+                      ? current.problemChips.filter((item) => item !== chip)
+                      : [...current.problemChips, chip].slice(0, 3),
+                  }))
+                }
               />
-            )
+              <TrustRail active="estimate" />
+              <EstimatePanel estimate={estimate} isFallback={isEstimateFallback} />
+              <SchedulePanel draft={draft} onSelect={(timeChoice) => setDraft((current) => ({ ...current, timeChoice }))} />
+              <ConfirmPanel draft={draft} estimate={estimate} />
+              <MatchingStatesPanel />
+            </>
           ) : null}
-
-          {step === 'estimate' ? (
-            <StateReveal role={isEstimateFallback ? 'fallback' : 'estimate'}>
-              <KaelEstimatePanel
-                draft={draft}
-                estimate={estimate}
-                isFallback={isEstimateFallback}
-                onRetry={retryPriceCheck}
-              />
-            </StateReveal>
-          ) : null}
-        </Animated.View>
+          {step === 'clarification' ? <ClarificationPanel draft={draft} questions={questions} onAnswer={(questionId, answer) => setDraft((current) => ({ ...current, clarificationAnswers: { ...current.clarificationAnswers, [questionId]: answer } }))} /> : null}
+          {step === 'estimate' ? <><TrustRail active="estimate" /><EstimatePanel estimate={estimate} isFallback={isEstimateFallback} /></> : null}
+          {step === 'schedule' ? <SchedulePanel draft={draft} onSelect={(timeChoice) => setDraft((current) => ({ ...current, timeChoice }))} /> : null}
+          {step === 'confirm' ? <ConfirmPanel draft={draft} estimate={estimate} /> : null}
+          {step === 'searching' ? <SearchingWorkerPanel draft={draft} /> : null}
+          {step === 'emptyWorker' ? <EmptyWorkerPanel /> : null}
+          {step === 'matched' ? matchedWorker ? <WorkerMatchedPanel worker={matchedWorker} /> : <EmptyWorkerPanel /> : null}
+          <SheetActions
+            onPrimary={continueFlow}
+            onSecondary={step === 'form' ? () => setDraft(INITIAL_DRAFT) : goBack}
+            primaryLabel={primaryLabel(step, status)}
+            progress={progressForStep(step, status)}
+            secondaryLabel={step === 'form' ? 'Sửa lại' : 'Quay lại'}
+          />
+        </View>
       </ScrollView>
-
-      <BookingBottomDock
-        bottomInset={insets.bottom}
-        primaryDisabled={primaryDisabled}
-        primaryLabel={primaryLabel(step, status)}
-        progress={progressForStep(step, status)}
-        secondaryLabel={step === 'form' ? 'Làm lại' : 'Quay lại'}
-        onPrimary={continueFlow}
-        onSecondary={step === 'form' ? resetFlow : goBack}
-      />
+      <CustomerV4DockOverlay active="booking" />
     </View>
   )
 }
 
-function BookingTopBar() {
+function BookingHeader() {
   return (
-    <View style={styles.topBar}>
-      <View style={styles.brandRow}>
-        <View style={styles.brandMark}>
-          <Text style={styles.brandMarkText}>H</Text>
-        </View>
-        <View style={styles.brandCopy}>
-          <Text style={styles.appName} numberOfLines={1}>
-            HomeServices
-          </Text>
-          <Text style={styles.appMeta} numberOfLines={1}>
-            Đặt lịch sửa chữa
-          </Text>
-        </View>
-      </View>
-      <View style={styles.scopePill}>
-        <Text style={styles.scopePillText} numberOfLines={1}>
-          Điện / nước
+    <View style={styles.bookingTitle}>
+      <View>
+        <Text style={styles.flowBadge} numberOfLines={1}>
+          LUỒNG V4
         </Text>
+        <Text style={styles.pageTitle} numberOfLines={1}>
+          Kiểm giá đầy đủ
+        </Text>
+      </View>
+      <View style={styles.kaelHeaderMascot}>
+        <GlassSheen />
+        <Image resizeMode="contain" source={kaelModel8A} style={styles.kaelHeaderImage} />
+      </View>
+    </View>
+  )
+}
+
+function BookingBackdrop() {
+  const pulse = useSharedValue(0)
+
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(1, { duration: 1900, easing: Easing.inOut(Easing.quad) }), -1, true)
+  }, [pulse])
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: 0.20 + pulse.value * 0.14,
+    transform: [{ translateX: -75 }, { scale: 0.96 + pulse.value * 0.1 }],
+  }))
+  const pinStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -9 }, { scale: 1 + pulse.value * 0.08 }],
+  }))
+
+  return (
+    <View pointerEvents="none" style={styles.bookingBackdrop}>
+      <Animated.View style={[styles.backdropGlow, glowStyle]} />
+      <View style={[styles.backdropLine, styles.backdropLineOne]} />
+      <View style={[styles.backdropLine, styles.backdropLineTwo]} />
+      <View style={[styles.backdropRoom, styles.backdropRoomOne]} />
+      <View style={[styles.backdropRoom, styles.backdropRoomTwo]} />
+      <Animated.View style={[styles.backdropPin, pinStyle]} />
+    </View>
+  )
+}
+
+function BookingAmbientGlassField() {
+  const drift = useSharedValue(0)
+
+  useEffect(() => {
+    drift.value = withRepeat(withTiming(1, { duration: 5800, easing: Easing.inOut(Easing.quad) }), -1, true)
+  }, [drift])
+
+  const orbStyle = useAnimatedStyle(() => ({
+    opacity: 0.11 + drift.value * 0.06,
+    transform: [{ translateY: -8 + drift.value * 16 }, { scale: 0.98 + drift.value * 0.04 }],
+  }))
+  const lineStyle = useAnimatedStyle(() => ({
+    opacity: 0.08 + drift.value * 0.05,
+    transform: [{ rotate: '-12deg' }, { translateX: -10 + drift.value * 20 }],
+  }))
+
+  return (
+    <View pointerEvents="none" style={styles.bookingAmbientField} testID="booking-section-glass-field">
+      <Animated.View style={[styles.bookingAmbientMint, orbStyle]} />
+      <View style={styles.bookingAmbientWarm} />
+      <Animated.View style={[styles.bookingAmbientLine, lineStyle]} />
+    </View>
+  )
+}
+
+function GlassSheen() {
+  return (
+    <>
+      <View pointerEvents="none" style={styles.glassTopHighlight} />
+      <View pointerEvents="none" style={styles.glassSheen} />
+    </>
+  )
+}
+
+function ChevronGlyph() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      <Path d="m14.5 6.5-5 5.5 5 5.5" stroke={tokens.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
+function TrustRail({ active }: { active: 'describe' | 'estimate' | 'confirm' | 'match' }) {
+  const steps = [
+    ['describe', 'Mô tả'],
+    ['estimate', 'Ước tính'],
+    ['confirm', 'Xác nhận'],
+    ['match', 'Tìm thợ'],
+  ] as const
+  const activeIndex = Math.max(steps.findIndex(([key]) => key === active), 0)
+  return (
+    <View style={styles.trustRail}>
+      <GlassSheen />
+      {steps.map(([key, label], index) => {
+        const isActive = index === activeIndex
+        const isDone = index < activeIndex
+        return (
+          <View key={key} style={styles.trustStep}>
+            <View style={[styles.trustDot, isActive || isDone ? styles.trustDotActive : null]} />
+            <Text style={[styles.trustLabel, isActive || isDone ? styles.trustLabelActive : null]} numberOfLines={1}>
+              {label}
+            </Text>
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+function MatchingStatesPanel() {
+  return (
+    <View style={styles.flowCard}>
+      <GlassSheen />
+      <Text style={styles.cardTitle}>Trạng thái tìm thợ</Text>
+      <View style={styles.stateGrid}>
+        {['Đang tìm', 'Thử thợ khác', 'Không có thợ', 'Đã ghép'].map((state, index) => (
+          <View key={state} style={styles.stateItem}>
+            <View style={[styles.stateDot, index === 0 ? styles.stateDotActive : null]} />
+            <Text style={styles.stateText} numberOfLines={1}>
+              {state}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <View style={styles.actionRow}>
+        <Pressable style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText} numberOfLines={1}>Hủy tìm</Text>
+        </Pressable>
+        <Pressable style={styles.primaryButton}>
+          <Text style={styles.primaryButtonText} numberOfLines={1}>Thử lại</Text>
+        </Pressable>
       </View>
     </View>
   )
@@ -447,296 +495,80 @@ function BookingTopBar() {
 function BookingFormSurface({
   chips,
   draft,
-  fieldFocusMotion,
-  formFirstViewport,
-  isCompact,
-  status,
   onDescriptionChange,
-  onFieldFocus,
+  onPickMedia,
+  onRemoveMedia,
   onSelectService,
   onToggleChip,
 }: {
   chips: readonly string[]
   draft: PriceCheckDraft
-  fieldFocusMotion: Animated.Value
-  formFirstViewport: boolean
-  isCompact: boolean
-  status: PriceCheckUiStatus
   onDescriptionChange: (description: string) => void
-  onFieldFocus: () => void
+  onPickMedia: () => void
+  onRemoveMedia: (id: string) => void
   onSelectService: (serviceType: ServiceType) => void
   onToggleChip: (chip: string) => void
 }) {
   return (
-    <View
-      style={[styles.bookingFormShell, formFirstViewport ? styles.bookingFormCompact : null]}
-      testID="booking-form-first-shell"
-    >
-      <View
-        style={[
-          styles.formHero,
-          formFirstViewport ? styles.formHeroCompact : null,
-          { minHeight: formFirstViewport ? compactFormHeroHeight : 142 },
-        ]}
-      >
-        <View style={styles.formHeroDepthLayer} />
-        <View style={styles.bookingCompactCopy}>
-          <Text style={styles.formEyebrow} numberOfLines={1}>
-            AI Price Check
-          </Text>
-          <Text style={styles.formTitle} numberOfLines={2}>
-            Kiểm giá trước khi sửa
-          </Text>
-          <Text style={styles.formSubtitle} numberOfLines={2}>
-            Chọn nhóm việc, mô tả ngắn.
-          </Text>
+    <View style={styles.formStack} testID="booking-form-first-shell">
+      <View style={styles.segmented}>
+        <Segment label="Sửa điện" active={draft.serviceType === 'electrical'} onPress={() => onSelectService('electrical')} />
+        <Segment label="Sửa nước" active={draft.serviceType === 'plumbing'} onPress={() => onSelectService('plumbing')} />
+      </View>
+      <SoftField title="Vấn đề" meta="Chọn">
+        <View style={styles.pillRow}>
+          {chips.slice(0, 6).map((chip) => (
+            <Chip key={chip} active={draft.problemChips.includes(chip)} label={chip} onPress={() => onToggleChip(chip)} />
+          ))}
         </View>
-        <View style={styles.formHeroGlyph}>
-          <ServiceGlyph type={draft.serviceType} />
-        </View>
-      </View>
-
-      <View style={styles.contextStrip}>
-        <MiniSignal label="Địa chỉ" value={draft.addressLabel} />
-        <MiniSignal label="Scope" value={draft.serviceType === 'electrical' ? 'Điện' : 'Nước'} />
-      </View>
-
-      <FormServiceSegment
-        selectedService={draft.serviceType}
-        compact={isCompact}
-        onSelectService={onSelectService}
-      />
-
-      <ProblemChipField
-        chips={chips}
-        selectedChips={draft.problemChips}
-        hasError={status === 'error' && draft.problemChips.length === 0}
-        onToggleChip={onToggleChip}
-      />
-
-      <DescriptionField
-        description={draft.description}
-        fieldFocusMotion={fieldFocusMotion}
-        hasError={status === 'error' && !draft.description.trim()}
-        onChangeDescription={onDescriptionChange}
-        onFocus={onFieldFocus}
-      />
-
-      <EvidenceDraftSlots photoCount={draft.photoUris.length} />
-    </View>
-  )
-}
-
-function FormServiceSegment({
-  selectedService,
-  compact,
-  onSelectService,
-}: {
-  selectedService: ServiceType
-  compact: boolean
-  onSelectService: (serviceType: ServiceType) => void
-}) {
-  return (
-    <View style={styles.serviceSegment}>
-      {SERVICES.map((service) => {
-        const active = selectedService === service.type
-        return (
-          <MotionPressable
-            key={service.type}
-            motionRole="service"
-            deferPressMs={120}
-            onPress={() => onSelectService(service.type)}
-            style={[
-              styles.formServiceCard,
-              compact ? styles.formServiceCardCompact : null,
-              active ? styles.formServiceCardActive : null,
-              service.type === 'plumbing' && active ? styles.formServiceCardWater : null,
-            ]}
-            pressedStyle={styles.formServiceCardPressed}
-            contentStyle={styles.formServiceContent}
-          >
-            <View style={[styles.serviceIconPlate, service.type === 'plumbing' ? styles.serviceIconPlateWater : null]}>
-              <ServiceGlyph type={service.type} />
-            </View>
-            <Text style={styles.serviceTitle} numberOfLines={1}>
-              {service.title}
-            </Text>
-            <Text style={styles.serviceSubtitle} numberOfLines={2}>
-              {service.subtitle}
-            </Text>
-          </MotionPressable>
-        )
-      })}
-    </View>
-  )
-}
-
-function ProblemChipField({
-  chips,
-  selectedChips,
-  hasError,
-  onToggleChip,
-}: {
-  chips: readonly string[]
-  selectedChips: string[]
-  hasError: boolean
-  onToggleChip: (chip: string) => void
-}) {
-  return (
-    <View style={styles.bookingFormCard}>
-      <FieldHeader title="Vấn đề" meta={selectedChips.length > 0 ? `${selectedChips.length}/3` : 'Chọn'} />
-      <View style={styles.chipGrid}>
-        {chips.slice(0, 6).map((chip) => {
-          const active = selectedChips.includes(chip)
-          return (
-            <MotionPressable
-              key={chip}
-              motionRole="chip"
-              onPress={() => onToggleChip(chip)}
-              style={[styles.problemChip, active ? styles.problemChipActive : null]}
-              pressedStyle={styles.problemChipPressed}
-              contentStyle={styles.problemChipContent}
-            >
-              <View style={[styles.chipDot, active ? styles.chipDotActive : null]} />
-              <Text style={[styles.problemChipText, active ? styles.problemChipTextActive : null]} numberOfLines={1}>
-                {chip}
-              </Text>
-            </MotionPressable>
-          )
-        })}
-      </View>
-      {hasError ? <Text style={styles.inlineError}>Chọn ít nhất một vấn đề.</Text> : null}
-    </View>
-  )
-}
-
-function DescriptionField({
-  description,
-  fieldFocusMotion,
-  hasError,
-  onChangeDescription,
-  onFocus,
-}: {
-  description: string
-  fieldFocusMotion: Animated.Value
-  hasError: boolean
-  onChangeDescription: (description: string) => void
-  onFocus: () => void
-}) {
-  const borderColor = fieldFocusMotion.interpolate({
-    inputRange: [0, 1],
-    outputRange: [hasError ? theme.danger : bookingLayerTokens.border, bookingLayerTokens.primary],
-  })
-
-  return (
-    <View style={styles.bookingFormCard} testID="booking-form-field-focus">
-      <FieldHeader title="Mô tả" meta={`${description.trim().length}/160`} />
-      <Animated.View style={[styles.textAreaFrame, { borderColor }]}>
+      </SoftField>
+      <SoftField title="Mô tả" meta={`${draft.description.trim().length}/160`}>
         <TextInput
           multiline
-          onChangeText={onChangeDescription}
-          onFocus={onFocus}
-          placeholder="Ví dụ: ổ cắm bếp nóng, có mùi khét..."
-          placeholderTextColor={theme.muted}
+          onChangeText={onDescriptionChange}
+          placeholder="Ổ cắm bếp nóng khi bật máy nước nóng..."
+          placeholderTextColor={tokens.subtle}
           style={styles.descriptionInput}
           textAlignVertical="top"
-          value={description}
+          value={draft.description}
+          testID="booking-form-field-focus"
         />
-      </Animated.View>
-      {hasError ? <Text style={styles.inlineError}>Thêm vị trí và dấu hiệu chính.</Text> : null}
-    </View>
-  )
-}
-
-function EvidenceDraftSlots({ photoCount }: { photoCount: number }) {
-  return (
-    <View style={styles.bookingFormCard}>
-      <FieldHeader title="Ảnh" meta={photoCount > 0 ? `${photoCount}` : 'Tùy chọn'} />
-      <View style={styles.mediaRow}>
-        {[0, 1, 2].map((index) => (
-          <View key={index} style={styles.mediaSlot}>
-            <View style={styles.mediaIconDot}>
-              <CameraGlyph />
-            </View>
-            <Text style={styles.mediaSlotText} numberOfLines={1}>
-              {index === 0 ? 'Hiện trạng' : 'Thêm'}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  )
-}
-
-function KaelLoadingPanel() {
-  return (
-    <View style={styles.loadingCard}>
-      <View style={styles.loadingIconRing}>
-        <ActivityIndicator color={theme.forest} />
-      </View>
-      <Text style={styles.loadingTitle} numberOfLines={2}>
-        Kael đang đọc mô tả
-      </Text>
-      <Text style={styles.loadingText} numberOfLines={2}>
-        Chuẩn bị câu hỏi cần thiết.
-      </Text>
-    </View>
-  )
-}
-
-function KaelQuestionSheet({
-  draft,
-  questions,
-  onAnswer,
-}: {
-  draft: PriceCheckDraft
-  questions: ClarificationQuestion[]
-  onAnswer: (questionId: string, answer: string) => void
-}) {
-  return (
-    <View style={styles.questionSheet}>
-      <View style={styles.summaryStrip}>
-        <View style={styles.summaryIcon}>
-          <ServiceGlyph type={draft.serviceType} />
-        </View>
-        <View style={styles.summaryCopy}>
-          <Text style={styles.summaryLabel} numberOfLines={1}>
-            Kael hỏi thêm
+      </SoftField>
+      <EvidenceDraftSlots mediaItems={draft.mediaItems} onPickMedia={onPickMedia} onRemoveMedia={onRemoveMedia} />
+      <View style={styles.clarifyCard}>
+        <GlassSheen />
+        <View style={styles.cardMetaRow}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            Quản Gia Kael hỏi thêm
           </Text>
-          <Text style={styles.summaryTitle} numberOfLines={1}>
-            {draft.problemChips[0] ?? 'Vấn đề đã chọn'}
+          <Text style={styles.statusText} numberOfLines={1}>
+            0-2
           </Text>
         </View>
+        <Text style={styles.clarifyItem} numberOfLines={2}>
+          Ổ cắm nóng ở một vị trí hay nhiều vị trí?
+        </Text>
+        <Text style={styles.clarifyItem} numberOfLines={2}>
+          Aptomat có nhảy lại sau khi bật máy nước nóng không?
+        </Text>
       </View>
+    </View>
+  )
+}
 
+function ClarificationPanel({ draft, questions, onAnswer }: { draft: PriceCheckDraft; questions: ClarificationQuestion[]; onAnswer: (questionId: string, answer: string) => void }) {
+  return (
+    <View style={styles.formStack}>
       {questions.map((question, index) => (
-        <View key={question.id} style={styles.questionCard}>
-          <View style={styles.questionIndex}>
-            <Text style={styles.questionIndexText}>{index + 1}</Text>
-          </View>
-          <View style={styles.questionBody}>
-            <Text style={styles.questionText} numberOfLines={2}>
-              {question.question}
-            </Text>
-            <View style={styles.answerGrid}>
-              {question.options.map((option) => {
-                const active = draft.clarificationAnswers[question.id] === option
-                return (
-                  <MotionPressable
-                    key={option}
-                    motionRole="answer"
-                    onPress={() => onAnswer(question.id, option)}
-                    style={[styles.answerChip, active ? styles.answerChipActive : null]}
-                    pressedStyle={styles.answerChipPressed}
-                    contentStyle={styles.answerChipContent}
-                  >
-                    <Text style={[styles.answerText, active ? styles.answerTextActive : null]} numberOfLines={1}>
-                      {option}
-                    </Text>
-                  </MotionPressable>
-                )
-              })}
-            </View>
+        <View key={question.id} style={styles.flowCard}>
+          <GlassSheen />
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {index + 1}. {question.question}
+          </Text>
+          <View style={styles.pillRow}>
+            {question.options.map((option) => (
+              <Chip key={option} active={draft.clarificationAnswers[question.id] === option} label={option} onPress={() => onAnswer(question.id, option)} />
+            ))}
           </View>
         </View>
       ))}
@@ -744,382 +576,240 @@ function KaelQuestionSheet({
   )
 }
 
-function KaelEstimatePanel({
-  draft,
-  estimate,
-  isFallback,
-  onRetry,
-}: {
-  draft: PriceCheckDraft
-  estimate: PriceCheckEstimateCard
-  isFallback: boolean
-  onRetry: () => void
-}) {
+function EstimatePanel({ estimate, isFallback }: { estimate: PriceCheckEstimateCard; isFallback: boolean }) {
   return (
-    <View style={[styles.estimateCard, isFallback ? styles.fallbackCard : null]}>
-      <View style={styles.estimateTop}>
-        <View style={styles.estimateIcon}>
-          <ServiceGlyph type={draft.serviceType} />
-        </View>
-        <View style={styles.estimateHeading}>
-          <Text style={styles.estimateLabel} numberOfLines={1}>
-            {draft.addressLabel}
-          </Text>
-          <Text style={styles.estimateProblem} numberOfLines={2}>
-            {estimate.problemLabel}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.priceBand}>
-        <Text style={styles.priceLabel} numberOfLines={1}>
-          {estimate.source === 'kael' ? 'Khoảng giá tham khảo' : 'Trạng thái'}
+    <View style={[styles.estimateCard, isFallback ? styles.warningCard : null]}>
+      <GlassSheen />
+      <View style={styles.cardMetaRow}>
+        <Text style={styles.kicker} numberOfLines={1}>
+          KHUNG ƯỚC TÍNH
         </Text>
-        <Text style={[styles.priceValue, isFallback ? styles.priceValueMuted : null]} numberOfLines={2}>
+        <Text style={styles.statusText} numberOfLines={1}>
+          {estimate.confidenceLabel}
+        </Text>
+      </View>
+      <View style={styles.priceRange}>
+        <Text style={styles.priceValue} numberOfLines={2}>
           {estimate.priceRangeLabel}
         </Text>
         <Text style={styles.priceMeta} numberOfLines={1}>
-          {estimate.confidenceLabel} · {complexityLabel(estimate.complexity)}
+          {complexityLabel(estimate.complexity)} · {estimate.problemLabel}
         </Text>
       </View>
+      <View style={styles.summaryGrid}>
+        <SummaryCell label="Độ phức tạp" value={complexityLabel(estimate.complexity)} />
+        <SummaryCell label="Gợi ý" value={estimate.advisory} />
+      </View>
+      <Text selectable style={styles.disclaimerText}>
+        {estimate.disclaimer}
+      </Text>
+    </View>
+  )
+}
 
-      <View style={styles.reasonStack}>
-        {estimate.reasons.map((reason) => (
-          <View key={reason} style={styles.reasonRow}>
-            <View style={styles.reasonBullet} />
-            <Text style={styles.reasonText} numberOfLines={2}>
-              {reason}
+function SchedulePanel({ draft, onSelect }: { draft: PriceCheckDraft; onSelect: (choice: PriceCheckDraft['timeChoice']) => void }) {
+  return (
+    <View style={styles.flowCard}>
+      <GlassSheen />
+      <Text style={styles.cardTitle}>Thời gian</Text>
+      <View style={styles.twoCol}>
+        <ChoiceCard active={draft.timeChoice === 'now'} title="Ngay bây giờ" text="Ưu tiên tìm thợ gần nhất" onPress={() => onSelect('now')} />
+        <ChoiceCard active={draft.timeChoice === 'scheduled'} title="Đặt lịch" text="Hôm nay 18:30" onPress={() => onSelect('scheduled')} />
+      </View>
+    </View>
+  )
+}
+
+function ConfirmPanel({ draft, estimate }: { draft: PriceCheckDraft; estimate: PriceCheckEstimateCard }) {
+  return (
+    <View style={styles.flowCard}>
+      <GlassSheen />
+      <View style={styles.cardMetaRow}>
+        <Text style={styles.cardTitle}>Xác nhận tìm thợ</Text>
+        <Text style={styles.statusText}>Bắt buộc</Text>
+      </View>
+      <View style={styles.summaryGrid}>
+        <SummaryCell label="Dịch vụ" value={draft.serviceType === 'electrical' ? 'Sửa điện' : 'Sửa nước'} />
+        <SummaryCell label="Vấn đề" value={draft.problemChips[0] ?? 'Đã mô tả'} />
+        <SummaryCell label="Địa chỉ" value={draft.addressLabel} />
+        <SummaryCell label="Thời gian" value={draft.timeChoice === 'now' ? 'Ngay bây giờ' : 'Hôm nay 18:30'} />
+        <SummaryCell label="Ước giá" value={estimate.priceRangeLabel} />
+        <SummaryCell label="Phí nền tảng" value="7.5%" />
+      </View>
+      <Text selectable style={styles.disclaimerText}>
+        {PRICE_DISCLAIMER}
+      </Text>
+    </View>
+  )
+}
+
+function SearchingWorkerPanel({ draft }: { draft: PriceCheckDraft }) {
+  return (
+    <View accessibilityLabel={searchingWorkerState} style={styles.loadingCard}>
+      <GlassSheen />
+      <ActivityIndicator color={tokens.primary} />
+      <Text style={styles.loadingTitle}>Đang tìm thợ phù hợp</Text>
+      <Text style={styles.loadingText}>{draft.timeChoice === 'now' ? 'Ưu tiên thợ gần căn hộ của bạn.' : 'Đang kiểm tra lịch hẹn phù hợp.'}</Text>
+      <View style={styles.stateGrid}>
+        {['Đang tìm', 'Thử thợ khác', 'Không có thợ', 'Đã ghép'].map((state, index) => (
+          <View key={state} style={styles.stateItem}>
+            <View style={[styles.stateDot, index === 0 ? styles.stateDotActive : null]} />
+            <Text style={styles.stateText} numberOfLines={1}>
+              {state}
             </Text>
           </View>
         ))}
       </View>
-
-      {estimate.advisory ? (
-        <View style={styles.advisoryBox}>
-          <Text style={styles.advisoryText} numberOfLines={2}>
-            {estimate.advisory}
-          </Text>
-        </View>
-      ) : null}
-
-      <View style={styles.disclaimerBox}>
-        <Text selectable style={styles.disclaimerText}>
-          {estimate.disclaimer}
-        </Text>
-      </View>
-
-      {isFallback ? (
-        <MotionPressable
-          motionRole="retry"
-          onPress={onRetry}
-          style={styles.retryInlineButton}
-          pressedStyle={styles.retryInlineButtonPressed}
-          contentStyle={styles.retryInlineContent}
-        >
-          <Text style={styles.retryInlineText} numberOfLines={1}>
-            Sửa mô tả
-          </Text>
-        </MotionPressable>
-      ) : null}
     </View>
   )
 }
 
-function BookingBottomDock({
-  bottomInset,
-  primaryDisabled,
+function EmptyWorkerPanel() {
+  return (
+    <View accessibilityLabel={noWorkerFallbackState} style={styles.warningCard} testID="customer-no-fake-worker-data">
+      <GlassSheen />
+      <Text style={styles.cardTitle}>Chưa có thợ phù hợp</Text>
+      <Text style={styles.panelText}>Production không hiển thị dữ liệu thợ giả. Bạn có thể thử lại hoặc chỉnh yêu cầu.</Text>
+    </View>
+  )
+}
+
+function WorkerMatchedPanel({ worker }: { worker: WorkerMatch }) {
+  return (
+    <View style={styles.flowCard}>
+      <GlassSheen />
+      <Text style={styles.cardTitle}>Đã ghép thợ</Text>
+      <View style={styles.workerRow}>
+        <View style={styles.workerAvatar}>{worker.avatarUri ? <Image source={{ uri: worker.avatarUri }} style={styles.workerImage} /> : <ElectricalGlyph />}</View>
+        <View style={styles.workerCopy}>
+          <Text style={styles.workerName}>{worker.name}</Text>
+          <Text style={styles.panelText}>{worker.rating} · {worker.jobCountLabel} · {worker.etaLabel}</Text>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+function EvidenceDraftSlots({ mediaItems, onPickMedia, onRemoveMedia }: { mediaItems: MediaDraftItem[]; onPickMedia: () => void; onRemoveMedia: (id: string) => void }) {
+  return (
+    <SoftField title="Ảnh / video" meta={mediaItems.length > 0 ? `${mediaItems.length}/5` : 'Tùy chọn'} testID="client-media-local-only">
+      <View style={styles.mediaGrid}>
+        {mediaItems.map((item) => (
+          <Pressable key={item.id} accessibilityRole="button" onPress={() => onRemoveMedia(item.id)} style={styles.mediaTile}>
+            {item.type === 'image' ? <Image source={{ uri: item.uri }} style={styles.mediaPreview} resizeMode="cover" /> : <Text style={styles.mediaText}>Video</Text>}
+            <Text style={styles.mediaText} numberOfLines={1}>
+              Gỡ
+            </Text>
+          </Pressable>
+        ))}
+        {mediaItems.length < 5 ? (
+          <Pressable accessibilityRole="button" onPress={onPickMedia} style={styles.mediaTile}>
+            <CameraGlyph />
+            <Text style={styles.mediaText} numberOfLines={2}>
+              Thêm ảnh/video
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </SoftField>
+  )
+}
+
+function SheetActions({
+  onPrimary,
+  onSecondary,
   primaryLabel,
   progress,
   secondaryLabel,
-  onPrimary,
-  onSecondary,
 }: {
-  bottomInset: number
-  primaryDisabled: boolean
+  onPrimary: () => void
+  onSecondary: () => void
   primaryLabel: string
   progress: number
   secondaryLabel: string
-  onPrimary: () => void
-  onSecondary: () => void
 }) {
   return (
-    <View style={[styles.bottomBar, { paddingBottom: Math.max(bottomInset + 10, 18) }]}>
-      <View style={styles.bottomProgressTrack}>
-        <View style={[styles.bottomProgressFill, { width: `${progress}%` }]} />
+    <View style={styles.sheetActions}>
+      <GlassSheen />
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
       <View style={styles.actionRow}>
-        <MotionPressable
-          motionRole="retry"
-          onPress={onSecondary}
-          style={styles.secondaryButton}
-          pressedStyle={styles.secondaryButtonPressed}
-          contentStyle={styles.ctaContent}
-        >
-          <Text style={styles.secondaryButtonText} numberOfLines={1}>
-            {secondaryLabel}
-          </Text>
-        </MotionPressable>
-        <MotionPressable
-          disabled={primaryDisabled}
-          motionRole="cta"
-          onPress={onPrimary}
-          style={[styles.primaryButton, primaryDisabled ? styles.primaryButtonDisabled : null]}
-          pressedStyle={primaryDisabled ? null : styles.primaryButtonPressed}
-          contentStyle={styles.ctaContent}
-        >
-          <Text style={styles.primaryButtonText} numberOfLines={1}>
-            {primaryLabel}
-          </Text>
-        </MotionPressable>
+        <Pressable onPress={onSecondary} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText} numberOfLines={1}>{secondaryLabel}</Text>
+        </Pressable>
+        <Pressable onPress={onPrimary} style={styles.primaryButton}>
+          <Text style={styles.primaryButtonText} numberOfLines={1}>{primaryLabel}</Text>
+        </Pressable>
       </View>
     </View>
   )
 }
 
-function FieldHeader({ title, meta }: { title: string; meta: string }) {
+function SoftField({ children, meta, testID, title }: { children: ReactNode; meta?: string; testID?: string; title: string }) {
   return (
-    <View style={styles.fieldHeader}>
-      <Text style={styles.fieldTitle} numberOfLines={1}>
-        {title}
-      </Text>
-      <Text style={styles.fieldMeta} numberOfLines={1}>
-        {meta}
-      </Text>
-    </View>
-  )
-}
-
-function MiniSignal({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.miniSignal}>
-      <Text style={styles.miniSignalLabel} numberOfLines={1}>
-        {label}
-      </Text>
-      <Text style={styles.miniSignalValue} numberOfLines={1}>
-        {value}
-      </Text>
-    </View>
-  )
-}
-
-function StateReveal({
-  children,
-  role,
-}: {
-  children: ReactNode
-  role: 'loading' | 'estimate' | 'fallback'
-}) {
-  const stateMotion = useRef(new Animated.Value(0)).current
-
-  useEffect(() => {
-    stateMotion.setValue(0)
-    Animated.parallel([
-      Animated.timing(stateMotion, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }, [stateMotion, role])
-
-  const loadingRevealStyle = {
-    opacity: stateMotion,
-    transform: [
-      {
-        translateY: stateMotion.interpolate({
-          inputRange: [0, 1],
-          outputRange: [12, 0],
-        }),
-      },
-    ],
-  }
-
-  const estimateRevealStyle = {
-    opacity: stateMotion,
-    transform: [
-      {
-        scale: stateMotion.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.985, 1],
-        }),
-      },
-    ],
-  }
-
-  const stateAccentScale = stateMotion.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 1],
-  })
-
-  return (
-    <Animated.View
-      style={[
-        styles.stateRevealShell,
-        role === 'loading' ? loadingRevealStyle : estimateRevealStyle,
-      ]}
-    >
-      <Animated.View
-        style={[
-          styles.stateRevealAccent,
-          role === 'fallback' ? styles.stateRevealAccentWarning : null,
-          { transform: [{ scaleX: stateAccentScale }] },
-        ]}
-      />
+    <View style={styles.softField} testID={testID}>
+      <GlassSheen />
+      <View style={styles.cardMetaRow}>
+        <Text style={styles.fieldTitle}>{title}</Text>
+        {meta ? <Text style={styles.statusText}>{meta}</Text> : null}
+      </View>
       {children}
-    </Animated.View>
+    </View>
   )
 }
 
-function MotionPressable({
-  children,
-  contentStyle,
-  deferPressMs = 0,
-  disabled,
-  motionRole,
-  onPress,
-  onPressIn,
-  pressedStyle,
-  style,
-}: {
-  children: ReactNode
-  contentStyle?: StyleProp<ViewStyle>
-  deferPressMs?: number
-  disabled?: boolean
-  motionRole: MotionRole
-  onPress: () => void
-  onPressIn?: () => void
-  pressedStyle?: StyleProp<ViewStyle>
-  style: StyleProp<ViewStyle>
-}) {
-  const tapMotion = useRef(new Animated.Value(0)).current
-  const pressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const runTapMotion = () => {
-    if (disabled) return
-    tapMotion.setValue(0)
-    Animated.sequence([
-      Animated.timing(tapMotion, {
-        toValue: 1,
-        duration: 105,
-        useNativeDriver: true,
-      }),
-      Animated.timing(tapMotion, {
-        toValue: 0,
-        duration: 210,
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }
-
-  const tapScale = tapMotion.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, motionRole === 'cta' ? 0.99 : 0.985],
-  })
-  const tapTranslateY = tapMotion.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, motionRole === 'cta' ? 0 : -1],
-  })
-  const tapSweepTranslate = tapMotion.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-80, 140],
-  })
-
+function Segment({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={() => {
-        if (disabled) return
-        if (deferPressMs > 0) {
-          pressTimeoutRef.current = setTimeout(onPress, deferPressMs)
-          return
-        }
-        onPress()
-      }}
-      onPressIn={() => {
-        clearTimeout(pressTimeoutRef.current ?? undefined)
-        runTapMotion()
-        onPressIn?.()
-      }}
-      style={styles.motionPressable}
-    >
-      {({ pressed }) => (
-        <Animated.View
-          style={[
-            style,
-            pressed && !disabled ? pressedStyle : null,
-            disabled ? styles.motionPressableDisabled : null,
-            {
-              transform: [{ scale: tapScale }, { translateY: tapTranslateY }],
-            },
-          ]}
-        >
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              motionRole === 'service' ? styles.motionServiceInset : styles.chipActionSheen,
-              motionRole === 'cta' ? styles.chipActionSheenCta : null,
-              motionRole === 'retry' ? styles.chipActionSheenRetry : null,
-              { transform: [{ translateX: tapSweepTranslate }] },
-            ]}
-          />
-          <View style={contentStyle}>{children}</View>
-          {motionRole === 'service' ? (
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.serviceTileSweep, { transform: [{ translateX: tapSweepTranslate }, { rotate: '12deg' }] }]}
-            />
-          ) : null}
-        </Animated.View>
-      )}
+    <Pressable onPress={onPress} style={[styles.segment, active ? styles.segmentActive : null]}>
+      <Text style={[styles.segmentText, active ? styles.segmentTextActive : null]}>{label}</Text>
     </Pressable>
   )
 }
 
-function ServiceGlyph({ type }: { type: ServiceType }) {
-  return type === 'electrical' ? <ElectricalGlyph /> : <PlumbingGlyph />
-}
-
-function ElectricalGlyph() {
+function Chip({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
   return (
-    <Svg width={34} height={34} viewBox="0 0 34 34" fill="none">
-      <Rect x={8} y={6} width={18} height={22} rx={5} stroke={theme.forest} strokeWidth={2} />
-      <Path d="M13 13h8M13 18h8" stroke={theme.forestDark} strokeWidth={2} strokeLinecap="round" />
-      <Path d="m18 10-3.5 8H18l-2 6 5-9h-3l2-5Z" fill={theme.clay} opacity={0.9} />
-    </Svg>
+    <Pressable onPress={onPress} style={[styles.chip, active ? styles.chipActive : null]}>
+      <Text style={[styles.chipText, active ? styles.chipTextActive : null]} numberOfLines={1}>{label}</Text>
+    </Pressable>
   )
 }
 
-function PlumbingGlyph() {
+function ChoiceCard({ active, onPress, text, title }: { active: boolean; onPress: () => void; text: string; title: string }) {
   return (
-    <Svg width={34} height={34} viewBox="0 0 34 34" fill="none">
-      <Path d="M8 13h12c3.4 0 6 2.6 6 6v4" stroke={theme.forest} strokeWidth={2} strokeLinecap="round" />
-      <Path d="M7 25c3.8-2.4 7 2.4 11 0 2.5-1.5 5-1.4 8 0" stroke={theme.aqua} strokeWidth={2} strokeLinecap="round" />
-      <Circle cx={8.5} cy={13} r={3.5} fill={theme.surfaceAqua} stroke={theme.lineStrong} />
-    </Svg>
+    <Pressable onPress={onPress} style={[styles.choiceCard, active ? styles.choiceCardActive : null]}>
+      <Text style={[styles.choiceTitle, active ? styles.choiceTextActive : null]}>{title}</Text>
+      <Text style={[styles.choiceText, active ? styles.choiceTextActive : null]}>{text}</Text>
+    </Pressable>
   )
 }
 
-function CameraGlyph() {
+function SummaryCell({ label, value }: { label: string; value: string }) {
   return (
-    <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-      <Path d="M5.5 7.2 7 5h6l1.5 2.2h1.2c.9 0 1.6.7 1.6 1.6v5.8c0 .9-.7 1.6-1.6 1.6H4.3c-.9 0-1.6-.7-1.6-1.6V8.8c0-.9.7-1.6 1.6-1.6h1.2Z" stroke={theme.forest} strokeWidth={1.6} strokeLinejoin="round" />
-      <Circle cx={10} cy={11.5} r={2.4} stroke={theme.clay} strokeWidth={1.6} />
-    </Svg>
+    <View style={styles.summaryCell}>
+      <Text style={styles.summaryLabel} numberOfLines={1}>{label}</Text>
+      <Text style={styles.summaryValue} numberOfLines={2}>{value}</Text>
+    </View>
   )
 }
 
 function primaryLabel(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
   if (step === 'form') return 'Để Kael kiểm tra'
-  if (step === 'clarification' && status === 'loading') return 'Xem câu hỏi'
   if (step === 'clarification') return 'Xem ước tính'
-  return 'Xác nhận sau'
+  if (step === 'estimate') return 'Chọn thời gian'
+  if (step === 'schedule') return 'Xem xác nhận'
+  if (step === 'confirm') return 'Xác nhận phát yêu cầu'
+  if (step === 'searching') return 'Kiểm tra trạng thái'
+  if (step === 'emptyWorker') return 'Thử lại'
+  return status === 'estimate_ready' ? 'Trò chuyện' : 'Tiếp tục'
 }
 
 function progressForStep(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
   if (step === 'form') return 34
-  if (step === 'clarification' && status === 'loading') return 56
   if (step === 'clarification') return 72
+  if (step === 'estimate') return status === 'baseline_fallback' ? 78 : 82
+  if (step === 'schedule') return 88
+  if (step === 'confirm') return 94
   return 100
 }
 
@@ -1130,677 +820,727 @@ function complexityLabel(complexity: PriceCheckEstimateCard['complexity']) {
   return 'Chưa rõ'
 }
 
-const textBase = {
-  letterSpacing: 0,
+function ElectricalGlyph() {
+  return (
+    <Svg width={30} height={30} viewBox="0 0 30 30" fill="none">
+      <Rect x={8} y={6} width={14} height={18} rx={4} stroke={tokens.primary} strokeWidth={1.9} />
+      <Path d="M13 12h5M13 16h5" stroke={tokens.primaryDark} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="m16 9-3 7h3l-2 5 5-8h-3l2-4Z" fill={tokens.copper} opacity={0.9} />
+    </Svg>
+  )
+}
+
+function PlumbingGlyph() {
+  return (
+    <Svg width={30} height={30} viewBox="0 0 30 30" fill="none">
+      <Path d="M7 12h11c3 0 5 2 5 5v4" stroke={tokens.primary} strokeWidth={1.9} strokeLinecap="round" />
+      <Path d="M6 23c3.4-2.1 6.4 2.1 10 0 2.2-1.3 4.4-1.3 7 0" stroke={theme.aqua} strokeWidth={1.9} strokeLinecap="round" />
+    </Svg>
+  )
+}
+
+function DocumentGlyph() {
+  return (
+    <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+      <Rect x={7} y={5.5} width={11} height={14} rx={3} stroke={tokens.primary} strokeWidth={1.8} />
+      <Path d="M10 10h5M10 14h3.5" stroke={tokens.copper} strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  )
+}
+
+function CameraGlyph() {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      <Path d="M7 8.2 8.4 6h7.2L17 8.2h1.3c.9 0 1.7.8 1.7 1.7v6.4c0 .9-.8 1.7-1.7 1.7H5.7c-.9 0-1.7-.8-1.7-1.7V9.9c0-.9.8-1.7 1.7-1.7H7Z" stroke={tokens.primary} strokeWidth={1.8} />
+      <Circle cx={12} cy={13} r={2.6} stroke={tokens.copper} strokeWidth={1.8} />
+    </Svg>
+  )
 }
 
 const styles = StyleSheet.create({
   root: {
-    backgroundColor: bookingLayerTokens.canvas,
+    backgroundColor: tokens.canvas,
     flex: 1,
+    experimental_backgroundImage:
+      'radial-gradient(circle at 50% 12%, rgba(142,231,217,0.42), transparent 30%), radial-gradient(circle at 88% 18%, rgba(255,184,102,0.14), transparent 22%), radial-gradient(circle at 8% 82%, rgba(183,246,231,0.24), transparent 26%), linear-gradient(180deg, #f2fbf7 0%, #fff9ee 100%)',
   },
   hiddenMarker: {
     height: 0,
     width: 0,
   },
   scrollContent: {
-    gap: 16,
-    paddingHorizontal: 18,
+    gap: 12,
+    paddingHorizontal: bookingFrameHorizontalPadding,
   },
-  topBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  bookingBackdrop: {
+    bottom: 0,
+    left: 0,
+    opacity: 0.62,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
-  brandRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  brandMark: {
-    alignItems: 'center',
-    backgroundColor: bookingLayerTokens.primary,
-    borderRadius: 15,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  brandMarkText: {
-    ...textBase,
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  brandCopy: {
-    gap: 2,
-  },
-  appName: {
-    ...textBase,
-    color: bookingLayerTokens.text,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  appMeta: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  scopePill: {
-    backgroundColor: bookingLayerTokens.service,
-    borderColor: bookingLayerTokens.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-  },
-  scopePillText: {
-    ...textBase,
-    color: bookingLayerTokens.primary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  motionSurface: {
-    gap: 16,
-  },
-  bookingFormShell: {
-    gap: 14,
-  },
-  bookingFormCompact: {
-    gap: 11,
-  },
-  formHero: {
-    backgroundColor: theme.surfaceJade,
-    borderColor: bookingLayerTokens.borderStrong,
-    borderRadius: 28,
-    borderWidth: 1,
-    boxShadow: '0 18px 42px rgba(12, 117, 108, 0.08)',
-    justifyContent: 'space-between',
+  bookingAmbientField: {
+    bottom: 0,
+    left: 0,
     overflow: 'hidden',
-    padding: 17,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 0,
   },
-  formHeroCompact: {
-    borderRadius: 24,
+  bookingAmbientMint: {
+    backgroundColor: theme.aqua,
+    borderRadius: 999,
+    height: 230,
+    opacity: 0.2,
+    position: 'absolute',
+    right: -86,
+    top: 198,
+    width: 230,
+  },
+  bookingAmbientWarm: {
+    backgroundColor: tokens.copper,
+    borderRadius: 999,
+    bottom: 155,
+    height: 156,
+    left: -60,
+    opacity: 0.11,
+    position: 'absolute',
+    width: 156,
+  },
+  bookingAmbientLine: {
+    backgroundColor: tokens.borderStrong,
+    height: 1,
+    left: -34,
+    opacity: 0.14,
+    position: 'absolute',
+    top: 330,
+    width: 360,
+  },
+  backdropGlow: {
+    backgroundColor: theme.aqua,
+    borderRadius: 999,
+    height: 150,
+    left: '50%',
+    opacity: 0.24,
+    position: 'absolute',
+    top: 116,
+    transform: [{ translateX: -75 }],
+    width: 150,
+  },
+  backdropLine: {
+    backgroundColor: tokens.borderStrong,
+    height: 1,
+    opacity: 0.28,
+    position: 'absolute',
+    width: 300,
+  },
+  backdropLineOne: {
+    top: 96,
+    transform: [{ rotate: '-12deg' }],
+  },
+  backdropLineTwo: {
+    right: -55,
+    top: 215,
+    transform: [{ rotate: '23deg' }],
+  },
+  backdropRoom: {
+    borderColor: tokens.borderStrong,
+    borderRadius: 22,
+    borderWidth: 2,
+    opacity: 0.28,
+    position: 'absolute',
+  },
+  backdropRoomOne: {
+    height: 128,
+    left: 42,
+    top: 138,
+    width: 152,
+  },
+  backdropRoomTwo: {
+    height: 120,
+    right: 34,
+    top: 198,
+    width: 134,
+  },
+  backdropPin: {
+    backgroundColor: tokens.primary,
+    borderColor: tokens.glassBorder,
+    borderRadius: 999,
+    borderWidth: 3,
+    height: 18,
+    left: '50%',
+    position: 'absolute',
+    top: 188,
+    transform: [{ translateX: -9 }],
+    width: 18,
+  },
+  bookingSheet: {
+    backgroundColor: tokens.glassWarm,
+    backdropFilter: 'blur(28px) saturate(1.18)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 30,
+    borderWidth: 1,
+    boxShadow: tokens.glassShadow,
+    experimental_backgroundImage:
+      'radial-gradient(circle at 90% 8%, rgba(255,184,102,0.15), transparent 22%), radial-gradient(circle at 12% 86%, rgba(183,246,231,0.30), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.54), rgba(222,248,242,0.56))',
+    gap: 12,
+    overflow: 'hidden',
     padding: 14,
   },
-  formHeroDepthLayer: {
-    backgroundColor: bookingLayerTokens.warm,
-    borderColor: theme.claySoft,
-    borderRadius: 24,
-    borderWidth: 1,
-    height: 58,
-    opacity: 0.75,
-    position: 'absolute',
-    right: -8,
-    top: 12,
-    width: 92,
-  },
-  bookingCompactCopy: {
-    maxWidth: 250,
-  },
-  formEyebrow: {
-    ...textBase,
-    color: bookingLayerTokens.primary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  formTitle: {
-    ...textBase,
-    color: bookingLayerTokens.text,
-    fontSize: 28,
-    fontWeight: '700',
-    lineHeight: 33,
-    marginTop: 5,
-  },
-  formSubtitle: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
-    fontSize: 13,
-    fontWeight: '500',
-    lineHeight: 18,
-    marginTop: 7,
-  },
-  formHeroGlyph: {
+  bookingTopRow: {
     alignItems: 'center',
-    alignSelf: 'flex-end',
-    backgroundColor: bookingLayerTokens.raised,
-    borderColor: bookingLayerTokens.border,
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 8,
+  },
+  bookingMiniButton: {
+    alignItems: 'center',
+    backgroundColor: tokens.glassStrong,
+    backdropFilter: 'blur(24px) saturate(1.18)',
+    borderColor: tokens.glassBorder,
     borderRadius: 18,
     borderWidth: 1,
-    height: 52,
+    boxShadow: '0 14px 32px rgba(13,70,65,0.12)',
+    height: 48,
     justifyContent: 'center',
-    width: 52,
-  },
-  contextStrip: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  miniSignal: {
-    backgroundColor: bookingLayerTokens.base,
-    borderColor: bookingLayerTokens.border,
-    borderRadius: 19,
-    borderWidth: 1,
-    flex: 1,
-    gap: 3,
-    minHeight: 58,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  miniSignalLabel: {
-    ...textBase,
-    color: bookingLayerTokens.subtle,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  miniSignalValue: {
-    ...textBase,
-    color: bookingLayerTokens.text,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  serviceSegment: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  formServiceCard: {
-    backgroundColor: bookingLayerTokens.base,
-    borderColor: bookingLayerTokens.border,
-    borderRadius: 24,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 136,
     overflow: 'hidden',
-    padding: 13,
+    width: 48,
   },
-  formServiceCardCompact: {
-    borderRadius: 21,
-    minHeight: compactServiceCardHeight,
-    padding: 11,
-  },
-  formServiceCardActive: {
-    backgroundColor: bookingLayerTokens.service,
-    borderColor: bookingLayerTokens.borderStrong,
-  },
-  formServiceCardWater: {
-    backgroundColor: bookingLayerTokens.water,
-  },
-  formServiceCardPressed: {
-    borderColor: bookingLayerTokens.primary,
-  },
-  formServiceContent: {
-    flex: 1,
-    gap: 7,
-  },
-  serviceIconPlate: {
+  bookingLocationPill: {
     alignItems: 'center',
-    backgroundColor: bookingLayerTokens.raised,
+    backgroundColor: tokens.glassStrong,
+    backdropFilter: 'blur(24px) saturate(1.18)',
+    borderColor: tokens.glassBorder,
     borderRadius: 18,
+    borderWidth: 1,
+    boxShadow: '0 14px 32px rgba(13,70,65,0.12)',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 48,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+  },
+  bookingLocationText: {
+    color: tokens.text,
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0,
+  },
+  glassTopHighlight: {
+    backgroundColor: tokens.glassHighlight,
+    height: 1,
+    left: 16,
+    opacity: 0.78,
+    position: 'absolute',
+    right: 16,
+    top: 0,
+    zIndex: 0,
+  },
+  glassSheen: {
+    backgroundColor: tokens.glassHighlight,
+    height: '170%',
+    left: -72,
+    opacity: 0.38,
+    position: 'absolute',
+    top: -46,
+    transform: [{ rotate: '11deg' }],
+    width: 58,
+    zIndex: 0,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(16,43,45,0.16)',
+    borderRadius: 999,
+    height: 4,
+    width: 44,
+  },
+  bookingTitle: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  flowBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(8,120,110,0.11)',
+    borderRadius: 999,
+    color: tokens.primary,
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0,
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  pageTitle: {
+    color: tokens.text,
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 27,
+    marginTop: 6,
+  },
+  headerIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.74)',
+    borderColor: tokens.border,
+    borderRadius: 18,
+    borderWidth: 1,
     height: 48,
     justifyContent: 'center',
     width: 48,
   },
-  serviceIconPlateWater: {
-    backgroundColor: '#F6FEFD',
-  },
-  serviceTitle: {
-    ...textBase,
-    color: bookingLayerTokens.text,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 20,
-  },
-  serviceSubtitle: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
-    fontSize: 12,
-    fontWeight: '500',
-    lineHeight: 16,
-  },
-  bookingFormCard: {
-    backgroundColor: bookingLayerTokens.base,
-    borderColor: bookingLayerTokens.border,
-    borderRadius: 24,
+  kaelHeaderMascot: {
+    alignItems: 'center',
+    backgroundColor: tokens.glassStrong,
+    borderColor: tokens.glassBorder,
+    borderRadius: 20,
     borderWidth: 1,
-    gap: 12,
-    padding: 14,
+    boxShadow: tokens.glassFloatShadow,
+    height: 56,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+    width: 56,
   },
-  fieldHeader: {
+  kaelHeaderImage: {
+    height: 60,
+    width: 58,
+  },
+  formStack: {
+    gap: 11,
+  },
+  segmented: {
+    backgroundColor: tokens.glassSoft,
+    borderColor: tokens.glassBorder,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    padding: 5,
+  },
+  segment: {
+    alignItems: 'center',
+    borderRadius: 14,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  segmentActive: {
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    boxShadow: '0 8px 20px rgba(13,70,65,0.10)',
+  },
+  segmentText: {
+    color: tokens.muted,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0,
+  },
+  segmentTextActive: {
+    color: tokens.primary,
+  },
+  softField: {
+    backgroundColor: tokens.glassSoft,
+    backdropFilter: 'blur(22px) saturate(1.16)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 21,
+    borderWidth: 1,
+    boxShadow: tokens.glassFloatShadow,
+    gap: 9,
+    overflow: 'hidden',
+    padding: 12,
+  },
+  cardMetaRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   fieldTitle: {
-    ...textBase,
-    color: bookingLayerTokens.text,
-    fontSize: 15,
-    fontWeight: '700',
+    color: tokens.text,
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0,
   },
-  fieldMeta: {
-    ...textBase,
-    color: bookingLayerTokens.primary,
-    fontSize: 12,
-    fontWeight: '700',
+  statusText: {
+    color: tokens.primary,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0,
   },
-  chipGrid: {
+  pillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  problemChip: {
-    backgroundColor: bookingLayerTokens.depth,
-    borderColor: bookingLayerTokens.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    minHeight: minimumTouchTarget,
-    overflow: 'hidden',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  problemChipPressed: {
-    borderColor: bookingLayerTokens.primary,
-  },
-  problemChipActive: {
-    backgroundColor: bookingLayerTokens.primary,
-    borderColor: bookingLayerTokens.primary,
-  },
-  problemChipContent: {
+  trustRail: {
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: 7,
-  },
-  chipDot: {
-    backgroundColor: bookingLayerTokens.borderStrong,
-    borderRadius: 999,
-    height: 7,
-    width: 7,
-  },
-  chipDotActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  problemChipText: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  problemChipTextActive: {
-    color: '#FFFFFF',
-  },
-  textAreaFrame: {
-    backgroundColor: bookingLayerTokens.depth,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  descriptionInput: {
-    ...textBase,
-    color: bookingLayerTokens.text,
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 21,
-    minHeight: 116,
-    padding: 13,
-  },
-  inlineError: {
-    ...textBase,
-    color: theme.danger,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  mediaRow: {
-    flexDirection: 'row',
-    gap: 9,
-  },
-  mediaSlot: {
-    alignItems: 'center',
-    backgroundColor: bookingLayerTokens.depth,
-    borderColor: bookingLayerTokens.border,
+    backgroundColor: tokens.glassSoft,
+    borderColor: tokens.glassBorder,
     borderRadius: 18,
     borderWidth: 1,
-    flex: 1,
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.42)',
+    flexDirection: 'row',
     gap: 7,
-    minHeight: 78,
-    justifyContent: 'center',
+    overflow: 'hidden',
     padding: 8,
   },
-  mediaIconDot: {
+  trustStep: {
     alignItems: 'center',
-    backgroundColor: bookingLayerTokens.raised,
-    borderRadius: 999,
-    height: 32,
-    justifyContent: 'center',
-    width: 32,
+    flex: 1,
+    gap: 5,
   },
-  mediaSlotText: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
+  trustDot: {
+    backgroundColor: 'rgba(8,120,110,0.12)',
+    borderRadius: 999,
+    height: 7,
+    width: '100%',
+  },
+  trustDotActive: {
+    backgroundColor: tokens.primary,
+    boxShadow: '0 0 0 5px rgba(22,185,168,0.14)',
+  },
+  trustLabel: {
+    color: tokens.subtle,
+    fontSize: 10,
+    fontWeight: '500',
+    letterSpacing: 0,
+    textAlign: 'center',
+  },
+  trustLabelActive: {
+    color: tokens.primaryDark,
+  },
+  chip: {
+    backgroundColor: 'rgba(236,251,247,0.72)',
+    borderColor: 'rgba(8,120,110,0.08)',
+    borderRadius: 999,
+    borderWidth: 1,
+    minHeight: 34,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  chipActive: {
+    backgroundColor: tokens.primary,
+    boxShadow: '0 8px 20px rgba(8,120,110,0.20)',
+  },
+  chipText: {
+    color: tokens.primaryDark,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
+    letterSpacing: 0,
   },
-  questionSheet: {
-    gap: 13,
+  chipTextActive: {
+    color: '#FFFFFF',
   },
-  summaryStrip: {
-    alignItems: 'center',
-    backgroundColor: bookingLayerTokens.service,
-    borderColor: bookingLayerTokens.borderStrong,
-    borderRadius: 24,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 11,
-    padding: 13,
-  },
-  summaryIcon: {
-    alignItems: 'center',
-    backgroundColor: bookingLayerTokens.raised,
+  descriptionInput: {
+    backgroundColor: 'rgba(245,251,248,0.68)',
+    borderColor: 'rgba(255,255,255,0.66)',
     borderRadius: 18,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
-  summaryCopy: {
-    flex: 1,
-    gap: 3,
-  },
-  summaryLabel: {
-    ...textBase,
-    color: bookingLayerTokens.primary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  summaryTitle: {
-    ...textBase,
-    color: bookingLayerTokens.text,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  questionCard: {
-    backgroundColor: bookingLayerTokens.base,
-    borderColor: bookingLayerTokens.border,
-    borderRadius: 24,
     borderWidth: 1,
-    flexDirection: 'row',
-    gap: 11,
-    padding: 14,
+    color: tokens.text,
+    fontSize: 13,
+    letterSpacing: 0,
+    lineHeight: 18,
+    minHeight: 84,
+    padding: 11,
   },
-  questionIndex: {
-    alignItems: 'center',
-    backgroundColor: bookingLayerTokens.service,
-    borderRadius: 999,
-    height: 30,
-    justifyContent: 'center',
-    width: 30,
-  },
-  questionIndexText: {
-    ...textBase,
-    color: bookingLayerTokens.primary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  questionBody: {
-    flex: 1,
-    gap: 11,
-  },
-  questionText: {
-    ...textBase,
-    color: bookingLayerTokens.text,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 21,
-  },
-  answerGrid: {
+  mediaGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  answerChip: {
-    backgroundColor: bookingLayerTokens.depth,
-    borderColor: bookingLayerTokens.border,
-    borderRadius: 999,
+  mediaTile: {
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.50)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 18,
+    borderStyle: 'dashed',
     borderWidth: 1,
-    minHeight: minimumTouchTarget,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    flex: 1,
+    gap: 7,
+    minHeight: 72,
+    minWidth: '46%',
+    padding: 11,
   },
-  answerChipPressed: {
-    borderColor: bookingLayerTokens.primary,
+  mediaPreview: {
+    borderRadius: 12,
+    height: 46,
+    width: '100%',
   },
-  answerChipActive: {
-    backgroundColor: bookingLayerTokens.primary,
-    borderColor: bookingLayerTokens.primary,
+  mediaText: {
+    color: tokens.primaryDark,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0,
   },
-  answerChipContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  clarifyCard: {
+    backgroundColor: 'rgba(222,251,244,0.68)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 8,
+    overflow: 'hidden',
+    padding: 13,
   },
-  answerText: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
-    fontSize: 13,
+  clarifyItem: {
+    backgroundColor: 'rgba(216,247,239,0.72)',
+    borderColor: 'rgba(255,255,255,0.66)',
+    borderRadius: 17,
+    borderWidth: 1,
+    color: tokens.text,
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 16,
+    padding: 10,
+  },
+  flowCard: {
+    backgroundColor: tokens.glassSoft,
+    backdropFilter: 'blur(22px) saturate(1.16)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 22,
+    borderWidth: 1,
+    boxShadow: tokens.glassFloatShadow,
+    experimental_backgroundImage:
+      'radial-gradient(circle at 92% 10%, rgba(255,184,102,0.13), transparent 20%), radial-gradient(circle at 8% 92%, rgba(183,246,231,0.30), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.52), rgba(225,249,244,0.42))',
+    gap: 12,
+    overflow: 'hidden',
+    padding: 13,
+  },
+  cardTitle: {
+    color: tokens.text,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0,
+  },
+  kicker: {
+    color: tokens.primary,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0,
+  },
+  estimateCard: {
+    backgroundColor: tokens.glassSoft,
+    backdropFilter: 'blur(22px) saturate(1.16)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 22,
+    borderWidth: 1,
+    boxShadow: tokens.glassFloatShadow,
+    experimental_backgroundImage:
+      'radial-gradient(circle at 92% 12%, rgba(255,184,102,0.14), transparent 22%), radial-gradient(circle at 10% 88%, rgba(183,246,231,0.30), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.52), rgba(225,249,244,0.42))',
+    gap: 12,
+    overflow: 'hidden',
+    padding: 13,
+  },
+  warningCard: {
+    backgroundColor: tokens.glassWarm,
+    backdropFilter: 'blur(22px) saturate(1.16)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 12,
+    overflow: 'hidden',
+    padding: 13,
+  },
+  priceRange: {
+    backgroundColor: tokens.warm,
+    borderColor: tokens.border,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 4,
+    padding: 13,
+  },
+  priceValue: {
+    color: tokens.primaryDark,
+    fontSize: 27,
     fontWeight: '700',
+    letterSpacing: 0,
   },
-  answerTextActive: {
+  priceMeta: {
+    color: tokens.muted,
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  summaryCell: {
+    backgroundColor: 'rgba(255,255,255,0.56)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexBasis: '47%',
+    flexGrow: 1,
+    gap: 5,
+    minHeight: 66,
+    padding: 11,
+  },
+  summaryLabel: {
+    color: tokens.muted,
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0,
+  },
+  summaryValue: {
+    color: tokens.text,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0,
+  },
+  disclaimerText: {
+    color: tokens.muted,
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 18,
+  },
+  twoCol: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  choiceCard: {
+    backgroundColor: 'rgba(234,246,241,0.62)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 20,
+    borderWidth: 1,
+    flex: 1,
+    gap: 6,
+    minHeight: 86,
+    padding: 13,
+  },
+  choiceCardActive: {
+    backgroundColor: tokens.primary,
+    borderColor: tokens.primary,
+  },
+  choiceTitle: {
+    color: tokens.text,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0,
+  },
+  choiceText: {
+    color: tokens.muted,
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 18,
+  },
+  choiceTextActive: {
     color: '#FFFFFF',
   },
   loadingCard: {
     alignItems: 'center',
-    backgroundColor: bookingLayerTokens.service,
-    borderColor: bookingLayerTokens.borderStrong,
+    backgroundColor: 'rgba(220,243,236,0.68)',
+    backdropFilter: 'blur(22px) saturate(1.16)',
+    borderColor: tokens.glassBorder,
     borderRadius: 28,
     borderWidth: 1,
     gap: 12,
     justifyContent: 'center',
     minHeight: 252,
+    overflow: 'hidden',
     padding: 24,
   },
-  loadingIconRing: {
-    alignItems: 'center',
-    backgroundColor: bookingLayerTokens.raised,
-    borderRadius: 999,
-    height: 76,
-    justifyContent: 'center',
-    width: 76,
-  },
   loadingTitle: {
-    ...textBase,
-    color: bookingLayerTokens.text,
+    color: tokens.text,
     fontSize: 20,
     fontWeight: '700',
+    letterSpacing: 0,
     textAlign: 'center',
   },
   loadingText: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
+    color: tokens.muted,
     fontSize: 13,
     fontWeight: '500',
+    letterSpacing: 0,
     lineHeight: 19,
     textAlign: 'center',
   },
-  estimateCard: {
-    backgroundColor: bookingLayerTokens.base,
-    borderColor: bookingLayerTokens.borderStrong,
-    borderRadius: 30,
-    borderWidth: 1,
-    boxShadow: '0 20px 44px rgba(12, 117, 108, 0.09)',
-    gap: 15,
-    padding: 18,
-  },
-  fallbackCard: {
-    backgroundColor: bookingLayerTokens.warm,
-    borderColor: theme.claySoft,
-  },
-  estimateTop: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-  },
-  estimateIcon: {
-    alignItems: 'center',
-    backgroundColor: bookingLayerTokens.service,
-    borderRadius: 22,
-    height: 58,
-    justifyContent: 'center',
-    width: 58,
-  },
-  estimateHeading: {
-    flex: 1,
-    gap: 4,
-  },
-  estimateLabel: {
-    ...textBase,
-    color: bookingLayerTokens.subtle,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  estimateProblem: {
-    ...textBase,
-    color: bookingLayerTokens.text,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
-  },
-  priceBand: {
-    backgroundColor: bookingLayerTokens.warm,
-    borderColor: bookingLayerTokens.border,
-    borderRadius: 23,
-    borderWidth: 1,
-    gap: 4,
-    padding: 15,
-  },
-  priceLabel: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  priceValue: {
-    ...textBase,
-    color: bookingLayerTokens.primaryDark,
-    fontSize: 29,
-    fontVariant: ['tabular-nums'],
-    fontWeight: '700',
-  },
-  priceValueMuted: {
-    color: bookingLayerTokens.copper,
-    fontSize: 24,
-  },
-  priceMeta: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  reasonStack: {
-    gap: 9,
-  },
-  reasonRow: {
-    alignItems: 'flex-start',
+  stateGrid: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 4,
   },
-  reasonBullet: {
-    backgroundColor: bookingLayerTokens.primary,
-    borderRadius: 999,
-    height: 7,
-    marginTop: 7,
-    width: 7,
-  },
-  reasonText: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
+  stateItem: {
+    alignItems: 'center',
     flex: 1,
+    gap: 7,
+  },
+  stateDot: {
+    backgroundColor: tokens.borderStrong,
+    borderRadius: 999,
+    height: 8,
+    width: 8,
+  },
+  stateDotActive: {
+    backgroundColor: tokens.primary,
+  },
+  stateText: {
+    color: tokens.muted,
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0,
+    textAlign: 'center',
+  },
+  panelText: {
+    color: tokens.muted,
     fontSize: 13,
     fontWeight: '500',
+    letterSpacing: 0,
     lineHeight: 19,
   },
-  advisoryBox: {
-    backgroundColor: bookingLayerTokens.depth,
-    borderColor: bookingLayerTokens.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 12,
-  },
-  advisoryText: {
-    ...textBase,
-    color: bookingLayerTokens.text,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  disclaimerBox: {
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderColor: bookingLayerTokens.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 12,
-  },
-  disclaimerText: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  retryInlineButton: {
+  workerRow: {
     alignItems: 'center',
-    backgroundColor: bookingLayerTokens.raised,
-    borderColor: theme.claySoft,
-    borderRadius: 17,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: minimumTouchTarget,
-    overflow: 'hidden',
-    paddingHorizontal: 14,
-  },
-  retryInlineButtonPressed: {
-    backgroundColor: bookingLayerTokens.warm,
-  },
-  retryInlineContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retryInlineText: {
-    ...textBase,
-    color: bookingLayerTokens.copper,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  stateRevealShell: {
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  stateRevealAccent: {
-    backgroundColor: bookingLayerTokens.primary,
-    borderRadius: 999,
-    height: 4,
-    left: 22,
-    position: 'absolute',
-    right: 22,
-    top: 0,
-    zIndex: 2,
-  },
-  stateRevealAccentWarning: {
-    backgroundColor: bookingLayerTokens.copper,
-  },
-  bottomBar: {
-    backgroundColor: 'rgba(248, 252, 250, 0.96)',
-    borderColor: bookingLayerTokens.border,
-    borderTopWidth: 1,
-    bottom: 0,
+    flexDirection: 'row',
     gap: 12,
-    left: 0,
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    position: 'absolute',
-    right: 0,
   },
-  bottomProgressTrack: {
-    backgroundColor: bookingLayerTokens.border,
+  workerAvatar: {
+    alignItems: 'center',
+    backgroundColor: tokens.service,
+    borderRadius: 20,
+    height: 56,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 56,
+  },
+  workerImage: {
+    height: 56,
+    width: 56,
+  },
+  workerCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  workerName: {
+    color: tokens.text,
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0,
+  },
+  sheetActions: {
+    backgroundColor: tokens.glassStrong,
+    backdropFilter: 'blur(22px) saturate(1.18)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 20,
+    borderWidth: 1,
+    boxShadow: '0 16px 38px rgba(12,117,108,0.12), inset 0 1px 0 rgba(255,255,255,0.62)',
+    gap: 12,
+    overflow: 'hidden',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  progressTrack: {
+    backgroundColor: tokens.border,
     borderRadius: 999,
     height: 5,
     overflow: 'hidden',
   },
-  bottomProgressFill: {
-    backgroundColor: bookingLayerTokens.primary,
+  progressFill: {
+    backgroundColor: tokens.primary,
     borderRadius: 999,
     height: 5,
   },
@@ -1810,98 +1550,36 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     alignItems: 'center',
-    backgroundColor: bookingLayerTokens.base,
-    borderColor: bookingLayerTokens.border,
+    backgroundColor: tokens.base,
+    borderColor: tokens.border,
     borderRadius: 18,
     borderWidth: 1,
     flex: 0.82,
     justifyContent: 'center',
     minHeight: 54,
-    overflow: 'hidden',
     paddingHorizontal: 14,
   },
-  secondaryButtonPressed: {
-    backgroundColor: bookingLayerTokens.service,
-    borderColor: bookingLayerTokens.borderStrong,
-  },
   secondaryButtonText: {
-    ...textBase,
-    color: bookingLayerTokens.muted,
+    color: tokens.muted,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
+    letterSpacing: 0,
   },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: bookingLayerTokens.primary,
+    backgroundColor: tokens.primary,
     borderRadius: 18,
-    boxShadow: '0 10px 22px rgba(12, 117, 108, 0.18)',
+    boxShadow: '0 10px 22px rgba(12,117,108,0.18)',
     flex: 1.45,
     justifyContent: 'center',
     minHeight: 54,
-    overflow: 'hidden',
     paddingHorizontal: 16,
   },
-  primaryButtonPressed: {
-    backgroundColor: bookingLayerTokens.primaryDark,
-  },
-  primaryButtonDisabled: {
-    backgroundColor: bookingLayerTokens.borderStrong,
-    boxShadow: '0 0 0 rgba(0,0,0,0)',
-  },
   primaryButtonText: {
-    ...textBase,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
+    letterSpacing: 0,
     textAlign: 'center',
   },
-  ctaContent: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-  },
-  motionPressable: {
-    minHeight: minimumTouchTarget,
-  },
-  motionPressableDisabled: {
-    opacity: 0.72,
-  },
-  motionServiceInset: {
-    borderColor: 'rgba(23, 169, 149, 0.38)',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    bottom: 8,
-    left: 8,
-    position: 'absolute',
-    right: 8,
-    top: 8,
-  },
-  serviceTileSweep: {
-    backgroundColor: 'rgba(255, 253, 248, 0.72)',
-    bottom: -36,
-    position: 'absolute',
-    top: -36,
-    width: 44,
-  },
-  chipActionSheen: {
-    backgroundColor: 'rgba(23, 169, 149, 0.36)',
-    borderRadius: 999,
-    bottom: 6,
-    height: 2,
-    left: 10,
-    position: 'absolute',
-    width: 56,
-  },
-  chipActionSheenCta: {
-    backgroundColor: 'rgba(255, 255, 255, 0.62)',
-    bottom: 7,
-    left: 18,
-    width: 80,
-  },
-  chipActionSheenRetry: {
-    backgroundColor: 'rgba(184, 111, 50, 0.34)',
-    bottom: 7,
-    left: 16,
-    width: 72,
-  },
-})
+} as any)
