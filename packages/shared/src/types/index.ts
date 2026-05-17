@@ -31,6 +31,7 @@ export type {
   AvailabilityToggleResponse,
   BroadcastListResponse,
   AcceptBroadcastResponse,
+  DeclineBroadcastResponse,
   WorkerScopeChangeResponse,
   CustomerScopeDecisionResponse,
   WorkerJobListResponse,

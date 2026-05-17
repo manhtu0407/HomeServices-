@@ -1,4 +1,52 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import type { ExpoConfig, ConfigContext } from 'expo/config'
+
+const configDir = __dirname
+const repoRoot = resolve(configDir, '../..')
+
+const localEnv = [
+  resolve(repoRoot, '.env'),
+  resolve(repoRoot, '.env.local'),
+  resolve(configDir, '.env'),
+  resolve(configDir, '.env.local'),
+].reduce<Record<string, string>>((env, filePath) => {
+  if (!existsSync(filePath)) {
+    return env
+  }
+
+  const lines = readFileSync(filePath, 'utf8').split(/\r?\n/)
+
+  for (const line of lines) {
+    const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/)
+
+    if (!match) {
+      continue
+    }
+
+    const [, key, rawValue] = match
+    const value = rawValue.replace(/^(['"])(.*)\1$/, '$2')
+    env[key] = value
+  }
+
+  return env
+}, {})
+
+const fromEnv = (...keys: string[]) => {
+  for (const key of keys) {
+    const value = process.env[key] ?? localEnv[key]
+
+    if (value && value.trim().length > 0) {
+      return value
+    }
+  }
+
+  return ''
+}
+
+const supabaseUrl = fromEnv('EXPO_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL')
+const supabasePublishableKey = fromEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
+const apiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -40,8 +88,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
   ],
   extra: {
-    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
-    supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '',
-    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? '',
+    supabaseUrl,
+    supabasePublishableKey,
+    apiBaseUrl,
   },
 })

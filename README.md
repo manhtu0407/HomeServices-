@@ -67,7 +67,7 @@
   - Multiple permissive RLS policies (admin + role-specific for same action) — pre-existing design; optimization requires touching all RLS policies, deferred.
   - No cron for stale broadcast expiry — broadcasts expire on read; phase 1 OK.
 - **Next**: After frontend (PR#8) finishes, audit Clients + Fleets sections and wire backend.
-- **Supabase access**: Tu's management token (`sbp_a0ab...5305`) used for staging RPC verification + production migration push. Tu may revoke.
+- **Supabase access**: Tu's temporary management token was used for staging RPC verification + production migration push; token values must stay redacted and out of repo files.
 
 ### 2026-05-15 — Prototype Runtime Cleanup
 
@@ -209,7 +209,7 @@
 - **Task**: Prepare the repo for future mobile/backend/Kael implementation without building those features yet.
 - **Result**: Restored dependency state with `npm ci`, fixed Next/Turbopack workspace root, removed build-time Google Fonts dependency, added `docs/foundation/pre-app-build-contract.md`, and added 10 foundation guard tests.
 - **Quality gates**: `npm run test` 427/427 pass, `npm run lint` pass with clean output, `npm run build` pass.
-- **Security note**: Supabase temporary access token was not persisted to repo files. Static test now scans repo text files for `sbp_` management-token patterns.
+- **Security note**: Supabase temporary access token was not persisted to repo files. Static test now scans repo text files for Supabase management-token patterns.
 - **Next**: Design Supabase schema alignment migration and shared state-machine contracts before Expo mobile scaffold.
 - **Blockers**: `npm audit --omit=dev` reports 2 moderate vulnerabilities from Next's transitive `postcss`; npm only offers `--force` with a breaking downgrade, so no automatic fix was applied.
 

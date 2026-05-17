@@ -17,9 +17,17 @@ export default function Index() {
     return <Redirect href="/(auth)/login" />
   }
 
+  if (role === 'admin') {
+    return <Redirect href="/(auth)/login" />
+  }
+
   if (role === 'worker') {
     return <Redirect href="/(worker)/home" />
   }
 
-  return <Redirect href="/(customer)/home" />
+  if (role === 'customer') {
+    return <Redirect href="/(customer)/home" />
+  }
+
+  return <Redirect href="/(auth)/login" />
 }

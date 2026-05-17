@@ -2,10 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { createContext, type ReactNode, useContext, useEffect, useState, useSyncExternalStore } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
+import { serviceLabel, statusLabel, type LocalDeal, type LocalDealStatus } from '@home-services/shared'
+import { useAuth } from '@/lib/auth-provider'
+import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 const WORKER_XANHSM_REFERENCE_AUDIT = 'WORKER_XANHSM_REFERENCE_AUDIT: XanhSM map shell translated into Home Services worker production UI'
 const WORKER_PRODUCTION_CONTRACT = 'WORKER_PRODUCTION_CONTRACT: docs/design/worker-production-contract.md'
@@ -53,6 +56,7 @@ type WorkerIconName =
   | 'sun'
   | 'tools'
   | 'water'
+type WorkerChatMessage = { mine?: boolean; system?: boolean; text: string; who: string }
 
 let lastWorkerDockActive: WorkerActiveTab = 'home'
 const workerSectionMotionTestIDs: Record<WorkerActiveTab, string> = {
@@ -166,21 +170,21 @@ const workerCopy = {
     home: {
       eyebrow: 'Thợ',
       title: 'Ca trực',
-      mapSearch: 'Sẵn sàng quanh Quận 7',
+      mapSearch: 'Chờ deal local',
       mapTitle: 'Điện/nước chung cư',
-      mapMeta: 'Bán kính 4 km',
+      mapMeta: '--',
       electric: 'Điện',
       water: 'Nước',
       status: 'Trạng thái',
-      online: 'Đang nhận việc',
+      online: 'Chờ duyệt hệ thống',
       today: 'Hôm nay',
       estimate: 'Tạm tính',
       rating: 'Phản hồi',
       shiftTitle: 'Nhịp xử lý',
       shiftAction: '',
-      phases: ['Bật nhận việc', 'Nhận tóm tắt', 'Xác nhận', 'Di chuyển'],
+      phases: ['Chờ duyệt', 'Nhận tóm tắt', 'Xác nhận', 'Di chuyển'],
       nextTitle: 'Lịch gần nhất',
-      nextNote: 'Kiểm tra rò nước, chỉ hiện khu vực chung.',
+      nextNote: 'Chỉ hiện khi Customer phát broadcast local.',
       moneyNote: 'Chờ đối soát, chưa đánh dấu thanh toán.',
       serviceHeading: '',
       electricianCard: 'Kỹ thuật điện',
@@ -189,15 +193,15 @@ const workerCopy = {
       plumberNote: '',
     },
     request: {
-      service: 'Sửa điện',
-      title: 'Ổ cắm bếp nóng, có mùi khét nhẹ',
-      area: 'Quận 7 · khu Him Lam',
+      service: 'Chờ duyệt',
+      title: 'Chưa có yêu cầu mới',
+      area: 'Khu vực chung',
       briefTitle: 'Tóm tắt Kael',
-      brief: ['Khả năng ổ cắm quá nhiệt hoặc dây lỏng.', 'Khách đã được nhắc tắt CB khu bếp.'],
+      brief: ['Chưa có yêu cầu mới từ khách.', 'Chỉ hiện thông tin thật khi có broadcast.'],
       customerEstimate: 'Khách ước tính',
       workerEarns: 'Thợ nhận',
       decline: 'Bỏ qua',
-      accept: 'Nhận việc',
+      accept: 'Chấp nhận',
     },
     jobs: {
       eyebrow: 'Công việc',
@@ -235,25 +239,25 @@ const workerCopy = {
       waitingNote: 'Đang chờ xác nhận.',
       ledgerTitle: 'Sổ đối soát',
       rows: [
-        ['Tạm tính ca sáng', 'Chờ đối soát'],
-        ['Tài khoản nhận tiền', 'Chưa lưu'],
-        ['Lịch sử quyết toán', 'Chưa có'],
+        ['Giao dịch local', 'Chưa có'],
+        ['Tài khoản nhận tiền', 'Chưa lưu hệ thống'],
+        ['Thanh toán & đánh giá', 'Đang khóa'],
       ],
     },
     profile: {
       eyebrow: 'Hồ sơ',
       title: 'Tin cậy',
-      name: 'Hồ sơ thợ điện/nước',
+      name: 'Hồ sơ thợ',
       body: '',
-      scoreTitle: 'Kỹ sư xanh',
+      scoreTitle: 'Tin cậy',
       scoreBody: '',
       theme: 'Giao diện',
       language: 'Ngôn ngữ',
-      skills: ['Sửa điện', 'Sửa nước', 'Quận 7', 'Bình Thạnh'],
+      skills: ['Chờ duyệt hệ thống', 'Chưa có hồ sơ thật', 'Chờ phản hồi thật'],
       rows: [
-        ['Xác minh danh tính', 'Đang chuẩn bị'],
-        ['Kỹ năng dịch vụ', 'Điện, nước'],
-        ['Khu vực làm việc', 'Khu vực chung'],
+        ['Xác minh danh tính', 'Chờ duyệt hệ thống'],
+        ['Kỹ năng dịch vụ', 'Chưa lưu hệ thống'],
+        ['Khu vực làm việc', 'Chưa lưu hệ thống'],
       ],
     },
   },
@@ -263,21 +267,21 @@ const workerCopy = {
     home: {
       eyebrow: 'Worker',
       title: 'Shift',
-      mapSearch: 'Ready around District 7',
+      mapSearch: 'Waiting for local deal',
       mapTitle: 'Apartment power/water',
-      mapMeta: '4 km radius',
+      mapMeta: '--',
       electric: 'Power',
       water: 'Water',
       status: 'Status',
-      online: 'Accepting jobs',
+      online: 'System approval pending',
       today: 'Today',
       estimate: 'Estimate',
       rating: 'Rating',
       shiftTitle: 'Work rhythm',
       shiftAction: '',
-      phases: ['Available', 'Briefed', 'Confirm', 'Travel'],
+      phases: ['Pending', 'Briefed', 'Confirm', 'Travel'],
       nextTitle: 'Next visit',
-      nextNote: 'Water leak check, general area only.',
+      nextNote: 'Appears after Customer creates a local broadcast.',
       moneyNote: 'Pending reconciliation, not marked paid.',
       serviceHeading: '',
       electricianCard: 'Electrical',
@@ -286,11 +290,11 @@ const workerCopy = {
       plumberNote: '',
     },
     request: {
-      service: 'Electrical',
-      title: 'Kitchen outlet is hot with a slight burnt smell',
-      area: 'District 7 · Him Lam area',
+      service: 'Pending',
+      title: 'No live request',
+      area: 'General area',
       briefTitle: 'Kael brief',
-      brief: ['Likely overheated outlet or loose wiring.', 'Customer was reminded to turn off the kitchen breaker.'],
+      brief: ['Waiting for a real customer request.', 'Only real broadcast details are shown.'],
       customerEstimate: 'Customer estimate',
       workerEarns: 'Worker earns',
       decline: 'Skip',
@@ -332,33 +336,31 @@ const workerCopy = {
       waitingNote: 'Waiting for confirmation.',
       ledgerTitle: 'Ledger',
       rows: [
-        ['Morning estimate', 'Pending'],
-        ['Payout account', 'Not saved'],
-        ['Settlement history', 'Empty'],
+        ['Local transaction', 'Empty'],
+        ['Payout account', 'Not stored yet'],
+        ['Payment & review', 'Locked'],
       ],
     },
     profile: {
       eyebrow: 'Profile',
       title: 'Trust',
-      name: 'Electrical/water worker profile',
+      name: 'Worker profile',
       body: '',
-      scoreTitle: 'Green engineer',
+      scoreTitle: 'Trust',
       scoreBody: '',
       theme: 'Theme',
       language: 'Language',
-      skills: ['Electrical', 'Plumbing', 'District 7', 'Binh Thanh'],
+      skills: ['System pending', 'No real profile yet', 'Real feedback pending'],
       rows: [
-        ['Identity verification', 'Preparing'],
-        ['Service skills', 'Power, water'],
-        ['Working area', 'General area'],
+        ['Identity verification', 'System pending'],
+        ['Service skills', 'Not stored yet'],
+        ['Working area', 'Not stored yet'],
       ],
     },
   },
 } as const
 
 const mapPreview = {
-  centerGeneralArea: 'district-7-him-lam',
-  radiusKm: 4,
   replaceWithProvider: 'google-maps-camera-ready',
 }
 
@@ -438,8 +440,19 @@ function useWorkerFrameCopy() {
   return workerCopy[language]
 }
 
+function getWorkerVisibleDeal(deal: LocalDeal | null) {
+  if (!deal?.broadcast) return null
+  return deal.broadcast.status === 'declined' || deal.broadcast.status === 'expired' ? null : deal
+}
+
+function isAcceptedLocalWorkerDeal(deal: LocalDeal | null) {
+  return deal?.broadcast?.status === 'accepted'
+}
+
 export function WorkerHomeSurface() {
   const copy = useWorkerFrameCopy()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
 
   return (
     <WorkerFrame active="home" eyebrow={copy.home.eyebrow} title={copy.home.title} testID="worker-home-surface">
@@ -447,8 +460,8 @@ export function WorkerHomeSurface() {
       <IncomingRequestSheet />
 
       <View style={styles.operationalBand} testID="worker-shift-console">
-        <QuickPanel icon="clock" title={copy.home.nextTitle} value="14:30" note={copy.home.nextNote} tone="cyan" />
-        <QuickPanel icon="money" title={copy.home.estimate} value="520k" note={copy.home.moneyNote} tone="cream" />
+        <QuickPanel icon="clock" title={copy.home.nextTitle} value={deal ? statusLabel(selectors.currentStatus) : '--'} note={deal ? serviceLabel(deal.draft.serviceType) : copy.home.nextNote} tone="cyan" />
+        <QuickPanel icon="money" title={copy.home.estimate} value="--" note={selectors.paymentLocked ? copy.home.moneyNote : 'Mở sau khi hệ thống sẵn sàng.'} tone="cream" />
       </View>
 
       <TimelineCard />
@@ -458,12 +471,19 @@ export function WorkerHomeSurface() {
 
 export function WorkerJobsSurface() {
   const copy = useWorkerFrameCopy()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const jobTitle = deal ? serviceLabel(deal.draft.serviceType) : copy.jobs.emptyTitle
+  const visibleArea = deal?.broadcast?.generalArea ?? deal?.draft.districtLabel ?? 'Ẩn địa chỉ chi tiết'
+  const jobBody = deal
+    ? `${deal.draft.problemChips[0] ?? 'Đã mô tả'} · ${selectors.canWorkerSeeFullAddress ? deal.draft.addressLabel : visibleArea}`
+    : copy.jobs.emptyBody
 
   return (
     <WorkerFrame active="jobs" eyebrow={copy.jobs.eyebrow} title={copy.jobs.title} testID="worker-jobs-surface">
       <SegmentFilter labels={copy.jobs.filters} />
       <IncomingRequestSheet compact />
-      <JobActivityCard icon="tools" status={copy.jobs.emptyStatus} title={copy.jobs.emptyTitle} body={copy.jobs.emptyBody} tone="mint" />
+      <JobActivityCard icon="tools" status={deal ? statusLabel(selectors.currentStatus) : copy.jobs.emptyStatus} title={jobTitle} body={jobBody} tone="mint" />
       <JobActivityCard icon="brief" status={copy.jobs.scopeStatus} title={copy.jobs.scopeTitle} body={copy.jobs.scopeBody} testID="worker-scope-change-placeholder" tone="warm" />
     </WorkerFrame>
   )
@@ -481,14 +501,19 @@ export function WorkerChatSurface() {
 
 export function WorkerEarningsSurface() {
   const copy = useWorkerFrameCopy()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
+  const completedLocal = Boolean(acceptedDeal && selectors.currentStatus === 'confirmed_by_customer')
+  const waitingLocal = acceptedDeal && selectors.currentStatus !== 'confirmed_by_customer' ? '1 local' : '0'
 
   return (
     <WorkerFrame active="earnings" eyebrow={copy.earnings.eyebrow} title={copy.earnings.title} testID="worker-earnings-surface">
       <WorkerEarningsHero />
 
       <View style={styles.operationalBand}>
-        <QuickPanel icon="check" title={copy.earnings.complete} value="0" note={copy.earnings.completeNote} tone="mint" />
-        <QuickPanel icon="clock" title={copy.earnings.waiting} value="2" note={copy.earnings.waitingNote} tone="cyan" />
+        <QuickPanel icon="check" title={copy.earnings.complete} value={completedLocal ? '1 local' : '0'} note={copy.earnings.completeNote} tone="mint" />
+        <QuickPanel icon="clock" title={copy.earnings.waiting} value={waitingLocal} note={copy.earnings.waitingNote} tone="cyan" />
       </View>
 
       <WorkerEarningsLedger />
@@ -579,16 +604,37 @@ function WorkerFrame({
 
 function WorkerChatContent() {
   const { copy, tokens } = useWorkerUi()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const dealChatKey = workerChatDealKey(deal)
   const [draft, setDraft] = useState('')
-  const [messages, setMessages] = useState<Array<{ mine?: boolean; system?: boolean; text: string; who: string }>>([])
-  const hasAnyWorkerKaelMessage = messages.length > 0
+  const [messages, setMessages] = useState<WorkerChatMessage[]>([])
+  const [activeDealChatKey, setActiveDealChatKey] = useState(dealChatKey)
+  const dealSeedMessages = buildWorkerDealChatSeed(deal, selectors.currentStatus, copy.chat.kael)
+  const renderedMessages = messages.length > 0 ? messages : dealSeedMessages
+  const hasAnyWorkerKaelMessage = renderedMessages.length > 0
+  const canSendWorkerKaelMessage = !deal || isAcceptedLocalWorkerDeal(deal)
+  const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : 'Chấp nhận hoặc bỏ qua trước'
+
+  useEffect(() => {
+    if (activeDealChatKey === dealChatKey) return
+    setMessages([])
+    setDraft('')
+    setActiveDealChatKey(dealChatKey)
+  }, [activeDealChatKey, dealChatKey])
 
   const submitWorkerKaelLocalDraft = () => {
+    if (!canSendWorkerKaelMessage) return
     const value = draft.trim()
     if (!value) return
+    const localResponse = deal
+      ? 'Đã lưu ghi chú tại máy cho yêu cầu hiện tại. Chưa gửi lên hệ thống và chưa mở thêm dữ liệu riêng tư.'
+      : copy.chat.sampleKael
+    const baseMessages = messages.length > 0 ? messages : dealSeedMessages
     setMessages([
+      ...baseMessages,
       { mine: true, text: value, who: copy.chat.worker },
-      { system: true, text: copy.chat.sampleKael, who: copy.chat.kael },
+      { system: true, text: localResponse, who: copy.chat.kael },
     ])
     setDraft('')
   }
@@ -609,7 +655,7 @@ function WorkerChatContent() {
           </View>
         ) : (
           <View style={styles.chatStack} testID="hasAnyWorkerKaelMessage">
-            {messages.map((message, index) => (
+            {renderedMessages.map((message, index) => (
               <ChatBubble key={`${message.who}-${index}`} {...message} />
             ))}
           </View>
@@ -623,10 +669,11 @@ function WorkerChatContent() {
             </Text>
           </Pressable>
           <TextInput
-            accessibilityLabel={copy.chat.input}
+            accessibilityLabel={chatInputPlaceholder}
+            editable={canSendWorkerKaelMessage}
             onChangeText={setDraft}
             onSubmitEditing={submitWorkerKaelLocalDraft}
-            placeholder={copy.chat.input}
+            placeholder={chatInputPlaceholder}
             placeholderTextColor={tokens.subtle}
             returnKeyType="send"
             selectionColor={tokens.primary}
@@ -636,11 +683,11 @@ function WorkerChatContent() {
           />
           <Pressable
             accessibilityLabel={copy.chat.send}
-            disabled={!draft.trim()}
+            disabled={!draft.trim() || !canSendWorkerKaelMessage}
             onPress={submitWorkerKaelLocalDraft}
             style={({ pressed }) => [
               styles.sendButton,
-              { backgroundColor: draft.trim() ? tokens.primary : tokens.border },
+              { backgroundColor: draft.trim() && canSendWorkerKaelMessage ? tokens.primary : tokens.border },
               pressed ? styles.pressed : null,
             ]}
             testID="worker-kael-send-button"
@@ -653,8 +700,32 @@ function WorkerChatContent() {
   )
 }
 
+function buildWorkerDealChatSeed(deal: LocalDeal | null, status: LocalDealStatus | null, kaelLabel: string): WorkerChatMessage[] {
+  if (!deal?.broadcast) return []
+  return [
+    { system: true, text: `${serviceLabel(deal.draft.serviceType)} · ${statusLabel(status)}`, who: kaelLabel },
+    ...deal.broadcast.prebrief.slice(0, 2).map((text) => ({ system: true, text, who: kaelLabel })),
+  ]
+}
+
+function workerChatDealKey(deal: LocalDeal | null) {
+  if (!deal?.broadcast) return 'none'
+  return [
+    deal.broadcast.status,
+    deal.draft.serviceType ?? 'none',
+    deal.draft.problemChips.join('|'),
+    deal.draft.description,
+    deal.draft.districtLabel,
+  ].join('::')
+}
+
 function WorkerEarningsHero() {
   const { copy, tokens } = useWorkerUi()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
+  const moneyLabel = acceptedDeal ? 'Chờ hệ thống thanh toán' : 'Chưa có dữ liệu'
+  const body = acceptedDeal ? `${statusLabel(selectors.currentStatus)} · chưa ghi nhận thanh toán hoặc đánh giá trong giai đoạn này.` : copy.earnings.body
 
   return (
     <View style={[styles.earningsHero, glassSurface(tokens, 'cream')]} testID="worker-earnings-summary">
@@ -663,13 +734,13 @@ function WorkerEarningsHero() {
       <View style={styles.rowBetween}>
         <View style={styles.titleStack}>
           <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.earnings.today}</Text>
-          <Text style={[styles.moneyText, { color: tokens.ink }]}>520.000đ</Text>
+          <Text style={[styles.moneyText, { color: tokens.ink }]}>{moneyLabel}</Text>
         </View>
         <View style={[styles.earningsOrb, { backgroundColor: tokens.glassStrong }]}>
           <Icon name="money" active />
         </View>
       </View>
-      {copy.earnings.body ? <Text style={[styles.bodyText, { color: tokens.muted }]}>{copy.earnings.body}</Text> : null}
+      {body ? <Text style={[styles.bodyText, { color: tokens.muted }]}>{body}</Text> : null}
       <View style={styles.hiddenMarker} testID={WORKER_NO_FAKE_PAYMENT_DATA} />
     </View>
   )
@@ -677,13 +748,23 @@ function WorkerEarningsHero() {
 
 function WorkerEarningsLedger() {
   const { copy, tokens } = useWorkerUi()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
+  const rows = acceptedDeal
+    ? [
+        ['Local deal', statusLabel(selectors.currentStatus)],
+        ['Tài khoản nhận tiền', 'Chưa lưu hệ thống'],
+        ['Thanh toán & đánh giá', 'Đang khóa'],
+      ]
+    : copy.earnings.rows
 
   return (
     <View style={[styles.listCard, glassSurface(tokens, 'raised')]} testID="worker-earnings-ledger">
       <GlassSheen />
       <GlassMotionLayer compact />
       <SectionHeader title={copy.earnings.ledgerTitle} />
-      {copy.earnings.rows.map((row, index) => (
+      {rows.map((row, index) => (
         <ListRow key={row[0]} icon={index === 0 ? 'money' : index === 1 ? 'bank' : 'document'} title={row[0]} meta={row[1]} />
       ))}
     </View>
@@ -691,7 +772,23 @@ function WorkerEarningsLedger() {
 }
 
 function WorkerProfileContent() {
-  const { copy, tokens } = useWorkerUi()
+  const { copy, language, tokens } = useWorkerUi()
+  const router = useRouter()
+  const { role } = useAuth()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
+  const adminAuditSwitchLabel = language === 'en' ? 'Choose audit section' : 'Chọn section audit'
+  const profileRows = deal
+    ? [
+        ['Xác minh danh tính', 'Chờ duyệt hệ thống'],
+        ['Kỹ năng dịch vụ', serviceLabel(deal.draft.serviceType)],
+        ['Khu vực làm việc', deal.draft.districtLabel || 'Từ deal local'],
+      ]
+    : copy.profile.rows
+  const profileSkills = deal
+    ? [serviceLabel(deal.draft.serviceType), deal.draft.districtLabel || 'Khu vực local', 'Chờ duyệt hệ thống', 'Chờ phản hồi thật']
+    : copy.profile.skills
 
   return (
     <>
@@ -713,22 +810,27 @@ function WorkerProfileContent() {
           <Icon name="shield" small />
         </View>
       </View>
+      {role === 'admin' ? (
+        <View style={styles.adminSwitchWrap}>
+          <PressButton label={adminAuditSwitchLabel} onPress={() => router.replace('/(auth)/login')} testID="worker-admin-audit-switch" />
+        </View>
+      ) : null}
 
       <View style={[styles.greenScoreCard, glassSurface(tokens, 'mint')]}>
         <MotionSweep />
         <GlassMotionLayer />
         <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.profile.scoreTitle}</Text>
-        <Text style={[styles.scoreNumber, { color: tokens.ink }]}>4.9</Text>
+        <Text style={[styles.scoreNumber, { color: tokens.ink }]}>--</Text>
         {copy.profile.scoreBody ? <Text style={[styles.bodyText, { color: tokens.muted }]}>{copy.profile.scoreBody}</Text> : null}
         <View style={styles.scoreStats}>
-          <Metric label={copy.home.today} value="2" />
-          <Metric label={copy.home.rating} value="4.9" />
-          <Metric label={copy.jobs.title} value="2" />
+          <Metric label={copy.home.today} value={acceptedDeal ? '1 local' : '0'} />
+          <Metric label={copy.home.rating} value="--" />
+          <Metric label={copy.jobs.title} value={deal ? statusLabel(selectors.currentStatus) : '--'} />
         </View>
       </View>
 
       <View style={styles.skillWrap}>
-        {copy.profile.skills.map((item) => (
+        {profileSkills.map((item) => (
           <View key={item} style={[styles.skillPill, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
             <Text style={[styles.skillText, { color: tokens.primary }]}>{item}</Text>
           </View>
@@ -745,7 +847,7 @@ function WorkerProfileContent() {
       <View style={[styles.listCard, glassSurface(tokens, 'raised')]} testID="worker-profile-list-groups">
         <GlassSheen />
         <GlassMotionLayer compact />
-        {copy.profile.rows.map((row, index) => (
+        {profileRows.map((row, index) => (
           <ListRow key={row[0]} icon={index === 0 ? 'shield' : index === 1 ? 'tools' : index === 2 ? 'map' : index === 3 ? 'moon' : 'globe'} title={row[0]} meta={row[1]} />
         ))}
       </View>
@@ -755,6 +857,12 @@ function WorkerProfileContent() {
 
 function WorkerMapStage() {
   const { copy, tokens } = useWorkerUi()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
+  const broadcast = deal?.broadcast
+  const mapSearch = broadcast?.generalArea ?? deal?.draft.districtLabel ?? copy.home.mapSearch
+  const statusTitle = deal ? statusLabel(selectors.currentStatus) : copy.home.online
 
   return (
     <View style={[styles.mapStage, glassSurface(tokens, 'base')]} testID="worker-flexible-map-shell">
@@ -769,7 +877,7 @@ function WorkerMapStage() {
         <View style={[styles.searchPill, glassSurface(tokens, 'raised')]}>
           <Icon name="pin" small />
           <Text style={[styles.searchText, { color: tokens.ink }]} numberOfLines={1}>
-            {copy.home.mapSearch}
+            {mapSearch}
           </Text>
         </View>
         <PulseBeacon />
@@ -792,16 +900,16 @@ function WorkerMapStage() {
         <View style={styles.rowBetween}>
           <View style={styles.titleStack}>
             <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.home.status}</Text>
-            <Text style={[styles.heroTitle, { color: tokens.ink }]}>{copy.home.online}</Text>
+            <Text style={[styles.heroTitle, { color: tokens.ink }]}>{statusTitle}</Text>
           </View>
-          <View style={[styles.toggleTrack, { backgroundColor: tokens.primary }]}>
+          <View style={[styles.toggleTrack, { backgroundColor: deal ? tokens.primary : tokens.borderStrong }]}>
             <View style={[styles.toggleKnob, { backgroundColor: tokens.raised }]} />
           </View>
         </View>
         <View style={styles.metricRow}>
-          <Metric label={copy.home.today} value="2" />
-          <Metric label={copy.home.estimate} value="520k" />
-          <Metric label={copy.home.rating} value="4.9" />
+          <Metric label={copy.home.today} value={acceptedDeal ? '1 local' : '0'} />
+          <Metric label={copy.home.estimate} value="--" />
+          <Metric label={copy.home.rating} value="--" />
         </View>
       </View>
     </View>
@@ -823,56 +931,104 @@ function WorkerMapFeatureCard({ icon, title, tone }: { icon: WorkerIconName; tit
   )
 }
 
+type WorkerProgressAction =
+  | 'worker_start_travel'
+  | 'worker_mark_arrived'
+  | 'worker_start_inspection'
+  | 'worker_start_repair'
+  | 'worker_complete_job'
+
+function getNextWorkerAction(status: LocalDealStatus | null): { label: string; type: WorkerProgressAction } | null {
+  if (status === 'worker_matched') return { label: 'Bắt đầu di chuyển', type: 'worker_start_travel' }
+  if (status === 'worker_on_way') return { label: 'Đã đến nơi', type: 'worker_mark_arrived' }
+  if (status === 'arrived') return { label: 'Bắt đầu kiểm tra', type: 'worker_start_inspection' }
+  if (status === 'inspecting') return { label: 'Bắt đầu sửa', type: 'worker_start_repair' }
+  if (status === 'repairing') return { label: 'Báo hoàn tất', type: 'worker_complete_job' }
+  return null
+}
+
 function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const { copy, tokens } = useWorkerUi()
+  const { dispatch, selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const broadcast = deal?.broadcast ?? null
+  const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus) : null
+  const hasBroadcast = Boolean(broadcast)
+  const secondsRemainingLabel = broadcast?.secondsRemaining === null || broadcast?.secondsRemaining === undefined ? null : `${broadcast.secondsRemaining}s`
+  const confirmWorkerProgressAction = (action: { label: string; type: WorkerProgressAction }) => {
+    if (action.type !== 'worker_complete_job') {
+      dispatch({ type: action.type })
+      return
+    }
+
+    Alert.alert(
+      'Xác nhận báo hoàn tất?',
+      'Worker audit sẽ báo khách kiểm tra và xác nhận. Thanh toán, đánh giá và giá cuối vẫn khóa cho tới khi backend được nối.',
+      [
+        { text: 'Kiểm tra lại', style: 'cancel' },
+        { text: action.label, onPress: () => dispatch({ type: action.type }) },
+      ],
+    )
+  }
+  const addressLabel = selectors.canWorkerSeeFullAddress
+    ? broadcast?.fullAddressLabel ?? deal?.draft.addressLabel ?? ''
+    : broadcast?.generalArea
+      ? `${broadcast.generalArea} · ẩn địa chỉ chi tiết`
+      : 'Địa chỉ chi tiết chỉ hiện sau khi có job thật và được chấp nhận.'
 
   return (
     <View style={[styles.requestSheet, compact ? styles.requestSheetCompact : null, glassSurface(tokens, 'raised')]} testID="worker-request-sheet">
       <GlassSheen />
       <MotionSweep />
       <GlassMotionLayer />
+      <View style={styles.hiddenMarker} testID="worker-no-live-request-empty-state" />
+      <View style={styles.hiddenMarker} testID="worker-safe-address-gate" />
       <View style={styles.rowBetween}>
         <View style={[styles.serviceBadge, { backgroundColor: tokens.mint }]}>
-          <Icon name="bolt" small />
-          <Text style={[styles.serviceBadgeText, { color: tokens.primary }]}>{copy.request.service}</Text>
+          <Icon name={deal?.draft.serviceType === 'plumbing' ? 'water' : 'bolt'} small />
+          <Text style={[styles.serviceBadgeText, { color: tokens.primary }]}>{hasBroadcast ? serviceLabel(deal?.draft.serviceType ?? null) : copy.request.service}</Text>
         </View>
-        <View style={[styles.countdownOrbit, { backgroundColor: tokens.primary, borderColor: tokens.glassBorder }]} testID="worker-accept-countdown">
-          <Text style={[styles.countdownText, { color: tokens.primaryText }]}>00:42</Text>
-        </View>
+        {secondsRemainingLabel && selectors.canWorkerAccept ? (
+          <View style={[styles.countdownOrbit, { borderColor: tokens.primary }]} testID="worker-local-broadcast-countdown">
+            <Text style={[styles.countdownText, { color: tokens.primary }]}>{secondsRemainingLabel}</Text>
+          </View>
+        ) : null}
       </View>
 
-      <Text style={[styles.requestTitle, { color: tokens.ink }]}>{copy.request.title}</Text>
-      <View style={styles.areaRow} testID="worker-general-area-before-accept">
+      <Text style={[styles.requestTitle, { color: tokens.ink }]}>{broadcast?.problemSummary ?? copy.request.title}</Text>
+      <View style={styles.areaRow} testID={selectors.canWorkerSeeFullAddress ? 'worker-full-address-after-accept' : 'worker-general-area-before-accept'}>
         <Icon name="map" small />
-        <Text style={[styles.areaText, { color: tokens.muted }]}>{copy.request.area}</Text>
+        <Text style={[styles.areaText, { color: tokens.muted }]}>{addressLabel}</Text>
       </View>
-      <View style={styles.hiddenMarker} testID="worker-safe-address-gate" />
 
       <View style={[styles.kaelBrief, glassSurface(tokens, 'cyan')]} testID="worker-kael-brief">
         <View style={styles.identityRow}>
           <Image source={kaelHead} style={[styles.kaelMini, { borderColor: tokens.borderStrong }]} />
           <Text style={[styles.kaelBriefTitle, { color: tokens.ink }]}>{copy.request.briefTitle}</Text>
         </View>
-        {copy.request.brief.map((item) => (
-          <View key={item} style={styles.briefItem}>
+        {(broadcast?.prebrief ?? copy.request.brief).map((brief) => (
+          <View key={brief} style={styles.briefItem}>
             <View style={[styles.briefDot, { backgroundColor: tokens.primary }]} />
             <Text style={[styles.briefText, { color: tokens.muted }]} numberOfLines={2}>
-              {item}
+              {brief}
             </Text>
           </View>
         ))}
       </View>
 
       <View style={styles.priceRow}>
-        <Metric label={copy.request.customerEstimate} value="280k-420k" />
-        <Metric label={copy.request.workerEarns} value="245k-360k" />
+        <Metric label={copy.request.customerEstimate} value="--" />
+        <Metric label={copy.request.workerEarns} value="--" />
       </View>
-
-      {!compact ? (
+      {selectors.canWorkerAccept ? (
         <View style={styles.actionRow}>
-          <PressButton label={copy.request.decline} secondary />
-          <PressButton label={copy.request.accept} />
+          <PressButton label={copy.request.decline} onPress={() => dispatch({ type: 'worker_decline_broadcast' })} secondary />
+          <PressButton label={copy.request.accept} onPress={() => dispatch({ type: 'worker_accept_broadcast' })} testID="worker-local-accept-deal" />
         </View>
+      ) : nextAction ? (
+        <PressButton label={nextAction.label} onPress={() => confirmWorkerProgressAction(nextAction)} testID="worker-local-status-action" />
+      ) : hasBroadcast ? (
+        <Text style={[styles.bodyText, { color: tokens.muted }]}>{statusLabel(selectors.currentStatus)}</Text>
       ) : null}
     </View>
   )
@@ -1239,20 +1395,39 @@ function LanguageToggle() {
 
 function TimelineCard() {
   const { copy, tokens } = useWorkerUi()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const phases = getWorkerTimeline(deal ? selectors.currentStatus : null)
 
   return (
     <View style={[styles.timelineCard, glassSurface(tokens, 'raised')]}>
       <GlassSheen />
       <GlassMotionLayer compact />
       <SectionHeader title={copy.home.shiftTitle} action={copy.home.shiftAction} />
-      {copy.home.phases.map((item, index) => (
-        <View key={item} style={styles.timelineItem}>
-          <View style={[styles.timelineRail, { backgroundColor: index < 2 ? tokens.primary : tokens.border }]} />
-          <Text style={[styles.timelineText, { color: index < 2 ? tokens.ink : tokens.subtle }]}>{item}</Text>
+      {phases.map((item) => (
+        <View key={item.label} style={styles.timelineItem}>
+          <View style={[styles.timelineRail, { backgroundColor: item.active ? tokens.primary : tokens.border }]} />
+          <Text style={[styles.timelineText, { color: item.active ? tokens.ink : tokens.subtle }]}>{item.label}</Text>
         </View>
       ))}
     </View>
   )
+}
+
+function getWorkerTimeline(status: LocalDealStatus | null) {
+  const steps: Array<{ label: string; statuses: LocalDealStatus[] }> = [
+    { label: 'Chờ broadcast', statuses: ['broadcasting'] },
+    { label: 'Nhận local deal', statuses: ['worker_matched'] },
+    { label: 'Di chuyển', statuses: ['worker_on_way'] },
+    { label: 'Đến nơi', statuses: ['arrived'] },
+    { label: 'Kiểm tra', statuses: ['inspecting'] },
+    { label: 'Sửa và hoàn tất', statuses: ['repairing', 'completed_by_worker', 'confirmed_by_customer'] },
+  ]
+  const activeIndex = status ? Math.max(steps.findIndex((step) => step.statuses.includes(status)), -1) : -1
+  return steps.map((step, index) => ({
+    label: step.label,
+    active: activeIndex >= index,
+  }))
 }
 
 function SegmentFilter({ labels }: { labels: readonly string[] }) {
@@ -1380,17 +1555,34 @@ function ListRow({ icon, meta, title }: { icon: WorkerIconName; meta: string; ti
   )
 }
 
-function PressButton({ label, secondary = false }: { label: string; secondary?: boolean }) {
+function PressButton({
+  disabled = false,
+  label,
+  onPress,
+  secondary = false,
+  testID,
+}: {
+  disabled?: boolean
+  label: string
+  onPress?: () => void
+  secondary?: boolean
+  testID?: string
+}) {
   const { tokens } = useWorkerUi()
 
   return (
     <Pressable
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
       style={({ pressed }) => [
         styles.pressButton,
         { backgroundColor: secondary ? tokens.mint : tokens.primary },
+        disabled ? styles.disabledButton : null,
         pressed ? styles.pressed : null,
       ]}
+      testID={testID}
     >
       <Text style={[styles.pressButtonText, { color: secondary ? tokens.primary : tokens.primaryText }]}>{label}</Text>
     </Pressable>
@@ -1623,7 +1815,9 @@ const styles = StyleSheet.create({
   briefText: { flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 16 },
   priceRow: { flexDirection: 'row', gap: 8 },
   actionRow: { flexDirection: 'row', gap: 10 },
+  adminSwitchWrap: { flexDirection: 'row' },
   pressButton: { alignItems: 'center', borderRadius: 18, flex: 1, justifyContent: 'center', minHeight: 46 },
+  disabledButton: { opacity: 0.52 },
   pressButtonText: { fontSize: 15, fontWeight: '600' },
   operationalBand: { flexDirection: 'row', gap: 12 },
   quickPanel: { borderRadius: 25, flex: 1, gap: 5, minHeight: 132, overflow: 'hidden', padding: 14, position: 'relative' },

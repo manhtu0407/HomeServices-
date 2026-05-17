@@ -1,7 +1,8 @@
-import { Tabs } from 'expo-router'
-import { Image, useWindowDimensions } from 'react-native'
+import { Redirect, Tabs } from 'expo-router'
+import { ActivityIndicator, Image, useWindowDimensions, View } from 'react-native'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
+import { useAuth } from '@/lib/auth-provider'
 
 type CustomerTabName = 'home' | 'booking' | 'kael' | 'history' | 'profile'
 
@@ -20,12 +21,31 @@ const CUSTOMER_TAB_ICON_TEST_IDS = [
 ] as const
 
 export default function CustomerLayout() {
+  const { loading, role, session } = useAuth()
   const themeMode = useCustomerThemeMode()
   const tokens = getCustomerThemeTokens(themeMode)
   const { width } = useWindowDimensions()
   const dockWidth = Math.min(width - 32, 430)
   const dockLeft = Math.max((width - dockWidth) / 2, 16)
   const dockMarker = CUSTOMER_DARK_DOCK_LAYER_MATCH + 'customer-tab-dark-layer-match'
+
+  if (loading) {
+    return (
+      <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
+        <ActivityIndicator color={tokens.primary} size="large" />
+      </View>
+    )
+  }
+
+  if (!session) {
+    return <Redirect href="/(auth)/login" />
+  }
+
+  if (role === 'admin') {
+    // Admin audit mode can inspect the customer workflow without changing role.
+  } else if (role !== 'customer') {
+    return <Redirect href="/(auth)/login" />
+  }
 
   return (
     <Tabs
