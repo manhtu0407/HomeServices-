@@ -38,7 +38,8 @@
     ],
     "extra": {
       "supabaseUrl": "",
-      "supabasePublishableKey": ""
+      "supabasePublishableKey": "",
+      "apiBaseUrl": ""
     }
   }
 }
