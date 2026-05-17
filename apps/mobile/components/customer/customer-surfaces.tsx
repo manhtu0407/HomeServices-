@@ -12,11 +12,11 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native'
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
-const CUSTOMER_V4_PRODUCTION_SOURCE = 'CUSTOMER_V4_PRODUCTION_SOURCE: .tmp/design-lab/customer-app-v4-flow/index.html'
+const CUSTOMER_V4_PRODUCTION_STANDARD = 'CUSTOMER_V4_PRODUCTION_STANDARD: accepted customer V4 production standard'
 const CUSTOMER_V4_VISUAL_CONTRACT = 'CUSTOMER_V4_VISUAL_CONTRACT: production surfaces replace old customer UI'
 const CUSTOMER_SHARED_THEME_STORE = 'CUSTOMER_SHARED_THEME_STORE: one theme mode drives all mounted customer tabs'
 const CUSTOMER_DOCK_SCROLL_CLEARANCE = 'CUSTOMER_DOCK_SCROLL_CLEARANCE: content clears absolute V4 dock'
@@ -27,7 +27,7 @@ const KAEL_CHATBOX_SCREEN_CONTRACT = 'KAEL_CHATBOX_SCREEN_CONTRACT: local transa
 const KAEL_TICKET_COMPOSER_V3 = 'KAEL_TICKET_COMPOSER_V3: Kael asks, fills a repair ticket, then routes to booking'
 const CUSTOMER_THEME_STORAGE_KEY = 'customer.theme.mode.v4'
 const CUSTOMER_LANGUAGE_STORAGE_KEY = 'customer.language.mode.v4'
-const customerDockHeight = 82
+const customerDockHeight = 70
 const customerDockBottomMargin = 10
 const customerDockBottomClearance = customerDockHeight + customerDockBottomMargin + 44
 const customerFrameHorizontalPadding = 16
@@ -57,9 +57,12 @@ type IconName =
   | 'person'
   | 'privacy'
   | 'review'
+  | 'send'
   | 'support'
   | 'ticket'
   | 'waterPipe'
+
+let lastCustomerDockActive: CustomerDockActive = 'home'
 
 type CustomerThemeTokens = {
   mode: ThemeMode
@@ -243,17 +246,6 @@ export function CustomerHomeSurface() {
         <>
           <V4MapBackdrop />
           <View style={styles.v4Content}>
-            <View style={styles.v4TopRow}>
-              <Pressable style={[styles.locationPill, glassSurface(tokens, 'strong')]} onPress={openBookingFlow}>
-                <GlassSheen />
-                <IconGlyph name="apartment" color={tokens.primary} accent={tokens.copper} />
-                <Text style={[styles.locationText, { color: tokens.text }]} numberOfLines={1}>
-                  Căn hộ TP.HCM
-                </Text>
-              </Pressable>
-              <IconButton icon="notification" accessibilityLabel="Thông báo" markerTestID="customer-utility-notification-center" />
-            </View>
-
             <Pressable style={[styles.searchPill, glassSurface(tokens, 'strong')]} onPress={openBookingFlow} testID="customer-home-search-entry">
               <GlassSheen />
               <IconGlyph name="estimate" color={tokens.primary} accent={tokens.copper} />
@@ -268,6 +260,7 @@ export function CustomerHomeSurface() {
               <View style={styles.hiddenMarker} testID="customer-home-signature-v4" />
               <View style={styles.hiddenMarker} testID="customer-home-layer-stack" />
               <View style={styles.hiddenMarker} testID="customer-home-hero-depth-grid" />
+              <View style={styles.hiddenMarker} testID="customer-utility-notification-center" />
               <View style={styles.twoCol}>
                 <V4ServiceCard icon="boltPanel" title="Sửa điện" testID="customer-shell-service-electrical" onPress={openBookingFlow} />
                 <V4ServiceCard icon="waterPipe" title="Sửa nước" testID="customer-shell-service-plumbing" onPress={openBookingFlow} water />
@@ -330,17 +323,6 @@ export function CustomerKaelSurface() {
     <V4Frame active="kael" testID="customer-kael-companion">
       {({ tokens }) => (
         <View style={styles.plainContent} accessibilityLabel={`${KAEL_CHATBOX_SCREEN_CONTRACT}; ${KAEL_TICKET_COMPOSER_V3}`}>
-          <View style={styles.v4TopRow}>
-            <View>
-              <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
-                QUẢN GIA KAEL
-              </Text>
-              <Text style={[styles.pageTitle, { color: tokens.text }]} numberOfLines={1}>
-                Trò chuyện
-              </Text>
-            </View>
-            <KaelMascot variant="head" size={52} />
-          </View>
           <View style={[styles.kaelCard, glassSurface(tokens, 'depth')]} testID="customer-kael-chatbox">
             <GlassSheen />
             <View style={styles.hiddenMarker} testID="customer-kael-ticket-composer" />
@@ -406,9 +388,6 @@ export function CustomerHistorySurface() {
     <V4Frame active="activity" testID="customer-history-surface">
       {({ tokens }) => (
         <View style={styles.plainContent}>
-          <Text style={[styles.pageTitle, { color: tokens.text }]} numberOfLines={1}>
-            Hoạt động
-          </Text>
           <View style={[styles.filterRow, glassSurface(tokens, 'strong')]} testID="customer-history-filter-shell">
             <GlassSheen />
             {['Sửa', 'Kiểm giá', 'Trò chuyện', 'Xong'].map((label, index) => (
@@ -655,7 +634,7 @@ function V4Frame({
               maxWidth: 430,
               minHeight: '100%',
               paddingBottom: Math.max(insets.bottom + customerDockBottomClearance, customerDockBottomClearance),
-              paddingTop: Math.max(insets.top + 36, 44),
+              paddingTop: Math.max(insets.top + 8, 20),
               width: Math.max(0, frameWidth - customerFrameHorizontalPadding * 4),
             },
           ]}
@@ -664,7 +643,7 @@ function V4Frame({
           style={[styles.scroll, { backgroundColor: tokens.canvas }]}
         >
           <View
-            accessibilityLabel={`${CUSTOMER_V4_PRODUCTION_SOURCE}; ${CUSTOMER_V4_VISUAL_CONTRACT}; ${CUSTOMER_SHARED_THEME_STORE}; ${CUSTOMER_DOCK_SCROLL_CLEARANCE}; ${CUSTOMER_LAYER_ECOLOGY_V4}; ${SEMANTIC_LAYER_SWITCH_V4}; ${COPY_DENSITY_COMPACT}`}
+            accessibilityLabel={`${CUSTOMER_V4_PRODUCTION_STANDARD}; ${CUSTOMER_V4_VISUAL_CONTRACT}; ${CUSTOMER_SHARED_THEME_STORE}; ${CUSTOMER_DOCK_SCROLL_CLEARANCE}; ${CUSTOMER_LAYER_ECOLOGY_V4}; ${SEMANTIC_LAYER_SWITCH_V4}; ${COPY_DENSITY_COMPACT}`}
             style={styles.hiddenMarker}
             testID="customer-dark-layer-ecology"
           />
@@ -694,8 +673,8 @@ function V4Dock({
   const tokens = useCustomerTokens()
   const dockPulse = useSharedValue(0)
   const dockSweep = useSharedValue(0)
-  const dockWidth = Math.max(0, frameWidth - 56)
-  const dockLeft = Math.max((screenWidth - frameWidth) / 2 + 28, 28)
+  const dockWidth = Math.max(0, frameWidth - 82)
+  const dockLeft = Math.max((screenWidth - frameWidth) / 2 + 41, 41)
   const bottom = Math.max(bottomInset + customerDockBottomMargin, customerDockBottomMargin)
   const items = [
     { key: 'home' as const, icon: 'apartment' as const, path: '/(customer)/home' as const },
@@ -705,13 +684,24 @@ function V4Dock({
     { key: 'profile' as const, icon: 'person' as const, path: '/(customer)/profile' as const },
   ]
   const activeIndex = Math.max(items.findIndex((item) => item.key === active), 0)
+  const previousActiveIndex = Math.max(items.findIndex((item) => item.key === lastCustomerDockActive), 0)
   const slotWidth = dockWidth / items.length
-  const liquidLeft = activeIndex * slotWidth + slotWidth / 2 - 48
+  const liquidLeft = activeIndex * slotWidth + slotWidth / 2 - 40
+  const previousLiquidLeft = previousActiveIndex * slotWidth + slotWidth / 2 - 40
+  const liquidX = useSharedValue(previousLiquidLeft)
+  const liquidWake = useSharedValue(1)
 
   useEffect(() => {
     dockPulse.value = withRepeat(withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.quad) }), -1, true)
     dockSweep.value = withRepeat(withTiming(1, { duration: 4600, easing: Easing.inOut(Easing.quad) }), -1, false)
   }, [dockPulse, dockSweep])
+
+  useEffect(() => {
+    liquidX.value = withSpring(liquidLeft, { damping: 15, mass: 0.72, stiffness: 132 })
+    liquidWake.value = 0
+    liquidWake.value = withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) })
+    lastCustomerDockActive = active
+  }, [active, liquidLeft, liquidWake, liquidX])
 
   const dockHaloStyle = useAnimatedStyle(() => ({
     opacity: 0.22 + dockPulse.value * 0.2,
@@ -727,7 +717,11 @@ function V4Dock({
   }))
   const liquidPoolStyle = useAnimatedStyle(() => ({
     opacity: 0.18 + dockPulse.value * 0.18,
-    transform: [{ scaleX: 0.94 + dockPulse.value * 0.16 }, { scaleY: 0.86 + dockPulse.value * 0.12 }],
+    transform: [{ translateX: liquidX.value }, { scaleX: 0.94 + dockPulse.value * 0.16 }, { scaleY: 0.86 + dockPulse.value * 0.12 }],
+  }))
+  const liquidWakeStyle = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - liquidWake.value) * 0.24,
+    transform: [{ translateX: liquidX.value - 8 + liquidWake.value * 16 }, { scaleX: 0.82 + liquidWake.value * 0.5 }, { scaleY: 0.74 + liquidWake.value * 0.18 }],
   }))
 
   return (
@@ -736,7 +730,8 @@ function V4Dock({
       <View pointerEvents="none" style={[styles.dockWarmAura, { backgroundColor: tokens.copper }]} />
       <View style={[styles.glassDock, glassSurface(tokens, 'strong')]}>
         <GlassSheen />
-        <Animated.View pointerEvents="none" style={[styles.dockLiquidPool, { backgroundColor: tokens.aqua, left: liquidLeft }, liquidPoolStyle]} testID="customer-dock-liquid-pool" />
+        <Animated.View pointerEvents="none" style={[styles.dockLiquidWake, { backgroundColor: tokens.primary }, liquidWakeStyle]} testID="customer-dock-liquid-wake" />
+        <Animated.View pointerEvents="none" style={[styles.dockLiquidPool, { backgroundColor: tokens.aqua }, liquidPoolStyle]} testID="customer-dock-liquid-pool" />
         <View pointerEvents="none" style={[styles.dockBottomReflection, { backgroundColor: tokens.glassHighlight }]} />
         <Animated.View pointerEvents="none" style={[styles.dockMotionSheen, { backgroundColor: tokens.glassHighlight }, dockSheenStyle]} testID="customer-dock-motion-sheen" />
         {items.map((item) => (
@@ -1151,7 +1146,7 @@ function KaelComposer({
         value={draft}
       />
       <Pressable accessibilityLabel="Gửi" accessibilityRole="button" onPress={onSubmit} style={[styles.sendButton, { backgroundColor: tokens.primary }]}>
-        <IconGlyph name="chat" color={tokens.primaryText} accent={tokens.primaryText} />
+        <IconGlyph name="send" color={tokens.primaryText} accent={tokens.primaryText} />
       </Pressable>
     </View>
   )
@@ -1326,6 +1321,14 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
     )
   }
 
+  if (name === 'send') {
+    return (
+      <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+        <Path d="M5.4 12.8 19.4 5.8l-4.3 13.4-3.1-5.2-6.6-1.2Z" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
+      </Svg>
+    )
+  }
+
   if (name === 'payment') {
     return (
       <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
@@ -1453,54 +1456,65 @@ const styles = StyleSheet.create({
   },
   dockGlassAura: {
     borderRadius: 999,
-    bottom: -18,
-    filter: 'blur(22px)',
-    height: 86,
-    left: 20,
+    bottom: -14,
+    filter: 'blur(18px)',
+    height: 70,
+    left: 18,
     position: 'absolute',
-    right: 20,
+    right: 18,
     zIndex: -1,
   },
   dockWarmAura: {
     borderRadius: 999,
-    bottom: -8,
-    filter: 'blur(22px)',
-    height: 56,
-    opacity: 0.13,
+    bottom: -6,
+    filter: 'blur(18px)',
+    height: 46,
+    opacity: 0.11,
     position: 'absolute',
-    right: -18,
-    width: 104,
+    right: -12,
+    width: 88,
     zIndex: -1,
   },
   glassDock: {
     alignItems: 'center',
-    borderRadius: 32,
+    borderRadius: 29,
     borderWidth: 1,
-    boxShadow: '0 24px 66px rgba(13,70,65,0.22), inset 0 1px 0 rgba(255,255,255,0.78)',
+    boxShadow: '0 18px 50px rgba(13,70,65,0.18), inset 0 1px 0 rgba(255,255,255,0.76)',
     flexDirection: 'row',
-    gap: 5,
-    minHeight: 76,
+    gap: 4,
+    minHeight: 64,
     overflow: 'hidden',
-    padding: 9,
+    padding: 7,
   },
   dockLiquidPool: {
     borderRadius: 999,
-    bottom: 8,
-    filter: 'blur(16px)',
-    height: 62,
-    opacity: 0.28,
+    bottom: 7,
+    filter: 'blur(13px)',
+    height: 52,
+    left: 0,
+    opacity: 0.24,
     position: 'absolute',
-    width: 96,
+    width: 80,
+    zIndex: 0,
+  },
+  dockLiquidWake: {
+    borderRadius: 999,
+    bottom: 4,
+    filter: 'blur(16px)',
+    height: 56,
+    left: 0,
+    position: 'absolute',
+    width: 88,
     zIndex: 0,
   },
   dockBottomReflection: {
     borderRadius: 999,
-    bottom: 9,
-    height: 18,
-    left: 42,
-    opacity: 0.18,
+    bottom: 8,
+    height: 15,
+    left: 36,
+    opacity: 0.16,
     position: 'absolute',
-    right: 42,
+    right: 36,
     zIndex: 0,
   },
   dockMotionSheen: {
@@ -1508,14 +1522,14 @@ const styles = StyleSheet.create({
     filter: 'blur(1px)',
     position: 'absolute',
     top: -18,
-    width: 52,
+    width: 44,
     zIndex: 0,
   },
   dockItem: {
     alignItems: 'center',
-    borderRadius: 24,
+    borderRadius: 21,
     flex: 1,
-    height: 58,
+    height: 50,
     justifyContent: 'center',
     position: 'relative',
     zIndex: 2,
@@ -1527,34 +1541,34 @@ const styles = StyleSheet.create({
   },
   dockActiveGlow: {
     borderRadius: 999,
-    filter: 'blur(12px)',
-    height: 56,
-    opacity: 0.34,
+    filter: 'blur(10px)',
+    height: 48,
+    opacity: 0.3,
     position: 'absolute',
-    width: 56,
+    width: 48,
   },
   dockDot: {
     borderRadius: 999,
-    bottom: 7,
+    bottom: 6,
     height: 4,
     position: 'absolute',
     width: 4,
   },
   dockKaelImage: {
-    height: 44,
-    width: 44,
+    height: 36,
+    width: 36,
   },
   floatingAward: {
     alignItems: 'center',
     borderRadius: 999,
     borderWidth: 1,
-    bottom: -8,
-    height: 42,
+    bottom: -6,
+    height: 36,
     justifyContent: 'center',
     overflow: 'hidden',
     position: 'absolute',
-    right: -6,
-    width: 42,
+    right: -4,
+    width: 36,
     zIndex: 34,
   },
   v4Content: {
@@ -1688,30 +1702,6 @@ const styles = StyleSheet.create({
     right: 52,
     top: 246,
   },
-  v4TopRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  locationPill: {
-    alignItems: 'center',
-    borderRadius: 22,
-    borderWidth: 1,
-    boxShadow: '0 18px 44px rgba(13,70,65,0.12)',
-    flex: 1,
-    flexDirection: 'row',
-    gap: 10,
-    minHeight: 52,
-    overflow: 'hidden',
-    paddingHorizontal: 14,
-  },
-  locationText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0,
-  },
   searchPill: {
     alignItems: 'center',
     borderRadius: 22,
@@ -1719,7 +1709,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 18px 44px rgba(13,70,65,0.12)',
     flexDirection: 'row',
     gap: 10,
-    marginTop: 12,
+    marginTop: 0,
     minHeight: 52,
     overflow: 'hidden',
     paddingHorizontal: 14,
@@ -1921,7 +1911,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     boxShadow: '0 18px 42px rgba(16,43,47,0.08)',
     gap: 12,
-    minHeight: 520,
+    minHeight: 568,
     padding: 14,
   },
   kaelChatStage: {
@@ -1930,7 +1920,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 12,
     justifyContent: 'space-between',
-    minHeight: 440,
+    minHeight: 488,
     overflow: 'hidden',
     padding: 12,
   },
@@ -1939,7 +1929,7 @@ const styles = StyleSheet.create({
   },
   kaelBlankCanvas: {
     flex: 1,
-    minHeight: 300,
+    minHeight: 338,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -2064,6 +2054,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 16,
     borderWidth: 1,
+    flexShrink: 0,
     height: 40,
     justifyContent: 'center',
     width: 40,
@@ -2076,15 +2067,18 @@ const styles = StyleSheet.create({
   },
   composerInput: {
     flex: 1,
+    flexShrink: 1,
     fontSize: 15,
     fontWeight: '500',
     letterSpacing: 0,
+    minWidth: 0,
     minHeight: 40,
     paddingHorizontal: 8,
   },
   sendButton: {
     alignItems: 'center',
     borderRadius: 17,
+    flexShrink: 0,
     height: 42,
     justifyContent: 'center',
     width: 42,

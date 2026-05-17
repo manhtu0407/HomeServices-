@@ -1,17 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native'
-import { Colors } from '@/constants/colors'
+import { WorkerEarningsSurface } from '@/components/worker/worker-surfaces'
 
 export default function EarningsScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Thu nhập</Text>
-      <Text style={styles.subtitle}>Doanh thu và lịch sử thanh toán</Text>
-    </View>
-  )
+  return <WorkerEarningsSurface />
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
-  title: { fontSize: 24, fontWeight: '700', color: Colors.text, marginBottom: 8 },
-  subtitle: { fontSize: 16, color: Colors.textSecondary },
-})

@@ -11,12 +11,16 @@ const exists = (rel: string) => existsSync(resolve(MOBILE_ROOT, rel))
 // ===================================================================
 
 describe('screen files existence (STRUCTURES.md mapping)', () => {
-  const authScreens = ['login.tsx', 'verify-otp.tsx', 'onboard.tsx']
+  const authScreens = ['login.tsx', 'verify-otp.tsx']
   const customerScreens = ['home.tsx', 'booking.tsx', 'kael.tsx', 'history.tsx', 'profile.tsx']
   const workerScreens = ['home.tsx', 'jobs.tsx', 'chat.tsx', 'earnings.tsx', 'profile.tsx']
 
   it.each(authScreens)('(auth)/%s exists', (file) => {
     expect(exists(`app/(auth)/${file}`)).toBe(true)
+  })
+
+  it('does not ship the removed auth onboarding route', () => {
+    expect(exists('app/(auth)/onboard.tsx')).toBe(false)
   })
 
   it.each(customerScreens)('(customer)/%s exists', (file) => {
@@ -53,7 +57,6 @@ describe('all screens export default function', () => {
     'app/(auth)/_layout.tsx',
     'app/(auth)/login.tsx',
     'app/(auth)/verify-otp.tsx',
-    'app/(auth)/onboard.tsx',
     'app/(customer)/_layout.tsx',
     'app/(customer)/home.tsx',
     'app/(customer)/booking.tsx',
@@ -193,7 +196,8 @@ describe('customer frontend shell surfaces', () => {
   it('implements the V4 customer quality system markers', () => {
     const src = shell()
     const layout = customerLayout()
-    expect(src).toContain('CUSTOMER_V4_PRODUCTION_SOURCE')
+    expect(src).toContain('CUSTOMER_V4_PRODUCTION_STANDARD')
+    expect(src).not.toContain('CUSTOMER_V4_PRODUCTION_SOURCE')
     expect(src).toContain('CUSTOMER_V4_VISUAL_CONTRACT')
     expect(layout).toContain('CUSTOMER_DOCK_MAIN_A')
     expect(src).toContain('CUSTOMER_SHARED_THEME_STORE')
@@ -219,7 +223,7 @@ describe('customer frontend shell surfaces', () => {
   it('implements V4 production customer language/theme persistence and Kael 8A assets', () => {
     const src = shell()
     const layout = customerLayout()
-    expect(src).toContain('CUSTOMER_V4_PRODUCTION_SOURCE')
+    expect(src).toContain('CUSTOMER_V4_PRODUCTION_STANDARD')
     expect(src).toContain('CustomerLanguageMode')
     expect(src).toContain('CUSTOMER_LANGUAGE_STORAGE_KEY')
     expect(src).toContain('CUSTOMER_THEME_STORAGE_KEY')
@@ -234,10 +238,10 @@ describe('customer frontend shell surfaces', () => {
     expect(layout).toContain('customer-tab-kael-mascot-8a')
   })
 
-  it('keeps design-lab V1/V2 removed while preserving the V4 source prototype', () => {
+  it('keeps design-lab artifacts out of production customer source references', () => {
     expect(exists('../../.tmp/design-lab/customer-app-v1')).toBe(false)
     expect(exists('../../.tmp/design-lab/customer-app-v2')).toBe(false)
-    expect(exists('../../.tmp/design-lab/customer-app-v4-flow/index.html')).toBe(true)
+    expect(shell()).not.toContain('.tmp/design-lab')
   })
 
   it('keeps V4 dark mode as a semantic layer switch instead of a separate redesign', () => {
@@ -383,10 +387,12 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-dock-glass-aura')
     expect(src).toContain('customer-dock-motion-sheen')
     expect(src).toContain('customer-dock-liquid-pool')
+    expect(src).toContain('customer-dock-liquid-wake')
     expect(src).toContain('MotionSweep')
     expect(src).toContain('V4MapBackdrop')
     expect(src).toContain('useSharedValue')
     expect(src).toContain('withRepeat')
+    expect(src).toContain('withSpring')
     expect(src).not.toContain('Animated.loop')
     expect(src).not.toContain('onHoverIn')
   })
@@ -436,6 +442,9 @@ const removedPrototypeRuntimePaths = [
   'app/prototype/client-price-check.tsx',
   'app/prototype/client-frontier.tsx',
   'app/prototype/fleets.tsx',
+  'app/(auth)/onboard.tsx',
+  'components/auth/auth-surfaces-v2.tsx',
+  'components/worker/worker-surfaces-v3.tsx',
   'components/client-price-check/client-price-check-prototype.tsx',
   'components/customer/client-frontier-prototype.tsx',
   'components/fleets/fleets-prototype.tsx',
@@ -520,8 +529,137 @@ describe('worker tab labels (STRUCTURES.md B1)', () => {
   })
 })
 
+describe('worker client-V4/XanhSM aligned shell surfaces', () => {
+  const shellPath = 'components/worker/worker-surfaces.tsx'
+  const shell = () => (exists(shellPath) ? read(shellPath) : '')
+  const workerRoutes = [
+    ['home', 'WorkerHomeSurface'],
+    ['jobs', 'WorkerJobsSurface'],
+    ['chat', 'WorkerChatSurface'],
+    ['earnings', 'WorkerEarningsSurface'],
+    ['profile', 'WorkerProfileSurface'],
+  ] as const
+
+  it('defines the five worker shell surface exports', () => {
+    const src = shell()
+    expect(exists(shellPath)).toBe(true)
+    expect(src).toContain('export function WorkerHomeSurface')
+    expect(src).toContain('export function WorkerJobsSurface')
+    expect(src).toContain('export function WorkerChatSurface')
+    expect(src).toContain('export function WorkerEarningsSurface')
+    expect(src).toContain('export function WorkerProfileSurface')
+  })
+
+  it.each(workerRoutes)('wires (worker)/%s to %s', (route, exportName) => {
+    const src = read(`app/(worker)/${route}.tsx`)
+    expect(src).toContain(exportName)
+    expect(src).toContain('@/components/worker/worker-surfaces')
+    expect(src).not.toContain('@/components/worker/worker-surfaces-v3')
+  })
+
+  it('keeps the Worker production visual contract tied to customer V4 and XanhSM references', () => {
+    const src = shell()
+    expect(src).toContain('WORKER_XANHSM_REFERENCE_AUDIT')
+    expect(src).toContain('WORKER_PRODUCTION_CONTRACT')
+    expect(src).toContain('WORKER_CLIENT_BASELINE_AUDIT')
+    expect(src).toContain('WORKER_DOCK_GLASS_MOTION')
+    expect(src).toContain('WORKER_GLASSMORPHISM_MOTION_LAYER')
+    expect(src).toContain('StatusBar')
+    expect(src).toContain('GlassSheen')
+    expect(src).toContain('GlassMotionLayer')
+    expect(src).toContain('worker-vertical-glass-flow')
+    expect(src).toContain('worker-vertical-glass-core')
+    expect(src).toContain('verticalFlow.value')
+    expect(src).toContain('translateY')
+    expect(src).toContain('WorkerSectionMotionField')
+    expect(src).toContain('worker-section-glass-motion-home')
+    expect(src).toContain('worker-section-glass-motion-jobs')
+    expect(src).toContain('worker-section-glass-motion-chat')
+    expect(src).toContain('worker-section-glass-motion-earnings')
+    expect(src).toContain('worker-section-glass-motion-profile')
+    expect(src).toContain('centered-metric-type')
+    expect(src).toContain("textAlign: 'center'")
+    expect(src).toContain('backdropFilter')
+    expect(src).toContain('experimental_backgroundImage')
+    expect(src).toContain('worker-flexible-map-shell')
+    expect(src).toContain('worker-map-google-ready')
+    expect(src).toContain('mapCardsRow')
+    expect(src).toContain('worker-liquid-glass-dock')
+    expect(src).toContain('worker-dock-liquid-pool')
+    expect(src).toContain('worker-dock-liquid-wake')
+    expect(src).toContain('worker-dock-active-glow')
+    expect(src).toContain('worker-dock-kael-brief-mascot')
+    expect(src).toContain('withSpring')
+    expect(src).toContain('worker-profile-preference-toggles')
+    expect(src).toContain('worker-kael-client-chatbox-parity')
+    expect(src).toContain('worker-kael-composer-dock')
+    expect(src).not.toContain('quickGrid')
+    expect(src).not.toContain('dockLabel')
+    expect(src).not.toContain('mapFeatureNote')
+    expect(src).not.toContain('WORKER_XANHSM_PROTOTYPE_SOURCE')
+    expect(src).not.toContain('worker-prototype-contract')
+    expect(src).not.toContain('.tmp/design-lab/worker-xanhsm-v3')
+    expect(src).not.toContain('worker-surfaces-v3')
+    expect(src).not.toContain('worker-v2-')
+    expect(src).not.toContain('worker-v3-')
+  })
+
+  it('keeps Worker scope to electrical and plumbing services only', () => {
+    const src = shell()
+    expect(src).toContain('electricianCard')
+    expect(src).toContain('plumberCard')
+    expect(src).not.toMatch(/cleaning|ac repair|appliance|handyman/i)
+  })
+
+  it('keeps Worker theme/language switching and Kael chat local-only', () => {
+    const src = shell()
+    expect(src).toContain('WORKER_THEME_LANGUAGE_STORE')
+    expect(src).toContain('WorkerLanguageMode')
+    expect(src).toContain('WORKER_LANGUAGE_STORAGE_KEY')
+    expect(src).toContain('WORKER_THEME_STORAGE_KEY')
+    expect(src).toContain('worker-language-toggle')
+    expect(src).toContain('worker-dark-mode-toggle')
+    expect(src).toContain('worker-kael-empty-chat-state')
+    expect(src).toContain('worker-kael-local-chat-input')
+    expect(src).toContain('submitWorkerKaelLocalDraft')
+  })
+
+  it('keeps Worker shell frontend-only with no backend, AI, secrets, or workflow mutations', () => {
+    const files = [
+      shellPath,
+      'app/(worker)/home.tsx',
+      'app/(worker)/jobs.tsx',
+      'app/(worker)/chat.tsx',
+      'app/(worker)/earnings.tsx',
+      'app/(worker)/profile.tsx',
+    ]
+
+    for (const file of files) {
+      const src = exists(file) ? read(file) : ''
+      expect(src).not.toContain('fetch(')
+      expect(src).not.toContain('createClient')
+      expect(src).not.toContain('supabase.')
+      expect(src).not.toMatch(/\.(insert|update|upsert|delete)\(/)
+      expect(src).not.toContain('callAI')
+      expect(src).not.toContain('ANTHROPIC_API_KEY')
+      expect(src).not.toContain('PERPLEXITY_API_KEY')
+      expect(src).not.toContain('DEEPSEEK_API_KEY')
+      expect(src).not.toContain('broadcasting')
+      expect(src).not.toContain('worker_matched')
+      expect(src).not.toContain('payment_pending')
+      expect(src).not.toContain('scope_change_pending')
+    }
+  })
+
+  it('keeps Worker typography below extra-heavy weights', () => {
+    const src = shell()
+    expect(src).not.toContain("fontWeight: '800'")
+    expect(src).not.toContain("fontWeight: '900'")
+  })
+})
+
 // ===================================================================
-// Auth layout â€” Stack navigator (A0: login â†’ verify-otp â†’ onboard)
+// Auth layout - Stack navigator (A0: login -> verify-otp)
 // ===================================================================
 
 
@@ -540,8 +678,31 @@ describe('auth layout wiring', () => {
     expect(src).toContain('"verify-otp"')
   })
 
-  it('registers onboard screen', () => {
-    expect(src).toContain('"onboard"')
+  it('does not register the removed onboard screen', () => {
+    expect(src).not.toContain('"onboard"')
+  })
+})
+
+describe('auth production login surface', () => {
+  const route = read('app/(auth)/login.tsx')
+  const surfacePath = 'components/auth/auth-surfaces.tsx'
+  const surface = read(surfacePath)
+
+  it('wires login to the production auth surface', () => {
+    expect(exists(surfacePath)).toBe(true)
+    expect(route).toContain('@/components/auth/auth-surfaces')
+    expect(route).not.toContain('auth-surfaces-v2')
+    expect(surface).toContain('export function LoginRoleSurface')
+  })
+
+  it('keeps the role gate and removes onboarding runtime markers', () => {
+    expect(surface).toContain('auth-role-gate-glass')
+    expect(surface).toContain('auth-login-role-customer')
+    expect(surface).toContain('auth-login-role-worker')
+    expect(surface).not.toContain('OnboardingSurface')
+    expect(surface).not.toContain('auth-onboarding')
+    expect(surface).not.toContain('auth-v2')
+    expect(surface).not.toContain('/(auth)/onboard')
   })
 })
 
@@ -585,6 +746,7 @@ describe('index.tsx routing logic', () => {
 
   it('redirects to (auth)/login when no session', () => {
     expect(src).toContain('/(auth)/login')
+    expect(src).not.toContain('/(auth)/onboard')
   })
 
   it('redirects to (worker)/home for worker role', () => {
