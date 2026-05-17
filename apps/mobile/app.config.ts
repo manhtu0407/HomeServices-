@@ -26,7 +26,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     package: 'com.homeservices.app',
   },
-  plugins: ['expo-router', 'expo-secure-store'],
+  plugins: [
+    'expo-router',
+    'expo-secure-store',
+    [
+      'expo-image-picker',
+      {
+        photosPermission:
+          'Home Services cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa.',
+        cameraPermission:
+          'Home Services cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa.',
+      },
+    ],
+  ],
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
     supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '',

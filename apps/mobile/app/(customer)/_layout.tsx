@@ -1,12 +1,13 @@
 import { Tabs } from 'expo-router'
+import { Image, useWindowDimensions } from 'react-native'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
 
 type CustomerTabName = 'home' | 'booking' | 'kael' | 'history' | 'profile'
 
-const CUSTOMER_DOCK_MAIN_A = 'CUSTOMER_DOCK_MAIN_A: rounded material dock with active surface'
-const CUSTOMER_DARK_DOCK_LAYER_MATCH = 'CUSTOMER_DARK_DOCK_LAYER_MATCH: dock reads the same semantic dark layers'
-const CUSTOMER_DARK_LAYER_RESTORE_V12 = 'CUSTOMER_DARK_LAYER_RESTORE_V12: customer-dock-shadow-layer'
+const CUSTOMER_DOCK_MAIN_A = 'CUSTOMER_DOCK_MAIN_A: V4 rounded glass dock with active surface'
+const CUSTOMER_DARK_DOCK_LAYER_MATCH = 'CUSTOMER_DARK_DOCK_LAYER_MATCH: dock reads the same semantic V4 layers'
+const CUSTOMER_DARK_DOCK_LAYER_V4 = 'CUSTOMER_DARK_DOCK_LAYER_V4: customer-dock-shadow-layer'
 const CUSTOMER_TAB_DOCK_MARKERS = ['customer-tab-dock-main-a', 'customer-tab-dock-active-surface'] as const
 const customerDockHeight = 82
 const customerDockBottomMargin = 10
@@ -21,6 +22,9 @@ const CUSTOMER_TAB_ICON_TEST_IDS = [
 export default function CustomerLayout() {
   const themeMode = useCustomerThemeMode()
   const tokens = getCustomerThemeTokens(themeMode)
+  const { width } = useWindowDimensions()
+  const dockWidth = Math.min(width - 32, 430)
+  const dockLeft = Math.max((width - dockWidth) / 2, 16)
   const dockMarker = CUSTOMER_DARK_DOCK_LAYER_MATCH + 'customer-tab-dark-layer-match'
 
   return (
@@ -29,32 +33,37 @@ export default function CustomerLayout() {
         headerShown: false,
         tabBarActiveTintColor: tokens.primary,
         tabBarInactiveTintColor: tokens.subtleText,
+        tabBarShowLabel: false,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 0,
           fontWeight: '700',
           letterSpacing: 0,
         },
         tabBarActiveBackgroundColor: tokens.service,
         tabBarInactiveBackgroundColor: 'transparent',
         tabBarItemStyle: {
-          borderRadius: 22,
-          marginHorizontal: 4,
+          borderRadius: 24,
+          marginHorizontal: 3,
           marginVertical: 6,
           minHeight: 58,
         },
         tabBarStyle: {
-          backgroundColor: tokens.base,
-          borderColor: tokens.border,
-          borderRadius: 28,
-          borderTopColor: tokens.border,
+          backgroundColor: tokens.mode === 'dark' ? 'rgba(14,32,32,0.72)' : 'rgba(255,253,248,0.72)',
+          borderColor: tokens.mode === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.88)',
+          borderRadius: 32,
+          borderTopColor: tokens.mode === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.88)',
           borderWidth: 1,
-          boxShadow: tokens.mode === 'dark' ? '0 18px 44px rgba(0,0,0,0.32)' : '0 16px 38px rgba(16,43,47,0.12)',
+          boxShadow: tokens.mode === 'dark' ? '0 24px 70px rgba(0,0,0,0.34)' : '0 24px 64px rgba(13,70,65,0.20), inset 0 1px 0 rgba(255,255,255,0.76)',
+          display: 'none',
           height: customerDockHeight,
+          left: dockLeft,
           marginBottom: customerDockBottomMargin,
-          marginHorizontal: 16,
+          marginHorizontal: 0,
           paddingBottom: 8,
           paddingTop: 8,
           position: 'absolute',
+          right: undefined,
+          width: dockWidth,
         },
       }}
     >
@@ -69,9 +78,10 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="booking"
         options={{
-          title: 'Đặt lịch',
-          tabBarLabel: 'Đặt lịch',
+          title: 'Kiểm giá',
+          tabBarLabel: 'Kiểm giá',
           tabBarIcon: ({ color, focused }) => <CustomerTabIcon color={color} focused={focused} marker={dockMarker} name="booking" />,
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen
@@ -85,8 +95,8 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Lịch sử',
-          tabBarLabel: 'Lịch sử',
+          title: 'Hoạt động',
+          tabBarLabel: 'Hoạt động',
           tabBarIcon: ({ color, focused }) => <CustomerTabIcon color={color} focused={focused} marker={dockMarker} name="history" />,
         }}
       />
@@ -118,16 +128,27 @@ function CustomerTabIcon({
   const accent = focused ? tokens.copper : tokens.subtleText
   const testID = CUSTOMER_TAB_ICON_TEST_IDS.find((item) => item.endsWith(name))
   const dockMarker = focused ? CUSTOMER_TAB_DOCK_MARKERS[1] : CUSTOMER_TAB_DOCK_MARKERS[0]
-  const accessibilityMarker = CUSTOMER_DOCK_MAIN_A + CUSTOMER_DARK_LAYER_RESTORE_V12 + dockMarker + marker
+  const accessibilityMarker = CUSTOMER_DOCK_MAIN_A + CUSTOMER_DARK_DOCK_LAYER_V4 + dockMarker + marker
+
+  if (name === 'kael') {
+    return (
+      <Image
+        accessibilityLabel={accessibilityMarker}
+        source={require('../../assets/kael-model-8a-head.png')}
+        style={{
+          borderColor: focused ? tokens.primary : tokens.borderStrong,
+          borderRadius: 999,
+          borderWidth: 1,
+          height: focused ? 35 : 29,
+          width: focused ? 35 : 29,
+        }}
+        testID="customer-tab-kael-mascot-8a"
+      />
+    )
+  }
+
   return (
-    <Svg
-      width={25}
-      height={25}
-      viewBox="0 0 25 25"
-      fill="none"
-      accessibilityLabel={accessibilityMarker}
-      testID={testID}
-    >
+    <Svg width={25} height={25} viewBox="0 0 25 25" fill="none" accessibilityLabel={accessibilityMarker} testID={testID}>
       {name === 'home' ? (
         <>
           <Path d="M5.5 12.2 12.5 6l7 6.2v7.2H5.5v-7.2Z" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
@@ -138,13 +159,6 @@ function CustomerTabIcon({
         <>
           <Rect x={6} y={5.8} width={13} height={14} rx={3.4} stroke={color} strokeWidth={1.9} />
           <Path d="M9.2 10.3h6.4M9.2 14h4.8" stroke={accent} strokeWidth={1.8} strokeLinecap="round" />
-        </>
-      ) : null}
-      {name === 'kael' ? (
-        <>
-          <Path d="M12.5 5.5v14" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
-          <Path d="M7.3 10.4c3-2 7.4-2 10.4 0M7.3 15.1c3 2 7.4 2 10.4 0" stroke={accent} strokeWidth={1.8} strokeLinecap="round" />
-          <Circle cx={12.5} cy={12.5} r={6.2} fill={focused ? color : accent} opacity={focused ? 0.14 : 0.08} />
         </>
       ) : null}
       {name === 'history' ? (
