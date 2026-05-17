@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import {
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -15,6 +16,9 @@ import {
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
+import { serviceLabel, statusLabel, type LocalCustomerSearchState, type LocalDealStatus, type ServiceType } from '@home-services/shared'
+import { useAuth } from '@/lib/auth-provider'
+import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 const CUSTOMER_V4_PRODUCTION_STANDARD = 'CUSTOMER_V4_PRODUCTION_STANDARD: accepted customer V4 production standard'
 const CUSTOMER_V4_VISUAL_CONTRACT = 'CUSTOMER_V4_VISUAL_CONTRACT: production surfaces replace old customer UI'
@@ -32,6 +36,7 @@ const customerDockBottomMargin = 10
 const customerDockBottomClearance = customerDockHeight + customerDockBottomMargin + 44
 const customerFrameHorizontalPadding = 16
 const openBookingPath = '/(customer)/booking'
+const openHistoryPath = '/(customer)/history'
 const kaelModel8A = require('../../assets/kael-model-8a.png')
 const kaelModel8AHead = require('../../assets/kael-model-8a-head.png')
 
@@ -39,7 +44,6 @@ type ThemeMode = 'light' | 'dark'
 export type CustomerLanguageMode = 'vi' | 'en'
 type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
 type SurfaceTone = 'base' | 'raised' | 'service' | 'water' | 'warm' | 'depth' | 'ghost' | 'disabled'
-type PaymentMode = 'bank' | 'cod'
 type IconName =
   | 'apartment'
   | 'boltPanel'
@@ -237,8 +241,24 @@ export function useCustomerLanguageMode() {
 
 export function CustomerHomeSurface() {
   const router = useRouter()
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>('cod')
-  const openBookingFlow = () => router.push(openBookingPath)
+  const { dispatch, selectors, state } = useFrontendWorkflow()
+  const activeDeal = state.deal
+  const canStartNewDeal = !activeDeal || canReplaceCustomerDeal(activeDeal.status)
+  const isTerminalDeal = activeDeal ? isTerminalCustomerDeal(activeDeal.status) : false
+  const activeDealRoute =
+    selectors.currentStatus === 'draft' || selectors.currentStatus === 'analyzing' || selectors.currentStatus === 'awaiting_customer_confirm'
+      ? openBookingPath
+      : openHistoryPath
+  const activeDealStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState)
+  const openBookingFlow = (serviceType?: ServiceType) => {
+    if (!canStartNewDeal) {
+      router.push(activeDealRoute)
+      return
+    }
+    if (serviceType) dispatch({ type: 'start_home_service', serviceType })
+    if (!serviceType && isTerminalDeal) dispatch({ type: 'reset_workflow' })
+    router.push(openBookingPath)
+  }
 
   return (
     <V4Frame active="home" testID="customer-home-surface">
@@ -246,7 +266,7 @@ export function CustomerHomeSurface() {
         <>
           <V4MapBackdrop />
           <View style={styles.v4Content}>
-            <Pressable style={[styles.searchPill, glassSurface(tokens, 'strong')]} onPress={openBookingFlow} testID="customer-home-search-entry">
+            <Pressable style={[styles.searchPill, glassSurface(tokens, 'strong')]} onPress={() => openBookingFlow()} testID="customer-home-search-entry">
               <GlassSheen />
               <IconGlyph name="estimate" color={tokens.primary} accent={tokens.copper} />
               <Text style={[styles.searchText, { color: tokens.muted }]} numberOfLines={1}>
@@ -262,10 +282,31 @@ export function CustomerHomeSurface() {
               <View style={styles.hiddenMarker} testID="customer-home-hero-depth-grid" />
               <View style={styles.hiddenMarker} testID="customer-utility-notification-center" />
               <View style={styles.twoCol}>
-                <V4ServiceCard icon="boltPanel" title="Sửa điện" testID="customer-shell-service-electrical" onPress={openBookingFlow} />
-                <V4ServiceCard icon="waterPipe" title="Sửa nước" testID="customer-shell-service-plumbing" onPress={openBookingFlow} water />
+                <V4ServiceCard icon="boltPanel" title="Sửa điện" testID="customer-shell-service-electrical" onPress={() => openBookingFlow('electrical')} />
+                <V4ServiceCard icon="waterPipe" title="Sửa nước" testID="customer-shell-service-plumbing" onPress={() => openBookingFlow('plumbing')} water />
               </View>
-              <HomePaymentSection selectedMode={paymentMode} onSelectMode={setPaymentMode} />
+              {activeDeal ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push(activeDealRoute)}
+                  style={[styles.ticketCard, glassSurface(tokens, 'service')]}
+                  testID="customer-home-active-local-deal"
+                >
+                  <GlassSheen />
+                  <View style={styles.sectionTitle}>
+                    <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+                      {serviceLabel(activeDeal.draft.serviceType)}
+                    </Text>
+                    <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+                      {activeDealStatusLabel}
+                    </Text>
+                  </View>
+                  <View style={styles.twoCol}>
+                    <V4TicketCell label="Vấn đề" value={activeDeal.draft.problemChips[0] ?? activeDeal.draft.inferredProblemLabel ?? 'Đã mô tả'} />
+                    <V4TicketCell label="Khu vực" value={activeDeal.draft.districtLabel || 'Chưa rõ'} />
+                  </View>
+                </Pressable>
+              ) : null}
               <View style={styles.sectionTitle}>
                 <Text style={[styles.sectionHeading, { color: tokens.text }]} numberOfLines={1}>
                   Dịch vụ khác
@@ -285,7 +326,7 @@ export function CustomerHomeSurface() {
                   </View>
                 ))}
               </View>
-              <Pressable style={[styles.promoCard, glassSurface(tokens, 'warm')]} onPress={openBookingFlow} testID="customer-home-layered-hero">
+              <Pressable style={[styles.promoCard, glassSurface(tokens, 'warm')]} onPress={() => openBookingFlow()} testID="customer-home-layered-hero">
                 <GlassSheen />
                 <View style={[styles.promoMintCloud, { backgroundColor: tokens.aqua }]} />
                 <View style={[styles.promoWarmCloud, { backgroundColor: tokens.copper }]} />
@@ -308,16 +349,44 @@ export function CustomerHomeSurface() {
 
 export function CustomerKaelSurface() {
   const router = useRouter()
+  const { dispatch, state } = useFrontendWorkflow()
   const [kaelDraft, setKaelDraft] = useState('')
   const [latestAnswer, setLatestAnswer] = useState('')
-  const hasAnyKaelInfo = latestAnswer.trim().length > 0
-  const hasEnoughKaelInfo = latestAnswer.trim().length >= 16
+  const [kaelError, setKaelError] = useState<string | null>(null)
+  const localKaelDraft = state.deal?.draft.source === 'kael' ? state.deal.draft : null
+  const canStartKaelDraft = !state.deal || canReplaceCustomerDeal(state.deal.status)
+  const displayedKaelAnswer = latestAnswer.trim().length > 0 ? latestAnswer : localKaelDraft?.description ?? ''
+  const hasAnyKaelInfo = displayedKaelAnswer.trim().length > 0
+  const hasEnoughKaelInfo = displayedKaelAnswer.trim().length >= 16
+  const kaelTicketService = localKaelDraft?.unsupportedServiceLabel ? 'Dịch vụ đang khóa' : localKaelDraft ? serviceLabel(localKaelDraft.serviceType) : 'Chưa chọn'
+  const kaelTicketProblem = localKaelDraft?.unsupportedServiceLabel ?? localKaelDraft?.inferredProblemLabel ?? (localKaelDraft?.needsServiceChoice ? 'Cần chọn ở Kiểm giá' : 'Đã mô tả')
   const submitKaelLocalDraft = () => {
     const trimmed = kaelDraft.trim()
     if (!trimmed) return
+    if (trimmed.length < 4) {
+      setKaelError('Mô tả Kael cần rõ hơn trước khi tạo phiếu.')
+      return
+    }
+    if (!canStartKaelDraft) {
+      setKaelError('Đang có yêu cầu đang chạy. Mở Hoạt động để theo dõi hoặc hoàn tất trước khi tạo yêu cầu mới.')
+      return
+    }
+    dispatch({ type: 'submit_kael_draft', text: trimmed })
     setLatestAnswer(trimmed)
     setKaelDraft('')
+    setKaelError(null)
   }
+  const updateKaelDraft = (value: string) => {
+    setKaelDraft(value)
+    if (kaelError) setKaelError(null)
+  }
+
+  useEffect(() => {
+    if (state.deal?.draft.source === 'kael') return
+    setLatestAnswer('')
+    setKaelDraft('')
+    setKaelError(null)
+  }, [state.deal?.draft.source])
 
   return (
     <V4Frame active="kael" testID="customer-kael-companion">
@@ -338,7 +407,7 @@ export function CustomerKaelSurface() {
                 <>
                   <View style={[styles.kaelUserBubble, glassSurface(tokens, 'strong')]} testID="customer-kael-user-message">
                     <Text style={[styles.bubbleTitle, styles.kaelUserText, { color: tokens.text }]} numberOfLines={3}>
-                      {latestAnswer}
+                      {displayedKaelAnswer}
                     </Text>
                   </View>
                   {hasEnoughKaelInfo ? (
@@ -354,8 +423,8 @@ export function CustomerKaelSurface() {
                         </Text>
                       </View>
                       <View style={styles.twoCol}>
-                        <V4TicketCell label="Dịch vụ" value="Sửa điện" testID="customer-kael-ticket-field-service" />
-                        <V4TicketCell label="Rủi ro" value="Ổ nóng" testID="customer-kael-ticket-field-problem" />
+                        <V4TicketCell label="Dịch vụ" value={kaelTicketService} testID="customer-kael-ticket-field-service" />
+                        <V4TicketCell label="Vấn đề" value={kaelTicketProblem} testID="customer-kael-ticket-field-problem" />
                       </View>
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-field-location" />
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-field-media" />
@@ -365,13 +434,18 @@ export function CustomerKaelSurface() {
                   ) : null}
                 </>
               )}
-              <KaelComposer draft={kaelDraft} onChangeDraft={setKaelDraft} onSubmit={submitKaelLocalDraft} />
+              <KaelComposer draft={kaelDraft} onChangeDraft={updateKaelDraft} onSubmit={submitKaelLocalDraft} />
             </View>
+            {kaelError ? (
+              <Text style={[styles.kaelErrorText, { color: tokens.danger }]} testID="customer-kael-active-deal-guard">
+                {kaelError}
+              </Text>
+            ) : null}
             {hasEnoughKaelInfo ? (
               <View style={styles.chipRow}>
-                <SmallChip label="Gửi ảnh" tone="water" />
-                <SmallChip label="Bỏ qua ảnh" tone="base" />
-                <SmallChip label="Sửa nội dung" tone="service" />
+                <SmallChip label="Ảnh tùy chọn" tone="water" />
+                <SmallChip label="Phiếu local" tone="base" />
+                <SmallChip label="Chưa gửi thợ" tone="service" />
               </View>
             ) : null}
           </View>
@@ -384,6 +458,59 @@ export function CustomerKaelSurface() {
 
 export function CustomerHistorySurface() {
   const router = useRouter()
+  const { dispatch, selectors, state } = useFrontendWorkflow()
+  const deal = state.deal
+  const timeline = getCustomerTimeline(selectors.currentStatus)
+  const visibleStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState)
+  const workerStateLabel =
+    selectors.customerSearchState === 'searching'
+      ? 'Đang chờ phản hồi'
+      : selectors.customerSearchState === 'no_worker'
+        ? 'Chưa có thợ nhận'
+        : selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active'
+          ? 'Worker audit đang xử lý'
+          : selectors.customerSearchState === 'completed'
+            ? selectors.currentStatus === 'confirmed_by_customer'
+              ? 'Đã xác nhận xong'
+              : 'Chờ xác nhận cuối'
+            : 'Chưa có thợ được ghép'
+  const completionStatusLabel = selectors.canCustomerConfirmCompletion
+    ? 'Cần khách xác nhận'
+    : selectors.currentStatus === 'confirmed_by_customer'
+      ? 'Đã xác nhận xong'
+      : 'Chờ completion thật'
+  const canCreateFreshRequest = !deal || selectors.currentStatus === 'confirmed_by_customer' || selectors.currentStatus === 'cancelled'
+  const canEditNoWorkerRequest = selectors.customerSearchState === 'no_worker'
+  const canCancelLocalRequest = selectors.canCustomerCancelDeal
+  const continueOrCreate = () => {
+    if (canEditNoWorkerRequest) {
+      dispatch({ type: 'reopen_booking_draft' })
+    } else if (deal && canCreateFreshRequest) {
+      dispatch({ type: 'reset_workflow' })
+    }
+    router.push(openBookingPath)
+  }
+  const confirmCompletionReceived = () => {
+    Alert.alert(
+      'Xác nhận đã nhận việc?',
+      'Yêu cầu local sẽ chuyển sang khách đã xác nhận xong. Thanh toán và đánh giá vẫn khóa cho tới khi hệ thống backend được nối.',
+      [
+        { text: 'Kiểm tra lại', style: 'cancel' },
+        { text: 'Xác nhận xong', onPress: () => dispatch({ type: 'customer_confirm_completion' }) },
+      ],
+    )
+  }
+  const confirmCancelLocalDeal = () => {
+    const cancelMessage = selectors.hasLocalBroadcast
+      ? 'Broadcast local sẽ dừng và địa chỉ chi tiết vẫn bị ẩn khỏi worker.'
+      : 'Phiếu local sẽ đóng. Bạn có thể tạo yêu cầu mới khi cần.'
+    Alert.alert('Hủy yêu cầu local?', cancelMessage, [
+      { text: 'Giữ lại', style: 'cancel' },
+      { text: 'Hủy local', style: 'destructive', onPress: () => dispatch({ type: 'cancel_deal' }) },
+    ])
+  }
+  const historyActionLabel = canEditNoWorkerRequest ? 'Chỉnh yêu cầu' : canCreateFreshRequest ? 'Tạo yêu cầu mới' : 'Mở Kiểm giá'
+
   return (
     <V4Frame active="activity" testID="customer-history-surface">
       {({ tokens }) => (
@@ -402,13 +529,19 @@ export function CustomerHistorySurface() {
             <GlassSheen />
             <View style={styles.sectionTitle}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-                Phiếu nháp
+                {deal ? serviceLabel(deal.draft.serviceType) : 'Chưa có phiếu'}
               </Text>
               <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-                Nháp
+                {visibleStatusLabel}
               </Text>
             </View>
-            <PrimaryButton label="Tiếp tục" onPress={() => router.push(openBookingPath)} compact />
+            {deal ? (
+              <View style={styles.twoCol}>
+                <V4TicketCell label="Vấn đề" value={deal.draft.problemChips[0] ?? 'Đã mô tả'} />
+                <V4TicketCell label="Khu vực" value={deal.draft.districtLabel || 'Chưa rõ'} />
+              </View>
+            ) : null}
+            <PrimaryButton label={historyActionLabel} onPress={continueOrCreate} compact />
           </View>
           <View style={[styles.flowCard, glassSurface(tokens, 'service')]} testID="customer-history-worker-placeholder">
             <GlassSheen />
@@ -416,29 +549,36 @@ export function CustomerHistorySurface() {
               <View style={[styles.workerAvatar, { backgroundColor: tokens.water, borderColor: tokens.glassBorder }]} />
               <View style={styles.listCopy}>
                 <Text style={[styles.listTitle, { color: tokens.text }]} numberOfLines={1}>
-                  Chờ ghép thợ
+                  {workerStateLabel}
                 </Text>
                 <View style={styles.workerMetaRow}>
-                  {['Rating', 'Số việc', 'ETA'].map((label) => (
+                  {['Yêu cầu tại máy', 'Ẩn địa chỉ trước nhận', 'Chờ phản hồi thật'].map((label) => (
                     <Text key={label} style={[styles.workerMetaPill, { color: tokens.primary, backgroundColor: tokens.glassStrong }]} numberOfLines={1}>
                       {label}
                     </Text>
                   ))}
                 </View>
               </View>
-              <PrimaryButton label="Chat" onPress={() => router.push('/(customer)/kael')} compact />
+              <View style={styles.workerActions}>
+                {selectors.canCustomerConfirmCompletion ? (
+                  <PrimaryButton label="Xác nhận xong" onPress={confirmCompletionReceived} compact />
+                ) : (
+                  <PrimaryButton label={historyActionLabel} onPress={continueOrCreate} compact />
+                )}
+                {canCancelLocalRequest ? <SecondaryButton label="Hủy local" onPress={confirmCancelLocalDeal} compact testID="customer-history-cancel-local-deal" /> : null}
+              </View>
             </View>
           </View>
           <View style={[styles.flowCard, glassSurface(tokens)]}>
             <GlassSheen />
             <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-              Trạng thái việc
+              Luồng ticket
             </Text>
-            {['Đã đặt', 'Thợ đang đến', 'Đã đến', 'Đang kiểm tra', 'Đang sửa', 'Hoàn tất'].map((label, index) => (
-              <View key={label} style={styles.timelineRow}>
-                <View style={[styles.timelineDot, { backgroundColor: index < 3 ? tokens.primary : tokens.borderStrong }]} />
+            {timeline.map((item) => (
+              <View key={item.label} style={styles.timelineRow}>
+                <View style={[styles.timelineDot, { backgroundColor: item.active ? tokens.primary : tokens.borderStrong }]} />
                 <Text style={[styles.timelineText, { color: tokens.text }]} numberOfLines={1}>
-                  {label}
+                  {item.label}
                 </Text>
               </View>
             ))}
@@ -447,21 +587,21 @@ export function CustomerHistorySurface() {
             <GlassSheen />
             <View style={styles.sectionTitle}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-                Xác nhận đổi phạm vi
+                Đổi phạm vi
               </Text>
               <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-                Chờ bạn
+                Chưa phát sinh
               </Text>
             </View>
             <View style={styles.twoCol}>
-              <V4TicketCell label="Cũ" value="Ổ cắm nóng" />
-              <V4TicketCell label="Mới" value="Dây lỏng" />
+              <V4TicketCell label="Hiện tại" value={deal ? visibleStatusLabel : 'Không có ticket'} />
+              <V4TicketCell label="Cập nhật" value="Khóa tới giai đoạn đổi phạm vi" />
             </View>
           </View>
           <View style={[styles.flowCard, glassSurface(tokens)]}>
             <GlassSheen />
             <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-              Hoàn tất & bằng chứng
+              Bằng chứng hoàn tất
             </Text>
             <View style={styles.twoCol}>
               <View style={[styles.evidenceTile, glassSurface(tokens, 'strong')]}>
@@ -472,8 +612,8 @@ export function CustomerHistorySurface() {
               </View>
             </View>
             <View style={styles.twoCol}>
-              <V4TicketCell label="Giá cuối" value="Chờ xác nhận" />
-              <V4TicketCell label="Trạng thái" value="Pending" />
+              <V4TicketCell label="Giá cuối" value="Cần backend" />
+              <V4TicketCell label="Trạng thái" value={completionStatusLabel} />
             </View>
           </View>
           <View style={[styles.flowCard, glassSurface(tokens)]}>
@@ -482,32 +622,8 @@ export function CustomerHistorySurface() {
               Thanh toán & đánh giá
             </Text>
             <View style={styles.twoCol}>
-              <V4TicketCell label="Thanh toán" value="Tiền mặt" />
-              <V4TicketCell label="Trạng thái" value="Chờ xác nhận" />
-            </View>
-            <View style={[styles.ratingGlass, glassSurface(tokens, 'warm')]}>
-              <RatingStarGlass />
-            </View>
-            <View style={styles.chipRow}>
-              <SmallChip label="Đúng giờ" tone="water" />
-              <SmallChip label="Rõ giá" tone="service" />
-              <SmallChip label="Giải thích rõ" tone="base" />
-            </View>
-          </View>
-          <View style={[styles.flowCard, glassSurface(tokens)]}>
-            <GlassSheen />
-            <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-              Các trạng thái
-            </Text>
-            <View style={styles.stateGrid}>
-              {['Đang tải', 'Trống', 'Lỗi', 'Thành công'].map((label) => (
-                <View key={label} style={[styles.statePill, { backgroundColor: tokens.ghost, borderColor: tokens.border }]}>
-                  <View style={[styles.stateDot, { backgroundColor: tokens.subtleText }]} />
-                  <Text style={[styles.stateText, { color: tokens.muted }]} numberOfLines={1}>
-                    {label}
-                  </Text>
-                </View>
-              ))}
+              <V4TicketCell label="Thanh toán" value={selectors.paymentLocked ? 'Khóa' : 'Mở'} />
+              <V4TicketCell label="Đánh giá" value={selectors.reviewLocked ? 'Khóa' : 'Mở'} />
             </View>
           </View>
           <View style={styles.hiddenMarker} testID="customer-shell-no-fake-history-data" />
@@ -522,10 +638,22 @@ export function CustomerHistorySurface() {
 }
 
 export function CustomerProfileSurface() {
+  const router = useRouter()
+  const { role, session } = useAuth()
+  const { selectors, state } = useFrontendWorkflow()
   const themeMode = useCustomerThemeMode()
   const languageMode = useCustomerLanguageMode()
   const toggleLanguage = () => setCustomerLanguageMode(languageMode === 'vi' ? 'en' : 'vi')
   const toggleTheme = () => setCustomerThemeMode(themeMode === 'light' ? 'dark' : 'light')
+  const adminAuditSwitchLabel = languageMode === 'en' ? 'Switch section' : 'Đổi section'
+  const profileLabel = session?.user.email ?? 'Chưa có email hồ sơ'
+  const profileRoleLabel = role === 'admin' ? 'Admin audit' : role === 'customer' ? 'Khách' : 'Chưa xác định'
+  const deal = state.deal
+  const draftLabel = deal ? 'Có local' : 'Chưa có'
+  const serviceValue = deal ? serviceLabel(deal.draft.serviceType) : 'Chưa chọn'
+  const profileStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState)
+  const historyMeta = deal ? profileStatusLabel : 'Trống'
+  const dataValue = deal ? 'Local' : 'Trống'
 
   return (
     <V4Frame active="profile" testID="customer-profile-surface">
@@ -533,14 +661,23 @@ export function CustomerProfileSurface() {
         <View style={styles.plainContent}>
           <View style={[styles.profileHead, glassSurface(tokens)]} testID="customer-profile-empty-state">
             <GlassSheen />
-            <KaelMascot variant="head" size={58} />
-            <Text style={[styles.profileName, { color: tokens.text }]} numberOfLines={1}>
-              Phan Mạnh Tú
-            </Text>
-            <View style={[styles.profileButton, { backgroundColor: tokens.ghost, borderColor: tokens.border }]}>
-              <Text style={[styles.profileButtonText, { color: tokens.primary }]} numberOfLines={1}>
-                Hồ sơ
+            <View style={styles.profileIdentityRow}>
+              <KaelMascot variant="head" size={58} />
+              <Text style={[styles.profileName, { color: tokens.text }]} numberOfLines={1}>
+                {profileLabel}
               </Text>
+            </View>
+            <View style={styles.profileActionRow}>
+              <View style={[styles.profileButton, { backgroundColor: tokens.ghost, borderColor: tokens.border }]}>
+                <Text style={[styles.profileButtonText, { color: tokens.primary }]} numberOfLines={1}>
+                  {profileRoleLabel}
+                </Text>
+              </View>
+              {role === 'admin' ? (
+                <View style={styles.profileAdminAction}>
+                  <PrimaryButton label={adminAuditSwitchLabel} onPress={() => router.replace('/(auth)/login')} compact testID="customer-admin-audit-switch" />
+                </View>
+              ) : null}
             </View>
           </View>
           <View style={styles.hiddenMarker} testID="customer-shell-no-fake-profile-save" />
@@ -551,12 +688,12 @@ export function CustomerProfileSurface() {
               CĂN HỘ
             </Text>
             <Text style={[styles.statusTitle, { color: tokens.text }]} numberOfLines={1}>
-              Sẵn sàng
+              {deal ? profileStatusLabel : 'Chưa có yêu cầu'}
             </Text>
             <View style={styles.metricRow}>
-              <V4Metric label="Phiếu nháp" value="Có" />
-              <V4Metric label="Dịch vụ" value="Điện/nước" />
-              <V4Metric label="Dữ liệu" value="Ẩn" />
+              <V4Metric label="Phiếu nháp" value={draftLabel} />
+              <V4Metric label="Dịch vụ" value={serviceValue} />
+              <V4Metric label="Dữ liệu" value={dataValue} />
             </View>
           </View>
           <View style={styles.quickGrid}>
@@ -568,9 +705,9 @@ export function CustomerProfileSurface() {
             <View style={[styles.listCard, glassSurface(tokens)]} testID="customer-profile-checklist">
               <GlassSheen />
               <View style={styles.hiddenMarker} testID="customer-profile-unified-functions" />
-              <ListRow icon="map" title="Địa chỉ" meta="Chưa lưu" testID="customer-utility-saved-address" />
+              <ListRow icon="map" title="Địa chỉ" meta={deal?.draft.districtLabel || 'Chưa lưu'} testID="customer-utility-saved-address" />
               <ListRow icon="kael" title="Quản Gia Kael" meta="Điện / nước" />
-              <ListRow icon="history" title="Lịch sử" meta="Trống" testID="customer-profile-evidence-shell" />
+              <ListRow icon="history" title="Lịch sử" meta={historyMeta} testID="customer-profile-evidence-shell" />
               <ListRow icon="ticket" title="Phiếu dịch vụ" meta="Sắp mở" testID="customer-utility-ticket-wallet" />
               <ListRow icon="support" title="Hỗ trợ" meta="Sau này" testID="customer-utility-support-entry" />
               <SwitchRow icon="person" title="Ngôn ngữ" meta={languageMode === 'vi' ? 'Tiếng Việt' : 'English'} active={languageMode === 'en'} onPress={toggleLanguage} testID="customer-language-toggle" />
@@ -597,6 +734,37 @@ export function CustomerV4DockOverlay({ active }: { active: CustomerDockActive }
       <V4Dock active={active} bottomInset={insets.bottom} frameWidth={frameWidth} screenWidth={width} />
     </CustomerThemeContext.Provider>
   )
+}
+
+function getCustomerTimeline(status: LocalDealStatus | null) {
+  const steps: Array<{ label: string; statuses: LocalDealStatus[] }> = [
+    { label: 'Mô tả vấn đề', statuses: ['draft', 'analyzing'] },
+    { label: 'Xác nhận tìm thợ', statuses: ['awaiting_customer_confirm'] },
+    { label: 'Broadcast local', statuses: ['broadcasting'] },
+    { label: 'Worker audit nhận', statuses: ['worker_matched', 'worker_on_way'] },
+    { label: 'Kiểm tra/sửa', statuses: ['arrived', 'inspecting', 'repairing'] },
+    { label: 'Thợ báo hoàn tất', statuses: ['completed_by_worker'] },
+    { label: 'Khách xác nhận xong', statuses: ['confirmed_by_customer'] },
+  ]
+  const activeIndex = status ? steps.findIndex((step) => step.statuses.includes(status)) : -1
+  return steps.map((step, index) => ({
+    label: step.label,
+    active: activeIndex >= index,
+  }))
+}
+
+function canReplaceCustomerDeal(status: LocalDealStatus): boolean {
+  return ['draft', 'cancelled', 'confirmed_by_customer'].includes(status)
+}
+
+function customerVisibleStatusLabel(status: LocalDealStatus | null, searchState: LocalCustomerSearchState): string {
+  if (searchState === 'no_worker') return 'Chưa có thợ nhận'
+  if (searchState === 'searching') return 'Đang chờ thợ nhận'
+  return statusLabel(status)
+}
+
+function isTerminalCustomerDeal(status: LocalDealStatus): boolean {
+  return status === 'cancelled' || status === 'confirmed_by_customer'
 }
 
 function V4Frame({
@@ -889,73 +1057,6 @@ function V4TicketCell({ label, testID, value }: { label: string; testID?: string
   )
 }
 
-function HomePaymentSection({ onSelectMode, selectedMode }: { onSelectMode: (mode: PaymentMode) => void; selectedMode: PaymentMode }) {
-  const tokens = useCustomerTokens()
-  return (
-    <View style={[styles.paymentRail, glassSurface(tokens, 'service')]} testID="customer-home-payment-section">
-      <GlassSheen />
-      <View style={[styles.paymentWarmHalo, { backgroundColor: tokens.copper }]} />
-      <View style={styles.sectionTitle}>
-        <Text style={[styles.sectionHeading, { color: tokens.text }]} numberOfLines={1}>
-          Thanh toán
-        </Text>
-        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-          Tùy chọn
-        </Text>
-      </View>
-      <View style={styles.paymentOptions}>
-        <PaymentOption
-          active={selectedMode === 'bank'}
-          icon="payment"
-          meta="Kết nối"
-          onPress={() => onSelectMode('bank')}
-          testID="customer-home-bank-connect"
-          title="Ngân hàng"
-        />
-        <PaymentOption
-          active={selectedMode === 'cod'}
-          icon="ticket"
-          meta="Tiền mặt"
-          onPress={() => onSelectMode('cod')}
-          testID="customer-home-cod-payment"
-          title="COD"
-        />
-      </View>
-      <View style={styles.hiddenMarker} testID="customer-home-payment-local-only" />
-    </View>
-  )
-}
-
-function PaymentOption({ active, icon, meta, onPress, testID, title }: { active: boolean; icon: IconName; meta: string; onPress: () => void; testID: string; title: string }) {
-  const tokens = useCustomerTokens()
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={[
-        styles.paymentOption,
-        glassSurface(tokens, active ? 'strong' : 'default'),
-        {
-          borderColor: active ? tokens.borderStrong : tokens.glassBorder,
-        },
-      ]}
-      testID={testID}
-    >
-      <View style={[styles.paymentIconBubble, { backgroundColor: active ? tokens.service : tokens.raised, borderColor: tokens.border }]}>
-        <IconGlyph name={icon} color={tokens.primary} accent={tokens.copper} />
-      </View>
-      <View style={styles.paymentCopy}>
-        <Text style={[styles.paymentTitle, { color: tokens.text }]} numberOfLines={1}>
-          {title}
-        </Text>
-        <Text style={[styles.paymentMeta, { color: active ? tokens.primary : tokens.subtleText }]} numberOfLines={1}>
-          {meta}
-        </Text>
-      </View>
-    </Pressable>
-  )
-}
-
 function V4Metric({ label, value }: { label: string; value: string }) {
   const tokens = useCustomerTokens()
   return (
@@ -1117,6 +1218,22 @@ function PrimaryButton({ compact, label, onPress, testID }: { compact?: boolean;
   )
 }
 
+function SecondaryButton({ compact, label, onPress, testID }: { compact?: boolean; label: string; onPress: () => void; testID?: string }) {
+  const tokens = useCustomerTokens()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.secondaryButton, compact ? styles.primaryButtonCompact : null, { borderColor: tokens.borderStrong, backgroundColor: tokens.ghost }]}
+      testID={testID}
+    >
+      <Text style={[styles.secondaryButtonText, { color: tokens.danger }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
+
 function KaelComposer({
   draft,
   onChangeDraft,
@@ -1136,6 +1253,7 @@ function KaelComposer({
         </Text>
       </Pressable>
       <TextInput
+        maxLength={220}
         onChangeText={onChangeDraft}
         onSubmitEditing={onSubmit}
         placeholder="Mô tả vấn đề..."
@@ -1159,38 +1277,6 @@ function SmallChip({ label, tone = 'base' }: { label: string; tone?: SurfaceTone
       <Text style={[styles.smallChipText, { color: tokens.text }]} numberOfLines={1}>
         {label}
       </Text>
-    </View>
-  )
-}
-
-function RatingStarGlass() {
-  const tokens = useCustomerTokens()
-  return (
-    <View style={styles.ratingStarWrap} testID="customer-rating-glass-stars">
-      <View style={[styles.ratingScorePill, { backgroundColor: tokens.glassStrong, borderColor: tokens.glassBorder }]}>
-        <Text style={[styles.ratingScoreText, { color: tokens.copper }]} numberOfLines={1}>
-          5.0
-        </Text>
-      </View>
-      <View style={styles.ratingStarRow}>
-        {[0, 1, 2, 3, 4].map((star) => (
-          <View key={star} style={[styles.ratingStarShell, { backgroundColor: tokens.glassWarm, borderColor: tokens.glassBorder }]}>
-            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-              <Path
-                d="m12 3.7 2.2 4.45 4.9.72-3.55 3.45.84 4.88L12 14.9l-4.39 2.3.84-4.88L4.9 8.87l4.9-.72L12 3.7Z"
-                fill={tokens.copper}
-                opacity={star === 0 ? 1 : 0.88}
-              />
-              <Path
-                d="m12 3.7 2.2 4.45 4.9.72-3.55 3.45.84 4.88L12 14.9l-4.39 2.3.84-4.88L4.9 8.87l4.9-.72L12 3.7Z"
-                stroke={tokens.glassHighlight}
-                strokeLinejoin="round"
-                strokeWidth={1.1}
-              />
-            </Svg>
-          </View>
-        ))}
-      </View>
     </View>
   )
 }
@@ -1379,6 +1465,12 @@ const styles = StyleSheet.create({
   hiddenMarker: {
     height: 0,
     width: 0,
+  },
+  kaelErrorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+    paddingHorizontal: 6,
   },
   glassTopHighlight: {
     height: 1,
@@ -2133,6 +2225,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  workerActions: {
+    gap: 8,
+    minWidth: 112,
+  },
   workerAvatar: {
     borderRadius: 18,
     borderWidth: 1,
@@ -2167,86 +2263,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0,
   },
-  ratingGlass: {
-    alignItems: 'stretch',
-    borderRadius: 18,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 66,
-    overflow: 'hidden',
-    padding: 9,
-  },
-  ratingStarWrap: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  ratingScorePill: {
-    alignItems: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 42,
-    minWidth: 54,
-  },
-  ratingScoreText: {
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0,
-  },
-  ratingStarRow: {
-    flexDirection: 'row',
-    flex: 1,
-    gap: 6,
-    justifyContent: 'flex-end',
-  },
-  ratingStarShell: {
-    alignItems: 'center',
-    borderRadius: 15,
-    borderWidth: 1,
-    height: 38,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 38,
-  },
-  stateGrid: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  statePill: {
-    alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1,
-    flex: 1,
-    gap: 7,
-    minHeight: 56,
-    justifyContent: 'center',
-  },
-  stateDot: {
-    borderRadius: 999,
-    height: 7,
-    width: 7,
-  },
-  stateText: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0,
-  },
   profileHead: {
-    alignItems: 'center',
     borderRadius: 28,
     borderWidth: 1,
-    flexDirection: 'row',
-    gap: 14,
+    gap: 12,
     overflow: 'hidden',
     padding: 15,
+  },
+  profileIdentityRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 14,
+    minWidth: 0,
+  },
+  profileActionRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
   profileName: {
     flex: 1,
     fontSize: 22,
     fontWeight: '700',
     letterSpacing: 0,
+    minWidth: 0,
+  },
+  profileAdminAction: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 164,
   },
   profileButton: {
     borderRadius: 999,
@@ -2420,6 +2466,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   primaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0,
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 54,
+    paddingHorizontal: 16,
+  },
+  secondaryButtonText: {
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0,

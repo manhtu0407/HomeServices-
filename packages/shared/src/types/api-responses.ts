@@ -47,15 +47,34 @@ export type CreateJobResponse = {
 }
 
 export type JobDetailResponse = {
-  id: string
-  status: JobStatus
-  service_type: ServiceType
-  description: string
-  customer_id: string
-  worker_id: string | null
-  estimate_price_min: number | null
-  estimate_price_max: number | null
-  final_price: number | null
+  job: {
+    id: string
+    status: JobStatus
+    service_type: ServiceType
+    description: string
+    problem_chips: string[]
+    photo_urls: string[]
+    address_building: string | null
+    address_unit: string | null
+    address_floor: string | null
+    address_district: string | null
+    scheduled_at: string | null
+    kael_problem_identified: string | null
+    kael_complexity: ComplexityLevel | null
+    kael_price_min: number | null
+    kael_price_max: number | null
+    kael_advisory: string | null
+    final_price: number | null
+    completion_notes: string | null
+    completion_photo_urls: string[]
+    created_at: string
+    matched_at: string | null
+    arrived_at: string | null
+    completed_at: string | null
+    confirmed_at: string | null
+    paid_at: string | null
+    reviewed_at: string | null
+  }
 }
 
 export type ConfirmSearchResponse = {
@@ -66,6 +85,7 @@ export type ConfirmSearchResponse = {
     rating: number
     total_jobs: number
   } | null
+  message: string
 }
 
 export type StatusUpdateResponse = {
@@ -78,7 +98,7 @@ export type StatusUpdateResponse = {
 export type ConfirmCompletionResponse = {
   job_id: string
   status: JobStatus
-  final_price: number
+  final_price: number | null
 }
 
 export type ReviewResponse = {
@@ -153,6 +173,11 @@ export type AcceptBroadcastResponse = {
   }
 }
 
+export type DeclineBroadcastResponse = {
+  job_id: string
+  declined: true
+}
+
 export type WorkerScopeChangeResponse = {
   scope_change_id: string
   job_id: string
@@ -190,4 +215,6 @@ export type EarningsResponse = {
   net_earnings: number         // gross - platform_fee_total
   pending_payment_count: number
   pending_payment_amount: number
+  from_date: string | null
+  to_date: string | null
 }

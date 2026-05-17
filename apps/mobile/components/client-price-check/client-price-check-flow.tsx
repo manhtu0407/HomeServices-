@@ -1,8 +1,9 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -15,9 +16,18 @@ import {
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { PROBLEM_CHIPS, type ServiceType } from '@home-services/shared'
+import {
+  LOCAL_WORKFLOW_PRICE_DISCLAIMER,
+  PROBLEM_CHIPS,
+  serviceLabel,
+  statusLabel,
+  type LocalDealDraft,
+  type LocalDealStatus,
+  type ServiceType,
+} from '@home-services/shared'
 import { CustomerV4DockOverlay } from '@/components/customer/customer-surfaces'
 import { Colors } from '@/constants/colors'
+import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 type PriceCheckUiStep = 'form' | 'clarification' | 'estimate' | 'schedule' | 'confirm' | 'searching' | 'emptyWorker' | 'matched'
 type PriceCheckUiStatus = 'editing' | 'loading' | 'needs_clarification' | 'estimate_ready' | 'baseline_fallback' | 'fallback' | 'error'
@@ -31,13 +41,13 @@ type MediaDraftItem = {
 }
 
 type PriceCheckDraft = {
-  serviceType: ServiceType
+  serviceType: ServiceType | null
   problemChips: string[]
   description: string
   mediaItems: MediaDraftItem[]
   addressLabel: string
   clarificationAnswers: Record<string, string>
-  timeChoice: 'now' | 'scheduled'
+  timeChoice: 'now'
 }
 
 type PriceCheckEstimateCard = {
@@ -56,24 +66,15 @@ type ClarificationQuestion = {
   options: string[]
 }
 
-type WorkerMatch = {
-  name: string
-  avatarUri?: string
-  rating: string
-  jobCountLabel: string
-  etaLabel: string
-}
-
 const theme = Colors.priceCheck
 const BOOKING_V4_VISUAL_CONTRACT = 'BOOKING_V4_VISUAL_CONTRACT: production replaces old booking UI with prototype V4 flow'
 const BOOKING_FORM_FIRST_CONTRACT = 'BOOKING_FORM_FIRST_CONTRACT: V4 form-first production price check'
 const BOOKING_LAYER_SWITCH_V4 = 'BOOKING_LAYER_SWITCH_V4: glass mint/warm semantic layers'
 const BOOKING_TYPE_RHYTHM = 'BOOKING_TYPE_RHYTHM: compact V4 typography'
 const BOOKING_INTERACTION_MOTION_V4 = 'BOOKING_INTERACTION_MOTION_V4: tap and reveal only'
-const searchingWorkerState = 'searchingWorkerState: local searching UI until worker backend exists'
-const noWorkerFallbackState = 'noWorkerFallbackState: no fake worker rendered in production'
-const PRICE_DISCLAIMER =
-  'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
+const searchingWorkerState = 'searchingWorkerState: local searching UI until worker data exists'
+const noWorkerFallbackState = 'noWorkerFallbackState: no local worker matched request'
+const PRICE_DISCLAIMER = LOCAL_WORKFLOW_PRICE_DISCLAIMER
 const kaelModel8A = require('../../assets/kael-model-8a.png')
 const bookingFrameHorizontalPadding = 16
 
@@ -103,13 +104,14 @@ const tokens = {
   copper: '#BB743D',
 }
 const openHomePath = '/(customer)/home'
+const openHistoryPath = '/(customer)/history'
 
-const INITIAL_DRAFT: PriceCheckDraft = {
-  serviceType: 'electrical',
-  problemChips: ['Ổ cắm nóng'],
-  description: 'Ổ cắm bếp nóng khi bật máy nước nóng...',
+const EMPTY_DRAFT: PriceCheckDraft = {
+  serviceType: null,
+  problemChips: [],
+  description: '',
   mediaItems: [],
-  addressLabel: 'Căn hộ TP.HCM',
+  addressLabel: '',
   clarificationAnswers: {},
   timeChoice: 'now',
 }
@@ -118,13 +120,13 @@ const QUESTIONS: Record<ServiceType, ClarificationQuestion[]> = {
   electrical: [
     {
       id: 'scope',
-      question: 'Ổ cắm nóng ở một vị trí hay nhiều vị trí?',
+      question: 'Sự cố điện ở một vị trí hay nhiều vị trí?',
       options: ['Một vị trí', 'Nhiều vị trí', 'Chưa rõ'],
     },
     {
       id: 'breaker',
-      question: 'Aptomat có nhảy lại sau khi bật máy nước nóng không?',
-      options: ['Có', 'Không', 'Chưa thử'],
+      question: 'Aptomat hoặc công tắc có dấu hiệu bất thường không?',
+      options: ['Có', 'Không', 'Chưa rõ'],
     },
   ],
   plumbing: [
@@ -142,11 +144,11 @@ const QUESTIONS: Record<ServiceType, ClarificationQuestion[]> = {
 }
 
 const ESTIMATE: PriceCheckEstimateCard = {
-  problemLabel: 'Ổ cắm nóng khi dùng máy nước nóng',
-  complexity: 'medium',
-  priceRangeLabel: '280k - 420k VND',
-  confidenceLabel: 'Tự tin 72%',
-  advisory: 'Tắt nguồn khu vực ổ cắm nếu có mùi khét hoặc vỏ ổ đổi màu.',
+  problemLabel: 'Yêu cầu sẽ được Kael kiểm tra khi backend được bật',
+  complexity: 'unknown',
+  priceRangeLabel: 'Cần backend ước tính',
+  confidenceLabel: 'Cần backend',
+  advisory: 'Giữ mô tả, ảnh và khu vực rõ ràng để bước backend sau này tính sát hơn.',
   disclaimer: PRICE_DISCLAIMER,
   source: 'kael',
 }
@@ -165,21 +167,77 @@ export function ClientPriceCheckFlow() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
+  const { dispatch, selectors, state: workflowState } = useFrontendWorkflow()
   const frameWidth = Math.min(width, 430)
-  const [step, setStep] = useState<PriceCheckUiStep>('form')
+  const [step, setStep] = useState<PriceCheckUiStep>(() => initialStepFromWorkflow(selectors.currentStatus))
   const [status, setStatus] = useState<PriceCheckUiStatus>('editing')
-  const [draft, setDraft] = useState<PriceCheckDraft>(INITIAL_DRAFT)
-  const [matchedWorker] = useState<WorkerMatch | null>(null)
-  const questions = QUESTIONS[draft.serviceType]
-  const chips = useMemo(() => PROBLEM_CHIPS[draft.serviceType], [draft.serviceType])
+  const [draft, setDraft] = useState<PriceCheckDraft>(() => draftFromWorkflow(workflowState.deal?.draft))
+  const [manualErrorMessage, setManualErrorMessage] = useState<string | null>(null)
+  const workflowDraftKey = useMemo(() => workflowDraftSyncKey(workflowState.deal), [workflowState.deal])
+  const syncedWorkflowDraftKeyRef = useRef(workflowDraftKey)
+  const skipNextWorkflowDraftSyncRef = useRef(false)
+  const questions = draft.serviceType ? QUESTIONS[draft.serviceType] : []
+  const chips = useMemo(() => (draft.serviceType ? PROBLEM_CHIPS[draft.serviceType] : []), [draft.serviceType])
   const answeredQuestions = questions.filter((question) => draft.clarificationAnswers[question.id]).length
   const clarificationComplete = answeredQuestions === questions.length
   const isEstimateFallback = status === 'baseline_fallback' || status === 'fallback'
-  const estimate = isEstimateFallback ? FALLBACK_ESTIMATE : ESTIMATE
+  const estimate = workflowState.deal?.estimate
+    ? {
+        problemLabel: workflowState.deal.estimate.problemLabel,
+        complexity: workflowState.deal.estimate.complexity,
+        priceRangeLabel: workflowState.deal.estimate.priceRangeLabel,
+        confidenceLabel: workflowState.deal.estimate.confidenceLabel,
+        advisory: workflowState.deal.estimate.advisory,
+        disclaimer: workflowState.deal.estimate.disclaimer,
+        source: 'kael' as const,
+      }
+    : isEstimateFallback
+      ? FALLBACK_ESTIMATE
+      : ESTIMATE
+  const validationMessage = getDraftValidationMessage(draft)
+  const isDraftValid = validationMessage === null
+  const canCancelFromSearching =
+    step === 'searching' && selectors.customerSearchState === 'searching' && selectors.canCustomerCancelDeal
+
+  useEffect(() => {
+    if (selectors.customerSearchState === 'no_worker') setStep('emptyWorker')
+    if (selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active' || selectors.customerSearchState === 'completed') {
+      setStep('matched')
+    }
+  }, [selectors.customerSearchState])
+
+  useEffect(() => {
+    if (selectors.currentStatus !== 'draft' || step !== 'emptyWorker') return
+    setDraft(draftFromWorkflow(workflowState.deal?.draft))
+    setStep('form')
+    setStatus('editing')
+  }, [selectors.currentStatus, step, workflowState.deal?.draft])
+
+  useEffect(() => {
+    if (syncedWorkflowDraftKeyRef.current === workflowDraftKey) return
+    syncedWorkflowDraftKeyRef.current = workflowDraftKey
+
+    if (skipNextWorkflowDraftSyncRef.current) {
+      skipNextWorkflowDraftSyncRef.current = false
+      return
+    }
+
+    setDraft(draftFromWorkflow(workflowState.deal?.draft))
+    setStep(initialStepFromWorkflow(selectors.currentStatus))
+    setStatus('editing')
+  }, [selectors.currentStatus, workflowDraftKey, workflowState.deal?.draft])
+
+  const commitDraft = (nextDraft: PriceCheckDraft) => {
+    setDraft(nextDraft)
+    setManualErrorMessage(null)
+    skipNextWorkflowDraftSyncRef.current = true
+    dispatch({ type: 'update_booking_draft', patch: draftToWorkflowPatch(nextDraft) })
+  }
 
   const pickMedia = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
+      setManualErrorMessage('Cần quyền thư viện ảnh/video để thêm bằng chứng local.')
       setStatus('error')
       return
     }
@@ -202,29 +260,43 @@ export function ClientPriceCheckFlow() {
       durationMs: asset.duration ?? undefined,
     }))
 
-    setDraft((current) => ({
-      ...current,
-      mediaItems: [...current.mediaItems, ...nextItems].slice(0, 5),
-    }))
+    commitDraft({
+      ...draft,
+      mediaItems: [...draft.mediaItems, ...nextItems].slice(0, 5),
+    })
+    setManualErrorMessage(null)
     setStatus('editing')
   }
 
   const removeMedia = (id: string) => {
-    setDraft((current) => ({
-      ...current,
-      mediaItems: current.mediaItems.filter((item) => item.id !== id),
-    }))
+    commitDraft({
+      ...draft,
+      mediaItems: draft.mediaItems.filter((item) => item.id !== id),
+    })
   }
 
   const continueFlow = () => {
     if (step === 'form') {
+      if (!isDraftValid) {
+        setStatus('error')
+        return
+      }
+      dispatch({ type: 'update_booking_draft', patch: draftToWorkflowPatch(draft) })
       setStep('clarification')
       setStatus('needs_clarification')
       return
     }
     if (step === 'clarification') {
+      if (!isDraftValid) {
+        setStep('form')
+        setStatus('error')
+        return
+      }
       if (!clarificationComplete) return
       const unclear = Object.values(draft.clarificationAnswers).some((answer) => answer === 'Chưa rõ')
+      dispatch({ type: 'update_booking_draft', patch: draftToWorkflowPatch(draft) })
+      dispatch({ type: 'submit_booking_draft' })
+      dispatch({ type: 'finish_local_analysis' })
       setStep('estimate')
       setStatus(unclear ? 'baseline_fallback' : 'estimate_ready')
       return
@@ -238,20 +310,33 @@ export function ClientPriceCheckFlow() {
       return
     }
     if (step === 'confirm') {
+      if (!selectors.canConfirmCustomerSearch) {
+        setStatus('error')
+        return
+      }
+      dispatch({ type: 'confirm_customer_search' })
       setStep('searching')
       setStatus('loading')
       return
     }
     if (step === 'searching') {
-      if (matchedWorker === null) {
+      if (selectors.customerSearchState === 'no_worker') {
         setStep('emptyWorker')
         setStatus('fallback')
         return
       }
-      setStep('matched')
+      if (selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active' || selectors.customerSearchState === 'completed') {
+        setStep('matched')
+        return
+      }
+      return
+    }
+    if (step === 'matched') {
+      router.push(openHistoryPath)
       return
     }
     if (step === 'emptyWorker') {
+      dispatch({ type: 'retry_customer_search' })
       setStep('searching')
       setStatus('loading')
     }
@@ -263,7 +348,102 @@ export function ClientPriceCheckFlow() {
     if (step === 'estimate') setStep('clarification')
     if (step === 'schedule') setStep('estimate')
     if (step === 'confirm') setStep('schedule')
-    if (step === 'searching' || step === 'emptyWorker') setStep('confirm')
+    if (step === 'searching' || step === 'matched') router.push(openHomePath)
+  }
+
+  const editAfterNoWorker = () => {
+    dispatch({ type: 'reopen_booking_draft' })
+    setStep('form')
+    setStatus('editing')
+  }
+
+  const confirmCancelCurrentSearch = () => {
+    if (!canCancelFromSearching) {
+      goBack()
+      return
+    }
+
+    Alert.alert(
+      'Hủy yêu cầu local?',
+      selectors.hasLocalBroadcast
+        ? 'Broadcast local sẽ dừng. Địa chỉ chi tiết vẫn bị ẩn khỏi worker vì chưa có ai nhận.'
+        : 'Phiếu local sẽ đóng. Bạn có thể tạo yêu cầu mới khi cần.',
+      [
+        { text: 'Giữ lại', style: 'cancel' },
+        {
+          text: 'Hủy local',
+          style: 'destructive',
+          onPress: () => {
+            dispatch({ type: 'cancel_deal' })
+            setStatus('fallback')
+            router.push(openHistoryPath)
+          },
+        },
+      ],
+    )
+  }
+
+  const secondaryAction = () => {
+    if (step === 'form') {
+      setDraft(EMPTY_DRAFT)
+      dispatch({ type: 'reset_workflow' })
+      return
+    }
+    if (step === 'emptyWorker') {
+      editAfterNoWorker()
+      return
+    }
+    if (canCancelFromSearching) {
+      confirmCancelCurrentSearch()
+      return
+    }
+    goBack()
+  }
+
+  const renderCurrentStep = () => {
+    switch (step) {
+      case 'form':
+        return (
+          <BookingFormSurface
+            chips={chips}
+            draft={draft}
+            previewQuestions={questions}
+            unsupportedServiceLabel={workflowState.deal?.draft.unsupportedServiceLabel ?? null}
+            validationMessage={status === 'error' ? manualErrorMessage ?? validationMessage : null}
+            onAddressChange={(addressLabel) => commitDraft({ ...draft, addressLabel })}
+            onDescriptionChange={(description) => commitDraft({ ...draft, description })}
+            onPickMedia={pickMedia}
+            onRemoveMedia={removeMedia}
+            onSelectService={(serviceType) =>
+              commitDraft({ ...draft, serviceType, clarificationAnswers: {}, problemChips: [] })
+            }
+            onToggleChip={(chip) =>
+              commitDraft({
+                ...draft,
+                problemChips: draft.problemChips.includes(chip)
+                  ? draft.problemChips.filter((item) => item !== chip)
+                  : [...draft.problemChips, chip].slice(0, 3),
+              })
+            }
+          />
+        )
+      case 'clarification':
+        return <ClarificationPanel draft={draft} questions={questions} onAnswer={(questionId, answer) => commitDraft({ ...draft, clarificationAnswers: { ...draft.clarificationAnswers, [questionId]: answer } })} />
+      case 'estimate':
+        return <><TrustRail active="estimate" /><EstimatePanel estimate={estimate} isFallback={isEstimateFallback} /></>
+      case 'schedule':
+        return <SchedulePanel draft={draft} onSelect={() => commitDraft({ ...draft, timeChoice: 'now' })} />
+      case 'confirm':
+        return <ConfirmPanel draft={draft} estimate={estimate} />
+      case 'searching':
+        return selectors.customerSearchState === 'no_worker' ? <EmptyWorkerPanel /> : selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active' || selectors.customerSearchState === 'completed' ? <WorkerMatchedPanel status={selectors.currentStatus} /> : <SearchingWorkerPanel draft={draft} />
+      case 'emptyWorker':
+        return <EmptyWorkerPanel />
+      case 'matched':
+        return <WorkerMatchedPanel status={selectors.currentStatus} />
+      default:
+        return null
+    }
   }
 
   return (
@@ -295,53 +475,22 @@ export function ClientPriceCheckFlow() {
           </Pressable>
           <View style={styles.bookingLocationPill}>
             <ElectricalGlyph />
-            <Text style={styles.bookingLocationText} numberOfLines={1}>Căn hộ TP.HCM</Text>
+            <Text style={styles.bookingLocationText} numberOfLines={1}>{draft.addressLabel || 'Chọn khu vực'}</Text>
           </View>
         </View>
         <View style={styles.bookingSheet}>
           <GlassSheen />
           <View style={styles.sheetHandle} />
           <BookingHeader />
-          {step === 'form' ? (
-            <>
-              <BookingFormSurface
-                chips={chips}
-                draft={draft}
-                onDescriptionChange={(description) => setDraft((current) => ({ ...current, description }))}
-                onPickMedia={pickMedia}
-                onRemoveMedia={removeMedia}
-                onSelectService={(serviceType) =>
-                  setDraft((current) => ({ ...current, serviceType, clarificationAnswers: {}, problemChips: serviceType === 'electrical' ? ['Ổ cắm nóng'] : ['Rò rỉ'] }))
-                }
-                onToggleChip={(chip) =>
-                  setDraft((current) => ({
-                    ...current,
-                    problemChips: current.problemChips.includes(chip)
-                      ? current.problemChips.filter((item) => item !== chip)
-                      : [...current.problemChips, chip].slice(0, 3),
-                  }))
-                }
-              />
-              <TrustRail active="estimate" />
-              <EstimatePanel estimate={estimate} isFallback={isEstimateFallback} />
-              <SchedulePanel draft={draft} onSelect={(timeChoice) => setDraft((current) => ({ ...current, timeChoice }))} />
-              <ConfirmPanel draft={draft} estimate={estimate} />
-              <MatchingStatesPanel />
-            </>
-          ) : null}
-          {step === 'clarification' ? <ClarificationPanel draft={draft} questions={questions} onAnswer={(questionId, answer) => setDraft((current) => ({ ...current, clarificationAnswers: { ...current.clarificationAnswers, [questionId]: answer } }))} /> : null}
-          {step === 'estimate' ? <><TrustRail active="estimate" /><EstimatePanel estimate={estimate} isFallback={isEstimateFallback} /></> : null}
-          {step === 'schedule' ? <SchedulePanel draft={draft} onSelect={(timeChoice) => setDraft((current) => ({ ...current, timeChoice }))} /> : null}
-          {step === 'confirm' ? <ConfirmPanel draft={draft} estimate={estimate} /> : null}
-          {step === 'searching' ? <SearchingWorkerPanel draft={draft} /> : null}
-          {step === 'emptyWorker' ? <EmptyWorkerPanel /> : null}
-          {step === 'matched' ? matchedWorker ? <WorkerMatchedPanel worker={matchedWorker} /> : <EmptyWorkerPanel /> : null}
+          <View testID="booking-current-step-only">{renderCurrentStep()}</View>
           <SheetActions
+            disabled={step === 'clarification' && !clarificationComplete}
             onPrimary={continueFlow}
-            onSecondary={step === 'form' ? () => setDraft(INITIAL_DRAFT) : goBack}
+            onSecondary={secondaryAction}
             primaryLabel={primaryLabel(step, status)}
             progress={progressForStep(step, status)}
-            secondaryLabel={step === 'form' ? 'Sửa lại' : 'Quay lại'}
+            secondaryLabel={secondaryLabelForStep(step, canCancelFromSearching)}
+            secondaryTestID={canCancelFromSearching ? 'customer-booking-cancel-local-deal' : undefined}
           />
         </View>
       </ScrollView>
@@ -465,36 +614,13 @@ function TrustRail({ active }: { active: 'describe' | 'estimate' | 'confirm' | '
   )
 }
 
-function MatchingStatesPanel() {
-  return (
-    <View style={styles.flowCard}>
-      <GlassSheen />
-      <Text style={styles.cardTitle}>Trạng thái tìm thợ</Text>
-      <View style={styles.stateGrid}>
-        {['Đang tìm', 'Thử thợ khác', 'Không có thợ', 'Đã ghép'].map((state, index) => (
-          <View key={state} style={styles.stateItem}>
-            <View style={[styles.stateDot, index === 0 ? styles.stateDotActive : null]} />
-            <Text style={styles.stateText} numberOfLines={1}>
-              {state}
-            </Text>
-          </View>
-        ))}
-      </View>
-      <View style={styles.actionRow}>
-        <Pressable style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText} numberOfLines={1}>Hủy tìm</Text>
-        </Pressable>
-        <Pressable style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText} numberOfLines={1}>Thử lại</Text>
-        </Pressable>
-      </View>
-    </View>
-  )
-}
-
 function BookingFormSurface({
   chips,
   draft,
+  previewQuestions,
+  unsupportedServiceLabel,
+  validationMessage,
+  onAddressChange,
   onDescriptionChange,
   onPickMedia,
   onRemoveMedia,
@@ -503,6 +629,10 @@ function BookingFormSurface({
 }: {
   chips: readonly string[]
   draft: PriceCheckDraft
+  previewQuestions: ClarificationQuestion[]
+  unsupportedServiceLabel: string | null
+  validationMessage: string | null
+  onAddressChange: (addressLabel: string) => void
   onDescriptionChange: (description: string) => void
   onPickMedia: () => void
   onRemoveMedia: (id: string) => void
@@ -515,18 +645,24 @@ function BookingFormSurface({
         <Segment label="Sửa điện" active={draft.serviceType === 'electrical'} onPress={() => onSelectService('electrical')} />
         <Segment label="Sửa nước" active={draft.serviceType === 'plumbing'} onPress={() => onSelectService('plumbing')} />
       </View>
+      {unsupportedServiceLabel ? <Text style={styles.validationText}>{unsupportedServiceLabel}</Text> : null}
       <SoftField title="Vấn đề" meta="Chọn">
         <View style={styles.pillRow}>
-          {chips.slice(0, 6).map((chip) => (
-            <Chip key={chip} active={draft.problemChips.includes(chip)} label={chip} onPress={() => onToggleChip(chip)} />
-          ))}
+          {chips.length > 0 ? (
+            chips.slice(0, 6).map((chip) => (
+              <Chip key={chip} active={draft.problemChips.includes(chip)} label={chip} onPress={() => onToggleChip(chip)} />
+            ))
+          ) : (
+            <Text style={styles.panelText}>Chọn dịch vụ trước để hiện đúng nhóm vấn đề.</Text>
+          )}
         </View>
       </SoftField>
       <SoftField title="Mô tả" meta={`${draft.description.trim().length}/160`}>
         <TextInput
           multiline
+          maxLength={160}
           onChangeText={onDescriptionChange}
-          placeholder="Ổ cắm bếp nóng khi bật máy nước nóng..."
+          placeholder="Mô tả dấu hiệu, vị trí, thời điểm xảy ra..."
           placeholderTextColor={tokens.subtle}
           style={styles.descriptionInput}
           textAlignVertical="top"
@@ -534,6 +670,18 @@ function BookingFormSurface({
           testID="booking-form-field-focus"
         />
       </SoftField>
+      <SoftField title="Khu vực" meta={draft.addressLabel.trim() ? 'Đã nhập' : 'Bắt buộc'}>
+        <TextInput
+          maxLength={96}
+          onChangeText={onAddressChange}
+          placeholder="Ví dụ: Quận 7, TP.HCM"
+          placeholderTextColor={tokens.subtle}
+          style={styles.singleLineInput}
+          value={draft.addressLabel}
+          testID="booking-address-field"
+        />
+      </SoftField>
+      {validationMessage ? <Text style={styles.validationText}>{validationMessage}</Text> : null}
       <EvidenceDraftSlots mediaItems={draft.mediaItems} onPickMedia={onPickMedia} onRemoveMedia={onRemoveMedia} />
       <View style={styles.clarifyCard}>
         <GlassSheen />
@@ -545,18 +693,20 @@ function BookingFormSurface({
             0-2
           </Text>
         </View>
-        <Text style={styles.clarifyItem} numberOfLines={2}>
-          Ổ cắm nóng ở một vị trí hay nhiều vị trí?
-        </Text>
-        <Text style={styles.clarifyItem} numberOfLines={2}>
-          Aptomat có nhảy lại sau khi bật máy nước nóng không?
-        </Text>
+        {(previewQuestions.length > 0 ? previewQuestions : [{ id: 'service', question: 'Kael sẽ hỏi thêm sau khi có dịch vụ và mô tả rõ.', options: [] }]).map((question) => (
+          <Text key={question.id} style={styles.clarifyItem} numberOfLines={2}>
+            {question.question}
+          </Text>
+        ))}
       </View>
     </View>
   )
 }
 
 function ClarificationPanel({ draft, questions, onAnswer }: { draft: PriceCheckDraft; questions: ClarificationQuestion[]; onAnswer: (questionId: string, answer: string) => void }) {
+  const answeredQuestions = questions.filter((question) => draft.clarificationAnswers[question.id]).length
+  const remainingQuestions = questions.length - answeredQuestions
+
   return (
     <View style={styles.formStack}>
       {questions.map((question, index) => (
@@ -572,6 +722,11 @@ function ClarificationPanel({ draft, questions, onAnswer }: { draft: PriceCheckD
           </View>
         </View>
       ))}
+      {remainingQuestions > 0 ? (
+        <Text style={styles.validationText} testID="booking-clarification-required">
+          Trả lời thêm {remainingQuestions} câu để xem ước tính.
+        </Text>
+      ) : null}
     </View>
   )
 }
@@ -614,7 +769,7 @@ function SchedulePanel({ draft, onSelect }: { draft: PriceCheckDraft; onSelect: 
       <Text style={styles.cardTitle}>Thời gian</Text>
       <View style={styles.twoCol}>
         <ChoiceCard active={draft.timeChoice === 'now'} title="Ngay bây giờ" text="Ưu tiên tìm thợ gần nhất" onPress={() => onSelect('now')} />
-        <ChoiceCard active={draft.timeChoice === 'scheduled'} title="Đặt lịch" text="Hôm nay 18:30" onPress={() => onSelect('scheduled')} />
+        <ChoiceCard active={false} disabled title="Đặt lịch" text="Sắp mở sau khi backend lịch sẵn sàng" onPress={() => undefined} />
       </View>
     </View>
   )
@@ -629,12 +784,12 @@ function ConfirmPanel({ draft, estimate }: { draft: PriceCheckDraft; estimate: P
         <Text style={styles.statusText}>Bắt buộc</Text>
       </View>
       <View style={styles.summaryGrid}>
-        <SummaryCell label="Dịch vụ" value={draft.serviceType === 'electrical' ? 'Sửa điện' : 'Sửa nước'} />
+        <SummaryCell label="Dịch vụ" value={serviceLabel(draft.serviceType)} />
         <SummaryCell label="Vấn đề" value={draft.problemChips[0] ?? 'Đã mô tả'} />
         <SummaryCell label="Địa chỉ" value={draft.addressLabel} />
-        <SummaryCell label="Thời gian" value={draft.timeChoice === 'now' ? 'Ngay bây giờ' : 'Hôm nay 18:30'} />
+        <SummaryCell label="Thời gian" value="Ngay bây giờ" />
         <SummaryCell label="Ước giá" value={estimate.priceRangeLabel} />
-        <SummaryCell label="Phí nền tảng" value="7.5%" />
+        <SummaryCell label="Phí nền tảng" value="Cần backend xác nhận" />
       </View>
       <Text selectable style={styles.disclaimerText}>
         {PRICE_DISCLAIMER}
@@ -649,7 +804,7 @@ function SearchingWorkerPanel({ draft }: { draft: PriceCheckDraft }) {
       <GlassSheen />
       <ActivityIndicator color={tokens.primary} />
       <Text style={styles.loadingTitle}>Đang tìm thợ phù hợp</Text>
-      <Text style={styles.loadingText}>{draft.timeChoice === 'now' ? 'Ưu tiên thợ gần căn hộ của bạn.' : 'Đang kiểm tra lịch hẹn phù hợp.'}</Text>
+      <Text style={styles.loadingText}>Ưu tiên thợ gần khu vực của bạn. Địa chỉ chi tiết chỉ mở khi worker nhận.</Text>
       <View style={styles.stateGrid}>
         {['Đang tìm', 'Thử thợ khác', 'Không có thợ', 'Đã ghép'].map((state, index) => (
           <View key={state} style={styles.stateItem}>
@@ -669,21 +824,21 @@ function EmptyWorkerPanel() {
     <View accessibilityLabel={noWorkerFallbackState} style={styles.warningCard} testID="customer-no-fake-worker-data">
       <GlassSheen />
       <Text style={styles.cardTitle}>Chưa có thợ phù hợp</Text>
-      <Text style={styles.panelText}>Production không hiển thị dữ liệu thợ giả. Bạn có thể thử lại hoặc chỉnh yêu cầu.</Text>
+      <Text style={styles.panelText}>Chưa có thợ nhận yêu cầu. Bạn có thể thử lại hoặc chỉnh yêu cầu để mô tả rõ hơn.</Text>
     </View>
   )
 }
 
-function WorkerMatchedPanel({ worker }: { worker: WorkerMatch }) {
+function WorkerMatchedPanel({ status }: { status: LocalDealStatus | null }) {
   return (
-    <View style={styles.flowCard}>
+    <View style={styles.flowCard} testID="customer-no-fake-worker-data">
       <GlassSheen />
-      <Text style={styles.cardTitle}>Đã ghép thợ</Text>
+      <Text style={styles.cardTitle}>Worker audit đã nhận</Text>
       <View style={styles.workerRow}>
-        <View style={styles.workerAvatar}>{worker.avatarUri ? <Image source={{ uri: worker.avatarUri }} style={styles.workerImage} /> : <ElectricalGlyph />}</View>
+        <View style={styles.workerAvatar}><DocumentGlyph /></View>
         <View style={styles.workerCopy}>
-          <Text style={styles.workerName}>{worker.name}</Text>
-          <Text style={styles.panelText}>{worker.rating} · {worker.jobCountLabel} · {worker.etaLabel}</Text>
+          <Text style={styles.workerName}>{statusLabel(status)}</Text>
+          <Text style={styles.panelText}>Thông tin worker thật, phản hồi và thanh toán vẫn khóa cho tới khi backend được nối.</Text>
         </View>
       </View>
     </View>
@@ -716,17 +871,21 @@ function EvidenceDraftSlots({ mediaItems, onPickMedia, onRemoveMedia }: { mediaI
 }
 
 function SheetActions({
+  disabled = false,
   onPrimary,
   onSecondary,
   primaryLabel,
   progress,
   secondaryLabel,
+  secondaryTestID,
 }: {
+  disabled?: boolean
   onPrimary: () => void
   onSecondary: () => void
   primaryLabel: string
   progress: number
   secondaryLabel: string
+  secondaryTestID?: string
 }) {
   return (
     <View style={styles.sheetActions}>
@@ -735,11 +894,11 @@ function SheetActions({
         <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
       <View style={styles.actionRow}>
-        <Pressable onPress={onSecondary} style={styles.secondaryButton}>
+        <Pressable onPress={onSecondary} style={styles.secondaryButton} testID={secondaryTestID}>
           <Text style={styles.secondaryButtonText} numberOfLines={1}>{secondaryLabel}</Text>
         </Pressable>
-        <Pressable onPress={onPrimary} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText} numberOfLines={1}>{primaryLabel}</Text>
+        <Pressable disabled={disabled} onPress={onPrimary} style={[styles.primaryButton, disabled ? styles.primaryButtonDisabled : null]}>
+          <Text style={[styles.primaryButtonText, disabled ? styles.primaryButtonDisabledText : null]} numberOfLines={1}>{primaryLabel}</Text>
         </Pressable>
       </View>
     </View>
@@ -775,9 +934,9 @@ function Chip({ active, label, onPress }: { active: boolean; label: string; onPr
   )
 }
 
-function ChoiceCard({ active, onPress, text, title }: { active: boolean; onPress: () => void; text: string; title: string }) {
+function ChoiceCard({ active, disabled = false, onPress, text, title }: { active: boolean; disabled?: boolean; onPress: () => void; text: string; title: string }) {
   return (
-    <Pressable onPress={onPress} style={[styles.choiceCard, active ? styles.choiceCardActive : null]}>
+    <Pressable disabled={disabled} onPress={onPress} style={[styles.choiceCard, active ? styles.choiceCardActive : null, disabled ? styles.disabledChoiceCard : null]}>
       <Text style={[styles.choiceTitle, active ? styles.choiceTextActive : null]}>{title}</Text>
       <Text style={[styles.choiceText, active ? styles.choiceTextActive : null]}>{text}</Text>
     </Pressable>
@@ -793,6 +952,50 @@ function SummaryCell({ label, value }: { label: string; value: string }) {
   )
 }
 
+function initialStepFromWorkflow(status: LocalDealStatus | null): PriceCheckUiStep {
+  if (status === 'awaiting_customer_confirm') return 'confirm'
+  if (status === 'broadcasting') return 'searching'
+  if (status === 'worker_matched' || status === 'worker_on_way' || status === 'arrived' || status === 'inspecting' || status === 'repairing' || status === 'completed_by_worker' || status === 'confirmed_by_customer') {
+    return 'matched'
+  }
+  return 'form'
+}
+
+function draftFromWorkflow(draft?: LocalDealDraft): PriceCheckDraft {
+  if (!draft) return EMPTY_DRAFT
+  return {
+    serviceType: draft.serviceType,
+    problemChips: draft.problemChips,
+    description: draft.description,
+    mediaItems: [],
+    addressLabel: draft.addressLabel,
+    clarificationAnswers: {},
+    timeChoice: 'now',
+  }
+}
+
+function draftToWorkflowPatch(draft: PriceCheckDraft) {
+  return {
+    serviceType: draft.serviceType,
+    problemChips: draft.problemChips,
+    description: draft.description,
+    addressLabel: draft.addressLabel,
+    mediaCount: draft.mediaItems.length,
+  }
+}
+
+function workflowDraftSyncKey(deal: { draft: LocalDealDraft } | null) {
+  if (!deal) return 'none'
+  return [
+    deal.draft.source,
+    deal.draft.serviceType ?? 'none',
+    deal.draft.problemChips.join('|'),
+    deal.draft.description,
+    deal.draft.addressLabel,
+    deal.draft.mediaCount,
+  ].join('::')
+}
+
 function primaryLabel(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
   if (step === 'form') return 'Để Kael kiểm tra'
   if (step === 'clarification') return 'Xem ước tính'
@@ -801,7 +1004,16 @@ function primaryLabel(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
   if (step === 'confirm') return 'Xác nhận phát yêu cầu'
   if (step === 'searching') return 'Kiểm tra trạng thái'
   if (step === 'emptyWorker') return 'Thử lại'
+  if (step === 'matched') return 'Xem hoạt động'
   return status === 'estimate_ready' ? 'Trò chuyện' : 'Tiếp tục'
+}
+
+function secondaryLabelForStep(step: PriceCheckUiStep, canCancelFromSearching = false) {
+  if (step === 'form') return 'Sửa lại'
+  if (step === 'emptyWorker') return 'Chỉnh yêu cầu'
+  if (canCancelFromSearching) return 'Hủy local'
+  if (step === 'searching' || step === 'matched') return 'Về Home'
+  return 'Quay lại'
 }
 
 function progressForStep(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
@@ -811,6 +1023,14 @@ function progressForStep(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
   if (step === 'schedule') return 88
   if (step === 'confirm') return 94
   return 100
+}
+
+function getDraftValidationMessage(draft: PriceCheckDraft) {
+  if (!draft.serviceType) return 'Chọn dịch vụ điện hoặc nước.'
+  if (draft.problemChips.length === 0) return 'Chọn ít nhất một vấn đề cần xử lý.'
+  if (draft.description.trim().length < 12) return 'Mô tả cần đủ rõ để Kael tóm tắt.'
+  if (draft.addressLabel.trim().length < 4) return 'Nhập khu vực hoặc địa chỉ tổng quát.'
+  return null
 }
 
 function complexityLabel(complexity: PriceCheckEstimateCard['complexity']) {
@@ -1245,6 +1465,23 @@ const styles = StyleSheet.create({
     minHeight: 84,
     padding: 11,
   },
+  singleLineInput: {
+    backgroundColor: 'rgba(245,251,248,0.68)',
+    borderColor: 'rgba(255,255,255,0.66)',
+    borderRadius: 18,
+    borderWidth: 1,
+    color: tokens.text,
+    fontSize: 13,
+    fontWeight: '600',
+    minHeight: 46,
+    paddingHorizontal: 11,
+  },
+  validationText: {
+    color: '#B64B40',
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
   mediaGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1416,6 +1653,9 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.primary,
     borderColor: tokens.primary,
   },
+  disabledChoiceCard: {
+    opacity: 0.52,
+  },
   choiceTitle: {
     color: tokens.text,
     fontSize: 15,
@@ -1575,11 +1815,18 @@ const styles = StyleSheet.create({
     minHeight: 54,
     paddingHorizontal: 16,
   },
+  primaryButtonDisabled: {
+    backgroundColor: tokens.border,
+    boxShadow: 'none',
+  },
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 0,
     textAlign: 'center',
+  },
+  primaryButtonDisabledText: {
+    color: tokens.muted,
   },
 } as any)

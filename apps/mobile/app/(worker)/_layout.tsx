@@ -1,5 +1,7 @@
-import { Tabs } from 'expo-router'
+import { Redirect, Tabs } from 'expo-router'
+import { ActivityIndicator, View } from 'react-native'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
+import { useAuth } from '@/lib/auth-provider'
 
 type WorkerTabName = 'chat' | 'earnings' | 'home' | 'jobs' | 'profile'
 
@@ -23,6 +25,26 @@ const dockTokens = {
 }
 
 export default function WorkerLayout() {
+  const { loading, role, session } = useAuth()
+
+  if (loading) {
+    return (
+      <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
+        <ActivityIndicator color={dockTokens.active} size="large" />
+      </View>
+    )
+  }
+
+  if (!session) {
+    return <Redirect href="/(auth)/login" />
+  }
+
+  if (role === 'admin') {
+    // Admin audit mode can inspect the worker workflow without changing role.
+  } else if (role !== 'worker') {
+    return <Redirect href="/(auth)/login" />
+  }
+
   return (
     <Tabs
       screenOptions={{

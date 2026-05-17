@@ -8,7 +8,9 @@ import type {
   ConfirmCompletionResponse,
   ReviewResponse,
 } from './api-types'
-import type { JobCreateInput, ReviewInput } from '@home-services/shared'
+import type { JobCreateInput, JobStatus, ReviewInput } from '@home-services/shared'
+
+type WorkerStatusUpdate = Extract<JobStatus, 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'completed_by_worker'>
 
 export const jobService = {
   getServices() {
@@ -27,7 +29,7 @@ export const jobService = {
     return api.post<ConfirmSearchResponse>(`/api/jobs/${jobId}/confirm-search`)
   },
 
-  updateStatus(jobId: string, status: string, extras?: {
+  updateStatus(jobId: string, status: WorkerStatusUpdate, extras?: {
     completion_notes?: string
     completion_photo_urls?: string[]
     final_price?: number

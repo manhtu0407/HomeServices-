@@ -1,8 +1,9 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import { useRouter } from 'expo-router'
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Rect } from 'react-native-svg'
+import { useAuth } from '@/lib/auth-provider'
 
 const AUTH_LOGIN_ROLE_GATE = 'AUTH_LOGIN_ROLE_GATE: auth-login-role-customer auth-login-role-worker'
 const AUTH_LOGIN_ROLE_GATE_GLASS = 'AUTH_LOGIN_ROLE_GATE_GLASS: auth-role-gate-glass'
@@ -27,6 +28,51 @@ const authTokens = {
 
 export function LoginRoleSurface() {
   const router = useRouter()
+  const { authError, loading, profileStatus, refreshProfile, role, session, signInWithPassword, signOut } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [signingIn, setSigningIn] = useState(false)
+  const isAdmin = role === 'admin'
+  const isAuthenticated = Boolean(session && role)
+  const canOpenCustomer = role === 'customer' || isAdmin
+  const canOpenWorker = role === 'worker' || isAdmin
+  const configMissing = profileStatus === 'config_missing'
+  const visibleError = formError ?? authError ?? (configMissing ? 'Supabase chưa được cấu hình cho mobile build này' : null)
+  const needsProfileRecovery = Boolean(session && !role && (profileStatus === 'profile_missing' || profileStatus === 'profile_error'))
+
+  const submitLogin = async () => {
+    setFormError(null)
+    setSigningIn(true)
+    try {
+      const result = await signInWithPassword(email, password)
+      if (!result.success) {
+        setFormError(result.error ?? 'Không thể đăng nhập')
+      } else {
+        setPassword('')
+      }
+    } catch {
+      setFormError('Không thể đăng nhập lúc này')
+    } finally {
+      setSigningIn(false)
+    }
+  }
+
+  const openCustomerSection = () => {
+    if (!canOpenCustomer) {
+      setFormError('Tài khoản này chưa được phép vào section Khách')
+      return
+    }
+    router.replace('/(customer)/home')
+  }
+
+  const openWorkerSection = () => {
+    if (!canOpenWorker) {
+      setFormError('Tài khoản này chưa được phép vào section Thợ')
+      return
+    }
+    router.replace('/(worker)/home')
+  }
 
   return (
     <AuthFrame testID="auth-login-surface">
@@ -35,30 +81,101 @@ export function LoginRoleSurface() {
           <MapLineField />
           <View style={styles.loginHeader}>
             <Text style={styles.kicker}>Đăng nhập</Text>
-            <Text style={styles.title}>Bạn vào app với vai trò nào?</Text>
-            <Text style={styles.body}>Chọn đúng vai trò để vào section tương ứng.</Text>
+            <Text style={styles.title}>{isAuthenticated ? 'Chọn section để audit' : 'Đăng nhập để vào app'}</Text>
+            <Text style={styles.body}>
+              {isAuthenticated ? roleLabel(role) : 'Email/Password xác thực trước, vai trò trong profile quyết định section được vào.'}
+            </Text>
           </View>
 
-          <RoleCard
-            description="Đặt lịch sửa điện/nước, kiểm giá với Kael và theo dõi tiến trình."
-            icon="home"
-            label="Khách"
-            onPress={() => router.replace('/(customer)/home')}
-            testID="auth-login-role-customer"
-          />
-          <RoleCard
-            description="Bật nhận việc, xem brief, xử lý yêu cầu và theo dõi thu nhập."
-            icon="tools"
-            label="Thợ"
-            onPress={() => router.replace('/(worker)/home')}
-            testID="auth-login-role-worker"
-            worker
-          />
+          {needsProfileRecovery ? (
+            <View style={styles.formStack} testID="auth-profile-recovery">
+              <Text style={styles.errorText}>Hồ sơ vai trò chưa sẵn sàng. Tải lại hồ sơ hoặc đăng xuất để đăng nhập tài khoản khác.</Text>
+              {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
+              <Pressable
+                accessibilityRole="button"
+                disabled={loading}
+                onPress={() => void refreshProfile()}
+                style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, loading ? styles.disabled : null]}
+                testID="auth-profile-refresh"
+              >
+                {loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>Tải lại hồ sơ</Text>}
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-profile-recovery-sign-out">
+                <Text style={styles.secondaryActionText}>Đăng xuất</Text>
+              </Pressable>
+            </View>
+          ) : !isAuthenticated ? (
+            <View style={styles.formStack}>
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                inputMode="email"
+                keyboardType="email-address"
+                onChangeText={setEmail}
+                placeholder="Email"
+                placeholderTextColor={authTokens.subtle}
+                style={styles.input}
+                testID="auth-login-email-input"
+                value={email}
+              />
+              <TextInput
+                autoCapitalize="none"
+                onChangeText={setPassword}
+                placeholder="Mật khẩu"
+                placeholderTextColor={authTokens.subtle}
+                secureTextEntry
+                style={styles.input}
+                testID="auth-login-password-input"
+                value={password}
+              />
+              {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
+              <Pressable
+                accessibilityRole="button"
+                disabled={signingIn || loading || configMissing}
+                onPress={submitLogin}
+                style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, signingIn || loading || configMissing ? styles.disabled : null]}
+                testID="auth-login-submit"
+              >
+                {signingIn || loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>Đăng nhập</Text>}
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              <RoleCard
+                description={isAdmin ? 'Audit luồng Khách với quyền admin.' : 'Đặt lịch sửa điện/nước, kiểm giá với Kael và theo dõi tiến trình.'}
+                disabled={!canOpenCustomer}
+                icon="home"
+                label="Khách"
+                onPress={openCustomerSection}
+                testID={isAdmin ? 'auth-login-admin-audit-customer' : 'auth-login-role-customer'}
+              />
+              <RoleCard
+                description={isAdmin ? 'Audit luồng Thợ với quyền admin.' : 'Bật nhận việc, xem brief, xử lý yêu cầu và theo dõi thu nhập.'}
+                disabled={!canOpenWorker}
+                icon="tools"
+                label="Thợ"
+                onPress={openWorkerSection}
+                testID={isAdmin ? 'auth-login-admin-audit-worker' : 'auth-login-role-worker'}
+                worker
+              />
+              {isAdmin ? <View style={styles.hiddenMarker} testID="auth-login-admin-audit" /> : null}
+              <Pressable accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-login-sign-out">
+                <Text style={styles.secondaryActionText}>Đăng xuất</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       </ScrollView>
       <View style={styles.hiddenMarker} testID={AUTH_LOGIN_ROLE_GATE + AUTH_LOGIN_ROLE_GATE_GLASS + '/(customer)/home /(worker)/home'} />
     </AuthFrame>
   )
+}
+
+function roleLabel(role: string | null) {
+  if (role === 'admin') return 'Admin có thể audit cả hai section.'
+  if (role === 'worker') return 'Tài khoản Thợ chỉ vào luồng Thợ.'
+  if (role === 'customer') return 'Tài khoản Khách chỉ vào luồng Khách.'
+  return 'Đang kiểm tra vai trò tài khoản.'
 }
 
 function AuthFrame({ children, testID }: { children: ReactNode; testID: string }) {
@@ -80,11 +197,14 @@ function AuthFrame({ children, testID }: { children: ReactNode; testID: string }
 
 function AmbientBackdrop() {
   return (
-    <>
-      <View style={styles.backdropMint} />
-      <View style={styles.backdropCream} />
-      <View style={styles.backdropCyan} />
-    </>
+    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 390 844" preserveAspectRatio="none">
+      <Path d="M-18 152 C72 116 120 178 198 144 S318 80 418 126" stroke={authTokens.border} strokeWidth={5} opacity={0.42} fill="none" />
+      <Path d="M32 320 C118 282 144 352 232 314 S332 250 420 292" stroke={authTokens.line} strokeWidth={4} opacity={0.34} fill="none" />
+      <Path d="M-30 642 C64 600 122 668 198 622 S316 552 424 604" stroke={authTokens.border} strokeWidth={5} opacity={0.32} fill="none" />
+      <Rect x={34} y={226} width={76} height={48} rx={16} fill={authTokens.mint} opacity={0.32} />
+      <Rect x={248} y={146} width={92} height={56} rx={18} fill={authTokens.cyan} opacity={0.34} />
+      <Rect x={218} y={652} width={104} height={64} rx={18} fill={authTokens.cream} opacity={0.38} />
+    </Svg>
   )
 }
 
@@ -100,6 +220,7 @@ function MapLineField() {
 
 function RoleCard({
   description,
+  disabled = false,
   icon,
   label,
   onPress,
@@ -107,6 +228,7 @@ function RoleCard({
   worker = false,
 }: {
   description: string
+  disabled?: boolean
   icon: 'home' | 'tools'
   label: string
   onPress: () => void
@@ -116,8 +238,10 @@ function RoleCard({
   return (
     <Pressable
       accessibilityLabel={`Đăng nhập vai trò ${label}`}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.roleCard, glassSurface(worker ? 'mint' : 'raised'), pressed ? styles.pressed : null]}
+      style={({ pressed }) => [styles.roleCard, glassSurface(worker ? 'mint' : 'raised'), disabled ? styles.disabled : null, pressed ? styles.pressed : null]}
       testID={testID}
     >
       <View style={[styles.roleIcon, { backgroundColor: worker ? authTokens.raised : authTokens.mint }]}>
@@ -176,20 +300,35 @@ function glassSurface(tone: 'cream' | 'cyan' | 'glass' | 'mint' | 'raised') {
 const styles = StyleSheet.create({
   safe: { backgroundColor: authTokens.canvas, flex: 1 },
   canvas: { alignItems: 'center', backgroundColor: authTokens.canvas, flex: 1, justifyContent: 'center', overflow: 'hidden' },
-  backdropMint: { backgroundColor: '#DDF4EC', borderRadius: 999, height: 270, opacity: 0.84, position: 'absolute', right: -104, top: 60, width: 270 },
-  backdropCream: { backgroundColor: '#FFF0DE', borderRadius: 999, bottom: 50, height: 210, left: -88, opacity: 0.72, position: 'absolute', width: 210 },
-  backdropCyan: { backgroundColor: '#E4F8F7', borderRadius: 999, height: 160, left: -72, opacity: 0.64, position: 'absolute', top: 160, width: 160 },
   authContent: { gap: 16, minHeight: '100%', paddingVertical: 18 },
+  formStack: { gap: 10 },
   loginHeader: { gap: 7 },
   kicker: { color: authTokens.primary, fontSize: 12, fontWeight: '700', letterSpacing: 0 },
   title: { color: authTokens.ink, fontSize: 29, fontWeight: '700', letterSpacing: 0, lineHeight: 35 },
   body: { color: authTokens.muted, fontSize: 14, fontWeight: '500', lineHeight: 20 },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderColor: authTokens.border,
+    borderRadius: 20,
+    borderWidth: 1,
+    color: authTokens.ink,
+    fontSize: 15,
+    fontWeight: '600',
+    minHeight: 52,
+    paddingHorizontal: 14,
+  },
+  errorText: { color: '#B64B40', fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  primaryButton: { alignItems: 'center', backgroundColor: authTokens.primary, borderRadius: 20, justifyContent: 'center', minHeight: 52 },
+  primaryButtonText: { color: authTokens.raised, fontSize: 15, fontWeight: '700' },
+  secondaryAction: { alignItems: 'center', minHeight: 42, justifyContent: 'center' },
+  secondaryActionText: { color: authTokens.primary, fontSize: 14, fontWeight: '700' },
   roleGateShell: { borderRadius: 36, gap: 14, overflow: 'hidden', padding: 16, paddingTop: 24 },
   roleCard: { alignItems: 'center', borderRadius: 30, flexDirection: 'row', gap: 14, minHeight: 126, padding: 16 },
   roleIcon: { alignItems: 'center', borderRadius: 22, height: 58, justifyContent: 'center', width: 58 },
   titleStack: { flex: 1, gap: 5 },
   roleTitle: { color: authTokens.ink, fontSize: 22, fontWeight: '700' },
   roleArrow: { color: authTokens.primary, fontSize: 32, fontWeight: '700' },
+  disabled: { opacity: 0.54 },
   pressed: { opacity: 0.78, transform: [{ scale: 0.985 }] },
   hiddenMarker: { height: 0, opacity: 0, width: 0 },
 })
