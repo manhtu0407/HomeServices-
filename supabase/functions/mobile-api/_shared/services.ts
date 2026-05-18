@@ -843,6 +843,7 @@ async function decideScopeChange(
   scopeChangeId: string,
   input: { decision: "approve" | "reject" },
 ) {
+  const nextJobStatus = scopeDecisionToJobStatus(input.decision);
   const result = await dbQuery<Array<Record<string, unknown>>>(
     db(ctx).rpc("decide_scope_change_atomic", {
       p_scope_change_id: scopeChangeId,
@@ -865,7 +866,7 @@ async function decideScopeChange(
       : "customer_rejected_scope_change",
     ctx,
     "scope_change_pending",
-    "repairing",
+    nextJobStatus,
     { scope_change_id: scopeChangeId, decision: input.decision },
   );
   return {
@@ -874,6 +875,10 @@ async function decideScopeChange(
     status: row.scope_status as ScopeChangeStatus,
     decided_at: asString(row.decided_at_ts),
   };
+}
+
+function scopeDecisionToJobStatus(decision: "approve" | "reject"): JobStatus {
+  return decision === "approve" ? "repairing" : "cancelled";
 }
 
 async function confirmCompletion(ctx: MobileApiContext, jobId: string) {

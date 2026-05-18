@@ -149,11 +149,10 @@ export async function requestScopeChange(
  *
  * The PG function atomically:
  *   - Updates scope_change_requests.status to approved_by_customer / rejected_by_customer
- *   - Transitions job.status back to 'repairing' with decision text
+ *   - Approve transitions job.status back to 'repairing' with decision text
+ *   - Reject transitions the job to 'cancelled' to stop changed work
  *
- * Both approve and reject return job to 'repairing' so worker can continue
- * (with new scope on approve, original on reject). Per RULES.md #7, customer
- * MUST tap explicitly — no auto-decision.
+ * Per RULES.md #7, customer MUST tap explicitly — no auto-decision.
  */
 export async function decideScopeChange(
   supabase: SupabaseClient<Database>,

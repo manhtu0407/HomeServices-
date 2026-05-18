@@ -23,6 +23,11 @@ const RLS_AUTO_ENABLE_REVOKE_SQL = readFileSync(
   resolve(MIGRATIONS_DIR, '20260513131949_revoke_rls_auto_enable_rpc.sql'),
   'utf-8'
 )
+const FUNCTION_SEARCH_PATH_PATTERNS = [
+  /alter\s+function\s+public\.update_updated_at\(\)\s+set\s+search_path\s*=\s*public/i,
+  /alter\s+function\s+public\.update_worker_rating\(\)\s+set\s+search_path\s*=\s*public/i,
+  /alter\s+function\s+public\.handle_new_user\(\)\s+set\s+search_path\s*=\s*public/i,
+]
 
 describe('Workflow alignment migration exists', () => {
   it('renames legacy job_status before creating the new enum', () => {
@@ -131,10 +136,8 @@ describe('RLS policy hardening', () => {
 
 describe('Function execution hardening migration', () => {
   it('pins search_path on trigger/helper functions flagged by Supabase advisors', () => {
-    for (const fnName of ['update_updated_at', 'update_worker_rating', 'handle_new_user']) {
-      expect(FUNCTION_HARDENING_SQL).toMatch(
-        new RegExp(`alter\\s+function\\s+public\\.${fnName}\\(\\)\\s+set\\s+search_path\\s*=\\s*public`, 'i')
-      )
+    for (const pattern of FUNCTION_SEARCH_PATH_PATTERNS) {
+      expect(FUNCTION_HARDENING_SQL).toMatch(pattern)
     }
   })
 

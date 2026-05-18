@@ -35,9 +35,9 @@ function loadEnvFile(): Record<string, string> {
     for (const line of content.split('\n')) {
       const trimmed = line.trim()
       if (!trimmed || trimmed.startsWith('#')) continue
-      const eqIdx = trimmed.indexOf('=')
-      if (eqIdx === -1) continue
-      vars[trimmed.slice(0, eqIdx).trim()] = trimmed.slice(eqIdx + 1).trim()
+      const [key, ...valueParts] = trimmed.split('=')
+      if (!key || valueParts.length === 0) continue
+      vars[key.trim()] = valueParts.join('=').trim()
     }
     return vars
   } catch {

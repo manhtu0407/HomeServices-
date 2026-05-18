@@ -5,8 +5,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Rect } from 'react-native-svg'
 import { useAuth } from '@/lib/auth-provider'
 
-const AUTH_LOGIN_ROLE_GATE = 'AUTH_LOGIN_ROLE_GATE: auth-login-role-customer auth-login-role-worker'
-const AUTH_LOGIN_ROLE_GATE_GLASS = 'AUTH_LOGIN_ROLE_GATE_GLASS: auth-role-gate-glass'
+const LOGIN_ROLE_GATE_MARKER = 'LOGIN_ROLE_GATE_MARKER: auth-login-role-customer auth-login-role-worker'
+const LOGIN_ROLE_GATE_GLASS_MARKER = 'LOGIN_ROLE_GATE_GLASS_MARKER: auth-role-gate-glass'
 
 const authTokens = {
   canvas: '#F3FAF7',
@@ -27,7 +27,7 @@ const authTokens = {
 }
 
 export function LoginRoleSurface() {
-  const router = useRouter()
+  const { replace } = useRouter()
   const { authError, loading, profileStatus, refreshProfile, role, session, signInWithPassword, signOut } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -63,7 +63,7 @@ export function LoginRoleSurface() {
       setFormError('Tài khoản này chưa được phép vào section Khách')
       return
     }
-    router.replace('/(customer)/home')
+    replace('/(customer)/home')
   }
 
   const openWorkerSection = () => {
@@ -71,7 +71,7 @@ export function LoginRoleSurface() {
       setFormError('Tài khoản này chưa được phép vào section Thợ')
       return
     }
-    router.replace('/(worker)/home')
+    replace('/(worker)/home')
   }
 
   return (
@@ -166,7 +166,7 @@ export function LoginRoleSurface() {
           )}
         </View>
       </ScrollView>
-      <View style={styles.hiddenMarker} testID={AUTH_LOGIN_ROLE_GATE + AUTH_LOGIN_ROLE_GATE_GLASS + '/(customer)/home /(worker)/home'} />
+      <View style={styles.hiddenMarker} testID={LOGIN_ROLE_GATE_MARKER + LOGIN_ROLE_GATE_GLASS_MARKER + '/(customer)/home /(worker)/home'} />
     </AuthFrame>
   )
 }

@@ -53,7 +53,7 @@ describe('Database.public.Tables completeness', () => {
 
 describe('Database.public.Enums completeness', () => {
   it('has all workflow and learning enums', () => {
-    expect(Object.keys(Constants.public.Enums).sort()).toEqual([...EXPECTED_ENUMS].sort())
+    expect(Object.keys(Constants.public.Enums).toSorted()).toEqual(EXPECTED_ENUMS.toSorted())
   })
 
   it.each(EXPECTED_ENUMS)('enum "%s" exists in Constants', (name) => {

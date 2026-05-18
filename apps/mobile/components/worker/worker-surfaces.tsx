@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { createContext, type ReactNode, useContext, useEffect, useState, useSyncExternalStore } from 'react'
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { createContext, type ReactNode, use, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
@@ -29,8 +30,8 @@ const workerDockClearance = workerDockHeight + workerDockBottomMargin + 42
 const workerFrameHorizontalPadding = 16
 const kaelHead = require('../../assets/kael-model-8a-head.png')
 
-export type WorkerThemeMode = 'dark' | 'light'
-export type WorkerLanguageMode = 'en' | 'vi'
+type WorkerThemeMode = 'dark' | 'light'
+type WorkerLanguageMode = 'en' | 'vi'
 
 type WorkerActiveTab = 'chat' | 'earnings' | 'home' | 'jobs' | 'profile'
 type WorkerTone = 'base' | 'cream' | 'cyan' | 'depth' | 'mint' | 'raised' | 'strong' | 'warm'
@@ -389,13 +390,13 @@ function subscribeWorkerThemeMode(listener: () => void) {
   return () => removeListener(listener)
 }
 
-export function setWorkerThemeMode(nextMode: WorkerThemeMode) {
+function setWorkerThemeMode(nextMode: WorkerThemeMode) {
   workerThemeMode = nextMode
   void AsyncStorage.setItem(WORKER_THEME_STORAGE_KEY, nextMode)
   themeListeners.forEach((listener) => listener())
 }
 
-export function useWorkerThemeMode() {
+function useWorkerThemeMode() {
   useEffect(() => {
     void AsyncStorage.getItem(WORKER_THEME_STORAGE_KEY).then((stored) => {
       if (stored === 'light' || stored === 'dark') setWorkerThemeMode(stored)
@@ -415,13 +416,13 @@ function subscribeWorkerLanguageMode(listener: () => void) {
   return () => removeListener(listener)
 }
 
-export function setWorkerLanguageMode(nextMode: WorkerLanguageMode) {
+function setWorkerLanguageMode(nextMode: WorkerLanguageMode) {
   workerLanguageMode = nextMode
   void AsyncStorage.setItem(WORKER_LANGUAGE_STORAGE_KEY, nextMode)
   languageListeners.forEach((listener) => listener())
 }
 
-export function useWorkerLanguageMode() {
+function useWorkerLanguageMode() {
   useEffect(() => {
     void AsyncStorage.getItem(WORKER_LANGUAGE_STORAGE_KEY).then((stored) => {
       if (stored === 'vi' || stored === 'en') setWorkerLanguageMode(stored)
@@ -431,7 +432,7 @@ export function useWorkerLanguageMode() {
   return useSyncExternalStore(subscribeWorkerLanguageMode, getWorkerLanguageModeSnapshot, getWorkerLanguageModeSnapshot)
 }
 
-export function getWorkerThemeTokens(mode: WorkerThemeMode) {
+function getWorkerThemeTokens(mode: WorkerThemeMode) {
   return mode === 'dark' ? darkLayer : lightLayer
 }
 
@@ -609,7 +610,7 @@ function WorkerChatContent() {
   const dealChatKey = workerChatDealKey(deal)
   const [draft, setDraft] = useState('')
   const [messages, setMessages] = useState<WorkerChatMessage[]>([])
-  const [activeDealChatKey, setActiveDealChatKey] = useState(dealChatKey)
+  const activeDealChatKeyRef = useRef(dealChatKey)
   const dealSeedMessages = buildWorkerDealChatSeed(deal, selectors.currentStatus, copy.chat.kael)
   const renderedMessages = messages.length > 0 ? messages : dealSeedMessages
   const hasAnyWorkerKaelMessage = renderedMessages.length > 0
@@ -617,11 +618,11 @@ function WorkerChatContent() {
   const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : 'Chấp nhận hoặc bỏ qua trước'
 
   useEffect(() => {
-    if (activeDealChatKey === dealChatKey) return
+    if (activeDealChatKeyRef.current === dealChatKey) return
     setMessages([])
     setDraft('')
-    setActiveDealChatKey(dealChatKey)
-  }, [activeDealChatKey, dealChatKey])
+    activeDealChatKeyRef.current = dealChatKey
+  }, [dealChatKey])
 
   const submitWorkerKaelLocalDraft = () => {
     if (!canSendWorkerKaelMessage) return
@@ -655,8 +656,8 @@ function WorkerChatContent() {
           </View>
         ) : (
           <View style={styles.chatStack} testID="hasAnyWorkerKaelMessage">
-            {renderedMessages.map((message, index) => (
-              <ChatBubble key={`${message.who}-${index}`} {...message} />
+            {renderedMessages.map((message) => (
+              <ChatBubble key={`${message.who}-${message.system ? 'system' : message.mine ? 'mine' : 'plain'}-${message.text}`} {...message} />
             ))}
           </View>
         )}
@@ -773,7 +774,7 @@ function WorkerEarningsLedger() {
 
 function WorkerProfileContent() {
   const { copy, language, tokens } = useWorkerUi()
-  const router = useRouter()
+  const { replace } = useRouter()
   const { role } = useAuth()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
@@ -812,7 +813,7 @@ function WorkerProfileContent() {
       </View>
       {role === 'admin' ? (
         <View style={styles.adminSwitchWrap}>
-          <PressButton label={adminAuditSwitchLabel} onPress={() => router.replace('/(auth)/login')} testID="worker-admin-audit-switch" />
+          <PressButton label={adminAuditSwitchLabel} onPress={() => replace('/(auth)/login')} testID="worker-admin-audit-switch" />
         </View>
       ) : null}
 
@@ -1155,7 +1156,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
 }
 
 function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
-  const router = useRouter()
+  const { push } = useRouter()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const { copy, tokens } = useWorkerUi()
@@ -1238,7 +1239,7 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
             <Pressable
               accessibilityLabel={item.label}
               key={item.key}
-              onPress={() => router.push(item.path)}
+              onPress={() => push(item.path)}
               style={({ pressed }) => [
                 styles.dockItem,
                 focused ? { backgroundColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(216,247,239,0.78)', boxShadow: tokens.softShadow } : null,
@@ -1248,7 +1249,7 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
             >
               {focused ? <Animated.View pointerEvents="none" style={[styles.dockActiveGlow, { backgroundColor: tokens.aqua }, activeGlowStyle]} testID="worker-dock-active-glow" /> : null}
               {item.key === 'chat' ? (
-                <Image resizeMode="contain" source={kaelHead} style={styles.dockKaelImage} testID="worker-dock-kael-brief-mascot" />
+                <Image contentFit="contain" source={kaelHead} style={styles.dockKaelImage} testID="worker-dock-kael-brief-mascot" />
               ) : (
                 <Icon name={item.icon} active={focused} />
               )}
@@ -1811,7 +1812,7 @@ function Icon({ active = false, name, small = false }: { active?: boolean; name:
 }
 
 function useWorkerUi() {
-  const context = useContext(WorkerUiContext)
+  const context = use(WorkerUiContext)
   if (!context) throw new Error('useWorkerUi must be used inside WorkerFrame')
   return context
 }

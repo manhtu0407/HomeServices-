@@ -1,10 +1,10 @@
-import { createContext, type ReactNode, useContext, useEffect, useState, useSyncExternalStore } from 'react'
+import { createContext, type ReactNode, use, useEffect, useReducer, useState, useSyncExternalStore } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import {
   Alert,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -39,9 +39,10 @@ const openBookingPath = '/(customer)/booking'
 const openHistoryPath = '/(customer)/history'
 const kaelModel8A = require('../../assets/kael-model-8a.png')
 const kaelModel8AHead = require('../../assets/kael-model-8a-head.png')
+const vndFormatter = new Intl.NumberFormat('vi-VN')
 
 type ThemeMode = 'light' | 'dark'
-export type CustomerLanguageMode = 'vi' | 'en'
+type CustomerLanguageMode = 'vi' | 'en'
 type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
 type SurfaceTone = 'base' | 'raised' | 'service' | 'water' | 'warm' | 'depth' | 'ghost' | 'disabled'
 type IconName =
@@ -158,7 +159,7 @@ const darkLayer: CustomerThemeTokens = {
   danger: '#F29A8D',
 }
 
-export const CUSTOMER_THEME_TOKENS = {
+const CUSTOMER_THEME_TOKENS = {
   lightLayer,
   darkLayer,
 }
@@ -182,7 +183,7 @@ function subscribeCustomerThemeMode(listener: () => void) {
   }
 }
 
-export function setCustomerThemeMode(nextMode: ThemeMode) {
+function setCustomerThemeMode(nextMode: ThemeMode) {
   if (customerThemeMode === nextMode) return
   customerThemeMode = nextMode
   AsyncStorage.setItem(CUSTOMER_THEME_STORAGE_KEY, nextMode).catch(() => undefined)
@@ -218,14 +219,14 @@ function subscribeCustomerLanguageMode(listener: () => void) {
   }
 }
 
-export function setCustomerLanguageMode(nextMode: CustomerLanguageMode) {
+function setCustomerLanguageMode(nextMode: CustomerLanguageMode) {
   if (customerLanguageMode === nextMode) return
   customerLanguageMode = nextMode
   AsyncStorage.setItem(CUSTOMER_LANGUAGE_STORAGE_KEY, nextMode).catch(() => undefined)
   for (const listener of customerLanguageSubscribers) listener()
 }
 
-export function useCustomerLanguageMode() {
+function useCustomerLanguageMode() {
   useEffect(() => {
     if (customerLanguageHydrated) return
     customerLanguageHydrated = true
@@ -240,7 +241,7 @@ export function useCustomerLanguageMode() {
 }
 
 export function CustomerHomeSurface() {
-  const router = useRouter()
+  const { push } = useRouter()
   const { dispatch, selectors, state } = useFrontendWorkflow()
   const activeDeal = state.deal
   const canStartNewDeal = !activeDeal || canReplaceCustomerDeal(activeDeal.status)
@@ -252,12 +253,12 @@ export function CustomerHomeSurface() {
   const activeDealStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState)
   const openBookingFlow = (serviceType?: ServiceType) => {
     if (!canStartNewDeal) {
-      router.push(activeDealRoute)
+      push(activeDealRoute)
       return
     }
     if (serviceType) dispatch({ type: 'start_home_service', serviceType })
     if (!serviceType && isTerminalDeal) dispatch({ type: 'reset_workflow' })
-    router.push(openBookingPath)
+    push(openBookingPath)
   }
 
   return (
@@ -288,7 +289,7 @@ export function CustomerHomeSurface() {
               {activeDeal ? (
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => router.push(activeDealRoute)}
+                  onPress={() => push(activeDealRoute)}
                   style={[styles.ticketCard, glassSurface(tokens, 'service')]}
                   testID="customer-home-active-local-deal"
                 >
@@ -347,12 +348,29 @@ export function CustomerHomeSurface() {
   )
 }
 
+type CustomerKaelDraftState = {
+  kaelDraft: string
+  latestAnswer: string
+  kaelError: string | null
+}
+
+const EMPTY_CUSTOMER_KAEL_DRAFT_STATE: CustomerKaelDraftState = {
+  kaelDraft: '',
+  latestAnswer: '',
+  kaelError: null,
+}
+
+function customerKaelDraftReducer(current: CustomerKaelDraftState, patch: Partial<CustomerKaelDraftState>): CustomerKaelDraftState {
+  return { ...current, ...patch }
+}
+
 export function CustomerKaelSurface() {
-  const router = useRouter()
+  const { push } = useRouter()
   const { dispatch, state } = useFrontendWorkflow()
-  const [kaelDraft, setKaelDraft] = useState('')
-  const [latestAnswer, setLatestAnswer] = useState('')
-  const [kaelError, setKaelError] = useState<string | null>(null)
+  const [{ kaelDraft, latestAnswer, kaelError }, patchKaelDraft] = useReducer(customerKaelDraftReducer, EMPTY_CUSTOMER_KAEL_DRAFT_STATE)
+  const setKaelDraft = (nextDraft: string) => patchKaelDraft({ kaelDraft: nextDraft })
+  const setLatestAnswer = (nextAnswer: string) => patchKaelDraft({ latestAnswer: nextAnswer })
+  const setKaelError = (nextError: string | null) => patchKaelDraft({ kaelError: nextError })
   const localKaelDraft = state.deal?.draft.source === 'kael' ? state.deal.draft : null
   const canStartKaelDraft = !state.deal || canReplaceCustomerDeal(state.deal.status)
   const displayedKaelAnswer = latestAnswer.trim().length > 0 ? latestAnswer : localKaelDraft?.description ?? ''
@@ -383,9 +401,7 @@ export function CustomerKaelSurface() {
 
   useEffect(() => {
     if (state.deal?.draft.source === 'kael') return
-    setLatestAnswer('')
-    setKaelDraft('')
-    setKaelError(null)
+    patchKaelDraft(EMPTY_CUSTOMER_KAEL_DRAFT_STATE)
   }, [state.deal?.draft.source])
 
   return (
@@ -429,7 +445,7 @@ export function CustomerKaelSurface() {
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-field-location" />
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-field-media" />
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-progress" />
-                      <PrimaryButton label="Qua Kiểm giá" onPress={() => router.push(openBookingPath)} compact testID="customer-kael-ticket-booking-cta" />
+                      <PrimaryButton label="Qua Kiểm giá" onPress={() => push(openBookingPath)} compact testID="customer-kael-ticket-booking-cta" />
                     </View>
                   ) : null}
                 </>
@@ -457,7 +473,7 @@ export function CustomerKaelSurface() {
 }
 
 export function CustomerHistorySurface() {
-  const router = useRouter()
+  const { push } = useRouter()
   const { actions, dispatch, selectors, state } = useFrontendWorkflow()
   const [reviewRating, setReviewRating] = useState<1 | 2 | 3 | 4 | 5 | null>(null)
   const deal = state.deal
@@ -492,7 +508,7 @@ export function CustomerHistorySurface() {
     } else if (deal && canCreateFreshRequest) {
       dispatch({ type: 'reset_workflow' })
     }
-    router.push(openBookingPath)
+    push(openBookingPath)
   }
   const confirmCompletionReceived = () => {
     Alert.alert(
@@ -523,7 +539,7 @@ export function CustomerHistorySurface() {
       decision === 'approve' ? 'Duyệt thay đổi phạm vi?' : 'Từ chối thay đổi phạm vi?',
       decision === 'approve'
         ? 'Hệ thống sẽ ghi nhận khách đã duyệt thay đổi và cho thợ tiếp tục sửa.'
-        : 'Hệ thống sẽ ghi nhận khách từ chối thay đổi và cho thợ tiếp tục theo phạm vi cũ.',
+        : 'Hệ thống sẽ ghi nhận khách từ chối thay đổi và dừng ticket này để tránh thợ tiếp tục phạm vi mới.',
       [
         { text: 'Kiểm tra lại', style: 'cancel' },
         {
@@ -694,7 +710,7 @@ export function CustomerHistorySurface() {
 }
 
 export function CustomerProfileSurface() {
-  const router = useRouter()
+  const { replace } = useRouter()
   const { role, session } = useAuth()
   const { selectors, state } = useFrontendWorkflow()
   const themeMode = useCustomerThemeMode()
@@ -731,7 +747,7 @@ export function CustomerProfileSurface() {
               </View>
               {role === 'admin' ? (
                 <View style={styles.profileAdminAction}>
-                  <PrimaryButton label={adminAuditSwitchLabel} onPress={() => router.replace('/(auth)/login')} compact testID="customer-admin-audit-switch" />
+                  <PrimaryButton label={adminAuditSwitchLabel} onPress={() => replace('/(auth)/login')} compact testID="customer-admin-audit-switch" />
                 </View>
               ) : null}
             </View>
@@ -820,7 +836,7 @@ function customerVisibleStatusLabel(status: LocalDealStatus | null, searchState:
 }
 
 function formatVnd(value: number) {
-  return `${new Intl.NumberFormat('vi-VN').format(value)}đ`
+  return `${vndFormatter.format(value)}đ`
 }
 
 function isTerminalCustomerDeal(status: LocalDealStatus): boolean {
@@ -897,7 +913,7 @@ function V4Dock({
   frameWidth: number
   screenWidth: number
 }) {
-  const router = useRouter()
+  const { push } = useRouter()
   const tokens = useCustomerTokens()
   const dockPulse = useSharedValue(0)
   const dockSweep = useSharedValue(0)
@@ -966,13 +982,13 @@ function V4Dock({
           <Pressable
             accessibilityRole="button"
             key={item.key}
-            onPress={() => router.push(item.path)}
+            onPress={() => push(item.path)}
             style={[styles.dockItem, active === item.key ? styles.dockItemActive : null]}
             testID={`customer-v4-dock-${item.key}`}
           >
             {active === item.key ? <Animated.View pointerEvents="none" style={[styles.dockActiveGlow, { backgroundColor: tokens.aqua }, activeGlowStyle]} /> : null}
             {item.icon === 'kael' ? (
-              <Image resizeMode="contain" source={kaelModel8AHead} style={styles.dockKaelImage} />
+              <Image contentFit="contain" source={kaelModel8AHead} style={styles.dockKaelImage} />
             ) : (
               <IconGlyph name={item.icon} color={active === item.key ? tokens.primary : tokens.subtleText} accent={active === item.key ? tokens.copper : tokens.subtleText} />
             )}
@@ -1262,7 +1278,7 @@ function KaelMascot({ size, variant }: { size: number; variant: 'head' | 'full' 
       testID={variant === 'head' ? 'kael-model-8a-head.png' : 'kael-model-8a.png'}
     >
       <GlassSheen />
-      <Image resizeMode="contain" source={source} style={{ height: variant === 'head' ? size * 0.9 : size * 1.1, width: variant === 'head' ? size * 0.9 : size * 1.05 }} />
+      <Image contentFit="contain" source={source} style={{ height: variant === 'head' ? size * 0.9 : size * 1.1, width: variant === 'head' ? size * 0.9 : size * 1.05 }} />
     </View>
   )
 }
@@ -1342,7 +1358,7 @@ function SmallChip({ label, tone = 'base' }: { label: string; tone?: SurfaceTone
 }
 
 function useCustomerTokens(): CustomerThemeTokens {
-  return useContext(CustomerThemeContext)
+  return use(CustomerThemeContext)
 }
 
 function getLayerSurface(tokens: CustomerThemeTokens, tone: SurfaceTone) {

@@ -10,7 +10,8 @@ type RouteParams = { params: Promise<{ id: string }> }
  * POST /api/scope-changes/[id]/decide — A11
  *
  * Customer approves or rejects a worker's scope change request.
- * Job returns to 'repairing' either way (worker continues new or original scope).
+ * Approve resumes repairing. Reject cancels the job until original-scope
+ * continuation is modeled explicitly.
  *
  * Per RULES.md #7 — no autonomous money action. Customer MUST tap to approve.
  */
@@ -51,7 +52,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       : 'customer_rejected_scope_change',
     { id: auth.user.id, role: 'customer' },
     'scope_change_pending' as JobStatus,
-    'repairing' as JobStatus,
+    (parsed.data.decision === 'approve' ? 'repairing' : 'cancelled') as JobStatus,
     { scope_change_id: id, decision: parsed.data.decision },
   )
 

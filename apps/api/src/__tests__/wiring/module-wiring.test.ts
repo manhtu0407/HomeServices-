@@ -67,8 +67,6 @@ describe('AI providers import env module (not process.env)', () => {
 
 describe('Supabase clients import env module', () => {
   const clients = [
-    ['client.ts', read('src/lib/client.ts')],
-    ['server.ts', read('src/lib/server.ts')],
     ['middleware.ts', read('src/lib/middleware.ts')],
   ] as const
 
@@ -83,6 +81,11 @@ describe('Supabase clients import env module', () => {
 
   it.each(clients)('%s uses Database type generic on Supabase client', (_name, src) => {
     expect(src).toContain('<Database>')
+  })
+
+  it('does not keep unused browser/server Supabase client wrappers', () => {
+    expect(() => read('src/lib/client.ts')).toThrow()
+    expect(() => read('src/lib/server.ts')).toThrow()
   })
 })
 

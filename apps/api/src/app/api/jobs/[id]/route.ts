@@ -64,18 +64,17 @@ export async function GET(request: Request, { params }: RouteParams) {
       return apiError('DB_ERROR', 'Không thể kiểm tra trạng thái broadcast', 500)
     }
 
-    const active = (broadcasts ?? []).filter((broadcast) =>
-      !broadcast.expires_at || broadcast.expires_at > nowIso
-    )
-    const seconds = active
-      .map((broadcast) =>
-        broadcast.expires_at
-          ? Math.max(0, Math.round((new Date(broadcast.expires_at).getTime() - now.getTime()) / 1000))
-          : null
-      )
-      .filter((value): value is number => value !== null)
+    let activeCount = 0
+    const seconds: number[] = []
+    for (const broadcast of broadcasts ?? []) {
+      if (broadcast.expires_at && broadcast.expires_at <= nowIso) continue
+      activeCount += 1
+      if (broadcast.expires_at) {
+        seconds.push(Math.max(0, Math.round((new Date(broadcast.expires_at).getTime() - now.getTime()) / 1000)))
+      }
+    }
     broadcastState = {
-      active_count: active.length,
+      active_count: activeCount,
       seconds_remaining: seconds.length > 0 ? Math.max(...seconds) : 0,
     }
   }

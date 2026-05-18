@@ -85,13 +85,14 @@ describe('Secret hygiene baseline', () => {
       expect(envExample).toContain(`${key}=`)
     }
 
-    const assignments = envExample
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith('#'))
+    const assignments: string[] = []
+    for (const line of envExample.split(/\r?\n/)) {
+      const trimmed = line.trim()
+      if (trimmed.length > 0 && !trimmed.startsWith('#')) assignments.push(trimmed)
+    }
 
     for (const line of assignments) {
-      const value = line.slice(line.indexOf('=') + 1)
+      const [, value = ''] = line.split('=')
       expect(value).toBe('')
     }
   })

@@ -18,9 +18,9 @@ export async function callAnthropic(request: AIRequest): Promise<AIResponse> {
       model: request.model,
       max_tokens: request.maxTokens ?? 1024,
       temperature: request.temperature ?? 0.7,
-      messages: request.messages
-        .filter((m) => m.role !== 'system')
-        .map((m) => ({ role: m.role, content: m.content })),
+      messages: request.messages.flatMap((m) =>
+        m.role === 'system' ? [] : [{ role: m.role, content: m.content }],
+      ),
       system: request.messages.find((m) => m.role === 'system')?.content,
     }),
     signal: request.signal,

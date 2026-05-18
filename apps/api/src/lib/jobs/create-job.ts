@@ -46,7 +46,7 @@ function isLoggableStage(s: string): s is LoggableStage {
  *  - INSERT directly as 'analyzing' instead of 'draft' + UPDATE (saves 1 op)
  *  - Single UPDATE to 'awaiting_customer_confirm' with all kael fields + estimate_ready_at
  *    (saves 1 UPDATE + 1 logJobEvent vs old 2-step transition)
- *  - Batched logApiCall via logApiCalls (3 INSERTs → 1)
+ *  - Batched API-call logging via logApiCalls (3 INSERTs -> 1)
  *  - Removed runtime validateTransition for fixed internal sequences (state
  *    machine validation is reserved for cross-boundary calls like worker
  *    status updates)
