@@ -2,11 +2,12 @@ import {
   HCMC_DISTRICTS,
   PROBLEM_CHIPS,
   type DistrictSlug,
+  type ScopeChangeStatus,
   type ServiceType,
 } from './constants'
 
 export const LOCAL_WORKFLOW_PRICE_DISCLAIMER =
-  'Đây là ước tính cần backend xác nhận. Giá thực tế sẽ được thợ xác nhận trước khi bắt đầu.'
+  'Đây là ước tính ban đầu. Giá thực tế sẽ được thợ xác nhận trước khi bắt đầu.'
 
 export const LOCAL_DEAL_STATUSES = Object.freeze([
   'draft',
@@ -18,15 +19,17 @@ export const LOCAL_DEAL_STATUSES = Object.freeze([
   'arrived',
   'inspecting',
   'repairing',
+  'scope_change_pending',
   'completed_by_worker',
   'confirmed_by_customer',
+  'reviewed',
   'cancelled',
 ] as const)
 
 export type LocalDealStatus = (typeof LOCAL_DEAL_STATUSES)[number]
 export type LocalDealSource = 'home' | 'kael' | 'booking'
-export type LocalWorkerBroadcastStatus = 'sent' | 'accepted' | 'declined' | 'expired'
-export type LocalWorkerGate = 'backend_pending' | 'local_deal_audit'
+export type LocalWorkerBroadcastStatus = 'pending' | 'sent' | 'accepted' | 'declined' | 'expired' | 'reassigned' | 'cancelled'
+export type LocalWorkerGate = 'backend_pending' | 'local_deal_audit' | 'remote_backend'
 export type LocalScheduleMode = 'now_only'
 export type LocalCustomerSearchState = 'idle' | 'searching' | 'no_worker' | 'matched' | 'active' | 'completed'
 
@@ -46,16 +49,19 @@ export type LocalDealDraft = {
 
 export type LocalDealEstimate = {
   problemLabel: string
-  complexity: 'unknown'
-  priceRangeLabel: 'Cần backend ước tính'
-  confidenceLabel: 'Cần backend'
+  complexity: 'small' | 'medium' | 'large' | 'unknown'
+  priceRangeLabel: string
+  confidenceLabel: string
   advisory: string
-  disclaimer: typeof LOCAL_WORKFLOW_PRICE_DISCLAIMER
-  hasVndPrice: false
+  disclaimer: string
+  hasVndPrice: boolean
+  fallbackUsed?: boolean
 }
 
 export type LocalWorkerBroadcast = {
   status: LocalWorkerBroadcastStatus
+  broadcastId?: string
+  jobId?: string
   serviceType: ServiceType
   problemSummary: string
   generalArea: string
@@ -63,6 +69,8 @@ export type LocalWorkerBroadcast = {
   fullAddressVisible: boolean
   fullAddressLabel: string | null
   secondsRemaining: number | null
+  estimatedPriceLabel?: string
+  estimatedEarningLabel?: string
 }
 
 export type LocalDeal = {
@@ -71,12 +79,52 @@ export type LocalDeal = {
   draft: LocalDealDraft
   estimate: LocalDealEstimate | null
   broadcast: LocalWorkerBroadcast | null
+  scopeChange: LocalScopeChange | null
+  finalPrice?: number | null
+}
+
+export type LocalScopeChange = {
+  id: string
+  status: ScopeChangeStatus
+  requestedDescription: string | null
+  reason: string | null
+  priceMin: number | null
+  priceMax: number | null
+  createdAt: string | null
 }
 
 export type LocalWorkflowState = {
   deal: LocalDeal | null
   workerGate: LocalWorkerGate
   lastError: string | null
+  lastRemoteSyncAt: string | null
+}
+
+export type LocalRemoteJobSnapshot = {
+  id: string
+  status: LocalDealStatus
+  serviceType: ServiceType
+  description: string
+  problemChips: string[]
+  addressLabel: string
+  districtLabel: string
+  mediaCount?: number
+  estimate?: LocalDealEstimate | null
+  broadcast?: LocalWorkerBroadcast | null
+  scopeChange?: LocalScopeChange | null
+  finalPrice?: number | null
+}
+
+export type LocalRemoteBroadcastSnapshot = {
+  broadcastId: string
+  jobId: string
+  status: LocalWorkerBroadcastStatus
+  serviceType: ServiceType
+  problemSummary: string
+  generalArea: string
+  secondsRemaining: number | null
+  estimatedPriceLabel?: string
+  estimatedEarningLabel?: string
 }
 
 export type LocalDealDraftPatch = Partial<
@@ -101,7 +149,12 @@ export type LocalWorkflowAction =
   | { type: 'worker_start_repair' }
   | { type: 'worker_complete_job' }
   | { type: 'customer_confirm_completion' }
+  | { type: 'customer_submit_review' }
   | { type: 'cancel_deal' }
+  | { type: 'hydrate_remote_job'; job: LocalRemoteJobSnapshot; workerGate?: LocalWorkerGate }
+  | { type: 'hydrate_remote_broadcast'; broadcast: LocalRemoteBroadcastSnapshot }
+  | { type: 'mark_remote_broadcast_expired' }
+  | { type: 'set_workflow_error'; error: string | null }
   | { type: 'reset_workflow' }
 
 export type LocalWorkflowSelectors = {
@@ -115,12 +168,13 @@ export type LocalWorkflowSelectors = {
   canWorkerSeeFullAddress: boolean
   canCustomerCancelDeal: boolean
   canCustomerConfirmCompletion: boolean
+  canCustomerSubmitReview: boolean
   paymentLocked: true
-  reviewLocked: true
+  reviewLocked: boolean
   draftValidationMessage: string | null
 }
 
-const LOCAL_DEAL_ID = 'local-session-deal'
+export const LOCAL_DEAL_ID = 'local-session-deal'
 const GENERIC_AREA = 'Khu vực TP.HCM'
 const NEXT_WORKER_STATUS: Partial<Record<LocalDealStatus, LocalDealStatus>> = {
   worker_matched: 'worker_on_way',
@@ -149,6 +203,7 @@ export function createInitialLocalWorkflowState(): LocalWorkflowState {
     deal: null,
     workerGate: 'backend_pending',
     lastError: null,
+    lastRemoteSyncAt: null,
   }
 }
 
@@ -219,6 +274,43 @@ export function localWorkflowReducer(
   switch (action.type) {
     case 'reset_workflow':
       return createInitialLocalWorkflowState()
+    case 'set_workflow_error':
+      return {
+        ...state,
+        lastError: action.error,
+      }
+    case 'hydrate_remote_job':
+      return {
+        deal: createDealFromRemoteJob(action.job),
+        workerGate: action.workerGate ?? 'remote_backend',
+        lastError: null,
+        lastRemoteSyncAt: new Date().toISOString(),
+      }
+    case 'hydrate_remote_broadcast':
+      return {
+        deal: createDealFromRemoteBroadcast(action.broadcast),
+        workerGate: 'remote_backend',
+        lastError: null,
+        lastRemoteSyncAt: new Date().toISOString(),
+      }
+    case 'mark_remote_broadcast_expired': {
+      if (!state.deal || state.deal.status !== 'broadcasting' || state.deal.broadcast?.status !== 'sent') return state
+      return {
+        ...state,
+        deal: {
+          ...state.deal,
+          broadcast: {
+            ...state.deal.broadcast,
+            status: 'expired',
+            secondsRemaining: 0,
+            fullAddressVisible: false,
+            fullAddressLabel: null,
+          },
+        },
+        workerGate: 'backend_pending',
+        lastError: null,
+      }
+    }
     case 'start_home_service': {
       if (state.deal && !canReplaceLocalDeal(state.deal.status)) {
         return withError(state, 'Đang có yêu cầu đang chạy, không thể tạo yêu cầu mới')
@@ -230,6 +322,7 @@ export function localWorkflowReducer(
         }),
         workerGate: 'backend_pending',
         lastError: null,
+        lastRemoteSyncAt: null,
       }
     }
     case 'submit_kael_draft': {
@@ -244,6 +337,7 @@ export function localWorkflowReducer(
         deal: createDeal(draft),
         workerGate: 'backend_pending',
         lastError: null,
+        lastRemoteSyncAt: null,
       }
     }
     case 'update_booking_draft': {
@@ -274,6 +368,7 @@ export function localWorkflowReducer(
           draft: nextDraft,
           estimate: null,
           broadcast: null,
+          scopeChange: null,
         },
         lastError: null,
       }
@@ -312,11 +407,14 @@ export function localWorkflowReducer(
         },
         workerGate: 'local_deal_audit',
         lastError: null,
+        lastRemoteSyncAt: null,
       }
     }
     case 'worker_accept_broadcast': {
       if (!state.deal) return withError(state, 'Không có broadcast để nhận')
-      if (state.workerGate !== 'local_deal_audit') return withError(state, 'Worker chưa được mở local audit cho broadcast này')
+      if (state.workerGate !== 'local_deal_audit' && state.workerGate !== 'remote_backend') {
+        return withError(state, 'Worker chưa được mở workflow cho broadcast này')
+      }
       if (state.deal.status !== 'broadcasting') return invalidTransition(state, state.deal.status, 'worker_matched')
       if (state.deal.broadcast?.status !== 'sent') return withError(state, 'Broadcast không còn ở trạng thái có thể nhận')
       return {
@@ -356,7 +454,13 @@ export function localWorkflowReducer(
     }
     case 'reopen_booking_draft': {
       if (!state.deal) return state
-      if (state.deal.status !== 'broadcasting' || (state.deal.broadcast?.status !== 'declined' && state.deal.broadcast?.status !== 'expired')) {
+      const canReopenBroadcast =
+        state.deal.status === 'broadcasting' &&
+        (state.deal.broadcast?.status === 'declined' || state.deal.broadcast?.status === 'expired')
+      const canReopenCancelledNoWorker =
+        state.deal.status === 'cancelled' &&
+        (state.deal.broadcast?.status === 'cancelled' || state.deal.broadcast?.status === 'expired')
+      if (!canReopenBroadcast && !canReopenCancelledNoWorker) {
         return withError(state, 'Chỉ chỉnh yêu cầu sau khi không có worker nhận')
       }
       return {
@@ -373,7 +477,9 @@ export function localWorkflowReducer(
     }
     case 'worker_decline_broadcast': {
       if (!state.deal) return withError(state, 'Không có broadcast để từ chối')
-      if (state.workerGate !== 'local_deal_audit') return withError(state, 'Worker chưa được mở local audit cho broadcast này')
+      if (state.workerGate !== 'local_deal_audit' && state.workerGate !== 'remote_backend') {
+        return withError(state, 'Worker chưa được mở workflow cho broadcast này')
+      }
       if (state.deal.status !== 'broadcasting') return invalidTransition(state, state.deal.status, 'broadcasting')
       if (state.deal.broadcast?.status !== 'sent') return withError(state, 'Broadcast không còn ở trạng thái có thể từ chối')
       return {
@@ -440,6 +546,11 @@ export function localWorkflowReducer(
       }
       return setStatus(state, 'completed_by_worker', 'confirmed_by_customer')
     }
+    case 'customer_submit_review': {
+      if (!state.deal) return withError(state, 'Không có phiếu để đánh giá')
+      if (state.deal.status !== 'confirmed_by_customer') return invalidTransition(state, state.deal.status, 'reviewed')
+      return setStatus(state, 'confirmed_by_customer', 'reviewed')
+    }
     case 'cancel_deal': {
       if (!state.deal) return state
       if (!canCancelLocalDeal(state.deal.status)) {
@@ -481,11 +592,13 @@ export function selectLocalWorkflow(state: LocalWorkflowState): LocalWorkflowSel
           ? 'searching'
           : status === 'worker_matched'
             ? 'matched'
-            : status === 'completed_by_worker' || status === 'confirmed_by_customer'
+            : status === 'completed_by_worker' || status === 'confirmed_by_customer' || status === 'reviewed'
               ? 'completed'
-              : status && ['worker_on_way', 'arrived', 'inspecting', 'repairing'].includes(status)
+              : status && ['worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending'].includes(status)
                 ? 'active'
                 : 'idle'
+  const hasWorkerActionGate = state.workerGate === 'local_deal_audit' || state.workerGate === 'remote_backend'
+  const canCustomerSubmitReview = Boolean(deal && status === 'confirmed_by_customer')
 
   return {
     currentStatus: status,
@@ -493,16 +606,17 @@ export function selectLocalWorkflow(state: LocalWorkflowState): LocalWorkflowSel
     customerSearchState,
     hasLocalBroadcast: Boolean(broadcast),
     canConfirmCustomerSearch: Boolean(deal && status === 'awaiting_customer_confirm' && deal.estimate && validateLocalDealDraft(deal.draft) === null),
-    canWorkerAccept: state.workerGate === 'local_deal_audit' && status === 'broadcasting' && broadcast?.status === 'sent',
+    canWorkerAccept: hasWorkerActionGate && status === 'broadcasting' && broadcast?.status === 'sent',
     canWorkerAdvance:
-      state.workerGate === 'local_deal_audit' &&
+      hasWorkerActionGate &&
       broadcast?.status === 'accepted' &&
       Boolean(status && NEXT_WORKER_STATUS[status]),
     canWorkerSeeFullAddress: Boolean(broadcast?.status === 'accepted' && broadcast.fullAddressVisible && broadcast.fullAddressLabel),
     canCustomerCancelDeal: Boolean(deal && canCancelLocalDeal(deal.status)),
     canCustomerConfirmCompletion: Boolean(deal && canConfirmCustomerCompletion(deal)),
+    canCustomerSubmitReview,
     paymentLocked: true,
-    reviewLocked: true,
+    reviewLocked: !canCustomerSubmitReview,
     draftValidationMessage: deal ? validateLocalDealDraft(deal.draft) : null,
   }
 }
@@ -512,15 +626,16 @@ export function validateLocalDealDraft(draft: LocalDealDraft): string | null {
   if (draft.problemChips.length === 0) return 'Chọn ít nhất một vấn đề cần xử lý'
   if (draft.description.trim().length < 12) return 'Mô tả cần đủ rõ để Kael tóm tắt'
   if (draft.addressLabel.trim().length < 4) return 'Nhập khu vực hoặc địa chỉ tổng quát'
+  if (!extractKnownDistrictLabel(draft.addressLabel)) return 'Địa chỉ cần có quận TP.HCM rõ ràng'
   return null
 }
 
 function canReplaceLocalDeal(status: LocalDealStatus): boolean {
-  return ['draft', 'cancelled', 'confirmed_by_customer'].includes(status)
+  return ['draft', 'cancelled', 'confirmed_by_customer', 'reviewed'].includes(status)
 }
 
 function canEditBookingDraft(status: LocalDealStatus): boolean {
-  return ['draft', 'cancelled', 'confirmed_by_customer'].includes(status)
+  return ['draft', 'cancelled', 'confirmed_by_customer', 'reviewed'].includes(status)
 }
 
 function canCancelLocalDeal(status: LocalDealStatus): boolean {
@@ -549,14 +664,16 @@ export function statusLabel(status: LocalDealStatus | null): string {
     arrived: 'Thợ đã đến',
     inspecting: 'Đang kiểm tra',
     repairing: 'Đang sửa',
+    scope_change_pending: 'Chờ khách duyệt thay đổi',
     completed_by_worker: 'Thợ báo hoàn tất',
     confirmed_by_customer: 'Khách xác nhận xong',
+    reviewed: 'Đã đánh giá',
     cancelled: 'Đã hủy',
   }
   return labels[status]
 }
 
-export function extractDistrictLabel(input: string): string {
+export function extractKnownDistrictLabel(input: string): string {
   const normalized = normalizeSearchText(input)
   if (!normalized) return ''
 
@@ -568,7 +685,11 @@ export function extractDistrictLabel(input: string): string {
   const numberedDistrict = normalized.match(/\b(?:quan|q)\s*\.?\s*(1[0-2]|\d)\b/)
   if (numberedDistrict) return `Quận ${numberedDistrict[1]}`
 
-  return GENERIC_AREA
+  return ''
+}
+
+export function extractDistrictLabel(input: string): string {
+  return extractKnownDistrictLabel(input) || GENERIC_AREA
 }
 
 function createDeal(draft: LocalDealDraft): LocalDeal {
@@ -578,16 +699,78 @@ function createDeal(draft: LocalDealDraft): LocalDeal {
     draft,
     estimate: null,
     broadcast: null,
+    scopeChange: null,
+    finalPrice: null,
+  }
+}
+
+function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
+  return {
+    id: job.id,
+    status: job.status,
+    draft: {
+      serviceType: job.serviceType,
+      problemChips: job.problemChips,
+      description: job.description,
+      mediaCount: job.mediaCount ?? 0,
+      addressLabel: job.addressLabel,
+      districtLabel: job.districtLabel,
+      timeChoice: 'now',
+      source: 'booking',
+      needsServiceChoice: false,
+      inferredProblemLabel: job.problemChips[0] ?? null,
+      unsupportedServiceLabel: null,
+    },
+    estimate: job.estimate ?? null,
+    broadcast: job.broadcast ?? null,
+    scopeChange: job.scopeChange ?? null,
+    finalPrice: job.finalPrice ?? null,
+  }
+}
+
+function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot): LocalDeal {
+  const draft: LocalDealDraft = {
+    ...emptyDraft('booking', broadcast.serviceType),
+    description: broadcast.problemSummary,
+    districtLabel: broadcast.generalArea,
+    problemChips: broadcast.problemSummary ? [broadcast.problemSummary] : [],
+    needsServiceChoice: false,
+  }
+
+  return {
+    id: broadcast.jobId,
+    status: broadcast.status === 'accepted' ? 'worker_matched' : 'broadcasting',
+    draft,
+    estimate: null,
+    broadcast: {
+      status: broadcast.status,
+      broadcastId: broadcast.broadcastId,
+      jobId: broadcast.jobId,
+      serviceType: broadcast.serviceType,
+      problemSummary: broadcast.problemSummary,
+      generalArea: broadcast.generalArea,
+      prebrief: [
+        `${serviceLabel(broadcast.serviceType)} · ${broadcast.problemSummary}`,
+        `Khu vực: ${broadcast.generalArea}. Địa chỉ chi tiết vẫn ẩn trước khi nhận.`,
+      ],
+      fullAddressVisible: false,
+      fullAddressLabel: null,
+      secondsRemaining: broadcast.secondsRemaining,
+      estimatedPriceLabel: broadcast.estimatedPriceLabel,
+      estimatedEarningLabel: broadcast.estimatedEarningLabel,
+    },
+    scopeChange: null,
+    finalPrice: null,
   }
 }
 
 function createLocalEstimate(draft: LocalDealDraft): LocalDealEstimate {
   return {
-    problemLabel: draft.problemChips[0] ?? draft.inferredProblemLabel ?? 'Cần backend phân tích chi tiết',
+    problemLabel: draft.problemChips[0] ?? draft.inferredProblemLabel ?? 'Kael sẽ phân tích chi tiết',
     complexity: 'unknown',
-    priceRangeLabel: 'Cần backend ước tính',
-    confidenceLabel: 'Cần backend',
-    advisory: 'Giữ mô tả, ảnh/video và khu vực rõ ràng để hệ thống backend ước tính chính xác ở giai đoạn sau.',
+    priceRangeLabel: 'Chờ Kael ước tính',
+    confidenceLabel: 'Đang chờ dữ liệu',
+    advisory: 'Giữ mô tả, ảnh/video và khu vực rõ ràng để Kael ước tính chính xác hơn.',
     disclaimer: LOCAL_WORKFLOW_PRICE_DISCLAIMER,
     hasVndPrice: false,
   }
@@ -690,7 +873,9 @@ function transitionWorkerStatus(
   from: LocalDealStatus,
   to: LocalDealStatus,
 ): LocalWorkflowState {
-  if (state.workerGate !== 'local_deal_audit') return withError(state, 'Worker chưa được mở local audit cho job này')
+  if (state.workerGate !== 'local_deal_audit' && state.workerGate !== 'remote_backend') {
+    return withError(state, 'Worker chưa được mở workflow cho job này')
+  }
   if (!state.deal) return withError(state, 'Không có phiếu để chuyển trạng thái')
   if (state.deal.status !== from) return invalidTransition(state, state.deal.status, to)
   if (state.deal?.broadcast?.status !== 'accepted') return withError(state, 'Worker chỉ có thể cập nhật sau khi broadcast ở trạng thái accepted')
@@ -698,7 +883,7 @@ function transitionWorkerStatus(
   if (!nextState.deal || nextState.lastError) return nextState
   return {
     ...nextState,
-    workerGate: to === 'completed_by_worker' ? 'backend_pending' : 'local_deal_audit',
+    workerGate: to === 'completed_by_worker' ? 'backend_pending' : state.workerGate,
   }
 }
 

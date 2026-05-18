@@ -72,10 +72,32 @@ insert into public.worker_profiles (
   districts,
   is_approved,
   is_available,
+  legal_name,
+  date_of_birth,
   verification_status
 ) values
-  ('30000000-0000-0000-0000-000000000001', array['electrical']::service_type[], 5, array['District 1'], true, true, 'approved'),
-  ('30000000-0000-0000-0000-000000000002', array['plumbing']::service_type[], 4, array['District 2'], true, true, 'approved');
+  (
+    '30000000-0000-0000-0000-000000000001',
+    array['electrical']::service_type[],
+    5,
+    array['District 1'],
+    true,
+    true,
+    'Security Worker One',
+    '1990-01-01',
+    'approved'
+  ),
+  (
+    '30000000-0000-0000-0000-000000000002',
+    array['plumbing']::service_type[],
+    4,
+    array['District 2'],
+    true,
+    true,
+    'Security Worker Two',
+    '1991-02-02',
+    'approved'
+  );
 
 insert into public.jobs (
   id,
@@ -418,9 +440,9 @@ begin
   begin
     insert into public.notifications (user_id, job_id, event_type, title, body)
     values ('20000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'admin_test', 'Admin test', 'Admin write allowed');
-    insert into security_results values ('admin_can_manage_notifications', 'allowed', 'allowed', true, null);
+    insert into security_results values ('admin_direct_notification_insert_blocked', 'blocked', 'allowed', false, 'insert unexpectedly succeeded');
   exception when others then
-    insert into security_results values ('admin_can_manage_notifications', 'allowed', 'blocked', false, sqlstate || ': ' || sqlerrm);
+    insert into security_results values ('admin_direct_notification_insert_blocked', 'blocked', 'blocked', true, sqlstate || ': ' || sqlerrm);
   end;
 end $$;
 

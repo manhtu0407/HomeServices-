@@ -1,10 +1,8 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { reviewSchema } from '@home-services/shared'
-import { validateTransition } from '@/lib/jobs/lifecycle'
 import { logJobEvent } from '@/lib/jobs/event-log'
 import { withDbTimeout } from '@/lib/db/query'
 import { runLearningHook } from '@/lib/learning/hook'
-import type { JobStatus } from '@home-services/shared'
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -38,60 +36,25 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const input = parsed.data
 
-  const { data: job, error: fetchError } = await withDbTimeout(
-    auth.supabase
-      .from('jobs')
-      .select('id, status, customer_id, worker_id')
-      .eq('id', id)
-      .single(),
+  const { data: rpcRows, error: rpcError } = await withDbTimeout(
+    auth.supabase.rpc('submit_review_atomic', {
+      p_job_id: id,
+      p_customer_id: auth.user.id,
+      p_rating: input.rating,
+      p_tags: input.tags,
+      p_comment: input.comment ?? null,
+    }),
   )
 
-  if (fetchError || !job) {
-    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
-  }
-
-  if (job.customer_id !== auth.user.id) {
-    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
-  }
-
-  if (!job.worker_id) {
-    return apiError('INVALID_STATUS', 'Yêu cầu chưa có thợ', 409)
-  }
-
-  const transition = validateTransition(job.status as JobStatus, 'reviewed')
-  if (!transition.valid) {
-    return apiError('INVALID_STATUS', transition.error, 409)
-  }
-
-  const { data: review, error: reviewError } = await withDbTimeout(
-    auth.supabase
-      .from('reviews')
-      .insert({
-        job_id: id,
-        customer_id: auth.user.id,
-        worker_id: job.worker_id,
-        rating: input.rating,
-        tags: input.tags,
-        comment: input.comment ?? null,
-      })
-      .select('id')
-      .single(),
-  )
-
-  if (reviewError || !review) {
+  if (rpcError) {
     return apiError('DB_ERROR', 'Không thể gửi đánh giá', 500)
   }
-
-  const now = new Date().toISOString()
-  const { error: statusErr } = await withDbTimeout(
-    auth.supabase
-      .from('jobs')
-      .update({ status: 'reviewed', reviewed_at: now })
-      .eq('id', id),
-  )
-
-  if (statusErr) {
-    return apiError('DB_ERROR', 'Không thể cập nhật trạng thái', 500)
+  const row = rpcRows?.[0]
+  if (!row) {
+    return apiError('DB_ERROR', 'Không thể gửi đánh giá', 500)
+  }
+  if (!row.ok) {
+    return reviewRpcError(row.error_code)
   }
 
   await logJobEvent(
@@ -99,24 +62,47 @@ export async function POST(request: Request, { params }: RouteParams) {
     id,
     'customer_reviewed',
     { id: auth.user.id, role: 'customer' },
-    job.status as JobStatus,
+    null,
     'reviewed',
     { rating: input.rating },
   )
 
-  // Kael learning hook — fire-and-forget. Per RULES.md #8 + STRUCTURES.md §10F,
+  // Kael learning hook: fire-and-forget. Per RULES.md #8 + STRUCTURES.md §10F,
   // learning failures MUST NOT block the customer's review response.
   await runLearningHook(auth.supabase, id).catch((err: unknown) => {
     console.warn('Learning hook failed', {
       jobId: id,
       errorCode: 'LEARNING_FAILED',
-      message: err instanceof Error ? err.message : 'unknown',
+      errorName: err instanceof Error ? err.name : typeof err,
     })
   })
 
   return apiSuccess({
-    review_id: review.id,
+    review_id: row.review_id,
     job_id: id,
-    status: 'reviewed',
+    status: row.job_status,
   }, 201)
+}
+
+function reviewRpcError(code: string | null) {
+  if (code === 'NOT_FOUND') {
+    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
+  }
+  if (code === 'ALREADY_REVIEWED') {
+    return apiError('ALREADY_REVIEWED', 'Yêu cầu này đã được đánh giá', 409)
+  }
+  if (code === 'INVALID_RATING') {
+    return apiError('VALIDATION', 'Đánh giá phải từ 1 đến 5 sao', 400)
+  }
+  if (code === 'INVALID_STATUS') {
+    return apiError('INVALID_STATUS', 'Chưa thể đánh giá yêu cầu này', 409)
+  }
+  if (code === 'STATUS_CHANGED') {
+    return apiError(
+      'STATUS_CHANGED',
+      'Trạng thái đã thay đổi. Vui lòng tải lại và thử lại.',
+      409,
+    )
+  }
+  return apiError('DB_ERROR', 'Không thể gửi đánh giá', 500)
 }

@@ -84,6 +84,14 @@ export function sanitizeForLLM(input: string): string {
     .slice(0, 5000)
 }
 
+export function scrubSensitiveForLLM(input: string): string {
+  return sanitizeForLLM(input)
+    .replace(/\b0\d{8,10}\b/g, '[phone]')
+    .replace(/\b\+?84\d{8,10}\b/g, '[phone]')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
+    .replace(/\b\d{9,12}\b/g, '[id-number]')
+}
+
 export type JobCreateInput = z.infer<typeof jobCreateSchema>
 export type ReviewInput = z.infer<typeof reviewSchema>
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>

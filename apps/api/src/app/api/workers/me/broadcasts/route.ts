@@ -11,14 +11,15 @@ const WORKER_NET_MULTIPLIER = 1 - PLATFORM_FEE_WORKER
 // inline object-literal cast — if schema changes, this won't compile.
 type BroadcastJobSummary = Pick<
   Tables<'jobs'>,
-  'service_type' | 'address_district' | 'kael_problem_identified' | 'kael_price_min' | 'kael_price_max'
+  'status' | 'service_type' | 'address_district' | 'kael_problem_identified' | 'kael_price_min' | 'kael_price_max'
 >
 
 /**
  * GET /api/workers/me/broadcasts — B3 inbox
  *
  * Returns pending incoming job requests for the authenticated worker.
- * Only shows broadcasts with status='sent' AND expires_at > now.
+ * Only shows broadcasts with status='sent' AND expires_at > now for jobs that
+ * are still broadcasting.
  * Per STRUCTURES.md B3: hides full address until accept.
  */
 export async function GET(request: Request) {
@@ -34,10 +35,23 @@ export async function GET(request: Request) {
   const now = new Date()
   const nowIso = now.toISOString()
 
+  const { error: expireErr } = await withDbTimeout(
+    auth.supabase
+      .from('job_broadcasts')
+      .update({ status: 'expired', responded_at: nowIso })
+      .eq('worker_id', auth.user.id)
+      .eq('status', 'sent')
+      .lte('expires_at', nowIso),
+  )
+  if (expireErr) {
+    console.warn('GET /workers/me/broadcasts: expire stale broadcasts failed', { userId: auth.user.id, errorCode: expireErr.code })
+    return apiError('DB_ERROR', 'Không thể cập nhật yêu cầu hết hạn', 500)
+  }
+
   const { data: rows, error } = await withDbTimeout(
     auth.supabase
       .from('job_broadcasts')
-      .select('id, job_id, status, sent_at, expires_at, jobs(service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max)')
+      .select('id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max)')
       .eq('worker_id', auth.user.id)
       .eq('status', 'sent')
       .gt('expires_at', nowIso)
@@ -55,8 +69,8 @@ export async function GET(request: Request) {
       // Supabase nested select returns the related row as `unknown`-ish in the
       // generated types when the relation isn't 1:1 declared. Narrow via a
       // typed pick (BroadcastJobSummary) so callers fail-compile on schema drift.
-      const job = (row.jobs as BroadcastJobSummary | null) ?? null
-      if (!job) return null // FK guarantees it exists; defensive skip
+      const job = relatedJob(row.jobs)
+      if (!job || job.status !== 'broadcasting') return null // FK guarantees it exists; defensive skip
 
       const earningMin = job.kael_price_min !== null ? Math.round(job.kael_price_min * WORKER_NET_MULTIPLIER) : null
       const earningMax = job.kael_price_max !== null ? Math.round(job.kael_price_max * WORKER_NET_MULTIPLIER) : null
@@ -80,4 +94,11 @@ export async function GET(request: Request) {
     .filter((b): b is NonNullable<typeof b> => b !== null)
 
   return apiSuccess({ broadcasts })
+}
+
+function relatedJob(value: unknown): BroadcastJobSummary | null {
+  if (Array.isArray(value)) {
+    return (value[0] as BroadcastJobSummary | undefined) ?? null
+  }
+  return (value as BroadcastJobSummary | null) ?? null
 }

@@ -15,7 +15,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, ServiceType, ComplexityLevel } from '@home-services/shared'
+import { normalizeServiceAreaDistrict, type Database, type ServiceType, type ComplexityLevel } from '@home-services/shared'
 import { withDbTimeout } from '@/lib/db/query'
 import { env } from '@/lib/env'
 import { observeFinalPrice } from './market-memory'
@@ -88,6 +88,8 @@ async function loadHookInput(
 
   if (!problemSlug) return null
   if (!job.kael_complexity || !job.kael_price_min || !job.kael_price_max) return null
+  const districtCode = normalizeServiceAreaDistrict(job.address_district)
+  if (!districtCode) return null
 
   // Detect scope change presence (any row).
   const { count: scopeChangeCount } = await withDbTimeout(
@@ -101,7 +103,7 @@ async function loadHookInput(
     jobId,
     serviceType: job.service_type as ServiceType,
     problemSlug,
-    districtCode: job.address_district ?? 'hcmc_all',
+    districtCode,
     complexityHint: job.kael_complexity as ComplexityLevel,
     baselineMin: job.kael_price_min,
     baselineMax: job.kael_price_max,

@@ -21,6 +21,7 @@ import { callAI } from '@/lib/ai/client'
 import { classifyIntent } from '@/lib/kael/intent'
 import { analyzeDescription } from '@/lib/kael/vision'
 import { searchMarketPrice, synthesizePrice } from '@/lib/kael/pricing'
+import { fetchBaseline } from '@/lib/kael/baseline'
 
 const mockCallAI = callAI as ReturnType<typeof vi.fn>
 
@@ -74,6 +75,26 @@ describe('kael-pipeline — classifyIntent', () => {
       expect(result.fallback.problem_slug).toBe('breaker_trip')
       expect(result.fallback.confidence).toBeLessThan(0.5)
     }
+  })
+
+  it('uses Anthropic intent fallback before local heuristic fallback when DeepSeek fails', async () => {
+    mockCallAI
+      .mockResolvedValueOnce(mockAIFailure())
+      .mockResolvedValueOnce(mockAISuccess(JSON.stringify({
+        service_type: 'plumbing',
+        problem_slug: 'pipe_leak',
+        confidence: 0.85,
+        needs_clarification: false,
+      })))
+
+    const result = await classifyIntent('plumbing', ['á»ng rÃ² rá»‰'], 'á»ng nÆ°á»›c rÃ² rá»‰')
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.intent.problem_slug).toBe('pipe_leak')
+    }
+    expect(mockCallAI).toHaveBeenNthCalledWith(1, expect.objectContaining({ provider: 'deepseek' }))
+    expect(mockCallAI).toHaveBeenNthCalledWith(2, expect.objectContaining({ provider: 'anthropic' }))
   })
 
   it('returns fallback on invalid JSON response', async () => {
@@ -229,6 +250,22 @@ describe('kael-pipeline — searchMarketPrice', () => {
   })
 })
 
+describe('kael-pipeline — fetchBaseline', () => {
+  it('rejects invalid raw baseline rows instead of returning zero prices', async () => {
+    const supabase = makeSequenceSupabase([
+      { data: [{ id: 'pipe-problem' }], error: null },
+      { data: [{ price_min: null, price_max: 250000, district_code: 'q7' }], error: null },
+    ]).supabase
+
+    const result = await fetchBaseline(supabase, 'plumbing', 'pipe_leak', 'medium', 'q7')
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain('Invalid price baseline')
+    }
+  })
+})
+
 describe('kael-pipeline — synthesizePrice', () => {
   it('returns baseline-only when no market data', () => {
     const result = synthesizePrice({
@@ -337,3 +374,69 @@ describe('kael-pipeline — synthesizePrice', () => {
     expect(result.confidence).toBeLessThanOrEqual(0.85)
   })
 })
+
+describe('kael-pipeline fetchBaseline problem-specific selection', () => {
+  it('filters price baselines by service problem slug before choosing a district match', async () => {
+    const { supabase, calls } = makeSequenceSupabase([
+      { data: [{ id: 'pipe-problem' }], error: null },
+      { data: [{ price_min: 150000, price_max: 350000, district_code: 'q7' }], error: null },
+    ])
+
+    const result = await fetchBaseline(supabase, 'plumbing', 'pipe_leak', 'small', 'q7')
+
+    expect(result).toMatchObject({
+      success: true,
+      priceMin: 150000,
+      priceMax: 350000,
+      matchedDistrict: 'q7',
+    })
+    expect(calls[0]).toMatchObject({
+      table: 'service_problems',
+      operations: expect.arrayContaining([
+        ['eq', 'service_type', 'plumbing'],
+        ['eq', 'slug', 'pipe_leak'],
+      ]),
+    })
+    expect(calls[1]).toMatchObject({
+      table: 'price_baselines',
+      operations: expect.arrayContaining([
+        ['eq', 'service_problem_id', 'pipe-problem'],
+        ['eq', 'service_type', 'plumbing'],
+        ['eq', 'complexity', 'small'],
+      ]),
+    })
+  })
+})
+
+function makeSequenceSupabase(results: Array<{ data: unknown; error: unknown }>) {
+  const calls: Array<{ table: string; operations: unknown[][] }> = []
+  const supabase = {
+    from(table: string) {
+      const call = { table, operations: [] as unknown[][] }
+      calls.push(call)
+      const query = {
+        select(columns?: string) {
+          call.operations.push(['select', columns])
+          return query
+        },
+        eq(column: string, value: unknown) {
+          call.operations.push(['eq', column, value])
+          return query
+        },
+        in(column: string, value: unknown[]) {
+          call.operations.push(['in', column, value])
+          return query
+        },
+        then<TResult1 = unknown, TResult2 = never>(
+          onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
+          onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+        ): PromiseLike<TResult1 | TResult2> {
+          const next = results.shift() ?? { data: null, error: null }
+          return Promise.resolve(next).then(onfulfilled, onrejected)
+        },
+      }
+      return query
+    },
+  } as any
+  return { supabase, calls }
+}

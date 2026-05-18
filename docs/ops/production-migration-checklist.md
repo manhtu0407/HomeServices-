@@ -2,6 +2,13 @@
 
 This checklist is the production safety gate for applying the Supabase migration chain from the verified staging database to the production `HomeServices` project.
 
+> 2026-05-18 staging backend note: this checklist predates the `mobile-api`
+> staging execution and the later staging-only hardening migrations through
+> `20260518043000_harden_private_rls_helper_execution.sql`. Production was not
+> mutated during that staging backend session. Before any production apply,
+> rerun production migration history, dry-run the exact target, and regenerate
+> the expected pending chain from current staging evidence.
+
 ## Current Target State
 
 Production project:

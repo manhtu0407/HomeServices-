@@ -7,7 +7,7 @@
  *
  * Requires .env.local with real credentials.
  */
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@home-services/shared'
 import { readFileSync } from 'fs'
@@ -39,8 +39,17 @@ const supabaseUrl = envVars['NEXT_PUBLIC_SUPABASE_URL'] || process.env.NEXT_PUBL
 const serviceRoleKey = envVars['SUPABASE_SERVICE_ROLE_KEY'] || process.env.SUPABASE_SERVICE_ROLE_KEY
 const anonKey = envVars['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'] || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
-const skip = !supabaseUrl || !serviceRoleKey
+const PRODUCTION_REF = 'iwevizmsedyqozxlawwl'
+const isProduction = supabaseUrl?.includes(PRODUCTION_REF) ?? false
+
+const skip = !supabaseUrl || !serviceRoleKey || isProduction
 const describeReal = skip ? describe.skip : describe
+
+if (isProduction) {
+  console.warn(
+    '[real-supabase] Refusing to run against production. Set NEXT_PUBLIC_SUPABASE_URL to staging.',
+  )
+}
 
 let supabase: SupabaseClient<Database>
 
@@ -224,7 +233,7 @@ describeReal('Real Supabase — auth user creation + profile trigger', () => {
   it('admin upgrades worker role (simulates admin approval)', async () => {
     const { error } = await supabase
       .from('profiles')
-      .update({ role: 'worker' as any })
+      .update({ role: 'worker' as const })
       .eq('id', workerUserId!)
 
     expect(error).toBeNull()

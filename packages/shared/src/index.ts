@@ -31,6 +31,7 @@ export {
   workerScopeChangeSchema,
   customerScopeDecisionSchema,
   sanitizeForLLM,
+  scrubSensitiveForLLM,
 } from './validation'
 export type {
   JobCreateInput,

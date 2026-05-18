@@ -22,14 +22,21 @@ export type EarningsRange = {
   to?: string | null
 }
 
+export class EarningsQueryError extends Error {
+  constructor(public readonly code?: string) {
+    super('Failed to load worker earnings')
+    this.name = 'EarningsQueryError'
+  }
+}
+
 /**
  * B8 — Worker earnings summary.
  *
  * Aggregates from jobs table:
- *   - gross_earnings:        sum(final_price) where status in {paid, reviewed}
+ *   - gross_earnings:        sum(final_price) where status is paid
  *   - platform_fee_total:    gross * PLATFORM_FEE_WORKER (10%)
  *   - net_earnings:          gross - platform_fee_total
- *   - pending_payment:       jobs in confirmed_by_customer or payment_pending state
+ *   - pending_payment:       jobs in confirmed_by_customer, payment_pending, or reviewed state
  *
  * `range.from` / `range.to` filter on jobs.created_at (ISO timestamptz).
  * Both bounds optional. Returns the effective range in the response.
@@ -54,17 +61,7 @@ export async function computeEarnings(
 
   if (error || !rows) {
     console.warn('Earnings: query failed', { workerId, errorCode: error?.code })
-    return {
-      workerId,
-      totalJobsPaid: 0,
-      grossEarnings: 0,
-      platformFeeTotal: 0,
-      netEarnings: 0,
-      pendingPaymentCount: 0,
-      pendingPaymentAmount: 0,
-      fromDate: range.from ?? null,
-      toDate: range.to ?? null,
-    }
+    throw new EarningsQueryError(error?.code)
   }
 
   let gross = 0
@@ -74,10 +71,10 @@ export async function computeEarnings(
 
   for (const row of rows) {
     const price = row.final_price ?? 0
-    if (row.status === 'paid' || row.status === 'reviewed') {
+    if (row.status === 'paid') {
       gross += price
       paidCount++
-    } else if (row.status === 'confirmed_by_customer' || row.status === 'payment_pending') {
+    } else if (row.status === 'confirmed_by_customer' || row.status === 'payment_pending' || row.status === 'reviewed') {
       pendingAmount += price
       pendingCount++
     }

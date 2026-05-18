@@ -98,8 +98,6 @@ export async function callAI(request: AIRequest): Promise<AIResult> {
     }
   }
 
-  const errorMessage =
-    lastError instanceof Error ? lastError.message : 'Unknown error'
   const errorCode =
     lastError instanceof AIProviderError
       ? `HTTP_${lastError.statusCode}`
@@ -108,14 +106,14 @@ export async function callAI(request: AIRequest): Promise<AIResult> {
   console.error('AI call failed', {
     provider: request.provider,
     model: request.model,
-    error: errorMessage,
+    error: errorCode,
     code: errorCode,
     retriesExhausted: true,
   })
 
   return {
     provider: request.provider,
-    error: errorMessage,
+    error: errorCode,
     code: errorCode,
     retryable: false,
     success: false,

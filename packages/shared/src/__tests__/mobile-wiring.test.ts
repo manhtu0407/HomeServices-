@@ -7,7 +7,7 @@ const read = (rel: string) => readFileSync(resolve(MOBILE_ROOT, rel), 'utf-8')
 const exists = (rel: string) => existsSync(resolve(MOBILE_ROOT, rel))
 
 // ===================================================================
-// Navigation skeleton â€” must match STRUCTURES.md exactly
+// Navigation skeleton - must match STRUCTURES.md exactly
 // ===================================================================
 
 describe('screen files existence (STRUCTURES.md mapping)', () => {
@@ -78,7 +78,7 @@ describe('all screens export default function', () => {
 })
 
 // ===================================================================
-// Customer tabs â€” STRUCTURES.md A1: Trang chá»§ | Äáº·t lá»‹ch | Kael | Lá»‹ch sá»­ | Há»“ sÆ¡
+// Customer tabs - STRUCTURES.md A1: Trang chủ | Đặt lịch | Kael | Lịch sử | Hồ sơ
 // ===================================================================
 
 describe('customer tab labels (STRUCTURES.md A1)', () => {
@@ -117,7 +117,7 @@ describe('customer tab labels (STRUCTURES.md A1)', () => {
 })
 
 // ===================================================================
-// Customer frontend shell â€” production static/local surfaces around Price Check
+// Customer frontend shell - production static/local surfaces around Price Check
 // ===================================================================
 
 describe('customer frontend shell surfaces', () => {
@@ -177,7 +177,6 @@ describe('customer frontend shell surfaces', () => {
       expect(src).not.toContain('PERPLEXITY_API_KEY')
       expect(src).not.toContain('DEEPSEEK_API_KEY')
       expect(src).not.toContain('payment_pending')
-      expect(src).not.toContain('scope_change_pending')
       expect(src).not.toContain('customer_confirmed_booking_search')
     }
 
@@ -357,14 +356,14 @@ describe('customer frontend shell surfaces', () => {
     const src = shell()
     expect(src).toContain('COPY_DENSITY_COMPACT')
     expect(src).toContain('customer-profile-checklist')
-    expect(src).not.toContain('Chá»‰ lÆ°u ngá»¯ cáº£nh chung')
-    expect(src).not.toContain('GiÃ¡ thá»±c táº¿ do thá»£ xÃ¡c nháº­n trÆ°á»›c khi báº¯t Ä‘áº§u.')
+    expect(src).not.toContain('Chỉ lưu ngữ cảnh chung')
+    expect(src).not.toContain('Giá thực tế do thợ xác nhận trước khi bắt đầu.')
     expect(src).not.toContain('Name/building/floor')
-    expect(src).not.toContain('KhÃƒÂ´ng bÃ¡Â»â€¹a ngÃƒÂ y')
-    expect(src).not.toContain('ChÃ†Â°a lÃ†Â°u backend')
-    expect(src).not.toContain('KhÃƒÂ´ng fake worker')
-    expect(src).not.toContain('BÃ¡Â»â„¢ lÃ¡Â»Âc sÃ¡ÂºÂ½ mÃ¡Â»Å¸')
-    expect(src).not.toContain('KhÃƒÂ´ng Ã„â€˜ÃƒÂ¡nh dÃ¡ÂºÂ¥u Ã„â€˜ÃƒÂ£ thanh toÃƒÂ¡n')
+    expect(src).not.toContain('Không bịa ngày')
+    expect(src).not.toContain('Chưa lưu backend')
+    expect(src).not.toContain('Không fake worker')
+    expect(src).not.toContain('Bộ lọc sẽ mở')
+    expect(src).not.toContain('Không đánh dấu đã thanh toán')
   })
 
   it('uses mobile production V4 frame markers and dock-safe scrolling', () => {
@@ -421,7 +420,7 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-shell-no-fake-history-data')
     expect(src).toContain('customer-shell-no-fake-profile-save')
     expect(src).not.toMatch(/090\d{7}|0\d{9}/)
-    expect(src).not.toMatch(/\d{1,3}\.\d{3}\s?Ä‘/)
+    expect(src).not.toMatch(/\d{1,3}\.\d{3}\s?đ/)
   })
 
   it('routes customer shell entry points back to the booking tab', () => {
@@ -503,7 +502,7 @@ describe('frontend workflow provider wiring', () => {
 })
 
 // ===================================================================
-// Prototype runtime cleanup â€” store-build guard
+// Prototype runtime cleanup - store-build guard
 // ===================================================================
 
 const removedPrototypeRuntimePaths = [
@@ -568,7 +567,7 @@ describe('prototype runtime cleanup', () => {
 })
 
 // ===================================================================
-// Worker tabs â€” STRUCTURES.md B1: Trang chá»§ | CÃ´ng viá»‡c | Chat | Thu nháº­p | Há»“ sÆ¡
+// Worker tabs - STRUCTURES.md B1: Trang chủ | Công việc | Chat | Thu nhập | Hồ sơ
 // ===================================================================
 describe('worker tab labels (STRUCTURES.md B1)', () => {
   const src = read('app/(worker)/_layout.tsx')
@@ -697,7 +696,7 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('deal.broadcast.prebrief.slice(0, 2)')
   })
 
-  it('keeps Worker shell frontend-only with no backend, AI, secrets, or workflow mutations', () => {
+  it('keeps Worker shell behind provider actions with no direct backend, AI, or secrets', () => {
     const files = [
       shellPath,
       'app/(worker)/home.tsx',
@@ -718,7 +717,6 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
       expect(src).not.toContain('PERPLEXITY_API_KEY')
       expect(src).not.toContain('DEEPSEEK_API_KEY')
       expect(src).not.toContain('payment_pending')
-      expect(src).not.toContain('scope_change_pending')
     }
   })
 
@@ -799,7 +797,7 @@ describe('auth production login surface', () => {
 })
 
 // ===================================================================
-// Root layout â€” AuthProvider wrapping
+// Root layout - AuthProvider wrapping
 // ===================================================================
 
 
@@ -822,7 +820,7 @@ describe('root layout', () => {
 })
 
 // ===================================================================
-// Index (splash redirect) â€” role-based routing
+// Index (splash redirect) - role-based routing
 // ===================================================================
 
 describe('index.tsx routing logic', () => {
@@ -886,7 +884,7 @@ describe('role guarded route groups', () => {
 })
 
 // ===================================================================
-// Supabase client â€” Rule #1: secrets server-side only
+// Supabase client - Rule #1: secrets server-side only
 // ===================================================================
 
 describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
@@ -910,9 +908,11 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
     expect(src).toContain('supabasePublishableKey')
   })
 
-  it('uses AsyncStorage for session persistence', () => {
-    expect(src).toContain('AsyncStorage')
-    expect(src).toContain('storage: AsyncStorage')
+  it('uses SecureStore for session persistence', () => {
+    expect(src).toContain("from 'expo-secure-store'")
+    expect(src).toContain('supabaseAuthStorage')
+    expect(src).toContain('storage: supabaseAuthStorage')
+    expect(src).not.toContain('AsyncStorage')
   })
 
   it('disables detectSessionInUrl (RN has no URL bar)', () => {
@@ -928,7 +928,7 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
     expect(src).toContain("from '@home-services/shared'")
   })
 
-  it('does NOT use process.env (Rule #1 â€” RN uses app.json extra)', () => {
+  it('does NOT use process.env (Rule #1 - RN uses app.json extra)', () => {
     expect(src).not.toContain('process.env')
   })
 
@@ -944,7 +944,7 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
 })
 
 // ===================================================================
-// Auth provider â€” correct Supabase auth pattern
+// Auth provider - correct Supabase auth pattern
 // ===================================================================
 
 describe('auth-provider.tsx', () => {
@@ -1144,9 +1144,10 @@ describe('app.config.ts runtime config', () => {
 
   it('maps mobile Supabase config from public env names only', () => {
     expect(src).toContain('EXPO_PUBLIC_SUPABASE_URL')
-    expect(src).toContain('NEXT_PUBLIC_SUPABASE_URL')
+    expect(src).not.toContain('NEXT_PUBLIC_SUPABASE_URL')
     expect(src).toContain('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
-    expect(src).toContain('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
+    expect(src).not.toContain('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
+    expect(src).toContain('EXPO_PUBLIC_API_BASE_URL')
     expect(src).toContain('supabasePublishableKey')
     expect(src).not.toContain('SUPABASE_SERVICE_ROLE_KEY')
     expect(src).not.toContain('SUPABASE_SECRET_KEY')
@@ -1178,7 +1179,7 @@ describe('web preview dependencies', () => {
 })
 
 // ===================================================================
-// colors.ts â€” design consistency
+// colors.ts - design consistency
 // ===================================================================
 
 describe('constants/colors.ts', () => {
@@ -1198,7 +1199,7 @@ describe('constants/colors.ts', () => {
 })
 
 // ===================================================================
-// Client Price Check production UI â€” customer Äáº·t lá»‹ch A2-A5 slice
+// Client Price Check production UI - customer Đặt lịch A2-A5 slice
 // ===================================================================
 
 describe('client price check production UI', () => {
@@ -1409,33 +1410,31 @@ describe('client price check production UI', () => {
     const component = read(productionComponentPath)
     expect(component).toContain('searchingWorkerState')
     expect(component).toContain('noWorkerFallbackState')
-    expect(component).toContain("dispatch({ type: 'confirm_customer_search' })")
+    expect(component).toContain('actions.confirmRemoteSearch')
     expect(component).toContain('WorkerMatchedPanel status')
     expect(component).toContain('customer-no-fake-worker-data')
     expect(component).not.toContain('Anh Minh')
     expect(component).not.toContain('128 job')
     expect(component).not.toContain('payment_pending')
-    expect(component).not.toContain('scope_change_pending')
     expect(component).not.toContain('customer_confirmed_booking_search')
   })
 
-  it('uses frontend workflow actions for now-only local broadcast without hardcoded prices or scheduled slot', () => {
+  it('uses frontend workflow actions for now-only backend broadcast without hardcoded prices or scheduled slot', () => {
     const component = read(productionComponentPath)
     expect(component).toContain('useFrontendWorkflow')
     expect(component).toContain("serviceType: null")
-    expect(component).toContain("dispatch({ type: 'submit_booking_draft' })")
-    expect(component).toContain("dispatch({ type: 'finish_local_analysis' })")
+    expect(component).not.toContain("dispatch({ type: 'submit_booking_draft' })")
+    expect(component).toContain('actions.createRemoteJobFromDraft')
     expect(component).toContain('selectors.canConfirmCustomerSearch')
-    expect(component).toContain("dispatch({ type: 'confirm_customer_search' })")
-    expect(component).toContain("dispatch({ type: 'retry_customer_search' })")
+    expect(component).toContain('actions.confirmRemoteSearch')
+    expect(component).not.toContain("dispatch({ type: 'retry_customer_search' })")
     expect(component).toContain("dispatch({ type: 'reopen_booking_draft' })")
     expect(component).toContain('confirmCancelCurrentSearch')
     expect(component).toContain('Alert.alert')
-    expect(component).toContain("dispatch({ type: 'cancel_deal' })")
-    expect(component).toContain('customer-booking-cancel-local-deal')
+    expect(component).toContain('actions.cancelRemoteJob')
+    expect(component).toContain('Hủy yêu cầu')
     expect(component).toContain('secondaryLabelForStep')
     expect(component).toContain('Chỉnh yêu cầu')
-    expect(component).toContain('Hủy local')
     expect(component).toContain('Về Home')
     expect(component).toContain('workflowDraftSyncKey')
     expect(component).toContain('skipNextWorkflowDraftSyncRef')
@@ -1443,8 +1442,8 @@ describe('client price check production UI', () => {
     expect(component).toContain('Cần quyền thư viện ảnh/video')
     expect(component).toContain('draftFromWorkflow(workflowState.deal?.draft)')
     expect(component).toContain("selectors.currentStatus !== 'draft' || step !== 'emptyWorker'")
-    expect(component).toContain('Cần backend ước tính')
-    expect(component).toContain('Sắp mở sau khi backend lịch sẵn sàng')
+    expect(component).toContain('Chờ Kael ước tính')
+    expect(component).toContain('Sắp mở cho lịch hẹn')
     expect(component).toContain('booking-clarification-required')
     expect(component).toContain('description.trim().length < 12')
     expect(component).toContain('addressLabel.trim().length < 4')
@@ -1494,12 +1493,12 @@ describe('frontend-only workflow safety audit', () => {
     expect(customerShell).toContain('customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState)')
     expect(customerShell).toContain("searchState === 'no_worker'")
     expect(customerShell).toContain('selectors.canCustomerCancelDeal')
-    expect(customerShell).toContain('Broadcast local sẽ dừng')
+    expect(customerShell).toContain('Broadcast sẽ dừng')
     expect(customerShell).not.toContain('Worker đã nhận địa chỉ')
     expect(customerShell).toContain('Alert.alert')
-    expect(customerShell).toContain("dispatch({ type: 'cancel_deal' })")
+    expect(customerShell).toContain('actions.cancelRemoteJob')
     expect(customerShell).toContain('customer-history-cancel-local-deal')
-    expect(customerShell).toContain('<V4TicketCell label="Giá cuối" value="Cần backend" />')
+    expect(customerShell).toContain('<V4TicketCell label="Giá cuối" value="Chờ thợ nhập" />')
     expect(customerShell).toContain("dispatch({ type: 'reopen_booking_draft' })")
     expect(customerShell).toContain("dispatch({ type: 'reset_workflow' })")
     expect(customerShell).toContain('historyActionLabel')
@@ -1562,7 +1561,9 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerShell).toContain('if (!canSendWorkerKaelMessage) return')
     expect(workerShell).toContain('confirmWorkerProgressAction')
     expect(workerShell).toContain('Xác nhận báo hoàn tất?')
-    expect(workerShell).toContain("dispatch({ type: 'worker_accept_broadcast' })")
+    expect(workerShell).toContain('actions.workerAcceptBroadcast')
+    expect(workerShell).toContain('actions.workerUpdateStatus')
+    expect(workerShell).toContain('worker-final-price-input')
     expect(workerShell).toContain('confirmWorkerProgressAction(nextAction)')
     expect(workerShell).toContain('worker-local-status-action')
   })

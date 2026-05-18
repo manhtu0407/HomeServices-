@@ -194,7 +194,7 @@ describe('maskBankAccount', () => {
 function makeMockSupabase(opts: {
   profile?: { role: string } | null
   profileError?: { code: string } | null
-  existingWorker?: { verification_status: string } | null
+  existingWorker?: { verification_status: string; is_suspended?: boolean } | null
   existingError?: { code: string } | null
   upsertResult?: { id: string; verification_status: string } | null
   upsertError?: { code: string } | null
@@ -316,6 +316,20 @@ describe('registerWorker', () => {
     }
   })
 
+  it('rejects when worker has a suspended flag even before status is finalized', async () => {
+    const supabase = makeMockSupabase({
+      profile: { role: 'worker' },
+      existingWorker: { verification_status: 'under_review', is_suspended: true },
+    })
+
+    const result = await registerWorker('user-1', VALID_INPUT, supabase)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.code).toBe('ALREADY_FINALIZED')
+      expect(result.status).toBe(409)
+    }
+  })
+
   it('allows re-submission when status is draft/submitted/under_review/rejected', async () => {
     for (const status of ['draft', 'submitted', 'under_review', 'rejected']) {
       const supabase = makeMockSupabase({
@@ -326,6 +340,41 @@ describe('registerWorker', () => {
       const result = await registerWorker('user-1', VALID_INPUT, supabase)
       expect(result.success, `status=${status} should allow re-submit`).toBe(true)
     }
+  })
+
+  it('rejects unknown worker districts instead of granting city-wide coverage', async () => {
+    const supabase = makeMockSupabase({
+      profile: { role: 'worker' },
+      existingWorker: null,
+    })
+
+    const result = await registerWorker('user-1', {
+      ...VALID_INPUT,
+      districts: ['Hà Nội'],
+    }, supabase)
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.code).toBe('VALIDATION')
+      expect(result.status).toBe(400)
+    }
+    expect(supabase.from).toHaveBeenCalledTimes(2)
+  })
+
+  it('allows explicit city-wide coverage only when the worker selects hcmc_all', async () => {
+    const supabase = makeMockSupabase({
+      profile: { role: 'worker' },
+      existingWorker: null,
+      upsertResult: { id: 'user-1', verification_status: 'submitted' },
+    })
+
+    const result = await registerWorker('user-1', {
+      ...VALID_INPUT,
+      districts: ['hcmc_all'],
+    }, supabase)
+
+    expect(result.success).toBe(true)
+    expect(supabase.from).toHaveBeenCalledTimes(3)
   })
 
   it('returns DB_ERROR when upsert fails', async () => {

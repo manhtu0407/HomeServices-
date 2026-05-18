@@ -21,7 +21,7 @@ export const marketPriceResultSchema = z.object({
   market_range_min: z.number().int().positive(),
   market_range_max: z.number().int().positive(),
   confidence: z.number().min(0).max(1),
-  sources_summary: z.string().max(500).optional(),
+  sources_summary: z.string().max(1000).optional(),
 })
 
 export type MarketPriceResult = z.infer<typeof marketPriceResultSchema>

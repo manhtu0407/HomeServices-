@@ -38,6 +38,14 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (!transition.valid) {
     return apiError('INVALID_STATUS', transition.error, 409)
   }
+  const finalPrice = job.final_price
+  if (!Number.isInteger(finalPrice) || finalPrice === null || finalPrice <= 0) {
+    return apiError(
+      'INVALID_STATUS',
+      'Worker chưa nhập giá cuối cùng nên chưa thể xác nhận hoàn tất',
+      409,
+    )
+  }
 
   const now = new Date().toISOString()
 
@@ -78,6 +86,6 @@ export async function POST(request: Request, { params }: RouteParams) {
   return apiSuccess({
     job_id: id,
     status: 'confirmed_by_customer',
-    final_price: job.final_price,
+    final_price: finalPrice,
   })
 }

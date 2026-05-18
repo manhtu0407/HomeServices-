@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeDistrict, HCMC_DISTRICTS, DEFAULT_DISTRICT } from '../constants'
+import { normalizeDistrict, normalizeServiceAreaDistrict, HCMC_DISTRICTS, DEFAULT_DISTRICT } from '../constants'
 
 describe('normalizeDistrict', () => {
   describe('exact slug match', () => {
@@ -123,5 +123,17 @@ describe('HCMC_DISTRICTS catalog', () => {
 
   it('is frozen (cannot mutate at runtime)', () => {
     expect(Object.isFrozen(HCMC_DISTRICTS)).toBe(true)
+  })
+})
+
+describe('normalizeServiceAreaDistrict', () => {
+  it('accepts a concrete HCMC district for customer dispatch', () => {
+    expect(normalizeServiceAreaDistrict('Quận 7')).toBe('q7')
+  })
+
+  it('rejects unknown and city-wide values for new customer jobs', () => {
+    expect(normalizeServiceAreaDistrict('Hà Nội')).toBeNull()
+    expect(normalizeServiceAreaDistrict('hcmc_all')).toBeNull()
+    expect(normalizeServiceAreaDistrict('')).toBeNull()
   })
 })

@@ -25,26 +25,58 @@ vi.mock('@/lib/db/query', () => ({
   withDbTimeout: vi.fn(<T>(p: PromiseLike<T>) => p),
 }))
 
-import { runKaelPipeline, type PipelineResult } from '@/lib/kael/pipeline'
+import { runKaelPipeline } from '@/lib/kael/pipeline'
 import type { IntentClassifyResult } from '@/lib/kael/intent'
 import type { VisionAnalysisResult } from '@/lib/kael/vision'
 import type { PriceSearchResult } from '@/lib/kael/pricing'
 
 function makeMockSupabase(baselineData: { price_min: number; price_max: number } | null) {
-  // New baseline.ts uses .in() and awaits without .single(), returns rows array
-  const rows = baselineData
-    ? [{ price_min: baselineData.price_min, price_max: baselineData.price_max, district_code: 'hcmc_all' }]
+  const serviceProblemId = 'problem-breaker-trip'
+  const serviceProblems: Array<Record<string, unknown>> = [
+    { id: serviceProblemId, service_type: 'electrical', slug: 'breaker_trip' },
+  ]
+  const baselineRows: Array<Record<string, unknown>> = baselineData
+    ? (['small', 'medium', 'large'] as const).map((complexity) => ({
+        service_problem_id: serviceProblemId,
+        service_type: 'electrical',
+        complexity,
+        price_min: baselineData.price_min,
+        price_max: baselineData.price_max,
+        district_code: 'hcmc_all',
+      }))
     : []
 
   return {
-    from: vi.fn(() => {
+    from: vi.fn((table: string) => {
+      const filters: Array<{ column: string; value: unknown; kind: 'eq' | 'in' }> = []
+      const tableRows: Array<Record<string, unknown>> = table === 'service_problems'
+        ? serviceProblems
+        : table === 'price_baselines'
+          ? baselineRows
+          : []
+
+      const filteredRows = () =>
+        tableRows.filter((row) =>
+          filters.every((filter) => {
+            const rowValue = row[filter.column]
+            return filter.kind === 'in'
+              ? Array.isArray(filter.value) && filter.value.includes(rowValue)
+              : rowValue === filter.value
+          }),
+        )
+
       const chain: any = {}
       chain.select = vi.fn(() => chain)
-      chain.eq = vi.fn(() => chain)
-      chain.in = vi.fn(() => chain)
-      // Thenable so `await chain` resolves to rows array
-      chain.then = (onFulfilled: (v: { data: typeof rows; error: null }) => unknown) =>
-        Promise.resolve({ data: rows, error: null }).then(onFulfilled)
+      chain.eq = vi.fn((column: string, value: unknown) => {
+        filters.push({ column, value, kind: 'eq' })
+        return chain
+      })
+      chain.in = vi.fn((column: string, value: unknown[]) => {
+        filters.push({ column, value, kind: 'in' })
+        return chain
+      })
+      chain.then = (onFulfilled: (v: { data: Array<Record<string, unknown>>; error: null }) => unknown) =>
+        Promise.resolve({ data: filteredRows(), error: null }).then(onFulfilled)
       return chain
     }),
   } as any
@@ -99,6 +131,7 @@ describe('runKaelPipeline with DI providers', () => {
     if (result.success) {
       expect(result.estimate.service_type).toBe('electrical')
       expect(result.estimate.problem_category).toBe('breaker_trip')
+      expect(result.serviceProblemId).toBe('problem-breaker-trip')
       expect(result.estimate.price_min).toBeGreaterThan(0)
       expect(result.estimate.price_max).toBeGreaterThan(result.estimate.price_min)
       expect(result.estimate.disclaimer).toContain('ước tính')

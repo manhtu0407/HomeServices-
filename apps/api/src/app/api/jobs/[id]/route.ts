@@ -34,6 +34,89 @@ export async function GET(request: Request, { params }: RouteParams) {
     return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
   }
 
+  let broadcastState: { active_count: number; seconds_remaining: number | null } | null = null
+  if (job.status === 'broadcasting') {
+    const now = new Date()
+    const nowIso = now.toISOString()
+    const { error: expireErr } = await withDbTimeout(
+      auth.supabase
+        .from('job_broadcasts')
+        .update({ status: 'expired', responded_at: nowIso })
+        .eq('job_id', id)
+        .eq('status', 'sent')
+        .lte('expires_at', nowIso),
+    )
+    if (expireErr) {
+      console.warn('Job detail: expire stale broadcasts failed', { jobId: id, errorCode: expireErr.code })
+      return apiError('DB_ERROR', 'Không thể kiểm tra trạng thái broadcast', 500)
+    }
+
+    const { data: broadcasts, error: broadcastErr } = await withDbTimeout(
+      auth.supabase
+        .from('job_broadcasts')
+        .select('id, expires_at')
+        .eq('job_id', id)
+        .eq('status', 'sent')
+        .limit(20),
+    )
+    if (broadcastErr) {
+      console.warn('Job detail: broadcast state query failed', { jobId: id, errorCode: broadcastErr.code })
+      return apiError('DB_ERROR', 'Không thể kiểm tra trạng thái broadcast', 500)
+    }
+
+    const active = (broadcasts ?? []).filter((broadcast) =>
+      !broadcast.expires_at || broadcast.expires_at > nowIso
+    )
+    const seconds = active
+      .map((broadcast) =>
+        broadcast.expires_at
+          ? Math.max(0, Math.round((new Date(broadcast.expires_at).getTime() - now.getTime()) / 1000))
+          : null
+      )
+      .filter((value): value is number => value !== null)
+    broadcastState = {
+      active_count: active.length,
+      seconds_remaining: seconds.length > 0 ? Math.max(...seconds) : 0,
+    }
+  }
+
+  let currentScopeChange: {
+    id: string
+    status: string
+    requested_description: string | null
+    reason: string | null
+    price_min: number | null
+    price_max: number | null
+    created_at: string | null
+  } | null = null
+  if (job.status === 'scope_change_pending') {
+    const { data: scopeRows, error: scopeErr } = await withDbTimeout(
+      auth.supabase
+        .from('scope_change_requests')
+        .select('id, status, requested_description, reason, price_min, price_max, created_at')
+        .eq('job_id', id)
+        .in('status', ['waiting_customer_decision', 'reviewing_by_kael'])
+        .order('created_at', { ascending: false })
+        .limit(1),
+    )
+    if (scopeErr) {
+      console.warn('Job detail: current scope-change query failed', { jobId: id, errorCode: scopeErr.code })
+      return apiError('DB_ERROR', 'Không thể tải yêu cầu đổi phạm vi hiện tại', 500)
+    }
+    const scope = scopeRows?.[0]
+    currentScopeChange = scope
+      ? {
+          id: scope.id,
+          status: scope.status,
+          requested_description: scope.requested_description,
+          reason: scope.reason,
+          price_min: scope.price_min,
+          price_max: scope.price_max,
+          created_at: scope.created_at,
+        }
+      : null
+  }
+
   return apiSuccess({
     job: {
       id: job.id,
@@ -63,5 +146,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       paid_at: job.paid_at,
       reviewed_at: job.reviewed_at,
     },
+    broadcast_state: broadcastState,
+    current_scope_change: currentScopeChange,
   })
 }

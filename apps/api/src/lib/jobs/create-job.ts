@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, JobCreateInput } from '@home-services/shared'
-import { sanitizeForLLM, normalizeDistrict } from '@home-services/shared'
-import { runKaelPipeline } from '@/lib/kael/pipeline'
+import { sanitizeForLLM, normalizeServiceAreaDistrict } from '@home-services/shared'
+import { runKaelPipeline, type PipelineResult } from '@/lib/kael/pipeline'
 import { logJobEvent, type EventActor } from '@/lib/jobs/event-log'
 import { withDbTimeout } from '@/lib/db/query'
 import { logApiCalls, generateRequestId, type ApiCallLog } from '@/lib/kael/log-api-call'
@@ -28,7 +28,7 @@ export type CreateJobResult =
 
 // Static stage → provider/model lookup. Co-located so model upgrades touch one place.
 const PROVIDER_MAP = {
-  intent: { provider: 'deepseek' as const, model: 'deepseek-chat' },
+  intent: { provider: 'deepseek' as const, model: 'deepseek-v4-flash' },
   vision: { provider: 'anthropic' as const, model: 'claude-sonnet-4-6' },
   market: { provider: 'perplexity' as const, model: 'sonar' },
 } as const
@@ -58,7 +58,15 @@ export async function createJobWithEstimate(
   actor: EventActor,
   supabase: SupabaseClient<Database>,
 ): Promise<CreateJobResult> {
-  const canonicalDistrict = normalizeDistrict(input.address_district)
+  const canonicalDistrict = normalizeServiceAreaDistrict(input.address_district)
+  if (!canonicalDistrict) {
+    return {
+      success: false,
+      error: 'Địa chỉ cần có quận TP.HCM rõ ràng',
+      code: 'VALIDATION',
+      status: 400,
+    }
+  }
 
   // Correlation ID — every AI call in this pipeline run shares this id, so a
   // debugger can trace one user request through all 3 provider calls.
@@ -95,15 +103,35 @@ export async function createJobWithEstimate(
   await logJobEvent(supabase, job.id, 'job_created', actor, null, 'analyzing')
 
   // Run AI pipeline (3 provider calls, baseline DB lookup, synthesis).
-  const pipelineResult = await runKaelPipeline(
-    {
-      serviceType: input.service_type,
-      problemChips: input.problem_chips,
-      description: input.description,
-      district: canonicalDistrict,
-    },
-    supabase,
-  )
+  let pipelineResult: PipelineResult
+  try {
+    pipelineResult = await runKaelPipeline(
+      {
+        serviceType: input.service_type,
+        problemChips: input.problem_chips,
+        description: input.description,
+        district: canonicalDistrict,
+      },
+      supabase,
+    )
+  } catch {
+    const cleanupOk = await cancelAnalyzingJob(supabase, job.id, actor, 'PIPELINE_THROW')
+    if (!cleanupOk) {
+      return {
+        success: false,
+        error: 'Không thể đóng yêu cầu sau lỗi hệ thống',
+        code: 'DB_ERROR',
+        status: 500,
+      }
+    }
+    console.warn('Kael pipeline threw', { jobId: job.id, reasonCode: 'PIPELINE_THROW' })
+    return {
+      success: false,
+      error: 'Hệ thống đang xử lý. Vui lòng thử lại.',
+      code: 'AI_FAILED',
+      status: 502,
+    }
+  }
 
   // Op 3: Batched provider logs (one INSERT, multiple rows).
   const apiLogs: ApiCallLog[] = []
@@ -127,17 +155,15 @@ export async function createJobWithEstimate(
   if (!pipelineResult.success) {
     // Op 4 (fail path): Cancel cleanly — customer sees it in history as cancelled,
     // no orphan analyzing rows. Optimistic concurrency guards against double-write.
-    const cancelledAt = new Date().toISOString()
-    await withDbTimeout(
-      supabase
-        .from('jobs')
-        .update({ status: 'cancelled', cancelled_at: cancelledAt })
-        .eq('id', job.id)
-        .eq('status', 'analyzing'),
-    )
-    await logJobEvent(supabase, job.id, 'kael_failed', actor, 'analyzing', 'cancelled', {
-      reason_code: pipelineResult.code,
-    })
+    const cleanupOk = await cancelAnalyzingJob(supabase, job.id, actor, pipelineResult.code)
+    if (!cleanupOk) {
+      return {
+        success: false,
+        error: 'Không thể đóng yêu cầu sau lỗi hệ thống',
+        code: 'DB_ERROR',
+        status: 500,
+      }
+    }
 
     if (pipelineResult.code === 'UNSUPPORTED') {
       return { success: false, error: pipelineResult.error, code: 'UNSUPPORTED', status: 400 }
@@ -172,6 +198,7 @@ export async function createJobWithEstimate(
         kael_price_min: estimate.price_min,
         kael_price_max: estimate.price_max,
         kael_advisory: estimate.advisory,
+        service_problem_id: pipelineResult.serviceProblemId,
         estimate_ready_at: now,
       })
       .eq('id', job.id)
@@ -227,4 +254,44 @@ export async function createJobWithEstimate(
     },
     fallbackUsed,
   }
+}
+
+async function cancelAnalyzingJob(
+  supabase: SupabaseClient<Database>,
+  jobId: string,
+  actor: EventActor,
+  reasonCode: string,
+): Promise<boolean> {
+  const cancelledAt = new Date().toISOString()
+  try {
+    const { data, error } = await withDbTimeout(
+      supabase
+        .from('jobs')
+        .update({ status: 'cancelled', cancelled_at: cancelledAt })
+        .eq('id', jobId)
+        .eq('status', 'analyzing')
+        .select('id')
+        .maybeSingle(),
+    )
+    if (error) {
+      console.warn('Failed to cancel analyzing job', {
+        jobId,
+        reasonCode,
+        errorCode: error.code,
+      })
+      return false
+    }
+    if (!data) {
+      console.warn('Cancel analyzing job matched no rows', { jobId, reasonCode })
+      return false
+    }
+  } catch {
+    console.warn('Failed to cancel analyzing job', { jobId, reasonCode })
+    return false
+  }
+
+  await logJobEvent(supabase, jobId, 'kael_failed', actor, 'analyzing', 'cancelled', {
+    reason_code: reasonCode,
+  })
+  return true
 }

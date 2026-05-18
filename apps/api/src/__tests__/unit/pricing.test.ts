@@ -16,7 +16,7 @@ vi.mock('@/lib/ai/client', () => ({
   callAI: vi.fn(),
 }))
 
-import { synthesizePrice, type PriceSynthesisInput } from '@/lib/kael/pricing'
+import { synthesizePrice } from '@/lib/kael/pricing'
 
 describe('pricing — synthesizePrice edge cases', () => {
   it('baseline-only produces correct range for small complexity', () => {

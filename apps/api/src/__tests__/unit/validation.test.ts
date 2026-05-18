@@ -6,6 +6,7 @@ import {
   reviewSchema,
   chatMessageSchema,
   sanitizeForLLM,
+  scrubSensitiveForLLM,
 } from '@home-services/shared'
 
 describe('serviceTypeSchema (Rule #6: only electrical + plumbing)', () => {
@@ -349,5 +350,13 @@ describe('sanitizeForLLM', () => {
     expect(result).toHaveLength(5000)
     expect(result).not.toContain('\x00')
     expect(result).not.toMatch(/^\s/)
+  })
+})
+
+describe('scrubSensitiveForLLM', () => {
+  it('scrubs phone, email, and id-like numbers before AI prompts', () => {
+    const input = 'SĐT 0901234567, email tu@example.com, CCCD 001234567890'
+
+    expect(scrubSensitiveForLLM(input)).toBe('SĐT [phone], email [email], CCCD [id-number]')
   })
 })

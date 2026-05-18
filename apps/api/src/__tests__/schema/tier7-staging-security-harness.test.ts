@@ -41,9 +41,17 @@ describe('Staging security verification harness', () => {
       'customer_cannot_upload_completion_photo',
       'unmatched_worker_cannot_upload_job_photo',
       'admin_reads_worker_documents',
+      'admin_direct_notification_insert_blocked',
     ]) {
       expect(HARNESS_SQL).toContain(checkName)
     }
+  })
+
+  it('keeps worker fixtures valid for submitted-or-approved identity constraints', () => {
+    expect(HARNESS_SQL).toContain('legal_name')
+    expect(HARNESS_SQL).toContain('date_of_birth')
+    expect(HARNESS_SQL).toContain("'Security Worker One'")
+    expect(HARNESS_SQL).toContain("'Security Worker Two'")
   })
 
   it('reports a summary row that must show zero failures', () => {

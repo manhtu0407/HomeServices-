@@ -1,8 +1,16 @@
 import Constants from 'expo-constants'
 import { supabase } from './supabase'
 
-const API_BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl ?? ''
+const configuredApiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl
+const API_BASE_URL = typeof configuredApiBaseUrl === 'string'
+  ? configuredApiBaseUrl.trim().replace(/\/+$/, '')
+  : ''
+const configuredPublishableKey = Constants.expoConfig?.extra?.supabasePublishableKey
+const SUPABASE_PUBLISHABLE_KEY = typeof configuredPublishableKey === 'string'
+  ? configuredPublishableKey.trim()
+  : ''
 const TIMEOUT_MS = 15_000
+const MOBILE_API_BASE_PATH = /(?:\/functions\/v1)?\/mobile-api$/i
 
 export type ApiResult<T> =
   | { success: true; data: T; status: number }
@@ -11,6 +19,9 @@ export type ApiResult<T> =
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+  }
+  if (SUPABASE_PUBLISHABLE_KEY) {
+    headers.apikey = SUPABASE_PUBLISHABLE_KEY
   }
   if (!supabase) {
     return headers
@@ -32,8 +43,16 @@ async function request<T>(
   if (!API_BASE_URL) {
     return {
       success: false,
-      error: 'API chưa được cấu hình',
+      error: 'Dịch vụ chưa được cấu hình',
       code: 'CONFIG_MISSING',
+      status: 0,
+    }
+  }
+  if (!MOBILE_API_BASE_PATH.test(API_BASE_URL)) {
+    return {
+      success: false,
+      error: 'Đường kết nối chưa đúng',
+      code: 'CONFIG_INVALID',
       status: 0,
     }
   }
@@ -52,20 +71,21 @@ async function request<T>(
       signal: controller.signal,
     })
 
-    const json = await response.json()
+    const responseText = await response.text()
+    const json = safeParseJsonObject(responseText)
 
     if (!response.ok) {
       return {
         success: false,
         error: json.error ?? 'Lỗi không xác định',
-        code: json.code ?? 'UNKNOWN',
+        code: typeof json?.code === 'string' ? json.code : `HTTP_${response.status}`,
         status: response.status,
       }
     }
 
-    return { success: true, data: json as T, status: response.status }
+    return { success: true, data: (json ?? {}) as T, status: response.status }
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
+    if (isAbortError(err)) {
       return {
         success: false,
         error: 'Kết nối quá chậm, vui lòng thử lại',
@@ -75,7 +95,7 @@ async function request<T>(
     }
     return {
       success: false,
-      error: 'Không thể kết nối đến server',
+      error: 'Không thể kết nối đến hệ thống',
       code: 'NETWORK_ERROR',
       status: 0,
     }
@@ -88,4 +108,25 @@ export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
+}
+
+type ApiJsonObject = { error?: string; code?: string } & Record<string, unknown>
+
+function safeParseJsonObject(text: string): ApiJsonObject {
+  if (!text.trim()) return {}
+  try {
+    const parsed = JSON.parse(text) as unknown
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? parsed as ApiJsonObject
+      : {}
+  } catch {
+    return {}
+  }
+}
+
+function isAbortError(err: unknown) {
+  return typeof err === 'object' &&
+    err !== null &&
+    'name' in err &&
+    (err as { name?: unknown }).name === 'AbortError'
 }

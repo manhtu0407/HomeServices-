@@ -31,7 +31,7 @@ export type PipelineStageLog = {
 }
 
 export type PipelineResult =
-  | { success: true; estimate: KaelEstimate; fallbackUsed: boolean; stageLogs: PipelineStageLog[] }
+  | { success: true; estimate: KaelEstimate; serviceProblemId: string; fallbackUsed: boolean; stageLogs: PipelineStageLog[] }
   | { success: false; error: string; code: string; stageLogs: PipelineStageLog[] }
 
 function timed<T>(fn: () => Promise<T>): Promise<{ result: T; ms: number }> {
@@ -171,7 +171,7 @@ export async function runKaelPipeline(
     disclaimer: PRICE_DISCLAIMER,
   }
 
-  return { success: true, estimate, fallbackUsed, stageLogs }
+  return { success: true, estimate, serviceProblemId: baselineResult.serviceProblemId, fallbackUsed, stageLogs }
 }
 
 function buildAdvisory(severityIndicators: string[]): string | null {

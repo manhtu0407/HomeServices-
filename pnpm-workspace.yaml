@@ -11,3 +11,8 @@ onlyBuiltDependencies:
   - sharp
   - supabase
   - unrs-resolver
+overrides:
+  postcss: 8.5.14
+peerDependencyRules:
+  allowedVersions:
+    "@types/react-dom@19.2.3>@types/react": ">=19.1.10 <20"

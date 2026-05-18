@@ -9,6 +9,7 @@ export type BaselineResult =
       priceMin: number
       priceMax: number
       matchedDistrict: string
+      serviceProblemId: string
       /** Set when a learned rule shifted the baseline. Absent => raw baseline. */
       learnedRuleId?: string
       learnedRuleVersion?: number
@@ -42,17 +43,43 @@ export async function fetchBaseline(
 ): Promise<BaselineResult> {
   const districts = district === CITYWIDE_DISTRICT ? [CITYWIDE_DISTRICT] : [district, CITYWIDE_DISTRICT]
 
-  const [baselineResult, learnedRule] = await Promise.all([
+  const [problemResult, learnedRule] = await Promise.all([
     withDbTimeout(
       supabase
-        .from('price_baselines')
-        .select('price_min, price_max, district_code')
+        .from('service_problems')
+        .select('id')
         .eq('service_type', serviceType)
-        .eq('complexity', complexity)
-        .in('district_code', districts),
+        .eq('slug', problemSlug),
     ),
     applyLearnedPriceRule(supabase, serviceType, problemSlug, district),
   ])
+
+  const { data: problems, error: problemError } = problemResult
+  if (problemError) {
+    console.warn('Baseline problem lookup failed', { serviceType, problemSlug, errorCode: problemError.code })
+    return {
+      success: false,
+      error: `Service problem lookup failed for ${serviceType}/${problemSlug}`,
+    }
+  }
+
+  const problemId = problems?.[0]?.id
+  if (!problemId) {
+    return {
+      success: false,
+      error: `No service problem found for ${serviceType}/${problemSlug}`,
+    }
+  }
+
+  const baselineResult = await withDbTimeout(
+    supabase
+      .from('price_baselines')
+      .select('price_min, price_max, district_code')
+      .eq('service_problem_id', problemId)
+      .eq('service_type', serviceType)
+      .eq('complexity', complexity)
+      .in('district_code', districts),
+  )
 
   const { data, error } = baselineResult
 
@@ -83,6 +110,16 @@ export async function fetchBaseline(
     }
   }
 
+  const rawPriceMin = positiveNumberFrom(chosen.price_min)
+  const rawPriceMax = positiveNumberFrom(chosen.price_max)
+  if (rawPriceMin === null || rawPriceMax === null || rawPriceMax < rawPriceMin) {
+    console.warn('Baseline row failed price validation', { serviceType, complexity, district })
+    return {
+      success: false,
+      error: `Invalid price baseline found for ${serviceType}/${complexity}/${district}`,
+    }
+  }
+
   // Learned rule overrides raw baseline when present.
   if (learnedRule) {
     return {
@@ -90,6 +127,7 @@ export async function fetchBaseline(
       priceMin: learnedRule.priceMin,
       priceMax: learnedRule.priceMax,
       matchedDistrict: chosen.district_code,
+      serviceProblemId: problemId,
       learnedRuleId: learnedRule.ruleId,
       learnedRuleVersion: learnedRule.ruleVersion,
     }
@@ -97,8 +135,14 @@ export async function fetchBaseline(
 
   return {
     success: true,
-    priceMin: chosen.price_min,
-    priceMax: chosen.price_max,
+    priceMin: rawPriceMin,
+    priceMax: rawPriceMax,
     matchedDistrict: chosen.district_code,
+    serviceProblemId: problemId,
   }
+}
+
+function positiveNumberFrom(value: unknown): number | null {
+  const number = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(number) && number > 0 ? number : null
 }

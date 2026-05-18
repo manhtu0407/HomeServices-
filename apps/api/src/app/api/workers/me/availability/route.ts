@@ -1,12 +1,20 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
-import { availabilityToggleSchema } from '@home-services/shared'
 import { withDbTimeout } from '@/lib/db/query'
+import { availabilityToggleSchema } from '@home-services/shared'
+
+type AvailabilityRpcRow = {
+  ok: boolean
+  error_code: string | null
+  is_available: boolean | null
+  updated_at_ts: string | null
+}
 
 /**
- * PATCH /api/workers/me/availability — B2
+ * PATCH /api/workers/me/availability
  *
- * Worker toggles online/offline. Only approved & not-suspended workers may
- * become available. Setting is_available=false is always allowed (going offline).
+ * Reference-only Next route. Mobile runtime uses Supabase Edge mobile-api.
+ * Availability still goes through the same atomic RPC so the reference backend
+ * cannot drift into a race-prone direct table update.
  */
 export async function PATCH(request: Request) {
   const auth = await authenticateRequest(request, ['worker'])
@@ -22,61 +30,46 @@ export async function PATCH(request: Request) {
   try {
     body = await request.json()
   } catch {
-    return apiError('VALIDATION', 'Dữ liệu không hợp lệ', 400)
+    return apiError('VALIDATION', 'Invalid request body', 400)
   }
 
   const parsed = availabilityToggleSchema.safeParse(body)
   if (!parsed.success) {
-    return apiError('VALIDATION', 'Dữ liệu không hợp lệ', 400)
+    return apiError('VALIDATION', 'Invalid request body', 400)
   }
 
-  const { is_available } = parsed.data
-
-  const { data: worker, error: fetchErr } = await withDbTimeout(
-    auth.supabase
-      .from('worker_profiles')
-      .select('id, is_approved, is_suspended, verification_status')
-      .eq('id', auth.user.id)
-      .maybeSingle(),
+  const { data, error } = await withDbTimeout(
+    auth.supabase.rpc('set_worker_availability_atomic', {
+      p_worker_id: auth.user.id,
+      p_is_available: parsed.data.is_available,
+    }),
   )
 
-  if (fetchErr) {
-    console.warn('Availability: worker lookup failed', { userId: auth.user.id, errorCode: fetchErr.code })
-    return apiError('DB_ERROR', 'Không thể tải hồ sơ thợ', 500)
+  if (error) {
+    console.warn('Availability: RPC failed', { userId: auth.user.id, errorCode: error.code })
+    return apiError('DB_ERROR', 'Cannot update availability', 500)
   }
 
-  if (!worker) {
-    return apiError('NOT_FOUND', 'Vui lòng hoàn tất đăng ký trước', 404)
-  }
-
-  // Going online requires approved + not suspended
-  if (is_available && (!worker.is_approved || worker.is_suspended)) {
-    return apiError(
-      'NOT_APPROVED',
-      worker.is_suspended
-        ? 'Tài khoản đang bị khóa, không thể bật online'
-        : 'Tài khoản chưa được duyệt, không thể bật online',
-      403,
-    )
-  }
-
-  const now = new Date().toISOString()
-
-  const { error: updateErr } = await withDbTimeout(
-    auth.supabase
-      .from('worker_profiles')
-      .update({ is_available, updated_at: now })
-      .eq('id', auth.user.id),
-  )
-
-  if (updateErr) {
-    console.warn('Availability: update failed', { userId: auth.user.id, errorCode: updateErr.code })
-    return apiError('DB_ERROR', 'Không thể cập nhật trạng thái', 500)
-  }
+  const row = (Array.isArray(data) ? data[0] : data) as AvailabilityRpcRow | null
+  if (!row) return apiError('DB_ERROR', 'Cannot update availability', 500)
+  if (!row.ok) return mapAvailabilityRpcError(row.error_code)
 
   return apiSuccess({
     worker_id: auth.user.id,
-    is_available,
-    updated_at: now,
+    is_available: Boolean(row.is_available),
+    updated_at: row.updated_at_ts,
   })
+}
+
+function mapAvailabilityRpcError(errorCode: string | null) {
+  if (errorCode === 'NOT_FOUND') {
+    return apiError('NOT_FOUND', 'Complete worker registration first', 404)
+  }
+  if (errorCode === 'NOT_APPROVED') {
+    return apiError('NOT_APPROVED', 'Worker profile is not approved for online work', 403)
+  }
+  if (errorCode === 'WORKER_BUSY') {
+    return apiError('WORKER_BUSY', 'An active job is already assigned to this worker', 409)
+  }
+  return apiError('DB_ERROR', 'Cannot update availability', 500)
 }

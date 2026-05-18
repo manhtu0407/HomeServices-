@@ -1,5 +1,5 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
-import { computeEarnings, type EarningsRange } from '@/lib/workers/earnings'
+import { computeEarnings, EarningsQueryError, type EarningsRange } from '@/lib/workers/earnings'
 
 /**
  * GET /api/workers/me/earnings — B8
@@ -47,7 +47,15 @@ export async function GET(request: Request) {
     return apiError('VALIDATION', '"from" phải nhỏ hơn hoặc bằng "to"', 400)
   }
 
-  const summary = await computeEarnings(auth.supabase, auth.user.id, range)
+  let summary
+  try {
+    summary = await computeEarnings(auth.supabase, auth.user.id, range)
+  } catch (err) {
+    if (err instanceof EarningsQueryError) {
+      return apiError('DB_ERROR', 'Không thể tải thu nhập', 500)
+    }
+    throw err
+  }
 
   return apiSuccess({
     worker_id: summary.workerId,
