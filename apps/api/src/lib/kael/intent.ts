@@ -2,7 +2,7 @@ import { callAI } from '@/lib/ai/client'
 import { buildIntentMessages } from './prompts'
 import { intentResultSchema, type IntentResult } from './schemas'
 import { safeParseJSON } from './parsing'
-import { sanitizeForLLM } from '@home-services/shared'
+import { sanitizeForLLM, scrubSensitiveForLLM } from '@home-services/shared'
 
 export type IntentClassifyResult =
   | { success: true; intent: IntentResult; failureReason?: undefined }
@@ -13,45 +13,50 @@ export async function classifyIntent(
   problemChips: string[],
   description: string,
 ): Promise<IntentClassifyResult> {
-  const sanitized = sanitizeForLLM(description)
-  const sanitizedChips = problemChips.map(sanitizeForLLM)
+  const sanitized = scrubSensitiveForLLM(description)
+  const sanitizedChips = problemChips.map(scrubSensitiveForLLM)
   const messages = buildIntentMessages(sanitizeForLLM(serviceType), sanitizedChips, sanitized)
 
-  const result = await callAI({
-    provider: 'deepseek',
-    model: 'deepseek-chat',
-    messages,
-    maxTokens: 200,
-    temperature: 0.1,
-  })
+  const failures: string[] = []
+  for (const candidate of [
+    { provider: 'deepseek' as const, model: 'deepseek-v4-flash' },
+    { provider: 'anthropic' as const, model: 'claude-sonnet-4-6' },
+  ]) {
+    const result = await callAI({
+      provider: candidate.provider,
+      model: candidate.model,
+      messages,
+      maxTokens: 200,
+      temperature: 0.1,
+    })
 
-  if (!result.success) {
-    return {
-      success: false,
-      fallback: buildFallbackIntent(serviceType, problemChips),
-      failureReason: `AI call failed: ${result.code} — ${result.error}`,
+    if (!result.success) {
+      failures.push(`${candidate.provider}: AI call failed: ${result.code} - ${result.error}`)
+      continue
     }
+
+    const parsed = safeParseJSON(result.content)
+    if (!parsed) {
+      failures.push(`${candidate.provider}: JSON parse failed on AI response`)
+      continue
+    }
+
+    const validated = intentResultSchema.safeParse(parsed)
+    if (!validated.success) {
+      failures.push(
+        `${candidate.provider}: Schema validation failed: ${validated.error.issues[0]?.message ?? 'unknown'}`,
+      )
+      continue
+    }
+
+    return { success: true, intent: validated.data }
   }
 
-  const parsed = safeParseJSON(result.content)
-  if (!parsed) {
-    return {
-      success: false,
-      fallback: buildFallbackIntent(serviceType, problemChips),
-      failureReason: 'JSON parse failed on AI response',
-    }
+  return {
+    success: false,
+    fallback: buildFallbackIntent(serviceType, problemChips),
+    failureReason: failures.join('; '),
   }
-
-  const validated = intentResultSchema.safeParse(parsed)
-  if (!validated.success) {
-    return {
-      success: false,
-      fallback: buildFallbackIntent(serviceType, problemChips),
-      failureReason: `Schema validation failed: ${validated.error.issues[0]?.message ?? 'unknown'}`,
-    }
-  }
-
-  return { success: true, intent: validated.data }
 }
 
 function buildFallbackIntent(

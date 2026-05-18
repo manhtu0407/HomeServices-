@@ -40,12 +40,13 @@ describe('mobile local workflow state machine', () => {
       'arrived',
       'inspecting',
       'repairing',
+      'scope_change_pending',
       'completed_by_worker',
       'confirmed_by_customer',
+      'reviewed',
       'cancelled',
     ])
     expect([...LOCAL_DEAL_STATUSES]).not.toContain('payment_pending')
-    expect([...LOCAL_DEAL_STATUSES]).not.toContain('scope_change_pending')
   })
 
   it('starts empty and does not fabricate a booking, worker, price, payment, or review', () => {
@@ -184,13 +185,13 @@ describe('mobile local workflow state machine', () => {
     expect(selectLocalWorkflow(corrected).draftValidationMessage).toBeNull()
   })
 
-  it('moves booking to customer confirmation with backend-only estimate and now-only schedule', () => {
+  it('moves booking to customer confirmation with remote estimate placeholder and now-only schedule', () => {
     const state = reduce(validBookingActions)
     const selectors = selectLocalWorkflow(state)
 
     expect(state.deal?.status).toBe('awaiting_customer_confirm')
     expect(state.deal?.draft.timeChoice).toBe('now')
-    expect(state.deal?.estimate?.priceRangeLabel).toBe('Cần backend ước tính')
+    expect(state.deal?.estimate?.priceRangeLabel).toBe('Chờ Kael ước tính')
     expect(state.deal?.estimate?.hasVndPrice).toBe(false)
     expect(state.deal?.estimate?.disclaimer).toContain('thợ')
     expect(selectors.scheduleMode).toBe('now_only')
@@ -214,6 +215,26 @@ describe('mobile local workflow state machine', () => {
 
     expect(state.deal?.status).toBe('draft')
     expect(state.lastError).toContain('Chọn ít nhất một vấn đề')
+    expect(selectors.canConfirmCustomerSearch).toBe(false)
+  })
+
+  it('blocks analysis when the booking address has no concrete HCMC district', () => {
+    const state = reduce([
+      { type: 'start_home_service', serviceType: 'plumbing' },
+      {
+        type: 'update_booking_draft',
+        patch: {
+          addressLabel: 'Thanh Xuan, Ha Noi',
+          description: 'Vòi nước dưới lavabo rò liên tục, đã khóa van phụ.',
+          problemChips: [PROBLEM_CHIPS.plumbing[0]],
+        },
+      },
+      { type: 'submit_booking_draft' },
+    ])
+    const selectors = selectLocalWorkflow(state)
+
+    expect(state.deal?.status).toBe('draft')
+    expect(state.lastError).toContain('quận TP.HCM')
     expect(selectors.canConfirmCustomerSearch).toBe(false)
   })
 
@@ -304,7 +325,7 @@ describe('mobile local workflow state machine', () => {
 
     expect(gatedOff.deal?.status).toBe('broadcasting')
     expect(gatedOff.deal?.broadcast?.status).toBe('sent')
-    expect(gatedOff.lastError).toContain('local audit')
+    expect(gatedOff.lastError).toContain('workflow')
     expect(selectLocalWorkflow(gatedOff).canWorkerAccept).toBe(false)
   })
 
@@ -314,7 +335,7 @@ describe('mobile local workflow state machine', () => {
 
     expect(gatedOff.deal?.status).toBe('broadcasting')
     expect(gatedOff.deal?.broadcast?.status).toBe('sent')
-    expect(gatedOff.lastError).toContain('local audit')
+    expect(gatedOff.lastError).toContain('workflow')
     expect(selectLocalWorkflow(gatedOff).customerSearchState).toBe('searching')
   })
 
@@ -341,7 +362,12 @@ describe('mobile local workflow state machine', () => {
     const selectors = selectLocalWorkflow(confirmed)
     expect(confirmed.deal?.status).toBe('confirmed_by_customer')
     expect(selectors.paymentLocked).toBe(true)
-    expect(selectors.reviewLocked).toBe(true)
+    expect(selectors.reviewLocked).toBe(false)
+    expect(selectors.canCustomerSubmitReview).toBe(true)
+
+    const reviewed = localWorkflowReducer(confirmed, { type: 'customer_submit_review' })
+    expect(reviewed.deal?.status).toBe('reviewed')
+    expect(selectLocalWorkflow(reviewed).reviewLocked).toBe(true)
   })
 
   it('blocks worker status progression when the local audit gate is closed', () => {
@@ -349,7 +375,7 @@ describe('mobile local workflow state machine', () => {
     const gatedOff = localWorkflowReducer({ ...accepted, workerGate: 'backend_pending' }, { type: 'worker_start_travel' })
 
     expect(gatedOff.deal?.status).toBe('worker_matched')
-    expect(gatedOff.lastError).toContain('local audit')
+    expect(gatedOff.lastError).toContain('workflow')
     expect(selectLocalWorkflow(gatedOff).canWorkerAdvance).toBe(false)
   })
 
@@ -412,6 +438,64 @@ describe('mobile local workflow state machine', () => {
     expect(attempted.lastError).toContain('worker')
   })
 
+  it('hydrates active scope-change details from the remote job snapshot', () => {
+    const state = localWorkflowReducer(createInitialLocalWorkflowState(), {
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-1',
+        status: 'scope_change_pending',
+        serviceType: 'electrical',
+        description: 'Breaker keeps tripping',
+        problemChips: ['Breaker trip'],
+        addressLabel: 'Block A, Quận 7',
+        districtLabel: 'Quận 7',
+        mediaCount: 0,
+        estimate: null,
+        broadcast: null,
+        scopeChange: {
+          id: 'scope-1',
+          status: 'waiting_customer_decision',
+          requestedDescription: 'Replace damaged breaker',
+          reason: 'Breaker is burnt',
+          priceMin: 250000,
+          priceMax: 250000,
+          createdAt: '2026-05-17T00:00:00.000Z',
+        },
+        finalPrice: null,
+      },
+    })
+
+    expect(state.deal?.status).toBe('scope_change_pending')
+    expect(state.deal?.scopeChange?.id).toBe('scope-1')
+    expect(state.deal?.scopeChange?.priceMin).toBe(250000)
+    expect(selectLocalWorkflow(state).canWorkerAdvance).toBe(false)
+  })
+
+  it('marks a stale remote worker broadcast as expired when backend no longer returns it', () => {
+    const state = localWorkflowReducer(createInitialLocalWorkflowState(), {
+      type: 'hydrate_remote_broadcast',
+      broadcast: {
+        broadcastId: 'broadcast-1',
+        jobId: 'job-1',
+        status: 'sent',
+        serviceType: 'plumbing',
+        problemSummary: 'Pipe leak',
+        generalArea: 'Quận 7',
+        secondsRemaining: 25,
+        estimatedPriceLabel: '150.000đ - 350.000đ',
+        estimatedEarningLabel: '135.000đ - 315.000đ',
+      },
+    })
+    const expired = localWorkflowReducer(state, { type: 'mark_remote_broadcast_expired' })
+    const selectors = selectLocalWorkflow(expired)
+
+    expect(expired.deal?.status).toBe('broadcasting')
+    expect(expired.deal?.broadcast?.status).toBe('expired')
+    expect(expired.deal?.broadcast?.secondsRemaining).toBe(0)
+    expect(expired.workerGate).toBe('backend_pending')
+    expect(selectors.canWorkerAccept).toBe(false)
+  })
+
   it('does not let worker actions advance after worker completion or customer confirmation', () => {
     const completed = reduce([
       ...validBookingActions,
@@ -425,7 +509,7 @@ describe('mobile local workflow state machine', () => {
     ])
     const attemptedAfterCompletion = localWorkflowReducer(completed, { type: 'worker_start_repair' })
     expect(attemptedAfterCompletion.deal?.status).toBe('completed_by_worker')
-    expect(attemptedAfterCompletion.lastError).toContain('local audit')
+    expect(attemptedAfterCompletion.lastError).toContain('workflow')
 
     const confirmed = localWorkflowReducer(completed, { type: 'customer_confirm_completion' })
     const attemptedAfterConfirm = localWorkflowReducer(confirmed, { type: 'worker_start_travel' })
@@ -433,7 +517,7 @@ describe('mobile local workflow state machine', () => {
 
     expect(attemptedAfterConfirm.deal?.status).toBe('confirmed_by_customer')
     expect(selectors.paymentLocked).toBe(true)
-    expect(selectors.reviewLocked).toBe(true)
+    expect(selectors.reviewLocked).toBe(false)
   })
 
   it('keeps a worker decline as local no-worker UI without fake worker match', () => {
@@ -475,6 +559,29 @@ describe('mobile local workflow state machine', () => {
     expect(reopened.deal?.draft.description).toContain('lavabo')
     expect(reopened.workerGate).toBe('backend_pending')
     expect(selectors.customerSearchState).toBe('idle')
+  })
+
+  it('reopens a backend-cancelled no-worker broadcast as an editable draft', () => {
+    const broadcasting = reduce([...validBookingActions, { type: 'confirm_customer_search' }])
+    const declined = localWorkflowReducer(broadcasting, { type: 'worker_decline_broadcast' })
+    const cancelled = localWorkflowReducer({
+      ...declined,
+      deal: declined.deal
+        ? {
+            ...declined.deal,
+            status: 'cancelled',
+            broadcast: declined.deal.broadcast
+              ? { ...declined.deal.broadcast, status: 'cancelled' }
+              : null,
+          }
+        : null,
+    }, { type: 'reopen_booking_draft' })
+
+    expect(cancelled.deal?.status).toBe('draft')
+    expect(cancelled.deal?.draft.description).toBe(broadcasting.deal?.draft.description)
+    expect(cancelled.deal?.broadcast).toBeNull()
+    expect(cancelled.workerGate).toBe('backend_pending')
+    expect(cancelled.lastError).toBeNull()
   })
 
   it('does not reopen a still-searching broadcast as a hidden cancellation', () => {

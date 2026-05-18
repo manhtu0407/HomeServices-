@@ -993,6 +993,15 @@ export type Database = {
           ok: boolean
         }[]
       }
+      cancel_job_before_accept_atomic: {
+        Args: { p_customer_id: string; p_job_id: string }
+        Returns: {
+          cancelled_at_ts: string | null
+          error_code: string | null
+          job_status: Database["public"]["Enums"]["job_status"] | null
+          ok: boolean
+        }[]
+      }
       decide_scope_change_atomic: {
         Args: {
           p_customer_id: string
@@ -1022,6 +1031,31 @@ export type Database = {
           ok: boolean
           scope_change_id: string
           scope_status: Database["public"]["Enums"]["scope_change_status"]
+        }[]
+      }
+      set_worker_availability_atomic: {
+        Args: { p_is_available: boolean; p_worker_id: string }
+        Returns: {
+          error_code: string | null
+          is_available: boolean | null
+          ok: boolean
+          updated_at_ts: string | null
+        }[]
+      }
+      submit_review_atomic: {
+        Args: {
+          p_comment: string | null
+          p_customer_id: string
+          p_job_id: string
+          p_rating: number
+          p_tags: string[]
+        }
+        Returns: {
+          error_code: string | null
+          job_status: Database["public"]["Enums"]["job_status"] | null
+          ok: boolean
+          review_id: string | null
+          reviewed_at_ts: string | null
         }[]
       }
     }

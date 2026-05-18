@@ -79,28 +79,6 @@ function authForbidden() {
   })
 }
 
-function authAs(role: 'customer' | 'worker' | 'admin', userId = 'user-1') {
-  const supabase: any = {
-    from: vi.fn(() => {
-      const chain: any = {}
-      chain.select = vi.fn(() => chain)
-      chain.eq = vi.fn(() => chain)
-      chain.update = vi.fn(() => chain)
-      chain.insert = vi.fn(() => chain)
-      chain.single = vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-      chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null })
-      chain.then = (cb: any) => Promise.resolve({ data: null, error: null }).then(cb)
-      return chain
-    }),
-  }
-  mockAuthenticate.mockResolvedValue({
-    success: true,
-    user: { id: userId, email: `${userId}@test.test` },
-    role,
-    supabase,
-  })
-}
-
 beforeEach(() => {
   mockAuthenticate.mockReset()
 })
@@ -143,6 +121,35 @@ describe('Worker-only routes reject non-workers', () => {
     const { PATCH } = await import('@/app/api/workers/me/availability/route')
     const res = await PATCH(makeRequest('PATCH', { is_available: true }))
     expect(res.status).toBe(403)
+  })
+
+  it('PATCH /workers/me/availability: active job blocks online state', async () => {
+    const supabase: any = {
+      rpc: vi.fn(async () => ({
+        data: [{
+          ok: false,
+          error_code: 'WORKER_BUSY',
+          is_available: null,
+          updated_at_ts: null,
+        }],
+        error: null,
+      })),
+    }
+    mockAuthenticate.mockResolvedValue({
+      success: true,
+      user: { id: 'worker-1', email: 'worker-1@test.test' },
+      role: 'worker',
+      supabase,
+    })
+    const { PATCH } = await import('@/app/api/workers/me/availability/route')
+    const res = await PATCH(makeRequest('PATCH', { is_available: true }))
+    const body = await res.json()
+    expect(res.status).toBe(409)
+    expect(body.code).toBe('WORKER_BUSY')
+    expect(supabase.rpc).toHaveBeenCalledWith('set_worker_availability_atomic', {
+      p_worker_id: 'worker-1',
+      p_is_available: true,
+    })
   })
 
   it('GET /workers/me/broadcasts: customer role → 403', async () => {
@@ -192,6 +199,44 @@ describe('Worker-only routes reject non-workers', () => {
     const { PATCH } = await import('@/app/api/jobs/[id]/status/route')
     const res = await PATCH(makeRequest('PATCH', { status: 'arrived' }), makeParams('job-1'))
     expect(res.status).toBe(403)
+  })
+
+  it('PATCH /jobs/[id]/status: concurrent status change → 409', async () => {
+    const query: any = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      }),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: null,
+        error: null,
+      }),
+    }
+    const supabase: any = {
+      from: vi.fn(() => query),
+    }
+    mockAuthenticate.mockResolvedValue({
+      success: true,
+      user: { id: 'worker-1', email: 'worker-1@test.test' },
+      role: 'worker',
+      supabase,
+    })
+
+    const { PATCH } = await import('@/app/api/jobs/[id]/status/route')
+    const res = await PATCH(makeRequest('PATCH', { status: 'arrived' }), makeParams('job-1'))
+    const body = await res.json()
+
+    expect(res.status).toBe(409)
+    expect(body.code).toBe('STATUS_CHANGED')
+    expect(query.eq).toHaveBeenCalledWith('status', 'worker_on_way')
+    expect(query.maybeSingle).toHaveBeenCalled()
   })
 })
 

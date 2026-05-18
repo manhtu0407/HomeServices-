@@ -90,7 +90,7 @@ export function computePricePriorPayload(
   baselineUsedMin: number,
   baselineUsedMax: number,
   observations: PriceObservation[],
-  windowDays: number = ROLLING_WINDOW_DAYS,
+  _windowDays: number = ROLLING_WINDOW_DAYS,
 ): PricePriorPayload {
   const finalPrices = observations.map((o) => o.finalPrice)
   const estimateMins = observations.map((o) => o.estimateMin)
@@ -121,8 +121,6 @@ export function computePricePriorPayload(
 
   const shiftMin = newMin - baselineUsedMin
   const shiftMax = newMax - baselineUsedMax
-  const confidence = confidenceFromIqr(final.p25, final.p75, final.median)
-
   // Window: oldest observation timestamp to newest.
   const reviewedTimes = observations.map((o) => o.reviewedAt).sort()
   const fromTs = reviewedTimes[0] ?? new Date().toISOString()

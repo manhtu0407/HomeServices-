@@ -6,6 +6,7 @@ import {
   reviewSchema,
   chatMessageSchema,
   sanitizeForLLM,
+  scrubSensitiveForLLM,
   SERVICE_TYPES,
 } from '../index'
 
@@ -369,5 +370,13 @@ describe('sanitizeForLLM', () => {
 
   it('strips DEL character (0x7F)', () => {
     expect(sanitizeForLLM('before\x7Fafter')).toBe('beforeafter')
+  })
+})
+
+describe('scrubSensitiveForLLM', () => {
+  it('removes phone, email, and id-like numbers after sanitizing text', () => {
+    const input = '  SĐT 0901234567, email tu@example.com, CCCD 001234567890\x00  '
+
+    expect(scrubSensitiveForLLM(input)).toBe('SĐT [phone], email [email], CCCD [id-number]')
   })
 })

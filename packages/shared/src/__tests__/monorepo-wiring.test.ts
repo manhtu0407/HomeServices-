@@ -212,11 +212,11 @@ describe('apps/mobile/package.json', () => {
     expect(pkg.dependencies['@supabase/supabase-js']).toBeDefined()
   })
 
-  it('has AsyncStorage for session persistence', () => {
+  it('has AsyncStorage for non-sensitive local UI preferences', () => {
     expect(pkg.dependencies['@react-native-async-storage/async-storage']).toBeDefined()
   })
 
-  it('has expo-secure-store', () => {
+  it('has expo-secure-store for Supabase session persistence', () => {
     expect(pkg.dependencies['expo-secure-store']).toBeDefined()
   })
 

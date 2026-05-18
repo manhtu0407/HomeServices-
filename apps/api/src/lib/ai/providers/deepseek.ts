@@ -17,6 +17,8 @@ export async function callDeepSeek(request: AIRequest): Promise<AIResponse> {
       model: request.model,
       max_tokens: request.maxTokens ?? 1024,
       temperature: request.temperature ?? 0.7,
+      thinking: { type: 'disabled' },
+      response_format: { type: 'json_object' },
       messages: request.messages.map((m) => ({
         role: m.role,
         content: m.content,

@@ -857,12 +857,28 @@ function WorkerProfileContent() {
 
 function WorkerMapStage() {
   const { copy, tokens } = useWorkerUi()
-  const { selectors, state } = useFrontendWorkflow()
+  const { actions, selectors, state, workerProfile } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
   const broadcast = deal?.broadcast
   const mapSearch = broadcast?.generalArea ?? deal?.draft.districtLabel ?? copy.home.mapSearch
-  const statusTitle = deal ? statusLabel(selectors.currentStatus) : copy.home.online
+  const nextAvailability = !workerProfile?.is_available
+  const isOperationallyBusy = Boolean(
+    acceptedDeal &&
+      selectors.currentStatus !== 'confirmed_by_customer' &&
+      selectors.currentStatus !== 'reviewed',
+  )
+  const canToggleAvailability = Boolean(workerProfile) &&
+    (!nextAvailability || (workerProfile?.is_approved && !workerProfile?.is_suspended && !isOperationallyBusy))
+  const statusTitle = deal
+    ? statusLabel(selectors.currentStatus)
+    : workerProfile?.is_available
+      ? 'Đang online'
+      : workerProfile?.is_suspended
+        ? 'Tài khoản đang khóa'
+        : workerProfile?.is_approved
+          ? 'Đang offline'
+          : copy.home.online
 
   return (
     <View style={[styles.mapStage, glassSurface(tokens, 'base')]} testID="worker-flexible-map-shell">
@@ -894,7 +910,19 @@ function WorkerMapStage() {
         </View>
       ) : null}
 
-      <View style={[styles.shiftCard, glassSurface(tokens, 'raised')]} testID="worker-availability-toggle">
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: Boolean(workerProfile?.is_available), disabled: !canToggleAvailability }}
+        disabled={!canToggleAvailability}
+        onPress={() => void actions.workerUpdateAvailability(nextAvailability)}
+        style={({ pressed }) => [
+          styles.shiftCard,
+          glassSurface(tokens, 'raised'),
+          !canToggleAvailability ? styles.disabledButton : null,
+          pressed ? styles.pressed : null,
+        ]}
+        testID="worker-availability-toggle"
+      >
         <GlassSheen />
         <GlassMotionLayer compact />
         <View style={styles.rowBetween}>
@@ -902,7 +930,7 @@ function WorkerMapStage() {
             <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.home.status}</Text>
             <Text style={[styles.heroTitle, { color: tokens.ink }]}>{statusTitle}</Text>
           </View>
-          <View style={[styles.toggleTrack, { backgroundColor: deal ? tokens.primary : tokens.borderStrong }]}>
+          <View style={[styles.toggleTrack, { backgroundColor: workerProfile?.is_available ? tokens.primary : tokens.borderStrong }]}>
             <View style={[styles.toggleKnob, { backgroundColor: tokens.raised }]} />
           </View>
         </View>
@@ -911,7 +939,7 @@ function WorkerMapStage() {
           <Metric label={copy.home.estimate} value="--" />
           <Metric label={copy.home.rating} value="--" />
         </View>
-      </View>
+      </Pressable>
     </View>
   )
 }
@@ -947,26 +975,82 @@ function getNextWorkerAction(status: LocalDealStatus | null): { label: string; t
   return null
 }
 
+function workerStatusForAction(action: WorkerProgressAction): Extract<LocalDealStatus, 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'completed_by_worker'> | null {
+  if (action === 'worker_start_travel') return 'worker_on_way'
+  if (action === 'worker_mark_arrived') return 'arrived'
+  if (action === 'worker_start_inspection') return 'inspecting'
+  if (action === 'worker_start_repair') return 'repairing'
+  if (action === 'worker_complete_job') return 'completed_by_worker'
+  return null
+}
+
 function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const { copy, tokens } = useWorkerUi()
-  const { dispatch, selectors, state } = useFrontendWorkflow()
+  const { actions, selectors, state } = useFrontendWorkflow()
+  const [finalPriceDraft, setFinalPriceDraft] = useState('')
+  const [scopeDescriptionDraft, setScopeDescriptionDraft] = useState('')
+  const [scopePriceDraft, setScopePriceDraft] = useState('')
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast ?? null
   const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus) : null
+  const canRequestScopeChange = selectors.currentStatus === 'inspecting' || selectors.currentStatus === 'repairing'
   const hasBroadcast = Boolean(broadcast)
   const secondsRemainingLabel = broadcast?.secondsRemaining === null || broadcast?.secondsRemaining === undefined ? null : `${broadcast.secondsRemaining}s`
   const confirmWorkerProgressAction = (action: { label: string; type: WorkerProgressAction }) => {
+    const nextStatus = workerStatusForAction(action.type)
+    if (!nextStatus) return
     if (action.type !== 'worker_complete_job') {
-      dispatch({ type: action.type })
+      void actions.workerUpdateStatus(nextStatus)
+      return
+    }
+
+    const finalPrice = Number.parseInt(finalPriceDraft.replace(/[^\d]/g, ''), 10)
+    if (!Number.isFinite(finalPrice) || finalPrice <= 0) {
+      Alert.alert('Cần giá cuối cùng', 'Nhập giá cuối cùng thực tế trước khi báo hoàn tất.')
       return
     }
 
     Alert.alert(
       'Xác nhận báo hoàn tất?',
-      'Worker audit sẽ báo khách kiểm tra và xác nhận. Thanh toán, đánh giá và giá cuối vẫn khóa cho tới khi backend được nối.',
+      'Hệ thống sẽ báo khách kiểm tra và xác nhận. Thanh toán vẫn khóa ở giai đoạn này.',
       [
         { text: 'Kiểm tra lại', style: 'cancel' },
-        { text: action.label, onPress: () => dispatch({ type: action.type }) },
+        {
+          text: action.label,
+          onPress: () => void actions.workerUpdateStatus(nextStatus, {
+            completion_notes: 'Thợ báo đã hoàn tất từ app mobile.',
+            completion_photo_urls: [],
+            final_price: finalPrice,
+          }),
+        },
+      ],
+    )
+  }
+  const submitScopeChangeRequest = () => {
+    const description = scopeDescriptionDraft.trim()
+    const price = Number.parseInt(scopePriceDraft.replace(/[^\d]/g, ''), 10)
+    if (description.length < 10) {
+      Alert.alert('Cần mô tả phạm vi mới', 'Nhập rõ phần phát sinh để khách quyết định.')
+      return
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+      Alert.alert('Cần giá mới', 'Nhập mức giá mới để khách duyệt thay đổi phạm vi.')
+      return
+    }
+    Alert.alert(
+      'Gửi yêu cầu đổi phạm vi?',
+      'Hệ thống sẽ khóa tiến độ cho tới khi khách duyệt hoặc từ chối.',
+      [
+        { text: 'Kiểm tra lại', style: 'cancel' },
+        {
+          text: 'Gửi',
+          onPress: () => void actions.requestScopeChange({
+            new_description: description,
+            new_price_min: price,
+            new_price_max: price,
+            reason: description,
+          }),
+        },
       ],
     )
   }
@@ -1017,13 +1101,49 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       </View>
 
       <View style={styles.priceRow}>
-        <Metric label={copy.request.customerEstimate} value="--" />
-        <Metric label={copy.request.workerEarns} value="--" />
+        <Metric label={copy.request.customerEstimate} value={broadcast?.estimatedPriceLabel ?? '--'} />
+        <Metric label={copy.request.workerEarns} value={broadcast?.estimatedEarningLabel ?? '--'} />
       </View>
+      {canRequestScopeChange ? (
+        <View style={styles.scopeRequestBox} testID="worker-scope-change-request">
+          <TextInput
+            onChangeText={setScopeDescriptionDraft}
+            placeholder="Mô tả phần phát sinh"
+            placeholderTextColor={tokens.subtle}
+            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
+            value={scopeDescriptionDraft}
+          />
+          <TextInput
+            keyboardType="number-pad"
+            onChangeText={setScopePriceDraft}
+            placeholder="Giá mới cần khách duyệt"
+            placeholderTextColor={tokens.subtle}
+            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
+            value={scopePriceDraft}
+          />
+          <PressButton label="Yêu cầu đổi phạm vi" onPress={submitScopeChangeRequest} secondary testID="worker-scope-change-submit" />
+        </View>
+      ) : null}
+      {selectors.currentStatus === 'scope_change_pending' ? (
+        <Text style={[styles.bodyText, { color: tokens.muted }]} testID="worker-scope-change-waiting">
+          Chờ khách quyết định thay đổi phạm vi.
+        </Text>
+      ) : null}
+      {nextAction?.type === 'worker_complete_job' ? (
+        <TextInput
+          keyboardType="number-pad"
+          onChangeText={setFinalPriceDraft}
+          placeholder="Giá cuối cùng"
+          placeholderTextColor={tokens.subtle}
+          style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
+          testID="worker-final-price-input"
+          value={finalPriceDraft}
+        />
+      ) : null}
       {selectors.canWorkerAccept ? (
         <View style={styles.actionRow}>
-          <PressButton label={copy.request.decline} onPress={() => dispatch({ type: 'worker_decline_broadcast' })} secondary />
-          <PressButton label={copy.request.accept} onPress={() => dispatch({ type: 'worker_accept_broadcast' })} testID="worker-local-accept-deal" />
+          <PressButton label={copy.request.decline} onPress={() => void actions.workerDeclineBroadcast()} secondary />
+          <PressButton label={copy.request.accept} onPress={() => void actions.workerAcceptBroadcast()} testID="worker-local-accept-deal" />
         </View>
       ) : nextAction ? (
         <PressButton label={nextAction.label} onPress={() => confirmWorkerProgressAction(nextAction)} testID="worker-local-status-action" />
@@ -1814,6 +1934,7 @@ const styles = StyleSheet.create({
   briefDot: { borderRadius: 999, height: 5, marginTop: 7, width: 5 },
   briefText: { flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 16 },
   priceRow: { flexDirection: 'row', gap: 8 },
+  scopeRequestBox: { gap: 8 },
   actionRow: { flexDirection: 'row', gap: 10 },
   adminSwitchWrap: { flexDirection: 'row' },
   pressButton: { alignItems: 'center', borderRadius: 18, flex: 1, justifyContent: 'center', minHeight: 46 },

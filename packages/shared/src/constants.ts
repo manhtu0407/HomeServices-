@@ -213,3 +213,16 @@ export function normalizeDistrict(input: string | null | undefined): DistrictSlu
 
   return DEFAULT_DISTRICT
 }
+
+/**
+ * Strict customer dispatch district parser.
+ *
+ * `normalizeDistrict()` intentionally keeps a city-wide fallback for legacy
+ * reads and broad worker coverage. New customer jobs need a concrete district,
+ * otherwise we could broadcast an unknown/non-HCMC address as all of HCMC.
+ */
+export function normalizeServiceAreaDistrict(input: string | null | undefined): Exclude<DistrictSlug, 'hcmc_all'> | null {
+  const canonical = normalizeDistrict(input)
+  if (canonical === DEFAULT_DISTRICT) return null
+  return canonical as Exclude<DistrictSlug, 'hcmc_all'>
+}

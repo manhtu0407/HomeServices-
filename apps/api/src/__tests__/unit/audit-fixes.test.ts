@@ -4,7 +4,7 @@
  * Supabase timeout, DB-level worker filtering, confirm-completion chain,
  * non-greedy JSON parsing, body validation in review route.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 // ─── assertOwnership ─────────────────────────────────────────
 

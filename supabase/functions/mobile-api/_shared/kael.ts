@@ -1,0 +1,1114 @@
+import { z } from "zod";
+import type { ComplexityLevel, ServiceType } from "../../_shared/domain.ts";
+import { sanitizeForLLM } from "../../_shared/domain.ts";
+
+export const PRICE_DISCLAIMER =
+  "Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.";
+
+export const UNSUPPORTED_SERVICE_MESSAGE =
+  "Chúng tôi hiện chỉ hỗ trợ sửa điện và sửa nước. Vui lòng quay lại khi chúng tôi mở rộng dịch vụ.";
+
+const intentResultSchema = z.object({
+  service_type: z.enum(["electrical", "plumbing", "unsupported"]),
+  problem_slug: z.string().min(1).max(100),
+  confidence: z.number().min(0).max(1),
+  needs_clarification: z.boolean(),
+});
+
+const visionResultSchema = z.object({
+  problem_identified: z.string().min(1).max(500),
+  severity_indicators: z.array(z.string().max(200)).max(5),
+  complexity_hint: z.enum(["small", "medium", "large"]),
+});
+
+const marketPriceResultSchema = z.object({
+  market_range_min: z.number().int().positive(),
+  market_range_max: z.number().int().positive(),
+  confidence: z.number().min(0).max(1),
+  sources_summary: z.string().max(1000).optional(),
+});
+
+type IntentResult = z.infer<typeof intentResultSchema>;
+type VisionResult = z.infer<typeof visionResultSchema>;
+type MarketPriceResult = z.infer<typeof marketPriceResultSchema>;
+
+const PROBLEM_SLUGS_BY_SERVICE: Record<ServiceType, readonly string[]> = {
+  electrical: [
+    "breaker_trip",
+    "electrical-general",
+    "flickering_light",
+    "install_device",
+    "other_electrical",
+    "outlet_or_switch_broken",
+    "power_outage_one_room",
+    "power_outage_whole_unit",
+  ],
+  plumbing: [
+    "clogged_drain_or_sink",
+    "faucet_broken",
+    "install_or_replace_fixture",
+    "other_plumbing",
+    "pipe_leak",
+    "plumbing-general",
+    "toilet_flush_issue",
+    "weak_water_pressure",
+  ],
+};
+
+const FALLBACK_PROBLEM_SLUG_BY_SERVICE: Record<ServiceType, string> = {
+  electrical: "other_electrical",
+  plumbing: "other_plumbing",
+};
+
+type AIProvider = "anthropic" | "perplexity" | "deepseek";
+type AIMessage = { role: "system" | "user" | "assistant"; content: string };
+type AIRequest = {
+  provider: AIProvider;
+  model: string;
+  messages: AIMessage[];
+  maxTokens?: number;
+  temperature?: number;
+};
+
+type AIResponse = {
+  success: true;
+  content: string;
+  usage: { inputTokens: number; outputTokens: number; costUsd: number };
+  latencyMs: number;
+};
+
+type ProviderRequestSpec = {
+  url: string;
+  headers: Record<string, string>;
+  body: Record<string, unknown>;
+  parse(
+    data: Record<string, unknown>,
+    latencyMs: number,
+    model: string,
+  ): AIResponse;
+};
+
+type AIError = {
+  success: false;
+  provider: AIProvider;
+  code: string;
+  error: string;
+};
+
+export type EdgeAiSecrets = {
+  anthropicApiKey?: string;
+  perplexityApiKey?: string;
+  deepseekApiKey?: string;
+};
+
+export type PipelineInput = {
+  serviceType: string;
+  problemChips: string[];
+  description: string;
+  district: string;
+};
+
+export type PipelineStageLog = {
+  stage: "intent" | "vision" | "baseline" | "market" | "synthesis";
+  provider?: AIProvider;
+  model?: string;
+  latencyMs: number;
+  success: boolean;
+  failureReason?: string;
+  fallbackUsed: boolean;
+  inputTokens?: number;
+  outputTokens?: number;
+  costUsd?: number;
+};
+
+type IntentAttemptLog = Omit<PipelineStageLog, "stage" | "fallbackUsed">;
+
+export type KaelEstimate = {
+  service_type: ServiceType;
+  problem_category: string;
+  problem_summary: string;
+  complexity: ComplexityLevel;
+  price_min: number;
+  price_max: number;
+  confidence: number;
+  advisory: string | null;
+  disclaimer: string;
+};
+
+export type PipelineResult =
+  | {
+    success: true;
+    estimate: KaelEstimate;
+    serviceProblemId: string;
+    fallbackUsed: boolean;
+    stageLogs: PipelineStageLog[];
+  }
+  | {
+    success: false;
+    error: string;
+    code: string;
+    stageLogs: PipelineStageLog[];
+  };
+
+export async function runKaelPipeline(
+  input: PipelineInput,
+  supabase: SupabaseLike,
+  secrets: EdgeAiSecrets,
+): Promise<PipelineResult> {
+  const { serviceType, district } = input;
+  const problemChips = input.problemChips.map(scrubSensitiveForLLM);
+  const description = scrubSensitiveForLLM(input.description);
+  const stageLogs: PipelineStageLog[] = [];
+  let fallbackUsed = false;
+
+  const intentStage = await classifyIntent(
+    serviceType,
+    problemChips,
+    description,
+    secrets,
+  );
+  const intent = intentStage.success
+    ? intentStage.intent
+    : intentStage.fallback;
+  fallbackUsed ||= !intentStage.success;
+  intentStage.attempts.forEach((attempt, index) => {
+    stageLogs.push({
+      stage: "intent",
+      ...attempt,
+      fallbackUsed: !intentStage.success &&
+        index === intentStage.attempts.length - 1,
+    });
+  });
+
+  if (intent.service_type === "unsupported") {
+    return {
+      success: false,
+      error: UNSUPPORTED_SERVICE_MESSAGE,
+      code: "UNSUPPORTED",
+      stageLogs,
+    };
+  }
+
+  const validServiceType = intent.service_type;
+  const normalizedProblem = normalizeProblemSlugForService(
+    validServiceType,
+    intent.problem_slug,
+  );
+  const problemSlug = normalizedProblem.slug;
+  fallbackUsed ||= normalizedProblem.normalized;
+  const visionStage = await timed(() =>
+    analyzeDescription(
+      description,
+      `${validServiceType}: ${problemSlug}`,
+      secrets,
+    )
+  );
+  const analysis = visionStage.result.success
+    ? visionStage.result.analysis
+    : visionStage.result.fallback;
+  fallbackUsed ||= !visionStage.result.success;
+  stageLogs.push({
+    stage: "vision",
+    provider: "anthropic",
+    model: "claude-sonnet-4-6",
+    latencyMs: visionStage.ms,
+    success: visionStage.result.success,
+    failureReason: visionStage.result.success
+      ? undefined
+      : visionStage.result.failureReason,
+    fallbackUsed: !visionStage.result.success,
+  });
+
+  const baselineStage = await timed(() =>
+    fetchBaseline(
+      supabase,
+      validServiceType,
+      problemSlug,
+      analysis.complexity_hint,
+      district,
+    )
+  );
+  stageLogs.push({
+    stage: "baseline",
+    latencyMs: baselineStage.ms,
+    success: baselineStage.result.success,
+    failureReason: baselineStage.result.success
+      ? undefined
+      : baselineStage.result.error,
+    fallbackUsed: false,
+  });
+
+  if (!baselineStage.result.success) {
+    return {
+      success: false,
+      error:
+        "Không có dữ liệu giá tham khảo cho dịch vụ này. Vui lòng thử lại sau.",
+      code: "NO_BASELINE",
+      stageLogs,
+    };
+  }
+
+  const marketStage = await timed(() =>
+    searchMarketPrice(
+      validServiceType,
+      problemSlug,
+      analysis.complexity_hint,
+      district,
+      secrets,
+    )
+  );
+  fallbackUsed ||= !marketStage.result.success;
+  stageLogs.push({
+    stage: "market",
+    provider: "perplexity",
+    model: "sonar",
+    latencyMs: marketStage.ms,
+    success: marketStage.result.success,
+    failureReason: marketStage.result.success
+      ? undefined
+      : marketStage.result.failureReason,
+    fallbackUsed: !marketStage.result.success,
+  });
+
+  const synthStart = Date.now();
+  const synthesized = synthesizePrice({
+    baselineMin: baselineStage.result.priceMin,
+    baselineMax: baselineStage.result.priceMax,
+    market: marketStage.result.success ? marketStage.result.market : null,
+    complexityHint: analysis.complexity_hint,
+  });
+  stageLogs.push({
+    stage: "synthesis",
+    latencyMs: Date.now() - synthStart,
+    success: true,
+    fallbackUsed: false,
+  });
+
+  return {
+    success: true,
+    fallbackUsed,
+    stageLogs,
+    serviceProblemId: baselineStage.result.serviceProblemId,
+    estimate: {
+      service_type: validServiceType,
+      problem_category: problemSlug,
+      problem_summary: analysis.problem_identified,
+      complexity: analysis.complexity_hint,
+      price_min: synthesized.price_min,
+      price_max: synthesized.price_max,
+      confidence: synthesized.confidence,
+      advisory: buildAdvisory(analysis.severity_indicators),
+      disclaimer: PRICE_DISCLAIMER,
+    },
+  };
+}
+
+function normalizeProblemSlugForService(
+  serviceType: ServiceType,
+  problemSlug: string,
+): { slug: string; normalized: boolean } {
+  const allowed = PROBLEM_SLUGS_BY_SERVICE[serviceType];
+  const trimmed = problemSlug.trim();
+  const variants = [
+    trimmed,
+    trimmed.toLowerCase(),
+    trimmed.toLowerCase().replace(/\s+/g, "_"),
+  ];
+  const match = variants.find((variant) => allowed.includes(variant));
+  if (match) return { slug: match, normalized: match !== problemSlug };
+  return {
+    slug: FALLBACK_PROBLEM_SLUG_BY_SERVICE[serviceType],
+    normalized: true,
+  };
+}
+
+async function classifyIntent(
+  serviceType: string,
+  problemChips: string[],
+  description: string,
+  secrets: EdgeAiSecrets,
+): Promise<
+  | { success: true; intent: IntentResult; attempts: IntentAttemptLog[] }
+  | {
+    success: false;
+    fallback: IntentResult;
+    failureReason: string;
+    attempts: IntentAttemptLog[];
+  }
+> {
+  const messages = buildIntentMessages(
+    sanitizeForLLM(serviceType),
+    problemChips.map(sanitizeForLLM),
+    description,
+  );
+  const attempts: IntentAttemptLog[] = [];
+
+  for (
+    const candidate of [
+      { provider: "deepseek" as const, model: "deepseek-v4-flash" },
+      { provider: "anthropic" as const, model: "claude-sonnet-4-6" },
+    ]
+  ) {
+    const attempt = await classifyIntentWithProvider(
+      candidate.provider,
+      candidate.model,
+      messages,
+      secrets,
+    );
+    attempts.push(attempt.log);
+    if (attempt.success) {
+      return { success: true, intent: attempt.intent, attempts };
+    }
+  }
+
+  return {
+    success: false,
+    fallback: buildFallbackIntent(serviceType, problemChips, description),
+    failureReason: attempts.map((attempt) =>
+      `${attempt.provider ?? "unknown"}:${attempt.failureReason ?? "failed"}`
+    ).join("; "),
+    attempts,
+  };
+}
+
+async function classifyIntentWithProvider(
+  provider: AIProvider,
+  model: string,
+  messages: AIMessage[],
+  secrets: EdgeAiSecrets,
+): Promise<
+  | { success: true; intent: IntentResult; log: IntentAttemptLog }
+  | { success: false; log: IntentAttemptLog }
+> {
+  const attempt = await timed(() =>
+    callAI({
+      provider,
+      model,
+      messages,
+      maxTokens: 200,
+      temperature: 0.1,
+    }, secrets)
+  );
+  const baseLog = {
+    provider,
+    model,
+    latencyMs: attempt.ms,
+  };
+
+  if (!attempt.result.success) {
+    return {
+      success: false,
+      log: {
+        ...baseLog,
+        success: false,
+        failureReason: `AI call failed: ${attempt.result.code}`,
+      },
+    };
+  }
+
+  const parsed = safeParseJSON(attempt.result.content);
+  const validated = parsed ? intentResultSchema.safeParse(parsed) : null;
+  if (!validated?.success) {
+    return {
+      success: false,
+      log: {
+        ...baseLog,
+        success: false,
+        failureReason: "AI intent JSON validation failed",
+        inputTokens: attempt.result.usage.inputTokens,
+        outputTokens: attempt.result.usage.outputTokens,
+        costUsd: attempt.result.usage.costUsd,
+      },
+    };
+  }
+
+  return {
+    success: true,
+    intent: validated.data,
+    log: {
+      ...baseLog,
+      success: true,
+      inputTokens: attempt.result.usage.inputTokens,
+      outputTokens: attempt.result.usage.outputTokens,
+      costUsd: attempt.result.usage.costUsd,
+    },
+  };
+}
+
+async function analyzeDescription(
+  description: string,
+  intentContext: string,
+  secrets: EdgeAiSecrets,
+): Promise<
+  | { success: true; analysis: VisionResult }
+  | { success: false; fallback: VisionResult; failureReason: string }
+> {
+  const result = await callAI({
+    provider: "anthropic",
+    model: "claude-sonnet-4-6",
+    messages: buildVisionMessages(description, sanitizeForLLM(intentContext)),
+    maxTokens: 500,
+    temperature: 0.2,
+  }, secrets);
+
+  if (!result.success) {
+    return {
+      success: false,
+      fallback: buildFallbackVision(intentContext),
+      failureReason: `AI call failed: ${result.code}`,
+    };
+  }
+
+  const parsed = safeParseJSON(result.content);
+  const validated = parsed ? visionResultSchema.safeParse(parsed) : null;
+  if (!validated?.success) {
+    return {
+      success: false,
+      fallback: buildFallbackVision(intentContext),
+      failureReason: "AI vision JSON validation failed",
+    };
+  }
+
+  return { success: true, analysis: validated.data };
+}
+
+async function searchMarketPrice(
+  serviceType: ServiceType,
+  problem: string,
+  complexity: ComplexityLevel,
+  district: string,
+  secrets: EdgeAiSecrets,
+): Promise<
+  { success: true; market: MarketPriceResult } | {
+    success: false;
+    failureReason: string;
+  }
+> {
+  const result = await callAI({
+    provider: "perplexity",
+    model: "sonar",
+    messages: buildPricingMessages(serviceType, problem, complexity, district),
+    maxTokens: 300,
+    temperature: 0.1,
+  }, secrets);
+
+  if (!result.success) {
+    return { success: false, failureReason: `AI call failed: ${result.code}` };
+  }
+
+  const parsed = safeParseJSON(result.content);
+  const validated = parsed ? marketPriceResultSchema.safeParse(parsed) : null;
+  if (!validated?.success) {
+    return {
+      success: false,
+      failureReason: "AI market JSON validation failed",
+    };
+  }
+  if (validated.data.market_range_max < validated.data.market_range_min) {
+    return {
+      success: false,
+      failureReason: "market_range_max < market_range_min",
+    };
+  }
+  return { success: true, market: validated.data };
+}
+
+async function callAI(
+  request: AIRequest,
+  secrets: EdgeAiSecrets,
+): Promise<AIResponse | AIError> {
+  const apiKey = providerKey(request.provider, secrets);
+  if (!apiKey) {
+    return {
+      success: false,
+      provider: request.provider,
+      code: "KEY_MISSING",
+      error: "provider key missing",
+    };
+  }
+
+  const timeout = request.provider === "anthropic"
+    ? 20_000
+    : request.provider === "perplexity"
+    ? 15_000
+    : 10_000;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    if (attempt > 0) {
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10_000);
+      console.warn("AI retry", {
+        provider: request.provider,
+        model: request.model,
+        attempt,
+        backoffMs: delay,
+      });
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+
+    const controller = new AbortController();
+    try {
+      const response = await withTimeout(
+        callProvider(request, apiKey, controller.signal),
+        timeout,
+        controller,
+      );
+      console.log("AI call success", {
+        provider: request.provider,
+        model: request.model,
+        inputTokens: response.usage.inputTokens,
+        outputTokens: response.usage.outputTokens,
+        costUsd: response.usage.costUsd.toFixed(6),
+        latencyMs: response.latencyMs,
+      });
+      return response;
+    } catch (err) {
+      lastError = err;
+      if (!isRetryableProviderError(err) || attempt === 2) break;
+    }
+  }
+
+  const code = lastError instanceof ProviderHttpError
+    ? `HTTP_${lastError.status}`
+    : "AI_CALL_FAILED";
+  console.error("AI call failed", {
+    provider: request.provider,
+    model: request.model,
+    code,
+    retriesExhausted: true,
+  });
+  return {
+    success: false,
+    provider: request.provider,
+    code,
+    error: code,
+  };
+}
+
+async function callProvider(
+  request: AIRequest,
+  apiKey: string,
+  signal: AbortSignal,
+): Promise<AIResponse> {
+  const start = Date.now();
+  const { url, headers, body, parse } = providerRequest(request, apiKey);
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    signal,
+  });
+  const latencyMs = Date.now() - start;
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new ProviderHttpError(response.status, text);
+  }
+
+  return parse(await response.json(), latencyMs, request.model);
+}
+
+function providerRequest(
+  request: AIRequest,
+  apiKey: string,
+): ProviderRequestSpec {
+  if (request.provider === "anthropic") {
+    return {
+      url: "https://api.anthropic.com/v1/messages",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: {
+        model: request.model,
+        max_tokens: request.maxTokens ?? 1024,
+        temperature: request.temperature ?? 0.7,
+        messages: request.messages
+          .filter((m) => m.role !== "system")
+          .map((m) => ({ role: m.role, content: m.content })),
+        system: request.messages.find((m) => m.role === "system")?.content,
+      },
+      parse: (
+        data: Record<string, unknown>,
+        latencyMs: number,
+        model: string,
+      ) => {
+        const content = getPath<string>(data, ["content", 0, "text"]) ?? "";
+        const inputTokens = getPath<number>(data, ["usage", "input_tokens"]) ??
+          0;
+        const outputTokens =
+          getPath<number>(data, ["usage", "output_tokens"]) ?? 0;
+        const isHaiku = model.includes("haiku");
+        const costUsd = inputTokens * ((isHaiku ? 0.25 : 3) / 1_000_000) +
+          outputTokens * ((isHaiku ? 1.25 : 15) / 1_000_000);
+        return {
+          success: true as const,
+          content,
+          usage: { inputTokens, outputTokens, costUsd },
+          latencyMs,
+        };
+      },
+    };
+  }
+
+  const openAiCompatibleUrl = request.provider === "perplexity"
+    ? "https://api.perplexity.ai/v1/sonar"
+    : "https://api.deepseek.com/chat/completions";
+  return {
+    url: openAiCompatibleUrl,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: {
+      model: request.model,
+      max_tokens: request.maxTokens ?? 1024,
+      temperature: request.temperature ?? 0.2,
+      ...(request.provider === "deepseek"
+        ? {
+          thinking: { type: "disabled" },
+          response_format: { type: "json_object" },
+        }
+        : {}),
+      messages: request.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    },
+    parse: (data: Record<string, unknown>, latencyMs: number) => {
+      const content =
+        getPath<string>(data, ["choices", 0, "message", "content"]) ?? "";
+      const inputTokens = getPath<number>(data, ["usage", "prompt_tokens"]) ??
+        0;
+      const outputTokens =
+        getPath<number>(data, ["usage", "completion_tokens"]) ?? 0;
+      const costUsd = request.provider === "deepseek"
+        ? inputTokens * (0.14 / 1_000_000) + outputTokens * (0.28 / 1_000_000)
+        : inputTokens * (1 / 1_000_000) + outputTokens * (1 / 1_000_000);
+      return {
+        success: true as const,
+        content,
+        usage: { inputTokens, outputTokens, costUsd },
+        latencyMs,
+      };
+    },
+  };
+}
+
+function providerKey(
+  provider: AIProvider,
+  secrets: EdgeAiSecrets,
+): string | undefined {
+  if (provider === "anthropic") return secrets.anthropicApiKey;
+  if (provider === "perplexity") return secrets.perplexityApiKey;
+  return secrets.deepseekApiKey;
+}
+
+function synthesizePrice(input: {
+  baselineMin: number;
+  baselineMax: number;
+  market: MarketPriceResult | null;
+  complexityHint: ComplexityLevel;
+}): { price_min: number; price_max: number; confidence: number } {
+  if (!input.market) {
+    return {
+      price_min: input.baselineMin,
+      price_max: input.baselineMax,
+      confidence: 0.4,
+    };
+  }
+
+  const complexityMultiplier = input.complexityHint === "large"
+    ? 1.2
+    : input.complexityHint === "small"
+    ? 0.85
+    : 1;
+  let priceMin = Math.round(
+    (input.market.market_range_min * 0.6 + input.baselineMin * 0.4) *
+      complexityMultiplier,
+  );
+  let priceMax = Math.round(
+    (input.market.market_range_max * 0.6 + input.baselineMax * 0.4) *
+      complexityMultiplier,
+  );
+
+  priceMin = Math.round(priceMin / 1000) * 1000;
+  priceMax = Math.round(priceMax / 1000) * 1000;
+  if (priceMax <= priceMin) priceMax = priceMin + 50_000;
+  return {
+    price_min: priceMin,
+    price_max: priceMax,
+    confidence:
+      Math.round(Math.min(0.85, (input.market.confidence + 0.5) / 2) * 100) /
+      100,
+  };
+}
+
+async function fetchBaseline(
+  supabase: SupabaseLike,
+  serviceType: ServiceType,
+  problemSlug: string,
+  complexity: ComplexityLevel,
+  district: string,
+): Promise<
+  {
+    success: true;
+    priceMin: number;
+    priceMax: number;
+    serviceProblemId: string;
+  } | {
+    success: false;
+    error: string;
+  }
+> {
+  const districts = district === "hcmc_all"
+    ? ["hcmc_all"]
+    : [district, "hcmc_all"];
+  const { data: problems, error: problemError } = await withDbTimeout<
+    {
+      data: Array<Record<string, unknown>> | null;
+      error: { code?: string; message?: string } | null;
+    }
+  >(
+    supabase
+      .from("service_problems")
+      .select("id")
+      .eq("service_type", serviceType)
+      .eq("slug", problemSlug) as PromiseLike<
+        {
+          data: Array<Record<string, unknown>> | null;
+          error: { code?: string; message?: string } | null;
+        }
+      >,
+  );
+  if (problemError) {
+    console.warn("Baseline problem lookup failed", {
+      serviceType,
+      problemSlug,
+      errorCode: problemError.code,
+    });
+    return { success: false, error: "baseline problem lookup failed" };
+  }
+  const problemId = problems?.[0]?.id;
+  if (typeof problemId !== "string" || problemId.length === 0) {
+    return { success: false, error: "no service problem" };
+  }
+
+  const { data, error } = await withDbTimeout<
+    {
+      data: Array<Record<string, unknown>> | null;
+      error: { code?: string; message?: string } | null;
+    }
+  >(
+    supabase
+      .from("price_baselines")
+      .select("price_min, price_max, district_code")
+      .eq("service_problem_id", problemId)
+      .eq("service_type", serviceType)
+      .eq("complexity", complexity)
+      .in("district_code", districts) as PromiseLike<
+        {
+          data: Array<Record<string, unknown>> | null;
+          error: { code?: string; message?: string } | null;
+        }
+      >,
+  );
+
+  if (error) {
+    console.warn("Baseline query failed", {
+      serviceType,
+      complexity,
+      district,
+      errorCode: error.code,
+    });
+    return { success: false, error: "baseline query failed" };
+  }
+  if (!data || data.length === 0) {
+    return { success: false, error: "no baseline" };
+  }
+  const exact = data.find((row) => row.district_code === district);
+  const citywide = data.find((row) => row.district_code === "hcmc_all");
+  const chosen = exact ?? citywide;
+  if (!chosen) return { success: false, error: "no matching baseline" };
+  const priceMin = positiveNumberFrom(chosen.price_min);
+  const priceMax = positiveNumberFrom(chosen.price_max);
+  if (priceMin === null || priceMax === null || priceMax < priceMin) {
+    console.warn("Baseline row failed price validation", {
+      serviceType,
+      complexity,
+      district,
+    });
+    return { success: false, error: "invalid baseline" };
+  }
+  return {
+    success: true,
+    priceMin,
+    priceMax,
+    serviceProblemId: problemId,
+  };
+}
+
+function buildFallbackIntent(
+  serviceType: string,
+  problemChips: string[],
+  description: string,
+): IntentResult {
+  if (hasUnsupportedRepairIntent(description)) {
+    return {
+      service_type: "unsupported",
+      problem_slug: "unsupported",
+      confidence: 0.2,
+      needs_clarification: false,
+    };
+  }
+
+  const validServiceType =
+    serviceType === "electrical" || serviceType === "plumbing"
+      ? serviceType
+      : "unsupported";
+  const slugMap: Record<string, string> = {
+    "Mất điện một phòng": "power_outage_one_room",
+    "Mất điện toàn căn": "power_outage_whole_unit",
+    "Ổ cắm/công tắc hỏng": "outlet_or_switch_broken",
+    "Cầu dao trip": "breaker_trip",
+    "Đèn chập chờn": "flickering_light",
+    "Lắp thêm thiết bị": "install_device",
+    "Ống rò rỉ": "pipe_leak",
+    "Tắc cống/bồn": "clogged_drain_or_sink",
+    "Vòi hỏng": "faucet_broken",
+    "Toilet không xả": "toilet_flush_issue",
+    "Áp nước yếu": "weak_water_pressure",
+    "Lắp/thay thiết bị": "install_or_replace_fixture",
+  };
+  const firstChip = problemChips[0] ?? "";
+  const slug = slugMap[firstChip] ??
+    (validServiceType === "electrical"
+      ? "other_electrical"
+      : validServiceType === "plumbing"
+      ? "other_plumbing"
+      : "unsupported");
+  return {
+    service_type: validServiceType,
+    problem_slug: slug,
+    confidence: 0.3,
+    needs_clarification: false,
+  };
+}
+
+function buildFallbackVision(intentContext: string): VisionResult {
+  return {
+    problem_identified: intentContext || "Vấn đề cần kiểm tra trực tiếp",
+    severity_indicators: [],
+    complexity_hint: "medium",
+  };
+}
+
+function buildIntentMessages(
+  serviceType: string,
+  problemChips: string[],
+  description: string,
+): AIMessage[] {
+  return [
+    {
+      role: "system",
+      content:
+        `You are an intent classifier for a home repair service in Ho Chi Minh City.
+Supported services: electrical, plumbing. Nothing else.
+If the request is not about electrical or plumbing repair, classify as "unsupported".
+Allowed electrical problem_slug values: ${
+          PROBLEM_SLUGS_BY_SERVICE.electrical.join(", ")
+        }.
+Allowed plumbing problem_slug values: ${
+          PROBLEM_SLUGS_BY_SERVICE.plumbing.join(", ")
+        }.
+If the exact problem is unclear, use other_electrical or other_plumbing for the chosen service.
+Respond only with valid JSON for: service_type, problem_slug, confidence, needs_clarification.`,
+    },
+    {
+      role: "user",
+      content: `Service: ${serviceType}
+Problem chips: ${problemChips.join(", ")}
+Description: ${description}`,
+    },
+  ];
+}
+
+function buildVisionMessages(
+  description: string,
+  intentContext: string,
+): AIMessage[] {
+  return [
+    {
+      role: "system",
+      content: `Analyze a Ho Chi Minh City apartment electrical/plumbing issue.
+Respond only with valid JSON: problem_identified, severity_indicators, complexity_hint.
+problem_identified must be Vietnamese. complexity_hint is small, medium, or large.`,
+    },
+    {
+      role: "user",
+      content:
+        `Intent context: ${intentContext}\nCustomer description: ${description}`,
+    },
+  ];
+}
+
+function buildPricingMessages(
+  serviceType: ServiceType,
+  problem: string,
+  complexity: ComplexityLevel,
+  district: string,
+): AIMessage[] {
+  return [
+    {
+      role: "system",
+      content:
+        `Research current market prices for HCMC apartment electrical/plumbing repair.
+Respond only with valid JSON: market_range_min, market_range_max, confidence, sources_summary.
+Prices must be VND integers. If weak evidence, use conservative estimates with confidence below 0.5.`,
+    },
+    {
+      role: "user",
+      content: `Service: ${serviceType}
+Problem: ${problem}
+Complexity: ${complexity}
+District: ${district}
+Location: Ho Chi Minh City, Vietnam`,
+    },
+  ];
+}
+
+function buildAdvisory(indicators: string[]): string | null {
+  const joined = indicators.join(" ").toLowerCase();
+  if (!joined) return null;
+  if (/(cháy|khét|burn|smell|rò điện|giật|ngập|vỡ|tràn|nóng)/i.test(joined)) {
+    return "Nếu có mùi khét, rò điện, nước tràn hoặc dấu hiệu nguy hiểm, hãy ngắt nguồn/khóa nước và chờ thợ kiểm tra trực tiếp.";
+  }
+  return null;
+}
+
+function scrubSensitiveForLLM(input: string): string {
+  return sanitizeForLLM(input)
+    .replace(/\b0\d{8,10}\b/g, "[phone]")
+    .replace(/\b\+?84\d{8,10}\b/g, "[phone]")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
+    .replace(/\b\d{9,12}\b/g, "[id-number]");
+}
+
+function hasUnsupportedRepairIntent(input: string): boolean {
+  const normalized = input.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  return [
+    "dieu hoa",
+    "may lanh",
+    "tu lanh",
+    "may giat",
+    "internet",
+    "sua khoa",
+    "son nha",
+    "ve sinh",
+    "don dep",
+  ].some((keyword) => normalized.includes(keyword));
+}
+
+function safeParseJSON(content: string): unknown | null {
+  try {
+    return JSON.parse(content);
+  } catch {
+    const start = content.indexOf("{");
+    const end = content.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) return null;
+    try {
+      return JSON.parse(content.slice(start, end + 1));
+    } catch {
+      return null;
+    }
+  }
+}
+
+async function timed<T>(
+  fn: () => Promise<T>,
+): Promise<{ result: T; ms: number }> {
+  const start = Date.now();
+  const result = await fn();
+  return { result, ms: Date.now() - start };
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  controller: AbortController,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Timeout after ${ms}ms`));
+    }, ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+function isRetryableProviderError(error: unknown): boolean {
+  if (error instanceof ProviderHttpError) {
+    return error.status === 429 || error.status >= 500;
+  }
+  return error instanceof Error && error.message.includes("Timeout");
+}
+
+class ProviderHttpError extends Error {
+  constructor(public readonly status: number, body: string) {
+    super(`HTTP ${status}: ${body.slice(0, 160)}`);
+  }
+}
+
+function getPath<T>(obj: unknown, path: Array<string | number>): T | undefined {
+  let current = obj;
+  for (const key of path) {
+    if (typeof key === "number") {
+      if (!Array.isArray(current)) return undefined;
+      current = current[key];
+    } else {
+      if (typeof current !== "object" || current === null) return undefined;
+      current = (current as Record<string, unknown>)[key];
+    }
+  }
+  return current as T | undefined;
+}
+
+function positiveNumberFrom(value: unknown): number | null {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
+export type SupabaseLike = {
+  from(table: string): QueryBuilderLike;
+};
+
+type QueryBuilderLike = {
+  select(columns?: string, options?: unknown): QueryBuilderLike;
+  eq(column: string, value: unknown): QueryBuilderLike;
+  in(column: string, values: unknown[]): QueryBuilderLike;
+  then<TResult1 = unknown, TResult2 = never>(
+    onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ): PromiseLike<TResult1 | TResult2>;
+};
+
+async function withDbTimeout<T>(
+  promise: PromiseLike<T>,
+  ms = 10_000,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`DB timeout after ${ms}ms`)), ms);
+  });
+  try {
+    return await Promise.race([Promise.resolve(promise), timeout]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}

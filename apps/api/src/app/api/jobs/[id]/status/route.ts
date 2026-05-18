@@ -89,12 +89,26 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     baseUpdate.completion_photo_urls = input.completion_photo_urls ?? []
   }
 
-  const { error: updateError } = await withDbTimeout(
-    auth.supabase.from('jobs').update(baseUpdate).eq('id', id),
+  const { data: updated, error: updateError } = await withDbTimeout(
+    auth.supabase
+      .from('jobs')
+      .update(baseUpdate)
+      .eq('id', id)
+      .eq('status', job.status)
+      .select('id')
+      .maybeSingle(),
   )
 
   if (updateError) {
     return apiError('DB_ERROR', 'Không thể cập nhật trạng thái', 500)
+  }
+
+  if (!updated) {
+    return apiError(
+      'STATUS_CHANGED',
+      'Trạng thái đã thay đổi. Vui lòng tải lại và thử lại.',
+      409,
+    )
   }
 
   await logJobEvent(auth.supabase, id, 'worker_status_update', { id: auth.user.id, role: 'worker' }, job.status as JobStatus, input.status)

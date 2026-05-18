@@ -264,7 +264,7 @@ describe('callAI', () => {
       expect(result.success).toBe(false)
       if (!result.success) {
         expect(result.provider).toBe('anthropic')
-        expect(result.error).toBe('anthropic API 401')
+        expect(result.error).toBe('HTTP_401')
         expect(result.code).toBe('HTTP_401')
         expect(result.retryable).toBe(false)
       }
@@ -276,13 +276,13 @@ describe('callAI', () => {
 
       if (!result.success) {
         expect(result.code).toBe('AI_CALL_FAILED')
-        expect(result.error).toBe('network down')
+        expect(result.error).toBe('AI_CALL_FAILED')
       }
     })
 
-    it('logs failure details', async () => {
+    it('logs failure details without raw provider messages', async () => {
       mockAnthropic.mockRejectedValueOnce(
-        new AIProviderError('anthropic', 401, '')
+        new AIProviderError('anthropic', 401, 'secret provider body')
       )
       await callAI(makeRequest())
 
@@ -293,6 +293,10 @@ describe('callAI', () => {
           code: 'HTTP_401',
           retriesExhausted: true,
         })
+      )
+      expect(console.error).not.toHaveBeenCalledWith(
+        'AI call failed',
+        expect.objectContaining({ error: expect.stringContaining('secret provider body') }),
       )
     })
   })

@@ -4,6 +4,11 @@ Date: 2026-05-14
 Status: ready for Tu review before production UI build planning
 Surface: Expo React Native customer app
 
+2026-05-18 update: this remains a historical A2-A5 UI-prep artifact. The
+store-bound runtime path is now Supabase Edge Function `mobile-api`; do not use
+the older local/mock or "out of scope for the next UI slice" language below to
+block the current backend wiring work.
+
 ## Purpose
 
 This document converts the approved Client Price Check prototype learnings into a production UI contract. It is a preparation artifact only. The throwaway runtime prototype files were removed after the production slice was accepted; keep the decisions here, not in runtime reference code.
@@ -141,15 +146,15 @@ Fallback/error behavior:
 - Retry must re-enter loading without losing the user's draft.
 - If no safe estimate exists, show unavailable state instead of a fake price.
 
-## API And Backend Boundary For Later
+## Backend Boundary
 
-This prep phase does not implement these endpoints. The next backend/Kael plan should align with this boundary:
+The current mobile runtime is Supabase Edge Function `mobile-api`, not hosted Next.js. Mobile should align with this boundary:
 
-- `GET /api/service-catalog` returns supported electrical/plumbing categories and problem chips.
-- `POST /api/price-checks` accepts validated input and returns a structured estimate, clarification request, fallback, or clear unavailable/error state.
+- `GET /functions/v1/mobile-api/services` returns supported electrical/plumbing categories, problem chips, and baselines.
+- `POST /functions/v1/mobile-api/jobs` accepts validated input and returns a structured estimate, fallback marker, or clear unavailable/error state.
 - Mobile sends Supabase access token through `Authorization: Bearer <token>`.
-- API verifies user and role server-side.
-- Service-role Supabase client stays inside API/lib boundary only.
+- Edge verifies user and role server-side.
+- Service-role Supabase client stays inside Edge/server-only boundary.
 - React Native never calls AI providers, never stores server secrets, and never mutates workflow-sensitive tables directly.
 
 Future shared contracts should live in `packages/shared`:

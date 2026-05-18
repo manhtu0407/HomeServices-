@@ -45,8 +45,13 @@ const fromEnv = (...keys: string[]) => {
 }
 
 const supabaseUrl = fromEnv('EXPO_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL')
-const supabasePublishableKey = fromEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
-const apiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
+const supabasePublishableKey = fromEnv(
+  'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+)
+const configuredApiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
+const apiBaseUrl =
+  configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : '')
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,

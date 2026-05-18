@@ -21,6 +21,13 @@ export type DeclineResult =
   | { success: true; jobId: string }
   | { success: false; error: string; code: string; status: number }
 
+function relatedJob(value: unknown): Record<string, unknown> | null {
+  if (Array.isArray(value)) {
+    return typeof value[0] === 'object' && value[0] !== null ? value[0] as Record<string, unknown> : null
+  }
+  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : null
+}
+
 /**
  * Map error codes from PG RPC to HTTP-friendly responses + Vietnamese messages.
  */
@@ -48,6 +55,13 @@ function mapAcceptError(errorCode: string | null): {
         error: 'Yêu cầu đã được thợ khác nhận trước',
         code: 'ALREADY_TAKEN',
         status: 409,
+      }
+    case 'WORKER_NOT_ELIGIBLE':
+      return {
+        success: false,
+        error: 'Tài khoản thợ chưa đủ điều kiện nhận việc',
+        code: 'WORKER_NOT_ELIGIBLE',
+        status: 403,
       }
     default:
       return { success: false, error: 'Lỗi khi nhận yêu cầu', code: 'DB_ERROR', status: 500 }
@@ -136,9 +150,12 @@ export async function declineBroadcast(
   const { data: broadcast, error } = await withDbTimeout(
     supabase
       .from('job_broadcasts')
-      .select('id, status')
+      .select('id, status, expires_at, jobs(status)')
       .eq('job_id', jobId)
       .eq('worker_id', workerId)
+      .eq('status', 'sent')
+      .order('sent_at', { ascending: false })
+      .limit(1)
       .maybeSingle(),
   )
 
@@ -155,16 +172,58 @@ export async function declineBroadcast(
     }
   }
 
-  const { error: updateErr } = await withDbTimeout(
+  const parentJob = relatedJob((broadcast as { jobs?: unknown }).jobs)
+  if (!parentJob || parentJob.status !== 'broadcasting') {
+    return { success: false, error: 'Yêu cầu này đã được xử lý', code: 'BROADCAST_NOT_ACTIVE', status: 409 }
+  }
+
+  const now = new Date().toISOString()
+  if (broadcast.expires_at && broadcast.expires_at <= now) {
+    const { data: expiredRow, error: expiredErr } = await withDbTimeout(
+      supabase
+        .from('job_broadcasts')
+        .update({ status: 'expired', responded_at: now })
+        .eq('id', broadcast.id)
+        .eq('status', 'sent')
+        .select('id')
+        .maybeSingle(),
+    )
+    if (expiredErr) {
+      console.warn('Decline: expire update failed', { jobId, workerId, errorCode: expiredErr.code })
+      return { success: false, error: 'Không thể cập nhật broadcast hết hạn', code: 'DB_ERROR', status: 500 }
+    }
+    if (!expiredRow) {
+      return { success: false, error: 'Yêu cầu này đã được xử lý', code: 'BROADCAST_NOT_ACTIVE', status: 409 }
+    }
+    await logJobEvent(
+      supabase,
+      jobId,
+      'broadcast_expired',
+      { id: workerId, role: 'worker' },
+      null,
+      null,
+      { reason: 'EXPIRED via decline' },
+    )
+    return { success: false, error: 'Yêu cầu đã hết hạn', code: 'EXPIRED', status: 410 }
+  }
+
+  const { data: updatedRow, error: updateErr } = await withDbTimeout(
     supabase
       .from('job_broadcasts')
-      .update({ status: 'declined', responded_at: new Date().toISOString() })
-      .eq('id', broadcast.id),
+      .update({ status: 'declined', responded_at: now })
+      .eq('id', broadcast.id)
+      .eq('status', 'sent')
+      .select('id')
+      .maybeSingle(),
   )
 
   if (updateErr) {
     console.warn('Decline: update failed', { jobId, workerId, errorCode: updateErr.code })
     return { success: false, error: 'Lỗi khi từ chối', code: 'DB_ERROR', status: 500 }
+  }
+
+  if (!updatedRow) {
+    return { success: false, error: 'Yêu cầu này đã được xử lý', code: 'BROADCAST_NOT_ACTIVE', status: 409 }
   }
 
   return { success: true, jobId }

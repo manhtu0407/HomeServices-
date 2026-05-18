@@ -144,6 +144,14 @@ describe('kael-schemas — marketPriceResultSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('accepts longer Sonar source summaries without discarding valid price JSON', () => {
+    const result = marketPriceResultSchema.safeParse({
+      ...validMarket,
+      sources_summary: 'Sonar source summary '.repeat(35),
+    })
+    expect(result.success).toBe(true)
+  })
+
   it('rejects negative price', () => {
     const result = marketPriceResultSchema.safeParse({
       ...validMarket,

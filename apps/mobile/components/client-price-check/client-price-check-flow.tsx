@@ -19,6 +19,8 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import {
   LOCAL_WORKFLOW_PRICE_DISCLAIMER,
   PROBLEM_CHIPS,
+  extractDistrictLabel,
+  extractKnownDistrictLabel,
   serviceLabel,
   statusLabel,
   type LocalDealDraft,
@@ -144,11 +146,11 @@ const QUESTIONS: Record<ServiceType, ClarificationQuestion[]> = {
 }
 
 const ESTIMATE: PriceCheckEstimateCard = {
-  problemLabel: 'Yêu cầu sẽ được Kael kiểm tra khi backend được bật',
+  problemLabel: 'Kael sẽ kiểm tra yêu cầu trước khi gửi thợ',
   complexity: 'unknown',
-  priceRangeLabel: 'Cần backend ước tính',
-  confidenceLabel: 'Cần backend',
-  advisory: 'Giữ mô tả, ảnh và khu vực rõ ràng để bước backend sau này tính sát hơn.',
+  priceRangeLabel: 'Chờ Kael ước tính',
+  confidenceLabel: 'Đang chờ dữ liệu',
+  advisory: 'Giữ mô tả, ảnh và khu vực rõ ràng để Kael ước tính sát hơn.',
   disclaimer: PRICE_DISCLAIMER,
   source: 'kael',
 }
@@ -167,7 +169,7 @@ export function ClientPriceCheckFlow() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
-  const { dispatch, selectors, state: workflowState } = useFrontendWorkflow()
+  const { actions, dispatch, selectors, state: workflowState } = useFrontendWorkflow()
   const frameWidth = Math.min(width, 430)
   const [step, setStep] = useState<PriceCheckUiStep>(() => initialStepFromWorkflow(selectors.currentStatus))
   const [status, setStatus] = useState<PriceCheckUiStatus>('editing')
@@ -180,7 +182,7 @@ export function ClientPriceCheckFlow() {
   const chips = useMemo(() => (draft.serviceType ? PROBLEM_CHIPS[draft.serviceType] : []), [draft.serviceType])
   const answeredQuestions = questions.filter((question) => draft.clarificationAnswers[question.id]).length
   const clarificationComplete = answeredQuestions === questions.length
-  const isEstimateFallback = status === 'baseline_fallback' || status === 'fallback'
+  const isEstimateFallback = status === 'baseline_fallback' || status === 'fallback' || workflowState.deal?.estimate?.fallbackUsed === true
   const estimate = workflowState.deal?.estimate
     ? {
         problemLabel: workflowState.deal.estimate.problemLabel,
@@ -200,7 +202,10 @@ export function ClientPriceCheckFlow() {
     step === 'searching' && selectors.customerSearchState === 'searching' && selectors.canCustomerCancelDeal
 
   useEffect(() => {
-    if (selectors.customerSearchState === 'no_worker') setStep('emptyWorker')
+    if (selectors.customerSearchState === 'no_worker') {
+      setStep('emptyWorker')
+      setStatus((current) => current === 'loading' ? 'fallback' : current)
+    }
     if (selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active' || selectors.customerSearchState === 'completed') {
       setStep('matched')
     }
@@ -275,7 +280,7 @@ export function ClientPriceCheckFlow() {
     })
   }
 
-  const continueFlow = () => {
+  const continueFlow = async () => {
     if (step === 'form') {
       if (!isDraftValid) {
         setStatus('error')
@@ -294,9 +299,14 @@ export function ClientPriceCheckFlow() {
       }
       if (!clarificationComplete) return
       const unclear = Object.values(draft.clarificationAnswers).some((answer) => answer === 'Chưa rõ')
+      const workflowDraft = draftToWorkflowDraft(draft)
       dispatch({ type: 'update_booking_draft', patch: draftToWorkflowPatch(draft) })
-      dispatch({ type: 'submit_booking_draft' })
-      dispatch({ type: 'finish_local_analysis' })
+      setStatus('loading')
+      const created = await actions.createRemoteJobFromDraft(workflowDraft)
+      if (!created) {
+        setStatus('error')
+        return
+      }
       setStep('estimate')
       setStatus(unclear ? 'baseline_fallback' : 'estimate_ready')
       return
@@ -314,7 +324,12 @@ export function ClientPriceCheckFlow() {
         setStatus('error')
         return
       }
-      dispatch({ type: 'confirm_customer_search' })
+      setStatus('loading')
+      const confirmed = await actions.confirmRemoteSearch()
+      if (!confirmed) {
+        setStatus('error')
+        return
+      }
       setStep('searching')
       setStatus('loading')
       return
@@ -336,7 +351,11 @@ export function ClientPriceCheckFlow() {
       return
     }
     if (step === 'emptyWorker') {
-      dispatch({ type: 'retry_customer_search' })
+      const retried = await actions.confirmRemoteSearch()
+      if (!retried) {
+        setStatus('error')
+        return
+      }
       setStep('searching')
       setStatus('loading')
     }
@@ -352,9 +371,16 @@ export function ClientPriceCheckFlow() {
   }
 
   const editAfterNoWorker = () => {
-    dispatch({ type: 'reopen_booking_draft' })
-    setStep('form')
-    setStatus('editing')
+    setStatus('loading')
+    void actions.cancelRemoteJob().then((cancelled) => {
+      if (!cancelled) {
+        setStatus('error')
+        return
+      }
+      dispatch({ type: 'reopen_booking_draft' })
+      setStep('form')
+      setStatus('editing')
+    })
   }
 
   const confirmCancelCurrentSearch = () => {
@@ -364,19 +390,24 @@ export function ClientPriceCheckFlow() {
     }
 
     Alert.alert(
-      'Hủy yêu cầu local?',
+      'Hủy yêu cầu?',
       selectors.hasLocalBroadcast
-        ? 'Broadcast local sẽ dừng. Địa chỉ chi tiết vẫn bị ẩn khỏi worker vì chưa có ai nhận.'
-        : 'Phiếu local sẽ đóng. Bạn có thể tạo yêu cầu mới khi cần.',
+        ? 'Yêu cầu đang tìm thợ sẽ dừng. Địa chỉ chi tiết vẫn bị ẩn khỏi worker vì chưa có ai nhận.'
+        : 'Yêu cầu sẽ đóng. Bạn có thể tạo yêu cầu mới khi cần.',
       [
         { text: 'Giữ lại', style: 'cancel' },
         {
-          text: 'Hủy local',
+          text: 'Hủy yêu cầu',
           style: 'destructive',
           onPress: () => {
-            dispatch({ type: 'cancel_deal' })
-            setStatus('fallback')
-            router.push(openHistoryPath)
+            void actions.cancelRemoteJob().then((cancelled) => {
+              if (!cancelled) {
+                setStatus('error')
+                return
+              }
+              setStatus('fallback')
+              router.push(openHistoryPath)
+            })
           },
         },
       ],
@@ -769,7 +800,7 @@ function SchedulePanel({ draft, onSelect }: { draft: PriceCheckDraft; onSelect: 
       <Text style={styles.cardTitle}>Thời gian</Text>
       <View style={styles.twoCol}>
         <ChoiceCard active={draft.timeChoice === 'now'} title="Ngay bây giờ" text="Ưu tiên tìm thợ gần nhất" onPress={() => onSelect('now')} />
-        <ChoiceCard active={false} disabled title="Đặt lịch" text="Sắp mở sau khi backend lịch sẵn sàng" onPress={() => undefined} />
+        <ChoiceCard active={false} disabled title="Đặt lịch" text="Sắp mở cho lịch hẹn" onPress={() => undefined} />
       </View>
     </View>
   )
@@ -789,7 +820,7 @@ function ConfirmPanel({ draft, estimate }: { draft: PriceCheckDraft; estimate: P
         <SummaryCell label="Địa chỉ" value={draft.addressLabel} />
         <SummaryCell label="Thời gian" value="Ngay bây giờ" />
         <SummaryCell label="Ước giá" value={estimate.priceRangeLabel} />
-        <SummaryCell label="Phí nền tảng" value="Cần backend xác nhận" />
+        <SummaryCell label="Phí nền tảng" value="Chờ hệ thống xác nhận" />
       </View>
       <Text selectable style={styles.disclaimerText}>
         {PRICE_DISCLAIMER}
@@ -833,12 +864,12 @@ function WorkerMatchedPanel({ status }: { status: LocalDealStatus | null }) {
   return (
     <View style={styles.flowCard} testID="customer-no-fake-worker-data">
       <GlassSheen />
-      <Text style={styles.cardTitle}>Worker audit đã nhận</Text>
+      <Text style={styles.cardTitle}>Thợ đã nhận</Text>
       <View style={styles.workerRow}>
         <View style={styles.workerAvatar}><DocumentGlyph /></View>
         <View style={styles.workerCopy}>
           <Text style={styles.workerName}>{statusLabel(status)}</Text>
-          <Text style={styles.panelText}>Thông tin worker thật, phản hồi và thanh toán vẫn khóa cho tới khi backend được nối.</Text>
+          <Text style={styles.panelText}>Thông tin thợ, phản hồi và thanh toán sẽ mở ở đúng bước xử lý.</Text>
         </View>
       </View>
     </View>
@@ -984,6 +1015,23 @@ function draftToWorkflowPatch(draft: PriceCheckDraft) {
   }
 }
 
+function draftToWorkflowDraft(draft: PriceCheckDraft): LocalDealDraft {
+  const districtLabel = extractDistrictLabel(draft.addressLabel)
+  return {
+    serviceType: draft.serviceType,
+    problemChips: draft.problemChips,
+    description: draft.description,
+    mediaCount: draft.mediaItems.length,
+    addressLabel: draft.addressLabel,
+    districtLabel,
+    timeChoice: 'now',
+    source: 'booking',
+    needsServiceChoice: draft.serviceType === null,
+    inferredProblemLabel: draft.problemChips[0] ?? null,
+    unsupportedServiceLabel: null,
+  }
+}
+
 function workflowDraftSyncKey(deal: { draft: LocalDealDraft } | null) {
   if (!deal) return 'none'
   return [
@@ -1011,7 +1059,7 @@ function primaryLabel(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
 function secondaryLabelForStep(step: PriceCheckUiStep, canCancelFromSearching = false) {
   if (step === 'form') return 'Sửa lại'
   if (step === 'emptyWorker') return 'Chỉnh yêu cầu'
-  if (canCancelFromSearching) return 'Hủy local'
+  if (canCancelFromSearching) return 'Hủy yêu cầu'
   if (step === 'searching' || step === 'matched') return 'Về Home'
   return 'Quay lại'
 }
@@ -1030,6 +1078,7 @@ function getDraftValidationMessage(draft: PriceCheckDraft) {
   if (draft.problemChips.length === 0) return 'Chọn ít nhất một vấn đề cần xử lý.'
   if (draft.description.trim().length < 12) return 'Mô tả cần đủ rõ để Kael tóm tắt.'
   if (draft.addressLabel.trim().length < 4) return 'Nhập khu vực hoặc địa chỉ tổng quát.'
+  if (!extractKnownDistrictLabel(draft.addressLabel)) return 'Địa chỉ cần có quận TP.HCM rõ ràng.'
   return null
 }
 

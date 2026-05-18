@@ -2,7 +2,7 @@ import { callAI } from '@/lib/ai/client'
 import { buildVisionMessages } from './prompts'
 import { visionResultSchema, type VisionResult } from './schemas'
 import { safeParseJSON } from './parsing'
-import { sanitizeForLLM } from '@home-services/shared'
+import { sanitizeForLLM, scrubSensitiveForLLM } from '@home-services/shared'
 
 export type VisionAnalysisResult =
   | { success: true; analysis: VisionResult; failureReason?: undefined }
@@ -12,7 +12,7 @@ export async function analyzeDescription(
   description: string,
   intentContext: string,
 ): Promise<VisionAnalysisResult> {
-  const sanitized = sanitizeForLLM(description)
+  const sanitized = scrubSensitiveForLLM(description)
   const messages = buildVisionMessages(sanitized, sanitizeForLLM(intentContext))
 
   const result = await callAI({

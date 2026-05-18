@@ -49,7 +49,7 @@ describe('computeEarnings', () => {
     expect(result.pendingPaymentAmount).toBe(0)
   })
 
-  it('sums paid + reviewed jobs as gross earnings', async () => {
+  it('sums only paid jobs as gross earnings while reviewed remains pending', async () => {
     const supabase = makeSupabase([
       { id: 'j1', status: 'paid', final_price: 500_000 },
       { id: 'j2', status: 'reviewed', final_price: 300_000 },
@@ -57,8 +57,10 @@ describe('computeEarnings', () => {
     ])
 
     const result = await computeEarnings(supabase, 'worker-1')
-    expect(result.totalJobsPaid).toBe(3)
-    expect(result.grossEarnings).toBe(1_800_000)
+    expect(result.totalJobsPaid).toBe(2)
+    expect(result.grossEarnings).toBe(1_500_000)
+    expect(result.pendingPaymentCount).toBe(1)
+    expect(result.pendingPaymentAmount).toBe(300_000)
   })
 
   it('applies 10% platform fee correctly (RULES & STRUCTURES)', async () => {
@@ -77,13 +79,14 @@ describe('computeEarnings', () => {
       { id: 'j1', status: 'paid', final_price: 500_000 },
       { id: 'j2', status: 'confirmed_by_customer', final_price: 300_000 },
       { id: 'j3', status: 'payment_pending', final_price: 700_000 },
+      { id: 'j4', status: 'reviewed', final_price: 200_000 },
     ])
 
     const result = await computeEarnings(supabase, 'worker-1')
     expect(result.totalJobsPaid).toBe(1)
     expect(result.grossEarnings).toBe(500_000) // only j1
-    expect(result.pendingPaymentCount).toBe(2)
-    expect(result.pendingPaymentAmount).toBe(1_000_000) // j2 + j3
+    expect(result.pendingPaymentCount).toBe(3)
+    expect(result.pendingPaymentAmount).toBe(1_200_000) // j2 + j3 + j4
   })
 
   it('handles null final_price gracefully', async () => {
@@ -97,11 +100,11 @@ describe('computeEarnings', () => {
     expect(result.grossEarnings).toBe(500_000)
   })
 
-  it('returns zeros on DB error (honest fallback, RULES.md #8)', async () => {
+  it('rejects on DB error instead of faking zero earnings', async () => {
     const supabase = makeSupabase(null, { code: 'PGRST500' })
-    const result = await computeEarnings(supabase, 'worker-1')
-    expect(result.totalJobsPaid).toBe(0)
-    expect(result.grossEarnings).toBe(0)
+    await expect(computeEarnings(supabase, 'worker-1')).rejects.toMatchObject({
+      code: 'PGRST500',
+    })
   })
 
   it('rounds platform fee to nearest integer (no fractional VND)', async () => {

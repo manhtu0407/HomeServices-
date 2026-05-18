@@ -73,6 +73,8 @@ function createMockSupabase(currentUserId: string) {
     if (table === 'price_baselines') return baselinesOps()
     if (table === 'service_categories') return catalogOps()
     if (table === 'service_problems') return problemsOps()
+    if (table === 'scope_change_requests') return scopeChangeOps()
+    if (table === 'learning_candidates') return learningCandidatesOps()
     return noOps()
   }
 
@@ -112,7 +114,16 @@ function createMockSupabase(currentUserId: string) {
         }
         return chain
       },
+      in: (col: string, values: unknown[]) => { filters[col] = values; return chain },
       limit: (_n: number) => chain,
+      then: (onFulfilled: (v: { data: JobRow[]; error: null }) => unknown) => {
+        const rows = Array.from(jobsTable.values()).filter((row) =>
+          Object.entries(filters).every(([col, value]) =>
+            Array.isArray(value) ? value.includes(row[col]) : row[col] === value
+          )
+        )
+        return Promise.resolve({ data: rows, error: null }).then(onFulfilled)
+      },
       single: async () => {
         if (pendingInsert) {
           const id = genId()
@@ -164,6 +175,22 @@ function createMockSupabase(currentUserId: string) {
 
   function reviewsOps() {
     return {
+      select: (_fields: string) => {
+        const filters: Record<string, unknown> = {}
+        const chain: any = {
+          eq: (col: string, val: unknown) => {
+            filters[col] = val
+            return chain
+          },
+          maybeSingle: async () => {
+            const review = [...reviewsTable.values()].find((row) =>
+              Object.entries(filters).every(([col, value]) => row[col] === value)
+            )
+            return { data: review ?? null, error: null }
+          },
+        }
+        return chain
+      },
       insert: (data: ReviewRow) => {
         const id = genId()
         reviewsTable.set(id, { ...data, id })
@@ -176,8 +203,42 @@ function createMockSupabase(currentUserId: string) {
     }
   }
 
+  function scopeChangeOps() {
+    return {
+      select: (_fields: string, _opts?: unknown) => {
+        const chain: any = {
+          eq: (_col: string, _val: unknown) => chain,
+          then: (onFulfilled: (v: { data: unknown[]; count: number; error: null }) => unknown) =>
+            Promise.resolve({ data: [], count: 0, error: null }).then(onFulfilled),
+        }
+        return chain
+      },
+    }
+  }
+
+  function learningCandidatesOps() {
+    return {
+      select: (_fields: string) => {
+        const chain: any = {
+          eq: (_col: string, _val: unknown) => chain,
+          in: (_col: string, _vals: unknown[]) => chain,
+          limit: (_n: number) => chain,
+          maybeSingle: async () => ({ data: null, error: null }),
+        }
+        return chain
+      },
+      insert: (_data: Record<string, unknown>) => ({
+        select: (_fields: string) => ({
+          single: async () => ({ data: { id: genId() }, error: null }),
+        }),
+      }),
+      update: (_data: Record<string, unknown>) => ({
+        eq: async (_col: string, _val: unknown) => ({ data: null, error: null }),
+      }),
+    }
+  }
+
   function profilesOps() {
-    let filters: Record<string, unknown> = {}
     return {
       select: (_fields: string) => ({
         eq: (_col: string, _val: unknown) => ({
@@ -212,6 +273,7 @@ function createMockSupabase(currentUserId: string) {
         const chain: any = {
           eq: (_c: string, _v: unknown) => chain,
           contains: (_c: string, _v: unknown) => chain,
+          or: (_filter: string) => chain,
           order: (_c: string, _opts?: unknown) => chain,
           limit: (_n: number) => {
             chain.then = undefined
@@ -224,16 +286,60 @@ function createMockSupabase(currentUserId: string) {
   }
 
   function baselinesOps() {
+    const rows = [
+      {
+        service_problem_id: 'prob-1',
+        service_type: 'electrical',
+        complexity: 'medium',
+        district_code: 'hcmc_all',
+        price_min: 200000,
+        price_max: 500000,
+      },
+      {
+        service_problem_id: 'prob-2',
+        service_type: 'plumbing',
+        complexity: 'small',
+        district_code: 'hcmc_all',
+        price_min: 150000,
+        price_max: 350000,
+      },
+      {
+        service_problem_id: 'prob-2',
+        service_type: 'plumbing',
+        complexity: 'medium',
+        district_code: 'hcmc_all',
+        price_min: 200000,
+        price_max: 500000,
+      },
+    ]
+
     // baseline.ts now uses .in() then awaits without .single() — returns row array.
     return {
       select: (_fields: string) => {
+        const filters: Array<{ column: string; value: unknown; kind: 'eq' | 'in' }> = []
+        const filteredRows = () =>
+          rows.filter((row) =>
+            filters.every((filter) => {
+              const rowValue = row[filter.column as keyof typeof row]
+              return filter.kind === 'in'
+                ? Array.isArray(filter.value) && filter.value.includes(rowValue)
+                : rowValue === filter.value
+            }),
+          )
+
         const chain: any = {
-          eq: (_col: string, _val: unknown) => chain,
-          in: (_col: string, _vals: unknown[]) => chain,
+          eq: (col: string, val: unknown) => {
+            filters.push({ column: col, value: val, kind: 'eq' })
+            return chain
+          },
+          in: (col: string, vals: unknown[]) => {
+            filters.push({ column: col, value: vals, kind: 'in' })
+            return chain
+          },
           // Thenable: `await chain` resolves to data array
           then: (onFulfilled: (v: { data: unknown[]; error: null }) => unknown) =>
             Promise.resolve({
-              data: [{ price_min: 200000, price_max: 500000, district_code: 'hcmc_all' }],
+              data: filteredRows(),
               error: null,
             }).then(onFulfilled),
         }
@@ -259,9 +365,28 @@ function createMockSupabase(currentUserId: string) {
   }
 
   function problemsOps() {
+    const rows = [
+      { id: 'prob-1', slug: 'breaker_trip', label_vi: 'Cáº§u dao trip', default_complexity: 'medium', service_category_id: 'cat-1', service_type: 'electrical', sort_order: 1, is_active: true },
+      { id: 'prob-2', slug: 'pipe_leak', label_vi: 'á»ng rÃ² rá»‰', default_complexity: 'medium', service_category_id: 'cat-2', service_type: 'plumbing', sort_order: 1, is_active: true },
+    ]
+
     return {
       select: (_fields: string) => ({
-        eq: (_col: string, _val: unknown) => ({
+        eq: (col: string, val: unknown) => ({
+          eq: (col2: string, val2: unknown) => ({
+            then: (onFulfilled: (v: { data: typeof rows; error: null }) => unknown) =>
+              Promise.resolve({
+                data: rows.filter((row) =>
+                  row[col as keyof typeof row] === val &&
+                  row[col2 as keyof typeof row] === val2
+                ),
+                error: null,
+              }).then(onFulfilled),
+          }),
+          maybeSingle: async () => ({
+            data: rows.find((row) => row[col as keyof typeof row] === val) ?? null,
+            error: null,
+          }),
           order: (_col2: string) => ({
             data: [
               { id: 'prob-1', slug: 'breaker_trip', label_vi: 'Cầu dao trip', default_complexity: 'medium', service_category_id: 'cat-1', service_type: 'electrical', sort_order: 1, is_active: true },
@@ -289,6 +414,45 @@ function createMockSupabase(currentUserId: string) {
       }),
     },
     from: fromTable,
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      if (name !== 'submit_review_atomic') return { data: null, error: null }
+
+      const jobId = args.p_job_id as string
+      const customerId = args.p_customer_id as string
+      const job = jobsTable.get(jobId)
+      if (!job || job.customer_id !== customerId) {
+        return { data: [{ ok: false, error_code: 'NOT_FOUND' }], error: null }
+      }
+      if ([...reviewsTable.values()].some((review) => review.job_id === jobId)) {
+        return { data: [{ ok: false, error_code: 'ALREADY_REVIEWED' }], error: null }
+      }
+      if (!job.worker_id || !['confirmed_by_customer', 'paid'].includes(String(job.status))) {
+        return { data: [{ ok: false, error_code: 'INVALID_STATUS' }], error: null }
+      }
+
+      const reviewedAt = new Date().toISOString()
+      const reviewId = genId()
+      jobsTable.set(jobId, { ...job, status: 'reviewed', reviewed_at: reviewedAt })
+      reviewsTable.set(reviewId, {
+        id: reviewId,
+        job_id: jobId,
+        customer_id: customerId,
+        worker_id: job.worker_id,
+        rating: args.p_rating as number,
+        tags: args.p_tags as string[],
+        comment: args.p_comment as string | null,
+      })
+      return {
+        data: [{
+          ok: true,
+          error_code: null,
+          review_id: reviewId,
+          job_status: 'reviewed',
+          reviewed_at_ts: reviewedAt,
+        }],
+        error: null,
+      }
+    },
   }
 }
 
@@ -409,7 +573,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       service_type: 'electrical',
       description: 'Cầu dao liên tục bị trip khi bật máy lạnh và máy giặt cùng lúc, đã thử reset nhiều lần',
       problem_chips: ['Cầu dao trip'],
-      address_district: 'quan_7',
+      address_district: 'q7',
     })
 
     const res = await createJob(req)
@@ -423,6 +587,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     expect(body.estimate.complexity).toBe('medium')
     expect(body.estimate.price_min).toBeGreaterThan(0)
     expect(body.estimate.price_max).toBeGreaterThan(body.estimate.price_min)
+    expect(jobsTable.get(body.job_id)?.service_problem_id).toBe('prob-1')
     expect(body.estimate.disclaimer).toContain('ước tính')
 
     // Rule #4: disclaimer luôn có
@@ -447,6 +612,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       service_type: 'electrical',
       description: 'Tôi muốn dọn dẹp nhà, lau sàn và giặt rèm cửa',
       problem_chips: ['Vấn đề khác'],
+      address_district: 'q1',
     })
 
     const res = await createJob(req)
@@ -461,9 +627,11 @@ describe('Full Customer Journey — End-to-End Flow', () => {
   })
 
   it('POST /api/jobs — fallback khi AI fail (Rule #8)', async () => {
-    // All 3 AI calls fail
+    // All provider attempts fail: DeepSeek intent, Anthropic intent fallback,
+    // Anthropic vision, then Perplexity market.
     mockCallAI
       .mockResolvedValueOnce({ provider: 'deepseek', error: 'timeout', code: 'TIMEOUT', retryable: false, success: false })
+      .mockResolvedValueOnce({ provider: 'anthropic', error: 'timeout', code: 'TIMEOUT', retryable: false, success: false })
       .mockResolvedValueOnce({ provider: 'anthropic', error: 'timeout', code: 'TIMEOUT', retryable: false, success: false })
       .mockResolvedValueOnce({ provider: 'perplexity', error: 'timeout', code: 'TIMEOUT', retryable: false, success: false })
 
@@ -471,7 +639,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       service_type: 'plumbing',
       description: 'Ống nước dưới bồn rửa chén bị rò rỉ nước liên tục, nước chảy ra sàn',
       problem_chips: ['Ống rò rỉ'],
-      address_district: 'quan_1',
+      address_district: 'q1',
     })
 
     const res = await createJob(req)
@@ -556,7 +724,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       service_type: 'plumbing',
       description: 'Ống nước dưới bồn rửa bát bị rò rỉ, nước nhỏ giọt liên tục',
       problem_chips: ['Ống rò rỉ'],
-      address_district: 'quan_7',
+      address_district: 'q7',
       address_building: 'Vinhomes Grand Park',
       address_unit: 'S5.03-1205',
       address_floor: '12',
@@ -567,6 +735,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
 
     expect(createRes.status).toBe(201)
     expect(createBody.status).toBe('awaiting_customer_confirm')
+    expect(jobsTable.get(createBody.job_id)?.service_problem_id).toBe('prob-2')
     expect(createBody.estimate.disclaimer).toContain('ước tính')
 
     const jobId = createBody.job_id
@@ -678,7 +847,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
         status: 'draft',
         customer_id: 'customer-001',
         service_type: 'electrical',
-        address_district: 'quan_1',
+        address_district: 'q1',
       })
 
       const req = makeRequest('POST')
@@ -727,7 +896,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       })
 
       const res = await updateStatus(req, makeParams(id))
-      const body = await res.json()
+      await res.json()
 
       expect(res.status).toBe(400)
 

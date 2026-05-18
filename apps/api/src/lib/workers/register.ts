@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, WorkerRegisterInput, WorkerVerificationStatus } from '@home-services/shared'
-import { normalizeDistrict } from '@home-services/shared'
+import { HCMC_DISTRICTS, normalizeDistrict } from '@home-services/shared'
 import { withDbTimeout } from '@/lib/db/query'
 
 export type WorkerRegisterResult =
@@ -47,7 +47,7 @@ export async function registerWorker(
   const { data: existing, error: existingErr } = await withDbTimeout(
     supabase
       .from('worker_profiles')
-      .select('verification_status')
+      .select('verification_status, is_suspended')
       .eq('id', userId)
       .maybeSingle(),
   )
@@ -57,7 +57,12 @@ export async function registerWorker(
     return { success: false, error: 'Không thể tải hồ sơ thợ', code: 'DB_ERROR', status: 500 }
   }
 
-  if (existing && (existing.verification_status === 'approved' || existing.verification_status === 'suspended')) {
+  if (
+    existing &&
+    (existing.verification_status === 'approved' ||
+      existing.verification_status === 'suspended' ||
+      existing.is_suspended === true)
+  ) {
     return {
       success: false,
       error: 'Hồ sơ đã được duyệt hoặc bị khóa. Liên hệ hỗ trợ để cập nhật.',
@@ -71,9 +76,15 @@ export async function registerWorker(
 
   // Normalize districts to canonical slugs so broadcast.ts queries match.
   // De-dupe in case worker entered "Q1" and "q1" both.
-  const canonicalDistricts = Array.from(
-    new Set(input.districts.map((d) => normalizeDistrict(d))),
-  )
+  const canonicalDistricts = normalizeWorkerDistricts(input.districts)
+  if (!canonicalDistricts) {
+    return {
+      success: false,
+      error: 'Khu vực làm việc không hợp lệ',
+      code: 'VALIDATION',
+      status: 400,
+    }
+  }
 
   const { data: upserted, error: upsertErr } = await withDbTimeout(
     supabase
@@ -112,6 +123,27 @@ export async function registerWorker(
     verificationStatus: upserted.verification_status,
     submittedAt: now,
   }
+}
+
+function normalizeWorkerDistricts(districts: string[]): string[] | null {
+  const normalized: string[] = []
+  for (const district of districts) {
+    const canonical = normalizeWorkerDistrict(district)
+    if (!canonical) return null
+    normalized.push(canonical)
+  }
+  return Array.from(new Set(normalized))
+}
+
+function normalizeWorkerDistrict(district: string): string | null {
+  const canonical = normalizeDistrict(district)
+  if (canonical !== 'hcmc_all') return canonical
+
+  const trimmed = district.trim().toLowerCase()
+  if (trimmed === 'hcmc_all' || trimmed === HCMC_DISTRICTS.hcmc_all.toLowerCase()) {
+    return canonical
+  }
+  return null
 }
 
 /**

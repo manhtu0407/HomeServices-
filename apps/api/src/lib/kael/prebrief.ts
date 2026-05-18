@@ -2,7 +2,7 @@ import { callAI } from '@/lib/ai/client'
 import { buildPrebriefMessages } from './prompts'
 import { workerPrebriefSchema, type WorkerPrebrief } from './schemas'
 import { safeParseJSON } from './parsing'
-import { sanitizeForLLM } from '@home-services/shared'
+import { sanitizeForLLM, scrubSensitiveForLLM } from '@home-services/shared'
 
 export type PrebriefResult =
   | { success: true; prebrief: WorkerPrebrief }
@@ -15,10 +15,10 @@ export async function generatePrebrief(
   customerDescription: string,
   complexity: string,
 ): Promise<PrebriefResult> {
-  const sanitizedDescription = sanitizeForLLM(customerDescription)
+  const sanitizedDescription = scrubSensitiveForLLM(customerDescription)
   const messages = buildPrebriefMessages(
     sanitizeForLLM(serviceType),
-    sanitizeForLLM(problemSummary),
+    scrubSensitiveForLLM(problemSummary),
     sanitizedDescription,
     sanitizeForLLM(complexity),
   )

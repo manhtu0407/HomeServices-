@@ -68,11 +68,25 @@ export type JobDetailResponse = {
     paid_at: string | null
     reviewed_at: string | null
   }
+  broadcast_state: {
+    active_count: number
+    seconds_remaining: number | null
+  } | null
+  current_scope_change: {
+    id: string
+    status: ScopeChangeStatus
+    requested_description: string | null
+    reason: string | null
+    price_min: number | null
+    price_max: number | null
+    created_at: string | null
+  } | null
 }
 
 export type ConfirmSearchResponse = {
   job_id: string
   status: JobStatus
+  broadcast_sent: boolean
   worker: {
     full_name: string
     rating: number
@@ -190,6 +204,9 @@ export type WorkerJobListResponse = {
     status: JobStatus
     service_type: ServiceType
     problem_summary: string | null
+    address_building: string | null
+    address_unit: string | null
+    address_floor: string | null
     district: string | null
     final_price: number | null
     estimated_earning: number | null

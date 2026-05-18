@@ -64,7 +64,9 @@ describe('secondsRemaining', () => {
 
 function makeBroadcastSupabase(opts: {
   eligibleWorkers?: Array<{ id: string; rating: number; total_jobs: number; service_types: string[]; districts: string[] }>
+  activeJobs?: Array<{ worker_id: string }>
   workerQueryError?: { code: string }
+  activeJobQueryError?: { code: string }
   insertError?: { code: string }
 }) {
   return {
@@ -74,6 +76,7 @@ function makeBroadcastSupabase(opts: {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           contains: vi.fn().mockReturnThis(),
+          or: vi.fn().mockReturnThis(),
           order: vi.fn().mockReturnThis(),
           limit: vi.fn().mockResolvedValue({
             data: opts.eligibleWorkers ?? [],
@@ -84,6 +87,16 @@ function makeBroadcastSupabase(opts: {
       if (table === 'job_broadcasts') {
         return {
           insert: vi.fn().mockResolvedValue({ error: opts.insertError ?? null }),
+        }
+      }
+      if (table === 'jobs') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          in: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue({
+            data: opts.activeJobs ?? [],
+            error: opts.activeJobQueryError ?? null,
+          }),
         }
       }
       return {}
@@ -100,22 +113,88 @@ describe('queryEligibleWorkers', () => {
       ],
     })
 
-    const workers = await queryEligibleWorkers(supabase, 'electrical', 'Q1')
-    expect(workers).toHaveLength(2)
-    expect(workers[0].id).toBe('w1')
-    expect(workers[0].rating).toBe(4.9)
+    const result = await queryEligibleWorkers(supabase, 'electrical', 'Q1')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.workers).toHaveLength(2)
+      expect(result.workers[0].id).toBe('w1')
+      expect(result.workers[0].rating).toBe(4.9)
+    }
   })
 
-  it('returns empty array when query errors', async () => {
+  it('queries both exact district and city-wide worker coverage', async () => {
+    const supabase = makeBroadcastSupabase({
+      eligibleWorkers: [
+        { id: 'w-city', rating: 4.9, total_jobs: 100, service_types: ['electrical'], districts: ['hcmc_all'] },
+      ],
+    })
+
+    const result = await queryEligibleWorkers(supabase, 'electrical', 'q7')
+
+    expect(result.success).toBe(true)
+    const workerQuery = (supabase.from as any).mock.results[0].value
+    expect(workerQuery.or).toHaveBeenCalledWith('districts.cs.{q7},districts.cs.{hcmc_all}')
+  })
+
+  it('normalizes legacy district strings before building the PostgREST filter', async () => {
+    const supabase = makeBroadcastSupabase({
+      eligibleWorkers: [
+        { id: 'w-city', rating: 4.9, total_jobs: 100, service_types: ['electrical'], districts: ['hcmc_all'] },
+      ],
+    })
+
+    const result = await queryEligibleWorkers(supabase, 'electrical', 'Quận 1')
+
+    expect(result.success).toBe(true)
+    const workerQuery = (supabase.from as any).mock.results[0].value
+    expect(workerQuery.or).toHaveBeenCalledWith('districts.cs.{q1},districts.cs.{hcmc_all}')
+  })
+
+  it('returns DB_ERROR when query errors', async () => {
     const supabase = makeBroadcastSupabase({ workerQueryError: { code: 'PGRST500' } })
-    const workers = await queryEligibleWorkers(supabase, 'electrical', 'Q1')
-    expect(workers).toEqual([])
+    const result = await queryEligibleWorkers(supabase, 'electrical', 'Q1')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.reasonCode).toBe('DB_ERROR')
+    }
   })
 
   it('returns empty array when no eligible workers', async () => {
     const supabase = makeBroadcastSupabase({ eligibleWorkers: [] })
-    const workers = await queryEligibleWorkers(supabase, 'plumbing', 'Q99')
-    expect(workers).toEqual([])
+    const result = await queryEligibleWorkers(supabase, 'plumbing', 'Q99')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.workers).toEqual([])
+    }
+  })
+
+  it('filters out workers that already have active jobs', async () => {
+    const supabase = makeBroadcastSupabase({
+      eligibleWorkers: [
+        { id: 'w1', rating: 4.9, total_jobs: 100, service_types: ['electrical'], districts: ['Q1'] },
+        { id: 'w2', rating: 4.7, total_jobs: 80, service_types: ['electrical'], districts: ['Q1'] },
+      ],
+      activeJobs: [{ worker_id: 'w1' }],
+    })
+    const result = await queryEligibleWorkers(supabase, 'electrical', 'Q1')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.workers.map((worker) => worker.id)).toEqual(['w2'])
+    }
+  })
+
+  it('returns DB_ERROR when active job lookup fails', async () => {
+    const supabase = makeBroadcastSupabase({
+      eligibleWorkers: [
+        { id: 'w1', rating: 4.9, total_jobs: 100, service_types: ['electrical'], districts: ['Q1'] },
+      ],
+      activeJobQueryError: { code: 'PGRST500' },
+    })
+    const result = await queryEligibleWorkers(supabase, 'electrical', 'Q1')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.reasonCode).toBe('DB_ERROR')
+    }
   })
 })
 
@@ -125,7 +204,18 @@ describe('createBroadcasts', () => {
     const result = await createBroadcasts(supabase, 'job-1', 'electrical', 'Q1')
     expect(result.success).toBe(false)
     if (!result.success) {
+      expect(result.reasonCode).toBe('NO_WORKER')
       expect(result.reason).toContain('Không tìm thấy thợ')
+    }
+  })
+
+  it('returns DB error when the worker eligibility query fails', async () => {
+    const supabase = makeBroadcastSupabase({ workerQueryError: { code: 'PGRST500' } })
+    const result = await createBroadcasts(supabase, 'job-1', 'electrical', 'Q1')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.reasonCode).toBe('DB_ERROR')
+      expect(result.reason).not.toContain('Không tìm thấy thợ')
     }
   })
 
@@ -154,6 +244,9 @@ describe('createBroadcasts', () => {
 
     const result = await createBroadcasts(supabase, 'job-1', 'electrical', 'Q1')
     expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.reasonCode).toBe('DB_ERROR')
+    }
   })
 })
 
@@ -325,6 +418,26 @@ describe('acceptBroadcast (RPC-based)', () => {
     }
   })
 
+  it('maps WORKER_NOT_ELIGIBLE to 403', async () => {
+    const { supabase } = makeAcceptRpcSupabase({
+      rpcResult: {
+        ok: false,
+        error_code: 'WORKER_NOT_ELIGIBLE',
+        job_status: null,
+        address_building: null,
+        address_unit: null,
+        address_floor: null,
+        address_district: null,
+      },
+    })
+    const result = await acceptBroadcast(supabase, 'job-1', 'worker-1')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.code).toBe('WORKER_NOT_ELIGIBLE')
+      expect(result.status).toBe(403)
+    }
+  })
+
   it('returns DB_ERROR when RPC itself fails', async () => {
     const { supabase } = makeAcceptRpcSupabase({
       rpcError: { code: 'PGRST500' },
@@ -351,24 +464,44 @@ describe('acceptBroadcast (RPC-based)', () => {
 // declineBroadcast
 // =============================================================================
 
-type DeclineBroadcastRow = { id: string; status: string; expires_at: string | null; batch_id: string }
+type DeclineBroadcastRow = {
+  id: string
+  status: string
+  expires_at: string | null
+  batch_id: string
+  jobs?: { status: string } | { status: string }[] | null
+}
 
 describe('declineBroadcast', () => {
-  function makeDeclineSupabase(opts: { broadcast?: DeclineBroadcastRow | null; updateError?: { code: string } }) {
+  function makeDeclineSupabase(opts: {
+    broadcast?: DeclineBroadcastRow | null
+    updateError?: { code: string }
+    updatedRow?: { id: string } | null
+  }) {
+    const broadcast = opts.broadcast === null || opts.broadcast === undefined
+      ? opts.broadcast ?? null
+      : { jobs: { status: 'broadcasting' }, ...opts.broadcast }
     let isSelect = true
     return {
       from: vi.fn(() => {
         if (isSelect) {
           isSelect = false
           return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            maybeSingle: vi.fn().mockResolvedValue({ data: opts.broadcast ?? null, error: null }),
-          }
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          order: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: broadcast, error: null }),
         }
+      }
         return {
           update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockResolvedValue({ error: opts.updateError ?? null }),
+          eq: vi.fn().mockReturnThis(),
+          select: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: opts.updatedRow === undefined ? { id: 'b1' } : opts.updatedRow,
+            error: opts.updateError ?? null,
+          }),
         }
       }),
     } as any
@@ -401,6 +534,54 @@ describe('declineBroadcast', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.code).toBe('BROADCAST_NOT_ACTIVE')
+    }
+  })
+
+  it('rejects sent broadcast when the parent job is no longer broadcasting', async () => {
+    const supabase = makeDeclineSupabase({
+      broadcast: {
+        id: 'b1',
+        status: 'sent',
+        expires_at: FUTURE,
+        batch_id: 'batch-1',
+        jobs: { status: 'worker_matched' },
+      },
+    })
+    const result = await declineBroadcast(supabase, 'job-1', 'worker-1')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.code).toBe('BROADCAST_NOT_ACTIVE')
+      expect(result.status).toBe(409)
+    }
+  })
+
+  it('expires stale sent broadcast instead of recording a decline', async () => {
+    const supabase = makeDeclineSupabase({
+      broadcast: {
+        id: 'b1',
+        status: 'sent',
+        expires_at: new Date(Date.now() - 30_000).toISOString(),
+        batch_id: 'batch-1',
+      },
+    })
+    const result = await declineBroadcast(supabase, 'job-1', 'worker-1')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.code).toBe('EXPIRED')
+      expect(result.status).toBe(410)
+    }
+  })
+
+  it('does not overwrite an accepted broadcast when decline races with accept', async () => {
+    const supabase = makeDeclineSupabase({
+      broadcast: { id: 'b1', status: 'sent', expires_at: FUTURE, batch_id: 'batch-1' },
+      updatedRow: null,
+    })
+    const result = await declineBroadcast(supabase, 'job-1', 'worker-1')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.code).toBe('BROADCAST_NOT_ACTIVE')
+      expect(result.status).toBe(409)
     }
   })
 })

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@home-services/shared'
+import { normalizeDistrict, type Database } from '@home-services/shared'
 import { withDbTimeout } from '@/lib/db/query'
 
 export type EligibleWorker = {
@@ -8,12 +8,26 @@ export type EligibleWorker = {
   total_jobs: number
 }
 
+export type EligibleWorkerQueryResult =
+  | { success: true; workers: EligibleWorker[] }
+  | { success: false; reasonCode: 'DB_ERROR'; reason: string }
+
 export type CreateBroadcastsResult =
   | { success: true; batchId: string; broadcastCount: number; workerIds: string[] }
-  | { success: false; reason: string }
+  | { success: false; reasonCode: 'NO_WORKER' | 'DB_ERROR'; reason: string }
 
 export const DEFAULT_BROADCAST_EXPIRY_SEC = 60
 export const DEFAULT_BROADCAST_BATCH_SIZE = 5
+const DEFAULT_CANDIDATE_POOL_SIZE = 50
+const ACTIVE_WORKER_JOB_STATUSES = [
+  'worker_matched',
+  'worker_on_way',
+  'arrived',
+  'inspecting',
+  'repairing',
+  'scope_change_pending',
+  'completed_by_worker',
+] as const
 
 /**
  * Find eligible workers + create broadcast rows (status='sent') in a single batch.
@@ -32,11 +46,20 @@ export async function createBroadcasts(
   const batchSize = options.batchSize ?? DEFAULT_BROADCAST_BATCH_SIZE
   const expirySec = options.expirySec ?? DEFAULT_BROADCAST_EXPIRY_SEC
 
-  const eligible = await queryEligibleWorkers(supabase, serviceType, district, batchSize)
+  const eligibleResult = await queryEligibleWorkers(supabase, serviceType, district, batchSize)
+  if (!eligibleResult.success) {
+    return {
+      success: false,
+      reasonCode: eligibleResult.reasonCode,
+      reason: eligibleResult.reason,
+    }
+  }
+  const eligible = eligibleResult.workers
 
   if (eligible.length === 0) {
     return {
       success: false,
+      reasonCode: 'NO_WORKER',
       reason: 'Không tìm thấy thợ phù hợp đang online trong khu vực',
     }
   }
@@ -65,7 +88,11 @@ export async function createBroadcasts(
       errorCode: insertErr.code,
       workerCount: eligible.length,
     })
-    return { success: false, reason: 'Lỗi khi gửi yêu cầu đến thợ' }
+    return {
+      success: false,
+      reasonCode: 'DB_ERROR',
+      reason: 'Lỗi khi gửi yêu cầu đến thợ',
+    }
   }
 
   return {
@@ -85,27 +112,72 @@ export async function queryEligibleWorkers(
   serviceType: 'electrical' | 'plumbing',
   district: string,
   limit: number = DEFAULT_BROADCAST_BATCH_SIZE,
-): Promise<EligibleWorker[]> {
+): Promise<EligibleWorkerQueryResult> {
+  const candidateLimit = Math.max(limit, DEFAULT_CANDIDATE_POOL_SIZE)
+  const districtCode = normalizeDistrict(district)
   const { data, error } = await withDbTimeout(
     supabase
       .from('worker_profiles')
       .select('id, rating, total_jobs, service_types, districts')
       .eq('is_approved', true)
-      .eq('is_available', true)
-      .eq('is_suspended', false)
-      .contains('service_types', [serviceType])
-      .contains('districts', [district])
-      .order('rating', { ascending: false })
-      .limit(limit),
+    .eq('is_available', true)
+    .eq('is_suspended', false)
+    .contains('service_types', [serviceType])
+    .or(`districts.cs.{${districtCode}},districts.cs.{hcmc_all}`)
+    .order('rating', { ascending: false })
+      .limit(candidateLimit),
   )
 
-  if (error || !data) return []
+  if (error) {
+    console.warn('Broadcast: worker query failed', {
+      serviceType,
+      district: districtCode,
+      errorCode: error.code,
+    })
+    return {
+      success: false,
+      reasonCode: 'DB_ERROR',
+      reason: 'Lỗi khi tìm thợ phù hợp',
+    }
+  }
+  if (!data) return { success: true, workers: [] }
 
-  return data.map((w) => ({
-    id: w.id,
-    rating: w.rating,
-    total_jobs: w.total_jobs,
-  }))
+  const candidateIds = data.map((w) => w.id)
+  if (candidateIds.length === 0) return { success: true, workers: [] }
+
+  const { data: activeJobs, error: activeErr } = await withDbTimeout(
+    supabase
+      .from('jobs')
+      .select('worker_id')
+      .in('worker_id', candidateIds)
+      .in('status', [...ACTIVE_WORKER_JOB_STATUSES])
+      .limit(candidateIds.length),
+  )
+  if (activeErr) {
+    console.warn('Broadcast: active worker job query failed', {
+      serviceType,
+      district: districtCode,
+      errorCode: activeErr.code,
+    })
+    return {
+      success: false,
+      reasonCode: 'DB_ERROR',
+      reason: 'Lỗi khi tìm thợ phù hợp',
+    }
+  }
+
+  const busyWorkerIds = new Set((activeJobs ?? []).map((job) => job.worker_id).filter(Boolean))
+  return {
+    success: true,
+    workers: data
+      .filter((w) => !busyWorkerIds.has(w.id))
+      .slice(0, limit)
+      .map((w) => ({
+        id: w.id,
+        rating: w.rating,
+        total_jobs: w.total_jobs,
+      })),
+  }
 }
 
 /**

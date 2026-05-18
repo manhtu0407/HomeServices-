@@ -458,8 +458,10 @@ export function CustomerKaelSurface() {
 
 export function CustomerHistorySurface() {
   const router = useRouter()
-  const { dispatch, selectors, state } = useFrontendWorkflow()
+  const { actions, dispatch, selectors, state } = useFrontendWorkflow()
+  const [reviewRating, setReviewRating] = useState<1 | 2 | 3 | 4 | 5 | null>(null)
   const deal = state.deal
+  const scopeChange = deal?.scopeChange ?? null
   const timeline = getCustomerTimeline(selectors.currentStatus)
   const visibleStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState)
   const workerStateLabel =
@@ -468,9 +470,11 @@ export function CustomerHistorySurface() {
       : selectors.customerSearchState === 'no_worker'
         ? 'Chưa có thợ nhận'
         : selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active'
-          ? 'Worker audit đang xử lý'
+          ? 'Thợ đang xử lý'
           : selectors.customerSearchState === 'completed'
-            ? selectors.currentStatus === 'confirmed_by_customer'
+            ? selectors.currentStatus === 'reviewed'
+              ? 'Đã gửi đánh giá'
+              : selectors.currentStatus === 'confirmed_by_customer'
               ? 'Đã xác nhận xong'
               : 'Chờ xác nhận cuối'
             : 'Chưa có thợ được ghép'
@@ -479,7 +483,7 @@ export function CustomerHistorySurface() {
     : selectors.currentStatus === 'confirmed_by_customer'
       ? 'Đã xác nhận xong'
       : 'Chờ completion thật'
-  const canCreateFreshRequest = !deal || selectors.currentStatus === 'confirmed_by_customer' || selectors.currentStatus === 'cancelled'
+  const canCreateFreshRequest = !deal || selectors.currentStatus === 'confirmed_by_customer' || selectors.currentStatus === 'reviewed' || selectors.currentStatus === 'cancelled'
   const canEditNoWorkerRequest = selectors.customerSearchState === 'no_worker'
   const canCancelLocalRequest = selectors.canCustomerCancelDeal
   const continueOrCreate = () => {
@@ -493,21 +497,42 @@ export function CustomerHistorySurface() {
   const confirmCompletionReceived = () => {
     Alert.alert(
       'Xác nhận đã nhận việc?',
-      'Yêu cầu local sẽ chuyển sang khách đã xác nhận xong. Thanh toán và đánh giá vẫn khóa cho tới khi hệ thống backend được nối.',
+      'Hệ thống sẽ ghi nhận khách đã xác nhận xong. Thanh toán vẫn khóa ở giai đoạn này.',
       [
         { text: 'Kiểm tra lại', style: 'cancel' },
-        { text: 'Xác nhận xong', onPress: () => dispatch({ type: 'customer_confirm_completion' }) },
+        { text: 'Xác nhận xong', onPress: () => void actions.customerConfirmCompletion() },
       ],
     )
   }
   const confirmCancelLocalDeal = () => {
     const cancelMessage = selectors.hasLocalBroadcast
-      ? 'Broadcast local sẽ dừng và địa chỉ chi tiết vẫn bị ẩn khỏi worker.'
-      : 'Phiếu local sẽ đóng. Bạn có thể tạo yêu cầu mới khi cần.'
-    Alert.alert('Hủy yêu cầu local?', cancelMessage, [
+      ? 'Broadcast sẽ dừng và địa chỉ chi tiết vẫn bị ẩn khỏi worker.'
+      : 'Phiếu sẽ đóng. Bạn có thể tạo yêu cầu mới khi cần.'
+    Alert.alert('Hủy yêu cầu?', cancelMessage, [
       { text: 'Giữ lại', style: 'cancel' },
-      { text: 'Hủy local', style: 'destructive', onPress: () => dispatch({ type: 'cancel_deal' }) },
+      { text: 'Hủy yêu cầu', style: 'destructive', onPress: () => void actions.cancelRemoteJob() },
     ])
+  }
+  const submitSelectedReview = () => {
+    if (!reviewRating) return
+    void actions.submitReview({ rating: reviewRating, tags: [] })
+  }
+  const decideCurrentScopeChange = (decision: 'approve' | 'reject') => {
+    if (!scopeChange) return
+    Alert.alert(
+      decision === 'approve' ? 'Duyệt thay đổi phạm vi?' : 'Từ chối thay đổi phạm vi?',
+      decision === 'approve'
+        ? 'Hệ thống sẽ ghi nhận khách đã duyệt thay đổi và cho thợ tiếp tục sửa.'
+        : 'Hệ thống sẽ ghi nhận khách từ chối thay đổi và cho thợ tiếp tục theo phạm vi cũ.',
+      [
+        { text: 'Kiểm tra lại', style: 'cancel' },
+        {
+          text: decision === 'approve' ? 'Duyệt' : 'Từ chối',
+          style: decision === 'approve' ? 'default' : 'destructive',
+          onPress: () => void actions.decideScopeChange(scopeChange.id, { decision }),
+        },
+      ],
+    )
   }
   const historyActionLabel = canEditNoWorkerRequest ? 'Chỉnh yêu cầu' : canCreateFreshRequest ? 'Tạo yêu cầu mới' : 'Mở Kiểm giá'
 
@@ -565,7 +590,7 @@ export function CustomerHistorySurface() {
                 ) : (
                   <PrimaryButton label={historyActionLabel} onPress={continueOrCreate} compact />
                 )}
-                {canCancelLocalRequest ? <SecondaryButton label="Hủy local" onPress={confirmCancelLocalDeal} compact testID="customer-history-cancel-local-deal" /> : null}
+                {canCancelLocalRequest ? <SecondaryButton label="Hủy yêu cầu" onPress={confirmCancelLocalDeal} compact testID="customer-history-cancel-local-deal" /> : null}
               </View>
             </View>
           </View>
@@ -590,13 +615,25 @@ export function CustomerHistorySurface() {
                 Đổi phạm vi
               </Text>
               <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-                Chưa phát sinh
+                {scopeChange ? 'Chờ quyết định' : 'Chưa phát sinh'}
               </Text>
             </View>
             <View style={styles.twoCol}>
               <V4TicketCell label="Hiện tại" value={deal ? visibleStatusLabel : 'Không có ticket'} />
-              <V4TicketCell label="Cập nhật" value="Khóa tới giai đoạn đổi phạm vi" />
+              <V4TicketCell label="Cập nhật" value={scopeChange?.requestedDescription ?? 'Khóa tới giai đoạn đổi phạm vi'} />
             </View>
+            {scopeChange ? (
+              <View style={styles.workerActions} testID="customer-scope-change-decision">
+                <View style={styles.twoCol}>
+                  <V4TicketCell label="Lý do" value={scopeChange.reason ?? 'Thợ chưa ghi lý do'} />
+                  <V4TicketCell label="Giá mới" value={scopeChange.priceMin && scopeChange.priceMax ? `${formatVnd(scopeChange.priceMin)} - ${formatVnd(scopeChange.priceMax)}` : 'Cần xác nhận'} />
+                </View>
+                <View style={styles.workerMetaRow}>
+                  <SecondaryButton label="Từ chối" onPress={() => decideCurrentScopeChange('reject')} compact />
+                  <PrimaryButton label="Duyệt" onPress={() => decideCurrentScopeChange('approve')} compact />
+                </View>
+              </View>
+            ) : null}
           </View>
           <View style={[styles.flowCard, glassSurface(tokens)]}>
             <GlassSheen />
@@ -612,7 +649,7 @@ export function CustomerHistorySurface() {
               </View>
             </View>
             <View style={styles.twoCol}>
-              <V4TicketCell label="Giá cuối" value="Cần backend" />
+              <V4TicketCell label="Giá cuối" value="Chờ thợ nhập" />
               <V4TicketCell label="Trạng thái" value={completionStatusLabel} />
             </View>
           </View>
@@ -625,6 +662,25 @@ export function CustomerHistorySurface() {
               <V4TicketCell label="Thanh toán" value={selectors.paymentLocked ? 'Khóa' : 'Mở'} />
               <V4TicketCell label="Đánh giá" value={selectors.reviewLocked ? 'Khóa' : 'Mở'} />
             </View>
+            {selectors.canCustomerSubmitReview ? (
+              <View style={styles.workerActions} testID="customer-history-review-submit">
+                <View style={styles.workerMetaRow}>
+                  {([1, 2, 3, 4, 5] as const).map((rating) => (
+                    <Pressable
+                      accessibilityRole="button"
+                      key={rating}
+                      onPress={() => setReviewRating(rating)}
+                      style={[styles.reviewRatingButton, { backgroundColor: reviewRating === rating ? tokens.primary : tokens.glassStrong }]}
+                    >
+                      <Text style={{ color: reviewRating === rating ? tokens.primaryText : tokens.primary }} numberOfLines={1}>
+                        {rating}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <PrimaryButton label="Gửi đánh giá" onPress={submitSelectedReview} compact />
+              </View>
+            ) : null}
           </View>
           <View style={styles.hiddenMarker} testID="customer-shell-no-fake-history-data" />
           <View style={styles.hiddenMarker} testID="customer-history-evidence-timeline" />
@@ -740,11 +796,11 @@ function getCustomerTimeline(status: LocalDealStatus | null) {
   const steps: Array<{ label: string; statuses: LocalDealStatus[] }> = [
     { label: 'Mô tả vấn đề', statuses: ['draft', 'analyzing'] },
     { label: 'Xác nhận tìm thợ', statuses: ['awaiting_customer_confirm'] },
-    { label: 'Broadcast local', statuses: ['broadcasting'] },
-    { label: 'Worker audit nhận', statuses: ['worker_matched', 'worker_on_way'] },
-    { label: 'Kiểm tra/sửa', statuses: ['arrived', 'inspecting', 'repairing'] },
+    { label: 'Tìm thợ', statuses: ['broadcasting'] },
+    { label: 'Thợ nhận việc', statuses: ['worker_matched', 'worker_on_way'] },
+    { label: 'Kiểm tra/sửa', statuses: ['arrived', 'inspecting', 'repairing', 'scope_change_pending'] },
     { label: 'Thợ báo hoàn tất', statuses: ['completed_by_worker'] },
-    { label: 'Khách xác nhận xong', statuses: ['confirmed_by_customer'] },
+    { label: 'Khách xác nhận xong', statuses: ['confirmed_by_customer', 'reviewed'] },
   ]
   const activeIndex = status ? steps.findIndex((step) => step.statuses.includes(status)) : -1
   return steps.map((step, index) => ({
@@ -754,7 +810,7 @@ function getCustomerTimeline(status: LocalDealStatus | null) {
 }
 
 function canReplaceCustomerDeal(status: LocalDealStatus): boolean {
-  return ['draft', 'cancelled', 'confirmed_by_customer'].includes(status)
+  return ['draft', 'cancelled', 'confirmed_by_customer', 'reviewed'].includes(status)
 }
 
 function customerVisibleStatusLabel(status: LocalDealStatus | null, searchState: LocalCustomerSearchState): string {
@@ -763,8 +819,12 @@ function customerVisibleStatusLabel(status: LocalDealStatus | null, searchState:
   return statusLabel(status)
 }
 
+function formatVnd(value: number) {
+  return `${new Intl.NumberFormat('vi-VN').format(value)}đ`
+}
+
 function isTerminalCustomerDeal(status: LocalDealStatus): boolean {
-  return status === 'cancelled' || status === 'confirmed_by_customer'
+  return status === 'cancelled' || status === 'confirmed_by_customer' || status === 'reviewed'
 }
 
 function V4Frame({
@@ -2246,6 +2306,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0,
     overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  reviewRatingButton: {
+    alignItems: 'center',
+    borderRadius: 999,
+    minWidth: 30,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },

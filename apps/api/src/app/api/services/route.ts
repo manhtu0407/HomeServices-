@@ -1,5 +1,6 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { withDbTimeout } from '@/lib/db/query'
+import { HCMC_DISTRICTS } from '@home-services/shared'
 
 export async function GET(request: Request) {
   const auth = await authenticateRequest(request)
@@ -44,9 +45,14 @@ export async function GET(request: Request) {
   }
 
   if (baseError) {
-    // Baselines are non-critical for the catalog response — log and continue
-    // with empty baselines rather than failing the entire request.
-    console.warn('Failed to fetch baselines', { errorCode: baseError.code })
+    return apiError('DB_ERROR', 'Không thể tải bảng giá nền', 500)
+  }
+
+  if ((baselines ?? []).some((baseline) => hasInvalidBaselineRange(baseline.price_min, baseline.price_max))) {
+    return apiError('DB_ERROR', 'Bảng giá nền có dữ liệu không hợp lệ', 500)
+  }
+  if ((baselines ?? []).some((baseline) => hasInvalidBaselineDistrict(baseline.district_code))) {
+    return apiError('DB_ERROR', 'Bảng giá nền có khu vực không hợp lệ', 500)
   }
 
   const services = (categories ?? []).map((cat) => ({
@@ -68,8 +74,44 @@ export async function GET(request: Request) {
         district_code: b.district_code,
         price_min: b.price_min,
         price_max: b.price_max,
-      })),
+      }))
+      .filter(uniqueCatalogBaseline),
   }))
 
   return apiSuccess({ services })
+}
+
+function hasInvalidBaselineRange(priceMin: unknown, priceMax: unknown) {
+  const min = positiveNumberFrom(priceMin)
+  const max = positiveNumberFrom(priceMax)
+  return min === null || max === null || max < min
+}
+
+function hasInvalidBaselineDistrict(districtCode: unknown) {
+  return typeof districtCode !== 'string' ||
+    !Object.prototype.hasOwnProperty.call(HCMC_DISTRICTS, districtCode)
+}
+
+function positiveNumberFrom(value: unknown): number | null {
+  const number = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(number) && number > 0 ? number : null
+}
+
+function uniqueCatalogBaseline<T extends {
+  complexity: unknown
+  district_code: unknown
+  price_min: unknown
+  price_max: unknown
+}>(baseline: T, index: number, baselines: T[]) {
+  const key = catalogBaselineKey(baseline)
+  return baselines.findIndex((candidate) => catalogBaselineKey(candidate) === key) === index
+}
+
+function catalogBaselineKey(baseline: {
+  complexity: unknown
+  district_code: unknown
+  price_min: unknown
+  price_max: unknown
+}) {
+  return `${baseline.complexity}:${baseline.district_code}:${baseline.price_min}:${baseline.price_max}`
 }

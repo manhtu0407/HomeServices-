@@ -1,5 +1,10 @@
 # Home Services — Progress Log
 
+> Current runtime decision (2026-05-18): React Native AppStore/CHPlay ->
+> Supabase Auth -> Supabase Edge Function `mobile-api` ->
+> DB/RPC/Storage/Realtime -> AI providers. Do not use Vercel or hosted
+> Next.js as the mobile runtime; `apps/api` is reference/parity code only.
+
 ### 2026-05-17 — Kael Two Supporting Services (MarketMemory + CaseReview)
 
 - **Task**: Build Kael's two supporting services per STRUCTURES.md §10A/§10B. Real working loop end-to-end, not just code that looks pretty.
@@ -15,8 +20,8 @@
 - **Verification**:
   - `corepack pnpm --filter @home-services/api test` → 800 pass / 59 skip / 0 fail.
   - Staging integration (5 tests, real Supabase): 4-job evidence floor, 5-job + autopromote on → rule active + version v1, fetchBaseline returns learned range, autopromote-off path, null final_price graceful skip.
-- **Known gap (Tu caught)**: backend has NO deployment config — `vercel.json` / `netlify.toml` / `Dockerfile` absent. Production has 0 Supabase Edge Functions. Backend buildable but not hosted. Tu to decide Path A (deploy Next.js) vs Path B (migrate to Edge Functions) vs Path C (refactor — violates RULES #1/#2).
-- **Next**: Decide deployment path. After frontend (PR#8) finishes, audit Clients + Fleets sections and wire backend.
+- **Decision update (2026-05-18)**: runtime path is locked to Supabase Edge Function `mobile-api`. Vercel/hosted Next.js is not part of the mobile release path.
+- **Next**: Continue Edge/mobile parity, staging/prod gates, and App E2E last.
 
 ### 2026-05-16 — Real Backend Build (Customer + Worker) + 3-Tier Quality Pass
 

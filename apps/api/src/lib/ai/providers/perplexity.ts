@@ -7,7 +7,7 @@ export async function callPerplexity(request: AIRequest): Promise<AIResponse> {
 
   const start = Date.now()
 
-  const res = await fetch('https://api.perplexity.ai/chat/completions', {
+  const res = await fetch('https://api.perplexity.ai/v1/sonar', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
