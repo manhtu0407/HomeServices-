@@ -1,5 +1,16 @@
 # MEMORY
 
+## 2026-05-18 React Doctor & AI Coding Agents Skills Session
+
+- Added project-local React Doctor runner at the repo root. `package.json` now has `doctor:react` for full workspace scans and `doctor:react:changed` for diff scans, both using `npx -y react-doctor@latest` with `--yes`, `--verbose`, `--offline`, and `--fail-on none`. Added `react-doctor.config.json` with `share: false`, `failOn: none`, and `respectInlineDisables: true`.
+- Verified React Doctor setup with `pnpm doctor:react:changed`: API scanned clean at 100/100, mobile scored 91/100 with existing warnings. Then ran full `pnpm doctor:react`: API scored 93/100 with 43 issues across 28/108 files; mobile scored 90/100 with 55 issues across 12/29 files. Treat the project as generally healthy but with mobile cleanup priority.
+- React Doctor findings to remember: mobile state/effect cleanup is the highest-value area (`auth-provider.tsx`, `client-price-check-flow.tsx`), followed by unused exports/types, `react-native` `Image` imports that should move to `expo-image` where appropriate, and React 19 context API warnings. The `no-secrets-in-client-code` findings reviewed during the session looked like route/test marker constants, not real secrets.
+- API React Doctor findings were mostly performance/style/dead-code signals. Do not blindly parallelize the Kael provider fallback loop in `apps/api/src/lib/kael/intent.ts`; the sequential DeepSeek -> Anthropic behavior is intentional failover unless product requirements change.
+- Added `skills.md` at the repo root as the project memory/reference for Karpathy-inspired AI coding behavior: think before coding, simplicity first, surgical changes, and goal-driven execution. This is adapted for Home Services: ship toward first real transaction, keep Kael narrow, protect auth/secrets/PII/booking, and verify with evidence.
+- Installed the project-local AI Coding Agents skill at `.agents/skills/karpathy-guidelines/SKILL.md`, adapted from `multica-ai/andrej-karpathy-skills`, and registered it in `skills-lock.json` with SHA-256 `78577415bd09ecf7283752cf163e15c5d57c9972c80550df78d278f89f8ef1c7`.
+- Updated `CLAUDE.md`, `critical.md`, and `RULES.md` after Tu explicitly approved editing locked docs. New rule: coding/review/refactor/debug/planning agents must read `skills.md` or invoke the project-local `karpathy-guidelines` skill. `RULES.md` remains higher priority than `skills.md` if they conflict.
+- Important PR hygiene from this session: the worktree contained unrelated pre-existing mobile/API/migration changes. When committing this session, stage only the agent-skill/React Doctor/memory files unless Tu explicitly asks to include the broader dirty worktree.
+
 ## 2026-05-18 Supabase Edge Backend Wiring Session
 
 - Locked deployment path: React Native AppStore/CHPlay -> Supabase Auth -> Supabase Edge Function `mobile-api` -> DB/RPC/Storage/Realtime -> AI providers. No Vercel or hosted Next.js runtime for mobile.
