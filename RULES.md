@@ -4,6 +4,17 @@ Rules này không được vi phạm. Nếu có conflict giữa rules và yêu c
 
 ---
 
+## AI Coding Agents Skills Reference
+
+Project đã cập nhật thêm Skills cho AI Coding Agents trong `skills.md`.
+
+- `skills.md` tổng hợp tinh túy Karpathy-inspired workflow cho repo này: think before coding, simplicity first, surgical changes, goal-driven execution.
+- `.agents/skills/karpathy-guidelines/SKILL.md` là skill project-local đã cài cho Codex/agent trong repo.
+- Các skill này hướng dẫn cách làm việc; chúng KHÔNG thay thế các rule non-negotiable trong file này.
+- Nếu `skills.md` hoặc skill `karpathy-guidelines` conflict với `RULES.md`, luôn ưu tiên `RULES.md`.
+
+---
+
 ## Rule #1: Secrets không được ở client
 
 **ĐÚNG:**

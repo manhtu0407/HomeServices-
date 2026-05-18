@@ -6,6 +6,8 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "doctor:react": "npx -y react-doctor@latest . --yes --verbose --offline --fail-on none",
+    "doctor:react:changed": "npx -y react-doctor@latest . --yes --verbose --diff --offline --fail-on none",
     "test": "turbo test",
     "lint": "turbo lint",
     "type-check": "turbo type-check"

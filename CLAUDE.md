@@ -46,6 +46,15 @@ Phase 0 — Foundation Hardening. Chưa có feature code.
 5. **Think in systems** — ảnh hưởng Kael, scale, data sinh ra, second-order effects
 6. **Documentation = Memory** — pattern/rule mới phải log TRƯỚC khi code
 
+## AI Coding Agents Skills
+
+Project này đã cập nhật thêm AI Coding Agents skills trong `skills.md`.
+
+- `skills.md` = tinh túy Karpathy-inspired coding behavior cho repo này: think before coding, simplicity first, surgical changes, goal-driven execution.
+- `.agents/skills/karpathy-guidelines/SKILL.md` = project-local Codex skill được cài từ `multica-ai/andrej-karpathy-skills`, đã được điều chỉnh cho Home Services.
+- Khi làm code/review/refactor/debug, agent phải đọc `skills.md` hoặc skill `karpathy-guidelines` trước khi chọn cách làm.
+- Nếu có conflict: `RULES.md` và security/product constraints thắng; `skills.md` hướng dẫn cách thực thi.
+
 ## Response Modes
 
 | Mode | Trigger | Hành vi |
@@ -71,6 +80,8 @@ Phase 0 — Foundation Hardening. Chưa có feature code.
 
 @STRUCTURES.md
 @RULES.md
+@skills.md
+@.agents/skills/karpathy-guidelines/SKILL.md
 
 README.md — progress log (xem khi cần báo cáo tiến trình)
 

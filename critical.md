@@ -2,7 +2,7 @@
 
 This file is a mandatory execution contract for AI coding agents working on Home Services.
 
-It exists to help Codex, Claude Code, and any future AI coding tool execute with discipline. `design.md` provides the design execution contract for UI work. `CLAUDE.md`, `RULES.md`, and `STRUCTURES.md` provide project context and hard product/security rules. This file provides the operating skills, execution protocols, quality gates, and anti-patterns that agents MUST use while changing the codebase.
+It exists to help Codex, Claude Code, and any future AI coding tool execute with discipline. `design.md` provides the design execution contract for UI work. `CLAUDE.md`, `RULES.md`, and `STRUCTURES.md` provide project context and hard product/security rules. `skills.md` and `.agents/skills/karpathy-guidelines/SKILL.md` provide the newly installed AI Coding Agents skills for explicit assumptions, simple implementations, surgical diffs, and verification-driven execution. This file provides the operating skills, execution protocols, quality gates, and anti-patterns that agents MUST use while changing the codebase.
 
 This file is locked. AI agents MUST NOT edit `critical.md` unless Tu explicitly requests that edit in the current conversation.
 
@@ -16,13 +16,14 @@ Before editing files, the agent MUST:
 
 1. Read `critical.md`.
 2. Read `design.md` when the task touches UI, frontend, prototype, visual design, motion, mascot, layout, design tokens, or component styling.
-3. Read `RULES.md`.
-4. Read `STRUCTURES.md`.
-5. Read `CLAUDE.md` when the task is ambiguous, strategic, cross-cutting, or may conflict with project identity.
-6. Read the relevant code and tests before proposing or making changes.
-7. Classify the task.
-8. Select the smallest sufficient protocol set.
-9. State the selected protocols before editing.
+3. Read `skills.md`, or invoke the project-local `karpathy-guidelines` skill from `.agents/skills/karpathy-guidelines/SKILL.md`, before writing, reviewing, refactoring, debugging, or planning code.
+4. Read `RULES.md`.
+5. Read `STRUCTURES.md`.
+6. Read `CLAUDE.md` when the task is ambiguous, strategic, cross-cutting, or may conflict with project identity.
+7. Read the relevant code and tests before proposing or making changes.
+8. Classify the task.
+9. Select the smallest sufficient protocol set.
+10. State the selected protocols before editing.
 
 The agent MUST distinguish:
 
