@@ -65,17 +65,17 @@ export async function GET(request: Request) {
   }
 
   const broadcasts = (rows ?? [])
-    .map((row) => {
+    .flatMap((row) => {
       // Supabase nested select returns the related row as `unknown`-ish in the
       // generated types when the relation isn't 1:1 declared. Narrow via a
       // typed pick (BroadcastJobSummary) so callers fail-compile on schema drift.
       const job = relatedJob(row.jobs)
-      if (!job || job.status !== 'broadcasting') return null // FK guarantees it exists; defensive skip
+      if (!job || job.status !== 'broadcasting') return [] // FK guarantees it exists; defensive skip
 
       const earningMin = job.kael_price_min !== null ? Math.round(job.kael_price_min * WORKER_NET_MULTIPLIER) : null
       const earningMax = job.kael_price_max !== null ? Math.round(job.kael_price_max * WORKER_NET_MULTIPLIER) : null
 
-      return {
+      return [{
         broadcast_id: row.id,
         job_id: row.job_id,
         status: row.status,
@@ -89,9 +89,8 @@ export async function GET(request: Request) {
         sent_at: row.sent_at,
         expires_at: row.expires_at,
         seconds_remaining: secondsRemaining(row.expires_at, now),
-      }
+      }]
     })
-    .filter((b): b is NonNullable<typeof b> => b !== null)
 
   return apiSuccess({ broadcasts })
 }

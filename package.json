@@ -13,6 +13,7 @@
     "type-check": "turbo type-check"
   },
   "devDependencies": {
+    "metro-runtime": "0.83.3",
     "turbo": "^2"
   }
 }

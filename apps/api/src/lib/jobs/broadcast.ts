@@ -166,7 +166,7 @@ export async function queryEligibleWorkers(
     }
   }
 
-  const busyWorkerIds = new Set((activeJobs ?? []).map((job) => job.worker_id).filter(Boolean))
+  const busyWorkerIds = new Set((activeJobs ?? []).flatMap((job) => job.worker_id ? [job.worker_id] : []))
   return {
     success: true,
     workers: data

@@ -456,8 +456,8 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-kael-active-deal-guard')
     expect(src).toContain('canReplaceCustomerDeal')
     expect(src).toContain("state.deal?.draft.source === 'kael'")
-    expect(src).toContain("setLatestAnswer('')")
-    expect(src).toContain("setKaelDraft('')")
+    expect(src).toContain('EMPTY_CUSTOMER_KAEL_DRAFT_STATE')
+    expect(src).toContain('patchKaelDraft(EMPTY_CUSTOMER_KAEL_DRAFT_STATE)')
     expect(src).toContain('trimmed.length < 4')
     expect(src).toContain('maxLength={220}')
     expect(src).not.toContain('value="Sửa điện"')
@@ -1326,7 +1326,7 @@ describe('client price check production UI', () => {
 
   it('renders only the active booking workflow section at each step', () => {
     const component = read(productionComponentPath)
-    expect(component).toContain('renderCurrentStep')
+    expect(component).toContain('currentStepContent')
     expect(component).toContain('booking-current-step-only')
     expect(component).toContain('isDraftValid')
     expect(component).toContain('validationMessage')

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, use, useEffect, useReducer } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { USER_ROLES, type UserRole } from '@home-services/shared'
@@ -16,6 +16,16 @@ type AuthState = {
   refreshProfile: () => Promise<UserRole | null>
 }
 
+type AuthSnapshot = Pick<AuthState, 'session' | 'role' | 'loading' | 'profileStatus' | 'authError'>
+
+const INITIAL_AUTH_SNAPSHOT: AuthSnapshot = {
+  session: null,
+  role: null,
+  loading: true,
+  profileStatus: 'idle',
+  authError: null,
+}
+
 const AuthContext = createContext<AuthState>({
   session: null,
   role: null,
@@ -27,51 +37,51 @@ const AuthContext = createContext<AuthState>({
   refreshProfile: async () => null,
 })
 
+function authSnapshotReducer(current: AuthSnapshot, patch: Partial<AuthSnapshot>): AuthSnapshot {
+  return { ...current, ...patch }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null)
-  const [role, setRole] = useState<UserRole | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [profileStatus, setProfileStatus] = useState<ProfileStatus>('idle')
-  const [authError, setAuthError] = useState<string | null>(null)
+  const [{ session, role, loading, profileStatus, authError }, patchAuth] = useReducer(authSnapshotReducer, INITIAL_AUTH_SNAPSHOT)
+  const setSession = (nextSession: Session | null) => patchAuth({ session: nextSession })
+  const setRole = (nextRole: UserRole | null) => patchAuth({ role: nextRole })
+  const setLoading = (nextLoading: boolean) => patchAuth({ loading: nextLoading })
+  const setProfileStatus = (nextProfileStatus: ProfileStatus) => patchAuth({ profileStatus: nextProfileStatus })
+  const setAuthError = (nextAuthError: string | null) => patchAuth({ authError: nextAuthError })
 
   useEffect(() => {
     if (!supabase) {
-      setSession(null)
-      setRole(null)
-      setProfileStatus('config_missing')
-      setLoading(false)
+      patchAuth({ session: null, role: null, profileStatus: 'config_missing', loading: false })
       return
     }
 
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
-        setSession(session)
         if (session?.user) {
+          patchAuth({ session })
           void fetchRole(session.user.id)
         } else {
-          setProfileStatus('idle')
-          setLoading(false)
+          patchAuth({ session, role: null, profileStatus: 'idle', loading: false })
         }
       })
       .catch(() => {
-        setSession(null)
-        setRole(null)
-        setProfileStatus('profile_error')
-        setAuthError('Không thể khôi phục phiên đăng nhập')
-        setLoading(false)
+        patchAuth({
+          session: null,
+          role: null,
+          profileStatus: 'profile_error',
+          authError: 'Không thể khôi phục phiên đăng nhập',
+          loading: false,
+        })
       })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
       if (session?.user) {
+        patchAuth({ session })
         void fetchRole(session.user.id)
       } else {
-        setRole(null)
-        setProfileStatus('idle')
-        setAuthError(null)
-        setLoading(false)
+        patchAuth({ session, role: null, profileStatus: 'idle', authError: null, loading: false })
       }
     })
 
@@ -224,7 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth() {
-  return useContext(AuthContext)
+  return use(AuthContext)
 }
 
 function isValidEmail(email: string) {

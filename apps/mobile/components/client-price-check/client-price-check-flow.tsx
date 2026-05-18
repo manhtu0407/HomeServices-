@@ -1,10 +1,10 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useReducer, useRef } from 'react'
+import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -165,19 +165,47 @@ const FALLBACK_ESTIMATE: PriceCheckEstimateCard = {
   source: 'baseline_fallback',
 }
 
-export function ClientPriceCheckFlow() {
-  const router = useRouter()
+type PriceCheckUiState = {
+  step: PriceCheckUiStep
+  status: PriceCheckUiStatus
+  draft: PriceCheckDraft
+  manualErrorMessage: string | null
+}
+
+type PriceCheckUiPatch = Partial<PriceCheckUiState> | ((current: PriceCheckUiState) => Partial<PriceCheckUiState>)
+
+function priceCheckUiReducer(current: PriceCheckUiState, patch: PriceCheckUiPatch): PriceCheckUiState {
+  const nextPatch = typeof patch === 'function' ? patch(current) : patch
+  return { ...current, ...nextPatch }
+}
+
+function useClientPriceCheckController() {
+  const { push } = useRouter()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const { actions, dispatch, selectors, state: workflowState } = useFrontendWorkflow()
   const frameWidth = Math.min(width, 430)
-  const [step, setStep] = useState<PriceCheckUiStep>(() => initialStepFromWorkflow(selectors.currentStatus))
-  const [status, setStatus] = useState<PriceCheckUiStatus>('editing')
-  const [draft, setDraft] = useState<PriceCheckDraft>(() => draftFromWorkflow(workflowState.deal?.draft))
-  const [manualErrorMessage, setManualErrorMessage] = useState<string | null>(null)
+  const [{ step, status, draft, manualErrorMessage }, patchUiState] = useReducer(
+    priceCheckUiReducer,
+    null,
+    (): PriceCheckUiState => ({
+      step: initialStepFromWorkflow(selectors.currentStatus),
+      status: 'editing',
+      draft: draftFromWorkflow(workflowState.deal?.draft),
+      manualErrorMessage: null,
+    }),
+  )
   const workflowDraftKey = useMemo(() => workflowDraftSyncKey(workflowState.deal), [workflowState.deal])
   const syncedWorkflowDraftKeyRef = useRef(workflowDraftKey)
   const skipNextWorkflowDraftSyncRef = useRef(false)
+  const setStep = (nextStep: PriceCheckUiStep) => patchUiState({ step: nextStep })
+  const setStatus = (nextStatus: PriceCheckUiStatus | ((current: PriceCheckUiStatus) => PriceCheckUiStatus)) => {
+    patchUiState((current) => ({
+      status: typeof nextStatus === 'function' ? nextStatus(current.status) : nextStatus,
+    }))
+  }
+  const setDraft = (nextDraft: PriceCheckDraft) => patchUiState({ draft: nextDraft })
+  const setManualErrorMessage = (nextMessage: string | null) => patchUiState({ manualErrorMessage: nextMessage })
   const questions = draft.serviceType ? QUESTIONS[draft.serviceType] : []
   const chips = useMemo(() => (draft.serviceType ? PROBLEM_CHIPS[draft.serviceType] : []), [draft.serviceType])
   const answeredQuestions = questions.filter((question) => draft.clarificationAnswers[question.id]).length
@@ -203,19 +231,23 @@ export function ClientPriceCheckFlow() {
 
   useEffect(() => {
     if (selectors.customerSearchState === 'no_worker') {
-      setStep('emptyWorker')
-      setStatus((current) => current === 'loading' ? 'fallback' : current)
+      patchUiState((current) => ({
+        step: 'emptyWorker',
+        status: current.status === 'loading' ? 'fallback' : current.status,
+      }))
     }
     if (selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active' || selectors.customerSearchState === 'completed') {
-      setStep('matched')
+      patchUiState({ step: 'matched' })
     }
   }, [selectors.customerSearchState])
 
   useEffect(() => {
     if (selectors.currentStatus !== 'draft' || step !== 'emptyWorker') return
-    setDraft(draftFromWorkflow(workflowState.deal?.draft))
-    setStep('form')
-    setStatus('editing')
+    patchUiState({
+      draft: draftFromWorkflow(workflowState.deal?.draft),
+      step: 'form',
+      status: 'editing',
+    })
   }, [selectors.currentStatus, step, workflowState.deal?.draft])
 
   useEffect(() => {
@@ -227,9 +259,11 @@ export function ClientPriceCheckFlow() {
       return
     }
 
-    setDraft(draftFromWorkflow(workflowState.deal?.draft))
-    setStep(initialStepFromWorkflow(selectors.currentStatus))
-    setStatus('editing')
+    patchUiState({
+      draft: draftFromWorkflow(workflowState.deal?.draft),
+      step: initialStepFromWorkflow(selectors.currentStatus),
+      status: 'editing',
+    })
   }, [selectors.currentStatus, workflowDraftKey, workflowState.deal?.draft])
 
   const commitDraft = (nextDraft: PriceCheckDraft) => {
@@ -347,7 +381,7 @@ export function ClientPriceCheckFlow() {
       return
     }
     if (step === 'matched') {
-      router.push(openHistoryPath)
+      push(openHistoryPath)
       return
     }
     if (step === 'emptyWorker') {
@@ -367,7 +401,7 @@ export function ClientPriceCheckFlow() {
     if (step === 'estimate') setStep('clarification')
     if (step === 'schedule') setStep('estimate')
     if (step === 'confirm') setStep('schedule')
-    if (step === 'searching' || step === 'matched') router.push(openHomePath)
+    if (step === 'searching' || step === 'matched') push(openHomePath)
   }
 
   const editAfterNoWorker = () => {
@@ -406,7 +440,7 @@ export function ClientPriceCheckFlow() {
                 return
               }
               setStatus('fallback')
-              router.push(openHistoryPath)
+              push(openHistoryPath)
             })
           },
         },
@@ -431,51 +465,86 @@ export function ClientPriceCheckFlow() {
     goBack()
   }
 
-  const renderCurrentStep = () => {
-    switch (step) {
-      case 'form':
-        return (
-          <BookingFormSurface
-            chips={chips}
-            draft={draft}
-            previewQuestions={questions}
-            unsupportedServiceLabel={workflowState.deal?.draft.unsupportedServiceLabel ?? null}
-            validationMessage={status === 'error' ? manualErrorMessage ?? validationMessage : null}
-            onAddressChange={(addressLabel) => commitDraft({ ...draft, addressLabel })}
-            onDescriptionChange={(description) => commitDraft({ ...draft, description })}
-            onPickMedia={pickMedia}
-            onRemoveMedia={removeMedia}
-            onSelectService={(serviceType) =>
-              commitDraft({ ...draft, serviceType, clarificationAnswers: {}, problemChips: [] })
-            }
-            onToggleChip={(chip) =>
-              commitDraft({
-                ...draft,
-                problemChips: draft.problemChips.includes(chip)
-                  ? draft.problemChips.filter((item) => item !== chip)
-                  : [...draft.problemChips, chip].slice(0, 3),
-              })
-            }
-          />
-        )
-      case 'clarification':
-        return <ClarificationPanel draft={draft} questions={questions} onAnswer={(questionId, answer) => commitDraft({ ...draft, clarificationAnswers: { ...draft.clarificationAnswers, [questionId]: answer } })} />
-      case 'estimate':
-        return <><TrustRail active="estimate" /><EstimatePanel estimate={estimate} isFallback={isEstimateFallback} /></>
-      case 'schedule':
-        return <SchedulePanel draft={draft} onSelect={() => commitDraft({ ...draft, timeChoice: 'now' })} />
-      case 'confirm':
-        return <ConfirmPanel draft={draft} estimate={estimate} />
-      case 'searching':
-        return selectors.customerSearchState === 'no_worker' ? <EmptyWorkerPanel /> : selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active' || selectors.customerSearchState === 'completed' ? <WorkerMatchedPanel status={selectors.currentStatus} /> : <SearchingWorkerPanel draft={draft} />
-      case 'emptyWorker':
-        return <EmptyWorkerPanel />
-      case 'matched':
-        return <WorkerMatchedPanel status={selectors.currentStatus} />
-      default:
-        return null
-    }
+  let currentStepContent: ReactNode = null
+  switch (step) {
+    case 'form':
+      currentStepContent = (
+        <BookingFormSurface
+          chips={chips}
+          draft={draft}
+          previewQuestions={questions}
+          unsupportedServiceLabel={workflowState.deal?.draft.unsupportedServiceLabel ?? null}
+          validationMessage={status === 'error' ? manualErrorMessage ?? validationMessage : null}
+          onAddressChange={(addressLabel) => commitDraft({ ...draft, addressLabel })}
+          onDescriptionChange={(description) => commitDraft({ ...draft, description })}
+          onPickMedia={pickMedia}
+          onRemoveMedia={removeMedia}
+          onSelectService={(serviceType) =>
+            commitDraft({ ...draft, serviceType, clarificationAnswers: {}, problemChips: [] })
+          }
+          onToggleChip={(chip) =>
+            commitDraft({
+              ...draft,
+              problemChips: draft.problemChips.includes(chip)
+                ? draft.problemChips.filter((item) => item !== chip)
+                : [...draft.problemChips, chip].slice(0, 3),
+            })
+          }
+        />
+      )
+      break
+    case 'clarification':
+      currentStepContent = <ClarificationPanel draft={draft} questions={questions} onAnswer={(questionId, answer) => commitDraft({ ...draft, clarificationAnswers: { ...draft.clarificationAnswers, [questionId]: answer } })} />
+      break
+    case 'estimate':
+      currentStepContent = <><TrustRail active="estimate" /><EstimatePanel estimate={estimate} isFallback={isEstimateFallback} /></>
+      break
+    case 'schedule':
+      currentStepContent = <SchedulePanel draft={draft} onSelect={() => commitDraft({ ...draft, timeChoice: 'now' })} />
+      break
+    case 'confirm':
+      currentStepContent = <ConfirmPanel draft={draft} estimate={estimate} />
+      break
+    case 'searching':
+      currentStepContent = selectors.customerSearchState === 'no_worker' ? <EmptyWorkerPanel /> : selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active' || selectors.customerSearchState === 'completed' ? <WorkerMatchedPanel status={selectors.currentStatus} /> : <SearchingWorkerPanel draft={draft} />
+      break
+    case 'emptyWorker':
+      currentStepContent = <EmptyWorkerPanel />
+      break
+    case 'matched':
+      currentStepContent = <WorkerMatchedPanel status={selectors.currentStatus} />
+      break
   }
+
+  return {
+    canCancelFromSearching,
+    clarificationComplete,
+    continueFlow,
+    currentStepContent,
+    draft,
+    frameWidth,
+    insets,
+    push,
+    secondaryAction,
+    status,
+    step,
+  }
+}
+
+export function ClientPriceCheckFlow() {
+  const {
+    canCancelFromSearching,
+    clarificationComplete,
+    continueFlow,
+    currentStepContent,
+    draft,
+    frameWidth,
+    insets,
+    push,
+    secondaryAction,
+    status,
+    step,
+  } = useClientPriceCheckController()
 
   return (
     <View
@@ -501,7 +570,7 @@ export function ClientPriceCheckFlow() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.bookingTopRow}>
-          <Pressable accessibilityLabel="Quay lại" onPress={() => router.push(openHomePath)} style={styles.bookingMiniButton}>
+          <Pressable accessibilityLabel="Quay lại" onPress={() => push(openHomePath)} style={styles.bookingMiniButton}>
             <ChevronGlyph />
           </Pressable>
           <View style={styles.bookingLocationPill}>
@@ -513,7 +582,7 @@ export function ClientPriceCheckFlow() {
           <GlassSheen />
           <View style={styles.sheetHandle} />
           <BookingHeader />
-          <View testID="booking-current-step-only">{renderCurrentStep()}</View>
+          <View testID="booking-current-step-only">{currentStepContent}</View>
           <SheetActions
             disabled={step === 'clarification' && !clarificationComplete}
             onPrimary={continueFlow}
@@ -543,7 +612,7 @@ function BookingHeader() {
       </View>
       <View style={styles.kaelHeaderMascot}>
         <GlassSheen />
-        <Image resizeMode="contain" source={kaelModel8A} style={styles.kaelHeaderImage} />
+        <Image contentFit="contain" source={kaelModel8A} style={styles.kaelHeaderImage} />
       </View>
     </View>
   )
@@ -882,7 +951,7 @@ function EvidenceDraftSlots({ mediaItems, onPickMedia, onRemoveMedia }: { mediaI
       <View style={styles.mediaGrid}>
         {mediaItems.map((item) => (
           <Pressable key={item.id} accessibilityRole="button" onPress={() => onRemoveMedia(item.id)} style={styles.mediaTile}>
-            {item.type === 'image' ? <Image source={{ uri: item.uri }} style={styles.mediaPreview} resizeMode="cover" /> : <Text style={styles.mediaText}>Video</Text>}
+            {item.type === 'image' ? <Image source={{ uri: item.uri }} style={styles.mediaPreview} contentFit="cover" /> : <Text style={styles.mediaText}>Video</Text>}
             <Text style={styles.mediaText} numberOfLines={1}>
               Gỡ
             </Text>

@@ -20,7 +20,7 @@ export type ServiceCatalogResponse = {
   }[]
 }
 
-export type KaelEstimate = {
+type KaelEstimate = {
   service_type: ServiceType
   problem_category: string
   problem_summary: string
@@ -160,7 +160,7 @@ export type WorkerBroadcastsResponse = {
 
 export type BroadcastListResponse = WorkerBroadcastsResponse
 
-export type WorkerAvailabilityResponse = {
+type WorkerAvailabilityResponse = {
   worker_id: string
   is_available: boolean
   updated_at: string

@@ -18,8 +18,10 @@ vi.mock('@supabase/ssr', () => ({
 import { updateSession } from '@/lib/middleware'
 import { NextRequest } from 'next/server'
 
-function makeRequest(pathname: string): NextRequest {
-  return new NextRequest(new URL(`http://localhost:3000${pathname}`))
+function makeRequest(pathname: string, cookie?: string): NextRequest {
+  return new NextRequest(new URL(`http://localhost:3000${pathname}`), {
+    headers: cookie ? { cookie } : undefined,
+  })
 }
 
 describe('middleware — API route bypass', () => {
@@ -51,9 +53,17 @@ describe('middleware — API route bypass', () => {
     expect(mockGetUser).not.toHaveBeenCalled()
   })
 
-  it('still checks auth for non-API routes (e.g. /dashboard)', async () => {
+  it('redirects non-API routes without Supabase auth cookie before auth lookup', async () => {
     mockGetUser.mockResolvedValue({ data: { user: null } })
     const response = await updateSession(makeRequest('/dashboard'))
+    expect(mockGetUser).not.toHaveBeenCalled()
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toContain('/auth/login')
+  })
+
+  it('checks auth for non-API routes with Supabase auth cookie', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } })
+    const response = await updateSession(makeRequest('/dashboard', 'sb-local-auth-token=test'))
     expect(mockGetUser).toHaveBeenCalled()
     expect(response.status).toBe(307)
     expect(response.headers.get('location')).toContain('/auth/login')
@@ -63,13 +73,21 @@ describe('middleware — API route bypass', () => {
     mockGetUser.mockResolvedValue({ data: { user: null } })
     const response = await updateSession(makeRequest('/auth/login'))
     expect(response.status).toBe(200)
+    expect(mockGetUser).not.toHaveBeenCalled()
+  })
+
+  it('allows /login without auth lookup', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } })
+    const response = await updateSession(makeRequest('/login'))
+    expect(response.status).toBe(200)
+    expect(mockGetUser).not.toHaveBeenCalled()
   })
 
   it('allows authenticated non-API request through', async () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-1' } },
     })
-    const response = await updateSession(makeRequest('/dashboard'))
+    const response = await updateSession(makeRequest('/dashboard', 'sb-local-auth-token=test'))
     expect(response.status).toBe(200)
   })
 })

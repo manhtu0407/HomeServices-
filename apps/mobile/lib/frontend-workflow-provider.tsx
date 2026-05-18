@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type Dispatch, type ReactNode } from 'react'
+import { createContext, use, useCallback, useEffect, useMemo, useReducer, useRef, useState, type Dispatch, type ReactNode } from 'react'
 import {
   HCMC_DISTRICTS,
   LOCAL_DEAL_ID,
@@ -64,7 +64,7 @@ type FrontendWorkflowContextValue = {
 
 const FrontendWorkflowContext = createContext<FrontendWorkflowContextValue | null>(null)
 
-export function FrontendWorkflowProvider({ children }: { children: ReactNode }) {
+function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const { role, session } = useAuth()
   const [state, dispatch] = useReducer(localWorkflowReducer, undefined, createInitialLocalWorkflowState)
   const selectors = useMemo(() => selectLocalWorkflow(state), [state])
@@ -384,15 +384,21 @@ export function FrontendWorkflowProvider({ children }: { children: ReactNode }) 
     return () => clearTimeout(timer)
   }, [state.deal?.status, broadcast?.status, broadcast?.secondsRemaining])
 
+  return { state, selectors, workerProfile, dispatch, actions }
+}
+
+export function FrontendWorkflowProvider({ children }: { children: ReactNode }) {
+  const value = useFrontendWorkflowValue()
+
   return (
-    <FrontendWorkflowContext.Provider value={{ state, selectors, workerProfile, dispatch, actions }}>
+    <FrontendWorkflowContext.Provider value={value}>
       {children}
     </FrontendWorkflowContext.Provider>
   )
 }
 
 export function useFrontendWorkflow() {
-  const value = useContext(FrontendWorkflowContext)
+  const value = use(FrontendWorkflowContext)
   if (!value) {
     throw new Error('useFrontendWorkflow must be used inside FrontendWorkflowProvider')
   }
@@ -414,6 +420,7 @@ const WORKER_OPERATIONAL_JOB_STATUSES = new Set<JobStatus>([
   'scope_change_pending',
   'completed_by_worker',
 ])
+const vndFormatter = new Intl.NumberFormat('vi-VN')
 
 function isWorkerOperationalJobStatus(status: JobStatus) {
   return WORKER_OPERATIONAL_JOB_STATUSES.has(status)
@@ -643,5 +650,5 @@ function formatPriceRange(min: number, max: number) {
 }
 
 function formatVnd(value: number) {
-  return `${new Intl.NumberFormat('vi-VN').format(value)}đ`
+  return `${vndFormatter.format(value)}đ`
 }

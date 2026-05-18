@@ -34,7 +34,7 @@ export function quantiles(values: number[]): {
   p75: number
 } {
   if (values.length === 0) return { p25: 0, median: 0, p75: 0 }
-  const sorted = [...values].sort((a, b) => a - b)
+  const sorted = values.toSorted((a, b) => a - b)
   const at = (q: number): number => {
     const idx = Math.max(0, Math.min(sorted.length - 1, Math.ceil(q * sorted.length) - 1))
     return sorted[idx]

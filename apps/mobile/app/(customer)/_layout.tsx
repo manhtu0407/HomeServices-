@@ -1,5 +1,6 @@
 import { Redirect, Tabs } from 'expo-router'
-import { ActivityIndicator, Image, useWindowDimensions, View } from 'react-native'
+import { Image } from 'expo-image'
+import { ActivityIndicator, useWindowDimensions, View } from 'react-native'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
 import { useAuth } from '@/lib/auth-provider'

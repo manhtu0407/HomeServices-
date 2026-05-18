@@ -35,22 +35,8 @@ function toRow(log: ApiCallLog) {
   }
 }
 
-export async function logApiCall(
-  supabase: SupabaseClient<Database>,
-  log: ApiCallLog,
-): Promise<void> {
-  try {
-    await supabase.from('api_logs').insert(toRow(log))
-  } catch {
-    console.warn('Failed to persist api_log', {
-      provider: log.provider,
-      success: log.success,
-    })
-  }
-}
-
 /**
- * Batch insert variant — sends all logs in a single round trip.
+ * Batch insert variant - sends all logs in a single round trip.
  *
  * Use when a pipeline produces multiple log entries (e.g. one HTTP request
  * yields 3 AI provider calls). Cuts DB round trips proportionally.
@@ -71,7 +57,7 @@ export async function logApiCalls(
 
 /**
  * Generate a request correlation ID. Used at the top of route handlers that
- * trigger pipelines; passed through to logApiCall so all rows for one user
+ * trigger pipelines; passed through to logApiCalls so all rows for one user
  * request share the same id.
  */
 export function generateRequestId(): string {

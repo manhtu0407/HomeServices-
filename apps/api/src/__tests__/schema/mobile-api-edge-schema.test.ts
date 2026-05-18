@@ -88,7 +88,8 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeServices).toContain('apiFailure("DB_ERROR", "Không thể tải bảng giá nền", 500)')
     expect(nextServices).toContain("return apiError('DB_ERROR', 'Không thể tải bảng giá nền', 500)")
     expect(edgeServices).toContain('filter(uniqueCatalogBaseline)')
-    expect(nextServices).toContain('filter(uniqueCatalogBaseline)')
+    expect(nextServices).toContain('baselineKeysByService')
+    expect(nextServices).toContain('serviceKeys.has(baselineKey)')
     expect(edgeServices).not.toContain('baselines fetch failed')
     expect(nextServices).not.toContain('Failed to fetch baselines')
   })
@@ -480,6 +481,21 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('raise exception')
     expect(jobUpdateIndex).toBeGreaterThan(-1)
     expect(scopeUpdateIndex).toBeGreaterThan(jobUpdateIndex)
+  })
+
+  it('stops changed work when a customer rejects a scope-change request', () => {
+    const migration = read('supabase/migrations/20260518181500_scope_change_reject_cancels_job.sql')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const nextRoute = read('apps/api/src/app/api/scope-changes/[id]/decide/route.ts')
+    const nextScopeChange = read('apps/api/src/lib/jobs/scope-change.ts')
+
+    expect(migration).toContain("v_job_status := 'cancelled'::public.job_status")
+    expect(migration).toContain('cancelled_at = case')
+    expect(migration).toContain("v_decision_text := 'rejected'")
+    expect(migration).toContain('scope_change_customer_decision = v_decision_text')
+    expect(edgeServices).toContain('scopeDecisionToJobStatus(input.decision)')
+    expect(nextRoute).toContain("parsed.data.decision === 'approve' ? 'repairing' : 'cancelled'")
+    expect(nextScopeChange).toContain("Reject transitions the job to 'cancelled'")
   })
 
   it('keeps real Supabase integration suites blocked from production project ref', () => {

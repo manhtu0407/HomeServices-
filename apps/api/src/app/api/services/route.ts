@@ -55,27 +55,49 @@ export async function GET(request: Request) {
     return apiError('DB_ERROR', 'Bảng giá nền có khu vực không hợp lệ', 500)
   }
 
+  type ProblemRow = NonNullable<typeof problems>[number]
+  type CatalogProblem = Pick<ProblemRow, 'id' | 'slug' | 'label_vi' | 'default_complexity'>
+  type BaselineRow = NonNullable<typeof baselines>[number]
+  type CatalogBaseline = Pick<BaselineRow, 'complexity' | 'district_code' | 'price_min' | 'price_max'>
+
+  const problemsByCategory = new Map<string, CatalogProblem[]>()
+  for (const problem of problems ?? []) {
+    const categoryProblems = problemsByCategory.get(problem.service_category_id) ?? []
+    categoryProblems.push({
+      id: problem.id,
+      slug: problem.slug,
+      label_vi: problem.label_vi,
+      default_complexity: problem.default_complexity,
+    })
+    problemsByCategory.set(problem.service_category_id, categoryProblems)
+  }
+
+  const baselinesByService = new Map<string, CatalogBaseline[]>()
+  const baselineKeysByService = new Map<string, Set<string>>()
+  for (const baseline of baselines ?? []) {
+    const catalogBaseline = {
+      complexity: baseline.complexity,
+      district_code: baseline.district_code,
+      price_min: baseline.price_min,
+      price_max: baseline.price_max,
+    }
+    const baselineKey = catalogBaselineKey(catalogBaseline)
+    const serviceKeys = baselineKeysByService.get(baseline.service_type) ?? new Set<string>()
+    if (serviceKeys.has(baselineKey)) continue
+    serviceKeys.add(baselineKey)
+    baselineKeysByService.set(baseline.service_type, serviceKeys)
+
+    const serviceBaselines = baselinesByService.get(baseline.service_type) ?? []
+    serviceBaselines.push(catalogBaseline)
+    baselinesByService.set(baseline.service_type, serviceBaselines)
+  }
+
   const services = (categories ?? []).map((cat) => ({
     id: cat.id,
     service_type: cat.service_type,
     label_vi: cat.label_vi,
-    problems: (problems ?? [])
-      .filter((p) => p.service_category_id === cat.id)
-      .map((p) => ({
-        id: p.id,
-        slug: p.slug,
-        label_vi: p.label_vi,
-        default_complexity: p.default_complexity,
-      })),
-    baselines: (baselines ?? [])
-      .filter((b) => b.service_type === cat.service_type)
-      .map((b) => ({
-        complexity: b.complexity,
-        district_code: b.district_code,
-        price_min: b.price_min,
-        price_max: b.price_max,
-      }))
-      .filter(uniqueCatalogBaseline),
+    problems: problemsByCategory.get(cat.id) ?? [],
+    baselines: baselinesByService.get(cat.service_type) ?? [],
   }))
 
   return apiSuccess({ services })
@@ -95,16 +117,6 @@ function hasInvalidBaselineDistrict(districtCode: unknown) {
 function positiveNumberFrom(value: unknown): number | null {
   const number = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(number) && number > 0 ? number : null
-}
-
-function uniqueCatalogBaseline<T extends {
-  complexity: unknown
-  district_code: unknown
-  price_min: unknown
-  price_max: unknown
-}>(baseline: T, index: number, baselines: T[]) {
-  const key = catalogBaselineKey(baseline)
-  return baselines.findIndex((candidate) => catalogBaselineKey(candidate) === key) === index
 }
 
 function catalogBaselineKey(baseline: {

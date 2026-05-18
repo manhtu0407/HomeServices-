@@ -103,34 +103,3 @@ Location: Ho Chi Minh City, Vietnam`,
     },
   ]
 }
-
-export function buildPrebriefMessages(
-  serviceType: string,
-  problemSummary: string,
-  customerDescription: string,
-  complexity: string,
-): AIMessage[] {
-  return [
-    {
-      role: 'system',
-      content: `You are preparing a worker pre-brief for a home repair job in Ho Chi Minh City.
-Create a concise brief that helps the worker prepare for the job.
-Write in Vietnamese. Be specific and actionable.
-
-Respond ONLY with valid JSON matching this schema:
-{
-  "problem_summary": "string (concise problem summary in Vietnamese)",
-  "key_observations": ["string (key things worker should check)"],
-  "suggested_tools": ["string (tools likely needed)"],
-  "estimated_duration_minutes": number (estimated job duration)
-}`,
-    },
-    {
-      role: 'user',
-      content: `Service: ${serviceType}
-Problem: ${problemSummary}
-Customer said: ${customerDescription}
-Complexity: ${complexity}`,
-    },
-  ]
-}
