@@ -29,7 +29,7 @@ The supplied videos and prompt are design references. During this implementation
 - Decorative looping motion is disabled unless it communicates loading or status.
 - Reduce Motion removes parallax, sweep, and scale-heavy effects.
 - Reduce Transparency falls back to stronger opaque/tinted surfaces.
-- Native Liquid Glass or blur packages may be used only when the dependency is installed and verified for Expo SDK 54. Otherwise, use the local performant fallback.
+- Native Liquid Glass and blur packages are installed for Expo SDK 54: `expo-glass-effect@~0.1.10` and `expo-blur@~15.0.8`. The shared `GlassSurface` uses `GlassView` only when `isLiquidGlassAvailable()` returns true, falls back to low-intensity `BlurView`, and uses a mostly opaque `View` when Reduce Transparency is enabled.
 
 ## Performance Budget
 

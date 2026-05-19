@@ -1,8 +1,9 @@
 import { type ReactNode } from 'react'
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native'
 import { useGlassAccessibility } from './accessibility-motion'
+import { GlassSurface } from './glass-surface'
 import { motionTokens } from './motion-tokens'
-import { createGlassSurfaceStyle, type GlassMode } from './tokens'
+import { type GlassMode } from './tokens'
 
 export type FloatingGlassTabItem<Key extends string> = {
   accessibilityLabel?: string
@@ -30,10 +31,10 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
   style,
   testID,
 }: FloatingGlassTabBarProps<Key, Item>) {
-  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const { reduceMotion } = useGlassAccessibility()
 
   return (
-    <View style={[styles.bar, createGlassSurfaceStyle({ mode, reduceTransparency, variant: 'nav' }), style]} testID={testID}>
+    <GlassSurface mode={mode} style={[styles.bar, style]} testID={testID} variant="nav">
       {items.map((item) => {
         const focused = item.key === activeKey
         const labelColor = focused
@@ -66,7 +67,7 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
           </Pressable>
         )
       })}
-    </View>
+    </GlassSurface>
   )
 }
 

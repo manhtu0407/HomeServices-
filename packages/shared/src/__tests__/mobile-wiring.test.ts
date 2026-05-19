@@ -1311,17 +1311,23 @@ describe('mobile glassmorphism design system', () => {
     expect(exists(file)).toBe(true)
   })
 
-  it('centralizes glass variants and motion tokens without native dependency drift', () => {
+  it('centralizes glass variants and motion tokens with verified Expo native glass dependencies', () => {
     const tokens = read('components/ui/tokens.ts')
     const motion = read('components/ui/motion-tokens.ts')
+    const surface = read('components/ui/glass-surface.tsx')
     const mobilePackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'package.json'), 'utf-8'))
     expect(tokens).toContain("export type GlassVariant = 'nav' | 'control' | 'hero' | 'sheet' | 'subtle'")
     expect(tokens).toContain('reduceTransparency ? fallbackBackground')
     expect(tokens).toContain("boxShadow: reduceTransparency ? 'none'")
     expect(motion).toContain('durationMs: 440')
     expect(motion).toContain('reducedDurationMs')
-    expect(mobilePackage.dependencies['expo-glass-effect']).toBeUndefined()
-    expect(mobilePackage.dependencies['expo-blur']).toBeUndefined()
+    expect(mobilePackage.dependencies['expo-glass-effect']).toBe('~0.1.10')
+    expect(mobilePackage.dependencies['expo-blur']).toBe('~15.0.8')
+    expect(surface).toContain("from 'expo-glass-effect'")
+    expect(surface).toContain("from 'expo-blur'")
+    expect(surface).toContain('isLiquidGlassAvailable()')
+    expect(surface).toContain('reduceTransparency')
+    expect(surface).toContain('experimentalBlurMethod="none"')
   })
 
   it('wires Reduce Motion and accessibility states into shared glass controls', () => {
