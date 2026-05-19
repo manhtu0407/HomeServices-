@@ -504,7 +504,7 @@ Allowed decoration families:
 
 - Home repair service illustrations,
 - apartment / building / home context,
-- electrical and plumbing pictograms,
+- electrical, plumbing, and cleaning pictograms,
 - abstract mint / cream / cyan material layers,
 - Kael mascot,
 - service icons,
@@ -681,7 +681,7 @@ Anatomy:
 - apartment/address context,
 - search or Kael input affordance,
 - Kael Price Check primary CTA,
-- service entries for electrical and plumbing,
+- service entries for electrical, plumbing, and cleaning,
 - active draft / active booking summary when present,
 - useful trust or estimate note,
 - promotional content only when it supports service conversion,
@@ -691,7 +691,7 @@ Rules:
 
 - do not make Home a marketing landing page,
 - do not overcrowd service catalog,
-- only electrical and plumbing are active,
+- only electrical, plumbing, and cleaning are active,
 - disabled future services must not act as real services,
 - address context must be visible but not dominate,
 - Kael should feel like the guide into price check.
@@ -799,7 +799,7 @@ Rules:
 
 - no raw AI output to users,
 - Vietnamese user-facing text,
-- Kael scope limited to electrical/plumbing price check and approved support roles,
+- Kael scope limited to electrical/plumbing/cleaning Home Services intake, price check, worker brief, and approved support roles,
 - no autonomous booking/payment/cancel action,
 - critical actions must route to explicit confirmation screens.
 

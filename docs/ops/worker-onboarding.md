@@ -1,6 +1,8 @@
 # Worker Onboarding - Operational Workflow
 
-Status: Active gap, documented behavior. Not yet a self-service flow.
+Status: Active role-promotion gap. The mobile worker verification form exists,
+but worker role promotion is still manual/admin-controlled before that form can
+submit successfully.
 
 ## The Constraint
 
@@ -15,9 +17,10 @@ begin
 end;
 ```
 
-Every Supabase auth signup (phone OTP) creates a `profiles` row with
-`role = 'customer'`. There is no signup flag, no metadata pathway, and no
-client-driven way to elect the worker role.
+Every Supabase auth signup creates a `profiles` row with `role = 'customer'`.
+In Phase 0 the mobile app uses role-first email/password auth; phone OTP is a
+later production-auth upgrade after SMS provider setup. There is no signup
+flag, no metadata pathway, and no client-driven way to elect the worker role.
 
 When a worker calls the mobile runtime endpoint
 `POST /functions/v1/mobile-api/workers/register`, the Edge service reads
@@ -31,8 +34,9 @@ Until a self-service flow exists, admin onboards workers out of band:
 
 1. Prospective worker contacts the platform through whatever channel
    operations uses (Zalo, phone, in-person).
-2. Worker signs up in the app via phone OTP. `profiles.role` is set to
-   `'customer'` by the trigger.
+2. Worker signs up in the app through the current role-first email/password
+   flow. `profiles.role` is set to `'customer'` by the trigger. When phone OTP
+   ships later, this same server/admin promotion rule still applies.
 3. Admin verifies identity manually (per `STRUCTURES.md` B1: admin must
    approve worker trust before marketplace access anyway, so this step does
    not add new work).

@@ -183,6 +183,24 @@ describe('queryEligibleWorkers', () => {
     }
   })
 
+  it('excludes workers that should not receive the next broadcast batch', async () => {
+    const supabase = makeBroadcastSupabase({
+      eligibleWorkers: [
+        { id: 'w-cancelled', rating: 5, total_jobs: 120, service_types: ['plumbing'], districts: ['Q7'] },
+        { id: 'w-replacement', rating: 4.8, total_jobs: 90, service_types: ['plumbing'], districts: ['Q7'] },
+      ],
+    })
+
+    const result = await queryEligibleWorkers(supabase, 'plumbing', 'Q7', 5, {
+      excludeWorkerIds: ['w-cancelled'],
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.workers.map((worker) => worker.id)).toEqual(['w-replacement'])
+    }
+  })
+
   it('returns DB_ERROR when active job lookup fails', async () => {
     const supabase = makeBroadcastSupabase({
       eligibleWorkers: [
@@ -234,6 +252,31 @@ describe('createBroadcasts', () => {
       expect(result.workerIds).toEqual(['w1', 'w2'])
       expect(result.batchId).toMatch(/^[0-9a-f-]{36}$/)
     }
+  })
+
+  it('does not create a reassignment broadcast for an excluded worker', async () => {
+    const supabase = makeBroadcastSupabase({
+      eligibleWorkers: [
+        { id: 'w-cancelled', rating: 5, total_jobs: 120, service_types: ['plumbing'], districts: ['Q7'] },
+        { id: 'w-replacement', rating: 4.8, total_jobs: 90, service_types: ['plumbing'], districts: ['Q7'] },
+      ],
+    })
+
+    const result = await createBroadcasts(supabase, 'job-1', 'plumbing', 'Q7', {
+      excludeWorkerIds: ['w-cancelled'],
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.workerIds).toEqual(['w-replacement'])
+      expect(result.broadcastCount).toBe(1)
+    }
+    const insertCall = (supabase.from as any).mock.results
+      .map((entry: { value: { insert?: ReturnType<typeof vi.fn> } }) => entry.value)
+      .find((query: { insert?: ReturnType<typeof vi.fn> }) => query.insert)?.insert
+    expect(insertCall).toHaveBeenCalledWith([
+      expect.objectContaining({ worker_id: 'w-replacement' }),
+    ])
   })
 
   it('returns DB error when insert fails', async () => {

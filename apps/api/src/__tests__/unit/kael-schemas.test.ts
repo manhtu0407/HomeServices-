@@ -42,7 +42,7 @@ describe('kael-schemas — intentResultSchema', () => {
   it('rejects invalid service type', () => {
     const result = intentResultSchema.safeParse({
       ...validIntent,
-      service_type: 'cleaning',
+      service_type: 'hvac',
     })
     expect(result.success).toBe(false)
   })
@@ -268,8 +268,9 @@ describe('kael-schemas — constants', () => {
     expect(PRICE_DISCLAIMER).toContain('thợ')
   })
 
-  it('UNSUPPORTED_SERVICE_MESSAGE mentions only electrical and plumbing', () => {
+  it('UNSUPPORTED_SERVICE_MESSAGE mentions electrical, plumbing, and cleaning', () => {
     expect(UNSUPPORTED_SERVICE_MESSAGE).toContain('sửa điện')
     expect(UNSUPPORTED_SERVICE_MESSAGE).toContain('sửa nước')
+    expect(UNSUPPORTED_SERVICE_MESSAGE).toContain('vệ sinh')
   })
 })

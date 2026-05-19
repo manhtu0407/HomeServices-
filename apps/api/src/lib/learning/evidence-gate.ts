@@ -89,7 +89,7 @@ function touchesMoneyOrScope(payload: unknown): boolean {
     // mutation of jobs.final_price or service scope expansion. Schema constraints
     // already prevent this; runtime double-check.
     const svc = payload.scope.service_type as string
-    if (svc !== 'electrical' && svc !== 'plumbing') return true
+    if (svc !== 'electrical' && svc !== 'plumbing' && svc !== 'cleaning') return true
     // Sanity: suggested.new_min must be positive integer; if negative, treat as
     // unsafe (would underflow baseline computation downstream).
     if (payload.suggested.new_min <= 0 || payload.suggested.new_max <= 0) return true
@@ -98,7 +98,7 @@ function touchesMoneyOrScope(payload: unknown): boolean {
   }
   if (isAnalysisRulePayload(payload)) {
     const svc = payload.scope.service_type as string
-    if (svc !== 'electrical' && svc !== 'plumbing') return true
+    if (svc !== 'electrical' && svc !== 'plumbing' && svc !== 'cleaning') return true
     // Allowed suggestion kinds are explicitly enumerated in types.ts.
     // Any unknown kind is rejected as potentially unsafe.
     const k = payload.suggested.kind

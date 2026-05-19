@@ -77,7 +77,7 @@ Home Services filters:
 - Prefer plain TypeScript over clever architecture.
 - Prefer existing Expo, Next.js, Supabase, Turbo, and workspace patterns.
 - Prefer explicit data flow over magic.
-- Keep Kael scoped to price check for electrical and plumbing.
+- Keep Kael scoped to Home Services: electrical repair, plumbing repair, and home cleaning/housekeeping only.
 - Ship toward the first real transaction, not theoretical scale.
 
 ## Principle 3: Surgical Changes
@@ -163,8 +163,8 @@ Project constraints override generic advice:
 
 - Primary client is React Native / Expo.
 - Next.js is secondary: API routes and admin only.
-- Service scope is electrical and plumbing only.
-- Kael is AI Price Check only.
+- Service scope is electrical, plumbing, and cleaning only.
+- Kael is the primary AI assistant for intake, diagnosis, price analysis, worker brief, and support; Kael never performs booking, payment, cancellation, or worker punishment without explicit user/admin confirmation.
 - User-facing text should be Vietnamese-first.
 - No secrets in client code.
 - No PII in logs.

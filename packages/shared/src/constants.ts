@@ -1,4 +1,4 @@
-export const SERVICE_TYPES = Object.freeze(['electrical', 'plumbing'] as const)
+export const SERVICE_TYPES = Object.freeze(['electrical', 'plumbing', 'cleaning'] as const)
 export type ServiceType = (typeof SERVICE_TYPES)[number]
 
 export const JOB_STATUSES = Object.freeze([
@@ -113,6 +113,15 @@ export const PROBLEM_CHIPS = Object.freeze({
     'Toilet không xả',
     'Áp nước yếu',
     'Lắp/thay thiết bị',
+    'Vấn đề khác',
+  ] as const),
+  cleaning: Object.freeze([
+    'Dọn dẹp nhà',
+    'Vệ sinh bếp',
+    'Vệ sinh phòng tắm',
+    'Tổng vệ sinh',
+    'Dọn sau sửa chữa',
+    'Vệ sinh cửa kính',
     'Vấn đề khác',
   ] as const),
 } as const)

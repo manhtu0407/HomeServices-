@@ -53,7 +53,10 @@ export function createEdgeAuthenticator(env: EdgeEnv) {
       };
     }
 
-    if (allowedRoles && !allowedRoles.includes(profile.role)) {
+    if (
+      allowedRoles && !allowedRoles.includes(profile.role) &&
+      profile.role !== "admin"
+    ) {
       return {
         success: false,
         error: "Bạn không có quyền thực hiện hành động này",

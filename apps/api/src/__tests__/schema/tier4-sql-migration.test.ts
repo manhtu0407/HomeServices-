@@ -23,6 +23,10 @@ const RLS_AUTO_ENABLE_REVOKE_SQL = readFileSync(
   resolve(MIGRATIONS_DIR, '20260513131949_revoke_rls_auto_enable_rpc.sql'),
   'utf-8'
 )
+const CATALOG_LABEL_FIX_SQL = readFileSync(
+  resolve(MIGRATIONS_DIR, '20260519145538_fix_vietnamese_catalog_labels.sql'),
+  'utf-8'
+)
 const FUNCTION_SEARCH_PATH_PATTERNS = [
   /alter\s+function\s+public\.update_updated_at\(\)\s+set\s+search_path\s*=\s*public/i,
   /alter\s+function\s+public\.update_worker_rating\(\)\s+set\s+search_path\s*=\s*public/i,
@@ -203,6 +207,20 @@ describe('Data API grants are explicit', () => {
   it('grants public schema usage and table access to authenticated role', () => {
     expect(ALIGNMENT_SQL).toMatch(/grant\s+usage\s+on\s+schema\s+public\s+to\s+authenticated/i)
     expect(ALIGNMENT_SQL).toMatch(/grant\s+select\s+on[\s\S]*service_categories[\s\S]*to\s+authenticated/i)
+  })
+})
+
+describe('Catalog labels are Vietnamese-first', () => {
+  it('patches the three active service and box labels with Vietnamese accents', () => {
+    for (const label of ['Sửa điện', 'Sửa nước', 'Vệ sinh/dọn dẹp']) {
+      expect(CATALOG_LABEL_FIX_SQL).toContain(label)
+    }
+  })
+
+  it('patches cleaning problem labels because cleaning was added after the original seed', () => {
+    for (const label of ['Dọn dẹp nhà', 'Vệ sinh bếp', 'Vệ sinh phòng tắm', 'Tổng vệ sinh']) {
+      expect(CATALOG_LABEL_FIX_SQL).toContain(label)
+    }
   })
 })
 

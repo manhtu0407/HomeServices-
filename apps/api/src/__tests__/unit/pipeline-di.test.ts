@@ -174,11 +174,11 @@ describe('runKaelPipeline with DI providers', () => {
     expect(intentLog?.fallbackUsed).toBe(true)
   })
 
-  it('returns UNSUPPORTED for non-electrical/plumbing', async () => {
+  it('returns UNSUPPORTED for services outside electrical/plumbing/cleaning', async () => {
     const supabase = makeMockSupabase(null)
 
     const result = await runKaelPipeline(
-      { ...INPUT, serviceType: 'cleaning' },
+      { ...INPUT, serviceType: 'hvac' as 'electrical' },
       supabase,
       {
         classifyIntent: vi.fn().mockResolvedValue({

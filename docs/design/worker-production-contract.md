@@ -19,7 +19,7 @@ Layout anatomy:
 - Jobs uses segmented filters, quiet job cards, safe address gates, and quick accept/skip affordances.
 - Chat starts empty and only shows local messages after user interaction.
 - Earnings shows pending/estimated rows only, without fake paid success.
-- Profile uses an identity/trust card, skill chips, settings groups, and theme/language toggles.
+- Profile uses an identity/trust card, worker verification submit form, skill chips, settings groups, and theme/language toggles.
 
 Component list:
 
@@ -30,6 +30,7 @@ Component list:
 - `WorkerEarningsSurface`
 - `WorkerProfileSurface`
 - `WorkerDockOverlay`
+- `WorkerVerificationForm`
 
 Production markers:
 
@@ -99,7 +100,7 @@ Forbidden regressions:
 - Do not depend on `.tmp/design-lab` files from production routes/components.
 - Do not reveal full address, unit, phone, or exact customer identity before accept.
 - Do not fabricate paid transactions or completed payouts.
-- Do not expand services beyond electrical and plumbing.
+- Do not expand services beyond electrical, plumbing, and cleaning without explicit Tu approval.
 
 Verification plan:
 

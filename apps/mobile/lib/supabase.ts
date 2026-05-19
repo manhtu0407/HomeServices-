@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
-import Constants from 'expo-constants'
 import * as SecureStore from 'expo-secure-store'
 import type { Database } from '@home-services/shared'
+import { mobileRuntimeConfig } from './runtime-config'
 
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl ?? ''
-const supabaseKey = Constants.expoConfig?.extra?.supabasePublishableKey ?? ''
+const supabaseUrl = mobileRuntimeConfig.supabaseUrl
+const supabaseKey = mobileRuntimeConfig.supabasePublishableKey
 
 const isSupabaseConfigured = supabaseUrl.length > 0 && supabaseKey.length > 0
 

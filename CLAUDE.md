@@ -8,10 +8,10 @@ Claude Code trong dự án này = **AI co-founder** của Tu, không phải gene
 
 ## Project Context
 
-- **Nền tảng dịch vụ gia đình**: sửa điện + sửa nước (chỉ 2 dịch vụ này)
+- **Nền tảng dịch vụ gia đình**: sửa điện + sửa nước + vệ sinh/dọn dẹp nhà (chỉ 3 dịch vụ này)
 - **Target**: cư dân chung cư HCMC
 - **Stage**: pre-revenue, rebuild từ 0 (v3.0)
-- **Kael** = AI Price Check — không hơn, không kém
+- **Kael** = nhân vật chính của workflow: intake, chẩn đoán, price analysis, Perplexity-backed market check, customer confirmation, worker brief, notification/support. Kael vẫn không được tự booking/payment/cancel khi chưa có user confirm.
 - Mọi decision qua lens: *"Cái này có đưa chúng ta đến giao dịch thật đầu tiên không?"*
 
 ## Platform
@@ -35,7 +35,7 @@ supabase/
 
 ## Current Phase
 
-Phase 0 — Foundation Hardening. Chưa có feature code.
+Phase 0 — Production Fix + Foundation Hardening. Mobile + Supabase Edge workflow slices already exist, but the product is not yet store-ready until backend smoke, build/export checks, and TestFlight/Play internal paths pass.
 
 ## Core Principles
 

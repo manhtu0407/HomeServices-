@@ -30,7 +30,7 @@ insert into worker_profiles (
 ) values
   (
     '00000000-0000-0000-0000-000000000002',
-    array['electrical', 'plumbing']::service_type[],
+    array['electrical', 'plumbing', 'cleaning']::service_type[],
     5,
     array['Binh Thanh', 'Quan 1', 'Quan 2'],
     true, true, 'approved', 4.50, 12

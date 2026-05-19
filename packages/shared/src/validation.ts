@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const serviceTypeSchema = z.enum(['electrical', 'plumbing'])
+export const serviceTypeSchema = z.enum(['electrical', 'plumbing', 'cleaning'])
 
 export const jobCreateSchema = z.object({
   service_type: serviceTypeSchema,
@@ -47,7 +47,7 @@ export const workerRegisterSchema = z.object({
     .string()
     .refine(isRealCalendarDate, 'date_of_birth must be a real calendar date in YYYY-MM-DD'),
   gender: z.enum(['male', 'female', 'other']).optional(),
-  service_types: z.array(serviceTypeSchema).min(1).max(2),
+  service_types: z.array(serviceTypeSchema).min(1).max(3),
   years_experience: z.number().int().min(0).max(60),
   districts: z.array(z.string().min(1).max(50)).min(1).max(20),
   cccd_front_url: z.string().url(),

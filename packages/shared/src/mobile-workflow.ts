@@ -243,17 +243,34 @@ export function inferLocalDealDraftFromKael(text: string): LocalDealDraft {
     'ap nuoc',
     'lavabo',
   ]) + (hasStandalonePlumbingClog(normalized) ? 1 : 0)
+  const cleaningScore = scoreKeywords(normalized, [
+    've sinh',
+    'don dep',
+    'don nha',
+    'lau don',
+    'tong ve sinh',
+    've sinh bep',
+    've sinh phong tam',
+    'cua kinh',
+    'sau sua chua',
+    'rac',
+    'ban',
+    'bui',
+  ])
   const electricalStrictScore = scoreKeywords(normalized, ['dien', 'o cam', 'o dien', 'cong tac', 'cau dao', 'aptomat', 'den', 'chap', 'mat dien'])
   const plumbingStrictScore = scoreKeywords(normalized, ['nuoc', 'ro', 'ri', 'bon', 'toilet', 'voi', 'ong', 'ap nuoc', 'lavabo'])
-  const mentionsBothSupportedServices = electricalStrictScore > 0 && plumbingStrictScore > 0
-  const serviceType =
-    mentionsBothSupportedServices
+  const cleaningStrictScore = scoreKeywords(normalized, ['ve sinh', 'don dep', 'don nha', 'lau don', 'tong ve sinh', 'cua kinh'])
+  const supportedServiceMentions = [electricalStrictScore, plumbingStrictScore, cleaningStrictScore].filter((score) => score > 0).length
+  const serviceType: ServiceType | null =
+    supportedServiceMentions > 1
       ? null
-      : electricalScore > plumbingScore && electricalScore > 0
+      : electricalScore > plumbingScore && electricalScore > cleaningScore && electricalScore > 0
         ? 'electrical'
-        : plumbingScore > electricalScore && plumbingScore > 0
+        : plumbingScore > electricalScore && plumbingScore > cleaningScore && plumbingScore > 0
           ? 'plumbing'
-          : null
+          : cleaningScore > electricalScore && cleaningScore > plumbingScore && cleaningScore > 0
+            ? 'cleaning'
+            : null
   const problemChips = serviceType ? inferProblemChips(normalized, serviceType) : []
 
   return {
@@ -622,7 +639,7 @@ export function selectLocalWorkflow(state: LocalWorkflowState): LocalWorkflowSel
 }
 
 export function validateLocalDealDraft(draft: LocalDealDraft): string | null {
-  if (!draft.serviceType) return 'Chọn dịch vụ điện hoặc nước'
+  if (!draft.serviceType) return 'Chọn dịch vụ điện, nước hoặc vệ sinh'
   if (draft.problemChips.length === 0) return 'Chọn ít nhất một vấn đề cần xử lý'
   if (draft.description.trim().length < 12) return 'Mô tả cần đủ rõ để Kael tóm tắt'
   if (draft.addressLabel.trim().length < 4) return 'Nhập khu vực hoặc địa chỉ tổng quát'
@@ -649,6 +666,7 @@ function canConfirmCustomerCompletion(deal: LocalDeal): boolean {
 export function serviceLabel(serviceType: ServiceType | null): string {
   if (serviceType === 'electrical') return 'Sửa điện'
   if (serviceType === 'plumbing') return 'Sửa nước'
+  if (serviceType === 'cleaning') return 'Vệ sinh'
   return 'Chưa chọn'
 }
 
@@ -797,6 +815,16 @@ function createBroadcast(draft: LocalDealDraft): LocalWorkerBroadcast {
 }
 
 function inferProblemChips(normalized: string, serviceType: ServiceType): string[] {
+  if (serviceType === 'cleaning') {
+    if (hasAny(normalized, ['bep'])) return [PROBLEM_CHIPS.cleaning[1]]
+    if (hasAny(normalized, ['phong tam', 'toilet', 'nha tam'])) return [PROBLEM_CHIPS.cleaning[2]]
+    if (hasAny(normalized, ['sau sua chua', 've sinh sau'])) return [PROBLEM_CHIPS.cleaning[4]]
+    if (hasAny(normalized, ['tong ve sinh'])) return [PROBLEM_CHIPS.cleaning[3]]
+    if (hasAny(normalized, ['cua kinh', 'kinh'])) return [PROBLEM_CHIPS.cleaning[5]]
+    if (hasAny(normalized, ['don dep', 'don nha', 'lau don', 've sinh'])) return [PROBLEM_CHIPS.cleaning[0]]
+    return []
+  }
+
   if (serviceType === 'plumbing') {
     if (hasAny(normalized, ['ro', 'ri', 'leak'])) return [PROBLEM_CHIPS.plumbing[0]]
     if (hasAny(normalized, ['tac', 'nghet', 'cong', 'bon'])) return [PROBLEM_CHIPS.plumbing[1]]
@@ -816,7 +844,7 @@ function inferProblemChips(normalized: string, serviceType: ServiceType): string
 
 function detectUnsupportedServiceLabel(normalized: string): string | null {
   if (hasAny(normalized, ['dieu hoa', 'may lanh', 'tu lanh', 'may giat', 'internet', 'sua khoa', 'khoa cua', 'o khoa', 'son nha'])) {
-    return 'Dịch vụ này đang khóa. Kael hiện chỉ hỗ trợ sửa điện và sửa nước.'
+    return 'Dịch vụ này đang khóa. Kael hiện chỉ hỗ trợ sửa điện, sửa nước và vệ sinh.'
   }
 
   const hasSupportedRepairIntent = hasAny(normalized, [
@@ -838,10 +866,16 @@ function detectUnsupportedServiceLabel(normalized: string): string | null {
     'ap nuoc',
     'lavabo',
     'van',
+    've sinh',
+    'don dep',
+    'don nha',
+    'lau don',
+    'tong ve sinh',
+    'cua kinh',
   ])
 
-  if (!hasSupportedRepairIntent && hasAny(normalized, ['ve sinh', 'don dep', 'thiet bi', 'son', 'khoa'])) {
-    return 'Dịch vụ này đang khóa. Kael hiện chỉ hỗ trợ sửa điện và sửa nước.'
+  if (!hasSupportedRepairIntent && hasAny(normalized, ['thiet bi', 'son', 'khoa'])) {
+    return 'Dịch vụ này đang khóa. Kael hiện chỉ hỗ trợ sửa điện, sửa nước và vệ sinh.'
   }
   return null
 }

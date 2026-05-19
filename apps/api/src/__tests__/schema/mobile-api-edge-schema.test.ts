@@ -46,6 +46,26 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(functionFiles).toContain('normalizeDistrict')
   })
 
+  it('does not ship mojibake Vietnamese error messages from mobile-api Edge runtime', () => {
+    const functionFiles = [
+      'supabase/functions/mobile-api/_shared/router.ts',
+      'supabase/functions/mobile-api/_shared/services.ts',
+    ].map(read).join('\n')
+
+    expect(functionFiles).not.toMatch(new RegExp([
+      '\\u00c3',
+      '\\u00c2',
+      '\\u00e1\\u00ba',
+      '\\u00e1\\u00bb',
+      '\\u00c4\\u0090',
+      '\\u00c4\\u2018',
+      '\\u00c6',
+    ].join('|')))
+    expect(functionFiles).toContain('Dữ liệu không hợp lệ')
+    expect(functionFiles).toContain('Không thể gửi yêu cầu hủy việc')
+    expect(functionFiles).toContain('Không thể lưu thiết bị nhận thông báo')
+  })
+
   it('requires a concrete HCMC district before customer job creation', () => {
     const edgeDomain = read('supabase/functions/_shared/domain.ts')
     const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
@@ -159,6 +179,17 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('.replace(/\\b0\\d{8,10}\\b/g, "[phone]")')
     expect(edgeKael).toContain('.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[email]")')
     expect(edgeKael).toContain('.replace(/\\b\\d{9,12}\\b/g, "[id-number]")')
+  })
+
+  it('keeps the deployed Edge Kael prompt aligned with the product guardrails', () => {
+    const edgeKael = read('supabase/functions/mobile-api/_shared/kael.ts')
+
+    expect(edgeKael).toContain('KAEL_BUSINESS_GUARDRAILS')
+    expect(edgeKael).toContain('Kael is the main AI assistant')
+    expect(edgeKael).toContain('exactly three service boxes')
+    expect(edgeKael).toContain('adult or explicit sexual content')
+    expect(edgeKael).toContain('legality questions')
+    expect(edgeKael).toContain('Return the required JSON only')
   })
 
   it('keeps review submission atomic for Edge mobile-api runtime', () => {
@@ -452,7 +483,62 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migrations).toContain('alter function public.request_scope_change_atomic(uuid, uuid, text, int, int, text) security invoker')
     expect(migrations).toContain('alter function public.decide_scope_change_atomic(uuid, uuid, text) security invoker')
     expect(migrations).toContain('alter function public.submit_review_atomic(uuid, uuid, int, text[], text) security invoker')
+    expect(migrations).toContain('language plpgsql security invoker')
+    expect(migrations).toContain('create or replace function public.request_worker_cancellation_atomic')
+    expect(migrations).toContain('create or replace function public.decide_worker_cancellation_atomic')
     expect(migrations).toContain('create function public.set_worker_availability_atomic')
+  })
+
+  it('adds Supabase boxes for media, Kael artifacts, notifications, and worker cancellation', () => {
+    const migration = read('supabase/migrations/20260519090200_supabase_boxes_notifications_media_cancellation.sql')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+
+    for (const table of [
+      'public.job_media_assets',
+      'public.kael_analysis_artifacts',
+      'public.device_push_tokens',
+      'public.worker_cancellation_requests',
+    ]) {
+      expect(migration).toContain(`alter table ${table} enable row level security`)
+      expect(migration).toContain(`revoke insert, update, delete on ${table} from authenticated`)
+      expect(migration).toContain(`grant all on ${table} to service_role`)
+    }
+
+    expect(migration).toContain("insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)")
+    expect(migration).toContain("'worker-verification', 'worker-verification', false")
+    expect(migration).toContain("'job-media', 'job-media', false")
+    expect(migration).toContain('create or replace function public.insert_notification_atomic')
+    expect(migration).toContain('create or replace function public.register_device_push_token_atomic')
+    expect(migration).toContain('create or replace function public.request_worker_cancellation_atomic')
+    expect(migration).toContain('create or replace function public.decide_worker_cancellation_atomic')
+    expect(migration).toContain('grant execute on function public.request_worker_cancellation_atomic(uuid, uuid, text, text[]) to service_role')
+    expect(migration).toContain('grant execute on function public.decide_worker_cancellation_atomic(uuid, uuid, text, text) to service_role')
+    expect(migration).toContain("status = 'broadcasting'::public.job_status")
+    expect(edgeServices).toContain('request_worker_cancellation_atomic')
+    expect(edgeServices).toContain('decide_worker_cancellation_atomic')
+    expect(edgeRouter).toContain('jobs.workerCancellation')
+    expect(edgeRouter).toContain('workerCancellation.decide')
+  })
+
+  it('splits Supabase box admin RLS policies so SELECT has one permissive path', () => {
+    const migration = read('supabase/migrations/20260519122000_consolidate_box_admin_rls_policies.sql')
+
+    for (const policy of [
+      'Admins manage service knowledge boxes',
+      'Admins manage Kael market artifacts',
+      'Admins manage job media assets',
+      'Admins manage Kael analysis artifacts',
+      'Admins manage device push tokens',
+      'Admins manage worker cancellation requests',
+    ]) {
+      expect(migration).toContain(`drop policy if exists "${policy}"`)
+    }
+
+    expect(migration).toContain('for insert')
+    expect(migration).toContain('for update')
+    expect(migration).toContain('for delete')
+    expect(migration).not.toMatch(/for all/i)
   })
 
   it('locks scope-change lifecycle rows and returns explicit race errors', () => {

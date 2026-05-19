@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { normalizeDistrict, type Database } from '@home-services/shared'
+import { normalizeDistrict, type Database, type ServiceType } from '@home-services/shared'
 import { withDbTimeout } from '@/lib/db/query'
 
 export type EligibleWorker = {
@@ -15,6 +15,12 @@ export type EligibleWorkerQueryResult =
 export type CreateBroadcastsResult =
   | { success: true; batchId: string; broadcastCount: number; workerIds: string[] }
   | { success: false; reasonCode: 'NO_WORKER' | 'DB_ERROR'; reason: string }
+
+type BroadcastOptions = {
+  batchSize?: number
+  expirySec?: number
+  excludeWorkerIds?: string[]
+}
 
 export const DEFAULT_BROADCAST_EXPIRY_SEC = 60
 export const DEFAULT_BROADCAST_BATCH_SIZE = 5
@@ -39,14 +45,16 @@ const ACTIVE_WORKER_JOB_STATUSES = [
 export async function createBroadcasts(
   supabase: SupabaseClient<Database>,
   jobId: string,
-  serviceType: 'electrical' | 'plumbing',
+  serviceType: ServiceType,
   district: string,
-  options: { batchSize?: number; expirySec?: number } = {},
+  options: BroadcastOptions = {},
 ): Promise<CreateBroadcastsResult> {
   const batchSize = options.batchSize ?? DEFAULT_BROADCAST_BATCH_SIZE
   const expirySec = options.expirySec ?? DEFAULT_BROADCAST_EXPIRY_SEC
 
-  const eligibleResult = await queryEligibleWorkers(supabase, serviceType, district, batchSize)
+  const eligibleResult = await queryEligibleWorkers(supabase, serviceType, district, batchSize, {
+    excludeWorkerIds: options.excludeWorkerIds,
+  })
   if (!eligibleResult.success) {
     return {
       success: false,
@@ -109,12 +117,14 @@ export async function createBroadcasts(
  */
 export async function queryEligibleWorkers(
   supabase: SupabaseClient<Database>,
-  serviceType: 'electrical' | 'plumbing',
+  serviceType: ServiceType,
   district: string,
   limit: number = DEFAULT_BROADCAST_BATCH_SIZE,
+  options: { excludeWorkerIds?: string[] } = {},
 ): Promise<EligibleWorkerQueryResult> {
   const candidateLimit = Math.max(limit, DEFAULT_CANDIDATE_POOL_SIZE)
   const districtCode = normalizeDistrict(district)
+  const excludedWorkerIds = new Set(options.excludeWorkerIds ?? [])
   const { data, error } = await withDbTimeout(
     supabase
       .from('worker_profiles')
@@ -142,7 +152,8 @@ export async function queryEligibleWorkers(
   }
   if (!data) return { success: true, workers: [] }
 
-  const candidateIds = data.map((w) => w.id)
+  const candidates = data.filter((w) => !excludedWorkerIds.has(w.id))
+  const candidateIds = candidates.map((w) => w.id)
   if (candidateIds.length === 0) return { success: true, workers: [] }
 
   const { data: activeJobs, error: activeErr } = await withDbTimeout(
@@ -169,7 +180,7 @@ export async function queryEligibleWorkers(
   const busyWorkerIds = new Set((activeJobs ?? []).flatMap((job) => job.worker_id ? [job.worker_id] : []))
   return {
     success: true,
-    workers: data
+    workers: candidates
       .filter((w) => !busyWorkerIds.has(w.id))
       .slice(0, limit)
       .map((w) => ({

@@ -15,7 +15,7 @@ This document converts the approved Client Price Check prototype learnings into 
 
 The next implementation plan should use this as the decision baseline for the customer A2-A5 production UI slice:
 
-- A2: select electrical/plumbing service and problem chips
+- A2: select electrical/plumbing/cleaning service and problem chips
 - A3: describe the problem and prepare media/address UI affordances
 - A4: Kael clarification/loading/fallback states
 - A5: price estimate card
@@ -30,7 +30,7 @@ The repo is ready for a production UI planning pass, not for direct production a
 - `apps/mobile/app/(customer)/home.tsx` is still a placeholder and should remain a light entry/dashboard surface.
 - `apps/mobile/app/(customer)/kael.tsx` is still a placeholder and should stay a read/entry-support surface, not a generic chatbot.
 - The former client price-check prototype route/component have been deleted. Treat this document and `docs/agent-lessons.md` as the durable context.
-- `packages/shared/src/constants.ts` and `packages/shared/src/validation.ts` already enforce electrical/plumbing scope at the shared layer.
+- `packages/shared/src/constants.ts` and `packages/shared/src/validation.ts` already enforce electrical/plumbing/cleaning scope at the shared layer.
 - `apps/mobile/constants/colors.ts` is still default blue/slate and should be replaced or extended by production price-check tokens in the next UI build.
 
 Cleanup note: mobile prototype runtime artifacts should not be reintroduced before store-bound builds.
@@ -94,7 +94,7 @@ type PriceCheckUiStatus =
   | 'error'
 
 type PriceCheckDraft = {
-  serviceType: 'electrical' | 'plumbing'
+  serviceType: 'electrical' | 'plumbing' | 'cleaning'
   problemChips: string[]
   description: string
   photoUris: string[]
@@ -150,7 +150,7 @@ Fallback/error behavior:
 
 The current mobile runtime is Supabase Edge Function `mobile-api`, not hosted Next.js. Mobile should align with this boundary:
 
-- `GET /functions/v1/mobile-api/services` returns supported electrical/plumbing categories, problem chips, and baselines.
+- `GET /functions/v1/mobile-api/services` returns supported electrical/plumbing/cleaning categories, problem chips, and baselines.
 - `POST /functions/v1/mobile-api/jobs` accepts validated input and returns a structured estimate, fallback marker, or clear unavailable/error state.
 - Mobile sends Supabase access token through `Authorization: Bearer <token>`.
 - Edge verifies user and role server-side.
@@ -169,7 +169,7 @@ Future shared contracts should live in `packages/shared`:
 
 The production UI build must preserve these rules:
 
-- Only electrical and plumbing are active.
+- Only electrical, plumbing, and cleaning are active.
 - No booking broadcast, matching, worker flow, payment, or scope-change UI in the A2-A5 slice.
 - No exact guaranteed price.
 - No raw AI output shown to users.

@@ -1,14 +1,8 @@
-import Constants from 'expo-constants'
 import { supabase } from './supabase'
+import { mobileRuntimeConfig } from './runtime-config'
 
-const configuredApiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl
-const API_BASE_URL = typeof configuredApiBaseUrl === 'string'
-  ? configuredApiBaseUrl.trim().replace(/\/+$/, '')
-  : ''
-const configuredPublishableKey = Constants.expoConfig?.extra?.supabasePublishableKey
-const SUPABASE_PUBLISHABLE_KEY = typeof configuredPublishableKey === 'string'
-  ? configuredPublishableKey.trim()
-  : ''
+const API_BASE_URL = mobileRuntimeConfig.apiBaseUrl.replace(/\/+$/, '')
+const SUPABASE_PUBLISHABLE_KEY = mobileRuntimeConfig.supabasePublishableKey
 const TIMEOUT_MS = 15_000
 const MOBILE_API_BASE_PATH = /(?:\/functions\/v1)?\/mobile-api$/i
 

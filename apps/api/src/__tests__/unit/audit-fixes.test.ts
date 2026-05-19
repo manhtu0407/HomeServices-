@@ -392,7 +392,14 @@ describe('kael schemas — Rule #4 disclaimer', () => {
 
 // ─── prompt versions exist ───────────────────────────────────
 
-import { PROMPT_VERSIONS } from '@/lib/kael/prompts'
+import {
+  KAEL_BUSINESS_GUARDRAILS,
+  KAEL_RESPONSE_STYLE,
+  PROMPT_VERSIONS,
+  buildIntentMessages,
+  buildPricingMessages,
+  buildVisionMessages,
+} from '@/lib/kael/prompts'
 
 describe('kael prompts — versioning', () => {
   it('all pipeline steps have prompt versions', () => {
@@ -408,5 +415,31 @@ describe('kael prompts — versioning', () => {
     expect(PROMPT_VERSIONS.vision).toMatch(datePattern)
     expect(PROMPT_VERSIONS.pricing).toMatch(datePattern)
     expect(PROMPT_VERSIONS.prebrief).toMatch(datePattern)
+  })
+
+  it('Kael prompt contract keeps the business scope and tone explicit', () => {
+    expect(PROMPT_VERSIONS.intent).toBe('2026-05-19.v2')
+    expect(PROMPT_VERSIONS.vision).toBe('2026-05-19.v2')
+    expect(PROMPT_VERSIONS.pricing).toBe('2026-05-19.v2')
+    expect(KAEL_BUSINESS_GUARDRAILS).toContain('exactly three service boxes')
+    expect(KAEL_BUSINESS_GUARDRAILS).toContain('adult or explicit sexual content')
+    expect(KAEL_BUSINESS_GUARDRAILS).toContain('legality questions')
+    expect(KAEL_RESPONSE_STYLE).toContain('concise')
+    expect(KAEL_RESPONSE_STYLE).toContain('short Vietnamese')
+  })
+
+  it('injects Kael guardrails into every AI pipeline prompt', () => {
+    const prompts = [
+      buildIntentMessages('electrical', ['breaker'], 'breaker trips'),
+      buildVisionMessages('breaker trips', 'electrical: breaker_trip'),
+      buildPricingMessages('electrical', 'breaker_trip', 'medium', 'q1'),
+    ].map((messages) => messages[0]?.content ?? '')
+
+    for (const prompt of prompts) {
+      expect(prompt).toContain('Kael is the main AI assistant')
+      expect(prompt).toContain('electrical repair, plumbing repair, and home cleaning')
+      expect(prompt).toContain('unsupported')
+      expect(prompt).toContain('Return the required JSON only')
+    }
   })
 })

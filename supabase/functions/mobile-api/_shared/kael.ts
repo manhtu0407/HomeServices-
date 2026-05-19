@@ -6,10 +6,10 @@ export const PRICE_DISCLAIMER =
   "Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.";
 
 export const UNSUPPORTED_SERVICE_MESSAGE =
-  "Chúng tôi hiện chỉ hỗ trợ sửa điện và sửa nước. Vui lòng quay lại khi chúng tôi mở rộng dịch vụ.";
+  "Chúng tôi hiện chỉ hỗ trợ sửa điện, sửa nước và vệ sinh. Vui lòng quay lại khi chúng tôi mở rộng dịch vụ.";
 
 const intentResultSchema = z.object({
-  service_type: z.enum(["electrical", "plumbing", "unsupported"]),
+  service_type: z.enum(["electrical", "plumbing", "cleaning", "unsupported"]),
   problem_slug: z.string().min(1).max(100),
   confidence: z.number().min(0).max(1),
   needs_clarification: z.boolean(),
@@ -27,6 +27,15 @@ const marketPriceResultSchema = z.object({
   confidence: z.number().min(0).max(1),
   sources_summary: z.string().max(1000).optional(),
 });
+
+const KAEL_BUSINESS_GUARDRAILS = `Kael is the main AI assistant for this home-services product.
+Scope is strictly HCMC home services for exactly three service boxes: electrical repair, plumbing repair, and home cleaning.
+Reject unrelated topics, adult or explicit sexual content, random image requests, or any request that is not useful for those three service boxes by classifying it as unsupported.
+Home-service safety and legality questions are allowed only when they directly affect electrical, plumbing, or cleaning work.
+Do not collect or repeat PII; use only sanitized job context.`;
+
+const KAEL_RESPONSE_STYLE = `Keep reasoning concise, friendly, and on-point.
+Return the required JSON only. Any free-text field should be short Vietnamese, directly answer the job context, and include a practical safety note only when relevant.`;
 
 type IntentResult = z.infer<typeof intentResultSchema>;
 type VisionResult = z.infer<typeof visionResultSchema>;
@@ -53,11 +62,22 @@ const PROBLEM_SLUGS_BY_SERVICE: Record<ServiceType, readonly string[]> = {
     "toilet_flush_issue",
     "weak_water_pressure",
   ],
+  cleaning: [
+    "bathroom_deep_clean",
+    "cleaning-general",
+    "deep_cleaning",
+    "kitchen_deep_clean",
+    "other_cleaning",
+    "post_repair_cleaning",
+    "standard_home_cleaning",
+    "window_cleaning",
+  ],
 };
 
 const FALLBACK_PROBLEM_SLUG_BY_SERVICE: Record<ServiceType, string> = {
   electrical: "other_electrical",
   plumbing: "other_plumbing",
+  cleaning: "other_cleaning",
 };
 
 type AIProvider = "anthropic" | "perplexity" | "deepseek";
@@ -863,7 +883,8 @@ function buildFallbackIntent(
   }
 
   const validServiceType =
-    serviceType === "electrical" || serviceType === "plumbing"
+    serviceType === "electrical" || serviceType === "plumbing" ||
+      serviceType === "cleaning"
       ? serviceType
       : "unsupported";
   const slugMap: Record<string, string> = {
@@ -879,6 +900,12 @@ function buildFallbackIntent(
     "Toilet không xả": "toilet_flush_issue",
     "Áp nước yếu": "weak_water_pressure",
     "Lắp/thay thiết bị": "install_or_replace_fixture",
+    "Dọn dẹp nhà": "standard_home_cleaning",
+    "Vệ sinh bếp": "kitchen_deep_clean",
+    "Vệ sinh phòng tắm": "bathroom_deep_clean",
+    "Tổng vệ sinh": "deep_cleaning",
+    "Dọn sau sửa chữa": "post_repair_cleaning",
+    "Vệ sinh cửa kính": "window_cleaning",
   };
   const firstChip = problemChips[0] ?? "";
   const slug = slugMap[firstChip] ??
@@ -886,6 +913,8 @@ function buildFallbackIntent(
       ? "other_electrical"
       : validServiceType === "plumbing"
       ? "other_plumbing"
+      : validServiceType === "cleaning"
+      ? "other_cleaning"
       : "unsupported");
   return {
     service_type: validServiceType,
@@ -912,16 +941,22 @@ function buildIntentMessages(
     {
       role: "system",
       content:
-        `You are an intent classifier for a home repair service in Ho Chi Minh City.
-Supported services: electrical, plumbing. Nothing else.
-If the request is not about electrical or plumbing repair, classify as "unsupported".
+        `${KAEL_BUSINESS_GUARDRAILS}
+${KAEL_RESPONSE_STYLE}
+
+You are an intent classifier for a home service platform in Ho Chi Minh City.
+Supported services: electrical, plumbing, cleaning. Nothing else.
+If the request is not about electrical repair, plumbing repair, or home cleaning, classify as "unsupported".
 Allowed electrical problem_slug values: ${
           PROBLEM_SLUGS_BY_SERVICE.electrical.join(", ")
         }.
 Allowed plumbing problem_slug values: ${
           PROBLEM_SLUGS_BY_SERVICE.plumbing.join(", ")
         }.
-If the exact problem is unclear, use other_electrical or other_plumbing for the chosen service.
+Allowed cleaning problem_slug values: ${
+          PROBLEM_SLUGS_BY_SERVICE.cleaning.join(", ")
+        }.
+If the exact problem is unclear, use other_electrical, other_plumbing, or other_cleaning for the chosen service.
 Respond only with valid JSON for: service_type, problem_slug, confidence, needs_clarification.`,
     },
     {
@@ -940,7 +975,10 @@ function buildVisionMessages(
   return [
     {
       role: "system",
-      content: `Analyze a Ho Chi Minh City apartment electrical/plumbing issue.
+      content: `${KAEL_BUSINESS_GUARDRAILS}
+${KAEL_RESPONSE_STYLE}
+
+Analyze a Ho Chi Minh City apartment electrical, plumbing, or cleaning issue.
 Respond only with valid JSON: problem_identified, severity_indicators, complexity_hint.
 problem_identified must be Vietnamese. complexity_hint is small, medium, or large.`,
     },
@@ -962,7 +1000,10 @@ function buildPricingMessages(
     {
       role: "system",
       content:
-        `Research current market prices for HCMC apartment electrical/plumbing repair.
+        `${KAEL_BUSINESS_GUARDRAILS}
+${KAEL_RESPONSE_STYLE}
+
+Research current market prices for HCMC apartment electrical repair, plumbing repair, or home cleaning.
 Respond only with valid JSON: market_range_min, market_range_max, confidence, sources_summary.
 Prices must be VND integers. If weak evidence, use conservative estimates with confidence below 0.5.`,
     },
@@ -1005,8 +1046,6 @@ function hasUnsupportedRepairIntent(input: string): boolean {
     "internet",
     "sua khoa",
     "son nha",
-    "ve sinh",
-    "don dep",
   ].some((keyword) => normalized.includes(keyword));
 }
 

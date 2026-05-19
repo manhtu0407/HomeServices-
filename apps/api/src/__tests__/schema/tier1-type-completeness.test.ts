@@ -23,6 +23,12 @@ const EXPECTED_TABLES = [
   'learning_candidates',
   'learning_rules',
   'learning_rule_versions',
+  'service_knowledge_boxes',
+  'kael_market_artifacts',
+  'job_media_assets',
+  'kael_analysis_artifacts',
+  'device_push_tokens',
+  'worker_cancellation_requests',
 ] as const satisfies readonly TableNames[]
 
 const EXPECTED_ENUMS = [
@@ -42,7 +48,7 @@ const EXPECTED_ENUMS = [
 
 describe('Database.public.Tables completeness', () => {
   it('has all aligned workflow tables', () => {
-    expect(EXPECTED_TABLES).toHaveLength(17)
+    expect(EXPECTED_TABLES).toHaveLength(23)
   })
 
   it.each(EXPECTED_TABLES)('table "%s" is a valid generated table key', (name) => {
@@ -62,8 +68,8 @@ describe('Database.public.Enums completeness', () => {
 })
 
 describe('Core enum values', () => {
-  it('service_type remains scoped to electrical and plumbing', () => {
-    expect(Constants.public.Enums.service_type).toEqual(['electrical', 'plumbing'])
+  it('service_type remains scoped to electrical, plumbing, and cleaning', () => {
+    expect(Constants.public.Enums.service_type).toEqual(['electrical', 'plumbing', 'cleaning'])
   })
 
   it('job_status matches STRUCTURES.md workflow', () => {

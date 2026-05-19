@@ -183,13 +183,14 @@ describe('customer frontend shell surfaces', () => {
     expect(shell()).toContain('useFrontendWorkflow')
   })
 
-  it('limits active customer services to electrical and plumbing entries', () => {
+  it('limits active customer services to electrical, plumbing, and cleaning entries', () => {
     const src = shell()
     expect(src).toContain('customer-shell-service-electrical')
     expect(src).toContain('customer-shell-service-plumbing')
+    expect(src).toContain('customer-shell-service-cleaning')
     expect(src).toContain('customer-home-other-services-message')
     expect(src).toContain('CUSTOMER_V4_VISUAL_CONTRACT')
-    expect(src).not.toMatch(/cleaning|ac repair|appliance|handyman/i)
+    expect(src).not.toMatch(/ac repair|appliance|handyman/i)
   })
 
   it('implements the V4 customer quality system markers', () => {
@@ -215,6 +216,10 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-theme-layer-switch')
     expect(src).toContain('customer-dark-layer-ecology')
     expect(src).toContain('customer-dark-mode-toggle')
+    expect(src).toContain('dockActiveSurfaceStyle(tokens)')
+    expect(src).toContain("tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)'")
+    expect(src).toContain('const experimentalBackgroundImage')
+    expect(src).toContain('linear-gradient(145deg, rgba(22,43,40,0.78), rgba(12,26,25,0.68))')
     expect(src).toContain('lightLayer')
     expect(src).toContain('darkLayer')
   })
@@ -660,6 +665,11 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('worker-dock-kael-brief-mascot')
     expect(src).toContain('withSpring')
     expect(src).toContain('worker-profile-preference-toggles')
+    expect(src).toContain('worker-verification-submit-card')
+    expect(src).toContain("const workerVerificationServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']")
+    expect(src).toContain('worker-verification-service-${serviceType}')
+    expect(src).toContain('worker-verification-cccd-front')
+    expect(src).toContain('worker-verification-selfie')
     expect(src).toContain('worker-kael-client-chatbox-parity')
     expect(src).toContain('worker-kael-composer-dock')
     expect(src).not.toContain('quickGrid')
@@ -673,11 +683,14 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).not.toContain('worker-v3-')
   })
 
-  it('keeps Worker scope to electrical and plumbing services only', () => {
+  it('keeps Worker scope to electrical, plumbing, and cleaning services only', () => {
     const src = shell()
     expect(src).toContain('electricianCard')
     expect(src).toContain('plumberCard')
-    expect(src).not.toMatch(/cleaning|ac repair|appliance|handyman/i)
+    expect(src).toContain('cleaningCard')
+    expect(src).toContain('const experimentalBackgroundImage')
+    expect(src).toContain('linear-gradient(145deg, rgba(22,43,40,0.78), rgba(12,26,25,0.68))')
+    expect(src).not.toMatch(/ac repair|appliance|handyman/i)
   })
 
   it('keeps Worker theme/language switching and Kael chat local-only', () => {
@@ -766,6 +779,10 @@ describe('auth production login surface', () => {
 
   it('keeps the role gate and removes onboarding runtime markers', () => {
     expect(surface).toContain('auth-role-gate-glass')
+    expect(surface).toContain('auth-entry-role-first')
+    expect(surface).toContain('auth-entry-role-customer')
+    expect(surface).toContain('auth-entry-role-worker')
+    expect(surface).toContain('auth-entry-role-change')
     expect(surface).toContain('auth-login-role-customer')
     expect(surface).toContain('auth-login-role-worker')
     expect(surface).not.toContain('OnboardingSurface')
@@ -774,7 +791,11 @@ describe('auth production login surface', () => {
     expect(surface).not.toContain('/(auth)/onboard')
   })
 
-  it('requires email/password auth before role section routing', () => {
+  it('requires role-first selection and email/password auth before role section routing', () => {
+    expect(surface).toContain("const [selectedEntryRole, setSelectedEntryRole]")
+    expect(surface).toContain('!isAuthenticated && !selectedEntryRole')
+    expect(surface).toContain("setSelectedEntryRole('customer')")
+    expect(surface).toContain("setSelectedEntryRole('worker')")
     expect(surface).toContain('TextInput')
     expect(surface).toContain('secureTextEntry')
     expect(surface).toContain('signInWithPassword')
@@ -889,23 +910,29 @@ describe('role guarded route groups', () => {
 
 describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
   const src = read('lib/supabase.ts')
+  const runtimeConfig = read('lib/runtime-config.ts')
 
   it('does NOT hardcode supabase URL', () => {
     expect(src).not.toMatch(/https:\/\/[a-z]+\.supabase\.co/)
+    expect(runtimeConfig).not.toMatch(/https:\/\/[a-z]+\.supabase\.co/)
   })
 
   it('does NOT hardcode anon key', () => {
     // Supabase anon keys start with eyJ
     expect(src).not.toMatch(/eyJ[A-Za-z0-9_-]+/)
+    expect(runtimeConfig).not.toMatch(/eyJ[A-Za-z0-9_-]+/)
   })
 
-  it('reads URL from Constants.expoConfig', () => {
-    expect(src).toContain('Constants.expoConfig')
-    expect(src).toContain('supabaseUrl')
+  it('reads URL from runtime Expo config with Expo Go fallbacks', () => {
+    expect(src).toContain('mobileRuntimeConfig.supabaseUrl')
+    expect(runtimeConfig).toContain('Constants.expoConfig')
+    expect(runtimeConfig).toContain('manifest2')
+    expect(runtimeConfig).toContain('EXPO_PUBLIC_SUPABASE_URL')
   })
 
-  it('reads key from Constants.expoConfig', () => {
-    expect(src).toContain('supabasePublishableKey')
+  it('reads key from runtime Expo config', () => {
+    expect(src).toContain('mobileRuntimeConfig.supabasePublishableKey')
+    expect(runtimeConfig).toContain('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
   })
 
   it('uses SecureStore for session persistence', () => {
@@ -930,11 +957,13 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
 
   it('does NOT use process.env (Rule #1 - RN uses app.json extra)', () => {
     expect(src).not.toContain('process.env')
+    expect(runtimeConfig).toContain('EXPO_PUBLIC_')
+    expect(runtimeConfig).not.toContain('SERVICE_ROLE')
+    expect(runtimeConfig).not.toContain('SECRET_KEY')
   })
 
   it('falls back to empty string (not undefined) for missing config', () => {
-    // ?? '' ensures createClient gets string, not undefined
-    expect(src).toContain("?? ''")
+    expect(runtimeConfig).toContain("return ''")
   })
 
   it('does NOT create a Supabase client when mobile config is missing', () => {
@@ -999,7 +1028,7 @@ describe('auth-provider.tsx', () => {
   })
 
   it('sets loading false after role fetch completes', () => {
-    expect(src).toContain('setLoading(false)')
+    expect(src).toContain("patchAuth({ role: nextRole, profileStatus: 'ready', loading: false })")
   })
 
   it('handles Supabase auth/profile failures without leaving loading stuck', () => {
@@ -1017,13 +1046,13 @@ describe('auth-provider.tsx', () => {
   })
 
   it('resets role to null on sign out', () => {
-    expect(src).toContain('setRole(null)')
+    expect(src).toContain('role: null')
     expect(src).toContain("supabase.auth.signOut({ scope: 'local' })")
   })
 
   it('renders children instead of crashing when Supabase config is missing', () => {
     expect(src).toContain('if (!supabase)')
-    expect(src).toContain('setLoading(false)')
+    expect(src).toContain("profileStatus: 'config_missing', loading: false")
   })
 })
 
@@ -1098,8 +1127,21 @@ describe('app.json configuration', () => {
     expect(expo.ios?.bundleIdentifier).toBeDefined()
   })
 
+  it('has iOS store build metadata and review permission copy', () => {
+    expect(expo.ios?.buildNumber).toBeDefined()
+    expect(expo.ios?.config?.usesNonExemptEncryption).toBe(false)
+    expect(expo.ios?.infoPlist?.NSCameraUsageDescription).toContain('camera')
+    expect(expo.ios?.infoPlist?.NSPhotoLibraryUsageDescription).toContain('ảnh')
+  })
+
   it('has Android package', () => {
     expect(expo.android?.package).toBeDefined()
+  })
+
+  it('has Android store build metadata and blocks microphone permission', () => {
+    expect(expo.android?.versionCode).toBeGreaterThanOrEqual(1)
+    expect(expo.android?.permissions).toEqual([])
+    expect(expo.android?.blockedPermissions).toContain('android.permission.RECORD_AUDIO')
   })
 
   it('has expo-router plugin', () => {
@@ -1276,18 +1318,20 @@ describe('client price check production UI', () => {
     expect(component).not.toContain('?? t?i l?n')
   })
 
-  it('uses electrical/plumbing shared scope and Vietnamese production copy', () => {
+  it('uses electrical/plumbing/cleaning shared scope and Vietnamese production copy', () => {
     const component = read(productionComponentPath)
     expect(component).toContain('PROBLEM_CHIPS')
     expect(component).toContain('ServiceType')
     expect(component).toContain("'electrical'")
     expect(component).toContain("'plumbing'")
+    expect(component).toContain("'cleaning'")
     expect(component).toContain('EMPTY_DRAFT')
     expect(component).not.toContain('INITIAL_DRAFT')
     expect(component).toContain("serviceType === 'electrical'")
     expect(component).toContain("onSelectService('plumbing')")
+    expect(component).toContain("onSelectService('cleaning')")
     expect(component).toContain('addressLabel')
-    expect(component).not.toMatch(/cleaning|ac repair|appliance|handyman/i)
+    expect(component).not.toMatch(/ac repair|appliance|handyman/i)
   })
 
   it('harmonizes booking colors and typography with the V4 customer shell', () => {
@@ -1389,7 +1433,7 @@ describe('client price check production UI', () => {
     expect(component).toContain('bookingFrameHorizontalPadding')
     expect(component).toContain('SheetActions')
     expect(component).toContain('sheetActions')
-    expect(component).toContain('width: Math.max(0, frameWidth - bookingFrameHorizontalPadding * 4)')
+    expect(component).toContain('width: Math.max(0, frameWidth - bookingFrameHorizontalPadding * 2)')
     expect(component).toContain('ScrollView')
     expect(component).not.toContain('left: horizontalOffset')
   })

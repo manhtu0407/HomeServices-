@@ -4,11 +4,17 @@ import type {
   AvailabilityToggleResponse,
   BroadcastListResponse,
   CustomerScopeDecisionResponse,
+  DevicePushTokenInput,
+  DevicePushTokenResponse,
   DeclineBroadcastResponse,
   EarningsResponse,
   ServiceCatalogResponse,
   CreateJobResponse,
   JobDetailResponse,
+  JobMediaAttachInput,
+  JobMediaAttachResponse,
+  NotificationListResponse,
+  NotificationReadResponse,
   ConfirmSearchResponse,
   StatusUpdateResponse,
   ConfirmCompletionResponse,
@@ -16,6 +22,10 @@ import type {
   WorkerJobListResponse,
   WorkerProfileResponse,
   WorkerRegisterResponse,
+  WorkerCancellationDecisionInput,
+  WorkerCancellationDecisionResponse,
+  WorkerCancellationRequestInput,
+  WorkerCancellationResponse,
   WorkerScopeChangeResponse,
 } from './api-types'
 import type {
@@ -43,6 +53,10 @@ export const jobService = {
     return api.get<JobDetailResponse>(`/jobs/${jobId}`)
   },
 
+  attachJobMedia(jobId: string, input: JobMediaAttachInput) {
+    return api.post<JobMediaAttachResponse>(`/jobs/${jobId}/media`, input)
+  },
+
   confirmSearch(jobId: string) {
     return api.post<ConfirmSearchResponse>(`/jobs/${jobId}/confirm-search`)
   },
@@ -66,8 +80,16 @@ export const jobService = {
     return api.post<WorkerScopeChangeResponse>(`/jobs/${jobId}/scope-change`, input)
   },
 
+  requestWorkerCancellation(jobId: string, input: WorkerCancellationRequestInput) {
+    return api.post<WorkerCancellationResponse>(`/jobs/${jobId}/worker-cancellation`, input)
+  },
+
   decideScopeChange(scopeChangeId: string, input: CustomerScopeDecisionInput) {
     return api.post<CustomerScopeDecisionResponse>(`/scope-changes/${scopeChangeId}/decide`, input)
+  },
+
+  decideWorkerCancellation(cancellationId: string, input: WorkerCancellationDecisionInput) {
+    return api.post<WorkerCancellationDecisionResponse>(`/worker-cancellations/${cancellationId}/decide`, input)
   },
 
   confirmCompletion(jobId: string) {
@@ -130,5 +152,23 @@ export const workerService = {
 
   requestScopeChange(jobId: string, input: WorkerScopeChangeInput) {
     return jobService.requestScopeChange(jobId, input)
+  },
+
+  requestWorkerCancellation(jobId: string, input: WorkerCancellationRequestInput) {
+    return jobService.requestWorkerCancellation(jobId, input)
+  },
+}
+
+export const notificationService = {
+  list() {
+    return api.get<NotificationListResponse>('/notifications')
+  },
+
+  markRead(notificationId: string) {
+    return api.post<NotificationReadResponse>(`/notifications/${notificationId}/read`)
+  },
+
+  registerDeviceToken(input: DevicePushTokenInput) {
+    return api.post<DevicePushTokenResponse>('/notifications/device-token', input)
   },
 }

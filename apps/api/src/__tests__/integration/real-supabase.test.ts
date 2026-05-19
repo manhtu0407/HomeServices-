@@ -87,7 +87,7 @@ describeReal('Real Supabase — connection + schema', () => {
     expect(data).toBeDefined()
   })
 
-  it('service_categories has electrical + plumbing', async () => {
+  it('service_categories has electrical, plumbing, and cleaning', async () => {
     const { data, error } = await supabase
       .from('service_categories')
       .select('id, service_type, slug, label_vi, is_active')
@@ -98,6 +98,7 @@ describeReal('Real Supabase — connection + schema', () => {
     expect(data!.length).toBeGreaterThan(0)
     expect(data!.map((c) => c.service_type)).toContain('electrical')
     expect(data!.map((c) => c.service_type)).toContain('plumbing')
+    expect(data!.map((c) => c.service_type)).toContain('cleaning')
   })
 
   it('service_problems has active problems', async () => {
@@ -254,7 +255,7 @@ describeReal('Real Supabase — auth user creation + profile trigger', () => {
       .from('worker_profiles')
       .upsert({
         id: workerUserId!,
-        service_types: ['electrical', 'plumbing'],
+        service_types: ['electrical', 'plumbing', 'cleaning'],
         districts: ['quan_7', 'quan_1'],
         is_approved: true,
         is_available: true,

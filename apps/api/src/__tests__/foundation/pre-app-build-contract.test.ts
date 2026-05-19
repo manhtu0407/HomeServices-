@@ -73,6 +73,9 @@ describe('Secret hygiene baseline', () => {
     const requiredKeys = [
       'NEXT_PUBLIC_SUPABASE_URL',
       'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+      'EXPO_PUBLIC_SUPABASE_URL',
+      'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+      'EXPO_PUBLIC_API_BASE_URL',
       'SUPABASE_SERVICE_ROLE_KEY',
       'SUPABASE_ANON_KEY',
       'SUPABASE_SECRET_KEY',

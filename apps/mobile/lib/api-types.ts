@@ -191,6 +191,87 @@ export type WorkerScopeChangeResponse = {
   created_at: string
 }
 
+export type WorkerCancellationRequestInput = {
+  reason: string
+  evidence_photo_urls?: string[]
+}
+
+export type WorkerCancellationResponse = {
+  cancellation_id: string
+  job_id: string
+  status: string
+  created_at: string
+}
+
+export type WorkerCancellationDecisionInput = {
+  decision: 'approve' | 'reject'
+  review_note?: string
+}
+
+export type WorkerCancellationDecisionResponse = {
+  cancellation_id: string
+  job_id: string
+  status: string
+  job_status: JobStatus
+  broadcast_sent: boolean
+  message: string
+}
+
+export type JobMediaStage = 'before' | 'after' | 'kael_reference' | 'cancellation_evidence'
+
+export type JobMediaAttachInput = {
+  assets: {
+    object_path: string
+    stage: JobMediaStage
+    mime_type?: string
+    file_size_bytes?: number
+  }[]
+}
+
+export type JobMediaAttachResponse = {
+  job_id: string
+  photo_urls: string[]
+  media: {
+    bucket_id: 'job-media'
+    object_path: string
+    storage_ref: string
+    stage: JobMediaStage
+  }[]
+}
+
+export type NotificationListResponse = {
+  unread_count: number
+  notifications: {
+    id: string
+    title: string
+    body: string
+    event_type: string
+    status: string
+    job_id: string | null
+    created_at: string
+    read_at: string | null
+  }[]
+}
+
+export type NotificationReadResponse = {
+  notification_id: string
+  status: 'read'
+  read_at: string
+}
+
+export type DevicePushTokenInput = {
+  platform: 'ios' | 'android' | 'web' | 'unknown'
+  push_token: string
+  permission_status: 'granted' | 'denied' | 'undetermined'
+  safe_metadata?: Record<string, unknown>
+}
+
+export type DevicePushTokenResponse = {
+  token_id: string
+  enabled: boolean
+  updated_at: string
+}
+
 export type CustomerScopeDecisionResponse = {
   scope_change_id: string
   job_id: string

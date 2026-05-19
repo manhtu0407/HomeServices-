@@ -81,15 +81,19 @@ Không bỏ disclaimer. Không cam kết giá chính xác.
 
 ---
 
-## Rule #6: Kael chỉ trả lời về điện và nước
+## Rule #6: Kael chỉ trả lời trong scope Home Services điện, nước, vệ sinh
 
 ```typescript
-if (service_category !== 'electrical' && service_category !== 'plumbing') {
+if (
+  service_category !== 'electrical' &&
+  service_category !== 'plumbing' &&
+  service_category !== 'cleaning'
+) {
   return POLITE_DECLINE_MESSAGE
 }
 ```
 
-Hard rule. Không có exception trước khi có quyết định mở rộng dịch vụ.
+Hard rule. Kael trả lời ngắn gọn, đúng trọng tâm, thân thiện cho các vấn đề Home Services trong 3 nhóm active: sửa điện, sửa nước, vệ sinh/dọn dẹp nhà. Ngoài scope này thì từ chối lịch sự; nội dung nguy hiểm, 18+, làm lộ PII, hoặc không liên quan thì không phân tích.
 
 ---
 

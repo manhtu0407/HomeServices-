@@ -40,10 +40,21 @@ describe('workerRegisterSchema', () => {
     expect(workerRegisterSchema.safeParse(VALID_INPUT).success).toBe(true)
   })
 
-  it('accepts both electrical and plumbing service types', () => {
+  it('accepts private Supabase worker-verification storage refs', () => {
     const result = workerRegisterSchema.safeParse({
       ...VALID_INPUT,
-      service_types: ['electrical', 'plumbing'],
+      cccd_front_url: 'supabase://worker-verification/user-1/cccd-front/front.jpg',
+      cccd_back_url: 'supabase://worker-verification/user-1/cccd-back/back.jpg',
+      selfie_url: 'supabase://worker-verification/user-1/selfie/selfie.jpg',
+    })
+
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts electrical, plumbing, and cleaning service types', () => {
+    const result = workerRegisterSchema.safeParse({
+      ...VALID_INPUT,
+      service_types: ['electrical', 'plumbing', 'cleaning'],
     })
     expect(result.success).toBe(true)
   })
@@ -62,7 +73,7 @@ describe('workerRegisterSchema', () => {
   it('rejects unsupported service (RULES.md #6)', () => {
     const result = workerRegisterSchema.safeParse({
       ...VALID_INPUT,
-      service_types: ['cleaning'],
+      service_types: ['hvac'],
     })
     expect(result.success).toBe(false)
   })

@@ -14,10 +14,10 @@ import {
 const UUID = '550e8400-e29b-41d4-a716-446655440000'
 
 // ===================================================================
-// Rule #6: Kael chỉ trả lời về điện và nước — hard enforcement
+// Rule #6: Kael chỉ trả lời về điện, nước, và vệ sinh — hard enforcement
 // ===================================================================
 
-describe('serviceTypeSchema (Rule #6: only electrical + plumbing)', () => {
+describe('serviceTypeSchema (Rule #6: electrical + plumbing + cleaning)', () => {
   it('accepts electrical', () => {
     expect(serviceTypeSchema.parse('electrical')).toBe('electrical')
   })
@@ -30,8 +30,8 @@ describe('serviceTypeSchema (Rule #6: only electrical + plumbing)', () => {
     expect(() => serviceTypeSchema.parse('hvac')).toThrow()
   })
 
-  it('rejects cleaning', () => {
-    expect(() => serviceTypeSchema.parse('cleaning')).toThrow()
+  it('accepts cleaning', () => {
+    expect(serviceTypeSchema.parse('cleaning')).toBe('cleaning')
   })
 
   it('rejects empty string', () => {

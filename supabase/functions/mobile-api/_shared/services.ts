@@ -13,8 +13,12 @@ import {
   PLATFORM_FEE_WORKER,
 } from "../../_shared/domain.ts";
 import {
+  type DevicePushTokenInput,
   type JobCreateInput,
+  type JobMediaAttachInput,
   sanitizeForLLM,
+  type WorkerCancellationDecisionInput,
+  type WorkerCancellationRequestInput,
   type WorkerRegisterInput,
 } from "../../_shared/domain.ts";
 import {
@@ -90,6 +94,9 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     declineBroadcast,
     updateJobStatus,
     requestScopeChange,
+    requestWorkerCancellation,
+    attachJobMedia,
+    decideWorkerCancellation,
     decideScopeChange,
     confirmCompletion,
     submitReview,
@@ -99,6 +106,9 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     listWorkerBroadcasts,
     listWorkerJobs,
     getWorkerEarnings,
+    listNotifications,
+    markNotificationRead,
+    registerDevicePushToken,
   };
 }
 
@@ -838,6 +848,241 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
   };
 }
 
+async function requestWorkerCancellation(
+  ctx: MobileApiContext,
+  jobId: string,
+  input: WorkerCancellationRequestInput,
+) {
+  const client = db(ctx);
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("request_worker_cancellation_atomic", {
+      p_job_id: jobId,
+      p_worker_id: ctx.user.id,
+      p_reason: input.reason,
+      p_evidence_photo_urls: input.evidence_photo_urls,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy việc", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy việc", 500);
+  if (!row.ok) mapWorkerCancellationRequestError(nullableString(row.error_code));
+
+  await logJobEvent(
+    client,
+    jobId,
+    "worker_requested_cancellation",
+    ctx,
+    null,
+    null,
+    {
+      cancellation_id: row.cancellation_id,
+    },
+  );
+  return {
+    cancellation_id: asString(row.cancellation_id),
+    job_id: jobId,
+    status: asString(row.cancellation_status),
+    created_at: asString(row.created_at_ts),
+  };
+}
+
+async function attachJobMedia(
+  ctx: MobileApiContext,
+  jobId: string,
+  input: JobMediaAttachInput,
+) {
+  const client = db(ctx);
+  const jobResult = await dbQuery<Record<string, unknown>>(
+    client
+      .from("jobs")
+      .select("id, status, service_type, customer_id, worker_id, photo_urls, completion_photo_urls")
+      .eq("id", jobId)
+      .single(),
+  );
+  if (jobResult.error || !jobResult.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy yêu cầu", 404);
+  }
+
+  const job = jobResult.data;
+  const status = job.status as JobStatus;
+  const customerId = nullableString(job.customer_id);
+  const workerId = nullableString(job.worker_id);
+  const isCustomer = customerId === ctx.user.id;
+  const isWorker = workerId === ctx.user.id;
+  const isAdmin = ctx.role === "admin";
+  if (!isCustomer && !isWorker && !isAdmin) {
+    apiFailure("FORBIDDEN", "Bạn không có quyền gắn media cho yêu cầu này", 403);
+  }
+
+  const serviceType = asServiceType(job.service_type);
+  const rows = input.assets.map((asset) => {
+    validateJobMediaPath(jobId, asset.stage, asset.object_path);
+    if (!canAttachJobMediaStage(asset.stage, isCustomer, isWorker, isAdmin)) {
+      apiFailure("FORBIDDEN", "Vai trò hiện tại không được gắn media ở bước này", 403);
+    }
+    return {
+      job_id: jobId,
+      owner_id: ctx.user.id,
+      service_type: serviceType,
+      stage: asset.stage,
+      bucket_id: "job-media",
+      object_path: asset.object_path,
+      mime_type: asset.mime_type ?? null,
+      file_size_bytes: asset.file_size_bytes ?? null,
+      safe_metadata: {},
+    };
+  });
+
+  const inserted = await dbQuery(
+    client.from("job_media_assets").insert(rows).select("id"),
+  );
+  if (inserted.error) {
+    apiFailure("DB_ERROR", "Không thể lưu thông tin media", 500);
+  }
+
+  const beforeRefs = rows
+    .filter((row) => row.stage === "before" || row.stage === "kael_reference")
+    .map((row) => storageRef(row.object_path));
+  const afterRefs = rows
+    .filter((row) => row.stage === "after")
+    .map((row) => storageRef(row.object_path));
+  let photoUrls = asStringArray(job.photo_urls);
+
+  if (beforeRefs.length > 0) {
+    photoUrls = mergeLimitedRefs(photoUrls, beforeRefs, 5);
+    const updated = await dbQuery(
+      client
+        .from("jobs")
+        .update({ photo_urls: photoUrls })
+        .eq("id", jobId)
+        .select("id")
+        .maybeSingle(),
+    );
+    if (updated.error || !updated.data) {
+      apiFailure("DB_ERROR", "Không thể cập nhật media yêu cầu", 500);
+    }
+  }
+
+  if (afterRefs.length > 0) {
+    const completionPhotoUrls = mergeLimitedRefs(
+      asStringArray(job.completion_photo_urls),
+      afterRefs,
+      10,
+    );
+    const updated = await dbQuery(
+      client
+        .from("jobs")
+        .update({ completion_photo_urls: completionPhotoUrls })
+        .eq("id", jobId)
+        .select("id")
+        .maybeSingle(),
+    );
+    if (updated.error || !updated.data) {
+      apiFailure("DB_ERROR", "Không thể cập nhật media hoàn tất", 500);
+    }
+  }
+
+  await logJobEvent(
+    client,
+    jobId,
+    "job_media_attached",
+    ctx,
+    status,
+    status,
+    {
+      count: rows.length,
+      stages: Array.from(new Set(rows.map((row) => row.stage))),
+    },
+  );
+
+  return {
+    job_id: jobId,
+    photo_urls: photoUrls,
+    media: rows.map((row) => ({
+      bucket_id: "job-media" as const,
+      object_path: row.object_path,
+      storage_ref: storageRef(row.object_path),
+      stage: row.stage,
+    })),
+  };
+}
+
+async function decideWorkerCancellation(
+  ctx: MobileApiContext,
+  cancellationId: string,
+  input: WorkerCancellationDecisionInput,
+) {
+  const client = db(ctx);
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("decide_worker_cancellation_atomic", {
+      p_cancellation_id: cancellationId,
+      p_admin_id: ctx.user.id,
+      p_decision: input.decision,
+      p_review_note: input.review_note ?? null,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể xử lý yêu cầu hủy việc", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) apiFailure("DB_ERROR", "Không thể xử lý yêu cầu hủy việc", 500);
+  if (!row.ok) mapWorkerCancellationDecisionError(nullableString(row.error_code));
+
+  const jobId = asString(row.job_id_out);
+  const jobStatus = row.job_status as JobStatus;
+  let broadcastSent = false;
+  let message = input.decision === "approve"
+    ? "Đã duyệt hủy và đang tìm thợ thay thế."
+    : "Đã từ chối yêu cầu hủy. Thợ cần tiếp tục công việc.";
+
+  if (input.decision === "approve") {
+    const district = normalizeServiceAreaDistrict(nullableString(row.district_code) ?? "");
+    if (district) {
+      const broadcast = await createBroadcasts(
+        client,
+        jobId,
+        row.service_type_out as ServiceType,
+        district,
+        { excludeWorkerIds: [asString(row.worker_id_out)] },
+      );
+      broadcastSent = broadcast.success;
+      message = broadcast.success
+        ? `Đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ thay thế.`
+        : broadcast.reason;
+    } else {
+      message = "Đã duyệt hủy nhưng địa chỉ cần có quận TP.HCM rõ ràng để tìm thợ thay thế.";
+    }
+  }
+
+  await logJobEvent(
+    client,
+    jobId,
+    input.decision === "approve"
+      ? "admin_approved_worker_cancellation"
+      : "admin_rejected_worker_cancellation",
+    ctx,
+    null,
+    jobStatus,
+    {
+      cancellation_id: cancellationId,
+      decision: input.decision,
+      broadcast_sent: broadcastSent,
+      worker_id: row.worker_id_out,
+    },
+  );
+
+  return {
+    cancellation_id: cancellationId,
+    job_id: jobId,
+    status: asString(row.cancellation_status),
+    job_status: jobStatus,
+    broadcast_sent: broadcastSent,
+    message,
+  };
+}
+
 async function decideScopeChange(
   ctx: MobileApiContext,
   scopeChangeId: string,
@@ -1287,17 +1532,103 @@ async function getWorkerEarnings(
   };
 }
 
+async function listNotifications(ctx: MobileApiContext) {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx)
+      .from("notifications")
+      .select("id, title, body, event_type, status, job_id, created_at, read_at")
+      .eq("user_id", ctx.user.id)
+      .order("created_at", { ascending: false })
+      .limit(30),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể tải thông báo", 500);
+  }
+  const notifications = (result.data ?? []).map((row) => ({
+    id: asString(row.id),
+    title: asString(row.title),
+    body: asString(row.body),
+    event_type: asString(row.event_type),
+    status: asString(row.status),
+    job_id: nullableString(row.job_id),
+    created_at: asString(row.created_at),
+    read_at: nullableString(row.read_at),
+  }));
+  return {
+    unread_count: notifications.filter((item) =>
+      item.status !== "read" && item.status !== "archived"
+    ).length,
+    notifications,
+  };
+}
+
+async function markNotificationRead(
+  ctx: MobileApiContext,
+  notificationId: string,
+) {
+  const readAt = new Date().toISOString();
+  const result = await dbQuery<Record<string, unknown>>(
+    db(ctx)
+      .from("notifications")
+      .update({ status: "read", read_at: readAt })
+      .eq("id", notificationId)
+      .eq("user_id", ctx.user.id)
+      .select("id, read_at")
+      .maybeSingle(),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể cập nhật thông báo", 500);
+  }
+  if (!result.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy thông báo", 404);
+  }
+  return {
+    notification_id: asString(result.data.id),
+    status: "read" as const,
+    read_at: nullableString(result.data.read_at) ?? readAt,
+  };
+}
+
+async function registerDevicePushToken(
+  ctx: MobileApiContext,
+  input: DevicePushTokenInput,
+) {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("register_device_push_token_atomic", {
+      p_user_id: ctx.user.id,
+      p_platform: input.platform,
+      p_push_token: input.push_token,
+      p_permission_status: input.permission_status,
+      p_safe_metadata: input.safe_metadata,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể lưu thiết bị nhận thông báo", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) {
+    apiFailure("VALIDATION", "Dữ liệu thiết bị nhận thông báo không hợp lệ", 400);
+  }
+  return {
+    token_id: asString(row.token_id),
+    enabled: asBoolean(row.enabled_out),
+    updated_at: asString(row.updated_at_ts),
+  };
+}
+
 async function createBroadcasts(
   client: DbClient,
   jobId: string,
   serviceType: ServiceType,
   district: string,
+  options: { excludeWorkerIds?: string[] } = {},
 ) {
   const eligibleResult = await queryEligibleWorkers(
     client,
     serviceType,
     district,
     5,
+    options,
   );
   if (!eligibleResult.success) {
     return {
@@ -1470,9 +1801,11 @@ async function queryEligibleWorkers(
   serviceType: ServiceType,
   district: string,
   limit: number,
+  options: { excludeWorkerIds?: string[] } = {},
 ) {
   const candidateLimit = Math.max(limit, DEFAULT_WORKER_CANDIDATE_POOL_SIZE);
   const districtCode = normalizeDistrict(district);
+  const excludedWorkerIds = new Set(options.excludeWorkerIds ?? []);
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client
       .from("worker_profiles")
@@ -1496,7 +1829,9 @@ async function queryEligibleWorkers(
       reason: "Lỗi khi tìm thợ phù hợp",
     };
   }
-  const candidates = result.data ?? [];
+  const candidates = (result.data ?? []).filter((worker) =>
+    !excludedWorkerIds.has(asString(worker.id))
+  );
   const candidateIds = candidates
     .map((worker) => asString(worker.id))
     .filter(Boolean);
@@ -1635,6 +1970,41 @@ function mapCancelError(errorCode: string | null): never {
   apiFailure("DB_ERROR", "Không thể hủy yêu cầu", 500);
 }
 
+function mapWorkerCancellationRequestError(errorCode: string | null): never {
+  if (errorCode === "NOT_FOUND") {
+    apiFailure("NOT_FOUND", "Không tìm thấy công việc phù hợp", 404);
+  }
+  if (errorCode === "INVALID_STATUS") {
+    apiFailure("INVALID_STATUS", "Trạng thái công việc chưa thể yêu cầu hủy", 409);
+  }
+  if (errorCode === "ALREADY_REQUESTED") {
+    apiFailure("ALREADY_REQUESTED", "Yêu cầu hủy đang chờ Kael/Admin duyệt", 409);
+  }
+  if (errorCode === "INVALID_REASON") {
+    apiFailure("VALIDATION", "Cần lý do hủy rõ ràng", 400);
+  }
+  apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy việc", 500);
+}
+
+function mapWorkerCancellationDecisionError(errorCode: string | null): never {
+  if (errorCode === "NOT_FOUND") {
+    apiFailure("NOT_FOUND", "Không tìm thấy yêu cầu hủy", 404);
+  }
+  if (errorCode === "AUTH_FORBIDDEN") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được duyệt yêu cầu hủy", 403);
+  }
+  if (errorCode === "ALREADY_DECIDED") {
+    apiFailure("ALREADY_DECIDED", "Yêu cầu hủy đã được xử lý", 409);
+  }
+  if (errorCode === "JOB_CHANGED") {
+    apiFailure("STATUS_CHANGED", "Công việc đã thay đổi, vui lòng tải lại", 409);
+  }
+  if (errorCode === "INVALID_DECISION") {
+    apiFailure("VALIDATION", "Quyết định không hợp lệ", 400);
+  }
+  apiFailure("DB_ERROR", "Không thể xử lý yêu cầu hủy việc", 500);
+}
+
 function mapScopeRequestError(errorCode: string | null): never {
   if (errorCode === "STATUS_CHANGED") {
     apiFailure(
@@ -1706,6 +2076,43 @@ function mapReviewError(errorCode: string | null): never {
     );
   }
   apiFailure("DB_ERROR", "Không thể gửi đánh giá", 500);
+}
+
+function validateJobMediaPath(
+  jobId: string,
+  stage: JobMediaAttachInput["assets"][number]["stage"],
+  objectPath: string,
+) {
+  const expectedPrefix = `${jobId}/${stage}/`;
+  const safePathPattern =
+    /^[0-9a-fA-F-]{36}\/(?:before|after|kael_reference|cancellation_evidence)\/[A-Za-z0-9._-]+$/;
+  if (
+    !objectPath.startsWith(expectedPrefix) ||
+    objectPath.includes("..") ||
+    objectPath.includes("//") ||
+    !safePathPattern.test(objectPath)
+  ) {
+    apiFailure("VALIDATION", "Đường dẫn media không hợp lệ", 400);
+  }
+}
+
+function canAttachJobMediaStage(
+  stage: JobMediaAttachInput["assets"][number]["stage"],
+  isCustomer: boolean,
+  isWorker: boolean,
+  isAdmin: boolean,
+) {
+  if (isAdmin) return true;
+  if (stage === "before" || stage === "kael_reference") return isCustomer;
+  return isWorker;
+}
+
+function storageRef(objectPath: string) {
+  return `supabase://job-media/${objectPath}`;
+}
+
+function mergeLimitedRefs(existing: string[], incoming: string[], limit: number) {
+  return Array.from(new Set([...existing, ...incoming])).slice(0, limit);
 }
 
 function assertJobOwnership(
@@ -1820,6 +2227,10 @@ function asNumber(value: unknown): number {
   return typeof value === "number" ? value : Number(value ?? 0);
 }
 
+function asBoolean(value: unknown): boolean {
+  return value === true;
+}
+
 function positiveNumberFrom(value: unknown): number | null {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) && number > 0 ? number : null;
@@ -1897,12 +2308,14 @@ function relatedJob(value: unknown): Record<string, unknown> | null {
 }
 
 function asServiceType(value: unknown): ServiceType {
-  return value === "plumbing" ? "plumbing" : "electrical";
+  if (value === "plumbing") return "plumbing";
+  if (value === "cleaning") return "cleaning";
+  return "electrical";
 }
 
 function asServiceTypeArray(value: unknown): ServiceType[] {
   return asStringArray(value).filter((item): item is ServiceType =>
-    item === "electrical" || item === "plumbing"
+    item === "electrical" || item === "plumbing" || item === "cleaning"
   );
 }
 

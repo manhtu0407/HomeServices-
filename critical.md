@@ -182,12 +182,13 @@ Current service scope is only:
 
 - electrical repair,
 - plumbing repair,
+- home cleaning / housekeeping,
 - HCMC apartment residents,
-- Kael as AI Price Check.
+- Kael as the primary AI assistant for intake, diagnosis, price analysis, worker briefing, and customer/worker workflow support.
 
 The agent MUST NOT implement:
 
-- service expansion,
+- service expansion beyond electrical/plumbing/cleaning,
 - multi-city expansion,
 - autonomous booking,
 - multi-agent orchestration,
@@ -1051,7 +1052,7 @@ Issue/publish target:
 
 - PRD contains stale file paths.
 - PRD ignores current phase.
-- PRD expands beyond electrical/plumbing/HCMC.
+- PRD expands beyond electrical/plumbing/cleaning/HCMC.
 
 ### Anti-Patterns
 
@@ -1459,7 +1460,7 @@ Prevention: use `kael-diagnose`. If no local repro exists, report limitation and
 
 Risk: pre-revenue rebuild wastes time on future systems.
 
-Prevention: apply survival test and scope check. Stop for Tu approval on scope-risk tasks.
+Prevention: apply survival test and scope check. The approved 2026-05-19 scope is electrical, plumbing, and cleaning in HCMC only; stop for Tu approval on any scope beyond that.
 
 ### 5. Over-Engineering
 

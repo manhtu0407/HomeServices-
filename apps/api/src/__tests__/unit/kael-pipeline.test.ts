@@ -87,7 +87,7 @@ describe('kael-pipeline — classifyIntent', () => {
         needs_clarification: false,
       })))
 
-    const result = await classifyIntent('plumbing', ['á»ng rÃ² rá»‰'], 'á»ng nÆ°á»›c rÃ² rá»‰')
+    const result = await classifyIntent('plumbing', ['Ống rò rỉ'], 'Ống nước rò rỉ')
 
     expect(result.success).toBe(true)
     if (result.success) {
@@ -160,12 +160,13 @@ describe('kael-pipeline — classifyIntent', () => {
     }
   })
 
-  it('handles unsupported service type in fallback', async () => {
+  it('handles cleaning service type in fallback', async () => {
     mockCallAI.mockResolvedValue(mockAIFailure())
 
     const result = await classifyIntent('cleaning', ['test'], 'test desc for service')
     if (!result.success) {
-      expect(result.fallback.service_type).toBe('unsupported')
+      expect(result.fallback.service_type).toBe('cleaning')
+      expect(result.fallback.problem_slug).toBe('other_cleaning')
     }
   })
 })

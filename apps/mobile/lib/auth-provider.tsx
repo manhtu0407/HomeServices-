@@ -43,11 +43,6 @@ function authSnapshotReducer(current: AuthSnapshot, patch: Partial<AuthSnapshot>
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [{ session, role, loading, profileStatus, authError }, patchAuth] = useReducer(authSnapshotReducer, INITIAL_AUTH_SNAPSHOT)
-  const setSession = (nextSession: Session | null) => patchAuth({ session: nextSession })
-  const setRole = (nextRole: UserRole | null) => patchAuth({ role: nextRole })
-  const setLoading = (nextLoading: boolean) => patchAuth({ loading: nextLoading })
-  const setProfileStatus = (nextProfileStatus: ProfileStatus) => patchAuth({ profileStatus: nextProfileStatus })
-  const setAuthError = (nextAuthError: string | null) => patchAuth({ authError: nextAuthError })
 
   useEffect(() => {
     if (!supabase) {
@@ -90,15 +85,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchRole(userId: string): Promise<UserRole | null> {
     if (!supabase) {
-      setRole(null)
-      setProfileStatus('config_missing')
-      setLoading(false)
+      patchAuth({ role: null, profileStatus: 'config_missing', loading: false })
       return null
     }
 
-    setLoading(true)
-    setProfileStatus('loading')
-    setAuthError(null)
+    patchAuth({ loading: true, profileStatus: 'loading', authError: null })
 
     try {
       const { data, error } = await supabase
@@ -108,39 +99,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle()
 
       if (error) {
-        setRole(null)
-        setProfileStatus('profile_error')
-        setAuthError('Không thể tải hồ sơ đăng nhập')
-        setLoading(false)
+        patchAuth({
+          role: null,
+          profileStatus: 'profile_error',
+          authError: 'Không thể tải hồ sơ đăng nhập',
+          loading: false,
+        })
         return null
       }
 
       if (!data?.role) {
-        setRole(null)
-        setProfileStatus('profile_missing')
-        setAuthError('Tài khoản chưa có hồ sơ vai trò')
-        setLoading(false)
+        patchAuth({
+          role: null,
+          profileStatus: 'profile_missing',
+          authError: 'Tài khoản chưa có hồ sơ vai trò',
+          loading: false,
+        })
         return null
       }
 
       if (!USER_ROLES.includes(data.role as UserRole)) {
-        setRole(null)
-        setProfileStatus('profile_error')
-        setAuthError('Vai trò tài khoản không hợp lệ')
-        setLoading(false)
+        patchAuth({
+          role: null,
+          profileStatus: 'profile_error',
+          authError: 'Vai trò tài khoản không hợp lệ',
+          loading: false,
+        })
         return null
       }
 
       const nextRole = data.role as UserRole
-      setRole(nextRole)
-      setProfileStatus('ready')
-      setLoading(false)
+      patchAuth({ role: nextRole, profileStatus: 'ready', loading: false })
       return nextRole
     } catch {
-      setRole(null)
-      setProfileStatus('profile_error')
-      setAuthError('Không thể tải hồ sơ đăng nhập')
-      setLoading(false)
+      patchAuth({
+        role: null,
+        profileStatus: 'profile_error',
+        authError: 'Không thể tải hồ sơ đăng nhập',
+        loading: false,
+      })
       return null
     }
   }
@@ -148,25 +145,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signInWithPassword(email: string, password: string) {
     if (!supabase) {
       const error = 'Supabase chưa được cấu hình'
-      setAuthError(error)
-      setProfileStatus('config_missing')
+      patchAuth({ authError: error, profileStatus: 'config_missing', loading: false })
       return { success: false, error }
     }
 
     const normalizedEmail = email.trim().toLowerCase()
     if (!normalizedEmail || !password) {
       const error = 'Nhập email và mật khẩu để tiếp tục'
-      setAuthError(error)
+      patchAuth({ authError: error })
       return { success: false, error }
     }
     if (!isValidEmail(normalizedEmail)) {
       const error = 'Email không hợp lệ'
-      setAuthError(error)
+      patchAuth({ authError: error })
       return { success: false, error }
     }
 
-    setLoading(true)
-    setAuthError(null)
+    patchAuth({ loading: true, authError: null })
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
@@ -175,15 +170,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error || !data.session?.user) {
         const message = 'Email hoặc mật khẩu không đúng'
-        setSession(null)
-        setRole(null)
-        setProfileStatus('idle')
-        setAuthError(message)
-        setLoading(false)
+        patchAuth({
+          session: null,
+          role: null,
+          profileStatus: 'idle',
+          authError: message,
+          loading: false,
+        })
         return { success: false, error: message }
       }
 
-      setSession(data.session)
+      patchAuth({ session: data.session })
       const nextRole = await fetchRole(data.session.user.id)
       if (!nextRole) {
         return { success: false, error: 'Không thể tải vai trò tài khoản' }
@@ -192,11 +189,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true }
     } catch {
       const message = 'Không thể kết nối Supabase để đăng nhập'
-      setSession(null)
-      setRole(null)
-      setProfileStatus('profile_error')
-      setAuthError(message)
-      setLoading(false)
+      patchAuth({
+        session: null,
+        role: null,
+        profileStatus: 'profile_error',
+        authError: message,
+        loading: false,
+      })
       return { success: false, error: message }
     }
   }
@@ -209,17 +208,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Local auth state still needs to clear when the remote sign-out request fails.
     }
-    setSession(null)
-    setRole(null)
-    setProfileStatus('idle')
-    setAuthError(null)
-    setLoading(false)
+    patchAuth({
+      session: null,
+      role: null,
+      profileStatus: 'idle',
+      authError: null,
+      loading: false,
+    })
   }
 
   async function refreshProfile() {
     if (!session?.user) {
-      setRole(null)
-      setProfileStatus('idle')
+      patchAuth({ role: null, profileStatus: 'idle' })
       return null
     }
 
