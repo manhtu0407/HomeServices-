@@ -39,24 +39,74 @@ describe('mobile-api Edge runtime helpers', () => {
 
     expect(Object.keys(services).sort()).toEqual([
       'acceptBroadcast',
+      'attachJobMedia',
       'cancelJob',
       'confirmCompletion',
       'confirmSearch',
       'createJob',
       'decideScopeChange',
+      'decideWorkerCancellation',
       'declineBroadcast',
       'getJob',
       'getWorkerEarnings',
       'getWorkerProfile',
+      'listNotifications',
       'listServices',
       'listWorkerBroadcasts',
       'listWorkerJobs',
+      'markNotificationRead',
+      'registerDevicePushToken',
       'registerWorker',
       'requestScopeChange',
+      'requestWorkerCancellation',
       'submitReview',
       'updateJobStatus',
       'updateWorkerAvailability',
     ].sort())
+  })
+
+  it('registers notification device tokens through the atomic Supabase RPC only', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          token_id: '44444444-4444-4444-8444-444444444444',
+          enabled_out: true,
+          updated_at_ts: '2026-05-19T00:00:00.000Z',
+        }],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).registerDevicePushToken(ctx, {
+      platform: 'ios',
+      push_token: 'ExponentPushToken[valid-token]',
+      permission_status: 'granted',
+      safe_metadata: { device: 'expo-go' },
+    })
+
+    expect(result).toEqual({
+      token_id: '44444444-4444-4444-8444-444444444444',
+      enabled: true,
+      updated_at: '2026-05-19T00:00:00.000Z',
+    })
+    expect(client.calls).toHaveLength(1)
+    expect(client.calls[0].operations).toContainEqual([
+      'rpc',
+      'register_device_push_token_atomic',
+      {
+        p_user_id: 'customer-1',
+        p_platform: 'ios',
+        p_push_token: 'ExponentPushToken[valid-token]',
+        p_permission_status: 'granted',
+        p_safe_metadata: { device: 'expo-go' },
+      },
+    ])
   })
 
   it('rejects unknown worker districts before registration upsert', async () => {
@@ -1258,6 +1308,68 @@ describe('mobile-api Edge runtime helpers', () => {
       call.operations.some((op) => op[0] === 'update')
     )
     expect(statusUpdateCall?.operations).toContainEqual(['eq', 'customer_id', 'customer-1'])
+  })
+
+  it('rebroadcasts approved worker cancellation without re-sending to the cancelling worker', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          cancellation_status: 'approved',
+          job_id_out: 'job-1',
+          job_status: 'broadcasting',
+          service_type_out: 'plumbing',
+          district_code: 'q7',
+          worker_id_out: 'worker-cancelled',
+          decided_at_ts: '2026-05-19T00:00:00.000Z',
+        }],
+        error: null,
+      },
+      {
+        data: [
+          { id: 'worker-cancelled', rating: 5, total_jobs: 100, service_types: ['plumbing'], districts: ['q7'] },
+          { id: 'worker-new', rating: 4.8, total_jobs: 80, service_types: ['plumbing'], districts: ['q7'] },
+        ],
+        error: null,
+      },
+      { data: [], error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'admin-1' },
+      role: 'admin',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).decideWorkerCancellation(ctx, 'cancel-1', {
+      decision: 'approve',
+      review_note: 'Lý do hợp lệ',
+    })).resolves.toMatchObject({
+      cancellation_id: 'cancel-1',
+      job_id: 'job-1',
+      status: 'approved',
+      job_status: 'broadcasting',
+      broadcast_sent: true,
+    })
+
+    const activeJobCall = client.calls.find((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'in' && op[1] === 'worker_id')
+    )
+    expect(activeJobCall?.operations).toContainEqual(['in', 'worker_id', ['worker-new']])
+
+    const broadcastInsert = client.calls.find((call) =>
+      call.table === 'job_broadcasts' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )
+    const insertOp = broadcastInsert?.operations.find((op) => op[0] === 'insert')
+    expect(insertOp?.[1]).toEqual([
+      expect.objectContaining({ worker_id: 'worker-new', job_id: 'job-1' }),
+    ])
+    expect(JSON.stringify(insertOp?.[1])).not.toContain('worker-cancelled')
   })
 
   it('does not fake zero earnings when the earnings query fails', async () => {

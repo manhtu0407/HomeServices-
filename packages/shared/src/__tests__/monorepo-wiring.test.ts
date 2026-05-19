@@ -58,6 +58,34 @@ describe('monorepo directory structure', () => {
   })
 })
 
+describe('root product contract alignment', () => {
+  const structures = readText('STRUCTURES.md')
+  const supabaseConfig = readText('supabase/config.toml')
+
+  it('keeps Phase 0 auth aligned with the current role-first email/password app', () => {
+    expect(structures).toContain('chooses role first')
+    expect(structures).toContain('current Supabase email/password auth in Phase 0')
+    expect(structures).toContain('phone OTP is a later production-auth upgrade after SMS provider setup')
+    expect(structures).not.toContain('logs in with phone OTP')
+    expect(structures).not.toContain('|- OTP required')
+    expect(supabaseConfig).toContain('later phone OTP production-auth upgrade')
+    expect(supabaseConfig).not.toContain('auth flow is phone OTP')
+  })
+
+  it('keeps worker verification scoped to electrical, plumbing, and cleaning services', () => {
+    expect(structures).toContain('service skills: electrical / plumbing / cleaning')
+    expect(structures).toContain('including multi-service combinations')
+    expect(structures).not.toContain('service skills: electrical / plumbing / both')
+  })
+
+  it('does not describe the repo as pre-feature after mobile and Edge workflow slices exist', () => {
+    const claude = readText('CLAUDE.md')
+    expect(claude).toContain('Production Fix + Foundation Hardening')
+    expect(claude).toContain('Mobile + Supabase Edge workflow slices already exist')
+    expect(claude).not.toContain('Chưa có feature code')
+  })
+})
+
 // ===================================================================
 // pnpm workspace config
 // ===================================================================

@@ -29,6 +29,7 @@ const SEMANTIC_LAYER_SWITCH_V4 = 'SEMANTIC_LAYER_SWITCH_V4: light/dark swaps sem
 const COPY_DENSITY_COMPACT = 'COPY_DENSITY_COMPACT: structure first, no feature explanations'
 const KAEL_CHATBOX_SCREEN_CONTRACT = 'KAEL_CHATBOX_SCREEN_CONTRACT: local transaction-intent chatbox'
 const KAEL_TICKET_COMPOSER_V3 = 'KAEL_TICKET_COMPOSER_V3: Kael asks, fills a repair ticket, then routes to booking'
+const CUSTOMER_DECORATIVE_MOTION_ENABLED = false
 const CUSTOMER_THEME_STORAGE_KEY = 'customer.theme.mode.v4'
 const CUSTOMER_LANGUAGE_STORAGE_KEY = 'customer.language.mode.v4'
 const customerDockHeight = 70
@@ -51,6 +52,7 @@ type IconName =
   | 'calendar'
   | 'chat'
   | 'check'
+  | 'cleaning'
   | 'document'
   | 'estimate'
   | 'filter'
@@ -242,8 +244,9 @@ function useCustomerLanguageMode() {
 
 export function CustomerHomeSurface() {
   const { push } = useRouter()
-  const { dispatch, selectors, state } = useFrontendWorkflow()
+  const { actions, dispatch, notificationUnreadCount, notifications, selectors, state } = useFrontendWorkflow()
   const activeDeal = state.deal
+  const visibleNotifications = notifications.slice(0, 2)
   const canStartNewDeal = !activeDeal || canReplaceCustomerDeal(activeDeal.status)
   const isTerminalDeal = activeDeal ? isTerminalCustomerDeal(activeDeal.status) : false
   const activeDealRoute =
@@ -282,10 +285,37 @@ export function CustomerHomeSurface() {
               <View style={styles.hiddenMarker} testID="customer-home-layer-stack" />
               <View style={styles.hiddenMarker} testID="customer-home-hero-depth-grid" />
               <View style={styles.hiddenMarker} testID="customer-utility-notification-center" />
-              <View style={styles.twoCol}>
+              <View style={styles.serviceGrid}>
                 <V4ServiceCard icon="boltPanel" title="Sửa điện" testID="customer-shell-service-electrical" onPress={() => openBookingFlow('electrical')} />
                 <V4ServiceCard icon="waterPipe" title="Sửa nước" testID="customer-shell-service-plumbing" onPress={() => openBookingFlow('plumbing')} water />
+                <V4ServiceCard icon="cleaning" title="Vệ sinh" testID="customer-shell-service-cleaning" onPress={() => openBookingFlow('cleaning')} />
               </View>
+              {visibleNotifications.length > 0 ? (
+                <View style={[styles.notificationInlineCard, glassSurface(tokens, 'service')]} testID="customer-notification-inbox-live">
+                  <GlassSheen />
+                  <IconGlyph name="notification" color={tokens.primary} accent={tokens.copper} />
+                  <View style={styles.notificationInlineBody}>
+                    <Text style={[styles.notificationInlineText, { color: tokens.text }]} numberOfLines={1}>
+                      Kael có {notificationUnreadCount} cập nhật chưa đọc
+                    </Text>
+                    {visibleNotifications.map((item) => (
+                      <Pressable
+                        accessibilityRole="button"
+                        key={item.id}
+                        onPress={() => {
+                          void actions.markNotificationRead(item.id)
+                          if (item.job_id) push(openHistoryPath)
+                        }}
+                        style={styles.notificationInlineItem}
+                      >
+                        <Text style={[styles.notificationInlineItemText, { color: tokens.muted }]} numberOfLines={1}>
+                          {item.title}: {item.body}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
               {activeDeal ? (
                 <Pressable
                   accessibilityRole="button"
@@ -317,7 +347,7 @@ export function CustomerHomeSurface() {
                 </Text>
               </View>
               <View style={styles.smallServiceGrid}>
-                {['Điều hòa', 'Vệ sinh', 'Thiết bị', 'Sửa vặt'].map((label) => (
+                {['Điều hòa', 'Thiết bị', 'Sửa vặt'].map((label) => (
                   <View key={label} style={[styles.smallService, glassSurface(tokens)]}>
                     <GlassSheen />
                     <IconGlyph name="privacy" color={tokens.subtleText} accent={tokens.subtleText} />
@@ -778,7 +808,7 @@ export function CustomerProfileSurface() {
               <GlassSheen />
               <View style={styles.hiddenMarker} testID="customer-profile-unified-functions" />
               <ListRow icon="map" title="Địa chỉ" meta={deal?.draft.districtLabel || 'Chưa lưu'} testID="customer-utility-saved-address" />
-              <ListRow icon="kael" title="Quản Gia Kael" meta="Điện / nước" />
+              <ListRow icon="kael" title="Quản Gia Kael" meta="Điện / nước / vệ sinh" />
               <ListRow icon="history" title="Lịch sử" meta={historyMeta} testID="customer-profile-evidence-shell" />
               <ListRow icon="ticket" title="Phiếu dịch vụ" meta="Sắp mở" testID="customer-utility-ticket-wallet" />
               <ListRow icon="support" title="Hỗ trợ" meta="Sau này" testID="customer-utility-support-entry" />
@@ -936,6 +966,11 @@ function V4Dock({
   const liquidWake = useSharedValue(1)
 
   useEffect(() => {
+    if (!CUSTOMER_DECORATIVE_MOTION_ENABLED) {
+      dockPulse.value = 0.28
+      dockSweep.value = 0
+      return
+    }
     dockPulse.value = withRepeat(withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.quad) }), -1, true)
     dockSweep.value = withRepeat(withTiming(1, { duration: 4600, easing: Easing.inOut(Easing.quad) }), -1, false)
   }, [dockPulse, dockSweep])
@@ -983,7 +1018,10 @@ function V4Dock({
             accessibilityRole="button"
             key={item.key}
             onPress={() => push(item.path)}
-            style={[styles.dockItem, active === item.key ? styles.dockItemActive : null]}
+            style={[
+              styles.dockItem,
+              active === item.key ? [styles.dockItemActive, dockActiveSurfaceStyle(tokens)] : null,
+            ]}
             testID={`customer-v4-dock-${item.key}`}
           >
             {active === item.key ? <Animated.View pointerEvents="none" style={[styles.dockActiveGlow, { backgroundColor: tokens.aqua }, activeGlowStyle]} /> : null}
@@ -1009,6 +1047,10 @@ function MotionSweep({ frameWidth, screenWidth }: { frameWidth: number; screenWi
   const progress = useSharedValue(0)
 
   useEffect(() => {
+    if (!CUSTOMER_DECORATIVE_MOTION_ENABLED) {
+      progress.value = 0.36
+      return
+    }
     progress.value = withRepeat(withTiming(1, { duration: 5200, easing: Easing.inOut(Easing.quad) }), -1, false)
   }, [progress])
 
@@ -1026,6 +1068,10 @@ function AmbientGlassField({ frameWidth, screenWidth }: { frameWidth: number; sc
   const drift = useSharedValue(0)
 
   useEffect(() => {
+    if (!CUSTOMER_DECORATIVE_MOTION_ENABLED) {
+      drift.value = 0.42
+      return
+    }
     drift.value = withRepeat(withTiming(1, { duration: 6200, easing: Easing.inOut(Easing.quad) }), -1, true)
   }, [drift])
 
@@ -1054,6 +1100,11 @@ function V4MapBackdrop() {
   const route = useSharedValue(0)
 
   useEffect(() => {
+    if (!CUSTOMER_DECORATIVE_MOTION_ENABLED) {
+      pulse.value = 0.36
+      route.value = 0.48
+      return
+    }
     pulse.value = withRepeat(withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.quad) }), -1, true)
     route.value = withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.quad) }), -1, true)
   }, [pulse, route])
@@ -1404,25 +1455,43 @@ function glassSurface(tokens: CustomerThemeTokens, tone: 'default' | 'strong' | 
                 ? 'rgba(13,27,26,0.70)'
                 : 'rgba(234,246,241,0.70)'
               : tokens.glass
+  const experimentalBackgroundImage =
+    tokens.mode === 'dark'
+      ? tone === 'warm'
+        ? `radial-gradient(circle at 84% 42%, ${warmAccent}, transparent 31%), radial-gradient(circle at 18% 88%, ${mintWash}, transparent 38%), linear-gradient(120deg, rgba(59,41,27,0.70), rgba(18,34,32,0.68))`
+        : tone === 'service'
+          ? `radial-gradient(circle at 88% 16%, ${softWarmAccent}, transparent 22%), radial-gradient(circle at 74% 62%, rgba(105,222,198,0.18), transparent 34%), linear-gradient(145deg, rgba(23,59,53,0.78), rgba(12,26,25,0.68))`
+          : tone === 'water'
+            ? `radial-gradient(circle at 92% 12%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 78% 62%, rgba(105,222,198,0.16), transparent 34%), linear-gradient(145deg, rgba(21,54,58,0.76), rgba(12,26,25,0.68))`
+            : `radial-gradient(circle at 94% 10%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 10% 92%, ${mintWash}, transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.78), rgba(12,26,25,0.68))`
+      : tone === 'warm'
+        ? `radial-gradient(circle at 84% 42%, ${warmAccent}, transparent 31%), radial-gradient(circle at 18% 88%, ${mintWash}, transparent 38%), linear-gradient(120deg, rgba(201,248,237,0.62), rgba(255,243,205,0.48))`
+        : tone === 'service'
+          ? `radial-gradient(circle at 88% 16%, ${softWarmAccent}, transparent 22%), radial-gradient(circle at 74% 62%, rgba(22,185,168,0.26), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,248,241,0.56))`
+          : tone === 'water'
+            ? `radial-gradient(circle at 92% 12%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 78% 62%, rgba(33,165,177,0.28), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,249,247,0.58))`
+            : `radial-gradient(circle at 94% 10%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 10% 92%, ${mintWash}, transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(224,248,242,0.34))`
 
   return {
     backgroundColor,
     borderColor: tokens.glassBorder,
     backdropFilter: 'blur(24px) saturate(1.18)',
     boxShadow: tokens.glassFloatShadow,
-    experimental_backgroundImage:
-      tone === 'warm'
-        ? `radial-gradient(circle at 84% 42%, ${warmAccent}, transparent 31%), radial-gradient(circle at 18% 88%, ${mintWash}, transparent 38%), linear-gradient(120deg, rgba(201,248,237,0.62), rgba(255,243,205,0.48))`
-        : tone === 'service'
-          ? `radial-gradient(circle at 88% 16%, ${softWarmAccent}, transparent 22%), radial-gradient(circle at 74% 62%, rgba(22,185,168,0.26), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,248,241,0.56))`
-          : tone === 'water'
-            ? `radial-gradient(circle at 92% 12%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 78% 62%, rgba(33,165,177,0.28), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,249,247,0.58))`
-            : `radial-gradient(circle at 94% 10%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 10% 92%, ${mintWash}, transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(224,248,242,0.34))`,
+    experimental_backgroundImage: experimentalBackgroundImage,
     shadowColor: '#0D4641',
     shadowOffset: { height: 18, width: 0 },
     shadowOpacity: tokens.mode === 'dark' ? 0.28 : 0.13,
     shadowRadius: 28,
   }
+}
+
+function dockActiveSurfaceStyle(tokens: CustomerThemeTokens) {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(216,247,239,0.82)',
+    boxShadow: tokens.mode === 'dark'
+      ? '0 12px 28px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.10)'
+      : '0 12px 28px rgba(64,197,187,0.18), inset 0 1px 0 rgba(255,255,255,0.68)',
+  } as any
 }
 
 function GlassSheen() {
@@ -1452,6 +1521,17 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
         <Path d="M7 9.5h9c3 0 5 2 5 5V20" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
         <Path d="M6 22c3-2 5.8 2 9 0 2-1.2 4-1.2 6 0" stroke={accent} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
         <Circle cx={7.5} cy={9.5} r={3} fill={accent} opacity={0.16} />
+      </Svg>
+    )
+  }
+
+  if (name === 'cleaning') {
+    return (
+      <Svg width={29} height={29} viewBox="0 0 29 29" fill="none">
+        <Path d="M17.5 5.5 8 23" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+        <Path d="M15.5 9.5h5.2c1.2 0 2 .8 2 2v1.2c0 1.2-.8 2-2 2h-8.4" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M9.2 20.5c2.2 1.8 5.5 1.8 8.1 0M7 23.2c3.2 2 8.6 2 12 0" stroke={accent} strokeWidth={1.9} strokeLinecap="round" />
+        <Circle cx={21.5} cy={6.5} r={2.2} fill={accent} opacity={0.2} />
       </Svg>
     )
   }
@@ -1703,8 +1783,6 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   dockItemActive: {
-    backgroundColor: 'rgba(216,247,239,0.82)',
-    boxShadow: '0 12px 28px rgba(64,197,187,0.18), inset 0 1px 0 rgba(255,255,255,0.68)',
     transform: [{ translateY: -1 }],
   },
   dockActiveGlow: {
@@ -1904,10 +1982,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  serviceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  notificationInlineCard: {
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 56,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  notificationInlineText: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 18,
+  },
+  notificationInlineBody: {
+    flex: 1,
+    gap: 3,
+  },
+  notificationInlineItem: {
+    minHeight: 18,
+    justifyContent: 'center',
+  },
+  notificationInlineItemText: {
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 18,
+  },
   serviceCard: {
     borderRadius: 24,
     borderWidth: 1,
     boxShadow: '0 24px 52px rgba(13,70,65,0.16), inset 0 1px 0 rgba(255,255,255,0.72)',
+    flexBasis: '31%',
     flex: 1,
     gap: 15,
     minHeight: 126,

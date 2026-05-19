@@ -57,7 +57,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
-  userInterfaceStyle: 'light',
+  userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   scheme: 'homeservices',
   splash: {
@@ -67,13 +67,27 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   ios: {
     supportsTablet: false,
+    buildNumber: '1',
     bundleIdentifier: 'com.homeservices.app',
+    config: {
+      usesNonExemptEncryption: false,
+    },
+    infoPlist: {
+      NSCameraUsageDescription:
+        'Home Services cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.',
+      NSPhotoLibraryUsageDescription:
+        'Home Services cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
+    },
   },
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#ffffff',
     },
+    versionCode: 1,
+    permissions: [],
+    blockedPermissions: ['android.permission.RECORD_AUDIO'],
+    edgeToEdgeEnabled: true,
     package: 'com.homeservices.app',
   },
   plugins: [

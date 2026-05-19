@@ -8,6 +8,8 @@ import { useAuth } from '@/lib/auth-provider'
 const LOGIN_ROLE_GATE_MARKER = 'LOGIN_ROLE_GATE_MARKER: auth-login-role-customer auth-login-role-worker'
 const LOGIN_ROLE_GATE_GLASS_MARKER = 'LOGIN_ROLE_GATE_GLASS_MARKER: auth-role-gate-glass'
 
+type AuthEntryRole = 'customer' | 'worker'
+
 const authTokens = {
   canvas: '#F3FAF7',
   raised: '#FFFFFF',
@@ -33,6 +35,7 @@ export function LoginRoleSurface() {
   const [password, setPassword] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [signingIn, setSigningIn] = useState(false)
+  const [selectedEntryRole, setSelectedEntryRole] = useState<AuthEntryRole | null>(null)
   const isAdmin = role === 'admin'
   const isAuthenticated = Boolean(session && role)
   const canOpenCustomer = role === 'customer' || isAdmin
@@ -40,6 +43,7 @@ export function LoginRoleSurface() {
   const configMissing = profileStatus === 'config_missing'
   const visibleError = formError ?? authError ?? (configMissing ? 'Supabase chưa được cấu hình cho mobile build này' : null)
   const needsProfileRecovery = Boolean(session && !role && (profileStatus === 'profile_missing' || profileStatus === 'profile_error'))
+  const selectedEntryRoleLabel = selectedEntryRole === 'worker' ? 'Thợ' : 'Khách'
 
   const submitLogin = async () => {
     setFormError(null)
@@ -104,8 +108,29 @@ export function LoginRoleSurface() {
                 <Text style={styles.secondaryActionText}>Đăng xuất</Text>
               </Pressable>
             </View>
+          ) : !isAuthenticated && !selectedEntryRole ? (
+            <>
+              <View style={styles.hiddenMarker} testID="auth-entry-role-first" />
+              <RoleCard
+                description="Dat dich vu dien, nuoc, ve sinh voi Kael."
+                icon="home"
+                label="Khách"
+                onPress={() => setSelectedEntryRole('customer')}
+                testID="auth-entry-role-customer"
+              />
+              <RoleCard
+                description="Đăng nhập để xem hồ sơ Thợ và nhận việc sau khi duyệt."
+                icon="tools"
+                label="Thợ"
+                onPress={() => setSelectedEntryRole('worker')}
+                testID="auth-entry-role-worker"
+                worker
+              />
+            </>
           ) : !isAuthenticated ? (
             <View style={styles.formStack}>
+              <View style={styles.hiddenMarker} testID={`auth-entry-role-selected-${selectedEntryRole}`} />
+              <Text style={styles.body}>{`Đăng nhập với vai trò ${selectedEntryRoleLabel}.`}</Text>
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -138,11 +163,23 @@ export function LoginRoleSurface() {
               >
                 {signingIn || loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>Đăng nhập</Text>}
               </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                disabled={signingIn || loading}
+                onPress={() => {
+                  setFormError(null)
+                  setSelectedEntryRole(null)
+                }}
+                style={styles.secondaryAction}
+                testID="auth-entry-role-change"
+              >
+                <Text style={styles.secondaryActionText}>Doi vai tro</Text>
+              </Pressable>
             </View>
           ) : (
             <>
               <RoleCard
-                description={isAdmin ? 'Audit luồng Khách với quyền admin.' : 'Đặt lịch sửa điện/nước, kiểm giá với Kael và theo dõi tiến trình.'}
+                description={isAdmin ? 'Audit luồng Khách với quyền admin.' : 'Đặt lịch sửa điện, nước, vệ sinh; kiểm giá với Kael và theo dõi tiến trình.'}
                 disabled={!canOpenCustomer}
                 icon="home"
                 label="Khách"

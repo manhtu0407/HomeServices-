@@ -64,7 +64,7 @@ function buildFallbackIntent(
   problemChips: string[],
 ): IntentResult {
   const validServiceType =
-    serviceType === 'electrical' || serviceType === 'plumbing'
+    serviceType === 'electrical' || serviceType === 'plumbing' || serviceType === 'cleaning'
       ? serviceType
       : ('unsupported' as const)
 
@@ -81,6 +81,12 @@ function buildFallbackIntent(
     'Toilet không xả': 'toilet_flush_issue',
     'Áp nước yếu': 'weak_water_pressure',
     'Lắp/thay thiết bị': 'install_or_replace_fixture',
+    'Dọn dẹp nhà': 'standard_home_cleaning',
+    'Vệ sinh bếp': 'kitchen_deep_clean',
+    'Vệ sinh phòng tắm': 'bathroom_deep_clean',
+    'Tổng vệ sinh': 'deep_cleaning',
+    'Dọn sau sửa chữa': 'post_repair_cleaning',
+    'Vệ sinh cửa kính': 'window_cleaning',
   }
 
   const firstChip = problemChips[0] ?? ''
@@ -90,7 +96,9 @@ function buildFallbackIntent(
       ? 'other_electrical'
       : validServiceType === 'plumbing'
         ? 'other_plumbing'
-        : 'unsupported')
+        : validServiceType === 'cleaning'
+          ? 'other_cleaning'
+          : 'unsupported')
 
   return {
     service_type: validServiceType,

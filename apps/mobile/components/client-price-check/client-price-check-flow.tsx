@@ -27,9 +27,11 @@ import {
   type LocalDealStatus,
   type ServiceType,
 } from '@home-services/shared'
-import { CustomerV4DockOverlay } from '@/components/customer/customer-surfaces'
+import { CustomerV4DockOverlay, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
 import { Colors } from '@/constants/colors'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+
+const BOOKING_DECORATIVE_MOTION_ENABLED = false
 
 type PriceCheckUiStep = 'form' | 'clarification' | 'estimate' | 'schedule' | 'confirm' | 'searching' | 'emptyWorker' | 'matched'
 type PriceCheckUiStatus = 'editing' | 'loading' | 'needs_clarification' | 'estimate_ready' | 'baseline_fallback' | 'fallback' | 'error'
@@ -39,6 +41,8 @@ type MediaDraftItem = {
   uri: string
   type: 'image' | 'video'
   fileName?: string
+  mimeType?: string
+  fileSizeBytes?: number
   durationMs?: number
 }
 
@@ -105,6 +109,7 @@ const tokens = {
   primaryDark: '#075F58',
   copper: '#BB743D',
 }
+let currentBookingThemeMode: 'light' | 'dark' = 'light'
 const openHomePath = '/(customer)/home'
 const openHistoryPath = '/(customer)/history'
 
@@ -143,6 +148,18 @@ const QUESTIONS: Record<ServiceType, ClarificationQuestion[]> = {
       options: ['Liên tục', 'Khi dùng', 'Chưa rõ'],
     },
   ],
+  cleaning: [
+    {
+      id: 'scope',
+      question: 'Khu vực cần dọn là một phòng hay cả nhà?',
+      options: ['Một phòng', 'Cả nhà', 'Chưa rõ'],
+    },
+    {
+      id: 'condition',
+      question: 'Tình trạng cần vệ sinh ở mức nào?',
+      options: ['Dọn thường', 'Tổng vệ sinh', 'Sau sửa chữa'],
+    },
+  ],
 }
 
 const ESTIMATE: PriceCheckEstimateCard = {
@@ -170,6 +187,7 @@ type PriceCheckUiState = {
   status: PriceCheckUiStatus
   draft: PriceCheckDraft
   manualErrorMessage: string | null
+  notificationGateAccepted: boolean
 }
 
 type PriceCheckUiPatch = Partial<PriceCheckUiState> | ((current: PriceCheckUiState) => Partial<PriceCheckUiState>)
@@ -185,7 +203,7 @@ function useClientPriceCheckController() {
   const { width } = useWindowDimensions()
   const { actions, dispatch, selectors, state: workflowState } = useFrontendWorkflow()
   const frameWidth = Math.min(width, 430)
-  const [{ step, status, draft, manualErrorMessage }, patchUiState] = useReducer(
+  const [{ step, status, draft, manualErrorMessage, notificationGateAccepted }, patchUiState] = useReducer(
     priceCheckUiReducer,
     null,
     (): PriceCheckUiState => ({
@@ -193,6 +211,7 @@ function useClientPriceCheckController() {
       status: 'editing',
       draft: draftFromWorkflow(workflowState.deal?.draft),
       manualErrorMessage: null,
+      notificationGateAccepted: false,
     }),
   )
   const workflowDraftKey = useMemo(() => workflowDraftSyncKey(workflowState.deal), [workflowState.deal])
@@ -296,6 +315,8 @@ function useClientPriceCheckController() {
       uri: asset.uri,
       type: asset.type === 'video' ? 'video' : 'image',
       fileName: asset.fileName ?? asset.uri.split('/').pop(),
+      mimeType: asset.mimeType ?? undefined,
+      fileSizeBytes: asset.fileSize ?? undefined,
       durationMs: asset.duration ?? undefined,
     }))
 
@@ -336,11 +357,12 @@ function useClientPriceCheckController() {
       const workflowDraft = draftToWorkflowDraft(draft)
       dispatch({ type: 'update_booking_draft', patch: draftToWorkflowPatch(draft) })
       setStatus('loading')
-      const created = await actions.createRemoteJobFromDraft(workflowDraft)
+      const created = await actions.createRemoteJobFromDraft(workflowDraft, draft.mediaItems)
       if (!created) {
         setStatus('error')
         return
       }
+      if (created.mediaError) setManualErrorMessage(created.mediaError)
       setStep('estimate')
       setStatus(unclear ? 'baseline_fallback' : 'estimate_ready')
       return
@@ -354,6 +376,11 @@ function useClientPriceCheckController() {
       return
     }
     if (step === 'confirm') {
+      if (!notificationGateAccepted) {
+        setManualErrorMessage('Bật cập nhật từ Kael để nhận tin ghép thợ và thay đổi quan trọng.')
+        setStatus('error')
+        return
+      }
       if (!selectors.canConfirmCustomerSearch) {
         setStatus('error')
         return
@@ -503,7 +530,14 @@ function useClientPriceCheckController() {
       currentStepContent = <SchedulePanel draft={draft} onSelect={() => commitDraft({ ...draft, timeChoice: 'now' })} />
       break
     case 'confirm':
-      currentStepContent = <ConfirmPanel draft={draft} estimate={estimate} />
+      currentStepContent = (
+        <ConfirmPanel
+          draft={draft}
+          estimate={estimate}
+          notificationGateAccepted={notificationGateAccepted}
+          onToggleNotificationGate={() => patchUiState({ notificationGateAccepted: !notificationGateAccepted, manualErrorMessage: null })}
+        />
+      )
       break
     case 'searching':
       currentStepContent = selectors.customerSearchState === 'no_worker' ? <EmptyWorkerPanel /> : selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active' || selectors.customerSearchState === 'completed' ? <WorkerMatchedPanel status={selectors.currentStatus} /> : <SearchingWorkerPanel draft={draft} />
@@ -532,6 +566,8 @@ function useClientPriceCheckController() {
 }
 
 export function ClientPriceCheckFlow() {
+  const customerThemeMode = useCustomerThemeMode()
+  currentBookingThemeMode = customerThemeMode === 'dark' ? 'dark' : 'light'
   const {
     canCancelFromSearching,
     clarificationComplete,
@@ -563,7 +599,7 @@ export function ClientPriceCheckFlow() {
             maxWidth: 430,
             paddingBottom: insets.bottom + 190,
             paddingTop: insets.top + 36,
-            width: Math.max(0, frameWidth - bookingFrameHorizontalPadding * 4),
+            width: Math.max(0, frameWidth - bookingFrameHorizontalPadding * 2),
           },
         ]}
         contentInsetAdjustmentBehavior="automatic"
@@ -622,6 +658,10 @@ function BookingBackdrop() {
   const pulse = useSharedValue(0)
 
   useEffect(() => {
+    if (!BOOKING_DECORATIVE_MOTION_ENABLED) {
+      pulse.value = 0.34
+      return
+    }
     pulse.value = withRepeat(withTiming(1, { duration: 1900, easing: Easing.inOut(Easing.quad) }), -1, true)
   }, [pulse])
 
@@ -649,6 +689,10 @@ function BookingAmbientGlassField() {
   const drift = useSharedValue(0)
 
   useEffect(() => {
+    if (!BOOKING_DECORATIVE_MOTION_ENABLED) {
+      drift.value = 0.42
+      return
+    }
     drift.value = withRepeat(withTiming(1, { duration: 5800, easing: Easing.inOut(Easing.quad) }), -1, true)
   }, [drift])
 
@@ -744,6 +788,7 @@ function BookingFormSurface({
       <View style={styles.segmented}>
         <Segment label="Sửa điện" active={draft.serviceType === 'electrical'} onPress={() => onSelectService('electrical')} />
         <Segment label="Sửa nước" active={draft.serviceType === 'plumbing'} onPress={() => onSelectService('plumbing')} />
+        <Segment label="Vệ sinh" active={draft.serviceType === 'cleaning'} onPress={() => onSelectService('cleaning')} />
       </View>
       {unsupportedServiceLabel ? <Text style={styles.validationText}>{unsupportedServiceLabel}</Text> : null}
       <SoftField title="Vấn đề" meta="Chọn">
@@ -875,7 +920,17 @@ function SchedulePanel({ draft, onSelect }: { draft: PriceCheckDraft; onSelect: 
   )
 }
 
-function ConfirmPanel({ draft, estimate }: { draft: PriceCheckDraft; estimate: PriceCheckEstimateCard }) {
+function ConfirmPanel({
+  draft,
+  estimate,
+  notificationGateAccepted,
+  onToggleNotificationGate,
+}: {
+  draft: PriceCheckDraft
+  estimate: PriceCheckEstimateCard
+  notificationGateAccepted: boolean
+  onToggleNotificationGate: () => void
+}) {
   return (
     <View style={styles.flowCard}>
       <GlassSheen />
@@ -891,6 +946,18 @@ function ConfirmPanel({ draft, estimate }: { draft: PriceCheckDraft; estimate: P
         <SummaryCell label="Ước giá" value={estimate.priceRangeLabel} />
         <SummaryCell label="Phí nền tảng" value="Chờ hệ thống xác nhận" />
       </View>
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: notificationGateAccepted }}
+        onPress={onToggleNotificationGate}
+        style={[styles.notificationGate, notificationGateAccepted ? styles.notificationGateActive : null]}
+        testID="customer-notification-permission-gate"
+      >
+        <View style={[styles.notificationGateDot, notificationGateAccepted ? styles.notificationGateDotActive : null]} />
+        <Text style={styles.notificationGateText}>
+          Bật cập nhật từ Kael để nhận tin ghép thợ và thay đổi quan trọng.
+        </Text>
+      </Pressable>
       <Text selectable style={styles.disclaimerText}>
         {PRICE_DISCLAIMER}
       </Text>
@@ -1143,7 +1210,7 @@ function progressForStep(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
 }
 
 function getDraftValidationMessage(draft: PriceCheckDraft) {
-  if (!draft.serviceType) return 'Chọn dịch vụ điện hoặc nước.'
+  if (!draft.serviceType) return 'Chọn dịch vụ điện, nước hoặc vệ sinh.'
   if (draft.problemChips.length === 0) return 'Chọn ít nhất một vấn đề cần xử lý.'
   if (draft.description.trim().length < 12) return 'Mô tả cần đủ rõ để Kael tóm tắt.'
   if (draft.addressLabel.trim().length < 4) return 'Nhập khu vực hoặc địa chỉ tổng quát.'
@@ -1195,7 +1262,7 @@ function CameraGlyph() {
   )
 }
 
-const styles = StyleSheet.create({
+const lightStyles = StyleSheet.create({
   root: {
     backgroundColor: tokens.canvas,
     flex: 1,
@@ -1753,6 +1820,39 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
     lineHeight: 18,
   },
+  notificationGate: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(245,251,248,0.68)',
+    borderColor: tokens.glassBorder,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  notificationGateActive: {
+    backgroundColor: 'rgba(220,243,236,0.78)',
+    borderColor: tokens.borderStrong,
+  },
+  notificationGateDot: {
+    borderColor: tokens.borderStrong,
+    borderRadius: 9,
+    borderWidth: 1,
+    height: 18,
+    width: 18,
+  },
+  notificationGateDotActive: {
+    backgroundColor: tokens.primary,
+    borderColor: tokens.primary,
+  },
+  notificationGateText: {
+    color: tokens.text,
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 16,
+  },
   twoCol: {
     flexDirection: 'row',
     gap: 10,
@@ -1948,3 +2048,298 @@ const styles = StyleSheet.create({
     color: tokens.muted,
   },
 } as any)
+
+const darkStyleOverrides = StyleSheet.create({
+  root: {
+    backgroundColor: '#071312',
+    experimental_backgroundImage:
+      'radial-gradient(circle at 50% 12%, rgba(105,222,198,0.16), transparent 30%), radial-gradient(circle at 88% 18%, rgba(224,160,107,0.10), transparent 22%), linear-gradient(180deg, #071312 0%, #141B18 100%)',
+  },
+  bookingBackdrop: {
+    opacity: 0.36,
+  },
+  bookingAmbientMint: {
+    backgroundColor: 'rgba(105,222,198,0.45)',
+  },
+  bookingAmbientWarm: {
+    backgroundColor: 'rgba(224,160,107,0.36)',
+  },
+  bookingAmbientLine: {
+    backgroundColor: 'rgba(105,222,198,0.32)',
+  },
+  backdropGlow: {
+    backgroundColor: 'rgba(105,222,198,0.50)',
+  },
+  backdropLine: {
+    backgroundColor: 'rgba(105,222,198,0.24)',
+  },
+  backdropRoom: {
+    borderColor: 'rgba(105,222,198,0.30)',
+  },
+  backdropPin: {
+    backgroundColor: '#69DEC6',
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  bookingSheet: {
+    backgroundColor: 'rgba(16,32,31,0.82)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    boxShadow: '0 24px 70px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10)',
+    experimental_backgroundImage:
+      'radial-gradient(circle at 90% 8%, rgba(224,160,107,0.13), transparent 22%), radial-gradient(circle at 12% 86%, rgba(105,222,198,0.14), transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.86), rgba(12,26,25,0.78))',
+  },
+  bookingMiniButton: {
+    backgroundColor: 'rgba(22,43,40,0.82)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    boxShadow: '0 14px 32px rgba(0,0,0,0.28)',
+  },
+  bookingLocationPill: {
+    backgroundColor: 'rgba(22,43,40,0.82)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    boxShadow: '0 14px 32px rgba(0,0,0,0.28)',
+  },
+  bookingLocationText: {
+    color: '#E8F8F2',
+  },
+  glassTopHighlight: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  glassSheen: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  sheetHandle: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  flowBadge: {
+    backgroundColor: 'rgba(105,222,198,0.16)',
+    color: '#69DEC6',
+  },
+  pageTitle: {
+    color: '#E8F8F2',
+  },
+  headerIcon: {
+    backgroundColor: 'rgba(22,43,40,0.72)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  kaelHeaderMascot: {
+    backgroundColor: 'rgba(22,43,40,0.82)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    boxShadow: '0 18px 48px rgba(0,0,0,0.26)',
+  },
+  segmented: {
+    backgroundColor: 'rgba(22,43,40,0.72)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  segmentActive: {
+    backgroundColor: 'rgba(105,222,198,0.16)',
+    boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
+  },
+  segmentText: {
+    color: '#8FB0AA',
+  },
+  segmentTextActive: {
+    color: '#69DEC6',
+  },
+  softField: {
+    backgroundColor: 'rgba(22,43,40,0.72)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    boxShadow: '0 18px 48px rgba(0,0,0,0.24)',
+  },
+  fieldTitle: {
+    color: '#E8F8F2',
+  },
+  statusText: {
+    color: '#69DEC6',
+  },
+  trustRail: {
+    backgroundColor: 'rgba(22,43,40,0.72)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+  },
+  trustDot: {
+    backgroundColor: 'rgba(105,222,198,0.16)',
+  },
+  trustDotActive: {
+    backgroundColor: '#69DEC6',
+    boxShadow: '0 0 0 5px rgba(105,222,198,0.12)',
+  },
+  trustLabel: {
+    color: '#8FB0AA',
+  },
+  trustLabelActive: {
+    color: '#CFF7EE',
+  },
+  chip: {
+    backgroundColor: 'rgba(105,222,198,0.11)',
+    borderColor: 'rgba(105,222,198,0.16)',
+  },
+  chipActive: {
+    backgroundColor: '#08786E',
+    boxShadow: '0 8px 20px rgba(0,0,0,0.24)',
+  },
+  chipText: {
+    color: '#CFF7EE',
+  },
+  descriptionInput: {
+    backgroundColor: 'rgba(7,19,18,0.42)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    color: '#E8F8F2',
+  },
+  singleLineInput: {
+    backgroundColor: 'rgba(7,19,18,0.42)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    color: '#E8F8F2',
+  },
+  validationText: {
+    color: '#F0A69C',
+  },
+  mediaTile: {
+    backgroundColor: 'rgba(7,19,18,0.42)',
+    borderColor: 'rgba(105,222,198,0.18)',
+  },
+  mediaText: {
+    color: '#CFF7EE',
+  },
+  clarifyCard: {
+    backgroundColor: 'rgba(23,59,53,0.58)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  clarifyItem: {
+    backgroundColor: 'rgba(105,222,198,0.10)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    color: '#E8F8F2',
+  },
+  flowCard: {
+    backgroundColor: 'rgba(22,43,40,0.72)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    boxShadow: '0 18px 48px rgba(0,0,0,0.24)',
+    experimental_backgroundImage:
+      'radial-gradient(circle at 92% 10%, rgba(224,160,107,0.10), transparent 20%), radial-gradient(circle at 8% 92%, rgba(105,222,198,0.13), transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.78), rgba(12,26,25,0.68))',
+  },
+  cardTitle: {
+    color: '#E8F8F2',
+  },
+  kicker: {
+    color: '#69DEC6',
+  },
+  estimateCard: {
+    backgroundColor: 'rgba(22,43,40,0.72)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    boxShadow: '0 18px 48px rgba(0,0,0,0.24)',
+    experimental_backgroundImage:
+      'radial-gradient(circle at 92% 12%, rgba(224,160,107,0.11), transparent 22%), radial-gradient(circle at 10% 88%, rgba(105,222,198,0.13), transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.78), rgba(12,26,25,0.68))',
+  },
+  warningCard: {
+    backgroundColor: 'rgba(74,47,31,0.46)',
+    borderColor: 'rgba(224,160,107,0.22)',
+  },
+  priceRange: {
+    backgroundColor: 'rgba(74,47,31,0.34)',
+    borderColor: 'rgba(224,160,107,0.24)',
+  },
+  priceValue: {
+    color: '#CFF7EE',
+  },
+  priceMeta: {
+    color: '#A9C4BE',
+  },
+  summaryCell: {
+    backgroundColor: 'rgba(7,19,18,0.42)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  summaryLabel: {
+    color: '#A9C4BE',
+  },
+  summaryValue: {
+    color: '#E8F8F2',
+  },
+  disclaimerText: {
+    color: '#A9C4BE',
+  },
+  notificationGate: {
+    backgroundColor: 'rgba(7,19,18,0.42)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  notificationGateActive: {
+    backgroundColor: 'rgba(105,222,198,0.13)',
+    borderColor: 'rgba(105,222,198,0.32)',
+  },
+  notificationGateDot: {
+    borderColor: 'rgba(105,222,198,0.38)',
+  },
+  notificationGateDotActive: {
+    backgroundColor: '#69DEC6',
+    borderColor: '#69DEC6',
+  },
+  notificationGateText: {
+    color: '#E8F8F2',
+  },
+  choiceCard: {
+    backgroundColor: 'rgba(7,19,18,0.42)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  choiceCardActive: {
+    backgroundColor: '#08786E',
+    borderColor: '#69DEC6',
+  },
+  choiceTitle: {
+    color: '#E8F8F2',
+  },
+  choiceText: {
+    color: '#A9C4BE',
+  },
+  loadingCard: {
+    backgroundColor: 'rgba(23,59,53,0.58)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  loadingTitle: {
+    color: '#E8F8F2',
+  },
+  loadingText: {
+    color: '#A9C4BE',
+  },
+  stateDot: {
+    backgroundColor: 'rgba(105,222,198,0.24)',
+  },
+  stateText: {
+    color: '#A9C4BE',
+  },
+  panelText: {
+    color: '#A9C4BE',
+  },
+  workerAvatar: {
+    backgroundColor: 'rgba(105,222,198,0.14)',
+  },
+  workerName: {
+    color: '#E8F8F2',
+  },
+  sheetActions: {
+    backgroundColor: 'rgba(22,43,40,0.84)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    boxShadow: '0 16px 38px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08)',
+  },
+  progressTrack: {
+    backgroundColor: 'rgba(105,222,198,0.18)',
+  },
+  secondaryButton: {
+    backgroundColor: 'rgba(7,19,18,0.42)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  secondaryButtonText: {
+    color: '#A9C4BE',
+  },
+  primaryButtonDisabled: {
+    backgroundColor: 'rgba(105,222,198,0.16)',
+  },
+  primaryButtonDisabledText: {
+    color: '#8FB0AA',
+  },
+} as any)
+
+const styles = new Proxy(lightStyles, {
+  get(target, property: string | symbol) {
+    const base = target[property as keyof typeof lightStyles]
+    if (currentBookingThemeMode !== 'dark') return base
+    const darkOverride = darkStyleOverrides[property as keyof typeof darkStyleOverrides]
+    return darkOverride ? [base, darkOverride] : base
+  },
+}) as typeof lightStyles

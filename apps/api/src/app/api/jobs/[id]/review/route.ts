@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       p_customer_id: auth.user.id,
       p_rating: input.rating,
       p_tags: input.tags,
-      p_comment: input.comment ?? null,
+      p_comment: input.comment ?? '',
     }),
   )
 

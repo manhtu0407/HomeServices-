@@ -251,7 +251,7 @@ otp_expiry = 3600
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
-# Enabled: STRUCTURES.md auth flow is phone OTP (A0)
+# Enabled locally for the later phone OTP production-auth upgrade.
 enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = true

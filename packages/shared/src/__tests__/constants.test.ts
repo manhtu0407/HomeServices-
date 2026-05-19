@@ -32,11 +32,22 @@ function extractFinalEnumValues(enumName: string): string[] {
   const match = matches.at(-1)
   if (!match) return []
 
-  return match[1]
+  const values = match[1]
     .replace(/--.*$/gm, '')
     .split(',')
     .map((value) => value.trim().replace(/^'|'$/g, ''))
     .filter(Boolean)
+
+  const alterRe = new RegExp(
+    `alter\\s+type\\s+${enumName}\\s+add\\s+value\\s+(?:if\\s+not\\s+exists\\s+)?'([^']+)'`,
+    'gi'
+  )
+  for (const alter of SQL.matchAll(alterRe)) {
+    const value = alter[1]
+    if (!values.includes(value)) values.push(value)
+  }
+
+  return values
 }
 
 describe('database enum constants', () => {
@@ -58,8 +69,8 @@ describe('database enum constants', () => {
     expect([...values]).toEqual(sqlValues)
   })
 
-  it('keeps services hard-scoped to electrical and plumbing', () => {
-    expect(SERVICE_TYPES).toEqual(['electrical', 'plumbing'])
+  it('keeps services hard-scoped to electrical, plumbing, and cleaning', () => {
+    expect(SERVICE_TYPES).toEqual(['electrical', 'plumbing', 'cleaning'])
   })
 
   it('keeps the full STRUCTURES.md job workflow states', () => {
@@ -91,6 +102,7 @@ describe('business constants', () => {
     expect(Object.keys(PROBLEM_CHIPS).sort()).toEqual([...SERVICE_TYPES].sort())
     expect(PROBLEM_CHIPS.electrical).toHaveLength(7)
     expect(PROBLEM_CHIPS.plumbing).toHaveLength(7)
+    expect(PROBLEM_CHIPS.cleaning).toHaveLength(7)
   })
 
   it('does not allow duplicate problem chips within a service', () => {

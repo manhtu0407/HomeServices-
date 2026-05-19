@@ -261,7 +261,7 @@ function createMockSupabase(currentUserId: string) {
         id: 'worker-001',
         rating: 4.8,
         total_jobs: 50,
-        service_types: ['electrical', 'plumbing'],
+        service_types: ['electrical', 'plumbing', 'cleaning'],
         districts: ['quan_1', 'quan_7', 'default'],
         is_available: true,
         is_approved: true,
@@ -356,6 +356,7 @@ function createMockSupabase(currentUserId: string) {
             data: [
               { id: 'cat-1', service_type: 'electrical', slug: 'electrical', label_vi: 'Sửa điện', sort_order: 1, is_active: true },
               { id: 'cat-2', service_type: 'plumbing', slug: 'plumbing', label_vi: 'Sửa nước', sort_order: 2, is_active: true },
+              { id: 'cat-3', service_type: 'cleaning', slug: 'cleaning', label_vi: 'Vệ sinh', sort_order: 3, is_active: true },
             ],
             error: null,
           }),
@@ -366,8 +367,9 @@ function createMockSupabase(currentUserId: string) {
 
   function problemsOps() {
     const rows = [
-      { id: 'prob-1', slug: 'breaker_trip', label_vi: 'Cáº§u dao trip', default_complexity: 'medium', service_category_id: 'cat-1', service_type: 'electrical', sort_order: 1, is_active: true },
-      { id: 'prob-2', slug: 'pipe_leak', label_vi: 'á»ng rÃ² rá»‰', default_complexity: 'medium', service_category_id: 'cat-2', service_type: 'plumbing', sort_order: 1, is_active: true },
+      { id: 'prob-1', slug: 'breaker_trip', label_vi: 'Cầu dao trip', default_complexity: 'medium', service_category_id: 'cat-1', service_type: 'electrical', sort_order: 1, is_active: true },
+      { id: 'prob-2', slug: 'pipe_leak', label_vi: 'Ống rò rỉ', default_complexity: 'medium', service_category_id: 'cat-2', service_type: 'plumbing', sort_order: 1, is_active: true },
+      { id: 'prob-3', slug: 'standard_home_cleaning', label_vi: 'Dọn dẹp nhà', default_complexity: 'small', service_category_id: 'cat-3', service_type: 'cleaning', sort_order: 1, is_active: true },
     ]
 
     return {
@@ -391,6 +393,7 @@ function createMockSupabase(currentUserId: string) {
             data: [
               { id: 'prob-1', slug: 'breaker_trip', label_vi: 'Cầu dao trip', default_complexity: 'medium', service_category_id: 'cat-1', service_type: 'electrical', sort_order: 1, is_active: true },
               { id: 'prob-2', slug: 'pipe_leak', label_vi: 'Ống rò rỉ', default_complexity: 'medium', service_category_id: 'cat-2', service_type: 'plumbing', sort_order: 1, is_active: true },
+              { id: 'prob-3', slug: 'standard_home_cleaning', label_vi: 'Dọn dẹp nhà', default_complexity: 'small', service_category_id: 'cat-3', service_type: 'cleaning', sort_order: 1, is_active: true },
             ],
             error: null,
           }),
@@ -539,13 +542,15 @@ describe('Full Customer Journey — End-to-End Flow', () => {
 
     expect(res.status).toBe(200)
     expect(body.services).toBeDefined()
-    expect(body.services.length).toBe(2)
+    expect(body.services.length).toBe(3)
     expect(body.services[0].service_type).toBe('electrical')
     expect(body.services[0].label_vi).toBe('Sửa điện')
     expect(body.services[1].service_type).toBe('plumbing')
     expect(body.services[1].label_vi).toBe('Sửa nước')
+    expect(body.services[2].service_type).toBe('cleaning')
+    expect(body.services[2].label_vi).toBe('Vệ sinh')
 
-    console.log('✓ Service catalog: 2 services (điện + nước)')
+    console.log('✓ Service catalog: 3 services (điện + nước + vệ sinh)')
   })
 
   it('POST /api/jobs — Kael phân tích + ước giá thành công', async () => {

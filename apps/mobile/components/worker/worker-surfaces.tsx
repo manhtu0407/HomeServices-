@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
+import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { createContext, type ReactNode, use, useEffect, useRef, useState, useSyncExternalStore } from 'react'
@@ -7,9 +8,10 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDim
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { serviceLabel, statusLabel, type LocalDeal, type LocalDealStatus } from '@home-services/shared'
+import { serviceLabel, statusLabel, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput } from '@home-services/shared'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { uploadWorkerVerificationDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 
 const WORKER_XANHSM_REFERENCE_AUDIT = 'WORKER_XANHSM_REFERENCE_AUDIT: XanhSM map shell translated into Home Services worker production UI'
 const WORKER_PRODUCTION_CONTRACT = 'WORKER_PRODUCTION_CONTRACT: docs/design/worker-production-contract.md'
@@ -22,6 +24,7 @@ const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kae
 const WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT = 'WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT: general area only until worker accepts'
 const WORKER_NO_FAKE_PAYMENT_DATA = 'WORKER_NO_FAKE_PAYMENT_DATA: worker-no-fake-payment-data'
 
+const WORKER_DECORATIVE_MOTION_ENABLED = false
 const WORKER_THEME_STORAGE_KEY = 'home-services.worker.theme.production'
 const WORKER_LANGUAGE_STORAGE_KEY = 'home-services.worker.language.production'
 const workerDockHeight = 64
@@ -32,6 +35,7 @@ const kaelHead = require('../../assets/kael-model-8a-head.png')
 
 type WorkerThemeMode = 'dark' | 'light'
 type WorkerLanguageMode = 'en' | 'vi'
+type WorkerVerificationFileSlot = 'cccdFront' | 'cccdBack' | 'selfie'
 
 type WorkerActiveTab = 'chat' | 'earnings' | 'home' | 'jobs' | 'profile'
 type WorkerTone = 'base' | 'cream' | 'cyan' | 'depth' | 'mint' | 'raised' | 'strong' | 'warm'
@@ -192,6 +196,8 @@ const workerCopy = {
       electricianNote: '',
       plumberCard: 'Hệ thống nước',
       plumberNote: '',
+      cleaningCard: 'Vệ sinh nhà',
+      cleaningNote: '',
     },
     request: {
       service: 'Chờ duyệt',
@@ -289,6 +295,8 @@ const workerCopy = {
       electricianNote: '',
       plumberCard: 'Plumbing',
       plumberNote: '',
+      cleaningCard: 'Cleaning',
+      cleaningNote: '',
     },
     request: {
       service: 'Pending',
@@ -656,8 +664,8 @@ function WorkerChatContent() {
           </View>
         ) : (
           <View style={styles.chatStack} testID="hasAnyWorkerKaelMessage">
-            {renderedMessages.map((message) => (
-              <ChatBubble key={`${message.who}-${message.system ? 'system' : message.mine ? 'mine' : 'plain'}-${message.text}`} {...message} />
+            {renderedMessages.map((message, index) => (
+              <ChatBubble key={`${message.who}-${index}-${message.system ? 'system' : message.mine ? 'mine' : 'plain'}-${message.text}`} {...message} />
             ))}
           </View>
         )}
@@ -776,7 +784,7 @@ function WorkerProfileContent() {
   const { copy, language, tokens } = useWorkerUi()
   const { replace } = useRouter()
   const { role } = useAuth()
-  const { selectors, state } = useFrontendWorkflow()
+  const { selectors, state, workerProfile } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
   const adminAuditSwitchLabel = language === 'en' ? 'Choose audit section' : 'Chọn section audit'
@@ -790,6 +798,9 @@ function WorkerProfileContent() {
   const profileSkills = deal
     ? [serviceLabel(deal.draft.serviceType), deal.draft.districtLabel || 'Khu vực local', 'Chờ duyệt hệ thống', 'Chờ phản hồi thật']
     : copy.profile.skills
+  const canSubmitVerification = role === 'worker' &&
+    !workerProfile?.is_suspended &&
+    !['approved', 'suspended'].includes(workerProfile?.verification_status ?? 'draft')
 
   return (
     <>
@@ -816,6 +827,7 @@ function WorkerProfileContent() {
           <PressButton label={adminAuditSwitchLabel} onPress={() => replace('/(auth)/login')} testID="worker-admin-audit-switch" />
         </View>
       ) : null}
+      {canSubmitVerification ? <WorkerVerificationForm /> : null}
 
       <View style={[styles.greenScoreCard, glassSurface(tokens, 'mint')]}>
         <MotionSweep />
@@ -853,6 +865,198 @@ function WorkerProfileContent() {
         ))}
       </View>
     </>
+  )
+}
+
+const workerVerificationServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']
+
+function WorkerVerificationForm() {
+  const { tokens } = useWorkerUi()
+  const { actions, workerProfile } = useFrontendWorkflow()
+  const [legalName, setLegalName] = useState(workerProfile?.legal_name ?? '')
+  const [dateOfBirth, setDateOfBirth] = useState(workerProfile?.date_of_birth ?? '')
+  const [districts, setDistricts] = useState(workerProfile?.districts.join(', ') ?? '')
+  const [yearsExperience, setYearsExperience] = useState(workerProfile?.years_experience ? String(workerProfile.years_experience) : '')
+  const [bankName, setBankName] = useState(workerProfile?.bank_name ?? '')
+  const [bankAccount, setBankAccount] = useState('')
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>(workerProfile?.service_types.length ? workerProfile.service_types : ['electrical'])
+  const [files, setFiles] = useState<Partial<Record<WorkerVerificationFileSlot, LocalMediaUploadDraft>>>({})
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const status = workerProfile?.verification_status ?? 'draft'
+
+  useEffect(() => {
+    if (!workerProfile) return
+    setLegalName((current) => current || workerProfile.legal_name || '')
+    setDateOfBirth((current) => current || workerProfile.date_of_birth || '')
+    setDistricts((current) => current || workerProfile.districts.join(', '))
+    setYearsExperience((current) => current || (workerProfile.years_experience ? String(workerProfile.years_experience) : ''))
+    setBankName((current) => current || workerProfile.bank_name || '')
+    if (workerProfile.service_types.length > 0) setServiceTypes(workerProfile.service_types)
+  }, [workerProfile])
+
+  const toggleService = (serviceType: ServiceType) => {
+    setServiceTypes((current) => {
+      if (current.includes(serviceType)) {
+        return current.length === 1 ? current : current.filter((item) => item !== serviceType)
+      }
+      return [...current, serviceType]
+    })
+  }
+
+  const pickVerificationFile = async (slot: WorkerVerificationFileSlot) => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      setSubmitError('Cần quyền thư viện ảnh để chọn giấy tờ xác minh.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: false,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.86,
+      selectionLimit: 1,
+    })
+    if (result.canceled || !result.assets[0]) return
+    const asset = result.assets[0]
+    setFiles((current) => ({
+      ...current,
+      [slot]: {
+        uri: asset.uri,
+        type: 'image',
+        fileName: asset.fileName ?? asset.uri.split('/').pop(),
+        mimeType: asset.mimeType ?? undefined,
+        fileSizeBytes: asset.fileSize ?? undefined,
+      },
+    }))
+    setSubmitError(null)
+  }
+
+  const submitVerification = async () => {
+    const years = Number.parseInt(yearsExperience.replace(/[^\d]/g, ''), 10)
+    const districtList = districts.split(',').map((item) => item.trim()).filter(Boolean)
+    if (legalName.trim().length < 2 || !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth.trim())) {
+      setSubmitError('Nhập tên pháp lý và ngày sinh theo YYYY-MM-DD.')
+      return
+    }
+    if (!Number.isFinite(years) || years < 0 || districtList.length === 0 || serviceTypes.length === 0) {
+      setSubmitError('Nhập kinh nghiệm, dịch vụ và khu vực làm việc.')
+      return
+    }
+    if (!bankName.trim() || bankAccount.trim().length < 6) {
+      setSubmitError('Nhập ngân hàng và số tài khoản nhận tiền.')
+      return
+    }
+    if (!files.cccdFront || !files.cccdBack || !files.selfie) {
+      setSubmitError('Cần CCCD mặt trước, CCCD mặt sau và ảnh selfie.')
+      return
+    }
+
+    setSubmitting(true)
+    setSubmitError(null)
+    const uploaded = await uploadWorkerVerificationDrafts({
+      cccdFront: files.cccdFront,
+      cccdBack: files.cccdBack,
+      selfie: files.selfie,
+    })
+    if (!uploaded.success) {
+      setSubmitting(false)
+      setSubmitError(uploaded.error)
+      return
+    }
+
+    const input: WorkerRegisterInput = {
+      legal_name: legalName.trim(),
+      date_of_birth: dateOfBirth.trim(),
+      service_types: serviceTypes,
+      years_experience: years,
+      districts: districtList,
+      bank_account: bankAccount.trim(),
+      bank_name: bankName.trim(),
+      ...uploaded.urls,
+    }
+    const saved = await actions.workerSubmitRegistration(input)
+    setSubmitting(false)
+    if (!saved) {
+      setSubmitError('Backend chưa nhận hồ sơ. Kiểm tra lại kết nối và thử lại.')
+      return
+    }
+    setBankAccount('')
+    Alert.alert('Đã gửi hồ sơ', 'Kael/admin sẽ duyệt hồ sơ trước khi bật nhận việc.')
+  }
+
+  return (
+    <View style={[styles.verificationCard, glassSurface(tokens, 'raised')]} testID="worker-verification-submit-card">
+      <GlassSheen />
+      <GlassMotionLayer compact />
+      <View style={styles.rowBetween}>
+        <View style={styles.titleStack}>
+          <Text style={[styles.kicker, { color: tokens.primary }]}>Xác minh</Text>
+          <Text style={[styles.sectionTitle, { color: tokens.ink }]}>Hồ sơ Thợ</Text>
+        </View>
+        <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} testID="worker-verification-status">
+          {status}
+        </Text>
+      </View>
+      <TextInput autoCapitalize="words" onChangeText={setLegalName} placeholder="Tên pháp lý" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-legal-name" value={legalName} />
+      <View style={styles.verificationGrid}>
+        <TextInput onChangeText={setDateOfBirth} placeholder="YYYY-MM-DD" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-date-of-birth" value={dateOfBirth} />
+        <TextInput keyboardType="number-pad" onChangeText={setYearsExperience} placeholder="Năm kinh nghiệm" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-years" value={yearsExperience} />
+      </View>
+      <TextInput onChangeText={setDistricts} placeholder="Quận làm việc, cách nhau bằng dấu phẩy" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-districts" value={districts} />
+      <View style={styles.skillWrap} testID="worker-verification-service-types">
+        {workerVerificationServices.map((serviceType) => {
+          const selected = serviceTypes.includes(serviceType)
+          return (
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: selected }}
+              key={serviceType}
+              onPress={() => toggleService(serviceType)}
+              style={({ pressed }) => [
+                styles.skillPill,
+                { backgroundColor: selected ? tokens.primary : tokens.glassStrong, borderColor: selected ? tokens.primary : tokens.border },
+                pressed ? styles.pressed : null,
+              ]}
+              testID={`worker-verification-service-${serviceType}`}
+            >
+              <Text style={[styles.skillText, { color: selected ? tokens.primaryText : tokens.primary }]}>{serviceLabel(serviceType)}</Text>
+            </Pressable>
+          )
+        })}
+      </View>
+      <View style={styles.verificationGrid}>
+        <TextInput onChangeText={setBankName} placeholder="Ngân hàng" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-bank-name" value={bankName} />
+        <TextInput keyboardType="number-pad" onChangeText={setBankAccount} placeholder="Số tài khoản" placeholderTextColor={tokens.subtle} secureTextEntry style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-bank-account" value={bankAccount} />
+      </View>
+      <View style={styles.verificationFiles}>
+        <VerificationFileButton file={files.cccdFront} label="CCCD trước" onPress={() => void pickVerificationFile('cccdFront')} testID="worker-verification-cccd-front" />
+        <VerificationFileButton file={files.cccdBack} label="CCCD sau" onPress={() => void pickVerificationFile('cccdBack')} testID="worker-verification-cccd-back" />
+        <VerificationFileButton file={files.selfie} label="Ảnh selfie" onPress={() => void pickVerificationFile('selfie')} testID="worker-verification-selfie" />
+      </View>
+      {submitError ? <Text style={[styles.bodyText, { color: tokens.copper }]} testID="worker-verification-error">{submitError}</Text> : null}
+      <PressButton disabled={submitting} label={submitting ? 'Đang gửi...' : 'Gửi hồ sơ xác minh'} onPress={() => void submitVerification()} testID="worker-verification-submit" />
+    </View>
+  )
+}
+
+function VerificationFileButton({ file, label, onPress, testID }: { file?: LocalMediaUploadDraft; label: string; onPress: () => void; testID: string }) {
+  const { tokens } = useWorkerUi()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.verificationFileButton,
+        { backgroundColor: file ? tokens.mint : tokens.glassStrong, borderColor: file ? tokens.primary : tokens.border },
+        pressed ? styles.pressed : null,
+      ]}
+      testID={testID}
+    >
+      <Icon name="document" small />
+      <Text style={[styles.verificationFileText, { color: file ? tokens.primary : tokens.muted }]} numberOfLines={2}>
+        {file?.fileName ?? label}
+      </Text>
+    </Pressable>
   )
 }
 
@@ -901,8 +1105,9 @@ function WorkerMapStage() {
       </View>
 
       <View style={styles.mapCardsRow}>
-        <WorkerMapFeatureCard icon="bolt" title={copy.home.electricianCard} tone="mint" />
-        <WorkerMapFeatureCard icon="water" title={copy.home.plumberCard} tone="cream" />
+        <WorkerMapFeatureCard icon="bolt" title={copy.home.electricianCard} tone="mint" testID="worker-shell-service-electrical" />
+        <WorkerMapFeatureCard icon="water" title={copy.home.plumberCard} tone="cream" testID="worker-shell-service-plumbing" />
+        <WorkerMapFeatureCard icon="spark" title={copy.home.cleaningCard} tone="cyan" testID="worker-shell-service-cleaning" />
       </View>
 
       {copy.home.serviceHeading ? (
@@ -945,11 +1150,11 @@ function WorkerMapStage() {
   )
 }
 
-function WorkerMapFeatureCard({ icon, title, tone }: { icon: WorkerIconName; title: string; tone: WorkerTone }) {
+function WorkerMapFeatureCard({ icon, testID, title, tone }: { icon: WorkerIconName; testID?: string; title: string; tone: WorkerTone }) {
   const { tokens } = useWorkerUi()
 
   return (
-    <View style={[styles.mapFeatureCard, glassSurface(tokens, tone)]}>
+    <View style={[styles.mapFeatureCard, glassSurface(tokens, tone)]} testID={testID}>
       <GlassSheen />
       <GlassMotionLayer compact />
       <Text style={[styles.mapFeatureTitle, { color: tokens.ink }]} numberOfLines={1}>{title}</Text>
@@ -989,6 +1194,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const { copy, tokens } = useWorkerUi()
   const { actions, selectors, state } = useFrontendWorkflow()
   const [finalPriceDraft, setFinalPriceDraft] = useState('')
+  const [cancellationReasonDraft, setCancellationReasonDraft] = useState('')
   const [scopeDescriptionDraft, setScopeDescriptionDraft] = useState('')
   const [scopePriceDraft, setScopePriceDraft] = useState('')
   const deal = getWorkerVisibleDeal(state.deal)
@@ -996,6 +1202,14 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus) : null
   const canRequestScopeChange = selectors.currentStatus === 'inspecting' || selectors.currentStatus === 'repairing'
   const hasBroadcast = Boolean(broadcast)
+  const canRequestCancellation = Boolean(hasBroadcast && !selectors.canWorkerAccept && [
+    'worker_matched',
+    'worker_on_way',
+    'arrived',
+    'inspecting',
+    'repairing',
+    'scope_change_pending',
+  ].includes(selectors.currentStatus ?? ''))
   const secondsRemainingLabel = broadcast?.secondsRemaining === null || broadcast?.secondsRemaining === undefined ? null : `${broadcast.secondsRemaining}s`
   const confirmWorkerProgressAction = (action: { label: string; type: WorkerProgressAction }) => {
     const nextStatus = workerStatusForAction(action.type)
@@ -1055,6 +1269,30 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       ],
     )
   }
+  const submitCancellationRequest = () => {
+    const reason = cancellationReasonDraft.trim()
+    if (reason.length < 10) {
+      Alert.alert('Cần lý do hủy', 'Nhập lý do cụ thể để Kael/admin duyệt và tìm thợ thay thế nếu hợp lệ.')
+      return
+    }
+    Alert.alert(
+      'Gửi yêu cầu hủy việc?',
+      'Yêu cầu này không hủy job ngay. Backend sẽ duyệt lý do và tự tìm thợ thay thế nếu được chấp nhận.',
+      [
+        { text: 'Kiểm tra lại', style: 'cancel' },
+        {
+          text: 'Gửi',
+          onPress: () => {
+            setCancellationReasonDraft('')
+            void actions.requestWorkerCancellation({
+              reason,
+              evidence_photo_urls: [],
+            })
+          },
+        },
+      ],
+    )
+  }
   const addressLabel = selectors.canWorkerSeeFullAddress
     ? broadcast?.fullAddressLabel ?? deal?.draft.addressLabel ?? ''
     : broadcast?.generalArea
@@ -1070,7 +1308,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       <View style={styles.hiddenMarker} testID="worker-safe-address-gate" />
       <View style={styles.rowBetween}>
         <View style={[styles.serviceBadge, { backgroundColor: tokens.mint }]}>
-          <Icon name={deal?.draft.serviceType === 'plumbing' ? 'water' : 'bolt'} small />
+          <Icon name={deal?.draft.serviceType === 'plumbing' ? 'water' : deal?.draft.serviceType === 'cleaning' ? 'spark' : 'bolt'} small />
           <Text style={[styles.serviceBadgeText, { color: tokens.primary }]}>{hasBroadcast ? serviceLabel(deal?.draft.serviceType ?? null) : copy.request.service}</Text>
         </View>
         {secondsRemainingLabel && selectors.canWorkerAccept ? (
@@ -1130,6 +1368,18 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
           Chờ khách quyết định thay đổi phạm vi.
         </Text>
       ) : null}
+      {canRequestCancellation ? (
+        <View style={styles.scopeRequestBox} testID="worker-cancellation-request">
+          <TextInput
+            onChangeText={setCancellationReasonDraft}
+            placeholder="Lý do cần hủy để Kael duyệt"
+            placeholderTextColor={tokens.subtle}
+            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
+            value={cancellationReasonDraft}
+          />
+          <PressButton label="Yêu cầu hủy có lý do" onPress={submitCancellationRequest} secondary testID="worker-cancellation-submit" />
+        </View>
+      ) : null}
       {nextAction?.type === 'worker_complete_job' ? (
         <TextInput
           keyboardType="number-pad"
@@ -1180,6 +1430,11 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
   const liquidWake = useSharedValue(1)
 
   useEffect(() => {
+    if (!WORKER_DECORATIVE_MOTION_ENABLED) {
+      dockPulse.value = 0.28
+      dockSweep.value = 0
+      return
+    }
     dockPulse.value = withRepeat(withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.quad) }), -1, true)
     dockSweep.value = withRepeat(withTiming(1, { duration: 4600, easing: Easing.inOut(Easing.quad) }), -1, false)
   }, [dockPulse, dockSweep])
@@ -1269,6 +1524,10 @@ function AmbientBackdrop() {
   const drift = useSharedValue(0)
 
   useEffect(() => {
+    if (!WORKER_DECORATIVE_MOTION_ENABLED) {
+      drift.value = 0.42
+      return
+    }
     drift.value = withRepeat(withTiming(1, { duration: 6200, easing: Easing.inOut(Easing.quad) }), -1, true)
   }, [drift])
 
@@ -1313,6 +1572,10 @@ function WorkerSectionMotionField({
   const topBias = 18 + Math.max(sectionIndex, 0) * 9
 
   useEffect(() => {
+    if (!WORKER_DECORATIVE_MOTION_ENABLED) {
+      tide.value = 0.38
+      return
+    }
     tide.value = withRepeat(withTiming(1, { duration: 6800, easing: Easing.inOut(Easing.quad) }), -1, true)
   }, [tide])
 
@@ -1394,6 +1657,10 @@ function MotionSweep({ testID }: { testID?: string }) {
   const sweep = useSharedValue(0)
 
   useEffect(() => {
+    if (!WORKER_DECORATIVE_MOTION_ENABLED) {
+      sweep.value = 0.4
+      return
+    }
     sweep.value = withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.quad) }), -1, true)
   }, [sweep])
 
@@ -1411,6 +1678,11 @@ function GlassMotionLayer({ compact = false }: { compact?: boolean }) {
   const verticalFlow = useSharedValue(0)
 
   useEffect(() => {
+    if (!WORKER_DECORATIVE_MOTION_ENABLED) {
+      motion.value = 0.34
+      verticalFlow.value = 0.5
+      return
+    }
     motion.value = withRepeat(withTiming(1, { duration: 5200, easing: Easing.inOut(Easing.quad) }), -1, true)
     verticalFlow.value = withRepeat(
       withTiming(1, { duration: compact ? 3600 : 4300, easing: Easing.inOut(Easing.quad) }),
@@ -1841,6 +2113,22 @@ function glassSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
                 ? 'rgba(13,27,26,0.70)'
                 : 'rgba(234,246,241,0.70)'
               : tokens.glass
+  const experimentalBackgroundImage =
+    tokens.mode === 'dark'
+      ? tone === 'cream' || tone === 'warm'
+        ? `radial-gradient(circle at 84% 42%, ${warmAccent}, transparent 31%), radial-gradient(circle at 18% 88%, ${mintWash}, transparent 38%), linear-gradient(120deg, rgba(59,41,27,0.70), rgba(18,34,32,0.68))`
+        : tone === 'mint'
+          ? `radial-gradient(circle at 88% 16%, ${softWarmAccent}, transparent 22%), radial-gradient(circle at 74% 62%, rgba(105,222,198,0.18), transparent 34%), linear-gradient(145deg, rgba(23,59,53,0.78), rgba(12,26,25,0.68))`
+        : tone === 'cyan'
+            ? `radial-gradient(circle at 92% 12%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 78% 62%, rgba(105,222,198,0.16), transparent 34%), linear-gradient(145deg, rgba(21,54,58,0.76), rgba(12,26,25,0.68))`
+            : `radial-gradient(circle at 94% 10%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 10% 92%, ${mintWash}, transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.78), rgba(12,26,25,0.68))`
+      : tone === 'cream' || tone === 'warm'
+        ? `radial-gradient(circle at 84% 42%, ${warmAccent}, transparent 31%), radial-gradient(circle at 18% 88%, ${mintWash}, transparent 38%), linear-gradient(120deg, rgba(201,248,237,0.62), rgba(255,243,205,0.48))`
+        : tone === 'mint'
+          ? `radial-gradient(circle at 88% 16%, ${softWarmAccent}, transparent 22%), radial-gradient(circle at 74% 62%, rgba(22,185,168,0.26), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,248,241,0.56))`
+        : tone === 'cyan'
+            ? `radial-gradient(circle at 92% 12%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 78% 62%, rgba(33,165,177,0.28), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,249,247,0.58))`
+            : `radial-gradient(circle at 94% 10%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 10% 92%, ${mintWash}, transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(224,248,242,0.34))`
 
   return {
     backgroundColor,
@@ -1848,14 +2136,7 @@ function glassSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
     borderWidth: 1,
     backdropFilter: 'blur(24px) saturate(1.18)',
     boxShadow: tone === 'raised' || tone === 'base' || tone === 'strong' ? tokens.shadow : tokens.softShadow,
-    experimental_backgroundImage:
-      tone === 'cream' || tone === 'warm'
-        ? `radial-gradient(circle at 84% 42%, ${warmAccent}, transparent 31%), radial-gradient(circle at 18% 88%, ${mintWash}, transparent 38%), linear-gradient(120deg, rgba(201,248,237,0.62), rgba(255,243,205,0.48))`
-        : tone === 'mint'
-          ? `radial-gradient(circle at 88% 16%, ${softWarmAccent}, transparent 22%), radial-gradient(circle at 74% 62%, rgba(22,185,168,0.26), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,248,241,0.56))`
-        : tone === 'cyan'
-            ? `radial-gradient(circle at 92% 12%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 78% 62%, rgba(33,165,177,0.28), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,249,247,0.58))`
-            : `radial-gradient(circle at 94% 10%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 10% 92%, ${mintWash}, transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(224,248,242,0.34))`,
+    experimental_backgroundImage: experimentalBackgroundImage,
     shadowColor: '#0D4641',
     shadowOffset: { height: 18, width: 0 },
     shadowOpacity: tokens.mode === 'dark' ? 0.28 : 0.13,
@@ -1999,6 +2280,13 @@ const styles = StyleSheet.create({
   preferenceSwitch: { borderRadius: 999, borderWidth: 1, height: 34, justifyContent: 'center', padding: 4, width: 62 },
   preferenceKnob: { borderRadius: 999, height: 24, width: 24 },
   preferenceKnobRight: { alignSelf: 'flex-end' },
+  verificationCard: { borderRadius: 29, gap: 10, overflow: 'hidden', padding: 14, position: 'relative' },
+  verificationGrid: { flexDirection: 'row', gap: 8 },
+  verificationInput: { borderRadius: 18, borderWidth: 1, fontSize: 14, fontWeight: '600', minHeight: 46, paddingHorizontal: 12 },
+  verificationHalfInput: { flex: 1, minWidth: 0 },
+  verificationFiles: { flexDirection: 'row', gap: 8 },
+  verificationFileButton: { alignItems: 'center', borderRadius: 18, borderWidth: 1, flex: 1, gap: 5, justifyContent: 'center', minHeight: 72, padding: 8 },
+  verificationFileText: { fontSize: 11, fontWeight: '600', lineHeight: 14, textAlign: 'center' },
   dockWrap: { alignSelf: 'center', minHeight: workerDockHeight, position: 'absolute', zIndex: 30 },
   dockGlassAura: { borderRadius: 999, bottom: -20, filter: 'blur(24px)', height: 84, left: 20, position: 'absolute', right: 20, zIndex: -1 },
   dockWarmAura: { borderRadius: 999, bottom: -10, filter: 'blur(22px)', height: 48, opacity: 0.12, position: 'absolute', right: -10, width: 100, zIndex: -1 },

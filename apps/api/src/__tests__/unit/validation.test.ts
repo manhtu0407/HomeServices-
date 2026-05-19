@@ -9,7 +9,7 @@ import {
   scrubSensitiveForLLM,
 } from '@home-services/shared'
 
-describe('serviceTypeSchema (Rule #6: only electrical + plumbing)', () => {
+describe('serviceTypeSchema (Rule #6: electrical + plumbing + cleaning)', () => {
   it('accepts "electrical"', () => {
     expect(serviceTypeSchema.parse('electrical')).toBe('electrical')
   })
@@ -18,7 +18,11 @@ describe('serviceTypeSchema (Rule #6: only electrical + plumbing)', () => {
     expect(serviceTypeSchema.parse('plumbing')).toBe('plumbing')
   })
 
-  it.each(['hvac', 'cleaning', '', 'ELECTRICAL', 'Plumbing', 'gas', 'painting'])(
+  it('accepts "cleaning"', () => {
+    expect(serviceTypeSchema.parse('cleaning')).toBe('cleaning')
+  })
+
+  it.each(['hvac', '', 'ELECTRICAL', 'Plumbing', 'gas', 'painting'])(
     'rejects "%s"',
     (value) => {
       expect(() => serviceTypeSchema.parse(value)).toThrow()

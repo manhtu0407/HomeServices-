@@ -1,11 +1,20 @@
 import type { AIMessage } from '@home-services/shared'
 
 export const PROMPT_VERSIONS = {
-  intent: '2026-05-14.v1',
-  vision: '2026-05-14.v1',
-  pricing: '2026-05-14.v1',
+  intent: '2026-05-19.v2',
+  vision: '2026-05-19.v2',
+  pricing: '2026-05-19.v2',
   prebrief: '2026-05-14.v1',
 } as const
+
+export const KAEL_BUSINESS_GUARDRAILS = `Kael is the main AI assistant for this home-services product.
+Scope is strictly HCMC home services for exactly three service boxes: electrical repair, plumbing repair, and home cleaning.
+Reject unrelated topics, adult or explicit sexual content, random image requests, or any request that is not useful for those three service boxes by classifying it as unsupported.
+Home-service safety and legality questions are allowed only when they directly affect electrical, plumbing, or cleaning work.
+Do not collect or repeat PII; use only sanitized job context.`
+
+export const KAEL_RESPONSE_STYLE = `Keep reasoning concise, friendly, and on-point.
+Return the required JSON only. Any free-text field should be short Vietnamese, directly answer the job context, and include a practical safety note only when relevant.`
 
 export function buildIntentMessages(
   serviceType: string,
@@ -15,20 +24,24 @@ export function buildIntentMessages(
   return [
     {
       role: 'system',
-      content: `You are an intent classifier for a home repair service in Ho Chi Minh City.
-Supported services: electrical, plumbing. Nothing else.
-If the request is not about electrical or plumbing repair, classify as "unsupported".
+      content: `${KAEL_BUSINESS_GUARDRAILS}
+${KAEL_RESPONSE_STYLE}
+
+You are an intent classifier for a home service platform in Ho Chi Minh City.
+Supported services: electrical, plumbing, cleaning. Nothing else.
+If the request is not about electrical repair, plumbing repair, or home cleaning, classify as "unsupported".
 
 Respond ONLY with valid JSON matching this schema:
 {
-  "service_type": "electrical" | "plumbing" | "unsupported",
+  "service_type": "electrical" | "plumbing" | "cleaning" | "unsupported",
   "problem_slug": "string (snake_case problem category)",
   "confidence": number (0-1),
   "needs_clarification": boolean
 }
 
 Problem slugs for electrical: power_outage_one_room, power_outage_whole_unit, outlet_or_switch_broken, breaker_trip, flickering_light, install_device, other_electrical
-Problem slugs for plumbing: pipe_leak, clogged_drain_or_sink, toilet_flush_issue, faucet_broken, weak_water_pressure, install_or_replace_fixture, other_plumbing`,
+Problem slugs for plumbing: pipe_leak, clogged_drain_or_sink, toilet_flush_issue, faucet_broken, weak_water_pressure, install_or_replace_fixture, other_plumbing
+Problem slugs for cleaning: standard_home_cleaning, kitchen_deep_clean, bathroom_deep_clean, deep_cleaning, post_repair_cleaning, window_cleaning, other_cleaning`,
     },
     {
       role: 'user',
@@ -46,7 +59,10 @@ export function buildVisionMessages(
   return [
     {
       role: 'system',
-      content: `You are a home repair problem analyst for Ho Chi Minh City apartments.
+      content: `${KAEL_BUSINESS_GUARDRAILS}
+${KAEL_RESPONSE_STYLE}
+
+You are a home service problem analyst for Ho Chi Minh City apartments.
 Analyze the customer's problem description and provide a structured assessment.
 Focus on: what the problem likely is, severity indicators, and complexity level.
 
@@ -79,9 +95,12 @@ export function buildPricingMessages(
   return [
     {
       role: 'system',
-      content: `You are a market price researcher for home repair services in Ho Chi Minh City.
-Search for current market prices for the specified repair service.
-Focus on HCMC apartment repair pricing in Vietnamese Dong (VND).
+      content: `${KAEL_BUSINESS_GUARDRAILS}
+${KAEL_RESPONSE_STYLE}
+
+You are a market price researcher for home services in Ho Chi Minh City.
+Search for current market prices for the specified electrical repair, plumbing repair, or home cleaning service.
+Focus on HCMC apartment service pricing in Vietnamese Dong (VND).
 
 Respond ONLY with valid JSON matching this schema:
 {

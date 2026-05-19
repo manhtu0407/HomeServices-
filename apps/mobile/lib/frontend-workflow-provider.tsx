@@ -1,4 +1,5 @@
 import { createContext, use, useCallback, useEffect, useMemo, useReducer, useRef, useState, type Dispatch, type ReactNode } from 'react'
+import { AppState } from 'react-native'
 import {
   HCMC_DISTRICTS,
   LOCAL_DEAL_ID,
@@ -19,15 +20,19 @@ import {
   type LocalWorkflowState,
   type ReviewInput,
   type ServiceType,
+  type WorkerRegisterInput,
   type WorkerScopeChangeInput,
 } from '@home-services/shared'
 import { useAuth } from './auth-provider'
-import { jobService, workerService } from './services'
+import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from './media-upload'
+import { jobService, notificationService, workerService } from './services'
 import type { ApiResult } from './api'
 import type {
   ConfirmSearchResponse,
   CreateJobResponse,
   JobDetailResponse,
+  NotificationListResponse,
+  WorkerCancellationRequestInput,
   WorkerBroadcastsResponse,
   WorkerJobListResponse,
   WorkerProfileResponse,
@@ -36,7 +41,10 @@ import type {
 type WorkerStatusUpdate = Extract<JobStatus, 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'completed_by_worker'>
 
 type FrontendWorkflowActions = {
-  createRemoteJobFromDraft: (draft?: LocalDealDraft) => Promise<boolean>
+  createRemoteJobFromDraft: (
+    draft?: LocalDealDraft,
+    mediaItems?: LocalMediaUploadDraft[],
+  ) => Promise<{ jobId: string; mediaError?: string } | false | null>
   confirmRemoteSearch: () => Promise<boolean>
   cancelRemoteJob: () => Promise<boolean>
   refreshCurrentJob: () => Promise<boolean>
@@ -48,21 +56,28 @@ type FrontendWorkflowActions = {
     extras?: { completion_notes?: string; completion_photo_urls?: string[]; final_price?: number },
   ) => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeInput) => Promise<boolean>
+  requestWorkerCancellation: (input: WorkerCancellationRequestInput) => Promise<boolean>
+  workerSubmitRegistration: (input: WorkerRegisterInput) => Promise<boolean>
   decideScopeChange: (scopeChangeId: string, input: CustomerScopeDecisionInput) => Promise<boolean>
   customerConfirmCompletion: () => Promise<boolean>
   submitReview: (input: Omit<ReviewInput, 'job_id'>) => Promise<boolean>
   workerUpdateAvailability: (isAvailable: boolean) => Promise<boolean>
+  refreshNotifications: () => Promise<boolean>
+  markNotificationRead: (notificationId: string) => Promise<boolean>
 }
 
 type FrontendWorkflowContextValue = {
   state: LocalWorkflowState
   selectors: LocalWorkflowSelectors
   workerProfile: WorkerProfileResponse | null
+  notifications: NotificationListResponse['notifications']
+  notificationUnreadCount: number
   dispatch: Dispatch<LocalWorkflowAction>
   actions: FrontendWorkflowActions
 }
 
 const FrontendWorkflowContext = createContext<FrontendWorkflowContextValue | null>(null)
+const isAppForeground = () => AppState.currentState === 'active'
 
 function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const { role, session } = useAuth()
@@ -72,6 +87,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const previousSessionUserIdRef = useRef(sessionUserId)
   const stateRef = useRef(state)
   const [workerProfile, setWorkerProfile] = useState<WorkerProfileResponse | null>(null)
+  const [notifications, setNotifications] = useState<NotificationListResponse['notifications']>([])
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
 
   useEffect(() => {
     stateRef.current = state
@@ -94,9 +111,12 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return hydrateJobResult(await jobService.getJob(jobId))
   }, [hydrateJobResult, setRemoteError])
 
-  const createRemoteJobFromDraft = useCallback(async (draftOverride?: LocalDealDraft) => {
+  const createRemoteJobFromDraft = useCallback(async (
+    draftOverride?: LocalDealDraft,
+    mediaItems: LocalMediaUploadDraft[] = [],
+  ) => {
     const draft = draftOverride ?? stateRef.current.deal?.draft
-    if (!draft?.serviceType) return setRemoteError('Chọn dịch vụ điện hoặc nước trước khi tạo yêu cầu')
+    if (!draft?.serviceType) return setRemoteError('Chọn dịch vụ điện, nước hoặc vệ sinh trước khi tạo yêu cầu')
     if (draft.problemChips.length === 0) return setRemoteError('Chọn ít nhất một vấn đề cần xử lý')
     if (draft.description.trim().length < 10) return setRemoteError('Mô tả cần rõ hơn trước khi gửi yêu cầu')
     const districtLabel = extractKnownDistrictLabel(draft.districtLabel) || extractKnownDistrictLabel(draft.addressLabel)
@@ -112,9 +132,23 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }
 
     const created = await jobService.createJob(input)
-    if (!created.success) return setRemoteError(created.error)
+    if (!created.success) {
+      setRemoteError(created.error)
+      return null
+    }
     dispatch({ type: 'hydrate_remote_job', job: createJobResponseToSnapshot(created.data, draft) })
-    return true
+    if (mediaItems.length === 0) return { jobId: created.data.job_id }
+
+    const uploaded = await uploadJobMediaDrafts(created.data.job_id, mediaItems, 'before')
+    if (!uploaded.success) {
+      dispatch({ type: 'set_workflow_error', error: uploaded.error })
+      return { jobId: created.data.job_id, mediaError: uploaded.error }
+    }
+    const refreshed = await jobService.getJob(created.data.job_id)
+    if (refreshed.success) {
+      dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(refreshed.data) })
+    }
+    return { jobId: created.data.job_id }
   }, [setRemoteError])
 
   const confirmRemoteSearch = useCallback(async () => {
@@ -164,11 +198,11 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   }, [setRemoteError])
 
   const workerRefresh = useCallback(async () => {
-    if (role !== 'worker') return true
+    if (role !== 'worker' && role !== 'admin') return true
 
     const profile = await workerService.getProfile()
     if (!profile.success) return setRemoteError(profile.error)
-    setWorkerProfile(profile.data)
+    setWorkerProfile((current) => sameWorkerProfile(current, profile.data) ? current : profile.data)
 
     const broadcasts = await workerService.getBroadcasts()
     if (!broadcasts.success) return setRemoteError(broadcasts.error)
@@ -275,6 +309,22 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [refreshCurrentJob, setRemoteError])
 
+  const requestWorkerCancellation = useCallback(async (input: WorkerCancellationRequestInput) => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để hủy')
+    const result = await workerService.requestWorkerCancellation(jobId, input)
+    if (!result.success) return setRemoteError(result.error)
+    await refreshCurrentJob()
+    return true
+  }, [refreshCurrentJob, setRemoteError])
+
+  const workerSubmitRegistration = useCallback(async (input: WorkerRegisterInput) => {
+    const result = await workerService.register(input)
+    if (!result.success) return setRemoteError(result.error)
+    await workerRefresh()
+    return true
+  }, [setRemoteError, workerRefresh])
+
   const decideScopeChange = useCallback(async (scopeChangeId: string, input: CustomerScopeDecisionInput) => {
     const result = await jobService.decideScopeChange(scopeChangeId, input)
     if (!result.success) return setRemoteError(result.error)
@@ -301,6 +351,33 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [refreshCurrentJob, setRemoteError])
 
+  const refreshNotifications = useCallback(async () => {
+    if (!sessionUserId || !role) return true
+    const result = await notificationService.list()
+    if (!result.success) return setRemoteError(result.error)
+    setNotifications((current) =>
+      sameNotifications(current, result.data.notifications) ? current : result.data.notifications,
+    )
+    setNotificationUnreadCount((current) =>
+      current === result.data.unread_count ? current : result.data.unread_count,
+    )
+    return true
+  }, [role, sessionUserId, setRemoteError])
+
+  const markNotificationRead = useCallback(async (notificationId: string) => {
+    const result = await notificationService.markRead(notificationId)
+    if (!result.success) return setRemoteError(result.error)
+    setNotifications((current) =>
+      current.map((item) =>
+        item.id === notificationId
+          ? { ...item, status: 'read', read_at: result.data.read_at }
+          : item,
+      ),
+    )
+    setNotificationUnreadCount((current) => Math.max(0, current - 1))
+    return true
+  }, [setRemoteError])
+
   const actions = useMemo<FrontendWorkflowActions>(() => ({
     createRemoteJobFromDraft,
     confirmRemoteSearch,
@@ -311,10 +388,14 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerDeclineBroadcast,
     workerUpdateStatus,
     requestScopeChange,
+    requestWorkerCancellation,
+    workerSubmitRegistration,
     decideScopeChange,
     customerConfirmCompletion,
     submitReview,
     workerUpdateAvailability,
+    refreshNotifications,
+    markNotificationRead,
   }), [
     cancelRemoteJob,
     confirmRemoteSearch,
@@ -322,11 +403,15 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     customerConfirmCompletion,
     decideScopeChange,
     refreshCurrentJob,
+    refreshNotifications,
+    markNotificationRead,
     requestScopeChange,
+    requestWorkerCancellation,
     submitReview,
     workerAcceptBroadcast,
     workerDeclineBroadcast,
     workerRefresh,
+    workerSubmitRegistration,
     workerUpdateAvailability,
     workerUpdateStatus,
   ])
@@ -336,23 +421,38 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     previousSessionUserIdRef.current = sessionUserId
     dispatch({ type: 'reset_workflow' })
     setWorkerProfile(null)
+    setNotifications([])
+    setNotificationUnreadCount(0)
   }, [sessionUserId])
 
   useEffect(() => {
-    if (!sessionUserId || role !== 'worker') return
-    void workerRefresh()
-    const interval = setInterval(() => void workerRefresh(), 10_000)
+    if (!sessionUserId || !role) return
+    if (isAppForeground()) void refreshNotifications()
+    const interval = setInterval(() => {
+      if (isAppForeground()) void refreshNotifications()
+    }, 60_000)
+    return () => clearInterval(interval)
+  }, [refreshNotifications, role, sessionUserId])
+
+  useEffect(() => {
+    if (!sessionUserId || (role !== 'worker' && role !== 'admin')) return
+    if (isAppForeground()) void workerRefresh()
+    const interval = setInterval(() => {
+      if (isAppForeground()) void workerRefresh()
+    }, 20_000)
     return () => clearInterval(interval)
   }, [role, sessionUserId, workerRefresh])
 
   const broadcast = state.deal?.broadcast
+  const customerBroadcast = state.deal?.broadcast
+  const remoteJobId = getRemoteJobId(state)
+  const customerStatus = state.deal?.status
+  const customerBroadcastStatus = customerBroadcast?.status
 
   useEffect(() => {
-    if (!sessionUserId || role !== 'customer') return
-    if (!getRemoteJobId(state)) return
+    if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
+    if (!remoteJobId) return
 
-    const customerStatus = state.deal?.status
-    const customerBroadcast = state.deal?.broadcast
     if (customerStatus === 'broadcasting' && customerBroadcast?.status === 'expired') return
     if (![
       'broadcasting',
@@ -365,15 +465,17 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       'completed_by_worker',
     ].includes(customerStatus ?? '')) return
 
-    const interval = setInterval(() => void refreshCurrentJob(), 10_000)
+    const interval = setInterval(() => {
+      if (isAppForeground()) void refreshCurrentJob()
+    }, 15_000)
     return () => clearInterval(interval)
   }, [
+    customerBroadcastStatus,
+    customerStatus,
     refreshCurrentJob,
+    remoteJobId,
     role,
     sessionUserId,
-    state,
-    state.deal?.broadcast,
-    state.deal?.status,
   ])
 
   useEffect(() => {
@@ -384,7 +486,15 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return () => clearTimeout(timer)
   }, [state.deal?.status, broadcast?.status, broadcast?.secondsRemaining])
 
-  return { state, selectors, workerProfile, dispatch, actions }
+  return {
+    state,
+    selectors,
+    workerProfile,
+    notifications,
+    notificationUnreadCount,
+    dispatch,
+    actions,
+  }
 }
 
 export function FrontendWorkflowProvider({ children }: { children: ReactNode }) {
@@ -638,6 +748,49 @@ function districtLabelFromValue(value: string | null | undefined) {
 
 function formatFullAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
   return [address.building, address.floor, address.unit, districtLabelFromValue(address.district)].filter(Boolean).join(', ')
+}
+
+function sameWorkerProfile(left: WorkerProfileResponse | null, right: WorkerProfileResponse) {
+  if (!left) return false
+  return left.id === right.id
+    && left.verification_status === right.verification_status
+    && left.is_available === right.is_available
+    && left.is_approved === right.is_approved
+    && left.is_suspended === right.is_suspended
+    && left.years_experience === right.years_experience
+    && left.rating === right.rating
+    && left.total_jobs === right.total_jobs
+    && left.legal_name === right.legal_name
+    && left.date_of_birth === right.date_of_birth
+    && left.gender === right.gender
+    && left.bank_account_masked === right.bank_account_masked
+    && left.bank_name === right.bank_name
+    && left.has_cccd === right.has_cccd
+    && left.has_selfie === right.has_selfie
+    && sameStringArray(left.service_types, right.service_types)
+    && sameStringArray(left.districts, right.districts)
+}
+
+function sameNotifications(
+  left: NotificationListResponse['notifications'],
+  right: NotificationListResponse['notifications'],
+) {
+  if (left.length !== right.length) return false
+  return left.every((item, index) => {
+    const next = right[index]
+    return item.id === next.id
+      && item.title === next.title
+      && item.body === next.body
+      && item.event_type === next.event_type
+      && item.status === next.status
+      && item.job_id === next.job_id
+      && item.created_at === next.created_at
+      && item.read_at === next.read_at
+  })
+}
+
+function sameStringArray(left: readonly string[], right: readonly string[]) {
+  return left.length === right.length && left.every((item, index) => item === right[index])
 }
 
 function formatNullablePriceRange(min: number | null, max: number | null) {

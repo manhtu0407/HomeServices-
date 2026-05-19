@@ -261,7 +261,7 @@ Supabase work rules
 
 ## 7. Kael Foundation Contract
 
-Kael is not a generic chatbot. Kael is the bounded AI price-check and problem-understanding layer for electrical and plumbing repair.
+Kael is not a generic chatbot. Kael is the bounded AI price-check and problem-understanding layer for electrical repair, plumbing repair, and home cleaning.
 
 Before implementing Kael runtime, define:
 
@@ -285,7 +285,7 @@ Allowed Kael effects:
 ```text
 Allowed
 -
-|- classify electrical/plumbing issue
+|- classify electrical/plumbing/cleaning issue
 |- reject out-of-scope services
 |- ask clarification
 |- estimate price range with disclaimer

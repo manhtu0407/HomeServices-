@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-export const SERVICE_TYPES = Object.freeze(["electrical", "plumbing"] as const);
+export const SERVICE_TYPES = Object.freeze([
+  "electrical",
+  "plumbing",
+  "cleaning",
+] as const);
 export type ServiceType = (typeof SERVICE_TYPES)[number];
 
 export const JOB_STATUSES = Object.freeze(
@@ -151,7 +155,7 @@ export function normalizeServiceAreaDistrict(
   return canonical as Exclude<DistrictSlug, "hcmc_all">;
 }
 
-export const serviceTypeSchema = z.enum(["electrical", "plumbing"]);
+export const serviceTypeSchema = z.enum(["electrical", "plumbing", "cleaning"]);
 
 export const jobCreateSchema = z.object({
   service_type: serviceTypeSchema,
@@ -188,7 +192,7 @@ export const workerRegisterSchema = z.object({
       "date_of_birth must be a real calendar date in YYYY-MM-DD",
     ),
   gender: z.enum(["male", "female", "other"]).optional(),
-  service_types: z.array(serviceTypeSchema).min(1).max(2),
+  service_types: z.array(serviceTypeSchema).min(1).max(3),
   years_experience: z.number().int().min(0).max(60),
   districts: z.array(z.string().min(1).max(50)).min(1).max(20),
   cccd_front_url: z.string().url(),
@@ -214,6 +218,32 @@ export const workerScopeChangeSchema = z
     path: ["new_price_max"],
   });
 
+export const workerCancellationRequestSchema = z.object({
+  reason: z.string().min(10).max(1000),
+  evidence_photo_urls: z.array(z.string().url()).max(5).default([]),
+});
+
+export const workerCancellationDecisionSchema = z.object({
+  decision: z.enum(["approve", "reject"]),
+  review_note: z.string().max(1000).optional(),
+});
+
+export const jobMediaAttachSchema = z.object({
+  assets: z.array(z.object({
+    object_path: z.string().min(10).max(500),
+    stage: z.enum(["before", "after", "kael_reference", "cancellation_evidence"]),
+    mime_type: z.string().min(3).max(120).optional(),
+    file_size_bytes: z.number().int().min(0).max(26_214_400).optional(),
+  })).min(1).max(5),
+});
+
+export const devicePushTokenSchema = z.object({
+  platform: z.enum(["ios", "android", "web", "unknown"]),
+  push_token: z.string().min(8).max(4096),
+  permission_status: z.enum(["granted", "denied", "undetermined"]),
+  safe_metadata: z.record(z.string(), z.unknown()).default({}),
+});
+
 export const customerScopeDecisionSchema = z.object({
   decision: z.enum(["approve", "reject"]),
 });
@@ -234,6 +264,14 @@ export type ReviewInput = z.infer<typeof reviewSchema>;
 export type WorkerRegisterInput = z.infer<typeof workerRegisterSchema>;
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>;
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>;
+export type WorkerCancellationRequestInput = z.infer<
+  typeof workerCancellationRequestSchema
+>;
+export type WorkerCancellationDecisionInput = z.infer<
+  typeof workerCancellationDecisionSchema
+>;
+export type JobMediaAttachInput = z.infer<typeof jobMediaAttachSchema>;
+export type DevicePushTokenInput = z.infer<typeof devicePushTokenSchema>;
 export type CustomerScopeDecisionInput = z.infer<
   typeof customerScopeDecisionSchema
 >;

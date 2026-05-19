@@ -110,7 +110,10 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain('extractKnownDistrictLabel')
     expect(provider).toContain('address_district: districtLabel')
     expect(provider).toContain('workerService.getBroadcasts')
+    expect(provider).toContain('workerService.register')
     expect(provider).toContain('workerService.updateAvailability')
+    expect(provider).toContain("role !== 'worker' && role !== 'admin'")
+    expect(provider).toContain("role !== 'customer' && role !== 'admin'")
     expect(provider).toContain('await workerRefresh()')
 
     for (const ui of [booking, customer, worker]) {
@@ -132,8 +135,18 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(worker).toContain('actions.workerDeclineBroadcast')
     expect(worker).toContain('actions.workerUpdateStatus')
     expect(worker).toContain('actions.workerUpdateAvailability')
+    expect(worker).toContain('actions.workerSubmitRegistration')
+    expect(worker).toContain('uploadWorkerVerificationDrafts')
     expect(worker).toContain('actions.requestScopeChange')
     expect(worker).toContain('worker-scope-change-request')
+  })
+
+  it('stores worker verification uploads as private Supabase storage refs, not public URLs', () => {
+    const mediaUpload = read('lib/media-upload.ts')
+
+    expect(mediaUpload).toContain("from('worker-verification').upload")
+    expect(mediaUpload).toContain('supabase://worker-verification/${objectPath}')
+    expect(mediaUpload).not.toContain("from('worker-verification').getPublicUrl")
   })
 
   it('carries active scope-change details from job detail into customer decision UI', () => {
@@ -154,8 +167,9 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('polls remote workflow state without overwriting explicit no-worker fallback', () => {
     const provider = read('lib/frontend-workflow-provider.tsx')
 
-    expect(provider).toContain('setInterval(() => void workerRefresh()')
-    expect(provider).toContain('setInterval(() => void refreshCurrentJob()')
+    expect(provider).toContain('if (isAppForeground()) void workerRefresh()')
+    expect(provider).toContain('if (isAppForeground()) void refreshCurrentJob()')
+    expect(provider).toContain('AppState.currentState')
     expect(provider).toContain("customerBroadcast?.status === 'expired'")
     expect(provider).toContain("broadcastState?.active_count === 0")
     expect(provider).toContain('const currentJobId = getRemoteJobId(stateRef.current)')

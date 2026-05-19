@@ -156,7 +156,7 @@ describe('mobile local workflow state machine', () => {
     expect(draft.serviceType).toBeNull()
     expect(draft.needsServiceChoice).toBe(true)
     expect(draft.problemChips).toEqual([])
-    expect(draft.unsupportedServiceLabel).toContain('chỉ hỗ trợ sửa điện và sửa nước')
+    expect(draft.unsupportedServiceLabel).toContain('chỉ hỗ trợ sửa điện, sửa nước và vệ sinh')
   })
 
   it('does not misclassify unsupported AC leak language as plumbing', () => {
@@ -165,7 +165,7 @@ describe('mobile local workflow state machine', () => {
     expect(draft.serviceType).toBeNull()
     expect(draft.needsServiceChoice).toBe(true)
     expect(draft.problemChips).toEqual([])
-    expect(draft.unsupportedServiceLabel).toContain('chỉ hỗ trợ sửa điện và sửa nước')
+    expect(draft.unsupportedServiceLabel).toContain('chỉ hỗ trợ sửa điện, sửa nước và vệ sinh')
   })
 
   it('clears unsupported Kael hints after the customer explicitly chooses a supported service in booking', () => {

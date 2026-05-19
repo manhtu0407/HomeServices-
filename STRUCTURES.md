@@ -54,9 +54,10 @@ Supported now
 -
 |- Electrical repair
 |- Plumbing repair
+|- Home cleaning / housekeeping
 |- HCMC apartments
 |- Customer-to-worker matching
-|- Kael AI Price Check
+|- Kael-first AI intake, diagnosis, price check, worker brief, and support
 ```
 
 Out of scope now:
@@ -64,7 +65,6 @@ Out of scope now:
 ```text
 Not supported now
 -
-|- Cleaning
 |- AC repair
 |- Appliance repair
 |- General handyman marketplace
@@ -79,7 +79,7 @@ If a user asks for an unsupported service, Kael must politely decline:
 
 ```text
 Current meaning:
-"We currently only support electrical repair and plumbing repair. Please come back when we open more services."
+"We currently only support electrical repair, plumbing repair, and home cleaning. Please come back when we open more services."
 ```
 
 Kael today:
@@ -88,7 +88,7 @@ Kael today:
 Kael = AI Price Check + camera-based problem understanding
 -
 |- receives customer text/photos/videos
-|- identifies likely electrical/plumbing problem
+|- identifies likely electrical/plumbing/cleaning problem
 |- asks clarification when needed
 |- estimates market price range
 |- explains uncertainty
@@ -154,7 +154,7 @@ Product principle:
 ```text
 Copy the validated shape.
 Remove what is heavy or unclear.
-Adapt it to electrical/plumbing Price Check.
+Adapt it to electrical/plumbing/cleaning Price Check.
 Keep the path to the first real transaction short.
 ```
 
@@ -164,7 +164,7 @@ Keep the path to the first real transaction short.
 
 ### Customer
 
-The customer is an HCMC apartment resident who needs electrical or plumbing help, wants a fair price estimate, and wants a trustworthy worker.
+The customer is an HCMC apartment resident who needs electrical, plumbing, or home cleaning help, wants a fair price estimate, and wants a trustworthy worker.
 
 Customer app responsibilities:
 
@@ -192,6 +192,7 @@ Worker app responsibilities:
 Worker app
 -
 |- register and submit verification
+|- upload identity/selfie files into the private worker-verification storage box
 |- toggle availability
 |- receive incoming job request
 |- accept or skip within countdown
@@ -316,7 +317,7 @@ define the backend contract before building final UI.
 
 ## 5. Service Taxonomy
 
-Only electrical and plumbing are active. Other services may appear as disabled "coming soon" UI only, never functional.
+Only electrical, plumbing, and home cleaning are active. Other services may appear as disabled "coming soon" UI only, never functional.
 
 ### Electrical Taxonomy
 
@@ -435,9 +436,11 @@ Step contract
 ```text
 Customer opens app
 -
-|- logs in with phone OTP
+|- chooses role first
+|- signs in with current Supabase email/password auth in Phase 0
+|- phone OTP is a later production-auth upgrade after SMS provider setup
 |- creates apartment profile
-|- selects electrical/plumbing
+|- selects electrical/plumbing/cleaning
 |- chooses problem chips
 |- describes issue + uploads photos
 |- Kael analyzes
@@ -464,8 +467,9 @@ Purpose
 
 User input
 -
-|- phone number
-|- OTP
+|- email
+|- password
+|- phone number later when OTP auth is enabled
 |- name
 |- building name
 |- unit number
@@ -480,8 +484,9 @@ Backend dependency
 
 Validation
 -
-|- phone required
-|- OTP required
+|- email required in Phase 0
+|- password required in Phase 0
+|- phone/OTP required later when SMS provider is enabled
 |- district required
 |- address can be edited later
 
@@ -501,7 +506,7 @@ Tests
 Purpose
 -
 |- show active address
-|- provide entry to electrical/plumbing booking
+|- provide entry to electrical/plumbing/cleaning booking
 |- show active booking if any
 |- show recent jobs
 
@@ -513,7 +518,8 @@ UI
 |- address bar
 |- electrical card
 |- plumbing card
-|- disabled future service cards
+|- cleaning card
+|- disabled future service cards only for non-active future services
 |- active booking banner
 |- recent history
 |- bottom tabs: Home / Book / Kael / History / Profile
@@ -533,7 +539,7 @@ Purpose
 
 User input
 -
-|- service_type: electrical or plumbing
+|- service_type: electrical, plumbing, or cleaning
 |- one or more problem chips
 |- other problem free text when needed
 
@@ -544,7 +550,7 @@ Backend dependency
 
 Validation
 -
-|- service_type must be electrical or plumbing
+|- service_type must be electrical, plumbing, or cleaning
 |- unsupported service returns polite decline
 
 Events
@@ -859,7 +865,9 @@ Learning impact
 ```text
 Worker opens app
 -
-|- registers with phone OTP
+|- chooses worker role first
+|- signs in with current Supabase email/password auth in Phase 0
+|- phone OTP is a later production-auth upgrade after SMS provider setup
 |- submits identity + skill info
 |- waits for admin approval
 |- turns online
@@ -884,11 +892,12 @@ Purpose
 
 Input
 -
-|- phone OTP
+|- email/password auth in Phase 0
+|- phone OTP later when SMS provider is enabled
 |- legal name
 |- date of birth
 |- gender optional
-|- service skills: electrical / plumbing / both
+|- service skills: electrical / plumbing / cleaning, including multi-service combinations
 |- years of experience
 |- working districts
 |- CCCD front/back
@@ -1429,7 +1438,8 @@ Each module must define
 Responsibility
 -
 |- customer/worker/admin identity
-|- phone OTP auth
+|- role-first Supabase email/password auth in Phase 0
+|- phone OTP auth later after SMS provider setup
 |- role-safe profile creation
 |- customer apartment profile
 |- worker verification profile
@@ -1445,7 +1455,7 @@ Forbidden
 ```text
 Responsibility
 -
-|- electrical/plumbing taxonomy
+|- electrical/plumbing/cleaning taxonomy
 |- problem categories
 |- complexity hints
 |- disabled future service entries
@@ -1791,6 +1801,7 @@ Worker trust
 -
 |- phone verified
 |- identity submitted
+|- CCCD front/back and selfie stored in worker-verification storage
 |- admin approved
 |- service skill declared
 |- working district declared
@@ -2191,7 +2202,8 @@ Idempotency:
 ```text
 Idempotency required for
 -
-|- OTP/profile creation
+|- auth/profile creation
+|- OTP/profile creation later when SMS provider is enabled
 |- booking confirmation
 |- job broadcast
 |- worker accept
@@ -2301,7 +2313,7 @@ Do not build now
 |- autonomous payment
 |- autonomous cancellation
 |- autonomous worker punishment
-|- service expansion beyond electrical/plumbing
+|- service expansion beyond electrical/plumbing/cleaning
 |- multi-city support
 |- consumer web app
 |- complex custom memory system outside controlled learning tables

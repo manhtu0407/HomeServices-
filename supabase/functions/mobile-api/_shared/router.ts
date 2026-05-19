@@ -3,10 +3,18 @@ import {
   availabilityToggleSchema,
   type CustomerScopeDecisionInput,
   customerScopeDecisionSchema,
+  type DevicePushTokenInput,
+  devicePushTokenSchema,
   type JobCreateInput,
+  type JobMediaAttachInput,
+  jobMediaAttachSchema,
   jobCreateSchema,
   type ReviewInput,
   reviewSchema,
+  type WorkerCancellationDecisionInput,
+  workerCancellationDecisionSchema,
+  type WorkerCancellationRequestInput,
+  workerCancellationRequestSchema,
   type WorkerRegisterInput,
   workerRegisterSchema,
   type WorkerScopeChangeInput,
@@ -106,11 +114,58 @@ type WorkerScopeChangeResponse = {
   status: ScopeChangeStatus;
   created_at: string;
 };
+type WorkerCancellationResponse = {
+  cancellation_id: string;
+  job_id: string;
+  status: string;
+  created_at: string;
+};
+type WorkerCancellationDecisionResponse = {
+  cancellation_id: string;
+  job_id: string;
+  status: string;
+  job_status: JobStatus;
+  broadcast_sent: boolean;
+  message: string;
+};
+type JobMediaAttachResponse = {
+  job_id: string;
+  photo_urls: string[];
+  media: {
+    bucket_id: "job-media";
+    object_path: string;
+    storage_ref: string;
+    stage: "before" | "after" | "kael_reference" | "cancellation_evidence";
+  }[];
+};
 type CustomerScopeDecisionResponse = {
   scope_change_id: string;
   job_id: string;
   status: ScopeChangeStatus;
   decided_at: string;
+};
+type NotificationListResponse = {
+  unread_count: number;
+  notifications: {
+    id: string;
+    title: string;
+    body: string;
+    event_type: string;
+    status: string;
+    job_id: string | null;
+    created_at: string;
+    read_at: string | null;
+  }[];
+};
+type NotificationReadResponse = {
+  notification_id: string;
+  status: "read";
+  read_at: string;
+};
+type DevicePushTokenResponse = {
+  token_id: string;
+  enabled: boolean;
+  updated_at: string;
 };
 type BroadcastListResponse = {
   broadcasts: {
@@ -297,6 +352,21 @@ export type MobileApiServices = {
     jobId: string,
     input: WorkerScopeChangeInput,
   ): Promise<WorkerScopeChangeResponse>;
+  requestWorkerCancellation(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: WorkerCancellationRequestInput,
+  ): Promise<WorkerCancellationResponse>;
+  attachJobMedia(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: JobMediaAttachInput,
+  ): Promise<JobMediaAttachResponse>;
+  decideWorkerCancellation(
+    ctx: MobileApiContext,
+    cancellationId: string,
+    input: WorkerCancellationDecisionInput,
+  ): Promise<WorkerCancellationDecisionResponse>;
   decideScopeChange(
     ctx: MobileApiContext,
     scopeChangeId: string,
@@ -326,6 +396,15 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     range: { from?: string; to?: string },
   ): Promise<EarningsResponse>;
+  listNotifications(ctx: MobileApiContext): Promise<NotificationListResponse>;
+  markNotificationRead(
+    ctx: MobileApiContext,
+    notificationId: string,
+  ): Promise<NotificationReadResponse>;
+  registerDevicePushToken(
+    ctx: MobileApiContext,
+    input: DevicePushTokenInput,
+  ): Promise<DevicePushTokenResponse>;
 };
 
 export type MobileApiHandlerDeps = {
@@ -425,9 +504,29 @@ type Route =
     successStatus: 201;
   }
   | {
+    kind: "jobs.workerCancellation";
+    method: "POST";
+    jobId: string;
+    roles: UserRole[];
+    successStatus: 201;
+  }
+  | {
+    kind: "jobs.media";
+    method: "POST";
+    jobId: string;
+    roles: UserRole[];
+    successStatus: 201;
+  }
+  | {
     kind: "scope.decide";
     method: "POST";
     scopeChangeId: string;
+    roles: UserRole[];
+  }
+  | {
+    kind: "workerCancellation.decide";
+    method: "POST";
+    cancellationId: string;
     roles: UserRole[];
   }
   | {
@@ -453,7 +552,15 @@ type Route =
   | { kind: "workers.availability"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
-  | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] };
+  | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
+  | { kind: "notifications"; method: "GET"; roles: UserRole[] }
+  | { kind: "notifications.deviceToken"; method: "POST"; roles: UserRole[] }
+  | {
+    kind: "notifications.read";
+    method: "POST";
+    notificationId: string;
+    roles: UserRole[];
+  };
 
 function matchRoute(request: Request): Route | null {
   const path = normalizePath(new URL(request.url).pathname);
@@ -466,8 +573,22 @@ function matchRoute(request: Request): Route | null {
     return {
       kind: "jobs.create",
       method: "POST",
-      roles: ["customer"],
+      roles: ["customer", "admin"],
       successStatus: 201,
+    };
+  }
+  if (method === "GET" && path === "/notifications") {
+    return {
+      kind: "notifications",
+      method: "GET",
+      roles: ["customer", "worker", "admin"],
+    };
+  }
+  if (method === "POST" && path === "/notifications/device-token") {
+    return {
+      kind: "notifications.deviceToken",
+      method: "POST",
+      roles: ["customer", "worker", "admin"],
     };
   }
   if (method === "POST" && path === "/workers/register") {
@@ -479,19 +600,19 @@ function matchRoute(request: Request): Route | null {
     };
   }
   if (method === "GET" && path === "/workers/me") {
-    return { kind: "workers.me", method: "GET", roles: ["worker"] };
+    return { kind: "workers.me", method: "GET", roles: ["worker", "admin"] };
   }
   if (method === "PATCH" && path === "/workers/me/availability") {
-    return { kind: "workers.availability", method: "PATCH", roles: ["worker"] };
+    return { kind: "workers.availability", method: "PATCH", roles: ["worker", "admin"] };
   }
   if (method === "GET" && path === "/workers/me/broadcasts") {
-    return { kind: "workers.broadcasts", method: "GET", roles: ["worker"] };
+    return { kind: "workers.broadcasts", method: "GET", roles: ["worker", "admin"] };
   }
   if (method === "GET" && path === "/workers/me/jobs") {
-    return { kind: "workers.jobs", method: "GET", roles: ["worker"] };
+    return { kind: "workers.jobs", method: "GET", roles: ["worker", "admin"] };
   }
   if (method === "GET" && path === "/workers/me/earnings") {
-    return { kind: "workers.earnings", method: "GET", roles: ["worker"] };
+    return { kind: "workers.earnings", method: "GET", roles: ["worker", "admin"] };
   }
 
   const job = path.match(/^\/jobs\/([^/]+)(?:\/([^/]+))?$/);
@@ -507,7 +628,7 @@ function matchRoute(request: Request): Route | null {
         kind: "jobs.confirmSearch",
         method: "POST",
         jobId,
-        roles: ["customer"],
+        roles: ["customer", "admin"],
       };
     }
     if (action === "cancel" && method === "POST") {
@@ -515,24 +636,42 @@ function matchRoute(request: Request): Route | null {
         kind: "jobs.cancel",
         method: "POST",
         jobId,
-        roles: ["customer"],
+        roles: ["customer", "admin"],
       };
     }
     if (action === "accept" && method === "POST") {
-      return { kind: "jobs.accept", method: "POST", jobId, roles: ["worker"] };
+      return { kind: "jobs.accept", method: "POST", jobId, roles: ["worker", "admin"] };
     }
     if (action === "decline" && method === "POST") {
-      return { kind: "jobs.decline", method: "POST", jobId, roles: ["worker"] };
+      return { kind: "jobs.decline", method: "POST", jobId, roles: ["worker", "admin"] };
     }
     if (action === "status" && method === "PATCH") {
-      return { kind: "jobs.status", method: "PATCH", jobId, roles: ["worker"] };
+      return { kind: "jobs.status", method: "PATCH", jobId, roles: ["worker", "admin"] };
     }
     if (action === "scope-change" && method === "POST") {
       return {
         kind: "jobs.scopeChange",
         method: "POST",
         jobId,
-        roles: ["worker"],
+        roles: ["worker", "admin"],
+        successStatus: 201,
+      };
+    }
+    if (action === "worker-cancellation" && method === "POST") {
+      return {
+        kind: "jobs.workerCancellation",
+        method: "POST",
+        jobId,
+        roles: ["worker", "admin"],
+        successStatus: 201,
+      };
+    }
+    if (action === "media" && method === "POST") {
+      return {
+        kind: "jobs.media",
+        method: "POST",
+        jobId,
+        roles: ["customer", "worker", "admin"],
         successStatus: 201,
       };
     }
@@ -541,7 +680,7 @@ function matchRoute(request: Request): Route | null {
         kind: "jobs.confirmCompletion",
         method: "POST",
         jobId,
-        roles: ["customer"],
+        roles: ["customer", "admin"],
       };
     }
     if (action === "review" && method === "POST") {
@@ -549,7 +688,7 @@ function matchRoute(request: Request): Route | null {
         kind: "jobs.review",
         method: "POST",
         jobId,
-        roles: ["customer"],
+        roles: ["customer", "admin"],
         successStatus: 201,
       };
     }
@@ -563,7 +702,33 @@ function matchRoute(request: Request): Route | null {
       kind: "scope.decide",
       method: "POST",
       scopeChangeId,
-      roles: ["customer"],
+      roles: ["customer", "admin"],
+    };
+  }
+
+  const workerCancellation = path.match(
+    /^\/worker-cancellations\/([^/]+)\/decide$/,
+  );
+  if (workerCancellation && method === "POST") {
+    const cancellationId = safeDecodePathSegment(workerCancellation[1] ?? "");
+    if (!cancellationId) return null;
+    return {
+      kind: "workerCancellation.decide",
+      method: "POST",
+      cancellationId,
+      roles: ["admin"],
+    };
+  }
+
+  const notification = path.match(/^\/notifications\/([^/]+)\/read$/);
+  if (notification && method === "POST") {
+    const notificationId = safeDecodePathSegment(notification[1] ?? "");
+    if (!notificationId) return null;
+    return {
+      kind: "notifications.read",
+      method: "POST",
+      notificationId,
+      roles: ["customer", "worker", "admin"],
     };
   }
 
@@ -612,12 +777,35 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.requestScopeChange(ctx, route.jobId, input.data);
     }
+    case "jobs.workerCancellation": {
+      const input = workerCancellationRequestSchema.safeParse(
+        await readJson(request),
+      );
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.requestWorkerCancellation(ctx, route.jobId, input.data);
+    }
+    case "jobs.media": {
+      const input = jobMediaAttachSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.attachJobMedia(ctx, route.jobId, input.data);
+    }
     case "scope.decide": {
       const input = customerScopeDecisionSchema.safeParse(
         await readJson(request),
       );
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.decideScopeChange(ctx, route.scopeChangeId, input.data);
+    }
+    case "workerCancellation.decide": {
+      const input = workerCancellationDecisionSchema.safeParse(
+        await readJson(request),
+      );
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.decideWorkerCancellation(
+        ctx,
+        route.cancellationId,
+        input.data,
+      );
     }
     case "jobs.confirmCompletion":
       return services.confirmCompletion(ctx, route.jobId);
@@ -659,6 +847,15 @@ async function dispatchRoute(
       }
       return services.getWorkerEarnings(ctx, { from, to });
     }
+    case "notifications":
+      return services.listNotifications(ctx);
+    case "notifications.deviceToken": {
+      const input = devicePushTokenSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.registerDevicePushToken(ctx, input.data);
+    }
+    case "notifications.read":
+      return services.markNotificationRead(ctx, route.notificationId);
   }
 }
 

@@ -19,6 +19,13 @@ const workerAuth: MobileApiAuthResult = {
   supabase: {},
 }
 
+const adminAuth: MobileApiAuthResult = {
+  success: true,
+  user: { id: '99999999-9999-4999-8999-999999999999' },
+  role: 'admin',
+  supabase: {},
+}
+
 function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServices {
   return {
     listServices: vi.fn(async () => ({ services: [] })),
@@ -47,6 +54,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     updateJobStatus: vi.fn(),
     requestScopeChange: vi.fn(),
     decideScopeChange: vi.fn(),
+    requestWorkerCancellation: vi.fn(),
+    attachJobMedia: vi.fn(),
+    decideWorkerCancellation: vi.fn(),
     confirmCompletion: vi.fn(),
     submitReview: vi.fn(),
     registerWorker: vi.fn(),
@@ -55,6 +65,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     listWorkerBroadcasts: vi.fn(),
     listWorkerJobs: vi.fn(),
     getWorkerEarnings: vi.fn(),
+    listNotifications: vi.fn(),
+    markNotificationRead: vi.fn(),
+    registerDevicePushToken: vi.fn(),
     ...overrides,
   }
 }
@@ -124,6 +137,85 @@ describe('mobile-api Edge router contract', () => {
     expect(listServices).not.toHaveBeenCalled()
   })
 
+  it('routes notification inbox through authenticated mobile API services', async () => {
+    const listNotifications = vi.fn(async () => ({
+      unread_count: 1,
+      notifications: [{
+        id: 'notification-1',
+        title: 'Kael',
+        body: 'Có cập nhật mới',
+        event_type: 'job_update',
+        status: 'sent',
+        job_id: null,
+        created_at: '2026-05-19T00:00:00.000Z',
+        read_at: null,
+      }],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ listNotifications }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/notifications'))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ unread_count: 1 })
+    expect(listNotifications).toHaveBeenCalledWith(expect.objectContaining({ role: 'customer' }))
+  })
+
+  it('routes notification read receipts through authenticated mobile API services', async () => {
+    const markNotificationRead = vi.fn(async () => ({
+      notification_id: 'notification-1',
+      status: 'read' as const,
+      read_at: '2026-05-19T00:00:00.000Z',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ markNotificationRead }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/notifications/notification-1/read', {
+      method: 'POST',
+    }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ status: 'read' })
+    expect(markNotificationRead).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      'notification-1',
+    )
+  })
+
+  it('routes device push token registration through authenticated mobile API services', async () => {
+    const registerDevicePushToken = vi.fn(async () => ({
+      token_id: '44444444-4444-4444-8444-444444444444',
+      enabled: true,
+      updated_at: '2026-05-19T00:00:00.000Z',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ registerDevicePushToken }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/notifications/device-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'ios',
+        push_token: 'ExponentPushToken[valid-token]',
+        permission_status: 'granted',
+        safe_metadata: { device: 'expo-go' },
+      }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ enabled: true })
+    expect(registerDevicePushToken).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      expect.objectContaining({ platform: 'ios', permission_status: 'granted' }),
+    )
+  })
+
   it('does not dispatch worker routes when the authenticator rejects the role', async () => {
     const updateJobStatus = vi.fn()
     const authenticate = vi.fn(async (): Promise<MobileApiAuthResult> => ({
@@ -147,7 +239,7 @@ describe('mobile-api Edge router contract', () => {
       code: 'AUTH_FORBIDDEN',
       error: 'forbidden',
     })
-    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker'])
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker', 'admin'])
     expect(updateJobStatus).not.toHaveBeenCalled()
   })
 
@@ -216,6 +308,86 @@ describe('mobile-api Edge router contract', () => {
       expect.objectContaining({
         service_type: 'plumbing',
         address_district: 'q7',
+      }),
+    )
+  })
+
+  it('lets admin QA exercise the customer job creation route explicitly', async () => {
+    const createJob = vi.fn(async () => ({
+      job_id: '22222222-2222-4222-8222-222222222222',
+      status: 'awaiting_customer_confirm' as const,
+      estimate: {
+        service_type: 'cleaning' as const,
+        problem_category: 'home_cleaning',
+        problem_summary: 'Can don dep can ho',
+        complexity: 'medium' as const,
+        price_min: 200000,
+        price_max: 450000,
+        confidence: 0.6,
+        advisory: null,
+        disclaimer: 'Uoc tinh se duoc xac nhan truoc khi bat dau.',
+      },
+      fallback_used: false,
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => adminAuth),
+      services: makeServices({ createJob }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service_type: 'cleaning',
+        problem_chips: ['Don dep nha'],
+        description: 'Can don dep can ho sau khi sua chua va gom rac nhe',
+        photo_urls: [],
+        address_district: 'q7',
+      }),
+    }))
+
+    expect(response.status).toBe(201)
+    expect(createJob).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin', user: adminAuth.user }),
+      expect.objectContaining({ service_type: 'cleaning' }),
+    )
+  })
+
+  it('passes validated POST /jobs/:id/media payload to the backend service', async () => {
+    const attachJobMedia = vi.fn(async () => ({
+      job_id: '22222222-2222-4222-8222-222222222222',
+      photo_urls: ['supabase://job-media/22222222-2222-4222-8222-222222222222/before/photo.jpg'],
+      media: [{
+        bucket_id: 'job-media' as const,
+        object_path: '22222222-2222-4222-8222-222222222222/before/photo.jpg',
+        storage_ref: 'supabase://job-media/22222222-2222-4222-8222-222222222222/before/photo.jpg',
+        stage: 'before' as const,
+      }],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ attachJobMedia }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/22222222-2222-4222-8222-222222222222/media', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assets: [{
+          object_path: '22222222-2222-4222-8222-222222222222/before/photo.jpg',
+          stage: 'before',
+          mime_type: 'image/jpeg',
+          file_size_bytes: 1200,
+        }],
+      }),
+    }))
+
+    expect(response.status).toBe(201)
+    expect(attachJobMedia).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      '22222222-2222-4222-8222-222222222222',
+      expect.objectContaining({
+        assets: [expect.objectContaining({ stage: 'before' })],
       }),
     )
   })

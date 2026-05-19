@@ -7,7 +7,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <FrontendWorkflowProvider>
-        <StatusBar style="dark" />
+        <StatusBar style="auto" />
         <Slot />
       </FrontendWorkflowProvider>
     </AuthProvider>

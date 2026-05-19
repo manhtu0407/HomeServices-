@@ -51,12 +51,13 @@ describe('Worker profile seed', () => {
     expect(SEED.toLowerCase()).toContain('insert into worker_profiles')
   })
 
-  it('worker has both service types (electrical + plumbing)', () => {
+  it('worker has all three active service types', () => {
     const workerSection = SEED.substring(
       SEED.toLowerCase().indexOf('insert into worker_profiles')
     )
     expect(workerSection).toContain("'electrical'")
     expect(workerSection).toContain("'plumbing'")
+    expect(workerSection).toContain("'cleaning'")
   })
 
   it('worker is approved and available for testing', () => {

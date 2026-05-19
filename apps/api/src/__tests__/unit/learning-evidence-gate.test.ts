@@ -232,7 +232,7 @@ describe('shouldPromote — forbidden autonomy guards', () => {
   it('rejects price payload with unsupported service_type', () => {
     const bad = pricePayload()
     // Force-cast to bypass TS scope_change_pending — testing runtime safety.
-    ;(bad.scope as { service_type: string }).service_type = 'cleaning'
+    ;(bad.scope as { service_type: string }).service_type = 'hvac'
     const decision = shouldPromote(priceCandidate({ suggested_payload: bad }), [])
     expect(decision.promote).toBe(false)
     if (!decision.promote) expect(decision.reason).toBe('forbidden_autonomy')

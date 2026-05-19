@@ -58,7 +58,7 @@ Project-specific filters:
 - Prefer existing Supabase, Expo, Next.js, and Turbo patterns.
 - Prefer explicit data flow over magic.
 - Prefer small functions over framework-like internal APIs.
-- Keep Kael narrow: price check for electrical and plumbing only.
+- Keep Kael scoped to Home Services: electrical repair, plumbing repair, and home cleaning/housekeeping only.
 
 ## Core Skill 3: Surgical Changes
 
@@ -155,8 +155,8 @@ Product:
 
 - Primary client is React Native / Expo.
 - Next.js is secondary: API routes and admin only.
-- Service scope is electrical and plumbing only.
-- Kael is AI Price Check only.
+- Service scope is electrical, plumbing, and cleaning only.
+- Kael is the primary AI assistant for intake, diagnosis, price analysis, worker brief, and support; Kael never performs booking, payment, cancellation, or worker punishment without explicit user/admin confirmation.
 - Optimize for first real transaction, not architectural perfection.
 
 Security:
