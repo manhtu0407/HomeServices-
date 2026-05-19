@@ -13,10 +13,13 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native'
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { serviceLabel, statusLabel, type LocalCustomerSearchState, type LocalDealStatus, type ServiceType } from '@home-services/shared'
+import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { GlassCard } from '@/components/ui/glass-card'
+import { GlassPressable } from '@/components/ui/glass-pressable'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
@@ -210,6 +213,20 @@ export function getCustomerThemeTokens(mode: ThemeMode) {
   return mode === 'light' ? CUSTOMER_THEME_TOKENS.lightLayer : CUSTOMER_THEME_TOKENS.darkLayer
 }
 
+function getReducedTransparencyCustomerTokens(tokens: CustomerThemeTokens): CustomerThemeTokens {
+  return {
+    ...tokens,
+    ghost: tokens.mode === 'dark' ? 'rgba(18,39,36,0.96)' : 'rgba(255,253,248,0.96)',
+    glass: tokens.mode === 'dark' ? 'rgba(18,39,36,0.96)' : 'rgba(255,253,248,0.96)',
+    glassBorder: tokens.borderStrong,
+    glassFloatShadow: 'none',
+    glassHighlight: 'transparent',
+    glassShadow: 'none',
+    glassStrong: tokens.mode === 'dark' ? 'rgba(22,43,40,0.98)' : 'rgba(255,255,255,0.98)',
+    glassWarm: tokens.mode === 'dark' ? 'rgba(59,41,27,0.96)' : 'rgba(255,247,235,0.98)',
+  }
+}
+
 function getCustomerLanguageModeSnapshot() {
   return customerLanguageMode
 }
@@ -270,17 +287,16 @@ export function CustomerHomeSurface() {
         <>
           <V4MapBackdrop />
           <View style={styles.v4Content}>
-            <Pressable style={[styles.searchPill, glassSurface(tokens, 'strong')]} onPress={() => openBookingFlow()} testID="customer-home-search-entry">
-              <GlassSheen />
+            <GlassPressable accessibilityLabel="Mở kiểm giá dịch vụ" accessibilityRole="button" mode={tokens.mode} onPress={() => openBookingFlow()} style={styles.searchPill} testID="customer-home-search-entry" variant="control">
+              <SubtleGlassHighlight />
               <IconGlyph name="estimate" color={tokens.primary} accent={tokens.copper} />
               <Text style={[styles.searchText, { color: tokens.muted }]} numberOfLines={1}>
                 Bạn cần sửa gì?
               </Text>
-            </Pressable>
+            </GlassPressable>
 
             <View style={styles.homeMapSpace} />
-            <View style={[styles.homeSheet, glassSurface(tokens, 'warm')]}>
-              <GlassSheen />
+            <View style={[styles.homeSheet, customerOpaqueSurface(tokens)]}>
               <View style={styles.hiddenMarker} testID="customer-home-signature-v4" />
               <View style={styles.hiddenMarker} testID="customer-home-layer-stack" />
               <View style={styles.hiddenMarker} testID="customer-home-hero-depth-grid" />
@@ -291,8 +307,7 @@ export function CustomerHomeSurface() {
                 <V4ServiceCard icon="cleaning" title="Vệ sinh" testID="customer-shell-service-cleaning" onPress={() => openBookingFlow('cleaning')} />
               </View>
               {visibleNotifications.length > 0 ? (
-                <View style={[styles.notificationInlineCard, glassSurface(tokens, 'service')]} testID="customer-notification-inbox-live">
-                  <GlassSheen />
+                <View style={[styles.notificationInlineCard, customerOpaqueSurface(tokens)]} testID="customer-notification-inbox-live">
                   <IconGlyph name="notification" color={tokens.primary} accent={tokens.copper} />
                   <View style={styles.notificationInlineBody}>
                     <Text style={[styles.notificationInlineText, { color: tokens.text }]} numberOfLines={1}>
@@ -300,6 +315,7 @@ export function CustomerHomeSurface() {
                     </Text>
                     {visibleNotifications.map((item) => (
                       <Pressable
+                        accessibilityLabel={`${item.title}. ${item.body}`}
                         accessibilityRole="button"
                         key={item.id}
                         onPress={() => {
@@ -318,12 +334,12 @@ export function CustomerHomeSurface() {
               ) : null}
               {activeDeal ? (
                 <Pressable
+                  accessibilityLabel={`Mở yêu cầu ${serviceLabel(activeDeal.draft.serviceType)} đang xử lý`}
                   accessibilityRole="button"
                   onPress={() => push(activeDealRoute)}
-                  style={[styles.ticketCard, glassSurface(tokens, 'service')]}
+                  style={[styles.ticketCard, customerOpaqueSurface(tokens)]}
                   testID="customer-home-active-local-deal"
                 >
-                  <GlassSheen />
                   <View style={styles.sectionTitle}>
                     <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                       {serviceLabel(activeDeal.draft.serviceType)}
@@ -348,8 +364,7 @@ export function CustomerHomeSurface() {
               </View>
               <View style={styles.smallServiceGrid}>
                 {['Điều hòa', 'Thiết bị', 'Sửa vặt'].map((label) => (
-                  <View key={label} style={[styles.smallService, glassSurface(tokens)]}>
-                    <GlassSheen />
+                  <View key={label} style={[styles.smallService, customerOpaqueSurface(tokens)]}>
                     <IconGlyph name="privacy" color={tokens.subtleText} accent={tokens.subtleText} />
                     <Text style={[styles.smallServiceText, { color: tokens.subtleText }]} numberOfLines={1}>
                       {label}
@@ -357,16 +372,17 @@ export function CustomerHomeSurface() {
                   </View>
                 ))}
               </View>
-              <Pressable style={[styles.promoCard, glassSurface(tokens, 'warm')]} onPress={() => openBookingFlow()} testID="customer-home-layered-hero">
-                <GlassSheen />
-                <View style={[styles.promoMintCloud, { backgroundColor: tokens.aqua }]} />
-                <View style={[styles.promoWarmCloud, { backgroundColor: tokens.copper }]} />
-                <View style={[styles.promoOrb, { backgroundColor: tokens.raised, borderColor: tokens.border }]} />
-                <Text style={[styles.promoTitle, { color: tokens.text }]} numberOfLines={4}>
-                  Không biết giá chính là cái giá đắt nhất!
-                </Text>
-                <View style={styles.hiddenMarker} testID="customer-home-ticket-decor" />
-              </Pressable>
+              <GlassCard mode={tokens.mode} style={styles.promoCard} testID="customer-home-layered-hero">
+                <Pressable accessibilityLabel="Mở kiểm giá trước khi đặt dịch vụ" accessibilityRole="button" onPress={() => openBookingFlow()} style={styles.promoCardHitArea}>
+                  <View style={[styles.promoMintCloud, { backgroundColor: tokens.aqua }]} />
+                  <View style={[styles.promoWarmCloud, { backgroundColor: tokens.copper }]} />
+                  <View style={[styles.promoOrb, { backgroundColor: tokens.raised, borderColor: tokens.border }]} />
+                  <Text style={[styles.promoTitle, { color: tokens.text }]} numberOfLines={4}>
+                    Không biết giá chính là cái giá đắt nhất!
+                  </Text>
+                  <View style={styles.hiddenMarker} testID="customer-home-ticket-decor" />
+                </Pressable>
+              </GlassCard>
               <View style={styles.hiddenMarker} testID="customer-home-other-services-message" />
               <View style={styles.hiddenMarker} testID="customer-home-relaxed-stage" />
               <View style={styles.hiddenMarker} testID="customer-home-coupon-strip" />
@@ -437,12 +453,10 @@ export function CustomerKaelSurface() {
   return (
     <V4Frame active="kael" testID="customer-kael-companion">
       {({ tokens }) => (
-        <View style={styles.plainContent} accessibilityLabel={`${KAEL_CHATBOX_SCREEN_CONTRACT}; ${KAEL_TICKET_COMPOSER_V3}`}>
-          <View style={[styles.kaelCard, glassSurface(tokens, 'depth')]} testID="customer-kael-chatbox">
-            <GlassSheen />
+        <View style={styles.plainContent}>
+          <View style={[styles.kaelCard, customerOpaqueSurface(tokens)]} testID="customer-kael-chatbox">
             <View style={styles.hiddenMarker} testID="customer-kael-ticket-composer" />
-            <View style={[styles.kaelChatStage, glassSurface(tokens, 'water'), !hasAnyKaelInfo ? styles.kaelChatStageEmpty : null]} testID="customer-kael-conversation-feed">
-              <GlassSheen />
+            <View style={[styles.kaelChatStage, customerOpaqueSurface(tokens), !hasAnyKaelInfo ? styles.kaelChatStageEmpty : null]} testID="customer-kael-conversation-feed">
               <View style={styles.hiddenMarker} testID="customer-kael-empty-chat-state" />
               {!hasAnyKaelInfo ? (
                 <View style={styles.kaelBlankCanvas} testID="customer-kael-empty-chat-canvas">
@@ -451,14 +465,14 @@ export function CustomerKaelSurface() {
                 </View>
               ) : (
                 <>
-                  <View style={[styles.kaelUserBubble, glassSurface(tokens, 'strong')]} testID="customer-kael-user-message">
+                  <View style={[styles.kaelUserBubble, customerMessageSurface(tokens)]} testID="customer-kael-user-message">
                     <Text style={[styles.bubbleTitle, styles.kaelUserText, { color: tokens.text }]} numberOfLines={3}>
                       {displayedKaelAnswer}
                     </Text>
                   </View>
                   {hasEnoughKaelInfo ? (
                     <View style={[styles.ticketCard, styles.kaelSummaryTicket, glassSurface(tokens, 'warm')]} testID="customer-kael-ticket-reveal-after-info">
-                      <GlassSheen />
+                      <SubtleGlassHighlight />
                       <View style={styles.hiddenMarker} testID="customer-kael-repair-ticket" />
                       <View style={styles.sectionTitle}>
                         <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
@@ -569,7 +583,7 @@ export function CustomerHistorySurface() {
       decision === 'approve' ? 'Duyệt thay đổi phạm vi?' : 'Từ chối thay đổi phạm vi?',
       decision === 'approve'
         ? 'Hệ thống sẽ ghi nhận khách đã duyệt thay đổi và cho thợ tiếp tục sửa.'
-        : 'Hệ thống sẽ ghi nhận khách từ chối thay đổi và dừng ticket này để tránh thợ tiếp tục phạm vi mới.',
+        : 'Hệ thống sẽ ghi nhận khách từ chối thay đổi và dừng yêu cầu này để tránh thợ tiếp tục phạm vi mới.',
       [
         { text: 'Kiểm tra lại', style: 'cancel' },
         {
@@ -587,7 +601,7 @@ export function CustomerHistorySurface() {
       {({ tokens }) => (
         <View style={styles.plainContent}>
           <View style={[styles.filterRow, glassSurface(tokens, 'strong')]} testID="customer-history-filter-shell">
-            <GlassSheen />
+            <SubtleGlassHighlight />
             {['Sửa', 'Kiểm giá', 'Trò chuyện', 'Xong'].map((label, index) => (
               <View key={label} style={[styles.filterChip, index === 0 ? { backgroundColor: tokens.primary } : { backgroundColor: tokens.raised }]}>
                 <Text style={[styles.filterText, { color: index === 0 ? tokens.primaryText : tokens.muted }]} numberOfLines={1}>
@@ -596,8 +610,7 @@ export function CustomerHistorySurface() {
               </View>
             ))}
           </View>
-          <View style={[styles.flowCard, glassSurface(tokens)]} testID="customer-history-empty-state">
-            <GlassSheen />
+          <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-empty-state">
             <View style={styles.sectionTitle}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                 {deal ? serviceLabel(deal.draft.serviceType) : 'Chưa có phiếu'}
@@ -614,8 +627,7 @@ export function CustomerHistorySurface() {
             ) : null}
             <PrimaryButton label={historyActionLabel} onPress={continueOrCreate} compact />
           </View>
-          <View style={[styles.flowCard, glassSurface(tokens, 'service')]} testID="customer-history-worker-placeholder">
-            <GlassSheen />
+          <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-worker-placeholder">
             <View style={styles.workerCard}>
               <View style={[styles.workerAvatar, { backgroundColor: tokens.water, borderColor: tokens.glassBorder }]} />
               <View style={styles.listCopy}>
@@ -640,10 +652,9 @@ export function CustomerHistorySurface() {
               </View>
             </View>
           </View>
-          <View style={[styles.flowCard, glassSurface(tokens)]}>
-            <GlassSheen />
+          <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
             <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-              Luồng ticket
+              Tiến trình yêu cầu
             </Text>
             {timeline.map((item) => (
               <View key={item.label} style={styles.timelineRow}>
@@ -654,8 +665,7 @@ export function CustomerHistorySurface() {
               </View>
             ))}
           </View>
-          <View style={[styles.flowCard, glassSurface(tokens, 'warm')]}>
-            <GlassSheen />
+          <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
             <View style={styles.sectionTitle}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                 Đổi phạm vi
@@ -665,7 +675,7 @@ export function CustomerHistorySurface() {
               </Text>
             </View>
             <View style={styles.twoCol}>
-              <V4TicketCell label="Hiện tại" value={deal ? visibleStatusLabel : 'Không có ticket'} />
+              <V4TicketCell label="Hiện tại" value={deal ? visibleStatusLabel : 'Không có yêu cầu'} />
               <V4TicketCell label="Cập nhật" value={scopeChange?.requestedDescription ?? 'Khóa tới giai đoạn đổi phạm vi'} />
             </View>
             {scopeChange ? (
@@ -681,16 +691,15 @@ export function CustomerHistorySurface() {
               </View>
             ) : null}
           </View>
-          <View style={[styles.flowCard, glassSurface(tokens)]}>
-            <GlassSheen />
+          <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
             <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
               Bằng chứng hoàn tất
             </Text>
             <View style={styles.twoCol}>
-              <View style={[styles.evidenceTile, glassSurface(tokens, 'strong')]}>
+              <View style={[styles.evidenceTile, customerOpaqueSurface(tokens)]}>
                 <Text style={[styles.evidenceText, { color: tokens.muted }]} numberOfLines={1}>Ảnh trước</Text>
               </View>
-              <View style={[styles.evidenceTile, glassSurface(tokens, 'strong')]}>
+              <View style={[styles.evidenceTile, customerOpaqueSurface(tokens)]}>
                 <Text style={[styles.evidenceText, { color: tokens.muted }]} numberOfLines={1}>Ảnh sau</Text>
               </View>
             </View>
@@ -699,8 +708,7 @@ export function CustomerHistorySurface() {
               <V4TicketCell label="Trạng thái" value={completionStatusLabel} />
             </View>
           </View>
-          <View style={[styles.flowCard, glassSurface(tokens)]}>
-            <GlassSheen />
+          <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
             <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
               Thanh toán & đánh giá
             </Text>
@@ -713,7 +721,9 @@ export function CustomerHistorySurface() {
                 <View style={styles.workerMetaRow}>
                   {([1, 2, 3, 4, 5] as const).map((rating) => (
                     <Pressable
+                      accessibilityLabel={`Chọn ${rating} sao`}
                       accessibilityRole="button"
+                      accessibilityState={{ selected: reviewRating === rating }}
                       key={rating}
                       onPress={() => setReviewRating(rating)}
                       style={[styles.reviewRatingButton, { backgroundColor: reviewRating === rating ? tokens.primary : tokens.glassStrong }]}
@@ -747,9 +757,9 @@ export function CustomerProfileSurface() {
   const languageMode = useCustomerLanguageMode()
   const toggleLanguage = () => setCustomerLanguageMode(languageMode === 'vi' ? 'en' : 'vi')
   const toggleTheme = () => setCustomerThemeMode(themeMode === 'light' ? 'dark' : 'light')
-  const adminAuditSwitchLabel = languageMode === 'en' ? 'Switch section' : 'Đổi section'
+  const adminAuditSwitchLabel = languageMode === 'en' ? 'Switch area' : 'Đổi khu vực'
   const profileLabel = session?.user.email ?? 'Chưa có email hồ sơ'
-  const profileRoleLabel = role === 'admin' ? 'Admin audit' : role === 'customer' ? 'Khách' : 'Chưa xác định'
+  const profileRoleLabel = role === 'admin' ? 'Quản trị' : role === 'customer' ? 'Khách' : 'Chưa xác định'
   const deal = state.deal
   const draftLabel = deal ? 'Có local' : 'Chưa có'
   const serviceValue = deal ? serviceLabel(deal.draft.serviceType) : 'Chưa chọn'
@@ -762,7 +772,7 @@ export function CustomerProfileSurface() {
       {({ tokens }) => (
         <View style={styles.plainContent}>
           <View style={[styles.profileHead, glassSurface(tokens)]} testID="customer-profile-empty-state">
-            <GlassSheen />
+            <SubtleGlassHighlight />
             <View style={styles.profileIdentityRow}>
               <KaelMascot variant="head" size={58} />
               <Text style={[styles.profileName, { color: tokens.text }]} numberOfLines={1}>
@@ -784,7 +794,7 @@ export function CustomerProfileSurface() {
           </View>
           <View style={styles.hiddenMarker} testID="customer-shell-no-fake-profile-save" />
           <View style={[styles.statusCard, glassSurface(tokens, 'service')]} testID="customer-profile-status-card">
-            <GlassSheen />
+            <SubtleGlassHighlight />
             <View style={[styles.statusOrb, { backgroundColor: tokens.raised }]} />
             <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
               CĂN HỘ
@@ -804,8 +814,7 @@ export function CustomerProfileSurface() {
             <QuickCard icon="privacy" title="Riêng tư" testID="customer-profile-privacy-shell" />
           </View>
           <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} style={styles.profileActionsScroll}>
-            <View style={[styles.listCard, glassSurface(tokens)]} testID="customer-profile-checklist">
-              <GlassSheen />
+            <View style={[styles.listCard, customerOpaqueSurface(tokens)]} testID="customer-profile-checklist">
               <View style={styles.hiddenMarker} testID="customer-profile-unified-functions" />
               <ListRow icon="map" title="Địa chỉ" meta={deal?.draft.districtLabel || 'Chưa lưu'} testID="customer-utility-saved-address" />
               <ListRow icon="kael" title="Quản Gia Kael" meta="Điện / nước / vệ sinh" />
@@ -828,7 +837,9 @@ export function CustomerV4DockOverlay({ active }: { active: CustomerDockActive }
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const themeMode = useCustomerThemeMode()
-  const tokens = getCustomerThemeTokens(themeMode)
+  const { reduceTransparency } = useGlassAccessibility()
+  const baseTokens = getCustomerThemeTokens(themeMode)
+  const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(baseTokens) : baseTokens
   const frameWidth = Math.min(width, 430)
 
   return (
@@ -885,7 +896,9 @@ function V4Frame({
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const themeMode = useCustomerThemeMode()
-  const tokens = getCustomerThemeTokens(themeMode)
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const baseTokens = getCustomerThemeTokens(themeMode)
+  const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(baseTokens) : baseTokens
   const frameWidth = Math.min(width, 430)
   const canvasLayer = {
     backgroundColor: tokens.canvas,
@@ -899,7 +912,7 @@ function V4Frame({
     <SafeAreaView style={[styles.safeArea, canvasLayer]} testID={testID}>
       <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
       <CustomerThemeContext.Provider value={tokens}>
-        <AmbientGlassField frameWidth={frameWidth} screenWidth={width} />
+        {reduceTransparency ? null : <AmbientGlassField frameWidth={frameWidth} screenWidth={width} />}
         <ScrollView
           contentContainerStyle={[
             styles.v4Scroll,
@@ -916,16 +929,12 @@ function V4Frame({
           showsVerticalScrollIndicator={false}
           style={[styles.scroll, { backgroundColor: tokens.canvas }]}
         >
-          <View
-            accessibilityLabel={`${CUSTOMER_V4_PRODUCTION_STANDARD}; ${CUSTOMER_V4_VISUAL_CONTRACT}; ${CUSTOMER_SHARED_THEME_STORE}; ${CUSTOMER_DOCK_SCROLL_CLEARANCE}; ${CUSTOMER_LAYER_ECOLOGY_V4}; ${SEMANTIC_LAYER_SWITCH_V4}; ${COPY_DENSITY_COMPACT}`}
-            style={styles.hiddenMarker}
-            testID="customer-dark-layer-ecology"
-          />
+          <View style={styles.hiddenMarker} testID="customer-dark-layer-ecology" />
           <View style={styles.hiddenMarker} testID="customer-shell-motion-field" />
           <View style={styles.hiddenMarker} testID="customer-theme-layer-switch" />
           {children({ tokens, mode: themeMode })}
         </ScrollView>
-        <MotionSweep frameWidth={frameWidth} screenWidth={width} />
+        {reduceMotion || reduceTransparency ? null : <MotionSweep frameWidth={frameWidth} screenWidth={width} />}
         <V4Dock active={active} bottomInset={insets.bottom} frameWidth={frameWidth} screenWidth={width} />
       </CustomerThemeContext.Provider>
     </SafeAreaView>
@@ -945,97 +954,44 @@ function V4Dock({
 }) {
   const { push } = useRouter()
   const tokens = useCustomerTokens()
-  const dockPulse = useSharedValue(0)
-  const dockSweep = useSharedValue(0)
   const dockWidth = Math.max(0, frameWidth - 82)
   const dockLeft = Math.max((screenWidth - frameWidth) / 2 + 41, 41)
   const bottom = Math.max(bottomInset + customerDockBottomMargin, customerDockBottomMargin)
-  const items = [
-    { key: 'home' as const, icon: 'apartment' as const, path: '/(customer)/home' as const },
-    { key: 'booking' as const, icon: 'document' as const, path: openBookingPath },
-    { key: 'kael' as const, icon: 'kael' as const, path: '/(customer)/kael' as const },
-    { key: 'activity' as const, icon: 'history' as const, path: '/(customer)/history' as const },
-    { key: 'profile' as const, icon: 'person' as const, path: '/(customer)/profile' as const },
+  type CustomerDockItem = FloatingGlassTabItem<CustomerDockActive> & {
+    icon: IconName
+    path: '/(customer)/home' | '/(customer)/booking' | '/(customer)/kael' | '/(customer)/history' | '/(customer)/profile'
+  }
+  const items: CustomerDockItem[] = [
+    { accessibilityLabel: 'Trang chủ', key: 'home', icon: 'apartment', label: 'Nhà', path: '/(customer)/home', testID: 'customer-v4-dock-home' },
+    { accessibilityLabel: 'Đặt dịch vụ', key: 'booking', icon: 'document', label: 'Đặt', path: openBookingPath, testID: 'customer-v4-dock-booking' },
+    { accessibilityLabel: 'Kael', key: 'kael', icon: 'kael', label: 'Kael', path: '/(customer)/kael', testID: 'customer-v4-dock-kael' },
+    { accessibilityLabel: 'Lịch sử', key: 'activity', icon: 'history', label: 'Lịch', path: '/(customer)/history', testID: 'customer-v4-dock-activity' },
+    { accessibilityLabel: 'Hồ sơ', key: 'profile', icon: 'person', label: 'Hồ sơ', path: '/(customer)/profile', testID: 'customer-v4-dock-profile' },
   ]
-  const activeIndex = Math.max(items.findIndex((item) => item.key === active), 0)
-  const previousActiveIndex = Math.max(items.findIndex((item) => item.key === lastCustomerDockActive), 0)
-  const slotWidth = dockWidth / items.length
-  const liquidLeft = activeIndex * slotWidth + slotWidth / 2 - 40
-  const previousLiquidLeft = previousActiveIndex * slotWidth + slotWidth / 2 - 40
-  const liquidX = useSharedValue(previousLiquidLeft)
-  const liquidWake = useSharedValue(1)
-
-  useEffect(() => {
-    if (!CUSTOMER_DECORATIVE_MOTION_ENABLED) {
-      dockPulse.value = 0.28
-      dockSweep.value = 0
-      return
-    }
-    dockPulse.value = withRepeat(withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.quad) }), -1, true)
-    dockSweep.value = withRepeat(withTiming(1, { duration: 4600, easing: Easing.inOut(Easing.quad) }), -1, false)
-  }, [dockPulse, dockSweep])
-
-  useEffect(() => {
-    liquidX.value = withSpring(liquidLeft, { damping: 15, mass: 0.72, stiffness: 132 })
-    liquidWake.value = 0
-    liquidWake.value = withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) })
-    lastCustomerDockActive = active
-  }, [active, liquidLeft, liquidWake, liquidX])
-
-  const dockHaloStyle = useAnimatedStyle(() => ({
-    opacity: 0.22 + dockPulse.value * 0.2,
-    transform: [{ scaleX: 0.98 + dockPulse.value * 0.045 }, { scaleY: 0.94 + dockPulse.value * 0.06 }],
-  }))
-  const dockSheenStyle = useAnimatedStyle(() => ({
-    opacity: dockSweep.value < 0.08 ? dockSweep.value * 2.4 : dockSweep.value > 0.92 ? (1 - dockSweep.value) * 2.4 : 0.22,
-    transform: [{ translateX: -70 + dockSweep.value * (dockWidth + 140) }, { rotate: '11deg' }],
-  }))
-  const activeGlowStyle = useAnimatedStyle(() => ({
-    opacity: 0.2 + dockPulse.value * 0.22,
-    transform: [{ scale: 0.92 + dockPulse.value * 0.16 }],
-  }))
-  const liquidPoolStyle = useAnimatedStyle(() => ({
-    opacity: 0.18 + dockPulse.value * 0.18,
-    transform: [{ translateX: liquidX.value }, { scaleX: 0.94 + dockPulse.value * 0.16 }, { scaleY: 0.86 + dockPulse.value * 0.12 }],
-  }))
-  const liquidWakeStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - liquidWake.value) * 0.24,
-    transform: [{ translateX: liquidX.value - 8 + liquidWake.value * 16 }, { scaleX: 0.82 + liquidWake.value * 0.5 }, { scaleY: 0.74 + liquidWake.value * 0.18 }],
-  }))
 
   return (
     <View pointerEvents="box-none" style={[styles.dockWrap, { bottom, left: dockLeft, width: dockWidth }]}>
-      <Animated.View pointerEvents="none" style={[styles.dockGlassAura, { backgroundColor: tokens.aqua }, dockHaloStyle]} testID="customer-dock-glass-aura" />
+      <View pointerEvents="none" style={[styles.dockGlassAura, { backgroundColor: tokens.aqua, opacity: 0.18 }]} testID="customer-dock-glass-aura" />
       <View pointerEvents="none" style={[styles.dockWarmAura, { backgroundColor: tokens.copper }]} />
-      <View style={[styles.glassDock, glassSurface(tokens, 'strong')]}>
-        <GlassSheen />
-        <Animated.View pointerEvents="none" style={[styles.dockLiquidWake, { backgroundColor: tokens.primary }, liquidWakeStyle]} testID="customer-dock-liquid-wake" />
-        <Animated.View pointerEvents="none" style={[styles.dockLiquidPool, { backgroundColor: tokens.aqua }, liquidPoolStyle]} testID="customer-dock-liquid-pool" />
-        <View pointerEvents="none" style={[styles.dockBottomReflection, { backgroundColor: tokens.glassHighlight }]} />
-        <Animated.View pointerEvents="none" style={[styles.dockMotionSheen, { backgroundColor: tokens.glassHighlight }, dockSheenStyle]} testID="customer-dock-motion-sheen" />
-        {items.map((item) => (
-          <Pressable
-            accessibilityRole="button"
-            key={item.key}
-            onPress={() => push(item.path)}
-            style={[
-              styles.dockItem,
-              active === item.key ? [styles.dockItemActive, dockActiveSurfaceStyle(tokens)] : null,
-            ]}
-            testID={`customer-v4-dock-${item.key}`}
-          >
-            {active === item.key ? <Animated.View pointerEvents="none" style={[styles.dockActiveGlow, { backgroundColor: tokens.aqua }, activeGlowStyle]} /> : null}
-            {item.icon === 'kael' ? (
-              <Image contentFit="contain" source={kaelModel8AHead} style={styles.dockKaelImage} />
-            ) : (
-              <IconGlyph name={item.icon} color={active === item.key ? tokens.primary : tokens.subtleText} accent={active === item.key ? tokens.copper : tokens.subtleText} />
-            )}
-            {active === item.key ? <View style={[styles.dockDot, { backgroundColor: tokens.primary }]} /> : null}
-          </Pressable>
-        ))}
-      </View>
-      <View pointerEvents="none" style={[styles.floatingAward, glassSurface(tokens, 'warm')]}>
-        <GlassSheen />
+      <FloatingGlassTabBar<CustomerDockActive, CustomerDockItem>
+        activeKey={active}
+        items={items}
+        mode={tokens.mode}
+        onItemPress={(item) => {
+          lastCustomerDockActive = item.key
+          push(item.path)
+        }}
+        renderIcon={(item, focused) =>
+          item.icon === 'kael' ? (
+            <Image accessible={false} contentFit="contain" source={kaelModel8AHead} style={styles.dockKaelImage} />
+          ) : (
+            <IconGlyph name={item.icon} color={focused ? tokens.primary : tokens.subtleText} accent={focused ? tokens.copper : tokens.subtleText} />
+          )
+        }
+        style={styles.glassDock}
+        testID="customer-liquid-glass-dock"
+      />
+      <View pointerEvents="none" style={[styles.floatingAward, customerOpaqueSurface(tokens)]}>
         <IconGlyph name="privacy" color={tokens.primary} accent={tokens.copper} />
       </View>
     </View>
@@ -1044,106 +1000,77 @@ function V4Dock({
 
 function MotionSweep({ frameWidth, screenWidth }: { frameWidth: number; screenWidth: number }) {
   const tokens = useCustomerTokens()
-  const progress = useSharedValue(0)
-
-  useEffect(() => {
-    if (!CUSTOMER_DECORATIVE_MOTION_ENABLED) {
-      progress.value = 0.36
-      return
-    }
-    progress.value = withRepeat(withTiming(1, { duration: 5200, easing: Easing.inOut(Easing.quad) }), -1, false)
-  }, [progress])
-
-  const sweepStyle = useAnimatedStyle(() => ({
-    opacity: progress.value < 0.14 ? progress.value * 1.4 : progress.value > 0.86 ? (1 - progress.value) * 1.4 : 0.16,
-    transform: [{ translateX: -120 + progress.value * (frameWidth + 240) }, { rotate: '8deg' }],
-  }))
+  const progress = 0.36
+  const sweepStyle = {
+    opacity: 0.16,
+    transform: [{ translateX: -120 + progress * (frameWidth + 240) }, { rotate: '8deg' }],
+  }
   const left = Math.max((screenWidth - frameWidth) / 2, 0)
 
-  return <Animated.View pointerEvents="none" style={[styles.motionSweep, { backgroundColor: tokens.glassHighlight, left }, sweepStyle]} />
+  return <View pointerEvents="none" style={[styles.motionSweep, { backgroundColor: tokens.glassHighlight, left }, sweepStyle]} />
 }
 
 function AmbientGlassField({ frameWidth, screenWidth }: { frameWidth: number; screenWidth: number }) {
   const tokens = useCustomerTokens()
-  const drift = useSharedValue(0)
-
-  useEffect(() => {
-    if (!CUSTOMER_DECORATIVE_MOTION_ENABLED) {
-      drift.value = 0.42
-      return
-    }
-    drift.value = withRepeat(withTiming(1, { duration: 6200, easing: Easing.inOut(Easing.quad) }), -1, true)
-  }, [drift])
-
-  const orbStyle = useAnimatedStyle(() => ({
-    opacity: 0.13 + drift.value * 0.08,
-    transform: [{ translateY: -10 + drift.value * 18 }, { scale: 0.98 + drift.value * 0.04 }],
-  }))
-  const lineStyle = useAnimatedStyle(() => ({
-    opacity: 0.11 + drift.value * 0.06,
-    transform: [{ rotate: '-12deg' }, { translateX: -12 + drift.value * 24 }],
-  }))
+  const drift = 0.42
+  const orbStyle = {
+    opacity: 0.13 + drift * 0.08,
+    transform: [{ translateY: -10 + drift * 18 }, { scale: 0.98 + drift * 0.04 }],
+  }
+  const lineStyle = {
+    opacity: 0.11 + drift * 0.06,
+    transform: [{ rotate: '-12deg' }, { translateX: -12 + drift * 24 }],
+  }
   const left = Math.max((screenWidth - frameWidth) / 2, 0)
 
   return (
     <View pointerEvents="none" style={[styles.ambientGlassField, { left, width: frameWidth }]} testID="customer-section-glass-field">
-      <Animated.View style={[styles.ambientOrbMint, { backgroundColor: tokens.aqua }, orbStyle]} />
+      <View style={[styles.ambientOrbMint, { backgroundColor: tokens.aqua }, orbStyle]} />
       <View style={[styles.ambientOrbWarm, { backgroundColor: tokens.copper }]} />
-      <Animated.View style={[styles.ambientGlassLine, { backgroundColor: tokens.borderStrong }, lineStyle]} />
+      <View style={[styles.ambientGlassLine, { backgroundColor: tokens.borderStrong }, lineStyle]} />
     </View>
   )
 }
 
 function V4MapBackdrop() {
   const tokens = useCustomerTokens()
-  const pulse = useSharedValue(0)
-  const route = useSharedValue(0)
-
-  useEffect(() => {
-    if (!CUSTOMER_DECORATIVE_MOTION_ENABLED) {
-      pulse.value = 0.36
-      route.value = 0.48
-      return
-    }
-    pulse.value = withRepeat(withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.quad) }), -1, true)
-    route.value = withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.quad) }), -1, true)
-  }, [pulse, route])
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: 0.26 + pulse.value * 0.22,
-    transform: [{ translateX: -59 }, { scale: 0.96 + pulse.value * 0.12 }],
-  }))
-  const pinStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -9 }, { scale: 1 + pulse.value * 0.08 }],
-  }))
-  const routeStyle = useAnimatedStyle(() => ({
-    opacity: 0.28 + route.value * 0.38,
-    transform: [{ rotate: '-19deg' }, { scaleX: 0.72 + route.value * 0.28 }],
-  }))
-  const vehicleStyle = useAnimatedStyle(() => ({
-    opacity: 0.72 + route.value * 0.24,
-    transform: [{ translateX: -54 + route.value * 108 }, { translateY: -10 + route.value * 22 }, { scale: 0.94 + pulse.value * 0.04 }],
-  }))
+  const pulse = 0.36
+  const route = 0.48
+  const glowStyle = {
+    opacity: 0.26 + pulse * 0.22,
+    transform: [{ translateX: -59 }, { scale: 0.96 + pulse * 0.12 }],
+  }
+  const pinStyle = {
+    transform: [{ translateX: -9 }, { scale: 1 + pulse * 0.08 }],
+  }
+  const routeStyle = {
+    opacity: 0.28 + route * 0.38,
+    transform: [{ rotate: '-19deg' }, { scaleX: 0.72 + route * 0.28 }],
+  }
+  const vehicleStyle = {
+    opacity: 0.72 + route * 0.24,
+    transform: [{ translateX: -54 + route * 108 }, { translateY: -10 + route * 22 }, { scale: 0.94 + pulse * 0.04 }],
+  }
 
   return (
     <View pointerEvents="none" style={styles.mapBackdrop}>
-      <Animated.View style={[styles.mapGlow, { backgroundColor: tokens.aqua }, glowStyle]} />
-      <Animated.View style={[styles.mapRoute, { backgroundColor: tokens.primary }, routeStyle]} />
+      <View style={[styles.mapGlow, { backgroundColor: tokens.aqua }, glowStyle]} />
+      <View style={[styles.mapRoute, { backgroundColor: tokens.primary }, routeStyle]} />
       <View style={[styles.mapRouteSoft, { backgroundColor: tokens.aqua }]} />
-      <Animated.View style={[styles.mapVehicle, glassSurface(tokens, 'strong'), vehicleStyle]}>
+      <View style={[styles.mapVehicle, customerOpaqueSurface(tokens), vehicleStyle]}>
         <IconGlyph name="estimate" color={tokens.primary} accent={tokens.copper} />
-      </Animated.View>
+      </View>
       <View style={[styles.mapLine, styles.mapLineOne, { backgroundColor: tokens.borderStrong }]} />
       <View style={[styles.mapLine, styles.mapLineTwo, { backgroundColor: tokens.borderStrong }]} />
       <View style={[styles.mapLine, styles.mapLineThree, { backgroundColor: tokens.borderStrong }]} />
       <View style={[styles.mapRoom, styles.mapRoomOne, { borderColor: tokens.borderStrong }]} />
       <View style={[styles.mapRoom, styles.mapRoomTwo, { borderColor: tokens.borderStrong }]} />
       <View style={[styles.mapRoom, styles.mapRoomThree, { borderColor: tokens.borderStrong }]} />
-      <Animated.View style={[styles.mapPin, { backgroundColor: tokens.primary, borderColor: tokens.glassBorder }, pinStyle]} />
-      <View style={[styles.mapNode, styles.mapNodeElectric, glassSurface(tokens, 'strong')]}>
+      <View style={[styles.mapPin, { backgroundColor: tokens.primary, borderColor: tokens.glassBorder }, pinStyle]} />
+      <View style={[styles.mapNode, styles.mapNodeElectric, customerOpaqueSurface(tokens)]}>
         <IconGlyph name="boltPanel" color={tokens.primary} accent={tokens.copper} />
       </View>
-      <View style={[styles.mapNode, styles.mapNodeWater, glassSurface(tokens, 'strong')]}>
+      <View style={[styles.mapNode, styles.mapNodeWater, customerOpaqueSurface(tokens)]}>
         <IconGlyph name="waterPipe" color={tokens.primary} accent={tokens.aqua} />
       </View>
     </View>
@@ -1154,12 +1081,12 @@ function V4ServiceCard({ icon, onPress, testID, title, water }: { icon: IconName
   const tokens = useCustomerTokens()
   return (
     <Pressable
+      accessibilityLabel={`Chọn dịch vụ ${title}`}
       accessibilityRole="button"
       onPress={onPress}
-      style={[styles.serviceCard, glassSurface(tokens, water ? 'water' : 'service')]}
+      style={[styles.serviceCard, customerOpaqueSurface(tokens)]}
       testID={testID}
     >
-      <GlassSheen />
       <View pointerEvents="none" style={[styles.glassRing, { borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.16)' : 'rgba(8,120,110,0.10)' }]} />
       <IconShell icon={icon} tone={water ? 'water' : 'service'} size={50} />
       <Text style={[styles.serviceTitle, { color: tokens.text }]} numberOfLines={1}>
@@ -1172,8 +1099,7 @@ function V4ServiceCard({ icon, onPress, testID, title, water }: { icon: IconName
 function V4TicketCell({ label, testID, value }: { label: string; testID?: string; value: string }) {
   const tokens = useCustomerTokens()
   return (
-    <View style={[styles.ticketCell, glassSurface(tokens, 'strong')]} testID={testID}>
-      <GlassSheen />
+    <View style={[styles.ticketCell, customerOpaqueSurface(tokens)]} testID={testID}>
       <Text style={[styles.ticketLabel, { color: tokens.muted }]} numberOfLines={1}>
         {label}
       </Text>
@@ -1201,8 +1127,7 @@ function V4Metric({ label, value }: { label: string; value: string }) {
 function QuickCard({ icon, testID, title }: { icon: IconName; testID?: string; title: string }) {
   const tokens = useCustomerTokens()
   return (
-    <View style={[styles.quickCard, glassSurface(tokens)]} testID={testID}>
-      <GlassSheen />
+    <View style={[styles.quickCard, customerOpaqueSurface(tokens)]} testID={testID}>
       <IconGlyph name={icon} color={tokens.primary} accent={tokens.copper} />
       <Text style={[styles.quickTitle, { color: tokens.text }]} numberOfLines={2}>
         {title}
@@ -1248,7 +1173,7 @@ function SwitchRow({
 }) {
   const tokens = useCustomerTokens()
   return (
-    <Pressable accessibilityRole="switch" accessibilityState={{ checked: active }} onPress={onPress} style={styles.listRow} testID={testID}>
+    <Pressable accessibilityLabel={title} accessibilityRole="switch" accessibilityState={{ checked: active }} onPress={onPress} style={styles.listRow} testID={testID}>
       <IconGlyph name={icon} color={tokens.primary} accent={tokens.copper} />
       <View style={styles.listCopy}>
         <Text style={[styles.listTitle, { color: tokens.text }]} numberOfLines={1}>
@@ -1284,10 +1209,10 @@ function ThemeToggle({ mode, onToggle }: { mode: ThemeMode; onToggle: () => void
 function IconButton({ accessibilityLabel, icon, markerTestID }: { accessibilityLabel: string; icon: IconName; markerTestID?: string }) {
   const tokens = useCustomerTokens()
   return (
-    <Pressable accessibilityLabel={accessibilityLabel} accessibilityRole="button" style={[styles.iconButton, glassSurface(tokens, 'strong')]} testID={markerTestID}>
-      <GlassSheen />
+    <View accessibilityLabel={accessibilityLabel} accessibilityRole="image" style={[styles.iconButton, glassSurface(tokens, 'strong')]} testID={markerTestID}>
+      <SubtleGlassHighlight />
       <IconGlyph name={icon} color={tokens.primary} accent={tokens.copper} />
-    </Pressable>
+    </View>
   )
 }
 
@@ -1299,14 +1224,13 @@ function IconShell({ icon, tone = 'service', size = 46 }: { icon: IconName; tone
       style={[
         styles.iconShell,
         {
-          ...glassSurface(tokens, tone === 'warm' ? 'warm' : tone === 'water' ? 'water' : 'service'),
+          ...customerOpaqueSurface(tokens),
           borderRadius: Math.max(14, Math.round(size * 0.36)),
           height: size,
           width: size,
         },
       ]}
     >
-      <GlassSheen />
       <IconGlyph name={icon} color={tokens.primary} accent={accent} />
     </View>
   )
@@ -1328,8 +1252,8 @@ function KaelMascot({ size, variant }: { size: number; variant: 'head' | 'full' 
       ]}
       testID={variant === 'head' ? 'kael-model-8a-head.png' : 'kael-model-8a.png'}
     >
-      <GlassSheen />
-      <Image contentFit="contain" source={source} style={{ height: variant === 'head' ? size * 0.9 : size * 1.1, width: variant === 'head' ? size * 0.9 : size * 1.05 }} />
+      <SubtleGlassHighlight />
+      <Image accessible={false} contentFit="contain" source={source} style={{ height: variant === 'head' ? size * 0.9 : size * 1.1, width: variant === 'head' ? size * 0.9 : size * 1.05 }} />
     </View>
   )
 }
@@ -1337,7 +1261,7 @@ function KaelMascot({ size, variant }: { size: number; variant: 'head' | 'full' 
 function PrimaryButton({ compact, label, onPress, testID }: { compact?: boolean; label: string; onPress: () => void; testID?: string }) {
   const tokens = useCustomerTokens()
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.primaryButton, compact ? styles.primaryButtonCompact : null, { backgroundColor: tokens.primary }]} testID={testID}>
+    <Pressable accessibilityLabel={label} accessibilityRole="button" onPress={onPress} style={[styles.primaryButton, compact ? styles.primaryButtonCompact : null, { backgroundColor: tokens.primary }]} testID={testID}>
       <Text style={[styles.primaryButtonText, { color: tokens.primaryText }]} numberOfLines={1}>
         {label}
       </Text>
@@ -1349,6 +1273,7 @@ function SecondaryButton({ compact, label, onPress, testID }: { compact?: boolea
   const tokens = useCustomerTokens()
   return (
     <Pressable
+      accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
       style={[styles.secondaryButton, compact ? styles.primaryButtonCompact : null, { borderColor: tokens.borderStrong, backgroundColor: tokens.ghost }]}
@@ -1373,13 +1298,14 @@ function KaelComposer({
   const tokens = useCustomerTokens()
   return (
     <View style={[styles.composer, styles.kaelComposerInline, glassSurface(tokens, 'strong')]} testID="customer-kael-composer-dock">
-      <GlassSheen />
-      <Pressable accessibilityLabel="Thêm ảnh" accessibilityRole="button" style={[styles.composerTool, { borderColor: tokens.border }]}>
+      <SubtleGlassHighlight />
+      <View accessible={false} pointerEvents="none" style={[styles.composerTool, { borderColor: tokens.border }]}>
         <Text style={[styles.composerToolText, { color: tokens.primary }]} numberOfLines={1}>
           +
         </Text>
-      </Pressable>
+      </View>
       <TextInput
+        accessibilityLabel="Mô tả vấn đề cho Kael"
         maxLength={220}
         onChangeText={onChangeDraft}
         onSubmitEditing={onSubmit}
@@ -1475,39 +1401,45 @@ function glassSurface(tokens: CustomerThemeTokens, tone: 'default' | 'strong' | 
   return {
     backgroundColor,
     borderColor: tokens.glassBorder,
-    backdropFilter: 'blur(24px) saturate(1.18)',
-    boxShadow: tokens.glassFloatShadow,
+    boxShadow:
+      tone === 'default' || tone === 'strong'
+        ? tokens.mode === 'dark'
+          ? '0 14px 34px rgba(0,0,0,0.24)'
+          : '0 14px 34px rgba(13,70,65,0.10)'
+        : 'none',
     experimental_backgroundImage: experimentalBackgroundImage,
     shadowColor: '#0D4641',
     shadowOffset: { height: 18, width: 0 },
-    shadowOpacity: tokens.mode === 'dark' ? 0.28 : 0.13,
-    shadowRadius: 28,
+    shadowOpacity: 0,
+    shadowRadius: 0,
   }
 }
 
-function dockActiveSurfaceStyle(tokens: CustomerThemeTokens) {
+function customerMessageSurface(tokens: CustomerThemeTokens) {
   return {
-    backgroundColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(216,247,239,0.82)',
-    boxShadow: tokens.mode === 'dark'
-      ? '0 12px 28px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.10)'
-      : '0 12px 28px rgba(64,197,187,0.18), inset 0 1px 0 rgba(255,255,255,0.68)',
-  } as any
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(19,43,42,0.96)' : 'rgba(255,253,248,0.96)',
+    borderColor: tokens.border,
+    boxShadow: 'none',
+  }
 }
 
-function GlassSheen() {
+function customerOpaqueSurface(tokens: CustomerThemeTokens) {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,43,40,0.94)' : 'rgba(255,253,248,0.96)',
+    borderColor: tokens.border,
+    boxShadow: 'none',
+  }
+}
+
+function SubtleGlassHighlight() {
   const tokens = useCustomerTokens()
-  return (
-    <>
-      <View pointerEvents="none" style={[styles.glassTopHighlight, { backgroundColor: tokens.glassHighlight }]} />
-      <View pointerEvents="none" style={[styles.glassSheen, { backgroundColor: tokens.glassHighlight }]} />
-    </>
-  )
+  return <View pointerEvents="none" style={[styles.glassTopHighlight, { backgroundColor: tokens.glassHighlight }]} />
 }
 
 function IconGlyph({ name, color, accent }: { name: IconName; color: string; accent: string }) {
   if (name === 'boltPanel') {
     return (
-      <Svg width={28} height={28} viewBox="0 0 28 28" fill="none">
+      <Svg accessible={false} width={28} height={28} viewBox="0 0 28 28" fill="none">
         <Rect x={7.5} y={5} width={13} height={18} rx={4} stroke={color} strokeWidth={1.9} />
         <Path d="M11.5 11h5M11.5 15.5h5" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
         <Path d="m15 8-3 8h3l-2 5 5-8h-3l2-5Z" fill={accent} opacity={0.9} />
@@ -1517,7 +1449,7 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
 
   if (name === 'waterPipe') {
     return (
-      <Svg width={29} height={29} viewBox="0 0 29 29" fill="none">
+      <Svg accessible={false} width={29} height={29} viewBox="0 0 29 29" fill="none">
         <Path d="M7 9.5h9c3 0 5 2 5 5V20" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
         <Path d="M6 22c3-2 5.8 2 9 0 2-1.2 4-1.2 6 0" stroke={accent} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
         <Circle cx={7.5} cy={9.5} r={3} fill={accent} opacity={0.16} />
@@ -1527,7 +1459,7 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
 
   if (name === 'cleaning') {
     return (
-      <Svg width={29} height={29} viewBox="0 0 29 29" fill="none">
+      <Svg accessible={false} width={29} height={29} viewBox="0 0 29 29" fill="none">
         <Path d="M17.5 5.5 8 23" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
         <Path d="M15.5 9.5h5.2c1.2 0 2 .8 2 2v1.2c0 1.2-.8 2-2 2h-8.4" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
         <Path d="M9.2 20.5c2.2 1.8 5.5 1.8 8.1 0M7 23.2c3.2 2 8.6 2 12 0" stroke={accent} strokeWidth={1.9} strokeLinecap="round" />
@@ -1538,7 +1470,7 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
 
   if (name === 'apartment') {
     return (
-      <Svg width={26} height={26} viewBox="0 0 26 26" fill="none">
+      <Svg accessible={false} width={26} height={26} viewBox="0 0 26 26" fill="none">
         <Path d="M5.5 12.5 13 6l7.5 6.5v7.2c0 1-.8 1.8-1.8 1.8H7.3c-1 0-1.8-.8-1.8-1.8v-7.2Z" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
         <Path d="M11 21.5v-5h4v5" stroke={accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
@@ -1547,7 +1479,7 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
 
   if (name === 'person') {
     return (
-      <Svg width={26} height={26} viewBox="0 0 26 26" fill="none">
+      <Svg accessible={false} width={26} height={26} viewBox="0 0 26 26" fill="none">
         <Path d="M7.5 20c.9-2.5 2.9-3.8 5.5-3.8s4.6 1.3 5.5 3.8" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
         <Circle cx={13} cy={9.5} r={3.3} stroke={color} strokeWidth={1.9} />
       </Svg>
@@ -1556,7 +1488,7 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
 
   if (name === 'chat') {
     return (
-      <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+      <Svg accessible={false} width={25} height={25} viewBox="0 0 25 25" fill="none">
         <Path d="M6.5 6.5h12c1 0 1.8.8 1.8 1.8v7.2c0 1-.8 1.8-1.8 1.8h-6l-4 3v-3h-2c-1 0-1.8-.8-1.8-1.8V8.3c0-1 .8-1.8 1.8-1.8Z" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
         <Path d="M9.5 11h6" stroke={accent} strokeWidth={1.8} strokeLinecap="round" />
       </Svg>
@@ -1565,7 +1497,7 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
 
   if (name === 'send') {
     return (
-      <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+      <Svg accessible={false} width={25} height={25} viewBox="0 0 25 25" fill="none">
         <Path d="M5.4 12.8 19.4 5.8l-4.3 13.4-3.1-5.2-6.6-1.2Z" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
       </Svg>
     )
@@ -1573,7 +1505,7 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
 
   if (name === 'payment') {
     return (
-      <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+      <Svg accessible={false} width={25} height={25} viewBox="0 0 25 25" fill="none">
         <Path d="M5.4 9.5 12.5 5l7.1 4.5" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
         <Path d="M7 10.5h11M8.2 10.5v6.2M12.5 10.5v6.2M16.8 10.5v6.2M6.5 18.5h12" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
         <Path d="M12.5 7.8h.1" stroke={accent} strokeWidth={3} strokeLinecap="round" />
@@ -1583,7 +1515,7 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
 
   if (name === 'ticket') {
     return (
-      <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+      <Svg accessible={false} width={25} height={25} viewBox="0 0 25 25" fill="none">
         <Path d="M5.8 8.5c0-1 .8-1.8 1.8-1.8h9.8c1 0 1.8.8 1.8 1.8v2.2a2 2 0 0 0 0 3.6v2.2c0 1-.8 1.8-1.8 1.8H7.6c-1 0-1.8-.8-1.8-1.8v-2.2a2 2 0 0 0 0-3.6V8.5Z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
         <Path d="M9.4 12.5h6.2" stroke={accent} strokeWidth={1.8} strokeLinecap="round" />
       </Svg>
@@ -1592,7 +1524,7 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
 
   if (name === 'privacy' || name === 'check') {
     return (
-      <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+      <Svg accessible={false} width={25} height={25} viewBox="0 0 25 25" fill="none">
         <Path d="M12.5 4.8 18.5 7v4.6c0 3.6-2.2 6.5-6 7.7-3.8-1.2-6-4.1-6-7.7V7l6-2.2Z" stroke={color} strokeWidth={1.8} />
         <Path d="m10 12.2 1.6 1.6 3.5-4" stroke={accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
@@ -1600,7 +1532,7 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
   }
 
   return (
-    <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+    <Svg accessible={false} width={25} height={25} viewBox="0 0 25 25" fill="none">
       <Rect x={6} y={6} width={13} height={13} rx={3.2} stroke={color} strokeWidth={1.9} />
       <Path d="M9.5 11h6M9.5 15h4" stroke={accent} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
@@ -1705,7 +1637,6 @@ const styles = StyleSheet.create({
   dockGlassAura: {
     borderRadius: 999,
     bottom: -14,
-    filter: 'blur(18px)',
     height: 70,
     left: 18,
     position: 'absolute',
@@ -1715,7 +1646,6 @@ const styles = StyleSheet.create({
   dockWarmAura: {
     borderRadius: 999,
     bottom: -6,
-    filter: 'blur(18px)',
     height: 46,
     opacity: 0.11,
     position: 'absolute',
@@ -1737,7 +1667,6 @@ const styles = StyleSheet.create({
   dockLiquidPool: {
     borderRadius: 999,
     bottom: 7,
-    filter: 'blur(13px)',
     height: 52,
     left: 0,
     opacity: 0.24,
@@ -1748,7 +1677,6 @@ const styles = StyleSheet.create({
   dockLiquidWake: {
     borderRadius: 999,
     bottom: 4,
-    filter: 'blur(16px)',
     height: 56,
     left: 0,
     position: 'absolute',
@@ -1767,7 +1695,6 @@ const styles = StyleSheet.create({
   },
   dockMotionSheen: {
     bottom: -18,
-    filter: 'blur(1px)',
     position: 'absolute',
     top: -18,
     width: 44,
@@ -1787,7 +1714,6 @@ const styles = StyleSheet.create({
   },
   dockActiveGlow: {
     borderRadius: 999,
-    filter: 'blur(10px)',
     height: 48,
     opacity: 0.3,
     position: 'absolute',
@@ -2134,6 +2060,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 17,
     paddingVertical: 17,
+  },
+  promoCardHitArea: {
+    flex: 1,
+    minHeight: 104,
+    position: 'relative',
   },
   promoTitle: {
     fontSize: 21,

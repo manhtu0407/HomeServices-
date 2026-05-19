@@ -64,7 +64,7 @@ export function LoginRoleSurface() {
 
   const openCustomerSection = () => {
     if (!canOpenCustomer) {
-      setFormError('Tài khoản này chưa được phép vào section Khách')
+      setFormError('Tài khoản này chưa được phép vào khu vực Khách')
       return
     }
     replace('/(customer)/home')
@@ -72,7 +72,7 @@ export function LoginRoleSurface() {
 
   const openWorkerSection = () => {
     if (!canOpenWorker) {
-      setFormError('Tài khoản này chưa được phép vào section Thợ')
+      setFormError('Tài khoản này chưa được phép vào khu vực Thợ')
       return
     }
     replace('/(worker)/home')
@@ -85,9 +85,9 @@ export function LoginRoleSurface() {
           <MapLineField />
           <View style={styles.loginHeader}>
             <Text style={styles.kicker}>Đăng nhập</Text>
-            <Text style={styles.title}>{isAuthenticated ? 'Chọn section để audit' : 'Đăng nhập để vào app'}</Text>
+            <Text style={styles.title}>{isAuthenticated ? 'Chọn khu vực sử dụng' : 'Đăng nhập để vào app'}</Text>
             <Text style={styles.body}>
-              {isAuthenticated ? roleLabel(role) : 'Email/Password xác thực trước, vai trò trong profile quyết định section được vào.'}
+              {isAuthenticated ? roleLabel(role) : 'Email/Password xác thực trước, vai trò trong hồ sơ quyết định khu vực được vào.'}
             </Text>
           </View>
 
@@ -96,7 +96,9 @@ export function LoginRoleSurface() {
               <Text style={styles.errorText}>Hồ sơ vai trò chưa sẵn sàng. Tải lại hồ sơ hoặc đăng xuất để đăng nhập tài khoản khác.</Text>
               {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
               <Pressable
+                accessibilityLabel="Tải lại hồ sơ"
                 accessibilityRole="button"
+                accessibilityState={{ disabled: loading }}
                 disabled={loading}
                 onPress={() => void refreshProfile()}
                 style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, loading ? styles.disabled : null]}
@@ -104,7 +106,7 @@ export function LoginRoleSurface() {
               >
                 {loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>Tải lại hồ sơ</Text>}
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-profile-recovery-sign-out">
+              <Pressable accessibilityLabel="Đăng xuất" accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-profile-recovery-sign-out">
                 <Text style={styles.secondaryActionText}>Đăng xuất</Text>
               </Pressable>
             </View>
@@ -132,6 +134,7 @@ export function LoginRoleSurface() {
               <View style={styles.hiddenMarker} testID={`auth-entry-role-selected-${selectedEntryRole}`} />
               <Text style={styles.body}>{`Đăng nhập với vai trò ${selectedEntryRoleLabel}.`}</Text>
               <TextInput
+                accessibilityLabel="Email"
                 autoCapitalize="none"
                 autoCorrect={false}
                 inputMode="email"
@@ -144,6 +147,7 @@ export function LoginRoleSurface() {
                 value={email}
               />
               <TextInput
+                accessibilityLabel="Mật khẩu"
                 autoCapitalize="none"
                 onChangeText={setPassword}
                 placeholder="Mật khẩu"
@@ -155,7 +159,9 @@ export function LoginRoleSurface() {
               />
               {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
               <Pressable
+                accessibilityLabel="Đăng nhập"
                 accessibilityRole="button"
+                accessibilityState={{ disabled: signingIn || loading || configMissing }}
                 disabled={signingIn || loading || configMissing}
                 onPress={submitLogin}
                 style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, signingIn || loading || configMissing ? styles.disabled : null]}
@@ -164,7 +170,9 @@ export function LoginRoleSurface() {
                 {signingIn || loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>Đăng nhập</Text>}
               </Pressable>
               <Pressable
+                accessibilityLabel="Đổi vai trò"
                 accessibilityRole="button"
+                accessibilityState={{ disabled: signingIn || loading }}
                 disabled={signingIn || loading}
                 onPress={() => {
                   setFormError(null)
@@ -179,7 +187,7 @@ export function LoginRoleSurface() {
           ) : (
             <>
               <RoleCard
-                description={isAdmin ? 'Audit luồng Khách với quyền admin.' : 'Đặt lịch sửa điện, nước, vệ sinh; kiểm giá với Kael và theo dõi tiến trình.'}
+                description={isAdmin ? 'Mở khu vực Khách với quyền quản trị.' : 'Đặt lịch sửa điện, nước, vệ sinh; kiểm giá với Kael và theo dõi tiến trình.'}
                 disabled={!canOpenCustomer}
                 icon="home"
                 label="Khách"
@@ -187,7 +195,7 @@ export function LoginRoleSurface() {
                 testID={isAdmin ? 'auth-login-admin-audit-customer' : 'auth-login-role-customer'}
               />
               <RoleCard
-                description={isAdmin ? 'Audit luồng Thợ với quyền admin.' : 'Bật nhận việc, xem brief, xử lý yêu cầu và theo dõi thu nhập.'}
+                description={isAdmin ? 'Mở khu vực Thợ với quyền quản trị.' : 'Bật nhận việc, xem brief, xử lý yêu cầu và theo dõi thu nhập.'}
                 disabled={!canOpenWorker}
                 icon="tools"
                 label="Thợ"
@@ -196,7 +204,7 @@ export function LoginRoleSurface() {
                 worker
               />
               {isAdmin ? <View style={styles.hiddenMarker} testID="auth-login-admin-audit" /> : null}
-              <Pressable accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-login-sign-out">
+              <Pressable accessibilityLabel="Đăng xuất" accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-login-sign-out">
                 <Text style={styles.secondaryActionText}>Đăng xuất</Text>
               </Pressable>
             </>
@@ -209,9 +217,9 @@ export function LoginRoleSurface() {
 }
 
 function roleLabel(role: string | null) {
-  if (role === 'admin') return 'Admin có thể audit cả hai section.'
-  if (role === 'worker') return 'Tài khoản Thợ chỉ vào luồng Thợ.'
-  if (role === 'customer') return 'Tài khoản Khách chỉ vào luồng Khách.'
+  if (role === 'admin') return 'Quản trị viên có thể mở cả hai khu vực.'
+  if (role === 'worker') return 'Tài khoản Thợ chỉ vào khu vực Thợ.'
+  if (role === 'customer') return 'Tài khoản Khách chỉ vào khu vực Khách.'
   return 'Đang kiểm tra vai trò tài khoản.'
 }
 
@@ -275,6 +283,7 @@ function RoleCard({
   return (
     <Pressable
       accessibilityLabel={`Đăng nhập vai trò ${label}`}
+      accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}

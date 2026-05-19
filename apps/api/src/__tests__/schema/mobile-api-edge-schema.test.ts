@@ -521,6 +521,24 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeRouter).toContain('workerCancellation.decide')
   })
 
+  it('hardens worker cancellation approval and job-media upload stages after PR review', () => {
+    const migration = read('supabase/migrations/20260519120720_fix_worker_cancellation_race_and_media_stage_rls.sql')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+
+    expect(migration).toContain('JOB_NOT_CANCELLABLE')
+    expect(migration).toContain("'worker_matched'::public.job_status")
+    expect(migration).toContain("'scope_change_pending'::public.job_status")
+    expect(migration).not.toContain("'confirmed_by_customer'::public.job_status")
+    expect(migration).toContain('drop policy if exists "Participants upload job media files"')
+    expect(migration).toContain('and case')
+    expect(migration).toContain('else false')
+    expect(migration).toContain("(storage.foldername(name))[2] in ('before', 'kael_reference')")
+    expect(migration).toContain('private.is_job_customer')
+    expect(migration).toContain("(storage.foldername(name))[2] in ('after', 'cancellation_evidence')")
+    expect(migration).toContain('private.is_job_worker')
+    expect(edgeServices).toContain('JOB_NOT_CANCELLABLE')
+  })
+
   it('splits Supabase box admin RLS policies so SELECT has one permissive path', () => {
     const migration = read('supabase/migrations/20260519122000_consolidate_box_admin_rls_policies.sql')
 

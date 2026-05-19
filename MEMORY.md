@@ -1,5 +1,17 @@
 # MEMORY
 
+## 2026-05-19 Native Glass Motion Follow-up
+
+- Follow-up was run on branch `codex/glass-motion-ui-enhancement` after PR #19 had already been opened for the production glass motion UI pass. Tu asked Codex to install the native Expo glass dependencies directly because he could not run the commands locally.
+- `pnpm` was not available on PATH, and the Windows `node.exe`/package-manager shims were blocked by `Access is denied`. Codex downloaded portable `pnpm@11.1.1` into the ignored `.tmp` workspace and used the bundled Codex Node runtime by absolute path for install and verification commands.
+- Expo SDK 54 resolved and installed `expo-glass-effect@~0.1.10` and `expo-blur@~15.0.8` into `apps/mobile/package.json` and `pnpm-lock.yaml`.
+- The shared mobile `GlassSurface` now uses `expo-glass-effect` `GlassView` only when `isLiquidGlassAvailable()` returns true, falls back to low-intensity `expo-blur` `BlurView` with Android `experimentalBlurMethod="none"`, and falls back to a mostly opaque `View` when Reduce Transparency is enabled. `FloatingGlassTabBar` now composes through `GlassSurface` so the shared client/worker dock gets the same native/fallback path.
+- The production design contract in `docs/design/production-glass-motion-contract.md` now records that native glass dependencies are installed and documents the fallback chain. The shared mobile wiring test now guards the dependency versions and the `GlassSurface` native/fallback wiring.
+- Verification evidence for this follow-up: direct TypeScript checks passed for `apps/mobile`, `packages/shared`, and `apps/api`; targeted shared `mobile-wiring.test.ts` passed 216/216; full shared Vitest passed 475/475; API Vitest rerun from `apps/api` passed 938 tests with 59 skipped; `git diff --check` passed; Expo export passed for web, iOS, and Android. An initial API test run from repo root failed because Vitest could not resolve the `@/` alias; the correct rerun from `apps/api` passed. Initial parallel iOS/Android exports with `--clear` failed due a Windows Metro cache race, then sequential exports without `--clear` passed.
+- Static mobile UI risk count after the native follow-up: `GlassSheen` 0, `GlassMotionLayer` 0, `withRepeat` 0, `backdropFilter` 0, `filter: blur` 0, `boxShadow` 48, `Pressable` 82, `TextInput` 23, `BlurView` 3, `GlassView` 3, `isLiquidGlassAvailable` 2.
+- Supabase access credentials were not used during this UI/native-glass follow-up and must not be stored in repo files, docs, commits, logs, screenshots, or memory. The value provided by Tu should remain treated as a secret and be revoked by Tu as planned.
+- Still not verified in this environment: real FPS, frame hitch rate, Expo Go device behavior, TestFlight behavior, adb capture, xcrun/Instruments capture, and EAS device build runtime. Do not claim TestFlight or Expo Go smoothness until real device evidence exists.
+
 ## 2026-05-19 Production Supabase + 3-Service Fix Session
 
 - Production `iwevizmsedyqozxlawwl` was migrated past the 2026-05-18 hardening baseline with cleaning/service-box work and the new Supabase boxes/RPCs: `20260518181500_scope_change_reject_cancels_job.sql`, `20260519090000_add_cleaning_service_type.sql`, `20260519090100_add_cleaning_service_box.sql`, `20260519090200_supabase_boxes_notifications_media_cancellation.sql`, and `20260519122000_consolidate_box_admin_rls_policies.sql`.

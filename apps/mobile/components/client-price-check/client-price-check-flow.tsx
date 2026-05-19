@@ -13,7 +13,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native'
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import {
@@ -28,6 +27,8 @@ import {
   type ServiceType,
 } from '@home-services/shared'
 import { CustomerV4DockOverlay, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { GlassPressable } from '@/components/ui/glass-pressable'
 import { Colors } from '@/constants/colors'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
@@ -567,6 +568,7 @@ function useClientPriceCheckController() {
 
 export function ClientPriceCheckFlow() {
   const customerThemeMode = useCustomerThemeMode()
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   currentBookingThemeMode = customerThemeMode === 'dark' ? 'dark' : 'light'
   const {
     canCancelFromSearching,
@@ -583,14 +585,10 @@ export function ClientPriceCheckFlow() {
   } = useClientPriceCheckController()
 
   return (
-    <View
-      accessibilityLabel={`${BOOKING_V4_VISUAL_CONTRACT}; ${BOOKING_FORM_FIRST_CONTRACT}; ${BOOKING_LAYER_SWITCH_V4}; ${BOOKING_TYPE_RHYTHM}; ${BOOKING_INTERACTION_MOTION_V4}`}
-      style={styles.root}
-      testID="production-price-check-flow"
-    >
+    <View style={styles.root} testID="production-price-check-flow">
       <View style={styles.hiddenMarker} testID="booking-layer-semantic-switch" />
-      <BookingBackdrop />
-      <BookingAmbientGlassField />
+      {reduceTransparency ? null : <BookingBackdrop />}
+      {reduceMotion || reduceTransparency ? null : <BookingAmbientGlassField />}
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
@@ -606,7 +604,7 @@ export function ClientPriceCheckFlow() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.bookingTopRow}>
-          <Pressable accessibilityLabel="Quay lại" onPress={() => push(openHomePath)} style={styles.bookingMiniButton}>
+          <Pressable accessibilityLabel="Quay lại" accessibilityRole="button" onPress={() => push(openHomePath)} style={styles.bookingMiniButton}>
             <ChevronGlyph />
           </Pressable>
           <View style={styles.bookingLocationPill}>
@@ -615,7 +613,7 @@ export function ClientPriceCheckFlow() {
           </View>
         </View>
         <View style={styles.bookingSheet}>
-          <GlassSheen />
+          <SubtleGlassHighlight />
           <View style={styles.sheetHandle} />
           <BookingHeader />
           <View testID="booking-current-step-only">{currentStepContent}</View>
@@ -640,14 +638,14 @@ function BookingHeader() {
     <View style={styles.bookingTitle}>
       <View>
         <Text style={styles.flowBadge} numberOfLines={1}>
-          LUỒNG V4
+          KIỂM GIÁ
         </Text>
         <Text style={styles.pageTitle} numberOfLines={1}>
           Kiểm giá đầy đủ
         </Text>
       </View>
       <View style={styles.kaelHeaderMascot}>
-        <GlassSheen />
+        <SubtleGlassHighlight />
         <Image contentFit="contain" source={kaelModel8A} style={styles.kaelHeaderImage} />
       </View>
     </View>
@@ -655,72 +653,49 @@ function BookingHeader() {
 }
 
 function BookingBackdrop() {
-  const pulse = useSharedValue(0)
-
-  useEffect(() => {
-    if (!BOOKING_DECORATIVE_MOTION_ENABLED) {
-      pulse.value = 0.34
-      return
-    }
-    pulse.value = withRepeat(withTiming(1, { duration: 1900, easing: Easing.inOut(Easing.quad) }), -1, true)
-  }, [pulse])
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: 0.20 + pulse.value * 0.14,
-    transform: [{ translateX: -75 }, { scale: 0.96 + pulse.value * 0.1 }],
-  }))
-  const pinStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -9 }, { scale: 1 + pulse.value * 0.08 }],
-  }))
+  const pulse = 0.34
+  const glowStyle = {
+    opacity: 0.20 + pulse * 0.14,
+    transform: [{ translateX: -75 }, { scale: 0.96 + pulse * 0.1 }],
+  }
+  const pinStyle = {
+    transform: [{ translateX: -9 }, { scale: 1 + pulse * 0.08 }],
+  }
 
   return (
     <View pointerEvents="none" style={styles.bookingBackdrop}>
-      <Animated.View style={[styles.backdropGlow, glowStyle]} />
+      <View style={[styles.backdropGlow, glowStyle]} />
       <View style={[styles.backdropLine, styles.backdropLineOne]} />
       <View style={[styles.backdropLine, styles.backdropLineTwo]} />
       <View style={[styles.backdropRoom, styles.backdropRoomOne]} />
       <View style={[styles.backdropRoom, styles.backdropRoomTwo]} />
-      <Animated.View style={[styles.backdropPin, pinStyle]} />
+      <View style={[styles.backdropPin, pinStyle]} />
     </View>
   )
 }
 
 function BookingAmbientGlassField() {
-  const drift = useSharedValue(0)
-
-  useEffect(() => {
-    if (!BOOKING_DECORATIVE_MOTION_ENABLED) {
-      drift.value = 0.42
-      return
-    }
-    drift.value = withRepeat(withTiming(1, { duration: 5800, easing: Easing.inOut(Easing.quad) }), -1, true)
-  }, [drift])
-
-  const orbStyle = useAnimatedStyle(() => ({
-    opacity: 0.11 + drift.value * 0.06,
-    transform: [{ translateY: -8 + drift.value * 16 }, { scale: 0.98 + drift.value * 0.04 }],
-  }))
-  const lineStyle = useAnimatedStyle(() => ({
-    opacity: 0.08 + drift.value * 0.05,
-    transform: [{ rotate: '-12deg' }, { translateX: -10 + drift.value * 20 }],
-  }))
+  const drift = 0.42
+  const orbStyle = {
+    opacity: 0.11 + drift * 0.06,
+    transform: [{ translateY: -8 + drift * 16 }, { scale: 0.98 + drift * 0.04 }],
+  }
+  const lineStyle = {
+    opacity: 0.08 + drift * 0.05,
+    transform: [{ rotate: '-12deg' }, { translateX: -10 + drift * 20 }],
+  }
 
   return (
     <View pointerEvents="none" style={styles.bookingAmbientField} testID="booking-section-glass-field">
-      <Animated.View style={[styles.bookingAmbientMint, orbStyle]} />
+      <View style={[styles.bookingAmbientMint, orbStyle]} />
       <View style={styles.bookingAmbientWarm} />
-      <Animated.View style={[styles.bookingAmbientLine, lineStyle]} />
+      <View style={[styles.bookingAmbientLine, lineStyle]} />
     </View>
   )
 }
 
-function GlassSheen() {
-  return (
-    <>
-      <View pointerEvents="none" style={styles.glassTopHighlight} />
-      <View pointerEvents="none" style={styles.glassSheen} />
-    </>
-  )
+function SubtleGlassHighlight() {
+  return <View pointerEvents="none" style={styles.glassTopHighlight} />
 }
 
 function ChevronGlyph() {
@@ -741,7 +716,7 @@ function TrustRail({ active }: { active: 'describe' | 'estimate' | 'confirm' | '
   const activeIndex = Math.max(steps.findIndex(([key]) => key === active), 0)
   return (
     <View style={styles.trustRail}>
-      <GlassSheen />
+      <SubtleGlassHighlight />
       {steps.map(([key, label], index) => {
         const isActive = index === activeIndex
         const isDone = index < activeIndex
@@ -804,6 +779,7 @@ function BookingFormSurface({
       </SoftField>
       <SoftField title="Mô tả" meta={`${draft.description.trim().length}/160`}>
         <TextInput
+          accessibilityLabel="Mô tả vấn đề"
           multiline
           maxLength={160}
           onChangeText={onDescriptionChange}
@@ -817,6 +793,7 @@ function BookingFormSurface({
       </SoftField>
       <SoftField title="Khu vực" meta={draft.addressLabel.trim() ? 'Đã nhập' : 'Bắt buộc'}>
         <TextInput
+          accessibilityLabel="Khu vực"
           maxLength={96}
           onChangeText={onAddressChange}
           placeholder="Ví dụ: Quận 7, TP.HCM"
@@ -829,7 +806,6 @@ function BookingFormSurface({
       {validationMessage ? <Text style={styles.validationText}>{validationMessage}</Text> : null}
       <EvidenceDraftSlots mediaItems={draft.mediaItems} onPickMedia={onPickMedia} onRemoveMedia={onRemoveMedia} />
       <View style={styles.clarifyCard}>
-        <GlassSheen />
         <View style={styles.cardMetaRow}>
           <Text style={styles.cardTitle} numberOfLines={1}>
             Quản Gia Kael hỏi thêm
@@ -856,7 +832,6 @@ function ClarificationPanel({ draft, questions, onAnswer }: { draft: PriceCheckD
     <View style={styles.formStack}>
       {questions.map((question, index) => (
         <View key={question.id} style={styles.flowCard}>
-          <GlassSheen />
           <Text style={styles.cardTitle} numberOfLines={2}>
             {index + 1}. {question.question}
           </Text>
@@ -879,7 +854,7 @@ function ClarificationPanel({ draft, questions, onAnswer }: { draft: PriceCheckD
 function EstimatePanel({ estimate, isFallback }: { estimate: PriceCheckEstimateCard; isFallback: boolean }) {
   return (
     <View style={[styles.estimateCard, isFallback ? styles.warningCard : null]}>
-      <GlassSheen />
+      <SubtleGlassHighlight />
       <View style={styles.cardMetaRow}>
         <Text style={styles.kicker} numberOfLines={1}>
           KHUNG ƯỚC TÍNH
@@ -910,7 +885,6 @@ function EstimatePanel({ estimate, isFallback }: { estimate: PriceCheckEstimateC
 function SchedulePanel({ draft, onSelect }: { draft: PriceCheckDraft; onSelect: (choice: PriceCheckDraft['timeChoice']) => void }) {
   return (
     <View style={styles.flowCard}>
-      <GlassSheen />
       <Text style={styles.cardTitle}>Thời gian</Text>
       <View style={styles.twoCol}>
         <ChoiceCard active={draft.timeChoice === 'now'} title="Ngay bây giờ" text="Ưu tiên tìm thợ gần nhất" onPress={() => onSelect('now')} />
@@ -933,7 +907,6 @@ function ConfirmPanel({
 }) {
   return (
     <View style={styles.flowCard}>
-      <GlassSheen />
       <View style={styles.cardMetaRow}>
         <Text style={styles.cardTitle}>Xác nhận tìm thợ</Text>
         <Text style={styles.statusText}>Bắt buộc</Text>
@@ -947,6 +920,7 @@ function ConfirmPanel({
         <SummaryCell label="Phí nền tảng" value="Chờ hệ thống xác nhận" />
       </View>
       <Pressable
+        accessibilityLabel="Bật cập nhật từ Kael"
         accessibilityRole="switch"
         accessibilityState={{ checked: notificationGateAccepted }}
         onPress={onToggleNotificationGate}
@@ -968,7 +942,6 @@ function ConfirmPanel({
 function SearchingWorkerPanel({ draft }: { draft: PriceCheckDraft }) {
   return (
     <View accessibilityLabel={searchingWorkerState} style={styles.loadingCard}>
-      <GlassSheen />
       <ActivityIndicator color={tokens.primary} />
       <Text style={styles.loadingTitle}>Đang tìm thợ phù hợp</Text>
       <Text style={styles.loadingText}>Ưu tiên thợ gần khu vực của bạn. Địa chỉ chi tiết chỉ mở khi worker nhận.</Text>
@@ -989,7 +962,6 @@ function SearchingWorkerPanel({ draft }: { draft: PriceCheckDraft }) {
 function EmptyWorkerPanel() {
   return (
     <View accessibilityLabel={noWorkerFallbackState} style={styles.warningCard} testID="customer-no-fake-worker-data">
-      <GlassSheen />
       <Text style={styles.cardTitle}>Chưa có thợ phù hợp</Text>
       <Text style={styles.panelText}>Chưa có thợ nhận yêu cầu. Bạn có thể thử lại hoặc chỉnh yêu cầu để mô tả rõ hơn.</Text>
     </View>
@@ -999,7 +971,6 @@ function EmptyWorkerPanel() {
 function WorkerMatchedPanel({ status }: { status: LocalDealStatus | null }) {
   return (
     <View style={styles.flowCard} testID="customer-no-fake-worker-data">
-      <GlassSheen />
       <Text style={styles.cardTitle}>Thợ đã nhận</Text>
       <View style={styles.workerRow}>
         <View style={styles.workerAvatar}><DocumentGlyph /></View>
@@ -1017,7 +988,13 @@ function EvidenceDraftSlots({ mediaItems, onPickMedia, onRemoveMedia }: { mediaI
     <SoftField title="Ảnh / video" meta={mediaItems.length > 0 ? `${mediaItems.length}/5` : 'Tùy chọn'} testID="client-media-local-only">
       <View style={styles.mediaGrid}>
         {mediaItems.map((item) => (
-          <Pressable key={item.id} accessibilityRole="button" onPress={() => onRemoveMedia(item.id)} style={styles.mediaTile}>
+          <Pressable
+            accessibilityLabel={`Gỡ ${item.type === 'image' ? 'ảnh' : 'video'}${item.fileName ? ` ${item.fileName}` : ''}`}
+            key={item.id}
+            accessibilityRole="button"
+            onPress={() => onRemoveMedia(item.id)}
+            style={styles.mediaTile}
+          >
             {item.type === 'image' ? <Image source={{ uri: item.uri }} style={styles.mediaPreview} contentFit="cover" /> : <Text style={styles.mediaText}>Video</Text>}
             <Text style={styles.mediaText} numberOfLines={1}>
               Gỡ
@@ -1025,7 +1002,7 @@ function EvidenceDraftSlots({ mediaItems, onPickMedia, onRemoveMedia }: { mediaI
           </Pressable>
         ))}
         {mediaItems.length < 5 ? (
-          <Pressable accessibilityRole="button" onPress={onPickMedia} style={styles.mediaTile}>
+          <Pressable accessibilityLabel="Thêm ảnh hoặc video" accessibilityRole="button" onPress={onPickMedia} style={styles.mediaTile}>
             <CameraGlyph />
             <Text style={styles.mediaText} numberOfLines={2}>
               Thêm ảnh/video
@@ -1056,17 +1033,35 @@ function SheetActions({
 }) {
   return (
     <View style={styles.sheetActions}>
-      <GlassSheen />
+      <SubtleGlassHighlight />
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
       <View style={styles.actionRow}>
-        <Pressable onPress={onSecondary} style={styles.secondaryButton} testID={secondaryTestID}>
+        <GlassPressable
+          accessibilityLabel={secondaryLabel}
+          accessibilityRole="button"
+          mode={currentBookingThemeMode}
+          onPress={onSecondary}
+          style={styles.secondaryButton}
+          testID={secondaryTestID}
+          variant="control"
+        >
           <Text style={styles.secondaryButtonText} numberOfLines={1}>{secondaryLabel}</Text>
-        </Pressable>
-        <Pressable disabled={disabled} onPress={onPrimary} style={[styles.primaryButton, disabled ? styles.primaryButtonDisabled : null]}>
+        </GlassPressable>
+        <GlassPressable
+          accessibilityLabel={primaryLabel}
+          accessibilityRole="button"
+          accessibilityState={{ disabled }}
+          active
+          disabled={disabled}
+          mode={currentBookingThemeMode}
+          onPress={onPrimary}
+          style={[styles.primaryButton, disabled ? styles.primaryButtonDisabled : null]}
+          variant="control"
+        >
           <Text style={[styles.primaryButtonText, disabled ? styles.primaryButtonDisabledText : null]} numberOfLines={1}>{primaryLabel}</Text>
-        </Pressable>
+        </GlassPressable>
       </View>
     </View>
   )
@@ -1075,7 +1070,6 @@ function SheetActions({
 function SoftField({ children, meta, testID, title }: { children: ReactNode; meta?: string; testID?: string; title: string }) {
   return (
     <View style={styles.softField} testID={testID}>
-      <GlassSheen />
       <View style={styles.cardMetaRow}>
         <Text style={styles.fieldTitle}>{title}</Text>
         {meta ? <Text style={styles.statusText}>{meta}</Text> : null}
@@ -1087,26 +1081,51 @@ function SoftField({ children, meta, testID, title }: { children: ReactNode; met
 
 function Segment({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[styles.segment, active ? styles.segmentActive : null]}>
+    <GlassPressable
+      accessibilityLabel={label}
+      accessibilityRole="tab"
+      active={active}
+      mode={currentBookingThemeMode}
+      onPress={onPress}
+      style={[styles.segment, active ? styles.segmentActive : null]}
+      variant="control"
+    >
       <Text style={[styles.segmentText, active ? styles.segmentTextActive : null]}>{label}</Text>
-    </Pressable>
+    </GlassPressable>
   )
 }
 
 function Chip({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[styles.chip, active ? styles.chipActive : null]}>
+    <GlassPressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      active={active}
+      mode={currentBookingThemeMode}
+      onPress={onPress}
+      style={[styles.chip, active ? styles.chipActive : null]}
+      variant="control"
+    >
       <Text style={[styles.chipText, active ? styles.chipTextActive : null]} numberOfLines={1}>{label}</Text>
-    </Pressable>
+    </GlassPressable>
   )
 }
 
 function ChoiceCard({ active, disabled = false, onPress, text, title }: { active: boolean; disabled?: boolean; onPress: () => void; text: string; title: string }) {
   return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.choiceCard, active ? styles.choiceCardActive : null, disabled ? styles.disabledChoiceCard : null]}>
+    <GlassPressable
+      accessibilityLabel={`${title}. ${text}`}
+      accessibilityRole="button"
+      active={active}
+      disabled={disabled}
+      mode={currentBookingThemeMode}
+      onPress={onPress}
+      style={[styles.choiceCard, active ? styles.choiceCardActive : null, disabled ? styles.disabledChoiceCard : null]}
+      variant="subtle"
+    >
       <Text style={[styles.choiceTitle, active ? styles.choiceTextActive : null]}>{title}</Text>
       <Text style={[styles.choiceText, active ? styles.choiceTextActive : null]}>{text}</Text>
-    </Pressable>
+    </GlassPressable>
   )
 }
 
@@ -1383,7 +1402,6 @@ const lightStyles = StyleSheet.create({
   },
   bookingSheet: {
     backgroundColor: tokens.glassWarm,
-    backdropFilter: 'blur(28px) saturate(1.18)',
     borderColor: tokens.glassBorder,
     borderRadius: 30,
     borderWidth: 1,
@@ -1403,7 +1421,6 @@ const lightStyles = StyleSheet.create({
   bookingMiniButton: {
     alignItems: 'center',
     backgroundColor: tokens.glassStrong,
-    backdropFilter: 'blur(24px) saturate(1.18)',
     borderColor: tokens.glassBorder,
     borderRadius: 18,
     borderWidth: 1,
@@ -1416,7 +1433,6 @@ const lightStyles = StyleSheet.create({
   bookingLocationPill: {
     alignItems: 'center',
     backgroundColor: tokens.glassStrong,
-    backdropFilter: 'blur(24px) saturate(1.18)',
     borderColor: tokens.glassBorder,
     borderRadius: 18,
     borderWidth: 1,
@@ -1443,17 +1459,6 @@ const lightStyles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     top: 0,
-    zIndex: 0,
-  },
-  glassSheen: {
-    backgroundColor: tokens.glassHighlight,
-    height: '170%',
-    left: -72,
-    opacity: 0.38,
-    position: 'absolute',
-    top: -46,
-    transform: [{ rotate: '11deg' }],
-    width: 58,
     zIndex: 0,
   },
   sheetHandle: {
@@ -1535,7 +1540,7 @@ const lightStyles = StyleSheet.create({
   },
   segmentActive: {
     backgroundColor: 'rgba(255,255,255,0.78)',
-    boxShadow: '0 8px 20px rgba(13,70,65,0.10)',
+    boxShadow: 'none',
   },
   segmentText: {
     color: tokens.muted,
@@ -1547,12 +1552,11 @@ const lightStyles = StyleSheet.create({
     color: tokens.primary,
   },
   softField: {
-    backgroundColor: tokens.glassSoft,
-    backdropFilter: 'blur(22px) saturate(1.16)',
-    borderColor: tokens.glassBorder,
+    backgroundColor: tokens.base,
+    borderColor: tokens.border,
     borderRadius: 21,
     borderWidth: 1,
-    boxShadow: tokens.glassFloatShadow,
+    boxShadow: 'none',
     gap: 9,
     overflow: 'hidden',
     padding: 12,
@@ -1604,7 +1608,7 @@ const lightStyles = StyleSheet.create({
   },
   trustDotActive: {
     backgroundColor: tokens.primary,
-    boxShadow: '0 0 0 5px rgba(22,185,168,0.14)',
+    boxShadow: 'none',
   },
   trustLabel: {
     color: tokens.subtle,
@@ -1627,7 +1631,7 @@ const lightStyles = StyleSheet.create({
   },
   chipActive: {
     backgroundColor: tokens.primary,
-    boxShadow: '0 8px 20px rgba(8,120,110,0.20)',
+    boxShadow: 'none',
   },
   chipText: {
     color: tokens.primaryDark,
@@ -1697,8 +1701,8 @@ const lightStyles = StyleSheet.create({
     letterSpacing: 0,
   },
   clarifyCard: {
-    backgroundColor: 'rgba(222,251,244,0.68)',
-    borderColor: tokens.glassBorder,
+    backgroundColor: tokens.service,
+    borderColor: tokens.border,
     borderRadius: 22,
     borderWidth: 1,
     gap: 8,
@@ -1706,8 +1710,8 @@ const lightStyles = StyleSheet.create({
     padding: 13,
   },
   clarifyItem: {
-    backgroundColor: 'rgba(216,247,239,0.72)',
-    borderColor: 'rgba(255,255,255,0.66)',
+    backgroundColor: 'rgba(255,253,248,0.92)',
+    borderColor: tokens.border,
     borderRadius: 17,
     borderWidth: 1,
     color: tokens.text,
@@ -1718,14 +1722,11 @@ const lightStyles = StyleSheet.create({
     padding: 10,
   },
   flowCard: {
-    backgroundColor: tokens.glassSoft,
-    backdropFilter: 'blur(22px) saturate(1.16)',
-    borderColor: tokens.glassBorder,
+    backgroundColor: tokens.base,
+    borderColor: tokens.border,
     borderRadius: 22,
     borderWidth: 1,
-    boxShadow: tokens.glassFloatShadow,
-    experimental_backgroundImage:
-      'radial-gradient(circle at 92% 10%, rgba(255,184,102,0.13), transparent 20%), radial-gradient(circle at 8% 92%, rgba(183,246,231,0.30), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.52), rgba(225,249,244,0.42))',
+    boxShadow: 'none',
     gap: 12,
     overflow: 'hidden',
     padding: 13,
@@ -1744,7 +1745,6 @@ const lightStyles = StyleSheet.create({
   },
   estimateCard: {
     backgroundColor: tokens.glassSoft,
-    backdropFilter: 'blur(22px) saturate(1.16)',
     borderColor: tokens.glassBorder,
     borderRadius: 22,
     borderWidth: 1,
@@ -1757,7 +1757,6 @@ const lightStyles = StyleSheet.create({
   },
   warningCard: {
     backgroundColor: tokens.glassWarm,
-    backdropFilter: 'blur(22px) saturate(1.16)',
     borderColor: tokens.glassBorder,
     borderRadius: 22,
     borderWidth: 1,
@@ -1892,9 +1891,8 @@ const lightStyles = StyleSheet.create({
   },
   loadingCard: {
     alignItems: 'center',
-    backgroundColor: 'rgba(220,243,236,0.68)',
-    backdropFilter: 'blur(22px) saturate(1.16)',
-    borderColor: tokens.glassBorder,
+    backgroundColor: tokens.service,
+    borderColor: tokens.border,
     borderRadius: 28,
     borderWidth: 1,
     gap: 12,
@@ -1981,7 +1979,6 @@ const lightStyles = StyleSheet.create({
   },
   sheetActions: {
     backgroundColor: tokens.glassStrong,
-    backdropFilter: 'blur(22px) saturate(1.18)',
     borderColor: tokens.glassBorder,
     borderRadius: 20,
     borderWidth: 1,
@@ -2103,9 +2100,6 @@ const darkStyleOverrides = StyleSheet.create({
   glassTopHighlight: {
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  glassSheen: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
   sheetHandle: {
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
@@ -2131,7 +2125,7 @@ const darkStyleOverrides = StyleSheet.create({
   },
   segmentActive: {
     backgroundColor: 'rgba(105,222,198,0.16)',
-    boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
+    boxShadow: 'none',
   },
   segmentText: {
     color: '#8FB0AA',
@@ -2142,7 +2136,7 @@ const darkStyleOverrides = StyleSheet.create({
   softField: {
     backgroundColor: 'rgba(22,43,40,0.72)',
     borderColor: 'rgba(255,255,255,0.12)',
-    boxShadow: '0 18px 48px rgba(0,0,0,0.24)',
+    boxShadow: 'none',
   },
   fieldTitle: {
     color: '#E8F8F2',
@@ -2160,7 +2154,7 @@ const darkStyleOverrides = StyleSheet.create({
   },
   trustDotActive: {
     backgroundColor: '#69DEC6',
-    boxShadow: '0 0 0 5px rgba(105,222,198,0.12)',
+    boxShadow: 'none',
   },
   trustLabel: {
     color: '#8FB0AA',
@@ -2174,7 +2168,7 @@ const darkStyleOverrides = StyleSheet.create({
   },
   chipActive: {
     backgroundColor: '#08786E',
-    boxShadow: '0 8px 20px rgba(0,0,0,0.24)',
+    boxShadow: 'none',
   },
   chipText: {
     color: '#CFF7EE',
@@ -2209,11 +2203,9 @@ const darkStyleOverrides = StyleSheet.create({
     color: '#E8F8F2',
   },
   flowCard: {
-    backgroundColor: 'rgba(22,43,40,0.72)',
+    backgroundColor: 'rgba(12,26,25,0.92)',
     borderColor: 'rgba(255,255,255,0.12)',
-    boxShadow: '0 18px 48px rgba(0,0,0,0.24)',
-    experimental_backgroundImage:
-      'radial-gradient(circle at 92% 10%, rgba(224,160,107,0.10), transparent 20%), radial-gradient(circle at 8% 92%, rgba(105,222,198,0.13), transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.78), rgba(12,26,25,0.68))',
+    boxShadow: 'none',
   },
   cardTitle: {
     color: '#E8F8F2',
