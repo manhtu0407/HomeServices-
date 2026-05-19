@@ -10,6 +10,8 @@ type CustomerTabName = 'home' | 'booking' | 'kael' | 'history' | 'profile'
 const CUSTOMER_DOCK_MAIN_A = 'CUSTOMER_DOCK_MAIN_A: V4 rounded glass dock with active surface'
 const CUSTOMER_DARK_DOCK_LAYER_MATCH = 'CUSTOMER_DARK_DOCK_LAYER_MATCH: dock reads the same semantic V4 layers'
 const CUSTOMER_DARK_DOCK_LAYER_V4 = 'CUSTOMER_DARK_DOCK_LAYER_V4: customer-dock-shadow-layer'
+void CUSTOMER_DOCK_MAIN_A
+void CUSTOMER_DARK_DOCK_LAYER_V4
 const CUSTOMER_TAB_DOCK_MARKERS = ['customer-tab-dock-main-a', 'customer-tab-dock-active-surface'] as const
 const customerDockHeight = 82
 const customerDockBottomMargin = 10
@@ -20,6 +22,13 @@ const CUSTOMER_TAB_ICON_TEST_IDS = [
   'customer-tab-icon-history',
   'customer-tab-icon-profile',
 ] as const
+const CUSTOMER_TAB_ACCESSIBILITY_LABELS: Record<CustomerTabName, string> = {
+  booking: 'Đặt dịch vụ',
+  history: 'Lịch sử',
+  home: 'Trang chủ',
+  kael: 'Kael',
+  profile: 'Hồ sơ',
+}
 
 export default function CustomerLayout() {
   const { loading, role, session } = useAuth()
@@ -43,7 +52,7 @@ export default function CustomerLayout() {
   }
 
   if (role === 'admin') {
-    // Admin audit mode can inspect the customer workflow without changing role.
+    // Admin users can inspect the customer workflow without changing role.
   } else if (role !== 'customer') {
     return <Redirect href="/(auth)/login" />
   }
@@ -149,12 +158,14 @@ function CustomerTabIcon({
   const accent = focused ? tokens.copper : tokens.subtleText
   const testID = CUSTOMER_TAB_ICON_TEST_IDS.find((item) => item.endsWith(name))
   const dockMarker = focused ? CUSTOMER_TAB_DOCK_MARKERS[1] : CUSTOMER_TAB_DOCK_MARKERS[0]
-  const accessibilityMarker = CUSTOMER_DOCK_MAIN_A + CUSTOMER_DARK_DOCK_LAYER_V4 + dockMarker + marker
+  const accessibilityLabel = CUSTOMER_TAB_ACCESSIBILITY_LABELS[name]
+  void dockMarker
+  void marker
 
   if (name === 'kael') {
     return (
       <Image
-        accessibilityLabel={accessibilityMarker}
+        accessibilityLabel={accessibilityLabel}
         source={require('../../assets/kael-model-8a-head.png')}
         style={{
           borderColor: focused ? tokens.primary : tokens.borderStrong,
@@ -169,7 +180,7 @@ function CustomerTabIcon({
   }
 
   return (
-    <Svg width={25} height={25} viewBox="0 0 25 25" fill="none" accessibilityLabel={accessibilityMarker} testID={testID}>
+    <Svg width={25} height={25} viewBox="0 0 25 25" fill="none" accessibilityLabel={accessibilityLabel} testID={testID}>
       {name === 'home' ? (
         <>
           <Path d="M5.5 12.2 12.5 6l7 6.2v7.2H5.5v-7.2Z" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />

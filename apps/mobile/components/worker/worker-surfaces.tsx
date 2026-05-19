@@ -5,10 +5,13 @@ import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { createContext, type ReactNode, use, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { serviceLabel, statusLabel, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput } from '@home-services/shared'
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
+import { GlassModalSheet } from '@/components/ui/glass-modal-sheet'
+import { GlassPressable } from '@/components/ui/glass-pressable'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { uploadWorkerVerificationDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
@@ -18,8 +21,8 @@ const WORKER_PRODUCTION_CONTRACT = 'WORKER_PRODUCTION_CONTRACT: docs/design/work
 const WORKER_CLIENT_BASELINE_AUDIT = 'WORKER_CLIENT_BASELINE_AUDIT: customer V4 semantic layers matched for worker production'
 const WORKER_THEME_LANGUAGE_STORE = 'WORKER_THEME_LANGUAGE_STORE: worker-theme-language-switch AsyncStorage useSyncExternalStore'
 const WORKER_FLEXIBLE_MAP_SHELL = 'WORKER_FLEXIBLE_MAP_SHELL: worker-map-google-ready flexible-map-preview'
-const WORKER_DOCK_GLASS_MOTION = 'WORKER_DOCK_GLASS_MOTION: worker-dock-glass-aura worker-dock-liquid-pool worker-dock-active-glow worker-dock-motion-sheen worker-dock-kael-brief-mascot worker-dock-icon-system'
-const WORKER_GLASSMORPHISM_MOTION_LAYER = 'WORKER_GLASSMORPHISM_MOTION_LAYER: worker-glass-motion-layer animated-refraction-ribbon centered-metric-type'
+const WORKER_DOCK_GLASS_MOTION = 'WORKER_DOCK_GLASS_MOTION: worker-dock-glass-aura worker-liquid-glass-dock worker-dock-kael-brief-mascot worker-dock-icon-system'
+const WORKER_GLASSMORPHISM_MOTION_LAYER = 'WORKER_GLASSMORPHISM_MOTION_LAYER: shared-glass-pressable static-depth-layer centered-metric-type'
 const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kael-empty-chat-state worker-kael-local-chat-input submitWorkerKaelLocalDraft'
 const WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT = 'WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT: general area only until worker accepts'
 const WORKER_NO_FAKE_PAYMENT_DATA = 'WORKER_NO_FAKE_PAYMENT_DATA: worker-no-fake-payment-data'
@@ -444,6 +447,19 @@ function getWorkerThemeTokens(mode: WorkerThemeMode) {
   return mode === 'dark' ? darkLayer : lightLayer
 }
 
+function getReducedTransparencyWorkerTokens(tokens: WorkerThemeTokens): WorkerThemeTokens {
+  return {
+    ...tokens,
+    glass: tokens.mode === 'dark' ? 'rgba(18,39,36,0.96)' : 'rgba(255,253,248,0.96)',
+    glassBorder: tokens.borderStrong,
+    glassHighlight: 'transparent',
+    glassStrong: tokens.mode === 'dark' ? 'rgba(22,43,40,0.98)' : 'rgba(255,255,255,0.98)',
+    shadow: 'none',
+    sheen: 'transparent',
+    softShadow: 'none',
+  }
+}
+
 function useWorkerFrameCopy() {
   const language = useWorkerLanguageMode()
   return workerCopy[language]
@@ -557,8 +573,10 @@ function WorkerFrame({
   const { width } = useWindowDimensions()
   const mode = useWorkerThemeMode()
   const language = useWorkerLanguageMode()
-  const tokens = getWorkerThemeTokens(mode)
   const copy = workerCopy[language]
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const baseTokens = getWorkerThemeTokens(mode)
+  const tokens = reduceTransparency ? getReducedTransparencyWorkerTokens(baseTokens) : baseTokens
   const frameWidth = Math.min(width, 430)
   void eyebrow
   void title
@@ -575,8 +593,8 @@ function WorkerFrame({
       <SafeAreaView style={[styles.safe, canvasLayer]} testID={testID}>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
         <View style={[styles.canvas, canvasLayer]}>
-          <AmbientBackdrop />
-          <WorkerSectionMotionField active={active} frameWidth={frameWidth} screenWidth={width} />
+          {reduceTransparency ? null : <AmbientBackdrop />}
+          {reduceMotion || reduceTransparency ? null : <WorkerSectionMotionField active={active} frameWidth={frameWidth} screenWidth={width} />}
           <ScrollView
             contentContainerStyle={[
               styles.scrollContent,
@@ -649,13 +667,9 @@ function WorkerChatContent() {
   }
 
   return (
-    <View style={[styles.chatShell, glassSurface(tokens, 'depth')]} testID="worker-chat-kael-relay">
-      <GlassSheen />
-      <GlassMotionLayer />
+    <View style={[styles.chatShell, workerOpaqueCardSurface(tokens, 'depth')]} testID="worker-chat-kael-relay">
       <View style={styles.hiddenMarker} testID="worker-kael-client-chatbox-parity" />
-      <View style={[styles.kaelClientStage, glassSurface(tokens, 'cyan'), !hasAnyWorkerKaelMessage ? styles.kaelClientStageEmpty : null]} testID="worker-kael-conversation-feed">
-        <GlassSheen />
-        <GlassMotionLayer compact />
+      <View style={[styles.kaelClientStage, workerOpaqueCardSurface(tokens, 'cyan'), !hasAnyWorkerKaelMessage ? styles.kaelClientStageEmpty : null]} testID="worker-kael-conversation-feed">
         <View style={styles.hiddenMarker} testID="worker-kael-empty-chat-state" />
         {!hasAnyWorkerKaelMessage ? (
           <View style={styles.kaelBlankCanvas} testID="worker-kael-empty-chat-canvas">
@@ -671,12 +685,12 @@ function WorkerChatContent() {
         )}
 
         <View style={[styles.chatComposer, glassSurface(tokens, 'strong')]} testID="worker-kael-composer-dock">
-          <GlassSheen />
-          <Pressable accessibilityLabel="Thêm" accessibilityRole="button" style={[styles.composerTool, { borderColor: tokens.border }]}>
+          <SubtleGlassHighlight />
+          <View accessible={false} pointerEvents="none" style={[styles.composerTool, { borderColor: tokens.border }]}>
             <Text style={[styles.composerToolText, { color: tokens.primary }]} numberOfLines={1}>
               +
             </Text>
-          </Pressable>
+          </View>
           <TextInput
             accessibilityLabel={chatInputPlaceholder}
             editable={canSendWorkerKaelMessage}
@@ -692,6 +706,8 @@ function WorkerChatContent() {
           />
           <Pressable
             accessibilityLabel={copy.chat.send}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !draft.trim() || !canSendWorkerKaelMessage }}
             disabled={!draft.trim() || !canSendWorkerKaelMessage}
             onPress={submitWorkerKaelLocalDraft}
             style={({ pressed }) => [
@@ -739,7 +755,6 @@ function WorkerEarningsHero() {
   return (
     <View style={[styles.earningsHero, glassSurface(tokens, 'cream')]} testID="worker-earnings-summary">
       <MotionSweep />
-      <GlassMotionLayer />
       <View style={styles.rowBetween}>
         <View style={styles.titleStack}>
           <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.earnings.today}</Text>
@@ -769,9 +784,7 @@ function WorkerEarningsLedger() {
     : copy.earnings.rows
 
   return (
-    <View style={[styles.listCard, glassSurface(tokens, 'raised')]} testID="worker-earnings-ledger">
-      <GlassSheen />
-      <GlassMotionLayer compact />
+    <View style={[styles.listCard, workerOpaqueCardSurface(tokens)]} testID="worker-earnings-ledger">
       <SectionHeader title={copy.earnings.ledgerTitle} />
       {rows.map((row, index) => (
         <ListRow key={row[0]} icon={index === 0 ? 'money' : index === 1 ? 'bank' : 'document'} title={row[0]} meta={row[1]} />
@@ -787,7 +800,7 @@ function WorkerProfileContent() {
   const { selectors, state, workerProfile } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
-  const adminAuditSwitchLabel = language === 'en' ? 'Choose audit section' : 'Chọn section audit'
+  const adminAuditSwitchLabel = language === 'en' ? 'Choose area' : 'Chọn khu vực'
   const profileRows = deal
     ? [
         ['Xác minh danh tính', 'Chờ duyệt hệ thống'],
@@ -805,8 +818,7 @@ function WorkerProfileContent() {
   return (
     <>
       <View style={[styles.profileHead, glassSurface(tokens, 'raised')]} testID="worker-profile-verification-card">
-        <GlassSheen />
-        <GlassMotionLayer compact />
+        <SubtleGlassHighlight />
         <View style={[styles.avatarWrap, { backgroundColor: tokens.mint }]}>
           <Icon name="person" />
         </View>
@@ -831,7 +843,6 @@ function WorkerProfileContent() {
 
       <View style={[styles.greenScoreCard, glassSurface(tokens, 'mint')]}>
         <MotionSweep />
-        <GlassMotionLayer />
         <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.profile.scoreTitle}</Text>
         <Text style={[styles.scoreNumber, { color: tokens.ink }]}>--</Text>
         {copy.profile.scoreBody ? <Text style={[styles.bodyText, { color: tokens.muted }]}>{copy.profile.scoreBody}</Text> : null}
@@ -850,16 +861,12 @@ function WorkerProfileContent() {
         ))}
       </View>
 
-      <View style={[styles.preferenceCard, glassSurface(tokens, 'raised')]} testID="worker-profile-preference-toggles">
-        <GlassSheen />
-        <GlassMotionLayer compact />
+      <View style={[styles.preferenceCard, workerOpaqueCardSurface(tokens)]} testID="worker-profile-preference-toggles">
         <ThemeToggle />
         <LanguageToggle />
       </View>
 
-      <View style={[styles.listCard, glassSurface(tokens, 'raised')]} testID="worker-profile-list-groups">
-        <GlassSheen />
-        <GlassMotionLayer compact />
+      <View style={[styles.listCard, workerOpaqueCardSurface(tokens)]} testID="worker-profile-list-groups">
         {profileRows.map((row, index) => (
           <ListRow key={row[0]} icon={index === 0 ? 'shield' : index === 1 ? 'tools' : index === 2 ? 'map' : index === 3 ? 'moon' : 'globe'} title={row[0]} meta={row[1]} />
         ))}
@@ -977,17 +984,15 @@ function WorkerVerificationForm() {
     const saved = await actions.workerSubmitRegistration(input)
     setSubmitting(false)
     if (!saved) {
-      setSubmitError('Backend chưa nhận hồ sơ. Kiểm tra lại kết nối và thử lại.')
+      setSubmitError('Hệ thống chưa nhận hồ sơ. Kiểm tra lại kết nối và thử lại.')
       return
     }
     setBankAccount('')
-    Alert.alert('Đã gửi hồ sơ', 'Kael/admin sẽ duyệt hồ sơ trước khi bật nhận việc.')
+    Alert.alert('Đã gửi hồ sơ', 'Đội vận hành sẽ duyệt hồ sơ trước khi bật nhận việc.')
   }
 
   return (
-    <View style={[styles.verificationCard, glassSurface(tokens, 'raised')]} testID="worker-verification-submit-card">
-      <GlassSheen />
-      <GlassMotionLayer compact />
+    <View style={[styles.verificationCard, workerOpaqueCardSurface(tokens)]} testID="worker-verification-submit-card">
       <View style={styles.rowBetween}>
         <View style={styles.titleStack}>
           <Text style={[styles.kicker, { color: tokens.primary }]}>Xác minh</Text>
@@ -997,17 +1002,18 @@ function WorkerVerificationForm() {
           {status}
         </Text>
       </View>
-      <TextInput autoCapitalize="words" onChangeText={setLegalName} placeholder="Tên pháp lý" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-legal-name" value={legalName} />
+      <TextInput accessibilityLabel="Tên pháp lý" autoCapitalize="words" onChangeText={setLegalName} placeholder="Tên pháp lý" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-legal-name" value={legalName} />
       <View style={styles.verificationGrid}>
-        <TextInput onChangeText={setDateOfBirth} placeholder="YYYY-MM-DD" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-date-of-birth" value={dateOfBirth} />
-        <TextInput keyboardType="number-pad" onChangeText={setYearsExperience} placeholder="Năm kinh nghiệm" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-years" value={yearsExperience} />
+        <TextInput accessibilityLabel="Ngày sinh" onChangeText={setDateOfBirth} placeholder="YYYY-MM-DD" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-date-of-birth" value={dateOfBirth} />
+        <TextInput accessibilityLabel="Năm kinh nghiệm" keyboardType="number-pad" onChangeText={setYearsExperience} placeholder="Năm kinh nghiệm" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-years" value={yearsExperience} />
       </View>
-      <TextInput onChangeText={setDistricts} placeholder="Quận làm việc, cách nhau bằng dấu phẩy" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-districts" value={districts} />
+      <TextInput accessibilityLabel="Quận làm việc" onChangeText={setDistricts} placeholder="Quận làm việc, cách nhau bằng dấu phẩy" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-districts" value={districts} />
       <View style={styles.skillWrap} testID="worker-verification-service-types">
         {workerVerificationServices.map((serviceType) => {
           const selected = serviceTypes.includes(serviceType)
           return (
             <Pressable
+              accessibilityLabel={`Chọn kỹ năng ${serviceLabel(serviceType)}`}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: selected }}
               key={serviceType}
@@ -1025,8 +1031,8 @@ function WorkerVerificationForm() {
         })}
       </View>
       <View style={styles.verificationGrid}>
-        <TextInput onChangeText={setBankName} placeholder="Ngân hàng" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-bank-name" value={bankName} />
-        <TextInput keyboardType="number-pad" onChangeText={setBankAccount} placeholder="Số tài khoản" placeholderTextColor={tokens.subtle} secureTextEntry style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-bank-account" value={bankAccount} />
+        <TextInput accessibilityLabel="Ngân hàng" onChangeText={setBankName} placeholder="Ngân hàng" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-bank-name" value={bankName} />
+        <TextInput accessibilityLabel="Số tài khoản" keyboardType="number-pad" onChangeText={setBankAccount} placeholder="Số tài khoản" placeholderTextColor={tokens.subtle} secureTextEntry style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-bank-account" value={bankAccount} />
       </View>
       <View style={styles.verificationFiles}>
         <VerificationFileButton file={files.cccdFront} label="CCCD trước" onPress={() => void pickVerificationFile('cccdFront')} testID="worker-verification-cccd-front" />
@@ -1043,6 +1049,7 @@ function VerificationFileButton({ file, label, onPress, testID }: { file?: Local
   const { tokens } = useWorkerUi()
   return (
     <Pressable
+      accessibilityLabel={file ? `${label}: ${file.fileName ?? 'đã chọn tệp'}` : `Chọn ${label}`}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -1086,9 +1093,7 @@ function WorkerMapStage() {
           : copy.home.online
 
   return (
-    <View style={[styles.mapStage, glassSurface(tokens, 'base')]} testID="worker-flexible-map-shell">
-      <GlassSheen />
-      <GlassMotionLayer />
+    <View style={[styles.mapStage, workerOpaqueCardSurface(tokens, 'depth')]} testID="worker-flexible-map-shell">
       <View style={[styles.mapViewport, { backgroundColor: tokens.mode === 'dark' ? tokens.depth : '#F8FBF9' }]} testID="worker-map-google-ready">
         <MapLineField />
         <View pointerEvents="none" style={[styles.mapFogTop, { backgroundColor: tokens.raised }]} />
@@ -1117,6 +1122,7 @@ function WorkerMapStage() {
       ) : null}
 
       <Pressable
+        accessibilityLabel={nextAvailability ? 'Bật nhận việc' : 'Tắt nhận việc'}
         accessibilityRole="switch"
         accessibilityState={{ checked: Boolean(workerProfile?.is_available), disabled: !canToggleAvailability }}
         disabled={!canToggleAvailability}
@@ -1129,8 +1135,7 @@ function WorkerMapStage() {
         ]}
         testID="worker-availability-toggle"
       >
-        <GlassSheen />
-        <GlassMotionLayer compact />
+        <SubtleGlassHighlight />
         <View style={styles.rowBetween}>
           <View style={styles.titleStack}>
             <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.home.status}</Text>
@@ -1154,9 +1159,7 @@ function WorkerMapFeatureCard({ icon, testID, title, tone }: { icon: WorkerIconN
   const { tokens } = useWorkerUi()
 
   return (
-    <View style={[styles.mapFeatureCard, glassSurface(tokens, tone)]} testID={testID}>
-      <GlassSheen />
-      <GlassMotionLayer compact />
+    <View style={[styles.mapFeatureCard, workerOpaqueCardSurface(tokens, tone)]} testID={testID}>
       <Text style={[styles.mapFeatureTitle, { color: tokens.ink }]} numberOfLines={1}>{title}</Text>
       <View style={[styles.mapFeatureIcon, { backgroundColor: tokens.glassStrong }]}>
         <Icon name={icon} />
@@ -1272,12 +1275,12 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const submitCancellationRequest = () => {
     const reason = cancellationReasonDraft.trim()
     if (reason.length < 10) {
-      Alert.alert('Cần lý do hủy', 'Nhập lý do cụ thể để Kael/admin duyệt và tìm thợ thay thế nếu hợp lệ.')
+      Alert.alert('Cần lý do hủy', 'Nhập lý do cụ thể để đội vận hành duyệt và tìm thợ thay thế nếu hợp lệ.')
       return
     }
     Alert.alert(
       'Gửi yêu cầu hủy việc?',
-      'Yêu cầu này không hủy job ngay. Backend sẽ duyệt lý do và tự tìm thợ thay thế nếu được chấp nhận.',
+      'Yêu cầu này chưa hủy việc ngay. Đội vận hành sẽ duyệt lý do và tìm thợ thay thế nếu được chấp nhận.',
       [
         { text: 'Kiểm tra lại', style: 'cancel' },
         {
@@ -1297,13 +1300,12 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
     ? broadcast?.fullAddressLabel ?? deal?.draft.addressLabel ?? ''
     : broadcast?.generalArea
       ? `${broadcast.generalArea} · ẩn địa chỉ chi tiết`
-      : 'Địa chỉ chi tiết chỉ hiện sau khi có job thật và được chấp nhận.'
+      : 'Địa chỉ chi tiết chỉ hiện sau khi có việc thật và được chấp nhận.'
 
   return (
-    <View style={[styles.requestSheet, compact ? styles.requestSheetCompact : null, glassSurface(tokens, 'raised')]} testID="worker-request-sheet">
-      <GlassSheen />
+    <GlassModalSheet mode={tokens.mode} style={[styles.requestSheet, compact ? styles.requestSheetCompact : null]} testID="worker-request-sheet">
+      <SubtleGlassHighlight />
       <MotionSweep />
-      <GlassMotionLayer />
       <View style={styles.hiddenMarker} testID="worker-no-live-request-empty-state" />
       <View style={styles.hiddenMarker} testID="worker-safe-address-gate" />
       <View style={styles.rowBetween}>
@@ -1324,9 +1326,9 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         <Text style={[styles.areaText, { color: tokens.muted }]}>{addressLabel}</Text>
       </View>
 
-      <View style={[styles.kaelBrief, glassSurface(tokens, 'cyan')]} testID="worker-kael-brief">
+      <View style={[styles.kaelBrief, workerOpaqueCardSurface(tokens, 'cyan')]} testID="worker-kael-brief">
         <View style={styles.identityRow}>
-          <Image source={kaelHead} style={[styles.kaelMini, { borderColor: tokens.borderStrong }]} />
+          <Image accessible={false} source={kaelHead} style={[styles.kaelMini, { borderColor: tokens.borderStrong }]} />
           <Text style={[styles.kaelBriefTitle, { color: tokens.ink }]}>{copy.request.briefTitle}</Text>
         </View>
         {(broadcast?.prebrief ?? copy.request.brief).map((brief) => (
@@ -1346,6 +1348,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       {canRequestScopeChange ? (
         <View style={styles.scopeRequestBox} testID="worker-scope-change-request">
           <TextInput
+            accessibilityLabel="Mô tả phần phát sinh"
             onChangeText={setScopeDescriptionDraft}
             placeholder="Mô tả phần phát sinh"
             placeholderTextColor={tokens.subtle}
@@ -1353,6 +1356,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
             value={scopeDescriptionDraft}
           />
           <TextInput
+            accessibilityLabel="Giá mới cần khách duyệt"
             keyboardType="number-pad"
             onChangeText={setScopePriceDraft}
             placeholder="Giá mới cần khách duyệt"
@@ -1371,6 +1375,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       {canRequestCancellation ? (
         <View style={styles.scopeRequestBox} testID="worker-cancellation-request">
           <TextInput
+            accessibilityLabel="Lý do cần hủy"
             onChangeText={setCancellationReasonDraft}
             placeholder="Lý do cần hủy để Kael duyệt"
             placeholderTextColor={tokens.subtle}
@@ -1382,6 +1387,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       ) : null}
       {nextAction?.type === 'worker_complete_job' ? (
         <TextInput
+          accessibilityLabel="Giá cuối cùng"
           keyboardType="number-pad"
           onChangeText={setFinalPriceDraft}
           placeholder="Giá cuối cùng"
@@ -1401,7 +1407,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       ) : hasBroadcast ? (
         <Text style={[styles.bodyText, { color: tokens.muted }]}>{statusLabel(selectors.currentStatus)}</Text>
       ) : null}
-    </View>
+    </GlassModalSheet>
   )
 }
 
@@ -1410,148 +1416,70 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const { copy, tokens } = useWorkerUi()
-  const dockPulse = useSharedValue(0)
-  const dockSweep = useSharedValue(0)
   const dockWidth = Math.min(Math.max(width - 34, 0), 392)
   const bottom = Math.max(insets.bottom + workerDockBottomMargin, workerDockBottomMargin)
-  const items = [
-    { key: 'home' as const, icon: 'home' as const, label: copy.nav.home, path: '/(worker)/home' as const },
-    { key: 'jobs' as const, icon: 'jobs' as const, label: copy.nav.jobs, path: '/(worker)/jobs' as const },
-    { key: 'chat' as const, icon: 'chat' as const, label: copy.nav.chat, path: '/(worker)/chat' as const },
-    { key: 'earnings' as const, icon: 'money' as const, label: copy.nav.earnings, path: '/(worker)/earnings' as const },
-    { key: 'profile' as const, icon: 'person' as const, label: copy.nav.profile, path: '/(worker)/profile' as const },
+  type WorkerDockItem = FloatingGlassTabItem<WorkerActiveTab> & {
+    icon: WorkerIconName
+    path: '/(worker)/home' | '/(worker)/jobs' | '/(worker)/chat' | '/(worker)/earnings' | '/(worker)/profile'
+  }
+  const items: WorkerDockItem[] = [
+    { key: 'home', icon: 'home', label: copy.nav.home, path: '/(worker)/home', testID: 'worker-dock-home' },
+    { key: 'jobs', icon: 'jobs', label: copy.nav.jobs, path: '/(worker)/jobs', testID: 'worker-dock-jobs' },
+    { key: 'chat', icon: 'chat', label: copy.nav.chat, path: '/(worker)/chat', testID: 'worker-dock-chat' },
+    { key: 'earnings', icon: 'money', label: copy.nav.earnings, path: '/(worker)/earnings', testID: 'worker-dock-earnings' },
+    { key: 'profile', icon: 'person', label: copy.nav.profile, path: '/(worker)/profile', testID: 'worker-dock-profile' },
   ]
-  const activeIndex = Math.max(items.findIndex((item) => item.key === active), 0)
-  const previousActiveIndex = Math.max(items.findIndex((item) => item.key === lastWorkerDockActive), 0)
-  const slotWidth = dockWidth / items.length
-  const liquidLeft = activeIndex * slotWidth + slotWidth / 2 - 48
-  const previousLiquidLeft = previousActiveIndex * slotWidth + slotWidth / 2 - 48
-  const liquidX = useSharedValue(previousLiquidLeft)
-  const liquidWake = useSharedValue(1)
-
-  useEffect(() => {
-    if (!WORKER_DECORATIVE_MOTION_ENABLED) {
-      dockPulse.value = 0.28
-      dockSweep.value = 0
-      return
-    }
-    dockPulse.value = withRepeat(withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.quad) }), -1, true)
-    dockSweep.value = withRepeat(withTiming(1, { duration: 4600, easing: Easing.inOut(Easing.quad) }), -1, false)
-  }, [dockPulse, dockSweep])
-
-  useEffect(() => {
-    liquidX.value = withSpring(liquidLeft, { damping: 15, mass: 0.72, stiffness: 132 })
-    liquidWake.value = 0
-    liquidWake.value = withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) })
-    lastWorkerDockActive = active
-  }, [active, liquidLeft, liquidWake, liquidX])
-
-  const dockHaloStyle = useAnimatedStyle(() => ({
-    opacity: 0.18 + dockPulse.value * 0.2,
-    transform: [{ scaleX: 0.98 + dockPulse.value * 0.045 }, { scaleY: 0.94 + dockPulse.value * 0.06 }],
-  }))
-  const dockSheenStyle = useAnimatedStyle(() => ({
-    opacity: dockSweep.value < 0.08 ? dockSweep.value * 2.4 : dockSweep.value > 0.92 ? (1 - dockSweep.value) * 2.4 : 0.2,
-    transform: [{ translateX: -64 + dockSweep.value * (dockWidth + 128) }, { rotate: '11deg' }],
-  }))
-  const activeGlowStyle = useAnimatedStyle(() => ({
-    opacity: 0.18 + dockPulse.value * 0.22,
-    transform: [{ scale: 0.9 + dockPulse.value * 0.16 }],
-  }))
-  const liquidPoolStyle = useAnimatedStyle(() => ({
-    opacity: 0.16 + dockPulse.value * 0.17,
-    transform: [{ translateX: liquidX.value }, { scaleX: 0.94 + dockPulse.value * 0.16 }, { scaleY: 0.84 + dockPulse.value * 0.12 }],
-  }))
-  const liquidWakeStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - liquidWake.value) * 0.24,
-    transform: [{ translateX: liquidX.value - 10 + liquidWake.value * 20 }, { scaleX: 0.8 + liquidWake.value * 0.52 }, { scaleY: 0.72 + liquidWake.value * 0.2 }],
-  }))
 
   return (
     <View pointerEvents="box-none" style={[styles.dockWrap, { bottom, width: dockWidth }]}>
-      <Animated.View pointerEvents="none" style={[styles.dockGlassAura, { backgroundColor: tokens.aqua }, dockHaloStyle]} testID="worker-dock-glass-aura" />
+      <View pointerEvents="none" style={[styles.dockGlassAura, { backgroundColor: tokens.aqua, opacity: 0.16 }]} testID="worker-dock-glass-aura" />
       <View pointerEvents="none" style={[styles.dockWarmAura, { backgroundColor: tokens.copper }]} />
-      <View
-        style={[
-          styles.workerDock,
-          {
-            backgroundColor: tokens.mode === 'dark' ? 'rgba(14,32,32,0.74)' : 'rgba(255,255,255,0.74)',
-            backdropFilter: 'blur(22px) saturate(1.18)',
-            borderColor: tokens.glassBorder,
-            boxShadow: tokens.mode === 'dark' ? '0 18px 50px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.12)' : '0 20px 52px rgba(13,70,65,0.16), inset 0 1px 0 rgba(255,255,255,0.78)',
-          } as any,
-        ]}
-        testID="worker-liquid-glass-dock"
-      >
-        <GlassSheen />
-        <Animated.View pointerEvents="none" style={[styles.dockLiquidWake, { backgroundColor: tokens.primary }, liquidWakeStyle]} testID="worker-dock-liquid-wake" />
-        <Animated.View pointerEvents="none" style={[styles.dockLiquidPool, { backgroundColor: tokens.aqua }, liquidPoolStyle]} testID="worker-dock-liquid-pool" />
-        <View pointerEvents="none" style={[styles.dockBottomReflection, { backgroundColor: tokens.glassHighlight }]} testID="worker-dock-bottom-reflection" />
-        <Animated.View pointerEvents="none" style={[styles.dockMotionSheen, { backgroundColor: tokens.glassHighlight }, dockSheenStyle]} testID="worker-dock-motion-sheen" />
-        {items.map((item) => {
-          const focused = active === item.key
-          return (
-            <Pressable
-              accessibilityLabel={item.label}
-              key={item.key}
-              onPress={() => push(item.path)}
-              style={({ pressed }) => [
-                styles.dockItem,
-                focused ? { backgroundColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(216,247,239,0.78)', boxShadow: tokens.softShadow } : null,
-                pressed ? styles.pressed : null,
-              ]}
-              testID={`worker-dock-${item.key}`}
-            >
-              {focused ? <Animated.View pointerEvents="none" style={[styles.dockActiveGlow, { backgroundColor: tokens.aqua }, activeGlowStyle]} testID="worker-dock-active-glow" /> : null}
-              {item.key === 'chat' ? (
-                <Image contentFit="contain" source={kaelHead} style={styles.dockKaelImage} testID="worker-dock-kael-brief-mascot" />
-              ) : (
-                <Icon name={item.icon} active={focused} />
-              )}
-              {focused ? (
-                <View style={[styles.dockDot, { backgroundColor: tokens.primary }]} />
-              ) : null}
-            </Pressable>
+      <FloatingGlassTabBar<WorkerActiveTab, WorkerDockItem>
+        activeKey={active}
+        items={items}
+        mode={tokens.mode}
+        onItemPress={(item) => {
+          lastWorkerDockActive = item.key
+          push(item.path)
+        }}
+        renderIcon={(item, focused) =>
+          item.key === 'chat' ? (
+            <Image accessible={false} contentFit="contain" source={kaelHead} style={styles.dockKaelImage} testID="worker-dock-kael-brief-mascot" />
+          ) : (
+            <Icon name={item.icon} active={focused} />
           )
-        })}
-      </View>
+        }
+        style={styles.workerDock}
+        testID="worker-liquid-glass-dock"
+      />
     </View>
   )
 }
 
 function AmbientBackdrop() {
   const { tokens } = useWorkerUi()
-  const drift = useSharedValue(0)
-
-  useEffect(() => {
-    if (!WORKER_DECORATIVE_MOTION_ENABLED) {
-      drift.value = 0.42
-      return
-    }
-    drift.value = withRepeat(withTiming(1, { duration: 6200, easing: Easing.inOut(Easing.quad) }), -1, true)
-  }, [drift])
-
-  const mintDriftStyle = useAnimatedStyle(() => ({
-    opacity: 0.16 + drift.value * 0.08,
-    transform: [{ translateY: -8 + drift.value * 16 }, { scale: 0.98 + drift.value * 0.04 }],
-  }))
-  const lineDriftStyle = useAnimatedStyle(() => ({
-    opacity: 0.1 + drift.value * 0.06,
-    transform: [{ translateX: -10 + drift.value * 20 }],
-  }))
+  const drift = 0.42
+  const mintDriftStyle = {
+    opacity: 0.16 + drift * 0.08,
+    transform: [{ translateY: -8 + drift * 16 }, { scale: 0.98 + drift * 0.04 }],
+  }
+  const lineDriftStyle = {
+    opacity: 0.1 + drift * 0.06,
+    transform: [{ translateX: -10 + drift * 20 }],
+  }
 
   return (
     <>
       <View style={[styles.backdropWarm, { backgroundColor: tokens.cream }]} />
-      <Animated.View style={[styles.backdropMint, { backgroundColor: tokens.aqua }, mintDriftStyle]} />
+      <View style={[styles.backdropMint, { backgroundColor: tokens.aqua }, mintDriftStyle]} />
       <View style={[styles.backdropCyan, { backgroundColor: tokens.cyan }]} />
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, lineDriftStyle]}>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, lineDriftStyle]}>
         <Svg style={StyleSheet.absoluteFill} viewBox="0 0 390 844" preserveAspectRatio="none">
           <Path d="M-10 210 C74 178 128 230 198 190 S332 132 420 164" stroke={tokens.line} strokeWidth={2.2} opacity={0.42} fill="none" />
           <Path d="M42 78 C118 124 126 174 88 238 S92 366 176 394 S302 378 410 424" stroke={tokens.line} strokeWidth={1.8} opacity={0.28} fill="none" />
           <Path d="M-20 604 C72 570 112 620 182 584 S316 512 420 550" stroke={tokens.line} strokeWidth={2} opacity={0.26} fill="none" />
         </Svg>
-      </Animated.View>
+      </View>
     </>
   )
 }
@@ -1566,35 +1494,27 @@ function WorkerSectionMotionField({
   screenWidth: number
 }) {
   const { tokens } = useWorkerUi()
-  const tide = useSharedValue(0)
+  const tide = 0.38
   const sectionIndex = ['home', 'jobs', 'chat', 'earnings', 'profile'].indexOf(active)
   const left = Math.max((screenWidth - frameWidth) / 2, 0)
   const topBias = 18 + Math.max(sectionIndex, 0) * 9
 
-  useEffect(() => {
-    if (!WORKER_DECORATIVE_MOTION_ENABLED) {
-      tide.value = 0.38
-      return
-    }
-    tide.value = withRepeat(withTiming(1, { duration: 6800, easing: Easing.inOut(Easing.quad) }), -1, true)
-  }, [tide])
-
-  const ribbonStyle = useAnimatedStyle(() => ({
-    opacity: 0.16 + tide.value * 0.12,
-    transform: [{ translateX: -28 + tide.value * 56 }, { translateY: -10 + tide.value * 18 }, { rotate: '10deg' }],
-  }))
-  const orbStyle = useAnimatedStyle(() => ({
-    opacity: 0.14 + tide.value * 0.1,
-    transform: [{ translateX: 12 - tide.value * 24 }, { translateY: -12 + tide.value * 24 }, { scale: 0.98 + tide.value * 0.05 }],
-  }))
-  const causticStyle = useAnimatedStyle(() => ({
-    opacity: 0.08 + tide.value * 0.1,
-    transform: [{ translateX: -18 + tide.value * 36 }, { scaleX: 0.92 + tide.value * 0.16 }],
-  }))
-  const glintStyle = useAnimatedStyle(() => ({
-    opacity: tide.value < 0.5 ? 0.08 + tide.value * 0.18 : 0.26 - (tide.value - 0.5) * 0.24,
-    transform: [{ translateX: -90 + tide.value * 180 }, { rotate: '13deg' }],
-  }))
+  const ribbonStyle = {
+    opacity: 0.16 + tide * 0.12,
+    transform: [{ translateX: -28 + tide * 56 }, { translateY: -10 + tide * 18 }, { rotate: '10deg' }],
+  }
+  const orbStyle = {
+    opacity: 0.14 + tide * 0.1,
+    transform: [{ translateX: 12 - tide * 24 }, { translateY: -12 + tide * 24 }, { scale: 0.98 + tide * 0.05 }],
+  }
+  const causticStyle = {
+    opacity: 0.08 + tide * 0.1,
+    transform: [{ translateX: -18 + tide * 36 }, { scaleX: 0.92 + tide * 0.16 }],
+  }
+  const glintStyle = {
+    opacity: tide < 0.5 ? 0.08 + tide * 0.18 : 0.26 - (tide - 0.5) * 0.24,
+    transform: [{ translateX: -90 + tide * 180 }, { rotate: '13deg' }],
+  }
 
   return (
     <View
@@ -1602,10 +1522,10 @@ function WorkerSectionMotionField({
       style={[styles.sectionMotionField, { left, width: frameWidth }]}
       testID={workerSectionMotionTestIDs[active]}
     >
-      <Animated.View style={[styles.sectionMotionRibbon, { backgroundColor: tokens.glassHighlight, top: topBias }, ribbonStyle]} />
-      <Animated.View style={[styles.sectionMotionOrb, { backgroundColor: tokens.aqua, top: 28 + topBias }, orbStyle]} />
-      <Animated.View style={[styles.sectionMotionCaustic, { backgroundColor: tokens.mint }, causticStyle]} />
-      <Animated.View style={[styles.sectionMotionGlint, { backgroundColor: tokens.glassHighlight }, glintStyle]} />
+      <View style={[styles.sectionMotionRibbon, { backgroundColor: tokens.glassHighlight, top: topBias }, ribbonStyle]} />
+      <View style={[styles.sectionMotionOrb, { backgroundColor: tokens.aqua, top: 28 + topBias }, orbStyle]} />
+      <View style={[styles.sectionMotionCaustic, { backgroundColor: tokens.mint }, causticStyle]} />
+      <View style={[styles.sectionMotionGlint, { backgroundColor: tokens.glassHighlight }, glintStyle]} />
     </View>
   )
 }
@@ -1641,101 +1561,19 @@ function PulseBeacon() {
   )
 }
 
-function GlassSheen() {
+function SubtleGlassHighlight() {
   const { tokens } = useWorkerUi()
 
-  return (
-    <>
-      <View pointerEvents="none" style={[styles.glassTopHighlight, { backgroundColor: tokens.glassHighlight }]} />
-      <View pointerEvents="none" style={[styles.glassSheen, { backgroundColor: tokens.glassHighlight }]} />
-    </>
-  )
+  return <View pointerEvents="none" style={[styles.glassTopHighlight, { backgroundColor: tokens.glassHighlight }]} />
 }
 
 function MotionSweep({ testID }: { testID?: string }) {
   const { tokens } = useWorkerUi()
-  const sweep = useSharedValue(0)
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
 
-  useEffect(() => {
-    if (!WORKER_DECORATIVE_MOTION_ENABLED) {
-      sweep.value = 0.4
-      return
-    }
-    sweep.value = withRepeat(withTiming(1, { duration: 2600, easing: Easing.inOut(Easing.quad) }), -1, true)
-  }, [sweep])
+  if (reduceMotion || reduceTransparency) return null
 
-  const sweepStyle = useAnimatedStyle(() => ({
-    opacity: 0.14 + sweep.value * 0.16,
-    transform: [{ translateX: -130 + sweep.value * 260 }],
-  }))
-
-  return <Animated.View pointerEvents="none" style={[styles.motionSweep, { backgroundColor: tokens.sheen }, sweepStyle]} testID={testID} />
-}
-
-function GlassMotionLayer({ compact = false }: { compact?: boolean }) {
-  const { tokens } = useWorkerUi()
-  const motion = useSharedValue(0)
-  const verticalFlow = useSharedValue(0)
-
-  useEffect(() => {
-    if (!WORKER_DECORATIVE_MOTION_ENABLED) {
-      motion.value = 0.34
-      verticalFlow.value = 0.5
-      return
-    }
-    motion.value = withRepeat(withTiming(1, { duration: 5200, easing: Easing.inOut(Easing.quad) }), -1, true)
-    verticalFlow.value = withRepeat(
-      withTiming(1, { duration: compact ? 3600 : 4300, easing: Easing.inOut(Easing.quad) }),
-      -1,
-      false,
-    )
-  }, [compact, motion, verticalFlow])
-
-  const orbStyle = useAnimatedStyle(() => ({
-    opacity: (compact ? 0.08 : 0.12) + motion.value * (compact ? 0.05 : 0.07),
-    transform: [{ translateY: -8 + motion.value * 16 }, { scale: 0.96 + motion.value * 0.08 }],
-  }))
-  const ribbonStyle = useAnimatedStyle(() => ({
-    opacity: (compact ? 0.14 : 0.2) + motion.value * (compact ? 0.1 : 0.14),
-    transform: [
-      { translateY: (compact ? -118 : -168) + verticalFlow.value * (compact ? 236 : 336) },
-      { translateX: -8 + motion.value * 16 },
-      { rotate: '9deg' },
-    ],
-  }))
-  const coreStyle = useAnimatedStyle(() => ({
-    opacity: (compact ? 0.16 : 0.22) + (1 - Math.abs(verticalFlow.value - 0.5) * 2) * (compact ? 0.16 : 0.22),
-    transform: [
-      { translateY: (compact ? -94 : -138) + verticalFlow.value * (compact ? 188 : 276) },
-      { translateX: 6 - motion.value * 12 },
-      { rotate: '9deg' },
-    ],
-  }))
-
-  return (
-    <>
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.glassMotionOrb, compact ? styles.glassMotionOrbCompact : null, { backgroundColor: tokens.aqua }, orbStyle]}
-        testID="worker-glass-motion-layer"
-      />
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.glassMotionRibbon,
-          compact ? styles.glassMotionRibbonCompact : null,
-          { backgroundColor: tokens.glassHighlight },
-          ribbonStyle,
-        ]}
-        testID="worker-vertical-glass-flow"
-      />
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.glassMotionCore, compact ? styles.glassMotionCoreCompact : null, { backgroundColor: tokens.aqua }, coreStyle]}
-        testID="worker-vertical-glass-core"
-      />
-    </>
-  )
+  return <View pointerEvents="none" style={[styles.motionSweep, { backgroundColor: tokens.sheen, opacity: 0.12 }]} testID={testID} />
 }
 
 function ThemeToggle() {
@@ -1752,6 +1590,8 @@ function ThemeToggle() {
       </View>
       <Pressable
         accessibilityLabel={mode === 'light' ? copy.frame.themeDark : copy.frame.themeLight}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: mode === 'dark' }}
         onPress={() => setWorkerThemeMode(nextMode)}
         style={({ pressed }) => [styles.preferenceSwitch, { backgroundColor: tokens.mint, borderColor: tokens.borderStrong }, pressed ? styles.pressed : null]}
         testID="worker-dark-mode-toggle"
@@ -1776,6 +1616,8 @@ function LanguageToggle() {
       </View>
       <Pressable
         accessibilityLabel={copy.frame.lang}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: language === 'en' }}
         onPress={() => setWorkerLanguageMode(nextLanguage)}
         style={({ pressed }) => [styles.preferenceSwitch, { backgroundColor: tokens.cyan, borderColor: tokens.borderStrong }, pressed ? styles.pressed : null]}
         testID="worker-language-toggle"
@@ -1793,9 +1635,7 @@ function TimelineCard() {
   const phases = getWorkerTimeline(deal ? selectors.currentStatus : null)
 
   return (
-    <View style={[styles.timelineCard, glassSurface(tokens, 'raised')]}>
-      <GlassSheen />
-      <GlassMotionLayer compact />
+    <View style={[styles.timelineCard, workerOpaqueCardSurface(tokens)]}>
       <SectionHeader title={copy.home.shiftTitle} action={copy.home.shiftAction} />
       {phases.map((item) => (
         <View key={item.label} style={styles.timelineItem}>
@@ -1828,10 +1668,9 @@ function SegmentFilter({ labels }: { labels: readonly string[] }) {
 
   return (
     <View style={[styles.segmentShell, glassSurface(tokens, 'raised')]} testID="worker-activity-filter-pattern">
-      <GlassSheen />
-      <GlassMotionLayer compact />
+      <SubtleGlassHighlight />
       {labels.map((item, index) => (
-        <View key={item} style={[styles.segmentPill, index === 0 ? { backgroundColor: tokens.mint, boxShadow: tokens.softShadow } : null]}>
+        <View key={item} style={[styles.segmentPill, index === 0 ? { backgroundColor: tokens.mint } : null]}>
           <Text style={[styles.segmentText, { color: index === 0 ? tokens.primary : tokens.muted }]} numberOfLines={1}>
             {item}
           </Text>
@@ -1859,9 +1698,7 @@ function JobActivityCard({
   const { tokens } = useWorkerUi()
 
   return (
-    <View style={[styles.flowCard, glassSurface(tokens, tone)]} testID={testID}>
-      <GlassSheen />
-      <GlassMotionLayer compact />
+    <View style={[styles.flowCard, workerOpaqueCardSurface(tokens, tone)]} testID={testID}>
       <View style={styles.rowBetween}>
         <Icon name={icon} />
         <Text style={[styles.statusPill, { backgroundColor: tokens.glassStrong, color: tokens.primary }]}>{status}</Text>
@@ -1877,7 +1714,6 @@ function Metric({ label, value }: { label: string; value: string }) {
 
   return (
     <View style={[styles.metric, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
-      <GlassMotionLayer compact />
       <Text style={[styles.metricValue, { color: tokens.ink }]} numberOfLines={1}>
         {value}
       </Text>
@@ -1892,9 +1728,7 @@ function QuickPanel({ icon, note, title, tone, value }: { icon: WorkerIconName; 
   const { tokens } = useWorkerUi()
 
   return (
-    <View style={[styles.quickPanel, glassSurface(tokens, tone)]}>
-      <GlassSheen />
-      <GlassMotionLayer compact />
+    <View style={[styles.quickPanel, workerOpaqueCardSurface(tokens, tone)]}>
       <Icon name={icon} />
       <Text style={[styles.quickValue, { color: tokens.ink }]} numberOfLines={1}>
         {value}
@@ -1922,10 +1756,9 @@ function SectionHeader({ action = '', title }: { action?: string; title: string 
 
 function ChatBubble({ mine = false, system = false, text, who }: { mine?: boolean; system?: boolean; text: string; who: string }) {
   const { tokens } = useWorkerUi()
-  const tone = mine ? 'mint' : system ? 'cyan' : 'raised'
 
   return (
-    <View style={[styles.chatBubble, mine ? styles.chatBubbleMine : null, glassSurface(tokens, tone)]}>
+    <View style={[styles.chatBubble, messageBubbleSurface(tokens, { mine, system }), mine ? styles.chatBubbleMine : null]}>
       <Text style={[styles.chatWho, { color: tokens.primary }]}>{who}</Text>
       <Text style={[styles.chatText, { color: tokens.ink }]}>{text}</Text>
     </View>
@@ -1957,28 +1790,31 @@ function PressButton({
 }: {
   disabled?: boolean
   label: string
-  onPress?: () => void
+  onPress: () => void
   secondary?: boolean
   testID?: string
 }) {
   const { tokens } = useWorkerUi()
 
   return (
-    <Pressable
+    <GlassPressable
       accessibilityLabel={label}
+      accessibilityRole="button"
       accessibilityState={{ disabled }}
+      active={!secondary}
       disabled={disabled}
+      mode={tokens.mode}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.pressButton,
         { backgroundColor: secondary ? tokens.mint : tokens.primary },
         disabled ? styles.disabledButton : null,
-        pressed ? styles.pressed : null,
       ]}
       testID={testID}
+      variant="control"
     >
       <Text style={[styles.pressButtonText, { color: secondary ? tokens.primary : tokens.primaryText }]}>{label}</Text>
-    </Pressable>
+    </GlassPressable>
   )
 }
 
@@ -1990,7 +1826,7 @@ function Icon({ active = false, name, small = false }: { active?: boolean; name:
   const stroke = small ? 1.8 : 2
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 25 25" fill="none" testID="worker-dock-icon-system-v3">
+    <Svg accessible={false} width={size} height={size} viewBox="0 0 25 25" fill="none" testID="worker-dock-icon-system-v3">
       {name === 'home' ? (
         <>
           <Path d="M5.5 12.2 12.5 6l7 6.2v7.2H5.5v-7.2Z" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
@@ -2134,13 +1970,64 @@ function glassSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
     backgroundColor,
     borderColor: tokens.glassBorder,
     borderWidth: 1,
-    backdropFilter: 'blur(24px) saturate(1.18)',
-    boxShadow: tone === 'raised' || tone === 'base' || tone === 'strong' ? tokens.shadow : tokens.softShadow,
+    boxShadow:
+      tone === 'raised' || tone === 'base' || tone === 'strong'
+        ? tokens.mode === 'dark'
+          ? '0 14px 36px rgba(0,0,0,0.24)'
+          : '0 14px 36px rgba(13,70,65,0.10)'
+        : 'none',
     experimental_backgroundImage: experimentalBackgroundImage,
     shadowColor: '#0D4641',
     shadowOffset: { height: 18, width: 0 },
-    shadowOpacity: tokens.mode === 'dark' ? 0.28 : 0.13,
-    shadowRadius: 28,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+  }
+}
+
+function messageBubbleSurface(tokens: WorkerThemeTokens, { mine, system }: { mine: boolean; system: boolean }) {
+  const backgroundColor = mine
+    ? tokens.mode === 'dark'
+      ? 'rgba(23,59,53,0.96)'
+      : 'rgba(225,248,242,0.96)'
+    : system
+      ? tokens.mode === 'dark'
+        ? 'rgba(21,54,58,0.94)'
+        : 'rgba(235,249,248,0.96)'
+      : tokens.mode === 'dark'
+        ? 'rgba(18,39,36,0.96)'
+        : 'rgba(255,253,248,0.96)'
+
+  return {
+    backgroundColor,
+    borderColor: system ? tokens.borderStrong : tokens.border,
+    borderWidth: 1,
+    boxShadow: 'none',
+  }
+}
+
+function workerOpaqueCardSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
+  const isWarm = tone === 'cream' || tone === 'warm'
+  const isMint = tone === 'mint'
+  const isCyan = tone === 'cyan'
+  return {
+    backgroundColor: isWarm
+      ? tokens.mode === 'dark'
+        ? 'rgba(59,41,27,0.94)'
+        : 'rgba(255,247,235,0.96)'
+      : isMint
+        ? tokens.mode === 'dark'
+          ? 'rgba(23,59,53,0.94)'
+          : 'rgba(232,249,244,0.96)'
+        : isCyan
+          ? tokens.mode === 'dark'
+            ? 'rgba(21,54,58,0.94)'
+            : 'rgba(235,249,248,0.96)'
+          : tokens.mode === 'dark'
+            ? 'rgba(18,39,36,0.96)'
+            : 'rgba(255,253,248,0.96)',
+    borderColor: tokens.border,
+    borderWidth: 1,
+    boxShadow: 'none',
   }
 }
 
@@ -2151,20 +2038,20 @@ const styles = StyleSheet.create({
   backdropMint: { borderRadius: 999, height: 270, opacity: 0.22, position: 'absolute', right: -108, top: 34, width: 270 },
   backdropCyan: { borderRadius: 999, height: 184, left: -80, opacity: 0.14, position: 'absolute', top: 190, width: 184 },
   sectionMotionField: { bottom: 0, overflow: 'hidden', position: 'absolute', top: 0, zIndex: 0 },
-  sectionMotionRibbon: { borderRadius: 999, filter: 'blur(8px)', height: 760, left: 18, position: 'absolute', width: 62 },
-  sectionMotionOrb: { borderRadius: 999, filter: 'blur(20px)', height: 214, position: 'absolute', right: -82, width: 214 },
-  sectionMotionCaustic: { borderRadius: 999, bottom: 84, filter: 'blur(22px)', height: 146, left: -86, position: 'absolute', width: 246 },
-  sectionMotionGlint: { bottom: 52, filter: 'blur(2px)', height: 260, left: '50%', position: 'absolute', width: 34 },
+  sectionMotionRibbon: { borderRadius: 999, height: 760, left: 18, position: 'absolute', width: 62 },
+  sectionMotionOrb: { borderRadius: 999, height: 214, position: 'absolute', right: -82, width: 214 },
+  sectionMotionCaustic: { borderRadius: 999, bottom: 84, height: 146, left: -86, position: 'absolute', width: 246 },
+  sectionMotionGlint: { bottom: 52, height: 260, left: '50%', position: 'absolute', width: 34 },
   scrollContent: { gap: 14, paddingHorizontal: workerFrameHorizontalPadding, paddingTop: 8, zIndex: 2 },
   kicker: { fontSize: 12, fontWeight: '600', letterSpacing: 0 },
   screenTitle: { fontSize: 27, fontWeight: '600', letterSpacing: 0, lineHeight: 32 },
   glassTopHighlight: { height: 1, left: 16, opacity: 0.82, position: 'absolute', right: 16, top: 0, zIndex: 0 },
   glassSheen: { height: '170%', left: -72, opacity: 0.42, position: 'absolute', top: -46, transform: [{ rotate: '11deg' }], width: 58, zIndex: 0 },
-  glassMotionOrb: { borderRadius: 999, filter: 'blur(12px)', height: 126, position: 'absolute', right: -40, top: -34, width: 126, zIndex: 0 },
+  glassMotionOrb: { borderRadius: 999, height: 126, position: 'absolute', right: -40, top: -34, width: 126, zIndex: 0 },
   glassMotionOrbCompact: { height: 78, right: -28, top: -24, width: 78 },
-  glassMotionRibbon: { borderRadius: 999, filter: 'blur(7px)', height: 168, left: 16, position: 'absolute', top: -168, width: 58, zIndex: 0 },
+  glassMotionRibbon: { borderRadius: 999, height: 168, left: 16, position: 'absolute', top: -168, width: 58, zIndex: 0 },
   glassMotionRibbonCompact: { height: 118, left: 8, top: -118, width: 38 },
-  glassMotionCore: { borderRadius: 999, filter: 'blur(2px)', height: 118, left: 56, position: 'absolute', top: -118, width: 13, zIndex: 0 },
+  glassMotionCore: { borderRadius: 999, height: 118, left: 56, position: 'absolute', top: -118, width: 13, zIndex: 0 },
   glassMotionCoreCompact: { height: 86, left: 36, top: -86, width: 9 },
   mapStage: { borderRadius: 34, gap: 10, marginBottom: 42, minHeight: 448, overflow: 'hidden', padding: 12, position: 'relative' },
   searchPill: { alignItems: 'center', borderRadius: 24, flexDirection: 'row', gap: 8, left: 13, minHeight: 46, paddingHorizontal: 14, position: 'absolute', right: 13, top: 13, zIndex: 4 },
@@ -2172,7 +2059,7 @@ const styles = StyleSheet.create({
   mapViewport: { borderRadius: 30, minHeight: 318, overflow: 'hidden', position: 'relative' },
   mapFogTop: { height: 92, left: 0, opacity: 0.38, position: 'absolute', right: 0, top: 0 },
   mapFogBottom: { bottom: -6, height: 86, left: 0, opacity: 0.5, position: 'absolute', right: 0 },
-  mapCyanVeil: { borderRadius: 999, filter: 'blur(22px)', height: 118, left: '50%', marginLeft: -59, opacity: 0.12, position: 'absolute', top: 120, width: 118 },
+  mapCyanVeil: { borderRadius: 999, height: 118, left: '50%', marginLeft: -59, opacity: 0.12, position: 'absolute', top: 120, width: 118 },
   mapChipTop: { left: 6, position: 'absolute', top: 15 },
   mapZonePill: { borderRadius: 22, left: 6, maxWidth: '64%', paddingHorizontal: 12, paddingVertical: 9, position: 'absolute', top: 9 },
   mapChipTitle: { fontSize: 14, fontWeight: '600', letterSpacing: 0 },
@@ -2183,7 +2070,7 @@ const styles = StyleSheet.create({
   mapFeatureIcon: { alignItems: 'center', borderRadius: 999, bottom: 12, height: 50, justifyContent: 'center', position: 'absolute', right: 12, width: 50 },
   mapServiceHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 1 },
   beaconWrap: { alignItems: 'center', height: 104, justifyContent: 'center', left: '50%', marginLeft: -52, marginTop: -28, position: 'absolute', top: '48%', width: 104 },
-  beaconHalo: { borderRadius: 999, filter: 'blur(4px)', height: 74, opacity: 0.16, position: 'absolute', width: 74 },
+  beaconHalo: { borderRadius: 999, height: 74, opacity: 0.16, position: 'absolute', width: 74 },
   beaconCrescent: { borderBottomWidth: 10, borderLeftWidth: 8, borderRadius: 999, bottom: 31, height: 38, opacity: 0.2, position: 'absolute', transform: [{ rotate: '18deg' }], width: 42 },
   beaconPin: { alignItems: 'center', borderRadius: 999, borderWidth: 2, height: 22, justifyContent: 'center', opacity: 0.82, width: 22 },
   beaconCore: { borderRadius: 999, height: 6, opacity: 0.82, width: 6 },
@@ -2288,14 +2175,14 @@ const styles = StyleSheet.create({
   verificationFileButton: { alignItems: 'center', borderRadius: 18, borderWidth: 1, flex: 1, gap: 5, justifyContent: 'center', minHeight: 72, padding: 8 },
   verificationFileText: { fontSize: 11, fontWeight: '600', lineHeight: 14, textAlign: 'center' },
   dockWrap: { alignSelf: 'center', minHeight: workerDockHeight, position: 'absolute', zIndex: 30 },
-  dockGlassAura: { borderRadius: 999, bottom: -20, filter: 'blur(24px)', height: 84, left: 20, position: 'absolute', right: 20, zIndex: -1 },
-  dockWarmAura: { borderRadius: 999, bottom: -10, filter: 'blur(22px)', height: 48, opacity: 0.12, position: 'absolute', right: -10, width: 100, zIndex: -1 },
+  dockGlassAura: { borderRadius: 999, bottom: -20, height: 84, left: 20, position: 'absolute', right: 20, zIndex: -1 },
+  dockWarmAura: { borderRadius: 999, bottom: -10, height: 48, opacity: 0.12, position: 'absolute', right: -10, width: 100, zIndex: -1 },
   workerDock: { alignItems: 'center', borderRadius: 33, borderWidth: 1, flexDirection: 'row', gap: 5, height: workerDockHeight, justifyContent: 'space-around', overflow: 'hidden', padding: 7, position: 'relative' },
-  dockLiquidPool: { borderRadius: 999, bottom: 4, filter: 'blur(15px)', height: 56, left: 0, opacity: 0.27, position: 'absolute', width: 96, zIndex: 0 },
-  dockLiquidWake: { borderRadius: 999, bottom: 1, filter: 'blur(18px)', height: 62, left: 0, position: 'absolute', width: 106, zIndex: 0 },
+  dockLiquidPool: { borderRadius: 999, bottom: 4, height: 56, left: 0, opacity: 0.27, position: 'absolute', width: 96, zIndex: 0 },
+  dockLiquidWake: { borderRadius: 999, bottom: 1, height: 62, left: 0, position: 'absolute', width: 106, zIndex: 0 },
   dockBottomReflection: { borderRadius: 999, bottom: 7, height: 17, left: 38, opacity: 0.18, position: 'absolute', right: 38, zIndex: 0 },
-  dockMotionSheen: { bottom: -18, filter: 'blur(1px)', position: 'absolute', top: -18, width: 54, zIndex: 0 },
-  dockActiveGlow: { borderRadius: 999, filter: 'blur(11px)', height: 52, position: 'absolute', width: 58 },
+  dockMotionSheen: { bottom: -18, position: 'absolute', top: -18, width: 54, zIndex: 0 },
+  dockActiveGlow: { borderRadius: 999, height: 52, position: 'absolute', width: 58 },
   dockItem: { alignItems: 'center', borderRadius: 27, flex: 1, height: 54, justifyContent: 'center', position: 'relative', zIndex: 2 },
   dockDot: { borderRadius: 999, bottom: 5, height: 3, position: 'absolute', width: 3 },
   dockKaelImage: { height: 34, width: 34 },

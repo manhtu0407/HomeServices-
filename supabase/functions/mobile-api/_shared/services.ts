@@ -72,6 +72,7 @@ type Chain = {
   contains(column: string, value: unknown[]): Chain;
   or(filter: string): Chain;
   order(column: string, options?: unknown): Chain;
+  range(from: number, to: number): Chain;
   limit(count: number): Chain;
   single(): Chain;
   maybeSingle(): Chain;
@@ -1040,17 +1041,26 @@ async function decideWorkerCancellation(
   if (input.decision === "approve") {
     const district = normalizeServiceAreaDistrict(nullableString(row.district_code) ?? "");
     if (district) {
-      const broadcast = await createBroadcasts(
-        client,
-        jobId,
-        row.service_type_out as ServiceType,
-        district,
-        { excludeWorkerIds: [asString(row.worker_id_out)] },
-      );
-      broadcastSent = broadcast.success;
-      message = broadcast.success
-        ? `Đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ thay thế.`
-        : broadcast.reason;
+      const previousRecipients = await listBroadcastRecipientWorkerIds(client, jobId);
+      if (!previousRecipients.success) {
+        message = previousRecipients.reason;
+      } else {
+        const excludeWorkerIds = Array.from(new Set([
+          asString(row.worker_id_out),
+          ...previousRecipients.workerIds,
+        ]));
+        const broadcast = await createBroadcasts(
+          client,
+          jobId,
+          row.service_type_out as ServiceType,
+          district,
+          { excludeWorkerIds },
+        );
+        broadcastSent = broadcast.success;
+        message = broadcast.success
+          ? `Đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ thay thế.`
+          : broadcast.reason;
+      }
     } else {
       message = "Đã duyệt hủy nhưng địa chỉ cần có quận TP.HCM rõ ràng để tìm thợ thay thế.";
     }
@@ -1533,6 +1543,17 @@ async function getWorkerEarnings(
 }
 
 async function listNotifications(ctx: MobileApiContext) {
+  const unreadResult = await dbQuery<null>(
+    db(ctx)
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", ctx.user.id)
+      .neq("status", "read")
+      .neq("status", "archived"),
+  );
+  if (unreadResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải số thông báo chưa đọc", 500);
+  }
   const result = await dbQuery<Array<Record<string, unknown>>>(
     db(ctx)
       .from("notifications")
@@ -1555,9 +1576,7 @@ async function listNotifications(ctx: MobileApiContext) {
     read_at: nullableString(row.read_at),
   }));
   return {
-    unread_count: notifications.filter((item) =>
-      item.status !== "read" && item.status !== "archived"
-    ).length,
+    unread_count: unreadResult.count ?? 0,
     notifications,
   };
 }
@@ -1666,6 +1685,40 @@ async function createBroadcasts(
     };
   }
   return { success: true as const, batchId, broadcastCount: eligible.length };
+}
+
+async function listBroadcastRecipientWorkerIds(client: DbClient, jobId: string) {
+  const workerIds = new Set<string>();
+  const pageSize = 1000;
+  let from = 0;
+
+  while (true) {
+    const result = await dbQuery<Array<Record<string, unknown>>>(
+      client
+        .from("job_broadcasts")
+        .select("worker_id")
+        .eq("job_id", jobId)
+        .order("broadcast_at", { ascending: true })
+        .range(from, from + pageSize - 1),
+    );
+    if (result.error) {
+      return {
+        success: false as const,
+        reason: "Đã duyệt hủy nhưng không thể kiểm tra danh sách thợ đã nhận yêu cầu.",
+      };
+    }
+    const rows = result.data ?? [];
+    for (const row of rows) {
+      const workerId = asString(row.worker_id);
+      if (workerId) workerIds.add(workerId);
+    }
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+  return {
+    success: true as const,
+    workerIds: Array.from(workerIds),
+  };
 }
 
 async function expireStaleBroadcasts(
@@ -1998,6 +2051,9 @@ function mapWorkerCancellationDecisionError(errorCode: string | null): never {
   }
   if (errorCode === "JOB_CHANGED") {
     apiFailure("STATUS_CHANGED", "Công việc đã thay đổi, vui lòng tải lại", 409);
+  }
+  if (errorCode === "JOB_NOT_CANCELLABLE") {
+    apiFailure("STATUS_CHANGED", "Công việc đã qua giai đoạn có thể duyệt hủy", 409);
   }
   if (errorCode === "INVALID_DECISION") {
     apiFailure("VALIDATION", "Quyết định không hợp lệ", 400);

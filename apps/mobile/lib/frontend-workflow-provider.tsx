@@ -89,10 +89,16 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const [workerProfile, setWorkerProfile] = useState<WorkerProfileResponse | null>(null)
   const [notifications, setNotifications] = useState<NotificationListResponse['notifications']>([])
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
+  const notificationsRef = useRef<NotificationListResponse['notifications']>([])
+  const locallyReadNotificationIdsRef = useRef(new Set<string>())
 
   useEffect(() => {
     stateRef.current = state
   }, [state])
+
+  useEffect(() => {
+    notificationsRef.current = notifications
+  }, [notifications])
 
   const setRemoteError = useCallback((error: string) => {
     dispatch({ type: 'set_workflow_error', error })
@@ -355,6 +361,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (!sessionUserId || !role) return true
     const result = await notificationService.list()
     if (!result.success) return setRemoteError(result.error)
+    notificationsRef.current = result.data.notifications
+    locallyReadNotificationIdsRef.current = new Set(
+      result.data.notifications.filter((item) => item.status === 'read').map((item) => item.id),
+    )
     setNotifications((current) =>
       sameNotifications(current, result.data.notifications) ? current : result.data.notifications,
     )
@@ -367,6 +377,18 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const markNotificationRead = useCallback(async (notificationId: string) => {
     const result = await notificationService.markRead(notificationId)
     if (!result.success) return setRemoteError(result.error)
+    const currentNotification = notificationsRef.current.find((item) => item.id === notificationId)
+    const shouldDecrementUnread = Boolean(
+      currentNotification &&
+      currentNotification.status !== 'read' &&
+      !locallyReadNotificationIdsRef.current.has(notificationId),
+    )
+    locallyReadNotificationIdsRef.current.add(notificationId)
+    notificationsRef.current = notificationsRef.current.map((item) =>
+      item.id === notificationId
+        ? { ...item, status: 'read', read_at: result.data.read_at }
+        : item,
+    )
     setNotifications((current) =>
       current.map((item) =>
         item.id === notificationId
@@ -374,7 +396,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
           : item,
       ),
     )
-    setNotificationUnreadCount((current) => Math.max(0, current - 1))
+    if (shouldDecrementUnread) setNotificationUnreadCount((current) => Math.max(0, current - 1))
     return true
   }, [setRemoteError])
 

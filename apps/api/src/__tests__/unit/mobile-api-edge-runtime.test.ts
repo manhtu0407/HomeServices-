@@ -65,6 +65,43 @@ describe('mobile-api Edge runtime helpers', () => {
     ].sort())
   })
 
+  it('counts unread notifications separately from the limited notification page', async () => {
+    const client = makeSequenceClient([
+      { data: null, error: null, count: 42 },
+      {
+        data: [{
+          id: 'notification-1',
+          title: 'Cập nhật',
+          body: 'Đã đọc trong trang mới nhất',
+          event_type: 'job_update',
+          status: 'read',
+          job_id: 'job-1',
+          created_at: '2026-05-19T00:00:00.000Z',
+          read_at: '2026-05-19T00:01:00.000Z',
+        }],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).listNotifications(ctx)
+
+    expect(result.unread_count).toBe(42)
+    expect(result.notifications).toHaveLength(1)
+    expect(client.calls).toHaveLength(2)
+    expect(client.calls[0].operations).toContainEqual(['select', 'id', { count: 'exact', head: true }])
+    expect(client.calls[0].operations).toContainEqual(['eq', 'user_id', 'customer-1'])
+    expect(client.calls[0].operations).toContainEqual(['neq', 'status', 'read'])
+    expect(client.calls[0].operations).toContainEqual(['neq', 'status', 'archived'])
+    expect(client.calls[0].operations.some((op) => op[0] === 'limit')).toBe(false)
+    expect(client.calls[1].operations).toContainEqual(['limit', 30])
+  })
+
   it('registers notification device tokens through the atomic Supabase RPC only', async () => {
     const client = makeSequenceClient([
       {
@@ -1328,7 +1365,15 @@ describe('mobile-api Edge runtime helpers', () => {
       },
       {
         data: [
+          { worker_id: 'worker-cancelled' },
+          { worker_id: 'worker-prior' },
+        ],
+        error: null,
+      },
+      {
+        data: [
           { id: 'worker-cancelled', rating: 5, total_jobs: 100, service_types: ['plumbing'], districts: ['q7'] },
+          { id: 'worker-prior', rating: 4.9, total_jobs: 90, service_types: ['plumbing'], districts: ['q7'] },
           { id: 'worker-new', rating: 4.8, total_jobs: 80, service_types: ['plumbing'], districts: ['q7'] },
         ],
         error: null,
@@ -1360,6 +1405,13 @@ describe('mobile-api Edge runtime helpers', () => {
       call.operations.some((op) => op[0] === 'in' && op[1] === 'worker_id')
     )
     expect(activeJobCall?.operations).toContainEqual(['in', 'worker_id', ['worker-new']])
+    const priorRecipientCall = client.calls.find((call) =>
+      call.table === 'job_broadcasts' &&
+      call.operations.some((op) => op[0] === 'select' && op[1] === 'worker_id')
+    )
+    expect(priorRecipientCall?.operations).toContainEqual(['eq', 'job_id', 'job-1'])
+    expect(priorRecipientCall?.operations).toContainEqual(['order', 'broadcast_at', { ascending: true }])
+    expect(priorRecipientCall?.operations).toContainEqual(['range', 0, 999])
 
     const broadcastInsert = client.calls.find((call) =>
       call.table === 'job_broadcasts' &&
@@ -1370,6 +1422,43 @@ describe('mobile-api Edge runtime helpers', () => {
       expect.objectContaining({ worker_id: 'worker-new', job_id: 'job-1' }),
     ])
     expect(JSON.stringify(insertOp?.[1])).not.toContain('worker-cancelled')
+    expect(JSON.stringify(insertOp?.[1])).not.toContain('worker-prior')
+  })
+
+  it('maps stale worker cancellation approvals to status-changed instead of reopening the job', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: false,
+          error_code: 'JOB_NOT_CANCELLABLE',
+          cancellation_status: 'reviewing_by_kael',
+          job_id_out: 'job-1',
+          job_status: 'confirmed_by_customer',
+          service_type_out: 'plumbing',
+          district_code: 'q7',
+          worker_id_out: 'worker-1',
+          decided_at_ts: null,
+        }],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'admin-1' },
+      role: 'admin',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).decideWorkerCancellation(ctx, 'cancel-1', {
+      decision: 'approve',
+    })).rejects.toMatchObject({
+      code: 'STATUS_CHANGED',
+      status: 409,
+    })
+    expect(client.calls.some((call) =>
+      call.table === 'job_broadcasts' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )).toBe(false)
   })
 
   it('does not fake zero earnings when the earnings query fails', async () => {
@@ -1512,7 +1601,7 @@ describe('mobile-api Edge runtime helpers', () => {
 })
 
 type QueryResult =
-  | { data: unknown; error: { code?: string; message?: string } | null }
+  | { data: unknown; error: { code?: string; message?: string } | null; count?: number | null }
   | { reject: unknown }
 type QueryCall = { table: string; operations: unknown[][] }
 
@@ -1535,8 +1624,8 @@ function makeSequenceClient(results: QueryResult[]) {
 
 function makeQuery(call: QueryCall, results: QueryResult[]) {
   const query = {
-    select(columns?: string) {
-      call.operations.push(['select', columns])
+    select(columns?: string, options?: unknown) {
+      call.operations.push(options === undefined ? ['select', columns] : ['select', columns, options])
       return query
     },
     insert(value: unknown) {
@@ -1585,6 +1674,10 @@ function makeQuery(call: QueryCall, results: QueryResult[]) {
     },
     order(column: string, options?: unknown) {
       call.operations.push(['order', column, options])
+      return query
+    },
+    range(from: number, to: number) {
+      call.operations.push(['range', from, to])
       return query
     },
     limit(count: number) {

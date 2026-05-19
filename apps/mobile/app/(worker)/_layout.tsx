@@ -7,6 +7,8 @@ type WorkerTabName = 'chat' | 'earnings' | 'home' | 'jobs' | 'profile'
 
 const WORKER_DOCK_MAIN = 'WORKER_DOCK_MAIN: worker liquid glass dock'
 const WORKER_DOCK_XANHSM_LAYER_MATCH = 'WORKER_DOCK_XANHSM_LAYER_MATCH: mint/cyan service-app dock'
+void WORKER_DOCK_MAIN
+void WORKER_DOCK_XANHSM_LAYER_MATCH
 const WORKER_TAB_ICON_TEST_IDS = [
   'worker-tab-icon-home',
   'worker-tab-icon-jobs',
@@ -14,6 +16,13 @@ const WORKER_TAB_ICON_TEST_IDS = [
   'worker-tab-icon-earnings',
   'worker-tab-icon-profile',
 ] as const
+const WORKER_TAB_ACCESSIBILITY_LABELS: Record<WorkerTabName, string> = {
+  chat: 'Chat',
+  earnings: 'Thu nhập',
+  home: 'Trang chủ',
+  jobs: 'Công việc',
+  profile: 'Hồ sơ',
+}
 
 const workerDockHeight = 64
 const workerDockBottomMargin = 8
@@ -40,7 +49,7 @@ export default function WorkerLayout() {
   }
 
   if (role === 'admin') {
-    // Admin audit mode can inspect the worker workflow without changing role.
+    // Admin users can inspect the worker workflow without changing role.
   } else if (role !== 'worker') {
     return <Redirect href="/(auth)/login" />
   }
@@ -122,7 +131,7 @@ export default function WorkerLayout() {
 function WorkerTabIcon({ color, focused, name }: { color: string; focused: boolean; name: WorkerTabName }) {
   const accent = focused ? dockTokens.accent : dockTokens.inactive
   const testID = WORKER_TAB_ICON_TEST_IDS.find((item) => item.endsWith(name))
-  const accessibilityLabel = WORKER_DOCK_MAIN + WORKER_DOCK_XANHSM_LAYER_MATCH
+  const accessibilityLabel = WORKER_TAB_ACCESSIBILITY_LABELS[name]
 
   return (
     <Svg width={25} height={25} viewBox="0 0 25 25" fill="none" accessibilityLabel={accessibilityLabel} testID={testID}>
