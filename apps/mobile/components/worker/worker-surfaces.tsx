@@ -913,8 +913,8 @@ function WorkerChatContent() {
     if (!canSendWorkerKaelMessage) return
     const value = draft.trim()
     if (!value) return
-    setMessages([
-      ...messages,
+    setMessages((prev) => [
+      ...prev,
       { id: `worker-local-${Date.now()}`, mine: true, text: value, who: copy.chat.worker },
     ])
     setDraft('')
