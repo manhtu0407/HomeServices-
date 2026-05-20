@@ -2,6 +2,7 @@ import { Redirect, Tabs } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { useAuth } from '@/lib/auth-provider'
+import { useAppLanguage } from '@/lib/app-language'
 
 type WorkerTabName = 'chat' | 'earnings' | 'home' | 'jobs' | 'profile'
 
@@ -16,13 +17,22 @@ const WORKER_TAB_ICON_TEST_IDS = [
   'worker-tab-icon-earnings',
   'worker-tab-icon-profile',
 ] as const
-const WORKER_TAB_ACCESSIBILITY_LABELS: Record<WorkerTabName, string> = {
-  chat: 'Chat',
-  earnings: 'Thu nhập',
-  home: 'Trang chủ',
-  jobs: 'Công việc',
-  profile: 'Hồ sơ',
-}
+const WORKER_TAB_COPY = {
+  vi: {
+    chat: 'Tin nhắn',
+    earnings: 'Thu nhập',
+    home: 'Trang chủ',
+    jobs: 'Công việc',
+    profile: 'Hồ sơ',
+  },
+  en: {
+    chat: 'Messages',
+    earnings: 'Earnings',
+    home: 'Home',
+    jobs: 'Jobs',
+    profile: 'Profile',
+  },
+} as const
 
 const workerDockHeight = 64
 const workerDockBottomMargin = 8
@@ -35,6 +45,8 @@ const dockTokens = {
 
 export default function WorkerLayout() {
   const { loading, role, session } = useAuth()
+  const language = useAppLanguage()
+  const tabCopy = WORKER_TAB_COPY[language]
 
   if (loading) {
     return (
@@ -74,7 +86,7 @@ export default function WorkerLayout() {
           borderRadius: 29,
           borderTopColor: 'rgba(255,255,255,0.88)',
           borderWidth: 1,
-          boxShadow: '0 24px 64px rgba(13,70,65,0.22), inset 0 1px 0 rgba(255,255,255,0.78)',
+          boxShadow: 'none',
           display: 'none',
           height: workerDockHeight,
           marginBottom: workerDockBottomMargin,
@@ -87,51 +99,50 @@ export default function WorkerLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Trang chủ',
-          tabBarLabel: 'Trang chủ',
-          tabBarIcon: ({ color, focused }) => <WorkerTabIcon color={color} focused={focused} name="home" />,
+          title: tabCopy.home,
+          tabBarLabel: tabCopy.home,
+          tabBarIcon: ({ color, focused }) => <WorkerTabIcon accessibilityLabel={tabCopy.home} color={color} focused={focused} name="home" />,
         }}
       />
       <Tabs.Screen
         name="jobs"
         options={{
-          title: 'Công việc',
-          tabBarLabel: 'Công việc',
-          tabBarIcon: ({ color, focused }) => <WorkerTabIcon color={color} focused={focused} name="jobs" />,
+          title: tabCopy.jobs,
+          tabBarLabel: tabCopy.jobs,
+          tabBarIcon: ({ color, focused }) => <WorkerTabIcon accessibilityLabel={tabCopy.jobs} color={color} focused={focused} name="jobs" />,
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
-          title: 'Chat',
-          tabBarLabel: 'Chat',
-          tabBarIcon: ({ color, focused }) => <WorkerTabIcon color={color} focused={focused} name="chat" />,
+          title: tabCopy.chat,
+          tabBarLabel: tabCopy.chat,
+          tabBarIcon: ({ color, focused }) => <WorkerTabIcon accessibilityLabel={tabCopy.chat} color={color} focused={focused} name="chat" />,
         }}
       />
       <Tabs.Screen
         name="earnings"
         options={{
-          title: 'Thu nhập',
-          tabBarLabel: 'Thu nhập',
-          tabBarIcon: ({ color, focused }) => <WorkerTabIcon color={color} focused={focused} name="earnings" />,
+          title: tabCopy.earnings,
+          tabBarLabel: tabCopy.earnings,
+          tabBarIcon: ({ color, focused }) => <WorkerTabIcon accessibilityLabel={tabCopy.earnings} color={color} focused={focused} name="earnings" />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Hồ sơ',
-          tabBarLabel: 'Hồ sơ',
-          tabBarIcon: ({ color, focused }) => <WorkerTabIcon color={color} focused={focused} name="profile" />,
+          title: tabCopy.profile,
+          tabBarLabel: tabCopy.profile,
+          tabBarIcon: ({ color, focused }) => <WorkerTabIcon accessibilityLabel={tabCopy.profile} color={color} focused={focused} name="profile" />,
         }}
       />
     </Tabs>
   )
 }
 
-function WorkerTabIcon({ color, focused, name }: { color: string; focused: boolean; name: WorkerTabName }) {
+function WorkerTabIcon({ accessibilityLabel, color, focused, name }: { accessibilityLabel: string; color: string; focused: boolean; name: WorkerTabName }) {
   const accent = focused ? dockTokens.accent : dockTokens.inactive
   const testID = WORKER_TAB_ICON_TEST_IDS.find((item) => item.endsWith(name))
-  const accessibilityLabel = WORKER_TAB_ACCESSIBILITY_LABELS[name]
 
   return (
     <Svg width={25} height={25} viewBox="0 0 25 25" fill="none" accessibilityLabel={accessibilityLabel} testID={testID}>

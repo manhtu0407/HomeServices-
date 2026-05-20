@@ -158,7 +158,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(apiTypes).toContain('current_scope_change')
     expect(provider).toContain('scopeChangeFromJobDetail')
     expect(provider).toContain('data.current_scope_change')
-    expect(customer).toContain('scopeChange?.requestedDescription')
+    expect(customer).toContain('scopeChange.requestedDescription ?? copy.history.needsConfirm')
     expect(customer).toContain("actions.decideScopeChange(scopeChange.id, { decision })")
     expect(worker).toContain('new_price_min: price')
     expect(worker).toContain('new_price_max: price')

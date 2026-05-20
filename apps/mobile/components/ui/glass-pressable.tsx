@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { Pressable, type AccessibilityRole, type AccessibilityState, type StyleProp, type ViewStyle } from 'react-native'
 import { useGlassAccessibility } from './accessibility-motion'
-import { motionTokens } from './motion-tokens'
+import { reduceMotionAwarePressStyle } from './reduce-motion-aware-animation'
 import { createGlassSurfaceStyle, type GlassMode, type GlassVariant } from './tokens'
 
 type GlassPressableProps = {
@@ -43,7 +43,7 @@ export function GlassPressable({
       style={({ pressed }) => [
         createGlassSurfaceStyle({ mode, reduceTransparency, variant }),
         active ? { borderColor: mode === 'dark' ? 'rgba(105,222,198,0.46)' : 'rgba(8,120,110,0.34)' } : null,
-        pressed && !reduceMotion ? { transform: [{ scale: motionTokens.press.scale }] } : null,
+        reduceMotionAwarePressStyle(pressed, reduceMotion),
         disabled ? { opacity: 0.48 } : null,
         style,
       ]}

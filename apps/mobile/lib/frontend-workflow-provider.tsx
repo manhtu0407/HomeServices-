@@ -37,6 +37,7 @@ import type {
   WorkerJobListResponse,
   WorkerProfileResponse,
 } from './api-types'
+import { useAppLanguage, type AppLanguage } from './app-language'
 
 type WorkerStatusUpdate = Extract<JobStatus, 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'completed_by_worker'>
 
@@ -78,17 +79,99 @@ type FrontendWorkflowContextValue = {
 
 const FrontendWorkflowContext = createContext<FrontendWorkflowContextValue | null>(null)
 const isAppForeground = () => AppState.currentState === 'active'
+const asciiOnlyPattern = /^[\x00-\x7F]*$/
+
+const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
+  vi: {
+    noRequestRefresh: 'Chưa có yêu cầu để tải lại',
+    missingService: 'Chọn dịch vụ điện, nước hoặc vệ sinh trước khi tạo yêu cầu',
+    missingProblem: 'Chọn ít nhất một vấn đề cần xử lý',
+    shortDescription: 'Mô tả cần rõ hơn trước khi gửi yêu cầu',
+    missingDistrict: 'Địa chỉ cần có quận TP.HCM rõ ràng',
+    noRequestSearch: 'Chưa có yêu cầu để tìm thợ',
+    noInviteAccept: 'Không có lời mời việc để nhận',
+    noInviteDecline: 'Không có lời mời việc để từ chối',
+    noRequestUpdate: 'Không có yêu cầu để cập nhật',
+    noRequestScope: 'Không có yêu cầu để đổi phạm vi',
+    noRequestCancel: 'Không có yêu cầu để hủy',
+    noRequestConfirm: 'Không có yêu cầu để xác nhận hoàn tất',
+    noRequestReview: 'Không có yêu cầu để đánh giá',
+    fallback: 'Không thể cập nhật yêu cầu. Vui lòng thử lại.',
+  },
+  en: {
+    noRequestRefresh: 'No request to refresh',
+    missingService: 'Choose electrical, plumbing, or cleaning before creating a request',
+    missingProblem: 'Choose at least one problem to handle',
+    shortDescription: 'Describe the issue more clearly before sending',
+    missingDistrict: 'Enter a clear HCMC district',
+    noRequestSearch: 'No request to send to workers',
+    noInviteAccept: 'No job invite to accept',
+    noInviteDecline: 'No job invite to skip',
+    noRequestUpdate: 'No request to update',
+    noRequestScope: 'No request for scope change',
+    noRequestCancel: 'No request to cancel',
+    noRequestConfirm: 'No request to confirm completion',
+    noRequestReview: 'No request to review',
+    fallback: 'Could not update the request. Try again.',
+  },
+}
+
+const workflowErrorKeyByViMessage = createWorkflowErrorLookup()
+
+function createWorkflowErrorLookup() {
+  const lookup = new Map<string, keyof typeof workflowErrorCopy.vi>()
+  for (const [key, value] of Object.entries(workflowErrorCopy.vi)) {
+    if (key !== 'fallback') lookup.set(value, key as keyof typeof workflowErrorCopy.vi)
+  }
+  return lookup
+}
+
+type NotificationState = {
+  notifications: NotificationListResponse['notifications']
+  unreadCount: number
+}
+
+type NotificationStateAction =
+  | { type: 'mark_read'; notificationId: string; readAt: string; shouldDecrementUnread: boolean }
+  | { type: 'refresh'; notifications: NotificationListResponse['notifications']; unreadCount: number }
+  | { type: 'reset' }
+
+const initialNotificationState: NotificationState = {
+  notifications: [],
+  unreadCount: 0,
+}
+
+function notificationStateReducer(state: NotificationState, action: NotificationStateAction): NotificationState {
+  switch (action.type) {
+    case 'mark_read': {
+      const notifications = markNotificationListRead(state.notifications, action.notificationId, action.readAt)
+      const unreadCount = action.shouldDecrementUnread ? Math.max(0, state.unreadCount - 1) : state.unreadCount
+      return notifications === state.notifications && unreadCount === state.unreadCount
+        ? state
+        : { notifications, unreadCount }
+    }
+    case 'refresh':
+      return sameNotifications(state.notifications, action.notifications) && state.unreadCount === action.unreadCount
+        ? state
+        : { notifications: action.notifications, unreadCount: action.unreadCount }
+    case 'reset':
+      return state.notifications.length === 0 && state.unreadCount === 0 ? state : initialNotificationState
+    default:
+      return state
+  }
+}
 
 function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const { role, session } = useAuth()
+  const language = useAppLanguage()
   const [state, dispatch] = useReducer(localWorkflowReducer, undefined, createInitialLocalWorkflowState)
   const selectors = useMemo(() => selectLocalWorkflow(state), [state])
   const sessionUserId = session?.user.id ?? null
   const previousSessionUserIdRef = useRef(sessionUserId)
   const stateRef = useRef(state)
   const [workerProfile, setWorkerProfile] = useState<WorkerProfileResponse | null>(null)
-  const [notifications, setNotifications] = useState<NotificationListResponse['notifications']>([])
-  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0)
+  const [notificationState, setNotificationState] = useReducer(notificationStateReducer, initialNotificationState)
+  const { notifications, unreadCount: notificationUnreadCount } = notificationState
   const notificationsRef = useRef<NotificationListResponse['notifications']>([])
   const locallyReadNotificationIdsRef = useRef(new Set<string>())
 
@@ -101,9 +184,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   }, [notifications])
 
   const setRemoteError = useCallback((error: string) => {
-    dispatch({ type: 'set_workflow_error', error })
+    dispatch({ type: 'set_workflow_error', error: localizeWorkflowError(error, language) })
     return false
-  }, [])
+  }, [language])
 
   const hydrateJobResult = useCallback((result: ApiResult<JobDetailResponse>) => {
     if (!result.success) return setRemoteError(result.error)
@@ -147,15 +230,16 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
     const uploaded = await uploadJobMediaDrafts(created.data.job_id, mediaItems, 'before')
     if (!uploaded.success) {
-      dispatch({ type: 'set_workflow_error', error: uploaded.error })
-      return { jobId: created.data.job_id, mediaError: uploaded.error }
+      const mediaError = localizeWorkflowError(uploaded.error, language)
+      dispatch({ type: 'set_workflow_error', error: mediaError })
+      return { jobId: created.data.job_id, mediaError }
     }
     const refreshed = await jobService.getJob(created.data.job_id)
     if (refreshed.success) {
       dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(refreshed.data) })
     }
     return { jobId: created.data.job_id }
-  }, [setRemoteError])
+  }, [language, setRemoteError])
 
   const confirmRemoteSearch = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
@@ -362,15 +446,16 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     const result = await notificationService.list()
     if (!result.success) return setRemoteError(result.error)
     notificationsRef.current = result.data.notifications
-    locallyReadNotificationIdsRef.current = new Set(
-      result.data.notifications.filter((item) => item.status === 'read').map((item) => item.id),
-    )
-    setNotifications((current) =>
-      sameNotifications(current, result.data.notifications) ? current : result.data.notifications,
-    )
-    setNotificationUnreadCount((current) =>
-      current === result.data.unread_count ? current : result.data.unread_count,
-    )
+    const readNotificationIds = new Set<string>()
+    for (const item of result.data.notifications) {
+      if (item.status === 'read') readNotificationIds.add(item.id)
+    }
+    locallyReadNotificationIdsRef.current = readNotificationIds
+    setNotificationState({
+      type: 'refresh',
+      notifications: result.data.notifications,
+      unreadCount: result.data.unread_count,
+    })
     return true
   }, [role, sessionUserId, setRemoteError])
 
@@ -384,19 +469,13 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       !locallyReadNotificationIdsRef.current.has(notificationId),
     )
     locallyReadNotificationIdsRef.current.add(notificationId)
-    notificationsRef.current = notificationsRef.current.map((item) =>
-      item.id === notificationId
-        ? { ...item, status: 'read', read_at: result.data.read_at }
-        : item,
-    )
-    setNotifications((current) =>
-      current.map((item) =>
-        item.id === notificationId
-          ? { ...item, status: 'read', read_at: result.data.read_at }
-          : item,
-      ),
-    )
-    if (shouldDecrementUnread) setNotificationUnreadCount((current) => Math.max(0, current - 1))
+    notificationsRef.current = markNotificationListRead(notificationsRef.current, notificationId, result.data.read_at)
+    setNotificationState({
+      type: 'mark_read',
+      notificationId,
+      readAt: result.data.read_at,
+      shouldDecrementUnread,
+    })
     return true
   }, [setRemoteError])
 
@@ -443,8 +522,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     previousSessionUserIdRef.current = sessionUserId
     dispatch({ type: 'reset_workflow' })
     setWorkerProfile(null)
-    setNotifications([])
-    setNotificationUnreadCount(0)
+    setNotificationState({ type: 'reset' })
   }, [sessionUserId])
 
   useEffect(() => {
@@ -748,8 +826,8 @@ function broadcastFromJobStatus(
     prebrief: [
       problemSummary,
       expiredBroadcast
-        ? 'Chưa có thợ phản hồi trong lượt tìm hiện tại. Khách có thể thử lại hoặc chỉnh yêu cầu.'
-        : accepted ? 'Yêu cầu đã được nhận. Địa chỉ chi tiết chỉ hiện trong phiên đã xác thực.' : 'Đang chờ thợ phản hồi.',
+        ? 'Chưa có thợ phản hồi.'
+        : accepted ? 'Yêu cầu đã được nhận.' : 'Đang chờ thợ phản hồi.',
     ],
     fullAddressVisible: accepted,
     fullAddressLabel: accepted ? addressLabel : null,
@@ -797,8 +875,7 @@ function sameNotifications(
   left: NotificationListResponse['notifications'],
   right: NotificationListResponse['notifications'],
 ) {
-  if (left.length !== right.length) return false
-  return left.every((item, index) => {
+  return left.length === right.length && left.every((item, index) => {
     const next = right[index]
     return item.id === next.id
       && item.title === next.title
@@ -811,8 +888,30 @@ function sameNotifications(
   })
 }
 
+function markNotificationListRead(
+  notifications: NotificationListResponse['notifications'],
+  notificationId: string,
+  readAt: string,
+) {
+  let changed = false
+  const next = notifications.map((item) => {
+    if (item.id !== notificationId) return item
+    changed = item.status !== 'read' || item.read_at !== readAt
+    return changed ? { ...item, status: 'read' as const, read_at: readAt } : item
+  })
+  return changed ? next : notifications
+}
+
 function sameStringArray(left: readonly string[], right: readonly string[]) {
   return left.length === right.length && left.every((item, index) => item === right[index])
+}
+
+function localizeWorkflowError(error: string, language: AppLanguage) {
+  const mappedKey = workflowErrorKeyByViMessage.get(error)
+  if (mappedKey) return workflowErrorCopy[language][mappedKey]
+  if (language === 'en' && !asciiOnlyPattern.test(error)) return workflowErrorCopy.en.fallback
+  if (language === 'vi' && asciiOnlyPattern.test(error)) return workflowErrorCopy.vi.fallback
+  return error
 }
 
 function formatNullablePriceRange(min: number | null, max: number | null) {

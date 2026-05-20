@@ -4,6 +4,7 @@ import { ActivityIndicator, useWindowDimensions, View } from 'react-native'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
 import { useAuth } from '@/lib/auth-provider'
+import { useAppLanguage } from '@/lib/app-language'
 
 type CustomerTabName = 'home' | 'booking' | 'kael' | 'history' | 'profile'
 
@@ -22,16 +23,31 @@ const CUSTOMER_TAB_ICON_TEST_IDS = [
   'customer-tab-icon-history',
   'customer-tab-icon-profile',
 ] as const
-const CUSTOMER_TAB_ACCESSIBILITY_LABELS: Record<CustomerTabName, string> = {
-  booking: 'Đặt dịch vụ',
-  history: 'Lịch sử',
-  home: 'Trang chủ',
-  kael: 'Kael',
-  profile: 'Hồ sơ',
-}
+const CUSTOMER_TAB_COPY = {
+  vi: {
+    booking: 'Kiểm giá',
+    bookingA11y: 'Đặt dịch vụ',
+    history: 'Hoạt động',
+    historyA11y: 'Lịch sử',
+    home: 'Trang chủ',
+    kael: 'Kael',
+    profile: 'Hồ sơ',
+  },
+  en: {
+    booking: 'Price check',
+    bookingA11y: 'Book service',
+    history: 'Activity',
+    historyA11y: 'History',
+    home: 'Home',
+    kael: 'Kael',
+    profile: 'Profile',
+  },
+} as const
 
 export default function CustomerLayout() {
   const { loading, role, session } = useAuth()
+  const language = useAppLanguage()
+  const tabCopy = CUSTOMER_TAB_COPY[language]
   const themeMode = useCustomerThemeMode()
   const tokens = getCustomerThemeTokens(themeMode)
   const { width } = useWindowDimensions()
@@ -83,7 +99,7 @@ export default function CustomerLayout() {
           borderRadius: 32,
           borderTopColor: tokens.mode === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.88)',
           borderWidth: 1,
-          boxShadow: tokens.mode === 'dark' ? '0 24px 70px rgba(0,0,0,0.34)' : '0 24px 64px rgba(13,70,65,0.20), inset 0 1px 0 rgba(255,255,255,0.76)',
+          boxShadow: 'none',
           display: 'none',
           height: customerDockHeight,
           left: dockLeft,
@@ -100,17 +116,17 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Trang chủ',
-          tabBarLabel: 'Trang chủ',
-          tabBarIcon: ({ color, focused }) => <CustomerTabIcon color={color} focused={focused} marker={dockMarker} name="home" />,
+          title: tabCopy.home,
+          tabBarLabel: tabCopy.home,
+          tabBarIcon: ({ color, focused }) => <CustomerTabIcon accessibilityLabel={tabCopy.home} color={color} focused={focused} marker={dockMarker} name="home" />,
         }}
       />
       <Tabs.Screen
         name="booking"
         options={{
-          title: 'Kiểm giá',
-          tabBarLabel: 'Kiểm giá',
-          tabBarIcon: ({ color, focused }) => <CustomerTabIcon color={color} focused={focused} marker={dockMarker} name="booking" />,
+          title: tabCopy.booking,
+          tabBarLabel: tabCopy.booking,
+          tabBarIcon: ({ color, focused }) => <CustomerTabIcon accessibilityLabel={tabCopy.bookingA11y} color={color} focused={focused} marker={dockMarker} name="booking" />,
           tabBarStyle: { display: 'none' },
         }}
       />
@@ -119,23 +135,23 @@ export default function CustomerLayout() {
         options={{
           title: 'Kael',
           tabBarLabel: 'Kael',
-          tabBarIcon: ({ color, focused }) => <CustomerTabIcon color={color} focused={focused} marker={dockMarker} name="kael" />,
+          tabBarIcon: ({ color, focused }) => <CustomerTabIcon accessibilityLabel={tabCopy.kael} color={color} focused={focused} marker={dockMarker} name="kael" />,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Hoạt động',
-          tabBarLabel: 'Hoạt động',
-          tabBarIcon: ({ color, focused }) => <CustomerTabIcon color={color} focused={focused} marker={dockMarker} name="history" />,
+          title: tabCopy.history,
+          tabBarLabel: tabCopy.history,
+          tabBarIcon: ({ color, focused }) => <CustomerTabIcon accessibilityLabel={tabCopy.historyA11y} color={color} focused={focused} marker={dockMarker} name="history" />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Hồ sơ',
-          tabBarLabel: 'Hồ sơ',
-          tabBarIcon: ({ color, focused }) => <CustomerTabIcon color={color} focused={focused} marker={dockMarker} name="profile" />,
+          title: tabCopy.profile,
+          tabBarLabel: tabCopy.profile,
+          tabBarIcon: ({ color, focused }) => <CustomerTabIcon accessibilityLabel={tabCopy.profile} color={color} focused={focused} marker={dockMarker} name="profile" />,
         }}
       />
     </Tabs>
@@ -143,11 +159,13 @@ export default function CustomerLayout() {
 }
 
 function CustomerTabIcon({
+  accessibilityLabel,
   color,
   focused,
   marker,
   name,
 }: {
+  accessibilityLabel: string
   color: string
   focused: boolean
   marker: string
@@ -158,7 +176,6 @@ function CustomerTabIcon({
   const accent = focused ? tokens.copper : tokens.subtleText
   const testID = CUSTOMER_TAB_ICON_TEST_IDS.find((item) => item.endsWith(name))
   const dockMarker = focused ? CUSTOMER_TAB_DOCK_MARKERS[1] : CUSTOMER_TAB_DOCK_MARKERS[0]
-  const accessibilityLabel = CUSTOMER_TAB_ACCESSIBILITY_LABELS[name]
   void dockMarker
   void marker
 

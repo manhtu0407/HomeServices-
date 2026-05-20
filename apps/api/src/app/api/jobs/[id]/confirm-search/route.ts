@@ -49,6 +49,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const now = new Date().toISOString()
+  let rollbackStatus: JobStatus | null = null
   if (job.status === 'broadcasting') {
     const { error: expireErr } = await withDbTimeout(
       auth.supabase
@@ -84,7 +85,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       )
     }
 
-    const lease = await acquireBroadcastRetryLease(auth.supabase, id, now)
+    const lease = await acquireBroadcastRetryLease(auth.supabase, id, auth.user.id, now)
     if (!lease.success) {
       return apiError(lease.code, lease.error, lease.status)
     }
@@ -102,6 +103,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (!transition.valid) {
       return apiError('INVALID_STATUS', transition.error, 409)
     }
+    rollbackStatus = job.status as JobStatus
 
     // Optimistic concurrency: only transition if status hasn't changed since the
     // fetch above. Prevents double-tap from creating two broadcast batches.
@@ -114,6 +116,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           confirmed_search_at: now,
         })
         .eq('id', id)
+        .eq('customer_id', auth.user.id)
         .eq('status', job.status)
         .select('id')
         .maybeSingle(),
@@ -158,6 +161,26 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   if (!broadcastResult.success) {
     if (broadcastResult.reasonCode === 'DB_ERROR') {
+      if (rollbackStatus) {
+        const rolledBack = await rollbackFailedBroadcastStart(
+          auth.supabase,
+          id,
+          auth.user.id,
+          rollbackStatus,
+        )
+        if (!rolledBack) {
+          return apiError('DB_ERROR', 'Không thể khôi phục yêu cầu sau lỗi gửi thợ', 500)
+        }
+        await logJobEvent(
+          auth.supabase,
+          id,
+          'broadcast_start_failed',
+          { id: auth.user.id, role: 'customer' },
+          'broadcasting',
+          rollbackStatus,
+          { reason: broadcastResult.reason },
+        )
+      }
       return apiError('DB_ERROR', 'Không thể gửi yêu cầu đến thợ', 500)
     }
 
@@ -199,20 +222,17 @@ export async function POST(request: Request, { params }: RouteParams) {
   })
 }
 
-async function acquireBroadcastRetryLease(
+async function rollbackFailedBroadcastStart(
   supabase: { from: (table: 'jobs') => unknown },
   jobId: string,
-  nowIso: string,
-): Promise<
-  | { success: true }
-  | { success: false; error: string; code: string; status: number }
-> {
-  const guardIso = new Date(Date.parse(nowIso) - 1_000).toISOString()
+  customerId: string,
+  previousStatus: JobStatus,
+): Promise<boolean> {
   const query = supabase.from('jobs') as {
     update(value: unknown): {
       eq(column: string, value: unknown): {
         eq(column: string, value: unknown): {
-          or(filter: string): {
+          eq(column: string, value: unknown): {
             select(columns: string): {
               maybeSingle(): PromiseLike<{
                 data: { id: string } | null
@@ -226,8 +246,53 @@ async function acquireBroadcastRetryLease(
   }
   const { data, error } = await withDbTimeout(
     query
+      .update({
+        status: previousStatus,
+        broadcast_at: null,
+        confirmed_search_at: null,
+      })
+      .eq('id', jobId)
+      .eq('customer_id', customerId)
+      .eq('status', 'broadcasting')
+      .select('id')
+      .maybeSingle(),
+  )
+  return !error && Boolean(data)
+}
+
+async function acquireBroadcastRetryLease(
+  supabase: { from: (table: 'jobs') => unknown },
+  jobId: string,
+  customerId: string,
+  nowIso: string,
+): Promise<
+  | { success: true }
+  | { success: false; error: string; code: string; status: number }
+> {
+  const guardIso = new Date(Date.parse(nowIso) - 1_000).toISOString()
+  const query = supabase.from('jobs') as {
+    update(value: unknown): {
+      eq(column: string, value: unknown): {
+        eq(column: string, value: unknown): {
+          eq(column: string, value: unknown): {
+            or(filter: string): {
+              select(columns: string): {
+                maybeSingle(): PromiseLike<{
+                  data: { id: string } | null
+                  error: { code?: string } | null
+                }>
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  const { data, error } = await withDbTimeout(
+    query
       .update({ broadcast_at: nowIso, confirmed_search_at: nowIso })
       .eq('id', jobId)
+      .eq('customer_id', customerId)
       .eq('status', 'broadcasting')
       .or(`broadcast_at.is.null,broadcast_at.lte.${guardIso}`)
       .select('id')

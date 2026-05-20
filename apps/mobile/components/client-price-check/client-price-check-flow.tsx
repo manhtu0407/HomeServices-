@@ -17,11 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import {
   LOCAL_WORKFLOW_PRICE_DISCLAIMER,
-  PROBLEM_CHIPS,
   extractDistrictLabel,
   extractKnownDistrictLabel,
-  serviceLabel,
-  statusLabel,
   type LocalDealDraft,
   type LocalDealStatus,
   type ServiceType,
@@ -29,7 +26,17 @@ import {
 import { CustomerV4DockOverlay, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassPressable } from '@/components/ui/glass-pressable'
+import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
 import { Colors } from '@/constants/colors'
+import {
+  appCopy,
+  localizedProblemLabel,
+  localizedProblemOptions,
+  localizedServiceLabel,
+  localizedStatusLabel,
+  useAppLanguage,
+  type AppLanguage,
+} from '@/lib/app-language'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 
 const BOOKING_DECORATIVE_MOTION_ENABLED = false
@@ -70,7 +77,10 @@ type PriceCheckEstimateCard = {
 type ClarificationQuestion = {
   id: string
   question: string
-  options: string[]
+  options: readonly {
+    label: string
+    value: string
+  }[]
 }
 
 const theme = Colors.priceCheck
@@ -79,8 +89,6 @@ const BOOKING_FORM_FIRST_CONTRACT = 'BOOKING_FORM_FIRST_CONTRACT: V4 form-first 
 const BOOKING_LAYER_SWITCH_V4 = 'BOOKING_LAYER_SWITCH_V4: glass mint/warm semantic layers'
 const BOOKING_TYPE_RHYTHM = 'BOOKING_TYPE_RHYTHM: compact V4 typography'
 const BOOKING_INTERACTION_MOTION_V4 = 'BOOKING_INTERACTION_MOTION_V4: tap and reveal only'
-const searchingWorkerState = 'searchingWorkerState: local searching UI until worker data exists'
-const noWorkerFallbackState = 'noWorkerFallbackState: no local worker matched request'
 const PRICE_DISCLAIMER = LOCAL_WORKFLOW_PRICE_DISCLAIMER
 const kaelModel8A = require('../../assets/kael-model-8a.png')
 const bookingFrameHorizontalPadding = 16
@@ -95,8 +103,8 @@ const tokens = {
   glassWarm: 'rgba(255,253,246,0.68)',
   glassBorder: 'rgba(255,255,255,0.82)',
   glassHighlight: 'rgba(255,255,255,0.70)',
-  glassShadow: '0 24px 70px rgba(13,70,65,0.18)',
-  glassFloatShadow: '0 20px 52px rgba(13,70,65,0.14)',
+  glassShadow: '0 12px 30px rgba(13,70,65,0.09)',
+  glassFloatShadow: '0 8px 20px rgba(13,70,65,0.07)',
   service: '#DCF3EC',
   water: '#E6F8F6',
   warm: '#FFF0DE',
@@ -124,63 +132,424 @@ const EMPTY_DRAFT: PriceCheckDraft = {
   timeChoice: 'now',
 }
 
-const QUESTIONS: Record<ServiceType, ClarificationQuestion[]> = {
-  electrical: [
-    {
-      id: 'scope',
-      question: 'Sự cố điện ở một vị trí hay nhiều vị trí?',
-      options: ['Một vị trí', 'Nhiều vị trí', 'Chưa rõ'],
+const UNKNOWN_OPTION_VALUE = 'unknown'
+
+const bookingCopy = {
+  vi: {
+    nav: {
+      back: 'Quay lại',
+      locationFallback: appCopy.vi.common.chooseArea,
     },
-    {
-      id: 'breaker',
-      question: 'Aptomat hoặc công tắc có dấu hiệu bất thường không?',
-      options: ['Có', 'Không', 'Chưa rõ'],
+    header: {
+      badge: 'KIỂM GIÁ',
+      title: 'Kiểm giá',
     },
-  ],
-  plumbing: [
-    {
-      id: 'scope',
-      question: 'Rò/tắc ở một vị trí hay nhiều vị trí?',
-      options: ['Một vị trí', 'Nhiều vị trí', 'Chưa rõ'],
+    trust: {
+      describe: 'Mô tả',
+      estimate: 'Ước tính',
+      confirm: 'Xác nhận',
+      match: 'Tìm thợ',
     },
-    {
-      id: 'leak',
-      question: 'Nước rò liên tục hay khi sử dụng?',
-      options: ['Liên tục', 'Khi dùng', 'Chưa rõ'],
+    form: {
+      address: 'Khu vực',
+      addressEntered: 'Đã nhập',
+      addressRequired: 'Bắt buộc',
+      addressPlaceholder: 'Ví dụ: Quận 7, TP.HCM',
+      clarifyFallback: 'Kael sẽ hỏi thêm khi cần.',
+      clarifyMeta: 'Khi cần',
+      clarifyTitle: 'Kael hỏi thêm',
+      description: 'Mô tả',
+      descriptionAccessibility: 'Mô tả vấn đề',
+      descriptionPlaceholder: 'Mô tả dấu hiệu, vị trí, thời điểm xảy ra...',
+      problem: 'Vấn đề',
+      problemMeta: 'Chọn',
+      serviceFirst: 'Chọn dịch vụ trước.',
+      unsupportedService: 'Chỉ hỗ trợ điện, nước, vệ sinh.',
     },
-  ],
-  cleaning: [
-    {
-      id: 'scope',
-      question: 'Khu vực cần dọn là một phòng hay cả nhà?',
-      options: ['Một phòng', 'Cả nhà', 'Chưa rõ'],
+    media: {
+      accessibilityAdd: 'Thêm ảnh hoặc video',
+      add: 'Thêm ảnh/video',
+      remove: 'Gỡ',
+      removeImage: 'Gỡ ảnh',
+      removeVideo: 'Gỡ video',
+      title: 'Ảnh / video',
+      video: 'Video',
+      optional: 'Tùy chọn',
     },
-    {
-      id: 'condition',
-      question: 'Tình trạng cần vệ sinh ở mức nào?',
-      options: ['Dọn thường', 'Tổng vệ sinh', 'Sau sửa chữa'],
+    questions: {
+      electrical: [
+        {
+          id: 'scope',
+          question: 'Sự cố điện ở một vị trí hay nhiều vị trí?',
+          options: [
+            { value: 'single', label: 'Một vị trí' },
+            { value: 'multiple', label: 'Nhiều vị trí' },
+            { value: UNKNOWN_OPTION_VALUE, label: appCopy.vi.common.unknown },
+          ],
+        },
+        {
+          id: 'breaker',
+          question: 'Aptomat hoặc công tắc có dấu hiệu bất thường không?',
+          options: [
+            { value: 'yes', label: 'Có' },
+            { value: 'no', label: 'Không' },
+            { value: UNKNOWN_OPTION_VALUE, label: appCopy.vi.common.unknown },
+          ],
+        },
+      ],
+      plumbing: [
+        {
+          id: 'scope',
+          question: 'Rò/tắc ở một vị trí hay nhiều vị trí?',
+          options: [
+            { value: 'single', label: 'Một vị trí' },
+            { value: 'multiple', label: 'Nhiều vị trí' },
+            { value: UNKNOWN_OPTION_VALUE, label: appCopy.vi.common.unknown },
+          ],
+        },
+        {
+          id: 'leak',
+          question: 'Nước rò liên tục hay khi sử dụng?',
+          options: [
+            { value: 'continuous', label: 'Liên tục' },
+            { value: 'in_use', label: 'Khi dùng' },
+            { value: UNKNOWN_OPTION_VALUE, label: appCopy.vi.common.unknown },
+          ],
+        },
+      ],
+      cleaning: [
+        {
+          id: 'scope',
+          question: 'Khu vực cần dọn là một phòng hay cả nhà?',
+          options: [
+            { value: 'single_room', label: 'Một phòng' },
+            { value: 'whole_home', label: 'Cả nhà' },
+            { value: UNKNOWN_OPTION_VALUE, label: appCopy.vi.common.unknown },
+          ],
+        },
+        {
+          id: 'condition',
+          question: 'Tình trạng cần vệ sinh ở mức nào?',
+          options: [
+            { value: 'standard', label: 'Dọn thường' },
+            { value: 'deep', label: 'Tổng vệ sinh' },
+            { value: 'post_repair', label: 'Sau sửa chữa' },
+          ],
+        },
+      ],
     },
-  ],
+    clarification: {
+      remaining: (count: number) => `Trả lời thêm ${count} câu để xem ước tính.`,
+    },
+    estimate: {
+      default: {
+        problemLabel: 'Kael kiểm tra trước khi gửi thợ',
+        complexity: 'unknown',
+        priceRangeLabel: 'Chờ Kael ước tính',
+        confidenceLabel: 'Đang chờ dữ liệu',
+        advisory: 'Thêm ảnh/khu vực để sát hơn.',
+      },
+      fallback: {
+        problemLabel: 'Chưa đủ dữ liệu an toàn',
+        complexity: 'unknown',
+        priceRangeLabel: 'Cần thêm thông tin',
+        confidenceLabel: 'Cần làm rõ',
+        advisory: 'Thêm ảnh hoặc trả lời câu hỏi.',
+      },
+      kicker: 'KHUNG ƯỚC TÍNH',
+      complexity: 'Độ phức tạp',
+      advisory: 'Gợi ý',
+      priceDisclaimer: PRICE_DISCLAIMER,
+      remoteConfidence: 'Kael ước tính',
+      systemConfirm: 'Chờ hệ thống xác nhận',
+    },
+    complexity: {
+      large: 'Lớn',
+      medium: 'Trung bình',
+      small: 'Nhỏ',
+      unknown: appCopy.vi.common.unknown,
+    },
+    schedule: {
+      title: 'Thời gian',
+      nowTitle: 'Ngay bây giờ',
+      nowText: 'Tìm thợ gần nhất',
+    },
+    confirm: {
+      accessibilityNotification: 'Bật cập nhật từ Kael',
+      address: 'Địa chỉ',
+      confirmTitle: 'Xác nhận tìm thợ',
+      described: 'Đã mô tả',
+      notificationText: 'Nhận cập nhật ghép thợ.',
+      platformFee: 'Phí nền tảng',
+      price: 'Ước giá',
+      problem: 'Vấn đề',
+      required: 'Bắt buộc',
+      service: 'Dịch vụ',
+      time: 'Thời gian',
+    },
+    search: {
+      title: 'Đang tìm thợ phù hợp',
+      text: 'Địa chỉ chi tiết chỉ mở khi thợ nhận.',
+      states: ['Đang tìm', 'Thử thợ khác', 'Không có thợ', 'Đã ghép'],
+    },
+    emptyWorker: {
+      title: 'Chưa có thợ phù hợp',
+      text: 'Thử lại hoặc chỉnh yêu cầu.',
+    },
+    matched: {
+      title: 'Thợ đã nhận',
+      text: 'Theo dõi trạng thái trong Hoạt động.',
+    },
+    actions: {
+      back: 'Quay lại',
+      cancel: 'Hủy yêu cầu',
+      confirmSearch: 'Gửi yêu cầu',
+      continue: 'Tiếp tục',
+      editRequest: 'Chỉnh yêu cầu',
+      goHome: 'Về trang chủ',
+      inspect: 'Để Kael kiểm tra',
+      keep: 'Giữ lại',
+      openHistory: 'Xem hoạt động',
+      retry: 'Thử lại',
+      reset: 'Sửa lại',
+      reviewConfirm: 'Xem xác nhận',
+      reviewEstimate: 'Xem ước tính',
+      schedule: 'Chọn thời gian',
+      status: 'Trạng thái',
+      talk: 'Trò chuyện',
+    },
+    alerts: {
+      cancelBody: 'Yêu cầu sẽ đóng.',
+      cancelBroadcastBody: 'Yêu cầu tìm thợ sẽ dừng. Địa chỉ vẫn ẩn.',
+      cancelTitle: 'Hủy yêu cầu?',
+      mediaPermission: 'Cần quyền thư viện ảnh/video để thêm bằng chứng.',
+      mediaUpload: 'Không thể tải ảnh/video lên. Bạn vẫn có thể tiếp tục và bổ sung sau.',
+      notificationGate: 'Bật cập nhật để nhận tin ghép thợ.',
+    },
+    validation: {
+      addressDistrict: 'Địa chỉ cần có quận TP.HCM rõ ràng.',
+      addressRequired: 'Nhập khu vực hoặc địa chỉ tổng quát.',
+      descriptionRequired: 'Mô tả cần đủ rõ để Kael tóm tắt.',
+      problemRequired: 'Chọn ít nhất một vấn đề cần xử lý.',
+      serviceRequired: 'Chọn dịch vụ điện, nước hoặc vệ sinh.',
+    },
+  },
+  en: {
+    nav: {
+      back: 'Back',
+      locationFallback: appCopy.en.common.chooseArea,
+    },
+    header: {
+      badge: 'PRICE CHECK',
+      title: 'Price check',
+    },
+    trust: {
+      describe: 'Describe',
+      estimate: 'Estimate',
+      confirm: 'Confirm',
+      match: 'Find worker',
+    },
+    form: {
+      address: 'Area',
+      addressEntered: 'Entered',
+      addressRequired: 'Required',
+      addressPlaceholder: 'Example: District 7, HCMC',
+      clarifyFallback: 'Kael will ask when needed.',
+      clarifyMeta: 'If needed',
+      clarifyTitle: 'Kael follow-up',
+      description: 'Description',
+      descriptionAccessibility: 'Problem description',
+      descriptionPlaceholder: 'Describe signs, location, and when it happens...',
+      problem: 'Problem',
+      problemMeta: 'Choose',
+      serviceFirst: 'Choose a service first.',
+      unsupportedService: 'Electrical, plumbing, and cleaning only.',
+    },
+    media: {
+      accessibilityAdd: 'Add photo or video',
+      add: 'Add media',
+      remove: 'Remove',
+      removeImage: 'Remove image',
+      removeVideo: 'Remove video',
+      title: 'Photo / video',
+      video: 'Video',
+      optional: 'Optional',
+    },
+    questions: {
+      electrical: [
+        {
+          id: 'scope',
+          question: 'Is the electrical issue in one area or multiple areas?',
+          options: [
+            { value: 'single', label: 'One area' },
+            { value: 'multiple', label: 'Multiple areas' },
+            { value: UNKNOWN_OPTION_VALUE, label: appCopy.en.common.unknown },
+          ],
+        },
+        {
+          id: 'breaker',
+          question: 'Does the breaker or switch look unusual?',
+          options: [
+            { value: 'yes', label: 'Yes' },
+            { value: 'no', label: 'No' },
+            { value: UNKNOWN_OPTION_VALUE, label: appCopy.en.common.unknown },
+          ],
+        },
+      ],
+      plumbing: [
+        {
+          id: 'scope',
+          question: 'Is the leak or clog in one area or multiple areas?',
+          options: [
+            { value: 'single', label: 'One area' },
+            { value: 'multiple', label: 'Multiple areas' },
+            { value: UNKNOWN_OPTION_VALUE, label: appCopy.en.common.unknown },
+          ],
+        },
+        {
+          id: 'leak',
+          question: 'Does water leak continuously or only during use?',
+          options: [
+            { value: 'continuous', label: 'Continuously' },
+            { value: 'in_use', label: 'During use' },
+            { value: UNKNOWN_OPTION_VALUE, label: appCopy.en.common.unknown },
+          ],
+        },
+      ],
+      cleaning: [
+        {
+          id: 'scope',
+          question: 'Is the cleaning area one room or the whole home?',
+          options: [
+            { value: 'single_room', label: 'One room' },
+            { value: 'whole_home', label: 'Whole home' },
+            { value: UNKNOWN_OPTION_VALUE, label: appCopy.en.common.unknown },
+          ],
+        },
+        {
+          id: 'condition',
+          question: 'How intensive is the cleaning need?',
+          options: [
+            { value: 'standard', label: 'Standard cleaning' },
+            { value: 'deep', label: 'Deep cleaning' },
+            { value: 'post_repair', label: 'After repair work' },
+          ],
+        },
+      ],
+    },
+    clarification: {
+      remaining: (count: number) => `${count} more answer${count === 1 ? '' : 's'} to view the estimate.`,
+    },
+    estimate: {
+      default: {
+        problemLabel: 'Kael reviews before dispatch',
+        complexity: 'unknown',
+        priceRangeLabel: 'Waiting for Kael estimate',
+        confidenceLabel: 'Waiting for data',
+        advisory: 'Add media/area for accuracy.',
+      },
+      fallback: {
+        problemLabel: 'Not enough safe data yet',
+        complexity: 'unknown',
+        priceRangeLabel: 'More information needed',
+        confidenceLabel: 'Needs clarification',
+        advisory: 'Add media or answer follow-ups.',
+      },
+      kicker: 'ESTIMATE RANGE',
+      complexity: 'Complexity',
+      advisory: 'Guidance',
+      priceDisclaimer: 'This is an initial estimate. The final price will be confirmed by the worker before work starts.',
+      remoteConfidence: 'Kael estimate',
+      systemConfirm: 'Waiting for system confirmation',
+    },
+    complexity: {
+      large: 'Large',
+      medium: 'Medium',
+      small: 'Small',
+      unknown: appCopy.en.common.unknown,
+    },
+    schedule: {
+      title: 'Time',
+      nowTitle: 'Now',
+      nowText: 'Find the nearest worker',
+    },
+    confirm: {
+      accessibilityNotification: 'Enable Kael updates',
+      address: 'Address',
+      confirmTitle: 'Confirm worker search',
+      described: 'Described',
+      notificationText: 'Receive worker-match updates.',
+      platformFee: 'Platform fee',
+      price: 'Estimate',
+      problem: 'Problem',
+      required: 'Required',
+      service: 'Service',
+      time: 'Time',
+    },
+    search: {
+      title: 'Finding a suitable worker',
+      text: 'Detailed address opens only after acceptance.',
+      states: ['Searching', 'Trying another', 'No worker', 'Matched'],
+    },
+    emptyWorker: {
+      title: 'No suitable worker yet',
+      text: 'Retry or edit the request.',
+    },
+    matched: {
+      title: 'Worker accepted',
+      text: 'Track the status in Activity.',
+    },
+    actions: {
+      back: 'Back',
+      cancel: 'Cancel request',
+      confirmSearch: 'Send request',
+      continue: 'Continue',
+      editRequest: 'Edit request',
+      goHome: 'Go home',
+      inspect: 'Let Kael check',
+      keep: 'Keep',
+      openHistory: 'View activity',
+      retry: 'Retry',
+      reset: 'Reset',
+      reviewConfirm: 'Review confirmation',
+      reviewEstimate: 'View estimate',
+      schedule: 'Choose time',
+      status: 'Status',
+      talk: 'Chat',
+    },
+    alerts: {
+      cancelBody: 'The request will close.',
+      cancelBroadcastBody: 'Worker search will stop. Address stays hidden.',
+      cancelTitle: 'Cancel request?',
+      mediaPermission: 'Photo/video library permission is needed to add evidence.',
+      mediaUpload: 'Unable to upload media. You can continue and add it later.',
+      notificationGate: 'Enable worker-match updates.',
+    },
+    validation: {
+      addressDistrict: 'The address needs a clear HCMC district.',
+      addressRequired: 'Enter an area or general address.',
+      descriptionRequired: 'Add enough detail for Kael to summarize the issue.',
+      problemRequired: 'Choose at least one problem to handle.',
+      serviceRequired: 'Choose electrical, plumbing, or cleaning service.',
+    },
+  },
+} as const
+
+type BookingCopy = (typeof bookingCopy)[AppLanguage]
+type EstimateTemplate = {
+  problemLabel: string
+  complexity: PriceCheckEstimateCard['complexity']
+  priceRangeLabel: string
+  confidenceLabel: string
+  advisory: string
 }
 
-const ESTIMATE: PriceCheckEstimateCard = {
-  problemLabel: 'Kael sẽ kiểm tra yêu cầu trước khi gửi thợ',
-  complexity: 'unknown',
-  priceRangeLabel: 'Chờ Kael ước tính',
-  confidenceLabel: 'Đang chờ dữ liệu',
-  advisory: 'Giữ mô tả, ảnh và khu vực rõ ràng để Kael ước tính sát hơn.',
-  disclaimer: PRICE_DISCLAIMER,
-  source: 'kael',
-}
-
-const FALLBACK_ESTIMATE: PriceCheckEstimateCard = {
-  problemLabel: 'Chưa đủ dữ liệu an toàn',
-  complexity: 'unknown',
-  priceRangeLabel: 'Cần thêm thông tin',
-  confidenceLabel: 'Cần làm rõ',
-  advisory: 'Thêm ảnh hoặc trả lời câu hỏi để Kael ước tính sát hơn.',
-  disclaimer: PRICE_DISCLAIMER,
-  source: 'baseline_fallback',
+function estimateTemplate(template: EstimateTemplate, source: PriceCheckEstimateCard['source'], copy: BookingCopy): PriceCheckEstimateCard {
+  return {
+    ...template,
+    disclaimer: copy.estimate.priceDisclaimer,
+    source,
+  }
 }
 
 type PriceCheckUiState = {
@@ -199,10 +568,12 @@ function priceCheckUiReducer(current: PriceCheckUiState, patch: PriceCheckUiPatc
 }
 
 function useClientPriceCheckController() {
-  const { push } = useRouter()
+  const { replace } = useRouter()
+  const language = useAppLanguage()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const { actions, dispatch, selectors, state: workflowState } = useFrontendWorkflow()
+  const copy = bookingCopy[language]
   const frameWidth = Math.min(width, 430)
   const [{ step, status, draft, manualErrorMessage, notificationGateAccepted }, patchUiState] = useReducer(
     priceCheckUiReducer,
@@ -226,8 +597,8 @@ function useClientPriceCheckController() {
   }
   const setDraft = (nextDraft: PriceCheckDraft) => patchUiState({ draft: nextDraft })
   const setManualErrorMessage = (nextMessage: string | null) => patchUiState({ manualErrorMessage: nextMessage })
-  const questions = draft.serviceType ? QUESTIONS[draft.serviceType] : []
-  const chips = useMemo(() => (draft.serviceType ? PROBLEM_CHIPS[draft.serviceType] : []), [draft.serviceType])
+  const questions = draft.serviceType ? copy.questions[draft.serviceType] : []
+  const chips = useMemo(() => (draft.serviceType ? localizedProblemOptions(draft.serviceType, language) : []), [draft.serviceType, language])
   const answeredQuestions = questions.filter((question) => draft.clarificationAnswers[question.id]).length
   const clarificationComplete = answeredQuestions === questions.length
   const isEstimateFallback = status === 'baseline_fallback' || status === 'fallback' || workflowState.deal?.estimate?.fallbackUsed === true
@@ -242,9 +613,10 @@ function useClientPriceCheckController() {
         source: 'kael' as const,
       }
     : isEstimateFallback
-      ? FALLBACK_ESTIMATE
-      : ESTIMATE
-  const validationMessage = getDraftValidationMessage(draft)
+      ? estimateTemplate(copy.estimate.fallback, 'baseline_fallback', copy)
+      : estimateTemplate(copy.estimate.default, 'kael', copy)
+  const displayEstimate = localizeEstimateForDisplay(estimate, draft, copy, language)
+  const validationMessage = getDraftValidationMessage(draft, copy)
   const isDraftValid = validationMessage === null
   const canCancelFromSearching =
     step === 'searching' && selectors.customerSearchState === 'searching' && selectors.canCustomerCancelDeal
@@ -296,7 +668,7 @@ function useClientPriceCheckController() {
   const pickMedia = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      setManualErrorMessage('Cần quyền thư viện ảnh/video để thêm bằng chứng local.')
+      setManualErrorMessage(copy.alerts.mediaPermission)
       setStatus('error')
       return
     }
@@ -354,7 +726,7 @@ function useClientPriceCheckController() {
         return
       }
       if (!clarificationComplete) return
-      const unclear = Object.values(draft.clarificationAnswers).some((answer) => answer === 'Chưa rõ')
+      const unclear = Object.values(draft.clarificationAnswers).some((answer) => answer === UNKNOWN_OPTION_VALUE)
       const workflowDraft = draftToWorkflowDraft(draft)
       dispatch({ type: 'update_booking_draft', patch: draftToWorkflowPatch(draft) })
       setStatus('loading')
@@ -363,7 +735,7 @@ function useClientPriceCheckController() {
         setStatus('error')
         return
       }
-      if (created.mediaError) setManualErrorMessage(created.mediaError)
+      if (created.mediaError) setManualErrorMessage(copy.alerts.mediaUpload)
       setStep('estimate')
       setStatus(unclear ? 'baseline_fallback' : 'estimate_ready')
       return
@@ -378,7 +750,7 @@ function useClientPriceCheckController() {
     }
     if (step === 'confirm') {
       if (!notificationGateAccepted) {
-        setManualErrorMessage('Bật cập nhật từ Kael để nhận tin ghép thợ và thay đổi quan trọng.')
+        setManualErrorMessage(copy.alerts.notificationGate)
         setStatus('error')
         return
       }
@@ -409,7 +781,7 @@ function useClientPriceCheckController() {
       return
     }
     if (step === 'matched') {
-      push(openHistoryPath)
+      replace(openHistoryPath)
       return
     }
     if (step === 'emptyWorker') {
@@ -429,7 +801,7 @@ function useClientPriceCheckController() {
     if (step === 'estimate') setStep('clarification')
     if (step === 'schedule') setStep('estimate')
     if (step === 'confirm') setStep('schedule')
-    if (step === 'searching' || step === 'matched') push(openHomePath)
+    if (step === 'searching' || step === 'matched') replace(openHomePath)
   }
 
   const editAfterNoWorker = () => {
@@ -452,14 +824,14 @@ function useClientPriceCheckController() {
     }
 
     Alert.alert(
-      'Hủy yêu cầu?',
+      copy.alerts.cancelTitle,
       selectors.hasLocalBroadcast
-        ? 'Yêu cầu đang tìm thợ sẽ dừng. Địa chỉ chi tiết vẫn bị ẩn khỏi worker vì chưa có ai nhận.'
-        : 'Yêu cầu sẽ đóng. Bạn có thể tạo yêu cầu mới khi cần.',
+        ? copy.alerts.cancelBroadcastBody
+        : copy.alerts.cancelBody,
       [
-        { text: 'Giữ lại', style: 'cancel' },
+        { text: copy.actions.keep, style: 'cancel' },
         {
-          text: 'Hủy yêu cầu',
+          text: copy.actions.cancel,
           style: 'destructive',
           onPress: () => {
             void actions.cancelRemoteJob().then((cancelled) => {
@@ -468,7 +840,7 @@ function useClientPriceCheckController() {
                 return
               }
               setStatus('fallback')
-              push(openHistoryPath)
+              replace(openHistoryPath)
             })
           },
         },
@@ -499,7 +871,9 @@ function useClientPriceCheckController() {
       currentStepContent = (
         <BookingFormSurface
           chips={chips}
+          copy={copy}
           draft={draft}
+          language={language}
           previewQuestions={questions}
           unsupportedServiceLabel={workflowState.deal?.draft.unsupportedServiceLabel ?? null}
           validationMessage={status === 'error' ? manualErrorMessage ?? validationMessage : null}
@@ -522,32 +896,34 @@ function useClientPriceCheckController() {
       )
       break
     case 'clarification':
-      currentStepContent = <ClarificationPanel draft={draft} questions={questions} onAnswer={(questionId, answer) => commitDraft({ ...draft, clarificationAnswers: { ...draft.clarificationAnswers, [questionId]: answer } })} />
+      currentStepContent = <ClarificationPanel copy={copy} draft={draft} questions={questions} onAnswer={(questionId, answer) => commitDraft({ ...draft, clarificationAnswers: { ...draft.clarificationAnswers, [questionId]: answer } })} />
       break
     case 'estimate':
-      currentStepContent = <><TrustRail active="estimate" /><EstimatePanel estimate={estimate} isFallback={isEstimateFallback} /></>
+      currentStepContent = <><TrustRail active="estimate" copy={copy} /><EstimatePanel copy={copy} estimate={displayEstimate} isFallback={isEstimateFallback} /></>
       break
     case 'schedule':
-      currentStepContent = <SchedulePanel draft={draft} onSelect={() => commitDraft({ ...draft, timeChoice: 'now' })} />
+      currentStepContent = <SchedulePanel copy={copy} draft={draft} onSelect={() => commitDraft({ ...draft, timeChoice: 'now' })} />
       break
     case 'confirm':
       currentStepContent = (
         <ConfirmPanel
+          copy={copy}
           draft={draft}
-          estimate={estimate}
+          estimate={displayEstimate}
+          language={language}
           notificationGateAccepted={notificationGateAccepted}
           onToggleNotificationGate={() => patchUiState({ notificationGateAccepted: !notificationGateAccepted, manualErrorMessage: null })}
         />
       )
       break
     case 'searching':
-      currentStepContent = selectors.customerSearchState === 'no_worker' ? <EmptyWorkerPanel /> : selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active' || selectors.customerSearchState === 'completed' ? <WorkerMatchedPanel status={selectors.currentStatus} /> : <SearchingWorkerPanel draft={draft} />
+      currentStepContent = selectors.customerSearchState === 'no_worker' ? <EmptyWorkerPanel copy={copy} /> : selectors.customerSearchState === 'matched' || selectors.customerSearchState === 'active' || selectors.customerSearchState === 'completed' ? <WorkerMatchedPanel copy={copy} language={language} status={selectors.currentStatus} /> : <SearchingWorkerPanel copy={copy} />
       break
     case 'emptyWorker':
-      currentStepContent = <EmptyWorkerPanel />
+      currentStepContent = <EmptyWorkerPanel copy={copy} />
       break
     case 'matched':
-      currentStepContent = <WorkerMatchedPanel status={selectors.currentStatus} />
+      currentStepContent = <WorkerMatchedPanel copy={copy} language={language} status={selectors.currentStatus} />
       break
   }
 
@@ -555,11 +931,12 @@ function useClientPriceCheckController() {
     canCancelFromSearching,
     clarificationComplete,
     continueFlow,
+    copy,
     currentStepContent,
     draft,
     frameWidth,
     insets,
-    push,
+    replace,
     secondaryAction,
     status,
     step,
@@ -574,11 +951,12 @@ export function ClientPriceCheckFlow() {
     canCancelFromSearching,
     clarificationComplete,
     continueFlow,
+    copy,
     currentStepContent,
     draft,
     frameWidth,
     insets,
-    push,
+    replace,
     secondaryAction,
     status,
     step,
@@ -595,56 +973,63 @@ export function ClientPriceCheckFlow() {
           {
             alignSelf: 'center',
             maxWidth: 430,
-            paddingBottom: insets.bottom + 190,
+            paddingBottom: Math.max(insets.bottom + 220, 220),
             paddingTop: insets.top + 36,
             width: Math.max(0, frameWidth - bookingFrameHorizontalPadding * 2),
           },
         ]}
+        automaticallyAdjustKeyboardInsets
         contentInsetAdjustmentBehavior="automatic"
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.bookingTopRow}>
-          <Pressable accessibilityLabel="Quay lại" accessibilityRole="button" onPress={() => push(openHomePath)} style={styles.bookingMiniButton}>
+          <Pressable accessibilityLabel={copy.nav.back} accessibilityRole="button" onPress={() => replace(openHomePath)} style={[styles.bookingMiniButton, reduceTransparency ? styles.bookingOpaqueControl : null]}>
             <ChevronGlyph />
           </Pressable>
-          <View style={styles.bookingLocationPill}>
+          <View style={[styles.bookingLocationPill, reduceTransparency ? styles.bookingOpaqueControl : null]}>
             <ElectricalGlyph />
-            <Text style={styles.bookingLocationText} numberOfLines={1}>{draft.addressLabel || 'Chọn khu vực'}</Text>
+            <Text style={styles.bookingLocationText} numberOfLines={1}>{draft.addressLabel || copy.nav.locationFallback}</Text>
           </View>
         </View>
-        <View style={styles.bookingSheet}>
-          <SubtleGlassHighlight />
-          <View style={styles.sheetHandle} />
-          <BookingHeader />
-          <View testID="booking-current-step-only">{currentStepContent}</View>
-          <SheetActions
-            disabled={step === 'clarification' && !clarificationComplete}
-            onPrimary={continueFlow}
-            onSecondary={secondaryAction}
-            primaryLabel={primaryLabel(step, status)}
-            progress={progressForStep(step, status)}
-            secondaryLabel={secondaryLabelForStep(step, canCancelFromSearching)}
-            secondaryTestID={canCancelFromSearching ? 'customer-booking-cancel-local-deal' : undefined}
-          />
-        </View>
+        <ReduceMotionAwareEntranceView delayMs={60} distanceY={18} testID="customer-booking-sheet-motion">
+          <View style={[styles.bookingSheet, reduceTransparency ? styles.bookingOpaqueSheet : null]}>
+            <SubtleGlassHighlight />
+            <View style={styles.sheetHandle} />
+            <BookingHeader copy={copy} />
+            <View testID="booking-current-step-only">{currentStepContent}</View>
+            <SheetActions
+              disabled={step === 'clarification' && !clarificationComplete}
+              onPrimary={continueFlow}
+              onSecondary={secondaryAction}
+              primaryLabel={primaryLabel(step, status, copy)}
+              progress={progressForStep(step, status)}
+              secondaryLabel={secondaryLabelForStep(step, canCancelFromSearching, copy)}
+              secondaryTestID={canCancelFromSearching ? 'customer-booking-cancel-local-deal' : undefined}
+            />
+          </View>
+        </ReduceMotionAwareEntranceView>
       </ScrollView>
       <CustomerV4DockOverlay active="booking" />
     </View>
   )
 }
 
-function BookingHeader() {
+function BookingHeader({ copy }: { copy: BookingCopy }) {
+  const { reduceTransparency } = useGlassAccessibility()
+
   return (
     <View style={styles.bookingTitle}>
       <View>
         <Text style={styles.flowBadge} numberOfLines={1}>
-          KIỂM GIÁ
+          {copy.header.badge}
         </Text>
         <Text style={styles.pageTitle} numberOfLines={1}>
-          Kiểm giá đầy đủ
+          {copy.header.title}
         </Text>
       </View>
-      <View style={styles.kaelHeaderMascot}>
+      <View style={[styles.kaelHeaderMascot, reduceTransparency ? styles.bookingOpaqueControl : null]}>
         <SubtleGlassHighlight />
         <Image contentFit="contain" source={kaelModel8A} style={styles.kaelHeaderImage} />
       </View>
@@ -653,13 +1038,12 @@ function BookingHeader() {
 }
 
 function BookingBackdrop() {
-  const pulse = 0.34
   const glowStyle = {
-    opacity: 0.20 + pulse * 0.14,
-    transform: [{ translateX: -75 }, { scale: 0.96 + pulse * 0.1 }],
+    opacity: 0.28,
+    transform: [{ translateX: -75 }, { scale: 1 }],
   }
   const pinStyle = {
-    transform: [{ translateX: -9 }, { scale: 1 + pulse * 0.08 }],
+    transform: [{ translateX: -9 }, { scale: 1 }],
   }
 
   return (
@@ -675,26 +1059,23 @@ function BookingBackdrop() {
 }
 
 function BookingAmbientGlassField() {
-  const drift = 0.42
-  const orbStyle = {
-    opacity: 0.11 + drift * 0.06,
-    transform: [{ translateY: -8 + drift * 16 }, { scale: 0.98 + drift * 0.04 }],
-  }
   const lineStyle = {
-    opacity: 0.08 + drift * 0.05,
-    transform: [{ rotate: '-12deg' }, { translateX: -10 + drift * 20 }],
+    opacity: 0.12,
+    transform: [{ rotate: '-12deg' }],
   }
 
   return (
     <View pointerEvents="none" style={styles.bookingAmbientField} testID="booking-section-glass-field">
-      <View style={[styles.bookingAmbientMint, orbStyle]} />
-      <View style={styles.bookingAmbientWarm} />
+      <View style={styles.bookingAmbientMintWash} />
+      <View style={styles.bookingAmbientWarmWash} />
       <View style={[styles.bookingAmbientLine, lineStyle]} />
     </View>
   )
 }
 
 function SubtleGlassHighlight() {
+  const { reduceTransparency } = useGlassAccessibility()
+  if (reduceTransparency) return null
   return <View pointerEvents="none" style={styles.glassTopHighlight} />
 }
 
@@ -706,12 +1087,12 @@ function ChevronGlyph() {
   )
 }
 
-function TrustRail({ active }: { active: 'describe' | 'estimate' | 'confirm' | 'match' }) {
+function TrustRail({ active, copy }: { active: 'describe' | 'estimate' | 'confirm' | 'match'; copy: BookingCopy }) {
   const steps = [
-    ['describe', 'Mô tả'],
-    ['estimate', 'Ước tính'],
-    ['confirm', 'Xác nhận'],
-    ['match', 'Tìm thợ'],
+    ['describe', copy.trust.describe],
+    ['estimate', copy.trust.estimate],
+    ['confirm', copy.trust.confirm],
+    ['match', copy.trust.match],
   ] as const
   const activeIndex = Math.max(steps.findIndex(([key]) => key === active), 0)
   return (
@@ -735,7 +1116,9 @@ function TrustRail({ active }: { active: 'describe' | 'estimate' | 'confirm' | '
 
 function BookingFormSurface({
   chips,
+  copy,
   draft,
+  language,
   previewQuestions,
   unsupportedServiceLabel,
   validationMessage,
@@ -746,9 +1129,11 @@ function BookingFormSurface({
   onSelectService,
   onToggleChip,
 }: {
-  chips: readonly string[]
+  chips: ReadonlyArray<{ label: string; value: string }>
+  copy: BookingCopy
   draft: PriceCheckDraft
-  previewQuestions: ClarificationQuestion[]
+  language: AppLanguage
+  previewQuestions: readonly ClarificationQuestion[]
   unsupportedServiceLabel: string | null
   validationMessage: string | null
   onAddressChange: (addressLabel: string) => void
@@ -761,29 +1146,29 @@ function BookingFormSurface({
   return (
     <View style={styles.formStack} testID="booking-form-first-shell">
       <View style={styles.segmented}>
-        <Segment label="Sửa điện" active={draft.serviceType === 'electrical'} onPress={() => onSelectService('electrical')} />
-        <Segment label="Sửa nước" active={draft.serviceType === 'plumbing'} onPress={() => onSelectService('plumbing')} />
-        <Segment label="Vệ sinh" active={draft.serviceType === 'cleaning'} onPress={() => onSelectService('cleaning')} />
+        <Segment label={localizedServiceLabel('electrical', language)} active={draft.serviceType === 'electrical'} onPress={() => onSelectService('electrical')} />
+        <Segment label={localizedServiceLabel('plumbing', language)} active={draft.serviceType === 'plumbing'} onPress={() => onSelectService('plumbing')} />
+        <Segment label={localizedServiceLabel('cleaning', language)} active={draft.serviceType === 'cleaning'} onPress={() => onSelectService('cleaning')} />
       </View>
-      {unsupportedServiceLabel ? <Text style={styles.validationText}>{unsupportedServiceLabel}</Text> : null}
-      <SoftField title="Vấn đề" meta="Chọn">
+      {unsupportedServiceLabel ? <Text style={styles.validationText}>{copy.form.unsupportedService}</Text> : null}
+      <SoftField title={copy.form.problem} meta={copy.form.problemMeta}>
         <View style={styles.pillRow}>
           {chips.length > 0 ? (
             chips.slice(0, 6).map((chip) => (
-              <Chip key={chip} active={draft.problemChips.includes(chip)} label={chip} onPress={() => onToggleChip(chip)} />
+              <Chip key={chip.value} active={draft.problemChips.includes(chip.value)} label={chip.label} onPress={() => onToggleChip(chip.value)} />
             ))
           ) : (
-            <Text style={styles.panelText}>Chọn dịch vụ trước để hiện đúng nhóm vấn đề.</Text>
+            <Text style={styles.panelText}>{copy.form.serviceFirst}</Text>
           )}
         </View>
       </SoftField>
-      <SoftField title="Mô tả" meta={`${draft.description.trim().length}/160`}>
+      <SoftField title={copy.form.description} meta={`${draft.description.trim().length}/160`}>
         <TextInput
-          accessibilityLabel="Mô tả vấn đề"
+          accessibilityLabel={copy.form.descriptionAccessibility}
           multiline
           maxLength={160}
           onChangeText={onDescriptionChange}
-          placeholder="Mô tả dấu hiệu, vị trí, thời điểm xảy ra..."
+          placeholder={copy.form.descriptionPlaceholder}
           placeholderTextColor={tokens.subtle}
           style={styles.descriptionInput}
           textAlignVertical="top"
@@ -791,12 +1176,12 @@ function BookingFormSurface({
           testID="booking-form-field-focus"
         />
       </SoftField>
-      <SoftField title="Khu vực" meta={draft.addressLabel.trim() ? 'Đã nhập' : 'Bắt buộc'}>
+      <SoftField title={copy.form.address} meta={draft.addressLabel.trim() ? copy.form.addressEntered : copy.form.addressRequired}>
         <TextInput
-          accessibilityLabel="Khu vực"
+          accessibilityLabel={copy.form.address}
           maxLength={96}
           onChangeText={onAddressChange}
-          placeholder="Ví dụ: Quận 7, TP.HCM"
+          placeholder={copy.form.addressPlaceholder}
           placeholderTextColor={tokens.subtle}
           style={styles.singleLineInput}
           value={draft.addressLabel}
@@ -804,17 +1189,17 @@ function BookingFormSurface({
         />
       </SoftField>
       {validationMessage ? <Text style={styles.validationText}>{validationMessage}</Text> : null}
-      <EvidenceDraftSlots mediaItems={draft.mediaItems} onPickMedia={onPickMedia} onRemoveMedia={onRemoveMedia} />
+      <EvidenceDraftSlots copy={copy} mediaItems={draft.mediaItems} onPickMedia={onPickMedia} onRemoveMedia={onRemoveMedia} />
       <View style={styles.clarifyCard}>
         <View style={styles.cardMetaRow}>
           <Text style={styles.cardTitle} numberOfLines={1}>
-            Quản Gia Kael hỏi thêm
+            {copy.form.clarifyTitle}
           </Text>
           <Text style={styles.statusText} numberOfLines={1}>
-            0-2
+            {copy.form.clarifyMeta}
           </Text>
         </View>
-        {(previewQuestions.length > 0 ? previewQuestions : [{ id: 'service', question: 'Kael sẽ hỏi thêm sau khi có dịch vụ và mô tả rõ.', options: [] }]).map((question) => (
+        {(previewQuestions.length > 0 ? previewQuestions : [{ id: 'service', question: copy.form.clarifyFallback, options: [] }]).map((question) => (
           <Text key={question.id} style={styles.clarifyItem} numberOfLines={2}>
             {question.question}
           </Text>
@@ -824,7 +1209,7 @@ function BookingFormSurface({
   )
 }
 
-function ClarificationPanel({ draft, questions, onAnswer }: { draft: PriceCheckDraft; questions: ClarificationQuestion[]; onAnswer: (questionId: string, answer: string) => void }) {
+function ClarificationPanel({ copy, draft, questions, onAnswer }: { copy: BookingCopy; draft: PriceCheckDraft; questions: readonly ClarificationQuestion[]; onAnswer: (questionId: string, answer: string) => void }) {
   const answeredQuestions = questions.filter((question) => draft.clarificationAnswers[question.id]).length
   const remainingQuestions = questions.length - answeredQuestions
 
@@ -837,27 +1222,27 @@ function ClarificationPanel({ draft, questions, onAnswer }: { draft: PriceCheckD
           </Text>
           <View style={styles.pillRow}>
             {question.options.map((option) => (
-              <Chip key={option} active={draft.clarificationAnswers[question.id] === option} label={option} onPress={() => onAnswer(question.id, option)} />
+              <Chip key={option.value} active={draft.clarificationAnswers[question.id] === option.value} label={option.label} onPress={() => onAnswer(question.id, option.value)} />
             ))}
           </View>
         </View>
       ))}
       {remainingQuestions > 0 ? (
         <Text style={styles.validationText} testID="booking-clarification-required">
-          Trả lời thêm {remainingQuestions} câu để xem ước tính.
+          {copy.clarification.remaining(remainingQuestions)}
         </Text>
       ) : null}
     </View>
   )
 }
 
-function EstimatePanel({ estimate, isFallback }: { estimate: PriceCheckEstimateCard; isFallback: boolean }) {
+function EstimatePanel({ copy, estimate, isFallback }: { copy: BookingCopy; estimate: PriceCheckEstimateCard; isFallback: boolean }) {
   return (
     <View style={[styles.estimateCard, isFallback ? styles.warningCard : null]}>
       <SubtleGlassHighlight />
       <View style={styles.cardMetaRow}>
         <Text style={styles.kicker} numberOfLines={1}>
-          KHUNG ƯỚC TÍNH
+          {copy.estimate.kicker}
         </Text>
         <Text style={styles.statusText} numberOfLines={1}>
           {estimate.confidenceLabel}
@@ -867,13 +1252,13 @@ function EstimatePanel({ estimate, isFallback }: { estimate: PriceCheckEstimateC
         <Text style={styles.priceValue} numberOfLines={2}>
           {estimate.priceRangeLabel}
         </Text>
-        <Text style={styles.priceMeta} numberOfLines={1}>
-          {complexityLabel(estimate.complexity)} · {estimate.problemLabel}
+        <Text style={styles.priceMeta} numberOfLines={2}>
+          {complexityLabel(estimate.complexity, copy)} · {estimate.problemLabel}
         </Text>
       </View>
       <View style={styles.summaryGrid}>
-        <SummaryCell label="Độ phức tạp" value={complexityLabel(estimate.complexity)} />
-        <SummaryCell label="Gợi ý" value={estimate.advisory} />
+        <SummaryCell label={copy.estimate.complexity} value={complexityLabel(estimate.complexity, copy)} />
+        <SummaryCell label={copy.estimate.advisory} value={estimate.advisory} />
       </View>
       <Text selectable style={styles.disclaimerText}>
         {estimate.disclaimer}
@@ -882,45 +1267,48 @@ function EstimatePanel({ estimate, isFallback }: { estimate: PriceCheckEstimateC
   )
 }
 
-function SchedulePanel({ draft, onSelect }: { draft: PriceCheckDraft; onSelect: (choice: PriceCheckDraft['timeChoice']) => void }) {
+function SchedulePanel({ copy, draft, onSelect }: { copy: BookingCopy; draft: PriceCheckDraft; onSelect: (choice: PriceCheckDraft['timeChoice']) => void }) {
   return (
     <View style={styles.flowCard}>
-      <Text style={styles.cardTitle}>Thời gian</Text>
+      <Text style={styles.cardTitle}>{copy.schedule.title}</Text>
       <View style={styles.twoCol}>
-        <ChoiceCard active={draft.timeChoice === 'now'} title="Ngay bây giờ" text="Ưu tiên tìm thợ gần nhất" onPress={() => onSelect('now')} />
-        <ChoiceCard active={false} disabled title="Đặt lịch" text="Sắp mở cho lịch hẹn" onPress={() => undefined} />
+        <ChoiceCard active={draft.timeChoice === 'now'} title={copy.schedule.nowTitle} text={copy.schedule.nowText} onPress={() => onSelect('now')} />
       </View>
     </View>
   )
 }
 
 function ConfirmPanel({
+  copy,
   draft,
   estimate,
+  language,
   notificationGateAccepted,
   onToggleNotificationGate,
 }: {
+  copy: BookingCopy
   draft: PriceCheckDraft
   estimate: PriceCheckEstimateCard
+  language: AppLanguage
   notificationGateAccepted: boolean
   onToggleNotificationGate: () => void
 }) {
   return (
     <View style={styles.flowCard}>
       <View style={styles.cardMetaRow}>
-        <Text style={styles.cardTitle}>Xác nhận tìm thợ</Text>
-        <Text style={styles.statusText}>Bắt buộc</Text>
+        <Text style={styles.cardTitle}>{copy.confirm.confirmTitle}</Text>
+        <Text style={styles.statusText}>{copy.confirm.required}</Text>
       </View>
       <View style={styles.summaryGrid}>
-        <SummaryCell label="Dịch vụ" value={serviceLabel(draft.serviceType)} />
-        <SummaryCell label="Vấn đề" value={draft.problemChips[0] ?? 'Đã mô tả'} />
-        <SummaryCell label="Địa chỉ" value={draft.addressLabel} />
-        <SummaryCell label="Thời gian" value="Ngay bây giờ" />
-        <SummaryCell label="Ước giá" value={estimate.priceRangeLabel} />
-        <SummaryCell label="Phí nền tảng" value="Chờ hệ thống xác nhận" />
+        <SummaryCell label={copy.confirm.service} value={localizedServiceLabel(draft.serviceType, language)} />
+        <SummaryCell label={copy.confirm.problem} value={draft.problemChips[0] ? localizedProblemLabel(draft.problemChips[0], draft.serviceType, language) : copy.confirm.described} />
+        <SummaryCell label={copy.confirm.address} value={draft.addressLabel} />
+        <SummaryCell label={copy.confirm.time} value={copy.schedule.nowTitle} />
+        <SummaryCell label={copy.confirm.price} value={estimate.priceRangeLabel} />
+        <SummaryCell label={copy.confirm.platformFee} value={copy.estimate.systemConfirm} />
       </View>
       <Pressable
-        accessibilityLabel="Bật cập nhật từ Kael"
+        accessibilityLabel={copy.confirm.accessibilityNotification}
         accessibilityRole="switch"
         accessibilityState={{ checked: notificationGateAccepted }}
         onPress={onToggleNotificationGate}
@@ -929,24 +1317,24 @@ function ConfirmPanel({
       >
         <View style={[styles.notificationGateDot, notificationGateAccepted ? styles.notificationGateDotActive : null]} />
         <Text style={styles.notificationGateText}>
-          Bật cập nhật từ Kael để nhận tin ghép thợ và thay đổi quan trọng.
+          {copy.confirm.notificationText}
         </Text>
       </Pressable>
       <Text selectable style={styles.disclaimerText}>
-        {PRICE_DISCLAIMER}
+        {copy.estimate.priceDisclaimer}
       </Text>
     </View>
   )
 }
 
-function SearchingWorkerPanel({ draft }: { draft: PriceCheckDraft }) {
+function SearchingWorkerPanel({ copy }: { copy: BookingCopy }) {
   return (
-    <View accessibilityLabel={searchingWorkerState} style={styles.loadingCard}>
+    <View accessibilityLabel={copy.search.title} style={styles.loadingCard}>
       <ActivityIndicator color={tokens.primary} />
-      <Text style={styles.loadingTitle}>Đang tìm thợ phù hợp</Text>
-      <Text style={styles.loadingText}>Ưu tiên thợ gần khu vực của bạn. Địa chỉ chi tiết chỉ mở khi worker nhận.</Text>
+      <Text style={styles.loadingTitle}>{copy.search.title}</Text>
+      <Text style={styles.loadingText}>{copy.search.text}</Text>
       <View style={styles.stateGrid}>
-        {['Đang tìm', 'Thử thợ khác', 'Không có thợ', 'Đã ghép'].map((state, index) => (
+        {copy.search.states.map((state, index) => (
           <View key={state} style={styles.stateItem}>
             <View style={[styles.stateDot, index === 0 ? styles.stateDotActive : null]} />
             <Text style={styles.stateText} numberOfLines={1}>
@@ -959,53 +1347,53 @@ function SearchingWorkerPanel({ draft }: { draft: PriceCheckDraft }) {
   )
 }
 
-function EmptyWorkerPanel() {
+function EmptyWorkerPanel({ copy }: { copy: BookingCopy }) {
   return (
-    <View accessibilityLabel={noWorkerFallbackState} style={styles.warningCard} testID="customer-no-fake-worker-data">
-      <Text style={styles.cardTitle}>Chưa có thợ phù hợp</Text>
-      <Text style={styles.panelText}>Chưa có thợ nhận yêu cầu. Bạn có thể thử lại hoặc chỉnh yêu cầu để mô tả rõ hơn.</Text>
+    <View accessibilityLabel={copy.emptyWorker.title} style={styles.warningCard} testID="customer-no-fake-worker-data">
+      <Text style={styles.cardTitle}>{copy.emptyWorker.title}</Text>
+      <Text style={styles.panelText}>{copy.emptyWorker.text}</Text>
     </View>
   )
 }
 
-function WorkerMatchedPanel({ status }: { status: LocalDealStatus | null }) {
+function WorkerMatchedPanel({ copy, language, status }: { copy: BookingCopy; language: AppLanguage; status: LocalDealStatus | null }) {
   return (
     <View style={styles.flowCard} testID="customer-no-fake-worker-data">
-      <Text style={styles.cardTitle}>Thợ đã nhận</Text>
+      <Text style={styles.cardTitle}>{copy.matched.title}</Text>
       <View style={styles.workerRow}>
         <View style={styles.workerAvatar}><DocumentGlyph /></View>
         <View style={styles.workerCopy}>
-          <Text style={styles.workerName}>{statusLabel(status)}</Text>
-          <Text style={styles.panelText}>Thông tin thợ, phản hồi và thanh toán sẽ mở ở đúng bước xử lý.</Text>
+          <Text style={styles.workerName}>{localizedStatusLabel(status, language)}</Text>
+          <Text style={styles.panelText}>{copy.matched.text}</Text>
         </View>
       </View>
     </View>
   )
 }
 
-function EvidenceDraftSlots({ mediaItems, onPickMedia, onRemoveMedia }: { mediaItems: MediaDraftItem[]; onPickMedia: () => void; onRemoveMedia: (id: string) => void }) {
+function EvidenceDraftSlots({ copy, mediaItems, onPickMedia, onRemoveMedia }: { copy: BookingCopy; mediaItems: MediaDraftItem[]; onPickMedia: () => void; onRemoveMedia: (id: string) => void }) {
   return (
-    <SoftField title="Ảnh / video" meta={mediaItems.length > 0 ? `${mediaItems.length}/5` : 'Tùy chọn'} testID="client-media-local-only">
+    <SoftField title={copy.media.title} meta={mediaItems.length > 0 ? `${mediaItems.length}/5` : copy.media.optional} testID="client-media-local-only">
       <View style={styles.mediaGrid}>
         {mediaItems.map((item) => (
           <Pressable
-            accessibilityLabel={`Gỡ ${item.type === 'image' ? 'ảnh' : 'video'}${item.fileName ? ` ${item.fileName}` : ''}`}
+            accessibilityLabel={`${item.type === 'image' ? copy.media.removeImage : copy.media.removeVideo}${item.fileName ? ` ${item.fileName}` : ''}`}
             key={item.id}
             accessibilityRole="button"
             onPress={() => onRemoveMedia(item.id)}
             style={styles.mediaTile}
           >
-            {item.type === 'image' ? <Image source={{ uri: item.uri }} style={styles.mediaPreview} contentFit="cover" /> : <Text style={styles.mediaText}>Video</Text>}
+            {item.type === 'image' ? <Image source={{ uri: item.uri }} style={styles.mediaPreview} contentFit="cover" /> : <Text style={styles.mediaText}>{copy.media.video}</Text>}
             <Text style={styles.mediaText} numberOfLines={1}>
-              Gỡ
+              {copy.media.remove}
             </Text>
           </Pressable>
         ))}
         {mediaItems.length < 5 ? (
-          <Pressable accessibilityLabel="Thêm ảnh hoặc video" accessibilityRole="button" onPress={onPickMedia} style={styles.mediaTile}>
+          <Pressable accessibilityLabel={copy.media.accessibilityAdd} accessibilityRole="button" onPress={onPickMedia} style={styles.mediaTile}>
             <CameraGlyph />
             <Text style={styles.mediaText} numberOfLines={2}>
-              Thêm ảnh/video
+              {copy.media.add}
             </Text>
           </Pressable>
         ) : null}
@@ -1031,8 +1419,10 @@ function SheetActions({
   secondaryLabel: string
   secondaryTestID?: string
 }) {
+  const { reduceTransparency } = useGlassAccessibility()
+
   return (
-    <View style={styles.sheetActions}>
+    <View style={[styles.sheetActions, reduceTransparency ? styles.bookingOpaqueControl : null]}>
       <SubtleGlassHighlight />
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progress}%` }]} />
@@ -1047,7 +1437,7 @@ function SheetActions({
           testID={secondaryTestID}
           variant="control"
         >
-          <Text style={styles.secondaryButtonText} numberOfLines={1}>{secondaryLabel}</Text>
+          <Text adjustsFontSizeToFit minimumFontScale={0.84} style={styles.secondaryButtonText} numberOfLines={1}>{secondaryLabel}</Text>
         </GlassPressable>
         <GlassPressable
           accessibilityLabel={primaryLabel}
@@ -1060,7 +1450,7 @@ function SheetActions({
           style={[styles.primaryButton, disabled ? styles.primaryButtonDisabled : null]}
           variant="control"
         >
-          <Text style={[styles.primaryButtonText, disabled ? styles.primaryButtonDisabledText : null]} numberOfLines={1}>{primaryLabel}</Text>
+          <Text adjustsFontSizeToFit minimumFontScale={0.84} style={[styles.primaryButtonText, disabled ? styles.primaryButtonDisabledText : null]} numberOfLines={1}>{primaryLabel}</Text>
         </GlassPressable>
       </View>
     </View>
@@ -1090,7 +1480,9 @@ function Segment({ active, label, onPress }: { active: boolean; label: string; o
       style={[styles.segment, active ? styles.segmentActive : null]}
       variant="control"
     >
-      <Text style={[styles.segmentText, active ? styles.segmentTextActive : null]}>{label}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.segmentText, active ? styles.segmentTextActive : null]}>
+        {label}
+      </Text>
     </GlassPressable>
   )
 }
@@ -1106,7 +1498,7 @@ function Chip({ active, label, onPress }: { active: boolean; label: string; onPr
       style={[styles.chip, active ? styles.chipActive : null]}
       variant="control"
     >
-      <Text style={[styles.chipText, active ? styles.chipTextActive : null]} numberOfLines={1}>{label}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.84} style={[styles.chipText, active ? styles.chipTextActive : null]} numberOfLines={1}>{label}</Text>
     </GlassPressable>
   )
 }
@@ -1199,24 +1591,63 @@ function workflowDraftSyncKey(deal: { draft: LocalDealDraft } | null) {
   ].join('::')
 }
 
-function primaryLabel(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
-  if (step === 'form') return 'Để Kael kiểm tra'
-  if (step === 'clarification') return 'Xem ước tính'
-  if (step === 'estimate') return 'Chọn thời gian'
-  if (step === 'schedule') return 'Xem xác nhận'
-  if (step === 'confirm') return 'Xác nhận phát yêu cầu'
-  if (step === 'searching') return 'Kiểm tra trạng thái'
-  if (step === 'emptyWorker') return 'Thử lại'
-  if (step === 'matched') return 'Xem hoạt động'
-  return status === 'estimate_ready' ? 'Trò chuyện' : 'Tiếp tục'
+function localizeEstimateForDisplay(estimate: PriceCheckEstimateCard, draft: PriceCheckDraft, copy: BookingCopy, language: AppLanguage): PriceCheckEstimateCard {
+  const fallback = estimate.source === 'baseline_fallback'
+  const template = fallback ? copy.estimate.fallback : copy.estimate.default
+  const selectedProblemLabel = draft.problemChips[0]
+    ? localizedProblemLabel(draft.problemChips[0], draft.serviceType, language)
+    : null
+  const knownPlaceholderPrice = estimate.priceRangeLabel === bookingCopy.vi.estimate.default.priceRangeLabel
+    || estimate.priceRangeLabel === bookingCopy.vi.estimate.fallback.priceRangeLabel
+    || estimate.priceRangeLabel === bookingCopy.en.estimate.default.priceRangeLabel
+    || estimate.priceRangeLabel === bookingCopy.en.estimate.fallback.priceRangeLabel
+  const knownConfidence = estimate.confidenceLabel === bookingCopy.vi.estimate.default.confidenceLabel
+    || estimate.confidenceLabel === bookingCopy.vi.estimate.fallback.confidenceLabel
+    || estimate.confidenceLabel === bookingCopy.vi.estimate.remoteConfidence
+    || estimate.confidenceLabel === bookingCopy.en.estimate.default.confidenceLabel
+    || estimate.confidenceLabel === bookingCopy.en.estimate.fallback.confidenceLabel
+    || estimate.confidenceLabel === bookingCopy.en.estimate.remoteConfidence
+  const advisoryLooksForeign = language === 'en'
+    || estimate.advisory === bookingCopy.vi.estimate.default.advisory
+    || estimate.advisory === bookingCopy.vi.estimate.fallback.advisory
+    || (language === 'vi' && !/[^\x00-\x7F]/.test(estimate.advisory))
+
+  return {
+    ...estimate,
+    advisory: advisoryLooksForeign ? template.advisory : estimate.advisory,
+    confidenceLabel: knownConfidence
+      ? estimate.source === 'kael' && workflowPriceLooksReady(estimate.priceRangeLabel)
+        ? copy.estimate.remoteConfidence
+        : template.confidenceLabel
+      : estimate.confidenceLabel,
+    disclaimer: copy.estimate.priceDisclaimer,
+    priceRangeLabel: knownPlaceholderPrice ? template.priceRangeLabel : estimate.priceRangeLabel,
+    problemLabel: selectedProblemLabel ?? template.problemLabel,
+  }
 }
 
-function secondaryLabelForStep(step: PriceCheckUiStep, canCancelFromSearching = false) {
-  if (step === 'form') return 'Sửa lại'
-  if (step === 'emptyWorker') return 'Chỉnh yêu cầu'
-  if (canCancelFromSearching) return 'Hủy yêu cầu'
-  if (step === 'searching' || step === 'matched') return 'Về Home'
-  return 'Quay lại'
+function workflowPriceLooksReady(priceRangeLabel: string) {
+  return /\d/.test(priceRangeLabel)
+}
+
+function primaryLabel(step: PriceCheckUiStep, status: PriceCheckUiStatus, copy: BookingCopy) {
+  if (step === 'form') return copy.actions.inspect
+  if (step === 'clarification') return copy.actions.reviewEstimate
+  if (step === 'estimate') return copy.actions.schedule
+  if (step === 'schedule') return copy.actions.reviewConfirm
+  if (step === 'confirm') return copy.actions.confirmSearch
+  if (step === 'searching') return copy.actions.status
+  if (step === 'emptyWorker') return copy.actions.retry
+  if (step === 'matched') return copy.actions.openHistory
+  return status === 'estimate_ready' ? copy.actions.talk : copy.actions.continue
+}
+
+function secondaryLabelForStep(step: PriceCheckUiStep, canCancelFromSearching: boolean, copy: BookingCopy) {
+  if (step === 'form') return copy.actions.reset
+  if (step === 'emptyWorker') return copy.actions.editRequest
+  if (canCancelFromSearching) return copy.actions.cancel
+  if (step === 'searching' || step === 'matched') return copy.actions.goHome
+  return copy.actions.back
 }
 
 function progressForStep(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
@@ -1228,20 +1659,17 @@ function progressForStep(step: PriceCheckUiStep, status: PriceCheckUiStatus) {
   return 100
 }
 
-function getDraftValidationMessage(draft: PriceCheckDraft) {
-  if (!draft.serviceType) return 'Chọn dịch vụ điện, nước hoặc vệ sinh.'
-  if (draft.problemChips.length === 0) return 'Chọn ít nhất một vấn đề cần xử lý.'
-  if (draft.description.trim().length < 12) return 'Mô tả cần đủ rõ để Kael tóm tắt.'
-  if (draft.addressLabel.trim().length < 4) return 'Nhập khu vực hoặc địa chỉ tổng quát.'
-  if (!extractKnownDistrictLabel(draft.addressLabel)) return 'Địa chỉ cần có quận TP.HCM rõ ràng.'
+function getDraftValidationMessage(draft: PriceCheckDraft, copy: BookingCopy) {
+  if (!draft.serviceType) return copy.validation.serviceRequired
+  if (draft.problemChips.length === 0) return copy.validation.problemRequired
+  if (draft.description.trim().length < 12) return copy.validation.descriptionRequired
+  if (draft.addressLabel.trim().length < 4) return copy.validation.addressRequired
+  if (!extractKnownDistrictLabel(draft.addressLabel)) return copy.validation.addressDistrict
   return null
 }
 
-function complexityLabel(complexity: PriceCheckEstimateCard['complexity']) {
-  if (complexity === 'small') return 'Nhỏ'
-  if (complexity === 'medium') return 'Trung bình'
-  if (complexity === 'large') return 'Lớn'
-  return 'Chưa rõ'
+function complexityLabel(complexity: PriceCheckEstimateCard['complexity'], copy: BookingCopy) {
+  return copy.complexity[complexity]
 }
 
 function ElectricalGlyph() {
@@ -1313,25 +1741,27 @@ const lightStyles = StyleSheet.create({
     top: 0,
     zIndex: 0,
   },
-  bookingAmbientMint: {
+  bookingAmbientMintWash: {
     backgroundColor: theme.aqua,
-    borderRadius: 999,
-    height: 230,
-    opacity: 0.2,
+    borderRadius: 34,
+    height: 188,
+    opacity: 0.15,
     position: 'absolute',
-    right: -86,
-    top: 198,
-    width: 230,
+    right: -92,
+    top: 214,
+    transform: [{ rotate: '-8deg' }],
+    width: 216,
   },
-  bookingAmbientWarm: {
+  bookingAmbientWarmWash: {
     backgroundColor: tokens.copper,
-    borderRadius: 999,
+    borderRadius: 30,
     bottom: 155,
-    height: 156,
-    left: -60,
-    opacity: 0.11,
+    height: 124,
+    left: -72,
+    opacity: 0.08,
     position: 'absolute',
-    width: 156,
+    transform: [{ rotate: '12deg' }],
+    width: 176,
   },
   bookingAmbientLine: {
     backgroundColor: tokens.borderStrong,
@@ -1412,6 +1842,17 @@ const lightStyles = StyleSheet.create({
     overflow: 'hidden',
     padding: 14,
   },
+  bookingOpaqueSheet: {
+    backgroundColor: 'rgba(255,253,248,0.98)',
+    borderColor: tokens.borderStrong,
+    boxShadow: 'none',
+    experimental_backgroundImage: 'none',
+  },
+  bookingOpaqueControl: {
+    backgroundColor: 'rgba(255,253,248,0.98)',
+    borderColor: tokens.border,
+    boxShadow: 'none',
+  },
   bookingTopRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -1424,7 +1865,7 @@ const lightStyles = StyleSheet.create({
     borderColor: tokens.glassBorder,
     borderRadius: 18,
     borderWidth: 1,
-    boxShadow: '0 14px 32px rgba(13,70,65,0.12)',
+    boxShadow: 'none',
     height: 48,
     justifyContent: 'center',
     overflow: 'hidden',
@@ -1436,7 +1877,7 @@ const lightStyles = StyleSheet.create({
     borderColor: tokens.glassBorder,
     borderRadius: 18,
     borderWidth: 1,
-    boxShadow: '0 14px 32px rgba(13,70,65,0.12)',
+    boxShadow: 'none',
     flex: 1,
     flexDirection: 'row',
     gap: 8,
@@ -1536,7 +1977,8 @@ const lightStyles = StyleSheet.create({
     borderRadius: 14,
     flex: 1,
     justifyContent: 'center',
-    minHeight: 40,
+    minHeight: 44,
+    paddingHorizontal: 4,
   },
   segmentActive: {
     backgroundColor: 'rgba(255,255,255,0.78)',
@@ -1625,9 +2067,9 @@ const lightStyles = StyleSheet.create({
     borderColor: 'rgba(8,120,110,0.08)',
     borderRadius: 999,
     borderWidth: 1,
-    minHeight: 34,
+    minHeight: 44,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   chipActive: {
     backgroundColor: tokens.primary,
@@ -1982,7 +2424,7 @@ const lightStyles = StyleSheet.create({
     borderColor: tokens.glassBorder,
     borderRadius: 20,
     borderWidth: 1,
-    boxShadow: '0 16px 38px rgba(12,117,108,0.12), inset 0 1px 0 rgba(255,255,255,0.62)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.62)',
     gap: 12,
     overflow: 'hidden',
     paddingHorizontal: 18,
@@ -2024,7 +2466,7 @@ const lightStyles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: tokens.primary,
     borderRadius: 18,
-    boxShadow: '0 10px 22px rgba(12,117,108,0.18)',
+    boxShadow: '0 7px 16px rgba(12,117,108,0.12)',
     flex: 1.45,
     justifyContent: 'center',
     minHeight: 54,
@@ -2055,10 +2497,10 @@ const darkStyleOverrides = StyleSheet.create({
   bookingBackdrop: {
     opacity: 0.36,
   },
-  bookingAmbientMint: {
+  bookingAmbientMintWash: {
     backgroundColor: 'rgba(105,222,198,0.45)',
   },
-  bookingAmbientWarm: {
+  bookingAmbientWarmWash: {
     backgroundColor: 'rgba(224,160,107,0.36)',
   },
   bookingAmbientLine: {
@@ -2080,19 +2522,30 @@ const darkStyleOverrides = StyleSheet.create({
   bookingSheet: {
     backgroundColor: 'rgba(16,32,31,0.82)',
     borderColor: 'rgba(255,255,255,0.12)',
-    boxShadow: '0 24px 70px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10)',
+    boxShadow: '0 8px 20px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.08)',
     experimental_backgroundImage:
       'radial-gradient(circle at 90% 8%, rgba(224,160,107,0.13), transparent 22%), radial-gradient(circle at 12% 86%, rgba(105,222,198,0.14), transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.86), rgba(12,26,25,0.78))',
+  },
+  bookingOpaqueSheet: {
+    backgroundColor: 'rgba(18,39,36,0.98)',
+    borderColor: 'rgba(255,255,255,0.16)',
+    boxShadow: 'none',
+    experimental_backgroundImage: 'none',
+  },
+  bookingOpaqueControl: {
+    backgroundColor: 'rgba(18,39,36,0.96)',
+    borderColor: 'rgba(255,255,255,0.14)',
+    boxShadow: 'none',
   },
   bookingMiniButton: {
     backgroundColor: 'rgba(22,43,40,0.82)',
     borderColor: 'rgba(255,255,255,0.12)',
-    boxShadow: '0 14px 32px rgba(0,0,0,0.28)',
+    boxShadow: 'none',
   },
   bookingLocationPill: {
     backgroundColor: 'rgba(22,43,40,0.82)',
     borderColor: 'rgba(255,255,255,0.12)',
-    boxShadow: '0 14px 32px rgba(0,0,0,0.28)',
+    boxShadow: 'none',
   },
   bookingLocationText: {
     color: '#E8F8F2',
@@ -2117,7 +2570,7 @@ const darkStyleOverrides = StyleSheet.create({
   kaelHeaderMascot: {
     backgroundColor: 'rgba(22,43,40,0.82)',
     borderColor: 'rgba(255,255,255,0.12)',
-    boxShadow: '0 18px 48px rgba(0,0,0,0.26)',
+    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
   },
   segmented: {
     backgroundColor: 'rgba(22,43,40,0.72)',
@@ -2216,7 +2669,7 @@ const darkStyleOverrides = StyleSheet.create({
   estimateCard: {
     backgroundColor: 'rgba(22,43,40,0.72)',
     borderColor: 'rgba(255,255,255,0.12)',
-    boxShadow: '0 18px 48px rgba(0,0,0,0.24)',
+    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
     experimental_backgroundImage:
       'radial-gradient(circle at 92% 12%, rgba(224,160,107,0.11), transparent 22%), radial-gradient(circle at 10% 88%, rgba(105,222,198,0.13), transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.78), rgba(12,26,25,0.68))',
   },
@@ -2307,7 +2760,7 @@ const darkStyleOverrides = StyleSheet.create({
   sheetActions: {
     backgroundColor: 'rgba(22,43,40,0.84)',
     borderColor: 'rgba(255,255,255,0.12)',
-    boxShadow: '0 16px 38px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
   },
   progressTrack: {
     backgroundColor: 'rgba(105,222,198,0.18)',

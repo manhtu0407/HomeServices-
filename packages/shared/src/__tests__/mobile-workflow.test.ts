@@ -401,7 +401,7 @@ describe('mobile local workflow state machine', () => {
 
     expect(selectLocalWorkflow(inconsistent).canWorkerAdvance).toBe(false)
     expect(attempted.deal?.status).toBe('worker_matched')
-    expect(attempted.lastError).toContain('accepted')
+    expect(attempted.lastError).toContain('đã được nhận')
   })
 
   it('blocks customer completion confirmation unless an accepted worker broadcast exists', () => {
@@ -435,7 +435,7 @@ describe('mobile local workflow state machine', () => {
 
     expect(selectLocalWorkflow(inconsistent).canCustomerConfirmCompletion).toBe(false)
     expect(attempted.deal?.status).toBe('completed_by_worker')
-    expect(attempted.lastError).toContain('worker')
+    expect(attempted.lastError).toContain('thợ')
   })
 
   it('hydrates active scope-change details from the remote job snapshot', () => {

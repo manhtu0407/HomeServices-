@@ -74,6 +74,14 @@ describe('Bug #3: confirm-completion does NOT auto-pay', () => {
     expect(routeCode).not.toContain('auto_payment')
     expect(routeCode).toContain('confirmed_by_customer')
   })
+
+  it('confirm-completion update is still guarded by customer ownership', () => {
+    const routeCode = readFileSync(
+      join(__dirname, '../../app/api/jobs/[id]/confirm-completion/route.ts'),
+      'utf-8',
+    )
+    expect(routeCode).toContain(".eq('customer_id', auth.user.id)")
+  })
 })
 
 describe('Bug #4: DB queries have timeout', () => {

@@ -453,6 +453,7 @@ async function getJob(ctx: MobileApiContext, jobId: string) {
 async function confirmSearch(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
   const now = new Date().toISOString();
+  let rollbackStatus: JobStatus | null = null;
   const jobResult = await dbQuery<Record<string, unknown>>(
     client
       .from("jobs")
@@ -509,6 +510,7 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
       "broadcasting",
     );
     if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
+    rollbackStatus = job.status as JobStatus;
 
     const updated = await dbQuery<{ id: string }>(
       client
@@ -551,6 +553,30 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
   );
   if (!broadcast.success) {
     if (broadcast.reasonCode === "DB_ERROR") {
+      if (rollbackStatus) {
+        const rolledBack = await rollbackFailedBroadcastStart(
+          client,
+          jobId,
+          ctx.user.id,
+          rollbackStatus,
+        );
+        if (!rolledBack) {
+          apiFailure(
+            "DB_ERROR",
+            "Không thể khôi phục yêu cầu sau lỗi gửi thợ",
+            500,
+          );
+        }
+        await logJobEvent(
+          client,
+          jobId,
+          "broadcast_start_failed",
+          ctx,
+          "broadcasting",
+          rollbackStatus,
+          { reason: broadcast.reason },
+        );
+      }
       apiFailure("DB_ERROR", "Không thể gửi yêu cầu đến thợ", 500);
     }
     await logJobEvent(
@@ -596,6 +622,29 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
     message:
       `Đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ. Đang chờ phản hồi.`,
   };
+}
+
+async function rollbackFailedBroadcastStart(
+  client: DbClient,
+  jobId: string,
+  customerId: string,
+  previousStatus: JobStatus,
+): Promise<boolean> {
+  const result = await dbQuery<{ id: string }>(
+    client
+      .from("jobs")
+      .update({
+        status: previousStatus,
+        broadcast_at: null,
+        confirmed_search_at: null,
+      })
+      .eq("id", jobId)
+      .eq("customer_id", customerId)
+      .eq("status", "broadcasting")
+      .select("id")
+      .maybeSingle(),
+  );
+  return !result.error && Boolean(result.data);
 }
 
 async function cancelJob(ctx: MobileApiContext, jobId: string) {
@@ -1160,7 +1209,7 @@ async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
   if (finalPrice === null || finalPrice <= 0) {
     apiFailure(
       "INVALID_STATUS",
-      "Worker chưa nhập giá cuối cùng nên chưa thể xác nhận hoàn tất",
+      "Thợ chưa nhập giá cuối cùng nên chưa thể xác nhận hoàn tất",
       409,
     );
   }
