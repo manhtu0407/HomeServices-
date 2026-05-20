@@ -73,6 +73,252 @@ Worker travel → arrived → inspecting → repairing → completed_by_worker �
 
 ---
 
+## 1.1 Workflow Map (end-to-end)
+
+Map dưới đây là visualization của §1. Đọc 1 lần để nắm tổng thể trước khi vào chi tiết từng phase. Mỗi node ghi rõ NEW WIRE hoặc phase nào thực hiện.
+
+```
+═══════════════════════════════════════════════════════════════════
+                    CUSTOMER JOURNEY
+═══════════════════════════════════════════════════════════════════
+
+  ┌─────────────────────────────────────────────────┐
+  │ [1] HOME SCREEN                                 │
+  │  ─ Header + brand intro                         │
+  │  ─ 3 service cards: Sửa điện / Sửa nước / VS    │
+  │    click → set serviceType context              │
+  │  ─ Active deal banner (nếu có)                  │
+  │  ─ Brand impression card                        │
+  │                                                 │  Phase 1
+  └────────────────┬────────────────────────────────┘
+                   │ click service card
+                   │ push /(customer)/kael-chat?serviceType=...
+                   ▼
+  ┌─────────────────────────────────────────────────┐
+  │ [2] KAEL CHAT (stack screen, full-screen)       │
+  │  ─ Header: "Kael — Sửa điện" theo serviceType   │
+  │  ─ Chat history: customer ↔ Kael bubbles        │
+  │  ─ Composer: text + [📷 ảnh] + [🎥 video]       │
+  │                                                 │
+  │  Kael conversation pattern:                     │
+  │   1. Greet + hỏi vấn đề                         │
+  │   2. Customer mô tả text                        │
+  │   3. Kael phân tích + hỏi ảnh khi cần           │
+  │   4. Customer gửi ảnh → Anthropic vision        │ ← fix C3
+  │   5. Kael clarify thêm 0-2 câu nếu cần          │
+  │   6. Perplexity market lookup                   │
+  │   7. Kael synthesize estimate                   │
+  │                                                 │  Phase 1
+  └────────────────┬────────────────────────────────┘
+                   │ Kael ready với estimate
+                   ▼
+  ┌─────────────────────────────────────────────────┐
+  │ [3] ESTIMATE CARD inline trong chat             │
+  │  ─ Vấn đề Kael xác định                         │
+  │  ─ Chẩn đoán có thể (1-2 dòng)                  │
+  │  ─ Thợ sẽ làm gì (concise technical)            │
+  │  ─ Thời gian dự kiến                            │
+  │  ─ Giá range (VND)                              │
+  │  ─ Confidence + nguồn (baseline / market)       │
+  │  ─ Advice (safety, lưu ý) — max 1               │
+  │  ─ DISCLAIMER bắt buộc (RULES.md §4)            │
+  │  ─ [ Đặt thợ ]  [ Hỏi thêm ]                    │
+  │                                                 │  Phase 1
+  └────────┬───────────────────┬────────────────────┘
+           │ "Hỏi thêm"        │ "Đặt thợ"
+           │ → tiếp chat       │  TAP CONFIRM (double-tap pattern)
+           │                   ▼
+           │      ┌──────────────────────────────────┐
+           │      │ [4] BACKEND CONFIRM-SEARCH       │
+           │      │  POST /kael/chat/:id/confirm     │
+           │      │  ─ Atomic: create job +          │
+           │      │    confirm-search → broadcasting │
+           │      │  ─ createBroadcasts (top 5 thợ)  │
+           │      │  ─ INSERT notification rows       │ ← Phase 2
+           │      │  ─ Expo Push → worker phones     │ ← Phase 2
+           │      └────────────┬─────────────────────┘
+           │                   │
+           │                   ▼ (poll 15s OR push từ worker accept)
+           │      ┌──────────────────────────────────┐
+           │      │ [5] WORKER MATCHED               │
+           │      │  ─ Push notification → customer  │ ← Phase 2
+           │      │    "Đã có thợ nhận việc"         │
+           │      │  ─ Chat tiếp tục với worker info │
+           │      │  ─ Track: travel → arrived       │
+           │      │    → inspecting → repairing      │
+           │      │  ─ Each transition: push cust    │ ← Phase 2
+           │      └────────────┬─────────────────────┘
+                              │
+                              ▼ (worker reports completed_by_worker)
+                          ┌──────────────────────────┐
+                          │ [6] A12 CONFIRM          │
+                          │  Customer xác nhận xong  │
+                          │  Required: final_price>0 │
+                          └─────────┬────────────────┘
+                                    │
+                                    ▼
+                          ┌──────────────────────────┐
+                          │ [7] A14 REVIEW           │
+                          │  1-5 stars + tags        │
+                          │  → status: reviewed      │
+                          └──────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════
+                    WORKER JOURNEY
+═══════════════════════════════════════════════════════════════════
+
+  ┌─────────────────────────────────────────────────┐
+  │ [W1] WORKER ONLINE (background)                 │
+  │  ─ device_push_tokens registered                │ ← Phase 2
+  │  ─ is_available = true                          │
+  │  ─ Polling /workers/me/broadcasts every 20s     │
+  └────────────────┬────────────────────────────────┘
+                   │
+                   │ ── PUSH NOTIFICATION ARRIVES         ← Phase 2
+                   │    via Expo Push Service
+                   ▼
+  ┌─────────────────────────────────────────────────┐
+  │ [W2] PUSH POPUP                                 │
+  │  "Có yêu cầu mới — Sửa điện · Quận 1"           │
+  │  Tap → deep link                                │
+  │  /(worker)/jobs?broadcast_id=...                │
+  └────────────────┬────────────────────────────────┘
+                   ▼
+  ┌─────────────────────────────────────────────────┐
+  │ [W3] INCOMING REQUEST SHEET (B2)                │
+  │  ─ Service + general area (ẨN full address)     │
+  │  ─ Kael pre-brief                               │
+  │  ─ Estimated earning                            │
+  │  ─ COUNTDOWN 60s                                │
+  │  ─ [ Chấp nhận ]  [ Bỏ qua ]                    │
+  └────────┬───────────────────┬────────────────────┘
+           │ Bỏ qua            │ Chấp nhận
+           │ → next worker     ▼
+           │      ┌──────────────────────────────────┐
+           │      │ [W4] ACCEPT → atomic RPC         │
+           │      │  accept_broadcast_atomic         │
+           │      │  ─ status: worker_matched        │
+           │      │  ─ full address REVEALED         │
+           │      │  ─ Push customer "Đã có thợ"     │ ← Phase 2
+           │      └────────────┬─────────────────────┘
+           │                   │
+           │                   ▼
+           │      ┌──────────────────────────────────┐
+           │      │ [W5] OPERATIONAL                 │
+           │      │  worker_on_way → arrived →       │
+           │      │  inspecting → repairing →        │
+           │      │  completed_by_worker             │
+           │      │  Each: push customer notify      │ ← Phase 2
+           │      └──────────────────────────────────┘
+           ▼
+       (back to W1 polling)
+
+
+═══════════════════════════════════════════════════════════════════
+       WORKER CANCELLATION AUTO LOOP (NEW — Phase 3)
+═══════════════════════════════════════════════════════════════════
+
+     (worker đã accept, đang trên đường hoặc onsite)
+                              │
+                              ▼
+  ┌─────────────────────────────────────────────────┐
+  │ [WC1] WORKER tap "Hủy việc"                     │
+  │  ─ Modal: chọn reason (text ≥ 10 ký tự)         │
+  │  ─ Optional: photo evidence                     │
+  │  ─ Submit POST /jobs/:id/worker-cancellation    │
+  └────────────────┬────────────────────────────────┘
+                   ▼
+  ┌─────────────────────────────────────────────────┐
+  │ [WC2] BACKEND AUTO PROCESS (Kael in loop)       │
+  │  request_worker_cancellation_atomic (updated)   │
+  │                                                 │
+  │  Inside atomic transaction:                     │
+  │   ─ Check rate limit (max 2 cancel/24h)         │
+  │     → fail → return RATE_LIMITED                │
+  │   ─ Mark cancellation status='approved'         │ ← bỏ admin gate
+  │   ─ Decrement worker rating -0.1                │
+  │   ─ Count cancellations last 7d                 │
+  │     ≥5 → auto-suspend worker                    │
+  │   ─ Job status: → 'broadcasting' (reset)        │
+  │   ─ Clear worker_id, matched_at, arrived_at     │
+  │   ─ Return prev worker_id + svc + dist + geo    │
+  │                                                 │
+  │  Then Edge service:                             │
+  │   ─ findNextBestWorker(exclude=[prev_worker])   │
+  │     score = rating*10                           │
+  │           + specialization_match ? 20 : 0       │
+  │           + distance_bonus (Phase 3 geo)        │
+  │   ─ createBroadcasts(top 5 candidates)          │
+  │   ─ INSERT notification rows                    │ ← Phase 2 wire
+  │   ─ Expo Push → new worker(s)                   │ ← Phase 2 wire
+  │   ─ Expo Push → customer "Đang tìm thợ thay     │
+  │     thế"                                        │ ← Phase 2 wire
+  │   ─ Log job_events                              │
+  └────────────────┬────────────────────────────────┘
+                   ▼
+       [WC3] Loop back to [W2] PUSH POPUP cho new worker
+              → [W3] IncomingRequestSheet
+              → [W4] Accept → reveal address
+              → [W5] Operational continues
+
+
+═══════════════════════════════════════════════════════════════════
+       SCOPE CHANGE FLOW (A11 — Phase 4 hard-stop modal)
+═══════════════════════════════════════════════════════════════════
+
+     (worker đang inspecting / repairing,
+      thấy vấn đề khác giá đã estimate)
+                              │
+                              ▼
+  ┌─────────────────────────────────────────────────┐
+  │ [SC1] WORKER request scope change               │
+  │  request_scope_change_atomic                    │
+  │  ─ status: scope_change_pending                 │
+  │  ─ Kael generate explanation (Anthropic call)   │ ← Phase 4
+  │  ─ Save kael_review JSONB                       │
+  │  ─ Push customer URGENT                         │ ← Phase 2 wire
+  └────────────────┬────────────────────────────────┘
+                   ▼
+  ┌─────────────────────────────────────────────────┐
+  │ [SC2] CUSTOMER receives push                    │
+  │  Tap → deep link                                │
+  │  /(customer)/history?scope_change=...           │
+  │  → HARD-STOP MODAL force-shown                  │ ← Phase 4 fix C1
+  │                                                 │
+  │  Modal content:                                 │
+  │   ─ Old scope vs new scope comparison           │
+  │   ─ Old price vs new price                      │
+  │   ─ Worker reason                               │
+  │   ─ Kael explanation (why reasonable / not)     │
+  │   ─ Cannot dismiss without decision             │
+  │   ─ [ Từ chối ]  [ Duyệt ]                      │
+  └────────┬───────────────────┬────────────────────┘
+           │ Từ chối           │ Duyệt
+           │ → job CANCELLED   │ → status: repairing
+           │ (per migration    │ (worker tiếp tục)
+           │  20260518181500)  │
+           ▼                   ▼
+       Job ends            Continue workflow
+
+
+═══════════════════════════════════════════════════════════════════
+                    PHASE MAPPING LEGEND
+═══════════════════════════════════════════════════════════════════
+
+Phase 1 (Kael-first):    [1] [2] [3] [4 part]
+Phase 2 (Notifications): [4 wire] [5 push] [W1 token] [W2 push]
+                          [W4 push] [W5 push] [SC1 push]
+Phase 3 (Auto cancel):   [WC1] [WC2] [WC3]
+Phase 4 (Bug fixes):     [SC2 hard-stop] + A11 modal
+Phase 5 (Supporting):    Customer signup, Worker self-onboard,
+                          Chat customer↔worker persist
+```
+
+Map này là **end-state** sau khi tất cả phase 1-4 hoàn tất. Codex implement TỪNG PHASE, không phải full map 1 lần.
+
+---
+
 ## 2. Decisions Locked (Tu confirmed)
 
 | # | Quyết định | Giá trị |
