@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (!Number.isInteger(finalPrice) || finalPrice === null || finalPrice <= 0) {
     return apiError(
       'INVALID_STATUS',
-      'Worker chưa nhập giá cuối cùng nên chưa thể xác nhận hoàn tất',
+      'Thợ chưa nhập giá cuối cùng nên chưa thể xác nhận hoàn tất',
       409,
     )
   }
@@ -56,6 +56,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       .from('jobs')
       .update({ status: 'confirmed_by_customer', confirmed_at: now })
       .eq('id', id)
+      .eq('customer_id', auth.user.id)
       .eq('status', job.status)
       .select('id')
       .maybeSingle(),

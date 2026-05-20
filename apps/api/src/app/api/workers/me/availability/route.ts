@@ -30,12 +30,12 @@ export async function PATCH(request: Request) {
   try {
     body = await request.json()
   } catch {
-    return apiError('VALIDATION', 'Invalid request body', 400)
+    return apiError('VALIDATION', 'Nội dung yêu cầu không hợp lệ', 400)
   }
 
   const parsed = availabilityToggleSchema.safeParse(body)
   if (!parsed.success) {
-    return apiError('VALIDATION', 'Invalid request body', 400)
+    return apiError('VALIDATION', 'Nội dung yêu cầu không hợp lệ', 400)
   }
 
   const { data, error } = await withDbTimeout(
@@ -47,11 +47,11 @@ export async function PATCH(request: Request) {
 
   if (error) {
     console.warn('Availability: RPC failed', { userId: auth.user.id, errorCode: error.code })
-    return apiError('DB_ERROR', 'Cannot update availability', 500)
+    return apiError('DB_ERROR', 'Không thể cập nhật trạng thái nhận việc', 500)
   }
 
   const row = (Array.isArray(data) ? data[0] : data) as AvailabilityRpcRow | null
-  if (!row) return apiError('DB_ERROR', 'Cannot update availability', 500)
+  if (!row) return apiError('DB_ERROR', 'Không thể cập nhật trạng thái nhận việc', 500)
   if (!row.ok) return mapAvailabilityRpcError(row.error_code)
 
   return apiSuccess({
@@ -63,13 +63,13 @@ export async function PATCH(request: Request) {
 
 function mapAvailabilityRpcError(errorCode: string | null) {
   if (errorCode === 'NOT_FOUND') {
-    return apiError('NOT_FOUND', 'Complete worker registration first', 404)
+    return apiError('NOT_FOUND', 'Hoàn tất hồ sơ thợ trước khi nhận việc', 404)
   }
   if (errorCode === 'NOT_APPROVED') {
-    return apiError('NOT_APPROVED', 'Worker profile is not approved for online work', 403)
+    return apiError('NOT_APPROVED', 'Hồ sơ thợ chưa được duyệt để nhận việc', 403)
   }
   if (errorCode === 'WORKER_BUSY') {
-    return apiError('WORKER_BUSY', 'An active job is already assigned to this worker', 409)
+    return apiError('WORKER_BUSY', 'Thợ đang có yêu cầu đang xử lý', 409)
   }
-  return apiError('DB_ERROR', 'Cannot update availability', 500)
+  return apiError('DB_ERROR', 'Không thể cập nhật trạng thái nhận việc', 500)
 }

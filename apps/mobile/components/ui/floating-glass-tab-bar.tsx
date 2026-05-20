@@ -2,7 +2,7 @@ import { type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native'
 import { useGlassAccessibility } from './accessibility-motion'
 import { GlassSurface } from './glass-surface'
-import { motionTokens } from './motion-tokens'
+import { reduceMotionAwarePressStyle } from './reduce-motion-aware-animation'
 import { type GlassMode } from './tokens'
 
 export type FloatingGlassTabItem<Key extends string> = {
@@ -14,20 +14,20 @@ export type FloatingGlassTabItem<Key extends string> = {
 
 type FloatingGlassTabBarProps<Key extends string, Item extends FloatingGlassTabItem<Key> = FloatingGlassTabItem<Key>> = {
   activeKey: Key
+  iconForItem: (item: Item, focused: boolean) => ReactNode
   items: Item[]
   mode?: GlassMode
   onItemPress: (item: Item) => void
-  renderIcon: (item: Item, focused: boolean) => ReactNode
   style?: StyleProp<ViewStyle>
   testID?: string
 }
 
 export function FloatingGlassTabBar<Key extends string, Item extends FloatingGlassTabItem<Key> = FloatingGlassTabItem<Key>>({
   activeKey,
+  iconForItem,
   items,
   mode = 'light',
   onItemPress,
-  renderIcon,
   style,
   testID,
 }: FloatingGlassTabBarProps<Key, Item>) {
@@ -54,13 +54,13 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
             style={({ pressed }) => [
               styles.item,
               focused ? { backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(216,247,239,0.68)' } : null,
-              pressed && !reduceMotion ? { transform: [{ scale: motionTokens.press.scale }] } : null,
+              reduceMotionAwarePressStyle(pressed, reduceMotion),
             ]}
             testID={item.testID}
           >
-            {renderIcon(item, focused)}
+            {iconForItem(item, focused)}
             {item.label ? (
-              <Text numberOfLines={1} style={[styles.label, { color: labelColor }]}>
+              <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.label, { color: labelColor }]}>
                 {item.label}
               </Text>
             ) : null}
@@ -90,8 +90,8 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   label: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
-    lineHeight: 12,
+    lineHeight: 13,
   },
 })

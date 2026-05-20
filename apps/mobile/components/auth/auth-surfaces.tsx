@@ -1,14 +1,53 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useReducer } from 'react'
 import { useRouter } from 'expo-router'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Rect } from 'react-native-svg'
 import { useAuth } from '@/lib/auth-provider'
+import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 
 const LOGIN_ROLE_GATE_MARKER = 'LOGIN_ROLE_GATE_MARKER: auth-login-role-customer auth-login-role-worker'
 const LOGIN_ROLE_GATE_GLASS_MARKER = 'LOGIN_ROLE_GATE_GLASS_MARKER: auth-role-gate-glass'
 
 type AuthEntryRole = 'customer' | 'worker'
+
+type LoginRoleState = {
+  email: string
+  formError: string | null
+  password: string
+  selectedEntryRole: AuthEntryRole | null
+  signingIn: boolean
+}
+
+type LoginRoleAction =
+  | { type: 'field'; field: 'email' | 'password'; value: string }
+  | { type: 'form_error'; error: string | null }
+  | { type: 'select_role'; role: AuthEntryRole | null }
+  | { type: 'set_signing_in'; signingIn: boolean }
+
+const loginRoleInitialState: LoginRoleState = {
+  email: '',
+  formError: null,
+  password: '',
+  selectedEntryRole: null,
+  signingIn: false,
+}
+
+function loginRoleReducer(state: LoginRoleState, action: LoginRoleAction): LoginRoleState {
+  switch (action.type) {
+    case 'field':
+      return { ...state, [action.field]: action.value }
+    case 'form_error':
+      return { ...state, formError: action.error }
+    case 'select_role':
+      return { ...state, formError: null, selectedEntryRole: action.role }
+    case 'set_signing_in':
+      return { ...state, signingIn: action.signingIn }
+    default:
+      return state
+  }
+}
 
 const authTokens = {
   canvas: '#F3FAF7',
@@ -24,26 +63,108 @@ const authTokens = {
   subtle: '#8AA39E',
   primary: '#08786E',
   copper: '#BB743D',
-  shadow: '0 24px 70px rgba(13,70,65,0.17)',
-  softShadow: '0 14px 36px rgba(13,70,65,0.12)',
+  shadow: '0 12px 30px rgba(13,70,65,0.09)',
+  softShadow: '0 8px 20px rgba(13,70,65,0.06)',
 }
+
+const authCopy = {
+  vi: {
+    kicker: '',
+    titleAuthenticated: 'Chọn vai trò',
+    titleLogin: 'Đăng nhập',
+    bodyLogin: '',
+    recovery: 'Hồ sơ vai trò chưa sẵn sàng. Tải lại hồ sơ hoặc đăng xuất để đăng nhập tài khoản khác.',
+    refresh: 'Tải lại hồ sơ',
+    signOut: 'Đăng xuất',
+    submit: 'Đăng nhập',
+    changeRole: 'Đổi vai trò',
+    email: 'Email',
+    password: 'Mật khẩu',
+    selectedRole: (role: string) => `Vai trò: ${role}`,
+    roleCustomer: 'Khách',
+    roleWorker: 'Thợ',
+    entryCustomer: 'Đặt dịch vụ',
+    entryWorker: 'Nhận việc',
+    adminCustomer: 'Mở khu vực Khách với quyền quản trị.',
+    adminWorker: 'Mở khu vực Thợ với quyền quản trị.',
+    customerDesc: 'Kiểm giá và theo dõi.',
+    workerDesc: 'Tóm tắt và đối soát.',
+    openRoleA11y: (label: string) => `Đăng nhập vai trò ${label}`,
+    roleStatus: {
+      admin: 'Quản trị viên có thể mở cả hai khu vực.',
+      customer: 'Tài khoản Khách chỉ vào khu vực Khách.',
+      checking: 'Đang kiểm tra vai trò tài khoản.',
+      worker: 'Tài khoản Thợ chỉ vào khu vực Thợ.',
+    },
+    errors: {
+      config: 'Supabase chưa được cấu hình cho mobile build này',
+      customerDenied: 'Tài khoản này chưa được phép vào khu vực Khách',
+      generic: 'Không thể đăng nhập',
+      login: 'Không thể đăng nhập',
+      unavailable: 'Không thể đăng nhập lúc này',
+      workerDenied: 'Tài khoản này chưa được phép vào khu vực Thợ',
+    },
+  },
+  en: {
+    kicker: '',
+    titleAuthenticated: 'Choose role',
+    titleLogin: 'Sign in',
+    bodyLogin: '',
+    recovery: 'Role profile is not ready. Refresh the profile or sign out to use another account.',
+    refresh: 'Refresh profile',
+    signOut: 'Sign out',
+    submit: 'Sign in',
+    changeRole: 'Change role',
+    email: 'Email',
+    password: 'Password',
+    selectedRole: (role: string) => `Role: ${role}`,
+    roleCustomer: 'Customer',
+    roleWorker: 'Worker',
+    entryCustomer: 'Book service',
+    entryWorker: 'Receive jobs',
+    adminCustomer: 'Open customer workspace as admin.',
+    adminWorker: 'Open worker workspace as admin.',
+    customerDesc: 'Check prices and track.',
+    workerDesc: 'Briefs and reconciliation.',
+    openRoleA11y: (label: string) => `Sign in as ${label}`,
+    roleStatus: {
+      admin: 'Admin can open both workspaces.',
+      customer: 'Customer account can only open Customer.',
+      checking: 'Checking account role.',
+      worker: 'Worker account can only open Worker.',
+    },
+    errors: {
+      config: 'Supabase is not configured for this mobile build',
+      customerDenied: 'This account cannot open Customer yet',
+      generic: 'Unable to sign in',
+      login: 'Unable to sign in',
+      unavailable: 'Unable to sign in right now',
+      workerDenied: 'This account cannot open Worker yet',
+    },
+  },
+} as const
 
 export function LoginRoleSurface() {
   const { replace } = useRouter()
   const { authError, loading, profileStatus, refreshProfile, role, session, signInWithPassword, signOut } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [formError, setFormError] = useState<string | null>(null)
-  const [signingIn, setSigningIn] = useState(false)
-  const [selectedEntryRole, setSelectedEntryRole] = useState<AuthEntryRole | null>(null)
+  const { reduceTransparency } = useGlassAccessibility()
+  const language = useAppLanguage()
+  const copy = authCopy[language]
+  const [{ email, formError, password, selectedEntryRole, signingIn }, loginDispatch] = useReducer(loginRoleReducer, loginRoleInitialState)
+  const setEmail = (value: string) => loginDispatch({ type: 'field', field: 'email', value })
+  const setPassword = (value: string) => loginDispatch({ type: 'field', field: 'password', value })
+  const setFormError = (error: string | null) => loginDispatch({ type: 'form_error', error })
+  const setSigningIn = (signingInValue: boolean) => loginDispatch({ type: 'set_signing_in', signingIn: signingInValue })
+  const setSelectedEntryRole = (entryRole: AuthEntryRole | null) => loginDispatch({ type: 'select_role', role: entryRole })
   const isAdmin = role === 'admin'
   const isAuthenticated = Boolean(session && role)
   const canOpenCustomer = role === 'customer' || isAdmin
   const canOpenWorker = role === 'worker' || isAdmin
   const configMissing = profileStatus === 'config_missing'
-  const visibleError = formError ?? authError ?? (configMissing ? 'Supabase chưa được cấu hình cho mobile build này' : null)
+  const visibleError = formError ?? (authError ? copy.errors.generic : null) ?? (configMissing ? copy.errors.config : null)
   const needsProfileRecovery = Boolean(session && !role && (profileStatus === 'profile_missing' || profileStatus === 'profile_error'))
-  const selectedEntryRoleLabel = selectedEntryRole === 'worker' ? 'Thợ' : 'Khách'
+  const selectedEntryRoleLabel = selectedEntryRole === 'worker' ? copy.roleWorker : copy.roleCustomer
+  const headerBody = isAuthenticated ? roleLabel(role, language) : copy.bodyLogin
 
   const submitLogin = async () => {
     setFormError(null)
@@ -51,12 +172,12 @@ export function LoginRoleSurface() {
     try {
       const result = await signInWithPassword(email, password)
       if (!result.success) {
-        setFormError(result.error ?? 'Không thể đăng nhập')
+        setFormError(copy.errors.login)
       } else {
         setPassword('')
       }
     } catch {
-      setFormError('Không thể đăng nhập lúc này')
+      setFormError(copy.errors.unavailable)
     } finally {
       setSigningIn(false)
     }
@@ -64,7 +185,7 @@ export function LoginRoleSurface() {
 
   const openCustomerSection = () => {
     if (!canOpenCustomer) {
-      setFormError('Tài khoản này chưa được phép vào khu vực Khách')
+      setFormError(copy.errors.customerDenied)
       return
     }
     replace('/(customer)/home')
@@ -72,7 +193,7 @@ export function LoginRoleSurface() {
 
   const openWorkerSection = () => {
     if (!canOpenWorker) {
-      setFormError('Tài khoản này chưa được phép vào khu vực Thợ')
+      setFormError(copy.errors.workerDenied)
       return
     }
     replace('/(worker)/home')
@@ -80,23 +201,21 @@ export function LoginRoleSurface() {
 
   return (
     <AuthFrame testID="auth-login-surface">
-      <ScrollView contentContainerStyle={styles.authContent} showsVerticalScrollIndicator={false}>
-        <View style={[styles.roleGateShell, glassSurface('glass')]} testID="auth-role-gate-glass">
+      <ScrollView contentContainerStyle={styles.authContent} showsVerticalScrollIndicator={false} style={styles.authScroll}>
+        <View style={[styles.roleGateShell, glassSurface('glass', reduceTransparency)]} testID="auth-role-gate-glass">
           <MapLineField />
           <View style={styles.loginHeader}>
-            <Text style={styles.kicker}>Đăng nhập</Text>
-            <Text style={styles.title}>{isAuthenticated ? 'Chọn khu vực sử dụng' : 'Đăng nhập để vào app'}</Text>
-            <Text style={styles.body}>
-              {isAuthenticated ? roleLabel(role) : 'Email/Password xác thực trước, vai trò trong hồ sơ quyết định khu vực được vào.'}
-            </Text>
+            {copy.kicker ? <Text style={styles.kicker}>{copy.kicker}</Text> : null}
+            <Text style={styles.title}>{isAuthenticated ? copy.titleAuthenticated : copy.titleLogin}</Text>
+            {headerBody ? <Text style={styles.body}>{headerBody}</Text> : null}
           </View>
 
           {needsProfileRecovery ? (
             <View style={styles.formStack} testID="auth-profile-recovery">
-              <Text style={styles.errorText}>Hồ sơ vai trò chưa sẵn sàng. Tải lại hồ sơ hoặc đăng xuất để đăng nhập tài khoản khác.</Text>
+              <Text style={styles.errorText}>{copy.recovery}</Text>
               {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
               <Pressable
-                accessibilityLabel="Tải lại hồ sơ"
+                accessibilityLabel={copy.refresh}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: loading }}
                 disabled={loading}
@@ -104,53 +223,54 @@ export function LoginRoleSurface() {
                 style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, loading ? styles.disabled : null]}
                 testID="auth-profile-refresh"
               >
-                {loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>Tải lại hồ sơ</Text>}
+                {loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>{copy.refresh}</Text>}
               </Pressable>
-              <Pressable accessibilityLabel="Đăng xuất" accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-profile-recovery-sign-out">
-                <Text style={styles.secondaryActionText}>Đăng xuất</Text>
+              <Pressable accessibilityLabel={copy.signOut} accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-profile-recovery-sign-out">
+                <Text style={styles.secondaryActionText}>{copy.signOut}</Text>
               </Pressable>
             </View>
           ) : !isAuthenticated && !selectedEntryRole ? (
             <>
               <View style={styles.hiddenMarker} testID="auth-entry-role-first" />
               <RoleCard
-                description="Dat dich vu dien, nuoc, ve sinh voi Kael."
+                accessibilityLabel={copy.openRoleA11y(copy.roleCustomer)}
+                description={copy.entryCustomer}
                 icon="home"
-                label="Khách"
+                label={copy.roleCustomer}
                 onPress={() => setSelectedEntryRole('customer')}
                 testID="auth-entry-role-customer"
               />
               <RoleCard
-                description="Đăng nhập để xem hồ sơ Thợ và nhận việc sau khi duyệt."
+                accessibilityLabel={copy.openRoleA11y(copy.roleWorker)}
+                description={copy.entryWorker}
                 icon="tools"
-                label="Thợ"
+                label={copy.roleWorker}
                 onPress={() => setSelectedEntryRole('worker')}
                 testID="auth-entry-role-worker"
-                worker
               />
             </>
           ) : !isAuthenticated ? (
             <View style={styles.formStack}>
               <View style={styles.hiddenMarker} testID={`auth-entry-role-selected-${selectedEntryRole}`} />
-              <Text style={styles.body}>{`Đăng nhập với vai trò ${selectedEntryRoleLabel}.`}</Text>
+              <Text style={styles.body}>{copy.selectedRole(selectedEntryRoleLabel)}</Text>
               <TextInput
-                accessibilityLabel="Email"
+                accessibilityLabel={copy.email}
                 autoCapitalize="none"
                 autoCorrect={false}
                 inputMode="email"
                 keyboardType="email-address"
                 onChangeText={setEmail}
-                placeholder="Email"
+                placeholder={copy.email}
                 placeholderTextColor={authTokens.subtle}
                 style={styles.input}
                 testID="auth-login-email-input"
                 value={email}
               />
               <TextInput
-                accessibilityLabel="Mật khẩu"
+                accessibilityLabel={copy.password}
                 autoCapitalize="none"
                 onChangeText={setPassword}
-                placeholder="Mật khẩu"
+                placeholder={copy.password}
                 placeholderTextColor={authTokens.subtle}
                 secureTextEntry
                 style={styles.input}
@@ -159,7 +279,7 @@ export function LoginRoleSurface() {
               />
               {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
               <Pressable
-                accessibilityLabel="Đăng nhập"
+                accessibilityLabel={copy.submit}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: signingIn || loading || configMissing }}
                 disabled={signingIn || loading || configMissing}
@@ -167,10 +287,10 @@ export function LoginRoleSurface() {
                 style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, signingIn || loading || configMissing ? styles.disabled : null]}
                 testID="auth-login-submit"
               >
-                {signingIn || loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>Đăng nhập</Text>}
+                {signingIn || loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>{copy.submit}</Text>}
               </Pressable>
               <Pressable
-                accessibilityLabel="Đổi vai trò"
+                accessibilityLabel={copy.changeRole}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: signingIn || loading }}
                 disabled={signingIn || loading}
@@ -181,31 +301,32 @@ export function LoginRoleSurface() {
                 style={styles.secondaryAction}
                 testID="auth-entry-role-change"
               >
-                <Text style={styles.secondaryActionText}>Doi vai tro</Text>
+                <Text style={styles.secondaryActionText}>{copy.changeRole}</Text>
               </Pressable>
             </View>
           ) : (
             <>
               <RoleCard
-                description={isAdmin ? 'Mở khu vực Khách với quyền quản trị.' : 'Đặt lịch sửa điện, nước, vệ sinh; kiểm giá với Kael và theo dõi tiến trình.'}
+                accessibilityLabel={copy.openRoleA11y(copy.roleCustomer)}
+                description={isAdmin ? copy.adminCustomer : copy.customerDesc}
                 disabled={!canOpenCustomer}
                 icon="home"
-                label="Khách"
+                label={copy.roleCustomer}
                 onPress={openCustomerSection}
                 testID={isAdmin ? 'auth-login-admin-audit-customer' : 'auth-login-role-customer'}
               />
               <RoleCard
-                description={isAdmin ? 'Mở khu vực Thợ với quyền quản trị.' : 'Bật nhận việc, xem brief, xử lý yêu cầu và theo dõi thu nhập.'}
+                accessibilityLabel={copy.openRoleA11y(copy.roleWorker)}
+                description={isAdmin ? copy.adminWorker : copy.workerDesc}
                 disabled={!canOpenWorker}
                 icon="tools"
-                label="Thợ"
+                label={copy.roleWorker}
                 onPress={openWorkerSection}
                 testID={isAdmin ? 'auth-login-admin-audit-worker' : 'auth-login-role-worker'}
-                worker
               />
               {isAdmin ? <View style={styles.hiddenMarker} testID="auth-login-admin-audit" /> : null}
-              <Pressable accessibilityLabel="Đăng xuất" accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-login-sign-out">
-                <Text style={styles.secondaryActionText}>Đăng xuất</Text>
+              <Pressable accessibilityLabel={copy.signOut} accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-login-sign-out">
+                <Text style={styles.secondaryActionText}>{copy.signOut}</Text>
               </Pressable>
             </>
           )}
@@ -216,23 +337,25 @@ export function LoginRoleSurface() {
   )
 }
 
-function roleLabel(role: string | null) {
-  if (role === 'admin') return 'Quản trị viên có thể mở cả hai khu vực.'
-  if (role === 'worker') return 'Tài khoản Thợ chỉ vào khu vực Thợ.'
-  if (role === 'customer') return 'Tài khoản Khách chỉ vào khu vực Khách.'
-  return 'Đang kiểm tra vai trò tài khoản.'
+function roleLabel(role: string | null, language: AppLanguage) {
+  const statusCopy = authCopy[language].roleStatus
+  if (role === 'admin') return statusCopy.admin
+  if (role === 'worker') return statusCopy.worker
+  if (role === 'customer') return statusCopy.customer
+  return statusCopy.checking
 }
 
 function AuthFrame({ children, testID }: { children: ReactNode; testID: string }) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const frameWidth = Math.min(width, 430)
+  const contentWidth = Math.max(0, frameWidth - 48)
 
   return (
     <SafeAreaView style={styles.safe} testID={testID}>
       <View style={styles.canvas}>
         <AmbientBackdrop />
-        <View style={{ width: Math.max(0, frameWidth - 32), paddingTop: Math.max(insets.top, 8), paddingBottom: insets.bottom + 18 }}>
+        <View style={{ width: contentWidth, paddingTop: Math.max(insets.top, 8), paddingBottom: insets.bottom + 18 }}>
           {children}
         </View>
       </View>
@@ -256,41 +379,43 @@ function AmbientBackdrop() {
 function MapLineField() {
   return (
     <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 360 390" preserveAspectRatio="none">
-      <Path d="M20 94 C84 58 134 96 188 78 S292 24 342 60" stroke={authTokens.line} strokeWidth={4} opacity={0.68} fill="none" />
-      <Path d="M40 166 C86 146 106 188 162 170 S246 118 322 150" stroke={authTokens.line} strokeWidth={3.2} opacity={0.54} fill="none" />
-      <Path d="M82 28 L82 132 M162 76 L162 226 M258 40 L238 164" stroke={authTokens.line} strokeWidth={3} opacity={0.42} fill="none" />
+      <Path d="M20 132 C84 96 134 134 188 116 S292 62 342 98" stroke={authTokens.line} strokeWidth={4} opacity={0.42} fill="none" />
+      <Path d="M40 214 C86 194 106 236 162 218 S246 166 322 198" stroke={authTokens.line} strokeWidth={3.2} opacity={0.34} fill="none" />
+      <Path d="M82 176 L82 258 M162 204 L162 314 M258 168 L238 286" stroke={authTokens.line} strokeWidth={3} opacity={0.18} fill="none" />
     </Svg>
   )
 }
 
 function RoleCard({
+  accessibilityLabel,
   description,
   disabled = false,
   icon,
   label,
   onPress,
   testID,
-  worker = false,
 }: {
+  accessibilityLabel: string
   description: string
   disabled?: boolean
   icon: 'home' | 'tools'
   label: string
   onPress: () => void
   testID: string
-  worker?: boolean
 }) {
+  const { reduceTransparency } = useGlassAccessibility()
+
   return (
     <Pressable
-      accessibilityLabel={`Đăng nhập vai trò ${label}`}
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.roleCard, glassSurface(worker ? 'mint' : 'raised'), disabled ? styles.disabled : null, pressed ? styles.pressed : null]}
+      style={({ pressed }) => [styles.roleCard, glassSurface('raised', reduceTransparency), disabled ? styles.disabled : null, pressed ? styles.pressed : null]}
       testID={testID}
     >
-      <View style={[styles.roleIcon, { backgroundColor: worker ? authTokens.raised : authTokens.mint }]}>
+      <View style={[styles.roleIcon, { backgroundColor: authTokens.mint }]}>
         <AuthIcon name={icon} />
       </View>
       <View style={styles.titleStack}>
@@ -326,31 +451,32 @@ function AuthIcon({ name }: { name: 'home' | 'tools' }) {
   )
 }
 
-function glassSurface(tone: 'cream' | 'cyan' | 'glass' | 'mint' | 'raised') {
+function glassSurface(tone: 'cream' | 'cyan' | 'glass' | 'mint' | 'raised', reduceTransparency = false) {
   const backgroundColor = {
     cream: authTokens.cream,
     cyan: authTokens.cyan,
-    glass: authTokens.glass,
+    glass: reduceTransparency ? 'rgba(255,253,248,0.98)' : authTokens.glass,
     mint: authTokens.mint,
-    raised: 'rgba(255,255,255,0.88)',
+    raised: reduceTransparency ? authTokens.raised : 'rgba(255,255,255,0.88)',
   }[tone]
 
   return {
     backgroundColor,
-    borderColor: 'rgba(255,255,255,0.88)',
+    borderColor: reduceTransparency ? authTokens.border : 'rgba(255,255,255,0.88)',
     borderWidth: 1,
-    boxShadow: tone === 'glass' || tone === 'raised' ? authTokens.shadow : authTokens.softShadow,
+    boxShadow: reduceTransparency ? 'none' : tone === 'glass' || tone === 'raised' ? authTokens.shadow : authTokens.softShadow,
   }
 }
 
 const styles = StyleSheet.create({
   safe: { backgroundColor: authTokens.canvas, flex: 1 },
   canvas: { alignItems: 'center', backgroundColor: authTokens.canvas, flex: 1, justifyContent: 'center', overflow: 'hidden' },
-  authContent: { gap: 16, minHeight: '100%', paddingVertical: 18 },
+  authScroll: { width: '100%' },
+  authContent: { alignItems: 'stretch', gap: 16, minHeight: '100%', paddingVertical: 18, width: '100%' },
   formStack: { gap: 10 },
   loginHeader: { gap: 7 },
   kicker: { color: authTokens.primary, fontSize: 12, fontWeight: '700', letterSpacing: 0 },
-  title: { color: authTokens.ink, fontSize: 29, fontWeight: '700', letterSpacing: 0, lineHeight: 35 },
+  title: { color: authTokens.ink, fontSize: 24, fontWeight: '700', letterSpacing: 0, lineHeight: 30 },
   body: { color: authTokens.muted, fontSize: 14, fontWeight: '500', lineHeight: 20 },
   input: {
     backgroundColor: 'rgba(255,255,255,0.9)',
@@ -368,13 +494,13 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: authTokens.raised, fontSize: 15, fontWeight: '700' },
   secondaryAction: { alignItems: 'center', minHeight: 42, justifyContent: 'center' },
   secondaryActionText: { color: authTokens.primary, fontSize: 14, fontWeight: '700' },
-  roleGateShell: { borderRadius: 36, gap: 14, overflow: 'hidden', padding: 16, paddingTop: 24 },
-  roleCard: { alignItems: 'center', borderRadius: 30, flexDirection: 'row', gap: 14, minHeight: 126, padding: 16 },
+  roleGateShell: { alignSelf: 'center', borderRadius: 34, gap: 14, maxWidth: 260, overflow: 'hidden', padding: 14, paddingTop: 22, width: '100%' },
+  roleCard: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 28, flexDirection: 'row', gap: 12, minHeight: 112, padding: 14 },
   roleIcon: { alignItems: 'center', borderRadius: 22, height: 58, justifyContent: 'center', width: 58 },
   titleStack: { flex: 1, gap: 5 },
   roleTitle: { color: authTokens.ink, fontSize: 22, fontWeight: '700' },
   roleArrow: { color: authTokens.primary, fontSize: 32, fontWeight: '700' },
   disabled: { opacity: 0.54 },
-  pressed: { opacity: 0.78, transform: [{ scale: 0.985 }] },
+  pressed: { opacity: 0.78 },
   hiddenMarker: { height: 0, opacity: 0, width: 0 },
 })

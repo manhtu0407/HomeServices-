@@ -3,15 +3,18 @@ import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { createContext, type ReactNode, use, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { createContext, type ReactNode, use, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { serviceLabel, statusLabel, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput } from '@home-services/shared'
+import { type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus } from '@home-services/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import { GlassModalSheet } from '@/components/ui/glass-modal-sheet'
 import { GlassPressable } from '@/components/ui/glass-pressable'
+import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
+import { appCopy, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel, setAppLanguage, type AppLanguage, useAppLanguage } from '@/lib/app-language'
+import type { WorkerProfileResponse } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { uploadWorkerVerificationDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
@@ -29,15 +32,14 @@ const WORKER_NO_FAKE_PAYMENT_DATA = 'WORKER_NO_FAKE_PAYMENT_DATA: worker-no-fake
 
 const WORKER_DECORATIVE_MOTION_ENABLED = false
 const WORKER_THEME_STORAGE_KEY = 'home-services.worker.theme.production'
-const WORKER_LANGUAGE_STORAGE_KEY = 'home-services.worker.language.production'
 const workerDockHeight = 64
 const workerDockBottomMargin = 8
-const workerDockClearance = workerDockHeight + workerDockBottomMargin + 42
+const workerDockClearance = workerDockHeight + workerDockBottomMargin + 76
 const workerFrameHorizontalPadding = 16
 const kaelHead = require('../../assets/kael-model-8a-head.png')
 
 type WorkerThemeMode = 'dark' | 'light'
-type WorkerLanguageMode = 'en' | 'vi'
+type WorkerLanguageMode = AppLanguage
 type WorkerVerificationFileSlot = 'cccdFront' | 'cccdBack' | 'selfie'
 
 type WorkerActiveTab = 'chat' | 'earnings' | 'home' | 'jobs' | 'profile'
@@ -64,7 +66,8 @@ type WorkerIconName =
   | 'sun'
   | 'tools'
   | 'water'
-type WorkerChatMessage = { mine?: boolean; system?: boolean; text: string; who: string }
+type WorkerChatMessage = { id: string; mine?: boolean; system?: boolean; text: string; who: string }
+type WorkerBroadcastView = NonNullable<LocalDeal['broadcast']>
 
 let lastWorkerDockActive: WorkerActiveTab = 'home'
 const workerSectionMotionTestIDs: Record<WorkerActiveTab, string> = {
@@ -135,8 +138,8 @@ const lightLayer: WorkerThemeTokens = {
   mapLine: '#C7DCD7',
   mapBlock: 'rgba(255,255,255,0.56)',
   sheen: 'rgba(255,255,255,0.64)',
-  shadow: '0 20px 52px rgba(13,70,65,0.14)',
-  softShadow: '0 12px 30px rgba(13,70,65,0.09)',
+  shadow: '0 14px 36px rgba(13,70,65,0.11)',
+  softShadow: '0 9px 24px rgba(13,70,65,0.08)',
 }
 
 const darkLayer: WorkerThemeTokens = {
@@ -167,47 +170,41 @@ const darkLayer: WorkerThemeTokens = {
   mapLine: '#2F5650',
   mapBlock: 'rgba(255,255,255,0.07)',
   sheen: 'rgba(255,255,255,0.16)',
-  shadow: '0 26px 76px rgba(0,0,0,0.36)',
-  softShadow: '0 14px 40px rgba(0,0,0,0.25)',
+  shadow: '0 18px 50px rgba(0,0,0,0.28)',
+  softShadow: '0 10px 30px rgba(0,0,0,0.20)',
 }
 
 const workerCopy = {
   vi: {
-    frame: { safe: 'An toàn', themeLight: 'Sáng', themeDark: 'Tối', lang: 'EN' },
+    frame: { availabilityOff: 'Tắt nhận việc', availabilityOn: 'Bật nhận việc', safe: 'An toàn', themeLight: 'Sáng', themeDark: 'Tối', lang: 'Đổi sang English' },
     nav: { chat: 'Nhắn', earnings: 'Tiền', home: 'Nhà', jobs: 'Việc', profile: 'Hồ sơ' },
     home: {
       eyebrow: 'Thợ',
       title: 'Ca trực',
-      mapSearch: 'Chờ deal local',
-      mapTitle: 'Điện/nước chung cư',
-      mapMeta: '--',
+      mapSearch: 'Chờ yêu cầu mới',
+      mapTitle: 'Điện, nước, vệ sinh',
+      mapMeta: 'Chưa có yêu cầu',
       electric: 'Điện',
       water: 'Nước',
       status: 'Trạng thái',
-      online: 'Chờ duyệt hệ thống',
-      today: 'Hôm nay',
-      estimate: 'Tạm tính',
+      online: 'Chờ duyệt',
+      today: 'Trạng thái',
       rating: 'Phản hồi',
       shiftTitle: 'Nhịp xử lý',
       shiftAction: '',
-      phases: ['Chờ duyệt', 'Nhận tóm tắt', 'Xác nhận', 'Di chuyển'],
-      nextTitle: 'Lịch gần nhất',
-      nextNote: 'Chỉ hiện khi Customer phát broadcast local.',
-      moneyNote: 'Chờ đối soát, chưa đánh dấu thanh toán.',
+      phases: ['Chờ duyệt', 'Tóm tắt', 'Xác nhận', 'Di chuyển'],
+      nextTitle: 'Yêu cầu',
       serviceHeading: '',
       electricianCard: 'Kỹ thuật điện',
-      electricianNote: '',
       plumberCard: 'Hệ thống nước',
-      plumberNote: '',
       cleaningCard: 'Vệ sinh nhà',
-      cleaningNote: '',
     },
     request: {
       service: 'Chờ duyệt',
       title: 'Chưa có yêu cầu mới',
       area: 'Khu vực chung',
       briefTitle: 'Tóm tắt Kael',
-      brief: ['Chưa có yêu cầu mới từ khách.', 'Chỉ hiện thông tin thật khi có broadcast.'],
+      brief: ['Chưa có yêu cầu mới từ khách.'],
       customerEstimate: 'Khách ước tính',
       workerEarns: 'Thợ nhận',
       decline: 'Bỏ qua',
@@ -215,7 +212,7 @@ const workerCopy = {
     },
     jobs: {
       eyebrow: 'Công việc',
-      title: 'Hàng đợi',
+      title: 'Yêu cầu',
       filters: ['Chờ nhận', 'Đang làm', 'Cần xử lý'],
       emptyStatus: 'Đang theo dõi',
       emptyTitle: 'Chưa có việc đang làm',
@@ -233,80 +230,71 @@ const workerCopy = {
       emptyBody: '',
       input: 'Nhập...',
       send: 'Gửi',
-      sampleWorker: 'Tôi có thể tới kiểm tra sau khi nhận yêu cầu.',
-      sampleKael: 'Đã lưu phản hồi tại máy. Chưa gửi hệ thống và chưa mở địa chỉ chi tiết.',
       worker: 'Thợ',
       kael: 'Kael',
     },
     earnings: {
       eyebrow: 'Thu nhập',
       title: 'Đối soát',
-      today: 'Tạm tính hôm nay',
+      today: 'Dữ liệu đối soát',
+      noReconciliation: 'Chưa có đối soát',
       body: '',
       complete: 'Hoàn tất',
       waiting: 'Chờ khách',
-      completeNote: 'Chưa có giao dịch thật.',
-      waitingNote: 'Đang chờ xác nhận.',
       ledgerTitle: 'Sổ đối soát',
       rows: [
-        ['Giao dịch local', 'Chưa có'],
+        ['Yêu cầu dịch vụ', appCopy.vi.common.noRequest],
         ['Tài khoản nhận tiền', 'Chưa lưu hệ thống'],
-        ['Thanh toán & đánh giá', 'Đang khóa'],
+        ['Thanh toán & đánh giá', appCopy.vi.common.noData],
       ],
     },
     profile: {
       eyebrow: 'Hồ sơ',
-      title: 'Tin cậy',
+      title: 'Hồ sơ',
       name: 'Hồ sơ thợ',
       body: '',
-      scoreTitle: 'Tin cậy',
+      scoreTitle: 'Trạng thái hồ sơ',
       scoreBody: '',
       theme: 'Giao diện',
       language: 'Ngôn ngữ',
-      skills: ['Chờ duyệt hệ thống', 'Chưa có hồ sơ thật', 'Chờ phản hồi thật'],
+      skills: ['Chờ duyệt', 'Chưa có hồ sơ', 'Chờ phản hồi'],
       rows: [
-        ['Xác minh danh tính', 'Chờ duyệt hệ thống'],
+        ['Xác minh danh tính', 'Chờ duyệt'],
         ['Kỹ năng dịch vụ', 'Chưa lưu hệ thống'],
         ['Khu vực làm việc', 'Chưa lưu hệ thống'],
       ],
     },
   },
   en: {
-    frame: { safe: 'Safe', themeLight: 'Light', themeDark: 'Dark', lang: 'VI' },
+    frame: { availabilityOff: 'Go offline', availabilityOn: 'Go online', safe: 'Safe', themeLight: 'Light', themeDark: 'Dark', lang: 'Switch to Tiếng Việt' },
     nav: { chat: 'Chat', earnings: 'Pay', home: 'Home', jobs: 'Jobs', profile: 'Profile' },
     home: {
       eyebrow: 'Worker',
       title: 'Shift',
-      mapSearch: 'Waiting for local deal',
-      mapTitle: 'Apartment power/water',
-      mapMeta: '--',
+      mapSearch: 'Waiting for a new request',
+      mapTitle: 'Power, plumbing, cleaning',
+      mapMeta: 'No request yet',
       electric: 'Power',
       water: 'Water',
       status: 'Status',
-      online: 'System approval pending',
-      today: 'Today',
-      estimate: 'Estimate',
-      rating: 'Rating',
+      online: 'Pending approval',
+      today: 'Status',
+      rating: 'Feedback',
       shiftTitle: 'Work rhythm',
       shiftAction: '',
       phases: ['Pending', 'Briefed', 'Confirm', 'Travel'],
-      nextTitle: 'Next visit',
-      nextNote: 'Appears after Customer creates a local broadcast.',
-      moneyNote: 'Pending reconciliation, not marked paid.',
+      nextTitle: 'Request',
       serviceHeading: '',
       electricianCard: 'Electrical',
-      electricianNote: '',
       plumberCard: 'Plumbing',
-      plumberNote: '',
       cleaningCard: 'Cleaning',
-      cleaningNote: '',
     },
     request: {
       service: 'Pending',
       title: 'No live request',
       area: 'General area',
       briefTitle: 'Kael brief',
-      brief: ['Waiting for a real customer request.', 'Only real broadcast details are shown.'],
+      brief: ['Waiting for a customer request.'],
       customerEstimate: 'Customer estimate',
       workerEarns: 'Worker earns',
       decline: 'Skip',
@@ -314,7 +302,7 @@ const workerCopy = {
     },
     jobs: {
       eyebrow: 'Jobs',
-      title: 'Queue',
+      title: 'Requests',
       filters: ['Pending', 'Active', 'Needs review'],
       emptyStatus: 'Watching',
       emptyTitle: 'No active job',
@@ -332,42 +320,197 @@ const workerCopy = {
       emptyBody: '',
       input: 'Type...',
       send: 'Send',
-      sampleWorker: 'I can inspect this after accepting the request.',
-      sampleKael: 'Reply saved on this device. No detailed address revealed.',
       worker: 'Worker',
       kael: 'Kael',
     },
     earnings: {
       eyebrow: 'Earnings',
       title: 'Reconcile',
-      today: 'Today estimate',
+      today: 'Reconciliation data',
+      noReconciliation: 'No reconciliation yet',
       body: '',
       complete: 'Completed',
       waiting: 'Waiting',
-      completeNote: 'No real transaction yet.',
-      waitingNote: 'Waiting for confirmation.',
       ledgerTitle: 'Ledger',
       rows: [
-        ['Local transaction', 'Empty'],
+        ['Service request', appCopy.en.common.noRequest],
         ['Payout account', 'Not stored yet'],
-        ['Payment & review', 'Locked'],
+        ['Payment & review', appCopy.en.common.noData],
       ],
     },
     profile: {
       eyebrow: 'Profile',
-      title: 'Trust',
-      name: 'Worker profile',
+      title: 'Profile',
+      name: 'Service profile',
       body: '',
-      scoreTitle: 'Trust',
+      scoreTitle: 'Profile status',
       scoreBody: '',
       theme: 'Theme',
       language: 'Language',
-      skills: ['System pending', 'No real profile yet', 'Real feedback pending'],
+      skills: ['Pending approval', 'No profile yet', 'Feedback pending'],
       rows: [
-        ['Identity verification', 'System pending'],
+        ['Identity verification', 'Pending approval'],
         ['Service skills', 'Not stored yet'],
         ['Working area', 'Not stored yet'],
       ],
+    },
+  },
+} as const
+
+const workerVerificationCopy = {
+  vi: {
+    kicker: 'Xác minh',
+    title: 'Hồ sơ xác minh',
+    legalName: 'Tên pháp lý',
+    dateOfBirth: 'Ngày sinh',
+    yearsExperience: 'Năm kinh nghiệm',
+    districts: 'Khu vực làm việc',
+    districtsPlaceholder: 'Khu vực làm việc, cách nhau bằng dấu phẩy',
+    bankName: 'Ngân hàng',
+    bankAccount: 'Số tài khoản',
+    selectSkill: 'Chọn kỹ năng',
+    files: {
+      cccdFront: 'CCCD mặt trước',
+      cccdBack: 'CCCD mặt sau',
+      selfie: 'Ảnh selfie',
+      selectedFallback: 'đã chọn tệp',
+      choose: 'Chọn',
+    },
+    submit: 'Gửi hồ sơ xác minh',
+    submitting: 'Đang gửi...',
+    permissionError: 'Cần quyền thư viện ảnh để chọn giấy tờ xác minh.',
+    uploadError: 'Không thể tải hồ sơ xác minh. Kiểm tra kết nối và thử lại.',
+    savedTitle: 'Đã gửi hồ sơ',
+    savedBody: 'Đội vận hành sẽ duyệt hồ sơ trước khi bật nhận việc.',
+    errors: {
+      identity: 'Nhập tên pháp lý và ngày sinh theo YYYY-MM-DD.',
+      work: 'Nhập kinh nghiệm, dịch vụ và khu vực làm việc.',
+      bank: 'Nhập ngân hàng và số tài khoản nhận tiền.',
+      files: 'Cần CCCD mặt trước, CCCD mặt sau và ảnh selfie.',
+      submit: 'Hệ thống chưa nhận hồ sơ. Kiểm tra lại kết nối và thử lại.',
+    },
+    status: {
+      approved: 'Đã duyệt',
+      draft: 'Nháp',
+      rejected: 'Cần bổ sung',
+      submitted: 'Đã gửi',
+      suspended: 'Tạm khóa',
+      under_review: 'Đang duyệt',
+    },
+  },
+  en: {
+    kicker: 'Verification',
+    title: 'Verification profile',
+    legalName: 'Legal name',
+    dateOfBirth: 'Date of birth',
+    yearsExperience: 'Years of experience',
+    districts: 'Work areas',
+    districtsPlaceholder: 'Work areas, separated by commas',
+    bankName: 'Bank',
+    bankAccount: 'Account number',
+    selectSkill: 'Select skill',
+    files: {
+      cccdFront: 'ID front',
+      cccdBack: 'ID back',
+      selfie: 'Selfie',
+      selectedFallback: 'file selected',
+      choose: 'Select',
+    },
+    submit: 'Submit verification',
+    submitting: 'Submitting...',
+    permissionError: 'Photo library permission is required to choose verification documents.',
+    uploadError: 'Unable to upload verification files. Check your connection and try again.',
+    savedTitle: 'Profile submitted',
+    savedBody: 'Operations will review the profile before enabling live jobs.',
+    errors: {
+      identity: 'Enter legal name and date of birth as YYYY-MM-DD.',
+      work: 'Enter experience, services, and work areas.',
+      bank: 'Enter bank and payout account number.',
+      files: 'ID front, ID back, and selfie are required.',
+      submit: 'The system did not receive the profile. Check your connection and try again.',
+    },
+    status: {
+      approved: 'Approved',
+      draft: 'Draft',
+      rejected: 'Needs update',
+      submitted: 'Submitted',
+      suspended: 'Suspended',
+      under_review: 'Under review',
+    },
+  },
+} as const
+
+const workerActionCopy = {
+  vi: {
+    hiddenAddress: 'ẩn địa chỉ chi tiết',
+    finalPrice: 'Giá cuối cùng',
+    scopeDescription: 'Mô tả phần phát sinh',
+    scopePrice: 'Giá mới cần khách duyệt',
+    scopeSubmit: 'Yêu cầu đổi phạm vi',
+    scopeWaiting: 'Chờ khách quyết định thay đổi phạm vi.',
+    cancelReason: 'Lý do cần hủy',
+    cancelPlaceholder: 'Lý do cần hủy để Kael duyệt',
+    cancelSubmit: 'Yêu cầu hủy có lý do',
+    review: 'Kiểm tra lại',
+    send: 'Gửi',
+    progress: {
+      worker_start_travel: 'Bắt đầu di chuyển',
+      worker_mark_arrived: 'Đã đến nơi',
+      worker_start_inspection: 'Bắt đầu kiểm tra',
+      worker_start_repair: 'Bắt đầu sửa',
+      worker_complete_job: 'Báo hoàn tất',
+    },
+    alerts: {
+      finalPriceRequiredTitle: 'Cần giá cuối cùng',
+      finalPriceRequiredBody: 'Nhập giá cuối cùng thực tế trước khi báo hoàn tất.',
+      completeTitle: 'Xác nhận báo hoàn tất?',
+      completeBody: 'Hệ thống sẽ báo khách kiểm tra và xác nhận. Thanh toán vẫn khóa ở giai đoạn này.',
+      scopeDescriptionTitle: 'Cần mô tả phạm vi mới',
+      scopeDescriptionBody: 'Nhập rõ phần phát sinh để khách quyết định.',
+      scopePriceTitle: 'Cần giá mới',
+      scopePriceBody: 'Nhập mức giá mới để khách duyệt thay đổi phạm vi.',
+      scopeConfirmTitle: 'Gửi yêu cầu đổi phạm vi?',
+      scopeConfirmBody: 'Hệ thống sẽ khóa tiến độ cho tới khi khách duyệt hoặc từ chối.',
+      cancelReasonTitle: 'Cần lý do hủy',
+      cancelReasonBody: 'Nhập lý do cụ thể để đội vận hành duyệt và tìm thợ thay thế nếu hợp lệ.',
+      cancelConfirmTitle: 'Gửi yêu cầu hủy việc?',
+      cancelConfirmBody: 'Yêu cầu này chưa hủy việc ngay. Đội vận hành sẽ duyệt lý do và tìm thợ thay thế nếu được chấp nhận.',
+    },
+  },
+  en: {
+    hiddenAddress: 'detailed address hidden',
+    finalPrice: 'Final price',
+    scopeDescription: 'New scope details',
+    scopePrice: 'New price for customer approval',
+    scopeSubmit: 'Request scope change',
+    scopeWaiting: 'Waiting for the customer to decide on the scope change.',
+    cancelReason: 'Cancellation reason',
+    cancelPlaceholder: 'Reason Kael should review',
+    cancelSubmit: 'Request cancellation',
+    review: 'Review',
+    send: 'Send',
+    progress: {
+      worker_start_travel: 'Start travel',
+      worker_mark_arrived: 'Mark arrived',
+      worker_start_inspection: 'Start inspection',
+      worker_start_repair: 'Start repair',
+      worker_complete_job: 'Mark complete',
+    },
+    alerts: {
+      finalPriceRequiredTitle: 'Final price required',
+      finalPriceRequiredBody: 'Enter the real final price before marking the job complete.',
+      completeTitle: 'Mark job complete?',
+      completeBody: 'The customer will be asked to review and confirm. Payment remains locked at this stage.',
+      scopeDescriptionTitle: 'New scope details required',
+      scopeDescriptionBody: 'Describe the added work so the customer can decide.',
+      scopePriceTitle: 'New price required',
+      scopePriceBody: 'Enter the new price for customer approval.',
+      scopeConfirmTitle: 'Send scope change request?',
+      scopeConfirmBody: 'Progress will stay locked until the customer approves or rejects it.',
+      cancelReasonTitle: 'Cancellation reason required',
+      cancelReasonBody: 'Enter a specific reason for operations to review and reassign if valid.',
+      cancelConfirmTitle: 'Send cancellation request?',
+      cancelConfirmBody: 'This does not cancel the job immediately. Operations will review the reason and reassign if approved.',
     },
   },
 } as const
@@ -387,9 +530,7 @@ type WorkerUiContextValue = {
 const WorkerUiContext = createContext<WorkerUiContextValue | null>(null)
 
 let workerThemeMode: WorkerThemeMode = 'light'
-let workerLanguageMode: WorkerLanguageMode = 'vi'
 const themeListeners = new Set<() => void>()
-const languageListeners = new Set<() => void>()
 
 function getWorkerThemeModeSnapshot() {
   return workerThemeMode
@@ -417,32 +558,6 @@ function useWorkerThemeMode() {
   return useSyncExternalStore(subscribeWorkerThemeMode, getWorkerThemeModeSnapshot, getWorkerThemeModeSnapshot)
 }
 
-function getWorkerLanguageModeSnapshot() {
-  return workerLanguageMode
-}
-
-function subscribeWorkerLanguageMode(listener: () => void) {
-  languageListeners.add(listener)
-  const removeListener = languageListeners.delete.bind(languageListeners)
-  return () => removeListener(listener)
-}
-
-function setWorkerLanguageMode(nextMode: WorkerLanguageMode) {
-  workerLanguageMode = nextMode
-  void AsyncStorage.setItem(WORKER_LANGUAGE_STORAGE_KEY, nextMode)
-  languageListeners.forEach((listener) => listener())
-}
-
-function useWorkerLanguageMode() {
-  useEffect(() => {
-    void AsyncStorage.getItem(WORKER_LANGUAGE_STORAGE_KEY).then((stored) => {
-      if (stored === 'vi' || stored === 'en') setWorkerLanguageMode(stored)
-    })
-  }, [])
-
-  return useSyncExternalStore(subscribeWorkerLanguageMode, getWorkerLanguageModeSnapshot, getWorkerLanguageModeSnapshot)
-}
-
 function getWorkerThemeTokens(mode: WorkerThemeMode) {
   return mode === 'dark' ? darkLayer : lightLayer
 }
@@ -461,7 +576,7 @@ function getReducedTransparencyWorkerTokens(tokens: WorkerThemeTokens): WorkerTh
 }
 
 function useWorkerFrameCopy() {
-  const language = useWorkerLanguageMode()
+  const language = useAppLanguage()
   return workerCopy[language]
 }
 
@@ -470,14 +585,20 @@ function getWorkerVisibleDeal(deal: LocalDeal | null) {
   return deal.broadcast.status === 'declined' || deal.broadcast.status === 'expired' ? null : deal
 }
 
+function localizedWorkerVerificationStatus(status: WorkerVerificationStatus, language: WorkerLanguageMode) {
+  return workerVerificationCopy[language].status[status]
+}
+
 function isAcceptedLocalWorkerDeal(deal: LocalDeal | null) {
   return deal?.broadcast?.status === 'accepted'
 }
 
 export function WorkerHomeSurface() {
   const copy = useWorkerFrameCopy()
-  const { selectors, state } = useFrontendWorkflow()
+  const language = useAppLanguage()
+  const { selectors, state, workerProfile } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
+  const profileValue = localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)
 
   return (
     <WorkerFrame active="home" eyebrow={copy.home.eyebrow} title={copy.home.title} testID="worker-home-surface">
@@ -485,8 +606,8 @@ export function WorkerHomeSurface() {
       <IncomingRequestSheet />
 
       <View style={styles.operationalBand} testID="worker-shift-console">
-        <QuickPanel icon="clock" title={copy.home.nextTitle} value={deal ? statusLabel(selectors.currentStatus) : '--'} note={deal ? serviceLabel(deal.draft.serviceType) : copy.home.nextNote} tone="cyan" />
-        <QuickPanel icon="money" title={copy.home.estimate} value="--" note={selectors.paymentLocked ? copy.home.moneyNote : 'Mở sau khi hệ thống sẵn sàng.'} tone="cream" />
+        <QuickPanel icon="clock" title={copy.home.nextTitle} value={deal ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noRequest} tone="cyan" />
+        <QuickPanel icon="shield" title={copy.profile.title} value={profileValue} tone="mint" />
       </View>
 
       <TimelineCard />
@@ -496,20 +617,25 @@ export function WorkerHomeSurface() {
 
 export function WorkerJobsSurface() {
   const copy = useWorkerFrameCopy()
+  const language = useAppLanguage()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
-  const jobTitle = deal ? serviceLabel(deal.draft.serviceType) : copy.jobs.emptyTitle
-  const visibleArea = deal?.broadcast?.generalArea ?? deal?.draft.districtLabel ?? 'Ẩn địa chỉ chi tiết'
+  const jobTitle = deal ? localizedServiceLabel(deal.draft.serviceType, language) : copy.jobs.emptyTitle
+  const hiddenAddressLabel = workerActionCopy[language].hiddenAddress
+  const visibleArea = deal?.broadcast?.generalArea ?? deal?.draft.districtLabel
+  const jobAreaLabel = visibleArea ? localizedWorkerAreaLabel(visibleArea, language) : hiddenAddressLabel
+  const jobAddressLabel = deal?.draft.addressLabel ? localizedWorkerAreaLabel(deal.draft.addressLabel, language) : jobAreaLabel
   const jobBody = deal
-    ? `${deal.draft.problemChips[0] ?? 'Đã mô tả'} · ${selectors.canWorkerSeeFullAddress ? deal.draft.addressLabel : visibleArea}`
+    ? `${localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, language)} · ${selectors.canWorkerSeeFullAddress ? jobAddressLabel : jobAreaLabel}`
     : copy.jobs.emptyBody
+  const showScopeChangeCard = Boolean(deal && selectors.currentStatus === 'scope_change_pending')
 
   return (
     <WorkerFrame active="jobs" eyebrow={copy.jobs.eyebrow} title={copy.jobs.title} testID="worker-jobs-surface">
       <SegmentFilter labels={copy.jobs.filters} />
       <IncomingRequestSheet compact />
-      <JobActivityCard icon="tools" status={deal ? statusLabel(selectors.currentStatus) : copy.jobs.emptyStatus} title={jobTitle} body={jobBody} tone="mint" />
-      <JobActivityCard icon="brief" status={copy.jobs.scopeStatus} title={copy.jobs.scopeTitle} body={copy.jobs.scopeBody} testID="worker-scope-change-placeholder" tone="warm" />
+      <JobActivityCard icon="tools" status={deal ? localizedStatusLabel(selectors.currentStatus, language) : copy.jobs.emptyStatus} title={jobTitle} body={jobBody} tone="mint" />
+      {showScopeChangeCard ? <JobActivityCard icon="brief" status={copy.jobs.scopeStatus} title={copy.jobs.scopeTitle} body={copy.jobs.scopeBody} testID="worker-scope-change-active" tone="warm" /> : null}
     </WorkerFrame>
   )
 }
@@ -526,19 +652,21 @@ export function WorkerChatSurface() {
 
 export function WorkerEarningsSurface() {
   const copy = useWorkerFrameCopy()
+  const language = useAppLanguage()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
   const completedLocal = Boolean(acceptedDeal && selectors.currentStatus === 'confirmed_by_customer')
-  const waitingLocal = acceptedDeal && selectors.currentStatus !== 'confirmed_by_customer' ? '1 local' : '0'
+  const completedValue = completedLocal ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noData
+  const waitingValue = acceptedDeal && selectors.currentStatus !== 'confirmed_by_customer' ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noData
 
   return (
     <WorkerFrame active="earnings" eyebrow={copy.earnings.eyebrow} title={copy.earnings.title} testID="worker-earnings-surface">
       <WorkerEarningsHero />
 
       <View style={styles.operationalBand}>
-        <QuickPanel icon="check" title={copy.earnings.complete} value={completedLocal ? '1 local' : '0'} note={copy.earnings.completeNote} tone="mint" />
-        <QuickPanel icon="clock" title={copy.earnings.waiting} value={waitingLocal} note={copy.earnings.waitingNote} tone="cyan" />
+        <QuickPanel icon="check" title={copy.earnings.complete} value={completedValue} tone="mint" />
+        <QuickPanel icon="clock" title={copy.earnings.waiting} value={waitingValue} tone="cyan" />
       </View>
 
       <WorkerEarningsLedger />
@@ -572,7 +700,7 @@ function WorkerFrame({
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const mode = useWorkerThemeMode()
-  const language = useWorkerLanguageMode()
+  const language = useAppLanguage()
   const copy = workerCopy[language]
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const baseTokens = getWorkerThemeTokens(mode)
@@ -603,7 +731,10 @@ function WorkerFrame({
                 width: Math.max(0, frameWidth - workerFrameHorizontalPadding * 2),
               },
             ]}
+            automaticallyAdjustKeyboardInsets
             contentInsetAdjustmentBehavior="automatic"
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             <View
@@ -630,18 +761,18 @@ function WorkerFrame({
 }
 
 function WorkerChatContent() {
-  const { copy, tokens } = useWorkerUi()
+  const { copy, language, tokens } = useWorkerUi()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const dealChatKey = workerChatDealKey(deal)
   const [draft, setDraft] = useState('')
   const [messages, setMessages] = useState<WorkerChatMessage[]>([])
   const activeDealChatKeyRef = useRef(dealChatKey)
-  const dealSeedMessages = buildWorkerDealChatSeed(deal, selectors.currentStatus, copy.chat.kael)
+  const dealSeedMessages = buildWorkerDealChatSeed(deal, selectors.currentStatus, copy.chat.kael, language)
   const renderedMessages = messages.length > 0 ? messages : dealSeedMessages
   const hasAnyWorkerKaelMessage = renderedMessages.length > 0
-  const canSendWorkerKaelMessage = !deal || isAcceptedLocalWorkerDeal(deal)
-  const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : 'Chấp nhận hoặc bỏ qua trước'
+  const canSendWorkerKaelMessage = Boolean(deal && isAcceptedLocalWorkerDeal(deal))
+  const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : language === 'en' ? 'Accept or skip first' : 'Chấp nhận hoặc bỏ qua trước'
 
   useEffect(() => {
     if (activeDealChatKeyRef.current === dealChatKey) return
@@ -654,14 +785,10 @@ function WorkerChatContent() {
     if (!canSendWorkerKaelMessage) return
     const value = draft.trim()
     if (!value) return
-    const localResponse = deal
-      ? 'Đã lưu ghi chú tại máy cho yêu cầu hiện tại. Chưa gửi lên hệ thống và chưa mở thêm dữ liệu riêng tư.'
-      : copy.chat.sampleKael
     const baseMessages = messages.length > 0 ? messages : dealSeedMessages
     setMessages([
       ...baseMessages,
-      { mine: true, text: value, who: copy.chat.worker },
-      { system: true, text: localResponse, who: copy.chat.kael },
+      { id: `worker-local-${Date.now()}`, mine: true, text: value, who: copy.chat.worker },
     ])
     setDraft('')
   }
@@ -673,13 +800,16 @@ function WorkerChatContent() {
         <View style={styles.hiddenMarker} testID="worker-kael-empty-chat-state" />
         {!hasAnyWorkerKaelMessage ? (
           <View style={styles.kaelBlankCanvas} testID="worker-kael-empty-chat-canvas">
-            <View style={[styles.kaelCanvasOrbLarge, { backgroundColor: tokens.aqua }]} />
-            <View style={[styles.kaelCanvasOrbWarm, { backgroundColor: tokens.copper }]} />
+            <View style={[styles.kaelCanvasWashLarge, { backgroundColor: tokens.aqua }]} />
+            <View style={[styles.kaelCanvasWashWarm, { backgroundColor: tokens.copper }]} />
+            <View style={styles.emptyChatState}>
+              <Text style={[styles.cardTitle, { color: tokens.ink }]}>{copy.chat.emptyTitle}</Text>
+            </View>
           </View>
         ) : (
           <View style={styles.chatStack} testID="hasAnyWorkerKaelMessage">
-            {renderedMessages.map((message, index) => (
-              <ChatBubble key={`${message.who}-${index}-${message.system ? 'system' : message.mine ? 'mine' : 'plain'}-${message.text}`} {...message} />
+            {renderedMessages.map((message) => (
+              <ChatBubble key={message.id} {...message} />
             ))}
           </View>
         )}
@@ -725,12 +855,45 @@ function WorkerChatContent() {
   )
 }
 
-function buildWorkerDealChatSeed(deal: LocalDeal | null, status: LocalDealStatus | null, kaelLabel: string): WorkerChatMessage[] {
-  if (!deal?.broadcast) return []
-  return [
-    { system: true, text: `${serviceLabel(deal.draft.serviceType)} · ${statusLabel(status)}`, who: kaelLabel },
-    ...deal.broadcast.prebrief.slice(0, 2).map((text) => ({ system: true, text, who: kaelLabel })),
-  ]
+function buildWorkerDealChatSeed(deal: LocalDeal | null, status: LocalDealStatus | null, kaelLabel: string, language: WorkerLanguageMode): WorkerChatMessage[] {
+  const broadcast = deal?.broadcast ?? null
+  if (!deal || !broadcast) return []
+  return buildWorkerBroadcastBrief(deal, broadcast, status, language)
+    .slice(0, 2)
+    .map((text, index) => ({ id: `${deal.id}-prebrief-${index}-${text}`, system: true, text, who: kaelLabel }))
+}
+
+function buildWorkerBroadcastBrief(deal: LocalDeal | null, broadcast: WorkerBroadcastView, status: LocalDealStatus | null, language: WorkerLanguageMode): string[] {
+  const serviceLabel = localizedServiceLabel(broadcast.serviceType, language)
+  const problemLabel = localizedWorkerProblemSummary(broadcast, language)
+  const areaLabel = localizedWorkerAreaLabel(broadcast.generalArea, language)
+  const addressGate = language === 'en'
+    ? `${areaLabel}. Detailed address is hidden until acceptance.`
+    : `Khu vực: ${areaLabel}. Địa chỉ chi tiết vẫn ẩn trước khi nhận.`
+  const statusLine = localizedStatusLabel(status, language)
+  const mediaLine = deal?.draft.mediaCount
+    ? language === 'en'
+      ? `${deal.draft.mediaCount} media item attached.`
+      : `Có ${deal.draft.mediaCount} ảnh/video.`
+    : null
+
+  return [`${serviceLabel} · ${problemLabel}`, addressGate, mediaLine ?? statusLine].filter(Boolean)
+}
+
+function localizedWorkerProblemSummary(broadcast: WorkerBroadcastView, language: WorkerLanguageMode) {
+  return localizedProblemLabel(broadcast.problemSummary, broadcast.serviceType, language)
+}
+
+function localizedWorkerAreaLabel(area: string | null | undefined, language: WorkerLanguageMode) {
+  if (!area) return appCopy[language].common.noData
+  if (language === 'vi') return area
+  const mapped = area
+    .replace(/^Khu vực:\s*/i, '')
+    .replace(/Khu vực TP\.?HCM/gi, 'Ho Chi Minh City area')
+    .replace(/Khu vực chung/gi, 'General area')
+    .replace(/Quận\s*(\d+)/gi, 'District $1')
+    .replace(/TP\.?\s*HCM|Thành phố Hồ Chí Minh/gi, 'HCMC')
+  return mapped.trim() || appCopy[language].common.noData
 }
 
 function workerChatDealKey(deal: LocalDeal | null) {
@@ -745,22 +908,21 @@ function workerChatDealKey(deal: LocalDeal | null) {
 }
 
 function WorkerEarningsHero() {
-  const { copy, tokens } = useWorkerUi()
+  const { copy, language, tokens } = useWorkerUi()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
-  const moneyLabel = acceptedDeal ? 'Chờ hệ thống thanh toán' : 'Chưa có dữ liệu'
-  const body = acceptedDeal ? `${statusLabel(selectors.currentStatus)} · chưa ghi nhận thanh toán hoặc đánh giá trong giai đoạn này.` : copy.earnings.body
+  const moneyLabel = acceptedDeal ? localizedStatusLabel(selectors.currentStatus, language) : copy.earnings.noReconciliation
+  const body = copy.earnings.body
 
   return (
     <View style={[styles.earningsHero, glassSurface(tokens, 'cream')]} testID="worker-earnings-summary">
-      <MotionSweep />
       <View style={styles.rowBetween}>
         <View style={styles.titleStack}>
           <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.earnings.today}</Text>
           <Text style={[styles.moneyText, { color: tokens.ink }]}>{moneyLabel}</Text>
         </View>
-        <View style={[styles.earningsOrb, { backgroundColor: tokens.glassStrong }]}>
+        <View style={[styles.earningsBadge, { backgroundColor: tokens.glassStrong }]}>
           <Icon name="money" active />
         </View>
       </View>
@@ -771,15 +933,15 @@ function WorkerEarningsHero() {
 }
 
 function WorkerEarningsLedger() {
-  const { copy, tokens } = useWorkerUi()
+  const { copy, language, tokens } = useWorkerUi()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
   const rows = acceptedDeal
     ? [
-        ['Local deal', statusLabel(selectors.currentStatus)],
-        ['Tài khoản nhận tiền', 'Chưa lưu hệ thống'],
-        ['Thanh toán & đánh giá', 'Đang khóa'],
+        [appCopy[language].common.serviceRequest, localizedStatusLabel(selectors.currentStatus, language)],
+        [language === 'en' ? 'Payout account' : 'Tài khoản nhận tiền', appCopy[language].common.noData],
+        [language === 'en' ? 'Payment & review' : 'Thanh toán & đánh giá', appCopy[language].common.noData],
       ]
     : copy.earnings.rows
 
@@ -797,20 +959,22 @@ function WorkerProfileContent() {
   const { copy, language, tokens } = useWorkerUi()
   const { replace } = useRouter()
   const { role } = useAuth()
-  const { selectors, state, workerProfile } = useFrontendWorkflow()
+  const { state, workerProfile } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
-  const adminAuditSwitchLabel = language === 'en' ? 'Choose area' : 'Chọn khu vực'
+  const adminAuditSwitchLabel = language === 'en' ? 'Back to login' : 'Về đăng nhập'
+  const workingAreaLabel = deal ? localizedWorkerAreaLabel(deal.draft.districtLabel, language) : appCopy[language].common.noData
   const profileRows = deal
     ? [
-        ['Xác minh danh tính', 'Chờ duyệt hệ thống'],
-        ['Kỹ năng dịch vụ', serviceLabel(deal.draft.serviceType)],
-        ['Khu vực làm việc', deal.draft.districtLabel || 'Từ deal local'],
+        [language === 'en' ? 'Identity verification' : 'Xác minh danh tính', appCopy[language].common.pendingSystem],
+        [language === 'en' ? 'Service skills' : 'Kỹ năng dịch vụ', localizedServiceLabel(deal.draft.serviceType, language)],
+        [language === 'en' ? 'Working area' : 'Khu vực làm việc', workingAreaLabel],
       ]
     : copy.profile.rows
   const profileSkills = deal
-    ? [serviceLabel(deal.draft.serviceType), deal.draft.districtLabel || 'Khu vực local', 'Chờ duyệt hệ thống', 'Chờ phản hồi thật']
+    ? [localizedServiceLabel(deal.draft.serviceType, language), workingAreaLabel, appCopy[language].common.pendingSystem, language === 'en' ? 'Feedback pending' : 'Chờ phản hồi']
     : copy.profile.skills
+  const profileStatusValue = localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)
   const canSubmitVerification = role === 'worker' &&
     !workerProfile?.is_suspended &&
     !['approved', 'suspended'].includes(workerProfile?.verification_status ?? 'draft')
@@ -842,15 +1006,9 @@ function WorkerProfileContent() {
       {canSubmitVerification ? <WorkerVerificationForm /> : null}
 
       <View style={[styles.greenScoreCard, glassSurface(tokens, 'mint')]}>
-        <MotionSweep />
         <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.profile.scoreTitle}</Text>
-        <Text style={[styles.scoreNumber, { color: tokens.ink }]}>--</Text>
+        <Text style={[styles.scoreNumber, { color: tokens.ink }]} numberOfLines={1}>{profileStatusValue}</Text>
         {copy.profile.scoreBody ? <Text style={[styles.bodyText, { color: tokens.muted }]}>{copy.profile.scoreBody}</Text> : null}
-        <View style={styles.scoreStats}>
-          <Metric label={copy.home.today} value={acceptedDeal ? '1 local' : '0'} />
-          <Metric label={copy.home.rating} value="--" />
-          <Metric label={copy.jobs.title} value={deal ? statusLabel(selectors.currentStatus) : '--'} />
-        </View>
       </View>
 
       <View style={styles.skillWrap}>
@@ -877,44 +1035,131 @@ function WorkerProfileContent() {
 
 const workerVerificationServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']
 
+type WorkerVerificationField =
+  | 'bankAccount'
+  | 'bankName'
+  | 'dateOfBirth'
+  | 'districts'
+  | 'legalName'
+  | 'yearsExperience'
+
+type WorkerVerificationFormState = {
+  bankAccount: string
+  bankName: string
+  dateOfBirth: string
+  districts: string
+  files: Partial<Record<WorkerVerificationFileSlot, LocalMediaUploadDraft>>
+  legalName: string
+  serviceTypes: ServiceType[]
+  submitError: string | null
+  submitting: boolean
+  yearsExperience: string
+}
+
+type WorkerVerificationFormAction =
+  | { type: 'field'; field: WorkerVerificationField; value: string }
+  | { type: 'file'; slot: WorkerVerificationFileSlot; file: LocalMediaUploadDraft }
+  | { type: 'hydrate'; profile: WorkerProfileResponse }
+  | { type: 'reset_bank_account' }
+  | { type: 'submit_error'; error: string | null }
+  | { type: 'submitting'; submitting: boolean }
+  | { type: 'toggle_service'; serviceType: ServiceType }
+
+function createWorkerVerificationFormState(workerProfile: WorkerProfileResponse | null): WorkerVerificationFormState {
+  return {
+    bankAccount: '',
+    bankName: workerProfile?.bank_name ?? '',
+    dateOfBirth: workerProfile?.date_of_birth ?? '',
+    districts: workerProfile?.districts.join(', ') ?? '',
+    files: {},
+    legalName: workerProfile?.legal_name ?? '',
+    serviceTypes: workerProfile?.service_types.length ? workerProfile.service_types : ['electrical'],
+    submitError: null,
+    submitting: false,
+    yearsExperience: workerProfile?.years_experience ? String(workerProfile.years_experience) : '',
+  }
+}
+
+function workerVerificationFormReducer(
+  state: WorkerVerificationFormState,
+  action: WorkerVerificationFormAction,
+): WorkerVerificationFormState {
+  switch (action.type) {
+    case 'field':
+      return { ...state, [action.field]: action.value }
+    case 'file':
+      return { ...state, files: { ...state.files, [action.slot]: action.file }, submitError: null }
+    case 'hydrate':
+      return {
+        ...state,
+        bankName: state.bankName || action.profile.bank_name || '',
+        dateOfBirth: state.dateOfBirth || action.profile.date_of_birth || '',
+        districts: state.districts || action.profile.districts.join(', '),
+        legalName: state.legalName || action.profile.legal_name || '',
+        serviceTypes: action.profile.service_types.length > 0 ? action.profile.service_types : state.serviceTypes,
+        yearsExperience: state.yearsExperience || (action.profile.years_experience ? String(action.profile.years_experience) : ''),
+      }
+    case 'reset_bank_account':
+      return { ...state, bankAccount: '' }
+    case 'submit_error':
+      return { ...state, submitError: action.error }
+    case 'submitting':
+      return { ...state, submitting: action.submitting }
+    case 'toggle_service':
+      if (state.serviceTypes.includes(action.serviceType)) {
+        return state.serviceTypes.length === 1
+          ? state
+          : { ...state, serviceTypes: state.serviceTypes.filter((item) => item !== action.serviceType) }
+      }
+      return { ...state, serviceTypes: [...state.serviceTypes, action.serviceType] }
+    default:
+      return state
+  }
+}
+
 function WorkerVerificationForm() {
-  const { tokens } = useWorkerUi()
+  const { language, tokens } = useWorkerUi()
   const { actions, workerProfile } = useFrontendWorkflow()
-  const [legalName, setLegalName] = useState(workerProfile?.legal_name ?? '')
-  const [dateOfBirth, setDateOfBirth] = useState(workerProfile?.date_of_birth ?? '')
-  const [districts, setDistricts] = useState(workerProfile?.districts.join(', ') ?? '')
-  const [yearsExperience, setYearsExperience] = useState(workerProfile?.years_experience ? String(workerProfile.years_experience) : '')
-  const [bankName, setBankName] = useState(workerProfile?.bank_name ?? '')
-  const [bankAccount, setBankAccount] = useState('')
-  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>(workerProfile?.service_types.length ? workerProfile.service_types : ['electrical'])
-  const [files, setFiles] = useState<Partial<Record<WorkerVerificationFileSlot, LocalMediaUploadDraft>>>({})
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const status = workerProfile?.verification_status ?? 'draft'
+  const verificationCopy = workerVerificationCopy[language]
+  const [{
+    bankAccount,
+    bankName,
+    dateOfBirth,
+    districts,
+    files,
+    legalName,
+    serviceTypes,
+    submitError,
+    submitting,
+    yearsExperience,
+  }, formDispatch] = useReducer(
+    workerVerificationFormReducer,
+    workerProfile,
+    createWorkerVerificationFormState,
+  )
+  const status: WorkerVerificationStatus = workerProfile?.verification_status ?? 'draft'
+  const setLegalName = (value: string) => formDispatch({ type: 'field', field: 'legalName', value })
+  const setDateOfBirth = (value: string) => formDispatch({ type: 'field', field: 'dateOfBirth', value })
+  const setDistricts = (value: string) => formDispatch({ type: 'field', field: 'districts', value })
+  const setYearsExperience = (value: string) => formDispatch({ type: 'field', field: 'yearsExperience', value })
+  const setBankName = (value: string) => formDispatch({ type: 'field', field: 'bankName', value })
+  const setBankAccount = (value: string) => formDispatch({ type: 'field', field: 'bankAccount', value })
+  const setSubmitError = (error: string | null) => formDispatch({ type: 'submit_error', error })
+  const setSubmitting = (submittingValue: boolean) => formDispatch({ type: 'submitting', submitting: submittingValue })
 
   useEffect(() => {
     if (!workerProfile) return
-    setLegalName((current) => current || workerProfile.legal_name || '')
-    setDateOfBirth((current) => current || workerProfile.date_of_birth || '')
-    setDistricts((current) => current || workerProfile.districts.join(', '))
-    setYearsExperience((current) => current || (workerProfile.years_experience ? String(workerProfile.years_experience) : ''))
-    setBankName((current) => current || workerProfile.bank_name || '')
-    if (workerProfile.service_types.length > 0) setServiceTypes(workerProfile.service_types)
+    formDispatch({ type: 'hydrate', profile: workerProfile })
   }, [workerProfile])
 
   const toggleService = (serviceType: ServiceType) => {
-    setServiceTypes((current) => {
-      if (current.includes(serviceType)) {
-        return current.length === 1 ? current : current.filter((item) => item !== serviceType)
-      }
-      return [...current, serviceType]
-    })
+    formDispatch({ type: 'toggle_service', serviceType })
   }
 
   const pickVerificationFile = async (slot: WorkerVerificationFileSlot) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      setSubmitError('Cần quyền thư viện ảnh để chọn giấy tờ xác minh.')
+      setSubmitError(verificationCopy.permissionError)
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -925,36 +1170,39 @@ function WorkerVerificationForm() {
     })
     if (result.canceled || !result.assets[0]) return
     const asset = result.assets[0]
-    setFiles((current) => ({
-      ...current,
-      [slot]: {
+    formDispatch({
+      type: 'file',
+      slot,
+      file: {
         uri: asset.uri,
         type: 'image',
         fileName: asset.fileName ?? asset.uri.split('/').pop(),
         mimeType: asset.mimeType ?? undefined,
         fileSizeBytes: asset.fileSize ?? undefined,
       },
-    }))
-    setSubmitError(null)
+    })
   }
 
   const submitVerification = async () => {
     const years = Number.parseInt(yearsExperience.replace(/[^\d]/g, ''), 10)
-    const districtList = districts.split(',').map((item) => item.trim()).filter(Boolean)
+    const districtList = districts.split(',').flatMap((item) => {
+      const district = item.trim()
+      return district ? [district] : []
+    })
     if (legalName.trim().length < 2 || !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth.trim())) {
-      setSubmitError('Nhập tên pháp lý và ngày sinh theo YYYY-MM-DD.')
+      setSubmitError(verificationCopy.errors.identity)
       return
     }
     if (!Number.isFinite(years) || years < 0 || districtList.length === 0 || serviceTypes.length === 0) {
-      setSubmitError('Nhập kinh nghiệm, dịch vụ và khu vực làm việc.')
+      setSubmitError(verificationCopy.errors.work)
       return
     }
     if (!bankName.trim() || bankAccount.trim().length < 6) {
-      setSubmitError('Nhập ngân hàng và số tài khoản nhận tiền.')
+      setSubmitError(verificationCopy.errors.bank)
       return
     }
     if (!files.cccdFront || !files.cccdBack || !files.selfie) {
-      setSubmitError('Cần CCCD mặt trước, CCCD mặt sau và ảnh selfie.')
+      setSubmitError(verificationCopy.errors.files)
       return
     }
 
@@ -967,7 +1215,7 @@ function WorkerVerificationForm() {
     })
     if (!uploaded.success) {
       setSubmitting(false)
-      setSubmitError(uploaded.error)
+      setSubmitError(verificationCopy.uploadError)
       return
     }
 
@@ -984,36 +1232,36 @@ function WorkerVerificationForm() {
     const saved = await actions.workerSubmitRegistration(input)
     setSubmitting(false)
     if (!saved) {
-      setSubmitError('Hệ thống chưa nhận hồ sơ. Kiểm tra lại kết nối và thử lại.')
+      setSubmitError(verificationCopy.errors.submit)
       return
     }
-    setBankAccount('')
-    Alert.alert('Đã gửi hồ sơ', 'Đội vận hành sẽ duyệt hồ sơ trước khi bật nhận việc.')
+    formDispatch({ type: 'reset_bank_account' })
+    Alert.alert(verificationCopy.savedTitle, verificationCopy.savedBody)
   }
 
   return (
     <View style={[styles.verificationCard, workerOpaqueCardSurface(tokens)]} testID="worker-verification-submit-card">
       <View style={styles.rowBetween}>
         <View style={styles.titleStack}>
-          <Text style={[styles.kicker, { color: tokens.primary }]}>Xác minh</Text>
-          <Text style={[styles.sectionTitle, { color: tokens.ink }]}>Hồ sơ Thợ</Text>
+          <Text style={[styles.kicker, { color: tokens.primary }]}>{verificationCopy.kicker}</Text>
+          <Text style={[styles.sectionTitle, { color: tokens.ink }]}>{verificationCopy.title}</Text>
         </View>
         <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} testID="worker-verification-status">
-          {status}
+          {localizedWorkerVerificationStatus(status, language)}
         </Text>
       </View>
-      <TextInput accessibilityLabel="Tên pháp lý" autoCapitalize="words" onChangeText={setLegalName} placeholder="Tên pháp lý" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-legal-name" value={legalName} />
+      <TextInput accessibilityLabel={verificationCopy.legalName} autoCapitalize="words" onChangeText={setLegalName} placeholder={verificationCopy.legalName} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-legal-name" value={legalName} />
       <View style={styles.verificationGrid}>
-        <TextInput accessibilityLabel="Ngày sinh" onChangeText={setDateOfBirth} placeholder="YYYY-MM-DD" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-date-of-birth" value={dateOfBirth} />
-        <TextInput accessibilityLabel="Năm kinh nghiệm" keyboardType="number-pad" onChangeText={setYearsExperience} placeholder="Năm kinh nghiệm" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-years" value={yearsExperience} />
+        <TextInput accessibilityLabel={verificationCopy.dateOfBirth} onChangeText={setDateOfBirth} placeholder="YYYY-MM-DD" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-date-of-birth" value={dateOfBirth} />
+        <TextInput accessibilityLabel={verificationCopy.yearsExperience} keyboardType="number-pad" onChangeText={setYearsExperience} placeholder={verificationCopy.yearsExperience} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-years" value={yearsExperience} />
       </View>
-      <TextInput accessibilityLabel="Quận làm việc" onChangeText={setDistricts} placeholder="Quận làm việc, cách nhau bằng dấu phẩy" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-districts" value={districts} />
+      <TextInput accessibilityLabel={verificationCopy.districts} onChangeText={setDistricts} placeholder={verificationCopy.districtsPlaceholder} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-districts" value={districts} />
       <View style={styles.skillWrap} testID="worker-verification-service-types">
         {workerVerificationServices.map((serviceType) => {
           const selected = serviceTypes.includes(serviceType)
           return (
             <Pressable
-              accessibilityLabel={`Chọn kỹ năng ${serviceLabel(serviceType)}`}
+              accessibilityLabel={`${verificationCopy.selectSkill} ${localizedServiceLabel(serviceType, language)}`}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: selected }}
               key={serviceType}
@@ -1025,31 +1273,32 @@ function WorkerVerificationForm() {
               ]}
               testID={`worker-verification-service-${serviceType}`}
             >
-              <Text style={[styles.skillText, { color: selected ? tokens.primaryText : tokens.primary }]}>{serviceLabel(serviceType)}</Text>
+              <Text style={[styles.skillText, { color: selected ? tokens.primaryText : tokens.primary }]}>{localizedServiceLabel(serviceType, language)}</Text>
             </Pressable>
           )
         })}
       </View>
       <View style={styles.verificationGrid}>
-        <TextInput accessibilityLabel="Ngân hàng" onChangeText={setBankName} placeholder="Ngân hàng" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-bank-name" value={bankName} />
-        <TextInput accessibilityLabel="Số tài khoản" keyboardType="number-pad" onChangeText={setBankAccount} placeholder="Số tài khoản" placeholderTextColor={tokens.subtle} secureTextEntry style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-bank-account" value={bankAccount} />
+        <TextInput accessibilityLabel={verificationCopy.bankName} onChangeText={setBankName} placeholder={verificationCopy.bankName} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-bank-name" value={bankName} />
+        <TextInput accessibilityLabel={verificationCopy.bankAccount} keyboardType="number-pad" onChangeText={setBankAccount} placeholder={verificationCopy.bankAccount} placeholderTextColor={tokens.subtle} secureTextEntry style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-bank-account" value={bankAccount} />
       </View>
       <View style={styles.verificationFiles}>
-        <VerificationFileButton file={files.cccdFront} label="CCCD trước" onPress={() => void pickVerificationFile('cccdFront')} testID="worker-verification-cccd-front" />
-        <VerificationFileButton file={files.cccdBack} label="CCCD sau" onPress={() => void pickVerificationFile('cccdBack')} testID="worker-verification-cccd-back" />
-        <VerificationFileButton file={files.selfie} label="Ảnh selfie" onPress={() => void pickVerificationFile('selfie')} testID="worker-verification-selfie" />
+        <VerificationFileButton file={files.cccdFront} label={verificationCopy.files.cccdFront} onPress={() => void pickVerificationFile('cccdFront')} testID="worker-verification-cccd-front" />
+        <VerificationFileButton file={files.cccdBack} label={verificationCopy.files.cccdBack} onPress={() => void pickVerificationFile('cccdBack')} testID="worker-verification-cccd-back" />
+        <VerificationFileButton file={files.selfie} label={verificationCopy.files.selfie} onPress={() => void pickVerificationFile('selfie')} testID="worker-verification-selfie" />
       </View>
       {submitError ? <Text style={[styles.bodyText, { color: tokens.copper }]} testID="worker-verification-error">{submitError}</Text> : null}
-      <PressButton disabled={submitting} label={submitting ? 'Đang gửi...' : 'Gửi hồ sơ xác minh'} onPress={() => void submitVerification()} testID="worker-verification-submit" />
+      <PressButton disabled={submitting} label={submitting ? verificationCopy.submitting : verificationCopy.submit} onPress={() => void submitVerification()} testID="worker-verification-submit" />
     </View>
   )
 }
 
 function VerificationFileButton({ file, label, onPress, testID }: { file?: LocalMediaUploadDraft; label: string; onPress: () => void; testID: string }) {
-  const { tokens } = useWorkerUi()
+  const { language, tokens } = useWorkerUi()
+  const fileCopy = workerVerificationCopy[language].files
   return (
     <Pressable
-      accessibilityLabel={file ? `${label}: ${file.fileName ?? 'đã chọn tệp'}` : `Chọn ${label}`}
+      accessibilityLabel={file ? `${label}: ${file.fileName ?? fileCopy.selectedFallback}` : `${fileCopy.choose} ${label}`}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -1068,12 +1317,13 @@ function VerificationFileButton({ file, label, onPress, testID }: { file?: Local
 }
 
 function WorkerMapStage() {
-  const { copy, tokens } = useWorkerUi()
+  const { copy, language, tokens } = useWorkerUi()
   const { actions, selectors, state, workerProfile } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
   const broadcast = deal?.broadcast
-  const mapSearch = broadcast?.generalArea ?? deal?.draft.districtLabel ?? copy.home.mapSearch
+  const mapArea = broadcast?.generalArea ?? deal?.draft.districtLabel
+  const mapSearch = mapArea ? localizedWorkerAreaLabel(mapArea, language) : copy.home.mapSearch
   const nextAvailability = !workerProfile?.is_available
   const isOperationallyBusy = Boolean(
     acceptedDeal &&
@@ -1083,13 +1333,13 @@ function WorkerMapStage() {
   const canToggleAvailability = Boolean(workerProfile) &&
     (!nextAvailability || (workerProfile?.is_approved && !workerProfile?.is_suspended && !isOperationallyBusy))
   const statusTitle = deal
-    ? statusLabel(selectors.currentStatus)
+    ? localizedStatusLabel(selectors.currentStatus, language)
     : workerProfile?.is_available
-      ? 'Đang online'
+      ? language === 'en' ? 'Online' : 'Đang online'
       : workerProfile?.is_suspended
-        ? 'Tài khoản đang khóa'
+        ? language === 'en' ? 'Account suspended' : 'Tài khoản đang khóa'
         : workerProfile?.is_approved
-          ? 'Đang offline'
+          ? language === 'en' ? 'Offline' : 'Đang offline'
           : copy.home.online
 
   return (
@@ -1106,7 +1356,7 @@ function WorkerMapStage() {
             {mapSearch}
           </Text>
         </View>
-        <PulseBeacon />
+        <StatusBeacon />
       </View>
 
       <View style={styles.mapCardsRow}>
@@ -1122,7 +1372,7 @@ function WorkerMapStage() {
       ) : null}
 
       <Pressable
-        accessibilityLabel={nextAvailability ? 'Bật nhận việc' : 'Tắt nhận việc'}
+        accessibilityLabel={nextAvailability ? copy.frame.availabilityOn : copy.frame.availabilityOff}
         accessibilityRole="switch"
         accessibilityState={{ checked: Boolean(workerProfile?.is_available), disabled: !canToggleAvailability }}
         disabled={!canToggleAvailability}
@@ -1145,11 +1395,6 @@ function WorkerMapStage() {
             <View style={[styles.toggleKnob, { backgroundColor: tokens.raised }]} />
           </View>
         </View>
-        <View style={styles.metricRow}>
-          <Metric label={copy.home.today} value={acceptedDeal ? '1 local' : '0'} />
-          <Metric label={copy.home.estimate} value="--" />
-          <Metric label={copy.home.rating} value="--" />
-        </View>
       </Pressable>
     </View>
   )
@@ -1160,7 +1405,7 @@ function WorkerMapFeatureCard({ icon, testID, title, tone }: { icon: WorkerIconN
 
   return (
     <View style={[styles.mapFeatureCard, workerOpaqueCardSurface(tokens, tone)]} testID={testID}>
-      <Text style={[styles.mapFeatureTitle, { color: tokens.ink }]} numberOfLines={1}>{title}</Text>
+      <Text style={[styles.mapFeatureTitle, { color: tokens.ink }]} numberOfLines={2}>{title}</Text>
       <View style={[styles.mapFeatureIcon, { backgroundColor: tokens.glassStrong }]}>
         <Icon name={icon} />
       </View>
@@ -1175,12 +1420,13 @@ type WorkerProgressAction =
   | 'worker_start_repair'
   | 'worker_complete_job'
 
-function getNextWorkerAction(status: LocalDealStatus | null): { label: string; type: WorkerProgressAction } | null {
-  if (status === 'worker_matched') return { label: 'Bắt đầu di chuyển', type: 'worker_start_travel' }
-  if (status === 'worker_on_way') return { label: 'Đã đến nơi', type: 'worker_mark_arrived' }
-  if (status === 'arrived') return { label: 'Bắt đầu kiểm tra', type: 'worker_start_inspection' }
-  if (status === 'inspecting') return { label: 'Bắt đầu sửa', type: 'worker_start_repair' }
-  if (status === 'repairing') return { label: 'Báo hoàn tất', type: 'worker_complete_job' }
+function getNextWorkerAction(status: LocalDealStatus | null, language: WorkerLanguageMode): { label: string; type: WorkerProgressAction } | null {
+  const progressCopy = workerActionCopy[language].progress
+  if (status === 'worker_matched') return { label: progressCopy.worker_start_travel, type: 'worker_start_travel' }
+  if (status === 'worker_on_way') return { label: progressCopy.worker_mark_arrived, type: 'worker_mark_arrived' }
+  if (status === 'arrived') return { label: progressCopy.worker_start_inspection, type: 'worker_start_inspection' }
+  if (status === 'inspecting') return { label: progressCopy.worker_start_repair, type: 'worker_start_repair' }
+  if (status === 'repairing') return { label: progressCopy.worker_complete_job, type: 'worker_complete_job' }
   return null
 }
 
@@ -1194,15 +1440,18 @@ function workerStatusForAction(action: WorkerProgressAction): Extract<LocalDealS
 }
 
 function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
-  const { copy, tokens } = useWorkerUi()
+  const { copy, language, tokens } = useWorkerUi()
   const { actions, selectors, state } = useFrontendWorkflow()
+  const actionCopy = workerActionCopy[language]
   const [finalPriceDraft, setFinalPriceDraft] = useState('')
   const [cancellationReasonDraft, setCancellationReasonDraft] = useState('')
   const [scopeDescriptionDraft, setScopeDescriptionDraft] = useState('')
   const [scopePriceDraft, setScopePriceDraft] = useState('')
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast ?? null
-  const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus) : null
+  const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus, language) : null
+  const localizedProblemSummary = broadcast ? localizedWorkerProblemSummary(broadcast, language) : copy.request.title
+  const workerBriefLines = broadcast ? buildWorkerBroadcastBrief(deal, broadcast, selectors.currentStatus, language) : copy.request.brief
   const canRequestScopeChange = selectors.currentStatus === 'inspecting' || selectors.currentStatus === 'repairing'
   const hasBroadcast = Boolean(broadcast)
   const canRequestCancellation = Boolean(hasBroadcast && !selectors.canWorkerAccept && [
@@ -1224,19 +1473,18 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
 
     const finalPrice = Number.parseInt(finalPriceDraft.replace(/[^\d]/g, ''), 10)
     if (!Number.isFinite(finalPrice) || finalPrice <= 0) {
-      Alert.alert('Cần giá cuối cùng', 'Nhập giá cuối cùng thực tế trước khi báo hoàn tất.')
+      Alert.alert(actionCopy.alerts.finalPriceRequiredTitle, actionCopy.alerts.finalPriceRequiredBody)
       return
     }
 
     Alert.alert(
-      'Xác nhận báo hoàn tất?',
-      'Hệ thống sẽ báo khách kiểm tra và xác nhận. Thanh toán vẫn khóa ở giai đoạn này.',
+      actionCopy.alerts.completeTitle,
+      actionCopy.alerts.completeBody,
       [
-        { text: 'Kiểm tra lại', style: 'cancel' },
+        { text: actionCopy.review, style: 'cancel' },
         {
           text: action.label,
           onPress: () => void actions.workerUpdateStatus(nextStatus, {
-            completion_notes: 'Thợ báo đã hoàn tất từ app mobile.',
             completion_photo_urls: [],
             final_price: finalPrice,
           }),
@@ -1248,20 +1496,20 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
     const description = scopeDescriptionDraft.trim()
     const price = Number.parseInt(scopePriceDraft.replace(/[^\d]/g, ''), 10)
     if (description.length < 10) {
-      Alert.alert('Cần mô tả phạm vi mới', 'Nhập rõ phần phát sinh để khách quyết định.')
+      Alert.alert(actionCopy.alerts.scopeDescriptionTitle, actionCopy.alerts.scopeDescriptionBody)
       return
     }
     if (!Number.isFinite(price) || price <= 0) {
-      Alert.alert('Cần giá mới', 'Nhập mức giá mới để khách duyệt thay đổi phạm vi.')
+      Alert.alert(actionCopy.alerts.scopePriceTitle, actionCopy.alerts.scopePriceBody)
       return
     }
     Alert.alert(
-      'Gửi yêu cầu đổi phạm vi?',
-      'Hệ thống sẽ khóa tiến độ cho tới khi khách duyệt hoặc từ chối.',
+      actionCopy.alerts.scopeConfirmTitle,
+      actionCopy.alerts.scopeConfirmBody,
       [
-        { text: 'Kiểm tra lại', style: 'cancel' },
+        { text: actionCopy.review, style: 'cancel' },
         {
-          text: 'Gửi',
+          text: actionCopy.send,
           onPress: () => void actions.requestScopeChange({
             new_description: description,
             new_price_min: price,
@@ -1275,16 +1523,16 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const submitCancellationRequest = () => {
     const reason = cancellationReasonDraft.trim()
     if (reason.length < 10) {
-      Alert.alert('Cần lý do hủy', 'Nhập lý do cụ thể để đội vận hành duyệt và tìm thợ thay thế nếu hợp lệ.')
+      Alert.alert(actionCopy.alerts.cancelReasonTitle, actionCopy.alerts.cancelReasonBody)
       return
     }
     Alert.alert(
-      'Gửi yêu cầu hủy việc?',
-      'Yêu cầu này chưa hủy việc ngay. Đội vận hành sẽ duyệt lý do và tìm thợ thay thế nếu được chấp nhận.',
+      actionCopy.alerts.cancelConfirmTitle,
+      actionCopy.alerts.cancelConfirmBody,
       [
-        { text: 'Kiểm tra lại', style: 'cancel' },
+        { text: actionCopy.review, style: 'cancel' },
         {
-          text: 'Gửi',
+          text: actionCopy.send,
           onPress: () => {
             setCancellationReasonDraft('')
             void actions.requestWorkerCancellation({
@@ -1296,14 +1544,16 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       ],
     )
   }
+  const fullAddressLabel = broadcast?.fullAddressLabel ?? deal?.draft.addressLabel ?? null
   const addressLabel = selectors.canWorkerSeeFullAddress
-    ? broadcast?.fullAddressLabel ?? deal?.draft.addressLabel ?? ''
+    ? localizedWorkerAreaLabel(fullAddressLabel, language)
     : broadcast?.generalArea
-      ? `${broadcast.generalArea} · ẩn địa chỉ chi tiết`
-      : 'Địa chỉ chi tiết chỉ hiện sau khi có việc thật và được chấp nhận.'
+      ? `${localizedWorkerAreaLabel(broadcast.generalArea, language)} · ${actionCopy.hiddenAddress}`
+      : appCopy[language].common.noRequest
 
   return (
-    <GlassModalSheet mode={tokens.mode} style={[styles.requestSheet, compact ? styles.requestSheetCompact : null]} testID="worker-request-sheet">
+    <ReduceMotionAwareEntranceView delayMs={compact ? 40 : 80} distanceY={compact ? 8 : 14} testID="worker-request-sheet-motion">
+      <GlassModalSheet mode={tokens.mode} style={[styles.requestSheet, compact ? styles.requestSheetCompact : null]} testID="worker-request-sheet">
       <SubtleGlassHighlight />
       <MotionSweep />
       <View style={styles.hiddenMarker} testID="worker-no-live-request-empty-state" />
@@ -1311,16 +1561,16 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       <View style={styles.rowBetween}>
         <View style={[styles.serviceBadge, { backgroundColor: tokens.mint }]}>
           <Icon name={deal?.draft.serviceType === 'plumbing' ? 'water' : deal?.draft.serviceType === 'cleaning' ? 'spark' : 'bolt'} small />
-          <Text style={[styles.serviceBadgeText, { color: tokens.primary }]}>{hasBroadcast ? serviceLabel(deal?.draft.serviceType ?? null) : copy.request.service}</Text>
+          <Text style={[styles.serviceBadgeText, { color: tokens.primary }]}>{hasBroadcast ? localizedServiceLabel(deal?.draft.serviceType ?? null, language) : copy.request.service}</Text>
         </View>
         {secondsRemainingLabel && selectors.canWorkerAccept ? (
-          <View style={[styles.countdownOrbit, { borderColor: tokens.primary }]} testID="worker-local-broadcast-countdown">
+          <View style={[styles.countdownRing, { borderColor: tokens.primary }]} testID="worker-local-broadcast-countdown">
             <Text style={[styles.countdownText, { color: tokens.primary }]}>{secondsRemainingLabel}</Text>
           </View>
         ) : null}
       </View>
 
-      <Text style={[styles.requestTitle, { color: tokens.ink }]}>{broadcast?.problemSummary ?? copy.request.title}</Text>
+      <Text style={[styles.requestTitle, { color: tokens.ink }]}>{localizedProblemSummary}</Text>
       <View style={styles.areaRow} testID={selectors.canWorkerSeeFullAddress ? 'worker-full-address-after-accept' : 'worker-general-area-before-accept'}>
         <Icon name="map" small />
         <Text style={[styles.areaText, { color: tokens.muted }]}>{addressLabel}</Text>
@@ -1331,7 +1581,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
           <Image accessible={false} source={kaelHead} style={[styles.kaelMini, { borderColor: tokens.borderStrong }]} />
           <Text style={[styles.kaelBriefTitle, { color: tokens.ink }]}>{copy.request.briefTitle}</Text>
         </View>
-        {(broadcast?.prebrief ?? copy.request.brief).map((brief) => (
+        {workerBriefLines.map((brief) => (
           <View key={brief} style={styles.briefItem}>
             <View style={[styles.briefDot, { backgroundColor: tokens.primary }]} />
             <Text style={[styles.briefText, { color: tokens.muted }]} numberOfLines={2}>
@@ -1342,55 +1592,55 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       </View>
 
       <View style={styles.priceRow}>
-        <Metric label={copy.request.customerEstimate} value={broadcast?.estimatedPriceLabel ?? '--'} />
-        <Metric label={copy.request.workerEarns} value={broadcast?.estimatedEarningLabel ?? '--'} />
+        <Metric label={copy.request.customerEstimate} value={broadcast?.estimatedPriceLabel ?? appCopy[language].common.noData} />
+        <Metric label={copy.request.workerEarns} value={broadcast?.estimatedEarningLabel ?? appCopy[language].common.noData} />
       </View>
       {canRequestScopeChange ? (
         <View style={styles.scopeRequestBox} testID="worker-scope-change-request">
           <TextInput
-            accessibilityLabel="Mô tả phần phát sinh"
+            accessibilityLabel={actionCopy.scopeDescription}
             onChangeText={setScopeDescriptionDraft}
-            placeholder="Mô tả phần phát sinh"
+            placeholder={actionCopy.scopeDescription}
             placeholderTextColor={tokens.subtle}
             style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
             value={scopeDescriptionDraft}
           />
           <TextInput
-            accessibilityLabel="Giá mới cần khách duyệt"
+            accessibilityLabel={actionCopy.scopePrice}
             keyboardType="number-pad"
             onChangeText={setScopePriceDraft}
-            placeholder="Giá mới cần khách duyệt"
+            placeholder={actionCopy.scopePrice}
             placeholderTextColor={tokens.subtle}
             style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
             value={scopePriceDraft}
           />
-          <PressButton label="Yêu cầu đổi phạm vi" onPress={submitScopeChangeRequest} secondary testID="worker-scope-change-submit" />
+          <PressButton label={actionCopy.scopeSubmit} onPress={submitScopeChangeRequest} secondary testID="worker-scope-change-submit" />
         </View>
       ) : null}
       {selectors.currentStatus === 'scope_change_pending' ? (
         <Text style={[styles.bodyText, { color: tokens.muted }]} testID="worker-scope-change-waiting">
-          Chờ khách quyết định thay đổi phạm vi.
+          {actionCopy.scopeWaiting}
         </Text>
       ) : null}
       {canRequestCancellation ? (
         <View style={styles.scopeRequestBox} testID="worker-cancellation-request">
           <TextInput
-            accessibilityLabel="Lý do cần hủy"
+            accessibilityLabel={actionCopy.cancelReason}
             onChangeText={setCancellationReasonDraft}
-            placeholder="Lý do cần hủy để Kael duyệt"
+            placeholder={actionCopy.cancelPlaceholder}
             placeholderTextColor={tokens.subtle}
             style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
             value={cancellationReasonDraft}
           />
-          <PressButton label="Yêu cầu hủy có lý do" onPress={submitCancellationRequest} secondary testID="worker-cancellation-submit" />
+          <PressButton label={actionCopy.cancelSubmit} onPress={submitCancellationRequest} secondary testID="worker-cancellation-submit" />
         </View>
       ) : null}
       {nextAction?.type === 'worker_complete_job' ? (
         <TextInput
-          accessibilityLabel="Giá cuối cùng"
+          accessibilityLabel={actionCopy.finalPrice}
           keyboardType="number-pad"
           onChangeText={setFinalPriceDraft}
-          placeholder="Giá cuối cùng"
+          placeholder={actionCopy.finalPrice}
           placeholderTextColor={tokens.subtle}
           style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
           testID="worker-final-price-input"
@@ -1405,16 +1655,18 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       ) : nextAction ? (
         <PressButton label={nextAction.label} onPress={() => confirmWorkerProgressAction(nextAction)} testID="worker-local-status-action" />
       ) : hasBroadcast ? (
-        <Text style={[styles.bodyText, { color: tokens.muted }]}>{statusLabel(selectors.currentStatus)}</Text>
+        <Text style={[styles.bodyText, { color: tokens.muted }]}>{localizedStatusLabel(selectors.currentStatus, language)}</Text>
       ) : null}
-    </GlassModalSheet>
+      </GlassModalSheet>
+    </ReduceMotionAwareEntranceView>
   )
 }
 
 function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
-  const { push } = useRouter()
+  const { replace } = useRouter()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
+  const { reduceTransparency } = useGlassAccessibility()
   const { copy, tokens } = useWorkerUi()
   const dockWidth = Math.min(Math.max(width - 34, 0), 392)
   const bottom = Math.max(insets.bottom + workerDockBottomMargin, workerDockBottomMargin)
@@ -1432,17 +1684,22 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
 
   return (
     <View pointerEvents="box-none" style={[styles.dockWrap, { bottom, width: dockWidth }]}>
-      <View pointerEvents="none" style={[styles.dockGlassAura, { backgroundColor: tokens.aqua, opacity: 0.16 }]} testID="worker-dock-glass-aura" />
-      <View pointerEvents="none" style={[styles.dockWarmAura, { backgroundColor: tokens.copper }]} />
+      {reduceTransparency ? null : (
+        <>
+          <View pointerEvents="none" style={[styles.dockGlassAura, { backgroundColor: tokens.aqua, opacity: 0.16 }]} testID="worker-dock-glass-aura" />
+          <View pointerEvents="none" style={[styles.dockWarmAura, { backgroundColor: tokens.copper }]} />
+        </>
+      )}
       <FloatingGlassTabBar<WorkerActiveTab, WorkerDockItem>
         activeKey={active}
         items={items}
         mode={tokens.mode}
         onItemPress={(item) => {
+          if (item.key === active) return
           lastWorkerDockActive = item.key
-          push(item.path)
+          replace(item.path)
         }}
-        renderIcon={(item, focused) =>
+        iconForItem={(item, focused) =>
           item.key === 'chat' ? (
             <Image accessible={false} contentFit="contain" source={kaelHead} style={styles.dockKaelImage} testID="worker-dock-kael-brief-mascot" />
           ) : (
@@ -1458,22 +1715,20 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
 
 function AmbientBackdrop() {
   const { tokens } = useWorkerUi()
-  const drift = 0.42
-  const mintDriftStyle = {
-    opacity: 0.16 + drift * 0.08,
-    transform: [{ translateY: -8 + drift * 16 }, { scale: 0.98 + drift * 0.04 }],
+  const mintWashStyle = {
+    opacity: 0.18,
+    transform: [{ rotate: '-8deg' }],
   }
-  const lineDriftStyle = {
-    opacity: 0.1 + drift * 0.06,
-    transform: [{ translateX: -10 + drift * 20 }],
+  const lineWashStyle = {
+    opacity: 0.12,
   }
 
   return (
     <>
       <View style={[styles.backdropWarm, { backgroundColor: tokens.cream }]} />
-      <View style={[styles.backdropMint, { backgroundColor: tokens.aqua }, mintDriftStyle]} />
+      <View style={[styles.backdropMint, { backgroundColor: tokens.aqua }, mintWashStyle]} />
       <View style={[styles.backdropCyan, { backgroundColor: tokens.cyan }]} />
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, lineDriftStyle]}>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, lineWashStyle]}>
         <Svg style={StyleSheet.absoluteFill} viewBox="0 0 390 844" preserveAspectRatio="none">
           <Path d="M-10 210 C74 178 128 230 198 190 S332 132 420 164" stroke={tokens.line} strokeWidth={2.2} opacity={0.42} fill="none" />
           <Path d="M42 78 C118 124 126 174 88 238 S92 366 176 394 S302 378 410 424" stroke={tokens.line} strokeWidth={1.8} opacity={0.28} fill="none" />
@@ -1494,26 +1749,25 @@ function WorkerSectionMotionField({
   screenWidth: number
 }) {
   const { tokens } = useWorkerUi()
-  const tide = 0.38
   const sectionIndex = ['home', 'jobs', 'chat', 'earnings', 'profile'].indexOf(active)
   const left = Math.max((screenWidth - frameWidth) / 2, 0)
   const topBias = 18 + Math.max(sectionIndex, 0) * 9
 
   const ribbonStyle = {
-    opacity: 0.16 + tide * 0.12,
-    transform: [{ translateX: -28 + tide * 56 }, { translateY: -10 + tide * 18 }, { rotate: '10deg' }],
+    opacity: 0.16,
+    transform: [{ rotate: '10deg' }],
   }
-  const orbStyle = {
-    opacity: 0.14 + tide * 0.1,
-    transform: [{ translateX: 12 - tide * 24 }, { translateY: -12 + tide * 24 }, { scale: 0.98 + tide * 0.05 }],
+  const washStyle = {
+    opacity: 0.13,
+    transform: [{ rotate: '-8deg' }],
   }
   const causticStyle = {
-    opacity: 0.08 + tide * 0.1,
-    transform: [{ translateX: -18 + tide * 36 }, { scaleX: 0.92 + tide * 0.16 }],
+    opacity: 0.1,
+    transform: [{ scaleX: 0.96 }],
   }
   const glintStyle = {
-    opacity: tide < 0.5 ? 0.08 + tide * 0.18 : 0.26 - (tide - 0.5) * 0.24,
-    transform: [{ translateX: -90 + tide * 180 }, { rotate: '13deg' }],
+    opacity: 0.1,
+    transform: [{ rotate: '13deg' }],
   }
 
   return (
@@ -1523,7 +1777,7 @@ function WorkerSectionMotionField({
       testID={workerSectionMotionTestIDs[active]}
     >
       <View style={[styles.sectionMotionRibbon, { backgroundColor: tokens.glassHighlight, top: topBias }, ribbonStyle]} />
-      <View style={[styles.sectionMotionOrb, { backgroundColor: tokens.aqua, top: 28 + topBias }, orbStyle]} />
+      <View style={[styles.sectionMotionWash, { backgroundColor: tokens.aqua, top: 28 + topBias }, washStyle]} />
       <View style={[styles.sectionMotionCaustic, { backgroundColor: tokens.mint }, causticStyle]} />
       <View style={[styles.sectionMotionGlint, { backgroundColor: tokens.glassHighlight }, glintStyle]} />
     </View>
@@ -1547,7 +1801,7 @@ function MapLineField() {
   )
 }
 
-function PulseBeacon() {
+function StatusBeacon() {
   const { tokens } = useWorkerUi()
 
   return (
@@ -1564,6 +1818,7 @@ function PulseBeacon() {
 function SubtleGlassHighlight() {
   const { tokens } = useWorkerUi()
 
+  if (tokens.glassHighlight === 'transparent') return null
   return <View pointerEvents="none" style={[styles.glassTopHighlight, { backgroundColor: tokens.glassHighlight }]} />
 }
 
@@ -1618,7 +1873,7 @@ function LanguageToggle() {
         accessibilityLabel={copy.frame.lang}
         accessibilityRole="switch"
         accessibilityState={{ checked: language === 'en' }}
-        onPress={() => setWorkerLanguageMode(nextLanguage)}
+        onPress={() => setAppLanguage(nextLanguage)}
         style={({ pressed }) => [styles.preferenceSwitch, { backgroundColor: tokens.cyan, borderColor: tokens.borderStrong }, pressed ? styles.pressed : null]}
         testID="worker-language-toggle"
       >
@@ -1629,10 +1884,10 @@ function LanguageToggle() {
 }
 
 function TimelineCard() {
-  const { copy, tokens } = useWorkerUi()
+  const { copy, language, tokens } = useWorkerUi()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
-  const phases = getWorkerTimeline(deal ? selectors.currentStatus : null)
+  const phases = getWorkerTimeline(deal ? selectors.currentStatus : null, language)
 
   return (
     <View style={[styles.timelineCard, workerOpaqueCardSurface(tokens)]}>
@@ -1647,10 +1902,17 @@ function TimelineCard() {
   )
 }
 
-function getWorkerTimeline(status: LocalDealStatus | null) {
-  const steps: Array<{ label: string; statuses: LocalDealStatus[] }> = [
-    { label: 'Chờ broadcast', statuses: ['broadcasting'] },
-    { label: 'Nhận local deal', statuses: ['worker_matched'] },
+function getWorkerTimeline(status: LocalDealStatus | null, language: WorkerLanguageMode) {
+  const steps: Array<{ label: string; statuses: LocalDealStatus[] }> = language === 'en' ? [
+    { label: 'Waiting request', statuses: ['broadcasting'] },
+    { label: 'Accepted', statuses: ['worker_matched'] },
+    { label: 'On the way', statuses: ['worker_on_way'] },
+    { label: 'Arrived', statuses: ['arrived'] },
+    { label: 'Inspecting', statuses: ['inspecting'] },
+    { label: 'Repairing', statuses: ['repairing', 'completed_by_worker', 'confirmed_by_customer'] },
+  ] : [
+    { label: 'Chờ yêu cầu', statuses: ['broadcasting'] },
+    { label: 'Đã nhận việc', statuses: ['worker_matched'] },
     { label: 'Di chuyển', statuses: ['worker_on_way'] },
     { label: 'Đến nơi', statuses: ['arrived'] },
     { label: 'Kiểm tra', statuses: ['inspecting'] },
@@ -1724,7 +1986,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-function QuickPanel({ icon, note, title, tone, value }: { icon: WorkerIconName; note: string; title: string; tone: WorkerTone; value: string }) {
+function QuickPanel({ icon, title, tone, value }: { icon: WorkerIconName; title: string; tone: WorkerTone; value: string }) {
   const { tokens } = useWorkerUi()
 
   return (
@@ -1735,9 +1997,6 @@ function QuickPanel({ icon, note, title, tone, value }: { icon: WorkerIconName; 
       </Text>
       <Text style={[styles.quickTitle, { color: tokens.ink }]} numberOfLines={1}>
         {title}
-      </Text>
-      <Text style={[styles.quickNote, { color: tokens.muted }]} numberOfLines={2}>
-        {note}
       </Text>
     </View>
   )
@@ -1813,7 +2072,7 @@ function PressButton({
       testID={testID}
       variant="control"
     >
-      <Text style={[styles.pressButtonText, { color: secondary ? tokens.primary : tokens.primaryText }]}>{label}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.pressButtonText, { color: secondary ? tokens.primary : tokens.primaryText }]}>{label}</Text>
     </GlassPressable>
   )
 }
@@ -1926,6 +2185,7 @@ function useWorkerUi() {
 }
 
 function glassSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
   const warmAccent = tokens.mode === 'dark' ? 'rgba(224,160,107,0.20)' : 'rgba(255,184,102,0.23)'
   const softWarmAccent = tokens.mode === 'dark' ? 'rgba(224,160,107,0.13)' : 'rgba(255,184,102,0.14)'
   const mintWash = tokens.mode === 'dark' ? 'rgba(105,222,198,0.17)' : 'rgba(183,246,231,0.34)'
@@ -1971,16 +2231,14 @@ function glassSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
     borderColor: tokens.glassBorder,
     borderWidth: 1,
     boxShadow:
-      tone === 'raised' || tone === 'base' || tone === 'strong'
+      reduceTransparency
+        ? 'none'
+        : tone === 'raised' || tone === 'strong'
         ? tokens.mode === 'dark'
-          ? '0 14px 36px rgba(0,0,0,0.24)'
-          : '0 14px 36px rgba(13,70,65,0.10)'
+          ? '0 10px 26px rgba(0,0,0,0.18)'
+          : '0 10px 26px rgba(13,70,65,0.07)'
         : 'none',
-    experimental_backgroundImage: experimentalBackgroundImage,
-    shadowColor: '#0D4641',
-    shadowOffset: { height: 18, width: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
+    experimental_backgroundImage: reduceTransparency ? undefined : experimentalBackgroundImage,
   }
 }
 
@@ -2034,21 +2292,19 @@ function workerOpaqueCardSurface(tokens: WorkerThemeTokens, tone: WorkerTone = '
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   canvas: { alignItems: 'center', flex: 1, overflow: 'hidden' },
-  backdropWarm: { borderRadius: 999, bottom: 72, height: 188, left: -86, opacity: 0.16, position: 'absolute', width: 188 },
-  backdropMint: { borderRadius: 999, height: 270, opacity: 0.22, position: 'absolute', right: -108, top: 34, width: 270 },
-  backdropCyan: { borderRadius: 999, height: 184, left: -80, opacity: 0.14, position: 'absolute', top: 190, width: 184 },
+  backdropWarm: { borderRadius: 30, bottom: 72, height: 148, left: -98, opacity: 0.12, position: 'absolute', transform: [{ rotate: '12deg' }], width: 210 },
+  backdropMint: { borderRadius: 36, height: 226, opacity: 0.18, position: 'absolute', right: -126, top: 54, width: 294 },
+  backdropCyan: { borderRadius: 30, height: 148, left: -96, opacity: 0.1, position: 'absolute', top: 200, transform: [{ rotate: '-10deg' }], width: 220 },
   sectionMotionField: { bottom: 0, overflow: 'hidden', position: 'absolute', top: 0, zIndex: 0 },
-  sectionMotionRibbon: { borderRadius: 999, height: 760, left: 18, position: 'absolute', width: 62 },
-  sectionMotionOrb: { borderRadius: 999, height: 214, position: 'absolute', right: -82, width: 214 },
-  sectionMotionCaustic: { borderRadius: 999, bottom: 84, height: 146, left: -86, position: 'absolute', width: 246 },
+  sectionMotionRibbon: { borderRadius: 34, height: 760, left: 18, position: 'absolute', width: 62 },
+  sectionMotionWash: { borderRadius: 34, height: 178, position: 'absolute', right: -92, width: 224 },
+  sectionMotionCaustic: { borderRadius: 30, bottom: 84, height: 118, left: -104, position: 'absolute', width: 268 },
   sectionMotionGlint: { bottom: 52, height: 260, left: '50%', position: 'absolute', width: 34 },
   scrollContent: { gap: 14, paddingHorizontal: workerFrameHorizontalPadding, paddingTop: 8, zIndex: 2 },
   kicker: { fontSize: 12, fontWeight: '600', letterSpacing: 0 },
   screenTitle: { fontSize: 27, fontWeight: '600', letterSpacing: 0, lineHeight: 32 },
   glassTopHighlight: { height: 1, left: 16, opacity: 0.82, position: 'absolute', right: 16, top: 0, zIndex: 0 },
   glassSheen: { height: '170%', left: -72, opacity: 0.42, position: 'absolute', top: -46, transform: [{ rotate: '11deg' }], width: 58, zIndex: 0 },
-  glassMotionOrb: { borderRadius: 999, height: 126, position: 'absolute', right: -40, top: -34, width: 126, zIndex: 0 },
-  glassMotionOrbCompact: { height: 78, right: -28, top: -24, width: 78 },
   glassMotionRibbon: { borderRadius: 999, height: 168, left: 16, position: 'absolute', top: -168, width: 58, zIndex: 0 },
   glassMotionRibbonCompact: { height: 118, left: 8, top: -118, width: 38 },
   glassMotionCore: { borderRadius: 999, height: 118, left: 56, position: 'absolute', top: -118, width: 13, zIndex: 0 },
@@ -2090,7 +2346,7 @@ const styles = StyleSheet.create({
   requestSheetCompact: { marginTop: 0 },
   serviceBadge: { alignItems: 'center', borderRadius: 999, flexDirection: 'row', gap: 6, minHeight: 34, paddingHorizontal: 10 },
   serviceBadgeText: { fontSize: 13, fontWeight: '600' },
-  countdownOrbit: { alignItems: 'center', borderRadius: 999, borderWidth: 3, justifyContent: 'center', minHeight: 38, minWidth: 70, paddingHorizontal: 10 },
+  countdownRing: { alignItems: 'center', borderRadius: 999, borderWidth: 3, justifyContent: 'center', minHeight: 38, minWidth: 70, paddingHorizontal: 10 },
   countdownText: { fontSize: 13, fontVariant: ['tabular-nums'], fontWeight: '600' },
   requestTitle: { fontSize: 19, fontWeight: '600', letterSpacing: 0, lineHeight: 25 },
   areaRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
@@ -2113,7 +2369,6 @@ const styles = StyleSheet.create({
   quickPanel: { borderRadius: 25, flex: 1, gap: 5, minHeight: 132, overflow: 'hidden', padding: 14, position: 'relative' },
   quickValue: { fontSize: 23, fontVariant: ['tabular-nums'], fontWeight: '600' },
   quickTitle: { fontSize: 14, fontWeight: '600' },
-  quickNote: { fontSize: 12, fontWeight: '600', lineHeight: 17 },
   sectionTitle: { fontSize: 18, fontWeight: '600' },
   sectionAction: { fontSize: 13, fontWeight: '600' },
   timelineCard: { borderRadius: 27, gap: 12, overflow: 'hidden', padding: 15, position: 'relative' },
@@ -2126,14 +2381,14 @@ const styles = StyleSheet.create({
   flowCard: { borderRadius: 28, gap: 10, overflow: 'hidden', padding: 16, position: 'relative' },
   statusPill: { borderRadius: 999, fontSize: 12, fontWeight: '600', overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
   cardTitle: { fontSize: 17, fontWeight: '600', letterSpacing: 0, lineHeight: 23 },
-  chatShell: { borderRadius: 32, gap: 12, minHeight: 593, overflow: 'hidden', padding: 12, position: 'relative' },
+  chatShell: { borderRadius: 32, gap: 12, minHeight: 430, overflow: 'hidden', padding: 12, position: 'relative' },
   kaelRelayCard: { borderRadius: 27, gap: 12, padding: 14 },
   emptyChatState: { alignItems: 'center', borderRadius: 28, gap: 8, minHeight: 194, justifyContent: 'center', padding: 20 },
-  kaelClientStage: { borderRadius: 25, borderWidth: 1, flex: 1, gap: 12, justifyContent: 'space-between', minHeight: 513, overflow: 'hidden', padding: 12, position: 'relative' },
+  kaelClientStage: { borderRadius: 25, borderWidth: 1, flex: 1, gap: 12, justifyContent: 'space-between', minHeight: 336, overflow: 'hidden', padding: 12, position: 'relative' },
   kaelClientStageEmpty: { opacity: 0.92 },
-  kaelBlankCanvas: { flex: 1, minHeight: 363, overflow: 'hidden', position: 'relative' },
-  kaelCanvasOrbLarge: { borderRadius: 999, height: 168, left: -48, opacity: 0.09, position: 'absolute', top: 46, width: 168 },
-  kaelCanvasOrbWarm: { borderRadius: 999, bottom: 42, height: 126, opacity: 0.08, position: 'absolute', right: -34, width: 126 },
+  kaelBlankCanvas: { flex: 1, minHeight: 196, overflow: 'hidden', position: 'relative' },
+  kaelCanvasWashLarge: { borderRadius: 32, height: 168, left: -48, opacity: 0.07, position: 'absolute', top: 46, transform: [{ rotate: '-8deg' }], width: 168 },
+  kaelCanvasWashWarm: { borderRadius: 28, bottom: 42, height: 126, opacity: 0.06, position: 'absolute', right: -34, transform: [{ rotate: '12deg' }], width: 126 },
   chatStack: { gap: 10 },
   chatBubble: { alignSelf: 'flex-start', borderRadius: 22, maxWidth: '88%', padding: 13 },
   chatBubbleMine: { alignSelf: 'flex-end' },
@@ -2145,7 +2400,7 @@ const styles = StyleSheet.create({
   chatInput: { flex: 1, flexShrink: 1, fontSize: 15, fontWeight: '500', minHeight: 40, minWidth: 0, paddingHorizontal: 8 },
   sendButton: { alignItems: 'center', borderRadius: 17, flexShrink: 0, height: 42, justifyContent: 'center', width: 42 },
   earningsHero: { borderRadius: 32, gap: 12, overflow: 'hidden', padding: 18, position: 'relative' },
-  earningsOrb: { alignItems: 'center', borderRadius: 999, height: 58, justifyContent: 'center', width: 58 },
+  earningsBadge: { alignItems: 'center', borderRadius: 24, height: 58, justifyContent: 'center', transform: [{ rotate: '-5deg' }], width: 58 },
   moneyText: { fontSize: 34, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: 0 },
   listCard: { borderRadius: 29, gap: 4, overflow: 'hidden', padding: 10, position: 'relative' },
   listRow: { alignItems: 'center', flexDirection: 'row', gap: 11, minHeight: 54, paddingHorizontal: 8 },
@@ -2156,16 +2411,15 @@ const styles = StyleSheet.create({
   profileName: { fontSize: 17, fontWeight: '600', letterSpacing: 0 },
   profileBadge: { alignItems: 'center', borderRadius: 999, height: 42, justifyContent: 'center', width: 42 },
   greenScoreCard: { borderRadius: 30, gap: 8, overflow: 'hidden', padding: 17, position: 'relative' },
-  scoreNumber: { fontSize: 40, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: 0, lineHeight: 46 },
-  scoreStats: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  scoreNumber: { fontSize: 28, fontWeight: '600', letterSpacing: 0, lineHeight: 34 },
   skillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  skillPill: { borderRadius: 999, borderWidth: 1, justifyContent: 'center', minHeight: 38, paddingHorizontal: 13 },
+  skillPill: { borderRadius: 999, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 13 },
   skillText: { fontSize: 13, fontWeight: '600' },
   preferenceCard: { borderRadius: 29, gap: 6, overflow: 'hidden', padding: 10, position: 'relative' },
   preferenceRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 54, paddingHorizontal: 8 },
   preferenceTitle: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 11 },
-  preferenceSwitch: { borderRadius: 999, borderWidth: 1, height: 34, justifyContent: 'center', padding: 4, width: 62 },
-  preferenceKnob: { borderRadius: 999, height: 24, width: 24 },
+  preferenceSwitch: { borderRadius: 999, borderWidth: 1, height: 44, justifyContent: 'center', padding: 6, width: 72 },
+  preferenceKnob: { borderRadius: 999, height: 28, width: 28 },
   preferenceKnobRight: { alignSelf: 'flex-end' },
   verificationCard: { borderRadius: 29, gap: 10, overflow: 'hidden', padding: 14, position: 'relative' },
   verificationGrid: { flexDirection: 'row', gap: 8 },
@@ -2187,6 +2441,6 @@ const styles = StyleSheet.create({
   dockDot: { borderRadius: 999, bottom: 5, height: 3, position: 'absolute', width: 3 },
   dockKaelImage: { height: 34, width: 34 },
   motionSweep: { borderRadius: 999, height: 76, position: 'absolute', top: -18, width: 96 },
-  pressed: { opacity: 0.78, transform: [{ scale: 0.98 }] },
+  pressed: { opacity: 0.78 },
   hiddenMarker: { height: 0, opacity: 0, width: 0 },
 })

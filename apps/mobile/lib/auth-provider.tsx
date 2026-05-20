@@ -1,4 +1,5 @@
-import { createContext, use, useEffect, useReducer } from 'react'
+import { createContext, use, useEffect, useRef, useReducer } from 'react'
+import { Platform } from 'react-native'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { USER_ROLES, type UserRole } from '@home-services/shared'
@@ -43,12 +44,33 @@ function authSnapshotReducer(current: AuthSnapshot, patch: Partial<AuthSnapshot>
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [{ session, role, loading, profileStatus, authError }, patchAuth] = useReducer(authSnapshotReducer, INITIAL_AUTH_SNAPSHOT)
+  const loadingRef = useRef(INITIAL_AUTH_SNAPSHOT.loading)
+  const sessionRef = useRef<Session | null>(INITIAL_AUTH_SNAPSHOT.session)
+
+  useEffect(() => {
+    loadingRef.current = loading
+    sessionRef.current = session
+  }, [loading, session])
 
   useEffect(() => {
     if (!supabase) {
       patchAuth({ session: null, role: null, profileStatus: 'config_missing', loading: false })
       return
     }
+
+    const bootstrapTimeout = setTimeout(() => {
+      if (!loadingRef.current) {
+        return
+      }
+
+      patchAuth({
+        session: sessionRef.current,
+        role: null,
+        profileStatus: 'profile_error',
+        authError: 'Auth bootstrap timed out',
+        loading: false,
+      })
+    }, Platform.OS === 'web' ? 900 : 7000)
 
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
@@ -80,7 +102,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(bootstrapTimeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function fetchRole(userId: string): Promise<UserRole | null> {

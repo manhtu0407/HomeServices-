@@ -415,7 +415,7 @@ export function localWorkflowReducer(
       const validationMessage = validateLocalDealDraft(state.deal.draft)
       if (validationMessage) return withError(state, validationMessage)
       if (!state.deal.draft.serviceType) return withError(state, 'Chọn dịch vụ trước khi tìm thợ')
-      if (!state.deal.estimate) return withError(state, 'Cần hoàn tất ước tính local trước khi tìm thợ')
+      if (!state.deal.estimate) return withError(state, 'Cần hoàn tất ước tính trước khi tìm thợ')
       return {
         deal: {
           ...state.deal,
@@ -428,12 +428,12 @@ export function localWorkflowReducer(
       }
     }
     case 'worker_accept_broadcast': {
-      if (!state.deal) return withError(state, 'Không có broadcast để nhận')
+      if (!state.deal) return withError(state, 'Không có yêu cầu để nhận')
       if (state.workerGate !== 'local_deal_audit' && state.workerGate !== 'remote_backend') {
-        return withError(state, 'Worker chưa được mở workflow cho broadcast này')
+        return withError(state, 'Thợ chưa được mở workflow cho yêu cầu này')
       }
       if (state.deal.status !== 'broadcasting') return invalidTransition(state, state.deal.status, 'worker_matched')
-      if (state.deal.broadcast?.status !== 'sent') return withError(state, 'Broadcast không còn ở trạng thái có thể nhận')
+      if (state.deal.broadcast?.status !== 'sent') return withError(state, 'Yêu cầu không còn ở trạng thái có thể nhận')
       return {
         ...state,
         deal: {
@@ -450,9 +450,9 @@ export function localWorkflowReducer(
       }
     }
     case 'retry_customer_search': {
-      if (!state.deal) return withError(state, 'Không có broadcast để thử lại')
+      if (!state.deal) return withError(state, 'Không có yêu cầu để thử lại')
       if (state.deal.status !== 'broadcasting') return invalidTransition(state, state.deal.status, 'broadcasting')
-      if (state.deal.broadcast?.status !== 'declined' && state.deal.broadcast?.status !== 'expired') return withError(state, 'Chỉ thử lại sau khi không có worker nhận')
+      if (state.deal.broadcast?.status !== 'declined' && state.deal.broadcast?.status !== 'expired') return withError(state, 'Chỉ thử lại sau khi chưa có thợ nhận')
       return {
         ...state,
         deal: {
@@ -478,7 +478,7 @@ export function localWorkflowReducer(
         state.deal.status === 'cancelled' &&
         (state.deal.broadcast?.status === 'cancelled' || state.deal.broadcast?.status === 'expired')
       if (!canReopenBroadcast && !canReopenCancelledNoWorker) {
-        return withError(state, 'Chỉ chỉnh yêu cầu sau khi không có worker nhận')
+        return withError(state, 'Chỉ chỉnh yêu cầu sau khi chưa có thợ nhận')
       }
       return {
         ...state,
@@ -493,12 +493,12 @@ export function localWorkflowReducer(
       }
     }
     case 'worker_decline_broadcast': {
-      if (!state.deal) return withError(state, 'Không có broadcast để từ chối')
+      if (!state.deal) return withError(state, 'Không có yêu cầu để từ chối')
       if (state.workerGate !== 'local_deal_audit' && state.workerGate !== 'remote_backend') {
-        return withError(state, 'Worker chưa được mở workflow cho broadcast này')
+        return withError(state, 'Thợ chưa được mở workflow cho yêu cầu này')
       }
       if (state.deal.status !== 'broadcasting') return invalidTransition(state, state.deal.status, 'broadcasting')
-      if (state.deal.broadcast?.status !== 'sent') return withError(state, 'Broadcast không còn ở trạng thái có thể từ chối')
+      if (state.deal.broadcast?.status !== 'sent') return withError(state, 'Yêu cầu không còn ở trạng thái có thể từ chối')
       return {
         ...state,
         deal: {
@@ -559,7 +559,7 @@ export function localWorkflowReducer(
       if (!state.deal) return withError(state, 'Không có phiếu để xác nhận hoàn tất')
       if (state.deal.status !== 'completed_by_worker') return invalidTransition(state, state.deal.status, 'confirmed_by_customer')
       if (!canConfirmCustomerCompletion(state.deal)) {
-        return withError(state, 'Chỉ xác nhận sau khi worker đã nhận broadcast và báo hoàn tất')
+        return withError(state, 'Chỉ xác nhận sau khi thợ đã nhận yêu cầu và báo hoàn tất')
       }
       return setStatus(state, 'completed_by_worker', 'confirmed_by_customer')
     }
@@ -806,7 +806,7 @@ function createBroadcast(draft: LocalDealDraft): LocalWorkerBroadcast {
     prebrief: [
       `${serviceLabel(draft.serviceType)} · ${problemSummary}`,
       `Khu vực: ${generalArea}. Địa chỉ chi tiết vẫn ẩn trước khi nhận.`,
-      draft.mediaCount > 0 ? `Có ${draft.mediaCount} ảnh/video local để khách bổ sung sau.` : 'Chưa có media local.',
+      draft.mediaCount > 0 ? `Có ${draft.mediaCount} ảnh/video để khách bổ sung sau.` : 'Chưa có ảnh/video.',
     ],
     fullAddressVisible: false,
     fullAddressLabel: null,
@@ -908,11 +908,11 @@ function transitionWorkerStatus(
   to: LocalDealStatus,
 ): LocalWorkflowState {
   if (state.workerGate !== 'local_deal_audit' && state.workerGate !== 'remote_backend') {
-    return withError(state, 'Worker chưa được mở workflow cho job này')
+    return withError(state, 'Thợ chưa được mở workflow cho yêu cầu này')
   }
   if (!state.deal) return withError(state, 'Không có phiếu để chuyển trạng thái')
   if (state.deal.status !== from) return invalidTransition(state, state.deal.status, to)
-  if (state.deal?.broadcast?.status !== 'accepted') return withError(state, 'Worker chỉ có thể cập nhật sau khi broadcast ở trạng thái accepted')
+  if (state.deal?.broadcast?.status !== 'accepted') return withError(state, 'Thợ chỉ có thể cập nhật sau khi yêu cầu đã được nhận')
   const nextState = setStatus(state, from, to)
   if (!nextState.deal || nextState.lastError) return nextState
   return {

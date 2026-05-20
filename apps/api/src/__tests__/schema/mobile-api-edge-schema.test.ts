@@ -401,6 +401,10 @@ describe('mobile-api Edge schema compatibility', () => {
       expect(source).toContain('job_broadcasts')
       expect(source).toContain('no_worker_found')
       expect(source).toContain('broadcast_sent: false')
+      expect(source).toContain('rollbackFailedBroadcastStart')
+      expect(source).toContain('broadcast_start_failed')
+      expect(source).toContain('confirmed_search_at: null')
+      expect(source).toContain('customer_id')
     }
   })
 

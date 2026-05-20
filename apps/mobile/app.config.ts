@@ -68,7 +68,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: false,
     buildNumber: '1',
-    bundleIdentifier: 'com.homeservices.app',
+    bundleIdentifier: 'com.phanmanhtu.homeservices',
     config: {
       usesNonExemptEncryption: false,
     },
@@ -88,7 +88,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     permissions: [],
     blockedPermissions: ['android.permission.RECORD_AUDIO'],
     edgeToEdgeEnabled: true,
-    package: 'com.homeservices.app',
+    package: 'com.phanmanhtu.homeservices',
   },
   plugins: [
     'expo-router',
@@ -107,5 +107,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseUrl,
     supabasePublishableKey,
     apiBaseUrl,
+    eas: {
+      projectId: 'df74d6a3-f85b-4b40-85ef-fe3162023d6e',
+    },
   },
 })

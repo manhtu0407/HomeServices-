@@ -12,26 +12,37 @@ export function useGlassAccessibility(): GlassAccessibilityPreferences {
 
   useEffect(() => {
     let mounted = true
+    const accessibilityInfo = AccessibilityInfo as typeof AccessibilityInfo & {
+      isReduceTransparencyEnabled?: () => Promise<boolean>
+    }
 
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((value) => {
-        if (mounted) setReduceMotion(value)
-      })
-      .catch(() => undefined)
+    if (typeof accessibilityInfo.isReduceMotionEnabled === 'function') {
+      accessibilityInfo.isReduceMotionEnabled()
+        .then((value) => {
+          if (mounted) setReduceMotion(value)
+        })
+        .catch(() => undefined)
+    }
 
-    AccessibilityInfo.isReduceTransparencyEnabled()
-      .then((value) => {
-        if (mounted) setReduceTransparency(value)
-      })
-      .catch(() => undefined)
+    if (typeof accessibilityInfo.isReduceTransparencyEnabled === 'function') {
+      accessibilityInfo.isReduceTransparencyEnabled()
+        .then((value) => {
+          if (mounted) setReduceTransparency(value)
+        })
+        .catch(() => undefined)
+    }
 
-    const motionSub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion)
-    const transparencySub = AccessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency)
+    const motionSub = typeof accessibilityInfo.addEventListener === 'function'
+      ? accessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion)
+      : null
+    const transparencySub = typeof accessibilityInfo.addEventListener === 'function' && typeof accessibilityInfo.isReduceTransparencyEnabled === 'function'
+      ? accessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency)
+      : null
 
     return () => {
       mounted = false
-      motionSub.remove()
-      transparencySub.remove()
+      motionSub?.remove()
+      transparencySub?.remove()
     }
   }, [])
 

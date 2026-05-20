@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "buildNumber": "1",
-      "bundleIdentifier": "com.homeservices.app",
+      "bundleIdentifier": "com.phanmanhtu.homeservices",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -36,7 +36,7 @@
         "android.permission.RECORD_AUDIO"
       ],
       "edgeToEdgeEnabled": true,
-      "package": "com.homeservices.app"
+      "package": "com.phanmanhtu.homeservices"
     },
     "plugins": [
       "expo-router",
@@ -52,7 +52,10 @@
     "extra": {
       "supabaseUrl": "",
       "supabasePublishableKey": "",
-      "apiBaseUrl": ""
+      "apiBaseUrl": "",
+      "eas": {
+        "projectId": "df74d6a3-f85b-4b40-85ef-fe3162023d6e"
+      }
     }
   }
 }

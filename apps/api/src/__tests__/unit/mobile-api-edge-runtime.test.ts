@@ -1323,6 +1323,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: [{ id: 'worker-1' }], error: null },
       { data: [], error: null },
       { data: null, error: { code: 'PGRST500', message: 'insert failed' } },
+      { data: { id: 'job-1' }, error: null },
     ])
     const ctx: MobileApiContext = {
       success: true,
@@ -1345,6 +1346,17 @@ describe('mobile-api Edge runtime helpers', () => {
       call.operations.some((op) => op[0] === 'update')
     )
     expect(statusUpdateCall?.operations).toContainEqual(['eq', 'customer_id', 'customer-1'])
+    const rollbackCall = client.calls.find((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => {
+        const updateValue = op[1] as { status?: string } | null
+        return op[0] === 'update' && updateValue?.status === 'awaiting_customer_confirm'
+      })
+    )
+    expect(rollbackCall).toBeDefined()
+    expect(rollbackCall!.operations).toContainEqual(['eq', 'id', 'job-1'])
+    expect(rollbackCall!.operations).toContainEqual(['eq', 'customer_id', 'customer-1'])
+    expect(rollbackCall!.operations).toContainEqual(['eq', 'status', 'broadcasting'])
   })
 
   it('rebroadcasts approved worker cancellation without re-sending to the cancelling worker', async () => {

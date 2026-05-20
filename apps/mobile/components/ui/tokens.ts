@@ -21,24 +21,24 @@ const radiusByVariant: Record<GlassVariant, number> = {
 
 const shadowByVariant: Record<GlassVariant, { dark: string; light: string }> = {
   nav: {
-    dark: '0 18px 44px rgba(0,0,0,0.28)',
-    light: '0 18px 44px rgba(13,70,65,0.13)',
+    dark: '0 12px 30px rgba(0,0,0,0.22)',
+    light: '0 12px 30px rgba(13,70,65,0.10)',
   },
   control: {
-    dark: '0 8px 20px rgba(0,0,0,0.22)',
-    light: '0 8px 20px rgba(13,70,65,0.10)',
+    dark: '0 6px 14px rgba(0,0,0,0.16)',
+    light: '0 6px 14px rgba(13,70,65,0.07)',
   },
   hero: {
-    dark: '0 22px 58px rgba(0,0,0,0.30)',
-    light: '0 22px 58px rgba(13,70,65,0.14)',
+    dark: '0 12px 30px rgba(0,0,0,0.20)',
+    light: '0 12px 30px rgba(13,70,65,0.09)',
   },
   sheet: {
-    dark: '0 24px 64px rgba(0,0,0,0.34)',
-    light: '0 24px 64px rgba(13,70,65,0.15)',
+    dark: '0 14px 34px rgba(0,0,0,0.22)',
+    light: '0 14px 34px rgba(13,70,65,0.09)',
   },
   subtle: {
-    dark: '0 6px 16px rgba(0,0,0,0.18)',
-    light: '0 6px 16px rgba(13,70,65,0.07)',
+    dark: '0 4px 10px rgba(0,0,0,0.12)',
+    light: '0 4px 10px rgba(13,70,65,0.05)',
   },
 }
 
