@@ -107,5 +107,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseUrl,
     supabasePublishableKey,
     apiBaseUrl,
+    eas: {
+      projectId: 'df74d6a3-f85b-4b40-85ef-fe3162023d6e',
+    },
   },
 })
