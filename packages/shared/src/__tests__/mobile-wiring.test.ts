@@ -954,6 +954,8 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('const availabilityLabel = !workerProfile')
     expect(src).toContain('worker-jobs-jobroom-entry')
     expect(src).toContain('worker-jobs-open-jobroom')
+    expect(src).toContain('worker-earnings-chart-empty-state')
+    expect(src).not.toContain('earningsChartPlaceholder')
     expect(src).toContain('type WorkerJobsTab')
     expect(src).toContain("const workerJobsTabKeys: WorkerJobsTab[] = ['waiting', 'active', 'needs']")
     expect(src).toContain('worker-jobs-segment-${tab}')
