@@ -20,6 +20,7 @@ import {
   type JobMessageSendInput,
   type KaelChatCreateInput,
   type KaelChatTurnInput,
+  type PlacesAutocompleteInput,
   sanitizeForLLM,
   type WorkerCancellationDecisionInput,
   type WorkerCancellationRequestInput,
@@ -28,6 +29,7 @@ import {
 import {
   apiFailure,
   type MobileApiContext,
+  type PlacesAutocompleteResponse,
   type MobileApiServices,
 } from "./router.ts";
 import { validateTransition } from "./lifecycle.ts";
@@ -81,6 +83,10 @@ const JOB_DETAIL_SELECT =
 const DEFAULT_WORKER_CANDIDATE_POOL_SIZE = 50;
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 const KAEL_CHAT_HARD_COST_CAP_USD = 1;
+const GOOGLE_GEOCODING_URL = "https://maps.googleapis.com/maps/api/geocode/json";
+const GOOGLE_PLACES_AUTOCOMPLETE_URL =
+  "https://places.googleapis.com/v1/places:autocomplete";
+const GOOGLE_MAPS_TIMEOUT_MS = 5_000;
 
 type KaelChatStatus = "active" | "estimate_ready" | "confirmed" | "abandoned";
 type KaelChatNextAction =
@@ -132,13 +138,14 @@ type Chain = {
 export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
   return {
     listServices,
+    placesAutocomplete: (ctx, input) => placesAutocomplete(ctx, input, secrets),
     createJob: (ctx, input) => createJob(ctx, input, secrets),
     getJob,
     createKaelChat: (ctx, input) => createKaelChat(ctx, input, secrets),
     getKaelChat,
     sendKaelChatTurn: (ctx, sessionId, input) =>
       sendKaelChatTurn(ctx, sessionId, input, secrets),
-    confirmKaelChat,
+    confirmKaelChat: (ctx, sessionId) => confirmKaelChat(ctx, sessionId, secrets),
     confirmSearch,
     cancelJob,
     acceptBroadcast,
@@ -229,6 +236,86 @@ async function listServices(ctx: MobileApiContext) {
   };
 }
 
+async function placesAutocomplete(
+  ctx: MobileApiContext,
+  input: PlacesAutocompleteInput,
+  secrets: EdgeAiSecrets,
+): Promise<PlacesAutocompleteResponse> {
+  void ctx;
+  const apiKey = readGoogleMapsApiKey(secrets);
+  if (!apiKey) return { suggestions: [], fallback_used: true };
+
+  try {
+    const response = await fetchJsonWithTimeout(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask":
+          "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text,suggestions.placePrediction.structuredFormat.mainText.text,suggestions.placePrediction.structuredFormat.secondaryText.text",
+      },
+      body: JSON.stringify({
+        input: input.input,
+        languageCode: "vi",
+        regionCode: "VN",
+        includedRegionCodes: ["vn"],
+        sessionToken: input.session_token,
+        locationBias: {
+          rectangle: {
+            low: { latitude: 10.65, longitude: 106.55 },
+            high: { latitude: 10.91, longitude: 106.85 },
+          },
+        },
+      }),
+    });
+    if (!response.ok) {
+      console.warn("mobile-api places autocomplete failed", {
+        status: response.status,
+      });
+      return { suggestions: [], fallback_used: true };
+    }
+
+    const body = await response.json().catch(() => ({})) as {
+      suggestions?: Array<{
+        placePrediction?: {
+          placeId?: string;
+          text?: { text?: string };
+          structuredFormat?: {
+            mainText?: { text?: string };
+            secondaryText?: { text?: string };
+          };
+        };
+      }>;
+    };
+    const suggestions = (body.suggestions ?? [])
+      .map((suggestion) => {
+        const prediction = suggestion.placePrediction;
+        const label = prediction?.text?.text?.trim() ?? "";
+        const placeId = prediction?.placeId?.trim() ?? "";
+        if (!label || !placeId) return null;
+        return {
+          place_id: placeId,
+          label,
+          main_text: prediction?.structuredFormat?.mainText?.text?.trim() ??
+            label,
+          secondary_text:
+            prediction?.structuredFormat?.secondaryText?.text?.trim() ?? null,
+        };
+      })
+      .filter((item): item is PlacesAutocompleteResponse["suggestions"][number] =>
+        item !== null
+      )
+      .slice(0, 5);
+
+    return { suggestions, fallback_used: false };
+  } catch (error) {
+    console.warn("mobile-api places autocomplete threw", {
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+    return { suggestions: [], fallback_used: true };
+  }
+}
+
 async function createJob(
   ctx: MobileApiContext,
   input: JobCreateInput,
@@ -275,6 +362,10 @@ async function createJob(
     apiFailure("DB_ERROR", "Không thể tạo yêu cầu", 500);
   }
   const jobId = inserted.data.id;
+  await geocodeJobAddressForMatching(client, jobId, {
+    addressLabel: input.address_building ?? null,
+    district: canonicalDistrict,
+  }, secrets);
   await logJobEvent(client, jobId, "job_created", ctx, null, "analyzing");
 
   let pipeline: PipelineResult;
@@ -458,6 +549,7 @@ async function createKaelChat(
       message: input.message,
       problem_chips: input.problem_chips,
       photo_urls: input.photo_urls,
+      address_label: input.address_label,
       address_district: input.address_district,
     }, secrets);
   }
@@ -473,6 +565,7 @@ async function createKaelChat(
   const client = db(ctx);
   const metadata = compactMetadata({
     problem_chips: input.problem_chips,
+    address_label: input.address_label ?? null,
     address_district: input.address_district ?? null,
     photo_urls: input.photo_urls,
   });
@@ -593,6 +686,8 @@ async function sendKaelChatTurn(
     ...asRecord(session.safe_metadata),
     problem_chips: input.problem_chips ??
       asStringArray(asRecord(session.safe_metadata).problem_chips),
+    address_label: input.address_label ??
+      nullableString(asRecord(session.safe_metadata).address_label),
     address_district: input.address_district ??
       nullableString(asRecord(session.safe_metadata).address_district),
     photo_urls: mergeLimitedRefs(
@@ -627,7 +722,11 @@ async function sendKaelChatTurn(
   return getKaelChat(ctx, sessionId);
 }
 
-async function confirmKaelChat(ctx: MobileApiContext, sessionId: string) {
+async function confirmKaelChat(
+  ctx: MobileApiContext,
+  sessionId: string,
+  secrets: EdgeAiSecrets,
+) {
   const client = db(ctx);
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("confirm_kael_chat_atomic", {
@@ -644,6 +743,13 @@ async function confirmKaelChat(ctx: MobileApiContext, sessionId: string) {
 
   const jobId = asString(row.job_id);
   if (!jobId) apiFailure("DB_ERROR", "Phiên Kael chưa tạo được yêu cầu", 500);
+  await geocodeConfirmedKaelJob(
+    client,
+    sessionId,
+    jobId,
+    nullableString(row.district_code),
+    secrets,
+  );
   const confirmed = await confirmSearch(ctx, jobId);
   return {
     session_id: sessionId,
@@ -1916,6 +2022,10 @@ async function registerWorker(
         service_types: input.service_types,
         years_experience: input.years_experience,
         districts,
+        home_lat: input.home_lat ?? null,
+        home_lng: input.home_lng ?? null,
+        service_radius_km: input.service_radius_km ?? 8,
+        problem_specializations: input.problem_specializations ?? [],
         cccd_front_url: input.cccd_front_url,
         cccd_back_url: input.cccd_back_url,
         selfie_url: input.selfie_url,
@@ -1947,7 +2057,7 @@ async function getWorkerProfile(ctx: MobileApiContext) {
     db(ctx)
       .from("worker_profiles")
       .select(
-        "id, verification_status, is_available, is_approved, is_suspended, service_types, districts, years_experience, rating, total_jobs, legal_name, date_of_birth, gender, bank_account, bank_name, cccd_front_url, cccd_back_url, selfie_url",
+        "id, verification_status, is_available, is_approved, is_suspended, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations, years_experience, rating, total_jobs, legal_name, date_of_birth, gender, bank_account, bank_name, cccd_front_url, cccd_back_url, selfie_url",
       )
       .eq("id", ctx.user.id)
       .maybeSingle(),
@@ -1963,6 +2073,10 @@ async function getWorkerProfile(ctx: MobileApiContext) {
     is_suspended: Boolean(worker.is_suspended),
     service_types: asServiceTypeArray(worker.service_types),
     districts: asStringArray(worker.districts),
+    home_lat: nullableNumber(worker.home_lat),
+    home_lng: nullableNumber(worker.home_lng),
+    service_radius_km: clampServiceRadius(worker.service_radius_km),
+    problem_specializations: asStringArray(worker.problem_specializations),
     years_experience: asNumber(worker.years_experience),
     rating: asNumber(worker.rating),
     total_jobs: asNumber(worker.total_jobs),
@@ -2262,7 +2376,7 @@ async function createBroadcasts(
     serviceType,
     district,
     5,
-    options,
+    { ...options, jobId },
   );
   if (!eligibleResult.success) {
     return {
@@ -2854,15 +2968,18 @@ async function queryEligibleWorkers(
   serviceType: ServiceType,
   district: string,
   limit: number,
-  options: { excludeWorkerIds?: string[] } = {},
+  options: { excludeWorkerIds?: string[]; jobId?: string } = {},
 ) {
   const candidateLimit = Math.max(limit, DEFAULT_WORKER_CANDIDATE_POOL_SIZE);
   const districtCode = normalizeDistrict(district);
   const excludedWorkerIds = new Set(options.excludeWorkerIds ?? []);
+  const jobGeo = options.jobId
+    ? await loadJobGeoForMatching(client, options.jobId)
+    : null;
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client
       .from("worker_profiles")
-      .select("id, rating, total_jobs, service_types, districts")
+      .select("id, rating, total_jobs, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations")
       .eq("is_approved", true)
       .eq("is_available", true)
       .eq("is_suspended", false)
@@ -2917,13 +3034,116 @@ async function queryEligibleWorkers(
   );
   return {
     success: true as const,
-    workers: candidates
-      .filter((worker) => !busyWorkerIds.has(asString(worker.id)))
+    workers: rankEligibleWorkers(
+      candidates.filter((worker) => !busyWorkerIds.has(asString(worker.id))),
+      jobGeo,
+    )
       .slice(0, limit)
       .map((worker) => ({
         id: asString(worker.id),
       })),
   };
+}
+
+async function loadJobGeoForMatching(client: DbClient, jobId: string) {
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("jobs")
+      .select("address_lat, address_lng, problem_chips, service_problem_id, kael_problem_identified")
+      .eq("id", jobId)
+      .maybeSingle(),
+  );
+  if (result.error) {
+    console.warn("mobile-api geo job lookup failed", {
+      jobId,
+      errorCode: result.error.code,
+    });
+    return null;
+  }
+  if (!result.data) return null;
+  return {
+    lat: nullableNumber(result.data.address_lat),
+    lng: nullableNumber(result.data.address_lng),
+    problemKeys: specializationKeys([
+      ...asStringArray(result.data.problem_chips),
+      nullableString(result.data.service_problem_id),
+      nullableString(result.data.kael_problem_identified),
+    ]),
+  };
+}
+
+function rankEligibleWorkers(
+  workers: Array<Record<string, unknown>>,
+  jobGeo: Awaited<ReturnType<typeof loadJobGeoForMatching>>,
+) {
+  return workers
+    .map((worker) => {
+      const workerLat = nullableNumber(worker.home_lat);
+      const workerLng = nullableNumber(worker.home_lng);
+      const radius = clampServiceRadius(worker.service_radius_km);
+      const distanceKm = jobGeo && jobGeo.lat !== null && jobGeo.lng !== null &&
+          workerLat !== null && workerLng !== null
+        ? distanceKmBetween(jobGeo.lat, jobGeo.lng, workerLat, workerLng)
+        : null;
+      const specializationMatch = hasSpecializationMatch(
+        asStringArray(worker.problem_specializations),
+        jobGeo?.problemKeys ?? new Set<string>(),
+      );
+      const rating = asNumber(worker.rating);
+      const totalJobs = asNumber(worker.total_jobs);
+      const distanceScore = distanceKm === null || distanceKm <= radius
+        ? 0
+        : -(distanceKm - radius) * 2;
+      return {
+        worker,
+        rating,
+        totalJobs,
+        score: rating * 10 + (specializationMatch ? 20 : 0) + distanceScore,
+      };
+    })
+    .sort((left, right) =>
+      right.score - left.score ||
+      right.rating - left.rating ||
+      right.totalJobs - left.totalJobs
+    )
+    .map((entry) => entry.worker);
+}
+
+function distanceKmBetween(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+) {
+  const toRadians = (value: number) => value * Math.PI / 180;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+      Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function hasSpecializationMatch(
+  workerSpecializations: string[],
+  jobProblemKeys: Set<string>,
+) {
+  if (jobProblemKeys.size === 0 || workerSpecializations.length === 0) return false;
+  return workerSpecializations
+    .map(normalizeSpecializationKey)
+    .some((key) => key.length > 0 && jobProblemKeys.has(key));
+}
+
+function specializationKeys(values: Array<string | null>) {
+  return new Set(
+    values
+      .map((value) => normalizeSpecializationKey(value ?? ""))
+      .filter(Boolean),
+  );
+}
+
+function normalizeSpecializationKey(value: string) {
+  return value.trim().toLowerCase();
 }
 
 async function logJobEvent(
@@ -3346,6 +3566,155 @@ function assertKaelSessionOwnership(
   apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
 }
 
+async function geocodeConfirmedKaelJob(
+  client: DbClient,
+  sessionId: string,
+  jobId: string,
+  district: string | null,
+  secrets: EdgeAiSecrets,
+) {
+  const session = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_chat_sessions")
+      .select("safe_metadata")
+      .eq("id", sessionId)
+      .maybeSingle(),
+  );
+  if (session.error) {
+    console.warn("mobile-api Kael geocode session lookup failed", {
+      jobId,
+      errorCode: session.error.code,
+    });
+    await markJobGeocodeFallback(client, jobId);
+    return;
+  }
+  const metadata = asRecord(session.data?.safe_metadata);
+  await geocodeJobAddressForMatching(client, jobId, {
+    addressLabel: nullableString(metadata.address_label),
+    district,
+  }, secrets);
+}
+
+async function geocodeJobAddressForMatching(
+  client: DbClient,
+  jobId: string,
+  input: { addressLabel: string | null; district: string | null },
+  secrets: EdgeAiSecrets,
+) {
+  const district = normalizeServiceAreaDistrict(input.district);
+  const address = buildGeocodingAddress(input.addressLabel, district);
+  const fallbackUpdate = compactMetadata({
+    address_building: input.addressLabel?.slice(0, 200) ?? null,
+    geo_source: "fallback",
+  });
+  const apiKey = readGoogleMapsApiKey(secrets);
+  if (!apiKey || !district || !address) {
+    await updateJobGeo(client, jobId, fallbackUpdate);
+    return;
+  }
+
+  try {
+    const url =
+      `${GOOGLE_GEOCODING_URL}?address=${encodeURIComponent(address)}&region=vn&language=vi&key=${encodeURIComponent(apiKey)}`;
+    const response = await fetchJsonWithTimeout(url, { method: "GET" });
+    if (!response.ok) {
+      console.warn("mobile-api geocoding failed", {
+        jobId,
+        status: response.status,
+      });
+      await updateJobGeo(client, jobId, fallbackUpdate);
+      return;
+    }
+    const body = await response.json().catch(() => ({})) as {
+      status?: string;
+      results?: Array<{
+        geometry?: { location?: { lat?: number; lng?: number } };
+      }>;
+    };
+    const location = body.results?.[0]?.geometry?.location;
+    if (
+      body.status !== "OK" ||
+      typeof location?.lat !== "number" ||
+      typeof location.lng !== "number"
+    ) {
+      await updateJobGeo(client, jobId, fallbackUpdate);
+      return;
+    }
+
+    await updateJobGeo(client, jobId, {
+      ...fallbackUpdate,
+      address_lat: location.lat,
+      address_lng: location.lng,
+      geo_source: "google_maps",
+    });
+  } catch (error) {
+    console.warn("mobile-api geocoding threw", {
+      jobId,
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+    await updateJobGeo(client, jobId, fallbackUpdate);
+  }
+}
+
+function buildGeocodingAddress(
+  addressLabel: string | null,
+  district: string | null,
+) {
+  const parts = [
+    addressLabel?.trim(),
+    district ? districtLabel(district) : null,
+    "Ho Chi Minh City",
+    "Vietnam",
+  ].filter((part): part is string => Boolean(part));
+  return Array.from(new Set(parts)).join(", ");
+}
+
+async function markJobGeocodeFallback(client: DbClient, jobId: string) {
+  await updateJobGeo(client, jobId, { geo_source: "fallback" });
+}
+
+async function updateJobGeo(
+  client: DbClient,
+  jobId: string,
+  value: Record<string, unknown>,
+) {
+  const update = await dbQuery<{ id: string }>(
+    client
+      .from("jobs")
+      .update(value)
+      .eq("id", jobId)
+      .select("id")
+      .maybeSingle(),
+  );
+  if (update.error) {
+    console.warn("mobile-api job geo update failed", {
+      jobId,
+      errorCode: update.error.code,
+    });
+  }
+}
+
+function readGoogleMapsApiKey(secrets: EdgeAiSecrets): string | null {
+  if (secrets.googleMapsApiKey) return secrets.googleMapsApiKey;
+  const denoGet = (globalThis as {
+    Deno?: { env?: { get?: (name: string) => string | undefined } };
+  }).Deno?.env?.get;
+  return denoGet?.("GOOGLE_MAPS_API_KEY") ?? null; // Deno.env.get("GOOGLE_MAPS_API_KEY")
+}
+
+async function fetchJsonWithTimeout(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GOOGLE_MAPS_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function db(ctx: MobileApiContext): DbClient {
   return ctx.supabase as DbClient;
 }
@@ -3399,6 +3768,10 @@ function blankWorkerProfile(workerId: string) {
     is_suspended: false,
     service_types: [],
     districts: [],
+    home_lat: null,
+    home_lng: null,
+    service_radius_km: 8,
+    problem_specializations: [],
     years_experience: 0,
     rating: 0,
     total_jobs: 0,
@@ -3410,6 +3783,11 @@ function blankWorkerProfile(workerId: string) {
     has_cccd: false,
     has_selfie: false,
   };
+}
+
+function clampServiceRadius(value: unknown): number {
+  const radius = Math.round(asNumber(value) || 8);
+  return Math.min(30, Math.max(1, radius));
 }
 
 function normalizeWorkerDistricts(districts: string[]): string[] | null {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   ActivityIndicator,
@@ -11,13 +11,16 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Svg, { Path } from 'react-native-svg'
 import { type ServiceType } from '@home-services/shared'
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
 import { localizedServiceLabel, type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { kaelChatService } from '@/lib/services'
+import { AddressAutocomplete } from '@/components/customer/address-autocomplete'
 import { takePendingKaelChatDraft } from './pending-intake'
+import { createInitialKaelChatState, kaelChatReducer } from './state'
 import { styles } from './styles'
 
 const KAEL_CHAT_STACK_SCREEN_CONTRACT = 'KAEL_CHAT_STACK_SCREEN_CONTRACT: stack route uses kaelChatService only'
@@ -146,61 +149,60 @@ export function KaelChatSurface() {
   const tokens = getCustomerThemeTokens(themeMode)
   const routeService = useMemo(() => parseServiceType(firstParam(params.serviceType)), [params.serviceType])
   const routeSessionId = useMemo(() => firstParam(params.sessionId), [params.sessionId])
-  const [selectedService, setSelectedService] = useState<ServiceType | null>(routeService)
-  const [session, setSession] = useState<KaelChatResponse | null>(null)
-  const [draft, setDraft] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [sending, setSending] = useState(false)
-  const [confirming, setConfirming] = useState(false)
-  const [confirmArmed, setConfirmArmed] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [confirmedMessage, setConfirmedMessage] = useState<string | null>(null)
+  const [state, dispatch] = useReducer(kaelChatReducer, routeService, createInitialKaelChatState)
+  const addressDistrictRef = useRef<string | null>(null)
+  const {
+    addressLabel,
+    confirmArmed,
+    confirmedMessage,
+    confirming,
+    draft,
+    error,
+    loading,
+    selectedService,
+    sending,
+    session,
+  } = state
   const estimate = session?.session.estimate ?? session?.turns.find((turn) => turn.estimate)?.estimate ?? null
   const turns = session?.turns ?? []
   const historyTarget = session?.session.job_id ? `/(customer)/history?job_id=${encodeURIComponent(session.session.job_id)}` : '/(customer)/history'
 
   useEffect(() => {
-    if (!routeService) return
-    setSelectedService(routeService)
-    if (!routeSessionId && session?.session.service_type !== routeService) {
-      setSession(null)
-      setConfirmArmed(false)
-      setConfirmedMessage(null)
-      setError(null)
-    }
-  }, [routeService, routeSessionId, session?.session.service_type])
+    dispatch({ type: 'syncRouteService', service: routeService, routeSessionId })
+  }, [routeService, routeSessionId])
 
   useEffect(() => {
     if (routeSessionId) return
     const pendingDraft = takePendingKaelChatDraft()
     if (!pendingDraft) return
-    if (pendingDraft.serviceType) setSelectedService(pendingDraft.serviceType)
-    setDraft(pendingDraft.message)
+    dispatch({
+      type: 'applyPendingDraft',
+      service: pendingDraft.serviceType ?? null,
+      message: pendingDraft.message,
+    })
   }, [routeSessionId])
 
   useEffect(() => {
     if (!routeSessionId) return
     let cancelled = false
-    setLoading(true)
-    setError(null)
+    dispatch({ type: 'loadSessionStarted' })
 
     void kaelChatService
       .get(routeSessionId)
       .then((result) => {
         if (cancelled) return
         if (result.success) {
-          setSession(result.data)
-          setSelectedService(result.data.session.service_type)
+          dispatch({ type: 'loadSessionSucceeded', session: result.data })
         } else {
-          setError(localizedKaelChatError(result.error, language))
+          dispatch({ type: 'loadSessionFailed', error: localizedKaelChatError(result.error, language) })
         }
       })
       .catch((unknownError: unknown) => {
         if (cancelled) return
-        setError(localizedKaelChatError(errorMessage(unknownError, text.errorUnknown), language))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
+        dispatch({
+          type: 'loadSessionFailed',
+          error: localizedKaelChatError(errorMessage(unknownError, text.errorUnknown), language),
+        })
       })
 
     return () => {
@@ -212,75 +214,68 @@ export function KaelChatSurface() {
     const trimmed = draft.trim()
     if (!trimmed || sending) return
     if (!selectedService && !session) {
-      setError(text.errorNoService)
+      dispatch({ type: 'showTransientError', error: text.errorNoService })
       return
     }
 
-    setSending(true)
-    setError(null)
-    setConfirmArmed(false)
-    setConfirmedMessage(null)
+    dispatch({ type: 'sendStarted' })
 
     try {
+      const addressPayload = addressLabel.trim()
+      const addressFields = {
+        address_label: addressPayload || undefined,
+        address_district: addressDistrictRef.current ?? undefined,
+      }
       const result = session
-        ? await kaelChatService.sendTurn(session.session.id, { message: trimmed, photo_urls: [] })
+        ? await kaelChatService.sendTurn(session.session.id, { message: trimmed, photo_urls: [], ...addressFields })
         : await kaelChatService.create({
             service_type: selectedService as ServiceType,
             message: trimmed,
             problem_chips: [],
             photo_urls: [],
+            ...addressFields,
           })
 
       if (result.success) {
-        setSession(result.data)
-        setSelectedService(result.data.session.service_type)
-        setDraft('')
+        dispatch({ type: 'sendSucceeded', session: result.data })
       } else {
-        setError(localizedKaelChatError(result.error, language))
+        dispatch({ type: 'sendFailed', error: localizedKaelChatError(result.error, language) })
       }
     } catch (unknownError: unknown) {
-      setError(localizedKaelChatError(errorMessage(unknownError, text.errorUnknown), language))
-    } finally {
-      setSending(false)
+      dispatch({
+        type: 'sendFailed',
+        error: localizedKaelChatError(errorMessage(unknownError, text.errorUnknown), language),
+      })
     }
   }
 
   const confirmSearch = async () => {
     if (!session || !estimate || confirming) return
     if (!confirmArmed) {
-      setConfirmArmed(true)
-      setError(null)
+      dispatch({ type: 'confirmArmed' })
       return
     }
-    setConfirming(true)
-    setError(null)
+    dispatch({ type: 'confirmStarted' })
 
     try {
       const result = await kaelChatService.confirm(session.session.id)
       if (result.success) {
         const confirmationFallback = result.data.broadcast_sent ? text.confirmed : text.noWorkerConfirmed
-        setConfirmedMessage(localizedGeneratedText(result.data.message || confirmationFallback, language, confirmationFallback))
-        setSession((current) =>
-          current
-            ? {
-                ...current,
-                session: {
-                  ...current.session,
-                  job_id: result.data.job_id,
-                  status: result.data.status === 'broadcasting' ? 'confirmed' : current.session.status,
-                  next_action: 'confirmed',
-                },
-              }
-            : current,
-        )
+        dispatch({
+          type: 'confirmSucceeded',
+          message: localizedGeneratedText(result.data.message || confirmationFallback, language, confirmationFallback),
+          jobId: result.data.job_id,
+          status: result.data.status,
+        })
         await actions.hydrateRemoteJobById(result.data.job_id)
       } else {
-        setError(localizedKaelChatError(result.error, language))
+        dispatch({ type: 'confirmFailed', error: localizedKaelChatError(result.error, language) })
       }
     } catch (unknownError: unknown) {
-      setError(localizedKaelChatError(errorMessage(unknownError, text.errorUnknown), language))
-    } finally {
-      setConfirming(false)
+      dispatch({
+        type: 'confirmFailed',
+        error: localizedKaelChatError(errorMessage(unknownError, text.errorUnknown), language),
+      })
     }
   }
 
@@ -288,8 +283,8 @@ export function KaelChatSurface() {
     <SafeAreaView style={[styles.safe, { backgroundColor: tokens.canvas }]} testID="customer-kael-chat-stack-screen">
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" onPress={() => replace('/(customer)/kael')} style={({ pressed }) => [styles.closeButton, { borderColor: tokens.border, backgroundColor: tokens.raised }, pressed ? styles.pressed : null]} testID="customer-kael-chat-close">
-            <Text style={[styles.closeText, { color: tokens.text }]}>{text.back}</Text>
+          <Pressable accessibilityLabel={text.back} accessibilityRole="button" onPress={() => replace('/(customer)/kael')} style={({ pressed }) => [styles.closeButton, { borderColor: tokens.border, backgroundColor: tokens.raised }, pressed ? styles.pressed : null]} testID="customer-kael-chat-close">
+            <ChatBackIcon color={tokens.primary} />
           </Pressable>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>
@@ -317,9 +312,7 @@ export function KaelChatSurface() {
                     accessibilityRole="button"
                     key={service}
                     onPress={() => {
-                      setSelectedService(service)
-                      setError(null)
-                      if (!session || session.session.service_type !== service) setSession(null)
+                      dispatch({ type: 'selectService', service })
                     }}
                     style={({ pressed }) => [
                       styles.serviceChip,
@@ -338,6 +331,14 @@ export function KaelChatSurface() {
                 )
               })}
             </View>
+            <AddressAutocomplete
+              language={language}
+              onChange={(value, district) => {
+                dispatch({ type: 'setAddress', value })
+                addressDistrictRef.current = district
+              }}
+              value={addressLabel}
+            />
           </View>
 
           {loading ? (
@@ -380,14 +381,17 @@ export function KaelChatSurface() {
         </ScrollView>
 
         <View style={[styles.composer, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]}>
-          <Pressable accessibilityRole="button" onPress={() => setError(text.attachHint)} style={({ pressed }) => [styles.attachButton, { borderColor: tokens.border, backgroundColor: tokens.service }, pressed ? styles.pressed : null]} testID="customer-kael-chat-attach">
+          <Pressable accessibilityRole="button" onPress={() => dispatch({ type: 'showTransientError', error: text.attachHint })} style={({ pressed }) => [styles.attachButton, { borderColor: tokens.border, backgroundColor: tokens.service }, pressed ? styles.pressed : null]} testID="customer-kael-chat-attach">
             <Text style={[styles.attachText, { color: tokens.text }]}>{text.attach}</Text>
           </Pressable>
           <TextInput
             multiline
             onChangeText={(value) => {
-              setDraft(value)
-              if (error === text.errorNoService || error === text.attachHint) setError(null)
+              dispatch({
+                type: 'setDraft',
+                value,
+                clearTransientError: error === text.errorNoService || error === text.attachHint,
+              })
             }}
             placeholder={text.composerPlaceholder}
             placeholderTextColor={tokens.subtleText}
@@ -401,6 +405,14 @@ export function KaelChatSurface() {
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  )
+}
+
+function ChatBackIcon({ color }: { color: string }) {
+  return (
+    <Svg accessible={false} width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M15 18 9 12l6-6" stroke={color} strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
   )
 }
 

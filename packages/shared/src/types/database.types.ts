@@ -379,6 +379,8 @@ export type Database = {
           address_building: string | null
           address_district: string | null
           address_floor: string | null
+          address_lat: number | null
+          address_lng: number | null
           address_unit: string | null
           arrived_at: string | null
           broadcast_at: string | null
@@ -393,6 +395,7 @@ export type Database = {
           description: string
           estimate_ready_at: string | null
           final_price: number | null
+          geo_source: string | null
           id: string
           kael_advisory: string | null
           kael_complexity:
@@ -424,6 +427,8 @@ export type Database = {
           address_building?: string | null
           address_district?: string | null
           address_floor?: string | null
+          address_lat?: number | null
+          address_lng?: number | null
           address_unit?: string | null
           arrived_at?: string | null
           broadcast_at?: string | null
@@ -438,6 +443,7 @@ export type Database = {
           description: string
           estimate_ready_at?: string | null
           final_price?: number | null
+          geo_source?: string | null
           id?: string
           kael_advisory?: string | null
           kael_complexity?:
@@ -469,6 +475,8 @@ export type Database = {
           address_building?: string | null
           address_district?: string | null
           address_floor?: string | null
+          address_lat?: number | null
+          address_lng?: number | null
           address_unit?: string | null
           arrived_at?: string | null
           broadcast_at?: string | null
@@ -483,6 +491,7 @@ export type Database = {
           description?: string
           estimate_ready_at?: string | null
           final_price?: number | null
+          geo_source?: string | null
           id?: string
           kael_advisory?: string | null
           kael_complexity?:
@@ -1354,13 +1363,17 @@ export type Database = {
           date_of_birth: string | null
           districts: string[]
           gender: string | null
+          home_lat: number | null
+          home_lng: number | null
           id: string
           is_approved: boolean
           is_available: boolean
           is_suspended: boolean
           legal_name: string | null
+          problem_specializations: string[]
           rating: number
           selfie_url: string | null
+          service_radius_km: number
           service_types: Database["public"]["Enums"]["service_type"][]
           total_jobs: number
           updated_at: string
@@ -1376,13 +1389,17 @@ export type Database = {
           date_of_birth?: string | null
           districts?: string[]
           gender?: string | null
+          home_lat?: number | null
+          home_lng?: number | null
           id: string
           is_approved?: boolean
           is_available?: boolean
           is_suspended?: boolean
           legal_name?: string | null
+          problem_specializations?: string[]
           rating?: number
           selfie_url?: string | null
+          service_radius_km?: number
           service_types?: Database["public"]["Enums"]["service_type"][]
           total_jobs?: number
           updated_at?: string
@@ -1398,13 +1415,17 @@ export type Database = {
           date_of_birth?: string | null
           districts?: string[]
           gender?: string | null
+          home_lat?: number | null
+          home_lng?: number | null
           id?: string
           is_approved?: boolean
           is_available?: boolean
           is_suspended?: boolean
           legal_name?: string | null
+          problem_specializations?: string[]
           rating?: number
           selfie_url?: string | null
+          service_radius_km?: number
           service_types?: Database["public"]["Enums"]["service_type"][]
           total_jobs?: number
           updated_at?: string
@@ -1490,6 +1511,10 @@ export type Database = {
           service_type_out: Database["public"]["Enums"]["service_type"]
           worker_id_out: string
         }[]
+      }
+      distance_km: {
+        Args: { lat1: number; lng1: number; lat2: number; lng2: number }
+        Returns: number | null
       }
       insert_notification_atomic: {
         Args: {

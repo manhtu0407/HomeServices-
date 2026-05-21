@@ -133,6 +133,7 @@ export type EdgeAiSecrets = {
   anthropicApiKey?: string;
   perplexityApiKey?: string;
   deepseekApiKey?: string;
+  googleMapsApiKey?: string;
 };
 
 export type PipelineInput = {

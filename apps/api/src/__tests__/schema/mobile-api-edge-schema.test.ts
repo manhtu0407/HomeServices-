@@ -588,6 +588,30 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeServices).toContain('broadcast_sent: broadcastSent')
   })
 
+  it('adds Phase 3 geo matching schema, Maps proxy, and auto-suspend without rating penalty', () => {
+    const migration = read('supabase/migrations/20260521120000_geo_matching_and_worker_auto_suspend.sql')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const mobileServices = read('apps/mobile/lib/services.ts')
+
+    expect(migration).toContain('address_lat numeric(9,6)')
+    expect(migration).toContain('address_lng numeric(9,6)')
+    expect(migration).toContain('home_lat numeric(9,6)')
+    expect(migration).toContain('service_radius_km int not null default 8')
+    expect(migration).toContain('problem_specializations text[]')
+    expect(migration).toContain('create or replace function public.distance_km')
+    expect(migration).toContain('is_suspended = true')
+    expect(migration).not.toMatch(/rating\s*=/i)
+    expect(edgeServices).toContain('GOOGLE_MAPS_API_KEY')
+    expect(edgeServices).toContain('https://places.googleapis.com/v1/places:autocomplete')
+    expect(edgeServices).toContain('https://maps.googleapis.com/maps/api/geocode/json')
+    expect(edgeServices).toContain('placesAutocomplete')
+    expect(edgeServices).toContain('geo_source: "fallback"')
+    expect(edgeRouter).toContain('places.autocomplete')
+    expect(edgeRouter).toContain('/places/autocomplete')
+    expect(mobileServices).toContain("api.post<PlacesAutocompleteResponse>('/places/autocomplete', input)")
+  })
+
   it('splits Supabase box admin RLS policies so SELECT has one permissive path', () => {
     const migration = read('supabase/migrations/20260519122000_consolidate_box_admin_rls_policies.sql')
 

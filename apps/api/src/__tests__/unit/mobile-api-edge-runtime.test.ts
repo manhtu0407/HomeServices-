@@ -63,6 +63,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'listWorkerBroadcasts',
       'listWorkerJobs',
       'markNotificationRead',
+      'placesAutocomplete',
       'registerDevicePushToken',
       'registerWorker',
       'requestScopeChange',
@@ -71,6 +72,48 @@ describe('mobile-api Edge runtime helpers', () => {
       'updateJobStatus',
       'updateWorkerAvailability',
     ].sort())
+  })
+
+  it('returns a safe Places autocomplete fallback when Google Maps key is not configured', async () => {
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: makeSequenceClient([]),
+    }
+
+    await expect(createEdgeServices({}).placesAutocomplete(ctx, {
+      input: 'Bình Thạnh',
+    })).resolves.toEqual({
+      suggestions: [],
+      fallback_used: true,
+    })
+  })
+
+  it('returns a safe Places autocomplete fallback when quota is exhausted', async () => {
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 429 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: makeSequenceClient([]),
+    }
+
+    await expect(createEdgeServices({ googleMapsApiKey: 'maps-test-key' }).placesAutocomplete(ctx, {
+      input: 'Bình Thạnh',
+      session_token: 'session-1',
+    })).resolves.toEqual({
+      suggestions: [],
+      fallback_used: true,
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://places.googleapis.com/v1/places:autocomplete',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('Bình Thạnh'),
+      }),
+    )
   })
 
   it('confirms Kael chat through the atomic RPC before starting worker broadcast', async () => {
@@ -86,9 +129,12 @@ describe('mobile-api Edge runtime helpers', () => {
         }],
         error: null,
       },
+      { data: { safe_metadata: { address_label: 'Landmark 81, Bình Thạnh' } }, error: null },
+      { data: { id: 'job-1' }, error: null },
       { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7' }, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
+      { data: { address_lat: null, address_lng: null, problem_chips: ['leak'], service_problem_id: null, kael_problem_identified: 'Pipe leak' }, error: null },
       { data: [], error: null },
       { data: null, error: null },
     ])
@@ -116,7 +162,10 @@ describe('mobile-api Edge runtime helpers', () => {
     ])
     const statusUpdateCall = client.calls.find((call) =>
       call.table === 'jobs' &&
-      call.operations.some((op) => op[0] === 'update')
+      call.operations.some((op) => {
+        const value = op[1] as { status?: string } | undefined
+        return op[0] === 'update' && value?.status === 'broadcasting'
+      })
     )
     expect(statusUpdateCall?.operations).toContainEqual(['eq', 'status', 'awaiting_customer_confirm'])
   })
@@ -838,6 +887,7 @@ describe('mobile-api Edge runtime helpers', () => {
   it('cancels an analyzing job when the Kael pipeline throws unexpectedly', async () => {
     const client = makeSequenceClient([
       { data: { id: 'job-1' }, error: null },
+      { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
       { reject: new Error('DB timeout after 10000ms') },
       { data: { id: 'job-1' }, error: null },
@@ -863,7 +913,10 @@ describe('mobile-api Edge runtime helpers', () => {
 
     const cancelCall = client.calls.find((call) =>
       call.table === 'jobs' &&
-      call.operations.some((op) => op[0] === 'update')
+      call.operations.some((op) => {
+        const updateValue = op[1] as { status?: string } | null
+        return op[0] === 'update' && updateValue?.status === 'cancelled'
+      })
     )
     expect(cancelCall?.operations).toContainEqual([
       'update',
@@ -1829,6 +1882,7 @@ describe('mobile-api Edge runtime helpers', () => {
         ],
         error: null,
       },
+      { data: { address_lat: null, address_lng: null, problem_chips: ['pipe_leak'], service_problem_id: null, kael_problem_identified: null }, error: null },
       {
         data: [
           { id: 'worker-cancelled', rating: 5, total_jobs: 100, service_types: ['plumbing'], districts: ['q7'] },
@@ -2125,6 +2179,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: [], error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
+      { data: { address_lat: null, address_lng: null, problem_chips: [], service_problem_id: null, kael_problem_identified: null }, error: null },
       { data: [], error: null },
       { data: null, error: null },
     ])
@@ -2156,6 +2211,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7' }, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
+      { data: { address_lat: null, address_lng: null, problem_chips: ['pipe_leak'], service_problem_id: null, kael_problem_identified: null }, error: null },
       { data: [{ id: 'worker-1', rating: 4.8, total_jobs: 12, service_types: ['plumbing'], districts: ['q7'] }], error: null },
       { data: [], error: null },
       { data: [{ id: 'broadcast-1', worker_id: 'worker-1' }], error: null },
@@ -2232,6 +2288,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: [], error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
+      { data: { address_lat: null, address_lng: null, problem_chips: [], service_problem_id: null, kael_problem_identified: null }, error: null },
       { data: [], error: null },
       { data: null, error: null },
     ])
@@ -2258,6 +2315,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: [], error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
+      { data: { address_lat: null, address_lng: null, problem_chips: [], service_problem_id: null, kael_problem_identified: null }, error: null },
       { data: null, error: { code: 'PGRST500', message: 'worker query failed' } },
     ])
     const ctx: MobileApiContext = {
@@ -2288,6 +2346,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7' }, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
+      { data: { address_lat: null, address_lng: null, problem_chips: ['pipe_leak'], service_problem_id: null, kael_problem_identified: null }, error: null },
       { data: [{ id: 'worker-1' }], error: null },
       { data: [], error: null },
       { data: null, error: { code: 'PGRST500', message: 'insert failed' } },

@@ -37,8 +37,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     height: 44,
     justifyContent: 'center',
-    minWidth: 64,
-    paddingHorizontal: 12,
+    width: 44,
   },
   closeText: {
     fontSize: 13,

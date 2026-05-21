@@ -19,6 +19,7 @@ import type {
   KaelChatResponse,
   NotificationListResponse,
   NotificationReadResponse,
+  PlacesAutocompleteResponse,
   ConfirmSearchResponse,
   StatusUpdateResponse,
   ConfirmCompletionResponse,
@@ -39,6 +40,7 @@ import type {
   JobStatus,
   KaelChatCreateInput,
   KaelChatTurnInput,
+  PlacesAutocompleteInput,
   ReviewInput,
   WorkerRegisterInput,
   WorkerScopeChangeInput,
@@ -134,6 +136,12 @@ export const kaelChatService = {
 
   confirm(sessionId: string) {
     return api.post<ConfirmKaelChatResponse>(`/kael/chat/${sessionId}/confirm`)
+  },
+}
+
+export const placesService = {
+  autocomplete(input: PlacesAutocompleteInput) {
+    return api.post<PlacesAutocompleteResponse>('/places/autocomplete', input)
   },
 }
 

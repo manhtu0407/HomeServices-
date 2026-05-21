@@ -97,6 +97,16 @@ export type KaelChatResponse = {
   turns: KaelChatTurn[]
 }
 
+export type PlacesAutocompleteResponse = {
+  suggestions: {
+    place_id: string
+    label: string
+    main_text: string
+    secondary_text: string | null
+  }[]
+  fallback_used: boolean
+}
+
 export type JobDetailResponse = {
   job: {
     id: string
@@ -208,6 +218,10 @@ export type WorkerProfileResponse = {
   is_suspended: boolean
   service_types: ServiceType[]
   districts: string[]
+  home_lat: number | null
+  home_lng: number | null
+  service_radius_km: number
+  problem_specializations: string[]
   years_experience: number
   rating: number
   total_jobs: number

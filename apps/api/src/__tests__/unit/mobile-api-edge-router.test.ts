@@ -29,6 +29,7 @@ const adminAuth: MobileApiAuthResult = {
 function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServices {
   return {
     listServices: vi.fn(async () => ({ services: [] })),
+    placesAutocomplete: vi.fn(async () => ({ suggestions: [], fallback_used: false })),
     createJob: vi.fn(async () => ({
       job_id: '22222222-2222-4222-8222-222222222222',
       status: 'awaiting_customer_confirm' as const,
@@ -219,6 +220,35 @@ describe('mobile-api Edge router contract', () => {
     expect(registerDevicePushToken).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
       expect.objectContaining({ platform: 'ios', permission_status: 'granted' }),
+    )
+  })
+
+  it('routes Places autocomplete through authenticated mobile API services', async () => {
+    const placesAutocomplete = vi.fn(async () => ({
+      suggestions: [{
+        place_id: 'place-1',
+        label: 'Landmark 81, Bình Thạnh, TP.HCM',
+        main_text: 'Landmark 81',
+        secondary_text: 'Bình Thạnh, TP.HCM',
+      }],
+      fallback_used: false,
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ placesAutocomplete }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/places/autocomplete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: 'Landmark Bình Thạnh' }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ fallback_used: false })
+    expect(placesAutocomplete).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      expect.objectContaining({ input: 'Landmark Bình Thạnh' }),
     )
   })
 

@@ -15,7 +15,7 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { inferLocalDealDraftFromKael, type LocalCustomerSearchState, type LocalDealStatus, type ServiceType } from '@home-services/shared'
+import { inferLocalDealDraftFromKael, type LocalCustomerSearchState, type LocalDeal, type LocalDealStatus, type LocalScopeChange, type ServiceType } from '@home-services/shared'
 import { setPendingKaelChatDraft } from '@/components/customer/kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '@/components/customer/scope-change-modal/scope-change-hard-stop-modal'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
@@ -46,12 +46,14 @@ const openBookingPath = '/(customer)/booking'
 const openKaelChatPath = '/(customer)/kael-chat'
 const openHistoryPath = '/(customer)/history'
 const openProfilePath = '/(customer)/profile'
+const customerHistoryTabKeys: CustomerHistoryTab[] = ['repair', 'price', 'chat', 'done']
 const kaelModel8A = require('../../assets/kael-model-8a.png')
 const kaelModel8AHead = require('../../assets/kael-model-8a-head.png')
 const vndFormatter = new Intl.NumberFormat('vi-VN')
 
 type ThemeMode = 'light' | 'dark'
 type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
+type CustomerHistoryTab = 'chat' | 'done' | 'price' | 'repair'
 type SurfaceTone = 'base' | 'raised' | 'service' | 'water' | 'warm' | 'depth' | 'ghost' | 'disabled'
 type IconName =
   | 'apartment'
@@ -262,6 +264,7 @@ const customerCopy = {
       area: 'Khu vực',
       current: 'Hiện tại',
       described: 'Đã mô tả',
+      estimate: 'Ước tính',
       finalPrice: 'Giá cuối',
       issue: 'Vấn đề',
       noRequest: 'Không có yêu cầu',
@@ -340,6 +343,9 @@ const customerCopy = {
       review: 'Đánh giá',
       locked: 'Khóa',
       open: 'Mở',
+      presenceTitle: 'Bản đồ xác nhận',
+      presenceHome: 'Điểm hẹn',
+      presenceWorker: 'Thợ cập nhật',
       chooseStar: (rating: number) => `Chọn ${rating} sao`,
       submitReview: 'Gửi đánh giá',
       timeline: [
@@ -405,6 +411,7 @@ const customerCopy = {
       area: 'Area',
       current: 'Current',
       described: 'Described',
+      estimate: 'Estimate',
       finalPrice: 'Final price',
       issue: 'Problem',
       noRequest: 'No request',
@@ -483,6 +490,9 @@ const customerCopy = {
       review: 'Review',
       locked: 'Locked',
       open: 'Open',
+      presenceTitle: 'Confirmation map',
+      presenceHome: 'Service point',
+      presenceWorker: 'Worker update',
       chooseStar: (rating: number) => `Choose ${rating} stars`,
       submitReview: 'Submit review',
       timeline: [
@@ -761,6 +771,10 @@ export function CustomerBookingEntrySurface() {
         activeCta: 'View activity',
         activeTitle: 'Request in progress',
         body: 'Choose a supported service. Kael will collect details, estimate, and ask for confirmation before worker search.',
+        checklist: 'Price check',
+        checklistItems: ['Issue', 'Scope', 'Reference estimate'],
+        diagnosis: 'Kael diagnosis',
+        diagnosisValue: 'Waiting for description',
         kicker: 'Book service',
         title: 'Start with Kael',
       }
@@ -769,6 +783,10 @@ export function CustomerBookingEntrySurface() {
         activeCta: 'Xem hoạt động',
         activeTitle: 'Đang có yêu cầu',
         body: 'Chọn dịch vụ đang hỗ trợ. Kael sẽ hỏi chi tiết, ước tính và chỉ tìm thợ sau khi bạn xác nhận.',
+        checklist: 'Bảng kiểm giá',
+        checklistItems: ['Sự cố', 'Phạm vi', 'Ước tính'],
+        diagnosis: 'Chẩn đoán Kael',
+        diagnosisValue: 'Chờ mô tả',
         kicker: 'Đặt dịch vụ',
         title: 'Bắt đầu qua Kael',
       }
@@ -804,6 +822,38 @@ export function CustomerBookingEntrySurface() {
               <V4ServiceCard icon="boltPanel" title={localizedServiceLabel('electrical', languageMode)} testID="customer-booking-service-electrical" onPress={() => openChat('electrical')} />
               <V4ServiceCard icon="waterPipe" title={localizedServiceLabel('plumbing', languageMode)} testID="customer-booking-service-plumbing" onPress={() => openChat('plumbing')} water />
               <V4ServiceCard icon="cleaning" title={localizedServiceLabel('cleaning', languageMode)} testID="customer-booking-service-cleaning" onPress={() => openChat('cleaning')} />
+            </View>
+            <View style={[styles.bookingCheckPanel, customerOpaqueSurface(tokens)]} testID="customer-booking-price-check-panel">
+              <View style={styles.sectionTitle}>
+                <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+                  {entryCopy.checklist}
+                </Text>
+                <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+                  {entryCopy.diagnosisValue}
+                </Text>
+              </View>
+              {entryCopy.checklistItems.map((item) => (
+                <View key={item} style={styles.bookingCheckRow}>
+                  <View style={[styles.bookingCheckDot, { backgroundColor: tokens.primary }]} />
+                  <Text style={[styles.bookingCheckText, { color: tokens.text }]} numberOfLines={1}>
+                    {item}
+                  </Text>
+                  <Text style={[styles.bookingCheckMeta, { color: tokens.muted }]} numberOfLines={1}>
+                    {appCopy[languageMode].common.noData}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            <View style={[styles.bookingDiagnosisPanel, customerOpaqueSurface(tokens), { backgroundColor: tokens.service }]} testID="customer-booking-ai-diagnosis-summary">
+              <IconGlyph name="kael" color={tokens.primary} accent={tokens.copper} />
+              <View style={styles.homeShortcutCopy}>
+                <Text style={[styles.homeShortcutTitle, { color: tokens.text }]} numberOfLines={1}>
+                  {entryCopy.diagnosis}
+                </Text>
+                <Text style={[styles.homeShortcutMeta, { color: tokens.muted }]} numberOfLines={1}>
+                  {entryCopy.diagnosisValue}
+                </Text>
+              </View>
             </View>
           </View>
           {activeDeal ? (
@@ -1050,6 +1100,7 @@ export function CustomerHistorySurface() {
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
   const { actions, dispatch, selectors, state } = useFrontendWorkflow()
+  const [activeHistoryTab, setActiveHistoryTab] = useState<CustomerHistoryTab>('repair')
   const [reviewRating, setReviewRating] = useState<1 | 2 | 3 | 4 | 5 | null>(null)
   const deal = state.deal
   const scopeChange = deal?.scopeChange ?? null
@@ -1143,6 +1194,11 @@ export function CustomerHistorySurface() {
     )
   }
   const historyActionLabel = canEditNoWorkerRequest ? copy.history.editRequest : canCreateFreshRequest ? copy.history.newRequest : copy.history.openPriceCheck
+  const showRepairTab = activeHistoryTab === 'repair'
+  const showPriceTab = activeHistoryTab === 'price'
+  const showChatTab = activeHistoryTab === 'chat'
+  const showDoneTab = activeHistoryTab === 'done'
+  const isCompletedHistory = ['completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus ?? '')
 
   return (
     <V4Frame active="activity" testID="customer-history-surface">
@@ -1159,16 +1215,7 @@ export function CustomerHistorySurface() {
             tokens={tokens}
             visible={forceScopeChangeModal}
           />
-          <View style={[styles.filterRow, glassSurface(tokens, 'strong')]} testID="customer-history-filter-shell">
-            <SubtleGlassHighlight />
-            {copy.history.filters.map((label, index) => (
-              <View key={label} style={[styles.filterChip, index === 0 ? { backgroundColor: tokens.primary } : { backgroundColor: tokens.raised }]}>
-                <Text style={[styles.filterText, { color: index === 0 ? tokens.primaryText : tokens.muted }]} numberOfLines={1}>
-                  {label}
-                </Text>
-              </View>
-            ))}
-          </View>
+          <CustomerHistoryTabs activeTab={activeHistoryTab} labels={copy.history.filters} onTabChange={setActiveHistoryTab} tokens={tokens} />
           <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-empty-state">
             <View style={styles.sectionTitle}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
@@ -1186,7 +1233,9 @@ export function CustomerHistorySurface() {
             ) : null}
             <PrimaryButton label={historyActionLabel} onPress={continueOrCreate} compact />
           </View>
-          {deal ? (
+          {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} originalEstimateLabel={originalEstimateLabel} scopeChange={scopeChange} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
+          {showChatTab ? <CustomerHistoryChatPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
+          {deal && showRepairTab ? (
             <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-worker-placeholder">
               <View style={styles.workerCard}>
                 <View style={[styles.workerAvatar, { backgroundColor: tokens.water, borderColor: tokens.glassBorder }]} />
@@ -1206,7 +1255,7 @@ export function CustomerHistorySurface() {
               </View>
             </View>
           ) : null}
-          {deal ? (
+          {deal && showRepairTab ? (
             <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                 {copy.history.progress}
@@ -1221,7 +1270,7 @@ export function CustomerHistorySurface() {
               ))}
             </View>
           ) : null}
-          {scopeChange ? (
+          {scopeChange && (showRepairTab || showPriceTab) ? (
             <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
             <View style={styles.sectionTitle}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
@@ -1247,7 +1296,10 @@ export function CustomerHistorySurface() {
               </View>
             </View>
           ) : null}
-          {deal && ['completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus ?? '') ? (
+          {deal && showDoneTab && isCompletedHistory ? (
+            <CustomerCompletionPresenceMap copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} />
+          ) : null}
+          {deal && showDoneTab && isCompletedHistory ? (
             <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
             <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
               {copy.history.evidence}
@@ -1266,7 +1318,7 @@ export function CustomerHistorySurface() {
             </View>
             </View>
           ) : null}
-          {deal && (selectors.canCustomerSubmitReview || ['confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus ?? '')) ? (
+          {deal && showDoneTab && (selectors.canCustomerSubmitReview || ['confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus ?? '')) ? (
             <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
             <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
               {copy.history.paymentReview}
@@ -1661,6 +1713,175 @@ function V4ServiceCard({ icon, onPress, testID, title, water }: { icon: IconName
         {title}
       </Text>
     </Pressable>
+  )
+}
+
+function CustomerHistoryTabs({
+  activeTab,
+  labels,
+  onTabChange,
+  tokens,
+}: {
+  activeTab: CustomerHistoryTab
+  labels: readonly string[]
+  onTabChange: (tab: CustomerHistoryTab) => void
+  tokens: CustomerThemeTokens
+}) {
+  return (
+    <View style={[styles.filterRow, glassSurface(tokens, 'strong')]} testID="customer-history-filter-shell">
+      <SubtleGlassHighlight />
+      {labels.map((label, index) => {
+        const tab = customerHistoryTabKeys[index] ?? 'repair'
+        const selected = tab === activeTab
+        return (
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            key={tab}
+            onPress={() => onTabChange(tab)}
+            style={({ pressed }) => [
+              styles.filterChip,
+              selected ? { backgroundColor: tokens.primary } : { backgroundColor: tokens.raised },
+              pressed ? styles.pressed : null,
+            ]}
+            testID={`customer-history-tab-${tab}`}
+          >
+            <Text style={[styles.filterText, { color: selected ? tokens.primaryText : tokens.muted }]} numberOfLines={1}>
+              {label}
+            </Text>
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
+function CustomerHistoryPricePanel({
+  copy,
+  originalEstimateLabel,
+  scopeChange,
+  tokens,
+  visibleStatusLabel,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]
+  originalEstimateLabel: string
+  scopeChange: LocalScopeChange | null
+  tokens: CustomerThemeTokens
+  visibleStatusLabel: string
+}) {
+  const scopePrice =
+    scopeChange?.priceMin && scopeChange.priceMax
+      ? `${formatVnd(scopeChange.priceMin)} - ${formatVnd(scopeChange.priceMax)}`
+      : copy.history.needsConfirm
+
+  return (
+    <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-price-tab-panel">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {copy.history.filters[1]}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {visibleStatusLabel}
+        </Text>
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.history.filters[1]} value={originalEstimateLabel} />
+        <V4TicketCell label={copy.ticket.finalPrice} value={copy.history.waitingWorkerPrice} />
+      </View>
+      {scopeChange ? (
+        <View style={styles.twoCol}>
+          <V4TicketCell label={copy.history.reason} value={scopeChange.reason ?? copy.history.workerNoReason} />
+          <V4TicketCell label={copy.history.newPrice} value={scopePrice} />
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+function CustomerHistoryChatPanel({
+  copy,
+  deal,
+  languageMode,
+  onOpenKael,
+  tokens,
+  visibleStatusLabel,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]
+  deal: LocalDeal | null
+  languageMode: AppLanguage
+  onOpenKael: () => void
+  tokens: CustomerThemeTokens
+  visibleStatusLabel: string
+}) {
+  const statusValue = deal ? visibleStatusLabel : appCopy[languageMode].common.noRequest
+  const issueValue = deal
+    ? localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, languageMode)
+    : appCopy[languageMode].common.noData
+
+  return (
+    <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-chat-tab-panel">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {copy.history.filters[2]}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          Kael
+        </Text>
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.ticket.status} value={statusValue} />
+        <V4TicketCell label={copy.ticket.issue} value={issueValue} />
+      </View>
+      <PrimaryButton label={copy.history.openPriceCheck} onPress={onOpenKael} compact />
+    </View>
+  )
+}
+
+function CustomerCompletionPresenceMap({
+  copy,
+  deal,
+  languageMode,
+  tokens,
+  visibleStatusLabel,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]
+  deal: LocalDeal
+  languageMode: AppLanguage
+  tokens: CustomerThemeTokens
+  visibleStatusLabel: string
+}) {
+  const addressLabel = localizedCustomerAreaLabel(deal.draft.addressLabel ?? deal.draft.districtLabel, languageMode, copy.ticket.unknown)
+
+  return (
+    <View style={[styles.presenceMapCard, customerOpaqueSurface(tokens)]} testID="customer-presence-map-done">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {copy.history.presenceTitle}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {visibleStatusLabel}
+        </Text>
+      </View>
+      <View style={[styles.presenceMapViewport, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+        <V4MapBackdrop />
+        <View style={[styles.presenceBadge, styles.presenceBadgeHome, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
+          <IconGlyph name="apartment" color={tokens.primary} accent={tokens.aqua} />
+          <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
+            {copy.history.presenceHome}
+          </Text>
+        </View>
+        <View style={[styles.presenceBadge, styles.presenceBadgeWorker, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+          <IconGlyph name="check" color={tokens.primary} accent={tokens.copper} />
+          <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
+            {copy.history.presenceWorker}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.ticket.area} value={addressLabel} />
+        <V4TicketCell label={copy.ticket.status} value={visibleStatusLabel} />
+      </View>
+    </View>
   )
 }
 
@@ -2330,6 +2551,47 @@ const styles = StyleSheet.create({
   plainContent: {
     gap: 12,
   },
+  presenceMapCard: {
+    borderRadius: 30,
+    borderWidth: 1,
+    gap: 12,
+    overflow: 'hidden',
+    padding: 14,
+  },
+  presenceMapViewport: {
+    borderCurve: 'continuous',
+    borderRadius: 28,
+    borderWidth: 1,
+    minHeight: 188,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  presenceBadge: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    maxWidth: '58%',
+    minHeight: 42,
+    paddingHorizontal: 10,
+    position: 'absolute',
+    zIndex: 4,
+  },
+  presenceBadgeHome: {
+    left: 14,
+    top: 42,
+  },
+  presenceBadgeText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  presenceBadgeWorker: {
+    bottom: 36,
+    right: 14,
+  },
   mapBackdrop: {
     bottom: 0,
     left: 0,
@@ -2600,6 +2862,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  bookingCheckPanel: {
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 7,
+    overflow: 'hidden',
+    padding: 12,
+  },
+  bookingCheckRow: {
+    alignItems: 'center',
+    borderBottomColor: 'rgba(35,96,84,0.08)',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 9,
+    minHeight: 34,
+  },
+  bookingCheckDot: {
+    borderRadius: 999,
+    height: 9,
+    width: 9,
+  },
+  bookingCheckText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    minWidth: 0,
+  },
+  bookingCheckMeta: {
+    fontSize: 12,
+    fontWeight: '600',
+    maxWidth: 96,
+    textAlign: 'right',
+  },
+  bookingDiagnosisPanel: {
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 66,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
   },
   homeShortcutGrid: {
     flexDirection: 'row',
