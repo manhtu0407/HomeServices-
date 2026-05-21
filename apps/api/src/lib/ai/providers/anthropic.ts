@@ -1,4 +1,4 @@
-import type { AIRequest, AIResponse } from '../types'
+import type { AIMessageContent, AIRequest, AIResponse } from '../types'
 import { AIProviderError } from '../types'
 import { env } from '../../env'
 
@@ -21,7 +21,7 @@ export async function callAnthropic(request: AIRequest): Promise<AIResponse> {
       messages: request.messages.flatMap((m) =>
         m.role === 'system' ? [] : [{ role: m.role, content: m.content }],
       ),
-      system: request.messages.find((m) => m.role === 'system')?.content,
+      system: aiMessageContentToText(request.messages.find((m) => m.role === 'system')?.content),
     }),
     signal: request.signal,
   })
@@ -50,4 +50,13 @@ export async function callAnthropic(request: AIRequest): Promise<AIResponse> {
     latencyMs,
     success: true,
   }
+}
+
+function aiMessageContentToText(content: AIMessageContent | undefined): string {
+  if (!content) return ''
+  if (typeof content === 'string') return content
+  return content
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
 }

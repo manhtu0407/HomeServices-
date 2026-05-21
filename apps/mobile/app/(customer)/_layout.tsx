@@ -25,7 +25,7 @@ const CUSTOMER_TAB_ICON_TEST_IDS = [
 ] as const
 const CUSTOMER_TAB_COPY = {
   vi: {
-    booking: 'Kiểm giá',
+    booking: 'Đặt',
     bookingA11y: 'Đặt dịch vụ',
     history: 'Hoạt động',
     historyA11y: 'Lịch sử',
@@ -34,7 +34,7 @@ const CUSTOMER_TAB_COPY = {
     profile: 'Hồ sơ',
   },
   en: {
-    booking: 'Price check',
+    booking: 'Book',
     bookingA11y: 'Book service',
     history: 'Activity',
     historyA11y: 'History',
@@ -136,6 +136,14 @@ export default function CustomerLayout() {
           title: 'Kael',
           tabBarLabel: 'Kael',
           tabBarIcon: ({ color, focused }) => <CustomerTabIcon accessibilityLabel={tabCopy.kael} color={color} focused={focused} marker={dockMarker} name="kael" />,
+        }}
+      />
+      <Tabs.Screen
+        name="kael-chat"
+        options={{
+          href: null,
+          title: 'Kael',
+          tabBarStyle: { display: 'none' },
         }}
       />
       <Tabs.Screen

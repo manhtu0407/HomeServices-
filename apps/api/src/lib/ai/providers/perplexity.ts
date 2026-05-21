@@ -1,4 +1,4 @@
-import type { AIRequest, AIResponse } from '../types'
+import type { AIMessageContent, AIRequest, AIResponse } from '../types'
 import { AIProviderError } from '../types'
 import { env } from '../../env'
 
@@ -19,7 +19,7 @@ export async function callPerplexity(request: AIRequest): Promise<AIResponse> {
       temperature: request.temperature ?? 0.2,
       messages: request.messages.map((m) => ({
         role: m.role,
-        content: m.content,
+        content: aiMessageContentToText(m.content),
       })),
     }),
     signal: request.signal,
@@ -44,4 +44,12 @@ export async function callPerplexity(request: AIRequest): Promise<AIResponse> {
     latencyMs,
     success: true,
   }
+}
+
+function aiMessageContentToText(content: AIMessageContent): string {
+  if (typeof content === 'string') return content
+  return content
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
 }

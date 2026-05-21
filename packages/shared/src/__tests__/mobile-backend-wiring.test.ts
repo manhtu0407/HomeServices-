@@ -92,7 +92,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
   it('keeps UI components behind the workflow provider instead of direct backend calls', () => {
     const provider = read('lib/frontend-workflow-provider.tsx')
-    const booking = read('components/client-price-check/client-price-check-flow.tsx')
+    const bookingRoute = read('app/(customer)/booking.tsx')
     const customer = read('components/customer/customer-surfaces.tsx')
     const worker = read('components/worker/worker-surfaces.tsx')
 
@@ -116,18 +116,18 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain("role !== 'customer' && role !== 'admin'")
     expect(provider).toContain('await workerRefresh()')
 
-    for (const ui of [booking, customer, worker]) {
+    for (const ui of [bookingRoute, customer, worker]) {
       expect(ui).not.toContain('fetch(')
       expect(ui).not.toContain('jobService.')
       expect(ui).not.toContain('workerService.')
       expect(ui).not.toContain('supabase.')
     }
 
-    expect(booking).toContain('actions.createRemoteJobFromDraft')
-    expect(booking).toContain('actions.confirmRemoteSearch')
-    expect(booking).toContain('actions.cancelRemoteJob')
-    expect(booking).not.toContain("dispatch({ type: 'retry_customer_search' })")
-    expect(booking).not.toContain("dispatch({ type: 'finish_local_analysis' })")
+    expect(bookingRoute).toContain('CustomerBookingEntrySurface')
+    expect(bookingRoute).not.toContain('ClientPriceCheckFlow')
+    expect(customer).toContain('push(kaelChatPath(serviceType))')
+    expect(customer).not.toContain("dispatch({ type: 'retry_customer_search' })")
+    expect(customer).not.toContain("dispatch({ type: 'finish_local_analysis' })")
     expect(customer).toContain('actions.customerConfirmCompletion')
     expect(customer).toContain('actions.decideScopeChange')
     expect(customer).toContain('customer-scope-change-decision')
@@ -189,7 +189,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
   it('keeps visible mobile copy away from backend and server implementation language', () => {
     const visibleSources = [
-      read('components/client-price-check/client-price-check-flow.tsx'),
+      read('app/(customer)/booking.tsx'),
       read('components/customer/customer-surfaces.tsx'),
       read('components/worker/worker-surfaces.tsx'),
       read('lib/api.ts'),

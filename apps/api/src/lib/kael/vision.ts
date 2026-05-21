@@ -11,9 +11,14 @@ export type VisionAnalysisResult =
 export async function analyzeDescription(
   description: string,
   intentContext: string,
+  photoUrls: string[] = [],
 ): Promise<VisionAnalysisResult> {
   const sanitized = scrubSensitiveForLLM(description)
-  const messages = buildVisionMessages(sanitized, sanitizeForLLM(intentContext))
+  const messages = buildVisionMessages(
+    sanitized,
+    sanitizeForLLM(intentContext),
+    photoUrls,
+  )
 
   const result = await callAI({
     provider: 'anthropic',

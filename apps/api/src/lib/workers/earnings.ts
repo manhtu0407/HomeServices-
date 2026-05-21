@@ -33,7 +33,7 @@ export class EarningsQueryError extends Error {
  * B8 — Worker earnings summary.
  *
  * Aggregates from jobs table:
- *   - gross_earnings:        sum(final_price) where status is paid
+ *   - gross_earnings:        sum(final_price) where paid_at is set
  *   - platform_fee_total:    gross * PLATFORM_FEE_WORKER (10%)
  *   - net_earnings:          gross - platform_fee_total
  *   - pending_payment:       jobs in confirmed_by_customer, payment_pending, or reviewed state
@@ -50,7 +50,7 @@ export async function computeEarnings(
 ): Promise<EarningsSummary> {
   let query = supabase
     .from('jobs')
-    .select('id, status, final_price, created_at')
+    .select('id, status, final_price, paid_at, created_at')
     .eq('worker_id', workerId)
     .in('status', ['paid', 'reviewed', 'confirmed_by_customer', 'payment_pending'])
 
@@ -71,7 +71,7 @@ export async function computeEarnings(
 
   for (const row of rows) {
     const price = row.final_price ?? 0
-    if (row.status === 'paid') {
+    if (row.paid_at) {
       gross += price
       paidCount++
     } else if (row.status === 'confirmed_by_customer' || row.status === 'payment_pending' || row.status === 'reviewed') {

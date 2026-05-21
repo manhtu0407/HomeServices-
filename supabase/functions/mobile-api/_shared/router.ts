@@ -8,7 +8,13 @@ import {
   type JobCreateInput,
   type JobMediaAttachInput,
   jobMediaAttachSchema,
+  type JobMessageSendInput,
+  jobMessageSendSchema,
   jobCreateSchema,
+  type KaelChatCreateInput,
+  kaelChatCreateSchema,
+  type KaelChatTurnInput,
+  kaelChatTurnSchema,
   type ReviewInput,
   reviewSchema,
   type WorkerCancellationDecisionInput,
@@ -24,6 +30,7 @@ import type {
   BroadcastStatus,
   ComplexityLevel,
   JobStatus,
+  MessageSender,
   ScopeChangeStatus,
   ServiceType,
   UserRole,
@@ -67,6 +74,52 @@ type CreateJobResponse = {
   status: JobStatus;
   estimate: KaelEstimate;
   fallback_used: boolean;
+};
+type KaelChatStatus = "active" | "estimate_ready" | "confirmed" | "abandoned";
+type KaelChatNextAction =
+  | "await_input"
+  | "ask_photo"
+  | "ask_video"
+  | "estimate_ready"
+  | "unsupported"
+  | "budget_exceeded"
+  | "confirmed";
+type KaelChatTurnResponse = {
+  id: string;
+  session_id: string;
+  turn_index: number;
+  role: "customer" | "kael" | "system";
+  content_type:
+    | "text"
+    | "photo_request"
+    | "video_request"
+    | "photo_attached"
+    | "video_attached"
+    | "clarification"
+    | "analysis"
+    | "estimate"
+    | "error";
+  text_content: string | null;
+  media_refs: string[];
+  estimate: KaelEstimate | null;
+  created_at: string;
+};
+type KaelChatSessionResponse = {
+  id: string;
+  job_id: string | null;
+  customer_id: string;
+  service_type: ServiceType;
+  status: KaelChatStatus;
+  estimate: KaelEstimate | null;
+  started_at: string;
+  estimate_ready_at: string | null;
+  total_turns: number;
+  total_cost_usd: number;
+  next_action: KaelChatNextAction;
+};
+type KaelChatResponse = {
+  session: KaelChatSessionResponse;
+  turns: KaelChatTurnResponse[];
 };
 type ConfirmSearchResponse = {
   job_id: string;
@@ -118,6 +171,9 @@ type WorkerCancellationResponse = {
   cancellation_id: string;
   job_id: string;
   status: string;
+  job_status: JobStatus;
+  broadcast_sent: boolean;
+  message: string;
   created_at: string;
 };
 type WorkerCancellationDecisionResponse = {
@@ -137,6 +193,22 @@ type JobMediaAttachResponse = {
     storage_ref: string;
     stage: "before" | "after" | "kael_reference" | "cancellation_evidence";
   }[];
+};
+type JobMessageResponse = {
+  id: string;
+  job_id: string;
+  sender_id: string | null;
+  sender_role: MessageSender;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+};
+type JobMessageListResponse = {
+  job_id: string;
+  messages: JobMessageResponse[];
+};
+type JobMessageSendResponse = {
+  message: JobMessageResponse;
 };
 type CustomerScopeDecisionResponse = {
   scope_change_id: string;
@@ -271,6 +343,7 @@ type JobDetailResponse = {
     reason: string | null;
     price_min: number | null;
     price_max: number | null;
+    kael_review: Record<string, unknown> | null;
     created_at: string | null;
   } | null;
 };
@@ -326,6 +399,23 @@ export type MobileApiServices = {
     input: JobCreateInput,
   ): Promise<CreateJobResponse>;
   getJob(ctx: MobileApiContext, jobId: string): Promise<JobDetailResponse>;
+  createKaelChat(
+    ctx: MobileApiContext,
+    input: KaelChatCreateInput,
+  ): Promise<KaelChatResponse>;
+  getKaelChat(
+    ctx: MobileApiContext,
+    sessionId: string,
+  ): Promise<KaelChatResponse>;
+  sendKaelChatTurn(
+    ctx: MobileApiContext,
+    sessionId: string,
+    input: KaelChatTurnInput,
+  ): Promise<KaelChatResponse>;
+  confirmKaelChat(
+    ctx: MobileApiContext,
+    sessionId: string,
+  ): Promise<ConfirmSearchResponse & { session_id: string }>;
   confirmSearch(
     ctx: MobileApiContext,
     jobId: string,
@@ -362,6 +452,15 @@ export type MobileApiServices = {
     jobId: string,
     input: JobMediaAttachInput,
   ): Promise<JobMediaAttachResponse>;
+  listJobMessages(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<JobMessageListResponse>;
+  sendJobMessage(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: JobMessageSendInput,
+  ): Promise<JobMessageSendResponse>;
   decideWorkerCancellation(
     ctx: MobileApiContext,
     cancellationId: string,
@@ -485,6 +584,30 @@ type Route =
     roles: UserRole[];
     successStatus: 201;
   }
+  | {
+    kind: "kael.chat.create";
+    method: "POST";
+    roles: UserRole[];
+    successStatus: 201;
+  }
+  | {
+    kind: "kael.chat.get";
+    method: "GET";
+    sessionId: string;
+    roles: UserRole[];
+  }
+  | {
+    kind: "kael.chat.turn";
+    method: "POST";
+    sessionId: string;
+    roles: UserRole[];
+  }
+  | {
+    kind: "kael.chat.confirm";
+    method: "POST";
+    sessionId: string;
+    roles: UserRole[];
+  }
   | { kind: "jobs.get"; method: "GET"; jobId: string; roles?: UserRole[] }
   | {
     kind: "jobs.confirmSearch";
@@ -512,6 +635,19 @@ type Route =
   }
   | {
     kind: "jobs.media";
+    method: "POST";
+    jobId: string;
+    roles: UserRole[];
+    successStatus: 201;
+  }
+  | {
+    kind: "jobs.messages.list";
+    method: "GET";
+    jobId: string;
+    roles: UserRole[];
+  }
+  | {
+    kind: "jobs.messages.send";
     method: "POST";
     jobId: string;
     roles: UserRole[];
@@ -576,6 +712,44 @@ function matchRoute(request: Request): Route | null {
       roles: ["customer", "admin"],
       successStatus: 201,
     };
+  }
+  if (method === "POST" && path === "/kael/chat") {
+    return {
+      kind: "kael.chat.create",
+      method: "POST",
+      roles: ["customer", "admin"],
+      successStatus: 201,
+    };
+  }
+  const kaelChat = path.match(/^\/kael\/chat\/([^/]+)(?:\/([^/]+))?$/);
+  if (kaelChat) {
+    const sessionId = safeDecodePathSegment(kaelChat[1] ?? "");
+    if (!sessionId) return null;
+    const action = kaelChat[2];
+    if (!action && method === "GET") {
+      return {
+        kind: "kael.chat.get",
+        method: "GET",
+        sessionId,
+        roles: ["customer", "admin"],
+      };
+    }
+    if (!action && method === "POST") {
+      return {
+        kind: "kael.chat.turn",
+        method: "POST",
+        sessionId,
+        roles: ["customer", "admin"],
+      };
+    }
+    if (action === "confirm" && method === "POST") {
+      return {
+        kind: "kael.chat.confirm",
+        method: "POST",
+        sessionId,
+        roles: ["customer", "admin"],
+      };
+    }
   }
   if (method === "GET" && path === "/notifications") {
     return {
@@ -675,6 +849,23 @@ function matchRoute(request: Request): Route | null {
         successStatus: 201,
       };
     }
+    if (action === "messages" && method === "GET") {
+      return {
+        kind: "jobs.messages.list",
+        method: "GET",
+        jobId,
+        roles: ["customer", "worker", "admin"],
+      };
+    }
+    if (action === "messages" && method === "POST") {
+      return {
+        kind: "jobs.messages.send",
+        method: "POST",
+        jobId,
+        roles: ["customer", "worker"],
+        successStatus: 201,
+      };
+    }
     if (action === "confirm-completion" && method === "POST") {
       return {
         kind: "jobs.confirmCompletion",
@@ -758,6 +949,20 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.createJob(ctx, input.data);
     }
+    case "kael.chat.create": {
+      const input = kaelChatCreateSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.createKaelChat(ctx, input.data);
+    }
+    case "kael.chat.get":
+      return services.getKaelChat(ctx, route.sessionId);
+    case "kael.chat.turn": {
+      const input = kaelChatTurnSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.sendKaelChatTurn(ctx, route.sessionId, input.data);
+    }
+    case "kael.chat.confirm":
+      return services.confirmKaelChat(ctx, route.sessionId);
     case "jobs.get":
       return services.getJob(ctx, route.jobId);
     case "jobs.confirmSearch":
@@ -788,6 +993,13 @@ async function dispatchRoute(
       const input = jobMediaAttachSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.attachJobMedia(ctx, route.jobId, input.data);
+    }
+    case "jobs.messages.list":
+      return services.listJobMessages(ctx, route.jobId);
+    case "jobs.messages.send": {
+      const input = jobMessageSendSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.sendJobMessage(ctx, route.jobId, input.data);
     }
     case "scope.decide": {
       const input = customerScopeDecisionSchema.safeParse(

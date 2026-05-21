@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
 import { readEdgeEnv } from '../../../../../supabase/functions/mobile-api/_shared/env'
+import { requireJobAccess } from '../../../../../supabase/functions/mobile-api/_shared/access'
 import { runKaelPipeline, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael'
+import { sendPushToUsers } from '../../../../../supabase/functions/mobile-api/_shared/push'
 import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
 
 describe('mobile-api Edge runtime helpers', () => {
@@ -41,15 +43,21 @@ describe('mobile-api Edge runtime helpers', () => {
       'acceptBroadcast',
       'attachJobMedia',
       'cancelJob',
+      'confirmKaelChat',
       'confirmCompletion',
       'confirmSearch',
+      'createKaelChat',
       'createJob',
       'decideScopeChange',
       'decideWorkerCancellation',
       'declineBroadcast',
       'getJob',
+      'getKaelChat',
       'getWorkerEarnings',
       'getWorkerProfile',
+      'listJobMessages',
+      'sendKaelChatTurn',
+      'sendJobMessage',
       'listNotifications',
       'listServices',
       'listWorkerBroadcasts',
@@ -63,6 +71,354 @@ describe('mobile-api Edge runtime helpers', () => {
       'updateJobStatus',
       'updateWorkerAvailability',
     ].sort())
+  })
+
+  it('confirms Kael chat through the atomic RPC before starting worker broadcast', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          job_id: 'job-1',
+          job_status: 'awaiting_customer_confirm',
+          service_type: 'plumbing',
+          district_code: 'q7',
+        }],
+        error: null,
+      },
+      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7' }, error: null },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+      { data: [], error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1')).resolves.toMatchObject({
+      session_id: 'kael-session-1',
+      job_id: 'job-1',
+      status: 'broadcasting',
+      broadcast_sent: false,
+    })
+
+    expect(client.calls[0].operations).toContainEqual([
+      'rpc',
+      'confirm_kael_chat_atomic',
+      {
+        p_session_id: 'kael-session-1',
+        p_customer_id: 'customer-1',
+      },
+    ])
+    const statusUpdateCall = client.calls.find((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'update')
+    )
+    expect(statusUpdateCall?.operations).toContainEqual(['eq', 'status', 'awaiting_customer_confirm'])
+  })
+
+  it('hard-stops Kael chat before provider calls when the session exceeds the AI budget cap', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'kael-session-1',
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          status: 'active',
+          total_turns: 2,
+          safe_metadata: {
+            address_district: 'q7',
+            problem_chips: ['leak'],
+            photo_urls: [],
+          },
+        },
+        error: null,
+      },
+      { data: { id: 'turn-customer' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      { data: { id: 'kael-session-1', total_cost_usd: 1 }, error: null },
+      { data: { id: 'kael-session-1', total_turns: 3, total_cost_usd: 1 }, error: null },
+      { data: { id: 'turn-budget' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          status: 'active',
+          started_at: '2026-05-20T00:00:00.000Z',
+          estimate_ready_at: null,
+          total_turns: 4,
+          total_cost_usd: 1,
+          safe_metadata: {},
+          created_at: '2026-05-20T00:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: [
+          {
+            id: 'turn-customer',
+            session_id: 'kael-session-1',
+            turn_index: 3,
+            role: 'customer',
+            content_type: 'text',
+            text_content: 'Pipe is still leaking in the kitchen cabinet',
+            media_refs: [],
+            safe_metadata: {},
+            created_at: '2026-05-20T00:00:01.000Z',
+          },
+          {
+            id: 'turn-budget',
+            session_id: 'kael-session-1',
+            turn_index: 4,
+            role: 'kael',
+            content_type: 'error',
+            text_content: 'Budget cap reached',
+            media_refs: [],
+            safe_metadata: { budget_exceeded: true },
+            created_at: '2026-05-20T00:00:02.000Z',
+          },
+        ],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).sendKaelChatTurn(ctx, 'kael-session-1', {
+      message: 'Pipe is still leaking in the kitchen cabinet',
+      photo_urls: [],
+    })
+
+    expect(result.session.next_action).toBe('budget_exceeded')
+    expect(client.calls.some((call) => call.table === 'service_problems')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'price_baselines')).toBe(false)
+    const budgetTurnUpdate = client.calls
+      .flatMap((call) => call.operations)
+      .find((op) => {
+        const updateValue = op[1] as { total_turns?: number } | undefined
+        return op[0] === 'update' && updateValue?.total_turns === 4
+      })
+    expect(budgetTurnUpdate?.[1]).not.toHaveProperty('estimate_ready_at')
+  })
+
+  it('requireJobAccess hides cross-customer jobs with 404', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'broadcasting',
+          customer_id: 'other-customer',
+          worker_id: null,
+        },
+        error: null,
+      },
+    ])
+    const ctx = {
+      role: 'customer',
+      user: { id: 'customer-1' },
+      supabase: client,
+    } as MobileApiContext
+    const accessClient = client as unknown as Parameters<typeof requireJobAccess>[0]
+
+    await expect(requireJobAccess(accessClient, 'job-1', ctx)).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      status: 404,
+    })
+  })
+
+  it('lists job chat messages for a job participant and marks received messages read', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_matched',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      {
+        data: [
+          {
+            id: 'message-2',
+            job_id: 'job-1',
+            sender_id: 'customer-1',
+            sender_role: 'customer',
+            content: 'Tôi đang chờ ở sảnh.',
+            is_read: false,
+            created_at: '2026-05-20T00:01:00.000Z',
+          },
+          {
+            id: 'message-1',
+            job_id: 'job-1',
+            sender_id: 'worker-1',
+            sender_role: 'worker',
+            content: 'Tôi đang đến.',
+            is_read: true,
+            created_at: '2026-05-20T00:00:00.000Z',
+          },
+        ],
+        error: null,
+      },
+      { data: [{ id: 'message-2' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).listJobMessages(ctx, 'job-1')).resolves.toMatchObject({
+      job_id: 'job-1',
+      messages: [
+        { id: 'message-1', sender_role: 'worker' },
+        { id: 'message-2', sender_role: 'customer' },
+      ],
+    })
+
+    const readCall = client.calls.find((call) =>
+      call.table === 'chat_messages' &&
+      call.operations.some((op) => op[0] === 'update')
+    )
+    expect(readCall?.operations).toContainEqual(['neq', 'sender_id', 'worker-1'])
+    expect(readCall?.operations).toContainEqual(['eq', 'is_read', false])
+  })
+
+  it('sends a job chat message and notifies the other participant without message body in push copy', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'message-1',
+          job_id: 'job-1',
+          sender_id: 'worker-1',
+          sender_role: 'worker',
+          content: 'Tôi đang lên thang máy.',
+          is_read: false,
+          created_at: '2026-05-20T00:00:00.000Z',
+        },
+        error: null,
+      },
+      { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-1', user_id: 'customer-1', push_token: 'ExponentPushToken[customer]' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).sendJobMessage(ctx, 'job-1', {
+      content: 'Tôi đang lên thang máy.',
+    })).resolves.toMatchObject({
+      message: {
+        id: 'message-1',
+        sender_role: 'worker',
+        content: 'Tôi đang lên thang máy.',
+      },
+    })
+
+    const insertCall = client.calls.find((call) => call.table === 'chat_messages')
+    expect(insertCall?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        job_id: 'job-1',
+        sender_id: 'worker-1',
+        sender_role: 'worker',
+        content: 'Tôi đang lên thang máy.',
+      }),
+    ])
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.not.stringContaining('Tôi đang lên thang máy.'),
+      }),
+    )
+  })
+
+  it('requireJobAccess allows admin owner bypass unless a role is required', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'broadcasting',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+    ])
+    const ctx = {
+      role: 'admin',
+      user: { id: 'admin-1' },
+      supabase: client,
+    } as MobileApiContext
+    const accessClient = client as unknown as Parameters<typeof requireJobAccess>[0]
+
+    await expect(requireJobAccess(accessClient, 'job-1', ctx)).resolves.toMatchObject({
+      id: 'job-1',
+      status: 'broadcasting',
+    })
+    await expect(
+      requireJobAccess(accessClient, 'job-1', ctx, { requiredRole: 'worker' }),
+    ).rejects.toMatchObject({
+      code: 'AUTH_FORBIDDEN',
+      status: 403,
+    })
+  })
+
+  it('requireJobAccess enforces status guards with 409', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'broadcasting',
+          customer_id: 'customer-1',
+          worker_id: null,
+        },
+        error: null,
+      },
+    ])
+    const ctx = {
+      role: 'customer',
+      user: { id: 'customer-1' },
+      supabase: client,
+    } as MobileApiContext
+    const accessClient = client as unknown as Parameters<typeof requireJobAccess>[0]
+
+    await expect(
+      requireJobAccess(accessClient, 'job-1', ctx, { statuses: ['completed_by_worker'] }),
+    ).rejects.toMatchObject({
+      code: 'INVALID_STATUS',
+      status: 409,
+    })
   })
 
   it('counts unread notifications separately from the limited notification page', async () => {
@@ -144,6 +500,67 @@ describe('mobile-api Edge runtime helpers', () => {
         p_safe_metadata: { device: 'expo-go' },
       },
     ])
+  })
+
+  it('sends Expo push batches and disables unregistered device tokens', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({
+        data: [
+          { status: 'ok', id: 'ticket-1' },
+          {
+            status: 'error',
+            message: 'Device not registered',
+            details: { error: 'DeviceNotRegistered' },
+          },
+        ],
+      }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: [
+          { id: 'token-1', user_id: 'worker-1', push_token: 'ExponentPushToken[ok]' },
+          { id: 'token-2', user_id: 'worker-2', push_token: 'ExponentPushToken[stale]' },
+        ],
+        error: null,
+      },
+      { data: { id: 'token-2' }, error: null },
+    ])
+
+    const result = await sendPushToUsers(
+      client as unknown as Parameters<typeof sendPushToUsers>[0],
+      ['worker-1', 'worker-2'],
+      {
+        title: 'Có yêu cầu mới gần bạn',
+        body: 'Sửa nước - Quận 7',
+        data: {
+          event_type: 'broadcast_received',
+          job_id: 'job-1',
+          deep_link: '/(worker)/jobs?broadcast_id=broadcast-1',
+        },
+        sound: 'default',
+      },
+    )
+
+    expect(result).toMatchObject({ delivered: 1, failed: 1 })
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('ExponentPushToken[ok]'),
+      }),
+    )
+    const tokenQuery = client.calls[0]
+    expect(tokenQuery.operations).toContainEqual(['in', 'user_id', ['worker-1', 'worker-2']])
+    expect(tokenQuery.operations).toContainEqual(['eq', 'enabled', true])
+    expect(tokenQuery.operations).toContainEqual(['eq', 'permission_status', 'granted'])
+    const disableCall = client.calls.find((call) =>
+      call.table === 'device_push_tokens' &&
+      call.operations.some((op) => op[0] === 'update')
+    )
+    expect(disableCall?.operations).toContainEqual(['update', expect.objectContaining({ enabled: false })])
+    expect(disableCall?.operations).toContainEqual(['eq', 'id', 'token-2'])
   })
 
   it('rejects unknown worker districts before registration upsert', async () => {
@@ -628,6 +1045,97 @@ describe('mobile-api Edge runtime helpers', () => {
     ])
   })
 
+  it('passes customer photo URLs to Anthropic vision analysis', async () => {
+    const requestBodies: Array<Record<string, unknown>> = []
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown> & { max_tokens?: number }
+      requestBodies.push(body)
+      const target = String(url)
+
+      if (target.includes('deepseek.com')) {
+        return new Response(JSON.stringify({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                service_type: 'plumbing',
+                problem_slug: 'pipe_leak',
+                confidence: 0.9,
+                needs_clarification: false,
+              }),
+            },
+          }],
+          usage: { prompt_tokens: 40, completion_tokens: 12 },
+        }))
+      }
+
+      if (target.includes('anthropic.com') && body.max_tokens === 500) {
+        return new Response(JSON.stringify({
+          content: [{
+            text: JSON.stringify({
+              problem_identified: 'Rò nước nhìn thấy dưới lavabo',
+              severity_indicators: ['nước rỉ liên tục'],
+              complexity_hint: 'small',
+            }),
+          }],
+          usage: { input_tokens: 90, output_tokens: 28 },
+        }))
+      }
+
+      if (target.includes('perplexity.ai')) {
+        return new Response(JSON.stringify({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                market_range_min: 180000,
+                market_range_max: 360000,
+                confidence: 0.72,
+              }),
+            },
+          }],
+          usage: { prompt_tokens: 70, completion_tokens: 20 },
+        }))
+      }
+
+      throw new Error(`unexpected provider URL ${target}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const supabase = makeSequenceClient([
+      { data: [{ id: 'pipe-problem' }], error: null },
+      { data: [{ price_min: 150000, price_max: 350000, district_code: 'q7' }], error: null },
+    ])
+    const photoUrl = 'https://storage.example.com/job-media/before-lavabo.jpg'
+
+    const result = await runKaelPipeline({
+      serviceType: 'plumbing',
+      problemChips: ['Ống rò rỉ'],
+      description: 'Lavabo đang rò nước phía dưới tủ.',
+      district: 'q7',
+      photoUrls: [photoUrl],
+    }, supabase, {
+      deepseekApiKey: 'deepseek-ok',
+      anthropicApiKey: 'anthropic-ok',
+      perplexityApiKey: 'perplexity-ok',
+    })
+
+    expect(result.success).toBe(true)
+    const visionBody = requestBodies.find((body) => body.max_tokens === 500)
+    const visionMessages = visionBody?.messages as Array<{ content: unknown }> | undefined
+    expect(visionMessages?.[0]?.content).toEqual([
+      expect.objectContaining({
+        type: 'text',
+        text: expect.stringContaining('Lavabo đang rò nước phía dưới tủ.'),
+      }),
+      {
+        type: 'image',
+        source: {
+          type: 'url',
+          url: photoUrl,
+        },
+      },
+    ])
+  })
+
   it('normalizes AI-invented problem slugs to a service fallback before baseline lookup', async () => {
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body ?? '{}')) as { max_tokens?: number }
@@ -884,6 +1392,15 @@ describe('mobile-api Edge runtime helpers', () => {
   it('submits reviews through the atomic RPC so review insert and status update cannot split-brain', async () => {
     const client = makeSequenceClient([
       {
+        data: {
+          id: 'job-1',
+          status: 'confirmed_by_customer',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      {
         data: [{
           ok: false,
           error_code: 'ALREADY_REVIEWED',
@@ -909,8 +1426,8 @@ describe('mobile-api Edge runtime helpers', () => {
       status: 409,
     })
 
-    expect(client.calls).toHaveLength(1)
-    expect(client.calls[0]).toEqual({
+    expect(client.calls).toHaveLength(2)
+    expect(client.calls[1]).toEqual({
       table: 'rpc:submit_review_atomic',
       operations: [[
         'rpc',
@@ -993,8 +1510,409 @@ describe('mobile-api Edge runtime helpers', () => {
     })
   })
 
+  it('notifies the customer when a worker accepts a broadcast', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          job_status: 'worker_matched',
+          address_building: 'River Gate',
+          address_unit: '1201',
+          address_floor: '12',
+          address_district: 'q7',
+        }],
+        error: null,
+      },
+      { data: null, error: null },
+      { data: { customer_id: 'customer-1' }, error: null },
+      { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-1', user_id: 'customer-1', push_token: 'ExponentPushToken[customer]' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).acceptBroadcast(ctx, 'job-1')).resolves.toMatchObject({
+      job_id: 'job-1',
+      status: 'worker_matched',
+    })
+
+    const notificationCall = client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')
+    expect(notificationCall?.operations).toContainEqual([
+      'rpc',
+      'insert_notification_atomic',
+      expect.objectContaining({
+        p_user_id: 'customer-1',
+        p_job_id: 'job-1',
+        p_event_type: 'worker_matched',
+        p_safe_metadata: { worker_id: 'worker-1' },
+      }),
+    ])
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('/(customer)/history?job_id=job-1'),
+      }),
+    )
+  })
+
+  it('notifies the customer when a worker starts traveling', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_matched',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+      { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-1', user_id: 'customer-1', push_token: 'ExponentPushToken[customer]' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
+      status: 'worker_on_way',
+    })).resolves.toMatchObject({
+      job_id: 'job-1',
+      from_status: 'worker_matched',
+      to_status: 'worker_on_way',
+    })
+
+    const notificationCall = client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')
+    expect(notificationCall?.operations).toContainEqual([
+      'rpc',
+      'insert_notification_atomic',
+      expect.objectContaining({
+        p_user_id: 'customer-1',
+        p_job_id: 'job-1',
+        p_event_type: 'worker_on_way',
+      }),
+    ])
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('/(customer)/history?job_id=job-1'),
+      }),
+    )
+  })
+
+  it('notifies the customer immediately when a worker requests a scope change', async () => {
+    const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
+      const target = typeof url === 'string' ? url : url.toString()
+      if (target.includes('api.anthropic.com')) {
+        return new Response(JSON.stringify({
+          content: [{
+            text: JSON.stringify({
+              recommendation: 'approve',
+              price_assessment: 'reasonable',
+              customer_explanation: 'Phần phát sinh phù hợp với mô tả thợ báo.',
+              risk_notes: ['Khách cần xác nhận giá mới trước khi thợ tiếp tục.'],
+            }),
+          }],
+          usage: { input_tokens: 120, output_tokens: 48 },
+        }))
+      }
+      return new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'repairing',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          service_type: 'electrical',
+          description: 'Ổ cắm bị cháy',
+          kael_problem_identified: 'Ổ cắm có dấu hiệu cháy',
+          kael_complexity: 'small',
+          kael_price_min: 150000,
+          kael_price_max: 250000,
+        },
+        error: null,
+      },
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          scope_change_id: 'scope-1',
+          scope_status: 'waiting_customer_decision',
+          created_at_ts: '2026-05-20T00:00:00.000Z',
+        }],
+        error: null,
+      },
+      { data: null, error: null },
+      { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-1', user_id: 'customer-1', push_token: 'ExponentPushToken[customer]' }], error: null },
+      { data: null, error: null },
+      { data: { id: 'scope-1' }, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({ anthropicApiKey: 'test-anthropic-key' }).requestScopeChange(ctx, 'job-1', {
+      new_description: 'Add repair scope after onsite inspection',
+      new_price_min: 100000,
+      new_price_max: 200000,
+      reason: 'Found additional damaged part that needs immediate handling',
+    })).resolves.toMatchObject({
+      scope_change_id: 'scope-1',
+      job_id: 'job-1',
+      status: 'waiting_customer_decision',
+    })
+
+    const reviewCall = client.calls.find((call) => call.table === 'scope_change_requests')
+    const reviewUpdate = reviewCall?.operations.find((op) => op[0] === 'update')
+    expect(reviewUpdate?.[1]).toMatchObject({
+      kael_review: expect.objectContaining({
+        version: 'scope-change-review.2026-05-20.v1',
+        recommendation: 'approve',
+        price_assessment: 'reasonable',
+        fallback_used: false,
+      }),
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.anthropic.com/v1/messages',
+      expect.objectContaining({ method: 'POST' }),
+    )
+    const apiLogCall = client.calls.find((call) => call.table === 'api_logs')
+    expect(apiLogCall?.operations).toContainEqual([
+      'insert',
+      [expect.objectContaining({
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-6',
+        success: true,
+      })],
+    ])
+    const notificationCall = client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')
+    expect(notificationCall?.operations).toContainEqual([
+      'rpc',
+      'insert_notification_atomic',
+      expect.objectContaining({
+        p_user_id: 'customer-1',
+        p_job_id: 'job-1',
+        p_event_type: 'scope_change_requested',
+        p_safe_metadata: { scope_change_id: 'scope-1' },
+      }),
+    ])
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('/(customer)/history?scope_change=scope-1&job_id=job-1'),
+      }),
+    )
+  })
+
+  it('notifies the worker when the customer decides a scope change', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          job_id_out: 'job-1',
+          scope_status: 'approved_by_customer',
+          decided_at_ts: '2026-05-20T00:00:00.000Z',
+        }],
+        error: null,
+      },
+      { data: null, error: null },
+      { data: { worker_id: 'worker-1' }, error: null },
+      { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-1', user_id: 'worker-1', push_token: 'ExponentPushToken[worker]' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).decideScopeChange(ctx, 'scope-1', {
+      decision: 'approve',
+    })).resolves.toMatchObject({
+      scope_change_id: 'scope-1',
+      job_id: 'job-1',
+      status: 'approved_by_customer',
+    })
+
+    const notificationCall = client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')
+    expect(notificationCall?.operations).toContainEqual([
+      'rpc',
+      'insert_notification_atomic',
+      expect.objectContaining({
+        p_user_id: 'worker-1',
+        p_job_id: 'job-1',
+        p_event_type: 'scope_change_approved',
+        p_safe_metadata: { scope_change_id: 'scope-1', decision: 'approve' },
+      }),
+    ])
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('/(worker)/jobs?job_id=job-1'),
+      }),
+    )
+  })
+
+  it('auto-approves worker cancellation, re-broadcasts, and notifies the customer without rating penalties', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          customer_id: 'customer-1',
+          worker_id: 'worker-cancelled',
+        },
+        error: null,
+      },
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          cancellation_id: 'cancel-1',
+          cancellation_status: 'approved',
+          job_id_out: 'job-1',
+          job_status: 'broadcasting',
+          service_type_out: 'plumbing',
+          district_code: 'q7',
+          worker_id_out: 'worker-cancelled',
+          created_at_ts: '2026-05-20T00:00:00.000Z',
+        }],
+        error: null,
+      },
+      {
+        data: [
+          { worker_id: 'worker-cancelled' },
+          { worker_id: 'worker-prior' },
+        ],
+        error: null,
+      },
+      {
+        data: [
+          { id: 'worker-cancelled', rating: 5, total_jobs: 100, service_types: ['plumbing'], districts: ['q7'] },
+          { id: 'worker-prior', rating: 4.9, total_jobs: 90, service_types: ['plumbing'], districts: ['q7'] },
+          { id: 'worker-new', rating: 4.8, total_jobs: 80, service_types: ['plumbing'], districts: ['q7'] },
+        ],
+        error: null,
+      },
+      { data: [], error: null },
+      { data: [{ id: 'broadcast-new', worker_id: 'worker-new' }], error: null },
+      { data: [{ notification_id: 'notification-worker', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-worker', user_id: 'worker-new', push_token: 'ExponentPushToken[worker]' }], error: null },
+      { data: [{ notification_id: 'notification-customer', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-customer', user_id: 'customer-1', push_token: 'ExponentPushToken[customer]' }], error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-cancelled' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).requestWorkerCancellation(ctx, 'job-1', {
+      reason: 'Emergency reason that prevents continuing the job',
+      evidence_photo_urls: [],
+    })).resolves.toMatchObject({
+      cancellation_id: 'cancel-1',
+      job_id: 'job-1',
+      status: 'approved',
+      job_status: 'broadcasting',
+      broadcast_sent: true,
+    })
+
+    const broadcastInsert = client.calls.find((call) =>
+      call.table === 'job_broadcasts' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )
+    const insertOp = broadcastInsert?.operations.find((op) => op[0] === 'insert')
+    expect(insertOp?.[1]).toEqual([
+      expect.objectContaining({ worker_id: 'worker-new', job_id: 'job-1' }),
+    ])
+    expect(JSON.stringify(insertOp?.[1])).not.toContain('worker-cancelled')
+    expect(JSON.stringify(insertOp?.[1])).not.toContain('worker-prior')
+
+    const customerNotification = client.calls.find((call) =>
+      call.table === 'rpc:insert_notification_atomic' &&
+      call.operations.some((op) =>
+        JSON.stringify(op).includes('worker_replacement_search')
+      )
+    )
+    expect(customerNotification?.operations).toContainEqual([
+      'rpc',
+      'insert_notification_atomic',
+      expect.objectContaining({
+        p_user_id: 'customer-1',
+        p_job_id: 'job-1',
+        p_event_type: 'worker_replacement_search',
+      }),
+    ])
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('/(customer)/history?job_id=job-1'),
+      }),
+    )
+    expect(client.calls.some((call) =>
+      call.table === 'worker_profiles' &&
+      call.operations.some((op) => op[0] === 'update' && JSON.stringify(op[1]).includes('rating'))
+    )).toBe(false)
+  })
+
   it('maps scope-change request races to STATUS_CHANGED instead of DB_ERROR', async () => {
     const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'repairing',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
       {
         data: [{
           ok: false,
@@ -1228,6 +2146,56 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(workerCall?.operations).toContainEqual(['or', 'districts.cs.{q7},districts.cs.{hcmc_all}'])
   })
 
+  it('creates worker notification rows and Expo push after broadcast insert', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7' }, error: null },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+      { data: [{ id: 'worker-1', rating: 4.8, total_jobs: 12, service_types: ['plumbing'], districts: ['q7'] }], error: null },
+      { data: [], error: null },
+      { data: [{ id: 'broadcast-1', worker_id: 'worker-1' }], error: null },
+      { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-1', user_id: 'worker-1', push_token: 'ExponentPushToken[worker]' }], error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmSearch(ctx, 'job-1')).resolves.toMatchObject({
+      job_id: 'job-1',
+      status: 'broadcasting',
+      broadcast_sent: true,
+    })
+
+    const notificationCall = client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')
+    expect(notificationCall?.operations).toContainEqual([
+      'rpc',
+      'insert_notification_atomic',
+      expect.objectContaining({
+        p_user_id: 'worker-1',
+        p_job_id: 'job-1',
+        p_event_type: 'broadcast_received',
+        p_safe_metadata: expect.objectContaining({ broadcast_id: 'broadcast-1' }),
+      }),
+    ])
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('/(worker)/jobs?broadcast_id=broadcast-1'),
+      }),
+    )
+  })
+
   it('blocks duplicate confirm-search retries when another retry already took the broadcast lease', async () => {
     const client = makeSequenceClient([
       { data: { id: 'job-1', status: 'broadcasting', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7' }, error: null },
@@ -1359,101 +2327,8 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(rollbackCall!.operations).toContainEqual(['eq', 'status', 'broadcasting'])
   })
 
-  it('rebroadcasts approved worker cancellation without re-sending to the cancelling worker', async () => {
-    const client = makeSequenceClient([
-      {
-        data: [{
-          ok: true,
-          error_code: null,
-          cancellation_status: 'approved',
-          job_id_out: 'job-1',
-          job_status: 'broadcasting',
-          service_type_out: 'plumbing',
-          district_code: 'q7',
-          worker_id_out: 'worker-cancelled',
-          decided_at_ts: '2026-05-19T00:00:00.000Z',
-        }],
-        error: null,
-      },
-      {
-        data: [
-          { worker_id: 'worker-cancelled' },
-          { worker_id: 'worker-prior' },
-        ],
-        error: null,
-      },
-      {
-        data: [
-          { id: 'worker-cancelled', rating: 5, total_jobs: 100, service_types: ['plumbing'], districts: ['q7'] },
-          { id: 'worker-prior', rating: 4.9, total_jobs: 90, service_types: ['plumbing'], districts: ['q7'] },
-          { id: 'worker-new', rating: 4.8, total_jobs: 80, service_types: ['plumbing'], districts: ['q7'] },
-        ],
-        error: null,
-      },
-      { data: [], error: null },
-      { data: null, error: null },
-      { data: null, error: null },
-    ])
-    const ctx: MobileApiContext = {
-      success: true,
-      user: { id: 'admin-1' },
-      role: 'admin',
-      supabase: client,
-    }
-
-    await expect(createEdgeServices({}).decideWorkerCancellation(ctx, 'cancel-1', {
-      decision: 'approve',
-      review_note: 'Lý do hợp lệ',
-    })).resolves.toMatchObject({
-      cancellation_id: 'cancel-1',
-      job_id: 'job-1',
-      status: 'approved',
-      job_status: 'broadcasting',
-      broadcast_sent: true,
-    })
-
-    const activeJobCall = client.calls.find((call) =>
-      call.table === 'jobs' &&
-      call.operations.some((op) => op[0] === 'in' && op[1] === 'worker_id')
-    )
-    expect(activeJobCall?.operations).toContainEqual(['in', 'worker_id', ['worker-new']])
-    const priorRecipientCall = client.calls.find((call) =>
-      call.table === 'job_broadcasts' &&
-      call.operations.some((op) => op[0] === 'select' && op[1] === 'worker_id')
-    )
-    expect(priorRecipientCall?.operations).toContainEqual(['eq', 'job_id', 'job-1'])
-    expect(priorRecipientCall?.operations).toContainEqual(['order', 'broadcast_at', { ascending: true }])
-    expect(priorRecipientCall?.operations).toContainEqual(['range', 0, 999])
-
-    const broadcastInsert = client.calls.find((call) =>
-      call.table === 'job_broadcasts' &&
-      call.operations.some((op) => op[0] === 'insert')
-    )
-    const insertOp = broadcastInsert?.operations.find((op) => op[0] === 'insert')
-    expect(insertOp?.[1]).toEqual([
-      expect.objectContaining({ worker_id: 'worker-new', job_id: 'job-1' }),
-    ])
-    expect(JSON.stringify(insertOp?.[1])).not.toContain('worker-cancelled')
-    expect(JSON.stringify(insertOp?.[1])).not.toContain('worker-prior')
-  })
-
-  it('maps stale worker cancellation approvals to status-changed instead of reopening the job', async () => {
-    const client = makeSequenceClient([
-      {
-        data: [{
-          ok: false,
-          error_code: 'JOB_NOT_CANCELLABLE',
-          cancellation_status: 'reviewing_by_kael',
-          job_id_out: 'job-1',
-          job_status: 'confirmed_by_customer',
-          service_type_out: 'plumbing',
-          district_code: 'q7',
-          worker_id_out: 'worker-1',
-          decided_at_ts: null,
-        }],
-        error: null,
-      },
-    ])
+  it('rejects legacy admin worker-cancellation decisions after auto-approval is enabled', async () => {
+    const client = makeSequenceClient([])
     const ctx: MobileApiContext = {
       success: true,
       user: { id: 'admin-1' },
@@ -1464,13 +2339,10 @@ describe('mobile-api Edge runtime helpers', () => {
     await expect(createEdgeServices({}).decideWorkerCancellation(ctx, 'cancel-1', {
       decision: 'approve',
     })).rejects.toMatchObject({
-      code: 'STATUS_CHANGED',
-      status: 409,
+      code: 'DEPRECATED',
+      status: 410,
     })
-    expect(client.calls.some((call) =>
-      call.table === 'job_broadcasts' &&
-      call.operations.some((op) => op[0] === 'insert')
-    )).toBe(false)
+    expect(client.calls).toEqual([])
   })
 
   it('does not fake zero earnings when the earnings query fails', async () => {
@@ -1488,6 +2360,49 @@ describe('mobile-api Edge runtime helpers', () => {
       code: 'DB_ERROR',
       status: 500,
     })
+  })
+
+  it('counts reviewed jobs with paid_at as paid earnings in the Edge runtime', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [
+          {
+            id: 'job-reviewed-paid',
+            status: 'reviewed',
+            final_price: 300000,
+            paid_at: '2026-05-20T00:00:00.000Z',
+            created_at: '2026-05-20T00:00:00.000Z',
+          },
+          {
+            id: 'job-pending',
+            status: 'payment_pending',
+            final_price: 200000,
+            paid_at: null,
+            created_at: '2026-05-20T00:01:00.000Z',
+          },
+        ],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).getWorkerEarnings(ctx, {})).resolves.toMatchObject({
+      worker_id: 'worker-1',
+      total_jobs_paid: 1,
+      gross_earnings: 300000,
+      pending_payment_count: 1,
+      pending_payment_amount: 200000,
+    })
+
+    expect(client.calls[0].operations).toContainEqual([
+      'select',
+      'id, status, final_price, paid_at, created_at',
+    ])
   })
 
   it('blocks workers from going online while an active job is assigned', async () => {

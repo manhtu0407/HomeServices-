@@ -16,7 +16,7 @@ vi.mock('@/lib/db/query', () => ({
 
 import { computeEarnings } from '@/lib/workers/earnings'
 
-type EarningsRow = { id: string; status: string; final_price: number | null; created_at?: string }
+type EarningsRow = { id: string; status: string; final_price: number | null; paid_at?: string | null; created_at?: string }
 
 function makeSupabase(rows: Array<EarningsRow> | null, error: { code: string } | null = null) {
   return {
@@ -51,9 +51,9 @@ describe('computeEarnings', () => {
 
   it('sums only paid jobs as gross earnings while reviewed remains pending', async () => {
     const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: 500_000 },
-      { id: 'j2', status: 'reviewed', final_price: 300_000 },
-      { id: 'j3', status: 'paid', final_price: 1_000_000 },
+      { id: 'j1', status: 'paid', final_price: 500_000, paid_at: '2026-05-20T00:00:00Z' },
+      { id: 'j2', status: 'reviewed', final_price: 300_000, paid_at: null },
+      { id: 'j3', status: 'paid', final_price: 1_000_000, paid_at: '2026-05-20T00:01:00Z' },
     ])
 
     const result = await computeEarnings(supabase, 'worker-1')
@@ -63,9 +63,22 @@ describe('computeEarnings', () => {
     expect(result.pendingPaymentAmount).toBe(300_000)
   })
 
+  it('counts reviewed jobs with paid_at as paid earnings', async () => {
+    const supabase = makeSupabase([
+      { id: 'j1', status: 'reviewed', final_price: 300_000, paid_at: '2026-05-20T00:00:00Z' },
+      { id: 'j2', status: 'payment_pending', final_price: 200_000, paid_at: null },
+    ])
+
+    const result = await computeEarnings(supabase, 'worker-1')
+    expect(result.totalJobsPaid).toBe(1)
+    expect(result.grossEarnings).toBe(300_000)
+    expect(result.pendingPaymentCount).toBe(1)
+    expect(result.pendingPaymentAmount).toBe(200_000)
+  })
+
   it('applies 10% platform fee correctly (RULES & STRUCTURES)', async () => {
     const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: 1_000_000 },
+      { id: 'j1', status: 'paid', final_price: 1_000_000, paid_at: '2026-05-20T00:00:00Z' },
     ])
 
     const result = await computeEarnings(supabase, 'worker-1')
@@ -76,7 +89,7 @@ describe('computeEarnings', () => {
 
   it('counts pending payments separately from earnings', async () => {
     const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: 500_000 },
+      { id: 'j1', status: 'paid', final_price: 500_000, paid_at: '2026-05-20T00:00:00Z' },
       { id: 'j2', status: 'confirmed_by_customer', final_price: 300_000 },
       { id: 'j3', status: 'payment_pending', final_price: 700_000 },
       { id: 'j4', status: 'reviewed', final_price: 200_000 },
@@ -91,8 +104,8 @@ describe('computeEarnings', () => {
 
   it('handles null final_price gracefully', async () => {
     const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: null },
-      { id: 'j2', status: 'paid', final_price: 500_000 },
+      { id: 'j1', status: 'paid', final_price: null, paid_at: '2026-05-20T00:00:00Z' },
+      { id: 'j2', status: 'paid', final_price: 500_000, paid_at: '2026-05-20T00:01:00Z' },
     ])
 
     const result = await computeEarnings(supabase, 'worker-1')
@@ -109,7 +122,7 @@ describe('computeEarnings', () => {
 
   it('rounds platform fee to nearest integer (no fractional VND)', async () => {
     const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: 123_457 }, // 12345.7 * 0.1 → rounds
+      { id: 'j1', status: 'paid', final_price: 123_457, paid_at: '2026-05-20T00:00:00Z' }, // 12345.7 * 0.1 -> rounds
     ])
 
     const result = await computeEarnings(supabase, 'worker-1')
@@ -138,7 +151,7 @@ describe('computeEarnings', () => {
 
   it('applies gte/lte filters when range provided', async () => {
     const supabase = makeSupabase([
-      { id: 'j1', status: 'paid', final_price: 500_000, created_at: '2026-06-15T10:00:00Z' },
+      { id: 'j1', status: 'paid', final_price: 500_000, paid_at: '2026-06-15T10:00:00Z', created_at: '2026-06-15T10:00:00Z' },
     ])
     const result = await computeEarnings(supabase, 'worker-1', {
       from: '2026-06-01T00:00:00Z',

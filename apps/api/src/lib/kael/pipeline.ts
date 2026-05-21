@@ -14,6 +14,7 @@ export type PipelineInput = {
   problemChips: string[]
   description: string
   district: string
+  photoUrls?: string[]
 }
 
 export type PipelineProviders = {
@@ -45,6 +46,7 @@ export async function runKaelPipeline(
   providers?: PipelineProviders,
 ): Promise<PipelineResult> {
   const { serviceType, problemChips, description, district } = input
+  const photoUrls = input.photoUrls ?? []
   const classifyIntent = providers?.classifyIntent ?? defaultClassifyIntent
   const analyzeDescription = providers?.analyzeDescription ?? defaultAnalyzeDescription
   const searchMarketPrice = providers?.searchMarketPrice ?? defaultSearchMarketPrice
@@ -80,7 +82,7 @@ export async function runKaelPipeline(
 
   // Stage 2: Problem analysis
   const { result: visionResult, ms: visionMs } = await timed(() =>
-    analyzeDescription(description, `${validServiceType}: ${intent.problem_slug}`),
+    analyzeDescription(description, `${validServiceType}: ${intent.problem_slug}`, photoUrls),
   )
   const analysis = visionResult.success ? visionResult.analysis : visionResult.fallback
   if (!visionResult.success) fallbackUsed = true

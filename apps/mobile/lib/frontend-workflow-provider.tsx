@@ -7,6 +7,7 @@ import {
   extractKnownDistrictLabel,
   localWorkflowReducer,
   selectLocalWorkflow,
+  toLocalDealStatus,
   type CustomerScopeDecisionInput,
   type JobCreateInput,
   type JobStatus,
@@ -46,6 +47,7 @@ type FrontendWorkflowActions = {
     draft?: LocalDealDraft,
     mediaItems?: LocalMediaUploadDraft[],
   ) => Promise<{ jobId: string; mediaError?: string } | false | null>
+  hydrateRemoteJobById: (jobId: string) => Promise<boolean>
   confirmRemoteSearch: () => Promise<boolean>
   cancelRemoteJob: () => Promise<boolean>
   refreshCurrentJob: () => Promise<boolean>
@@ -194,6 +196,11 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [setRemoteError])
 
+  const hydrateRemoteJobById = useCallback(async (jobId: string) => {
+    if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
+    return hydrateJobResult(await jobService.getJob(jobId))
+  }, [hydrateJobResult, setRemoteError])
+
   const refreshCurrentJob = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
@@ -277,7 +284,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
         type: 'hydrate_remote_job',
         job: {
           ...dealToSnapshot(existing),
-          status: cancelled.data.status as LocalRemoteJobSnapshot['status'],
+          status: toLocalDealStatus(cancelled.data.status),
           broadcast: existing.broadcast
             ? { ...existing.broadcast, status: 'cancelled', fullAddressVisible: false, fullAddressLabel: null }
             : null,
@@ -352,7 +359,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
         workerGate: 'remote_backend',
         job: {
           ...dealToSnapshot(existing),
-          status: accepted.data.status as LocalRemoteJobSnapshot['status'],
+          status: toLocalDealStatus(accepted.data.status),
           addressLabel: fullAddressLabel || existing.draft.addressLabel,
           broadcast: {
             ...existing.broadcast,
@@ -483,6 +490,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     createRemoteJobFromDraft,
     confirmRemoteSearch,
     cancelRemoteJob,
+    hydrateRemoteJobById,
     refreshCurrentJob,
     workerRefresh,
     workerAcceptBroadcast,
@@ -503,6 +511,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     createRemoteJobFromDraft,
     customerConfirmCompletion,
     decideScopeChange,
+    hydrateRemoteJobById,
     refreshCurrentJob,
     refreshNotifications,
     markNotificationRead,
@@ -649,7 +658,7 @@ function isStaleBroadcastError(code: string) {
 function createJobResponseToSnapshot(data: CreateJobResponse, draft: LocalDealDraft): LocalRemoteJobSnapshot {
   return {
     id: data.job_id,
-    status: data.status as LocalRemoteJobSnapshot['status'],
+    status: toLocalDealStatus(data.status),
     serviceType: data.estimate.service_type,
     description: draft.description,
     problemChips: draft.problemChips,
@@ -668,7 +677,7 @@ function confirmSearchToSnapshot(data: ConfirmSearchResponse, deal: NonNullable<
   const broadcastSent = data.broadcast_sent
   return {
     ...snapshot,
-    status: data.status as LocalRemoteJobSnapshot['status'],
+    status: toLocalDealStatus(data.status),
     broadcast: {
       status: broadcastSent ? 'sent' : 'expired',
       jobId: data.job_id,
@@ -715,7 +724,7 @@ function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
 
   return {
     id: job.id,
-    status: toLocalStatus(job.status),
+    status: toLocalDealStatus(job.status),
     serviceType,
     description: job.description,
     problemChips: job.problem_chips,
@@ -750,7 +759,7 @@ function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalR
     .join(', ')
   return {
     id: job.id,
-    status: toLocalStatus(job.status),
+    status: toLocalDealStatus(job.status),
     serviceType: job.service_type,
     description: job.problem_summary ?? 'Yêu cầu sửa chữa',
     problemChips: job.problem_summary ? [job.problem_summary] : [],
@@ -790,6 +799,7 @@ function scopeChangeFromJobDetail(data: JobDetailResponse): LocalScopeChange | n
     reason: scope.reason,
     priceMin: scope.price_min,
     priceMax: scope.price_max,
+    kaelReview: scope.kael_review,
     createdAt: scope.created_at,
   }
 }
@@ -833,12 +843,6 @@ function broadcastFromJobStatus(
     fullAddressLabel: accepted ? addressLabel : null,
     secondsRemaining: expiredBroadcast ? 0 : status === 'broadcasting' ? broadcastState?.seconds_remaining ?? null : null,
   }
-}
-
-function toLocalStatus(status: JobStatus): LocalRemoteJobSnapshot['status'] {
-  if (status === 'estimate_ready') return 'awaiting_customer_confirm'
-  if (status === 'payment_pending' || status === 'paid') return 'confirmed_by_customer'
-  return status
 }
 
 function districtLabelFromValue(value: string | null | undefined) {

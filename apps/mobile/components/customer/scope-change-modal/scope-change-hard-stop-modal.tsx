@@ -1,0 +1,311 @@
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import type { LocalScopeChange } from '@home-services/shared'
+import type { AppLanguage } from '@/lib/app-language'
+
+type ScopeChangeModalTokens = {
+  aqua: string
+  base: string
+  border: string
+  borderStrong: string
+  copper: string
+  danger: string
+  glassStrong: string
+  muted: string
+  primary: string
+  primaryText: string
+  raised: string
+  text: string
+  warm: string
+}
+
+type ScopeChangeHardStopModalProps = {
+  language: AppLanguage
+  newScopeLabel: string
+  originalEstimateLabel: string
+  originalScopeLabel: string
+  onApprove: () => void
+  onReject: () => void
+  scopeChange: LocalScopeChange | null
+  tokens: ScopeChangeModalTokens
+  visible: boolean
+}
+
+const copy = {
+  vi: {
+    approve: 'Duyệt thay đổi',
+    currentEstimate: 'Ước tính ban đầu',
+    currentScope: 'Phạm vi ban đầu',
+    explanation: 'Đánh giá của Kael',
+    fallback: 'Cần kiểm tra trong ứng dụng trước khi quyết định.',
+    hardStop: 'Thợ đang chờ quyết định của bạn. Phần việc thay đổi chỉ được tiếp tục sau khi bạn duyệt.',
+    newEstimate: 'Ước tính mới',
+    newScope: 'Phạm vi mới',
+    pending: 'Cần xác nhận',
+    reason: 'Lý do từ thợ',
+    reject: 'Không duyệt',
+    risk: 'Lưu ý',
+    title: 'Duyệt thay đổi phạm vi',
+  },
+  en: {
+    approve: 'Approve change',
+    currentEstimate: 'Original estimate',
+    currentScope: 'Original scope',
+    explanation: 'Kael review',
+    fallback: 'Review this in the app before deciding.',
+    hardStop: 'The worker is waiting for your decision. Changed work can continue only after you approve it.',
+    newEstimate: 'New estimate',
+    newScope: 'New scope',
+    pending: 'Needs confirmation',
+    reason: 'Worker reason',
+    reject: 'Do not approve',
+    risk: 'Notes',
+    title: 'Approve scope change',
+  },
+} satisfies Record<AppLanguage, Record<string, string>>
+
+const vndFormatter = new Intl.NumberFormat('vi-VN')
+
+export function ScopeChangeHardStopModal({
+  language,
+  newScopeLabel,
+  originalEstimateLabel,
+  originalScopeLabel,
+  onApprove,
+  onReject,
+  scopeChange,
+  tokens,
+  visible,
+}: ScopeChangeHardStopModalProps) {
+  const text = copy[language]
+  const kaelExplanation = readString(scopeChange?.kaelReview, 'customer_explanation') ?? text.fallback
+  const riskNotes = readStringArray(scopeChange?.kaelReview, 'risk_notes')
+  const newEstimate = scopeChange?.priceMin && scopeChange.priceMax
+    ? formatPriceRange(scopeChange.priceMin, scopeChange.priceMax)
+    : text.pending
+  const reason = scopeChange?.reason?.trim() || text.pending
+
+  return (
+    <Modal animationType="fade" onRequestClose={() => undefined} transparent visible={visible}>
+      <View accessibilityViewIsModal style={styles.scrim} testID="customer-scope-change-hard-stop-modal">
+        <View style={[styles.sheet, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]}>
+          <Text style={[styles.eyebrow, { color: tokens.copper }]} numberOfLines={1}>
+            A11
+          </Text>
+          <Text style={[styles.title, { color: tokens.text }]}>{text.title}</Text>
+          <Text style={[styles.body, { color: tokens.muted }]}>{text.hardStop}</Text>
+
+          <View style={styles.compareGrid}>
+            <InfoBlock label={text.currentScope} tokens={tokens} value={originalScopeLabel || text.pending} />
+            <InfoBlock label={text.newScope} tokens={tokens} value={newScopeLabel || text.pending} />
+            <InfoBlock label={text.currentEstimate} tokens={tokens} value={originalEstimateLabel || text.pending} />
+            <InfoBlock label={text.newEstimate} tokens={tokens} value={newEstimate} />
+          </View>
+
+          <View style={[styles.noteBox, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
+            <Text style={[styles.noteLabel, { color: tokens.primary }]} numberOfLines={1}>
+              {text.reason}
+            </Text>
+            <Text style={[styles.noteValue, { color: tokens.text }]}>{reason}</Text>
+          </View>
+
+          <View style={[styles.noteBox, { backgroundColor: tokens.warm, borderColor: tokens.border }]}>
+            <Text style={[styles.noteLabel, { color: tokens.primary }]} numberOfLines={1}>
+              {text.explanation}
+            </Text>
+            <Text style={[styles.noteValue, { color: tokens.text }]}>{kaelExplanation}</Text>
+            {riskNotes.length > 0 ? (
+              <View style={styles.riskList}>
+                <Text style={[styles.noteLabel, { color: tokens.copper }]} numberOfLines={1}>
+                  {text.risk}
+                </Text>
+                {riskNotes.map((item) => (
+                  <Text key={item} style={[styles.riskText, { color: tokens.muted }]}>
+                    {item}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.actionRow}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onReject}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                { backgroundColor: tokens.glassStrong, borderColor: tokens.danger },
+                pressed ? styles.pressed : null,
+              ]}
+              testID="customer-scope-change-modal-reject"
+            >
+              <Text style={[styles.secondaryText, { color: tokens.danger }]}>{text.reject}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onApprove}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                { backgroundColor: tokens.primary, borderColor: tokens.primary },
+                pressed ? styles.pressed : null,
+              ]}
+              testID="customer-scope-change-modal-approve"
+            >
+              <Text style={[styles.primaryText, { color: tokens.primaryText }]}>{text.approve}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
+function InfoBlock({ label, tokens, value }: { label: string; tokens: ScopeChangeModalTokens; value: string }) {
+  return (
+    <View style={[styles.infoBlock, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
+      <Text style={[styles.infoLabel, { color: tokens.muted }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[styles.infoValue, { color: tokens.text }]}>{value}</Text>
+    </View>
+  )
+}
+
+function readString(record: Record<string, unknown> | null | undefined, key: string) {
+  const value = record?.[key]
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
+function readStringArray(record: Record<string, unknown> | null | undefined, key: string) {
+  const value = record?.[key]
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, 3)
+}
+
+function formatPriceRange(min: number, max: number) {
+  return `${vndFormatter.format(min)}đ - ${vndFormatter.format(max)}đ`
+}
+
+const styles = StyleSheet.create({
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  body: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 20,
+  },
+  compareGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
+  infoBlock: {
+    borderRadius: 14,
+    borderWidth: 1,
+    flexBasis: '47%',
+    flexGrow: 1,
+    gap: 5,
+    minHeight: 86,
+    padding: 12,
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0,
+    textTransform: 'uppercase',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 20,
+  },
+  noteBox: {
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 6,
+    padding: 13,
+  },
+  noteLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0,
+    textTransform: 'uppercase',
+  },
+  noteValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 20,
+  },
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
+  },
+  primaryButton: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 52,
+    paddingHorizontal: 14,
+  },
+  primaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
+  riskList: {
+    gap: 5,
+    paddingTop: 4,
+  },
+  riskText: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 19,
+  },
+  scrim: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.48)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 16,
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 52,
+    paddingHorizontal: 14,
+  },
+  secondaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
+  sheet: {
+    borderRadius: 26,
+    borderWidth: 1,
+    gap: 14,
+    maxWidth: 430,
+    padding: 18,
+    width: '100%',
+  },
+  title: {
+    fontSize: 21,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 27,
+  },
+})

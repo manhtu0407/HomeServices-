@@ -1,7 +1,7 @@
 import { createContext, type ReactNode, use, useEffect, useReducer, useState, useSyncExternalStore } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import {
   Alert,
@@ -15,7 +15,9 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { type LocalCustomerSearchState, type LocalDealStatus, type ServiceType } from '@home-services/shared'
+import { inferLocalDealDraftFromKael, type LocalCustomerSearchState, type LocalDealStatus, type ServiceType } from '@home-services/shared'
+import { setPendingKaelChatDraft } from '@/components/customer/kael-chat/pending-intake'
+import { ScopeChangeHardStopModal } from '@/components/customer/scope-change-modal/scope-change-hard-stop-modal'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassCard } from '@/components/ui/glass-card'
@@ -33,7 +35,7 @@ const CUSTOMER_LAYER_ECOLOGY_V4 = 'CUSTOMER_LAYER_ECOLOGY_V4: glass mint surface
 const SEMANTIC_LAYER_SWITCH_V4 = 'SEMANTIC_LAYER_SWITCH_V4: light/dark swaps semantic V4 layers'
 const COPY_DENSITY_COMPACT = 'COPY_DENSITY_COMPACT: structure first, no feature explanations'
 const KAEL_CHATBOX_SCREEN_CONTRACT = 'KAEL_CHATBOX_SCREEN_CONTRACT: local transaction-intent chatbox'
-const KAEL_TICKET_COMPOSER_V3 = 'KAEL_TICKET_COMPOSER_V3: Kael asks, fills a repair ticket, then routes to booking'
+const KAEL_TICKET_COMPOSER_V3 = 'KAEL_TICKET_COMPOSER_V3: Kael asks, fills a repair ticket, then routes to Kael chat'
 const CUSTOMER_DECORATIVE_MOTION_ENABLED = false
 const CUSTOMER_THEME_STORAGE_KEY = 'customer.theme.mode.v4'
 const customerDockHeight = 70
@@ -41,8 +43,8 @@ const customerDockBottomMargin = 10
 const customerDockBottomClearance = customerDockHeight + customerDockBottomMargin + 76
 const customerFrameHorizontalPadding = 16
 const openBookingPath = '/(customer)/booking'
+const openKaelChatPath = '/(customer)/kael-chat'
 const openHistoryPath = '/(customer)/history'
-const openKaelPath = '/(customer)/kael'
 const openProfilePath = '/(customer)/profile'
 const kaelModel8A = require('../../assets/kael-model-8a.png')
 const kaelModel8AHead = require('../../assets/kael-model-8a-head.png')
@@ -75,6 +77,10 @@ type IconName =
   | 'waterPipe'
 
 let lastCustomerDockActive: CustomerDockActive = 'home'
+
+function kaelChatPath(serviceType?: ServiceType | null) {
+  return serviceType ? `${openKaelChatPath}?serviceType=${serviceType}` : openKaelChatPath
+}
 
 type CustomerThemeTokens = {
   mode: ThemeMode
@@ -265,24 +271,24 @@ const customerCopy = {
     },
     kael: {
       activeDealError: 'Đang có yêu cầu đang chạy. Mở Hoạt động để theo dõi hoặc hoàn tất trước khi tạo yêu cầu mới.',
-      bookingCta: 'Qua Kiểm giá',
+      bookingCta: 'Mở chat Kael',
       hubKicker: 'Trợ lý nhận yêu cầu',
       hubTitle: 'Kael nhận mô tả trước',
       hubGreeting: 'Chào bạn, mình là Kael.',
-      hubBody: 'Mô tả sự cố điện, nước hoặc vệ sinh. Kael sẽ tóm tắt thành phiếu để bạn kiểm giá và xác nhận ở bước tiếp theo.',
+      hubBody: 'Mô tả sự cố điện, nước hoặc vệ sinh. Kael sẽ tóm tắt thành phiếu để bạn xem ước tính và xác nhận ở chat tiếp theo.',
       quickPrompt: 'Bắt đầu bằng dịch vụ',
-      attach: 'Thêm ảnh ở Kiểm giá',
+      attach: 'Bổ sung trong chat',
       sessionTitle: 'Phiên nhận yêu cầu',
       sessionMetaReady: 'Đủ để mở phiếu',
       sessionMetaNeedsMore: 'Cần thêm chi tiết',
-      assistantSummary: 'Kael đã giữ mô tả này trong phiên. Bước tiếp theo là kiểm giá, bổ sung ảnh/khu vực và xác nhận rõ trước khi tìm thợ.',
+      assistantSummary: 'Kael đã giữ mô tả này trong phiên. Bước tiếp theo là mở chat Kael để xem ước tính và xác nhận rõ trước khi tìm thợ.',
       assistantMoreDetail: 'Kael cần thêm chi tiết trước khi tạo phiếu.',
-      assistantMoreDetailHint: 'Hãy thêm vị trí trong căn hộ, dấu hiệu nhìn thấy, mức độ ảnh hưởng hoặc ảnh ở bước Kiểm giá.',
+      assistantMoreDetailHint: 'Hãy thêm vị trí trong căn hộ, dấu hiệu nhìn thấy, mức độ ảnh hưởng hoặc ảnh trong chat Kael.',
       unsupportedSummary: 'Kael chưa thể tạo phiếu cho dịch vụ ngoài phạm vi hiện tại.',
       unsupportedHint: 'Hiện tại chỉ hỗ trợ sửa điện, sửa nước và vệ sinh/dọn dẹp nhà.',
-      quickServiceA11y: (service: string) => `Bắt đầu kiểm giá ${service} với Kael`,
+      quickServiceA11y: (service: string) => `Bắt đầu chat ${service} với Kael`,
       needDetail: 'Mô tả Kael cần rõ hơn trước khi tạo phiếu.',
-      needService: 'Cần chọn ở Kiểm giá',
+      needService: 'Cần chọn dịch vụ',
       sendAfterConfirm: 'Gửi thợ sau xác nhận',
       summaryTicket: 'Phiếu tóm tắt',
       lockedService: 'Dịch vụ đang khóa',
@@ -290,7 +296,7 @@ const customerCopy = {
       service: 'Dịch vụ',
     },
     history: {
-      filters: ['Sửa', 'Kiểm giá', 'Trò chuyện', 'Xong'],
+      filters: ['Sửa', 'Ước tính', 'Trò chuyện', 'Xong'],
       workerWaiting: 'Đang chờ phản hồi',
       workerNone: 'Chưa có thợ nhận',
       workerActive: 'Thợ đang xử lý',
@@ -302,7 +308,7 @@ const customerCopy = {
       waitingWorkerDone: 'Chờ thợ hoàn tất',
       editRequest: 'Chỉnh yêu cầu',
       newRequest: 'Tạo yêu cầu mới',
-      openPriceCheck: 'Mở Kiểm giá',
+      openPriceCheck: 'Mở chat Kael',
       confirmDoneTitle: 'Xác nhận đã nhận việc?',
       confirmDoneBody: 'Hệ thống sẽ ghi nhận khách đã xác nhận xong. Thanh toán vẫn khóa ở giai đoạn này.',
       checkAgain: 'Kiểm tra lại',
@@ -372,7 +378,7 @@ const customerCopy = {
   },
   en: {
     home: {
-      searchA11y: 'Open service price check',
+      searchA11y: 'Open Kael service chat',
       searchText: 'What needs fixing?',
       commandKicker: 'Kael Command Home',
       commandTitle: 'Tell Kael what happened',
@@ -408,24 +414,24 @@ const customerCopy = {
     },
     kael: {
       activeDealError: 'An active request is running. Open Activity to follow or finish it before creating a new request.',
-      bookingCta: 'Open Price Check',
+      bookingCta: 'Open Kael chat',
       hubKicker: 'Service Intake Assistant',
       hubTitle: 'Kael takes the description first',
       hubGreeting: 'Hi, I am Kael.',
-      hubBody: 'Describe an electrical, plumbing, or cleaning issue. Kael will turn it into a ticket for price check and explicit confirmation.',
+      hubBody: 'Describe an electrical, plumbing, or cleaning issue. Kael will turn it into a ticket for estimate review and explicit confirmation.',
       quickPrompt: 'Start with a service',
-      attach: 'Add photo in Price Check',
+      attach: 'Add in chat',
       sessionTitle: 'Intake session',
       sessionMetaReady: 'Ready for ticket',
       sessionMetaNeedsMore: 'Needs more detail',
-      assistantSummary: 'Kael saved this description for the session. Next, open Price Check to add media/area details and confirm before worker search.',
+      assistantSummary: 'Kael saved this description for the session. Next, open Kael chat to review the estimate and confirm before worker search.',
       assistantMoreDetail: 'Kael needs a little more detail before creating a ticket.',
-      assistantMoreDetailHint: 'Add the room, visible symptom, impact level, or a photo in Price Check.',
+      assistantMoreDetailHint: 'Add the room, visible symptom, impact level, or photo context in Kael chat.',
       unsupportedSummary: 'Kael cannot create a ticket for a service outside the current scope.',
       unsupportedHint: 'Home Services currently supports electrical repair, plumbing repair, and home cleaning only.',
-      quickServiceA11y: (service: string) => `Start ${service} price check with Kael`,
+      quickServiceA11y: (service: string) => `Start ${service} chat with Kael`,
       needDetail: 'Kael needs a clearer description before creating a ticket.',
-      needService: 'Choose in Price Check',
+      needService: 'Choose a service',
       sendAfterConfirm: 'Sent after confirmation',
       summaryTicket: 'Summary ticket',
       lockedService: 'Service unavailable',
@@ -445,7 +451,7 @@ const customerCopy = {
       waitingWorkerDone: 'Waiting for worker completion',
       editRequest: 'Edit request',
       newRequest: 'New request',
-      openPriceCheck: 'Open Price Check',
+      openPriceCheck: 'Open Kael chat',
       confirmDoneTitle: 'Confirm the job is done?',
       confirmDoneBody: 'The system will record customer completion. Payment remains locked in this phase.',
       checkAgain: 'Check again',
@@ -516,7 +522,7 @@ const customerCopy = {
 } as const
 
 export function CustomerHomeSurface() {
-  const { replace } = useRouter()
+  const { push, replace } = useRouter()
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
   const { actions, dispatch, notificationUnreadCount, notifications, selectors, state } = useFrontendWorkflow()
@@ -526,22 +532,28 @@ export function CustomerHomeSurface() {
   const isTerminalDeal = activeDeal ? isTerminalCustomerDeal(activeDeal.status) : false
   const activeDealRoute =
     selectors.currentStatus === 'draft' || selectors.currentStatus === 'analyzing' || selectors.currentStatus === 'awaiting_customer_confirm'
-      ? openBookingPath
+      ? kaelChatPath(activeDeal?.draft.serviceType)
       : openHistoryPath
   const activeDealStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState, languageMode)
   const homeAreaValue = activeDeal?.draft.districtLabel
     ? localizedCustomerAreaLabel(activeDeal.draft.districtLabel, languageMode, copy.home.contextFallback)
     : copy.home.contextFallback
-  const openBookingFlow = (serviceType?: ServiceType) => {
+  const openKaelChatFlow = (serviceType?: ServiceType) => {
     if (!canStartNewDeal) {
       replace(activeDealRoute)
       return
     }
-    if (serviceType) dispatch({ type: 'start_home_service', serviceType })
-    if (!serviceType && isTerminalDeal) dispatch({ type: 'reset_workflow' })
-    replace(openBookingPath)
+    if (isTerminalDeal) dispatch({ type: 'reset_workflow' })
+    push(kaelChatPath(serviceType))
   }
-  const homeCommandTarget = canStartNewDeal ? openKaelPath : activeDealRoute
+  const homeCommandTarget = canStartNewDeal ? openKaelChatPath : activeDealRoute
+  const openHomeCommand = () => {
+    if (canStartNewDeal) {
+      push(openKaelChatPath)
+      return
+    }
+    replace(activeDealRoute)
+  }
   const homeCommandActionLabel = canStartNewDeal ? copy.home.intakeCta : copy.home.quickActive
   const homeShortcuts: Array<{ icon: IconName; meta: string; onPress: () => void; testID: string; title: string }> = [
     {
@@ -568,7 +580,7 @@ export function CustomerHomeSurface() {
     {
       icon: 'estimate',
       meta: copy.home.quickTrustMeta,
-      onPress: () => openBookingFlow(),
+      onPress: () => openKaelChatFlow(),
       testID: 'customer-home-shortcut-trust',
       title: copy.home.quickTrust,
     },
@@ -581,7 +593,7 @@ export function CustomerHomeSurface() {
           <V4MapBackdrop />
           <View style={styles.v4Content}>
             <ReduceMotionAwareEntranceView delayMs={40} distanceY={10} testID="customer-home-search-motion">
-              <GlassPressable accessibilityLabel={copy.home.searchA11y} accessibilityRole="button" mode={tokens.mode} onPress={() => openBookingFlow()} style={styles.searchPill} testID="customer-home-search-entry" variant="control">
+              <GlassPressable accessibilityLabel={copy.home.searchA11y} accessibilityRole="button" mode={tokens.mode} onPress={() => openKaelChatFlow()} style={styles.searchPill} testID="customer-home-search-entry" variant="control">
                 <SubtleGlassHighlight />
                 <IconGlyph name="estimate" color={tokens.primary} accent={tokens.copper} />
                 <Text style={[styles.searchText, { color: tokens.muted }]} numberOfLines={1}>
@@ -598,7 +610,7 @@ export function CustomerHomeSurface() {
               <View style={styles.hiddenMarker} testID="customer-utility-notification-center" />
               <ReduceMotionAwareEntranceView delayMs={100} distanceY={16} testID="customer-home-hero-motion">
                 <GlassCard mode={tokens.mode} style={styles.homeCommandHero} testID="customer-home-layered-hero">
-                  <Pressable accessibilityLabel={homeCommandActionLabel} accessibilityRole="button" onPress={() => replace(homeCommandTarget)} style={({ pressed }) => [styles.homeCommandHitArea, pressed ? styles.pressed : null]} testID="customer-home-kael-command">
+                  <Pressable accessibilityLabel={homeCommandActionLabel} accessibilityRole="button" onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandHitArea, pressed ? styles.pressed : null]} testID="customer-home-kael-command">
                     <SubtleGlassHighlight />
                     <View style={[styles.homeCommandWash, { backgroundColor: tokens.aqua }]} />
                     <View style={styles.homeCommandHeader}>
@@ -640,9 +652,9 @@ export function CustomerHomeSurface() {
                 </GlassCard>
               </ReduceMotionAwareEntranceView>
               <View style={styles.serviceGrid}>
-                <V4ServiceCard icon="boltPanel" title={localizedServiceLabel('electrical', languageMode)} testID="customer-shell-service-electrical" onPress={() => openBookingFlow('electrical')} />
-                <V4ServiceCard icon="waterPipe" title={localizedServiceLabel('plumbing', languageMode)} testID="customer-shell-service-plumbing" onPress={() => openBookingFlow('plumbing')} water />
-                <V4ServiceCard icon="cleaning" title={localizedServiceLabel('cleaning', languageMode)} testID="customer-shell-service-cleaning" onPress={() => openBookingFlow('cleaning')} />
+                <V4ServiceCard icon="boltPanel" title={localizedServiceLabel('electrical', languageMode)} testID="customer-shell-service-electrical" onPress={() => openKaelChatFlow('electrical')} />
+                <V4ServiceCard icon="waterPipe" title={localizedServiceLabel('plumbing', languageMode)} testID="customer-shell-service-plumbing" onPress={() => openKaelChatFlow('plumbing')} water />
+                <V4ServiceCard icon="cleaning" title={localizedServiceLabel('cleaning', languageMode)} testID="customer-shell-service-cleaning" onPress={() => openKaelChatFlow('cleaning')} />
               </View>
               <View style={styles.homeShortcutGrid} testID="customer-home-real-shortcuts">
                 {homeShortcuts.map((item) => (
@@ -731,6 +743,100 @@ export function CustomerHomeSurface() {
   )
 }
 
+export function CustomerBookingEntrySurface() {
+  const { push, replace } = useRouter()
+  const languageMode = useAppLanguage()
+  const { dispatch, selectors, state } = useFrontendWorkflow()
+  const activeDeal = state.deal
+  const isTerminalDeal = activeDeal ? isTerminalCustomerDeal(activeDeal.status) : false
+  const canStartNewDeal = !activeDeal || canReplaceCustomerDeal(activeDeal.status)
+  const activeDealRoute =
+    selectors.currentStatus === 'draft' || selectors.currentStatus === 'analyzing' || selectors.currentStatus === 'awaiting_customer_confirm'
+      ? kaelChatPath(activeDeal?.draft.serviceType)
+      : openHistoryPath
+  const activeDealStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState, languageMode)
+  const entryCopy = languageMode === 'en'
+    ? {
+        activeBody: 'Continue the active request before starting a new one.',
+        activeCta: 'View activity',
+        activeTitle: 'Request in progress',
+        body: 'Choose a supported service. Kael will collect details, estimate, and ask for confirmation before worker search.',
+        kicker: 'Book service',
+        title: 'Start with Kael',
+      }
+    : {
+        activeBody: 'Theo dõi hoặc hoàn tất yêu cầu hiện tại trước khi tạo yêu cầu mới.',
+        activeCta: 'Xem hoạt động',
+        activeTitle: 'Đang có yêu cầu',
+        body: 'Chọn dịch vụ đang hỗ trợ. Kael sẽ hỏi chi tiết, ước tính và chỉ tìm thợ sau khi bạn xác nhận.',
+        kicker: 'Đặt dịch vụ',
+        title: 'Bắt đầu qua Kael',
+      }
+  const openChat = (serviceType: ServiceType) => {
+    if (!canStartNewDeal) {
+      replace(activeDealRoute)
+      return
+    }
+    if (isTerminalDeal) dispatch({ type: 'reset_workflow' })
+    push(kaelChatPath(serviceType))
+  }
+
+  return (
+    <V4Frame active="booking" testID="customer-booking-entry-surface">
+      {({ tokens }) => (
+        <View style={styles.plainContent}>
+          <View style={[styles.kaelCard, customerOpaqueSurface(tokens)]} testID="customer-booking-kael-entry">
+            <View style={styles.kaelHubHeader}>
+              <KaelMascot variant="head" size={58} material="opaque" />
+              <View style={styles.kaelHubCopy}>
+                <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+                  {entryCopy.kicker}
+                </Text>
+                <Text style={[styles.kaelHubTitle, { color: tokens.text }]} numberOfLines={2}>
+                  {entryCopy.title}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.kaelHubBody, { color: tokens.muted }]} numberOfLines={3}>
+              {entryCopy.body}
+            </Text>
+            <View style={styles.serviceGrid} testID="customer-booking-service-entry-grid">
+              <V4ServiceCard icon="boltPanel" title={localizedServiceLabel('electrical', languageMode)} testID="customer-booking-service-electrical" onPress={() => openChat('electrical')} />
+              <V4ServiceCard icon="waterPipe" title={localizedServiceLabel('plumbing', languageMode)} testID="customer-booking-service-plumbing" onPress={() => openChat('plumbing')} water />
+              <V4ServiceCard icon="cleaning" title={localizedServiceLabel('cleaning', languageMode)} testID="customer-booking-service-cleaning" onPress={() => openChat('cleaning')} />
+            </View>
+          </View>
+          {activeDeal ? (
+            <Pressable
+              accessibilityLabel={`${entryCopy.activeTitle}. ${activeDealStatusLabel}`}
+              accessibilityRole="button"
+              onPress={() => replace(activeDealRoute)}
+              style={({ pressed }) => [styles.ticketCard, customerOpaqueSurface(tokens), pressed ? styles.pressed : null]}
+              testID="customer-booking-active-request"
+            >
+              <View style={styles.sectionTitle}>
+                <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+                  {entryCopy.activeTitle}
+                </Text>
+                <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+                  {activeDealStatusLabel}
+                </Text>
+              </View>
+              <Text style={[styles.homeTrustBody, { color: tokens.muted }]} numberOfLines={2}>
+                {entryCopy.activeBody}
+              </Text>
+              <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+                {entryCopy.activeCta}
+              </Text>
+            </Pressable>
+          ) : null}
+          <View style={styles.hiddenMarker} testID="customer-booking-legacy-flow-not-primary" />
+        </View>
+      )}
+    </V4Frame>
+  )
+}
+
 type CustomerKaelDraftState = {
   kaelDraft: string
   latestAnswer: string
@@ -748,7 +854,7 @@ function customerKaelDraftReducer(current: CustomerKaelDraftState, patch: Partia
 }
 
 export function CustomerKaelSurface() {
-  const { replace } = useRouter()
+  const { push, replace } = useRouter()
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
   const { dispatch, state } = useFrontendWorkflow()
@@ -775,8 +881,8 @@ export function CustomerKaelSurface() {
       setKaelError(copy.kael.activeDealError)
       return
     }
-    dispatch({ type: 'start_home_service', serviceType })
-    replace(openBookingPath)
+    if (state.deal && isTerminalCustomerDeal(state.deal.status)) dispatch({ type: 'reset_workflow' })
+    push(kaelChatPath(serviceType))
   }
   const submitKaelLocalDraft = () => {
     const trimmed = kaelDraft.trim()
@@ -789,10 +895,14 @@ export function CustomerKaelSurface() {
       setKaelError(copy.kael.activeDealError)
       return
     }
+    const inferredKaelDraft = inferLocalDealDraftFromKael(trimmed)
+    const handoffServiceType = inferredKaelDraft.unsupportedServiceLabel ? null : inferredKaelDraft.serviceType
     dispatch({ type: 'submit_kael_draft', text: trimmed })
+    setPendingKaelChatDraft({ message: trimmed, serviceType: handoffServiceType })
     setLatestAnswer(trimmed)
     setKaelDraft('')
     setKaelError(null)
+    push(kaelChatPath(handoffServiceType))
   }
   const updateKaelDraft = (value: string) => {
     setKaelDraft(value)
@@ -804,7 +914,7 @@ export function CustomerKaelSurface() {
       return
     }
     if (state.deal && isTerminalCustomerDeal(state.deal.status)) dispatch({ type: 'reset_workflow' })
-    replace(openBookingPath)
+    push(kaelChatPath(localKaelDraft?.serviceType))
   }
 
   useEffect(() => {
@@ -914,7 +1024,7 @@ export function CustomerKaelSurface() {
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-field-location" />
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-field-media" />
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-progress" />
-                      <PrimaryButton label={copy.kael.bookingCta} onPress={() => replace(openBookingPath)} compact testID="customer-kael-ticket-booking-cta" />
+                      <PrimaryButton label={copy.kael.bookingCta} onPress={() => push(kaelChatPath(localKaelDraft?.serviceType))} compact testID="customer-kael-ticket-booking-cta" />
                     </View>
                   ) : null}
                 </>
@@ -935,13 +1045,27 @@ export function CustomerKaelSurface() {
 }
 
 export function CustomerHistorySurface() {
-  const { replace } = useRouter()
+  const { push, replace } = useRouter()
+  const params = useLocalSearchParams<{ job_id?: string; scope_change?: string }>()
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
   const { actions, dispatch, selectors, state } = useFrontendWorkflow()
   const [reviewRating, setReviewRating] = useState<1 | 2 | 3 | 4 | 5 | null>(null)
   const deal = state.deal
   const scopeChange = deal?.scopeChange ?? null
+  const routeJobId = typeof params.job_id === 'string' ? params.job_id : null
+  const routeScopeChangeId = typeof params.scope_change === 'string' ? params.scope_change : null
+  const isScopeChangeWaiting = Boolean(
+    scopeChange && ['requested_by_worker', 'reviewing_by_kael', 'waiting_customer_decision'].includes(scopeChange.status),
+  )
+  const forceScopeChangeModal = Boolean(
+    isScopeChangeWaiting && (!routeScopeChangeId || routeScopeChangeId === scopeChange?.id),
+  )
+  const originalScopeLabel = deal
+    ? localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel, deal.draft.serviceType, languageMode)
+    : copy.history.needsConfirm
+  const originalEstimateLabel = deal?.estimate?.priceRangeLabel ?? copy.history.needsConfirm
+  const newScopeLabel = scopeChange?.requestedDescription ?? copy.history.needsConfirm
   const timeline = getCustomerTimeline(selectors.currentStatus, languageMode)
   const visibleStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState, languageMode)
   const workerStateLabel =
@@ -966,13 +1090,17 @@ export function CustomerHistorySurface() {
   const canCreateFreshRequest = !deal || selectors.currentStatus === 'confirmed_by_customer' || selectors.currentStatus === 'reviewed' || selectors.currentStatus === 'cancelled'
   const canEditNoWorkerRequest = selectors.customerSearchState === 'no_worker'
   const canCancelLocalRequest = selectors.canCustomerCancelDeal
+  useEffect(() => {
+    if (!routeJobId || routeJobId === deal?.id) return
+    void actions.hydrateRemoteJobById(routeJobId)
+  }, [actions, deal?.id, routeJobId])
   const continueOrCreate = () => {
     if (canEditNoWorkerRequest) {
       dispatch({ type: 'reopen_booking_draft' })
     } else if (deal && canCreateFreshRequest) {
       dispatch({ type: 'reset_workflow' })
     }
-    replace(openBookingPath)
+    push(kaelChatPath(deal?.draft.serviceType))
   }
   const confirmCompletionReceived = () => {
     Alert.alert(
@@ -1020,6 +1148,17 @@ export function CustomerHistorySurface() {
     <V4Frame active="activity" testID="customer-history-surface">
       {({ tokens }) => (
         <View style={styles.plainContent}>
+          <ScopeChangeHardStopModal
+            language={languageMode}
+            newScopeLabel={newScopeLabel}
+            onApprove={() => scopeChange ? void actions.decideScopeChange(scopeChange.id, { decision: 'approve' }) : undefined}
+            onReject={() => scopeChange ? void actions.decideScopeChange(scopeChange.id, { decision: 'reject' }) : undefined}
+            originalEstimateLabel={originalEstimateLabel}
+            originalScopeLabel={originalScopeLabel}
+            scopeChange={scopeChange}
+            tokens={tokens}
+            visible={forceScopeChangeModal}
+          />
           <View style={[styles.filterRow, glassSurface(tokens, 'strong')]} testID="customer-history-filter-shell">
             <SubtleGlassHighlight />
             {copy.history.filters.map((label, index) => (

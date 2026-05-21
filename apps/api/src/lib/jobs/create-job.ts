@@ -111,6 +111,7 @@ export async function createJobWithEstimate(
         problemChips: input.problem_chips,
         description: input.description,
         district: canonicalDistrict,
+        photoUrls: input.photo_urls,
       },
       supabase,
     )

@@ -186,8 +186,8 @@ export const DEFAULT_DISTRICT: DistrictSlug = 'hcmc_all'
  *   4. Numbered district patterns ("Quận 1", "Q.1", "quan 1" → "q1")
  *   5. Fallback: DEFAULT_DISTRICT ("hcmc_all") — never lies about location
  *
- * Diacritic-insensitive matching is deliberately NOT supported in phase 1;
- * frontend should send either canonical slug or exact VI label.
+ * Numbered district matching is diacritic-insensitive to stay aligned with
+ * the Edge mobile-api boundary.
  */
 export function normalizeDistrict(input: string | null | undefined): DistrictSlug {
   if (!input) return DEFAULT_DISTRICT
@@ -208,6 +208,17 @@ export function normalizeDistrict(input: string | null | undefined): DistrictSlu
   // 3. Vietnamese label (case-insensitive)
   for (const [slug, label] of Object.entries(HCMC_DISTRICTS)) {
     if (label.toLowerCase() === lower) return slug as DistrictSlug
+  }
+
+  // Keep numbered district parsing aligned with Edge domain.ts: "Quan 1",
+  // "quan 1", "Q.1", and "q 1" all normalize to q1.
+  const normalized = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const normalizedNumMatch = normalized.match(/^(?:quan|q)[\s.]*(\d+)$/i)
+  if (normalizedNumMatch) {
+    const slug = `q${normalizedNumMatch[1]}`
+    if (Object.prototype.hasOwnProperty.call(HCMC_DISTRICTS, slug)) {
+      return slug as DistrictSlug
+    }
   }
 
   // 4. Numbered district: "quận 1", "Q.1", "q 1", "quan 1"

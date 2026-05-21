@@ -86,13 +86,14 @@ export async function GET(request: Request, { params }: RouteParams) {
     reason: string | null
     price_min: number | null
     price_max: number | null
+    kael_review: Record<string, unknown> | null
     created_at: string | null
   } | null = null
   if (job.status === 'scope_change_pending') {
     const { data: scopeRows, error: scopeErr } = await withDbTimeout(
       auth.supabase
         .from('scope_change_requests')
-        .select('id, status, requested_description, reason, price_min, price_max, created_at')
+        .select('id, status, requested_description, reason, price_min, price_max, kael_review, created_at')
         .eq('job_id', id)
         .in('status', ['waiting_customer_decision', 'reviewing_by_kael'])
         .order('created_at', { ascending: false })
@@ -111,6 +112,7 @@ export async function GET(request: Request, { params }: RouteParams) {
           reason: scope.reason,
           price_min: scope.price_min,
           price_max: scope.price_max,
+          kael_review: isRecord(scope.kael_review) ? scope.kael_review : null,
           created_at: scope.created_at,
         }
       : null
@@ -148,4 +150,8 @@ export async function GET(request: Request, { params }: RouteParams) {
     broadcast_state: broadcastState,
     current_scope_change: currentScopeChange,
   })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

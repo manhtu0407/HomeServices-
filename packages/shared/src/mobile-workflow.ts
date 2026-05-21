@@ -2,6 +2,7 @@ import {
   HCMC_DISTRICTS,
   PROBLEM_CHIPS,
   type DistrictSlug,
+  type JobStatus,
   type ScopeChangeStatus,
   type ServiceType,
 } from './constants'
@@ -9,6 +10,11 @@ import {
 export const LOCAL_WORKFLOW_PRICE_DISCLAIMER =
   'Đây là ước tính ban đầu. Giá thực tế sẽ được thợ xác nhận trước khi bắt đầu.'
 
+// Local workflow keeps only statuses that create visible customer/worker UI
+// states. Backend-only settlement markers are folded by toLocalDealStatus():
+// estimate_ready -> awaiting_customer_confirm, payment_pending/paid ->
+// confirmed_by_customer. This keeps mobile honest while payment rails remain
+// outside the visible mobile workflow.
 export const LOCAL_DEAL_STATUSES = Object.freeze([
   'draft',
   'analyzing',
@@ -27,6 +33,7 @@ export const LOCAL_DEAL_STATUSES = Object.freeze([
 ] as const)
 
 export type LocalDealStatus = (typeof LOCAL_DEAL_STATUSES)[number]
+const LOCAL_DEAL_STATUS_SET = new Set<string>(LOCAL_DEAL_STATUSES)
 export type LocalDealSource = 'home' | 'kael' | 'booking'
 export type LocalWorkerBroadcastStatus = 'pending' | 'sent' | 'accepted' | 'declined' | 'expired' | 'reassigned' | 'cancelled'
 export type LocalWorkerGate = 'backend_pending' | 'local_deal_audit' | 'remote_backend'
@@ -90,6 +97,7 @@ export type LocalScopeChange = {
   reason: string | null
   priceMin: number | null
   priceMax: number | null
+  kaelReview: Record<string, unknown> | null
   createdAt: string | null
 }
 
@@ -197,6 +205,39 @@ const emptyDraft = (source: LocalDealSource, serviceType: ServiceType | null = n
   inferredProblemLabel: null,
   unsupportedServiceLabel: null,
 })
+
+export function toLocalDealStatus(status: JobStatus): LocalDealStatus {
+  switch (status) {
+    case 'estimate_ready':
+      return 'awaiting_customer_confirm'
+    case 'payment_pending':
+    case 'paid':
+      return 'confirmed_by_customer'
+    case 'draft':
+    case 'analyzing':
+    case 'awaiting_customer_confirm':
+    case 'broadcasting':
+    case 'worker_matched':
+    case 'worker_on_way':
+    case 'arrived':
+    case 'inspecting':
+    case 'repairing':
+    case 'scope_change_pending':
+    case 'completed_by_worker':
+    case 'confirmed_by_customer':
+    case 'reviewed':
+    case 'cancelled':
+      return status
+    default: {
+      const _exhaustive: never = status
+      return _exhaustive
+    }
+  }
+}
+
+export function isLocalDealStatus(status: JobStatus): status is LocalDealStatus {
+  return LOCAL_DEAL_STATUS_SET.has(status)
+}
 
 export function createInitialLocalWorkflowState(): LocalWorkflowState {
   return {

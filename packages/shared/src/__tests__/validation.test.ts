@@ -2,7 +2,13 @@ import { describe, it, expect } from 'vitest'
 import {
   serviceTypeSchema,
   jobCreateSchema,
+  kaelChatCreateSchema,
+  kaelChatTurnSchema,
   workerScopeChangeSchema,
+  workerCancellationRequestSchema,
+  workerCancellationDecisionSchema,
+  jobMediaAttachSchema,
+  devicePushTokenSchema,
   reviewSchema,
   chatMessageSchema,
   sanitizeForLLM,
@@ -166,6 +172,37 @@ describe('jobCreateSchema', () => {
 // workerScopeChangeSchema — STRUCTURES.md A11/B6
 // ===================================================================
 
+describe('kaelChat schemas', () => {
+  it('accepts a Kael chat session start with text and district', () => {
+    const result = kaelChatCreateSchema.parse({
+      service_type: 'plumbing',
+      message: 'Ống nước dưới lavabo đang rò liên tục',
+      problem_chips: ['Ống rò rỉ'],
+      photo_urls: [],
+      address_district: 'q7',
+    })
+
+    expect(result.service_type).toBe('plumbing')
+    expect(result.problem_chips).toEqual(['Ống rò rỉ'])
+  })
+
+  it('accepts a follow-up turn while limiting media payload size', () => {
+    expect(() =>
+      kaelChatTurnSchema.parse({
+        message: 'Tôi gửi thêm ảnh vị trí bị rò.',
+        photo_urls: ['https://example.com/leak.jpg'],
+      })
+    ).not.toThrow()
+
+    expect(() =>
+      kaelChatTurnSchema.parse({
+        message: 'Quá nhiều ảnh',
+        photo_urls: Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.jpg`),
+      })
+    ).toThrow()
+  })
+})
+
 describe('workerScopeChangeSchema', () => {
   const validScope = {
     new_description: 'Phạm vi thay đổi do ống chính bị hỏng',
@@ -248,6 +285,65 @@ describe('workerScopeChangeSchema', () => {
 // ===================================================================
 // reviewSchema — STRUCTURES.md A14
 // ===================================================================
+
+describe('workflow support schemas', () => {
+  it('validates worker cancellation request evidence safely', () => {
+    expect(workerCancellationRequestSchema.parse({
+      reason: 'Thợ không thể tiếp tục vì cần thiết bị an toàn bổ sung.',
+      evidence_photo_urls: ['https://example.com/evidence.jpg'],
+    }).evidence_photo_urls).toHaveLength(1)
+
+    expect(() =>
+      workerCancellationRequestSchema.parse({
+        reason: 'quá ngắn',
+        evidence_photo_urls: ['not-a-url'],
+      })
+    ).toThrow()
+  })
+
+  it('validates worker cancellation decisions', () => {
+    expect(workerCancellationDecisionSchema.parse({ decision: 'approve' }).decision).toBe('approve')
+    expect(() => workerCancellationDecisionSchema.parse({ decision: 'maybe' })).toThrow()
+  })
+
+  it('validates job media attachment payloads', () => {
+    expect(() =>
+      jobMediaAttachSchema.parse({
+        assets: [{
+          object_path: 'job-1/before/photo.jpg',
+          stage: 'before',
+          mime_type: 'image/jpeg',
+          file_size_bytes: 1200,
+        }],
+      })
+    ).not.toThrow()
+
+    expect(() =>
+      jobMediaAttachSchema.parse({
+        assets: Array.from({ length: 6 }, (_, index) => ({
+          object_path: `job-1/before/${index}.jpg`,
+          stage: 'before',
+        })),
+      })
+    ).toThrow()
+  })
+
+  it('validates device push token registration payloads', () => {
+    expect(devicePushTokenSchema.parse({
+      platform: 'ios',
+      push_token: 'ExponentPushToken[valid-token]',
+      permission_status: 'granted',
+    }).safe_metadata).toEqual({})
+
+    expect(() =>
+      devicePushTokenSchema.parse({
+        platform: 'desktop',
+        push_token: 'short',
+        permission_status: 'granted',
+      })
+    ).toThrow()
+  })
+})
 
 describe('reviewSchema', () => {
   const validReview = {

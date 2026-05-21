@@ -27,6 +27,8 @@ const EXPECTED_TABLES = [
   'kael_market_artifacts',
   'job_media_assets',
   'kael_analysis_artifacts',
+  'kael_chat_sessions',
+  'kael_chat_turns',
   'device_push_tokens',
   'worker_cancellation_requests',
 ] as const satisfies readonly TableNames[]
@@ -48,7 +50,7 @@ const EXPECTED_ENUMS = [
 
 describe('Database.public.Tables completeness', () => {
   it('has all aligned workflow tables', () => {
-    expect(EXPECTED_TABLES).toHaveLength(23)
+    expect(EXPECTED_TABLES).toHaveLength(25)
   })
 
   it.each(EXPECTED_TABLES)('table "%s" is a valid generated table key', (name) => {
@@ -163,6 +165,43 @@ describe('Insert type requirements', () => {
 
     expect(rule.rule_type).toBe('price_prior_update')
     expect(version.version).toBe(1)
+  })
+
+  it('kael chat sessions and turns carry service-role chat state', () => {
+    const session = {
+      customer_id: '00000000-0000-0000-0000-000000000000',
+      service_type: 'electrical' as const,
+    } satisfies Database['public']['Tables']['kael_chat_sessions']['Insert']
+    const turn = {
+      session_id: '00000000-0000-0000-0000-000000000000',
+      turn_index: 1,
+      role: 'customer',
+      content_type: 'text',
+    } satisfies Database['public']['Tables']['kael_chat_turns']['Insert']
+
+    expect(session.service_type).toBe('electrical')
+    expect(turn.role).toBe('customer')
+  })
+})
+
+describe('RPC type requirements', () => {
+  it('worker cancellation RPC return includes auto-reassignment fields', () => {
+    type WorkerCancellationRow =
+      Database['public']['Functions']['request_worker_cancellation_atomic']['Returns'][number]
+    const row = {
+      ok: true,
+      error_code: null,
+      cancellation_id: '00000000-0000-0000-0000-000000000000',
+      cancellation_status: 'approved',
+      job_id_out: '00000000-0000-0000-0000-000000000000',
+      job_status: 'broadcasting',
+      service_type_out: 'plumbing',
+      district_code: 'q7',
+      worker_id_out: '00000000-0000-0000-0000-000000000000',
+      created_at_ts: '2026-05-20T00:00:00.000Z',
+    } satisfies WorkerCancellationRow
+
+    expect(row.job_status).toBe('broadcasting')
   })
 })
 

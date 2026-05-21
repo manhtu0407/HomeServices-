@@ -1,8 +1,10 @@
 import { createContext, use, useEffect, useRef, useReducer } from 'react'
+import { useRouter } from 'expo-router'
 import { Platform } from 'react-native'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { USER_ROLES, type UserRole } from '@home-services/shared'
+import { addPushNotificationResponseListener, setupPushNotifications } from './push-notifications'
 
 type ProfileStatus = 'idle' | 'loading' | 'ready' | 'profile_missing' | 'profile_error' | 'config_missing'
 
@@ -43,14 +45,40 @@ function authSnapshotReducer(current: AuthSnapshot, patch: Partial<AuthSnapshot>
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { push: pushRoute } = useRouter()
   const [{ session, role, loading, profileStatus, authError }, patchAuth] = useReducer(authSnapshotReducer, INITIAL_AUTH_SNAPSHOT)
   const loadingRef = useRef(INITIAL_AUTH_SNAPSHOT.loading)
+  const pushRegistrationKeyRef = useRef<string | null>(null)
   const sessionRef = useRef<Session | null>(INITIAL_AUTH_SNAPSHOT.session)
 
   useEffect(() => {
     loadingRef.current = loading
     sessionRef.current = session
   }, [loading, session])
+
+  useEffect(() => {
+    const subscription = addPushNotificationResponseListener((path) => {
+      pushRoute(path as never)
+    })
+    return () => subscription.remove()
+  }, [pushRoute])
+
+  useEffect(() => {
+    const userId = session?.user.id ?? null
+    if (!userId || !role || profileStatus !== 'ready') {
+      pushRegistrationKeyRef.current = null
+      return
+    }
+
+    const registrationKey = `${userId}:${role}`
+    if (pushRegistrationKeyRef.current === registrationKey) return
+    pushRegistrationKeyRef.current = registrationKey
+    void setupPushNotifications({ role }).then((result) => {
+      if (result.status === 'error') {
+        pushRegistrationKeyRef.current = null
+      }
+    })
+  }, [profileStatus, role, session?.user.id])
 
   useEffect(() => {
     if (!supabase) {
