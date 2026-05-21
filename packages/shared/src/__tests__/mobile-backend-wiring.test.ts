@@ -26,6 +26,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
     for (const path of [
       "'/services'",
+      "'/places/autocomplete'",
       "'/jobs'",
       '`/jobs/${jobId}`',
       '`/jobs/${jobId}/confirm-search`',

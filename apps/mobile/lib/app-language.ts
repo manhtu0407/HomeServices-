@@ -220,11 +220,11 @@ async function hydrateLanguage() {
     return
   }
 
-  for (const key of LEGACY_LANGUAGE_STORAGE_KEYS) {
-    const legacy = await AsyncStorage.getItem(key).catch(() => null)
-    if (legacy === 'vi' || legacy === 'en') {
-      applyAppLanguage(legacy)
-      return
-    }
+  const legacyValues = await Promise.all(
+    LEGACY_LANGUAGE_STORAGE_KEYS.map((key) => AsyncStorage.getItem(key).catch(() => null)),
+  )
+  const legacy = legacyValues.find((value): value is AppLanguage => value === 'vi' || value === 'en')
+  if (legacy) {
+    applyAppLanguage(legacy)
   }
 }

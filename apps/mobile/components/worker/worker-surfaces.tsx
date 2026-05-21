@@ -186,6 +186,7 @@ const workerCopy = {
       readinessNoProfile: 'Hoàn tất hồ sơ thợ trước khi nhận yêu cầu mới.',
       readinessOnline: 'Bật nhận việc khi hồ sơ đã được duyệt và bạn đang rảnh.',
       readinessOffline: 'Tắt nhận việc khi đang bận hoặc chưa đủ điều kiện nhận yêu cầu.',
+      readinessSuspended: 'Tài khoản đang tạm khóa. Tắt nhận việc và liên hệ hỗ trợ trước khi nhận yêu cầu mới.',
       readinessVerification: 'Xác minh',
       readinessAvailability: 'Khả dụng',
       readinessRequest: 'Yêu cầu mới',
@@ -228,18 +229,18 @@ const workerCopy = {
       scopeStatus: 'Khách quyết định',
       scopeTitle: 'Thay đổi phạm vi',
       scopeBody: 'Thợ chờ khách xác nhận trước khi tiếp tục phần việc mới.',
-      jobRoomCta: 'Mở JobRoom',
+      jobRoomCta: 'Mở phòng việc',
     },
     chat: {
       eyebrow: 'Tin nhắn',
-      title: 'JobRoom',
-      jobRoomTitle: 'JobRoom của Kael',
+      title: 'Phòng việc',
+      jobRoomTitle: 'Phòng việc Kael',
       waitingTitle: 'Đang chờ Kael đưa việc',
-      waitingBody: 'Khi khách xác nhận tìm thợ, JobRoom sẽ mở tóm tắt công việc, khu vực chung và kênh trao đổi.',
-      waitingInput: 'Chờ Kael đưa yêu cầu vào JobRoom.',
+      waitingBody: 'Khi khách xác nhận tìm thợ, Kael sẽ mở tóm tắt công việc, khu vực chung và kênh trao đổi.',
+      waitingInput: 'Chờ Kael đưa yêu cầu vào phòng việc.',
       handoffTitle: 'Kael giao việc',
       privacyGate: 'Địa chỉ chi tiết chỉ mở sau khi thợ chấp nhận.',
-      acceptedGate: 'Đã nhận việc. Có thể trao đổi trong JobRoom.',
+      acceptedGate: 'Đã nhận việc. Có thể trao đổi trong phòng việc.',
       lockedGate: 'Chấp nhận việc để mở trao đổi.',
       serviceLabel: 'Dịch vụ',
       problemLabel: 'Vấn đề',
@@ -296,6 +297,7 @@ const workerCopy = {
       readinessNoProfile: 'Complete your worker profile before receiving new requests.',
       readinessOnline: 'Go online when your profile is approved and you are available.',
       readinessOffline: 'Stay offline while busy or not eligible for new requests.',
+      readinessSuspended: 'This account is suspended. Stay offline and contact support before receiving new requests.',
       readinessVerification: 'Verification',
       readinessAvailability: 'Availability',
       readinessRequest: 'New request',
@@ -407,6 +409,10 @@ const workerVerificationCopy = {
     yearsExperience: 'Năm kinh nghiệm',
     districts: 'Khu vực làm việc',
     districtsPlaceholder: 'Khu vực làm việc, cách nhau bằng dấu phẩy',
+    homeLat: 'Vĩ độ điểm xuất phát',
+    homeLng: 'Kinh độ điểm xuất phát',
+    serviceRadius: 'Bán kính km',
+    problemSpecializations: 'Chuyên môn, cách nhau bằng dấu phẩy',
     bankName: 'Ngân hàng',
     bankAccount: 'Số tài khoản',
     selectSkill: 'Chọn kỹ năng',
@@ -447,6 +453,10 @@ const workerVerificationCopy = {
     yearsExperience: 'Years of experience',
     districts: 'Work areas',
     districtsPlaceholder: 'Work areas, separated by commas',
+    homeLat: 'Home latitude',
+    homeLng: 'Home longitude',
+    serviceRadius: 'Radius km',
+    problemSpecializations: 'Specializations, comma-separated',
     bankName: 'Bank',
     bankAccount: 'Account number',
     selectSkill: 'Select skill',
@@ -480,6 +490,31 @@ const workerVerificationCopy = {
     },
   },
 } as const
+type WorkerVerificationCopy = {
+  bankAccount: string
+  bankName: string
+  dateOfBirth: string
+  districts: string
+  districtsPlaceholder: string
+  errors: Record<'bank' | 'files' | 'identity' | 'submit' | 'work', string>
+  files: Record<'cccdBack' | 'cccdFront' | 'choose' | 'selectedFallback' | 'selfie', string>
+  homeLat: string
+  homeLng: string
+  kicker: string
+  legalName: string
+  permissionError: string
+  problemSpecializations: string
+  savedBody: string
+  savedTitle: string
+  selectSkill: string
+  serviceRadius: string
+  status: Record<WorkerVerificationStatus, string>
+  submit: string
+  submitting: string
+  title: string
+  uploadError: string
+  yearsExperience: string
+}
 
 const workerActionCopy = {
   vi: {
@@ -678,6 +713,7 @@ export function WorkerJobsSurface() {
   return (
     <WorkerFrame active="jobs" eyebrow={copy.jobs.eyebrow} title={copy.jobs.title} testID="worker-jobs-surface">
       <SegmentFilter labels={copy.jobs.filters} />
+      <WorkerJobsTabOverview />
       <IncomingRequestSheet compact />
       <JobActivityCard icon="tools" status={deal ? localizedStatusLabel(selectors.currentStatus, language) : copy.jobs.emptyStatus} title={jobTitle} body={jobBody} tone="mint" />
       <WorkerJobsJobRoomEntry />
@@ -715,6 +751,7 @@ export function WorkerEarningsSurface() {
         <QuickPanel icon="clock" title={copy.earnings.waiting} value={waitingValue} tone="cyan" />
       </View>
 
+      <WorkerEarningsTrend />
       <WorkerEarningsLedger />
     </WorkerFrame>
   )
@@ -811,16 +848,20 @@ function WorkerReadinessPanel() {
   const { copy, language, tokens } = useWorkerUi()
   const { selectors, state, workerProfile } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
+  const isSuspended = Boolean(workerProfile?.is_suspended)
+  const isAvailable = Boolean(workerProfile?.is_available && !isSuspended)
   const verificationLabel = localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)
   const availabilityLabel = !workerProfile
     ? appCopy[language].common.noData
-    : workerProfile.is_available
+    : isSuspended
+    ? language === 'en' ? 'Suspended' : 'Tạm khóa'
+    : isAvailable
     ? language === 'en' ? 'Online' : 'Đang nhận việc'
     : language === 'en' ? 'Offline' : 'Tạm tắt nhận'
   const requestLabel = deal ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noRequest
   const body = !workerProfile
     ? copy.home.readinessNoProfile
-    : workerProfile.is_available ? copy.home.readinessOnline : copy.home.readinessOffline
+    : isSuspended ? copy.home.readinessSuspended : isAvailable ? copy.home.readinessOnline : copy.home.readinessOffline
 
   return (
     <View style={[styles.readinessPanel, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-unified-readiness-panel">
@@ -833,8 +874,8 @@ function WorkerReadinessPanel() {
             {body}
           </Text>
         </View>
-        <View style={[styles.readinessBadge, { backgroundColor: workerProfile?.is_available ? tokens.mint : tokens.glassStrong, borderColor: tokens.border }]}>
-          <Icon name={workerProfile?.is_available ? 'check' : 'clock'} active={Boolean(workerProfile?.is_available)} />
+        <View style={[styles.readinessBadge, { backgroundColor: isAvailable ? tokens.mint : tokens.glassStrong, borderColor: tokens.border }]}>
+          <Icon name={isSuspended ? 'shield' : isAvailable ? 'check' : 'clock'} active={isAvailable} />
         </View>
       </View>
       <View style={styles.readinessGrid}>
@@ -842,6 +883,52 @@ function WorkerReadinessPanel() {
         <Metric label={copy.home.readinessAvailability} value={availabilityLabel} />
         <Metric label={copy.home.readinessRequest} value={requestLabel} />
       </View>
+    </View>
+  )
+}
+
+function WorkerJobsTabOverview() {
+  const { copy, language, tokens } = useWorkerUi()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const broadcast = deal?.broadcast ?? null
+  const isAccepted = isAcceptedLocalWorkerDeal(deal)
+  const needsAction = selectors.currentStatus === 'scope_change_pending'
+  const labels = copy.jobs.filters
+  const waitingLabel = labels[0] ?? (language === 'en' ? 'Pending' : 'Chờ nhận')
+  const activeLabel = labels[1] ?? (language === 'en' ? 'Active' : 'Đang làm')
+  const needsLabel = labels[2] ?? (language === 'en' ? 'Needs attention' : 'Cần xử lý')
+  const rows = [
+    {
+      icon: 'clock' as WorkerIconName,
+      title: waitingLabel,
+      value: broadcast && !isAccepted ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noData,
+    },
+    {
+      icon: 'tools' as WorkerIconName,
+      title: activeLabel,
+      value: isAccepted ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noData,
+    },
+    {
+      icon: 'shield' as WorkerIconName,
+      title: needsLabel,
+      value: needsAction ? copy.jobs.scopeStatus : appCopy[language].common.noData,
+    },
+  ]
+
+  return (
+    <View style={styles.jobsTabOverview} testID="worker-jobs-tab-overview">
+      {rows.map((row, index) => (
+        <View key={row.title} style={[styles.jobsTabCard, workerOpaqueCardSurface(tokens)]} testID={`worker-jobs-tab-${index}`}>
+          <Icon name={row.icon} small />
+          <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
+            {row.title}
+          </Text>
+          <Text style={[styles.jobsTabValue, { color: tokens.ink }]} numberOfLines={2}>
+            {row.value}
+          </Text>
+        </View>
+      ))}
     </View>
   )
 }
@@ -890,7 +977,7 @@ function WorkerChatContent() {
   const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : broadcast ? copy.chat.lockedGate : copy.chat.waitingInput
   const hiddenAddressLabel = workerActionCopy[language].hiddenAddress
   const jobAreaLabel = broadcast?.generalArea ? localizedWorkerAreaLabel(broadcast.generalArea, language) : hiddenAddressLabel
-  const fullAddressLabel = broadcast?.fullAddressLabel ?? deal?.draft.addressLabel ?? null
+  const fullAddressLabel = broadcast?.fullAddressVisible ? broadcast.fullAddressLabel ?? null : null
   const jobAddressLabel = selectors.canWorkerSeeFullAddress && fullAddressLabel ? localizedWorkerAreaLabel(fullAddressLabel, language) : jobAreaLabel
   const jobStatusLabel = localizedStatusLabel(selectors.currentStatus, language)
   const jobRoomMeta = broadcast ? [
@@ -1061,7 +1148,7 @@ function buildWorkerBroadcastBrief(deal: LocalDeal | null, broadcast: WorkerBroa
   const serviceLabel = localizedServiceLabel(broadcast.serviceType, language)
   const problemLabel = localizedWorkerProblemSummary(broadcast, language)
   const areaLabel = localizedWorkerAreaLabel(broadcast.generalArea, language)
-  const fullAddressLabel = broadcast.fullAddressLabel ?? deal?.draft.addressLabel ?? null
+  const fullAddressLabel = broadcast.fullAddressVisible ? broadcast.fullAddressLabel ?? null : null
   const addressGate = language === 'en'
     ? isAcceptedLocalWorkerDeal(deal) && fullAddressLabel
       ? `Address: ${localizedWorkerAreaLabel(fullAddressLabel, language)}.`
@@ -1155,6 +1242,36 @@ function WorkerEarningsLedger() {
   )
 }
 
+function WorkerEarningsTrend() {
+  const { language, tokens } = useWorkerUi()
+  const title = language === 'en' ? 'Recent days' : '7 ngày gần nhất'
+  const empty = appCopy[language].common.noData
+  const days = language === 'en' ? ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7'] : ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+
+  return (
+    <View style={[styles.earningsTrendCard, workerOpaqueCardSurface(tokens, 'mint')]} testID="worker-earnings-seven-day-chart">
+      <View style={styles.rowBetween}>
+        <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
+          {empty}
+        </Text>
+      </View>
+      <View style={[styles.earningsChartShell, workerOpaqueCardSurface(tokens, 'raised')]}>
+        {days.map((day) => (
+          <View key={day} style={styles.earningsChartCol}>
+            <View style={[styles.earningsChartPlaceholder, { backgroundColor: tokens.border }]} />
+            <Text style={[styles.metricLabel, { color: tokens.muted }]} numberOfLines={1}>
+              {day}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  )
+}
+
 function WorkerProfileContent() {
   const { copy, language, tokens } = useWorkerUi()
   const { replace } = useRouter()
@@ -1240,7 +1357,11 @@ type WorkerVerificationField =
   | 'bankName'
   | 'dateOfBirth'
   | 'districts'
+  | 'homeLat'
+  | 'homeLng'
   | 'legalName'
+  | 'problemSpecializations'
+  | 'serviceRadiusKm'
   | 'yearsExperience'
 
 type WorkerVerificationFormState = {
@@ -1249,7 +1370,11 @@ type WorkerVerificationFormState = {
   dateOfBirth: string
   districts: string
   files: Partial<Record<WorkerVerificationFileSlot, LocalMediaUploadDraft>>
+  homeLat: string
+  homeLng: string
   legalName: string
+  problemSpecializations: string
+  serviceRadiusKm: string
   serviceTypes: ServiceType[]
   submitError: string | null
   submitting: boolean
@@ -1272,7 +1397,11 @@ function createWorkerVerificationFormState(workerProfile: WorkerProfileResponse 
     dateOfBirth: workerProfile?.date_of_birth ?? '',
     districts: workerProfile?.districts.join(', ') ?? '',
     files: {},
+    homeLat: workerProfile?.home_lat === null || workerProfile?.home_lat === undefined ? '' : String(workerProfile.home_lat),
+    homeLng: workerProfile?.home_lng === null || workerProfile?.home_lng === undefined ? '' : String(workerProfile.home_lng),
     legalName: workerProfile?.legal_name ?? '',
+    problemSpecializations: workerProfile?.problem_specializations.join(', ') ?? '',
+    serviceRadiusKm: String(workerProfile?.service_radius_km ?? 8),
     serviceTypes: workerProfile?.service_types.length ? workerProfile.service_types : ['electrical'],
     submitError: null,
     submitting: false,
@@ -1295,7 +1424,11 @@ function workerVerificationFormReducer(
         bankName: state.bankName || action.profile.bank_name || '',
         dateOfBirth: state.dateOfBirth || action.profile.date_of_birth || '',
         districts: state.districts || action.profile.districts.join(', '),
+        homeLat: state.homeLat || (action.profile.home_lat === null ? '' : String(action.profile.home_lat)),
+        homeLng: state.homeLng || (action.profile.home_lng === null ? '' : String(action.profile.home_lng)),
         legalName: state.legalName || action.profile.legal_name || '',
+        problemSpecializations: state.problemSpecializations || action.profile.problem_specializations.join(', '),
+        serviceRadiusKm: state.serviceRadiusKm || String(action.profile.service_radius_km ?? 8),
         serviceTypes: action.profile.service_types.length > 0 ? action.profile.service_types : state.serviceTypes,
         yearsExperience: state.yearsExperience || (action.profile.years_experience ? String(action.profile.years_experience) : ''),
       }
@@ -1320,14 +1453,18 @@ function workerVerificationFormReducer(
 function WorkerVerificationForm() {
   const { language, tokens } = useWorkerUi()
   const { actions, workerProfile } = useFrontendWorkflow()
-  const verificationCopy = workerVerificationCopy[language]
+  const verificationCopy = workerVerificationCopy[language] as WorkerVerificationCopy
   const [{
     bankAccount,
     bankName,
     dateOfBirth,
     districts,
     files,
+    homeLat,
+    homeLng,
     legalName,
+    problemSpecializations,
+    serviceRadiusKm,
     serviceTypes,
     submitError,
     submitting,
@@ -1341,7 +1478,11 @@ function WorkerVerificationForm() {
   const setLegalName = (value: string) => formDispatch({ type: 'field', field: 'legalName', value })
   const setDateOfBirth = (value: string) => formDispatch({ type: 'field', field: 'dateOfBirth', value })
   const setDistricts = (value: string) => formDispatch({ type: 'field', field: 'districts', value })
+  const setHomeLat = (value: string) => formDispatch({ type: 'field', field: 'homeLat', value })
+  const setHomeLng = (value: string) => formDispatch({ type: 'field', field: 'homeLng', value })
   const setYearsExperience = (value: string) => formDispatch({ type: 'field', field: 'yearsExperience', value })
+  const setProblemSpecializations = (value: string) => formDispatch({ type: 'field', field: 'problemSpecializations', value })
+  const setServiceRadiusKm = (value: string) => formDispatch({ type: 'field', field: 'serviceRadiusKm', value })
   const setBankName = (value: string) => formDispatch({ type: 'field', field: 'bankName', value })
   const setBankAccount = (value: string) => formDispatch({ type: 'field', field: 'bankAccount', value })
   const setSubmitError = (error: string | null) => formDispatch({ type: 'submit_error', error })
@@ -1385,6 +1526,13 @@ function WorkerVerificationForm() {
 
   const submitVerification = async () => {
     const years = Number.parseInt(yearsExperience.replace(/[^\d]/g, ''), 10)
+    const radius = Number.parseInt(serviceRadiusKm.replace(/[^\d]/g, ''), 10)
+    const parsedHomeLat = homeLat.trim() ? Number(homeLat.trim()) : null
+    const parsedHomeLng = homeLng.trim() ? Number(homeLng.trim()) : null
+    const specializationList = problemSpecializations.split(',').flatMap((item) => {
+      const specialization = item.trim()
+      return specialization ? [specialization] : []
+    })
     const districtList = districts.split(',').flatMap((item) => {
       const district = item.trim()
       return district ? [district] : []
@@ -1394,6 +1542,24 @@ function WorkerVerificationForm() {
       return
     }
     if (!Number.isFinite(years) || years < 0 || districtList.length === 0 || serviceTypes.length === 0) {
+      setSubmitError(verificationCopy.errors.work)
+      return
+    }
+    if (!Number.isFinite(radius) || radius < 1 || radius > 30) {
+      setSubmitError(verificationCopy.errors.work)
+      return
+    }
+    if (
+      (parsedHomeLat !== null || parsedHomeLng !== null) &&
+      (
+        parsedHomeLat === null ||
+        parsedHomeLng === null ||
+        !Number.isFinite(parsedHomeLat) ||
+        !Number.isFinite(parsedHomeLng) ||
+        Math.abs(parsedHomeLat) > 90 ||
+        Math.abs(parsedHomeLng) > 180
+      )
+    ) {
       setSubmitError(verificationCopy.errors.work)
       return
     }
@@ -1425,6 +1591,10 @@ function WorkerVerificationForm() {
       service_types: serviceTypes,
       years_experience: years,
       districts: districtList,
+      home_lat: parsedHomeLat ?? undefined,
+      home_lng: parsedHomeLng ?? undefined,
+      service_radius_km: radius,
+      problem_specializations: specializationList,
       bank_account: bankAccount.trim(),
       bank_name: bankName.trim(),
       ...uploaded.urls,
@@ -1456,6 +1626,14 @@ function WorkerVerificationForm() {
         <TextInput accessibilityLabel={verificationCopy.yearsExperience} keyboardType="number-pad" onChangeText={setYearsExperience} placeholder={verificationCopy.yearsExperience} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-years" value={yearsExperience} />
       </View>
       <TextInput accessibilityLabel={verificationCopy.districts} onChangeText={setDistricts} placeholder={verificationCopy.districtsPlaceholder} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-districts" value={districts} />
+      <View style={styles.verificationGrid} testID="worker-verification-home-geo">
+        <TextInput accessibilityLabel={verificationCopy.homeLat} keyboardType="decimal-pad" onChangeText={setHomeLat} placeholder={verificationCopy.homeLat} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-home-lat" value={homeLat} />
+        <TextInput accessibilityLabel={verificationCopy.homeLng} keyboardType="decimal-pad" onChangeText={setHomeLng} placeholder={verificationCopy.homeLng} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-home-lng" value={homeLng} />
+      </View>
+      <View style={styles.verificationGrid}>
+        <TextInput accessibilityLabel={verificationCopy.serviceRadius} keyboardType="number-pad" onChangeText={setServiceRadiusKm} placeholder={verificationCopy.serviceRadius} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-service-radius" value={serviceRadiusKm} />
+        <TextInput accessibilityLabel={verificationCopy.problemSpecializations} onChangeText={setProblemSpecializations} placeholder={verificationCopy.problemSpecializations} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-problem-specializations" value={problemSpecializations} />
+      </View>
       <View style={styles.skillWrap} testID="worker-verification-service-types">
         {workerVerificationServices.map((serviceType) => {
           const selected = serviceTypes.includes(serviceType)
@@ -1744,7 +1922,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       ],
     )
   }
-  const fullAddressLabel = broadcast?.fullAddressLabel ?? deal?.draft.addressLabel ?? null
+  const fullAddressLabel = broadcast?.fullAddressVisible ? broadcast.fullAddressLabel ?? null : null
   const addressLabel = selectors.canWorkerSeeFullAddress
     ? localizedWorkerAreaLabel(fullAddressLabel, language)
     : broadcast?.generalArea
@@ -2582,6 +2760,9 @@ const styles = StyleSheet.create({
   segmentShell: { borderRadius: 999, flexDirection: 'row', gap: 6, overflow: 'hidden', padding: 6, position: 'relative' },
   segmentPill: { alignItems: 'center', borderRadius: 999, flex: 1, justifyContent: 'center', minHeight: 38, paddingHorizontal: 4 },
   segmentText: { fontSize: 13, fontWeight: '600' },
+  jobsTabOverview: { flexDirection: 'row', gap: 8 },
+  jobsTabCard: { alignItems: 'center', borderRadius: 22, borderWidth: 1, flex: 1, gap: 5, minHeight: 92, overflow: 'hidden', padding: 10 },
+  jobsTabValue: { fontSize: 13, fontWeight: '600', lineHeight: 17, textAlign: 'center' },
   flowCard: { borderRadius: 28, gap: 10, overflow: 'hidden', padding: 16, position: 'relative' },
   statusPill: { borderRadius: 999, fontSize: 12, fontWeight: '600', overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
   cardTitle: { fontSize: 17, fontWeight: '600', letterSpacing: 0, lineHeight: 23 },
@@ -2612,6 +2793,10 @@ const styles = StyleSheet.create({
   sendButton: { alignItems: 'center', borderRadius: 17, flexShrink: 0, height: 42, justifyContent: 'center', width: 42 },
   earningsHero: { borderRadius: 32, gap: 12, overflow: 'hidden', padding: 18, position: 'relative' },
   earningsBadge: { alignItems: 'center', borderRadius: 24, height: 58, justifyContent: 'center', transform: [{ rotate: '-5deg' }], width: 58 },
+  earningsTrendCard: { borderRadius: 30, borderWidth: 1, gap: 12, overflow: 'hidden', padding: 14 },
+  earningsChartShell: { alignItems: 'flex-end', borderRadius: 24, borderWidth: 1, flexDirection: 'row', gap: 10, justifyContent: 'space-between', minHeight: 132, padding: 14 },
+  earningsChartCol: { alignItems: 'center', flex: 1, gap: 7, justifyContent: 'flex-end' },
+  earningsChartPlaceholder: { borderRadius: 999, height: 42, opacity: 0.48, width: '100%' },
   moneyText: { fontSize: 34, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: 0 },
   moneyTextState: { fontSize: 24, lineHeight: 30 },
   listCard: { borderRadius: 29, gap: 4, overflow: 'hidden', padding: 10, position: 'relative' },

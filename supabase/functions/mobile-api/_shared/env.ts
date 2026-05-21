@@ -19,6 +19,7 @@ export function readEdgeEnv(
     anthropicApiKey: getEnv("ANTHROPIC_API_KEY"),
     perplexityApiKey: getEnv("PERPLEXITY_API_KEY"),
     deepseekApiKey: getEnv("DEEPSEEK_API_KEY"),
+    googleMapsApiKey: getEnv("GOOGLE_MAPS_API_KEY"),
   };
 }
 

@@ -4,6 +4,7 @@ import {
   jobCreateSchema,
   kaelChatCreateSchema,
   kaelChatTurnSchema,
+  placesAutocompleteSchema,
   workerScopeChangeSchema,
   workerCancellationRequestSchema,
   workerCancellationDecisionSchema,
@@ -179,11 +180,19 @@ describe('kaelChat schemas', () => {
       message: 'Ống nước dưới lavabo đang rò liên tục',
       problem_chips: ['Ống rò rỉ'],
       photo_urls: [],
+      address_label: 'Landmark 81, Bình Thạnh, TP.HCM',
       address_district: 'q7',
     })
 
     expect(result.service_type).toBe('plumbing')
     expect(result.problem_chips).toEqual(['Ống rò rỉ'])
+    expect(result.address_label).toContain('Landmark')
+  })
+
+  it('validates Places autocomplete input for the Edge proxy', () => {
+    expect(placesAutocompleteSchema.parse({ input: 'Bình Thạnh' }).input).toBe('Bình Thạnh')
+    expect(() => placesAutocompleteSchema.parse({ input: 'x' })).toThrow()
+    expect(() => placesAutocompleteSchema.parse({ input: 'x'.repeat(200) })).toThrow()
   })
 
   it('accepts a follow-up turn while limiting media payload size', () => {

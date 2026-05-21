@@ -32,17 +32,27 @@ export function useGlassAccessibility(): GlassAccessibilityPreferences {
         .catch(() => undefined)
     }
 
-    const motionSub = typeof accessibilityInfo.addEventListener === 'function'
-      ? accessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion)
-      : null
-    const transparencySub = typeof accessibilityInfo.addEventListener === 'function' && typeof accessibilityInfo.isReduceTransparencyEnabled === 'function'
-      ? accessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency)
-      : null
+    let removeMotionListener = () => undefined
+    let removeTransparencyListener = () => undefined
+
+    if (typeof accessibilityInfo.addEventListener === 'function') {
+      const motionSubscription = accessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion)
+      removeMotionListener = () => {
+        motionSubscription.remove()
+      }
+    }
+
+    if (typeof accessibilityInfo.addEventListener === 'function' && typeof accessibilityInfo.isReduceTransparencyEnabled === 'function') {
+      const transparencySubscription = accessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency)
+      removeTransparencyListener = () => {
+        transparencySubscription.remove()
+      }
+    }
 
     return () => {
       mounted = false
-      motionSub?.remove()
-      transparencySub?.remove()
+      removeMotionListener()
+      removeTransparencyListener()
     }
   }, [])
 

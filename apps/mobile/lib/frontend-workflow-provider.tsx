@@ -864,6 +864,9 @@ function sameWorkerProfile(left: WorkerProfileResponse | null, right: WorkerProf
     && left.years_experience === right.years_experience
     && left.rating === right.rating
     && left.total_jobs === right.total_jobs
+    && left.home_lat === right.home_lat
+    && left.home_lng === right.home_lng
+    && left.service_radius_km === right.service_radius_km
     && left.legal_name === right.legal_name
     && left.date_of_birth === right.date_of_birth
     && left.gender === right.gender
@@ -873,6 +876,7 @@ function sameWorkerProfile(left: WorkerProfileResponse | null, right: WorkerProf
     && left.has_selfie === right.has_selfie
     && sameStringArray(left.service_types, right.service_types)
     && sameStringArray(left.districts, right.districts)
+    && sameStringArray(left.problem_specializations, right.problem_specializations)
 }
 
 function sameNotifications(

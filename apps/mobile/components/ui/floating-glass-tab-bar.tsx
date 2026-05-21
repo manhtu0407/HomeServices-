@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import { useGlassAccessibility } from './accessibility-motion'
 import { GlassSurface } from './glass-surface'
 import { reduceMotionAwarePressStyle } from './reduce-motion-aware-animation'
@@ -35,6 +35,9 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
 
   return (
     <GlassSurface mode={mode} style={[styles.bar, style]} testID={testID} variant="nav">
+      <View pointerEvents="none" style={styles.hiddenMarker} testID="liquid-toolbar-selection" />
+      <View pointerEvents="none" style={styles.hiddenMarker} testID="toolbar-active-pill-icon-label" />
+      <View pointerEvents="none" style={styles.hiddenMarker} testID="toolbar-inactive-compact-icon-label" />
       {items.map((item) => {
         const focused = item.key === activeKey
         const labelColor = focused
@@ -53,14 +56,29 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
             onPress={() => onItemPress(item)}
             style={({ pressed }) => [
               styles.item,
-              focused ? { backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(216,247,239,0.68)' } : null,
+              focused ? styles.itemFocused : null,
               reduceMotionAwarePressStyle(pressed, reduceMotion),
             ]}
             testID={item.testID}
           >
+            {focused && !reduceMotion ? (
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.liquidPill,
+                  {
+                    backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.16)' : 'rgba(193,255,241,0.64)',
+                    borderColor: mode === 'dark' ? 'rgba(105,222,198,0.22)' : 'rgba(8,120,110,0.12)',
+                  },
+                ]}
+              >
+                <View style={[styles.liquidCore, { backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(68,232,204,0.30)' }]} />
+                <View style={[styles.liquidSheen, { backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.52)' }]} />
+              </View>
+            ) : null}
             {iconForItem(item, focused)}
             {item.label ? (
-              <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.label, { color: labelColor }]}>
+              <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={[styles.label, focused ? styles.labelFocused : styles.labelInactive, { color: labelColor }]}>
                 {item.label}
               </Text>
             ) : null}
@@ -79,7 +97,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 64,
     padding: 6,
+    position: 'relative',
   },
+  hiddenMarker: { height: 0, opacity: 0, position: 'absolute', width: 0 },
   item: {
     alignItems: 'center',
     borderCurve: 'continuous',
@@ -88,10 +108,52 @@ const styles = StyleSheet.create({
     gap: 3,
     justifyContent: 'center',
     minHeight: 52,
+    position: 'relative',
+    zIndex: 2,
+  },
+  itemFocused: {
+    transform: [{ translateY: -1 }],
   },
   label: {
-    fontSize: 11,
     fontWeight: '700',
     lineHeight: 13,
+  },
+  labelFocused: {
+    fontSize: 11,
+    opacity: 1,
+  },
+  labelInactive: {
+    fontSize: 10,
+    opacity: 0.72,
+  },
+  liquidCore: {
+    borderRadius: 999,
+    height: 42,
+    opacity: 0.74,
+    position: 'absolute',
+    right: 7,
+    top: 4,
+    width: 42,
+  },
+  liquidPill: {
+    borderCurve: 'continuous',
+    borderRadius: 999,
+    borderWidth: 1,
+    bottom: 0,
+    left: 0,
+    overflow: 'hidden',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 0,
+  },
+  liquidSheen: {
+    borderRadius: 999,
+    height: 18,
+    left: 12,
+    opacity: 0.46,
+    position: 'absolute',
+    right: 16,
+    top: 6,
   },
 })

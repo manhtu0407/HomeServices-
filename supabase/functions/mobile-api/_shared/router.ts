@@ -15,6 +15,8 @@ import {
   kaelChatCreateSchema,
   type KaelChatTurnInput,
   kaelChatTurnSchema,
+  type PlacesAutocompleteInput,
+  placesAutocompleteSchema,
   type ReviewInput,
   reviewSchema,
   type WorkerCancellationDecisionInput,
@@ -392,8 +394,22 @@ export type WorkerStatusUpdateInput = {
   final_price?: number;
 };
 
+export type PlacesAutocompleteResponse = {
+  suggestions: Array<{
+    place_id: string;
+    label: string;
+    main_text: string;
+    secondary_text: string | null;
+  }>;
+  fallback_used: boolean;
+};
+
 export type MobileApiServices = {
   listServices(ctx: MobileApiContext): Promise<ServiceCatalogResponse>;
+  placesAutocomplete(
+    ctx: MobileApiContext,
+    input: PlacesAutocompleteInput,
+  ): Promise<PlacesAutocompleteResponse>;
   createJob(
     ctx: MobileApiContext,
     input: JobCreateInput,
@@ -579,6 +595,11 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
 type Route =
   | { kind: "services"; method: "GET"; roles?: UserRole[] }
   | {
+    kind: "places.autocomplete";
+    method: "POST";
+    roles: UserRole[];
+  }
+  | {
     kind: "jobs.create";
     method: "POST";
     roles: UserRole[];
@@ -704,6 +725,13 @@ function matchRoute(request: Request): Route | null {
 
   if (method === "GET" && path === "/services") {
     return { kind: "services", method: "GET" };
+  }
+  if (method === "POST" && path === "/places/autocomplete") {
+    return {
+      kind: "places.autocomplete",
+      method: "POST",
+      roles: ["customer", "worker", "admin"],
+    };
   }
   if (method === "POST" && path === "/jobs") {
     return {
@@ -944,6 +972,11 @@ async function dispatchRoute(
   switch (route.kind) {
     case "services":
       return services.listServices(ctx);
+    case "places.autocomplete": {
+      const input = placesAutocompleteSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.placesAutocomplete(ctx, input.data);
+    }
     case "jobs.create": {
       const input = jobCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

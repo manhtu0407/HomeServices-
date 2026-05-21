@@ -2374,4 +2374,27 @@ Google Cloud Console resources đã provisioned và secret đã set. Codex KHÔN
 
 ---
 
+#### 21.3.1.done — Codex local implementation update — 2026-05-21
+
+Scope completed in this local pass:
+- #2 Auto-suspend: new migration `20260521120000_geo_matching_and_worker_auto_suspend.sql` updates `request_worker_cancellation_atomic` with 7-day approved-cancel count and sets `is_suspended=true`, `is_available=false`, `verification_status='suspended'` when count >= 5.
+- #3 Geo schema: migration adds `jobs.address_lat/address_lng/geo_source` and worker `home_lat/home_lng/service_radius_km/problem_specializations`; shared/mobile API types were aligned.
+- #4 Geo-ranked matching: Edge `queryEligibleWorkers` now loads job geo/problem keys, excludes suspended workers, scores rating + specialization + distance/radius fallback, and preserves district fallback when coordinates are missing.
+- #5 Partial: Edge proxy `POST /places/autocomplete` uses Places API (New), server geocoding uses `GOOGLE_MAPS_API_KEY` only in Edge, Kael chat carries `address_label`/district into the service wrapper, and mobile has an Edge-backed `AddressAutocomplete`.
+- React Doctor cleanup: Kael chat state moved to a reducer slice so the changed Kael surface scans clean.
+
+Explicit non-completed / still-open items:
+- #1 Worker rating penalty remains intentionally omitted per Tu direction. Do not re-add it without renewed approval.
+- #5 is not fully done because production `GOOGLE_MAPS_API_KEY` is still pending, worker-side map picker/slider is not a true map UI yet, and DB-populated lat/lng was not verified against live Google/Supabase.
+- Phase 3 must not be marked fully complete until the open #5 production/manual verification items are closed or Tu explicitly approves deferral.
+
+Verification run locally:
+- `tsc --noEmit` for `apps/api`, `apps/mobile`, `packages/shared`: pass.
+- API targeted Vitest: router/runtime/schema, 132 tests pass.
+- Shared/mobile targeted Vitest: validation/backend wiring/mobile wiring, 279 tests pass.
+- React Doctor changed scan: API/mobile no issues found after reducer + CustomerHistorySurface extraction.
+- `git diff --check`: pass with line-ending warnings only.
+
+---
+
 End of Plan.md

@@ -13,6 +13,17 @@
 - React Doctor latest result for this pass: API still reports 19 existing optimization issues across async loops/provider array transforms; mobile reports 8 remaining issues across `components/ui/accessibility-motion.ts`, `lib/media-upload.ts`, `lib/app-language.ts`, `components/customer/kael-chat/kael-chat-surface.tsx`, and `components/ui/reduce-motion-aware-animation.ts`. Two new findings introduced by this pass were fixed before commit: modal `Intl.NumberFormat` hoisting and AuthProvider router method destructuring.
 - Manual/device caveat: real TestFlight/phone push delivery is not verified in this session. Push token registration and deep-link code are wired locally, but end-to-end delivery still needs a real device/backend staging check.
 
+## 2026-05-21 PR #25 Critical Deferred Follow-up
+
+- Codex re-audited PR #22/#23/#25 context plus the mandatory Markdown gate before executing the PR #25 deferred scope. Rating penalty remains explicitly excluded per Tu's instruction and must not be reintroduced without renewed approval.
+- Implemented a new local migration `supabase/migrations/20260521120000_geo_matching_and_worker_auto_suspend.sql`: adds job/worker geo columns, `distance_km`, and updates `request_worker_cancellation_atomic` to auto-suspend workers after 5 approved cancellations in 7 days while keeping rating penalties omitted.
+- Edge/mobile/shared contracts were extended for geo matching and Maps: `GOOGLE_MAPS_API_KEY` stays Edge-only, `POST /places/autocomplete` proxies Places API (New), Kael chat create/turn can carry `address_label`, and server-side geocoding updates jobs with `geo_source='google_maps'` or safe fallback.
+- Matching now excludes suspended workers and ranks eligible workers by rating + specialization + distance/radius when geo is available, with district fallback when coordinates are missing. Worker profile registration/response types now carry `home_lat`, `home_lng`, `service_radius_km`, and `problem_specializations`.
+- Mobile added an Edge-backed customer `AddressAutocomplete` integrated into Kael chat. Worker registration currently has numeric home lat/lng/radius/specialization inputs; the true map picker + slider from Plan #5 remains incomplete.
+- React Doctor flagged new Kael chat state churn; Codex moved Kael chat state into `components/customer/kael-chat/state.ts` with `useReducer`. A concurrent `CustomerHistorySurface` extraction was completed enough for React Doctor changed scan to report no API/mobile issues.
+- Latest verification in this follow-up: `tsc --noEmit` passed for `apps/api`, `apps/mobile`, and `packages/shared`; API targeted Vitest passed 132 tests; shared/mobile targeted Vitest passed 279 tests; `git diff --check` passed with CRLF warnings only. React Doctor changed scan reports no issues found for API/mobile.
+- Remaining Phase 3 truth: do not mark all of Phase 3 done yet. Production Maps secret, live DB lat/lng verification, true worker map/radius UI, and any later rating-penalty decision are still open or explicitly deferred.
+
 ## 2026-05-20 PR #23 Frontend Design Integration + React Doctor Toolchain
 
 - Tu asked for a slow PR #20/TestFlight video audit and then gave a strict v3 implementation plan with a 3-hour working window before reporting. The key design direction is not a rebuild: harmonize Glassphorism motion + Glassphorism design + mint/cream layout colors into one production mobile product experience.
