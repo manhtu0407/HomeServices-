@@ -1922,4 +1922,456 @@ Plan này là execution contract. Mỗi item trong DoD phải verify thực sự
 
 Tu approve plan → Codex bắt đầu Phase 0 spikes → Claude audit progressively.
 
+---
+
+## 21. Bổ sung — Audit Log + Gap Tracker
+
+Section này append sau mỗi pass implementation. KHÔNG edit §1-20 (Plan core là contract, audit log là addendum). Mỗi entry phải có ngày, mission rõ, evidence file:line.
+
+---
+
+### 21.1 — Audit 2026-05-21 (Codex PR#23 pass 1)
+
+**Ngày**: 2026-05-21
+**Auditor**: Claude (audit role)
+**Builder**: Codex
+**Source branch**: `codex/glass-motion-ui-enhancement`
+**PR đã merge**: [#23 Enhance PR20 frontend Kael and worker surfaces](https://github.com/manhtu0407/HomeServices-/pull/23) → main commit `b1b86c0`
+**Codex commits chính**: `778d622` (UI surface enhancement) + `ccc1d10` (memory + React Doctor fix)
+
+**Mission audit**: Verify Plan §16 checklist Phase 0 → 4 trên main + tất cả branch push được. Báo cáo gap theo file path + line ref. KHÔNG edit code.
+
+**Kết luận**: ❌ **Codex pass 1 CHƯA completed Plan.md**. PR#23 = UI cosmetic enhancement (scope KHÁC Plan.md), không phải Phase 1 execution.
+
+---
+
+#### 21.1.A — Cái Codex ĐÃ làm (PR#23 actual delivery)
+
+4 files touched, +888/-144 lines:
+
+| File | Δ | Nội dung |
+|---|---|---|
+| `apps/mobile/components/customer/customer-surfaces.tsx` | +640 | "Kael Command Home" + "Service Intake Assistant Hub" copy (VN+EN), 4 shortcut rows, KaelMascot variants. **God-file size: 2626L → ~3266L** |
+| `apps/mobile/components/worker/worker-surfaces.tsx` | +314 | "JobRoom" concept rename worker chat, `WorkerReadinessPanel`, `WorkerJobsJobRoomEntry`, fix `workerChatDealKey` leak. **God-file size: 2192L → ~2506L** |
+| `packages/shared/src/__tests__/mobile-wiring.test.ts` | +57 | Test markers cho UI mới (jobroom-kael-handoff, readiness-panel, kael-command-home) |
+| `MEMORY.md` | +21 | Codex's own session notes về PR#23 |
+
+Codex's MEMORY entry PR#23 (line 7) tự ghi:
+> "Scope intentionally staged for PR #23: `customer-surfaces.tsx`, `worker-surfaces.tsx`, and `mobile-wiring.test.ts`. The workspace still contains many **unrelated dirty** API/Supabase/shared changes; do not revert them and do not stage them into frontend-only PRs unless Tu explicitly asks."
+
+**Codex MEMORY KHÔNG nhắc đọc Plan.md** trước khi build (vi phạm §0 Activation Protocol).
+
+---
+
+#### 21.1.B — Gap Tracker per phase (chưa có)
+
+##### Phase 0 — Research SPIKES
+
+| Deliverable | Status | File path |
+|---|---|---|
+| Geo data spike | ❌ KHÔNG TỒN TẠI | `docs/foundation/geo-data-spike.md` |
+| Expo Push spike | ❌ KHÔNG TỒN TẠI | `docs/foundation/expo-push-spike.md` |
+
+Plan §6 cấm Phase 1-3 bắt đầu trước khi 2 spike có output. Codex bỏ qua.
+
+##### Phase 1.0 — Pre-work
+
+| Deliverable | Status |
+|---|---|
+| Sync shared ↔ Edge domain contracts (§7.1) | ❌ `domain.ts` + `constants.ts` không đổi |
+| `packages/shared/src/__tests__/contracts-parity.test.ts` | ❌ KHÔNG TỒN TẠI |
+| `supabase/functions/mobile-api/_shared/access.ts` (`requireJobAccess` helper, §7.2) | ❌ KHÔNG TỒN TẠI |
+| State machine alignment comment + assertion test (§7.3) | ❌ `mobile-workflow.ts` không đổi phần này |
+
+##### Phase 1 — Kael-First Workflow
+
+| Deliverable | Status | Evidence |
+|---|---|---|
+| Migration `kael_chat_sessions` + `kael_chat_turns` + RLS + RPC `confirm_kael_chat_atomic` | ❌ | Migration mới nhất `20260519145538_fix_vietnamese_catalog_labels.sql`; KHÔNG có migration nào dated 2026-05-2x |
+| `supabase/functions/mobile-api/_shared/kael-chat.ts` (multi-turn state machine) | ❌ | KHÔNG TỒN TẠI |
+| `POST /kael/chat` + `GET /kael/chat/:id` + `POST /kael/chat/:id/confirm` trong router | ❌ | router.ts unchanged |
+| Anthropic vision message format với image type (fix C3) | ❌ | `kael.ts:971-991` `buildVisionMessages` vẫn text-only — KHÔNG có `{ type: 'image', source: { type: 'url', url } }` |
+| Mobile `HomeScreen` refactor (3 service cards click → KaelChatSurface) | ⚠️ | Codex thêm copy "Mở Kael" nhưng vẫn route `openBookingPath`; service cards CHƯA wire tới Kael chat |
+| `apps/mobile/components/customer/kael-chat/` directory | ❌ | KHÔNG TỒN TẠI |
+| `apps/mobile/components/customer/kael-chat/kael-chat-surface.tsx` (NEW stack screen) | ❌ | KHÔNG TỒN TẠI |
+| `apps/mobile/components/customer/kael-chat/chat-bubble.tsx` + `composer.tsx` + `estimate-card.tsx` + `photo-attach-button.tsx` | ❌ | KHÔNG TỒN TẠI |
+| `apps/mobile/lib/kael-chat-service.ts` (API wrapper) | ❌ | KHÔNG TỒN TẠI |
+| `apps/mobile/app/(customer)/kael-chat.tsx` (route file, stack screen) | ❌ | KHÔNG TỒN TẠI |
+| DELETE `apps/mobile/components/client-price-check/client-price-check-flow.tsx` | ❌ | **VẪN TỒN TẠI** (2337L god-file vẫn còn) |
+| Repurpose `booking.tsx` (Quick entry với 3 service cards) per §8.6 | ⚠️ | Copy đổi, nhưng vẫn dùng `ClientPriceCheckFlow` cũ |
+| Repurpose `kael.tsx` (resume button + recent sessions) per §8.6 | ⚠️ | Chỉ thêm copy, không có recent sessions list, vẫn keyword classifier cũ |
+| Tests `kael-chat-state-machine.test.ts`, `kael-chat-real-supabase.test.ts`, `kael-chat-contract.test.ts` | ❌ | KHÔNG TỒN TẠI |
+
+##### Phase 2 — Notification Wire-Up
+
+| Deliverable | Status |
+|---|---|
+| `supabase/functions/mobile-api/_shared/push.ts` (`sendPushToUser`, `sendPushToUsers`) | ❌ KHÔNG TỒN TẠI |
+| `createBroadcasts` → wire `insert_notification_atomic` + `sendPushToUsers` | ❌ services.ts:1638-1688 unchanged |
+| `acceptBroadcast` → push customer "Đã có thợ" | ❌ services.ts:625-662 unchanged |
+| `updateJobStatus`, `requestScopeChange`, `decideScopeChange` → push triggers | ❌ |
+| `apps/mobile/lib/push-notifications.ts` (Expo Notifications client) | ❌ KHÔNG TỒN TẠI |
+| `setupPushNotifications` wire vào AuthProvider effect | ❌ auth-provider.tsx unchanged |
+| Deep link handlers `/(worker)/jobs?broadcast_id=...`, `/(customer)/history?scope_change=...` | ❌ |
+
+##### Phase 3 — Auto Worker Cancellation + Geo
+
+| Deliverable | Status |
+|---|---|
+| Migration geo (`jobs.address_lat/lng`, `worker_profiles.home_lat/lng`, `service_radius_km`) | ❌ |
+| Migration `problem_specializations text[]` | ❌ |
+| SQL function `public.distance_km()` | ❌ |
+| Update `request_worker_cancellation_atomic` → auto-approve + rate limit + auto-suspend + return next candidates | ❌ |
+| `supabase/functions/mobile-api/_shared/matching.ts` (`findNextBestWorker`) | ❌ KHÔNG TỒN TẠI |
+| Wire auto re-broadcast trong `requestWorkerCancellation` service | ❌ |
+| `apps/mobile/components/customer/address-autocomplete.tsx` | ❌ KHÔNG TỒN TẠI |
+| Google Maps Geocoding API integration server-side | ❌ |
+| Env var `GOOGLE_MAPS_API_KEY` server-side | ❌ Chưa thấy reference |
+| Worker rating decrement on cancel | ❌ |
+
+##### Phase 4 — Critical Bug Fixes (parallel)
+
+| Bug | Status | Evidence |
+|---|---|---|
+| C1: A11 scope change hard-stop modal | ❌ | `apps/mobile/components/customer/scope-change-modal/` KHÔNG TỒN TẠI |
+| C2: Worker earnings `paid_at` fix | ❌ | `supabase/functions/mobile-api/_shared/services.ts:1569` vẫn `gross += price;` — KHÔNG có check `row.paid_at IS NOT NULL` |
+| C6: `scope_change_reject_cancels_job` migration to prod | ✅ | Đã apply trong session 2026-05-19 (migration `20260518181500`) — trước khi Plan.md tồn tại |
+| M1: VN copy consistency sweep | ❌ | `supabase/functions/mobile-api/_shared/services.ts:1163` vẫn "Worker chưa nhập giá cuối cùng" |
+
+Phase 4 progress: 1/4 (C6 legacy), 3/4 chưa.
+
+---
+
+#### 21.1.C — Vi phạm Plan.md cụ thể
+
+1. **Plan §0 Activation Protocol** — Codex MEMORY PR#23 line 22 list các file cần đọc nhưng **KHÔNG có Plan.md**. Plan §0 yêu cầu agent đọc Plan.md trước khi đụng bất kỳ file nào.
+2. **Plan §15.1 Scope creep ngược** — Codex add "JobRoom" + "Kael Command Home" concepts ngoài Plan, thay vì build Phase 1 đã spec.
+3. **Plan §15.7 God-files** — Plan cấm file mới > 800L. Codex add +640L vào file 2626L (`customer-surfaces.tsx` thành 3266L). Đáng lẽ phải split.
+4. **D11 (locked decision)** — Plan §8.6 yêu cầu KaelChatSurface là stack screen mới ngoài tab bar. Codex chỉ thay copy của Kael tab cũ.
+5. **Plan §11 Phase 4 parallel** — C1, C2, M1 critical fixes phải parallel với Phase 1-3 → chưa làm.
+
+---
+
+#### 21.1.D — Files I CAN'T audit (uncommitted local)
+
+Tu's screenshot 2026-05-21 cho thấy branch `codex/glass-motion-ui-enhancement` có **43 files uncommitted** trong local Codex IDE workspace.
+
+- Tôi chỉ inspect được code đã push lên `origin`. 43 file local-only KHÔNG audit được.
+- Codex's MEMORY entry tự classify đó là "unrelated dirty changes" — strong signal KHÔNG phải Plan implementation, nhưng chưa confirm.
+- **Action cần Tu**: yêu cầu Codex push 43 file đó lên 1 branch (hoặc commit local rồi push) để Claude audit pass 2.
+
+---
+
+#### 21.1.E — Mission tiếp theo (Codex pass 2 hoặc next agent)
+
+Thứ tự bắt buộc:
+
+1. **Đọc Plan.md TRƯỚC** — Plan §0 Activation Protocol mandatory. Confirm trong commit message hoặc MEMORY.
+2. **Push hoặc clarify 43 uncommitted files** — Cần biết content trước khi tiếp tục, để không lost work.
+3. **Phase 0 SPIKES** — Output 2 file:
+   - `docs/foundation/geo-data-spike.md` (Google Maps pricing, schema, distance algo, autocomplete UX lib)
+   - `docs/foundation/expo-push-spike.md` (push helper signature, payload schema, deep link convention, permission UX timing)
+4. **Phase 1.0 Pre-work** — Sync contracts + access.ts helper + state machine docs.
+5. **Phase 1 thật** — Migration + Edge endpoint + Anthropic vision + KaelChatSurface stack screen + delete client-price-check-flow.
+6. **Phase 2 → 3 → 4** theo Plan §13 ordering (Phase 4 parallel với 1-3).
+
+Mỗi phase done → Codex commit + push → Claude audit per §16 checklist → entry mới §21.x trong audit log.
+
+---
+
+#### 21.1.F — Process note
+
+- Plan §1-20 KHÔNG đổi mid-execution (per §0).
+- Section §21 là audit log cumulative. Mỗi pass thêm 1 sub-section §21.X (X = 2, 3, ...).
+- Format mỗi entry:
+  - 21.X.A — Cái đã làm (PR# + commits + files)
+  - 21.X.B — Gap tracker per phase
+  - 21.X.C — Vi phạm Plan.md (nếu có)
+  - 21.X.D — Files uncommitted CAN'T audit
+  - 21.X.E — Mission tiếp theo
+- Plan §16 checklist là nguồn duy nhất để mark "done". Codex tự claim "completed" KHÔNG đủ.
+
+---
+
+---
+
+### 21.2 — Audit 2026-05-21 (Codex pass 2 + 3, PR#24 merged)
+
+**Ngày**: 2026-05-21
+**Auditor**: Claude
+**Builder**: Codex
+**Source branch**: `codex/glass-motion-ui-enhancement` → merged main qua [#24 Consolidate Plan workflow upgrade](https://github.com/manhtu0407/HomeServices-/pull/24) (commit `0f02641`)
+**Stat**: 62 files changed, +6834 / -3243 lines
+
+**Mission audit**: Verify Plan §16 checklist sau khi Codex hoàn tất 2 pass tiếp theo pass 1. Verify PR#24 merge intact.
+
+**Kết luận**: ✅ **Plan §16 Phase 0, 1.0, 1, 2, 4 hoàn chỉnh. Phase 3 partial theo Tu chỉ đạo (xem §21.3). Phase 5 bonus chat customer↔worker giữ nguyên theo Tu**.
+
+#### 21.2.A — Files merged trên main (đầy đủ Plan deliverable)
+
+| File | Status | Lines |
+|---|---|---|
+| `docs/foundation/geo-data-spike.md` | ✅ NEW | 85 |
+| `docs/foundation/expo-push-spike.md` | ✅ NEW | 84 |
+| `supabase/migrations/20260520130514_kael_chat_sessions.sql` | ✅ NEW | 246 |
+| `supabase/migrations/20260520141200_worker_cancellation_auto_reassign.sql` | ✅ NEW | 168 |
+| `supabase/functions/mobile-api/_shared/access.ts` (requireJobAccess) | ✅ NEW | 121 |
+| `supabase/functions/mobile-api/_shared/push.ts` (Expo Push helper) | ✅ NEW | 255 |
+| `supabase/functions/mobile-api/_shared/kael.ts` (vision photo wiring) | ✅ MOD | +243 |
+| `supabase/functions/mobile-api/_shared/router.ts` (4 chat routes) | ✅ MOD | +212 |
+| `supabase/functions/mobile-api/_shared/services.ts` (chat + push wires + auto reassign) | ✅ MOD | +1469 |
+| `apps/mobile/components/customer/kael-chat/kael-chat-surface.tsx` (stack screen) | ✅ NEW | 554 |
+| `apps/mobile/components/customer/kael-chat/styles.ts` | ✅ NEW | 265 |
+| `apps/mobile/components/customer/kael-chat/pending-intake.ts` | ✅ NEW | 21 |
+| `apps/mobile/app/(customer)/kael-chat.tsx` (route) | ✅ NEW | 5 |
+| `apps/mobile/components/customer/scope-change-modal/scope-change-hard-stop-modal.tsx` | ✅ NEW | 311 |
+| `apps/mobile/lib/push-notifications.ts` (Expo Notifications client) | ✅ NEW | 155 |
+| `apps/mobile/lib/auth-provider.tsx` (setupPushNotifications wire) | ✅ MOD | +28 |
+| `apps/mobile/components/client-price-check/client-price-check-flow.tsx` | ✅ DELETED | −2790 |
+| `apps/mobile/package.json` (expo-notifications ~0.32.17) | ✅ MOD | +1 |
+| `packages/shared/src/__tests__/contracts-parity.test.ts` | ✅ NEW | 56 |
+
+#### 21.2.B — Critical bug fixes verified trên main
+
+- **C1** A11 hard-stop modal: scope-change-modal/ tồn tại, render với deep-link param `scope_change`, non-dismissable, push trigger từ backend ✅
+- **C2** Worker earnings paid_at: `services.ts:2134-2135` `if (nullableString(row.paid_at)) { gross += price; }` ✅
+- **C3** Anthropic vision photos: `kael.ts:93,1107,1110,1126-1127` AIImageContent type + content array text+images ✅
+- **M1** VN copy sweep: grep "Worker chưa" = 0 hits ✅
+
+#### 21.2.C — Verified test additions
+
+- `mobile-api-edge-runtime.test.ts` +1139L
+- `mobile-api-edge-router.test.ts` +207L
+- `earnings.test.ts` +33L
+- `validation.test.ts` +96L
+- `mobile-wiring.test.ts` +211L (markers cho kael-chat, scope-change-modal, push wire)
+- `contracts-parity.test.ts` NEW (verify shared ↔ Edge domain sync)
+
+#### 21.2.D — Mission tiếp theo (post-merge deploy)
+
+KHÔNG phải gap audit — deploy/release steps:
+
+1. Apply migrations staging (`npx supabase db push --linked` trên `xyylanuyflrjzbjzhqfl`).
+2. Run RLS harness 29/29 + smoke test trên staging.
+3. Deploy Edge function `mobile-api` (`npx supabase functions deploy mobile-api`).
+4. Apply migrations production theo `docs/ops/production-migration-checklist.md` — Tu approve explicit.
+5. EAS rebuild mobile (`expo-notifications` package cần native bundle).
+6. TestFlight push delivery real-device test.
+
+---
+
+### 21.3 — 🔴 CRITICAL DEFERRED ITEMS — Phase 3 chưa hoàn tất
+
+**Ngày note**: 2026-05-21
+**Tu chỉ đạo**: defer 5 items dưới đây trong PR#24, sẽ revisit khi điều kiện trigger thoả mãn.
+
+**ĐÂY LÀ CRITICAL PART**. Mọi agent (Codex hoặc Claude) tiếp tục plan này MUST đọc section này trước khi mark Phase 3 done. KHÔNG được claim "Plan hoàn chỉnh" nếu 5 items này chưa có hoặc chưa có Tu approve skip thêm lần nữa.
+
+#### Phân cụm
+
+| Cụm | Mục đích | Items | Phụ thuộc |
+|---|---|---|---|
+| **Cụm A** — Trust & Safety | Chống worker abuse cancel | #1 Rating penalty + #2 Auto-suspend | Standalone, làm trước được |
+| **Cụm B** — Geo Matching Upgrade | Chọn thợ gần nhất + chuyên môn nhất | #3 Geo schema + #4 distance_km + #5 Address autocomplete + Google geocoding | #4 và #5 phụ thuộc #3 |
+
+Đề xuất ưu tiên khi revisit: Cụm A trước (đơn giản hơn, chỉ migration + Edge logic), Cụm B sau (cần Google Maps API + UI mới + schema migration lớn).
+
+---
+
+#### #1 — Worker rating penalty −0.1 mỗi cancel
+
+- **Plan ref**: D10 + §10.2 + §10.8
+- **Status**: ⏸️ DEFERRED 2026-05-21 per Tu
+- **Cluster**: A (Trust & Safety)
+- **Spec đầy đủ**: Khi `request_worker_cancellation_atomic` được call thành công (status='approved'):
+  - `UPDATE worker_profiles SET rating = GREATEST(0, rating - 0.1) WHERE id = p_worker_id;`
+  - Trong cùng transaction với cancellation insert.
+- **Evidence của deferral**: Migration `20260520141200_worker_cancellation_auto_reassign.sql` line 6 ghi rõ *"Rating penalties are intentionally omitted from this execution scope"*.
+- **Impact production**: Worker có thể hủy việc thoải mái mà không bị phạt → có thể chọn việc dễ + bỏ việc khó. Pre-revenue scale chấp nhận được.
+- **Trigger revisit**:
+  - Khi platform có ≥10 worker active, hoặc
+  - Khi Tu hoặc admin báo có 1 worker hủy bất thường, hoặc
+  - Khi production rating system bắt đầu hiển thị cho customer (cần data thật).
+- **Definition of done**:
+  - Migration mới: update `request_worker_cancellation_atomic` thêm rating UPDATE.
+  - Test: unit test verify rating giảm đúng 0.1, floor at 0.
+  - Test: integration test trên staging với fake worker rating 4.5 → cancel → rating = 4.4.
+  - Edge service: trả về `rating_after` trong response để client có thể display.
+
+#### #2 — Auto-suspend khi worker hủy ≥5 lần / 7 ngày
+
+- **Plan ref**: D10 + §10.2 + §10.8
+- **Status**: ⏸️ DEFERRED 2026-05-21 per Tu
+- **Cluster**: A (Trust & Safety) — bundle với #1
+- **Spec đầy đủ**: Trong `request_worker_cancellation_atomic`, sau khi insert cancellation:
+  ```sql
+  select count(*)::int into v_recent_count
+    from public.worker_cancellation_requests
+    where worker_id = p_worker_id
+      and status = 'approved'
+      and created_at >= v_now - interval '7 days';
+  
+  if v_recent_count >= 5 then
+    update public.worker_profiles
+      set is_suspended = true,
+          is_available = false
+      where id = p_worker_id;
+    -- Optionally insert admin notification for review
+  end if;
+  ```
+- **Evidence của deferral**: Migration hiện tại chỉ có rate limit 2/24h (chặn cancel mới khi đã có 2 approved trong 24h), **KHÔNG có** 7-day rolling auto-suspend.
+- **Impact production**: 1 worker xấu có thể hủy job liên tục trong tuần mà không bị remove khỏi marketplace pool. Customer experience xấu, broadcast wasted, Kael phải re-match nhiều lần.
+- **Trigger revisit**: Đi cùng với #1. Không có #2 mà có #1 thì rating có giảm nhưng worker vẫn nhận việc → ít hiệu quả.
+- **Definition of done**:
+  - Migration update `request_worker_cancellation_atomic` thêm 7-day count + auto-suspend.
+  - Edge service: thêm `notifyAdminWorkerSuspended` helper (tuỳ chọn — có thể defer admin notify).
+  - Test: 5 cancels trong 7 ngày → 6th attempt → worker đã bị suspend (is_suspended=true).
+  - Test: 4 cancels + 1 cancel cũ hơn 7 ngày → vẫn cho cancel (rolling window).
+  - Mobile worker UI: WorkerHomeSurface phải hiển thị banner "Tài khoản tạm khoá, liên hệ hỗ trợ" khi `is_suspended=true`.
+
+#### #3 — Geo schema (lat/lng + service_radius + problem_specializations)
+
+- **Plan ref**: §10.1 + spike `docs/foundation/geo-data-spike.md`
+- **Status**: ⏸️ DEFERRED 2026-05-21 per Tu
+- **Cluster**: B (Geo Matching) — BASE, #4 và #5 phụ thuộc
+- **Spec đầy đủ**:
+  ```sql
+  alter table public.jobs
+    add column if not exists address_lat numeric(9,6),
+    add column if not exists address_lng numeric(9,6),
+    add column if not exists geo_source text check (geo_source in ('google_maps', 'manual', 'fallback'));
+  
+  alter table public.worker_profiles
+    add column if not exists home_lat numeric(9,6),
+    add column if not exists home_lng numeric(9,6),
+    add column if not exists service_radius_km int default 8 check (service_radius_km between 1 and 30),
+    add column if not exists problem_specializations text[] not null default '{}'::text[];
+  ```
+- **Evidence của deferral**: Spike line 7: *"Phase 0 matching continues to work with the existing canonical HCMC district slugs, so missing geocoding must not block job creation or worker matching"*. Spike line 21: *"Add coordinates only when the product is ready for geo-ranked matching"*.
+- **Impact production**: Worker matching chỉ theo district slug (`q1`, `thu_duc`, `binh_thanh`...) + `service_types[]`. Không biết worker A ở Q1 cách customer ở Q1 bao xa thực sự (có thể 500m, có thể 5km).
+- **Trigger revisit**:
+  - Khi 1 district có ≥3 worker active đồng thời (cần ranking nearest), hoặc
+  - Khi customer feedback "thợ đi xa quá lâu mới đến", hoặc
+  - Khi pivot sang service mới cần specialization (ví dụ: cleaning sub-types).
+- **Definition of done**:
+  - Migration apply staging + prod theo checklist.
+  - `database.types.ts` regenerate.
+  - Backfill: jobs cũ có lat/lng NULL OK, worker cũ có default 0,0 cần backfill manual hoặc treat NULL.
+  - Test: schema migration tests pass.
+
+#### #4 — `distance_km()` SQL function + geo-ranked `findNextBestWorker`
+
+- **Plan ref**: §10.1 (SQL function) + §10.3 (matching algorithm)
+- **Status**: ⏸️ DEFERRED 2026-05-21 per Tu
+- **Cluster**: B (Geo Matching) — phụ thuộc #3
+- **Spec đầy đủ**:
+  - SQL function:
+    ```sql
+    create or replace function public.distance_km(
+      lat1 double precision, lng1 double precision,
+      lat2 double precision, lng2 double precision
+    ) returns double precision language sql immutable as $$
+      select 6371 * acos(
+        cos(radians(lat1)) * cos(radians(lat2)) *
+        cos(radians(lng2) - radians(lng1)) +
+        sin(radians(lat1)) * sin(radians(lat2))
+      );
+    $$;
+    ```
+  - Update `queryEligibleWorkers` trong `services.ts`:
+    - Add geo scoring: `score = rating*10 + (specialization_match ? 20 : 0) + distance_bonus`
+    - Sort by score DESC
+    - Fallback to district match khi job hoặc worker thiếu lat/lng
+- **Evidence của deferral**: Hiện `queryEligibleWorkers` trong `services.ts` chỉ filter district + service_type + order by `rating DESC`.
+- **Impact production**: Worker thắng broadcast vì rating cao hơn, không phải gần hơn. Customer chờ worker đi xa hơn (travel time). Worker bị giao việc xa nhà → có thể decline → re-broadcast.
+- **Trigger revisit**: Sau khi #3 done.
+- **Definition of done**:
+  - Migration `distance_km()` apply staging + prod.
+  - `services.ts queryEligibleWorkers` update với composite score.
+  - Test: unit test distance function với HCMC coordinates known (vd Q1 → Q7 ≈ 7km).
+  - Test: integration test 2 workers cùng rating, 1 gần 1 xa → gần thắng.
+  - Test: 1 worker có lat/lng + 1 worker NULL → ranking fallback to rating-only cho NULL one.
+
+#### #5 — Address autocomplete UI + Google Maps Geocoding server-side
+
+- **Plan ref**: §10.5 (UI) + §10.6 (server geocoding) + spike
+- **Status**: ⏸️ DEFERRED 2026-05-21 per Tu (code implementation chưa làm). **Infrastructure đã sẵn sàng 2026-05-21 pm** — xem block "Infra ready" bên dưới.
+- **Cluster**: B (Geo Matching) — phụ thuộc #3
+- **Spec đầy đủ**:
+  - **Mobile**: `apps/mobile/components/customer/address-autocomplete.tsx` dùng `react-native-google-places-autocomplete` với:
+    - HCMC bounding box: `{ northeast: 10.91, 106.85, southwest: 10.65, 106.55 }`
+    - Language: `vi`
+    - Components filter: `country:vn`
+  - **Mobile**: integrate vào KaelChatSurface khi Kael ask address turn
+  - **Backend**: server-side geocode trong `confirm_kael_chat_atomic` hoặc Edge wrapper:
+    - Khi customer confirm session → trước khi insert jobs → call Google Maps Geocoding API với `building + district + Ho Chi Minh City + Vietnam`
+    - Lưu lat/lng + `geo_source='google_maps'`
+    - Nếu API fail → `geo_source='fallback'`, lat/lng NULL → matching fallback to district
+  - **Worker side**: WorkerVerificationForm thêm "Chọn khu vực phục vụ" UI:
+    - Map picker với pin marker cho home_lat/lng
+    - Slider service_radius_km (1-30 km, default 8)
+  - **Env var**: `GOOGLE_MAPS_API_KEY` server-side only — KHÔNG bundle vào mobile (RULES.md #1)
+
+##### Infra ready (Tu setup 2026-05-21 pm)
+
+Google Cloud Console resources đã provisioned và secret đã set. Codex KHÔNG tạo lại các resource dưới đây:
+
+| Resource | Value / Config |
+|---|---|
+| **Provider** | Google Maps Platform (locked, không dùng GoongMap vì account chưa được Goong admin activate khi setup) |
+| **GCP Project** | `stone-plating-497006-d4` ("My Project") |
+| **Billing account** | "Home Services Billing" (linked) |
+| **API Key name** | `Maps Platform API Key` (auto-tạo bởi onboarding) |
+| **Key restrictions** | API restriction: **2 APIs** = Geocoding API + Places API (New). KHÔNG có IP/referer/bundle restriction (vì Edge IPs dynamic) |
+| **APIs enabled** | Geocoding API + Places API (New) |
+| **Quota Geocoding `v3 requests per day`** | **1,000 req/day** (cap potential cost ≤ $150/month nếu paid) |
+| **Quota Places `AutocompletePlacesRequest per day`** | **500 req/day** (cap potential cost ≤ $42/month nếu paid) |
+| **Combined potential max** | $192/month < $200 free credit → **ZERO charge expected** |
+| **Budget alert** | "Home Services Maps Alert" — 25,000₫ (~$1)/month, email tại 50% / 90% / 100% threshold to billing admins + project owners (manhtu0407@gmail.com) |
+| **Env var name (locked)** | `GOOGLE_MAPS_API_KEY` |
+| **Secret status staging** (`xyylanuyflrjzbjzhqfl`) | ✅ Set 2026-05-21 pm |
+| **Secret status production** (`iwevizmsedyqozxlawwl`) | Pending (Tu set khi sẵn sàng deploy prod) |
+
+##### Codex pass implement #5 — phải dùng exactly:
+
+- Edge code: `Deno.env.get("GOOGLE_MAPS_API_KEY")` — KHÔNG đổi env var name.
+- Geocoding endpoint: `https://maps.googleapis.com/maps/api/geocode/json?address=<encoded>&region=vn&language=vi&key=<key>`
+- Places autocomplete endpoint: `https://places.googleapis.com/v1/places:autocomplete` (Places New, KHÔNG dùng `https://maps.googleapis.com/maps/api/place/autocomplete/json` cũ vì Tu restrict key cho New only)
+- Mobile autocomplete: nếu dùng `react-native-google-places-autocomplete`, version package phải support Places API (New) endpoint. Verify trước install.
+- **KHÔNG bundle key vào mobile binary**: mobile autocomplete proxy qua Edge endpoint mới (vd `POST /places/autocomplete` trong `mobile-api`), KHÔNG gọi Google trực tiếp từ RN.
+
+##### Hard limit warnings cho Codex:
+
+- Nếu Geocoding test vượt 1000/day → API trả `RESOURCE_EXHAUSTED` 429. Code phải handle gracefully (fallback district).
+- Nếu Places test vượt 500/day → API trả `RESOURCE_EXHAUSTED` 429. Code phải handle gracefully (skip autocomplete suggestion).
+- Nếu cần tăng quota → Tu approve trong console + update Plan §21.3 #5 với value mới.
+
+- **Evidence của deferral (code implementation)**: Spike đã chọn Google Maps + infrastructure đã set, nhưng chưa implement UI + chưa wire backend code.
+- **Impact production**: Customer gõ address free-text → backend không geocode → lat/lng NULL → distance matching không hoạt động (cần #4 to be useful). Worker không khai báo radius/home → matching không xét coverage area.
+- **Trigger revisit**: Sau khi #3 + #4 done.
+- **Definition of done**:
+  - ✅ `GOOGLE_MAPS_API_KEY` set trong Supabase Edge secrets staging (done 2026-05-21 pm).
+  - [ ] `GOOGLE_MAPS_API_KEY` set trong production secrets.
+  - [ ] `apps/mobile/components/customer/address-autocomplete.tsx` exists + integrated vào KaelChatSurface.
+  - [ ] Edge endpoint proxy `POST /places/autocomplete` trong `mobile-api/_shared/router.ts` + `services.ts`.
+  - [ ] Edge backend trong `confirm_kael_chat_atomic` hoặc wrapper geocode address before insert jobs.
+  - [ ] WorkerVerificationForm có map picker + radius slider.
+  - [ ] Test: geocoding fail → fallback district match still works.
+  - [ ] Test: customer enter HCMC address → lat/lng populated trong DB.
+  - [ ] Test: worker register với home_lat/lng + radius_km → query eligible workers tính theo radius.
+  - [ ] Test: quota exhaustion (429) → fallback path không crash.
+
+---
+
+#### 21.3.X — Process notes cho Codex pass tới
+
+- KHÔNG được mark "Plan §16 Phase 3 done" cho đến khi 5 items này có evidence on main OR Tu re-confirm defer thêm 1 lần nữa.
+- 2 cụm có thể làm độc lập — không cần làm cả 5 cùng pass.
+- Cluster A (#1, #2) **không cần dependency mới** (Google Maps, không UI mới) — có thể làm pass tiếp theo nếu Tu OK.
+- Cluster B (#3, #4, #5) **cần Google Maps API key** + UI mới — chờ Tu approve trước.
+- Mỗi item có spec đầy đủ + Definition of Done trong section trên. Codex KHÔNG cần đoán mò.
+- Sau khi 1 item done → update §21 thêm sub-entry `§21.3.X.done` ghi PR + date + verification.
+
+---
+
 End of Plan.md
