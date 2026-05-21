@@ -11,6 +11,7 @@
 - Shared glass/motion components were tightened: bottom toolbar has active liquid pill markers and compact inactive labels; entrance motion moved from RN `Animated` to `react-native-reanimated`; Reduce Motion/Transparency hooks now keep explicit cleanup helpers.
 - Historical verification during this pass: mobile type-check passed; shared mobile wiring/workflow tests passed (`9 files / 484 tests`); `git diff --check` passed with CRLF warnings only. Later PR #25 follow-up scans supersede the older React Doctor warning counts.
 - Latest React Doctor rerun for the production redesign port: API remains at 19 pre-existing optimization warnings; mobile is down to 2 warnings in `apps/mobile/lib/media-upload.ts` async upload loops, intentionally left because changing sequencing can affect upload ordering/error behavior outside the UI port.
+- Follow-up UI motion update: role gateway hero/signature now use `ReduceMotionAwareEntranceView`, the floating glass tab bar active liquid pill uses the same reduce-motion-aware entrance primitive with pointer-events passthrough, and `mobile-wiring.test.ts` guards the hero motion plus toolbar selection marker.
 - Production honesty caveat: Google OAuth/phone OTP are still not enabled end-to-end in this code path, so auth buttons expose intent and clear unavailable errors rather than pretending successful login. Worker self-service role promotion remains governed by the existing server/admin trust model.
 
 ## 2026-05-21 Plan.md Workflow Upgrade Consolidation

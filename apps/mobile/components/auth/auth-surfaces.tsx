@@ -7,6 +7,7 @@ import Svg, { Path, Rect } from 'react-native-svg'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
 
 const LOGIN_ROLE_GATE_MARKER = 'LOGIN_ROLE_GATE_MARKER: auth-login-role-customer auth-login-role-worker'
 const LOGIN_ROLE_GATE_GLASS_MARKER = 'LOGIN_ROLE_GATE_GLASS_MARKER: auth-role-gate-glass'
@@ -493,7 +494,7 @@ function MapLineField() {
 
 function RoleGatewayHero({ copy }: { copy: (typeof authCopy)[AppLanguage] }) {
   return (
-    <View style={styles.roleGatewayHero}>
+    <ReduceMotionAwareEntranceView delayMs={45} distanceY={8} style={styles.roleGatewayHero} testID="auth-role-gateway-hero-motion">
       <View style={styles.roleGatewayTop}>
         <Text style={styles.roleGatewayBadge}>Home Services</Text>
         <View style={styles.roleGatewayBadgeIconRow}>
@@ -507,12 +508,12 @@ function RoleGatewayHero({ copy }: { copy: (typeof authCopy)[AppLanguage] }) {
           <Image accessible={false} contentFit="contain" source={kaelModel8AHead} style={styles.roleGatewayKaelImage} />
         </View>
       </View>
-      <View style={styles.roleGatewaySignature} testID="roleGatewaySignature">
+      <ReduceMotionAwareEntranceView delayMs={130} distanceY={4} style={styles.roleGatewaySignature} testID="roleGatewaySignature">
         <View style={styles.signatureRail} testID="signatureRail" />
         <Text style={styles.roleGatewaySignatureText}>{copy.signature}</Text>
         <View pointerEvents="none" style={styles.signatureLiquid} />
-      </View>
-    </View>
+      </ReduceMotionAwareEntranceView>
+    </ReduceMotionAwareEntranceView>
   )
 }
 

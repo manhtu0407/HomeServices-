@@ -1,5 +1,5 @@
 import { createElement, type ReactNode, useEffect } from 'react'
-import { type StyleProp, type ViewStyle } from 'react-native'
+import { type StyleProp, type ViewProps, type ViewStyle } from 'react-native'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
 import { motionDuration, motionTokens } from './motion-tokens'
 import { useGlassAccessibility } from './accessibility-motion'
@@ -8,6 +8,7 @@ type ReduceMotionAwareEntranceViewProps = {
   children: ReactNode
   delayMs?: number
   distanceY?: number
+  pointerEvents?: ViewProps['pointerEvents']
   style?: StyleProp<ViewStyle>
   testID?: string
 }
@@ -21,6 +22,7 @@ export function ReduceMotionAwareEntranceView({
   children,
   delayMs = 0,
   distanceY = motionTokens.entrance.translateY,
+  pointerEvents,
   style,
   testID,
 }: ReduceMotionAwareEntranceViewProps) {
@@ -56,6 +58,7 @@ export function ReduceMotionAwareEntranceView({
   return createElement(
     Animated.View,
     {
+      pointerEvents,
       style: [style, animatedStyle],
       testID,
     },

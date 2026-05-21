@@ -2,7 +2,7 @@ import { type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import { useGlassAccessibility } from './accessibility-motion'
 import { GlassSurface } from './glass-surface'
-import { reduceMotionAwarePressStyle } from './reduce-motion-aware-animation'
+import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from './reduce-motion-aware-animation'
 import { type GlassMode } from './tokens'
 
 export type FloatingGlassTabItem<Key extends string> = {
@@ -62,7 +62,9 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
             testID={item.testID}
           >
             {focused && !reduceMotion ? (
-              <View
+              <ReduceMotionAwareEntranceView
+                delayMs={0}
+                distanceY={2}
                 pointerEvents="none"
                 style={[
                   styles.liquidPill,
@@ -71,10 +73,11 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
                     borderColor: mode === 'dark' ? 'rgba(105,222,198,0.22)' : 'rgba(8,120,110,0.12)',
                   },
                 ]}
+                testID={`liquid-toolbar-selection-${item.key}`}
               >
                 <View style={[styles.liquidCore, { backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(68,232,204,0.30)' }]} />
                 <View style={[styles.liquidSheen, { backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.52)' }]} />
-              </View>
+              </ReduceMotionAwareEntranceView>
             ) : null}
             {iconForItem(item, focused)}
             {item.label ? (
