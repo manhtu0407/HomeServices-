@@ -29,6 +29,7 @@ const WORKER_GLASSMORPHISM_MOTION_LAYER = 'WORKER_GLASSMORPHISM_MOTION_LAYER: sh
 const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kael-empty-chat-state worker-kael-local-chat-input submitWorkerKaelLocalDraft'
 const WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT = 'WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT: general area only until worker accepts'
 const WORKER_NO_FAKE_PAYMENT_DATA = 'WORKER_NO_FAKE_PAYMENT_DATA: worker-no-fake-payment-data'
+const WORKER_JOBROOM_KAEL_HANDOFF = 'WORKER_JOBROOM_KAEL_HANDOFF: worker-jobroom-kael-handoff worker-jobroom-waiting-room worker-jobroom-privacy-gate'
 
 const WORKER_DECORATIVE_MOTION_ENABLED = false
 const WORKER_THEME_STORAGE_KEY = 'home-services.worker.theme.production'
@@ -181,6 +182,13 @@ const workerCopy = {
     home: {
       eyebrow: 'Thợ',
       title: 'Ca trực',
+      readinessTitle: 'Sẵn sàng nhận việc',
+      readinessNoProfile: 'Hoàn tất hồ sơ thợ trước khi nhận yêu cầu mới.',
+      readinessOnline: 'Bật nhận việc khi hồ sơ đã được duyệt và bạn đang rảnh.',
+      readinessOffline: 'Tắt nhận việc khi đang bận hoặc chưa đủ điều kiện nhận yêu cầu.',
+      readinessVerification: 'Xác minh',
+      readinessAvailability: 'Khả dụng',
+      readinessRequest: 'Yêu cầu mới',
       mapSearch: 'Chờ yêu cầu mới',
       mapTitle: 'Điện, nước, vệ sinh',
       mapMeta: 'Chưa có yêu cầu',
@@ -216,18 +224,31 @@ const workerCopy = {
       filters: ['Chờ nhận', 'Đang làm', 'Cần xử lý'],
       emptyStatus: 'Đang theo dõi',
       emptyTitle: 'Chưa có việc đang làm',
-      emptyBody: '',
+      emptyBody: 'Kael sẽ đưa yêu cầu mới vào đây khi có khách xác nhận tìm thợ.',
       scopeStatus: 'Khách quyết định',
       scopeTitle: 'Thay đổi phạm vi',
-      scopeBody: '',
+      scopeBody: 'Thợ chờ khách xác nhận trước khi tiếp tục phần việc mới.',
+      jobRoomCta: 'Mở JobRoom',
     },
     chat: {
       eyebrow: 'Tin nhắn',
-      title: 'Kael',
+      title: 'JobRoom',
+      jobRoomTitle: 'JobRoom của Kael',
+      waitingTitle: 'Đang chờ Kael đưa việc',
+      waitingBody: 'Khi khách xác nhận tìm thợ, JobRoom sẽ mở tóm tắt công việc, khu vực chung và kênh trao đổi.',
+      waitingInput: 'Chờ Kael đưa yêu cầu vào JobRoom.',
+      handoffTitle: 'Kael giao việc',
+      privacyGate: 'Địa chỉ chi tiết chỉ mở sau khi thợ chấp nhận.',
+      acceptedGate: 'Đã nhận việc. Có thể trao đổi trong JobRoom.',
+      lockedGate: 'Chấp nhận việc để mở trao đổi.',
+      serviceLabel: 'Dịch vụ',
+      problemLabel: 'Vấn đề',
+      areaLabel: 'Khu vực',
+      statusLabel: 'Trạng thái',
       briefTitle: 'Tóm tắt an toàn',
-      briefBody: '',
+      briefBody: 'Kael giữ tóm tắt công việc và mốc an toàn trước khi thợ phản hồi.',
       emptyTitle: 'Chưa có tin nhắn',
-      emptyBody: '',
+      emptyBody: 'Tin nhắn chỉ mở khi có yêu cầu thật hoặc thợ đã nhận việc.',
       input: 'Nhập...',
       send: 'Gửi',
       worker: 'Thợ',
@@ -271,6 +292,13 @@ const workerCopy = {
     home: {
       eyebrow: 'Worker',
       title: 'Shift',
+      readinessTitle: 'Ready for jobs',
+      readinessNoProfile: 'Complete your worker profile before receiving new requests.',
+      readinessOnline: 'Go online when your profile is approved and you are available.',
+      readinessOffline: 'Stay offline while busy or not eligible for new requests.',
+      readinessVerification: 'Verification',
+      readinessAvailability: 'Availability',
+      readinessRequest: 'New request',
       mapSearch: 'Waiting for a new request',
       mapTitle: 'Power, plumbing, cleaning',
       mapMeta: 'No request yet',
@@ -306,18 +334,31 @@ const workerCopy = {
       filters: ['Pending', 'Active', 'Needs review'],
       emptyStatus: 'Watching',
       emptyTitle: 'No active job',
-      emptyBody: '',
+      emptyBody: 'Kael will place new requests here after a customer confirms worker search.',
       scopeStatus: 'Customer decides',
       scopeTitle: 'Scope change',
-      scopeBody: '',
+      scopeBody: 'Wait for the customer decision before continuing the changed scope.',
+      jobRoomCta: 'Open JobRoom',
     },
     chat: {
       eyebrow: 'Chat',
-      title: 'Kael',
+      title: 'JobRoom',
+      jobRoomTitle: 'Kael JobRoom',
+      waitingTitle: 'Waiting for Kael to hand off a job',
+      waitingBody: 'When a customer confirms worker search, JobRoom opens the job brief, general area, and relay channel.',
+      waitingInput: 'Waiting for Kael to place a request in JobRoom.',
+      handoffTitle: 'Kael handoff',
+      privacyGate: 'Detailed address opens only after acceptance.',
+      acceptedGate: 'Job accepted. You can message in JobRoom.',
+      lockedGate: 'Accept the job to unlock messaging.',
+      serviceLabel: 'Service',
+      problemLabel: 'Problem',
+      areaLabel: 'Area',
+      statusLabel: 'Status',
       briefTitle: 'Safety brief',
-      briefBody: '',
+      briefBody: 'Kael keeps the job brief and safety context before worker replies.',
       emptyTitle: 'No messages yet',
-      emptyBody: '',
+      emptyBody: 'Messages open only for a real request or an accepted job.',
       input: 'Type...',
       send: 'Send',
       worker: 'Worker',
@@ -603,6 +644,7 @@ export function WorkerHomeSurface() {
   return (
     <WorkerFrame active="home" eyebrow={copy.home.eyebrow} title={copy.home.title} testID="worker-home-surface">
       <WorkerMapStage />
+      <WorkerReadinessPanel />
       <IncomingRequestSheet />
 
       <View style={styles.operationalBand} testID="worker-shift-console">
@@ -624,9 +666,12 @@ export function WorkerJobsSurface() {
   const hiddenAddressLabel = workerActionCopy[language].hiddenAddress
   const visibleArea = deal?.broadcast?.generalArea ?? deal?.draft.districtLabel
   const jobAreaLabel = visibleArea ? localizedWorkerAreaLabel(visibleArea, language) : hiddenAddressLabel
-  const jobAddressLabel = deal?.draft.addressLabel ? localizedWorkerAreaLabel(deal.draft.addressLabel, language) : jobAreaLabel
+  const fullJobAddressLabel = selectors.canWorkerSeeFullAddress && deal?.draft.addressLabel
+    ? localizedWorkerAreaLabel(deal.draft.addressLabel, language)
+    : null
+  const jobVisibleAreaLabel = fullJobAddressLabel ?? jobAreaLabel
   const jobBody = deal
-    ? `${localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, language)} · ${selectors.canWorkerSeeFullAddress ? jobAddressLabel : jobAreaLabel}`
+    ? `${localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, language)} · ${jobVisibleAreaLabel}`
     : copy.jobs.emptyBody
   const showScopeChangeCard = Boolean(deal && selectors.currentStatus === 'scope_change_pending')
 
@@ -635,6 +680,7 @@ export function WorkerJobsSurface() {
       <SegmentFilter labels={copy.jobs.filters} />
       <IncomingRequestSheet compact />
       <JobActivityCard icon="tools" status={deal ? localizedStatusLabel(selectors.currentStatus, language) : copy.jobs.emptyStatus} title={jobTitle} body={jobBody} tone="mint" />
+      <WorkerJobsJobRoomEntry />
       {showScopeChangeCard ? <JobActivityCard icon="brief" status={copy.jobs.scopeStatus} title={copy.jobs.scopeTitle} body={copy.jobs.scopeBody} testID="worker-scope-change-active" tone="warm" /> : null}
     </WorkerFrame>
   )
@@ -748,7 +794,8 @@ function WorkerFrame({
                 WORKER_DOCK_GLASS_MOTION +
                 WORKER_GLASSMORPHISM_MOTION_LAYER +
                 WORKER_CHATBOX_EMPTY_COMPOSER +
-                WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT
+                WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT +
+                WORKER_JOBROOM_KAEL_HANDOFF
               }
             />
             {children}
@@ -760,19 +807,100 @@ function WorkerFrame({
   )
 }
 
+function WorkerReadinessPanel() {
+  const { copy, language, tokens } = useWorkerUi()
+  const { selectors, state, workerProfile } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const verificationLabel = localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)
+  const availabilityLabel = !workerProfile
+    ? appCopy[language].common.noData
+    : workerProfile.is_available
+    ? language === 'en' ? 'Online' : 'Đang nhận việc'
+    : language === 'en' ? 'Offline' : 'Tạm tắt nhận'
+  const requestLabel = deal ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noRequest
+  const body = !workerProfile
+    ? copy.home.readinessNoProfile
+    : workerProfile.is_available ? copy.home.readinessOnline : copy.home.readinessOffline
+
+  return (
+    <View style={[styles.readinessPanel, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-unified-readiness-panel">
+      <View style={styles.rowBetween}>
+        <View style={styles.titleStack}>
+          <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+            {copy.home.readinessTitle}
+          </Text>
+          <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
+            {body}
+          </Text>
+        </View>
+        <View style={[styles.readinessBadge, { backgroundColor: workerProfile?.is_available ? tokens.mint : tokens.glassStrong, borderColor: tokens.border }]}>
+          <Icon name={workerProfile?.is_available ? 'check' : 'clock'} active={Boolean(workerProfile?.is_available)} />
+        </View>
+      </View>
+      <View style={styles.readinessGrid}>
+        <Metric label={copy.home.readinessVerification} value={verificationLabel} />
+        <Metric label={copy.home.readinessAvailability} value={availabilityLabel} />
+        <Metric label={copy.home.readinessRequest} value={requestLabel} />
+      </View>
+    </View>
+  )
+}
+
+function WorkerJobsJobRoomEntry() {
+  const { copy, tokens } = useWorkerUi()
+  const { replace } = useRouter()
+  const { state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const canMessage = isAcceptedLocalWorkerDeal(deal)
+
+  if (!deal?.broadcast) return null
+
+  return (
+    <View style={[styles.jobRoomEntry, workerOpaqueCardSurface(tokens, canMessage ? 'cyan' : 'warm')]} testID="worker-jobs-jobroom-entry">
+      <View style={styles.identityRow}>
+        <View style={[styles.readinessBadge, { backgroundColor: canMessage ? tokens.mint : tokens.glassStrong, borderColor: tokens.border }]}>
+          <Icon name={canMessage ? 'check' : 'shield'} active={canMessage} />
+        </View>
+        <View style={styles.titleStack}>
+          <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+            {copy.chat.jobRoomTitle}
+          </Text>
+          <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
+            {canMessage ? copy.chat.acceptedGate : copy.chat.privacyGate}
+          </Text>
+        </View>
+      </View>
+      <PressButton secondary label={copy.jobs.jobRoomCta} onPress={() => replace('/(worker)/chat')} testID="worker-jobs-open-jobroom" />
+    </View>
+  )
+}
+
 function WorkerChatContent() {
   const { copy, language, tokens } = useWorkerUi()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
+  const broadcast = deal?.broadcast ?? null
   const dealChatKey = workerChatDealKey(deal)
   const [draft, setDraft] = useState('')
   const [messages, setMessages] = useState<WorkerChatMessage[]>([])
   const activeDealChatKeyRef = useRef(dealChatKey)
-  const dealSeedMessages = buildWorkerDealChatSeed(deal, selectors.currentStatus, copy.chat.kael, language)
-  const renderedMessages = messages.length > 0 ? messages : dealSeedMessages
-  const hasAnyWorkerKaelMessage = renderedMessages.length > 0
+  const renderedMessages = messages
+  const hasAnyWorkerKaelMessage = Boolean(broadcast || renderedMessages.length > 0)
   const canSendWorkerKaelMessage = Boolean(deal && isAcceptedLocalWorkerDeal(deal))
-  const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : language === 'en' ? 'Accept or skip first' : 'Chấp nhận hoặc bỏ qua trước'
+  const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : broadcast ? copy.chat.lockedGate : copy.chat.waitingInput
+  const hiddenAddressLabel = workerActionCopy[language].hiddenAddress
+  const jobAreaLabel = broadcast?.generalArea ? localizedWorkerAreaLabel(broadcast.generalArea, language) : hiddenAddressLabel
+  const fullAddressLabel = broadcast?.fullAddressLabel ?? deal?.draft.addressLabel ?? null
+  const jobAddressLabel = selectors.canWorkerSeeFullAddress && fullAddressLabel ? localizedWorkerAreaLabel(fullAddressLabel, language) : jobAreaLabel
+  const jobStatusLabel = localizedStatusLabel(selectors.currentStatus, language)
+  const jobRoomMeta = broadcast ? [
+    { label: copy.chat.serviceLabel, value: localizedServiceLabel(broadcast.serviceType, language) },
+    { label: copy.chat.problemLabel, value: localizedWorkerProblemSummary(broadcast, language) },
+    { label: copy.chat.areaLabel, value: jobAddressLabel },
+    { label: copy.chat.statusLabel, value: jobStatusLabel },
+  ] : []
+  const jobRoomGate = canSendWorkerKaelMessage ? copy.chat.acceptedGate : broadcast ? copy.chat.lockedGate : copy.chat.waitingBody
+  const jobBriefLines = broadcast ? buildWorkerBroadcastBrief(deal, broadcast, selectors.currentStatus, language) : []
 
   useEffect(() => {
     if (activeDealChatKeyRef.current === dealChatKey) return
@@ -785,9 +913,8 @@ function WorkerChatContent() {
     if (!canSendWorkerKaelMessage) return
     const value = draft.trim()
     if (!value) return
-    const baseMessages = messages.length > 0 ? messages : dealSeedMessages
-    setMessages([
-      ...baseMessages,
+    setMessages((prev) => [
+      ...prev,
       { id: `worker-local-${Date.now()}`, mine: true, text: value, who: copy.chat.worker },
     ])
     setDraft('')
@@ -798,19 +925,79 @@ function WorkerChatContent() {
       <View style={styles.hiddenMarker} testID="worker-kael-client-chatbox-parity" />
       <View style={[styles.kaelClientStage, workerOpaqueCardSurface(tokens, 'cyan'), !hasAnyWorkerKaelMessage ? styles.kaelClientStageEmpty : null]} testID="worker-kael-conversation-feed">
         <View style={styles.hiddenMarker} testID="worker-kael-empty-chat-state" />
-        {!hasAnyWorkerKaelMessage ? (
+        {!broadcast ? (
           <View style={styles.kaelBlankCanvas} testID="worker-kael-empty-chat-canvas">
             <View style={[styles.kaelCanvasWashLarge, { backgroundColor: tokens.aqua }]} />
             <View style={[styles.kaelCanvasWashWarm, { backgroundColor: tokens.copper }]} />
-            <View style={styles.emptyChatState}>
-              <Text style={[styles.cardTitle, { color: tokens.ink }]}>{copy.chat.emptyTitle}</Text>
+            <View style={styles.jobRoomWaiting} testID="worker-jobroom-waiting-room">
+              <Image accessible={false} contentFit="contain" source={kaelHead} style={styles.jobRoomKaelHead} />
+              <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+                {copy.chat.jobRoomTitle}
+              </Text>
+              <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
+                {copy.chat.waitingTitle}
+              </Text>
+              <Text style={[styles.bodyText, { color: tokens.muted, textAlign: 'center' }]} numberOfLines={4}>
+                {copy.chat.waitingBody}
+              </Text>
             </View>
           </View>
         ) : (
-          <View style={styles.chatStack} testID="hasAnyWorkerKaelMessage">
-            {renderedMessages.map((message) => (
-              <ChatBubble key={message.id} {...message} />
-            ))}
+          <View style={styles.jobRoomStack} testID="hasAnyWorkerKaelMessage">
+            <View style={[styles.jobRoomHeader, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-jobroom-kael-handoff">
+              <View style={styles.identityRow}>
+                <Image accessible={false} contentFit="contain" source={kaelHead} style={styles.kaelHead} />
+                <View style={styles.titleStack}>
+                  <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+                    {copy.chat.handoffTitle}
+                  </Text>
+                  <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
+                    {localizedServiceLabel(broadcast.serviceType, language)}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
+                {copy.chat.briefBody}
+              </Text>
+            </View>
+            <View style={styles.jobRoomMetaGrid}>
+              {jobRoomMeta.map((item) => (
+                <JobRoomMetaCell key={item.label} label={item.label} value={item.value} />
+              ))}
+            </View>
+            <View style={[styles.jobRoomBrief, workerOpaqueCardSurface(tokens, 'mint')]} testID="worker-jobroom-live-brief">
+              <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+                {copy.chat.briefTitle}
+              </Text>
+              {jobBriefLines.map((line) => (
+                <View key={line} style={styles.briefItem}>
+                  <View style={[styles.briefDot, { backgroundColor: tokens.primary }]} />
+                  <Text style={[styles.briefText, { color: tokens.ink }]} numberOfLines={3}>
+                    {line}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            <View style={[styles.jobRoomGate, workerOpaqueCardSurface(tokens, canSendWorkerKaelMessage ? 'cyan' : 'warm')]} testID="worker-jobroom-privacy-gate">
+              <Icon name={canSendWorkerKaelMessage ? 'check' : 'shield'} active={canSendWorkerKaelMessage} small />
+              <View style={styles.titleStack}>
+                <Text style={[styles.bodyText, { color: tokens.ink }]} numberOfLines={2}>
+                  {jobRoomGate}
+                </Text>
+                {!canSendWorkerKaelMessage ? (
+                  <Text style={[styles.briefText, { color: tokens.muted }]} numberOfLines={2}>
+                    {copy.chat.privacyGate}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+            {renderedMessages.length > 0 ? (
+              <View style={styles.chatStack}>
+                {renderedMessages.map((message) => (
+                  <ChatBubble key={message.id} {...message} />
+                ))}
+              </View>
+            ) : null}
           </View>
         )}
 
@@ -855,21 +1042,33 @@ function WorkerChatContent() {
   )
 }
 
-function buildWorkerDealChatSeed(deal: LocalDeal | null, status: LocalDealStatus | null, kaelLabel: string, language: WorkerLanguageMode): WorkerChatMessage[] {
-  const broadcast = deal?.broadcast ?? null
-  if (!deal || !broadcast) return []
-  return buildWorkerBroadcastBrief(deal, broadcast, status, language)
-    .slice(0, 2)
-    .map((text, index) => ({ id: `${deal.id}-prebrief-${index}-${text}`, system: true, text, who: kaelLabel }))
+function JobRoomMetaCell({ label, value }: { label: string; value: string }) {
+  const { tokens } = useWorkerUi()
+
+  return (
+    <View style={[styles.jobRoomMetaCell, workerOpaqueCardSurface(tokens, 'raised')]}>
+      <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[styles.jobRoomMetaValue, { color: tokens.ink }]} numberOfLines={2}>
+        {value}
+      </Text>
+    </View>
+  )
 }
 
 function buildWorkerBroadcastBrief(deal: LocalDeal | null, broadcast: WorkerBroadcastView, status: LocalDealStatus | null, language: WorkerLanguageMode): string[] {
   const serviceLabel = localizedServiceLabel(broadcast.serviceType, language)
   const problemLabel = localizedWorkerProblemSummary(broadcast, language)
   const areaLabel = localizedWorkerAreaLabel(broadcast.generalArea, language)
+  const fullAddressLabel = broadcast.fullAddressLabel ?? deal?.draft.addressLabel ?? null
   const addressGate = language === 'en'
-    ? `${areaLabel}. Detailed address is hidden until acceptance.`
-    : `Khu vực: ${areaLabel}. Địa chỉ chi tiết vẫn ẩn trước khi nhận.`
+    ? isAcceptedLocalWorkerDeal(deal) && fullAddressLabel
+      ? `Address: ${localizedWorkerAreaLabel(fullAddressLabel, language)}.`
+      : `${areaLabel}. Detailed address is hidden until acceptance.`
+    : isAcceptedLocalWorkerDeal(deal) && fullAddressLabel
+      ? `Địa chỉ: ${localizedWorkerAreaLabel(fullAddressLabel, language)}.`
+      : `Khu vực: ${areaLabel}. Địa chỉ chi tiết vẫn ẩn trước khi nhận.`
   const statusLine = localizedStatusLabel(status, language)
   const mediaLine = deal?.draft.mediaCount
     ? language === 'en'
@@ -899,6 +1098,7 @@ function localizedWorkerAreaLabel(area: string | null | undefined, language: Wor
 function workerChatDealKey(deal: LocalDeal | null) {
   if (!deal?.broadcast) return 'none'
   return [
+    deal.broadcast.broadcastId ?? deal.broadcast.jobId ?? deal.id,
     deal.broadcast.status,
     deal.draft.serviceType ?? 'none',
     deal.draft.problemChips.join('|'),
@@ -920,7 +1120,7 @@ function WorkerEarningsHero() {
       <View style={styles.rowBetween}>
         <View style={styles.titleStack}>
           <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.earnings.today}</Text>
-          <Text style={[styles.moneyText, { color: tokens.ink }]}>{moneyLabel}</Text>
+          <Text adjustsFontSizeToFit minimumFontScale={0.74} numberOfLines={2} style={[styles.moneyText, !acceptedDeal ? styles.moneyTextState : null, { color: tokens.ink }]}>{moneyLabel}</Text>
         </View>
         <View style={[styles.earningsBadge, { backgroundColor: tokens.glassStrong }]}>
           <Icon name="money" active />
@@ -1007,7 +1207,7 @@ function WorkerProfileContent() {
 
       <View style={[styles.greenScoreCard, glassSurface(tokens, 'mint')]}>
         <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.profile.scoreTitle}</Text>
-        <Text style={[styles.scoreNumber, { color: tokens.ink }]} numberOfLines={1}>{profileStatusValue}</Text>
+        <Text adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.scoreNumber, { color: tokens.ink }]} numberOfLines={1}>{profileStatusValue}</Text>
         {copy.profile.scoreBody ? <Text style={[styles.bodyText, { color: tokens.muted }]}>{copy.profile.scoreBody}</Text> : null}
       </View>
 
@@ -1335,11 +1535,11 @@ function WorkerMapStage() {
   const statusTitle = deal
     ? localizedStatusLabel(selectors.currentStatus, language)
     : workerProfile?.is_available
-      ? language === 'en' ? 'Online' : 'Đang online'
+      ? language === 'en' ? 'Online' : 'Đang nhận việc'
       : workerProfile?.is_suspended
         ? language === 'en' ? 'Account suspended' : 'Tài khoản đang khóa'
         : workerProfile?.is_approved
-          ? language === 'en' ? 'Offline' : 'Đang offline'
+          ? language === 'en' ? 'Offline' : 'Tạm tắt nhận'
           : copy.home.online
 
   return (
@@ -1561,7 +1761,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       <View style={styles.rowBetween}>
         <View style={[styles.serviceBadge, { backgroundColor: tokens.mint }]}>
           <Icon name={deal?.draft.serviceType === 'plumbing' ? 'water' : deal?.draft.serviceType === 'cleaning' ? 'spark' : 'bolt'} small />
-          <Text style={[styles.serviceBadgeText, { color: tokens.primary }]}>{hasBroadcast ? localizedServiceLabel(deal?.draft.serviceType ?? null, language) : copy.request.service}</Text>
+          <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.serviceBadgeText, { color: tokens.primary }]}>{hasBroadcast ? localizedServiceLabel(deal?.draft.serviceType ?? null, language) : copy.request.service}</Text>
         </View>
         {secondsRemainingLabel && selectors.canWorkerAccept ? (
           <View style={[styles.countdownRing, { borderColor: tokens.primary }]} testID="worker-local-broadcast-countdown">
@@ -1570,10 +1770,10 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         ) : null}
       </View>
 
-      <Text style={[styles.requestTitle, { color: tokens.ink }]}>{localizedProblemSummary}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={2} style={[styles.requestTitle, { color: tokens.ink }]}>{localizedProblemSummary}</Text>
       <View style={styles.areaRow} testID={selectors.canWorkerSeeFullAddress ? 'worker-full-address-after-accept' : 'worker-general-area-before-accept'}>
         <Icon name="map" small />
-        <Text style={[styles.areaText, { color: tokens.muted }]}>{addressLabel}</Text>
+        <Text numberOfLines={2} style={[styles.areaText, { color: tokens.muted }]}>{addressLabel}</Text>
       </View>
 
       <View style={[styles.kaelBrief, workerOpaqueCardSurface(tokens, 'cyan')]} testID="worker-kael-brief">
@@ -1965,8 +2165,8 @@ function JobActivityCard({
         <Icon name={icon} />
         <Text style={[styles.statusPill, { backgroundColor: tokens.glassStrong, color: tokens.primary }]}>{status}</Text>
       </View>
-      <Text style={[styles.cardTitle, { color: tokens.ink }]}>{title}</Text>
-      {body ? <Text style={[styles.bodyText, { color: tokens.muted }]}>{body}</Text> : null}
+      <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={2} style={[styles.cardTitle, { color: tokens.ink }]}>{title}</Text>
+      {body ? <Text numberOfLines={3} style={[styles.bodyText, { color: tokens.muted }]}>{body}</Text> : null}
     </View>
   )
 }
@@ -1976,10 +2176,10 @@ function Metric({ label, value }: { label: string; value: string }) {
 
   return (
     <View style={[styles.metric, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
-      <Text style={[styles.metricValue, { color: tokens.ink }]} numberOfLines={1}>
+      <Text adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.metricValue, { color: tokens.ink }]} numberOfLines={1}>
         {value}
       </Text>
-      <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
+      <Text adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -1992,10 +2192,10 @@ function QuickPanel({ icon, title, tone, value }: { icon: WorkerIconName; title:
   return (
     <View style={[styles.quickPanel, workerOpaqueCardSurface(tokens, tone)]}>
       <Icon name={icon} />
-      <Text style={[styles.quickValue, { color: tokens.ink }]} numberOfLines={1}>
+      <Text adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.quickValue, { color: tokens.ink }]} numberOfLines={1}>
         {value}
       </Text>
-      <Text style={[styles.quickTitle, { color: tokens.ink }]} numberOfLines={1}>
+      <Text adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.quickTitle, { color: tokens.ink }]} numberOfLines={1}>
         {title}
       </Text>
     </View>
@@ -2344,6 +2544,10 @@ const styles = StyleSheet.create({
   metricLabel: { fontSize: 10, fontWeight: '500', position: 'relative', textAlign: 'center', zIndex: 2 },
   requestSheet: { borderRadius: 32, gap: 8, marginTop: -2, overflow: 'hidden', padding: 14, position: 'relative' },
   requestSheetCompact: { marginTop: 0 },
+  readinessPanel: { borderRadius: 28, gap: 12, overflow: 'hidden', padding: 15, position: 'relative' },
+  readinessBadge: { alignItems: 'center', borderRadius: 18, borderWidth: 1, height: 46, justifyContent: 'center', width: 46 },
+  readinessGrid: { flexDirection: 'row', gap: 8 },
+  jobRoomEntry: { borderRadius: 24, borderWidth: 1, gap: 10, overflow: 'hidden', padding: 12 },
   serviceBadge: { alignItems: 'center', borderRadius: 999, flexDirection: 'row', gap: 6, minHeight: 34, paddingHorizontal: 10 },
   serviceBadgeText: { fontSize: 13, fontWeight: '600' },
   countdownRing: { alignItems: 'center', borderRadius: 999, borderWidth: 3, justifyContent: 'center', minHeight: 38, minWidth: 70, paddingHorizontal: 10 },
@@ -2382,13 +2586,20 @@ const styles = StyleSheet.create({
   statusPill: { borderRadius: 999, fontSize: 12, fontWeight: '600', overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
   cardTitle: { fontSize: 17, fontWeight: '600', letterSpacing: 0, lineHeight: 23 },
   chatShell: { borderRadius: 32, gap: 12, minHeight: 430, overflow: 'hidden', padding: 12, position: 'relative' },
-  kaelRelayCard: { borderRadius: 27, gap: 12, padding: 14 },
-  emptyChatState: { alignItems: 'center', borderRadius: 28, gap: 8, minHeight: 194, justifyContent: 'center', padding: 20 },
   kaelClientStage: { borderRadius: 25, borderWidth: 1, flex: 1, gap: 12, justifyContent: 'space-between', minHeight: 336, overflow: 'hidden', padding: 12, position: 'relative' },
   kaelClientStageEmpty: { opacity: 0.92 },
-  kaelBlankCanvas: { flex: 1, minHeight: 196, overflow: 'hidden', position: 'relative' },
+  kaelBlankCanvas: { flex: 1, minHeight: 240, overflow: 'hidden', position: 'relative' },
   kaelCanvasWashLarge: { borderRadius: 32, height: 168, left: -48, opacity: 0.07, position: 'absolute', top: 46, transform: [{ rotate: '-8deg' }], width: 168 },
   kaelCanvasWashWarm: { borderRadius: 28, bottom: 42, height: 126, opacity: 0.06, position: 'absolute', right: -34, transform: [{ rotate: '12deg' }], width: 126 },
+  jobRoomWaiting: { alignItems: 'center', gap: 8, justifyContent: 'center', minHeight: 228, padding: 18, position: 'relative', zIndex: 2 },
+  jobRoomKaelHead: { height: 70, width: 70 },
+  jobRoomStack: { gap: 10 },
+  jobRoomHeader: { borderRadius: 24, borderWidth: 1, gap: 10, overflow: 'hidden', padding: 13 },
+  jobRoomMetaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  jobRoomMetaCell: { borderRadius: 18, borderWidth: 1, flexBasis: '47%', flexGrow: 1, gap: 4, minHeight: 66, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 9 },
+  jobRoomMetaValue: { fontSize: 13, fontWeight: '600', letterSpacing: 0, lineHeight: 17 },
+  jobRoomBrief: { borderRadius: 22, borderWidth: 1, gap: 8, overflow: 'hidden', padding: 12 },
+  jobRoomGate: { alignItems: 'center', borderRadius: 22, borderWidth: 1, flexDirection: 'row', gap: 10, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 11 },
   chatStack: { gap: 10 },
   chatBubble: { alignSelf: 'flex-start', borderRadius: 22, maxWidth: '88%', padding: 13 },
   chatBubbleMine: { alignSelf: 'flex-end' },
@@ -2402,6 +2613,7 @@ const styles = StyleSheet.create({
   earningsHero: { borderRadius: 32, gap: 12, overflow: 'hidden', padding: 18, position: 'relative' },
   earningsBadge: { alignItems: 'center', borderRadius: 24, height: 58, justifyContent: 'center', transform: [{ rotate: '-5deg' }], width: 58 },
   moneyText: { fontSize: 34, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: 0 },
+  moneyTextState: { fontSize: 24, lineHeight: 30 },
   listCard: { borderRadius: 29, gap: 4, overflow: 'hidden', padding: 10, position: 'relative' },
   listRow: { alignItems: 'center', flexDirection: 'row', gap: 11, minHeight: 54, paddingHorizontal: 8 },
   listTitle: { flex: 1, fontSize: 14, fontWeight: '600' },

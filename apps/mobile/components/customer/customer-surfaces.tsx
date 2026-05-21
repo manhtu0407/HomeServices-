@@ -42,6 +42,8 @@ const customerDockBottomClearance = customerDockHeight + customerDockBottomMargi
 const customerFrameHorizontalPadding = 16
 const openBookingPath = '/(customer)/booking'
 const openHistoryPath = '/(customer)/history'
+const openKaelPath = '/(customer)/kael'
+const openProfilePath = '/(customer)/profile'
 const kaelModel8A = require('../../assets/kael-model-8a.png')
 const kaelModel8AHead = require('../../assets/kael-model-8a-head.png')
 const vndFormatter = new Intl.NumberFormat('vi-VN')
@@ -229,8 +231,24 @@ const customerCopy = {
     home: {
       searchA11y: 'Mở kiểm giá dịch vụ',
       searchText: 'Bạn cần sửa gì?',
-      promoA11y: 'Mở kiểm giá trước khi đặt dịch vụ',
-      promoTitle: 'Kiểm giá trước khi đặt.',
+      commandKicker: 'Trung tâm Kael',
+      commandTitle: 'Kể Kael sự cố trong căn hộ',
+      commandBody: 'Kael gom mô tả, dịch vụ và ngữ cảnh căn hộ trước khi bạn xác nhận tìm thợ.',
+      commandComposer: 'Mô tả nhanh sự cố để Kael chuẩn bị phiếu',
+      contextLabel: 'Ngữ cảnh căn hộ',
+      contextFallback: 'Chưa có khu vực',
+      intakeCta: 'Mở Kael',
+      quickActive: 'Yêu cầu hiện tại',
+      quickHistory: 'Lịch sử',
+      quickAddress: 'Căn hộ',
+      quickTrust: 'Minh bạch giá',
+      quickActiveMeta: 'Theo dõi trạng thái',
+      quickHistoryMeta: 'Xem phiếu cũ',
+      quickAddressMeta: 'Kiểm tra khu vực',
+      quickTrustMeta: 'Ước tính trước xác nhận',
+      noActiveMeta: 'Chưa có yêu cầu',
+      trustTitle: 'Kael chỉ chuẩn bị phiếu',
+      trustBody: 'Giá là ước tính tham khảo. Thợ xác nhận phạm vi và giá thực tế trước khi bắt đầu.',
       notification: (count: number) => `Kael có ${count} cập nhật chưa đọc`,
       activeA11y: (service: string) => `Mở yêu cầu ${service} đang xử lý`,
     },
@@ -248,6 +266,21 @@ const customerCopy = {
     kael: {
       activeDealError: 'Đang có yêu cầu đang chạy. Mở Hoạt động để theo dõi hoặc hoàn tất trước khi tạo yêu cầu mới.',
       bookingCta: 'Qua Kiểm giá',
+      hubKicker: 'Trợ lý nhận yêu cầu',
+      hubTitle: 'Kael nhận mô tả trước',
+      hubGreeting: 'Chào bạn, mình là Kael.',
+      hubBody: 'Mô tả sự cố điện, nước hoặc vệ sinh. Kael sẽ tóm tắt thành phiếu để bạn kiểm giá và xác nhận ở bước tiếp theo.',
+      quickPrompt: 'Bắt đầu bằng dịch vụ',
+      attach: 'Thêm ảnh ở Kiểm giá',
+      sessionTitle: 'Phiên nhận yêu cầu',
+      sessionMetaReady: 'Đủ để mở phiếu',
+      sessionMetaNeedsMore: 'Cần thêm chi tiết',
+      assistantSummary: 'Kael đã giữ mô tả này trong phiên. Bước tiếp theo là kiểm giá, bổ sung ảnh/khu vực và xác nhận rõ trước khi tìm thợ.',
+      assistantMoreDetail: 'Kael cần thêm chi tiết trước khi tạo phiếu.',
+      assistantMoreDetailHint: 'Hãy thêm vị trí trong căn hộ, dấu hiệu nhìn thấy, mức độ ảnh hưởng hoặc ảnh ở bước Kiểm giá.',
+      unsupportedSummary: 'Kael chưa thể tạo phiếu cho dịch vụ ngoài phạm vi hiện tại.',
+      unsupportedHint: 'Hiện tại chỉ hỗ trợ sửa điện, sửa nước và vệ sinh/dọn dẹp nhà.',
+      quickServiceA11y: (service: string) => `Bắt đầu kiểm giá ${service} với Kael`,
       needDetail: 'Mô tả Kael cần rõ hơn trước khi tạo phiếu.',
       needService: 'Cần chọn ở Kiểm giá',
       sendAfterConfirm: 'Gửi thợ sau xác nhận',
@@ -341,8 +374,24 @@ const customerCopy = {
     home: {
       searchA11y: 'Open service price check',
       searchText: 'What needs fixing?',
-      promoA11y: 'Open price check before booking service',
-      promoTitle: 'Check the price before you book.',
+      commandKicker: 'Kael Command Home',
+      commandTitle: 'Tell Kael what happened',
+      commandBody: 'Kael gathers the description, service, and apartment context before you confirm worker search.',
+      commandComposer: 'Describe the problem so Kael can prepare a ticket',
+      contextLabel: 'Apartment context',
+      contextFallback: 'No area yet',
+      intakeCta: 'Open Kael',
+      quickActive: 'Active request',
+      quickHistory: 'History',
+      quickAddress: 'Apartment',
+      quickTrust: 'Price clarity',
+      quickActiveMeta: 'Track status',
+      quickHistoryMeta: 'View past tickets',
+      quickAddressMeta: 'Check area',
+      quickTrustMeta: 'Estimate before confirm',
+      noActiveMeta: 'No active request',
+      trustTitle: 'Kael prepares the ticket only',
+      trustBody: 'Prices are reference estimates. The worker confirms scope and actual price before starting.',
       notification: (count: number) => `Kael has ${count} unread updates`,
       activeA11y: (service: string) => `Open active ${service} request`,
     },
@@ -360,6 +409,21 @@ const customerCopy = {
     kael: {
       activeDealError: 'An active request is running. Open Activity to follow or finish it before creating a new request.',
       bookingCta: 'Open Price Check',
+      hubKicker: 'Service Intake Assistant',
+      hubTitle: 'Kael takes the description first',
+      hubGreeting: 'Hi, I am Kael.',
+      hubBody: 'Describe an electrical, plumbing, or cleaning issue. Kael will turn it into a ticket for price check and explicit confirmation.',
+      quickPrompt: 'Start with a service',
+      attach: 'Add photo in Price Check',
+      sessionTitle: 'Intake session',
+      sessionMetaReady: 'Ready for ticket',
+      sessionMetaNeedsMore: 'Needs more detail',
+      assistantSummary: 'Kael saved this description for the session. Next, open Price Check to add media/area details and confirm before worker search.',
+      assistantMoreDetail: 'Kael needs a little more detail before creating a ticket.',
+      assistantMoreDetailHint: 'Add the room, visible symptom, impact level, or a photo in Price Check.',
+      unsupportedSummary: 'Kael cannot create a ticket for a service outside the current scope.',
+      unsupportedHint: 'Home Services currently supports electrical repair, plumbing repair, and home cleaning only.',
+      quickServiceA11y: (service: string) => `Start ${service} price check with Kael`,
       needDetail: 'Kael needs a clearer description before creating a ticket.',
       needService: 'Choose in Price Check',
       sendAfterConfirm: 'Sent after confirmation',
@@ -465,6 +529,9 @@ export function CustomerHomeSurface() {
       ? openBookingPath
       : openHistoryPath
   const activeDealStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState, languageMode)
+  const homeAreaValue = activeDeal?.draft.districtLabel
+    ? localizedCustomerAreaLabel(activeDeal.draft.districtLabel, languageMode, copy.home.contextFallback)
+    : copy.home.contextFallback
   const openBookingFlow = (serviceType?: ServiceType) => {
     if (!canStartNewDeal) {
       replace(activeDealRoute)
@@ -474,6 +541,38 @@ export function CustomerHomeSurface() {
     if (!serviceType && isTerminalDeal) dispatch({ type: 'reset_workflow' })
     replace(openBookingPath)
   }
+  const homeCommandTarget = canStartNewDeal ? openKaelPath : activeDealRoute
+  const homeCommandActionLabel = canStartNewDeal ? copy.home.intakeCta : copy.home.quickActive
+  const homeShortcuts: Array<{ icon: IconName; meta: string; onPress: () => void; testID: string; title: string }> = [
+    {
+      icon: 'ticket',
+      meta: activeDeal ? activeDealStatusLabel : copy.home.noActiveMeta,
+      onPress: () => replace(activeDeal ? activeDealRoute : openHistoryPath),
+      testID: 'customer-home-shortcut-active',
+      title: copy.home.quickActive,
+    },
+    {
+      icon: 'history',
+      meta: copy.home.quickHistoryMeta,
+      onPress: () => replace(openHistoryPath),
+      testID: 'customer-home-shortcut-history',
+      title: copy.home.quickHistory,
+    },
+    {
+      icon: 'apartment',
+      meta: copy.home.quickAddressMeta,
+      onPress: () => replace(openProfilePath),
+      testID: 'customer-home-shortcut-address',
+      title: copy.home.quickAddress,
+    },
+    {
+      icon: 'estimate',
+      meta: copy.home.quickTrustMeta,
+      onPress: () => openBookingFlow(),
+      testID: 'customer-home-shortcut-trust',
+      title: copy.home.quickTrust,
+    },
+  ]
 
   return (
     <V4Frame active="home" testID="customer-home-surface">
@@ -497,10 +596,68 @@ export function CustomerHomeSurface() {
               <View style={styles.hiddenMarker} testID="customer-home-layer-stack" />
               <View style={styles.hiddenMarker} testID="customer-home-hero-depth-grid" />
               <View style={styles.hiddenMarker} testID="customer-utility-notification-center" />
+              <ReduceMotionAwareEntranceView delayMs={100} distanceY={16} testID="customer-home-hero-motion">
+                <GlassCard mode={tokens.mode} style={styles.homeCommandHero} testID="customer-home-layered-hero">
+                  <Pressable accessibilityLabel={homeCommandActionLabel} accessibilityRole="button" onPress={() => replace(homeCommandTarget)} style={({ pressed }) => [styles.homeCommandHitArea, pressed ? styles.pressed : null]} testID="customer-home-kael-command">
+                    <SubtleGlassHighlight />
+                    <View style={[styles.homeCommandWash, { backgroundColor: tokens.aqua }]} />
+                    <View style={styles.homeCommandHeader}>
+                      <KaelMascot variant="head" size={58} material="opaque" />
+                      <View style={styles.homeCommandCopy}>
+                        <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+                          {copy.home.commandKicker}
+                        </Text>
+                        <Text style={[styles.homeCommandTitle, { color: tokens.text }]} numberOfLines={2}>
+                          {copy.home.commandTitle}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.homeCommandBody, { color: tokens.muted }]} numberOfLines={3}>
+                      {copy.home.commandBody}
+                    </Text>
+                    <View style={[styles.homeCommandContext, customerOpaqueSurface(tokens)]} testID="customer-home-apartment-context">
+                      <IconGlyph name="apartment" color={tokens.primary} accent={tokens.copper} />
+                      <View style={styles.homeCommandContextCopy}>
+                        <Text style={[styles.homeCommandContextLabel, { color: tokens.muted }]} numberOfLines={1}>
+                          {copy.home.contextLabel}
+                        </Text>
+                        <Text style={[styles.homeCommandContextValue, { color: tokens.text }]} numberOfLines={1}>
+                          {homeAreaValue}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[styles.homeCommandComposer, customerOpaqueSurface(tokens)]}>
+                      <IconGlyph name="kael" color={tokens.primary} accent={tokens.copper} />
+                      <Text style={[styles.homeCommandComposerText, { color: tokens.subtleText }]} numberOfLines={2}>
+                        {copy.home.commandComposer}
+                      </Text>
+                      <View style={[styles.homeCommandSend, { backgroundColor: tokens.primary }]}>
+                        <IconGlyph name="send" color={tokens.primaryText} accent={tokens.primaryText} />
+                      </View>
+                    </View>
+                    <View style={styles.hiddenMarker} testID="customer-home-ticket-decor" />
+                  </Pressable>
+                </GlassCard>
+              </ReduceMotionAwareEntranceView>
               <View style={styles.serviceGrid}>
                 <V4ServiceCard icon="boltPanel" title={localizedServiceLabel('electrical', languageMode)} testID="customer-shell-service-electrical" onPress={() => openBookingFlow('electrical')} />
                 <V4ServiceCard icon="waterPipe" title={localizedServiceLabel('plumbing', languageMode)} testID="customer-shell-service-plumbing" onPress={() => openBookingFlow('plumbing')} water />
                 <V4ServiceCard icon="cleaning" title={localizedServiceLabel('cleaning', languageMode)} testID="customer-shell-service-cleaning" onPress={() => openBookingFlow('cleaning')} />
+              </View>
+              <View style={styles.homeShortcutGrid} testID="customer-home-real-shortcuts">
+                {homeShortcuts.map((item) => (
+                  <Pressable accessibilityLabel={`${item.title}. ${item.meta}`} accessibilityRole="button" key={item.testID} onPress={item.onPress} style={({ pressed }) => [styles.homeShortcutTile, customerOpaqueSurface(tokens), pressed ? styles.pressed : null]} testID={item.testID}>
+                    <IconGlyph name={item.icon} color={tokens.primary} accent={tokens.copper} />
+                    <View style={styles.homeShortcutCopy}>
+                      <Text style={[styles.homeShortcutTitle, { color: tokens.text }]} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={[styles.homeShortcutMeta, { color: tokens.muted }]} numberOfLines={2}>
+                        {item.meta}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
               </View>
               {visibleNotifications.length > 0 ? (
                 <View style={[styles.notificationInlineCard, customerOpaqueSurface(tokens)]} testID="customer-notification-inbox-live">
@@ -553,22 +710,19 @@ export function CustomerHomeSurface() {
                   </View>
                 </Pressable>
               ) : null}
-              <ReduceMotionAwareEntranceView delayMs={100} distanceY={16} testID="customer-home-hero-motion">
-                <GlassCard mode={tokens.mode} style={styles.promoCard} testID="customer-home-layered-hero">
-                  <Pressable accessibilityLabel={copy.home.promoA11y} accessibilityRole="button" onPress={() => openBookingFlow()} style={styles.promoCardHitArea}>
-                    <View style={[styles.promoMintCloud, { backgroundColor: tokens.aqua }]} />
-                    <View style={[styles.promoWarmCloud, { backgroundColor: tokens.copper }]} />
-                    <View style={[styles.promoAccentTile, { backgroundColor: tokens.raised, borderColor: tokens.border }]} />
-                    <Text style={[styles.promoTitle, { color: tokens.text }]} numberOfLines={4}>
-                      {copy.home.promoTitle}
-                    </Text>
-                    <View style={styles.hiddenMarker} testID="customer-home-ticket-decor" />
-                  </Pressable>
-                </GlassCard>
-              </ReduceMotionAwareEntranceView>
+              <View style={[styles.homeTrustNote, customerOpaqueSurface(tokens)]} testID="customer-home-trust-note">
+                <IconGlyph name="privacy" color={tokens.primary} accent={tokens.copper} />
+                <View style={styles.homeTrustCopy}>
+                  <Text style={[styles.homeTrustTitle, { color: tokens.text }]} numberOfLines={1}>
+                    {copy.home.trustTitle}
+                  </Text>
+                  <Text style={[styles.homeTrustBody, { color: tokens.muted }]} numberOfLines={3}>
+                    {copy.home.trustBody}
+                  </Text>
+                </View>
+              </View>
               <View style={styles.hiddenMarker} testID="customer-home-other-services-message" />
               <View style={styles.hiddenMarker} testID="customer-home-relaxed-stage" />
-              <View style={styles.hiddenMarker} testID="customer-home-coupon-strip" />
             </View>
           </View>
         </>
@@ -607,12 +761,23 @@ export function CustomerKaelSurface() {
   const displayedKaelAnswer = latestAnswer.trim().length > 0 ? latestAnswer : localKaelDraft?.description ?? ''
   const hasAnyKaelInfo = displayedKaelAnswer.trim().length > 0
   const hasEnoughKaelInfo = displayedKaelAnswer.trim().length >= 16
+  const isUnsupportedKaelService = Boolean(localKaelDraft?.unsupportedServiceLabel)
+  const shouldRevealKaelTicket = hasEnoughKaelInfo && !isUnsupportedKaelService
   const kaelTicketService = localKaelDraft?.unsupportedServiceLabel ? copy.kael.lockedService : localKaelDraft ? localizedServiceLabel(localKaelDraft.serviceType, languageMode) : localizedServiceLabel(null, languageMode)
   const kaelTicketProblem = localKaelDraft?.unsupportedServiceLabel
     ? copy.kael.unsupportedService
     : (localKaelDraft?.inferredProblemLabel
       ? localizedProblemLabel(localKaelDraft.inferredProblemLabel, localKaelDraft.serviceType, languageMode)
       : localKaelDraft?.needsServiceChoice ? copy.kael.needService : copy.ticket.described)
+  const quickKaelServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']
+  const startKaelService = (serviceType: ServiceType) => {
+    if (!canStartKaelDraft) {
+      setKaelError(copy.kael.activeDealError)
+      return
+    }
+    dispatch({ type: 'start_home_service', serviceType })
+    replace(openBookingPath)
+  }
   const submitKaelLocalDraft = () => {
     const trimmed = kaelDraft.trim()
     if (!trimmed) return
@@ -633,6 +798,14 @@ export function CustomerKaelSurface() {
     setKaelDraft(value)
     if (kaelError) setKaelError(null)
   }
+  const openKaelAttachFlow = () => {
+    if (!canStartKaelDraft && !localKaelDraft) {
+      setKaelError(copy.kael.activeDealError)
+      return
+    }
+    if (state.deal && isTerminalCustomerDeal(state.deal.status)) dispatch({ type: 'reset_workflow' })
+    replace(openBookingPath)
+  }
 
   useEffect(() => {
     if (state.deal?.draft.source === 'kael') return
@@ -651,17 +824,80 @@ export function CustomerKaelSurface() {
                 <View style={styles.kaelBlankCanvas} testID="customer-kael-empty-chat-canvas">
                   <View style={[styles.kaelCanvasWashLarge, { backgroundColor: tokens.aqua }]} />
                   <View style={[styles.kaelCanvasWashWarm, { backgroundColor: tokens.copper }]} />
+                  <View style={styles.kaelHubHeader} testID="customer-kael-service-intake-hub">
+                    <KaelMascot variant="full" size={96} material="opaque" />
+                    <View style={styles.kaelHubCopy}>
+                      <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+                        {copy.kael.hubKicker}
+                      </Text>
+                      <Text style={[styles.kaelHubGreeting, { color: tokens.text }]} numberOfLines={1}>
+                        {copy.kael.hubGreeting}
+                      </Text>
+                      <Text style={[styles.kaelHubTitle, { color: tokens.text }]} numberOfLines={2}>
+                        {copy.kael.hubTitle}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.kaelHubBody, { color: tokens.muted }]} numberOfLines={4}>
+                    {copy.kael.hubBody}
+                  </Text>
+                  <Text style={[styles.kaelHubPrompt, { color: tokens.primary }]} numberOfLines={1}>
+                    {copy.kael.quickPrompt}
+                  </Text>
+                  <View style={styles.kaelHubQuickRow} testID="customer-kael-hub-quick-services">
+                    {quickKaelServices.map((serviceType) => {
+                      const serviceLabel = localizedServiceLabel(serviceType, languageMode)
+                      return (
+                        <Pressable
+                          accessibilityLabel={copy.kael.quickServiceA11y(serviceLabel)}
+                          accessibilityRole="button"
+                          key={serviceType}
+                          onPress={() => startKaelService(serviceType)}
+                          style={({ pressed }) => [styles.kaelHubChip, customerOpaqueSurface(tokens), pressed ? styles.pressed : null]}
+                          testID={`customer-kael-hub-service-${serviceType}`}
+                        >
+                          <Text style={[styles.kaelHubChipText, { color: tokens.text }]} numberOfLines={1}>
+                            {serviceLabel}
+                          </Text>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
                 </View>
               ) : (
                 <>
+                  <View style={styles.kaelSessionHeader}>
+                    <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+                      {copy.kael.sessionTitle}
+                    </Text>
+                    <Text style={[styles.sectionMeta, { color: isUnsupportedKaelService ? tokens.copper : hasEnoughKaelInfo ? tokens.primary : tokens.copper }]} numberOfLines={1}>
+                      {isUnsupportedKaelService ? copy.kael.unsupportedService : shouldRevealKaelTicket ? copy.kael.sessionMetaReady : copy.kael.sessionMetaNeedsMore}
+                    </Text>
+                  </View>
                   <View style={[styles.kaelUserBubble, customerMessageSurface(tokens)]} testID="customer-kael-user-message">
                     <Text style={[styles.bubbleTitle, styles.kaelUserText, { color: tokens.text }]} numberOfLines={3}>
                       {displayedKaelAnswer}
                     </Text>
                   </View>
-                  {hasEnoughKaelInfo ? (
-                    <View style={[styles.ticketCard, styles.kaelSummaryTicket, glassSurface(tokens, 'warm')]} testID="customer-kael-ticket-reveal-after-info">
-                      <SubtleGlassHighlight />
+                  <View style={[styles.kaelAssistantBubble, customerOpaqueSurface(tokens)]} testID="customer-kael-assistant-guidance">
+                    <Text style={[styles.bubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
+                      Kael
+                    </Text>
+                    <Text style={[styles.kaelAssistantText, { color: tokens.text }]} numberOfLines={4}>
+                      {isUnsupportedKaelService ? copy.kael.unsupportedSummary : shouldRevealKaelTicket ? copy.kael.assistantSummary : copy.kael.assistantMoreDetail}
+                    </Text>
+                    {isUnsupportedKaelService ? (
+                      <Text style={[styles.kaelAssistantHint, { color: tokens.muted }]} numberOfLines={3}>
+                        {copy.kael.unsupportedHint}
+                      </Text>
+                    ) : !shouldRevealKaelTicket ? (
+                      <Text style={[styles.kaelAssistantHint, { color: tokens.muted }]} numberOfLines={3}>
+                        {copy.kael.assistantMoreDetailHint}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {shouldRevealKaelTicket ? (
+                    <View style={[styles.ticketCard, styles.kaelSummaryTicket, customerOpaqueSurface(tokens)]} testID="customer-kael-ticket-reveal-after-info">
                       <View style={styles.hiddenMarker} testID="customer-kael-repair-ticket" />
                       <View style={styles.sectionTitle}>
                         <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
@@ -683,7 +919,7 @@ export function CustomerKaelSurface() {
                   ) : null}
                 </>
               )}
-              <KaelComposer draft={kaelDraft} onChangeDraft={updateKaelDraft} onSubmit={submitKaelLocalDraft} />
+              <KaelComposer attachLabel={copy.kael.attach} draft={kaelDraft} onAttach={openKaelAttachFlow} onChangeDraft={updateKaelDraft} onSubmit={submitKaelLocalDraft} />
             </View>
             {kaelError ? (
               <Text style={[styles.kaelErrorText, { color: tokens.danger }]} testID="customer-kael-active-deal-guard">
@@ -1430,15 +1666,16 @@ function IconShell({ icon, tone = 'service', size = 46 }: { icon: IconName; tone
   )
 }
 
-function KaelMascot({ size, variant }: { size: number; variant: 'head' | 'full' }) {
+function KaelMascot({ material = 'glass', size, variant }: { material?: 'glass' | 'opaque'; size: number; variant: 'head' | 'full' }) {
   const tokens = useCustomerTokens()
   const source = variant === 'head' ? kaelModel8AHead : kaelModel8A
+  const mascotSurface = material === 'glass' ? glassSurface(tokens, 'water') : customerOpaqueSurface(tokens)
   return (
     <View
       style={[
         styles.kaelMascotFrame,
         {
-          ...glassSurface(tokens, 'water'),
+          ...mascotSurface,
           borderRadius: Math.round(size * 0.32),
           height: size,
           width: size,
@@ -1446,7 +1683,7 @@ function KaelMascot({ size, variant }: { size: number; variant: 'head' | 'full' 
       ]}
       testID={variant === 'head' ? 'kael-model-8a-head.png' : 'kael-model-8a.png'}
     >
-      <SubtleGlassHighlight />
+      {material === 'glass' ? <SubtleGlassHighlight /> : null}
       <Image accessible={false} contentFit="contain" source={source} style={{ height: variant === 'head' ? size * 0.9 : size * 1.1, width: variant === 'head' ? size * 0.9 : size * 1.05 }} />
     </View>
   )
@@ -1481,11 +1718,15 @@ function SecondaryButton({ compact, label, onPress, testID }: { compact?: boolea
 }
 
 function KaelComposer({
+  attachLabel,
   draft,
+  onAttach,
   onChangeDraft,
   onSubmit,
 }: {
+  attachLabel?: string
   draft: string
+  onAttach?: () => void
   onChangeDraft: (value: string) => void
   onSubmit: () => void
 }) {
@@ -1494,14 +1735,24 @@ function KaelComposer({
   const inputLabel = languageMode === 'en' ? 'Describe the problem for Kael' : 'Mô tả vấn đề cho Kael'
   const placeholder = languageMode === 'en' ? 'Describe the problem...' : 'Mô tả vấn đề...'
   const sendLabel = languageMode === 'en' ? 'Send' : 'Gửi'
+  const hasDraft = draft.trim().length > 0
+  const attachControl = onAttach ? (
+    <Pressable accessibilityLabel={attachLabel} accessibilityRole="button" onPress={onAttach} style={({ pressed }) => [styles.composerTool, { borderColor: tokens.border }, pressed ? styles.pressed : null]}>
+      <Text style={[styles.composerToolText, { color: tokens.primary }]} numberOfLines={1}>
+        +
+      </Text>
+    </Pressable>
+  ) : (
+    <View accessible={false} pointerEvents="none" style={[styles.composerTool, { borderColor: tokens.border }]}>
+      <Text style={[styles.composerToolText, { color: tokens.primary }]} numberOfLines={1}>
+        +
+      </Text>
+    </View>
+  )
   return (
     <View style={[styles.composer, styles.kaelComposerInline, glassSurface(tokens, 'strong')]} testID="customer-kael-composer-dock">
       <SubtleGlassHighlight />
-      <View accessible={false} pointerEvents="none" style={[styles.composerTool, { borderColor: tokens.border }]}>
-        <Text style={[styles.composerToolText, { color: tokens.primary }]} numberOfLines={1}>
-          +
-        </Text>
-      </View>
+      {attachControl}
       <TextInput
         accessibilityLabel={inputLabel}
         maxLength={220}
@@ -1514,8 +1765,8 @@ function KaelComposer({
         testID="customer-kael-local-chat-input"
         value={draft}
       />
-      <Pressable accessibilityLabel={sendLabel} accessibilityRole="button" onPress={onSubmit} style={[styles.sendButton, { backgroundColor: tokens.primary }]}>
-        <IconGlyph name="send" color={tokens.primaryText} accent={tokens.primaryText} />
+      <Pressable accessibilityLabel={sendLabel} accessibilityRole="button" accessibilityState={{ disabled: !hasDraft }} disabled={!hasDraft} onPress={onSubmit} style={({ pressed }) => [styles.sendButton, { backgroundColor: hasDraft ? tokens.primary : tokens.border, opacity: hasDraft ? 1 : 0.72 }, pressed && hasDraft ? styles.pressed : null]}>
+        <IconGlyph name="send" color={hasDraft ? tokens.primaryText : tokens.subtleText} accent={hasDraft ? tokens.primaryText : tokens.subtleText} />
       </Pressable>
     </View>
   )
@@ -1751,6 +2002,9 @@ const styles = StyleSheet.create({
   hiddenMarker: {
     height: 0,
     width: 0,
+  },
+  pressed: {
+    opacity: 0.78,
   },
   kaelErrorText: {
     fontSize: 13,
@@ -2080,16 +2334,124 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
   },
   homeMapSpace: {
-    height: 176,
+    height: 112,
   },
   homeSheet: {
     borderRadius: 30,
     borderWidth: 1,
     boxShadow: 'none',
     gap: 15,
-    minHeight: 520,
+    minHeight: 620,
     overflow: 'hidden',
     padding: 16,
+  },
+  homeCommandHero: {
+    borderRadius: 28,
+    borderWidth: 1,
+    boxShadow: 'none',
+    minHeight: 236,
+    overflow: 'hidden',
+    padding: 16,
+  },
+  homeCommandHitArea: {
+    flex: 1,
+    gap: 12,
+    minHeight: 204,
+    position: 'relative',
+  },
+  homeCommandHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    minWidth: 0,
+    position: 'relative',
+    zIndex: 2,
+  },
+  homeCommandCopy: {
+    flex: 1,
+    gap: 4,
+    minWidth: 0,
+  },
+  homeCommandTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 29,
+  },
+  homeCommandBody: {
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 20,
+    position: 'relative',
+    zIndex: 2,
+  },
+  homeCommandContext: {
+    alignItems: 'center',
+    borderRadius: 19,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 9,
+    minHeight: 48,
+    overflow: 'hidden',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    position: 'relative',
+    zIndex: 2,
+  },
+  homeCommandContextCopy: {
+    flex: 1,
+    gap: 1,
+    minWidth: 0,
+  },
+  homeCommandContextLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 14,
+  },
+  homeCommandContextValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 17,
+  },
+  homeCommandComposer: {
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 58,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    position: 'relative',
+    zIndex: 2,
+  },
+  homeCommandComposerText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 18,
+    minWidth: 0,
+  },
+  homeCommandSend: {
+    alignItems: 'center',
+    borderRadius: 16,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  homeCommandWash: {
+    borderRadius: 999,
+    height: 180,
+    opacity: 0.16,
+    position: 'absolute',
+    right: -52,
+    top: -48,
+    width: 180,
   },
   twoCol: {
     flexDirection: 'row',
@@ -2099,6 +2461,69 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  homeShortcutGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  homeShortcutTile: {
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    flexBasis: '47%',
+    flexDirection: 'row',
+    flexGrow: 1,
+    gap: 10,
+    minHeight: 78,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  homeShortcutCopy: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0,
+  },
+  homeShortcutTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 17,
+  },
+  homeShortcutMeta: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 16,
+  },
+  homeTrustNote: {
+    alignItems: 'center',
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 11,
+    minHeight: 82,
+    overflow: 'hidden',
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+  },
+  homeTrustCopy: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0,
+  },
+  homeTrustTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 18,
+  },
+  homeTrustBody: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 17,
   },
   notificationInlineCard: {
     alignItems: 'center',
@@ -2241,58 +2666,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     letterSpacing: 0,
   },
-  promoCard: {
-    borderRadius: 26,
-    borderWidth: 1,
-    boxShadow: 'none',
-    minHeight: 138,
-    overflow: 'hidden',
-    paddingHorizontal: 17,
-    paddingVertical: 17,
-  },
-  promoCardHitArea: {
-    flex: 1,
-    minHeight: 104,
-    position: 'relative',
-  },
-  promoTitle: {
-    fontSize: 21,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 24,
-    maxWidth: 188,
-    position: 'relative',
-    zIndex: 2,
-  },
-  promoMintCloud: {
-    borderRadius: 999,
-    height: 136,
-    left: -42,
-    opacity: 0.14,
-    position: 'absolute',
-    top: 18,
-    width: 136,
-  },
-  promoWarmCloud: {
-    borderRadius: 999,
-    height: 160,
-    opacity: 0.22,
-    position: 'absolute',
-    right: -44,
-    top: -20,
-    width: 160,
-  },
-  promoAccentTile: {
-    borderRadius: 26,
-    borderWidth: 1,
-    height: 82,
-    opacity: 0.8,
-    position: 'absolute',
-    right: 18,
-    top: 28,
-    transform: [{ rotate: '-8deg' }],
-    width: 82,
-  },
   kicker: {
     fontSize: 11,
     fontWeight: '600',
@@ -2332,8 +2705,11 @@ const styles = StyleSheet.create({
   },
   kaelBlankCanvas: {
     flex: 1,
-    minHeight: 196,
+    gap: 12,
+    justifyContent: 'center',
+    minHeight: 248,
     overflow: 'hidden',
+    padding: 4,
     position: 'relative',
   },
   kaelCanvasWashLarge: {
@@ -2356,6 +2732,73 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '12deg' }],
     width: 126,
   },
+  kaelHubHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 13,
+    minWidth: 0,
+    position: 'relative',
+    zIndex: 2,
+  },
+  kaelHubCopy: {
+    flex: 1,
+    gap: 4,
+    minWidth: 0,
+  },
+  kaelHubGreeting: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 18,
+  },
+  kaelHubTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 27,
+  },
+  kaelHubBody: {
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 20,
+    position: 'relative',
+    zIndex: 2,
+  },
+  kaelHubPrompt: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0,
+    position: 'relative',
+    zIndex: 2,
+  },
+  kaelHubQuickRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    position: 'relative',
+    zIndex: 2,
+  },
+  kaelHubChip: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 40,
+    minWidth: 94,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+  },
+  kaelHubChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0,
+  },
+  kaelSessionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   kaelUserBubble: {
     alignSelf: 'flex-end',
     borderRadius: 22,
@@ -2372,6 +2815,29 @@ const styles = StyleSheet.create({
   },
   kaelSummaryTicket: {
     width: '100%',
+  },
+  kaelAssistantBubble: {
+    alignSelf: 'flex-start',
+    borderRadius: 22,
+    borderTopLeftRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    maxWidth: '92%',
+    overflow: 'hidden',
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+  },
+  kaelAssistantText: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 19,
+  },
+  kaelAssistantHint: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 17,
   },
   kaelBubble: {
     borderRadius: 25,
