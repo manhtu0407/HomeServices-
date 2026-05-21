@@ -1,5 +1,5 @@
-import { ClientPriceCheckFlow } from '@/components/client-price-check/client-price-check-flow'
+import { CustomerBookingEntrySurface } from '@/components/customer/customer-surfaces'
 
 export default function BookingScreen() {
-  return <ClientPriceCheckFlow />
+  return <CustomerBookingEntrySurface />
 }

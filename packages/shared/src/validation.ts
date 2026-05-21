@@ -14,6 +14,22 @@ export const jobCreateSchema = z.object({
   scheduled_at: z.string().datetime().optional(),
 })
 
+export const kaelChatCreateSchema = z.object({
+  service_type: serviceTypeSchema,
+  session_id: z.string().uuid().optional(),
+  message: z.string().min(1).max(5000).optional(),
+  problem_chips: z.array(z.string().max(100)).max(10).default([]),
+  photo_urls: z.array(z.string().url()).max(5).default([]),
+  address_district: z.string().max(100).optional(),
+})
+
+export const kaelChatTurnSchema = z.object({
+  message: z.string().min(1).max(5000),
+  problem_chips: z.array(z.string().max(100)).max(10).optional(),
+  photo_urls: z.array(z.string().url()).max(5).default([]),
+  address_district: z.string().max(100).optional(),
+})
+
 export const reviewSchema = z.object({
   job_id: z.string().uuid(),
   rating: z.number().int().min(1).max(5),
@@ -23,6 +39,10 @@ export const reviewSchema = z.object({
 
 export const chatMessageSchema = z.object({
   job_id: z.string().uuid(),
+  content: z.string().min(1).max(5000),
+})
+
+export const jobMessageSendSchema = z.object({
   content: z.string().min(1).max(5000),
 })
 
@@ -73,6 +93,32 @@ export const workerScopeChangeSchema = z
     path: ['new_price_max'],
   })
 
+export const workerCancellationRequestSchema = z.object({
+  reason: z.string().min(10).max(1000),
+  evidence_photo_urls: z.array(z.string().url()).max(5).default([]),
+})
+
+export const workerCancellationDecisionSchema = z.object({
+  decision: z.enum(['approve', 'reject']),
+  review_note: z.string().max(1000).optional(),
+})
+
+export const jobMediaAttachSchema = z.object({
+  assets: z.array(z.object({
+    object_path: z.string().min(10).max(500),
+    stage: z.enum(['before', 'after', 'kael_reference', 'cancellation_evidence']),
+    mime_type: z.string().min(3).max(120).optional(),
+    file_size_bytes: z.number().int().min(0).max(26_214_400).optional(),
+  })).min(1).max(5),
+})
+
+export const devicePushTokenSchema = z.object({
+  platform: z.enum(['ios', 'android', 'web', 'unknown']),
+  push_token: z.string().min(8).max(4096),
+  permission_status: z.enum(['granted', 'denied', 'undetermined']),
+  safe_metadata: z.record(z.string(), z.unknown()).default({}),
+})
+
 export const customerScopeDecisionSchema = z.object({
   decision: z.enum(['approve', 'reject']),
 })
@@ -93,9 +139,16 @@ export function scrubSensitiveForLLM(input: string): string {
 }
 
 export type JobCreateInput = z.infer<typeof jobCreateSchema>
+export type KaelChatCreateInput = z.infer<typeof kaelChatCreateSchema>
+export type KaelChatTurnInput = z.infer<typeof kaelChatTurnSchema>
 export type ReviewInput = z.infer<typeof reviewSchema>
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>
+export type JobMessageSendInput = z.infer<typeof jobMessageSendSchema>
 export type WorkerRegisterInput = z.infer<typeof workerRegisterSchema>
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>
+export type WorkerCancellationRequestInput = z.infer<typeof workerCancellationRequestSchema>
+export type WorkerCancellationDecisionInput = z.infer<typeof workerCancellationDecisionSchema>
+export type JobMediaAttachInput = z.infer<typeof jobMediaAttachSchema>
+export type DevicePushTokenInput = z.infer<typeof devicePushTokenSchema>
 export type CustomerScopeDecisionInput = z.infer<typeof customerScopeDecisionSchema>

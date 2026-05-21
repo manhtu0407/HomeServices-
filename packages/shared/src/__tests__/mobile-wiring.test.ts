@@ -13,7 +13,7 @@ const countOccurrences = (source: string, value: string) => source.split(value).
 
 describe('screen files existence (STRUCTURES.md mapping)', () => {
   const authScreens = ['login.tsx', 'verify-otp.tsx']
-  const customerScreens = ['home.tsx', 'booking.tsx', 'kael.tsx', 'history.tsx', 'profile.tsx']
+  const customerScreens = ['home.tsx', 'booking.tsx', 'kael.tsx', 'kael-chat.tsx', 'history.tsx', 'profile.tsx']
   const workerScreens = ['home.tsx', 'jobs.tsx', 'chat.tsx', 'earnings.tsx', 'profile.tsx']
 
   it.each(authScreens)('(auth)/%s exists', (file) => {
@@ -62,6 +62,7 @@ describe('all screens export default function', () => {
     'app/(customer)/home.tsx',
     'app/(customer)/booking.tsx',
     'app/(customer)/kael.tsx',
+    'app/(customer)/kael-chat.tsx',
     'app/(customer)/history.tsx',
     'app/(customer)/profile.tsx',
     'app/(worker)/_layout.tsx',
@@ -85,16 +86,20 @@ describe('all screens export default function', () => {
 describe('customer tab labels (STRUCTURES.md A1)', () => {
   const src = read('app/(customer)/_layout.tsx')
 
-  it('has exactly 5 Tabs.Screen entries', () => {
+  it('keeps exactly five visible dock tabs and one hidden Kael chat stack route', () => {
     const matches = src.match(/Tabs\.Screen/g) ?? []
-    expect(matches.length).toBe(5)
+    expect(matches.length).toBe(6)
+    const tabIconMatches = src.match(/tabBarIcon:/g) ?? []
+    expect(tabIconMatches.length).toBe(5)
+    expect(src).toContain('name="kael-chat"')
+    expect(src).toContain('href: null')
   })
 
   it('tab route: home', () => {
     expect(src).toContain('name="home"')
   })
 
-  it('tab route: booking uses V4 price-check role', () => {
+  it('tab route: booking keeps the V4 service-entry role', () => {
     expect(src).toContain('name="booking"')
     expect(src).toContain('tabBarLabel')
   })
@@ -122,7 +127,7 @@ describe('customer tab labels (STRUCTURES.md A1)', () => {
     expect(src).toContain("home: 'Trang chủ'")
     expect(src).toContain("bookingA11y: 'Đặt dịch vụ'")
     expect(src).toContain("historyA11y: 'Lịch sử'")
-    expect(src).toContain("booking: 'Price check'")
+    expect(src).toContain("booking: 'Book'")
     expect(src).toContain("historyA11y: 'History'")
     expect(src).not.toContain('accessibilityLabel={accessibilityMarker}')
     expect(src).not.toContain('accessibilityLabel={CUSTOMER_DOCK')
@@ -139,15 +144,17 @@ describe('customer frontend shell surfaces', () => {
   const customerLayout = () => read('app/(customer)/_layout.tsx')
   const customerRoutes = [
     ['home', 'CustomerHomeSurface'],
+    ['booking', 'CustomerBookingEntrySurface'],
     ['kael', 'CustomerKaelSurface'],
     ['history', 'CustomerHistorySurface'],
     ['profile', 'CustomerProfileSurface'],
   ] as const
 
-  it('defines the four public customer shell surface exports', () => {
+  it('defines the public customer shell surface exports', () => {
     const src = shell()
     expect(exists(shellPath)).toBe(true)
     expect(src).toContain('export function CustomerHomeSurface')
+    expect(src).toContain('export function CustomerBookingEntrySurface')
     expect(src).toContain('export function CustomerKaelSurface')
     expect(src).toContain('export function CustomerHistorySurface')
     expect(src).toContain('export function CustomerProfileSurface')
@@ -161,11 +168,17 @@ describe('customer frontend shell surfaces', () => {
     expect(src).not.toContain('client-price-check-prototype')
   })
 
-  it('keeps booking as the only full production price-check flow route', () => {
+  it('keeps legacy booking isolated while Kael chat is the primary workflow route', () => {
     const bookingRoute = read('app/(customer)/booking.tsx')
     const src = shell()
-    expect(bookingRoute).toContain('ClientPriceCheckFlow')
-    expect(bookingRoute).toContain('@/components/client-price-check/client-price-check-flow')
+    const kaelChatRoute = read('app/(customer)/kael-chat.tsx')
+    expect(exists('components/client-price-check/client-price-check-flow.tsx')).toBe(false)
+    expect(bookingRoute).toContain('CustomerBookingEntrySurface')
+    expect(bookingRoute).not.toContain('ClientPriceCheckFlow')
+    expect(src).toContain('customer-booking-legacy-flow-not-primary')
+    expect(src).toContain('testID="customer-booking-service-entry-grid"')
+    expect(kaelChatRoute).toContain('KaelChatSurface')
+    expect(kaelChatRoute).toContain('@/components/customer/kael-chat/kael-chat-surface')
     expect(src).not.toContain('ClientPriceCheckFlow')
     expect(src).not.toContain('production-price-check-flow')
   })
@@ -174,6 +187,7 @@ describe('customer frontend shell surfaces', () => {
     const files = [
       shellPath,
       'app/(customer)/home.tsx',
+      'app/(customer)/booking.tsx',
       'app/(customer)/kael.tsx',
       'app/(customer)/history.tsx',
       'app/(customer)/profile.tsx',
@@ -300,8 +314,8 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-home-ticket-decor')
     expect(src).not.toContain('customer-home-coupon-strip')
     expect(src).toContain('customer-home-kael-command')
-    expect(src).toContain('const homeCommandTarget = canStartNewDeal ? openKaelPath : activeDealRoute')
-    expect(src).toContain('onPress={() => replace(homeCommandTarget)}')
+    expect(src).toContain('const homeCommandTarget = canStartNewDeal ? openKaelChatPath : activeDealRoute')
+    expect(src).toContain('const openHomeCommand = () => {')
     expect(src).toContain('customer-home-apartment-context')
     expect(src).toContain('customer-home-real-shortcuts')
     expect(src).toContain('customer-kael-conversation-feed')
@@ -342,8 +356,11 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-profile-evidence-shell')
   })
 
-  it('keeps Kael as a local price-check chatbox without backend or AI calls', () => {
+  it('keeps the Kael tab as an entry surface while the stack route owns backend chat', () => {
     const src = shell()
+    const stack = read('components/customer/kael-chat/kael-chat-surface.tsx')
+    const pendingIntake = read('components/customer/kael-chat/pending-intake.ts')
+    const stackStyles = read('components/customer/kael-chat/styles.ts')
     expect(src).toContain('KAEL_CHATBOX_SCREEN_CONTRACT')
     expect(src).toContain('KAEL_TICKET_COMPOSER_V3')
     expect(src).toContain('customer-kael-companion')
@@ -358,6 +375,9 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('submitKaelLocalDraft')
     expect(src).toContain('TextInput')
     expect(src).toContain('customer-kael-local-chat-input')
+    expect(src).toContain('inferLocalDealDraftFromKael(trimmed)')
+    expect(src).toContain('setPendingKaelChatDraft({ message: trimmed, serviceType: handoffServiceType })')
+    expect(src).toContain('push(kaelChatPath(handoffServiceType))')
     expect(src).not.toContain('TransactionIntentCard')
     expect(src).not.toContain('sendMessage')
     expect(src).not.toContain('Draft Price Check')
@@ -365,6 +385,50 @@ describe('customer frontend shell surfaces', () => {
     expect(src).not.toContain('kaelPhone')
     expect(src).not.toContain('callAI')
     expect(src).not.toContain('fetch(')
+    expect(src).toContain('kaelChatPath(serviceType)')
+    expect(src).toContain('push(kaelChatPath(localKaelDraft?.serviceType))')
+    expect(stack).toContain('KAEL_CHAT_STACK_SCREEN_CONTRACT')
+    expect(stack).toContain('useFrontendWorkflow')
+    expect(stack).toContain('actions.hydrateRemoteJobById(result.data.job_id)')
+    expect(exists('components/customer/kael-chat/pending-intake.ts')).toBe(true)
+    expect(stack).toContain('takePendingKaelChatDraft')
+    expect(stack).toContain('setDraft(pendingDraft.message)')
+    expect(pendingIntake).toContain('setPendingKaelChatDraft')
+    expect(pendingIntake).toContain('takePendingKaelChatDraft')
+    expect(exists('components/customer/kael-chat/styles.ts')).toBe(true)
+    expect(stack).toContain("import { styles } from './styles'")
+    expect(stack.split(/\r?\n/).length).toBeLessThanOrEqual(650)
+    expect(stackStyles).toContain('export const styles = StyleSheet.create')
+    expect(stack).toContain('kaelChatService.create')
+    expect(stack).toContain('kaelChatService.sendTurn')
+    expect(stack).toContain('kaelChatService.confirm')
+    expect(stack).toContain('confirmArmed')
+    expect(stack).toContain('testID="customer-kael-chat-inline-confirmation"')
+    expect(stack).toContain('/(customer)/history?job_id=')
+    expect(stack).toContain('localizedKaelChatError(result.error, language)')
+    expect(stack).toContain('localizedGeneratedText(rawBody, language, text.turnFallback)')
+    expect(stack).toContain('localizedGeneratedText(estimate.disclaimer, language, text.estimateDisclaimerFallback)')
+    expect(stack).toContain('const confirmationFallback = result.data.broadcast_sent ? text.confirmed : text.noWorkerConfirmed')
+    expect(stack).toContain('setConfirmedMessage(localizedGeneratedText(result.data.message || confirmationFallback, language, confirmationFallback))')
+    expect(stack).toContain('localizedOptionalGeneratedText(estimate.advisory, language)')
+    expect(stack).toContain('vietnameseSignalPattern')
+    expect(stack).toContain('if (!routeSessionId && session?.session.service_type !== routeService)')
+    expect(stack).toContain('catch (unknownError: unknown)')
+    expect(stack).toContain('setSending(false)')
+    expect(stack).toContain('setConfirming(false)')
+    expect(stack).toContain('errorMessage(unknownError, text.errorUnknown)')
+    expect(stack).toContain('testID="customer-kael-chat-stack-screen"')
+    expect(stack).not.toContain('fetch(')
+    expect(stack).not.toContain('createClient')
+    expect(stack).not.toContain('supabase.')
+    expect(stack).not.toMatch(/\.(insert|update|upsert|delete)\(/)
+    expect(stack).not.toContain('ANTHROPIC_API_KEY')
+    expect(stack).not.toContain('PERPLEXITY_API_KEY')
+    expect(stack).not.toContain('DEEPSEEK_API_KEY')
+    expect(stackStyles).not.toContain('fetch(')
+    expect(stackStyles).not.toContain('supabase.')
+    expect(pendingIntake).not.toContain('fetch(')
+    expect(pendingIntake).not.toContain('supabase.')
   })
 
   it('uses a custom customer tab icon set instead of default tab indicators', () => {
@@ -482,24 +546,53 @@ describe('customer frontend shell surfaces', () => {
     expect(src).not.toMatch(/\d{1,3}\.\d{3}\s?đ/)
   })
 
-  it('routes customer shell entry points back to the booking tab', () => {
+  it('routes customer shell service entry points into the Kael chat stack route', () => {
     const src = shell()
     expect(src).toContain('useRouter')
-    expect(src).toContain('openBookingFlow')
-    expect(src).toContain('/(customer)/booking')
+    expect(src).toContain('openKaelChatFlow')
+    expect(src).toContain('push(kaelChatPath(serviceType))')
+    expect(src).toContain('/(customer)/kael-chat')
+    expect(src).toContain('kaelChatPath(serviceType)')
   })
 
-  it('hands customer home service cards into the local workflow with exact service types', () => {
+  it('forces A11 scope change review through a hard-stop modal on the customer history route', () => {
     const src = shell()
-    expect(src).toContain("dispatch({ type: 'start_home_service', serviceType })")
-    expect(src).toContain("openBookingFlow('electrical')")
-    expect(src).toContain("openBookingFlow('plumbing')")
+    const modal = read('components/customer/scope-change-modal/scope-change-hard-stop-modal.tsx')
+    expect(exists('components/customer/scope-change-modal/scope-change-hard-stop-modal.tsx')).toBe(true)
+    expect(src).toContain("import { useLocalSearchParams, useRouter } from 'expo-router'")
+    expect(src).toContain('ScopeChangeHardStopModal')
+    expect(src).toContain("useLocalSearchParams<{ job_id?: string; scope_change?: string }>()")
+    expect(src).toContain('actions.hydrateRemoteJobById(routeJobId)')
+    expect(src).toContain("['requested_by_worker', 'reviewing_by_kael', 'waiting_customer_decision'].includes(scopeChange.status)")
+    expect(src).toContain('visible={forceScopeChangeModal}')
+    expect(src).toContain("actions.decideScopeChange(scopeChange.id, { decision: 'approve' })")
+    expect(src).toContain("actions.decideScopeChange(scopeChange.id, { decision: 'reject' })")
+    expect(modal).toContain('Modal animationType="fade"')
+    expect(modal).toContain('onRequestClose={() => undefined}')
+    expect(modal).toContain('customer-scope-change-hard-stop-modal')
+    expect(modal).toContain('customer-scope-change-modal-approve')
+    expect(modal).toContain('customer-scope-change-modal-reject')
+    expect(modal).toContain('customer_explanation')
+    expect(modal).toContain('risk_notes')
+    expect(modal).not.toContain('fetch(')
+    expect(modal).not.toContain('supabase.')
+    expect(modal).not.toContain('callAI')
+  })
+
+  it('hands customer home service cards directly into Kael chat with exact service types', () => {
+    const src = shell()
+    expect(src).toContain("openKaelChatFlow('electrical')")
+    expect(src).toContain("openKaelChatFlow('plumbing')")
+    expect(src).toContain("openKaelChatFlow('cleaning')")
+    expect(src).toContain('return serviceType ? `${openKaelChatPath}?serviceType=${serviceType}` : openKaelChatPath')
     expect(src).toContain('customer-home-active-local-deal')
     expect(src).toContain('activeDealRoute')
+    expect(src).toContain("? kaelChatPath(activeDeal?.draft.serviceType)")
+    expect(src).toContain("push(kaelChatPath(deal?.draft.serviceType))")
     expect(src).toContain('canStartNewDeal')
     expect(src).toContain('canReplaceCustomerDeal(activeDeal.status)')
     expect(src).toContain('isTerminalCustomerDeal(activeDeal.status)')
-    expect(src).toContain("if (!serviceType && isTerminalDeal) dispatch({ type: 'reset_workflow' })")
+    expect(src).toContain("if (isTerminalDeal) dispatch({ type: 'reset_workflow' })")
     expect(src).toContain('openHistoryPath')
   })
 
@@ -569,6 +662,55 @@ describe('frontend workflow provider wiring', () => {
     expect(src).toContain("type: 'mark_read'")
     expect(src).toContain('shouldDecrementUnread,')
     expect(src).not.toContain('setNotificationUnreadCount')
+  })
+})
+
+describe('mobile push notification wiring', () => {
+  it('adds Expo Notifications to the mobile app configuration', () => {
+    const mobilePackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'package.json'), 'utf-8'))
+    const appConfig = read('app.config.ts')
+    const appJson = read('app.json')
+    expect(mobilePackage.dependencies['expo-notifications']).toBe('~0.32.17')
+    expect(appConfig).toContain("'expo-notifications'")
+    expect(appJson).toContain('"expo-notifications"')
+  })
+
+  it('registers Expo push tokens through the mobile API wrapper after authenticated profile load', () => {
+    const authProvider = read('lib/auth-provider.tsx')
+    const push = read('lib/push-notifications.ts')
+    expect(exists('lib/push-notifications.ts')).toBe(true)
+    expect(authProvider).toContain("import { useRouter } from 'expo-router'")
+    expect(authProvider).toContain("import { addPushNotificationResponseListener, setupPushNotifications } from './push-notifications'")
+    expect(authProvider).toContain("profileStatus !== 'ready'")
+    expect(authProvider).toContain("const registrationKey = `${userId}:${role}`")
+    expect(authProvider).toContain('pushRegistrationKeyRef')
+    expect(authProvider).toContain('setupPushNotifications({ role })')
+    expect(push).toContain("require('expo-notifications')")
+    expect(push).toContain('getPermissionsAsync')
+    expect(push).toContain('requestPermissionsAsync')
+    expect(push).toContain('getExpoPushTokenAsync')
+    expect(push).toContain('notificationService.registerDeviceToken(payload)')
+    expect(push).toContain("permission_status: 'granted'")
+    expect(push).toContain("source: 'expo-notifications'")
+    expect(push).not.toContain('supabase.')
+    expect(push).not.toContain('createClient')
+    expect(push).not.toContain('fetch(')
+    expect(push).not.toContain('phone')
+    expect(push).not.toContain('unit')
+    expect(push).not.toContain('address')
+  })
+
+  it('handles push deep links only for role-safe workflow screens', () => {
+    const push = read('lib/push-notifications.ts')
+    expect(push).toContain('export function toNotificationPath')
+    expect(push).toContain("'deep_link'")
+    expect(push).toContain("'broadcast_id'")
+    expect(push).toContain("'scope_change'")
+    expect(push).toContain("`/(customer)/history?${params.toString()}`")
+    expect(push).toContain("`/(worker)/jobs?${params.toString()}`")
+    expect(push).toContain("withoutScheme.startsWith('/(customer)/history')")
+    expect(push).toContain("withoutScheme.startsWith('/(worker)/jobs')")
+    expect(push).not.toContain('Linking.openURL')
   })
 })
 
@@ -1403,7 +1545,7 @@ describe('mobile glassmorphism design system', () => {
     const reduceMotion = read('components/ui/reduce-motion-aware-animation.ts')
     const customerShell = read('components/customer/customer-surfaces.tsx')
     const workerShell = read('components/worker/worker-surfaces.tsx')
-    const bookingFlow = read('components/client-price-check/client-price-check-flow.tsx')
+    const bookingRoute = read('app/(customer)/booking.tsx')
     expect(accessibility).toContain('isReduceMotionEnabled')
     expect(accessibility).toContain('isReduceTransparencyEnabled')
     expect(pressable).toContain("accessibilityRole = 'button'")
@@ -1422,7 +1564,7 @@ describe('mobile glassmorphism design system', () => {
     expect(reduceMotion).toContain('motionDuration(motionTokens.entrance.durationMs, reduceMotion)')
     expect(customerShell).toContain('customer-home-hero-motion')
     expect(workerShell).toContain('worker-request-sheet-motion')
-    expect(bookingFlow).toContain('customer-booking-sheet-motion')
+    expect(bookingRoute).toContain('CustomerBookingEntrySurface')
     expect(read('components/auth/auth-surfaces.tsx')).toContain('pressed: { opacity: 0.78 }')
     expect(workerShell).toContain('pressed: { opacity: 0.78 }')
     expect(read('components/auth/auth-surfaces.tsx')).not.toContain('pressed: { opacity: 0.78, transform')
@@ -1464,10 +1606,27 @@ describe('client price check production UI', () => {
   const bookingRoute = read('app/(customer)/booking.tsx')
   const productionComponentPath = 'components/client-price-check/client-price-check-flow.tsx'
 
-  it('wires the customer booking tab to a production price-check component', () => {
+  if (!exists(productionComponentPath)) {
+    it('removes the legacy client price-check flow after Kael chat becomes the primary workflow', () => {
+      const customerShell = read('components/customer/customer-surfaces.tsx')
+      expect(exists(productionComponentPath)).toBe(false)
+      expect(bookingRoute).toContain('CustomerBookingEntrySurface')
+      expect(bookingRoute).toContain('@/components/customer/customer-surfaces')
+      expect(bookingRoute).not.toContain('ClientPriceCheckFlow')
+      expect(customerShell).not.toContain('ClientPriceCheckFlow')
+      expect(customerShell).toContain('customer-booking-legacy-flow-not-primary')
+      expect(customerShell).toContain('customer-booking-service-entry-grid')
+      expect(customerShell).toContain('push(kaelChatPath(serviceType))')
+    })
+    return
+  }
+
+  it('keeps the legacy production price-check component on disk but off the primary booking route', () => {
     expect(exists(productionComponentPath)).toBe(true)
-    expect(bookingRoute).toContain('ClientPriceCheckFlow')
-    expect(bookingRoute).toContain('@/components/client-price-check/client-price-check-flow')
+    expect(bookingRoute).toContain('CustomerBookingEntrySurface')
+    expect(bookingRoute).toContain('@/components/customer/customer-surfaces')
+    expect(bookingRoute).not.toContain('ClientPriceCheckFlow')
+    expect(bookingRoute).not.toContain('@/components/client-price-check/client-price-check-flow')
     expect(bookingRoute).not.toContain('ClientPriceCheckPrototype')
     expect(bookingRoute).not.toContain('client-price-check-prototype')
   })
@@ -1782,6 +1941,8 @@ describe('frontend-only workflow safety audit', () => {
     expect(provider).toContain("import { useAppLanguage, type AppLanguage } from './app-language'")
     expect(provider).toContain('workflowErrorCopy')
     expect(provider).toContain('localizeWorkflowError(error, language)')
+    expect(provider).toContain('hydrateRemoteJobById')
+    expect(provider).toContain('dispatch({ type: \'hydrate_remote_job\', job: jobDetailToSnapshot(result.data) })')
     expect(provider).toContain('Could not update the request. Try again.')
     expect(provider).toContain("if (language === 'en' && !asciiOnlyPattern.test(error)) return workflowErrorCopy.en.fallback")
     expect(provider).toContain("if (language === 'vi' && asciiOnlyPattern.test(error)) return workflowErrorCopy.vi.fallback")

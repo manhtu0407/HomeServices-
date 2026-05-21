@@ -1,4 +1,4 @@
-import type { AIMessage } from '@home-services/shared'
+import type { AIImageContent, AIMessage } from '@home-services/shared'
 
 export const PROMPT_VERSIONS = {
   intent: '2026-05-19.v2',
@@ -55,7 +55,15 @@ Description: ${description}`,
 export function buildVisionMessages(
   description: string,
   intentContext: string,
+  photoUrls: string[] = [],
 ): AIMessage[] {
+  const textContent = `Intent context: ${intentContext}
+Customer description: ${description}`
+  const imageBlocks = sanitizeVisionPhotoUrls(photoUrls).map((url): AIImageContent => ({
+    type: 'image',
+    source: { type: 'url', url },
+  }))
+
   return [
     {
       role: 'system',
@@ -80,10 +88,33 @@ Complexity guide:
     },
     {
       role: 'user',
-      content: `Intent context: ${intentContext}
-Customer description: ${description}`,
+      content: imageBlocks.length > 0
+        ? [{ type: 'text', text: textContent }, ...imageBlocks]
+        : textContent,
     },
   ]
+}
+
+function sanitizeVisionPhotoUrls(photoUrls: string[]): string[] {
+  const seen = new Set<string>()
+  const sanitized: string[] = []
+  for (const rawUrl of photoUrls) {
+    const url = rawUrl.trim()
+    if (seen.has(url) || !isHttpUrl(url)) continue
+    seen.add(url)
+    sanitized.push(url)
+    if (sanitized.length >= 5) break
+  }
+  return sanitized
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
 }
 
 export function buildPricingMessages(

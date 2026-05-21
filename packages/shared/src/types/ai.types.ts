@@ -1,8 +1,12 @@
 export type AIProvider = 'anthropic' | 'perplexity' | 'deepseek'
 
+export type AITextContent = { type: 'text'; text: string }
+export type AIImageContent = { type: 'image'; source: { type: 'url'; url: string } }
+export type AIMessageContent = string | Array<AITextContent | AIImageContent>
+
 export type AIMessage = {
   role: 'system' | 'user' | 'assistant'
-  content: string
+  content: AIMessageContent
 }
 
 export type AIRequest = {

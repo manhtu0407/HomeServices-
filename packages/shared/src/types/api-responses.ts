@@ -46,6 +46,57 @@ export type CreateJobResponse = {
   fallback_used: boolean
 }
 
+export type KaelChatStatus = 'active' | 'estimate_ready' | 'confirmed' | 'abandoned'
+
+export type KaelChatNextAction =
+  | 'await_input'
+  | 'ask_photo'
+  | 'ask_video'
+  | 'estimate_ready'
+  | 'unsupported'
+  | 'budget_exceeded'
+  | 'confirmed'
+
+export type KaelChatTurn = {
+  id: string
+  session_id: string
+  turn_index: number
+  role: 'customer' | 'kael' | 'system'
+  content_type:
+    | 'text'
+    | 'photo_request'
+    | 'video_request'
+    | 'photo_attached'
+    | 'video_attached'
+    | 'clarification'
+    | 'analysis'
+    | 'estimate'
+    | 'error'
+  text_content: string | null
+  media_refs: string[]
+  estimate: KaelEstimate | null
+  created_at: string
+}
+
+export type KaelChatSession = {
+  id: string
+  job_id: string | null
+  customer_id: string
+  service_type: ServiceType
+  status: KaelChatStatus
+  estimate: KaelEstimate | null
+  started_at: string
+  estimate_ready_at: string | null
+  total_turns: number
+  total_cost_usd: number
+  next_action: KaelChatNextAction
+}
+
+export type KaelChatResponse = {
+  session: KaelChatSession
+  turns: KaelChatTurn[]
+}
+
 export type JobDetailResponse = {
   job: {
     id: string
@@ -86,8 +137,28 @@ export type JobDetailResponse = {
     reason: string | null
     price_min: number | null
     price_max: number | null
+    kael_review: Record<string, unknown> | null
     created_at: string | null
   } | null
+}
+
+export type JobMessageResponse = {
+  id: string
+  job_id: string
+  sender_id: string | null
+  sender_role: 'customer' | 'worker' | 'kael'
+  content: string
+  is_read: boolean
+  created_at: string
+}
+
+export type JobMessageListResponse = {
+  job_id: string
+  messages: JobMessageResponse[]
+}
+
+export type JobMessageSendResponse = {
+  message: JobMessageResponse
 }
 
 export type ConfirmSearchResponse = {
@@ -100,6 +171,10 @@ export type ConfirmSearchResponse = {
     total_jobs: number
   } | null
   message: string
+}
+
+export type ConfirmKaelChatResponse = ConfirmSearchResponse & {
+  session_id: string
 }
 
 export type StatusUpdateResponse = {
@@ -206,6 +281,25 @@ export type CustomerScopeDecisionResponse = {
   decided_at: string
 }
 
+export type WorkerCancellationResponse = {
+  cancellation_id: string
+  job_id: string
+  status: string
+  job_status: JobStatus
+  broadcast_sent: boolean
+  message: string
+  created_at: string | null
+}
+
+export type WorkerCancellationDecisionResponse = {
+  cancellation_id: string
+  job_id: string
+  status: string
+  job_status: JobStatus
+  broadcast_sent: boolean
+  message: string
+}
+
 export type WorkerJobListResponse = {
   jobs: {
     id: string
@@ -234,4 +328,30 @@ export type EarningsResponse = {
   pending_payment_amount: number
   from_date: string | null
   to_date: string | null
+}
+
+export type NotificationListResponse = {
+  unread_count: number
+  notifications: {
+    id: string
+    title: string
+    body: string
+    event_type: string
+    status: string
+    job_id: string | null
+    created_at: string
+    read_at: string | null
+  }[]
+}
+
+export type NotificationReadResponse = {
+  notification_id: string
+  status: 'read'
+  read_at: string
+}
+
+export type DevicePushTokenResponse = {
+  token_id: string
+  enabled: boolean
+  updated_at: string
 }

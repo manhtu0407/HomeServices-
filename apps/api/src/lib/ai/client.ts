@@ -79,7 +79,7 @@ export async function callAI(request: AIRequest): Promise<AIResult> {
         controller,
       )
 
-      console.log('AI call success', {
+      console.info('AI call success', {
         provider: request.provider,
         model: request.model,
         inputTokens: response.usage.inputTokens,

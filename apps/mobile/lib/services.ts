@@ -13,6 +13,10 @@ import type {
   JobDetailResponse,
   JobMediaAttachInput,
   JobMediaAttachResponse,
+  JobMessageListResponse,
+  JobMessageSendResponse,
+  ConfirmKaelChatResponse,
+  KaelChatResponse,
   NotificationListResponse,
   NotificationReadResponse,
   ConfirmSearchResponse,
@@ -33,6 +37,8 @@ import type {
   CustomerScopeDecisionInput,
   JobCreateInput,
   JobStatus,
+  KaelChatCreateInput,
+  KaelChatTurnInput,
   ReviewInput,
   WorkerRegisterInput,
   WorkerScopeChangeInput,
@@ -51,6 +57,14 @@ export const jobService = {
 
   getJob(jobId: string) {
     return api.get<JobDetailResponse>(`/jobs/${jobId}`)
+  },
+
+  listMessages(jobId: string) {
+    return api.get<JobMessageListResponse>(`/jobs/${jobId}/messages`)
+  },
+
+  sendMessage(jobId: string, input: { content: string }) {
+    return api.post<JobMessageSendResponse>(`/jobs/${jobId}/messages`, input)
   },
 
   attachJobMedia(jobId: string, input: JobMediaAttachInput) {
@@ -88,6 +102,7 @@ export const jobService = {
     return api.post<CustomerScopeDecisionResponse>(`/scope-changes/${scopeChangeId}/decide`, input)
   },
 
+  // Đã bỏ: hủy việc của thợ được xử lý tự động qua requestWorkerCancellation.
   decideWorkerCancellation(cancellationId: string, input: WorkerCancellationDecisionInput) {
     return api.post<WorkerCancellationDecisionResponse>(`/worker-cancellations/${cancellationId}/decide`, input)
   },
@@ -101,6 +116,24 @@ export const jobService = {
       ...input,
       job_id: jobId,
     })
+  },
+}
+
+export const kaelChatService = {
+  create(input: KaelChatCreateInput) {
+    return api.post<KaelChatResponse>('/kael/chat', input)
+  },
+
+  get(sessionId: string) {
+    return api.get<KaelChatResponse>(`/kael/chat/${sessionId}`)
+  },
+
+  sendTurn(sessionId: string, input: KaelChatTurnInput) {
+    return api.post<KaelChatResponse>(`/kael/chat/${sessionId}`, input)
+  },
+
+  confirm(sessionId: string) {
+    return api.post<ConfirmKaelChatResponse>(`/kael/chat/${sessionId}/confirm`)
   },
 }
 

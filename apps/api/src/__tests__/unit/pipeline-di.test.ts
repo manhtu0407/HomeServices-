@@ -139,6 +139,25 @@ describe('runKaelPipeline with DI providers', () => {
     }
   })
 
+  it('passes photo URLs through to the vision provider', async () => {
+    const supabase = makeMockSupabase({ price_min: 300000, price_max: 700000 })
+    const analyzeDescription = vi.fn().mockResolvedValue(MOCK_VISION_SUCCESS)
+    const photoUrls = ['https://storage.example.com/job-media/before-panel.jpg']
+
+    const result = await runKaelPipeline({ ...INPUT, photoUrls }, supabase, {
+      classifyIntent: vi.fn().mockResolvedValue(MOCK_INTENT_SUCCESS),
+      analyzeDescription,
+      searchMarketPrice: vi.fn().mockResolvedValue(MOCK_MARKET_SUCCESS),
+    })
+
+    expect(result.success).toBe(true)
+    expect(analyzeDescription).toHaveBeenCalledWith(
+      INPUT.description,
+      'electrical: breaker_trip',
+      photoUrls,
+    )
+  })
+
   it('returns stage logs for every stage', async () => {
     const supabase = makeMockSupabase({ price_min: 300000, price_max: 700000 })
 

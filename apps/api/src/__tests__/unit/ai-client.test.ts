@@ -52,7 +52,7 @@ describe('callAI', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'info').mockImplementation(() => {})
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -91,7 +91,7 @@ describe('callAI', () => {
     it('logs success with usage metrics', async () => {
       mockAnthropic.mockResolvedValueOnce(successResponse)
       await callAI(makeRequest())
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.info).toHaveBeenCalledWith(
         'AI call success',
         expect.objectContaining({
           provider: 'anthropic',

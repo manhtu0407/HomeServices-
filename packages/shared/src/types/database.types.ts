@@ -534,6 +534,125 @@ export type Database = {
           },
         ]
       }
+      kael_chat_sessions: {
+        Row: {
+          abandoned_at: string | null
+          created_at: string
+          customer_id: string
+          estimate_ready_at: string | null
+          id: string
+          job_id: string | null
+          safe_metadata: Json
+          service_type: Database["public"]["Enums"]["service_type"]
+          started_at: string
+          status: string
+          total_cost_usd: number
+          total_turns: number
+          updated_at: string
+        }
+        Insert: {
+          abandoned_at?: string | null
+          created_at?: string
+          customer_id: string
+          estimate_ready_at?: string | null
+          id?: string
+          job_id?: string | null
+          safe_metadata?: Json
+          service_type: Database["public"]["Enums"]["service_type"]
+          started_at?: string
+          status?: string
+          total_cost_usd?: number
+          total_turns?: number
+          updated_at?: string
+        }
+        Update: {
+          abandoned_at?: string | null
+          created_at?: string
+          customer_id?: string
+          estimate_ready_at?: string | null
+          id?: string
+          job_id?: string | null
+          safe_metadata?: Json
+          service_type?: Database["public"]["Enums"]["service_type"]
+          started_at?: string
+          status?: string
+          total_cost_usd?: number
+          total_turns?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_chat_sessions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_chat_sessions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_chat_turns: {
+        Row: {
+          ai_model: string | null
+          ai_provider: Database["public"]["Enums"]["api_provider"] | null
+          content_type: string
+          cost_usd: number | null
+          created_at: string
+          id: string
+          latency_ms: number | null
+          media_refs: string[]
+          role: string
+          safe_metadata: Json
+          session_id: string
+          text_content: string | null
+          turn_index: number
+        }
+        Insert: {
+          ai_model?: string | null
+          ai_provider?: Database["public"]["Enums"]["api_provider"] | null
+          content_type: string
+          cost_usd?: number | null
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          media_refs?: string[]
+          role: string
+          safe_metadata?: Json
+          session_id: string
+          text_content?: string | null
+          turn_index: number
+        }
+        Update: {
+          ai_model?: string | null
+          ai_provider?: Database["public"]["Enums"]["api_provider"] | null
+          content_type?: string
+          cost_usd?: number | null
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          media_refs?: string[]
+          role?: string
+          safe_metadata?: Json
+          session_id?: string
+          text_content?: string | null
+          turn_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_chat_turns_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "kael_chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kael_analysis_artifacts: {
         Row: {
           artifact_type: string
@@ -1328,6 +1447,17 @@ export type Database = {
           ok: boolean
         }[]
       }
+      confirm_kael_chat_atomic: {
+        Args: { p_customer_id: string; p_session_id: string }
+        Returns: {
+          district_code: string | null
+          error_code: string | null
+          job_id: string | null
+          job_status: Database["public"]["Enums"]["job_status"] | null
+          ok: boolean
+          service_type: Database["public"]["Enums"]["service_type"] | null
+        }[]
+      }
       decide_scope_change_atomic: {
         Args: {
           p_customer_id: string
@@ -1417,9 +1547,13 @@ export type Database = {
           cancellation_id: string
           cancellation_status: string
           created_at_ts: string
-          error_code: string
+          district_code: string | null
+          error_code: string | null
           job_id_out: string
+          job_status: Database["public"]["Enums"]["job_status"] | null
           ok: boolean
+          service_type_out: Database["public"]["Enums"]["service_type"] | null
+          worker_id_out: string | null
         }[]
       }
       set_worker_availability_atomic: {

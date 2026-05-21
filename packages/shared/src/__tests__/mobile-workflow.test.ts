@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { PROBLEM_CHIPS } from '../constants'
+import { JOB_STATUSES, PROBLEM_CHIPS } from '../constants'
 import {
   createInitialLocalWorkflowState,
   inferLocalDealDraftFromKael,
+  isLocalDealStatus,
   LOCAL_DEAL_STATUSES,
   localWorkflowReducer,
   selectLocalWorkflow,
+  toLocalDealStatus,
   type LocalWorkflowAction,
   type LocalWorkflowState,
 } from '../mobile-workflow'
@@ -47,6 +49,23 @@ describe('mobile local workflow state machine', () => {
       'cancelled',
     ])
     expect([...LOCAL_DEAL_STATUSES]).not.toContain('payment_pending')
+  })
+
+  it('keeps local statuses as a documented subset of backend job statuses', () => {
+    for (const status of LOCAL_DEAL_STATUSES) {
+      expect(JOB_STATUSES).toContain(status)
+      expect(isLocalDealStatus(status)).toBe(true)
+    }
+  })
+
+  it('maps every backend job status into a local mobile status', () => {
+    for (const status of JOB_STATUSES) {
+      expect(LOCAL_DEAL_STATUSES).toContain(toLocalDealStatus(status))
+    }
+
+    expect(toLocalDealStatus('estimate_ready')).toBe('awaiting_customer_confirm')
+    expect(toLocalDealStatus('payment_pending')).toBe('confirmed_by_customer')
+    expect(toLocalDealStatus('paid')).toBe('confirmed_by_customer')
   })
 
   it('starts empty and does not fabricate a booking, worker, price, payment, or review', () => {
@@ -459,6 +478,7 @@ describe('mobile local workflow state machine', () => {
           reason: 'Breaker is burnt',
           priceMin: 250000,
           priceMax: 250000,
+          kaelReview: null,
           createdAt: '2026-05-17T00:00:00.000Z',
         },
         finalPrice: null,

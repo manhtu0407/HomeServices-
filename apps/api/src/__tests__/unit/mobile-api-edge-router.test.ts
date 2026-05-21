@@ -47,6 +47,10 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       fallback_used: false,
     })),
     getJob: vi.fn(),
+    createKaelChat: vi.fn(),
+    getKaelChat: vi.fn(),
+    sendKaelChatTurn: vi.fn(),
+    confirmKaelChat: vi.fn(),
     confirmSearch: vi.fn(),
     cancelJob: vi.fn(),
     acceptBroadcast: vi.fn(),
@@ -56,6 +60,8 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     decideScopeChange: vi.fn(),
     requestWorkerCancellation: vi.fn(),
     attachJobMedia: vi.fn(),
+    listJobMessages: vi.fn(),
+    sendJobMessage: vi.fn(),
     decideWorkerCancellation: vi.fn(),
     confirmCompletion: vi.fn(),
     submitReview: vi.fn(),
@@ -312,6 +318,157 @@ describe('mobile-api Edge router contract', () => {
     )
   })
 
+  it('routes Kael chat session creation through customer/admin auth', async () => {
+    const createKaelChat = vi.fn(async () => ({
+      session: {
+        id: 'kael-session-1',
+        status: 'estimate_ready' as const,
+        service_type: 'plumbing' as const,
+        job_id: null,
+        customer_id: customerAuth.user.id,
+        estimate: {
+          service_type: 'plumbing' as const,
+          problem_category: 'pipe_leak',
+          problem_summary: 'Ống nước rò rỉ',
+          complexity: 'medium' as const,
+          price_min: 150000,
+          price_max: 350000,
+          confidence: 0.7,
+          advisory: null,
+          disclaimer: 'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.',
+        },
+        started_at: '2026-05-20T00:00:00.000Z',
+        estimate_ready_at: '2026-05-20T00:01:00.000Z',
+        total_turns: 2,
+        total_cost_usd: 0,
+        next_action: 'estimate_ready' as const,
+      },
+      turns: [],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ createKaelChat }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service_type: 'plumbing',
+        message: 'Ống nước dưới lavabo đang rò liên tục',
+        problem_chips: ['Ống rò rỉ'],
+        photo_urls: [],
+        address_district: 'q7',
+      }),
+    }))
+
+    expect(response.status).toBe(201)
+    expect(createKaelChat).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      expect.objectContaining({ service_type: 'plumbing', address_district: 'q7' }),
+    )
+  })
+
+  it('routes Kael chat history reads through customer auth', async () => {
+    const getKaelChat = vi.fn(async () => ({
+      session: {
+        id: 'kael-session-1',
+        status: 'active' as const,
+        service_type: 'plumbing' as const,
+        job_id: null,
+        customer_id: customerAuth.user.id,
+        estimate: null,
+        started_at: '2026-05-20T00:00:00.000Z',
+        estimate_ready_at: null,
+        total_turns: 1,
+        total_cost_usd: 0,
+        next_action: 'await_input' as const,
+      },
+      turns: [],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ getKaelChat }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/kael-session-1', {
+      method: 'GET',
+    }))
+
+    expect(response.status).toBe(200)
+    expect(getKaelChat).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      'kael-session-1',
+    )
+  })
+
+  it('routes Kael chat follow-up turns with validated payloads', async () => {
+    const sendKaelChatTurn = vi.fn(async () => ({
+      session: {
+        id: 'kael-session-1',
+        status: 'active' as const,
+        service_type: 'plumbing' as const,
+        job_id: null,
+        customer_id: customerAuth.user.id,
+        estimate: null,
+        started_at: '2026-05-20T00:00:00.000Z',
+        estimate_ready_at: null,
+        total_turns: 2,
+        total_cost_usd: 0.01,
+        next_action: 'ask_photo' as const,
+      },
+      turns: [],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ sendKaelChatTurn }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/kael-session-1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Nước rò mạnh hơn dưới lavabo',
+        photo_urls: ['https://storage.example.test/job-media/photo.jpg'],
+      }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(sendKaelChatTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      'kael-session-1',
+      expect.objectContaining({
+        message: 'Nước rò mạnh hơn dưới lavabo',
+        photo_urls: ['https://storage.example.test/job-media/photo.jpg'],
+      }),
+    )
+  })
+
+  it('routes Kael chat confirmation as the explicit booking-search confirmation', async () => {
+    const confirmKaelChat = vi.fn(async () => ({
+      session_id: 'kael-session-1',
+      job_id: 'job-1',
+      status: 'broadcasting' as const,
+      broadcast_sent: false,
+      worker: null,
+      message: 'Đang tìm thợ phù hợp',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ confirmKaelChat }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/kael-session-1/confirm', {
+      method: 'POST',
+    }))
+
+    expect(response.status).toBe(200)
+    expect(confirmKaelChat).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      'kael-session-1',
+    )
+  })
+
   it('lets admin QA exercise the customer job creation route explicitly', async () => {
     const createJob = vi.fn(async () => ({
       job_id: '22222222-2222-4222-8222-222222222222',
@@ -389,6 +546,56 @@ describe('mobile-api Edge router contract', () => {
       expect.objectContaining({
         assets: [expect.objectContaining({ stage: 'before' })],
       }),
+    )
+  })
+
+  it('routes GET /jobs/:id/messages to the backend service', async () => {
+    const listJobMessages = vi.fn(async () => ({
+      job_id: '22222222-2222-4222-8222-222222222222',
+      messages: [],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ listJobMessages }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/22222222-2222-4222-8222-222222222222/messages'))
+
+    expect(response.status).toBe(200)
+    expect(listJobMessages).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      '22222222-2222-4222-8222-222222222222',
+    )
+  })
+
+  it('passes validated POST /jobs/:id/messages payload to the backend service', async () => {
+    const sendJobMessage = vi.fn(async () => ({
+      message: {
+        id: 'message-1',
+        job_id: '22222222-2222-4222-8222-222222222222',
+        sender_id: workerAuth.user.id,
+        sender_role: 'worker' as const,
+        content: 'Tôi đang lên thang máy.',
+        is_read: false,
+        created_at: '2026-05-20T00:00:00.000Z',
+      },
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ sendJobMessage }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/22222222-2222-4222-8222-222222222222/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'Tôi đang lên thang máy.' }),
+    }))
+
+    expect(response.status).toBe(201)
+    expect(sendJobMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      '22222222-2222-4222-8222-222222222222',
+      { content: 'Tôi đang lên thang máy.' },
     )
   })
 

@@ -44,6 +44,11 @@ export const USER_ROLES = Object.freeze(
 );
 export type UserRole = (typeof USER_ROLES)[number];
 
+export const MESSAGE_SENDERS = Object.freeze(
+  ["customer", "worker", "kael"] as const,
+);
+export type MessageSender = (typeof MESSAGE_SENDERS)[number];
+
 export const BROADCAST_STATUSES = Object.freeze(
   [
     "pending",
@@ -82,7 +87,84 @@ export const WORKER_VERIFICATION_STATUSES = Object.freeze(
 export type WorkerVerificationStatus =
   (typeof WORKER_VERIFICATION_STATUSES)[number];
 
+export const NOTIFICATION_STATUSES = Object.freeze(
+  [
+    "created",
+    "queued",
+    "sent",
+    "failed",
+    "read",
+    "archived",
+  ] as const,
+);
+export type NotificationStatus = (typeof NOTIFICATION_STATUSES)[number];
+
+export const LEARNING_CANDIDATE_STATUSES = Object.freeze(
+  [
+    "created",
+    "pending_evidence",
+    "evidence_gate_passed",
+    "auto_promoted",
+    "rejected",
+    "rolled_back",
+    "archived",
+  ] as const,
+);
+export type LearningCandidateStatus =
+  (typeof LEARNING_CANDIDATE_STATUSES)[number];
+
+export const LEARNING_RULE_STATUSES = Object.freeze(
+  [
+    "draft",
+    "active",
+    "monitoring",
+    "degraded",
+    "disabled",
+    "rolled_back",
+  ] as const,
+);
+export type LearningRuleStatus = (typeof LEARNING_RULE_STATUSES)[number];
+
+export const PLATFORM_FEE_CUSTOMER = 0.075;
 export const PLATFORM_FEE_WORKER = 0.10;
+
+export const PROBLEM_CHIPS = Object.freeze({
+  electrical: Object.freeze([
+    "Mất điện một phòng",
+    "Mất điện toàn căn",
+    "Ổ cắm/công tắc hỏng",
+    "Cầu dao trip",
+    "Đèn chập chờn",
+    "Lắp thêm thiết bị",
+    "Vấn đề khác",
+  ] as const),
+  plumbing: Object.freeze([
+    "Ống rò rỉ",
+    "Tắc cống/bồn",
+    "Vòi hỏng",
+    "Toilet không xả",
+    "Áp nước yếu",
+    "Lắp/thay thiết bị",
+    "Vấn đề khác",
+  ] as const),
+  cleaning: Object.freeze([
+    "Dọn dẹp nhà",
+    "Vệ sinh bếp",
+    "Vệ sinh phòng tắm",
+    "Tổng vệ sinh",
+    "Dọn sau sửa chữa",
+    "Vệ sinh cửa kính",
+    "Vấn đề khác",
+  ] as const),
+} as const);
+
+export const REVIEW_TAGS = Object.freeze([
+  "Đúng giờ",
+  "Chuyên nghiệp",
+  "Sạch sẽ",
+  "Giải thích rõ",
+  "Giá hợp lý",
+] as const);
 
 export const HCMC_DISTRICTS = Object.freeze(
   {
@@ -167,6 +249,26 @@ export const jobCreateSchema = z.object({
   address_floor: z.string().max(10).optional(),
   address_district: z.string().max(100).optional(),
   scheduled_at: z.string().datetime().optional(),
+});
+
+export const kaelChatCreateSchema = z.object({
+  service_type: serviceTypeSchema,
+  session_id: z.string().uuid().optional(),
+  message: z.string().min(1).max(5000).optional(),
+  problem_chips: z.array(z.string().max(100)).max(10).default([]),
+  photo_urls: z.array(z.string().url()).max(5).default([]),
+  address_district: z.string().max(100).optional(),
+});
+
+export const kaelChatTurnSchema = z.object({
+  message: z.string().min(1).max(5000),
+  problem_chips: z.array(z.string().max(100)).max(10).optional(),
+  photo_urls: z.array(z.string().url()).max(5).default([]),
+  address_district: z.string().max(100).optional(),
+});
+
+export const jobMessageSendSchema = z.object({
+  content: z.string().min(1).max(5000),
 });
 
 export const reviewSchema = z.object({
@@ -260,6 +362,9 @@ export function sanitizeForLLM(input: string): string {
 }
 
 export type JobCreateInput = z.infer<typeof jobCreateSchema>;
+export type KaelChatCreateInput = z.infer<typeof kaelChatCreateSchema>;
+export type KaelChatTurnInput = z.infer<typeof kaelChatTurnSchema>;
+export type JobMessageSendInput = z.infer<typeof jobMessageSendSchema>;
 export type ReviewInput = z.infer<typeof reviewSchema>;
 export type WorkerRegisterInput = z.infer<typeof workerRegisterSchema>;
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>;

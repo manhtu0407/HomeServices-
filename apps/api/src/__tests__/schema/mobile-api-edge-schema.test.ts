@@ -520,9 +520,39 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('grant execute on function public.decide_worker_cancellation_atomic(uuid, uuid, text, text) to service_role')
     expect(migration).toContain("status = 'broadcasting'::public.job_status")
     expect(edgeServices).toContain('request_worker_cancellation_atomic')
-    expect(edgeServices).toContain('decide_worker_cancellation_atomic')
+    expect(edgeServices).not.toContain('client.rpc("decide_worker_cancellation_atomic"')
+    expect(edgeServices).toContain('"Yêu cầu hủy việc của thợ đã được xử lý tự động ở endpoint hủy việc"')
     expect(edgeRouter).toContain('jobs.workerCancellation')
     expect(edgeRouter).toContain('workerCancellation.decide')
+  })
+
+  it('adds service-role Kael chat persistence and confirm RPC for the Kael-first workflow', () => {
+    const migration = read('supabase/migrations/20260520130514_kael_chat_sessions.sql')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const mobileApiTypes = read('apps/mobile/lib/api-types.ts')
+
+    for (const table of [
+      'public.kael_chat_sessions',
+      'public.kael_chat_turns',
+    ]) {
+      expect(migration).toContain(`alter table ${table} enable row level security`)
+      expect(migration).toContain(`revoke insert, update, delete on ${table} from authenticated`)
+      expect(migration).toContain(`grant all on ${table} to service_role`)
+    }
+
+    expect(migration).toContain('create table if not exists public.kael_chat_sessions')
+    expect(migration).toContain('create table if not exists public.kael_chat_turns')
+    expect(migration).toContain('create or replace function public.confirm_kael_chat_atomic')
+    expect(migration).toContain('grant execute on function public.confirm_kael_chat_atomic(uuid, uuid) to service_role')
+    expect(edgeServices).toContain('confirm_kael_chat_atomic')
+    expect(edgeServices).toContain('KAEL_CHAT_HARD_COST_CAP_USD')
+    expect(edgeServices).toContain('getKaelChatCostUsd')
+    expect(edgeServices).toContain('"budget_exceeded"')
+    expect(edgeRouter).toContain('kael.chat.create')
+    expect(edgeRouter).toContain('kael.chat.confirm')
+    expect(edgeRouter).toContain('"budget_exceeded"')
+    expect(mobileApiTypes).toContain("'budget_exceeded'")
   })
 
   it('hardens worker cancellation approval and job-media upload stages after PR review', () => {
@@ -541,6 +571,21 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain("(storage.foldername(name))[2] in ('after', 'cancellation_evidence')")
     expect(migration).toContain('private.is_job_worker')
     expect(edgeServices).toContain('JOB_NOT_CANCELLABLE')
+  })
+
+  it('auto-approves worker cancellation for immediate replacement without rating penalty', () => {
+    const migration = read('supabase/migrations/20260520141200_worker_cancellation_auto_reassign.sql')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+
+    expect(migration).toContain('drop function if exists public.request_worker_cancellation_atomic')
+    expect(migration).toContain("status = 'broadcasting'::public.job_status")
+    expect(migration).toContain("'approved'")
+    expect(migration).toContain("'RATE_LIMITED'")
+    expect(migration).not.toMatch(/rating\s*=/i)
+    expect(migration).not.toContain('is_suspended')
+    expect(edgeServices).toContain('notifyCustomerWorkerReplacementSearch')
+    expect(edgeServices).toContain('worker_replacement_search')
+    expect(edgeServices).toContain('broadcast_sent: broadcastSent')
   })
 
   it('splits Supabase box admin RLS policies so SELECT has one permissive path', () => {

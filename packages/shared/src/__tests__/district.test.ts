@@ -57,6 +57,10 @@ describe('normalizeDistrict', () => {
       expect(normalizeDistrict('quan 1')).toBe('q1')
     })
 
+    it('"Quận 7" with proper UTF-8 diacritics -> q7', () => {
+      expect(normalizeDistrict('Quận 7')).toBe('q7')
+    })
+
     it('"Q12" → q12', () => {
       expect(normalizeDistrict('Q12')).toBe('q12')
     })

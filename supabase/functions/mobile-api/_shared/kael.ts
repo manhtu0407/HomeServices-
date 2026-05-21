@@ -28,6 +28,13 @@ const marketPriceResultSchema = z.object({
   sources_summary: z.string().max(1000).optional(),
 });
 
+const scopeChangeReviewSchema = z.object({
+  recommendation: z.enum(["approve", "ask_worker", "reject"]),
+  price_assessment: z.enum(["reasonable", "needs_review", "high_risk"]),
+  customer_explanation: z.string().min(1).max(800),
+  risk_notes: z.array(z.string().min(1).max(200)).max(3),
+});
+
 const KAEL_BUSINESS_GUARDRAILS = `Kael is the main AI assistant for this home-services product.
 Scope is strictly HCMC home services for exactly three service boxes: electrical repair, plumbing repair, and home cleaning.
 Reject unrelated topics, adult or explicit sexual content, random image requests, or any request that is not useful for those three service boxes by classifying it as unsupported.
@@ -40,6 +47,7 @@ Return the required JSON only. Any free-text field should be short Vietnamese, d
 type IntentResult = z.infer<typeof intentResultSchema>;
 type VisionResult = z.infer<typeof visionResultSchema>;
 type MarketPriceResult = z.infer<typeof marketPriceResultSchema>;
+type ScopeChangeReviewBody = z.infer<typeof scopeChangeReviewSchema>;
 
 const PROBLEM_SLUGS_BY_SERVICE: Record<ServiceType, readonly string[]> = {
   electrical: [
@@ -81,7 +89,13 @@ const FALLBACK_PROBLEM_SLUG_BY_SERVICE: Record<ServiceType, string> = {
 };
 
 type AIProvider = "anthropic" | "perplexity" | "deepseek";
-type AIMessage = { role: "system" | "user" | "assistant"; content: string };
+type AITextContent = { type: "text"; text: string };
+type AIImageContent = { type: "image"; source: { type: "url"; url: string } };
+type AIMessageContent = string | Array<AITextContent | AIImageContent>;
+type AIMessage = {
+  role: "system" | "user" | "assistant";
+  content: AIMessageContent;
+};
 type AIRequest = {
   provider: AIProvider;
   model: string;
@@ -126,6 +140,7 @@ export type PipelineInput = {
   problemChips: string[];
   description: string;
   district: string;
+  photoUrls?: string[];
 };
 
 export type PipelineStageLog = {
@@ -155,6 +170,30 @@ export type KaelEstimate = {
   disclaimer: string;
 };
 
+export type ScopeChangeReviewInput = {
+  serviceType: ServiceType;
+  originalDescription: string;
+  originalProblemSummary?: string | null;
+  originalComplexity?: ComplexityLevel | null;
+  originalPriceMin?: number | null;
+  originalPriceMax?: number | null;
+  requestedDescription: string;
+  requestedPriceMin: number;
+  requestedPriceMax: number;
+  reason: string;
+};
+
+export type ScopeChangeKaelReview = ScopeChangeReviewBody & {
+  version: "scope-change-review.2026-05-20.v1";
+  provider: "anthropic" | null;
+  model: string | null;
+  fallback_used: boolean;
+  failure_reason?: string;
+  reviewed_at: string;
+  cost_usd: number | null;
+  latency_ms: number | null;
+};
+
 export type PipelineResult =
   | {
     success: true;
@@ -170,6 +209,56 @@ export type PipelineResult =
     stageLogs: PipelineStageLog[];
   };
 
+export async function reviewScopeChange(
+  input: ScopeChangeReviewInput,
+  secrets: EdgeAiSecrets,
+): Promise<ScopeChangeKaelReview> {
+  const fallback = buildScopeChangeFallbackReview(input);
+  const attempt = await timed(() =>
+    callAI({
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      messages: buildScopeChangeReviewMessages(input),
+      maxTokens: 450,
+      temperature: 0.1,
+    }, secrets)
+  );
+
+  if (!attempt.result.success) {
+    return {
+      ...fallback,
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      failure_reason: attempt.result.code,
+      latency_ms: attempt.ms,
+    };
+  }
+
+  const parsed = safeParseJSON(attempt.result.content);
+  const validated = parsed ? scopeChangeReviewSchema.safeParse(parsed) : null;
+  if (!validated?.success) {
+    return {
+      ...fallback,
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      failure_reason: "INVALID_SCHEMA",
+      cost_usd: attempt.result.usage.costUsd,
+      latency_ms: attempt.ms,
+    };
+  }
+
+  return {
+    version: "scope-change-review.2026-05-20.v1",
+    ...validated.data,
+    provider: "anthropic",
+    model: "claude-sonnet-4-6",
+    fallback_used: false,
+    reviewed_at: new Date().toISOString(),
+    cost_usd: attempt.result.usage.costUsd,
+    latency_ms: attempt.ms,
+  };
+}
+
 export async function runKaelPipeline(
   input: PipelineInput,
   supabase: SupabaseLike,
@@ -178,6 +267,7 @@ export async function runKaelPipeline(
   const { serviceType, district } = input;
   const problemChips = input.problemChips.map(scrubSensitiveForLLM);
   const description = scrubSensitiveForLLM(input.description);
+  const photoUrls = sanitizeVisionPhotoUrls(input.photoUrls ?? []);
   const stageLogs: PipelineStageLog[] = [];
   let fallbackUsed = false;
 
@@ -220,6 +310,7 @@ export async function runKaelPipeline(
     analyzeDescription(
       description,
       `${validServiceType}: ${problemSlug}`,
+      photoUrls,
       secrets,
     )
   );
@@ -458,6 +549,7 @@ async function classifyIntentWithProvider(
 async function analyzeDescription(
   description: string,
   intentContext: string,
+  photoUrls: string[],
   secrets: EdgeAiSecrets,
 ): Promise<
   | { success: true; analysis: VisionResult }
@@ -466,7 +558,11 @@ async function analyzeDescription(
   const result = await callAI({
     provider: "anthropic",
     model: "claude-sonnet-4-6",
-    messages: buildVisionMessages(description, sanitizeForLLM(intentContext)),
+    messages: buildVisionMessages(
+      description,
+      sanitizeForLLM(intentContext),
+      photoUrls,
+    ),
     maxTokens: 500,
     temperature: 0.2,
   }, secrets);
@@ -572,7 +668,7 @@ async function callAI(
         timeout,
         controller,
       );
-      console.log("AI call success", {
+      console.info("AI call success", {
         provider: request.provider,
         model: request.model,
         inputTokens: response.usage.inputTokens,
@@ -646,7 +742,9 @@ function providerRequest(
         messages: request.messages
           .filter((m) => m.role !== "system")
           .map((m) => ({ role: m.role, content: m.content })),
-        system: request.messages.find((m) => m.role === "system")?.content,
+        system: aiMessageContentToText(
+          request.messages.find((m) => m.role === "system")?.content,
+        ),
       },
       parse: (
         data: Record<string, unknown>,
@@ -692,7 +790,7 @@ function providerRequest(
         : {}),
       messages: request.messages.map((m) => ({
         role: m.role,
-        content: m.content,
+        content: aiMessageContentToText(m.content),
       })),
     },
     parse: (data: Record<string, unknown>, latencyMs: number) => {
@@ -722,6 +820,37 @@ function providerKey(
   if (provider === "anthropic") return secrets.anthropicApiKey;
   if (provider === "perplexity") return secrets.perplexityApiKey;
   return secrets.deepseekApiKey;
+}
+
+function aiMessageContentToText(content: AIMessageContent | undefined): string {
+  if (!content) return "";
+  if (typeof content === "string") return content;
+  return content
+    .filter((block): block is AITextContent => block.type === "text")
+    .map((block) => block.text)
+    .join("\n");
+}
+
+function sanitizeVisionPhotoUrls(photoUrls: string[]): string[] {
+  const seen = new Set<string>();
+  const sanitized: string[] = [];
+  for (const rawUrl of photoUrls) {
+    const url = sanitizeForLLM(rawUrl).trim();
+    if (seen.has(url) || !isHttpUrl(url)) continue;
+    seen.add(url);
+    sanitized.push(url);
+    if (sanitized.length >= 5) break;
+  }
+  return sanitized;
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 
 function synthesizePrice(input: {
@@ -971,7 +1100,17 @@ Description: ${description}`,
 function buildVisionMessages(
   description: string,
   intentContext: string,
+  photoUrls: string[] = [],
 ): AIMessage[] {
+  const textContent =
+    `Intent context: ${intentContext}\nCustomer description: ${description}`;
+  const imageBlocks = sanitizeVisionPhotoUrls(photoUrls).map((
+    url,
+  ): AIImageContent => ({
+    type: "image",
+    source: { type: "url", url },
+  }));
+
   return [
     {
       role: "system",
@@ -984,8 +1123,9 @@ problem_identified must be Vietnamese. complexity_hint is small, medium, or larg
     },
     {
       role: "user",
-      content:
-        `Intent context: ${intentContext}\nCustomer description: ${description}`,
+      content: imageBlocks.length > 0
+        ? [{ type: "text", text: textContent }, ...imageBlocks]
+        : textContent,
     },
   ];
 }
@@ -1016,6 +1156,95 @@ District: ${district}
 Location: Ho Chi Minh City, Vietnam`,
     },
   ];
+}
+
+function buildScopeChangeReviewMessages(
+  input: ScopeChangeReviewInput,
+): AIMessage[] {
+  const originalPrice = formatReviewPriceRange(
+    input.originalPriceMin,
+    input.originalPriceMax,
+  );
+  const requestedPrice = formatReviewPriceRange(
+    input.requestedPriceMin,
+    input.requestedPriceMax,
+  );
+  return [
+    {
+      role: "system",
+      content: `${KAEL_BUSINESS_GUARDRAILS}
+${KAEL_RESPONSE_STYLE}
+
+You review worker scope-change requests for a Vietnamese home-services workflow.
+Compare the original Kael estimate with the worker's new on-site scope and explain the decision support for the customer.
+Do not approve work yourself; the customer must decide.
+Do not include PII, full addresses, phone numbers, or raw worker/customer text.
+
+Respond ONLY with valid JSON matching this schema:
+{
+  "recommendation": "approve" | "ask_worker" | "reject",
+  "price_assessment": "reasonable" | "needs_review" | "high_risk",
+  "customer_explanation": "short Vietnamese explanation for the customer",
+  "risk_notes": ["0-3 short Vietnamese notes"]
+}`,
+    },
+    {
+      role: "user",
+      content: `Service: ${sanitizeForLLM(input.serviceType)}
+Original description: ${scrubSensitiveForLLM(input.originalDescription)}
+Original Kael summary: ${scrubSensitiveForLLM(input.originalProblemSummary ?? "")}
+Original complexity: ${sanitizeForLLM(input.originalComplexity ?? "unknown")}
+Original price range: ${originalPrice}
+Worker requested scope: ${scrubSensitiveForLLM(input.requestedDescription)}
+Worker reason: ${scrubSensitiveForLLM(input.reason)}
+Worker requested price range: ${requestedPrice}`,
+    },
+  ];
+}
+
+function buildScopeChangeFallbackReview(
+  input: ScopeChangeReviewInput,
+): ScopeChangeKaelReview {
+  const originalMax = input.originalPriceMax ?? input.originalPriceMin ?? 0;
+  const requestedMax = input.requestedPriceMax;
+  const increaseRatio = originalMax > 0 ? requestedMax / originalMax : 1;
+  const priceAssessment: ScopeChangeReviewBody["price_assessment"] =
+    increaseRatio >= 1.8
+      ? "high_risk"
+      : increaseRatio >= 1.25
+      ? "needs_review"
+      : "reasonable";
+  const recommendation: ScopeChangeReviewBody["recommendation"] =
+    priceAssessment === "high_risk" ? "ask_worker" : "approve";
+  const riskNotes = priceAssessment === "reasonable"
+    ? ["Khách vẫn cần xác nhận giá mới trước khi thợ tiếp tục."]
+    : [
+      "Giá mới tăng so với ước tính ban đầu.",
+      "Nên yêu cầu thợ giải thích rõ phần phát sinh trước khi duyệt.",
+    ];
+  return {
+    version: "scope-change-review.2026-05-20.v1",
+    recommendation,
+    price_assessment: priceAssessment,
+    customer_explanation:
+      "Kael đã ghi nhận phạm vi thợ báo phát sinh tại hiện trường. Vui lòng xem mô tả, lý do và mức giá mới trước khi quyết định.",
+    risk_notes: riskNotes,
+    provider: null,
+    model: null,
+    fallback_used: true,
+    failure_reason: "FALLBACK_REVIEW",
+    reviewed_at: new Date().toISOString(),
+    cost_usd: null,
+    latency_ms: null,
+  };
+}
+
+function formatReviewPriceRange(
+  priceMin: number | null | undefined,
+  priceMax: number | null | undefined,
+): string {
+  if (!priceMin || !priceMax) return "unknown";
+  return `${Math.round(priceMin)}-${Math.round(priceMax)} VND`;
 }
 
 function buildAdvisory(indicators: string[]): string | null {

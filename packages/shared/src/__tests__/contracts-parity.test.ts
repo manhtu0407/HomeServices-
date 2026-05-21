@@ -1,0 +1,56 @@
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
+import { describe, expect, it } from 'vitest'
+
+const REPO_ROOT = resolve(__dirname, '../../../../')
+const read = (rel: string) => readFileSync(resolve(REPO_ROOT, rel), 'utf-8')
+
+describe('shared and Edge domain contracts stay in parity', () => {
+  it('exports shared workflow constants from the Edge domain boundary', () => {
+    const shared = read('packages/shared/src/constants.ts')
+    const edge = read('supabase/functions/_shared/domain.ts')
+
+    for (const constantName of [
+      'MESSAGE_SENDERS',
+      'NOTIFICATION_STATUSES',
+      'LEARNING_CANDIDATE_STATUSES',
+      'LEARNING_RULE_STATUSES',
+      'PLATFORM_FEE_CUSTOMER',
+      'PROBLEM_CHIPS',
+      'REVIEW_TAGS',
+    ]) {
+      expect(shared).toContain(`export const ${constantName}`)
+      expect(edge).toContain(`export const ${constantName}`)
+    }
+  })
+
+  it('exports response contracts for the Kael-first mobile workflow', () => {
+    const apiResponses = read('packages/shared/src/types/api-responses.ts')
+    const sharedIndex = read('packages/shared/src/index.ts')
+
+    for (const typeName of [
+      'KaelChatResponse',
+      'ConfirmKaelChatResponse',
+      'JobMessageListResponse',
+      'JobMessageSendResponse',
+      'WorkerCancellationResponse',
+      'WorkerCancellationDecisionResponse',
+      'NotificationListResponse',
+      'NotificationReadResponse',
+      'DevicePushTokenResponse',
+    ]) {
+      expect(apiResponses).toContain(`export type ${typeName}`)
+      expect(sharedIndex).toContain(typeName)
+    }
+
+    expect(apiResponses).toContain("'budget_exceeded'")
+  })
+
+  it('keeps job chat message validation available on shared and Edge domains', () => {
+    const shared = read('packages/shared/src/validation.ts')
+    const edge = read('supabase/functions/_shared/domain.ts')
+
+    expect(shared).toContain('export const jobMessageSendSchema')
+    expect(edge).toContain('export const jobMessageSendSchema')
+  })
+})
