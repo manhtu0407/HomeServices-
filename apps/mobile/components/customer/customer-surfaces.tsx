@@ -343,6 +343,9 @@ const customerCopy = {
       review: 'Đánh giá',
       locked: 'Khóa',
       open: 'Mở',
+      presenceTitle: 'Bản đồ xác nhận',
+      presenceHome: 'Điểm hẹn',
+      presenceWorker: 'Thợ cập nhật',
       chooseStar: (rating: number) => `Chọn ${rating} sao`,
       submitReview: 'Gửi đánh giá',
       timeline: [
@@ -487,6 +490,9 @@ const customerCopy = {
       review: 'Review',
       locked: 'Locked',
       open: 'Open',
+      presenceTitle: 'Confirmation map',
+      presenceHome: 'Service point',
+      presenceWorker: 'Worker update',
       chooseStar: (rating: number) => `Choose ${rating} stars`,
       submitReview: 'Submit review',
       timeline: [
@@ -1192,6 +1198,7 @@ export function CustomerHistorySurface() {
   const showPriceTab = activeHistoryTab === 'price'
   const showChatTab = activeHistoryTab === 'chat'
   const showDoneTab = activeHistoryTab === 'done'
+  const isCompletedHistory = ['completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus ?? '')
 
   return (
     <V4Frame active="activity" testID="customer-history-surface">
@@ -1289,7 +1296,10 @@ export function CustomerHistorySurface() {
               </View>
             </View>
           ) : null}
-          {deal && showDoneTab && ['completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus ?? '') ? (
+          {deal && showDoneTab && isCompletedHistory ? (
+            <CustomerCompletionPresenceMap copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} />
+          ) : null}
+          {deal && showDoneTab && isCompletedHistory ? (
             <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
             <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
               {copy.history.evidence}
@@ -1823,6 +1833,54 @@ function CustomerHistoryChatPanel({
         <V4TicketCell label={copy.ticket.issue} value={issueValue} />
       </View>
       <PrimaryButton label={copy.history.openPriceCheck} onPress={onOpenKael} compact />
+    </View>
+  )
+}
+
+function CustomerCompletionPresenceMap({
+  copy,
+  deal,
+  languageMode,
+  tokens,
+  visibleStatusLabel,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]
+  deal: LocalDeal
+  languageMode: AppLanguage
+  tokens: CustomerThemeTokens
+  visibleStatusLabel: string
+}) {
+  const addressLabel = localizedCustomerAreaLabel(deal.draft.addressLabel ?? deal.draft.districtLabel, languageMode, copy.ticket.unknown)
+
+  return (
+    <View style={[styles.presenceMapCard, customerOpaqueSurface(tokens)]} testID="customer-presence-map-done">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {copy.history.presenceTitle}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {visibleStatusLabel}
+        </Text>
+      </View>
+      <View style={[styles.presenceMapViewport, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+        <V4MapBackdrop />
+        <View style={[styles.presenceBadge, styles.presenceBadgeHome, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
+          <IconGlyph name="apartment" color={tokens.primary} accent={tokens.aqua} />
+          <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
+            {copy.history.presenceHome}
+          </Text>
+        </View>
+        <View style={[styles.presenceBadge, styles.presenceBadgeWorker, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+          <IconGlyph name="check" color={tokens.primary} accent={tokens.copper} />
+          <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
+            {copy.history.presenceWorker}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.ticket.area} value={addressLabel} />
+        <V4TicketCell label={copy.ticket.status} value={visibleStatusLabel} />
+      </View>
     </View>
   )
 }
@@ -2492,6 +2550,47 @@ const styles = StyleSheet.create({
   },
   plainContent: {
     gap: 12,
+  },
+  presenceMapCard: {
+    borderRadius: 30,
+    borderWidth: 1,
+    gap: 12,
+    overflow: 'hidden',
+    padding: 14,
+  },
+  presenceMapViewport: {
+    borderCurve: 'continuous',
+    borderRadius: 28,
+    borderWidth: 1,
+    minHeight: 188,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  presenceBadge: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    maxWidth: '58%',
+    minHeight: 42,
+    paddingHorizontal: 10,
+    position: 'absolute',
+    zIndex: 4,
+  },
+  presenceBadgeHome: {
+    left: 14,
+    top: 42,
+  },
+  presenceBadgeText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  presenceBadgeWorker: {
+    bottom: 36,
+    right: 14,
   },
   mapBackdrop: {
     bottom: 0,

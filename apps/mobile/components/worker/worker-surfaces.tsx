@@ -7,7 +7,7 @@ import { createContext, type ReactNode, use, useEffect, useReducer, useRef, useS
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus } from '@home-services/shared'
+import { HCMC_DISTRICTS, normalizeDistrict, type DistrictSlug, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus } from '@home-services/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import { GlassModalSheet } from '@/components/ui/glass-modal-sheet'
@@ -44,6 +44,7 @@ type WorkerLanguageMode = AppLanguage
 type WorkerVerificationFileSlot = 'cccdFront' | 'cccdBack' | 'selfie'
 
 type WorkerActiveTab = 'chat' | 'earnings' | 'home' | 'jobs' | 'profile'
+type WorkerJobsTab = 'active' | 'needs' | 'waiting'
 type WorkerTone = 'base' | 'cream' | 'cyan' | 'depth' | 'mint' | 'raised' | 'strong' | 'warm'
 type WorkerIconName =
   | 'bank'
@@ -71,6 +72,18 @@ type WorkerChatMessage = { id: string; mine?: boolean; system?: boolean; text: s
 type WorkerBroadcastView = NonNullable<LocalDeal['broadcast']>
 
 let lastWorkerDockActive: WorkerActiveTab = 'home'
+const workerJobsTabKeys: WorkerJobsTab[] = ['waiting', 'active', 'needs']
+const workerServiceAreaAnchors: Array<{ lat: number; lng: number; slug: Exclude<DistrictSlug, 'hcmc_all'> }> = [
+  { slug: 'q1', lat: 10.7757, lng: 106.7004 },
+  { slug: 'q3', lat: 10.7844, lng: 106.6841 },
+  { slug: 'q7', lat: 10.7355, lng: 106.7218 },
+  { slug: 'binh_thanh', lat: 10.8118, lng: 106.7091 },
+  { slug: 'thu_duc', lat: 10.8494, lng: 106.7537 },
+  { slug: 'tan_binh', lat: 10.8015, lng: 106.6520 },
+  { slug: 'go_vap', lat: 10.8387, lng: 106.6653 },
+  { slug: 'phu_nhuan', lat: 10.7992, lng: 106.6803 },
+]
+const workerServiceRadiusPresets = [5, 8, 12, 20] as const
 const workerSectionMotionTestIDs: Record<WorkerActiveTab, string> = {
   chat: 'worker-section-glass-motion-chat',
   earnings: 'worker-section-glass-motion-earnings',
@@ -412,6 +425,12 @@ const workerVerificationCopy = {
     homeLat: 'Vĩ độ điểm xuất phát',
     homeLng: 'Kinh độ điểm xuất phát',
     serviceRadius: 'Bán kính km',
+    serviceAreaTitle: 'Khu vực phục vụ',
+    serviceAreaBody: 'Chọn quận làm điểm xuất phát để Kael ưu tiên việc gần khu vực bạn phục vụ.',
+    serviceAreaManual: 'Bạn có thể đổi quận hoặc bán kính trước khi gửi hồ sơ.',
+    radiusDecrease: 'Giảm bán kính phục vụ',
+    radiusIncrease: 'Tăng bán kính phục vụ',
+    radiusPreset: 'Chọn bán kính',
     problemSpecializations: 'Chuyên môn, cách nhau bằng dấu phẩy',
     bankName: 'Ngân hàng',
     bankAccount: 'Số tài khoản',
@@ -456,6 +475,12 @@ const workerVerificationCopy = {
     homeLat: 'Home latitude',
     homeLng: 'Home longitude',
     serviceRadius: 'Radius km',
+    serviceAreaTitle: 'Service area',
+    serviceAreaBody: 'Choose the district used as your starting anchor so Kael can prioritize nearby jobs.',
+    serviceAreaManual: 'You can change the district or radius before submitting the profile.',
+    radiusDecrease: 'Decrease service radius',
+    radiusIncrease: 'Increase service radius',
+    radiusPreset: 'Choose radius',
     problemSpecializations: 'Specializations, comma-separated',
     bankName: 'Bank',
     bankAccount: 'Account number',
@@ -504,9 +529,15 @@ type WorkerVerificationCopy = {
   legalName: string
   permissionError: string
   problemSpecializations: string
+  radiusDecrease: string
+  radiusIncrease: string
+  radiusPreset: string
   savedBody: string
   savedTitle: string
   selectSkill: string
+  serviceAreaBody: string
+  serviceAreaManual: string
+  serviceAreaTitle: string
   serviceRadius: string
   status: Record<WorkerVerificationStatus, string>
   submit: string
@@ -696,6 +727,7 @@ export function WorkerJobsSurface() {
   const copy = useWorkerFrameCopy()
   const language = useAppLanguage()
   const { selectors, state } = useFrontendWorkflow()
+  const [activeJobsTab, setActiveJobsTab] = useState<WorkerJobsTab>('waiting')
   const deal = getWorkerVisibleDeal(state.deal)
   const jobTitle = deal ? localizedServiceLabel(deal.draft.serviceType, language) : copy.jobs.emptyTitle
   const hiddenAddressLabel = workerActionCopy[language].hiddenAddress
@@ -709,15 +741,37 @@ export function WorkerJobsSurface() {
     ? `${localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, language)} · ${jobVisibleAreaLabel}`
     : copy.jobs.emptyBody
   const showScopeChangeCard = Boolean(deal && selectors.currentStatus === 'scope_change_pending')
+  const acceptedJob = isAcceptedLocalWorkerDeal(deal)
+  const activeJobStatus = deal && acceptedJob ? localizedStatusLabel(selectors.currentStatus, language) : copy.jobs.emptyStatus
+  const waitingStatus = deal?.broadcast && !acceptedJob ? localizedStatusLabel(selectors.currentStatus, language) : copy.jobs.emptyStatus
+  const needsStatus = showScopeChangeCard ? copy.jobs.scopeStatus : appCopy[language].common.noData
+  useEffect(() => {
+    if (showScopeChangeCard) {
+      setActiveJobsTab('needs')
+    } else if (acceptedJob) {
+      setActiveJobsTab('active')
+    }
+  }, [acceptedJob, showScopeChangeCard])
 
   return (
     <WorkerFrame active="jobs" eyebrow={copy.jobs.eyebrow} title={copy.jobs.title} testID="worker-jobs-surface">
-      <SegmentFilter labels={copy.jobs.filters} />
-      <WorkerJobsTabOverview />
-      <IncomingRequestSheet compact />
-      <JobActivityCard icon="tools" status={deal ? localizedStatusLabel(selectors.currentStatus, language) : copy.jobs.emptyStatus} title={jobTitle} body={jobBody} tone="mint" />
-      <WorkerJobsJobRoomEntry />
-      {showScopeChangeCard ? <JobActivityCard icon="brief" status={copy.jobs.scopeStatus} title={copy.jobs.scopeTitle} body={copy.jobs.scopeBody} testID="worker-scope-change-active" tone="warm" /> : null}
+      <SegmentFilter activeTab={activeJobsTab} labels={copy.jobs.filters} onTabChange={setActiveJobsTab} />
+      <WorkerJobsTabOverview activeTab={activeJobsTab} onTabChange={setActiveJobsTab} />
+      {activeJobsTab === 'waiting' ? (
+        <>
+          <IncomingRequestSheet compact />
+          <JobActivityCard icon="clock" status={waitingStatus} title={deal?.broadcast && !acceptedJob ? jobTitle : copy.jobs.emptyTitle} body={deal?.broadcast && !acceptedJob ? jobBody : copy.jobs.emptyBody} tone="mint" />
+        </>
+      ) : null}
+      {activeJobsTab === 'active' ? (
+        <>
+          <JobActivityCard icon="tools" status={activeJobStatus} title={acceptedJob ? jobTitle : copy.jobs.emptyTitle} body={acceptedJob ? jobBody : copy.jobs.emptyBody} tone="mint" />
+          <WorkerJobsJobRoomEntry />
+        </>
+      ) : null}
+      {activeJobsTab === 'needs' ? (
+        <JobActivityCard icon="brief" status={needsStatus} title={showScopeChangeCard ? copy.jobs.scopeTitle : copy.jobs.emptyTitle} body={showScopeChangeCard ? copy.jobs.scopeBody : copy.jobs.emptyBody} testID="worker-scope-change-active" tone="warm" />
+      ) : null}
     </WorkerFrame>
   )
 }
@@ -887,7 +941,13 @@ function WorkerReadinessPanel() {
   )
 }
 
-function WorkerJobsTabOverview() {
+function WorkerJobsTabOverview({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: WorkerJobsTab
+  onTabChange: (tab: WorkerJobsTab) => void
+}) {
   const { copy, language, tokens } = useWorkerUi()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
@@ -919,7 +979,18 @@ function WorkerJobsTabOverview() {
   return (
     <View style={styles.jobsTabOverview} testID="worker-jobs-tab-overview">
       {rows.map((row, index) => (
-        <View key={row.title} style={[styles.jobsTabCard, workerOpaqueCardSurface(tokens)]} testID={`worker-jobs-tab-${index}`}>
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === workerJobsTabKeys[index] }}
+          key={row.title}
+          onPress={() => onTabChange(workerJobsTabKeys[index] ?? 'waiting')}
+          style={({ pressed }) => [
+            styles.jobsTabCard,
+            workerOpaqueCardSurface(tokens, activeTab === workerJobsTabKeys[index] ? 'mint' : 'base'),
+            pressed ? styles.pressed : null,
+          ]}
+          testID={`worker-jobs-tab-${workerJobsTabKeys[index] ?? index}`}
+        >
           <Icon name={row.icon} small />
           <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
             {row.title}
@@ -927,7 +998,7 @@ function WorkerJobsTabOverview() {
           <Text style={[styles.jobsTabValue, { color: tokens.ink }]} numberOfLines={2}>
             {row.value}
           </Text>
-        </View>
+        </Pressable>
       ))}
     </View>
   )
@@ -1259,14 +1330,20 @@ function WorkerEarningsTrend() {
         </Text>
       </View>
       <View style={[styles.earningsChartShell, workerOpaqueCardSurface(tokens, 'raised')]}>
-        {days.map((day) => (
-          <View key={day} style={styles.earningsChartCol}>
-            <View style={[styles.earningsChartPlaceholder, { backgroundColor: tokens.border }]} />
-            <Text style={[styles.metricLabel, { color: tokens.muted }]} numberOfLines={1}>
+        <View style={styles.earningsChartEmptyState} testID="worker-earnings-chart-empty-state">
+          <View style={[styles.earningsChartBaseline, { backgroundColor: tokens.border }]} />
+          <Icon name="money" small />
+          <Text style={[styles.metricLabel, { color: tokens.muted }]} numberOfLines={1}>
+            {empty}
+          </Text>
+        </View>
+        <View style={styles.earningsDayRail}>
+          {days.map((day) => (
+            <Text key={day} style={[styles.metricLabel, { color: tokens.muted }]} numberOfLines={1}>
               {day}
             </Text>
-          </View>
-        ))}
+          ))}
+        </View>
       </View>
     </View>
   )
@@ -1487,6 +1564,29 @@ function WorkerVerificationForm() {
   const setBankAccount = (value: string) => formDispatch({ type: 'field', field: 'bankAccount', value })
   const setSubmitError = (error: string | null) => formDispatch({ type: 'submit_error', error })
   const setSubmitting = (submittingValue: boolean) => formDispatch({ type: 'submitting', submitting: submittingValue })
+  const setDistrictsFromText = (value: string) => {
+    setDistricts(value)
+    setHomeLat('')
+    setHomeLng('')
+    setSubmitError(null)
+  }
+  const selectedDistrictSlug = normalizeDistrict(districts.split(',')[0] ?? '')
+  const parsedRadiusValue = Number.parseInt(serviceRadiusKm.replace(/[^\d]/g, ''), 10)
+  const radiusValue = Math.min(30, Math.max(1, Number.isFinite(parsedRadiusValue) ? parsedRadiusValue : 8))
+  const setServiceAreaAnchor = (anchor: (typeof workerServiceAreaAnchors)[number]) => {
+    setDistricts(HCMC_DISTRICTS[anchor.slug])
+    setHomeLat(anchor.lat.toFixed(6))
+    setHomeLng(anchor.lng.toFixed(6))
+    setSubmitError(null)
+  }
+  const adjustServiceRadius = (delta: number) => {
+    setServiceRadiusKm(String(Math.min(30, Math.max(1, radiusValue + delta))))
+    setSubmitError(null)
+  }
+  const setRadiusPreset = (value: number) => {
+    setServiceRadiusKm(String(value))
+    setSubmitError(null)
+  }
 
   useEffect(() => {
     if (!workerProfile) return
@@ -1625,15 +1725,15 @@ function WorkerVerificationForm() {
         <TextInput accessibilityLabel={verificationCopy.dateOfBirth} onChangeText={setDateOfBirth} placeholder="YYYY-MM-DD" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-date-of-birth" value={dateOfBirth} />
         <TextInput accessibilityLabel={verificationCopy.yearsExperience} keyboardType="number-pad" onChangeText={setYearsExperience} placeholder={verificationCopy.yearsExperience} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-years" value={yearsExperience} />
       </View>
-      <TextInput accessibilityLabel={verificationCopy.districts} onChangeText={setDistricts} placeholder={verificationCopy.districtsPlaceholder} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-districts" value={districts} />
-      <View style={styles.verificationGrid} testID="worker-verification-home-geo">
-        <TextInput accessibilityLabel={verificationCopy.homeLat} keyboardType="decimal-pad" onChangeText={setHomeLat} placeholder={verificationCopy.homeLat} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-home-lat" value={homeLat} />
-        <TextInput accessibilityLabel={verificationCopy.homeLng} keyboardType="decimal-pad" onChangeText={setHomeLng} placeholder={verificationCopy.homeLng} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-home-lng" value={homeLng} />
-      </View>
-      <View style={styles.verificationGrid}>
-        <TextInput accessibilityLabel={verificationCopy.serviceRadius} keyboardType="number-pad" onChangeText={setServiceRadiusKm} placeholder={verificationCopy.serviceRadius} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-service-radius" value={serviceRadiusKm} />
-        <TextInput accessibilityLabel={verificationCopy.problemSpecializations} onChangeText={setProblemSpecializations} placeholder={verificationCopy.problemSpecializations} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-problem-specializations" value={problemSpecializations} />
-      </View>
+      <TextInput accessibilityLabel={verificationCopy.districts} onChangeText={setDistrictsFromText} placeholder={verificationCopy.districtsPlaceholder} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-districts" value={districts} />
+      <WorkerServiceAreaPicker
+        onAdjustRadius={adjustServiceRadius}
+        onSelectAnchor={setServiceAreaAnchor}
+        onSelectRadiusPreset={setRadiusPreset}
+        radiusValue={radiusValue}
+        selectedDistrictSlug={selectedDistrictSlug}
+      />
+      <TextInput accessibilityLabel={verificationCopy.problemSpecializations} onChangeText={setProblemSpecializations} placeholder={verificationCopy.problemSpecializations} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, { borderColor: tokens.border, color: tokens.ink }]} testID="worker-verification-problem-specializations" value={problemSpecializations} />
       <View style={styles.skillWrap} testID="worker-verification-service-types">
         {workerVerificationServices.map((serviceType) => {
           const selected = serviceTypes.includes(serviceType)
@@ -1667,6 +1767,110 @@ function WorkerVerificationForm() {
       </View>
       {submitError ? <Text style={[styles.bodyText, { color: tokens.copper }]} testID="worker-verification-error">{submitError}</Text> : null}
       <PressButton disabled={submitting} label={submitting ? verificationCopy.submitting : verificationCopy.submit} onPress={() => void submitVerification()} testID="worker-verification-submit" />
+    </View>
+  )
+}
+
+function WorkerServiceAreaPicker({
+  onAdjustRadius,
+  onSelectAnchor,
+  onSelectRadiusPreset,
+  radiusValue,
+  selectedDistrictSlug,
+}: {
+  onAdjustRadius: (delta: number) => void
+  onSelectAnchor: (anchor: (typeof workerServiceAreaAnchors)[number]) => void
+  onSelectRadiusPreset: (value: number) => void
+  radiusValue: number
+  selectedDistrictSlug: DistrictSlug
+}) {
+  const { language, tokens } = useWorkerUi()
+  const verificationCopy = workerVerificationCopy[language] as WorkerVerificationCopy
+
+  return (
+    <View style={[styles.serviceAreaPicker, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]} testID="worker-verification-service-area-picker">
+      <View style={styles.titleStack}>
+        <Text style={[styles.kicker, { color: tokens.primary }]}>{verificationCopy.serviceAreaTitle}</Text>
+        <Text style={[styles.bodyText, { color: tokens.muted }]}>{verificationCopy.serviceAreaBody}</Text>
+      </View>
+      <View style={styles.serviceAreaAnchorGrid} testID="worker-verification-service-area-anchors">
+        {workerServiceAreaAnchors.map((anchor) => {
+          const selected = selectedDistrictSlug === anchor.slug
+          return (
+            <Pressable
+              accessibilityLabel={`${verificationCopy.serviceAreaTitle}: ${HCMC_DISTRICTS[anchor.slug]}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              key={anchor.slug}
+              onPress={() => onSelectAnchor(anchor)}
+              style={({ pressed }) => [
+                styles.serviceAreaAnchorButton,
+                { backgroundColor: selected ? tokens.primary : tokens.raised, borderColor: selected ? tokens.primary : tokens.border },
+                pressed ? styles.pressed : null,
+              ]}
+              testID={`worker-verification-service-area-${anchor.slug}`}
+            >
+              <Text style={[styles.serviceAreaAnchorText, { color: selected ? tokens.primaryText : tokens.primary }]}>{HCMC_DISTRICTS[anchor.slug]}</Text>
+            </Pressable>
+          )
+        })}
+      </View>
+      <View style={styles.serviceAreaRadiusRow} testID="worker-verification-radius-stepper">
+        <Pressable
+          accessibilityLabel={verificationCopy.radiusDecrease}
+          accessibilityRole="button"
+          onPress={() => onAdjustRadius(-1)}
+          style={({ pressed }) => [
+            styles.serviceAreaRadiusButton,
+            { backgroundColor: tokens.raised, borderColor: tokens.border },
+            pressed ? styles.pressed : null,
+          ]}
+          testID="worker-verification-radius-minus"
+        >
+          <Text style={[styles.serviceAreaRadiusControlText, { color: tokens.primary }]}>-</Text>
+        </Pressable>
+        <Text accessibilityLabel={verificationCopy.serviceRadius} style={[styles.serviceAreaRadiusValue, { color: tokens.ink }]} testID="worker-verification-service-radius">
+          {radiusValue} km
+        </Text>
+        <Pressable
+          accessibilityLabel={verificationCopy.radiusIncrease}
+          accessibilityRole="button"
+          onPress={() => onAdjustRadius(1)}
+          style={({ pressed }) => [
+            styles.serviceAreaRadiusButton,
+            { backgroundColor: tokens.raised, borderColor: tokens.border },
+            pressed ? styles.pressed : null,
+          ]}
+          testID="worker-verification-radius-plus"
+        >
+          <Text style={[styles.serviceAreaRadiusControlText, { color: tokens.primary }]}>+</Text>
+        </Pressable>
+      </View>
+      <View style={styles.serviceAreaRadiusPresets}>
+        {workerServiceRadiusPresets.map((value) => {
+          const selected = radiusValue === value
+          return (
+            <Pressable
+              accessibilityLabel={`${verificationCopy.radiusPreset} ${value} km`}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              key={value}
+              onPress={() => onSelectRadiusPreset(value)}
+              style={({ pressed }) => [
+                styles.serviceAreaAnchorButton,
+                { backgroundColor: selected ? tokens.primary : tokens.raised, borderColor: selected ? tokens.primary : tokens.border },
+                pressed ? styles.pressed : null,
+              ]}
+              testID={`worker-verification-radius-${value}`}
+            >
+              <Text style={[styles.serviceAreaAnchorText, { color: selected ? tokens.primaryText : tokens.primary }]}>{value} km</Text>
+            </Pressable>
+          )
+        })}
+      </View>
+      <Text style={[styles.verificationHint, { color: tokens.subtle }]} testID="worker-verification-home-geo">
+        {verificationCopy.serviceAreaManual}
+      </Text>
     </View>
   )
 }
@@ -2303,19 +2507,42 @@ function getWorkerTimeline(status: LocalDealStatus | null, language: WorkerLangu
   }))
 }
 
-function SegmentFilter({ labels }: { labels: readonly string[] }) {
+function SegmentFilter({
+  activeTab,
+  labels,
+  onTabChange,
+}: {
+  activeTab: WorkerJobsTab
+  labels: readonly string[]
+  onTabChange: (tab: WorkerJobsTab) => void
+}) {
   const { tokens } = useWorkerUi()
 
   return (
     <View style={[styles.segmentShell, glassSurface(tokens, 'raised')]} testID="worker-activity-filter-pattern">
       <SubtleGlassHighlight />
-      {labels.map((item, index) => (
-        <View key={item} style={[styles.segmentPill, index === 0 ? { backgroundColor: tokens.mint } : null]}>
-          <Text style={[styles.segmentText, { color: index === 0 ? tokens.primary : tokens.muted }]} numberOfLines={1}>
-            {item}
-          </Text>
-        </View>
-      ))}
+      {labels.map((item, index) => {
+        const tab = workerJobsTabKeys[index] ?? 'waiting'
+        const selected = tab === activeTab
+        return (
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            key={item}
+            onPress={() => onTabChange(tab)}
+            style={({ pressed }) => [
+              styles.segmentPill,
+              selected ? { backgroundColor: tokens.mint } : null,
+              pressed ? styles.pressed : null,
+            ]}
+            testID={`worker-jobs-segment-${tab}`}
+          >
+            <Text style={[styles.segmentText, { color: selected ? tokens.primary : tokens.muted }]} numberOfLines={1}>
+              {item}
+            </Text>
+          </Pressable>
+        )
+      })}
     </View>
   )
 }
@@ -2794,9 +3021,10 @@ const styles = StyleSheet.create({
   earningsHero: { borderRadius: 32, gap: 12, overflow: 'hidden', padding: 18, position: 'relative' },
   earningsBadge: { alignItems: 'center', borderRadius: 24, height: 58, justifyContent: 'center', transform: [{ rotate: '-5deg' }], width: 58 },
   earningsTrendCard: { borderRadius: 30, borderWidth: 1, gap: 12, overflow: 'hidden', padding: 14 },
-  earningsChartShell: { alignItems: 'flex-end', borderRadius: 24, borderWidth: 1, flexDirection: 'row', gap: 10, justifyContent: 'space-between', minHeight: 132, padding: 14 },
-  earningsChartCol: { alignItems: 'center', flex: 1, gap: 7, justifyContent: 'flex-end' },
-  earningsChartPlaceholder: { borderRadius: 999, height: 42, opacity: 0.48, width: '100%' },
+  earningsChartShell: { borderRadius: 24, borderWidth: 1, gap: 12, justifyContent: 'space-between', minHeight: 132, padding: 14 },
+  earningsChartEmptyState: { alignItems: 'center', flex: 1, gap: 8, justifyContent: 'center', minHeight: 76, overflow: 'hidden', position: 'relative' },
+  earningsChartBaseline: { borderRadius: 999, height: 3, left: 0, opacity: 0.52, position: 'absolute', right: 0, top: '56%' },
+  earningsDayRail: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
   moneyText: { fontSize: 34, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: 0 },
   moneyTextState: { fontSize: 24, lineHeight: 30 },
   listCard: { borderRadius: 29, gap: 4, overflow: 'hidden', padding: 10, position: 'relative' },
@@ -2822,6 +3050,16 @@ const styles = StyleSheet.create({
   verificationGrid: { flexDirection: 'row', gap: 8 },
   verificationInput: { borderRadius: 18, borderWidth: 1, fontSize: 14, fontWeight: '600', minHeight: 46, paddingHorizontal: 12 },
   verificationHalfInput: { flex: 1, minWidth: 0 },
+  serviceAreaPicker: { borderRadius: 22, borderWidth: 1, gap: 10, padding: 12 },
+  serviceAreaAnchorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  serviceAreaAnchorButton: { borderRadius: 999, borderWidth: 1, justifyContent: 'center', minHeight: 40, paddingHorizontal: 11, paddingVertical: 7 },
+  serviceAreaAnchorText: { fontSize: 12, fontWeight: '700', letterSpacing: 0, lineHeight: 16 },
+  serviceAreaRadiusRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  serviceAreaRadiusButton: { alignItems: 'center', borderRadius: 999, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
+  serviceAreaRadiusControlText: { fontSize: 22, fontWeight: '700', letterSpacing: 0, lineHeight: 24 },
+  serviceAreaRadiusValue: { flex: 1, fontSize: 18, fontWeight: '700', letterSpacing: 0, lineHeight: 24, textAlign: 'center' },
+  serviceAreaRadiusPresets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  verificationHint: { fontSize: 12, fontWeight: '600', lineHeight: 16 },
   verificationFiles: { flexDirection: 'row', gap: 8 },
   verificationFileButton: { alignItems: 'center', borderRadius: 18, borderWidth: 1, flex: 1, gap: 5, justifyContent: 'center', minHeight: 72, padding: 8 },
   verificationFileText: { fontSize: 11, fontWeight: '600', lineHeight: 14, textAlign: 'center' },

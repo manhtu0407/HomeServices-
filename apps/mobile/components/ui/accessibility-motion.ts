@@ -6,15 +6,29 @@ export type GlassAccessibilityPreferences = {
   reduceTransparency: boolean
 }
 
+type AccessibilityInfoWithTransparency = typeof AccessibilityInfo & {
+  isReduceTransparencyEnabled?: () => Promise<boolean>
+}
+
+function subscribeAccessibilityPreference(
+  accessibilityInfo: AccessibilityInfoWithTransparency,
+  eventName: 'reduceMotionChanged' | 'reduceTransparencyChanged',
+  listener: (enabled: boolean) => void,
+) {
+  if (typeof accessibilityInfo.addEventListener !== 'function') return () => undefined
+  const subscription = accessibilityInfo.addEventListener(eventName, listener)
+  return () => {
+    subscription.remove()
+  }
+}
+
 export function useGlassAccessibility(): GlassAccessibilityPreferences {
   const [reduceMotion, setReduceMotion] = useState(false)
   const [reduceTransparency, setReduceTransparency] = useState(false)
 
   useEffect(() => {
     let mounted = true
-    const accessibilityInfo = AccessibilityInfo as typeof AccessibilityInfo & {
-      isReduceTransparencyEnabled?: () => Promise<boolean>
-    }
+    const accessibilityInfo = AccessibilityInfo as AccessibilityInfoWithTransparency
 
     if (typeof accessibilityInfo.isReduceMotionEnabled === 'function') {
       accessibilityInfo.isReduceMotionEnabled()
@@ -32,22 +46,10 @@ export function useGlassAccessibility(): GlassAccessibilityPreferences {
         .catch(() => undefined)
     }
 
-    let removeMotionListener = () => undefined
-    let removeTransparencyListener = () => undefined
-
-    if (typeof accessibilityInfo.addEventListener === 'function') {
-      const motionSubscription = accessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion)
-      removeMotionListener = () => {
-        motionSubscription.remove()
-      }
-    }
-
-    if (typeof accessibilityInfo.addEventListener === 'function' && typeof accessibilityInfo.isReduceTransparencyEnabled === 'function') {
-      const transparencySubscription = accessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency)
-      removeTransparencyListener = () => {
-        transparencySubscription.remove()
-      }
-    }
+    const removeMotionListener = subscribeAccessibilityPreference(accessibilityInfo, 'reduceMotionChanged', setReduceMotion)
+    const removeTransparencyListener = typeof accessibilityInfo.isReduceTransparencyEnabled === 'function'
+      ? subscribeAccessibilityPreference(accessibilityInfo, 'reduceTransparencyChanged', setReduceTransparency)
+      : () => undefined
 
     return () => {
       mounted = false

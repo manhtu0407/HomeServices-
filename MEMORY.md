@@ -1,5 +1,17 @@
 # MEMORY
 
+## 2026-05-21 Production Redesign Prototype Port
+
+- Tu chốt prototype `.tmp/design-lab/frontend-redesign-20260521/index.html` rồi yêu cầu port sang production mobile trong cửa sổ 2 giờ, không report sớm, và production phải giống prototype nhưng không đưa mock stats/fake data vào app chính.
+- Mandatory context recovery was rerun: confirmed workspace `C:\Users\Phan Manh Tu\Desktop\home-services`, branch `codex/glass-motion-ui-enhancement`, dirty worktree, and re-read important root/docs Markdown including `AGENTS.md`, `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md`, `CLAUDE.md`, `MEMORY.md`, `skills.md`, `README.md`, and `docs/**/*.md`.
+- Added `docs/design/frontend-redesign-production-contract-20260521.md` as the durable production contract for the accepted prototype: role gate hero `Bắt đầu từ điều bạn cần hôm nay`, signature `Đúng người, đúng việc, đúng lúc nhà cần.`, mint/cream glass direction, no fake/mock stats, and parity verification.
+- Auth production now ports the accepted role-first gate: glass signature ribbon, fixed role choice before auth, client Google/phone intent with honest unavailable errors until providers are configured, and worker email/password + create-profile path with no Google login.
+- Customer surfaces now port the prototype direction: Kael command home hierarchy, booking price-check/AI diagnosis summary without fake prices, full-screen Kael chat with back affordance and Edge-backed address autocomplete, real `Sửa/Giá/Chat/Xong` schedule tabs, and a `Xong` presence-map shell backed by workflow state rather than fake coordinates.
+- Worker surfaces now port the unified redesign direction: Home readiness/map shell, Jobs with actual interactive `Chờ nhận/Đang làm/Cần xử lý` tab state, JobRoom entry/privacy gate, no full address before accept, and earnings chart/summary as empty/real-state only instead of fake earnings.
+- Shared glass/motion components were tightened: bottom toolbar has active liquid pill markers and compact inactive labels; entrance motion moved from RN `Animated` to `react-native-reanimated`; Reduce Motion/Transparency hooks now keep explicit cleanup helpers.
+- Historical verification during this pass: mobile type-check passed; shared mobile wiring/workflow tests passed (`9 files / 483 tests`); `git diff --check` passed with CRLF warnings only. Later PR #25 follow-up scans supersede the older React Doctor warning counts.
+- Production honesty caveat: Google OAuth/phone OTP are still not enabled end-to-end in this code path, so auth buttons expose intent and clear unavailable errors rather than pretending successful login. Worker self-service role promotion remains governed by the existing server/admin trust model.
+
 ## 2026-05-21 Plan.md Workflow Upgrade Consolidation
 
 - Tu asked Codex to continue the Plan.md workflow rebuild after Claude Code audit showed remaining misses. The active branch is `codex/glass-motion-ui-enhancement`; this commit is intended to consolidate the broad Plan.md upgrade work already present in the workspace rather than split frontend/backend fragments into separate pushes.
@@ -23,6 +35,10 @@
 - React Doctor flagged new Kael chat state churn; Codex moved Kael chat state into `components/customer/kael-chat/state.ts` with `useReducer`. A concurrent `CustomerHistorySurface` extraction was completed enough for React Doctor changed scan to report no API/mobile issues.
 - Latest verification in this follow-up: `tsc --noEmit` passed for `apps/api`, `apps/mobile`, and `packages/shared`; API targeted Vitest passed 132 tests; shared/mobile targeted Vitest passed 279 tests; `git diff --check` passed with CRLF warnings only. React Doctor changed scan reports no issues found for API/mobile.
 - Remaining Phase 3 truth: do not mark all of Phase 3 done yet. Production Maps secret, live DB lat/lng verification, true worker map/radius UI, and any later rating-penalty decision are still open or explicitly deferred.
+- Continuation after Tu confirmed the Google Maps key was set in Supabase secrets: do not copy the Maps key into `.env.local` or mobile env. Verify it through the staging Edge route instead.
+- This continuation replaced the worker verification raw `home_lat`/`home_lng` numeric inputs with a focused service-area district picker plus radius stepper/presets, while still submitting `home_lat`, `home_lng`, and `service_radius_km` through the existing worker registration wrapper. It is not a full native map picker yet, but it removes the unsafe raw-coordinate UX and keeps district fallback honest.
+- Added `scripts/staging-mobile-api-smoke.ps1`, `.env.example` key name `STAGING_ACCESS_TOKEN`, and `docs/ops/staging-workflow-gap-verification.md` so staging can verify `/services` plus `/places/autocomplete` without printing or committing secrets. Local smoke reached the env gate and stopped because `.env.local` has no staging user access token yet.
+- Verification for this continuation: mobile TypeScript passed, shared TypeScript passed, shared/mobile targeted Vitest passed `3 files / 267 tests`, `git diff --check` passed with CRLF warnings only, and React Doctor changed scan reports no issues found for API/mobile after extracting `WorkerServiceAreaPicker`.
 
 ## 2026-05-20 PR #23 Frontend Design Integration + React Doctor Toolchain
 
