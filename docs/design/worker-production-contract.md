@@ -1,5 +1,12 @@
 # Worker Production UI Contract
 
+> Status: historical accepted UI contract. Use this file for worker visual
+> direction, role-gate intent, and original production UI acceptance notes.
+> Do not use it as current backend/runtime truth when it conflicts with
+> `critical.md`, `RULES.md`, `STRUCTURES.md`, `AGENTS.md`, or `MEMORY.md`.
+> Current mobile workflow state may be Edge/Supabase-backed even where this
+> document describes an earlier frontend-only slice.
+
 Screen: Worker section plus Auth Login role gate.
 
 Workflow mapping: A0 role entry; B1/B2/B3/B6 worker readiness, incoming job decision, Kael relay, earnings, and profile trust.

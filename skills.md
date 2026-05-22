@@ -1,10 +1,34 @@
 # Karpathy-Inspired Coding Skills
 
-Source: https://github.com/multica-ai/andrej-karpathy-skills
+Sources:
 
-Purpose: project-local operating rules for AI coding agents working in this repo. These rules are adapted from the Karpathy-inspired guidelines, then tightened for Home Services: ship toward the first real transaction, avoid needless complexity, keep diffs small, and verify with evidence.
+- https://github.com/multica-ai/andrej-karpathy-skills
+- https://github.com/addyosmani/agent-skills
+
+Purpose: project-local operating rules for AI coding agents working in this repo. These rules are adapted from Karpathy-inspired guidelines and the production workflow discipline in `addyosmani/agent-skills`, then tightened for Home Services: ship toward the first real transaction, avoid needless complexity, keep diffs small, and verify with evidence.
 
 Use these skills whenever writing, reviewing, refactoring, debugging, or planning code changes.
+
+## Agent-Skills Distillation
+
+Use this lifecycle for non-trivial work:
+
+1. Define: clarify the real goal, user, success criteria, constraints, and explicit out-of-scope items.
+2. Plan: break work into small verifiable slices with dependency order and acceptance criteria.
+3. Build: implement one bounded slice at a time using existing repo patterns.
+4. Verify: prove the change with real evidence, not confidence.
+5. Review: check correctness, simplicity, architecture, security, performance, and documentation impact.
+6. Ship: report changed files, verification, known risks, and next action.
+
+Use these control loops when needed:
+
+- Interview loop for unclear intent: `HYPOTHESIS -> CONFIDENCE -> ONE QUESTION -> RESTATE -> EXPLICIT YES`.
+- Context loop for large sessions: load stable rules first, task-specific docs/code next, error output during iteration, and `MEMORY.md` last.
+- Ownership loop for code enhancement: open `docs/architecture/code-ownership-map.md`, map workflow step to owner files, preserve layer boundaries, then choose the narrowest verification gate.
+- Doubt loop for non-trivial decisions: `CLAIM -> EXTRACT -> DOUBT -> RECONCILE -> STOP`.
+- Verification loop for every change: define evidence before editing, run the relevant check, read the output, and report only what actually happened.
+
+Anti-rationalization rule: do not skip a step because the task "seems simple" if skipping it would make the result depend on hidden assumptions.
 
 ## Core Skill 1: Think Before Coding
 
@@ -154,7 +178,8 @@ These repo-specific constraints override generic coding advice.
 Product:
 
 - Primary client is React Native / Expo.
-- Next.js is secondary: API routes and admin only.
+- Store-bound runtime is `Expo React Native -> Supabase Auth -> Supabase Edge Function mobile-api -> Supabase DB/RPC/Storage/Realtime -> server-side providers`.
+- Next.js in `apps/api` is reference/parity/admin/support unless Tu explicitly assigns a Next.js task.
 - Service scope is electrical, plumbing, and cleaning only.
 - Kael is the primary AI assistant for intake, diagnosis, price analysis, worker brief, and support; Kael never performs booking, payment, cancellation, or worker punishment without explicit user/admin confirmation.
 - Optimize for first real transaction, not architectural perfection.

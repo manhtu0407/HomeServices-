@@ -1,5 +1,12 @@
 # Production Migration Checklist
 
+> Status: historical production-migration evidence plus re-verification checklist.
+> Do not treat the older row counts or two-service smoke counts in this file as
+> current product truth. Current active service scope is electrical, plumbing,
+> and cleaning, and the current mobile runtime is Supabase Edge `mobile-api`.
+> Before any production migration, regenerate counts, pending migration chain,
+> and smoke evidence from the current staging and production state.
+
 This checklist is the production safety gate for applying the Supabase migration chain from the verified staging database to the production `HomeServices` project.
 
 > 2026-05-18 staging backend note: this checklist predates the `mobile-api`
@@ -211,9 +218,11 @@ Immediately restore local link to staging after production apply:
 npx.cmd supabase link --project-ref xyylanuyflrjzbjzhqfl
 ```
 
-## Post-Apply Smoke Tests
+## Historical Post-Apply Smoke Tests
 
-Run immediately after production apply.
+These are retained as evidence from the earlier migration session, not as
+current expected counts. For any new production apply, regenerate the expected
+counts from current migrations and current active 3-service scope.
 
 ```text
 post-apply checks:
@@ -224,9 +233,9 @@ post-apply checks:
 |- public policy table count is 17: passed
 |- storage bucket count is 3: passed
 |- storage policy count is 6: passed
-|- service_categories count is 2: passed
-|- service_problems count is 2: passed
-|- price_baselines count is 6: passed
+|- historical service_categories count was 2: passed at that time
+|- historical service_problems count was 2: passed at that time
+|- historical price_baselines count was 6: passed at that time
 |- learning tables count is 3: passed
 |- rollback-only RLS/storage harness: 29/29 passed
 |- production fixture rollback check: profiles/jobs/storage_objects remain 0

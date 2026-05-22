@@ -1,6 +1,13 @@
 # Expo Push Spike — 2026-05-20
 
-Status: execution input for workflow enhancement. This is not a production rollout approval.
+Status: historical execution input for workflow enhancement. This is not a production rollout approval.
+
+> Current-state note for agents: this spike may lag behind later mobile
+> implementation work. Before using any "Current Code State" bullet below,
+> verify `apps/mobile/package.json`, `apps/mobile/lib/push-notifications.ts`,
+> Edge `mobile-api`, and `MEMORY.md`. Do not treat the older
+> "expo-notifications is not installed" statement as current truth without
+> checking the repo.
 
 ## Decision
 

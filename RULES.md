@@ -1,41 +1,75 @@
-# Home Services — Non-Negotiable Coding Rules
+# Home Services - Non-Negotiable Coding Rules
 
-Rules này không được vi phạm. Nếu có conflict giữa rules và yêu cầu cụ thể → rules thắng → báo cáo conflict cho cộng sự.
+These rules are hard constraints. If a user request, implementation shortcut, skill, plan, or historical doc conflicts with this file, stop, report the conflict, and ask Tu before proceeding.
 
----
-
-## AI Coding Agents Skills Reference
-
-Project đã cập nhật thêm Skills cho AI Coding Agents trong `skills.md`.
-
-- `skills.md` tổng hợp tinh túy Karpathy-inspired workflow cho repo này: think before coding, simplicity first, surgical changes, goal-driven execution.
-- `.agents/skills/karpathy-guidelines/SKILL.md` là skill project-local đã cài cho Codex/agent trong repo.
-- Các skill này hướng dẫn cách làm việc; chúng KHÔNG thay thế các rule non-negotiable trong file này.
-- Nếu `skills.md` hoặc skill `karpathy-guidelines` conflict với `RULES.md`, luôn ưu tiên `RULES.md`.
+`critical.md` defines execution flow. This file defines product/security/runtime boundaries that must not be bypassed.
 
 ---
 
-## Rule #1: Secrets không được ở client
+## AI Coding Agent Skills Reference
 
-**ĐÚNG:**
-- API keys trong environment variables (server-side)
-- Keys đọc trong server functions / Edge Functions
-- `.env.example` (không có value) commit vào repo
+The repository includes AI coding agent skills in `skills.md` and `.agents/skills/karpathy-guidelines/SKILL.md`.
 
-**SAI — cấm tuyệt đối:**
-- Hardcode key trong code
-- API key trong client-side code (browser, React component, RN bundle)
-- API key trong git history
-
-Mỗi API key mới: (1) thêm `.env.example` (2) thêm env validator (3) thêm deployment config.
+- `skills.md` summarizes the repo's Karpathy-inspired workflow: think before coding, simplicity first, surgical changes, and goal-driven execution.
+- `.agents/skills/karpathy-guidelines/SKILL.md` is the project-local Codex/agent skill for Home Services.
+- Skills guide how agents work. They do not replace the non-negotiable rules in this file.
+- If a skill conflicts with `RULES.md`, `RULES.md` wins.
 
 ---
 
-## Rule #2: Mọi AI API call qua centralized wrapper
+## Rule #0: Mobile Runtime Boundary
+
+The store-bound runtime path is:
+
+```text
+Expo React Native mobile app
+-> Supabase Auth
+-> Supabase Edge Function `mobile-api`
+-> Supabase DB/RPC/Storage/Realtime
+-> server-side AI and external providers
+```
+
+Correct:
+- Mobile signs users in with Supabase Auth.
+- Mobile calls `supabase/functions/mobile-api` for workflow-sensitive APIs.
+- Edge/server code owns service-role access, AI provider calls, external provider keys, role guards, workflow writes, and sensitive validation.
+- `apps/api` remains reference/parity/admin/support code unless Tu explicitly assigns a Next.js runtime task.
+- Direct authenticated mobile Supabase access is read/bootstrap-oriented unless a documented contract explicitly permits a narrow write.
+
+Forbidden:
+- Do not make the mobile app call AI providers directly.
+- Do not put server secrets, service-role keys, Maps keys, AI provider keys, or payment secrets in the RN bundle.
+- Do not bypass `mobile-api` for booking, worker matching, scope change, completion, review, notification, cancellation, reassignment, or other workflow-sensitive writes.
+- Do not turn hosted Next.js/Vercel into the mobile release runtime without explicit approval.
+
+---
+
+## Rule #1: No Secrets In Client Code
+
+Correct:
+- API keys live in server-side environment variables.
+- Keys are read only inside server functions, Supabase Edge Functions, or approved server runtimes.
+- `.env.example` may be committed with key names only, never values.
+
+Forbidden:
+- Hardcoded keys.
+- API keys in browser code, React components, React Native bundle code, screenshots, logs, docs, or git history.
+- Printing or copying secrets into chat, memory, README, test logs, or handoff docs.
+
+For every new secret:
+
+1. Add the key name to `.env.example`.
+2. Add environment validation.
+3. Add deployment/runtime configuration instructions without exposing values.
+
+---
+
+## Rule #2: All AI API Calls Go Through The Centralized Wrapper
 
 ```typescript
-// ĐÚNG
+// Correct
 import { callAI } from '@/lib/ai/client'
+
 const result = await callAI({
   provider: 'anthropic',
   model: 'claude-sonnet-4-6',
@@ -43,45 +77,56 @@ const result = await callAI({
   maxTokens: 1000
 })
 
-// SAI — FORBIDDEN
+// Forbidden
 import Anthropic from '@anthropic-ai/sdk'
+
 const client = new Anthropic({ apiKey: 'sk-...' })
 ```
 
-Wrapper phải có: timeout, retry, error handling, cost logging.
+The wrapper must provide timeout, retry, error handling, cost logging, response validation hooks, and safe fallback behavior.
 
 ---
 
-## Rule #3: AI response validate trước khi đến user
+## Rule #3: Validate AI Output Before It Reaches Users
 
-Kael không bao giờ gửi raw AI output thẳng cho user:
-- Kiểm tra response có chứa giá → format đúng chưa?
-- Kiểm tra off-topic → nếu có, replace bằng template mặc định
-- Kiểm tra ngôn ngữ: phải là tiếng Việt (hoặc Anh nếu user dùng Anh)
+Kael must never send raw AI output directly to users.
+
+Required checks:
+- Price content is formatted correctly and includes the required disclaimer.
+- Off-topic, unsafe, adult, unrelated, PII-leaking, or unsupported-service content is refused or replaced with a safe template.
+- Language matches the selected app language: Vietnamese by default, English only through the intended VI/EN switch.
+- JSON/tool output is schema-validated before use.
 
 ---
 
-## Rule #4: Price estimate phải có disclaimer
+## Rule #4: Price Estimates Require A Disclaimer
 
-Mọi response chứa giá phải kèm:
+Every response or UI state containing a price estimate must include this Vietnamese disclaimer:
 
 > "Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu."
 
-Không bỏ disclaimer. Không cam kết giá chính xác.
+Do not remove the disclaimer. Do not promise an exact price before worker confirmation.
 
 ---
 
-## Rule #5: Vietnamese first
+## Rule #5: Vietnamese-First Product Copy
 
-- Mọi user-facing text: tiếng Việt
-- Error messages: tiếng Việt
-- Push notifications: tiếng Việt
-- Log messages (developer-facing): English OK
-- Code comments: English OK
+- User-facing app text defaults to Vietnamese.
+- Error messages shown to users are Vietnamese.
+- Push notifications shown to users are Vietnamese.
+- English mode is allowed only through the intended VI/EN switch.
+- Developer logs, code comments, doc instructions, and engineering artifacts may use English technical language.
+
+The app must not mix visible Vietnamese and English in one selected language mode.
 
 ---
 
-## Rule #6: Kael chỉ trả lời trong scope Home Services điện, nước, vệ sinh
+## Rule #6: Kael Only Supports The Active Home Services Scope
+
+Active service scope:
+- electrical repair,
+- plumbing repair,
+- home cleaning / housekeeping.
 
 ```typescript
 if (
@@ -93,58 +138,80 @@ if (
 }
 ```
 
-Hard rule. Kael trả lời ngắn gọn, đúng trọng tâm, thân thiện cho các vấn đề Home Services trong 3 nhóm active: sửa điện, sửa nước, vệ sinh/dọn dẹp nhà. Ngoài scope này thì từ chối lịch sự; nội dung nguy hiểm, 18+, làm lộ PII, hoặc không liên quan thì không phân tích.
+Hard rule: Kael answers concise, relevant, safe Home Services questions inside the three active categories only. For unsupported services, dangerous content, adult content, PII exposure, or unrelated requests, Kael must politely decline instead of analyzing.
 
 ---
 
-## Rule #7: Không autonomous action không có user confirmation
+## Rule #7: No Autonomous Money Or Booking Actions Without Confirmation
 
-Kael không tự làm bất kỳ điều gì ảnh hưởng đến tiền hoặc booking mà không có user tap/confirm tường minh:
-- Tạo booking: user phải confirm
-- Thanh toán: user phải confirm
-- Cancel booking: user phải confirm
+Kael must not perform any action that affects money, booking state, cancellation, reassignment, or scope without explicit user confirmation.
 
-Không có exception ở phase hiện tại.
+Explicit confirmation is required for:
+- creating a booking/search,
+- accepting a price-affecting scope change,
+- payment,
+- cancellation,
+- completion confirmation,
+- review submission when tied to workflow completion.
 
----
-
-## Rule #8: Honesty — không fake data hay silent degrade
-
-**Khi AI response fail hoặc data không có:**
-
-ĐÚNG:
-- Trả template response mặc định + thông báo rõ đang dùng fallback
-- Log lỗi với đủ context để debug
-- Hiển thị user: thông báo tiếng Việt phù hợp (không technical details)
-
-SAI — cấm tuyệt đối:
-- Return empty content và pretend thành công
-- Fabricate price data khi Perplexity fail
-- Fabricate worker info khi DB không có data
-- Silently swallow error mà không log
-
-**Fallback chấp nhận được. Fake success = KHÔNG BAO GIỜ.**
+There is no exception in the current phase.
 
 ---
 
-## Rule #9: Logging — không PII hoặc secrets
+## Rule #8: Data Honesty - No Fake Data Or Silent Degradation
+
+When AI output fails or real data is unavailable:
+
+Correct:
+- Return a safe fallback template and clearly mark fallback internally.
+- Log enough safe metadata to debug the failure.
+- Show users an appropriate non-technical Vietnamese unavailable/error state.
+- Use empty states instead of fake rows, fake numbers, or fake success.
+
+Forbidden:
+- Returning empty content while pretending success.
+- Fabricating price data when Perplexity/market data fails.
+- Fabricating worker info, ratings, queue counts, earnings, prices, or provider availability.
+- Displaying `0`, `--`, fake counts, fake payouts, fake worker names, or "coming soon" as if real product data exists.
+- Silently swallowing provider, Edge, or DB failures without safe logging.
+
+Fallback is acceptable. Fake success is never acceptable.
+
+---
+
+## Rule #9: Logging Must Not Expose PII Or Secrets
 
 ```typescript
-// ĐÚNG — log metadata
+// Correct: safe metadata only
 console.log('Booking started', { bookingId, serviceType, district })
 console.warn('API retry', { attempt, backoffMs, endpoint })
 
-// SAI — cấm
+// Forbidden
 console.log('User data', { phone: '09012345678', cccd: '001...' })
 console.error('API failed', { apiKey: process.env.ANTHROPIC_API_KEY })
 ```
 
-Chỉ log: IDs, status codes, error codes, metadata không nhạy cảm.
-Không log: token, password, API key, SĐT đầy đủ, CCCD, địa chỉ đầy đủ.
+Allowed in logs:
+- IDs,
+- status codes,
+- error codes,
+- safe metadata,
+- coarse district-level location when needed.
+
+Forbidden in logs:
+- full phone numbers,
+- passwords,
+- OTPs,
+- access/refresh tokens,
+- API keys,
+- service-role keys,
+- CCCD/national ID,
+- exact home address,
+- full raw chat text when it may contain PII.
 
 ---
 
-## Rule #10: Timeout cho mọi network call
+## Rule #10: Every Network Call Needs Timeout And Bounded Retry
 
 ```typescript
 const withTimeout = (promise, ms = 20000) =>
@@ -156,39 +223,53 @@ const withTimeout = (promise, ms = 20000) =>
   ])
 ```
 
-Timeout theo API:
+Default provider timeouts:
 - Anthropic: 20,000ms
 - Perplexity: 15,000ms
 - DeepSeek: 10,000ms
 
-Retry: tối đa 2 lần, exponential backoff (`backoffMs = Math.min(1000 * 2^attempt, 10000)`).
+Retry policy:
+- maximum 2 retries,
+- exponential backoff,
+- cap backoff at 10,000ms,
+- log safe metadata for retry and final failure.
 
-Không có network call nào không có timeout. Không có exception.
+No unbounded network call is allowed.
 
 ---
 
 ## Security Invariants
 
 ### Secrets Management
-- `.env` và `.env.local` không bao giờ commit (`.gitignore` must include)
-- `.env.example` commit với key names, không values
-- Secrets chỉ đọc ở server-side — không bundle vào RN app binary
-- Mọi secret mới: 3 bước bắt buộc (`.env.example` → env validator → deployment config)
+
+- `.env` and `.env.local` must never be committed.
+- `.env.example` contains key names only, never values.
+- Secrets are server-side only and must not be bundled into the RN app binary.
+- Every new secret requires `.env.example`, validation, and deployment/runtime config.
 
 ### PII Handling
-- Không log SĐT, CCCD, địa chỉ đầy đủ
-- Chat customer ↔ worker qua Kael relay (không expose contact trực tiếp đến khi cần)
-- Scrub thông tin nhạy cảm trước khi gửi lên LLM
-- Không share PII giữa customer và worker ngoài những gì cần cho job
+
+- Do not log full phone numbers, CCCD/national ID, exact addresses, tokens, or passwords.
+- Customer and worker chat is relayed through Kael; do not expose direct contact details unless the product contract explicitly requires it.
+- Scrub sensitive information before sending anything to LLMs.
+- Share only the minimum job context required for customer/worker workflow.
 
 ### Input Validation
-- Validate + sanitize mọi user input trước khi đưa vào DB hoặc LLM prompt
-- System prompt của Kael phải có refusal instruction cho off-topic
-- Rate limit: tránh user gọi AI API không giới hạn trong một session
 
-### Environment Variables (server-side only)
-```
+- Validate and sanitize all user input before DB writes, Edge processing, LLM prompts, or external provider calls.
+- Kael system prompts must include refusal instructions for off-topic, unsafe, unsupported, adult, or PII-leaking content.
+- Rate limit AI/provider routes to prevent unbounded usage.
+
+### Environment Variables
+
+Server-side only:
+
+```text
 ANTHROPIC_API_KEY
 PERPLEXITY_API_KEY
 DEEPSEEK_API_KEY
+GOOGLE_MAPS_API_KEY
+SUPABASE_SERVICE_ROLE_KEY
 ```
+
+Mobile-public values must be limited to intentionally public runtime configuration, such as Supabase URL and publishable/anon key, and must never include server authority.

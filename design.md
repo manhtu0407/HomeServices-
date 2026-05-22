@@ -692,7 +692,7 @@ Rules:
 - do not make Home a marketing landing page,
 - do not overcrowd service catalog,
 - only electrical, plumbing, and cleaning are active,
-- disabled future services must not act as real services,
+- future-service entries must stay hidden unless Tu explicitly approves a specific non-functional state,
 - address context must be visible but not dominate,
 - Kael should feel like the guide into price check.
 

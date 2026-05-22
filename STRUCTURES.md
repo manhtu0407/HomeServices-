@@ -317,7 +317,7 @@ define the backend contract before building final UI.
 
 ## 5. Service Taxonomy
 
-Only electrical, plumbing, and home cleaning are active. Other services may appear as disabled "coming soon" UI only, never functional.
+Only electrical, plumbing, and home cleaning are active. Future-service cards or "coming soon" service entries must not appear in current product UI unless Tu explicitly approves that specific state.
 
 ### Electrical Taxonomy
 
@@ -395,6 +395,46 @@ Plumbing repair
 |  |- required input: fixture type
 |
 |- other_plumbing
+|  |- hints: must be clarified by Kael
+|  |- complexity: unknown
+```
+
+### Cleaning Taxonomy
+
+```text
+Home cleaning / housekeeping
+-
+|- routine_cleaning
+|  |- hints: regular apartment cleaning, dusting, floor cleaning, surface wipe-down
+|  |- complexity: small/medium
+|  |- required input: rooms, bathrooms, approximate area, preferred time
+|
+|- deep_cleaning
+|  |- hints: heavier dirt, long gap since last cleaning, detailed bathroom/kitchen work
+|  |- complexity: medium/large
+|  |- required input: approximate area, priority zones, photos recommended
+|
+|- move_in_move_out_cleaning
+|  |- hints: empty or near-empty apartment before/after moving
+|  |- complexity: medium/large
+|  |- required input: apartment condition, area, elevator/building access
+|
+|- kitchen_grease_cleaning
+|  |- hints: greasy stove, hood, counters, cabinets, food-prep surfaces
+|  |- complexity: medium/large
+|  |- required input: kitchen condition and photos recommended
+|
+|- bathroom_deep_cleaning
+|  |- hints: stains, scale, mold-like buildup, toilet/shower/sink focus
+|  |- complexity: small/medium
+|  |- required input: number of bathrooms and condition
+|
+|- post_repair_cleanup
+|  |- hints: dust and debris after electrical/plumbing repair or minor installation
+|  |- complexity: small/medium
+|  |- required input: repair type, affected rooms, debris level
+|
+|- other_cleaning
 |  |- hints: must be clarified by Kael
 |  |- complexity: unknown
 ```
@@ -519,14 +559,14 @@ UI
 |- electrical card
 |- plumbing card
 |- cleaning card
-|- disabled future service cards only for non-active future services
+|- no future-service cards unless Tu explicitly approves them for the current task
 |- active booking banner
 |- recent history
 |- bottom tabs: Home / Book / Kael / History / Profile
 
 Rules
 -
-|- disabled services must not be clickable as real services
+|- unsupported services must not appear as selectable real services
 |- user-facing text must be Vietnamese
 ```
 
@@ -1458,7 +1498,7 @@ Responsibility
 |- electrical/plumbing/cleaning taxonomy
 |- problem categories
 |- complexity hints
-|- disabled future service entries
+|- active electrical/plumbing/cleaning service entries only
 
 Forbidden
 -
@@ -2064,13 +2104,47 @@ Frontend contract
 |- every screen maps to a workflow step
 |- every screen has loading/empty/error state
 |- user-facing text is Vietnamese
-|- future services are disabled, not functional
+|- future services are hidden unless Tu explicitly approves a specific non-functional state
 |- price UI always shows estimate disclaimer
 |- confirmation UI required for money-impacting actions
 |- Kael messages visually differ from human chat
 |- Next.js is not consumer web product
 |- React Native is the primary app surface
 ```
+
+### Implementation Ownership
+
+`STRUCTURES.md` defines the workflow truth. `docs/architecture/code-ownership-map.md` defines where that workflow currently lives in code.
+
+Before enhancing, refactoring, or reorganizing code, agents must map the task to:
+
+```text
+Implementation ownership map
+-
+|- workflow step or cross-cutting concern
+|- route / entry file
+|- UI surface owner
+|- state/provider owner
+|- runtime/API boundary
+|- shared contract/schema/type owner
+|- test or static gate
+```
+
+Layer ownership:
+
+```text
+Layers
+-
+|- routes stay thin and select surfaces
+|- surfaces own visual composition, copy, and user-triggered actions
+|- providers own frontend orchestration and remote state hydration
+|- `apps/mobile/lib/services.ts` owns typed mobile API method groups
+|- `apps/mobile/lib/api.ts` owns the `mobile-api` HTTP boundary
+|- Edge `mobile-api` owns workflow-sensitive writes and service-role behavior
+|- `packages/shared` owns service scope, schemas, workflow state, selectors, and shared types
+```
+
+If a change does not fit the current ownership map, stop and ask Tu before adding a new structure.
 
 Customer navigation:
 
