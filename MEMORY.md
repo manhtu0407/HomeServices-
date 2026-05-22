@@ -1,5 +1,15 @@
 # MEMORY
 
+## 2026-05-22 Agent Operating Docs Audit
+
+- Tu approved a docs-only operating-contract cleanup to remove contradictions, update the current runtime, and distill the useful workflow patterns from `addyosmani/agent-skills` for Codex/Claude Code.
+- Current doc authority is now: `critical.md` for execution discipline, `RULES.md` for non-negotiable product/security/runtime boundaries, `STRUCTURES.md` for workflow truth, `design.md` for UI truth, `AGENTS.md` for local workspace flow, `Plan.md` only when relevant, `README.md`/`docs/**/*.md` for durable/historical context, and `MEMORY.md` read last for freshest session facts.
+- Runtime boundary is now repeated in the agent-facing docs: `Expo React Native -> Supabase Auth -> Supabase Edge Function mobile-api -> Supabase DB/RPC/Storage/Realtime -> server-side providers`. Mobile must not bypass Edge for workflow-sensitive writes or store/call server-side AI/provider secrets.
+- `CLAUDE.md` and `RULES.md` were normalized to English technical AI language while preserving Vietnamese-first product copy rules. `STRUCTURES.md` now includes a cleaning taxonomy, and `STRUCTURES.md`/`design.md` now hide future-service entries unless Tu explicitly approves a specific non-functional state.
+- `critical.md`, `AGENTS.md`, and `skills.md` now encode the distilled agent-skills lifecycle: Define, Plan, Build, Verify, Review, Ship; interview loop for unclear intent; context loop with `MEMORY.md` last; doubt loop for non-trivial decisions; and verification with evidence.
+- Historical docs with stale two-service/frontend-only/push-runtime assumptions were marked with status notes instead of being deleted: production migration checklist, worker production UI contract, PR#3 schema test log, and Expo push spike.
+- Follow-up docs-only ownership pass added `docs/architecture/code-ownership-map.md` as the active code navigation contract. `AGENTS.md`, `CLAUDE.md`, `STRUCTURES.md`, `critical.md`, and `skills.md` now require code enhancement/refactor work to map the task to workflow step, owner route/surface/provider/runtime/shared contract, and tests before editing.
+
 ## 2026-05-21 Production Redesign Prototype Port
 
 - Tu chốt prototype `.tmp/design-lab/frontend-redesign-20260521/index.html` rồi yêu cầu port sang production mobile trong cửa sổ 2 giờ, không report sớm, và production phải giống prototype nhưng không đưa mock stats/fake data vào app chính.

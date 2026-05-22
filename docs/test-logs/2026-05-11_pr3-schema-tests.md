@@ -1,5 +1,11 @@
 # Test Log: PR#3 Database Schema — 2026-05-11
 
+> Status: historical PR#3 evidence. This log predates later monorepo,
+> Supabase Edge `mobile-api`, cleaning-service, storage, notification, and
+> workflow hardening work. Do not use the table counts, service counts, or
+> branch state here as current truth. Use current schema, migrations, tests,
+> `STRUCTURES.md`, and `MEMORY.md` for present-state decisions.
+
 ## Tổng kết
 
 | Metric | Value |

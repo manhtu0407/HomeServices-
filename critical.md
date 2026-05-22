@@ -2,7 +2,7 @@
 
 This file is a mandatory execution contract for AI coding agents working on Home Services.
 
-It exists to help Codex, Claude Code, and any future AI coding tool execute with discipline. `design.md` provides the design execution contract for UI work. `CLAUDE.md`, `RULES.md`, and `STRUCTURES.md` provide project context and hard product/security rules. `skills.md` and `.agents/skills/karpathy-guidelines/SKILL.md` provide the newly installed AI Coding Agents skills for explicit assumptions, simple implementations, surgical diffs, and verification-driven execution. This file provides the operating skills, execution protocols, quality gates, and anti-patterns that agents MUST use while changing the codebase.
+It exists to help Codex, Claude Code, and any future AI coding tool execute with discipline. `design.md` provides the design execution contract for UI work. `CLAUDE.md`, `RULES.md`, and `STRUCTURES.md` provide project context and hard product/security rules. `AGENTS.md` provides the local workspace operating loop. `skills.md` and `.agents/skills/karpathy-guidelines/SKILL.md` provide AI Coding Agent skills for explicit assumptions, simple implementations, surgical diffs, and verification-driven execution. `MEMORY.md` stores the freshest session memory and MUST be read last. This file provides the operating skills, execution protocols, quality gates, and anti-patterns that agents MUST use while changing the codebase.
 
 This file is locked. AI agents MUST NOT edit `critical.md` unless Tu explicitly requests that edit in the current conversation.
 
@@ -15,15 +15,18 @@ Every coding task, including small changes, MUST pass through this contract.
 Before editing files, the agent MUST:
 
 1. Read `critical.md`.
-2. Read `design.md` when the task touches UI, frontend, prototype, visual design, motion, mascot, layout, design tokens, or component styling.
-3. Read `skills.md`, or invoke the project-local `karpathy-guidelines` skill from `.agents/skills/karpathy-guidelines/SKILL.md`, before writing, reviewing, refactoring, debugging, or planning code.
-4. Read `RULES.md`.
-5. Read `STRUCTURES.md`.
+2. Read `RULES.md`.
+3. Read `STRUCTURES.md`.
+4. Read `design.md` when the task touches UI, frontend, prototype, visual design, motion, mascot, layout, design tokens, or component styling.
+5. Read `AGENTS.md` for the local Codex/Claude Code workspace loop.
 6. Read `CLAUDE.md` when the task is ambiguous, strategic, cross-cutting, or may conflict with project identity.
-7. Read the relevant code and tests before proposing or making changes.
-8. Classify the task.
-9. Select the smallest sufficient protocol set.
-10. State the selected protocols before editing.
+7. Read `skills.md`, or invoke the project-local `karpathy-guidelines` skill from `.agents/skills/karpathy-guidelines/SKILL.md`, before writing, reviewing, refactoring, debugging, or planning code.
+8. Read relevant `docs/**/*.md`, `README.md`, and `Plan.md` sections only when they materially affect the task or contain current/deferred work.
+9. Read the relevant code and tests before proposing or making changes.
+10. Read `MEMORY.md` last for current session facts, dirty-worktree context, latest caveats, and handoff notes.
+11. Classify the task.
+12. Select the smallest sufficient protocol set.
+13. State the selected protocols before editing.
 
 The agent MUST distinguish:
 
@@ -31,6 +34,21 @@ The agent MUST distinguish:
 - `Real goal`: what the codebase actually needs to achieve safely.
 
 If the asked task and real goal diverge, the agent MUST say so before implementation.
+
+### Authority And Context Flow
+
+The project docs are a supporting stack, not competing prompts:
+
+1. `critical.md` controls execution discipline: preflight, protocol selection, review, and verification.
+2. `RULES.md` controls non-negotiable product, security, AI, data, and runtime boundaries. These cannot be bypassed.
+3. `STRUCTURES.md` controls workflow truth, service taxonomy, state machines, backend contracts, and "do not build now" boundaries.
+4. `design.md` controls UI, motion, glass, prototype, and production visual contracts.
+5. `AGENTS.md` controls local workspace expectations for Codex/Claude Code.
+6. `Plan.md` applies only when the task continues that plan or references its deferred items.
+7. `README.md` and `docs/**/*.md` provide progress history, durable decisions, feature contracts, and historical evidence.
+8. `MEMORY.md` is read last. It provides the freshest AI-agent session memory and may be updated continuously. It does not silently override hard rules, locked docs, or code.
+
+If `MEMORY.md` or a historical doc conflicts with the hard docs or current code, treat it as a freshness signal and ask Tu instead of guessing.
 
 ### Conflict Rule
 
@@ -58,7 +76,22 @@ Do not invoke every protocol just because it is available. Overloaded context cr
 
 For small tasks, protocol outputs MUST be short. A simple preflight or review should usually fit in 5-8 concise lines. For complex tasks, expand only the sections that reduce real risk.
 
-When information is missing, ask focused questions until the task is clear. Ask 1-3 questions at a time, and provide a recommended answer when possible.
+When information is missing, ask focused questions until the task is clear. For alignment-sensitive work, ask one question at a time with a stated hypothesis and confidence level, then wait for Tu's reaction. For simple factual gaps, ask 1-3 concise questions and provide a recommended answer when possible.
+
+### Agent-Skills Lifecycle
+
+Use the distilled lifecycle from `addyosmani/agent-skills` without copying its repo structure:
+
+1. Define: clarify the real goal, binding constraints, and explicit out-of-scope items.
+2. Plan: split work into small verifiable slices with dependencies and acceptance criteria.
+3. Build: implement one bounded slice at a time using existing project patterns.
+4. Verify: prove behavior with tests, type-checks, smoke checks, screenshots, runtime output, or source citations as appropriate.
+5. Review: check correctness, simplicity, architecture, security, performance, and documentation impact.
+6. Ship: summarize changes, real verification, risks/limitations, and the next action.
+
+For ambiguous intent, use the interview loop: `HYPOTHESIS -> CONFIDENCE -> ONE QUESTION -> RESTATE -> EXPLICIT YES`.
+
+For non-trivial technical decisions, use the doubt loop: `CLAIM -> EXTRACT -> DOUBT -> RECONCILE -> STOP`. Reviewer output is data, not verdict. Reconcile it against the artifact and project contract.
 
 ### Required Pre-Edit Status
 
@@ -84,6 +117,7 @@ Use this index when deciding what to run.
 | Any coding change | `kael-preflight`, relevant primary protocol, `kael-review` |
 | Bug, failing test, build failure, runtime failure | `kael-preflight`, `kael-diagnose`, `kael-tdd`, `kael-review` |
 | Feature work | `kael-preflight`, `kael-architecture-deepening`, `kael-tdd`, `kael-review` |
+| Code enhancement, reorganization, or cleanup | `kael-preflight`, `kael-code-enhancement`, relevant primary protocol, `kael-review` |
 | UI-only small change | `kael-preflight`, read `design.md`, `kael-ui-rn-execution`, test-after or visual verification, `kael-review` |
 | Refactor | `kael-preflight`, `kael-architecture-deepening`, `kael-tdd` when behavior may change, `kael-review` |
 | Supabase, Auth, SQL, RLS, migrations, generated types | `kael-preflight`, `kael-supabase`, `kael-tdd`, `kael-security-sweep`, `kael-review` |
@@ -108,6 +142,7 @@ Classify every task before edits.
 | `bugfix` | broken behavior, failing tests, build failure | `kael-diagnose` |
 | `feature` | new user-visible or internal capability | `kael-architecture-deepening` + `kael-tdd` |
 | `ui` | screen, component, layout, copy, visual state | read `design.md` + `kael-ui-rn-execution` |
+| `enhancement` | improve, reorganize, or clean up existing code without new product scope | `kael-code-enhancement` |
 | `refactor` | behavior-preserving structure change | `kael-architecture-deepening` |
 | `test` | adding/fixing tests, test infra | `kael-tdd` |
 | `infra` | config, scripts, build, lint, env | `kael-preflight` + relevant protocol |
@@ -199,6 +234,26 @@ The agent MUST NOT implement:
 
 If Tu asks for a scope-risk task, stop and discuss. If Tu explicitly approves, split the plan into small phases and proceed only within the approved scope. Hard security rules still apply.
 
+### Current Runtime Boundary
+
+The store-bound runtime path is:
+
+```text
+Expo React Native mobile app
+-> Supabase Auth
+-> Supabase Edge Function `mobile-api`
+-> Supabase DB/RPC/Storage/Realtime
+-> server-side AI and external providers
+```
+
+Runtime implications:
+
+- `apps/mobile` is the primary customer/worker product.
+- `supabase/functions/mobile-api` is the production mobile API boundary.
+- `apps/api` is Next.js reference/parity/admin/support code unless Tu explicitly assigns a Next.js task.
+- Mobile must not call AI providers directly, store server secrets, or bypass Edge for workflow-sensitive writes.
+- Direct authenticated mobile Supabase access is read/bootstrap-oriented unless a documented contract explicitly permits a narrow write.
+
 ## 5. Kael Protocol: `kael-preflight`
 
 Use for every coding task before editing files.
@@ -209,8 +264,10 @@ Use for every coding task before editing files.
 - `critical.md`.
 - `RULES.md`.
 - `STRUCTURES.md`.
+- `AGENTS.md`.
 - Relevant code/tests.
 - `CLAUDE.md` when ambiguity or conflict exists.
+- `MEMORY.md` last when the task is long-running, cross-cutting, continues prior work, or depends on current workspace state.
 
 ### Workflow
 
@@ -558,6 +615,56 @@ Risks:
 - Refactor before understanding workflow.
 - Architecture changes that do not improve testing or maintainability.
 
+## 9A. Kael Protocol: `kael-code-enhancement`
+
+Use before enhancing, reorganizing, cleaning up, or refactoring existing code. This protocol keeps Codex/Claude Code from scattering logic across routes, surfaces, providers, runtime services, and shared contracts.
+
+### Inputs Required
+
+- Tu's requested enhancement.
+- `docs/architecture/code-ownership-map.md`.
+- Relevant workflow section from `STRUCTURES.md`.
+- Current owner files from the ownership map.
+- Existing tests or static gates for the touched boundary.
+
+### Workflow
+
+1. Name the workflow step or cross-cutting concern.
+2. Identify the touched layer: route, UI surface, provider/state, mobile API client, Edge runtime, shared contract, storage/media, notification, or test.
+3. Read the owner files from `docs/architecture/code-ownership-map.md`.
+4. Search for an existing helper, pattern, schema, selector, or service method before adding a new one.
+5. Keep routes thin, surfaces visual, providers orchestration-focused, shared contracts centralized, and workflow-sensitive writes behind Edge.
+6. Do not move logic across layers unless the reason and verification impact are stated.
+7. Choose the narrowest test/static gate that proves the ownership boundary still holds.
+8. If no owner exists, stop and propose a small ownership decision to Tu before creating a new structure.
+
+### Output Format
+
+```text
+Workflow / concern:
+Touched layer:
+Owner files read:
+Existing pattern reused:
+Boundary risk:
+Verification gate:
+```
+
+### Failure Modes
+
+- Adding helpers before searching existing shared/provider/service files.
+- Moving workflow-sensitive writes into UI, route files, or direct mobile Supabase calls.
+- Adding route-level business logic.
+- Creating a second source of truth for service scope, workflow status, copy state, or API response shapes.
+- Refactoring because code "looks messy" without tying the change to a workflow owner and test gate.
+
+### Anti-Patterns
+
+- "Enhance code" with no workflow step named.
+- "Clean up" that touches unrelated layers.
+- Duplicating state selectors in UI components.
+- Adding direct `fetch` calls to components instead of `apps/mobile/lib/services.ts`.
+- Treating `apps/api` as the mobile runtime.
+
 ## 10. Kael Protocol: `kael-prototype`
 
 Use when a design question must be answered before production implementation.
@@ -892,11 +999,11 @@ Security tests:
 
 ## 16. Kael Protocol: `kael-ui-rn-execution`
 
-Use for UI work in Next.js support/admin/prototype surfaces and future React Native app work.
+Use for UI work in the current Expo React Native app and in Next.js support/admin/prototype surfaces.
 
 ### Inputs Required
 
-- Target surface: admin, prototype, API support, or React Native.
+- Target surface: Expo React Native app, admin, prototype, or API support.
 - User flow step.
 - Copy requirements.
 - Confirmation requirements.
@@ -905,7 +1012,7 @@ Use for UI work in Next.js support/admin/prototype surfaces and future React Nat
 
 ### Workflow
 
-1. Confirm the surface is not turning Next.js into a consumer web product.
+1. Confirm the surface is not turning Next.js into the consumer product.
 2. Apply `design.md` before choosing visual direction, layout, tokens, motion, mascot treatment, or prototype structure.
 3. For major screens or visual systems, run the `design.md` design lab before production build.
 4. State skill adaptations from `design.md` before using generic design/frontend skills.
@@ -914,7 +1021,7 @@ Use for UI work in Next.js support/admin/prototype surfaces and future React Nat
 7. Preserve explicit confirmation for booking/payment/scope changes.
 8. Verify UI impact across related screens/components.
 9. For small UI tasks, use test-after or visual/manual verification.
-10. For future RN work, check mobile constraints.
+10. For React Native work, check mobile constraints and the Edge/mobile runtime boundary.
 
 ### Current Product Workflow Reference
 
@@ -939,12 +1046,14 @@ Customer flow:
 Worker flow:
 
 - B0 Worker registration and manual approval.
-- B1 Worker home and availability.
-- B2 Job request with 60s accept countdown.
-- B3 Job details after accept.
-- B4 Scope change report.
-- B5 Mark complete.
-- B6 Earnings.
+- B1 Admin approval required.
+- B2 Worker home and availability.
+- B3 Incoming job request with 60s accept countdown.
+- B4 Job details after accept.
+- B5 On-site status updates.
+- B6 Scope change request.
+- B7 Complete job.
+- B8 Earnings.
 
 Critical confirmations:
 
@@ -973,9 +1082,9 @@ B2 worker accept countdown MUST later be tested for expiry and auto-decline beha
 
 Customer and worker chat content is relayed through Kael. Kael MUST NOT filter or rewrite normal customer/worker content. Kael may only intervene for safety, legal, security, abuse, or platform-protection cases. Kael system messages MUST be visually distinct from human messages.
 
-### Future React Native Readiness
+### Current React Native Mobile Constraints
 
-When RN work starts, the agent MUST consider:
+For React Native work, the agent MUST consider:
 
 - small screen layout,
 - slow network,
@@ -1012,7 +1121,7 @@ Related UI risk:
 - Marketing landing page instead of functional app surface.
 - Using XanhSM as a copy target instead of a reference system.
 - Hidden booking/payment side effects.
-- Greyed future services behaving as active services.
+- Future-service entries shown without Tu's explicit approval.
 
 ## 17. Kael Protocol: `kael-to-prd`
 
@@ -1179,7 +1288,7 @@ Use for technical execution documents: ADRs, PRDs, issue bodies, test reports, h
 3. Capture decisions, constraints, tests, limitations, and next steps.
 4. Do not edit locked docs unless Tu approved it.
 5. For learned failures, store durable lessons in `docs/agent-lessons.md` rather than bloating README.
-6. After large sessions, update `.claude/MEMORY.md` and update README only at session end.
+6. After large sessions, update `MEMORY.md` when new durable session memory, caveats, or handoff facts would help the next AI agent. Update README only at session end and only when progress-log rules allow it.
 
 ### Locked Files
 
@@ -1239,7 +1348,7 @@ Use after long sessions, before context compaction, when switching between Claud
 3. Include protocols used and protocols likely needed next.
 4. Include exact verification state.
 5. Put the handoff section in the final response unless Tu asks for a file.
-6. For large sessions, update `.claude/MEMORY.md` and README at session end according to lock rules.
+6. For large sessions, update `MEMORY.md` and README at session end according to lock rules and current dirty-worktree safety.
 
 ### Output Format
 
@@ -1535,6 +1644,8 @@ Before saying a coding task is complete, the agent MUST verify:
 ```text
 [ ] Preflight was run.
 [ ] Protocols were selected before edits.
+[ ] Required docs were read in authority order.
+[ ] `MEMORY.md` was read last when the task depended on current session context, dirty worktree state, prior handoff, or long-running work.
 [ ] Relevant code and tests were read.
 [ ] `design.md` was read for UI, frontend, prototype, visual, motion, mascot, layout, token, or component-styling work.
 [ ] Scope and survival test passed or Tu approved exception.

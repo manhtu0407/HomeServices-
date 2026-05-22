@@ -4,9 +4,57 @@
 
 Home Services is a real Expo / React Native service app, not a motion graphics demo. Every UI pass must move the product closer to a trustworthy first real transaction in Ho Chi Minh City apartments.
 
+## Authority And Context Flow
+
+The core docs support each other and must be read as a stack:
+
+1. `critical.md` is the execution contract: preflight, protocols, review, and verification.
+2. `RULES.md` is the non-negotiable product/security/runtime boundary.
+3. `STRUCTURES.md` is the workflow, taxonomy, state-machine, and backend contract source.
+4. `design.md` is the UI, motion, glass, prototype, and production visual source.
+5. `AGENTS.md` is the local Codex/Claude Code summary for this workspace.
+6. `Plan.md` is active only when the current task continues that plan or references deferred work.
+7. `README.md` and `docs/**/*.md` provide progress logs, durable decisions, historical notes, and feature-specific contracts.
+8. `MEMORY.md` is read last. It contains the freshest AI-agent session memory and may be updated continuously, but it does not override hard rules by itself.
+
+If these sources conflict, stop and surface the conflict. Do not silently choose the source that makes implementation easier.
+
+## Agent Lifecycle
+
+Use this lightweight lifecycle from the agent-skills audit:
+
+- Define: clarify the real goal, constraints, and out-of-scope items.
+- Plan: split work into small verifiable slices with dependencies.
+- Build: implement one bounded slice at a time using existing repo patterns.
+- Verify: prove behavior with real evidence.
+- Review: check correctness, simplicity, architecture, security, performance, and docs impact.
+- Ship: report changed files, verification, risks, and next action.
+
+When alignment is unclear, ask one focused question at a time with a stated hypothesis and confidence level until Tu explicitly confirms. For non-trivial decisions, use a bounded doubt cycle: `CLAIM -> EXTRACT -> DOUBT -> RECONCILE -> STOP`.
+
+## Runtime Boundary
+
+The store-bound runtime is `Expo React Native -> Supabase Auth -> Supabase Edge Function mobile-api -> Supabase DB/RPC/Storage/Realtime -> server-side providers`.
+
+- `apps/mobile` is the primary customer/worker product.
+- `supabase/functions/mobile-api` is the production mobile API boundary.
+- `apps/api` is reference/parity/admin/support unless Tu explicitly assigns a Next.js task.
+- Mobile must not call AI providers directly, store server secrets, or bypass Edge for workflow-sensitive writes.
+
+## Code Enhancement Checklist
+
+Before enhancing, refactoring, reorganizing, or "cleaning up" code:
+
+- open `docs/architecture/code-ownership-map.md`
+- map the task to workflow step, owner route, UI surface, state/provider, runtime boundary, shared contract, and tests
+- keep routes thin, surfaces visual, providers orchestration-focused, shared contracts centralized, and workflow-sensitive writes behind Edge
+- search existing helpers before adding new ones
+- do not move logic across layers without naming the reason and verification impact
+- update or run the narrowest matching test/static gate when a boundary changes
+
 Before any major implementation batch:
 - rebuild the important `.md` manifest outside generated/vendor folders
-- read every important `.md` file, including `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md`, `CLAUDE.md`, `MEMORY.md`, `skills.md`, `README.md`, and `docs/**/*.md`
+- read every important `.md` file in authority order, including `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md` when relevant, `CLAUDE.md`, `skills.md`, `docs/architecture/code-ownership-map.md` for code changes, `README.md`, `docs/**/*.md`, relevant `Plan.md` sections, and `MEMORY.md` last
 - re-check relevant PR findings and the current touched files
 - compare the intended UI work against the local recording and glass reference notes
 - run React Doctor regularly after UI or React performance changes and treat reported issues as objective audit input
