@@ -2397,4 +2397,1529 @@ Verification run locally:
 
 ---
 
+## 22. Audit Fix Plan — 2026-05-23 (Stop Bleeding → Trust Foundation → Section Rạch Ròi)
+
+> Status: **Active addendum**. Khai sinh ngày 2026-05-23 từ audit toàn bộ workflow code (apps/mobile + supabase/functions/mobile-api + 46 migrations) sau khi PR #27 (commit `a87a955`) merge.
+>
+> Phụ thuộc: KHÔNG override §1-§21 (Plan core là contract). Đây là addendum tách biệt — fix các holes audit tìm thấy, không phải thay thế workflow enhancement plan §8-§13.
+>
+> Source plan file (local agent area): `C:\Users\Phan Manh Tu\.claude\plans\khoan-h-y-b-c-v-o-hazy-kitten.md` (single-source). §22 này là durable copy trong worktree để team reference.
+
+---
+
+### 22.0 — Plan Metadata & Decision Log
+
+#### 22.0.A — Plan Metadata
+
+| Field | Value |
+|---|---|
+| Plan created | 2026-05-23 |
+| Plan owner | Tu (decisions) + AI co-founder (drafting + implementation) |
+| Plan branch | `claude/cranky-shockley-57ad06` (worktree) |
+| Source plan file | `C:\Users\Phan Manh Tu\.claude\plans\khoan-h-y-b-c-v-o-hazy-kitten.md` |
+| Worktree mirror | `Plan.md §22` (this section) |
+| Status | Draft — awaiting Tu sign-off + STRUCTURES.md edit approval |
+| Expected start | After Tu approve + commit current dirty worktree state |
+| Expected first PR | Phase 1 fixes (3 items, S-tier nhỏ) — same day after approval |
+| Last update | 2026-05-23 |
+
+#### 22.0.B — Decision Log
+
+| Date | Decision | Owner | Reference |
+|---|---|---|---|
+| 2026-05-22 | PR #27 docs-only authority cleanup merged | Tu | commit `a87a955` |
+| 2026-05-23 | Comprehensive workflow audit done — 14 findings verified trực tiếp trong code | AI + Tu | this addendum |
+| 2026-05-23 | Confirm Tu's framing: workflow chain works nhưng thiếu chi tiết → micro + macro issues | Tu | conversation |
+| 2026-05-23 | Tu chốt giữ 3 customer tab Home/Booking/Kael KHÁC NHAU thật sự (Booking = A2-A6 wizard, Kael = Q&A không tạo job) | Tu | AskUserQuestion answer |
+| 2026-05-23 | Tu chốt admin `/(admin)/` separate route, gỡ bypass | Tu | AskUserQuestion answer |
+| 2026-05-23 | Tu chốt S-tier fix round đầu luôn | Tu | AskUserQuestion answer |
+| 2026-05-23 | **Tu chốt Kael OWNS final price authority — worker KHÔNG tự nhập `final_price` ở B7 / scope_change. Kael computes giá cuối based on original estimate + approved scope changes** | Tu | conversation 2026-05-23 |
+| 2026-05-23 | Tu yêu cầu plan chi tiết với ngày tháng + lý do đầy đủ vào Plan.md | Tu | conversation |
+| 2026-05-23 | Tu chọn "Append vào Plan.md hiện tại như §22 (Addendum 2026-05-23)" | Tu | AskUserQuestion answer |
+
+---
+
+### 22.1 — Context & Lý do Plan Tồn Tại
+
+#### 22.1.A — Lý do plan này tồn tại
+
+Tu nêu concern ngày 2026-05-23: "Workflow đã có chain logic nhưng chưa đủ chi tiết → micro issues (tap booking nhầm section, chức năng không đúng vai trò) + macro issues (vocabulary lệch, role overlap)". Audit verify Tu đúng — list 14 finding, gom thành 5 nhóm rủi ro.
+
+Mục tiêu plan: chuyển product từ trạng thái **"chain logic chạy được nhưng customer A12 confirm blind + chat fake + PII rò rỉ"** sang trạng thái có thể có **first real transaction đáng tin cậy**. Mỗi fix phải trace về cụ thể nhóm rủi ro nào trong STRUCTURES.md + RULES.md.
+
+Plan này KHÔNG:
+- Mở scope ngoài electrical/plumbing/cleaning HCMC
+- Implement payment rails (deferred until SMS + payment provider)
+- Implement learning candidates (tables ready, wiring sau khi có evidence baseline)
+- Multi-city / autonomous booking / multi-agent
+
+#### 22.1.B — 5 Nhóm Rủi Ro (verified từ audit code)
+
+```
+NHÓM 1 — Khách mất tiền không biết
+─────────────────────────────────────────
+• A12 confirm UI mù (D14):
+  customer-surfaces.tsx:1316 hardcode placeholder thay vì đọc deal.finalPrice;
+  evidence tiles render label strings thay vì completion_photo_urls
+• A11 có 2 UX song song (C5):
+  hard-stop modal CÙNG inline Alert.alert có nút "Kiểm lại" cancel
+• Worker B7 nhập thiếu (D5):
+  chỉ có final_price; completion_notes/photo_urls hardcode rỗng
+
+NHÓM 2 — Chat 2 phía giả
+─────────────────────────────────────────
+• Worker chat (D3): WorkerChatContent dùng useState local, KHÔNG gọi
+  jobService.sendMessage. Backend đầy đủ (chat_messages + realtime +
+  endpoints) nhưng UI 2 phía KHÔNG wire. Dispute trail = 0.
+
+NHÓM 3 — PII rò rỉ qua LLM
+─────────────────────────────────────────
+• scrubSensitiveForLLM (M5):
+  kael.ts:1260 chỉ strip phone/email/ID, KHÔNG strip tên chung cư /
+  unit / tầng / ngân hàng. Customer chat đẩy nguyên văn lên Anthropic.
+
+NHÓM 4 — User mù về trạng thái app
+─────────────────────────────────────────
+• Customer thiếu notification (D1a): estimate_ready, no_worker_found,
+  review_requested chưa emit
+• Worker thiếu notification (D1b): account_approved, customer_message,
+  customer_confirmed_completion, broadcast_expired chưa emit
+• 3 customer tab (Home/Booking/Kael) đều dẫn vào Kael chat — role overlap
+
+NHÓM 5 — Dev/admin gây sự cố thật + vocabulary lệch
+─────────────────────────────────────────
+• Admin bypass (M9): role=admin được vào customer/worker shell + Edge
+  cho admin chạy mọi route → admin nhấn nhầm = sự cố thật
+• Status vocabulary 3-layer (M2):
+  init migration cũ / Edge lifecycle mới / Mobile reducer fold —
+  cùng 1 trạng thái có 3 tên gọi
+```
+
+---
+
+### 22.2 — Workflow Decision 2026-05-23: Kael Owns Final Price (architectural change)
+
+**Decision date:** 2026-05-23
+**Decision owner:** Tu
+**Status:** Locked — phải implement trong Phase 2.0 (mới)
+
+#### 22.2.A — Old workflow (per STRUCTURES.md hiện tại)
+
+```
+A5  Kael estimate range
+A7  customer confirm estimate
+B6  worker reports scope change INCLUDING new price range proposal
+B7  worker complete với worker-typed final_price
+A12 customer confirms completion (currently UI blind — D14)
+```
+
+#### 22.2.B — New workflow (Tu decision 2026-05-23)
+
+```
+A5  Kael estimate range (unchanged)
+A7  customer confirm estimate → estimate becomes LOCKED Kael baseline
+B6  worker reports scope change description + reason + photos ONLY
+    (no price proposal)
+Edge Kael reviews worker's reported scope → Kael COMPUTES new estimate range
+A11 customer sees Kael's new computed estimate → approve → Kael-locked
+    new price OR reject → job cancelled
+B7  worker submits completion notes + photos ONLY (no final_price)
+A12 customer sees Kael-locked final price (= original estimate OR latest
+    A11 approved Kael estimate) + worker evidence → confirm
+Worker earnings tính từ Kael-locked price
+```
+
+#### 22.2.C — Lý do thay đổi
+
+- Closes the "S-tier hole" (worker tự đẩy giá ở B7, customer không biết)
+- Tăng cường RULES.md Rule #7 (no autonomous money actions) — worker KHÔNG có authority unilateral set price
+- Customer A11 approval thực sự gắn với 1 con số cụ thể (Kael-computed), không phải ước lượng do thợ tự nhập
+- A12 confirm có Kael-locked số rõ ràng → không còn blind
+- Dispute trail: nếu giá thực tế khác Kael compute → admin có thể audit Kael's reasoning chain
+
+#### 22.2.D — Implications kỹ thuật
+
+- `jobs.final_price` source = Kael, không phải worker input
+- `jobs.scope_change_price_min/max` source = Kael compute, không phải worker input
+- `lifecycle.ts` `completed_by_worker` transition: worker payload KHÔNG có `final_price`
+- Edge `updateJobStatus` reject `final_price` từ worker
+- Edge `requestScopeChange` reject `new_price_min/max` từ worker — chỉ accept description + reason + photos
+- Kael Edge thêm function `computeScopeChangeEstimate(originalContext, newScopeDescription, ...)` — sử dụng Anthropic + reuse pipeline elements
+- **STRUCTURES.md §6 A11/B6/B7, §11 JobLifecycleModule, §15 Pricing PHẢI ĐƯỢC EDIT** — đây là locked doc, cần Tu explicit approval trong fix execution
+
+---
+
+### 22.3 — Authority Context Loading (BẮT BUỘC trước mỗi phase)
+
+Mọi phase / fix item TRONG §22 này MUST tuân theo `critical.md` §0 Agent Activation Contract. Trước khi sửa code:
+
+#### 22.3.A — Required Reading Order (theo CLAUDE.md authority stack)
+
+```
+1. critical.md                              — execution discipline + protocols
+2. RULES.md                                 — non-negotiable product/security/AI/data
+3. STRUCTURES.md                            — workflow truth + state machines + module contracts
+4. design.md                                — UI/motion/glass/prototype contracts (khi fix touch UI)
+5. AGENTS.md                                — workspace operating loop + glassmorphism + motion
+6. docs/architecture/code-ownership-map.md  — code owner mapping (BẮT BUỘC cho mọi code edit)
+7. skills.md hoặc invoke karpathy-guidelines — Karpathy-inspired skills
+8. relevant docs/**/*.md                    — feature-specific contracts (Kael, push spike, geo)
+9. README.md                                — progress log
+10. MEMORY.md                               — CUỐI CÙNG, freshest session facts
+```
+
+Khi MEMORY.md mâu thuẫn với locked docs → dừng và hỏi Tu, KHÔNG silently override.
+
+#### 22.3.B — Required Pre-Edit Status Block (per critical.md §0)
+
+Trước mỗi file edit trong mỗi fix item, agent MUST output:
+
+```
+Asked task:        [Tu's literal request]
+Real goal:         [the actual code change needed]
+Task class:        [bugfix | feature | ui | enhancement | refactor | test | security | database | ai | docs]
+Selected protocols: [kael-preflight + relevant primary + supporting]
+Risk notes:        [scope creep, hidden assumption, security/PII risk]
+Verification plan: [exact tests + manual + smoke]
+```
+
+Cho tasks nhỏ — block này có thể 1 dòng mỗi field. KHÔNG được skip kể cả khi task tiny.
+
+#### 22.3.C — Kael Protocol Index (per critical.md §1, áp dụng cho §22 plan)
+
+| Phase / Fix | Primary Protocol | Mandatory Supporting | Notes |
+|---|---|---|---|
+| **2.0 Kael Price Authority** | `kael-architecture-deepening` + `kael-ai-boundary` + `kael-supabase` | `kael-preflight` + `kael-tdd` + `kael-security-sweep` + `kael-review` + `kael-docs-execution` | Cross-cutting, edit locked STRUCTURES.md |
+| 1.1 PII scrub | `kael-security-sweep` | `kael-preflight` + `kael-ai-boundary` + `kael-tdd` + `kael-review` | AI boundary + PII |
+| 1.2 A12 evidence render | `kael-ui-rn-execution` | `kael-preflight` + `kael-code-enhancement` + `kael-review` | UI fix |
+| 1.3 A11 dedup | `kael-ui-rn-execution` | `kael-preflight` + `kael-code-enhancement` + `kael-review` | UI structural removal |
+| 2.1 Chat wire | `kael-ui-rn-execution` + `kael-architecture-deepening` | `kael-preflight` + `kael-tdd` + `kael-security-sweep` + `kael-review` | Multi-module |
+| 2.2 Worker B7 form | `kael-ui-rn-execution` | `kael-preflight` + `kael-tdd` + `kael-review` | UI + media upload |
+| 2.3/2.4 Notifications | `kael-supabase` + `kael-ai-boundary` if Kael | `kael-preflight` + `kael-tdd` + `kael-security-sweep` + `kael-review` | Edge + DB + push |
+| 3.1 Booking wizard | `kael-architecture-deepening` + `kael-ui-rn-execution` | `kael-preflight` + `kael-tdd` + `kael-review` + `kael-prototype` | Large UI restructure |
+| 3.2 Kael tab Q&A | `kael-architecture-deepening` + `kael-ui-rn-execution` | `kael-preflight` + `kael-ai-boundary` + `kael-tdd` + `kael-review` | Touches Kael behavior |
+| 3.3 Home shortcuts | `kael-ui-rn-execution` + `kael-code-enhancement` | `kael-preflight` + `kael-review` | UI rename + routing |
+| 4.1 Kael A7 summary | `kael-ui-rn-execution` + `kael-ai-boundary` | `kael-preflight` + `kael-review` | EstimateCard render |
+| 4.2 Review tags+comment | `kael-ui-rn-execution` | `kael-preflight` + `kael-tdd` + `kael-review` | Form fields |
+| 4.3 Push retry | `kael-supabase` | `kael-preflight` + `kael-tdd` + `kael-review` | Edge helper |
+| 4.4 Copy canonical | `kael-docs-execution` + `kael-code-enhancement` | `kael-preflight` + `kael-review` | Refactor + doc |
+| 5.1 Admin /(admin)/ | `kael-architecture-deepening` + `kael-supabase` + `kael-security-sweep` | `kael-preflight` + `kael-tdd` + `kael-review` | New shell + Edge route split |
+| 5.2-5.6 Doc/cleanup | `kael-docs-execution` | `kael-preflight` + `kael-review` | Doc + naming |
+| 5.7 Test gates | `kael-tdd` | `kael-preflight` + `kael-review` | Static assertions |
+| 5.8-5.9 Format/mutable | `kael-code-enhancement` | `kael-preflight` + `kael-review` | Refactor |
+| 5.10 A6 placeholder | `kael-ui-rn-execution` | `kael-preflight` + `kael-review` | UI honesty fix |
+| 5.11 Realtime | `kael-architecture-deepening` + `kael-supabase` | `kael-preflight` + `kael-tdd` + `kael-review` | Subscription wiring |
+
+#### 22.3.D — Karpathy Skill Application (per skills.md)
+
+Mọi fix MUST apply 4 core skill from skills.md:
+
+1. **Think Before Coding** — state goal + list assumptions + flag scope risk trước khi edit
+2. **Simplicity First** — viết ít nhất có thể; no premature abstraction; reuse existing helpers
+3. **Surgical Changes** — chỉ touch files liên quan task; không drive-by refactor; không reformat unrelated code
+4. **Goal-Driven Execution** — define verification trước khi edit; report evidence không phải confidence
+
+Anti-pattern cấm tuyệt đối (per skills.md):
+- Hidden assumption (làm theo guess thay vì verify)
+- Over-abstraction (interface for 1 caller)
+- Speculative features (cache/validation/audit ngoài scope task)
+- Drive-by refactor (sửa thứ ngoài scope cùng PR)
+- Style drift (đổi quote/indent/import order tự động)
+- Vague verification ("looks done")
+
+#### 22.3.E — Workflow Rule Mapping (per RULES.md)
+
+| Fix item | RULES.md rule áp dụng |
+|---|---|
+| 2.0 Kael Price Authority | Rule #2 (AI wrapper), Rule #3 (Validate AI), Rule #4 (Disclaimer), Rule #7 (No autonomous money), Rule #8 (No fake), Rule #10 (Timeout) |
+| 1.1 PII scrub | Rule #9 (Logging Must Not Expose PII), §Security PII Handling, §Input Validation |
+| 1.2 A12 evidence | Rule #8 (Data Honesty — No Fake Data), Rule #4 (Price Disclaimer if shown) |
+| 1.3 A11 dedup | Rule #7 (No Autonomous Money Actions Without Confirmation) |
+| 2.1 Chat wire | Rule #8 (No Fake Data), Rule #9 (PII relay), Rule #10 (Timeout/Retry) |
+| 2.2 Worker B7 | Rule #7 (Confirmation), Rule #8 (No Fake Completion) |
+| 2.3/2.4 Notifications | Rule #5 (Vietnamese copy), Rule #9 (PII in push body) |
+| 3.x Section role | Rule #5 (Vietnamese copy consistency), Rule #6 (Kael scope) |
+| 4.1 Kael A7 summary | Rule #4 (Disclaimer), Rule #3 (Validate AI Output) |
+| 4.2 Review tags | Rule #5 (Vietnamese copy) |
+| 4.3 Push retry | Rule #10 (Timeout + Bounded Retry) |
+| 4.4 Copy canonical | Rule #5 (Vietnamese-First Product Copy) |
+| 5.1 Admin shell | Rule #0 (Mobile Runtime Boundary), §Security Invariants |
+| 5.7 Test gates | §Testing Blueprint enforcement |
+
+#### 22.3.F — STRUCTURES.md Section Mapping
+
+| Fix item | STRUCTURES.md section |
+|---|---|
+| 2.0 Kael Price Authority | §6 A7/A11/A12, §7 B6/B7, §9 Kael Workflow, §11 KaelPriceCheckModule + JobLifecycleModule + ScopeChangeModule, §15 Pricing |
+| 1.1 PII scrub | §14 (Trust, Safety, Evidence — PII rules), §9 (Kael AI Provider Roles) |
+| 1.2 A12 evidence | §6 A12 Completion Confirmation, §12 Job Status state machine |
+| 1.3 A11 dedup | §6 A11 Scope Change, §12 Scope Change Status, §15 Scope Change |
+| 2.1 Chat wire | §6 A10 Active Job, §14 Chat conduct, §11 ChatEvidenceModule |
+| 2.2 Worker B7 | §7 B7 Complete Job, §11 JobLifecycleModule |
+| 2.3/2.4 Notifications | §16 Notifications |
+| 3.1 Booking wizard | §6 A2-A6 customer steps, §18 Frontend Build Contract |
+| 3.2 Kael tab Q&A | §9 Kael Workflow, §1 Kael scope |
+| 3.3 Home shortcuts | §6 A1 Customer Home, §18 Frontend Build Contract |
+| 4.1 Kael A7 summary | §6 A7 Confirm, §15 Pricing Fees |
+| 4.2 Review tags | §6 A14 Review |
+| 4.3 Push retry | §16 Notifications, §17 Failure Recovery |
+| 5.1 Admin shell | §3 Admin role, §8 Admin Workflow |
+| 5.11 Realtime | §12 state machines, §16 Notifications |
+
+#### 22.3.G — Design.md Application (khi fix touch UI)
+
+Phases 1.2, 1.3, 2.0d, 2.1, 2.2, 3.x, 4.1, 4.2, 5.10 đều touch UI → BẮT BUỘC đọc `design.md` trước, apply:
+- Glass material as accent layer only (no glass-on-every-row)
+- Motion: opacity + small y-offset + spring timing; no animated blur
+- Reduce Motion + Reduce Transparency respect
+- Mint/cream/cyan token palette per `worker-production-contract.md` + `frontend-redesign-production-contract-20260521.md`
+- Empty/loading/error/success states explicit cho mỗi screen
+- Kael mascot variant per existing assets
+
+#### 22.3.H — Code Ownership Map Application (BẮT BUỘC mọi code change)
+
+Per AGENTS.md "Code Enhancement Checklist", trước mỗi fix:
+
+```
+[ ] Tôi đã đọc docs/architecture/code-ownership-map.md
+[ ] Tôi biết workflow step / cross-cutting concern
+[ ] Tôi đã mở owner files (route + UI surface + provider + runtime + shared contract)
+[ ] Tôi đã tìm helper hiện có trước khi tạo helper mới
+[ ] Tôi biết layer nào sở hữu change này
+[ ] Tôi KHÔNG move workflow-sensitive writes ra khỏi Edge
+[ ] Tôi biết narrowest test/static gate proves change
+```
+
+Nếu bất kỳ item nào false → dừng và gather context, KHÔNG edit.
+
+#### 22.3.I — MEMORY.md Reconciliation Note
+
+MEMORY.md có lịch sử PR #25 đề cập "rating penalty omitted per Tu's instruction" và "geo schema deferred", "production redesign accepted contract". Khi fix Phase 2.4 worker notification cho `account_approved` — phải verify admin approval workflow status hiện tại trước khi thêm trigger. Khi fix Phase 5.11 realtime — phải verify expo-notifications version chưa đụng (per MEMORY.md PR #25).
+
+---
+
+### 22.4 — Risk Ranking Summary
+
+| Tier | Group | Issue | Impact | Effort |
+|---|---|---|---|---|
+| **S** | **NEW (Tu 2026-05-23)** | **Kael Final Price Authority (worker không nhập price)** | **Tiền + dispute** | **Lớn (cross-cutting)** |
+| S | 3 | PII address strip (M5) | Compliance + legal | Nhỏ |
+| S | 1 | A12 evidence render (D14) | Tiền | Nhỏ |
+| S | 1 | A11 dual UX dedup (C5) | Tiền | Nhỏ |
+| S | 2 | Chat 2 phía wire (D3) | Dispute trail | Lớn |
+| S | 1 | Worker B7 completion form (notes + photos, no price) | Evidence | Trung |
+| S | 4 | Customer notifications missing (D1a) | UX + retention | Trung |
+| S | 4 | Worker notifications missing (D1b) | UX + retention | Trung |
+| A | 4 | Section role 3 tab khác nhau (C1-C3) | UX foundation | Lớn |
+| A | 1 | Kael A7 fee/cancellation summary (D6) | Trust signal | Nhỏ |
+| A | 1 | Review tags + comment (C7) | Feedback quality | Nhỏ |
+| A | 1 | Worker B6 scope full inputs (D4) | Dispute trail | Nhỏ |
+| A | 4 | Copy canonical source (M6) | Maintainability | Trung |
+| A | 4 | Push retry policy (D11) | Critical delivery | Nhỏ |
+| B | 5 | Admin /(admin)/ separate route (M9) | Dev safety | Lớn |
+| B | 5 | Status vocabulary unify (M2) | Debug speed | Trung |
+| B | 5 | A2-A6 step boundaries (M3) | Aligns với Phase 3 | Trung |
+| B | 5 | B6 dual flow doc (M4) | Doc only | Nhỏ |
+| B | 5 | `confirmed_by_customer` payment skip path (M7) | State machine clarity | Nhỏ |
+| B | 5 | activity/history naming (M8) | Naming | Nhỏ |
+| B | 5 | Test hard-rule enforcement (M10) | Regression prevention | Nhỏ |
+| B | 5 | VND formatter locale-aware (A.6) | EN mode honesty | Nhỏ |
+| B | 5 | Module-level mutable cleanup (A.7) | Code hygiene | Nhỏ |
+| B | 5 | A6 time UI honest "now only" placeholder (D2) | UX | Nhỏ |
+| B | 5 | Realtime subscription wire (D9) | Reduce polling | Lớn |
+
+---
+
+### 22.5 — Phase Overview & Sequencing
+
+```
+Phase 1 — Stop the Bleeding         3 fix nhỏ, ngay lập tức
+                                    (PII scrub, A12 render real evidence, A11 dedup)
+Phase 2 — Trust Foundation          5 fix S-tier (4 cũ + 2.0 mới)
+                                    (NEW 2.0 Kael price authority, chat wire,
+                                     worker B7 form notes+photos, notifications)
+Phase 3 — Section Rạch Ròi          Tu's main UX concern, restructure 3 tab
+                                    (Booking wizard A2-A6, Kael Q&A, Home shortcuts)
+Phase 4 — Communication Polish      A-tier minor + copy lock
+                                    (Kael A7 fee summary, review tags+comment,
+                                     push retry, copy canonical source)
+Phase 5 — Long-term Hygiene         B-tier, dọn dẹp trước nhân sự khác đụng code
+                                    (Admin /(admin)/, status vocab doc, naming,
+                                     test gates, format helpers, realtime wire)
+```
+
+#### Phase Dependency Note
+
+- Phase 2.0 (Kael Price Authority) là PREREQUISITE cho Phase 2.2 (Worker B7 form) — form layout phụ thuộc decision không có price input
+- Phase 2.0 cũng cần Tu approve STRUCTURES.md edit trước khi implement (locked doc)
+- Phase 3.1 (Booking wizard) tham chiếu STRUCTURES.md A2-A6 — nếu sửa wizard cần update doc, cần Tu approval cùng lúc
+- Phase 5.3 (A2-A6 step contracts doc) khả thi parallel với Phase 3.1
+- Phase 2.1 (chat wire) + 2.3/2.4 (notifications) có thể parallel sau khi Phase 2.0 land
+
+---
+
+### 22.6 — Phase 1: Stop the Bleeding
+
+Scope: 3 fix nhỏ với S-tier risk. Mỗi fix nhỏ hơn 1 buổi. Trigger được ngay vì không phụ thuộc các phase sau.
+
+#### 22.6.A — Phase 1 Preflight (BẮT BUỘC trước khi bắt đầu phase)
+
+```
+[ ] Read critical.md §5 kael-preflight + §15 kael-security-sweep + §16 kael-ui-rn-execution
+[ ] Read RULES.md Rule #4, #7, #8, #9 (touch trong các fix)
+[ ] Read STRUCTURES.md §6 A11/A12, §9 Kael, §14 PII
+[ ] Read AGENTS.md (data honesty + PR safety sections)
+[ ] Read design.md (cho 1.2 + 1.3 — A11 modal + History UI)
+[ ] Read docs/architecture/code-ownership-map.md (customer history + Kael Edge rows)
+[ ] Read skills.md (Think Before Coding + Surgical Changes principles)
+[ ] Read relevant docs/foundation/ chỉ khi material
+[ ] Read MEMORY.md LAST
+[ ] Identify code-ownership-map.md owners cho 3 fix items
+[ ] Confirm scope không slip sang Phase 2/3
+```
+
+#### 22.6.B — Fix 1.1: PII address strip (M5)
+
+**Authority refs:**
+- `critical.md` §15 `kael-security-sweep` + §12 `kael-ai-boundary` + §7 `kael-tdd`
+- `RULES.md` Rule #9 + §Security/PII Handling + §Input Validation
+- `STRUCTURES.md` §14 PII rules + §9 Kael AI Provider Roles
+- `docs/architecture/code-ownership-map.md` Edge Runtime Ownership row "Kael provider pipeline"
+- `skills.md` Skill 1 (Think Before Coding) + Skill 2 (Simplicity First)
+
+**Pre-edit status (paste vào response trước khi edit):**
+
+```
+Asked task: Strip apartment building/unit/floor/bank từ text gửi lên LLM
+Real goal: Reduce PII surface tới Anthropic/Perplexity/DeepSeek prompts + api_logs
+Task class: security
+Selected protocols: kael-preflight + kael-security-sweep + kael-ai-boundary + kael-tdd + kael-review
+Risk notes: Regex too greedy may strip legitimate problem description content
+Verification plan: Unit tests cover 8 positive + 4 negative samples; smoke test trên staging với sample customer chat
+```
+
+**Vấn đề:** Customer chat Kael "Tôi ở Vinhomes Central Park tầng 25 căn A.25.07" → đi nguyên văn lên Anthropic prompt + log api_logs.
+
+**Fix:** Mở rộng `scrubSensitiveForLLM` ở `supabase/functions/mobile-api/_shared/kael.ts:1260` thêm regex strip:
+- Tên chung cư phổ biến HCMC: Vinhomes, Masteri, Saigon, Sun, etc. + "căn", "tầng", "lầu", "block", "tòa" với số đi kèm
+- Số tài khoản ngân hàng VN (8-15 số liên tiếp)
+- Đường + số nhà (regex "{số} {tên đường}")
+
+**Files thay đổi:**
+- `supabase/functions/mobile-api/_shared/kael.ts` — function scrubSensitiveForLLM
+- `packages/shared/src/__tests__/` — thêm test cho 5-8 input mẫu
+
+**Verify:**
+- Unit test cho từng pattern (phone, email, ID, address chung cư, đường, ngân hàng)
+- Negative test: chuỗi không có PII không bị strip nhầm
+- Test sample: "tôi ở Vinhomes Central Park tầng 25" → "tôi ở [building] [floor]"
+
+**Risk:** thấp. Nếu regex sai có thể strip nhầm. Mitigate bằng test bao quát.
+
+#### 22.6.C — Fix 1.2: A12 evidence render (D14)
+
+**Authority refs:**
+- `critical.md` §16 `kael-ui-rn-execution` + §9A `kael-code-enhancement`
+- `RULES.md` Rule #8 (Data Honesty)
+- `STRUCTURES.md` §6 A12 Completion Confirmation, §11 JobLifecycleModule
+- `design.md` (UI render contract — empty/loading/error states cho evidence panel)
+- `docs/architecture/code-ownership-map.md` row "A12 completion confirmation" → customer history surface owner
+- `skills.md` Skill 3 (Surgical Changes)
+
+**Pre-edit status:**
+
+```
+Asked task: A12 confirmation phải hiển thị final_price + completion_photo_urls + completion_notes thực
+Real goal: Customer thấy bằng chứng trước khi tap confirm; remove fake placeholder labels
+Task class: ui
+Selected protocols: kael-preflight + kael-ui-rn-execution + kael-code-enhancement + kael-review
+Risk notes: LocalDeal hiện không có completionNotes/completionPhotoUrls field — phải thêm vào shared/mobile-workflow.ts và hydrate map
+Verification plan: Manual end-to-end completion path; wiring test assert UI binds deal.finalPrice; screenshot evidence
+```
+
+**Vấn đề:** `apps/mobile/components/customer/customer-surfaces.tsx:1316` hardcode `value={copy.history.waitingWorkerPrice}` thay vì đọc `deal.finalPrice`. Lines 1308-1313 evidence tiles render label string thay vì `completion_photo_urls`.
+
+**Note source change (Tu 2026-05-23):** `deal.finalPrice` source = **Kael-locked value** (set at A7 confirm hoặc latest A11 approve), KHÔNG phải worker-typed value. Phase 2.0 update backend để jobs.final_price = Kael computed. UI Phase 1.2 chỉ cần đọc giá trị từ jobs.final_price qua snapshot — independent of source (worker vs Kael).
+
+Implementation Phase 1.2 có thể land TRƯỚC Phase 2.0 vì:
+- Phase 1.2 chỉ thay "hardcoded placeholder string" → "đọc deal.finalPrice"
+- Phase 2.0 sau đó change "deal.finalPrice source" từ worker input → Kael compute
+- UI binding `deal.finalPrice` không cần biết source — chỉ render giá trị
+
+Tuy nhiên copy label nên cập nhật khi Phase 2.0 land: "Giá cuối (Kael xác định)" thay vì chỉ "Giá cuối".
+
+**Fix:**
+- Đọc `deal.finalPrice` từ `state.deal.finalPrice` (đã có trong LocalDeal type per `packages/shared/src/mobile-workflow.ts:91`)
+- Format VND qua `formatVnd()` helper (đã tồn tại)
+- Render `completion_photo_urls` array thành Image components — cần thêm field vào LocalDeal snapshot từ JobDetailResponse
+- `confirmCompletionReceived` Alert.alert: thêm body string list final_price + photos count + completion_notes
+- Tốt hơn: thay Alert bằng modal/sheet hiển thị evidence trước nút "Xác nhận đã nhận"
+
+**Files thay đổi:**
+- `apps/mobile/components/customer/customer-surfaces.tsx` — CustomerHistorySurface đoạn `showDoneTab && isCompletedHistory` block
+- `packages/shared/src/mobile-workflow.ts` — LocalDeal thêm `completionPhotoUrls?: string[]`, `completionNotes?: string`
+- `apps/mobile/lib/frontend-workflow-provider.tsx` — `jobDetailToSnapshot` map từ JobDetailResponse sang LocalDeal
+- `apps/mobile/lib/api-types.ts` — verify JobDetailResponse có `final_price`, `completion_notes`, `completion_photo_urls`
+
+**Verify:**
+- Manual test: tạo job đến state `completed_by_worker`, vào History tab Done → thấy giá thật + ảnh + ghi chú
+- Test wiring: assert UI renders `deal.finalPrice` value chứ không phải placeholder
+- Negative: khi `final_price === null`, render label "Đang chờ giá" (current behavior là acceptable fallback)
+
+**Risk:** thấp. Pure UI fix. Cần verify field tồn tại trong API response (đoán có vì lifecycle.ts có column).
+
+#### 22.6.D — Fix 1.3: A11 dual UX dedup (C5)
+
+**Authority refs:**
+- `critical.md` §16 `kael-ui-rn-execution` + §9A `kael-code-enhancement`
+- `RULES.md` Rule #7 (No Autonomous Money Actions Without Confirmation)
+- `STRUCTURES.md` §6 A11 + §12 Scope Change Status + §15 Scope Change
+- `design.md` (modal contract — hard-stop modal semantics)
+- `docs/architecture/code-ownership-map.md` row "A11 scope change decision"
+- `skills.md` Skill 3 (Surgical Changes — chỉ xóa inline path, không touch modal)
+
+**Pre-edit status:**
+
+```
+Asked task: Xóa inline Approve/Reject + Alert.alert ra khỏi History, modal là source duy nhất
+Real goal: A11 hard-stop guarantee không bị break bởi alternate path
+Task class: ui (structural removal)
+Selected protocols: kael-preflight + kael-ui-rn-execution + kael-code-enhancement + kael-review
+Risk notes: Có thể có user/test depend on inline testID — verify trước khi xóa
+Verification plan: Manual force scope_change pending, verify CHỈ modal hiện; wiring test scrub inline testID
+```
+
+**Vấn đề:** `apps/mobile/components/customer/customer-surfaces.tsx:1273-1297` có inline Approve/Reject buttons với `decideCurrentScopeChange` → Alert.alert có nút "Kiểm lại" cancel. Song song với hard-stop modal ở line 1207-1217.
+
+**Fix:** Xóa inline buttons + `decideCurrentScopeChange` function. Modal hard-stop là source duy nhất cho A11 decision. Inline section chỉ render thông tin (description + reason + new price) làm reference, không có CTA.
+
+**Files thay đổi:**
+- `apps/mobile/components/customer/customer-surfaces.tsx`:
+  - Xóa `decideCurrentScopeChange` (line 1179-1195)
+  - Đoạn `(showRepairTab || showPriceTab)` scope-change block (line 1273-1297): bỏ workerActions + workerMetaRow + 2 buttons. Giữ TwoCol info.
+
+**Verify:**
+- Unit/wiring test: assert History surface không có testID `customer-scope-change-decision` (or rename it)
+- Manual: trigger scope change pending → CHỈ modal hiện, không có path nào khác để decide
+
+**Risk:** thấp. Modal đã cover toàn bộ logic.
+
+---
+
+### 22.7 — Phase 2: Trust Foundation
+
+Scope: 5 fix S-tier (4 cũ + NEW 2.0 Kael Price Authority). Blocking first real transaction. Effort lớn hơn Phase 1.
+
+#### 22.7.A — Phase 2 Preflight (BẮT BUỘC trước khi bắt đầu phase)
+
+```
+[ ] Read critical.md §16 kael-ui-rn-execution + §9 kael-architecture-deepening + §14 kael-supabase + §7 kael-tdd + §15 kael-security-sweep
+[ ] Read RULES.md Rule #5, #7, #8, #9, #10 (Vietnamese, confirmation, honesty, PII, timeout)
+[ ] Read STRUCTURES.md §6 A10/A11/A12, §7 B6/B7, §11 ChatEvidenceModule + JobLifecycleModule + NotificationModule, §16 Notifications
+[ ] Read design.md (chat bubble contract, media upload UX, completion form layout)
+[ ] Read AGENTS.md (data honesty + glass material caveat)
+[ ] Read docs/architecture/code-ownership-map.md (chat owner row, media upload row, notification row)
+[ ] Read docs/foundation/expo-push-spike.md, geo-data-spike.md
+[ ] Read docs/ops/worker-onboarding.md (cho 2.4 account_approved)
+[ ] Read skills.md (all 4 skills + decision protocol)
+[ ] Read MEMORY.md LAST
+[ ] Verify push token registration state (per MEMORY.md PR #25 caveat)
+[ ] Confirm chat backend test gates exist (services.ts + router.ts)
+```
+
+#### 22.7.B — Fix 2.0: Kael Final Price Authority (NEW — Tu decision 2026-05-23)
+
+**Authority refs:**
+- `critical.md` §9 `kael-architecture-deepening` + §12 `kael-ai-boundary` + §14 `kael-supabase` + §7 `kael-tdd` + §15 `kael-security-sweep` + §20 `kael-docs-execution`
+- `RULES.md` Rule #2 (AI wrapper), Rule #3 (Validate AI output), Rule #4 (Disclaimer), Rule #7 (No autonomous money actions), Rule #8 (No fake data), Rule #10 (Timeout/retry)
+- `STRUCTURES.md` §6 A7/A11/A12, §7 B6/B7, §9 Kael Workflow, §11 KaelPriceCheckModule + JobLifecycleModule + ScopeChangeModule, §15 Pricing
+- `design.md` (A11 modal layout cho new Kael-computed estimate)
+- `docs/architecture/code-ownership-map.md` Edge Runtime rows
+- `skills.md` (Skill 1 Think Before Coding mạnh nhất — architectural decision)
+
+**Pre-edit status (paste TRƯỚC khi edit code hoặc doc):**
+
+```
+Asked task: Kael owns final price authority — worker không tự nhập final_price
+Real goal: Closes worker overcharge hole; A11/A12 customer thấy giá Kael-computed; dispute auditable
+Task class: feature (workflow architectural change, cross-cutting backend + UI)
+Selected protocols: kael-preflight + kael-architecture-deepening + kael-ai-boundary + kael-supabase + kael-tdd + kael-security-sweep + kael-docs-execution + kael-review
+Risk notes:
+  - LOCKED doc edit (STRUCTURES.md §6 B7, §7 B6, §15 Pricing) — Tu MUST approve explicitly
+  - Kael cost: thêm AI call cho mỗi B6 scope change. Verify cost cap không vượt limit.
+  - Backward compat: jobs cũ có worker-typed final_price không bị mất (read-only legacy)
+  - Edge contract change breaks mobile if release mismatch — phải coordinate deploy
+Verification plan:
+  - STRUCTURES.md edit approved by Tu
+  - Lifecycle.ts schema test reject worker-typed final_price
+  - Edge integration test: requestScopeChange với worker price field → 400 VALIDATION
+  - Edge integration test: computeScopeChangeEstimate trả về structured Kael output
+  - Mobile B7 form không có price input
+  - Mobile A11 modal hiển thị Kael compute output
+  - Mobile A12 displays jobs.final_price (Kael-locked source)
+  - End-to-end smoke trên staging: full A0→A14 với 1 scope change → final price = Kael compute
+```
+
+##### 22.7.B.1 — Backend: Lifecycle + Edge contract update
+
+Files thay đổi:
+- `supabase/functions/mobile-api/_shared/lifecycle.ts` — `completed_by_worker` transition không còn trigger `final_price` requirement từ worker payload
+- `supabase/functions/mobile-api/_shared/router.ts` workerStatusUpdateSchema function (router.ts:1131):
+  - Xóa `final_price` từ schema accept
+  - Xóa "Cần nhập giá cuối cùng khi hoàn thành" error
+  - Schema chỉ accept `status`, `completion_notes`, `completion_photo_urls`
+- `supabase/functions/mobile-api/_shared/router.ts` workerScopeChangeSchema:
+  - Xóa `new_price_min`, `new_price_max` từ worker input
+  - Chỉ accept `new_description`, `reason`, `photo_urls`
+- `supabase/functions/mobile-api/_shared/services.ts` updateJobStatus (services.ts:1324):
+  - Không apply `final_price` từ input
+  - `final_price` source: từ jobs record (đã Kael-locked at A7 confirm hoặc A11 approve)
+- `supabase/functions/mobile-api/_shared/services.ts` requestScopeChange (services.ts:1402):
+  - Sau khi insert scope_change_requests, GỌI Kael compute new estimate
+  - Lưu Kael-computed price_min/max vào scope_change_requests
+  - Edge response trả về Kael compute result
+- `supabase/functions/mobile-api/_shared/services.ts` decideScopeChange (services.ts:1820):
+  - Khi approve: update `jobs.final_price = scope_change_requests.kael_computed_max` (hoặc median) atomically
+  - Khi reject: cancel job (đã có per migration 20260518181500)
+- `supabase/functions/mobile-api/_shared/services.ts` confirmSearch (services.ts:1009):
+  - At A7 confirm, lock `jobs.final_price = kael_price_max` (hoặc median) — initial Kael-locked baseline
+- New migration `supabase/migrations/2026MMDD_kael_final_price_authority.sql`:
+  - Trigger ngăn worker direct DML set `jobs.final_price` (đã có lock từ migration 20260518032000 nhưng add comment for clarity)
+  - Add columns `scope_change_requests.kael_computed_min/max` nếu chưa có (verify schema first)
+
+##### 22.7.B.2 — Backend: Kael compute scope change estimate
+
+Files:
+- `supabase/functions/mobile-api/_shared/kael.ts`:
+  - Add function `computeScopeChangeEstimate(originalJobContext, newScopeDescription, secrets)`:
+    - Input: original problem identification + complexity + price range + new scope description from worker
+    - Use Anthropic (claude-sonnet-4-6) với prompt: "Given original Kael analysis [X] và worker's new scope report [Y], compute updated estimate range. Output structured JSON."
+    - Output: `{ problem_summary_delta, complexity_delta, price_min, price_max, confidence, advisory, disclaimer }`
+    - Validate output schema (Rule #3)
+    - Log api_logs (cost, latency)
+    - Fallback: nếu Kael fail, return error → scope change request marked `KAEL_FAILED`, admin path required
+  - Reuse `reviewScopeChange` (kael.ts:213) nếu phù hợp, hoặc fork
+
+##### 22.7.B.3 — Mobile: Remove worker price input
+
+Files:
+- `apps/mobile/components/worker/worker-surfaces.tsx`:
+  - IncomingRequestSheet (worker-surfaces.tsx:2024):
+    - Xóa `finalPriceDraft` state
+    - Xóa `Number.parseInt(finalPriceDraft...)` validation
+    - Xóa `final_price: finalPrice` từ `actions.workerUpdateStatus` call payload
+    - Xóa `TextInput accessibilityLabel={actionCopy.finalPrice}` (line 2220-2231)
+    - Xóa `scopePriceDraft` + scope TextInput (line 2190-2198)
+    - Form chỉ còn: scope description + reason (cho B6), notes + photos (cho B7)
+- `apps/mobile/lib/services.ts`:
+  - `jobService.updateStatus` signature: gỡ `final_price?: number` từ extras (line 88)
+  - `jobService.requestScopeChange` input: gỡ price fields
+- `apps/mobile/lib/api-types.ts`:
+  - Verify type definitions không expose price input cho worker
+
+##### 22.7.B.4 — Mobile: A11 modal display Kael compute
+
+Files:
+- `apps/mobile/components/customer/scope-change-modal/scope-change-hard-stop-modal.tsx`:
+  - Verify `scopeChange.priceMin/priceMax` source = Kael compute (per backend update)
+  - Copy update: "Ước tính mới do Kael tính lại dựa trên phạm vi thợ báo cáo"
+  - Add Kael badge / icon để phân biệt với worker-typed
+
+##### 22.7.B.5 — Mobile: A12 read Kael-locked final price
+
+Liên kết với Phase 1.2 (D14): nay xác nhận source = `jobs.final_price` (Kael-locked, không phải worker input).
+
+##### 22.7.B.6 — STRUCTURES.md edit (LOCKED DOC — Tu approval required)
+
+Sections cần edit:
+- **§6 A11 Scope Change Confirmation:** thay "old estimate vs new estimate" → "old Kael estimate vs new Kael-computed estimate based on worker's reported scope"
+- **§6 A12 Completion Confirmation:** clarify "final price = Kael-locked value at A7 or latest A11 approval"
+- **§7 B6 Scope Change Request:** worker input = description + reason + photos. KHÔNG còn `new_price_min/max`.
+- **§7 B7 Complete Job:** worker input = completion notes + completion photos. KHÔNG còn `final_price`.
+- **§11 KaelPriceCheckModule:** thêm responsibility "compute scope change estimate from worker's reported scope"
+- **§11 ScopeChangeModule:** clarify Kael review = price re-compute, not worker price validation
+- **§15 Pricing — Scope Change:** update flow để reflect Kael authority
+
+Agent MUST stop và present Tu the exact diff trước khi edit STRUCTURES.md.
+
+**Verify:**
+- STRUCTURES.md edit approved
+- Schema test: worker scope change request thiếu price field → no error (input now optional/removed)
+- Schema test: worker complete với final_price → 400 VALIDATION
+- Integration test: scope change → Kael `computeScopeChangeEstimate` trả structured output
+- Integration test: A11 approve → `jobs.final_price` updated to Kael compute value
+- Manual E2E staging: 1 job với 1 scope change → final price === Kael compute (verify in DB)
+
+**Risk:** lớn — architectural change. Mitigate bằng:
+- Migration không break old jobs (backward compat)
+- Phase 2.0 deploy backend trước, mobile theo sau với feature flag nếu cần
+- Smoke test staging với disposable user
+
+#### 22.7.C — Fix 2.1: Customer-worker chat wire 2 phía (D3)
+
+**Vấn đề:** `WorkerChatContent` (apps/mobile/components/worker/worker-surfaces.tsx:1036) dùng `useState<WorkerChatMessage[]>([])` local-only. `CustomerHistoryChatPanel` (apps/mobile/components/customer/customer-surfaces.tsx:1801) chỉ là card pointer.
+
+**Fix:**
+
+A. **Worker side:**
+- Thay `useState<WorkerChatMessage[]>([])` bằng query `jobService.listMessages(jobId)` qua useEffect khi deal có jobId + đổi key
+- `submitWorkerKaelLocalDraft` đổi tên thành `submitWorkerChatMessage`, gọi `await jobService.sendMessage(jobId, { content })`, sau đó refetch list (hoặc optimistic append với pending state)
+- Thêm error UI nếu send fail
+
+B. **Customer side:**
+- Tạo CustomerChatPanel mới (hoặc rebuild CustomerHistoryChatPanel) render messages list + composer
+- Render history qua `jobService.listMessages(jobId)`
+- Composer gọi `jobService.sendMessage(jobId, ...)`
+
+C. **Polling vs realtime:**
+- Phase 2 dùng polling on focus + AppState (đã có pattern trong frontend-workflow-provider)
+- Realtime subscription move sang Phase 5 B13 (D9)
+
+D. **Sender bubble distinction:**
+- Kael system messages (`sender_role='kael'`) visually distinct theo STRUCTURES.md §A10
+- Customer/worker bubble theo `sender_id === auth.uid()`
+
+**Files thay đổi:**
+- `apps/mobile/components/worker/worker-surfaces.tsx` — WorkerChatContent
+- `apps/mobile/components/customer/customer-surfaces.tsx` — CustomerHistoryChatPanel hoặc tạo subcomponent CustomerChatMessages
+- `apps/mobile/lib/services.ts` — đã có `jobService.listMessages/sendMessage`, không thay đổi
+- `apps/mobile/lib/api-types.ts` — verify JobMessageListResponse + JobMessageSendResponse shape
+- `packages/shared/src/__tests__/mobile-wiring.test.ts` — assert WorkerChatContent gọi listMessages + sendMessage
+
+**Verify:**
+- Manual: 2 device test, worker gõ tin nhắn → customer thấy trong History
+- Integration: dùng staging Edge, send message → query messages → assert content khớp
+- Edge case: send khi không có quyền (worker chưa accept) → 403
+- Empty state: no messages → composer + waiting copy
+
+**Risk:** trung. UI rebuild non-trivial. Realtime delay = polling interval (chấp nhận Phase 2).
+
+#### 22.7.D — Fix 2.2: Worker B7 completion form — notes + photos ONLY
+
+**Lưu ý:** Cập nhật theo decision 2026-05-23 (Phase 2.0): worker KHÔNG nhập `final_price` ở B7. Worker chỉ submit notes + photos. Final price = Kael-locked (Phase 2.0).
+
+**Authority refs:**
+- `critical.md` §16 `kael-ui-rn-execution` + §7 `kael-tdd`
+- `RULES.md` Rule #7 (Confirmation), Rule #8 (No fake), Rule #9 (PII trong notes)
+- `STRUCTURES.md` §7 B7 Complete Job (đã được Phase 2.0 propose update)
+- `design.md` (form layout cho completion notes textarea + photo grid)
+- `docs/architecture/code-ownership-map.md` row "B7 completion evidence"
+- `skills.md` Skill 3 (Surgical Changes)
+
+**Pre-edit status:**
+
+```
+Asked task: Worker B7 form chỉ collect completion_notes + completion_photo_urls (không có price input per Phase 2.0)
+Real goal: Evidence trail đầy đủ cho A12 customer confirm; Kael giữ price authority
+Task class: ui
+Selected protocols: kael-preflight + kael-ui-rn-execution + kael-tdd + kael-review
+Risk notes: Validate notes length + photo count; tránh upload race; phụ thuộc Phase 2.0 land trước
+Verification plan: Manual: worker complete → form 2 fields → submit thành công → A12 customer thấy notes + photos; Schema test: payload không có final_price; Edge test: status update accept thiếu final_price
+```
+
+**Vấn đề:** `IncomingRequestSheet` line 2056-2074 (apps/mobile/components/worker/worker-surfaces.tsx) hiện chỉ thu `finalPriceDraft`, hardcode `completion_photo_urls: []`, không có completion_notes input.
+
+**Fix:**
+- Xóa `finalPriceDraft` state + validation (Phase 2.0 đã làm backend; UI loại bỏ field này)
+- Thêm `completionNotesDraft` state + TextInput multiline (min 10 chars khuyến nghị, không bắt buộc cứng)
+- Thêm photo picker — reuse `media-upload.ts` `uploadJobMediaDrafts(jobId, drafts, stage: 'after')`
+- Submit form validate:
+  - `completion_notes` recommended >= 10 chars (warn nếu < 10, không block)
+  - `completion_photo_urls` >= 1 ảnh (tối thiểu, block submit nếu 0)
+- Upload photos qua `uploadJobMediaDrafts` trước, lấy `supabase://` URLs, sau đó gọi `workerUpdateStatus(completed_by_worker, { completion_photo_urls: uploadedUrls, completion_notes })`
+- Show Kael-locked final price (read-only) trên form để worker biết số sẽ submit về (transparency)
+
+**Files thay đổi:**
+- `apps/mobile/components/worker/worker-surfaces.tsx` — IncomingRequestSheet
+- `apps/mobile/lib/media-upload.ts` — verify support `stage='after'` (bucket completion-photos)
+- Reuse existing `LocalMediaUploadDraft` type
+
+**Verify:**
+- Manual: worker complete job → form 2 fields (notes + photos) → submit thành công → customer thấy notes + photos
+- Schema test: assert mobile payload KHÔNG có `final_price` field
+- Edge test: Edge response không apply worker-typed price
+- Edge case: photo upload fail → form không submit, show error
+
+**Risk:** trung. Cần test upload flow trên device thật. Phụ thuộc Phase 2.0 backend land trước.
+
+#### 22.7.E — Fix 2.2b: Worker B6 scope change form — description + reason + photos ONLY
+
+**Lưu ý:** Cập nhật theo decision 2026-05-23 (Phase 2.0): worker KHÔNG nhập price range ở B6. Kael compute mới sau khi worker submit.
+
+**Fix:**
+- Xóa `scopePriceDraft` state + price TextInput (Phase 2.0 đã loại bỏ schema)
+- Giữ `scopeDescriptionDraft` + thêm `scopeReasonDraft` riêng (không reuse description)
+- Thêm photo picker với `stage='scope'` (bucket job-media)
+- Validate description >= 10 chars, reason >= 10 chars, photos optional (recommended)
+- Submit gọi `actions.requestScopeChange({ new_description, reason, photo_urls })` (không có price)
+
+**Files thay đổi:**
+- `apps/mobile/components/worker/worker-surfaces.tsx` — scope-change request section in IncomingRequestSheet
+- `apps/mobile/lib/services.ts` — verify `requestScopeChange` signature không có price (Phase 2.0 update)
+- `packages/shared/src/validation.ts` — `WorkerScopeChangeInput` schema không có price
+
+**Verify:**
+- Manual: worker request scope → form 3 fields (desc + reason + photos) → submit → Edge Kael compute → A11 modal hiện Kael compute
+- Schema test: payload không có price field
+- Integration test: `requestScopeChange` E2E → assert `scope_change_requests.kael_computed_max` set
+
+#### 22.7.F — Fix 2.3: Customer missing notifications (D1a)
+
+**Vấn đề:** Edge emit chỉ 5 customer event_type. Thiếu `estimate_ready`, `no_worker_found`, `review_requested`.
+
+**Fix:** Thêm vào `supabase/functions/mobile-api/_shared/services.ts`:
+
+A. `estimate_ready` — sau khi `runKaelPipeline` xong trong `createJob` (line 319+) hoặc `confirmKaelChat`:
+```ts
+await insertUserNotification(client, {
+  userId: ctx.user.id,
+  jobId,
+  eventType: "estimate_ready",
+  title: "Kael đã ước tính xong",
+  body: "Vui lòng kiểm tra trong Hoạt động.",
+  metadata: { service_type, price_min, price_max },
+})
+```
+
+B. `no_worker_found` — trong `confirmSearch` (line 1009) nếu eligible workers = 0 hoặc batch hết:
+```ts
+await insertUserNotification(client, {
+  userId: customerId,
+  jobId,
+  eventType: "no_worker_found",
+  title: "Chưa có thợ phù hợp",
+  body: "Kael sẽ tiếp tục theo dõi và báo lại khi có thợ.",
+  metadata: {},
+})
+```
+
+C. `review_requested` — sau `confirmCompletion` trong services.ts:
+```ts
+await insertUserNotification(...eventType: "review_requested", ...)
+```
+
+D. Push helper send qua `sendPushToUser` với deep_link `/(customer)/history?job_id=${jobId}`.
+
+**Files thay đổi:**
+- `supabase/functions/mobile-api/_shared/services.ts` — thêm 3 helper notify functions + call sites
+- Mirror Next.js parity ở `apps/api/src/lib/notifications/` nếu reference parity được giữ
+
+**Verify:**
+- Integration test: tạo job → assert notification row `estimate_ready` exist
+- Negative: nếu Kael pipeline fail, không emit `estimate_ready`
+- Manual: smoke test trên staging — full flow
+
+**Risk:** thấp. Pure additive Edge logic.
+
+#### 22.7.G — Fix 2.4: Worker missing notifications (D1b)
+
+**Vấn đề:** Worker thiếu `account_approved`, `customer_message_received`, `customer_confirmed_completion`, `broadcast_expired`, `earning_updated`.
+
+**Fix:** Thêm vào services.ts tương tự 2.3:
+
+A. `account_approved` — trigger trong admin path. Vì admin approval workflow chưa wire (Phase 5 M9), trước mắt thêm worker `verification_status` change trigger trong DB. Cần migration thêm trigger gọi `insert_notification_atomic` khi `worker_profiles.is_approved` đổi false → true.
+
+B. `customer_message_received` — sau `sendJobMessage` (services.ts:1740), nếu `sender_role = 'customer'` và recipient = worker:
+```ts
+await insertUserNotification(... eventType: "customer_message_received" ...)
+```
+Ngược lại: `worker_message_received` cho customer.
+
+C. `customer_confirmed_completion` — trong `confirmCompletion` (services.ts:1866) sau khi đổi state thành công, notify worker.
+
+D. `broadcast_expired` — khi batch cycle cycle through và worker không respond trong 60s. Cần logic ở batch reassign code.
+
+E. `earning_updated` — defer (payment chưa wire, không emit fake).
+
+**Files thay đổi:**
+- `supabase/functions/mobile-api/_shared/services.ts` — `sendJobMessage` + `confirmCompletion` + broadcast cycle
+- `supabase/migrations/2026MMDD_worker_approved_notification_trigger.sql` — DB trigger cho A
+- Mobile: handle deep_link `/(worker)/jobs?job_id=...` đã có trong push-notifications.ts
+
+**Verify:**
+- Integration test cho 4 path (A/B/C/D)
+- Manual: register worker → admin approve trong supabase studio → device receive notification
+
+**Risk:** trung. Migration mới + Edge update đồng bộ. Cần test trên staging trước production.
+
+---
+
+### 22.8 — Phase 3: Section Rạch Ròi (Tu's main UX concern)
+
+Scope: Restructure 3 customer tab Home/Booking/Kael để mỗi tab có vai trò KHÁC NHAU thật sự (Tu chốt). Đây là phase lớn nhất về UI.
+
+#### 22.8.A — Phase 3 Preflight (BẮT BUỘC trước khi bắt đầu phase)
+
+```
+[ ] Read critical.md §9 kael-architecture-deepening + §16 kael-ui-rn-execution + §9A kael-code-enhancement
+[ ] Read RULES.md Rule #5 (Vietnamese), Rule #6 (Kael scope), Rule #7 (Confirmation), Rule #4 (Disclaimer)
+[ ] Read STRUCTURES.md §6 A0-A14 customer steps, §18 Frontend Build Contract, §1 Kael scope
+[ ] Read design.md FULLY (production glass contract + mint/cream/cyan tokens)
+[ ] Read AGENTS.md (language rules + glass + motion + data honesty)
+[ ] Read docs/architecture/code-ownership-map.md (booking row, kael row, home row, shared mobile state row)
+[ ] Read docs/design/frontend-redesign-production-contract-20260521.md
+[ ] Read docs/design/production-glass-motion-contract.md
+[ ] Read skills.md (Skill 2 Simplicity First strongly, Skill 3 Surgical Changes — KHÔNG drive-by refactor)
+[ ] Read MEMORY.md (PR #20-#25 design context)
+[ ] Apply kael-prototype protocol khi cần test design quyết định trước production absorb
+[ ] Verify visual references local recording + glassmorphism YouTube refs cho motion direction
+```
+
+Critical: Phase 3 là phase Tu prioritize cao nhất (section đúng vai trò). KHÔNG được skip preflight reading. Mỗi UI quyết định MUST trace về `design.md` token/layer rule.
+
+#### 22.8.B — Fix 3.1: Booking tab — A2-A6 wizard step-by-step
+
+**Vấn đề:** Hiện `CustomerBookingEntrySurface` giống Home (3 service cards + placeholder). Không có A3 description, A4 clarification, A5 estimate card, A6 time, A7 confirm steps.
+
+**Fix:** Rebuild thành multi-step wizard:
+
+```
+Step A2 — Choose service (electrical/plumbing/cleaning)
+Step A3 — Describe + photos upload + address picker
+Step A4 — Kael clarification (0-2 questions, skip if context enough)
+Step A5 — Estimate card với disclaimer
+Step A6 — Time selection (hiện chỉ Now, label honest)
+Step A7 — Summary screen với fee + cancellation note + Confirm CTA
+```
+
+**Implementation:**
+- State machine local cho wizard (`useReducer` hoặc Zustand store mini)
+- Mỗi step 1 component riêng trong `apps/mobile/components/customer/booking-wizard/`
+- Backend: tái sử dụng `jobService.createJob` (sau A3) + `kaelChatService.sendTurn` (A4) + `jobService.confirmSearch` (A7)
+- Nếu user tap back, state preserve cho phép edit step trước
+- Wizard không dùng Kael chat surface — đó là độc lập
+
+**Files thay đổi:**
+- `apps/mobile/components/customer/customer-surfaces.tsx` — gut `CustomerBookingEntrySurface`, render `<BookingWizard />`
+- `apps/mobile/components/customer/booking-wizard/` — folder mới với BookingWizard.tsx + Step{2,3,4,5,6,7}.tsx + state.ts
+- `apps/mobile/components/customer/booking-wizard/contracts.md` — copy contract for each step (link sang phase 4 M6)
+
+**Verify:**
+- Manual end-to-end qua wizard
+- Test wiring assert mỗi step có testID + state.ts handle back/forward
+- Empty/loading/error states cho mỗi step
+
+**Risk:** lớn. Đây là rebuild UI lớn. Có thể split thành 3.1a (skeleton + A2 + A3) → 3.1b (A4 + A5) → 3.1c (A6 + A7 summary).
+
+#### 22.8.C — Fix 3.2: Kael tab — ask-anything, không tạo job
+
+**Vấn đề:** Hiện `CustomerKaelSurface` có composer + 3 service cards → đẩy sang Kael chat → tạo job. Tu muốn Kael tab CHỈ là Q&A, không tạo job.
+
+**Fix:**
+- Kael tab render conversational chat surface (gần giống kael-chat.tsx nhưng KHÔNG có "Xác nhận tìm thợ" CTA)
+- Backend dùng `kaelChatService.create` + `sendTurn` đã có. Session là throwaway — không qua `confirmKaelChat` → không tạo job.
+- User muốn book → có nút "Đặt qua wizard" → push sang Booking tab (3.1)
+
+**Files thay đổi:**
+- `apps/mobile/components/customer/customer-surfaces.tsx` — `CustomerKaelSurface` rebuild
+- Reuse `apps/mobile/components/customer/kael-chat/kael-chat-surface.tsx` styles/components, fork variant `kael-qna-surface.tsx`
+- Edge: `confirmKaelChat` chỉ available qua wizard, không qua Kael tab
+
+**Verify:**
+- Manual: trong Kael tab, không có path nào tạo job
+- Wiring: assert `KaelChatSurface` không có CTA confirm
+
+**Risk:** trung. Fork existing kael-chat component, cẩn thận không break.
+
+#### 22.8.D — Fix 3.3: Home tab — active state + shortcuts, sửa naming
+
+**Vấn đề:** Home shortcuts misnamed (Address → Profile, Trust → Kael).
+
+**Fix:**
+- "Address" shortcut → open address editor (modal hoặc redirect đúng nơi sửa address), KHÔNG sang Profile generic
+- "Trust" shortcut → mở trust signals modal (worker rating average, completed jobs, platform fee transparency), KHÔNG sang Kael chat
+- 3 service cards remain → push sang Booking wizard step 1 (chọn service), KHÔNG vào Kael chat
+- "Quick active" shortcut → History tab với active job (OK)
+- "Quick history" → History tab (OK)
+
+**Files thay đổi:**
+- `apps/mobile/components/customer/customer-surfaces.tsx` — `CustomerHomeSurface`, `homeShortcuts` array + service card handlers
+- Có thể cần thêm `apps/mobile/components/customer/address-editor.tsx`, `trust-info-modal.tsx`
+
+**Verify:**
+- Manual: tap mỗi shortcut → arrive đúng surface với chức năng đúng tên
+- Wiring: testID `customer-home-shortcut-address` → route đúng
+
+**Risk:** thấp-trung. UI tweak + có thể thêm 2 component nhỏ.
+
+#### 22.8.E — Fix 3.4: Booking tab visibility logic clean
+
+**Vấn đề:** `tabBarStyle: { display: 'none' }` ở booking tab + dock không hiển thị trong wizard mode.
+
+**Fix:**
+- Wizard fullscreen mode (giấu dock khi đang trong step 2-7) — acceptable UX
+- Hoặc giữ dock visible, wizard step content scrollable trong frame — clean hơn
+
+Quyết định trong implementation. Document trong contract.
+
+**Verify:** manual qua mỗi step.
+
+**Risk:** thấp.
+
+---
+
+### 22.9 — Phase 4: Communication Polish
+
+Scope: A-tier minor fixes. Mỗi item nhỏ, có thể parallel.
+
+#### 22.9.A — Phase 4 Preflight
+
+```
+[ ] Read critical.md §16 kael-ui-rn-execution + §12 kael-ai-boundary + §14 kael-supabase + §20 kael-docs-execution
+[ ] Read RULES.md Rule #3 (Validate AI Output), Rule #4 (Disclaimer), Rule #5 (Vietnamese), Rule #10 (Retry)
+[ ] Read STRUCTURES.md §6 A7/A14, §15 Pricing Fees, §16 Notifications, §17 Failure Recovery
+[ ] Read design.md (estimate card layout + review form layout)
+[ ] Read docs/architecture/code-ownership-map.md
+[ ] Read skills.md
+[ ] Read MEMORY.md
+```
+
+#### 22.9.B — Fix 4.1: Kael A7 summary đầy đủ (D6)
+
+**Vấn đề:** EstimateCard không có platform fee + cancellation note.
+
+**Fix:**
+- Thêm vào EstimateCard (kael-chat-surface.tsx:364):
+  - Platform fee row: "Phí nền tảng: ~7.5%"
+  - Cancellation note row: copy nói rõ chính sách hủy
+  - Final breakdown row: "Tổng dự kiến: X - Y VND (đã bao gồm phí)"
+- Reuse same component trong Booking wizard step 7 (A7 summary)
+
+**Files thay đổi:**
+- `apps/mobile/components/customer/kael-chat/kael-chat-surface.tsx` — EstimateCard
+- Hoặc extract `EstimateSummary` thành component riêng
+
+**Risk:** thấp.
+
+#### 22.9.C — Fix 4.2: A14 review tags + comment (C7)
+
+**Vấn đề:** `submitSelectedReview` (customer-surfaces.tsx:1175) gọi `actions.submitReview({ rating: reviewRating, tags: [] })`. UI không có chip picker, không có textarea.
+
+**Fix:**
+- Thêm chip selector cho 5 tags: "Đúng giờ", "Lịch sự", "Sạch sẽ", "Giải thích rõ", "Giá hợp lý"
+- Thêm TextInput multiline cho comment (optional)
+- Submit truyền `{ rating, tags: selectedTags, comment }`
+
+**Files thay đổi:**
+- `apps/mobile/components/customer/customer-surfaces.tsx` — review section trong `CustomerHistorySurface`
+- Verify `ReviewInput` schema trong `shared/validation.ts` accept tags + comment (đã có)
+
+**Risk:** thấp.
+
+#### 22.9.D — Fix 4.3: Push retry policy (D11)
+
+**Vấn đề:** `sendExpoBatch` single attempt, fail → drop.
+
+**Fix:**
+- Wrap `sendExpoBatch` với retry helper:
+  - 2 retries
+  - Exponential backoff 500ms → 2s → 8s (cap 10s)
+  - Retry chỉ khi `EXPO_REQUEST_FAILED` hoặc HTTP 5xx
+  - Không retry khi `DeviceNotRegistered` hoặc HTTP 4xx
+- Critical event_type (`scope_change_requested`, `worker_matched`, `completed_by_worker`) ưu tiên retry; minor (status update, broadcast received) chỉ try 1 lần
+
+**Files thay đổi:**
+- `supabase/functions/mobile-api/_shared/push.ts` — `sendExpoBatch` + new helper
+
+**Risk:** thấp. Pure server-side improvement.
+
+#### 22.9.E — Fix 4.4: Copy canonical source (M6)
+
+**Vấn đề:** Tất cả copy Việt nằm rải rác trong surface files. RULES.md chỉ lock 1 disclaimer.
+
+**Fix:**
+- Tạo `docs/copy/workflow-copy-vi.md` + `docs/copy/workflow-copy-en.md`
+- Liệt kê copy theo step: A0, A1, A2, ..., A14, B0-B8, A11 modal, A12 confirmation, A14 review tags, error states, empty states
+- Mỗi surface import từ generated TypeScript constants (sinh từ md file qua script đơn giản)
+- Hoặc đơn giản hơn: file `apps/mobile/lib/copy/customer-copy.ts` + `worker-copy.ts` thành single source thay vì inline trong từng surface
+
+**Files thay đổi:**
+- `docs/copy/workflow-copy-{vi,en}.md` — new
+- `apps/mobile/lib/copy/` — new folder
+- Surface files import từ đây thay vì inline
+
+**Risk:** trung. Refactor lớn nhưng pure rename + relocation.
+
+---
+
+### 22.10 — Phase 5: Long-term Hygiene
+
+Scope: B-tier issues. Dọn dẹp trước khi nhân sự khác đụng code. Có thể parallelize.
+
+#### 22.10.A — Phase 5 Preflight
+
+```
+[ ] Read critical.md §9 kael-architecture-deepening + §14 kael-supabase + §15 kael-security-sweep + §20 kael-docs-execution + §7 kael-tdd
+[ ] Read RULES.md Rule #0 (Mobile Runtime Boundary) + §Security Invariants
+[ ] Read STRUCTURES.md §3 roles, §8 Admin Workflow, §11 modules, §12 state machines, §16 Notifications
+[ ] Read design.md
+[ ] Read AGENTS.md (admin role notes)
+[ ] Read docs/architecture/code-ownership-map.md (auth + admin rows)
+[ ] Read skills.md (Skill 2 Simplicity First — KHÔNG over-engineer admin shell)
+[ ] Read MEMORY.md (admin path historical decisions)
+```
+
+#### 22.10.B — Fix 5.1: Admin /(admin)/ separate route (M9)
+
+**Vấn đề:** Admin bypass vào customer/worker shell + Edge cho admin chạy mọi route → admin nhấn nhầm = sự cố thật.
+
+**Fix:**
+- Tạo `apps/mobile/app/(admin)/` shell với routing riêng
+- Admin login → redirect `/(admin)/dashboard`
+- Customer shell layout: `if (role !== 'customer') return <Redirect href="/(auth)/login" />` (xóa admin bypass)
+- Worker shell tương tự
+- Edge router roles: gỡ `admin` khỏi customer-only / worker-only routes. Admin có route riêng cho audit.
+- Cho phép admin impersonate explicit qua `/(admin)/impersonate/{user_id}` nếu cần (kèm banner đỏ + read-only flag).
+
+**Files thay đổi:**
+- `apps/mobile/app/(admin)/` — new folder
+- `apps/mobile/app/(customer)/_layout.tsx`, `apps/mobile/app/(worker)/_layout.tsx` — gỡ bypass
+- `supabase/functions/mobile-api/_shared/router.ts` — tách admin routes
+- `apps/mobile/app/index.tsx` — admin redirect
+
+**Risk:** lớn. Build new shell. Có thể defer thành phase riêng nếu Phase 5 quá dày.
+
+#### 22.10.C — Fix 5.2: Status vocabulary unify (M2)
+
+**Vấn đề:** init migration vocab cũ, Edge lifecycle.ts vocab mới, Mobile reducer fold.
+
+**Fix:**
+- Document trong `docs/architecture/status-vocabulary.md`: 3 layer + lý do fold
+- Đảm bảo Edge dùng vocab mới (đã có via migration 20260513114845)
+- Mobile fold giữ nguyên (Tu approve "keep mobile honest")
+- Test wiring: assert lifecycle.ts JobStatus tập = full 16 values; LocalDealStatus = 14 fold values
+
+**Files thay đổi:**
+- `docs/architecture/status-vocabulary.md` — new
+- Test wiring nếu chưa có
+
+**Risk:** thấp. Doc-only + test gate.
+
+#### 22.10.D — Fix 5.3: A2-A6 step boundaries (M3)
+
+Liên quan trực tiếp Phase 3.1 — sau khi Booking wizard build xong, document A2-A6 step contracts trong `docs/architecture/workflow-step-contracts.md`.
+
+#### 22.10.E — Fix 5.4: B6 dual flow document (M4)
+
+**Vấn đề:** STRUCTURES.md B6 chỉ có "scope change". Code có thêm worker-cancellation path.
+
+**Fix:** Thêm vào STRUCTURES.md (sau approve Tu) section B6b worker cancellation request + Admin decide flow. Hoặc tạo `docs/workflow/worker-cancellation.md` rồi link từ STRUCTURES.
+
+**Risk:** thấp.
+
+#### 22.10.F — Fix 5.5: `confirmed_by_customer` payment skip clarification (M7)
+
+**Vấn đề:** lifecycle.ts cho phép `confirmed_by_customer → reviewed` (skip payment). Doc không nói rõ.
+
+**Fix:** Document trong status-vocabulary.md hoặc state machine doc: "Phase 0 không có payment rails, lifecycle cho phép skip qua reviewed. Khi payment_pending wire, lifecycle sẽ require payment_pending → paid → reviewed."
+
+**Risk:** thấp.
+
+#### 22.10.G — Fix 5.6: activity/history naming (M8)
+
+**Vấn đề:** `CustomerDockActive` `'activity'` vs `CustomerTabName` `'history'`.
+
+**Fix:** Pick one, replace toàn bộ. Recommend `'history'` vì khớp route file name. Update `CustomerDockActive` type.
+
+**Files thay đổi:** `apps/mobile/components/customer/customer-surfaces.tsx`.
+
+**Risk:** thấp.
+
+#### 22.10.H — Fix 5.7: Test hard-rule enforcement (M10)
+
+**Vấn đề:** mobile-wiring.test.ts chỉ assert `toContain('FloatingGlassTabBar')`. Không catch `push` thay `replace`.
+
+**Fix:** Thêm assertions:
+- `expect(src).toContain('replace(item.path)')` cho dock
+- `expect(src).not.toContain('push(item.path)')` cho dock
+- A11 modal: `expect(src).toContain('onRequestClose={() => undefined}')` (hoặc tương đương)
+- Scope decide path: assert duy nhất một `actions.decideScopeChange` call origin (sau khi Phase 1.3 xóa inline)
+
+**Files thay đổi:** `packages/shared/src/__tests__/mobile-wiring.test.ts`.
+
+**Risk:** thấp.
+
+#### 22.10.I — Fix 5.8: VND formatter locale-aware (A.6)
+
+**Vấn đề:** `new Intl.NumberFormat('vi-VN')` hardcode trong vài surface.
+
+**Fix:** Tạo `apps/mobile/lib/format.ts` với `formatVnd(value: number, language: AppLanguage)`. Reuse trong các surface.
+
+**Risk:** thấp.
+
+#### 22.10.J — Fix 5.9: Module-level mutable cleanup (A.7)
+
+**Vấn đề:** `lastCustomerDockActive` / `lastWorkerDockActive` là module-scope mutable.
+
+**Fix:** Move vào React Context hoặc useRef. Reset khi auth session đổi.
+
+**Risk:** thấp.
+
+#### 22.10.K — Fix 5.10: A6 time UI honest placeholder (D2)
+
+**Vấn đề:** UI không có gì nói "schedule chưa hỗ trợ".
+
+**Fix:** Trong Booking wizard step 6 (Phase 3.1), thêm disabled chip "Lên lịch (sắp có)" + bullet rõ "Hiện chỉ hỗ trợ đặt ngay". User biết schedule là roadmap không phải bug.
+
+**Risk:** thấp.
+
+#### 22.10.L — Fix 5.11: Realtime subscription wire (D9)
+
+**Vấn đề:** Mobile poll thay vì subscribe.
+
+**Fix:**
+- Subscribe `chat_messages` trong chat surface (Phase 2.1 dùng polling, Phase 5 upgrade lên realtime)
+- Subscribe `jobs` cho status changes (giảm pull-to-refresh)
+- Subscribe `job_broadcasts` cho worker khi online
+- Fallback polling nếu realtime disconnect
+
+**Files thay đổi:**
+- `apps/mobile/lib/realtime.ts` — new helper
+- `frontend-workflow-provider.tsx` — wire subscriptions
+- Chat surfaces — replace polling với subscribe
+
+**Risk:** trung-lớn. Realtime reconnect logic phức tạp. Có thể defer hẳn nếu Phase 2.1 polling ổn.
+
+---
+
+### 22.11 — Verification Strategy
+
+#### 22.11.A — Mandatory `kael-review` per fix (per critical.md §8)
+
+Sau MỖI fix item, agent MUST chạy kael-review với 3 axes:
+1. **Spec Compliance** — solve real task không (so với STRUCTURES.md contract)
+2. **Rules/Standards Compliance** — obey RULES.md + STRUCTURES.md + critical.md
+3. **Long-Term Maintainability** — locality + testability + simplicity + change ease
+
+Cũng check:
+- Scope creep
+- Hidden autonomous action (Rule #7)
+- AI boundary violations (Rule #2)
+- PII/logging risk (Rule #9)
+- Test coverage gaps
+- Dead code / wiring gaps
+- UI copy language (Rule #5)
+- Build/test honesty (no false completion)
+
+Output format kael-review BẮT BUỘC:
+
+```
+Spec compliance:
+Rules/standards compliance:
+Maintainability:
+Scope creep:
+Verification:
+Required fixes:
+```
+
+#### 22.11.B — Per-phase gates
+
+| Phase | Gate trước khi đóng phase |
+|---|---|
+| Phase 1 | Unit tests mới pass + manual test 3 path + scrubSensitive sample test |
+| Phase 2 | Integration test trên staging Edge + 2-device manual chat + worker B7 form submission test + Kael compute scope change E2E |
+| Phase 3 | Manual end-to-end wizard A2-A7 + manual Kael Q&A (no job creation) + Home shortcut routing test |
+| Phase 4 | EstimateCard render fee + Review tags + push retry simulate fail recovery |
+| Phase 5 | Admin /(admin)/ access test + status vocabulary doc review + test assertions enforce |
+
+#### 22.11.C — Cross-cutting gates (run after Phase 1, 2, 3)
+
+- `pnpm test` shared + mobile + api targeted
+- `pnpm typecheck` (`tsc --noEmit`) cho cả 3 packages
+- Static sweeps: bundle marker scan, no service-role key in mobile bundle, no AI provider key in mobile bundle
+- React Doctor changed scan
+- Manual smoke trên staging Edge với disposable test user
+
+#### 22.11.D — Critical regression test set
+
+Sau khi mỗi S-tier fix:
+- A7 → broadcast → worker accept → on the way → arrived → inspecting → repairing → B7 complete → A12 confirm → A14 review (full path)
+- A11 scope change request → modal hiện → approve → continue (positive)
+- A11 scope change request → modal hiện → reject → job cancelled (negative)
+- B6 worker cancel → admin decide → reassign or release (Phase 5 wire admin)
+- Chat: worker send → customer receive → reverse direction → Kael system message render distinct
+
+#### 22.11.E — Honesty checks (per AGENTS.md)
+
+- No fake worker, no fake price, no hardcoded VND in source
+- Empty state vs error state distinguishable
+- Vietnamese mode không leak English copy
+- A12 confirm shows actual `final_price` (Kael-locked) hoặc honest fallback
+
+---
+
+### 22.12 — Final Agent Checklist & Forbidden Behaviors
+
+#### 22.12.A — Final Agent Checklist (per critical.md §25 — BẮT BUỘC trước khi mark complete)
+
+Trước khi agent nói task done cho BẤT KỲ fix item nào trong plan này:
+
+```
+[ ] Preflight đã chạy (critical.md §5)
+[ ] Protocols đã được select trước edits
+[ ] Required docs đã được đọc theo authority order (CLAUDE.md authority stack)
+[ ] MEMORY.md đã đọc LAST khi task depend session context
+[ ] Code-ownership-map.md đã được consult cho code changes
+[ ] Relevant code + tests đã được đọc
+[ ] design.md đã được đọc cho UI/motion/glass touches
+[ ] Scope check + survival test passed (Tu approve nếu vượt scope)
+[ ] RULES.md impact đã check
+[ ] Security/PII/AI/Supabase impact đã check khi relevant
+[ ] Tests đã được add/update khi behavior change
+[ ] Relevant tests đã được run
+[ ] Build đã được run khi applicable
+[ ] kael-review đã chạy
+[ ] Temporary debug code removed (no [DEBUG-kael-*] leftovers)
+[ ] Final response chỉ report real verification (no fake success)
+```
+
+#### 22.12.B — Forbidden Behaviors (per critical.md §24 — agent KHÔNG được làm)
+
+Khi triển khai plan này, agent KHÔNG được:
+
+1. Edit trước protocol selection
+2. Lie về verification (chỉ report commands actually ran)
+3. Fix bug không có feedback loop (no repro = no fix)
+4. Build ngoài current product scope (electrical/plumbing/cleaning HCMC only)
+5. Over-engineer (no premature abstraction; one caller = no interface)
+6. Tạo shallow modules (deletion test mandatory)
+7. Fake data / silent degrade (RULES.md Rule #8)
+8. Raw AI output to users (Rule #3)
+9. Client-side secrets / AI calls (Rule #0, #1, #2)
+10. PII in logs (Rule #9)
+11. Money-impacting autonomous actions (Rule #7)
+12. Turn Next.js into consumer product (Rule #0)
+13. Test count theater (layer coverage > count)
+14. Leave debug code (must remove `[DEBUG-kael-*]` prefix logs)
+15. Update locked docs without Tu permission (CLAUDE.md, STRUCTURES.md, RULES.md, README.md, critical.md, design.md locked)
+
+#### 22.12.C — Approval Required Before Implementation
+
+Plan này touch nhiều file lock vào doc tier (CLAUDE.md, STRUCTURES.md, RULES.md, design.md, critical.md). Trong implementation, nếu phát hiện cần edit locked doc:
+
+- STOP
+- Show Tu the exact edit + reason
+- Wait for explicit approval
+
+Plan này CHƯA propose edit locked docs (chỉ tạo file mới trong `docs/copy`, `docs/workflow`, `docs/architecture`). Phase 2.0 cần edit STRUCTURES.md — agent phải hỏi Tu trước với exact diff.
+
+---
+
+### 22.13 — Files Touched Summary
+
+```
+apps/mobile/components/customer/customer-surfaces.tsx          Phase 1.2, 1.3, 3.3, 4.2, 5.6
+apps/mobile/components/customer/scope-change-modal/            Phase 2.0d (Kael compute badge)
+apps/mobile/components/customer/booking-wizard/                Phase 3.1 (new folder)
+apps/mobile/components/customer/kael-chat/                     Phase 3.2 (fork qna-surface)
+apps/mobile/components/customer/kael-chat-surface.tsx          Phase 4.1
+apps/mobile/components/worker/worker-surfaces.tsx              Phase 2.0c (no price), 2.1, 2.2, 2.2b
+apps/mobile/lib/services.ts                                    Phase 2.0c (signature update)
+apps/mobile/lib/api-types.ts                                   Phase 2.0c (type update)
+apps/mobile/lib/frontend-workflow-provider.tsx                 Phase 1.2, 2.0c, 2.1
+apps/mobile/lib/media-upload.ts                                Phase 2.2 (verify stage='after')
+apps/mobile/lib/copy/                                          Phase 4.4 (new)
+apps/mobile/lib/format.ts                                      Phase 5.8 (new)
+apps/mobile/app/(customer)/_layout.tsx                         Phase 5.1
+apps/mobile/app/(worker)/_layout.tsx                           Phase 5.1
+apps/mobile/app/(admin)/                                       Phase 5.1 (new folder)
+apps/mobile/app/index.tsx                                      Phase 5.1
+packages/shared/src/mobile-workflow.ts                         Phase 1.2 (LocalDeal field), 2.0c
+packages/shared/src/validation.ts                              Phase 2.0c (worker scope schema)
+packages/shared/src/__tests__/mobile-wiring.test.ts            Phase 2.0, 2.2, 5.7 (assertions)
+supabase/functions/mobile-api/_shared/kael.ts                  Phase 1.1, 2.0b (compute scope estimate)
+supabase/functions/mobile-api/_shared/lifecycle.ts             Phase 2.0a (transition cleanup)
+supabase/functions/mobile-api/_shared/router.ts                Phase 2.0a (schema), 5.1
+supabase/functions/mobile-api/_shared/services.ts              Phase 2.0a/2.0b, 2.3, 2.4
+supabase/functions/mobile-api/_shared/push.ts                  Phase 4.3
+supabase/migrations/2026MMDD_kael_final_price_authority.sql    Phase 2.0a (new)
+supabase/migrations/2026MMDD_worker_approved_*.sql             Phase 2.4 (new)
+STRUCTURES.md (LOCKED — Tu approve required)                   Phase 2.0f (B6/B7/A11/A12/§11/§15 edits)
+docs/copy/workflow-copy-{vi,en}.md                             Phase 4.4 (new)
+docs/architecture/status-vocabulary.md                         Phase 5.2 (new)
+docs/architecture/workflow-step-contracts.md                   Phase 5.3 (new)
+docs/architecture/kael-price-authority.md                      Phase 2.0 (new, contract spec)
+docs/workflow/worker-cancellation.md                           Phase 5.4 (new)
+```
+
+---
+
+### 22.14 — Existing Functions/Utilities to Reuse
+
+- `jobService.listMessages` + `jobService.sendMessage` (`apps/mobile/lib/services.ts:64`) — Phase 2.1 chat wire
+- `uploadJobMediaDrafts` (`apps/mobile/lib/media-upload.ts`) — Phase 2.2 photo upload
+- `formatVnd` (sau Phase 5.8: `lib/format.ts`) — render giá
+- `insertUserNotification` helper (`supabase/functions/mobile-api/_shared/services.ts:2774`) — Phase 2.3, 2.4
+- `sendPushToUser` + retry helper (Phase 4.3 new) — push delivery
+- `scrubSensitiveForLLM` (`supabase/functions/mobile-api/_shared/kael.ts:1260`) — Phase 1.1 extend
+- `ScopeChangeHardStopModal` component — Phase 1.3 keep as single source
+- `reviewScopeChange` (`supabase/functions/mobile-api/_shared/kael.ts:213`) — Phase 2.0b reuse hoặc fork cho `computeScopeChangeEstimate`
+
+---
+
+### 22.15 — Out of Scope Reminders
+
+Plan §22 này KHÔNG bao gồm:
+- Payment rails (cash/MoMo/ZaloPay handlers) — defer until provider ready
+- Phone OTP auth — defer until SMS provider config
+- Google OAuth — defer until provider config
+- Learning candidates pipeline (tables ready, wire sau evidence baseline)
+- Multi-city / autonomous booking / multi-agent / service expansion
+- TestFlight delivery verification — Tu drive
+- Rating penalty system (MEMORY.md PR #25: explicitly excluded per Tu earlier instruction)
+- True native map picker for worker registration (district + radius hiện acceptable)
+
+---
+
+### 22.16 — Sign-off Checklist
+
+```
+[ ] Tu đã đọc 5 nhóm rủi ro + risk ranking
+[ ] Tu đã đồng ý 5 phase ordering (risk → trust → section role → polish → hygiene)
+[ ] Tu đã đồng ý S-tier fix trong Phase 1 + Phase 2 round đầu
+[ ] Tu đã đồng ý Phase 2.0 Kael Price Authority (workflow change 2026-05-23)
+[ ] Tu xác nhận sẽ approve STRUCTURES.md edit khi Phase 2.0 chạy (B6/B7/A11/A12/§11/§15)
+[ ] Tu đã đồng ý Phase 3 restructure 3 customer tab khác nhau thật
+[ ] Tu đã đồng ý Phase 5.1 admin /(admin)/ separate route
+[ ] Tu xác nhận no other macro concern không có trong plan
+[ ] Tu đồng ý mỗi phase = 1 PR, verification evidence honest
+```
+
+### 22.16.B — Tu Acknowledgment Required Before Implementation
+
+```
+□ Tu approve plan content (sign-off checklist above)
+□ Tu approve STRUCTURES.md edit cho Phase 2.0 (workflow contract change)
+□ Tu confirm dirty worktree state có thể proceed (commit hiện tại tách biệt với plan execution)
+□ Tu confirm sẽ review PR per phase, not all-at-once
+□ Tu confirm verification evidence sẽ được log honestly trong docs/test-logs/
+```
+
+---
+
+### 22.17 — Plan Maintenance & Update Notes
+
+#### 22.17.A — Change Log Cho §22
+
+| Date | Editor | Change |
+|---|---|---|
+| 2026-05-23 | AI co-founder | Initial draft từ audit findings (5 nhóm rủi ro, 14 issue) |
+| 2026-05-23 | AI co-founder | Add Authority Context Loading + Protocol Selection per Tu feedback (preflight + skills application) |
+| 2026-05-23 | AI co-founder | Add Phase 2.0 Kael Final Price Authority per Tu decision (worker không nhập price) |
+| 2026-05-23 | AI co-founder | Update Phase 2.2 + 2.2b to align với Phase 2.0 |
+| 2026-05-23 | AI co-founder | Add Plan Metadata, Decision Log, Lý do plan tồn tại, Change Log per Tu feedback (takenotes chi tiết) |
+| 2026-05-23 | AI co-founder | Append toàn bộ vào `Plan.md §22` per Tu request "Viết vào plan.md đi cộng sự" |
+
+#### 22.17.B — Khi §22 cần update
+
+Update §22 (NOT delete) khi:
+- Tu thêm decision mới (add row vào Decision Log + reflect trong relevant phase)
+- Audit phát hiện finding mới ngoài 14 hiện tại
+- Phase 1-5 nào complete → add timestamp + actual files changed vào §22.18 Implementation Notes
+- Locked doc edit được approved → ghi rõ commit hash
+- Implementation discover scope creep / risk mới → flag rõ trong relevant phase
+
+#### 22.17.C — §22 vs Other Authority Docs
+
+§22 KHÔNG override:
+- `critical.md` / `RULES.md` / `STRUCTURES.md` / `design.md` / `CLAUDE.md` (LOCKED)
+- `AGENTS.md` / `skills.md` (LOCKED-ish, may edit với Tu approval)
+- `docs/architecture/code-ownership-map.md` (active navigation contract)
+
+§22 CÓ THỂ update khi:
+- Tu approve edit
+- AI co-founder during implementation captures lesson / scope clarification
+- Audit re-run reveals new finding
+
+§22 KHÔNG override §1-§21 (Plan core). Đây là addendum tách biệt, fix các holes audit tìm thấy.
+
+---
+
+### 22.18 — Implementation Notes / Lessons Captured
+
+(Updated trong quá trình implement. Hiện tại trống.)
+
+```
+Date | Phase | Note | Resolution
+---  | ---   | ---  | ---
+     |       |      |
+```
+
+---
+
+### 22.19 — Appendix A: Quick Reference Authority Stack
+
+Khi implement bất kỳ phase nào, agent cần authority sequence:
+
+```
+critical.md          execution protocols (always)
+RULES.md             non-negotiable boundaries (always)
+STRUCTURES.md        workflow truth (always)
+design.md            UI/motion/glass (UI fixes)
+AGENTS.md            workspace + data honesty + glassmorphism + motion rules
+docs/architecture/code-ownership-map.md   code owner mapping (code changes)
+skills.md            Karpathy skills (writing/reviewing/refactoring/debugging/planning)
+docs/foundation/*.md, docs/ops/*.md, docs/design/*.md   feature-specific
+README.md            historical context
+MEMORY.md            LAST — session memory, may have caveats overriding plan
+```
+
+### 22.20 — Appendix B: Critical Files Quick Reference per Phase
+
+**Phase 1 (Stop the Bleeding):**
+
+```
+supabase/functions/mobile-api/_shared/kael.ts:1260            Phase 1.1 scrubSensitiveForLLM
+apps/mobile/components/customer/customer-surfaces.tsx:1207-1297, 1308-1320  Phase 1.2 + 1.3
+packages/shared/src/mobile-workflow.ts                         Phase 1.2 LocalDeal type
+apps/mobile/lib/frontend-workflow-provider.tsx                 Phase 1.2 hydrate mapping
+```
+
+**Phase 2 (Trust Foundation):**
+
+```
+supabase/functions/mobile-api/_shared/lifecycle.ts             Phase 2.0a
+supabase/functions/mobile-api/_shared/router.ts:1131           Phase 2.0a worker schema
+supabase/functions/mobile-api/_shared/services.ts:1324,1402,1820,1009,1866   Phase 2.0a
+supabase/functions/mobile-api/_shared/kael.ts:213+             Phase 2.0b reuse reviewScopeChange or fork
+apps/mobile/components/worker/worker-surfaces.tsx:2024-2241    Phase 2.0c + 2.2 + 2.2b
+apps/mobile/components/worker/worker-surfaces.tsx:1036-1201    Phase 2.1 chat wire
+apps/mobile/components/customer/customer-surfaces.tsx:1801-1838  Phase 2.1 customer chat
+apps/mobile/lib/services.ts:51-216                            Phase 2.0c worker service signature
+apps/mobile/components/customer/scope-change-modal/           Phase 2.0d badge
+STRUCTURES.md (LOCKED)                                         Phase 2.0f Tu approve
+```
+
+**Phase 3 (Section Rạch Ròi):**
+
+```
+apps/mobile/components/customer/customer-surfaces.tsx          Phase 3.1 BookingEntry rebuild, 3.3 Home shortcuts
+apps/mobile/components/customer/booking-wizard/                Phase 3.1 NEW folder
+apps/mobile/components/customer/kael-chat/                     Phase 3.2 fork qna-surface
+```
+
+**Phase 4 (Polish):**
+
+```
+apps/mobile/components/customer/kael-chat/kael-chat-surface.tsx:364   Phase 4.1 EstimateCard
+apps/mobile/components/customer/customer-surfaces.tsx:1321-1352       Phase 4.2 Review fields
+supabase/functions/mobile-api/_shared/push.ts:117-180                 Phase 4.3 retry
+apps/mobile/lib/copy/ (new)                                            Phase 4.4
+```
+
+**Phase 5 (Hygiene):**
+
+```
+apps/mobile/app/(admin)/ (new)                                 Phase 5.1
+apps/mobile/app/(customer)/_layout.tsx:70                      Phase 5.1 remove bypass
+apps/mobile/app/(worker)/_layout.tsx:63                        Phase 5.1 remove bypass
+apps/mobile/app/index.tsx:20                                   Phase 5.1 admin redirect
+supabase/functions/mobile-api/_shared/router.ts                Phase 5.1 admin route split
+packages/shared/src/__tests__/mobile-wiring.test.ts            Phase 5.7 hard-rule asserts
+docs/architecture/status-vocabulary.md (new)                   Phase 5.2
+docs/workflow/worker-cancellation.md (new)                     Phase 5.4
+```
+
+---
+
 End of Plan.md
