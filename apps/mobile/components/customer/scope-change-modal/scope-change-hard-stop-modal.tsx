@@ -46,6 +46,7 @@ const copy = {
     newEstimate: 'Ước tính mới (Kael)',
     newScope: 'Phạm vi mới',
     pending: 'Cần xác nhận',
+    priceDisclaimer: 'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.',
     reason: 'Lý do từ thợ',
     reject: 'Không duyệt',
     risk: 'Lưu ý',
@@ -63,6 +64,7 @@ const copy = {
     newEstimate: 'New estimate (Kael)',
     newScope: 'New scope',
     pending: 'Needs confirmation',
+    priceDisclaimer: 'This is a market-based estimate. The actual price will be confirmed by the worker before starting.',
     reason: 'Worker reason',
     reject: 'Do not approve',
     risk: 'Notes',
@@ -106,7 +108,7 @@ export function ScopeChangeHardStopModal({
       <View accessibilityViewIsModal style={styles.scrim} testID="customer-scope-change-hard-stop-modal">
         <View style={[styles.sheet, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]}>
           <Text style={[styles.eyebrow, { color: tokens.copper }]} numberOfLines={1}>
-            A11
+            {text.pending}
           </Text>
           <Text style={[styles.title, { color: tokens.text }]}>{text.title}</Text>
           <Text style={[styles.body, { color: tokens.muted }]}>{text.hardStop}</Text>
@@ -126,6 +128,7 @@ export function ScopeChangeHardStopModal({
             <InfoBlock label={text.currentEstimate} tokens={tokens} value={originalEstimateLabel || text.pending} />
             <InfoBlock label={text.newEstimate} tokens={tokens} value={newEstimate} />
           </View>
+          <Text style={[styles.priceDisclaimer, { color: tokens.muted }]}>{text.priceDisclaimer}</Text>
 
           <View style={[styles.noteBox, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
             <Text style={[styles.noteLabel, { color: tokens.primary }]} numberOfLines={1}>
@@ -319,6 +322,12 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.82,
     transform: [{ scale: 0.99 }],
+  },
+  priceDisclaimer: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 17,
   },
   primaryButton: {
     alignItems: 'center',

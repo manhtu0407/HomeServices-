@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { BlurView, type BlurTint } from 'expo-blur'
 import { GlassView, isLiquidGlassAvailable, type GlassColorScheme, type GlassStyle } from 'expo-glass-effect'
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Platform, StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native'
 import { useGlassAccessibility } from './accessibility-motion'
 import { createGlassSurfaceStyle, type GlassMode, type GlassVariant } from './tokens'
 
@@ -10,15 +10,22 @@ type GlassSurfaceProps = {
   borderColor?: string
   children: ReactNode
   mode?: GlassMode
+  onLayout?: ViewProps['onLayout']
   style?: StyleProp<ViewStyle>
   testID?: string
   variant?: GlassVariant
 }
 
-export function GlassSurface({ backgroundColor, borderColor, children, mode = 'light', style, testID, variant = 'subtle' }: GlassSurfaceProps) {
+export function GlassSurface({ backgroundColor, borderColor, children, mode = 'light', onLayout, style, testID, variant = 'subtle' }: GlassSurfaceProps) {
   const { reduceTransparency } = useGlassAccessibility()
   const surfaceStyle = createGlassSurfaceStyle({ backgroundColor, borderColor, mode, reduceTransparency, variant })
-  const composedStyle = [styles.surface, surfaceStyle, style]
+  const webNavBackingStyle = Platform.OS === 'web' && variant === 'nav' && !reduceTransparency
+    ? mode === 'dark'
+      ? styles.webNavBackingDark
+      : styles.webNavBackingLight
+    : null
+  const composedStyle = [styles.surface, surfaceStyle, webNavBackingStyle, style]
+  const shouldUseBlurFallback = variant !== 'nav' || Platform.OS !== 'web'
 
   if (!reduceTransparency && isLiquidGlassAvailable()) {
     return (
@@ -26,6 +33,7 @@ export function GlassSurface({ backgroundColor, borderColor, children, mode = 'l
         colorScheme={glassColorSchemeByMode[mode]}
         glassEffectStyle={glassStyleByVariant[variant]}
         isInteractive={variant === 'control' || variant === 'nav'}
+        onLayout={onLayout}
         style={composedStyle}
         testID={testID}
         tintColor={backgroundColor}
@@ -36,11 +44,12 @@ export function GlassSurface({ backgroundColor, borderColor, children, mode = 'l
     )
   }
 
-  if (!reduceTransparency) {
+  if (!reduceTransparency && shouldUseBlurFallback && Platform.OS !== 'web') {
     return (
       <BlurView
         experimentalBlurMethod="none"
         intensity={blurIntensityByVariant[variant]}
+        onLayout={onLayout}
         style={composedStyle}
         testID={testID}
         tint={blurTintByMode[mode]}
@@ -53,9 +62,11 @@ export function GlassSurface({ backgroundColor, borderColor, children, mode = 'l
 
   return (
     <View
+      onLayout={onLayout}
       style={composedStyle}
       testID={testID}
     >
+      {!reduceTransparency ? <View pointerEvents="none" style={styles.edgeHighlight} /> : null}
       {children}
     </View>
   )
@@ -101,4 +112,13 @@ const styles = StyleSheet.create({
   surface: {
     position: 'relative',
   },
+  webNavBackingDark: {
+    backgroundColor: '#102420',
+    borderColor: 'rgba(105,222,198,0.20)',
+  },
+  webNavBackingLight: {
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundImage: 'radial-gradient(circle at 52% 0%, rgba(207,255,243,0.52), transparent 38%)',
+    borderColor: 'rgba(255,255,255,0.88)',
+  } as any,
 })

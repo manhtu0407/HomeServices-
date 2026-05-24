@@ -21,8 +21,8 @@ const radiusByVariant: Record<GlassVariant, number> = {
 
 const shadowByVariant: Record<GlassVariant, { dark: string; light: string }> = {
   nav: {
-    dark: '0 12px 30px rgba(0,0,0,0.22)',
-    light: '0 12px 30px rgba(13,70,65,0.10)',
+    dark: '0 18px 36px rgba(0,0,0,0.28)',
+    light: '0 18px 36px rgba(21,89,78,0.18), inset 0 1px 0 rgba(255,255,255,0.94)',
   },
   control: {
     dark: '0 6px 14px rgba(0,0,0,0.16)',
@@ -46,7 +46,7 @@ export const glassDesignTokens = {
   borderWidth: 1,
   highlightOpacity: 0.48,
   maxVisibleLayers: 3,
-  pressedScale: 0.98,
+  pressedScale: 0.985,
   radius: radiusByVariant,
   spacing: {
     controlGap: 8,
@@ -66,12 +66,12 @@ export function createGlassSurfaceStyle({
   variant = 'subtle',
 }: GlassSurfaceOptions = {}): ViewStyle {
   const isDark = mode === 'dark'
-  const fallbackBackground = isDark ? 'rgba(17,37,34,0.88)' : 'rgba(255,255,255,0.88)'
-  const glassBackground = isDark ? 'rgba(16,36,32,0.72)' : 'rgba(255,255,255,0.70)'
+  const fallbackBackground = isDark ? '#112522' : '#FFFDF8'
+  const glassBackground = isDark ? 'rgba(16,36,32,0.72)' : variant === 'nav' ? 'rgba(255,255,255,0.78)' : 'rgba(255,255,255,0.70)'
 
   return {
     backgroundColor: reduceTransparency ? fallbackBackground : (backgroundColor ?? glassBackground),
-    borderColor: borderColor ?? (isDark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.78)'),
+    borderColor: borderColor ?? (isDark ? 'rgba(255,255,255,0.14)' : variant === 'nav' ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.78)'),
     borderCurve: 'continuous',
     borderRadius: radiusByVariant[variant],
     borderWidth: glassDesignTokens.borderWidth,
@@ -82,7 +82,7 @@ export function createGlassSurfaceStyle({
 
 export function createOpaqueRowStyle({ mode = 'light' }: { mode?: GlassMode } = {}): ViewStyle {
   return {
-    backgroundColor: mode === 'dark' ? 'rgba(18,39,36,0.96)' : 'rgba(255,253,248,0.96)',
+    backgroundColor: mode === 'dark' ? '#122724' : '#FFFDF8',
     borderColor: mode === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(210,232,225,0.82)',
     borderCurve: 'continuous',
     borderWidth: 1,

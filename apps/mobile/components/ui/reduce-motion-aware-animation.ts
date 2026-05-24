@@ -1,5 +1,5 @@
 import { createElement, type ReactNode, useEffect } from 'react'
-import { type StyleProp, type ViewProps, type ViewStyle } from 'react-native'
+import { Platform, type StyleProp, type ViewProps, type ViewStyle } from 'react-native'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
 import { motionDuration, motionTokens } from './motion-tokens'
 import { useGlassAccessibility } from './accessibility-motion'
@@ -27,15 +27,16 @@ export function ReduceMotionAwareEntranceView({
   testID,
 }: ReduceMotionAwareEntranceViewProps) {
   const { reduceMotion } = useGlassAccessibility()
-  const opacity = useSharedValue(0)
+  const fadeIn = Platform.OS !== 'web'
+  const opacity = useSharedValue(fadeIn ? 0 : 1)
   const translateY = useSharedValue(distanceY)
 
   useEffect(() => {
-    opacity.value = 0
+    opacity.value = fadeIn ? 0 : 1
     translateY.value = reduceMotion ? 0 : distanceY
 
     const duration = motionDuration(motionTokens.entrance.durationMs, reduceMotion)
-    opacity.value = withDelay(reduceMotion ? 0 : delayMs, withTiming(1, { duration }))
+    if (fadeIn) opacity.value = withDelay(reduceMotion ? 0 : delayMs, withTiming(1, { duration }))
     translateY.value = reduceMotion
       ? withTiming(0, { duration })
       : withDelay(delayMs, withSpring(0, {
@@ -47,7 +48,7 @@ export function ReduceMotionAwareEntranceView({
       cancelAnimation(opacity)
       cancelAnimation(translateY)
     }
-  }, [delayMs, distanceY, opacity, reduceMotion, translateY])
+  }, [delayMs, distanceY, fadeIn, opacity, reduceMotion, translateY])
 
   const animatedStyle = useAnimatedStyle(() => (
     reduceMotion
