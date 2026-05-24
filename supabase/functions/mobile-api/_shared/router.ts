@@ -168,6 +168,16 @@ type WorkerScopeChangeResponse = {
   job_id: string;
   status: ScopeChangeStatus;
   created_at: string;
+  kael_estimate?: {
+    price_min: number;
+    price_max: number;
+    confidence: number;
+    problem_summary: string;
+    advisory: string | null;
+    complexity_assessment: "small" | "medium" | "large";
+    disclaimer: string;
+    fallback_used: boolean;
+  };
 };
 type WorkerCancellationResponse = {
   cancellation_id: string;
@@ -193,7 +203,7 @@ type JobMediaAttachResponse = {
     bucket_id: "job-media";
     object_path: string;
     storage_ref: string;
-    stage: "before" | "after" | "kael_reference" | "cancellation_evidence";
+    stage: "before" | "after" | "kael_reference" | "cancellation_evidence" | "scope_change_evidence";
   }[];
 };
 type JobMessageResponse = {
@@ -345,7 +355,10 @@ type JobDetailResponse = {
     reason: string | null;
     price_min: number | null;
     price_max: number | null;
+    kael_computed_min: number | null;
+    kael_computed_max: number | null;
     kael_review: Record<string, unknown> | null;
+    evidence_photo_urls: string[];
     created_at: string | null;
   } | null;
 };

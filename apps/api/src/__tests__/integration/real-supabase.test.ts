@@ -357,6 +357,7 @@ describeReal('Real Supabase — full job lifecycle', () => {
       .update({
         status: 'broadcasting',
         broadcast_at: new Date().toISOString(),
+        final_price: 600000,
       })
       .eq('id', testJobId!)
 
@@ -416,14 +417,13 @@ describeReal('Real Supabase — full job lifecycle', () => {
     expect(data!.status).toBe('repairing')
   })
 
-  it('Step 8: repairing → completed_by_worker (with final_price)', async () => {
+  it('Step 8: repairing → completed_by_worker without worker final_price', async () => {
     expect(testJobId).not.toBeNull()
 
     const { error } = await supabase
       .from('jobs')
       .update({
         status: 'completed_by_worker',
-        final_price: 350000,
         completion_notes: 'Đã thay cầu dao mới và kiểm tra toàn bộ hệ thống điện',
         completion_photo_urls: [],
         completed_at: new Date().toISOString(),
@@ -481,7 +481,7 @@ describeReal('Real Supabase — full job lifecycle', () => {
     expect(data!.status).toBe('paid')
     expect(data!.customer_id).toBe(customerUserId)
     expect(data!.worker_id).toBe(workerUserId)
-    expect(data!.final_price).toBe(350000)
+    expect(data!.final_price).toBe(600000)
     expect(data!.kael_price_min).toBe(250000)
     expect(data!.kael_price_max).toBe(600000)
     expect(data!.kael_complexity).toBe('medium')

@@ -25,7 +25,7 @@ type WorkerVerificationUrls = {
 export async function uploadJobMediaDrafts(
   jobId: string,
   mediaItems: LocalMediaUploadDraft[],
-  stage: Extract<JobMediaStage, 'before' | 'after' | 'cancellation_evidence'> = 'before',
+  stage: Extract<JobMediaStage, 'before' | 'after' | 'cancellation_evidence' | 'scope_change_evidence'> = 'before',
 ) {
   if (mediaItems.length === 0) return { success: true as const, mediaRefs: [] as string[] }
   if (!supabase) {

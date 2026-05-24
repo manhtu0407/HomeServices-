@@ -2313,7 +2313,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
             try {
               let photoUrls: string[] = []
               if (scopePhotos.length > 0) {
-                const upload = await uploadJobMediaDrafts(jobId, scopePhotos, 'after')
+                const upload = await uploadJobMediaDrafts(jobId, scopePhotos, 'scope_change_evidence')
                 if (!upload.success) {
                   Alert.alert(actionCopy.alerts.uploadFailedTitle, upload.error)
                   return

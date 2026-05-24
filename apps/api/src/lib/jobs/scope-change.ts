@@ -22,44 +22,6 @@ export type DecideScopeChangeResult =
     }
   | { success: false; error: string; code: string; status: number }
 
-/**
- * Map RPC error codes to HTTP response shapes.
- */
-function mapRequestError(errorCode: string | null): {
-  success: false
-  error: string
-  code: string
-  status: number
-} {
-  switch (errorCode) {
-    case 'NOT_FOUND':
-      return { success: false, error: 'Không tìm thấy yêu cầu', code: 'NOT_FOUND', status: 404 }
-    case 'AUTH_FORBIDDEN':
-      return {
-        success: false,
-        error: 'Bạn không có quyền thực hiện hành động này',
-        code: 'AUTH_FORBIDDEN',
-        status: 403,
-      }
-    case 'INVALID_STATUS':
-      return {
-        success: false,
-        error: 'Trạng thái yêu cầu không hợp lệ',
-        code: 'INVALID_STATUS',
-        status: 409,
-      }
-    case 'INVALID_PRICE_RANGE':
-      return {
-        success: false,
-        error: 'Khoảng giá không hợp lệ',
-        code: 'VALIDATION',
-        status: 400,
-      }
-    default:
-      return { success: false, error: 'Không thể tạo yêu cầu thay đổi', code: 'DB_ERROR', status: 500 }
-  }
-}
-
 function mapDecideError(errorCode: string | null): {
   success: false
   error: string
@@ -90,59 +52,36 @@ function mapDecideError(errorCode: string | null): {
         code: 'VALIDATION',
         status: 400,
       }
+    case 'KAEL_PRICE_MISSING':
+      return {
+        success: false,
+        error: 'Kael chưa có giá phát sinh hợp lệ để chốt yêu cầu',
+        code: 'KAEL_PRICE_MISSING',
+        status: 409,
+      }
     default:
       return { success: false, error: 'Không thể cập nhật quyết định', code: 'DB_ERROR', status: 500 }
   }
 }
 
 /**
- * B6 — Worker requests scope change via `request_scope_change_atomic` RPC.
+ * B6 scope-change requests are Edge-only.
  *
- * The PG function atomically:
- *   - Inserts the scope_change_requests row
- *   - Transitions job to 'scope_change_pending' with mirrored price fields
- *
- * Replaces a 2-write non-atomic flow that could leave orphan scope_change rows.
+ * The Edge mobile-api computes and persists Kael's estimate before notifying
+ * the customer. Keeping this Next reference path open would call a stale RPC
+ * signature without Kael fields.
  */
 export async function requestScopeChange(
-  supabase: SupabaseClient<Database>,
-  jobId: string,
-  workerId: string,
-  input: WorkerScopeChangeInput,
+  _supabase: SupabaseClient<Database>,
+  _jobId: string,
+  _workerId: string,
+  _input: WorkerScopeChangeInput,
 ): Promise<RequestScopeChangeResult> {
-  // Phase 2.0 (2026-05-23): worker không nhập price ở B6; Kael compute từ
-  // original Kael context + worker reported scope sau khi RPC insert.
-  // Parity reference for apps/api admin/support; Edge runtime is the
-  // authoritative path (supabase/functions/mobile-api/_shared/services.ts).
-  const { data, error } = await withDbTimeout(
-    supabase.rpc('request_scope_change_atomic', {
-      p_job_id: jobId,
-      p_worker_id: workerId,
-      p_new_description: input.new_description,
-      p_reason: input.reason,
-    }),
-  )
-
-  if (error) {
-    console.warn('requestScopeChange: RPC call failed', { jobId, errorCode: error.code })
-    return { success: false, error: 'Không thể tạo yêu cầu thay đổi', code: 'DB_ERROR', status: 500 }
-  }
-
-  const row = data?.[0]
-  if (!row) {
-    return { success: false, error: 'Không thể tạo yêu cầu thay đổi', code: 'DB_ERROR', status: 500 }
-  }
-
-  if (!row.ok) {
-    return mapRequestError(row.error_code)
-  }
-
   return {
-    success: true,
-    scopeChangeId: row.scope_change_id!,
-    jobId,
-    status: row.scope_status as ScopeChangeStatus,
-    createdAt: row.created_at_ts!,
+    success: false,
+    error: 'Yêu cầu thay đổi phạm vi phải đi qua Edge mobile-api để Kael tính và lưu giá trước khi thông báo khách.',
+    code: 'EDGE_MOBILE_API_REQUIRED',
+    status: 501,
   }
 }
 

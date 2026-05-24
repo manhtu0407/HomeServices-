@@ -131,7 +131,7 @@ describe('mobile-api Edge runtime helpers', () => {
       },
       { data: { safe_metadata: { address_label: 'Landmark 81, Bình Thạnh' } }, error: null },
       { data: { id: 'job-1' }, error: null },
-      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7' }, error: null },
+      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7', kael_price_max: 250000, final_price: null }, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
       { data: { address_lat: null, address_lng: null, problem_chips: ['leak'], service_problem_id: null, kael_problem_identified: 'Pipe leak' }, error: null },
@@ -1418,6 +1418,16 @@ describe('mobile-api Edge runtime helpers', () => {
           reason: 'Breaker is burnt',
           price_min: 250000,
           price_max: 250000,
+          kael_computed_min: 250000,
+          kael_computed_max: 350000,
+          kael_review: {
+            problem_summary: 'Replace damaged breaker',
+            advisory: 'Confirm before continuing',
+            complexity_assessment: 'medium',
+            confidence: 0.8,
+            fallback_used: false,
+          },
+          evidence_photo_urls: ['supabase://job-media/job-1/scope_change_evidence/a.jpg'],
           created_at: '2026-05-17T00:01:00.000Z',
         }],
         error: null,
@@ -1436,6 +1446,8 @@ describe('mobile-api Edge runtime helpers', () => {
         id: 'scope-1',
         requested_description: 'Replace damaged breaker',
         price_min: 250000,
+        kael_computed_max: 350000,
+        evidence_photo_urls: ['supabase://job-media/job-1/scope_change_evidence/a.jpg'],
       },
     })
 
@@ -1676,7 +1688,7 @@ describe('mobile-api Edge runtime helpers', () => {
     )
   })
 
-  it('notifies the customer immediately when a worker requests a scope change', async () => {
+  it('persists Kael review before notifying the customer about a worker scope change', async () => {
     // Phase 2.0 (plan §22.7.B, 2026-05-23): computeScopeChangeEstimate schema
     // returns complexity_assessment + price_min/max + problem_summary.
     const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
@@ -1727,10 +1739,11 @@ describe('mobile-api Edge runtime helpers', () => {
         error: null,
       },
       { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
       { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
       { data: [{ id: 'token-1', user_id: 'customer-1', push_token: 'ExponentPushToken[customer]' }], error: null },
       { data: null, error: null },
-      { data: { id: 'scope-1' }, error: null },
     ])
     const ctx: MobileApiContext = {
       success: true,
@@ -1743,25 +1756,39 @@ describe('mobile-api Edge runtime helpers', () => {
       // Phase 2.0 (2026-05-23): worker không gửi price; Kael compute từ context.
       new_description: 'Add repair scope after onsite inspection',
       reason: 'Found additional damaged part that needs immediate handling',
-      photo_urls: [],
+      photo_urls: ['supabase://job-media/job-1/scope_change_evidence/a.jpg'],
     })).resolves.toMatchObject({
       scope_change_id: 'scope-1',
       job_id: 'job-1',
       status: 'waiting_customer_decision',
     })
 
-    const reviewCall = client.calls.find((call) => call.table === 'scope_change_requests')
-    const reviewUpdate = reviewCall?.operations.find((op) => op[0] === 'update')
-    expect(reviewUpdate?.[1]).toMatchObject({
-      kael_review: expect.objectContaining({
-        version: 'scope-change-estimate.2026-05-23.v1',
-        fallback_used: false,
+    const requestCallIndex = client.calls.findIndex((call) => call.table === 'rpc:request_scope_change_atomic')
+    const notificationCallIndex = client.calls.findIndex((call) => call.table === 'rpc:insert_notification_atomic')
+    expect(requestCallIndex).toBeGreaterThan(-1)
+    expect(notificationCallIndex).toBeGreaterThan(requestCallIndex)
+    const requestCall = client.calls[requestCallIndex]
+    expect(requestCall.operations).toContainEqual([
+      'rpc',
+      'request_scope_change_atomic',
+      expect.objectContaining({
+        p_evidence_photo_urls: ['supabase://job-media/job-1/scope_change_evidence/a.jpg'],
+        p_kael_computed_min: 200000,
+        p_kael_computed_max: 350000,
+        p_kael_review: expect.objectContaining({
+          version: 'scope-change-estimate.2026-05-23.v1',
+          fallback_used: false,
+          problem_summary: expect.any(String),
+          advisory: expect.any(String),
+          complexity_assessment: 'medium',
+          confidence: 0.72,
+        }),
       }),
-      kael_computed_min: expect.any(Number),
-      kael_computed_max: expect.any(Number),
-      price_min: expect.any(Number),
-      price_max: expect.any(Number),
-    })
+    ])
+    expect(client.calls.some((call) =>
+      call.table === 'scope_change_requests' &&
+      call.operations.some((op) => op[0] === 'update')
+    )).toBe(false)
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.anthropic.com/v1/messages',
       expect.objectContaining({ method: 'POST' }),
@@ -1775,6 +1802,7 @@ describe('mobile-api Edge runtime helpers', () => {
         success: true,
       })],
     ])
+    expect(client.calls.findIndex((call) => call.table === 'api_logs')).toBeLessThan(notificationCallIndex)
     const notificationCall = client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')
     expect(notificationCall?.operations).toContainEqual([
       'rpc',
@@ -1793,6 +1821,54 @@ describe('mobile-api Edge runtime helpers', () => {
         body: expect.stringContaining('/(customer)/history?scope_change=scope-1&job_id=job-1'),
       }),
     )
+  })
+
+  it('keeps scope-change evidence media separate from completion photos', async () => {
+    const jobId = '11111111-1111-1111-1111-111111111111'
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: jobId,
+          status: 'repairing',
+          service_type: 'plumbing',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          photo_urls: [],
+          completion_photo_urls: ['supabase://job-media/existing-after.jpg'],
+        },
+        error: null,
+      },
+      { data: [{ id: 'media-1' }], error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).attachJobMedia(ctx, jobId, {
+      assets: [{
+        object_path: `${jobId}/scope_change_evidence/evidence.jpg`,
+        stage: 'scope_change_evidence',
+        mime_type: 'image/jpeg',
+        file_size_bytes: 1234,
+      }],
+    })).resolves.toMatchObject({
+      job_id: jobId,
+      media: [expect.objectContaining({
+        stage: 'scope_change_evidence',
+        storage_ref: `supabase://job-media/${jobId}/scope_change_evidence/evidence.jpg`,
+      })],
+    })
+
+    expect(client.calls.some((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) =>
+        op[0] === 'update' && JSON.stringify(op[1]).includes('completion_photo_urls')
+      )
+    )).toBe(false)
   })
 
   it('notifies the worker when the customer decides a scope change', async () => {
@@ -1816,8 +1892,7 @@ describe('mobile-api Edge runtime helpers', () => {
         }],
         error: null,
       },
-      { data: { kael_computed_min: 200000, kael_computed_max: 350000 }, error: null },
-      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
       { data: null, error: null },
       { data: { worker_id: 'worker-1' }, error: null },
       { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
@@ -1856,6 +1931,51 @@ describe('mobile-api Edge runtime helpers', () => {
         body: expect.stringContaining('/(worker)/jobs?job_id=job-1'),
       }),
     )
+    expect(client.calls.some((call) =>
+      call.table === 'scope_change_requests' &&
+      call.operations.some((op) => op[0] === 'select')
+    )).toBe(false)
+    expect(client.calls.some((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'update' && JSON.stringify(op[1]).includes('final_price'))
+    )).toBe(false)
+  })
+
+  it('fails A11 approve atomically when the Kael computed max is missing', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: false,
+          error_code: 'KAEL_PRICE_MISSING',
+          job_id_out: null,
+          scope_status: null,
+          decided_at_ts: null,
+        }],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).decideScopeChange(ctx, 'scope-1', {
+      decision: 'approve',
+    })).rejects.toMatchObject({
+      code: 'KAEL_PRICE_MISSING',
+      status: 409,
+    })
+
+    expect(client.calls).toHaveLength(1)
+    expect(client.calls[0].table).toBe('rpc:decide_scope_change_atomic')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('auto-approves worker cancellation, re-broadcasts, and notifies the customer without rating penalties', async () => {
@@ -1978,6 +2098,13 @@ describe('mobile-api Edge runtime helpers', () => {
           status: 'repairing',
           customer_id: 'customer-1',
           worker_id: 'worker-1',
+          service_type: 'electrical',
+          description: 'Old scope',
+          address_district: 'q1',
+          kael_problem_identified: 'Old issue',
+          kael_complexity: 'small',
+          kael_price_min: 150000,
+          kael_price_max: 250000,
         },
         error: null,
       },
@@ -2186,6 +2313,37 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(client.calls.some((call) => call.table === 'worker_profiles')).toBe(false)
   })
 
+  it('rejects A7 confirm-search before broadcasting when Kael baseline max is missing', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'awaiting_customer_confirm',
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          address_district: 'q7',
+          kael_price_max: null,
+          final_price: null,
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmSearch(ctx, 'job-1')).rejects.toMatchObject({
+      code: 'KAEL_PRICE_MISSING',
+      status: 409,
+    })
+
+    expect(client.calls.some((call) => call.table === 'job_broadcasts')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'worker_profiles')).toBe(false)
+  })
+
   it('returns broadcast_sent=false when retry finds no eligible worker', async () => {
     const client = makeSequenceClient([
       { data: { id: 'job-1', status: 'broadcasting', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7' }, error: null },
@@ -2222,7 +2380,7 @@ describe('mobile-api Edge runtime helpers', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const client = makeSequenceClient([
-      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7' }, error: null },
+      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7', kael_price_max: 250000, final_price: null }, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
       { data: { address_lat: null, address_lng: null, problem_chips: ['pipe_leak'], service_problem_id: null, kael_problem_identified: null }, error: null },
@@ -2357,7 +2515,7 @@ describe('mobile-api Edge runtime helpers', () => {
 
   it('does not fake a no-worker fallback when broadcast insert fails', async () => {
     const client = makeSequenceClient([
-      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7' }, error: null },
+      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7', kael_price_max: 250000, final_price: null }, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
       { data: { address_lat: null, address_lng: null, problem_chips: ['pipe_leak'], service_problem_id: null, kael_problem_identified: null }, error: null },

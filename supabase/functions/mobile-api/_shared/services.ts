@@ -1036,27 +1036,7 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
   // Kael baseline (only if not already locked, e.g. retry). Worker không có
   // authority để override; chỉ A11 approve mới re-lock từ Kael compute mới.
   const kaelPriceMax = nullableNumber(job.kael_price_max);
-  if (
-    nullableNumber(job.final_price) === null &&
-    kaelPriceMax !== null &&
-    kaelPriceMax > 0
-  ) {
-    const lockUpdate = await dbQuery<{ id: string }>(
-      client
-        .from("jobs")
-        .update({ final_price: kaelPriceMax })
-        .eq("id", jobId)
-        .is("final_price", null)
-        .select("id")
-        .maybeSingle(),
-    );
-    if (lockUpdate.error) {
-      console.warn("mobile-api confirmSearch: failed to lock Kael price baseline", {
-        jobId,
-        errorCode: lockUpdate.error.code ?? null,
-      });
-    }
-  }
+  const lockedFinalPrice = nullableNumber(job.final_price) ?? kaelPriceMax;
 
   const district = normalizeServiceAreaDistrict(
     nullableString(job.address_district) ?? "",
@@ -1094,6 +1074,13 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
       "broadcasting",
     );
   } else {
+    if (lockedFinalPrice === null || lockedFinalPrice <= 0) {
+      apiFailure(
+        "KAEL_PRICE_MISSING",
+        "Kael chưa chốt được giá tạm tính nên chưa thể tìm thợ",
+        409,
+      );
+    }
     const transition = validateTransition(
       job.status as JobStatus,
       "broadcasting",
@@ -1108,6 +1095,7 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
           status: "broadcasting",
           broadcast_at: now,
           confirmed_search_at: now,
+          final_price: lockedFinalPrice,
         })
         .eq("id", jobId)
         .eq("customer_id", ctx.user.id)
@@ -1463,14 +1451,43 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
     select:
       "id, status, customer_id, worker_id, service_type, description, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max",
   });
-  // Phase 2.0 (2026-05-23): RPC no longer takes price params. Worker only
-  // supplies description + reason; Kael computes price after insert.
+  const originalPriceMax = nullableNumber(job.kael_price_max);
+  if (originalPriceMax === null || originalPriceMax <= 0) {
+    apiFailure(
+      "KAEL_PRICE_MISSING",
+      "Kael chưa có giá gốc hợp lệ để tính phạm vi phát sinh",
+      409,
+    );
+  }
+
+  const estimate = await computeScopeChangeEstimate({
+    serviceType: asServiceType(job.service_type),
+    district: nullableString(job.address_district),
+    originalDescription: nullableString(job.description) ?? "",
+    originalProblemSummary: nullableString(job.kael_problem_identified),
+    originalComplexity: asComplexityOrNull(job.kael_complexity),
+    originalPriceMin: nullableNumber(job.kael_price_min),
+    originalPriceMax,
+    workerReportedDescription: input.new_description,
+    workerReason: input.reason,
+  }, secrets);
+  if (estimate.price_max <= 0 || estimate.price_max < estimate.price_min) {
+    apiFailure(
+      "KAEL_PRICE_MISSING",
+      "Kael chưa thể tính giá phát sinh hợp lệ",
+      409,
+    );
+  }
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("request_scope_change_atomic", {
       p_job_id: jobId,
       p_worker_id: ctx.user.id,
       p_new_description: input.new_description,
       p_reason: input.reason,
+      p_evidence_photo_urls: input.photo_urls ?? [],
+      p_kael_computed_min: estimate.price_min,
+      p_kael_computed_max: estimate.price_max,
+      p_kael_review: estimate,
     }),
   );
   if (result.error) {
@@ -1479,6 +1496,21 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
   const row = result.data?.[0];
   if (!row) apiFailure("DB_ERROR", "Không thể tạo yêu cầu thay đổi", 500);
   if (!row.ok) mapScopeRequestError(nullableString(row.error_code));
+  await logJobEvent(
+    client,
+    jobId,
+    "kael_scope_review_computed",
+    ctx,
+    null,
+    null,
+    {
+      fallback_used: estimate.fallback_used,
+      confidence: estimate.confidence,
+      computed_min: estimate.price_min,
+      computed_max: estimate.price_max,
+    },
+  );
+  await logScopeChangeEstimateApiCall(client, jobId, estimate);
   await logJobEvent(
     client,
     jobId,
@@ -1497,21 +1529,15 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
     nullableString(job.customer_id),
     scopeChangeId,
   );
-
-  // Phase 2.0: Kael compute new price estimate from worker reported scope.
-  const estimate = await computeScopeChangeEstimate({
-    serviceType: asServiceType(job.service_type),
-    district: nullableString(job.address_district),
-    originalDescription: nullableString(job.description) ?? "",
-    originalProblemSummary: nullableString(job.kael_problem_identified),
-    originalComplexity: asComplexityOrNull(job.kael_complexity),
-    originalPriceMin: nullableNumber(job.kael_price_min),
-    originalPriceMax: nullableNumber(job.kael_price_max),
-    workerReportedDescription: input.new_description,
-    workerReason: input.reason,
-  }, secrets);
-  await logScopeChangeEstimateApiCall(client, jobId, estimate);
-  await saveScopeChangeKaelEstimate(client, scopeChangeId, estimate);
+  await logJobEvent(
+    client,
+    jobId,
+    "scope_change_notified",
+    ctx,
+    "scope_change_pending",
+    "scope_change_pending",
+    { scope_change_id: scopeChangeId },
+  );
   return {
     scope_change_id: scopeChangeId,
     job_id: jobId,
@@ -1522,7 +1548,7 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
       price_max: estimate.price_max,
       confidence: estimate.confidence,
       problem_summary: estimate.problem_summary,
-      advisory: estimate.advisory,
+      advisory: estimate.advisory ?? null,
       complexity_assessment: estimate.complexity_assessment,
       disclaimer: estimate.disclaimer,
       fallback_used: estimate.fallback_used,
@@ -1554,33 +1580,6 @@ async function logScopeChangeEstimateApiCall(
     success: !estimate.fallback_used,
     error_code: estimate.failure_reason ?? null,
   }]);
-}
-
-async function saveScopeChangeKaelEstimate(
-  client: DbClient,
-  scopeChangeId: string,
-  estimate: ScopeChangeKaelEstimate,
-) {
-  const result = await dbQuery<{ id: string }>(
-    client
-      .from("scope_change_requests")
-      .update({
-        kael_review: estimate,
-        kael_computed_min: estimate.price_min,
-        kael_computed_max: estimate.price_max,
-        price_min: estimate.price_min,
-        price_max: estimate.price_max,
-      })
-      .eq("id", scopeChangeId)
-      .select("id")
-      .maybeSingle(),
-  );
-  if (result.error || !result.data) {
-    console.warn("mobile-api scope change Kael estimate save failed", {
-      scopeChangeId,
-      errorCode: result.error?.code ?? "NO_ROW",
-    });
-  }
 }
 
 async function requestWorkerCancellation(
@@ -1912,13 +1911,16 @@ async function decideScopeChange(
   if (!row.ok) mapScopeDecisionError(nullableString(row.error_code));
 
   const jobId = asString(row.job_id_out);
-
-  // Phase 2.0 (2026-05-23): On approve, lock jobs.final_price to Kael-computed
-  // max from this scope change. Customer A12 will see this value at completion.
-  // On reject, leave final_price at the previous Kael baseline (job is cancelled
-  // anyway per 20260518181500_scope_change_reject_cancels_job migration).
   if (input.decision === "approve") {
-    await applyKaelLockedPriceFromScopeChange(client, jobId, scopeChangeId);
+    await logJobEvent(
+      client,
+      jobId,
+      "scope_change_final_price_locked",
+      ctx,
+      "scope_change_pending",
+      nextJobStatus,
+      { scope_change_id: scopeChangeId },
+    );
   }
 
   await logJobEvent(
@@ -1939,45 +1941,6 @@ async function decideScopeChange(
     status: row.scope_status as ScopeChangeStatus,
     decided_at: asString(row.decided_at_ts),
   };
-}
-
-async function applyKaelLockedPriceFromScopeChange(
-  client: DbClient,
-  jobId: string,
-  scopeChangeId: string,
-) {
-  const lookup = await dbQuery<{
-    kael_computed_min: number | null;
-    kael_computed_max: number | null;
-  }>(
-    client
-      .from("scope_change_requests")
-      .select("kael_computed_min, kael_computed_max")
-      .eq("id", scopeChangeId)
-      .maybeSingle(),
-  );
-  const computedMax = nullableNumber(lookup.data?.kael_computed_max);
-  if (computedMax === null || computedMax <= 0) {
-    console.warn(
-      "mobile-api scope change approve: Kael compute missing, leaving final_price unchanged",
-      { scopeChangeId, jobId },
-    );
-    return;
-  }
-  const update = await dbQuery<{ id: string }>(
-    client
-      .from("jobs")
-      .update({ final_price: computedMax })
-      .eq("id", jobId)
-      .select("id")
-      .maybeSingle(),
-  );
-  if (update.error) {
-    console.warn(
-      "mobile-api scope change approve: failed to update jobs.final_price",
-      { scopeChangeId, jobId, errorCode: update.error.code ?? null },
-    );
-  }
 }
 
 function scopeDecisionToJobStatus(decision: "approve" | "reject"): JobStatus {
@@ -3079,7 +3042,7 @@ async function getCurrentScopeChange(client: DbClient, jobId: string) {
     client
       .from("scope_change_requests")
       .select(
-        "id, status, requested_description, reason, price_min, price_max, kael_review, created_at",
+        "id, status, requested_description, reason, price_min, price_max, kael_computed_min, kael_computed_max, kael_review, evidence_photo_urls, created_at",
       )
       .eq("job_id", jobId)
       .in("status", ["waiting_customer_decision", "reviewing_by_kael"])
@@ -3102,7 +3065,10 @@ async function getCurrentScopeChange(client: DbClient, jobId: string) {
     reason: nullableString(row.reason),
     price_min: nullableNumber(row.price_min),
     price_max: nullableNumber(row.price_max),
+    kael_computed_min: nullableNumber(row.kael_computed_min),
+    kael_computed_max: nullableNumber(row.kael_computed_max),
     kael_review: nullableRecord(row.kael_review),
+    evidence_photo_urls: asStringArray(row.evidence_photo_urls),
     created_at: nullableString(row.created_at),
   };
 }
@@ -3581,6 +3547,9 @@ function mapWorkerCancellationDecisionError(errorCode: string | null): never {
 }
 
 function mapScopeRequestError(errorCode: string | null): never {
+  if (KAEL_SCOPE_PRICE_ERRORS.has(errorCode ?? "")) {
+    apiFailure("KAEL_PRICE_MISSING", "Kael chua tinh duoc gia phat sinh hop le", 409);
+  }
   if (errorCode === "STATUS_CHANGED") {
     apiFailure(
       "STATUS_CHANGED",
@@ -3607,7 +3576,13 @@ function mapScopeRequestError(errorCode: string | null): never {
   apiFailure("DB_ERROR", "Không thể tạo yêu cầu thay đổi", 500);
 }
 
+// Keep Kael-owned scope-change price failures user-visible instead of DB_ERROR.
+const KAEL_SCOPE_PRICE_ERRORS = new Set(["KAEL_PRICE_MISSING", "KAEL_REVIEW_MISSING"]);
+
 function mapScopeDecisionError(errorCode: string | null): never {
+  if (errorCode === "KAEL_PRICE_MISSING") {
+    apiFailure("KAEL_PRICE_MISSING", "Kael chua chot gia phat sinh nen chua the duyet", 409);
+  }
   if (errorCode === "STATUS_CHANGED") {
     apiFailure(
       "STATUS_CHANGED",
@@ -3660,7 +3635,7 @@ function validateJobMediaPath(
 ) {
   const expectedPrefix = `${jobId}/${stage}/`;
   const safePathPattern =
-    /^[0-9a-fA-F-]{36}\/(?:before|after|kael_reference|cancellation_evidence)\/[A-Za-z0-9._-]+$/;
+    /^[0-9a-fA-F-]{36}\/(?:before|after|kael_reference|cancellation_evidence|scope_change_evidence)\/[A-Za-z0-9._-]+$/;
   if (
     !objectPath.startsWith(expectedPrefix) ||
     objectPath.includes("..") ||
