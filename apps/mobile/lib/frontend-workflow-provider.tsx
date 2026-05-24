@@ -583,13 +583,12 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const customerBroadcast = state.deal?.broadcast
   const remoteJobId = getRemoteJobId(state)
   const customerStatus = state.deal?.status
-  const customerBroadcastStatus = customerBroadcast?.status
 
   useEffect(() => {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
     if (!remoteJobId) return
 
-    if (customerStatus === 'broadcasting' && customerBroadcastStatus === 'expired') return
+    if (customerStatus === 'broadcasting' && customerBroadcast?.status === 'expired') return
     if (![
       'broadcasting',
       'worker_matched',
@@ -606,7 +605,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }, 15_000)
     return () => clearInterval(interval)
   }, [
-    customerBroadcastStatus,
+    customerBroadcast?.status,
     customerStatus,
     refreshCurrentJob,
     remoteJobId,

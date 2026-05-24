@@ -22,48 +22,80 @@ type WorkerVerificationUrls = {
   selfie_url: string
 }
 
+type MediaUploadFailure = {
+  success: false
+  error: string
+}
+
+type JobMediaUploadResult =
+  | {
+      success: true
+      asset: JobMediaAttachInput['assets'][number]
+    }
+  | MediaUploadFailure
+
+type WorkerVerificationUploadResult =
+  | {
+      success: true
+      field: keyof WorkerVerificationUrls
+      url: string
+    }
+  | MediaUploadFailure
+
 export async function uploadJobMediaDrafts(
   jobId: string,
   mediaItems: LocalMediaUploadDraft[],
   stage: Extract<JobMediaStage, 'before' | 'after' | 'cancellation_evidence'> = 'before',
 ) {
   if (mediaItems.length === 0) return { success: true as const, mediaRefs: [] as string[] }
-  if (!supabase) {
+  const client = supabase
+  if (!client) {
     return {
       success: false as const,
       error: 'Kho media chưa được cấu hình',
     }
   }
 
-  const uploadedAssets: JobMediaAttachInput['assets'] = []
-  for (const [index, item] of mediaItems.slice(0, 5).entries()) {
-    const mimeType = item.mimeType ?? fallbackMimeType(item)
-    const objectPath = `${jobId}/${stage}/${safeObjectName(item.fileName, item.uri, index, mimeType)}`
-    const response = await fetch(item.uri)
-    if (!response.ok) {
-      return {
-        success: false as const,
-        error: 'Không thể đọc ảnh/video đã chọn',
+  const uploadResults = await Promise.all(
+    mediaItems.slice(0, 5).map(async (item, index): Promise<JobMediaUploadResult> => {
+      const mimeType = item.mimeType ?? fallbackMimeType(item)
+      const objectPath = `${jobId}/${stage}/${safeObjectName(item.fileName, item.uri, index, mimeType)}`
+      const localBlob = await readLocalMediaBlob(item.uri)
+      if (!localBlob.success) {
+        return {
+          success: false,
+          error: 'Không thể đọc ảnh/video đã chọn',
+        }
       }
-    }
-    const blob = await response.blob()
-    const { error } = await supabase.storage.from('job-media').upload(objectPath, blob, {
-      contentType: mimeType,
-      upsert: false,
-    })
-    if (error) {
-      return {
-        success: false as const,
-        error: 'Không thể tải ảnh/video lên kho media',
+      const { error } = await client.storage.from('job-media').upload(objectPath, localBlob.blob, {
+        contentType: mimeType,
+        upsert: false,
+      })
+      if (error) {
+        return {
+          success: false,
+          error: 'Không thể tải ảnh/video lên kho media',
+        }
       }
+      return {
+        success: true,
+        asset: {
+          object_path: objectPath,
+          stage,
+          mime_type: mimeType,
+          file_size_bytes: item.fileSizeBytes ?? localBlob.blob.size,
+        },
+      }
+    }),
+  )
+  const failedUpload = uploadResults.find((result) => !result.success)
+  if (failedUpload && !failedUpload.success) {
+    return {
+      success: false as const,
+      error: failedUpload.error,
     }
-    uploadedAssets.push({
-      object_path: objectPath,
-      stage,
-      mime_type: mimeType,
-      file_size_bytes: item.fileSizeBytes ?? blob.size,
-    })
   }
+  const uploadedAssets = uploadResults.flatMap((result) => (result.success ? [result.asset] : []))
 
   const attached = await jobService.attachJobMedia(jobId, { assets: uploadedAssets })
   if (!attached.success) {
@@ -79,14 +111,15 @@ export async function uploadJobMediaDrafts(
 }
 
 export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDrafts) {
-  if (!supabase) {
+  const client = supabase
+  if (!client) {
     return {
       success: false as const,
       error: 'Kho xác minh thợ chưa được cấu hình',
     }
   }
 
-  const user = await supabase.auth.getUser()
+  const user = await client.auth.getUser()
   const userId = user.data.user?.id
   if (user.error || !userId) {
     return {
@@ -102,28 +135,43 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
     ['selfie_url', 'selfie', files.selfie],
   ] as const
 
-  for (const [field, folder, item] of entries) {
-    const mimeType = item.mimeType ?? fallbackMimeType(item)
-    const objectPath = `${userId}/${folder}/${safeObjectName(item.fileName, item.uri, 0, mimeType)}`
-    const response = await fetch(item.uri)
-    if (!response.ok) {
-      return {
-        success: false as const,
-        error: 'Không thể đọc file xác minh đã chọn',
+  const uploadResults = await Promise.all(
+    entries.map(async ([field, folder, item]): Promise<WorkerVerificationUploadResult> => {
+      const mimeType = item.mimeType ?? fallbackMimeType(item)
+      const objectPath = `${userId}/${folder}/${safeObjectName(item.fileName, item.uri, 0, mimeType)}`
+      const localBlob = await readLocalMediaBlob(item.uri)
+      if (!localBlob.success) {
+        return {
+          success: false,
+          error: 'Không thể đọc file xác minh đã chọn',
+        }
       }
-    }
-    const blob = await response.blob()
-    const { error } = await supabase.storage.from('worker-verification').upload(objectPath, blob, {
-      contentType: mimeType,
-      upsert: false,
-    })
-    if (error) {
-      return {
-        success: false as const,
-        error: 'Không thể tải file xác minh lên kho bảo mật',
+      const { error } = await client.storage.from('worker-verification').upload(objectPath, localBlob.blob, {
+        contentType: mimeType,
+        upsert: false,
+      })
+      if (error) {
+        return {
+          success: false,
+          error: 'Không thể tải file xác minh lên kho bảo mật',
+        }
       }
+      return {
+        success: true,
+        field,
+        url: `supabase://worker-verification/${objectPath}`,
+      }
+    }),
+  )
+  const failedUpload = uploadResults.find((result) => !result.success)
+  if (failedUpload && !failedUpload.success) {
+    return {
+      success: false as const,
+      error: failedUpload.error,
     }
-    uploaded[field] = `supabase://worker-verification/${objectPath}`
+  }
+  for (const result of uploadResults) {
+    if (result.success) uploaded[result.field] = result.url
   }
 
   if (!uploaded.cccd_front_url || !uploaded.cccd_back_url || !uploaded.selfie_url) {
@@ -135,6 +183,16 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
   return {
     success: true as const,
     urls: uploaded as WorkerVerificationUrls,
+  }
+}
+
+async function readLocalMediaBlob(uri: string): Promise<{ success: true; blob: Blob } | { success: false }> {
+  try {
+    const response = await fetch(uri)
+    if (!response.ok) return { success: false }
+    return { success: true, blob: await response.blob() }
+  } catch {
+    return { success: false }
   }
 }
 

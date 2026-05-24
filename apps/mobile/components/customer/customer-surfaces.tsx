@@ -1334,23 +1334,6 @@ export function CustomerHistorySurface() {
     if (!reviewRating) return
     void actions.submitReview({ rating: reviewRating, tags: [] })
   }
-  const decideCurrentScopeChange = (decision: 'approve' | 'reject') => {
-    if (!scopeChange) return
-    Alert.alert(
-      decision === 'approve' ? copy.history.scopeApproveTitle : copy.history.scopeRejectTitle,
-      decision === 'approve'
-        ? copy.history.scopeApproveBody
-        : copy.history.scopeRejectBody,
-      [
-        { text: copy.history.checkAgain, style: 'cancel' },
-        {
-          text: decision === 'approve' ? copy.history.approve : copy.history.reject,
-          style: decision === 'approve' ? 'default' : 'destructive',
-          onPress: () => void actions.decideScopeChange(scopeChange.id, { decision }),
-        },
-      ],
-    )
-  }
   const historyActionLabel = canEditNoWorkerRequest ? copy.history.editRequest : canCreateFreshRequest ? copy.history.newRequest : copy.history.openPriceCheck
   const showRepairTab = activeHistoryTab === 'repair'
   const showPriceTab = activeHistoryTab === 'price'
@@ -1498,15 +1481,9 @@ export function CustomerHistorySurface() {
               <V4TicketCell label={copy.ticket.current} value={visibleStatusLabel} />
               <V4TicketCell label={copy.ticket.update} value={scopeChange.requestedDescription ?? copy.history.needsConfirm} />
             </View>
-              <View style={styles.workerActions} testID="customer-scope-change-decision">
-                <View style={styles.twoCol}>
-                  <V4TicketCell label={copy.history.reason} value={scopeChange.reason ?? copy.history.workerNoReason} />
-                  <V4TicketCell label={copy.history.newPrice} value={scopeChange.priceMin && scopeChange.priceMax ? `${formatVnd(scopeChange.priceMin)} - ${formatVnd(scopeChange.priceMax)}` : copy.history.needsConfirm} />
-                </View>
-                <View style={styles.workerMetaRow}>
-                  <SecondaryButton label={copy.history.reject} onPress={() => decideCurrentScopeChange('reject')} compact />
-                  <PrimaryButton label={copy.history.approve} onPress={() => decideCurrentScopeChange('approve')} compact />
-                </View>
+              <View style={styles.twoCol}>
+                <V4TicketCell label={copy.history.reason} value={scopeChange.reason ?? copy.history.workerNoReason} />
+                <V4TicketCell label={copy.history.newPrice} value={scopeChange.priceMin && scopeChange.priceMax ? `${formatVnd(scopeChange.priceMin)} - ${formatVnd(scopeChange.priceMax)}` : copy.history.needsConfirm} />
               </View>
             </View>
           ) : null}
