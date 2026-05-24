@@ -179,6 +179,13 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('.replace(/\\b0\\d{8,10}\\b/g, "[phone]")')
     expect(edgeKael).toContain('.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[email]")')
     expect(edgeKael).toContain('.replace(/\\b\\d{9,12}\\b/g, "[id-number]")')
+    expect(edgeKael).toContain('"[bank-account]"')
+    expect(edgeKael).toContain('"[building]"')
+    expect(edgeKael).toContain('"[floor]"')
+    expect(edgeKael).toContain('"[unit]"')
+    expect(edgeKael).toContain('"[house-no]"')
+    expect(edgeKael).toContain('Vinhomes')
+    expect(edgeKael).toContain('tầng|tang|lầu|lau')
   })
 
   it('keeps the deployed Edge Kael prompt aligned with the product guardrails', () => {

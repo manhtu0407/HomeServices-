@@ -319,17 +319,14 @@ export const availabilityToggleSchema = z.object({
   is_available: z.boolean(),
 });
 
-export const workerScopeChangeSchema = z
-  .object({
-    new_description: z.string().min(10).max(2000),
-    new_price_min: z.number().int().positive(),
-    new_price_max: z.number().int().positive(),
-    reason: z.string().min(10).max(1000),
-  })
-  .refine((d) => d.new_price_max >= d.new_price_min, {
-    message: "new_price_max must be >= new_price_min",
-    path: ["new_price_max"],
-  });
+// Phase 2.0 (2026-05-23): worker không đề xuất giá ở B6. Kael compute new
+// estimate từ original context + worker's reported scope. Schema accept
+// description + reason + photo_urls only.
+export const workerScopeChangeSchema = z.object({
+  new_description: z.string().min(10).max(2000),
+  reason: z.string().min(10).max(1000),
+  photo_urls: z.array(z.string().url()).max(5).default([]),
+});
 
 export const workerCancellationRequestSchema = z.object({
   reason: z.string().min(10).max(1000),

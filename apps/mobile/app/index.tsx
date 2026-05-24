@@ -17,8 +17,10 @@ export default function Index() {
     return <Redirect href="/(auth)/login" />
   }
 
+  // Phase 5.1 (plan §22.10.B, 2026-05-23): admin gets its own (admin) shell so
+  // admin actions are visually + structurally separated from customer/worker.
   if (role === 'admin') {
-    return <Redirect href="/(auth)/login" />
+    return <Redirect href="/(admin)/dashboard" />
   }
 
   if (role === 'worker') {

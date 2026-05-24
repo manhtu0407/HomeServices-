@@ -1,10 +1,11 @@
-import { createContext, type ReactNode, use, useEffect, useReducer, useState, useSyncExternalStore } from 'react'
+import { createContext, type ReactNode, use, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import {
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,12 +21,15 @@ import { setPendingKaelChatDraft } from '@/components/customer/kael-chat/pending
 import { ScopeChangeHardStopModal } from '@/components/customer/scope-change-modal/scope-change-hard-stop-modal'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { BookingWizard } from './booking-wizard'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GlassPressable } from '@/components/ui/glass-pressable'
 import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
 import { appCopy, languageDisplayName, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel, setAppLanguage, type AppLanguage, useAppLanguage } from '@/lib/app-language'
+import type { JobMessageResponse } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { jobService } from '@/lib/services'
 
 const CUSTOMER_V4_PRODUCTION_STANDARD = 'CUSTOMER_V4_PRODUCTION_STANDARD: accepted customer V4 production standard'
 const CUSTOMER_V4_VISUAL_CONTRACT = 'CUSTOMER_V4_VISUAL_CONTRACT: production surfaces replace old customer UI'
@@ -47,6 +51,9 @@ const openKaelChatPath = '/(customer)/kael-chat'
 const openHistoryPath = '/(customer)/history'
 const openProfilePath = '/(customer)/profile'
 const customerHistoryTabKeys: CustomerHistoryTab[] = ['repair', 'price', 'chat', 'done']
+// Phase 4.2 (plan §22.9.C, 2026-05-23): canonical review tags per STRUCTURES §6 A14.
+const REVIEW_TAG_KEYS = ['on_time', 'professional', 'clean_work', 'explained_clearly', 'fair_price'] as const
+type ReviewTagKey = (typeof REVIEW_TAG_KEYS)[number]
 const kaelModel8A = require('../../assets/kael-model-8a.png')
 const kaelModel8AHead = require('../../assets/kael-model-8a-head.png')
 const vndFormatter = new Intl.NumberFormat('vi-VN')
@@ -78,7 +85,12 @@ type IconName =
   | 'ticket'
   | 'waterPipe'
 
-let lastCustomerDockActive: CustomerDockActive = 'home'
+// Phase 5.9 (plan §22.10.J, 2026-05-23): removed module-level mutable
+// `lastCustomerDockActive`. It was written-only (no read sites), so it added
+// nothing but a session-leak risk between users in dev/hot-reload contexts.
+// React Router/expo-router already tracks active tab; the dock activates from
+// `active` prop. If active-tab persistence becomes needed, store it on the
+// auth provider or via AsyncStorage keyed by user id, not module scope.
 
 function kaelChatPath(serviceType?: ServiceType | null) {
   return serviceType ? `${openKaelChatPath}?serviceType=${serviceType}` : openKaelChatPath
@@ -257,6 +269,11 @@ const customerCopy = {
       noActiveMeta: 'Chưa có yêu cầu',
       trustTitle: 'Kael chỉ chuẩn bị phiếu',
       trustBody: 'Giá là ước tính tham khảo. Thợ xác nhận phạm vi và giá thực tế trước khi bắt đầu.',
+      trustModalFeeLabel: 'Phí nền tảng',
+      trustModalFeeBody: 'Phí nền tảng khoảng 7,5% giá dịch vụ, đã hiển thị rõ trong bước Xác nhận của tab Đặt.',
+      trustModalCancellationLabel: 'Chính sách hủy',
+      trustModalCancellationBody: 'Bạn có thể hủy miễn phí trước khi thợ nhận việc. Sau khi thợ nhận, có thể áp dụng phí dịch vụ tối thiểu để bảo vệ thợ.',
+      trustModalClose: 'Đóng',
       notification: (count: number) => `Kael có ${count} cập nhật chưa đọc`,
       activeA11y: (service: string) => `Mở yêu cầu ${service} đang xử lý`,
     },
@@ -274,7 +291,7 @@ const customerCopy = {
     },
     kael: {
       activeDealError: 'Đang có yêu cầu đang chạy. Mở Hoạt động để theo dõi hoặc hoàn tất trước khi tạo yêu cầu mới.',
-      bookingCta: 'Mở chat Kael',
+      bookingCta: 'Mở tab Đặt',
       hubKicker: 'Trợ lý nhận yêu cầu',
       hubTitle: 'Kael nhận mô tả trước',
       hubGreeting: 'Chào bạn, mình là Kael.',
@@ -297,6 +314,9 @@ const customerCopy = {
       lockedService: 'Dịch vụ đang khóa',
       unsupportedService: 'Dịch vụ chưa hỗ trợ',
       service: 'Dịch vụ',
+      qnaAnswer: 'Kael hỗ trợ trả lời câu hỏi về sửa điện, sửa nước và vệ sinh. Để đặt thợ, mở tab Đặt để gửi yêu cầu chính thức.',
+      unsupportedAnswer: 'Kael chỉ hỗ trợ sửa điện, sửa nước và vệ sinh trong căn hộ TP.HCM. Vui lòng quay lại khi mở thêm dịch vụ.',
+      openBookingCta: 'Mở tab Đặt',
     },
     history: {
       filters: ['Sửa', 'Ước tính', 'Trò chuyện', 'Xong'],
@@ -338,6 +358,19 @@ const customerCopy = {
       beforePhoto: 'Ảnh trước',
       afterPhoto: 'Ảnh sau',
       waitingWorkerPrice: 'Chờ thợ nhập',
+      noEvidencePhotos: 'Chưa có ảnh hoàn tất',
+      completionNotes: 'Ghi chú từ thợ',
+      noCompletionNotes: 'Thợ chưa ghi chú',
+      kaelLockedPrice: 'Giá Kael chốt',
+      chatEmptyBody: 'Chưa có tin nhắn. Hãy nhắn cho thợ qua kênh có Kael giám sát.',
+      chatInput: 'Nhập tin nhắn cho thợ…',
+      chatSend: 'Gửi',
+      chatSending: 'Đang gửi…',
+      chatSendError: 'Không gửi được tin nhắn. Vui lòng thử lại.',
+      chatLockedBody: 'Kênh tin nhắn mở sau khi thợ nhận việc.',
+      chatYou: 'Bạn',
+      chatWorker: 'Thợ',
+      chatKael: 'Kael',
       paymentReview: 'Thanh toán & đánh giá',
       payment: 'Thanh toán',
       review: 'Đánh giá',
@@ -348,6 +381,15 @@ const customerCopy = {
       presenceWorker: 'Thợ cập nhật',
       chooseStar: (rating: number) => `Chọn ${rating} sao`,
       submitReview: 'Gửi đánh giá',
+      reviewTagLabels: {
+        on_time: 'Đúng giờ',
+        professional: 'Lịch sự',
+        clean_work: 'Sạch sẽ',
+        explained_clearly: 'Giải thích rõ',
+        fair_price: 'Giá hợp lý',
+      } satisfies Record<ReviewTagKey, string>,
+      reviewCommentLabel: 'Nhận xét thêm',
+      reviewCommentPlaceholder: 'Ghi nhận xét cho thợ (tùy chọn)…',
       timeline: [
         ['Mô tả vấn đề', ['draft', 'analyzing']],
         ['Xác nhận tìm thợ', ['awaiting_customer_confirm']],
@@ -404,6 +446,11 @@ const customerCopy = {
       noActiveMeta: 'No active request',
       trustTitle: 'Kael prepares the ticket only',
       trustBody: 'Prices are reference estimates. The worker confirms scope and actual price before starting.',
+      trustModalFeeLabel: 'Platform fee',
+      trustModalFeeBody: 'Platform fee is about 7.5% of the service price, shown in the Confirmation step of the Booking tab.',
+      trustModalCancellationLabel: 'Cancellation policy',
+      trustModalCancellationBody: 'Free cancellation before a worker accepts. After acceptance, a minimum service fee may apply to protect workers.',
+      trustModalClose: 'Close',
       notification: (count: number) => `Kael has ${count} unread updates`,
       activeA11y: (service: string) => `Open active ${service} request`,
     },
@@ -421,7 +468,7 @@ const customerCopy = {
     },
     kael: {
       activeDealError: 'An active request is running. Open Activity to follow or finish it before creating a new request.',
-      bookingCta: 'Open Kael chat',
+      bookingCta: 'Open booking tab',
       hubKicker: 'Service Intake Assistant',
       hubTitle: 'Kael takes the description first',
       hubGreeting: 'Hi, I am Kael.',
@@ -444,6 +491,9 @@ const customerCopy = {
       lockedService: 'Service unavailable',
       unsupportedService: 'Service not supported',
       service: 'Service',
+      qnaAnswer: 'Kael answers questions about electrical, plumbing, and cleaning. To book a worker, open the Booking tab.',
+      unsupportedAnswer: 'Kael only supports electrical, plumbing, and cleaning in HCMC apartments. Please come back when other services open.',
+      openBookingCta: 'Open booking tab',
     },
     history: {
       filters: ['Repair', 'Price', 'Chat', 'Done'],
@@ -485,6 +535,19 @@ const customerCopy = {
       beforePhoto: 'Before',
       afterPhoto: 'After',
       waitingWorkerPrice: 'Waiting for worker',
+      noEvidencePhotos: 'No completion photos yet',
+      completionNotes: 'Worker notes',
+      noCompletionNotes: 'No worker notes',
+      kaelLockedPrice: 'Final price (locked by Kael)',
+      chatEmptyBody: 'No messages yet. Send a note to the worker through the Kael-supervised channel.',
+      chatInput: 'Message the worker…',
+      chatSend: 'Send',
+      chatSending: 'Sending…',
+      chatSendError: 'Could not send the message. Please try again.',
+      chatLockedBody: 'Messaging opens after the worker accepts the job.',
+      chatYou: 'You',
+      chatWorker: 'Worker',
+      chatKael: 'Kael',
       paymentReview: 'Payment & review',
       payment: 'Payment',
       review: 'Review',
@@ -495,6 +558,15 @@ const customerCopy = {
       presenceWorker: 'Worker update',
       chooseStar: (rating: number) => `Choose ${rating} stars`,
       submitReview: 'Submit review',
+      reviewTagLabels: {
+        on_time: 'On time',
+        professional: 'Professional',
+        clean_work: 'Clean work',
+        explained_clearly: 'Explained clearly',
+        fair_price: 'Fair price',
+      } satisfies Record<ReviewTagKey, string>,
+      reviewCommentLabel: 'Additional notes',
+      reviewCommentPlaceholder: 'Comment for the worker (optional)…',
       timeline: [
         ['Describe problem', ['draft', 'analyzing']],
         ['Confirm search', ['awaiting_customer_confirm']],
@@ -540,6 +612,9 @@ export function CustomerHomeSurface() {
   const visibleNotifications = notifications.slice(0, 2)
   const canStartNewDeal = !activeDeal || canReplaceCustomerDeal(activeDeal.status)
   const isTerminalDeal = activeDeal ? isTerminalCustomerDeal(activeDeal.status) : false
+  // Phase 3.3 (plan §22.8.D): Trust shortcut opens local info modal (no fake
+  // worker data) instead of jumping to Kael chat.
+  const [showTrustInfo, setShowTrustInfo] = useState(false)
   const activeDealRoute =
     selectors.currentStatus === 'draft' || selectors.currentStatus === 'analyzing' || selectors.currentStatus === 'awaiting_customer_confirm'
       ? kaelChatPath(activeDeal?.draft.serviceType)
@@ -565,6 +640,10 @@ export function CustomerHomeSurface() {
     replace(activeDealRoute)
   }
   const homeCommandActionLabel = canStartNewDeal ? copy.home.intakeCta : copy.home.quickActive
+  // Phase 3.3 (plan §22.8.D, 2026-05-23): Home shortcuts đúng vai trò.
+  // Address → hồ sơ căn hộ (đúng nơi sửa địa chỉ). Trust → modal phí + cam kết
+  // (không tự nhảy sang Kael chat). Service cards (3 dịch vụ) chuyển sang
+  // Booking wizard thay vì Kael chat (Phase 3.1/3.2).
   const homeShortcuts: Array<{ icon: IconName; meta: string; onPress: () => void; testID: string; title: string }> = [
     {
       icon: 'ticket',
@@ -590,7 +669,7 @@ export function CustomerHomeSurface() {
     {
       icon: 'estimate',
       meta: copy.home.quickTrustMeta,
-      onPress: () => openKaelChatFlow(),
+      onPress: () => setShowTrustInfo(true),
       testID: 'customer-home-shortcut-trust',
       title: copy.home.quickTrust,
     },
@@ -662,9 +741,11 @@ export function CustomerHomeSurface() {
                 </GlassCard>
               </ReduceMotionAwareEntranceView>
               <View style={styles.serviceGrid}>
-                <V4ServiceCard icon="boltPanel" title={localizedServiceLabel('electrical', languageMode)} testID="customer-shell-service-electrical" onPress={() => openKaelChatFlow('electrical')} />
-                <V4ServiceCard icon="waterPipe" title={localizedServiceLabel('plumbing', languageMode)} testID="customer-shell-service-plumbing" onPress={() => openKaelChatFlow('plumbing')} water />
-                <V4ServiceCard icon="cleaning" title={localizedServiceLabel('cleaning', languageMode)} testID="customer-shell-service-cleaning" onPress={() => openKaelChatFlow('cleaning')} />
+                {/* Phase 3.3 (plan §22.8.D, 2026-05-23): Home service cards
+                    push sang Booking wizard (A2-A7), không vào Kael chat. */}
+                <V4ServiceCard icon="boltPanel" title={localizedServiceLabel('electrical', languageMode)} testID="customer-shell-service-electrical" onPress={() => replace(openBookingPath)} />
+                <V4ServiceCard icon="waterPipe" title={localizedServiceLabel('plumbing', languageMode)} testID="customer-shell-service-plumbing" onPress={() => replace(openBookingPath)} water />
+                <V4ServiceCard icon="cleaning" title={localizedServiceLabel('cleaning', languageMode)} testID="customer-shell-service-cleaning" onPress={() => replace(openBookingPath)} />
               </View>
               <View style={styles.homeShortcutGrid} testID="customer-home-real-shortcuts">
                 {homeShortcuts.map((item) => (
@@ -747,9 +828,45 @@ export function CustomerHomeSurface() {
               <View style={styles.hiddenMarker} testID="customer-home-relaxed-stage" />
             </View>
           </View>
+          <TrustInfoModal copy={copy.home} onClose={() => setShowTrustInfo(false)} tokens={tokens} visible={showTrustInfo} />
         </>
       )}
     </V4Frame>
+  )
+}
+
+function TrustInfoModal({
+  copy,
+  onClose,
+  tokens,
+  visible,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]['home']
+  onClose: () => void
+  tokens: CustomerThemeTokens
+  visible: boolean
+}) {
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
+      <View style={styles.trustModalScrim} testID="customer-trust-info-modal">
+        <View style={[styles.trustModalSheet, { backgroundColor: tokens.raised, borderColor: tokens.glassBorder }]}>
+          <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+            {copy.trustTitle}
+          </Text>
+          <Text style={[styles.homeTrustBody, { color: tokens.muted }]}>{copy.trustBody}</Text>
+          <View style={styles.trustModalDivider} />
+          <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+            {copy.trustModalFeeLabel}
+          </Text>
+          <Text style={[styles.homeTrustBody, { color: tokens.text }]}>{copy.trustModalFeeBody}</Text>
+          <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+            {copy.trustModalCancellationLabel}
+          </Text>
+          <Text style={[styles.homeTrustBody, { color: tokens.text }]}>{copy.trustModalCancellationBody}</Text>
+          <PrimaryButton compact label={copy.trustModalClose} onPress={onClose} testID="customer-trust-info-modal-close" />
+        </View>
+      </View>
+    </Modal>
   )
 }
 
@@ -799,64 +916,14 @@ export function CustomerBookingEntrySurface() {
     push(kaelChatPath(serviceType))
   }
 
+  // Phase 3.1 (plan §22.8.B, 2026-05-23): Booking tab dùng BookingWizard
+  // (A2-A7 form theo bước). Khi đã có active deal, hướng người dùng vào tab
+  // Hoạt động/History thay vì cho phép tạo wizard mới song song.
   return (
     <V4Frame active="booking" testID="customer-booking-entry-surface">
       {({ tokens }) => (
         <View style={styles.plainContent}>
-          <View style={[styles.kaelCard, customerOpaqueSurface(tokens)]} testID="customer-booking-kael-entry">
-            <View style={styles.kaelHubHeader}>
-              <KaelMascot variant="head" size={58} material="opaque" />
-              <View style={styles.kaelHubCopy}>
-                <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
-                  {entryCopy.kicker}
-                </Text>
-                <Text style={[styles.kaelHubTitle, { color: tokens.text }]} numberOfLines={2}>
-                  {entryCopy.title}
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.kaelHubBody, { color: tokens.muted }]} numberOfLines={3}>
-              {entryCopy.body}
-            </Text>
-            <View style={styles.serviceGrid} testID="customer-booking-service-entry-grid">
-              <V4ServiceCard icon="boltPanel" title={localizedServiceLabel('electrical', languageMode)} testID="customer-booking-service-electrical" onPress={() => openChat('electrical')} />
-              <V4ServiceCard icon="waterPipe" title={localizedServiceLabel('plumbing', languageMode)} testID="customer-booking-service-plumbing" onPress={() => openChat('plumbing')} water />
-              <V4ServiceCard icon="cleaning" title={localizedServiceLabel('cleaning', languageMode)} testID="customer-booking-service-cleaning" onPress={() => openChat('cleaning')} />
-            </View>
-            <View style={[styles.bookingCheckPanel, customerOpaqueSurface(tokens)]} testID="customer-booking-price-check-panel">
-              <View style={styles.sectionTitle}>
-                <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-                  {entryCopy.checklist}
-                </Text>
-                <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-                  {entryCopy.diagnosisValue}
-                </Text>
-              </View>
-              {entryCopy.checklistItems.map((item) => (
-                <View key={item} style={styles.bookingCheckRow}>
-                  <View style={[styles.bookingCheckDot, { backgroundColor: tokens.primary }]} />
-                  <Text style={[styles.bookingCheckText, { color: tokens.text }]} numberOfLines={1}>
-                    {item}
-                  </Text>
-                  <Text style={[styles.bookingCheckMeta, { color: tokens.muted }]} numberOfLines={1}>
-                    {appCopy[languageMode].common.noData}
-                  </Text>
-                </View>
-              ))}
-            </View>
-            <View style={[styles.bookingDiagnosisPanel, customerOpaqueSurface(tokens), { backgroundColor: tokens.service }]} testID="customer-booking-ai-diagnosis-summary">
-              <IconGlyph name="kael" color={tokens.primary} accent={tokens.copper} />
-              <View style={styles.homeShortcutCopy}>
-                <Text style={[styles.homeShortcutTitle, { color: tokens.text }]} numberOfLines={1}>
-                  {entryCopy.diagnosis}
-                </Text>
-                <Text style={[styles.homeShortcutMeta, { color: tokens.muted }]} numberOfLines={1}>
-                  {entryCopy.diagnosisValue}
-                </Text>
-              </View>
-            </View>
-          </View>
-          {activeDeal ? (
+          {activeDeal && !canStartNewDeal ? (
             <Pressable
               accessibilityLabel={`${entryCopy.activeTitle}. ${activeDealStatusLabel}`}
               accessibilityRole="button"
@@ -879,7 +946,9 @@ export function CustomerBookingEntrySurface() {
                 {entryCopy.activeCta}
               </Text>
             </Pressable>
-          ) : null}
+          ) : (
+            <BookingWizard onOpenHistory={() => replace(openHistoryPath)} />
+          )}
           <View style={styles.hiddenMarker} testID="customer-booking-legacy-flow-not-primary" />
         </View>
       )}
@@ -926,13 +995,10 @@ export function CustomerKaelSurface() {
       ? localizedProblemLabel(localKaelDraft.inferredProblemLabel, localKaelDraft.serviceType, languageMode)
       : localKaelDraft?.needsServiceChoice ? copy.kael.needService : copy.ticket.described)
   const quickKaelServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']
-  const startKaelService = (serviceType: ServiceType) => {
-    if (!canStartKaelDraft) {
-      setKaelError(copy.kael.activeDealError)
-      return
-    }
-    if (state.deal && isTerminalCustomerDeal(state.deal.status)) dispatch({ type: 'reset_workflow' })
-    push(kaelChatPath(serviceType))
+  // Phase 3.2 (plan §22.8.C, 2026-05-23): Kael tab = Q&A only. KHÔNG tạo job.
+  // User want to book → push to Booking tab (wizard A2-A7).
+  const startKaelService = (_serviceType: ServiceType) => {
+    replace(openBookingPath)
   }
   const submitKaelLocalDraft = () => {
     const trimmed = kaelDraft.trim()
@@ -941,30 +1007,24 @@ export function CustomerKaelSurface() {
       setKaelError(copy.kael.needDetail)
       return
     }
-    if (!canStartKaelDraft) {
-      setKaelError(copy.kael.activeDealError)
-      return
-    }
     const inferredKaelDraft = inferLocalDealDraftFromKael(trimmed)
-    const handoffServiceType = inferredKaelDraft.unsupportedServiceLabel ? null : inferredKaelDraft.serviceType
-    dispatch({ type: 'submit_kael_draft', text: trimmed })
-    setPendingKaelChatDraft({ message: trimmed, serviceType: handoffServiceType })
-    setLatestAnswer(trimmed)
+    const supportedHint = inferredKaelDraft.unsupportedServiceLabel
+      ? copy.kael.unsupportedAnswer
+      : copy.kael.qnaAnswer
+    setLatestAnswer(`${trimmed}\n\n${supportedHint}`)
     setKaelDraft('')
     setKaelError(null)
-    push(kaelChatPath(handoffServiceType))
   }
   const updateKaelDraft = (value: string) => {
     setKaelDraft(value)
     if (kaelError) setKaelError(null)
   }
   const openKaelAttachFlow = () => {
-    if (!canStartKaelDraft && !localKaelDraft) {
-      setKaelError(copy.kael.activeDealError)
-      return
-    }
-    if (state.deal && isTerminalCustomerDeal(state.deal.status)) dispatch({ type: 'reset_workflow' })
-    push(kaelChatPath(localKaelDraft?.serviceType))
+    // Phase 3.2 — Kael Q&A tab không upload trực tiếp; mở Booking wizard.
+    replace(openBookingPath)
+  }
+  const openBookingFromKael = () => {
+    replace(openBookingPath)
   }
 
   useEffect(() => {
@@ -1074,7 +1134,7 @@ export function CustomerKaelSurface() {
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-field-location" />
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-field-media" />
                       <View style={styles.hiddenMarker} testID="customer-kael-ticket-progress" />
-                      <PrimaryButton label={copy.kael.bookingCta} onPress={() => push(kaelChatPath(localKaelDraft?.serviceType))} compact testID="customer-kael-ticket-booking-cta" />
+                      <PrimaryButton label={copy.kael.bookingCta} onPress={openBookingFromKael} compact testID="customer-kael-ticket-booking-cta" />
                     </View>
                   ) : null}
                 </>
@@ -1102,6 +1162,9 @@ export function CustomerHistorySurface() {
   const { actions, dispatch, selectors, state } = useFrontendWorkflow()
   const [activeHistoryTab, setActiveHistoryTab] = useState<CustomerHistoryTab>('repair')
   const [reviewRating, setReviewRating] = useState<1 | 2 | 3 | 4 | 5 | null>(null)
+  // Phase 4.2 (plan §22.9.C, 2026-05-23): tag chips + comment for A14 review.
+  const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([])
+  const [reviewComment, setReviewComment] = useState('')
   const deal = state.deal
   const scopeChange = deal?.scopeChange ?? null
   const routeJobId = typeof params.job_id === 'string' ? params.job_id : null
@@ -1172,25 +1235,20 @@ export function CustomerHistorySurface() {
       { text: copy.history.cancelRequest, style: 'destructive', onPress: () => void actions.cancelRemoteJob() },
     ])
   }
+  // Phase 4.2 (plan §22.9.C, 2026-05-23): A14 review form thu tag chips + comment.
   const submitSelectedReview = () => {
     if (!reviewRating) return
-    void actions.submitReview({ rating: reviewRating, tags: [] })
+    void actions.submitReview({
+      rating: reviewRating,
+      tags: selectedReviewTags,
+      comment: reviewComment.trim() || undefined,
+    })
   }
-  const decideCurrentScopeChange = (decision: 'approve' | 'reject') => {
-    if (!scopeChange) return
-    Alert.alert(
-      decision === 'approve' ? copy.history.scopeApproveTitle : copy.history.scopeRejectTitle,
-      decision === 'approve'
-        ? copy.history.scopeApproveBody
-        : copy.history.scopeRejectBody,
-      [
-        { text: copy.history.checkAgain, style: 'cancel' },
-        {
-          text: decision === 'approve' ? copy.history.approve : copy.history.reject,
-          style: decision === 'approve' ? 'default' : 'destructive',
-          onPress: () => void actions.decideScopeChange(scopeChange.id, { decision }),
-        },
-      ],
+  const toggleReviewTag = (tagKey: string) => {
+    setSelectedReviewTags((current) =>
+      current.includes(tagKey)
+        ? current.filter((value) => value !== tagKey)
+        : [...current, tagKey],
     )
   }
   const historyActionLabel = canEditNoWorkerRequest ? copy.history.editRequest : canCreateFreshRequest ? copy.history.newRequest : copy.history.openPriceCheck
@@ -1233,7 +1291,7 @@ export function CustomerHistorySurface() {
             ) : null}
             <PrimaryButton label={historyActionLabel} onPress={continueOrCreate} compact />
           </View>
-          {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} originalEstimateLabel={originalEstimateLabel} scopeChange={scopeChange} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
+          {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} finalPrice={deal.finalPrice ?? null} originalEstimateLabel={originalEstimateLabel} scopeChange={scopeChange} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {showChatTab ? <CustomerHistoryChatPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {deal && showRepairTab ? (
             <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-worker-placeholder">
@@ -1271,7 +1329,7 @@ export function CustomerHistorySurface() {
             </View>
           ) : null}
           {scopeChange && (showRepairTab || showPriceTab) ? (
-            <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
+            <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-scope-change-info">
             <View style={styles.sectionTitle}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                 {copy.history.scope}
@@ -1284,36 +1342,52 @@ export function CustomerHistorySurface() {
               <V4TicketCell label={copy.ticket.current} value={visibleStatusLabel} />
               <V4TicketCell label={copy.ticket.update} value={scopeChange.requestedDescription ?? copy.history.needsConfirm} />
             </View>
-              <View style={styles.workerActions} testID="customer-scope-change-decision">
-                <View style={styles.twoCol}>
-                  <V4TicketCell label={copy.history.reason} value={scopeChange.reason ?? copy.history.workerNoReason} />
-                  <V4TicketCell label={copy.history.newPrice} value={scopeChange.priceMin && scopeChange.priceMax ? `${formatVnd(scopeChange.priceMin)} - ${formatVnd(scopeChange.priceMax)}` : copy.history.needsConfirm} />
-                </View>
-                <View style={styles.workerMetaRow}>
-                  <SecondaryButton label={copy.history.reject} onPress={() => decideCurrentScopeChange('reject')} compact />
-                  <PrimaryButton label={copy.history.approve} onPress={() => decideCurrentScopeChange('approve')} compact />
-                </View>
-              </View>
+            <View style={styles.twoCol}>
+              <V4TicketCell label={copy.history.reason} value={scopeChange.reason ?? copy.history.workerNoReason} />
+              <V4TicketCell label={copy.history.newPrice} value={scopeChange.priceMin && scopeChange.priceMax ? `${formatVnd(scopeChange.priceMin)} - ${formatVnd(scopeChange.priceMax)}` : copy.history.needsConfirm} />
+            </View>
             </View>
           ) : null}
           {deal && showDoneTab && isCompletedHistory ? (
             <CustomerCompletionPresenceMap copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} />
           ) : null}
           {deal && showDoneTab && isCompletedHistory ? (
-            <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
+            <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-completion-evidence">
             <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
               {copy.history.evidence}
             </Text>
-            <View style={styles.twoCol}>
-              <View style={[styles.evidenceTile, customerOpaqueSurface(tokens)]}>
-                <Text style={[styles.evidenceText, { color: tokens.muted }]} numberOfLines={1}>{copy.history.beforePhoto}</Text>
+            {deal.completionPhotoUrls && deal.completionPhotoUrls.length > 0 ? (
+              <View style={styles.evidencePhotoGrid}>
+                {deal.completionPhotoUrls.slice(0, 4).map((url, index) => (
+                  <Image
+                    accessibilityLabel={`${copy.history.afterPhoto} ${index + 1}`}
+                    contentFit="cover"
+                    key={url + index}
+                    source={{ uri: url }}
+                    style={[styles.evidencePhoto, { borderColor: tokens.glassBorder }]}
+                    testID={`customer-history-completion-photo-${index}`}
+                  />
+                ))}
               </View>
-              <View style={[styles.evidenceTile, customerOpaqueSurface(tokens)]}>
-                <Text style={[styles.evidenceText, { color: tokens.muted }]} numberOfLines={1}>{copy.history.afterPhoto}</Text>
+            ) : (
+              <View style={[styles.evidenceTile, customerOpaqueSurface(tokens)]} testID="customer-history-completion-no-photos">
+                <Text style={[styles.evidenceText, { color: tokens.muted }]} numberOfLines={1}>{copy.history.noEvidencePhotos}</Text>
               </View>
+            )}
+            <View style={styles.completionNotesBlock}>
+              <Text style={[styles.evidenceText, { color: tokens.muted }]} numberOfLines={1}>{copy.history.completionNotes}</Text>
+              <Text style={[styles.completionNotesBody, { color: tokens.text }]} testID="customer-history-completion-notes">
+                {deal.completionNotes && deal.completionNotes.trim().length > 0
+                  ? deal.completionNotes
+                  : copy.history.noCompletionNotes}
+              </Text>
             </View>
             <View style={styles.twoCol}>
-              <V4TicketCell label={copy.ticket.finalPrice} value={copy.history.waitingWorkerPrice} />
+              <V4TicketCell
+                label={copy.history.kaelLockedPrice}
+                value={deal.finalPrice != null ? formatVnd(deal.finalPrice) : copy.history.waitingWorkerPrice}
+                testID="customer-history-final-price"
+              />
               <V4TicketCell label={copy.ticket.status} value={completionStatusLabel} />
             </View>
             </View>
@@ -1345,6 +1419,37 @@ export function CustomerHistorySurface() {
                     </Pressable>
                   ))}
                 </View>
+                <View style={styles.reviewTagRow} testID="customer-history-review-tags">
+                  {REVIEW_TAG_KEYS.map((tagKey) => {
+                    const selected = selectedReviewTags.includes(tagKey)
+                    return (
+                      <Pressable
+                        accessibilityLabel={copy.history.reviewTagLabels[tagKey]}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        key={tagKey}
+                        onPress={() => toggleReviewTag(tagKey)}
+                        style={[styles.reviewTagChip, { backgroundColor: selected ? tokens.primary : tokens.glassStrong, borderColor: tokens.glassBorder }]}
+                        testID={`customer-history-review-tag-${tagKey}`}
+                      >
+                        <Text style={{ color: selected ? tokens.primaryText : tokens.primary, fontWeight: '600' }} numberOfLines={1}>
+                          {copy.history.reviewTagLabels[tagKey]}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+                <TextInput
+                  accessibilityLabel={copy.history.reviewCommentLabel}
+                  multiline
+                  numberOfLines={3}
+                  onChangeText={setReviewComment}
+                  placeholder={copy.history.reviewCommentPlaceholder}
+                  placeholderTextColor={tokens.subtleText}
+                  style={[styles.reviewCommentInput, { borderColor: tokens.glassBorder, color: tokens.text }]}
+                  testID="customer-history-review-comment-input"
+                  value={reviewComment}
+                />
                 <PrimaryButton label={copy.history.submitReview} onPress={submitSelectedReview} compact />
               </View>
             ) : null}
@@ -1606,7 +1711,6 @@ function V4Dock({
         mode={tokens.mode}
         onItemPress={(item) => {
           if (item.key === active) return
-          lastCustomerDockActive = item.key
           replace(item.path)
         }}
         iconForItem={(item, focused) =>
@@ -1758,12 +1862,14 @@ function CustomerHistoryTabs({
 
 function CustomerHistoryPricePanel({
   copy,
+  finalPrice,
   originalEstimateLabel,
   scopeChange,
   tokens,
   visibleStatusLabel,
 }: {
   copy: (typeof customerCopy)[AppLanguage]
+  finalPrice: number | null
   originalEstimateLabel: string
   scopeChange: LocalScopeChange | null
   tokens: CustomerThemeTokens
@@ -1786,7 +1892,7 @@ function CustomerHistoryPricePanel({
       </View>
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.filters[1]} value={originalEstimateLabel} />
-        <V4TicketCell label={copy.ticket.finalPrice} value={copy.history.waitingWorkerPrice} />
+        <V4TicketCell label={copy.history.kaelLockedPrice} value={finalPrice != null ? formatVnd(finalPrice) : copy.history.waitingWorkerPrice} />
       </View>
       {scopeChange ? (
         <View style={styles.twoCol}>
@@ -1813,10 +1919,97 @@ function CustomerHistoryChatPanel({
   tokens: CustomerThemeTokens
   visibleStatusLabel: string
 }) {
+  // Phase 2.1 (2026-05-23): real chat backed by jobService.listMessages /
+  // sendMessage. Polling on focus + on send. Realtime upgrade deferred to
+  // Phase 5.11. Chat is dispute evidence trail per STRUCTURES.md §14.
+  const { session } = useAuth()
+  const currentUserId = session?.user.id ?? null
+  const jobId = deal?.id ?? null
+  const canChat = Boolean(
+    jobId &&
+      deal &&
+      ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer'].includes(
+        deal.status,
+      ),
+  )
+  const [remoteMessages, setRemoteMessages] = useState<JobMessageResponse[]>([])
+  const [draft, setDraft] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const activeJobIdRef = useRef<string | null>(jobId)
+
+  useEffect(() => {
+    if (activeJobIdRef.current === jobId) return
+    setRemoteMessages([])
+    setDraft('')
+    setSendError(null)
+    activeJobIdRef.current = jobId
+  }, [jobId])
+
+  useEffect(() => {
+    if (!jobId || !canChat) return
+    let cancelled = false
+    const fetchMessages = async () => {
+      const result = await jobService.listMessages(jobId)
+      if (cancelled) return
+      if (result.success) {
+        setRemoteMessages(result.data.messages)
+      }
+    }
+    void fetchMessages()
+    const interval = setInterval(fetchMessages, 8000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [jobId, canChat])
+
+  const submitChatMessage = async () => {
+    if (!jobId || !canChat) return
+    const value = draft.trim()
+    if (!value) return
+    setIsSending(true)
+    setSendError(null)
+    try {
+      const result = await jobService.sendMessage(jobId, { content: value })
+      if (!result.success) {
+        setSendError(copy.history.chatSendError ?? result.error)
+        return
+      }
+      setRemoteMessages((previous) => [...previous, result.data.message])
+      setDraft('')
+    } finally {
+      setIsSending(false)
+    }
+  }
+
   const statusValue = deal ? visibleStatusLabel : appCopy[languageMode].common.noRequest
   const issueValue = deal
     ? localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, languageMode)
     : appCopy[languageMode].common.noData
+
+  if (!canChat) {
+    return (
+      <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-chat-tab-panel">
+        <View style={styles.sectionTitle}>
+          <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+            {copy.history.filters[2]}
+          </Text>
+          <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+            Kael
+          </Text>
+        </View>
+        <View style={styles.twoCol}>
+          <V4TicketCell label={copy.ticket.status} value={statusValue} />
+          <V4TicketCell label={copy.ticket.issue} value={issueValue} />
+        </View>
+        <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={3}>
+          {copy.history.chatLockedBody}
+        </Text>
+        <PrimaryButton label={copy.history.openPriceCheck} onPress={onOpenKael} compact />
+      </View>
+    )
+  }
 
   return (
     <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-chat-tab-panel">
@@ -1825,14 +2018,92 @@ function CustomerHistoryChatPanel({
           {copy.history.filters[2]}
         </Text>
         <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-          Kael
+          {visibleStatusLabel}
         </Text>
       </View>
-      <View style={styles.twoCol}>
-        <V4TicketCell label={copy.ticket.status} value={statusValue} />
-        <V4TicketCell label={copy.ticket.issue} value={issueValue} />
+      <View style={styles.customerChatStack} testID="customer-history-chat-messages">
+        {remoteMessages.length === 0 ? (
+          <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={2} testID="customer-history-chat-empty">
+            {copy.history.chatEmptyBody}
+          </Text>
+        ) : (
+          remoteMessages.map((message) => (
+            <CustomerChatBubble
+              key={message.id}
+              currentUserId={currentUserId}
+              kaelLabel={copy.history.chatKael}
+              message={message}
+              tokens={tokens}
+              workerLabel={copy.history.chatWorker}
+              youLabel={copy.history.chatYou}
+            />
+          ))
+        )}
       </View>
-      <PrimaryButton label={copy.history.openPriceCheck} onPress={onOpenKael} compact />
+      <View style={[styles.customerChatComposer, { borderColor: tokens.glassBorder, backgroundColor: tokens.glassStrong }]}>
+        <TextInput
+          accessibilityLabel={copy.history.chatInput}
+          editable={!isSending}
+          multiline
+          numberOfLines={2}
+          onChangeText={setDraft}
+          placeholder={copy.history.chatInput}
+          placeholderTextColor={tokens.subtleText}
+          style={[styles.customerChatInput, { color: tokens.text }]}
+          testID="customer-history-chat-input"
+          value={draft}
+        />
+        <PrimaryButton
+          compact
+          label={isSending ? copy.history.chatSending : copy.history.chatSend}
+          onPress={() => void submitChatMessage()}
+          testID="customer-history-chat-send"
+        />
+      </View>
+      {sendError ? (
+        <Text style={[styles.sectionMeta, { color: tokens.danger }]} numberOfLines={2} testID="customer-history-chat-send-error">
+          {sendError}
+        </Text>
+      ) : null}
+    </View>
+  )
+}
+
+function CustomerChatBubble({
+  currentUserId,
+  kaelLabel,
+  message,
+  tokens,
+  workerLabel,
+  youLabel,
+}: {
+  currentUserId: string | null
+  kaelLabel: string
+  message: JobMessageResponse
+  tokens: CustomerThemeTokens
+  workerLabel: string
+  youLabel: string
+}) {
+  const isKael = message.sender_role === 'kael'
+  const isMine = currentUserId !== null && message.sender_id === currentUserId
+  const who = isKael ? kaelLabel : isMine ? youLabel : workerLabel
+  return (
+    <View
+      style={[
+        styles.customerChatBubble,
+        {
+          alignSelf: isMine ? 'flex-end' : 'flex-start',
+          backgroundColor: isKael ? tokens.water : isMine ? tokens.primary : tokens.raised,
+          borderColor: tokens.glassBorder,
+        },
+      ]}
+    >
+      <Text style={[styles.customerChatBubbleWho, { color: isMine ? tokens.primaryText : tokens.primary }]} numberOfLines={1}>
+        {who}
+      </Text>
+      <Text style={[styles.customerChatBubbleText, { color: isMine ? tokens.primaryText : tokens.text }]}>
+        {message.content}
+      </Text>
     </View>
   )
 }
@@ -3492,6 +3763,107 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0,
+  },
+  evidencePhotoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  evidencePhoto: {
+    aspectRatio: 1,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexBasis: '47%',
+    flexGrow: 1,
+    minHeight: 120,
+    overflow: 'hidden',
+  },
+  completionNotesBlock: {
+    gap: 4,
+    paddingVertical: 4,
+  },
+  completionNotesBody: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  customerChatStack: {
+    gap: 6,
+    minHeight: 80,
+  },
+  customerChatBubble: {
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 2,
+    maxWidth: '88%',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  customerChatBubbleWho: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0,
+  },
+  customerChatBubbleText: {
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  customerChatComposer: {
+    alignItems: 'flex-end',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  customerChatInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    minHeight: 44,
+    paddingVertical: 4,
+    textAlignVertical: 'top',
+  },
+  trustModalScrim: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 16,
+  },
+  trustModalSheet: {
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 10,
+    maxWidth: 420,
+    padding: 18,
+    width: '100%',
+  },
+  trustModalDivider: {
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    height: 1,
+    marginVertical: 4,
+  },
+  reviewTagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  reviewTagChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  reviewCommentInput: {
+    borderRadius: 16,
+    borderWidth: 1,
+    fontSize: 14,
+    minHeight: 72,
+    padding: 12,
+    textAlignVertical: 'top',
   },
   profileHead: {
     borderRadius: 28,

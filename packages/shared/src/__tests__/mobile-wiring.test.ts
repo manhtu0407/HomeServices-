@@ -168,15 +168,19 @@ describe('customer frontend shell surfaces', () => {
     expect(src).not.toContain('client-price-check-prototype')
   })
 
-  it('keeps legacy booking isolated while Kael chat is the primary workflow route', () => {
+  it('keeps legacy booking isolated while Booking wizard owns A2-A7 flow', () => {
+    // Phase 3.1 (plan §22.8.B, 2026-05-23): CustomerBookingEntrySurface now
+    // delegates to BookingWizard. Legacy ClientPriceCheckFlow must stay gone.
     const bookingRoute = read('app/(customer)/booking.tsx')
     const src = shell()
+    const wizard = read('components/customer/booking-wizard.tsx')
     const kaelChatRoute = read('app/(customer)/kael-chat.tsx')
     expect(exists('components/client-price-check/client-price-check-flow.tsx')).toBe(false)
     expect(bookingRoute).toContain('CustomerBookingEntrySurface')
     expect(bookingRoute).not.toContain('ClientPriceCheckFlow')
     expect(src).toContain('customer-booking-legacy-flow-not-primary')
-    expect(src).toContain('testID="customer-booking-service-entry-grid"')
+    expect(src).toContain('<BookingWizard')
+    expect(wizard).toContain('booking-wizard-step-service')
     expect(kaelChatRoute).toContain('KaelChatSurface')
     expect(kaelChatRoute).toContain('@/components/customer/kael-chat/kael-chat-surface')
     expect(src).not.toContain('ClientPriceCheckFlow')
@@ -363,7 +367,10 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-profile-evidence-shell')
   })
 
-  it('keeps the Kael tab as an entry surface while the stack route owns backend chat', () => {
+  it('keeps the Kael tab as a Q&A surface that pushes to Booking wizard for job creation', () => {
+    // Phase 3.2 (plan §22.8.C, 2026-05-23): Kael tab is Q&A only. No
+    // dispatch('submit_kael_draft'), no setPendingKaelChatDraft, no push to
+    // kaelChatPath inside Kael tab. Job creation flows through Booking wizard.
     const src = shell()
     const stack = read('components/customer/kael-chat/kael-chat-surface.tsx')
     const stackState = read('components/customer/kael-chat/state.ts')
@@ -385,17 +392,14 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('TextInput')
     expect(src).toContain('customer-kael-local-chat-input')
     expect(src).toContain('inferLocalDealDraftFromKael(trimmed)')
-    expect(src).toContain('setPendingKaelChatDraft({ message: trimmed, serviceType: handoffServiceType })')
-    expect(src).toContain('push(kaelChatPath(handoffServiceType))')
+    expect(src).toContain('openBookingFromKael')
     expect(src).not.toContain('TransactionIntentCard')
-    expect(src).not.toContain('sendMessage')
     expect(src).not.toContain('Draft Price Check')
     expect(src).not.toContain('customer-kael-conversation-phone')
     expect(src).not.toContain('kaelPhone')
     expect(src).not.toContain('callAI')
     expect(src).not.toContain('fetch(')
     expect(src).toContain('kaelChatPath(serviceType)')
-    expect(src).toContain('push(kaelChatPath(localKaelDraft?.serviceType))')
     expect(stack).toContain('KAEL_CHAT_STACK_SCREEN_CONTRACT')
     expect(stack).toContain('useFrontendWorkflow')
     expect(stack).toContain('actions.hydrateRemoteJobById(result.data.job_id)')
@@ -602,26 +606,29 @@ describe('customer frontend shell surfaces', () => {
     expect(modal).not.toContain('callAI')
   })
 
-  it('hands customer home service cards directly into Kael chat with exact service types', () => {
+  it('home service cards push into Booking wizard tab (Phase 3.3 2026-05-23)', () => {
     const src = shell()
-    expect(src).toContain("openKaelChatFlow('electrical')")
-    expect(src).toContain("openKaelChatFlow('plumbing')")
-    expect(src).toContain("openKaelChatFlow('cleaning')")
-    expect(src).toContain('return serviceType ? `${openKaelChatPath}?serviceType=${serviceType}` : openKaelChatPath')
+    // Phase 3.3 (plan §22.8.D): Home service cards no longer auto-open Kael chat;
+    // they hand off to the Booking wizard tab (A2-A7) which owns job creation.
+    expect(src).toContain('customer-shell-service-electrical')
+    expect(src).toContain('customer-shell-service-plumbing')
+    expect(src).toContain('customer-shell-service-cleaning')
+    expect(src).toContain('onPress={() => replace(openBookingPath)}')
     expect(src).toContain('customer-home-active-local-deal')
     expect(src).toContain('activeDealRoute')
     expect(src).toContain("? kaelChatPath(activeDeal?.draft.serviceType)")
-    expect(src).toContain("push(kaelChatPath(deal?.draft.serviceType))")
     expect(src).toContain('canStartNewDeal')
     expect(src).toContain('canReplaceCustomerDeal(activeDeal.status)')
     expect(src).toContain('isTerminalCustomerDeal(activeDeal.status)')
-    expect(src).toContain("if (isTerminalDeal) dispatch({ type: 'reset_workflow' })")
     expect(src).toContain('openHistoryPath')
   })
 
   it('keeps Kael ticket values derived from local draft instead of hardcoded electrical/outlet copy', () => {
     const src = shell()
-    expect(src).toContain("dispatch({ type: 'submit_kael_draft', text: trimmed })")
+    // Phase 3.2 (plan §22.8.C, 2026-05-23): Kael tab is Q&A only — no
+    // dispatch('submit_kael_draft') (which would create a job). User goes
+    // through Booking tab wizard to create a job.
+    expect(src).toContain('openBookingFromKael')
     expect(src).toContain('displayedKaelAnswer')
     expect(src).toContain('kaelTicketService')
     expect(src).toContain('kaelTicketProblem')
@@ -1016,9 +1023,12 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('worker-jobroom-kael-handoff')
     expect(src).toContain('worker-jobroom-live-brief')
     expect(src).toContain('worker-jobroom-privacy-gate')
-    expect(src).toContain('submitWorkerKaelLocalDraft')
+    // Phase 2.1 (plan §22.7.C, 2026-05-23): worker chat now backed by
+    // jobService.listMessages + sendMessage; helper renamed to
+    // submitWorkerChatMessage and messages source uses remoteMessages.
+    expect(src).toContain('submitWorkerChatMessage')
     expect(src).not.toContain('buildWorkerDealChatSeed')
-    expect(src).toContain('const renderedMessages = messages')
+    expect(src).toContain('remoteMessages')
     expect(src).toContain('buildWorkerBroadcastBrief')
     expect(src).toContain('const fullAddressLabel = broadcast.fullAddressVisible ? broadcast.fullAddressLabel ?? null : null')
     expect(src).not.toContain('const fullAddressLabel = broadcast.fullAddressLabel ?? deal?.draft.addressLabel ?? null')
@@ -1223,18 +1233,23 @@ describe('role guarded route groups', () => {
   const customerLayout = read('app/(customer)/_layout.tsx')
   const workerLayout = read('app/(worker)/_layout.tsx')
 
-  it('guards customer routes behind authenticated customer/admin roles', () => {
+  it('guards customer routes strictly behind authenticated customer role (Phase 5.1)', () => {
+    // Phase 5.1 (plan §22.10.B, 2026-05-23): admin no longer bypasses customer
+    // shell. Admin has its own (admin) shell. Customer shell strictly requires
+    // role='customer' to avoid misclicks from admin in customer surfaces.
     expect(customerLayout).toContain('useAuth')
     expect(customerLayout).toContain('Redirect')
-    expect(customerLayout).toContain("role === 'admin'")
+    expect(customerLayout).not.toContain("if (role === 'admin')")
     expect(customerLayout).toContain("role !== 'customer'")
     expect(customerLayout).toContain('/(auth)/login')
   })
 
-  it('guards worker routes behind authenticated worker/admin roles', () => {
+  it('guards worker routes strictly behind authenticated worker role (Phase 5.1)', () => {
+    // Phase 5.1 (plan §22.10.B, 2026-05-23): admin no longer bypasses worker
+    // shell. Admin has its own (admin) shell.
     expect(workerLayout).toContain('useAuth')
     expect(workerLayout).toContain('Redirect')
-    expect(workerLayout).toContain("role === 'admin'")
+    expect(workerLayout).not.toContain("if (role === 'admin')")
     expect(workerLayout).toContain("role !== 'worker'")
     expect(workerLayout).toContain('/(auth)/login')
   })
@@ -1668,7 +1683,9 @@ describe('client price check production UI', () => {
   const productionComponentPath = 'components/client-price-check/client-price-check-flow.tsx'
 
   if (!exists(productionComponentPath)) {
-    it('removes the legacy client price-check flow after Kael chat becomes the primary workflow', () => {
+    it('removes the legacy client price-check flow; Booking wizard owns the booking entry', () => {
+      // Phase 3.1 (plan §22.8.B, 2026-05-23): legacy price-check stays gone;
+      // BookingWizard is the new owner of A2-A7 steps.
       const customerShell = read('components/customer/customer-surfaces.tsx')
       expect(exists(productionComponentPath)).toBe(false)
       expect(bookingRoute).toContain('CustomerBookingEntrySurface')
@@ -1676,8 +1693,7 @@ describe('client price check production UI', () => {
       expect(bookingRoute).not.toContain('ClientPriceCheckFlow')
       expect(customerShell).not.toContain('ClientPriceCheckFlow')
       expect(customerShell).toContain('customer-booking-legacy-flow-not-primary')
-      expect(customerShell).toContain('customer-booking-service-entry-grid')
-      expect(customerShell).toContain('push(kaelChatPath(serviceType))')
+      expect(customerShell).toContain('<BookingWizard')
     })
     return
   }
@@ -2021,9 +2037,9 @@ describe('frontend-only workflow safety audit', () => {
     expect(customerShell).not.toContain('Ổ cắm nóng')
     expect(customerShell).not.toContain('Dây lỏng')
     expect(customerShell).not.toContain('Tiền mặt')
-    expect(customerShell).not.toContain('Đúng giờ')
-    expect(customerShell).not.toContain('Rõ giá')
-    expect(customerShell).not.toContain('Giải thích rõ')
+    // Phase 4.2 (plan §22.9.C, 2026-05-23): A14 review now uses canonical
+    // tag chips ("Đúng giờ", "Giải thích rõ", etc.). Original ban was for
+    // fake hardcoded data, not legitimate user-selectable review tags.
     expect(customerShell).not.toContain('Thợ đang đến')
     expect(customerShell).not.toContain('Đang sửa')
     expect(customerShell).not.toContain('Gửi ảnh')
@@ -2046,7 +2062,9 @@ describe('frontend-only workflow safety audit', () => {
     expect(customerShell).toContain('Alert.alert')
     expect(customerShell).toContain('actions.cancelRemoteJob')
     expect(customerShell).toContain('customer-history-cancel-local-deal')
-    expect(customerShell).toContain('<V4TicketCell label={copy.ticket.finalPrice} value={copy.history.waitingWorkerPrice} />')
+    // Phase 1.2/2.0 (plan §22.6.C + §22.7.B, 2026-05-23): A12 evidence shows
+    // Kael-locked final price (formatted) or honest waiting fallback.
+    expect(customerShell).toContain('deal.finalPrice != null ? formatVnd(deal.finalPrice) : copy.history.waitingWorkerPrice')
     expect(customerShell).toContain("dispatch({ type: 'reopen_booking_draft' })")
     expect(customerShell).toContain("dispatch({ type: 'reset_workflow' })")
     expect(customerShell).toContain('historyActionLabel')
@@ -2114,8 +2132,11 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerShell).toContain('const deal = getWorkerVisibleDeal(state.deal)')
     expect(workerShell).toContain('const phases = getWorkerTimeline(deal ? selectors.currentStatus : null, language)')
     expect(workerShell).not.toContain('dealSeedMessages')
-    expect(workerShell).toContain('setMessages((prev) => [')
-    expect(workerShell).toContain('...prev,')
+    // Phase 2.1 (plan §22.7.C, 2026-05-23): worker chat uses
+    // jobService.listMessages/sendMessage; optimistic append goes through
+    // setRemoteMessages((previous) => [...previous, result.data.message]).
+    expect(workerShell).toContain('setRemoteMessages((previous) => [')
+    expect(workerShell).toContain('jobService.sendMessage(currentJobId,')
     expect(workerShell).toContain('deal.broadcast.broadcastId ?? deal.broadcast.jobId ?? deal.id')
     expect(workerShell).toContain('const canSendWorkerKaelMessage = Boolean(deal && isAcceptedLocalWorkerDeal(deal))')
     expect(workerShell).toContain('const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : broadcast ? copy.chat.lockedGate : copy.chat.waitingInput')
@@ -2123,19 +2144,25 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerShell).toContain('copy.chat.lockedGate')
     expect(workerShell).toContain('Chấp nhận việc để mở trao đổi.')
     expect(workerShell).toContain("setDraft('')")
-    expect(workerShell).toContain('if (!canSendWorkerKaelMessage) return')
+    // Phase 2.1 (plan §22.7.C, 2026-05-23): chat submit guard now also checks
+    // currentJobId so the wire to jobService.sendMessage cannot fire without a job.
+    expect(workerShell).toContain('if (!canSendWorkerKaelMessage || !currentJobId) return')
     expect(workerShell).toContain('confirmWorkerProgressAction')
     expect(workerShell).toContain('Xác nhận báo hoàn tất?')
     expect(workerShell).toContain('actions.workerAcceptBroadcast')
     expect(workerShell).toContain('actions.workerUpdateStatus')
-    expect(workerShell).toContain('worker-final-price-input')
+    // Phase 2.0c (plan §22.7.B.3, 2026-05-23): final price input removed;
+    // Kael holds price authority. Worker completion form takes notes + photos.
+    expect(workerShell).not.toContain('worker-final-price-input')
+    expect(workerShell).toContain('worker-completion-form')
     expect(workerShell).toContain('confirmWorkerProgressAction(nextAction)')
     expect(workerShell).toContain('worker-local-status-action')
   })
 
   it('keeps mobile API response contracts aligned with PR#12 worker endpoints without wiring UI mutations', () => {
+    // Tolerate LF and CRLF (Windows worktree). Repo includes CRLF-tolerant gates elsewhere.
     expect(apiTypes).toContain('export type BroadcastListResponse = WorkerBroadcastsResponse')
-    expect(apiTypes).toContain('export type JobDetailResponse = {\n  job: {')
+    expect(apiTypes).toMatch(/export type JobDetailResponse = \{\r?\n {2}job: \{/)
     expect(apiTypes).toContain('kael_price_min: number | null')
     expect(apiTypes).toContain('completion_photo_urls: string[]')
     expect(apiTypes).not.toContain('estimate_price_min')
@@ -2148,6 +2175,122 @@ describe('frontend-only workflow safety audit', () => {
     expect(apiTypes).toContain('from_date: string | null')
     expect(apiTypes).toContain('to_date: string | null')
     expect(apiTypes).toContain('export type DeclineBroadcastResponse')
+  })
+})
+
+// Phase 5.7 (plan §22.10.H, 2026-05-23): hard-rule assertions for shipped
+// invariants from Phase 1-3. Each assertion blocks regression of a Tu-locked
+// product rule.
+describe('Plan §22 hard-rule gates (Phase 5.7 2026-05-23)', () => {
+  const customerSurfaces = readFileSync(resolve(MOBILE_ROOT, 'components/customer/customer-surfaces.tsx'), 'utf8')
+  const workerSurfaces = readFileSync(resolve(MOBILE_ROOT, 'components/worker/worker-surfaces.tsx'), 'utf8')
+  const bookingWizard = readFileSync(resolve(MOBILE_ROOT, 'components/customer/booking-wizard.tsx'), 'utf8')
+  const a11Modal = readFileSync(resolve(MOBILE_ROOT, 'components/customer/scope-change-modal/scope-change-hard-stop-modal.tsx'), 'utf8')
+  const customerLayoutSrc = readFileSync(resolve(MOBILE_ROOT, 'app/(customer)/_layout.tsx'), 'utf8')
+  const workerLayoutSrc = readFileSync(resolve(MOBILE_ROOT, 'app/(worker)/_layout.tsx'), 'utf8')
+  const adminLayoutSrc = readFileSync(resolve(MOBILE_ROOT, 'app/(admin)/_layout.tsx'), 'utf8')
+  const indexSrc = readFileSync(resolve(MOBILE_ROOT, 'app/index.tsx'), 'utf8')
+  const workerSvcs = readFileSync(resolve(MOBILE_ROOT, 'lib/services.ts'), 'utf8')
+
+  it('Phase 1.3: A11 single source — no inline decideScopeChange in history surface', () => {
+    expect(customerSurfaces).not.toContain('decideCurrentScopeChange')
+    expect(customerSurfaces).toContain('ScopeChangeHardStopModal')
+    expect(a11Modal).toContain('onRequestClose={() => undefined}')
+  })
+
+  it('Phase 1.2: A12 evidence reads deal.finalPrice + completion media (not placeholder)', () => {
+    expect(customerSurfaces).toContain('deal.finalPrice != null ? formatVnd(deal.finalPrice)')
+    expect(customerSurfaces).toContain('deal.completionPhotoUrls')
+    expect(customerSurfaces).toContain('deal.completionNotes')
+    expect(customerSurfaces).toContain('customer-history-final-price')
+    expect(customerSurfaces).toContain('customer-history-completion-evidence')
+  })
+
+  it('Phase 2.0: worker UI removed all price input fields', () => {
+    expect(workerSurfaces).not.toContain('finalPriceDraft')
+    expect(workerSurfaces).not.toContain('scopePriceDraft')
+    expect(workerSurfaces).not.toContain('final_price:')
+    expect(workerSurfaces).not.toContain('new_price_min')
+    expect(workerSurfaces).not.toContain('new_price_max')
+    expect(workerSurfaces).toContain('completionNotesDraft')
+    expect(workerSurfaces).toContain('scopeReasonDraft')
+    expect(workerSurfaces).toContain('worker-completion-form')
+    expect(workerSurfaces).toContain('worker-completion-kael-price')
+    expect(workerSvcs).not.toContain('final_price?: number')
+  })
+
+  it('Phase 2.0d: A11 modal shows Kael-computed badge', () => {
+    expect(a11Modal).toContain('customer-scope-change-modal-kael-badge')
+    expect(a11Modal).toContain('kaelBadge')
+  })
+
+  it('Phase 2.1: customer + worker chat wired to jobService.listMessages and sendMessage', () => {
+    expect(customerSurfaces).toContain('jobService.listMessages(jobId)')
+    expect(customerSurfaces).toContain('jobService.sendMessage(jobId,')
+    expect(customerSurfaces).toContain('customer-history-chat-input')
+    expect(customerSurfaces).toContain('customer-history-chat-send')
+    expect(workerSurfaces).toContain('jobService.listMessages(currentJobId)')
+    expect(workerSurfaces).toContain('jobService.sendMessage(currentJobId,')
+    expect(workerSurfaces).toContain('mapWorkerJobMessage')
+  })
+
+  it('Phase 3.1: Booking wizard owns A2-A7 steps', () => {
+    expect(bookingWizard).toContain('booking-wizard-step-service')
+    expect(bookingWizard).toContain('booking-wizard-step-describe')
+    expect(bookingWizard).toContain('booking-wizard-step-analyzing')
+    expect(bookingWizard).toContain('booking-wizard-step-estimate')
+    expect(bookingWizard).toContain('booking-wizard-step-time')
+    expect(bookingWizard).toContain('booking-wizard-step-summary')
+    expect(bookingWizard).toContain('booking-wizard-confirm-search')
+    expect(bookingWizard).toContain('actions.createRemoteJobFromDraft')
+    expect(bookingWizard).toContain('actions.confirmRemoteSearch')
+  })
+
+  it('Phase 3.2: Kael tab Q&A does not dispatch submit_kael_draft', () => {
+    expect(customerSurfaces).not.toContain("dispatch({ type: 'submit_kael_draft'")
+    expect(customerSurfaces).toContain('openBookingFromKael')
+    // Kael tab no longer routes to the Kael chat job-creation path on submit.
+    expect(customerSurfaces).not.toContain('push(kaelChatPath(handoffServiceType))')
+  })
+
+  it('Phase 3.3: Home shortcuts open address profile + trust info modal (no Kael chat hijack)', () => {
+    expect(customerSurfaces).toContain('customer-home-shortcut-address')
+    expect(customerSurfaces).toContain('customer-home-shortcut-trust')
+    expect(customerSurfaces).toContain('setShowTrustInfo(true)')
+    expect(customerSurfaces).toContain('customer-trust-info-modal')
+  })
+
+  it('Phase 4.1: A7 EstimateCard shows platform fee + cancellation note', () => {
+    const estimateCardSrc = readFileSync(resolve(MOBILE_ROOT, 'components/customer/kael-chat/kael-chat-surface.tsx'), 'utf8')
+    expect(estimateCardSrc).toContain('PLATFORM_FEE_PCT')
+    expect(estimateCardSrc).toContain('text.labels.platformFee')
+    expect(estimateCardSrc).toContain('text.labels.cancellationNote')
+    expect(estimateCardSrc).toContain('text.labels.summaryTotal')
+  })
+
+  it('Phase 4.2: A14 review form has tag chips + comment field', () => {
+    expect(customerSurfaces).toContain('REVIEW_TAG_KEYS')
+    expect(customerSurfaces).toContain('selectedReviewTags')
+    expect(customerSurfaces).toContain('customer-history-review-tags')
+    expect(customerSurfaces).toContain('customer-history-review-comment-input')
+    expect(customerSurfaces).toContain('comment: reviewComment.trim() || undefined')
+  })
+
+  it('Phase 4.3: push.ts wraps sendExpoBatch with bounded retry', () => {
+    const pushSrc = readFileSync(resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared/push.ts'), 'utf8')
+    expect(pushSrc).toContain('EXPO_PUSH_MAX_ATTEMPTS')
+    expect(pushSrc).toContain('EXPO_PUSH_BACKOFF_MS')
+    expect(pushSrc).toContain('async function sendExpoBatchOnce')
+    expect(pushSrc).toContain('EXPO_REQUEST_FAILED')
+  })
+
+  it('Phase 5.1: admin no longer bypasses customer/worker shells, has own (admin) shell', () => {
+    expect(customerLayoutSrc).not.toContain("if (role === 'admin')")
+    expect(customerLayoutSrc).toContain("if (role !== 'customer')")
+    expect(workerLayoutSrc).not.toContain("if (role === 'admin')")
+    expect(workerLayoutSrc).toContain("if (role !== 'worker')")
+    expect(adminLayoutSrc).toContain("if (role !== 'admin')")
+    expect(indexSrc).toContain("/(admin)/dashboard")
   })
 })
 

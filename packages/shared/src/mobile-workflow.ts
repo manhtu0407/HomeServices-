@@ -88,6 +88,8 @@ export type LocalDeal = {
   broadcast: LocalWorkerBroadcast | null
   scopeChange: LocalScopeChange | null
   finalPrice?: number | null
+  completionPhotoUrls?: string[]
+  completionNotes?: string | null
 }
 
 export type LocalScopeChange = {
@@ -121,6 +123,8 @@ export type LocalRemoteJobSnapshot = {
   broadcast?: LocalWorkerBroadcast | null
   scopeChange?: LocalScopeChange | null
   finalPrice?: number | null
+  completionPhotoUrls?: string[]
+  completionNotes?: string | null
 }
 
 export type LocalRemoteBroadcastSnapshot = {
@@ -760,6 +764,8 @@ function createDeal(draft: LocalDealDraft): LocalDeal {
     broadcast: null,
     scopeChange: null,
     finalPrice: null,
+    completionPhotoUrls: [],
+    completionNotes: null,
   }
 }
 
@@ -784,6 +790,8 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
     broadcast: job.broadcast ?? null,
     scopeChange: job.scopeChange ?? null,
     finalPrice: job.finalPrice ?? null,
+    completionPhotoUrls: job.completionPhotoUrls ?? [],
+    completionNotes: job.completionNotes ?? null,
   }
 }
 
@@ -820,6 +828,8 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
     },
     scopeChange: null,
     finalPrice: null,
+    completionPhotoUrls: [],
+    completionNotes: null,
   }
 }
 

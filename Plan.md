@@ -3809,6 +3809,7 @@ Plan §22 này KHÔNG bao gồm:
 | 2026-05-23 | AI co-founder | Update Phase 2.2 + 2.2b to align với Phase 2.0 |
 | 2026-05-23 | AI co-founder | Add Plan Metadata, Decision Log, Lý do plan tồn tại, Change Log per Tu feedback (takenotes chi tiết) |
 | 2026-05-23 | AI co-founder | Append toàn bộ vào `Plan.md §22` per Tu request "Viết vào plan.md đi cộng sự" |
+| 2026-05-24 | AI co-founder | Phase 1-5 implementation landed. §22.18 Implementation Notes + Verification Evidence + Out-of-Scope tracker added. STRUCTURES.md edits applied (Tu plan-execute approval). |
 
 #### 22.17.B — Khi §22 cần update
 
@@ -3837,13 +3838,49 @@ Update §22 (NOT delete) khi:
 
 ### 22.18 — Implementation Notes / Lessons Captured
 
-(Updated trong quá trình implement. Hiện tại trống.)
+| Date | Phase | Note | Resolution |
+|---|---|---|---|
+| 2026-05-24 | 1.1 | Building regex {0,3} greedy ate "tầng" keyword | Switched to {0,2} + negative lookahead for tầng/lầu/căn/block/toà/số/STK/TK |
+| 2026-05-24 | 1.2 + 1.3 | Combined edits in customer-surfaces.tsx Done tab + scope-change section | LocalDeal gained completionPhotoUrls + completionNotes; reducer + jobDetailToSnapshot updated |
+| 2026-05-24 | 2.0a | Edge Chain type was missing `is()` for null filter | Added `.is(column, value)` to Chain interface in services.ts |
+| 2026-05-24 | 2.0a | request_scope_change_atomic RPC dropped and recreated with `(uuid, text, text)` signature (no price) | Migration `20260524000000_kael_final_price_authority.sql` |
+| 2026-05-24 | 2.0a | scope_change_requests.price_min/max made nullable + added kael_computed_min/max | Same migration |
+| 2026-05-24 | 2.0b | reviewScopeChange retained as dead export but no longer wired (kept for backwards-compat; can be removed later) | Replaced by computeScopeChangeEstimate via Anthropic with new schema scopeChangeEstimateSchema |
+| 2026-05-24 | 2.0f | STRUCTURES.md (LOCKED) edited per Tu's plan-execute approval. Sections: §6 A11/A12, §7 B6/B7, §11 KaelPriceCheckModule + ScopeChangeModule, §15 Pricing | Inline Phase-tag comments mark every change; original wording preserved for diff trace |
+| 2026-05-24 | 2.1 | Customer chat panel rebuilt from pointer card to real list + composer; worker chat keeps existing UI shell, swaps state source | Both use `jobService.listMessages` (8s poll) + `sendMessage` (optimistic append) |
+| 2026-05-24 | 2.3 / 2.4 | Notifications `customer_message_received` / `worker_message_received` already covered by existing `job_message_received` generic event (right recipient already targeted) | Did not split event_type to keep mobile push handler stable |
+| 2026-05-24 | 2.4 | `broadcast_expired` worker-side notification deferred (background process not yet implemented) | Noted in TaskList comment; revisit when realtime batch-expiry job lands |
+| 2026-05-24 | 3.1 | BookingWizard built as a single contained file `apps/mobile/components/customer/booking-wizard.tsx` rather than per-step folder | Reduces import surface; keeps Phase 3.1 surgical. Can refactor into folder if step files grow |
+| 2026-05-24 | 3.2 | Kael tab uses local single-shot Q&A response (no kaelChatService session) | Plan allowed lightweight Q&A; full Kael chat session lives behind Booking wizard handoff |
+| 2026-05-24 | 4.4 | docs/copy/workflow-copy-{vi,en}.md created. Inline TS copy NOT migrated to `apps/mobile/lib/copy/` to keep diff surgical | Docs flag this as deferred follow-up; existing inline copy still serves runtime |
+| 2026-05-24 | 5.1 | Admin shell created with minimal dashboard. Edge router admin route split (per plan) deferred | Mobile shell separation is the primary safety win; Edge admin auth still uses existing role check |
+| 2026-05-24 | 5.8 | `apps/mobile/lib/format.ts` created with `formatVnd(value, language)` + `formatVndRange` | Existing surface-local vndFormatters left intact (surgical); future refactor can migrate one surface at a time |
+| 2026-05-24 | 5.9 | Module-level mutables `lastCustomerDockActive` + `lastWorkerDockActive` were write-only — removed entirely (no Context/useRef needed) | Comment in source documents the removal rationale and future-state if persistence becomes needed |
+| 2026-05-24 | 5.11 | `apps/mobile/lib/realtime.ts` helper file created but NOT wired into UI | Polling (Phase 2.1) is the active mechanism; helper exists as a seam for future enable |
+| 2026-05-24 | Final | mobile-wiring tests rewritten to align with shipped behavior (Phase 1-5). 224 of 224 pass | Pre-existing migration tests (4 in mobile-api-edge-schema.test.ts) remain failing on unrelated lifecycle SQL drift — not part of §22 scope |
 
-```
-Date | Phase | Note | Resolution
----  | ---   | ---  | ---
-     |       |      |
-```
+### 22.18.A — Verification Evidence
+
+| Suite | Result |
+|---|---|
+| `packages/shared` tsc --noEmit | passed |
+| `packages/shared` vitest run | 494 / 494 passed (9 test files) |
+| `apps/api` tsc --noEmit | passed |
+| `apps/api` vitest run | 974 passed / 4 failed (pre-existing migration drift, not §22-introduced) / 59 skipped |
+| `apps/api` mobile-api-edge-runtime.test.ts | 62 / 62 passed |
+| `apps/api` validation.test.ts | 72 / 72 passed |
+| `apps/api` scope-change.test.ts | 11 / 11 passed |
+| `apps/mobile` tsc --noEmit | passed |
+| Static gates (mobile-wiring Phase 5.7 hard-rule asserts) | 224 / 224 passed |
+
+### 22.18.B — Out-of-Scope Observations Logged for Future Work
+
+- 4 pre-existing failures in `apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts` covering lifecycle SQL `for update` ordering and split-brain prevention — unrelated to §22; investigate as a separate fix.
+- `apps/mobile/lib/copy/` TS extraction deferred (Phase 4.4 follow-up).
+- Edge router admin route split deferred (Phase 5.1 follow-up — mobile shell separation already removes the misclick blast radius).
+- Realtime subscription wire-in deferred (Phase 5.11 — polling acceptable, helper exists as seam).
+- TestFlight delivery verification still requires a real device (per existing MEMORY.md caveat).
+- API mock for `computeScopeChangeEstimate` updated to new schema; Anthropic prompt may need real-world tuning once first Kael-computed scope change runs against staging.
 
 ---
 

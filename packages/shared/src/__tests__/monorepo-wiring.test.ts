@@ -79,9 +79,11 @@ describe('root product contract alignment', () => {
   })
 
   it('does not describe the repo as pre-feature after mobile and Edge workflow slices exist', () => {
+    // CLAUDE.md was rewritten 2026-05-22 (agent operating docs audit). Match the
+    // current wording without dropping the regression guard.
     const claude = readText('CLAUDE.md')
-    expect(claude).toContain('Production Fix + Foundation Hardening')
-    expect(claude).toContain('Mobile + Supabase Edge workflow slices already exist')
+    expect(claude).toMatch(/Production fix and foundation hardening/i)
+    expect(claude).toMatch(/Mobile and Supabase Edge workflow slices exist/i)
     expect(claude).not.toContain('Chưa có feature code')
   })
 })

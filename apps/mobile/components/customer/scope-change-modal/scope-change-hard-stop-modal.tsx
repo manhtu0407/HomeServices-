@@ -30,15 +30,20 @@ type ScopeChangeHardStopModalProps = {
   visible: boolean
 }
 
+// Phase 2.0 (2026-05-23): Kael now owns final price authority. newEstimate
+// label clarifies the value is Kael-computed from worker's reported scope, not
+// worker-typed. Kael badge visualises the source.
 const copy = {
   vi: {
     approve: 'Duyệt thay đổi',
-    currentEstimate: 'Ước tính ban đầu',
+    currentEstimate: 'Ước tính ban đầu (Kael)',
     currentScope: 'Phạm vi ban đầu',
     explanation: 'Đánh giá của Kael',
     fallback: 'Cần kiểm tra trong ứng dụng trước khi quyết định.',
     hardStop: 'Thợ đang chờ quyết định của bạn. Phần việc thay đổi chỉ được tiếp tục sau khi bạn duyệt.',
-    newEstimate: 'Ước tính mới',
+    kaelBadge: 'Kael tự tính',
+    kaelBadgeHint: 'Ước tính mới do Kael tính lại dựa trên phạm vi thợ báo cáo.',
+    newEstimate: 'Ước tính mới (Kael)',
     newScope: 'Phạm vi mới',
     pending: 'Cần xác nhận',
     reason: 'Lý do từ thợ',
@@ -48,12 +53,14 @@ const copy = {
   },
   en: {
     approve: 'Approve change',
-    currentEstimate: 'Original estimate',
+    currentEstimate: 'Original estimate (Kael)',
     currentScope: 'Original scope',
     explanation: 'Kael review',
     fallback: 'Review this in the app before deciding.',
     hardStop: 'The worker is waiting for your decision. Changed work can continue only after you approve it.',
-    newEstimate: 'New estimate',
+    kaelBadge: 'Computed by Kael',
+    kaelBadgeHint: 'The new estimate is recomputed by Kael based on the scope the worker reported.',
+    newEstimate: 'New estimate (Kael)',
     newScope: 'New scope',
     pending: 'Needs confirmation',
     reason: 'Worker reason',
@@ -93,6 +100,15 @@ export function ScopeChangeHardStopModal({
           </Text>
           <Text style={[styles.title, { color: tokens.text }]}>{text.title}</Text>
           <Text style={[styles.body, { color: tokens.muted }]}>{text.hardStop}</Text>
+
+          <View style={[styles.kaelBadge, { backgroundColor: tokens.aqua, borderColor: tokens.borderStrong }]} testID="customer-scope-change-modal-kael-badge">
+            <Text style={[styles.kaelBadgeLabel, { color: tokens.primary }]} numberOfLines={1}>
+              ✦ {text.kaelBadge}
+            </Text>
+            <Text style={[styles.kaelBadgeHint, { color: tokens.muted }]} numberOfLines={3}>
+              {text.kaelBadgeHint}
+            </Text>
+          </View>
 
           <View style={styles.compareGrid}>
             <InfoBlock label={text.currentScope} tokens={tokens} value={originalScopeLabel || text.pending} />
@@ -220,6 +236,24 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0,
     textTransform: 'uppercase',
+  },
+  kaelBadge: {
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  kaelBadgeHint: {
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0,
+    lineHeight: 16,
+  },
+  kaelBadgeLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0,
   },
   infoValue: {
     fontSize: 14,

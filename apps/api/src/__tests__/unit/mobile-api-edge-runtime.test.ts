@@ -1295,7 +1295,9 @@ describe('mobile-api Edge runtime helpers', () => {
 
     await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
       status: 'completed_by_worker',
-      final_price: 250000,
+      // Phase 2.0 (2026-05-23): worker không nhập final_price; Kael giữ authority.
+      completion_notes: 'Đã hoàn tất',
+      completion_photo_urls: ['https://example.com/after-1.jpg'],
     })).rejects.toMatchObject({
       code: 'STATUS_CHANGED',
       status: 409,
@@ -1675,16 +1677,20 @@ describe('mobile-api Edge runtime helpers', () => {
   })
 
   it('notifies the customer immediately when a worker requests a scope change', async () => {
+    // Phase 2.0 (plan §22.7.B, 2026-05-23): computeScopeChangeEstimate schema
+    // returns complexity_assessment + price_min/max + problem_summary.
     const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
       const target = typeof url === 'string' ? url : url.toString()
       if (target.includes('api.anthropic.com')) {
         return new Response(JSON.stringify({
           content: [{
             text: JSON.stringify({
-              recommendation: 'approve',
-              price_assessment: 'reasonable',
-              customer_explanation: 'Phần phát sinh phù hợp với mô tả thợ báo.',
-              risk_notes: ['Khách cần xác nhận giá mới trước khi thợ tiếp tục.'],
+              complexity_assessment: 'medium',
+              price_min: 200000,
+              price_max: 350000,
+              confidence: 0.72,
+              problem_summary: 'Phần phát sinh: ống chính cần thay đoạn lớn.',
+              advisory: 'Cần khách xác nhận trước khi thợ tiếp tục.',
             }),
           }],
           usage: { input_tokens: 120, output_tokens: 48 },
@@ -1734,10 +1740,10 @@ describe('mobile-api Edge runtime helpers', () => {
     }
 
     await expect(createEdgeServices({ anthropicApiKey: 'test-anthropic-key' }).requestScopeChange(ctx, 'job-1', {
+      // Phase 2.0 (2026-05-23): worker không gửi price; Kael compute từ context.
       new_description: 'Add repair scope after onsite inspection',
-      new_price_min: 100000,
-      new_price_max: 200000,
       reason: 'Found additional damaged part that needs immediate handling',
+      photo_urls: [],
     })).resolves.toMatchObject({
       scope_change_id: 'scope-1',
       job_id: 'job-1',
@@ -1748,11 +1754,13 @@ describe('mobile-api Edge runtime helpers', () => {
     const reviewUpdate = reviewCall?.operations.find((op) => op[0] === 'update')
     expect(reviewUpdate?.[1]).toMatchObject({
       kael_review: expect.objectContaining({
-        version: 'scope-change-review.2026-05-20.v1',
-        recommendation: 'approve',
-        price_assessment: 'reasonable',
+        version: 'scope-change-estimate.2026-05-23.v1',
         fallback_used: false,
       }),
+      kael_computed_min: expect.any(Number),
+      kael_computed_max: expect.any(Number),
+      price_min: expect.any(Number),
+      price_max: expect.any(Number),
     })
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.anthropic.com/v1/messages',
@@ -1793,6 +1801,10 @@ describe('mobile-api Edge runtime helpers', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
 
+    // Phase 2.0a (plan §22.7.B.1, 2026-05-23): on approve, decideScopeChange
+    // now (a) looks up scope_change_requests.kael_computed_min/max and (b)
+    // updates jobs.final_price to the Kael-locked value before the
+    // notification flow. The sequence below adds those two DB rounds.
     const client = makeSequenceClient([
       {
         data: [{
@@ -1804,6 +1816,8 @@ describe('mobile-api Edge runtime helpers', () => {
         }],
         error: null,
       },
+      { data: { kael_computed_min: 200000, kael_computed_max: 350000 }, error: null },
+      { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
       { data: { worker_id: 'worker-1' }, error: null },
       { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
@@ -1986,10 +2000,10 @@ describe('mobile-api Edge runtime helpers', () => {
     }
 
     await expect(createEdgeServices({}).requestScopeChange(ctx, 'job-1', {
+      // Phase 2.0 (2026-05-23): worker không gửi price; Kael compute từ context.
       new_description: 'Thêm phạm vi sửa chữa',
-      new_price_min: 100000,
-      new_price_max: 200000,
       reason: 'Phát hiện lỗi phụ',
+      photo_urls: [],
     })).rejects.toMatchObject({
       code: 'STATUS_CHANGED',
       status: 409,

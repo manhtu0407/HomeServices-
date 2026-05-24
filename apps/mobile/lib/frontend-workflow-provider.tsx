@@ -56,7 +56,8 @@ type FrontendWorkflowActions = {
   workerDeclineBroadcast: () => Promise<boolean>
   workerUpdateStatus: (
     status: WorkerStatusUpdate,
-    extras?: { completion_notes?: string; completion_photo_urls?: string[]; final_price?: number },
+    // Phase 2.0 (2026-05-23): worker không nhập final_price; Kael giữ authority.
+    extras?: { completion_notes?: string; completion_photo_urls?: string[] },
   ) => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeInput) => Promise<boolean>
   requestWorkerCancellation: (input: WorkerCancellationRequestInput) => Promise<boolean>
@@ -735,6 +736,8 @@ function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
     broadcast,
     scopeChange: scopeChangeFromJobDetail(data),
     finalPrice: job.final_price,
+    completionPhotoUrls: job.completion_photo_urls ?? [],
+    completionNotes: job.completion_notes,
   }
 }
 
@@ -786,6 +789,8 @@ function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): LocalRem
     broadcast: deal.broadcast,
     scopeChange: deal.scopeChange,
     finalPrice: deal.finalPrice ?? null,
+    completionPhotoUrls: deal.completionPhotoUrls ?? [],
+    completionNotes: deal.completionNotes ?? null,
   }
 }
 

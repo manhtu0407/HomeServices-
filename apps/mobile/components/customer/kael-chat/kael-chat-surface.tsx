@@ -30,6 +30,10 @@ void KAEL_CHAT_SERVICE_WRAPPER_ONLY
 
 const supportedServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']
 const vndFormatter = new Intl.NumberFormat('vi-VN')
+// Phase 4.1 (plan §22.9.B, 2026-05-23): platform fee shown in A7 summary.
+// Commission model documented in STRUCTURES.md §15 Fees (~7.5% customer fee).
+const PLATFORM_FEE_PCT = 7.5
+const PLATFORM_FEE_MULTIPLIER = 1 + PLATFORM_FEE_PCT / 100
 const vietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i
 
 const copy = {
@@ -69,7 +73,12 @@ const copy = {
       service: 'Dịch vụ',
       status: 'Trạng thái',
       price: 'Khoảng giá',
+      platformFee: 'Phí nền tảng (~7,5%)',
+      cancellationNote: 'Chính sách hủy',
+      summaryTotal: 'Tổng dự kiến (đã gồm phí)',
     },
+    cancellationBody:
+      'Bạn có thể hủy miễn phí trước khi thợ nhận việc. Sau khi thợ nhận, có thể áp dụng phí dịch vụ tối thiểu.',
     complexity: {
       small: 'Nhỏ',
       medium: 'Vừa',
@@ -121,7 +130,12 @@ const copy = {
       service: 'Service',
       status: 'Status',
       price: 'Price range',
+      platformFee: 'Platform fee (~7.5%)',
+      cancellationNote: 'Cancellation policy',
+      summaryTotal: 'Estimated total (incl. fee)',
     },
+    cancellationBody:
+      'Free cancellation before a worker accepts. After acceptance, a minimum service fee may apply.',
     complexity: {
       small: 'Small',
       medium: 'Medium',
@@ -487,6 +501,17 @@ function EstimateCard({
       <InfoRow label={text.labels.complexity} value={text.complexity[estimate.complexity]} />
       <InfoRow label={text.labels.confidence} value={`${Math.round(estimate.confidence * 100)}%`} />
       {advisory ? <InfoRow label={text.labels.advisory} value={advisory} /> : null}
+      {/* Phase 4.1 (plan §22.9.B, 2026-05-23): fee + cancellation + summary
+          total so customer thấy tổng cost trước khi xác nhận tìm thợ. */}
+      <InfoRow label={text.labels.platformFee} value={`~${PLATFORM_FEE_PCT}%`} />
+      <InfoRow
+        label={text.labels.summaryTotal}
+        value={formatPriceRange(
+          Math.round(estimate.price_min * PLATFORM_FEE_MULTIPLIER),
+          Math.round(estimate.price_max * PLATFORM_FEE_MULTIPLIER),
+        )}
+      />
+      <InfoRow label={text.labels.cancellationNote} value={text.cancellationBody} />
       <Text style={[styles.disclaimer, { color: tokens.muted }]} testID="customer-kael-chat-price-disclaimer">
         {disclaimer}
       </Text>

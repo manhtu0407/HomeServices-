@@ -92,17 +92,14 @@ export const availabilityToggleSchema = z.object({
   is_available: z.boolean(),
 })
 
-export const workerScopeChangeSchema = z
-  .object({
-    new_description: z.string().min(10).max(2000),
-    new_price_min: z.number().int().positive(),
-    new_price_max: z.number().int().positive(),
-    reason: z.string().min(10).max(1000),
-  })
-  .refine((d) => d.new_price_max >= d.new_price_min, {
-    message: 'new_price_max must be >= new_price_min',
-    path: ['new_price_max'],
-  })
+// Phase 2.0 (2026-05-23): worker không đề xuất giá ở B6. Kael compute new
+// estimate từ original context + worker's reported scope. Schema accept
+// description + reason + photo_urls only.
+export const workerScopeChangeSchema = z.object({
+  new_description: z.string().min(10).max(2000),
+  reason: z.string().min(10).max(1000),
+  photo_urls: z.array(z.string().url()).max(5).default([]),
+})
 
 export const workerCancellationRequestSchema = z.object({
   reason: z.string().min(10).max(1000),
@@ -147,6 +144,12 @@ export function scrubSensitiveForLLM(input: string): string {
     .replace(/\b\+?84\d{8,10}\b/g, '[phone]')
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
     .replace(/\b\d{9,12}\b/g, '[id-number]')
+    .replace(/\b\d{8}\b/g, '[bank-account]')
+    .replace(/\b\d{13,15}\b/g, '[bank-account]')
+    .replace(/\b(?:Vinhomes|Vincom|Masteri|Saigon Pearl|Saigon Royal|Saigon South|Sun Avenue|Sun Village|Sunwah|Estella|Lexington|Diamond Island|Empire City|Eco Green|Phu My Hung|Phú Mỹ Hưng|Hoang Anh Gia Lai|Hoàng Anh Gia Lai|Riviera Point|Vista Verde|Era Town|The Manor|Lancaster|City Garden|Lavila|Centana|Topaz|Jamila|Akari|Sunrise City|Botanica|Pearl Plaza|Landmark|The Sun|Citadines|Lumière|Lumiere)(?:\s+(?!tầng|tang|lầu|lau|căn|can|phòng|phong|block|toà|tòa|toa|số|so|STK|TK)[A-Za-zÀ-ỹ][\wÀ-ỹ.]*){0,2}/gi, '[building]')
+    .replace(/\b(?:tầng|tang|lầu|lau)\s*\d{1,3}\b/gi, '[floor]')
+    .replace(/\b(?:căn(?:\s+hộ)?|can(?:\s+ho)?|phòng|phong|block|toà|tòa|toa)\s+[A-Za-z0-9.\-_/]+/gi, '[unit]')
+    .replace(/\b(?:số|so)\s+\d+[A-Za-z]?\b/gi, '[house-no]')
 }
 
 export type JobCreateInput = z.infer<typeof jobCreateSchema>

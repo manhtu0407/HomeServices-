@@ -114,12 +114,53 @@ export async function sendPushToUsers(
   return result;
 }
 
+// Phase 4.3 (plan §22.9.D, 2026-05-23): bounded retry for Expo push delivery.
+// 2 retries, backoff 500ms -> 2s -> 8s (cap 10s). Retry only on
+// EXPO_REQUEST_FAILED or HTTP 5xx. Skip retry on HTTP 4xx and per-ticket
+// DeviceNotRegistered (those are stable failures that disable token).
+const EXPO_PUSH_MAX_ATTEMPTS = 3;
+const EXPO_PUSH_BACKOFF_MS = [500, 2_000, 8_000];
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function sendExpoBatch(
   client: PushDbClient,
   rows: PushTokenRow[],
   payload: PushPayload,
 ): Promise<PushResult> {
   if (rows.length === 0) return emptyResult();
+
+  let attempt = 0;
+  let lastResult: PushResult = emptyResult();
+  while (attempt < EXPO_PUSH_MAX_ATTEMPTS) {
+    const attemptResult = await sendExpoBatchOnce(client, rows, payload);
+    const shouldRetry =
+      attemptResult.delivered === 0 &&
+      attemptResult.errors.some(
+        (code) => code === "EXPO_REQUEST_FAILED" || /^HTTP_5\d\d$/.test(code),
+      ) &&
+      attempt + 1 < EXPO_PUSH_MAX_ATTEMPTS;
+    lastResult = attemptResult;
+    if (!shouldRetry) {
+      if (attempt > 0) {
+        console.warn("mobile-api Expo push retried", { attempts: attempt + 1, errors: attemptResult.errors });
+      }
+      return attemptResult;
+    }
+    const backoff = EXPO_PUSH_BACKOFF_MS[attempt] ?? EXPO_PUSH_BACKOFF_MS[EXPO_PUSH_BACKOFF_MS.length - 1];
+    await sleep(backoff);
+    attempt += 1;
+  }
+  return lastResult;
+}
+
+async function sendExpoBatchOnce(
+  client: PushDbClient,
+  rows: PushTokenRow[],
+  payload: PushPayload,
+): Promise<PushResult> {
   const messages = rows.map((row) => ({
     to: row.push_token,
     title: payload.title,
