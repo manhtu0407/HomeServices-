@@ -212,7 +212,7 @@ describe('mobile local workflow state machine', () => {
     expect(state.deal?.draft.timeChoice).toBe('now')
     expect(state.deal?.estimate?.priceRangeLabel).toBe('Chờ Kael ước tính')
     expect(state.deal?.estimate?.hasVndPrice).toBe(false)
-    expect(state.deal?.estimate?.disclaimer).toContain('thợ')
+    expect(state.deal?.estimate?.disclaimer).toBe('Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.')
     expect(selectors.scheduleMode).toBe('now_only')
     expect(selectors.canConfirmCustomerSearch).toBe(true)
   })

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef } from 'react'
+import { Image } from 'expo-image'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   ActivityIndicator,
@@ -8,17 +9,21 @@ import {
   ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { type ServiceType } from '@home-services/shared'
-import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
+import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@home-services/shared'
+import { getCustomerThemeTokens, getReducedTransparencyCustomerTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
+import { GlassSurface } from '@/components/ui/glass-surface'
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { localizedServiceLabel, type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { kaelChatService } from '@/lib/services'
-import { AddressAutocomplete } from '@/components/customer/address-autocomplete'
+import { inferKaelChatDistrict, KaelAddressContextBar } from './address-context'
 import { takePendingKaelChatDraft } from './pending-intake'
 import { createInitialKaelChatState, kaelChatReducer } from './state'
 import { styles } from './styles'
@@ -31,13 +36,14 @@ void KAEL_CHAT_SERVICE_WRAPPER_ONLY
 const supportedServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']
 const vndFormatter = new Intl.NumberFormat('vi-VN')
 const vietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i
+const kaelModel8AHead = require('../../../assets/kael-model-8a-head.png')
 
 const copy = {
   vi: {
     attach: 'Ảnh',
     attachHint: 'Nếu cần ảnh, Kael sẽ yêu cầu bổ sung trong phiên này.',
     back: 'Đóng',
-    chatTitle: 'Trung tâm Kael',
+    chatTitle: 'Kael',
     chooseService: 'Chọn dịch vụ để Kael bắt đầu đúng luồng xử lý.',
     composerPlaceholder: 'Mô tả sự cố, vị trí trong căn hộ, dấu hiệu nguy hiểm...',
     confirm: 'Xác nhận tìm thợ',
@@ -50,7 +56,10 @@ const copy = {
     errorUnknown: 'Kael chưa thể cập nhật phiên này. Vui lòng thử lại.',
     estimateTitle: 'Ước tính của Kael',
     estimateProblemFallback: 'Kael đã phân loại vấn đề.',
-    estimateDisclaimerFallback: 'Giá là ước tính tham khảo. Thợ xác nhận phạm vi và giá thực tế trước khi bắt đầu.',
+    addressDetected: 'Đã nhận quận',
+    addressLabel: 'Khu vực',
+    addressPlaceholder: 'Ví dụ: Quận 7, tên tòa nhà/căn hộ',
+    estimateDisclaimerFallback: LOCAL_WORKFLOW_PRICE_DISCLAIMER,
     history: 'Xem hoạt động',
     loading: 'Đang tải phiên Kael',
     noWorkerConfirmed: 'Đã tạo yêu cầu. Hiện chưa có thợ phù hợp, Kael sẽ giữ trong hoạt động để tiếp tục theo dõi.',
@@ -58,9 +67,10 @@ const copy = {
     retry: 'Thử lại',
     send: 'Gửi',
     sending: 'Đang gửi',
-    subtitle: 'Kael hỏi rõ vấn đề, tạo ước tính, rồi chỉ tìm thợ sau khi bạn xác nhận.',
+    subtitle: 'Trợ lý kiểm giá và đặt lịch',
     turnFallback: 'Kael đã cập nhật phiên.',
     unsupported: 'Dịch vụ chưa hỗ trợ',
+    welcome: 'Mình là Kael. Cậu cứ mô tả sự cố trong căn hộ, mình sẽ giúp gom thông tin, hỏi thêm khi cần và chuẩn bị bước kiểm giá.',
     labels: {
       advisory: 'Lưu ý',
       complexity: 'Mức độ',
@@ -102,6 +112,9 @@ const copy = {
     errorUnknown: 'Kael could not update this session. Please try again.',
     estimateTitle: 'Kael estimate',
     estimateProblemFallback: 'Kael classified the issue.',
+    addressDetected: 'District set',
+    addressLabel: 'Area',
+    addressPlaceholder: 'Example: District 7, building/apartment',
     estimateDisclaimerFallback: 'This is a reference estimate. The worker confirms scope and actual price before starting.',
     history: 'View activity',
     loading: 'Loading Kael session',
@@ -110,9 +123,10 @@ const copy = {
     retry: 'Try again',
     send: 'Send',
     sending: 'Sending',
-    subtitle: 'Kael clarifies the issue, builds an estimate, then searches only after you confirm.',
+    subtitle: 'Price check and booking assistant',
     turnFallback: 'Kael updated the session.',
     unsupported: 'Unsupported service',
+    welcome: 'I am Kael. Describe the issue at home and I will gather details, ask what is needed, and prepare the price-check step.',
     labels: {
       advisory: 'Advisory',
       complexity: 'Complexity',
@@ -139,6 +153,13 @@ const copy = {
   },
 } as const
 
+function useKaelChatTokens() {
+  const themeMode = useCustomerThemeMode()
+  const { reduceTransparency } = useGlassAccessibility()
+  const tokens = getCustomerThemeTokens(themeMode)
+  return reduceTransparency ? getReducedTransparencyCustomerTokens(tokens) : tokens
+}
+
 export function KaelChatSurface() {
   const { replace } = useRouter()
   const params = useLocalSearchParams()
@@ -146,7 +167,10 @@ export function KaelChatSurface() {
   const text = copy[language]
   const { actions } = useFrontendWorkflow()
   const themeMode = useCustomerThemeMode()
-  const tokens = getCustomerThemeTokens(themeMode)
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const tokens = useKaelChatTokens()
+  const { width } = useWindowDimensions()
+  const frameWidth = Math.min(width, 430)
   const routeService = useMemo(() => parseServiceType(firstParam(params.serviceType)), [params.serviceType])
   const routeSessionId = useMemo(() => firstParam(params.sessionId), [params.sessionId])
   const [state, dispatch] = useReducer(kaelChatReducer, routeService, createInitialKaelChatState)
@@ -166,6 +190,11 @@ export function KaelChatSurface() {
   const estimate = session?.session.estimate ?? session?.turns.find((turn) => turn.estimate)?.estimate ?? null
   const turns = session?.turns ?? []
   const historyTarget = session?.session.job_id ? `/(customer)/history?job_id=${encodeURIComponent(session.session.job_id)}` : '/(customer)/history'
+  const addressDistrict = useMemo(() => inferKaelChatDistrict(addressLabel), [addressLabel])
+
+  useEffect(() => {
+    if (addressDistrict) addressDistrictRef.current = addressDistrict
+  }, [addressDistrict])
 
   useEffect(() => {
     dispatch({ type: 'syncRouteService', service: routeService, routeSessionId })
@@ -222,9 +251,12 @@ export function KaelChatSurface() {
 
     try {
       const addressPayload = addressLabel.trim()
+      const draftDistrict = inferKaelChatDistrict(trimmed)
+      const payloadDistrict = addressDistrict ?? draftDistrict ?? addressDistrictRef.current
+      if (payloadDistrict) addressDistrictRef.current = payloadDistrict
       const addressFields = {
         address_label: addressPayload || undefined,
-        address_district: addressDistrictRef.current ?? undefined,
+        address_district: payloadDistrict ?? undefined,
       }
       const result = session
         ? await kaelChatService.sendTurn(session.session.id, { message: trimmed, photo_urls: [], ...addressFields })
@@ -281,65 +313,40 @@ export function KaelChatSurface() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: tokens.canvas }]} testID="customer-kael-chat-stack-screen">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
-        <View style={styles.header}>
-          <Pressable accessibilityLabel={text.back} accessibilityRole="button" onPress={() => replace('/(customer)/kael')} style={({ pressed }) => [styles.closeButton, { borderColor: tokens.border, backgroundColor: tokens.raised }, pressed ? styles.pressed : null]} testID="customer-kael-chat-close">
-            <ChatBackIcon color={tokens.primary} />
-          </Pressable>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>
-              {text.chatTitle}
-            </Text>
-            <Text style={[styles.subtitle, { color: tokens.muted }]} numberOfLines={2}>
-              {text.subtitle}
+      <View style={[styles.chatFrame, { width: frameWidth }]}>
+        <View style={styles.hiddenMarker} testID="customer-kael-chat-fullscreen-no-bottom-dock" />
+        {reduceTransparency ? null : (
+          <View pointerEvents="none" style={styles.chatAmbientField} testID="customer-kael-chat-liquid-wash">
+            <View style={[styles.chatAmbientMint, { backgroundColor: tokens.aqua }]} />
+            <View style={[styles.chatAmbientWarm, { backgroundColor: tokens.copper }]} />
+            <View style={[styles.chatAmbientSweep, { backgroundColor: tokens.glassHighlight }]} />
+          </View>
+        )}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
+        <GlassSurface mode={themeMode} style={styles.headerGlass} testID="customer-kael-chat-glass-header" variant="hero">
+          <View style={styles.header}>
+            <Pressable accessibilityLabel={text.back} accessibilityRole="button" onPress={() => replace('/(customer)/home')} style={({ pressed }) => [styles.closeButton, { borderColor: tokens.border, backgroundColor: tokens.raised }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-close">
+              <ChatBackIcon color={tokens.primary} />
+            </Pressable>
+            <View style={[styles.kaelAvatar, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
+              <Image source={kaelModel8AHead} style={styles.kaelAvatarImage} />
+            </View>
+            <View style={styles.headerCopy}>
+              <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>
+                {text.chatTitle}
+              </Text>
+              <Text style={[styles.subtitle, { color: tokens.muted }]} numberOfLines={2}>
+                {text.subtitle}
+              </Text>
+            </View>
+            <Text style={[styles.onlinePill, { backgroundColor: tokens.service, borderColor: tokens.border, color: tokens.primary }]} numberOfLines={1}>
+              {language === 'en' ? 'Online' : 'Trực tuyến'}
             </Text>
           </View>
-        </View>
+        </GlassSurface>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={[styles.summaryCard, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-service-picker">
-            <Text style={[styles.sectionTitle, { color: tokens.text }]} numberOfLines={2}>
-              {selectedService ? localizedServiceLabel(selectedService, language) : text.emptyTitle}
-            </Text>
-            <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
-              {text.chooseService}
-            </Text>
-            <View style={styles.chipRow}>
-              {supportedServices.map((service) => {
-                const selected = selectedService === service
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    key={service}
-                    onPress={() => {
-                      dispatch({ type: 'selectService', service })
-                    }}
-                    style={({ pressed }) => [
-                      styles.serviceChip,
-                      {
-                        backgroundColor: selected ? tokens.primary : tokens.service,
-                        borderColor: selected ? tokens.primary : tokens.border,
-                      },
-                      pressed ? styles.pressed : null,
-                    ]}
-                    testID={`customer-kael-chat-service-${service}`}
-                  >
-                    <Text style={[styles.chipText, { color: selected ? tokens.primaryText : tokens.text }]} numberOfLines={1}>
-                      {localizedServiceLabel(service, language)}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-            <AddressAutocomplete
-              language={language}
-              onChange={(value, district) => {
-                dispatch({ type: 'setAddress', value })
-                addressDistrictRef.current = district
-              }}
-              value={addressLabel}
-            />
-          </View>
+          <View style={styles.hiddenMarker} testID="customer-kael-chat-service-picker" />
 
           {loading ? (
             <View style={[styles.stateCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
@@ -350,10 +357,41 @@ export function KaelChatSurface() {
 
           <View style={styles.turnList} testID="customer-kael-chat-history">
             {turns.length === 0 && !loading ? (
-              <View style={[styles.stateCard, { backgroundColor: tokens.base, borderColor: tokens.border }]}>
-                <Text style={[styles.sectionTitle, { color: tokens.text }]}>{text.noEstimate}</Text>
-                <Text style={[styles.bodyText, { color: tokens.muted }]}>{text.attachHint}</Text>
-              </View>
+              <>
+                <View style={[styles.turnBubble, styles.kaelTurn, styles.emptyChatStart, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-kael-chat-welcome-turn">
+                  <Text style={[styles.turnText, { color: tokens.text }]}>
+                    {text.welcome}
+                  </Text>
+                </View>
+                {!selectedService ? (
+                  <View style={styles.contextRail} testID="customer-kael-chat-service-picker-inline">
+                    <View style={styles.chatQuickServices}>
+                      {supportedServices.map((service) => (
+                        <Pressable
+                          accessibilityRole="button"
+                          key={service}
+                          onPress={() => {
+                            dispatch({ type: 'selectService', service })
+                          }}
+                          style={({ pressed }) => [
+                            styles.serviceChip,
+                            {
+                              backgroundColor: tokens.service,
+                              borderColor: tokens.border,
+                            },
+                            pressed ? styles.pressed : null,
+                          ]}
+                          testID={`customer-kael-chat-service-${service}`}
+                        >
+                          <Text style={[styles.chipText, { color: tokens.text }]} numberOfLines={1}>
+                            {localizedServiceLabel(service, language)}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+              </>
             ) : null}
             {turns.map((turn) => (
               <ChatTurn key={turn.id} language={language} turn={turn} />
@@ -380,38 +418,69 @@ export function KaelChatSurface() {
           ) : null}
         </ScrollView>
 
-        <View style={[styles.composer, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]}>
-          <Pressable accessibilityRole="button" onPress={() => dispatch({ type: 'showTransientError', error: text.attachHint })} style={({ pressed }) => [styles.attachButton, { borderColor: tokens.border, backgroundColor: tokens.service }, pressed ? styles.pressed : null]} testID="customer-kael-chat-attach">
-            <Text style={[styles.attachText, { color: tokens.text }]}>{text.attach}</Text>
-          </Pressable>
-          <TextInput
-            multiline
+        <GlassSurface mode={themeMode} style={styles.composerGlass} testID="customer-kael-chat-glass-composer" variant="sheet">
+          <KaelAddressContextBar
+            addressLabel={addressLabel}
+            language={language}
             onChangeText={(value) => {
-              dispatch({
-                type: 'setDraft',
-                value,
-                clearTransientError: error === text.errorNoService || error === text.attachHint,
-              })
+              const nextDistrict = inferKaelChatDistrict(value)
+              if (nextDistrict) addressDistrictRef.current = nextDistrict
+              dispatch({ type: 'setAddress', value })
             }}
-            placeholder={text.composerPlaceholder}
-            placeholderTextColor={tokens.subtleText}
-            style={[styles.input, { color: tokens.text, borderColor: tokens.border, backgroundColor: tokens.base }]}
-            testID="customer-kael-chat-input"
-            value={draft}
+            placeholder={text.addressPlaceholder}
+            tokens={tokens}
           />
-          <Pressable accessibilityRole="button" disabled={sending || draft.trim().length === 0} onPress={sendTurn} style={({ pressed }) => [styles.sendButton, { backgroundColor: draft.trim().length > 0 ? tokens.primary : tokens.disabled }, pressed ? styles.pressed : null]} testID="customer-kael-chat-send">
-            <Text style={[styles.sendText, { color: draft.trim().length > 0 ? tokens.primaryText : tokens.subtleText }]}>{sending ? text.sending : text.send}</Text>
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+          <View style={styles.composer}>
+            <Pressable accessibilityLabel={text.attach} accessibilityRole="button" onPress={() => dispatch({ type: 'showTransientError', error: text.attachHint })} style={({ pressed }) => [styles.attachButton, { borderColor: tokens.border, backgroundColor: tokens.service }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-attach">
+              <ChatPlusIcon color={tokens.primary} />
+            </Pressable>
+            <TextInput
+              multiline
+              onChangeText={(value) => {
+                dispatch({
+                  type: 'setDraft',
+                  value,
+                  clearTransientError: error === text.errorNoService || error === text.attachHint,
+                })
+              }}
+              placeholder={text.composerPlaceholder}
+              placeholderTextColor={tokens.subtleText}
+              style={[styles.input, { color: tokens.text }]}
+              testID="customer-kael-chat-input"
+              value={draft}
+            />
+            <Pressable accessibilityLabel={sending ? text.sending : text.send} accessibilityRole="button" disabled={sending || draft.trim().length === 0} onPress={sendTurn} style={({ pressed }) => [styles.sendButton, { backgroundColor: draft.trim().length > 0 ? tokens.primary : tokens.disabled }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-send">
+              {sending ? <ActivityIndicator color={tokens.primaryText} size="small" /> : <ChatSendIcon color={draft.trim().length > 0 ? tokens.primaryText : tokens.subtleText} />}
+            </Pressable>
+          </View>
+        </GlassSurface>
+        </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   )
 }
 
 function ChatBackIcon({ color }: { color: string }) {
   return (
-    <Svg accessible={false} width={22} height={22} viewBox="0 0 24 24" fill="none">
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
       <Path d="M15 18 9 12l6-6" stroke={color} strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
+function ChatPlusIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  )
+}
+
+function ChatSendIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M22 2 11 13" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="m22 2-7 20-4-9-9-4 20-7Z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   )
 }
@@ -425,8 +494,7 @@ function ChatTurn({ language, turn }: { language: AppLanguage; turn: KaelChatTur
   const body = isCustomer ? rawBody : localizedGeneratedText(rawBody, language, text.turnFallback)
 
   return (
-    <View style={[styles.turnBubble, isCustomer ? styles.customerTurn : styles.kaelTurn, { backgroundColor: isCustomer ? tokens.service : tokens.raised, borderColor: tokens.border }]} testID={`customer-kael-chat-turn-${turn.role}`}>
-      <Text style={[styles.turnRole, { color: isCustomer ? tokens.muted : tokens.primary }]}>{isCustomer ? localizedRoleCustomer(language) : 'Kael'}</Text>
+    <View style={[styles.turnBubble, isCustomer ? styles.customerTurn : styles.kaelTurn, { backgroundColor: isCustomer ? tokens.service : tokens.raised, borderColor: isCustomer ? tokens.borderStrong : tokens.border }]} testID={`customer-kael-chat-turn-${turn.role}`}>
       <Text style={[styles.turnText, { color: tokens.text }]}>{body}</Text>
       {turn.estimate ? <EstimateInline estimate={turn.estimate} language={language} /> : null}
     </View>
@@ -473,7 +541,9 @@ function EstimateCard({
   const text = copy[language]
   const problem = localizedGeneratedText(estimate.problem_summary || estimate.problem_category, language, text.estimateProblemFallback)
   const advisory = localizedOptionalGeneratedText(estimate.advisory, language)
-  const disclaimer = localizedGeneratedText(estimate.disclaimer, language, text.estimateDisclaimerFallback)
+  const disclaimer = language === 'vi'
+    ? LOCAL_WORKFLOW_PRICE_DISCLAIMER
+    : localizedGeneratedText(estimate.disclaimer, language, text.estimateDisclaimerFallback)
 
   return (
     <View style={[styles.estimateCard, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-estimate-card">

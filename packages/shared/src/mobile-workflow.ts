@@ -8,7 +8,7 @@ import {
 } from './constants'
 
 export const LOCAL_WORKFLOW_PRICE_DISCLAIMER =
-  'Đây là ước tính ban đầu. Giá thực tế sẽ được thợ xác nhận trước khi bắt đầu.'
+  'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
 
 // Local workflow keeps only statuses that create visible customer/worker UI
 // states. Backend-only settlement markers are folded by toLocalDealStatus():

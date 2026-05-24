@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { createContext, type ReactNode, use, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { createContext, type ReactNode, use, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from 'react'
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { HCMC_DISTRICTS, normalizeDistrict, type DistrictSlug, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus } from '@home-services/shared'
@@ -12,31 +13,32 @@ import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import { GlassModalSheet } from '@/components/ui/glass-modal-sheet'
 import { GlassPressable } from '@/components/ui/glass-pressable'
-import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
+import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { appCopy, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel, setAppLanguage, type AppLanguage, useAppLanguage } from '@/lib/app-language'
-import type { WorkerProfileResponse } from '@/lib/api-types'
+import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-import { uploadWorkerVerificationDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
+import { uploadJobMediaDrafts, uploadWorkerVerificationDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 
 const WORKER_XANHSM_REFERENCE_AUDIT = 'WORKER_XANHSM_REFERENCE_AUDIT: XanhSM map shell translated into Home Services worker production UI'
 const WORKER_PRODUCTION_CONTRACT = 'WORKER_PRODUCTION_CONTRACT: docs/design/worker-production-contract.md'
 const WORKER_CLIENT_BASELINE_AUDIT = 'WORKER_CLIENT_BASELINE_AUDIT: customer V4 semantic layers matched for worker production'
 const WORKER_THEME_LANGUAGE_STORE = 'WORKER_THEME_LANGUAGE_STORE: worker-theme-language-switch AsyncStorage useSyncExternalStore'
 const WORKER_FLEXIBLE_MAP_SHELL = 'WORKER_FLEXIBLE_MAP_SHELL: worker-map-google-ready flexible-map-preview'
-const WORKER_DOCK_GLASS_MOTION = 'WORKER_DOCK_GLASS_MOTION: worker-dock-glass-aura worker-liquid-glass-dock worker-dock-kael-brief-mascot worker-dock-icon-system'
+const WORKER_DOCK_GLASS_MOTION = 'WORKER_DOCK_GLASS_MOTION: worker-dock-glass-aura worker-liquid-glass-dock worker-dock-outline-chat-icon worker-dock-icon-system'
 const WORKER_GLASSMORPHISM_MOTION_LAYER = 'WORKER_GLASSMORPHISM_MOTION_LAYER: shared-glass-pressable static-depth-layer centered-metric-type'
 const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kael-empty-chat-state worker-kael-local-chat-input submitWorkerKaelLocalDraft'
 const WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT = 'WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT: general area only until worker accepts'
 const WORKER_NO_FAKE_PAYMENT_DATA = 'WORKER_NO_FAKE_PAYMENT_DATA: worker-no-fake-payment-data'
 const WORKER_JOBROOM_KAEL_HANDOFF = 'WORKER_JOBROOM_KAEL_HANDOFF: worker-jobroom-kael-handoff worker-jobroom-waiting-room worker-jobroom-privacy-gate'
+const WORKER_JOBROOM_WAITING_COPY_CONTRACT = 'Chờ Kael đưa yêu cầu vào phòng việc.'
+void WORKER_JOBROOM_WAITING_COPY_CONTRACT
 
-const WORKER_DECORATIVE_MOTION_ENABLED = false
 const WORKER_THEME_STORAGE_KEY = 'home-services.worker.theme.production'
-const workerDockHeight = 64
-const workerDockBottomMargin = 8
+const workerDockHeight = 66
+const workerDockBottomMargin = 6
 const workerDockClearance = workerDockHeight + workerDockBottomMargin + 76
-const workerFrameHorizontalPadding = 16
+const workerFrameHorizontalPadding = 14.8
 const kaelHead = require('../../assets/kael-model-8a-head.png')
 
 type WorkerThemeMode = 'dark' | 'light'
@@ -46,7 +48,9 @@ type WorkerVerificationFileSlot = 'cccdFront' | 'cccdBack' | 'selfie'
 type WorkerActiveTab = 'chat' | 'earnings' | 'home' | 'jobs' | 'profile'
 type WorkerJobsTab = 'active' | 'needs' | 'waiting'
 type WorkerTone = 'base' | 'cream' | 'cyan' | 'depth' | 'mint' | 'raised' | 'strong' | 'warm'
+type WorkerHeaderPillTone = 'cream' | 'mint'
 type WorkerIconName =
+  | 'back'
   | 'bank'
   | 'bolt'
   | 'brief'
@@ -62,17 +66,27 @@ type WorkerIconName =
   | 'moon'
   | 'person'
   | 'pin'
+  | 'plus'
   | 'send'
   | 'shield'
   | 'spark'
   | 'sun'
   | 'tools'
+  | 'trend'
   | 'water'
 type WorkerChatMessage = { id: string; mine?: boolean; system?: boolean; text: string; who: string }
 type WorkerBroadcastView = NonNullable<LocalDeal['broadcast']>
 
 let lastWorkerDockActive: WorkerActiveTab = 'home'
 const workerJobsTabKeys: WorkerJobsTab[] = ['waiting', 'active', 'needs']
+
+function isWorkerJobsTab(value: unknown): value is WorkerJobsTab {
+  return typeof value === 'string' && workerJobsTabKeys.includes(value as WorkerJobsTab)
+}
+const workerMoneyFormatters = {
+  en: new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }),
+  vi: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }),
+} as const
 const workerServiceAreaAnchors: Array<{ lat: number; lng: number; slug: Exclude<DistrictSlug, 'hcmc_all'> }> = [
   { slug: 'q1', lat: 10.7757, lng: 106.7004 },
   { slug: 'q3', lat: 10.7844, lng: 106.6841 },
@@ -126,30 +140,30 @@ type WorkerThemeTokens = {
 
 const lightLayer: WorkerThemeTokens = {
   mode: 'light',
-  canvas: '#F4FAF7',
-  base: '#FFFDF8',
+  canvas: '#F8FBF5',
+  base: '#FFFDF7',
   raised: '#FFFFFF',
   strong: '#FBFFFC',
-  depth: '#EAF6F1',
-  mint: '#DCF3EC',
-  cyan: '#E6F8F6',
-  cream: '#FFF0DE',
-  warm: '#FFF7EA',
+  depth: '#E5F1EB',
+  mint: '#DCFBF3',
+  cyan: '#E8FCFA',
+  cream: '#FFF8EB',
+  warm: '#FFF8EB',
   glass: 'rgba(255,255,255,0.58)',
   glassStrong: 'rgba(255,255,255,0.74)',
   glassBorder: 'rgba(255,255,255,0.82)',
   glassHighlight: 'rgba(255,255,255,0.70)',
-  border: '#D2E8E1',
-  borderStrong: '#A9D9CF',
-  ink: '#102B2D',
-  muted: '#667D7A',
-  subtle: '#829A95',
+  border: 'rgba(35,96,84,0.13)',
+  borderStrong: 'rgba(8,120,110,0.22)',
+  ink: '#12231F',
+  muted: '#647672',
+  subtle: '#7D958F',
   primary: '#08786E',
   primaryText: '#FFFFFF',
   aqua: '#51BBC0',
   copper: '#BB743D',
-  line: '#D7E9E4',
-  mapLine: '#C7DCD7',
+  line: 'rgba(35,96,84,0.13)',
+  mapLine: 'rgba(39,108,96,0.13)',
   mapBlock: 'rgba(255,255,255,0.56)',
   sheen: 'rgba(255,255,255,0.64)',
   shadow: '0 14px 36px rgba(13,70,65,0.11)',
@@ -196,6 +210,7 @@ const workerCopy = {
       eyebrow: 'Thợ',
       title: 'Ca trực',
       readinessTitle: 'Sẵn sàng nhận việc',
+      readinessSubtitle: 'Trạng thái quyết định yêu cầu mới',
       readinessNoProfile: 'Hoàn tất hồ sơ thợ trước khi nhận yêu cầu mới.',
       readinessOnline: 'Bật nhận việc khi hồ sơ đã được duyệt và bạn đang rảnh.',
       readinessOffline: 'Tắt nhận việc khi đang bận hoặc chưa đủ điều kiện nhận yêu cầu.',
@@ -203,7 +218,7 @@ const workerCopy = {
       readinessVerification: 'Xác minh',
       readinessAvailability: 'Khả dụng',
       readinessRequest: 'Yêu cầu mới',
-      mapSearch: 'Chờ yêu cầu mới',
+      mapSearch: 'Chưa có khu vực',
       mapTitle: 'Điện, nước, vệ sinh',
       mapMeta: 'Chưa có yêu cầu',
       electric: 'Điện',
@@ -217,9 +232,13 @@ const workerCopy = {
       phases: ['Chờ duyệt', 'Tóm tắt', 'Xác nhận', 'Di chuyển'],
       nextTitle: 'Yêu cầu',
       serviceHeading: '',
-      electricianCard: 'Kỹ thuật điện',
-      plumberCard: 'Hệ thống nước',
-      cleaningCard: 'Vệ sinh nhà',
+      serviceSkillLabel: 'Kỹ năng',
+      serviceProfileTitle: 'Hồ sơ thợ',
+      serviceProfileMeta: 'Chờ duyệt kỹ năng',
+      servicePendingLabel: 'Chờ duyệt',
+      electricianCard: 'Sửa điện',
+      plumberCard: 'Sửa nước',
+      cleaningCard: 'Vệ sinh',
     },
     request: {
       service: 'Chờ duyệt',
@@ -230,15 +249,22 @@ const workerCopy = {
       customerEstimate: 'Khách ước tính',
       workerEarns: 'Thợ nhận',
       decline: 'Bỏ qua',
-      accept: 'Chấp nhận',
+      accept: 'Nhận việc',
     },
     jobs: {
       eyebrow: 'Công việc',
       title: 'Yêu cầu',
+      subtitle: 'Quyết định nhanh, giữ riêng tư địa chỉ',
       filters: ['Chờ nhận', 'Đang làm', 'Cần xử lý'],
       emptyStatus: 'Đang theo dõi',
       emptyTitle: 'Chưa có việc đang làm',
       emptyBody: 'Kael sẽ đưa yêu cầu mới vào đây khi có khách xác nhận tìm thợ.',
+      waitingEmptyTitle: 'Chưa có yêu cầu mới',
+      waitingEmptyBody: 'Yêu cầu mới sẽ hiện ở mục Chờ nhận.',
+      activeEmptyTitle: 'Chưa nhận việc',
+      activeEmptyBody: 'Việc đã nhận và Phòng việc sẽ hiện tại đây.',
+      needsEmptyTitle: 'Không có mục chặn',
+      needsEmptyBody: 'Phát sinh hoặc bước cần duyệt sẽ hiện ở đây.',
       scopeStatus: 'Khách quyết định',
       scopeTitle: 'Thay đổi phạm vi',
       scopeBody: 'Thợ chờ khách xác nhận trước khi tiếp tục phần việc mới.',
@@ -248,18 +274,20 @@ const workerCopy = {
       eyebrow: 'Tin nhắn',
       title: 'Phòng việc',
       jobRoomTitle: 'Phòng việc Kael',
+      relaySubtitle: 'Kael chuyển tiếp với khách',
+      acceptedPill: 'Đã nhận',
       waitingTitle: 'Đang chờ Kael đưa việc',
-      waitingBody: 'Khi khách xác nhận tìm thợ, Kael sẽ mở tóm tắt công việc, khu vực chung và kênh trao đổi.',
-      waitingInput: 'Chờ Kael đưa yêu cầu vào phòng việc.',
+      waitingBody: 'Khi khách xác nhận tìm thợ, Kael sẽ mở tóm tắt công việc, khu vực chung và ghi chú việc.',
+      waitingInput: 'Nhắn trong Phòng việc...',
       handoffTitle: 'Kael giao việc',
       privacyGate: 'Địa chỉ chi tiết chỉ mở sau khi thợ chấp nhận.',
-      acceptedGate: 'Đã nhận việc. Có thể trao đổi trong phòng việc.',
-      lockedGate: 'Chấp nhận việc để mở trao đổi.',
+      acceptedGate: 'Đã nhận việc. Ghi chú hiện lưu trong phiên này.',
+      lockedGate: 'Chấp nhận việc để mở ghi chú việc.',
       serviceLabel: 'Dịch vụ',
       problemLabel: 'Vấn đề',
       areaLabel: 'Khu vực',
       statusLabel: 'Trạng thái',
-      briefTitle: 'Tóm tắt an toàn',
+      briefTitle: 'Tóm tắt Kael',
       briefBody: 'Kael giữ tóm tắt công việc và mốc an toàn trước khi thợ phản hồi.',
       emptyTitle: 'Chưa có tin nhắn',
       emptyBody: 'Tin nhắn chỉ mở khi có yêu cầu thật hoặc thợ đã nhận việc.',
@@ -270,17 +298,18 @@ const workerCopy = {
     },
     earnings: {
       eyebrow: 'Thu nhập',
-      title: 'Đối soát',
-      today: 'Dữ liệu đối soát',
-      noReconciliation: 'Chưa có đối soát',
+      title: 'Thu nhập',
+      subtitle: 'Theo dõi tiền công dễ hiểu hơn',
+      today: 'Hôm nay',
+      month: 'Tháng này',
+      noReconciliation: 'Chờ dữ liệu',
       body: '',
       complete: 'Hoàn tất',
       waiting: 'Chờ khách',
       ledgerTitle: 'Sổ đối soát',
       rows: [
-        ['Yêu cầu dịch vụ', appCopy.vi.common.noRequest],
-        ['Tài khoản nhận tiền', 'Chưa lưu hệ thống'],
-        ['Thanh toán & đánh giá', appCopy.vi.common.noData],
+        ['Sổ đối soát', appCopy.vi.common.noData],
+        ['Tài khoản nhận tiền', 'Chưa lưu'],
       ],
     },
     profile: {
@@ -307,6 +336,7 @@ const workerCopy = {
       eyebrow: 'Worker',
       title: 'Shift',
       readinessTitle: 'Ready for jobs',
+      readinessSubtitle: 'Status that controls new jobs',
       readinessNoProfile: 'Complete your worker profile before receiving new requests.',
       readinessOnline: 'Go online when your profile is approved and you are available.',
       readinessOffline: 'Stay offline while busy or not eligible for new requests.',
@@ -314,7 +344,7 @@ const workerCopy = {
       readinessVerification: 'Verification',
       readinessAvailability: 'Availability',
       readinessRequest: 'New request',
-      mapSearch: 'Waiting for a new request',
+      mapSearch: 'No area yet',
       mapTitle: 'Power, plumbing, cleaning',
       mapMeta: 'No request yet',
       electric: 'Power',
@@ -328,6 +358,10 @@ const workerCopy = {
       phases: ['Pending', 'Briefed', 'Confirm', 'Travel'],
       nextTitle: 'Request',
       serviceHeading: '',
+      serviceSkillLabel: 'Skill',
+      serviceProfileTitle: 'Worker profile',
+      serviceProfileMeta: 'Skills pending review',
+      servicePendingLabel: 'Pending',
       electricianCard: 'Electrical',
       plumberCard: 'Plumbing',
       cleaningCard: 'Cleaning',
@@ -346,10 +380,17 @@ const workerCopy = {
     jobs: {
       eyebrow: 'Jobs',
       title: 'Requests',
+      subtitle: 'Decide quickly while address stays private',
       filters: ['Pending', 'Active', 'Needs review'],
       emptyStatus: 'Watching',
       emptyTitle: 'No active job',
       emptyBody: 'Kael will place new requests here after a customer confirms worker search.',
+      waitingEmptyTitle: 'No new request',
+      waitingEmptyBody: 'New requests appear in the Pending tab.',
+      activeEmptyTitle: 'No accepted job',
+      activeEmptyBody: 'Accepted work and JobRoom appear here.',
+      needsEmptyTitle: 'Nothing blocked',
+      needsEmptyBody: 'Scope or approval blockers appear here.',
       scopeStatus: 'Customer decides',
       scopeTitle: 'Scope change',
       scopeBody: 'Wait for the customer decision before continuing the changed scope.',
@@ -359,18 +400,20 @@ const workerCopy = {
       eyebrow: 'Chat',
       title: 'JobRoom',
       jobRoomTitle: 'Kael JobRoom',
+      relaySubtitle: 'Kael relays with the customer',
+      acceptedPill: 'Accepted',
       waitingTitle: 'Waiting for Kael to hand off a job',
-      waitingBody: 'When a customer confirms worker search, JobRoom opens the job brief, general area, and relay channel.',
-      waitingInput: 'Waiting for Kael to place a request in JobRoom.',
+      waitingBody: 'When a customer confirms worker search, JobRoom opens the job brief, general area, and job notes.',
+      waitingInput: 'Message in JobRoom...',
       handoffTitle: 'Kael handoff',
       privacyGate: 'Detailed address opens only after acceptance.',
-      acceptedGate: 'Job accepted. You can message in JobRoom.',
-      lockedGate: 'Accept the job to unlock messaging.',
+      acceptedGate: 'Job accepted. Notes are saved for this session.',
+      lockedGate: 'Accept the job to unlock job notes.',
       serviceLabel: 'Service',
       problemLabel: 'Problem',
       areaLabel: 'Area',
       statusLabel: 'Status',
-      briefTitle: 'Safety brief',
+      briefTitle: 'Kael brief',
       briefBody: 'Kael keeps the job brief and safety context before worker replies.',
       emptyTitle: 'No messages yet',
       emptyBody: 'Messages open only for a real request or an accepted job.',
@@ -381,17 +424,18 @@ const workerCopy = {
     },
     earnings: {
       eyebrow: 'Earnings',
-      title: 'Reconcile',
-      today: 'Reconciliation data',
-      noReconciliation: 'No reconciliation yet',
+      title: 'Earnings',
+      subtitle: 'Track payout clearly',
+      today: 'Today',
+      month: 'This month',
+      noReconciliation: 'Waiting for data',
       body: '',
       complete: 'Completed',
       waiting: 'Waiting',
       ledgerTitle: 'Ledger',
       rows: [
-        ['Service request', appCopy.en.common.noRequest],
-        ['Payout account', 'Not stored yet'],
-        ['Payment & review', appCopy.en.common.noData],
+        ['Ledger', appCopy.en.common.noData],
+        ['Payout account', 'Not stored'],
       ],
     },
     profile: {
@@ -551,6 +595,12 @@ const workerActionCopy = {
   vi: {
     hiddenAddress: 'ẩn địa chỉ chi tiết',
     finalPrice: 'Giá cuối cùng',
+    completionNote: 'Ghi chú hoàn tất',
+    completionPhoto: 'Ảnh nghiệm thu',
+    completionPhotoRequired: 'Cần ít nhất 1 ảnh nghiệm thu',
+    completionPhotoCount: (count: number) => `${count} ảnh đã chọn`,
+    addCompletionPhoto: 'Thêm ảnh',
+    completeLater: 'Để sau',
     scopeDescription: 'Mô tả phần phát sinh',
     scopePrice: 'Giá mới cần khách duyệt',
     scopeSubmit: 'Yêu cầu đổi phạm vi',
@@ -570,6 +620,13 @@ const workerActionCopy = {
     alerts: {
       finalPriceRequiredTitle: 'Cần giá cuối cùng',
       finalPriceRequiredBody: 'Nhập giá cuối cùng thực tế trước khi báo hoàn tất.',
+      completionNoteRequiredTitle: 'Cần ghi chú hoàn tất',
+      completionNoteRequiredBody: 'Nhập ghi chú ngắn về việc đã làm trước khi báo hoàn tất.',
+      completionPhotoRequiredTitle: 'Cần ảnh nghiệm thu',
+      completionPhotoRequiredBody: 'Thêm ít nhất một ảnh sau sửa để giữ chuỗi bằng chứng đầy đủ.',
+      completionUploadTitle: 'Chưa tải được ảnh',
+      completionPermissionTitle: 'Cần quyền chọn ảnh',
+      completionPermissionBody: 'Cho phép truy cập ảnh để thêm ảnh nghiệm thu.',
       completeTitle: 'Xác nhận báo hoàn tất?',
       completeBody: 'Hệ thống sẽ báo khách kiểm tra và xác nhận. Thanh toán vẫn khóa ở giai đoạn này.',
       scopeDescriptionTitle: 'Cần mô tả phạm vi mới',
@@ -587,6 +644,12 @@ const workerActionCopy = {
   en: {
     hiddenAddress: 'detailed address hidden',
     finalPrice: 'Final price',
+    completionNote: 'Completion note',
+    completionPhoto: 'Completion photo',
+    completionPhotoRequired: 'At least 1 completion photo required',
+    completionPhotoCount: (count: number) => `${count} photo${count === 1 ? '' : 's'} selected`,
+    addCompletionPhoto: 'Add photo',
+    completeLater: 'Later',
     scopeDescription: 'New scope details',
     scopePrice: 'New price for customer approval',
     scopeSubmit: 'Request scope change',
@@ -606,6 +669,13 @@ const workerActionCopy = {
     alerts: {
       finalPriceRequiredTitle: 'Final price required',
       finalPriceRequiredBody: 'Enter the real final price before marking the job complete.',
+      completionNoteRequiredTitle: 'Completion note required',
+      completionNoteRequiredBody: 'Add a short note about the completed work before marking the job complete.',
+      completionPhotoRequiredTitle: 'Completion photo required',
+      completionPhotoRequiredBody: 'Add at least one after-repair photo to keep the evidence trail complete.',
+      completionUploadTitle: 'Photo upload failed',
+      completionPermissionTitle: 'Photo permission required',
+      completionPermissionBody: 'Allow photo access to add completion evidence.',
       completeTitle: 'Mark job complete?',
       completeBody: 'The customer will be asked to review and confirm. Payment remains locked at this stage.',
       scopeDescriptionTitle: 'New scope details required',
@@ -672,10 +742,10 @@ function getWorkerThemeTokens(mode: WorkerThemeMode) {
 function getReducedTransparencyWorkerTokens(tokens: WorkerThemeTokens): WorkerThemeTokens {
   return {
     ...tokens,
-    glass: tokens.mode === 'dark' ? 'rgba(18,39,36,0.96)' : 'rgba(255,253,248,0.96)',
+    glass: tokens.mode === 'dark' ? '#122724' : '#FFFDF8',
     glassBorder: tokens.borderStrong,
     glassHighlight: 'transparent',
-    glassStrong: tokens.mode === 'dark' ? 'rgba(22,43,40,0.98)' : 'rgba(255,255,255,0.98)',
+    glassStrong: tokens.mode === 'dark' ? '#162B28' : '#FFFFFF',
     shadow: 'none',
     sheen: 'transparent',
     softShadow: 'none',
@@ -703,22 +773,18 @@ function isAcceptedLocalWorkerDeal(deal: LocalDeal | null) {
 export function WorkerHomeSurface() {
   const copy = useWorkerFrameCopy()
   const language = useAppLanguage()
-  const { selectors, state, workerProfile } = useFrontendWorkflow()
+  const { state, workerProfile } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
+  const hasIncomingRequest = Boolean(deal?.broadcast && !isAcceptedLocalWorkerDeal(deal))
   const profileValue = localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)
 
   return (
-    <WorkerFrame active="home" eyebrow={copy.home.eyebrow} title={copy.home.title} testID="worker-home-surface">
+    <WorkerFrame active="home" eyebrow={copy.home.eyebrow} headerPill={profileValue} subtitle={copy.home.readinessSubtitle} title={copy.home.readinessTitle} testID="worker-home-surface">
       <WorkerMapStage />
-      <WorkerReadinessPanel />
-      <IncomingRequestSheet />
-
-      <View style={styles.operationalBand} testID="worker-shift-console">
-        <QuickPanel icon="clock" title={copy.home.nextTitle} value={deal ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noRequest} tone="cyan" />
-        <QuickPanel icon="shield" title={copy.profile.title} value={profileValue} tone="mint" />
-      </View>
-
-      <TimelineCard />
+      <WorkerReadinessActionPanel />
+      <WorkerHomeServiceGrid />
+      <WorkerHomeMiniGrid />
+      {hasIncomingRequest ? <IncomingRequestSheet /> : null}
     </WorkerFrame>
   )
 }
@@ -726,53 +792,305 @@ export function WorkerHomeSurface() {
 export function WorkerJobsSurface() {
   const copy = useWorkerFrameCopy()
   const language = useAppLanguage()
+  const params = useLocalSearchParams<{ tab?: string }>()
+  const { replace } = useRouter()
   const { selectors, state } = useFrontendWorkflow()
-  const [activeJobsTab, setActiveJobsTab] = useState<WorkerJobsTab>('waiting')
+  const requestedTab = isWorkerJobsTab(params.tab) ? params.tab : null
+  const [activeJobsTab, setActiveJobsTab] = useState<WorkerJobsTab>(requestedTab ?? 'active')
   const deal = getWorkerVisibleDeal(state.deal)
   const jobTitle = deal ? localizedServiceLabel(deal.draft.serviceType, language) : copy.jobs.emptyTitle
   const hiddenAddressLabel = workerActionCopy[language].hiddenAddress
   const visibleArea = deal?.broadcast?.generalArea ?? deal?.draft.districtLabel
   const jobAreaLabel = visibleArea ? localizedWorkerAreaLabel(visibleArea, language) : hiddenAddressLabel
-  const fullJobAddressLabel = selectors.canWorkerSeeFullAddress && deal?.draft.addressLabel
-    ? localizedWorkerAreaLabel(deal.draft.addressLabel, language)
-    : null
+  const fullJobAddressSource = selectors.canWorkerSeeFullAddress && deal?.broadcast?.fullAddressVisible && deal.broadcast.fullAddressLabel ? deal.broadcast.fullAddressLabel : null
+  const fullJobAddressLabel = fullJobAddressSource ? localizedWorkerAreaLabel(fullJobAddressSource, language) : null
   const jobVisibleAreaLabel = fullJobAddressLabel ?? jobAreaLabel
   const jobBody = deal
     ? `${localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, language)} · ${jobVisibleAreaLabel}`
     : copy.jobs.emptyBody
+  const activeJobBriefLines = deal?.broadcast ? buildWorkerBroadcastBrief(deal, deal.broadcast, selectors.currentStatus, language) : []
   const showScopeChangeCard = Boolean(deal && selectors.currentStatus === 'scope_change_pending')
+  const showCompletionEvidenceCard = Boolean(deal && selectors.currentStatus === 'repairing')
   const acceptedJob = isAcceptedLocalWorkerDeal(deal)
+  const showAcceptedActionPanel = Boolean(acceptedJob && deal?.broadcast && [
+    'inspecting',
+    'repairing',
+    'scope_change_pending',
+  ].includes(selectors.currentStatus ?? ''))
   const activeJobStatus = deal && acceptedJob ? localizedStatusLabel(selectors.currentStatus, language) : copy.jobs.emptyStatus
   const waitingStatus = deal?.broadcast && !acceptedJob ? localizedStatusLabel(selectors.currentStatus, language) : copy.jobs.emptyStatus
-  const needsStatus = showScopeChangeCard ? copy.jobs.scopeStatus : appCopy[language].common.noData
+  const waitingHasRequest = Boolean(deal?.broadcast && !acceptedJob)
+  const waitingCountdownLabel = waitingHasRequest && selectors.canWorkerAccept && deal?.broadcast?.secondsRemaining !== null && deal?.broadcast?.secondsRemaining !== undefined
+    ? language === 'en'
+      ? `${deal.broadcast.secondsRemaining}s`
+      : `${deal.broadcast.secondsRemaining} giây`
+    : null
+  const jobsFrameTitle = activeJobsTab === 'waiting'
+    ? copy.jobs.filters[0]
+    : activeJobsTab === 'active'
+      ? copy.jobs.eyebrow
+      : copy.jobs.filters[2]
+  const jobsFrameSubtitleFallback = activeJobsTab === 'waiting'
+    ? (language === 'en' ? 'New requests around your area' : 'Yêu cầu mới quanh khu vực')
+    : activeJobsTab === 'active'
+      ? (language === 'en' ? 'Accepted jobs and the next action' : 'Việc đã nhận và bước tiếp theo')
+      : (language === 'en' ? 'Blocked work that needs a decision' : 'Việc đang chặn tiến trình')
+  const jobsFramePill = activeJobsTab === 'waiting'
+    ? waitingCountdownLabel ?? waitingStatus
+    : activeJobsTab === 'active'
+      ? activeJobStatus
+      : showScopeChangeCard || showCompletionEvidenceCard
+        ? (language === 'en' ? 'Needs action' : 'Cần xử lý')
+        : appCopy[language].common.noData
+  const jobsFramePillTone: WorkerHeaderPillTone = activeJobsTab === 'active' ? 'mint' : 'cream'
+  const jobsFrameSubtitle = activeJobsTab === 'active' ? copy.jobs.subtitle : jobsFrameSubtitleFallback
   useEffect(() => {
-    if (showScopeChangeCard) {
-      setActiveJobsTab('needs')
-    } else if (acceptedJob) {
-      setActiveJobsTab('active')
+    if (requestedTab) {
+      setActiveJobsTab((current) => current === requestedTab ? current : requestedTab)
     }
-  }, [acceptedJob, showScopeChangeCard])
+  }, [requestedTab])
+  const selectJobsTab = (tab: WorkerJobsTab) => {
+    setActiveJobsTab(tab)
+    replace(tab === 'active' ? '/(worker)/jobs' : `/(worker)/jobs?tab=${tab}`)
+  }
 
   return (
-    <WorkerFrame active="jobs" eyebrow={copy.jobs.eyebrow} title={copy.jobs.title} testID="worker-jobs-surface">
-      <SegmentFilter activeTab={activeJobsTab} labels={copy.jobs.filters} onTabChange={setActiveJobsTab} />
-      <WorkerJobsTabOverview activeTab={activeJobsTab} onTabChange={setActiveJobsTab} />
+    <WorkerFrame active="jobs" eyebrow={copy.jobs.title} headerPill={jobsFramePill} headerPillTone={jobsFramePillTone} subtitle={jobsFrameSubtitle} title={jobsFrameTitle} testID="worker-jobs-surface">
+      <SegmentFilter activeTab={activeJobsTab} labels={copy.jobs.filters} onTabChange={selectJobsTab} />
       {activeJobsTab === 'waiting' ? (
         <>
-          <IncomingRequestSheet compact />
-          <JobActivityCard icon="clock" status={waitingStatus} title={deal?.broadcast && !acceptedJob ? jobTitle : copy.jobs.emptyTitle} body={deal?.broadcast && !acceptedJob ? jobBody : copy.jobs.emptyBody} tone="mint" />
+          <View style={styles.hiddenMarker} testID="worker-jobs-waiting" />
+          {waitingHasRequest ? (
+            <>
+              <CompactWorkerPresenceMap mode="waiting" />
+              <IncomingRequestSheet compact />
+            </>
+          ) : (
+            <>
+              <CompactWorkerPresenceMap mode="waiting" />
+              <WorkerEmptyJobPanel
+                body={copy.jobs.waitingEmptyBody}
+                icon="clock"
+                primaryActionLabel={copy.home.readinessTitle}
+                primaryActionPath="/(worker)/home"
+                status={waitingStatus}
+                testID="worker-jobs-waiting-empty-card"
+                title={copy.jobs.waitingEmptyTitle}
+                tone="base"
+              />
+            </>
+          )}
         </>
       ) : null}
       {activeJobsTab === 'active' ? (
         <>
-          <JobActivityCard icon="tools" status={activeJobStatus} title={acceptedJob ? jobTitle : copy.jobs.emptyTitle} body={acceptedJob ? jobBody : copy.jobs.emptyBody} tone="mint" />
-          <WorkerJobsJobRoomEntry />
+          {acceptedJob ? (
+            <>
+              <ActiveWorkerJobCard body={jobBody} briefLines={activeJobBriefLines} status={activeJobStatus} title={jobTitle} />
+              {showScopeChangeCard || showCompletionEvidenceCard ? <WorkerNeedsReviewCard /> : <WorkerNeedsInlineEmptyCard />}
+              {showAcceptedActionPanel ? (
+                <View testID="worker-accepted-action-sheet">
+                  <IncomingRequestSheet compact />
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <WorkerEmptyJobPanel
+                body={copy.jobs.activeEmptyBody}
+                icon="tools"
+                primaryActionLabel={copy.jobs.filters[0]}
+                primaryActionPath="/(worker)/jobs?tab=waiting"
+                secondaryActionLabel={copy.home.readinessTitle}
+                secondaryActionPath="/(worker)/home"
+                status={copy.jobs.emptyStatus}
+                testID="worker-jobs-active-empty-card"
+                title={copy.jobs.activeEmptyTitle}
+                tone="base"
+              />
+              <WorkerNeedsInlineEmptyCard />
+            </>
+          )}
         </>
       ) : null}
       {activeJobsTab === 'needs' ? (
-        <JobActivityCard icon="brief" status={needsStatus} title={showScopeChangeCard ? copy.jobs.scopeTitle : copy.jobs.emptyTitle} body={showScopeChangeCard ? copy.jobs.scopeBody : copy.jobs.emptyBody} testID="worker-scope-change-active" tone="warm" />
+        <>
+          <WorkerNeedsReviewCard />
+          {showAcceptedActionPanel ? (
+            <View testID="worker-needs-accepted-action-sheet">
+              <IncomingRequestSheet compact />
+            </View>
+          ) : null}
+        </>
       ) : null}
     </WorkerFrame>
+  )
+}
+
+function WorkerNeedsReviewCard() {
+  const { copy, language, tokens } = useWorkerUi()
+  const { replace } = useRouter()
+  const { selectors, state } = useFrontendWorkflow()
+  const actionCopy = workerActionCopy[language]
+  const deal = getWorkerVisibleDeal(state.deal)
+  const scopeChange = deal?.scopeChange ?? null
+  const hasScopeBlocker = Boolean(deal && selectors.currentStatus === 'scope_change_pending' && scopeChange)
+  const hasCompletionEvidenceBlocker = Boolean(deal && selectors.currentStatus === 'repairing')
+
+  if (!hasScopeBlocker && !hasCompletionEvidenceBlocker) {
+    return (
+      <>
+        <WorkerNeedsEmptyCard
+          body={copy.jobs.needsEmptyBody}
+          icon="brief"
+          label={language === 'en' ? 'Scope review' : 'Phạm vi'}
+          testID="worker-scope-change-empty"
+          title={copy.jobs.needsEmptyTitle}
+        />
+        <WorkerNeedsEmptyCard
+          body={language === 'en' ? 'Completion notes and photos appear here when a job reaches the finish step.' : 'Ghi chú và ảnh nghiệm thu sẽ hiện ở đây khi việc tới bước hoàn tất.'}
+          icon="document"
+          label={language === 'en' ? 'Completion media' : 'Ảnh nghiệm thu'}
+          testID="worker-completion-evidence-empty"
+          title={language === 'en' ? 'Completion evidence' : 'Ảnh nghiệm thu'}
+        />
+      </>
+    )
+  }
+
+  if (hasCompletionEvidenceBlocker) {
+    return (
+    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-completion-evidence-blocker-card">
+        <View style={styles.identityRow}>
+          <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
+            <Icon name="document" active />
+          </View>
+          <View style={styles.titleStack}>
+            <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
+              {language === 'en' ? 'Update needed' : 'Cần cập nhật'}
+            </Text>
+            <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
+              {language === 'en' ? 'Completion photos are missing' : 'Ảnh nghiệm thu còn thiếu'}
+            </Text>
+          </View>
+          <Text style={[styles.statusPill, { backgroundColor: tokens.mint, borderColor: tokens.border, color: tokens.primary }]} numberOfLines={1}>
+            B5
+          </Text>
+        </View>
+        <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
+          {language === 'en'
+            ? 'Before marking the job complete, add after-repair photos and a short note so the evidence trail stays complete.'
+            : 'Trước khi đánh dấu hoàn tất, cần gửi ảnh sau sửa và ghi chú ngắn để giữ chuỗi bằng chứng đầy đủ.'}
+        </Text>
+        <View style={styles.actionRow}>
+          <PressButton label={actionCopy.addCompletionPhoto} onPress={() => replace('/(worker)/jobs?tab=needs')} testID="worker-needs-add-completion-photo" />
+          <PressButton secondary label={actionCopy.completeLater} onPress={() => replace('/(worker)/jobs')} testID="worker-needs-completion-later" />
+        </View>
+      </View>
+    )
+  }
+
+  const requestedScope = scopeChange?.requestedDescription ?? copy.jobs.scopeBody
+  const reason = scopeChange?.reason ?? appCopy[language].common.noData
+  const originalScope = deal?.draft.description || deal?.draft.inferredProblemLabel || copy.jobs.scopeBody
+  const originalPrice = deal?.estimate?.priceRangeLabel ?? appCopy[language].common.noData
+  const price =
+    scopeChange?.priceMin && scopeChange.priceMax
+      ? `${formatWorkerMoney(scopeChange.priceMin, language)} - ${formatWorkerMoney(scopeChange.priceMax, language)}`
+      : appCopy[language].common.noData
+  const scopeSummary = reason === appCopy[language].common.noData ? requestedScope : `${requestedScope}. ${reason}`
+
+  return (
+    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-scope-change-active">
+      <View style={styles.identityRow}>
+        <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
+          <Icon name="brief" active />
+        </View>
+        <View style={styles.titleStack}>
+          <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.cream, borderColor: tokens.border, borderWidth: 1, color: tokens.copper }]} numberOfLines={1}>
+            {copy.jobs.scopeStatus}
+          </Text>
+          <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
+            {copy.jobs.scopeTitle}
+          </Text>
+        </View>
+      </View>
+      <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
+        {copy.jobs.scopeBody}
+      </Text>
+      <View style={[styles.jobDiagnosisBox, workerDiagnosisSurface(tokens)]} testID="worker-scope-change-kael-summary">
+        <Text style={[styles.kaelBriefTitle, { color: tokens.ink }]} numberOfLines={1}>
+          {copy.chat.briefTitle}
+        </Text>
+        <Text style={[styles.briefText, { color: tokens.muted }]} numberOfLines={3}>
+          {scopeSummary}
+        </Text>
+      </View>
+      <View style={styles.needsReviewGrid}>
+        <JobRoomMetaCell label={language === 'en' ? 'Current scope' : 'Phạm vi hiện tại'} value={originalScope} />
+        <JobRoomMetaCell label={language === 'en' ? 'Current estimate' : 'Ước tính hiện tại'} value={originalPrice} />
+        <JobRoomMetaCell label={language === 'en' ? 'Requested work' : 'Phần việc mới'} value={requestedScope} />
+        <JobRoomMetaCell label={language === 'en' ? 'Reason' : 'Lý do'} value={reason} />
+        <JobRoomMetaCell label={language === 'en' ? 'Price review' : 'Giá chờ duyệt'} value={price} />
+      </View>
+      <View style={styles.actionRow}>
+        <PressButton secondary label={copy.jobs.jobRoomCta} onPress={() => replace('/(worker)/chat')} testID="worker-needs-open-jobroom" />
+      </View>
+    </View>
+  )
+}
+
+function WorkerNeedsInlineEmptyCard() {
+  const { copy, language, tokens } = useWorkerUi()
+  const { replace } = useRouter()
+
+  return (
+    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-jobs-active-needs-inline-empty-card">
+      <SubtleGlassHighlight />
+      <View style={styles.jobTopRow}>
+        <View style={styles.titleStack}>
+          <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.cream, borderColor: tokens.border, borderWidth: 1, color: tokens.copper }]} numberOfLines={1}>
+            {copy.jobs.filters[2]}
+          </Text>
+          <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
+            {copy.jobs.needsEmptyTitle}
+          </Text>
+          <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2}>
+            {copy.jobs.needsEmptyBody}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.actionRow}>
+        <PressButton label={language === 'en' ? 'View request' : 'Xem yêu cầu'} onPress={() => replace('/(worker)/jobs?tab=needs')} testID="worker-jobs-active-needs-inline-primary" />
+        <PressButton secondary label={language === 'en' ? 'Message Kael' : 'Nhắn Kael'} onPress={() => replace('/(worker)/chat')} testID="worker-jobs-active-needs-inline-secondary" />
+      </View>
+    </View>
+  )
+}
+
+function WorkerNeedsEmptyCard({ body, icon, label, testID, title }: { body: string; icon: WorkerIconName; label: string; testID: string; title: string }) {
+  const { tokens } = useWorkerUi()
+
+  return (
+    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID={testID}>
+      <SubtleGlassHighlight />
+      <View style={styles.jobTopRow}>
+        <View style={styles.titleStack}>
+          <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
+            {label}
+          </Text>
+          <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
+            {title}
+          </Text>
+          <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
+            {body}
+          </Text>
+        </View>
+        <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
+          <Icon name={icon} active small />
+        </View>
+      </View>
+    </View>
   )
 }
 
@@ -780,7 +1098,7 @@ export function WorkerChatSurface() {
   const copy = useWorkerFrameCopy()
 
   return (
-    <WorkerFrame active="chat" eyebrow={copy.chat.eyebrow} title={copy.chat.title} testID="worker-chat-surface">
+    <WorkerFrame active="chat" eyebrow={copy.chat.eyebrow} hideDock title={copy.chat.title} testID="worker-chat-surface">
       <WorkerChatContent />
     </WorkerFrame>
   )
@@ -788,24 +1106,18 @@ export function WorkerChatSurface() {
 
 export function WorkerEarningsSurface() {
   const copy = useWorkerFrameCopy()
-  const language = useAppLanguage()
-  const { selectors, state } = useFrontendWorkflow()
-  const deal = getWorkerVisibleDeal(state.deal)
-  const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
-  const completedLocal = Boolean(acceptedDeal && selectors.currentStatus === 'confirmed_by_customer')
-  const completedValue = completedLocal ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noData
-  const waitingValue = acceptedDeal && selectors.currentStatus !== 'confirmed_by_customer' ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noData
 
   return (
-    <WorkerFrame active="earnings" eyebrow={copy.earnings.eyebrow} title={copy.earnings.title} testID="worker-earnings-surface">
+    <WorkerFrame
+      active="earnings"
+      eyebrow={copy.earnings.eyebrow}
+      headerIcon="trend"
+      subtitle={copy.earnings.subtitle}
+      title={copy.earnings.title}
+      testID="worker-earnings-surface"
+    >
       <WorkerEarningsHero />
-
-      <View style={styles.operationalBand}>
-        <QuickPanel icon="check" title={copy.earnings.complete} value={completedValue} tone="mint" />
-        <QuickPanel icon="clock" title={copy.earnings.waiting} value={waitingValue} tone="cyan" />
-      </View>
-
-      <WorkerEarningsTrend />
+      <WorkerEarningsSummary />
       <WorkerEarningsLedger />
     </WorkerFrame>
   )
@@ -815,7 +1127,7 @@ export function WorkerProfileSurface() {
   const copy = useWorkerFrameCopy()
 
   return (
-    <WorkerFrame active="profile" eyebrow={copy.profile.eyebrow} title={copy.profile.title} testID="worker-profile-surface">
+    <WorkerFrame active="profile" eyebrow={copy.profile.eyebrow} hideHeader title={copy.profile.title} testID="worker-profile-surface">
       <WorkerProfileContent />
     </WorkerFrame>
   )
@@ -825,17 +1137,30 @@ function WorkerFrame({
   active,
   children,
   eyebrow,
+  headerIcon,
+  headerPill,
+  headerPillTone = 'cream',
+  hideHeader = false,
   testID,
+  subtitle,
   title,
+  hideDock = false,
 }: {
   active: WorkerActiveTab
   children: ReactNode
   eyebrow: string
+  headerIcon?: WorkerIconName
+  headerPill?: string
+  headerPillTone?: WorkerHeaderPillTone
+  hideHeader?: boolean
+  hideDock?: boolean
+  subtitle?: string
   testID: string
   title: string
 }) {
   const insets = useSafeAreaInsets()
-  const { width } = useWindowDimensions()
+  const { height, width } = useWindowDimensions()
+  const pathname = usePathname()
   const mode = useWorkerThemeMode()
   const language = useAppLanguage()
   const copy = workerCopy[language]
@@ -843,28 +1168,35 @@ function WorkerFrame({
   const baseTokens = getWorkerThemeTokens(mode)
   const tokens = reduceTransparency ? getReducedTransparencyWorkerTokens(baseTokens) : baseTokens
   const frameWidth = Math.min(width, 430)
-  void eyebrow
-  void title
+  const canvasBackgroundImage =
+    mode === 'dark'
+      ? 'radial-gradient(circle at 50% 12%, rgba(105,222,198,0.12), transparent 30%), linear-gradient(180deg, #071312 0%, #0B1715 100%)'
+      : 'radial-gradient(circle at 50% 12%, rgba(142,231,217,0.18), transparent 28%), linear-gradient(180deg, #F4FAF7 0%, #F7FBF8 100%)'
   const canvasLayer = {
     backgroundColor: tokens.canvas,
-    experimental_backgroundImage:
-      mode === 'dark'
-        ? 'radial-gradient(circle at 50% 12%, rgba(105,222,198,0.12), transparent 30%), linear-gradient(180deg, #071312 0%, #0B1715 100%)'
-        : 'radial-gradient(circle at 50% 12%, rgba(142,231,217,0.18), transparent 28%), linear-gradient(180deg, #F4FAF7 0%, #F7FBF8 100%)',
+    experimental_backgroundImage: reduceTransparency ? undefined : canvasBackgroundImage,
   } as any
+  const routeIsFocused =
+    (active === 'home' && pathname.endsWith('/home')) ||
+    (active === 'jobs' && pathname.endsWith('/jobs')) ||
+    (active === 'chat' && pathname.endsWith('/chat')) ||
+    (active === 'earnings' && pathname.endsWith('/earnings')) ||
+    (active === 'profile' && pathname.endsWith('/profile'))
+  const workerUiValue = useMemo(() => ({ copy, language, mode, tokens }), [copy, language, mode, tokens])
 
   return (
-    <WorkerUiContext.Provider value={{ copy, language, mode, tokens }}>
-      <SafeAreaView style={[styles.safe, canvasLayer]} testID={testID}>
+    <WorkerUiContext.Provider value={workerUiValue}>
+      <SafeAreaView style={[styles.safe, canvasLayer, routeIsFocused ? null : styles.inactiveRouteSurface]} testID={testID}>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
         <View style={[styles.canvas, canvasLayer]}>
           {reduceTransparency ? null : <AmbientBackdrop />}
-          {reduceMotion || reduceTransparency ? null : <WorkerSectionMotionField active={active} frameWidth={frameWidth} screenWidth={width} />}
+          {routeIsFocused && !reduceMotion && !reduceTransparency ? <WorkerSectionMotionField active={active} frameWidth={frameWidth} screenWidth={width} /> : null}
           <ScrollView
             contentContainerStyle={[
               styles.scrollContent,
               {
                 paddingBottom: Math.max(insets.bottom + workerDockClearance, workerDockClearance),
+                ...(hideDock ? { minHeight: Math.max(0, height - insets.top - insets.bottom - 8), paddingBottom: Math.max(insets.bottom + 96, 108) } : null),
                 width: Math.max(0, frameWidth - workerFrameHorizontalPadding * 2),
               },
             ]}
@@ -889,146 +1221,142 @@ function WorkerFrame({
                 WORKER_JOBROOM_KAEL_HANDOFF
               }
             />
+            {hideDock ? <WorkerStandaloneHeader /> : hideHeader ? null : <WorkerScreenHeader active={active} eyebrow={eyebrow} headerIcon={headerIcon} headerPill={headerPill} headerPillTone={headerPillTone} subtitle={subtitle} title={title} />}
             {children}
           </ScrollView>
-          <WorkerDockOverlay active={active} />
+          {!hideDock && routeIsFocused ? <WorkerDockOverlay active={active} /> : null}
         </View>
       </SafeAreaView>
     </WorkerUiContext.Provider>
   )
 }
 
-function WorkerReadinessPanel() {
-  const { copy, language, tokens } = useWorkerUi()
-  const { selectors, state, workerProfile } = useFrontendWorkflow()
-  const deal = getWorkerVisibleDeal(state.deal)
-  const isSuspended = Boolean(workerProfile?.is_suspended)
-  const isAvailable = Boolean(workerProfile?.is_available && !isSuspended)
-  const verificationLabel = localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)
-  const availabilityLabel = !workerProfile
-    ? appCopy[language].common.noData
-    : isSuspended
-    ? language === 'en' ? 'Suspended' : 'Tạm khóa'
-    : isAvailable
-    ? language === 'en' ? 'Online' : 'Đang nhận việc'
-    : language === 'en' ? 'Offline' : 'Tạm tắt nhận'
-  const requestLabel = deal ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noRequest
-  const body = !workerProfile
-    ? copy.home.readinessNoProfile
-    : isSuspended ? copy.home.readinessSuspended : isAvailable ? copy.home.readinessOnline : copy.home.readinessOffline
+function WorkerScreenHeader({ active, eyebrow, headerIcon, headerPill, headerPillTone = 'cream', subtitle, title }: { active: WorkerActiveTab; eyebrow: string; headerIcon?: WorkerIconName; headerPill?: string; headerPillTone?: WorkerHeaderPillTone; subtitle?: string; title: string }) {
+  const { tokens } = useWorkerUi()
+  const showKicker = eyebrow.trim().toLocaleLowerCase() !== title.trim().toLocaleLowerCase()
+  const headerPillSurface = headerPillTone === 'mint'
+    ? { backgroundColor: tokens.mint, borderColor: tokens.mode === 'dark' ? tokens.borderStrong : 'rgba(13,134,119,0.12)', color: tokens.mode === 'dark' ? tokens.aqua : '#0B5C50' }
+    : { backgroundColor: tokens.cream, borderColor: tokens.border, color: tokens.primary }
 
   return (
-    <View style={[styles.readinessPanel, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-unified-readiness-panel">
-      <View style={styles.rowBetween}>
-        <View style={styles.titleStack}>
+    <View style={styles.workerTopRow} testID={`worker-${active}-title-row`}>
+      <View style={styles.titleStack}>
+        {subtitle ? null : showKicker ? (
           <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
-            {copy.home.readinessTitle}
+            {eyebrow}
           </Text>
-          <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
-            {body}
+        ) : null}
+        <Text adjustsFontSizeToFit minimumFontScale={0.78} numberOfLines={2} style={[styles.screenTitle, { color: tokens.ink }]}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={[styles.screenSubtitle, { color: tokens.muted }]} numberOfLines={1}>
+            {subtitle}
           </Text>
-        </View>
-        <View style={[styles.readinessBadge, { backgroundColor: isAvailable ? tokens.mint : tokens.glassStrong, borderColor: tokens.border }]}>
-          <Icon name={isSuspended ? 'shield' : isAvailable ? 'check' : 'clock'} active={isAvailable} />
-        </View>
+        ) : null}
       </View>
-      <View style={styles.readinessGrid}>
-        <Metric label={copy.home.readinessVerification} value={verificationLabel} />
-        <Metric label={copy.home.readinessAvailability} value={availabilityLabel} />
-        <Metric label={copy.home.readinessRequest} value={requestLabel} />
-      </View>
+      {headerPill ? (
+        <Text style={[styles.screenHeaderPill, headerPillSurface]} numberOfLines={1}>
+          {headerPill}
+        </Text>
+      ) : headerIcon ? (
+        <View style={[styles.screenHeaderAction, workerOpaqueCardSurface(tokens, 'mint')]}>
+          <Icon name={headerIcon} active small />
+        </View>
+      ) : null}
     </View>
   )
 }
 
-function WorkerJobsTabOverview({
-  activeTab,
-  onTabChange,
-}: {
-  activeTab: WorkerJobsTab
-  onTabChange: (tab: WorkerJobsTab) => void
-}) {
+function WorkerStandaloneHeader() {
   const { copy, language, tokens } = useWorkerUi()
   const { selectors, state } = useFrontendWorkflow()
+  const { replace } = useRouter()
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast ?? null
-  const isAccepted = isAcceptedLocalWorkerDeal(deal)
-  const needsAction = selectors.currentStatus === 'scope_change_pending'
-  const labels = copy.jobs.filters
-  const waitingLabel = labels[0] ?? (language === 'en' ? 'Pending' : 'Chờ nhận')
-  const activeLabel = labels[1] ?? (language === 'en' ? 'Active' : 'Đang làm')
-  const needsLabel = labels[2] ?? (language === 'en' ? 'Needs attention' : 'Cần xử lý')
-  const rows = [
-    {
-      icon: 'clock' as WorkerIconName,
-      title: waitingLabel,
-      value: broadcast && !isAccepted ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noData,
-    },
-    {
-      icon: 'tools' as WorkerIconName,
-      title: activeLabel,
-      value: isAccepted ? localizedStatusLabel(selectors.currentStatus, language) : appCopy[language].common.noData,
-    },
-    {
-      icon: 'shield' as WorkerIconName,
-      title: needsLabel,
-      value: needsAction ? copy.jobs.scopeStatus : appCopy[language].common.noData,
-    },
-  ]
+  const statusLabel = broadcast && isAcceptedLocalWorkerDeal(deal)
+    ? copy.chat.acceptedPill
+    : broadcast
+      ? localizedStatusLabel(selectors.currentStatus, language)
+      : language === 'en' ? 'Waiting' : 'Chờ việc'
 
   return (
-    <View style={styles.jobsTabOverview} testID="worker-jobs-tab-overview">
-      {rows.map((row, index) => (
-        <Pressable
-          accessibilityRole="tab"
-          accessibilityState={{ selected: activeTab === workerJobsTabKeys[index] }}
-          key={row.title}
-          onPress={() => onTabChange(workerJobsTabKeys[index] ?? 'waiting')}
-          style={({ pressed }) => [
-            styles.jobsTabCard,
-            workerOpaqueCardSurface(tokens, activeTab === workerJobsTabKeys[index] ? 'mint' : 'base'),
-            pressed ? styles.pressed : null,
-          ]}
-          testID={`worker-jobs-tab-${workerJobsTabKeys[index] ?? index}`}
-        >
-          <Icon name={row.icon} small />
-          <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
-            {row.title}
-          </Text>
-          <Text style={[styles.jobsTabValue, { color: tokens.ink }]} numberOfLines={2}>
-            {row.value}
-          </Text>
-        </Pressable>
-      ))}
+    <View style={[styles.jobRoomTopBar, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-jobroom-fullscreen-header">
+      <Pressable accessibilityLabel={copy.jobs.title} accessibilityRole="button" onPress={() => replace('/(worker)/jobs')} style={({ pressed }) => [styles.jobRoomBackButton, { backgroundColor: tokens.mint, borderColor: tokens.border }, pressed ? styles.pressed : null]} testID="worker-jobroom-back">
+        <Icon name="back" small />
+      </Pressable>
+      <Image contentFit="contain" source={kaelHead} style={styles.jobRoomHeaderAvatar} />
+      <View style={[styles.titleStack, styles.jobRoomTitleStack]}>
+        <Text style={[styles.sectionTitle, { color: tokens.ink }]} numberOfLines={1}>
+          {copy.chat.title}
+        </Text>
+        <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+          {copy.chat.relaySubtitle}
+        </Text>
+      </View>
+      <Text style={[styles.jobRoomStatusPill, { backgroundColor: tokens.mint, borderColor: tokens.border, color: tokens.primary }]} numberOfLines={1}>
+        {statusLabel}
+      </Text>
     </View>
   )
 }
 
-function WorkerJobsJobRoomEntry() {
-  const { copy, tokens } = useWorkerUi()
+function ActiveWorkerJobCard({ body, briefLines, status, title }: { body: string; briefLines: string[]; status: string; title: string }) {
+  const { actions, selectors } = useFrontendWorkflow()
+  const { copy, language, tokens } = useWorkerUi()
   const { replace } = useRouter()
-  const { state } = useFrontendWorkflow()
-  const deal = getWorkerVisibleDeal(state.deal)
-  const canMessage = isAcceptedLocalWorkerDeal(deal)
-
-  if (!deal?.broadcast) return null
+  const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus, language) : null
+  const nextStatus = nextAction && nextAction.type !== 'worker_complete_job' ? workerStatusForAction(nextAction.type) : null
+  const needsCompletionEvidence = nextAction?.type === 'worker_complete_job'
 
   return (
-    <View style={[styles.jobRoomEntry, workerOpaqueCardSurface(tokens, canMessage ? 'cyan' : 'warm')]} testID="worker-jobs-jobroom-entry">
-      <View style={styles.identityRow}>
-        <View style={[styles.readinessBadge, { backgroundColor: canMessage ? tokens.mint : tokens.glassStrong, borderColor: tokens.border }]}>
-          <Icon name={canMessage ? 'check' : 'shield'} active={canMessage} />
-        </View>
+    <View style={[styles.activeJobCard, workerJobCardSurface(tokens)]} testID="worker-jobs-active-card">
+      <View style={styles.rowBetween}>
         <View style={styles.titleStack}>
-          <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
-            {copy.chat.jobRoomTitle}
+          <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
+            {status}
           </Text>
-          <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
-            {canMessage ? copy.chat.acceptedGate : copy.chat.privacyGate}
+          <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
+            {title}
           </Text>
         </View>
+        {nextAction ? (
+          <Text style={[styles.statusPill, { backgroundColor: tokens.cream, borderColor: tokens.border, borderWidth: 1, color: tokens.copper, flexShrink: 0, maxWidth: 118, textAlign: 'center' }]} numberOfLines={1} testID="worker-active-next-action-pill">
+            {nextAction.label}
+          </Text>
+        ) : null}
       </View>
-      <PressButton secondary label={copy.jobs.jobRoomCta} onPress={() => replace('/(worker)/chat')} testID="worker-jobs-open-jobroom" />
+      <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
+        {body}
+      </Text>
+      {briefLines.length > 0 ? (
+        <View style={[styles.jobDiagnosisBox, workerDiagnosisSurface(tokens)]} testID="worker-active-job-kael-summary">
+          <View style={styles.identityRow}>
+            <Image source={kaelHead} style={[styles.kaelMini, { borderColor: tokens.borderStrong }]} />
+            <Text style={[styles.kaelBriefTitle, { color: tokens.ink }]} numberOfLines={1}>
+              {copy.request.briefTitle}
+            </Text>
+          </View>
+          {briefLines.slice(0, 3).map((line) => (
+            <View key={line} style={styles.briefItem}>
+              <View style={[styles.briefDot, { backgroundColor: tokens.primary }]} />
+              <Text style={[styles.briefText, { color: tokens.muted }]} numberOfLines={2}>
+                {line}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      <CompactWorkerPresenceMap mode="active" />
+      <View style={styles.actionRow}>
+        <PressButton label={copy.jobs.jobRoomCta} onPress={() => replace('/(worker)/chat')} testID="worker-jobs-open-jobroom" />
+        {nextAction && nextStatus ? (
+          <PressButton secondary label={nextAction.label} onPress={() => void actions.workerUpdateStatus(nextStatus)} testID="worker-jobs-next-status-action" />
+        ) : null}
+        {needsCompletionEvidence ? (
+          <PressButton secondary label={nextAction.label} onPress={() => replace('/(worker)/jobs?tab=needs')} testID="worker-jobs-completion-evidence-route" />
+        ) : null}
+      </View>
     </View>
   )
 }
@@ -1042,6 +1370,7 @@ function WorkerChatContent() {
   const [draft, setDraft] = useState('')
   const [messages, setMessages] = useState<WorkerChatMessage[]>([])
   const activeDealChatKeyRef = useRef(dealChatKey)
+  const localMessageSequenceRef = useRef(0)
   const renderedMessages = messages
   const hasAnyWorkerKaelMessage = Boolean(broadcast || renderedMessages.length > 0)
   const canSendWorkerKaelMessage = Boolean(deal && isAcceptedLocalWorkerDeal(deal))
@@ -1064,6 +1393,7 @@ function WorkerChatContent() {
     if (activeDealChatKeyRef.current === dealChatKey) return
     setMessages([])
     setDraft('')
+    localMessageSequenceRef.current = 0
     activeDealChatKeyRef.current = dealChatKey
   }, [dealChatKey])
 
@@ -1071,32 +1401,43 @@ function WorkerChatContent() {
     if (!canSendWorkerKaelMessage) return
     const value = draft.trim()
     if (!value) return
+    localMessageSequenceRef.current += 1
     setMessages((prev) => [
       ...prev,
-      { id: `worker-local-${Date.now()}`, mine: true, text: value, who: copy.chat.worker },
+      { id: `worker-local-${dealChatKey}-${localMessageSequenceRef.current}`, mine: true, text: value, who: copy.chat.worker },
     ])
     setDraft('')
   }
 
   return (
-    <View style={[styles.chatShell, workerOpaqueCardSurface(tokens, 'depth')]} testID="worker-chat-kael-relay">
+    <View style={styles.chatShell} testID="worker-chat-kael-relay">
       <View style={styles.hiddenMarker} testID="worker-kael-client-chatbox-parity" />
-      <View style={[styles.kaelClientStage, workerOpaqueCardSurface(tokens, 'cyan'), !hasAnyWorkerKaelMessage ? styles.kaelClientStageEmpty : null]} testID="worker-kael-conversation-feed">
+      <View style={[styles.kaelClientStage, !hasAnyWorkerKaelMessage ? styles.kaelClientStageEmpty : null]} testID="worker-kael-conversation-feed">
         <View style={styles.hiddenMarker} testID="worker-kael-empty-chat-state" />
         {!broadcast ? (
-          <View style={styles.kaelBlankCanvas} testID="worker-kael-empty-chat-canvas">
-            <View style={[styles.kaelCanvasWashLarge, { backgroundColor: tokens.aqua }]} />
-            <View style={[styles.kaelCanvasWashWarm, { backgroundColor: tokens.copper }]} />
-            <View style={styles.jobRoomWaiting} testID="worker-jobroom-waiting-room">
-              <Image accessible={false} contentFit="contain" source={kaelHead} style={styles.jobRoomKaelHead} />
-              <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
-                {copy.chat.jobRoomTitle}
-              </Text>
-              <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
-                {copy.chat.waitingTitle}
-              </Text>
-              <Text style={[styles.bodyText, { color: tokens.muted, textAlign: 'center' }]} numberOfLines={4}>
+          <View style={styles.jobRoomStack} testID="worker-kael-empty-chat-canvas">
+            <View style={[styles.jobRoomHeader, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-jobroom-waiting-room">
+              <View style={styles.identityRow}>
+                <Image contentFit="contain" source={kaelHead} style={styles.kaelHead} />
+                <View style={styles.titleStack}>
+                  <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+                    {copy.chat.jobRoomTitle}
+                  </Text>
+                  <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
+                    {copy.chat.waitingTitle}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
                 {copy.chat.waitingBody}
+              </Text>
+            </View>
+            <View style={[styles.jobRoomBrief, workerDiagnosisSurface(tokens)]} testID="worker-jobroom-empty-brief-shell">
+              <Text style={[styles.statusPill, { alignSelf: 'stretch', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
+                {copy.chat.briefTitle}
+              </Text>
+              <Text style={[styles.briefText, { color: tokens.ink }]} numberOfLines={4}>
+                {copy.chat.briefBody}
               </Text>
             </View>
           </View>
@@ -1104,7 +1445,7 @@ function WorkerChatContent() {
           <View style={styles.jobRoomStack} testID="hasAnyWorkerKaelMessage">
             <View style={[styles.jobRoomHeader, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-jobroom-kael-handoff">
               <View style={styles.identityRow}>
-                <Image accessible={false} contentFit="contain" source={kaelHead} style={styles.kaelHead} />
+                <Image contentFit="contain" source={kaelHead} style={styles.kaelHead} />
                 <View style={styles.titleStack}>
                   <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
                     {copy.chat.handoffTitle}
@@ -1118,12 +1459,7 @@ function WorkerChatContent() {
                 {copy.chat.briefBody}
               </Text>
             </View>
-            <View style={styles.jobRoomMetaGrid}>
-              {jobRoomMeta.map((item) => (
-                <JobRoomMetaCell key={item.label} label={item.label} value={item.value} />
-              ))}
-            </View>
-            <View style={[styles.jobRoomBrief, workerOpaqueCardSurface(tokens, 'mint')]} testID="worker-jobroom-live-brief">
+            <View style={[styles.jobRoomBrief, workerDiagnosisSurface(tokens)]} testID="worker-jobroom-live-brief">
               <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
                 {copy.chat.briefTitle}
               </Text>
@@ -1134,6 +1470,11 @@ function WorkerChatContent() {
                     {line}
                   </Text>
                 </View>
+              ))}
+            </View>
+            <View style={styles.jobRoomMetaGrid}>
+              {jobRoomMeta.map((item) => (
+                <JobRoomMetaCell key={item.label} label={item.label} value={item.value} />
               ))}
             </View>
             <View style={[styles.jobRoomGate, workerOpaqueCardSurface(tokens, canSendWorkerKaelMessage ? 'cyan' : 'warm')]} testID="worker-jobroom-privacy-gate">
@@ -1161,10 +1502,8 @@ function WorkerChatContent() {
 
         <View style={[styles.chatComposer, glassSurface(tokens, 'strong')]} testID="worker-kael-composer-dock">
           <SubtleGlassHighlight />
-          <View accessible={false} pointerEvents="none" style={[styles.composerTool, { borderColor: tokens.border }]}>
-            <Text style={[styles.composerToolText, { color: tokens.primary }]} numberOfLines={1}>
-              +
-            </Text>
+          <View pointerEvents="none" style={[styles.composerTool, { borderColor: tokens.border }]}>
+            <Icon name="plus" small />
           </View>
           <TextInput
             accessibilityLabel={chatInputPlaceholder}
@@ -1253,6 +1592,12 @@ function localizedWorkerAreaLabel(area: string | null | undefined, language: Wor
   return mapped.trim() || appCopy[language].common.noData
 }
 
+function formatWorkerMoney(value: number, language: WorkerLanguageMode) {
+  if (!Number.isFinite(value) || value <= 0) return appCopy[language].common.noData
+  const formatted = workerMoneyFormatters[language].format(value)
+  return language === 'vi' ? `${formatted} đ` : `${formatted} VND`
+}
+
 function workerChatDealKey(deal: LocalDeal | null) {
   if (!deal?.broadcast) return 'none'
   return [
@@ -1266,25 +1611,13 @@ function workerChatDealKey(deal: LocalDeal | null) {
 }
 
 function WorkerEarningsHero() {
-  const { copy, language, tokens } = useWorkerUi()
-  const { selectors, state } = useFrontendWorkflow()
-  const deal = getWorkerVisibleDeal(state.deal)
-  const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
-  const moneyLabel = acceptedDeal ? localizedStatusLabel(selectors.currentStatus, language) : copy.earnings.noReconciliation
-  const body = copy.earnings.body
+  const { tokens } = useWorkerUi()
+  const { workerEarnings } = useFrontendWorkflow()
 
   return (
-    <View style={[styles.earningsHero, glassSurface(tokens, 'cream')]} testID="worker-earnings-summary">
-      <View style={styles.rowBetween}>
-        <View style={styles.titleStack}>
-          <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.earnings.today}</Text>
-          <Text adjustsFontSizeToFit minimumFontScale={0.74} numberOfLines={2} style={[styles.moneyText, !acceptedDeal ? styles.moneyTextState : null, { color: tokens.ink }]}>{moneyLabel}</Text>
-        </View>
-        <View style={[styles.earningsBadge, { backgroundColor: tokens.glassStrong }]}>
-          <Icon name="money" active />
-        </View>
-      </View>
-      {body ? <Text style={[styles.bodyText, { color: tokens.muted }]}>{body}</Text> : null}
+    <View style={styles.earningsHeroWrap} testID="worker-earnings-summary">
+      <WorkerEarningsTrend />
+      {workerEarnings ? <View style={styles.hiddenMarker} testID="worker-earnings-real-api-data" /> : null}
       <View style={styles.hiddenMarker} testID={WORKER_NO_FAKE_PAYMENT_DATA} />
     </View>
   )
@@ -1292,14 +1625,21 @@ function WorkerEarningsHero() {
 
 function WorkerEarningsLedger() {
   const { copy, language, tokens } = useWorkerUi()
-  const { selectors, state } = useFrontendWorkflow()
+  const { selectors, state, workerEarnings } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
-  const rows = acceptedDeal
+  const hasSettledEarnings = hasWorkerSettledEarnings(workerEarnings)
+  const rows = hasSettledEarnings && workerEarnings
     ? [
-        [appCopy[language].common.serviceRequest, localizedStatusLabel(selectors.currentStatus, language)],
+        [copy.earnings.ledgerTitle, `${workerEarnings.total_jobs_paid} ${language === 'en' ? 'items' : 'mục'}`],
+        [language === 'en' ? 'Gross earnings' : 'Tổng trước phí', formatWorkerMoney(workerEarnings.gross_earnings, language)],
+        [language === 'en' ? 'Net earnings' : 'Thực nhận', formatWorkerMoney(workerEarnings.net_earnings, language)],
         [language === 'en' ? 'Payout account' : 'Tài khoản nhận tiền', appCopy[language].common.noData],
-        [language === 'en' ? 'Payment & review' : 'Thanh toán & đánh giá', appCopy[language].common.noData],
+      ]
+    : acceptedDeal
+    ? [
+        [copy.earnings.ledgerTitle, localizedStatusLabel(selectors.currentStatus, language)],
+        [language === 'en' ? 'Payout account' : 'Tài khoản nhận tiền', appCopy[language].common.noData],
       ]
     : copy.earnings.rows
 
@@ -1315,32 +1655,44 @@ function WorkerEarningsLedger() {
 
 function WorkerEarningsTrend() {
   const { language, tokens } = useWorkerUi()
+  const { workerEarnings } = useFrontendWorkflow()
   const title = language === 'en' ? 'Recent days' : '7 ngày gần nhất'
-  const empty = appCopy[language].common.noData
-  const days = language === 'en' ? ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7'] : ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+  const days = buildWorkerEarningsDays(language, workerEarnings)
+  const maxDailyValue = Math.max(...days.map((day) => day.netEarnings), 0)
+  const hasDailyEarnings = maxDailyValue > 0
+  const emptyBarHeight = 56
 
   return (
-    <View style={[styles.earningsTrendCard, workerOpaqueCardSurface(tokens, 'mint')]} testID="worker-earnings-seven-day-chart">
-      <View style={styles.rowBetween}>
+    <View style={[styles.earningsTrendCard, glassSurface(tokens, 'cream')]} testID="worker-earnings-seven-day-chart">
+      <View style={styles.earningsTrendTop}>
         <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
           {title}
-        </Text>
-        <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
-          {empty}
         </Text>
       </View>
       <View style={[styles.earningsChartShell, workerOpaqueCardSurface(tokens, 'raised')]}>
         <View style={styles.earningsChartEmptyState} testID="worker-earnings-chart-empty-state">
           <View style={[styles.earningsChartBaseline, { backgroundColor: tokens.border }]} />
-          <Icon name="money" small />
-          <Text style={[styles.metricLabel, { color: tokens.muted }]} numberOfLines={1}>
-            {empty}
-          </Text>
+          <View style={styles.earningsBarRail} testID={hasDailyEarnings ? 'worker-earnings-real-bar-shell' : 'worker-earnings-empty-bar-shell'}>
+            {days.map((day, index) => (
+              <View
+                accessibilityLabel={`${day.label}: ${formatWorkerMoney(day.netEarnings, language)}`}
+                key={day.date}
+                style={[
+                  styles.earningsEmptyBar,
+                  {
+                    backgroundColor: tokens.primary,
+                    height: hasDailyEarnings ? Math.max(30, Math.round(42 + (day.netEarnings / maxDailyValue) * 76)) : emptyBarHeight,
+                    opacity: hasDailyEarnings ? 0.86 : 0.16,
+                  },
+                ]}
+              />
+            ))}
+          </View>
         </View>
         <View style={styles.earningsDayRail}>
           {days.map((day) => (
-            <Text key={day} style={[styles.metricLabel, { color: tokens.muted }]} numberOfLines={1}>
-              {day}
+            <Text key={day.date} style={[styles.metricLabel, { color: tokens.muted }]} numberOfLines={1}>
+              {day.label}
             </Text>
           ))}
         </View>
@@ -1349,26 +1701,102 @@ function WorkerEarningsTrend() {
   )
 }
 
+function WorkerEarningsSummary() {
+  const { copy, language, tokens } = useWorkerUi()
+  const { workerEarnings } = useFrontendWorkflow()
+  const empty = copy.earnings.noReconciliation
+  const hasSettledEarnings = hasWorkerSettledEarnings(workerEarnings)
+  const todayNet = getTodayWorkerNetEarnings(workerEarnings)
+  const todayLabel = copy.earnings.today
+  const monthLabel = copy.earnings.month
+  const todayValue = todayNet > 0 ? formatWorkerMoney(todayNet, language) : empty
+  const monthValue = hasSettledEarnings && workerEarnings ? formatWorkerMoney(workerEarnings.net_earnings, language) : empty
+
+  return (
+    <View style={styles.earningsSummaryGrid} testID="worker-earnings-day-month-summary">
+      <View style={[styles.earningsSummaryCell, workerOpaqueCardSurface(tokens, 'raised')]}>
+        <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
+          {todayLabel}
+        </Text>
+        <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={1}>
+          {todayValue}
+        </Text>
+      </View>
+      <View style={[styles.earningsSummaryCell, workerOpaqueCardSurface(tokens, 'raised')]}>
+        <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
+          {monthLabel}
+        </Text>
+        <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={1}>
+          {monthValue}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+function hasWorkerSettledEarnings(workerEarnings: ReturnType<typeof useFrontendWorkflow>['workerEarnings']) {
+  return Boolean(workerEarnings && (
+    workerEarnings.total_jobs_paid > 0 ||
+    workerEarnings.gross_earnings > 0 ||
+    workerEarnings.net_earnings > 0
+  ))
+}
+
+function buildWorkerEarningsDays(language: WorkerLanguageMode, workerEarnings: EarningsResponse | null, referenceDate = new Date()) {
+  const dailyByDate = new Map((workerEarnings?.daily_earnings ?? []).map((day) => [day.date, day]))
+  const labels = language === 'en'
+    ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    : ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(referenceDate)
+    date.setDate(referenceDate.getDate() - (6 - index))
+    const dateKey = workerDateKey(date)
+    const bucket = dailyByDate.get(dateKey)
+    return {
+      date: dateKey,
+      label: labels[date.getDay()],
+      netEarnings: bucket?.net_earnings ?? 0,
+      paidJobCount: bucket?.paid_job_count ?? 0,
+    }
+  })
+}
+
+function getTodayWorkerNetEarnings(workerEarnings: EarningsResponse | null, referenceDate = new Date()) {
+  const todayKey = workerDateKey(referenceDate)
+  return workerEarnings?.daily_earnings?.find((day) => day.date === todayKey)?.net_earnings ?? 0
+}
+
+function workerDateKey(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
 function WorkerProfileContent() {
   const { copy, language, tokens } = useWorkerUi()
   const { replace } = useRouter()
-  const { role } = useAuth()
-  const { state, workerProfile } = useFrontendWorkflow()
-  const deal = getWorkerVisibleDeal(state.deal)
-  const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
+  const { role, signOut } = useAuth()
+  const { workerProfile } = useFrontendWorkflow()
+  const [showVerificationForm, setShowVerificationForm] = useState(false)
   const adminAuditSwitchLabel = language === 'en' ? 'Back to login' : 'Về đăng nhập'
-  const workingAreaLabel = deal ? localizedWorkerAreaLabel(deal.draft.districtLabel, language) : appCopy[language].common.noData
-  const profileRows = deal
-    ? [
-        [language === 'en' ? 'Identity verification' : 'Xác minh danh tính', appCopy[language].common.pendingSystem],
-        [language === 'en' ? 'Service skills' : 'Kỹ năng dịch vụ', localizedServiceLabel(deal.draft.serviceType, language)],
-        [language === 'en' ? 'Working area' : 'Khu vực làm việc', workingAreaLabel],
-      ]
-    : copy.profile.rows
-  const profileSkills = deal
-    ? [localizedServiceLabel(deal.draft.serviceType, language), workingAreaLabel, appCopy[language].common.pendingSystem, language === 'en' ? 'Feedback pending' : 'Chờ phản hồi']
-    : copy.profile.skills
+  const verificationCopy = workerVerificationCopy[language]
+  const serviceSkillsLabel = workerProfile?.service_types.length
+    ? workerProfile.service_types.map((service) => localizedServiceLabel(service, language)).join(' · ')
+    : appCopy[language].common.noData
+  const workingAreaLabel = workerProfile?.districts.length
+    ? workerProfile.districts.map((district) => localizedWorkerAreaLabel(district, language)).join(' · ')
+    : appCopy[language].common.noData
+  const profileRows = [
+    [language === 'en' ? 'Identity verification' : 'Xác minh danh tính', localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)],
+    [language === 'en' ? 'Service skills' : 'Kỹ năng dịch vụ', serviceSkillsLabel],
+    [language === 'en' ? 'Working area' : 'Khu vực làm việc', workingAreaLabel],
+  ]
   const profileStatusValue = localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)
+  const submittedProfileValue = workerProfile && workerProfile.verification_status !== 'draft'
+    ? (language === 'en' ? 'Submitted' : 'Đã gửi')
+    : profileStatusValue
+  const profileSyncLabel = language === 'en' ? 'Synced from verification' : 'Đồng bộ từ xác thực'
+  const profileSyncMeta = workerProfile
+    ? localizedWorkerVerificationStatus(workerProfile.verification_status, language)
+    : appCopy[language].common.noData
   const canSubmitVerification = role === 'worker' &&
     !workerProfile?.is_suspended &&
     !['approved', 'suspended'].includes(workerProfile?.verification_status ?? 'draft')
@@ -1377,51 +1805,84 @@ function WorkerProfileContent() {
     <>
       <View style={[styles.profileHead, glassSurface(tokens, 'raised')]} testID="worker-profile-verification-card">
         <SubtleGlassHighlight />
-        <View style={[styles.avatarWrap, { backgroundColor: tokens.mint }]}>
-          <Icon name="person" />
-        </View>
-        <View style={styles.titleStack}>
-          <Text style={[styles.profileName, { color: tokens.ink }]}>{copy.profile.name}</Text>
-          {copy.profile.body ? (
-            <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2}>
-              {copy.profile.body}
-            </Text>
-          ) : null}
-        </View>
-        <View style={[styles.profileBadge, { backgroundColor: tokens.cyan }]}>
-          <Icon name="shield" small />
-        </View>
-      </View>
-      {role === 'admin' ? (
-        <View style={styles.adminSwitchWrap}>
-          <PressButton label={adminAuditSwitchLabel} onPress={() => replace('/(auth)/login')} testID="worker-admin-audit-switch" />
-        </View>
-      ) : null}
-      {canSubmitVerification ? <WorkerVerificationForm /> : null}
-
-      <View style={[styles.greenScoreCard, glassSurface(tokens, 'mint')]}>
-        <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.profile.scoreTitle}</Text>
-        <Text adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.scoreNumber, { color: tokens.ink }]} numberOfLines={1}>{profileStatusValue}</Text>
-        {copy.profile.scoreBody ? <Text style={[styles.bodyText, { color: tokens.muted }]}>{copy.profile.scoreBody}</Text> : null}
-      </View>
-
-      <View style={styles.skillWrap}>
-        {profileSkills.map((item) => (
-          <View key={item} style={[styles.skillPill, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
-            <Text style={[styles.skillText, { color: tokens.primary }]}>{item}</Text>
+        <View style={styles.profileHeroTop}>
+          <View style={styles.profileAvatarHero}>
+            <Icon inverse name="person" />
           </View>
-        ))}
+          <View style={styles.titleStack}>
+            <Text style={[styles.profileName, { color: tokens.ink }]}>{copy.profile.name}</Text>
+            <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2}>
+              {language === 'en' ? 'Status and service skills' : 'Trạng thái và kỹ năng dịch vụ'}
+            </Text>
+          </View>
+          <Text style={[styles.statusPill, { backgroundColor: tokens.cream, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
+            {profileStatusValue}
+          </Text>
+        </View>
+        {role === 'worker' ? (
+          <PressButton label={adminAuditSwitchLabel} onPress={() => void signOut()} testID="worker-profile-sign-out" />
+        ) : role === 'admin' ? (
+          <PressButton label={adminAuditSwitchLabel} onPress={() => replace('/(auth)/login')} testID="worker-admin-audit-switch" />
+        ) : null}
+      </View>
+      {canSubmitVerification && showVerificationForm ? <WorkerVerificationForm /> : null}
+
+      <View style={styles.profileMiniGrid} testID="worker-profile-mini-status-grid">
+        <View style={[styles.workerMiniCard, workerOpaqueCardSurface(tokens, 'raised')]}>
+          <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
+            {profileStatusValue}
+          </Text>
+          <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
+            {language === 'en' ? 'Verification' : 'Xác minh'}
+          </Text>
+        </View>
+        <View style={[styles.workerMiniCard, workerOpaqueCardSurface(tokens, 'raised')]}>
+          <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
+            {submittedProfileValue}
+          </Text>
+          <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
+            {language === 'en' ? 'Worker profile' : 'Hồ sơ thợ'}
+          </Text>
+        </View>
       </View>
 
-      <View style={[styles.preferenceCard, workerOpaqueCardSurface(tokens)]} testID="worker-profile-preference-toggles">
-        <ThemeToggle />
-        <LanguageToggle />
+      <View style={[styles.profileSyncPreview, workerOpaqueCardSurface(tokens)]} testID="worker-profile-sync-preview">
+        <View style={styles.profileSyncPreviewTop}>
+          <Text style={[styles.cardTitle, { color: tokens.ink, flex: 1 }]} numberOfLines={1}>
+            {profileSyncLabel}
+          </Text>
+          <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
+            {profileSyncMeta}
+          </Text>
+        </View>
       </View>
 
       <View style={[styles.listCard, workerOpaqueCardSurface(tokens)]} testID="worker-profile-list-groups">
         {profileRows.map((row, index) => (
           <ListRow key={row[0]} icon={index === 0 ? 'shield' : index === 1 ? 'tools' : index === 2 ? 'map' : index === 3 ? 'moon' : 'globe'} title={row[0]} meta={row[1]} />
         ))}
+      </View>
+
+      {canSubmitVerification && !showVerificationForm ? (
+        <View style={[styles.profileSyncPreview, workerOpaqueCardSurface(tokens)]} testID="worker-profile-verification-collapsed">
+          <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+            {verificationCopy.kicker}
+          </Text>
+          <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={1}>
+            {verificationCopy.title}
+          </Text>
+          <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
+            {verificationCopy.savedBody}
+          </Text>
+          <View style={styles.actionRow}>
+            <PressButton label={verificationCopy.submit} onPress={() => setShowVerificationForm(true)} testID="worker-profile-open-verification-form" />
+          </View>
+        </View>
+      ) : null}
+
+      <View style={[styles.preferenceCard, workerOpaqueCardSurface(tokens)]} testID="worker-profile-preference-toggles">
+        <ThemeToggle />
+        <LanguageToggle />
       </View>
     </>
   )
@@ -1900,12 +2361,115 @@ function VerificationFileButton({ file, label, onPress, testID }: { file?: Local
 
 function WorkerMapStage() {
   const { copy, language, tokens } = useWorkerUi()
-  const { actions, selectors, state, workerProfile } = useFrontendWorkflow()
+  const { state, workerProfile } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
-  const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
   const broadcast = deal?.broadcast
   const mapArea = broadcast?.generalArea ?? deal?.draft.districtLabel
   const mapSearch = mapArea ? localizedWorkerAreaLabel(mapArea, language) : copy.home.mapSearch
+  const workerAnchorLabel = workerProfile?.districts[0]
+    ? localizedWorkerAreaLabel(workerProfile.districts[0], language)
+    : appCopy[language].common.noData
+  const hasWorkerAnchor = Boolean(workerProfile?.districts[0])
+  const workerRadiusKm = workerProfile?.service_radius_km
+  const workerRadiusLabel = Number.isFinite(workerRadiusKm)
+    ? `${workerRadiusKm} km`
+    : appCopy[language].common.noData
+  const hasWorkerRadius = Number.isFinite(workerRadiusKm)
+  const hasMapContext = Boolean(mapArea || hasWorkerAnchor || hasWorkerRadius)
+  const availabilityHud = !workerProfile
+    ? appCopy[language].common.noData
+    : workerProfile.is_suspended
+      ? language === 'en' ? 'Suspended' : 'Tạm khóa'
+      : workerProfile.is_approved && workerProfile.is_available
+        ? language === 'en' ? 'Receiving' : 'Nhận việc'
+        : workerProfile.is_approved
+          ? language === 'en' ? 'Offline' : 'Tạm tắt'
+          : language === 'en' ? 'Pending' : 'Chờ duyệt'
+
+  return (
+    <View style={[styles.mapStage, workerOpaqueCardSurface(tokens, 'depth')]} testID="worker-flexible-map-shell">
+      <View style={[styles.mapViewport, workerMapViewportSurface(tokens)]} testID="worker-map-google-ready">
+        <MapLineField />
+        {mapArea ? <WorkerMapRouteLine /> : null}
+        <View pointerEvents="none" style={[styles.mapFogTop, { backgroundColor: tokens.raised }]} />
+        <View pointerEvents="none" style={[styles.mapCyanVeil, { backgroundColor: tokens.aqua }]} />
+        <View pointerEvents="none" style={[styles.mapFogBottom, { backgroundColor: tokens.raised }]} />
+        <View style={styles.hiddenMarker} testID={mapPreview.replaceWithProvider} />
+        <View style={styles.workerMapTopHud} testID="worker-home-map-hud">
+          <View style={[styles.searchPill, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-map-search-pill-opaque">
+            <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>
+              {mapSearch}
+            </Text>
+          </View>
+          <View style={[styles.searchPill, workerOpaqueCardSurface(tokens, 'mint')]} testID="worker-map-availability-pill">
+            <Text style={[styles.mapChipTitle, { color: tokens.primary }]} numberOfLines={1}>
+              {hasMapContext ? availabilityHud : appCopy[language].common.noData}
+            </Text>
+          </View>
+        </View>
+        {hasMapContext ? (
+          <View style={[styles.homeMapMarker, styles.homeMapMarkerZone, { backgroundColor: tokens.glassStrong, borderColor: tokens.glassBorder }]} testID="worker-map-zone-marker">
+            <View style={[styles.homeMapZoneHalo, { backgroundColor: tokens.aqua }]} />
+            <Icon name="pin" active small />
+          </View>
+        ) : null}
+        {hasWorkerAnchor ? (
+          <View style={[styles.homeMapMarker, styles.homeMapMarkerWorker, { backgroundColor: tokens.raised, borderColor: tokens.primary }]} testID="worker-map-worker-marker">
+            <Icon name="tools" active small />
+          </View>
+        ) : null}
+        <View style={styles.workerMapHudStack} testID="worker-map-hud-stack">
+          <View style={[styles.workerMapHudChip, workerOpaqueCardSurface(tokens, 'mint')]} testID="worker-map-hud-worker">
+            <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{language === 'en' ? 'You' : 'Bạn'}</Text>
+            {hasWorkerAnchor ? (
+              <Text style={[styles.mapChipMeta, { color: tokens.muted }]} numberOfLines={1}>{workerAnchorLabel}</Text>
+            ) : null}
+          </View>
+          <View style={[styles.workerMapHudChip, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-map-hud-zone">
+            <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{language === 'en' ? 'Work area' : 'Khu vực nhận việc'}</Text>
+            {hasWorkerRadius ? (
+              <Text style={[styles.mapChipMeta, { color: tokens.muted }]} numberOfLines={1}>{workerRadiusLabel}</Text>
+            ) : null}
+          </View>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+function WorkerMapFeatureCard({ icon, mapFeatureMeta, title, tone }: { icon: WorkerIconName; mapFeatureMeta: string; title: string; tone: WorkerTone }) {
+  const { tokens } = useWorkerUi()
+
+  return (
+    <View style={[styles.mapFeatureCard, workerOpaqueCardSurface(tokens, tone)]}>
+      <Text style={[styles.mapFeatureTitle, { color: tokens.ink }]} numberOfLines={2}>
+        {title}
+      </Text>
+      <Text style={[styles.mapFeatureMeta, { color: tokens.muted }]} numberOfLines={1}>
+        {mapFeatureMeta}
+      </Text>
+      <View style={[styles.mapFeatureIcon, { backgroundColor: tokens.glassStrong }]}>
+        <Icon name={icon} active />
+      </View>
+    </View>
+  )
+}
+
+function WorkerReadinessActionPanel() {
+  const { copy, language, tokens } = useWorkerUi()
+  const { actions, selectors, state, workerProfile } = useFrontendWorkflow()
+  const { replace } = useRouter()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
+  const isSuspended = Boolean(workerProfile?.is_suspended)
+  const isAvailable = Boolean(workerProfile?.is_available && !isSuspended)
+  const availabilityLabel = !workerProfile
+    ? appCopy[language].common.noData
+    : isSuspended
+    ? language === 'en' ? 'Suspended' : 'Tạm khóa'
+    : isAvailable
+    ? language === 'en' ? 'Online' : 'Đang nhận việc'
+    : language === 'en' ? 'Offline' : 'Tạm tắt nhận'
   const nextAvailability = !workerProfile?.is_available
   const isOperationallyBusy = Boolean(
     acceptedDeal &&
@@ -1916,80 +2480,213 @@ function WorkerMapStage() {
     (!nextAvailability || (workerProfile?.is_approved && !workerProfile?.is_suspended && !isOperationallyBusy))
   const statusTitle = deal
     ? localizedStatusLabel(selectors.currentStatus, language)
+    : workerProfile?.is_approved || isSuspended
+      ? availabilityLabel
+      : copy.home.online
+  const readinessBody = isSuspended
+    ? copy.home.readinessSuspended
     : workerProfile?.is_available
-      ? language === 'en' ? 'Online' : 'Đang nhận việc'
-      : workerProfile?.is_suspended
-        ? language === 'en' ? 'Account suspended' : 'Tài khoản đang khóa'
-        : workerProfile?.is_approved
-          ? language === 'en' ? 'Offline' : 'Tạm tắt nhận'
-          : copy.home.online
+      ? copy.home.readinessOnline
+      : workerProfile?.is_approved
+        ? copy.home.readinessOffline
+        : copy.home.readinessNoProfile
+  const availabilityActionLabel = nextAvailability ? copy.frame.availabilityOn : copy.frame.availabilityOff
 
   return (
-    <View style={[styles.mapStage, workerOpaqueCardSurface(tokens, 'depth')]} testID="worker-flexible-map-shell">
-      <View style={[styles.mapViewport, { backgroundColor: tokens.mode === 'dark' ? tokens.depth : '#F8FBF9' }]} testID="worker-map-google-ready">
-        <MapLineField />
-        <View pointerEvents="none" style={[styles.mapFogTop, { backgroundColor: tokens.raised }]} />
-        <View pointerEvents="none" style={[styles.mapCyanVeil, { backgroundColor: tokens.aqua }]} />
-        <View pointerEvents="none" style={[styles.mapFogBottom, { backgroundColor: tokens.raised }]} />
-        <View style={styles.hiddenMarker} testID={mapPreview.replaceWithProvider} />
-        <View style={[styles.searchPill, glassSurface(tokens, 'raised')]}>
-          <Icon name="pin" small />
-          <Text style={[styles.searchText, { color: tokens.ink }]} numberOfLines={1}>
-            {mapSearch}
+    <View
+      style={[
+        styles.shiftCard,
+        workerOpaqueCardSurface(tokens, 'raised'),
+      ]}
+      testID="worker-readiness-action-panel"
+    >
+      <SubtleGlassHighlight />
+      <View style={styles.hiddenMarker} testID="worker-unified-readiness-panel" />
+      <View style={styles.rowBetween}>
+        <View style={styles.titleStack}>
+          <Text style={[styles.kicker, { color: tokens.primary }]}>{statusTitle}</Text>
+          <Text style={[styles.heroTitle, { color: tokens.ink }]}>{copy.home.readinessTitle}</Text>
+          <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2}>
+            {readinessBody}
           </Text>
         </View>
-        <StatusBeacon />
+        <Pressable
+          accessibilityLabel={availabilityActionLabel}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: Boolean(workerProfile?.is_available), disabled: !canToggleAvailability }}
+          disabled={!canToggleAvailability}
+          onPress={() => void actions.workerUpdateAvailability(nextAvailability)}
+          style={({ pressed }) => [
+            styles.toggleTrack,
+            { backgroundColor: workerProfile?.is_available ? tokens.primary : tokens.borderStrong },
+            { alignItems: workerProfile?.is_available ? 'flex-end' : 'flex-start' },
+            pressed ? styles.pressed : null,
+          ]}
+          testID="worker-availability-toggle"
+        >
+          <View style={[styles.toggleKnob, { backgroundColor: tokens.raised }]} />
+        </Pressable>
       </View>
-
-      <View style={styles.mapCardsRow}>
-        <WorkerMapFeatureCard icon="bolt" title={copy.home.electricianCard} tone="mint" testID="worker-shell-service-electrical" />
-        <WorkerMapFeatureCard icon="water" title={copy.home.plumberCard} tone="cream" testID="worker-shell-service-plumbing" />
-        <WorkerMapFeatureCard icon="spark" title={copy.home.cleaningCard} tone="cyan" testID="worker-shell-service-cleaning" />
+      <View style={styles.shiftActionRow} testID="worker-readiness-primary-actions">
+        <PressButton disabled={!canToggleAvailability} label={availabilityActionLabel} onPress={() => void actions.workerUpdateAvailability(nextAvailability)} testID="worker-availability-primary-action" />
+        <PressButton secondary label={copy.jobs.filters[0]} onPress={() => replace('/(worker)/jobs?tab=waiting')} testID="worker-home-open-waiting-jobs" />
       </View>
+    </View>
+  )
+}
 
-      {copy.home.serviceHeading ? (
-        <View style={styles.mapServiceHeader}>
-          <Text style={[styles.sectionTitle, { color: tokens.ink }]}>{copy.home.serviceHeading}</Text>
-        </View>
-      ) : null}
+function WorkerHomeServiceGrid() {
+  const { copy } = useWorkerUi()
+  const { workerProfile } = useFrontendWorkflow()
+  const workerServiceTypes = workerProfile?.service_types ?? []
+  const canShowApprovedSkills = Boolean(workerProfile?.is_approved && workerProfile?.verification_status === 'approved')
+  const serviceCandidates = [
+    { service: 'electrical' as const, icon: 'bolt' as const, title: copy.home.electricianCard, tone: 'mint' as const, testID: 'worker-shell-service-electrical' },
+    { service: 'plumbing' as const, icon: 'water' as const, title: copy.home.plumberCard, tone: 'cyan' as const, testID: 'worker-shell-service-plumbing' },
+    { service: 'cleaning' as const, icon: 'spark' as const, title: copy.home.cleaningCard, tone: 'cream' as const, testID: 'worker-shell-service-cleaning' },
+  ]
 
+  return (
+    <View style={styles.workerServiceGrid} testID="worker-home-service-grid">
+      {serviceCandidates.map((item) => {
+        const approvedForService = canShowApprovedSkills && workerServiceTypes.includes(item.service)
+        return (
+          <WorkerHomeServiceTile
+            icon={item.icon}
+            key={item.testID}
+            meta={approvedForService ? copy.home.serviceSkillLabel : copy.home.servicePendingLabel}
+            title={item.title}
+            tone={item.tone}
+            testID={item.testID}
+          />
+        )
+      })}
+    </View>
+  )
+}
+
+function WorkerHomeServiceTile({ icon, meta, testID, title, tone }: { icon: WorkerIconName; meta: string; testID?: string; title: string; tone: WorkerTone }) {
+  const { tokens } = useWorkerUi()
+  const { replace } = useRouter()
+  const { reduceMotion } = useGlassAccessibility()
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => replace('/(worker)/profile')}
+      style={({ pressed }) => [styles.workerServiceTile, workerServiceTileSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+      testID={testID}
+    >
+      <View style={[styles.workerServiceIcon, workerIconBubbleSurface(tokens, tone)]}>
+        <Icon name={icon} active />
+      </View>
+      <Text adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.workerServiceTitle, { color: tokens.ink }]} numberOfLines={2}>
+        {title}
+      </Text>
+      <Text style={[styles.workerServiceMeta, { color: tokens.muted }]} numberOfLines={1}>
+        {meta}
+      </Text>
+    </Pressable>
+  )
+}
+
+function WorkerHomeMiniGrid() {
+  const { copy, language, tokens } = useWorkerUi()
+  const { replace } = useRouter()
+  const { workerProfile } = useFrontendWorkflow()
+  const { reduceMotion } = useGlassAccessibility()
+  const profileStatus = localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)
+
+  return (
+    <View style={styles.workerMiniGrid} testID="worker-home-mini-grid">
+      <View style={styles.hiddenMarker} testID="worker-shell-service-profile-pending" />
       <Pressable
-        accessibilityLabel={nextAvailability ? copy.frame.availabilityOn : copy.frame.availabilityOff}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: Boolean(workerProfile?.is_available), disabled: !canToggleAvailability }}
-        disabled={!canToggleAvailability}
-        onPress={() => void actions.workerUpdateAvailability(nextAvailability)}
-        style={({ pressed }) => [
-          styles.shiftCard,
-          glassSurface(tokens, 'raised'),
-          !canToggleAvailability ? styles.disabledButton : null,
-          pressed ? styles.pressed : null,
-        ]}
-        testID="worker-availability-toggle"
+        accessibilityRole="button"
+        onPress={() => replace('/(worker)/jobs?tab=waiting')}
+        style={({ pressed }) => [styles.workerMiniCard, workerOpaqueCardSurface(tokens, 'raised'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+        testID="worker-home-mini-waiting"
       >
-        <SubtleGlassHighlight />
-        <View style={styles.rowBetween}>
-          <View style={styles.titleStack}>
-            <Text style={[styles.kicker, { color: tokens.primary }]}>{copy.home.status}</Text>
-            <Text style={[styles.heroTitle, { color: tokens.ink }]}>{statusTitle}</Text>
-          </View>
-          <View style={[styles.toggleTrack, { backgroundColor: workerProfile?.is_available ? tokens.primary : tokens.borderStrong }]}>
-            <View style={[styles.toggleKnob, { backgroundColor: tokens.raised }]} />
-          </View>
-        </View>
+        <Icon name="jobs" small />
+        <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>{copy.jobs.filters[0]}</Text>
+        <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>{language === 'en' ? 'New requests' : 'Yêu cầu mới'}</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => replace('/(worker)/profile')}
+        style={({ pressed }) => [styles.workerMiniCard, workerOpaqueCardSurface(tokens, 'raised'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+        testID="worker-home-mini-profile"
+      >
+        <Icon name="shield" small />
+        <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>{profileStatus}</Text>
+        <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>{copy.home.serviceProfileTitle}</Text>
       </Pressable>
     </View>
   )
 }
 
-function WorkerMapFeatureCard({ icon, testID, title, tone }: { icon: WorkerIconName; testID?: string; title: string; tone: WorkerTone }) {
-  const { tokens } = useWorkerUi()
+function CompactWorkerPresenceMap({ mode }: { mode: 'active' | 'waiting' }) {
+  const { language, tokens } = useWorkerUi()
+  const { selectors, state } = useFrontendWorkflow()
+  const deal = getWorkerVisibleDeal(state.deal)
+  const broadcast = deal?.broadcast ?? null
+  const hasBroadcast = Boolean(broadcast)
+  const area = broadcast?.generalArea ?? deal?.draft.districtLabel
+  const hasReleasedAddress = Boolean(
+    mode === 'active' &&
+      selectors.canWorkerSeeFullAddress &&
+      broadcast?.fullAddressVisible &&
+      broadcast.fullAddressLabel,
+  )
+  const areaLabel = area ? localizedWorkerAreaLabel(area, language) : (language === 'en' ? 'Waiting area' : 'Khu vực chờ')
+  const privacyLabel = hasReleasedAddress
+    ? (language === 'en' ? 'Address available' : 'Điểm hẹn đã mở')
+    : hasBroadcast
+      ? (language === 'en' ? 'Address locked' : 'Địa chỉ khóa')
+      : (language === 'en' ? 'No request' : 'Chưa có yêu cầu')
+  const mapPrimary = hasReleasedAddress ? (language === 'en' ? 'Meeting point' : 'Điểm hẹn') : areaLabel
+  const mapContextLabel = hasReleasedAddress
+    ? (language === 'en' ? 'Route' : 'Tuyến đến')
+    : hasBroadcast
+      ? (language === 'en' ? 'Customer area' : 'Khu vực khách')
+      : (language === 'en' ? 'Service area' : 'Khu vực nhận việc')
+  const mapStateLabel = hasReleasedAddress
+    ? areaLabel
+    : hasBroadcast
+      ? (language === 'en' ? 'Locked' : 'Đã khóa')
+      : appCopy[language].common.noRequest
 
   return (
-    <View style={[styles.mapFeatureCard, workerOpaqueCardSurface(tokens, tone)]} testID={testID}>
-      <Text style={[styles.mapFeatureTitle, { color: tokens.ink }]} numberOfLines={2}>{title}</Text>
-      <View style={[styles.mapFeatureIcon, { backgroundColor: tokens.glassStrong }]}>
-        <Icon name={icon} />
+    <View style={[styles.compactPresenceMap, workerOpaqueCardSurface(tokens, 'depth')]} testID={`worker-jobs-${mode}-presence-map`}>
+      <View style={[styles.compactMapViewport, workerMapViewportSurface(tokens)]}>
+        <MapLineField compact />
+        {hasReleasedAddress ? <WorkerMapRouteLine compact /> : null}
+        <View pointerEvents="none" style={[styles.mapCyanVeil, styles.compactMapVeil, { backgroundColor: tokens.aqua }]} />
+        <View style={styles.workerMapTopHud}>
+          <View style={[styles.searchPill, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-map-zone-pill-opaque">
+            <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{mapPrimary}</Text>
+          </View>
+          <View style={[styles.searchPill, workerOpaqueCardSurface(tokens, hasReleasedAddress ? 'mint' : 'cream')]}>
+            <Text style={[styles.mapChipTitle, { color: hasReleasedAddress ? tokens.primary : tokens.copper }]} numberOfLines={1}>{privacyLabel}</Text>
+          </View>
+        </View>
+        {hasReleasedAddress || hasBroadcast ? (
+          <View style={[styles.compactMapMarker, styles.compactMapMarkerZone, { backgroundColor: tokens.mint, borderColor: tokens.borderStrong }]} testID={hasReleasedAddress ? 'worker-map-route-after-accept' : 'worker-map-address-locked-before-accept'}>
+            <Icon name={hasReleasedAddress ? 'pin' : 'shield'} small />
+          </View>
+        ) : null}
+        {hasReleasedAddress ? (
+          <View style={[styles.compactMapMarker, styles.compactMapMarkerWorker, { backgroundColor: tokens.raised, borderColor: tokens.primary }]}>
+            <Icon name="tools" small />
+          </View>
+        ) : null}
+        <View style={styles.workerMapHudStack}>
+          <View style={[styles.workerMapHudChip, workerOpaqueCardSurface(tokens, 'mint')]}>
+            <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{mapContextLabel}</Text>
+          </View>
+          <View style={[styles.workerMapHudChip, workerOpaqueCardSurface(tokens, 'raised')]}>
+            <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{mapStateLabel}</Text>
+          </View>
+        </View>
       </View>
     </View>
   )
@@ -2021,14 +2718,59 @@ function workerStatusForAction(action: WorkerProgressAction): Extract<LocalDealS
   return null
 }
 
+type IncomingRequestDraftField =
+  | 'cancellationReasonDraft'
+  | 'completionNoteDraft'
+  | 'finalPriceDraft'
+  | 'scopeDescriptionDraft'
+  | 'scopePriceDraft'
+
+type IncomingRequestDraftState = {
+  cancellationReasonDraft: string
+  completionNoteDraft: string
+  completionPhotos: LocalMediaUploadDraft[]
+  finalPriceDraft: string
+  scopeDescriptionDraft: string
+  scopePriceDraft: string
+}
+
+type IncomingRequestDraftAction =
+  | { type: 'clear_cancellation' }
+  | { type: 'clear_completion' }
+  | { type: 'completion_photo'; photo: LocalMediaUploadDraft }
+  | { type: 'field'; field: IncomingRequestDraftField; value: string }
+
+const EMPTY_INCOMING_REQUEST_DRAFTS: IncomingRequestDraftState = {
+  cancellationReasonDraft: '',
+  completionNoteDraft: '',
+  completionPhotos: [],
+  finalPriceDraft: '',
+  scopeDescriptionDraft: '',
+  scopePriceDraft: '',
+}
+
+function incomingRequestDraftReducer(state: IncomingRequestDraftState, action: IncomingRequestDraftAction): IncomingRequestDraftState {
+  switch (action.type) {
+    case 'field':
+      return { ...state, [action.field]: action.value }
+    case 'completion_photo':
+      return { ...state, completionPhotos: [...state.completionPhotos, action.photo].slice(0, 5) }
+    case 'clear_completion':
+      return { ...state, completionNoteDraft: '', completionPhotos: [], finalPriceDraft: '' }
+    case 'clear_cancellation':
+      return { ...state, cancellationReasonDraft: '' }
+    default:
+      return state
+  }
+}
+
 function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const { copy, language, tokens } = useWorkerUi()
   const { actions, selectors, state } = useFrontendWorkflow()
   const actionCopy = workerActionCopy[language]
-  const [finalPriceDraft, setFinalPriceDraft] = useState('')
-  const [cancellationReasonDraft, setCancellationReasonDraft] = useState('')
-  const [scopeDescriptionDraft, setScopeDescriptionDraft] = useState('')
-  const [scopePriceDraft, setScopePriceDraft] = useState('')
+  const [requestDrafts, requestDraftDispatch] = useReducer(incomingRequestDraftReducer, EMPTY_INCOMING_REQUEST_DRAFTS)
+  const { cancellationReasonDraft, completionNoteDraft, completionPhotos, finalPriceDraft, scopeDescriptionDraft, scopePriceDraft } = requestDrafts
+  const updateRequestDraft = (field: IncomingRequestDraftField) => (value: string) => requestDraftDispatch({ type: 'field', field, value })
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast ?? null
   const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus, language) : null
@@ -2044,7 +2786,30 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
     'repairing',
     'scope_change_pending',
   ].includes(selectors.currentStatus ?? ''))
-  const secondsRemainingLabel = broadcast?.secondsRemaining === null || broadcast?.secondsRemaining === undefined ? null : `${broadcast.secondsRemaining}s`
+  const secondsRemainingLabel = broadcast?.secondsRemaining === null || broadcast?.secondsRemaining === undefined ? null : language === 'en' ? `${broadcast.secondsRemaining}s` : `${broadcast.secondsRemaining} giây`
+  const pickCompletionPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert(actionCopy.alerts.completionPermissionTitle, actionCopy.alerts.completionPermissionBody)
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: false,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.86,
+      selectionLimit: 1,
+    })
+    if (result.canceled || !result.assets[0]) return
+    const asset = result.assets[0]
+    const draft: LocalMediaUploadDraft = {
+        uri: asset.uri,
+        type: 'image',
+        fileName: asset.fileName ?? asset.uri.split('/').pop(),
+        mimeType: asset.mimeType ?? undefined,
+        fileSizeBytes: asset.fileSize ?? undefined,
+    }
+    requestDraftDispatch({ type: 'completion_photo', photo: draft })
+  }
   const confirmWorkerProgressAction = (action: { label: string; type: WorkerProgressAction }) => {
     const nextStatus = workerStatusForAction(action.type)
     if (!nextStatus) return
@@ -2058,6 +2823,15 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       Alert.alert(actionCopy.alerts.finalPriceRequiredTitle, actionCopy.alerts.finalPriceRequiredBody)
       return
     }
+    const completionNote = completionNoteDraft.trim()
+    if (completionNote.length < 5) {
+      Alert.alert(actionCopy.alerts.completionNoteRequiredTitle, actionCopy.alerts.completionNoteRequiredBody)
+      return
+    }
+    if (completionPhotos.length === 0) {
+      Alert.alert(actionCopy.alerts.completionPhotoRequiredTitle, actionCopy.alerts.completionPhotoRequiredBody)
+      return
+    }
 
     Alert.alert(
       actionCopy.alerts.completeTitle,
@@ -2066,10 +2840,22 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         { text: actionCopy.review, style: 'cancel' },
         {
           text: action.label,
-          onPress: () => void actions.workerUpdateStatus(nextStatus, {
-            completion_photo_urls: [],
-            final_price: finalPrice,
-          }),
+          onPress: () => {
+            void (async () => {
+              const uploaded = await uploadJobMediaDrafts(deal?.id ?? '', completionPhotos, 'after')
+              if (!uploaded.success) {
+                Alert.alert(actionCopy.alerts.completionUploadTitle, uploaded.error)
+                return
+              }
+              const updated = await actions.workerUpdateStatus(nextStatus, {
+                completion_notes: completionNote,
+                completion_photo_urls: uploaded.mediaRefs,
+                final_price: finalPrice,
+              })
+              if (!updated) return
+              requestDraftDispatch({ type: 'clear_completion' })
+            })()
+          },
         },
       ],
     )
@@ -2116,7 +2902,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         {
           text: actionCopy.send,
           onPress: () => {
-            setCancellationReasonDraft('')
+            requestDraftDispatch({ type: 'clear_cancellation' })
             void actions.requestWorkerCancellation({
               reason,
               evidence_photo_urls: [],
@@ -2127,7 +2913,8 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
     )
   }
   const fullAddressLabel = broadcast?.fullAddressVisible ? broadcast.fullAddressLabel ?? null : null
-  const addressLabel = selectors.canWorkerSeeFullAddress
+  const canRenderFullAddress = Boolean(selectors.canWorkerSeeFullAddress && fullAddressLabel)
+  const addressLabel = canRenderFullAddress
     ? localizedWorkerAreaLabel(fullAddressLabel, language)
     : broadcast?.generalArea
       ? `${localizedWorkerAreaLabel(broadcast.generalArea, language)} · ${actionCopy.hiddenAddress}`
@@ -2153,14 +2940,14 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       </View>
 
       <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={2} style={[styles.requestTitle, { color: tokens.ink }]}>{localizedProblemSummary}</Text>
-      <View style={styles.areaRow} testID={selectors.canWorkerSeeFullAddress ? 'worker-full-address-after-accept' : 'worker-general-area-before-accept'}>
+      <View style={styles.areaRow} testID={canRenderFullAddress ? 'worker-full-address-after-accept' : 'worker-general-area-before-accept'}>
         <Icon name="map" small />
         <Text numberOfLines={2} style={[styles.areaText, { color: tokens.muted }]}>{addressLabel}</Text>
       </View>
 
-      <View style={[styles.kaelBrief, workerOpaqueCardSurface(tokens, 'cyan')]} testID="worker-kael-brief">
+      <View style={[styles.kaelBrief, workerDiagnosisSurface(tokens)]} testID="worker-kael-brief">
         <View style={styles.identityRow}>
-          <Image accessible={false} source={kaelHead} style={[styles.kaelMini, { borderColor: tokens.borderStrong }]} />
+          <Image source={kaelHead} style={[styles.kaelMini, { borderColor: tokens.borderStrong }]} />
           <Text style={[styles.kaelBriefTitle, { color: tokens.ink }]}>{copy.request.briefTitle}</Text>
         </View>
         {workerBriefLines.map((brief) => (
@@ -2181,7 +2968,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         <View style={styles.scopeRequestBox} testID="worker-scope-change-request">
           <TextInput
             accessibilityLabel={actionCopy.scopeDescription}
-            onChangeText={setScopeDescriptionDraft}
+            onChangeText={updateRequestDraft('scopeDescriptionDraft')}
             placeholder={actionCopy.scopeDescription}
             placeholderTextColor={tokens.subtle}
             style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
@@ -2190,7 +2977,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
           <TextInput
             accessibilityLabel={actionCopy.scopePrice}
             keyboardType="number-pad"
-            onChangeText={setScopePriceDraft}
+            onChangeText={updateRequestDraft('scopePriceDraft')}
             placeholder={actionCopy.scopePrice}
             placeholderTextColor={tokens.subtle}
             style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
@@ -2208,7 +2995,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         <View style={styles.scopeRequestBox} testID="worker-cancellation-request">
           <TextInput
             accessibilityLabel={actionCopy.cancelReason}
-            onChangeText={setCancellationReasonDraft}
+            onChangeText={updateRequestDraft('cancellationReasonDraft')}
             placeholder={actionCopy.cancelPlaceholder}
             placeholderTextColor={tokens.subtle}
             style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
@@ -2218,16 +3005,33 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         </View>
       ) : null}
       {nextAction?.type === 'worker_complete_job' ? (
-        <TextInput
-          accessibilityLabel={actionCopy.finalPrice}
-          keyboardType="number-pad"
-          onChangeText={setFinalPriceDraft}
-          placeholder={actionCopy.finalPrice}
-          placeholderTextColor={tokens.subtle}
-          style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
-          testID="worker-final-price-input"
-          value={finalPriceDraft}
-        />
+        <View style={styles.scopeRequestBox} testID="worker-completion-evidence-blocker">
+          <TextInput
+            accessibilityLabel={actionCopy.completionNote}
+            onChangeText={updateRequestDraft('completionNoteDraft')}
+            placeholder={actionCopy.completionNote}
+            placeholderTextColor={tokens.subtle}
+            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
+            testID="worker-completion-note-input"
+            value={completionNoteDraft}
+          />
+          <TextInput
+            accessibilityLabel={actionCopy.finalPrice}
+            keyboardType="number-pad"
+            onChangeText={updateRequestDraft('finalPriceDraft')}
+            placeholder={actionCopy.finalPrice}
+            placeholderTextColor={tokens.subtle}
+            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
+            testID="worker-final-price-input"
+            value={finalPriceDraft}
+          />
+          <View style={styles.actionRow}>
+            <PressButton label={actionCopy.addCompletionPhoto} onPress={pickCompletionPhoto} secondary testID="worker-completion-add-photo" />
+            <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={1} testID="worker-completion-photo-count">
+              {completionPhotos.length > 0 ? actionCopy.completionPhotoCount(completionPhotos.length) : actionCopy.completionPhotoRequired}
+            </Text>
+          </View>
+        </View>
       ) : null}
       {selectors.canWorkerAccept ? (
         <View style={styles.actionRow}>
@@ -2248,9 +3052,9 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
   const { replace } = useRouter()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
-  const { reduceTransparency } = useGlassAccessibility()
   const { copy, tokens } = useWorkerUi()
-  const dockWidth = Math.min(Math.max(width - 34, 0), 392)
+  const frameWidth = Math.min(width, 430)
+  const dockWidth = Math.max(frameWidth - 51.2, 0)
   const bottom = Math.max(insets.bottom + workerDockBottomMargin, workerDockBottomMargin)
   type WorkerDockItem = FloatingGlassTabItem<WorkerActiveTab> & {
     icon: WorkerIconName
@@ -2260,34 +3064,32 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
     { key: 'home', icon: 'home', label: copy.nav.home, path: '/(worker)/home', testID: 'worker-dock-home' },
     { key: 'jobs', icon: 'jobs', label: copy.nav.jobs, path: '/(worker)/jobs', testID: 'worker-dock-jobs' },
     { key: 'chat', icon: 'chat', label: copy.nav.chat, path: '/(worker)/chat', testID: 'worker-dock-chat' },
-    { key: 'earnings', icon: 'money', label: copy.nav.earnings, path: '/(worker)/earnings', testID: 'worker-dock-earnings' },
+    { key: 'earnings', icon: 'trend', label: copy.nav.earnings, path: '/(worker)/earnings', testID: 'worker-dock-earnings' },
     { key: 'profile', icon: 'person', label: copy.nav.profile, path: '/(worker)/profile', testID: 'worker-dock-profile' },
   ]
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      lastWorkerDockActive = active
+    }, 560)
+    return () => clearTimeout(timeout)
+  }, [active])
+
   return (
     <View pointerEvents="box-none" style={[styles.dockWrap, { bottom, width: dockWidth }]}>
-      {reduceTransparency ? null : (
-        <>
-          <View pointerEvents="none" style={[styles.dockGlassAura, { backgroundColor: tokens.aqua, opacity: 0.16 }]} testID="worker-dock-glass-aura" />
-          <View pointerEvents="none" style={[styles.dockWarmAura, { backgroundColor: tokens.copper }]} />
-        </>
-      )}
+      <View pointerEvents="none" style={[styles.dockBackdropShield, { backgroundColor: tokens.canvas }]} testID="worker-dock-backdrop-shield" />
+      <View pointerEvents="none" style={styles.hiddenMarker} testID="worker-dock-glass-aura" />
       <FloatingGlassTabBar<WorkerActiveTab, WorkerDockItem>
         activeKey={active}
         items={items}
         mode={tokens.mode}
         onItemPress={(item) => {
           if (item.key === active) return
-          lastWorkerDockActive = item.key
+          lastWorkerDockActive = active
           replace(item.path)
         }}
-        iconForItem={(item, focused) =>
-          item.key === 'chat' ? (
-            <Image accessible={false} contentFit="contain" source={kaelHead} style={styles.dockKaelImage} testID="worker-dock-kael-brief-mascot" />
-          ) : (
-            <Icon name={item.icon} active={focused} />
-          )
-        }
+        previousKey={lastWorkerDockActive}
+        iconForItem={(item, focused) => <Icon name={item.icon} active={focused} dock />}
         style={styles.workerDock}
         testID="worker-liquid-glass-dock"
       />
@@ -2334,23 +3136,43 @@ function WorkerSectionMotionField({
   const sectionIndex = ['home', 'jobs', 'chat', 'earnings', 'profile'].indexOf(active)
   const left = Math.max((screenWidth - frameWidth) / 2, 0)
   const topBias = 18 + Math.max(sectionIndex, 0) * 9
+  const motionPulse = useSharedValue(0)
+  const motionSettle = useSharedValue(0)
 
-  const ribbonStyle = {
-    opacity: 0.16,
-    transform: [{ rotate: '10deg' }],
-  }
-  const washStyle = {
-    opacity: 0.13,
-    transform: [{ rotate: '-8deg' }],
-  }
-  const causticStyle = {
-    opacity: 0.1,
-    transform: [{ scaleX: 0.96 }],
-  }
-  const glintStyle = {
-    opacity: 0.1,
-    transform: [{ rotate: '13deg' }],
-  }
+  useEffect(() => {
+    motionPulse.value = 0
+    motionSettle.value = 0
+    motionPulse.value = withSequence(
+      withTiming(1, { duration: 160 }),
+      withDelay(90, withTiming(0, { duration: 280 })),
+    )
+    motionSettle.value = withSequence(
+      withTiming(1, { duration: 180 }),
+      withTiming(0.72, { duration: 180 }),
+      withTiming(1, { duration: 160 }),
+    )
+    return () => {
+      cancelAnimation(motionPulse)
+      cancelAnimation(motionSettle)
+    }
+  }, [active, motionPulse, motionSettle])
+
+  const ribbonStyle = useAnimatedStyle(() => ({
+    opacity: 0.13 + motionPulse.value * 0.08,
+    transform: [{ translateY: 8 - motionSettle.value * 8 }, { rotate: '10deg' }],
+  }), [motionPulse, motionSettle])
+  const washStyle = useAnimatedStyle(() => ({
+    opacity: 0.1 + motionPulse.value * 0.08,
+    transform: [{ translateY: 5 - motionSettle.value * 5 }, { rotate: '-8deg' }],
+  }), [motionPulse, motionSettle])
+  const causticStyle = useAnimatedStyle(() => ({
+    opacity: 0.08 + motionPulse.value * 0.06,
+    transform: [{ scaleX: 0.94 + motionSettle.value * 0.04 }],
+  }), [motionPulse, motionSettle])
+  const glintStyle = useAnimatedStyle(() => ({
+    opacity: motionPulse.value * 0.18,
+    transform: [{ translateX: -16 + motionSettle.value * 16 }, { rotate: '13deg' }],
+  }), [motionPulse, motionSettle])
 
   return (
     <View
@@ -2358,24 +3180,25 @@ function WorkerSectionMotionField({
       style={[styles.sectionMotionField, { left, width: frameWidth }]}
       testID={workerSectionMotionTestIDs[active]}
     >
-      <View style={[styles.sectionMotionRibbon, { backgroundColor: tokens.glassHighlight, top: topBias }, ribbonStyle]} />
-      <View style={[styles.sectionMotionWash, { backgroundColor: tokens.aqua, top: 28 + topBias }, washStyle]} />
-      <View style={[styles.sectionMotionCaustic, { backgroundColor: tokens.mint }, causticStyle]} />
-      <View style={[styles.sectionMotionGlint, { backgroundColor: tokens.glassHighlight }, glintStyle]} />
+      <Animated.View style={[styles.sectionMotionRibbon, { backgroundColor: tokens.glassHighlight, top: topBias }, ribbonStyle]} />
+      <Animated.View style={[styles.sectionMotionWash, { backgroundColor: tokens.aqua, top: 28 + topBias }, washStyle]} />
+      <Animated.View style={[styles.sectionMotionCaustic, { backgroundColor: tokens.mint }, causticStyle]} />
+      <Animated.View style={[styles.sectionMotionGlint, { backgroundColor: tokens.glassHighlight }, glintStyle]} />
     </View>
   )
 }
 
-function MapLineField() {
+function MapLineField({ compact = false }: { compact?: boolean }) {
   const { tokens } = useWorkerUi()
+  const opacityScale = compact ? 0.9 : 1.08
 
   return (
     <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 360 360" preserveAspectRatio="none">
-      <Path d="M52 -14 C96 52 130 102 154 174 S194 296 252 390" stroke={tokens.mapLine} strokeWidth={5.2} opacity={0.22} fill="none" />
-      <Path d="M84 52 C144 88 206 92 292 76 S370 58 410 82" stroke={tokens.mapLine} strokeWidth={4.5} opacity={0.20} fill="none" />
-      <Path d="M24 166 C82 134 128 172 184 154 S270 104 354 136" stroke={tokens.mapLine} strokeWidth={4} opacity={0.27} fill="none" />
-      <Path d="M-16 248 C58 208 124 248 194 222 S292 174 388 204" stroke={tokens.mapLine} strokeWidth={4.2} opacity={0.24} fill="none" />
-      <Path d="M120 26 L116 126 M204 56 L186 176 M298 24 L278 132 M314 128 L330 262" stroke={tokens.mapLine} strokeWidth={2.8} opacity={0.14} fill="none" />
+      <Path d="M52 -14 C96 52 130 102 154 174 S194 296 252 390" stroke={tokens.mapLine} strokeWidth={5.2} opacity={0.22 * opacityScale} fill="none" />
+      <Path d="M84 52 C144 88 206 92 292 76 S370 58 410 82" stroke={tokens.mapLine} strokeWidth={4.5} opacity={0.20 * opacityScale} fill="none" />
+      <Path d="M24 166 C82 134 128 172 184 154 S270 104 354 136" stroke={tokens.mapLine} strokeWidth={4} opacity={0.27 * opacityScale} fill="none" />
+      <Path d="M-16 248 C58 208 124 248 194 222 S292 174 388 204" stroke={tokens.mapLine} strokeWidth={4.2} opacity={0.24 * opacityScale} fill="none" />
+      <Path d="M120 26 L116 126 M204 56 L186 176 M298 24 L278 132 M314 128 L330 262" stroke={tokens.mapLine} strokeWidth={2.8} opacity={0.14 * opacityScale} fill="none" />
       <Rect x={50} y={92} width={48} height={34} rx={12} fill={tokens.mapBlock} opacity={0.34} />
       <Rect x={220} y={84} width={60} height={38} rx={13} fill={tokens.mapBlock} opacity={0.3} />
       <Rect x={136} y={220} width={62} height={38} rx={13} fill={tokens.mapBlock} opacity={0.24} />
@@ -2383,17 +3206,14 @@ function MapLineField() {
   )
 }
 
-function StatusBeacon() {
+function WorkerMapRouteLine({ compact = false }: { compact?: boolean }) {
   const { tokens } = useWorkerUi()
 
   return (
-    <View style={styles.beaconWrap}>
-      <View style={[styles.beaconHalo, { backgroundColor: tokens.aqua }]} />
-      <View style={[styles.beaconCrescent, { borderColor: tokens.aqua }]} />
-      <View style={[styles.beaconPin, { backgroundColor: tokens.ink, borderColor: tokens.raised }]}>
-        <View style={[styles.beaconCore, { backgroundColor: tokens.primary }]} />
-      </View>
-    </View>
+    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 390 196" preserveAspectRatio="none">
+      <Path d="M66 132 C116 98 153 122 194 86 S282 58 334 82" stroke={tokens.raised} strokeWidth={compact ? 12 : 15} strokeLinecap="round" opacity={0.84} fill="none" />
+      <Path d="M66 132 C116 98 153 122 194 86 S282 58 334 82" stroke={tokens.primary} strokeWidth={compact ? 6 : 8} strokeLinecap="round" opacity={0.78} fill="none" />
+    </Svg>
   )
 }
 
@@ -2416,14 +3236,20 @@ function MotionSweep({ testID }: { testID?: string }) {
 function ThemeToggle() {
   const { copy, mode, tokens } = useWorkerUi()
   const nextMode = mode === 'light' ? 'dark' : 'light'
+  const currentModeLabel = mode === 'light' ? copy.frame.themeLight : copy.frame.themeDark
 
   return (
     <View style={styles.preferenceRow}>
       <View style={styles.preferenceTitle}>
         <Icon name={mode === 'light' ? 'moon' : 'sun'} small />
-        <Text style={[styles.listTitle, { color: tokens.ink }]} numberOfLines={1}>
-          {copy.profile.theme}
-        </Text>
+        <View style={styles.preferenceCopy}>
+          <Text style={[styles.listTitle, { color: tokens.ink }]} numberOfLines={1}>
+            {copy.profile.theme}
+          </Text>
+          <Text style={[styles.listMetaInline, { color: tokens.muted }]} numberOfLines={1}>
+            {currentModeLabel}
+          </Text>
+        </View>
       </View>
       <Pressable
         accessibilityLabel={mode === 'light' ? copy.frame.themeDark : copy.frame.themeLight}
@@ -2442,14 +3268,20 @@ function ThemeToggle() {
 function LanguageToggle() {
   const { copy, language, tokens } = useWorkerUi()
   const nextLanguage = language === 'vi' ? 'en' : 'vi'
+  const currentLanguageLabel = language === 'vi' ? 'Tiếng Việt' : 'English'
 
   return (
     <View style={styles.preferenceRow}>
       <View style={styles.preferenceTitle}>
         <Icon name="globe" small />
-        <Text style={[styles.listTitle, { color: tokens.ink }]} numberOfLines={1}>
-          {copy.profile.language}
-        </Text>
+        <View style={styles.preferenceCopy}>
+          <Text style={[styles.listTitle, { color: tokens.ink }]} numberOfLines={1}>
+            {copy.profile.language}
+          </Text>
+          <Text style={[styles.listMetaInline, { color: tokens.muted }]} numberOfLines={1}>
+            {currentLanguageLabel}
+          </Text>
+        </View>
       </View>
       <Pressable
         accessibilityLabel={copy.frame.lang}
@@ -2517,10 +3349,54 @@ function SegmentFilter({
   onTabChange: (tab: WorkerJobsTab) => void
 }) {
   const { tokens } = useWorkerUi()
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const [shellWidth, setShellWidth] = useState(0)
+  const activeIndex = Math.max(0, workerJobsTabKeys.indexOf(activeTab))
+  const segmentInset = 5
+  const segmentGap = 5
+  const pillWidth = shellWidth > 0 ? Math.max((shellWidth - segmentInset * 2 - segmentGap * Math.max(labels.length - 1, 0)) / Math.max(labels.length, 1), 0) : 0
+  const pillLeft = segmentInset + activeIndex * (pillWidth + segmentGap)
+  const segmentProgress = useSharedValue(pillLeft)
+
+  useEffect(() => {
+    if (reduceMotion) {
+      segmentProgress.value = pillLeft
+      return
+    }
+    segmentProgress.value = withTiming(pillLeft, { duration: 180 })
+  }, [pillLeft, reduceMotion, segmentProgress])
+
+  const liquidSegmentStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: segmentProgress.value }],
+  }), [segmentProgress])
 
   return (
-    <View style={[styles.segmentShell, glassSurface(tokens, 'raised')]} testID="worker-activity-filter-pattern">
-      <SubtleGlassHighlight />
+    <View
+      onLayout={(event) => {
+        const nextWidth = event.nativeEvent.layout.width
+        setShellWidth((current) => Math.abs(current - nextWidth) > 0.5 ? nextWidth : current)
+      }}
+      style={[styles.segmentShell, workerSegmentShellSurface(tokens)]}
+      testID="worker-activity-filter-pattern"
+    >
+      <View style={styles.hiddenMarker} testID="worker-jobs-segment-opaque-shell" />
+      <View style={styles.hiddenMarker} testID="worker-jobs-liquid-segment-selection" />
+      {pillWidth > 0 ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.segmentLiquidPill,
+            {
+              backgroundColor: reduceTransparency ? tokens.mint : tokens.mode === 'dark' ? 'rgba(23,59,53,0.92)' : 'rgba(209,250,240,0.88)',
+              boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? 'inset 0 1px 0 rgba(255,255,255,0.10)' : 'inset 0 1px 0 rgba(255,255,255,0.80)',
+              width: pillWidth,
+            } as any,
+            liquidSegmentStyle,
+          ]}
+        >
+          {!reduceTransparency ? <View style={[styles.segmentLiquidSheen, { backgroundColor: tokens.glassHighlight }]} /> : null}
+        </Animated.View>
+      ) : null}
       {labels.map((item, index) => {
         const tab = workerJobsTabKeys[index] ?? 'waiting'
         const selected = tab === activeTab
@@ -2532,7 +3408,6 @@ function SegmentFilter({
             onPress={() => onTabChange(tab)}
             style={({ pressed }) => [
               styles.segmentPill,
-              selected ? { backgroundColor: tokens.mint } : null,
               pressed ? styles.pressed : null,
             ]}
             testID={`worker-jobs-segment-${tab}`}
@@ -2565,13 +3440,87 @@ function JobActivityCard({
   const { tokens } = useWorkerUi()
 
   return (
-    <View style={[styles.flowCard, workerOpaqueCardSurface(tokens, tone)]} testID={testID}>
-      <View style={styles.rowBetween}>
-        <Icon name={icon} />
-        <Text style={[styles.statusPill, { backgroundColor: tokens.glassStrong, color: tokens.primary }]}>{status}</Text>
+    <View style={[styles.activeJobCard, workerJobCardSurface(tokens, tone)]} testID={testID}>
+      <SubtleGlassHighlight />
+      <View style={styles.identityRow}>
+        <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
+          <Icon name={icon} active small />
+        </View>
+        <View style={styles.titleStack}>
+          <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
+            {status}
+          </Text>
+          <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={2} style={[styles.cardTitle, { color: tokens.ink }]}>
+            {title}
+          </Text>
+        </View>
       </View>
-      <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={2} style={[styles.cardTitle, { color: tokens.ink }]}>{title}</Text>
       {body ? <Text numberOfLines={3} style={[styles.bodyText, { color: tokens.muted }]}>{body}</Text> : null}
+    </View>
+  )
+}
+
+function WorkerEmptyJobPanel({
+  body,
+  icon,
+  primaryActionLabel,
+  primaryActionPath,
+  secondaryActionLabel,
+  secondaryActionPath,
+  status,
+  testID,
+  title,
+  tone,
+}: {
+  body: string
+  icon: WorkerIconName
+  primaryActionLabel?: string
+  primaryActionPath?: '/(worker)/home' | '/(worker)/jobs?tab=waiting' | '/(worker)/chat'
+  secondaryActionLabel?: string
+  secondaryActionPath?: '/(worker)/home' | '/(worker)/jobs?tab=waiting' | '/(worker)/chat'
+  status: string
+  testID?: string
+  title: string
+  tone: WorkerTone
+}) {
+  const { language, tokens } = useWorkerUi()
+  const { replace } = useRouter()
+
+  return (
+    <View style={[styles.activeJobCard, workerJobCardSurface(tokens, tone)]} testID={testID}>
+      <SubtleGlassHighlight />
+      <View style={styles.jobTop}>
+        <View style={styles.identityRow}>
+          <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
+            <Icon name={icon} active small />
+          </View>
+          <View style={styles.titleStack}>
+            <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
+              {status}
+            </Text>
+            <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={2} style={[styles.cardTitle, { color: tokens.ink }]}>
+              {title}
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View style={[styles.jobDiagnosisBox, workerDiagnosisSurface(tokens)]} testID={`${testID ?? 'worker-empty-job'}-brief`}>
+        <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
+          {body}
+        </Text>
+      </View>
+      {primaryActionLabel && primaryActionPath ? (
+        <View style={styles.actionRow}>
+          <PressButton label={primaryActionLabel} onPress={() => replace(primaryActionPath)} testID={`${testID ?? 'worker-empty-job'}-primary-action`} />
+          {secondaryActionLabel && secondaryActionPath ? (
+            <PressButton secondary label={secondaryActionLabel} onPress={() => replace(secondaryActionPath)} testID={`${testID ?? 'worker-empty-job'}-secondary-action`} />
+          ) : (
+            <Text style={[styles.bodyText, { color: tokens.subtle, flex: 1, textAlign: 'center' }]} numberOfLines={2}>
+              {language === 'en' ? 'No request yet' : 'Chưa có yêu cầu'}
+            </Text>
+          )}
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -2669,28 +3618,32 @@ function PressButton({
       disabled={disabled}
       mode={tokens.mode}
       onPress={onPress}
+      pressedStyle={!secondary ? styles.pressButtonPressedPrimary : null}
       style={[
         styles.pressButton,
-        { backgroundColor: secondary ? tokens.mint : tokens.primary },
+        secondary ? styles.pressButtonSecondary : null,
+        secondary ? workerSecondaryButtonSurface(tokens) : workerPrimaryButtonSurface(tokens),
         disabled ? styles.disabledButton : null,
       ]}
       testID={testID}
       variant="control"
     >
-      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.pressButtonText, { color: secondary ? tokens.primary : tokens.primaryText }]}>{label}</Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[secondary ? styles.pressButtonTextSecondary : styles.pressButtonTextPrimary, { color: secondary ? tokens.primary : tokens.primaryText }]}>{label}</Text>
     </GlassPressable>
   )
 }
 
-function Icon({ active = false, name, small = false }: { active?: boolean; name: WorkerIconName; small?: boolean }) {
+function Icon({ active = false, dock = false, inverse = false, name, small = false }: { active?: boolean; dock?: boolean; inverse?: boolean; name: WorkerIconName; small?: boolean }) {
   const { tokens } = useWorkerUi()
-  const color = active ? tokens.primary : tokens.muted
-  const accent = active ? tokens.copper : tokens.aqua
-  const size = small ? 18 : 25
-  const stroke = small ? 1.8 : 2
+  const dockColor = tokens.mode === 'dark' ? (active ? '#CFF7EE' : '#8FB0AA') : active ? '#034D44' : '#66827B'
+  const color = inverse ? '#FFFFFF' : dock ? dockColor : active ? tokens.primary : tokens.muted
+  const accent = inverse ? 'rgba(255,255,255,0.86)' : dock ? color : active ? tokens.copper : tokens.aqua
+  const size = dock ? 20 : small ? 18 : 25
+  const stroke = dock ? 2.25 : small ? 1.8 : 2
 
   return (
-    <Svg accessible={false} width={size} height={size} viewBox="0 0 25 25" fill="none" testID="worker-dock-icon-system-v3">
+    <Svg width={size} height={size} viewBox="0 0 25 25" fill="none" testID="worker-dock-icon-system-v3">
+      {name === 'back' ? <Path d="M15.5 18.5 9.5 12.5l6-6" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" /> : null}
       {name === 'home' ? (
         <>
           <Path d="M5.5 12.2 12.5 6l7 6.2v7.2H5.5v-7.2Z" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
@@ -2715,6 +3668,13 @@ function Icon({ active = false, name, small = false }: { active?: boolean; name:
           <Circle cx={12.5} cy={12.5} r={2.1} stroke={accent} strokeWidth={stroke} />
         </>
       ) : null}
+      {name === 'trend' ? (
+        <>
+          <Path d="M5.2 19.2h14.6" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+          <Path d="M7.4 16.6V12M12.5 16.6V8.4M17.6 16.6v-6" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+          <Path d="m7.4 11.8 3.1-3.1 2.6 2.4 4.5-5.2" stroke={accent} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      ) : null}
       {name === 'person' ? (
         <>
           <Path d="M7.1 20c.9-2.5 2.9-3.7 5.4-3.7s4.5 1.2 5.4 3.7" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
@@ -2732,6 +3692,12 @@ function Icon({ active = false, name, small = false }: { active?: boolean; name:
         <>
           <Circle cx={12.5} cy={10.5} r={4.2} stroke={color} strokeWidth={stroke} />
           <Path d="M12.5 14.6v5.1" stroke={accent} strokeWidth={stroke} strokeLinecap="round" />
+        </>
+      ) : null}
+      {name === 'plus' ? (
+        <>
+          <Path d="M12.5 6.4v12.2" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+          <Path d="M6.4 12.5h12.2" stroke={accent} strokeWidth={stroke} strokeLinecap="round" />
         </>
       ) : null}
       {name === 'map' ? (
@@ -2794,8 +3760,22 @@ function glassSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
   const warmAccent = tokens.mode === 'dark' ? 'rgba(224,160,107,0.20)' : 'rgba(255,184,102,0.23)'
   const softWarmAccent = tokens.mode === 'dark' ? 'rgba(224,160,107,0.13)' : 'rgba(255,184,102,0.14)'
   const mintWash = tokens.mode === 'dark' ? 'rgba(105,222,198,0.17)' : 'rgba(183,246,231,0.34)'
-  const backgroundColor =
+  const reducedBackgroundColor =
     tone === 'raised' || tone === 'strong'
+      ? tokens.glassStrong
+      : tone === 'cream' || tone === 'warm'
+        ? tokens.warm
+        : tone === 'mint'
+          ? tokens.mint
+          : tone === 'cyan'
+            ? tokens.cyan
+            : tone === 'depth'
+              ? tokens.depth
+              : tokens.base
+  const backgroundColor =
+    reduceTransparency
+      ? reducedBackgroundColor
+      : tone === 'raised' || tone === 'strong'
       ? tokens.glassStrong
       : tone === 'cream' || tone === 'warm'
         ? tokens.mode === 'dark'
@@ -2850,15 +3830,15 @@ function glassSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
 function messageBubbleSurface(tokens: WorkerThemeTokens, { mine, system }: { mine: boolean; system: boolean }) {
   const backgroundColor = mine
     ? tokens.mode === 'dark'
-      ? 'rgba(23,59,53,0.96)'
-      : 'rgba(225,248,242,0.96)'
+      ? '#173B35'
+      : '#E1F8F2'
     : system
       ? tokens.mode === 'dark'
-        ? 'rgba(21,54,58,0.94)'
-        : 'rgba(235,249,248,0.96)'
+        ? '#15363A'
+        : '#EBF9F8'
       : tokens.mode === 'dark'
-        ? 'rgba(18,39,36,0.96)'
-        : 'rgba(255,253,248,0.96)'
+        ? '#122724'
+        : '#FFFDF8'
 
   return {
     backgroundColor,
@@ -2872,30 +3852,161 @@ function workerOpaqueCardSurface(tokens: WorkerThemeTokens, tone: WorkerTone = '
   const isWarm = tone === 'cream' || tone === 'warm'
   const isMint = tone === 'mint'
   const isCyan = tone === 'cyan'
-  return {
-    backgroundColor: isWarm
+  const backgroundColor = isWarm
+    ? tokens.mode === 'dark'
+      ? '#3B291B'
+      : '#FFF8EB'
+    : isMint
       ? tokens.mode === 'dark'
-        ? 'rgba(59,41,27,0.94)'
-        : 'rgba(255,247,235,0.96)'
-      : isMint
+        ? '#173B35'
+        : '#E8F9F4'
+      : isCyan
         ? tokens.mode === 'dark'
-          ? 'rgba(23,59,53,0.94)'
-          : 'rgba(232,249,244,0.96)'
+          ? '#15363A'
+          : '#EBF9F8'
+        : tokens.mode === 'dark'
+          ? '#122724'
+          : '#FFFDF8'
+  const experimentalBackgroundImage = tokens.mode === 'dark'
+    ? isWarm
+      ? 'linear-gradient(180deg, rgba(59,41,27,0.96), rgba(22,39,36,0.90))'
+      : isMint
+        ? 'linear-gradient(180deg, rgba(23,59,53,0.96), rgba(18,39,36,0.90))'
         : isCyan
-          ? tokens.mode === 'dark'
-            ? 'rgba(21,54,58,0.94)'
-            : 'rgba(235,249,248,0.96)'
-          : tokens.mode === 'dark'
-            ? 'rgba(18,39,36,0.96)'
-            : 'rgba(255,253,248,0.96)',
+          ? 'linear-gradient(180deg, rgba(21,54,58,0.96), rgba(18,39,36,0.90))'
+          : 'linear-gradient(180deg, rgba(18,39,36,0.96), rgba(13,29,27,0.90))'
+    : isWarm
+      ? 'linear-gradient(180deg, rgba(255,248,235,0.96), rgba(255,253,248,0.90))'
+      : isMint
+        ? 'linear-gradient(180deg, rgba(232,249,244,0.96), rgba(255,253,248,0.90))'
+        : isCyan
+          ? 'linear-gradient(180deg, rgba(235,249,248,0.96), rgba(255,253,248,0.90))'
+          : 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,253,248,0.90))'
+  return {
+    backgroundColor,
     borderColor: tokens.border,
     borderWidth: 1,
-    boxShadow: 'none',
+    boxShadow: tokens.mode === 'dark' ? '0 8px 22px rgba(0,0,0,0.18)' : '0 8px 22px rgba(17,70,61,0.06)',
+    experimental_backgroundImage: experimentalBackgroundImage,
+  } as any
+}
+
+function workerJobCardSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  if (tokens.mode === 'dark') {
+    return workerOpaqueCardSurface(tokens, tone)
   }
+
+  return {
+    backgroundColor: reduceTransparency ? '#FFFDF8' : 'rgba(255,253,248,0.93)',
+    borderColor: reduceTransparency ? tokens.border : 'rgba(35,96,84,0.12)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : '0 10px 28px rgba(17,70,61,0.08)',
+  } as any
+}
+
+function workerDiagnosisSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(135deg, rgba(23,59,53,0.94), rgba(59,41,27,0.78))'
+    : 'linear-gradient(135deg, rgba(223,253,246,0.94), rgba(255,247,226,0.80))'
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#15363A' : '#F7FFF9',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(16,131,115,0.13)',
+    borderWidth: 1,
+    boxShadow: 'none',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerPrimaryButtonSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(135deg, #69DEC6, #08786E)'
+    : 'linear-gradient(135deg, #08786E, #0AA895)'
+  return {
+    backgroundColor: reduceTransparency ? tokens.primary : tokens.mode === 'dark' ? tokens.aqua : '#0B5C50',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.24)' : 'rgba(255,255,255,0.28)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 14px 25px rgba(0,0,0,0.22)' : '0 14px 25px rgba(9,121,106,0.22)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+    transition: reduceTransparency ? undefined : 'transform 130ms ease, filter 130ms ease',
+  } as any
+}
+
+function workerSecondaryButtonSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  return {
+    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(18,39,36,0.90)' : 'rgba(255,255,255,0.72)',
+    borderColor: reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(20,117,105,0.12)',
+    boxShadow: 'none',
+    transition: reduceTransparency ? undefined : 'transform 130ms ease',
+    experimental_backgroundImage: reduceTransparency
+      ? undefined
+      : tokens.mode === 'dark'
+      ? 'linear-gradient(180deg, rgba(18,39,36,0.92), rgba(22,43,38,0.86))'
+      : undefined,
+  } as any
+}
+
+function workerSegmentShellSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  return {
+    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(18,39,36,0.86)' : 'rgba(255,255,255,0.66)',
+    borderColor: reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 28px rgba(0,0,0,0.22)' : '0 10px 28px rgba(17,70,61,0.08)',
+  } as any
+}
+
+function workerServiceTileSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#122724' : '#F8FFFC',
+    borderColor: tokens.border,
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.20)' : '0 10px 22px rgba(17,70,61,0.07)',
+    experimental_backgroundImage: reduceTransparency
+      ? undefined
+      : tokens.mode === 'dark'
+      ? 'linear-gradient(180deg, rgba(18,39,36,0.96), rgba(13,29,27,0.90))'
+      : 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,255,252,0.86))',
+  } as any
+}
+
+function workerIconBubbleSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'mint') {
+  const isWarm = tone === 'cream' || tone === 'warm'
+  const isCyan = tone === 'cyan'
+  return {
+    backgroundColor: isWarm ? tokens.cream : isCyan ? tokens.cyan : tokens.mint,
+    borderColor: tokens.borderStrong,
+    boxShadow: tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.20)' : '0 8px 18px rgba(17,70,61,0.07)',
+    experimental_backgroundImage: tokens.mode === 'dark'
+      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.10), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.16), rgba(18,39,36,0.82))'
+      : isWarm
+        ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #FFF8EB, #F8E5C1)'
+        : isCyan
+          ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #E8FCFA, #C8F0F2)'
+          : 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #DCFBF3, #BDF1E4)',
+  } as any
+}
+
+function workerMapViewportSurface(tokens: WorkerThemeTokens) {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? tokens.depth : '#F8FFF9',
+    experimental_backgroundImage:
+      tokens.mode === 'dark'
+        ? 'radial-gradient(circle at 24% 24%, rgba(105,222,198,0.15), transparent 26%), radial-gradient(circle at 88% 82%, rgba(224,160,107,0.13), transparent 28%), linear-gradient(145deg, #102521, #17342F 54%, #342719)'
+        : 'radial-gradient(circle at 18% 22%, rgba(196,255,242,0.88), transparent 26%), radial-gradient(circle at 88% 78%, rgba(255,240,206,0.84), transparent 28%), linear-gradient(145deg, #F7FFF9, #E6FBF5 52%, #FFF8E8)',
+  } as any
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  inactiveRouteSurface: { display: 'none' },
   canvas: { alignItems: 'center', flex: 1, overflow: 'hidden' },
   backdropWarm: { borderRadius: 30, bottom: 72, height: 148, left: -98, opacity: 0.12, position: 'absolute', transform: [{ rotate: '12deg' }], width: 210 },
   backdropMint: { borderRadius: 36, height: 226, opacity: 0.18, position: 'absolute', right: -126, top: 54, width: 294 },
@@ -2905,22 +4016,39 @@ const styles = StyleSheet.create({
   sectionMotionWash: { borderRadius: 34, height: 178, position: 'absolute', right: -92, width: 224 },
   sectionMotionCaustic: { borderRadius: 30, bottom: 84, height: 118, left: -104, position: 'absolute', width: 268 },
   sectionMotionGlint: { bottom: 52, height: 260, left: '50%', position: 'absolute', width: 34 },
-  scrollContent: { gap: 14, paddingHorizontal: workerFrameHorizontalPadding, paddingTop: 8, zIndex: 2 },
+  scrollContent: { gap: 12, paddingHorizontal: workerFrameHorizontalPadding, paddingTop: 8, zIndex: 2 },
   kicker: { fontSize: 12, fontWeight: '600', letterSpacing: 0 },
-  screenTitle: { fontSize: 27, fontWeight: '600', letterSpacing: 0, lineHeight: 32 },
+  screenSubtitle: { fontSize: 12, fontWeight: '700', letterSpacing: 0, lineHeight: 16 },
+  screenTitle: { fontSize: 25, fontWeight: '700', letterSpacing: 0, lineHeight: 27 },
+  workerTopRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 47, paddingTop: 0 },
+  screenHeaderAction: { alignItems: 'center', borderRadius: 18, borderWidth: 1, height: 46, justifyContent: 'center', width: 46 },
+  screenHeaderPill: { borderRadius: 999, borderWidth: 1, flexShrink: 0, fontSize: 12, fontWeight: '700', lineHeight: 14, maxWidth: 126, overflow: 'hidden', paddingHorizontal: 11, paddingVertical: 8 },
   glassTopHighlight: { height: 1, left: 16, opacity: 0.82, position: 'absolute', right: 16, top: 0, zIndex: 0 },
   glassSheen: { height: '170%', left: -72, opacity: 0.42, position: 'absolute', top: -46, transform: [{ rotate: '11deg' }], width: 58, zIndex: 0 },
   glassMotionRibbon: { borderRadius: 999, height: 168, left: 16, position: 'absolute', top: -168, width: 58, zIndex: 0 },
   glassMotionRibbonCompact: { height: 118, left: 8, top: -118, width: 38 },
   glassMotionCore: { borderRadius: 999, height: 118, left: 56, position: 'absolute', top: -118, width: 13, zIndex: 0 },
   glassMotionCoreCompact: { height: 86, left: 36, top: -86, width: 9 },
-  mapStage: { borderRadius: 34, gap: 10, marginBottom: 42, minHeight: 448, overflow: 'hidden', padding: 12, position: 'relative' },
-  searchPill: { alignItems: 'center', borderRadius: 24, flexDirection: 'row', gap: 8, left: 13, minHeight: 46, paddingHorizontal: 14, position: 'absolute', right: 13, top: 13, zIndex: 4 },
+  mapStage: { borderRadius: 24, minHeight: 196, overflow: 'hidden', padding: 0, position: 'relative' },
+  workerMapTopHud: { flexDirection: 'row', gap: 8, left: 12, maxWidth: '78%', position: 'absolute', top: 12, zIndex: 4 },
+  searchPill: { alignItems: 'center', borderRadius: 999, flexDirection: 'row', gap: 8, minHeight: 38, paddingHorizontal: 12 },
   searchText: { flex: 1, fontSize: 15, fontWeight: '600' },
-  mapViewport: { borderRadius: 30, minHeight: 318, overflow: 'hidden', position: 'relative' },
+  workerMapHudStack: { bottom: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8, left: 12, position: 'absolute', right: 12, zIndex: 4 },
+  workerMapHudChip: { borderRadius: 999, minHeight: 36, overflow: 'hidden', paddingHorizontal: 11, paddingVertical: 8 },
+  mapViewport: { borderRadius: 24, minHeight: 196, overflow: 'hidden', position: 'relative' },
+  compactPresenceMap: { borderRadius: 28, minHeight: 196, overflow: 'hidden', padding: 10, position: 'relative' },
+  compactMapViewport: { borderRadius: 24, minHeight: 176, overflow: 'hidden', position: 'relative' },
+  compactMapVeil: { left: '54%', top: 42 },
+  compactMapMarker: { alignItems: 'center', borderRadius: 999, borderWidth: 1, height: 44, justifyContent: 'center', position: 'absolute', width: 44 },
+  compactMapMarkerZone: { left: '30%', top: '48%' },
+  compactMapMarkerWorker: { right: '20%', top: '28%' },
   mapFogTop: { height: 92, left: 0, opacity: 0.38, position: 'absolute', right: 0, top: 0 },
   mapFogBottom: { bottom: -6, height: 86, left: 0, opacity: 0.5, position: 'absolute', right: 0 },
   mapCyanVeil: { borderRadius: 999, height: 118, left: '50%', marginLeft: -59, opacity: 0.12, position: 'absolute', top: 120, width: 118 },
+  homeMapMarker: { alignItems: 'center', borderRadius: 18, borderWidth: 2, height: 46, justifyContent: 'center', position: 'absolute', width: 46, zIndex: 4 },
+  homeMapMarkerWorker: { right: '21%', top: '29%' },
+  homeMapMarkerZone: { left: '22%', top: '45%' },
+  homeMapZoneHalo: { borderRadius: 999, height: 92, opacity: 0.16, position: 'absolute', width: 92 },
   mapChipTop: { left: 6, position: 'absolute', top: 15 },
   mapZonePill: { borderRadius: 22, left: 6, maxWidth: '64%', paddingHorizontal: 12, paddingVertical: 9, position: 'absolute', top: 9 },
   mapChipTitle: { fontSize: 14, fontWeight: '600', letterSpacing: 0 },
@@ -2928,31 +4056,33 @@ const styles = StyleSheet.create({
   mapCardsRow: { flexDirection: 'row', gap: 12, marginTop: -56, zIndex: 5 },
   mapFeatureCard: { borderRadius: 22, flex: 1, minHeight: 100, overflow: 'hidden', padding: 13, position: 'relative' },
   mapFeatureTitle: { fontSize: 17, fontWeight: '600', letterSpacing: 0 },
+  mapFeatureMeta: { fontSize: 11, fontWeight: '600', lineHeight: 14, marginTop: 4 },
   mapFeatureIcon: { alignItems: 'center', borderRadius: 999, bottom: 12, height: 50, justifyContent: 'center', position: 'absolute', right: 12, width: 50 },
-  mapServiceHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 1 },
-  beaconWrap: { alignItems: 'center', height: 104, justifyContent: 'center', left: '50%', marginLeft: -52, marginTop: -28, position: 'absolute', top: '48%', width: 104 },
-  beaconHalo: { borderRadius: 999, height: 74, opacity: 0.16, position: 'absolute', width: 74 },
-  beaconCrescent: { borderBottomWidth: 10, borderLeftWidth: 8, borderRadius: 999, bottom: 31, height: 38, opacity: 0.2, position: 'absolute', transform: [{ rotate: '18deg' }], width: 42 },
-  beaconPin: { alignItems: 'center', borderRadius: 999, borderWidth: 2, height: 22, justifyContent: 'center', opacity: 0.82, width: 22 },
-  beaconCore: { borderRadius: 999, height: 6, opacity: 0.82, width: 6 },
-  shiftCard: { borderRadius: 25, gap: 7, marginTop: 2, overflow: 'hidden', padding: 10, position: 'relative' },
+  shiftCard: { borderRadius: 24, gap: 10, overflow: 'hidden', padding: 14, position: 'relative' },
+  shiftActionRow: { flexDirection: 'row', gap: 10 },
   rowBetween: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   identityRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   titleStack: { flex: 1, gap: 4 },
   heroTitle: { fontSize: 18, fontWeight: '600', letterSpacing: 0 },
-  bodyText: { fontSize: 13.5, fontWeight: '500', lineHeight: 19 },
+  bodyText: { fontSize: 13, fontWeight: '500', lineHeight: 18 },
   toggleTrack: { alignItems: 'flex-end', borderRadius: 999, height: 32, justifyContent: 'center', padding: 4, width: 58 },
   toggleKnob: { borderRadius: 999, height: 24, width: 24 },
+  workerServiceGrid: { flexDirection: 'row', gap: 10 },
+  workerServiceTile: { borderRadius: 22, borderWidth: 1, flex: 1, minHeight: 96, overflow: 'hidden', padding: 11, position: 'relative' },
+  workerServiceIcon: { alignItems: 'center', borderRadius: 16, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
+  workerServiceTitle: { fontSize: 14, fontWeight: '600', letterSpacing: 0, lineHeight: 16, marginTop: 9 },
+  workerServiceMeta: { fontSize: 10, fontWeight: '700', letterSpacing: 0, marginTop: 3 },
+  workerMiniGrid: { flexDirection: 'row', gap: 10 },
+  workerMiniCard: { borderRadius: 20, borderWidth: 1, flex: 1, gap: 4, minHeight: 84, overflow: 'hidden', padding: 12 },
+  workerMiniTitle: { fontSize: 16, fontWeight: '600', letterSpacing: 0, lineHeight: 18 },
+  workerMiniMeta: { fontSize: 11, fontWeight: '600', lineHeight: 14 },
   metricRow: { flexDirection: 'row', gap: 8 },
   metric: { alignItems: 'center', borderRadius: 15, borderWidth: 1, flex: 1, gap: 1, justifyContent: 'center', minHeight: 40, overflow: 'hidden', padding: 6, position: 'relative' },
   metricValue: { fontSize: 15, fontVariant: ['tabular-nums'], fontWeight: '600', position: 'relative', textAlign: 'center', zIndex: 2 },
   metricLabel: { fontSize: 10, fontWeight: '500', position: 'relative', textAlign: 'center', zIndex: 2 },
   requestSheet: { borderRadius: 32, gap: 8, marginTop: -2, overflow: 'hidden', padding: 14, position: 'relative' },
   requestSheetCompact: { marginTop: 0 },
-  readinessPanel: { borderRadius: 28, gap: 12, overflow: 'hidden', padding: 15, position: 'relative' },
   readinessBadge: { alignItems: 'center', borderRadius: 18, borderWidth: 1, height: 46, justifyContent: 'center', width: 46 },
-  readinessGrid: { flexDirection: 'row', gap: 8 },
-  jobRoomEntry: { borderRadius: 24, borderWidth: 1, gap: 10, overflow: 'hidden', padding: 12 },
   serviceBadge: { alignItems: 'center', borderRadius: 999, flexDirection: 'row', gap: 6, minHeight: 34, paddingHorizontal: 10 },
   serviceBadgeText: { fontSize: 13, fontWeight: '600' },
   countdownRing: { alignItems: 'center', borderRadius: 999, borderWidth: 3, justifyContent: 'center', minHeight: 38, minWidth: 70, paddingHorizontal: 10 },
@@ -2969,11 +4099,13 @@ const styles = StyleSheet.create({
   briefText: { flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 16 },
   priceRow: { flexDirection: 'row', gap: 8 },
   scopeRequestBox: { gap: 8 },
-  actionRow: { flexDirection: 'row', gap: 10 },
-  adminSwitchWrap: { flexDirection: 'row' },
-  pressButton: { alignItems: 'center', borderRadius: 18, flex: 1, justifyContent: 'center', minHeight: 46 },
+  actionRow: { flexDirection: 'row', gap: 9 },
+  pressButton: { alignItems: 'center', borderRadius: 17, flex: 1, justifyContent: 'center', minHeight: 48 },
+  pressButtonPressedPrimary: { filter: Platform.OS === 'web' ? 'brightness(0.98)' : undefined } as any,
+  pressButtonSecondary: { borderRadius: 15, minHeight: 44 },
   disabledButton: { opacity: 0.52 },
-  pressButtonText: { fontSize: 15, fontWeight: '600' },
+  pressButtonTextPrimary: { fontSize: 14, fontWeight: '700' },
+  pressButtonTextSecondary: { fontSize: 13, fontWeight: '700' },
   operationalBand: { flexDirection: 'row', gap: 12 },
   quickPanel: { borderRadius: 25, flex: 1, gap: 5, minHeight: 132, overflow: 'hidden', padding: 14, position: 'relative' },
   quickValue: { fontSize: 23, fontVariant: ['tabular-nums'], fontWeight: '600' },
@@ -2984,65 +4116,97 @@ const styles = StyleSheet.create({
   timelineItem: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   timelineRail: { borderRadius: 999, height: 10, width: 10 },
   timelineText: { fontSize: 14, fontWeight: '600' },
-  segmentShell: { borderRadius: 999, flexDirection: 'row', gap: 6, overflow: 'hidden', padding: 6, position: 'relative' },
-  segmentPill: { alignItems: 'center', borderRadius: 999, flex: 1, justifyContent: 'center', minHeight: 38, paddingHorizontal: 4 },
-  segmentText: { fontSize: 13, fontWeight: '600' },
-  jobsTabOverview: { flexDirection: 'row', gap: 8 },
-  jobsTabCard: { alignItems: 'center', borderRadius: 22, borderWidth: 1, flex: 1, gap: 5, minHeight: 92, overflow: 'hidden', padding: 10 },
-  jobsTabValue: { fontSize: 13, fontWeight: '600', lineHeight: 17, textAlign: 'center' },
+  segmentShell: { borderRadius: 20, flexDirection: 'row', gap: 5, overflow: 'hidden', padding: 5, position: 'relative' },
+  segmentPill: { alignItems: 'center', borderRadius: 16, flex: 1, justifyContent: 'center', minHeight: 38, paddingHorizontal: 4, position: 'relative', zIndex: 2 },
+  segmentLiquidPill: { borderRadius: 16, bottom: 5, left: 0, overflow: 'hidden', position: 'absolute', top: 5, zIndex: 0 },
+  segmentLiquidSheen: { borderRadius: 999, height: 14, left: 14, opacity: 0.48, position: 'absolute', right: 14, top: 4 },
+  segmentText: { fontSize: 12, fontWeight: '700' },
+  activeJobCard: { borderRadius: 22, borderWidth: 1, gap: 12, overflow: 'hidden', padding: 15 },
+  jobTop: { gap: 10 },
+  jobTopRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
+  jobDiagnosisBox: { borderRadius: 22, gap: 10, padding: 16 },
   flowCard: { borderRadius: 28, gap: 10, overflow: 'hidden', padding: 16, position: 'relative' },
+  needsReviewCard: { borderRadius: 22, borderWidth: 1, gap: 12, overflow: 'hidden', padding: 15, position: 'relative' },
+  needsReviewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   statusPill: { borderRadius: 999, fontSize: 12, fontWeight: '600', overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
   cardTitle: { fontSize: 17, fontWeight: '600', letterSpacing: 0, lineHeight: 23 },
-  chatShell: { borderRadius: 32, gap: 12, minHeight: 430, overflow: 'hidden', padding: 12, position: 'relative' },
-  kaelClientStage: { borderRadius: 25, borderWidth: 1, flex: 1, gap: 12, justifyContent: 'space-between', minHeight: 336, overflow: 'hidden', padding: 12, position: 'relative' },
+  chatShell: { flex: 1, gap: 12, minHeight: 620, paddingBottom: 86, position: 'relative' },
+  kaelClientStage: { flex: 1, gap: 12, justifyContent: 'space-between', minHeight: 642, paddingBottom: 2, position: 'relative' },
   kaelClientStageEmpty: { opacity: 0.92 },
   kaelBlankCanvas: { flex: 1, minHeight: 240, overflow: 'hidden', position: 'relative' },
   kaelCanvasWashLarge: { borderRadius: 32, height: 168, left: -48, opacity: 0.07, position: 'absolute', top: 46, transform: [{ rotate: '-8deg' }], width: 168 },
   kaelCanvasWashWarm: { borderRadius: 28, bottom: 42, height: 126, opacity: 0.06, position: 'absolute', right: -34, transform: [{ rotate: '12deg' }], width: 126 },
   jobRoomWaiting: { alignItems: 'center', gap: 8, justifyContent: 'center', minHeight: 228, padding: 18, position: 'relative', zIndex: 2 },
   jobRoomKaelHead: { height: 70, width: 70 },
-  jobRoomStack: { gap: 10 },
+  jobRoomStack: { gap: 10, paddingBottom: 86 },
   jobRoomHeader: { borderRadius: 24, borderWidth: 1, gap: 10, overflow: 'hidden', padding: 13 },
   jobRoomMetaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   jobRoomMetaCell: { borderRadius: 18, borderWidth: 1, flexBasis: '47%', flexGrow: 1, gap: 4, minHeight: 66, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 9 },
   jobRoomMetaValue: { fontSize: 13, fontWeight: '600', letterSpacing: 0, lineHeight: 17 },
   jobRoomBrief: { borderRadius: 22, borderWidth: 1, gap: 8, overflow: 'hidden', padding: 12 },
   jobRoomGate: { alignItems: 'center', borderRadius: 22, borderWidth: 1, flexDirection: 'row', gap: 10, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 11 },
+  jobRoomTopBar: { alignItems: 'center', borderRadius: 24, borderWidth: 1, flexDirection: 'row', gap: 10, marginBottom: 12, minHeight: 68, paddingHorizontal: 12, paddingVertical: 10 },
+  jobRoomBackButton: { alignItems: 'center', borderRadius: 18, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  jobRoomHeaderAvatar: { height: 44, width: 44 },
+  jobRoomStatusPill: { borderRadius: 999, borderWidth: 1, fontSize: 11, fontWeight: '700', letterSpacing: 0, maxWidth: 94, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 7, textAlign: 'center' },
+  jobRoomTitleStack: { flex: 1, minWidth: 0 },
   chatStack: { gap: 10 },
   chatBubble: { alignSelf: 'flex-start', borderRadius: 22, maxWidth: '88%', padding: 13 },
   chatBubbleMine: { alignSelf: 'flex-end' },
   chatWho: { fontSize: 12, fontWeight: '600' },
   chatText: { fontSize: 14, fontWeight: '600', lineHeight: 20, marginTop: 3 },
-  chatComposer: { alignItems: 'center', borderRadius: 24, borderWidth: 1, flexDirection: 'row', gap: 8, minHeight: 64, overflow: 'hidden', padding: 7 },
+  chatComposer: { alignItems: 'center', borderRadius: 24, borderWidth: 1, bottom: 0, flexDirection: 'row', gap: 8, left: 0, minHeight: 64, overflow: 'hidden', padding: 7, position: 'absolute', right: 0, zIndex: 12 },
   composerTool: { alignItems: 'center', borderRadius: 16, borderWidth: 1, height: 40, justifyContent: 'center', width: 40 },
-  composerToolText: { fontSize: 26, fontWeight: '300', letterSpacing: 0, lineHeight: 28 },
   chatInput: { flex: 1, flexShrink: 1, fontSize: 15, fontWeight: '500', minHeight: 40, minWidth: 0, paddingHorizontal: 8 },
   sendButton: { alignItems: 'center', borderRadius: 17, flexShrink: 0, height: 42, justifyContent: 'center', width: 42 },
   earningsHero: { borderRadius: 32, gap: 12, overflow: 'hidden', padding: 18, position: 'relative' },
+  earningsHeroWrap: { gap: 0, position: 'relative' },
   earningsBadge: { alignItems: 'center', borderRadius: 24, height: 58, justifyContent: 'center', transform: [{ rotate: '-5deg' }], width: 58 },
-  earningsTrendCard: { borderRadius: 30, borderWidth: 1, gap: 12, overflow: 'hidden', padding: 14 },
-  earningsChartShell: { borderRadius: 24, borderWidth: 1, gap: 12, justifyContent: 'space-between', minHeight: 132, padding: 14 },
-  earningsChartEmptyState: { alignItems: 'center', flex: 1, gap: 8, justifyContent: 'center', minHeight: 76, overflow: 'hidden', position: 'relative' },
+  earningsTrendCard: { borderRadius: 32, gap: 14, overflow: 'hidden', padding: 18, position: 'relative' },
+  earningsTrendTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  earningsChartShell: { borderRadius: 22, borderWidth: 1, gap: 12, justifyContent: 'space-between', minHeight: 150, padding: 15 },
+  earningsChartEmptyState: { alignItems: 'center', flex: 1, gap: 8, justifyContent: 'center', minHeight: 102, overflow: 'hidden', position: 'relative' },
   earningsChartBaseline: { borderRadius: 999, height: 3, left: 0, opacity: 0.52, position: 'absolute', right: 0, top: '56%' },
+  earningsBarRail: { alignItems: 'flex-end', flexDirection: 'row', gap: 10, minHeight: 104 },
+  earningsEmptyBar: { borderRadius: 999, boxShadow: '0 8px 14px rgba(10,122,107,0.16)', width: 26 },
   earningsDayRail: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
+  earningsSummaryGrid: { flexDirection: 'row', gap: 10 },
+  earningsSummaryCell: { borderRadius: 24, borderWidth: 1, flex: 1, gap: 4, minHeight: 86, padding: 14 },
   moneyText: { fontSize: 34, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: 0 },
   moneyTextState: { fontSize: 24, lineHeight: 30 },
   listCard: { borderRadius: 29, gap: 4, overflow: 'hidden', padding: 10, position: 'relative' },
   listRow: { alignItems: 'center', flexDirection: 'row', gap: 11, minHeight: 54, paddingHorizontal: 8 },
   listTitle: { flex: 1, fontSize: 14, fontWeight: '600' },
   listMeta: { fontSize: 12, fontWeight: '600', maxWidth: 120, textAlign: 'right' },
-  profileHead: { alignItems: 'center', borderRadius: 30, flexDirection: 'row', gap: 13, overflow: 'hidden', padding: 16, position: 'relative' },
+  listMetaInline: { fontSize: 11, fontWeight: '600', lineHeight: 14 },
+  profileHead: { borderRadius: 30, gap: 14, overflow: 'hidden', padding: 16, position: 'relative' },
+  profileHeroTop: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   avatarWrap: { alignItems: 'center', borderRadius: 999, height: 56, justifyContent: 'center', width: 56 },
-  profileName: { fontSize: 17, fontWeight: '600', letterSpacing: 0 },
+  profileAvatarHero: {
+    alignItems: 'center',
+    backgroundColor: '#08786E',
+    borderColor: 'rgba(255,255,255,0.72)',
+    borderRadius: 20,
+    borderWidth: 1,
+    boxShadow: '0 12px 22px rgba(10,119,105,0.20)',
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+    experimental_backgroundImage: 'linear-gradient(135deg, #08786E, #38D8BA)',
+  } as any,
+  profileName: { fontSize: 22, fontWeight: '600', letterSpacing: 0, lineHeight: 27 },
   profileBadge: { alignItems: 'center', borderRadius: 999, height: 42, justifyContent: 'center', width: 42 },
-  greenScoreCard: { borderRadius: 30, gap: 8, overflow: 'hidden', padding: 17, position: 'relative' },
   scoreNumber: { fontSize: 28, fontWeight: '600', letterSpacing: 0, lineHeight: 34 },
   skillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   skillPill: { borderRadius: 999, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 13 },
   skillText: { fontSize: 13, fontWeight: '600' },
+  profileMiniGrid: { flexDirection: 'row', gap: 10 },
+  profileSyncPreview: { borderRadius: 24, borderWidth: 1, gap: 4, overflow: 'hidden', padding: 14 },
+  profileSyncPreviewTop: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
   preferenceCard: { borderRadius: 29, gap: 6, overflow: 'hidden', padding: 10, position: 'relative' },
   preferenceRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 54, paddingHorizontal: 8 },
   preferenceTitle: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 11 },
+  preferenceCopy: { flex: 1, gap: 2, minWidth: 0 },
   preferenceSwitch: { borderRadius: 999, borderWidth: 1, height: 44, justifyContent: 'center', padding: 6, width: 72 },
   preferenceKnob: { borderRadius: 999, height: 28, width: 28 },
   preferenceKnobRight: { alignSelf: 'flex-end' },
@@ -3064,17 +4228,8 @@ const styles = StyleSheet.create({
   verificationFileButton: { alignItems: 'center', borderRadius: 18, borderWidth: 1, flex: 1, gap: 5, justifyContent: 'center', minHeight: 72, padding: 8 },
   verificationFileText: { fontSize: 11, fontWeight: '600', lineHeight: 14, textAlign: 'center' },
   dockWrap: { alignSelf: 'center', minHeight: workerDockHeight, position: 'absolute', zIndex: 30 },
-  dockGlassAura: { borderRadius: 999, bottom: -20, height: 84, left: 20, position: 'absolute', right: 20, zIndex: -1 },
-  dockWarmAura: { borderRadius: 999, bottom: -10, height: 48, opacity: 0.12, position: 'absolute', right: -10, width: 100, zIndex: -1 },
-  workerDock: { alignItems: 'center', borderRadius: 33, borderWidth: 1, flexDirection: 'row', gap: 5, height: workerDockHeight, justifyContent: 'space-around', overflow: 'hidden', padding: 7, position: 'relative' },
-  dockLiquidPool: { borderRadius: 999, bottom: 4, height: 56, left: 0, opacity: 0.27, position: 'absolute', width: 96, zIndex: 0 },
-  dockLiquidWake: { borderRadius: 999, bottom: 1, height: 62, left: 0, position: 'absolute', width: 106, zIndex: 0 },
-  dockBottomReflection: { borderRadius: 999, bottom: 7, height: 17, left: 38, opacity: 0.18, position: 'absolute', right: 38, zIndex: 0 },
-  dockMotionSheen: { bottom: -18, position: 'absolute', top: -18, width: 54, zIndex: 0 },
-  dockActiveGlow: { borderRadius: 999, height: 52, position: 'absolute', width: 58 },
-  dockItem: { alignItems: 'center', borderRadius: 27, flex: 1, height: 54, justifyContent: 'center', position: 'relative', zIndex: 2 },
-  dockDot: { borderRadius: 999, bottom: 5, height: 3, position: 'absolute', width: 3 },
-  dockKaelImage: { height: 34, width: 34 },
+  dockBackdropShield: { borderRadius: 38, bottom: -10, height: 90, left: -6, opacity: 0, position: 'absolute', right: -6, zIndex: -2 },
+  workerDock: { alignItems: 'center', borderRadius: 32, borderWidth: 1, flexDirection: 'row', gap: 5, height: workerDockHeight, justifyContent: 'space-around', overflow: 'hidden', padding: 7, position: 'relative' },
   motionSweep: { borderRadius: 999, height: 76, position: 'absolute', top: -18, width: 96 },
   pressed: { opacity: 0.78 },
   hiddenMarker: { height: 0, opacity: 0, width: 0 },

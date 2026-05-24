@@ -11,6 +11,13 @@ export type EarningsSummary = {
   netEarnings: number
   pendingPaymentCount: number
   pendingPaymentAmount: number
+  dailyEarnings: {
+    date: string
+    grossEarnings: number
+    platformFeeTotal: number
+    netEarnings: number
+    paidJobCount: number
+  }[]
   fromDate: string | null
   toDate: string | null
 }
@@ -68,12 +75,21 @@ export async function computeEarnings(
   let paidCount = 0
   let pendingCount = 0
   let pendingAmount = 0
+  const dailyGross = new Map<string, { gross: number; paidJobCount: number }>()
 
   for (const row of rows) {
     const price = row.final_price ?? 0
     if (row.paid_at) {
       gross += price
       paidCount++
+      const paidDate = row.paid_at.length >= 10 ? row.paid_at.slice(0, 10) : null
+      if (paidDate) {
+        const current = dailyGross.get(paidDate) ?? { gross: 0, paidJobCount: 0 }
+        dailyGross.set(paidDate, {
+          gross: current.gross + price,
+          paidJobCount: current.paidJobCount + 1,
+        })
+      }
     } else if (row.status === 'confirmed_by_customer' || row.status === 'payment_pending' || row.status === 'reviewed') {
       pendingAmount += price
       pendingCount++
@@ -82,6 +98,18 @@ export async function computeEarnings(
 
   const platformFee = Math.round(gross * PLATFORM_FEE_WORKER)
   const net = gross - platformFee
+  const dailyEarnings = Array.from(dailyGross.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, day]) => {
+      const platformFeeTotal = Math.round(day.gross * PLATFORM_FEE_WORKER)
+      return {
+        date,
+        grossEarnings: day.gross,
+        platformFeeTotal,
+        netEarnings: day.gross - platformFeeTotal,
+        paidJobCount: day.paidJobCount,
+      }
+    })
 
   return {
     workerId,
@@ -91,6 +119,7 @@ export async function computeEarnings(
     netEarnings: net,
     pendingPaymentCount: pendingCount,
     pendingPaymentAmount: pendingAmount,
+    dailyEarnings,
     fromDate: range.from ?? null,
     toDate: range.to ?? null,
   }

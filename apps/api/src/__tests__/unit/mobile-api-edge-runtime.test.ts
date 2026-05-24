@@ -2456,6 +2456,15 @@ describe('mobile-api Edge runtime helpers', () => {
       gross_earnings: 300000,
       pending_payment_count: 1,
       pending_payment_amount: 200000,
+      daily_earnings: [
+        {
+          date: '2026-05-20',
+          gross_earnings: 300000,
+          platform_fee_total: 30000,
+          net_earnings: 270000,
+          paid_job_count: 1,
+        },
+      ],
     })
 
     expect(client.calls[0].operations).toContainEqual([

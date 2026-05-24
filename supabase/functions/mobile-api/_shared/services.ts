@@ -2243,11 +2243,21 @@ async function getWorkerEarnings(
   let paidCount = 0;
   let pendingCount = 0;
   let pendingAmount = 0;
+  const dailyGross = new Map<string, { gross: number; paidJobCount: number }>();
   for (const row of rows) {
     const price = nullableNumber(row.final_price) ?? 0;
-    if (nullableString(row.paid_at)) {
+    const paidAt = nullableString(row.paid_at);
+    if (paidAt) {
       gross += price;
       paidCount++;
+      const paidDate = paidAt.length >= 10 ? paidAt.slice(0, 10) : null;
+      if (paidDate) {
+        const current = dailyGross.get(paidDate) ?? { gross: 0, paidJobCount: 0 };
+        dailyGross.set(paidDate, {
+          gross: current.gross + price,
+          paidJobCount: current.paidJobCount + 1,
+        });
+      }
     } else if (
       row.status === "confirmed_by_customer" ||
       row.status === "payment_pending" ||
@@ -2258,6 +2268,18 @@ async function getWorkerEarnings(
     }
   }
   const fee = Math.round(gross * PLATFORM_FEE_WORKER);
+  const dailyEarnings = Array.from(dailyGross.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, day]) => {
+      const platformFeeTotal = Math.round(day.gross * PLATFORM_FEE_WORKER);
+      return {
+        date,
+        gross_earnings: day.gross,
+        platform_fee_total: platformFeeTotal,
+        net_earnings: day.gross - platformFeeTotal,
+        paid_job_count: day.paidJobCount,
+      };
+    });
   return {
     worker_id: ctx.user.id,
     total_jobs_paid: paidCount,
@@ -2266,6 +2288,7 @@ async function getWorkerEarnings(
     net_earnings: gross - fee,
     pending_payment_count: pendingCount,
     pending_payment_amount: pendingAmount,
+    daily_earnings: dailyEarnings,
     from_date: range.from ?? null,
     to_date: range.to ?? null,
   };
