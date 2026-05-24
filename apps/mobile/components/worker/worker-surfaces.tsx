@@ -602,7 +602,6 @@ const workerActionCopy = {
     addCompletionPhoto: 'Thêm ảnh',
     completeLater: 'Để sau',
     scopeDescription: 'Mô tả phần phát sinh',
-    scopePrice: 'Giá mới cần khách duyệt',
     scopeSubmit: 'Yêu cầu đổi phạm vi',
     scopeWaiting: 'Chờ khách quyết định thay đổi phạm vi.',
     cancelReason: 'Lý do cần hủy',
@@ -631,8 +630,6 @@ const workerActionCopy = {
       completeBody: 'Hệ thống sẽ báo khách kiểm tra và xác nhận. Thanh toán vẫn khóa ở giai đoạn này.',
       scopeDescriptionTitle: 'Cần mô tả phạm vi mới',
       scopeDescriptionBody: 'Nhập rõ phần phát sinh để khách quyết định.',
-      scopePriceTitle: 'Cần giá mới',
-      scopePriceBody: 'Nhập mức giá mới để khách duyệt thay đổi phạm vi.',
       scopeConfirmTitle: 'Gửi yêu cầu đổi phạm vi?',
       scopeConfirmBody: 'Hệ thống sẽ khóa tiến độ cho tới khi khách duyệt hoặc từ chối.',
       cancelReasonTitle: 'Cần lý do hủy',
@@ -651,7 +648,6 @@ const workerActionCopy = {
     addCompletionPhoto: 'Add photo',
     completeLater: 'Later',
     scopeDescription: 'New scope details',
-    scopePrice: 'New price for customer approval',
     scopeSubmit: 'Request scope change',
     scopeWaiting: 'Waiting for the customer to decide on the scope change.',
     cancelReason: 'Cancellation reason',
@@ -680,8 +676,6 @@ const workerActionCopy = {
       completeBody: 'The customer will be asked to review and confirm. Payment remains locked at this stage.',
       scopeDescriptionTitle: 'New scope details required',
       scopeDescriptionBody: 'Describe the added work so the customer can decide.',
-      scopePriceTitle: 'New price required',
-      scopePriceBody: 'Enter the new price for customer approval.',
       scopeConfirmTitle: 'Send scope change request?',
       scopeConfirmBody: 'Progress will stay locked until the customer approves or rejects it.',
       cancelReasonTitle: 'Cancellation reason required',
@@ -2722,16 +2716,14 @@ type IncomingRequestDraftField =
   | 'cancellationReasonDraft'
   | 'completionNoteDraft'
   | 'finalPriceDraft'
-  | 'scopeDescriptionDraft'
-  | 'scopePriceDraft'
+  | 'scopeReasonDraft'
 
 type IncomingRequestDraftState = {
   cancellationReasonDraft: string
   completionNoteDraft: string
   completionPhotos: LocalMediaUploadDraft[]
   finalPriceDraft: string
-  scopeDescriptionDraft: string
-  scopePriceDraft: string
+  scopeReasonDraft: string
 }
 
 type IncomingRequestDraftAction =
@@ -2745,8 +2737,7 @@ const EMPTY_INCOMING_REQUEST_DRAFTS: IncomingRequestDraftState = {
   completionNoteDraft: '',
   completionPhotos: [],
   finalPriceDraft: '',
-  scopeDescriptionDraft: '',
-  scopePriceDraft: '',
+  scopeReasonDraft: '',
 }
 
 function incomingRequestDraftReducer(state: IncomingRequestDraftState, action: IncomingRequestDraftAction): IncomingRequestDraftState {
@@ -2769,7 +2760,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const { actions, selectors, state } = useFrontendWorkflow()
   const actionCopy = workerActionCopy[language]
   const [requestDrafts, requestDraftDispatch] = useReducer(incomingRequestDraftReducer, EMPTY_INCOMING_REQUEST_DRAFTS)
-  const { cancellationReasonDraft, completionNoteDraft, completionPhotos, finalPriceDraft, scopeDescriptionDraft, scopePriceDraft } = requestDrafts
+  const { cancellationReasonDraft, completionNoteDraft, completionPhotos, finalPriceDraft, scopeReasonDraft } = requestDrafts
   const updateRequestDraft = (field: IncomingRequestDraftField) => (value: string) => requestDraftDispatch({ type: 'field', field, value })
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast ?? null
@@ -2861,14 +2852,9 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
     )
   }
   const submitScopeChangeRequest = () => {
-    const description = scopeDescriptionDraft.trim()
-    const price = Number.parseInt(scopePriceDraft.replace(/[^\d]/g, ''), 10)
-    if (description.length < 10) {
+    const reason = scopeReasonDraft.trim()
+    if (reason.length < 10) {
       Alert.alert(actionCopy.alerts.scopeDescriptionTitle, actionCopy.alerts.scopeDescriptionBody)
-      return
-    }
-    if (!Number.isFinite(price) || price <= 0) {
-      Alert.alert(actionCopy.alerts.scopePriceTitle, actionCopy.alerts.scopePriceBody)
       return
     }
     Alert.alert(
@@ -2879,9 +2865,9 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         {
           text: actionCopy.send,
           onPress: () => void actions.requestScopeChange({
-            new_description: description,
+            new_description: reason,
             photo_urls: [],
-            reason: description,
+            reason,
           }),
         },
       ],
@@ -2967,20 +2953,11 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         <View style={styles.scopeRequestBox} testID="worker-scope-change-request">
           <TextInput
             accessibilityLabel={actionCopy.scopeDescription}
-            onChangeText={updateRequestDraft('scopeDescriptionDraft')}
+            onChangeText={updateRequestDraft('scopeReasonDraft')}
             placeholder={actionCopy.scopeDescription}
             placeholderTextColor={tokens.subtle}
             style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
-            value={scopeDescriptionDraft}
-          />
-          <TextInput
-            accessibilityLabel={actionCopy.scopePrice}
-            keyboardType="number-pad"
-            onChangeText={updateRequestDraft('scopePriceDraft')}
-            placeholder={actionCopy.scopePrice}
-            placeholderTextColor={tokens.subtle}
-            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
-            value={scopePriceDraft}
+            value={scopeReasonDraft}
           />
           <PressButton label={actionCopy.scopeSubmit} onPress={submitScopeChangeRequest} secondary testID="worker-scope-change-submit" />
         </View>

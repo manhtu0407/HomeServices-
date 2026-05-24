@@ -50,6 +50,18 @@ const INITIAL: WizardState = {
   error: null,
 }
 
+function mergePhotoDrafts(current: LocalMediaUploadDraft[], drafts: LocalMediaUploadDraft[]) {
+  const seenUris = new Set(current.map((photo) => photo.uri))
+  const merged = [...current]
+  for (const draft of drafts) {
+    if (seenUris.has(draft.uri)) continue
+    seenUris.add(draft.uri)
+    merged.push(draft)
+    if (merged.length >= 5) break
+  }
+  return merged
+}
+
 function reducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case 'select_service':
@@ -57,7 +69,7 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
     case 'update_description':
       return { ...state, description: action.description }
     case 'add_photos':
-      return { ...state, photoDrafts: [...state.photoDrafts, ...action.drafts].slice(0, 5) }
+      return { ...state, photoDrafts: mergePhotoDrafts(state.photoDrafts, action.drafts) }
     case 'remove_photo':
       return { ...state, photoDrafts: state.photoDrafts.filter((_, index) => index !== action.index) }
     case 'update_address':
@@ -384,7 +396,7 @@ function DescribeStep({
       <Text style={styles.label}>{copy.photosLabel}</Text>
       <View style={styles.photoRow}>
         {state.photoDrafts.map((photo, index) => (
-          <View key={`${photo.uri}-${index}`} style={styles.photoTile}>
+          <View key={photo.uri} style={styles.photoTile}>
             <Image accessibilityLabel={`photo-${index}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.photoImage} />
             <Pressable
               accessibilityLabel={`remove-photo-${index}`}

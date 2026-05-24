@@ -13,7 +13,7 @@ export default function AdminDashboard() {
   return (
     <ScrollView contentContainerStyle={styles.container} testID="admin-dashboard">
       <Text style={styles.banner} testID="admin-shell-banner">
-        Khu vực Admin — xem & kiểm toán, không thao tác thay khách/thợ
+        Khu vực Admin, xem & kiểm toán, không thao tác thay khách/thợ
       </Text>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Trang Admin (giai đoạn 0)</Text>
@@ -37,7 +37,7 @@ export default function AdminDashboard() {
         style={[styles.button, styles.secondaryButton]}
         testID="admin-shell-sign-out"
       >
-        <Text style={styles.buttonText}>Sign out</Text>
+        <Text style={styles.buttonText}>Đăng xuất</Text>
       </Pressable>
     </ScrollView>
   )
