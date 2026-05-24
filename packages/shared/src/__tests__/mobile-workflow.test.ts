@@ -479,6 +479,7 @@ describe('mobile local workflow state machine', () => {
           priceMin: 250000,
           priceMax: 250000,
           kaelReview: null,
+          evidencePhotoUrls: [],
           createdAt: '2026-05-17T00:00:00.000Z',
         },
         finalPrice: null,

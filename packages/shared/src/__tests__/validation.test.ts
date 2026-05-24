@@ -327,6 +327,19 @@ describe('workflow support schemas', () => {
     ).toThrow()
   })
 
+  it('accepts scope-change evidence as its own media stage', () => {
+    expect(() =>
+      jobMediaAttachSchema.parse({
+        assets: [{
+          object_path: '11111111-1111-1111-1111-111111111111/scope_change_evidence/evidence.jpg',
+          stage: 'scope_change_evidence',
+          mime_type: 'image/jpeg',
+          file_size_bytes: 1200,
+        }],
+      })
+    ).not.toThrow()
+  })
+
   it('validates device push token registration payloads', () => {
     expect(devicePushTokenSchema.parse({
       platform: 'ios',

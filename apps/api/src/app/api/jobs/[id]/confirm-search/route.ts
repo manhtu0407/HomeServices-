@@ -30,7 +30,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: job, error: fetchError } = await withDbTimeout(
     auth.supabase
       .from('jobs')
-      .select('id, status, customer_id, service_type, address_district')
+      .select('id, status, customer_id, service_type, address_district, kael_price_max, final_price')
       .eq('id', id)
       .single(),
   )
@@ -47,6 +47,11 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (!district) {
     return apiError('VALIDATION', 'Địa chỉ cần có quận TP.HCM rõ ràng', 400)
   }
+
+  const lockedFinalPrice =
+    typeof job.final_price === 'number' && Number.isInteger(job.final_price) && job.final_price > 0
+      ? job.final_price
+      : job.kael_price_max
 
   const now = new Date().toISOString()
   let rollbackStatus: JobStatus | null = null
@@ -103,6 +108,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     if (!transition.valid) {
       return apiError('INVALID_STATUS', transition.error, 409)
     }
+    if (typeof lockedFinalPrice !== 'number' || !Number.isInteger(lockedFinalPrice) || lockedFinalPrice <= 0) {
+      return apiError(
+        'KAEL_PRICE_MISSING',
+        'Kael chưa chốt được giá tạm tính nên chưa thể tìm thợ',
+        409,
+      )
+    }
     rollbackStatus = job.status as JobStatus
 
     // Optimistic concurrency: only transition if status hasn't changed since the
@@ -114,6 +126,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           status: 'broadcasting',
           broadcast_at: now,
           confirmed_search_at: now,
+          final_price: lockedFinalPrice,
         })
         .eq('id', id)
         .eq('customer_id', auth.user.id)

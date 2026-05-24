@@ -160,8 +160,12 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     const worker = read('components/worker/worker-surfaces.tsx')
 
     expect(apiTypes).toContain('current_scope_change')
+    expect(apiTypes).toContain('kael_computed_min')
+    expect(apiTypes).toContain('kael_computed_max')
+    expect(apiTypes).toContain('evidence_photo_urls')
     expect(provider).toContain('scopeChangeFromJobDetail')
     expect(provider).toContain('data.current_scope_change')
+    expect(provider).toContain('evidencePhotoUrls: scope.evidence_photo_urls')
     expect(customer).toContain('scopeChange.requestedDescription ?? copy.history.needsConfirm')
     // Phase 1.3 (plan §22.6.D, 2026-05-23): A11 decision callsite consolidated
     // into the hard-stop modal. Phase 2.0 (plan §22.7.B): worker no longer

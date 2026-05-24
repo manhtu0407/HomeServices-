@@ -824,9 +824,10 @@ function scopeChangeFromJobDetail(data: JobDetailResponse): LocalScopeChange | n
     status: scope.status,
     requestedDescription: scope.requested_description,
     reason: scope.reason,
-    priceMin: scope.price_min,
-    priceMax: scope.price_max,
+    priceMin: scope.kael_computed_min ?? scope.price_min,
+    priceMax: scope.kael_computed_max ?? scope.price_max,
     kaelReview: scope.kael_review,
+    evidencePhotoUrls: scope.evidence_photo_urls,
     createdAt: scope.created_at,
   }
 }

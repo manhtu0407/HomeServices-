@@ -799,7 +799,6 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     // ── Step 5: Worker completes job ──
     const completeRes = await updateStatus(makeRequest('PATCH', {
       status: 'completed_by_worker',
-      final_price: 280000,
       completion_notes: 'Đã thay mối nối ống PVC và kiểm tra toàn bộ hệ thống nước',
       completion_photo_urls: ['https://storage.example.com/photos/completion-1.jpg'],
     }), makeParams(jobId))
@@ -808,7 +807,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     expect(completeRes.status).toBe(200)
     expect(completeBody.to_status).toBe('completed_by_worker')
 
-    console.log(`Step 5 ✓ Worker completed — final price: ${(280000).toLocaleString()}đ`)
+    console.log(`Step 5 ✓ Worker completed — Kael final price preserved`)
 
     // ── Step 6: Customer confirm completion (A12 gate) ──
     currentMockRole = 'customer'
@@ -819,7 +818,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
 
     expect(confirmRes.status).toBe(200)
     expect(confirmBody.status).toBe('confirmed_by_customer')
-    expect(confirmBody.final_price).toBe(280000)
+    expect(confirmBody.final_price).toBe(createBody.estimate.price_max)
 
     console.log(`Step 6 ✓ A12 confirmed — no auto-pay (Bug #3 fix)`)
 
@@ -884,7 +883,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       console.log('✓ State machine blocks A12 confirm before worker completion')
     })
 
-    it('Worker completed_by_worker phải có final_price', async () => {
+    it('Worker completed_by_worker preserves Kael final_price', async () => {
       currentMockRole = 'worker'
       currentMockUserId = 'worker-001'
 
@@ -897,15 +896,17 @@ describe('Full Customer Journey — End-to-End Flow', () => {
 
       const req = makeRequest('PATCH', {
         status: 'completed_by_worker',
-        // Missing final_price
+        completion_notes: 'Done',
+        completion_photo_urls: ['https://storage.example.com/photos/completion-1.jpg'],
+        // No worker-entered final_price
       })
 
       const res = await updateStatus(req, makeParams(id))
       await res.json()
 
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(200)
 
-      console.log('✓ Worker must provide final_price when completing')
+      console.log('✓ Worker completion preserves Kael-owned final_price')
     })
 
     it('Customer không thể cập nhật worker status', async () => {

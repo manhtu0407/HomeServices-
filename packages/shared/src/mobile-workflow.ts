@@ -100,6 +100,7 @@ export type LocalScopeChange = {
   priceMin: number | null
   priceMax: number | null
   kaelReview: Record<string, unknown> | null
+  evidencePhotoUrls: string[]
   createdAt: string | null
 }
 
