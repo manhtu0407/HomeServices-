@@ -396,6 +396,13 @@ export type EarningsResponse = {
   net_earnings: number
   pending_payment_count: number
   pending_payment_amount: number
+  daily_earnings: {
+    date: string
+    gross_earnings: number
+    platform_fee_total: number
+    net_earnings: number
+    paid_job_count: number
+  }[]
   from_date: string | null
   to_date: string | null
 }

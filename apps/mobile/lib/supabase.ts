@@ -98,7 +98,7 @@ export const supabase = isSupabaseConfigured
         storage: supabaseAuthStorage,
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: Platform.OS === 'web',
       },
     })
   : null

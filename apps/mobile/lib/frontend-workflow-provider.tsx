@@ -31,6 +31,7 @@ import type { ApiResult } from './api'
 import type {
   ConfirmSearchResponse,
   CreateJobResponse,
+  EarningsResponse,
   JobDetailResponse,
   NotificationListResponse,
   WorkerCancellationRequestInput,
@@ -56,8 +57,7 @@ type FrontendWorkflowActions = {
   workerDeclineBroadcast: () => Promise<boolean>
   workerUpdateStatus: (
     status: WorkerStatusUpdate,
-    // Phase 2.0 (2026-05-23): worker không nhập final_price; Kael giữ authority.
-    extras?: { completion_notes?: string; completion_photo_urls?: string[] },
+    extras?: { completion_notes?: string; completion_photo_urls?: string[]; final_price?: number },
   ) => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeInput) => Promise<boolean>
   requestWorkerCancellation: (input: WorkerCancellationRequestInput) => Promise<boolean>
@@ -73,11 +73,24 @@ type FrontendWorkflowActions = {
 type FrontendWorkflowContextValue = {
   state: LocalWorkflowState
   selectors: LocalWorkflowSelectors
+  workerEarnings: EarningsResponse | null
   workerProfile: WorkerProfileResponse | null
   notifications: NotificationListResponse['notifications']
   notificationUnreadCount: number
   dispatch: Dispatch<LocalWorkflowAction>
   actions: FrontendWorkflowActions
+}
+
+type WorkerRemoteState = {
+  earnings: EarningsResponse | null
+  profile: WorkerProfileResponse | null
+  sessionUserId: string | null
+}
+
+const initialWorkerRemoteState: WorkerRemoteState = {
+  earnings: null,
+  profile: null,
+  sessionUserId: null,
 }
 
 const FrontendWorkflowContext = createContext<FrontendWorkflowContextValue | null>(null)
@@ -143,6 +156,7 @@ const initialNotificationState: NotificationState = {
   notifications: [],
   unreadCount: 0,
 }
+const REQUIRED_PRICE_DISCLAIMER = 'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
 
 function notificationStateReducer(state: NotificationState, action: NotificationStateAction): NotificationState {
   switch (action.type) {
@@ -170,9 +184,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const [state, dispatch] = useReducer(localWorkflowReducer, undefined, createInitialLocalWorkflowState)
   const selectors = useMemo(() => selectLocalWorkflow(state), [state])
   const sessionUserId = session?.user.id ?? null
-  const previousSessionUserIdRef = useRef(sessionUserId)
   const stateRef = useRef(state)
-  const [workerProfile, setWorkerProfile] = useState<WorkerProfileResponse | null>(null)
+  const [workerRemoteState, setWorkerRemoteState] = useState<WorkerRemoteState>(initialWorkerRemoteState)
+  const workerProfile = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.profile : null
+  const workerEarnings = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.earnings : null
   const [notificationState, setNotificationState] = useReducer(notificationStateReducer, initialNotificationState)
   const { notifications, unreadCount: notificationUnreadCount } = notificationState
   const notificationsRef = useRef<NotificationListResponse['notifications']>([])
@@ -300,7 +315,18 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
     const profile = await workerService.getProfile()
     if (!profile.success) return setRemoteError(profile.error)
-    setWorkerProfile((current) => sameWorkerProfile(current, profile.data) ? current : profile.data)
+
+    const earnings = await workerService.getEarnings(currentWorkerMonthRange())
+    const nextEarnings = earnings.success ? earnings.data : null
+    setWorkerRemoteState((current) => {
+      const currentProfile = current.sessionUserId === sessionUserId ? current.profile : null
+      const currentEarnings = current.sessionUserId === sessionUserId ? current.earnings : null
+      const sameProfile = sameWorkerProfile(currentProfile, profile.data)
+      const sameEarnings = nextEarnings ? sameWorkerEarnings(currentEarnings, nextEarnings) : currentEarnings === null
+      return current.sessionUserId === sessionUserId && sameProfile && sameEarnings
+        ? current
+        : { earnings: nextEarnings, profile: profile.data, sessionUserId }
+    })
 
     const broadcasts = await workerService.getBroadcasts()
     if (!broadcasts.success) return setRemoteError(broadcasts.error)
@@ -328,19 +354,17 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       dispatch({ type: 'mark_remote_broadcast_expired' })
     }
     return true
-  }, [role, setRemoteError])
+  }, [role, sessionUserId, setRemoteError])
 
   const workerUpdateAvailability = useCallback(async (isAvailable: boolean) => {
     const updated = await workerService.updateAvailability({ is_available: isAvailable })
     if (!updated.success) return setRemoteError(updated.error)
-    setWorkerProfile((current) =>
-      current
-        ? { ...current, is_available: updated.data.is_available }
-        : current,
-    )
+    setWorkerRemoteState((current) => current.sessionUserId === sessionUserId && current.profile
+      ? { ...current, profile: { ...current.profile, is_available: updated.data.is_available } }
+      : current)
     await workerRefresh()
     return true
-  }, [setRemoteError, workerRefresh])
+  }, [sessionUserId, setRemoteError, workerRefresh])
 
   const workerAcceptBroadcast = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
@@ -350,7 +374,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       if (isStaleBroadcastError(accepted.code)) dispatch({ type: 'mark_remote_broadcast_expired' })
       return setRemoteError(accepted.error)
     }
-    setWorkerProfile((current) => current ? { ...current, is_available: false } : current)
+    setWorkerRemoteState((current) => current.sessionUserId === sessionUserId && current.profile
+      ? { ...current, profile: { ...current.profile, is_available: false } }
+      : current)
 
     const existing = stateRef.current.deal
     if (existing?.broadcast) {
@@ -374,7 +400,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       await refreshCurrentJob()
     }
     return true
-  }, [refreshCurrentJob, setRemoteError])
+  }, [refreshCurrentJob, sessionUserId, setRemoteError])
 
   const workerDeclineBroadcast = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
@@ -528,10 +554,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   ])
 
   useEffect(() => {
-    if (previousSessionUserIdRef.current === sessionUserId) return
-    previousSessionUserIdRef.current = sessionUserId
     dispatch({ type: 'reset_workflow' })
-    setWorkerProfile(null)
+  }, [sessionUserId])
+
+  useEffect(() => {
     setNotificationState({ type: 'reset' })
   }, [sessionUserId])
 
@@ -563,7 +589,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
     if (!remoteJobId) return
 
-    if (customerStatus === 'broadcasting' && customerBroadcast?.status === 'expired') return
+    if (customerStatus === 'broadcasting' && customerBroadcastStatus === 'expired') return
     if (![
       'broadcasting',
       'worker_matched',
@@ -599,6 +625,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   return {
     state,
     selectors,
+    workerEarnings,
     workerProfile,
     notifications,
     notificationUnreadCount,
@@ -710,7 +737,7 @@ function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
         priceRangeLabel: formatPriceRange(job.kael_price_min, job.kael_price_max),
         confidenceLabel: 'Kael ước tính',
         advisory: job.kael_advisory ?? 'Giá thực tế do thợ xác nhận trước khi bắt đầu.',
-        disclaimer: 'Đây là ước tính cần thợ xác nhận. Giá thực tế sẽ được thợ xác nhận trước khi bắt đầu.',
+        disclaimer: REQUIRED_PRICE_DISCLAIMER,
         hasVndPrice: true,
       } satisfies LocalDealEstimate
     : null
@@ -736,8 +763,6 @@ function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
     broadcast,
     scopeChange: scopeChangeFromJobDetail(data),
     finalPrice: job.final_price,
-    completionPhotoUrls: job.completion_photo_urls ?? [],
-    completionNotes: job.completion_notes,
   }
 }
 
@@ -789,8 +814,6 @@ function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): LocalRem
     broadcast: deal.broadcast,
     scopeChange: deal.scopeChange,
     finalPrice: deal.finalPrice ?? null,
-    completionPhotoUrls: deal.completionPhotoUrls ?? [],
-    completionNotes: deal.completionNotes ?? null,
   }
 }
 
@@ -816,7 +839,7 @@ function estimateFromCreateResponse(data: CreateJobResponse): LocalDealEstimate 
     priceRangeLabel: formatPriceRange(data.estimate.price_min, data.estimate.price_max),
     confidenceLabel: `${Math.round(data.estimate.confidence * 100)}%`,
     advisory: data.estimate.advisory ?? 'Giá thực tế do thợ xác nhận trước khi bắt đầu.',
-    disclaimer: data.estimate.disclaimer,
+    disclaimer: REQUIRED_PRICE_DISCLAIMER,
     hasVndPrice: true,
     fallbackUsed: data.fallback_used,
   }
@@ -884,6 +907,46 @@ function sameWorkerProfile(left: WorkerProfileResponse | null, right: WorkerProf
     && sameStringArray(left.problem_specializations, right.problem_specializations)
 }
 
+function sameWorkerEarnings(left: EarningsResponse | null, right: EarningsResponse) {
+  if (!left) return false
+  return left.worker_id === right.worker_id
+    && left.total_jobs_paid === right.total_jobs_paid
+    && left.gross_earnings === right.gross_earnings
+    && left.platform_fee_total === right.platform_fee_total
+    && left.net_earnings === right.net_earnings
+    && left.pending_payment_count === right.pending_payment_count
+    && left.pending_payment_amount === right.pending_payment_amount
+    && sameWorkerDailyEarnings(left.daily_earnings, right.daily_earnings)
+    && left.from_date === right.from_date
+    && left.to_date === right.to_date
+}
+
+function sameWorkerDailyEarnings(left: EarningsResponse['daily_earnings'] | null | undefined, right: EarningsResponse['daily_earnings'] | null | undefined) {
+  const leftItems = left ?? []
+  const rightItems = right ?? []
+  return leftItems.length === rightItems.length && leftItems.every((item, index) => {
+    const next = rightItems[index]
+    return item.date === next.date
+      && item.gross_earnings === next.gross_earnings
+      && item.platform_fee_total === next.platform_fee_total
+      && item.net_earnings === next.net_earnings
+      && item.paid_job_count === next.paid_job_count
+  })
+}
+
+function currentWorkerMonthRange(referenceDate = new Date()) {
+  const from = new Date(referenceDate)
+  from.setDate(1)
+  from.setHours(0, 0, 0, 0)
+  const to = new Date(from)
+  to.setMonth(to.getMonth() + 1)
+  to.setMilliseconds(-1)
+  return {
+    from: from.toISOString(),
+    to: to.toISOString(),
+  }
+}
+
 function sameNotifications(
   left: NotificationListResponse['notifications'],
   right: NotificationListResponse['notifications'],
@@ -915,8 +978,10 @@ function markNotificationListRead(
   return changed ? next : notifications
 }
 
-function sameStringArray(left: readonly string[], right: readonly string[]) {
-  return left.length === right.length && left.every((item, index) => item === right[index])
+function sameStringArray(left: readonly string[] | null | undefined, right: readonly string[] | null | undefined) {
+  const leftItems = left ?? []
+  const rightItems = right ?? []
+  return leftItems.length === rightItems.length && leftItems.every((item, index) => item === rightItems[index])
 }
 
 function localizeWorkflowError(error: string, language: AppLanguage) {

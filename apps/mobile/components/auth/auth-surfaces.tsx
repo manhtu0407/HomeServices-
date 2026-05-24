@@ -1,7 +1,8 @@
-import { type ReactNode, useReducer } from 'react'
+import { type ReactNode, useEffect, useReducer, useRef, useState } from 'react'
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type ImageStyle } from 'react-native'
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path, Rect } from 'react-native-svg'
 import { useAuth } from '@/lib/auth-provider'
@@ -13,42 +14,69 @@ const LOGIN_ROLE_GATE_MARKER = 'LOGIN_ROLE_GATE_MARKER: auth-login-role-customer
 const LOGIN_ROLE_GATE_GLASS_MARKER = 'LOGIN_ROLE_GATE_GLASS_MARKER: auth-role-gate-glass'
 const AUTH_PROTOTYPE_PARITY_MARKER = 'AUTH_PROTOTYPE_PARITY_MARKER: roleGatewaySignature signatureRail auth-google-primary-client worker-no-google-login role-fixed-after-choice'
 const kaelModel8AHead = require('../../assets/kael-model-8a-head.png')
+const CLIENT_PHONE_AUTH_AVAILABLE = false
 
 type AuthEntryRole = 'customer' | 'worker'
 const EMPTY_AUTH_META: string[] = []
 
 type LoginRoleState = {
+  customerAuthMode: 'choices' | 'phone'
+  customerAddress: string
+  customerSetupDismissed: boolean
   email: string
   formError: string | null
   password: string
+  passwordVisible: boolean
+  phone: string
+  customerDisplayName: string
   selectedEntryRole: AuthEntryRole | null
   signingIn: boolean
+  workerAuthMode: 'create' | 'login'
 }
 
 type LoginRoleAction =
-  | { type: 'field'; field: 'email' | 'password'; value: string }
+  | { type: 'field'; field: 'customerAddress' | 'customerDisplayName' | 'email' | 'password' | 'phone'; value: string }
+  | { type: 'dismiss_customer_setup' }
+  | { type: 'set_customer_auth_mode'; mode: 'choices' | 'phone' }
   | { type: 'form_error'; error: string | null }
   | { type: 'select_role'; role: AuthEntryRole | null }
   | { type: 'set_signing_in'; signingIn: boolean }
+  | { type: 'set_worker_auth_mode'; mode: 'create' | 'login' }
+  | { type: 'toggle_password_visible' }
 
 const loginRoleInitialState: LoginRoleState = {
+  customerAuthMode: 'choices',
+  customerAddress: '',
+  customerDisplayName: '',
+  customerSetupDismissed: false,
   email: '',
   formError: null,
   password: '',
+  passwordVisible: false,
+  phone: '',
   selectedEntryRole: null,
   signingIn: false,
+  workerAuthMode: 'login',
 }
 
 function loginRoleReducer(state: LoginRoleState, action: LoginRoleAction): LoginRoleState {
   switch (action.type) {
     case 'field':
       return { ...state, [action.field]: action.value }
+    case 'set_customer_auth_mode':
+      return { ...state, customerAuthMode: action.mode, formError: null }
     case 'form_error':
       return { ...state, formError: action.error }
     case 'select_role':
-      return { ...state, formError: null, selectedEntryRole: action.role }
+      return { ...state, customerAuthMode: 'choices', customerSetupDismissed: false, formError: null, selectedEntryRole: action.role, workerAuthMode: 'login' }
+    case 'dismiss_customer_setup':
+      return { ...state, customerSetupDismissed: true, formError: null }
     case 'set_signing_in':
       return { ...state, signingIn: action.signingIn }
+    case 'set_worker_auth_mode':
+      return { ...state, formError: null, workerAuthMode: action.mode }
+    case 'toggle_password_visible':
+      return { ...state, passwordVisible: !state.passwordVisible }
     default:
       return state
   }
@@ -76,33 +104,103 @@ const authCopy = {
   vi: {
     kicker: '',
     titleAuthenticated: 'Chọn vai trò',
+    roleGateTitle: 'Chọn vai trò',
+    roleGateSubtitle: 'Tiếp tục đúng trải nghiệm của bạn',
+    customerLoginHeading: 'Đăng nhập khách',
+    customerLoginSubtitle: 'Vào app nhanh để đặt lịch và theo dõi yêu cầu',
+    workerLoginHeading: 'Tài khoản thợ',
+    workerLoginSubtitle: 'Đăng nhập hoặc tạo hồ sơ thợ mới',
+    workerVerificationHeading: 'Xác thực thợ',
+    workerVerificationSubtitle: 'Hồ sơ quyết định quyền nhận việc',
     titleLogin: 'Bắt đầu từ điều bạn cần hôm nay',
     bodyLogin: '',
     recovery: 'Hồ sơ vai trò chưa sẵn sàng. Tải lại hồ sơ hoặc đăng xuất để đăng nhập tài khoản khác.',
     refresh: 'Tải lại hồ sơ',
     signOut: 'Đăng xuất',
     submit: 'Tiếp tục',
+    workerSubmit: 'Đăng nhập',
     changeRole: 'Quay lại',
-    email: 'Email hoặc số điện thoại',
+    email: 'Email',
     password: 'Mật khẩu',
     selectedRole: (role: string) => `Vai trò: ${role}`,
     roleCustomer: 'Khách',
     roleWorker: 'Thợ',
-    entryCustomer: 'Google hoặc số điện thoại',
-    entryWorker: 'Tài khoản thợ đã duyệt',
+    entryCustomer: 'Đặt lịch và theo dõi dịch vụ',
+    entryWorker: 'Đăng nhập hoặc tạo hồ sơ',
     adminCustomer: 'Mở khu vực Khách với quyền quản trị.',
     adminWorker: 'Mở khu vực Thợ với quyền quản trị.',
     customerDesc: 'Đặt dịch vụ, chat Kael và theo dõi lịch.',
-    workerDesc: 'Nhận việc, JobRoom và đối soát.',
+    workerDesc: 'Nhận việc, phòng việc và đối soát.',
     fixedRole: 'Vai trò cố định',
-    google: 'Đăng nhập bằng Google',
+    google: 'Tiếp tục bằng Google',
     phone: 'Dùng số điện thoại',
+    customerEmailFallback: 'Dùng email và mật khẩu',
+    customerEmailFallbackClose: 'Ẩn đăng nhập email',
     signature: 'Đúng người, đúng việc, đúng lúc nhà cần.',
     workerLoginTitle: 'Đăng nhập cho Thợ',
     customerLoginTitle: 'Đăng nhập cho Khách',
+    customerPhoneHeading: 'Số điện thoại',
+    customerPhoneSubtitle: 'Đăng nhập cho khách',
+    customerPhoneTitle: 'Đăng nhập bằng số điện thoại',
+    customerPhonePlaceholder: 'Nhập số tại Việt Nam',
+    customerPhoneSubmit: 'Nhận mã xác minh',
+    customerGoogleFallback: 'Đăng nhập bằng Google',
+    customerSetupHeading: 'Hoàn tất hồ sơ khách',
+    customerSetupHeroTitle: 'Khách cần xác nhận nhẹ',
+    customerSetupSubtitle: 'Thông tin dùng cho đặt lịch và liên hệ',
+    customerSetupBadge: '2 phút',
+    customerSetupMode: 'Thông tin khách',
+    customerSetupAccount: 'Tài khoản',
+    customerSetupAccountMeta: 'Đã đăng nhập',
+    customerSetupContact: 'Liên hệ',
+    customerSetupContactMeta: 'Điện thoại',
+    customerSetupProfile: 'Hồ sơ',
+    customerSetupProfileMeta: 'Đồng bộ',
+    customerDisplayName: 'Tên hiển thị',
+    customerDisplayNamePlaceholder: 'Nhập tên của bạn',
+    customerPhoneContact: 'Số điện thoại',
+    customerPhoneContactPlaceholder: 'Thêm số để thợ liên hệ',
+    customerDefaultAddress: 'Địa chỉ mặc định',
+    customerDefaultAddressPlaceholder: 'Chọn tòa nhà/căn hộ',
+    customerSaveProfile: 'Lưu vào hồ sơ',
+    customerSkipSetup: 'Bỏ qua tạm thời',
+    customerProfileSyncTitle: 'Sẽ xuất hiện trong Hồ sơ',
+    customerNotVerified: 'Chưa xác minh',
     accountLabel: 'Tài khoản',
     securityLabel: 'Bảo mật',
+    workerAccountLabel: 'Email hoặc số điện thoại',
+    workerAccountPlaceholder: 'Nhập tài khoản thợ',
+    workerPasswordPlaceholder: 'Nhập mật khẩu',
+    passwordVisibility: 'Hiện hoặc ẩn mật khẩu',
     createWorker: 'Tạo hồ sơ thợ',
+    createWorkerAccount: 'Tạo tài khoản và xác thực',
+    createWorkerQuestion: 'Chưa có tài khoản thợ?',
+    workerHasAccount: 'Đã có tài khoản thợ?',
+    workerBackToLogin: 'Đăng nhập',
+    workerVerificationHeroTitle: 'Gửi hồ sơ để xét duyệt',
+    workerVerificationRequired: 'Bắt buộc',
+    workerSetupAccount: 'Tài khoản',
+    workerSetupAccountMeta: 'Đang tạo',
+    workerSetupVerify: 'Xác thực',
+    workerSetupVerifyMeta: 'Đang nhập',
+    workerSetupProfile: 'Hồ sơ',
+    workerSetupProfileMeta: 'Chờ duyệt',
+    workerSkillAreaMode: 'Kỹ năng và khu vực',
+    workerCccd: 'CCCD',
+    workerCccdFront: 'CCCD mặt trước',
+    workerCccdBack: 'CCCD mặt sau',
+    workerCertificate: 'Chứng nhận nghề',
+    workerPortrait: 'Ảnh chân dung',
+    workerServiceSkills: 'Dịch vụ nhận',
+    workerServiceElectrical: 'Sửa điện',
+    workerServicePlumbing: 'Sửa nước',
+    workerServiceCleaning: 'Vệ sinh',
+    workerServiceArea: 'Khu vực nhận việc',
+    workerPhoneContact: 'Số điện thoại',
+    chooseArea: 'Chọn khu vực',
+    addContact: 'Thêm liên hệ',
+    chooseFile: 'Chọn tệp',
+    submitVerification: 'Gửi xét duyệt',
     forgotPassword: 'Quên mật khẩu?',
     divider: 'hoặc',
     openRoleA11y: (label: string) => `Đăng nhập vai trò ${label}`,
@@ -112,47 +210,127 @@ const authCopy = {
       checking: 'Đang kiểm tra vai trò tài khoản.',
       worker: 'Tài khoản Thợ chỉ vào khu vực Thợ.',
     },
+    roleHero: {
+      customer: 'Ứng dụng cho khách',
+      worker: 'Ứng dụng cho thợ',
+      customerLock: 'Vai trò cố định: Khách',
+      workerLock: 'Vai trò cố định: Thợ',
+      workerFoot: 'Hồ sơ cần xét duyệt',
+    },
     errors: {
-      config: 'Supabase chưa được cấu hình cho mobile build này',
+      config: 'Dịch vụ đăng nhập chưa sẵn sàng. Vui lòng thử lại sau.',
       customerDenied: 'Tài khoản này chưa được phép vào khu vực Khách',
       generic: 'Không thể đăng nhập',
       login: 'Không thể đăng nhập',
       unavailable: 'Không thể đăng nhập lúc này',
       workerDenied: 'Tài khoản này chưa được phép vào khu vực Thợ',
-      googleUnavailable: 'Google OAuth cần được cấu hình trước khi dùng trong production.',
-      phoneUnavailable: 'Đăng nhập số điện thoại cần nhà cung cấp OTP ổn định trước khi bật.',
+      workerCreateUnavailable: 'Tạo tài khoản thợ chưa sẵn sàng. Vui lòng liên hệ hỗ trợ.',
+      customerSetupUnavailable: 'Chưa lưu được hồ sơ khách. Vui lòng thử lại.',
+      googleUnavailable: 'Chưa mở được đăng nhập Google. Vui lòng thử lại.',
+      phoneUnavailable: 'Đăng nhập số điện thoại chưa sẵn sàng.',
+      resetPasswordUnavailable: 'Đặt lại mật khẩu thợ chưa sẵn sàng.',
     },
   },
   en: {
     kicker: '',
     titleAuthenticated: 'Choose role',
+    roleGateTitle: 'Choose role',
+    roleGateSubtitle: 'Continue into the right experience',
+    customerLoginHeading: 'Customer sign in',
+    customerLoginSubtitle: 'Open the app quickly to book and track requests',
+    workerLoginHeading: 'Worker account',
+    workerLoginSubtitle: 'Sign in or create a new worker profile',
+    workerVerificationHeading: 'Worker verification',
+    workerVerificationSubtitle: 'Profile review decides when you can receive jobs',
     titleLogin: 'Start with what you need today',
     bodyLogin: '',
     recovery: 'Role profile is not ready. Refresh the profile or sign out to use another account.',
     refresh: 'Refresh profile',
     signOut: 'Sign out',
     submit: 'Continue',
+    workerSubmit: 'Sign in',
     changeRole: 'Back',
-    email: 'Email or phone',
+    email: 'Email',
     password: 'Password',
     selectedRole: (role: string) => `Role: ${role}`,
     roleCustomer: 'Customer',
     roleWorker: 'Worker',
-    entryCustomer: 'Google or phone',
-    entryWorker: 'Approved worker account',
+    entryCustomer: 'Book and track service',
+    entryWorker: 'Sign in or create a profile',
     adminCustomer: 'Open customer workspace as admin.',
     adminWorker: 'Open worker workspace as admin.',
     customerDesc: 'Book service, chat with Kael, and track activity.',
     workerDesc: 'Receive jobs, JobRoom, and reconciliation.',
     fixedRole: 'Fixed role',
-    google: 'Sign in with Google',
+    google: 'Continue with Google',
     phone: 'Use phone number',
+    customerEmailFallback: 'Use email and password',
+    customerEmailFallbackClose: 'Hide email sign-in',
     signature: 'Right person, right job, right when home needs it.',
     workerLoginTitle: 'Worker sign in',
     customerLoginTitle: 'Customer sign in',
+    customerPhoneHeading: 'Phone number',
+    customerPhoneSubtitle: 'Customer sign in',
+    customerPhoneTitle: 'Sign in with phone number',
+    customerPhonePlaceholder: 'Enter a Vietnam phone number',
+    customerPhoneSubmit: 'Get verification code',
+    customerGoogleFallback: 'Sign in with Google',
+    customerSetupHeading: 'Finish customer profile',
+    customerSetupHeroTitle: 'Light customer setup',
+    customerSetupSubtitle: 'Used for booking and contact',
+    customerSetupBadge: '2 min',
+    customerSetupMode: 'Customer details',
+    customerSetupAccount: 'Account',
+    customerSetupAccountMeta: 'Signed in',
+    customerSetupContact: 'Contact',
+    customerSetupContactMeta: 'Phone',
+    customerSetupProfile: 'Profile',
+    customerSetupProfileMeta: 'Sync',
+    customerDisplayName: 'Display name',
+    customerDisplayNamePlaceholder: 'Enter your name',
+    customerPhoneContact: 'Phone number',
+    customerPhoneContactPlaceholder: 'Add a contact number',
+    customerDefaultAddress: 'Default address',
+    customerDefaultAddressPlaceholder: 'Choose building/apartment',
+    customerSaveProfile: 'Save to profile',
+    customerSkipSetup: 'Skip for now',
+    customerProfileSyncTitle: 'Appears in Profile',
+    customerNotVerified: 'Not verified',
     accountLabel: 'Account',
     securityLabel: 'Security',
+    workerAccountLabel: 'Email or phone number',
+    workerAccountPlaceholder: 'Enter worker account',
+    workerPasswordPlaceholder: 'Enter password',
+    passwordVisibility: 'Show or hide password',
     createWorker: 'Create worker profile',
+    createWorkerAccount: 'Create account and verify',
+    createWorkerQuestion: 'No worker account yet?',
+    workerHasAccount: 'Already have a worker account?',
+    workerBackToLogin: 'Sign in',
+    workerVerificationHeroTitle: 'Submit profile for review',
+    workerVerificationRequired: 'Required',
+    workerSetupAccount: 'Account',
+    workerSetupAccountMeta: 'Creating',
+    workerSetupVerify: 'Verify',
+    workerSetupVerifyMeta: 'In progress',
+    workerSetupProfile: 'Profile',
+    workerSetupProfileMeta: 'Pending',
+    workerSkillAreaMode: 'Skills and area',
+    workerCccd: 'National ID',
+    workerCccdFront: 'National ID front',
+    workerCccdBack: 'National ID back',
+    workerCertificate: 'Trade certificate',
+    workerPortrait: 'Portrait photo',
+    workerServiceSkills: 'Services',
+    workerServiceElectrical: 'Electrical',
+    workerServicePlumbing: 'Plumbing',
+    workerServiceCleaning: 'Cleaning',
+    workerServiceArea: 'Work area',
+    workerPhoneContact: 'Phone number',
+    chooseArea: 'Choose area',
+    addContact: 'Add contact',
+    chooseFile: 'Choose file',
+    submitVerification: 'Send for review',
     forgotPassword: 'Forgot password?',
     divider: 'or',
     openRoleA11y: (label: string) => `Sign in as ${label}`,
@@ -162,31 +340,50 @@ const authCopy = {
       checking: 'Checking account role.',
       worker: 'Worker account can only open Worker.',
     },
+    roleHero: {
+      customer: 'Customer app',
+      worker: 'Worker app',
+      customerLock: 'Fixed role: Customer',
+      workerLock: 'Fixed role: Worker',
+      workerFoot: 'Review required',
+    },
     errors: {
-      config: 'Supabase is not configured for this mobile build',
+      config: 'Sign-in is not ready yet. Please try again later.',
       customerDenied: 'This account cannot open Customer yet',
       generic: 'Unable to sign in',
       login: 'Unable to sign in',
       unavailable: 'Unable to sign in right now',
       workerDenied: 'This account cannot open Worker yet',
-      googleUnavailable: 'Google OAuth must be configured before production use.',
-      phoneUnavailable: 'Phone sign-in needs a stable OTP provider before it is enabled.',
+      workerCreateUnavailable: 'Worker account creation is not ready. Contact support.',
+      customerSetupUnavailable: 'Customer profile could not be saved. Please try again.',
+      googleUnavailable: 'Google sign-in could not open. Please try again.',
+      phoneUnavailable: 'Phone sign-in is not ready.',
+      resetPasswordUnavailable: 'Worker password reset is not ready.',
     },
   },
 } as const
 
+type AuthCopy = (typeof authCopy)[AppLanguage]
+
 export function LoginRoleSurface() {
   const { replace } = useRouter()
-  const { authError, loading, profileStatus, refreshProfile, role, session, signInWithPassword, signOut } = useAuth()
+  const { authError, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, updateCustomerProfile } = useAuth()
   const { reduceTransparency } = useGlassAccessibility()
   const language = useAppLanguage()
   const copy = authCopy[language]
-  const [{ email, formError, password, selectedEntryRole, signingIn }, loginDispatch] = useReducer(loginRoleReducer, loginRoleInitialState)
+  const scrollRef = useRef<ScrollView>(null)
+  const [signatureChoice, setSignatureChoice] = useState<AuthEntryRole | null>(null)
+  const [{ customerAddress, customerAuthMode, customerDisplayName, customerSetupDismissed, email, formError, password, passwordVisible, phone, selectedEntryRole, signingIn, workerAuthMode }, loginDispatch] = useReducer(loginRoleReducer, loginRoleInitialState)
+  const setCustomerAddress = (value: string) => loginDispatch({ type: 'field', field: 'customerAddress', value })
+  const setCustomerDisplayName = (value: string) => loginDispatch({ type: 'field', field: 'customerDisplayName', value })
   const setEmail = (value: string) => loginDispatch({ type: 'field', field: 'email', value })
   const setPassword = (value: string) => loginDispatch({ type: 'field', field: 'password', value })
+  const setPhone = (value: string) => loginDispatch({ type: 'field', field: 'phone', value })
   const setFormError = (error: string | null) => loginDispatch({ type: 'form_error', error })
   const setSigningIn = (signingInValue: boolean) => loginDispatch({ type: 'set_signing_in', signingIn: signingInValue })
+  const setCustomerAuthMode = (mode: 'choices' | 'phone') => loginDispatch({ type: 'set_customer_auth_mode', mode })
   const setSelectedEntryRole = (entryRole: AuthEntryRole | null) => loginDispatch({ type: 'select_role', role: entryRole })
+  const setWorkerAuthMode = (mode: 'create' | 'login') => loginDispatch({ type: 'set_worker_auth_mode', mode })
   const isAdmin = role === 'admin'
   const isAuthenticated = Boolean(session && role)
   const canOpenCustomer = role === 'customer' || isAdmin
@@ -194,10 +391,88 @@ export function LoginRoleSurface() {
   const configMissing = profileStatus === 'config_missing'
   const visibleError = formError ?? (authError ? copy.errors.generic : null) ?? (configMissing ? copy.errors.config : null)
   const needsProfileRecovery = Boolean(session && !role && (profileStatus === 'profile_missing' || profileStatus === 'profile_error'))
-  const selectedEntryRoleLabel = selectedEntryRole === 'worker' ? copy.roleWorker : copy.roleCustomer
-  const headerBody = isAuthenticated ? roleLabel(role, language) : copy.bodyLogin
-  const loginTitle = selectedEntryRole === 'worker' ? copy.workerLoginTitle : copy.customerLoginTitle
-  const showClientAuthOptions = selectedEntryRole === 'customer'
+  const authProviderName = typeof session?.user.app_metadata?.provider === 'string' ? session.user.app_metadata.provider : null
+  const customerMetadata = session?.user.user_metadata ?? {}
+  const metadataCustomerDisplayName = typeof customerMetadata.full_name === 'string' && customerMetadata.full_name.trim()
+    ? customerMetadata.full_name.trim()
+    : typeof customerMetadata.name === 'string' && customerMetadata.name.trim()
+      ? customerMetadata.name.trim()
+      : ''
+  const metadataCustomerAddress = typeof customerMetadata.default_address === 'string' ? customerMetadata.default_address.trim() : ''
+  const metadataCustomerPhone = typeof customerMetadata.phone_number === 'string' ? customerMetadata.phone_number.trim() : ''
+  const customerDisplayNameValue = customerDisplayName || metadataCustomerDisplayName
+  const customerAddressValue = customerAddress || metadataCustomerAddress
+  const customerPhoneValue = phone || metadataCustomerPhone
+  const shouldShowSignedInCustomerSetup = Boolean(
+    session &&
+      role === 'customer' &&
+      selectedEntryRole === 'customer' &&
+      !customerSetupDismissed &&
+      (!metadataCustomerDisplayName || !metadataCustomerAddress),
+  )
+  const needsCustomerOnboarding = shouldShowSignedInCustomerSetup || (needsProfileRecovery && !customerSetupDismissed && (selectedEntryRole === 'customer' || authProviderName === 'google'))
+  const isWorkerCreateMode = selectedEntryRole === 'worker' && workerAuthMode === 'create'
+  const isCustomerPhoneMode = selectedEntryRole === 'customer' && customerAuthMode === 'phone'
+  const loginTitle = isWorkerCreateMode
+    ? copy.createWorker
+    : selectedEntryRole === 'worker'
+    ? copy.workerLoginTitle
+    : isCustomerPhoneMode
+    ? copy.customerPhoneTitle
+    : copy.customerLoginTitle
+  const submitLabel = selectedEntryRole === 'worker' ? copy.workerSubmit : copy.submit
+  const showClientAuthOptions = selectedEntryRole === 'customer' && customerAuthMode === 'choices'
+  const accountPlaceholder = copy.workerAccountPlaceholder
+  const passwordPlaceholder = copy.workerPasswordPlaceholder
+  const authSurfaceKey = needsCustomerOnboarding
+    ? 'customer-onboarding'
+    : needsProfileRecovery
+      ? 'profile-recovery'
+      : isAuthenticated
+        ? `authenticated-${role ?? 'unknown'}`
+        : selectedEntryRole
+          ? `${selectedEntryRole}-${customerAuthMode}-${workerAuthMode}`
+          : 'role-gate'
+  const useAuthFlowShell = Boolean(needsProfileRecovery || needsCustomerOnboarding || (!isAuthenticated && selectedEntryRole))
+
+  useEffect(() => {
+    if (!isAuthenticated || loading || needsProfileRecovery || needsCustomerOnboarding || isAdmin) return
+    if (role === 'customer') {
+      replace('/(customer)/home')
+    } else if (role === 'worker') {
+      replace('/(worker)/home')
+    }
+  }, [isAdmin, isAuthenticated, loading, needsCustomerOnboarding, needsProfileRecovery, replace, role])
+
+  useEffect(() => {
+    const resetWebScroll = () => {
+      if (Platform.OS !== 'web') return
+      const webGlobal = globalThis as typeof globalThis & {
+        document?: {
+          querySelectorAll?: (selector: string) => ArrayLike<{ scrollTop?: number }>
+        }
+        requestAnimationFrame?: (callback: () => void) => number
+      }
+      const nodes = webGlobal.document?.querySelectorAll?.('[data-testid="auth-login-surface"] *')
+      if (!nodes) return
+      Array.from(nodes).forEach((node) => {
+        if (typeof node.scrollTop === 'number' && node.scrollTop > 0) {
+          node.scrollTop = 0
+        }
+      })
+    }
+    const resetScroll = () => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false })
+      resetWebScroll()
+    }
+    resetScroll()
+    if (Platform.OS === 'web') {
+      const webGlobal = globalThis as typeof globalThis & { requestAnimationFrame?: (callback: () => void) => number }
+      webGlobal.requestAnimationFrame?.(resetScroll)
+    }
+    const timeout = setTimeout(resetScroll, 80)
+    return () => clearTimeout(timeout)
+  }, [authSurfaceKey])
 
   const submitLogin = async () => {
     setFormError(null)
@@ -211,6 +486,41 @@ export function LoginRoleSurface() {
       }
     } catch {
       setFormError(copy.errors.unavailable)
+    } finally {
+      setSigningIn(false)
+    }
+  }
+
+  const submitGoogleLogin = async () => {
+    setFormError(null)
+    setSigningIn(true)
+    try {
+      const result = await signInWithGoogle()
+      if (!result.success) setFormError(result.error ?? copy.errors.login)
+    } catch {
+      setFormError(copy.errors.unavailable)
+    } finally {
+      setSigningIn(false)
+    }
+  }
+
+  const saveCustomerProfile = async () => {
+    setFormError(null)
+    setSigningIn(true)
+    try {
+      const result = await updateCustomerProfile({
+        defaultAddress: customerAddressValue,
+        displayName: customerDisplayNameValue,
+        phone: customerPhoneValue,
+      })
+      if (!result.success) {
+        setFormError(result.error ?? copy.errors.customerSetupUnavailable)
+        return
+      }
+      loginDispatch({ type: 'dismiss_customer_setup' })
+      await refreshProfile()
+    } catch {
+      setFormError(copy.errors.customerSetupUnavailable)
     } finally {
       setSigningIn(false)
     }
@@ -233,24 +543,41 @@ export function LoginRoleSurface() {
   }
 
   return (
-    <AuthFrame testID="auth-login-surface">
-      <ScrollView contentContainerStyle={styles.authContent} showsVerticalScrollIndicator={false} style={styles.authScroll}>
-        <View style={[styles.roleGateShell, glassSurface('glass', reduceTransparency)]} testID="auth-role-gate-glass">
-          <MapLineField />
+    <AuthFrame testID="auth-login-surface" topAligned={Boolean(needsProfileRecovery || isAuthenticated || selectedEntryRole)}>
+      <ScrollView key={authSurfaceKey} ref={scrollRef} contentContainerStyle={styles.authContent} showsVerticalScrollIndicator={false} style={styles.authScroll}>
+        <View style={useAuthFlowShell ? styles.authFlowShell : [styles.roleGateShell, glassSurface('glass', reduceTransparency)]} testID={useAuthFlowShell ? 'auth-flow-shell' : 'auth-role-gate-glass'}>
           <View style={styles.hiddenMarker} testID={AUTH_PROTOTYPE_PARITY_MARKER} />
-          <View style={styles.loginHeader}>
-            {!isAuthenticated && !selectedEntryRole ? (
-              <RoleGatewayHero copy={copy} />
-            ) : (
-              <>
-                {copy.kicker ? <Text style={styles.kicker}>{copy.kicker}</Text> : null}
-                <Text style={styles.title}>{isAuthenticated ? copy.titleAuthenticated : loginTitle}</Text>
-              </>
-            )}
-            {headerBody ? <Text style={styles.body}>{headerBody}</Text> : null}
-          </View>
+          {!needsProfileRecovery && ((!isAuthenticated && !selectedEntryRole) || isAuthenticated) ? (
+            <View style={styles.loginHeader}>
+              <AuthTopRow
+                subtitle={copy.roleGateSubtitle}
+                title={copy.roleGateTitle}
+                trailing={<View style={[styles.topKaelFace, reduceTransparency ? styles.topKaelFaceReduced : null]}><Image contentFit="contain" source={kaelModel8AHead} style={styles.topKaelImage as ImageStyle} /></View>}
+              />
+              <RoleGatewayHero choice={signatureChoice} copy={copy} />
+            </View>
+          ) : null}
 
-          {needsProfileRecovery ? (
+          {needsCustomerOnboarding ? (
+            <CustomerOnboardingPanel
+              address={customerAddressValue}
+              copy={copy}
+              displayName={customerDisplayNameValue}
+              loading={loading}
+              onBack={() => setSelectedEntryRole(null)}
+              onSaveProfile={saveCustomerProfile}
+              onSkip={() => {
+                loginDispatch({ type: 'dismiss_customer_setup' })
+                void refreshProfile()
+              }}
+              onUpdateAddress={setCustomerAddress}
+              onUpdateDisplayName={setCustomerDisplayName}
+              onUpdatePhone={setPhone}
+              phone={customerPhoneValue}
+              signingIn={signingIn}
+              visibleError={visibleError}
+            />
+          ) : needsProfileRecovery ? (
             <View style={styles.formStack} testID="auth-profile-recovery">
               <Text style={styles.errorText}>{copy.recovery}</Text>
               {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
@@ -272,174 +599,678 @@ export function LoginRoleSurface() {
           ) : !isAuthenticated && !selectedEntryRole ? (
             <>
               <View style={styles.hiddenMarker} testID="auth-entry-role-first" />
-              <View style={styles.roleGatewayGrid}>
-                <RoleCard
-                  accessibilityLabel={copy.openRoleA11y(copy.roleCustomer)}
-                  description={copy.entryCustomer}
-                  icon="home"
-                  label={copy.roleCustomer}
-                  meta={language === 'en' ? ['Google', 'Phone'] : ['Google', 'Số điện thoại']}
-                  onPress={() => setSelectedEntryRole('customer')}
-                  primary
-                  testID="auth-entry-role-customer"
-                />
-                <RoleCard
-                  accessibilityLabel={copy.openRoleA11y(copy.roleWorker)}
-                  description={copy.entryWorker}
-                  icon="tools"
-                  label={copy.roleWorker}
-                  meta={language === 'en' ? ['Worker account', 'Verification'] : ['Tài khoản thợ', 'Xác thực']}
-                  onPress={() => setSelectedEntryRole('worker')}
-                  testID="auth-entry-role-worker"
-                />
-              </View>
+              <RoleGatewayCards copy={copy} language={language} onPreviewRole={setSignatureChoice} onSelectRole={setSelectedEntryRole} />
             </>
           ) : !isAuthenticated ? (
-            <View style={styles.formStack}>
-              <View style={styles.hiddenMarker} testID={`auth-entry-role-selected-${selectedEntryRole}`} />
-              <View style={styles.loginMode}>
-                <Text style={styles.loginModeText}>{copy.selectedRole(selectedEntryRoleLabel)}</Text>
-              </View>
-              {showClientAuthOptions ? (
-                <>
-                  <Pressable
-                    accessibilityLabel={copy.google}
-                    accessibilityRole="button"
-                    onPress={() => setFormError(copy.errors.googleUnavailable)}
-                    style={({ pressed }) => [styles.googleButton, pressed ? styles.pressed : null]}
-                    testID="auth-client-google-primary"
-                  >
-                    <GoogleMark />
-                    <Text style={styles.googleButtonText}>{copy.google}</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={copy.phone}
-                    accessibilityRole="button"
-                    onPress={() => setFormError(copy.errors.phoneUnavailable)}
-                    style={({ pressed }) => [styles.phoneButton, pressed ? styles.pressed : null]}
-                    testID="auth-client-phone-secondary"
-                  >
-                    <AuthIcon name="phone" />
-                    <Text style={styles.phoneButtonText}>{copy.phone}</Text>
-                  </Pressable>
-                  <View style={styles.loginDivider}>
-                    <View style={styles.loginDividerLine} />
-                    <Text style={styles.loginDividerText}>{copy.divider}</Text>
-                    <View style={styles.loginDividerLine} />
-                  </View>
-                </>
-              ) : null}
-              <AuthInputField
-                icon="email"
-                label={copy.accountLabel}
-                valueLabel={copy.email}
-              >
-                <TextInput
-                  accessibilityLabel={copy.email}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  inputMode="email"
-                  keyboardType="email-address"
-                  onChangeText={setEmail}
-                  placeholder={copy.email}
-                  placeholderTextColor={authTokens.subtle}
-                  style={styles.fieldInput}
-                  testID="auth-login-email-input"
-                  value={email}
-                />
-              </AuthInputField>
-              <AuthInputField
-                actionLabel={copy.forgotPassword}
-                icon="lock"
-                label={copy.securityLabel}
-                valueLabel={copy.password}
-              >
-                <TextInput
-                  accessibilityLabel={copy.password}
-                  autoCapitalize="none"
-                  onChangeText={setPassword}
-                  placeholder={copy.password}
-                  placeholderTextColor={authTokens.subtle}
-                  secureTextEntry
-                  style={styles.fieldInput}
-                  testID="auth-login-password-input"
-                  value={password}
-                />
-              </AuthInputField>
-              {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
-              {selectedEntryRole === 'worker' ? (
-                <View style={styles.workerFormFoot}>
-                  <Text style={styles.workerFormFootText}>{copy.entryWorker}</Text>
-                  <Text style={styles.workerFormFootAction}>{copy.forgotPassword}</Text>
-                </View>
-              ) : null}
-              <Pressable
-                accessibilityLabel={copy.submit}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: signingIn || loading || configMissing }}
-                disabled={signingIn || loading || configMissing}
-                onPress={submitLogin}
-                style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, signingIn || loading || configMissing ? styles.disabled : null]}
-                testID="auth-login-submit"
-              >
-                {signingIn || loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>{copy.submit}</Text>}
-              </Pressable>
-              {selectedEntryRole === 'worker' ? (
-                <Pressable
-                  accessibilityLabel={copy.createWorker}
-                  accessibilityRole="button"
-                  onPress={() => setFormError(copy.errors.workerDenied)}
-                  style={({ pressed }) => [styles.secondaryBoxButton, pressed ? styles.pressed : null]}
-                  testID="auth-worker-create-profile"
-                >
-                  <Text style={styles.secondaryBoxButtonText}>{copy.createWorker}</Text>
-                </Pressable>
-              ) : null}
-              <Pressable
-                accessibilityLabel={copy.changeRole}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: signingIn || loading }}
-                disabled={signingIn || loading}
-                onPress={() => {
-                  setFormError(null)
-                  setSelectedEntryRole(null)
-                }}
-                style={styles.secondaryAction}
-                testID="auth-entry-role-change"
-              >
-                <Text style={styles.secondaryActionText}>{copy.changeRole}</Text>
-              </Pressable>
-            </View>
+            <UnauthenticatedRoleForm
+              accountPlaceholder={accountPlaceholder}
+              configMissing={configMissing}
+              copy={copy}
+              email={email}
+              isCustomerPhoneMode={isCustomerPhoneMode}
+              isWorkerCreateMode={isWorkerCreateMode}
+              loading={loading}
+              loginTitle={loginTitle}
+              onBack={() => {
+                setFormError(null)
+                if (isCustomerPhoneMode) {
+                  setCustomerAuthMode('choices')
+                  return
+                }
+                setSelectedEntryRole(null)
+              }}
+              onForgotPassword={() => setFormError(copy.errors.resetPasswordUnavailable)}
+              onGoogle={submitGoogleLogin}
+              onOpenPhone={() => setCustomerAuthMode('phone')}
+              onPhoneBack={() => setCustomerAuthMode('choices')}
+              onPhoneSubmitUnavailable={() => setFormError(copy.errors.phoneUnavailable)}
+              onSubmitLogin={submitLogin}
+              onSubmitWorkerCreate={() => setFormError(copy.errors.workerCreateUnavailable)}
+              onTogglePasswordVisible={() => loginDispatch({ type: 'toggle_password_visible' })}
+              onUpdateEmail={setEmail}
+              onUpdatePassword={setPassword}
+              onUpdatePhone={setPhone}
+              onWorkerModeChange={setWorkerAuthMode}
+              password={password}
+              passwordPlaceholder={passwordPlaceholder}
+              passwordVisible={passwordVisible}
+              phone={phone}
+              reduceTransparency={reduceTransparency}
+              selectedEntryRole={selectedEntryRole}
+              showClientAuthOptions={showClientAuthOptions}
+              signingIn={signingIn}
+              submitLabel={submitLabel}
+              visibleError={visibleError}
+            />
           ) : (
-            <>
-              <RoleCard
-                accessibilityLabel={copy.openRoleA11y(copy.roleCustomer)}
-                description={isAdmin ? copy.adminCustomer : copy.customerDesc}
-                disabled={!canOpenCustomer}
-                icon="home"
-                label={copy.roleCustomer}
-                onPress={openCustomerSection}
-                testID={isAdmin ? 'auth-login-admin-audit-customer' : 'auth-login-role-customer'}
-              />
-              <RoleCard
-                accessibilityLabel={copy.openRoleA11y(copy.roleWorker)}
-                description={isAdmin ? copy.adminWorker : copy.workerDesc}
-                disabled={!canOpenWorker}
-                icon="tools"
-                label={copy.roleWorker}
-                onPress={openWorkerSection}
-                testID={isAdmin ? 'auth-login-admin-audit-worker' : 'auth-login-role-worker'}
-              />
-              {isAdmin ? <View style={styles.hiddenMarker} testID="auth-login-admin-audit" /> : null}
-              <Pressable accessibilityLabel={copy.signOut} accessibilityRole="button" onPress={signOut} style={styles.secondaryAction} testID="auth-login-sign-out">
-                <Text style={styles.secondaryActionText}>{copy.signOut}</Text>
-              </Pressable>
-            </>
+            <AuthenticatedRoleActions canOpenCustomer={canOpenCustomer} canOpenWorker={canOpenWorker} copy={copy} isAdmin={isAdmin} language={language} onOpenCustomer={openCustomerSection} onOpenWorker={openWorkerSection} onSignOut={signOut} onPreviewRole={setSignatureChoice} />
           )}
         </View>
       </ScrollView>
       <View style={styles.hiddenMarker} testID={LOGIN_ROLE_GATE_MARKER + LOGIN_ROLE_GATE_GLASS_MARKER + '/(customer)/home /(worker)/home'} />
     </AuthFrame>
+  )
+}
+
+function UnauthenticatedRoleForm({
+  accountPlaceholder,
+  configMissing,
+  copy,
+  email,
+  isCustomerPhoneMode,
+  isWorkerCreateMode,
+  loading,
+  loginTitle,
+  onBack,
+  onForgotPassword,
+  onGoogle,
+  onOpenPhone,
+  onPhoneBack,
+  onPhoneSubmitUnavailable,
+  onSubmitLogin,
+  onSubmitWorkerCreate,
+  onTogglePasswordVisible,
+  onUpdateEmail,
+  onUpdatePassword,
+  onUpdatePhone,
+  onWorkerModeChange,
+  password,
+  passwordPlaceholder,
+  passwordVisible,
+  phone,
+  reduceTransparency,
+  selectedEntryRole,
+  showClientAuthOptions,
+  signingIn,
+  submitLabel,
+  visibleError,
+}: {
+  accountPlaceholder: string
+  configMissing: boolean
+  copy: AuthCopy
+  email: string
+  isCustomerPhoneMode: boolean
+  isWorkerCreateMode: boolean
+  loading: boolean
+  loginTitle: string
+  onBack: () => void
+  onForgotPassword: () => void
+  onGoogle: () => void
+  onOpenPhone: () => void
+  onPhoneBack: () => void
+  onPhoneSubmitUnavailable: () => void
+  onSubmitLogin: () => void
+  onSubmitWorkerCreate: () => void
+  onTogglePasswordVisible: () => void
+  onUpdateEmail: (value: string) => void
+  onUpdatePassword: (value: string) => void
+  onUpdatePhone: (value: string) => void
+  onWorkerModeChange: (mode: 'create' | 'login') => void
+  password: string
+  passwordPlaceholder: string
+  passwordVisible: boolean
+  phone: string
+  reduceTransparency: boolean
+  selectedEntryRole: AuthEntryRole | null
+  showClientAuthOptions: boolean
+  signingIn: boolean
+  submitLabel: string
+  visibleError: string | null
+}) {
+  const isWorker = selectedEntryRole === 'worker'
+  const isCustomerPasswordFallback = selectedEntryRole === 'customer' && !isCustomerPhoneMode
+  const [showCustomerEmailFallback, setShowCustomerEmailFallback] = useState(false)
+  const canUsePasswordLogin = isWorker || (isCustomerPasswordFallback && showCustomerEmailFallback)
+
+  return (
+    <View style={styles.formStack}>
+      <View style={styles.hiddenMarker} testID={`auth-entry-role-selected-${selectedEntryRole}`} />
+      <AuthTopRow
+        onBack={onBack}
+        subtitle={isWorkerCreateMode ? copy.workerVerificationSubtitle : isWorker ? copy.workerLoginSubtitle : isCustomerPhoneMode ? copy.customerPhoneSubtitle : copy.customerLoginSubtitle}
+        title={isWorkerCreateMode ? copy.workerVerificationHeading : isWorker ? copy.workerLoginHeading : isCustomerPhoneMode ? copy.customerPhoneHeading : copy.customerLoginHeading}
+      />
+      {isCustomerPhoneMode || isWorkerCreateMode ? null : (
+        <LoginHeroRole
+          icon={isWorker ? 'tools' : 'home'}
+          lockLabel={isWorker ? copy.roleHero.workerLock : copy.roleHero.customerLock}
+          title={isWorker ? copy.roleHero.worker : copy.roleHero.customer}
+        />
+      )}
+      {isWorkerCreateMode ? <WorkerVerificationHero copy={copy} /> : null}
+      <ReduceMotionAwareEntranceView delayMs={80} distanceY={6} style={[styles.loginForm, reduceTransparency ? styles.loginFormReduced : null]} testID="authLoginFormMotion">
+        {!reduceTransparency ? <View pointerEvents="none" style={styles.loginFormGlow} testID="auth-login-form-glow" /> : null}
+        <View style={styles.loginMode}>
+          <Text style={styles.loginModeText}>{loginTitle}</Text>
+        </View>
+        {showClientAuthOptions ? (
+          <ClientAuthChoices
+            configMissing={configMissing}
+            copy={copy}
+            loading={loading}
+            onGoogle={onGoogle}
+            onPhone={onOpenPhone}
+            signingIn={signingIn}
+          />
+        ) : null}
+        {isCustomerPhoneMode ? (
+          <CustomerPhoneLoginPanel
+            configMissing={configMissing}
+            copy={copy}
+            loading={loading}
+            onBackToChoices={onPhoneBack}
+            onSubmitUnavailable={onPhoneSubmitUnavailable}
+            onUpdatePhone={onUpdatePhone}
+            phone={phone}
+            signingIn={signingIn}
+          />
+        ) : null}
+        {isCustomerPasswordFallback ? (
+          <Pressable
+            accessibilityLabel={showCustomerEmailFallback ? copy.customerEmailFallbackClose : copy.customerEmailFallback}
+            accessibilityRole="button"
+            onPress={() => setShowCustomerEmailFallback((current) => !current)}
+            style={({ pressed }) => [styles.customerEmailFallbackButton, pressed ? styles.pressed : null]}
+            testID="auth-client-email-fallback-toggle"
+          >
+            <Text style={styles.customerEmailFallbackText}>{showCustomerEmailFallback ? copy.customerEmailFallbackClose : copy.customerEmailFallback}</Text>
+          </Pressable>
+        ) : null}
+        {isCustomerPasswordFallback && showCustomerEmailFallback ? (
+          <View style={styles.loginDivider} testID="auth-client-email-fallback-divider">
+            <View style={styles.loginDividerLine} />
+            <Text style={styles.loginDividerText}>{copy.divider}</Text>
+            <View style={styles.loginDividerLine} />
+          </View>
+        ) : null}
+        {canUsePasswordLogin ? (
+          <>
+            <AuthInputField icon="email" label={isWorker ? copy.workerAccountLabel : copy.email}>
+              <TextInput
+                accessibilityLabel={isWorker ? copy.workerAccountLabel : copy.email}
+                autoCapitalize="none"
+                autoCorrect={false}
+                inputMode={isWorker ? 'text' : 'email'}
+                keyboardType={isWorker ? 'default' : 'email-address'}
+                onChangeText={onUpdateEmail}
+                placeholder={isWorker ? accountPlaceholder : copy.email}
+                placeholderTextColor={authTokens.subtle}
+                style={styles.fieldInput}
+                testID="auth-login-email-input"
+                value={email}
+              />
+            </AuthInputField>
+            <AuthInputField actionLabel={copy.passwordVisibility} icon="lock" label={copy.password} onAction={onTogglePasswordVisible}>
+              <TextInput
+                accessibilityLabel={copy.password}
+                autoCapitalize="none"
+                onChangeText={onUpdatePassword}
+                placeholder={isWorker ? passwordPlaceholder : copy.password}
+                placeholderTextColor={authTokens.subtle}
+                secureTextEntry={!passwordVisible}
+                style={styles.fieldInput}
+                testID="auth-login-password-input"
+                value={password}
+              />
+            </AuthInputField>
+            {isWorkerCreateMode ? (
+              <WorkerVerificationPreview copy={copy} />
+            ) : null}
+          </>
+        ) : null}
+        {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
+        {isWorker ? (
+          <View style={styles.workerFormFoot}>
+            <Text style={styles.workerFormFootText}>{isWorkerCreateMode ? copy.workerHasAccount : copy.roleHero.workerFoot}</Text>
+            <Pressable accessibilityRole="button" onPress={() => isWorkerCreateMode ? onWorkerModeChange('login') : onForgotPassword()}>
+              <Text style={styles.workerFormFootAction}>{isWorkerCreateMode ? copy.workerBackToLogin : copy.forgotPassword}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {canUsePasswordLogin ? (
+          <Pressable
+            accessibilityLabel={isWorkerCreateMode ? copy.submitVerification : submitLabel}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: signingIn || loading || configMissing }}
+            disabled={signingIn || loading || configMissing}
+            onPress={isWorkerCreateMode ? onSubmitWorkerCreate : onSubmitLogin}
+            style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, signingIn || loading || configMissing ? styles.disabled : null]}
+            testID="auth-login-submit"
+          >
+            {signingIn || loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>{isWorkerCreateMode ? copy.submitVerification : submitLabel}</Text>}
+          </Pressable>
+        ) : null}
+        {isWorker && !isWorkerCreateMode ? (
+          <View style={styles.authFootCta}>
+            <Text style={styles.authFootCtaText}>{copy.createWorkerQuestion}</Text>
+            <Pressable
+              accessibilityLabel={copy.createWorkerAccount}
+              accessibilityRole="button"
+              onPress={() => onWorkerModeChange('create')}
+              style={({ pressed }) => [styles.authFootLinkButton, pressed ? styles.pressed : null]}
+              testID="auth-worker-create-profile"
+            >
+              <Text style={styles.authFootLinkText}>{copy.createWorkerAccount}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </ReduceMotionAwareEntranceView>
+    </View>
+  )
+}
+
+function WorkerVerificationHero({ copy }: { copy: AuthCopy }) {
+  return (
+    <View style={styles.setupHero} testID="auth-worker-verification-setup-hero">
+      <View style={styles.setupHeroTop}>
+        <View style={[styles.roleIcon, styles.roleIconHero]}>
+          <AuthIcon name="tools" inverse />
+        </View>
+        <View style={styles.titleStack}>
+          <Text style={styles.loginHeroTitle}>{copy.workerVerificationHeroTitle}</Text>
+        </View>
+        <Text style={[styles.roleLock, styles.roleLockCream]}>{copy.workerVerificationRequired}</Text>
+      </View>
+      <View style={styles.setupSteps}>
+        <SetupStep active label={copy.workerSetupAccount} value={copy.workerSetupAccountMeta} />
+        <SetupStep active label={copy.workerSetupVerify} value={copy.workerSetupVerifyMeta} />
+        <SetupStep label={copy.workerSetupProfile} value={copy.workerSetupProfileMeta} />
+      </View>
+    </View>
+  )
+}
+
+function WorkerVerificationPreview({ copy }: { copy: AuthCopy }) {
+  return (
+    <View style={styles.workerVerificationStack} testID="auth-worker-verification-preview">
+      <View style={styles.workerUploadGrid} testID="auth-worker-verification-upload-grid">
+        <WorkerCredentialPill icon="shield" label={copy.workerCccdFront} meta={copy.chooseFile} variant="upload" />
+        <WorkerCredentialPill icon="shield" label={copy.workerCccdBack} meta={copy.chooseFile} variant="upload" />
+        <WorkerCredentialPill icon="home" label={copy.workerPortrait} meta={copy.chooseFile} variant="upload" />
+        <WorkerCredentialPill icon="tools" label={copy.workerCertificate} meta={copy.chooseFile} variant="upload" />
+      </View>
+      <View style={styles.loginMode}>
+        <Text style={styles.loginModeText}>{copy.workerSkillAreaMode}</Text>
+      </View>
+      <View style={styles.workerVerifyServiceRow} testID="auth-worker-verification-services">
+        {[copy.workerServiceElectrical, copy.workerServicePlumbing, copy.workerServiceCleaning].map((service) => (
+          <Text key={service} style={styles.workerVerifyServiceChip} numberOfLines={1}>{service}</Text>
+        ))}
+      </View>
+      <WorkerCredentialPill icon="home" label={copy.workerServiceArea} meta={copy.chooseArea} />
+      <WorkerCredentialPill icon="phone" label={copy.workerPhoneContact} meta={copy.addContact} />
+    </View>
+  )
+}
+
+function RoleGatewayCards({
+  copy,
+  language,
+  onPreviewRole,
+  onSelectRole,
+}: {
+  copy: (typeof authCopy)[AppLanguage]
+  language: AppLanguage
+  onPreviewRole: (role: AuthEntryRole) => void
+  onSelectRole: (role: AuthEntryRole) => void
+}) {
+  return (
+    <View style={styles.roleGatewayGrid}>
+      <ReduceMotionAwareEntranceView delayMs={105} distanceY={8} testID="auth-role-card-motion-customer">
+        <RoleCard
+          accessibilityLabel={copy.openRoleA11y(copy.roleCustomer)}
+          description={copy.entryCustomer}
+          icon="home"
+          label={copy.roleCustomer}
+          meta={language === 'en' ? ['Google', 'Phone'] : ['Google', 'Số điện thoại']}
+          onPreview={() => onPreviewRole('customer')}
+          onPress={() => onSelectRole('customer')}
+          primary
+          testID="auth-entry-role-customer"
+        />
+      </ReduceMotionAwareEntranceView>
+      <ReduceMotionAwareEntranceView delayMs={160} distanceY={8} testID="auth-role-card-motion-worker">
+        <RoleCard
+          accessibilityLabel={copy.openRoleA11y(copy.roleWorker)}
+          description={copy.entryWorker}
+          icon="tools"
+          label={copy.roleWorker}
+          meta={language === 'en' ? ['Worker account', 'Verification'] : ['Tài khoản thợ', 'Xác thực']}
+          onPreview={() => onPreviewRole('worker')}
+          onPress={() => onSelectRole('worker')}
+          testID="auth-entry-role-worker"
+        />
+      </ReduceMotionAwareEntranceView>
+    </View>
+  )
+}
+
+function ClientAuthChoices({
+  configMissing,
+  copy,
+  loading,
+  onGoogle,
+  onPhone,
+  signingIn,
+}: {
+  configMissing: boolean
+  copy: (typeof authCopy)[AppLanguage]
+  loading: boolean
+  onGoogle: () => void
+  onPhone: () => void
+  signingIn: boolean
+}) {
+  const disabled = signingIn || loading || configMissing
+  const phoneDisabled = disabled
+
+  return (
+    <View style={styles.authChoiceList}>
+      <AuthMotionPressable
+        accessibilityLabel={copy.google}
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        motionTestID="authOptionPressScale"
+        onPress={onGoogle}
+        style={({ pressed }) => [styles.googleButton, pressed ? styles.pressed : null, disabled ? styles.disabled : null]}
+        testID="auth-client-google-primary"
+      >
+        <GoogleMark />
+        {signingIn || loading ? <ActivityIndicator color={authTokens.primary} /> : <Text style={styles.googleButtonText}>{copy.google}</Text>}
+      </AuthMotionPressable>
+      <AuthMotionPressable
+        accessibilityLabel={copy.phone}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: phoneDisabled }}
+        disabled={phoneDisabled}
+        onPress={onPhone}
+        style={({ pressed }) => [styles.phoneButton, pressed ? styles.pressed : null, phoneDisabled ? styles.disabled : null]}
+        testID="auth-client-phone-secondary"
+      >
+        <View style={styles.authMark}>
+          <AuthIcon name="phone" />
+        </View>
+        <Text style={styles.phoneButtonText}>{copy.phone}</Text>
+      </AuthMotionPressable>
+    </View>
+  )
+}
+
+function CustomerPhoneLoginPanel({
+  configMissing,
+  copy,
+  loading,
+  onBackToChoices,
+  onSubmitUnavailable,
+  onUpdatePhone,
+  phone,
+  signingIn,
+}: {
+  configMissing: boolean
+  copy: (typeof authCopy)[AppLanguage]
+  loading: boolean
+  onBackToChoices: () => void
+  onSubmitUnavailable: () => void
+  onUpdatePhone: (value: string) => void
+  phone: string
+  signingIn: boolean
+}) {
+  const disabled = signingIn || loading || configMissing || !CLIENT_PHONE_AUTH_AVAILABLE
+  const phoneAuthUnavailable = !CLIENT_PHONE_AUTH_AVAILABLE
+
+  return (
+    <View style={styles.authChoiceList} testID="auth-client-phone-login-form">
+      <AuthInputField icon="phone" label={copy.phone}>
+        <TextInput
+          accessibilityLabel={copy.phone}
+          autoCapitalize="none"
+          inputMode="tel"
+          keyboardType="phone-pad"
+          onChangeText={onUpdatePhone}
+          placeholder={copy.customerPhonePlaceholder}
+          placeholderTextColor={authTokens.subtle}
+          style={styles.fieldInput}
+          testID="auth-client-phone-input"
+          value={phone}
+        />
+      </AuthInputField>
+      {phoneAuthUnavailable ? (
+        <Pressable
+          accessibilityLabel={copy.errors.phoneUnavailable}
+          accessibilityRole="button"
+          onPress={onSubmitUnavailable}
+          style={({ pressed }) => [styles.phoneUnavailableBox, pressed ? styles.pressed : null]}
+          testID="auth-client-phone-submit-unavailable"
+        >
+          <Text style={styles.phoneUnavailableText}>{copy.errors.phoneUnavailable}</Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          accessibilityLabel={copy.customerPhoneSubmit}
+          accessibilityRole="button"
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={onSubmitUnavailable}
+          style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, disabled ? styles.disabled : null]}
+          testID="auth-client-phone-submit"
+        >
+          <Text style={styles.primaryButtonText}>{copy.customerPhoneSubmit}</Text>
+        </Pressable>
+      )}
+      <Pressable
+        accessibilityLabel={copy.customerGoogleFallback}
+        accessibilityRole="button"
+        onPress={onBackToChoices}
+        style={({ pressed }) => [styles.secondaryBoxButton, pressed ? styles.pressed : null]}
+        testID="auth-client-phone-back-google"
+      >
+        <Text style={styles.secondaryBoxButtonText}>{copy.customerGoogleFallback}</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+function CustomerOnboardingPanel({
+  address,
+  copy,
+  displayName,
+  loading,
+  onBack,
+  onSaveProfile,
+  onSkip,
+  onUpdateAddress,
+  onUpdateDisplayName,
+  onUpdatePhone,
+  phone,
+  signingIn,
+  visibleError,
+}: {
+  address: string
+  copy: (typeof authCopy)[AppLanguage]
+  displayName: string
+  loading: boolean
+  onBack: () => void
+  onSaveProfile: () => void
+  onSkip: () => void
+  onUpdateAddress: (value: string) => void
+  onUpdateDisplayName: (value: string) => void
+  onUpdatePhone: (value: string) => void
+  phone: string
+  signingIn: boolean
+  visibleError: string | null
+}) {
+  const disabled = loading || signingIn
+
+  return (
+    <View style={styles.formStack} testID="auth-client-onboarding">
+      <AuthTopRow onBack={onBack} subtitle={copy.customerSetupSubtitle} title={copy.customerSetupHeading} />
+      <View style={styles.setupHero} testID="auth-client-onboarding-setup-hero">
+        <View style={styles.setupHeroTop}>
+          <View style={[styles.roleIcon, { backgroundColor: authTokens.mint }]}>
+            <AuthIcon name="home" />
+          </View>
+          <View style={styles.titleStack}>
+            <Text style={styles.loginHeroTitle}>{copy.customerSetupHeroTitle}</Text>
+          </View>
+          <Text style={styles.roleLock}>{copy.customerSetupBadge}</Text>
+        </View>
+        <View style={styles.setupSteps}>
+          <SetupStep active label={copy.customerSetupAccount} value={copy.customerSetupAccountMeta} />
+          <SetupStep active label={copy.customerSetupContact} value={copy.customerSetupContactMeta} />
+          <SetupStep label={copy.customerSetupProfile} value={copy.customerSetupProfileMeta} />
+        </View>
+      </View>
+      <View style={[styles.loginForm, styles.setupForm]}>
+        <View style={styles.loginMode}>
+          <Text style={styles.loginModeText}>{copy.customerSetupMode}</Text>
+        </View>
+        <AuthInputField icon="home" label={copy.customerDisplayName}>
+          <TextInput
+            accessibilityLabel={copy.customerDisplayName}
+            autoCapitalize="words"
+            onChangeText={onUpdateDisplayName}
+            placeholder={copy.customerDisplayNamePlaceholder}
+            placeholderTextColor={authTokens.subtle}
+            style={styles.fieldInput}
+            testID="auth-client-onboarding-display-name"
+            value={displayName}
+          />
+        </AuthInputField>
+        <AuthInputField icon="phone" label={copy.customerPhoneContact}>
+          <TextInput
+            accessibilityLabel={copy.customerPhoneContact}
+            autoCapitalize="none"
+            inputMode="tel"
+            keyboardType="phone-pad"
+            onChangeText={onUpdatePhone}
+            placeholder={copy.customerPhoneContactPlaceholder}
+            placeholderTextColor={authTokens.subtle}
+            style={styles.fieldInput}
+            testID="auth-client-onboarding-phone"
+            value={phone}
+          />
+        </AuthInputField>
+        <AuthInputField icon="map" label={copy.customerDefaultAddress}>
+          <TextInput
+            accessibilityLabel={copy.customerDefaultAddress}
+            onChangeText={onUpdateAddress}
+            placeholder={copy.customerDefaultAddressPlaceholder}
+            placeholderTextColor={authTokens.subtle}
+            style={styles.fieldInput}
+            testID="auth-client-onboarding-address"
+            value={address}
+          />
+        </AuthInputField>
+        {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
+        <Pressable
+          accessibilityLabel={copy.customerSaveProfile}
+          accessibilityRole="button"
+          accessibilityState={{ disabled }}
+          disabled={disabled}
+          onPress={onSaveProfile}
+          style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, disabled ? styles.disabled : null]}
+          testID="auth-client-onboarding-save"
+        >
+          {disabled ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>{copy.customerSaveProfile}</Text>}
+        </Pressable>
+        <Pressable accessibilityLabel={copy.customerSkipSetup} accessibilityRole="button" onPress={onSkip} style={({ pressed }) => [styles.secondaryBoxButton, pressed ? styles.pressed : null]} testID="auth-client-onboarding-skip">
+          <Text style={styles.secondaryBoxButtonText}>{copy.customerSkipSetup}</Text>
+        </Pressable>
+      </View>
+      <View style={styles.syncPreview} testID="auth-client-onboarding-profile-sync-preview">
+        <View style={styles.syncPreviewTop}>
+          <Text style={styles.syncPreviewTitle}>{copy.customerProfileSyncTitle}</Text>
+          <Text style={styles.roleLock}>{copy.customerNotVerified}</Text>
+        </View>
+        <View style={styles.workerVerifyServiceRow}>
+          <Text style={styles.workerVerifyServiceChip}>{copy.customerDisplayName}</Text>
+          <Text style={styles.workerVerifyServiceChip}>{copy.customerPhoneContact}</Text>
+          <Text style={styles.workerVerifyServiceChip}>{copy.customerDefaultAddress}</Text>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+function SetupStep({ active = false, label, value }: { active?: boolean; label: string; value: string }) {
+  return (
+    <View style={[styles.setupStep, active ? styles.setupStepActive : null]}>
+      <Text style={styles.setupStepLabel} numberOfLines={1}>{label}</Text>
+      <Text style={styles.setupStepValue} numberOfLines={1}>{value}</Text>
+    </View>
+  )
+}
+
+function AuthenticatedRoleActions({
+  canOpenCustomer,
+  canOpenWorker,
+  copy,
+  isAdmin,
+  language,
+  onOpenCustomer,
+  onOpenWorker,
+  onPreviewRole,
+  onSignOut,
+}: {
+  canOpenCustomer: boolean
+  canOpenWorker: boolean
+  copy: (typeof authCopy)[AppLanguage]
+  isAdmin: boolean
+  language: AppLanguage
+  onOpenCustomer: () => void
+  onOpenWorker: () => void
+  onPreviewRole: (role: AuthEntryRole) => void
+  onSignOut: () => Promise<void>
+}) {
+  return (
+      <View style={styles.roleGatewayGrid}>
+      <ReduceMotionAwareEntranceView delayMs={105} distanceY={8} testID="auth-role-card-motion-customer">
+        <RoleCard
+          accessibilityLabel={copy.openRoleA11y(copy.roleCustomer)}
+          description={copy.entryCustomer}
+          disabled={!canOpenCustomer}
+          icon="home"
+          label={copy.roleCustomer}
+          meta={language === 'en' ? ['Google', 'Phone'] : ['Google', 'Số điện thoại']}
+          onPreview={() => onPreviewRole('customer')}
+          onPress={onOpenCustomer}
+          primary
+          testID={isAdmin ? 'auth-login-admin-audit-customer' : 'auth-login-role-customer'}
+        />
+      </ReduceMotionAwareEntranceView>
+      <ReduceMotionAwareEntranceView delayMs={160} distanceY={8} testID="auth-role-card-motion-worker">
+        <RoleCard
+          accessibilityLabel={copy.openRoleA11y(copy.roleWorker)}
+          description={copy.entryWorker}
+          disabled={!canOpenWorker}
+          icon="tools"
+          label={copy.roleWorker}
+          meta={language === 'en' ? ['Worker account', 'Verification'] : ['Tài khoản thợ', 'Xác thực']}
+          onPreview={() => onPreviewRole('worker')}
+          onPress={onOpenWorker}
+          testID={isAdmin ? 'auth-login-admin-audit-worker' : 'auth-login-role-worker'}
+        />
+      </ReduceMotionAwareEntranceView>
+      {isAdmin ? <View style={styles.hiddenMarker} testID="auth-login-admin-audit" /> : null}
+      <Pressable accessibilityLabel={copy.signOut} accessibilityRole="button" onPress={onSignOut} style={({ pressed }) => [styles.authSignOutAction, pressed ? styles.pressed : null]} testID="auth-login-sign-out">
+        <Text style={styles.secondaryActionText}>{copy.signOut}</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+function WorkerCredentialPill({ icon, label, meta, variant = 'row' }: { icon: 'home' | 'phone' | 'shield' | 'tools'; label: string; meta: string; variant?: 'row' | 'upload' }) {
+  const isUpload = variant === 'upload'
+  return (
+    <View style={isUpload ? styles.workerUploadTile : styles.workerCredentialPill}>
+      <View style={isUpload ? styles.workerUploadIcon : null}>
+        <AuthIcon name={icon} />
+      </View>
+      <View style={isUpload ? styles.workerUploadCopy : styles.workerCredentialCopy}>
+        <Text style={isUpload ? styles.workerUploadLabel : styles.workerCredentialLabel} numberOfLines={isUpload ? 2 : 1}>{label}</Text>
+        <Text style={isUpload ? styles.workerUploadMeta : styles.workerCredentialMeta} numberOfLines={isUpload ? 2 : 1}>{meta}</Text>
+      </View>
+    </View>
   )
 }
 
@@ -451,17 +1282,19 @@ function roleLabel(role: string | null, language: AppLanguage) {
   return statusCopy.checking
 }
 
-function AuthFrame({ children, testID }: { children: ReactNode; testID: string }) {
+function AuthFrame({ children, testID, topAligned = false }: { children: ReactNode; testID: string; topAligned?: boolean }) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const frameWidth = Math.min(width, 430)
-  const contentWidth = Math.max(0, frameWidth - 48)
+  const contentWidth = Math.max(0, Math.min(frameWidth - 40, 350))
+  const topPadding = topAligned ? Math.max(insets.top + 42, 56) : Math.max(insets.top, 8)
+  const webPreviewOffset = Platform.OS === 'web' && width > 430 ? -46 : 0
 
   return (
     <SafeAreaView style={styles.safe} testID={testID}>
-      <View style={styles.canvas}>
+      <View style={[styles.canvas, topAligned ? styles.canvasTop : null]}>
         <AmbientBackdrop />
-        <View style={{ width: contentWidth, paddingTop: Math.max(insets.top, 8), paddingBottom: insets.bottom + 18 }}>
+        <View style={{ width: contentWidth, paddingTop: topPadding, paddingBottom: insets.bottom + 18, transform: webPreviewOffset ? [{ translateX: webPreviewOffset }] : undefined }}>
           {children}
         </View>
       </View>
@@ -482,39 +1315,185 @@ function AmbientBackdrop() {
   )
 }
 
-function MapLineField() {
+function AuthTopRow({
+  onBack,
+  subtitle,
+  title,
+  trailing,
+}: {
+  onBack?: () => void
+  subtitle: string
+  title: string
+  trailing?: ReactNode
+}) {
+  const { reduceTransparency } = useGlassAccessibility()
+  const language = useAppLanguage()
+  const backLabel = language === 'en' ? 'Back to role selection' : 'Quay lại chọn vai trò'
+
   return (
-    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 360 390" preserveAspectRatio="none">
-      <Path d="M20 132 C84 96 134 134 188 116 S292 62 342 98" stroke={authTokens.line} strokeWidth={4} opacity={0.42} fill="none" />
-      <Path d="M40 214 C86 194 106 236 162 218 S246 166 322 198" stroke={authTokens.line} strokeWidth={3.2} opacity={0.34} fill="none" />
-      <Path d="M82 176 L82 258 M162 204 L162 314 M258 168 L238 286" stroke={authTokens.line} strokeWidth={3} opacity={0.18} fill="none" />
+    <View style={styles.authTopRow}>
+      <View style={styles.authTitleBlock}>
+        <Text style={styles.authScreenTitle}>{title}</Text>
+        <Text style={styles.authScreenSubtitle}>{subtitle}</Text>
+      </View>
+      {trailing ?? (
+        <Pressable accessibilityLabel={backLabel} accessibilityRole="button" onPress={onBack} style={({ pressed }) => [styles.roundBackButton, reduceTransparency ? styles.roundBackButtonReduced : null, pressed ? styles.pressed : null]} testID="auth-entry-role-change">
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+            <Path d="M15 18l-6-6 6-6" stroke={authTokens.primary} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+        </Pressable>
+      )}
+    </View>
+  )
+}
+
+function LoginHeroRole({ icon, lockLabel, title }: { icon: 'home' | 'tools'; lockLabel: string; title: string }) {
+  const { reduceTransparency } = useGlassAccessibility()
+
+  return (
+    <View style={[styles.loginHeroRole, reduceTransparency ? styles.loginHeroRoleReduced : null]}>
+      <View style={[styles.roleIcon, styles.roleIconHero]}>
+        <AuthIcon name={icon} inverse />
+      </View>
+      <View style={styles.titleStack}>
+        <Text style={styles.loginHeroTitle}>{title}</Text>
+        <Text style={styles.roleLock}>{lockLabel}</Text>
+      </View>
+    </View>
+  )
+}
+
+function RoleGatewayHero({ choice, copy }: { choice: AuthEntryRole | null; copy: (typeof authCopy)[AppLanguage] }) {
+  const { reduceTransparency } = useGlassAccessibility()
+
+  return (
+    <ReduceMotionAwareEntranceView delayMs={45} distanceY={8} style={[styles.roleGatewayHero, reduceTransparency ? styles.roleGatewayHeroReduced : null]} testID="auth-role-gateway-hero-motion">
+      {!reduceTransparency ? (
+        <>
+          <View pointerEvents="none" style={styles.roleGatewayHeroTint} />
+          <View pointerEvents="none" style={styles.roleGatewayHeroSheen} />
+          <View pointerEvents="none" style={styles.roleGatewayHeroDivider} />
+        </>
+      ) : null}
+      <View style={styles.roleGatewayTop}>
+        <Text style={[styles.roleGatewayBadge, reduceTransparency ? styles.roleGatewayBadgeReduced : null]}>Home Services</Text>
+        <View style={[styles.roleGatewayFixedBadge, reduceTransparency ? styles.roleGatewayBadgeReduced : null]}>
+          <ShieldMiniIcon />
+          <Text style={styles.roleGatewayFixedBadgeText}>{copy.fixedRole}</Text>
+        </View>
+      </View>
+      <View style={styles.roleGatewayGlassLine}>
+        <Text style={styles.roleGatewayTitle}>{copy.titleLogin}</Text>
+        <View style={[styles.roleGatewayKael, reduceTransparency ? styles.roleGatewayKaelReduced : null]}>
+          <Image contentFit="contain" source={kaelModel8AHead} style={styles.roleGatewayKaelImage as ImageStyle} />
+        </View>
+      </View>
+      <ReduceMotionAwareEntranceView delayMs={130} distanceY={4} testID="roleGatewaySignature">
+        <RoleGatewaySignatureEffects choice={choice} reduceTransparency={reduceTransparency}>
+          <View style={[styles.signatureRail, reduceTransparency ? styles.signatureRailReduced : null]} testID="signatureRail" />
+          <Text style={styles.roleGatewaySignatureText}>{copy.signature}</Text>
+        </RoleGatewaySignatureEffects>
+      </ReduceMotionAwareEntranceView>
+    </ReduceMotionAwareEntranceView>
+  )
+}
+
+function ShieldMiniIcon() {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+      <Path d="M8 2.4 12 4v3.6c0 2.3-1.4 3.9-4 4.9-2.6-1-4-2.6-4-4.9V4l4-1.6Z" stroke={authTokens.primary} strokeWidth={1.7} strokeLinejoin="round" />
     </Svg>
   )
 }
 
-function RoleGatewayHero({ copy }: { copy: (typeof authCopy)[AppLanguage] }) {
+function RoleGatewaySignatureEffects({ children, choice, reduceTransparency }: { children: ReactNode; choice: AuthEntryRole | null; reduceTransparency: boolean }) {
+  const { reduceMotion } = useGlassAccessibility()
+  const signatureChoicePulse = useSharedValue(1)
+  const signatureSheenOpacity = useSharedValue(reduceMotion ? 0 : 0)
+  const signatureSheenX = useSharedValue(reduceMotion ? 0 : -160)
+  const signatureIdleOpacity = useSharedValue(reduceMotion ? 0.12 : 0)
+  const signatureIdleX = useSharedValue(reduceMotion ? 0 : -48)
+  const signatureIdleScaleX = useSharedValue(reduceMotion ? 1 : 0.88)
+
+  useEffect(() => {
+    if (reduceMotion) {
+      signatureChoicePulse.value = 1
+      signatureSheenOpacity.value = 0
+      signatureSheenX.value = 0
+      signatureIdleOpacity.value = reduceTransparency ? 0 : 0.12
+      signatureIdleX.value = 0
+      signatureIdleScaleX.value = 1
+      return
+    }
+
+    signatureChoicePulse.value = 1
+    signatureSheenOpacity.value = 0
+    signatureSheenX.value = -160
+    signatureIdleOpacity.value = 0
+    signatureIdleX.value = choice === 'worker' ? 190 : -48
+    signatureIdleScaleX.value = 0.88
+    signatureChoicePulse.value = withSequence(
+      withTiming(0.993, { duration: 170 }),
+      withSpring(1, { damping: 18, stiffness: 150 }),
+    )
+    signatureSheenOpacity.value = withDelay(70, withSequence(
+      withTiming(0.58, { duration: 150 }),
+      withTiming(0, { duration: 610 }),
+    ))
+    signatureSheenX.value = withDelay(70, withTiming(160, { duration: 760 }))
+    const targetX = choice === 'worker' ? 46 : choice === 'customer' ? 205 : 260
+    signatureIdleOpacity.value = withDelay(120, withSequence(
+      withTiming(reduceTransparency ? 0 : 0.28, { duration: 220 }),
+      withTiming(reduceTransparency ? 0 : 0.08, { duration: choice ? 700 : 2380 }),
+      withTiming(0, { duration: 180 }),
+    ))
+    signatureIdleX.value = withDelay(120, withTiming(targetX, { duration: choice ? 920 : 2600 }))
+    signatureIdleScaleX.value = withDelay(120, withTiming(choice ? 1.06 : 1.12, { duration: choice ? 920 : 2600 }))
+
+    return () => {
+      cancelAnimation(signatureChoicePulse)
+      cancelAnimation(signatureSheenOpacity)
+      cancelAnimation(signatureSheenX)
+      cancelAnimation(signatureIdleOpacity)
+      cancelAnimation(signatureIdleX)
+      cancelAnimation(signatureIdleScaleX)
+    }
+  }, [choice, reduceMotion, reduceTransparency, signatureChoicePulse, signatureIdleOpacity, signatureIdleScaleX, signatureIdleX, signatureSheenOpacity, signatureSheenX])
+
+  const shellStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: signatureChoicePulse.value }],
+  }), [signatureChoicePulse])
+
+  const sheenStyle = useAnimatedStyle(() => ({
+    opacity: signatureSheenOpacity.value,
+    transform: [{ translateX: signatureSheenX.value }, { skewX: '-10deg' }],
+  }), [signatureSheenOpacity, signatureSheenX])
+
+  const liquidStyle = useAnimatedStyle(() => ({
+    opacity: signatureIdleOpacity.value,
+    transform: [{ translateX: signatureIdleX.value }, { skewX: choice === 'worker' ? '10deg' : '-10deg' }, { scaleX: signatureIdleScaleX.value }],
+  }), [choice, signatureIdleOpacity, signatureIdleScaleX, signatureIdleX])
+
   return (
-    <ReduceMotionAwareEntranceView delayMs={45} distanceY={8} style={styles.roleGatewayHero} testID="auth-role-gateway-hero-motion">
-      <View style={styles.roleGatewayTop}>
-        <Text style={styles.roleGatewayBadge}>Home Services</Text>
-        <View style={styles.roleGatewayBadgeIconRow}>
-          <AuthIcon name="shield" />
-          <Text style={styles.roleGatewayBadge}>{copy.fixedRole}</Text>
-        </View>
-      </View>
-      <View style={styles.roleGatewayGlassLine}>
-        <Text style={styles.title}>{copy.titleLogin}</Text>
-        <View style={styles.roleGatewayKael}>
-          <Image accessible={false} contentFit="contain" source={kaelModel8AHead} style={styles.roleGatewayKaelImage} />
-        </View>
-      </View>
-      <ReduceMotionAwareEntranceView delayMs={130} distanceY={4} style={styles.roleGatewaySignature} testID="roleGatewaySignature">
-        <View style={styles.signatureRail} testID="signatureRail" />
-        <Text style={styles.roleGatewaySignatureText}>{copy.signature}</Text>
-        <View pointerEvents="none" style={styles.signatureLiquid} />
-      </ReduceMotionAwareEntranceView>
-    </ReduceMotionAwareEntranceView>
+    <Animated.View
+      style={[styles.roleGatewaySignature, reduceTransparency ? styles.roleGatewaySignatureReduced : null, shellStyle]}
+      testID="signatureChoicePulse"
+    >
+      {children}
+      {!reduceTransparency ? (
+        <>
+          <Animated.View pointerEvents="none" style={[styles.signatureSheen, sheenStyle]} testID="signatureSheenLight" />
+          <Animated.View pointerEvents="none" style={[styles.signatureLiquid, liquidStyle]} testID="signatureIdleLiquid" />
+          <SignatureLiquidLight reduceTransparency={reduceTransparency} />
+        </>
+      ) : null}
+    </Animated.View>
   )
+}
+
+function SignatureLiquidLight({ reduceTransparency }: { reduceTransparency: boolean }) {
+  if (reduceTransparency) return null
+  return <View style={styles.hiddenMarker} testID="signatureLiquidLight" />
 }
 
 function RoleCard({
@@ -524,6 +1503,7 @@ function RoleCard({
   icon,
   label,
   meta = EMPTY_AUTH_META,
+  onPreview,
   onPress,
   primary = false,
   testID,
@@ -534,42 +1514,139 @@ function RoleCard({
   icon: 'home' | 'tools'
   label: string
   meta?: string[]
+  onPreview?: () => void
   onPress: () => void
   primary?: boolean
   testID: string
 }) {
-  const { reduceTransparency } = useGlassAccessibility()
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const pressProgress = useSharedValue(0)
+  const roleCardPressScale = disabled ? 1 : 0.985
+  const roleArrowPressTravel = primary ? 2.4 : 1.8
+
+  const cardMotionStyle = useAnimatedStyle(() => {
+    if (reduceMotion) return {}
+    return {
+      transform: [
+        { translateY: pressProgress.value },
+        { scale: 1 - ((1 - roleCardPressScale) * pressProgress.value) },
+      ],
+    }
+  }, [pressProgress, reduceMotion, roleCardPressScale])
+
+  const arrowMotionStyle = useAnimatedStyle(() => {
+    if (reduceMotion) return {}
+    return {
+      transform: [
+        { translateX: pressProgress.value * roleArrowPressTravel },
+        { scale: 1 + (pressProgress.value * 0.04) },
+      ],
+    }
+  }, [pressProgress, reduceMotion, roleArrowPressTravel])
+
+  const setPressed = (pressed: boolean) => {
+    if (disabled || reduceMotion) return
+    pressProgress.value = withTiming(pressed ? 1 : 0, { duration: pressed ? 120 : 150 })
+  }
 
   return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [styles.roleCard, primary ? styles.roleCardPrimary : null, glassSurface('raised', reduceTransparency), disabled ? styles.disabled : null, pressed ? styles.pressed : null]}
-      testID={testID}
-    >
-      <View style={[styles.roleIcon, { backgroundColor: authTokens.mint }]}>
-        <AuthIcon name={icon} />
-      </View>
-      <View style={styles.titleStack}>
-        <Text style={styles.roleTitle}>{label}</Text>
-        <Text style={styles.body} numberOfLines={2}>
-          {description}
-        </Text>
-        {meta.length > 0 ? (
-          <View style={styles.roleMetaRow}>
-            {meta.map((item) => (
-              <Text key={item} style={styles.roleMetaPill} numberOfLines={1}>
-                {item}
-              </Text>
-            ))}
-          </View>
-        ) : null}
-      </View>
-      <Text style={styles.roleArrow}>›</Text>
-    </Pressable>
+    <Animated.View style={[styles.motionPressShell, cardMotionStyle]} testID={primary ? 'roleCardPressScale' : undefined}>
+      <Pressable
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPressIn={() => {
+          onPreview?.()
+          setPressed(true)
+        }}
+        onPressOut={() => setPressed(false)}
+        onPress={onPress}
+        style={({ pressed }) => [styles.roleCard, glassSurface('raised', reduceTransparency), primary ? styles.roleCardPrimary : null, disabled ? styles.disabled : null, pressed ? styles.pressed : null]}
+        testID={testID}
+      >
+        {!reduceTransparency ? <View pointerEvents="none" style={[styles.roleCardGlow, primary ? styles.roleCardGlowPrimary : styles.roleCardGlowWorker]} /> : null}
+        <View style={[styles.roleIcon, primary ? styles.roleIconCustomer : styles.roleIconWorker]}>
+          <AuthIcon name={icon} />
+        </View>
+        <View style={styles.titleStack}>
+          <Text style={styles.roleTitle}>{label}</Text>
+          <Text style={styles.body} numberOfLines={2}>
+            {description}
+          </Text>
+          {meta.length > 0 ? (
+            <View style={styles.roleMetaRow}>
+              {meta.map((item) => (
+                <Text key={item} style={styles.roleMetaPill} numberOfLines={1}>
+                  {item}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
+        <Animated.View style={[styles.roleArrowBox, primary ? styles.roleArrowBoxPrimary : null, arrowMotionStyle]} testID="roleArrowPressTravel">
+          <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
+            <Path d="m7 4.5 4.5 4.5L7 13.5" stroke={primary ? '#FFFFFF' : authTokens.primary} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
+  )
+}
+
+function AuthMotionPressable({
+  accessibilityLabel,
+  accessibilityRole,
+  accessibilityState,
+  children,
+  disabled,
+  motionTestID,
+  onPress,
+  style,
+  testID,
+}: {
+  accessibilityLabel: string
+  accessibilityRole: 'button'
+  accessibilityState?: { disabled?: boolean }
+  children: ReactNode
+  disabled?: boolean
+  motionTestID?: string
+  onPress: () => void
+  style: (state: { pressed: boolean }) => any
+  testID: string
+}) {
+  const { reduceMotion } = useGlassAccessibility()
+  const pressProgress = useSharedValue(0)
+  const authOptionPressScale = 0.985
+
+  const motionStyle = useAnimatedStyle(() => {
+    if (reduceMotion) return {}
+    return {
+      transform: [{ scale: 1 - ((1 - authOptionPressScale) * pressProgress.value) }],
+    }
+  }, [authOptionPressScale, pressProgress, reduceMotion])
+
+  const updatePress = (pressed: boolean) => {
+    if (disabled || reduceMotion) return
+    pressProgress.value = withTiming(pressed ? 1 : 0, { duration: pressed ? 120 : 150 })
+  }
+
+  return (
+    <Animated.View style={[styles.motionPressShell, motionStyle]} testID={motionTestID}>
+      <Pressable
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole={accessibilityRole}
+        accessibilityState={accessibilityState}
+        disabled={disabled}
+        onPressIn={() => updatePress(true)}
+        onPressOut={() => updatePress(false)}
+        onPress={onPress}
+        style={style}
+        testID={testID}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
   )
 }
 
@@ -578,13 +1655,13 @@ function AuthInputField({
   children,
   icon,
   label,
-  valueLabel,
+  onAction,
 }: {
   actionLabel?: string
   children: ReactNode
-  icon: 'email' | 'lock'
+  icon: 'email' | 'home' | 'lock' | 'map' | 'phone'
   label: string
-  valueLabel: string
+  onAction?: () => void
 }) {
   return (
     <View style={styles.fieldShell}>
@@ -593,10 +1670,13 @@ function AuthInputField({
       </View>
       <View style={styles.fieldCopy}>
         <Text style={styles.fieldLabel}>{label}</Text>
-        <Text style={styles.fieldValueLabel}>{valueLabel}</Text>
         {children}
       </View>
-      {actionLabel ? <Text style={styles.fieldAction}>{actionLabel}</Text> : null}
+      {actionLabel && onAction ? (
+        <Pressable accessibilityLabel={actionLabel} accessibilityRole="button" onPress={onAction} style={({ pressed }) => [styles.fieldActionButton, pressed ? styles.pressed : null]}>
+          <AuthIcon name="eye" />
+        </Pressable>
+      ) : null}
     </View>
   )
 }
@@ -614,9 +1694,9 @@ function GoogleMark() {
   )
 }
 
-function AuthIcon({ name }: { name: 'email' | 'home' | 'lock' | 'phone' | 'shield' | 'tools' }) {
-  const color = authTokens.primary
-  const accent = authTokens.copper
+function AuthIcon({ inverse = false, name }: { inverse?: boolean; name: 'email' | 'eye' | 'home' | 'lock' | 'map' | 'phone' | 'shield' | 'tools' }) {
+  const color = inverse ? authTokens.raised : authTokens.primary
+  const accent = inverse ? 'rgba(255,255,255,0.84)' : authTokens.copper
 
   return (
     <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
@@ -630,6 +1710,12 @@ function AuthIcon({ name }: { name: 'email' | 'home' | 'lock' | 'phone' | 'shiel
         <>
           <Path d="M5.5 12.2 12.5 6l7 6.2v7.2H5.5v-7.2Z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           <Path d="M10.2 19.4v-4.2h4.6v4.2" stroke={accent} strokeWidth={2} strokeLinecap="round" />
+        </>
+      ) : null}
+      {name === 'eye' ? (
+        <>
+          <Path d="M3.8 12.5s3.1-5.2 8.7-5.2 8.7 5.2 8.7 5.2-3.1 5.2-8.7 5.2-8.7-5.2-8.7-5.2Z" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+          <Path d="M10.5 12.5a2 2 0 1 0 4 0 2 2 0 0 0-4 0Z" stroke={accent} strokeWidth={2} />
         </>
       ) : null}
       {name === 'tools' ? (
@@ -650,6 +1736,12 @@ function AuthIcon({ name }: { name: 'email' | 'home' | 'lock' | 'phone' | 'shiel
           <Path d="M11.2 8.8h2.6M11 16.6h3" stroke={accent} strokeWidth={2} strokeLinecap="round" />
         </>
       ) : null}
+      {name === 'map' ? (
+        <>
+          <Path d="M12.5 20.4s6-4.5 6-10a6 6 0 0 0-12 0c0 5.5 6 10 6 10Z" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+          <Path d="M10.4 10.4a2.1 2.1 0 1 0 4.2 0 2.1 2.1 0 0 0-4.2 0Z" stroke={accent} strokeWidth={2} />
+        </>
+      ) : null}
       {name === 'shield' ? (
         <>
           <Path d="M12.5 4.6 18.4 7v5.4c0 3.4-2.1 5.8-5.9 7.2-3.8-1.4-5.9-3.8-5.9-7.2V7l5.9-2.4Z" stroke={color} strokeWidth={2} strokeLinejoin="round" />
@@ -663,7 +1755,7 @@ function glassSurface(tone: 'cream' | 'cyan' | 'glass' | 'mint' | 'raised', redu
   const backgroundColor = {
     cream: authTokens.cream,
     cyan: authTokens.cyan,
-    glass: reduceTransparency ? 'rgba(255,253,248,0.98)' : authTokens.glass,
+    glass: reduceTransparency ? '#FFFDF8' : authTokens.glass,
     mint: authTokens.mint,
     raised: reduceTransparency ? authTokens.raised : 'rgba(255,255,255,0.88)',
   }[tone]
@@ -677,12 +1769,23 @@ function glassSurface(tone: 'cream' | 'cyan' | 'glass' | 'mint' | 'raised', redu
 }
 
 const styles = StyleSheet.create({
-  safe: { backgroundColor: authTokens.canvas, flex: 1 },
-  canvas: { alignItems: 'center', backgroundColor: authTokens.canvas, flex: 1, justifyContent: 'center', overflow: 'hidden' },
+  safe: { backgroundColor: authTokens.canvas, flex: 1, width: '100%' },
+  canvas: { alignItems: 'center', backgroundColor: authTokens.canvas, flex: 1, justifyContent: 'center', overflow: 'hidden', width: '100%' },
+  canvasTop: { justifyContent: 'flex-start' },
   authScroll: { width: '100%' },
   authContent: { alignItems: 'stretch', gap: 16, minHeight: '100%', paddingVertical: 18, width: '100%' },
   formStack: { gap: 10 },
   loginHeader: { gap: 7 },
+  authFlowShell: { alignSelf: 'center', gap: 14, maxWidth: 350, width: '100%' },
+  authTopRow: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
+  authTitleBlock: { flex: 1, minWidth: 0 },
+  authScreenTitle: { color: authTokens.ink, fontSize: 25, fontWeight: '700', letterSpacing: 0, lineHeight: 29 },
+  authScreenSubtitle: { color: authTokens.muted, fontSize: 12, fontWeight: '700', lineHeight: 17, marginTop: 4 },
+  topKaelFace: { alignItems: 'center', backgroundColor: 'rgba(235,255,250,0.82)', borderColor: 'rgba(255,255,255,0.88)', borderRadius: 22, borderWidth: 1, boxShadow: authTokens.softShadow, height: 54, justifyContent: 'center', overflow: 'hidden', width: 54 },
+  topKaelFaceReduced: { backgroundColor: '#F1FFFB', borderColor: authTokens.border, boxShadow: 'none' },
+  topKaelImage: { height: 60, transform: [{ translateY: 4 }], width: 60 },
+  roundBackButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.86)', borderColor: authTokens.border, borderRadius: 18, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  roundBackButtonReduced: { backgroundColor: '#FFFFFF', boxShadow: 'none' },
   kicker: { color: authTokens.primary, fontSize: 12, fontWeight: '700', letterSpacing: 0 },
   title: { color: authTokens.ink, fontSize: 24, fontWeight: '700', letterSpacing: 0, lineHeight: 30 },
   body: { color: authTokens.muted, fontSize: 14, fontWeight: '500', lineHeight: 20 },
@@ -698,52 +1801,114 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   errorText: { color: '#B64B40', fontSize: 13, fontWeight: '600', lineHeight: 18 },
-  primaryButton: { alignItems: 'center', backgroundColor: authTokens.primary, borderRadius: 20, justifyContent: 'center', minHeight: 52 },
+  primaryButton: { alignItems: 'center', backgroundColor: authTokens.primary, borderRadius: 20, boxShadow: '0 14px 25px rgba(9,121,106,0.22)', justifyContent: 'center', minHeight: 52 },
   primaryButtonText: { color: authTokens.raised, fontSize: 15, fontWeight: '700' },
   secondaryAction: { alignItems: 'center', minHeight: 42, justifyContent: 'center' },
   secondaryActionText: { color: authTokens.primary, fontSize: 14, fontWeight: '700' },
-  roleGateShell: { alignSelf: 'center', borderRadius: 34, gap: 14, maxWidth: 392, overflow: 'hidden', padding: 14, paddingTop: 16, width: '100%' },
-  roleGatewayHero: { borderColor: 'rgba(255,255,255,0.86)', borderRadius: 32, borderWidth: 1, boxShadow: '0 22px 42px rgba(17,70,61,0.12)', gap: 13, overflow: 'hidden', padding: 16 },
-  roleGatewayTop: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
-  roleGatewayBadge: { backgroundColor: 'rgba(255,255,255,0.66)', borderColor: 'rgba(13,134,119,0.12)', borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 11, fontWeight: '800', overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 7 },
-  roleGatewayBadgeIconRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-  roleGatewayGlassLine: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between', minHeight: 94 },
+  authSignOutAction: { alignItems: 'center', alignSelf: 'center', borderRadius: 999, justifyContent: 'center', marginTop: 3, minHeight: 38, paddingHorizontal: 20 },
+  roleGateShell: { alignSelf: 'center', borderRadius: 34, gap: 14, maxWidth: 350, overflow: 'hidden', padding: 14, paddingTop: 16, width: '100%' },
+  roleGatewayHero: { backgroundColor: 'rgba(247,255,252,0.86)', borderColor: 'rgba(255,255,255,0.9)', borderRadius: 32, borderWidth: 1, boxShadow: '0 22px 42px rgba(17,70,61,0.12)', gap: 13, marginTop: 10, overflow: 'hidden', padding: 16, position: 'relative' },
+  roleGatewayHeroReduced: { backgroundColor: '#F2FFFB', borderColor: authTokens.border, boxShadow: 'none' },
+  roleGatewayHeroTint: { backgroundColor: 'rgba(170,255,235,0.2)', bottom: 56, position: 'absolute', right: -30, top: 0, width: 122 },
+  roleGatewayHeroSheen: { backgroundColor: 'rgba(255,255,255,0.38)', height: 84, left: -22, position: 'absolute', top: 54, transform: [{ rotate: '-18deg' }], width: 210 },
+  roleGatewayHeroDivider: { backgroundColor: 'rgba(13,134,119,0.10)', height: 1, left: 16, position: 'absolute', right: 16, top: 58 },
+  roleGatewayTop: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between', zIndex: 1 },
+  roleGatewayBadge: { backgroundColor: 'rgba(255,255,255,0.68)', borderColor: 'rgba(13,134,119,0.12)', borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 11, fontWeight: '800', lineHeight: 15, minHeight: 32, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 7 },
+  roleGatewayBadgeReduced: { backgroundColor: '#FFFFFF', borderColor: authTokens.border },
+  roleGatewayFixedBadge: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.68)', borderColor: 'rgba(13,134,119,0.12)', borderRadius: 999, borderWidth: 1, flexDirection: 'row', gap: 6, minHeight: 32, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 7 },
+  roleGatewayFixedBadgeText: { color: authTokens.primary, fontSize: 11, fontWeight: '800', lineHeight: 15 },
+  roleGatewayGlassLine: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between', minHeight: 94, paddingBottom: 10, paddingRight: 10, paddingTop: 10, zIndex: 1 },
+  roleGatewayTitle: { color: authTokens.ink, flex: 1, fontSize: 25, fontWeight: '700', letterSpacing: 0, lineHeight: 26, maxWidth: 230 },
   roleGatewayKael: { alignItems: 'center', backgroundColor: 'rgba(230,255,249,0.78)', borderColor: 'rgba(255,255,255,0.88)', borderRadius: 24, borderWidth: 1, boxShadow: authTokens.softShadow, height: 66, justifyContent: 'center', overflow: 'hidden', width: 66 },
+  roleGatewayKaelReduced: { backgroundColor: '#EBFFFA', borderColor: authTokens.border, boxShadow: 'none' },
   roleGatewayKaelImage: { height: 74, transform: [{ translateY: 5 }], width: 74 },
-  roleGatewaySignature: { alignItems: 'center', backgroundColor: 'rgba(235,255,250,0.70)', borderColor: 'rgba(255,255,255,0.78)', borderRadius: 24, borderWidth: 1, flexDirection: 'row', gap: 11, minHeight: 58, overflow: 'hidden', paddingHorizontal: 13, paddingVertical: 11, position: 'relative' },
+  roleGatewaySignature: { alignItems: 'center', backgroundColor: 'rgba(235,255,250,0.70)', borderColor: 'rgba(255,255,255,0.78)', borderRadius: 24, borderWidth: 1, flexDirection: 'row', gap: 11, minHeight: 58, overflow: 'hidden', paddingHorizontal: 13, paddingVertical: 11, position: 'relative', zIndex: 1 },
+  roleGatewaySignatureReduced: { backgroundColor: '#EBFFFA', borderColor: authTokens.border },
   roleGatewaySignatureText: { color: '#123F38', flex: 1, fontSize: 13.8, fontWeight: '800', lineHeight: 18 },
   signatureRail: { backgroundColor: authTokens.primary, borderRadius: 999, boxShadow: '0 0 18px rgba(50,218,190,0.42)', height: 34, width: 7 },
-  signatureLiquid: { backgroundColor: 'rgba(116,255,223,0.20)', borderRadius: 999, height: 60, position: 'absolute', right: 18, top: -12, transform: [{ rotate: '-10deg' }], width: 120 },
-  roleGatewayGrid: { gap: 13 },
-  roleCard: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 28, flexDirection: 'row', gap: 12, minHeight: 106, padding: 16 },
-  roleCardPrimary: { backgroundColor: 'rgba(241,255,251,0.94)' },
+  signatureRailReduced: { boxShadow: 'none' },
+  signatureSheen: { backgroundColor: 'rgba(255,255,255,0.72)', bottom: -16, left: -28, position: 'absolute', top: -16, width: 42 },
+  signatureLiquid: { backgroundColor: 'rgba(116,255,223,0.20)', borderRadius: 999, height: 60, left: -24, position: 'absolute', top: -12, width: 120 },
+  roleGatewayGrid: { gap: 13, marginTop: 15 },
+  motionPressShell: { alignSelf: 'stretch' },
+  roleCard: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 28, flexDirection: 'row', gap: 12, minHeight: 106, overflow: 'hidden', padding: 16, position: 'relative' },
+  roleCardPrimary: { backgroundColor: '#F1FFFB', borderColor: 'rgba(13,134,119,0.12)' },
+  roleCardGlow: { bottom: -20, height: 92, position: 'absolute', right: -28, width: 134 },
+  roleCardGlowPrimary: { backgroundColor: 'rgba(133,255,226,0.22)' },
+  roleCardGlowWorker: { backgroundColor: 'rgba(255,239,212,0.3)' },
   roleIcon: { alignItems: 'center', borderRadius: 22, height: 54, justifyContent: 'center', width: 54 },
+  roleIconCustomer: { backgroundColor: authTokens.mint },
+  roleIconHero: { backgroundColor: authTokens.primary, borderColor: 'rgba(255,255,255,0.54)', borderWidth: 1, boxShadow: '0 12px 22px rgba(10,119,105,0.20)', experimental_backgroundImage: 'linear-gradient(135deg, #08786E, #38D8BA)' } as any,
+  roleIconWorker: { backgroundColor: '#FFF4DF', borderColor: 'rgba(187,116,61,0.14)', borderWidth: 1 },
   titleStack: { flex: 1, gap: 5 },
   roleTitle: { color: authTokens.ink, fontSize: 19, fontWeight: '700' },
   roleMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   roleMetaPill: { backgroundColor: 'rgba(218,255,247,0.78)', borderColor: 'rgba(13,134,119,0.11)', borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 10, fontWeight: '800', maxWidth: 120, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5 },
   roleArrow: { color: authTokens.primary, fontSize: 32, fontWeight: '700' },
-  loginMode: { alignItems: 'center', backgroundColor: authTokens.mint, borderColor: authTokens.border, borderRadius: 21, borderWidth: 1, justifyContent: 'center', minHeight: 42, paddingHorizontal: 14 },
-  loginModeText: { color: authTokens.primary, fontSize: 13, fontWeight: '800' },
-  googleButton: { alignItems: 'center', backgroundColor: authTokens.raised, borderColor: authTokens.border, borderRadius: 22, borderWidth: 1, flexDirection: 'row', gap: 10, justifyContent: 'center', minHeight: 58 },
-  googleButtonText: { color: authTokens.ink, fontSize: 14, fontWeight: '800' },
-  googleMark: { alignItems: 'center', backgroundColor: authTokens.raised, borderColor: authTokens.border, borderRadius: 999, borderWidth: 1, height: 28, justifyContent: 'center', width: 28 },
-  phoneButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.94)', borderColor: authTokens.border, borderRadius: 22, borderWidth: 1, flexDirection: 'row', gap: 10, minHeight: 54, paddingHorizontal: 14 },
+  roleArrowBox: { alignItems: 'center', backgroundColor: 'rgba(218,255,247,0.92)', borderColor: 'rgba(13,134,119,0.14)', borderRadius: 15, borderWidth: 1, height: 34, justifyContent: 'center', width: 34 },
+  roleArrowBoxPrimary: { backgroundColor: authTokens.primary, borderColor: 'rgba(255,255,255,0.6)', boxShadow: '0 8px 18px rgba(8,120,110,0.18)' },
+  loginHeroRole: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.84)', borderColor: 'rgba(15,118,104,0.16)', borderRadius: 28, borderWidth: 1, boxShadow: authTokens.softShadow, flexDirection: 'row', gap: 14, marginTop: 4, minHeight: 86, padding: 16 },
+  loginHeroRoleReduced: { backgroundColor: '#FFFFFF', borderColor: authTokens.border, boxShadow: 'none' },
+  loginHeroTitle: { color: authTokens.ink, fontSize: 19, fontWeight: '700', lineHeight: 22 },
+  roleLock: { alignSelf: 'flex-start', backgroundColor: 'rgba(217,255,246,0.82)', borderColor: 'rgba(13,134,119,0.14)', borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 10, fontWeight: '800', marginTop: 2, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
+  roleLockCream: { backgroundColor: 'rgba(255,244,219,0.88)', borderColor: 'rgba(187,116,61,0.16)', color: '#7B552D' },
+  loginForm: { backgroundColor: 'rgba(242,255,251,0.90)', borderColor: 'rgba(20,117,105,0.18)', borderRadius: 30, borderWidth: 1, boxShadow: '0 18px 38px rgba(17,70,61,0.11), inset 0 1px 0 rgba(255,255,255,0.92)', gap: 10, marginTop: 2, overflow: 'hidden', padding: 16, position: 'relative' },
+  loginFormReduced: { backgroundColor: '#F2FFFB', borderColor: authTokens.border, boxShadow: 'none' },
+  loginFormGlow: { backgroundColor: 'rgba(206,255,244,0.34)', borderRadius: 999, height: 104, position: 'absolute', right: -40, top: -38, width: 136 },
+  setupHero: { backgroundColor: 'rgba(235,255,250,0.82)', borderColor: 'rgba(255,255,255,0.82)', borderRadius: 30, borderWidth: 1, boxShadow: authTokens.softShadow, gap: 13, overflow: 'hidden', padding: 15 },
+  setupHeroTop: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+  setupSteps: { flexDirection: 'row', gap: 8 },
+  setupStep: { backgroundColor: 'rgba(255,255,255,0.78)', borderColor: authTokens.border, borderRadius: 18, borderWidth: 1, flex: 1, gap: 2, minHeight: 62, paddingHorizontal: 9, paddingVertical: 9 },
+  setupStepActive: { backgroundColor: authTokens.mint },
+  setupStepLabel: { color: authTokens.primary, fontSize: 11, fontWeight: '800', lineHeight: 14 },
+  setupStepValue: { color: authTokens.muted, fontSize: 10.5, fontWeight: '700', lineHeight: 13 },
+  setupForm: { marginTop: 0 },
+  syncPreview: { backgroundColor: 'rgba(255,255,255,0.76)', borderColor: authTokens.border, borderRadius: 24, borderWidth: 1, gap: 11, overflow: 'hidden', padding: 13 },
+  syncPreviewTop: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
+  syncPreviewTitle: { color: authTokens.ink, flex: 1, fontSize: 13, fontWeight: '800', lineHeight: 17 },
+  loginMode: { alignItems: 'center', backgroundColor: 'rgba(215,255,246,0.96)', borderColor: 'rgba(13,134,119,0.18)', borderRadius: 21, borderWidth: 1, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.88)', justifyContent: 'center', minHeight: 42, paddingHorizontal: 14, zIndex: 1 },
+  loginModeText: { color: authTokens.primary, fontSize: 13, fontWeight: '900' },
+  authChoiceList: { gap: 10, zIndex: 1 },
+  googleButton: { alignItems: 'center', backgroundColor: 'rgba(245,255,252,0.98)', borderColor: 'rgba(13,134,119,0.20)', borderRadius: 22, borderWidth: 1, boxShadow: '0 14px 28px rgba(17,70,61,0.09), inset 0 1px 0 rgba(255,255,255,0.94)', flexDirection: 'row', gap: 10, justifyContent: 'center', minHeight: 58, paddingHorizontal: 13 },
+  googleButtonText: { color: '#073F38', fontSize: 14, fontWeight: '900' },
+  googleMark: { alignItems: 'center', backgroundColor: authTokens.raised, borderColor: 'rgba(20,117,105,0.10)', borderRadius: 999, borderWidth: 1, height: 24, justifyContent: 'center', width: 24 },
+  authMark: { alignItems: 'center', backgroundColor: 'rgba(202,251,240,0.96)', borderColor: 'rgba(13,134,119,0.10)', borderRadius: 15, borderWidth: 1, height: 34, justifyContent: 'center', width: 34 },
+  phoneButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.94)', borderColor: 'rgba(20,117,105,0.15)', borderRadius: 22, borderWidth: 1, boxShadow: '0 8px 18px rgba(17,70,61,0.05), inset 0 1px 0 rgba(255,255,255,0.92)', flexDirection: 'row', gap: 12, minHeight: 56, paddingHorizontal: 13, paddingVertical: 10 },
   phoneButtonText: { color: authTokens.ink, flex: 1, fontSize: 14, fontWeight: '800' },
+  customerEmailFallbackButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.80)', borderColor: 'rgba(20,117,105,0.14)', borderRadius: 18, borderWidth: 1, justifyContent: 'center', minHeight: 42, paddingHorizontal: 12, zIndex: 1 },
+  customerEmailFallbackText: { color: authTokens.primary, fontSize: 13, fontWeight: '800' },
+  phoneUnavailableBox: { alignItems: 'center', backgroundColor: 'rgba(226,255,249,0.78)', borderColor: 'rgba(13,134,119,0.13)', borderRadius: 20, borderWidth: 1, justifyContent: 'center', minHeight: 50, paddingHorizontal: 12 },
+  phoneUnavailableText: { color: authTokens.primary, fontSize: 13, fontWeight: '800', lineHeight: 17, textAlign: 'center' },
   loginDivider: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   loginDividerLine: { backgroundColor: authTokens.line, flex: 1, height: 1 },
   loginDividerText: { color: authTokens.subtle, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
-  fieldShell: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.94)', borderColor: authTokens.border, borderRadius: 22, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 13, paddingVertical: 10 },
-  fieldIcon: { alignItems: 'center', backgroundColor: authTokens.mint, borderColor: authTokens.border, borderRadius: 15, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
+  fieldShell: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.94)', borderColor: 'rgba(20,117,105,0.18)', borderRadius: 21, borderWidth: 1, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.92), 0 7px 14px rgba(17,70,61,0.035)', flexDirection: 'row', gap: 12, minHeight: 54, paddingHorizontal: 14, paddingVertical: 10, zIndex: 1 },
+  fieldIcon: { alignItems: 'center', backgroundColor: 'rgba(202,251,240,0.96)', borderColor: 'rgba(13,134,119,0.10)', borderRadius: 15, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
   fieldCopy: { flex: 1, gap: 1, minWidth: 0 },
   fieldLabel: { color: authTokens.primary, fontSize: 10, fontWeight: '800', lineHeight: 12 },
-  fieldValueLabel: { color: authTokens.ink, fontSize: 14, fontWeight: '800', lineHeight: 17 },
-  fieldInput: { color: authTokens.ink, fontSize: 14, fontWeight: '700', minHeight: 0, padding: 0 },
-  fieldAction: { color: authTokens.primary, fontSize: 11, fontWeight: '800' },
+  fieldInput: { color: authTokens.ink, fontSize: 15, fontWeight: '800', lineHeight: 19, minHeight: 22, padding: 0 },
+  fieldActionButton: { alignItems: 'center', borderRadius: 999, height: 38, justifyContent: 'center', width: 38 },
   workerFormFoot: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   workerFormFootText: { color: authTokens.muted, flex: 1, fontSize: 12, fontWeight: '700' },
   workerFormFootAction: { color: authTokens.primary, fontSize: 12, fontWeight: '800' },
-  secondaryBoxButton: { alignItems: 'center', backgroundColor: authTokens.raised, borderColor: authTokens.border, borderRadius: 20, borderWidth: 1, justifyContent: 'center', minHeight: 50 },
+  workerVerificationStack: { gap: 10, zIndex: 1 },
+  workerUploadGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  workerUploadTile: { backgroundColor: 'rgba(255,255,255,0.88)', borderColor: 'rgba(20,117,105,0.25)', borderRadius: 22, borderStyle: 'dashed', borderWidth: 1, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.92), 0 8px 16px rgba(17,70,61,0.04)', gap: 8, minHeight: 104, padding: 13, width: '48%' },
+  workerUploadIcon: { height: 26, justifyContent: 'center', width: 26 },
+  workerUploadCopy: { gap: 4 },
+  workerUploadLabel: { color: authTokens.ink, fontSize: 13, fontWeight: '800', lineHeight: 15 },
+  workerUploadMeta: { color: authTokens.muted, fontSize: 10.5, fontWeight: '700', lineHeight: 14 },
+  workerCredentialPill: { alignItems: 'center', backgroundColor: authTokens.raised, borderColor: authTokens.border, borderRadius: 20, borderWidth: 1, flexDirection: 'row', gap: 10, minHeight: 52, paddingHorizontal: 12 },
+  workerCredentialCopy: { flex: 1, minWidth: 0 },
+  workerCredentialLabel: { color: authTokens.ink, fontSize: 13, fontWeight: '800' },
+  workerCredentialMeta: { color: authTokens.muted, fontSize: 12, fontWeight: '700', marginTop: 2 },
+  workerVerifyServiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 2 },
+  workerVerifyServiceChip: { backgroundColor: authTokens.mint, borderColor: authTokens.border, borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 12, fontWeight: '800', overflow: 'hidden', paddingHorizontal: 11, paddingVertical: 8 },
+  authFootCta: { alignItems: 'center', backgroundColor: 'rgba(226,255,249,0.78)', borderColor: 'rgba(13,134,119,0.13)', borderRadius: 20, borderWidth: 1, gap: 8, marginTop: 2, padding: 12, zIndex: 1 },
+  authFootCtaText: { color: authTokens.primary, fontSize: 11.5, fontWeight: '700', lineHeight: 15, textAlign: 'center' },
+  authFootLinkButton: { alignItems: 'center', borderRadius: 999, minHeight: 28, paddingHorizontal: 12 },
+  authFootLinkText: { color: authTokens.primary, fontSize: 13, fontWeight: '900' },
+  secondaryBoxButton: { alignItems: 'center', alignSelf: 'stretch', backgroundColor: authTokens.raised, borderColor: authTokens.border, borderRadius: 20, borderWidth: 1, justifyContent: 'center', minHeight: 50 },
   secondaryBoxButtonText: { color: authTokens.primary, fontSize: 14, fontWeight: '800' },
   disabled: { opacity: 0.54 },
   pressed: { opacity: 0.78 },
