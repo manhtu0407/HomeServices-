@@ -60,9 +60,10 @@ export default function WorkerLayout() {
     return <Redirect href="/(auth)/login" />
   }
 
-  if (role === 'admin') {
-    // Admin users can inspect the worker workflow without changing role.
-  } else if (role !== 'worker') {
+  // Phase 5.1 (plan §22.10.B, 2026-05-23): admin no longer auto-bypass worker
+  // shell. Admin gets its own (admin) shell. Worker shell strictly requires
+  // role='worker' to prevent accidental admin actions in worker surfaces.
+  if (role !== 'worker') {
     return <Redirect href="/(auth)/login" />
   }
 

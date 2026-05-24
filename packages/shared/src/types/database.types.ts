@@ -1547,11 +1547,9 @@ export type Database = {
       request_scope_change_atomic: {
         Args: {
           p_job_id: string
-          p_new_description: string
-          p_new_price_max: number
-          p_new_price_min: number
-          p_reason: string
           p_worker_id: string
+          p_new_description: string
+          p_reason: string
         }
         Returns: {
           created_at_ts: string

@@ -212,15 +212,19 @@ describe('kaelChat schemas', () => {
   })
 })
 
-describe('workerScopeChangeSchema', () => {
+describe('workerScopeChangeSchema (Phase 2.0 2026-05-23: no price fields)', () => {
+  // Phase 2.0 (plan §22.7.B): worker does not propose price. Kael compute new
+  // estimate from worker's reported scope. Schema accepts description + reason
+  // + optional photo_urls only. Price tests were removed because workers no
+  // longer pass price; the price authority moved to Kael per Tu's decision
+  // 2026-05-23.
   const validScope = {
     new_description: 'Phạm vi thay đổi do ống chính bị hỏng',
-    new_price_min: 200000,
-    new_price_max: 400000,
     reason: 'Phát hiện ống chính rỉ nước nghiêm trọng',
+    photo_urls: [],
   }
 
-  it('accepts valid scope change', () => {
+  it('accepts valid scope change (description + reason + optional photos)', () => {
     expect(() => workerScopeChangeSchema.parse(validScope)).not.toThrow()
   })
 
@@ -228,52 +232,38 @@ describe('workerScopeChangeSchema', () => {
     expect(workerScopeChangeSchema.safeParse(validScope).success).toBe(true)
   })
 
-  it('rejects price_max < price_min', () => {
-    expect(() =>
-      workerScopeChangeSchema.parse({
-        ...validScope,
-        new_price_min: 500000,
-        new_price_max: 200000,
-      })
-    ).toThrow()
+  it('rejects price fields if a regressed client sends them', () => {
+    // .strict() not enforced; current zod accepts unknown keys silently. But the
+    // parsed object MUST NOT carry a price field — Edge ignores it anyway.
+    const parsed = workerScopeChangeSchema.parse({
+      ...validScope,
+      new_price_min: 200000,
+      new_price_max: 400000,
+    } as unknown as typeof validScope)
+    expect(parsed).not.toHaveProperty('new_price_min')
+    expect(parsed).not.toHaveProperty('new_price_max')
   })
 
-  it('accepts price_max === price_min', () => {
+  it('accepts up to 5 photo urls', () => {
     expect(() =>
       workerScopeChangeSchema.parse({
         ...validScope,
-        new_price_min: 300000,
-        new_price_max: 300000,
+        photo_urls: [
+          'https://example.com/1.jpg',
+          'https://example.com/2.jpg',
+          'https://example.com/3.jpg',
+          'https://example.com/4.jpg',
+          'https://example.com/5.jpg',
+        ],
       })
     ).not.toThrow()
   })
 
-  it('rejects negative prices', () => {
+  it('rejects more than 5 photo urls', () => {
     expect(() =>
       workerScopeChangeSchema.parse({
         ...validScope,
-        new_price_min: -100,
-        new_price_max: 200000,
-      })
-    ).toThrow()
-  })
-
-  it('rejects zero price', () => {
-    expect(() =>
-      workerScopeChangeSchema.parse({
-        ...validScope,
-        new_price_min: 0,
-        new_price_max: 200000,
-      })
-    ).toThrow()
-  })
-
-  it('rejects fractional prices (must be integer VND)', () => {
-    expect(() =>
-      workerScopeChangeSchema.parse({
-        ...validScope,
-        new_price_min: 199999.5,
-        new_price_max: 400000,
+        photo_urls: Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.jpg`),
       })
     ).toThrow()
   })

@@ -812,16 +812,18 @@ UI
 -
 |- hard-stop modal or equivalent
 |- old scope vs new scope
-|- old estimate vs new estimate
+|- old Kael estimate vs new Kael-computed estimate (computed from worker's reported scope)
 |- reason from worker
 |- Kael explanation
 |- continue or cancel
+|- Kael badge: estimate is computed by Kael, not worker-typed (Phase 2.0 2026-05-23)
 
 Hard rule
 -
 |- worker is blocked until customer decides
 |- no hidden price change
 |- no auto-approval
+|- worker does not propose price; Kael computes from original Kael context + worker reported scope (Phase 2.0 2026-05-23)
 
 Events
 -
@@ -841,12 +843,13 @@ Content
 -
 |- worker completion note
 |- completion photos
-|- final price
+|- final price (Kael-locked: set at A7 confirm baseline or latest A11 approved Kael-computed value)
 |- confirm received button
 
 Hard rule
 -
 |- payment cannot complete before customer confirmation in current phase
+|- final price source is Kael authority, not worker input (Phase 2.0 2026-05-23)
 ```
 
 ### A13. Payment
@@ -1077,14 +1080,14 @@ Purpose
 Worker input
 -
 |- real issue description
-|- new estimated price
 |- reason
 |- optional photo evidence
 
 Rules
 -
+|- worker does NOT propose price; Kael computes new estimate from worker reported scope (Phase 2.0 2026-05-23)
 |- worker cannot continue changed work until customer approves
-|- Kael explains change to customer
+|- Kael computes + explains change to customer
 |- all scope change data is logged
 ```
 
@@ -1097,14 +1100,18 @@ Purpose
 
 Input
 -
-|- completion note
-|- final price
-|- completion photos
+|- completion note (required)
+|- completion photos (>= 1 required)
 
 State
 -
 |- completed_by_worker
 |- waiting_customer_confirmation
+
+Rules
+-
+|- worker does NOT enter final price; Kael-locked value is authoritative (Phase 2.0 2026-05-23)
+|- final price source: jobs.final_price (set at A7 confirm baseline or latest A11 approved Kael-computed value)
 ```
 
 ### B8. Earnings
@@ -1528,12 +1535,15 @@ Responsibility
 |- orchestrate intent, vision, price search, synthesis
 |- validate structured output
 |- return estimate card data
+|- compute scope-change estimate from worker reported scope (Phase 2.0 2026-05-23)
+|- own final-price authority across A7 baseline + A11 approved updates
 
 Forbidden
 -
 |- raw AI output to UI
 |- client-side AI calls
 |- unsupported service advice
+|- accepting worker-typed prices for final price decisions (Phase 2.0 2026-05-23)
 ```
 
 ### JobLifecycleModule
@@ -1589,15 +1599,17 @@ Forbidden
 ```text
 Responsibility
 -
-|- worker scope-change request
-|- Kael explanation
-|- customer decision
+|- worker scope-change request (description + reason + photos only; Phase 2.0 2026-05-23)
+|- delegate price re-computation to KaelPriceCheckModule (computeScopeChangeEstimate)
+|- persist Kael-computed price (kael_computed_min/max) for audit
+|- customer decision; on approve, lock jobs.final_price = Kael-computed max
 |- worker blocking until decision
 
 Forbidden
 -
 |- auto-approve scope change
 |- hidden price change
+|- worker-proposed price (Phase 2.0 2026-05-23)
 ```
 
 ### LearningRuleModule
@@ -1901,7 +1913,8 @@ PII rules
 Price principles
 -
 |- estimate before booking
-|- final price confirmed by worker after inspection
+|- Kael owns final-price authority (Phase 2.0 2026-05-23): initial lock = kael_price_max at A7 confirm; updates only via Kael compute at approved A11 scope change
+|- worker does not enter or change final price; worker submits scope description + reason + photos and Kael recomputes
 |- estimate shown as range, not exact guarantee
 |- required disclaimer on every price estimate
 |- no hardcoded VND values in source code
@@ -1937,14 +1950,15 @@ Example job: 300,000 VND
 Scope change exists because real on-site inspection may reveal a different issue.
 
 ```text
-Scope change flow
+Scope change flow (Phase 2.0 2026-05-23)
 -
 |- worker inspects
-|- worker reports new issue/scope
-|- worker enters new price estimate and reason
-|- Kael compares original vs new scope
-|- customer sees hard-stop confirmation
+|- worker reports new issue/scope (description + reason + optional photos)
+|- Kael compute new estimate from original Kael context + worker reported scope
+|- customer sees hard-stop confirmation with Kael-computed new estimate (badge: computed by Kael)
 |- customer approves or rejects
+|- on approve, jobs.final_price relocked to Kael-computed max
+|- on reject, job cancelled (per migration 20260518181500)
 |- worker continues only if approved
 ```
 
@@ -1955,8 +1969,9 @@ Modal content
 -
 |- original issue
 |- new issue
-|- original estimate
-|- new estimate
+|- original Kael estimate
+|- new Kael-computed estimate
+|- Kael compute badge clarifying authority (Phase 2.0 2026-05-23)
 |- reason
 |- Kael explanation
 |- continue button
@@ -1970,7 +1985,8 @@ Forbidden pricing behavior
 -
 |- hidden price change
 |- exact guarantee
-|- final price without worker confirmation
+|- worker-entered final price (Phase 2.0 2026-05-23)
+|- final price change without customer A11 approval
 |- scope change without customer decision
 |- AI-fabricated market price
 ```

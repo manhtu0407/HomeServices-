@@ -16,11 +16,11 @@ vi.mock('@/lib/db/query', () => ({
 
 import { requestScopeChange, decideScopeChange } from '@/lib/jobs/scope-change'
 
+// Phase 2.0 (2026-05-23): worker không gửi price; Kael compute từ context.
 const VALID_INPUT = {
   new_description: 'Phát hiện ống chính bị hỏng, cần thay đoạn lớn hơn',
-  new_price_min: 800_000,
-  new_price_max: 1_500_000,
   reason: 'On-site inspection cho thấy vấn đề nghiêm trọng hơn',
+  photo_urls: [],
 }
 
 // =============================================================================
@@ -75,8 +75,6 @@ describe('requestScopeChange (RPC-based)', () => {
       p_job_id: 'job-1',
       p_worker_id: 'worker-1',
       p_new_description: VALID_INPUT.new_description,
-      p_new_price_min: VALID_INPUT.new_price_min,
-      p_new_price_max: VALID_INPUT.new_price_max,
       p_reason: VALID_INPUT.reason,
     })
   })

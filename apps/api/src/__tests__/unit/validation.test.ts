@@ -137,60 +137,50 @@ describe('jobCreateSchema', () => {
   })
 })
 
-describe('workerScopeChangeSchema (B6 — worker requests scope change)', () => {
+describe('workerScopeChangeSchema (Phase 2.0 2026-05-23: Kael owns final price)', () => {
+  // Phase 2.0 (plan §22.7.B): worker không gửi price; Kael compute new estimate
+  // from worker's reported scope. Schema accepts description + reason + photos.
   const validScope = {
     new_description: 'Phát hiện thêm ống nước bị rỉ ở bếp, cần thay đoạn lớn hơn',
-    new_price_min: 300000,
-    new_price_max: 500000,
     reason: 'Ống nước bếp cũ, cần thay mới toàn bộ',
+    photo_urls: [],
   }
 
-  it('accepts valid scope change', () => {
+  it('accepts valid scope change (description + reason + optional photos)', () => {
     expect(() => workerScopeChangeSchema.parse(validScope)).not.toThrow()
   })
 
   it('does NOT include job_id (comes from URL, not body)', () => {
-    // The schema should not require job_id — it's derived from URL params
     const result = workerScopeChangeSchema.safeParse(validScope)
     expect(result.success).toBe(true)
   })
 
-  it('rejects negative price', () => {
-    expect(() =>
-      workerScopeChangeSchema.parse({ ...validScope, new_price_min: -100000 })
-    ).toThrow()
+  it('drops worker-typed price fields if a regressed client sends them', () => {
+    const parsed = workerScopeChangeSchema.parse({
+      ...validScope,
+      new_price_min: 300000,
+      new_price_max: 500000,
+    } as unknown as typeof validScope)
+    expect(parsed).not.toHaveProperty('new_price_min')
+    expect(parsed).not.toHaveProperty('new_price_max')
   })
 
-  it('rejects zero price', () => {
-    expect(() =>
-      workerScopeChangeSchema.parse({ ...validScope, new_price_max: 0 })
-    ).toThrow()
-  })
-
-  it('rejects float price (prices are integer VND)', () => {
-    expect(() =>
-      workerScopeChangeSchema.parse({ ...validScope, new_price_min: 150000.5 })
-    ).toThrow()
-  })
-
-  it('rejects min > max', () => {
+  it('accepts up to 5 photo urls', () => {
     expect(() =>
       workerScopeChangeSchema.parse({
         ...validScope,
-        new_price_min: 600000,
-        new_price_max: 300000,
-      })
-    ).toThrow()
-  })
-
-  it('accepts min == max (fixed price)', () => {
-    expect(() =>
-      workerScopeChangeSchema.parse({
-        ...validScope,
-        new_price_min: 400000,
-        new_price_max: 400000,
+        photo_urls: Array.from({ length: 5 }, (_, index) => `https://example.com/${index}.jpg`),
       })
     ).not.toThrow()
+  })
+
+  it('rejects more than 5 photo urls', () => {
+    expect(() =>
+      workerScopeChangeSchema.parse({
+        ...validScope,
+        photo_urls: Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.jpg`),
+      })
+    ).toThrow()
   })
 
   it('rejects short new_description', () => {
@@ -362,5 +352,59 @@ describe('scrubSensitiveForLLM', () => {
     const input = 'SĐT 0901234567, email tu@example.com, CCCD 001234567890'
 
     expect(scrubSensitiveForLLM(input)).toBe('SĐT [phone], email [email], CCCD [id-number]')
+  })
+
+  it('strips HCMC apartment complex names', () => {
+    expect(scrubSensitiveForLLM('Tôi ở Vinhomes Central Park')).toContain('[building]')
+    expect(scrubSensitiveForLLM('Toi o Masteri An Phu')).toContain('[building]')
+    expect(scrubSensitiveForLLM('Phú Mỹ Hưng quận 7')).toContain('[building]')
+    expect(scrubSensitiveForLLM('The Manor 2')).toContain('[building]')
+  })
+
+  it('strips floor and unit identifiers', () => {
+    expect(scrubSensitiveForLLM('tầng 25 căn A.25.07')).toBe('[floor] [unit]')
+    expect(scrubSensitiveForLLM('lầu 10 phòng 1234')).toBe('[floor] [unit]')
+    expect(scrubSensitiveForLLM('block A toà B2')).toContain('[unit]')
+  })
+
+  it('strips bank account numbers (8 or 13-15 digits)', () => {
+    expect(scrubSensitiveForLLM('STK 12345678')).toBe('STK [bank-account]')
+    expect(scrubSensitiveForLLM('Tài khoản 1234567890123')).toBe('Tài khoản [bank-account]')
+    expect(scrubSensitiveForLLM('STK 123456789012345')).toBe('STK [bank-account]')
+  })
+
+  it('strips house number after "số"', () => {
+    expect(scrubSensitiveForLLM('số 123 Nguyễn Văn Linh')).toBe('[house-no] Nguyễn Văn Linh')
+    expect(scrubSensitiveForLLM('so 45A Le Loi')).toBe('[house-no] Le Loi')
+  })
+
+  it('combines patterns in a realistic customer message', () => {
+    const input = 'Tôi ở Vinhomes Central Park tầng 25 căn A.25.07, STK 1234567890123'
+    const out = scrubSensitiveForLLM(input)
+    expect(out).toContain('[building]')
+    expect(out).toContain('[floor]')
+    expect(out).toContain('[unit]')
+    expect(out).toContain('[bank-account]')
+    expect(out).not.toContain('Vinhomes')
+    expect(out).not.toContain('25')
+  })
+
+  it('does not strip legitimate problem description without PII', () => {
+    expect(scrubSensitiveForLLM('Đèn bị chập, có mùi khét')).toBe('Đèn bị chập, có mùi khét')
+    expect(scrubSensitiveForLLM('Vòi nước bị rò rỉ ở bồn rửa')).toBe(
+      'Vòi nước bị rò rỉ ở bồn rửa',
+    )
+    expect(scrubSensitiveForLLM('Cần dọn dẹp sau sửa chữa')).toBe('Cần dọn dẹp sau sửa chữa')
+  })
+
+  it('does not strip standalone "tầng" without a number', () => {
+    const input = 'Tầng dưới bị thấm nước'
+    expect(scrubSensitiveForLLM(input)).toBe('Tầng dưới bị thấm nước')
+  })
+
+  it('does not strip short numbers (< 8 digits) outside phone/id patterns', () => {
+    expect(scrubSensitiveForLLM('Tôi đếm 5 con muỗi')).toBe('Tôi đếm 5 con muỗi')
+    expect(scrubSensitiveForLLM('Bóng đèn 60w')).toBe('Bóng đèn 60w')
+    expect(scrubSensitiveForLLM('Hỏng 3 ổ cắm')).toBe('Hỏng 3 ổ cắm')
   })
 })

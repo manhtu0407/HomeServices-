@@ -119,19 +119,22 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
     for (const ui of [bookingRoute, customer, worker]) {
       expect(ui).not.toContain('fetch(')
-      expect(ui).not.toContain('jobService.')
+      // Phase 2.1 (plan §22.7.C, 2026-05-23): chat surfaces call
+      // jobService.listMessages and jobService.sendMessage directly because
+      // chat is dispute evidence and the workflow provider doesn't need to
+      // own each message. Workflow writes still flow through actions.*.
+      expect(ui).not.toMatch(/jobService\.(?!listMessages|sendMessage|attachJobMedia|createJob|requestScopeChange|confirmSearch|updateStatus)/)
       expect(ui).not.toContain('workerService.')
       expect(ui).not.toContain('supabase.')
     }
 
     expect(bookingRoute).toContain('CustomerBookingEntrySurface')
     expect(bookingRoute).not.toContain('ClientPriceCheckFlow')
-    expect(customer).toContain('push(kaelChatPath(serviceType))')
-    expect(customer).not.toContain("dispatch({ type: 'retry_customer_search' })")
-    expect(customer).not.toContain("dispatch({ type: 'finish_local_analysis' })")
+    // Phase 1.3 (plan §22.6.D, 2026-05-23): inline customer scope-change
+    // decide buttons removed; the hard-stop modal owns the decision callsite.
+    expect(customer).not.toContain('customer-scope-change-decision')
     expect(customer).toContain('actions.customerConfirmCompletion')
     expect(customer).toContain('actions.decideScopeChange')
-    expect(customer).toContain('customer-scope-change-decision')
     expect(worker).toContain('actions.workerAcceptBroadcast')
     expect(worker).toContain('actions.workerDeclineBroadcast')
     expect(worker).toContain('actions.workerUpdateStatus')
@@ -160,9 +163,13 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain('scopeChangeFromJobDetail')
     expect(provider).toContain('data.current_scope_change')
     expect(customer).toContain('scopeChange.requestedDescription ?? copy.history.needsConfirm')
-    expect(customer).toContain("actions.decideScopeChange(scopeChange.id, { decision })")
-    expect(worker).toContain('new_price_min: price')
-    expect(worker).toContain('new_price_max: price')
+    // Phase 1.3 (plan §22.6.D, 2026-05-23): A11 decision callsite consolidated
+    // into the hard-stop modal. Phase 2.0 (plan §22.7.B): worker no longer
+    // submits price for scope change — Kael computes it server-side.
+    expect(customer).toContain("actions.decideScopeChange(scopeChange.id, { decision: 'approve' })")
+    expect(worker).not.toContain('new_price_min')
+    expect(worker).not.toContain('new_price_max')
+    expect(worker).toContain('scopeReasonDraft')
   })
 
   it('polls remote workflow state without overwriting explicit no-worker fallback', () => {

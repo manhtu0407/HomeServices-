@@ -35,6 +35,20 @@ const scopeChangeReviewSchema = z.object({
   risk_notes: z.array(z.string().min(1).max(200)).max(3),
 });
 
+// Phase 2.0 (2026-05-23): Kael compute new estimate from worker scope report.
+// Worker không đề xuất giá ở B6; Kael compute new price range độc lập.
+const scopeChangeEstimateSchema = z.object({
+  complexity_assessment: z.enum(["small", "medium", "large"]),
+  price_min: z.number().int().positive(),
+  price_max: z.number().int().positive(),
+  confidence: z.number().min(0).max(1),
+  problem_summary: z.string().min(1).max(500),
+  advisory: z.string().max(400).nullable().optional(),
+}).refine((data) => data.price_max >= data.price_min, {
+  message: "price_max must be >= price_min",
+  path: ["price_max"],
+});
+
 const KAEL_BUSINESS_GUARDRAILS = `Kael is the main AI assistant for this home-services product.
 Scope is strictly HCMC home services for exactly three service boxes: electrical repair, plumbing repair, and home cleaning.
 Reject unrelated topics, adult or explicit sexual content, random image requests, or any request that is not useful for those three service boxes by classifying it as unsupported.
@@ -195,6 +209,35 @@ export type ScopeChangeKaelReview = ScopeChangeReviewBody & {
   latency_ms: number | null;
 };
 
+// Phase 2.0 (2026-05-23): input cho Kael compute new estimate khi worker báo
+// scope change. Worker không gửi price; Kael compute độc lập từ original Kael
+// analysis + worker's reported scope.
+export type ScopeChangeComputeInput = {
+  serviceType: ServiceType;
+  district?: string | null;
+  originalDescription: string;
+  originalProblemSummary?: string | null;
+  originalComplexity?: ComplexityLevel | null;
+  originalPriceMin?: number | null;
+  originalPriceMax?: number | null;
+  workerReportedDescription: string;
+  workerReason: string;
+};
+
+type ScopeChangeEstimateBody = z.infer<typeof scopeChangeEstimateSchema>;
+
+export type ScopeChangeKaelEstimate = ScopeChangeEstimateBody & {
+  version: "scope-change-estimate.2026-05-23.v1";
+  provider: "anthropic" | null;
+  model: string | null;
+  fallback_used: boolean;
+  failure_reason?: string;
+  computed_at: string;
+  cost_usd: number | null;
+  latency_ms: number | null;
+  disclaimer: string;
+};
+
 export type PipelineResult =
   | {
     success: true;
@@ -257,6 +300,138 @@ export async function reviewScopeChange(
     reviewed_at: new Date().toISOString(),
     cost_usd: attempt.result.usage.costUsd,
     latency_ms: attempt.ms,
+  };
+}
+
+// Phase 2.0 (2026-05-23): Kael computes new price estimate from worker's
+// reported on-site scope. Worker không nhập price; Kael giữ price authority.
+export async function computeScopeChangeEstimate(
+  input: ScopeChangeComputeInput,
+  secrets: EdgeAiSecrets,
+): Promise<ScopeChangeKaelEstimate> {
+  const fallback = buildScopeChangeEstimateFallback(input);
+  const attempt = await timed(() =>
+    callAI({
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      messages: buildScopeChangeEstimateMessages(input),
+      maxTokens: 500,
+      temperature: 0.1,
+    }, secrets)
+  );
+
+  if (!attempt.result.success) {
+    return {
+      ...fallback,
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      failure_reason: attempt.result.code,
+      latency_ms: attempt.ms,
+    };
+  }
+
+  const parsed = safeParseJSON(attempt.result.content);
+  const validated = parsed ? scopeChangeEstimateSchema.safeParse(parsed) : null;
+  if (!validated?.success) {
+    return {
+      ...fallback,
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      failure_reason: "INVALID_SCHEMA",
+      cost_usd: attempt.result.usage.costUsd,
+      latency_ms: attempt.ms,
+    };
+  }
+
+  return {
+    version: "scope-change-estimate.2026-05-23.v1",
+    ...validated.data,
+    advisory: validated.data.advisory ?? null,
+    disclaimer: PRICE_DISCLAIMER,
+    provider: "anthropic",
+    model: "claude-sonnet-4-6",
+    fallback_used: false,
+    computed_at: new Date().toISOString(),
+    cost_usd: attempt.result.usage.costUsd,
+    latency_ms: attempt.ms,
+  };
+}
+
+function buildScopeChangeEstimateMessages(
+  input: ScopeChangeComputeInput,
+): AIMessage[] {
+  const originalRange = formatReviewPriceRange(
+    input.originalPriceMin,
+    input.originalPriceMax,
+  );
+  return [
+    {
+      role: "system",
+      content: `${KAEL_BUSINESS_GUARDRAILS}
+${KAEL_RESPONSE_STYLE}
+
+You compute an updated price estimate for a Vietnamese HCMC home-services job
+after the worker reports a different on-site scope.
+The worker does NOT propose a price; you compute it independently using the
+original Kael analysis and the worker's reported scope description + reason.
+Do not include PII, full addresses, phone numbers, or raw worker/customer text.
+Prices must be VND integers reasonable for HCMC apartment electrical / plumbing
+/ cleaning work. Confidence below 0.4 if evidence is weak.
+
+Respond ONLY with valid JSON matching this schema:
+{
+  "complexity_assessment": "small" | "medium" | "large",
+  "price_min": number (VND integer),
+  "price_max": number (VND integer, >= price_min),
+  "confidence": number (0-1),
+  "problem_summary": "short Vietnamese summary of updated problem",
+  "advisory": "optional short Vietnamese practical note or null"
+}`,
+    },
+    {
+      role: "user",
+      content: `Service: ${sanitizeForLLM(input.serviceType)}
+District: ${sanitizeForLLM(input.district ?? "unknown")}
+Original description: ${scrubSensitiveForLLM(input.originalDescription)}
+Original Kael summary: ${scrubSensitiveForLLM(input.originalProblemSummary ?? "")}
+Original complexity: ${sanitizeForLLM(input.originalComplexity ?? "unknown")}
+Original price range: ${originalRange}
+Worker reported scope: ${scrubSensitiveForLLM(input.workerReportedDescription)}
+Worker reason: ${scrubSensitiveForLLM(input.workerReason)}`,
+    },
+  ];
+}
+
+function buildScopeChangeEstimateFallback(
+  input: ScopeChangeComputeInput,
+): ScopeChangeKaelEstimate {
+  const originalMax = input.originalPriceMax ?? input.originalPriceMin ?? 0;
+  const fallbackMin = Math.max(
+    1,
+    Math.round((input.originalPriceMin ?? originalMax) * 1.2),
+  );
+  const fallbackMax = Math.max(
+    fallbackMin,
+    Math.round(originalMax * 1.5) || fallbackMin,
+  );
+  return {
+    version: "scope-change-estimate.2026-05-23.v1",
+    complexity_assessment: "medium",
+    price_min: fallbackMin,
+    price_max: fallbackMax,
+    confidence: 0.3,
+    problem_summary:
+      "Kael chưa thể tính lại chính xác — vui lòng kiểm tra mô tả từ thợ.",
+    advisory:
+      "Khách nên đối chiếu phạm vi mới với phạm vi ban đầu trước khi quyết định.",
+    disclaimer: PRICE_DISCLAIMER,
+    provider: null,
+    model: null,
+    fallback_used: true,
+    failure_reason: "FALLBACK_ESTIMATE",
+    computed_at: new Date().toISOString(),
+    cost_usd: null,
+    latency_ms: null,
   };
 }
 
@@ -1262,7 +1437,19 @@ function scrubSensitiveForLLM(input: string): string {
     .replace(/\b0\d{8,10}\b/g, "[phone]")
     .replace(/\b\+?84\d{8,10}\b/g, "[phone]")
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
-    .replace(/\b\d{9,12}\b/g, "[id-number]");
+    .replace(/\b\d{9,12}\b/g, "[id-number]")
+    .replace(/\b\d{8}\b/g, "[bank-account]")
+    .replace(/\b\d{13,15}\b/g, "[bank-account]")
+    .replace(
+      /\b(?:Vinhomes|Vincom|Masteri|Saigon Pearl|Saigon Royal|Saigon South|Sun Avenue|Sun Village|Sunwah|Estella|Lexington|Diamond Island|Empire City|Eco Green|Phu My Hung|Phú Mỹ Hưng|Hoang Anh Gia Lai|Hoàng Anh Gia Lai|Riviera Point|Vista Verde|Era Town|The Manor|Lancaster|City Garden|Lavila|Centana|Topaz|Jamila|Akari|Sunrise City|Botanica|Pearl Plaza|Landmark|The Sun|Citadines|Lumière|Lumiere)(?:\s+(?!tầng|tang|lầu|lau|căn|can|phòng|phong|block|toà|tòa|toa|số|so|STK|TK)[A-Za-zÀ-ỹ][\wÀ-ỹ.]*){0,2}/gi,
+      "[building]",
+    )
+    .replace(/\b(?:tầng|tang|lầu|lau)\s*\d{1,3}\b/gi, "[floor]")
+    .replace(
+      /\b(?:căn(?:\s+hộ)?|can(?:\s+ho)?|phòng|phong|block|toà|tòa|toa)\s+[A-Za-z0-9.\-_/]+/gi,
+      "[unit]",
+    )
+    .replace(/\b(?:số|so)\s+\d+[A-Za-z]?\b/gi, "[house-no]");
 }
 
 function hasUnsupportedRepairIntent(input: string): boolean {

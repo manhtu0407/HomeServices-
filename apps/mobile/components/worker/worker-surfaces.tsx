@@ -17,7 +17,9 @@ import { appCopy, localizedProblemLabel, localizedServiceLabel, localizedStatusL
 import type { WorkerProfileResponse } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-import { uploadWorkerVerificationDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
+import { uploadJobMediaDrafts, uploadWorkerVerificationDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
+import { jobService } from '@/lib/services'
+import type { JobMessageResponse } from '@/lib/api-types'
 
 const WORKER_XANHSM_REFERENCE_AUDIT = 'WORKER_XANHSM_REFERENCE_AUDIT: XanhSM map shell translated into Home Services worker production UI'
 const WORKER_PRODUCTION_CONTRACT = 'WORKER_PRODUCTION_CONTRACT: docs/design/worker-production-contract.md'
@@ -26,7 +28,7 @@ const WORKER_THEME_LANGUAGE_STORE = 'WORKER_THEME_LANGUAGE_STORE: worker-theme-l
 const WORKER_FLEXIBLE_MAP_SHELL = 'WORKER_FLEXIBLE_MAP_SHELL: worker-map-google-ready flexible-map-preview'
 const WORKER_DOCK_GLASS_MOTION = 'WORKER_DOCK_GLASS_MOTION: worker-dock-glass-aura worker-liquid-glass-dock worker-dock-kael-brief-mascot worker-dock-icon-system'
 const WORKER_GLASSMORPHISM_MOTION_LAYER = 'WORKER_GLASSMORPHISM_MOTION_LAYER: shared-glass-pressable static-depth-layer centered-metric-type'
-const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kael-empty-chat-state worker-kael-local-chat-input submitWorkerKaelLocalDraft'
+const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kael-empty-chat-state worker-kael-local-chat-input submitWorkerChatMessage'
 const WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT = 'WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT: general area only until worker accepts'
 const WORKER_NO_FAKE_PAYMENT_DATA = 'WORKER_NO_FAKE_PAYMENT_DATA: worker-no-fake-payment-data'
 const WORKER_JOBROOM_KAEL_HANDOFF = 'WORKER_JOBROOM_KAEL_HANDOFF: worker-jobroom-kael-handoff worker-jobroom-waiting-room worker-jobroom-privacy-gate'
@@ -71,7 +73,9 @@ type WorkerIconName =
 type WorkerChatMessage = { id: string; mine?: boolean; system?: boolean; text: string; who: string }
 type WorkerBroadcastView = NonNullable<LocalDeal['broadcast']>
 
-let lastWorkerDockActive: WorkerActiveTab = 'home'
+// Phase 5.9 (plan §22.10.J, 2026-05-23): removed module-level mutable
+// `lastWorkerDockActive`. Written-only, never read — see customer-surfaces.tsx
+// comment for the rationale and the future-state plan if persistence is needed.
 const workerJobsTabKeys: WorkerJobsTab[] = ['waiting', 'active', 'needs']
 const workerServiceAreaAnchors: Array<{ lat: number; lng: number; slug: Exclude<DistrictSlug, 'hcmc_all'> }> = [
   { slug: 'q1', lat: 10.7757, lng: 106.7004 },
@@ -267,6 +271,8 @@ const workerCopy = {
       send: 'Gửi',
       worker: 'Thợ',
       kael: 'Kael',
+      customer: 'Khách',
+      sendErrorFallback: 'Không gửi được tin nhắn. Vui lòng thử lại.',
     },
     earnings: {
       eyebrow: 'Thu nhập',
@@ -378,6 +384,8 @@ const workerCopy = {
       send: 'Send',
       worker: 'Worker',
       kael: 'Kael',
+      customer: 'Customer',
+      sendErrorFallback: 'Could not send the message. Please try again.',
     },
     earnings: {
       eyebrow: 'Earnings',
@@ -550,9 +558,15 @@ type WorkerVerificationCopy = {
 const workerActionCopy = {
   vi: {
     hiddenAddress: 'ẩn địa chỉ chi tiết',
-    finalPrice: 'Giá cuối cùng',
+    // Phase 2.0 (2026-05-23): worker không nhập giá. Kael giữ price authority.
+    kaelLockedPriceLabel: 'Giá Kael chốt',
+    kaelLockedPriceWaiting: 'Kael chưa chốt giá',
+    completionNotes: 'Ghi chú khi hoàn tất',
+    completionPhotosLabel: 'Ảnh sau khi hoàn tất (1-5 ảnh)',
     scopeDescription: 'Mô tả phần phát sinh',
-    scopePrice: 'Giá mới cần khách duyệt',
+    scopeReason: 'Lý do vì sao thay đổi',
+    scopeKaelPriceHint: 'Kael sẽ tính lại giá khi khách xem yêu cầu.',
+    scopePhotosLabel: 'Ảnh phần phát sinh (tuỳ chọn)',
     scopeSubmit: 'Yêu cầu đổi phạm vi',
     scopeWaiting: 'Chờ khách quyết định thay đổi phạm vi.',
     cancelReason: 'Lý do cần hủy',
@@ -560,6 +574,8 @@ const workerActionCopy = {
     cancelSubmit: 'Yêu cầu hủy có lý do',
     review: 'Kiểm tra lại',
     send: 'Gửi',
+    uploading: 'Đang tải ảnh…',
+    pickPhotos: 'Chọn ảnh',
     progress: {
       worker_start_travel: 'Bắt đầu di chuyển',
       worker_mark_arrived: 'Đã đến nơi',
@@ -568,27 +584,37 @@ const workerActionCopy = {
       worker_complete_job: 'Báo hoàn tất',
     },
     alerts: {
-      finalPriceRequiredTitle: 'Cần giá cuối cùng',
-      finalPriceRequiredBody: 'Nhập giá cuối cùng thực tế trước khi báo hoàn tất.',
       completeTitle: 'Xác nhận báo hoàn tất?',
       completeBody: 'Hệ thống sẽ báo khách kiểm tra và xác nhận. Thanh toán vẫn khóa ở giai đoạn này.',
+      completionPhotoRequiredTitle: 'Cần ảnh hoàn tất',
+      completionPhotoRequiredBody: 'Tải ít nhất 1 ảnh sau khi xong việc để khách kiểm tra trước khi xác nhận.',
+      completionNotesShortTitle: 'Ghi chú quá ngắn',
+      completionNotesShortBody: 'Ghi chú ít nhất 10 ký tự về phần đã làm để khách hiểu rõ.',
       scopeDescriptionTitle: 'Cần mô tả phạm vi mới',
-      scopeDescriptionBody: 'Nhập rõ phần phát sinh để khách quyết định.',
-      scopePriceTitle: 'Cần giá mới',
-      scopePriceBody: 'Nhập mức giá mới để khách duyệt thay đổi phạm vi.',
+      scopeDescriptionBody: 'Nhập rõ phần phát sinh để Kael tính lại giá cho khách.',
+      scopeReasonTitle: 'Cần lý do',
+      scopeReasonBody: 'Ghi rõ vì sao phạm vi thay đổi để khách hiểu trước khi quyết định.',
       scopeConfirmTitle: 'Gửi yêu cầu đổi phạm vi?',
-      scopeConfirmBody: 'Hệ thống sẽ khóa tiến độ cho tới khi khách duyệt hoặc từ chối.',
+      scopeConfirmBody: 'Hệ thống sẽ khóa tiến độ cho tới khi khách duyệt hoặc từ chối. Kael sẽ tự tính lại giá.',
       cancelReasonTitle: 'Cần lý do hủy',
       cancelReasonBody: 'Nhập lý do cụ thể. Hệ thống sẽ hủy lượt nhận việc này và bắt đầu tìm thợ thay thế sau khi gửi.',
       cancelConfirmTitle: 'Gửi yêu cầu hủy việc?',
       cancelConfirmBody: 'Sau khi gửi, lượt nhận việc của bạn sẽ được hủy và hệ thống tự động tìm thợ thay thế cho khách.',
+      photoPermissionTitle: 'Cần quyền truy cập ảnh',
+      photoPermissionBody: 'Cho phép ứng dụng truy cập thư viện ảnh để tải bằng chứng.',
+      uploadFailedTitle: 'Tải ảnh thất bại',
     },
   },
   en: {
     hiddenAddress: 'detailed address hidden',
-    finalPrice: 'Final price',
+    kaelLockedPriceLabel: 'Kael-locked price',
+    kaelLockedPriceWaiting: 'Kael price not locked yet',
+    completionNotes: 'Completion notes',
+    completionPhotosLabel: 'After-completion photos (1-5)',
     scopeDescription: 'New scope details',
-    scopePrice: 'New price for customer approval',
+    scopeReason: 'Reason for the change',
+    scopeKaelPriceHint: 'Kael will compute the new price when the customer reviews the request.',
+    scopePhotosLabel: 'Scope change photos (optional)',
     scopeSubmit: 'Request scope change',
     scopeWaiting: 'Waiting for the customer to decide on the scope change.',
     cancelReason: 'Cancellation reason',
@@ -596,6 +622,8 @@ const workerActionCopy = {
     cancelSubmit: 'Request cancellation',
     review: 'Review',
     send: 'Send',
+    uploading: 'Uploading photos…',
+    pickPhotos: 'Pick photos',
     progress: {
       worker_start_travel: 'Start travel',
       worker_mark_arrived: 'Mark arrived',
@@ -604,20 +632,25 @@ const workerActionCopy = {
       worker_complete_job: 'Mark complete',
     },
     alerts: {
-      finalPriceRequiredTitle: 'Final price required',
-      finalPriceRequiredBody: 'Enter the real final price before marking the job complete.',
       completeTitle: 'Mark job complete?',
       completeBody: 'The customer will be asked to review and confirm. Payment remains locked at this stage.',
+      completionPhotoRequiredTitle: 'Completion photo required',
+      completionPhotoRequiredBody: 'Upload at least 1 photo after finishing so the customer can verify before confirming.',
+      completionNotesShortTitle: 'Notes too short',
+      completionNotesShortBody: 'Write at least 10 characters about what was done so the customer understands.',
       scopeDescriptionTitle: 'New scope details required',
-      scopeDescriptionBody: 'Describe the added work so the customer can decide.',
-      scopePriceTitle: 'New price required',
-      scopePriceBody: 'Enter the new price for customer approval.',
+      scopeDescriptionBody: 'Describe the added work so Kael can recompute the price for the customer.',
+      scopeReasonTitle: 'Reason required',
+      scopeReasonBody: 'Explain why the scope changed so the customer understands before deciding.',
       scopeConfirmTitle: 'Send scope change request?',
-      scopeConfirmBody: 'Progress will stay locked until the customer approves or rejects it.',
+      scopeConfirmBody: 'Progress will stay locked until the customer approves or rejects it. Kael will recompute the price.',
       cancelReasonTitle: 'Cancellation reason required',
       cancelReasonBody: 'Enter a specific reason. The system will cancel this worker assignment and begin replacement search after you send.',
       cancelConfirmTitle: 'Send cancellation request?',
       cancelConfirmBody: 'After you send, this worker assignment will be cancelled and the system will automatically search for a replacement.',
+      photoPermissionTitle: 'Photo permission required',
+      photoPermissionBody: 'Allow photo library access to upload evidence.',
+      uploadFailedTitle: 'Photo upload failed',
     },
   },
 } as const
@@ -1036,13 +1069,21 @@ function WorkerJobsJobRoomEntry() {
 function WorkerChatContent() {
   const { copy, language, tokens } = useWorkerUi()
   const { selectors, state } = useFrontendWorkflow()
+  const { session } = useAuth()
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast ?? null
   const dealChatKey = workerChatDealKey(deal)
   const [draft, setDraft] = useState('')
-  const [messages, setMessages] = useState<WorkerChatMessage[]>([])
+  // Phase 2.1 (2026-05-23): real chat backed by jobService.listMessages /
+  // sendMessage. Polling on focus + on send. Realtime upgrade deferred to
+  // Phase 5.11. Source of truth lives in chat_messages table.
+  const [remoteMessages, setRemoteMessages] = useState<JobMessageResponse[]>([])
+  const [isSending, setIsSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const activeDealChatKeyRef = useRef(dealChatKey)
-  const renderedMessages = messages
+  const currentJobId = deal?.id ?? null
+  const currentUserId = session?.user.id ?? null
+  const renderedMessages = remoteMessages.map((message) => mapWorkerJobMessage(message, currentUserId, copy.chat))
   const hasAnyWorkerKaelMessage = Boolean(broadcast || renderedMessages.length > 0)
   const canSendWorkerKaelMessage = Boolean(deal && isAcceptedLocalWorkerDeal(deal))
   const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : broadcast ? copy.chat.lockedGate : copy.chat.waitingInput
@@ -1062,20 +1103,47 @@ function WorkerChatContent() {
 
   useEffect(() => {
     if (activeDealChatKeyRef.current === dealChatKey) return
-    setMessages([])
+    setRemoteMessages([])
     setDraft('')
+    setSendError(null)
     activeDealChatKeyRef.current = dealChatKey
   }, [dealChatKey])
 
-  const submitWorkerKaelLocalDraft = () => {
-    if (!canSendWorkerKaelMessage) return
+  useEffect(() => {
+    if (!currentJobId || !canSendWorkerKaelMessage) return
+    let cancelled = false
+    const fetchMessages = async () => {
+      const result = await jobService.listMessages(currentJobId)
+      if (cancelled) return
+      if (result.success) {
+        setRemoteMessages(result.data.messages)
+      }
+    }
+    void fetchMessages()
+    const interval = setInterval(fetchMessages, 8000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [currentJobId, canSendWorkerKaelMessage])
+
+  const submitWorkerChatMessage = async () => {
+    if (!canSendWorkerKaelMessage || !currentJobId) return
     const value = draft.trim()
     if (!value) return
-    setMessages((prev) => [
-      ...prev,
-      { id: `worker-local-${Date.now()}`, mine: true, text: value, who: copy.chat.worker },
-    ])
-    setDraft('')
+    setIsSending(true)
+    setSendError(null)
+    try {
+      const result = await jobService.sendMessage(currentJobId, { content: value })
+      if (!result.success) {
+        setSendError(copy.chat.sendErrorFallback ?? result.error)
+        return
+      }
+      setRemoteMessages((previous) => [...previous, result.data.message])
+      setDraft('')
+    } finally {
+      setIsSending(false)
+    }
   }
 
   return (
@@ -1168,9 +1236,9 @@ function WorkerChatContent() {
           </View>
           <TextInput
             accessibilityLabel={chatInputPlaceholder}
-            editable={canSendWorkerKaelMessage}
+            editable={canSendWorkerKaelMessage && !isSending}
             onChangeText={setDraft}
-            onSubmitEditing={submitWorkerKaelLocalDraft}
+            onSubmitEditing={() => void submitWorkerChatMessage()}
             placeholder={chatInputPlaceholder}
             placeholderTextColor={tokens.subtle}
             returnKeyType="send"
@@ -1182,9 +1250,9 @@ function WorkerChatContent() {
           <Pressable
             accessibilityLabel={copy.chat.send}
             accessibilityRole="button"
-            accessibilityState={{ disabled: !draft.trim() || !canSendWorkerKaelMessage }}
-            disabled={!draft.trim() || !canSendWorkerKaelMessage}
-            onPress={submitWorkerKaelLocalDraft}
+            accessibilityState={{ disabled: !draft.trim() || !canSendWorkerKaelMessage || isSending }}
+            disabled={!draft.trim() || !canSendWorkerKaelMessage || isSending}
+            onPress={() => void submitWorkerChatMessage()}
             style={({ pressed }) => [
               styles.sendButton,
               { backgroundColor: draft.trim() && canSendWorkerKaelMessage ? tokens.primary : tokens.border },
@@ -1195,6 +1263,11 @@ function WorkerChatContent() {
             <Icon name="send" active />
           </Pressable>
         </View>
+        {sendError ? (
+          <Text style={[styles.bodyText, { color: tokens.copper }]} numberOfLines={2} testID="worker-chat-send-error">
+            {sendError}
+          </Text>
+        ) : null}
       </View>
     </View>
   )
@@ -1898,6 +1971,68 @@ function VerificationFileButton({ file, label, onPress, testID }: { file?: Local
   )
 }
 
+// Phase 2.0/2.2 (2026-05-23): photo grid cho worker scope change + completion.
+// Worker thay vì nhập price ở B7/B6 nay submit notes + photos để Kael compute
+// + customer trust.
+function WorkerPhotoGrid({
+  label,
+  onPick,
+  onRemove,
+  photos,
+  testID,
+  tokens,
+}: {
+  label: string
+  onPick: () => void
+  onRemove: (index: number) => void
+  photos: LocalMediaUploadDraft[]
+  testID: string
+  tokens: WorkerThemeTokens
+}) {
+  const { language } = useWorkerUi()
+  const actionCopy = workerActionCopy[language]
+  return (
+    <View style={styles.workerPhotoGrid} testID={testID}>
+      <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <View style={styles.workerPhotoRow}>
+        {photos.map((photo, index) => (
+          <View key={`${photo.uri}-${index}`} style={[styles.workerPhotoTile, { borderColor: tokens.border }]}>
+            <Image accessibilityLabel={photo.fileName ?? `photo-${index}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.workerPhotoImage} />
+            <Pressable
+              accessibilityLabel={`remove-photo-${index}`}
+              accessibilityRole="button"
+              onPress={() => onRemove(index)}
+              style={styles.workerPhotoRemove}
+              testID={`${testID}-remove-${index}`}
+            >
+              <Text style={styles.workerPhotoRemoveText}>×</Text>
+            </Pressable>
+          </View>
+        ))}
+        {photos.length < 5 ? (
+          <Pressable
+            accessibilityLabel={actionCopy.pickPhotos}
+            accessibilityRole="button"
+            onPress={onPick}
+            style={[styles.workerPhotoAddTile, { borderColor: tokens.border, backgroundColor: tokens.glassStrong }]}
+            testID={`${testID}-add`}
+          >
+            <Text style={[styles.workerPhotoAddText, { color: tokens.primary }]} numberOfLines={2}>
+              + {actionCopy.pickPhotos}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
+function formatWorkerVnd(value: number): string {
+  return new Intl.NumberFormat('vi-VN').format(value) + ' đ'
+}
+
 function WorkerMapStage() {
   const { copy, language, tokens } = useWorkerUi()
   const { actions, selectors, state, workerProfile } = useFrontendWorkflow()
@@ -2025,10 +2160,17 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const { copy, language, tokens } = useWorkerUi()
   const { actions, selectors, state } = useFrontendWorkflow()
   const actionCopy = workerActionCopy[language]
-  const [finalPriceDraft, setFinalPriceDraft] = useState('')
+  // Phase 2.0 (2026-05-23): worker không nhập price. Kael giữ final-price
+  // authority. Worker chỉ submit notes (B7) hoặc description + reason (B6) +
+  // ảnh hỗ trợ Kael compute.
+  const [completionNotesDraft, setCompletionNotesDraft] = useState('')
+  const [completionPhotos, setCompletionPhotos] = useState<LocalMediaUploadDraft[]>([])
+  const [isUploadingCompletion, setIsUploadingCompletion] = useState(false)
   const [cancellationReasonDraft, setCancellationReasonDraft] = useState('')
   const [scopeDescriptionDraft, setScopeDescriptionDraft] = useState('')
-  const [scopePriceDraft, setScopePriceDraft] = useState('')
+  const [scopeReasonDraft, setScopeReasonDraft] = useState('')
+  const [scopePhotos, setScopePhotos] = useState<LocalMediaUploadDraft[]>([])
+  const [isUploadingScope, setIsUploadingScope] = useState(false)
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast ?? null
   const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus, language) : null
@@ -2045,6 +2187,57 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
     'scope_change_pending',
   ].includes(selectors.currentStatus ?? ''))
   const secondsRemainingLabel = broadcast?.secondsRemaining === null || broadcast?.secondsRemaining === undefined ? null : `${broadcast.secondsRemaining}s`
+  const kaelLockedPrice = deal?.finalPrice ?? null
+  const pickCompletionPhotos = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert(actionCopy.alerts.photoPermissionTitle, actionCopy.alerts.photoPermissionBody)
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+      selectionLimit: 5,
+    })
+    if (result.canceled) return
+    const drafts: LocalMediaUploadDraft[] = result.assets.map((asset) => ({
+      uri: asset.uri,
+      type: 'image',
+      fileName: asset.fileName ?? asset.uri.split('/').pop(),
+      mimeType: asset.mimeType ?? undefined,
+      fileSizeBytes: asset.fileSize ?? undefined,
+    }))
+    setCompletionPhotos((previous) => [...previous, ...drafts].slice(0, 5))
+  }
+  const pickScopePhotos = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert(actionCopy.alerts.photoPermissionTitle, actionCopy.alerts.photoPermissionBody)
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+      selectionLimit: 5,
+    })
+    if (result.canceled) return
+    const drafts: LocalMediaUploadDraft[] = result.assets.map((asset) => ({
+      uri: asset.uri,
+      type: 'image',
+      fileName: asset.fileName ?? asset.uri.split('/').pop(),
+      mimeType: asset.mimeType ?? undefined,
+      fileSizeBytes: asset.fileSize ?? undefined,
+    }))
+    setScopePhotos((previous) => [...previous, ...drafts].slice(0, 5))
+  }
+  const removeCompletionPhoto = (index: number) => {
+    setCompletionPhotos((previous) => previous.filter((_, current) => current !== index))
+  }
+  const removeScopePhoto = (index: number) => {
+    setScopePhotos((previous) => previous.filter((_, current) => current !== index))
+  }
   const confirmWorkerProgressAction = (action: { label: string; type: WorkerProgressAction }) => {
     const nextStatus = workerStatusForAction(action.type)
     if (!nextStatus) return
@@ -2053,11 +2246,19 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       return
     }
 
-    const finalPrice = Number.parseInt(finalPriceDraft.replace(/[^\d]/g, ''), 10)
-    if (!Number.isFinite(finalPrice) || finalPrice <= 0) {
-      Alert.alert(actionCopy.alerts.finalPriceRequiredTitle, actionCopy.alerts.finalPriceRequiredBody)
+    // Phase 2.0/2.2: worker submits notes + photos. Final price = Kael-locked
+    // (set at A7 confirm or A11 approve). Worker không nhập final_price.
+    if (completionPhotos.length < 1) {
+      Alert.alert(actionCopy.alerts.completionPhotoRequiredTitle, actionCopy.alerts.completionPhotoRequiredBody)
       return
     }
+    const notes = completionNotesDraft.trim()
+    if (notes.length < 10) {
+      Alert.alert(actionCopy.alerts.completionNotesShortTitle, actionCopy.alerts.completionNotesShortBody)
+      return
+    }
+    const jobId = deal?.id ?? null
+    if (!jobId) return
 
     Alert.alert(
       actionCopy.alerts.completeTitle,
@@ -2066,25 +2267,40 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         { text: actionCopy.review, style: 'cancel' },
         {
           text: action.label,
-          onPress: () => void actions.workerUpdateStatus(nextStatus, {
-            completion_photo_urls: [],
-            final_price: finalPrice,
-          }),
+          onPress: async () => {
+            setIsUploadingCompletion(true)
+            try {
+              const upload = await uploadJobMediaDrafts(jobId, completionPhotos, 'after')
+              if (!upload.success) {
+                Alert.alert(actionCopy.alerts.uploadFailedTitle, upload.error)
+                return
+              }
+              await actions.workerUpdateStatus(nextStatus, {
+                completion_photo_urls: upload.mediaRefs,
+                completion_notes: notes,
+              })
+            } finally {
+              setIsUploadingCompletion(false)
+            }
+          },
         },
       ],
     )
   }
   const submitScopeChangeRequest = () => {
     const description = scopeDescriptionDraft.trim()
-    const price = Number.parseInt(scopePriceDraft.replace(/[^\d]/g, ''), 10)
+    const reason = scopeReasonDraft.trim()
     if (description.length < 10) {
       Alert.alert(actionCopy.alerts.scopeDescriptionTitle, actionCopy.alerts.scopeDescriptionBody)
       return
     }
-    if (!Number.isFinite(price) || price <= 0) {
-      Alert.alert(actionCopy.alerts.scopePriceTitle, actionCopy.alerts.scopePriceBody)
+    if (reason.length < 10) {
+      Alert.alert(actionCopy.alerts.scopeReasonTitle, actionCopy.alerts.scopeReasonBody)
       return
     }
+    const jobId = deal?.id ?? null
+    if (!jobId) return
+
     Alert.alert(
       actionCopy.alerts.scopeConfirmTitle,
       actionCopy.alerts.scopeConfirmBody,
@@ -2092,12 +2308,28 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         { text: actionCopy.review, style: 'cancel' },
         {
           text: actionCopy.send,
-          onPress: () => void actions.requestScopeChange({
-            new_description: description,
-            new_price_min: price,
-            new_price_max: price,
-            reason: description,
-          }),
+          onPress: async () => {
+            setIsUploadingScope(true)
+            try {
+              let photoUrls: string[] = []
+              if (scopePhotos.length > 0) {
+                const upload = await uploadJobMediaDrafts(jobId, scopePhotos, 'after')
+                if (!upload.success) {
+                  Alert.alert(actionCopy.alerts.uploadFailedTitle, upload.error)
+                  return
+                }
+                photoUrls = upload.mediaRefs
+              }
+              // Phase 2.0: worker không gửi price; Kael compute sau khi insert.
+              await actions.requestScopeChange({
+                new_description: description,
+                reason,
+                photo_urls: photoUrls,
+              })
+            } finally {
+              setIsUploadingScope(false)
+            }
+          },
         },
       ],
     )
@@ -2181,22 +2413,36 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         <View style={styles.scopeRequestBox} testID="worker-scope-change-request">
           <TextInput
             accessibilityLabel={actionCopy.scopeDescription}
+            multiline
+            numberOfLines={3}
             onChangeText={setScopeDescriptionDraft}
             placeholder={actionCopy.scopeDescription}
             placeholderTextColor={tokens.subtle}
-            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
+            style={[styles.chatInput, styles.scopeMultilineInput, { borderColor: tokens.border, color: tokens.ink }]}
             value={scopeDescriptionDraft}
           />
           <TextInput
-            accessibilityLabel={actionCopy.scopePrice}
-            keyboardType="number-pad"
-            onChangeText={setScopePriceDraft}
-            placeholder={actionCopy.scopePrice}
+            accessibilityLabel={actionCopy.scopeReason}
+            multiline
+            numberOfLines={2}
+            onChangeText={setScopeReasonDraft}
+            placeholder={actionCopy.scopeReason}
             placeholderTextColor={tokens.subtle}
-            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
-            value={scopePriceDraft}
+            style={[styles.chatInput, styles.scopeMultilineInput, { borderColor: tokens.border, color: tokens.ink }]}
+            value={scopeReasonDraft}
           />
-          <PressButton label={actionCopy.scopeSubmit} onPress={submitScopeChangeRequest} secondary testID="worker-scope-change-submit" />
+          <Text style={[styles.bodyText, { color: tokens.muted }]} testID="worker-scope-kael-locked-price-hint">
+            {actionCopy.scopeKaelPriceHint}
+          </Text>
+          <WorkerPhotoGrid
+            label={actionCopy.scopePhotosLabel}
+            onPick={pickScopePhotos}
+            onRemove={removeScopePhoto}
+            photos={scopePhotos}
+            testID="worker-scope-photo-grid"
+            tokens={tokens}
+          />
+          <PressButton label={isUploadingScope ? actionCopy.uploading : actionCopy.scopeSubmit} onPress={submitScopeChangeRequest} secondary testID="worker-scope-change-submit" />
         </View>
       ) : null}
       {selectors.currentStatus === 'scope_change_pending' ? (
@@ -2218,16 +2464,40 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         </View>
       ) : null}
       {nextAction?.type === 'worker_complete_job' ? (
-        <TextInput
-          accessibilityLabel={actionCopy.finalPrice}
-          keyboardType="number-pad"
-          onChangeText={setFinalPriceDraft}
-          placeholder={actionCopy.finalPrice}
-          placeholderTextColor={tokens.subtle}
-          style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
-          testID="worker-final-price-input"
-          value={finalPriceDraft}
-        />
+        <View style={styles.completionBox} testID="worker-completion-form">
+          <View style={[styles.kaelLockedPriceBadge, { backgroundColor: tokens.mint, borderColor: tokens.borderStrong }]}>
+            <Text style={[styles.kaelLockedPriceLabel, { color: tokens.primary }]} numberOfLines={1}>
+              {actionCopy.kaelLockedPriceLabel}
+            </Text>
+            <Text style={[styles.kaelLockedPriceValue, { color: tokens.ink }]} numberOfLines={1} testID="worker-completion-kael-price">
+              {kaelLockedPrice != null ? formatWorkerVnd(kaelLockedPrice) : actionCopy.kaelLockedPriceWaiting}
+            </Text>
+          </View>
+          <TextInput
+            accessibilityLabel={actionCopy.completionNotes}
+            multiline
+            numberOfLines={3}
+            onChangeText={setCompletionNotesDraft}
+            placeholder={actionCopy.completionNotes}
+            placeholderTextColor={tokens.subtle}
+            style={[styles.chatInput, styles.scopeMultilineInput, { borderColor: tokens.border, color: tokens.ink }]}
+            testID="worker-completion-notes-input"
+            value={completionNotesDraft}
+          />
+          <WorkerPhotoGrid
+            label={actionCopy.completionPhotosLabel}
+            onPick={pickCompletionPhotos}
+            onRemove={removeCompletionPhoto}
+            photos={completionPhotos}
+            testID="worker-completion-photo-grid"
+            tokens={tokens}
+          />
+          {isUploadingCompletion ? (
+            <Text style={[styles.bodyText, { color: tokens.muted }]} testID="worker-completion-uploading">
+              {actionCopy.uploading}
+            </Text>
+          ) : null}
+        </View>
       ) : null}
       {selectors.canWorkerAccept ? (
         <View style={styles.actionRow}>
@@ -2278,7 +2548,6 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
         mode={tokens.mode}
         onItemPress={(item) => {
           if (item.key === active) return
-          lastWorkerDockActive = item.key
           replace(item.path)
         }}
         iconForItem={(item, focused) =>
@@ -2616,6 +2885,26 @@ function SectionHeader({ action = '', title }: { action?: string; title: string 
       {action ? <Text style={[styles.sectionAction, { color: tokens.primary }]}>{action}</Text> : null}
     </View>
   )
+}
+
+// Phase 2.1 (2026-05-23): map remote JobMessageResponse → WorkerChatMessage.
+// sender_role='kael' renders as system bubble; sender_id === currentUser is
+// "mine" bubble; remaining customer/worker counterparts get the relay label.
+function mapWorkerJobMessage(
+  message: JobMessageResponse,
+  currentUserId: string | null,
+  chatCopy: { worker: string; kael: string; customer: string },
+): WorkerChatMessage {
+  if (message.sender_role === 'kael') {
+    return { id: message.id, system: true, text: message.content, who: chatCopy.kael }
+  }
+  const isMine = currentUserId !== null && message.sender_id === currentUserId
+  return {
+    id: message.id,
+    mine: isMine,
+    text: message.content,
+    who: isMine ? chatCopy.worker : chatCopy.customer,
+  }
 }
 
 function ChatBubble({ mine = false, system = false, text, who }: { mine?: boolean; system?: boolean; text: string; who: string }) {
@@ -2969,6 +3258,19 @@ const styles = StyleSheet.create({
   briefText: { flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 16 },
   priceRow: { flexDirection: 'row', gap: 8 },
   scopeRequestBox: { gap: 8 },
+  scopeMultilineInput: { minHeight: 72, paddingTop: 10, paddingVertical: 10, textAlignVertical: 'top' },
+  completionBox: { gap: 10 },
+  kaelLockedPriceBadge: { alignItems: 'center', borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: 10, justifyContent: 'space-between', overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 10 },
+  kaelLockedPriceLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0 },
+  kaelLockedPriceValue: { fontSize: 15, fontVariant: ['tabular-nums'], fontWeight: '700' },
+  workerPhotoGrid: { gap: 8 },
+  workerPhotoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  workerPhotoTile: { borderRadius: 14, borderWidth: 1, height: 78, overflow: 'hidden', position: 'relative', width: 78 },
+  workerPhotoImage: { height: '100%', width: '100%' },
+  workerPhotoRemove: { alignItems: 'center', backgroundColor: 'rgba(15, 23, 42, 0.7)', borderRadius: 999, height: 22, justifyContent: 'center', position: 'absolute', right: 4, top: 4, width: 22 },
+  workerPhotoRemoveText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  workerPhotoAddTile: { alignItems: 'center', borderRadius: 14, borderStyle: 'dashed', borderWidth: 1, height: 78, justifyContent: 'center', width: 78 },
+  workerPhotoAddText: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
   actionRow: { flexDirection: 'row', gap: 10 },
   adminSwitchWrap: { flexDirection: 'row' },
   pressButton: { alignItems: 'center', borderRadius: 18, flex: 1, justifyContent: 'center', minHeight: 46 },

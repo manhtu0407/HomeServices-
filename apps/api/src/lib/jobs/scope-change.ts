@@ -110,19 +110,21 @@ export async function requestScopeChange(
   workerId: string,
   input: WorkerScopeChangeInput,
 ): Promise<RequestScopeChangeResult> {
+  // Phase 2.0 (2026-05-23): worker không nhập price ở B6; Kael compute từ
+  // original Kael context + worker reported scope sau khi RPC insert.
+  // Parity reference for apps/api admin/support; Edge runtime is the
+  // authoritative path (supabase/functions/mobile-api/_shared/services.ts).
   const { data, error } = await withDbTimeout(
     supabase.rpc('request_scope_change_atomic', {
       p_job_id: jobId,
       p_worker_id: workerId,
       p_new_description: input.new_description,
-      p_new_price_min: input.new_price_min,
-      p_new_price_max: input.new_price_max,
       p_reason: input.reason,
     }),
   )
 
   if (error) {
-    console.warn('requestScopeChange: RPC call failed', { jobId, workerId, errorCode: error.code })
+    console.warn('requestScopeChange: RPC call failed', { jobId, errorCode: error.code })
     return { success: false, error: 'Không thể tạo yêu cầu thay đổi', code: 'DB_ERROR', status: 500 }
   }
 

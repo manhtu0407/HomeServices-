@@ -391,7 +391,6 @@ export type WorkerStatusUpdateInput = {
   status: WorkerStatusUpdate;
   completion_notes?: string;
   completion_photo_urls?: string[];
-  final_price?: number;
 };
 
 export type PlacesAutocompleteResponse = {
@@ -1144,15 +1143,14 @@ function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
   if (typeof status !== "string" || !allowed.includes(status)) {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
-  if (
-    record.final_price !== undefined && !isPositiveInteger(record.final_price)
-  ) {
-    apiFailure("VALIDATION", "Giá cuối cùng phải là số nguyên dương", 400);
-  }
-  if (
-    status === "completed_by_worker" && !isPositiveInteger(record.final_price)
-  ) {
-    apiFailure("VALIDATION", "Cần nhập giá cuối cùng khi hoàn thành", 400);
+  // Phase 2.0 (2026-05-23): worker không nhập final_price ở B7. Reject nếu
+  // worker bundle field này trong payload — Kael giữ final-price authority.
+  if (record.final_price !== undefined) {
+    apiFailure(
+      "VALIDATION",
+      "Giá cuối do Kael xác định, thợ không được nhập",
+      400,
+    );
   }
 
   const result: WorkerStatusUpdateInput = {
@@ -1174,9 +1172,6 @@ function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
     result.completion_photo_urls = urls;
   } else if (record.completion_photo_urls !== undefined) {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-  }
-  if (typeof record.final_price === "number") {
-    result.final_price = record.final_price;
   }
   return result;
 }

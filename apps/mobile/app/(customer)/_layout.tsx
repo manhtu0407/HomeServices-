@@ -67,9 +67,10 @@ export default function CustomerLayout() {
     return <Redirect href="/(auth)/login" />
   }
 
-  if (role === 'admin') {
-    // Admin users can inspect the customer workflow without changing role.
-  } else if (role !== 'customer') {
+  // Phase 5.1 (plan §22.10.B, 2026-05-23): admin no longer auto-bypass customer
+  // shell. Admin gets its own (admin) shell. Customer shell strictly requires
+  // role='customer' to prevent accidental admin actions in customer surfaces.
+  if (role !== 'customer') {
     return <Redirect href="/(auth)/login" />
   }
 

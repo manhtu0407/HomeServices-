@@ -84,8 +84,8 @@ export const jobService = {
   updateStatus(jobId: string, status: WorkerStatusUpdate, extras?: {
     completion_notes?: string
     completion_photo_urls?: string[]
-    final_price?: number
   }) {
+    // Phase 2.0 (2026-05-23): worker không nhập final_price; Kael giữ authority.
     return api.patch<StatusUpdateResponse>(`/jobs/${jobId}/status`, {
       status,
       ...extras,
@@ -186,8 +186,8 @@ export const workerService = {
   updateJobStatus(jobId: string, status: WorkerStatusUpdate, extras?: {
     completion_notes?: string
     completion_photo_urls?: string[]
-    final_price?: number
   }) {
+    // Phase 2.0 (2026-05-23): worker không nhập final_price; Kael giữ authority.
     return jobService.updateStatus(jobId, status, extras)
   },
 
