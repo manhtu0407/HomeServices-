@@ -8,7 +8,7 @@ export const motionTokens = {
   },
   press: {
     durationMs: 110,
-    scale: 0.98,
+    scale: 0.985,
   },
   sheet: {
     damping: 18,

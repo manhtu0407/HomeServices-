@@ -120,7 +120,7 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
     if (error) {
       return {
         success: false as const,
-        error: 'Không thể tải file xác minh lên Supabase',
+        error: 'Không thể tải file xác minh lên kho bảo mật',
       }
     }
     uploaded[field] = `supabase://worker-verification/${objectPath}`

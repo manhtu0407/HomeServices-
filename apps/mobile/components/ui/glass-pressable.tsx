@@ -13,6 +13,7 @@ type GlassPressableProps = {
   disabled?: boolean
   mode?: GlassMode
   onPress: () => void
+  pressedStyle?: StyleProp<ViewStyle>
   style?: StyleProp<ViewStyle>
   testID?: string
   variant?: GlassVariant
@@ -27,6 +28,7 @@ export function GlassPressable({
   disabled = false,
   mode = 'light',
   onPress,
+  pressedStyle,
   style,
   testID,
   variant = 'control',
@@ -46,6 +48,7 @@ export function GlassPressable({
         reduceMotionAwarePressStyle(pressed, reduceMotion),
         disabled ? { opacity: 0.48 } : null,
         style,
+        pressed && !reduceMotion ? pressedStyle : null,
       ]}
       testID={testID}
     >
