@@ -229,7 +229,7 @@ describeReal('Worker Flow B0-B8 — real Supabase integration', () => {
     const now = new Date().toISOString()
     const { error: jobErr } = await supabase
       .from('jobs')
-      .update({ status: 'broadcasting', broadcast_at: now, confirmed_search_at: now })
+      .update({ status: 'broadcasting', broadcast_at: now, confirmed_search_at: now, final_price: 700_000 })
       .eq('id', createdJobId!)
     expect(jobErr).toBeNull()
 
@@ -303,15 +303,14 @@ describeReal('Worker Flow B0-B8 — real Supabase integration', () => {
     expect(data?.status).toBe('repairing')
   })
 
-  // ─── B7: Worker completes with final_price ───────────────────────
+  // ─── B7: Worker completes with Kael-owned final_price ────────────
 
-  it('B7: worker completes → completed_by_worker with final_price', async () => {
+  it('B7: worker completes → completed_by_worker without entering final_price', async () => {
     const { error } = await supabase
       .from('jobs')
       .update({
         status: 'completed_by_worker',
         completed_at: new Date().toISOString(),
-        final_price: 500_000,
         completion_notes: 'Đã thay cầu dao mới',
         completion_photo_urls: ['https://example.test/completion.jpg'],
       })
@@ -379,9 +378,9 @@ describeReal('Worker Flow B0-B8 — real Supabase integration', () => {
     expect(jobs).not.toBeNull()
 
     const gross = (jobs ?? []).reduce((sum, r) => sum + (r.final_price ?? 0), 0)
-    expect(gross).toBeGreaterThanOrEqual(500_000)
+    expect(gross).toBeGreaterThanOrEqual(700_000)
     // 10% platform fee → worker gets 90%
     const net = Math.round(gross * 0.9)
-    expect(net).toBe(450_000)
+    expect(net).toBe(630_000)
   })
 })

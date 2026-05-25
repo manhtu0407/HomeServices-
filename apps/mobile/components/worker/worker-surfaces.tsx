@@ -611,7 +611,6 @@ type WorkerVerificationCopy = {
 const workerActionCopy = {
   vi: {
     hiddenAddress: 'ẩn địa chỉ chi tiết',
-    finalPrice: 'Giá cuối cùng',
     completionNote: 'Ghi chú hoàn tất',
     completionPhoto: 'Ảnh nghiệm thu',
     completionPhotoRequired: 'Cần ít nhất 1 ảnh nghiệm thu',
@@ -619,8 +618,12 @@ const workerActionCopy = {
     addCompletionPhoto: 'Thêm ảnh',
     completeLater: 'Để sau',
     scopeDescription: 'Mô tả phần phát sinh',
+    scopePhotoOptional: 'Ảnh bằng chứng phát sinh nếu có',
+    scopePhotoCount: (count: number) => `${count} ảnh phát sinh đã chọn`,
+    addScopePhoto: 'Thêm ảnh phát sinh',
     scopeSubmit: 'Yêu cầu đổi phạm vi',
     scopeWaiting: 'Chờ khách quyết định thay đổi phạm vi.',
+    uploading: 'Đang tải ảnh...',
     cancelReason: 'Lý do cần hủy',
     cancelPlaceholder: 'Lý do hủy và tìm thợ thay thế',
     cancelSubmit: 'Yêu cầu hủy có lý do',
@@ -634,8 +637,6 @@ const workerActionCopy = {
       worker_complete_job: 'Báo hoàn tất',
     },
     alerts: {
-      finalPriceRequiredTitle: 'Cần giá cuối cùng',
-      finalPriceRequiredBody: 'Nhập giá cuối cùng thực tế trước khi báo hoàn tất.',
       completionNoteRequiredTitle: 'Cần ghi chú hoàn tất',
       completionNoteRequiredBody: 'Nhập ghi chú ngắn về việc đã làm trước khi báo hoàn tất.',
       completionPhotoRequiredTitle: 'Cần ảnh nghiệm thu',
@@ -647,6 +648,9 @@ const workerActionCopy = {
       completeBody: 'Hệ thống sẽ báo khách kiểm tra và xác nhận. Thanh toán vẫn khóa ở giai đoạn này.',
       scopeDescriptionTitle: 'Cần mô tả phạm vi mới',
       scopeDescriptionBody: 'Nhập rõ phần phát sinh để khách quyết định.',
+      scopeUploadTitle: 'Chưa tải được ảnh phát sinh',
+      scopePermissionTitle: 'Cần quyền chọn ảnh',
+      scopePermissionBody: 'Cho phép truy cập ảnh để thêm bằng chứng phát sinh.',
       scopeConfirmTitle: 'Gửi yêu cầu đổi phạm vi?',
       scopeConfirmBody: 'Hệ thống sẽ khóa tiến độ cho tới khi khách duyệt hoặc từ chối.',
       cancelReasonTitle: 'Cần lý do hủy',
@@ -657,7 +661,6 @@ const workerActionCopy = {
   },
   en: {
     hiddenAddress: 'detailed address hidden',
-    finalPrice: 'Final price',
     completionNote: 'Completion note',
     completionPhoto: 'Completion photo',
     completionPhotoRequired: 'At least 1 completion photo required',
@@ -665,8 +668,12 @@ const workerActionCopy = {
     addCompletionPhoto: 'Add photo',
     completeLater: 'Later',
     scopeDescription: 'New scope details',
+    scopePhotoOptional: 'Scope evidence photos optional',
+    scopePhotoCount: (count: number) => `${count} scope photo${count === 1 ? '' : 's'} selected`,
+    addScopePhoto: 'Add scope photo',
     scopeSubmit: 'Request scope change',
     scopeWaiting: 'Waiting for the customer to decide on the scope change.',
+    uploading: 'Uploading photos...',
     cancelReason: 'Cancellation reason',
     cancelPlaceholder: 'Reason for replacement search',
     cancelSubmit: 'Request cancellation',
@@ -680,8 +687,6 @@ const workerActionCopy = {
       worker_complete_job: 'Mark complete',
     },
     alerts: {
-      finalPriceRequiredTitle: 'Final price required',
-      finalPriceRequiredBody: 'Enter the real final price before marking the job complete.',
       completionNoteRequiredTitle: 'Completion note required',
       completionNoteRequiredBody: 'Add a short note about the completed work before marking the job complete.',
       completionPhotoRequiredTitle: 'Completion photo required',
@@ -693,6 +698,9 @@ const workerActionCopy = {
       completeBody: 'The customer will be asked to review and confirm. Payment remains locked at this stage.',
       scopeDescriptionTitle: 'New scope details required',
       scopeDescriptionBody: 'Describe the added work so the customer can decide.',
+      scopeUploadTitle: 'Scope photo upload failed',
+      scopePermissionTitle: 'Photo permission required',
+      scopePermissionBody: 'Allow photo access to add scope-change evidence.',
       scopeConfirmTitle: 'Send scope change request?',
       scopeConfirmBody: 'Progress will stay locked until the customer approves or rejects it.',
       cancelReasonTitle: 'Cancellation reason required',
@@ -2807,29 +2815,30 @@ function workerStatusForAction(action: WorkerProgressAction): Extract<LocalDealS
 type IncomingRequestDraftField =
   | 'cancellationReasonDraft'
   | 'completionNoteDraft'
-  | 'finalPriceDraft'
   | 'scopeReasonDraft'
 
 type IncomingRequestDraftState = {
   cancellationReasonDraft: string
   completionNoteDraft: string
   completionPhotos: LocalMediaUploadDraft[]
-  finalPriceDraft: string
   scopeReasonDraft: string
+  scopePhotos: LocalMediaUploadDraft[]
 }
 
 type IncomingRequestDraftAction =
   | { type: 'clear_cancellation' }
   | { type: 'clear_completion' }
+  | { type: 'clear_scope' }
   | { type: 'completion_photo'; photo: LocalMediaUploadDraft }
   | { type: 'field'; field: IncomingRequestDraftField; value: string }
+  | { type: 'scope_photo'; photo: LocalMediaUploadDraft }
 
 const EMPTY_INCOMING_REQUEST_DRAFTS: IncomingRequestDraftState = {
   cancellationReasonDraft: '',
   completionNoteDraft: '',
   completionPhotos: [],
-  finalPriceDraft: '',
   scopeReasonDraft: '',
+  scopePhotos: [],
 }
 
 function incomingRequestDraftReducer(state: IncomingRequestDraftState, action: IncomingRequestDraftAction): IncomingRequestDraftState {
@@ -2838,8 +2847,12 @@ function incomingRequestDraftReducer(state: IncomingRequestDraftState, action: I
       return { ...state, [action.field]: action.value }
     case 'completion_photo':
       return { ...state, completionPhotos: [...state.completionPhotos, action.photo].slice(0, 5) }
+    case 'scope_photo':
+      return { ...state, scopePhotos: [...state.scopePhotos, action.photo].slice(0, 5) }
     case 'clear_completion':
-      return { ...state, completionNoteDraft: '', completionPhotos: [], finalPriceDraft: '' }
+      return { ...state, completionNoteDraft: '', completionPhotos: [] }
+    case 'clear_scope':
+      return { ...state, scopeReasonDraft: '', scopePhotos: [] }
     case 'clear_cancellation':
       return { ...state, cancellationReasonDraft: '' }
     default:
@@ -2852,9 +2865,11 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const { actions, selectors, state } = useFrontendWorkflow()
   const actionCopy = workerActionCopy[language]
   const [requestDrafts, requestDraftDispatch] = useReducer(incomingRequestDraftReducer, EMPTY_INCOMING_REQUEST_DRAFTS)
-  const { cancellationReasonDraft, completionNoteDraft, completionPhotos, finalPriceDraft, scopeReasonDraft } = requestDrafts
+  const [isUploadingScope, setIsUploadingScope] = useState(false)
+  const { cancellationReasonDraft, completionNoteDraft, completionPhotos, scopePhotos, scopeReasonDraft } = requestDrafts
   const updateRequestDraft = (field: IncomingRequestDraftField) => (value: string) => requestDraftDispatch({ type: 'field', field, value })
   const deal = getWorkerVisibleDeal(state.deal)
+  const jobId = deal?.id ?? ''
   const broadcast = deal?.broadcast ?? null
   const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus, language) : null
   const localizedProblemSummary = broadcast ? localizedWorkerProblemSummary(broadcast, language) : copy.request.title
@@ -2893,6 +2908,29 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
     }
     requestDraftDispatch({ type: 'completion_photo', photo: draft })
   }
+  const pickScopePhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert(actionCopy.alerts.scopePermissionTitle, actionCopy.alerts.scopePermissionBody)
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: false,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.86,
+      selectionLimit: 1,
+    })
+    if (result.canceled || !result.assets[0]) return
+    const asset = result.assets[0]
+    const draft: LocalMediaUploadDraft = {
+        uri: asset.uri,
+        type: 'image',
+        fileName: asset.fileName ?? asset.uri.split('/').pop(),
+        mimeType: asset.mimeType ?? undefined,
+        fileSizeBytes: asset.fileSize ?? undefined,
+    }
+    requestDraftDispatch({ type: 'scope_photo', photo: draft })
+  }
   const confirmWorkerProgressAction = (action: { label: string; type: WorkerProgressAction }) => {
     const nextStatus = workerStatusForAction(action.type)
     if (!nextStatus) return
@@ -2901,11 +2939,6 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       return
     }
 
-    const finalPrice = Number.parseInt(finalPriceDraft.replace(/[^\d]/g, ''), 10)
-    if (!Number.isFinite(finalPrice) || finalPrice <= 0) {
-      Alert.alert(actionCopy.alerts.finalPriceRequiredTitle, actionCopy.alerts.finalPriceRequiredBody)
-      return
-    }
     const completionNote = completionNoteDraft.trim()
     if (completionNote.length < 5) {
       Alert.alert(actionCopy.alerts.completionNoteRequiredTitle, actionCopy.alerts.completionNoteRequiredBody)
@@ -2933,7 +2966,6 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
               const updated = await actions.workerUpdateStatus(nextStatus, {
                 completion_notes: completionNote,
                 completion_photo_urls: uploaded.mediaRefs,
-                final_price: finalPrice,
               })
               if (!updated) return
               requestDraftDispatch({ type: 'clear_completion' })
@@ -2956,11 +2988,29 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         { text: actionCopy.review, style: 'cancel' },
         {
           text: actionCopy.send,
-          onPress: () => void actions.requestScopeChange({
-            new_description: reason,
-            photo_urls: [],
-            reason,
-          }),
+          onPress: async () => {
+            setIsUploadingScope(true)
+            try {
+              let photoUrls: string[] = []
+              if (scopePhotos.length > 0) {
+                const upload = await uploadJobMediaDrafts(jobId, scopePhotos, 'scope_change_evidence')
+                if (!upload.success) {
+                  Alert.alert(actionCopy.alerts.scopeUploadTitle, upload.error)
+                  return
+                }
+                photoUrls = upload.mediaRefs
+              }
+              // Phase 2.0: worker không gửi price; Kael compute sau khi insert.
+              await actions.requestScopeChange({
+                new_description: reason,
+                reason,
+                photo_urls: photoUrls,
+              })
+              requestDraftDispatch({ type: 'clear_scope' })
+            } finally {
+              setIsUploadingScope(false)
+            }
+          },
         },
       ],
     )
@@ -3051,7 +3101,13 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
             style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
             value={scopeReasonDraft}
           />
-          <PressButton label={actionCopy.scopeSubmit} onPress={submitScopeChangeRequest} secondary testID="worker-scope-change-submit" />
+          <View style={styles.actionRow}>
+            <PressButton label={actionCopy.addScopePhoto} onPress={pickScopePhoto} secondary testID="worker-scope-change-add-photo" />
+            <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={1} testID="worker-scope-change-photo-count">
+              {scopePhotos.length > 0 ? actionCopy.scopePhotoCount(scopePhotos.length) : actionCopy.scopePhotoOptional}
+            </Text>
+          </View>
+          <PressButton disabled={isUploadingScope} label={isUploadingScope ? actionCopy.uploading : actionCopy.scopeSubmit} onPress={submitScopeChangeRequest} secondary testID="worker-scope-change-submit" />
         </View>
       ) : null}
       {selectors.currentStatus === 'scope_change_pending' ? (
@@ -3082,16 +3138,6 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
             style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
             testID="worker-completion-note-input"
             value={completionNoteDraft}
-          />
-          <TextInput
-            accessibilityLabel={actionCopy.finalPrice}
-            keyboardType="number-pad"
-            onChangeText={updateRequestDraft('finalPriceDraft')}
-            placeholder={actionCopy.finalPrice}
-            placeholderTextColor={tokens.subtle}
-            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
-            testID="worker-final-price-input"
-            value={finalPriceDraft}
           />
           <View style={styles.actionRow}>
             <PressButton label={actionCopy.addCompletionPhoto} onPress={pickCompletionPhoto} secondary testID="worker-completion-add-photo" />

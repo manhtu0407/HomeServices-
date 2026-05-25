@@ -15,8 +15,7 @@ const statusUpdateSchema = z.object({
   ]),
   completion_notes: z.string().max(2000).optional(),
   completion_photo_urls: z.array(z.string().url()).max(10).optional(),
-  final_price: z.number().int().positive().optional(),
-})
+}).strict()
 
 type RouteParams = { params: Promise<{ id: string }> }
 
@@ -46,10 +45,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   const input = parsed.data
 
-  if (input.status === 'completed_by_worker' && !input.final_price) {
-    return apiError('VALIDATION', 'Cần nhập giá cuối cùng khi hoàn thành', 400)
-  }
-
   const { data: job, error: fetchError } = await withDbTimeout(
     auth.supabase
       .from('jobs')
@@ -76,7 +71,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   const now = new Date().toISOString()
-
   const baseUpdate: TablesUpdate<'jobs'> = { status: input.status }
 
   if (transition.timestampColumn) {
@@ -84,7 +78,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   if (input.status === 'completed_by_worker') {
-    baseUpdate.final_price = input.final_price ?? null
     baseUpdate.completion_notes = input.completion_notes ?? null
     baseUpdate.completion_photo_urls = input.completion_photo_urls ?? []
   }
@@ -94,6 +87,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       .from('jobs')
       .update(baseUpdate)
       .eq('id', id)
+      .eq('worker_id', auth.user.id)
       .eq('status', job.status)
       .select('id')
       .maybeSingle(),

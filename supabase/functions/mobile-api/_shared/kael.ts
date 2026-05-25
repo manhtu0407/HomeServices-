@@ -31,8 +31,10 @@ const marketPriceResultSchema = z.object({
 const scopeChangeReviewSchema = z.object({
   recommendation: z.enum(["approve", "ask_worker", "reject"]),
   price_assessment: z.enum(["reasonable", "needs_review", "high_risk"]),
-  customer_explanation: z.string().min(1).max(800),
-  risk_notes: z.array(z.string().min(1).max(200)).max(3),
+  problem_summary: z.string().min(1).max(500),
+  advisory: z.string().max(400).nullable().optional(),
+  complexity_assessment: z.enum(["small", "medium", "large"]),
+  confidence: z.number().min(0).max(1),
 });
 
 // Phase 2.0 (2026-05-23): Kael compute new estimate from worker scope report.
@@ -227,6 +229,8 @@ export type ScopeChangeComputeInput = {
 type ScopeChangeEstimateBody = z.infer<typeof scopeChangeEstimateSchema>;
 
 export type ScopeChangeKaelEstimate = ScopeChangeEstimateBody & {
+  schema_version: "scope_change_kael_review.v1";
+  prompt_version: "scope-change-estimate.2026-05-23.v1";
   version: "scope-change-estimate.2026-05-23.v1";
   provider: "anthropic" | null;
   model: string | null;
@@ -236,6 +240,13 @@ export type ScopeChangeKaelEstimate = ScopeChangeEstimateBody & {
   cost_usd: number | null;
   latency_ms: number | null;
   disclaimer: string;
+  input_summary: {
+    service_type: ServiceType;
+    district: string | null;
+    original_problem_summary: string | null;
+    original_price_min: number | null;
+    original_price_max: number | null;
+  };
 };
 
 export type PipelineResult =
@@ -344,6 +355,8 @@ export async function computeScopeChangeEstimate(
   }
 
   return {
+    schema_version: "scope_change_kael_review.v1",
+    prompt_version: "scope-change-estimate.2026-05-23.v1",
     version: "scope-change-estimate.2026-05-23.v1",
     ...validated.data,
     advisory: validated.data.advisory ?? null,
@@ -354,6 +367,7 @@ export async function computeScopeChangeEstimate(
     computed_at: new Date().toISOString(),
     cost_usd: attempt.result.usage.costUsd,
     latency_ms: attempt.ms,
+    input_summary: scopeChangeInputSummary(input),
   };
 }
 
@@ -415,6 +429,8 @@ function buildScopeChangeEstimateFallback(
     Math.round(originalMax * 1.5) || fallbackMin,
   );
   return {
+    schema_version: "scope_change_kael_review.v1",
+    prompt_version: "scope-change-estimate.2026-05-23.v1",
     version: "scope-change-estimate.2026-05-23.v1",
     complexity_assessment: "medium",
     price_min: fallbackMin,
@@ -432,6 +448,17 @@ function buildScopeChangeEstimateFallback(
     computed_at: new Date().toISOString(),
     cost_usd: null,
     latency_ms: null,
+    input_summary: scopeChangeInputSummary(input),
+  };
+}
+
+function scopeChangeInputSummary(input: ScopeChangeComputeInput) {
+  return {
+    service_type: input.serviceType,
+    district: input.district ?? null,
+    original_problem_summary: input.originalProblemSummary ?? null,
+    original_price_min: input.originalPriceMin ?? null,
+    original_price_max: input.originalPriceMax ?? null,
   };
 }
 
@@ -1360,8 +1387,10 @@ Respond ONLY with valid JSON matching this schema:
 {
   "recommendation": "approve" | "ask_worker" | "reject",
   "price_assessment": "reasonable" | "needs_review" | "high_risk",
-  "customer_explanation": "short Vietnamese explanation for the customer",
-  "risk_notes": ["0-3 short Vietnamese notes"]
+  "problem_summary": "short Vietnamese summary of updated problem",
+  "advisory": "optional short Vietnamese practical note or null",
+  "complexity_assessment": "small" | "medium" | "large",
+  "confidence": number (0-1)
 }`,
     },
     {
@@ -1398,13 +1427,16 @@ function buildScopeChangeFallbackReview(
       "Giá mới tăng so với ước tính ban đầu.",
       "Nên yêu cầu thợ giải thích rõ phần phát sinh trước khi duyệt.",
     ];
+  void riskNotes;
   return {
     version: "scope-change-review.2026-05-20.v1",
     recommendation,
     price_assessment: priceAssessment,
-    customer_explanation:
+    problem_summary:
       "Kael đã ghi nhận phạm vi thợ báo phát sinh tại hiện trường. Vui lòng xem mô tả, lý do và mức giá mới trước khi quyết định.",
-    risk_notes: riskNotes,
+    advisory: null,
+    complexity_assessment: priceAssessment === "reasonable" ? "medium" : "large",
+    confidence: priceAssessment === "reasonable" ? 0.55 : 0.35,
     provider: null,
     model: null,
     fallback_used: true,

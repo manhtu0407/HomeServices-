@@ -24,105 +24,32 @@ const VALID_INPUT = {
 }
 
 // =============================================================================
-// requestScopeChange (B6) — RPC-based
+// requestScopeChange (B6) — Edge-only guard
 // =============================================================================
 
-type RequestRpcRow = {
-  ok: boolean
-  error_code: string | null
-  scope_change_id: string | null
-  scope_status: string | null
-  created_at_ts: string | null
-}
-
-function makeRequestRpcSupabase(rpcResult: RequestRpcRow | null, rpcError: { code: string } | null = null) {
-  return {
-    rpc: vi.fn(async (_fnName: string, _args: unknown) => ({
-      data: rpcResult ? [rpcResult] : null,
-      error: rpcError,
-    })),
-  } as any
-}
-
-describe('requestScopeChange (RPC-based)', () => {
-  it('succeeds when RPC returns ok=true', async () => {
-    const supabase = makeRequestRpcSupabase({
-      ok: true,
-      error_code: null,
-      scope_change_id: 'sc-1',
-      scope_status: 'waiting_customer_decision',
-      created_at_ts: '2026-05-16T10:00:00Z',
-    })
+describe('requestScopeChange (Edge-only reference guard)', () => {
+  it('refuses the Next reference B6 path instead of calling a stale RPC shape', async () => {
+    const supabase = {
+      rpc: vi.fn(async () => ({
+        data: [{
+          ok: true,
+          error_code: null,
+          scope_change_id: 'sc-1',
+          scope_status: 'waiting_customer_decision',
+          created_at_ts: '2026-05-16T10:00:00Z',
+        }],
+        error: null,
+      })),
+    } as any
 
     const result = await requestScopeChange(supabase, 'job-1', 'worker-1', VALID_INPUT)
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.scopeChangeId).toBe('sc-1')
-      expect(result.status).toBe('waiting_customer_decision')
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.code).toBe('EDGE_MOBILE_API_REQUIRED')
+      expect(result.status).toBe(501)
     }
-  })
-
-  it('passes all input fields to RPC', async () => {
-    const supabase = makeRequestRpcSupabase({
-      ok: true,
-      error_code: null,
-      scope_change_id: 'sc-1',
-      scope_status: 'waiting_customer_decision',
-      created_at_ts: '2026-05-16T10:00:00Z',
-    })
-    await requestScopeChange(supabase, 'job-1', 'worker-1', VALID_INPUT)
-    expect(supabase.rpc).toHaveBeenCalledWith('request_scope_change_atomic', {
-      p_job_id: 'job-1',
-      p_worker_id: 'worker-1',
-      p_new_description: VALID_INPUT.new_description,
-      p_reason: VALID_INPUT.reason,
-    })
-  })
-
-  it('maps NOT_FOUND → 404', async () => {
-    const supabase = makeRequestRpcSupabase({
-      ok: false,
-      error_code: 'NOT_FOUND',
-      scope_change_id: null,
-      scope_status: null,
-      created_at_ts: null,
-    })
-    const result = await requestScopeChange(supabase, 'job-x', 'worker-1', VALID_INPUT)
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.code).toBe('NOT_FOUND')
-  })
-
-  it('maps AUTH_FORBIDDEN → 403 (worker not assigned to job)', async () => {
-    const supabase = makeRequestRpcSupabase({
-      ok: false,
-      error_code: 'AUTH_FORBIDDEN',
-      scope_change_id: null,
-      scope_status: null,
-      created_at_ts: null,
-    })
-    const result = await requestScopeChange(supabase, 'job-1', 'worker-1', VALID_INPUT)
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.code).toBe('AUTH_FORBIDDEN')
-  })
-
-  it('maps INVALID_STATUS → 409 (job not in inspecting/repairing)', async () => {
-    const supabase = makeRequestRpcSupabase({
-      ok: false,
-      error_code: 'INVALID_STATUS',
-      scope_change_id: null,
-      scope_status: null,
-      created_at_ts: null,
-    })
-    const result = await requestScopeChange(supabase, 'job-1', 'worker-1', VALID_INPUT)
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.code).toBe('INVALID_STATUS')
-  })
-
-  it('returns DB_ERROR on RPC failure', async () => {
-    const supabase = makeRequestRpcSupabase(null, { code: 'PGRST500' })
-    const result = await requestScopeChange(supabase, 'job-1', 'worker-1', VALID_INPUT)
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.code).toBe('DB_ERROR')
+    expect(supabase.rpc).not.toHaveBeenCalled()
   })
 })
 

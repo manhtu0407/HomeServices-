@@ -1111,12 +1111,15 @@ export type Database = {
         Row: {
           created_at: string
           customer_decision_at: string | null
+          evidence_photo_urls: string[]
           id: string
           job_id: string
+          kael_computed_max: number | null
+          kael_computed_min: number | null
           kael_review: Json | null
           original_summary: string | null
-          price_max: number
-          price_min: number
+          price_max: number | null
+          price_min: number | null
           reason: string
           requested_description: string
           status: Database["public"]["Enums"]["scope_change_status"]
@@ -1126,12 +1129,15 @@ export type Database = {
         Insert: {
           created_at?: string
           customer_decision_at?: string | null
+          evidence_photo_urls?: string[]
           id?: string
           job_id: string
+          kael_computed_max?: number | null
+          kael_computed_min?: number | null
           kael_review?: Json | null
           original_summary?: string | null
-          price_max: number
-          price_min: number
+          price_max?: number | null
+          price_min?: number | null
           reason: string
           requested_description: string
           status?: Database["public"]["Enums"]["scope_change_status"]
@@ -1141,12 +1147,15 @@ export type Database = {
         Update: {
           created_at?: string
           customer_decision_at?: string | null
+          evidence_photo_urls?: string[]
           id?: string
           job_id?: string
+          kael_computed_max?: number | null
+          kael_computed_min?: number | null
           kael_review?: Json | null
           original_summary?: string | null
-          price_max?: number
-          price_min?: number
+          price_max?: number | null
+          price_min?: number | null
           reason?: string
           requested_description?: string
           status?: Database["public"]["Enums"]["scope_change_status"]
@@ -1546,7 +1555,11 @@ export type Database = {
       }
       request_scope_change_atomic: {
         Args: {
+          p_evidence_photo_urls: string[]
           p_job_id: string
+          p_kael_computed_max: number
+          p_kael_computed_min: number
+          p_kael_review: Json
           p_worker_id: string
           p_new_description: string
           p_reason: string

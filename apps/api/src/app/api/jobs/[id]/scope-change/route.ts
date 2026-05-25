@@ -9,9 +9,9 @@ type RouteParams = { params: Promise<{ id: string }> }
 /**
  * POST /api/jobs/[id]/scope-change — B6
  *
- * Worker reports the real on-site issue differs from initial scope.
- * Creates scope_change_requests row + transitions job to 'scope_change_pending'.
- * Worker is blocked from status updates until customer decides (A11).
+ * Edge-only money/status path. The Supabase Edge mobile-api must compute and
+ * persist Kael's scope estimate before notifying the customer, so this
+ * reference route returns EDGE_MOBILE_API_REQUIRED.
  */
 export async function POST(request: Request, { params }: RouteParams) {
   const auth = await authenticateRequest(request, ['worker'])

@@ -27,6 +27,7 @@ vi.mock('@/lib/db/query', () => ({
 // Mock authenticateRequest at the module level so we can vary auth outcomes
 // per test without spinning up real Supabase.
 const mockAuthenticate = vi.fn()
+const mockCreateBroadcasts = vi.fn()
 vi.mock('@/lib/auth/api-auth', async () => {
   const actual = await vi.importActual<typeof import('@/lib/auth/api-auth')>('@/lib/auth/api-auth')
   return {
@@ -45,6 +46,14 @@ vi.mock('@/lib/rate-limit', () => ({
   checkRateLimit: vi.fn(() => ({ allowed: true })),
   AI_SESSION_LIMIT: 10,
 }))
+
+vi.mock('@/lib/jobs/broadcast', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/jobs/broadcast')>('@/lib/jobs/broadcast')
+  return {
+    ...actual,
+    createBroadcasts: mockCreateBroadcasts,
+  }
+})
 
 // =============================================================================
 // Helper: build a Request object + mock auth outcomes
@@ -81,6 +90,13 @@ function authForbidden() {
 
 beforeEach(() => {
   mockAuthenticate.mockReset()
+  mockCreateBroadcasts.mockReset()
+  mockCreateBroadcasts.mockResolvedValue({
+    success: true,
+    batchId: 'batch-1',
+    broadcastCount: 1,
+    workerIds: ['worker-1'],
+  })
 })
 
 // =============================================================================
@@ -194,6 +210,33 @@ describe('Worker-only routes reject non-workers', () => {
     expect(res.status).toBe(403)
   })
 
+  it('POST /jobs/[id]/scope-change: worker must use Edge mobile-api', async () => {
+    const supabase: any = {
+      rpc: vi.fn(async () => ({ data: [], error: null })),
+    }
+    mockAuthenticate.mockResolvedValue({
+      success: true,
+      user: { id: 'worker-1', email: 'worker-1@test.test' },
+      role: 'worker',
+      supabase,
+    })
+
+    const { POST } = await import('@/app/api/jobs/[id]/scope-change/route')
+    const res = await POST(
+      makeRequest('POST', {
+        new_description: 'Need extra pipe replacement',
+        reason: 'Inspection found a larger leak',
+        photo_urls: [],
+      }),
+      makeParams('job-1'),
+    )
+    const body = await res.json()
+
+    expect(res.status).toBe(501)
+    expect(body.code).toBe('EDGE_MOBILE_API_REQUIRED')
+    expect(supabase.rpc).not.toHaveBeenCalled()
+  })
+
   it('PATCH /jobs/[id]/status: customer role → 403', async () => {
     authForbidden()
     const { PATCH } = await import('@/app/api/jobs/[id]/status/route')
@@ -237,6 +280,101 @@ describe('Worker-only routes reject non-workers', () => {
     expect(body.code).toBe('STATUS_CHANGED')
     expect(query.eq).toHaveBeenCalledWith('status', 'worker_on_way')
     expect(query.maybeSingle).toHaveBeenCalled()
+  })
+
+  it('PATCH /jobs/[id]/status: completed_by_worker rejects worker final_price', async () => {
+    const query: any = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: {
+          id: 'job-1',
+          status: 'repairing',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      }),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: { id: 'job-1' },
+        error: null,
+      }),
+    }
+    const supabase: any = {
+      from: vi.fn(() => query),
+    }
+    mockAuthenticate.mockResolvedValue({
+      success: true,
+      user: { id: 'worker-1', email: 'worker-1@test.test' },
+      role: 'worker',
+      supabase,
+    })
+
+    const { PATCH } = await import('@/app/api/jobs/[id]/status/route')
+    const res = await PATCH(
+      makeRequest('PATCH', {
+        status: 'completed_by_worker',
+        final_price: 280000,
+        completion_notes: 'Done',
+        completion_photo_urls: ['https://example.com/after.jpg'],
+      }),
+      makeParams('job-1'),
+    )
+    const body = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(body.code).toBe('VALIDATION')
+  })
+
+  it('PATCH /jobs/[id]/status: completed_by_worker preserves Kael final_price', async () => {
+    const updates: Array<Record<string, unknown>> = []
+    const query: any = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      update: vi.fn((data: Record<string, unknown>) => {
+        updates.push(data)
+        return query
+      }),
+      single: vi.fn().mockResolvedValue({
+        data: {
+          id: 'job-1',
+          status: 'repairing',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      }),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: { id: 'job-1' },
+        error: null,
+      }),
+    }
+    const supabase: any = {
+      from: vi.fn(() => query),
+    }
+    mockAuthenticate.mockResolvedValue({
+      success: true,
+      user: { id: 'worker-1', email: 'worker-1@test.test' },
+      role: 'worker',
+      supabase,
+    })
+
+    const { PATCH } = await import('@/app/api/jobs/[id]/status/route')
+    const res = await PATCH(
+      makeRequest('PATCH', {
+        status: 'completed_by_worker',
+        completion_notes: 'Done',
+        completion_photo_urls: ['https://example.com/after.jpg'],
+      }),
+      makeParams('job-1'),
+    )
+
+    expect(res.status).toBe(200)
+    expect(updates[0]).toMatchObject({
+      status: 'completed_by_worker',
+      completion_notes: 'Done',
+      completion_photo_urls: ['https://example.com/after.jpg'],
+    })
+    expect(updates[0]).not.toHaveProperty('final_price')
   })
 })
 
@@ -285,6 +423,57 @@ describe('Customer-only routes reject non-customers', () => {
     const { POST } = await import('@/app/api/scope-changes/[id]/decide/route')
     const res = await POST(makeRequest('POST', { decision: 'approve' }), makeParams('sc-1'))
     expect(res.status).toBe(403)
+  })
+})
+
+describe('Kael-owned money path parity in Next reference routes', () => {
+  it('POST /jobs/[id]/confirm-search locks jobs.final_price from Kael baseline', async () => {
+    const updates: Array<Record<string, unknown>> = []
+    const jobsQuery: any = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      update: vi.fn((data: Record<string, unknown>) => {
+        updates.push(data)
+        return jobsQuery
+      }),
+      single: vi.fn().mockResolvedValue({
+        data: {
+          id: 'job-1',
+          status: 'awaiting_customer_confirm',
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          address_district: 'q7',
+          kael_price_max: 250000,
+          final_price: null,
+        },
+        error: null,
+      }),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: { id: 'job-1' },
+        error: null,
+      }),
+    }
+    const eventQuery = {
+      insert: vi.fn(async () => ({ data: null, error: null })),
+    }
+    const supabase: any = {
+      from: vi.fn((table: string) => table === 'job_events' ? eventQuery : jobsQuery),
+    }
+    mockAuthenticate.mockResolvedValue({
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase,
+    })
+
+    const { POST } = await import('@/app/api/jobs/[id]/confirm-search/route')
+    const res = await POST(makeRequest('POST'), makeParams('job-1'))
+
+    expect(res.status).toBe(200)
+    expect(updates[0]).toMatchObject({
+      status: 'broadcasting',
+      final_price: 250000,
+    })
   })
 })
 

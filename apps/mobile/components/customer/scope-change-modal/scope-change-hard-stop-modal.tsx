@@ -1,4 +1,4 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { LocalScopeChange } from '@home-services/shared'
 import type { AppLanguage } from '@/lib/app-language'
 
@@ -86,12 +86,22 @@ export function ScopeChangeHardStopModal({
   visible,
 }: ScopeChangeHardStopModalProps) {
   const text = copy[language]
-  const kaelExplanation = readString(scopeChange?.kaelReview, 'customer_explanation') ?? text.fallback
-  const riskNotes = readStringArray(scopeChange?.kaelReview, 'risk_notes')
+  const problemSummary = readString(scopeChange?.kaelReview, 'problem_summary') ?? text.fallback
+  const advisory = readString(scopeChange?.kaelReview, 'advisory')
+  const complexity = readString(scopeChange?.kaelReview, 'complexity_assessment')
+  const confidence = readNumber(scopeChange?.kaelReview, 'confidence')
+  const fallbackUsed = readBoolean(scopeChange?.kaelReview, 'fallback_used')
+  const evidencePhotoUrls = scopeChange?.evidencePhotoUrls ?? []
   const newEstimate = scopeChange?.priceMin && scopeChange.priceMax
     ? formatPriceRange(scopeChange.priceMin, scopeChange.priceMax)
     : text.pending
   const reason = scopeChange?.reason?.trim() || text.pending
+  const metadataLabel = language === 'vi' ? 'Độ tin cậy' : 'Confidence'
+  const photosLabel = language === 'vi' ? 'Ảnh minh chứng' : 'Evidence photos'
+  const fallbackLabel = language === 'vi' ? 'Ước tính dự phòng' : 'Fallback estimate'
+  const confidenceLabel = confidence !== null
+    ? `${Math.round(confidence * 100)}%${fallbackUsed ? ` · ${fallbackLabel}` : ''}`
+    : fallbackUsed ? fallbackLabel : text.pending
 
   return (
     <Modal animationType="fade" onRequestClose={() => undefined} transparent visible={visible}>
@@ -131,17 +141,27 @@ export function ScopeChangeHardStopModal({
             <Text style={[styles.noteLabel, { color: tokens.primary }]} numberOfLines={1}>
               {text.explanation}
             </Text>
-            <Text style={[styles.noteValue, { color: tokens.text }]}>{kaelExplanation}</Text>
-            {riskNotes.length > 0 ? (
-              <View style={styles.riskList}>
+            <Text style={[styles.noteValue, { color: tokens.text }]}>{problemSummary}</Text>
+            {advisory ? (
+              <Text style={[styles.riskText, { color: tokens.muted }]}>{advisory}</Text>
+            ) : null}
+            <Text style={[styles.riskText, { color: tokens.copper }]}>
+              {metadataLabel}: {confidenceLabel}{complexity ? ` · ${complexity}` : ''}
+            </Text>
+            {evidencePhotoUrls.length > 0 ? (
+              <View style={styles.evidenceGrid}>
                 <Text style={[styles.noteLabel, { color: tokens.copper }]} numberOfLines={1}>
-                  {text.risk}
+                  {photosLabel}
                 </Text>
-                {riskNotes.map((item) => (
-                  <Text key={item} style={[styles.riskText, { color: tokens.muted }]}>
-                    {item}
-                  </Text>
-                ))}
+                <View style={styles.evidenceRow}>
+                  {evidencePhotoUrls.slice(0, 3).map((uri) => (
+                    <Image
+                      key={uri}
+                      source={{ uri }}
+                      style={[styles.evidenceImage, { borderColor: tokens.borderStrong }]}
+                    />
+                  ))}
+                </View>
               </View>
             ) : null}
           </View>
@@ -194,14 +214,17 @@ function readString(record: Record<string, unknown> | null | undefined, key: str
   return typeof value === 'string' && value.trim().length > 0 ? value : null
 }
 
-function readStringArray(record: Record<string, unknown> | null | undefined, key: string) {
-  const value = record?.[key]
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, 3)
-}
-
 function formatPriceRange(min: number, max: number) {
   return `${vndFormatter.format(min)}đ - ${vndFormatter.format(max)}đ`
+}
+
+function readNumber(record: Record<string, unknown> | null | undefined, key: string) {
+  const value = record?.[key]
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function readBoolean(record: Record<string, unknown> | null | undefined, key: string) {
+  return record?.[key] === true
 }
 
 const styles = StyleSheet.create({
@@ -219,6 +242,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  evidenceGrid: {
+    gap: 8,
+    paddingTop: 4,
+  },
+  evidenceImage: {
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 62,
+    width: 62,
+  },
+  evidenceRow: {
+    flexDirection: 'row',
+    gap: 8,
   },
   eyebrow: {
     fontSize: 12,

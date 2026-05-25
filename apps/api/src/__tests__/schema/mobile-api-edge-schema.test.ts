@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const ROOT = resolve(__dirname, '../../../../../')
-const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8')
+const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
 const readMigrations = () => {
   const dir = resolve(ROOT, 'supabase/migrations')
   return readdirSync(dir)
@@ -491,7 +491,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const migrations = readMigrations()
 
     expect(migrations).toContain('alter function public.accept_broadcast_atomic(uuid, uuid) security invoker')
-    expect(migrations).toContain('alter function public.request_scope_change_atomic(uuid, uuid, text, int, int, text) security invoker')
+    expect(migrations).toContain('alter function public.request_scope_change_atomic(uuid, uuid, text, text, text[], int, int, jsonb) security invoker')
     expect(migrations).toContain('alter function public.decide_scope_change_atomic(uuid, uuid, text) security invoker')
     expect(migrations).toContain('alter function public.submit_review_atomic(uuid, uuid, int, text[], text) security invoker')
     expect(migrations).toContain('language plpgsql security invoker')
@@ -653,6 +653,23 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(insertScopeIndex).toBeGreaterThan(updateJobIndex)
     expect(edgeServices).toContain('current_scope_change')
     expect(edgeServices).toContain('getCurrentScopeChange')
+  })
+
+  it('keeps PR#29 scope-change money path atomic and Kael-owned', () => {
+    const migrations = readMigrations()
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+
+    expect(migrations).toContain('p_kael_computed_max int')
+    expect(migrations).toContain('p_kael_review jsonb')
+    expect(migrations).toContain('evidence_photo_urls')
+    expect(migrations).toContain("return query select false, 'KAEL_PRICE_MISSING'::text")
+    expect(migrations).toContain("when p_decision = 'approve' then v_sc.kael_computed_max")
+    expect(edgeServices).toContain('kael_scope_review_computed')
+    expect(edgeServices).toContain('scope_change_notified')
+    expect(edgeServices).toContain('scope_change_final_price_locked')
+    expect(edgeServices).not.toContain('applyKaelLockedPriceFromScopeChange')
+    expect(edgeServices).not.toContain('failed to update jobs.final_price')
+    expect(edgeServices).not.toContain('failed to lock Kael price baseline')
   })
 
   it('prevents scope-change decision split-brain when one lifecycle update cannot persist', () => {
