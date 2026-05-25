@@ -3959,4 +3959,2089 @@ docs/workflow/worker-cancellation.md (new)                     Phase 5.4
 
 ---
 
+## 23. Kael Harness + Agentic Implementation Plan — 2026-05-25
+
+### 23.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-harness-agentic
+Created:        2026-05-25
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         DRAFT v0.1 → Tu approved 2026-05-25 → write Plan.md §23
+Critical Alert: HIGH — touches Kael identity, provider routing, money-impacting workflow
+Decision log:   Conversation 2026-05-25 (Tu + Claude) chốt Harness 7/7 + Agentic 5/5
+Scope:          Build Harness (7 sub-systems) + Agentic behavior (5 cases) trên top
+                of existing mobile-api Edge runtime
+Out of scope:   Multi-city, service expansion, autonomous booking/payment,
+                web consumer product, L3/L4 autonomy
+Effort total:   4-6 tuần agent build (sequential), 2-3 tuần (parallel where possible)
+Phase count:    18 phases (P0 pre-plan + P1-P17 execution)
+```
+
+**Mục tiêu chính:**
+
+1. **Build Harness** — lớp wrapper bao bọc Kael, cấu trúc lại từ kael.ts ~1602 dòng monolith thành module nhỏ kiểm soát được. Provide identity, permission, memory, learning governance, response policy.
+2. **Build Agentic behavior** — script Kael's behavior cho 5 scenario thực tế (normal, demanding, worker-cancel, customer-cancel, dispute) để Kael "biết phải làm gì" trong mọi tình huống.
+3. **Chuẩn bị scale** — code foundation đủ tốt để 10-100 jobs/ngày không vỡ trận.
+4. **Phục vụ first real transaction** — không vượt scope, vẫn đảm bảo Phase 0 priority theo CLAUDE.md.
+
+**Authority refs (theo critical.md §0):**
+
+```
+1. critical.md       (execution protocols)
+2. RULES.md          (security/PII/AI/scope non-negotiable)
+3. STRUCTURES.md     (workflow blueprint + §10F forbidden)
+4. design.md         (UI/visual contract khi đụng UI)
+5. AGENTS.md         (workspace operating rules)
+6. CLAUDE.md         (project identity)
+7. THIS PLAN §23     (Kael Harness + Agentic plan)
+8. Plan.md §0-§22    (existing workflow enhancement plan, may overlap)
+9. README.md + docs/** (durable contracts)
+10. MEMORY.md        (last, freshness signal only)
+```
+
+---
+
+### 23.1 Glossary
+
+| Term | Definition |
+|---|---|
+| **Harness** | 7 sub-systems wrapping Kael: routing, orchestrator, output, permission, memory, learning, charter |
+| **Agentic case** | Scripted Kael behavior for specific scenarios (5 cases chốt: normal, demanding, worker-cancel, customer-cancel, dispute) |
+| **Purpose** | Business intent unit cho Kael (11 purposes: intent_classification, vision_analysis, ..., educational_response) |
+| **Charter** | Locked identity files cho Kael (identity, persona, mission-values) + tunable (tone, language, forbidden) |
+| **Skill registry** | Code structure cho 7 learning skills (LS1-LS7) với evidence gate + lifecycle |
+| **95% acceptance** | Scenario-quality target only. Blocking tests, type-checks, security gates, and build gates must pass 100%; any failure triggers verify-improve loop |
+| **Foundation enhancement** | End-of-phase refactor: identify deep modules, eliminate shallow abstractions, improve testability |
+
+---
+
+### 23.2 Decisions Locked (discussion 2026-05-25)
+
+#### Harness decisions
+
+| # | Decision | Source |
+|---|---|---|
+| D1 | Harness = outer wrapper + add missing pieces, KHÔNG refactor toàn bộ | Q1 discussion |
+| D2 | Routing unit = **Purpose** (11 purposes, refactor stage-based) | Q2 discussion |
+| D3 | Config = file default + DB override khi cần | Q2 discussion |
+| D4 | Fallback strategy = Rule-based (cost + latency + circuit health) | Q3 discussion |
+| D5 | 11 purposes mapping: 6 DeepSeek-primary, 3 Anthropic-only, 1 Perplexity-primary, 1 Anthropic w/ A/B test | Final mapping |
+| D6 | Pipeline worst-case 9s, intent 1s budget (NO fallback intent), parallel pattern | Pipeline Orchestrator |
+| D7 | Streaming via Supabase Realtime trên `jobs.kael_progress` jsonb | Pipeline Orchestrator |
+| D8 | Output Format = 4-artifact meta-pattern (Schema + Sanitizer + Fallback + Renderer) | Output Format |
+| D9 | Estimate Card v3 có `needs_inspection`, `price_source`, `kael_reasoning` | Output Format |
+| D10 | Worker Brief = Hybrid Progressive 2-stage (core sau A7, guidance sau B3 accept) + "Hỏi Kael thêm" button limit 3/job | Output Format |
+| D11 | Scope-Change = Kael Challenge phase (anti-fraud) + 2 schema + anomaly score + margin check | Output Format |
+| D12 | Permission Scope = matrix (purpose × actor × job_relation) + topic allow/deny + 8 decline templates | Permission |
+| D13 | Education về 3 services = ALLOWED (không decline cứng); thêm purpose #11 `educational_response` | Permission v2 |
+| D14 | Legal awareness vs legal advice = phân biệt; worker_safety_advisory + legal_safety_awareness allowed | Permission v2 |
+| D15 | Memory = 6 layers (L1-L6) + 2 schema mới (customer_kael_memory, worker_kael_memory) | Memory |
+| D16 | Retrieval budget ≤ 1500 tokens/call, conflict resolution domain > job > user > short-term | Memory |
+| D17 | Learning = 7 skills (LS1-LS7), extend PR #12 EvidenceGate | Learning |
+| D18 | Charter = identity/persona/mission LOCKED, tone/language/forbidden tunable | Charter |
+| D19 | Soft-but-firm wording (NO hardcore language), 3 motif: system/process, record, fairness | Case 2 v2 |
+| D20 | Kael split kael.ts ~1602 dòng thành nhiều .ts nhỏ trong `kael/` folder | Q4 nâng cấp cấu trúc |
+| D21 | Identity layer + skill registry + tool calling pattern + versioning/governance | Q4 nâng cấp cấu trúc |
+
+#### Agentic decisions
+
+| # | Decision | Source |
+|---|---|---|
+| D22 | Case 1 normal: 6 phase compact, 5 notif, skip optional steps | Case 1 v2 |
+| D23 | Case 2 demanding: 2 nuance (legit vs pressure), 5 strategies, soft-but-firm, escalation pathway | Case 2 |
+| D24 | Case 3 worker hủy: 2 sub-cases (explicit + no-show), reason taxonomy, anti-abuse (30% rate, admin suspension review) | Case 3 |
+| D25 | Case 4 customer hủy: 5 sub-cases (4A-4E theo timing), Phase 0 no monetary penalty | Case 4 |
+| D26 | Case 5 dispute: Kael NEUTRAL only, evidence locking, admin decide, 5 sub-cases | Case 5 |
+| D27 | Anti-fraud spine NGẦM (system/process/record/fairness motif), NEVER accusatory | Case 2 v2 |
+
+#### Cross-cutting
+
+| # | Decision | Source |
+|---|---|---|
+| D28 | A/B test Perplexity #6 price_synthesis với 100 cases, 4 metrics, threshold loại nếu fail 2+ | Provider Routing |
+| D29 | DeepSeek 402 đã fix (Tu nạp tiền); cần verify khi staging | Discussion |
+| D30 | Telemetry blocker: `api_logs.purpose` NULL trên 52 records — bắt buộc fix trước A/B test | Memory + Learning |
+| D31 | District format risk: jobs `q7` vs worker `Quan 1/2/BT` — cần verify `normalizeServiceAreaDistrict()` mapping | Original verify |
+| D32 | Plan này KHÔNG conflict với Plan.md §1-§22 (workflow enhancement đợt 2026-05-20); 2 plan có thể parallel hoặc sequence | New plan |
+
+---
+
+### 23.3 Architecture Baseline (preserve, không động)
+
+- **Mobile RN (Expo SDK 54)** = primary customer + worker client.
+- **Supabase Edge `mobile-api`** = production runtime backend, AI provider boundary.
+- **Next.js `apps/api`** = reference/parity/admin.
+- **Supabase Postgres** = source of truth, RLS bật mọi public table.
+- **3 services**: electrical, plumbing, cleaning ONLY.
+- **Existing 42 migrations** (đã apply staging + prod) — KHÔNG edit, chỉ add new.
+- **Existing 13 RPCs** atomic — KHÔNG break, có thể extend.
+- **PR #12 (Kael learning)** = MarketMemoryService + CaseReviewService + EvidenceGate đã merge, extend ở P7.
+
+---
+
+### 23.4 High-Level Roadmap
+
+```
+P0  Pre-Plan Context Loading (MANDATORY, NEVER SKIP)
+├── Read order: critical.md → RULES.md → STRUCTURES.md → design.md → AGENTS.md
+│   → CLAUDE.md → skills.md → karpathy-guidelines → code-ownership-map.md
+│   → existing Plan.md → MEMORY.md last
+├── Verify decisions D1-D32 vẫn align
+├── Output preflight per critical.md §5
+
+P1  Foundation Prep (charter skeleton, permission matrix, memory schema, telemetry fix)
+├── Dep: P0
+
+P2  kael.ts Split + Module Skeleton (D20-D21)
+├── Dep: P1
+
+P3  Provider Routing + Pipeline Orchestrator (D2-D7)
+├── Dep: P2
+
+P4  Output Format (D8-D11)
+├── Dep: P2, P3
+
+P5  Permission Scope + Response Policy (D12-D14)
+├── Dep: P2
+
+P6  Memory Governance (D15-D16)
+├── Dep: P1 (schemas), P5
+
+P7  Learning Skill Setup (D17, extend PR #12)
+├── Dep: P6
+
+P8  Response Style / Charter Implementation (D18-D19)
+├── Dep: P2
+
+P9  Agentic Case 1 — Transaction bình thường (D22)
+├── Dep: P3-P8
+
+P10 Agentic Case 2 — Transaction khắc khe (D23, D27)
+├── Dep: P9, P5, P8
+
+P11 Agentic Case 3 — Worker hủy deal (D24)
+├── Dep: P9, P7
+
+P12 Agentic Case 4 — Customer hủy deal (D25)
+├── Dep: P9
+
+P13 Agentic Case 5 — Dispute (D26)
+├── Dep: P9, P12
+
+P14 Backend Gaps Cleanup
+├── Dep: P3-P13 done
+
+P15 Integration Testing
+├── Dep: P14
+
+P16 Pre-Launch Verification
+├── Dep: P15
+
+P17 Staging Deploy + Monitoring + A/B Test #6 Setup (D28)
+├── Dep: P16
+```
+
+**Critical path:** P0 → P1 → P2 → P3 → P4/P5/P6/P8 (parallel) → P7 → P9 → P10/P11/P12/P13 (parallel) → P14 → P15 → P16 → P17.
+
+**Parallel opportunities:** P4/P5/P6/P8 sau P3; P10/P11/P12/P13 sau P9.
+
+---
+
+### 23.5 Phase P0 — Pre-Plan Context Loading ⚠️ MANDATORY, NEVER SKIP
+
+**Goal:** AI agent build phase này có ngữ cảnh đầy đủ trước khi đụng code.
+
+**Dependencies:** None.
+
+**Scope:** Đọc TẤT CẢ files authority order. Verify decisions D1-D32. State preflight.
+
+**Out of scope:** KHÔNG sửa file nào trong P0.
+
+**WBS (Work Breakdown Structure):**
+
+- T0.1 Read `critical.md` § toàn bộ (execution contract).
+- T0.2 Read `RULES.md` § toàn bộ (non-negotiable rules).
+- T0.3 Read `STRUCTURES.md` §1-22 (workflow + §10F forbidden + §11 module forbidden).
+- T0.4 Read `design.md` (UI/motion/glass contract, nếu phase động UI).
+- T0.5 Read `AGENTS.md` (workspace operating loop).
+- T0.6 Read `CLAUDE.md` (project identity).
+- T0.7 Read `skills.md` + `.agents/skills/karpathy-guidelines/SKILL.md`.
+- T0.8 Read `docs/architecture/code-ownership-map.md` (ownership boundary).
+- T0.9 Read existing `Plan.md` §1-§22 (workflow enhancement context).
+- T0.10 Read `MEMORY.md` LAST.
+- T0.11 Read this plan §23 phase target.
+- T0.12 Verify D1-D32 alignment với code hiện tại — flag drift nếu có.
+- T0.13 State preflight format per `critical.md` §5.
+
+**Build Instructions:** N/A (read-only phase).
+
+**Affected Areas:** None.
+
+**Skills/Protocols:** `kael-preflight` (mandatory), `kael-clarify-with-docs` nếu ambiguity, `karpathy-guidelines` Principle 1.
+
+**Tests:** N/A.
+
+**Verification Loop:** Output preflight phải bao gồm tất cả T0.1-T0.13. Nếu drift detected → STOP, ask Tu.
+
+**Foundation Enhancement:** N/A.
+
+**Acceptance Gate:**
+
+- [ ] All 10 authority files read.
+- [ ] Preflight stated theo format.
+- [ ] No silent assumptions.
+- [ ] Drift (nếu có) reported.
+
+**Estimated Effort:** 30-60 phút.
+
+**Handoff Notes:** Output preflight là input cho mọi phase sau. Lưu trong session memory cho agent kế tiếp.
+
+---
+
+### 23.6 Phase P1 — Foundation Prep
+
+**Goal:** Tạo skeleton files cho Charter, Permission matrix, Memory schemas, fix telemetry blocker — KHÔNG implement logic.
+
+**Dependencies:** P0.
+
+**Scope:**
+
+- Charter skeleton files trong `packages/shared/kael/charter/`.
+- Permission matrix file template.
+- 2 migration mới cho `customer_kael_memory` + `worker_kael_memory`.
+- Fix `api_logs.purpose` NULL logging.
+- Audit log tables (`kael_permission_audit`, `kael_advisory_audit`, `kael_memory_audit`).
+
+**Out of scope:** KHÔNG implement logic. KHÔNG động `kael.ts`. KHÔNG add purposes.
+
+**WBS:**
+
+- T1.1 Tạo dir `packages/shared/kael/charter/` với 7 stub files (identity.md, persona.md, mission-values.md, tone-matrix.yaml, language-rules.md, forbidden-language.json, style-guidelines.md, version.json).
+- T1.2 Tạo `packages/shared/kael/permissions.ts` skeleton với types `PermissionRule`, `KaelPurpose`, `KaelAction`, `KaelTopic`.
+- T1.3 Tạo migration `YYYYMMDDHHMMSS_customer_kael_memory.sql` (schema only, no data).
+- T1.4 Tạo migration `YYYYMMDDHHMMSS_worker_kael_memory.sql`.
+- T1.5 Tạo migration `YYYYMMDDHHMMSS_kael_audit_tables.sql` (3 audit tables).
+- T1.6 Fix `api_logs.purpose` logging: pass `purpose` arg vào log function. KHÔNG refactor kael.ts (defer P2).
+- T1.7 Verify D31: chạy SQL `normalizeServiceAreaDistrict("q7")` vs worker districts → report drift.
+- T1.8 Verify D29: 1 test call DeepSeek với key mới → check api_logs success.
+- T1.9 Update RLS policies cho 3 table mới.
+- T1.10 Add generated types: `npm run supabase:gen-types`.
+
+**Build Instructions:**
+
+- Migration files atomic — 1 migration per concern.
+- KHÔNG edit existing migrations.
+- Charter stubs có frontmatter version + LOCKED status, content có thể TODO.
+- Skeleton files compile sạch (no `any`, no `@ts-ignore`).
+
+**Affected Areas:**
+
+- `packages/shared/kael/charter/` (NEW dir, 7 files)
+- `packages/shared/kael/permissions.ts` (NEW)
+- `supabase/migrations/*` (3 NEW migrations)
+- `supabase/functions/mobile-api/_shared/kael.ts` (minor edit: add purpose arg to log)
+- `packages/shared/src/database.types.ts` (regenerate)
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-security-sweep`, `kael-code-enhancement`, `karpathy-guidelines`.
+
+**Tests (blocking gates + acceptance metric):**
+
+- Layer: SQL/Migration + Wiring + Unit.
+- T1-test-1: Migration apply clean trên staging.
+- T1-test-2: RLS positive/negative cho 3 table mới.
+- T1-test-3: Type check pass after generated types update.
+- T1-test-4: api_logs.purpose populated cho mọi new call.
+- T1-test-5: Charter file structure (frontmatter present + valid).
+- Target: 5/5 = 100%. < 95% → improve loop.
+
+**Verification Loop:**
+
+- Run tests; nếu any blocking test fails hoặc scenario metric < 95%:
+  - Identify failing layer.
+  - Re-read relevant skill failure modes.
+  - Apply smallest fix.
+  - Re-run.
+- Honest reporting per memory `feedback_honest_reporting`.
+
+**Foundation Enhancement:**
+
+- Review folder structure `packages/shared/kael/` đã clean chưa.
+- Verify no duplicate type definitions (per memory `feedback_duplicate_types`).
+- Document folder convention trong `docs/architecture/code-ownership-map.md` addendum.
+
+**Acceptance Gate:**
+
+- [ ] 3 migrations applied staging clean.
+- [ ] RLS tests pass cho 3 new tables.
+- [ ] Type check pass.
+- [ ] api_logs.purpose KHÔNG còn NULL trên call mới.
+- [ ] D31 district drift verified.
+- [ ] D29 DeepSeek 402 fix verified.
+- [ ] kael-review pass.
+
+**Estimated Effort:** 1-2 ngày.
+
+**Handoff Notes:** Foundation skeleton ready cho P2-P8 build trên top. Migration order: customer_kael_memory → worker_kael_memory → audit_tables.
+
+---
+
+### 23.7 Phase P2 — kael.ts Split + Module Skeleton
+
+**Goal:** Chia `kael.ts` (~1602 dòng) thành nhiều `.ts` nhỏ hơn trong `kael/` folder theo D20-D21, KHÔNG đổi behavior.
+
+**Dependencies:** P1.
+
+**Scope:**
+
+- Tạo `supabase/functions/mobile-api/_shared/kael/` folder.
+- Split kael.ts thành: `index.ts`, `types.ts`, `pipeline.ts`, `prompts.ts`, `provider-client.ts`, `intent.ts`, `vision.ts`, `market.ts`, `synthesis.ts`, `advisory.ts`, `scope-change.ts`.
+- Skill registry skeleton `kael/skills/registry.ts`.
+- Behavior preserved 100%.
+
+**Out of scope:** KHÔNG thêm purposes. KHÔNG đổi provider routing. KHÔNG thêm features.
+
+**WBS:**
+
+- T2.1 Map kael.ts hiện tại → identify natural boundaries.
+- T2.2 Create `kael/` dir + `index.ts` re-export cho backward compat.
+- T2.3 Move types/interfaces sang `kael/types.ts`.
+- T2.4 Move prompts sang `kael/prompts.ts`.
+- T2.5 Move `callAI` + provider HTTP client sang `kael/provider-client.ts`.
+- T2.6 Move intent classification sang `kael/intent.ts`.
+- T2.7 Move vision analysis sang `kael/vision.ts`.
+- T2.8 Move market lookup sang `kael/market.ts`.
+- T2.9 Move price/problem synthesis sang `kael/synthesis.ts`.
+- T2.10 Move advisory generation sang `kael/advisory.ts`.
+- T2.11 Move scope-change estimate sang `kael/scope-change.ts`.
+- T2.12 Update import paths trong `services.ts`, `router.ts`, `index.ts`.
+- T2.13 Create `kael/skills/registry.ts` skeleton.
+- T2.14 Run full test suite — must pass 100%.
+
+**Build Instructions:**
+
+- Pure refactor, no logic change. Surgical: move code as-is, only fix imports.
+- KEEP `kael.ts` as re-export shim (`export * from "./kael/index.ts"`) cho backward compat. Delete sau khi all imports migrated.
+- Mỗi file `.ts` không quá 400 dòng.
+- KHÔNG circular imports.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael.ts` (becomes re-export shim)
+- `supabase/functions/mobile-api/_shared/kael/` (NEW dir, ~10 files)
+- `supabase/functions/mobile-api/_shared/services.ts` (update imports)
+- `supabase/functions/mobile-api/_shared/router.ts` (update imports)
+- `supabase/functions/mobile-api/index.ts` (update imports)
+
+**Skills/Protocols:** `kael-preflight`, `kael-architecture-deepening`, `kael-code-enhancement`, `kael-tdd`, `karpathy-guidelines`.
+
+**Tests (blocking gates + acceptance metric):**
+
+- T2-test-1: Full existing test suite pass (zero regression).
+- T2-test-2: Import paths resolve correctly.
+- T2-test-3: Each new file < 400 lines.
+- T2-test-4: No circular imports.
+- T2-test-5: Manual smoke staging.
+- Target: 5/5 = 100%. < 95% → STOP, no regression allowed.
+
+**Verification Loop:** Tests fail → STOP, no further phase progress.
+
+**Foundation Enhancement:**
+
+- Apply `kael-architecture-deepening` deletion test trên each new file.
+- Document new structure trong `docs/architecture/code-ownership-map.md`.
+
+**Acceptance Gate:**
+
+- [ ] All existing tests pass (zero regression).
+- [ ] kael.ts giảm xuống ≤ 50 dòng.
+- [ ] No file > 400 dòng.
+- [ ] No circular imports.
+- [ ] Ownership map updated.
+
+**Estimated Effort:** 2-3 ngày.
+
+**Handoff Notes:** Sau P2, mọi phase sau dễ navigate. Defer delete shim đến cuối roadmap.
+
+---
+
+### 23.8 Phase P3 — Provider Routing + Pipeline Orchestrator
+
+**Goal:** Implement Purpose-based routing (11 purposes) + Pipeline Orchestrator (9s worst case, parallel pattern, streaming).
+
+**Dependencies:** P2.
+
+**Scope:**
+
+- Define 11 purposes enum + per-purpose config.
+- Routing layer `kael/routing.ts` với rule-based scoring.
+- Pipeline Orchestrator `kael/orchestrator.ts`.
+- Streaming layer: update `jobs.kael_progress jsonb`.
+- Circuit breaker storage.
+- Config file + DB override.
+
+**11 Purposes Mapping (D5):**
+
+| # | Purpose | Primary | Fallback |
+|---|---|---|---|
+| 1 | intent_classification | DeepSeek | Anthropic |
+| 2 | vision_analysis | **Anthropic** (bắt buộc) | — |
+| 3 | clarification | DeepSeek | Anthropic |
+| 4 | problem_synthesis | DeepSeek | Anthropic |
+| 5 | market_lookup | Perplexity | Anthropic |
+| 6 | price_synthesis | **Perplexity** (A/B 100 cases) | Anthropic (bảo hiểm) |
+| 7 | advisory_generation | DeepSeek | Anthropic |
+| 8 | worker_brief | DeepSeek | Anthropic |
+| 9 | scope_change | **Anthropic** | — |
+| 10 | post_job_learning | DeepSeek | Anthropic |
+| 11 | educational_response | DeepSeek | Anthropic |
+
+**Cost ceiling per purpose:**
+
+| # | Purpose | Cost/call |
+|---|---|---|
+| 1 | intent_classification | $0.001 |
+| 2 | vision_analysis | $0.015 |
+| 3 | clarification | $0.003 |
+| 4 | problem_synthesis | $0.005 |
+| 5 | market_lookup | $0.002 |
+| 6 | price_synthesis | $0.010 |
+| 7 | advisory_generation | $0.004 |
+| 8 | worker_brief | $0.006 |
+| 9 | scope_change | $0.010 |
+| 10 | post_job_learning | $0.012 |
+| 11 | educational_response | $0.003 |
+
+Daily cap: $30/provider/day giai đoạn đầu.
+
+**Latency budget:**
+
+| # | Purpose | Budget | User thấy? |
+|---|---|---|---|
+| 1 | intent_classification | 1s | Có (gate) |
+| 2 | vision_analysis | 5s | Có |
+| 3 | clarification | 2s | Có |
+| 4 | problem_synthesis | 3s | Có |
+| 5 | market_lookup | 4s | Có |
+| 6 | price_synthesis | 3s | Có |
+| 7 | advisory_generation | 2s | Có |
+| 8 | worker_brief | 3s | KHÔNG (background) |
+| 9 | scope_change | 4s | Có |
+| 10 | post_job_learning | 15s | KHÔNG (background) |
+| 11 | educational_response | 2s | Có |
+
+**Circuit breaker thresholds:**
+
+| Error type | Threshold | Open duration |
+|---|---|---|
+| HTTP 402 (no credit) | 1 fail | 60 phút + admin alert |
+| HTTP 429 (rate limit) | 3 fail / 1 phút | 5 phút |
+| HTTP 5xx (server) | 5 fail / 5 phút | 5 phút |
+| Timeout | 5 fail / 5 phút | 5 phút |
+| Schema validation fail | 3 fail / 10 phút | 10 phút |
+
+**Concurrency graph (D6):**
+
+```
+intent_classification (gate 1s)
+  ↓ proceed nếu in-scope
+  ├─ vision_analysis (5s) ──┐
+  ├─ market_lookup (4s) ────┤  PARALLEL
+  └─ problem_synthesis (3s) ─┘
+       ↓
+  ├─ price_synthesis (3s)    ─┐
+  └─ advisory_generation (2s) ─┘  PARALLEL
+       ↓
+  [Customer thấy estimate card]
+A7 confirm (user action)
+  └─ worker_brief (3s) — BACKGROUND
+A14 review submitted
+  └─ post_job_learning (15s) — BACKGROUND queue
+```
+
+Worst case: 1 + 5 + 3 = **9s** (skip clarification, có vision).
+
+**WBS:**
+
+- T3.1 Define `KaelPurpose` enum trong `kael/types.ts`.
+- T3.2 Implement `kael/routing.config.ts` với 11 purposes mapping.
+- T3.3 Migration `ai_provider_routing` table.
+- T3.4 Implement `kael/routing.ts`.
+- T3.5 Implement `kael/circuit-breaker.ts`.
+- T3.6 Implement `kael/orchestrator.ts`.
+- T3.7 Implement streaming `kael/streaming.ts`.
+- T3.8 Migration `jobs.kael_progress jsonb` column.
+- T3.9 Update `kael/pipeline.ts` to use orchestrator.
+- T3.10 Telemetry: log per-purpose call (D30 fix).
+- T3.11 Wire orchestrator into existing call sites.
+
+**Build Instructions:**
+
+- Routing layer pure functions, no side effects.
+- Orchestrator uses `Promise.all` + `Promise.race`.
+- Circuit breaker state: start in-memory; migrate DB nếu cần.
+- Intent purpose: KHÔNG fallback Anthropic theo D6.
+- Streaming: write to DB row (Supabase Realtime auto broadcast).
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/types.ts`
+- `supabase/functions/mobile-api/_shared/kael/routing.config.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/routing.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/circuit-breaker.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/orchestrator.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/streaming.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/pipeline.ts` (REFACTOR)
+- `supabase/functions/mobile-api/_shared/services.ts` (call sites)
+- `supabase/migrations/*` (ai_provider_routing + jobs.kael_progress)
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-supabase`, `kael-tdd`, `kael-architecture-deepening`.
+
+**Tests (blocking gates + acceptance metric):**
+
+- T3-test-1: 11 purposes config valid.
+- T3-test-2: `chooseProvider` returns expected per purpose + scenario.
+- T3-test-3: Circuit breaker state transitions.
+- T3-test-4: Orchestrator parallel pattern within max latency.
+- T3-test-5: Orchestrator fallback: 1 purpose timeout → continue.
+- T3-test-6: Streaming: `jobs.kael_progress` updated trên each stage.
+- T3-test-7: api_logs.purpose populated (D30 fix verify).
+- T3-test-8: Integration end-to-end staging.
+- T3-test-9: Security: invalid purpose reject.
+- T3-test-10: Cost ceiling: purpose cost > cap → reject.
+- Target: 10/10 blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Verification Loop:** Test fail → `kael-diagnose`: hypothesis-driven, repro before fix.
+
+**Foundation Enhancement:**
+
+- Orchestrator interface: deep module check.
+- Circuit breaker: plan DB migration nếu Edge instances cần shared state.
+
+**Acceptance Gate:**
+
+- [ ] 11 purposes routable.
+- [ ] Rule-based scoring works.
+- [ ] Worst case latency ≤ 9s.
+- [ ] Streaming events visible Supabase Realtime.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+- [ ] api_logs.purpose populated 100%.
+- [ ] kael-security-sweep pass.
+
+**Estimated Effort:** 4-6 ngày.
+
+**Handoff Notes:** Orchestrator là foundation cho mọi case. Output schema ready ở P4.
+
+---
+
+### 23.9 Phase P4 — Output Format
+
+**Goal:** Implement meta-pattern 4-artifact + 3 critical outputs (Estimate Card v3, Worker Brief Hybrid Progressive, Scope-Change + Anti-fraud).
+
+**Dependencies:** P2, P3.
+
+**Scope:**
+
+- Meta-pattern infrastructure: `Schema + Sanitizer + Fallback + Renderer`.
+- Estimate Card v3 với `needs_inspection`, `price_source`, `kael_reasoning`.
+- Worker Brief Hybrid Progressive 2-stage + "Hỏi Kael thêm" button (limit 3/job).
+- Scope-Change Output với Kael Challenge phase (anti-fraud).
+
+**Estimate Card v3 Schema:**
+
+```ts
+const EstimateCardSchema = z.object({
+  service_type: z.enum(['electrical', 'plumbing', 'cleaning']),
+  problem_summary: z.string().min(10).max(200),
+  complexity: z.enum(['small', 'medium', 'large']),
+  price_min: z.number().int().positive(),
+  price_max: z.number().int().positive(),
+  confidence: z.enum(['low', 'medium', 'high']),
+  needs_inspection: z.boolean(),
+  price_source: z.enum([
+    'perplexity_validated',
+    'baseline_with_market',
+    'baseline_only',
+    'inspection_required',
+  ]),
+  kael_reasoning: z.object({
+    vision_findings: z.string().max(300).optional(),
+    market_signals: z.string().max(300).optional(),
+    baseline_used: z.string().max(100),
+    complexity_reasoning: z.string().max(200),
+    needs_inspection_reason: z.string().max(200).optional(),
+  }).strict(),
+  advisory: z.string().max(150).optional(),
+  disclaimer: z.literal(
+    'Đây là mức giá ước tính dựa trên thị trường HCMC. ' +
+    'Giá cuối được thợ xác nhận trước khi làm.'
+  ),
+}).refine(/* cross-field validation */);
+```
+
+**Anti-fraud anomaly score formula (admin tunable):**
+
+```
+score = 0
+if drift_ratio > 1.5:               score += 0.30
+if drift_ratio > 3.0:               score += 0.20  (cumulative)
+if no_photo AND drift_ratio > 2.0:  score += 0.20
+if suspicious_keyword_match:        score += 0.15
+if worker_scope_change_rate > 30%:  score += 0.15
+
+Thresholds:
+  score >= 0.5 → generate challenge
+  score >= 0.8 → flag admin (parallel)
+```
+
+**Suspicious keywords (Vietnamese, admin tunable):**
+
+- "phải thay hết"
+- "đường ống chính"
+- "thiết bị đặc biệt"
+- "phải đào tường"
+- "phải tháo nguyên hệ"
+- "vấn đề lớn hơn dự kiến"
+
+**Margin/profitability check:**
+
+```
+complexity_hours = { small: 1, medium: 3, large: 6 }
+hcmc_hourly_rate = 100,000 VND/hr  (admin tunable)
+fair_price_max = complexity_hours[new_complexity] * hcmc_hourly_rate * 1.5
+
+if new_price_max <= fair * 1.5:  kael_assessment = 'reasonable'
+if new_price_max > fair * 1.5:   kael_assessment = 'high_increase'
+if new_price_max > fair * 2.0:   kael_assessment = 'requires_attention' + admin_alert
+```
+
+**WBS:**
+
+- T4.1 Create `packages/shared/kael/schemas/` dir.
+- T4.2 Create `packages/shared/kael/sanitizers/index.ts`.
+- T4.3 Create `packages/shared/kael/fallbacks/` dir.
+- T4.4 Implement Estimate Card v3 (schema + sanitizer + fallback + renderer).
+- T4.5 Implement Worker Brief (2-section, Progressive 2-stage).
+- T4.6 Implement "Hỏi Kael thêm" route + rate limit 3/job + `kael_worker_qa_log` table.
+- T4.7 Implement Scope-Change + Anti-fraud (worker challenge + customer card schemas + anomaly + margin + `worker_scope_change_stats` table).
+- T4.8 Generic `kael/output-pipeline.ts`.
+- T4.9 Update existing `services.ts` để emit outputs.
+
+**Build Instructions:**
+
+- Schemas dùng Zod, strict mode.
+- Sanitizers pure functions, testable individually.
+- Fallback content deterministic, không depend on LLM.
+- KHÔNG hardcode VND values (per RULES.md).
+
+**Affected Areas:**
+
+- `packages/shared/kael/schemas/` (NEW)
+- `packages/shared/kael/sanitizers/` (NEW)
+- `packages/shared/kael/fallbacks/` (NEW)
+- `packages/shared/kael/renderers/` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/output-pipeline.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/scope-change.ts` (UPDATE)
+- `supabase/functions/mobile-api/_shared/services.ts` (call sites)
+- `supabase/functions/mobile-api/_shared/router.ts` (add `POST /jobs/:id/kael-clarify`)
+- `supabase/migrations/*` (jobs columns + 2 new tables)
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, `kael-tdd`.
+
+**Tests (blocking gates + acceptance metric):**
+
+- T4-test-1: Each Zod schema accepts valid + rejects invalid.
+- T4-test-2: Each sanitizer rule tested.
+- T4-test-3: Fallback template returns valid output.
+- T4-test-4: Worker Brief pre-accept has NO full address.
+- T4-test-5: Worker Brief post-accept has full address (RLS guarded).
+- T4-test-6: Estimate Card v3 với `needs_inspection=true` → confidence=low + advisory present.
+- T4-test-7: Scope-Change anomaly score formula correct.
+- T4-test-8: Margin check: fair_price_max calculation.
+- T4-test-9: Suspicious keyword match classification.
+- T4-test-10: Integration: full estimate flow → valid + sanitized.
+- T4-test-11: Integration: scope-change → worker challenge → customer card.
+- T4-test-12: Security negative: PII leak attempt caught.
+- T4-test-13: Security negative: VND-pattern stripped.
+- Target: 13/13 blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Verification Loop:** Sanitizer fail → tighten. Schema fail → check edge cases. Anti-fraud false positive → tune weights.
+
+**Foundation Enhancement:**
+
+- Schema registry central index file.
+- Sanitizer composition: composable functions.
+- Fallback templates Vietnamese review pass với Tu.
+
+**Acceptance Gate:**
+
+- [ ] Estimate Card v3 complete.
+- [ ] Worker Brief 2-stage complete.
+- [ ] "Hỏi Kael thêm" route + rate limit working.
+- [ ] Scope-Change Anti-fraud detection working.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+- [ ] No PII leak.
+- [ ] No exact VND price.
+- [ ] Disclaimer present every price output.
+
+**Estimated Effort:** 5-7 ngày.
+
+**Handoff Notes:** Mobile UI rendering riêng phase (out of scope). 5 output còn lại defer P15 hoặc lazy.
+
+---
+
+### 23.10 Phase P5 — Permission Scope + Response Policy
+
+**Goal:** Implement Permission matrix + topic allow/deny + decline templates + rate limit + audit log.
+
+**Dependencies:** P2.
+
+**Scope:**
+
+- Permission matrix (purpose × actor × job_relation).
+- Topic allow/deny lists.
+- Educational response purpose (#11).
+- 8 decline templates Vietnamese.
+- Rate limit + cost cap per actor.
+- Advisory audit log.
+- Worker safety patterns + legal awareness patterns.
+
+**Topic allowed (6 groups):**
+
+| Group | Topics |
+|---|---|
+| Service request | electrical_repair, plumbing_repair, home_cleaning |
+| Educational về 3 services | electrical_safety_education, plumbing_self_diagnosis, cleaning_best_practices, service_pricing_general_info, worker_qualification_explain |
+| Functional | price_estimate (own job), worker_brief, scope_change, job_status, app_usage_help, safety_advisory |
+| Worker safety | worker_safety_advisory |
+| Legal awareness | legal_safety_awareness |
+| Redirect | support_redirect |
+
+**Topic forbidden:**
+
+| Forbidden | Lý do |
+|---|---|
+| medical_advice, legal_advice, financial_advice | Ngoài chuyên môn |
+| other_workers_specific, other_jobs_specific | PII + privacy |
+| market_prediction | Không phải Kael's job |
+| political_opinion, social_opinion | Brand safety |
+| exact_guaranteed_price, fear_based_upsell | STRUCTURES rule |
+| out_of_scope_services_anything | Hard scope |
+
+**8 Decline templates Vietnamese:**
+
+```ts
+const DeclineTemplates = {
+  out_of_scope_service: "Hiện Kael chỉ hỗ trợ sửa điện, sửa nước và dọn dẹp tại các căn hộ HCMC. Bạn vui lòng quay lại khi chúng tôi mở thêm dịch vụ.",
+  out_of_domain_question: "Câu hỏi này nằm ngoài phạm vi của Kael. Vui lòng liên hệ hỗ trợ khách hàng tại tab Profile để được giúp.",
+  cannot_do_action: (alternative) => `Kael không có thẩm quyền thực hiện điều này. ${alternative}`,
+  unsafe_or_sensitive: "Kael không thể trả lời câu hỏi này. Nếu bạn cần hỗ trợ khẩn cấp, vui lòng gọi số 113.",
+  rate_limit_hit: "Bạn đã hỏi Kael quá nhiều lần trong thời gian ngắn. Vui lòng đợi {seconds} giây.",
+  cost_cap_hit: "Bạn đã đạt giới hạn yêu cầu cho tháng này. Vui lòng liên hệ hỗ trợ.",
+  legal_advice_redirect: "Câu hỏi này cần tư vấn pháp lý chuyên môn. Kael có thể cảnh báo về an toàn nhưng không tư vấn pháp lý. Vui lòng tham vấn luật sư.",
+  emergency_redirect: "Tình huống này có vẻ khẩn cấp. Vui lòng gọi 113 (cứu hỏa/khẩn cấp) hoặc 115 (cấp cứu y tế) ngay lập tức.",
+};
+```
+
+**Rate limit + cost cap:**
+
+| Actor / Action | Per-minute | Per-day | Cost cap/month |
+|---|---|---|---|
+| Customer intent_classification | 30 | — | — |
+| Customer full estimate request | 5 | 50 | $5 |
+| Customer clarification | 10 | 100 | — |
+| Customer scope_change | 3 per job | — | — |
+| Worker brief clarification | 3 per job | — | — |
+| Worker scope_change submit | 1 per job | — | — |
+| Admin | unlimited | unlimited | unlimited |
+| System (background learning) | — | — | $30/day |
+
+**WBS:**
+
+- T5.1 Implement `packages/shared/kael/permissions.ts` (Permission matrix data).
+- T5.2 Implement `supabase/functions/mobile-api/_shared/kael/permission-gate.ts`.
+- T5.3 Add purpose #11 `educational_response` to routing config.
+- T5.4 Enhance intent_classification output schema với 6 intent categories.
+- T5.5 Implement decline templates Vietnamese.
+- T5.6 Implement rate limit `kael/rate-limit.ts`.
+- T5.7 Migration `kael_advisory_audit` table.
+- T5.8 Migration `worker_safety_patterns` table.
+- T5.9 Migration `legal_awareness_patterns` table.
+- T5.10 Seed initial safety + legal patterns.
+- T5.11 Integrate permission gate vào orchestrator (P3 hook).
+
+**Build Instructions:**
+
+- Permission matrix: declarative data, not code logic.
+- Decline templates: hardcode Vietnamese.
+- Rate limit: start in-memory; migrate DB nếu cần.
+- Audit log: append-only.
+
+**Affected Areas:**
+
+- `packages/shared/kael/permissions.ts`
+- `packages/shared/kael/decline-templates.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/permission-gate.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/rate-limit.ts`
+- `supabase/functions/mobile-api/_shared/kael/orchestrator.ts` (UPDATE: hook)
+- `supabase/migrations/*` (3 new tables + seeds)
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-security-sweep`, `kael-supabase`, `kael-tdd`.
+
+**Tests (blocking gates + acceptance metric):**
+
+- T5-test-1: Permission matrix coverage (11 × 4 × 4) compile + valid.
+- T5-test-2: Educational query in-scope → respond, not decline.
+- T5-test-3: AC service query → decline OOS.
+- T5-test-4: Legal advice → decline.
+- T5-test-5: Legal awareness query → respond cảnh báo.
+- T5-test-6: Worker safety advisory triggered.
+- T5-test-7: Rate limit hit → template, no LLM.
+- T5-test-8: Cost cap hit → template + log.
+- T5-test-9: Audit log row inserted.
+- T5-test-10: Security: cross-customer access denied.
+- T5-test-11: Security: worker pre-accept PII denied.
+- T5-test-12: Decline templates Vietnamese only.
+- Target: 12/12 blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Verification Loop:** Permission deny không đúng → tune matrix. Template cần update → tune.
+
+**Foundation Enhancement:** Permission matrix size → config file. Rate limit → DB nếu cần.
+
+**Acceptance Gate:**
+
+- [ ] Permission matrix complete.
+- [ ] Educational query routes #11.
+- [ ] 8 decline templates Vietnamese.
+- [ ] Rate limit + cost cap enforced.
+- [ ] Advisory audit working.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+- [ ] No permission bypass.
+
+**Estimated Effort:** 3-4 ngày.
+
+**Handoff Notes:** Permission gate integrated vào orchestrator. Mọi purpose call qua check trước.
+
+---
+
+### 23.11 Phase P6 — Memory Governance
+
+**Goal:** Implement 6-layer memory (L1-L6) + retrieval budget + privacy + audit.
+
+**Dependencies:** P1 (schemas), P5.
+
+**Memory taxonomy:**
+
+| Layer | Storage | Lifetime | Access | Versioned |
+|---|---|---|---|---|
+| L1 Short-term context | Memory (Edge function) | Per-request | service-role | No |
+| L2 Job memory | jobs.kael_* + kael_*_artifacts | 2 năm retention | RLS (own + admin) | Snapshot per write |
+| L3 Customer memory (NEW) | customer_kael_memory | Indefinite, purge khi xóa account | RLS | Latest only |
+| L4 Worker memory (NEW) | worker_kael_memory | Indefinite, archive sau suspended > 1 năm | RLS | Latest only |
+| L5 Domain memory | learning_rules + learning_rule_versions | Indefinite | service-role + admin | Yes (PR #12) |
+| L6 Conversational | chat_messages | 90 ngày | RLS | No |
+
+**Retrieval budget per LLM call (tokens):**
+
+| Layer | Customer call | Worker call | Background learning |
+|---|---|---|---|
+| L1 short-term | Full | Full | Full |
+| L2 job memory | Full job context | Full job context | Full |
+| L3 customer | Last 5 jobs + prefs (≤500) | **NEVER** (privacy) | Full |
+| L4 worker | **NEVER** (privacy) | Own (≤500) | Full |
+| L5 domain | Relevant rules (≤500) | Same | Full |
+| L6 conversational | Last 10 messages (≤300) | Last 10 messages | Full |
+
+**Total budget per LLM call: ≤ 1500 tokens context.**
+
+**Conflict resolution:** L5 domain > L2 job > L3/L4 user > L1 short-term.
+
+**Stale check:** Memory > 90 days → mark 'stale'. > 365 days → archive.
+
+**WBS:**
+
+- T6.1 Implement `kael/memory.ts` (KaelMemory class với getContext + per-layer fetchers).
+- T6.2 L1 short-term context: per-request scratchpad.
+- T6.3 L2 job memory fetcher.
+- T6.4 L3 customer memory fetcher.
+- T6.5 L4 worker memory fetcher.
+- T6.6 L5 domain memory fetcher.
+- T6.7 L6 conversational fetcher.
+- T6.8 Token budget enforcement.
+- T6.9 Conflict resolution.
+- T6.10 PII filter `kael/memory-sanitizer.ts`.
+- T6.11 Cascade delete trigger.
+- T6.12 Audit log `kael_memory_audit`.
+- T6.13 Endpoint `GET /me/kael-memory`.
+- T6.14 Endpoint `GET /workers/me/kael-memory`.
+- T6.15 Memory deletion endpoint `DELETE /me/kael-memory` (GDPR-ready).
+- T6.16 Wire `KaelMemory.getContext()` vào orchestrator.
+- T6.17 Stale check job.
+
+**Build Instructions:**
+
+- Token counting: tiktoken hoặc heuristic (4 chars ≈ 1 token).
+- Retrieval per layer parallel (Promise.all).
+- PII filter strict whitelist.
+- Audit log append-only.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/memory.ts` (NEW, ~400-600 lines)
+- `supabase/functions/mobile-api/_shared/kael/memory-sanitizer.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/orchestrator.ts` (UPDATE)
+- `supabase/functions/mobile-api/_shared/router.ts` (3 new routes)
+- `supabase/functions/mobile-api/_shared/services.ts` (3 new handlers)
+- `supabase/migrations/*` (trigger cascade + archive table)
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-security-sweep`, `kael-architecture-deepening`, `kael-tdd`.
+
+**Tests (blocking gates + acceptance metric):**
+
+- T6-test-1: `getContext` returns 6 layers correctly.
+- T6-test-2: Token budget per layer enforced.
+- T6-test-3: PII filter strips phone/CCCD/address.
+- T6-test-4: Customer cannot read other customer's L3.
+- T6-test-5: Worker cannot read other worker's L4.
+- T6-test-6: Customer-facing call: L4 NOT included.
+- T6-test-7: Worker-facing call: L3 detailed NOT included.
+- T6-test-8: Conflict resolution priority.
+- T6-test-9: Stale check.
+- T6-test-10: Cascade delete: delete customer → L3 row gone.
+- T6-test-11: Audit log 1 row per L3/L4/L5 read/write.
+- T6-test-12: Self-view endpoint sanitized data.
+- T6-test-13: Memory deletion endpoint: data gone + audit.
+- Target: 13/13 blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Verification Loop:** Token budget exceed → tune. PII leak → tighten filter. Cascade fail → fix FK + trigger.
+
+**Foundation Enhancement:** KaelMemory class deep module check. Audit log partition strategy.
+
+**Acceptance Gate:**
+
+- [ ] 6 layers fetchable.
+- [ ] Budget ≤ 1500 tokens/call enforced.
+- [ ] PII filter security test pass.
+- [ ] Cascade delete works.
+- [ ] Self-view endpoints work.
+- [ ] Audit log working.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Estimated Effort:** 4-5 ngày.
+
+**Handoff Notes:** Memory layer ready cho Learning Skill (P7) consume.
+
+---
+
+### 23.12 Phase P7 — Learning Skill Setup (extend PR #12)
+
+**Goal:** Implement 7 learning skills (LS1-LS7) với skill registry, evidence gate, scope limits, lifecycle, monitoring, admin controls.
+
+**Dependencies:** P6.
+
+**7 Learning Skills:**
+
+| # | Skill | Trigger | Status | Effect |
+|---|---|---|---|---|
+| LS1 | Price prior learning (MarketMemoryService) | post-A14 | ✅ PR #12 | Adjust baseline range |
+| LS2 | Case review learning (CaseReviewService) | post-A14 | ✅ PR #12 | Detect missing questions, advisory, fraud |
+| LS3 | Worker pattern learning | post-B6 + post-B7 | NEW | Update worker_kael_memory.red_flags |
+| LS4 | Customer preference learning | post-A14 | NEW | Update customer_kael_memory |
+| LS5 | Service knowledge learning | post-A14 + admin trigger | NEW | Update service_knowledge_boxes |
+| LS6 | Safety pattern learning | post-A14 + admin tag | NEW | Extend worker_safety + legal_awareness patterns |
+| LS7 | Decline reason learning | post-decline + customer feedback | NEW | Improve intent + decline templates |
+
+**Skill Registry pattern:**
+
+```ts
+interface KaelLearningSkill {
+  name: string;
+  trigger: SkillTrigger;
+  inputs_schema: ZodSchema;
+  outputs_schema: ZodSchema;
+  evidence_gate: {
+    min_evidence_count: number;     // default 5 (PR #12)
+    confidence_threshold: number;   // default 0.6 (PR #12)
+    recency_window_days: number;    // default 90
+    require_completed_transactions: true;
+    quality_filter?: (evidence: any[]) => any[];
+  };
+  scope_limits: {
+    forbidden_effects: KaelForbiddenEffect[];
+    allowed_targets: ('analysis_prompt' | 'price_prior' | 'clarification' | 'advisory' | 'detection_pattern')[];
+  };
+  rollback: {
+    available: boolean;
+    auto_rollback_trigger?: {
+      accuracy_drop_pct: number;     // default 10%
+      satisfaction_drop_pts: number; // default 0.3
+      monitor_window_days: number;   // default 30
+    };
+  };
+  performance_metrics: ('applied_count' | 'override_count' | 'accuracy_delta' | 'satisfaction_delta')[];
+  enabled: boolean;
+  version: number;
+}
+```
+
+**Forbidden effects (STRUCTURES §10F, code constant):**
+
+- auto_charge_payment
+- auto_confirm_booking
+- auto_cancel_job
+- auto_approve_worker
+- auto_suspend_worker
+- auto_change_final_price (without A11)
+- auto_expand_service_scope
+- hide_learning_changes_from_admin
+
+**Allowed targets (code constant):**
+
+- analysis_prompt
+- price_prior
+- clarification_pattern
+- advisory_pattern
+- detection_pattern
+- intent_category
+
+**Lifecycle:**
+
+```
+candidate → pending_evidence → evidence_gate_check
+  → auto_promoted (if pass all) OR manual_review (if borderline)
+  → active → monitoring
+  → degraded (if accuracy/satisfaction drops) → rolled_back → archived
+```
+
+**3 NEW env flags:**
+
+```
+KAEL_LEARNING_KILL_SWITCH=false        # emergency disable all
+KAEL_LEARNING_AB_PERCENTAGE=100        # A/B rollout %
+KAEL_LEARNING_AUTO_ROLLBACK=true       # enable auto-degrade
+```
+
+(extends PR #12 existing `KAEL_LEARNING_READ_ENABLED` + `KAEL_LEARNING_WRITE_ENABLED`)
+
+**WBS:**
+
+- T7.1 Implement `kael/skills/registry.ts`.
+- T7.2 Implement `kael/skills/LS1-market-memory.ts` (port PR #12).
+- T7.3 Implement `kael/skills/LS2-case-review.ts` (port PR #12 + extend).
+- T7.4 Implement `kael/skills/LS3-worker-pattern.ts`.
+- T7.5 Implement `kael/skills/LS4-customer-preference.ts`.
+- T7.6 Implement `kael/skills/LS5-service-knowledge.ts` (manual review required).
+- T7.7 Implement `kael/skills/LS6-safety-pattern.ts` (manual review required).
+- T7.8 Implement `kael/skills/LS7-decline-reason.ts` (manual review required).
+- T7.9 Migration `kael_rule_application_log` table.
+- T7.10 Migration `kael_rule_lifecycle_log` table.
+- T7.11 Lifecycle state machine.
+- T7.12 Scope limits runtime enforcement.
+- T7.13 Performance monitoring.
+- T7.14 3 env flags.
+- T7.15 Wire skill triggers vào workflow events.
+
+**Build Instructions:**
+
+- Skills run background queue (NOT inline).
+- Use existing `insert_notification_atomic` cho async.
+- Forbidden effects + allowed targets trong code constant (KHÔNG configurable).
+- Per-skill prompts versioned.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/skills/` (NEW dir, 7 skill files + registry)
+- `supabase/functions/mobile-api/_shared/services.ts` (wire triggers)
+- `supabase/migrations/*` (2 new tables + env flag docs)
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, `kael-tdd`, `kael-architecture-deepening`.
+
+**Tests (blocking gates + acceptance metric):**
+
+- T7-test-1: Skill registry CRUD.
+- T7-test-2: LS1-LS7 each trigger → output valid.
+- T7-test-3: Evidence gate: count < min → no promote.
+- T7-test-4: Evidence gate pass → auto-promote (auto skills) or queue (manual).
+- T7-test-5: Scope limits: candidate forbidden_effect → reject + audit.
+- T7-test-6: Lifecycle state transitions valid.
+- T7-test-7: Performance monitoring tracking.
+- T7-test-8: Auto-rollback: simulate accuracy drop → rule degraded.
+- T7-test-9: Manual review queue: LS5/6/7 pending.
+- T7-test-10: Kill switch: env true → no learning.
+- T7-test-11: A/B percentage: 50% → only 50% trigger.
+- T7-test-12: Security: skill attempts auto-charge → blocked.
+- T7-test-13: Cross-skill: 1 job → multiple skills correctly.
+- Target: 13/13 blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Verification Loop:** Skill not triggering → check wiring. Auto-promote không đúng → tune gate.
+
+**Foundation Enhancement:** Skill registry pattern docs. Learning rule version archive strategy.
+
+**Acceptance Gate:**
+
+- [ ] 7 skills registered.
+- [ ] PR #12 LS1/LS2 integrated.
+- [ ] LS3-LS7 new skills implemented.
+- [ ] Evidence gate works.
+- [ ] Scope limits enforced.
+- [ ] Performance monitoring active.
+- [ ] 3 env flags working.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+- [ ] No autonomous money-impacting action possible.
+
+**Estimated Effort:** 5-7 ngày (largest after P3).
+
+**Handoff Notes:** Learning loop ready. Admin needs UI để view candidates + approve manual review skills.
+
+---
+
+### 23.13 Phase P8 — Response Style / Charter Implementation
+
+**Goal:** Charter files đầy đủ + system prompt construction + self-check pipeline.
+
+**Dependencies:** P2.
+
+**Charter structure:**
+
+```
+packages/shared/kael/charter/
+  identity.md              # LOCKED — Tu approve mới đổi
+  persona.md               # LOCKED
+  mission-values.md        # LOCKED
+  tone-matrix.yaml         # admin tunable
+  language-rules.md        # admin tunable (add only)
+  forbidden-language.json  # admin tunable (add only)
+  style-guidelines.md      # admin tunable
+  version.json             # version tracking
+```
+
+**Identity (LOCKED):**
+
+```md
+Kael là trợ lý AI của Home Services, nền tảng dịch vụ sửa điện, sửa nước
+và dọn dẹp cho căn hộ tại HCMC.
+
+Kael KHÔNG phải: chatbot tổng quát, người quyết định booking, người trừng phạt thợ,
+cố vấn pháp lý/y tế/tài chính, hệ thống bán hàng.
+
+Kael LÀ: phân tích vấn đề từ ảnh và mô tả, ước tính giá thị trường minh bạch,
+brief cho thợ trước khi đến, bảo vệ khách + thợ khỏi lừa đảo, học từ giao dịch hoàn tất.
+```
+
+**Persona traits (LOCKED):**
+
+| Trait | Có | Không |
+|---|---|---|
+| Professional | Câu rõ ràng, dùng số liệu | Không slang, emoji default |
+| Humble | Biết giới hạn, "cần khảo sát" khi thiếu info | Không ép giá chính xác |
+| Transparent | Show price_source, kael_reasoning | Không giấu data từ admin |
+| Customer-first | Đặt customer interest trước platform | Không upsell |
+| Fair to workers | Đề xuất earning hợp lý | Không pressure |
+| Has spine | Challenge thợ khi scope-change suspicious | Không bị dắt mũi |
+| Direct | Nói thẳng, không vòng vo | Không politically correct excess |
+
+**Mission + Values priority (LOCKED):**
+
+```
+1. Trust  — không lừa khách, không lừa thợ, không lừa platform
+2. Safety — bảo vệ khách + thợ khỏi nguy hiểm vật lý/pháp lý
+3. Transparency — show reasoning, không giấu data
+4. Fairness — giá đúng, không upcharge, không lowball
+5. Humility — biết khi nào không biết
+```
+
+**Forbidden language (admin tunable, add-only):**
+
+```json
+{
+  "fear_language": ["nguy hiểm chết người", "cháy nổ tức thì", "tử vong", "không cứu kịp", "phá hủy hoàn toàn"],
+  "absolute_claims": ["chắc chắn 100%", "không bao giờ", "tuyệt đối an toàn", "guaranteed", "đảm bảo không lỗi"],
+  "ai_self_reference": ["As an AI", "Tôi là AI", "Tôi là chatbot", "Tôi không phải con người", "AI language model"],
+  "casual_slang": ["ok đm", "vãi", "ờm", "à uh"],
+  "buzzwords": ["synergy", "leverage", "paradigm shift", "revolutionary", "game-changing"],
+  "accusatory_in_dispute": ["Bạn đang đe dọa", "Hành vi không chấp nhận", "Vui lòng dừng việc", "Kael phát hiện bạn đang", "Yêu cầu của bạn không hợp lý", "Bạn đang lừa Kael", "Không thể chấp nhận", "Bạn cần bình tĩnh"],
+  "aggressive_response": ["Tôi sẽ không trả lời", "Đây là yêu cầu vô lý", "Bạn cần kiềm chế", "Tôi từ chối", "Hệ thống không cho phép điều đó", "Bạn đã sai"]
+}
+```
+
+**Style guidelines (per actor):**
+
+| Rule | Customer-facing | Worker-facing | Admin |
+|---|---|---|---|
+| Câu length | ≤ 20 từ/câu | ≤ 30 từ | unlimited |
+| 1 response | 1 ý chính | 1-3 bullet | structured |
+| Markdown | NO (sanitize) | Limited bullet | YES |
+| Emoji | NO default | NO | YES |
+| Code blocks | NO | NO | YES |
+| Number format | Vietnamese | Vietnamese | English OK |
+
+**System prompt construction:**
+
+```ts
+function buildSystemPrompt(purpose, actor, context): string {
+  return [
+    Charter.identity,                              // LOCKED
+    Charter.persona,                               // LOCKED
+    Charter.missionValues,                         // LOCKED
+    Charter.toneMatrix.lookup({ purpose, actor }), // dynamic
+    Charter.languageRules,                         // always
+    Charter.forbiddenLanguage.toAvoidance(),       // always
+    Charter.styleGuidelines.lookup(actor),         // dynamic
+    PurposeSpecificGuidance.lookup(purpose),       // dynamic
+    Permission.summarize({ actor, purpose }),       // from #4
+    Context.summarize(context),                     // from #5 memory
+  ].join('\n\n---\n\n');
+}
+```
+
+Cap total prompt: 3000 system + 1500 memory = ~4500 tokens.
+
+**Self-check pipeline:**
+
+```
+LLM raw output
+  → Sanitizer (strip PII, AI self-ref, forbidden language, VI check, length cap)
+  → Tone check (heuristic: formal markers vs casual)
+  → If fail → regen 1 lần | fallback template
+  → Persist + emit
+```
+
+**WBS:**
+
+- T8.1 Fill `kael/charter/identity.md` (LOCKED, Vietnamese).
+- T8.2 Fill `kael/charter/persona.md` (LOCKED).
+- T8.3 Fill `kael/charter/mission-values.md` (LOCKED).
+- T8.4 Fill `kael/charter/tone-matrix.yaml` (mọi purpose × actor, empathy v2, 3 motif).
+- T8.5 Fill `kael/charter/language-rules.md`.
+- T8.6 Fill `kael/charter/forbidden-language.json`.
+- T8.7 Fill `kael/charter/style-guidelines.md`.
+- T8.8 Implement `kael/system-prompt.ts`.
+- T8.9 Implement `kael/self-check.ts`.
+- T8.10 Charter governance (LOCKED vs tunable).
+- T8.11 Versioning `kael/charter/version.json`.
+- T8.12 Migration `kael_charter_audit` table.
+- T8.13 Endpoint `GET /kael/charter` (public, sanitized).
+- T8.14 Integrate self-check vào orchestrator output path.
+
+**Build Instructions:**
+
+- Charter Vietnamese.
+- Frontmatter on every file: name, status, version, last_modified.
+- System prompt: deterministic order.
+- Self-check pure function.
+- Tone heuristic: keyword count, no LLM call.
+
+**Affected Areas:**
+
+- `packages/shared/kael/charter/` (FILL 7 files)
+- `supabase/functions/mobile-api/_shared/kael/system-prompt.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/self-check.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/orchestrator.ts` (UPDATE)
+- `supabase/functions/mobile-api/_shared/router.ts` (1 new route)
+- `supabase/migrations/*` (charter audit table)
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-docs-execution`, `kael-tdd`.
+
+**Tests (blocking gates + acceptance metric):**
+
+- T8-test-1: Charter files valid (frontmatter + schema).
+- T8-test-2: System prompt builder ≤ 3000 tokens.
+- T8-test-3: Tone matrix lookup correct.
+- T8-test-4: Self-check fear language → fail.
+- T8-test-5: Self-check AI self-ref → fail.
+- T8-test-6: Self-check exact VND → fail.
+- T8-test-7: Self-check Vietnamese pass.
+- T8-test-8: Self-check English mid-VI mode → fail.
+- T8-test-9: Tone enforcement length ≤ 20 từ/câu customer.
+- T8-test-10: Forbidden language Case 2 anti-accusation caught.
+- T8-test-11: Charter endpoint sanitized.
+- T8-test-12: Integration: full Kael invocation → prompt valid + response checked.
+- T8-test-13: Security: LOCKED file edit via API → blocked.
+- Target: 13/13 blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Verification Loop:** Tone wrong → tune matrix. Self-check false positive → adjust.
+
+**Foundation Enhancement:** Charter source of truth. Future: visual Charter editor (out of scope).
+
+**Acceptance Gate:**
+
+- [ ] 7 charter files Vietnamese.
+- [ ] System prompt builder works.
+- [ ] Self-check catches violations.
+- [ ] Tone matrix covers all (purpose × actor).
+- [ ] Forbidden language complete.
+- [ ] Charter endpoint public-safe.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Estimated Effort:** 3-4 ngày.
+
+**Handoff Notes:** Charter governs Kael personality. Any future change MUST update charter first.
+
+---
+
+### 23.14 Phase P9 — Agentic Case 1: Transaction bình thường
+
+**Goal:** Wire full happy-path workflow theo Compact 6 phase (D22).
+
+**Dependencies:** P3-P8 (all Harness done).
+
+**Compact 6 phase:**
+
+```
+Phase 1 INTAKE (A2-A5, ~9s)
+  - Pipeline run: intent → (vision ‖ market ‖ problem) → (price ‖ advisory)
+  - Optional skip: A4 clarification (skip nếu ảnh + ≥50 char)
+  - Notif: "Kael đã ước tính"
+
+Phase 2 CONFIRM (A6-A7, user action)
+  - Customer confirm A7
+  - Eager gen worker_brief Stage 1 (core)
+  - Optional skip "Đang tìm thợ" notif nếu match < 5s
+
+Phase 3 MATCH (A8-B4, ~30s typical)
+  - Backend broadcast → worker accept
+  - brief Stage 2 background
+  - Notif gộp: "Đã có thợ B. ETA: 15 phút"
+
+Phase 4 EXECUTE (B5, ~45 min typical)
+  - on_way → arrived → inspecting → repairing
+  - Kael: SILENT
+  - Notif chỉ 1: "Thợ đã đến" (skip on_way/inspecting/repairing)
+
+Phase 5 COMPLETE (B7-A13, ~5 min)
+  - Worker complete + customer confirm + payment
+  - Validate completion_notes (LS5 input), show final_price = kael_price_max
+  - Notif gộp: "Thợ báo hoàn thành. Xác nhận để thanh toán"
+
+Phase 6 LEARN (A14, background)
+  - Customer review
+  - Realtime: LS1 MarketMemory, LS2 CaseReview
+  - Background batch: LS3, LS4, LS5
+  - Skip: LS6, LS7 (no signal)
+  - Notif: "Cảm ơn đánh giá!"
+```
+
+**Optional skip rules:**
+
+```
+A4 clarification → SKIP nếu (ảnh) AND (description ≥ 50 char) AND (vision conf ≥ 0.7)
+"Đang tìm thợ" notif → SKIP nếu worker match < 5s
+B5 on_way notif → SKIP nếu booking 'now'
+B5 inspecting/repairing notif → SKIP (silent observe)
+LS6 safety learning → SKIP nếu không có incident
+LS7 decline learning → SKIP nếu không có decline trong session
+"Thợ báo hoàn thành" + "Xác nhận để thanh toán" → GỘP thành 1 notif với CTA
+```
+
+**Realtime vs Background memory updates:**
+
+| Realtime (sync) | Background (queue) |
+|---|---|
+| L2 job memory writes | L3 customer preference update |
+| L4 worker.rating (after review) | L4 worker.service_skill_proficiency |
+| L5 LS1 evidence increment | L5 LS3/LS4/LS5 candidates |
+| L3 customer.satisfaction | L5 LS2 case review analysis |
+
+**WBS:**
+
+- T9.1 Wire Phase 1 INTAKE: orchestrator parallel pipeline.
+- T9.2 Wire Phase 2 CONFIRM: A7 → broadcast + gen worker_brief Stage 1.
+- T9.3 Wire Phase 3 MATCH: brief Stage 2 background after B3.
+- T9.4 Wire Phase 4 EXECUTE: silent observe, 1 notif arrived.
+- T9.5 Wire Phase 5 COMPLETE: validate completion, show final_price.
+- T9.6 Wire Phase 6 LEARN: trigger LS1+LS2+LS3+LS4+LS5 background.
+- T9.7 Implement notification budget: 5 notif/transaction.
+- T9.8 Implement optional skip rules.
+- T9.9 Realtime vs background memory split.
+- T9.10 Integration test end-to-end staging.
+
+**Build Instructions:**
+
+- Use orchestrator (P3), output format (P4), permission (P5), memory (P6), learning (P7), charter (P8).
+- Wire by adding workflow hooks vào existing services.ts state transitions.
+- Notification gộp: check trước insert.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/services.ts`
+- `supabase/functions/mobile-api/_shared/lifecycle.ts`
+- `supabase/functions/mobile-api/_shared/kael/agentic/case-1-normal.ts` (NEW)
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-supabase`, `kael-tdd`, `kael-architecture-deepening`.
+
+**Tests (blocking gates + acceptance metric):**
+
+- T9-test-1: End-to-end happy path 1 plumbing job.
+- T9-test-2: Notification count = 5 (or 4 nếu skip).
+- T9-test-3: Memory updates L2/L3/L4/L5 verified.
+- T9-test-4: Token cost $0.07-0.10/transaction.
+- T9-test-5: Latency A2→A5 ≤ 9s.
+- T9-test-6: LS1-LS5 triggered post-A14.
+- T9-test-7: Repeat 10 times → 10/10 success; any failure triggers diagnose.
+- T9-test-8: A4 clarification skipped với đủ context.
+- T9-test-9: B5 silent: no Kael chat injection.
+- T9-test-10: Final price = kael_price_max.
+- Target: 10/10 blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Verification Loop:** E2E fail → `kael-diagnose` hypothesis-driven repro.
+
+**Foundation Enhancement:** Case 1 = template. Document trong `docs/agent-lessons.md`.
+
+**Acceptance Gate:**
+
+- [ ] End-to-end Case 1 works staging.
+- [ ] Notification budget 5 met.
+- [ ] Memory + learning triggered.
+- [ ] Latency ≤ 9s.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Estimated Effort:** 3-4 ngày.
+
+**Handoff Notes:** Case 1 = baseline. Cases 2-5 build trên template này.
+
+---
+
+### 23.15 Phase P10 — Agentic Case 2: Transaction khắc khe
+
+**Goal:** Implement 2-nuance detection + 5 strategies + escalation pathway + defensive log (D23, D27).
+
+**Dependencies:** P9.
+
+**2 nuance:**
+
+| Nuance | Behavior | Kael's response |
+|---|---|---|
+| **Detail-oriented** (legit) | Hỏi chi tiết, muốn hiểu | **Transparency**: show kael_reasoning, market source, worker credentials |
+| **Pressure** (illegit) | Đòi giảm giá, đe dọa | **Spine NGẦM**: polite decline + log + escalate admin |
+
+**Patterns Kael detect:**
+
+```ts
+const DemandingCustomerPatterns = {
+  legitimate_concern: ['qa_loop_above_3', 'request_credentials', 'request_breakdown', 'request_alternatives'],
+  pressure_signals: ['demand_discount', 'threat_complaint', 'demand_refund_no_reason', 'aggressive_language', 'multiple_cancel_pattern'],
+  combined: { qa_count_threshold: 5, pressure_score_threshold: 0.5 }
+};
+```
+
+**5 strategies:**
+
+| # | Strategy | Khi nào | Action |
+|---|---|---|---|
+| 1 | Transparency expansion | Detail-oriented | Show kael_reasoning expanded, market source, credentials |
+| 2 | Empathy + factual | Concern language | Acknowledge concern trước, sau factual |
+| 3 | Soft escalation | Pressure signals | Flag admin background, vẫn handle polite |
+| 4 | Hard escalation | Threat/aggressive | Stop AI loop, redirect admin queue |
+| 5 | Defensive documentation | Always when khắc khe | Log every interaction vào L2 + audit |
+
+**Empathy templates v2 (soft-but-firm motif):**
+
+```ts
+const EmpathyTemplatesV2 = {
+  price_concern: "Kael hiểu bạn cần đảm bảo giá hợp lý. Đây là cơ sở Kael tính: {reasoning}. Mọi dữ liệu Kael dùng đều minh bạch.",
+  worker_concern: "Kael hiểu bạn muốn yên tâm về thợ. Thợ {name} đã hoàn tất {n} việc với rating {r}/5. Mọi review đều được Kael ghi nhận và kiểm chứng.",
+  wait_time_concern: "Xin lỗi vì thời gian chờ. Kael đã ghi nhận tiến trình thợ và sẽ cập nhật ngay.",
+  service_quality_concern: "Kael ghi nhận mối lo của bạn. Mỗi tương tác được lưu lại đầy đủ. Nếu cần admin can thiệp, bạn có thể yêu cầu qua nút bên dưới.",
+  complaint_threat_acknowledge: "Kael đã ghi nhận đầy đủ thông tin. Để vấn đề được giải quyết đúng cách, admin sẽ liên hệ bạn trong vòng 30 phút.",
+  refund_demand: "Kael không có thẩm quyền quyết định hoàn tiền. Admin sẽ xem xét trường hợp của bạn dựa trên đầy đủ thông tin Kael đã ghi nhận từ giao dịch này.",
+  pressure_acknowledge: "Kael ghi nhận yêu cầu của bạn. Quy trình của Kael minh bạch và mọi tương tác đều được lưu lại để đảm bảo công bằng cho cả khách và thợ.",
+  repeated_demand: "Kael đã trả lời câu này. Nếu bạn vẫn cần giải thích thêm, admin có thể tham gia để giúp bạn hiểu rõ hơn.",
+};
+```
+
+**Implicit-firmness pattern (3 motif):**
+
+1. **System/Process motif:** "Quy trình Kael...", "Hệ thống ghi nhận..."
+2. **Record motif:** "Mọi tương tác được lưu lại...", "Dữ liệu đầy đủ được giữ..."
+3. **Fairness motif:** "Để đảm bảo công bằng cho cả khách và thợ...", "Quy tắc áp dụng như nhau..."
+
+**Escalation pathway:**
+
+```
+SOFT ESCALATION: pressure score ≥ 0.5 → admin queue medium priority, continue polite
+
+HARD ESCALATION: threat OR refund demand OR repeated complaint
+  → Stop AI response loop
+  → Show: "Kael đã ghi nhận đầy đủ. Để giải quyết tốt nhất, admin sẽ liên hệ bạn trong vòng 30 phút."
+  → Insert admin queue high priority
+  → Lock job state (no auto transitions)
+  → Wait admin action
+```
+
+**WBS:**
+
+- T10.1 Pattern detection `kael/agentic/demanding-customer-detect.ts`.
+- T10.2 5 strategies implementation.
+- T10.3 Empathy templates v2 trong `kael/decline-templates.ts` (extend P5).
+- T10.4 Escalation: admin queue table + insert logic.
+- T10.5 Defensive log: `kael_interaction_log` migration.
+- T10.6 Hard escalation: stop AI loop + show admin contact wait.
+- T10.7 Integration test với simulated demanding customer.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/agentic/case-2-demanding.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/services.ts`
+- `supabase/migrations/*` (admin queue + interaction log)
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-tdd`, `kael-security-sweep`.
+
+**Tests (blocking gates + acceptance metric):** 8+ blocking tests covering pattern detection, strategy application, escalation, audit. All blocking tests must pass; scenario quality metric target ≥ 95%.
+
+**Acceptance Gate:**
+
+- [ ] Pattern detection ≥ 90% accuracy.
+- [ ] Empathy templates Vietnamese soft-but-firm.
+- [ ] NO accusatory wording (per D27).
+- [ ] Escalation pathway working.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Estimated Effort:** 3-4 ngày.
+
+---
+
+### 23.16 Phase P11 — Agentic Case 3: Worker hủy deal
+
+**Goal:** Implement 2 sub-cases (explicit + no-show) + reason taxonomy + anti-abuse + rebroadcast (D24).
+
+**Dependencies:** P9, P7.
+
+**2 sub-cases:**
+
+| Sub-case | Detection | Reason |
+|---|---|---|
+| **3A** Worker explicit cancel | `worker_cancellation_requests` row | Worker submit lý do |
+| **3B** Worker no-show | Backend timer detect: status stuck > 15 min hoặc ETA past + no on_way | Worker silent |
+
+**Cancellation reason taxonomy (admin tunable):**
+
+```ts
+const CancellationReasons = {
+  legit_auto_approve: ['medical_emergency_with_evidence', 'family_emergency_confirmed', 'vehicle_breakdown_with_photo'],
+  legit_with_admin_review: ['job_more_complex_than_described', 'unsafe_conditions_on_site', 'customer_not_responding_at_site'],
+  suspicious: ['higher_pay_elsewhere', 'changed_mind', 'unable_to_find_address'],
+  no_reason: [],
+};
+```
+
+**Anti-abuse rules:**
+
+```ts
+const WorkerAbuseRules = {
+  cancellation_rate_threshold: 0.30,         // > 30% / 30 days
+  consecutive_cancel_threshold: 3,
+  no_reason_cancel_threshold: 2,
+  cancel_after_arrival_threshold: 1,
+  actions: {
+    soft_flag: 'mark red_flag in L4',
+    admin_notify: 'admin queue priority=medium',
+    admin_suspend_review: 'create admin review item before any suspension',
+  },
+};
+```
+
+**Customer fallback options (Phase 5B):**
+
+1. Đợi 15 phút Kael tìm tiếp
+2. Reschedule sang slot khác
+3. Cancel job (no charge Phase 0)
+
+**WBS:**
+
+- T11.1 Wire sub-case 3A: extend `request_worker_cancellation_atomic` RPC.
+- T11.2 Implement sub-case 3B: backend timer.
+- T11.3 Cancellation reason taxonomy DB table + seed.
+- T11.4 Classification logic.
+- T11.5 Auto-approve rules + manual review queue.
+- T11.6 Rebroadcast logic (reuse existing).
+- T11.7 Customer fallback options emit.
+- T11.8 Anti-abuse: cancellation_rate computation, admin suspension review trigger.
+- T11.9 L4 update: red_flags.
+- T11.10 Integration tests.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/agentic/case-3-worker-cancel.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/services.ts`
+- `supabase/migrations/*` (extend existing RPC, add taxonomy table)
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-tdd`.
+
+**Tests (blocking gates + acceptance metric):** 8+ blocking tests covering sub-cases, classification, anti-abuse, rebroadcast. All blocking tests must pass; scenario quality metric target ≥ 95%.
+
+**Acceptance Gate:**
+
+- [ ] 2 sub-cases work.
+- [ ] Reason taxonomy admin tunable.
+- [ ] Anti-abuse thresholds enforced.
+- [ ] No autonomous suspension; admin action required.
+- [ ] Rebroadcast triggered.
+- [ ] Customer fallback options available.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Estimated Effort:** 3-4 ngày.
+
+---
+
+### 23.17 Phase P12 — Agentic Case 4: Customer hủy deal
+
+**Goal:** Implement 5 sub-cases (4A-4E) + reason taxonomy + Phase 0 limitations + missing RPC (D25).
+
+**Dependencies:** P9.
+
+**5 sub-cases:**
+
+| Sub-case | Khi nào | Backend impact | Complexity |
+|---|---|---|---|
+| **4A** Cancel trước A7 | Estimate chưa confirm | Simple archive draft | Low |
+| **4B** Cancel sau A7 trước B3 | Đang broadcast, chưa worker accept | `cancel_job_before_accept_atomic` (existing) | Low |
+| **4C** Cancel sau B3 worker accepted | Worker đã invest | **NEW RPC `cancel_job_after_accept_atomic`** | **High** |
+| **4D** Cancel sau B7 completed | Reject completion = dispute | Trigger Case 5 dispute | **Highest** |
+| **4E** Cancel scheduled job | Booking future hủy sớm | Tùy timing | Medium |
+
+**Customer cancellation reason taxonomy:**
+
+```ts
+const CustomerCancellationReasons = {
+  no_penalty_anytime: ['worker_late_significantly', 'worker_no_show', 'personal_emergency_with_note', 'service_issue_resolved_itself'],
+  no_penalty_phase_0: ['changed_mind', 'found_alternative', 'wrong_service_selected'],
+  needs_admin_review: ['worker_not_trustworthy_claim', 'address_inaccessible', 'pricing_disagreement_late'],
+  flag_suspicious: ['repeat_cancel_same_day', 'multiple_cancel_after_accept', 'no_reason_provided'],
+};
+```
+
+**Anti-abuse customer rules:**
+
+```ts
+const CustomerAbuseRules = {
+  cancellation_rate_threshold: 0.30,
+  cancel_after_accept_threshold: 3,
+  same_day_cancel_threshold: 2,
+  no_reason_cancel_threshold: 3,
+  actions: {
+    soft_flag: 'trust_signals.cancellation_abuser = true',
+    require_reason: 'next booking phải chọn reason cụ thể',
+    require_admin_verify: 'admin xác nhận trước khi book tiếp',
+  },
+};
+```
+
+**Phase 0 vs Future:**
+
+| Aspect | Phase 0 | Phase future |
+|---|---|---|
+| Worker compensation 4C | None — chỉ goodwill | Platform credit 20-50k cho worker arrived |
+| Customer late-cancel penalty 4E | Warning | Cancellation fee 10-20% |
+| Customer abuse temp-block | No | 24h block sau 5 abuse signal |
+
+**WBS:**
+
+- T12.1 Migration NEW RPC `cancel_job_after_accept_atomic`.
+- T12.2 Implement 4A logic.
+- T12.3 Implement 4B logic (reuse existing RPC).
+- T12.4 Implement 4C logic: NEW RPC + worker notification + goodwill record.
+- T12.5 Implement 4D: trigger dispute flow (defer Case 5 P13).
+- T12.6 Implement 4E: scheduled cancellation timing.
+- T12.7 Customer cancellation reason taxonomy.
+- T12.8 Anti-abuse logic.
+- T12.9 Notifications gộp.
+- T12.10 Integration tests.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/agentic/case-4-customer-cancel.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/services.ts`
+- `supabase/functions/mobile-api/_shared/router.ts` (1 new route)
+- `supabase/migrations/*` (NEW RPC + taxonomy)
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-tdd`, `kael-security-sweep`.
+
+**Tests (blocking gates + acceptance metric):** 10+ blocking tests covering 5 sub-cases, anti-abuse, notifications. All blocking tests must pass; scenario quality metric target ≥ 95%.
+
+**Acceptance Gate:**
+
+- [ ] 5 sub-cases work.
+- [ ] NEW RPC `cancel_job_after_accept_atomic` atomic.
+- [ ] Anti-abuse rules enforced.
+- [ ] Worker goodwill recorded (no rating penalty 4C).
+- [ ] Phase 0 no monetary penalty.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Estimated Effort:** 3-4 ngày.
+
+---
+
+### 23.18 Phase P13 — Agentic Case 5: Dispute
+
+**Goal:** Implement dispute flow + Kael neutral rules + evidence locking + admin review (D26).
+
+**Dependencies:** P9, P12.
+
+**5 sub-cases:**
+
+| Sub-case | Trigger | Phase 0 status |
+|---|---|---|
+| **5A** Completion rejected | Customer reject A12 | **Primary** spec đầy đủ |
+| **5B** Damage claim | 24-48h sau A12 | **Primary** spec đầy đủ |
+| **5C** Unpaid service | Worker mark customer didn't pay | **Defer** (no payment Phase 0) |
+| **5D** Abusive behavior | Worker/customer complain | **Secondary** spec ngắn |
+| **5E** Scope disagreement post-job | "Chưa fix hết" vs "Không trong scope" | **Secondary** spec ngắn |
+
+**Kael's CRITICAL rules (không thể tune):**
+
+```
+1. Kael NEUTRAL — không bênh ai, kể cả khi data thiên về 1 bên
+2. Kael CHỈ analyze + summarize, KHÔNG decide
+3. Kael provide FACT-BASED summary, KHÔNG inject opinion
+4. Kael KHÔNG communicate dispute outcome (admin only)
+5. Kael KHÔNG suggest refund/penalty amount
+6. Kael LOCK evidence ngay khi dispute opened, không cho edit
+```
+
+**Dispute schema:**
+
+```ts
+const DisputeSchema = z.object({
+  id: z.string().uuid(),
+  job_id: z.string().uuid(),
+  dispute_type: z.enum(['completion_rejected', 'damage_claim', 'unpaid_service', 'abusive_behavior_customer', 'abusive_behavior_worker', 'scope_disagreement_post_job', 'other']),
+  initiated_by: z.enum(['customer', 'worker', 'admin']),
+  initiator_statement: z.string().max(2000),
+  counter_party_statement: z.string().max(2000).optional(),
+  counter_party_response_deadline: z.string().datetime(),  // 24h
+  evidence_locked_at: z.string().datetime(),
+  evidence_snapshot: z.object({
+    chat_message_ids: z.array(z.string().uuid()),
+    photo_urls: z.array(z.string().url()),
+    status_timeline: z.array(z.object({ status: z.string(), at: z.string().datetime() })),
+    scope_changes: z.array(z.string().uuid()),
+    kael_artifacts: z.array(z.string().uuid()),
+  }),
+  kael_neutral_summary: z.string().max(1000),
+  admin_review: z.object({
+    priority: z.enum(['low', 'medium', 'high', 'critical']),
+    assigned_admin_id: z.string().uuid().optional(),
+    reviewed_at: z.string().datetime().optional(),
+  }),
+  admin_decision: z.object({
+    outcome: z.enum(['customer_favor_full', 'customer_favor_partial', 'worker_favor', 'no_fault_both', 'mutual_warning']),
+    refund_amount: z.number().int().optional(),
+    worker_credit_amount: z.number().int().optional(),
+    customer_trust_impact: z.enum(['none', 'minor_down', 'major_down', 'positive_resolved']),
+    worker_action: z.enum(['none', 'warning', 'temp_suspend_7d', 'temp_suspend_30d', 'permanent_suspend']),
+    reasoning: z.string().max(2000).min(50),
+    admin_id: z.string().uuid(),
+  }).optional(),
+  resolved_at: z.string().datetime().optional(),
+  status: z.enum(['open', 'awaiting_counter_party', 'admin_review', 'admin_decided', 'communicated', 'resolved', 'appealed']),
+});
+```
+
+**Anti-abuse dispute rules:**
+
+```ts
+const DisputeAbuseRules = {
+  customer_dispute_rate_threshold: 0.20,
+  worker_dispute_rate_threshold: 0.15,
+  frivolous_dispute_threshold: 3,
+  same_party_repeat_threshold: 2,
+};
+```
+
+**WBS:**
+
+- T13.1 Migration: `disputes` table.
+- T13.2 Migration: `evidence_snapshots` table (immutable).
+- T13.3 NEW RPC `open_dispute_atomic`.
+- T13.4 NEW RPC `submit_counter_statement_atomic`.
+- T13.5 NEW RPC `admin_decide_dispute_atomic`.
+- T13.6 Kael neutral summary generator.
+- T13.7 Evidence snapshot trigger on dispute open.
+- T13.8 Admin queue priority logic.
+- T13.9 Communication: wrap admin reasoning Charter tone.
+- T13.10 Anti-abuse: dispute_rate.
+- T13.11 Integration tests cho 4 sub-cases.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/agentic/case-5-dispute.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/services.ts`
+- `supabase/functions/mobile-api/_shared/router.ts` (3 new routes)
+- `supabase/migrations/*` (2 new tables + 3 RPCs)
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-tdd`, `kael-security-sweep`.
+
+**Tests (blocking gates + acceptance metric):** 12+ blocking tests covering 4 sub-cases, neutral rules, evidence lock, admin decision. All blocking tests must pass; scenario quality metric target ≥ 95%.
+
+**Acceptance Gate:**
+
+- [ ] 4 sub-cases work (5C deferred).
+- [ ] Kael NEUTRAL: no fault assignment.
+- [ ] Evidence locked immutable.
+- [ ] Admin decision outcomes enforce side effects.
+- [ ] Anti-abuse enforced.
+- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Estimated Effort:** 5-6 ngày (most complex).
+
+---
+
+### 23.19 Phase P14 — Backend Gaps Cleanup
+
+**Goal:** Close all flagged backend gaps.
+
+**Dependencies:** P3-P13 done.
+
+**Scope:**
+
+- Telemetry: `api_logs.purpose` populated 100%.
+- District normalization verify cho q1-q12 + diacritic variants.
+- DeepSeek 402 recovery verify.
+- Worker district data fix.
+- Migration audit (Plan.md H6).
+- Stale data cleanup (M2 orphan analyzing jobs).
+- VN copy sweep (M1).
+
+**WBS:**
+
+- T14.1 Spot-check api_logs.purpose population trên 50+ records mới.
+- T14.2 Test `normalizeServiceAreaDistrict` cho mọi q1-q12 variant.
+- T14.3 Test DeepSeek call success.
+- T14.4 Re-seed worker_profiles districts consistent với jobs.
+- T14.5 Document migration chain trong `docs/architecture/migration-chain.md`.
+- T14.6 Cron job cleanup orphan jobs > 24h stuck `analyzing`.
+- T14.7 Grep VN copy English leak.
+
+**Affected Areas:** Various existing files + 1-2 cleanup migrations.
+
+**Skills/Protocols:** `kael-preflight`, `kael-diagnose`, `kael-supabase`.
+
+**Tests (blocking gates + acceptance metric):** Spot-check per item. All blocking checks must pass; scenario quality metric target ≥ 95%.
+
+**Acceptance Gate:**
+
+- [ ] api_logs.purpose 100% populated.
+- [ ] District normalization verified.
+- [ ] DeepSeek 402 recovered.
+- [ ] Worker district data consistent.
+- [ ] Migration chain documented.
+- [ ] Orphan jobs cleaned.
+- [ ] No English leak.
+
+**Estimated Effort:** 2-3 ngày.
+
+---
+
+### 23.20 Phase P15 — Integration Testing
+
+**Goal:** End-to-end testing 5 cases trên staging với real data.
+
+**Dependencies:** P14.
+
+**Scope:**
+
+- E2E test scenarios cho mỗi case.
+- Multi-actor scenarios.
+- Realtime streaming verification.
+- Performance benchmarks.
+- Cost ceiling validation.
+
+**WBS:**
+
+- T15.1 Setup staging test data: 5 customer + 5 worker profiles.
+- T15.2 E2E Case 1: 10 normal transactions, consistency.
+- T15.3 E2E Case 2: 5 demanding customers, escalation verify.
+- T15.4 E2E Case 3: 5 worker cancels each sub-case.
+- T15.5 E2E Case 4: 5 customer cancels each sub-case.
+- T15.6 E2E Case 5: 3 disputes, admin queue + decision.
+- T15.7 Realtime: subscribe mobile to job.kael_progress.
+- T15.8 Performance: p50/p95/p99 latency per phase.
+- T15.9 Cost: $/transaction per case type.
+- T15.10 Honest report per memory `feedback_honest_reporting`.
+
+**Acceptance Gate:**
+
+- [ ] 5 cases E2E pass staging.
+- [ ] Multi-actor scenarios work.
+- [ ] Realtime streaming verified.
+- [ ] Performance: p95 < 12s end-to-end intake.
+- [ ] Cost: < $0.30/transaction worst case.
+- [ ] Test report logged per `/log` format.
+
+**Estimated Effort:** 3-5 ngày.
+
+---
+
+### 23.21 Phase P16 — Pre-Launch Verification
+
+**Goal:** Final audit before production deploy.
+
+**Dependencies:** P15.
+
+**Scope:**
+
+- Charter audit (LOCKED files unchanged).
+- Permission audit (no scope creep).
+- Memory privacy audit (no PII leak).
+- Performance benchmark.
+- Cost ceiling validation.
+- Security audit (per RULES.md + critical.md §15).
+- Compliance check against STRUCTURES §10F + §11.
+- Documentation completeness.
+
+**WBS:** Run `kael-security-sweep` + `kael-review` toàn bộ change set + manual audit.
+
+**Acceptance Gate:**
+
+- [ ] kael-security-sweep pass.
+- [ ] kael-review pass.
+- [ ] No autonomous money-impacting action.
+- [ ] All PII filters working.
+- [ ] Charter LOCKED files unchanged.
+- [ ] Permission scope honored.
+- [ ] No STRUCTURES §10F violation.
+
+**Estimated Effort:** 2-3 ngày.
+
+---
+
+### 23.22 Phase P17 — Staging Deploy + Monitoring + A/B Test Setup
+
+**Goal:** Deploy staging, setup monitoring, kick off A/B test #6 (D28).
+
+**Dependencies:** P16.
+
+**Scope:**
+
+- Staging deploy.
+- Monitoring dashboards.
+- A/B test framework Perplexity vs Anthropic cho purpose #6.
+- 100-case collection plan.
+- 4 metrics: schema rate, deviation Anthropic, deviation actual, fallback rate.
+- Threshold decision.
+- Production deploy plan (Tu approve manual).
+
+**A/B test 4 metrics:**
+
+| Metric | Cách đo | Threshold giữ |
+|---|---|---|
+| Schema validation rate | Perplexity output qua Zod lần đầu / tổng | ≥ 95% |
+| Price range deviation vs Anthropic | abs(perp_max - anth_max) / anth_max | ≤ 25% |
+| Price range deviation vs actual paid | abs(perp - final_price) / final_price | ≤ 30% |
+| Fallback rate | Anthropic cứu / tổng | ≤ 10% |
+
+Nếu 2+ metric fail → loại Perplexity #6, Anthropic làm main.
+
+**Acceptance Gate:**
+
+- [ ] Staging deploy successful.
+- [ ] Monitoring dashboards live.
+- [ ] A/B test #6 running.
+- [ ] 100-case collection in progress.
+- [ ] Production deploy plan ready.
+
+**Estimated Effort:** 2-3 ngày.
+
+---
+
+### 23.23 Cross-cutting Concerns
+
+#### Skills Mapping Summary
+
+| Skill (per critical.md) | Used in Phases |
+|---|---|
+| `kael-preflight` (mandatory) | ALL phases |
+| `kael-ai-boundary` | P3, P4, P5, P7, P8, P9-P13 |
+| `kael-supabase` | P1, P3, P5, P6, P7, P11, P12, P13, P14 |
+| `kael-security-sweep` | P1, P4, P5, P6, P7, P12, P13, P16 |
+| `kael-tdd` | ALL phases except P0 |
+| `kael-architecture-deepening` | P2, P3, P6, P7 |
+| `kael-code-enhancement` | P1, P2 |
+| `kael-review` | ALL phases (acceptance gate) |
+| `kael-diagnose` | P14, P15 (issue resolution) |
+| `kael-docs-execution` | P8 (charter docs) |
+| `karpathy-guidelines` (project local) | ALL phases |
+
+#### Test Strategy (per critical.md §7 kael-tdd)
+
+- **Layer minimum:** Mỗi phase ≥ 2 layers.
+- **Negative tests:** Mandatory cho security changes (P5, P6, P7, P13, P16).
+- **Test count:** KHÔNG là metric (per `feedback_mock_vs_real_tests`).
+- **Real DB integration:** Per memory `feedback_integration_caught_bug`.
+- **Honest reporting:** Per memory `feedback_honest_reporting`.
+- **Save results:** Per memory `feedback_save_test_results` — log to README.md.
+
+#### Documentation Updates (per phase)
+
+- `docs/agent-lessons.md` — durable lessons learned.
+- `docs/architecture/code-ownership-map.md` — new owners.
+- `MEMORY.md` (per locked rules) — session continuation facts.
+- README progress log (end of session per `kael-handoff`).
+
+#### Risk Management
+
+| Risk | Mitigation |
+|---|---|
+| Regression in kael.ts split | P2 zero-regression test policy |
+| Anti-fraud false positive | Tune anomaly post-launch via L4 data |
+| Permission scope too tight | Audit log + adjust per real customer queries |
+| Memory privacy leak | P6 sanitizer + cascade delete + P16 audit |
+| Cost ceiling exceed | P3 cost cap + circuit breaker; P15 real-world |
+| Latency exceed 9s | P3 timeout + fallback; P15 benchmark |
+| Learning rule promotes wrong | P7 evidence gate + auto-rollback + admin override |
+| Dispute neutral rule broken | P13 strict tests + P16 audit |
+| DeepSeek 402 recurring | P3 circuit breaker 60' + admin alert |
+
+#### Approval Gates Summary
+
+```
+P0 → P1: Pre-plan output verified
+P1 → P2: Foundation prep tests pass + drift verified
+P2 → P3: Zero regression
+P3 → P4-P8: Routing + orchestrator + streaming working
+P4-P8 → P9: All Harness sub-systems pass blocking gates; scenario metrics ≥ 95%
+P9 → P10-P13: Case 1 baseline working
+P10-P13 → P14: All 5 cases pass blocking gates; scenario metrics ≥ 95%
+P14 → P15: Gaps closed
+P15 → P16: E2E pass staging
+P16 → P17: Security + audit pass
+P17 → Production: Tu approve (manual gate)
+```
+
+---
+
+### 23.24 Change Log
+
+| Version | Date | Author | Change |
+|---|---|---|---|
+| 0.1 DRAFT | 2026-05-25 | Tu + Claude (discussion 2026-05-25) | Initial draft based on Harness 7/7 + Agentic 5/5 discussion |
+| 1.0 | 2026-05-25 | Tu approved | Approve toàn bộ, write vào Plan.md §23 |
+
+---
+
+### 23.25 Notes for Future Agents
+
+**Khi resume work ở phase nào đó:**
+
+1. Read this section §23 đầy đủ.
+2. Check Change Log để biết version mới nhất.
+3. Verify decisions D1-D32 vẫn align với code hiện tại (drift check).
+4. Run preflight per `critical.md` §5.
+5. Apply phase's selected protocols.
+6. Honest report per memory feedback.
+
+**Conflict resolution:**
+
+- Nếu §23 có vẻ conflict với `Plan.md §1-§22` (workflow enhancement đợt 2026-05-20), treat as scope overlap first: §1-§22 spec workflow Kael chat + auto cancel; §23 spec Harness + Agentic governance layer. Có thể parallel hoặc sequence — Tu quyết.
+- Plan này conflict với `RULES.md` hoặc `critical.md`: STOP, ask Tu.
+- Plan này conflict với code đã merge: re-read code, code wins, update plan addendum.
+
+**Plan immutable:**
+
+- §23.0-§23.24 (decisions + phases + cross-cutting) KHÔNG được edit mid-execution.
+- Nếu cần đổi → tạo §23 v2.0 + change log entry.
+- Tu approve trước khi áp dụng.
+
+---
+
 End of Plan.md
