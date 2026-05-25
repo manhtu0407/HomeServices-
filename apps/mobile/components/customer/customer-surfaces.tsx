@@ -19,6 +19,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, inferLocalDealDraftFromKael, type LocalCustomerSearchState, type LocalDeal, type LocalDealStatus, type LocalScopeChange, type LocalWorkflowSelectors, type ServiceType } from '@home-services/shared'
 import { setPendingKaelChatDraft } from '@/components/customer/kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '@/components/customer/scope-change-modal/scope-change-hard-stop-modal'
+import { BookingWizard } from '@/components/customer/booking-wizard'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassCard } from '@/components/ui/glass-card'
@@ -61,14 +62,17 @@ type SurfaceTone = 'base' | 'raised' | 'service' | 'water' | 'warm' | 'depth' | 
 type IconName =
   | 'apartment'
   | 'boltPanel'
+  | 'broom'
   | 'calendar'
   | 'chat'
   | 'check'
   | 'chevron'
+  | 'clock'
   | 'cleaning'
   | 'document'
   | 'estimate'
   | 'external'
+  | 'faucet'
   | 'filter'
   | 'history'
   | 'kael'
@@ -80,6 +84,7 @@ type IconName =
   | 'person'
   | 'privacy'
   | 'phone'
+  | 'plug'
   | 'review'
   | 'send'
   | 'support'
@@ -90,6 +95,16 @@ let lastCustomerDockActive: CustomerDockActive = 'home'
 
 function kaelChatPath(serviceType?: ServiceType | null) {
   return serviceType ? `${openKaelChatPath}?serviceType=${serviceType}` : openKaelChatPath
+}
+
+function bookingWizardPath(serviceType?: ServiceType | null) {
+  return serviceType ? `${openBookingPath}?serviceType=${serviceType}` : openBookingPath
+}
+
+function localizedProfileName(rawName: string, languageMode: AppLanguage) {
+  const trimmed = rawName.trim()
+  if (!trimmed) return ''
+  return languageMode === 'vi' && /^customer(\s+qa)?$/i.test(trimmed) ? '' : trimmed
 }
 
 type CustomerThemeTokens = {
@@ -124,12 +139,12 @@ type CustomerThemeTokens = {
 
 const lightLayer: CustomerThemeTokens = {
   mode: 'light',
-  canvas: '#F8FBF5',
-  base: '#FFFDF7',
+  canvas: '#FAFCF4',
+  base: '#FFFDF6',
   raised: '#FFFFFF',
-  service: '#DCFBF3',
+  service: '#DDFBF2',
   water: '#E8FCFA',
-  warm: '#FFF8EB',
+  warm: '#FFF7EA',
   depthSurface: '#E5F1EB',
   ghost: 'rgba(255,253,248,0.78)',
   glass: 'rgba(255,255,255,0.58)',
@@ -147,7 +162,7 @@ const lightLayer: CustomerThemeTokens = {
   subtleText: '#7D958F',
   primary: '#08786E',
   primaryText: '#FFFFFF',
-  aqua: '#51BBC0',
+  aqua: '#7BE5D7',
   copper: '#BB743D',
   danger: '#C94F45',
 }
@@ -402,6 +417,8 @@ const customerCopy = {
       interface: 'Giao diện',
       light: 'Sáng',
       dark: 'Tối',
+      signOut: 'Đăng xuất',
+      switchAccount: 'Đổi tài khoản',
     },
     nav: { home: 'Nhà', booking: 'Đặt', kael: 'Kael', activity: 'Lịch', profile: 'Hồ sơ' },
     navA11y: { home: 'Trang chủ', booking: 'Đặt dịch vụ', kael: 'Kael', activity: 'Lịch sử', profile: 'Hồ sơ' },
@@ -565,6 +582,8 @@ const customerCopy = {
       interface: 'Theme',
       light: 'Light',
       dark: 'Dark',
+      signOut: 'Sign out',
+      switchAccount: 'Switch account',
     },
     nav: { home: 'Home', booking: 'Book', kael: 'Kael', activity: 'History', profile: 'Profile' },
     navA11y: { home: 'Home', booking: 'Book service', kael: 'Kael', activity: 'History', profile: 'Profile' },
@@ -576,6 +595,7 @@ export function CustomerHomeSurface() {
   const { session } = useAuth()
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
+  const { reduceMotion } = useGlassAccessibility()
   const { actions, dispatch, notificationUnreadCount, notifications, selectors, state } = useFrontendWorkflow()
   const activeDeal = state.deal
   const visibleNotifications = notifications.slice(0, 2)
@@ -603,7 +623,7 @@ export function CustomerHomeSurface() {
     : typeof customerMetadata.name === 'string'
       ? customerMetadata.name
       : ''
-  const displayName = rawDisplayName.trim()
+  const displayName = localizedProfileName(rawDisplayName, languageMode)
   const homeTitle = languageMode === 'en'
     ? displayName ? `${displayName}'s home` : 'Your home'
     : displayName ? `Nhà của ${displayName}` : 'Nhà của bạn'
@@ -616,6 +636,14 @@ export function CustomerHomeSurface() {
     if (isTerminalDeal) dispatch({ type: 'reset_workflow' })
     push(kaelChatPath(serviceType))
   }
+  const openBookingFlow = (serviceType?: ServiceType) => {
+    if (!canStartNewDeal) {
+      replace(activeDealRoute)
+      return
+    }
+    if (isTerminalDeal) dispatch({ type: 'reset_workflow' })
+    push(bookingWizardPath(serviceType))
+  }
   const homeCommandTarget = canStartNewDeal ? openKaelChatPath : activeDealRoute
   const openHomeCommand = () => {
     if (canStartNewDeal) {
@@ -625,20 +653,22 @@ export function CustomerHomeSurface() {
     replace(activeDealRoute)
   }
   const homeCommandActionLabel = canStartNewDeal ? copy.home.intakeCta : copy.home.quickActive
-  const homeShortcuts: Array<{ icon: IconName; meta: string; onPress: () => void; testID: string; title: string }> = [
+  const homeShortcuts: Array<{ icon: IconName; meta: string; onPress: () => void; testID: string; title: string; tone: SurfaceTone }> = [
     {
-      icon: 'ticket',
+      icon: 'menu',
       meta: activeDeal ? activeDealStatusLabel : copy.home.noActiveMeta,
       onPress: () => replace(activeDeal ? activeDealRoute : openHistoryPath),
       testID: 'customer-home-shortcut-active',
       title: copy.home.quickActive,
+      tone: 'service',
     },
     {
-      icon: 'history',
+      icon: 'clock',
       meta: copy.home.quickHistoryMeta,
       onPress: () => replace(openHistoryPath),
       testID: 'customer-home-shortcut-history',
       title: copy.home.quickHistory,
+      tone: 'water',
     },
     {
       icon: 'apartment',
@@ -646,6 +676,7 @@ export function CustomerHomeSurface() {
       onPress: () => replace(openProfilePath),
       testID: 'customer-home-shortcut-address',
       title: copy.home.quickAddress,
+      tone: 'service',
     },
     {
       icon: 'estimate',
@@ -653,6 +684,7 @@ export function CustomerHomeSurface() {
       onPress: () => openKaelChatFlow(),
       testID: 'customer-home-shortcut-trust',
       title: copy.home.quickTrust,
+      tone: 'warm',
     },
   ]
 
@@ -664,7 +696,7 @@ export function CustomerHomeSurface() {
             <View pointerEvents="none" style={[styles.customerSectionLiquidWash, { backgroundColor: tokens.aqua }]} testID="customer-section-liquid-wash-home" />
             <View style={styles.homeTopRow} testID="customer-home-title-row">
               <View style={styles.titleBlock}>
-                <Text style={[styles.screenTitle, { color: tokens.text }]} numberOfLines={1}>
+                <Text adjustsFontSizeToFit minimumFontScale={0.82} style={[styles.screenTitle, { color: tokens.text }]} numberOfLines={1}>
                   {customerTitle}
                 </Text>
                 <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={1}>
@@ -675,7 +707,7 @@ export function CustomerHomeSurface() {
                 accessibilityLabel={copy.home.notification(notificationUnreadCount)}
                 accessibilityRole="button"
                 onPress={() => replace(openHistoryPath)}
-                style={({ pressed }) => [styles.homeBell, customerOpaqueSurface(tokens), pressed ? styles.pressed : null]}
+                style={({ pressed }) => [styles.homeBell, customerOpaqueSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
                 testID="customer-home-notification-entry"
               >
                 <IconGlyph name="notification" color={tokens.primary} accent={tokens.copper} />
@@ -687,8 +719,8 @@ export function CustomerHomeSurface() {
               <View style={styles.hiddenMarker} testID="customer-home-hero-depth-grid" />
               <View style={styles.hiddenMarker} testID="customer-home-apartment-context" />
               <View style={styles.hiddenMarker} testID="customer-utility-notification-center" />
-              <ReduceMotionAwareEntranceView delayMs={100} distanceY={16} testID="customer-home-hero-motion">
-                <Pressable accessibilityLabel={`${copy.home.contextLabel}. ${homeAreaValue}`} accessibilityRole="button" onPress={() => replace(openProfilePath)} style={({ pressed }) => [styles.homeAddressCard, customerOpaqueSurface(tokens), pressed ? styles.pressed : null]} testID="customer-home-address-card">
+              <ReduceMotionAwareEntranceView delayMs={100} distanceY={16} style={styles.homeHeroStack} testID="customer-home-hero-motion">
+                <Pressable accessibilityLabel={`${copy.home.contextLabel}. ${homeAreaValue}`} accessibilityRole="button" onPress={() => replace(openProfilePath)} style={({ pressed }) => [styles.homeAddressCard, customerOpaqueSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-address-card">
                   <View style={styles.homeAddressCopy}>
                     <Text style={[styles.homeAddressValue, { color: tokens.text }]} numberOfLines={1}>
                       {homeAreaValue}
@@ -714,7 +746,7 @@ export function CustomerHomeSurface() {
                           {copy.home.commandSubtitle}
                         </Text>
                       </View>
-                      <Pressable accessibilityLabel={homeCommandActionLabel} accessibilityRole="button" onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandOpen, { backgroundColor: tokens.service, borderColor: tokens.border }, pressed ? styles.pressed : null]} testID="customer-home-kael-open">
+                      <Pressable accessibilityLabel={homeCommandActionLabel} accessibilityRole="button" onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandOpen, { backgroundColor: tokens.service, borderColor: tokens.border }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-open">
                         <IconGlyph name="external" color={tokens.primary} accent={tokens.copper} />
                       </Pressable>
                     </View>
@@ -723,12 +755,12 @@ export function CustomerHomeSurface() {
                         {copy.home.commandTitle}
                       </Text>
                       <View style={styles.homeCommandPromptActions}>
-                        <Pressable accessibilityLabel={copy.kael.attach} accessibilityRole="button" onPress={() => openKaelChatFlow()} style={({ pressed }) => [styles.homeCommandAttach, { backgroundColor: tokens.service, borderColor: tokens.border }, pressed ? styles.pressed : null]} testID="customer-home-kael-command-attach">
+                        <Pressable accessibilityLabel={copy.kael.attach} accessibilityRole="button" onPress={() => openKaelChatFlow()} style={({ pressed }) => [styles.homeCommandAttach, { backgroundColor: tokens.service, borderColor: tokens.border }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-command-attach">
                           <Text style={[styles.homeCommandAttachText, { color: tokens.primary }]} numberOfLines={1}>
                             {copy.kael.attach}
                           </Text>
                         </Pressable>
-                        <Pressable accessibilityLabel={copy.home.commandSend} accessibilityRole="button" onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandSend, { backgroundColor: tokens.primary }, pressed ? styles.pressed : null]} testID="customer-home-kael-command-send">
+                        <Pressable accessibilityLabel={copy.home.commandSend} accessibilityRole="button" onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandSend, { backgroundColor: tokens.primary }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-command-send">
                           <Text style={[styles.homeCommandSendText, { color: tokens.primaryText }]} numberOfLines={1}>
                             {copy.home.commandSend}
                           </Text>
@@ -744,7 +776,7 @@ export function CustomerHomeSurface() {
                   </View>
                 </GlassCard>
               </ReduceMotionAwareEntranceView>
-              <View style={styles.homeServicesBlock} testID="customer-home-services-section">
+              <ReduceMotionAwareEntranceView delayMs={150} distanceY={12} style={styles.homeServicesBlock} testID="customer-home-services-section">
                 <View style={styles.sectionTitle} testID="customer-home-services-heading">
                   <Text style={[styles.homeServicesTitle, { color: tokens.text }]} numberOfLines={1}>
                     {copy.home.serviceSectionTitle}
@@ -754,16 +786,16 @@ export function CustomerHomeSurface() {
                   </Text>
                 </View>
                 <View style={styles.serviceGrid} testID="customer-home-service-grid">
-                  <V4ServiceCard icon="boltPanel" meta={copy.home.serviceMetaElectrical} title={localizedServiceLabel('electrical', languageMode)} testID="customer-shell-service-electrical" onPress={() => openKaelChatFlow('electrical')} />
-                  <V4ServiceCard icon="waterPipe" meta={copy.home.serviceMetaPlumbing} title={localizedServiceLabel('plumbing', languageMode)} testID="customer-shell-service-plumbing" onPress={() => openKaelChatFlow('plumbing')} water />
-                  <V4ServiceCard icon="cleaning" meta={copy.home.serviceMetaCleaning} title={localizedServiceLabel('cleaning', languageMode)} testID="customer-shell-service-cleaning" onPress={() => openKaelChatFlow('cleaning')} />
+                  <V4ServiceCard homeTile icon="plug" meta={copy.home.serviceMetaElectrical} showMeta={false} title={localizedServiceLabel('electrical', languageMode)} testID="customer-shell-service-electrical" tone="service" onPress={() => openBookingFlow('electrical')} />
+                  <V4ServiceCard homeTile icon="faucet" meta={copy.home.serviceMetaPlumbing} showMeta={false} title={localizedServiceLabel('plumbing', languageMode)} testID="customer-shell-service-plumbing" tone="water" onPress={() => openBookingFlow('plumbing')} />
+                  <V4ServiceCard homeTile icon="broom" meta={copy.home.serviceMetaCleaning} showMeta={false} title={localizedServiceLabel('cleaning', languageMode)} testID="customer-shell-service-cleaning" tone="warm" onPress={() => openBookingFlow('cleaning')} />
                 </View>
-              </View>
-              <View style={styles.homeShortcutGrid} testID="customer-home-shortcuts">
+              </ReduceMotionAwareEntranceView>
+              <ReduceMotionAwareEntranceView delayMs={205} distanceY={10} style={styles.homeShortcutGrid} testID="customer-home-shortcuts">
                 <View style={styles.hiddenMarker} testID="customer-home-real-shortcuts" />
                 {homeShortcuts.slice(0, 2).map((item) => (
-                  <Pressable accessibilityLabel={`${item.title}. ${item.meta}`} accessibilityRole="button" key={item.testID} onPress={item.onPress} style={({ pressed }) => [styles.homeShortcutTile, customerOpaqueSurface(tokens), pressed ? styles.pressed : null]} testID={item.testID}>
-                    <IconGlyph name={item.icon} color={tokens.primary} accent={tokens.copper} />
+                  <Pressable accessibilityLabel={`${item.title}. ${item.meta}`} accessibilityRole="button" key={item.testID} onPress={item.onPress} style={({ pressed }) => [styles.homeShortcutTile, customerHomeShortcutSurface(tokens, item.tone), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={item.testID}>
+                    <IconShell icon={item.icon} tone={item.tone} size={30} />
                     <View style={styles.homeShortcutCopy}>
                       <Text style={[styles.homeShortcutTitle, { color: tokens.text }]} numberOfLines={1}>
                         {item.title}
@@ -774,7 +806,7 @@ export function CustomerHomeSurface() {
                     </View>
                   </Pressable>
                 ))}
-              </View>
+              </ReduceMotionAwareEntranceView>
               {visibleNotifications.length > 0 ? (
                 <View style={[styles.notificationInlineCard, customerOpaqueSurface(tokens)]} testID="customer-notification-inbox-live">
                   <IconGlyph name="notification" color={tokens.primary} accent={tokens.copper} />
@@ -842,6 +874,7 @@ export function CustomerBookingEntrySurface() {
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
   const { dispatch, selectors, state } = useFrontendWorkflow()
+  const [bookingWizardSessionActive, setBookingWizardSessionActive] = useState(false)
   const activeDeal = state.deal
   const isTerminalDeal = activeDeal ? isTerminalCustomerDeal(activeDeal.status) : false
   const canStartNewDeal = !activeDeal || canReplaceCustomerDeal(activeDeal.status)
@@ -868,7 +901,7 @@ export function CustomerBookingEntrySurface() {
         serviceChoose: 'Choose service',
         serviceSelected: 'Selected',
         startKaelCheck: 'Open Kael chat',
-        step: 'Step 2/4',
+        step: '4 steps',
         title: 'Check price',
       }
     : {
@@ -888,7 +921,7 @@ export function CustomerBookingEntrySurface() {
         serviceChoose: 'Chọn dịch vụ',
         serviceSelected: 'Đã chọn',
         startKaelCheck: 'Mở chat Kael',
-        step: 'Bước 2/4',
+        step: '4 bước',
         title: 'Kiểm giá',
       }
   const activeServiceType = activeDeal?.draft.serviceType ?? null
@@ -925,6 +958,40 @@ export function CustomerBookingEntrySurface() {
     }
     push(kaelChatPath(activeServiceType))
   }
+  const shouldShowBookingWizard = canStartNewDeal || bookingWizardSessionActive
+
+  if (shouldShowBookingWizard) {
+    return (
+      <V4Frame active="booking" testID="customer-booking-entry-surface">
+        {({ tokens }) => (
+          <View style={styles.bookingStack}>
+            <View pointerEvents="none" style={[styles.customerSectionLiquidWash, { backgroundColor: tokens.aqua }]} testID="customer-section-liquid-wash-booking" />
+            <View style={styles.bookingTopRow} testID="customer-booking-title-row">
+              <View style={styles.titleBlock}>
+                <Text style={[styles.screenTitle, { color: tokens.text }]} numberOfLines={1}>
+                  {entryCopy.title}
+                </Text>
+                <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={1}>
+                  {entryCopy.beforeConfirmSearch}
+                </Text>
+              </View>
+              <View style={[styles.bookingStepPill, customerMintPillSurface(tokens)]}>
+                <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
+                  {bookingPillLabel}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.hiddenMarker} testID="customer-booking-wizard-a2-a7-primary" />
+            <BookingWizard
+              mode={tokens.mode}
+              onOpenHistory={() => replace(openHistoryPath)}
+              onWorkflowSessionStart={() => setBookingWizardSessionActive(true)}
+            />
+          </View>
+        )}
+      </V4Frame>
+    )
+  }
 
   return (
     <V4Frame active="booking" testID="customer-booking-entry-surface">
@@ -940,24 +1007,24 @@ export function CustomerBookingEntrySurface() {
                 {entryCopy.beforeConfirmSearch}
               </Text>
             </View>
-            <View style={[styles.bookingStepPill, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
+            <View style={[styles.bookingStepPill, customerMintPillSurface(tokens)]}>
               <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
                 {bookingPillLabel}
               </Text>
             </View>
           </View>
           <View style={styles.serviceGrid} testID="customer-booking-service-entry-grid">
-            <V4ServiceCard compact icon="boltPanel" meta={serviceMetaForBooking('electrical')} selected={activeServiceType === 'electrical'} title={localizedServiceLabel('electrical', languageMode)} testID="customer-booking-service-electrical" onPress={() => openChat('electrical')} />
-            <V4ServiceCard compact icon="waterPipe" meta={serviceMetaForBooking('plumbing')} selected={activeServiceType === 'plumbing'} title={localizedServiceLabel('plumbing', languageMode)} testID="customer-booking-service-plumbing" onPress={() => openChat('plumbing')} water />
-            <V4ServiceCard compact icon="cleaning" meta={serviceMetaForBooking('cleaning')} selected={activeServiceType === 'cleaning'} title={localizedServiceLabel('cleaning', languageMode)} testID="customer-booking-service-cleaning" onPress={() => openChat('cleaning')} />
+            <V4ServiceCard compact icon="plug" meta={serviceMetaForBooking('electrical')} selected={activeServiceType === 'electrical'} title={localizedServiceLabel('electrical', languageMode)} testID="customer-booking-service-electrical" tone="service" onPress={() => openChat('electrical')} />
+            <V4ServiceCard compact icon="faucet" meta={serviceMetaForBooking('plumbing')} selected={activeServiceType === 'plumbing'} title={localizedServiceLabel('plumbing', languageMode)} testID="customer-booking-service-plumbing" tone="water" onPress={() => openChat('plumbing')} />
+            <V4ServiceCard compact icon="broom" meta={serviceMetaForBooking('cleaning')} selected={activeServiceType === 'cleaning'} title={localizedServiceLabel('cleaning', languageMode)} testID="customer-booking-service-cleaning" tone="warm" onPress={() => openChat('cleaning')} />
           </View>
           <View style={styles.chipRow} testID="customer-booking-summary-chips">
             <SmallChip label={activeDeal?.draft.problemChips[0] ? `${copy.ticket.issue}: ${localizedProblemLabel(activeDeal.draft.problemChips[0], activeDeal.draft.serviceType, languageMode)}` : `${copy.ticket.issue}: ${entryCopy.estimatePending}`} tone="service" />
-            <SmallChip label={mediaChipLabel} tone="service" />
-            <SmallChip label={`${copy.ticket.area}: ${activeDeal ? localizedCustomerAreaLabel(activeDeal.draft.districtLabel, languageMode, copy.ticket.unknown) : entryCopy.estimatePending}`} tone="service" />
+            <SmallChip label={mediaChipLabel} tone="water" />
+            <SmallChip label={`${copy.ticket.area}: ${activeDeal ? localizedCustomerAreaLabel(activeDeal.draft.districtLabel, languageMode, copy.ticket.unknown) : entryCopy.estimatePending}`} tone="warm" />
             <SmallChip label={`${entryCopy.estimateLabel}: ${estimateLabel}`} tone="service" />
           </View>
-          <View style={[styles.bookingDiagnosisPanel, customerOpaqueSurface(tokens), { backgroundColor: tokens.service }]} testID="customer-booking-ai-diagnosis-summary">
+          <View style={[styles.bookingDiagnosisPanel, customerBookingDiagnosisSurface(tokens)]} testID="customer-booking-ai-diagnosis-summary">
             <View style={styles.hiddenMarker} testID="customer-booking-kael-summary" />
             <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]}>
               <IconGlyph name="kael" color={tokens.primary} accent={tokens.copper} />
@@ -1392,7 +1459,7 @@ export function CustomerHistorySurface() {
             </View>
           </View>
           <CustomerHistoryTabs activeTab={activeHistoryTab} labels={copy.history.filters} onTabChange={selectHistoryTab} tokens={tokens} />
-          {showRepairTab ? <View style={[styles.historyHeroPanel, customerOpaqueSurface(tokens)]} testID="customer-history-repair-hero-panel">
+          {showRepairTab ? <View style={[styles.historyHeroPanel, customerHistoryHeroSurface(tokens)]} testID="customer-history-repair-hero-panel">
             <SubtleLiquidLight testID="customer-history-repair-hero-liquid" variant="rim" />
             <View style={[styles.historyHeroStatusPill, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
               <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
@@ -1432,7 +1499,7 @@ export function CustomerHistorySurface() {
           {!deal && showChatTab ? <CustomerHistoryChatEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
           {deal && showChatTab ? <CustomerHistoryChatPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {deal && showRepairTab ? (
-            <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-worker-placeholder">
+            <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-worker-placeholder">
               <View style={styles.workerCard}>
                 <View style={[styles.workerAvatar, { backgroundColor: tokens.water, borderColor: tokens.glassBorder }]} />
                 <View style={styles.listCopy}>
@@ -1452,7 +1519,7 @@ export function CustomerHistorySurface() {
             </View>
           ) : null}
           {deal && showRepairTab ? (
-            <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
+            <View style={[styles.flowCard, styles.historyTimelineCard, customerHistoryPanelSurface(tokens)]}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                 {copy.history.progress}
               </Text>
@@ -1468,7 +1535,7 @@ export function CustomerHistorySurface() {
           ) : null}
           {!deal && showRepairTab ? <CustomerHistoryRepairEmptyTimeline languageMode={languageMode} tokens={tokens} /> : null}
           {scopeChange && (showRepairTab || showPriceTab) ? (
-            <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
+            <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]}>
             <View style={styles.sectionTitle}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                 {copy.history.scope}
@@ -1488,17 +1555,19 @@ export function CustomerHistorySurface() {
             </View>
           ) : null}
           {showDoneTab ? (
-            <CustomerHistoryDoneHero canConfirmCompletion={selectors.canCustomerConfirmCompletion} canSubmitReview={selectors.canCustomerSubmitReview} copy={copy} deal={deal} isCompleted={isCompletedHistory} languageMode={languageMode} onConfirmCompletion={confirmCompletionReceived} onOpenChat={continueOrCreate} tokens={tokens} />
-          ) : null}
-          {deal && showDoneTab && isCompletedHistory ? (
-            <CustomerCompletionPresenceMap copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} />
-          ) : null}
-          {!deal && showDoneTab ? <CustomerHistoryDoneMapEmptyPanel copy={copy} tokens={tokens} /> : null}
-          {deal && showDoneTab && !isCompletedHistory ? <CustomerHistoryDoneMapEmptyPanel copy={copy} tokens={tokens} /> : null}
-          {deal && showDoneTab ? <CustomerCompletionEvidencePanel copy={copy} languageMode={languageMode} tokens={tokens} /> : null}
-          {showDoneTab ? <CustomerHistoryDoneTimeline completionStatusLabel={completionStatusLabel} languageMode={languageMode} status={selectors.currentStatus} tokens={tokens} /> : null}
-          {deal && showDoneTab && (selectors.canCustomerSubmitReview || ['confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus ?? '')) ? (
-            <CustomerHistoryReviewPanel copy={copy} onRatingChange={setReviewRating} onSubmit={submitSelectedReview} rating={reviewRating} selectors={selectors} tokens={tokens} />
+            <View style={styles.historyDoneStack} testID="customer-history-done-stack">
+              <CustomerHistoryDoneHero canConfirmCompletion={selectors.canCustomerConfirmCompletion} canSubmitReview={selectors.canCustomerSubmitReview} copy={copy} deal={deal} isCompleted={isCompletedHistory} languageMode={languageMode} onConfirmCompletion={confirmCompletionReceived} onOpenChat={continueOrCreate} tokens={tokens} />
+              {deal && isCompletedHistory ? (
+                <CustomerCompletionPresenceMap copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} />
+              ) : null}
+              {!deal ? <CustomerHistoryDoneMapEmptyPanel copy={copy} tokens={tokens} /> : null}
+              {deal && !isCompletedHistory ? <CustomerHistoryDoneMapEmptyPanel copy={copy} tokens={tokens} /> : null}
+              {deal ? <CustomerCompletionEvidencePanel copy={copy} languageMode={languageMode} tokens={tokens} /> : null}
+              <CustomerHistoryDoneTimeline completionStatusLabel={completionStatusLabel} languageMode={languageMode} status={selectors.currentStatus} tokens={tokens} />
+              {deal && (selectors.canCustomerSubmitReview || ['confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus ?? '')) ? (
+                <CustomerHistoryReviewPanel copy={copy} onRatingChange={setReviewRating} onSubmit={submitSelectedReview} rating={reviewRating} selectors={selectors} tokens={tokens} />
+              ) : null}
+            </View>
           ) : null}
           <View style={styles.hiddenMarker} testID="customer-shell-honest-history-data" />
           <View style={styles.hiddenMarker} testID="customer-history-evidence-timeline" />
@@ -1512,7 +1581,7 @@ export function CustomerHistorySurface() {
 }
 
 export function CustomerProfileSurface() {
-  const { role, session } = useAuth()
+  const { role, session, signOut } = useAuth()
   const themeMode = useCustomerThemeMode()
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
@@ -1531,7 +1600,7 @@ export function CustomerProfileSurface() {
       ? customerMetadata.phone.trim()
       : ''
   const rawAddress = typeof customerMetadata.default_address === 'string' ? customerMetadata.default_address.trim() : ''
-  const profileDisplayName = rawDisplayName || appCopy[languageMode].common.noData
+  const profileDisplayName = localizedProfileName(rawDisplayName, languageMode) || appCopy[languageMode].common.noData
   const profilePhone = rawPhone || (languageMode === 'en' ? 'Not verified' : 'Chưa xác minh')
   const profileAddress = rawAddress || appCopy[languageMode].common.noData
   const profileTitle = languageMode === 'en' ? 'Customer profile' : 'Hồ sơ khách'
@@ -1560,74 +1629,79 @@ export function CustomerProfileSurface() {
       {({ tokens }) => (
         <View style={styles.plainContent}>
           <View pointerEvents="none" style={[styles.customerSectionLiquidWash, { backgroundColor: tokens.aqua }]} testID="customer-section-liquid-wash-profile" />
-          <View style={[styles.profilePrototypeHero, glassSurface(tokens)]} testID="customer-profile-hero">
-            <SubtleGlassHighlight />
-            <View style={styles.hiddenMarker} testID="customer-profile-empty-state" />
-            <SubtleLiquidLight testID="customer-profile-identity-liquid-card" variant="profile" />
-            <View style={styles.profilePrototypeTop}>
-              <View style={styles.profilePrototypeTitleRow}>
-                <IconShell icon="person" size={52} tone="service" />
-                <View style={styles.profilePrototypeTitleCopy}>
-                  <Text style={[styles.profilePrototypeTitle, { color: tokens.text }]} numberOfLines={1}>
-                    {profileTitle}
-                  </Text>
-                  <Text style={[styles.homeShortcutMeta, { color: tokens.muted }]} numberOfLines={1}>
-                    {profileSubtitle}
+          <ReduceMotionAwareEntranceView delayMs={70} distanceY={10} testID="customer-profile-hero-motion">
+            <View style={[styles.profilePrototypeHero, customerProfileHeroSurface(tokens)]} testID="customer-profile-hero">
+              <SubtleGlassHighlight />
+              <View style={styles.hiddenMarker} testID="customer-profile-empty-state" />
+              <SubtleLiquidLight testID="customer-profile-identity-liquid-card" variant="profile" />
+              <View style={styles.profilePrototypeTop}>
+                <View style={styles.profilePrototypeTitleRow}>
+                  <IconShell icon="person" size={52} tone="service" />
+                  <View style={styles.profilePrototypeTitleCopy}>
+                    <Text style={[styles.profilePrototypeTitle, { color: tokens.text }]} numberOfLines={1}>
+                      {profileTitle}
+                    </Text>
+                    <Text style={[styles.homeShortcutMeta, { color: tokens.muted }]} numberOfLines={1}>
+                      {profileSubtitle}
+                    </Text>
+                  </View>
+                </View>
+                <View style={[styles.profileButton, customerMintPillSurface(tokens)]}>
+                  <Text style={[styles.profileButtonText, { color: tokens.primary }]} numberOfLines={1}>
+                    {profileRoleLabel}
                   </Text>
                 </View>
               </View>
-              <View style={[styles.profileButton, { backgroundColor: tokens.ghost, borderColor: tokens.border }]}>
-                <Text style={[styles.profileButtonText, { color: tokens.primary }]} numberOfLines={1}>
-                  {profileRoleLabel}
-                </Text>
+              <View style={styles.profileSetupSteps} testID="profileSetupSteps">
+                {setupSteps.map((step) => (
+                  <CustomerProfileSetupStep active={step.active} key={step.title} meta={step.meta} title={step.title} />
+                ))}
               </View>
+              <View style={styles.hiddenMarker} testID="customer-admin-audit-switch" />
             </View>
-            <View style={styles.profileSetupSteps} testID="profileSetupSteps">
-              {setupSteps.map((step) => (
-                <CustomerProfileSetupStep active={step.active} key={step.title} meta={step.meta} title={step.title} />
-              ))}
-            </View>
-            <View style={styles.hiddenMarker} testID="customer-admin-audit-switch" />
-          </View>
+          </ReduceMotionAwareEntranceView>
           <View style={styles.hiddenMarker} testID="customer-profile-setup-card" />
           <View style={styles.hiddenMarker} testID="customer-shell-honest-profile-save" />
-          <View style={[styles.syncPreview, customerOpaqueSurface(tokens)]} testID="customer-profile-sync-preview">
-            <View style={styles.syncPreviewTop}>
-              <Text style={[styles.syncPreviewTitle, { color: tokens.text }]} numberOfLines={1}>
-                {languageMode === 'en' ? 'Synced from setup' : 'Đồng bộ từ thiết lập'}
-              </Text>
-              <View style={[styles.bookingStepPill, { backgroundColor: tokens.service, borderColor: tokens.border, minWidth: 0 }]}>
-                <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
-                  {syncStatus}
+          <ReduceMotionAwareEntranceView delayMs={120} distanceY={8} testID="customer-profile-sync-motion">
+            <View style={[styles.syncPreview, customerProfilePanelSurface(tokens)]} testID="customer-profile-sync-preview">
+              <View style={styles.syncPreviewTop}>
+                <Text style={[styles.syncPreviewTitle, { color: tokens.text }]} numberOfLines={1}>
+                  {languageMode === 'en' ? 'Synced from setup' : 'Đồng bộ từ thiết lập'}
                 </Text>
+                <View style={[styles.bookingStepPill, rawPhone ? customerMintPillSurface(tokens) : customerWarmPillSurface(tokens), { minWidth: 0 }]}>
+                  <Text style={[styles.bookingStepText, { color: rawPhone ? tokens.primary : tokens.mode === 'dark' ? '#F3D7A9' : '#7B552D' }]} numberOfLines={1}>
+                    {syncStatus}
+                  </Text>
+                </View>
               </View>
+              <Text style={[styles.homeTrustBody, { color: tokens.muted }]} numberOfLines={2}>
+                {languageMode === 'en'
+                  ? 'Setup details stay here and can be adjusted before booking.'
+                  : 'Thông tin thiết lập nằm ở đây và có thể chỉnh trước khi đặt lịch.'}
+              </Text>
             </View>
-            <Text style={[styles.homeTrustBody, { color: tokens.muted }]} numberOfLines={2}>
-              {languageMode === 'en'
-                ? 'Setup details stay here and can be adjusted before booking.'
-                : 'Thông tin thiết lập nằm ở đây và có thể chỉnh trước khi đặt lịch.'}
-            </Text>
-          </View>
-          <View style={styles.profileActions}>
-            <View style={[styles.listCard, customerOpaqueSurface(tokens)]} testID="customer-profile-checklist">
+          </ReduceMotionAwareEntranceView>
+          <ReduceMotionAwareEntranceView delayMs={165} distanceY={8} style={styles.profileActions} testID="customer-profile-list-motion">
+            <View style={[styles.listCard, customerProfilePanelSurface(tokens)]} testID="customer-profile-checklist">
               <View style={styles.hiddenMarker} testID="customer-profile-unified-functions" />
               <View style={styles.hiddenMarker} testID="customer-profile-privacy-shell" />
-              <ListRow icon="person" title={languageMode === 'en' ? 'Display name' : 'Tên hiển thị'} meta={profileDisplayName} />
-              <ListRow icon="phone" title={languageMode === 'en' ? 'Phone number' : 'Số điện thoại'} meta={profilePhone} />
-              <ListRow icon="map" title={languageMode === 'en' ? 'Default address' : 'Địa chỉ mặc định'} meta={profileAddress} testID="customer-utility-saved-address" />
+              <ListRow compact icon="person" title={languageMode === 'en' ? 'Display name' : 'Tên hiển thị'} meta={profileDisplayName} />
+              <ListRow compact icon="phone" title={languageMode === 'en' ? 'Phone number' : 'Số điện thoại'} meta={profilePhone} />
+              <ListRow compact icon="map" title={languageMode === 'en' ? 'Default address' : 'Địa chỉ mặc định'} meta={profileAddress} testID="customer-utility-saved-address" />
               <View style={styles.hiddenMarker} testID="customer-profile-evidence-shell" />
             </View>
-          </View>
-          <View style={styles.profileActions}>
-            <View style={[styles.listCard, customerOpaqueSurface(tokens)]}>
-              <ActionRow icon="moon" title={copy.profile.interface} meta={themeMode === 'light' ? copy.profile.light : copy.profile.dark} onPress={toggleTheme} testID="customer-dark-mode-toggle-profile" />
-              <ActionRow icon="menu" title={appCopy[languageMode].common.appLanguage} meta={languageDisplayName(languageMode)} onPress={toggleLanguage} testID="customer-language-toggle" />
+          </ReduceMotionAwareEntranceView>
+          <ReduceMotionAwareEntranceView delayMs={205} distanceY={8} style={styles.profileActions} testID="customer-profile-actions-motion">
+            <View style={[styles.listCard, customerProfilePanelSurface(tokens)]}>
+              <ActionRow compact icon="moon" title={copy.profile.interface} meta={themeMode === 'light' ? copy.profile.light : copy.profile.dark} onPress={toggleTheme} testID="customer-dark-mode-toggle-profile" />
+              <ActionRow compact icon="menu" title={appCopy[languageMode].common.appLanguage} meta={languageDisplayName(languageMode)} onPress={toggleLanguage} testID="customer-language-toggle" />
+              <ActionRow compact icon="external" title={copy.profile.signOut} meta={copy.profile.switchAccount} onPress={() => void signOut()} testID="customer-profile-sign-out" />
               <View style={styles.hiddenMarker} testID="customer-utility-ticket-wallet" />
               <View style={styles.hiddenMarker} testID="customer-utility-support-entry" />
               <View style={styles.hiddenMarker} testID="customer-profile-payment-placeholder" />
               <View style={styles.hiddenMarker} testID="customer-profile-review-placeholder" />
             </View>
-          </View>
+          </ReduceMotionAwareEntranceView>
         </View>
       )}
     </V4Frame>
@@ -1718,8 +1792,8 @@ function V4Frame({
     settle.value = withDelay(80, withTiming(0, { duration: 300 }))
   }, [active, pulse, settle])
   const motionFieldStyle = useAnimatedStyle(() => ({
-    opacity: reduceMotion ? 0 : 0.08 + pulse.value * 0.04,
-    transform: [{ translateY: settle.value * 2 }],
+    opacity: reduceMotion ? 0 : 0.07 + pulse.value * 0.05,
+    transform: [{ translateY: settle.value * 2 }, { scale: 0.96 + pulse.value * 0.05 }],
   }))
   const experimentalBackgroundImage =
     themeMode === 'dark'
@@ -1843,15 +1917,19 @@ function V4Dock({
 
 function MotionSweep({ frameWidth, screenWidth }: { frameWidth: number; screenWidth: number }) {
   const tokens = useCustomerTokens()
+  const sweep = useSharedValue(0)
+  useEffect(() => {
+    sweep.value = 0
+    sweep.value = withDelay(80, withTiming(1, { duration: 420 }))
+  }, [sweep])
+  const sweepStyle = useAnimatedStyle(() => ({
+    opacity: 0.16 * (1 - sweep.value),
+    transform: [{ translateX: -120 + sweep.value * (frameWidth + 240) }, { rotate: '8deg' }],
+  }), [frameWidth])
   if (tokens.glassHighlight === 'transparent') return null
-  const progress = 0.36
-  const sweepStyle = {
-    opacity: 0.16,
-    transform: [{ translateX: -120 + progress * (frameWidth + 240) }, { rotate: '8deg' }],
-  }
   const left = Math.max((screenWidth - frameWidth) / 2, 0)
 
-  return <View pointerEvents="none" style={[styles.motionSweep, { backgroundColor: tokens.glassHighlight, left }, sweepStyle]} />
+  return <Animated.View pointerEvents="none" style={[styles.motionSweep, { backgroundColor: tokens.glassHighlight, left }, sweepStyle]} />
 }
 
 function AmbientGlassField({ frameWidth, screenWidth }: { frameWidth: number; screenWidth: number }) {
@@ -1919,11 +1997,11 @@ function V4MapBackdrop({ presence = false }: { presence?: boolean }) {
   )
 }
 
-function V4ServiceCard({ compact = false, icon, meta, onPress, selected = false, testID, title, water }: { compact?: boolean; icon: IconName; meta?: string; onPress: () => void; selected?: boolean; testID: string; title: string; water?: boolean }) {
+function V4ServiceCard({ compact = false, homeTile = false, icon, meta, onPress, selected = false, showMeta = true, testID, title, tone, water }: { compact?: boolean; homeTile?: boolean; icon: IconName; meta?: string; onPress: () => void; selected?: boolean; showMeta?: boolean; testID: string; title: string; tone?: SurfaceTone; water?: boolean }) {
   const tokens = useCustomerTokens()
   const languageMode = useAppLanguage()
   const { reduceMotion } = useGlassAccessibility()
-  const showMeta = compact
+  const iconTone = tone ?? (water ? 'water' : icon === 'cleaning' || icon === 'broom' ? 'warm' : 'service')
   return (
     <Pressable
       accessibilityLabel={languageMode === 'en' ? `Select service ${title}` : `Chọn dịch vụ ${title}`}
@@ -1931,26 +2009,23 @@ function V4ServiceCard({ compact = false, icon, meta, onPress, selected = false,
       onPress={onPress}
       style={({ pressed }) => [
         styles.serviceCard,
+        homeTile ? styles.serviceCardHome : null,
         compact ? styles.serviceCardCompact : null,
-        customerOpaqueSurface(tokens),
-        selected ? { backgroundColor: tokens.service, borderColor: tokens.borderStrong } : null,
+        homeTile ? customerHomeServiceTileSurface(tokens, iconTone) : compact ? customerBookingServiceTileSurface(tokens, iconTone) : customerOpaqueSurface(tokens),
+        selected ? customerSelectedServiceTileSurface(tokens, iconTone) : null,
         reduceMotionAwarePressStyle(pressed, reduceMotion),
       ]}
       testID={testID}
     >
       <View pointerEvents="none" style={[styles.glassRing, { borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.16)' : 'rgba(8,120,110,0.10)' }]} />
-      <IconShell icon={icon} tone={water ? 'water' : icon === 'cleaning' ? 'warm' : 'service'} size={compact ? 34 : 38} />
-      <Text style={[styles.serviceTitle, { color: tokens.text }]} numberOfLines={2}>
+      <IconShell icon={icon} tone={iconTone} size={compact ? 34 : 38} />
+      <Text style={[styles.serviceTitle, homeTile ? styles.serviceTitleHome : null, { color: tokens.text }]} numberOfLines={2}>
         {title}
       </Text>
-      {meta ? (
-        showMeta ? (
-          <Text style={[styles.serviceMeta, { color: tokens.muted }]} numberOfLines={1}>
-            {meta}
-          </Text>
-        ) : (
-          <View style={styles.hiddenMarker} testID={`${testID}-meta-production-hidden`} />
-        )
+      {meta && showMeta ? (
+        <Text style={[styles.serviceMeta, { color: tokens.muted }]} numberOfLines={1}>
+          {meta}
+        </Text>
       ) : null}
     </Pressable>
   )
@@ -2046,7 +2121,7 @@ function CustomerHistoryRepairEmptyTimeline({
 }) {
   const emptyTimeline = getCustomerTimeline(null, languageMode).slice(0, 3)
   return (
-    <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-repair-empty-timeline">
+    <View style={[styles.flowCard, styles.historyTimelineCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-repair-empty-timeline">
       {emptyTimeline.map((item) => (
         <View key={item.label} style={styles.timelineRow}>
           <View style={[styles.timelineDot, { backgroundColor: tokens.borderStrong }]} />
@@ -2075,16 +2150,17 @@ function CustomerHistoryPriceEmptyPanel({
   onConfirmSearch: () => void
   tokens: CustomerThemeTokens
 }) {
+  const priceBandLabel = languageMode === 'en' ? 'Price band' : 'Biên giá'
   const priceRows = [
-    [copy.history.filters[1], appCopy[languageMode].common.noRequest],
+    [priceBandLabel, appCopy[languageMode].common.noRequest],
     [languageMode === 'en' ? 'Urgency' : 'Độ khẩn', copy.history.needsConfirm],
-    [languageMode === 'en' ? 'Price band' : 'Biên giá', copy.history.needsConfirm],
+    [languageMode === 'en' ? 'Risk' : 'Rủi ro', copy.history.needsConfirm],
     [languageMode === 'en' ? 'Confirm' : 'Xác nhận', copy.history.needsConfirm],
   ] as const
 
   return (
     <>
-      <View style={[styles.bookingDiagnosisPanel, customerOpaqueSurface(tokens), { backgroundColor: tokens.service }]} testID="customer-history-price-empty-kael-summary">
+      <View style={[styles.bookingDiagnosisPanel, customerBookingDiagnosisSurface(tokens)]} testID="customer-history-price-empty-kael-summary">
         <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]}>
           <IconGlyph name="kael" color={tokens.primary} accent={tokens.copper} />
           <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
@@ -2094,22 +2170,22 @@ function CustomerHistoryPriceEmptyPanel({
         <Text style={[styles.bookingDiagnosisBody, { color: tokens.text }]} numberOfLines={4}>
           {languageMode === 'en'
             ? 'Kael summarizes price when the request has real details.'
-            : 'Kael tóm tắt giá khi phiếu có đủ dữ liệu thật.'}
+          : 'Kael tóm tắt giá khi phiếu có đủ dữ liệu thật.'}
         </Text>
       </View>
-      <View style={[styles.historyCheckPanel, customerOpaqueSurface(tokens)]} testID="customer-history-price-empty-checklist">
+      <View style={[styles.historyCheckPanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-price-empty-checklist">
         <SubtleLiquidLight testID="customer-history-tab-liquid-selector" variant="tab" />
         <View style={styles.sectionTitle}>
           <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
             {languageMode === 'en' ? 'Price check' : 'Bảng kiểm giá'}
           </Text>
           <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-            {copy.history.needsConfirm}
+            {languageMode === 'en' ? 'Not guaranteed' : 'Không cam kết giá'}
           </Text>
         </View>
         <View style={styles.bookingGrid}>
           {priceRows.map(([label, value]) => (
-            <View key={label} style={[styles.priceBox, customerOpaqueSurface(tokens)]}>
+            <View key={label} style={[styles.priceBox, customerHistoryPriceBoxSurface(tokens)]}>
               <Text style={[styles.priceBoxLabel, { color: tokens.muted }]} numberOfLines={1}>
                 {label}
               </Text>
@@ -2137,15 +2213,22 @@ function CustomerHistoryChatEmptyPanel({
   tokens: CustomerThemeTokens
 }) {
   return (
-    <View style={[styles.historyThreadCard, customerOpaqueSurface(tokens)]} testID="customer-history-chat-empty-thread">
+    <View style={[styles.historyThreadCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-chat-empty-thread">
       <View style={styles.hiddenMarker} testID="customer-history-chat-empty-evidence" />
-      <View style={[styles.chatPreviewCard, styles.chatPreviewKaelBubble, customerOpaqueSurface(tokens)]} testID="customer-history-chat-feed-preview">
-        <Text style={[styles.bubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
-          Kael
-        </Text>
-        <Text style={[styles.homeTrustBody, { color: tokens.text }]} numberOfLines={3}>
-          {copy.history.chatEmpty}
-        </Text>
+      <View style={styles.historyChatFeed}>
+        <View style={[styles.chatPreviewCard, styles.chatPreviewKaelBubble, customerHistoryChatBubbleSurface(tokens, 'kael')]} testID="customer-history-chat-feed-preview">
+          <Text style={[styles.bubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
+            Kael
+          </Text>
+          <Text style={[styles.homeTrustBody, { color: tokens.text }]} numberOfLines={3}>
+            {copy.history.chatEmpty}
+          </Text>
+        </View>
+        <View style={[styles.historyChatEmptyCue, customerMintPillSurface(tokens)]} testID="customer-history-chat-empty-cue">
+          <Text style={[styles.historyChatCueText, { color: tokens.primary }]} numberOfLines={2}>
+            {languageMode === 'en' ? 'The thread opens after a real ticket exists.' : 'Luồng chat mở sau khi có phiếu thật.'}
+          </Text>
+        </View>
       </View>
       <PrimaryButton label={languageMode === 'en' ? 'Open Kael chat' : 'Mở chat Kael'} onPress={onOpenKael} compact />
     </View>
@@ -2160,7 +2243,7 @@ function CustomerHistoryDoneMapEmptyPanel({
   tokens: CustomerThemeTokens
 }) {
   return (
-    <View style={[styles.presenceMapCard, styles.presenceMapCardCompact, customerOpaqueSurface(tokens)]} testID="customer-history-done-empty-timeline">
+    <View style={[styles.presenceMapCard, styles.presenceMapCardCompact, customerHistoryPanelSurface(tokens)]} testID="customer-history-done-empty-timeline">
       <View style={styles.sectionTitle}>
         <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
           {copy.history.presenceTitle}
@@ -2169,8 +2252,20 @@ function CustomerHistoryDoneMapEmptyPanel({
           {copy.history.needsConfirm}
         </Text>
       </View>
-      <View style={[styles.presenceMapViewport, styles.presenceMapViewportCompact, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+      <View style={[styles.presenceMapViewport, styles.presenceMapViewportCompact, customerHistoryMapViewportSurface(tokens)]}>
         <V4MapBackdrop />
+        <View style={styles.presenceMapHud} testID="customer-history-presence-map-hud">
+          <View style={[styles.presenceMapControl, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
+            <Text style={[styles.presenceMapControlText, { color: tokens.primary }]} numberOfLines={1}>
+              {copy.history.presenceTitle}
+            </Text>
+          </View>
+          <View style={[styles.presenceMapControl, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+            <Text style={[styles.presenceMapControlText, { color: tokens.primary }]} numberOfLines={1}>
+              {copy.history.needsConfirm}
+            </Text>
+          </View>
+        </View>
         <View style={[styles.presenceBadge, styles.presenceBadgeHome, { backgroundColor: tokens.service, borderColor: tokens.border }]} testID="customer-presence-map-done-empty-no-worker-badge">
           <IconGlyph name="apartment" color={tokens.primary} accent={tokens.aqua} />
           <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
@@ -2194,7 +2289,7 @@ function CustomerCompletionEvidencePanel({
   const emptyValue = appCopy[languageMode].common.noData
 
   return (
-    <View style={[styles.flowCard, customerOpaqueSurface(tokens)]} testID="customer-history-completion-evidence-panel">
+    <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-completion-evidence-panel">
       <View style={styles.sectionTitle}>
         <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
           {copy.history.evidence}
@@ -2253,7 +2348,7 @@ function CustomerHistoryDoneHero({
         : copy.history.newRequest
   const primaryAction = canConfirmCompletion ? onConfirmCompletion : onOpenChat
   return (
-    <View style={[styles.historyHeroPanel, styles.historyHeroPanelCompact, customerOpaqueSurface(tokens)]} testID="customer-history-done-hero">
+    <View style={[styles.historyHeroPanel, styles.historyHeroPanelCompact, customerHistoryHeroSurface(tokens)]} testID="customer-history-done-hero">
       <SubtleLiquidLight testID="customer-history-done-hero-liquid" variant="rim" />
       <View style={[styles.historyHeroStatusPill, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
         <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
@@ -2301,9 +2396,9 @@ function CustomerHistoryDoneTimeline({
       ]
 
   return (
-    <View style={[styles.flowCard, styles.flowCardCompact, customerOpaqueSurface(tokens)]} testID="customer-history-done-timeline">
+    <View style={[styles.flowCard, styles.historyTimelineCard, styles.historyDoneTimelineCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-done-timeline">
       {rows.map(([title, meta, active]) => (
-        <View key={title} style={[styles.timelineRow, styles.timelineRowCompact]}>
+        <View key={title} style={[styles.timelineRow, styles.timelineRowDone]}>
           <View style={[styles.timelineDot, styles.timelineDotCompact, { backgroundColor: active ? tokens.primary : tokens.borderStrong }]} />
           <View style={styles.listCopy}>
             <Text style={[styles.timelineText, styles.timelineTextCompact, { color: tokens.text }]} numberOfLines={1}>
@@ -2335,7 +2430,7 @@ function CustomerHistoryReviewPanel({
   tokens: CustomerThemeTokens
 }) {
   return (
-    <View style={[styles.flowCard, customerOpaqueSurface(tokens)]}>
+    <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]}>
       <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
         {copy.history.paymentReview}
       </Text>
@@ -2401,23 +2496,23 @@ function CustomerHistoryPricePanel({
     ? deal.estimate.complexity
     : copy.history.needsConfirm
   const priceGrid = [
-    [copy.history.filters[1], estimateLabel],
+    [languageMode === 'en' ? 'Price band' : 'Biên giá', estimateLabel],
     [languageMode === 'en' ? 'Urgency' : 'Độ khẩn', urgencyLabel],
     [languageMode === 'en' ? 'Risk' : 'Rủi ro', problemLabel],
     [languageMode === 'en' ? 'Confirm' : 'Xác nhận', copy.history.needsConfirm],
   ] as const
 
   return (
-    <View style={[styles.historyCheckPanel, customerOpaqueSurface(tokens)]} testID="customer-history-price-tab-panel">
+    <View style={[styles.historyCheckPanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-price-tab-panel">
       <View style={styles.sectionTitle}>
         <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
           {copy.history.filters[1]}
         </Text>
         <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-          {visibleStatusLabel}
+          {languageMode === 'en' ? 'Not guaranteed' : 'Không cam kết giá'}
         </Text>
       </View>
-      <View style={[styles.bookingDiagnosisPanel, customerOpaqueSurface(tokens), { backgroundColor: tokens.service }]} testID="customer-history-price-kael-summary">
+      <View style={[styles.bookingDiagnosisPanel, customerBookingDiagnosisSurface(tokens)]} testID="customer-history-price-kael-summary">
         <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]}>
           <IconGlyph name="kael" color={tokens.primary} accent={tokens.copper} />
           <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
@@ -2430,7 +2525,7 @@ function CustomerHistoryPricePanel({
       </View>
       <View style={styles.bookingGrid} testID="customer-history-price-check-grid">
         {priceGrid.map(([label, value]) => (
-          <View key={label} style={[styles.priceBox, customerOpaqueSurface(tokens)]}>
+          <View key={label} style={[styles.priceBox, customerHistoryPriceBoxSurface(tokens)]}>
             <Text style={[styles.priceBoxLabel, { color: tokens.muted }]} numberOfLines={1}>
               {label}
             </Text>
@@ -2483,7 +2578,7 @@ function CustomerHistoryChatPanel({
   const kaelSummaryValue = deal.estimate?.advisory ?? copy.history.chatEmpty
 
   return (
-    <View style={[styles.historyThreadCard, customerOpaqueSurface(tokens)]} testID="customer-history-chat-tab-panel">
+    <View style={[styles.historyThreadCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-chat-tab-panel">
       <View style={styles.sectionTitle}>
         <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
           {copy.history.filters[2]}
@@ -2493,31 +2588,33 @@ function CustomerHistoryChatPanel({
         </Text>
       </View>
       <View style={styles.hiddenMarker} testID="customer-history-chat-empty-evidence" />
-      <View style={[styles.chatPreviewCard, styles.chatPreviewKaelBubble, customerOpaqueSurface(tokens)]} testID="customer-history-chat-feed-preview">
-        <Text style={[styles.bubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
-          Kael
-        </Text>
-        <Text style={[styles.homeTrustBody, { color: tokens.text }]} numberOfLines={3}>
-          {languageMode === 'en'
-            ? `Request status: ${statusValue}. Problem: ${issueValue}.`
-            : `Trạng thái: ${statusValue}. Vấn đề: ${issueValue}.`}
-        </Text>
-      </View>
-      <View style={[styles.chatPreviewCard, styles.chatPreviewUserBubble, { backgroundColor: tokens.service, borderColor: tokens.border }]} testID="customer-history-chat-user-bubble">
-        <Text style={[styles.bubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
-          {languageMode === 'en' ? 'Customer' : 'Khách'}
-        </Text>
-        <Text style={[styles.homeTrustBody, { color: tokens.text }]} numberOfLines={3}>
-          {descriptionValue}
-        </Text>
-      </View>
-      <View style={[styles.chatPreviewCard, styles.chatPreviewKaelBubble, customerOpaqueSurface(tokens)]} testID="customer-history-chat-kael-bubble">
-        <Text style={[styles.bubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
-          Kael
-        </Text>
-        <Text style={[styles.homeTrustBody, { color: tokens.text }]} numberOfLines={3}>
-          {kaelSummaryValue}
-        </Text>
+      <View style={styles.historyChatFeed}>
+        <View style={[styles.chatPreviewCard, styles.chatPreviewKaelBubble, customerHistoryChatBubbleSurface(tokens, 'kael')]} testID="customer-history-chat-feed-preview">
+          <Text style={[styles.bubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
+            Kael
+          </Text>
+          <Text style={[styles.homeTrustBody, { color: tokens.text }]} numberOfLines={3}>
+            {languageMode === 'en'
+              ? `Request status: ${statusValue}. Problem: ${issueValue}.`
+              : `Trạng thái: ${statusValue}. Vấn đề: ${issueValue}.`}
+          </Text>
+        </View>
+        <View style={[styles.chatPreviewCard, styles.chatPreviewUserBubble, customerHistoryChatBubbleSurface(tokens, 'user')]} testID="customer-history-chat-user-bubble">
+          <Text style={[styles.bubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
+            {languageMode === 'en' ? 'Customer' : 'Khách'}
+          </Text>
+          <Text style={[styles.homeTrustBody, { color: tokens.text }]} numberOfLines={3}>
+            {descriptionValue}
+          </Text>
+        </View>
+        <View style={[styles.chatPreviewCard, styles.chatPreviewKaelBubble, customerHistoryChatBubbleSurface(tokens, 'kael')]} testID="customer-history-chat-kael-bubble">
+          <Text style={[styles.bubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
+            Kael
+          </Text>
+          <Text style={[styles.homeTrustBody, { color: tokens.text }]} numberOfLines={3}>
+            {kaelSummaryValue}
+          </Text>
+        </View>
       </View>
       <PrimaryButton label={copy.history.openPriceCheck} onPress={onOpenKael} compact />
     </View>
@@ -2540,7 +2637,7 @@ function CustomerCompletionPresenceMap({
   const addressLabel = localizedCustomerAreaLabel(deal.draft.addressLabel ?? deal.draft.districtLabel, languageMode, copy.ticket.unknown)
 
   return (
-    <View style={[styles.presenceMapCard, customerOpaqueSurface(tokens)]} testID="customer-presence-map-done">
+    <View style={[styles.presenceMapCard, customerHistoryPanelSurface(tokens)]} testID="customer-presence-map-done">
       <View style={styles.sectionTitle}>
         <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
           {copy.history.presenceTitle}
@@ -2549,8 +2646,20 @@ function CustomerCompletionPresenceMap({
           {visibleStatusLabel}
         </Text>
       </View>
-      <View style={[styles.presenceMapViewport, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+      <View style={[styles.presenceMapViewport, customerHistoryMapViewportSurface(tokens)]}>
         <V4MapBackdrop presence />
+        <View style={styles.presenceMapHud} testID="customer-history-presence-map-hud">
+          <View style={[styles.presenceMapControl, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
+            <Text style={[styles.presenceMapControlText, { color: tokens.primary }]} numberOfLines={1}>
+              {copy.history.presenceTitle}
+            </Text>
+          </View>
+          <View style={[styles.presenceMapControl, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+            <Text style={[styles.presenceMapControlText, { color: tokens.primary }]} numberOfLines={1}>
+              {visibleStatusLabel}
+            </Text>
+          </View>
+        </View>
         <View style={[styles.presenceBadge, styles.presenceBadgeHome, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
           <IconGlyph name="apartment" color={tokens.primary} accent={tokens.aqua} />
           <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
@@ -2589,7 +2698,7 @@ function V4TicketCell({ label, testID, value }: { label: string; testID?: string
 function CustomerProfileSetupStep({ active, meta, title }: { active: boolean; meta: string; title: string }) {
   const tokens = useCustomerTokens()
   return (
-    <View style={[styles.profileSetupStep, active ? { backgroundColor: tokens.service, borderColor: tokens.borderStrong } : { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="CustomerProfileSetupStep">
+    <View style={[styles.profileSetupStep, active ? customerMintPillSurface(tokens) : { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="CustomerProfileSetupStep">
       <Text style={[styles.profileSetupStepTitle, { color: tokens.text }]} numberOfLines={1}>
         {title}
       </Text>
@@ -2626,33 +2735,37 @@ function QuickCard({ icon, testID, title }: { icon: IconName; testID?: string; t
   )
 }
 
-function ListRow({ icon, meta, testID, title }: { icon: IconName; meta: string; testID?: string; title: string }) {
+function ListRow({ compact = false, icon, meta, testID, title }: { compact?: boolean; icon: IconName; meta: string; testID?: string; title: string }) {
   const tokens = useCustomerTokens()
   return (
-    <View style={styles.listRow} testID={testID}>
+    <View style={[styles.listRow, compact ? styles.profileListRow : null]} testID={testID}>
       <IconGlyph name={icon} color={tokens.primary} accent={tokens.copper} />
-      <View style={styles.listCopy}>
-        <Text style={[styles.listTitle, { color: tokens.text }]} numberOfLines={1}>
+      <View style={[styles.listCopy, compact ? styles.profileListCopy : null]}>
+        <Text style={[styles.listTitle, compact ? styles.profileListTitle : null, { color: tokens.text }]} numberOfLines={1}>
           {title}
         </Text>
-        <Text style={[styles.listMeta, { color: tokens.subtleText }]} numberOfLines={1}>
+        <Text style={[styles.listMeta, compact ? styles.profileListMeta : null, { color: tokens.subtleText }]} numberOfLines={1}>
           {meta}
         </Text>
       </View>
-      <Text style={[styles.chevron, { color: tokens.text }]} numberOfLines={1}>
-        ›
-      </Text>
+      {compact ? null : (
+        <Text style={[styles.chevron, { color: tokens.text }]} numberOfLines={1}>
+          ›
+        </Text>
+      )}
     </View>
   )
 }
 
 function ActionRow({
+  compact = false,
   icon,
   meta,
   onPress,
   testID,
   title,
 }: {
+  compact?: boolean
   icon: IconName
   meta: string
   onPress: () => void
@@ -2661,19 +2774,21 @@ function ActionRow({
 }) {
   const tokens = useCustomerTokens()
   return (
-    <Pressable accessibilityLabel={title} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.listRow, pressed ? styles.pressed : null]} testID={testID}>
+    <Pressable accessibilityLabel={title} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.listRow, compact ? styles.profileListRow : null, pressed ? styles.pressed : null]} testID={testID}>
       <IconGlyph name={icon} color={tokens.primary} accent={tokens.copper} />
-      <View style={styles.listCopy}>
-        <Text style={[styles.listTitle, { color: tokens.text }]} numberOfLines={1}>
+      <View style={[styles.listCopy, compact ? styles.profileListCopy : null]}>
+        <Text style={[styles.listTitle, compact ? styles.profileListTitle : null, { color: tokens.text }]} numberOfLines={1}>
           {title}
         </Text>
-        <Text style={[styles.listMeta, { color: tokens.subtleText }]} numberOfLines={1}>
+        <Text style={[styles.listMeta, compact ? styles.profileListMeta : null, { color: tokens.subtleText }]} numberOfLines={1}>
           {meta}
         </Text>
       </View>
-      <Text style={[styles.chevron, { color: tokens.text }]} numberOfLines={1}>
-        ›
-      </Text>
+      {compact ? null : (
+        <Text style={[styles.chevron, { color: tokens.text }]} numberOfLines={1}>
+          ›
+        </Text>
+      )}
     </Pressable>
   )
 }
@@ -2853,8 +2968,8 @@ function KaelComposer({
 function SmallChip({ label, tone = 'base' }: { label: string; tone?: SurfaceTone }) {
   const tokens = useCustomerTokens()
   return (
-    <View style={[styles.smallChip, { backgroundColor: getLayerSurface(tokens, tone), borderColor: tokens.border }]}>
-      <Text style={[styles.smallChipText, { color: tokens.text }]} numberOfLines={1}>
+    <View style={[styles.smallChip, customerSmallChipSurface(tokens, tone)]}>
+      <Text style={[styles.smallChipText, { color: customerSmallChipTextColor(tokens, tone) }]} numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -2884,6 +2999,34 @@ function getLayerSurface(tokens: CustomerThemeTokens, tone: SurfaceTone) {
     case 'disabled':
       return tokens.disabled
   }
+}
+
+function customerSmallChipSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'base') {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const isWater = tone === 'water'
+  const isWarm = tone === 'warm'
+  const isService = tone === 'service'
+
+  if (!isWater && !isWarm && !isService) {
+    return { backgroundColor: getLayerSurface(tokens, tone), borderColor: tokens.border }
+  }
+
+  return {
+    backgroundColor: tokens.mode === 'dark'
+      ? isWarm ? 'rgba(64,42,24,0.86)' : isWater ? 'rgba(18,60,64,0.82)' : 'rgba(19,64,55,0.82)'
+      : isWarm ? 'rgba(255,244,219,0.94)' : isWater ? 'rgba(232,252,253,0.94)' : 'rgba(220,251,243,0.94)',
+    borderColor: tokens.mode === 'dark'
+      ? isWarm ? 'rgba(224,160,107,0.24)' : 'rgba(105,222,198,0.20)'
+      : isWarm ? 'rgba(176,118,44,0.18)' : isWater ? 'rgba(35,156,168,0.18)' : 'rgba(13,134,119,0.18)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 6px 14px rgba(0,0,0,0.16)' : '0 8px 18px rgba(17,70,61,0.055)',
+  }
+}
+
+function customerSmallChipTextColor(tokens: CustomerThemeTokens, tone: SurfaceTone = 'base') {
+  if (tone === 'water') return tokens.mode === 'dark' ? '#8AEBD9' : '#08786E'
+  if (tone === 'warm') return tokens.mode === 'dark' ? '#F3D7A9' : '#6F4C22'
+  if (tone === 'service') return tokens.primary
+  return tokens.text
 }
 
 function glassSurface(tokens: CustomerThemeTokens, tone: 'default' | 'strong' | 'warm' | 'service' | 'water' | 'depth' = 'default') {
@@ -2961,9 +3104,238 @@ function customerOpaqueSurface(tokens: CustomerThemeTokens) {
   }
 }
 
+function customerBookingDiagnosisSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = 'radial-gradient(circle at 94% 18%, rgba(255,244,219,0.64), transparent 30%), linear-gradient(135deg, rgba(223,253,246,0.96), rgba(255,247,226,0.82))'
+  const darkGradient = 'radial-gradient(circle at 94% 18%, rgba(224,160,107,0.15), transparent 30%), linear-gradient(135deg, rgba(17,54,48,0.96), rgba(38,32,23,0.82))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(17,54,48,0.94)' : 'rgba(229,252,246,0.94)',
+    borderColor: tokens.mode === 'dark' ? tokens.borderStrong : 'rgba(13,134,119,0.16)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.16)' : '0 12px 26px rgba(17,70,61,0.055)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerHistoryHeroSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = 'radial-gradient(circle at 84% 12%, rgba(189,255,241,0.82), transparent 36%), radial-gradient(circle at 96% 70%, rgba(255,236,198,0.50), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.94), rgba(238,255,250,0.88))'
+  const darkGradient = 'radial-gradient(circle at 82% 12%, rgba(105,222,198,0.18), transparent 36%), radial-gradient(circle at 96% 70%, rgba(224,160,107,0.13), transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.96), rgba(13,29,27,0.92))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(20,44,40,0.96)' : 'rgba(255,255,255,0.94)',
+    borderColor: tokens.mode === 'dark' ? tokens.borderStrong : 'rgba(13,134,119,0.15)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 16px 32px rgba(0,0,0,0.20)' : '0 18px 38px rgba(17,70,61,0.095)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerHistoryPanelSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = 'radial-gradient(circle at 92% 10%, rgba(215,255,246,0.56), transparent 32%), linear-gradient(180deg, rgba(255,253,248,0.98), rgba(247,255,252,0.92))'
+  const darkGradient = 'radial-gradient(circle at 92% 10%, rgba(105,222,198,0.12), transparent 32%), linear-gradient(180deg, rgba(22,43,40,0.96), rgba(17,36,34,0.94))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,43,40,0.96)' : 'rgba(255,253,248,0.97)',
+    borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(35,96,84,0.12)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 24px rgba(0,0,0,0.18)' : '0 12px 30px rgba(17,70,61,0.075)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerHistoryPriceBoxSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = 'radial-gradient(circle at 90% 18%, rgba(202,255,242,0.58), transparent 38%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,255,252,0.92))'
+  const darkGradient = 'radial-gradient(circle at 90% 18%, rgba(105,222,198,0.12), transparent 38%), linear-gradient(180deg, rgba(19,43,42,0.98), rgba(17,36,34,0.94))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(19,43,42,0.96)' : 'rgba(255,255,255,0.96)',
+    borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(35,96,84,0.13)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.14)' : '0 8px 20px rgba(17,70,61,0.055)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerHistoryChatBubbleSurface(tokens: CustomerThemeTokens, role: 'kael' | 'user') {
+  if (role === 'user') {
+    return {
+      backgroundColor: tokens.mode === 'dark' ? 'rgba(19,70,62,0.90)' : 'rgba(215,251,243,0.94)',
+      borderColor: tokens.mode === 'dark' ? tokens.borderStrong : 'rgba(13,134,119,0.16)',
+    }
+  }
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,43,40,0.96)' : 'rgba(255,255,255,0.96)',
+    borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(35,96,84,0.12)',
+  }
+}
+
+function customerHistoryMapViewportSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = 'radial-gradient(circle at 72% 18%, rgba(190,252,240,0.84), transparent 34%), radial-gradient(circle at 22% 70%, rgba(220,250,244,0.62), transparent 32%), linear-gradient(145deg, rgba(250,255,253,0.98), rgba(241,253,249,0.90))'
+  const darkGradient = 'radial-gradient(circle at 72% 18%, rgba(105,222,198,0.18), transparent 34%), radial-gradient(circle at 22% 70%, rgba(80,190,202,0.10), transparent 32%), linear-gradient(145deg, rgba(15,38,36,0.98), rgba(18,39,36,0.92))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#102B29' : '#F2FFFA',
+    borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(13,134,119,0.12)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerHomeServiceTileSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'service') {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const isWater = tone === 'water'
+  const isWarm = tone === 'warm'
+  const lightGradient = isWarm
+    ? 'radial-gradient(circle at 86% 24%, rgba(255,232,184,0.70), transparent 34%), linear-gradient(180deg, rgba(255,253,248,0.98), rgba(255,248,232,0.88))'
+    : isWater
+      ? 'radial-gradient(circle at 84% 24%, rgba(183,243,247,0.82), transparent 34%), linear-gradient(180deg, rgba(248,255,254,0.98), rgba(231,251,249,0.90))'
+      : 'radial-gradient(circle at 84% 24%, rgba(177,249,234,0.86), transparent 34%), linear-gradient(180deg, rgba(247,255,251,0.98), rgba(226,250,242,0.90))'
+  const darkGradient = isWarm
+    ? 'radial-gradient(circle at 82% 22%, rgba(224,160,107,0.20), transparent 34%), linear-gradient(180deg, rgba(34,29,23,0.98), rgba(18,39,36,0.88))'
+    : isWater
+      ? 'radial-gradient(circle at 82% 22%, rgba(80,190,202,0.18), transparent 34%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(15,44,45,0.88))'
+      : 'radial-gradient(circle at 82% 22%, rgba(105,222,198,0.18), transparent 34%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(13,29,27,0.90))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark'
+      ? isWarm ? '#221D17' : isWater ? '#102B2C' : '#122724'
+      : isWarm ? '#FFF8EA' : isWater ? '#F0FEFF' : '#F0FFF9',
+    borderColor: tokens.mode === 'dark'
+      ? 'rgba(105,222,198,0.16)'
+      : isWarm ? 'rgba(202,145,75,0.20)' : isWater ? 'rgba(35,156,168,0.18)' : 'rgba(15,130,115,0.16)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.20)' : '0 10px 24px rgba(17,70,61,0.085)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerBookingServiceTileSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'service') {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const isWater = tone === 'water'
+  const isWarm = tone === 'warm'
+  const lightGradient = isWarm
+    ? 'radial-gradient(circle at 82% 22%, rgba(255,230,178,0.68), transparent 36%), linear-gradient(180deg, rgba(255,254,250,0.98), rgba(255,247,230,0.88))'
+    : isWater
+      ? 'radial-gradient(circle at 82% 22%, rgba(181,241,247,0.78), transparent 36%), linear-gradient(180deg, rgba(250,255,254,0.98), rgba(232,251,250,0.90))'
+      : 'radial-gradient(circle at 82% 22%, rgba(177,249,234,0.82), transparent 36%), linear-gradient(180deg, rgba(250,255,252,0.98), rgba(226,250,242,0.90))'
+  const darkGradient = isWarm
+    ? 'radial-gradient(circle at 80% 20%, rgba(224,160,107,0.18), transparent 36%), linear-gradient(180deg, rgba(34,29,23,0.98), rgba(18,39,36,0.88))'
+    : isWater
+      ? 'radial-gradient(circle at 80% 20%, rgba(80,190,202,0.17), transparent 36%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(15,44,45,0.88))'
+      : 'radial-gradient(circle at 80% 20%, rgba(105,222,198,0.17), transparent 36%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(13,29,27,0.90))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark'
+      ? isWarm ? '#221D17' : isWater ? '#102B2C' : '#122724'
+      : isWarm ? '#FFF7E8' : isWater ? '#F0FEFF' : '#F0FFF9',
+    borderColor: tokens.mode === 'dark'
+      ? isWarm ? 'rgba(224,160,107,0.20)' : 'rgba(105,222,198,0.16)'
+      : isWarm ? 'rgba(202,145,75,0.20)' : isWater ? 'rgba(35,156,168,0.18)' : 'rgba(15,130,115,0.16)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.20)' : '0 10px 24px rgba(17,70,61,0.075)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerSelectedServiceTileSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'service') {
+  const isWarm = tone === 'warm'
+  const isWater = tone === 'water'
+  return {
+    borderColor: tokens.mode === 'dark'
+      ? isWarm ? 'rgba(244,190,122,0.34)' : 'rgba(138,235,217,0.34)'
+      : isWarm ? 'rgba(176,118,44,0.30)' : isWater ? 'rgba(35,156,168,0.30)' : 'rgba(13,134,119,0.30)',
+    boxShadow: tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+      ? 'none'
+      : tokens.mode === 'dark'
+        ? '0 12px 24px rgba(0,0,0,0.22)'
+        : isWarm
+          ? '0 12px 24px rgba(176,118,44,0.11)'
+          : '0 12px 24px rgba(9,121,106,0.12)',
+  }
+}
+
+function customerHomeShortcutSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'service') {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const isWater = tone === 'water'
+  const lightGradient = isWater
+    ? 'radial-gradient(circle at 92% 10%, rgba(183,243,247,0.70), transparent 32%), linear-gradient(180deg, rgba(244,255,253,0.96), rgba(232,250,248,0.88))'
+    : 'radial-gradient(circle at 92% 10%, rgba(177,249,234,0.74), transparent 32%), linear-gradient(180deg, rgba(245,255,250,0.96), rgba(231,250,244,0.88))'
+  const darkGradient = isWater
+    ? 'radial-gradient(circle at 88% 10%, rgba(80,190,202,0.16), transparent 32%), linear-gradient(180deg, rgba(18,39,36,0.96), rgba(15,44,45,0.88))'
+    : 'radial-gradient(circle at 88% 10%, rgba(105,222,198,0.17), transparent 32%), linear-gradient(180deg, rgba(18,39,36,0.96), rgba(13,29,27,0.90))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? isWater ? '#102B2C' : '#122724' : isWater ? '#F0FEFF' : '#F2FFF9',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.15)' : isWater ? 'rgba(35,156,168,0.16)' : 'rgba(15,130,115,0.15)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.18)' : '0 10px 24px rgba(17,70,61,0.075)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerMintPillSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  return tokens.mode === 'dark'
+    ? { backgroundColor: tokens.service, borderColor: tokens.borderStrong }
+    : { backgroundColor: reduceTransparency ? '#DCFBF3' : 'rgba(220,251,243,0.92)', borderColor: 'rgba(13,134,119,0.16)' }
+}
+
+function customerWarmPillSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  return tokens.mode === 'dark'
+    ? { backgroundColor: tokens.warm, borderColor: 'rgba(224,160,107,0.24)' }
+    : { backgroundColor: reduceTransparency ? '#FFF4DB' : 'rgba(255,244,219,0.90)', borderColor: 'rgba(176,118,44,0.18)' }
+}
+
+function customerProfileHeroSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  return tokens.mode === 'dark'
+    ? glassSurface(tokens)
+    : {
+        backgroundColor: reduceTransparency ? 'rgba(255,253,248,0.98)' : 'rgba(255,255,255,0.74)',
+        borderColor: reduceTransparency ? tokens.borderStrong : 'rgba(255,255,255,0.86)',
+        boxShadow: reduceTransparency ? 'none' : '0 18px 38px rgba(17,70,61,0.11)',
+        experimental_backgroundImage: reduceTransparency
+          ? undefined
+          : 'radial-gradient(circle at 84% 6%, rgba(197,255,242,0.84), transparent 36%), linear-gradient(145deg, rgba(255,255,255,0.95), rgba(239,255,251,0.88))',
+      }
+}
+
+function customerProfilePanelSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  return tokens.mode === 'dark'
+    ? customerOpaqueSurface(tokens)
+    : {
+        backgroundColor: reduceTransparency ? '#FFFDF8' : 'rgba(255,253,248,0.94)',
+        borderColor: 'rgba(35,96,84,0.12)',
+        boxShadow: reduceTransparency ? 'none' : '0 10px 28px rgba(17,70,61,0.08)',
+      }
+}
+
 function customerIconSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'service') {
   const isWater = tone === 'water'
   const isWarm = tone === 'warm'
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = isWarm
+    ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.94), transparent 28%), linear-gradient(145deg, #FFF1D6, #F3D28D)'
+    : isWater
+      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #E4FCFA, #AEEBEF)'
+      : 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #C9F8EA, #8FE7D2)'
+  const darkGradient = 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.10), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.20), rgba(18,39,36,0.82))'
   return {
     backgroundColor: tokens.mode === 'dark'
       ? isWater
@@ -2981,19 +3353,11 @@ function customerIconSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 's
       : isWarm
         ? tokens.mode === 'dark' ? 'rgba(224,160,107,0.24)' : 'rgba(176,118,44,0.22)'
         : tokens.borderStrong,
-    boxShadow: tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.18)' : '0 10px 18px rgba(17,70,61,0.08)',
-    experimental_backgroundImage: tokens.mode === 'dark'
-      ? isWater
-        ? 'radial-gradient(circle at 30% 22%, rgba(255,255,255,0.12), transparent 34%), linear-gradient(145deg, rgba(21,54,58,0.98), rgba(12,28,30,0.94))'
-        : isWarm
-          ? 'radial-gradient(circle at 30% 22%, rgba(255,255,255,0.12), transparent 34%), linear-gradient(145deg, rgba(59,41,27,0.98), rgba(32,24,18,0.94))'
-          : 'radial-gradient(circle at 30% 22%, rgba(255,255,255,0.12), transparent 34%), linear-gradient(145deg, rgba(23,59,53,0.98), rgba(12,32,29,0.94))'
-      : isWater
-        ? 'radial-gradient(circle at 30% 22%, rgba(255,255,255,0.92), transparent 34%), linear-gradient(145deg, rgba(214,246,255,0.98), rgba(240,253,255,0.94))'
-        : isWarm
-          ? 'radial-gradient(circle at 30% 22%, rgba(255,255,255,0.94), transparent 34%), linear-gradient(145deg, rgba(255,239,196,0.98), rgba(255,253,242,0.94))'
-          : 'radial-gradient(circle at 30% 22%, rgba(255,255,255,0.92), transparent 34%), linear-gradient(145deg, rgba(190,248,235,0.98), rgba(230,255,249,0.94))',
-  }
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.20)' : '0 8px 18px rgba(17,70,61,0.08)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
 }
 
 function SubtleGlassHighlight() {
@@ -3029,6 +3393,37 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
         <Path d="M7 9.5h9c3 0 5 2 5 5V20" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
         <Path d="M6 22c3-2 5.8 2 9 0 2-1.2 4-1.2 6 0" stroke={accent} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
         <Circle cx={7.5} cy={9.5} r={3} fill={accent} opacity={0.16} />
+      </Svg>
+    )
+  }
+
+  if (name === 'plug') {
+    return (
+      <Svg width={28} height={28} viewBox="0 0 28 28" fill="none">
+        <Path d="M10.2 6.2v5.6M17.8 6.2v5.6" stroke={accent} strokeWidth={1.9} strokeLinecap="round" />
+        <Path d="M8.8 11.6h10.4v3.5a5.2 5.2 0 0 1-10.4 0v-3.5Z" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
+        <Path d="M14 20.3v2.4" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+      </Svg>
+    )
+  }
+
+  if (name === 'faucet') {
+    return (
+      <Svg width={29} height={29} viewBox="0 0 29 29" fill="none">
+        <Path d="M6.4 9.4h7.4c2.6 0 4.5 1.8 4.5 4.4v1.1" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M8.4 6.6h5.5M11.2 6.6v2.8M6.2 12.8h5" stroke={accent} strokeWidth={1.9} strokeLinecap="round" />
+        <Path d="M18.3 16c1.3 1.3 2 2.3 2 3.2a2 2 0 0 1-4 0c0-.9.7-1.9 2-3.2Z" stroke={accent} strokeWidth={1.9} strokeLinejoin="round" />
+      </Svg>
+    )
+  }
+
+  if (name === 'broom') {
+    return (
+      <Svg width={29} height={29} viewBox="0 0 29 29" fill="none">
+        <Path d="M18.5 6.2 11 15" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+        <Path d="m10 14.6 4.8 4" stroke={accent} strokeWidth={1.9} strokeLinecap="round" />
+        <Path d="M8.4 16 14 20.7l-1.4 1.6c-1.6.7-3.4.5-5.4-.5l-1.5-1.2L8.4 16Z" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
+        <Path d="m7.2 20 2.6 2.1" stroke={accent} strokeWidth={1.9} strokeLinecap="round" />
       </Svg>
     )
   }
@@ -3076,6 +3471,16 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
       <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
         <Path d="M6.5 6.5h12c1 0 1.8.8 1.8 1.8v7.2c0 1-.8 1.8-1.8 1.8h-6l-4 3v-3h-2c-1 0-1.8-.8-1.8-1.8V8.3c0-1 .8-1.8 1.8-1.8Z" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
         <Path d="M9.5 11h6" stroke={accent} strokeWidth={1.8} strokeLinecap="round" />
+      </Svg>
+    )
+  }
+
+  if (name === 'clock') {
+    return (
+      <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+        <Path d="M12.5 7.7v5l3 1.8" stroke={accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M20.5 12.5a8 8 0 1 1-8-8" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M16.8 5.3c1 .6 1.9 1.5 2.5 2.5" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
       </Svg>
     )
   }
@@ -3270,13 +3675,13 @@ const styles = StyleSheet.create({
   },
   ambientMintWash: {
     borderRadius: 34,
-    height: 190,
-    opacity: 0.16,
+    height: 182,
+    opacity: 0.12,
     position: 'absolute',
-    right: -92,
-    top: 152,
+    right: -108,
+    top: 128,
     transform: [{ rotate: '-8deg' }],
-    width: 220,
+    width: 218,
   },
   ambientWarmWash: {
     borderRadius: 30,
@@ -3387,12 +3792,12 @@ const styles = StyleSheet.create({
   },
   customerSectionLiquidWash: {
     borderRadius: 999,
-    height: 210,
-    opacity: 0.13,
+    height: 218,
+    opacity: 0.14,
     position: 'absolute',
-    right: -86,
-    top: 38,
-    width: 210,
+    right: -104,
+    top: 44,
+    width: 218,
     zIndex: 0,
   },
   homeTopRow: {
@@ -3427,17 +3832,21 @@ const styles = StyleSheet.create({
     gap: 12,
     position: 'relative',
   },
+  historyDoneStack: {
+    gap: 16,
+    paddingTop: 2,
+  },
   presenceMapCard: {
     borderRadius: 30,
     borderWidth: 1,
-    gap: 12,
+    gap: 14,
     overflow: 'hidden',
-    padding: 13,
+    padding: 15,
   },
   presenceMapCardCompact: {
     borderRadius: 26,
-    gap: 8,
-    padding: 10,
+    gap: 11,
+    padding: 12,
   },
   presenceMapViewport: {
     borderCurve: 'continuous',
@@ -3448,8 +3857,33 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   presenceMapViewportCompact: {
-    borderRadius: 23,
-    minHeight: 92,
+    borderRadius: 24,
+    minHeight: 144,
+  },
+  presenceMapHud: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'space-between',
+    left: 12,
+    position: 'absolute',
+    right: 12,
+    top: 10,
+    zIndex: 6,
+  },
+  presenceMapControl: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: 'center',
+    maxWidth: '56%',
+    minHeight: 32,
+    paddingHorizontal: 10,
+  },
+  presenceMapControlText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 14,
   },
   presenceBadge: {
     alignItems: 'center',
@@ -3466,7 +3900,7 @@ const styles = StyleSheet.create({
   },
   presenceBadgeHome: {
     left: 14,
-    top: 42,
+    top: 58,
   },
   presenceBadgeText: {
     flex: 1,
@@ -3487,33 +3921,33 @@ const styles = StyleSheet.create({
   },
   mapGlow: {
     borderRadius: 999,
-    height: 118,
+    height: 132,
     left: '50%',
-    opacity: 0.42,
+    opacity: 0.34,
     position: 'absolute',
-    top: 150,
+    top: 34,
     transform: [{ translateX: -59 }],
-    width: 118,
+    width: 132,
   },
   mapRoute: {
     borderRadius: 999,
-    height: 12,
-    left: 78,
+    height: 10,
+    left: 60,
     opacity: 0.5,
     position: 'absolute',
-    top: 222,
+    top: 72,
     transformOrigin: 'left center',
-    width: 232,
+    width: 226,
   },
   mapRouteSoft: {
     borderRadius: 999,
-    height: 54,
-    left: 70,
+    height: 44,
+    left: 52,
     opacity: 0.12,
     position: 'absolute',
-    top: 200,
+    top: 54,
     transform: [{ rotate: '-19deg' }],
-    width: 246,
+    width: 240,
   },
   mapVehicle: {
     alignItems: 'center',
@@ -3524,7 +3958,7 @@ const styles = StyleSheet.create({
     left: '50%',
     overflow: 'hidden',
     position: 'absolute',
-    top: 214,
+    top: 62,
     width: 42,
     zIndex: 2,
   },
@@ -3535,17 +3969,17 @@ const styles = StyleSheet.create({
     width: 280,
   },
   mapLineOne: {
-    top: 110,
+    top: 38,
     transform: [{ rotate: '-10deg' }],
   },
   mapLineTwo: {
     right: -40,
-    top: 210,
+    top: 88,
     transform: [{ rotate: '25deg' }],
   },
   mapLineThree: {
     left: -28,
-    top: 286,
+    top: 130,
     transform: [{ rotate: '-32deg' }],
   },
   mapRoom: {
@@ -3555,22 +3989,22 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   mapRoomOne: {
-    height: 132,
+    height: 86,
     left: 42,
-    top: 138,
-    width: 150,
+    top: 24,
+    width: 136,
   },
   mapRoomTwo: {
-    height: 118,
+    height: 84,
     right: 35,
-    top: 188,
-    width: 138,
+    top: 68,
+    width: 132,
   },
   mapRoomThree: {
-    height: 108,
+    height: 76,
     left: 68,
-    top: 318,
-    width: 196,
+    top: 120,
+    width: 186,
   },
   mapPin: {
     borderRadius: 999,
@@ -3579,7 +4013,7 @@ const styles = StyleSheet.create({
     left: '50%',
     opacity: 0.9,
     position: 'absolute',
-    top: 205,
+    top: 66,
     transform: [{ translateX: -9 }],
     width: 18,
   },
@@ -3595,11 +4029,11 @@ const styles = StyleSheet.create({
   },
   mapNodeElectric: {
     left: 50,
-    top: 170,
+    top: 50,
   },
   mapNodeWater: {
     right: 52,
-    top: 246,
+    top: 100,
   },
   searchPill: {
     alignItems: 'center',
@@ -3624,10 +4058,13 @@ const styles = StyleSheet.create({
   },
   homeSheet: {
     boxShadow: 'none',
-    gap: 14,
+    gap: 16,
     marginTop: 12,
     minHeight: 620,
     padding: 0,
+  },
+  homeHeroStack: {
+    gap: 16,
   },
   homeAddressCard: {
     alignItems: 'center',
@@ -3661,14 +4098,14 @@ const styles = StyleSheet.create({
   homeCommandHero: {
     borderRadius: 28,
     borderWidth: 1,
-    boxShadow: '0 18px 36px rgba(21,89,78,0.10)',
-    minHeight: 210,
+    boxShadow: '0 18px 38px rgba(21,89,78,0.08)',
+    minHeight: 214,
     overflow: 'hidden',
     padding: 16,
   },
   homeCommandHitArea: {
     flex: 1,
-    gap: 10,
+    gap: 12,
     minHeight: 176,
     position: 'relative',
   },
@@ -3814,12 +4251,12 @@ const styles = StyleSheet.create({
   },
   homeCommandWash: {
     borderRadius: 999,
-    height: 180,
-    opacity: 0.16,
+    height: 164,
+    opacity: 0.1,
     position: 'absolute',
-    right: -52,
-    top: -48,
-    width: 180,
+    right: -62,
+    top: -44,
+    width: 164,
   },
   twoCol: {
     flexDirection: 'row',
@@ -3847,7 +4284,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   bookingStack: {
-    gap: 12,
+    gap: 16,
     minHeight: 0,
     position: 'relative',
   },
@@ -3885,8 +4322,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexBasis: '47%',
     flexGrow: 1,
-    gap: 5,
-    minHeight: 68,
+    gap: 6,
+    minHeight: 74,
     overflow: 'hidden',
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -3898,10 +4335,10 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   priceBoxValue: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     letterSpacing: 0,
-    lineHeight: 20,
+    lineHeight: 19,
   },
   bookingCheckRow: {
     alignItems: 'center',
@@ -3949,7 +4386,7 @@ const styles = StyleSheet.create({
   },
   bookingDiagnosisPillText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
   },
   bookingDiagnosisBody: {
@@ -3962,13 +4399,14 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 1,
     gap: 14,
+    minHeight: 168,
     overflow: 'hidden',
     padding: 16,
     position: 'relative',
   },
   historyHeroPanelCompact: {
-    gap: 8,
-    padding: 12,
+    gap: 10,
+    padding: 14,
   },
   historyHeroStatusPill: {
     alignItems: 'center',
@@ -3996,18 +4434,36 @@ const styles = StyleSheet.create({
   historyCheckPanel: {
     borderRadius: 26,
     borderWidth: 1,
-    gap: 12,
+    gap: 14,
     overflow: 'hidden',
-    padding: 15,
+    padding: 16,
     position: 'relative',
   },
   historyThreadCard: {
     borderRadius: 26,
     borderWidth: 1,
-    gap: 12,
+    gap: 14,
     overflow: 'hidden',
-    padding: 15,
+    padding: 16,
     position: 'relative',
+  },
+  historyChatFeed: {
+    gap: 11,
+  },
+  historyChatEmptyCue: {
+    alignSelf: 'flex-end',
+    borderRadius: 999,
+    borderWidth: 1,
+    maxWidth: '84%',
+    minHeight: 34,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  historyChatCueText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 16,
   },
   chatPreviewCard: {
     borderRadius: 20,
@@ -4040,30 +4496,30 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   homeShortcutTile: {
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1,
     flexBasis: '47%',
     flexGrow: 1,
-    gap: 5,
+    gap: 7,
     justifyContent: 'center',
-    minHeight: 76,
+    minHeight: 84,
     overflow: 'hidden',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 14,
   },
   homeShortcutCopy: {
     gap: 3,
     minWidth: 0,
   },
   homeShortcutTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     letterSpacing: 0,
     lineHeight: 17,
   },
   homeShortcutMeta: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '700',
     letterSpacing: 0,
     lineHeight: 15,
   },
@@ -4096,14 +4552,14 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   homeServicesBlock: {
-    gap: 12,
-    marginTop: 22,
+    gap: 10,
+    marginTop: 18,
   },
   homeServicesTitle: {
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0,
-    lineHeight: 23,
+    lineHeight: 22,
   },
   homeServicesMeta: {
     fontSize: 12,
@@ -4156,6 +4612,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
+  serviceCardHome: {
+    alignItems: 'flex-start',
+    borderRadius: 22,
+    gap: 9,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
   serviceCardCompact: {
     borderRadius: 22,
     gap: 6,
@@ -4169,6 +4633,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
     lineHeight: 16,
     textAlign: 'center',
+  },
+  serviceTitleHome: {
+    alignSelf: 'stretch',
+    fontWeight: '700',
+    lineHeight: 15,
+    textAlign: 'left',
   },
   sectionTitle: {
     alignItems: 'center',
@@ -4603,11 +5073,23 @@ const styles = StyleSheet.create({
     gap: 4,
     padding: 8,
   },
+  historyTimelineCard: {
+    paddingVertical: 16,
+  },
+  historyDoneTimelineCard: {
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+  },
   timelineRow: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
-    minHeight: 25,
+    minHeight: 32,
+  },
+  timelineRowDone: {
+    gap: 11,
+    minHeight: 36,
   },
   timelineRowCompact: {
     gap: 8,
@@ -4780,9 +5262,9 @@ const styles = StyleSheet.create({
   syncPreview: {
     borderRadius: 24,
     borderWidth: 1,
-    gap: 8,
+    gap: 10,
     overflow: 'hidden',
-    padding: 12,
+    padding: 14,
   },
   syncPreviewTop: {
     alignItems: 'center',
@@ -4880,19 +5362,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
+  profileListRow: {
+    minHeight: 52,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
   listCopy: {
     flex: 1,
     gap: 3,
+  },
+  profileListCopy: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
   },
   listTitle: {
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 0,
   },
+  profileListTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
   listMeta: {
     fontSize: 13,
     fontWeight: '500',
     letterSpacing: 0,
+  },
+  profileListMeta: {
+    flexShrink: 1,
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 14,
+    maxWidth: '54%',
+    textAlign: 'right',
   },
   listMetaCompact: {
     fontSize: 11,
@@ -4988,7 +5495,7 @@ const styles = StyleSheet.create({
   },
   smallChipText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '700',
     letterSpacing: 0,
   },
 })

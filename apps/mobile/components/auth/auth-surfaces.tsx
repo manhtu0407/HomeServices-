@@ -480,7 +480,7 @@ export function LoginRoleSurface() {
     try {
       const result = await signInWithPassword(email, password)
       if (!result.success) {
-        setFormError(copy.errors.login)
+        setFormError(result.error ?? copy.errors.login)
       } else {
         setPassword('')
       }

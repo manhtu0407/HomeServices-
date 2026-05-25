@@ -53,11 +53,13 @@ type WorkerIconName =
   | 'back'
   | 'bank'
   | 'bolt'
+  | 'broom'
   | 'brief'
   | 'chat'
   | 'check'
   | 'clock'
   | 'document'
+  | 'faucet'
   | 'globe'
   | 'home'
   | 'jobs'
@@ -66,6 +68,7 @@ type WorkerIconName =
   | 'moon'
   | 'person'
   | 'pin'
+  | 'plug'
   | 'plus'
   | 'send'
   | 'shield'
@@ -98,6 +101,20 @@ const workerServiceAreaAnchors: Array<{ lat: number; lng: number; slug: Exclude<
   { slug: 'phu_nhuan', lat: 10.7992, lng: 106.6803 },
 ]
 const workerServiceRadiusPresets = [5, 8, 12, 20] as const
+const workerDistrictTextAliases: Partial<Record<string, DistrictSlug>> = {
+  'binh chanh': 'binh_chanh',
+  'binh tan': 'binh_tan',
+  'binh thanh': 'binh_thanh',
+  'can gio': 'can_gio',
+  'cu chi': 'cu_chi',
+  'go vap': 'go_vap',
+  'hoc mon': 'hoc_mon',
+  'nha be': 'nha_be',
+  'phu nhuan': 'phu_nhuan',
+  'tan binh': 'tan_binh',
+  'tan phu': 'tan_phu',
+  'thu duc': 'thu_duc',
+}
 const workerSectionMotionTestIDs: Record<WorkerActiveTab, string> = {
   chat: 'worker-section-glass-motion-chat',
   earnings: 'worker-section-glass-motion-earnings',
@@ -905,6 +922,7 @@ export function WorkerJobsSurface() {
                 primaryActionPath="/(worker)/jobs?tab=waiting"
                 secondaryActionLabel={copy.home.readinessTitle}
                 secondaryActionPath="/(worker)/home"
+                showMapPreview
                 status={copy.jobs.emptyStatus}
                 testID="worker-jobs-active-empty-card"
                 title={copy.jobs.activeEmptyTitle}
@@ -946,15 +964,19 @@ function WorkerNeedsReviewCard() {
           body={copy.jobs.needsEmptyBody}
           icon="brief"
           label={language === 'en' ? 'Scope review' : 'Phạm vi'}
+          labelTone="cream"
           testID="worker-scope-change-empty"
           title={copy.jobs.needsEmptyTitle}
+          tone="warm"
         />
         <WorkerNeedsEmptyCard
           body={language === 'en' ? 'Completion notes and photos appear here when a job reaches the finish step.' : 'Ghi chú và ảnh nghiệm thu sẽ hiện ở đây khi việc tới bước hoàn tất.'}
           icon="document"
           label={language === 'en' ? 'Completion media' : 'Ảnh nghiệm thu'}
+          labelTone="mint"
           testID="worker-completion-evidence-empty"
           title={language === 'en' ? 'Completion evidence' : 'Ảnh nghiệm thu'}
+          tone="base"
         />
       </>
     )
@@ -1047,7 +1069,7 @@ function WorkerNeedsInlineEmptyCard() {
   const { replace } = useRouter()
 
   return (
-    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-jobs-active-needs-inline-empty-card">
+    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens, 'warm')]} testID="worker-jobs-active-needs-inline-empty-card">
       <SubtleGlassHighlight />
       <View style={styles.jobTopRow}>
         <View style={styles.titleStack}>
@@ -1070,15 +1092,34 @@ function WorkerNeedsInlineEmptyCard() {
   )
 }
 
-function WorkerNeedsEmptyCard({ body, icon, label, testID, title }: { body: string; icon: WorkerIconName; label: string; testID: string; title: string }) {
+function WorkerNeedsEmptyCard({
+  body,
+  icon,
+  label,
+  labelTone = 'mint',
+  testID,
+  title,
+  tone = 'base',
+}: {
+  body: string
+  icon: WorkerIconName
+  label: string
+  labelTone?: WorkerHeaderPillTone
+  testID: string
+  title: string
+  tone?: WorkerTone
+}) {
   const { tokens } = useWorkerUi()
+  const pillSurface = labelTone === 'cream'
+    ? { backgroundColor: tokens.cream, borderColor: tokens.border, borderWidth: 1, color: tokens.copper }
+    : { backgroundColor: tokens.mint, borderColor: tokens.borderStrong, borderWidth: 1, color: tokens.primary }
 
   return (
-    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID={testID}>
+    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens, tone)]} testID={testID}>
       <SubtleGlassHighlight />
       <View style={styles.jobTopRow}>
         <View style={styles.titleStack}>
-          <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
+          <Text style={[styles.statusPill, { alignSelf: 'flex-start' }, pillSurface]} numberOfLines={1}>
             {label}
           </Text>
           <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
@@ -1088,7 +1129,7 @@ function WorkerNeedsEmptyCard({ body, icon, label, testID, title }: { body: stri
             {body}
           </Text>
         </View>
-        <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
+        <View style={[styles.readinessBadge, styles.needsIconBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
           <Icon name={icon} active small />
         </View>
       </View>
@@ -1582,10 +1623,27 @@ function localizedWorkerProblemSummary(broadcast: WorkerBroadcastView, language:
   return localizedProblemLabel(broadcast.problemSummary, broadcast.serviceType, language)
 }
 
+function canonicalWorkerAreaLabel(area: string) {
+  const trimmed = area.trim()
+  if (!trimmed) return null
+  const directSlug = normalizeDistrict(trimmed)
+  if (directSlug !== 'hcmc_all' || /^hcmc_all$/i.test(trimmed)) return HCMC_DISTRICTS[directSlug]
+  const aliasKey = trimmed
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+  const aliasSlug = workerDistrictTextAliases[aliasKey]
+  return aliasSlug ? HCMC_DISTRICTS[aliasSlug] : null
+}
+
 function localizedWorkerAreaLabel(area: string | null | undefined, language: WorkerLanguageMode) {
   if (!area) return appCopy[language].common.noData
-  if (language === 'vi') return area
-  const mapped = area
+  const canonicalArea = canonicalWorkerAreaLabel(area) ?? area
+  if (language === 'vi') return canonicalArea
+  const mapped = canonicalArea
     .replace(/^Khu vực:\s*/i, '')
     .replace(/Khu vực TP\.?HCM/gi, 'Ho Chi Minh City area')
     .replace(/Khu vực chung/gi, 'General area')
@@ -1646,8 +1704,7 @@ function WorkerEarningsLedger() {
     : copy.earnings.rows
 
   return (
-    <View style={[styles.listCard, workerOpaqueCardSurface(tokens)]} testID="worker-earnings-ledger">
-      <SectionHeader title={copy.earnings.ledgerTitle} />
+    <View style={[styles.earningsLedgerCard, workerEarningsLedgerSurface(tokens)]} testID="worker-earnings-ledger">
       {rows.map((row, index) => (
         <ListRow key={row[0]} icon={index === 0 ? 'money' : index === 1 ? 'bank' : 'document'} title={row[0]} meta={row[1]} />
       ))}
@@ -1656,39 +1713,44 @@ function WorkerEarningsLedger() {
 }
 
 function WorkerEarningsTrend() {
-  const { language, tokens } = useWorkerUi()
+  const { copy, language, tokens } = useWorkerUi()
   const { workerEarnings } = useFrontendWorkflow()
   const title = language === 'en' ? 'Recent days' : '7 ngày gần nhất'
-  const days = buildWorkerEarningsDays(language, workerEarnings)
-  const maxDailyValue = Math.max(...days.map((day) => day.netEarnings), 0)
+  const realDays = buildWorkerEarningsDays(language, workerEarnings)
+  const maxDailyValue = Math.max(...realDays.map((day) => day.netEarnings), 0)
   const hasDailyEarnings = maxDailyValue > 0
-  const emptyBarHeight = 56
+  const days = hasDailyEarnings ? realDays : buildWorkerEmptyEarningsDays(language)
+  const emptySkeletonBarHeights = [42, 76, 56, 100, 70, 118, 60]
 
   return (
-    <View style={[styles.earningsTrendCard, glassSurface(tokens, 'cream')]} testID="worker-earnings-seven-day-chart">
+    <View style={[styles.earningsTrendCard, workerEarningsTrendSurface(tokens)]} testID="worker-earnings-seven-day-chart">
+      <View pointerEvents="none" style={[styles.earningsTrendGlow, { backgroundColor: tokens.aqua }]} />
+      <SubtleGlassHighlight />
       <View style={styles.earningsTrendTop}>
-        <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
+        <Text style={[styles.statusPill, workerEarningsPillSurface(tokens)]} numberOfLines={1}>
           {title}
         </Text>
       </View>
-      <View style={[styles.earningsChartShell, workerOpaqueCardSurface(tokens, 'raised')]}>
+      <View style={[styles.earningsChartShell, workerEarningsChartSurface(tokens)]}>
         <View style={styles.earningsChartEmptyState} testID="worker-earnings-chart-empty-state">
-          <View style={[styles.earningsChartBaseline, { backgroundColor: tokens.border }]} />
           <View style={styles.earningsBarRail} testID={hasDailyEarnings ? 'worker-earnings-real-bar-shell' : 'worker-earnings-empty-bar-shell'}>
-            {days.map((day, index) => (
-              <View
-                accessibilityLabel={`${day.label}: ${formatWorkerMoney(day.netEarnings, language)}`}
-                key={day.date}
-                style={[
-                  styles.earningsEmptyBar,
-                  {
-                    backgroundColor: tokens.primary,
-                    height: hasDailyEarnings ? Math.max(30, Math.round(42 + (day.netEarnings / maxDailyValue) * 76)) : emptyBarHeight,
-                    opacity: hasDailyEarnings ? 0.86 : 0.16,
-                  },
-                ]}
-              />
-            ))}
+            {days.map((day, index) => {
+              const emptyBarHeight = emptySkeletonBarHeights[index % emptySkeletonBarHeights.length]
+              return (
+                <View
+                  accessibilityLabel={hasDailyEarnings ? `${day.label}: ${formatWorkerMoney(day.netEarnings, language)}` : `${day.label}: ${copy.earnings.noReconciliation}`}
+                  key={day.date}
+                  style={[
+                    styles.earningsEmptyBar,
+                    workerEarningsBarSurface(tokens, hasDailyEarnings),
+                    {
+                      height: hasDailyEarnings ? Math.max(30, Math.round(42 + (day.netEarnings / maxDailyValue) * 76)) : emptyBarHeight,
+                      opacity: hasDailyEarnings ? 0.98 : 0.96,
+                    },
+                  ]}
+                />
+              )
+            })}
           </View>
         </View>
         <View style={styles.earningsDayRail}>
@@ -1716,7 +1778,7 @@ function WorkerEarningsSummary() {
 
   return (
     <View style={styles.earningsSummaryGrid} testID="worker-earnings-day-month-summary">
-      <View style={[styles.earningsSummaryCell, workerOpaqueCardSurface(tokens, 'raised')]}>
+      <View style={[styles.earningsSummaryCell, workerEarningsMiniSurface(tokens)]}>
         <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
           {todayLabel}
         </Text>
@@ -1724,7 +1786,7 @@ function WorkerEarningsSummary() {
           {todayValue}
         </Text>
       </View>
-      <View style={[styles.earningsSummaryCell, workerOpaqueCardSurface(tokens, 'raised')]}>
+      <View style={[styles.earningsSummaryCell, workerEarningsMiniSurface(tokens)]}>
         <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
           {monthLabel}
         </Text>
@@ -1763,6 +1825,18 @@ function buildWorkerEarningsDays(language: WorkerLanguageMode, workerEarnings: E
   })
 }
 
+function buildWorkerEmptyEarningsDays(language: WorkerLanguageMode) {
+  const labels = language === 'en'
+    ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    : ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+  return labels.map((label, index) => ({
+    date: `empty-${index}`,
+    label,
+    netEarnings: 0,
+    paidJobCount: 0,
+  }))
+}
+
 function getTodayWorkerNetEarnings(workerEarnings: EarningsResponse | null, referenceDate = new Date()) {
   const todayKey = workerDateKey(referenceDate)
   return workerEarnings?.daily_earnings?.find((day) => day.date === todayKey)?.net_earnings ?? 0
@@ -1778,6 +1852,7 @@ function WorkerProfileContent() {
   const { role, signOut } = useAuth()
   const { workerProfile } = useFrontendWorkflow()
   const [showVerificationForm, setShowVerificationForm] = useState(false)
+  const workerSignOutLabel = language === 'en' ? 'Sign out' : 'Đăng xuất'
   const adminAuditSwitchLabel = language === 'en' ? 'Back to login' : 'Về đăng nhập'
   const verificationCopy = workerVerificationCopy[language]
   const serviceSkillsLabel = workerProfile?.service_types.length
@@ -1786,13 +1861,14 @@ function WorkerProfileContent() {
   const workingAreaLabel = workerProfile?.districts.length
     ? workerProfile.districts.map((district) => localizedWorkerAreaLabel(district, language)).join(' · ')
     : appCopy[language].common.noData
+  const verificationStatus = workerProfile?.verification_status ?? 'draft'
   const profileRows = [
-    [language === 'en' ? 'Identity verification' : 'Xác minh danh tính', localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)],
+    [language === 'en' ? 'Identity verification' : 'Xác minh danh tính', localizedWorkerVerificationStatus(verificationStatus, language)],
     [language === 'en' ? 'Service skills' : 'Kỹ năng dịch vụ', serviceSkillsLabel],
     [language === 'en' ? 'Working area' : 'Khu vực làm việc', workingAreaLabel],
   ]
-  const profileStatusValue = localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)
-  const submittedProfileValue = workerProfile && workerProfile.verification_status !== 'draft'
+  const profileStatusValue = localizedWorkerVerificationStatus(verificationStatus, language)
+  const submittedProfileValue = workerProfile && verificationStatus !== 'draft'
     ? (language === 'en' ? 'Submitted' : 'Đã gửi')
     : profileStatusValue
   const profileSyncLabel = language === 'en' ? 'Synced from verification' : 'Đồng bộ từ xác thực'
@@ -1801,11 +1877,12 @@ function WorkerProfileContent() {
     : appCopy[language].common.noData
   const canSubmitVerification = role === 'worker' &&
     !workerProfile?.is_suspended &&
-    !['approved', 'suspended'].includes(workerProfile?.verification_status ?? 'draft')
+    !['approved', 'suspended'].includes(verificationStatus)
+  const showProfileSyncPreview = role === 'admin' && Boolean(workerProfile) && !showVerificationForm
 
   return (
     <>
-      <View style={[styles.profileHead, glassSurface(tokens, 'raised')]} testID="worker-profile-verification-card">
+      <View style={[styles.profileHead, workerProfileHeroSurface(tokens)]} testID="worker-profile-verification-card">
         <SubtleGlassHighlight />
         <View style={styles.profileHeroTop}>
           <View style={styles.profileAvatarHero}>
@@ -1822,9 +1899,13 @@ function WorkerProfileContent() {
           </Text>
         </View>
         {role === 'worker' ? (
-          <PressButton label={adminAuditSwitchLabel} onPress={() => void signOut()} testID="worker-profile-sign-out" />
+          <View style={styles.profileHeroAction}>
+            <PressButton label={workerSignOutLabel} onPress={() => void signOut()} testID="worker-profile-sign-out" />
+          </View>
         ) : role === 'admin' ? (
-          <PressButton label={adminAuditSwitchLabel} onPress={() => replace('/(auth)/login')} testID="worker-admin-audit-switch" />
+          <View style={styles.profileHeroAction}>
+            <PressButton label={adminAuditSwitchLabel} onPress={() => replace('/(auth)/login')} testID="worker-admin-audit-switch" />
+          </View>
         ) : null}
       </View>
       {canSubmitVerification && showVerificationForm ? <WorkerVerificationForm /> : null}
@@ -1848,16 +1929,18 @@ function WorkerProfileContent() {
         </View>
       </View>
 
-      <View style={[styles.profileSyncPreview, workerOpaqueCardSurface(tokens)]} testID="worker-profile-sync-preview">
-        <View style={styles.profileSyncPreviewTop}>
-          <Text style={[styles.cardTitle, { color: tokens.ink, flex: 1 }]} numberOfLines={1}>
-            {profileSyncLabel}
-          </Text>
-          <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
-            {profileSyncMeta}
-          </Text>
+      {showProfileSyncPreview ? (
+        <View style={[styles.profileSyncPreview, workerOpaqueCardSurface(tokens)]} testID="worker-profile-sync-preview">
+          <View style={styles.profileSyncPreviewTop}>
+            <Text style={[styles.cardTitle, { color: tokens.ink, flex: 1 }]} numberOfLines={1}>
+              {profileSyncLabel}
+            </Text>
+            <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
+              {profileSyncMeta}
+            </Text>
+          </View>
         </View>
-      </View>
+      ) : null}
 
       <View style={[styles.listCard, workerOpaqueCardSurface(tokens)]} testID="worker-profile-list-groups">
         {profileRows.map((row, index) => (
@@ -1882,7 +1965,7 @@ function WorkerProfileContent() {
         </View>
       ) : null}
 
-      <View style={[styles.preferenceCard, workerOpaqueCardSurface(tokens)]} testID="worker-profile-preference-toggles">
+      <View style={[styles.preferenceCard, workerProfilePreferenceSurface(tokens)]} testID="worker-profile-preference-toggles">
         <ThemeToggle />
         <LanguageToggle />
       </View>
@@ -2367,11 +2450,11 @@ function WorkerMapStage() {
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast
   const mapArea = broadcast?.generalArea ?? deal?.draft.districtLabel
-  const mapSearch = mapArea ? localizedWorkerAreaLabel(mapArea, language) : copy.home.mapSearch
+  const hasWorkerAnchor = Boolean(workerProfile?.districts[0])
   const workerAnchorLabel = workerProfile?.districts[0]
     ? localizedWorkerAreaLabel(workerProfile.districts[0], language)
     : appCopy[language].common.noData
-  const hasWorkerAnchor = Boolean(workerProfile?.districts[0])
+  const mapSearch = mapArea ? localizedWorkerAreaLabel(mapArea, language) : hasWorkerAnchor ? workerAnchorLabel : copy.home.mapSearch
   const workerRadiusKm = workerProfile?.service_radius_km
   const workerRadiusLabel = Number.isFinite(workerRadiusKm)
     ? `${workerRadiusKm} km`
@@ -2392,7 +2475,7 @@ function WorkerMapStage() {
     <View style={[styles.mapStage, workerOpaqueCardSurface(tokens, 'depth')]} testID="worker-flexible-map-shell">
       <View style={[styles.mapViewport, workerMapViewportSurface(tokens)]} testID="worker-map-google-ready">
         <MapLineField />
-        {mapArea ? <WorkerMapRouteLine /> : null}
+        {hasMapContext ? <WorkerMapRouteLine /> : null}
         <View pointerEvents="none" style={[styles.mapFogTop, { backgroundColor: tokens.raised }]} />
         <View pointerEvents="none" style={[styles.mapCyanVeil, { backgroundColor: tokens.aqua }]} />
         <View pointerEvents="none" style={[styles.mapFogBottom, { backgroundColor: tokens.raised }]} />
@@ -2410,14 +2493,14 @@ function WorkerMapStage() {
           </View>
         </View>
         {hasMapContext ? (
-          <View style={[styles.homeMapMarker, styles.homeMapMarkerZone, { backgroundColor: tokens.glassStrong, borderColor: tokens.glassBorder }]} testID="worker-map-zone-marker">
+          <View style={[styles.homeMapMarker, styles.homeMapMarkerZone, { backgroundColor: tokens.raised, borderColor: tokens.glassBorder }]} testID="worker-map-zone-marker">
             <View style={[styles.homeMapZoneHalo, { backgroundColor: tokens.aqua }]} />
             <Icon name="pin" active small />
           </View>
         ) : null}
         {hasWorkerAnchor ? (
-          <View style={[styles.homeMapMarker, styles.homeMapMarkerWorker, { backgroundColor: tokens.raised, borderColor: tokens.primary }]} testID="worker-map-worker-marker">
-            <Icon name="tools" active small />
+          <View style={[styles.homeMapMarker, styles.homeMapMarkerWorker, { backgroundColor: tokens.primary, borderColor: tokens.glassBorder }]} testID="worker-map-worker-marker">
+            <Icon inverse name="brief" small />
           </View>
         ) : null}
         <View style={styles.workerMapHudStack} testID="worker-map-hud-stack">
@@ -2498,7 +2581,7 @@ function WorkerReadinessActionPanel() {
     <View
       style={[
         styles.shiftCard,
-        workerOpaqueCardSurface(tokens, 'raised'),
+        workerReadinessPanelSurface(tokens),
       ]}
       testID="worker-readiness-action-panel"
     >
@@ -2543,9 +2626,9 @@ function WorkerHomeServiceGrid() {
   const workerServiceTypes = workerProfile?.service_types ?? []
   const canShowApprovedSkills = Boolean(workerProfile?.is_approved && workerProfile?.verification_status === 'approved')
   const serviceCandidates = [
-    { service: 'electrical' as const, icon: 'bolt' as const, title: copy.home.electricianCard, tone: 'mint' as const, testID: 'worker-shell-service-electrical' },
-    { service: 'plumbing' as const, icon: 'water' as const, title: copy.home.plumberCard, tone: 'cyan' as const, testID: 'worker-shell-service-plumbing' },
-    { service: 'cleaning' as const, icon: 'spark' as const, title: copy.home.cleaningCard, tone: 'cream' as const, testID: 'worker-shell-service-cleaning' },
+    { service: 'electrical' as const, icon: 'plug' as const, title: copy.home.electricianCard, tone: 'mint' as const, testID: 'worker-shell-service-electrical' },
+    { service: 'plumbing' as const, icon: 'faucet' as const, title: copy.home.plumberCard, tone: 'cyan' as const, testID: 'worker-shell-service-plumbing' },
+    { service: 'cleaning' as const, icon: 'broom' as const, title: copy.home.cleaningCard, tone: 'cream' as const, testID: 'worker-shell-service-cleaning' },
   ]
 
   return (
@@ -2576,7 +2659,7 @@ function WorkerHomeServiceTile({ icon, meta, testID, title, tone }: { icon: Work
     <Pressable
       accessibilityRole="button"
       onPress={() => replace('/(worker)/profile')}
-      style={({ pressed }) => [styles.workerServiceTile, workerServiceTileSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+      style={({ pressed }) => [styles.workerServiceTile, workerServiceTileSurface(tokens, tone), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
       testID={testID}
     >
       <View style={[styles.workerServiceIcon, workerIconBubbleSurface(tokens, tone)]}>
@@ -2626,7 +2709,7 @@ function WorkerHomeMiniGrid() {
   )
 }
 
-function CompactWorkerPresenceMap({ mode }: { mode: 'active' | 'waiting' }) {
+function CompactWorkerPresenceMap({ density = 'regular', mode }: { density?: 'dense' | 'regular'; mode: 'active' | 'waiting' }) {
   const { language, tokens } = useWorkerUi()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
@@ -2656,10 +2739,11 @@ function CompactWorkerPresenceMap({ mode }: { mode: 'active' | 'waiting' }) {
     : hasBroadcast
       ? (language === 'en' ? 'Locked' : 'Đã khóa')
       : appCopy[language].common.noRequest
+  const showEmptyWaitingMarker = mode === 'waiting' && !hasBroadcast && !hasReleasedAddress
 
   return (
-    <View style={[styles.compactPresenceMap, workerOpaqueCardSurface(tokens, 'depth')]} testID={`worker-jobs-${mode}-presence-map`}>
-      <View style={[styles.compactMapViewport, workerMapViewportSurface(tokens)]}>
+    <View style={[styles.compactPresenceMap, density === 'dense' ? styles.compactPresenceMapDense : null, workerOpaqueCardSurface(tokens, 'depth')]} testID={`worker-jobs-${mode}-presence-map`}>
+      <View style={[styles.compactMapViewport, density === 'dense' ? styles.compactMapViewportDense : null, workerMapViewportSurface(tokens)]}>
         <MapLineField compact />
         {hasReleasedAddress ? <WorkerMapRouteLine compact /> : null}
         <View pointerEvents="none" style={[styles.mapCyanVeil, styles.compactMapVeil, { backgroundColor: tokens.aqua }]} />
@@ -2671,9 +2755,17 @@ function CompactWorkerPresenceMap({ mode }: { mode: 'active' | 'waiting' }) {
             <Text style={[styles.mapChipTitle, { color: hasReleasedAddress ? tokens.primary : tokens.copper }]} numberOfLines={1}>{privacyLabel}</Text>
           </View>
         </View>
-        {hasReleasedAddress || hasBroadcast ? (
-          <View style={[styles.compactMapMarker, styles.compactMapMarkerZone, { backgroundColor: tokens.mint, borderColor: tokens.borderStrong }]} testID={hasReleasedAddress ? 'worker-map-route-after-accept' : 'worker-map-address-locked-before-accept'}>
-            <Icon name={hasReleasedAddress ? 'pin' : 'shield'} small />
+        {hasReleasedAddress || hasBroadcast || showEmptyWaitingMarker ? (
+          <View
+            style={[
+              styles.compactMapMarker,
+              styles.compactMapMarkerZone,
+              showEmptyWaitingMarker ? styles.compactMapMarkerEmpty : null,
+              { backgroundColor: showEmptyWaitingMarker ? tokens.glassStrong : tokens.mint, borderColor: showEmptyWaitingMarker ? tokens.glassBorder : tokens.borderStrong },
+            ]}
+            testID={hasReleasedAddress ? 'worker-map-route-after-accept' : hasBroadcast ? 'worker-map-address-locked-before-accept' : 'worker-map-waiting-area-marker'}
+          >
+            <Icon name={hasReleasedAddress ? 'pin' : hasBroadcast ? 'shield' : 'pin'} active={!showEmptyWaitingMarker} small />
           </View>
         ) : null}
         {hasReleasedAddress ? (
@@ -3212,29 +3304,33 @@ function WorkerSectionMotionField({
 
 function MapLineField({ compact = false }: { compact?: boolean }) {
   const { tokens } = useWorkerUi()
-  const opacityScale = compact ? 0.9 : 1.08
+  const opacityScale = compact ? 0.96 : 1.08
 
   return (
     <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 360 360" preserveAspectRatio="none">
-      <Path d="M52 -14 C96 52 130 102 154 174 S194 296 252 390" stroke={tokens.mapLine} strokeWidth={5.2} opacity={0.22 * opacityScale} fill="none" />
-      <Path d="M84 52 C144 88 206 92 292 76 S370 58 410 82" stroke={tokens.mapLine} strokeWidth={4.5} opacity={0.20 * opacityScale} fill="none" />
-      <Path d="M24 166 C82 134 128 172 184 154 S270 104 354 136" stroke={tokens.mapLine} strokeWidth={4} opacity={0.27 * opacityScale} fill="none" />
-      <Path d="M-16 248 C58 208 124 248 194 222 S292 174 388 204" stroke={tokens.mapLine} strokeWidth={4.2} opacity={0.24 * opacityScale} fill="none" />
-      <Path d="M120 26 L116 126 M204 56 L186 176 M298 24 L278 132 M314 128 L330 262" stroke={tokens.mapLine} strokeWidth={2.8} opacity={0.14 * opacityScale} fill="none" />
-      <Rect x={50} y={92} width={48} height={34} rx={12} fill={tokens.mapBlock} opacity={0.34} />
-      <Rect x={220} y={84} width={60} height={38} rx={13} fill={tokens.mapBlock} opacity={0.3} />
-      <Rect x={136} y={220} width={62} height={38} rx={13} fill={tokens.mapBlock} opacity={0.24} />
+      <Path d="M52 -14 C96 52 130 102 154 174 S194 296 252 390" stroke={tokens.mapLine} strokeWidth={4.4} opacity={0.24 * opacityScale} fill="none" />
+      <Path d="M84 52 C144 88 206 92 292 76 S370 58 410 82" stroke={tokens.mapLine} strokeWidth={3.8} opacity={0.21 * opacityScale} fill="none" />
+      <Path d="M24 166 C82 134 128 172 184 154 S270 104 354 136" stroke={tokens.mapLine} strokeWidth={3.6} opacity={0.28 * opacityScale} fill="none" />
+      <Path d="M-16 248 C58 208 124 248 194 222 S292 174 388 204" stroke={tokens.mapLine} strokeWidth={3.7} opacity={0.24 * opacityScale} fill="none" />
+      <Path d="M120 26 L116 126 M204 56 L186 176 M298 24 L278 132 M314 128 L330 262" stroke={tokens.mapLine} strokeWidth={2.4} opacity={0.15 * opacityScale} fill="none" />
+      <Rect x={50} y={92} width={48} height={34} rx={12} fill={tokens.mapBlock} opacity={0.42} />
+      <Rect x={220} y={84} width={60} height={38} rx={13} fill={tokens.mapBlock} opacity={0.38} />
+      <Rect x={136} y={220} width={62} height={38} rx={13} fill={tokens.mapBlock} opacity={0.32} />
     </Svg>
   )
 }
 
 function WorkerMapRouteLine({ compact = false }: { compact?: boolean }) {
   const { tokens } = useWorkerUi()
+  const routePath = compact
+    ? 'M70 128 C116 98 158 116 194 86 S280 58 330 82'
+    : 'M68 130 C116 99 158 116 194 86 S282 58 334 82'
 
   return (
     <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 390 196" preserveAspectRatio="none">
-      <Path d="M66 132 C116 98 153 122 194 86 S282 58 334 82" stroke={tokens.raised} strokeWidth={compact ? 12 : 15} strokeLinecap="round" opacity={0.84} fill="none" />
-      <Path d="M66 132 C116 98 153 122 194 86 S282 58 334 82" stroke={tokens.primary} strokeWidth={compact ? 6 : 8} strokeLinecap="round" opacity={0.78} fill="none" />
+      <Path d={routePath} stroke={tokens.raised} strokeWidth={compact ? 9 : 12} strokeLinecap="round" opacity={0.82} fill="none" />
+      <Path d={routePath} stroke={tokens.primary} strokeWidth={compact ? 5 : 6.5} strokeLinecap="round" opacity={0.9} fill="none" />
+      <Path d={routePath} stroke={tokens.aqua} strokeWidth={compact ? 1.7 : 2.2} strokeLinecap="round" opacity={0.35} fill="none" />
     </Svg>
   )
 }
@@ -3261,29 +3357,26 @@ function ThemeToggle() {
   const currentModeLabel = mode === 'light' ? copy.frame.themeLight : copy.frame.themeDark
 
   return (
-    <View style={styles.preferenceRow}>
+    <Pressable
+      accessibilityLabel={mode === 'light' ? copy.frame.themeDark : copy.frame.themeLight}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: mode === 'dark' }}
+      onPress={() => setWorkerThemeMode(nextMode)}
+      style={({ pressed }) => [styles.preferenceRow, pressed ? styles.pressed : null]}
+      testID="worker-dark-mode-toggle"
+    >
       <View style={styles.preferenceTitle}>
         <Icon name={mode === 'light' ? 'moon' : 'sun'} small />
         <View style={styles.preferenceCopy}>
           <Text style={[styles.listTitle, { color: tokens.ink }]} numberOfLines={1}>
             {copy.profile.theme}
           </Text>
-          <Text style={[styles.listMetaInline, { color: tokens.muted }]} numberOfLines={1}>
-            {currentModeLabel}
-          </Text>
         </View>
       </View>
-      <Pressable
-        accessibilityLabel={mode === 'light' ? copy.frame.themeDark : copy.frame.themeLight}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: mode === 'dark' }}
-        onPress={() => setWorkerThemeMode(nextMode)}
-        style={({ pressed }) => [styles.preferenceSwitch, { backgroundColor: tokens.mint, borderColor: tokens.borderStrong }, pressed ? styles.pressed : null]}
-        testID="worker-dark-mode-toggle"
-      >
-        <View style={[styles.preferenceKnob, mode === 'dark' ? styles.preferenceKnobRight : null, { backgroundColor: tokens.primary }]} />
-      </Pressable>
-    </View>
+      <Text style={[styles.preferenceMetaAction, { color: tokens.muted }]} numberOfLines={1}>
+        {currentModeLabel}
+      </Text>
+    </Pressable>
   )
 }
 
@@ -3293,29 +3386,26 @@ function LanguageToggle() {
   const currentLanguageLabel = language === 'vi' ? 'Tiếng Việt' : 'English'
 
   return (
-    <View style={styles.preferenceRow}>
+    <Pressable
+      accessibilityLabel={copy.frame.lang}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: language === 'en' }}
+      onPress={() => setAppLanguage(nextLanguage)}
+      style={({ pressed }) => [styles.preferenceRow, pressed ? styles.pressed : null]}
+      testID="worker-language-toggle"
+    >
       <View style={styles.preferenceTitle}>
         <Icon name="globe" small />
         <View style={styles.preferenceCopy}>
           <Text style={[styles.listTitle, { color: tokens.ink }]} numberOfLines={1}>
             {copy.profile.language}
           </Text>
-          <Text style={[styles.listMetaInline, { color: tokens.muted }]} numberOfLines={1}>
-            {currentLanguageLabel}
-          </Text>
         </View>
       </View>
-      <Pressable
-        accessibilityLabel={copy.frame.lang}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: language === 'en' }}
-        onPress={() => setAppLanguage(nextLanguage)}
-        style={({ pressed }) => [styles.preferenceSwitch, { backgroundColor: tokens.cyan, borderColor: tokens.borderStrong }, pressed ? styles.pressed : null]}
-        testID="worker-language-toggle"
-      >
-        <View style={[styles.preferenceKnob, language === 'en' ? styles.preferenceKnobRight : null, { backgroundColor: tokens.primary }]} />
-      </Pressable>
-    </View>
+      <Text style={[styles.preferenceMetaAction, { color: tokens.muted }]} numberOfLines={1}>
+        {currentLanguageLabel}
+      </Text>
+    </Pressable>
   )
 }
 
@@ -3409,8 +3499,10 @@ function SegmentFilter({
           style={[
             styles.segmentLiquidPill,
             {
-              backgroundColor: reduceTransparency ? tokens.mint : tokens.mode === 'dark' ? 'rgba(23,59,53,0.92)' : 'rgba(209,250,240,0.88)',
-              boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? 'inset 0 1px 0 rgba(255,255,255,0.10)' : 'inset 0 1px 0 rgba(255,255,255,0.80)',
+              backgroundColor: reduceTransparency ? tokens.mint : tokens.mode === 'dark' ? 'rgba(23,59,53,0.94)' : 'rgba(197,253,239,0.96)',
+              borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.22)' : 'rgba(8,120,110,0.10)',
+              borderWidth: 1,
+              boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? 'inset 0 1px 0 rgba(255,255,255,0.12)' : 'inset 0 1px 0 rgba(255,255,255,0.90), 0 10px 22px rgba(14,141,124,0.12)',
               width: pillWidth,
             } as any,
             liquidSegmentStyle,
@@ -3489,6 +3581,7 @@ function WorkerEmptyJobPanel({
   primaryActionPath,
   secondaryActionLabel,
   secondaryActionPath,
+  showMapPreview = false,
   status,
   testID,
   title,
@@ -3500,6 +3593,7 @@ function WorkerEmptyJobPanel({
   primaryActionPath?: '/(worker)/home' | '/(worker)/jobs?tab=waiting' | '/(worker)/chat'
   secondaryActionLabel?: string
   secondaryActionPath?: '/(worker)/home' | '/(worker)/jobs?tab=waiting' | '/(worker)/chat'
+  showMapPreview?: boolean
   status: string
   testID?: string
   title: string
@@ -3531,6 +3625,7 @@ function WorkerEmptyJobPanel({
           {body}
         </Text>
       </View>
+      {showMapPreview ? <CompactWorkerPresenceMap density="dense" mode="active" /> : null}
       {primaryActionLabel && primaryActionPath ? (
         <View style={styles.actionRow}>
           <PressButton label={primaryActionLabel} onPress={() => replace(primaryActionPath)} testID={`${testID ?? 'worker-empty-job'}-primary-action`} />
@@ -3609,7 +3704,7 @@ function ListRow({ icon, meta, title }: { icon: WorkerIconName; meta: string; ti
       <Text style={[styles.listTitle, { color: tokens.ink }]} numberOfLines={1}>
         {title}
       </Text>
-      <Text style={[styles.listMeta, { color: tokens.subtle }]} numberOfLines={1}>
+      <Text style={[styles.listMeta, { color: tokens.muted }]} numberOfLines={1}>
         {meta}
       </Text>
     </View>
@@ -3710,6 +3805,20 @@ function Icon({ active = false, dock = false, inverse = false, name, small = fal
           <Path d="M9.7 14.2c.8 1.3 2.1 1.9 3.8 1.6" stroke={accent} strokeWidth={stroke} strokeLinecap="round" />
         </>
       ) : null}
+      {name === 'plug' ? (
+        <>
+          <Path d="M9.4 5.6v5.2M15.6 5.6v5.2" stroke={accent} strokeWidth={stroke} strokeLinecap="round" />
+          <Path d="M8.2 10.6h8.6v3.3a4.3 4.3 0 0 1-4.3 4.3 4.3 4.3 0 0 1-4.3-4.3v-3.3Z" stroke={color} strokeWidth={stroke} strokeLinejoin="round" />
+          <Path d="M12.5 18.2v2.2" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+        </>
+      ) : null}
+      {name === 'faucet' ? (
+        <>
+          <Path d="M6.2 9.2h7.2c2.4 0 4 1.5 4 3.8v1.1" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M8.2 6.6h5.2M10.8 6.6v2.6M5.8 12.2h4.8" stroke={accent} strokeWidth={stroke} strokeLinecap="round" />
+          <Path d="M17.4 15.2c1.3 1.3 2 2.3 2 3.1a2 2 0 0 1-4 0c0-.8.7-1.8 2-3.1Z" stroke={accent} strokeWidth={stroke} strokeLinejoin="round" />
+        </>
+      ) : null}
       {name === 'pin' ? (
         <>
           <Circle cx={12.5} cy={10.5} r={4.2} stroke={color} strokeWidth={stroke} />
@@ -3744,6 +3853,14 @@ function Icon({ active = false, dock = false, inverse = false, name, small = fal
         <>
           <Path d="M7.2 17.8 17.8 7.2M15.8 5.8l3.4 3.4M5.8 15.8l3.4 3.4" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
           <Path d="M8.2 6.2 11 9" stroke={accent} strokeWidth={stroke} strokeLinecap="round" />
+        </>
+      ) : null}
+      {name === 'broom' ? (
+        <>
+          <Path d="M15.8 5.6 9.6 13" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+          <Path d="m8.5 12.6 4.2 3.5" stroke={accent} strokeWidth={stroke} strokeLinecap="round" />
+          <Path d="M7.2 13.8 12 18l-1.2 1.4c-1.4.6-3 .5-4.7-.4l-1.3-1.1 2.4-4.1Z" stroke={color} strokeWidth={stroke} strokeLinejoin="round" />
+          <Path d="m6.3 17.2 2.2 1.9" stroke={accent} strokeWidth={stroke} strokeLinecap="round" />
         </>
       ) : null}
       {name === 'document' ? (
@@ -3918,12 +4035,128 @@ function workerJobCardSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'bas
   if (tokens.mode === 'dark') {
     return workerOpaqueCardSurface(tokens, tone)
   }
+  const isWarm = tone === 'cream' || tone === 'warm'
+  const isMint = tone === 'mint'
+  const isDepth = tone === 'depth'
+  const backgroundColor = reduceTransparency
+    ? '#FFFDF8'
+    : isWarm
+      ? 'rgba(255,250,238,0.96)'
+      : isMint
+        ? 'rgba(237,255,249,0.96)'
+        : isDepth
+          ? 'rgba(236,250,246,0.95)'
+          : 'rgba(255,253,248,0.95)'
+  const gradient = isWarm
+    ? 'radial-gradient(circle at 96% 6%, rgba(255,218,155,0.34), transparent 29%), radial-gradient(circle at 0% 92%, rgba(154,246,226,0.34), transparent 38%), linear-gradient(180deg, rgba(255,253,247,0.96), rgba(255,247,231,0.90))'
+    : isMint
+      ? 'radial-gradient(circle at 12% 8%, rgba(184,255,239,0.48), transparent 30%), radial-gradient(circle at 94% 76%, rgba(255,232,185,0.24), transparent 34%), linear-gradient(180deg, rgba(249,255,252,0.96), rgba(232,253,247,0.90))'
+      : 'radial-gradient(circle at 94% 0%, rgba(187,249,235,0.38), transparent 27%), radial-gradient(circle at 10% 100%, rgba(255,235,190,0.22), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,252,244,0.90))'
 
   return {
-    backgroundColor: reduceTransparency ? '#FFFDF8' : 'rgba(255,253,248,0.93)',
-    borderColor: reduceTransparency ? tokens.border : 'rgba(35,96,84,0.12)',
+    backgroundColor,
+    borderColor: reduceTransparency ? tokens.border : isWarm ? 'rgba(187,116,61,0.18)' : 'rgba(13,134,119,0.16)',
     borderWidth: 1,
-    boxShadow: reduceTransparency ? 'none' : '0 10px 28px rgba(17,70,61,0.08)',
+    boxShadow: reduceTransparency ? 'none' : '0 14px 34px rgba(17,70,61,0.105)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerEarningsTrendSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 82% 18%, rgba(105,222,198,0.20), transparent 32%), radial-gradient(circle at 12% 94%, rgba(224,160,107,0.16), transparent 40%), linear-gradient(140deg, rgba(20,50,45,0.92), rgba(59,41,27,0.74))'
+    : 'radial-gradient(circle at 82% 18%, rgba(62,216,188,0.34), transparent 32%), radial-gradient(circle at 12% 94%, rgba(255,192,112,0.24), transparent 40%), linear-gradient(140deg, rgba(239,255,250,0.82), rgba(255,244,219,0.94))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#15362F' : '#FFF7EA',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(255,255,255,0.86)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 18px 42px rgba(0,0,0,0.28)' : '0 18px 40px rgba(18,82,72,0.13)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerEarningsChartSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(18,39,36,0.96), rgba(14,31,29,0.92))'
+    : 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,253,248,0.88))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#122724' : 'rgba(255,255,255,0.92)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.16)' : 'rgba(35,96,84,0.12)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 24px rgba(0,0,0,0.20)' : '0 12px 26px rgba(17,70,61,0.09)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerEarningsBarSurface(tokens: WorkerThemeTokens, hasDailyEarnings: boolean) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? hasDailyEarnings
+      ? 'linear-gradient(180deg, #69DEC6, #08786E)'
+      : 'linear-gradient(180deg, rgba(105,222,198,0.96), rgba(8,120,110,0.78))'
+    : hasDailyEarnings
+      ? 'linear-gradient(180deg, #3ED8BC, #08786E)'
+      : 'linear-gradient(180deg, #42DCC4 0%, #16BCA9 54%, #08786E 100%)'
+
+  return {
+    backgroundColor: hasDailyEarnings ? tokens.primary : tokens.mode === 'dark' ? '#69DEC6' : '#16BCA9',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 14px rgba(0,0,0,0.24)' : '0 10px 18px rgba(8,120,110,0.24)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerEarningsMiniSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(18,39,36,0.96), rgba(14,31,29,0.92))'
+    : 'linear-gradient(180deg, rgba(249,255,250,0.96), rgba(255,253,248,0.92))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#122724' : '#FFFDF8',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.16)' : 'rgba(35,96,84,0.13)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 24px rgba(0,0,0,0.20)' : '0 10px 24px rgba(17,70,61,0.07)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerEarningsLedgerSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(18,39,36,0.96), rgba(13,29,27,0.92))'
+    : 'linear-gradient(180deg, rgba(255,253,248,0.96), rgba(255,251,244,0.92))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#122724' : '#FFFDF8',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.14)' : 'rgba(35,96,84,0.13)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 24px rgba(0,0,0,0.18)' : '0 10px 24px rgba(17,70,61,0.07)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerEarningsPillSurface(tokens: WorkerThemeTokens) {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(203,255,243,0.92)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.24)' : 'rgba(11,150,132,0.14)',
+    borderWidth: 1,
+    color: tokens.primary,
   } as any
 }
 
@@ -3977,52 +4210,133 @@ function workerSecondaryButtonSurface(tokens: WorkerThemeTokens) {
 function workerSegmentShellSurface(tokens: WorkerThemeTokens) {
   const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
   return {
-    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(18,39,36,0.86)' : 'rgba(255,255,255,0.66)',
-    borderColor: reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(255,255,255,0.78)',
+    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(18,39,36,0.88)' : 'rgba(255,255,255,0.76)',
+    borderColor: reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(105,222,198,0.20)' : 'rgba(255,255,255,0.88)',
     borderWidth: 1,
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 28px rgba(0,0,0,0.22)' : '0 10px 28px rgba(17,70,61,0.08)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 12px 30px rgba(0,0,0,0.24)' : '0 12px 30px rgba(17,70,61,0.095)',
   } as any
 }
 
-function workerServiceTileSurface(tokens: WorkerThemeTokens) {
+function workerReadinessPanelSurface(tokens: WorkerThemeTokens) {
   const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 82% 18%, rgba(105,222,198,0.18), transparent 26%), radial-gradient(circle at 8% 96%, rgba(224,160,107,0.16), transparent 34%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(13,29,27,0.92))'
+    : 'radial-gradient(circle at 86% 12%, rgba(195,255,242,0.88), transparent 31%), radial-gradient(circle at 8% 100%, rgba(255,232,184,0.50), transparent 36%), linear-gradient(180deg, rgba(255,253,248,0.98), rgba(244,255,250,0.92))'
+
   return {
-    backgroundColor: tokens.mode === 'dark' ? '#122724' : '#F8FFFC',
-    borderColor: tokens.border,
+    backgroundColor: tokens.mode === 'dark' ? '#122724' : '#FFFDF8',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.20)' : 'rgba(15,130,115,0.13)',
     borderWidth: 1,
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.20)' : '0 10px 22px rgba(17,70,61,0.07)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 14px 30px rgba(0,0,0,0.24)' : '0 14px 30px rgba(17,70,61,0.09)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerServiceTileSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const isWarm = tone === 'cream' || tone === 'warm'
+  const isCyan = tone === 'cyan'
+  const isMint = tone === 'mint'
+  const lightGradient = isWarm
+    ? 'radial-gradient(circle at 86% 24%, rgba(255,232,184,0.70), transparent 34%), linear-gradient(180deg, rgba(255,253,248,0.98), rgba(255,248,232,0.88))'
+    : isCyan
+      ? 'radial-gradient(circle at 84% 24%, rgba(183,243,247,0.82), transparent 34%), linear-gradient(180deg, rgba(248,255,254,0.98), rgba(231,251,249,0.90))'
+      : isMint
+        ? 'radial-gradient(circle at 84% 24%, rgba(177,249,234,0.86), transparent 34%), linear-gradient(180deg, rgba(247,255,251,0.98), rgba(226,250,242,0.90))'
+        : 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,255,252,0.88))'
+  const darkGradient = isWarm
+    ? 'radial-gradient(circle at 82% 22%, rgba(224,160,107,0.20), transparent 34%), linear-gradient(180deg, rgba(34,29,23,0.98), rgba(18,39,36,0.88))'
+    : isCyan
+      ? 'radial-gradient(circle at 82% 22%, rgba(80,190,202,0.18), transparent 34%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(15,44,45,0.88))'
+      : 'radial-gradient(circle at 82% 22%, rgba(105,222,198,0.18), transparent 34%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(13,29,27,0.90))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark'
+      ? isWarm ? '#221D17' : isCyan ? '#102B2C' : '#122724'
+      : isWarm ? '#FFF8EA' : isCyan ? '#F0FEFF' : isMint ? '#F0FFF9' : '#F8FFFC',
+    borderColor: tokens.mode === 'dark'
+      ? 'rgba(105,222,198,0.16)'
+      : isWarm ? 'rgba(202,145,75,0.20)' : isCyan ? 'rgba(35,156,168,0.18)' : 'rgba(15,130,115,0.16)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.20)' : '0 10px 24px rgba(17,70,61,0.085)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     experimental_backgroundImage: reduceTransparency
       ? undefined
       : tokens.mode === 'dark'
-      ? 'linear-gradient(180deg, rgba(18,39,36,0.96), rgba(13,29,27,0.90))'
-      : 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,255,252,0.86))',
+        ? darkGradient
+        : lightGradient,
+  } as any
+}
+
+function workerProfileHeroSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 84% 18%, rgba(105,222,198,0.20), transparent 30%), linear-gradient(135deg, rgba(20,46,42,0.98), rgba(13,31,29,0.92))'
+    : 'radial-gradient(circle at 86% 14%, rgba(195,255,242,0.90), transparent 31%), linear-gradient(135deg, rgba(255,255,255,0.96), rgba(234,255,248,0.90) 56%, rgba(255,250,239,0.94))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#142E2A' : '#FFFFFF',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.20)' : 'rgba(15,130,115,0.14)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 14px 30px rgba(0,0,0,0.24)' : '0 16px 30px rgba(17,70,61,0.10)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerProfilePreferenceSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(18,39,36,0.96), rgba(13,29,27,0.92))'
+    : 'linear-gradient(180deg, rgba(255,253,248,0.96), rgba(249,255,250,0.92))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#122724' : '#FFFDF8',
+    borderColor: tokens.border,
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 24px rgba(0,0,0,0.18)' : '0 10px 24px rgba(17,70,61,0.07)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
   } as any
 }
 
 function workerIconBubbleSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'mint') {
   const isWarm = tone === 'cream' || tone === 'warm'
   const isCyan = tone === 'cyan'
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const lightGradient = isWarm
+    ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.94), transparent 28%), linear-gradient(145deg, #FFF1D6, #F3D28D)'
+    : isCyan
+      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #E4FCFA, #AEEBEF)'
+      : 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #C9F8EA, #8FE7D2)'
   return {
     backgroundColor: isWarm ? tokens.cream : isCyan ? tokens.cyan : tokens.mint,
-    borderColor: tokens.borderStrong,
-    boxShadow: tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.20)' : '0 8px 18px rgba(17,70,61,0.07)',
-    experimental_backgroundImage: tokens.mode === 'dark'
-      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.10), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.16), rgba(18,39,36,0.82))'
-      : isWarm
-        ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #FFF8EB, #F8E5C1)'
-        : isCyan
-          ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #E8FCFA, #C8F0F2)'
-          : 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #DCFBF3, #BDF1E4)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.22)' : isWarm ? 'rgba(202,145,75,0.22)' : 'rgba(15,130,115,0.20)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.20)' : '0 8px 18px rgba(17,70,61,0.08)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark'
+      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.10), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.20), rgba(18,39,36,0.82))'
+      : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark'
+      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.10), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.20), rgba(18,39,36,0.82))'
+      : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark'
+      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.10), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.20), rgba(18,39,36,0.82))'
+      : lightGradient,
   } as any
 }
 
 function workerMapViewportSurface(tokens: WorkerThemeTokens) {
   return {
-    backgroundColor: tokens.mode === 'dark' ? tokens.depth : '#F8FFF9',
+    backgroundColor: tokens.mode === 'dark' ? tokens.depth : '#ECFFF8',
     experimental_backgroundImage:
       tokens.mode === 'dark'
-        ? 'radial-gradient(circle at 24% 24%, rgba(105,222,198,0.15), transparent 26%), radial-gradient(circle at 88% 82%, rgba(224,160,107,0.13), transparent 28%), linear-gradient(145deg, #102521, #17342F 54%, #342719)'
-        : 'radial-gradient(circle at 18% 22%, rgba(196,255,242,0.88), transparent 26%), radial-gradient(circle at 88% 78%, rgba(255,240,206,0.84), transparent 28%), linear-gradient(145deg, #F7FFF9, #E6FBF5 52%, #FFF8E8)',
+        ? 'radial-gradient(circle at 24% 28%, rgba(105,222,198,0.24), transparent 28%), radial-gradient(circle at 82% 32%, rgba(88,190,196,0.18), transparent 30%), radial-gradient(circle at 88% 86%, rgba(224,160,107,0.20), transparent 31%), linear-gradient(145deg, #102521, #17342F 54%, #342719)'
+        : 'radial-gradient(circle at 27% 49%, rgba(134,237,220,0.72), transparent 23%), radial-gradient(circle at 83% 31%, rgba(151,226,220,0.54), transparent 31%), radial-gradient(circle at 86% 85%, rgba(255,226,173,0.70), transparent 31%), linear-gradient(145deg, #F7FFF8 0%, #D7F7EE 50%, #FFF2D8 100%)',
   } as any
 }
 
@@ -4058,22 +4372,25 @@ const styles = StyleSheet.create({
   workerMapHudStack: { bottom: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8, left: 12, position: 'absolute', right: 12, zIndex: 4 },
   workerMapHudChip: { borderRadius: 999, minHeight: 36, overflow: 'hidden', paddingHorizontal: 11, paddingVertical: 8 },
   mapViewport: { borderRadius: 24, minHeight: 196, overflow: 'hidden', position: 'relative' },
-  compactPresenceMap: { borderRadius: 28, minHeight: 196, overflow: 'hidden', padding: 10, position: 'relative' },
-  compactMapViewport: { borderRadius: 24, minHeight: 176, overflow: 'hidden', position: 'relative' },
-  compactMapVeil: { left: '54%', top: 42 },
-  compactMapMarker: { alignItems: 'center', borderRadius: 999, borderWidth: 1, height: 44, justifyContent: 'center', position: 'absolute', width: 44 },
+  compactPresenceMap: { borderRadius: 28, minHeight: 194, overflow: 'hidden', padding: 10, position: 'relative' },
+  compactPresenceMapDense: { borderRadius: 24, minHeight: 152, padding: 8 },
+  compactMapViewport: { borderRadius: 24, minHeight: 174, overflow: 'hidden', position: 'relative' },
+  compactMapViewportDense: { borderRadius: 20, minHeight: 136 },
+  compactMapVeil: { left: '54%', opacity: 0.24, top: 42 },
+  compactMapMarker: { alignItems: 'center', borderRadius: 999, borderWidth: 1, height: 46, justifyContent: 'center', position: 'absolute', width: 46 },
+  compactMapMarkerEmpty: { opacity: 0.92 },
   compactMapMarkerZone: { left: '30%', top: '48%' },
   compactMapMarkerWorker: { right: '20%', top: '28%' },
-  mapFogTop: { height: 92, left: 0, opacity: 0.38, position: 'absolute', right: 0, top: 0 },
-  mapFogBottom: { bottom: -6, height: 86, left: 0, opacity: 0.5, position: 'absolute', right: 0 },
-  mapCyanVeil: { borderRadius: 999, height: 118, left: '50%', marginLeft: -59, opacity: 0.12, position: 'absolute', top: 120, width: 118 },
+  mapFogTop: { height: 92, left: 0, opacity: 0.16, position: 'absolute', right: 0, top: 0 },
+  mapFogBottom: { bottom: -6, height: 86, left: 0, opacity: 0.24, position: 'absolute', right: 0 },
+  mapCyanVeil: { borderRadius: 999, height: 158, left: '52%', marginLeft: -79, opacity: 0.23, position: 'absolute', top: 94, width: 158 },
   homeMapMarker: { alignItems: 'center', borderRadius: 18, borderWidth: 2, height: 46, justifyContent: 'center', position: 'absolute', width: 46, zIndex: 4 },
-  homeMapMarkerWorker: { right: '21%', top: '29%' },
-  homeMapMarkerZone: { left: '22%', top: '45%' },
-  homeMapZoneHalo: { borderRadius: 999, height: 92, opacity: 0.16, position: 'absolute', width: 92 },
+  homeMapMarkerWorker: { right: '24%', top: '32%' },
+  homeMapMarkerZone: { left: '23%', top: '48%' },
+  homeMapZoneHalo: { borderRadius: 999, height: 102, opacity: 0.24, position: 'absolute', width: 102 },
   mapChipTop: { left: 6, position: 'absolute', top: 15 },
   mapZonePill: { borderRadius: 22, left: 6, maxWidth: '64%', paddingHorizontal: 12, paddingVertical: 9, position: 'absolute', top: 9 },
-  mapChipTitle: { fontSize: 14, fontWeight: '600', letterSpacing: 0 },
+  mapChipTitle: { fontSize: 14, fontWeight: '700', letterSpacing: 0 },
   mapChipMeta: { fontSize: 11, fontWeight: '600', marginTop: 2 },
   mapCardsRow: { flexDirection: 'row', gap: 12, marginTop: -56, zIndex: 5 },
   mapFeatureCard: { borderRadius: 22, flex: 1, minHeight: 100, overflow: 'hidden', padding: 13, position: 'relative' },
@@ -4086,7 +4403,7 @@ const styles = StyleSheet.create({
   identityRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   titleStack: { flex: 1, gap: 4 },
   heroTitle: { fontSize: 18, fontWeight: '600', letterSpacing: 0 },
-  bodyText: { fontSize: 13, fontWeight: '500', lineHeight: 18 },
+  bodyText: { fontSize: 13, fontWeight: '600', lineHeight: 18 },
   toggleTrack: { alignItems: 'flex-end', borderRadius: 999, height: 32, justifyContent: 'center', padding: 4, width: 58 },
   toggleKnob: { borderRadius: 999, height: 24, width: 24 },
   workerServiceGrid: { flexDirection: 'row', gap: 10 },
@@ -4143,15 +4460,16 @@ const styles = StyleSheet.create({
   segmentLiquidPill: { borderRadius: 16, bottom: 5, left: 0, overflow: 'hidden', position: 'absolute', top: 5, zIndex: 0 },
   segmentLiquidSheen: { borderRadius: 999, height: 14, left: 14, opacity: 0.48, position: 'absolute', right: 14, top: 4 },
   segmentText: { fontSize: 12, fontWeight: '700' },
-  activeJobCard: { borderRadius: 22, borderWidth: 1, gap: 12, overflow: 'hidden', padding: 15 },
+  activeJobCard: { borderRadius: 24, borderWidth: 1, gap: 13, overflow: 'hidden', padding: 16 },
   jobTop: { gap: 10 },
   jobTopRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
-  jobDiagnosisBox: { borderRadius: 22, gap: 10, padding: 16 },
+  jobDiagnosisBox: { borderRadius: 22, gap: 10, padding: 15 },
   flowCard: { borderRadius: 28, gap: 10, overflow: 'hidden', padding: 16, position: 'relative' },
-  needsReviewCard: { borderRadius: 22, borderWidth: 1, gap: 12, overflow: 'hidden', padding: 15, position: 'relative' },
+  needsReviewCard: { borderRadius: 24, borderWidth: 1, gap: 13, overflow: 'hidden', padding: 16, position: 'relative' },
+  needsIconBadge: { height: 48, width: 48 },
   needsReviewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  statusPill: { borderRadius: 999, fontSize: 12, fontWeight: '600', overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
-  cardTitle: { fontSize: 17, fontWeight: '600', letterSpacing: 0, lineHeight: 23 },
+  statusPill: { borderRadius: 999, fontSize: 12, fontWeight: '700', overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
+  cardTitle: { fontSize: 18, fontWeight: '600', letterSpacing: 0, lineHeight: 24 },
   chatShell: { flex: 1, gap: 12, minHeight: 620, paddingBottom: 86, position: 'relative' },
   kaelClientStage: { flex: 1, gap: 12, justifyContent: 'space-between', minHeight: 642, paddingBottom: 2, position: 'relative' },
   kaelClientStageEmpty: { opacity: 0.92 },
@@ -4185,24 +4503,26 @@ const styles = StyleSheet.create({
   earningsHeroWrap: { gap: 0, position: 'relative' },
   earningsBadge: { alignItems: 'center', borderRadius: 24, height: 58, justifyContent: 'center', transform: [{ rotate: '-5deg' }], width: 58 },
   earningsTrendCard: { borderRadius: 32, gap: 14, overflow: 'hidden', padding: 18, position: 'relative' },
+  earningsTrendGlow: { borderRadius: 44, height: 146, opacity: 0.15, position: 'absolute', right: -38, top: -34, transform: [{ rotate: '-6deg' }], width: 146 },
   earningsTrendTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   earningsChartShell: { borderRadius: 22, borderWidth: 1, gap: 12, justifyContent: 'space-between', minHeight: 150, padding: 15 },
   earningsChartEmptyState: { alignItems: 'center', flex: 1, gap: 8, justifyContent: 'center', minHeight: 102, overflow: 'hidden', position: 'relative' },
-  earningsChartBaseline: { borderRadius: 999, height: 3, left: 0, opacity: 0.52, position: 'absolute', right: 0, top: '56%' },
-  earningsBarRail: { alignItems: 'flex-end', flexDirection: 'row', gap: 10, minHeight: 104 },
-  earningsEmptyBar: { borderRadius: 999, boxShadow: '0 8px 14px rgba(10,122,107,0.16)', width: 26 },
-  earningsDayRail: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
+  earningsBarRail: { alignItems: 'flex-end', alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-between', minHeight: 104, paddingHorizontal: 18 },
+  earningsEmptyBar: { borderRadius: 12, width: 28 },
+  earningsDayRail: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18 },
   earningsSummaryGrid: { flexDirection: 'row', gap: 10 },
   earningsSummaryCell: { borderRadius: 24, borderWidth: 1, flex: 1, gap: 4, minHeight: 86, padding: 14 },
   moneyText: { fontSize: 34, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: 0 },
   moneyTextState: { fontSize: 24, lineHeight: 30 },
   listCard: { borderRadius: 29, gap: 4, overflow: 'hidden', padding: 10, position: 'relative' },
+  earningsLedgerCard: { borderRadius: 29, gap: 8, overflow: 'hidden', padding: 12, position: 'relative' },
   listRow: { alignItems: 'center', flexDirection: 'row', gap: 11, minHeight: 54, paddingHorizontal: 8 },
   listTitle: { flex: 1, fontSize: 14, fontWeight: '600' },
-  listMeta: { fontSize: 12, fontWeight: '600', maxWidth: 120, textAlign: 'right' },
+  listMeta: { fontSize: 12, fontWeight: '600', maxWidth: 148, textAlign: 'right' },
   listMetaInline: { fontSize: 11, fontWeight: '600', lineHeight: 14 },
-  profileHead: { borderRadius: 30, gap: 14, overflow: 'hidden', padding: 16, position: 'relative' },
+  profileHead: { borderRadius: 30, gap: 16, overflow: 'hidden', padding: 17, position: 'relative' },
   profileHeroTop: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+  profileHeroAction: { flexDirection: 'row' },
   avatarWrap: { alignItems: 'center', borderRadius: 999, height: 56, justifyContent: 'center', width: 56 },
   profileAvatarHero: {
     alignItems: 'center',
@@ -4225,13 +4545,11 @@ const styles = StyleSheet.create({
   profileMiniGrid: { flexDirection: 'row', gap: 10 },
   profileSyncPreview: { borderRadius: 24, borderWidth: 1, gap: 4, overflow: 'hidden', padding: 14 },
   profileSyncPreviewTop: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
-  preferenceCard: { borderRadius: 29, gap: 6, overflow: 'hidden', padding: 10, position: 'relative' },
-  preferenceRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 54, paddingHorizontal: 8 },
+  preferenceCard: { borderRadius: 29, gap: 0, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 8, position: 'relative' },
+  preferenceRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 58, paddingHorizontal: 4 },
   preferenceTitle: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 11 },
   preferenceCopy: { flex: 1, gap: 2, minWidth: 0 },
-  preferenceSwitch: { borderRadius: 999, borderWidth: 1, height: 44, justifyContent: 'center', padding: 6, width: 72 },
-  preferenceKnob: { borderRadius: 999, height: 28, width: 28 },
-  preferenceKnobRight: { alignSelf: 'flex-end' },
+  preferenceMetaAction: { flexShrink: 0, fontSize: 12, fontWeight: '600', maxWidth: 112, textAlign: 'right' },
   verificationCard: { borderRadius: 29, gap: 10, overflow: 'hidden', padding: 14, position: 'relative' },
   verificationGrid: { flexDirection: 'row', gap: 8 },
   verificationInput: { borderRadius: 18, borderWidth: 1, fontSize: 14, fontWeight: '600', minHeight: 46, paddingHorizontal: 12 },
