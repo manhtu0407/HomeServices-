@@ -24,9 +24,13 @@ function envString(...keys: string[]) {
   return ''
 }
 
-const supabaseUrl = extraString('supabaseUrl') || envString('EXPO_PUBLIC_SUPABASE_URL')
-const supabasePublishableKey = extraString('supabasePublishableKey') || envString('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
-const configuredApiBaseUrl = extraString('apiBaseUrl') || envString('EXPO_PUBLIC_API_BASE_URL')
+// Expo web injects EXPO_PUBLIC_* into the JS runtime even when a stale
+// Constants.extra payload was baked when the dev server started. Prefer the
+// runtime env so local previews do not accidentally point at placeholder
+// Supabase config, while native builds still fall back to app.config extra.
+const supabaseUrl = envString('EXPO_PUBLIC_SUPABASE_URL') || extraString('supabaseUrl')
+const supabasePublishableKey = envString('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || extraString('supabasePublishableKey')
+const configuredApiBaseUrl = envString('EXPO_PUBLIC_API_BASE_URL') || extraString('apiBaseUrl')
 
 export const mobileRuntimeConfig = {
   apiBaseUrl: configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : ''),

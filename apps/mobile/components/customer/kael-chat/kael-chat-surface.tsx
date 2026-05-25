@@ -56,6 +56,9 @@ const copy = {
     confirmed: 'Đã tạo yêu cầu. Kael đang chuyển sang bước tìm thợ phù hợp.',
     confirming: 'Đang xác nhận',
     emptyTitle: 'Bắt đầu với điện, nước hoặc dọn dẹp',
+    emptyTicketBody: 'Phiếu sẽ hiện ở đây sau khi bạn gửi mô tả thật.',
+    emptyTicketSelected: 'Dịch vụ đã chọn',
+    emptyTicketTitle: 'Phiếu Kael',
     errorNoService: 'Chọn một dịch vụ trước khi gửi mô tả.',
     errorUnknown: 'Kael chưa thể cập nhật phiên này. Vui lòng thử lại.',
     estimateTitle: 'Ước tính của Kael',
@@ -117,6 +120,9 @@ const copy = {
     confirmed: 'Request created. Kael is moving to worker search.',
     confirming: 'Confirming',
     emptyTitle: 'Start with electrical, plumbing, or cleaning',
+    emptyTicketBody: 'The ticket appears here after you send real details.',
+    emptyTicketSelected: 'Selected service',
+    emptyTicketTitle: 'Kael ticket',
     errorNoService: 'Choose a service before sending details.',
     errorUnknown: 'Kael could not update this session. Please try again.',
     estimateTitle: 'Kael estimate',
@@ -405,6 +411,14 @@ export function KaelChatSurface() {
                     </View>
                   </View>
                 ) : null}
+                <View style={[styles.emptyTicketCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-empty-ticket-summary">
+                  <Text style={[styles.emptyTicketPill, { backgroundColor: tokens.service, borderColor: tokens.border, color: tokens.primary }]} numberOfLines={1}>
+                    {text.emptyTicketTitle}
+                  </Text>
+                  <Text style={[styles.bodyText, { color: tokens.text }]}>
+                    {selectedService ? `${text.emptyTicketSelected}: ${localizedServiceLabel(selectedService, language)}. ${text.emptyTicketBody}` : text.emptyTicketBody}
+                  </Text>
+                </View>
               </>
             ) : null}
             {turns.map((turn) => (
