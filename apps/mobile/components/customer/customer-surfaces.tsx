@@ -707,7 +707,7 @@ export function CustomerHomeSurface() {
                 accessibilityLabel={copy.home.notification(notificationUnreadCount)}
                 accessibilityRole="button"
                 onPress={() => replace(openHistoryPath)}
-                style={({ pressed }) => [styles.homeBell, customerOpaqueSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+                style={({ pressed }) => [styles.homeBell, customerHomeFrameSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
                 testID="customer-home-notification-entry"
               >
                 <IconGlyph name="notification" color={tokens.primary} accent={tokens.copper} />
@@ -720,7 +720,7 @@ export function CustomerHomeSurface() {
               <View style={styles.hiddenMarker} testID="customer-home-apartment-context" />
               <View style={styles.hiddenMarker} testID="customer-utility-notification-center" />
               <ReduceMotionAwareEntranceView delayMs={100} distanceY={16} style={styles.homeHeroStack} testID="customer-home-hero-motion">
-                <Pressable accessibilityLabel={`${copy.home.contextLabel}. ${homeAreaValue}`} accessibilityRole="button" onPress={() => replace(openProfilePath)} style={({ pressed }) => [styles.homeAddressCard, customerOpaqueSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-address-card">
+                <Pressable accessibilityLabel={`${copy.home.contextLabel}. ${homeAreaValue}`} accessibilityRole="button" onPress={() => replace(openProfilePath)} style={({ pressed }) => [styles.homeAddressCard, customerHomeFrameSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-address-card">
                   <View style={styles.homeAddressCopy}>
                     <Text style={[styles.homeAddressValue, { color: tokens.text }]} numberOfLines={1}>
                       {homeAreaValue}
@@ -731,7 +731,7 @@ export function CustomerHomeSurface() {
                   </View>
                   <IconGlyph name="chevron" color={tokens.primary} accent={tokens.aqua} />
                 </Pressable>
-                <GlassCard mode={tokens.mode} style={styles.homeCommandHero} testID="customer-home-layered-hero">
+                <GlassCard mode={tokens.mode} style={[styles.homeCommandHero, customerHomeHeroSurface(tokens)]} testID="customer-home-layered-hero">
                   <View style={styles.homeCommandHitArea} testID="customer-home-kael-command">
                     <SubtleGlassHighlight />
                     <SubtleLiquidLight testID="customer-home-command-liquid-light" />
@@ -746,21 +746,21 @@ export function CustomerHomeSurface() {
                           {copy.home.commandSubtitle}
                         </Text>
                       </View>
-                      <Pressable accessibilityLabel={homeCommandActionLabel} accessibilityRole="button" onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandOpen, { backgroundColor: tokens.service, borderColor: tokens.border }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-open">
+                      <Pressable accessibilityLabel={homeCommandActionLabel} accessibilityRole="button" onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandOpen, customerHomeControlSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-open">
                         <IconGlyph name="external" color={tokens.primary} accent={tokens.copper} />
                       </Pressable>
                     </View>
-                    <View style={[styles.homeCommandPrompt, customerOpaqueSurface(tokens)]} testID="customer-home-kael-command-prompt">
+                    <View style={[styles.homeCommandPrompt, customerHomePromptSurface(tokens)]} testID="customer-home-kael-command-prompt">
                       <Text style={[styles.homeCommandPromptText, { color: tokens.subtleText }]} numberOfLines={2}>
                         {copy.home.commandTitle}
                       </Text>
                       <View style={styles.homeCommandPromptActions}>
-                        <Pressable accessibilityLabel={copy.kael.attach} accessibilityRole="button" onPress={() => openKaelChatFlow()} style={({ pressed }) => [styles.homeCommandAttach, { backgroundColor: tokens.service, borderColor: tokens.border }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-command-attach">
+                        <Pressable accessibilityLabel={copy.kael.attach} accessibilityRole="button" onPress={() => openKaelChatFlow()} style={({ pressed }) => [styles.homeCommandAttach, customerHomeControlSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-command-attach">
                           <Text style={[styles.homeCommandAttachText, { color: tokens.primary }]} numberOfLines={1}>
                             {copy.kael.attach}
                           </Text>
                         </Pressable>
-                        <Pressable accessibilityLabel={copy.home.commandSend} accessibilityRole="button" onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandSend, { backgroundColor: tokens.primary }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-command-send">
+                        <Pressable accessibilityLabel={copy.home.commandSend} accessibilityRole="button" hitSlop={4} onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandSend, customerHomeSendSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-command-send">
                           <Text style={[styles.homeCommandSendText, { color: tokens.primaryText }]} numberOfLines={1}>
                             {copy.home.commandSend}
                           </Text>
@@ -3104,6 +3104,81 @@ function customerOpaqueSurface(tokens: CustomerThemeTokens) {
   }
 }
 
+function customerHomeFrameSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,255,252,0.90))'
+  const darkGradient = 'linear-gradient(180deg, rgba(22,43,40,0.96), rgba(18,39,36,0.94))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,43,40,0.96)' : reduceTransparency ? '#FFFDF8' : 'rgba(255,253,248,0.96)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.18)' : 'rgba(38,126,111,0.15)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 22px rgba(0,0,0,0.18)' : '0 10px 22px rgba(17,70,61,0.07), inset 0 1px 0 rgba(255,255,255,0.92)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerHomeHeroSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = 'radial-gradient(circle at 86% 12%, rgba(193,251,242,0.68), transparent 36%), linear-gradient(140deg, rgba(240,255,250,0.86), rgba(255,248,232,0.80))'
+  const darkGradient = 'radial-gradient(circle at 86% 12%, rgba(105,222,198,0.18), transparent 36%), linear-gradient(140deg, rgba(18,48,43,0.92), rgba(38,32,23,0.82))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(18,48,43,0.92)' : reduceTransparency ? '#F7FFF9' : 'rgba(248,255,250,0.84)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.22)' : reduceTransparency ? 'rgba(38,126,111,0.16)' : 'rgba(255,255,255,0.82)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 12px 30px rgba(0,0,0,0.20)' : '0 18px 38px rgba(21,89,78,0.08), inset 0 1px 0 rgba(255,255,255,0.88)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerHomePromptSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,255,252,0.86))'
+  const darkGradient = 'linear-gradient(180deg, rgba(22,43,40,0.96), rgba(18,39,36,0.92))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,43,40,0.96)' : reduceTransparency ? '#FFFDF8' : 'rgba(255,253,248,0.94)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.18)' : 'rgba(38,126,111,0.15)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.16)' : '0 10px 22px rgba(17,70,61,0.07), inset 0 1px 0 rgba(255,255,255,0.92)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerHomeControlSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = 'linear-gradient(180deg, rgba(225,252,245,0.94), rgba(211,247,239,0.86))'
+  const darkGradient = 'linear-gradient(180deg, rgba(23,59,53,0.96), rgba(16,45,42,0.92))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#173B35' : reduceTransparency ? '#DCFBF3' : 'rgba(220,251,243,0.90)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.24)' : 'rgba(13,134,119,0.18)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.18)' : '0 8px 18px rgba(17,70,61,0.08), inset 0 1px 0 rgba(255,255,255,0.82)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerHomeSendSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const lightGradient = 'linear-gradient(135deg, #0B5C50, #0E9C88)'
+  const darkGradient = 'linear-gradient(135deg, #69DEC6, #22BDA5)'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#69DEC6' : '#0B5C50',
+    borderColor: tokens.mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.34)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 18px rgba(0,0,0,0.22)' : '0 12px 22px rgba(9,121,106,0.20), inset 0 1px 0 rgba(255,255,255,0.24)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
 function customerBookingDiagnosisSurface(tokens: CustomerThemeTokens) {
   const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
   const lightGradient = 'radial-gradient(circle at 94% 18%, rgba(255,244,219,0.64), transparent 30%), linear-gradient(135deg, rgba(223,253,246,0.96), rgba(255,247,226,0.82))'
@@ -3212,9 +3287,9 @@ function customerHomeServiceTileSurface(tokens: CustomerThemeTokens, tone: Surfa
       ? isWarm ? '#221D17' : isWater ? '#102B2C' : '#122724'
       : isWarm ? '#FFF8EA' : isWater ? '#F0FEFF' : '#F0FFF9',
     borderColor: tokens.mode === 'dark'
-      ? 'rgba(105,222,198,0.16)'
-      : isWarm ? 'rgba(202,145,75,0.20)' : isWater ? 'rgba(35,156,168,0.18)' : 'rgba(15,130,115,0.16)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.20)' : '0 10px 24px rgba(17,70,61,0.085)',
+      ? isWarm ? 'rgba(244,190,122,0.22)' : 'rgba(138,235,217,0.18)'
+      : isWarm ? 'rgba(176,118,44,0.22)' : isWater ? 'rgba(35,156,168,0.20)' : 'rgba(38,126,111,0.15)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.20)' : '0 10px 22px rgba(17,70,61,0.07), inset 0 1px 0 rgba(255,255,255,0.92)',
     background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
@@ -3279,8 +3354,8 @@ function customerHomeShortcutSurface(tokens: CustomerThemeTokens, tone: SurfaceT
 
   return {
     backgroundColor: tokens.mode === 'dark' ? isWater ? '#102B2C' : '#122724' : isWater ? '#F0FEFF' : '#F2FFF9',
-    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.15)' : isWater ? 'rgba(35,156,168,0.16)' : 'rgba(15,130,115,0.15)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.18)' : '0 10px 24px rgba(17,70,61,0.075)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.18)' : isWater ? 'rgba(35,156,168,0.20)' : 'rgba(38,126,111,0.15)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.18)' : '0 10px 22px rgba(17,70,61,0.07), inset 0 1px 0 rgba(255,255,255,0.92)',
     background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
@@ -4239,13 +4314,15 @@ const styles = StyleSheet.create({
   },
   homeCommandSend: {
     alignItems: 'center',
-    borderRadius: 20,
-    minHeight: 42,
+    borderRadius: 17,
+    borderWidth: 1,
     justifyContent: 'center',
-    paddingHorizontal: 18,
+    minHeight: 40,
+    minWidth: 56,
+    paddingHorizontal: 15,
   },
   homeCommandSendText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0,
   },

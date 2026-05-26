@@ -21,13 +21,17 @@ export function inferKaelChatDistrict(value: string): DistrictSlug | null {
 export function KaelAddressContextBar({
   addressLabel,
   language,
+  onBlur,
   onChangeText,
+  onFocus,
   placeholder,
   tokens,
 }: {
   addressLabel: string
   language: AppLanguage
+  onBlur?: () => void
   onChangeText: (value: string) => void
+  onFocus?: () => void
   placeholder: string
   tokens: AddressContextTokens
 }) {
@@ -37,7 +41,9 @@ export function KaelAddressContextBar({
     <View style={[styles.addressBar, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-kael-chat-address-context">
       <ChatPinIcon color={tokens.primary} />
       <TextInput
+        onBlur={onBlur}
         onChangeText={onChangeText}
+        onFocus={onFocus}
         placeholder={placeholder}
         placeholderTextColor={tokens.subtleText}
         style={[styles.addressInput, { color: tokens.text }]}

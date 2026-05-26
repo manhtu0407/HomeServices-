@@ -25,7 +25,7 @@ const WORKER_PRODUCTION_CONTRACT = 'WORKER_PRODUCTION_CONTRACT: docs/design/work
 const WORKER_CLIENT_BASELINE_AUDIT = 'WORKER_CLIENT_BASELINE_AUDIT: customer V4 semantic layers matched for worker production'
 const WORKER_THEME_LANGUAGE_STORE = 'WORKER_THEME_LANGUAGE_STORE: worker-theme-language-switch AsyncStorage useSyncExternalStore'
 const WORKER_FLEXIBLE_MAP_SHELL = 'WORKER_FLEXIBLE_MAP_SHELL: worker-map-google-ready flexible-map-preview'
-const WORKER_DOCK_GLASS_MOTION = 'WORKER_DOCK_GLASS_MOTION: worker-dock-glass-aura worker-liquid-glass-dock worker-dock-outline-chat-icon worker-dock-icon-system'
+const WORKER_DOCK_GLASS_MOTION = 'WORKER_DOCK_GLASS_MOTION: worker-dock-glass-aura worker-liquid-glass-dock worker-dock-kael-mascot-icon worker-dock-client-style-icon'
 const WORKER_GLASSMORPHISM_MOTION_LAYER = 'WORKER_GLASSMORPHISM_MOTION_LAYER: shared-glass-pressable static-depth-layer centered-metric-type'
 const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kael-empty-chat-state worker-kael-local-chat-input submitWorkerKaelLocalDraft'
 const WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT = 'WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT: general area only until worker accepts'
@@ -39,6 +39,7 @@ const workerDockHeight = 66
 const workerDockBottomMargin = 6
 const workerDockClearance = workerDockHeight + workerDockBottomMargin + 76
 const workerFrameHorizontalPadding = 14.8
+const workerJobRoomRevealDelayMs = 360
 const kaelHead = require('../../assets/kael-model-8a-head.png')
 
 type WorkerThemeMode = 'dark' | 'light'
@@ -48,7 +49,9 @@ type WorkerVerificationFileSlot = 'cccdFront' | 'cccdBack' | 'selfie'
 type WorkerActiveTab = 'chat' | 'earnings' | 'home' | 'jobs' | 'profile'
 type WorkerJobsTab = 'active' | 'needs' | 'waiting'
 type WorkerTone = 'base' | 'cream' | 'cyan' | 'depth' | 'mint' | 'raised' | 'strong' | 'warm'
+type WorkerKaelChatTone = 'agent' | 'avatar' | 'brief' | 'bubble' | 'composer' | 'header' | 'icon' | 'send' | 'status' | 'step'
 type WorkerHeaderPillTone = 'cream' | 'mint'
+type WorkerDockIconName = 'apartment' | 'document' | 'kael' | 'payment' | 'person'
 type WorkerIconName =
   | 'back'
   | 'bank'
@@ -64,6 +67,7 @@ type WorkerIconName =
   | 'home'
   | 'jobs'
   | 'map'
+  | 'mic'
   | 'money'
   | 'moon'
   | 'person'
@@ -78,10 +82,19 @@ type WorkerIconName =
   | 'trend'
   | 'water'
 type WorkerChatMessage = { id: string; mine?: boolean; system?: boolean; text: string; who: string }
+type WorkerChatLocalState = {
+  draft: string
+  messages: WorkerChatMessage[]
+  reveal: { requested: number; step: number }
+}
 type WorkerBroadcastView = NonNullable<LocalDeal['broadcast']>
 
 let lastWorkerDockActive: WorkerActiveTab = 'home'
 const workerJobsTabKeys: WorkerJobsTab[] = ['waiting', 'active', 'needs']
+
+function createWorkerChatLocalState(): WorkerChatLocalState {
+  return { draft: '', messages: [], reveal: { requested: 0, step: 0 } }
+}
 
 function isWorkerJobsTab(value: unknown): value is WorkerJobsTab {
   return typeof value === 'string' && workerJobsTabKeys.includes(value as WorkerJobsTab)
@@ -300,6 +313,10 @@ const workerCopy = {
       privacyGate: 'Địa chỉ chi tiết chỉ mở sau khi thợ chấp nhận.',
       acceptedGate: 'Đã nhận việc. Ghi chú hiện lưu trong phiên này.',
       lockedGate: 'Chấp nhận việc để mở ghi chú việc.',
+      attach: 'Đính kèm',
+      attachHint: 'Đính kèm chưa mở trong Phòng việc này. Thợ ghi chú bằng chữ trước.',
+      mic: 'Mic',
+      micHint: 'Mic chưa sẵn sàng trong Phòng việc này. Thợ nhập ghi chú để Kael giữ bối cảnh trước.',
       serviceLabel: 'Dịch vụ',
       problemLabel: 'Vấn đề',
       areaLabel: 'Khu vực',
@@ -320,6 +337,7 @@ const workerCopy = {
       today: 'Hôm nay',
       month: 'Tháng này',
       noReconciliation: 'Chờ dữ liệu',
+      summaryHint: 'Khi có đối soát',
       body: '',
       complete: 'Hoàn tất',
       waiting: 'Chờ khách',
@@ -426,6 +444,10 @@ const workerCopy = {
       privacyGate: 'Detailed address opens only after acceptance.',
       acceptedGate: 'Job accepted. Notes are saved for this session.',
       lockedGate: 'Accept the job to unlock job notes.',
+      attach: 'Attach',
+      attachHint: 'Attachments are not open in this JobRoom yet. Add a written note first.',
+      mic: 'Mic',
+      micHint: 'Voice input is not ready in this JobRoom yet. Type a note so Kael can keep context first.',
       serviceLabel: 'Service',
       problemLabel: 'Problem',
       areaLabel: 'Area',
@@ -446,6 +468,7 @@ const workerCopy = {
       today: 'Today',
       month: 'This month',
       noReconciliation: 'Waiting for data',
+      summaryHint: 'After reconciliation',
       body: '',
       complete: 'Completed',
       waiting: 'Waiting',
@@ -1219,6 +1242,7 @@ function WorkerFrame({
     backgroundColor: tokens.canvas,
     experimental_backgroundImage: reduceTransparency ? undefined : canvasBackgroundImage,
   } as any
+  const frameHeight = Math.max(0, height - insets.top - insets.bottom)
   const routeIsFocused =
     (active === 'home' && pathname.endsWith('/home')) ||
     (active === 'jobs' && pathname.endsWith('/jobs')) ||
@@ -1226,28 +1250,48 @@ function WorkerFrame({
     (active === 'earnings' && pathname.endsWith('/earnings')) ||
     (active === 'profile' && pathname.endsWith('/profile'))
   const workerUiValue = useMemo(() => ({ copy, language, mode, tokens }), [copy, language, mode, tokens])
+  const routeScrollRef = useRef<ScrollView | null>(null)
+
+  useEffect(() => {
+    if (!hideDock || !routeIsFocused) return
+    const resetScroll = () => {
+      routeScrollRef.current?.scrollTo({ animated: false, y: 0 })
+      resetWorkerChatWebScrollPosition()
+    }
+    resetScroll()
+    const frame = requestAnimationFrame(resetScroll)
+    return () => {
+      cancelAnimationFrame(frame)
+    }
+  }, [frameHeight, hideDock, routeIsFocused])
 
   return (
     <WorkerUiContext.Provider value={workerUiValue}>
       <SafeAreaView style={[styles.safe, canvasLayer, routeIsFocused ? null : styles.inactiveRouteSurface]} testID={testID}>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
-        <View style={[styles.canvas, canvasLayer]}>
-          {reduceTransparency ? null : <AmbientBackdrop />}
-          {routeIsFocused && !reduceMotion && !reduceTransparency ? <WorkerSectionMotionField active={active} frameWidth={frameWidth} screenWidth={width} /> : null}
+        <View style={[styles.canvas, canvasLayer, { minHeight: frameHeight }]}>
+          {reduceTransparency || hideDock ? null : <AmbientBackdrop />}
+          {routeIsFocused && !hideDock && !reduceMotion && !reduceTransparency ? <WorkerSectionMotionField active={active} frameWidth={frameWidth} screenWidth={width} /> : null}
           <ScrollView
+            ref={routeScrollRef}
             contentContainerStyle={[
               styles.scrollContent,
+              hideDock ? styles.standaloneScrollContent : null,
               {
+                alignSelf: 'center',
+                minHeight: frameHeight,
                 paddingBottom: Math.max(insets.bottom + workerDockClearance, workerDockClearance),
-                ...(hideDock ? { minHeight: Math.max(0, height - insets.top - insets.bottom - 8), paddingBottom: Math.max(insets.bottom + 96, 108) } : null),
+                ...(hideDock ? { height: frameHeight, minHeight: frameHeight, paddingBottom: 0 } : null),
                 width: Math.max(0, frameWidth - workerFrameHorizontalPadding * 2),
               },
             ]}
-            automaticallyAdjustKeyboardInsets
+            automaticallyAdjustKeyboardInsets={!hideDock}
             contentInsetAdjustmentBehavior="automatic"
             keyboardDismissMode="interactive"
             keyboardShouldPersistTaps="handled"
+            scrollEnabled={!hideDock}
             showsVerticalScrollIndicator={false}
+            style={[styles.workerScroll, hideDock ? styles.workerStandaloneScroll : null]}
           >
             <View
               style={styles.hiddenMarker}
@@ -1312,34 +1356,15 @@ function WorkerScreenHeader({ active, eyebrow, headerIcon, headerPill, headerPil
 }
 
 function WorkerStandaloneHeader() {
-  const { copy, language, tokens } = useWorkerUi()
-  const { selectors, state } = useFrontendWorkflow()
+  const { copy, tokens } = useWorkerUi()
   const { replace } = useRouter()
-  const deal = getWorkerVisibleDeal(state.deal)
-  const broadcast = deal?.broadcast ?? null
-  const statusLabel = broadcast && isAcceptedLocalWorkerDeal(deal)
-    ? copy.chat.acceptedPill
-    : broadcast
-      ? localizedStatusLabel(selectors.currentStatus, language)
-      : language === 'en' ? 'Waiting' : 'Chờ việc'
 
   return (
-    <View style={[styles.jobRoomTopBar, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-jobroom-fullscreen-header">
-      <Pressable accessibilityLabel={copy.jobs.title} accessibilityRole="button" onPress={() => replace('/(worker)/jobs')} style={({ pressed }) => [styles.jobRoomBackButton, { backgroundColor: tokens.mint, borderColor: tokens.border }, pressed ? styles.pressed : null]} testID="worker-jobroom-back">
+    <View style={[styles.jobRoomTopBar, workerKaelChatSurface(tokens, 'header')]} testID="worker-jobroom-fullscreen-header">
+      <Pressable accessibilityLabel={copy.jobs.title} accessibilityRole="button" onPress={() => replace('/(worker)/jobs')} style={({ pressed }) => [styles.jobRoomBackButton, { backgroundColor: tokens.mint, borderColor: tokens.border }, workerKaelChatSurface(tokens, 'icon'), pressed ? styles.pressed : null]} testID="worker-jobroom-back">
         <Icon name="back" small />
       </Pressable>
-      <Image contentFit="contain" source={kaelHead} style={styles.jobRoomHeaderAvatar} />
-      <View style={[styles.titleStack, styles.jobRoomTitleStack]}>
-        <Text style={[styles.sectionTitle, { color: tokens.ink }]} numberOfLines={1}>
-          {copy.chat.title}
-        </Text>
-        <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
-          {copy.chat.relaySubtitle}
-        </Text>
-      </View>
-      <Text style={[styles.jobRoomStatusPill, { backgroundColor: tokens.mint, borderColor: tokens.border, color: tokens.primary }]} numberOfLines={1}>
-        {statusLabel}
-      </Text>
+      <View style={styles.jobRoomHeaderSpacer} />
     </View>
   )
 }
@@ -1406,18 +1431,22 @@ function ActiveWorkerJobCard({ body, briefLines, status, title }: { body: string
 
 function WorkerChatContent() {
   const { copy, language, tokens } = useWorkerUi()
+  const { reduceMotion } = useGlassAccessibility()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast ?? null
   const dealChatKey = workerChatDealKey(deal)
-  const [draft, setDraft] = useState('')
-  const [messages, setMessages] = useState<WorkerChatMessage[]>([])
+  const [chatLocalState, setChatLocalState] = useState(createWorkerChatLocalState)
+  const draft = chatLocalState.draft
+  const jobRoomReveal = chatLocalState.reveal
   const activeDealChatKeyRef = useRef(dealChatKey)
   const localMessageSequenceRef = useRef(0)
-  const renderedMessages = messages
+  const renderedMessages = chatLocalState.messages
   const hasAnyWorkerKaelMessage = Boolean(broadcast || renderedMessages.length > 0)
   const canSendWorkerKaelMessage = Boolean(deal && isAcceptedLocalWorkerDeal(deal))
+  const canComposeWorkerKaelMessage = !broadcast || canSendWorkerKaelMessage
   const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : broadcast ? copy.chat.lockedGate : copy.chat.waitingInput
+  const visibleChatInputPlaceholder = ''
   const hiddenAddressLabel = workerActionCopy[language].hiddenAddress
   const jobAreaLabel = broadcast?.generalArea ? localizedWorkerAreaLabel(broadcast.generalArea, language) : hiddenAddressLabel
   const fullAddressLabel = broadcast?.fullAddressVisible ? broadcast.fullAddressLabel ?? null : null
@@ -1431,153 +1460,345 @@ function WorkerChatContent() {
   ] : []
   const jobRoomGate = canSendWorkerKaelMessage ? copy.chat.acceptedGate : broadcast ? copy.chat.lockedGate : copy.chat.waitingBody
   const jobBriefLines = broadcast ? buildWorkerBroadcastBrief(deal, broadcast, selectors.currentStatus, language) : []
+  const maxRevealStep = broadcast ? 4 : 3
+  const targetRevealStep = Math.min(maxRevealStep, jobRoomReveal.requested)
+  const showJobRoomProcess = jobRoomReveal.step >= 1
+  const showJobRoomMessage = jobRoomReveal.step >= 2
+  const showJobRoomBrief = jobRoomReveal.step >= 3
+  const showJobRoomDetails = jobRoomReveal.step >= 4
+  const startJobRoomReveal = () => {
+    setChatLocalState((current) => current.reveal.requested >= 1 ? current : { ...current, reveal: { ...current.reveal, requested: 1 } })
+  }
+  const advanceJobRoomReveal = () => {
+    setChatLocalState((current) => {
+      const nextRequested = Math.min(maxRevealStep, Math.max(current.reveal.requested, current.reveal.step + 1))
+      return nextRequested === current.reveal.requested ? current : { ...current, reveal: { ...current.reveal, requested: nextRequested } }
+    })
+  }
 
   useEffect(() => {
     if (activeDealChatKeyRef.current === dealChatKey) return
-    setMessages([])
-    setDraft('')
+    setChatLocalState(createWorkerChatLocalState())
     localMessageSequenceRef.current = 0
     activeDealChatKeyRef.current = dealChatKey
   }, [dealChatKey])
 
+  useEffect(() => {
+    if (jobRoomReveal.step >= targetRevealStep) return
+    const revealDelayMs = jobRoomReveal.step === 0 ? 80 : workerJobRoomRevealDelayMs
+    const revealTimer = setTimeout(() => {
+      setChatLocalState((current) => {
+        const nextTargetRevealStep = Math.min(maxRevealStep, current.reveal.requested)
+        if (current.reveal.step >= nextTargetRevealStep) return current
+        return { ...current, reveal: { ...current.reveal, step: Math.min(nextTargetRevealStep, current.reveal.step + 1) } }
+      })
+    }, reduceMotion ? 0 : revealDelayMs)
+
+    return () => {
+      clearTimeout(revealTimer)
+    }
+  }, [jobRoomReveal.step, maxRevealStep, reduceMotion, targetRevealStep])
+
   const submitWorkerKaelLocalDraft = () => {
-    if (!canSendWorkerKaelMessage) return
+    if (!canComposeWorkerKaelMessage) return
     const value = draft.trim()
     if (!value) return
     localMessageSequenceRef.current += 1
-    setMessages((prev) => [
-      ...prev,
-      { id: `worker-local-${dealChatKey}-${localMessageSequenceRef.current}`, mine: true, text: value, who: copy.chat.worker },
-    ])
-    setDraft('')
+    setChatLocalState((current) => ({
+      ...current,
+      draft: '',
+      messages: [
+        ...current.messages,
+        { id: `worker-local-${dealChatKey}-${localMessageSequenceRef.current}`, mine: true, text: value, who: copy.chat.worker },
+      ],
+      reveal: current.reveal.requested >= maxRevealStep ? current.reveal : { ...current.reveal, requested: maxRevealStep },
+    }))
   }
+  const showWorkerToolHint = (title: string, body: string) => {
+    blurFocusedWebControl()
+    startJobRoomReveal()
+    if (jobRoomReveal.step < 1) return
+    Alert.alert(title, body)
+  }
+  const focusWorkerKaelComposer = () => {
+    startJobRoomReveal()
+    stabilizeWorkerChatWebLayout()
+  }
+  const canSubmitWorkerDraft = Boolean(draft.trim() && canComposeWorkerKaelMessage)
 
   return (
     <View style={styles.chatShell} testID="worker-chat-kael-relay">
       <View style={styles.hiddenMarker} testID="worker-kael-client-chatbox-parity" />
+      <View style={styles.hiddenMarker} testID="worker-kael-empty-chat-state" />
       <View style={[styles.kaelClientStage, !hasAnyWorkerKaelMessage ? styles.kaelClientStageEmpty : null]} testID="worker-kael-conversation-feed">
-        <View style={styles.hiddenMarker} testID="worker-kael-empty-chat-state" />
-        {!broadcast ? (
-          <View style={styles.jobRoomStack} testID="worker-kael-empty-chat-canvas">
-            <View style={[styles.jobRoomHeader, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-jobroom-waiting-room">
-              <View style={styles.identityRow}>
-                <Image contentFit="contain" source={kaelHead} style={styles.kaelHead} />
-                <View style={styles.titleStack}>
-                  <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
-                    {copy.chat.jobRoomTitle}
-                  </Text>
-                  <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
-                    {copy.chat.waitingTitle}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
-                {copy.chat.waitingBody}
-              </Text>
+        <View style={styles.jobRoomRevealStack} testID="worker-jobroom-sequential-content">
+          {showJobRoomProcess ? (
+            <SequentialJobRoomReveal step={1} testID="worker-jobroom-process-reveal">
+              <JobRoomProcessCard broadcast={broadcast} canSend={canSendWorkerKaelMessage} onAdvance={advanceJobRoomReveal} />
+            </SequentialJobRoomReveal>
+          ) : (
+            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.jobRoomProcessHidden} testID="worker-jobroom-process-reserve">
+              <JobRoomProcessCard broadcast={broadcast} canSend={canSendWorkerKaelMessage} onAdvance={advanceJobRoomReveal} />
             </View>
-            <View style={[styles.jobRoomBrief, workerDiagnosisSurface(tokens)]} testID="worker-jobroom-empty-brief-shell">
-              <Text style={[styles.statusPill, { alignSelf: 'stretch', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
-                {copy.chat.briefTitle}
-              </Text>
-              <Text style={[styles.briefText, { color: tokens.ink }]} numberOfLines={4}>
-                {copy.chat.briefBody}
-              </Text>
+          )}
+          {!broadcast ? (
+            <View style={styles.jobRoomStack} testID="worker-kael-empty-chat-canvas">
+              {showJobRoomMessage ? (
+                <SequentialJobRoomReveal step={2} testID="worker-jobroom-waiting-room-reveal">
+                  <JobRoomKaelMessage body={copy.chat.waitingBody} kicker={copy.chat.jobRoomTitle} testID="worker-jobroom-waiting-room" title={copy.chat.waitingTitle} />
+                </SequentialJobRoomReveal>
+              ) : null}
+              {showJobRoomBrief ? (
+                <SequentialJobRoomReveal step={3} testID="worker-jobroom-empty-brief-reveal">
+                  <JobRoomBriefBlock body={copy.chat.briefBody} testID="worker-jobroom-empty-brief-shell" title={copy.chat.briefTitle} />
+                  {renderedMessages.length > 0 ? (
+                    <View style={styles.chatStack}>
+                      {renderedMessages.map((message) => (
+                        <ChatBubble key={message.id} {...message} />
+                      ))}
+                    </View>
+                  ) : null}
+                </SequentialJobRoomReveal>
+              ) : null}
             </View>
+          ) : (
+            <View style={styles.jobRoomStack} testID="hasAnyWorkerKaelMessage">
+              {showJobRoomMessage ? (
+                <SequentialJobRoomReveal step={2} testID="worker-jobroom-handoff-reveal">
+                  <JobRoomKaelMessage body={copy.chat.briefBody} kicker={copy.chat.handoffTitle} testID="worker-jobroom-kael-handoff" title={localizedServiceLabel(broadcast.serviceType, language)} />
+                </SequentialJobRoomReveal>
+              ) : null}
+              {showJobRoomBrief ? (
+                <SequentialJobRoomReveal step={3} testID="worker-jobroom-live-brief-reveal">
+                  <JobRoomBriefBlock lines={jobBriefLines} testID="worker-jobroom-live-brief" title={copy.chat.briefTitle} />
+                </SequentialJobRoomReveal>
+              ) : null}
+              {showJobRoomDetails ? (
+                <SequentialJobRoomReveal step={4} testID="worker-jobroom-details-reveal">
+                  <View style={styles.jobRoomMetaGrid}>
+                    {jobRoomMeta.map((item) => (
+                      <JobRoomMetaCell key={item.label} label={item.label} value={item.value} />
+                    ))}
+                  </View>
+                  <View style={[styles.jobRoomGate, workerOpaqueCardSurface(tokens, canSendWorkerKaelMessage ? 'cyan' : 'warm')]} testID="worker-jobroom-privacy-gate">
+                    <Icon name={canSendWorkerKaelMessage ? 'check' : 'shield'} active={canSendWorkerKaelMessage} small />
+                    <View style={styles.titleStack}>
+                      <Text style={[styles.bodyText, { color: tokens.ink }]} numberOfLines={2}>
+                        {jobRoomGate}
+                      </Text>
+                      {!canSendWorkerKaelMessage ? (
+                        <Text style={[styles.briefText, { color: tokens.muted }]} numberOfLines={2}>
+                          {copy.chat.privacyGate}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                  {renderedMessages.length > 0 ? (
+                    <View style={styles.chatStack}>
+                      {renderedMessages.map((message) => (
+                        <ChatBubble key={message.id} {...message} />
+                      ))}
+                    </View>
+                  ) : null}
+                </SequentialJobRoomReveal>
+              ) : null}
+            </View>
+          )}
           </View>
-        ) : (
-          <View style={styles.jobRoomStack} testID="hasAnyWorkerKaelMessage">
-            <View style={[styles.jobRoomHeader, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-jobroom-kael-handoff">
-              <View style={styles.identityRow}>
-                <Image contentFit="contain" source={kaelHead} style={styles.kaelHead} />
-                <View style={styles.titleStack}>
-                  <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
-                    {copy.chat.handoffTitle}
-                  </Text>
-                  <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
-                    {localizedServiceLabel(broadcast.serviceType, language)}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
-                {copy.chat.briefBody}
-              </Text>
-            </View>
-            <View style={[styles.jobRoomBrief, workerDiagnosisSurface(tokens)]} testID="worker-jobroom-live-brief">
-              <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
-                {copy.chat.briefTitle}
-              </Text>
-              {jobBriefLines.map((line) => (
-                <View key={line} style={styles.briefItem}>
-                  <View style={[styles.briefDot, { backgroundColor: tokens.primary }]} />
-                  <Text style={[styles.briefText, { color: tokens.ink }]} numberOfLines={3}>
-                    {line}
-                  </Text>
-                </View>
-              ))}
-            </View>
-            <View style={styles.jobRoomMetaGrid}>
-              {jobRoomMeta.map((item) => (
-                <JobRoomMetaCell key={item.label} label={item.label} value={item.value} />
-              ))}
-            </View>
-            <View style={[styles.jobRoomGate, workerOpaqueCardSurface(tokens, canSendWorkerKaelMessage ? 'cyan' : 'warm')]} testID="worker-jobroom-privacy-gate">
-              <Icon name={canSendWorkerKaelMessage ? 'check' : 'shield'} active={canSendWorkerKaelMessage} small />
-              <View style={styles.titleStack}>
-                <Text style={[styles.bodyText, { color: tokens.ink }]} numberOfLines={2}>
-                  {jobRoomGate}
-                </Text>
-                {!canSendWorkerKaelMessage ? (
-                  <Text style={[styles.briefText, { color: tokens.muted }]} numberOfLines={2}>
-                    {copy.chat.privacyGate}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-            {renderedMessages.length > 0 ? (
-              <View style={styles.chatStack}>
-                {renderedMessages.map((message) => (
-                  <ChatBubble key={message.id} {...message} />
-                ))}
-              </View>
-            ) : null}
-          </View>
-        )}
 
-        <View style={[styles.chatComposer, glassSurface(tokens, 'strong')]} testID="worker-kael-composer-dock">
-          <SubtleGlassHighlight />
-          <View pointerEvents="none" style={[styles.composerTool, { borderColor: tokens.border }]}>
-            <Icon name="plus" small />
+        <View style={styles.chatComposerTouchWrap} testID="worker-kael-composer-sequential-trigger">
+          <View style={[styles.chatComposer, workerKaelChatSurface(tokens, 'composer')]} testID="worker-kael-composer-dock">
+            <SubtleGlassHighlight />
+            <Pressable accessibilityLabel={copy.chat.attach} accessibilityRole="button" hitSlop={4} onPress={() => showWorkerToolHint(copy.chat.attach, copy.chat.attachHint)} style={({ pressed }) => [styles.composerTool, { borderColor: tokens.border, backgroundColor: tokens.mint }, workerKaelChatSurface(tokens, 'icon'), pressed ? styles.pressed : null]} testID="worker-kael-chat-attach">
+              <WorkerChatPlusIcon color={tokens.primary} />
+            </Pressable>
+            <Pressable accessibilityLabel={copy.chat.mic} accessibilityRole="button" hitSlop={4} onPress={() => showWorkerToolHint(copy.chat.mic, copy.chat.micHint)} style={({ pressed }) => [styles.composerTool, { borderColor: tokens.border, backgroundColor: tokens.mint }, workerKaelChatSurface(tokens, 'icon'), pressed ? styles.pressed : null]} testID="worker-kael-chat-mic">
+              <WorkerChatMicIcon color={tokens.primary} />
+            </Pressable>
+            <TextInput
+              accessibilityLabel={chatInputPlaceholder}
+              editable={canComposeWorkerKaelMessage}
+              onChangeText={(value) => setChatLocalState((current) => current.draft === value ? current : { ...current, draft: value })}
+              onFocus={focusWorkerKaelComposer}
+              onSubmitEditing={submitWorkerKaelLocalDraft}
+              placeholder={visibleChatInputPlaceholder}
+              placeholderTextColor={tokens.subtle}
+              returnKeyType="send"
+              selectionColor={tokens.primary}
+              style={[styles.chatInput, styles.chatInputInvisibleFocus, { caretColor: tokens.primary, color: tokens.ink } as any]}
+              testID="worker-kael-local-chat-input"
+              value={draft}
+            />
+            <Pressable
+              accessibilityLabel={copy.chat.send}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canSubmitWorkerDraft }}
+              disabled={!canSubmitWorkerDraft}
+              hitSlop={4}
+              onPress={submitWorkerKaelLocalDraft}
+              style={({ pressed }) => [
+                styles.sendButton,
+                { backgroundColor: canSubmitWorkerDraft ? tokens.primary : tokens.border },
+                canSubmitWorkerDraft ? workerKaelChatSurface(tokens, 'send') : null,
+                pressed ? styles.pressed : null,
+              ]}
+              testID="worker-kael-send-button"
+            >
+              <WorkerChatSendIcon color={canSubmitWorkerDraft ? tokens.primaryText : tokens.subtle} />
+            </Pressable>
           </View>
-          <TextInput
-            accessibilityLabel={chatInputPlaceholder}
-            editable={canSendWorkerKaelMessage}
-            onChangeText={setDraft}
-            onSubmitEditing={submitWorkerKaelLocalDraft}
-            placeholder={chatInputPlaceholder}
-            placeholderTextColor={tokens.subtle}
-            returnKeyType="send"
-            selectionColor={tokens.primary}
-            style={[styles.chatInput, { color: tokens.ink }]}
-            testID="worker-kael-local-chat-input"
-            value={draft}
-          />
-          <Pressable
-            accessibilityLabel={copy.chat.send}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !draft.trim() || !canSendWorkerKaelMessage }}
-            disabled={!draft.trim() || !canSendWorkerKaelMessage}
-            onPress={submitWorkerKaelLocalDraft}
-            style={({ pressed }) => [
-              styles.sendButton,
-              { backgroundColor: draft.trim() && canSendWorkerKaelMessage ? tokens.primary : tokens.border },
-              pressed ? styles.pressed : null,
-            ]}
-            testID="worker-kael-send-button"
-          >
-            <Icon name="send" active />
-          </Pressable>
         </View>
       </View>
+    </View>
+  )
+}
+
+function blurFocusedWebControl() {
+  if (Platform.OS !== 'web') return
+  const activeElement = (globalThis as typeof globalThis & { document?: { activeElement?: { blur?: () => void } | null } }).document?.activeElement
+  activeElement?.blur?.()
+}
+
+function resetWorkerChatWebScrollPosition() {
+  if (Platform.OS !== 'web') return
+  const document = (globalThis as typeof globalThis & { document?: Document }).document
+  const root = document?.querySelector?.('[data-testid="worker-chat-surface"]')
+  if (!root) return
+  const scrollTargets = [root, ...Array.from(root.querySelectorAll('*'))]
+  scrollTargets.forEach((target) => {
+    const scrollable = target as Element & { scrollLeft?: number; scrollTop?: number }
+    try {
+      if (typeof scrollable.scrollTop === 'number') scrollable.scrollTop = 0
+      if (typeof scrollable.scrollLeft === 'number') scrollable.scrollLeft = 0
+    } catch {
+      // React Native Web can expose read-only scroll accessors on wrapper nodes.
+    }
+  })
+}
+
+function stabilizeWorkerChatWebLayout() {
+  if (Platform.OS !== 'web') return
+  resetWorkerChatWebScrollPosition()
+  requestAnimationFrame(resetWorkerChatWebScrollPosition)
+  setTimeout(resetWorkerChatWebScrollPosition, 80)
+}
+
+function SequentialJobRoomReveal({ children, step, testID }: { children: ReactNode; step: number; testID: string }) {
+  return (
+    <ReduceMotionAwareEntranceView delayMs={(step - 1) * 70} distanceY={12} testID={testID}>
+      <View style={styles.jobRoomRevealStep}>
+        {children}
+      </View>
+    </ReduceMotionAwareEntranceView>
+  )
+}
+
+function JobRoomProcessCard({ broadcast, canSend, onAdvance }: { broadcast: WorkerBroadcastView | null; canSend: boolean; onAdvance: () => void }) {
+  const { copy, language, tokens } = useWorkerUi()
+  const status = canSend
+    ? copy.chat.acceptedPill
+    : broadcast
+      ? language === 'en' ? 'Reviewing request' : 'Đang kiểm tra yêu cầu'
+      : language === 'en' ? 'Waiting for request' : 'Đang chờ yêu cầu'
+  const steps = broadcast
+    ? canSend
+      ? language === 'en'
+        ? ['Read brief', 'Save notes', 'Update job']
+        : ['Đọc tóm tắt', 'Lưu ghi chú', 'Cập nhật việc']
+      : language === 'en'
+        ? ['Read request', 'Keep privacy', 'Await accept']
+        : ['Đọc yêu cầu', 'Giữ riêng tư', 'Chờ nhận']
+    : language === 'en'
+      ? ['Wait customer', 'Build brief', 'Open room']
+      : ['Chờ khách', 'Dựng tóm tắt', 'Mở phòng']
+
+  return (
+    <Pressable accessibilityLabel={status} accessibilityRole="button" onPress={onAdvance} style={({ pressed }) => [styles.jobRoomProcessTapTarget, pressed ? styles.pressed : null]} testID="worker-jobroom-agentic-process-trigger">
+      <View style={[styles.jobRoomProcessCard, workerKaelChatSurface(tokens, 'agent')]} testID="worker-jobroom-agentic-process">
+        <View style={styles.jobRoomProcessHead}>
+          <View style={[styles.jobRoomProcessAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }, workerKaelChatSurface(tokens, 'avatar')]}>
+            <Image contentFit="contain" source={kaelHead} style={styles.jobRoomProcessAvatarImage} />
+          </View>
+          <View style={[styles.jobRoomProcessStatus, { backgroundColor: tokens.raised, borderColor: tokens.border }, workerKaelChatSurface(tokens, 'status')]}>
+            <View style={[styles.jobRoomProcessAccent, { backgroundColor: tokens.primary }]} />
+            <View style={styles.titleStack}>
+              <Text style={[styles.jobRoomProcessTitle, { color: tokens.ink }]} numberOfLines={1}>
+                {status}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.jobRoomProcessSteps}>
+          {steps.map((step, index) => (
+            <JobRoomStepCard index={`0${index + 1}`} key={step} title={step} />
+          ))}
+        </View>
+      </View>
+    </Pressable>
+  )
+}
+
+function JobRoomStepCard({ index, title }: { index: string; title: string }) {
+  const { tokens } = useWorkerUi()
+
+  return (
+    <View style={[styles.jobRoomProcessStep, { backgroundColor: tokens.raised, borderColor: tokens.border }, workerKaelChatSurface(tokens, 'step')]}>
+      <Text style={[styles.jobRoomProcessStepIndex, { color: tokens.primary }]}>{index}</Text>
+      <Text style={[styles.jobRoomProcessStepTitle, { color: tokens.ink }]} numberOfLines={2}>
+        {title}
+      </Text>
+    </View>
+  )
+}
+
+function JobRoomKaelMessage({ body, kicker, testID, title }: { body: string; kicker: string; testID: string; title: string }) {
+  const { tokens } = useWorkerUi()
+
+  return (
+    <View style={styles.jobRoomMessageRow} testID={testID}>
+      <View style={[styles.jobRoomMessageAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }, workerKaelChatSurface(tokens, 'avatar')]}>
+        <Image contentFit="contain" source={kaelHead} style={styles.jobRoomMessageAvatarImage} />
+      </View>
+      <View style={[styles.jobRoomMessageBubble, messageBubbleSurface(tokens, { mine: false, system: true }), workerKaelChatSurface(tokens, 'bubble')]}>
+        <Text style={[styles.jobRoomBubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
+          {kicker}
+        </Text>
+        <Text style={[styles.jobRoomBubbleTitle, { color: tokens.ink }]} numberOfLines={2}>
+          {title}
+        </Text>
+        <Text style={[styles.jobRoomBubbleBody, { color: tokens.muted }]} numberOfLines={3}>
+          {body}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+function JobRoomBriefBlock({ body, lines, testID, title }: { body?: string; lines?: string[]; testID: string; title: string }) {
+  const { tokens } = useWorkerUi()
+
+  return (
+    <View style={[styles.jobRoomBrief, workerKaelChatSurface(tokens, 'brief'), styles.jobRoomBriefAligned]} testID={testID}>
+      <View style={styles.jobRoomBriefTitleRow}>
+        <View style={[styles.jobRoomBriefAccent, { backgroundColor: tokens.primary }]} />
+        <Text style={[styles.jobRoomBriefTitle, { color: tokens.primary }]} numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
+      {lines?.length
+        ? lines.map((line) => (
+            <View key={line} style={styles.briefItem}>
+              <View style={[styles.briefDot, { backgroundColor: tokens.primary }]} />
+              <Text style={[styles.briefText, styles.jobRoomBriefText, { color: tokens.ink }]} numberOfLines={3}>
+                {line}
+              </Text>
+            </View>
+          ))
+        : (
+            <Text style={[styles.briefText, styles.jobRoomBriefText, { color: tokens.ink }]} numberOfLines={4}>
+              {body}
+            </Text>
+          )}
     </View>
   )
 }
@@ -1642,7 +1863,7 @@ function canonicalWorkerAreaLabel(area: string) {
 function localizedWorkerAreaLabel(area: string | null | undefined, language: WorkerLanguageMode) {
   if (!area) return appCopy[language].common.noData
   const canonicalArea = canonicalWorkerAreaLabel(area) ?? area
-  if (language === 'vi') return canonicalArea
+  if (language === 'vi') return localizeWorkerAreaFallback(canonicalArea)
   const mapped = canonicalArea
     .replace(/^Khu vực:\s*/i, '')
     .replace(/Khu vực TP\.?HCM/gi, 'Ho Chi Minh City area')
@@ -1650,6 +1871,18 @@ function localizedWorkerAreaLabel(area: string | null | undefined, language: Wor
     .replace(/Quận\s*(\d+)/gi, 'District $1')
     .replace(/TP\.?\s*HCM|Thành phố Hồ Chí Minh/gi, 'HCMC')
   return mapped.trim() || appCopy[language].common.noData
+}
+
+function localizeWorkerAreaFallback(area: string) {
+  return area
+    .replace(/\bquan\s*(\d+)\b/gi, 'Quận $1')
+    .replace(/\bq\s*\.?\s*(\d+)\b/gi, 'Quận $1')
+    .replace(/\bBinh Thanh\b/gi, 'Bình Thạnh')
+    .replace(/\bThu Duc\b/gi, 'Thủ Đức')
+    .replace(/\bTan Binh\b/gi, 'Tân Bình')
+    .replace(/\bGo Vap\b/gi, 'Gò Vấp')
+    .replace(/\bPhu Nhuan\b/gi, 'Phú Nhuận')
+    .trim()
 }
 
 function formatWorkerMoney(value: number, language: WorkerLanguageMode) {
@@ -1689,27 +1922,34 @@ function WorkerEarningsLedger() {
   const deal = getWorkerVisibleDeal(state.deal)
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
   const hasSettledEarnings = hasWorkerSettledEarnings(workerEarnings)
+  const payoutAccountTitle = language === 'en' ? 'Payout account' : 'Tài khoản nhận tiền'
   const rows = hasSettledEarnings && workerEarnings
     ? [
         [copy.earnings.ledgerTitle, `${workerEarnings.total_jobs_paid} ${language === 'en' ? 'items' : 'mục'}`],
         [language === 'en' ? 'Gross earnings' : 'Tổng trước phí', formatWorkerMoney(workerEarnings.gross_earnings, language)],
         [language === 'en' ? 'Net earnings' : 'Thực nhận', formatWorkerMoney(workerEarnings.net_earnings, language)],
-        [language === 'en' ? 'Payout account' : 'Tài khoản nhận tiền', appCopy[language].common.noData],
+        [payoutAccountTitle, appCopy[language].common.noData],
       ]
     : acceptedDeal
     ? [
         [copy.earnings.ledgerTitle, localizedStatusLabel(selectors.currentStatus, language)],
-        [language === 'en' ? 'Payout account' : 'Tài khoản nhận tiền', appCopy[language].common.noData],
+        [payoutAccountTitle, appCopy[language].common.noData],
       ]
     : copy.earnings.rows
 
   return (
     <View style={[styles.earningsLedgerCard, workerEarningsLedgerSurface(tokens)]} testID="worker-earnings-ledger">
       {rows.map((row, index) => (
-        <ListRow key={row[0]} icon={index === 0 ? 'money' : index === 1 ? 'bank' : 'document'} title={row[0]} meta={row[1]} />
+        <EarningsLedgerRow key={row[0]} icon={earningsLedgerIcon(row[0], copy.earnings.ledgerTitle, payoutAccountTitle, index)} title={row[0]} meta={row[1]} />
       ))}
     </View>
   )
+}
+
+function earningsLedgerIcon(title: string, ledgerTitle: string, payoutAccountTitle: string, index: number): WorkerIconName {
+  if (title === ledgerTitle) return 'document'
+  if (title === payoutAccountTitle) return 'bank'
+  return index === 1 ? 'money' : 'document'
 }
 
 function WorkerEarningsTrend() {
@@ -1720,14 +1960,14 @@ function WorkerEarningsTrend() {
   const maxDailyValue = Math.max(...realDays.map((day) => day.netEarnings), 0)
   const hasDailyEarnings = maxDailyValue > 0
   const days = hasDailyEarnings ? realDays : buildWorkerEmptyEarningsDays(language)
-  const emptySkeletonBarHeights = [42, 76, 56, 100, 70, 118, 60]
+  const emptySkeletonBarHeights = [42, 78, 58, 104, 72, 122, 64]
 
   return (
     <View style={[styles.earningsTrendCard, workerEarningsTrendSurface(tokens)]} testID="worker-earnings-seven-day-chart">
       <View pointerEvents="none" style={[styles.earningsTrendGlow, { backgroundColor: tokens.aqua }]} />
       <SubtleGlassHighlight />
       <View style={styles.earningsTrendTop}>
-        <Text style={[styles.statusPill, workerEarningsPillSurface(tokens)]} numberOfLines={1}>
+        <Text style={[styles.earningsRangePill, workerEarningsPillSurface(tokens)]} numberOfLines={1}>
           {title}
         </Text>
       </View>
@@ -1755,7 +1995,7 @@ function WorkerEarningsTrend() {
         </View>
         <View style={styles.earningsDayRail}>
           {days.map((day) => (
-            <Text key={day.date} style={[styles.metricLabel, { color: tokens.muted }]} numberOfLines={1}>
+            <Text key={day.date} style={[styles.earningsDayLabel, { color: tokens.muted }]} numberOfLines={1}>
               {day.label}
             </Text>
           ))}
@@ -1779,19 +2019,25 @@ function WorkerEarningsSummary() {
   return (
     <View style={styles.earningsSummaryGrid} testID="worker-earnings-day-month-summary">
       <View style={[styles.earningsSummaryCell, workerEarningsMiniSurface(tokens)]}>
-        <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
+        <Text style={[styles.earningsSummaryLabel, { color: tokens.subtle }]} numberOfLines={1}>
           {todayLabel}
         </Text>
-        <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={1}>
+        <Text adjustsFontSizeToFit minimumFontScale={0.88} style={[styles.earningsSummaryValue, { color: tokens.ink }]} numberOfLines={1}>
           {todayValue}
+        </Text>
+        <Text style={[styles.earningsSummaryHint, { color: tokens.muted }]} numberOfLines={1}>
+          {copy.earnings.summaryHint}
         </Text>
       </View>
       <View style={[styles.earningsSummaryCell, workerEarningsMiniSurface(tokens)]}>
-        <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
+        <Text style={[styles.earningsSummaryLabel, { color: tokens.subtle }]} numberOfLines={1}>
           {monthLabel}
         </Text>
-        <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={1}>
+        <Text adjustsFontSizeToFit minimumFontScale={0.88} style={[styles.earningsSummaryValue, { color: tokens.ink }]} numberOfLines={1}>
           {monthValue}
+        </Text>
+        <Text style={[styles.earningsSummaryHint, { color: tokens.muted }]} numberOfLines={1}>
+          {copy.earnings.summaryHint}
         </Text>
       </View>
     </View>
@@ -1888,13 +2134,15 @@ function WorkerProfileContent() {
           <View style={styles.profileAvatarHero}>
             <Icon inverse name="person" />
           </View>
-          <View style={styles.titleStack}>
-            <Text style={[styles.profileName, { color: tokens.ink }]}>{copy.profile.name}</Text>
-            <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2}>
+          <View style={styles.profileTitleStack}>
+            <Text style={[styles.profileName, { color: tokens.ink }]} numberOfLines={1}>
+              {copy.profile.name}
+            </Text>
+            <Text style={[styles.profileSubtitle, { color: tokens.muted }]} numberOfLines={2}>
               {language === 'en' ? 'Status and service skills' : 'Trạng thái và kỹ năng dịch vụ'}
             </Text>
           </View>
-          <Text style={[styles.statusPill, { backgroundColor: tokens.cream, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
+          <Text style={[styles.profileStatusPill, { backgroundColor: tokens.cream, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
             {profileStatusValue}
           </Text>
         </View>
@@ -1911,19 +2159,19 @@ function WorkerProfileContent() {
       {canSubmitVerification && showVerificationForm ? <WorkerVerificationForm /> : null}
 
       <View style={styles.profileMiniGrid} testID="worker-profile-mini-status-grid">
-        <View style={[styles.workerMiniCard, workerOpaqueCardSurface(tokens, 'raised')]}>
-          <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
+        <View style={[styles.profileMiniCard, workerProfileMiniSurface(tokens)]}>
+          <Text style={[styles.profileMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
             {profileStatusValue}
           </Text>
-          <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
+          <Text style={[styles.profileMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
             {language === 'en' ? 'Verification' : 'Xác minh'}
           </Text>
         </View>
-        <View style={[styles.workerMiniCard, workerOpaqueCardSurface(tokens, 'raised')]}>
-          <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
+        <View style={[styles.profileMiniCard, workerProfileMiniSurface(tokens)]}>
+          <Text style={[styles.profileMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
             {submittedProfileValue}
           </Text>
-          <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
+          <Text style={[styles.profileMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
             {language === 'en' ? 'Worker profile' : 'Hồ sơ thợ'}
           </Text>
         </View>
@@ -1942,9 +2190,9 @@ function WorkerProfileContent() {
         </View>
       ) : null}
 
-      <View style={[styles.listCard, workerOpaqueCardSurface(tokens)]} testID="worker-profile-list-groups">
+      <View style={[styles.listCard, styles.profileListCard, workerOpaqueCardSurface(tokens)]} testID="worker-profile-list-groups">
         {profileRows.map((row, index) => (
-          <ListRow key={row[0]} icon={index === 0 ? 'shield' : index === 1 ? 'tools' : index === 2 ? 'map' : index === 3 ? 'moon' : 'globe'} title={row[0]} meta={row[1]} />
+          <ProfileListRow key={row[0]} icon={index === 0 ? 'shield' : index === 1 ? 'tools' : 'map'} title={row[0]} meta={row[1]} />
         ))}
       </View>
 
@@ -2688,20 +2936,24 @@ function WorkerHomeMiniGrid() {
       <Pressable
         accessibilityRole="button"
         onPress={() => replace('/(worker)/jobs?tab=waiting')}
-        style={({ pressed }) => [styles.workerMiniCard, workerOpaqueCardSurface(tokens, 'raised'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+        style={({ pressed }) => [styles.workerMiniCard, workerServiceTileSurface(tokens, 'mint'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
         testID="worker-home-mini-waiting"
       >
-        <Icon name="jobs" small />
+        <View style={[styles.workerMiniIcon, workerIconBubbleSurface(tokens, 'mint')]}>
+          <Icon name="jobs" active small />
+        </View>
         <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>{copy.jobs.filters[0]}</Text>
         <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>{language === 'en' ? 'New requests' : 'Yêu cầu mới'}</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
         onPress={() => replace('/(worker)/profile')}
-        style={({ pressed }) => [styles.workerMiniCard, workerOpaqueCardSurface(tokens, 'raised'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+        style={({ pressed }) => [styles.workerMiniCard, workerServiceTileSurface(tokens, 'cyan'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
         testID="worker-home-mini-profile"
       >
-        <Icon name="shield" small />
+        <View style={[styles.workerMiniIcon, workerIconBubbleSurface(tokens, 'cyan')]}>
+          <Icon name="shield" active small />
+        </View>
         <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>{profileStatus}</Text>
         <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>{copy.home.serviceProfileTitle}</Text>
       </Pressable>
@@ -3171,14 +3423,14 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
   const dockWidth = Math.max(frameWidth - 51.2, 0)
   const bottom = Math.max(insets.bottom + workerDockBottomMargin, workerDockBottomMargin)
   type WorkerDockItem = FloatingGlassTabItem<WorkerActiveTab> & {
-    icon: WorkerIconName
+    icon: WorkerDockIconName
     path: '/(worker)/home' | '/(worker)/jobs' | '/(worker)/chat' | '/(worker)/earnings' | '/(worker)/profile'
   }
   const items: WorkerDockItem[] = [
-    { key: 'home', icon: 'home', label: copy.nav.home, path: '/(worker)/home', testID: 'worker-dock-home' },
-    { key: 'jobs', icon: 'jobs', label: copy.nav.jobs, path: '/(worker)/jobs', testID: 'worker-dock-jobs' },
-    { key: 'chat', icon: 'chat', label: copy.nav.chat, path: '/(worker)/chat', testID: 'worker-dock-chat' },
-    { key: 'earnings', icon: 'trend', label: copy.nav.earnings, path: '/(worker)/earnings', testID: 'worker-dock-earnings' },
+    { key: 'home', icon: 'apartment', label: copy.nav.home, path: '/(worker)/home', testID: 'worker-dock-home' },
+    { key: 'jobs', icon: 'document', label: copy.nav.jobs, path: '/(worker)/jobs', testID: 'worker-dock-jobs' },
+    { key: 'chat', icon: 'kael', label: copy.nav.chat, path: '/(worker)/chat', testID: 'worker-dock-chat' },
+    { key: 'earnings', icon: 'payment', label: copy.nav.earnings, path: '/(worker)/earnings', testID: 'worker-dock-earnings' },
     { key: 'profile', icon: 'person', label: copy.nav.profile, path: '/(worker)/profile', testID: 'worker-dock-profile' },
   ]
 
@@ -3203,11 +3455,60 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
           replace(item.path)
         }}
         previousKey={lastWorkerDockActive}
-        iconForItem={(item, focused) => <Icon name={item.icon} active={focused} dock />}
+        iconForItem={(item, focused) => <WorkerDockIcon focused={focused} name={item.icon} />}
         style={styles.workerDock}
         testID="worker-liquid-glass-dock"
       />
     </View>
+  )
+}
+
+function WorkerDockIcon({ focused, name }: { focused: boolean; name: WorkerDockIconName }) {
+  const { tokens } = useWorkerUi()
+  const color = focused ? tokens.primary : tokens.subtle
+  const accent = focused ? tokens.copper : tokens.subtle
+
+  if (name === 'kael') {
+    return <Image contentFit="contain" source={kaelHead} style={styles.workerDockKaelImage} testID="worker-dock-kael-mascot-icon" />
+  }
+
+  return <WorkerDockGlyph accent={accent} color={color} name={name} />
+}
+
+function WorkerDockGlyph({ accent, color, name }: { accent: string; color: string; name: Exclude<WorkerDockIconName, 'kael'> }) {
+  if (name === 'apartment') {
+    return (
+      <Svg width={26} height={26} viewBox="0 0 26 26" fill="none" testID="worker-dock-client-style-icon">
+        <Path d="M5.5 12.5 13 6l7.5 6.5v7.2c0 1-.8 1.8-1.8 1.8H7.3c-1 0-1.8-.8-1.8-1.8v-7.2Z" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M11 21.5v-5h4v5" stroke={accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
+    )
+  }
+
+  if (name === 'person') {
+    return (
+      <Svg width={26} height={26} viewBox="0 0 26 26" fill="none" testID="worker-dock-client-style-icon">
+        <Path d="M7.5 20c.9-2.5 2.9-3.8 5.5-3.8s4.6 1.3 5.5 3.8" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+        <Circle cx={13} cy={9.5} r={3.3} stroke={color} strokeWidth={1.9} />
+      </Svg>
+    )
+  }
+
+  if (name === 'payment') {
+    return (
+      <Svg width={25} height={25} viewBox="0 0 25 25" fill="none" testID="worker-dock-client-style-icon">
+        <Path d="M5.4 9.5 12.5 5l7.1 4.5" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M7 10.5h11M8.2 10.5v6.2M12.5 10.5v6.2M16.8 10.5v6.2M6.5 18.5h12" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+        <Path d="M12.5 7.8h.1" stroke={accent} strokeWidth={3} strokeLinecap="round" />
+      </Svg>
+    )
+  }
+
+  return (
+    <Svg width={25} height={25} viewBox="0 0 25 25" fill="none" testID="worker-dock-client-style-icon">
+      <Rect x={6} y={6} width={13} height={13} rx={3.2} stroke={color} strokeWidth={1.9} />
+      <Path d="M9.5 11h6M9.5 15h4" stroke={accent} strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
   )
 }
 
@@ -3695,6 +3996,40 @@ function ChatBubble({ mine = false, system = false, text, who }: { mine?: boolea
   )
 }
 
+function EarningsLedgerRow({ icon, meta, title }: { icon: WorkerIconName; meta: string; title: string }) {
+  const { tokens } = useWorkerUi()
+
+  return (
+    <View style={styles.earningsListRow}>
+      <View style={[styles.earningsListIcon, { backgroundColor: tokens.mint, borderColor: tokens.border }]}>
+        <Icon name={icon} small />
+      </View>
+      <Text style={[styles.earningsListTitle, { color: tokens.ink }]} numberOfLines={1}>
+        {title}
+      </Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.86} style={[styles.earningsListMeta, { color: tokens.muted }]} numberOfLines={1}>
+        {meta}
+      </Text>
+    </View>
+  )
+}
+
+function ProfileListRow({ icon, meta, title }: { icon: WorkerIconName; meta: string; title: string }) {
+  const { tokens } = useWorkerUi()
+
+  return (
+    <View style={styles.profileListRow}>
+      <Icon name={icon} small />
+      <Text style={[styles.profileListTitle, { color: tokens.ink }]} numberOfLines={1}>
+        {title}
+      </Text>
+      <Text adjustsFontSizeToFit minimumFontScale={0.84} style={[styles.profileListMeta, { color: tokens.muted }]} numberOfLines={1}>
+        {meta}
+      </Text>
+    </View>
+  )
+}
+
 function ListRow({ icon, meta, title }: { icon: WorkerIconName; meta: string; title: string }) {
   const { tokens } = useWorkerUi()
 
@@ -3831,6 +4166,12 @@ function Icon({ active = false, dock = false, inverse = false, name, small = fal
           <Path d="M6.4 12.5h12.2" stroke={accent} strokeWidth={stroke} strokeLinecap="round" />
         </>
       ) : null}
+      {name === 'mic' ? (
+        <>
+          <Path d="M9.6 6.9a2.9 2.9 0 0 1 5.8 0v5.2a2.9 2.9 0 0 1-5.8 0V6.9Z" stroke={color} strokeWidth={stroke} strokeLinejoin="round" />
+          <Path d="M6.9 11.8c0 3.1 2.3 5.3 5.6 5.3s5.6-2.2 5.6-5.3M12.5 17.1v3.1M9.6 20.2h5.8" stroke={accent} strokeWidth={stroke} strokeLinecap="round" />
+        </>
+      ) : null}
       {name === 'map' ? (
         <>
           <Path d="m5.8 8.5 4-2 5.4 2.2 4-2v10l-4 2-5.4-2.2-4 2v-10Z" stroke={color} strokeWidth={stroke} strokeLinejoin="round" />
@@ -3884,6 +4225,32 @@ function Icon({ active = false, dock = false, inverse = false, name, small = fal
       ) : null}
       {name === 'send' ? <Path d="M5.4 12.8 19.4 5.8l-4.3 13.4-3.1-5.2-6.6-1.2Z" stroke={active ? tokens.primaryText : color} strokeWidth={stroke} strokeLinejoin="round" /> : null}
       {name === 'spark' ? <Path d="M12.5 4.8l1.7 5.1 5.1 1.7-5.1 1.7-1.7 5.1-1.7-5.1-5.1-1.7 5.1-1.7 1.7-5.1Z" stroke={color} strokeWidth={stroke} strokeLinejoin="round" /> : null}
+    </Svg>
+  )
+}
+
+function WorkerChatPlusIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  )
+}
+
+function WorkerChatMicIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3.5a3.3 3.3 0 0 0-3.3 3.3v4.4a3.3 3.3 0 0 0 6.6 0V6.8A3.3 3.3 0 0 0 12 3.5Z" stroke={color} strokeWidth={2} />
+      <Path d="M5.7 10.7a6.3 6.3 0 0 0 12.6 0M12 17v3.5M9.2 20.5h5.6" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
+function WorkerChatSendIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M22 2 11 13" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="m22 2-7 20-4-9-9-4 20-7Z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   )
 }
@@ -3985,6 +4352,79 @@ function messageBubbleSurface(tokens: WorkerThemeTokens, { mine, system }: { min
     borderWidth: 1,
     boxShadow: 'none',
   }
+}
+
+function workerKaelChatSurface(tokens: WorkerThemeTokens, tone: WorkerKaelChatTone) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const dark = tokens.mode === 'dark'
+  const gradients: Record<WorkerKaelChatTone, string> = dark
+    ? {
+        agent: 'radial-gradient(circle at 92% 0%, rgba(105,222,198,0.22), transparent 34%), radial-gradient(circle at 4% 100%, rgba(224,160,107,0.14), transparent 38%), linear-gradient(145deg, rgba(22,43,40,0.98), rgba(17,59,53,0.92))',
+        avatar: 'linear-gradient(145deg, rgba(31,62,57,0.98), rgba(17,45,41,0.92))',
+        brief: 'radial-gradient(circle at 95% 10%, rgba(224,160,107,0.18), transparent 35%), linear-gradient(150deg, rgba(23,59,53,0.96), rgba(59,41,27,0.72))',
+        bubble: 'linear-gradient(145deg, rgba(22,43,40,0.98), rgba(40,34,28,0.88))',
+        composer: 'linear-gradient(135deg, rgba(22,43,40,0.98), rgba(17,50,45,0.94))',
+        header: 'radial-gradient(circle at 88% 16%, rgba(105,222,198,0.18), transparent 30%), linear-gradient(135deg, rgba(21,43,40,0.98), rgba(18,48,43,0.94))',
+        icon: 'linear-gradient(145deg, rgba(31,62,57,0.98), rgba(17,45,41,0.92))',
+        send: 'linear-gradient(145deg, #69DEC6, #10A594)',
+        status: 'linear-gradient(135deg, rgba(26,66,59,0.98), rgba(22,43,40,0.84))',
+        step: 'linear-gradient(145deg, rgba(24,50,46,0.98), rgba(19,57,51,0.78))',
+      }
+    : {
+        agent: 'radial-gradient(circle at 92% 0%, rgba(156,238,221,0.82), transparent 32%), radial-gradient(circle at 4% 100%, rgba(255,245,229,0.76), transparent 36%), linear-gradient(145deg, rgba(255,253,248,0.98), rgba(224,249,243,0.93))',
+        avatar: 'linear-gradient(145deg, rgba(255,253,248,0.98), rgba(232,252,247,0.78))',
+        brief: 'radial-gradient(circle at 95% 10%, rgba(255,227,183,0.62), transparent 35%), linear-gradient(150deg, rgba(217,251,242,0.92), rgba(255,246,231,0.76))',
+        bubble: 'linear-gradient(145deg, rgba(255,253,248,0.98), rgba(255,249,239,0.92))',
+        composer: 'linear-gradient(135deg, rgba(255,253,248,0.98), rgba(239,255,250,0.94))',
+        header: 'radial-gradient(circle at 88% 16%, rgba(156,238,221,0.74), transparent 32%), linear-gradient(135deg, rgba(255,253,248,0.98), rgba(226,250,244,0.98))',
+        icon: 'linear-gradient(145deg, rgba(217,251,242,0.95), rgba(255,253,248,0.82))',
+        send: 'linear-gradient(145deg, #10A594, #078B7C)',
+        status: 'linear-gradient(135deg, rgba(217,251,242,0.96), rgba(255,253,248,0.80))',
+        step: 'linear-gradient(145deg, rgba(255,253,248,0.86), rgba(232,252,247,0.78))',
+      }
+  const backgroundColor = dark
+    ? tone === 'send'
+      ? '#69DEC6'
+      : tone === 'brief'
+        ? '#173B35'
+        : tone === 'icon'
+          ? tokens.mint
+        : '#122724'
+    : tone === 'send'
+      ? '#078B7C'
+      : tone === 'brief'
+        ? '#D9FBF2'
+        : tone === 'icon'
+          ? tokens.mint
+        : '#FFFDF8'
+  const borderColor = dark
+    ? tone === 'agent' || tone === 'brief' ? 'rgba(105,222,198,0.28)' : 'rgba(105,222,198,0.20)'
+    : tone === 'agent' || tone === 'brief' || tone === 'composer' || tone === 'header'
+      ? 'rgba(8,139,124,0.30)'
+      : 'rgba(8,139,124,0.22)'
+  const shadow = dark
+    ? tone === 'agent' || tone === 'brief' || tone === 'composer' || tone === 'header'
+      ? '0 16px 34px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.10)'
+      : '0 8px 18px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.08)'
+    : tone === 'agent' || tone === 'brief'
+      ? '0 15px 36px rgba(16,74,66,0.11), inset 0 1px 0 rgba(255,255,255,0.88)'
+      : tone === 'header'
+        ? '0 15px 36px rgba(16,74,66,0.12), inset 0 1px 0 rgba(255,255,255,0.92)'
+        : tone === 'composer'
+          ? '0 18px 40px rgba(16,74,66,0.12), inset 0 1px 0 rgba(255,255,255,0.92)'
+          : tone === 'send'
+            ? '0 10px 22px rgba(8,139,124,0.22), inset 0 1px 0 rgba(255,255,255,0.22)'
+            : '0 6px 14px rgba(16,74,66,0.06), inset 0 1px 0 rgba(255,255,255,0.72)'
+
+  return {
+    backgroundColor,
+    borderColor,
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : shadow,
+    background: reduceTransparency ? undefined : gradients[tone],
+    backgroundImage: reduceTransparency ? undefined : gradients[tone],
+    experimental_backgroundImage: reduceTransparency ? undefined : gradients[tone],
+  } as any
 }
 
 function workerOpaqueCardSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
@@ -4288,6 +4728,24 @@ function workerProfileHeroSurface(tokens: WorkerThemeTokens) {
   } as any
 }
 
+function workerProfileMiniSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  if (tokens.mode === 'dark') {
+    return workerOpaqueCardSurface(tokens, 'mint')
+  }
+
+  const gradient = 'linear-gradient(180deg, rgba(255,255,255,0.76), rgba(245,255,250,0.84))'
+  return {
+    backgroundColor: reduceTransparency ? '#F5FFFA' : 'rgba(245,255,250,0.82)',
+    borderColor: reduceTransparency ? tokens.border : 'rgba(34,122,108,0.12)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : '0 8px 22px rgba(17,70,61,0.045)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
 function workerProfilePreferenceSurface(tokens: WorkerThemeTokens) {
   const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
   const gradient = tokens.mode === 'dark'
@@ -4344,6 +4802,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   inactiveRouteSurface: { display: 'none' },
   canvas: { alignItems: 'center', flex: 1, overflow: 'hidden' },
+  workerScroll: { flex: 1, overflowAnchor: 'none', width: '100%' } as any,
+  workerStandaloneScroll: { overflow: 'hidden' } as any,
   backdropWarm: { borderRadius: 30, bottom: 72, height: 148, left: -98, opacity: 0.12, position: 'absolute', transform: [{ rotate: '12deg' }], width: 210 },
   backdropMint: { borderRadius: 36, height: 226, opacity: 0.18, position: 'absolute', right: -126, top: 54, width: 294 },
   backdropCyan: { borderRadius: 30, height: 148, left: -96, opacity: 0.1, position: 'absolute', top: 200, transform: [{ rotate: '-10deg' }], width: 220 },
@@ -4353,6 +4813,7 @@ const styles = StyleSheet.create({
   sectionMotionCaustic: { borderRadius: 30, bottom: 84, height: 118, left: -104, position: 'absolute', width: 268 },
   sectionMotionGlint: { bottom: 52, height: 260, left: '50%', position: 'absolute', width: 34 },
   scrollContent: { gap: 12, paddingHorizontal: workerFrameHorizontalPadding, paddingTop: 8, zIndex: 2 },
+  standaloneScrollContent: { overflow: 'hidden' } as any,
   kicker: { fontSize: 12, fontWeight: '600', letterSpacing: 0 },
   screenSubtitle: { fontSize: 12, fontWeight: '700', letterSpacing: 0, lineHeight: 16 },
   screenTitle: { fontSize: 25, fontWeight: '700', letterSpacing: 0, lineHeight: 27 },
@@ -4412,9 +4873,10 @@ const styles = StyleSheet.create({
   workerServiceTitle: { fontSize: 14, fontWeight: '600', letterSpacing: 0, lineHeight: 16, marginTop: 9 },
   workerServiceMeta: { fontSize: 10, fontWeight: '700', letterSpacing: 0, marginTop: 3 },
   workerMiniGrid: { flexDirection: 'row', gap: 10 },
-  workerMiniCard: { borderRadius: 20, borderWidth: 1, flex: 1, gap: 4, minHeight: 84, overflow: 'hidden', padding: 12 },
-  workerMiniTitle: { fontSize: 16, fontWeight: '600', letterSpacing: 0, lineHeight: 18 },
-  workerMiniMeta: { fontSize: 11, fontWeight: '600', lineHeight: 14 },
+  workerMiniCard: { borderRadius: 22, borderWidth: 1, flex: 1, gap: 4, minHeight: 98, overflow: 'hidden', padding: 11, position: 'relative' },
+  workerMiniIcon: { alignItems: 'center', borderRadius: 16, borderWidth: 1, height: 38, justifyContent: 'center', marginBottom: 3, width: 38 },
+  workerMiniTitle: { fontSize: 15.5, fontWeight: '600', letterSpacing: 0, lineHeight: 18 },
+  workerMiniMeta: { fontSize: 10.5, fontWeight: '700', letterSpacing: 0, lineHeight: 14 },
   metricRow: { flexDirection: 'row', gap: 8 },
   metric: { alignItems: 'center', borderRadius: 15, borderWidth: 1, flex: 1, gap: 1, justifyContent: 'center', minHeight: 40, overflow: 'hidden', padding: 6, position: 'relative' },
   metricValue: { fontSize: 15, fontVariant: ['tabular-nums'], fontWeight: '600', position: 'relative', textAlign: 'center', zIndex: 2 },
@@ -4470,24 +4932,53 @@ const styles = StyleSheet.create({
   needsReviewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   statusPill: { borderRadius: 999, fontSize: 12, fontWeight: '700', overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
   cardTitle: { fontSize: 18, fontWeight: '600', letterSpacing: 0, lineHeight: 24 },
-  chatShell: { flex: 1, gap: 12, minHeight: 620, paddingBottom: 86, position: 'relative' },
-  kaelClientStage: { flex: 1, gap: 12, justifyContent: 'space-between', minHeight: 642, paddingBottom: 2, position: 'relative' },
+  chatShell: { flex: 1, gap: 10, justifyContent: 'space-between', minHeight: 0, paddingBottom: 10, position: 'relative' },
+  kaelClientStage: { flex: 1, gap: 12, justifyContent: 'space-between', minHeight: 0, overflowAnchor: 'none', paddingBottom: 0, position: 'relative' } as any,
   kaelClientStageEmpty: { opacity: 0.92 },
   kaelBlankCanvas: { flex: 1, minHeight: 240, overflow: 'hidden', position: 'relative' },
   kaelCanvasWashLarge: { borderRadius: 32, height: 168, left: -48, opacity: 0.07, position: 'absolute', top: 46, transform: [{ rotate: '-8deg' }], width: 168 },
   kaelCanvasWashWarm: { borderRadius: 28, bottom: 42, height: 126, opacity: 0.06, position: 'absolute', right: -34, transform: [{ rotate: '12deg' }], width: 126 },
   jobRoomWaiting: { alignItems: 'center', gap: 8, justifyContent: 'center', minHeight: 228, padding: 18, position: 'relative', zIndex: 2 },
   jobRoomKaelHead: { height: 70, width: 70 },
-  jobRoomStack: { gap: 10, paddingBottom: 86 },
+  jobRoomRevealStack: { gap: 12 },
+  jobRoomStack: { gap: 11 },
+  jobRoomRevealStep: { gap: 11 },
+  jobRoomProcessHidden: { opacity: 0 },
+  jobRoomProcessTapTarget: { borderRadius: 28 },
+  jobRoomProcessCard: { borderRadius: 28, borderWidth: 1, gap: 16, overflow: 'hidden', paddingBottom: 18, paddingHorizontal: 17, paddingTop: 16 },
+  jobRoomProcessHead: { alignItems: 'center', flexDirection: 'row', gap: 11 },
+  jobRoomProcessAvatar: { alignItems: 'center', borderRadius: 21, borderWidth: 1, flexShrink: 0, height: 50, justifyContent: 'center', overflow: 'hidden', width: 50 },
+  jobRoomProcessAvatarImage: { height: 42, width: 42 },
+  jobRoomProcessStatus: { alignItems: 'center', borderRadius: 18, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 9, minHeight: 48, paddingHorizontal: 13 },
+  jobRoomProcessAccent: { borderRadius: 999, height: 26, width: 6 },
+  jobRoomProcessTitle: { flex: 1, fontSize: 14.5, fontWeight: '700', letterSpacing: 0, lineHeight: 18.5 },
+  jobRoomProcessMeta: { fontSize: 11.5, fontWeight: '600', letterSpacing: 0, lineHeight: 15 },
+  jobRoomProcessSteps: { flexDirection: 'row', gap: 9, paddingHorizontal: 3 },
+  jobRoomProcessStep: { borderRadius: 17, borderWidth: 1, flex: 1, minHeight: 64, paddingHorizontal: 9, paddingVertical: 10 },
+  jobRoomProcessStepIndex: { fontSize: 10, fontWeight: '700', letterSpacing: 0, lineHeight: 12, marginBottom: 6 },
+  jobRoomProcessStepTitle: { fontSize: 11.5, fontWeight: '700', letterSpacing: 0, lineHeight: 15 },
+  jobRoomMessageRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
+  jobRoomMessageAvatar: { alignItems: 'center', borderRadius: 18, borderWidth: 1, flexShrink: 0, height: 40, justifyContent: 'center', marginTop: 2, overflow: 'hidden', width: 40 },
+  jobRoomMessageAvatarImage: { height: 34, width: 34 },
+  jobRoomMessageBubble: { borderRadius: 22, borderTopLeftRadius: 8, borderWidth: 1, flex: 1, gap: 6, overflow: 'hidden', paddingHorizontal: 14, paddingVertical: 12 },
+  jobRoomBubbleKicker: { fontSize: 11.5, fontWeight: '700', letterSpacing: 0, lineHeight: 15 },
+  jobRoomBubbleTitle: { fontSize: 17, fontWeight: '700', letterSpacing: 0, lineHeight: 22 },
+  jobRoomBubbleBody: { fontSize: 13, fontWeight: '700', letterSpacing: 0, lineHeight: 19 },
   jobRoomHeader: { borderRadius: 24, borderWidth: 1, gap: 10, overflow: 'hidden', padding: 13 },
   jobRoomMetaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   jobRoomMetaCell: { borderRadius: 18, borderWidth: 1, flexBasis: '47%', flexGrow: 1, gap: 4, minHeight: 66, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 9 },
   jobRoomMetaValue: { fontSize: 13, fontWeight: '600', letterSpacing: 0, lineHeight: 17 },
-  jobRoomBrief: { borderRadius: 22, borderWidth: 1, gap: 8, overflow: 'hidden', padding: 12 },
+  jobRoomBrief: { borderRadius: 20, borderWidth: 1, gap: 8, overflow: 'hidden', paddingHorizontal: 13, paddingVertical: 11 },
+  jobRoomBriefAligned: { marginLeft: 50 },
+  jobRoomBriefTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
+  jobRoomBriefAccent: { borderRadius: 999, height: 18, width: 4 },
+  jobRoomBriefTitle: { flex: 1, fontSize: 12.5, fontWeight: '700', letterSpacing: 0, lineHeight: 16 },
+  jobRoomBriefText: { lineHeight: 19 },
   jobRoomGate: { alignItems: 'center', borderRadius: 22, borderWidth: 1, flexDirection: 'row', gap: 10, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 11 },
-  jobRoomTopBar: { alignItems: 'center', borderRadius: 24, borderWidth: 1, flexDirection: 'row', gap: 10, marginBottom: 12, minHeight: 68, paddingHorizontal: 12, paddingVertical: 10 },
-  jobRoomBackButton: { alignItems: 'center', borderRadius: 18, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+  jobRoomTopBar: { alignItems: 'center', borderRadius: 26, borderWidth: 1, flexDirection: 'row', gap: 10, marginBottom: 12, minHeight: 74, paddingHorizontal: 12, paddingVertical: 10 },
+  jobRoomBackButton: { alignItems: 'center', borderRadius: 20, borderWidth: 1, height: 48, justifyContent: 'center', width: 48 },
   jobRoomHeaderAvatar: { height: 44, width: 44 },
+  jobRoomHeaderSpacer: { flex: 1, minHeight: 42 },
   jobRoomStatusPill: { borderRadius: 999, borderWidth: 1, fontSize: 11, fontWeight: '700', letterSpacing: 0, maxWidth: 94, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 7, textAlign: 'center' },
   jobRoomTitleStack: { flex: 1, minWidth: 0 },
   chatStack: { gap: 10 },
@@ -4495,32 +4986,43 @@ const styles = StyleSheet.create({
   chatBubbleMine: { alignSelf: 'flex-end' },
   chatWho: { fontSize: 12, fontWeight: '600' },
   chatText: { fontSize: 14, fontWeight: '600', lineHeight: 20, marginTop: 3 },
-  chatComposer: { alignItems: 'center', borderRadius: 24, borderWidth: 1, bottom: 0, flexDirection: 'row', gap: 8, left: 0, minHeight: 64, overflow: 'hidden', padding: 7, position: 'absolute', right: 0, zIndex: 12 },
-  composerTool: { alignItems: 'center', borderRadius: 16, borderWidth: 1, height: 40, justifyContent: 'center', width: 40 },
-  chatInput: { flex: 1, flexShrink: 1, fontSize: 15, fontWeight: '500', minHeight: 40, minWidth: 0, paddingHorizontal: 8 },
-  sendButton: { alignItems: 'center', borderRadius: 17, flexShrink: 0, height: 42, justifyContent: 'center', width: 42 },
+  chatComposerTouchWrap: { marginHorizontal: -3, marginTop: 10 },
+  chatComposer: { alignItems: 'flex-end', alignSelf: 'stretch', borderRadius: 24, borderWidth: 1, flexDirection: 'row', gap: 10, minHeight: 52, overflow: 'hidden', paddingBottom: 8, paddingHorizontal: 9, paddingTop: 0, position: 'relative', zIndex: 2 },
+  composerTool: { alignItems: 'center', borderRadius: 16, borderWidth: 1, height: 46, justifyContent: 'center', width: 46 },
+  chatInput: { borderRadius: 16, borderWidth: 0, flex: 1, flexShrink: 1, fontSize: 14.5, fontWeight: '700', height: 46, letterSpacing: 0, lineHeight: 20, maxHeight: 46, minHeight: 46, minWidth: 0, paddingBottom: 13, paddingHorizontal: 8, paddingTop: 13, textAlignVertical: 'center' },
+  chatInputInvisibleFocus: { backgroundColor: 'transparent', borderColor: 'transparent', borderWidth: 0, boxShadow: 'none', outlineColor: 'transparent', outlineOffset: 0, outlineStyle: 'none', outlineWidth: 0 } as any,
+  sendButton: { alignItems: 'center', borderRadius: 16, flexShrink: 0, height: 44, justifyContent: 'center', minWidth: 44, width: 44 },
   earningsHero: { borderRadius: 32, gap: 12, overflow: 'hidden', padding: 18, position: 'relative' },
   earningsHeroWrap: { gap: 0, position: 'relative' },
   earningsBadge: { alignItems: 'center', borderRadius: 24, height: 58, justifyContent: 'center', transform: [{ rotate: '-5deg' }], width: 58 },
   earningsTrendCard: { borderRadius: 32, gap: 14, overflow: 'hidden', padding: 18, position: 'relative' },
   earningsTrendGlow: { borderRadius: 44, height: 146, opacity: 0.15, position: 'absolute', right: -38, top: -34, transform: [{ rotate: '-6deg' }], width: 146 },
   earningsTrendTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  earningsChartShell: { borderRadius: 22, borderWidth: 1, gap: 12, justifyContent: 'space-between', minHeight: 150, padding: 15 },
-  earningsChartEmptyState: { alignItems: 'center', flex: 1, gap: 8, justifyContent: 'center', minHeight: 102, overflow: 'hidden', position: 'relative' },
-  earningsBarRail: { alignItems: 'flex-end', alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-between', minHeight: 104, paddingHorizontal: 18 },
-  earningsEmptyBar: { borderRadius: 12, width: 28 },
-  earningsDayRail: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18 },
+  earningsRangePill: { alignSelf: 'flex-start', borderRadius: 999, fontSize: 12, fontWeight: '700', lineHeight: 16, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 7 },
+  earningsChartShell: { borderRadius: 22, borderWidth: 1, gap: 11, justifyContent: 'space-between', minHeight: 154, paddingHorizontal: 14, paddingVertical: 13 },
+  earningsChartEmptyState: { alignItems: 'center', flex: 1, gap: 8, justifyContent: 'center', minHeight: 124, overflow: 'hidden', position: 'relative' },
+  earningsBarRail: { alignItems: 'flex-end', alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-between', minHeight: 122, paddingHorizontal: 15 },
+  earningsEmptyBar: { borderBottomLeftRadius: 8, borderBottomRightRadius: 8, borderTopLeftRadius: 12, borderTopRightRadius: 12, width: 28 },
+  earningsDayRail: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15 },
+  earningsDayLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0, minWidth: 24, position: 'relative', textAlign: 'center', zIndex: 2 },
   earningsSummaryGrid: { flexDirection: 'row', gap: 10 },
-  earningsSummaryCell: { borderRadius: 24, borderWidth: 1, flex: 1, gap: 4, minHeight: 86, padding: 14 },
+  earningsSummaryCell: { borderRadius: 22, borderWidth: 1, flex: 1, gap: 4, justifyContent: 'center', minHeight: 86, paddingHorizontal: 16, paddingVertical: 13 },
+  earningsSummaryLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0, lineHeight: 14, textAlign: 'left' },
+  earningsSummaryValue: { fontSize: 17, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: 0, lineHeight: 22 },
+  earningsSummaryHint: { fontSize: 11, fontWeight: '600', letterSpacing: 0, lineHeight: 14 },
   moneyText: { fontSize: 34, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: 0 },
   moneyTextState: { fontSize: 24, lineHeight: 30 },
   listCard: { borderRadius: 29, gap: 4, overflow: 'hidden', padding: 10, position: 'relative' },
-  earningsLedgerCard: { borderRadius: 29, gap: 8, overflow: 'hidden', padding: 12, position: 'relative' },
+  earningsLedgerCard: { borderRadius: 29, gap: 6, overflow: 'hidden', padding: 10, position: 'relative' },
+  earningsListRow: { alignItems: 'center', borderRadius: 16, flexDirection: 'row', gap: 10, minHeight: 56, paddingHorizontal: 10, paddingVertical: 7 },
+  earningsListIcon: { alignItems: 'center', borderRadius: 13, borderWidth: 1, height: 30, justifyContent: 'center', width: 30 },
+  earningsListTitle: { flex: 1, fontSize: 13.5, fontWeight: '700', letterSpacing: 0, lineHeight: 18 },
+  earningsListMeta: { flexShrink: 0, fontSize: 11.5, fontWeight: '700', letterSpacing: 0, lineHeight: 15, maxWidth: 116, textAlign: 'right' },
   listRow: { alignItems: 'center', flexDirection: 'row', gap: 11, minHeight: 54, paddingHorizontal: 8 },
   listTitle: { flex: 1, fontSize: 14, fontWeight: '600' },
   listMeta: { fontSize: 12, fontWeight: '600', maxWidth: 148, textAlign: 'right' },
   listMetaInline: { fontSize: 11, fontWeight: '600', lineHeight: 14 },
-  profileHead: { borderRadius: 30, gap: 16, overflow: 'hidden', padding: 17, position: 'relative' },
+  profileHead: { borderRadius: 30, gap: 14, overflow: 'hidden', paddingHorizontal: 18, paddingVertical: 17, position: 'relative' },
   profileHeroTop: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   profileHeroAction: { flexDirection: 'row' },
   avatarWrap: { alignItems: 'center', borderRadius: 999, height: 56, justifyContent: 'center', width: 56 },
@@ -4536,17 +5038,27 @@ const styles = StyleSheet.create({
     width: 52,
     experimental_backgroundImage: 'linear-gradient(135deg, #08786E, #38D8BA)',
   } as any,
-  profileName: { fontSize: 22, fontWeight: '600', letterSpacing: 0, lineHeight: 27 },
+  profileTitleStack: { flex: 1, gap: 3, minWidth: 0 },
+  profileName: { fontSize: 23, fontWeight: '600', letterSpacing: 0, lineHeight: 28 },
+  profileSubtitle: { fontSize: 13, fontWeight: '600', letterSpacing: 0, lineHeight: 18 },
+  profileStatusPill: { borderRadius: 999, flexShrink: 0, fontSize: 12, fontWeight: '700', lineHeight: 16, maxWidth: 92, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 7, textAlign: 'center' },
   profileBadge: { alignItems: 'center', borderRadius: 999, height: 42, justifyContent: 'center', width: 42 },
   scoreNumber: { fontSize: 28, fontWeight: '600', letterSpacing: 0, lineHeight: 34 },
   skillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   skillPill: { borderRadius: 999, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 13 },
   skillText: { fontSize: 13, fontWeight: '600' },
   profileMiniGrid: { flexDirection: 'row', gap: 10 },
+  profileMiniCard: { borderRadius: 20, borderWidth: 1, flex: 1, gap: 3, minHeight: 84, overflow: 'hidden', paddingHorizontal: 14, paddingTop: 21 },
+  profileMiniTitle: { fontSize: 16, fontWeight: '600', letterSpacing: 0, lineHeight: 18 },
+  profileMiniMeta: { fontSize: 11, fontWeight: '700', letterSpacing: 0, lineHeight: 15 },
   profileSyncPreview: { borderRadius: 24, borderWidth: 1, gap: 4, overflow: 'hidden', padding: 14 },
   profileSyncPreviewTop: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
-  preferenceCard: { borderRadius: 29, gap: 0, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 8, position: 'relative' },
-  preferenceRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 58, paddingHorizontal: 4 },
+  profileListCard: { borderRadius: 29, gap: 8, paddingHorizontal: 12, paddingVertical: 14 },
+  profileListRow: { alignItems: 'center', borderRadius: 16, flexDirection: 'row', gap: 12, minHeight: 48, paddingHorizontal: 4 },
+  profileListTitle: { flex: 1, fontSize: 14.5, fontWeight: '600', letterSpacing: 0, lineHeight: 20 },
+  profileListMeta: { flexShrink: 0, fontSize: 12, fontWeight: '600', letterSpacing: 0, lineHeight: 16, maxWidth: 146, textAlign: 'right' },
+  preferenceCard: { borderRadius: 29, gap: 2, overflow: 'hidden', paddingHorizontal: 13, paddingVertical: 12, position: 'relative' },
+  preferenceRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 54, paddingHorizontal: 3 },
   preferenceTitle: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 11 },
   preferenceCopy: { flex: 1, gap: 2, minWidth: 0 },
   preferenceMetaAction: { flexShrink: 0, fontSize: 12, fontWeight: '600', maxWidth: 112, textAlign: 'right' },
@@ -4568,8 +5080,9 @@ const styles = StyleSheet.create({
   verificationFileButton: { alignItems: 'center', borderRadius: 18, borderWidth: 1, flex: 1, gap: 5, justifyContent: 'center', minHeight: 72, padding: 8 },
   verificationFileText: { fontSize: 11, fontWeight: '600', lineHeight: 14, textAlign: 'center' },
   dockWrap: { alignSelf: 'center', minHeight: workerDockHeight, position: 'absolute', zIndex: 30 },
-  dockBackdropShield: { borderRadius: 38, bottom: -10, height: 90, left: -6, opacity: 0, position: 'absolute', right: -6, zIndex: -2 },
+  dockBackdropShield: { borderRadius: 38, bottom: -10, height: 90, left: -6, opacity: 0.86, position: 'absolute', right: -6, zIndex: -2 },
   workerDock: { alignItems: 'center', borderRadius: 32, borderWidth: 1, flexDirection: 'row', gap: 5, height: workerDockHeight, justifyContent: 'space-around', overflow: 'hidden', padding: 7, position: 'relative' },
+  workerDockKaelImage: { height: 29, width: 29 },
   motionSweep: { borderRadius: 999, height: 76, position: 'absolute', top: -18, width: 96 },
   pressed: { opacity: 0.78 },
   hiddenMarker: { height: 0, opacity: 0, width: 0 },
