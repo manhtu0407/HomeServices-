@@ -1,5 +1,15 @@
 # MEMORY
 
+## 2026-05-26 P18 Production Promotion And Live-Quality Fix
+
+- Tu flagged the critical gap that PR #37 evidence only covered staging. Production `iwevizmsedyqozxlawwl` was audited, backed up via scoped JSON export under `.tmp/production-backups/`, migrated, and redeployed.
+- Production post-promotion audit: `migration_count=71`; `customer_kael_memory`, `worker_kael_memory`, `ai_provider_routing`, `disputes`, `kael_advisory_audit`, and `jobs.kael_progress` all exist; `api_logs.purpose` is populated for `67/67` existing rows.
+- Production `mobile-api` moved from v8 to v10 after the follow-up deploy; staging is v29. Both projects now report the same deployed function hash `3758b958b9e850f918df9b25b3d144a970ea5b205a95b7dcac67edeb758e6b3a`; unauth `/services` smoke returns expected `401 AUTH_MISSING`.
+- Runtime fix: Edge env now accepts production's legacy `GOOGLE_MAP_KEY` secret alias as fallback for `GOOGLE_MAPS_API_KEY`.
+- Live-quality root cause: staging no-photo P15 jobs (`photo_urls: []`) were still calling Anthropic under `vision_analysis`, creating timeout-prone provider logs. Edge no-photo flows now skip Anthropic, avoid fake vision provider rows, mark `kael_progress.vision_analysis` completed, and real-photo vision uses a 320-token output cap.
+- Verification: runtime Vitest `75/75` passed; targeted runtime/P3/schema gates `3 files`, `148 passed`; full API Vitest `55 files passed | 3 skipped`, `1116 passed | 59 skipped`; shared district Vitest `53/53` passed; API `tsc --noEmit` passed; production final dry-run up to date; production lint no schema errors; performance advisor no issues; security advisor only existing `auth_leaked_password_protection`.
+- Local Supabase link was restored to staging `xyylanuyflrjzbjzhqfl` after production work.
+
 ## 2026-05-26 Plan.md Kael Harness P17 Staging Monitoring And A/B Setup
 
 - Plan.md P17 was executed on worktree `C:\Users\Phan Manh Tu\.config\superpowers\worktrees\home-services\kael-harness-p1` against staging `xyylanuyflrjzbjzhqfl`. Production `iwevizmsedyqozxlawwl` was not migrated or deployed.

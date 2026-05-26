@@ -7,6 +7,13 @@
 > Before any production migration, regenerate counts, pending migration chain,
 > and smoke evidence from the current staging and production state.
 
+> 2026-05-26 P18 update: Tu approved the post-P17 production promotion after
+> audit. Production `iwevizmsedyqozxlawwl` now has `71` migrations, all audited
+> P3-P17 tables/columns, `api_logs.purpose` populated for `67/67` existing rows,
+> and `mobile-api` redeployed at version `10`. The final production dry-run
+> reports `Remote database is up to date`; lint and performance advisors pass;
+> security advisor still reports only the existing Auth leaked-password warning.
+
 This checklist is the production safety gate for applying the Supabase migration chain from the verified staging database to the production `HomeServices` project.
 
 > 2026-05-18 staging backend note: this checklist predates the `mobile-api`
