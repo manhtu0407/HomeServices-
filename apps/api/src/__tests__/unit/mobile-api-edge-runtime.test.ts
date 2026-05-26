@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import {
+  createMobileApiHandler,
+  type MobileApiContext,
+  type MobileApiServices,
+} from '../../../../../supabase/functions/mobile-api/_shared/router'
 import { readEdgeEnv } from '../../../../../supabase/functions/mobile-api/_shared/env'
 import { requireJobAccess } from '../../../../../supabase/functions/mobile-api/_shared/access'
 import { runKaelPipeline, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael'
@@ -47,6 +51,100 @@ describe('mobile-api Edge runtime helpers', () => {
     })
 
     expect(env.googleMapsApiKey).toBe('maps-project-key')
+  })
+
+  it('reads the Section 25 R2 Perplexity source trust flag at the Edge boundary', () => {
+    const env = readEdgeEnv((name) => {
+      const values: Record<string, string> = {
+        SUPABASE_URL: 'https://project.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+        KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: '1',
+      }
+      return values[name]
+    })
+
+    expect(env.sourceTrustPerplexityFilterEnabled).toBe(true)
+    expect(env.sourceTrustPerplexityFilterExplicit).toBe(true)
+  })
+
+  it('accepts the Section 25 R2 source trust rollout alias at the Edge boundary', () => {
+    const env = readEdgeEnv((name) => {
+      const values: Record<string, string> = {
+        SUPABASE_URL: 'https://project.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+        KAEL_OPT_SOURCE_TRUST_ENABLED: 'yes',
+      }
+      return values[name]
+    })
+
+    expect(env.sourceTrustPerplexityFilterEnabled).toBe(true)
+    expect(env.sourceTrustPerplexityFilterExplicit).toBe(true)
+  })
+
+  it('keeps Section 25 R2 staging-on and production-off when the rollout flag is absent', () => {
+    const stagingEnv = readEdgeEnv((name) => {
+      const values: Record<string, string> = {
+        SUPABASE_URL: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+      }
+      return values[name]
+    })
+    const productionEnv = readEdgeEnv((name) => {
+      const values: Record<string, string> = {
+        SUPABASE_URL: 'https://iwevizmsedyqozxlawwl.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+      }
+      return values[name]
+    })
+
+    expect(stagingEnv.sourceTrustPerplexityFilterEnabled).toBe(true)
+    expect(stagingEnv.sourceTrustPerplexityFilterExplicit).toBe(false)
+    expect(productionEnv.sourceTrustPerplexityFilterEnabled).toBe(false)
+    expect(productionEnv.sourceTrustPerplexityFilterExplicit).toBe(false)
+  })
+
+  it('lets an explicit Section 25 R2 false flag override the staging fallback', () => {
+    const env = readEdgeEnv((name) => {
+      const values: Record<string, string> = {
+        SUPABASE_URL: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+        KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'false',
+      }
+      return values[name]
+    })
+
+    expect(env.sourceTrustPerplexityFilterEnabled).toBe(false)
+    expect(env.sourceTrustPerplexityFilterExplicit).toBe(true)
+  })
+
+  it('passes request host and project ref into the Edge service context', async () => {
+    let seenContext: MobileApiContext | undefined
+    const services = {
+      listServices: async (ctx: MobileApiContext) => {
+        seenContext = ctx
+        return { services: [] }
+      },
+    } as unknown as MobileApiServices
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: true,
+        user: { id: 'customer-1' },
+        role: 'customer',
+        supabase: makeSequenceClient([]),
+      }),
+      services,
+    })
+
+    const response = await handler(
+      new Request('https://xyylanuyflrjzbjzhqfl.supabase.co/functions/v1/mobile-api/services'),
+    )
+
+    expect(response.status).toBe(200)
+    expect(seenContext).toMatchObject({
+      requestUrl: expect.stringContaining('xyylanuyflrjzbjzhqfl.supabase.co'),
+      requestHost: 'xyylanuyflrjzbjzhqfl.supabase.co',
+      requestProjectRef: 'xyylanuyflrjzbjzhqfl',
+    })
   })
 
   it('keeps the Edge service surface aligned with the mobile API plan', () => {

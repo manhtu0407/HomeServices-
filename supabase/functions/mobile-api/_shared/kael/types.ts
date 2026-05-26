@@ -184,10 +184,13 @@ export type AIError = {
 };
 
 export type EdgeAiSecrets = {
+  supabaseUrl?: string;
   anthropicApiKey?: string;
   perplexityApiKey?: string;
   deepseekApiKey?: string;
   googleMapsApiKey?: string;
+  sourceTrustPerplexityFilterEnabled?: boolean;
+  sourceTrustPerplexityFilterExplicit?: boolean;
 };
 
 export type PipelineInput = {
@@ -211,6 +214,7 @@ export type PipelineStageLog = {
   outputTokens?: number;
   costUsd?: number;
   cacheStatus?: AICacheStatus;
+  safeMetadata?: Record<string, unknown>;
 };
 
 export type IntentAttemptLog = Omit<PipelineStageLog, "stage" | "fallbackUsed">;

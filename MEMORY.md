@@ -1,5 +1,15 @@
 # MEMORY
 
+## 2026-05-26 Q5 DeepSeek Health And Section 25 R2 Follow-Up
+
+- Tu asked whether the remaining risks could be handled. Work continued on branch `codex/kael-gap-continuation` in worktree `kael-harness-p1`; production canary/rollout was not enabled.
+- Root cause for the confusing R2 smoke logs: the outer `market_lookup` stage timeout could replace the real provider result with a fallback result that defaulted to `model=sonar` and dropped source-trust metadata. Edge now precomputes market telemetry and preserves source-trust metadata on failures/timeouts.
+- `intent_classification` now uses the configured route latency budget (`2500ms`) instead of a hardcoded `1000ms` provider timeout. The Q5 rerun proved the fix: report `docs/test-logs/2026-05-26_q5-deepseek-health-rerun.md`, baseline key `q1-1779791748798-a4da4c-staging-50`, 50/50 Edge jobs, 100 provider rows, provider success rate `1`, DeepSeek 50/50 success with p95 `1050ms`, market cache 50/50 success, cleanup all `0`.
+- Section 25 R2 was implemented behind `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED`: final 20-domain allowlist, `sonar-pro`, top-level `search_domain_filter`, `search_recency_filter=month`, web/medium search options, strict Vietnamese prompt, max tokens `600`, and source-trust budget `6000ms`.
+- R2 live staging smoke with market cache temporarily disabled proved the Edge provider path: run `r2-6s-smoke-1779791681924-71b4ed`, `market_lookup` provider `perplexity`, model `sonar-pro`, latency `3883ms`, metadata `source_trust_enabled=true`, `search_domain_filter_count=20`, `latency_budget_ms=6000`. It failed closed with `perplexity:insufficient_trusted_data`; the job still reached `awaiting_customer_confirm` through baseline fallback and cleanup counts were all `0`.
+- After smoke, staging flags were restored to `KAEL_OPT_MARKET_CACHE_ENABLED=true` and `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED=false` so normal staging/Q5 intake is not slowed by the experimental R2 path. Production was not changed.
+- Remaining honest gates: Section 24 production canary/rollout/rollback monitoring still needs Tu approval; Section 25 R4-R8 are not built yet, especially citation validation, trust registry, weighted blend, citation surfaces, A/B rollout, and production monitoring.
+
 ## 2026-05-26 Section 24 Q4/Q5 And Section 25 R1 Gap Continuation
 
 - Tu asked to finish the honest gaps: Q4 live result processing, Q5 start, and Section 25 R1 live Perplexity verification using the local `.env.local` key if needed. Work stayed on branch `codex/kael-gap-continuation` in worktree `kael-harness-p1`.

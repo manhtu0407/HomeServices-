@@ -37,7 +37,7 @@ Build summary:
   - final research doc at `docs/foundation/source-trust-research.md`;
   - live-call script at `scripts/source-trust-research/run-perplexity-r1.mjs`;
   - final R1 sample output at `docs/foundation/source-trust-samples/source-trust-r1-1779781564809.json`;
-  - R2 remains blocked until Tu approves the final 20-domain list.
+  - R2 was later implemented and staging-smoked in the Q5/R2 continuation; production rollout remains separately gated.
 
 Staging evidence:
 - `mobile-api` deployed to staging v44 after resetting Q4 flags off and deploying the Perplexity top-level-filter/mojibake fixes.
@@ -117,9 +117,15 @@ Known limitations / blockers:
 - Q5 provider health is not clean: DeepSeek timed out 44/50 intent calls in the latest 50-job run even though user-facing schema/advisory/cost gates passed through fallback/caching. Treat this as a provider-health blocker before production rollout.
 - Section 25 R2 must not start before Tu approves the final 20-domain R1 list.
 
+Follow-up update:
+- Q5 DeepSeek health blocker was rerun after the intent timeout budget fix. Report `docs/test-logs/2026-05-26_q5-deepseek-health-rerun.md`, baseline key `q1-1779791748798-a4da4c-staging-50`, showed 50/50 DeepSeek intent success, 0 provider failures, p95 intent 1050ms, provider success rate 1, and cleanup all 0.
+- Section 25 R2 was implemented and live-smoked on staging behind `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED`. The provider log proved `perplexity` `sonar-pro`, 20-domain allowlist metadata, month recency, web/medium search options, and 6000ms source-trust budget. The strict R2 query failed closed as `insufficient_trusted_data`, so normal product estimate still used baseline fallback.
+- Staging source-trust flag was restored rollback-off after smoke; market cache is on. Production was not changed.
+
 Gate status:
 - Section 24 Q2: implemented, tested, staging-enabled for Q2/Q3/Q5 evidence.
 - Section 24 Q3: implemented and staging-verified with clean 100-job cache evidence.
 - Section 24 Q4: live submit, live result processing, live realtime fallback, env flag toggle, and cleanup verified on staging.
-- Section 24 Q5: staging 50-job comparison started and passed schema/cost cleanup gates; production rollout remains blocked by DeepSeek health and Tu manual approval.
-- Section 25 R1: live verification complete; R2 awaits Tu approval.
+- Section 24 Q5: staging 50-job rerun passed schema/cost/provider-health cleanup gates; production rollout still requires Tu manual approval plus canary/rollback/monitoring.
+- Section 25 R1: live verification complete.
+- Section 25 R2: code-complete and staging-smoked behind rollback flag; production rollout deferred until later source-trust quality and rollout gates.

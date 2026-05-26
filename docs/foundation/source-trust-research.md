@@ -1,12 +1,12 @@
 # Source Trust Research - Section 25 R1
 
-Status: R1 live verified, awaiting Tu approval for R2.
+Status: R1 live verified; R2 code implemented and staging smoke verified behind rollback flag.
 Date: 2026-05-26.
 Plan ref: `Plan.md` Section 25.5.
 
 ## Scope
 
-R1 verifies a maximum-20 Perplexity allowlist for Vietnamese/HCMC home-service market evidence. This document is the handoff artifact for Tu approval before Section 25 R2. Code-side citation rejection, source-trust registry, and blended price synthesis remain out of scope until R2-R6.
+R1 verifies a maximum-20 Perplexity allowlist for Vietnamese/HCMC home-service market evidence. R2 now wires that allowlist into the Edge `market_lookup` Perplexity path behind `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED`. Code-side citation rejection, source-trust registry, and blended price synthesis remain out of scope until R4-R6.
 
 ## API Constraints Verified
 
@@ -34,7 +34,7 @@ Run summary:
 - 0 outside-domain citation violations.
 - 0 zero-citation domains.
 
-These are final R1 candidates only. They are not approved Tier 1 production sources until Tu approves this list for R2.
+These are the R2 allowlist candidates used by the staging source-trust smoke. They are not approved for production rollout until the later Section 25 rollout gates pass.
 
 | Domain | Category | R1 citations/search results | Outside-domain violations | R1 status |
 |---|---:|---:|---:|---|
@@ -95,7 +95,9 @@ Output goes to `docs/foundation/source-trust-samples/` and records per-domain st
 Current local status:
 - R1 live verification completed with Tu-provided local `.env.local` key.
 - Edge/provider wrapper now sends Perplexity domain and recency filters at the top level to match live enforcement behavior.
-- R2 remains blocked until Tu approves the final 20-domain list.
+- R2 Edge config is implemented behind `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED`.
+- R2 staging provider smoke with the flag enabled produced `market_lookup` provider `perplexity`, model `sonar-pro`, `source_trust_enabled=true`, `search_domain_filter_count=20`, `search_recency_filter=month`, `latency_budget_ms=6000`, and fail-closed `insufficient_trusted_data`; the job still completed through baseline fallback and fixture cleanup returned all tracked counts to 0.
+- The staging flag was restored to rollback-off after smoke while Q5/DeepSeek health was remeasured.
 
 ## Approval Gate
 
@@ -103,4 +105,6 @@ Current local status:
 - [x] Candidate list prepared.
 - [x] Untrust patterns documented.
 - [x] Research script prepared.
-- [ ] Tu approval before R2.
+- [x] R2 Edge config implemented behind rollback flag.
+- [x] R2 staging smoke proves allowlist config reaches live Edge provider calls.
+- [ ] Production rollout approval and Section 25 R4-R8 gates.

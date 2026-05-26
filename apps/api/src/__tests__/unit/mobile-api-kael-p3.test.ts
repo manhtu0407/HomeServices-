@@ -39,6 +39,17 @@ describe('mobile-api Kael P3 routing foundation', () => {
     })
   })
 
+  it('uses the measured DeepSeek intent budget through the provider route', () => {
+    const intentSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/intent.ts', import.meta.url),
+      'utf8',
+    )
+
+    expect(KAEL_ROUTING_CONFIG.intent_classification.latencyBudgetMs).toBe(2_500)
+    expect(intentSource).toContain('timeoutMs: route.latencyBudgetMs')
+    expect(intentSource).not.toContain('timeoutMs: 1_000')
+  })
+
   it('rejects invalid purposes and over-budget calls before provider selection', () => {
     expect(() => chooseProvider('unknown_purpose')).toThrow(/INVALID_PURPOSE/)
     expect(() =>

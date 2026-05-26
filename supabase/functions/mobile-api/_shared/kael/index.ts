@@ -3,6 +3,7 @@ export * from "./pipeline.ts";
 export * from "./scope-change.ts";
 export * from "./routing.config.ts";
 export * from "./routing.ts";
+export * from "./source-trust.ts";
 export * from "./circuit-breaker.ts";
 export * from "./orchestrator.ts";
 export * from "./streaming.ts";

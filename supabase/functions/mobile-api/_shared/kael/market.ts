@@ -5,6 +5,7 @@ import { callAI } from "./provider-client.ts";
 import { readKaelOptimizationFlags } from "./cost-tracking.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { providerCandidatesForPurpose } from "./routing.ts";
+import { isSourceTrustPerplexityFilterEnabled, trustedPerplexityMarketConfig } from "./source-trust.ts";
 import { safeParseJSON } from "./utils.ts";
 
 const MARKET_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -37,6 +38,30 @@ type MarketCacheRow = {
   sources_summary?: unknown;
 };
 
+export function marketLookupTelemetry(input: {
+  serviceType: ServiceType;
+  problem: string;
+  complexity: ComplexityLevel;
+  district: string;
+  secrets: EdgeAiSecrets;
+}): {
+  provider: "perplexity";
+  model: string;
+  timeoutMs?: number;
+  safeMetadata?: Record<string, unknown>;
+} {
+  if (isSourceTrustPerplexityFilterEnabledForSecrets(input.secrets)) {
+    const trustedConfig = trustedPerplexityMarketConfig(input);
+    return {
+      provider: "perplexity",
+      model: trustedConfig.model,
+      timeoutMs: trustedConfig.timeoutMs,
+      safeMetadata: trustedConfig.safeMetadata,
+    };
+  }
+  return { provider: "perplexity", model: "sonar" };
+}
+
 export async function searchMarketPrice(
   serviceType: ServiceType,
   problem: string,
@@ -54,11 +79,13 @@ export async function searchMarketPrice(
     outputTokens: number;
     costUsd: number;
     cacheStatus?: AICacheStatus;
+    safeMetadata?: Record<string, unknown>;
   } | {
     success: false;
     failureReason: string;
     provider?: "anthropic" | "perplexity" | "deepseek";
     model?: string;
+    safeMetadata?: Record<string, unknown>;
   }
 > {
   const cacheClient = asMarketCacheClient(supabase);
@@ -90,31 +117,70 @@ export async function searchMarketPrice(
   }
 
   const failures: string[] = [];
+  let lastAttempt: {
+    provider: "anthropic" | "perplexity" | "deepseek";
+    model: string;
+    safeMetadata?: Record<string, unknown>;
+  } | undefined;
   for (const route of providerCandidatesForPurpose("market_lookup")) {
+    const trustedConfig = route.provider === "perplexity" &&
+        isSourceTrustPerplexityFilterEnabledForSecrets(secrets)
+      ? trustedPerplexityMarketConfig({ serviceType, problem, complexity, district })
+      : null;
+    lastAttempt = {
+      provider: route.provider,
+      model: trustedConfig?.model ?? route.model,
+      safeMetadata: trustedConfig?.safeMetadata,
+    };
     const result = await callAI({
       purpose: "market_lookup",
       provider: route.provider,
-      model: route.model,
-      messages: buildPricingMessages(serviceType, problem, complexity, district),
-      maxTokens: maxTokensForPurpose("market_lookup", 300),
+      model: trustedConfig?.model ?? route.model,
+      messages: trustedConfig?.messages ??
+        buildPricingMessages(serviceType, problem, complexity, district),
+      maxTokens: trustedConfig?.maxTokens ?? maxTokensForPurpose("market_lookup", 300),
       temperature: 0.1,
-      timeoutMs: route.latencyBudgetMs,
+      timeoutMs: trustedConfig?.timeoutMs ?? route.latencyBudgetMs,
       maxRetries: 0,
+      searchDomainFilter: trustedConfig?.searchDomainFilter,
+      searchRecencyFilter: trustedConfig?.searchRecencyFilter,
+      searchMode: trustedConfig?.searchMode,
+      searchContextSize: trustedConfig?.searchContextSize,
     }, secrets);
 
     if (!result.success) {
-      failures.push(`${route.provider}:AI call failed: ${result.code}`);
+      const failureReason = `${route.provider}:AI call failed: ${result.code}`;
+      if (trustedConfig) {
+        return trustedMarketFailure(failureReason, trustedConfig);
+      }
+      failures.push(failureReason);
       continue;
     }
 
     const parsed = safeParseJSON(result.content);
+    if (isInsufficientTrustedData(parsed)) {
+      const failureReason = `${route.provider}:insufficient_trusted_data`;
+      if (trustedConfig) {
+        return trustedMarketFailure(failureReason, trustedConfig);
+      }
+      failures.push(failureReason);
+      continue;
+    }
     const validated = parsed ? marketPriceResultSchema.safeParse(parsed) : null;
     if (!validated?.success) {
-      failures.push(`${route.provider}:AI market JSON validation failed`);
+      const failureReason = `${route.provider}:AI market JSON validation failed`;
+      if (trustedConfig) {
+        return trustedMarketFailure(failureReason, trustedConfig);
+      }
+      failures.push(failureReason);
       continue;
     }
     if (validated.data.market_range_max < validated.data.market_range_min) {
-      failures.push(`${route.provider}:market_range_max < market_range_min`);
+      const failureReason = `${route.provider}:market_range_max < market_range_min`;
+      if (trustedConfig) {
+        return trustedMarketFailure(failureReason, trustedConfig);
+      }
+      failures.push(failureReason);
       continue;
     }
     const cacheStatus = await maybeWriteMarketCache(
@@ -128,14 +194,46 @@ export async function searchMarketPrice(
       success: true,
       market: validated.data,
       provider: route.provider,
-      model: route.model,
+      model: trustedConfig?.model ?? route.model,
       inputTokens: result.usage.inputTokens,
       outputTokens: result.usage.outputTokens,
       costUsd: result.usage.costUsd,
       cacheStatus,
+      safeMetadata: trustedConfig?.safeMetadata,
     };
   }
-  return { success: false, failureReason: failures.join("; ") || "NO_PROVIDER_AVAILABLE" };
+  return {
+    success: false,
+    failureReason: failures.join("; ") || "NO_PROVIDER_AVAILABLE",
+    provider: lastAttempt?.provider,
+    model: lastAttempt?.model,
+    safeMetadata: lastAttempt?.safeMetadata,
+  };
+}
+
+function isInsufficientTrustedData(value: unknown): boolean {
+  return typeof value === "object" && value !== null &&
+    (value as Record<string, unknown>).error === "insufficient_trusted_data";
+}
+
+function trustedMarketFailure(
+  failureReason: string,
+  trustedConfig: ReturnType<typeof trustedPerplexityMarketConfig>,
+) {
+  return {
+    success: false as const,
+    failureReason,
+    provider: "perplexity" as const,
+    model: trustedConfig.model,
+    safeMetadata: trustedConfig.safeMetadata,
+  };
+}
+
+function isSourceTrustPerplexityFilterEnabledForSecrets(
+  secrets: EdgeAiSecrets,
+): boolean {
+  return secrets.sourceTrustPerplexityFilterEnabled === true ||
+    isSourceTrustPerplexityFilterEnabled();
 }
 
 function asMarketCacheClient(value: unknown): MarketCacheClient | undefined {

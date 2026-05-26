@@ -47,8 +47,8 @@ describe('Q1 cost optimization baseline telemetry', () => {
 
     expect(services).toContain('buildKaelOptimizationMetricRows(rows)')
     expect(services).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
-    expect(services).toContain('safe_metadata: stage.cacheStatus')
-    expect(services).toContain(': {}')
+    expect(services).toContain('...(stage.cacheStatus ? { cache_status: stage.cacheStatus } : {})')
+    expect(services).toContain('...(stage.safeMetadata ?? {})')
     expect(services).not.toContain('safe_metadata: stage.cacheStatus\n          ? { cache_status: stage.cacheStatus }\n          : undefined')
     expect(costTracking).toContain('KAEL_OPT_PROMPT_CACHE_ENABLED')
     expect(costTracking).toContain('KAEL_OPT_CAP_OUTPUT_ENABLED')

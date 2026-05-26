@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
 import { maxTokensForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
-import { searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
+import { marketLookupTelemetry, searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
+import {
+  isSourceTrustPerplexityFilterEnabled,
+  SOURCE_TRUST_VERSION,
+  TIER_1_SOURCE_TRUST_DOMAINS,
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust'
 
 describe('mobile-api Kael Q2/Q3 cost optimization', () => {
   afterEach(() => {
@@ -93,6 +98,162 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     if (result.success) {
       expect(result.citations).toEqual(['https://example.test/source'])
     }
+  })
+
+  it('parses the Section 25 R2 source trust flag with rollback-safe truthy values', () => {
+    expect(isSourceTrustPerplexityFilterEnabled(() => '1')).toBe(true)
+    expect(isSourceTrustPerplexityFilterEnabled(() => ' true ')).toBe(true)
+    expect(isSourceTrustPerplexityFilterEnabled(() => 'on')).toBe(true)
+    expect(isSourceTrustPerplexityFilterEnabled((name) =>
+      name === 'KAEL_OPT_SOURCE_TRUST_ENABLED' ? 'yes' : undefined
+    )).toBe(true)
+    expect(isSourceTrustPerplexityFilterEnabled(() => 'false')).toBe(false)
+    expect(isSourceTrustPerplexityFilterEnabled(() => undefined)).toBe(false)
+  })
+
+  it('keeps Section 25 R2 Perplexity allowlist config behind the env flag', async () => {
+    stubDenoEnv({ KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'false' })
+    let body: Record<string, unknown> | undefined
+    vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+      body = JSON.parse(String((init as RequestInit).body))
+      return jsonResponse({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              market_range_min: 130000,
+              market_range_max: 240000,
+              confidence: 0.78,
+              sources_summary: 'Legacy Perplexity market sources.',
+            }),
+          },
+        }],
+        usage: { prompt_tokens: 44, completion_tokens: 31 },
+      })
+    }))
+
+    const result = await searchMarketPrice(
+      'electrical',
+      'breaker trip',
+      'medium',
+      'q7',
+      { perplexityApiKey: 'pplx-test', sourceTrustPerplexityFilterEnabled: false },
+    )
+
+    expect(result.success).toBe(true)
+    expect(body?.search_domain_filter).toBeUndefined()
+    if (result.success) {
+      expect(result.model).toBe('sonar')
+      expect(result.safeMetadata).toBeUndefined()
+    }
+  })
+
+  it('applies Section 25 R2 trusted Perplexity allowlist, recency, prompt, and safe metadata', async () => {
+    stubDenoEnv({ KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'false' })
+    let body: Record<string, unknown> | undefined
+    vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+      body = JSON.parse(String((init as RequestInit).body))
+      return jsonResponse({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              market_range_min: 150000,
+              market_range_max: 260000,
+              confidence: 0.82,
+              sources_summary: '2 trusted Vietnamese domains.',
+            }),
+          },
+        }],
+        usage: { prompt_tokens: 52, completion_tokens: 38 },
+      })
+    }))
+
+    const result = await searchMarketPrice(
+      'plumbing',
+      'pipe leak',
+      'small',
+      'q7',
+      { perplexityApiKey: 'pplx-test', sourceTrustPerplexityFilterEnabled: true },
+    )
+
+    expect(body).toMatchObject({
+      model: 'sonar-pro',
+      max_tokens: 600,
+      search_domain_filter: [...TIER_1_SOURCE_TRUST_DOMAINS],
+      search_recency_filter: 'month',
+      web_search_options: {
+        search_mode: 'web',
+        search_context_size: 'medium',
+      },
+    })
+    expect(body?.search_domain_filter).toHaveLength(20)
+    const messages = body?.messages as Array<Record<string, unknown>>
+    expect(messages[0]?.content).toContain('trusted Vietnamese domains')
+    expect(messages[0]?.content).toContain('insufficient_trusted_data')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.model).toBe('sonar-pro')
+      expect(result.safeMetadata).toMatchObject({
+        source_trust_enabled: true,
+        source_trust_version: SOURCE_TRUST_VERSION,
+        search_domain_filter_count: 20,
+        search_recency_filter: 'month',
+        search_mode: 'web',
+        search_context_size: 'medium',
+        latency_budget_ms: 6000,
+      })
+    }
+  })
+
+  it('fails safely when trusted Perplexity says data is insufficient', async () => {
+    stubDenoEnv({ KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'true' })
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({
+        choices: [{ message: { content: '{"error":"insufficient_trusted_data"}' } }],
+        usage: { prompt_tokens: 20, completion_tokens: 8 },
+      })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await searchMarketPrice(
+      'cleaning',
+      'window cleaning',
+      'small',
+      'q7',
+      { perplexityApiKey: 'pplx-test', sourceTrustPerplexityFilterEnabled: true },
+    )
+
+    expect(result.success).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    if (!result.success) {
+      expect(result.failureReason).toContain('insufficient_trusted_data')
+      expect(result.provider).toBe('perplexity')
+      expect(result.model).toBe('sonar-pro')
+      expect(result.safeMetadata).toMatchObject({
+        source_trust_enabled: true,
+        source_trust_version: SOURCE_TRUST_VERSION,
+      })
+    }
+  })
+
+  it('precomputes Section 25 R2 market telemetry for outer stage timeouts', () => {
+    const telemetry = marketLookupTelemetry({
+      serviceType: 'plumbing',
+      problem: 'pipe_leak',
+      complexity: 'medium',
+      district: 'q7',
+      secrets: { sourceTrustPerplexityFilterEnabled: true },
+    })
+
+    expect(telemetry).toMatchObject({
+      provider: 'perplexity',
+      model: 'sonar-pro',
+      timeoutMs: 6000,
+      safeMetadata: {
+        source_trust_enabled: true,
+        search_domain_filter_count: 20,
+        latency_budget_ms: 6000,
+      },
+    })
   })
 
   it('serves Q3 market lookup from cache without a provider call', async () => {

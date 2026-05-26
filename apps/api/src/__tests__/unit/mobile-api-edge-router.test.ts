@@ -391,8 +391,8 @@ describe('mobile-api Edge router contract', () => {
 
     expect(getResponse.status).toBe(200)
     expect(deleteResponse.status).toBe(200)
-    expect(getMyKaelMemory).toHaveBeenCalledWith(customerAuth)
-    expect(deleteMyKaelMemory).toHaveBeenCalledWith(customerAuth)
+    expect(getMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+    expect(deleteMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
   })
 
   it('routes worker Kael memory self-view through the worker endpoint', async () => {
@@ -405,7 +405,7 @@ describe('mobile-api Edge router contract', () => {
     const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael-memory'))
 
     expect(response.status).toBe(200)
-    expect(getWorkerKaelMemory).toHaveBeenCalledWith(workerAuth)
+    expect(getWorkerKaelMemory).toHaveBeenCalledWith(expect.objectContaining(workerAuth))
   })
 
   it('routes device push token registration through authenticated mobile API services', async () => {

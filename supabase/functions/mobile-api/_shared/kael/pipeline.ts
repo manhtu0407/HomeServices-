@@ -2,7 +2,7 @@ import type { ComplexityLevel, EdgeAiSecrets, PipelineInput, PipelineResult, Pip
 import { PRICE_DISCLAIMER, UNSUPPORTED_SERVICE_MESSAGE } from "./types.ts";
 import { classifyIntent, buildFallbackIntent } from "./intent.ts";
 import { analyzeDescription } from "./vision.ts";
-import { searchMarketPrice } from "./market.ts";
+import { marketLookupTelemetry, searchMarketPrice } from "./market.ts";
 import { fetchBaselineCandidates, normalizeProblemSlugForService, pickBaselineCandidate, synthesizePrice } from "./synthesis.ts";
 import { buildAdvisory } from "./advisory.ts";
 import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
@@ -112,6 +112,13 @@ export async function runKaelPipeline(
   ]);
 
   const preliminaryComplexity: ComplexityLevel = "medium";
+  const marketTelemetry = marketLookupTelemetry({
+    serviceType: validServiceType,
+    problem: problemSlug,
+    complexity: preliminaryComplexity,
+    district,
+    secrets,
+  });
   const parallelRun = await runKaelParallel<EstimateParallelValue>([
     {
       label: "vision",
@@ -142,7 +149,8 @@ export async function runKaelPipeline(
     {
       label: "market",
       purpose: "market_lookup",
-      timeoutMs: KAEL_ROUTING_CONFIG.market_lookup.latencyBudgetMs,
+      timeoutMs: marketTelemetry.timeoutMs ??
+        KAEL_ROUTING_CONFIG.market_lookup.latencyBudgetMs,
       run: async () => ({
         kind: "market" as const,
         result: await searchMarketPrice(
@@ -156,7 +164,11 @@ export async function runKaelPipeline(
       }),
       fallback: () => ({
         kind: "market" as const,
-        result: { success: false as const, failureReason: "TIMEOUT" },
+        result: {
+          success: false as const,
+          failureReason: "TIMEOUT",
+          ...marketTelemetry,
+        },
       }),
     },
     {
@@ -282,6 +294,7 @@ export async function runKaelPipeline(
     outputTokens: marketResult.success ? marketResult.outputTokens : undefined,
     costUsd: marketResult.success ? marketResult.costUsd : undefined,
     cacheStatus: marketResult.success ? marketResult.cacheStatus : undefined,
+    safeMetadata: marketResult.safeMetadata,
   });
   await updateKaelProgress(supabase, input.progressJobId, {
     stage: "market_lookup",

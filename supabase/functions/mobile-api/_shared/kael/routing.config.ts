@@ -33,7 +33,7 @@ const perplexity = (model = "sonar"): ProviderRoute => ({
 });
 
 export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> = Object.freeze({
-  intent_classification: config("intent_classification", deepseek(), anthropic(), 0.001, 1_000, true, 50),
+  intent_classification: config("intent_classification", deepseek(), anthropic(), 0.001, 2_500, true, 50),
   vision_analysis: config("vision_analysis", anthropic(), undefined, 0.015, 4_500, true, 320),
   clarification: config("clarification", deepseek(), anthropic(), 0.003, 2_000, true, 100),
   problem_synthesis: config("problem_synthesis", deepseek(), anthropic(), 0.005, 3_000, true, 250),

@@ -132,6 +132,7 @@ const JOB_CHAT_SEND_STATUSES: JobStatus[] = [
 const JOB_DETAIL_SELECT =
   "id, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, kael_worker_brief_core, kael_worker_brief_guidance, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at";
 const DEFAULT_WORKER_CANDIDATE_POOL_SIZE = 50;
+const STAGING_PROJECT_REF = "xyylanuyflrjzbjzhqfl";
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 const KAEL_CHAT_HARD_COST_CAP_USD = 1;
 const GOOGLE_GEOCODING_URL = "https://maps.googleapis.com/maps/api/geocode/json";
@@ -451,7 +452,7 @@ async function createJob(
         progressJobId: jobId,
       },
       client,
-      secrets,
+      sourceTrustSecretsForRequest(secrets, ctx),
     );
   } catch {
     const cleanupOk = await cancelAnalyzingJob(
@@ -486,9 +487,10 @@ async function createJob(
         latency_ms: stage.latencyMs,
         success: stage.success,
         error_code: stage.failureReason ?? null,
-        safe_metadata: stage.cacheStatus
-          ? { cache_status: stage.cacheStatus }
-          : {},
+        safe_metadata: {
+          ...(stage.cacheStatus ? { cache_status: stage.cacheStatus } : {}),
+          ...(stage.safeMetadata ?? {}),
+        },
       })),
   );
 
@@ -1011,7 +1013,7 @@ async function advanceKaelChatEstimate(
         photoUrls: input.photo_urls ?? [],
       },
       client,
-      secrets,
+      sourceTrustSecretsForRequest(secrets, ctx),
     );
   } catch {
     await appendKaelSystemTurn(client, sessionId, {
@@ -1042,6 +1044,7 @@ async function advanceKaelChatEstimate(
           surface: "kael_chat",
           session_id: sessionId,
           ...(stage.cacheStatus ? { cache_status: stage.cacheStatus } : {}),
+          ...(stage.safeMetadata ?? {}),
         },
       })),
   );
@@ -4615,6 +4618,30 @@ function apiLogPurposeForPipelineStage(
     case "baseline":
       return "problem_synthesis";
   }
+}
+
+function sourceTrustSecretsForRequest(
+  secrets: EdgeAiSecrets,
+  ctx: MobileApiContext,
+): EdgeAiSecrets {
+  if (secrets.sourceTrustPerplexityFilterEnabled === true) return secrets;
+  if (secrets.sourceTrustPerplexityFilterExplicit === true) return secrets;
+  if (!isStagingSourceTrustRequest(secrets, ctx)) return secrets;
+  return { ...secrets, sourceTrustPerplexityFilterEnabled: true };
+}
+
+function isStagingSourceTrustRequest(
+  secrets: EdgeAiSecrets,
+  ctx: MobileApiContext,
+): boolean {
+  return [
+    secrets.supabaseUrl,
+    ctx.requestProjectRef,
+    ctx.requestHost,
+    ctx.requestUrl,
+  ].some((value) =>
+    typeof value === "string" && value.includes(STAGING_PROJECT_REF)
+  );
 }
 
 function mapConfirmKaelChatError(errorCode: string | null): never {

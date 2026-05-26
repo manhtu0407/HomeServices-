@@ -4,7 +4,8 @@ Newest test reports first.
 
 | Date | Report | Result | Bugs | Notes |
 |------|--------|--------|------|-------|
-| 2026-05-26 | [P20 Q2-Q5 + Source Trust R1](2026-05-26_p20-q2-q3-source-trust-start.md) | staging verified; production rollout blocked | 1 telemetry hotfix; 1 Perplexity filter fix; DeepSeek timeout risk remains | Q2 prompt cache/caps, Q3 cache proof, Q4 live result/fallback, Q5 50-job staging run, Section 25 R1 live output |
+| 2026-05-26 | [Q5 DeepSeek + R2 Gap Continuation](2026-05-26_q5-r2-gap-continuation.md) | staging verified; production rollout blocked | 0 product bugs; R2 strict source trust returns insufficient trusted data | DeepSeek 50/50 success after timeout fix, R2 sonar-pro allowlist smoke, cleanup 0 |
+| 2026-05-26 | [P20 Q2-Q5 + Source Trust R1](2026-05-26_p20-q2-q3-source-trust-start.md) | staging verified; production rollout blocked | 1 telemetry hotfix; 1 Perplexity filter fix; original DeepSeek risk fixed in follow-up | Q2 prompt cache/caps, Q3 cache proof, Q4 live result/fallback, Q5 50-job staging run, Section 25 R1 live output |
 | 2026-05-26 | [P19 Staging Gap E2E](2026-05-26_p19-staging-gap-e2e.md) | passed | 0 product bugs; live old broadcasts are historical/no active sent broadcast | Re-ran 5-case Edge E2E after P18, worker accept/complete/review proven, cleanup 0 |
 | 2026-05-26 | [P18 Production Promotion/Live Quality](2026-05-26_p18-production-promotion-live-quality.md) | passed | 1 production gap fixed; 1 no-photo vision timeout path fixed | Production migrations/Edge deploy, provider audit, auth-gated smoke |
 | 2026-05-26 | [P17 Staging Monitoring/A-B](2026-05-26_p17-staging-monitoring-ab.md) | passed | 0 product bugs; collection honestly starts at 0/100 | Staging deploy, dashboard views, A/B #6 running, production plan |

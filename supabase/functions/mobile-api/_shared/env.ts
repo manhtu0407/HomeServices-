@@ -9,6 +9,9 @@ export function readEdgeEnv(
   getEnv: (name: string) => string | undefined,
 ): EdgeEnv {
   const supabaseUrl = getEnv("SUPABASE_URL");
+  const sourceTrustFlag = getEnv("KAEL_TRUST_PERPLEXITY_FILTER_ENABLED") ??
+    getEnv("KAEL_OPT_SOURCE_TRUST_ENABLED");
+  const sourceTrustExplicit = sourceTrustFlag !== undefined;
   const supabaseSecretKey = readSupabaseSecretKey(getEnv);
   if (!supabaseUrl) throw new Error("SUPABASE_URL is required");
   if (!supabaseSecretKey) throw new Error("SUPABASE secret key is required");
@@ -20,6 +23,10 @@ export function readEdgeEnv(
     perplexityApiKey: getEnv("PERPLEXITY_API_KEY"),
     deepseekApiKey: getEnv("DEEPSEEK_API_KEY"),
     googleMapsApiKey: getEnv("GOOGLE_MAPS_API_KEY") ?? getEnv("GOOGLE_MAP_KEY"),
+    sourceTrustPerplexityFilterEnabled: !sourceTrustExplicit
+      ? isStagingProjectUrl(supabaseUrl)
+      : envFlag(sourceTrustFlag),
+    sourceTrustPerplexityFilterExplicit: sourceTrustExplicit,
   };
 }
 
@@ -39,4 +46,13 @@ function readSupabaseSecretKey(
   }
   return getEnv("SUPABASE_SERVICE_ROLE_KEY") ?? getEnv("SUPABASE_SECRET_KEY") ??
     getEnv("APP_SECRET_KEY");
+}
+
+function envFlag(value: string | undefined): boolean {
+  return typeof value === "string" &&
+    ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+function isStagingProjectUrl(value: string): boolean {
+  return value.includes("xyylanuyflrjzbjzhqfl");
 }

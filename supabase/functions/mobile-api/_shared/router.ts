@@ -503,6 +503,9 @@ export type MobileApiAuthResult =
     user: { id: string; email?: string };
     role: UserRole;
     supabase: unknown;
+    requestUrl?: string;
+    requestHost?: string;
+    requestProjectRef?: string;
   }
   | {
     success: false;
@@ -758,7 +761,9 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
         );
       }
 
-      const data = await dispatchRoute(route, request, auth, deps.services);
+      const requestContext = requestRuntimeContext(request);
+      const ctx: MobileApiContext = { ...auth, ...requestContext };
+      const data = await dispatchRoute(route, request, ctx, deps.services);
       return json(
         data,
         ("successStatus" in route ? route.successStatus : undefined) ?? 200,
@@ -1274,6 +1279,41 @@ function matchRoute(request: Request): Route | null {
   }
 
   return null;
+}
+
+function requestRuntimeContext(request: Request): Pick<
+  MobileApiContext,
+  "requestUrl" | "requestHost" | "requestProjectRef"
+> {
+  const parsed = safeRequestUrl(request.url);
+  const host = request.headers.get("host") ??
+    request.headers.get("x-forwarded-host") ??
+    parsed?.host;
+  return {
+    requestUrl: request.url,
+    requestHost: host ?? undefined,
+    requestProjectRef: request.headers.get("sb-project-ref") ??
+      request.headers.get("x-supabase-project-ref") ??
+      projectRefFromHost(host) ??
+      projectRefFromHost(parsed?.host),
+  };
+}
+
+function safeRequestUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+function projectRefFromHost(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const hostname = value.split(":")[0] ?? value;
+  const [projectRef, ...rest] = hostname.split(".");
+  return rest.join(".").endsWith("supabase.co") && projectRef
+    ? projectRef
+    : undefined;
 }
 
 function isPublicRoute(route: Route): route is PublicRoute {
