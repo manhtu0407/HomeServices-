@@ -204,6 +204,18 @@ type WorkerKaelClarifyResponse = {
     safety_notes: string[];
   };
 };
+export type MarketCacheInvalidateInput = {
+  cache_id?: string;
+  district_code?: string;
+  service_type?: ServiceType;
+  problem_slug?: string;
+  complexity?: ComplexityLevel;
+};
+export type MarketCacheInvalidateResponse = {
+  invalidated_count: number;
+  invalidated_at: string;
+  filters: MarketCacheInvalidateInput;
+};
 type WorkerCancellationResponse = {
   cancellation_id: string;
   job_id: string;
@@ -646,6 +658,10 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     range: { from?: string; to?: string },
   ): Promise<EarningsResponse>;
+  invalidateMarketCache(
+    ctx: MobileApiContext,
+    input: MarketCacheInvalidateInput,
+  ): Promise<MarketCacheInvalidateResponse>;
   listNotifications(ctx: MobileApiContext): Promise<NotificationListResponse>;
   markNotificationRead(
     ctx: MobileApiContext,
@@ -889,6 +905,7 @@ type Route =
   | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
+  | { kind: "admin.marketCache.invalidate"; method: "POST"; roles: UserRole[] }
   | { kind: "notifications"; method: "GET"; roles: UserRole[] }
   | { kind: "notifications.deviceToken"; method: "POST"; roles: UserRole[] }
   | {
@@ -913,6 +930,13 @@ function matchRoute(request: Request): Route | null {
       kind: "places.autocomplete",
       method: "POST",
       roles: ["customer", "worker", "admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/market-cache/invalidate") {
+    return {
+      kind: "admin.marketCache.invalidate",
+      method: "POST",
+      roles: ["admin"],
     };
   }
   if (method === "POST" && path === "/jobs") {
@@ -1230,6 +1254,11 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.placesAutocomplete(ctx, input.data);
     }
+    case "admin.marketCache.invalidate":
+      return services.invalidateMarketCache(
+        ctx,
+        marketCacheInvalidateInput(await readJson(request)),
+      );
     case "jobs.create": {
       const input = jobCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -1429,6 +1458,61 @@ async function readJson(request: Request): Promise<unknown> {
   } catch {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
+}
+
+function optionalSafeText(value: unknown, maxLength: number): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") {
+    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > maxLength) {
+    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+  }
+  return trimmed.toLowerCase();
+}
+
+function marketCacheInvalidateInput(input: unknown): MarketCacheInvalidateInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+  }
+  const record = input as Record<string, unknown>;
+  const cacheId = optionalSafeText(record.cache_id, 80);
+  const districtCode = optionalSafeText(record.district_code, 80);
+  const problemSlug = optionalSafeText(record.problem_slug, 120);
+  const serviceType = record.service_type;
+  const complexity = record.complexity;
+
+  if (
+    serviceType !== undefined &&
+    serviceType !== "electrical" &&
+    serviceType !== "plumbing" &&
+    serviceType !== "cleaning"
+  ) {
+    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+  }
+  if (
+    complexity !== undefined &&
+    complexity !== "small" &&
+    complexity !== "medium" &&
+    complexity !== "large"
+  ) {
+    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+  }
+  if (!cacheId && !districtCode && !problemSlug && !serviceType && !complexity) {
+    apiFailure("VALIDATION", "Cáº§n Ã­t nháº¥t má»™t bá»™ lá»c cache", 400);
+  }
+
+  return {
+    ...(cacheId ? { cache_id: cacheId } : {}),
+    ...(districtCode ? { district_code: districtCode } : {}),
+    ...(problemSlug ? { problem_slug: problemSlug } : {}),
+    ...(serviceType ? { service_type: serviceType as ServiceType } : {}),
+    ...(complexity ? { complexity: complexity as ComplexityLevel } : {}),
+  };
 }
 
 function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {

@@ -54,4 +54,35 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(costTracking).toContain('KAEL_OPT_BATCH_API_ENABLED')
     expect(costTracking).toContain('return false')
   })
+
+  it('keeps Q1.5 baseline evidence separate from provider failure rate', () => {
+    const script = read('apps/api/scripts/kael-q1-baseline.mjs')
+
+    expect(script).toContain('KAEL_PURPOSES')
+    expect(script).toContain('provider_success_rate')
+    expect(script).toContain('purpose_coverage')
+    expect(script).toContain('provider_failure_pattern')
+    expect(script).toContain('schema_validation_rate: round(estimateValidCount / jobs.length, 4)')
+  })
+
+  it('creates Q3 market cache schema and admin invalidate hook behind Edge', () => {
+    const migration = readMigrationByName('kael_market_cache_q3')
+    const router = read('supabase/functions/mobile-api/_shared/router.ts')
+    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+
+    expect(migration).toContain('create table if not exists public.kael_market_cache')
+    expect(migration).toContain('constraint kael_market_cache_lookup_unique')
+    expect(migration).toContain('kael_market_cache_lookup_active_idx')
+    expect(migration).toContain('create or replace function public.increment_kael_market_cache_hit')
+    expect(migration).toContain('grant execute on function public.increment_kael_market_cache_hit(uuid) to service_role')
+    expect(migration).toContain('cron.schedule')
+    expect(migration).toContain('using (private.is_admin())')
+    expect(router).toContain('admin.marketCache.invalidate')
+    expect(router).toContain('/admin/market-cache/invalidate')
+    expect(services).toContain('invalidateMarketCache')
+    expect(services).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
+    expect(sharedTypes).toContain('kael_market_cache')
+    expect(sharedTypes).toContain('increment_kael_market_cache_hit')
+  })
 })

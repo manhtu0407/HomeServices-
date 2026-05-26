@@ -3,6 +3,7 @@ import type { AIMessage, AIProvider, EdgeAiSecrets, IntentAttemptLog, IntentResu
 import { intentResultSchema } from "./types.ts";
 import { buildIntentMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
+import { maxTokensForPurpose } from "./routing.config.ts";
 import { providerCandidatesForPurpose } from "./routing.ts";
 import { hasUnsupportedRepairIntent, safeParseJSON, timed } from "./utils.ts";
 
@@ -65,7 +66,7 @@ async function classifyIntentWithProvider(
       provider,
       model,
       messages,
-      maxTokens: 200,
+      maxTokens: maxTokensForPurpose("intent_classification", 200),
       temperature: 0.1,
       timeoutMs: 1_000,
       maxRetries: 0,

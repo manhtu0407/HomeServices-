@@ -122,7 +122,13 @@ export const FALLBACK_PROBLEM_SLUG_BY_SERVICE: Record<ServiceType, string> = {
 };
 
 export type AIProvider = "anthropic" | "perplexity" | "deepseek";
-export type AITextContent = { type: "text"; text: string };
+export type AICacheControl = { type: "ephemeral"; ttl?: "1h" };
+export type AICacheStatus = "hit" | "write" | "miss";
+export type AITextContent = {
+  type: "text";
+  text: string;
+  cache_control?: AICacheControl;
+};
 export type AIImageContent = { type: "image"; source: { type: "url"; url: string } };
 export type AIMessageContent = string | Array<AITextContent | AIImageContent>;
 export type AIMessage = {
@@ -138,13 +144,25 @@ export type AIRequest = {
   temperature?: number;
   timeoutMs?: number;
   maxRetries?: number;
+  searchDomainFilter?: readonly string[];
+  searchRecencyFilter?: "hour" | "day" | "week" | "month" | "year";
+  searchMode?: "web" | "academic";
+  searchContextSize?: "low" | "medium" | "high";
 };
 
 export type AIResponse = {
   success: true;
   content: string;
-  usage: { inputTokens: number; outputTokens: number; costUsd: number };
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    costUsd: number;
+    cacheCreationInputTokens?: number;
+    cacheReadInputTokens?: number;
+    cacheStatus?: AICacheStatus;
+  };
   latencyMs: number;
+  citations?: string[];
 };
 
 export type ProviderRequestSpec = {
@@ -192,6 +210,7 @@ export type PipelineStageLog = {
   inputTokens?: number;
   outputTokens?: number;
   costUsd?: number;
+  cacheStatus?: AICacheStatus;
 };
 
 export type IntentAttemptLog = Omit<PipelineStageLog, "stage" | "fallbackUsed">;

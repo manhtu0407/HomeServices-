@@ -88,6 +88,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     listWorkerBroadcasts: vi.fn(),
     listWorkerJobs: vi.fn(),
     getWorkerEarnings: vi.fn(),
+    invalidateMarketCache: vi.fn(),
     listNotifications: vi.fn(),
     markNotificationRead: vi.fn(),
     registerDevicePushToken: vi.fn(),
@@ -461,6 +462,33 @@ describe('mobile-api Edge router contract', () => {
     expect(placesAutocomplete).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
       expect.objectContaining({ input: 'Landmark Bình Thạnh' }),
+    )
+  })
+
+  it('routes Q3 market cache invalidation through admin-only mobile API services', async () => {
+    const invalidateMarketCache = vi.fn(async () => ({
+      invalidated_count: 1,
+      invalidated_at: '2026-05-26T00:00:00.000Z',
+      filters: { district_code: 'q7' },
+    }))
+    const authenticate = vi.fn(async () => adminAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ invalidateMarketCache }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/admin/market-cache/invalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ district_code: 'Q7' }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ invalidated_count: 1 })
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['admin'])
+    expect(invalidateMarketCache).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      { district_code: 'q7' },
     )
   })
 

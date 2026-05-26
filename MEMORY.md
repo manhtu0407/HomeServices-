@@ -1,5 +1,15 @@
 # MEMORY
 
+## 2026-05-26 Section 24 Q2-Q3 And Section 25 R1 Start
+
+- Tu asked to continue remaining gaps: Section 24 Q2-Q5 and Section 25, plus verify/document/commit/PR. Active work stayed on branch `codex/kael-gap-continuation` in worktree `kael-harness-p1`.
+- Section 24 Q2 code was implemented behind default-off flags: Anthropic prompt cache control (`KAEL_OPT_PROMPT_CACHE_ENABLED`), per-purpose output caps (`KAEL_OPT_CAP_OUTPUT_ENABLED`), cache token/cost accounting, and `api_logs.safe_metadata.cache_status` for optimization telemetry. No optimization flag is enabled by code.
+- Section 24 Q3 code/migration was implemented behind `KAEL_OPT_MARKET_CACHE_ENABLED`: new migration `20260526053851_kael_market_cache_q3.sql`, `kael_market_cache`, `increment_kael_market_cache_hit`, daily cron cleanup, Edge cache read/write on market lookup, and admin-only `POST /admin/market-cache/invalidate`.
+- Q1.5 baseline harness was updated so `schema_validation_rate` tracks job estimate schema validity instead of provider success, while `provider_success_rate`, all-11-purpose coverage, and provider failure pattern move into safe metadata/reporting.
+- Section 25 was started only through R1-safe artifacts after Q3 code existed: `docs/foundation/source-trust-research.md` and `scripts/source-trust-research/run-perplexity-r1.mjs`. R2 remains blocked until Perplexity live R1 verification runs and Tu approves the final Tier 1 list.
+- Verification so far: targeted API Vitest `6 files, 200 passed`; API `tsc --noEmit` passed; `git diff --check` passed with CRLF warnings only; R1 script guard exits unless `SOURCE_TRUST_RUN_LIVE=1`.
+- Not yet verified remotely in this batch: Supabase local lint failed because local Postgres was not running on `127.0.0.1:54322`; linked staging `migration list`/dry-run failed with 401/DB login role until Supabase auth/DB password is restored. Perplexity live R1 calls were not run because `PERPLEXITY_API_KEY` is not present in this shell.
+
 ## 2026-05-26 P19 Staging Gap E2E And Plan.md §24 Q1 Start
 
 - Tu asked to continue the remaining audit gaps after P18. Staging was re-audited first: the two remaining `broadcasting` jobs were historical May 18 rows with no active `sent` broadcasts; the single approved QA worker had already completed/reviewed one job and was unavailable, so those old rows were not a live accept gate.

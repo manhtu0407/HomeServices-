@@ -151,6 +151,7 @@ export async function runKaelPipeline(
           preliminaryComplexity,
           district,
           secrets,
+          supabase,
         ),
       }),
       fallback: () => ({
@@ -191,14 +192,18 @@ export async function runKaelPipeline(
   if (!visionSkipped) {
     stageLogs.push({
       stage: "vision",
-      provider: "anthropic",
-      model: "claude-sonnet-4-6",
+      provider: visionResult.success ? visionResult.provider : "anthropic",
+      model: visionResult.success ? visionResult.model : "claude-sonnet-4-6",
       latencyMs: visionStage.elapsedMs,
       success: visionResult.success,
       failureReason: visionResult.success
         ? undefined
         : visionResult.failureReason,
       fallbackUsed: !visionResult.success,
+      inputTokens: visionResult.success ? visionResult.inputTokens : undefined,
+      outputTokens: visionResult.success ? visionResult.outputTokens : undefined,
+      costUsd: visionResult.success ? visionResult.costUsd : undefined,
+      cacheStatus: visionResult.success ? visionResult.cacheStatus : undefined,
     });
   }
   await updateKaelProgress(supabase, input.progressJobId, {
@@ -276,6 +281,7 @@ export async function runKaelPipeline(
     inputTokens: marketResult.success ? marketResult.inputTokens : undefined,
     outputTokens: marketResult.success ? marketResult.outputTokens : undefined,
     costUsd: marketResult.success ? marketResult.costUsd : undefined,
+    cacheStatus: marketResult.success ? marketResult.cacheStatus : undefined,
   });
   await updateKaelProgress(supabase, input.progressJobId, {
     stage: "market_lookup",

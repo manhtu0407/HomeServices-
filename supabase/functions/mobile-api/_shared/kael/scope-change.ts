@@ -3,6 +3,7 @@ import { PRICE_DISCLAIMER, scopeChangeEstimateSchema, scopeChangeReviewSchema } 
 import { buildScopeChangeEstimateMessages, buildScopeChangeReviewMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
 import { chooseProvider } from "./routing.ts";
+import { maxTokensForPurpose } from "./routing.config.ts";
 export {
   calculateScopeChangeAnomaly,
   calculateScopeChangeMargin,
@@ -26,7 +27,7 @@ export async function reviewScopeChange(
       provider,
       model: route.model,
       messages: buildScopeChangeReviewMessages(input),
-      maxTokens: 450,
+      maxTokens: maxTokensForPurpose("scope_change", 450),
       temperature: 0.1,
       timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,
@@ -83,7 +84,7 @@ export async function computeScopeChangeEstimate(
       provider,
       model: route.model,
       messages: buildScopeChangeEstimateMessages(input),
-      maxTokens: 500,
+      maxTokens: maxTokensForPurpose("scope_change", 500),
       temperature: 0.1,
       timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,

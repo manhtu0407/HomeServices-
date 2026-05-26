@@ -1,5 +1,6 @@
-import type { AIMessageContent, AIProvider, AIRequest, AIResponse, AIError, EdgeAiSecrets, ProviderRequestSpec, AITextContent } from "./types.ts";
+import type { AICacheStatus, AIMessageContent, AIProvider, AIRequest, AIResponse, AIError, EdgeAiSecrets, ProviderRequestSpec, AITextContent } from "./types.ts";
 import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
+import { readKaelOptimizationFlags } from "./cost-tracking.ts";
 
 export async function callAI(
   request: AIRequest,
@@ -113,6 +114,10 @@ function providerRequest(
   apiKey: string,
 ): ProviderRequestSpec {
   if (request.provider === "anthropic") {
+    const promptCacheEnabled = readKaelOptimizationFlags()
+      .KAEL_OPT_PROMPT_CACHE_ENABLED;
+    const systemContent = request.messages.find((m) => m.role === "system")
+      ?.content;
     return {
       url: "https://api.anthropic.com/v1/messages",
       headers: {
@@ -127,9 +132,7 @@ function providerRequest(
         messages: request.messages
           .filter((m) => m.role !== "system")
           .map((m) => ({ role: m.role, content: m.content })),
-        system: aiMessageContentToText(
-          request.messages.find((m) => m.role === "system")?.content,
-        ),
+        system: anthropicSystemContent(systemContent, promptCacheEnabled),
       },
       parse: (
         data: Record<string, unknown>,
@@ -141,13 +144,34 @@ function providerRequest(
           0;
         const outputTokens =
           getPath<number>(data, ["usage", "output_tokens"]) ?? 0;
+        const cacheCreationInputTokens =
+          getPath<number>(data, ["usage", "cache_creation_input_tokens"]) ?? 0;
+        const cacheReadInputTokens =
+          getPath<number>(data, ["usage", "cache_read_input_tokens"]) ?? 0;
         const isHaiku = model.includes("haiku");
-        const costUsd = inputTokens * ((isHaiku ? 0.25 : 3) / 1_000_000) +
+        const baseInputRate = isHaiku ? 0.25 : 3;
+        const costUsd =
+          inputTokens * (baseInputRate / 1_000_000) +
+          cacheCreationInputTokens * ((baseInputRate * 1.25) / 1_000_000) +
+          cacheReadInputTokens * ((baseInputRate * 0.1) / 1_000_000) +
           outputTokens * ((isHaiku ? 1.25 : 15) / 1_000_000);
+        const cacheStatus = promptCacheEnabled
+          ? inferAnthropicCacheStatus(
+            cacheCreationInputTokens,
+            cacheReadInputTokens,
+          )
+          : undefined;
         return {
           success: true as const,
           content,
-          usage: { inputTokens, outputTokens, costUsd },
+          usage: {
+            inputTokens,
+            outputTokens,
+            costUsd,
+            cacheCreationInputTokens,
+            cacheReadInputTokens,
+            cacheStatus,
+          },
           latencyMs,
         };
       },
@@ -173,6 +197,9 @@ function providerRequest(
           response_format: { type: "json_object" },
         }
         : {}),
+      ...(request.provider === "perplexity"
+        ? perplexitySearchOptions(request)
+        : {}),
       messages: request.messages.map((m) => ({
         role: m.role,
         content: aiMessageContentToText(m.content),
@@ -188,14 +215,63 @@ function providerRequest(
       const costUsd = request.provider === "deepseek"
         ? inputTokens * (0.14 / 1_000_000) + outputTokens * (0.28 / 1_000_000)
         : inputTokens * (1 / 1_000_000) + outputTokens * (1 / 1_000_000);
+      const citations = Array.isArray(data.citations)
+        ? data.citations.filter((item): item is string =>
+          typeof item === "string"
+        )
+        : undefined;
       return {
         success: true as const,
         content,
         usage: { inputTokens, outputTokens, costUsd },
         latencyMs,
+        citations,
       };
     },
   };
+}
+
+function anthropicSystemContent(
+  content: AIMessageContent | undefined,
+  promptCacheEnabled: boolean,
+): string | AITextContent[] {
+  const text = aiMessageContentToText(content);
+  if (!promptCacheEnabled || !text.trim()) return text;
+  return [{
+    type: "text",
+    text,
+    cache_control: { type: "ephemeral" },
+  }];
+}
+
+function inferAnthropicCacheStatus(
+  cacheCreationInputTokens: number,
+  cacheReadInputTokens: number,
+): AICacheStatus {
+  if (cacheReadInputTokens > 0) return "hit";
+  if (cacheCreationInputTokens > 0) return "write";
+  return "miss";
+}
+
+function perplexitySearchOptions(
+  request: AIRequest,
+): Record<string, unknown> {
+  const webSearchOptions: Record<string, unknown> = {};
+  if (request.searchDomainFilter?.length) {
+    webSearchOptions.search_domain_filter = [...request.searchDomainFilter];
+  }
+  if (request.searchRecencyFilter) {
+    webSearchOptions.search_recency_filter = request.searchRecencyFilter;
+  }
+  if (request.searchMode) {
+    webSearchOptions.search_mode = request.searchMode;
+  }
+  if (request.searchContextSize) {
+    webSearchOptions.search_context_size = request.searchContextSize;
+  }
+  return Object.keys(webSearchOptions).length > 0
+    ? { web_search_options: webSearchOptions }
+    : {};
 }
 
 function providerKey(

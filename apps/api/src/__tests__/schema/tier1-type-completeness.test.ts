@@ -53,6 +53,7 @@ const EXPECTED_TABLES = [
   'evidence_snapshots',
   'disputes',
   'kael_quality_baseline',
+  'kael_market_cache',
   'kael_optimization_metrics',
 ] as const satisfies readonly TableNames[]
 
@@ -73,7 +74,7 @@ const EXPECTED_ENUMS = [
 
 describe('Database.public.Tables completeness', () => {
   it('has all aligned workflow tables', () => {
-    expect(EXPECTED_TABLES).toHaveLength(48)
+    expect(EXPECTED_TABLES).toHaveLength(49)
   })
 
   it.each(EXPECTED_TABLES)('table "%s" is a valid generated table key', (name) => {

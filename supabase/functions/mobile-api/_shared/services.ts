@@ -33,6 +33,8 @@ import {
 } from "../../_shared/domain.ts";
 import {
   apiFailure,
+  type MarketCacheInvalidateInput,
+  type MarketCacheInvalidateResponse,
   type MobileApiContext,
   type PlacesAutocompleteResponse,
   type MobileApiServices,
@@ -217,6 +219,7 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     listWorkerBroadcasts,
     listWorkerJobs,
     getWorkerEarnings,
+    invalidateMarketCache,
     listNotifications,
     markNotificationRead,
     registerDevicePushToken,
@@ -469,6 +472,9 @@ async function createJob(
         latency_ms: stage.latencyMs,
         success: stage.success,
         error_code: stage.failureReason ?? null,
+        safe_metadata: stage.cacheStatus
+          ? { cache_status: stage.cacheStatus }
+          : undefined,
       })),
   );
 
@@ -1021,6 +1027,7 @@ async function advanceKaelChatEstimate(
         safe_metadata: {
           surface: "kael_chat",
           session_id: sessionId,
+          cache_status: stage.cacheStatus,
         },
       })),
   );
@@ -3507,6 +3514,35 @@ async function getWorkerEarnings(
     pending_payment_amount: pendingAmount,
     from_date: range.from ?? null,
     to_date: range.to ?? null,
+  };
+}
+
+async function invalidateMarketCache(
+  ctx: MobileApiContext,
+  input: MarketCacheInvalidateInput,
+): Promise<MarketCacheInvalidateResponse> {
+  if (ctx.role !== "admin") {
+    apiFailure("AUTH_FORBIDDEN", "Chá»‰ admin má»›i Ä‘Æ°á»£c xoÃ¡ cache giÃ¡", 403);
+  }
+  const invalidatedAt = new Date().toISOString();
+  let query = db(ctx)
+    .from("kael_market_cache")
+    .update({ invalidated_at: invalidatedAt, updated_at: invalidatedAt })
+    .is("invalidated_at", null);
+  if (input.cache_id) query = query.eq("id", input.cache_id);
+  if (input.district_code) query = query.eq("district_code", input.district_code);
+  if (input.service_type) query = query.eq("service_type", input.service_type);
+  if (input.problem_slug) query = query.eq("problem_slug", input.problem_slug);
+  if (input.complexity) query = query.eq("complexity", input.complexity);
+
+  const result = await dbQuery<Array<{ id: string }>>(query.select("id"));
+  if (result.error) {
+    apiFailure("DB_ERROR", "KhÃ´ng thá»ƒ xoÃ¡ cache giÃ¡", 500);
+  }
+  return {
+    invalidated_count: result.data?.length ?? 0,
+    invalidated_at: invalidatedAt,
+    filters: input,
   };
 }
 
