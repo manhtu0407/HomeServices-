@@ -7964,4 +7964,572 @@ R8 → Production: A/B verify quality + citation transparency + Tu approve
 
 ---
 
+## 26. Codex Gap Fixing Plan — Audit verify PR #37-#40 — 2026-05-26
+
+### 26.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-codex-gap-fixing
+Created:        2026-05-26
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         DRAFT v0.1 → Tu approved 2026-05-26 → write Plan.md §26
+Critical Alert: HIGH — production rollout decision + locked docs edit
+Trigger:        Audit verify PR #37 (P0-P17), #38 (P18 production fix), #39 (P19 + Q1),
+                #40 (Q2/Q3/Q4/Q5 + §25 R1+R2) → 10 gaps identified
+Scope:          Fix 10 gaps (5 verified + 5 newly found in deep verify) +
+                tune locked docs (STRUCTURES.md, RULES.md) align với reality
+Out of scope:   New features beyond fixing existing build
+Effort total:   ~17-25 ngày agent build (sequential)
+Phase count:    10 phases (F0 pre-read + F1-F9 fixes)
+```
+
+**Mục tiêu chính:**
+
+1. **Close 10 gaps** từ audit verify giữa Codex's PR #37-#40 và Plan §23+§24+§25 spec.
+2. **Align locked docs** (STRUCTURES.md §9, RULES.md §6) với reality (purposes mapping mới).
+3. **Production rollout gate** — Tu approve trước khi promote Q1-Q5 + R1-R2 lên prod.
+4. **Quality bar 95%+** mọi metric trước khi sign-off.
+
+**Authority refs:**
+
+```
+1. RULES.md          (§6 service scope, §3 validate AI output)
+2. critical.md       (§12 kael-ai-boundary, §15 kael-security-sweep)
+3. STRUCTURES.md     (§9 AI Provider Roles — sẽ tune ở F1)
+4. Plan.md §23-§25   (spec source of truth — sẽ bump version ở F8)
+5. AGENTS.md
+6. THIS PLAN §26
+7. CLAUDE.md         (Lock Notice — Tu approved F1 lock doc edits via this plan)
+8. docs/architecture/code-ownership-map.md
+9. MEMORY.md         (last)
+```
+
+---
+
+### 26.1 Gap Inventory (10 gaps verified)
+
+| # | Gap | Evidence | Severity |
+|---|---|---|---|
+| 1 | Production deploy stuck | Prod Edge v10, 71 migrations vs staging v67, 74 migrations | **HIGH** |
+| 2 | Q1.5 "11-purpose coverage" misleading | provider_logged=true cho 2/11 purposes only | MEDIUM |
+| 3 | 15% provider failure Q3 rerun | Q1 baseline 1.0 → Q3 100-job 0.85 success | MEDIUM |
+| 4 | §25 R3-R8 incomplete | R1+R2 done, R5 source_trust_registry table missing | MEDIUM |
+| 5 | A/B Perplexity #6 chưa run | `kael_ab_experiments` 1 row, `kael_ab_price_synthesis_cases` 0 rows | MEDIUM |
+| 6 | Tier 1 domains hardcoded | 20 domains trong source-trust.ts code, no DB table for admin tunable | MEDIUM |
+| 7 | 14 unindexed FK + 35+ unused indexes | Supabase advisor INFO findings | LOW |
+| 8 | Plan immutability violated | Codex added P18-P20, Q1.5 without v2.0 bump per spec §23.0/§24.0/§25.0 | LOW |
+| 9 | STRUCTURES.md §9 conflict reality | Provider role descriptions outdated vs purposes mapping | MEDIUM (will tune F1) |
+| 10 | RULES.md §6 wording slightly narrow | Educational/safety/legal topics broader than "service Q&A only" wording | LOW (will tune F1) |
+
+---
+
+### 26.2 High-Level Roadmap
+
+```
+F0 Pre-Read Mandatory (locked docs + plan + memory)
+   ↓
+F1 Locked Docs Tuning (STRUCTURES.md §9 + RULES.md §6 — Tu approved trong instruction)
+   ↓
+F2 Production Rollout Decision Gate (Tu manual approval)
+   ↓
+   ├─ F3 Extend Q1.5 Baseline 11 Purposes  ┐
+   ├─ F4 Fix 15% Provider Failure           ├─ parallel
+   └─ F5 Complete §25 R3-R7                 ┘
+   ↓
+F6 Run A/B Test Perplexity #6 (depend F3 baseline complete)
+   ↓
+   ├─ F7 DB Performance Cleanup             ┐
+   └─ F8 Plan Version Bump + Change Log     ┴─ parallel
+   ↓
+F9 Final E2E + Sign-off
+```
+
+**Critical path:** F0 → F1 → F2 → F5 → F6 → F9. Longest: F5 (4-6 ngày).
+
+**Parallel opportunities:** F3/F4/F5 sau F2; F7/F8 sau F6.
+
+**Estimated total effort:** 17-25 ngày sequential, 12-18 ngày với parallelization.
+
+---
+
+### 26.3 Phase F0 — Pre-Read Mandatory ⚠️ NEVER SKIP
+
+**Goal:** Codex agent có ngữ cảnh đầy đủ trước khi đụng code/docs.
+
+**Dependencies:** None.
+
+**Scope:** Read 8 authority files; state preflight per `critical.md §5`.
+
+**Out of scope:** KHÔNG sửa file nào trong F0.
+
+**Steps:**
+
+- Step 0.1 Read `critical.md` toàn bộ.
+- Step 0.2 Read `RULES.md` toàn bộ.
+- Step 0.3 Read `STRUCTURES.md` §9 + §10F + §11.
+- Step 0.4 Read `Plan.md §23 + §24 + §25` (base) + §26 (this plan).
+- Step 0.5 Read `MEMORY.md` last.
+- Step 0.6 Read `docs/architecture/code-ownership-map.md`.
+- Step 0.7 Read `docs/agent-lessons.md`.
+- Step 0.8 State preflight format per `critical.md §5`.
+
+**Skills/Protocols:** `kael-preflight`, `kael-clarify-with-docs`.
+
+**Acceptance Gate:**
+
+- [ ] All 8 authority files read.
+- [ ] Preflight stated.
+
+**Estimated Effort:** 30-60 phút.
+
+---
+
+### 26.4 Phase F1 — Locked Docs Tuning (Gap 9 + 10)
+
+**Goal:** Update STRUCTURES.md §9 + RULES.md §6 align với purposes mapping mới.
+
+**Dependencies:** F0.
+
+**Steps:**
+
+- Step 1.1 Update STRUCTURES.md §9 DeepSeek bullet:
+  Old: "DeepSeek: intent classification, simple FAQ, lightweight pre-screening"
+  New: "DeepSeek: primary cho intent classification, clarification, problem synthesis, advisory generation, worker brief, post-job learning, educational response. Text-based default với Anthropic fallback per ai_provider_routing config."
+- Step 1.2 Update STRUCTURES.md §9 Anthropic bullet:
+  Old: "Anthropic: vision analysis, problem identification, price synthesis, customer-facing explanation, worker pre-brief when needed"
+  New: "Anthropic: vision analysis (mandatory, no fallback), scope-change reasoning (Phase 2.0 final-price authority), and fallback cho DeepSeek/Perplexity failures per routing config."
+- Step 1.3 Update STRUCTURES.md §9 Perplexity bullet:
+  Old: "Perplexity: market price lookup only, HCMC repair price research"
+  New: "Perplexity: market price lookup AND price synthesis (purpose #6 under A/B test per Plan §23 D28); restricted to allowlist 20 Tier 1 Vietnamese sources per Plan §25 R1 research."
+- Step 1.4 Add effective date line cuối §9:
+  "Provider role mapping is sourced from `ai_provider_routing` (DB) + `routing.config.ts` (code). Effective 2026-05-26 per Plan.md §23 P3 + §25 R2. Tu approval recorded in §26 F1."
+- Step 1.5 Update RULES.md §6 wording:
+  Old: "Hard rule: Kael answers concise, relevant, safe Home Services questions inside the three active categories only."
+  New: "Hard rule: Kael answers Home Services questions (electrical, plumbing, cleaning) plus directly-tied educational responses, safety advisories, and legal-awareness warnings about the same three categories. Out-of-scope service requests get a polite decline."
+- Step 1.6 Verify diff `git diff origin/main -- STRUCTURES.md RULES.md` ≤ 30 lines total.
+
+**Build Instructions:**
+
+- KHÔNG add/remove sections.
+- Preserve LOCKED notice.
+- Use Edit tool surgical.
+
+**Affected Areas:** `STRUCTURES.md` + `RULES.md` (locked, Tu approved via §26).
+
+**Skills/Protocols:** `kael-preflight`, `kael-docs-execution`, `karpathy-guidelines`.
+
+**Tests:**
+
+- Step 1-test-1: Diff STRUCTURES.md chỉ §9 changes.
+- Step 1-test-2: Diff RULES.md chỉ §6 wording.
+- Step 1-test-3: LOCKED notice preserved.
+- Step 1-test-4: §9 mentions all 11 purposes / 3 providers.
+
+**Acceptance Gate:**
+
+- [ ] STRUCTURES.md §9 updated (3 bullets + effective date).
+- [ ] RULES.md §6 wording updated.
+- [ ] Total diff ≤ 30 lines.
+- [ ] Tests 4/4 pass.
+
+**Estimated Effort:** 1-1.5 ngày.
+
+---
+
+### 26.5 Phase F2 — Production Rollout Decision Gate (Gap 1)
+
+**Goal:** Deploy Q1-Q5 + R1-R2 lên production stuck on staging.
+
+**Dependencies:** F1.
+
+**Steps:**
+
+- Step 2.1 Risk assessment `docs/foundation/production-rollout-decision.md` (migrations safety, env flags default off, rollback plan, monitoring) (~1 ngày).
+- Step 2.2 Tu approve risk assessment + rollout authorization (manual gate).
+- Step 2.3 Apply migrations production (`iwevizmsedyqozxlawwl`) via `mcp__supabase__apply_migration` matching staging sequence (~0.5 ngày).
+- Step 2.4 Deploy mobile-api Edge function production (match staging code) (~0.5 ngày).
+- Step 2.5 Production smoke 5 real jobs với env flags OFF (~0.5 ngày).
+- Step 2.6 Document rollout `docs/test-logs/YYYY-MM-DD_f26-production-rollout.md` (~0.5 ngày).
+
+**Build Instructions:**
+
+- All env flags default off → behavior identical to current.
+- Smoke must pass with same staging metrics.
+- Migrations via mcp tool (audit trail).
+
+**Affected Areas:**
+
+- Production Supabase: migrations + Edge function.
+- `docs/foundation/production-rollout-decision.md` (NEW).
+- `docs/test-logs/YYYY-MM-DD_f26-production-rollout.md` (NEW).
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-security-sweep`, `kael-review`.
+
+**Tests:**
+
+- Step 2-test-1: Production migration count = staging count.
+- Step 2-test-2: Edge function version updated production.
+- Step 2-test-3: 5 smoke jobs successful.
+- Step 2-test-4: `api_logs.purpose` populated cho new calls.
+- Step 2-test-5: No production errors.
+
+**Acceptance Gate:**
+
+- [ ] Risk assessment doc reviewed by Tu.
+- [ ] Production migrations match staging.
+- [ ] Edge function deployed.
+- [ ] Smoke 5/5 pass.
+- [ ] kael-security-sweep pass.
+
+**Estimated Effort:** 2-3 ngày.
+
+**Handoff Notes:** F2 hard gate — Tu manual approve Step 2.2.
+
+---
+
+### 26.6 Phase F3 — Extend Q1.5 Baseline cho 11 Purposes (Gap 2)
+
+**Goal:** Q1.5 baseline thực sự cover 11 purposes với real data.
+
+**Dependencies:** F2.
+
+**Steps:**
+
+- Step 3.1 Read existing `kael-q1-baseline.mjs` (~0.5 ngày).
+- Step 3.2 Extend script: 50 jobs với photos (trigger vision), scope-change sim, A14 review (~1.5 ngày).
+- Step 3.3 Run extended baseline staging 50 jobs (~0.5 ngày).
+- Step 3.4 Verify `kael_quality_baseline` ≥ 8/11 provider_logged=true (~0.5 ngày).
+- Step 3.5 Update `docs/cost-baseline-2026-05.md` (~0.5 ngày).
+
+**Build Instructions:**
+
+- Staging fixture cleanup per P19 pattern.
+- Per-purpose cost/latency tracked.
+- Skipped purposes annotated `skipped=true`.
+
+**Affected Areas:**
+
+- `apps/api/scripts/kael-q1-baseline.mjs` (UPDATE).
+- `docs/cost-baseline-2026-05.md` (UPDATE).
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-tdd`.
+
+**Tests:** 5 tests covering script run, ≥ 8/11 coverage, skipped annotation, cost breakdown, cleanup.
+
+**Acceptance Gate:**
+
+- [ ] ≥ 8/11 purposes real data.
+- [ ] Cost baseline doc updated.
+- [ ] Tests 5/5 pass.
+
+**Estimated Effort:** 2-3 ngày.
+
+---
+
+### 26.7 Phase F4 — Investigate + Fix 15% Provider Failure (Gap 3)
+
+**Goal:** Root cause + fix success rate 0.85 → ≥ 0.95.
+
+**Dependencies:** F2.
+
+**Steps:**
+
+- Step 4.1 Query `api_logs` last 100 per provider × error_code (~0.5 ngày).
+- Step 4.2 Read 5 sample failed calls (~0.5 ngày).
+- Step 4.3 Document finding `docs/foundation/q3-failure-root-cause.md` (~0.5 ngày).
+- Step 4.4 Apply fix per finding (~1 ngày).
+- Step 4.5 Re-run 100-job staging baseline → success ≥ 0.95 (~0.5 ngày).
+
+**Build Instructions:**
+
+- Honest reporting per memory.
+- Minimal fix per karpathy.
+
+**Affected Areas:**
+
+- `docs/foundation/q3-failure-root-cause.md` (NEW).
+- Per finding: routing.ts / circuit-breaker.ts / provider-client.ts.
+
+**Skills/Protocols:** `kael-preflight`, `kael-diagnose`, `kael-tdd`.
+
+**Tests:** 4 tests: identify, fix minimal, re-run ≥ 0.95, no new failure.
+
+**Acceptance Gate:**
+
+- [ ] Root cause documented.
+- [ ] Fix applied + tested.
+- [ ] Success rate ≥ 0.95.
+
+**Estimated Effort:** 2-3 ngày.
+
+---
+
+### 26.8 Phase F5 — Complete §25 R3-R7 (Gap 4 + 6)
+
+**Goal:** Build R3-R7 source trust infrastructure.
+
+**Dependencies:** F1.
+
+**Steps:**
+
+- Step 5.1 R5 — Migration `source_trust_registry` per Plan §25.9 (~1 ngày).
+- Step 5.2 R5 — Seed 20 Tier 1 từ hardcoded list (~0.5 ngày).
+- Step 5.3 R5 — Replace source-trust.ts hardcoded với DB lookup (5-min cache) (~0.5 ngày).
+- Step 5.4 R5 — `lookupTrustScore` + decay function (~0.5 ngày).
+- Step 5.5 R4 — `validateCitations` với quorum ≥ 2 (~1 ngày).
+- Step 5.6 R4 — Wire validator vào market.ts post-Perplexity (~0.5 ngày).
+- Step 5.7 R3 — Verify citations[] populated cho 5 test jobs (~0.5 ngày).
+- Step 5.8 R6 — Extend LS1 với median ± 2σ outlier (~1 ngày).
+- Step 5.9 R6 — Weighted median trong `LS1-aggregation.ts` NEW (~0.5 ngày).
+- Step 5.10 R7 optional — Admin endpoints `/admin/source-trust/*` (~1 ngày).
+
+**Build Instructions:**
+
+- R5 cache via Map (5-min TTL).
+- R6 pure functions.
+- Backward compat: PR #12 LS1 tests pass.
+
+**Affected Areas:**
+
+- Migration: `source_trust_registry`.
+- `kael/source-trust.ts` (UPDATE).
+- `kael/market.ts` (UPDATE).
+- `kael/skills/LS1-aggregation.ts` (NEW).
+- `kael/skills/LS1-market-memory.ts` (UPDATE).
+- `kael/router.ts` (R7 routes optional).
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-ai-boundary`, `kael-security-sweep`, `kael-tdd`, `kael-architecture-deepening`.
+
+**Tests:** 10 tests covering registry seed, lookup, decay, validator quorum, citation persistence, outlier, weighted median, backward compat, RLS.
+
+**Acceptance Gate:**
+
+- [ ] R5 seeded + lookup working.
+- [ ] R4 validator quorum working.
+- [ ] R3 citations persisted (5 test jobs).
+- [ ] R6 outlier + weighted median working.
+- [ ] R7 admin (if approved).
+- [ ] Tests ≥ 9/10.
+
+**Estimated Effort:** 4-6 ngày.
+
+---
+
+### 26.9 Phase F6 — Run A/B Test Perplexity #6 (Gap 5)
+
+**Goal:** Execute A/B test price_synthesis 100 cases per D28.
+
+**Dependencies:** F3 + F5.
+
+**Steps:**
+
+- Step 6.1 Verify `kael_ab_experiments` config (~0.5 ngày).
+- Step 6.2 Build A/B runner `apps/api/scripts/kael-ab-pricesynth.mjs` (~1 ngày).
+- Step 6.3 Run 100 staging jobs split 50/50 (~1 ngày).
+- Step 6.4 Compute 4 metrics: schema_rate ≥95%, deviation_anthropic ≤25%, deviation_actual ≤30%, fallback_rate ≤10% (~0.5 ngày).
+- Step 6.5 Persist 100 case rows (~0.5 ngày).
+- Step 6.6 Decision report `docs/test-logs/YYYY-MM-DD_f26-ab-pricesynth-decision.md` (~0.5 ngày).
+
+**Build Instructions:**
+
+- Deterministic seed-based split.
+- Fixture cleanup.
+- Honest reporting.
+
+**Affected Areas:**
+
+- `apps/api/scripts/kael-ab-pricesynth.mjs` (NEW).
+- `kael_ab_price_synthesis_cases` (populate 100).
+- Decision report (NEW).
+- `routing.config.ts` (UPDATE nếu loại Perplexity #6).
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-tdd`, `kael-review`.
+
+**Tests:** 6 tests covering 100 cases, balanced split, 4 metrics, math sample verify, decision committed, cleanup.
+
+**Acceptance Gate:**
+
+- [ ] 100 cases persisted.
+- [ ] 4 metrics computed.
+- [ ] Decision report committed.
+- [ ] Tu approve direction.
+
+**Estimated Effort:** 2-3 ngày.
+
+---
+
+### 26.10 Phase F7 — DB Performance Cleanup (Gap 7)
+
+**Goal:** Fix 14 unindexed FK + drop 35+ unused indexes.
+
+**Dependencies:** F6.
+
+**Steps:**
+
+- Step 7.1 Migration 14 FK indexes (~0.5 ngày).
+- Step 7.2 Verify pg_stat_user_indexes 0 scans last 7 days (~0.5 ngày).
+- Step 7.3 Migration drop unused (0 scans only) (~0.5 ngày).
+- Step 7.4 Apply staging + production (~0.5 ngày).
+- Step 7.5 Re-run advisor verify lints < 10 (~0.5 ngày).
+
+**Build Instructions:**
+
+- Migrations idempotent.
+- Verify 0 scans STRICTLY.
+
+**Affected Areas:** 2 new migrations.
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-tdd`.
+
+**Tests:** 4 tests covering FK indexes added, 0 scans verified, advisor reduce ≥ 30 lints, no query regression.
+
+**Acceptance Gate:**
+
+- [ ] 14 FK indexes added.
+- [ ] ≥ 30 unused dropped.
+- [ ] Advisor lints < 10.
+
+**Estimated Effort:** 1-2 ngày.
+
+---
+
+### 26.11 Phase F8 — Plan Version Bump + Change Log (Gap 8)
+
+**Goal:** Bump §23/§24/§25 to v2.0 với change log.
+
+**Dependencies:** F7.
+
+**Steps:**
+
+- Step 8.1 Plan.md §23 Status v2.0 + §23.24 change log row (~0.5 ngày).
+- Step 8.2 Plan.md §24 Status v2.0 + §24.11 row (~0.5 ngày).
+- Step 8.3 Plan.md §25 Status v2.0 + §25.14 row (~0.5 ngày).
+
+**Build Instructions:**
+
+- Edit only metadata + change log.
+- Preserve phase content immutable.
+- Reference PR #37-#40 + date.
+
+**Affected Areas:** Plan.md §23.0, §23.24, §24.0, §24.11, §25.0, §25.14.
+
+**Skills/Protocols:** `kael-preflight`, `kael-docs-execution`.
+
+**Tests:** 3 tests: v2.0 all plans, change log rows reference PRs, phase content unchanged.
+
+**Acceptance Gate:**
+
+- [ ] All 3 plans v2.0.
+- [ ] Change log rows added.
+
+**Estimated Effort:** 1 ngày.
+
+---
+
+### 26.12 Phase F9 — Final E2E + Sign-off
+
+**Goal:** Re-verify full pipeline + Tu sign-off.
+
+**Dependencies:** F1-F8.
+
+**Steps:**
+
+- Step 9.1 Re-run P15 E2E 5-case matrix staging (~0.5 ngày).
+- Step 9.2 Production smoke 5 real jobs (~0.5 ngày).
+- Step 9.3 Create `docs/test-logs/YYYY-MM-DD_f26-final-signoff.md` (~0.5 ngày).
+- Step 9.4 Tu manual review + sign-off.
+
+**Acceptance Gate:**
+
+- [ ] Staging E2E 5/5 pass.
+- [ ] Production smoke 5/5 pass.
+- [ ] All 10 gaps verified closed.
+- [ ] Tu sign-off recorded.
+
+**Estimated Effort:** 1-2 ngày.
+
+---
+
+### 26.13 Cross-cutting Concerns
+
+#### Skills Mapping Summary
+
+| Skill | Phases |
+|---|---|
+| `kael-preflight` (mandatory) | ALL |
+| `kael-docs-execution` | F1, F8 |
+| `kael-supabase` | F2, F5, F7 |
+| `kael-ai-boundary` | F3, F4, F5, F6 |
+| `kael-security-sweep` | F2, F5 |
+| `kael-tdd` | ALL except F0, F1 |
+| `kael-architecture-deepening` | F5 (R6 aggregation) |
+| `kael-diagnose` | F4 (root cause) |
+| `kael-review` | ALL acceptance gates |
+| `karpathy-guidelines` | ALL |
+
+#### Approval Gates Summary
+
+```
+F0 → F1: Pre-read output verified
+F1 → F2: Locked docs tuned
+F2 → F3/F4/F5: Production rollout success + Tu manual approval
+F3/F4/F5 → F6: Baseline + failure fix + R3-R7 complete
+F6 → F7/F8: A/B decision committed
+F7/F8 → F9: All fixes complete
+F9 → Done: Tu sign-off
+```
+
+#### Risk Management
+
+| Risk | Mitigation |
+|---|---|
+| F1 locked doc edit creep | Strict ≤ 30 lines diff, surgical only |
+| F2 production rollout breaks | Default OFF flags, rollback ready |
+| F4 failure root cause unclear | `kael-diagnose` protocol |
+| F5 R6 aggregation math bug | Unit tests + backward compat |
+| F6 A/B decision premature | Persist 100 cases trước decide |
+| F7 drop wrong index | Verify pg_stat 0 scans STRICT |
+| F8 plan content drift | Edit only metadata + change log |
+
+---
+
+### 26.14 Change Log
+
+| Version | Date | Author | Change |
+|---|---|---|---|
+| 0.1 DRAFT | 2026-05-26 | Tu + Claude (audit verify PR #37-#40) | Initial fixing plan based on 10 gaps |
+| 1.0 | 2026-05-26 | Tu approved | Approve toàn bộ, write Plan.md §26, Codex execute |
+
+---
+
+### 26.15 Notes for Future Agents
+
+**Khi resume work §26:**
+
+1. Read §26 đầy đủ.
+2. Verify F0 pre-read done.
+3. Check Change Log.
+4. Run preflight per `critical.md §5`.
+
+**Conflict resolution:**
+
+- §26 conflict với §23/§24/§25: existing wins (base layer).
+- §26 conflict với `RULES.md` hoặc `critical.md`: STOP, ask Tu.
+- §26 conflict với code: re-read code, code wins.
+
+**Plan immutable after Tu approval:**
+
+- §26.0-§26.13 KHÔNG edit mid-execution.
+- Nếu cần đổi → v2.0 + Tu approve.
+
+**Phase dependency:**
+
+```
+F0 → F1 → F2 → {F3, F4, F5} → F6 → {F7, F8} → F9
+```
+
+F2 is HARD GATE — Tu manual approve required before F3-F9 begin.
+
+---
+
 End of Plan.md
