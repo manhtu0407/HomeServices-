@@ -1,9 +1,11 @@
 // P7 skill file: LS1-market-memory
 import type { LearningSkillCandidate, LearningSkillInput } from "./registry.ts";
+import { buildLS1Aggregation, type LS1PriceSample } from "./LS1-aggregation.ts";
 
 export function buildLS1MarketMemoryCandidate(
   input: LearningSkillInput,
 ): LearningSkillCandidate {
+  const aggregation = buildLS1Aggregation(readPriceSamples(input));
   return {
     skill_id: "LS1",
     candidate_type: "price_prior_update",
@@ -23,9 +25,23 @@ export function buildLS1MarketMemoryCandidate(
       },
       suggested: {
         signal: "price_prior_candidate",
+        ...(aggregation ? { aggregation } : {}),
       },
     },
   };
+}
+
+function readPriceSamples(input: LearningSkillInput): LS1PriceSample[] {
+  const value = Array.isArray(input.market_samples)
+    ? input.market_samples
+    : Array.isArray(input.price_samples)
+    ? input.price_samples
+    : [];
+  return value
+    .map((item) => typeof item === "object" && item !== null
+      ? item as LS1PriceSample
+      : null)
+    .filter((item): item is LS1PriceSample => item !== null);
 }
 
 function safeScope(input: LearningSkillInput) {

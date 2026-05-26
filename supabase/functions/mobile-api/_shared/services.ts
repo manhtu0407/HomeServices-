@@ -93,6 +93,9 @@ import {
   type CustomerCancellationAbuseSignal,
   type CustomerCancellationSubCase,
   type DisputeType,
+  evaluatePriceSynthesisAbCase as runPriceSynthesisAbCase,
+  type PriceSynthesisAbCaseInput,
+  type PriceSynthesisAbEvaluation,
 } from "./kael/index.ts";
 
 type DbError = { code?: string; message?: string };
@@ -231,6 +234,8 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     listWorkerJobs,
     getWorkerEarnings,
     invalidateMarketCache,
+    evaluatePriceSynthesisAbCase: (ctx, input) =>
+      evaluatePriceSynthesisAbCaseAdmin(ctx, input, secrets),
     processKaelLearningQueue: (ctx, input) =>
       processKaelLearningQueueAdmin(ctx, input, secrets),
     processKaelBatchResults: (ctx, input) =>
@@ -3561,6 +3566,17 @@ async function invalidateMarketCache(
     invalidated_at: invalidatedAt,
     filters: input,
   };
+}
+
+async function evaluatePriceSynthesisAbCaseAdmin(
+  ctx: MobileApiContext,
+  input: PriceSynthesisAbCaseInput,
+  secrets: EdgeAiSecrets,
+): Promise<PriceSynthesisAbEvaluation> {
+  if (ctx.role !== "admin") {
+    apiFailure("AUTH_FORBIDDEN", "Chi admin moi duoc chay A/B price_synthesis", 403);
+  }
+  return runPriceSynthesisAbCase(input, secrets);
 }
 
 async function processKaelLearningQueueAdmin(

@@ -45,11 +45,11 @@ describe('P17 monitoring and A/B setup', () => {
     expect(migration).toContain('grant all on public.kael_ab_price_synthesis_cases to service_role')
   })
 
-  it('documents provider #6 as Perplexity primary with Anthropic fallback', () => {
+  it('documents provider #6 as Anthropic primary after the F26 A/B rejection', () => {
     const routingConfig = read('supabase/functions/mobile-api/_shared/kael/routing.config.ts')
 
     expect(routingConfig).toContain(
-      'price_synthesis: config("price_synthesis", perplexity(), anthropic(), 0.01, 3_000, true, 200)',
+      'price_synthesis: config("price_synthesis", anthropic(), undefined, 0.01, 3_000, true, 200)',
     )
   })
 })

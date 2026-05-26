@@ -268,10 +268,16 @@ export function KaelChatComposer({
 
   useEffect(() => {
     if (!addressLifted || addressFocused || hasAddress || hasComposerIntent) return undefined
-    addressHideTimerRef.current = setTimeout(() => {
+    const timer = setTimeout(() => {
       setAddressLifted(false)
     }, ADDRESS_AUTO_HIDE_DELAY_MS)
-    return clearAddressHideTimer
+    addressHideTimerRef.current = timer
+    return () => {
+      clearTimeout(timer)
+      if (addressHideTimerRef.current === timer) {
+        addressHideTimerRef.current = null
+      }
+    }
   }, [addressFocused, addressLifted, hasAddress, hasComposerIntent])
 
   return (

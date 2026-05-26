@@ -138,7 +138,7 @@ if (
 }
 ```
 
-Hard rule: Kael answers concise, relevant, safe Home Services questions inside the three active categories only. For unsupported services, dangerous content, adult content, PII exposure, or unrelated requests, Kael must politely decline instead of analyzing.
+Hard rule: Kael answers Home Services questions for electrical repair, plumbing repair, and home cleaning/housekeeping, including directly tied educational responses, safety advisories, and legal-awareness warnings for those three categories. For unsupported services, dangerous content, adult content, PII exposure, or unrelated requests, Kael must politely decline instead of analyzing.
 
 ---
 

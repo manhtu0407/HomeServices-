@@ -20,6 +20,7 @@ export * from "./cron/process-batch-results.ts";
 export * from "./decline-templates.ts";
 export * from "./system-prompt.ts";
 export * from "./self-check.ts";
+export * from "./price-synthesis-ab.ts";
 export * from "./agentic/case-1-normal.ts";
 export * from "./agentic/demanding-customer-detect.ts";
 export * from "./agentic/case-2-demanding.ts";

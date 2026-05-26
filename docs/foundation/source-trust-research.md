@@ -1,12 +1,12 @@
 # Source Trust Research - Section 25 R1
 
-Status: R1 live verified; R2 code implemented and staging smoke verified behind rollback flag.
+Status: R1 live verified; R2 code implemented; F26 R3-R6 source-trust registry, citation quorum, and LS1 aggregation verified on staging.
 Date: 2026-05-26.
 Plan ref: `Plan.md` Section 25.5.
 
 ## Scope
 
-R1 verifies a maximum-20 Perplexity allowlist for Vietnamese/HCMC home-service market evidence. R2 now wires that allowlist into the Edge `market_lookup` Perplexity path behind `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED`. Code-side citation rejection, source-trust registry, and blended price synthesis remain out of scope until R4-R6.
+R1 verifies a maximum-20 Perplexity allowlist for Vietnamese/HCMC home-service market evidence. R2 wires that allowlist into the Edge `market_lookup` Perplexity path behind `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED`. F26 adds DB-backed source-trust lookup, citation quorum validation, persisted market citation artifacts, and LS1 weighted aggregation.
 
 ## API Constraints Verified
 
@@ -98,6 +98,8 @@ Current local status:
 - R2 Edge config is implemented behind `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED`.
 - R2 staging provider smoke with the flag enabled produced `market_lookup` provider `perplexity`, model `sonar-pro`, `source_trust_enabled=true`, `search_domain_filter_count=20`, `search_recency_filter=month`, `latency_budget_ms=6000`, and fail-closed `insufficient_trusted_data`; the job still completed through baseline fallback and fixture cleanup returned all tracked counts to 0.
 - The staging flag was restored to rollback-off after smoke while Q5/DeepSeek health was remeasured.
+- F26 F5 created `source_trust_registry`, seeded 20 active Tier 1 domains, deployed `mobile-api` on staging, and verified 6 accepted citation artifacts in a staging audit window. Live Perplexity remains fail-closed when trusted data is insufficient.
+- Registry maintenance rules now live in `docs/foundation/source-trust-maintenance.md`.
 
 ## Approval Gate
 
@@ -107,4 +109,8 @@ Current local status:
 - [x] Research script prepared.
 - [x] R2 Edge config implemented behind rollback flag.
 - [x] R2 staging smoke proves allowlist config reaches live Edge provider calls.
-- [ ] Production rollout approval and Section 25 R4-R8 gates.
+- [x] F26 R3 citations persisted in staging market artifacts.
+- [x] F26 R4 citation quorum validator implemented and tested.
+- [x] F26 R5 registry seeded and loaded from DB with decay.
+- [x] F26 R6 LS1 outlier + weighted median aggregation implemented and tested.
+- [ ] Production source-trust rollout approval.
