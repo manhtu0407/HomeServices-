@@ -11,6 +11,19 @@ const PASSWORD = 'Q1-baseline-Temp-12345!'
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../../..')
 const DEFAULT_REPORT_PATH = resolve(REPO_ROOT, 'docs/cost-baseline-2026-05.md')
+const KAEL_PURPOSES = [
+  'intent_classification',
+  'vision_analysis',
+  'clarification',
+  'problem_synthesis',
+  'market_lookup',
+  'price_synthesis',
+  'advisory_generation',
+  'worker_brief',
+  'scope_change',
+  'post_job_learning',
+  'educational_response',
+]
 
 const SCENARIOS = [
   {
@@ -61,13 +74,22 @@ function assertStagingUrl(value, label) {
 
 function timeoutFetch(timeoutMs) {
   return async (url, options = {}) => {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
-    try {
-      return await fetch(url, { ...options, signal: controller.signal })
-    } finally {
-      clearTimeout(timer)
+    const attempts = Number(readEnv('Q1_FETCH_RETRIES') ?? '2') + 1
+    let lastError = null
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), timeoutMs)
+      try {
+        return await fetch(url, { ...options, signal: controller.signal })
+      } catch (error) {
+        lastError = error
+        if (attempt === attempts) throw error
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempt))
+      } finally {
+        clearTimeout(timer)
+      }
     }
+    throw lastError
   }
 }
 
@@ -126,16 +148,17 @@ class Q1BaselineHarness {
     const estimateValidCount = jobs.filter((job) =>
       number(job.kael_price_min) > 0 && number(job.kael_price_max) >= number(job.kael_price_min)
     ).length
+    const purposeCoverage = buildPurposeCoverage(apiLogs, jobs)
     const toneScore = scoreVietnameseTone(jobs)
     const avgReviewRating = await this.fetchAverageReviewRating()
 
     const baseline = {
-      baseline_key: `${this.runId}-staging-50`,
-      source: 'staging_live_50',
+      baseline_key: `${this.runId}-staging-${this.config.sampleSize}`,
+      source: this.config.sampleSize === 50 ? 'staging_live_50' : 'manual',
       sample_size: this.config.sampleSize,
       job_count: jobs.length,
       api_log_count: apiLogs.length,
-      schema_validation_rate: round(successCount / apiLogs.length, 4),
+      schema_validation_rate: round(estimateValidCount / jobs.length, 4),
       vietnamese_tone_score: toneScore,
       avg_review_rating: avgReviewRating,
       advisory_accuracy_score: round(estimateValidCount / jobs.length, 4),
@@ -152,6 +175,10 @@ class Q1BaselineHarness {
       safe_metadata: {
         run_id: this.runId,
         edge_api: true,
+        baseline_version: 'q1.5',
+        provider_success_rate: round(successCount / apiLogs.length, 4),
+        purpose_coverage: purposeCoverage,
+        provider_failure_pattern: buildProviderFailurePattern(apiLogs),
         cleanup_policy: 'Fixture jobs, api_logs, events, profiles, and auth user deleted after aggregate persisted.',
       },
     }
@@ -321,24 +348,27 @@ Baseline row: ${this.baselineRow?.baseline_key ?? 'not persisted'}
 
 ## Scope
 
-Plan.md section 24 Q1 baseline measurement before enabling cost optimizations.
+Plan.md section 24 live baseline/comparison measurement for Kael cost optimization.
 
 ## Evidence
 
 - Sample jobs requested: ${this.config.sampleSize}
 - Jobs created through Edge: ${baseline?.job_count ?? 0}
 - Provider log rows measured: ${baseline?.api_log_count ?? 0}
-- Schema/provider success rate: ${baseline?.schema_validation_rate ?? 'n/a'}
+- Schema validation rate: ${baseline?.schema_validation_rate ?? 'n/a'}
+- Provider success rate: ${baseline?.safe_metadata?.provider_success_rate ?? 'n/a'}
 - Vietnamese tone heuristic: ${baseline?.vietnamese_tone_score ?? 'n/a'}
 - Advisory/estimate accuracy proxy: ${baseline?.advisory_accuracy_score ?? 'n/a'}
 - Provider breakdown: ${baseline ? JSON.stringify(baseline.provider_breakdown) : 'n/a'}
 - Purpose breakdown: ${baseline ? JSON.stringify(baseline.purpose_breakdown) : 'n/a'}
+- Purpose coverage: ${baseline ? JSON.stringify(baseline.safe_metadata.purpose_coverage) : 'n/a'}
+- Provider failure pattern: ${baseline ? JSON.stringify(baseline.safe_metadata.provider_failure_pattern) : 'n/a'}
 - Cost summary: ${baseline ? JSON.stringify(baseline.cost_summary) : 'n/a'}
 - Cleanup counts: ${JSON.stringify(this.cleanupCounts)}
 
 ## Notes
 
-- All optimization flags remained disabled.
+- This harness does not toggle remote Edge feature flags; verify Supabase secrets and cache metrics separately.
 - No fixture job, api log, event, profile, or auth user is intentionally retained.
 - Persisted aggregate baseline row remains in \`kael_quality_baseline\`.
 - Safe per-call metric rows remain in \`kael_optimization_metrics\` with fixture job ids nulled by cleanup.
@@ -381,6 +411,56 @@ function buildBreakdown(rows, keyFn) {
       p95_latency_ms: Math.round(percentile(value.latencies, 95)),
     },
   ]))
+}
+
+function buildPurposeCoverage(apiLogs, jobs) {
+  const estimateValidCount = jobs.filter((job) =>
+    number(job.kael_price_min) > 0 && number(job.kael_price_max) >= number(job.kael_price_min)
+  ).length
+  return Object.fromEntries(KAEL_PURPOSES.map((purpose) => {
+    const rows = apiLogs.filter((row) => row.purpose === purpose)
+    const providers = [...new Set(rows.map((row) => row.provider).filter(Boolean))]
+    return [
+      purpose,
+      {
+        provider_logged: rows.length > 0,
+        calls: rows.length,
+        successes: rows.filter((row) => row.success === true).length,
+        failures: rows.filter((row) => row.success !== true).length,
+        providers,
+        local_contract_observed: localPurposeContractObserved(purpose, jobs, estimateValidCount),
+      },
+    ]
+  }))
+}
+
+function localPurposeContractObserved(purpose, jobs, estimateValidCount) {
+  if (purpose === 'problem_synthesis' || purpose === 'price_synthesis') {
+    return estimateValidCount === jobs.length
+  }
+  if (purpose === 'advisory_generation') {
+    return jobs.some((job) => typeof job.kael_advisory === 'string' && job.kael_advisory.trim())
+  }
+  return false
+}
+
+function buildProviderFailurePattern(rows) {
+  const failures = rows.filter((row) => row.success !== true)
+  return {
+    failure_count: failures.length,
+    failure_rate: round(failures.length / Math.max(1, rows.length), 4),
+    by_error_code: buildCountMap(failures, (row) => row.error_code ?? 'unknown'),
+    by_purpose_provider: buildCountMap(failures, (row) => `${row.purpose ?? 'unknown'}:${row.provider ?? 'unknown'}`),
+  }
+}
+
+function buildCountMap(rows, keyFn) {
+  const counts = new Map()
+  for (const row of rows) {
+    const key = keyFn(row)
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  return Object.fromEntries([...counts.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0]))))
 }
 
 function scoreVietnameseTone(jobs) {

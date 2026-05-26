@@ -33,11 +33,20 @@ import {
 } from "../../_shared/domain.ts";
 import {
   apiFailure,
+  type KaelBatchResultsProcessInput,
+  type KaelBatchResultsProcessResponse,
+  type KaelLearningQueueProcessInput,
+  type KaelLearningQueueProcessResponse,
+  type MarketCacheInvalidateInput,
+  type MarketCacheInvalidateResponse,
   type MobileApiContext,
   type PlacesAutocompleteResponse,
   type MobileApiServices,
 } from "./router.ts";
-import { buildKaelOptimizationMetricRows } from "./kael/cost-tracking.ts";
+import {
+  buildKaelOptimizationMetricRows,
+  readKaelOptimizationFlags,
+} from "./kael/cost-tracking.ts";
 import { validateTransition } from "./lifecycle.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "./rate-limit.ts";
 import { requireJobAccess } from "./access.ts";
@@ -72,6 +81,9 @@ import {
   type LearningSkillTrigger,
   getPublicKaelCharter,
   NORMAL_TRANSACTION_SILENT_STATUSES,
+  processBatchResults,
+  processLearningQueue,
+  queueLearningForBatch,
   queueLearningSkillTriggers,
   recordDemandingCustomerInteraction,
   type ScopeChangeRiskConfig,
@@ -120,6 +132,7 @@ const JOB_CHAT_SEND_STATUSES: JobStatus[] = [
 const JOB_DETAIL_SELECT =
   "id, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, kael_worker_brief_core, kael_worker_brief_guidance, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at";
 const DEFAULT_WORKER_CANDIDATE_POOL_SIZE = 50;
+const STAGING_PROJECT_REF = "xyylanuyflrjzbjzhqfl";
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 const KAEL_CHAT_HARD_COST_CAP_USD = 1;
 const GOOGLE_GEOCODING_URL = "https://maps.googleapis.com/maps/api/geocode/json";
@@ -217,6 +230,11 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     listWorkerBroadcasts,
     listWorkerJobs,
     getWorkerEarnings,
+    invalidateMarketCache,
+    processKaelLearningQueue: (ctx, input) =>
+      processKaelLearningQueueAdmin(ctx, input, secrets),
+    processKaelBatchResults: (ctx, input) =>
+      processKaelBatchResultsAdmin(ctx, input, secrets),
     listNotifications,
     markNotificationRead,
     registerDevicePushToken,
@@ -434,7 +452,7 @@ async function createJob(
         progressJobId: jobId,
       },
       client,
-      secrets,
+      sourceTrustSecretsForRequest(secrets, ctx),
     );
   } catch {
     const cleanupOk = await cancelAnalyzingJob(
@@ -469,6 +487,10 @@ async function createJob(
         latency_ms: stage.latencyMs,
         success: stage.success,
         error_code: stage.failureReason ?? null,
+        safe_metadata: {
+          ...(stage.cacheStatus ? { cache_status: stage.cacheStatus } : {}),
+          ...(stage.safeMetadata ?? {}),
+        },
       })),
   );
 
@@ -991,7 +1013,7 @@ async function advanceKaelChatEstimate(
         photoUrls: input.photo_urls ?? [],
       },
       client,
-      secrets,
+      sourceTrustSecretsForRequest(secrets, ctx),
     );
   } catch {
     await appendKaelSystemTurn(client, sessionId, {
@@ -1021,6 +1043,8 @@ async function advanceKaelChatEstimate(
         safe_metadata: {
           surface: "kael_chat",
           session_id: sessionId,
+          ...(stage.cacheStatus ? { cache_status: stage.cacheStatus } : {}),
+          ...(stage.safeMetadata ?? {}),
         },
       })),
   );
@@ -3510,6 +3534,63 @@ async function getWorkerEarnings(
   };
 }
 
+async function invalidateMarketCache(
+  ctx: MobileApiContext,
+  input: MarketCacheInvalidateInput,
+): Promise<MarketCacheInvalidateResponse> {
+  if (ctx.role !== "admin") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được xóa cache giá", 403);
+  }
+  const invalidatedAt = new Date().toISOString();
+  let query = db(ctx)
+    .from("kael_market_cache")
+    .update({ invalidated_at: invalidatedAt, updated_at: invalidatedAt })
+    .is("invalidated_at", null);
+  if (input.cache_id) query = query.eq("id", input.cache_id);
+  if (input.district_code) query = query.eq("district_code", input.district_code);
+  if (input.service_type) query = query.eq("service_type", input.service_type);
+  if (input.problem_slug) query = query.eq("problem_slug", input.problem_slug);
+  if (input.complexity) query = query.eq("complexity", input.complexity);
+
+  const result = await dbQuery<Array<{ id: string }>>(query.select("id"));
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể xóa cache giá", 500);
+  }
+  return {
+    invalidated_count: result.data?.length ?? 0,
+    invalidated_at: invalidatedAt,
+    filters: input,
+  };
+}
+
+async function processKaelLearningQueueAdmin(
+  ctx: MobileApiContext,
+  input: KaelLearningQueueProcessInput,
+  secrets: EdgeAiSecrets,
+): Promise<KaelLearningQueueProcessResponse> {
+  if (ctx.role !== "admin") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được xử lý hàng đợi Kael", 403);
+  }
+  return processLearningQueue(db(ctx), secrets, {
+    limit: input.limit,
+    forceRealtime: input.force_realtime,
+  });
+}
+
+async function processKaelBatchResultsAdmin(
+  ctx: MobileApiContext,
+  input: KaelBatchResultsProcessInput,
+  secrets: EdgeAiSecrets,
+): Promise<KaelBatchResultsProcessResponse> {
+  if (ctx.role !== "admin") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được xử lý batch Kael", 403);
+  }
+  return processBatchResults(db(ctx), secrets, {
+    limit: input.limit,
+    forcePoll: input.force_poll,
+  });
+}
+
 async function listNotifications(ctx: MobileApiContext) {
   const unreadResult = await dbQuery<null>(
     db(ctx)
@@ -4455,7 +4536,11 @@ async function queueKaelLearningEvent(
   event: LearningSkillTrigger,
   input: LearningSkillInput,
 ) {
-  await queueLearningSkillTriggers(client, event, input).catch((error) => {
+  const flags = readKaelOptimizationFlags();
+  const queueFn = flags.KAEL_OPT_BATCH_LEARNING_ENABLED
+    ? queueLearningForBatch
+    : queueLearningSkillTriggers;
+  await queueFn(client, event, input).catch((error) => {
     console.warn("mobile-api kael learning queue failed", {
       event,
       jobId: nullableString(input.job_id),
@@ -4533,6 +4618,30 @@ function apiLogPurposeForPipelineStage(
     case "baseline":
       return "problem_synthesis";
   }
+}
+
+function sourceTrustSecretsForRequest(
+  secrets: EdgeAiSecrets,
+  ctx: MobileApiContext,
+): EdgeAiSecrets {
+  if (secrets.sourceTrustPerplexityFilterEnabled === true) return secrets;
+  if (secrets.sourceTrustPerplexityFilterExplicit === true) return secrets;
+  if (!isStagingSourceTrustRequest(secrets, ctx)) return secrets;
+  return { ...secrets, sourceTrustPerplexityFilterEnabled: true };
+}
+
+function isStagingSourceTrustRequest(
+  secrets: EdgeAiSecrets,
+  ctx: MobileApiContext,
+): boolean {
+  return [
+    secrets.supabaseUrl,
+    ctx.requestProjectRef,
+    ctx.requestHost,
+    ctx.requestUrl,
+  ].some((value) =>
+    typeof value === "string" && value.includes(STAGING_PROJECT_REF)
+  );
 }
 
 function mapConfirmKaelChatError(errorCode: string | null): never {

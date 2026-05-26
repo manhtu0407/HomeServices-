@@ -2,7 +2,7 @@ import type { ComplexityLevel, EdgeAiSecrets, PipelineInput, PipelineResult, Pip
 import { PRICE_DISCLAIMER, UNSUPPORTED_SERVICE_MESSAGE } from "./types.ts";
 import { classifyIntent, buildFallbackIntent } from "./intent.ts";
 import { analyzeDescription } from "./vision.ts";
-import { searchMarketPrice } from "./market.ts";
+import { marketLookupTelemetry, searchMarketPrice } from "./market.ts";
 import { fetchBaselineCandidates, normalizeProblemSlugForService, pickBaselineCandidate, synthesizePrice } from "./synthesis.ts";
 import { buildAdvisory } from "./advisory.ts";
 import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
@@ -112,6 +112,13 @@ export async function runKaelPipeline(
   ]);
 
   const preliminaryComplexity: ComplexityLevel = "medium";
+  const marketTelemetry = marketLookupTelemetry({
+    serviceType: validServiceType,
+    problem: problemSlug,
+    complexity: preliminaryComplexity,
+    district,
+    secrets,
+  });
   const parallelRun = await runKaelParallel<EstimateParallelValue>([
     {
       label: "vision",
@@ -142,7 +149,8 @@ export async function runKaelPipeline(
     {
       label: "market",
       purpose: "market_lookup",
-      timeoutMs: KAEL_ROUTING_CONFIG.market_lookup.latencyBudgetMs,
+      timeoutMs: marketTelemetry.timeoutMs ??
+        KAEL_ROUTING_CONFIG.market_lookup.latencyBudgetMs,
       run: async () => ({
         kind: "market" as const,
         result: await searchMarketPrice(
@@ -151,11 +159,16 @@ export async function runKaelPipeline(
           preliminaryComplexity,
           district,
           secrets,
+          supabase,
         ),
       }),
       fallback: () => ({
         kind: "market" as const,
-        result: { success: false as const, failureReason: "TIMEOUT" },
+        result: {
+          success: false as const,
+          failureReason: "TIMEOUT",
+          ...marketTelemetry,
+        },
       }),
     },
     {
@@ -191,14 +204,18 @@ export async function runKaelPipeline(
   if (!visionSkipped) {
     stageLogs.push({
       stage: "vision",
-      provider: "anthropic",
-      model: "claude-sonnet-4-6",
+      provider: visionResult.success ? visionResult.provider : "anthropic",
+      model: visionResult.success ? visionResult.model : "claude-sonnet-4-6",
       latencyMs: visionStage.elapsedMs,
       success: visionResult.success,
       failureReason: visionResult.success
         ? undefined
         : visionResult.failureReason,
       fallbackUsed: !visionResult.success,
+      inputTokens: visionResult.success ? visionResult.inputTokens : undefined,
+      outputTokens: visionResult.success ? visionResult.outputTokens : undefined,
+      costUsd: visionResult.success ? visionResult.costUsd : undefined,
+      cacheStatus: visionResult.success ? visionResult.cacheStatus : undefined,
     });
   }
   await updateKaelProgress(supabase, input.progressJobId, {
@@ -276,6 +293,8 @@ export async function runKaelPipeline(
     inputTokens: marketResult.success ? marketResult.inputTokens : undefined,
     outputTokens: marketResult.success ? marketResult.outputTokens : undefined,
     costUsd: marketResult.success ? marketResult.costUsd : undefined,
+    cacheStatus: marketResult.success ? marketResult.cacheStatus : undefined,
+    safeMetadata: marketResult.safeMetadata,
   });
   await updateKaelProgress(supabase, input.progressJobId, {
     stage: "market_lookup",

@@ -49,7 +49,7 @@ describe('P17 monitoring and A/B setup', () => {
     const routingConfig = read('supabase/functions/mobile-api/_shared/kael/routing.config.ts')
 
     expect(routingConfig).toContain(
-      'price_synthesis: config("price_synthesis", perplexity(), anthropic(), 0.01, 3_000, true)',
+      'price_synthesis: config("price_synthesis", perplexity(), anthropic(), 0.01, 3_000, true, 200)',
     )
   })
 })

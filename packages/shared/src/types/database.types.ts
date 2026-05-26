@@ -1056,6 +1056,60 @@ export type Database = {
           },
         ]
       }
+      kael_market_cache: {
+        Row: {
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          confidence: number
+          created_at: string
+          district_code: string
+          expires_at: string
+          hit_count: number
+          id: string
+          invalidated_at: string | null
+          market_range_max: number
+          market_range_min: number
+          perplexity_raw: Json
+          problem_slug: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          sources_summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          confidence: number
+          created_at?: string
+          district_code: string
+          expires_at: string
+          hit_count?: number
+          id?: string
+          invalidated_at?: string | null
+          market_range_max: number
+          market_range_min: number
+          perplexity_raw?: Json
+          problem_slug: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          sources_summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          complexity?: Database["public"]["Enums"]["complexity_level"]
+          confidence?: number
+          created_at?: string
+          district_code?: string
+          expires_at?: string
+          hit_count?: number
+          id?: string
+          invalidated_at?: string | null
+          market_range_max?: number
+          market_range_min?: number
+          perplexity_raw?: Json
+          problem_slug?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          sources_summary?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kael_optimization_metrics: {
         Row: {
           cost_actual: number | null
@@ -3057,6 +3111,10 @@ export type Database = {
           reason_code: string
           worker_id_out: string | null
         }[]
+      }
+      increment_kael_market_cache_hit: {
+        Args: { p_cache_id: string }
+        Returns: undefined
       }
       decide_scope_change_atomic: {
         Args: {

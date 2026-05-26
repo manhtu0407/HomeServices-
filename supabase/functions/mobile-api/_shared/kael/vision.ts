@@ -3,13 +3,23 @@ import type { EdgeAiSecrets, VisionResult } from "./types.ts";
 import { visionResultSchema } from "./types.ts";
 import { buildVisionMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
+import { maxTokensForPurpose } from "./routing.config.ts";
 import { chooseProvider } from "./routing.ts";
 import { safeParseJSON, sanitizeVisionPhotoUrls } from "./utils.ts";
 
 const VISION_MAX_TOKENS = 320;
 
 type VisionAnalysisResult =
-  | { success: true; analysis: VisionResult }
+  | {
+    success: true;
+    analysis: VisionResult;
+    provider: "anthropic" | "perplexity" | "deepseek";
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    costUsd: number;
+    cacheStatus?: "hit" | "write" | "miss";
+  }
   | {
     success: false;
     fallback: VisionResult;
@@ -43,7 +53,7 @@ export async function analyzeDescription(
       sanitizeForLLM(intentContext),
       safePhotoUrls,
     ),
-    maxTokens: VISION_MAX_TOKENS,
+    maxTokens: maxTokensForPurpose("vision_analysis", VISION_MAX_TOKENS),
     temperature: 0.2,
     timeoutMs: route.latencyBudgetMs,
     maxRetries: 0,
@@ -67,7 +77,16 @@ export async function analyzeDescription(
     };
   }
 
-  return { success: true, analysis: validated.data };
+  return {
+    success: true,
+    analysis: validated.data,
+    provider: route.provider,
+    model: route.model,
+    inputTokens: result.usage.inputTokens,
+    outputTokens: result.usage.outputTokens,
+    costUsd: result.usage.costUsd,
+    cacheStatus: result.usage.cacheStatus,
+  };
 }
 
 function buildFallbackVision(intentContext: string): VisionResult {

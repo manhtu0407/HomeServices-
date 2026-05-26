@@ -204,6 +204,43 @@ type WorkerKaelClarifyResponse = {
     safety_notes: string[];
   };
 };
+export type MarketCacheInvalidateInput = {
+  cache_id?: string;
+  district_code?: string;
+  service_type?: ServiceType;
+  problem_slug?: string;
+  complexity?: ComplexityLevel;
+};
+export type MarketCacheInvalidateResponse = {
+  invalidated_count: number;
+  invalidated_at: string;
+  filters: MarketCacheInvalidateInput;
+};
+export type KaelLearningQueueProcessInput = {
+  limit?: number;
+  force_realtime?: boolean;
+};
+export type KaelLearningQueueProcessResponse = {
+  selected: number;
+  submitted: number;
+  realtime_fallback: number;
+  batch_id?: string;
+  provider_batch_id?: string;
+  skipped_reason?: string;
+  error_code?: string;
+};
+export type KaelBatchResultsProcessInput = {
+  limit?: number;
+  force_poll?: boolean;
+};
+export type KaelBatchResultsProcessResponse = {
+  checked: number;
+  ended: number;
+  processed_items: number;
+  failed_items: number;
+  skipped_reason?: string;
+  error_code?: string;
+};
 type WorkerCancellationResponse = {
   cancellation_id: string;
   job_id: string;
@@ -466,6 +503,9 @@ export type MobileApiAuthResult =
     user: { id: string; email?: string };
     role: UserRole;
     supabase: unknown;
+    requestUrl?: string;
+    requestHost?: string;
+    requestProjectRef?: string;
   }
   | {
     success: false;
@@ -646,6 +686,18 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     range: { from?: string; to?: string },
   ): Promise<EarningsResponse>;
+  invalidateMarketCache(
+    ctx: MobileApiContext,
+    input: MarketCacheInvalidateInput,
+  ): Promise<MarketCacheInvalidateResponse>;
+  processKaelLearningQueue(
+    ctx: MobileApiContext,
+    input: KaelLearningQueueProcessInput,
+  ): Promise<KaelLearningQueueProcessResponse>;
+  processKaelBatchResults(
+    ctx: MobileApiContext,
+    input: KaelBatchResultsProcessInput,
+  ): Promise<KaelBatchResultsProcessResponse>;
   listNotifications(ctx: MobileApiContext): Promise<NotificationListResponse>;
   markNotificationRead(
     ctx: MobileApiContext,
@@ -709,7 +761,9 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
         );
       }
 
-      const data = await dispatchRoute(route, request, auth, deps.services);
+      const requestContext = requestRuntimeContext(request);
+      const ctx: MobileApiContext = { ...auth, ...requestContext };
+      const data = await dispatchRoute(route, request, ctx, deps.services);
       return json(
         data,
         ("successStatus" in route ? route.successStatus : undefined) ?? 200,
@@ -889,6 +943,9 @@ type Route =
   | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
+  | { kind: "admin.marketCache.invalidate"; method: "POST"; roles: UserRole[] }
+  | { kind: "admin.kaelLearning.processQueue"; method: "POST"; roles: UserRole[] }
+  | { kind: "admin.kaelLearning.processBatchResults"; method: "POST"; roles: UserRole[] }
   | { kind: "notifications"; method: "GET"; roles: UserRole[] }
   | { kind: "notifications.deviceToken"; method: "POST"; roles: UserRole[] }
   | {
@@ -913,6 +970,27 @@ function matchRoute(request: Request): Route | null {
       kind: "places.autocomplete",
       method: "POST",
       roles: ["customer", "worker", "admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/market-cache/invalidate") {
+    return {
+      kind: "admin.marketCache.invalidate",
+      method: "POST",
+      roles: ["admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/kael-learning/process-queue") {
+    return {
+      kind: "admin.kaelLearning.processQueue",
+      method: "POST",
+      roles: ["admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/kael-learning/process-batch-results") {
+    return {
+      kind: "admin.kaelLearning.processBatchResults",
+      method: "POST",
+      roles: ["admin"],
     };
   }
   if (method === "POST" && path === "/jobs") {
@@ -1203,6 +1281,41 @@ function matchRoute(request: Request): Route | null {
   return null;
 }
 
+function requestRuntimeContext(request: Request): Pick<
+  MobileApiContext,
+  "requestUrl" | "requestHost" | "requestProjectRef"
+> {
+  const parsed = safeRequestUrl(request.url);
+  const host = request.headers.get("host") ??
+    request.headers.get("x-forwarded-host") ??
+    parsed?.host;
+  return {
+    requestUrl: request.url,
+    requestHost: host ?? undefined,
+    requestProjectRef: request.headers.get("sb-project-ref") ??
+      request.headers.get("x-supabase-project-ref") ??
+      projectRefFromHost(host) ??
+      projectRefFromHost(parsed?.host),
+  };
+}
+
+function safeRequestUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+function projectRefFromHost(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const hostname = value.split(":")[0] ?? value;
+  const [projectRef, ...rest] = hostname.split(".");
+  return rest.join(".").endsWith("supabase.co") && projectRef
+    ? projectRef
+    : undefined;
+}
+
 function isPublicRoute(route: Route): route is PublicRoute {
   return "public" in route && route.public === true;
 }
@@ -1230,6 +1343,21 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.placesAutocomplete(ctx, input.data);
     }
+    case "admin.marketCache.invalidate":
+      return services.invalidateMarketCache(
+        ctx,
+        marketCacheInvalidateInput(await readJson(request)),
+      );
+    case "admin.kaelLearning.processQueue":
+      return services.processKaelLearningQueue(
+        ctx,
+        kaelLearningQueueProcessInput(await readJson(request)),
+      );
+    case "admin.kaelLearning.processBatchResults":
+      return services.processKaelBatchResults(
+        ctx,
+        kaelBatchResultsProcessInput(await readJson(request)),
+      );
     case "jobs.create": {
       const input = jobCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -1429,6 +1557,96 @@ async function readJson(request: Request): Promise<unknown> {
   } catch {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
+}
+
+function optionalSafeText(value: unknown, maxLength: number): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > maxLength) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  return trimmed.toLowerCase();
+}
+
+function marketCacheInvalidateInput(input: unknown): MarketCacheInvalidateInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  const record = input as Record<string, unknown>;
+  const cacheId = optionalSafeText(record.cache_id, 80);
+  const districtCode = optionalSafeText(record.district_code, 80);
+  const problemSlug = optionalSafeText(record.problem_slug, 120);
+  const serviceType = record.service_type;
+  const complexity = record.complexity;
+
+  if (
+    serviceType !== undefined &&
+    serviceType !== "electrical" &&
+    serviceType !== "plumbing" &&
+    serviceType !== "cleaning"
+  ) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  if (
+    complexity !== undefined &&
+    complexity !== "small" &&
+    complexity !== "medium" &&
+    complexity !== "large"
+  ) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  if (!cacheId && !districtCode && !problemSlug && !serviceType && !complexity) {
+    apiFailure("VALIDATION", "Cần ít nhất một bộ lọc cache", 400);
+  }
+
+  return {
+    ...(cacheId ? { cache_id: cacheId } : {}),
+    ...(districtCode ? { district_code: districtCode } : {}),
+    ...(problemSlug ? { problem_slug: problemSlug } : {}),
+    ...(serviceType ? { service_type: serviceType as ServiceType } : {}),
+    ...(complexity ? { complexity: complexity as ComplexityLevel } : {}),
+  };
+}
+
+function kaelLearningQueueProcessInput(input: unknown): KaelLearningQueueProcessInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  const record = input as Record<string, unknown>;
+  return {
+    limit: optionalPositiveInt(record.limit, 1, 100),
+    force_realtime: record.force_realtime === true,
+  };
+}
+
+function kaelBatchResultsProcessInput(input: unknown): KaelBatchResultsProcessInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  const record = input as Record<string, unknown>;
+  return {
+    limit: optionalPositiveInt(record.limit, 1, 50),
+    force_poll: record.force_poll === true,
+  };
+}
+
+function optionalPositiveInt(
+  value: unknown,
+  min: number,
+  max: number,
+): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const number = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(number) || number < min || number > max) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  return number;
 }
 
 function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {

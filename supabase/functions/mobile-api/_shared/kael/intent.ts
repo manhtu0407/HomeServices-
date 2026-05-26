@@ -3,6 +3,7 @@ import type { AIMessage, AIProvider, EdgeAiSecrets, IntentAttemptLog, IntentResu
 import { intentResultSchema } from "./types.ts";
 import { buildIntentMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
+import { maxTokensForPurpose } from "./routing.config.ts";
 import { providerCandidatesForPurpose } from "./routing.ts";
 import { hasUnsupportedRepairIntent, safeParseJSON, timed } from "./utils.ts";
 
@@ -29,8 +30,7 @@ export async function classifyIntent(
 
   for (const candidate of providerCandidatesForPurpose("intent_classification")) {
     const attempt = await classifyIntentWithProvider(
-      candidate.provider,
-      candidate.model,
+      candidate,
       messages,
       secrets,
     );
@@ -51,8 +51,7 @@ export async function classifyIntent(
 }
 
 async function classifyIntentWithProvider(
-  provider: AIProvider,
-  model: string,
+  route: { provider: AIProvider; model: string; latencyBudgetMs: number },
   messages: AIMessage[],
   secrets: EdgeAiSecrets,
 ): Promise<
@@ -62,18 +61,18 @@ async function classifyIntentWithProvider(
   const attempt = await timed(() =>
     callAI({
       purpose: "intent_classification",
-      provider,
-      model,
+      provider: route.provider,
+      model: route.model,
       messages,
-      maxTokens: 200,
+      maxTokens: maxTokensForPurpose("intent_classification", 200),
       temperature: 0.1,
-      timeoutMs: 1_000,
+      timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,
     }, secrets)
   );
   const baseLog = {
-    provider,
-    model,
+    provider: route.provider,
+    model: route.model,
     latencyMs: attempt.ms,
   };
 

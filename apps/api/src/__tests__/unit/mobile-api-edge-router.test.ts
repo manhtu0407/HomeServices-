@@ -88,6 +88,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     listWorkerBroadcasts: vi.fn(),
     listWorkerJobs: vi.fn(),
     getWorkerEarnings: vi.fn(),
+    invalidateMarketCache: vi.fn(),
+    processKaelLearningQueue: vi.fn(async () => ({ selected: 0, submitted: 0, realtime_fallback: 0 })),
+    processKaelBatchResults: vi.fn(async () => ({ checked: 0, ended: 0, processed_items: 0, failed_items: 0 })),
     listNotifications: vi.fn(),
     markNotificationRead: vi.fn(),
     registerDevicePushToken: vi.fn(),
@@ -388,8 +391,8 @@ describe('mobile-api Edge router contract', () => {
 
     expect(getResponse.status).toBe(200)
     expect(deleteResponse.status).toBe(200)
-    expect(getMyKaelMemory).toHaveBeenCalledWith(customerAuth)
-    expect(deleteMyKaelMemory).toHaveBeenCalledWith(customerAuth)
+    expect(getMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+    expect(deleteMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
   })
 
   it('routes worker Kael memory self-view through the worker endpoint', async () => {
@@ -402,7 +405,7 @@ describe('mobile-api Edge router contract', () => {
     const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael-memory'))
 
     expect(response.status).toBe(200)
-    expect(getWorkerKaelMemory).toHaveBeenCalledWith(workerAuth)
+    expect(getWorkerKaelMemory).toHaveBeenCalledWith(expect.objectContaining(workerAuth))
   })
 
   it('routes device push token registration through authenticated mobile API services', async () => {
@@ -461,6 +464,76 @@ describe('mobile-api Edge router contract', () => {
     expect(placesAutocomplete).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
       expect.objectContaining({ input: 'Landmark Bình Thạnh' }),
+    )
+  })
+
+  it('routes Q3 market cache invalidation through admin-only mobile API services', async () => {
+    const invalidateMarketCache = vi.fn(async () => ({
+      invalidated_count: 1,
+      invalidated_at: '2026-05-26T00:00:00.000Z',
+      filters: { district_code: 'q7' },
+    }))
+    const authenticate = vi.fn(async () => adminAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ invalidateMarketCache }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/admin/market-cache/invalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ district_code: 'Q7' }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ invalidated_count: 1 })
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['admin'])
+    expect(invalidateMarketCache).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      { district_code: 'q7' },
+    )
+  })
+
+  it('routes Q4 learning queue processors through admin-only mobile API services', async () => {
+    const processKaelLearningQueue = vi.fn(async () => ({
+      selected: 2,
+      submitted: 2,
+      realtime_fallback: 0,
+      batch_id: 'batch-local-1',
+    }))
+    const processKaelBatchResults = vi.fn(async () => ({
+      checked: 1,
+      ended: 1,
+      processed_items: 2,
+      failed_items: 0,
+    }))
+    const authenticate = vi.fn(async () => adminAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ processKaelLearningQueue, processKaelBatchResults }),
+    })
+
+    const queueResponse = await handler(new Request('https://example.test/mobile-api/admin/kael-learning/process-queue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 2 }),
+    }))
+    const resultsResponse = await handler(new Request('https://example.test/mobile-api/admin/kael-learning/process-batch-results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 1, force_poll: true }),
+    }))
+
+    expect(queueResponse.status).toBe(200)
+    expect(resultsResponse.status).toBe(200)
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['admin'])
+    expect(processKaelLearningQueue).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      { limit: 2, force_realtime: false },
+    )
+    expect(processKaelBatchResults).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      { limit: 1, force_poll: true },
     )
   })
 
