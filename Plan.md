@@ -4526,7 +4526,7 @@ Worst case: 1 + 5 + 3 = **9s** (skip clarification, có vision).
 - [ ] Streaming events visible Supabase Realtime.
 - [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
 - [ ] api_logs.purpose populated 100%.
-- [ ] kael-security-sweep pass.
+- [x] kael-security-sweep pass.
 
 **Estimated Effort:** 4-6 ngày.
 
@@ -5571,13 +5571,19 @@ const WorkerAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] 2 sub-cases work.
-- [ ] Reason taxonomy admin tunable.
-- [ ] Anti-abuse thresholds enforced.
-- [ ] No autonomous suspension; admin action required.
-- [ ] Rebroadcast triggered.
-- [ ] Customer fallback options available.
-- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+- [x] 2 sub-cases work.
+- [x] Reason taxonomy admin tunable.
+- [x] Anti-abuse thresholds enforced.
+- [x] No autonomous suspension; admin action required.
+- [x] Rebroadcast triggered.
+- [x] Customer fallback options available.
+- [x] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Execution evidence (2026-05-25, P11):**
+
+- Local: API Vitest `51 files | 3 skipped`, `1083 passed | 59 skipped`; shared Vitest `13 files`, `520 passed`; API/shared/mobile `tsc --noEmit` passed.
+- Staging `xyylanuyflrjzbjzhqfl`: migrations `20260525140826` and `20260525230054` applied; final dry-run reports remote database up to date; P11 taxonomy/signature/no-show smoke passed.
+- Safety: no autonomous `is_suspended=true` or `verification_status='suspended'` in P11 migrations; anti-abuse opens L4 red flag/admin queue review only.
 
 **Estimated Effort:** 3-4 ngày.
 
@@ -5660,12 +5666,21 @@ const CustomerAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] 5 sub-cases work.
-- [ ] NEW RPC `cancel_job_after_accept_atomic` atomic.
-- [ ] Anti-abuse rules enforced.
-- [ ] Worker goodwill recorded (no rating penalty 4C).
-- [ ] Phase 0 no monetary penalty.
-- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+- [x] 5 sub-cases work.
+- [x] NEW RPC `cancel_job_after_accept_atomic` atomic.
+- [x] Anti-abuse rules enforced.
+- [x] Worker goodwill recorded (no rating penalty 4C).
+- [x] Phase 0 no monetary penalty.
+- [x] Blocking tests pass; scenario quality metric >= 95% where measured.
+
+**Execution evidence (2026-05-25, P12):**
+
+- Local RED/GREEN: P12 unit/router/runtime/schema gates first failed on missing Case 4 module, migration/RPC/types, and route 404; after implementation they passed.
+- Local final: API Vitest `52 files | 3 skipped`, `1095 passed | 59 skipped`; shared Vitest `13 files`, `520 passed`; API/shared/mobile `tsc --noEmit` passed; `git diff --check` passed with CRLF warnings only.
+- Staging `xyylanuyflrjzbjzhqfl`: migrations `20260525231655`, `20260525233112`, and `20260525233322` applied. Production `iwevizmsedyqozxlawwl` was not migrated in this pass.
+- Staging rollback smoke covered all 5 sub-cases: `4A before_a7`, `4B after_a7_before_worker_accept`, `4C after_worker_accept`, `4D after_worker_completed_trigger_dispute`, and `4E scheduled_job`; all returned `ok=true` and `phase0_no_monetary_penalty=true`. 4D kept `job_status=completed_by_worker` for P13 dispute handling; other cancellable paths returned `cancelled`.
+- Staging advisors: performance advisor reports `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
+- Safety: P12 files contain no Supabase management token, no autonomous customer fee/block fields, and no new worker suspension mutation. Worker goodwill is an audit note only; no rating penalty or money promise is created.
 
 **Estimated Effort:** 3-4 ngày.
 
@@ -5775,12 +5790,21 @@ const DisputeAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] 4 sub-cases work (5C deferred).
-- [ ] Kael NEUTRAL: no fault assignment.
-- [ ] Evidence locked immutable.
-- [ ] Admin decision outcomes enforce side effects.
-- [ ] Anti-abuse enforced.
-- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+- [x] 4 sub-cases work (5C deferred).
+- [x] Kael NEUTRAL: no fault assignment.
+- [x] Evidence locked immutable.
+- [x] Admin decision outcomes enforce side effects.
+- [x] Anti-abuse enforced.
+- [x] Blocking tests pass; scenario quality metric >= 95% where measured.
+
+**P13 Evidence (2026-05-26, staging `xyylanuyflrjzbjzhqfl`):**
+
+- RED-first evidence: P13 helper test failed on missing `case-5-dispute`; schema/type tests failed on missing migration/types/contracts; router returned 404 for dispute endpoints; runtime service lacked `openDispute`.
+- GREEN scope: added `case-5-dispute.ts`, neutral summary/guard, evidence snapshot payload builder, dispute anti-abuse helper, 3 Edge routes, 3 Edge services, mobile/shared contracts, DB types, and migration `20260525234746_kael_dispute_case_p13.sql`.
+- DB scope: `evidence_snapshots` immutable table, `disputes` table, admin queue `dispute_review`, RPCs `open_dispute_atomic`, `submit_counter_statement_atomic`, `admin_decide_dispute_atomic`; admin decision can record optional admin-entered `refund_amount` / `worker_credit_amount`, but Kael never suggests amounts.
+- Local verification: targeted P13/schema/router/runtime tests passed; API `tsc --noEmit` passed; shared `tsc --noEmit` passed; full API Vitest passed `53 files | 3 skipped`, `1107 passed | 59 skipped`; full shared Vitest passed `13 files`, `520 passed`; `git diff --check` passed with CRLF warnings only; token sweep found no repo matches.
+- Staging verification: dry-run listed only P13 migration, migration applied, smoke returned `ok=true` for 5A completion rejected, 5B damage claim, 5D abusive behavior, 5E scope disagreement, and `DEFERRED_PHASE0` for 5C unpaid service. Smoke also proved immutable evidence update raises `evidence_snapshots are immutable once locked`, counter statement transitions to `admin_review`, and admin decision side effect suspended the worker profile when admin selected `temp_suspend_7d`.
+- Staging cleanup/advisors: synthetic smoke users/snapshots cleanup returned `0` leftovers; performance advisor reports `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
 
 **Estimated Effort:** 5-6 ngày (most complex).
 
@@ -5820,13 +5844,26 @@ const DisputeAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] api_logs.purpose 100% populated.
-- [ ] District normalization verified.
-- [ ] DeepSeek 402 recovered.
-- [ ] Worker district data consistent.
-- [ ] Migration chain documented.
-- [ ] Orphan jobs cleaned.
-- [ ] No English leak.
+- [x] api_logs.purpose 100% populated.
+- [x] District normalization verified.
+- [x] DeepSeek 402 recovered.
+- [x] Worker district data consistent.
+- [x] Migration chain documented.
+- [x] Orphan jobs cleaned.
+- [x] No English leak.
+
+**P14 Evidence (2026-05-26, staging `xyylanuyflrjzbjzhqfl`):**
+
+- Plan audit correction: active §23 has P0-P17 (18 phases) and five agentic cases P9-P13. P14 continued after P13 evidence.
+- RED/GREEN: district test first failed because `Quan 2` returned `null`; schema test first failed because P14 migration/type/doc did not exist; P11 lint-fix test first failed because no follow-up migration existed. After implementation, targeted gates passed.
+- Local verification: shared district Vitest `53/53` passed; schema Vitest `64/64` passed; DeepSeek 402 fallback/runtime gates passed `82/82`; API `tsc --noEmit` passed; shared `tsc --noEmit` passed; full API Vitest passed `53 files | 3 skipped`, `1109 passed | 59 skipped`; full shared Vitest passed `13 files`, `521 passed`.
+- Staging migrations applied: `20260526002253_backend_gaps_cleanup_p14.sql` and follow-up `20260526003315_fix_worker_cancellation_reason_category_ambiguity_p14.sql`.
+- Telemetry evidence: `api_logs` has `total_count=18`, `missing_purpose=0`; `purpose` is `NOT NULL` with `api_logs_purpose_non_empty`; 50 temporary P14 smoke log rows inserted with `missing_purpose=0` and then cleaned to `remaining=0`.
+- District evidence: `normalizeServiceAreaDistrict` covers q1-q12 variants, mapping legacy q2/q9 to `thu_duc`; staging worker seed districts changed from `['q7','hcmc_all']` to `['q7']`; invalid/empty/hcmc_all worker counts are `0`; worker/job district mismatch count is `0`.
+- DeepSeek 402 recovery evidence: local runtime test proves DeepSeek HTTP 402 falls back to Anthropic before local heuristic and succeeds.
+- Orphan cleanup evidence: Supabase Cron job `kael-cleanup-orphan-analyzing-jobs` is active on `17 * * * *` and runs `select public.cleanup_orphan_analyzing_jobs();`; smoke job stuck `analyzing` >24h was moved to `cancelled` with `orphan_analyzing_cleanup` event; smoke auth/profile/job/log leftovers are `false/0`.
+- Supabase verification: `db push --dry-run` showed only intended migrations before each push; `db lint --linked --fail-on error` returned `No schema errors found`; performance advisor returned `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
+- Safety sweeps: VN copy script found no forbidden English terms in `vi` copy string literals; exact Supabase token sweep found no repo matches; `git diff --check` passed with CRLF warnings only.
 
 **Estimated Effort:** 2-3 ngày.
 
@@ -5861,12 +5898,25 @@ const DisputeAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] 5 cases E2E pass staging.
-- [ ] Multi-actor scenarios work.
-- [ ] Realtime streaming verified.
-- [ ] Performance: p95 < 12s end-to-end intake.
-- [ ] Cost: < $0.30/transaction worst case.
-- [ ] Test report logged per `/log` format.
+- [x] 5 cases E2E pass staging.
+- [x] Multi-actor scenarios work.
+- [x] Realtime streaming verified.
+- [x] Performance: p95 < 12s end-to-end intake.
+- [x] Cost: < $0.30/transaction worst case.
+- [x] Test report logged per `/log` format.
+
+**P15 Evidence (2026-05-26, staging `xyylanuyflrjzbjzhqfl`):**
+
+- RED/GREEN: schema contract test first failed because `apps/api/scripts/kael-p15-staging-e2e.mjs` was missing; after adding the P15 harness, the contract test passed and `node --check` passed.
+- Staging deployment: `mobile-api` redeployed to staging before the matrix run; production `iwevizmsedyqozxlawwl` was not deployed or migrated.
+- Live run report: `docs/test-logs/2026-05-26_p15-staging-e2e.md`, run id `p15-1779757487092-397804`, status `passed`.
+- Case matrix passed: Case 1 `10` normal transactions, Case 2 `5` demanding-customer escalations, Case 3 `10` worker cancellation scenarios (`5` explicit + `5` no-show timer rows), Case 4 `5` customer cancellation sub-cases (`before_a7`, `after_a7_before_worker_accept`, `after_worker_accept`, `after_worker_completed_trigger_dispute`, `scheduled_job`), Case 5 `3` disputes (`completion_rejected`, `damage_claim`, `abusive_behavior_customer`) with admin queue + admin decision.
+- Multi-actor evidence: run created and used `5` customer auth users, `5` worker auth users, and `1` admin auth user. Workflow-sensitive actions went through Edge; direct DB was limited to fixtures, timer preconditions, realtime stimulus, metrics, and cleanup.
+- Realtime evidence: authenticated customer subscription received `jobs.kael_progress` update on staging.
+- Performance/cost evidence: intake latency `p50=6040ms`, `p95=6394ms`, `p99=9088ms`; cost `total=$0.008603`, `worst_transaction=$0.000482`, `provider_rows=60`, `jobs_with_logs=20`, below `$0.30` cap.
+- Cleanup evidence: scoped P15 cleanup returned `0` rows for jobs, events, broadcasts, messages, reviews, api logs, admin queue, interaction logs, worker/customer cancellation records, disputes, evidence snapshots, and profiles; independent post-run query also returned `p15_jobs=0`, `p15_profiles=0`, `p15_queues=0`, `p15_evidence=0`.
+- Local/static verification: P15 harness + schema gates passed `66/66`; API `tsc --noEmit` passed; `git diff --check` passed with CRLF warnings only; exact Supabase token sweep found no repo matches.
+- Supabase verification: `db lint --linked --fail-on error` returned `No schema errors found` after one transient login-role retry; performance advisor returned `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
 
 **Estimated Effort:** 3-5 ngày.
 
@@ -5893,13 +5943,25 @@ const DisputeAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] kael-security-sweep pass.
-- [ ] kael-review pass.
-- [ ] No autonomous money-impacting action.
-- [ ] All PII filters working.
-- [ ] Charter LOCKED files unchanged.
-- [ ] Permission scope honored.
-- [ ] No STRUCTURES §10F violation.
+- [x] kael-security-sweep pass.
+- [x] kael-review pass.
+- [x] No autonomous money-impacting action.
+- [x] All PII filters working.
+- [x] Charter LOCKED files unchanged.
+- [x] Permission scope honored.
+- [x] No STRUCTURES §10F violation.
+
+**P16 Evidence (2026-05-26, staging `xyylanuyflrjzbjzhqfl`):**
+
+- Report: `docs/test-logs/2026-05-26_p16-prelaunch-verification.md`, status `passed`.
+- Charter/locked-doc audit: `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md`, `CLAUDE.md`, `README.md`, and locked charter files had no P16 changes.
+- Security sweep: exact Supabase access-token/JWT sweeps found no repo matches; key-name sweep found only `.env.example` names and fake `eyJ...` test-comment placeholders; no secret values were written to repo artifacts.
+- PII audit: sanitizer and memory tests cover phone, email, CCCD, bank, unit/floor/address filtering; no console statement was found logging full phone, CCCD, bank, raw message, token, secret, or authorization values.
+- STRUCTURES section 10F/11 audit: historical `20260521120000_geo_matching_and_worker_auto_suspend.sql` is superseded by active runtime; staging `request_worker_cancellation_atomic` contains no `is_suspended = true` and no `verification_status = 'suspended'`, while `admin_review_required` is present. P13 suspension remains explicit admin decision only.
+- Permission/runtime audit: mobile workflow writes remain behind Edge `mobile-api`; AI provider calls and secrets remain server-side; learning forbidden effects still reject auto-charge, auto-confirm booking, auto-cancel job, auto-approve worker, auto-suspend worker, auto-change final price, auto-expand scope, and hidden learning changes.
+- Performance/cost reused from live P15 matrix: p95 intake `6394ms` under `12000ms`; worst transaction `$0.000482` under `$0.30`.
+- Verification gates: full API Vitest passed `54 files | 3 skipped`, `1111 passed | 59 skipped`; full shared Vitest passed `13 files`, `521 passed`; API/shared/mobile `tsc --noEmit` passed; `node --check apps/api/scripts/kael-p15-staging-e2e.mjs` passed; `git diff --check` passed with CRLF warnings only.
+- Supabase verification: `db push --dry-run --linked` says remote database is up to date; `db lint --linked --fail-on error` returned `No schema errors found`; performance advisor returned `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
 
 **Estimated Effort:** 2-3 ngày.
 
@@ -5934,11 +5996,22 @@ Nếu 2+ metric fail → loại Perplexity #6, Anthropic làm main.
 
 **Acceptance Gate:**
 
-- [ ] Staging deploy successful.
-- [ ] Monitoring dashboards live.
-- [ ] A/B test #6 running.
-- [ ] 100-case collection in progress.
-- [ ] Production deploy plan ready.
+- [x] Staging deploy successful.
+- [x] Monitoring dashboards live.
+- [x] A/B test #6 running.
+- [x] 100-case collection in progress.
+- [x] Production deploy plan ready.
+
+**P17 Evidence (2026-05-26, staging `xyylanuyflrjzbjzhqfl`):**
+
+- Report: `docs/test-logs/2026-05-26_p17-staging-monitoring-ab.md`, status `passed`.
+- Migration `20260526012712_kael_p17_monitoring_ab_setup.sql` created with Supabase CLI, dry-run listed only that migration, and it was pushed to staging. Final dry-run returned `Remote database is up to date`.
+- `mobile-api` redeployed to staging `xyylanuyflrjzbjzhqfl`; unauth smoke for `/services` returned expected `401 AUTH_MISSING`, proving the deployed function is reachable and still auth-gated.
+- Monitoring dashboards live: `kael_monitoring_provider_daily` and `kael_monitoring_ab_price_synthesis`, both `security_invoker` views. Provider dashboard smoke returned historical provider rows for `intent_classification`, `market_lookup`, and `vision_analysis`.
+- A/B #6 running: experiment key `p17-price-synthesis-perplexity-vs-anthropic-2026-05-26`, status `running`, purpose `price_synthesis`, primary `perplexity`, comparison/fallback `anthropic`, sample target `100`, started `true`.
+- 100-case collection honesty: dashboard shows `collected_cases=0`, `completed_cases=0`, `threshold_decision=collecting`. No fake A/B case rows were inserted.
+- Production deploy plan ready in the P17 report, with Tu approval as the manual gate before touching production `iwevizmsedyqozxlawwl`.
+- Verification gates: P17 schema tests plus P15/P16 schema gates passed `3 files`, `147 passed`; API/shared `tsc --noEmit` passed; Supabase `db lint --linked --fail-on error` passed after transient CLI login retry; performance advisor returned `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
 
 **Estimated Effort:** 2-3 ngày.
 

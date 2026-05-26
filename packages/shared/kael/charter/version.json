@@ -1,0 +1,21 @@
+{
+  "charter_version": "2026-05-25.p8",
+  "created_at": "2026-05-25",
+  "last_modified": "2026-05-25",
+  "source": "Plan.md 23.13 P8",
+  "locked_files": [
+    "identity.md",
+    "persona.md",
+    "mission-values.md"
+  ],
+  "tunable_files": [
+    "tone-matrix.yaml",
+    "language-rules.md",
+    "forbidden-language.json",
+    "style-guidelines.md"
+  ],
+  "governance": {
+    "locked_change_policy": "Tu approval required",
+    "tunable_change_policy": "Reviewed add-only config change"
+  }
+}

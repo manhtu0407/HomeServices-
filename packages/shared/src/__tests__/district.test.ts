@@ -68,6 +68,30 @@ describe('normalizeDistrict', () => {
     it('"Quận 12" → q12', () => {
       expect(normalizeDistrict('Quận 12')).toBe('q12')
     })
+
+    it('normalizes q1-q12 legacy variants without dropping old Thu Duc districts', () => {
+      const expectedByNumber: Record<number, string> = {
+        1: 'q1',
+        2: 'thu_duc',
+        3: 'q3',
+        4: 'q4',
+        5: 'q5',
+        6: 'q6',
+        7: 'q7',
+        8: 'q8',
+        9: 'thu_duc',
+        10: 'q10',
+        11: 'q11',
+        12: 'q12',
+      }
+
+      for (const [number, expected] of Object.entries(expectedByNumber)) {
+        expect(normalizeServiceAreaDistrict(`Q${number}`)).toBe(expected)
+        expect(normalizeServiceAreaDistrict(`Q. ${number}`)).toBe(expected)
+        expect(normalizeServiceAreaDistrict(`Quan ${number}`)).toBe(expected)
+        expect(normalizeServiceAreaDistrict(`Quận ${number}`)).toBe(expected)
+      }
+    })
   })
 
   describe('fallback behavior (RULES.md #8 — no fake data)', () => {
@@ -133,6 +157,14 @@ describe('HCMC_DISTRICTS catalog', () => {
 describe('normalizeServiceAreaDistrict', () => {
   it('accepts a concrete HCMC district for customer dispatch', () => {
     expect(normalizeServiceAreaDistrict('Quận 7')).toBe('q7')
+  })
+
+  it('keeps D31 dispatch district inputs canonical instead of silently storing drift', () => {
+    expect(normalizeServiceAreaDistrict('q7')).toBe('q7')
+    expect(normalizeServiceAreaDistrict('Quan 1')).toBe('q1')
+    expect(normalizeServiceAreaDistrict('Q.7')).toBe('q7')
+    expect(normalizeServiceAreaDistrict('BT')).toBeNull()
+    expect(normalizeServiceAreaDistrict('Quan 2')).toBe('thu_duc')
   })
 
   it('rejects unknown and city-wide values for new customer jobs', () => {

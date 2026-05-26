@@ -184,6 +184,7 @@ export const DEFAULT_DISTRICT: DistrictSlug = 'hcmc_all'
  *   2. Case-insensitive slug ("Q1" → "q1")
  *   3. Exact Vietnamese label match ("Quận 1" → "q1")
  *   4. Numbered district patterns ("Quận 1", "Q.1", "quan 1" → "q1")
+ *      Legacy "Quận 2" / "Quận 9" inputs map to "thu_duc".
  *   5. Fallback: DEFAULT_DISTRICT ("hcmc_all") — never lies about location
  *
  * Numbered district matching is diacritic-insensitive to stay aligned with
@@ -211,11 +212,13 @@ export function normalizeDistrict(input: string | null | undefined): DistrictSlu
   }
 
   // Keep numbered district parsing aligned with Edge domain.ts: "Quan 1",
-  // "quan 1", "Q.1", and "q 1" all normalize to q1.
+  // "quan 1", "Q.1", and "q 1" all normalize to canonical slugs.
   const normalized = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   const normalizedNumMatch = normalized.match(/^(?:quan|q)[\s.]*(\d+)$/i)
   if (normalizedNumMatch) {
-    const slug = `q${normalizedNumMatch[1]}`
+    const districtNumber = normalizedNumMatch[1]
+    if (districtNumber === '2' || districtNumber === '9') return 'thu_duc'
+    const slug = `q${districtNumber}`
     if (Object.prototype.hasOwnProperty.call(HCMC_DISTRICTS, slug)) {
       return slug as DistrictSlug
     }
@@ -225,7 +228,9 @@ export function normalizeDistrict(input: string | null | undefined): DistrictSlu
   // Match leading "qu(ận|an|.)?" then digits.
   const numMatch = lower.match(/^(?:qu[aâă]n|q)[\s\.]*(\d+)$/i)
   if (numMatch) {
-    const slug = `q${numMatch[1]}`
+    const districtNumber = numMatch[1]
+    if (districtNumber === '2' || districtNumber === '9') return 'thu_duc'
+    const slug = `q${districtNumber}`
     if (Object.prototype.hasOwnProperty.call(HCMC_DISTRICTS, slug)) {
       return slug as DistrictSlug
     }

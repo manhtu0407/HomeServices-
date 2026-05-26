@@ -27,7 +27,7 @@ If a task cannot be mapped, stop and ask Tu instead of creating a new structure.
 - `apps/mobile/lib/api.ts` owns the `mobile-api` HTTP boundary, auth headers, timeout, and response envelope.
 - `supabase/functions/mobile-api/_shared/router.ts` owns route matching, role guards, request validation, and dispatch.
 - `supabase/functions/mobile-api/_shared/services.ts` owns Edge workflow reads/writes, DB/RPC/Storage calls, notifications, matching, and service-role behavior.
-- `supabase/functions/mobile-api/_shared/kael.ts` owns Edge Kael pipeline/provider behavior. Mobile must not call AI providers directly.
+- `supabase/functions/mobile-api/_shared/kael.ts` is a backward-compatible re-export shim; `supabase/functions/mobile-api/_shared/kael/**` owns Edge Kael pipeline/provider behavior. Mobile must not call AI providers directly.
 - `packages/shared/src/constants.ts`, `validation.ts`, and `mobile-workflow.ts` own shared service scope, schemas, state transitions, selectors, and type-level contracts.
 - `apps/api` is reference/parity/admin/support code unless Tu explicitly assigns a Next.js task. Do not move the store-bound mobile runtime back into Next.js.
 
@@ -107,11 +107,15 @@ apps/mobile/components/ui/
 |---|---|---|
 | Route matching and role guards | `supabase/functions/mobile-api/_shared/router.ts` | validates body with shared Edge schemas and dispatches by route kind |
 | Workflow DB/RPC/Storage behavior | `supabase/functions/mobile-api/_shared/services.ts` | service-role behavior stays here |
-| Kael provider pipeline | `supabase/functions/mobile-api/_shared/kael.ts` | AI secrets stay server-side |
+| Kael provider pipeline | `supabase/functions/mobile-api/_shared/kael/**` via `kael/index.ts`; `kael.ts` remains a shim | `pipeline.ts` orchestrates stages, `routing.config.ts` / `routing.ts` own pure purpose-to-provider routing, `circuit-breaker.ts` owns in-memory provider health, `orchestrator.ts` owns timeout/parallel stage execution, `streaming.ts` owns `jobs.kael_progress`, `provider-client.ts` is the only provider HTTP client, `intent.ts` / `vision.ts` / `market.ts` own stage behavior, `synthesis.ts` owns baseline/price synthesis, `scope-change.ts` owns worker scope-change Kael review. AI secrets stay server-side |
+| Kael charter and response style | `packages/shared/kael/charter/**`, `supabase/functions/mobile-api/_shared/kael/system-prompt.ts`, `self-check.ts`, `orchestrator.ts`, and `GET /kael/charter` | P8 charter source files define locked identity/persona/mission and tunable tone/language/forbidden/style rules. Edge mirrors the public-safe runtime prompt bundle without importing `packages/shared`, and `self-check.ts` owns deterministic response screening before fallback |
+| Kael learning skills | `supabase/functions/mobile-api/_shared/kael/skills/**`, queue call sites in `services.ts`, and `kael_rule_*_log` migrations | P7 learning is queued behind Edge/service-role flow. Skill registry owns immutable forbidden effects, allowed targets, evidence gates, lifecycle, runtime flags, A/B gating, and rollback signals. It must not execute learning inline during customer/worker workflow writes |
+| Kael monitoring and A/B dashboards | `public.kael_ab_experiments`, `public.kael_ab_price_synthesis_cases`, `public.kael_monitoring_provider_daily`, `public.kael_monitoring_ab_price_synthesis` | P17 monitoring is DB-owned. Service role writes experiment/case rows, admins read through `security_invoker` views, and sample collection must not fabricate provider or price data. |
 | Transition validity | `supabase/functions/mobile-api/_shared/lifecycle.ts` | keep backend state machine authoritative |
 | Access checks | `supabase/functions/mobile-api/_shared/access.ts` | customer/worker/admin authorization |
 | Push helper | `supabase/functions/mobile-api/_shared/push.ts` | push is best-effort; notification rows remain source of truth |
 | Rate limit | `supabase/functions/mobile-api/_shared/rate-limit.ts` | protect AI/provider routes |
+| Kael Harness shared contracts | `packages/shared/kael/**` | charter skeletons, permission-purpose types, and future shared Kael governance contracts |
 
 `apps/api/src/**` mirrors/reference-tests many of these behaviors for Next.js/admin/support. It is not the store-bound mobile runtime unless Tu explicitly changes scope.
 
@@ -146,6 +150,8 @@ Use the narrowest relevant check first, then broaden when shared behavior change
 | Mobile wiring/static boundaries | `packages/shared/src/__tests__/mobile-wiring.test.ts`, `mobile-backend-wiring.test.ts`, `monorepo-wiring.test.ts` |
 | Edge/API routing and runtime | `apps/api/src/__tests__/unit/mobile-api-edge-router.test.ts`, `mobile-api-edge-runtime.test.ts`, `apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts` |
 | Kael/provider behavior | API Kael unit tests, `kael-schemas.test.ts`, `pricing.test.ts`, `ai-client.test.ts` |
+| Kael charter and response style | `packages/shared/src/__tests__/kael-charter-p8.test.ts`, `apps/api/src/__tests__/unit/mobile-api-kael-p8.test.ts`, `mobile-api-edge-schema.test.ts`, staging `GET /kael/charter` smoke, staging advisors |
+| Kael learning skills | `apps/api/src/__tests__/unit/mobile-api-kael-p7.test.ts`, `mobile-api-edge-schema.test.ts`, `tier1-type-completeness.test.ts`, staging migration/advisor checks |
 | Auth/security/RLS | API auth/security tests, schema hardening tests, staging harness docs |
 | UI motion/glass | Type-check, React Doctor changed scan, screenshot/recording evidence for UI tasks |
 

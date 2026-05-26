@@ -16,6 +16,10 @@ import type {
   JobMessageListResponse,
   JobMessageSendResponse,
   ConfirmKaelChatResponse,
+  CustomerCancellationResponse,
+  DisputeAdminDecisionResponse,
+  DisputeCounterStatementResponse,
+  DisputeOpenResponse,
   KaelChatResponse,
   NotificationListResponse,
   NotificationReadResponse,
@@ -31,13 +35,19 @@ import type {
   WorkerCancellationDecisionResponse,
   WorkerCancellationRequestInput,
   WorkerCancellationResponse,
+  WorkerKaelClarifyResponse,
   WorkerScopeChangeResponse,
 } from './api-types'
 import type {
   AvailabilityToggleInput,
+  CustomerCancellationRequestInput,
   CustomerScopeDecisionInput,
+  DisputeAdminDecisionInput,
+  DisputeCounterStatementInput,
+  DisputeOpenRequestInput,
   JobCreateInput,
   JobStatus,
+  KaelWorkerClarifyInput,
   KaelChatCreateInput,
   KaelChatTurnInput,
   PlacesAutocompleteInput,
@@ -96,8 +106,28 @@ export const jobService = {
     return api.post<WorkerScopeChangeResponse>(`/jobs/${jobId}/scope-change`, input)
   },
 
+  askKaelForWorker(jobId: string, input: KaelWorkerClarifyInput) {
+    return api.post<WorkerKaelClarifyResponse>(`/jobs/${jobId}/kael-clarify`, input)
+  },
+
   requestWorkerCancellation(jobId: string, input: WorkerCancellationRequestInput) {
     return api.post<WorkerCancellationResponse>(`/jobs/${jobId}/worker-cancellation`, input)
+  },
+
+  requestCustomerCancellation(jobId: string, input: CustomerCancellationRequestInput) {
+    return api.post<CustomerCancellationResponse>(`/jobs/${jobId}/customer-cancellation`, input)
+  },
+
+  openDispute(jobId: string, input: DisputeOpenRequestInput) {
+    return api.post<DisputeOpenResponse>(`/jobs/${jobId}/disputes`, input)
+  },
+
+  submitDisputeCounterStatement(disputeId: string, input: DisputeCounterStatementInput) {
+    return api.post<DisputeCounterStatementResponse>(`/disputes/${disputeId}/counter-statement`, input)
+  },
+
+  decideDispute(disputeId: string, input: DisputeAdminDecisionInput) {
+    return api.post<DisputeAdminDecisionResponse>(`/disputes/${disputeId}/admin-decision`, input)
   },
 
   decideScopeChange(scopeChangeId: string, input: CustomerScopeDecisionInput) {
@@ -193,6 +223,10 @@ export const workerService = {
 
   requestScopeChange(jobId: string, input: WorkerScopeChangeInput) {
     return jobService.requestScopeChange(jobId, input)
+  },
+
+  askKael(jobId: string, input: KaelWorkerClarifyInput) {
+    return jobService.askKaelForWorker(jobId, input)
   },
 
   requestWorkerCancellation(jobId: string, input: WorkerCancellationRequestInput) {

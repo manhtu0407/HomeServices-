@@ -36,6 +36,7 @@ export type CreateJobResponse = {
   job_id: string
   status: JobStatus
   estimate: KaelEstimate
+  estimate_card_v3?: Record<string, unknown>
   fallback_used: boolean
 }
 
@@ -121,6 +122,9 @@ export type JobDetailResponse = {
     kael_price_min: number | null
     kael_price_max: number | null
     kael_advisory: string | null
+    kael_estimate_card_v3: Record<string, unknown> | null
+    kael_worker_brief_core: Record<string, unknown> | null
+    kael_worker_brief_guidance: Record<string, unknown> | null
     final_price: number | null
     completion_notes: string | null
     completion_photo_urls: string[]
@@ -195,6 +199,54 @@ export type ConfirmCompletionResponse = {
   final_price: number | null
 }
 
+export type CustomerCancellationResponse = {
+  cancellation_id: string
+  job_id: string
+  status: 'requested'
+  job_status: JobStatus
+  sub_case:
+    | 'before_a7'
+    | 'after_a7_before_worker_accept'
+    | 'after_worker_accept'
+    | 'after_worker_completed_trigger_dispute'
+    | 'scheduled_job'
+  reason_code: string
+  reason_category: string
+  admin_review_required: boolean
+  phase0_no_monetary_penalty: boolean
+  worker_goodwill: Record<string, unknown> | null
+  abuse_signals: string[]
+  message: string
+  created_at: string
+}
+
+export type DisputeOpenResponse = {
+  dispute_id: string
+  job_id: string
+  status: string
+  dispute_type: string
+  evidence_snapshot_id: string
+  admin_review_required: boolean
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  evidence_locked_at: string
+  message: string
+  created_at: string
+}
+
+export type DisputeCounterStatementResponse = {
+  dispute_id: string
+  status: string
+  counter_party_statement_submitted: boolean
+  updated_at: string
+}
+
+export type DisputeAdminDecisionResponse = {
+  dispute_id: string
+  status: string
+  outcome: string
+  decided_at: string
+}
+
 export type ReviewResponse = {
   review_id: string
   job_id: string
@@ -243,6 +295,7 @@ export type WorkerBroadcastsResponse = {
     estimated_price_max: number | null
     estimated_earning_min: number | null
     estimated_earning_max: number | null
+    worker_brief_core?: Record<string, unknown> | null
     sent_at: string | null
     expires_at: string | null
     seconds_remaining: number | null
@@ -290,6 +343,20 @@ export type WorkerScopeChangeResponse = {
     disclaimer: string
     fallback_used: boolean
   }
+  anti_fraud?: Record<string, unknown>
+  worker_challenge?: Record<string, unknown>
+  customer_card?: Record<string, unknown>
+}
+
+export type WorkerKaelClarifyResponse = {
+  qa_id: string
+  job_id: string
+  remaining_questions: number
+  answer: {
+    schema_version: 'worker_qa_answer.v1'
+    text: string
+    safety_notes: string[]
+  }
 }
 
 export type WorkerCancellationRequestInput = {
@@ -305,6 +372,16 @@ export type WorkerCancellationResponse = {
   broadcast_sent: boolean
   message: string
   created_at: string
+  reason_code: string
+  reason_category: string
+  admin_review_required: boolean
+  abuse_signals: string[]
+  fallback_options: {
+    id: string
+    label_vi: string
+    effect: string
+    no_charge_phase0?: boolean
+  }[]
 }
 
 export type WorkerCancellationDecisionInput = {
@@ -395,6 +472,7 @@ export type WorkerJobListResponse = {
     district: string | null
     final_price: number | null
     estimated_earning: number | null
+    worker_brief_guidance?: Record<string, unknown> | null
     created_at: string
     matched_at: string | null
     completed_at: string | null

@@ -15,9 +15,14 @@ import {
 } from "../../_shared/domain.ts";
 import {
   type DevicePushTokenInput,
+  type CustomerCancellationRequestInput,
+  type DisputeAdminDecisionInput,
+  type DisputeCounterStatementInput,
+  type DisputeOpenRequestInput,
   type JobCreateInput,
   type JobMediaAttachInput,
   type JobMessageSendInput,
+  type KaelWorkerClarifyInput,
   type KaelChatCreateInput,
   type KaelChatTurnInput,
   type PlacesAutocompleteInput,
@@ -39,11 +44,43 @@ import { sendPushToUser, sendPushToUsers } from "./push.ts";
 import {
   computeScopeChangeEstimate,
   type EdgeAiSecrets,
+  type PipelineStageLog,
   type PipelineResult,
   PRICE_DISCLAIMER,
   type ScopeChangeKaelEstimate,
+  buildEstimateCardOutput,
+  buildScopeChangeOutputs,
+  buildWorkerBriefOutput,
+  buildDemandingCustomerResponse,
+  buildCustomerCancellationPhase0Outcome,
+  buildNeutralDisputeSummary,
+  buildWorkerCancellationFallbackOptions,
+  assertNeutralDisputeLanguage,
+  classifyCustomerCancellationReason,
+  classifyWorkerCancellationReason,
+  customerCancellationAbuseFromSignals,
+  detectDemandingCustomerPatterns,
+  determineDisputeSubCase,
+  recordCustomerCancellationReview,
+  recordWorkerCancellationReview,
   runKaelPipeline,
-} from "./kael.ts";
+  sanitizeKaelText,
+  sanitizeMemoryObject,
+  type EstimatePriceSource,
+  type LearningSkillInput,
+  type LearningSkillTrigger,
+  getPublicKaelCharter,
+  NORMAL_TRANSACTION_SILENT_STATUSES,
+  queueLearningSkillTriggers,
+  recordDemandingCustomerInteraction,
+  type ScopeChangeRiskConfig,
+  type WorkerCancellationAbuseSignal,
+  type WorkerCancellationExpectedCategory,
+  type WorkerCancellationReasonCode,
+  type CustomerCancellationAbuseSignal,
+  type CustomerCancellationSubCase,
+  type DisputeType,
+} from "./kael/index.ts";
 
 type DbError = { code?: string; message?: string };
 type DbResult<T> = {
@@ -80,7 +117,7 @@ const JOB_CHAT_SEND_STATUSES: JobStatus[] = [
 ];
 
 const JOB_DETAIL_SELECT =
-  "id, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at";
+  "id, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, kael_worker_brief_core, kael_worker_brief_guidance, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at";
 const DEFAULT_WORKER_CANDIDATE_POOL_SIZE = 50;
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 const KAEL_CHAT_HARD_COST_CAP_USD = 1;
@@ -113,6 +150,7 @@ type KaelChatContentType =
 type Chain = {
   select(columns?: string, options?: unknown): Chain;
   insert(value: unknown): Chain;
+  delete(): Chain;
   update(value: unknown): Chain;
   upsert(value: unknown): Chain;
   eq(column: string, value: unknown): Chain;
@@ -155,7 +193,12 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     updateJobStatus,
     requestScopeChange: (ctx, jobId, input) =>
       requestScopeChange(ctx, jobId, input, secrets),
+    askKaelForWorker,
+    requestCustomerCancellation,
     requestWorkerCancellation,
+    openDispute,
+    submitDisputeCounterStatement,
+    decideDispute,
     attachJobMedia,
     listJobMessages,
     sendJobMessage,
@@ -163,7 +206,11 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     decideScopeChange,
     confirmCompletion,
     submitReview,
+    getKaelCharter,
     registerWorker,
+    getMyKaelMemory,
+    getWorkerKaelMemory,
+    deleteMyKaelMemory,
     getWorkerProfile,
     updateWorkerAvailability,
     listWorkerBroadcasts,
@@ -173,6 +220,10 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     markNotificationRead,
     registerDevicePushToken,
   };
+}
+
+function getKaelCharter() {
+  return getPublicKaelCharter();
 }
 
 async function listServices(ctx: MobileApiContext) {
@@ -379,6 +430,7 @@ async function createJob(
         description: input.description,
         district: canonicalDistrict,
         photoUrls: input.photo_urls,
+        progressJobId: jobId,
       },
       client,
       secrets,
@@ -407,6 +459,7 @@ async function createJob(
       .map((stage) => ({
         job_id: jobId,
         request_id: requestId,
+        purpose: apiLogPurposeForPipelineStage(stage.stage),
         provider: stage.provider,
         model: stage.model,
         input_tokens: stage.inputTokens ?? null,
@@ -438,6 +491,12 @@ async function createJob(
   }
 
   const estimate = pipeline.estimate;
+  const estimateCardV3 = buildEstimateCardOutput({
+    estimate,
+    priceSource: estimatePriceSourceFromStageLogs(pipeline.stageLogs),
+    baselineUsed:
+      `${input.service_type}:${pipeline.serviceProblemId}:${estimate.complexity}`,
+  });
   const now = new Date().toISOString();
   const updated = await dbQuery<{ id: string }>(
     client
@@ -449,6 +508,7 @@ async function createJob(
         kael_price_min: estimate.price_min,
         kael_price_max: estimate.price_max,
         kael_advisory: estimate.advisory,
+        kael_estimate_card_v3: estimateCardV3,
         service_problem_id: pipeline.serviceProblemId,
         estimate_ready_at: now,
       })
@@ -499,6 +559,7 @@ async function createJob(
     job_id: jobId,
     status: "awaiting_customer_confirm" as JobStatus,
     estimate,
+    estimate_card_v3: estimateCardV3,
     fallback_used: pipeline.fallbackUsed,
   };
 }
@@ -584,6 +645,7 @@ async function createKaelChat(
     address_label: input.address_label ?? null,
     address_district: input.address_district ?? null,
     photo_urls: input.photo_urls,
+    demanding_customer_qa_count: input.message ? 1 : undefined,
   });
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
@@ -604,12 +666,13 @@ async function createKaelChat(
   }
 
   if (input.message) {
+    const message = sanitizeForLLM(input.message);
     await insertKaelTurn(client, {
       session_id: asString(sessionResult.data.id),
       turn_index: 1,
       role: "customer",
       content_type: "text",
-      text_content: sanitizeForLLM(input.message),
+      text_content: message,
       media_refs: input.photo_urls,
       safe_metadata: {},
     });
@@ -617,15 +680,29 @@ async function createKaelChat(
       total_turns: 1,
       safe_metadata: metadata,
     });
-    await advanceKaelChatEstimate(
-      ctx,
-      asString(sessionResult.data.id),
+    const handledDemandingCustomer = await maybeHandleDemandingCustomerKaelChatTurn(
+      client,
       {
-        ...input,
-        message: sanitizeForLLM(input.message),
+        sessionId: asString(sessionResult.data.id),
+        actorId: ctx.user.id,
+        jobId: null,
+        status: "active",
+        metadata,
+        message,
+        qaCount: 1,
       },
-      secrets,
     );
+    if (!handledDemandingCustomer) {
+      await advanceKaelChatEstimate(
+        ctx,
+        asString(sessionResult.data.id),
+        {
+          ...input,
+          message,
+        },
+        secrets,
+      );
+    }
   }
 
   return getKaelChat(ctx, asString(sessionResult.data.id));
@@ -682,7 +759,7 @@ async function sendKaelChatTurn(
     client
       .from("kael_chat_sessions")
       .select(
-        "id, customer_id, service_type, status, total_turns, safe_metadata",
+        "id, job_id, customer_id, service_type, status, total_turns, safe_metadata",
       )
       .eq("id", sessionId)
       .single(),
@@ -698,26 +775,30 @@ async function sendKaelChatTurn(
   }
 
   const previousTurns = asNumber(session.total_turns);
+  const previousMetadata = asRecord(session.safe_metadata);
+  const qaCount = asNumber(previousMetadata.demanding_customer_qa_count) + 1;
   const metadata = compactMetadata({
-    ...asRecord(session.safe_metadata),
+    ...previousMetadata,
     problem_chips: input.problem_chips ??
-      asStringArray(asRecord(session.safe_metadata).problem_chips),
+      asStringArray(previousMetadata.problem_chips),
     address_label: input.address_label ??
-      nullableString(asRecord(session.safe_metadata).address_label),
+      nullableString(previousMetadata.address_label),
     address_district: input.address_district ??
-      nullableString(asRecord(session.safe_metadata).address_district),
+      nullableString(previousMetadata.address_district),
     photo_urls: mergeLimitedRefs(
-      asStringArray(asRecord(session.safe_metadata).photo_urls),
+      asStringArray(previousMetadata.photo_urls),
       input.photo_urls,
       5,
     ),
+    demanding_customer_qa_count: qaCount,
   });
+  const message = sanitizeForLLM(input.message);
   await insertKaelTurn(client, {
     session_id: sessionId,
     turn_index: previousTurns + 1,
     role: "customer",
     content_type: input.photo_urls.length > 0 ? "photo_attached" : "text",
-    text_content: sanitizeForLLM(input.message),
+    text_content: message,
     media_refs: input.photo_urls,
     safe_metadata: {},
   });
@@ -727,9 +808,23 @@ async function sendKaelChatTurn(
     safe_metadata: metadata,
   });
 
+  const handledDemandingCustomer = await maybeHandleDemandingCustomerKaelChatTurn(
+    client,
+    {
+      sessionId,
+      actorId: ctx.user.id,
+      jobId: nullableString(session.job_id),
+      status,
+      metadata,
+      message,
+      qaCount,
+    },
+  );
+  if (handledDemandingCustomer) return getKaelChat(ctx, sessionId);
+
   await advanceKaelChatEstimate(ctx, sessionId, {
     service_type: asServiceType(session.service_type),
-    message: sanitizeForLLM(input.message),
+    message,
     problem_chips: asStringArray(metadata.problem_chips),
     photo_urls: asStringArray(metadata.photo_urls),
     address_district: nullableString(metadata.address_district) ?? undefined,
@@ -771,6 +866,65 @@ async function confirmKaelChat(
     session_id: sessionId,
     ...confirmed,
   };
+}
+
+async function maybeHandleDemandingCustomerKaelChatTurn(
+  client: DbClient,
+  input: {
+    sessionId: string;
+    actorId: string;
+    jobId: string | null;
+    status: KaelChatStatus;
+    metadata: Record<string, unknown>;
+    message: string;
+    qaCount: number;
+  },
+) {
+  const alreadyHardStopped = input.metadata.demanding_customer_hard_escalation === true;
+  const detection = detectDemandingCustomerPatterns({
+    message: input.message,
+    qaCount: input.qaCount,
+    cancelCount: asNumber(input.metadata.demanding_customer_cancel_count),
+  });
+  if (!alreadyHardStopped && detection.expectedNuance === "none") return false;
+
+  const effectiveDetection = alreadyHardStopped && detection.escalationLevel !== "hard"
+    ? {
+      ...detection,
+      nuance: detection.nuance === "none" ? "pressure" as const : detection.nuance,
+      expectedNuance: detection.expectedNuance === "none" ? "pressure" as const : detection.expectedNuance,
+      pressureScore: Math.max(detection.pressureScore, 1),
+      escalationLevel: "hard" as const,
+    }
+    : detection;
+  const response = buildDemandingCustomerResponse(effectiveDetection);
+
+  await recordDemandingCustomerInteraction(client, {
+    jobId: input.jobId,
+    actorId: input.actorId,
+    actorRole: "customer",
+    message: input.message,
+    detection: effectiveDetection,
+    response,
+  });
+  await appendKaelSystemTurn(client, input.sessionId, {
+    contentType: "clarification",
+    text: response.responseText,
+    nextStatus: response.stopAiLoop
+      ? "active"
+      : input.status === "estimate_ready"
+      ? "estimate_ready"
+      : "active",
+    metadata: {
+      demanding_customer: demandingCustomerTurnMetadata(effectiveDetection, response),
+    },
+    sessionMetadata: demandingCustomerSessionMetadata(
+      input.metadata,
+      effectiveDetection,
+      response,
+    ),
+  });
+  return true;
 }
 
 async function advanceKaelChatEstimate(
@@ -824,6 +978,7 @@ async function advanceKaelChatEstimate(
     return;
   }
 
+  const requestId = crypto.randomUUID();
   let pipeline: PipelineResult;
   try {
     pipeline = await runKaelPipeline(
@@ -845,6 +1000,29 @@ async function advanceKaelChatEstimate(
     });
     return;
   }
+
+  await logApiCalls(
+    client,
+    pipeline.stageLogs
+      .filter((stage) => stage.provider && stage.model)
+      .map((stage) => ({
+        job_id: null,
+        request_id: requestId,
+        purpose: apiLogPurposeForPipelineStage(stage.stage),
+        provider: stage.provider,
+        model: stage.model,
+        input_tokens: stage.inputTokens ?? null,
+        output_tokens: stage.outputTokens ?? null,
+        cost_usd: stage.costUsd ?? null,
+        latency_ms: stage.latencyMs,
+        success: stage.success,
+        error_code: stage.failureReason ?? null,
+        safe_metadata: {
+          surface: "kael_chat",
+          session_id: sessionId,
+        },
+      })),
+  );
 
   if (!pipeline.success) {
     await appendKaelSystemTurn(client, sessionId, {
@@ -906,12 +1084,13 @@ async function appendKaelSystemTurn(
     estimate?: unknown;
     costUsd?: number;
     metadata?: Record<string, unknown>;
+    sessionMetadata?: Record<string, unknown>;
   },
 ) {
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
       .from("kael_chat_sessions")
-      .select("id, total_turns, total_cost_usd")
+      .select("id, total_turns, total_cost_usd, safe_metadata")
       .eq("id", sessionId)
       .single(),
   );
@@ -937,6 +1116,12 @@ async function appendKaelSystemTurn(
   };
   if (input.nextStatus === "estimate_ready") {
     sessionUpdate.estimate_ready_at = new Date().toISOString();
+  }
+  if (input.sessionMetadata) {
+    sessionUpdate.safe_metadata = compactMetadata({
+      ...asRecord(sessionResult.data.safe_metadata),
+      ...input.sessionMetadata,
+    });
   }
   await updateKaelSession(client, sessionId, sessionUpdate);
 }
@@ -1006,6 +1191,9 @@ async function getJob(ctx: MobileApiContext, jobId: string) {
       kael_price_min: nullableNumber(job.kael_price_min),
       kael_price_max: nullableNumber(job.kael_price_max),
       kael_advisory: nullableString(job.kael_advisory),
+      kael_estimate_card_v3: nullableRecord(job.kael_estimate_card_v3),
+      kael_worker_brief_core: nullableRecord(job.kael_worker_brief_core),
+      kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
       final_price: nullableNumber(job.final_price),
       completion_notes: nullableString(job.completion_notes),
       completion_photo_urls: asStringArray(job.completion_photo_urls),
@@ -1029,7 +1217,7 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "customer",
     select:
-      "id, status, customer_id, worker_id, service_type, address_district, kael_price_min, kael_price_max, final_price",
+      "id, status, customer_id, worker_id, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, final_price",
   });
 
   // Phase 2.0 (2026-05-23): lock jobs.final_price = kael_price_max as initial
@@ -1087,6 +1275,19 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
     );
     if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
     rollbackStatus = job.status as JobStatus;
+    const workerBriefCore = buildWorkerBriefOutput({
+      stage: "core",
+      serviceType: asServiceType(job.service_type),
+      problemSummary:
+        nullableString(job.kael_problem_identified) ?? "Yêu cầu cần thợ kiểm tra",
+      district: nullableString(job.address_district),
+      estimatedEarningMin: nullableNumber(job.kael_price_min) === null
+        ? null
+        : Math.round(nullableNumber(job.kael_price_min)! * (1 - PLATFORM_FEE_WORKER)),
+      estimatedEarningMax: lockedFinalPrice === null
+        ? null
+        : Math.round(lockedFinalPrice * (1 - PLATFORM_FEE_WORKER)),
+    });
 
     const updated = await dbQuery<{ id: string }>(
       client
@@ -1096,6 +1297,7 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
           broadcast_at: now,
           confirmed_search_at: now,
           final_price: lockedFinalPrice,
+          kael_worker_brief_core: workerBriefCore,
         })
         .eq("id", jobId)
         .eq("customer_id", ctx.user.id)
@@ -1257,6 +1459,275 @@ async function cancelJob(ctx: MobileApiContext, jobId: string) {
   return { job_id: jobId, status: row.job_status as JobStatus };
 }
 
+async function requestCustomerCancellation(
+  ctx: MobileApiContext,
+  jobId: string,
+  input: CustomerCancellationRequestInput,
+) {
+  const client = db(ctx);
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("request_customer_cancellation_atomic", {
+      p_job_id: jobId,
+      p_customer_id: ctx.user.id,
+      p_reason_code: input.reason_code,
+      p_reason_note: input.reason_note ?? null,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy", 500);
+  if (!row.ok) mapCustomerCancellationError(nullableString(row.error_code));
+
+  const cancellationId = asString(row.cancellation_id);
+  const subCase = asCustomerCancellationSubCase(row.sub_case);
+  const reasonCode = nullableString(row.reason_code) ?? input.reason_code;
+  const localClassification = classifyCustomerCancellationReason({
+    reasonCode,
+    reason: input.reason_note ?? reasonCode,
+  });
+  const reasonCategory = nullableString(row.reason_category) ??
+    localClassification.category;
+  const abuseSignals = asCustomerCancellationAbuseSignals(row.abuse_signals);
+  const abuse = customerCancellationAbuseFromSignals(abuseSignals);
+  const adminReviewRequired = asBoolean(row.admin_review_required) ||
+    localClassification.adminReviewRequired ||
+    abuse.adminReviewRequired ||
+    subCase === "after_worker_completed_trigger_dispute";
+  const workerIdFromRow = nullableString(row.worker_id_out);
+  const phase0Outcome = buildCustomerCancellationPhase0Outcome({
+    subCase,
+    reasonCode,
+    workerId: workerIdFromRow,
+  });
+  const workerGoodwill = nullableRecord(row.worker_goodwill) ??
+    phase0Outcome.workerGoodwill;
+  const jobStatus = row.job_status as JobStatus | undefined;
+
+  await logJobEvent(
+    client,
+    jobId,
+    "customer_requested_cancellation",
+    ctx,
+    null,
+    jobStatus ?? null,
+    {
+      cancellation_id: cancellationId,
+      sub_case: subCase,
+      reason_code: reasonCode,
+      reason_category: reasonCategory,
+      abuse_signals: abuseSignals,
+      admin_review_required: adminReviewRequired,
+      phase0_no_monetary_penalty: true,
+      worker_goodwill: workerGoodwill,
+    },
+  );
+
+  const participants = await dbQuery<Record<string, unknown>>(
+    client
+      .from("jobs")
+      .select("customer_id, worker_id")
+      .eq("id", jobId)
+      .maybeSingle(),
+  );
+  const customerId = nullableString(participants.data?.customer_id) ?? ctx.user.id;
+  const workerId = workerIdFromRow ?? nullableString(participants.data?.worker_id);
+
+  await recordCustomerCancellationReview(client, {
+    jobId,
+    customerId,
+    workerId,
+    cancellationId,
+    reason: input.reason_note ?? reasonCode,
+    subCase,
+    classification: {
+      ...localClassification,
+      reasonCode: localClassification.reasonCode,
+      category: reasonCategory as typeof localClassification.category,
+      adminReviewRequired,
+    },
+    abuse,
+    phase0Outcome,
+  }).catch(() => {
+    console.warn("mobile-api customer cancellation review write failed", {
+      jobId,
+      cancellationId,
+    });
+  });
+
+  if (workerId && (subCase === "after_worker_accept" || subCase === "scheduled_job")) {
+    await notifyWorkerCustomerCancellation(client, jobId, workerId, subCase);
+  }
+
+  return {
+    cancellation_id: cancellationId,
+    job_id: jobId,
+    status: "requested" as const,
+    job_status: jobStatus ?? "cancelled",
+    sub_case: subCase,
+    reason_code: reasonCode,
+    reason_category: reasonCategory,
+    admin_review_required: adminReviewRequired,
+    phase0_no_monetary_penalty: true,
+    worker_goodwill: workerGoodwill,
+    abuse_signals: abuseSignals,
+    message: subCase === "after_worker_completed_trigger_dispute"
+      ? "Đã ghi nhận hủy sau hoàn tất để chuyển sang kiểm tra tranh chấp."
+      : "Đã ghi nhận yêu cầu hủy. Phase 0 không tự tính phí hủy.",
+    created_at: asString(row.created_at_ts),
+  };
+}
+
+async function openDispute(
+  ctx: MobileApiContext,
+  jobId: string,
+  input: DisputeOpenRequestInput,
+) {
+  const client = db(ctx);
+  const localDecision = determineDisputeSubCase({
+    disputeType: input.dispute_type as DisputeType,
+    jobStatus: "unknown",
+  });
+  const neutralSummary = buildNeutralDisputeSummary({
+    disputeType: input.dispute_type as DisputeType,
+    initiatedBy: ctx.role,
+    initiatorStatement: input.initiator_statement,
+    evidenceCounts: {
+      chatMessages: 0,
+      photoUrls: input.evidence_photo_urls.length,
+      statusEvents: 0,
+      scopeChanges: 0,
+      kaelArtifacts: 0,
+    },
+  });
+  const neutrality = assertNeutralDisputeLanguage(neutralSummary);
+  if (!neutrality.ok) {
+    apiFailure("KAEL_NEUTRALITY_GUARD", "Kael chỉ tóm tắt trung lập cho admin", 500);
+  }
+
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("open_dispute_atomic", {
+      p_job_id: jobId,
+      p_initiated_by_id: ctx.user.id,
+      p_initiated_by: ctx.role,
+      p_dispute_type: input.dispute_type,
+      p_initiator_statement: input.initiator_statement,
+      p_evidence_photo_urls: input.evidence_photo_urls,
+      p_kael_neutral_summary: neutralSummary,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể mở kiểm tra tranh chấp", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) apiFailure("DB_ERROR", "Không thể mở kiểm tra tranh chấp", 500);
+  if (!row.ok) mapDisputeOpenError(nullableString(row.error_code));
+
+  const disputeId = asString(row.dispute_id);
+  const evidenceSnapshotId = asString(row.evidence_snapshot_id);
+  const status = nullableString(row.dispute_status) ?? "open";
+  const priority = asDisputePriority(row.priority) ?? localDecision.priority;
+  const evidenceLockedAt = asString(row.evidence_locked_at);
+  const createdAt = asString(row.created_at_ts);
+
+  await logJobEvent(
+    client,
+    jobId,
+    "dispute_opened",
+    ctx,
+    null,
+    null,
+    {
+      dispute_id: disputeId,
+      dispute_type: input.dispute_type,
+      evidence_snapshot_id: evidenceSnapshotId,
+      priority,
+      kael_neutral: true,
+      sub_case: localDecision.subCase,
+      deferred_phase0: localDecision.deferred,
+    },
+  );
+
+  return {
+    dispute_id: disputeId,
+    job_id: jobId,
+    status,
+    dispute_type: input.dispute_type,
+    evidence_snapshot_id: evidenceSnapshotId,
+    admin_review_required: asBoolean(row.admin_review_required) ||
+      localDecision.adminReviewRequired,
+    priority,
+    evidence_locked_at: evidenceLockedAt,
+    message: localDecision.deferred
+      ? "Kael đã khóa bằng chứng và chuyển admin xem xét; thanh toán được hoãn trong Phase 0."
+      : "Kael đã khóa bằng chứng và chuyển admin xem xét trung lập.",
+    created_at: createdAt,
+  };
+}
+
+async function submitDisputeCounterStatement(
+  ctx: MobileApiContext,
+  disputeId: string,
+  input: DisputeCounterStatementInput,
+) {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("submit_counter_statement_atomic", {
+      p_dispute_id: disputeId,
+      p_actor_id: ctx.user.id,
+      p_statement: input.statement,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể gửi phản hồi tranh chấp", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) apiFailure("DB_ERROR", "Không thể gửi phản hồi tranh chấp", 500);
+  if (!row.ok) mapDisputeCounterError(nullableString(row.error_code));
+
+  return {
+    dispute_id: asString(row.dispute_id) || disputeId,
+    status: nullableString(row.dispute_status) ?? "admin_review",
+    counter_party_statement_submitted: true,
+    updated_at: asString(row.updated_at_ts),
+  };
+}
+
+async function decideDispute(
+  ctx: MobileApiContext,
+  disputeId: string,
+  input: DisputeAdminDecisionInput,
+) {
+  if (ctx.role !== "admin") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được quyết định tranh chấp", 403);
+  }
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("admin_decide_dispute_atomic", {
+      p_dispute_id: disputeId,
+      p_admin_id: ctx.user.id,
+      p_outcome: input.outcome,
+      p_refund_amount: input.refund_amount ?? null,
+      p_worker_credit_amount: input.worker_credit_amount ?? null,
+      p_customer_trust_impact: input.customer_trust_impact,
+      p_worker_action: input.worker_action,
+      p_reasoning: input.reasoning,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể ghi quyết định tranh chấp", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) apiFailure("DB_ERROR", "Không thể ghi quyết định tranh chấp", 500);
+  if (!row.ok) mapDisputeDecisionError(nullableString(row.error_code));
+
+  return {
+    dispute_id: asString(row.dispute_id) || disputeId,
+    status: nullableString(row.dispute_status) ?? "admin_decided",
+    outcome: input.outcome,
+    decided_at: asString(row.decided_at_ts),
+  };
+}
+
 async function acceptBroadcast(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
   const result = await dbQuery<Array<Record<string, unknown>>>(
@@ -1286,6 +1757,7 @@ async function acceptBroadcast(ctx: MobileApiContext, jobId: string) {
     "worker_matched",
   );
   await notifyCustomerWorkerMatched(client, jobId, ctx.user.id);
+  await persistWorkerBriefGuidanceAfterAccept(client, jobId, row);
   return {
     job_id: jobId,
     status: row.job_status as JobStatus,
@@ -1296,6 +1768,65 @@ async function acceptBroadcast(ctx: MobileApiContext, jobId: string) {
       district: nullableString(row.address_district),
     },
   };
+}
+
+async function persistWorkerBriefGuidanceAfterAccept(
+  client: DbClient,
+  jobId: string,
+  acceptedRow: Record<string, unknown>,
+) {
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("jobs")
+      .select(
+        "id, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, kael_price_min, kael_price_max, final_price",
+      )
+      .eq("id", jobId)
+      .maybeSingle(),
+  );
+  if (result.error || !result.data) return;
+
+  const job = result.data;
+  const finalPrice = nullableNumber(job.final_price) ??
+    nullableNumber(job.kael_price_max);
+  const priceMin = nullableNumber(job.kael_price_min);
+  const guidance = buildWorkerBriefOutput({
+    stage: "guidance",
+    serviceType: asServiceType(job.service_type),
+    problemSummary:
+      nullableString(job.kael_problem_identified) ??
+        "\u0059\u00eau c\u1ea7u c\u1ea7n th\u1ee3 ki\u1ec3m tra",
+    district: nullableString(job.address_district),
+    fullAddress: {
+      building:
+        nullableString(acceptedRow.address_building) ??
+          nullableString(job.address_building),
+      floor:
+        nullableString(acceptedRow.address_floor) ??
+          nullableString(job.address_floor),
+      unit:
+        nullableString(acceptedRow.address_unit) ??
+          nullableString(job.address_unit),
+      district:
+        nullableString(acceptedRow.address_district) ??
+          nullableString(job.address_district),
+    },
+    estimatedEarningMin: priceMin === null
+      ? null
+      : Math.round(priceMin * (1 - PLATFORM_FEE_WORKER)),
+    estimatedEarningMax: finalPrice === null
+      ? null
+      : Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER)),
+  });
+
+  await dbQuery(
+    client
+      .from("jobs")
+      .update({ kael_worker_brief_guidance: guidance })
+      .eq("id", jobId),
+  ).catch(() => {
+    console.warn("mobile-api worker brief guidance persist failed", { jobId });
+  });
 }
 
 async function declineBroadcast(ctx: MobileApiContext, jobId: string) {
@@ -1358,6 +1889,14 @@ async function declineBroadcast(ctx: MobileApiContext, jobId: string) {
     apiFailure("BROADCAST_NOT_ACTIVE", "Yêu cầu này đã được xử lý", 409);
   }
   await logJobEvent(client, jobId, "worker_declined", ctx, null, null);
+  await queueKaelLearningEvent(client, 'post-decline', {
+    actor_id: ctx.user.id,
+    actor_role: ctx.role,
+    job_id: jobId,
+    worker_id: ctx.user.id,
+    decline_reason: "broadcast_declined",
+    feedback_present: false,
+  });
   return { job_id: jobId, declined: true as const };
 }
 
@@ -1432,6 +1971,19 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
     nullableString(job.customer_id),
     input.status,
   );
+  if (input.status === "completed_by_worker") {
+    await queueKaelLearningEvent(client, 'post-B7', {
+      actor_id: ctx.user.id,
+      actor_role: ctx.role,
+      job_id: jobId,
+      customer_id: nullableString(job.customer_id) ?? undefined,
+      worker_id: ctx.user.id,
+      scope_change_requested: false,
+      worker_report: {
+        has_photos: (input.completion_photo_urls ?? []).length > 0,
+      },
+    });
+  }
   return {
     job_id: jobId,
     from_status: job.status as JobStatus,
@@ -1478,6 +2030,28 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
       409,
     );
   }
+  const workerScopeChangeRate = await getWorkerScopeChangeRate(client, ctx.user.id);
+  const scopeChangeOutputs = buildScopeChangeOutputs({
+    serviceType: asServiceType(job.service_type),
+    originalPriceMax,
+    newPriceMin: estimate.price_min,
+    newPriceMax: estimate.price_max,
+    newComplexity: estimate.complexity_assessment,
+    hasPhotos: (input.photo_urls ?? []).length > 0,
+    workerDescription: input.new_description,
+    workerReason: input.reason,
+    workerScopeChangeRate,
+    riskConfig: scopeChangeRiskConfig(
+      originalPriceMax,
+      asComplexityOrNull(job.kael_complexity),
+    ),
+  });
+  const enrichedEstimate: ScopeChangeKaelEstimate = {
+    ...estimate,
+    anti_fraud: scopeChangeOutputs.anti_fraud,
+    worker_challenge: scopeChangeOutputs.worker_challenge,
+    customer_card: scopeChangeOutputs.customer_card,
+  };
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("request_scope_change_atomic", {
       p_job_id: jobId,
@@ -1485,9 +2059,9 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
       p_new_description: input.new_description,
       p_reason: input.reason,
       p_evidence_photo_urls: input.photo_urls ?? [],
-      p_kael_computed_min: estimate.price_min,
-      p_kael_computed_max: estimate.price_max,
-      p_kael_review: estimate,
+      p_kael_computed_min: enrichedEstimate.price_min,
+      p_kael_computed_max: enrichedEstimate.price_max,
+      p_kael_review: enrichedEstimate,
     }),
   );
   if (result.error) {
@@ -1508,9 +2082,11 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
       confidence: estimate.confidence,
       computed_min: estimate.price_min,
       computed_max: estimate.price_max,
+      anti_fraud_score: scopeChangeOutputs.anti_fraud.score,
+      challenge_required: scopeChangeOutputs.anti_fraud.challenge_required,
     },
   );
-  await logScopeChangeEstimateApiCall(client, jobId, estimate);
+  await logScopeChangeEstimateApiCall(client, jobId, enrichedEstimate);
   await logJobEvent(
     client,
     jobId,
@@ -1538,6 +2114,25 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
     "scope_change_pending",
     { scope_change_id: scopeChangeId },
   );
+  await queueKaelLearningEvent(client, 'post-B6', {
+    actor_id: ctx.user.id,
+    actor_role: ctx.role,
+    job_id: jobId,
+    customer_id: nullableString(job.customer_id) ?? undefined,
+    worker_id: ctx.user.id,
+    service_type: asServiceType(job.service_type),
+    problem_slug: nullableString(job.kael_problem_identified) ?? undefined,
+    district_code: nullableString(job.address_district) ?? undefined,
+    complexity: enrichedEstimate.complexity_assessment,
+    baseline_min: nullableNumber(job.kael_price_min) ?? undefined,
+    baseline_max: originalPriceMax,
+    scope_change_requested: true,
+    worker_report: {
+      has_photos: (input.photo_urls ?? []).length > 0,
+      reported_complexity: enrichedEstimate.complexity_assessment,
+      challenge_required: scopeChangeOutputs.anti_fraud.challenge_required,
+    },
+  });
   return {
     scope_change_id: scopeChangeId,
     job_id: jobId,
@@ -1553,6 +2148,98 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
       disclaimer: estimate.disclaimer,
       fallback_used: estimate.fallback_used,
     },
+    anti_fraud: scopeChangeOutputs.anti_fraud,
+    worker_challenge: scopeChangeOutputs.worker_challenge,
+    customer_card: scopeChangeOutputs.customer_card,
+  };
+}
+
+async function askKaelForWorker(
+  ctx: MobileApiContext,
+  jobId: string,
+  input: KaelWorkerClarifyInput,
+) {
+  const client = db(ctx);
+  const job = await requireJobAccess(client, jobId, ctx, {
+    requiredRole: "worker",
+    select:
+      "id, status, customer_id, worker_id, service_type, description, address_building, address_unit, address_floor, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_worker_brief_core, kael_worker_brief_guidance",
+  });
+  if (!ACTIVE_WORKER_JOB_STATUSES.includes(job.status as JobStatus)) {
+    apiFailure(
+      "INVALID_STATUS",
+      "Kael chỉ hỗ trợ thêm sau khi thợ đã nhận hoặc đang xử lý việc",
+      409,
+    );
+  }
+
+  const countResult = await dbQuery<null>(
+    client
+      .from("kael_worker_qa_log")
+      .select("id", { count: "exact", head: true })
+      .eq("job_id", jobId)
+      .eq("worker_id", ctx.user.id),
+  );
+  if (countResult.error) {
+    apiFailure("DB_ERROR", "Không thể kiểm tra số lần hỏi Kael", 500);
+  }
+  const usedQuestions = countResult.count ?? 0;
+  if (usedQuestions >= 3) {
+    apiFailure(
+      "KAEL_QA_LIMIT_REACHED",
+      "Mỗi việc chỉ có thể hỏi Kael thêm tối đa 3 lần",
+      429,
+    );
+  }
+
+  const safeQuestion = sanitizeKaelText(input.question, 1000);
+  const answer = buildWorkerKaelAnswer(safeQuestion, job);
+  const inserted = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_qa_log")
+      .insert({
+        job_id: jobId,
+        worker_id: ctx.user.id,
+        question: safeQuestion,
+        answer,
+      })
+      .select("id, created_at")
+      .single(),
+  );
+  if (inserted.error || !inserted.data) {
+    apiFailure("DB_ERROR", "Không thể lưu câu hỏi Kael", 500);
+  }
+
+  return {
+    qa_id: asString(inserted.data.id),
+    job_id: jobId,
+    remaining_questions: Math.max(0, 3 - usedQuestions - 1),
+    answer,
+  };
+}
+
+function buildWorkerKaelAnswer(
+  question: string,
+  job: Record<string, unknown>,
+) {
+  const problem = sanitizeKaelText(
+    nullableString(job.kael_problem_identified) ??
+      nullableString(job.description) ??
+      "Yêu cầu cần kiểm tra",
+    180,
+  );
+  const district = sanitizeKaelText(nullableString(job.address_district) ?? "TP.HCM", 100);
+  const questionSummary = sanitizeKaelText(question, 180);
+  return {
+    schema_version: "worker_qa_answer.v1" as const,
+    text: sanitizeKaelText(
+      `Kael ghi nhận câu hỏi: ${questionSummary}. Với việc này, hãy kiểm tra đúng phạm vi "${problem}" tại khu vực ${district}, giải thích ngắn gọn bằng chứng thực tế và gửi scope-change nếu có phần phát sinh.`,
+      500,
+    ),
+    safety_notes: [
+      "Không bắt đầu phần phát sinh khi khách chưa duyệt.",
+      "Không tự báo giá mới ngoài flow Kael trong app.",
+    ],
   };
 }
 
@@ -1571,6 +2258,7 @@ async function logScopeChangeEstimateApiCall(
   await logApiCalls(client, [{
     job_id: jobId,
     request_id: crypto.randomUUID(),
+    purpose: "scope_change",
     provider,
     model,
     input_tokens: null,
@@ -1581,6 +2269,23 @@ async function logScopeChangeEstimateApiCall(
     error_code: estimate.failure_reason ?? null,
   }]);
 }
+
+async function getWorkerScopeChangeRate(
+  client: DbClient,
+  workerId: string,
+): Promise<number> {
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("worker_scope_change_stats")
+      .select("scope_change_rate")
+      .eq("worker_id", workerId)
+      .maybeSingle(),
+  );
+  if (result.error || !result.data) return 0;
+  const rate = nullableNumber(result.data.scope_change_rate) ?? 0;
+  return Math.max(0, Math.min(1, rate));
+}
+
 
 async function requestWorkerCancellation(
   ctx: MobileApiContext,
@@ -1609,6 +2314,40 @@ async function requestWorkerCancellation(
   const cancellationId = asString(row.cancellation_id);
   const cancellationStatus = asString(row.cancellation_status);
   const jobStatus = row.job_status as JobStatus | undefined;
+  const localClassification = classifyWorkerCancellationReason({
+    reason: input.reason,
+    evidencePhotoUrls: input.evidence_photo_urls,
+  });
+  const reasonCategory = asWorkerCancellationCategory(row.reason_category) ??
+    localClassification.category;
+  const reasonCode = asWorkerCancellationReasonCode(row.reason_code) ??
+    localClassification.reasonCode;
+  const adminReviewRequired = asBoolean(row.admin_review_required) ||
+    reasonCategory !== "legit_auto_approve";
+  const abuseSignals = asWorkerCancellationAbuseSignals(row.abuse_signals);
+  const fallbackOptions = asWorkerCancellationFallbackOptions(row.fallback_options);
+  const classification = {
+    ...localClassification,
+    category: reasonCategory,
+    reasonCode,
+    adminReviewRequired,
+    autoApprove: !adminReviewRequired && reasonCategory === "legit_auto_approve",
+  };
+  const redFlagPatch: Record<string, boolean> = adminReviewRequired || abuseSignals.length > 0
+    ? { worker_cancellation_abuse_review: true }
+    : {};
+  const abuse = {
+    cancellationRate: 0,
+    signals: abuseSignals,
+    adminReviewRequired: adminReviewRequired || abuseSignals.length > 0,
+    queuePriority: adminReviewRequired || abuseSignals.length > 0
+      ? "medium" as const
+      : "none" as const,
+    suspensionAction: adminReviewRequired || abuseSignals.length > 0
+      ? "admin_review_required" as const
+      : "none" as const,
+    redFlagPatch,
+  };
   let broadcastSent = false;
   let message = cancellationStatus === "approved"
     ? "Đã hủy việc và đang tìm thợ thay thế."
@@ -1660,8 +2399,28 @@ async function requestWorkerCancellation(
       cancellation_id: cancellationId,
       cancellation_status: cancellationStatus,
       broadcast_sent: broadcastSent,
+      reason_code: reasonCode,
+      reason_category: reasonCategory,
+      abuse_signals: abuseSignals,
+      admin_review_required: abuse.adminReviewRequired,
     },
   );
+  if (cancellationStatus === "approved") {
+    await recordWorkerCancellationReview(client, {
+      jobId,
+      workerId: nullableString(row.worker_id_out) ?? ctx.user.id,
+      cancellationId,
+      reason: input.reason,
+      classification,
+      abuse,
+      subCase: "explicit_cancel",
+    }).catch(() => {
+      console.warn("mobile-api worker cancellation review write failed", {
+        jobId,
+        cancellationId,
+      });
+    });
+  }
   return {
     cancellation_id: cancellationId,
     job_id: jobId,
@@ -1670,6 +2429,11 @@ async function requestWorkerCancellation(
     broadcast_sent: broadcastSent,
     message,
     created_at: asString(row.created_at_ts),
+    reason_code: reasonCode,
+    reason_category: reasonCategory,
+    admin_review_required: abuse.adminReviewRequired,
+    abuse_signals: abuseSignals,
+    fallback_options: fallbackOptions,
   };
 }
 
@@ -1847,8 +2611,58 @@ async function sendJobMessage(
     apiFailure("DB_ERROR", "Không thể gửi tin nhắn", 500);
   }
   const message = serializeJobMessage(result.data);
+  await maybeHandleDemandingCustomerJobChat(client, job, ctx, content);
   await notifyJobMessageRecipient(client, job, ctx, message.id);
   return { message };
+}
+
+async function maybeHandleDemandingCustomerJobChat(
+  client: DbClient,
+  job: Record<string, unknown>,
+  ctx: MobileApiContext,
+  message: string,
+) {
+  if (ctx.role !== "customer") return;
+  const detection = detectDemandingCustomerPatterns({
+    message,
+    qaCount: 1,
+    cancelCount: 0,
+  });
+  if (detection.expectedNuance === "none") return;
+
+  const response = buildDemandingCustomerResponse(detection);
+  await recordDemandingCustomerInteraction(client, {
+    jobId: asString(job.id),
+    actorId: ctx.user.id,
+    actorRole: "customer",
+    message,
+    detection,
+    response,
+  });
+  await insertKaelJobMessage(client, asString(job.id), response.responseText);
+}
+
+async function insertKaelJobMessage(
+  client: DbClient,
+  jobId: string,
+  content: string,
+) {
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("chat_messages")
+      .insert({
+        job_id: jobId,
+        sender_id: null,
+        sender_role: "kael",
+        content,
+      })
+      .select("id, job_id, sender_id, sender_role, content, is_read, created_at")
+      .single(),
+  );
+  if (result.error || !result.data) {
+    apiFailure("DB_ERROR", "Không thể lưu phản hồi Kael", 500);
+  }
+  return result.data;
 }
 
 async function markJobMessagesRead(
@@ -1999,15 +2813,7 @@ async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
     job.status as JobStatus,
     "confirmed_by_customer",
   );
-  // Phase 2.3 (2026-05-23): notify customer to submit review.
-  await insertUserNotification(client, {
-    userId: ctx.user.id,
-    jobId,
-    eventType: "review_requested",
-    title: "Cảm ơn bạn đã xác nhận hoàn tất",
-    body: "Để lại đánh giá giúp Kael chọn thợ tốt hơn lần sau.",
-    metadata: { final_price: finalPrice },
-  });
+  // P9 keeps review prompting in the completion surface; A14 sends the customer notification.
   // Phase 2.4 (2026-05-23): notify worker that customer confirmed completion.
   const workerId = nullableString(job.worker_id);
   if (workerId) {
@@ -2033,7 +2839,11 @@ async function submitReview(ctx: MobileApiContext, jobId: string, input: {
   comment?: string;
 }) {
   const client = db(ctx);
-  await requireJobAccess(client, jobId, ctx, { requiredRole: "customer" });
+  const job = await requireJobAccess(client, jobId, ctx, {
+    requiredRole: "customer",
+    select:
+      "id, status, customer_id, worker_id, service_type, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, final_price",
+  });
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("submit_review_atomic", {
       p_job_id: jobId,
@@ -2057,11 +2867,236 @@ async function submitReview(ctx: MobileApiContext, jobId: string, input: {
     "reviewed",
     { rating: input.rating },
   );
+  await queueKaelLearningEvent(client, 'post-A14', {
+    actor_id: ctx.user.id,
+    actor_role: ctx.role,
+    job_id: jobId,
+    customer_id: ctx.user.id,
+    worker_id: nullableString(job.worker_id) ?? undefined,
+    service_type: asServiceType(job.service_type),
+    problem_slug: nullableString(job.kael_problem_identified) ?? undefined,
+    district_code: nullableString(job.address_district) ?? undefined,
+    complexity: asComplexityOrNull(job.kael_complexity) ?? undefined,
+    baseline_min: nullableNumber(job.kael_price_min) ?? undefined,
+    baseline_max: nullableNumber(job.kael_price_max) ?? undefined,
+    final_price: nullableNumber(job.final_price),
+    rating: input.rating,
+    review_tags: input.tags ?? [],
+    scope_change_requested: false,
+    reviewed_at: new Date().toISOString(),
+  });
+  await recordNormalTransactionMemory(client, {
+    jobId,
+    customerId: ctx.user.id,
+    workerId: nullableString(job.worker_id),
+    serviceType: asServiceType(job.service_type),
+    problemSummary: nullableString(job.kael_problem_identified),
+    district: nullableString(job.address_district),
+    rating: input.rating,
+    finalPrice: nullableNumber(job.final_price),
+  });
+  await insertUserNotification(client, {
+    userId: ctx.user.id,
+    jobId,
+    eventType: "review_thanks",
+    title: "\u0043\u1ea3m \u01a1n b\u1ea1n \u0111\u00e3 \u0111\u00e1nh gi\u00e1",
+    body: "Kael \u0111\u00e3 ghi nh\u1eadn \u0111\u00e1nh gi\u00e1 \u0111\u1ec3 c\u1ea3i thi\u1ec7n l\u1ea7n sau.",
+    metadata: { rating: input.rating },
+  });
   return {
     review_id: asString(row.review_id),
     job_id: jobId,
     status: row.job_status as JobStatus,
   };
+}
+
+type NormalTransactionMemoryInput = {
+  jobId: string;
+  customerId: string;
+  workerId: string | null;
+  serviceType: ServiceType;
+  problemSummary: string | null;
+  district: string | null;
+  rating: number;
+  finalPrice: number | null;
+};
+
+async function recordNormalTransactionMemory(
+  client: DbClient,
+  input: NormalTransactionMemoryInput,
+) {
+  const observedAt = new Date().toISOString();
+  const customerExisting = await dbQuery<Record<string, unknown>>(
+    client
+      .from("customer_kael_memory")
+      .select("service_preferences, trust_signals, safe_metadata")
+      .eq("customer_id", input.customerId)
+      .maybeSingle(),
+  );
+  const servicePreferences = nullableRecord(
+    customerExisting.data?.service_preferences,
+  ) ?? {};
+  const previousServicePreference = nullableRecord(
+    servicePreferences[input.serviceType],
+  ) ?? {};
+  const trustSignals = nullableRecord(customerExisting.data?.trust_signals) ?? {};
+  const customerMetadata = nullableRecord(customerExisting.data?.safe_metadata) ??
+    {};
+
+  await dbQuery(
+    client.from("customer_kael_memory").upsert({
+      customer_id: input.customerId,
+      preference_summary:
+        `Normal ${input.serviceType} transaction reviewed with rating ${input.rating}.`,
+      service_preferences: {
+        ...servicePreferences,
+        [input.serviceType]: {
+          ...previousServicePreference,
+          last_rating: input.rating,
+          last_district: input.district,
+          last_normal_job_id: input.jobId,
+          observed_at: observedAt,
+        },
+      },
+      trust_signals: {
+        ...trustSignals,
+        reviewed_after_completion: true,
+        last_rating: input.rating,
+        last_normal_job_id: input.jobId,
+      },
+      safe_metadata: {
+        ...customerMetadata,
+        last_normal_transaction: {
+          job_id: input.jobId,
+          service_type: input.serviceType,
+          district: input.district,
+          final_price_present: input.finalPrice !== null,
+          problem_summary_present: input.problemSummary !== null,
+          layers: ["L2", "L3", "L5"],
+          observed_at: observedAt,
+        },
+      },
+      last_observed_at: observedAt,
+    }),
+  ).catch(() => {
+    console.warn("mobile-api customer kael memory write failed", {
+      jobId: input.jobId,
+    });
+  });
+
+  if (input.workerId) {
+    const workerExisting = await dbQuery<Record<string, unknown>>(
+      client
+        .from("worker_kael_memory")
+        .select("service_skill_proficiency, reliability_signals, safe_metadata")
+        .eq("worker_id", input.workerId)
+        .maybeSingle(),
+    );
+    const proficiency = nullableRecord(
+      workerExisting.data?.service_skill_proficiency,
+    ) ?? {};
+    const previousProficiency = nullableRecord(proficiency[input.serviceType]) ??
+      {};
+    const reliabilitySignals = nullableRecord(
+      workerExisting.data?.reliability_signals,
+    ) ?? {};
+    const workerMetadata = nullableRecord(workerExisting.data?.safe_metadata) ??
+      {};
+
+    await dbQuery(
+      client.from("worker_kael_memory").upsert({
+        worker_id: input.workerId,
+        service_skill_summary:
+          `Normal ${input.serviceType} job completed with customer rating ${input.rating}.`,
+        service_skill_proficiency: {
+          ...proficiency,
+          [input.serviceType]: {
+            ...previousProficiency,
+            last_rating: input.rating,
+            last_normal_job_id: input.jobId,
+            observed_at: observedAt,
+          },
+        },
+        reliability_signals: {
+          ...reliabilitySignals,
+          customer_reviewed_after_completion: true,
+          last_rating: input.rating,
+          last_normal_job_id: input.jobId,
+        },
+        safe_metadata: {
+          ...workerMetadata,
+          last_normal_transaction: {
+            job_id: input.jobId,
+            service_type: input.serviceType,
+            final_price_present: input.finalPrice !== null,
+            layers: ["L2", "L4", "L5"],
+            observed_at: observedAt,
+          },
+        },
+        last_observed_at: observedAt,
+      }),
+    ).catch(() => {
+      console.warn("mobile-api worker kael memory write failed", {
+        jobId: input.jobId,
+      });
+    });
+  }
+
+  await dbQuery(
+    client.from("job_events").insert({
+      job_id: input.jobId,
+      actor_id: input.customerId,
+      actor_role: "customer",
+      event_type: "kael_memory_l2_observed",
+      from_status: null,
+      to_status: null,
+      safe_metadata: {
+        normal_case: true,
+        layers: ["L2", "L3", "L4", "L5"],
+        service_type: input.serviceType,
+        final_price_present: input.finalPrice !== null,
+      },
+    }),
+  ).catch(() => {
+    console.warn("mobile-api job memory event write failed", {
+      jobId: input.jobId,
+    });
+  });
+
+  await logMemoryAudit(client, {
+    subjectType: "job",
+    subjectId: input.jobId,
+    actorId: input.customerId,
+    operation: "write",
+    layer: "L2",
+    purpose: "normal_transaction_review",
+  });
+  await logMemoryAudit(client, {
+    subjectType: "customer",
+    subjectId: input.customerId,
+    actorId: input.customerId,
+    operation: "write",
+    layer: "L3",
+    purpose: "normal_transaction_review",
+  });
+  if (input.workerId) {
+    await logMemoryAudit(client, {
+      subjectType: "worker",
+      subjectId: input.workerId,
+      actorId: input.customerId,
+      operation: "write",
+      layer: "L4",
+      purpose: "normal_transaction_review",
+    });
+  }
+  await logMemoryAudit(client, {
+    subjectType: "domain",
+    subjectId: null,
+    actorId: input.customerId,
+    operation: "write",
+    layer: "L5",
+    purpose: "normal_transaction_review",
+  });
 }
 
 async function registerWorker(
@@ -2159,6 +3194,78 @@ async function registerWorker(
   };
 }
 
+async function getMyKaelMemory(ctx: MobileApiContext) {
+  if (ctx.role === "worker") return getWorkerKaelMemory(ctx);
+  const client = db(ctx);
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("customer_kael_memory")
+      .select("customer_id, language, preference_summary, service_preferences, trust_signals, memory_version, last_observed_at")
+      .eq("customer_id", ctx.user.id)
+      .maybeSingle(),
+  );
+  if (result.error) apiFailure("DB_ERROR", "Không thể tải bộ nhớ Kael", 500);
+  await logMemoryAudit(client, {
+    subjectType: "customer",
+    subjectId: ctx.user.id,
+    actorId: ctx.user.id,
+    operation: "read",
+    layer: "L3",
+    purpose: "self_view",
+  });
+  return {
+    subject_type: "customer" as const,
+    memory: result.data ? sanitizeMemoryObject(result.data) : null,
+  };
+}
+
+async function getWorkerKaelMemory(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("worker_kael_memory")
+      .select("worker_id, language, service_skill_summary, service_skill_proficiency, reliability_signals, red_flags, memory_version, last_observed_at")
+      .eq("worker_id", ctx.user.id)
+      .maybeSingle(),
+  );
+  if (result.error) apiFailure("DB_ERROR", "Không thể tải bộ nhớ Kael", 500);
+  await logMemoryAudit(client, {
+    subjectType: "worker",
+    subjectId: ctx.user.id,
+    actorId: ctx.user.id,
+    operation: "read",
+    layer: "L4",
+    purpose: "self_view",
+  });
+  return {
+    subject_type: "worker" as const,
+    memory: result.data ? sanitizeMemoryObject(result.data) : null,
+  };
+}
+
+async function deleteMyKaelMemory(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const subjectType: "customer" | "worker" = ctx.role === "worker" ? "worker" : "customer";
+  const table = subjectType === "worker" ? "worker_kael_memory" : "customer_kael_memory";
+  const column = subjectType === "worker" ? "worker_id" : "customer_id";
+  const result = await dbQuery<null>(
+    client.from(table).delete().eq(column, ctx.user.id),
+  );
+  if (result.error) apiFailure("DB_ERROR", "Không thể xóa bộ nhớ Kael", 500);
+  await logMemoryAudit(client, {
+    subjectType,
+    subjectId: ctx.user.id,
+    actorId: ctx.user.id,
+    operation: "delete",
+    layer: subjectType === "worker" ? "L4" : "L3",
+    purpose: "self_delete",
+  });
+  return {
+    subject_type: subjectType,
+    deleted: true as const,
+  };
+}
+
 async function getWorkerProfile(ctx: MobileApiContext) {
   const result = await dbQuery<Record<string, unknown>>(
     db(ctx)
@@ -2239,7 +3346,7 @@ async function listWorkerBroadcasts(ctx: MobileApiContext) {
     db(ctx)
       .from("job_broadcasts")
       .select(
-        "id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max)",
+        "id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)",
       )
       .eq("worker_id", ctx.user.id)
       .eq("status", "sent")
@@ -2269,6 +3376,7 @@ async function listWorkerBroadcasts(ctx: MobileApiContext) {
         estimated_earning_max: max === null
           ? null
           : Math.round(max * (1 - PLATFORM_FEE_WORKER)),
+        worker_brief_core: nullableRecord(job.kael_worker_brief_core),
         sent_at: nullableString(row.sent_at),
         expires_at: nullableString(row.expires_at),
         seconds_remaining: secondsRemaining(
@@ -2287,7 +3395,7 @@ async function listWorkerJobs(ctx: MobileApiContext) {
     db(ctx)
       .from("jobs")
       .select(
-        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, final_price, created_at, matched_at, completed_at",
+        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, created_at, matched_at, completed_at",
       )
       .eq("worker_id", ctx.user.id)
       .order("created_at", { ascending: false })
@@ -2299,6 +3407,27 @@ async function listWorkerJobs(ctx: MobileApiContext) {
   return {
     jobs: (result.data ?? []).map((row) => {
       const finalPrice = nullableNumber(row.final_price);
+      const max = finalPrice ?? nullableNumber(row.kael_price_max);
+      const min = nullableNumber(row.kael_price_min);
+      const fallbackBrief = buildWorkerBriefOutput({
+        stage: "guidance",
+        serviceType: row.service_type as ServiceType,
+        problemSummary:
+          nullableString(row.kael_problem_identified) ?? "Yêu cầu cần thợ kiểm tra",
+        district: nullableString(row.address_district),
+        fullAddress: {
+          building: nullableString(row.address_building),
+          floor: nullableString(row.address_floor),
+          unit: nullableString(row.address_unit),
+          district: nullableString(row.address_district),
+        },
+        estimatedEarningMin: min === null
+          ? null
+          : Math.round(min * (1 - PLATFORM_FEE_WORKER)),
+        estimatedEarningMax: max === null
+          ? null
+          : Math.round(max * (1 - PLATFORM_FEE_WORKER)),
+      }).brief;
       return {
         id: asString(row.id),
         status: row.status as JobStatus,
@@ -2312,6 +3441,8 @@ async function listWorkerJobs(ctx: MobileApiContext) {
         estimated_earning: finalPrice
           ? Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER))
           : null,
+        worker_brief_guidance:
+          nullableRecord(row.kael_worker_brief_guidance) ?? fallbackBrief,
         created_at: asString(row.created_at),
         matched_at: nullableString(row.matched_at),
         completed_at: nullableString(row.completed_at),
@@ -2694,11 +3825,6 @@ type NotificationCopy = {
 };
 
 const CUSTOMER_STATUS_PUSH: Partial<Record<JobStatus, NotificationCopy>> = {
-  worker_on_way: {
-    eventType: "worker_on_way",
-    title: "Thợ đang đến",
-    body: "Thợ đang di chuyển đến nơi hẹn.",
-  },
   arrived: {
     eventType: "worker_arrived",
     title: "Thợ đã đến",
@@ -2707,7 +3833,7 @@ const CUSTOMER_STATUS_PUSH: Partial<Record<JobStatus, NotificationCopy>> = {
   completed_by_worker: {
     eventType: "completed_by_worker",
     title: "Thợ đã báo hoàn tất",
-    body: "Bạn có thể kiểm tra và xác nhận trong Hoạt động.",
+    body: "Bạn có thể kiểm tra rồi xác nhận để thanh toán.",
   },
 };
 
@@ -2718,6 +3844,7 @@ async function notifyCustomerJobStatus(
   status: JobStatus,
 ) {
   if (!customerId) return;
+  if ((NORMAL_TRANSACTION_SILENT_STATUSES as readonly string[]).includes(status)) return;
   const copy = CUSTOMER_STATUS_PUSH[status];
   if (!copy) return;
 
@@ -2817,6 +3944,48 @@ async function notifyCustomerWorkerReplacementSearch(
   });
   if (push.failed > 0) {
     console.warn("mobile-api replacement customer push delivery had failures", {
+      jobId,
+      failed: push.failed,
+    });
+  }
+}
+
+async function notifyWorkerCustomerCancellation(
+  client: DbClient,
+  jobId: string,
+  workerId: string,
+  subCase: CustomerCancellationSubCase,
+) {
+  if (!workerId) return;
+  const title = "Khách đã hủy yêu cầu";
+  const body = subCase === "scheduled_job"
+    ? "Khách đã hủy lịch sắp tới. Kael đã ghi nhận trong Phase 0."
+    : "Khách đã hủy sau khi bạn nhận việc. Kael đã ghi nhận goodwill Phase 0.";
+
+  await insertUserNotification(client, {
+    userId: workerId,
+    jobId,
+    eventType: "customer_cancelled_after_accept",
+    title,
+    body,
+    metadata: {
+      sub_case: subCase,
+      phase0_no_monetary_penalty: true,
+    },
+  });
+
+  const push = await sendPushToUser(client, workerId, {
+    title,
+    body,
+    data: {
+      event_type: "customer_cancelled_after_accept",
+      job_id: jobId,
+      deep_link: `/(worker)/jobs?job_id=${jobId}`,
+    },
+    sound: "default",
+  });
+  if (push.failed > 0) {
+    console.warn("mobile-api customer-cancel worker push delivery had failures", {
       jobId,
       failed: push.failed,
     });
@@ -3280,6 +4449,49 @@ async function logJobEvent(
   });
 }
 
+async function queueKaelLearningEvent(
+  client: DbClient,
+  event: LearningSkillTrigger,
+  input: LearningSkillInput,
+) {
+  await queueLearningSkillTriggers(client, event, input).catch((error) => {
+    console.warn("mobile-api kael learning queue failed", {
+      event,
+      jobId: nullableString(input.job_id),
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+  });
+}
+
+async function logMemoryAudit(
+  client: DbClient,
+  input: {
+    subjectType: "customer" | "worker" | "job" | "domain" | "system";
+    subjectId: string | null;
+    actorId: string | null;
+    operation: "read" | "write" | "delete" | "archive";
+    layer: string;
+    purpose: string;
+  },
+) {
+  await dbQuery(
+    client.from("kael_memory_audit").insert({
+      subject_type: input.subjectType,
+      subject_id: input.subjectId,
+      actor_id: input.actorId,
+      operation: input.operation,
+      layer: input.layer,
+      purpose: input.purpose,
+      safe_metadata: {},
+    }),
+  ).catch(() => {
+    console.warn("mobile-api kael memory audit failed", {
+      subjectType: input.subjectType,
+      operation: input.operation,
+    });
+  });
+}
+
 async function logApiCalls(
   client: DbClient,
   rows: Array<Record<string, unknown>>,
@@ -3290,6 +4502,23 @@ async function logApiCalls(
       count: rows.length,
     });
   });
+}
+
+function apiLogPurposeForPipelineStage(
+  stage: PipelineStageLog["stage"],
+): string {
+  switch (stage) {
+    case "intent":
+      return "intent_classification";
+    case "vision":
+      return "vision_analysis";
+    case "market":
+      return "market_lookup";
+    case "synthesis":
+      return "price_synthesis";
+    case "baseline":
+      return "problem_synthesis";
+  }
 }
 
 function mapConfirmKaelChatError(errorCode: string | null): never {
@@ -3429,6 +4658,40 @@ function compactMetadata(input: Record<string, unknown>) {
   return result;
 }
 
+function demandingCustomerTurnMetadata(
+  detection: ReturnType<typeof detectDemandingCustomerPatterns>,
+  response: ReturnType<typeof buildDemandingCustomerResponse>,
+) {
+  return {
+    nuance: detection.nuance,
+    expected_nuance: detection.expectedNuance,
+    escalation_level: detection.escalationLevel,
+    pressure_score: detection.pressureScore,
+    legitimate_concern_signals: detection.legitimateConcernSignals,
+    pressure_signals: detection.pressureSignals,
+    strategy_ids: response.strategyIds,
+    admin_queue_priority: response.adminQueuePriority,
+    stop_ai_loop: response.stopAiLoop,
+  };
+}
+
+function demandingCustomerSessionMetadata(
+  previousMetadata: Record<string, unknown>,
+  detection: ReturnType<typeof detectDemandingCustomerPatterns>,
+  response: ReturnType<typeof buildDemandingCustomerResponse>,
+) {
+  return compactMetadata({
+    ...previousMetadata,
+    demanding_customer_last_nuance: detection.nuance,
+    demanding_customer_escalation_level: detection.escalationLevel,
+    demanding_customer_admin_queue_priority: response.adminQueuePriority,
+    demanding_customer_stop_ai_loop: response.stopAiLoop,
+    demanding_customer_hard_escalation:
+      response.stopAiLoop || previousMetadata.demanding_customer_hard_escalation === true,
+    demanding_customer_last_at: new Date().toISOString(),
+  });
+}
+
 function formatKaelEstimateText(estimate: {
   problem_summary: string;
   complexity: ComplexityLevel;
@@ -3522,6 +4785,76 @@ function mapWorkerCancellationRequestError(errorCode: string | null): never {
     apiFailure("VALIDATION", "Cần lý do hủy rõ ràng", 400);
   }
   apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy việc", 500);
+}
+
+function mapCustomerCancellationError(errorCode: string | null): never {
+  if (errorCode === "NOT_FOUND") {
+    apiFailure("NOT_FOUND", "Không tìm thấy yêu cầu", 404);
+  }
+  if (errorCode === "INVALID_STATUS") {
+    apiFailure("INVALID_STATUS", "Trạng thái yêu cầu chưa thể hủy theo Case 4", 409);
+  }
+  if (errorCode === "ALREADY_REQUESTED") {
+    apiFailure("ALREADY_REQUESTED", "Yêu cầu hủy đang được xử lý", 409);
+  }
+  if (errorCode === "INVALID_REASON") {
+    apiFailure("VALIDATION", "Cần chọn lý do hủy hợp lệ", 400);
+  }
+  if (errorCode === "STATUS_CHANGED") {
+    apiFailure("STATUS_CHANGED", "Trạng thái đã thay đổi, vui lòng tải lại", 409);
+  }
+  apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy", 500);
+}
+
+function mapDisputeOpenError(errorCode: string | null): never {
+  if (errorCode === "NOT_FOUND") {
+    apiFailure("NOT_FOUND", "Không tìm thấy công việc", 404);
+  }
+  if (errorCode === "AUTH_FORBIDDEN") {
+    apiFailure("AUTH_FORBIDDEN", "Bạn không có quyền mở tranh chấp này", 403);
+  }
+  if (errorCode === "INVALID_STATUS") {
+    apiFailure("INVALID_STATUS", "Trạng thái công việc chưa thể mở tranh chấp", 409);
+  }
+  if (errorCode === "ALREADY_OPEN") {
+    apiFailure("ALREADY_OPEN", "Tranh chấp đang được xử lý", 409);
+  }
+  if (errorCode === "DEFERRED_PHASE0") {
+    apiFailure("DEFERRED_PHASE0", "Thanh toán đang được hoãn trong Phase 0", 409);
+  }
+  apiFailure("DB_ERROR", "Không thể mở kiểm tra tranh chấp", 500);
+}
+
+function mapDisputeCounterError(errorCode: string | null): never {
+  if (errorCode === "NOT_FOUND") {
+    apiFailure("NOT_FOUND", "Không tìm thấy tranh chấp", 404);
+  }
+  if (errorCode === "AUTH_FORBIDDEN") {
+    apiFailure("AUTH_FORBIDDEN", "Bạn không có quyền phản hồi tranh chấp này", 403);
+  }
+  if (errorCode === "ALREADY_SUBMITTED") {
+    apiFailure("ALREADY_SUBMITTED", "Phản hồi đã được ghi nhận", 409);
+  }
+  if (errorCode === "INVALID_STATUS") {
+    apiFailure("INVALID_STATUS", "Tranh chấp không còn nhận phản hồi", 409);
+  }
+  apiFailure("DB_ERROR", "Không thể gửi phản hồi tranh chấp", 500);
+}
+
+function mapDisputeDecisionError(errorCode: string | null): never {
+  if (errorCode === "NOT_FOUND") {
+    apiFailure("NOT_FOUND", "Không tìm thấy tranh chấp", 404);
+  }
+  if (errorCode === "AUTH_FORBIDDEN") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được quyết định tranh chấp", 403);
+  }
+  if (errorCode === "ALREADY_DECIDED") {
+    apiFailure("ALREADY_DECIDED", "Tranh chấp đã có quyết định", 409);
+  }
+  if (errorCode === "INVALID_STATUS") {
+    apiFailure("INVALID_STATUS", "Trạng thái tranh chấp không hợp lệ", 409);
+  }
+  apiFailure("DB_ERROR", "Không thể ghi quyết định tranh chấp", 500);
 }
 
 function mapWorkerCancellationDecisionError(errorCode: string | null): never {
@@ -3821,6 +5154,44 @@ function readGoogleMapsApiKey(secrets: EdgeAiSecrets): string | null {
   return denoGet?.("GOOGLE_MAPS_API_KEY") ?? null; // Deno.env.get("GOOGLE_MAPS_API_KEY")
 }
 
+function readEdgeEnvNumber(name: string): number | null {
+  const denoGet = (globalThis as {
+    Deno?: { env?: { get?: (name: string) => string | undefined } };
+  }).Deno?.env?.get;
+  const value = denoGet?.(name);
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function scopeChangeRiskConfig(
+  originalPriceMax: number,
+  originalComplexity: ComplexityLevel | null,
+): ScopeChangeRiskConfig {
+  const complexityHours = { small: 1, medium: 3, large: 6 };
+  const baselineComplexity = originalComplexity ?? "medium";
+  const derivedHourlyRate = Math.max(
+    1,
+    Math.round(originalPriceMax / (complexityHours[baselineComplexity] * 1.5)),
+  );
+  return {
+    complexityHours,
+    hcmcHourlyRateVnd:
+      readEdgeEnvNumber("SCOPE_CHANGE_HCMC_HOURLY_RATE_VND") ??
+        derivedHourlyRate,
+    baseMultiplier: readEdgeEnvNumber("SCOPE_CHANGE_BASE_MULTIPLIER") ?? 1.5,
+  };
+}
+
+function estimatePriceSourceFromStageLogs(
+  logs: PipelineStageLog[],
+): EstimatePriceSource {
+  const market = logs.find((stage) => stage.stage === "market");
+  if (market?.success && !market.fallbackUsed) return "perplexity_validated";
+  if (market?.success) return "baseline_with_market";
+  return "baseline_only";
+}
+
 async function fetchJsonWithTimeout(
   url: string,
   init: RequestInit,
@@ -4024,6 +5395,101 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
     : [];
+}
+
+function asWorkerCancellationCategory(
+  value: unknown,
+): WorkerCancellationExpectedCategory | null {
+  return value === "legit_auto_approve" ||
+      value === "legit_with_admin_review" ||
+      value === "suspicious" ||
+      value === "no_reason"
+    ? value
+    : null;
+}
+
+function asWorkerCancellationReasonCode(
+  value: unknown,
+): WorkerCancellationReasonCode | null {
+  if (
+    value === "medical_emergency_with_evidence" ||
+    value === "family_emergency_confirmed" ||
+    value === "vehicle_breakdown_with_photo" ||
+    value === "job_more_complex_than_described" ||
+    value === "unsafe_conditions_on_site" ||
+    value === "customer_not_responding_at_site" ||
+    value === "higher_pay_elsewhere" ||
+    value === "changed_mind" ||
+    value === "unable_to_find_address" ||
+    value === "no_reason"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function asWorkerCancellationAbuseSignals(
+  value: unknown,
+): WorkerCancellationAbuseSignal[] {
+  return asStringArray(value).filter((item): item is WorkerCancellationAbuseSignal =>
+    item === "cancellation_rate_exceeded" ||
+    item === "consecutive_cancel_threshold" ||
+    item === "no_reason_cancel_threshold" ||
+    item === "cancel_after_arrival_threshold"
+  );
+}
+
+function asCustomerCancellationSubCase(value: unknown): CustomerCancellationSubCase {
+  if (
+    value === "before_a7" ||
+    value === "after_a7_before_worker_accept" ||
+    value === "after_worker_accept" ||
+    value === "after_worker_completed_trigger_dispute" ||
+    value === "scheduled_job"
+  ) {
+    return value;
+  }
+  return "after_worker_accept";
+}
+
+function asCustomerCancellationAbuseSignals(
+  value: unknown,
+): CustomerCancellationAbuseSignal[] {
+  return asStringArray(value).filter((item): item is CustomerCancellationAbuseSignal =>
+    item === "customer_cancellation_rate_exceeded" ||
+    item === "cancel_after_accept_threshold" ||
+    item === "same_day_cancel_threshold" ||
+    item === "no_reason_cancel_threshold"
+  );
+}
+
+function asDisputePriority(value: unknown): "low" | "medium" | "high" | "critical" | null {
+  return value === "low" ||
+      value === "medium" ||
+      value === "high" ||
+      value === "critical"
+    ? value
+    : null;
+}
+
+function asWorkerCancellationFallbackOptions(value: unknown) {
+  if (!Array.isArray(value)) return buildWorkerCancellationFallbackOptions();
+  const safe = value
+    .filter((item): item is Record<string, unknown> =>
+      typeof item === "object" && item !== null && !Array.isArray(item)
+    )
+    .map((item) => ({
+      ...item,
+      id: asString(item.id),
+      label_vi: asString(item.label_vi),
+      effect: asString(item.effect),
+    }))
+    .filter((item) =>
+      item.id === "wait_15_minutes" ||
+      item.id === "reschedule" ||
+      item.id === "cancel_no_charge"
+    );
+  return safe.length > 0 ? safe : buildWorkerCancellationFallbackOptions();
 }
 
 function relatedJob(value: unknown): Record<string, unknown> | null {

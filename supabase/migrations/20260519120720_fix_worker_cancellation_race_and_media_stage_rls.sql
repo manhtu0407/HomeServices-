@@ -143,5 +143,4 @@ create policy "Participants upload job media files"
       )
       else false
     end
-    )
   );
