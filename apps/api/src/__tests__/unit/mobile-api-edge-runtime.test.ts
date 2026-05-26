@@ -41,6 +41,7 @@ describe('mobile-api Edge runtime helpers', () => {
 
     expect(Object.keys(services).sort()).toEqual([
       'acceptBroadcast',
+      'askKaelForWorker',
       'attachJobMedia',
       'cancelJob',
       'confirmKaelChat',
@@ -51,9 +52,13 @@ describe('mobile-api Edge runtime helpers', () => {
       'decideScopeChange',
       'decideWorkerCancellation',
       'declineBroadcast',
+      'deleteMyKaelMemory',
       'getJob',
+      'getKaelCharter',
       'getKaelChat',
+      'getMyKaelMemory',
       'getWorkerEarnings',
+      'getWorkerKaelMemory',
       'getWorkerProfile',
       'listJobMessages',
       'sendKaelChatTurn',
@@ -63,12 +68,16 @@ describe('mobile-api Edge runtime helpers', () => {
       'listWorkerBroadcasts',
       'listWorkerJobs',
       'markNotificationRead',
+      'openDispute',
       'placesAutocomplete',
       'registerDevicePushToken',
       'registerWorker',
       'requestScopeChange',
+      'requestCustomerCancellation',
       'requestWorkerCancellation',
+      'submitDisputeCounterStatement',
       'submitReview',
+      'decideDispute',
       'updateJobStatus',
       'updateWorkerAvailability',
     ].sort())
@@ -261,6 +270,301 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(budgetTurnUpdate?.[1]).not.toHaveProperty('estimate_ready_at')
   })
 
+  it('hard-stops Kael chat and queues admin review for demanding customer pressure', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          status: 'estimate_ready',
+          total_turns: 3,
+          safe_metadata: {
+            address_district: 'q7',
+            problem_chips: ['leak'],
+            photo_urls: [],
+            demanding_customer_qa_count: 4,
+          },
+        },
+        error: null,
+      },
+      { data: { id: 'turn-customer' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      { data: { id: 'interaction-1' }, error: null },
+      { data: { id: 'queue-1' }, error: null },
+      { data: { id: 'kael-session-1', total_turns: 4, total_cost_usd: 0.001, safe_metadata: {} }, error: null },
+      { data: { id: 'turn-hard' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          status: 'active',
+          started_at: '2026-05-20T00:00:00.000Z',
+          estimate_ready_at: '2026-05-20T00:00:10.000Z',
+          total_turns: 5,
+          total_cost_usd: 0.001,
+          safe_metadata: { demanding_customer_hard_escalation: true },
+          created_at: '2026-05-20T00:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: [
+          {
+            id: 'turn-customer',
+            session_id: 'kael-session-1',
+            turn_index: 4,
+            role: 'customer',
+            content_type: 'text',
+            text_content: 'Hoàn tiền ngay không tôi sẽ khiếu nại và đăng bài tố Kael.',
+            media_refs: [],
+            safe_metadata: {},
+            created_at: '2026-05-20T00:00:01.000Z',
+          },
+          {
+            id: 'turn-hard',
+            session_id: 'kael-session-1',
+            turn_index: 5,
+            role: 'kael',
+            content_type: 'clarification',
+            text_content: 'Kael đã ghi nhận đầy đủ. Để giải quyết tốt nhất, admin sẽ liên hệ bạn trong vòng 30 phút.',
+            media_refs: [],
+            safe_metadata: {
+              demanding_customer: {
+                escalation_level: 'hard',
+                stop_ai_loop: true,
+              },
+            },
+            created_at: '2026-05-20T00:00:02.000Z',
+          },
+        ],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).sendKaelChatTurn(ctx, 'kael-session-1', {
+      message: 'Hoàn tiền ngay không tôi sẽ khiếu nại và đăng bài tố Kael.',
+      photo_urls: [],
+    })
+
+    expect(result.session.next_action).toBe('await_input')
+    expect(result.turns.at(-1)).toMatchObject({
+      role: 'kael',
+      content_type: 'clarification',
+      text_content: expect.stringContaining('admin sẽ liên hệ'),
+    })
+    expect(client.calls.some((call) => call.table === 'service_problems')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'price_baselines')).toBe(false)
+    expect(client.calls.find((call) => call.table === 'kael_interaction_log')).toBeTruthy()
+    const queueCall = client.calls.find((call) => call.table === 'kael_admin_queue')
+    expect(queueCall?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        job_id: null,
+        actor_id: 'customer-1',
+        priority: 'high',
+        escalation_level: 'hard',
+      }),
+    ])
+    const hardStopUpdate = client.calls
+      .flatMap((call) => call.operations)
+      .find((op) => {
+        const updateValue = op[1] as { safe_metadata?: Record<string, unknown> } | undefined
+        return op[0] === 'update' &&
+          updateValue?.safe_metadata?.demanding_customer_hard_escalation === true
+      })?.[1] as { safe_metadata?: Record<string, unknown> } | undefined
+    expect(hardStopUpdate?.safe_metadata).toMatchObject({
+      demanding_customer_hard_escalation: true,
+      demanding_customer_stop_ai_loop: true,
+    })
+  })
+
+  it('logs provider purposes for Kael chat estimate calls', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const target = String(input)
+      if (target.includes('deepseek.com')) {
+        return new Response(JSON.stringify({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                service_type: 'electrical',
+                problem_slug: 'outlet_or_switch_broken',
+                confidence: 0.9,
+                needs_clarification: false,
+              }),
+            },
+          }],
+          usage: { prompt_tokens: 20, completion_tokens: 12 },
+        }))
+      }
+      if (target.includes('anthropic.com')) {
+        return new Response(JSON.stringify({
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              problem_identified: 'Ổ cắm cháy đen và có mùi khét',
+              severity_indicators: ['mùi khét'],
+              complexity_hint: 'medium',
+            }),
+          }],
+          usage: { input_tokens: 35, output_tokens: 18 },
+        }))
+      }
+      if (target.includes('perplexity.ai')) {
+        return new Response(JSON.stringify({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                market_range_min: 180000,
+                market_range_max: 420000,
+                confidence: 0.78,
+                sources_summary: 'HCMC apartment repair references',
+              }),
+            },
+          }],
+          usage: { prompt_tokens: 25, completion_tokens: 15 },
+        }))
+      }
+      return new Response('{}', { status: 404 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'kael-session-1',
+          customer_id: 'customer-1',
+          service_type: 'electrical',
+          status: 'active',
+          total_turns: 1,
+          safe_metadata: {
+            address_district: 'q7',
+            problem_chips: ['outlet_or_switch_broken'],
+            photo_urls: [],
+          },
+        },
+        error: null,
+      },
+      { data: { id: 'turn-customer' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      { data: { id: 'kael-session-1', total_cost_usd: 0 }, error: null },
+      { data: [{ id: 'problem-1' }], error: null },
+      { data: [{ complexity: 'medium', price_min: 120000, price_max: 320000, district_code: 'hcmc_all' }], error: null },
+      { data: null, error: null },
+      { data: { id: 'kael-session-1', total_turns: 2, total_cost_usd: 0 }, error: null },
+      { data: { id: 'turn-estimate' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: 'electrical',
+          status: 'estimate_ready',
+          started_at: '2026-05-20T00:00:00.000Z',
+          estimate_ready_at: '2026-05-20T00:00:10.000Z',
+          total_turns: 3,
+          total_cost_usd: 0.001,
+          safe_metadata: {},
+          created_at: '2026-05-20T00:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: [
+          {
+            id: 'turn-customer',
+            session_id: 'kael-session-1',
+            turn_index: 2,
+            role: 'customer',
+            content_type: 'text',
+            text_content: 'Ổ cắm bị cháy đen và có mùi khét',
+            media_refs: [],
+            safe_metadata: {},
+            created_at: '2026-05-20T00:00:01.000Z',
+          },
+          {
+            id: 'turn-estimate',
+            session_id: 'kael-session-1',
+            turn_index: 3,
+            role: 'kael',
+            content_type: 'estimate',
+            text_content: 'Kael estimate',
+            media_refs: [],
+            safe_metadata: {
+              estimate: {
+                service_type: 'electrical',
+                problem_category: 'outlet_or_switch_broken',
+                problem_summary: 'Ổ cắm cháy đen và có mùi khét',
+                complexity: 'medium',
+                price_min: 156000,
+                price_max: 380000,
+                confidence: 0.64,
+                advisory: null,
+                disclaimer: 'disclaimer',
+              },
+            },
+            created_at: '2026-05-20T00:00:02.000Z',
+          },
+        ],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({
+      deepseekApiKey: 'deepseek-ok',
+      anthropicApiKey: 'anthropic-ok',
+      perplexityApiKey: 'perplexity-ok',
+    }).sendKaelChatTurn(ctx, 'kael-session-1', {
+      message: 'Ổ cắm bị cháy đen và có mùi khét',
+      photo_urls: [],
+    })).resolves.toMatchObject({
+      session: { next_action: 'estimate_ready' },
+    })
+
+    const apiLogCall = client.calls.find((call) => call.table === 'api_logs')
+    const insertOp = apiLogCall?.operations.find((op) => op[0] === 'insert')
+    const rows = insertOp?.[1] as Array<Record<string, unknown>>
+    expect(rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        job_id: null,
+        purpose: 'intent_classification',
+        provider: 'deepseek',
+        success: true,
+        safe_metadata: { surface: 'kael_chat', session_id: 'kael-session-1' },
+      }),
+      expect.objectContaining({
+        job_id: null,
+        purpose: 'vision_analysis',
+        provider: 'anthropic',
+        success: true,
+      }),
+      expect.objectContaining({
+        job_id: null,
+        purpose: 'market_lookup',
+        provider: 'perplexity',
+        success: true,
+      }),
+    ]))
+    expect(rows.some((row) => row.purpose == null)).toBe(false)
+  })
+
   it('requireJobAccess hides cross-customer jobs with 404', async () => {
     const client = makeSequenceClient([
       {
@@ -410,6 +714,101 @@ describe('mobile-api Edge runtime helpers', () => {
         body: expect.not.stringContaining('Tôi đang lên thang máy.'),
       }),
     )
+  })
+
+  it('adds a Kael admin-wait message and defensive logs for hard demanding job chat', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'completed_by_worker',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'message-1',
+          job_id: 'job-1',
+          sender_id: 'customer-1',
+          sender_role: 'customer',
+          content: 'Hoàn tiền ngay không tôi sẽ khiếu nại và đăng bài tố Kael.',
+          is_read: false,
+          created_at: '2026-05-20T00:00:00.000Z',
+        },
+        error: null,
+      },
+      { data: { id: 'interaction-1' }, error: null },
+      { data: { id: 'queue-1' }, error: null },
+      {
+        data: {
+          id: 'message-kael-1',
+          job_id: 'job-1',
+          sender_id: null,
+          sender_role: 'kael',
+          content: 'Kael đã ghi nhận đầy đủ. Để giải quyết tốt nhất, admin sẽ liên hệ bạn trong vòng 30 phút.',
+          is_read: false,
+          created_at: '2026-05-20T00:00:01.000Z',
+        },
+        error: null,
+      },
+      { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-1', user_id: 'worker-1', push_token: 'ExponentPushToken[worker]' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).sendJobMessage(ctx, 'job-1', {
+      content: 'Hoàn tiền ngay không tôi sẽ khiếu nại và đăng bài tố Kael.',
+    })).resolves.toMatchObject({
+      message: {
+        id: 'message-1',
+        sender_role: 'customer',
+      },
+    })
+
+    const chatInserts = client.calls
+      .filter((call) => call.table === 'chat_messages')
+      .flatMap((call) => call.operations.filter((op) => op[0] === 'insert'))
+    expect(chatInserts).toEqual(expect.arrayContaining([
+      [
+        'insert',
+        expect.objectContaining({
+          sender_id: 'customer-1',
+          sender_role: 'customer',
+        }),
+      ],
+      [
+        'insert',
+        expect.objectContaining({
+          sender_id: null,
+          sender_role: 'kael',
+          content: expect.stringContaining('admin sẽ liên hệ'),
+        }),
+      ],
+    ]))
+    expect(client.calls.find((call) => call.table === 'kael_interaction_log')).toBeTruthy()
+    expect(client.calls.find((call) => call.table === 'kael_admin_queue')?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        job_id: 'job-1',
+        priority: 'high',
+        escalation_level: 'hard',
+      }),
+    ])
+    expect(client.calls.some((call) =>
+      call.table === 'jobs' && call.operations.some((op) => op[0] === 'update')
+    )).toBe(false)
   })
 
   it('requireJobAccess allows admin owner bypass unless a role is required', async () => {
@@ -830,7 +1229,7 @@ describe('mobile-api Edge runtime helpers', () => {
   it('filters Edge baseline lookup by the classified problem slug', async () => {
     const client = makeSequenceClient([
       { data: [{ id: 'pipe-problem' }], error: null },
-      { data: [{ price_min: 150000, price_max: 350000, district_code: 'q7' }], error: null },
+      { data: [{ complexity: 'medium', price_min: 150000, price_max: 350000, district_code: 'q7' }], error: null },
     ])
 
     const result = await runKaelPipeline({
@@ -856,7 +1255,7 @@ describe('mobile-api Edge runtime helpers', () => {
       operations: expect.arrayContaining([
         ['eq', 'service_problem_id', 'pipe-problem'],
         ['eq', 'service_type', 'plumbing'],
-        ['eq', 'complexity', 'medium'],
+        ['in', 'district_code', ['q7', 'hcmc_all']],
       ]),
     })
   })
@@ -889,7 +1288,13 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: { id: 'job-1' }, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
       { reject: new Error('DB timeout after 10000ms') },
+      { data: null, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
     ])
@@ -1061,7 +1466,7 @@ describe('mobile-api Edge runtime helpers', () => {
 
     const supabase = makeSequenceClient([
       { data: [{ id: 'pipe-problem' }], error: null },
-      { data: [{ price_min: 150000, price_max: 350000, district_code: 'q1' }], error: null },
+      { data: [{ complexity: 'small', price_min: 150000, price_max: 350000, district_code: 'q1' }], error: null },
     ])
 
     const result = await runKaelPipeline({
@@ -1155,7 +1560,7 @@ describe('mobile-api Edge runtime helpers', () => {
 
     const supabase = makeSequenceClient([
       { data: [{ id: 'pipe-problem' }], error: null },
-      { data: [{ price_min: 150000, price_max: 350000, district_code: 'q7' }], error: null },
+      { data: [{ complexity: 'small', price_min: 150000, price_max: 350000, district_code: 'q7' }], error: null },
     ])
     const photoUrl = 'https://storage.example.com/job-media/before-lavabo.jpg'
 
@@ -1252,7 +1657,7 @@ describe('mobile-api Edge runtime helpers', () => {
 
     const supabase = makeSequenceClient([
       { data: [{ id: 'other-electrical-problem' }], error: null },
-      { data: [{ price_min: 300000, price_max: 700000, district_code: 'hcmc_all' }], error: null },
+      { data: [{ complexity: 'medium', price_min: 300000, price_max: 700000, district_code: 'hcmc_all' }], error: null },
     ])
 
     const result = await runKaelPipeline({
@@ -1510,6 +1915,112 @@ describe('mobile-api Edge runtime helpers', () => {
     })
   })
 
+  it('P9 records normal transaction memory and thanks the customer after review', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'confirmed_by_customer',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          service_type: 'plumbing',
+          address_district: 'q7',
+          kael_problem_identified: 'leaking_pipe',
+          kael_complexity: 'medium',
+          kael_price_min: 250000,
+          kael_price_max: 450000,
+          final_price: 450000,
+        },
+        error: null,
+      },
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          review_id: 'review-1',
+          job_status: 'reviewed',
+          reviewed_at_ts: '2026-05-25T00:00:00.000Z',
+        }],
+        error: null,
+      },
+      { data: null, error: null },
+      { data: { service_preferences: {}, trust_signals: {}, safe_metadata: {} }, error: null },
+      { data: null, error: null },
+      { data: { service_skill_proficiency: {}, reliability_signals: {}, safe_metadata: {} }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-25T00:00:00.000Z' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).submitReview(ctx, 'job-1', {
+      rating: 5,
+      tags: ['on_time'],
+    })).resolves.toMatchObject({
+      review_id: 'review-1',
+      job_id: 'job-1',
+      status: 'reviewed',
+    })
+
+    const customerMemoryUpsert = client.calls
+      .find((call) =>
+        call.table === 'customer_kael_memory' &&
+        call.operations.some((op) => op[0] === 'upsert')
+      )
+      ?.operations.find((op) => op[0] === 'upsert')?.[1] as Record<string, unknown>
+    expect(customerMemoryUpsert).toMatchObject({
+      customer_id: 'customer-1',
+      trust_signals: expect.objectContaining({
+        reviewed_after_completion: true,
+        last_rating: 5,
+      }),
+      safe_metadata: expect.objectContaining({
+        last_normal_transaction: expect.objectContaining({
+          layers: ['L2', 'L3', 'L5'],
+          final_price_present: true,
+        }),
+      }),
+    })
+
+    const workerMemoryUpsert = client.calls
+      .find((call) =>
+        call.table === 'worker_kael_memory' &&
+        call.operations.some((op) => op[0] === 'upsert')
+      )
+      ?.operations.find((op) => op[0] === 'upsert')?.[1] as Record<string, unknown>
+    expect(workerMemoryUpsert).toMatchObject({
+      worker_id: 'worker-1',
+      reliability_signals: expect.objectContaining({
+        customer_reviewed_after_completion: true,
+        last_rating: 5,
+      }),
+    })
+
+    const memoryAuditLayers = client.calls
+      .filter((call) => call.table === 'kael_memory_audit')
+      .map((call) => (call.operations.find((op) => op[0] === 'insert')?.[1] as Record<string, unknown>)?.layer)
+    expect(memoryAuditLayers).toEqual(['L2', 'L3', 'L4', 'L5'])
+    expect(client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')?.operations)
+      .toContainEqual([
+        'rpc',
+        'insert_notification_atomic',
+        expect.objectContaining({
+          p_user_id: 'customer-1',
+          p_job_id: 'job-1',
+          p_event_type: 'review_thanks',
+        }),
+      ])
+  })
+
   it('cancels jobs through an atomic RPC so stale broadcasts cannot survive API success', async () => {
     const client = makeSequenceClient([
       {
@@ -1633,7 +2144,7 @@ describe('mobile-api Edge runtime helpers', () => {
     )
   })
 
-  it('notifies the customer when a worker starts traveling', async () => {
+  it('notifies the customer when a worker arrives', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
     )
@@ -1643,7 +2154,7 @@ describe('mobile-api Edge runtime helpers', () => {
       {
         data: {
           id: 'job-1',
-          status: 'worker_matched',
+          status: 'worker_on_way',
           customer_id: 'customer-1',
           worker_id: 'worker-1',
         },
@@ -1662,11 +2173,11 @@ describe('mobile-api Edge runtime helpers', () => {
     }
 
     await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
-      status: 'worker_on_way',
+      status: 'arrived',
     })).resolves.toMatchObject({
       job_id: 'job-1',
-      from_status: 'worker_matched',
-      to_status: 'worker_on_way',
+      from_status: 'worker_on_way',
+      to_status: 'arrived',
     })
 
     const notificationCall = client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')
@@ -1676,7 +2187,7 @@ describe('mobile-api Edge runtime helpers', () => {
       expect.objectContaining({
         p_user_id: 'customer-1',
         p_job_id: 'job-1',
-        p_event_type: 'worker_on_way',
+        p_event_type: 'worker_arrived',
       }),
     ])
     expect(fetchMock).toHaveBeenCalledWith(
@@ -1686,6 +2197,42 @@ describe('mobile-api Edge runtime helpers', () => {
         body: expect.stringContaining('/(customer)/history?job_id=job-1'),
       }),
     )
+  })
+
+  it('P9 keeps worker_on_way silent for the customer notification budget', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_matched',
+          customer_id: 'customer-p9-silent',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
+      status: 'worker_on_way',
+    })).resolves.toMatchObject({
+      job_id: 'job-1',
+      from_status: 'worker_matched',
+      to_status: 'worker_on_way',
+    })
+
+    expect(client.calls.some((call) => call.table === 'rpc:insert_notification_atomic')).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('persists Kael review before notifying the customer about a worker scope change', async () => {
@@ -1728,6 +2275,7 @@ describe('mobile-api Edge runtime helpers', () => {
         },
         error: null,
       },
+      { data: { scope_change_rate: 0.4 }, error: null },
       {
         data: [{
           ok: true,
@@ -1797,6 +2345,7 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(apiLogCall?.operations).toContainEqual([
       'insert',
       [expect.objectContaining({
+        purpose: 'scope_change',
         provider: 'anthropic',
         model: 'claude-sonnet-4-6',
         success: true,
@@ -1821,6 +2370,68 @@ describe('mobile-api Edge runtime helpers', () => {
         body: expect.stringContaining('/(customer)/history?scope_change=scope-1&job_id=job-1'),
       }),
     )
+  })
+
+  it('limits worker "Hỏi Kael thêm" to three questions per job and logs sanitized answers', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_matched',
+          worker_id: 'worker-1',
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          description: 'Ống nước dưới lavabo bị rò',
+          address_district: 'Quận 7',
+          kael_problem_identified: 'Ống nước rò dưới lavabo',
+          kael_complexity: 'medium',
+          kael_price_min: 250000,
+          kael_price_max: 450000,
+          kael_worker_brief_core: null,
+          kael_worker_brief_guidance: null,
+        },
+        error: null,
+      },
+      { data: null, error: null, count: 2 },
+      {
+        data: {
+          id: 'qa-3',
+          created_at: '2026-05-25T00:00:00.000Z',
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).askKaelForWorker(ctx, 'job-1', {
+      question: 'Khách có SĐT 0901234567, tôi có nên báo thêm 300.000 VND không?',
+    })
+
+    expect(result).toMatchObject({
+      qa_id: 'qa-3',
+      job_id: 'job-1',
+      remaining_questions: 0,
+    })
+    expect(JSON.stringify(result.answer)).not.toContain('0901234567')
+    expect(JSON.stringify(result.answer).toLowerCase()).not.toContain('vnd')
+
+    const insertCall = client.calls.find((call) =>
+      call.table === 'kael_worker_qa_log' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )
+    expect(insertCall?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        job_id: 'job-1',
+        worker_id: 'worker-1',
+        question: expect.not.stringContaining('0901234567'),
+      }),
+    ])
   })
 
   it('keeps scope-change evidence media separate from completion photos', async () => {
@@ -2006,6 +2617,15 @@ describe('mobile-api Edge runtime helpers', () => {
           district_code: 'q7',
           worker_id_out: 'worker-cancelled',
           created_at_ts: '2026-05-20T00:00:00.000Z',
+          reason_code: 'higher_pay_elsewhere',
+          reason_category: 'suspicious',
+          admin_review_required: true,
+          fallback_options: [
+            { id: 'wait_15_minutes', label_vi: 'Đợi 15 phút để Kael tìm tiếp', effect: 'continue_rebroadcast_search' },
+            { id: 'reschedule', label_vi: 'Đổi sang khung giờ khác', effect: 'reschedule_job' },
+            { id: 'cancel_no_charge', label_vi: 'Hủy việc, chưa tính phí trong Phase 0', effect: 'cancel_without_charge', no_charge_phase0: true },
+          ],
+          abuse_signals: ['cancellation_rate_exceeded', 'consecutive_cancel_threshold'],
         }],
         error: null,
       },
@@ -2032,6 +2652,9 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: [{ notification_id: 'notification-customer', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
       { data: [{ id: 'token-customer', user_id: 'customer-1', push_token: 'ExponentPushToken[customer]' }], error: null },
       { data: null, error: null },
+      { data: { red_flags: {}, reliability_signals: {}, safe_metadata: {} }, error: null },
+      { data: { worker_id: 'worker-cancelled' }, error: null },
+      { data: { id: 'queue-worker-cancel' }, error: null },
     ])
     const ctx: MobileApiContext = {
       success: true,
@@ -2049,6 +2672,15 @@ describe('mobile-api Edge runtime helpers', () => {
       status: 'approved',
       job_status: 'broadcasting',
       broadcast_sent: true,
+      reason_code: 'higher_pay_elsewhere',
+      reason_category: 'suspicious',
+      admin_review_required: true,
+      abuse_signals: ['cancellation_rate_exceeded', 'consecutive_cancel_threshold'],
+      fallback_options: [
+        expect.objectContaining({ id: 'wait_15_minutes' }),
+        expect.objectContaining({ id: 'reschedule' }),
+        expect.objectContaining({ id: 'cancel_no_charge', no_charge_phase0: true }),
+      ],
     })
 
     const broadcastInsert = client.calls.find((call) =>
@@ -2088,6 +2720,212 @@ describe('mobile-api Edge runtime helpers', () => {
       call.table === 'worker_profiles' &&
       call.operations.some((op) => op[0] === 'update' && JSON.stringify(op[1]).includes('rating'))
     )).toBe(false)
+    expect(client.calls.some((call) =>
+      call.table === 'worker_profiles' &&
+      call.operations.some((op) => op[0] === 'update' && JSON.stringify(op[1]).includes('is_suspended'))
+    )).toBe(false)
+    const workerMemoryUpdate = client.calls.find((call) =>
+      call.table === 'worker_kael_memory' &&
+      call.operations.some((op) => op[0] === 'upsert')
+    )
+    expect(workerMemoryUpdate?.operations).toContainEqual([
+      'upsert',
+      expect.objectContaining({
+        worker_id: 'worker-cancelled',
+        red_flags: expect.objectContaining({
+          worker_cancellation_abuse_review: true,
+        }),
+      }),
+    ])
+    expect(client.calls.find((call) => call.table === 'kael_admin_queue')?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        job_id: 'job-1',
+        actor_id: 'worker-cancelled',
+        queue_type: 'worker_cancellation_review',
+        priority: 'medium',
+        escalation_level: 'soft',
+        reason_code: 'higher_pay_elsewhere',
+      }),
+    ])
+  })
+
+  it('requests customer cancellation through the atomic P12 RPC and notifies the accepted worker without money penalties', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          cancellation_id: 'customer-cancel-1',
+          job_id_out: 'job-1',
+          job_status: 'cancelled',
+          sub_case: 'after_worker_accept',
+          reason_code: 'changed_mind',
+          reason_category: 'no_penalty_phase_0',
+          worker_id_out: 'worker-1',
+          admin_review_required: true,
+          phase0_no_monetary_penalty: true,
+          worker_goodwill: {
+            required: true,
+            kind: 'phase0_goodwill_note',
+            worker_id: 'worker-1',
+          },
+          abuse_signals: ['cancel_after_accept_threshold'],
+          created_at_ts: '2026-05-26T00:00:00.000Z',
+        }],
+        error: null,
+      },
+      { data: null, error: null },
+      { data: { customer_id: 'customer-1', worker_id: 'worker-1' }, error: null },
+      { data: { trust_signals: {}, safe_metadata: {} }, error: null },
+      { data: { customer_id: 'customer-1' }, error: null },
+      { data: { id: 'queue-customer-cancel' }, error: null },
+      { data: [{ notification_id: 'notification-worker', created_at_ts: '2026-05-26T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-worker', user_id: 'worker-1', push_token: 'ExponentPushToken[worker]' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).requestCustomerCancellation(ctx, 'job-1', {
+      reason_code: 'changed_mind',
+      reason_note: 'Toi doi y va muon huy sau khi tho da nhan viec.',
+    })).resolves.toMatchObject({
+      cancellation_id: 'customer-cancel-1',
+      job_id: 'job-1',
+      status: 'requested',
+      job_status: 'cancelled',
+      sub_case: 'after_worker_accept',
+      reason_code: 'changed_mind',
+      reason_category: 'no_penalty_phase_0',
+      admin_review_required: true,
+      phase0_no_monetary_penalty: true,
+      worker_goodwill: {
+        required: true,
+        kind: 'phase0_goodwill_note',
+        worker_id: 'worker-1',
+      },
+      abuse_signals: ['cancel_after_accept_threshold'],
+    })
+
+    expect(client.calls[0].operations).toContainEqual([
+      'rpc',
+      'request_customer_cancellation_atomic',
+      expect.objectContaining({
+        p_job_id: 'job-1',
+        p_customer_id: 'customer-1',
+        p_reason_code: 'changed_mind',
+      }),
+    ])
+    expect(client.calls.find((call) => call.table === 'job_events')?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        job_id: 'job-1',
+        event_type: 'customer_requested_cancellation',
+        to_status: 'cancelled',
+      }),
+    ])
+    expect(client.calls.find((call) =>
+      call.table === 'customer_kael_memory' &&
+      call.operations.some((op) => op[0] === 'upsert')
+    )?.operations).toContainEqual([
+      'upsert',
+      expect.objectContaining({
+        customer_id: 'customer-1',
+        trust_signals: expect.objectContaining({
+          customer_cancellation_abuse_review: true,
+        }),
+      }),
+    ])
+    expect(client.calls.find((call) => call.table === 'kael_admin_queue')?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        job_id: 'job-1',
+        actor_id: 'customer-1',
+        actor_role: 'customer',
+        queue_type: 'customer_cancellation_review',
+        priority: 'medium',
+      }),
+    ])
+    expect(client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')?.operations)
+      .toContainEqual([
+        'rpc',
+        'insert_notification_atomic',
+        expect.objectContaining({
+          p_user_id: 'worker-1',
+          p_job_id: 'job-1',
+          p_event_type: 'customer_cancelled_after_accept',
+        }),
+      ])
+    expect(JSON.stringify(client.calls)).not.toContain('customerPenaltyAmount')
+    expect(JSON.stringify(client.calls)).not.toContain('workerCompensationAmount')
+  })
+
+  it('opens a P13 dispute through the atomic RPC with a neutral summary and locked evidence id', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          dispute_id: 'dispute-1',
+          evidence_snapshot_id: 'snapshot-1',
+          dispute_status: 'open',
+          admin_review_required: true,
+          priority: 'high',
+          evidence_locked_at: '2026-05-26T00:00:00.000Z',
+          created_at_ts: '2026-05-26T00:00:00.000Z',
+        }],
+        error: null,
+      },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).openDispute(ctx, 'job-1', {
+      dispute_type: 'completion_rejected',
+      initiator_statement: 'Cong viec chua hoan tat nhu thong tin ban dau.',
+      evidence_photo_urls: ['supabase://job-media/job-1/after/a.jpg'],
+    })).resolves.toMatchObject({
+      dispute_id: 'dispute-1',
+      job_id: 'job-1',
+      status: 'open',
+      dispute_type: 'completion_rejected',
+      evidence_snapshot_id: 'snapshot-1',
+      admin_review_required: true,
+      priority: 'high',
+    })
+
+    expect(client.calls[0].operations).toContainEqual([
+      'rpc',
+      'open_dispute_atomic',
+      expect.objectContaining({
+        p_job_id: 'job-1',
+        p_initiated_by_id: 'customer-1',
+        p_dispute_type: 'completion_rejected',
+        p_kael_neutral_summary: expect.stringContaining('Evidence snapshot'),
+      }),
+    ])
+    expect(JSON.stringify(client.calls[0].operations)).not.toContain('refund')
+    expect(client.calls.find((call) => call.table === 'job_events')?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        job_id: 'job-1',
+        event_type: 'dispute_opened',
+      }),
+    ])
   })
 
   it('maps scope-change request races to STATUS_CHANGED instead of DB_ERROR', async () => {
@@ -2108,6 +2946,7 @@ describe('mobile-api Edge runtime helpers', () => {
         },
         error: null,
       },
+      { data: { worker_id: 'worker-1', scope_change_rate: 0 }, error: null },
       {
         data: [{
           ok: false,
@@ -2753,7 +3592,7 @@ describe('mobile-api Edge runtime helpers', () => {
     const listCall = client.calls[1]
     expect(listCall.operations).toContainEqual([
       'select',
-      'id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max)',
+      'id, job_id, status, sent_at, expires_at, jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)',
     ])
   })
 })

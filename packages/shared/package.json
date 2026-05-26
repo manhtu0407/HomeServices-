@@ -12,7 +12,14 @@
     ".": "./src/index.ts",
     "./types": "./src/types/index.ts",
     "./validation": "./src/validation.ts",
-    "./constants": "./src/constants.ts"
+    "./constants": "./src/constants.ts",
+    "./kael/permissions": "./kael/permissions.ts",
+    "./kael/decline-templates": "./kael/decline-templates.ts",
+    "./kael/schemas": "./kael/schemas/index.ts",
+    "./kael/sanitizers": "./kael/sanitizers/index.ts",
+    "./kael/fallbacks": "./kael/fallbacks/index.ts",
+    "./kael/renderers": "./kael/renderers/index.ts",
+    "./kael/anti-fraud": "./kael/anti-fraud.ts"
   },
   "dependencies": {
     "zod": "^4.4.3"

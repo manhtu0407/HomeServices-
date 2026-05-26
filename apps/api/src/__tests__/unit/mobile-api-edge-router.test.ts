@@ -28,6 +28,14 @@ const adminAuth: MobileApiAuthResult = {
 
 function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServices {
   return {
+    getKaelCharter: vi.fn(async () => ({
+      charter_version: '2026-05-25.p8',
+      identity_summary: 'Kael is the Home Services assistant.',
+      locked_files: ['identity.md', 'persona.md', 'mission-values.md'],
+      tunable_files: ['tone-matrix.yaml', 'language-rules.md', 'forbidden-language.json', 'style-guidelines.md'],
+      forbidden_categories: ['ai_self_reference'],
+      mission_values: ['Trust'],
+    })),
     listServices: vi.fn(async () => ({ services: [] })),
     placesAutocomplete: vi.fn(async () => ({ suggestions: [], fallback_used: false })),
     createJob: vi.fn(async () => ({
@@ -58,8 +66,13 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     declineBroadcast: vi.fn(),
     updateJobStatus: vi.fn(),
     requestScopeChange: vi.fn(),
+    askKaelForWorker: vi.fn(),
     decideScopeChange: vi.fn(),
+    requestCustomerCancellation: vi.fn(),
     requestWorkerCancellation: vi.fn(),
+    openDispute: vi.fn(),
+    submitDisputeCounterStatement: vi.fn(),
+    decideDispute: vi.fn(),
     attachJobMedia: vi.fn(),
     listJobMessages: vi.fn(),
     sendJobMessage: vi.fn(),
@@ -67,6 +80,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     confirmCompletion: vi.fn(),
     submitReview: vi.fn(),
     registerWorker: vi.fn(),
+    getMyKaelMemory: vi.fn(),
+    getWorkerKaelMemory: vi.fn(),
+    deleteMyKaelMemory: vi.fn(),
     getWorkerProfile: vi.fn(),
     updateWorkerAvailability: vi.fn(),
     listWorkerBroadcasts: vi.fn(),
@@ -191,6 +207,202 @@ describe('mobile-api Edge router contract', () => {
       expect.objectContaining({ role: 'customer' }),
       'notification-1',
     )
+  })
+
+  it('routes worker Kael clarification through the job-scoped worker endpoint', async () => {
+    const askKaelForWorker = vi.fn(async () => ({
+      qa_id: 'qa-1',
+      job_id: 'job-1',
+      remaining_questions: 2,
+      answer: {
+        schema_version: 'worker_qa_answer.v1' as const,
+        text: 'Kael gợi ý kiểm tra phần phát sinh và chụp ảnh rõ.',
+        safety_notes: ['Không bắt đầu phần phát sinh khi khách chưa duyệt.'],
+      },
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ askKaelForWorker }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/kael-clarify', {
+      method: 'POST',
+      body: JSON.stringify({ question: 'Tôi nên giải thích phát sinh thế nào?' }),
+    }))
+
+    expect(response.status).toBe(201)
+    expect(await response.json()).toMatchObject({ qa_id: 'qa-1', remaining_questions: 2 })
+    expect(askKaelForWorker).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'job-1',
+      { question: 'Tôi nên giải thích phát sinh thế nào?' },
+    )
+  })
+
+  it('routes P12 customer cancellation through the job-scoped customer endpoint', async () => {
+    const requestCustomerCancellation = vi.fn(async () => ({
+      cancellation_id: 'cancel-1',
+      job_id: 'job-1',
+      status: 'cancelled',
+      job_status: 'cancelled' as const,
+      sub_case: 'after_worker_accept',
+      reason_code: 'changed_mind',
+      reason_category: 'no_penalty_phase_0',
+      admin_review_required: true,
+      phase0_no_monetary_penalty: true,
+      worker_goodwill: { required: true, kind: 'phase0_goodwill_note' },
+      abuse_signals: [],
+      message: 'Kael đã ghi nhận yêu cầu hủy.',
+      created_at: '2026-05-26T00:00:00.000Z',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ requestCustomerCancellation } as Partial<MobileApiServices>),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/customer-cancellation', {
+      method: 'POST',
+      body: JSON.stringify({
+        reason_code: 'changed_mind',
+        reason_note: 'Tôi đổi ý và muốn hủy lịch này.',
+      }),
+    }))
+
+    expect(response.status).toBe(201)
+    expect(await response.json()).toMatchObject({
+      cancellation_id: 'cancel-1',
+      phase0_no_monetary_penalty: true,
+    })
+    expect(requestCustomerCancellation).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      'job-1',
+      expect.objectContaining({
+        reason_code: 'changed_mind',
+        reason_note: 'Tôi đổi ý và muốn hủy lịch này.',
+      }),
+    )
+  })
+
+  it('routes P13 dispute open through the job-scoped endpoint', async () => {
+    const openDispute = vi.fn(async () => ({
+      dispute_id: 'dispute-1',
+      job_id: 'job-1',
+      status: 'open',
+      dispute_type: 'completion_rejected',
+      evidence_snapshot_id: 'snapshot-1',
+      admin_review_required: true,
+      priority: 'high',
+      evidence_locked_at: '2026-05-26T00:00:00.000Z',
+      message: 'Dispute opened for admin review.',
+      created_at: '2026-05-26T00:00:00.000Z',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ openDispute } as Partial<MobileApiServices>),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/disputes', {
+      method: 'POST',
+      body: JSON.stringify({
+        dispute_type: 'completion_rejected',
+        initiator_statement: 'Cong viec chua hoan tat nhu thong tin ban dau.',
+        evidence_photo_urls: ['supabase://job-media/job-1/after/a.jpg'],
+      }),
+    }))
+
+    expect(response.status).toBe(201)
+    expect(await response.json()).toMatchObject({
+      dispute_id: 'dispute-1',
+      evidence_snapshot_id: 'snapshot-1',
+    })
+    expect(openDispute).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      'job-1',
+      expect.objectContaining({ dispute_type: 'completion_rejected' }),
+    )
+  })
+
+  it('routes P13 counter statement and admin decision through dispute endpoints', async () => {
+    const submitDisputeCounterStatement = vi.fn(async () => ({
+      dispute_id: 'dispute-1',
+      status: 'admin_review',
+      counter_party_statement_submitted: true,
+      updated_at: '2026-05-26T00:30:00.000Z',
+    }))
+    const decideDispute = vi.fn(async () => ({
+      dispute_id: 'dispute-1',
+      status: 'admin_decided',
+      outcome: 'no_fault_both',
+      decided_at: '2026-05-26T01:00:00.000Z',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async (request) =>
+        request.url.includes('admin-decision') ? adminAuth : workerAuth
+      ),
+      services: makeServices({
+        submitDisputeCounterStatement,
+        decideDispute,
+      } as Partial<MobileApiServices>),
+    })
+
+    const counterResponse = await handler(new Request('https://example.test/mobile-api/disputes/dispute-1/counter-statement', {
+      method: 'POST',
+      body: JSON.stringify({ statement: 'Toi da lam dung pham vi ban dau.' }),
+    }))
+    const decisionResponse = await handler(new Request('https://example.test/mobile-api/disputes/dispute-1/admin-decision', {
+      method: 'POST',
+      body: JSON.stringify({
+        outcome: 'no_fault_both',
+        customer_trust_impact: 'none',
+        worker_action: 'none',
+        reasoning: 'Admin reviewed the locked evidence and found no clear fault from either party.',
+      }),
+    }))
+
+    expect(counterResponse.status).toBe(200)
+    expect(decisionResponse.status).toBe(200)
+    expect(submitDisputeCounterStatement).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'dispute-1',
+      { statement: 'Toi da lam dung pham vi ban dau.' },
+    )
+    expect(decideDispute).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      'dispute-1',
+      expect.objectContaining({ outcome: 'no_fault_both' }),
+    )
+  })
+
+  it('routes Kael memory self-view and deletion through authenticated services', async () => {
+    const getMyKaelMemory = vi.fn(async () => ({ subject_type: 'customer' as const, memory: null }))
+    const deleteMyKaelMemory = vi.fn(async () => ({ subject_type: 'customer' as const, deleted: true as const }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ getMyKaelMemory, deleteMyKaelMemory }),
+    })
+
+    const getResponse = await handler(new Request('https://example.test/mobile-api/me/kael-memory'))
+    const deleteResponse = await handler(new Request('https://example.test/mobile-api/me/kael-memory', {
+      method: 'DELETE',
+    }))
+
+    expect(getResponse.status).toBe(200)
+    expect(deleteResponse.status).toBe(200)
+    expect(getMyKaelMemory).toHaveBeenCalledWith(customerAuth)
+    expect(deleteMyKaelMemory).toHaveBeenCalledWith(customerAuth)
+  })
+
+  it('routes worker Kael memory self-view through the worker endpoint', async () => {
+    const getWorkerKaelMemory = vi.fn(async () => ({ subject_type: 'worker' as const, memory: null }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ getWorkerKaelMemory }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael-memory'))
+
+    expect(response.status).toBe(200)
+    expect(getWorkerKaelMemory).toHaveBeenCalledWith(workerAuth)
   })
 
   it('routes device push token registration through authenticated mobile API services', async () => {

@@ -10,6 +10,7 @@ export type ApiCallLog = {
    * request_id = X to see every provider call for a single user request.
    */
   requestId?: string | null
+  purpose: string
   provider: AIProvider
   model: string
   inputTokens?: number
@@ -24,6 +25,7 @@ function toRow(log: ApiCallLog) {
   return {
     job_id: log.jobId,
     request_id: log.requestId ?? null,
+    purpose: log.purpose,
     provider: log.provider,
     model: log.model,
     input_tokens: log.inputTokens ?? null,

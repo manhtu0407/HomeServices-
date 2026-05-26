@@ -1,0 +1,65 @@
+{
+  "charter_version": "2026-05-25.p8",
+  "status": "TUNABLE",
+  "owner": "Tu",
+  "change_policy": "Reviewed add-only config change",
+  "last_modified": "2026-05-25",
+  "forbidden_phrases": {
+    "fear_language": [
+      "nguy hiem chet nguoi",
+      "chay no tuc thi",
+      "tu vong",
+      "khong cuu kip",
+      "pha huy hoan toan"
+    ],
+    "absolute_claims": [
+      "chac chan 100%",
+      "khong bao gio",
+      "tuyet doi an toan",
+      "guaranteed",
+      "dam bao khong loi"
+    ],
+    "ai_self_reference": [
+      "As an AI",
+      "Toi la AI",
+      "Toi la chatbot",
+      "AI language model"
+    ],
+    "casual_slang": [
+      "ok dm",
+      "vai",
+      "om",
+      "a uh"
+    ],
+    "buzzwords": [
+      "synergy",
+      "leverage",
+      "paradigm shift",
+      "revolutionary",
+      "game-changing"
+    ],
+    "accusatory_in_dispute": [
+      "Ban dang de doa",
+      "Hanh vi khong chap nhan",
+      "Vui long dung viec",
+      "Kael phat hien ban dang",
+      "Yeu cau cua ban khong hop ly",
+      "Ban dang lua Kael",
+      "Khong the chap nhan",
+      "Ban can binh tinh"
+    ],
+    "aggressive_response": [
+      "Toi se khong tra loi",
+      "Day la yeu cau vo ly",
+      "Ban can kiem che",
+      "Toi tu choi",
+      "He thong khong cho phep dieu do",
+      "Ban da sai"
+    ]
+  },
+  "forbidden_patterns": [
+    "\\b\\d{1,3}(?:[.,]\\d{3})*\\s*(?:VND|d|dong)\\b",
+    "\\b\\d+\\s*(?:VND|dong)\\b",
+    "(?i)as an ai|ai language model"
+  ]
+}

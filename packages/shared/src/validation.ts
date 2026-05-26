@@ -101,9 +101,52 @@ export const workerScopeChangeSchema = z.object({
   photo_urls: z.array(z.string().url()).max(5).default([]),
 })
 
+export const kaelWorkerClarifySchema = z.object({
+  question: z.string().min(3).max(1000),
+})
+
 export const workerCancellationRequestSchema = z.object({
   reason: z.string().min(10).max(1000),
   evidence_photo_urls: z.array(z.string().url()).max(5).default([]),
+})
+
+export const customerCancellationRequestSchema = z.object({
+  reason_code: z.string().trim().min(3).max(120),
+  reason_note: z.string().trim().min(3).max(1000).optional(),
+  requested_at: z.string().datetime().optional(),
+})
+
+export const disputeOpenRequestSchema = z.object({
+  dispute_type: z.enum([
+    'completion_rejected',
+    'damage_claim',
+    'unpaid_service',
+    'abusive_behavior_customer',
+    'abusive_behavior_worker',
+    'scope_disagreement_post_job',
+    'other',
+  ]),
+  initiator_statement: z.string().trim().min(10).max(2000),
+  evidence_photo_urls: z.array(z.string().min(10).max(500)).max(5).default([]),
+})
+
+export const disputeCounterStatementSchema = z.object({
+  statement: z.string().trim().min(10).max(2000),
+})
+
+export const disputeAdminDecisionSchema = z.object({
+  outcome: z.enum([
+    'customer_favor_full',
+    'customer_favor_partial',
+    'worker_favor',
+    'no_fault_both',
+    'mutual_warning',
+  ]),
+  refund_amount: z.number().int().nonnegative().optional(),
+  worker_credit_amount: z.number().int().nonnegative().optional(),
+  customer_trust_impact: z.enum(['none', 'minor_down', 'major_down', 'positive_resolved']),
+  worker_action: z.enum(['none', 'warning', 'temp_suspend_7d', 'temp_suspend_30d', 'permanent_suspend']),
+  reasoning: z.string().trim().min(50).max(2000),
 })
 
 export const workerCancellationDecisionSchema = z.object({
@@ -162,7 +205,12 @@ export type JobMessageSendInput = z.infer<typeof jobMessageSendSchema>
 export type WorkerRegisterInput = z.infer<typeof workerRegisterSchema>
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>
+export type KaelWorkerClarifyInput = z.infer<typeof kaelWorkerClarifySchema>
 export type WorkerCancellationRequestInput = z.infer<typeof workerCancellationRequestSchema>
+export type CustomerCancellationRequestInput = z.infer<typeof customerCancellationRequestSchema>
+export type DisputeOpenRequestInput = z.infer<typeof disputeOpenRequestSchema>
+export type DisputeCounterStatementInput = z.infer<typeof disputeCounterStatementSchema>
+export type DisputeAdminDecisionInput = z.infer<typeof disputeAdminDecisionSchema>
 export type WorkerCancellationDecisionInput = z.infer<typeof workerCancellationDecisionSchema>
 export type JobMediaAttachInput = z.infer<typeof jobMediaAttachSchema>
 export type DevicePushTokenInput = z.infer<typeof devicePushTokenSchema>

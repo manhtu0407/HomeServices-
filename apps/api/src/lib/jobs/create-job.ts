@@ -39,6 +39,17 @@ function isLoggableStage(s: string): s is LoggableStage {
   return s === 'intent' || s === 'vision' || s === 'market'
 }
 
+function apiLogPurposeForPipelineStage(stage: LoggableStage): string {
+  switch (stage) {
+    case 'intent':
+      return 'intent_classification'
+    case 'vision':
+      return 'vision_analysis'
+    case 'market':
+      return 'market_lookup'
+  }
+}
+
 /**
  * Orchestrates A3-A5: create job, run Kael pipeline, persist estimate.
  *
@@ -142,6 +153,7 @@ export async function createJobWithEstimate(
     apiLogs.push({
       jobId: job.id,
       requestId,
+      purpose: apiLogPurposeForPipelineStage(stage.stage),
       provider: meta.provider,
       model: meta.model,
       latencyMs: stage.latencyMs,

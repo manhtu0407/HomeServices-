@@ -1,4 +1,4 @@
-import type { EdgeAiSecrets } from "./kael.ts";
+import type { EdgeAiSecrets } from "./kael/index.ts";
 
 export type EdgeEnv = EdgeAiSecrets & {
   supabaseUrl: string;
