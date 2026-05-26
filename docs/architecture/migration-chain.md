@@ -54,6 +54,7 @@ The early chain creates the production schema and hardens workflow tables:
 | P14 | `20260526002253_backend_gaps_cleanup_p14.sql` | api_logs purpose invariant, worker district seed cleanup, orphan analyzing cron cleanup. |
 | P14 | `20260526003315_fix_worker_cancellation_reason_category_ambiguity_p14.sql` | Follow-up for Supabase lint: qualifies P11 worker cancellation `reason_category` references. |
 | P17 | `20260526012712_kael_p17_monitoring_ab_setup.sql` | Monitoring dashboard views and running A/B #6 experiment shell for `price_synthesis`. |
+| Section 24 Q1 | `20260526090000_kael_cost_optimization_q1.sql` | Cost dashboard views, quality baseline table, and per-call optimization metric telemetry. |
 
 ## P14 Notes
 

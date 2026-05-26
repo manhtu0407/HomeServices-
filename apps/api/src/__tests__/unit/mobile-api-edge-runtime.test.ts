@@ -474,6 +474,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: [{ id: 'problem-1' }], error: null },
       { data: [{ complexity: 'medium', price_min: 120000, price_max: 320000, district_code: 'hcmc_all' }], error: null },
       { data: null, error: null },
+      { data: null, error: null },
       { data: { id: 'kael-session-1', total_turns: 2, total_cost_usd: 0 }, error: null },
       { data: { id: 'turn-estimate' }, error: null },
       { data: { id: 'kael-session-1' }, error: null },
@@ -576,6 +577,16 @@ describe('mobile-api Edge runtime helpers', () => {
       }),
     ]))
     expect(rows.some((row) => row.purpose == null)).toBe(false)
+    const metricCall = client.calls.find((call) => call.table === 'kael_optimization_metrics')
+    const metricRows = metricCall?.operations.find((op) => op[0] === 'insert')?.[1] as Array<Record<string, unknown>>
+    expect(metricRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        purpose: 'market_lookup',
+        provider: 'perplexity',
+        enabled_options: [],
+        quality_pass: true,
+      }),
+    ]))
   })
 
   it('requireJobAccess hides cross-customer jobs with 404', async () => {
@@ -2368,6 +2379,7 @@ describe('mobile-api Edge runtime helpers', () => {
         }],
         error: null,
       },
+      { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },
       { data: null, error: null },

@@ -52,6 +52,8 @@ const EXPECTED_TABLES = [
   'customer_cancellation_records',
   'evidence_snapshots',
   'disputes',
+  'kael_quality_baseline',
+  'kael_optimization_metrics',
 ] as const satisfies readonly TableNames[]
 
 const EXPECTED_ENUMS = [
@@ -71,7 +73,7 @@ const EXPECTED_ENUMS = [
 
 describe('Database.public.Tables completeness', () => {
   it('has all aligned workflow tables', () => {
-    expect(EXPECTED_TABLES).toHaveLength(46)
+    expect(EXPECTED_TABLES).toHaveLength(48)
   })
 
   it.each(EXPECTED_TABLES)('table "%s" is a valid generated table key', (name) => {
@@ -285,6 +287,32 @@ describe('Insert type requirements', () => {
     } satisfies Database['public']['Tables']['disputes']['Insert']
 
     expect(dispute.dispute_type).toBe('completion_rejected')
+  })
+
+  it('Q1 cost optimization baseline and metric tables carry telemetry state', () => {
+    const baseline = {
+      baseline_key: 'q1-staging-50-smoke',
+      source: 'staging_live_50',
+      sample_size: 50,
+      job_count: 50,
+      api_log_count: 100,
+      schema_validation_rate: 1,
+      provider_breakdown: { perplexity: { calls: 50 } },
+      purpose_breakdown: { market_lookup: { calls: 50 } },
+      cost_summary: { total_usd: 0.01 },
+    } satisfies Database['public']['Tables']['kael_quality_baseline']['Insert']
+    const metric = {
+      purpose: 'market_lookup',
+      provider: 'perplexity' as const,
+      option_flags: { KAEL_OPT_MARKET_CACHE_ENABLED: false },
+      enabled_options: [],
+      cost_before_estimate: 0.00015,
+      cost_actual: 0.00015,
+      quality_pass: true,
+    } satisfies Database['public']['Tables']['kael_optimization_metrics']['Insert']
+
+    expect(baseline.sample_size).toBe(50)
+    expect(metric.provider).toBe('perplexity')
   })
 })
 
