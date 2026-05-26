@@ -75,6 +75,8 @@ describe('mobile-api Edge runtime helpers', () => {
       'getWorkerProfile',
       'invalidateMarketCache',
       'listJobMessages',
+      'processKaelBatchResults',
+      'processKaelLearningQueue',
       'sendKaelChatTurn',
       'sendJobMessage',
       'listNotifications',

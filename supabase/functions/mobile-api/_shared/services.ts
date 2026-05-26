@@ -33,13 +33,20 @@ import {
 } from "../../_shared/domain.ts";
 import {
   apiFailure,
+  type KaelBatchResultsProcessInput,
+  type KaelBatchResultsProcessResponse,
+  type KaelLearningQueueProcessInput,
+  type KaelLearningQueueProcessResponse,
   type MarketCacheInvalidateInput,
   type MarketCacheInvalidateResponse,
   type MobileApiContext,
   type PlacesAutocompleteResponse,
   type MobileApiServices,
 } from "./router.ts";
-import { buildKaelOptimizationMetricRows } from "./kael/cost-tracking.ts";
+import {
+  buildKaelOptimizationMetricRows,
+  readKaelOptimizationFlags,
+} from "./kael/cost-tracking.ts";
 import { validateTransition } from "./lifecycle.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "./rate-limit.ts";
 import { requireJobAccess } from "./access.ts";
@@ -74,6 +81,9 @@ import {
   type LearningSkillTrigger,
   getPublicKaelCharter,
   NORMAL_TRANSACTION_SILENT_STATUSES,
+  processBatchResults,
+  processLearningQueue,
+  queueLearningForBatch,
   queueLearningSkillTriggers,
   recordDemandingCustomerInteraction,
   type ScopeChangeRiskConfig,
@@ -220,6 +230,10 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     listWorkerJobs,
     getWorkerEarnings,
     invalidateMarketCache,
+    processKaelLearningQueue: (ctx, input) =>
+      processKaelLearningQueueAdmin(ctx, input, secrets),
+    processKaelBatchResults: (ctx, input) =>
+      processKaelBatchResultsAdmin(ctx, input, secrets),
     listNotifications,
     markNotificationRead,
     registerDevicePushToken,
@@ -474,7 +488,7 @@ async function createJob(
         error_code: stage.failureReason ?? null,
         safe_metadata: stage.cacheStatus
           ? { cache_status: stage.cacheStatus }
-          : undefined,
+          : {},
       })),
   );
 
@@ -1027,7 +1041,7 @@ async function advanceKaelChatEstimate(
         safe_metadata: {
           surface: "kael_chat",
           session_id: sessionId,
-          cache_status: stage.cacheStatus,
+          ...(stage.cacheStatus ? { cache_status: stage.cacheStatus } : {}),
         },
       })),
   );
@@ -3546,6 +3560,31 @@ async function invalidateMarketCache(
   };
 }
 
+async function processKaelLearningQueueAdmin(
+  ctx: MobileApiContext,
+  input: KaelLearningQueueProcessInput,
+  secrets: EdgeAiSecrets,
+): Promise<KaelLearningQueueProcessResponse> {
+  if (ctx.role !== "admin") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được xử lý hàng đợi Kael", 403);
+  }
+  return processLearningQueue(db(ctx), secrets, {
+    limit: input.limit,
+    forceRealtime: input.force_realtime,
+  });
+}
+
+async function processKaelBatchResultsAdmin(
+  ctx: MobileApiContext,
+  input: KaelBatchResultsProcessInput,
+  secrets: EdgeAiSecrets,
+): Promise<KaelBatchResultsProcessResponse> {
+  if (ctx.role !== "admin") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được xử lý batch Kael", 403);
+  }
+  return processBatchResults(db(ctx), secrets, { limit: input.limit });
+}
+
 async function listNotifications(ctx: MobileApiContext) {
   const unreadResult = await dbQuery<null>(
     db(ctx)
@@ -4491,7 +4530,11 @@ async function queueKaelLearningEvent(
   event: LearningSkillTrigger,
   input: LearningSkillInput,
 ) {
-  await queueLearningSkillTriggers(client, event, input).catch((error) => {
+  const flags = readKaelOptimizationFlags();
+  const queueFn = flags.KAEL_OPT_BATCH_LEARNING_ENABLED
+    ? queueLearningForBatch
+    : queueLearningSkillTriggers;
+  await queueFn(client, event, input).catch((error) => {
     console.warn("mobile-api kael learning queue failed", {
       event,
       jobId: nullableString(input.job_id),

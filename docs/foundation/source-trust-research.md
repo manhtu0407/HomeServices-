@@ -80,8 +80,10 @@ node scripts/source-trust-research/run-perplexity-r1.mjs
 Output goes to `docs/foundation/source-trust-samples/` and records per-domain status, citations, search results, and outside-domain citation violations.
 
 Current local status:
-- `PERPLEXITY_API_KEY` is not present in this Codex shell.
-- Perplexity R1 live calls were not run in this batch.
+- Staging Edge secrets include `PERPLEXITY_API_KEY`, and Q2/Q3 staging runs proved the Edge runtime can call Perplexity.
+- Supabase does not expose secret values back to CLI, only digests. The direct local R1 script still cannot read `PERPLEXITY_API_KEY` from the project secrets page.
+- Perplexity R1 live domain calls were not run by this direct script in this batch.
+- To avoid pasting the key into shell, R1 live verification needs a Tu-approved server-side harness that runs inside Edge with existing project secrets.
 - R2 remains blocked until live R1 output exists and Tu approves the final 20-domain list.
 
 ## Approval Gate

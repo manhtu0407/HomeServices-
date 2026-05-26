@@ -89,6 +89,8 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     listWorkerJobs: vi.fn(),
     getWorkerEarnings: vi.fn(),
     invalidateMarketCache: vi.fn(),
+    processKaelLearningQueue: vi.fn(async () => ({ selected: 0, submitted: 0, realtime_fallback: 0 })),
+    processKaelBatchResults: vi.fn(async () => ({ checked: 0, ended: 0, processed_items: 0, failed_items: 0 })),
     listNotifications: vi.fn(),
     markNotificationRead: vi.fn(),
     registerDevicePushToken: vi.fn(),
@@ -489,6 +491,49 @@ describe('mobile-api Edge router contract', () => {
     expect(invalidateMarketCache).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'admin' }),
       { district_code: 'q7' },
+    )
+  })
+
+  it('routes Q4 learning queue processors through admin-only mobile API services', async () => {
+    const processKaelLearningQueue = vi.fn(async () => ({
+      selected: 2,
+      submitted: 2,
+      realtime_fallback: 0,
+      batch_id: 'batch-local-1',
+    }))
+    const processKaelBatchResults = vi.fn(async () => ({
+      checked: 1,
+      ended: 1,
+      processed_items: 2,
+      failed_items: 0,
+    }))
+    const authenticate = vi.fn(async () => adminAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ processKaelLearningQueue, processKaelBatchResults }),
+    })
+
+    const queueResponse = await handler(new Request('https://example.test/mobile-api/admin/kael-learning/process-queue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 2 }),
+    }))
+    const resultsResponse = await handler(new Request('https://example.test/mobile-api/admin/kael-learning/process-batch-results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 1 }),
+    }))
+
+    expect(queueResponse.status).toBe(200)
+    expect(resultsResponse.status).toBe(200)
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['admin'])
+    expect(processKaelLearningQueue).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      { limit: 2, force_realtime: false },
+    )
+    expect(processKaelBatchResults).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      { limit: 1 },
     )
   })
 

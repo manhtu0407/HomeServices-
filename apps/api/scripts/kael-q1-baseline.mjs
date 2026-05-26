@@ -144,8 +144,8 @@ class Q1BaselineHarness {
     const avgReviewRating = await this.fetchAverageReviewRating()
 
     const baseline = {
-      baseline_key: `${this.runId}-staging-50`,
-      source: 'staging_live_50',
+      baseline_key: `${this.runId}-staging-${this.config.sampleSize}`,
+      source: this.config.sampleSize === 50 ? 'staging_live_50' : 'manual',
       sample_size: this.config.sampleSize,
       job_count: jobs.length,
       api_log_count: apiLogs.length,
@@ -339,7 +339,7 @@ Baseline row: ${this.baselineRow?.baseline_key ?? 'not persisted'}
 
 ## Scope
 
-Plan.md section 24 Q1 baseline measurement before enabling cost optimizations.
+Plan.md section 24 live baseline/comparison measurement for Kael cost optimization.
 
 ## Evidence
 
@@ -359,7 +359,7 @@ Plan.md section 24 Q1 baseline measurement before enabling cost optimizations.
 
 ## Notes
 
-- All optimization flags remained disabled.
+- This harness does not toggle remote Edge feature flags; verify Supabase secrets and cache metrics separately.
 - No fixture job, api log, event, profile, or auth user is intentionally retained.
 - Persisted aggregate baseline row remains in \`kael_quality_baseline\`.
 - Safe per-call metric rows remain in \`kael_optimization_metrics\` with fixture job ids nulled by cleanup.

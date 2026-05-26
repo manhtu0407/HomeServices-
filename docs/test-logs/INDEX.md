@@ -4,7 +4,7 @@ Newest test reports first.
 
 | Date | Report | Result | Bugs | Notes |
 |------|--------|--------|------|-------|
-| 2026-05-26 | [P20 Q2/Q3 + Source Trust Start](2026-05-26_p20-q2-q3-source-trust-start.md) | code verified; remote blocked | 0 product bugs; staging auth/key blockers documented | Q2 prompt cache/caps, Q3 market cache, Q1.5 baseline metadata, Section 25 R1 artifacts |
+| 2026-05-26 | [P20 Q2-Q4 + Source Trust Start](2026-05-26_p20-q2-q3-source-trust-start.md) | staging verified; Q4 partial | 1 telemetry hotfix; Q4 result polling remains hourly/pending | Q2 prompt cache/caps, Q3 100-job cache proof, Q4 batch submit smoke, Section 25 R1 artifacts |
 | 2026-05-26 | [P19 Staging Gap E2E](2026-05-26_p19-staging-gap-e2e.md) | passed | 0 product bugs; live old broadcasts are historical/no active sent broadcast | Re-ran 5-case Edge E2E after P18, worker accept/complete/review proven, cleanup 0 |
 | 2026-05-26 | [P18 Production Promotion/Live Quality](2026-05-26_p18-production-promotion-live-quality.md) | passed | 1 production gap fixed; 1 no-photo vision timeout path fixed | Production migrations/Edge deploy, provider audit, auth-gated smoke |
 | 2026-05-26 | [P17 Staging Monitoring/A-B](2026-05-26_p17-staging-monitoring-ab.md) | passed | 0 product bugs; collection honestly starts at 0/100 | Staging deploy, dashboard views, A/B #6 running, production plan |

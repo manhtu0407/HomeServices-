@@ -216,6 +216,30 @@ export type MarketCacheInvalidateResponse = {
   invalidated_at: string;
   filters: MarketCacheInvalidateInput;
 };
+export type KaelLearningQueueProcessInput = {
+  limit?: number;
+  force_realtime?: boolean;
+};
+export type KaelLearningQueueProcessResponse = {
+  selected: number;
+  submitted: number;
+  realtime_fallback: number;
+  batch_id?: string;
+  provider_batch_id?: string;
+  skipped_reason?: string;
+  error_code?: string;
+};
+export type KaelBatchResultsProcessInput = {
+  limit?: number;
+};
+export type KaelBatchResultsProcessResponse = {
+  checked: number;
+  ended: number;
+  processed_items: number;
+  failed_items: number;
+  skipped_reason?: string;
+  error_code?: string;
+};
 type WorkerCancellationResponse = {
   cancellation_id: string;
   job_id: string;
@@ -662,6 +686,14 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: MarketCacheInvalidateInput,
   ): Promise<MarketCacheInvalidateResponse>;
+  processKaelLearningQueue(
+    ctx: MobileApiContext,
+    input: KaelLearningQueueProcessInput,
+  ): Promise<KaelLearningQueueProcessResponse>;
+  processKaelBatchResults(
+    ctx: MobileApiContext,
+    input: KaelBatchResultsProcessInput,
+  ): Promise<KaelBatchResultsProcessResponse>;
   listNotifications(ctx: MobileApiContext): Promise<NotificationListResponse>;
   markNotificationRead(
     ctx: MobileApiContext,
@@ -906,6 +938,8 @@ type Route =
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
   | { kind: "admin.marketCache.invalidate"; method: "POST"; roles: UserRole[] }
+  | { kind: "admin.kaelLearning.processQueue"; method: "POST"; roles: UserRole[] }
+  | { kind: "admin.kaelLearning.processBatchResults"; method: "POST"; roles: UserRole[] }
   | { kind: "notifications"; method: "GET"; roles: UserRole[] }
   | { kind: "notifications.deviceToken"; method: "POST"; roles: UserRole[] }
   | {
@@ -935,6 +969,20 @@ function matchRoute(request: Request): Route | null {
   if (method === "POST" && path === "/admin/market-cache/invalidate") {
     return {
       kind: "admin.marketCache.invalidate",
+      method: "POST",
+      roles: ["admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/kael-learning/process-queue") {
+    return {
+      kind: "admin.kaelLearning.processQueue",
+      method: "POST",
+      roles: ["admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/kael-learning/process-batch-results") {
+    return {
+      kind: "admin.kaelLearning.processBatchResults",
       method: "POST",
       roles: ["admin"],
     };
@@ -1259,6 +1307,16 @@ async function dispatchRoute(
         ctx,
         marketCacheInvalidateInput(await readJson(request)),
       );
+    case "admin.kaelLearning.processQueue":
+      return services.processKaelLearningQueue(
+        ctx,
+        kaelLearningQueueProcessInput(await readJson(request)),
+      );
+    case "admin.kaelLearning.processBatchResults":
+      return services.processKaelBatchResults(
+        ctx,
+        kaelBatchResultsProcessInput(await readJson(request)),
+      );
     case "jobs.create": {
       const input = jobCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -1513,6 +1571,40 @@ function marketCacheInvalidateInput(input: unknown): MarketCacheInvalidateInput 
     ...(serviceType ? { service_type: serviceType as ServiceType } : {}),
     ...(complexity ? { complexity: complexity as ComplexityLevel } : {}),
   };
+}
+
+function kaelLearningQueueProcessInput(input: unknown): KaelLearningQueueProcessInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+  }
+  const record = input as Record<string, unknown>;
+  return {
+    limit: optionalPositiveInt(record.limit, 1, 100),
+    force_realtime: record.force_realtime === true,
+  };
+}
+
+function kaelBatchResultsProcessInput(input: unknown): KaelBatchResultsProcessInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+  }
+  const record = input as Record<string, unknown>;
+  return {
+    limit: optionalPositiveInt(record.limit, 1, 50),
+  };
+}
+
+function optionalPositiveInt(
+  value: unknown,
+  min: number,
+  max: number,
+): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const number = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(number) || number < min || number > max) {
+    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+  }
+  return number;
 }
 
 function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {

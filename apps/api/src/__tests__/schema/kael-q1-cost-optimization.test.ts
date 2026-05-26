@@ -47,6 +47,9 @@ describe('Q1 cost optimization baseline telemetry', () => {
 
     expect(services).toContain('buildKaelOptimizationMetricRows(rows)')
     expect(services).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
+    expect(services).toContain('safe_metadata: stage.cacheStatus')
+    expect(services).toContain(': {}')
+    expect(services).not.toContain('safe_metadata: stage.cacheStatus\n          ? { cache_status: stage.cacheStatus }\n          : undefined')
     expect(costTracking).toContain('KAEL_OPT_PROMPT_CACHE_ENABLED')
     expect(costTracking).toContain('KAEL_OPT_CAP_OUTPUT_ENABLED')
     expect(costTracking).toContain('KAEL_OPT_MARKET_CACHE_ENABLED')
@@ -63,6 +66,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(script).toContain('purpose_coverage')
     expect(script).toContain('provider_failure_pattern')
     expect(script).toContain('schema_validation_rate: round(estimateValidCount / jobs.length, 4)')
+    expect(script).toContain('does not toggle remote Edge feature flags')
   })
 
   it('creates Q3 market cache schema and admin invalidate hook behind Edge', () => {
@@ -84,5 +88,24 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(services).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
     expect(sharedTypes).toContain('kael_market_cache')
     expect(sharedTypes).toContain('increment_kael_market_cache_hit')
+  })
+
+  it('creates Q4 background learning queue and batch processor hooks behind Edge', () => {
+    const migration = readMigrationByName('kael_q4_background_optimization')
+    const router = read('supabase/functions/mobile-api/_shared/router.ts')
+    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+    const index = read('supabase/functions/mobile-api/_shared/kael/index.ts')
+
+    expect(migration).toContain('create table if not exists public.kael_learning_queue')
+    expect(migration).toContain('create table if not exists public.kael_ai_batches')
+    expect(migration).toContain('create table if not exists public.kael_ai_batch_items')
+    expect(migration).toContain('kael-learning-queue-stale-fallback')
+    expect(migration).toContain('grant all on public.kael_learning_queue to service_role')
+    expect(router).toContain('/admin/kael-learning/process-queue')
+    expect(router).toContain('/admin/kael-learning/process-batch-results')
+    expect(services).toContain('KAEL_OPT_BATCH_LEARNING_ENABLED')
+    expect(services).toContain('queueLearningForBatch')
+    expect(index).toContain('./cron/process-learning-queue.ts')
+    expect(index).toContain('./cron/process-batch-results.ts')
   })
 })
