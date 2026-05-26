@@ -37,6 +37,7 @@ import {
   type PlacesAutocompleteResponse,
   type MobileApiServices,
 } from "./router.ts";
+import { buildKaelOptimizationMetricRows } from "./kael/cost-tracking.ts";
 import { validateTransition } from "./lifecycle.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "./rate-limit.ts";
 import { requireJobAccess } from "./access.ts";
@@ -4497,11 +4498,24 @@ async function logApiCalls(
   rows: Array<Record<string, unknown>>,
 ) {
   if (rows.length === 0) return;
-  await dbQuery(client.from("api_logs").insert(rows)).catch(() => {
+  const result = await dbQuery(client.from("api_logs").insert(rows));
+  if (result.error) {
     console.warn("mobile-api api_logs batch insert failed", {
       count: rows.length,
     });
-  });
+    return;
+  }
+
+  const metricRows = buildKaelOptimizationMetricRows(rows);
+  if (metricRows.length === 0) return;
+  const metricsResult = await dbQuery(
+    client.from("kael_optimization_metrics").insert(metricRows),
+  );
+  if (metricsResult.error) {
+    console.warn("mobile-api optimization metrics insert failed", {
+      count: metricRows.length,
+    });
+  }
 }
 
 function apiLogPurposeForPipelineStage(

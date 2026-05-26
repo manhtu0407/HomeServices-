@@ -1056,6 +1056,78 @@ export type Database = {
           },
         ]
       }
+      kael_optimization_metrics: {
+        Row: {
+          cost_actual: number | null
+          cost_before_estimate: number | null
+          cost_delta_estimate: number
+          created_at: string
+          enabled_options: string[]
+          id: string
+          input_tokens: number | null
+          job_id: string | null
+          latency_ms: number | null
+          metric_source: string
+          model: string | null
+          option_flags: Json
+          output_tokens: number | null
+          provider: Database["public"]["Enums"]["api_provider"]
+          purpose: string
+          quality_pass: boolean | null
+          quality_signal: string | null
+          request_id: string | null
+          safe_metadata: Json
+        }
+        Insert: {
+          cost_actual?: number | null
+          cost_before_estimate?: number | null
+          created_at?: string
+          enabled_options?: string[]
+          id?: string
+          input_tokens?: number | null
+          job_id?: string | null
+          latency_ms?: number | null
+          metric_source?: string
+          model?: string | null
+          option_flags?: Json
+          output_tokens?: number | null
+          provider: Database["public"]["Enums"]["api_provider"]
+          purpose: string
+          quality_pass?: boolean | null
+          quality_signal?: string | null
+          request_id?: string | null
+          safe_metadata?: Json
+        }
+        Update: {
+          cost_actual?: number | null
+          cost_before_estimate?: number | null
+          created_at?: string
+          enabled_options?: string[]
+          id?: string
+          input_tokens?: number | null
+          job_id?: string | null
+          latency_ms?: number | null
+          metric_source?: string
+          model?: string | null
+          option_flags?: Json
+          output_tokens?: number | null
+          provider?: Database["public"]["Enums"]["api_provider"]
+          purpose?: string
+          quality_pass?: boolean | null
+          quality_signal?: string | null
+          request_id?: string | null
+          safe_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_optimization_metrics_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kael_admin_queue: {
         Row: {
           actor_id: string | null
@@ -1645,6 +1717,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      kael_quality_baseline: {
+        Row: {
+          advisory_accuracy_score: number | null
+          api_log_count: number
+          avg_review_rating: number | null
+          baseline_key: string
+          cost_summary: Json
+          created_at: string
+          id: string
+          job_count: number
+          provider_breakdown: Json
+          purpose_breakdown: Json
+          safe_metadata: Json
+          sample_ended_at: string | null
+          sample_size: number
+          sample_started_at: string | null
+          schema_validation_rate: number | null
+          source: string
+          updated_at: string
+          vietnamese_tone_score: number | null
+        }
+        Insert: {
+          advisory_accuracy_score?: number | null
+          api_log_count?: number
+          avg_review_rating?: number | null
+          baseline_key: string
+          cost_summary?: Json
+          created_at?: string
+          id?: string
+          job_count?: number
+          provider_breakdown?: Json
+          purpose_breakdown?: Json
+          safe_metadata?: Json
+          sample_ended_at?: string | null
+          sample_size: number
+          sample_started_at?: string | null
+          schema_validation_rate?: number | null
+          source: string
+          updated_at?: string
+          vietnamese_tone_score?: number | null
+        }
+        Update: {
+          advisory_accuracy_score?: number | null
+          api_log_count?: number
+          avg_review_rating?: number | null
+          baseline_key?: string
+          cost_summary?: Json
+          created_at?: string
+          id?: string
+          job_count?: number
+          provider_breakdown?: Json
+          purpose_breakdown?: Json
+          safe_metadata?: Json
+          sample_ended_at?: string | null
+          sample_size?: number
+          sample_started_at?: string | null
+          schema_validation_rate?: number | null
+          source?: string
+          updated_at?: string
+          vietnamese_tone_score?: number | null
+        }
+        Relationships: []
       }
       kael_rule_application_log: {
         Row: {
@@ -2741,6 +2876,37 @@ export type Database = {
       }
     }
     Views: {
+      kael_cost_daily_summary: {
+        Row: {
+          avg_cost_per_call_usd: number | null
+          avg_input_tokens: number | null
+          avg_latency_ms: number | null
+          avg_output_tokens: number | null
+          call_count: number | null
+          day: string | null
+          failure_count: number | null
+          failure_rate: number | null
+          fallback_count: number | null
+          p95_latency_ms: number | null
+          provider: Database["public"]["Enums"]["api_provider"] | null
+          purpose: string | null
+          success_count: number | null
+          total_cost_usd: number | null
+        }
+        Relationships: []
+      }
+      kael_cost_projection_daily: {
+        Row: {
+          cost_per_job_usd: number | null
+          day: string | null
+          observed_calls: number | null
+          observed_cost_usd: number | null
+          observed_jobs: number | null
+          projected_10000_jobs_usd: number | null
+          projected_1000_jobs_usd: number | null
+        }
+        Relationships: []
+      }
       kael_monitoring_ab_price_synthesis: {
         Row: {
           collected_cases: number | null

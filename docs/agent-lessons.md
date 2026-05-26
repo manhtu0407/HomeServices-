@@ -1,5 +1,11 @@
 # Home Services Agent Lessons
 
+## 2026-05-26 - Kael Cost Optimization Q1 Baseline
+
+- Keep baseline rows even when fixture jobs and provider logs are cleaned. Persist aggregate evidence in `kael_quality_baseline` and safe per-call flags/cost signals in `kael_optimization_metrics`.
+- A successful job-level baseline can still expose provider-level instability. In Q1, all 50 staging jobs completed, while DeepSeek and Perplexity each hit 6 timeout rows at their current budgets.
+- Do not start Source Trust before the Plan.md dependency is true. §25 R0 requires §24 Q3 market cache to exist and be verified.
+
 ## 2026-05-26 - P17 Staging Monitoring and A/B Setup
 
 - If Plan asks for an A/B test but runtime does not yet collect paired samples, start with a truthful experiment contract and dashboard state instead of inventing sample rows.

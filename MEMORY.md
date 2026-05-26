@@ -1,5 +1,14 @@
 # MEMORY
 
+## 2026-05-26 P19 Staging Gap E2E And Plan.md §24 Q1 Start
+
+- Tu asked to continue the remaining audit gaps after P18. Staging was re-audited first: the two remaining `broadcasting` jobs were historical May 18 rows with no active `sent` broadcasts; the single approved QA worker had already completed/reviewed one job and was unavailable, so those old rows were not a live accept gate.
+- A fresh mutable staging E2E run used `apps/api/scripts/kael-p15-staging-e2e.mjs` against `xyylanuyflrjzbjzhqfl` after the P18 Edge deploy. Report: `docs/test-logs/2026-05-26_p19-staging-gap-e2e.md`; run id `p15-1779770683705-8ac398`; status `passed`; 5-case matrix passed; realtime verified; intake p95 `5002ms`; worst transaction cost `$0.000506`; cleanup counts all `0`.
+- Plan.md §24 Q0 was completed and Q1 was started in sequence. Migration `20260526090000_kael_cost_optimization_q1.sql` created `kael_quality_baseline`, `kael_optimization_metrics`, `kael_cost_daily_summary`, and `kael_cost_projection_daily`. Staging migration applied and `mobile-api` was redeployed with per-call optimization metric writes after `api_logs`.
+- Q1 baseline script `apps/api/scripts/kael-q1-baseline.mjs` ran 50 staging Edge job creates with all optimization flags disabled. Report: `docs/cost-baseline-2026-05.md`; baseline key `q1-1779771672455-a7d275-staging-50`; 50/50 jobs created; 100 provider metric rows captured; fixture cleanup returned `0` for jobs/events/broadcasts/api_logs/notifications/profiles.
+- Q1 baseline numbers: provider success/schema proxy `0.88`, Vietnamese tone heuristic `1.0`, advisory/estimate proxy `1.0`, total measured cost `$0.018955`, cost/job `$0.000379`, projected 1000 jobs `$0.38`, intake p95 `5755ms`. Fresh provider timeouts were `6/50` DeepSeek at the 1000ms budget and `6/50` Perplexity at the 4000ms budget; jobs still succeeded through existing fallbacks. Treat this as a measured Q1 baseline signal, not a Q2 optimization result.
+- §25 remains blocked by Plan.md R0 until §24 Q3 (`kael_market_cache`) is implemented and verified. Do not start Source Trust code before Q3 is done.
+
 ## 2026-05-26 P18 Production Promotion And Live-Quality Fix
 
 - Tu flagged the critical gap that PR #37 evidence only covered staging. Production `iwevizmsedyqozxlawwl` was audited, backed up via scoped JSON export under `.tmp/production-backups/`, migrated, and redeployed.
