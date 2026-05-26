@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useReducer, useRef, useState } from 'react'
 import { Image } from 'expo-image'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type ImageStyle } from 'react-native'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -112,7 +112,7 @@ const authCopy = {
     workerLoginSubtitle: 'Đăng nhập hoặc tạo hồ sơ thợ mới',
     workerVerificationHeading: 'Xác thực thợ',
     workerVerificationSubtitle: 'Hồ sơ quyết định quyền nhận việc',
-    titleLogin: 'Bắt đầu từ điều bạn cần hôm nay',
+    titleLogin: 'Home help, matched right!',
     bodyLogin: '',
     recovery: 'Hồ sơ vai trò chưa sẵn sàng. Tải lại hồ sơ hoặc đăng xuất để đăng nhập tài khoản khác.',
     refresh: 'Tải lại hồ sơ',
@@ -131,7 +131,6 @@ const authCopy = {
     adminWorker: 'Mở khu vực Thợ với quyền quản trị.',
     customerDesc: 'Đặt dịch vụ, chat Kael và theo dõi lịch.',
     workerDesc: 'Nhận việc, phòng việc và đối soát.',
-    fixedRole: 'Vai trò cố định',
     google: 'Tiếp tục bằng Google',
     phone: 'Dùng số điện thoại',
     customerEmailFallback: 'Dùng email và mật khẩu',
@@ -145,27 +144,16 @@ const authCopy = {
     customerPhonePlaceholder: 'Nhập số tại Việt Nam',
     customerPhoneSubmit: 'Nhận mã xác minh',
     customerGoogleFallback: 'Đăng nhập bằng Google',
-    customerSetupHeading: 'Hoàn tất hồ sơ khách',
-    customerSetupHeroTitle: 'Khách cần xác nhận nhẹ',
-    customerSetupSubtitle: 'Thông tin dùng cho đặt lịch và liên hệ',
-    customerSetupBadge: '2 phút',
-    customerSetupMode: 'Thông tin khách',
-    customerSetupAccount: 'Tài khoản',
-    customerSetupAccountMeta: 'Đã đăng nhập',
-    customerSetupContact: 'Liên hệ',
-    customerSetupContactMeta: 'Điện thoại',
-    customerSetupProfile: 'Hồ sơ',
-    customerSetupProfileMeta: 'Đồng bộ',
+    customerSetupHeading: 'Xác nhận thông tin',
+    customerSetupSubtitle: 'Dùng khi đặt lịch và liên hệ',
     customerDisplayName: 'Tên hiển thị',
     customerDisplayNamePlaceholder: 'Nhập tên của bạn',
     customerPhoneContact: 'Số điện thoại',
     customerPhoneContactPlaceholder: 'Thêm số để thợ liên hệ',
     customerDefaultAddress: 'Địa chỉ mặc định',
     customerDefaultAddressPlaceholder: 'Chọn tòa nhà/căn hộ',
-    customerSaveProfile: 'Lưu vào hồ sơ',
-    customerSkipSetup: 'Bỏ qua tạm thời',
-    customerProfileSyncTitle: 'Sẽ xuất hiện trong Hồ sơ',
-    customerNotVerified: 'Chưa xác minh',
+    customerSaveProfile: 'Lưu và tiếp tục',
+    customerSkipSetup: 'Bỏ qua',
     accountLabel: 'Tài khoản',
     securityLabel: 'Bảo mật',
     workerAccountLabel: 'Email hoặc số điện thoại',
@@ -242,7 +230,7 @@ const authCopy = {
     workerLoginSubtitle: 'Sign in or create a new worker profile',
     workerVerificationHeading: 'Worker verification',
     workerVerificationSubtitle: 'Profile review decides when you can receive jobs',
-    titleLogin: 'Start with what you need today',
+    titleLogin: 'Home help, matched right!',
     bodyLogin: '',
     recovery: 'Role profile is not ready. Refresh the profile or sign out to use another account.',
     refresh: 'Refresh profile',
@@ -261,7 +249,6 @@ const authCopy = {
     adminWorker: 'Open worker workspace as admin.',
     customerDesc: 'Book service, chat with Kael, and track activity.',
     workerDesc: 'Receive jobs, JobRoom, and reconciliation.',
-    fixedRole: 'Fixed role',
     google: 'Continue with Google',
     phone: 'Use phone number',
     customerEmailFallback: 'Use email and password',
@@ -275,27 +262,16 @@ const authCopy = {
     customerPhonePlaceholder: 'Enter a Vietnam phone number',
     customerPhoneSubmit: 'Get verification code',
     customerGoogleFallback: 'Sign in with Google',
-    customerSetupHeading: 'Finish customer profile',
-    customerSetupHeroTitle: 'Light customer setup',
+    customerSetupHeading: 'Confirm details',
     customerSetupSubtitle: 'Used for booking and contact',
-    customerSetupBadge: '2 min',
-    customerSetupMode: 'Customer details',
-    customerSetupAccount: 'Account',
-    customerSetupAccountMeta: 'Signed in',
-    customerSetupContact: 'Contact',
-    customerSetupContactMeta: 'Phone',
-    customerSetupProfile: 'Profile',
-    customerSetupProfileMeta: 'Sync',
     customerDisplayName: 'Display name',
     customerDisplayNamePlaceholder: 'Enter your name',
     customerPhoneContact: 'Phone number',
     customerPhoneContactPlaceholder: 'Add a contact number',
     customerDefaultAddress: 'Default address',
     customerDefaultAddressPlaceholder: 'Choose building/apartment',
-    customerSaveProfile: 'Save to profile',
-    customerSkipSetup: 'Skip for now',
-    customerProfileSyncTitle: 'Appears in Profile',
-    customerNotVerified: 'Not verified',
+    customerSaveProfile: 'Save and continue',
+    customerSkipSetup: 'Skip',
     accountLabel: 'Account',
     securityLabel: 'Security',
     workerAccountLabel: 'Email or phone number',
@@ -367,6 +343,7 @@ type AuthCopy = (typeof authCopy)[AppLanguage]
 
 export function LoginRoleSurface() {
   const { replace } = useRouter()
+  const { preview } = useLocalSearchParams<{ preview?: string | string[] }>()
   const { authError, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, updateCustomerProfile } = useAuth()
   const { reduceTransparency } = useGlassAccessibility()
   const language = useAppLanguage()
@@ -403,12 +380,16 @@ export function LoginRoleSurface() {
   const customerDisplayNameValue = customerDisplayName || metadataCustomerDisplayName
   const customerAddressValue = customerAddress || metadataCustomerAddress
   const customerPhoneValue = phone || metadataCustomerPhone
+  const previewMode = Array.isArray(preview) ? preview[0] : preview
+  const customerSetupPreview = Platform.OS === 'web' && __DEV__ && previewMode === 'customer-setup'
+  const customerSetupPreviewActive = customerSetupPreview && !customerSetupDismissed
   const shouldShowSignedInCustomerSetup = Boolean(
-    session &&
+    (customerSetupPreviewActive && session && role === 'customer') ||
+      (session &&
       role === 'customer' &&
       selectedEntryRole === 'customer' &&
       !customerSetupDismissed &&
-      (!metadataCustomerDisplayName || !metadataCustomerAddress),
+      (!metadataCustomerDisplayName || !metadataCustomerAddress)),
   )
   const needsCustomerOnboarding = shouldShowSignedInCustomerSetup || (needsProfileRecovery && !customerSetupDismissed && (selectedEntryRole === 'customer' || authProviderName === 'google'))
   const isWorkerCreateMode = selectedEntryRole === 'worker' && workerAuthMode === 'create'
@@ -433,6 +414,7 @@ export function LoginRoleSurface() {
         : selectedEntryRole
           ? `${selectedEntryRole}-${customerAuthMode}-${workerAuthMode}`
           : 'role-gate'
+  const isTopAligned = Boolean(needsProfileRecovery || isAuthenticated || selectedEntryRole)
   const useAuthFlowShell = Boolean(needsProfileRecovery || needsCustomerOnboarding || (!isAuthenticated && selectedEntryRole))
 
   useEffect(() => {
@@ -504,6 +486,11 @@ export function LoginRoleSurface() {
     }
   }
 
+  const dismissCustomerSetup = () => {
+    loginDispatch({ type: 'dismiss_customer_setup' })
+    void refreshProfile()
+  }
+
   const saveCustomerProfile = async () => {
     setFormError(null)
     setSigningIn(true)
@@ -543,11 +530,11 @@ export function LoginRoleSurface() {
   }
 
   return (
-    <AuthFrame testID="auth-login-surface" topAligned={Boolean(needsProfileRecovery || isAuthenticated || selectedEntryRole)}>
-      <ScrollView key={authSurfaceKey} ref={scrollRef} contentContainerStyle={styles.authContent} showsVerticalScrollIndicator={false} style={styles.authScroll}>
-        <View style={useAuthFlowShell ? styles.authFlowShell : [styles.roleGateShell, glassSurface('glass', reduceTransparency)]} testID={useAuthFlowShell ? 'auth-flow-shell' : 'auth-role-gate-glass'}>
+    <AuthFrame testID="auth-login-surface" topAligned={isTopAligned}>
+      <ScrollView key={authSurfaceKey} ref={scrollRef} contentContainerStyle={[styles.authContent, isTopAligned ? styles.authContentScrollable : null]} showsVerticalScrollIndicator={isTopAligned} style={[styles.authScroll, isTopAligned ? styles.authScrollScrollable : null]}>
+        <View style={useAuthFlowShell ? styles.authFlowShell : [styles.roleGateShell, glassSurface('glass', reduceTransparency), reduceTransparency ? styles.roleGateShellReduced : styles.roleGateShellPrototype]} testID={useAuthFlowShell ? 'auth-flow-shell' : 'auth-role-gate-glass'}>
           <View style={styles.hiddenMarker} testID={AUTH_PROTOTYPE_PARITY_MARKER} />
-          {!needsProfileRecovery && ((!isAuthenticated && !selectedEntryRole) || isAuthenticated) ? (
+          {!needsProfileRecovery && !needsCustomerOnboarding && ((!isAuthenticated && !selectedEntryRole) || isAuthenticated) ? (
             <View style={styles.loginHeader}>
               <AuthTopRow
                 subtitle={copy.roleGateSubtitle}
@@ -564,12 +551,9 @@ export function LoginRoleSurface() {
               copy={copy}
               displayName={customerDisplayNameValue}
               loading={loading}
-              onBack={() => setSelectedEntryRole(null)}
+              onBack={dismissCustomerSetup}
               onSaveProfile={saveCustomerProfile}
-              onSkip={() => {
-                loginDispatch({ type: 'dismiss_customer_setup' })
-                void refreshProfile()
-              }}
+              onSkip={dismissCustomerSetup}
               onUpdateAddress={setCustomerAddress}
               onUpdateDisplayName={setCustomerDisplayName}
               onUpdatePhone={setPhone}
@@ -1104,27 +1088,10 @@ function CustomerOnboardingPanel({
   return (
     <View style={styles.formStack} testID="auth-client-onboarding">
       <AuthTopRow onBack={onBack} subtitle={copy.customerSetupSubtitle} title={copy.customerSetupHeading} />
-      <View style={styles.setupHero} testID="auth-client-onboarding-setup-hero">
-        <View style={styles.setupHeroTop}>
-          <View style={[styles.roleIcon, { backgroundColor: authTokens.mint }]}>
-            <AuthIcon name="home" />
-          </View>
-          <View style={styles.titleStack}>
-            <Text style={styles.loginHeroTitle}>{copy.customerSetupHeroTitle}</Text>
-          </View>
-          <Text style={styles.roleLock}>{copy.customerSetupBadge}</Text>
-        </View>
-        <View style={styles.setupSteps}>
-          <SetupStep active label={copy.customerSetupAccount} value={copy.customerSetupAccountMeta} />
-          <SetupStep active label={copy.customerSetupContact} value={copy.customerSetupContactMeta} />
-          <SetupStep label={copy.customerSetupProfile} value={copy.customerSetupProfileMeta} />
-        </View>
-      </View>
-      <View style={[styles.loginForm, styles.setupForm]}>
-        <View style={styles.loginMode}>
-          <Text style={styles.loginModeText}>{copy.customerSetupMode}</Text>
-        </View>
-        <AuthInputField icon="home" label={copy.customerDisplayName}>
+      <View style={[styles.loginForm, styles.setupForm, styles.customerSetupForm]} testID="auth-client-onboarding-core-form">
+        <View pointerEvents="none" style={styles.customerSetupCoolGlow} />
+        <View pointerEvents="none" style={styles.customerSetupWarmGlow} />
+        <AuthInputField icon="home" label={copy.customerDisplayName} variant="customerSetup">
           <TextInput
             accessibilityLabel={copy.customerDisplayName}
             autoCapitalize="words"
@@ -1136,7 +1103,7 @@ function CustomerOnboardingPanel({
             value={displayName}
           />
         </AuthInputField>
-        <AuthInputField icon="phone" label={copy.customerPhoneContact}>
+        <AuthInputField icon="phone" label={copy.customerPhoneContact} variant="customerSetup">
           <TextInput
             accessibilityLabel={copy.customerPhoneContact}
             autoCapitalize="none"
@@ -1150,7 +1117,7 @@ function CustomerOnboardingPanel({
             value={phone}
           />
         </AuthInputField>
-        <AuthInputField icon="map" label={copy.customerDefaultAddress}>
+        <AuthInputField icon="map" label={copy.customerDefaultAddress} variant="customerSetup">
           <TextInput
             accessibilityLabel={copy.customerDefaultAddress}
             onChangeText={onUpdateAddress}
@@ -1168,25 +1135,14 @@ function CustomerOnboardingPanel({
           accessibilityState={{ disabled }}
           disabled={disabled}
           onPress={onSaveProfile}
-          style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, disabled ? styles.disabled : null]}
+          style={({ pressed }) => [styles.primaryButton, styles.customerSetupPrimaryButton, pressed ? styles.pressed : null, disabled ? styles.disabled : null]}
           testID="auth-client-onboarding-save"
         >
           {disabled ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>{copy.customerSaveProfile}</Text>}
         </Pressable>
-        <Pressable accessibilityLabel={copy.customerSkipSetup} accessibilityRole="button" onPress={onSkip} style={({ pressed }) => [styles.secondaryBoxButton, pressed ? styles.pressed : null]} testID="auth-client-onboarding-skip">
+        <Pressable accessibilityLabel={copy.customerSkipSetup} accessibilityRole="button" onPress={onSkip} style={({ pressed }) => [styles.secondaryBoxButton, styles.customerSetupSecondaryButton, pressed ? styles.pressed : null]} testID="auth-client-onboarding-skip">
           <Text style={styles.secondaryBoxButtonText}>{copy.customerSkipSetup}</Text>
         </Pressable>
-      </View>
-      <View style={styles.syncPreview} testID="auth-client-onboarding-profile-sync-preview">
-        <View style={styles.syncPreviewTop}>
-          <Text style={styles.syncPreviewTitle}>{copy.customerProfileSyncTitle}</Text>
-          <Text style={styles.roleLock}>{copy.customerNotVerified}</Text>
-        </View>
-        <View style={styles.workerVerifyServiceRow}>
-          <Text style={styles.workerVerifyServiceChip}>{copy.customerDisplayName}</Text>
-          <Text style={styles.workerVerifyServiceChip}>{copy.customerPhoneContact}</Text>
-          <Text style={styles.workerVerifyServiceChip}>{copy.customerDefaultAddress}</Text>
-        </View>
       </View>
     </View>
   )
@@ -1288,13 +1244,12 @@ function AuthFrame({ children, testID, topAligned = false }: { children: ReactNo
   const frameWidth = Math.min(width, 430)
   const contentWidth = Math.max(0, Math.min(frameWidth - 40, 350))
   const topPadding = topAligned ? Math.max(insets.top + 42, 56) : Math.max(insets.top, 8)
-  const webPreviewOffset = Platform.OS === 'web' && width > 430 ? -46 : 0
 
   return (
     <SafeAreaView style={styles.safe} testID={testID}>
       <View style={[styles.canvas, topAligned ? styles.canvasTop : null]}>
         <AmbientBackdrop />
-        <View style={{ width: contentWidth, paddingTop: topPadding, paddingBottom: insets.bottom + 18, transform: webPreviewOffset ? [{ translateX: webPreviewOffset }] : undefined }}>
+        <View style={[styles.authFrameBody, topAligned ? styles.authFrameBodyScrollable : null, { width: contentWidth, paddingTop: topPadding, paddingBottom: insets.bottom + 18 }]}>
           {children}
         </View>
       </View>
@@ -1377,10 +1332,6 @@ function RoleGatewayHero({ choice, copy }: { choice: AuthEntryRole | null; copy:
       ) : null}
       <View style={styles.roleGatewayTop}>
         <Text style={[styles.roleGatewayBadge, reduceTransparency ? styles.roleGatewayBadgeReduced : null]}>Home Services</Text>
-        <View style={[styles.roleGatewayFixedBadge, reduceTransparency ? styles.roleGatewayBadgeReduced : null]}>
-          <ShieldMiniIcon />
-          <Text style={styles.roleGatewayFixedBadgeText}>{copy.fixedRole}</Text>
-        </View>
       </View>
       <View style={styles.roleGatewayGlassLine}>
         <Text style={styles.roleGatewayTitle}>{copy.titleLogin}</Text>
@@ -1395,14 +1346,6 @@ function RoleGatewayHero({ choice, copy }: { choice: AuthEntryRole | null; copy:
         </RoleGatewaySignatureEffects>
       </ReduceMotionAwareEntranceView>
     </ReduceMotionAwareEntranceView>
-  )
-}
-
-function ShieldMiniIcon() {
-  return (
-    <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
-      <Path d="M8 2.4 12 4v3.6c0 2.3-1.4 3.9-4 4.9-2.6-1-4-2.6-4-4.9V4l4-1.6Z" stroke={authTokens.primary} strokeWidth={1.7} strokeLinejoin="round" />
-    </Svg>
   )
 }
 
@@ -1562,7 +1505,7 @@ function RoleCard({
         }}
         onPressOut={() => setPressed(false)}
         onPress={onPress}
-        style={({ pressed }) => [styles.roleCard, glassSurface('raised', reduceTransparency), primary ? styles.roleCardPrimary : null, disabled ? styles.disabled : null, pressed ? styles.pressed : null]}
+        style={({ pressed }) => [styles.roleCard, glassSurface('raised', reduceTransparency), primary ? styles.roleCardPrimary : styles.roleCardSecondary, disabled ? styles.disabled : null, pressed ? styles.pressed : null]}
         testID={testID}
       >
         {!reduceTransparency ? <View pointerEvents="none" style={[styles.roleCardGlow, primary ? styles.roleCardGlowPrimary : styles.roleCardGlowWorker]} /> : null}
@@ -1656,20 +1599,24 @@ function AuthInputField({
   icon,
   label,
   onAction,
+  variant = 'default',
 }: {
   actionLabel?: string
   children: ReactNode
   icon: 'email' | 'home' | 'lock' | 'map' | 'phone'
   label: string
   onAction?: () => void
+  variant?: 'default' | 'customerSetup'
 }) {
+  const isCustomerSetup = variant === 'customerSetup'
+
   return (
-    <View style={styles.fieldShell}>
-      <View style={styles.fieldIcon}>
+    <View style={[styles.fieldShell, isCustomerSetup ? styles.customerSetupFieldShell : null]}>
+      <View style={[styles.fieldIcon, isCustomerSetup ? styles.customerSetupFieldIcon : null]}>
         <AuthIcon name={icon} />
       </View>
       <View style={styles.fieldCopy}>
-        <Text style={styles.fieldLabel}>{label}</Text>
+        <Text style={[styles.fieldLabel, isCustomerSetup ? styles.customerSetupFieldLabel : null]}>{label}</Text>
         {children}
       </View>
       {actionLabel && onAction ? (
@@ -1772,8 +1719,12 @@ const styles = StyleSheet.create({
   safe: { backgroundColor: authTokens.canvas, flex: 1, width: '100%' },
   canvas: { alignItems: 'center', backgroundColor: authTokens.canvas, flex: 1, justifyContent: 'center', overflow: 'hidden', width: '100%' },
   canvasTop: { justifyContent: 'flex-start' },
+  authFrameBody: { alignSelf: 'center' },
+  authFrameBodyScrollable: { flex: 1 },
   authScroll: { width: '100%' },
+  authScrollScrollable: { flex: 1 },
   authContent: { alignItems: 'stretch', gap: 16, minHeight: '100%', paddingVertical: 18, width: '100%' },
+  authContentScrollable: { flexGrow: 1, paddingBottom: 26 },
   formStack: { gap: 10 },
   loginHeader: { gap: 7 },
   authFlowShell: { alignSelf: 'center', gap: 14, maxWidth: 350, width: '100%' },
@@ -1781,7 +1732,7 @@ const styles = StyleSheet.create({
   authTitleBlock: { flex: 1, minWidth: 0 },
   authScreenTitle: { color: authTokens.ink, fontSize: 25, fontWeight: '700', letterSpacing: 0, lineHeight: 29 },
   authScreenSubtitle: { color: authTokens.muted, fontSize: 12, fontWeight: '700', lineHeight: 17, marginTop: 4 },
-  topKaelFace: { alignItems: 'center', backgroundColor: 'rgba(235,255,250,0.82)', borderColor: 'rgba(255,255,255,0.88)', borderRadius: 22, borderWidth: 1, boxShadow: authTokens.softShadow, height: 54, justifyContent: 'center', overflow: 'hidden', width: 54 },
+  topKaelFace: { alignItems: 'center', backgroundColor: 'rgba(235,255,250,0.88)', borderColor: 'rgba(132,230,210,0.28)', borderRadius: 22, borderWidth: 1, boxShadow: '0 10px 22px rgba(17,70,61,0.08), inset 0 1px 0 rgba(255,255,255,0.92)', height: 54, justifyContent: 'center', overflow: 'hidden', width: 54 },
   topKaelFaceReduced: { backgroundColor: '#F1FFFB', borderColor: authTokens.border, boxShadow: 'none' },
   topKaelImage: { height: 60, transform: [{ translateY: 4 }], width: 60 },
   roundBackButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.86)', borderColor: authTokens.border, borderRadius: 18, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
@@ -1807,46 +1758,47 @@ const styles = StyleSheet.create({
   secondaryActionText: { color: authTokens.primary, fontSize: 14, fontWeight: '700' },
   authSignOutAction: { alignItems: 'center', alignSelf: 'center', borderRadius: 999, justifyContent: 'center', marginTop: 3, minHeight: 38, paddingHorizontal: 20 },
   roleGateShell: { alignSelf: 'center', borderRadius: 34, gap: 14, maxWidth: 350, overflow: 'hidden', padding: 14, paddingTop: 16, width: '100%' },
-  roleGatewayHero: { backgroundColor: 'rgba(247,255,252,0.86)', borderColor: 'rgba(255,255,255,0.9)', borderRadius: 32, borderWidth: 1, boxShadow: '0 22px 42px rgba(17,70,61,0.12)', gap: 13, marginTop: 10, overflow: 'hidden', padding: 16, position: 'relative' },
+  roleGateShellPrototype: { backgroundColor: 'rgba(255,253,248,0.86)', borderColor: 'rgba(188,239,228,0.74)', boxShadow: '0 22px 48px rgba(17,70,61,0.12), inset 0 1px 0 rgba(255,255,255,0.96)' },
+  roleGateShellReduced: { backgroundColor: '#FFFDF8', borderColor: authTokens.border, boxShadow: 'none' },
+  roleGatewayHero: { backgroundColor: 'rgba(247,255,252,0.90)', borderColor: 'rgba(132,230,210,0.30)', borderRadius: 32, borderWidth: 1, boxShadow: '0 22px 42px rgba(17,70,61,0.12), inset 0 1px 0 rgba(255,255,255,0.92)', gap: 13, marginTop: 10, overflow: 'hidden', padding: 16, position: 'relative', experimental_backgroundImage: 'linear-gradient(142deg, rgba(255,255,255,0.94) 0%, rgba(244,255,251,0.90) 48%, rgba(219,255,247,0.78) 100%)' } as any,
   roleGatewayHeroReduced: { backgroundColor: '#F2FFFB', borderColor: authTokens.border, boxShadow: 'none' },
-  roleGatewayHeroTint: { backgroundColor: 'rgba(170,255,235,0.2)', bottom: 56, position: 'absolute', right: -30, top: 0, width: 122 },
-  roleGatewayHeroSheen: { backgroundColor: 'rgba(255,255,255,0.38)', height: 84, left: -22, position: 'absolute', top: 54, transform: [{ rotate: '-18deg' }], width: 210 },
-  roleGatewayHeroDivider: { backgroundColor: 'rgba(13,134,119,0.10)', height: 1, left: 16, position: 'absolute', right: 16, top: 58 },
-  roleGatewayTop: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between', zIndex: 1 },
-  roleGatewayBadge: { backgroundColor: 'rgba(255,255,255,0.68)', borderColor: 'rgba(13,134,119,0.12)', borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 11, fontWeight: '800', lineHeight: 15, minHeight: 32, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 7 },
+  roleGatewayHeroTint: { backgroundColor: 'rgba(181,255,239,0.42)', borderBottomLeftRadius: 30, bottom: 0, position: 'absolute', right: 0, top: 0, width: 118 },
+  roleGatewayHeroSheen: { backgroundColor: 'rgba(255,255,255,0.46)', height: 92, left: -26, position: 'absolute', top: 62, transform: [{ rotate: '-18deg' }], width: 230 },
+  roleGatewayHeroDivider: { backgroundColor: 'rgba(13,134,119,0.12)', height: 1, left: 16, position: 'absolute', right: 16, top: 58 },
+  roleGatewayTop: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'flex-start', zIndex: 1 },
+  roleGatewayBadge: { backgroundColor: 'rgba(255,255,255,0.82)', borderColor: 'rgba(13,134,119,0.16)', borderRadius: 999, borderWidth: 1, boxShadow: '0 6px 14px rgba(17,70,61,0.04)', color: authTokens.primary, fontSize: 11, fontWeight: '800', lineHeight: 15, minHeight: 32, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 7 },
   roleGatewayBadgeReduced: { backgroundColor: '#FFFFFF', borderColor: authTokens.border },
-  roleGatewayFixedBadge: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.68)', borderColor: 'rgba(13,134,119,0.12)', borderRadius: 999, borderWidth: 1, flexDirection: 'row', gap: 6, minHeight: 32, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 7 },
-  roleGatewayFixedBadgeText: { color: authTokens.primary, fontSize: 11, fontWeight: '800', lineHeight: 15 },
-  roleGatewayGlassLine: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between', minHeight: 94, paddingBottom: 10, paddingRight: 10, paddingTop: 10, zIndex: 1 },
-  roleGatewayTitle: { color: authTokens.ink, flex: 1, fontSize: 25, fontWeight: '700', letterSpacing: 0, lineHeight: 26, maxWidth: 230 },
-  roleGatewayKael: { alignItems: 'center', backgroundColor: 'rgba(230,255,249,0.78)', borderColor: 'rgba(255,255,255,0.88)', borderRadius: 24, borderWidth: 1, boxShadow: authTokens.softShadow, height: 66, justifyContent: 'center', overflow: 'hidden', width: 66 },
+  roleGatewayGlassLine: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between', minHeight: 92, paddingBottom: 10, paddingRight: 8, paddingTop: 11, zIndex: 1 },
+  roleGatewayTitle: { color: authTokens.ink, flex: 1, fontSize: 24, fontWeight: '700', letterSpacing: 0, lineHeight: 27, maxWidth: 214 },
+  roleGatewayKael: { alignItems: 'center', backgroundColor: 'rgba(238,255,251,0.82)', borderColor: 'rgba(255,255,255,0.92)', borderRadius: 24, borderWidth: 1, boxShadow: '0 10px 22px rgba(17,70,61,0.08), inset 0 1px 0 rgba(255,255,255,0.90)', height: 66, justifyContent: 'center', overflow: 'hidden', width: 66 },
   roleGatewayKaelReduced: { backgroundColor: '#EBFFFA', borderColor: authTokens.border, boxShadow: 'none' },
   roleGatewayKaelImage: { height: 74, transform: [{ translateY: 5 }], width: 74 },
-  roleGatewaySignature: { alignItems: 'center', backgroundColor: 'rgba(235,255,250,0.70)', borderColor: 'rgba(255,255,255,0.78)', borderRadius: 24, borderWidth: 1, flexDirection: 'row', gap: 11, minHeight: 58, overflow: 'hidden', paddingHorizontal: 13, paddingVertical: 11, position: 'relative', zIndex: 1 },
+  roleGatewaySignature: { alignItems: 'center', backgroundColor: 'rgba(229,255,248,0.84)', borderColor: 'rgba(123,222,202,0.24)', borderRadius: 24, borderWidth: 1, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.84)', flexDirection: 'row', gap: 11, minHeight: 58, overflow: 'hidden', paddingHorizontal: 13, paddingVertical: 11, position: 'relative', zIndex: 1 },
   roleGatewaySignatureReduced: { backgroundColor: '#EBFFFA', borderColor: authTokens.border },
   roleGatewaySignatureText: { color: '#123F38', flex: 1, fontSize: 13.8, fontWeight: '800', lineHeight: 18 },
-  signatureRail: { backgroundColor: authTokens.primary, borderRadius: 999, boxShadow: '0 0 18px rgba(50,218,190,0.42)', height: 34, width: 7 },
+  signatureRail: { backgroundColor: '#078E7F', borderRadius: 999, boxShadow: '0 0 18px rgba(50,218,190,0.42)', height: 34, width: 7 },
   signatureRailReduced: { boxShadow: 'none' },
   signatureSheen: { backgroundColor: 'rgba(255,255,255,0.72)', bottom: -16, left: -28, position: 'absolute', top: -16, width: 42 },
   signatureLiquid: { backgroundColor: 'rgba(116,255,223,0.20)', borderRadius: 999, height: 60, left: -24, position: 'absolute', top: -12, width: 120 },
   roleGatewayGrid: { gap: 13, marginTop: 15 },
   motionPressShell: { alignSelf: 'stretch' },
-  roleCard: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 28, flexDirection: 'row', gap: 12, minHeight: 106, overflow: 'hidden', padding: 16, position: 'relative' },
-  roleCardPrimary: { backgroundColor: '#F1FFFB', borderColor: 'rgba(13,134,119,0.12)' },
-  roleCardGlow: { bottom: -20, height: 92, position: 'absolute', right: -28, width: 134 },
-  roleCardGlowPrimary: { backgroundColor: 'rgba(133,255,226,0.22)' },
-  roleCardGlowWorker: { backgroundColor: 'rgba(255,239,212,0.3)' },
+  roleCard: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 30, flexDirection: 'row', gap: 13, minHeight: 110, overflow: 'hidden', padding: 16, position: 'relative' },
+  roleCardPrimary: { backgroundColor: '#F0FFFB', borderColor: 'rgba(99,220,199,0.42)', boxShadow: '0 14px 28px rgba(17,70,61,0.08), inset 0 1px 0 rgba(255,255,255,0.92)', experimental_backgroundImage: 'linear-gradient(112deg, rgba(255,255,255,0.94) 0%, rgba(238,255,251,0.94) 54%, rgba(189,255,240,0.64) 100%)' } as any,
+  roleCardSecondary: { backgroundColor: 'rgba(255,253,248,0.95)', borderColor: 'rgba(229,203,169,0.46)', boxShadow: '0 12px 24px rgba(84,56,28,0.06), inset 0 1px 0 rgba(255,255,255,0.92)', experimental_backgroundImage: 'linear-gradient(112deg, rgba(255,255,255,0.96) 0%, rgba(255,253,248,0.94) 58%, rgba(255,239,212,0.58) 100%)' } as any,
+  roleCardGlow: { borderRadius: 999, bottom: -20, height: 102, position: 'absolute', right: -30, width: 150 },
+  roleCardGlowPrimary: { backgroundColor: 'rgba(103,255,225,0.34)' },
+  roleCardGlowWorker: { backgroundColor: 'rgba(255,232,193,0.38)' },
   roleIcon: { alignItems: 'center', borderRadius: 22, height: 54, justifyContent: 'center', width: 54 },
-  roleIconCustomer: { backgroundColor: authTokens.mint },
+  roleIconCustomer: { backgroundColor: 'rgba(214,249,241,0.98)', borderColor: 'rgba(13,134,119,0.10)', borderWidth: 1 },
   roleIconHero: { backgroundColor: authTokens.primary, borderColor: 'rgba(255,255,255,0.54)', borderWidth: 1, boxShadow: '0 12px 22px rgba(10,119,105,0.20)', experimental_backgroundImage: 'linear-gradient(135deg, #08786E, #38D8BA)' } as any,
-  roleIconWorker: { backgroundColor: '#FFF4DF', borderColor: 'rgba(187,116,61,0.14)', borderWidth: 1 },
+  roleIconWorker: { backgroundColor: '#FFF4DF', borderColor: 'rgba(187,116,61,0.18)', borderWidth: 1 },
   titleStack: { flex: 1, gap: 5 },
   roleTitle: { color: authTokens.ink, fontSize: 19, fontWeight: '700' },
   roleMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  roleMetaPill: { backgroundColor: 'rgba(218,255,247,0.78)', borderColor: 'rgba(13,134,119,0.11)', borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 10, fontWeight: '800', maxWidth: 120, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5 },
+  roleMetaPill: { backgroundColor: 'rgba(226,255,249,0.88)', borderColor: 'rgba(13,134,119,0.16)', borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 10, fontWeight: '800', maxWidth: 120, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5 },
   roleArrow: { color: authTokens.primary, fontSize: 32, fontWeight: '700' },
-  roleArrowBox: { alignItems: 'center', backgroundColor: 'rgba(218,255,247,0.92)', borderColor: 'rgba(13,134,119,0.14)', borderRadius: 15, borderWidth: 1, height: 34, justifyContent: 'center', width: 34 },
-  roleArrowBoxPrimary: { backgroundColor: authTokens.primary, borderColor: 'rgba(255,255,255,0.6)', boxShadow: '0 8px 18px rgba(8,120,110,0.18)' },
+  roleArrowBox: { alignItems: 'center', backgroundColor: 'rgba(218,255,247,0.92)', borderColor: 'rgba(13,134,119,0.16)', borderRadius: 18, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
+  roleArrowBoxPrimary: { backgroundColor: authTokens.primary, borderColor: 'rgba(255,255,255,0.7)', boxShadow: '0 10px 22px rgba(8,120,110,0.22)' },
   loginHeroRole: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.84)', borderColor: 'rgba(15,118,104,0.16)', borderRadius: 28, borderWidth: 1, boxShadow: authTokens.softShadow, flexDirection: 'row', gap: 14, marginTop: 4, minHeight: 86, padding: 16 },
   loginHeroRoleReduced: { backgroundColor: '#FFFFFF', borderColor: authTokens.border, boxShadow: 'none' },
   loginHeroTitle: { color: authTokens.ink, fontSize: 19, fontWeight: '700', lineHeight: 22 },
@@ -1863,9 +1815,22 @@ const styles = StyleSheet.create({
   setupStepLabel: { color: authTokens.primary, fontSize: 11, fontWeight: '800', lineHeight: 14 },
   setupStepValue: { color: authTokens.muted, fontSize: 10.5, fontWeight: '700', lineHeight: 13 },
   setupForm: { marginTop: 0 },
-  syncPreview: { backgroundColor: 'rgba(255,255,255,0.76)', borderColor: authTokens.border, borderRadius: 24, borderWidth: 1, gap: 11, overflow: 'hidden', padding: 13 },
-  syncPreviewTop: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
-  syncPreviewTitle: { color: authTokens.ink, flex: 1, fontSize: 13, fontWeight: '800', lineHeight: 17 },
+  customerSetupForm: {
+    backgroundColor: 'rgba(246,255,252,0.96)',
+    borderColor: 'rgba(99,220,199,0.52)',
+    borderRadius: 30,
+    boxShadow: '0 22px 44px rgba(17,70,61,0.12), inset 0 1px 0 rgba(255,255,255,0.98)',
+    gap: 12,
+    padding: 16,
+    experimental_backgroundImage: 'linear-gradient(152deg, rgba(255,255,255,0.97) 0%, rgba(230,255,249,0.86) 48%, rgba(255,247,232,0.78) 100%)',
+  } as any,
+  customerSetupCoolGlow: { backgroundColor: 'rgba(123,255,226,0.30)', borderRadius: 999, height: 108, position: 'absolute', right: -44, top: -36, width: 150 },
+  customerSetupWarmGlow: { backgroundColor: 'rgba(255,233,198,0.32)', borderRadius: 999, bottom: -46, height: 112, position: 'absolute', right: -18, width: 132 },
+  customerSetupFieldShell: { backgroundColor: 'rgba(255,255,255,0.93)', borderColor: 'rgba(12,134,119,0.20)', borderRadius: 22, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.96), 0 8px 18px rgba(17,70,61,0.045)', minHeight: 58, paddingHorizontal: 14, zIndex: 1 },
+  customerSetupFieldIcon: { backgroundColor: 'rgba(195,250,238,0.98)', borderColor: 'rgba(13,134,119,0.16)', borderRadius: 16, height: 42, width: 42 },
+  customerSetupFieldLabel: { color: '#08786E', fontSize: 10.5, lineHeight: 13 },
+  customerSetupPrimaryButton: { borderRadius: 22, boxShadow: '0 15px 28px rgba(8,120,110,0.22)', marginTop: 2, minHeight: 52, zIndex: 1 },
+  customerSetupSecondaryButton: { backgroundColor: 'rgba(255,255,255,0.86)', borderColor: 'rgba(20,117,105,0.18)', borderRadius: 22, minHeight: 50, zIndex: 1 },
   loginMode: { alignItems: 'center', backgroundColor: 'rgba(215,255,246,0.96)', borderColor: 'rgba(13,134,119,0.18)', borderRadius: 21, borderWidth: 1, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.88)', justifyContent: 'center', minHeight: 42, paddingHorizontal: 14, zIndex: 1 },
   loginModeText: { color: authTokens.primary, fontSize: 13, fontWeight: '900' },
   authChoiceList: { gap: 10, zIndex: 1 },

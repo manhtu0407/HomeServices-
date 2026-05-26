@@ -384,12 +384,13 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onWorkflowSession
       <View style={styles.wizardFlowShell} testID="booking-wizard-unlocked-four-step-flow">
         <BookingFlowOverview activeIndex={activeFlowIndex} copy={copy} />
         {state.step === 'service' ? (
-          <ServiceStep copy={copy} initialServiceType={routeServiceType} onSelect={(serviceType) => dispatch({ type: 'select_service', serviceType })} />
+          <ServiceStep copy={copy} initialServiceType={state.serviceType ?? routeServiceType} onSelect={(serviceType) => dispatch({ type: 'select_service', serviceType })} />
         ) : state.step === 'describe' ? (
           <DescribeStep
             copy={copy}
             dispatch={dispatch}
             language={language}
+            onBack={() => dispatch({ type: 'goto', step: 'service' })}
             onPickPhotos={pickPhotos}
             onSubmit={() => void submitDescribe()}
             state={state}
@@ -653,6 +654,28 @@ function WizardSecondaryButton({
       testID={testID}
     >
       <Text style={[styles.secondaryButtonText, { color: visual.primary }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
+
+function WizardBackButton({ label, onPress, testID }: { label: string; onPress: () => void; testID: string }) {
+  const { reduceMotion, visual } = useBookingWizardVisual()
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      hitSlop={4}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.backButton,
+        { backgroundColor: visual.row, borderColor: visual.borderStrong },
+        reduceMotionAwarePressStyle(pressed, reduceMotion),
+      ]}
+      testID={testID}
+    >
+      <Text style={[styles.backButtonText, { color: visual.primary }]} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -1049,6 +1072,7 @@ function DescribeStep({
   copy,
   dispatch,
   language,
+  onBack,
   onPickPhotos,
   onSubmit,
   state,
@@ -1056,6 +1080,7 @@ function DescribeStep({
   copy: WizardCopy
   dispatch: (action: WizardAction) => void
   language: AppLanguage
+  onBack: () => void
   onPickPhotos: () => void
   onSubmit: () => void
   state: WizardState
@@ -1063,9 +1088,12 @@ function DescribeStep({
   const { reduceMotion, visual } = useBookingWizardVisual()
   return (
     <WizardCard testID="booking-wizard-step-describe">
-      <View style={styles.stepHeader}>
-        <WizardText kind="eyebrow">{copy.describeStep}</WizardText>
-        <WizardText kind="title">{copy.describeTitle}</WizardText>
+      <View style={styles.stepHeaderWithAction}>
+        <View style={styles.stepHeaderCopy}>
+          <WizardText kind="eyebrow">{copy.describeStep}</WizardText>
+          <WizardText kind="title">{copy.describeTitle}</WizardText>
+        </View>
+        <WizardBackButton label={copy.back} onPress={onBack} testID="booking-wizard-describe-back" />
       </View>
       <View style={styles.formGroup}>
         <TextInput
@@ -1311,6 +1339,19 @@ function DoneStep({
 
 const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 12 },
+  backButton: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: 12,
+  },
+  backButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
   body: { color: '#52615C', fontSize: 14, lineHeight: 20 },
   card: {
     gap: 16,
@@ -1621,6 +1662,16 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   stepHeader: { gap: 5, marginBottom: 1 },
+  stepHeaderCopy: {
+    flex: 1,
+    gap: 5,
+    minWidth: 0,
+  },
+  stepHeaderWithAction: {
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 1,
+  },
   stepEyebrow: { color: '#3F6F5A', fontSize: 12, fontWeight: '800', letterSpacing: 0, textTransform: 'uppercase' },
   timeNowButton: { minHeight: 120 },
   title: { color: '#0F172A', fontSize: 19, fontWeight: '700', lineHeight: 25 },
