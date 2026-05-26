@@ -5,7 +5,7 @@ This file records the active Supabase migration chain used by the Kael P3-P17 ba
 ## Staging Target
 
 - Project ref: `xyylanuyflrjzbjzhqfl`
-- Production target is not migrated by this branch until Tu explicitly approves a production deploy.
+- Production project `iwevizmsedyqozxlawwl` was promoted on 2026-05-26 after Tu's audit request. Post-promotion audit shows `71` migrations, P3-P17 tables/columns present, and production dry-run up to date.
 - Every new migration must be dry-run checked, pushed to staging, smoke tested, and reviewed with Supabase advisors before its Plan checkbox is marked complete.
 
 ## Baseline Before Kael Agentic Harness

@@ -186,23 +186,26 @@ export async function runKaelPipeline(
   const analysis = visionResult.success
     ? visionResult.analysis
     : visionResult.fallback;
-  fallbackUsed ||= !visionResult.success;
-  stageLogs.push({
-    stage: "vision",
-    provider: "anthropic",
-    model: "claude-sonnet-4-6",
-    latencyMs: visionStage.elapsedMs,
-    success: visionResult.success,
-    failureReason: visionResult.success
-      ? undefined
-      : visionResult.failureReason,
-    fallbackUsed: !visionResult.success,
-  });
+  const visionSkipped = !visionResult.success && visionResult.skipped === true;
+  fallbackUsed ||= !visionResult.success && !visionSkipped;
+  if (!visionSkipped) {
+    stageLogs.push({
+      stage: "vision",
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      latencyMs: visionStage.elapsedMs,
+      success: visionResult.success,
+      failureReason: visionResult.success
+        ? undefined
+        : visionResult.failureReason,
+      fallbackUsed: !visionResult.success,
+    });
+  }
   await updateKaelProgress(supabase, input.progressJobId, {
     stage: "vision_analysis",
-    status: visionResult.success ? "completed" : "failed",
+    status: visionResult.success || visionSkipped ? "completed" : "failed",
     progress: 0.4,
-    failureReason: visionResult.success ? undefined : visionResult.failureReason,
+    failureReason: visionResult.success || visionSkipped ? undefined : visionResult.failureReason,
   });
 
   const baselineStage = parallelRun.results.find((stage) =>

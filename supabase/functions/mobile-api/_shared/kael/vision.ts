@@ -4,17 +4,35 @@ import { visionResultSchema } from "./types.ts";
 import { buildVisionMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
 import { chooseProvider } from "./routing.ts";
-import { safeParseJSON } from "./utils.ts";
+import { safeParseJSON, sanitizeVisionPhotoUrls } from "./utils.ts";
+
+const VISION_MAX_TOKENS = 320;
+
+type VisionAnalysisResult =
+  | { success: true; analysis: VisionResult }
+  | {
+    success: false;
+    fallback: VisionResult;
+    failureReason: string;
+    skipped?: boolean;
+  };
 
 export async function analyzeDescription(
   description: string,
   intentContext: string,
   photoUrls: string[],
   secrets: EdgeAiSecrets,
-): Promise<
-  | { success: true; analysis: VisionResult }
-  | { success: false; fallback: VisionResult; failureReason: string }
-> {
+): Promise<VisionAnalysisResult> {
+  const safePhotoUrls = sanitizeVisionPhotoUrls(photoUrls);
+  if (safePhotoUrls.length === 0) {
+    return {
+      success: false,
+      fallback: buildFallbackVision(intentContext),
+      failureReason: "NO_PHOTOS_FOR_VISION",
+      skipped: true,
+    };
+  }
+
   const route = chooseProvider("vision_analysis");
   const result = await callAI({
     purpose: "vision_analysis",
@@ -23,9 +41,9 @@ export async function analyzeDescription(
     messages: buildVisionMessages(
       description,
       sanitizeForLLM(intentContext),
-      photoUrls,
+      safePhotoUrls,
     ),
-    maxTokens: 500,
+    maxTokens: VISION_MAX_TOKENS,
     temperature: 0.2,
     timeoutMs: route.latencyBudgetMs,
     maxRetries: 0,

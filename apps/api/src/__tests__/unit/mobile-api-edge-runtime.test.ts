@@ -36,6 +36,19 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(env.supabaseSecretKey).toBe('sb_secret_project')
   })
 
+  it('accepts the legacy GOOGLE_MAP_KEY Edge secret alias used by production', () => {
+    const env = readEdgeEnv((name) => {
+      const values: Record<string, string> = {
+        SUPABASE_URL: 'https://project.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+        GOOGLE_MAP_KEY: 'maps-project-key',
+      }
+      return values[name]
+    })
+
+    expect(env.googleMapsApiKey).toBe('maps-project-key')
+  })
+
   it('keeps the Edge service surface aligned with the mobile API plan', () => {
     const services = createEdgeServices({})
 
@@ -551,15 +564,15 @@ describe('mobile-api Edge runtime helpers', () => {
       }),
       expect.objectContaining({
         job_id: null,
-        purpose: 'vision_analysis',
-        provider: 'anthropic',
-        success: true,
-      }),
-      expect.objectContaining({
-        job_id: null,
         purpose: 'market_lookup',
         provider: 'perplexity',
         success: true,
+      }),
+    ]))
+    expect(rows).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        purpose: 'vision_analysis',
+        provider: 'anthropic',
       }),
     ]))
     expect(rows.some((row) => row.purpose == null)).toBe(false)
@@ -1431,7 +1444,7 @@ describe('mobile-api Edge runtime helpers', () => {
         }))
       }
 
-      if (target.includes('anthropic.com') && body.max_tokens === 500) {
+      if (target.includes('anthropic.com') && body.max_tokens === 320) {
         return new Response(JSON.stringify({
           content: [{
             text: JSON.stringify({
@@ -1503,6 +1516,75 @@ describe('mobile-api Edge runtime helpers', () => {
     ])
   })
 
+  it('skips Anthropic vision analysis when no customer photos are present', async () => {
+    const requestBodies: Array<Record<string, unknown>> = []
+    const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown> & { max_tokens?: number }
+      requestBodies.push(body)
+      const target = String(url)
+
+      if (target.includes('deepseek.com')) {
+        return new Response(JSON.stringify({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                service_type: 'plumbing',
+                problem_slug: 'pipe_leak',
+                confidence: 0.9,
+                needs_clarification: false,
+              }),
+            },
+          }],
+          usage: { prompt_tokens: 40, completion_tokens: 12 },
+        }))
+      }
+
+      if (target.includes('perplexity.ai')) {
+        return new Response(JSON.stringify({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                market_range_min: 180000,
+                market_range_max: 360000,
+                confidence: 0.72,
+              }),
+            },
+          }],
+          usage: { prompt_tokens: 70, completion_tokens: 20 },
+        }))
+      }
+
+      throw new Error(`unexpected provider URL ${target}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const supabase = makeSequenceClient([
+      { data: [{ id: 'pipe-problem' }], error: null },
+      { data: [{ complexity: 'medium', price_min: 150000, price_max: 350000, district_code: 'q7' }], error: null },
+    ])
+
+    const result = await runKaelPipeline({
+      serviceType: 'plumbing',
+      problemChips: ['á»ng rÃ² rá»‰'],
+      description: 'Lavabo Ä‘ang rÃ² nÆ°á»›c phÃ­a dÆ°á»›i tá»§.',
+      district: 'q7',
+      photoUrls: [],
+    }, supabase, {
+      deepseekApiKey: 'deepseek-ok',
+      anthropicApiKey: 'anthropic-ok',
+      perplexityApiKey: 'perplexity-ok',
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.fallbackUsed).toBe(false)
+      expect(result.stageLogs.some((stage) => stage.stage === 'vision')).toBe(false)
+      expect(result.estimate.problem_summary).toBe('plumbing: pipe_leak')
+    }
+    expect(requestBodies.some((body) => body.max_tokens === 320)).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('anthropic.com'), expect.anything())
+  })
+
   it('passes customer photo URLs to Anthropic vision analysis', async () => {
     const requestBodies: Array<Record<string, unknown>> = []
     const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
@@ -1526,7 +1608,7 @@ describe('mobile-api Edge runtime helpers', () => {
         }))
       }
 
-      if (target.includes('anthropic.com') && body.max_tokens === 500) {
+      if (target.includes('anthropic.com') && body.max_tokens === 320) {
         return new Response(JSON.stringify({
           content: [{
             text: JSON.stringify({
@@ -1577,7 +1659,7 @@ describe('mobile-api Edge runtime helpers', () => {
     })
 
     expect(result.success).toBe(true)
-    const visionBody = requestBodies.find((body) => body.max_tokens === 500)
+    const visionBody = requestBodies.find((body) => body.max_tokens === 320)
     const visionMessages = visionBody?.messages as Array<{ content: unknown }> | undefined
     expect(visionMessages?.[0]?.content).toEqual([
       expect.objectContaining({

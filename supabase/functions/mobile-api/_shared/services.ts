@@ -5151,7 +5151,7 @@ function readGoogleMapsApiKey(secrets: EdgeAiSecrets): string | null {
   const denoGet = (globalThis as {
     Deno?: { env?: { get?: (name: string) => string | undefined } };
   }).Deno?.env?.get;
-  return denoGet?.("GOOGLE_MAPS_API_KEY") ?? null; // Deno.env.get("GOOGLE_MAPS_API_KEY")
+  return denoGet?.("GOOGLE_MAPS_API_KEY") ?? denoGet?.("GOOGLE_MAP_KEY") ?? null; // Deno.env.get("GOOGLE_MAPS_API_KEY")
 }
 
 function readEdgeEnvNumber(name: string): number | null {
