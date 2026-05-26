@@ -3536,7 +3536,7 @@ async function invalidateMarketCache(
   input: MarketCacheInvalidateInput,
 ): Promise<MarketCacheInvalidateResponse> {
   if (ctx.role !== "admin") {
-    apiFailure("AUTH_FORBIDDEN", "Chá»‰ admin má»›i Ä‘Æ°á»£c xoÃ¡ cache giÃ¡", 403);
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được xóa cache giá", 403);
   }
   const invalidatedAt = new Date().toISOString();
   let query = db(ctx)
@@ -3551,7 +3551,7 @@ async function invalidateMarketCache(
 
   const result = await dbQuery<Array<{ id: string }>>(query.select("id"));
   if (result.error) {
-    apiFailure("DB_ERROR", "KhÃ´ng thá»ƒ xoÃ¡ cache giÃ¡", 500);
+    apiFailure("DB_ERROR", "Không thể xóa cache giá", 500);
   }
   return {
     invalidated_count: result.data?.length ?? 0,
@@ -3582,7 +3582,10 @@ async function processKaelBatchResultsAdmin(
   if (ctx.role !== "admin") {
     apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được xử lý batch Kael", 403);
   }
-  return processBatchResults(db(ctx), secrets, { limit: input.limit });
+  return processBatchResults(db(ctx), secrets, {
+    limit: input.limit,
+    forcePoll: input.force_poll,
+  });
 }
 
 async function listNotifications(ctx: MobileApiContext) {

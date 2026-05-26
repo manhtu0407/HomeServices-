@@ -1,5 +1,15 @@
 # MEMORY
 
+## 2026-05-26 Section 24 Q4/Q5 And Section 25 R1 Gap Continuation
+
+- Tu asked to finish the honest gaps: Q4 live result processing, Q5 start, and Section 25 R1 live Perplexity verification using the local `.env.local` key if needed. Work stayed on branch `codex/kael-gap-continuation` in worktree `kael-harness-p1`.
+- Q4 result gap is now staging-proven. Added admin-only `force_poll` support for `POST /admin/kael-learning/process-batch-results`; default hourly polling remains unchanged. Live smoke temporarily enabled Q4 flags, submitted one real Anthropic Message Batch, then force-polled it to `ended=1`, `processed_items=1`, queue `processed`, batch `results_processed`, lifecycle row `1`, then cleaned up.
+- Q4 realtime fallback is now staging-proven. A sanitized queue row processed with `{ force_realtime: true }` returned `selected=1`, `submitted=0`, `realtime_fallback=1`, queue `realtime_fallback`, lifecycle row `1`, then cleanup returned Q4 tables and disposable auth users to 0. Q4 flags were reset to false and `mobile-api` was redeployed to staging v44.
+- Perplexity R1 live revealed an important API behavior: nested `web_search_options.search_domain_filter` returned HTTP 200 but did not enforce domain filtering. Top-level `search_domain_filter` and `search_recency_filter` did enforce. The Edge provider wrapper and R1 script were updated accordingly and staging v44 includes the fix.
+- Section 25 R1 final live output is `docs/foundation/source-trust-samples/source-trust-r1-1779781564809.json`: 20 final domains, 5 queries each, 100/100 HTTP 200, 368 on-domain citations/search results, 0 outside-domain violations, 0 zero-citation domains. `docs/foundation/source-trust-research.md` now records the final candidate list. R2 remains blocked until Tu approves that 20-domain list.
+- Q5 was started on staging. First 50-job run hit transient DNS `ENOTFOUND`; manual cleanup removed 17 fixture jobs/events/api_logs/notifications/profile/auth user and verified all counts 0. Added a small retry loop to `apps/api/scripts/kael-q1-baseline.mjs`. The rerun passed: 50/50 Edge jobs, 100 provider rows, schema `1.0`, advisory/estimate proxy `1.0`, cost/job `$0.000009`, projected 1000 jobs `$0.01`, p95 `2129ms`, cleanup all 0. DeepSeek health remains a blocker: 44/50 intent calls timed out, so do not promote production rollout without provider fix/approval.
+- Q5 production rollout was not run. Plan.md still requires Tu manual approval plus canary/rollback/monitoring gates before Section 24 can be marked fully complete.
+
 ## 2026-05-26 Section 24 Q2-Q4 And Section 25 R1 Start
 
 - Tu asked to continue remaining gaps: Section 24 Q2-Q5 and Section 25, plus verify/document/commit/PR. Active work stayed on branch `codex/kael-gap-continuation` in worktree `kael-harness-p1`.

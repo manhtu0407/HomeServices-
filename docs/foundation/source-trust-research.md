@@ -1,6 +1,6 @@
 # Source Trust Research - Section 25 R1
 
-Status: started, not approved for R2.
+Status: R1 live verified, awaiting Tu approval for R2.
 Date: 2026-05-26.
 Plan ref: `Plan.md` Section 25.5.
 
@@ -13,7 +13,8 @@ R1 verifies a maximum-20 Perplexity allowlist for Vietnamese/HCMC home-service m
 - Perplexity domain filters support allowlist mode when domains have no `-` prefix.
 - The documented limit is 20 domains per request.
 - Domains must be root domains without protocol, path, trailing slash, or `www`.
-- Perplexity Sonar chat completion returns `citations` and `search_results`; Sonar search controls belong under `web_search_options`.
+- Live R1 testing found that `search_domain_filter` and `search_recency_filter` must be sent at the top level for the current Sonar endpoint to enforce domain filtering. A diagnostic run with `web_search_options.search_domain_filter` returned 200 but leaked citations outside the requested domain.
+- Perplexity Sonar chat completion returns `citations` and `search_results`.
 - Anthropic prompt caching uses `cache_control: { "type": "ephemeral" }`; usage reports cache creation/read token fields.
 
 References:
@@ -21,32 +22,44 @@ References:
 - https://docs.perplexity.ai/api-reference/sonar-post
 - https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching
 
-## Candidate Domains
+## Final R1 Candidate Domains
 
-These are candidates only. They are not approved Tier 1 sources until the Perplexity R1 script returns accessible, on-domain citations and Tu approves the final list.
+Live output: `docs/foundation/source-trust-samples/source-trust-r1-1779781564809.json`
 
-| Domain | Category | Initial role | Status |
-|---|---|---|---|
-| btaskee.com | Marketplace | Cleaning/home service pricing | Candidate |
-| btaskee.work | Marketplace | bTaskee public service pages surfaced in search | Candidate |
-| jupviec.vn | Marketplace | Cleaning/housekeeping pricing | Candidate |
-| rada.com.vn | Marketplace | Home repair marketplace | Candidate |
-| anvui.com | Marketplace | Plan-listed marketplace candidate | Candidate |
-| 247shome.com | Service provider | Home service pricing, verify existence | Candidate |
-| service.vn | Directory | Yellow-pages style fallback | Candidate |
-| tuoitre.vn | News | Public news cross-check, not primary pricing | Candidate |
-| vnexpress.net | News | Public news cross-check, not primary pricing | Candidate |
-| thanhnien.vn | News | Public news cross-check, not primary pricing | Candidate |
-| dienmayxanh.com | Retail/service knowledge | Appliance/electrical context, not primary pricing | Candidate |
-| suachuatainha.com.vn | Service provider | Electrical/plumbing public price pages surfaced in search | Candidate |
-| thopro.vn | Service provider | Electrical repair public price page surfaced in search | Candidate |
-| tktclean.com | Cleaning provider | Apartment cleaning pages surfaced in search | Candidate |
-| cleanipedia.com | Cleaning knowledge | Safety/process reference, not primary pricing | Candidate |
-| cleanhouse.com.vn | Cleaning provider | Cleaning service candidate | Candidate |
-| hoanmyclean.vn | Cleaning provider | Cleaning service candidate | Candidate |
-| vesinhnhaviet.vn | Cleaning provider | Cleaning service candidate | Candidate |
-| guvico.com | Marketplace | Home cleaning app/provider candidate | Candidate |
-| 6ixgo.com | Local listing | Backup only; likely lower trust than provider sites | Candidate |
+Run summary:
+- 20 domains tested.
+- 5 Vietnamese/HCMC price queries per domain.
+- 100 Perplexity calls returned HTTP 200.
+- 368 total on-domain citations/search results.
+- 0 outside-domain citation violations.
+- 0 zero-citation domains.
+
+These are final R1 candidates only. They are not approved Tier 1 production sources until Tu approves this list for R2.
+
+| Domain | Category | R1 citations/search results | Outside-domain violations | R1 status |
+|---|---:|---:|---:|---|
+| btaskee.com | Marketplace | 33 | 0 | Candidate |
+| jupviec.vn | Marketplace | 1 | 0 | Candidate, weak evidence |
+| tuoitre.vn | News | 40 | 0 | Candidate |
+| thanhnien.vn | News | 38 | 0 | Candidate |
+| dienmayxanh.com | Retail/service knowledge | 41 | 0 | Candidate |
+| suachuatainha.com.vn | Service provider | 26 | 0 | Candidate |
+| tktclean.com | Cleaning provider | 9 | 0 | Candidate |
+| cleanipedia.com | Cleaning knowledge | 2 | 0 | Candidate, knowledge only |
+| hoanmyclean.vn | Cleaning provider | 21 | 0 | Candidate |
+| thoviet.com.vn | Service provider | 31 | 0 | Candidate |
+| thosaigon.vn | Service provider | 20 | 0 | Candidate |
+| suadiennuocnamviet.com | Service provider | 13 | 0 | Candidate |
+| khodiennuoc.com | Service provider | 20 | 0 | Candidate |
+| f24.vn | Service provider | 27 | 0 | Candidate |
+| suadiennuocvn.net | Service provider | 10 | 0 | Candidate |
+| saigonfix.vn | Service provider | 2 | 0 | Candidate, weak evidence |
+| diennuochonglinh.com | Service provider | 14 | 0 | Candidate |
+| moitruongmiendong.com | Cleaning/environment provider | 18 | 0 | Candidate |
+| drhome.com.vn | Service provider | 1 | 0 | Candidate, weak evidence |
+| diennuochuongthinh.com | Service provider | 1 | 0 | Candidate, weak evidence |
+
+Dropped from the original candidate list because top-level domain-filtered R1 returned 0 citations: `btaskee.work`, `rada.com.vn`, `anvui.com`, `247shome.com`, `service.vn`, `vnexpress.net`, `thopro.vn`, `cleanhouse.com.vn`, `vesinhnhaviet.vn`, `guvico.com`. `6ixgo.com` returned a small usable signal but remains excluded from the final 20 because the business-identity trust level is lower than the replacement service-provider domains.
 
 ## Untrust Patterns
 
@@ -80,15 +93,13 @@ node scripts/source-trust-research/run-perplexity-r1.mjs
 Output goes to `docs/foundation/source-trust-samples/` and records per-domain status, citations, search results, and outside-domain citation violations.
 
 Current local status:
-- Staging Edge secrets include `PERPLEXITY_API_KEY`, and Q2/Q3 staging runs proved the Edge runtime can call Perplexity.
-- Supabase does not expose secret values back to CLI, only digests. The direct local R1 script still cannot read `PERPLEXITY_API_KEY` from the project secrets page.
-- Perplexity R1 live domain calls were not run by this direct script in this batch.
-- To avoid pasting the key into shell, R1 live verification needs a Tu-approved server-side harness that runs inside Edge with existing project secrets.
-- R2 remains blocked until live R1 output exists and Tu approves the final 20-domain list.
+- R1 live verification completed with Tu-provided local `.env.local` key.
+- Edge/provider wrapper now sends Perplexity domain and recency filters at the top level to match live enforcement behavior.
+- R2 remains blocked until Tu approves the final 20-domain list.
 
 ## Approval Gate
 
-- [ ] 20 domains verified with Perplexity API.
+- [x] 20 domains verified with Perplexity API.
 - [x] Candidate list prepared.
 - [x] Untrust patterns documented.
 - [x] Research script prepared.

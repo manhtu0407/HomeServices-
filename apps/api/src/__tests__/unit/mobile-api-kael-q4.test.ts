@@ -122,6 +122,64 @@ describe('Kael Q4 background optimization', () => {
     expect(client.calls.some((call) => call.table === 'kael_rule_lifecycle_log')).toBe(true)
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
+
+  it('allows admin force polling before next_poll_at without changing the default hourly gate', async () => {
+    stubDenoEnv({ KAEL_OPT_BATCH_API_ENABLED: 'true' })
+    const customId = 'lq_11111111111141118111111111111111'
+    const client = makeSequenceClient([
+      {
+        data: [{
+          id: '33333333-3333-4333-8333-333333333333',
+          provider_batch_id: 'msgbatch_force',
+          status: 'submitted',
+          next_poll_at: '2026-05-26T23:00:00.000Z',
+          created_at: '2026-05-26T00:00:00.000Z',
+        }],
+        error: null,
+      },
+      { data: null, error: null },
+      {
+        data: [{
+          id: '44444444-4444-4444-8444-444444444444',
+          batch_id: '33333333-3333-4333-8333-333333333333',
+          queue_id: '11111111-1111-4111-8111-111111111111',
+          custom_id: customId,
+          skill_id: 'LS1',
+        }],
+        error: null,
+      },
+      { data: [queuedRow()], error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+    ])
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/results')) {
+        return new Response(`${JSON.stringify({
+          custom_id: customId,
+          result: { type: 'succeeded', message: { content: [{ text: '{"ok":true}' }] } },
+        })}\n`, { status: 200 })
+      }
+      return new Response(JSON.stringify({
+        id: 'msgbatch_force',
+        processing_status: 'ended',
+        request_counts: { processing: 0, succeeded: 1, errored: 0, canceled: 0, expired: 0 },
+        ended_at: '2026-05-26T01:00:00.000Z',
+      }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const summary = await processBatchResults(client, { anthropicApiKey: 'anthropic-test' }, {
+      limit: 1,
+      forcePoll: true,
+      now: new Date('2026-05-26T00:05:00.000Z'),
+    })
+
+    const batchSelect = client.calls[0]
+    expect(summary.processed_items).toBe(1)
+    expect(batchSelect.operations.some((operation) => operation[0] === 'lte')).toBe(false)
+  })
 })
 
 function learningInput(overrides: Partial<LearningSkillInput> = {}): LearningSkillInput {

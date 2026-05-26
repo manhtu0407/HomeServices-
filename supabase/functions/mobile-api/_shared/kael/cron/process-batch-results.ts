@@ -39,18 +39,21 @@ export type ProcessBatchResultsSummary = {
 export async function processBatchResults(
   client: LearningQueueDbClient,
   secrets: EdgeAiSecrets,
-  options: { limit?: number; now?: Date } = {},
+  options: { limit?: number; now?: Date; forcePoll?: boolean } = {},
 ): Promise<ProcessBatchResultsSummary> {
   const flags = readKaelOptimizationFlags();
   if (!flags.KAEL_OPT_BATCH_API_ENABLED) {
     return { checked: 0, ended: 0, processed_items: 0, failed_items: 0, skipped_reason: "batch_api_disabled" };
   }
   const now = options.now ?? new Date();
-  const batchesResult = await client
+  let batchesQuery = client
     .from("kael_ai_batches")
     .select("id,provider_batch_id,status,next_poll_at,created_at")
     .in("status", ["submitted", "in_progress", "ended"])
-    .lte("next_poll_at", now.toISOString())
+  if (!options.forcePoll) {
+    batchesQuery = batchesQuery.lte("next_poll_at", now.toISOString());
+  }
+  const batchesResult = await batchesQuery
     .order("created_at", { ascending: true })
     .limit(options.limit ?? 10);
 

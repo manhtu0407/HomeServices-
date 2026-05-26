@@ -74,13 +74,22 @@ function assertStagingUrl(value, label) {
 
 function timeoutFetch(timeoutMs) {
   return async (url, options = {}) => {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
-    try {
-      return await fetch(url, { ...options, signal: controller.signal })
-    } finally {
-      clearTimeout(timer)
+    const attempts = Number(readEnv('Q1_FETCH_RETRIES') ?? '2') + 1
+    let lastError = null
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), timeoutMs)
+      try {
+        return await fetch(url, { ...options, signal: controller.signal })
+      } catch (error) {
+        lastError = error
+        if (attempt === attempts) throw error
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempt))
+      } finally {
+        clearTimeout(timer)
+      }
     }
+    throw lastError
   }
 }
 

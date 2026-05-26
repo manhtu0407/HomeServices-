@@ -1,26 +1,21 @@
 Document type:
-Section 24 Q2-Q4 and Section 25 R1 continuation report
+Section 24 Q2-Q5 and Section 25 R1 continuation report
 Audience:
 Tu, future AI agent, reviewer.
 
 Facts captured:
-- Status: Q2/Q3 implemented and staging-verified; Q4 infrastructure implemented and staging smoke submitted one live Anthropic batch; Q5 not started.
+- Status: Q2/Q3 implemented and staging-verified; Q4 live submit/result/fallback are now staging-verified; Q5 staging 50-job comparison was started; Section 25 R1 live domain verification is complete.
 - Branch: `codex/kael-gap-continuation`.
 - Staging project: `xyylanuyflrjzbjzhqfl`.
-- Production rollout: not promoted for Q2/Q3/Q4 in this batch.
+- Production rollout: not promoted for Q2/Q3/Q4/Q5/R1 in this batch.
 
 Build summary:
-- Q1.5 baseline harness now separates job schema validity from provider success:
-  - `schema_validation_rate` = valid Edge job estimate rows / jobs.
-  - `provider_success_rate` remains safe metadata.
-  - all 11 Kael purposes are listed in purpose coverage metadata.
-  - provider failure pattern is captured by error code and purpose/provider.
-  - report text no longer claims remote feature flags were disabled; the harness does not toggle Edge secrets.
+- Q1.5 baseline harness now separates job schema validity from provider success and has a small retry loop for transient DNS/fetch failures.
 - Q2 quick wins:
   - `KAEL_OPT_PROMPT_CACHE_ENABLED` adds Anthropic `cache_control`.
   - `KAEL_OPT_CAP_OUTPUT_ENABLED` caps output tokens per purpose.
   - Anthropic cache creation/read token usage and cache cost are captured.
-  - Perplexity Sonar search controls are passed under `web_search_options`.
+  - Perplexity domain/recency filters now send top-level `search_domain_filter` / `search_recency_filter` after live R1 proved nested `web_search_options.search_domain_filter` did not enforce the allowlist.
   - `api_logs.safe_metadata.cache_status` flows into `kael_optimization_metrics`; hotfix keeps `safe_metadata` `{}` instead of `undefined`.
 - Q3 market cache:
   - migration `20260526131000_kael_market_cache_q3.sql`;
@@ -36,14 +31,16 @@ Build summary:
   - Anthropic Message Batches wrapper `provider-batch.ts`;
   - queue and result processors under `kael/cron/`;
   - admin-only routes `POST /admin/kael-learning/process-queue` and `POST /admin/kael-learning/process-batch-results`;
+  - admin-only `force_poll` input added for manual smoke/emergency polling; default hourly behavior remains unchanged;
   - Q4 flags `KAEL_OPT_BATCH_LEARNING_ENABLED` and `KAEL_OPT_BATCH_API_ENABLED` are default-off after smoke.
 - Section 25 R1:
-  - research doc created at `docs/foundation/source-trust-research.md`;
-  - live-call script created at `scripts/source-trust-research/run-perplexity-r1.mjs`;
-  - R2 remains blocked until Perplexity live R1 output exists and Tu approves the final 20-domain list.
+  - final research doc at `docs/foundation/source-trust-research.md`;
+  - live-call script at `scripts/source-trust-research/run-perplexity-r1.mjs`;
+  - final R1 sample output at `docs/foundation/source-trust-samples/source-trust-r1-1779781564809.json`;
+  - R2 remains blocked until Tu approves the final 20-domain list.
 
 Staging evidence:
-- `mobile-api` deployed to staging v38 after resetting Q4 flags off.
+- `mobile-api` deployed to staging v44 after resetting Q4 flags off and deploying the Perplexity top-level-filter/mojibake fixes.
 - Migration list includes:
   - `20260526090000` Q1 telemetry,
   - `20260526131000` Q3 market cache,
@@ -68,32 +65,61 @@ Staging evidence:
   - `to_regclass` returns all 3 Q4 tables;
   - both Q4 stale-fallback cron jobs active;
   - unauth admin processor route returns `401 AUTH_MISSING`.
-- Q4 live batch smoke:
-  - temporarily set Q4 flags true, redeployed, inserted one sanitized test queue row, called admin process route with a disposable admin user.
-  - route returned `selected=1`, `submitted=1`, `realtime_fallback=0`, and provider batch id `msgbatch_*`.
-  - queue state moved to `batched`.
-  - polling returned `checked=0` because the processor intentionally waits until `next_poll_at` one hour later.
-  - test user/profile/queue/local batch/lifecycle rows were cleaned up.
-  - post-cleanup Q4 table counts: `kael_learning_queue=0`, `kael_ai_batches=0`, `kael_ai_batch_items=0`.
-  - Q4 flags were reset to false and `mobile-api` redeployed to v38.
+- Q4 live batch/result smoke:
+  - temporarily set Q4 flags true and deployed `mobile-api`;
+  - inserted one sanitized queue row and called admin process route with a disposable admin user;
+  - submit route returned `selected=1`, `submitted=1`, `realtime_fallback=0`, provider id `msgbatch_*`, queue state `batched`;
+  - admin `force_poll` first saw `checked=1`, `ended=0`, batch `in_progress`;
+  - later admin `force_poll` saw `checked=1`, `ended=1`, `processed_items=1`, `failed_items=0`;
+  - final queue state `processed`, batch status `results_processed`, lifecycle rows for the queue = 1.
+- Q4 live fallback smoke:
+  - inserted one sanitized queue row and called process route with `{ force_realtime: true }`;
+  - route returned `selected=1`, `submitted=0`, `realtime_fallback=1`;
+  - queue state `realtime_fallback`, lifecycle rows for the queue = 1.
+- Q4 cleanup proof:
+  - `kael_learning_queue=0`;
+  - `kael_ai_batches=0`;
+  - `kael_ai_batch_items=0`;
+  - disposable `codex-q4-*` auth users = 0;
+  - Q4 flags reset false and staging redeployed.
+- Q5 staging comparison attempt:
+  - first 50-job run hit transient DNS `ENOTFOUND` after fixture creation; manual cleanup removed 17 jobs, events, api logs, notifications, profile, and auth user with post-cleanup counts all 0.
+  - rerun with harness retry passed: report `.tmp/q5-staging-50-20260526.md`, baseline key `q1-1779782521778-f86f98-staging-50`;
+  - jobs through Edge: 50;
+  - provider log rows: 100;
+  - schema validation: 1.0;
+  - advisory/estimate proxy: 1.0;
+  - provider success rate: 0.56 because DeepSeek timed out 44/50 intent calls;
+  - market lookup: 50/50 success, p95 100ms, cost `$0`;
+  - cost/job: `0.000009`;
+  - projected 1000 jobs: `$0.01`;
+  - intake p95: 2129ms;
+  - cleanup counts all 0.
+- Section 25 R1 live verification:
+  - final run id `source-trust-r1-1779781564809`;
+  - 20 domains tested;
+  - 5 queries per domain;
+  - 100 calls returned HTTP 200;
+  - 368 total citations/search results;
+  - outside-domain citation violations: 0;
+  - zero-citation domains: 0.
 
 Verification:
-- API targeted Vitest: `4 files`, `115 passed`.
-- API Q4 unit Vitest: `1 file`, `3 passed`.
-- API `tsc --noEmit`: passed.
-- `git diff --check`: passed with CRLF warnings only.
-- Supabase performance advisor: `No issues found`.
-- Supabase security advisor: existing `auth_leaked_password_protection` warning only.
+- API targeted Vitest after Q4/Q2-R1 changes: `3 files`, `40 passed`.
+- Q4 previous targeted gates: `2 files`, `35 passed`.
+- API Q4 unit Vitest: covered submit, result processing, and `forcePoll`.
+- API `tsc --noEmit`: run in final verification batch.
+- `git diff --check`: run in final verification batch.
 
 Known limitations / blockers:
 - `supabase db push --dry-run --linked` and `supabase db lint --linked` can still fail with direct Postgres `cli_login_postgres` password auth unless `SUPABASE_DB_PASSWORD` is available. Management API operations, migrations, advisors, and deployed smoke worked.
-- Q4 result-processing was not proven against a completed live batch because `process-batch-results` follows hourly `next_poll_at` by design. Batch submit path is live-proven; result path is unit-tested.
-- Q4 is not Q5-ready: no 50-job A/B, no 65% total cost comparison, no production rollout, no Tu manual production approval.
-- Section 25 R1 direct script still cannot read `PERPLEXITY_API_KEY` back out of Supabase secrets. Edge runtime has the key, but Supabase only exposes secret digests to CLI. R1 live needs either a shell Perplexity key or a Tu-approved server-side R1 harness.
+- Q5 production rollout was not run. Plan.md requires gradual production rollout and Tu manual approval. Do not mark Section 24 fully done until canary/rollout/rollback monitoring gates are satisfied.
+- Q5 provider health is not clean: DeepSeek timed out 44/50 intent calls in the latest 50-job run even though user-facing schema/advisory/cost gates passed through fallback/caching. Treat this as a provider-health blocker before production rollout.
+- Section 25 R2 must not start before Tu approves the final 20-domain R1 list.
 
 Gate status:
-- Section 24 Q2: implemented, tested, staging-enabled for Q2/Q3 evidence.
+- Section 24 Q2: implemented, tested, staging-enabled for Q2/Q3/Q5 evidence.
 - Section 24 Q3: implemented and staging-verified with clean 100-job cache evidence.
-- Section 24 Q4: infrastructure and live batch submit path implemented; hourly result processing not live-complete yet.
-- Section 24 Q5: not started.
-- Section 25 R1: started, not complete; R2 must not start before Tu approval.
+- Section 24 Q4: live submit, live result processing, live realtime fallback, env flag toggle, and cleanup verified on staging.
+- Section 24 Q5: staging 50-job comparison started and passed schema/cost cleanup gates; production rollout remains blocked by DeepSeek health and Tu manual approval.
+- Section 25 R1: live verification complete; R2 awaits Tu approval.

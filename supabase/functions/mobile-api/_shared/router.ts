@@ -231,6 +231,7 @@ export type KaelLearningQueueProcessResponse = {
 };
 export type KaelBatchResultsProcessInput = {
   limit?: number;
+  force_poll?: boolean;
 };
 export type KaelBatchResultsProcessResponse = {
   checked: number;
@@ -1521,21 +1522,21 @@ async function readJson(request: Request): Promise<unknown> {
 function optionalSafeText(value: unknown, maxLength: number): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== "string") {
-    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   const trimmed = value.trim();
   if (!trimmed || trimmed.length > maxLength) {
-    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
-    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   return trimmed.toLowerCase();
 }
 
 function marketCacheInvalidateInput(input: unknown): MarketCacheInvalidateInput {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
-    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   const record = input as Record<string, unknown>;
   const cacheId = optionalSafeText(record.cache_id, 80);
@@ -1550,7 +1551,7 @@ function marketCacheInvalidateInput(input: unknown): MarketCacheInvalidateInput 
     serviceType !== "plumbing" &&
     serviceType !== "cleaning"
   ) {
-    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   if (
     complexity !== undefined &&
@@ -1558,10 +1559,10 @@ function marketCacheInvalidateInput(input: unknown): MarketCacheInvalidateInput 
     complexity !== "medium" &&
     complexity !== "large"
   ) {
-    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   if (!cacheId && !districtCode && !problemSlug && !serviceType && !complexity) {
-    apiFailure("VALIDATION", "Cáº§n Ã­t nháº¥t má»™t bá»™ lá»c cache", 400);
+    apiFailure("VALIDATION", "Cần ít nhất một bộ lọc cache", 400);
   }
 
   return {
@@ -1575,7 +1576,7 @@ function marketCacheInvalidateInput(input: unknown): MarketCacheInvalidateInput 
 
 function kaelLearningQueueProcessInput(input: unknown): KaelLearningQueueProcessInput {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
-    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   const record = input as Record<string, unknown>;
   return {
@@ -1586,11 +1587,12 @@ function kaelLearningQueueProcessInput(input: unknown): KaelLearningQueueProcess
 
 function kaelBatchResultsProcessInput(input: unknown): KaelBatchResultsProcessInput {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
-    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   const record = input as Record<string, unknown>;
   return {
     limit: optionalPositiveInt(record.limit, 1, 50),
+    force_poll: record.force_poll === true,
   };
 }
 
@@ -1602,7 +1604,7 @@ function optionalPositiveInt(
   if (value === undefined || value === null) return undefined;
   const number = typeof value === "number" ? value : Number(value);
   if (!Number.isInteger(number) || number < min || number > max) {
-    apiFailure("VALIDATION", "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", 400);
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   return number;
 }

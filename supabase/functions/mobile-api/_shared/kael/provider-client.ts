@@ -256,12 +256,13 @@ function inferAnthropicCacheStatus(
 function perplexitySearchOptions(
   request: AIRequest,
 ): Record<string, unknown> {
+  const options: Record<string, unknown> = {};
   const webSearchOptions: Record<string, unknown> = {};
   if (request.searchDomainFilter?.length) {
-    webSearchOptions.search_domain_filter = [...request.searchDomainFilter];
+    options.search_domain_filter = [...request.searchDomainFilter];
   }
   if (request.searchRecencyFilter) {
-    webSearchOptions.search_recency_filter = request.searchRecencyFilter;
+    options.search_recency_filter = request.searchRecencyFilter;
   }
   if (request.searchMode) {
     webSearchOptions.search_mode = request.searchMode;
@@ -269,9 +270,10 @@ function perplexitySearchOptions(
   if (request.searchContextSize) {
     webSearchOptions.search_context_size = request.searchContextSize;
   }
-  return Object.keys(webSearchOptions).length > 0
-    ? { web_search_options: webSearchOptions }
-    : {};
+  if (Object.keys(webSearchOptions).length > 0) {
+    options.web_search_options = webSearchOptions;
+  }
+  return options;
 }
 
 function providerKey(

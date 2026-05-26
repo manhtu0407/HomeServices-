@@ -82,9 +82,9 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     }, { perplexityApiKey: 'pplx-test' })
 
     expect(body).toMatchObject({
+      search_domain_filter: ['example.test'],
+      search_recency_filter: 'month',
       web_search_options: {
-        search_domain_filter: ['example.test'],
-        search_recency_filter: 'month',
         search_mode: 'web',
         search_context_size: 'low',
       },

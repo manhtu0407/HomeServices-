@@ -521,7 +521,7 @@ describe('mobile-api Edge router contract', () => {
     const resultsResponse = await handler(new Request('https://example.test/mobile-api/admin/kael-learning/process-batch-results', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ limit: 1 }),
+      body: JSON.stringify({ limit: 1, force_poll: true }),
     }))
 
     expect(queueResponse.status).toBe(200)
@@ -533,7 +533,7 @@ describe('mobile-api Edge router contract', () => {
     )
     expect(processKaelBatchResults).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'admin' }),
-      { limit: 1 },
+      { limit: 1, force_poll: true },
     )
   })
 
