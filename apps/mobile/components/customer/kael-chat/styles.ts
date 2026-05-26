@@ -202,6 +202,24 @@ export const styles = StyleSheet.create({
   emptyChatStart: {
     gap: 12,
   },
+  emptyTicketCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 10,
+    padding: 14,
+  },
+  emptyTicketPill: {
+    alignSelf: 'stretch',
+    borderRadius: 999,
+    borderWidth: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 16,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
