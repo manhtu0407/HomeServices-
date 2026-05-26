@@ -21,7 +21,7 @@ Build summary:
   - Perplexity Sonar search controls are passed under `web_search_options`.
   - `api_logs.safe_metadata.cache_status` flows into `kael_optimization_metrics`.
 - Q3 market cache:
-  - migration `20260526053851_kael_market_cache_q3.sql`;
+  - migration `20260526131000_kael_market_cache_q3.sql`;
   - table `kael_market_cache`;
   - RPC `increment_kael_market_cache_hit`;
   - daily cron cleanup;
