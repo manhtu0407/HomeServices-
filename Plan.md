@@ -3967,7 +3967,7 @@ docs/workflow/worker-cancellation.md (new)                     Phase 5.4
 Plan ID:        plan-kael-harness-agentic
 Created:        2026-05-25
 Owner:          Manh Tu (manhtu0407@gmail.com)
-Status:         DRAFT v0.1 → Tu approved 2026-05-25 → write Plan.md §23
+Status:         v2.0 F26 reconciled 2026-05-26 → PR #37-#40 audit gaps closed in §26
 Critical Alert: HIGH — touches Kael identity, provider routing, money-impacting workflow
 Decision log:   Conversation 2026-05-25 (Tu + Claude) chốt Harness 7/7 + Agentic 5/5
 Scope:          Build Harness (7 sub-systems) + Agentic behavior (5 cases) trên top
@@ -6089,6 +6089,7 @@ P17 → Production: Tu approve (manual gate)
 |---|---|---|---|
 | 0.1 DRAFT | 2026-05-25 | Tu + Claude (discussion 2026-05-25) | Initial draft based on Harness 7/7 + Agentic 5/5 discussion |
 | 1.0 | 2026-05-25 | Tu approved | Approve toàn bộ, write vào Plan.md §23 |
+| 2.0 | 2026-05-26 | Tu + Claude + Codex | Reconciled PR #37-#40 audit via Plan.md §26; production rollout, provider reruns, A/B #6 decision, and DB performance cleanup recorded without editing phase bodies |
 
 ---
 
@@ -6125,7 +6126,7 @@ P17 → Production: Tu approve (manual gate)
 Plan ID:        plan-cost-optimization-anthropic
 Created:        2026-05-25
 Owner:          Manh Tu (manhtu0407@gmail.com)
-Status:         DRAFT v0.1 → Tu approved 2026-05-25 → write Plan.md §24
+Status:         v2.0 F26 reconciled 2026-05-26 → PR #37-#40 audit gaps closed in §26
 Critical Alert: MEDIUM — touches AI provider routing layer, quality measurable
 Decision log:   Conversation 2026-05-25 sau khi chốt §23
 Scope:          Implement 5 cost optimizations cho Anthropic usage, quality preserve 100%
@@ -6915,6 +6916,7 @@ Q5 → Production: A/B verify quality preserve + cost saving ≥ 65% + Tu approv
 |---|---|---|---|
 | 0.1 DRAFT | 2026-05-25 | Tu + Claude discussion | Initial draft based on Nhóm A 5 options |
 | 1.0 | 2026-05-25 | Tu approved | Approve toàn bộ, write vào Plan.md §24 |
+| 2.0 | 2026-05-26 | Tu + Claude + Codex | Reconciled PR #37-#40 audit via Plan.md §26; Q1-Q5 production rollout and quality/cost reruns recorded without editing phase bodies |
 
 ---
 
@@ -6955,7 +6957,7 @@ Q5 → Production: A/B verify quality preserve + cost saving ≥ 65% + Tu approv
 Plan ID:        plan-source-trust-multi-llm
 Created:        2026-05-25 (drafted), 2026-05-26 (written to Plan.md)
 Owner:          Manh Tu (manhtu0407@gmail.com)
-Status:         DRAFT v0.1 → Tu approved 2026-05-25 → write Plan.md §25
+Status:         v2.0 F26 reconciled 2026-05-26 → PR #37-#40 audit gaps closed in §26
 Critical Alert: MEDIUM-HIGH — touches AI price accuracy + customer trust
 Decision log:   Conversation 2026-05-25 sau khi chốt §24; Perplexity API doc verified 2026-05-25
 Scope:          Source trust enforcement (3-layer validation) + Multi-LLM blended synthesis
@@ -7932,6 +7934,7 @@ R8 → Production: A/B verify quality + citation transparency + Tu approve
 |---|---|---|---|
 | 0.1 DRAFT | 2026-05-25 | Tu + Claude discussion + Perplexity API verified | Initial draft based on Phương án A |
 | 1.0 | 2026-05-26 | Tu approved | Approve toàn bộ, write vào Plan.md §25 |
+| 2.0 | 2026-05-26 | Tu + Claude + Codex | Reconciled PR #37-#40 audit via Plan.md §26; source trust registry, citation quorum, LS1 aggregation, and production DB apply recorded without editing phase bodies |
 
 ---
 

@@ -55,6 +55,9 @@ The early chain creates the production schema and hardens workflow tables:
 | P14 | `20260526003315_fix_worker_cancellation_reason_category_ambiguity_p14.sql` | Follow-up for Supabase lint: qualifies P11 worker cancellation `reason_category` references. |
 | P17 | `20260526012712_kael_p17_monitoring_ab_setup.sql` | Monitoring dashboard views and running A/B #6 experiment shell for `price_synthesis`. |
 | Section 24 Q1 | `20260526090000_kael_cost_optimization_q1.sql` | Cost dashboard views, quality baseline table, and per-call optimization metric telemetry. |
+| Section 25 R5 | `20260526195300_source_trust_registry_f26.sql` | Source trust registry with Tier 1 seed domains and admin RLS. |
+| Plan 26 F7 | `20260526203000_f26_fk_performance_indexes.sql` | Covering indexes for remaining advisor-reported unindexed foreign keys. |
+| Plan 26 F7 | `20260526203100_f26_drop_unused_indexes.sql` | Drop advisor-reported zero-scan secondary indexes while retaining FK-supporting indexes. |
 
 ## P14 Notes
 

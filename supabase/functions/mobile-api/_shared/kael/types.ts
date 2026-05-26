@@ -27,6 +27,7 @@ export const marketPriceResultSchema = z.object({
   market_range_max: z.number().int().positive(),
   confidence: z.number().min(0).max(1),
   sources_summary: z.string().max(1000).optional(),
+  citations: z.array(z.string().url()).max(10).optional(),
 });
 
 export const scopeChangeReviewSchema = z.object({
@@ -129,7 +130,12 @@ export type AITextContent = {
   text: string;
   cache_control?: AICacheControl;
 };
-export type AIImageContent = { type: "image"; source: { type: "url"; url: string } };
+export type AIImageContent = {
+  type: "image";
+  source:
+    | { type: "url"; url: string }
+    | { type: "base64"; media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp"; data: string };
+};
 export type AIMessageContent = string | Array<AITextContent | AIImageContent>;
 export type AIMessage = {
   role: "system" | "user" | "assistant";

@@ -5,7 +5,14 @@ import { callAI } from "./provider-client.ts";
 import { readKaelOptimizationFlags } from "./cost-tracking.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { providerCandidatesForPurpose } from "./routing.ts";
-import { isSourceTrustPerplexityFilterEnabled, trustedPerplexityMarketConfig } from "./source-trust.ts";
+import {
+  isSourceTrustPerplexityFilterEnabled,
+  trustedPerplexityMarketConfig,
+  trustedPerplexityMarketConfigForClient,
+  validateCitations,
+  type CitationValidationResult,
+  type TrustedPerplexityMarketConfig,
+} from "./source-trust.ts";
 import { safeParseJSON } from "./utils.ts";
 
 const MARKET_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -95,10 +102,14 @@ export async function searchMarketPrice(
     complexity,
     district,
   );
+  const sourceTrustEnabled = isSourceTrustPerplexityFilterEnabledForSecrets(
+    secrets,
+  );
 
   if (
     readKaelOptimizationFlags().KAEL_OPT_MARKET_CACHE_ENABLED &&
-    cacheClient
+    cacheClient &&
+    !sourceTrustEnabled
   ) {
     const cached = await readMarketCache(cacheClient, cacheKey);
     if (cached) {
@@ -123,9 +134,13 @@ export async function searchMarketPrice(
     safeMetadata?: Record<string, unknown>;
   } | undefined;
   for (const route of providerCandidatesForPurpose("market_lookup")) {
-    const trustedConfig = route.provider === "perplexity" &&
-        isSourceTrustPerplexityFilterEnabledForSecrets(secrets)
-      ? trustedPerplexityMarketConfig({ serviceType, problem, complexity, district })
+    const trustedConfig = route.provider === "perplexity" && sourceTrustEnabled
+      ? await trustedPerplexityMarketConfigForClient({
+        serviceType,
+        problem,
+        complexity,
+        district,
+      }, cacheClient)
       : null;
     lastAttempt = {
       provider: route.provider,
@@ -183,23 +198,61 @@ export async function searchMarketPrice(
       failures.push(failureReason);
       continue;
     }
+    const marketWithCitations = attachCitations(validated.data, result.citations);
+    const citationValidation = trustedConfig
+      ? await validateCitations(marketWithCitations.citations ?? [], cacheClient)
+      : null;
+    const safeMetadata = mergeMarketSafeMetadata(
+      trustedConfig?.safeMetadata,
+      citationValidation?.safeMetadata,
+    );
+    if (trustedConfig && citationValidation && !citationValidation.quorumMet) {
+      const failureReason = `${route.provider}:insufficient_trusted_citations`;
+      await maybeWriteMarketArtifact(cacheClient, {
+        key: cacheKey,
+        serviceType,
+        provider: route.provider,
+        market: null,
+        failureReason,
+        safeMetadata: marketArtifactMetadata(
+          safeMetadata,
+          marketWithCitations.citations ?? [],
+          citationValidation,
+        ),
+      });
+      return trustedMarketFailure(failureReason, trustedConfig, safeMetadata);
+    }
     const cacheStatus = await maybeWriteMarketCache(
       cacheClient,
       cacheKey,
       route.provider,
-      validated.data,
+      marketWithCitations,
       result.content,
     );
+    if (trustedConfig || marketWithCitations.citations?.length) {
+      await maybeWriteMarketArtifact(cacheClient, {
+        key: cacheKey,
+        serviceType,
+        provider: route.provider,
+        market: marketWithCitations,
+        failureReason: null,
+        safeMetadata: marketArtifactMetadata(
+          safeMetadata,
+          marketWithCitations.citations ?? [],
+          citationValidation,
+        ),
+      });
+    }
     return {
       success: true,
-      market: validated.data,
+      market: marketWithCitations,
       provider: route.provider,
       model: trustedConfig?.model ?? route.model,
       inputTokens: result.usage.inputTokens,
       outputTokens: result.usage.outputTokens,
       costUsd: result.usage.costUsd,
       cacheStatus,
-      safeMetadata: trustedConfig?.safeMetadata,
+      safeMetadata,
     };
   }
   return {
@@ -218,14 +271,68 @@ function isInsufficientTrustedData(value: unknown): boolean {
 
 function trustedMarketFailure(
   failureReason: string,
-  trustedConfig: ReturnType<typeof trustedPerplexityMarketConfig>,
+  trustedConfig: TrustedPerplexityMarketConfig,
+  safeMetadata = trustedConfig.safeMetadata,
 ) {
   return {
     success: false as const,
     failureReason,
     provider: "perplexity" as const,
     model: trustedConfig.model,
-    safeMetadata: trustedConfig.safeMetadata,
+    safeMetadata,
+  };
+}
+
+function attachCitations(
+  market: MarketPriceResult,
+  providerCitations: readonly string[] | undefined,
+): MarketPriceResult {
+  const citations = [...new Set([
+    ...(market.citations ?? []),
+    ...(providerCitations ?? []),
+  ].filter((item): item is string => typeof item === "string" && item.length > 0))]
+    .slice(0, 10);
+  return citations.length > 0 ? { ...market, citations } : market;
+}
+
+function mergeMarketSafeMetadata(
+  ...parts: Array<Record<string, unknown> | undefined | null>
+): Record<string, unknown> | undefined {
+  const merged = parts.reduce<Record<string, unknown>>((acc, part) => {
+    if (!part) return acc;
+    return { ...acc, ...part };
+  }, {});
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function marketArtifactMetadata(
+  safeMetadata: Record<string, unknown> | undefined,
+  citations: readonly string[],
+  validation: CitationValidationResult | null,
+): Record<string, unknown> {
+  return {
+    ...(safeMetadata ?? {}),
+    citations: citations.map((url) => {
+      const accepted = validation?.accepted.find((item) => item.url === url);
+      if (accepted) {
+        return {
+          url,
+          domain: accepted.domain,
+          matched_domain: accepted.matchedDomain,
+          tier: accepted.tier,
+          trust_score: accepted.trustScore,
+          effective_trust_score: accepted.effectiveTrustScore,
+          accepted: true,
+        };
+      }
+      const rejected = validation?.rejected.find((item) => item.url === url);
+      return {
+        url,
+        domain: rejected?.domain ?? null,
+        accepted: false,
+        reason: rejected?.reason ?? "not_validated",
+      };
+    }),
   };
 }
 
@@ -339,6 +446,37 @@ async function maybeWriteMarketCache(
       onConflict: "district_code,service_type,problem_slug,complexity",
     }) as { error?: { message?: string } | null };
   return error ? "miss" : "write";
+}
+
+async function maybeWriteMarketArtifact(
+  supabase: MarketCacheClient | undefined,
+  input: {
+    key: ReturnType<typeof normalizeMarketCacheKey>;
+    serviceType: ServiceType;
+    provider: "anthropic" | "perplexity" | "deepseek";
+    market: MarketPriceResult | null;
+    failureReason: string | null;
+    safeMetadata: Record<string, unknown>;
+  },
+) {
+  if (!supabase || input.provider !== "perplexity") return;
+  await supabase
+    .from("kael_market_artifacts")
+    .insert({
+      service_type: input.serviceType,
+      service_problem_id: null,
+      problem_slug: input.key.problem_slug,
+      district_code: input.key.district_code,
+      complexity: input.key.complexity,
+      provider: input.provider,
+      market_range_min: input.market?.market_range_min ?? null,
+      market_range_max: input.market?.market_range_max ?? null,
+      confidence: input.market?.confidence ?? null,
+      sources_summary: input.market?.sources_summary ?? null,
+      failure_reason: input.failureReason,
+      safe_metadata: input.safeMetadata,
+    })
+    .then(() => null, () => null);
 }
 
 function numberOrNull(value: unknown): number | null {

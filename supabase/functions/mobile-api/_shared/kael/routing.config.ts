@@ -38,7 +38,7 @@ export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> 
   clarification: config("clarification", deepseek(), anthropic(), 0.003, 2_000, true, 100),
   problem_synthesis: config("problem_synthesis", deepseek(), anthropic(), 0.005, 3_000, true, 250),
   market_lookup: config("market_lookup", perplexity(), anthropic(), 0.002, 4_000, true, 300),
-  price_synthesis: config("price_synthesis", perplexity(), anthropic(), 0.01, 3_000, true, 200),
+  price_synthesis: config("price_synthesis", anthropic(), undefined, 0.01, 3_000, true, 200),
   advisory_generation: config("advisory_generation", deepseek(), anthropic(), 0.004, 2_000, true, 150),
   worker_brief: config("worker_brief", deepseek(), anthropic(), 0.006, 3_000, false, 600),
   scope_change: config("scope_change", anthropic(), undefined, 0.01, 4_000, true, 500),

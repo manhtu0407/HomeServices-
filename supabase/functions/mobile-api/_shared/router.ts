@@ -49,6 +49,11 @@ import type {
   WorkerVerificationStatus,
 } from "../../_shared/domain.ts";
 import type { KaelPublicCharterResponse } from "./kael/system-prompt.ts";
+import {
+  priceSynthesisAbCaseSchema,
+  type PriceSynthesisAbCaseInput,
+  type PriceSynthesisAbEvaluation,
+} from "./kael/price-synthesis-ab.ts";
 
 type KaelEstimate = {
   service_type: ServiceType;
@@ -690,6 +695,10 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: MarketCacheInvalidateInput,
   ): Promise<MarketCacheInvalidateResponse>;
+  evaluatePriceSynthesisAbCase(
+    ctx: MobileApiContext,
+    input: PriceSynthesisAbCaseInput,
+  ): Promise<PriceSynthesisAbEvaluation>;
   processKaelLearningQueue(
     ctx: MobileApiContext,
     input: KaelLearningQueueProcessInput,
@@ -944,6 +953,7 @@ type Route =
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
   | { kind: "admin.marketCache.invalidate"; method: "POST"; roles: UserRole[] }
+  | { kind: "admin.kaelAb.priceSynthesis"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelLearning.processQueue"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelLearning.processBatchResults"; method: "POST"; roles: UserRole[] }
   | { kind: "notifications"; method: "GET"; roles: UserRole[] }
@@ -975,6 +985,13 @@ function matchRoute(request: Request): Route | null {
   if (method === "POST" && path === "/admin/market-cache/invalidate") {
     return {
       kind: "admin.marketCache.invalidate",
+      method: "POST",
+      roles: ["admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/kael-ab/price-synthesis") {
+    return {
+      kind: "admin.kaelAb.priceSynthesis",
       method: "POST",
       roles: ["admin"],
     };
@@ -1348,6 +1365,11 @@ async function dispatchRoute(
         ctx,
         marketCacheInvalidateInput(await readJson(request)),
       );
+    case "admin.kaelAb.priceSynthesis": {
+      const input = priceSynthesisAbCaseSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Du lieu A/B khong hop le", 400);
+      return services.evaluatePriceSynthesisAbCase(ctx, input.data);
+    }
     case "admin.kaelLearning.processQueue":
       return services.processKaelLearningQueue(
         ctx,

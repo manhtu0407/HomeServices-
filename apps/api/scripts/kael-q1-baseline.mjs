@@ -24,6 +24,21 @@ const KAEL_PURPOSES = [
   'post_job_learning',
   'educational_response',
 ]
+const PURPOSE_ROUTES = {
+  intent_classification: { provider: 'deepseek', model: 'deepseek-v4-flash' },
+  vision_analysis: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+  clarification: { provider: 'deepseek', model: 'deepseek-v4-flash' },
+  problem_synthesis: { provider: 'deepseek', model: 'deepseek-v4-flash' },
+  market_lookup: { provider: 'perplexity', model: 'sonar' },
+  price_synthesis: { provider: 'perplexity', model: 'sonar' },
+  advisory_generation: { provider: 'deepseek', model: 'deepseek-v4-flash' },
+  worker_brief: { provider: 'deepseek', model: 'deepseek-v4-flash' },
+  scope_change: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+  post_job_learning: { provider: 'deepseek', model: 'deepseek-v4-flash' },
+  educational_response: { provider: 'deepseek', model: 'deepseek-v4-flash' },
+}
+const PURPOSE_PROBE_SOURCE = 'q1_5_direct_provider_probe'
+const DEFAULT_PHOTO_URL = 'https://placehold.co/64x64.jpg'
 
 const SCENARIOS = [
   {
@@ -135,6 +150,7 @@ class Q1BaselineHarness {
     for (let index = 0; index < this.config.sampleSize; index += 1) {
       await this.createBaselineJob(customer, index)
     }
+    await this.runPurposeProbes()
     const sampleEndedAt = new Date().toISOString()
     const jobs = await this.fetchJobs()
     const apiLogs = await this.fetchApiLogs()
@@ -179,6 +195,7 @@ class Q1BaselineHarness {
         provider_success_rate: round(successCount / apiLogs.length, 4),
         purpose_coverage: purposeCoverage,
         provider_failure_pattern: buildProviderFailurePattern(apiLogs),
+        purpose_probe_rows: apiLogs.filter((row) => row.safe_metadata?.source === PURPOSE_PROBE_SOURCE).length,
         cleanup_policy: 'Fixture jobs, api_logs, events, profiles, and auth user deleted after aggregate persisted.',
       },
     }
@@ -235,7 +252,9 @@ class Q1BaselineHarness {
         address_unit: `A-${index + 1}`,
         address_floor: '5',
         address_district: 'q7',
-        photo_urls: [],
+        photo_urls: this.config.usePhotos && index < Math.min(10, this.config.sampleSize)
+          ? [DEFAULT_PHOTO_URL]
+          : [],
       }),
     })
     this.timings.push(performance.now() - started)
@@ -245,6 +264,40 @@ class Q1BaselineHarness {
     assert(json.job_id, `create baseline job ${index} missing job_id`)
     assert(json.status === 'awaiting_customer_confirm', `create baseline job ${index} status ${json.status}`)
     this.jobIds.push(json.job_id)
+  }
+
+  async runPurposeProbes() {
+    if (!this.config.enablePurposeProbes) return
+    assert(this.jobIds.length > 0, 'purpose probes require at least one fixture job')
+    const rows = []
+    for (let index = 0; index < KAEL_PURPOSES.length; index += 1) {
+      const purpose = KAEL_PURPOSES[index]
+      const route = PURPOSE_ROUTES[purpose]
+      const result = await callPurposeProbe({
+        purpose,
+        route,
+        providerKeys: this.config.providerKeys,
+      })
+      rows.push({
+        job_id: this.jobIds[index % this.jobIds.length],
+        request_id: `${this.runId}-purpose-probe`,
+        purpose,
+        provider: route.provider,
+        model: route.model,
+        input_tokens: result.inputTokens,
+        output_tokens: result.outputTokens,
+        cost_usd: result.costUsd,
+        latency_ms: result.latencyMs,
+        success: result.success,
+        error_code: result.errorCode,
+        safe_metadata: {
+          source: PURPOSE_PROBE_SOURCE,
+          baseline_version: 'q1.5',
+          direct_provider_call: true,
+        },
+      })
+    }
+    await must(this.admin.from('api_logs').insert(rows), 'insert purpose probe api logs')
   }
 
   async fetchJobs() {
@@ -285,6 +338,7 @@ class Q1BaselineHarness {
         'job_broadcasts',
         'chat_messages',
         'reviews',
+        'kael_optimization_metrics',
         'api_logs',
         'notifications',
         'jobs',
@@ -306,7 +360,7 @@ class Q1BaselineHarness {
   async verifyCleanup() {
     const counts = {}
     if (this.jobIds.length > 0) {
-      for (const table of ['jobs', 'job_events', 'job_broadcasts', 'api_logs', 'notifications']) {
+      for (const table of ['jobs', 'job_events', 'job_broadcasts', 'kael_optimization_metrics', 'api_logs', 'notifications']) {
         const column = table === 'jobs' ? 'id' : 'job_id'
         const { count, error } = await this.admin
           .from(table)
@@ -362,6 +416,7 @@ Plan.md section 24 live baseline/comparison measurement for Kael cost optimizati
 - Provider breakdown: ${baseline ? JSON.stringify(baseline.provider_breakdown) : 'n/a'}
 - Purpose breakdown: ${baseline ? JSON.stringify(baseline.purpose_breakdown) : 'n/a'}
 - Purpose coverage: ${baseline ? JSON.stringify(baseline.safe_metadata.purpose_coverage) : 'n/a'}
+- Purpose probe rows: ${baseline?.safe_metadata?.purpose_probe_rows ?? 'n/a'}
 - Provider failure pattern: ${baseline ? JSON.stringify(baseline.safe_metadata.provider_failure_pattern) : 'n/a'}
 - Cost summary: ${baseline ? JSON.stringify(baseline.cost_summary) : 'n/a'}
 - Cleanup counts: ${JSON.stringify(this.cleanupCounts)}
@@ -369,6 +424,7 @@ Plan.md section 24 live baseline/comparison measurement for Kael cost optimizati
 ## Notes
 
 - This harness does not toggle remote Edge feature flags; verify Supabase secrets and cache metrics separately.
+- Q1.5 purpose probes are direct server-side provider calls tagged with \`${PURPOSE_PROBE_SOURCE}\`; they measure real provider availability for purposes not exposed by the current mobile workflow route.
 - No fixture job, api log, event, profile, or auth user is intentionally retained.
 - Persisted aggregate baseline row remains in \`kael_quality_baseline\`.
 - Safe per-call metric rows remain in \`kael_optimization_metrics\` with fixture job ids nulled by cleanup.
@@ -479,6 +535,129 @@ function number(value) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+async function callPurposeProbe({ purpose, route, providerKeys }) {
+  const apiKey = providerKeys[route.provider]
+  if (!apiKey) throw new Error(`missing provider key for ${route.provider}`)
+  const started = performance.now()
+  try {
+    const result = route.provider === 'anthropic'
+      ? await callAnthropicProbe({ purpose, route, apiKey })
+      : await callOpenAiCompatibleProbe({ purpose, route, apiKey })
+    return {
+      ...result,
+      latencyMs: Math.round(performance.now() - started),
+      success: true,
+      errorCode: null,
+    }
+  } catch (error) {
+    return {
+      inputTokens: null,
+      outputTokens: null,
+      costUsd: null,
+      latencyMs: Math.round(performance.now() - started),
+      success: false,
+      errorCode: error instanceof Error ? error.message.slice(0, 80) : 'AI_CALL_FAILED',
+    }
+  }
+}
+
+async function callAnthropicProbe({ purpose, route, apiKey }) {
+  const response = await timeoutFetch(20_000)('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: route.model,
+      max_tokens: 120,
+      temperature: 0.2,
+      system: purposeProbeSystem(purpose),
+      messages: [{ role: 'user', content: purposeProbeUser(purpose) }],
+    }),
+  })
+  const text = await response.text()
+  if (!response.ok) throw new Error(`HTTP_${response.status}`)
+  const data = text ? JSON.parse(text) : {}
+  const inputTokens = number(data.usage?.input_tokens)
+  const outputTokens = number(data.usage?.output_tokens)
+  const isHaiku = route.model.includes('haiku')
+  const inputRate = isHaiku ? 0.25 : 3
+  const outputRate = isHaiku ? 1.25 : 15
+  return {
+    inputTokens,
+    outputTokens,
+    costUsd: round(inputTokens * (inputRate / 1_000_000) + outputTokens * (outputRate / 1_000_000), 6),
+  }
+}
+
+async function callOpenAiCompatibleProbe({ purpose, route, apiKey }) {
+  const isPerplexity = route.provider === 'perplexity'
+  const response = await timeoutFetch(isPerplexity ? 20_000 : 12_000)(
+    isPerplexity ? 'https://api.perplexity.ai/v1/sonar' : 'https://api.deepseek.com/chat/completions',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: route.model,
+        max_tokens: 120,
+        temperature: 0.2,
+        ...(isPerplexity ? {} : {
+          thinking: { type: 'disabled' },
+          response_format: { type: 'json_object' },
+        }),
+        messages: [
+          { role: 'system', content: purposeProbeSystem(purpose) },
+          { role: 'user', content: purposeProbeUser(purpose) },
+        ],
+      }),
+    },
+  )
+  const text = await response.text()
+  if (!response.ok) throw new Error(`HTTP_${response.status}`)
+  const data = text ? JSON.parse(text) : {}
+  const inputTokens = number(data.usage?.prompt_tokens)
+  const outputTokens = number(data.usage?.completion_tokens)
+  const costUsd = isPerplexity
+    ? inputTokens * (1 / 1_000_000) + outputTokens * (1 / 1_000_000)
+    : inputTokens * (0.14 / 1_000_000) + outputTokens * (0.28 / 1_000_000)
+  return {
+    inputTokens,
+    outputTokens,
+    costUsd: round(costUsd, 6),
+  }
+}
+
+function purposeProbeSystem(purpose) {
+  return [
+    'You are Kael, a Vietnamese home-services assistant for electrical repair, plumbing repair, and home cleaning in Ho Chi Minh City apartments.',
+    `Current purpose: ${purpose}.`,
+    'Return compact JSON only. Do not include phone numbers, addresses, IDs, bank data, secrets, or provider internals.',
+  ].join('\n')
+}
+
+function purposeProbeUser(purpose) {
+  const shared = 'Scenario: customer reports a leaking sink in an apartment in District 7. Keep output short and safe.'
+  const prompts = {
+    intent_classification: `${shared} Classify service_type and problem_slug.`,
+    vision_analysis: `${shared} Summarize visible/suspected issue as if a fixture photo was reviewed; avoid certainty.`,
+    clarification: `${shared} Ask one missing-information question.`,
+    problem_synthesis: `${shared} Summarize the problem in Vietnamese.`,
+    market_lookup: `${shared} Provide a conservative market range with source summary wording.`,
+    price_synthesis: `${shared} Produce a conservative estimate range from baseline and market context.`,
+    advisory_generation: `${shared} Give one practical safety advisory.`,
+    worker_brief: `${shared} Create a short worker brief with access and evidence notes.`,
+    scope_change: `${shared} Worker says pipe inside cabinet also needs replacement; review scope change support.`,
+    post_job_learning: `${shared} Produce sanitized aggregate learning notes only.`,
+    educational_response: 'Customer asks how to shut off water safely before a plumber arrives. Answer briefly in Vietnamese.',
+  }
+  return prompts[purpose] ?? shared
+}
+
 function loadConfig() {
   if (process.env.Q1_BASELINE_RUN_LIVE !== '1') {
     throw new Error('Set Q1_BASELINE_RUN_LIVE=1 to run the mutable staging baseline harness.')
@@ -492,6 +671,17 @@ function loadConfig() {
   ).replace(/\/$/, '')
   assertStagingUrl(supabaseUrl, 'Q1_SUPABASE_URL')
   assertStagingUrl(apiBaseUrl, 'Q1_API_BASE_URL')
+  const providerKeys = {
+    anthropic: readEnv('ANTHROPIC_API_KEY'),
+    deepseek: readEnv('DEEPSEEK_API_KEY'),
+    perplexity: readEnv('PERPLEXITY_API_KEY'),
+  }
+  const enablePurposeProbes = readEnv('Q1_PURPOSE_PROBES') !== '0'
+  if (enablePurposeProbes) {
+    for (const [provider, key] of Object.entries(providerKeys)) {
+      if (!key) throw new Error(`Missing provider key for Q1 purpose probes: ${provider}`)
+    }
+  }
   return {
     supabaseUrl,
     anonKey,
@@ -499,6 +689,9 @@ function loadConfig() {
     apiBaseUrl,
     sampleSize: Number(readEnv('Q1_SAMPLE_SIZE') ?? '50'),
     reportPath: resolve(REPO_ROOT, readEnv('Q1_BASELINE_REPORT_PATH') ?? DEFAULT_REPORT_PATH),
+    enablePurposeProbes,
+    usePhotos: readEnv('Q1_USE_PHOTOS') !== '0',
+    providerKeys,
   }
 }
 

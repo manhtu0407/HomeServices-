@@ -164,6 +164,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'decideWorkerCancellation',
       'declineBroadcast',
       'deleteMyKaelMemory',
+      'evaluatePriceSynthesisAbCase',
       'getJob',
       'getKaelCharter',
       'getKaelChat',
@@ -1635,6 +1636,12 @@ describe('mobile-api Edge runtime helpers', () => {
       requestBodies.push(body)
       const target = String(url)
 
+      if (target.includes('storage.example.com')) {
+        return new Response(new Uint8Array([255, 216, 255, 217]), {
+          headers: { 'content-type': 'image/jpeg' },
+        })
+      }
+
       if (target.includes('deepseek.com')) {
         return new Response(JSON.stringify({
           choices: [{
@@ -1703,6 +1710,12 @@ describe('mobile-api Edge runtime helpers', () => {
       const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown> & { max_tokens?: number }
       requestBodies.push(body)
       const target = String(url)
+
+      if (target.includes('storage.example.com')) {
+        return new Response(new Uint8Array([255, 216, 255, 217]), {
+          headers: { 'content-type': 'image/jpeg' },
+        })
+      }
 
       if (target.includes('deepseek.com')) {
         return new Response(JSON.stringify({
@@ -1781,8 +1794,9 @@ describe('mobile-api Edge runtime helpers', () => {
       {
         type: 'image',
         source: {
-          type: 'url',
-          url: photoUrl,
+          type: 'base64',
+          media_type: 'image/jpeg',
+          data: expect.any(String),
         },
       },
     ])

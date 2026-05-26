@@ -841,8 +841,8 @@ class P15Harness {
     if (jobIds.length === 0) return true
     const cli = this.config.supabaseCli
     const token = this.config.supabaseAccessToken
-    if (!cli || !token || !existsSync(cli)) {
-      this.results.limitations.push('Cleanup SQL skipped because P15_SUPABASE_CLI or SUPABASE_ACCESS_TOKEN was unavailable.')
+    if (!cli || !existsSync(cli)) {
+      this.results.limitations.push('Cleanup SQL skipped because P15_SUPABASE_CLI was unavailable.')
       return false
     }
     const uuidArray = `array[${jobIds.map((id) => `'${id}'`).join(',')}]::uuid[]`
@@ -872,17 +872,20 @@ commit;
     await writeFile(sqlPath, sql, 'utf8')
     try {
       const result = spawnSync(
-        cli,
-        ['db', 'query', '--linked', '--file', sqlPath, '--output', 'json'],
+        process.platform === 'win32' ? (process.env.ComSpec ?? 'cmd.exe') : cli,
+        process.platform === 'win32'
+          ? ['/d', '/c', `""${cli}" db query --linked --file "${sqlPath}" --output json"`]
+          : ['db', 'query', '--linked', '--file', sqlPath, '--output', 'json'],
         {
           cwd: REPO_ROOT,
-          env: { ...process.env, SUPABASE_ACCESS_TOKEN: token },
+          env: token ? { ...process.env, SUPABASE_ACCESS_TOKEN: token } : process.env,
           encoding: 'utf8',
+          windowsVerbatimArguments: process.platform === 'win32',
           maxBuffer: 10 * 1024 * 1024,
         },
       )
       if (result.status !== 0) {
-        throw new Error(result.stderr || result.stdout || `supabase db query exited ${result.status}`)
+        throw new Error(result.error?.message || result.stderr || result.stdout || `supabase db query exited ${result.status}`)
       }
       return true
     } finally {

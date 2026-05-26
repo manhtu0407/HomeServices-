@@ -19,8 +19,8 @@ describe('mobile-api Kael P3 routing foundation', () => {
     expect(KAEL_ROUTING_CONFIG.intent_classification.fallback?.provider).toBe('anthropic')
     expect(KAEL_ROUTING_CONFIG.vision_analysis.primary.provider).toBe('anthropic')
     expect(KAEL_ROUTING_CONFIG.vision_analysis.fallback).toBeUndefined()
-    expect(KAEL_ROUTING_CONFIG.price_synthesis.primary.provider).toBe('perplexity')
-    expect(KAEL_ROUTING_CONFIG.price_synthesis.fallback?.provider).toBe('anthropic')
+    expect(KAEL_ROUTING_CONFIG.price_synthesis.primary.provider).toBe('anthropic')
+    expect(KAEL_ROUTING_CONFIG.price_synthesis.fallback).toBeUndefined()
     expect(KAEL_ROUTING_CONFIG.scope_change.primary.provider).toBe('anthropic')
   })
 

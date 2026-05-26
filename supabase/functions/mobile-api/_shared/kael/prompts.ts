@@ -88,16 +88,20 @@ Description: ${description}`,
 export function buildVisionMessages(
   description: string,
   intentContext: string,
-  photoUrls: string[] = [],
+  photoInputs: string[] | AIImageContent[] = [],
 ): AIMessage[] {
   const textContent =
     `Intent context: ${intentContext}\nCustomer description: ${description}`;
-  const imageBlocks = sanitizeVisionPhotoUrls(photoUrls).map((
-    url,
-  ): AIImageContent => ({
-    type: "image",
-    source: { type: "url", url },
-  }));
+  const imageBlocks: AIImageContent[] = photoInputs.every((item) =>
+      typeof item !== "string"
+    )
+    ? photoInputs
+    : sanitizeVisionPhotoUrls(photoInputs as string[]).map((
+      url,
+    ): AIImageContent => ({
+      type: "image",
+      source: { type: "url", url },
+    }));
 
   return [
     {

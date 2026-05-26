@@ -4,14 +4,19 @@ import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kae
 import { maxTokensForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
 import { marketLookupTelemetry, searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
 import {
+  effectiveTrustScore,
   isSourceTrustPerplexityFilterEnabled,
+  lookupTrustScore,
+  resetSourceTrustRegistryCacheForTest,
   SOURCE_TRUST_VERSION,
   TIER_1_SOURCE_TRUST_DOMAINS,
+  validateCitations,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/source-trust'
 
 describe('mobile-api Kael Q2/Q3 cost optimization', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    resetSourceTrustRegistryCacheForTest()
   })
 
   it('keeps output caps behind KAEL_OPT_CAP_OUTPUT_ENABLED', () => {
@@ -164,6 +169,10 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
           },
         }],
         usage: { prompt_tokens: 52, completion_tokens: 38 },
+        citations: [
+          'https://btaskee.com/bang-gia-ve-sinh',
+          'https://jupviec.vn/bang-gia',
+        ],
       })
     }))
 
@@ -200,8 +209,86 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
         search_mode: 'web',
         search_context_size: 'medium',
         latency_budget_ms: 6000,
+        source_trust_citation_result: 'passed',
+        accepted_citations: 2,
       })
+      expect(result.market.citations).toEqual([
+        'https://btaskee.com/bang-gia-ve-sinh',
+        'https://jupviec.vn/bang-gia',
+      ])
     }
+  })
+
+  it('loads F26 source trust scores from DB rows', async () => {
+    const { client, calls } = makeSourceTrustClient([
+      registryRow('btaskee.com', 1),
+      registryRow('jupviec.vn', 0.9),
+      registryRow('untrusted.test', 0.2, 'tier_3'),
+    ])
+
+    const result = await lookupTrustScore(
+      'https://www.btaskee.com/cleaning',
+      client,
+      { now: new Date('2026-05-26T12:00:00.000Z') },
+    )
+
+    expect(result).toMatchObject({
+      requestedDomain: 'btaskee.com',
+      matchedDomain: 'btaskee.com',
+      tier: 'tier_1',
+      trustScore: 1,
+      effectiveTrustScore: 1,
+      source: 'db',
+    })
+    expect(calls.filter((call) => call.table === 'source_trust_registry')).toHaveLength(1)
+  })
+
+  it('applies F26 trust score decay and blocks unknown domains', async () => {
+    expect(effectiveTrustScore({
+      trustScore: 1,
+      lastReviewedAt: '2026-01-01T00:00:00.000Z',
+      effectiveUntil: null,
+      isActive: true,
+    }, new Date('2026-05-26T00:00:00.000Z'))).toBe(0.9)
+
+    const unknown = await lookupTrustScore(
+      'https://unknown.example/price',
+      makeSourceTrustClient([registryRow('btaskee.com', 1)]).client,
+      { now: new Date('2026-05-26T00:00:00.000Z') },
+    )
+
+    expect(unknown).toMatchObject({
+      tier: 'blocked',
+      trustScore: 0,
+      effectiveTrustScore: 0,
+    })
+  })
+
+  it('validates trusted citation quorum from distinct Tier 1 domains', async () => {
+    const { client } = makeSourceTrustClient([
+      registryRow('btaskee.com', 1),
+      registryRow('jupviec.vn', 0.95),
+    ])
+
+    const pass = await validateCitations([
+      'https://btaskee.com/source-a',
+      'https://jupviec.vn/source-b',
+    ], client, 2, { now: new Date('2026-05-26T00:00:00.000Z') })
+    const fail = await validateCitations([
+      'https://btaskee.com/source-a',
+      'https://facebook.com/group-post',
+    ], client, 2, { now: new Date('2026-05-26T00:00:00.000Z') })
+
+    expect(pass.quorumMet).toBe(true)
+    expect(pass.safeMetadata).toMatchObject({
+      source_trust_citation_result: 'passed',
+      accepted_citations: 2,
+    })
+    expect(fail.quorumMet).toBe(false)
+    expect(fail.safeMetadata).toMatchObject({
+      source_trust_citation_result: 'insufficient_trusted_citations',
+      accepted_citations: 1,
+    })
   })
 
   it('fails safely when trusted Perplexity says data is insufficient', async () => {
@@ -233,6 +320,48 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
         source_trust_version: SOURCE_TRUST_VERSION,
       })
     }
+  })
+
+  it('persists F26 trusted citations into kael_market_artifacts metadata', async () => {
+    stubDenoEnv({ KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'true' })
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      jsonResponse({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              market_range_min: 160000,
+              market_range_max: 280000,
+              confidence: 0.84,
+              sources_summary: '2 trusted Vietnamese domains.',
+            }),
+          },
+        }],
+        usage: { prompt_tokens: 52, completion_tokens: 38 },
+        citations: [
+          'https://btaskee.com/bang-gia',
+          'https://jupviec.vn/gia-dich-vu',
+        ],
+      })
+    ))
+    const { client, calls } = makeMarketTrustClient()
+
+    const result = await searchMarketPrice(
+      'cleaning',
+      'standard_home_cleaning',
+      'medium',
+      'q7',
+      { perplexityApiKey: 'pplx-test', sourceTrustPerplexityFilterEnabled: true },
+      client,
+    )
+
+    expect(result.success).toBe(true)
+    const artifactInsert = calls.find((call) =>
+      call.table === 'kael_market_artifacts' &&
+      call.operations.some((operation) => operation[0] === 'insert')
+    )
+    expect(JSON.stringify(artifactInsert)).toContain('https://btaskee.com/bang-gia')
+    expect(JSON.stringify(artifactInsert)).toContain('"accepted":true')
+    expect(JSON.stringify(artifactInsert)).toContain('source_trust_citation_result')
   })
 
   it('precomputes Section 25 R2 market telemetry for outer stage timeouts', () => {
@@ -355,6 +484,100 @@ function jsonResponse(value: unknown) {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   })
+}
+
+function registryRow(domain: string, trustScore: number, tier = 'tier_1') {
+  return {
+    domain,
+    tier,
+    trust_score: trustScore,
+    is_active: true,
+    last_reviewed_at: '2026-05-26T00:00:00.000Z',
+    effective_until: null,
+  }
+}
+
+function makeSourceTrustClient(rows: Array<Record<string, unknown>>) {
+  const calls: Array<{ table: string; operations: unknown[][] }> = []
+  return {
+    calls,
+    client: {
+      from: (table: string) => makeTableQuery(
+        table,
+        calls,
+        table === 'source_trust_registry' ? rows : null,
+      ),
+    },
+  }
+}
+
+function makeMarketTrustClient() {
+  const calls: Array<{ table: string; operations: unknown[][] }> = []
+  return {
+    calls,
+    client: {
+      from: (table: string) => makeTableQuery(
+        table,
+        calls,
+        table === 'source_trust_registry'
+          ? [registryRow('btaskee.com', 1), registryRow('jupviec.vn', 0.95)]
+          : null,
+      ),
+      rpc: () => thenable({ data: null, error: null }),
+    },
+  }
+}
+
+function makeTableQuery(
+  table: string,
+  calls: Array<{ table: string; operations: unknown[][] }>,
+  data: unknown,
+) {
+  const call = { table, operations: [] as unknown[][] }
+  calls.push(call)
+  let mode: 'select' | 'insert' | 'upsert' = 'select'
+  const query = {
+    select: (columns?: string) => {
+      call.operations.push(['select', columns])
+      return query
+    },
+    insert: (value: unknown) => {
+      mode = 'insert'
+      call.operations.push(['insert', value])
+      return query
+    },
+    update: (value: unknown) => {
+      call.operations.push(['update', value])
+      return query
+    },
+    upsert: (value: unknown, options?: unknown) => {
+      mode = 'upsert'
+      call.operations.push(['upsert', value, options])
+      return query
+    },
+    eq: (column: string, value: unknown) => {
+      call.operations.push(['eq', column, value])
+      return query
+    },
+    gt: (column: string, value: unknown) => {
+      call.operations.push(['gt', column, value])
+      return query
+    },
+    is: (column: string, value: unknown) => {
+      call.operations.push(['is', column, value])
+      return query
+    },
+    maybeSingle: () => query,
+    then: <TResult1 = unknown, TResult2 = never>(
+      onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
+      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+    ) => Promise.resolve(
+      mode === 'insert' || mode === 'upsert'
+        ? { data: null, error: null }
+        : { data, error: null },
+    ).then(onfulfilled, onrejected),
+  }
+  return query
 }
 
 function makeMarketCacheClient(cacheRow: Record<string, unknown> | null) {
