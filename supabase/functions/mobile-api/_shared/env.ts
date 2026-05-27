@@ -19,7 +19,11 @@ export function readEdgeEnv(
     anthropicApiKey: getEnv("ANTHROPIC_API_KEY"),
     perplexityApiKey: getEnv("PERPLEXITY_API_KEY"),
     deepseekApiKey: getEnv("DEEPSEEK_API_KEY"),
-    googleMapsApiKey: getEnv("GOOGLE_MAPS_API_KEY"),
+    vietmapApiKey: getEnv("VIETMAP_API_KEY") ?? getEnv("VIETMAP_MAPS_API_KEY"),
+    googleMapsApiKey: getEnv("GOOGLE_MAPS_API_KEY") ?? getEnv("GOOGLE_MAP_KEY"),
+    learningEnabled:
+      readBooleanFlag(getEnv("LEARNING_ENABLED")) ||
+      readBooleanFlag(getEnv("KAEL_OPT_BATCH_LEARNING_ENABLED")),
   };
 }
 
@@ -39,4 +43,8 @@ function readSupabaseSecretKey(
   }
   return getEnv("SUPABASE_SERVICE_ROLE_KEY") ?? getEnv("SUPABASE_SECRET_KEY") ??
     getEnv("APP_SECRET_KEY");
+}
+
+function readBooleanFlag(value: string | undefined): boolean {
+  return value?.trim().toLowerCase() === "true";
 }

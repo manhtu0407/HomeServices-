@@ -4,6 +4,9 @@ import { mobileRuntimeConfig } from './runtime-config'
 const API_BASE_URL = mobileRuntimeConfig.apiBaseUrl.replace(/\/+$/, '')
 const SUPABASE_PUBLISHABLE_KEY = mobileRuntimeConfig.supabasePublishableKey
 const TIMEOUT_MS = 15_000
+const MAX_RETRIES = 2
+const BASE_RETRY_DELAY_MS = 500
+const MAX_RETRY_DELAY_MS = 10_000
 const MOBILE_API_BASE_PATH = /(?:\/functions\/v1)?\/mobile-api$/i
 
 export type ApiResult<T> =
@@ -51,50 +54,69 @@ async function request<T>(
     }
   }
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const retryBudget = isRetrySafeRequest(method, path) ? MAX_RETRIES : 0
 
-  try {
-    const headers = await getAuthHeaders()
-    const url = `${API_BASE_URL}${path}`
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    })
+    try {
+      const headers = await getAuthHeaders()
+      const url = `${API_BASE_URL}${path}`
 
-    const responseText = await response.text()
-    const json = safeParseJsonObject(responseText)
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      })
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: json.error ?? 'Lỗi không xác định',
-        code: typeof json?.code === 'string' ? json.code : `HTTP_${response.status}`,
-        status: response.status,
+      const responseText = await response.text()
+      const json = safeParseJsonObject(responseText)
+
+      if (!response.ok) {
+        if (attempt < retryBudget && shouldRetryResponse(response.status)) {
+          await waitForRetry(method, path, attempt, `HTTP_${response.status}`)
+          continue
+        }
+        return {
+          success: false,
+          error: json.error ?? 'Lỗi không xác định',
+          code: typeof json?.code === 'string' ? json.code : `HTTP_${response.status}`,
+          status: response.status,
+        }
       }
-    }
 
-    return { success: true, data: (json ?? {}) as T, status: response.status }
-  } catch (err) {
-    if (isAbortError(err)) {
+      return { success: true, data: (json ?? {}) as T, status: response.status }
+    } catch (err) {
+      if (attempt < retryBudget && shouldRetryError(err)) {
+        await waitForRetry(method, path, attempt, isAbortError(err) ? 'TIMEOUT' : 'NETWORK_ERROR')
+        continue
+      }
+      if (isAbortError(err)) {
+        return {
+          success: false,
+          error: 'Kết nối quá chậm, vui lòng thử lại',
+          code: 'TIMEOUT',
+          status: 0,
+        }
+      }
       return {
         success: false,
-        error: 'Kết nối quá chậm, vui lòng thử lại',
-        code: 'TIMEOUT',
+        error: 'Không thể kết nối đến hệ thống',
+        code: 'NETWORK_ERROR',
         status: 0,
       }
+    } finally {
+      clearTimeout(timeout)
     }
-    return {
-      success: false,
-      error: 'Không thể kết nối đến hệ thống',
-      code: 'NETWORK_ERROR',
-      status: 0,
-    }
-  } finally {
-    clearTimeout(timeout)
+  }
+
+  return {
+    success: false,
+    error: 'Không thể kết nối đến hệ thống',
+    code: 'NETWORK_ERROR',
+    status: 0,
   }
 }
 
@@ -123,4 +145,36 @@ function isAbortError(err: unknown) {
     err !== null &&
     'name' in err &&
     (err as { name?: unknown }).name === 'AbortError'
+}
+
+function isRetrySafeRequest(method: string, path: string) {
+  if (method === 'GET' || method === 'HEAD') return true
+  if (method === 'POST' && path === '/places/autocomplete') return true
+  if (method === 'POST' && path === '/notifications/device-token') return true
+  if (method === 'POST' && /^\/notifications\/[^/]+\/read$/.test(path)) return true
+  return false
+}
+
+function shouldRetryResponse(status: number) {
+  return status === 408 || status === 425 || status === 429 || status >= 500
+}
+
+function shouldRetryError(err: unknown) {
+  return isAbortError(err) || err instanceof TypeError
+}
+
+async function waitForRetry(method: string, path: string, attempt: number, reason: string) {
+  const backoffMs = Math.min(BASE_RETRY_DELAY_MS * Math.pow(2, attempt), MAX_RETRY_DELAY_MS)
+  console.warn('mobile-api retry', {
+    method,
+    path: safePathForLog(path),
+    attempt: attempt + 1,
+    backoffMs,
+    reason,
+  })
+  await new Promise((resolve) => setTimeout(resolve, backoffMs))
+}
+
+function safePathForLog(path: string) {
+  return path.split('?')[0] || '/'
 }

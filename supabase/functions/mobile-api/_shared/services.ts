@@ -84,10 +84,18 @@ const JOB_DETAIL_SELECT =
 const DEFAULT_WORKER_CANDIDATE_POOL_SIZE = 50;
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 const KAEL_CHAT_HARD_COST_CAP_USD = 1;
+const VIETMAP_AUTOCOMPLETE_URL = "https://maps.vietmap.vn/api/autocomplete/v4";
+const VIETMAP_SEARCH_URL = "https://maps.vietmap.vn/api/search/v4";
+const VIETMAP_PLACE_URL = "https://maps.vietmap.vn/api/place/v4";
 const GOOGLE_GEOCODING_URL = "https://maps.googleapis.com/maps/api/geocode/json";
 const GOOGLE_PLACES_AUTOCOMPLETE_URL =
   "https://places.googleapis.com/v1/places:autocomplete";
-const GOOGLE_MAPS_TIMEOUT_MS = 5_000;
+const HCMC_MAP_FOCUS = "10.776889,106.700806";
+const VIETMAP_HCMC_CITY_ID = "12";
+const MAPS_PROVIDER_TIMEOUT_MS = 5_000;
+
+type MapsGeoSource = "vietmap" | "google_maps";
+type GeocodeResult = { lat: number; lng: number; geoSource: MapsGeoSource };
 
 type KaelChatStatus = "active" | "estimate_ready" | "confirmed" | "abandoned";
 type KaelChatNextAction =
@@ -244,9 +252,61 @@ async function placesAutocomplete(
   secrets: EdgeAiSecrets,
 ): Promise<PlacesAutocompleteResponse> {
   void ctx;
-  const apiKey = readGoogleMapsApiKey(secrets);
-  if (!apiKey) return { suggestions: [], fallback_used: true };
+  const vietmapApiKey = readVietmapApiKey(secrets);
+  if (vietmapApiKey) {
+    const result = await vietmapPlacesAutocomplete(input, vietmapApiKey);
+    if (!result.fallback_used) return result;
+  }
 
+  const googleApiKey = readGoogleMapsApiKey(secrets);
+  if (googleApiKey) return googlePlacesAutocomplete(input, googleApiKey);
+
+  return { suggestions: [], fallback_used: true };
+}
+
+async function vietmapPlacesAutocomplete(
+  input: PlacesAutocompleteInput,
+  apiKey: string,
+): Promise<PlacesAutocompleteResponse> {
+  try {
+    const url = buildVietmapUrl(VIETMAP_AUTOCOMPLETE_URL, apiKey, {
+      text: input.input,
+      focus: HCMC_MAP_FOCUS,
+      display_type: "6",
+      cityId: VIETMAP_HCMC_CITY_ID,
+    });
+    const response = await fetchJsonWithTimeout(url, { method: "GET" });
+    if (!response.ok) {
+      console.warn("mobile-api places autocomplete failed", {
+        provider: "vietmap",
+        status: response.status,
+      });
+      return { suggestions: [], fallback_used: true };
+    }
+
+    const body = await response.json().catch(() => []) as unknown;
+    const rows = Array.isArray(body) ? body : [];
+    const suggestions = rows
+      .map(vietmapAutocompleteSuggestion)
+      .filter((item): item is PlacesAutocompleteResponse["suggestions"][number] =>
+        item !== null
+      )
+      .slice(0, 5);
+
+    return { suggestions, fallback_used: false };
+  } catch (error) {
+    console.warn("mobile-api places autocomplete threw", {
+      provider: "vietmap",
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+    return { suggestions: [], fallback_used: true };
+  }
+}
+
+async function googlePlacesAutocomplete(
+  input: PlacesAutocompleteInput,
+  apiKey: string,
+): Promise<PlacesAutocompleteResponse> {
   try {
     const response = await fetchJsonWithTimeout(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
       method: "POST",
@@ -272,6 +332,7 @@ async function placesAutocomplete(
     });
     if (!response.ok) {
       console.warn("mobile-api places autocomplete failed", {
+        provider: "google_maps",
         status: response.status,
       });
       return { suggestions: [], fallback_used: true };
@@ -312,6 +373,7 @@ async function placesAutocomplete(
     return { suggestions, fallback_used: false };
   } catch (error) {
     console.warn("mobile-api places autocomplete threw", {
+      provider: "google_maps",
       errorName: error instanceof Error ? error.name : typeof error,
     });
     return { suggestions: [], fallback_used: true };
@@ -3726,23 +3788,108 @@ async function geocodeJobAddressForMatching(
     address_building: input.addressLabel?.slice(0, 200) ?? null,
     geo_source: "fallback",
   });
-  const apiKey = readGoogleMapsApiKey(secrets);
-  if (!apiKey || !district || !address) {
+  const vietmapApiKey = readVietmapApiKey(secrets);
+  const googleApiKey = readGoogleMapsApiKey(secrets);
+  if ((!vietmapApiKey && !googleApiKey) || !district || !address) {
     await updateJobGeo(client, jobId, fallbackUpdate);
     return;
   }
 
+  const vietmapResult = vietmapApiKey
+    ? await geocodeWithVietmap(address, vietmapApiKey, jobId)
+    : null;
+  const result = vietmapResult ??
+    (googleApiKey
+      ? await geocodeWithGoogleMaps(address, googleApiKey, jobId)
+      : null);
+
+  if (result) {
+    await updateJobGeo(client, jobId, {
+      ...fallbackUpdate,
+      address_lat: result.lat,
+      address_lng: result.lng,
+      geo_source: result.geoSource,
+    });
+    return;
+  }
+
+  await updateJobGeo(client, jobId, fallbackUpdate);
+}
+
+async function geocodeWithVietmap(
+  address: string,
+  apiKey: string,
+  jobId: string,
+): Promise<GeocodeResult | null> {
+  try {
+    const searchUrl = buildVietmapUrl(VIETMAP_SEARCH_URL, apiKey, {
+      text: address,
+      focus: HCMC_MAP_FOCUS,
+      display_type: "6",
+      cityId: VIETMAP_HCMC_CITY_ID,
+    });
+    const searchResponse = await fetchJsonWithTimeout(searchUrl, {
+      method: "GET",
+    });
+    if (!searchResponse.ok) {
+      console.warn("mobile-api geocoding failed", {
+        provider: "vietmap",
+        stage: "search",
+        jobId,
+        status: searchResponse.status,
+      });
+      return null;
+    }
+
+    const searchBody = await searchResponse.json().catch(() => []) as unknown;
+    const refId = firstVietmapRefId(searchBody);
+    if (!refId) return null;
+
+    const placeUrl = buildVietmapUrl(VIETMAP_PLACE_URL, apiKey, {
+      refid: refId,
+    });
+    const placeResponse = await fetchJsonWithTimeout(placeUrl, { method: "GET" });
+    if (!placeResponse.ok) {
+      console.warn("mobile-api geocoding failed", {
+        provider: "vietmap",
+        stage: "place",
+        jobId,
+        status: placeResponse.status,
+      });
+      return null;
+    }
+
+    const placeBody = asRecord(await placeResponse.json().catch(() => ({})));
+    const lat = nullableNumber(placeBody.lat);
+    const lng = nullableNumber(placeBody.lng);
+    if (lat === null || lng === null) return null;
+    return { lat, lng, geoSource: "vietmap" };
+  } catch (error) {
+    console.warn("mobile-api geocoding threw", {
+      provider: "vietmap",
+      jobId,
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+    return null;
+  }
+}
+
+async function geocodeWithGoogleMaps(
+  address: string,
+  apiKey: string,
+  jobId: string,
+): Promise<GeocodeResult | null> {
   try {
     const url =
       `${GOOGLE_GEOCODING_URL}?address=${encodeURIComponent(address)}&region=vn&language=vi&key=${encodeURIComponent(apiKey)}`;
     const response = await fetchJsonWithTimeout(url, { method: "GET" });
     if (!response.ok) {
       console.warn("mobile-api geocoding failed", {
+        provider: "google_maps",
         jobId,
         status: response.status,
       });
-      await updateJobGeo(client, jobId, fallbackUpdate);
-      return;
+      return null;
     }
     const body = await response.json().catch(() => ({})) as {
       status?: string;
@@ -3756,22 +3903,16 @@ async function geocodeJobAddressForMatching(
       typeof location?.lat !== "number" ||
       typeof location.lng !== "number"
     ) {
-      await updateJobGeo(client, jobId, fallbackUpdate);
-      return;
+      return null;
     }
-
-    await updateJobGeo(client, jobId, {
-      ...fallbackUpdate,
-      address_lat: location.lat,
-      address_lng: location.lng,
-      geo_source: "google_maps",
-    });
+    return { lat: location.lat, lng: location.lng, geoSource: "google_maps" };
   } catch (error) {
     console.warn("mobile-api geocoding threw", {
+      provider: "google_maps",
       jobId,
       errorName: error instanceof Error ? error.name : typeof error,
     });
-    await updateJobGeo(client, jobId, fallbackUpdate);
+    return null;
   }
 }
 
@@ -3786,6 +3927,57 @@ function buildGeocodingAddress(
     "Vietnam",
   ].filter((part): part is string => Boolean(part));
   return Array.from(new Set(parts)).join(", ");
+}
+
+function vietmapAutocompleteSuggestion(
+  value: unknown,
+): PlacesAutocompleteResponse["suggestions"][number] | null {
+  const record = asRecord(value);
+  const placeId = nullableString(record.ref_id)?.trim() ?? "";
+  const label = vietmapDisplayText(record);
+  if (!placeId || !label) return null;
+
+  const mainText = nullableString(record.name)?.trim() || label;
+  const secondaryText = nullableString(record.address)?.trim() || null;
+  return {
+    place_id: placeId,
+    label,
+    main_text: mainText,
+    secondary_text: secondaryText,
+  };
+}
+
+function firstVietmapRefId(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  for (const item of value) {
+    const record = asRecord(item);
+    const refId = nullableString(record.ref_id)?.trim();
+    if (refId) return refId;
+  }
+  return null;
+}
+
+function vietmapDisplayText(record: Record<string, unknown>): string {
+  const display = nullableString(record.display)?.trim();
+  if (display) return display;
+  const parts = [
+    nullableString(record.name)?.trim(),
+    nullableString(record.address)?.trim(),
+  ].filter((part): part is string => Boolean(part));
+  return parts.join(" ");
+}
+
+function buildVietmapUrl(
+  baseUrl: string,
+  apiKey: string,
+  params: Record<string, string>,
+): string {
+  const url = new URL(baseUrl);
+  url.searchParams.set("apikey", apiKey);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  return url.toString();
 }
 
 async function markJobGeocodeFallback(client: DbClient, jobId: string) {
@@ -3818,7 +4010,17 @@ function readGoogleMapsApiKey(secrets: EdgeAiSecrets): string | null {
   const denoGet = (globalThis as {
     Deno?: { env?: { get?: (name: string) => string | undefined } };
   }).Deno?.env?.get;
-  return denoGet?.("GOOGLE_MAPS_API_KEY") ?? null; // Deno.env.get("GOOGLE_MAPS_API_KEY")
+  return denoGet?.("GOOGLE_MAPS_API_KEY") ?? denoGet?.("GOOGLE_MAP_KEY") ??
+    null; // Deno.env.get("GOOGLE_MAPS_API_KEY")
+}
+
+function readVietmapApiKey(secrets: EdgeAiSecrets): string | null {
+  if (secrets.vietmapApiKey) return secrets.vietmapApiKey;
+  const denoGet = (globalThis as {
+    Deno?: { env?: { get?: (name: string) => string | undefined } };
+  }).Deno?.env?.get;
+  return denoGet?.("VIETMAP_API_KEY") ?? denoGet?.("VIETMAP_MAPS_API_KEY") ??
+    null;
 }
 
 async function fetchJsonWithTimeout(
@@ -3826,7 +4028,7 @@ async function fetchJsonWithTimeout(
   init: RequestInit,
 ): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), GOOGLE_MAPS_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), MAPS_PROVIDER_TIMEOUT_MS);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } finally {
