@@ -1,7 +1,8 @@
 import { Text, TextInput, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
-import { HCMC_DISTRICTS, normalizeDistrict, type DistrictSlug } from '@home-services/shared'
+import { HCMC_DISTRICTS, type DistrictSlug } from '@home-services/shared'
 import { type AppLanguage } from '@/lib/app-language'
+import { inferKaelChatDistrict } from './address-district'
 import { styles } from './styles'
 
 type AddressContextTokens = {
@@ -11,11 +12,6 @@ type AddressContextTokens = {
   service: string
   subtleText: string
   text: string
-}
-
-export function inferKaelChatDistrict(value: string): DistrictSlug | null {
-  const normalized = normalizeDistrict(value)
-  return normalized === 'hcmc_all' ? null : normalized
 }
 
 export function KaelAddressContextBar({

@@ -40,6 +40,19 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(env.supabaseSecretKey).toBe('sb_secret_project')
   })
 
+  it('reads the VietMap Maps key only from Edge secrets', () => {
+    const env = readEdgeEnv((name) => {
+      const values: Record<string, string> = {
+        SUPABASE_URL: 'https://project.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+        VIETMAP_API_KEY: 'vietmap-test-key',
+      }
+      return values[name]
+    })
+
+    expect(env.vietmapApiKey).toBe('vietmap-test-key')
+  })
+
   it('accepts the legacy GOOGLE_MAP_KEY Edge secret alias used by production', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
@@ -198,7 +211,7 @@ describe('mobile-api Edge runtime helpers', () => {
     ].sort())
   })
 
-  it('returns a safe Places autocomplete fallback when Google Maps key is not configured', async () => {
+  it('returns a safe Places autocomplete fallback when no Maps provider key is configured', async () => {
     const ctx: MobileApiContext = {
       success: true,
       user: { id: 'customer-1' },
@@ -212,6 +225,49 @@ describe('mobile-api Edge runtime helpers', () => {
       suggestions: [],
       fallback_used: true,
     })
+  })
+
+  it('uses VietMap autocomplete before falling back to Google Maps', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(JSON.stringify([{
+        ref_id: 'vietmap-place-1',
+        display: 'Landmark 81, Binh Thanh, Ho Chi Minh City',
+        name: 'Landmark 81',
+        address: 'Binh Thanh, Ho Chi Minh City',
+      }]))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: makeSequenceClient([]),
+    }
+
+    await expect(createEdgeServices({
+      vietmapApiKey: 'vietmap-test-key',
+      googleMapsApiKey: 'maps-test-key',
+    }).placesAutocomplete(ctx, {
+      input: 'Landmark 81',
+      session_token: 'session-1',
+    })).resolves.toEqual({
+      suggestions: [{
+        place_id: 'vietmap-place-1',
+        label: 'Landmark 81, Binh Thanh, Ho Chi Minh City',
+        main_text: 'Landmark 81',
+        secondary_text: 'Binh Thanh, Ho Chi Minh City',
+      }],
+      fallback_used: false,
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const firstCall = fetchMock.mock.calls[0]
+    expect(firstCall).toBeDefined()
+    const calledUrl = new URL(String(firstCall?.[0]))
+    expect(`${calledUrl.origin}${calledUrl.pathname}`).toBe('https://maps.vietmap.vn/api/autocomplete/v4')
+    expect(calledUrl.searchParams.get('text')).toBe('Landmark 81')
+    expect(calledUrl.searchParams.get('display_type')).toBe('6')
+    expect(calledUrl.searchParams.get('cityId')).toBe('12')
   })
 
   it('returns a safe Places autocomplete fallback when quota is exhausted', async () => {
@@ -1384,6 +1440,68 @@ describe('mobile-api Edge runtime helpers', () => {
         ['in', 'district_code', ['q7', 'hcmc_all']],
       ]),
     })
+  })
+
+  it('applies learned Edge Kael complexity and price rules when the read-path flag is enabled', async () => {
+    const client = makeSequenceClient([
+      { data: [{ id: 'pipe-problem' }], error: null },
+      { data: [{ complexity: 'large', price_min: 250000, price_max: 450000, district_code: 'q7' }], error: null },
+      {
+        data: [{
+          id: 'complexity-rule-1',
+          active_version: 1,
+          affected_district: 'q7',
+          rule_payload: {
+            candidate_type: 'analysis_rule',
+            suggested: {
+              kind: 'raise_complexity_prior',
+              from: 'medium',
+              to: 'large',
+              rationale: 'Frequent scope increases for this problem.',
+            },
+          },
+        }],
+        error: null,
+      },
+      {
+        data: [{
+          id: 'price-rule-1',
+          active_version: 2,
+          affected_district: 'q7',
+          rule_payload: {
+            candidate_type: 'price_prior_update',
+            suggested: {
+              new_min: 500000,
+              new_max: 700000,
+            },
+          },
+        }],
+        error: null,
+      },
+    ])
+
+    const result = await runKaelPipeline({
+      serviceType: 'plumbing',
+      problemChips: ['Ống rò rỉ'],
+      description: 'Kitchen sink pipe is leaking steadily under the cabinet.',
+      district: 'q7',
+    }, client, { learningEnabled: true })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.estimate.complexity).toBe('large')
+      expect(result.estimate.price_min).toBe(500000)
+      expect(result.estimate.price_max).toBe(700000)
+    }
+
+    const learningCalls = client.calls.filter((call) => call.table === 'learning_rules')
+    expect(learningCalls).toHaveLength(2)
+    expect(learningCalls[0].operations).toContainEqual(['eq', 'rule_type', 'analysis_rule'])
+    expect(learningCalls[1].operations).toContainEqual(['eq', 'rule_type', 'price_prior_update'])
+
+    const baselineCall = client.calls.find((call) => call.table === 'price_baselines')
+    expect(baselineCall?.operations).toContainEqual(['select', 'complexity, price_min, price_max, district_code'])
+    expect(baselineCall?.operations).toContainEqual(['in', 'district_code', ['q7', 'hcmc_all']])
   })
 
   it('rejects customer job creation without a concrete HCMC district before insert', async () => {

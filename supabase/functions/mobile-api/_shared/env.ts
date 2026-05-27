@@ -22,7 +22,11 @@ export function readEdgeEnv(
     anthropicApiKey: getEnv("ANTHROPIC_API_KEY"),
     perplexityApiKey: getEnv("PERPLEXITY_API_KEY"),
     deepseekApiKey: getEnv("DEEPSEEK_API_KEY"),
+    vietmapApiKey: getEnv("VIETMAP_API_KEY") ?? getEnv("VIETMAP_MAPS_API_KEY"),
     googleMapsApiKey: getEnv("GOOGLE_MAPS_API_KEY") ?? getEnv("GOOGLE_MAP_KEY"),
+    learningEnabled:
+      readBooleanFlag(getEnv("LEARNING_ENABLED")) ||
+      readBooleanFlag(getEnv("KAEL_OPT_BATCH_LEARNING_ENABLED")),
     sourceTrustPerplexityFilterEnabled: !sourceTrustExplicit
       ? isStagingProjectUrl(supabaseUrl)
       : envFlag(sourceTrustFlag),
@@ -48,10 +52,12 @@ function readSupabaseSecretKey(
     getEnv("APP_SECRET_KEY");
 }
 
-function envFlag(value: string | undefined): boolean {
+function readBooleanFlag(value: string | undefined): boolean {
   return typeof value === "string" &&
     ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
 }
+
+const envFlag = readBooleanFlag;
 
 function isStagingProjectUrl(value: string): boolean {
   return value.includes("xyylanuyflrjzbjzhqfl");

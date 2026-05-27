@@ -13,22 +13,22 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { inferLocalDealDraftFromKael, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@home-services/shared'
-import { useCustomerThemeMode } from '@/components/customer/customer-surfaces'
+import { useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { localizedServiceLabel, type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { kaelChatService } from '@/lib/services'
-import { inferKaelChatDistrict } from './address-context'
+import { inferKaelChatDistrict } from './address-district'
 import {
   EmptyKaelBriefCard,
   KaelChatComposer,
   KaelChatHeader,
   KaelProcessCard,
   KaelTraceCard,
-  kaelSurfacePaint,
   useKaelChatTokens,
 } from './agentic-parts'
+import { kaelSurfacePaint } from './paint'
 import { takePendingKaelChatDraft } from './pending-intake'
 import { createInitialKaelChatState, kaelChatReducer } from './state'
 import { styles } from './styles'

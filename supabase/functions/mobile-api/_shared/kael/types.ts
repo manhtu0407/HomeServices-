@@ -194,7 +194,9 @@ export type EdgeAiSecrets = {
   anthropicApiKey?: string;
   perplexityApiKey?: string;
   deepseekApiKey?: string;
+  vietmapApiKey?: string;
   googleMapsApiKey?: string;
+  learningEnabled?: boolean;
   sourceTrustPerplexityFilterEnabled?: boolean;
   sourceTrustPerplexityFilterExplicit?: boolean;
 };

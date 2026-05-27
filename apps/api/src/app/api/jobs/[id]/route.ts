@@ -26,30 +26,18 @@ export async function GET(request: Request, { params }: RouteParams) {
   )
 
   if (error || !job) {
-    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
+    return apiError('NOT_FOUND', 'KhÃ´ng tÃ¬m tháº¥y yÃªu cáº§u', 404)
   }
 
   const ownership = assertOwnership(job, auth.user.id, auth.role)
   if (!ownership.allowed) {
-    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
+    return apiError('NOT_FOUND', 'KhÃ´ng tÃ¬m tháº¥y yÃªu cáº§u', 404)
   }
 
   let broadcastState: { active_count: number; seconds_remaining: number | null } | null = null
   if (job.status === 'broadcasting') {
     const now = new Date()
     const nowIso = now.toISOString()
-    const { error: expireErr } = await withDbTimeout(
-      auth.supabase
-        .from('job_broadcasts')
-        .update({ status: 'expired', responded_at: nowIso })
-        .eq('job_id', id)
-        .eq('status', 'sent')
-        .lte('expires_at', nowIso),
-    )
-    if (expireErr) {
-      console.warn('Job detail: expire stale broadcasts failed', { jobId: id, errorCode: expireErr.code })
-      return apiError('DB_ERROR', 'Không thể kiểm tra trạng thái broadcast', 500)
-    }
 
     const { data: broadcasts, error: broadcastErr } = await withDbTimeout(
       auth.supabase
@@ -57,17 +45,17 @@ export async function GET(request: Request, { params }: RouteParams) {
         .select('id, expires_at')
         .eq('job_id', id)
         .eq('status', 'sent')
+        .gt('expires_at', nowIso)
         .limit(20),
     )
     if (broadcastErr) {
       console.warn('Job detail: broadcast state query failed', { jobId: id, errorCode: broadcastErr.code })
-      return apiError('DB_ERROR', 'Không thể kiểm tra trạng thái broadcast', 500)
+      return apiError('DB_ERROR', 'KhÃ´ng thá»ƒ kiá»ƒm tra tráº¡ng thÃ¡i broadcast', 500)
     }
 
     let activeCount = 0
     const seconds: number[] = []
     for (const broadcast of broadcasts ?? []) {
-      if (broadcast.expires_at && broadcast.expires_at <= nowIso) continue
       activeCount += 1
       if (broadcast.expires_at) {
         seconds.push(Math.max(0, Math.round((new Date(broadcast.expires_at).getTime() - now.getTime()) / 1000)))
@@ -101,7 +89,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     )
     if (scopeErr) {
       console.warn('Job detail: current scope-change query failed', { jobId: id, errorCode: scopeErr.code })
-      return apiError('DB_ERROR', 'Không thể tải yêu cầu đổi phạm vi hiện tại', 500)
+      return apiError('DB_ERROR', 'KhÃ´ng thá»ƒ táº£i yÃªu cáº§u Ä‘á»•i pháº¡m vi hiá»‡n táº¡i', 500)
     }
     const scope = scopeRows?.[0]
     currentScopeChange = scope

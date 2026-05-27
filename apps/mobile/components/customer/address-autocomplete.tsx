@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { extractKnownDistrictLabel } from '@home-services/shared'
-import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
+import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { placesService } from '@/lib/services'
 import type { PlacesAutocompleteResponse } from '@/lib/api-types'

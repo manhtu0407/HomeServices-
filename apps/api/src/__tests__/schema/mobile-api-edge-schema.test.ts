@@ -753,7 +753,8 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('grant execute on function public.set_worker_availability_atomic(uuid, boolean) to service_role')
     expect(edgeServices).toContain('set_worker_availability_atomic')
     expect(nextRoute).toContain('set_worker_availability_atomic')
-    expect(nextBroadcasts).toContain("update({ status: 'expired', responded_at: nowIso })")
+    expect(nextBroadcasts).not.toContain(".update(")
+    expect(nextBroadcasts).toContain(".gt('expires_at', nowIso)")
   })
 
   it('keeps worker inbox defensive against sent broadcasts attached to non-broadcasting jobs', () => {
@@ -910,6 +911,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('adds Phase 3 geo matching schema, Maps proxy, and auto-suspend without rating penalty', () => {
     const migration = read('supabase/migrations/20260521120000_geo_matching_and_worker_auto_suspend.sql')
+    const vietmapMigration = read('supabase/migrations/20260527090118_allow_vietmap_geo_source.sql')
     const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
     const mobileServices = read('apps/mobile/lib/services.ts')
@@ -922,6 +924,11 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('create or replace function public.distance_km')
     expect(migration).toContain('is_suspended = true')
     expect(migration).not.toMatch(/rating\s*=/i)
+    expect(vietmapMigration).toContain("'vietmap'")
+    expect(edgeServices).toContain('VIETMAP_API_KEY')
+    expect(edgeServices).toContain('https://maps.vietmap.vn/api/autocomplete/v4')
+    expect(edgeServices).toContain('https://maps.vietmap.vn/api/search/v4')
+    expect(edgeServices).toContain('https://maps.vietmap.vn/api/place/v4')
     expect(edgeServices).toContain('GOOGLE_MAPS_API_KEY')
     expect(edgeServices).toContain('https://places.googleapis.com/v1/places:autocomplete')
     expect(edgeServices).toContain('https://maps.googleapis.com/maps/api/geocode/json')

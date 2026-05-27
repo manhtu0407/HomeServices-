@@ -1,6 +1,7 @@
 import { Redirect, Tabs, usePathname } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
-import { CustomerV4DockOverlay, getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
+import { CustomerV4DockOverlay } from '@/components/customer/customer-surfaces'
+import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage } from '@/lib/app-language'
 

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { ExpoConfig, ConfigContext } from 'expo/config'
+import { withEntitlementsPlist, withXcodeProject, type ConfigPlugin } from 'expo/config-plugins'
 
 const configDir = __dirname
 const repoRoot = resolve(configDir, '../..')
@@ -50,6 +51,29 @@ const configuredApiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
 const apiBaseUrl =
   configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : '')
 
+const withoutIosPushEntitlement: ConfigPlugin = (expoConfig) => {
+  const configWithoutEntitlement = withEntitlementsPlist(expoConfig, (config) => {
+    delete config.modResults['aps-environment']
+    return config
+  })
+
+  return withXcodeProject(configWithoutEntitlement, (config) => {
+    const project = config.modResults
+    const projectAttributes = project.getFirstProject()?.firstProject?.attributes as
+      | { TargetAttributes?: Record<string, { SystemCapabilities?: Record<string, unknown> }> }
+      | undefined
+
+    const targetAttributes = projectAttributes?.TargetAttributes
+    if (targetAttributes) {
+      for (const attributes of Object.values(targetAttributes)) {
+        delete attributes.SystemCapabilities?.['com.apple.Push']
+      }
+    }
+
+    return config
+  })
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Home Services',
@@ -93,7 +117,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-secure-store',
-    'expo-notifications',
     [
       'expo-image-picker',
       {
@@ -103,6 +126,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'Home Services cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa.',
       },
     ],
+    withoutIosPushEntitlement as unknown as string,
   ],
   extra: {
     supabaseUrl,

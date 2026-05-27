@@ -4,18 +4,16 @@ import { secondsRemaining } from '@/lib/jobs/broadcast'
 import { PLATFORM_FEE_WORKER } from '@home-services/shared'
 import type { Tables } from '@home-services/shared'
 
-// Worker net = gross * (1 - platform fee). E.g., 10% fee → worker keeps 90%.
+// Worker net = gross * (1 - platform fee). E.g., 10% fee -> worker keeps 90%.
 const WORKER_NET_MULTIPLIER = 1 - PLATFORM_FEE_WORKER
 
-// Typed pick of the columns we select from the related jobs row. Replaces an
-// inline object-literal cast — if schema changes, this won't compile.
 type BroadcastJobSummary = Pick<
   Tables<'jobs'>,
   'status' | 'service_type' | 'address_district' | 'kael_problem_identified' | 'kael_price_min' | 'kael_price_max'
 >
 
 /**
- * GET /api/workers/me/broadcasts — B3 inbox
+ * GET /api/workers/me/broadcasts - B3 inbox
  *
  * Returns pending incoming job requests for the authenticated worker.
  * Only shows broadcasts with status='sent' AND expires_at > now for jobs that
@@ -35,19 +33,6 @@ export async function GET(request: Request) {
   const now = new Date()
   const nowIso = now.toISOString()
 
-  const { error: expireErr } = await withDbTimeout(
-    auth.supabase
-      .from('job_broadcasts')
-      .update({ status: 'expired', responded_at: nowIso })
-      .eq('worker_id', auth.user.id)
-      .eq('status', 'sent')
-      .lte('expires_at', nowIso),
-  )
-  if (expireErr) {
-    console.warn('GET /workers/me/broadcasts: expire stale broadcasts failed', { userId: auth.user.id, errorCode: expireErr.code })
-    return apiError('DB_ERROR', 'Không thể cập nhật yêu cầu hết hạn', 500)
-  }
-
   const { data: rows, error } = await withDbTimeout(
     auth.supabase
       .from('job_broadcasts')
@@ -61,16 +46,13 @@ export async function GET(request: Request) {
 
   if (error) {
     console.warn('GET /workers/me/broadcasts: query failed', { userId: auth.user.id, errorCode: error.code })
-    return apiError('DB_ERROR', 'Không thể tải yêu cầu', 500)
+    return apiError('DB_ERROR', 'KhÃ´ng thá»ƒ táº£i yÃªu cáº§u', 500)
   }
 
   const broadcasts = (rows ?? [])
     .flatMap((row) => {
-      // Supabase nested select returns the related row as `unknown`-ish in the
-      // generated types when the relation isn't 1:1 declared. Narrow via a
-      // typed pick (BroadcastJobSummary) so callers fail-compile on schema drift.
       const job = relatedJob(row.jobs)
-      if (!job || job.status !== 'broadcasting') return [] // FK guarantees it exists; defensive skip
+      if (!job || job.status !== 'broadcasting') return []
 
       const earningMin = job.kael_price_min !== null ? Math.round(job.kael_price_min * WORKER_NET_MULTIPLIER) : null
       const earningMax = job.kael_price_max !== null ? Math.round(job.kael_price_max * WORKER_NET_MULTIPLIER) : null

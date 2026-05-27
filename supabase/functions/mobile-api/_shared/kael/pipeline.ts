@@ -1,10 +1,11 @@
-import type { ComplexityLevel, EdgeAiSecrets, PipelineInput, PipelineResult, PipelineStageLog, SupabaseLike } from "./types.ts";
+import type { EdgeAiSecrets, PipelineInput, PipelineResult, PipelineStageLog, SupabaseLike } from "./types.ts";
 import { PRICE_DISCLAIMER, UNSUPPORTED_SERVICE_MESSAGE } from "./types.ts";
 import { classifyIntent, buildFallbackIntent } from "./intent.ts";
 import { analyzeDescription } from "./vision.ts";
 import { marketLookupTelemetry, searchMarketPrice } from "./market.ts";
 import { fetchBaselineCandidates, normalizeProblemSlugForService, pickBaselineCandidate, synthesizePrice } from "./synthesis.ts";
 import { buildAdvisory } from "./advisory.ts";
+import { applyLearnedComplexityRule, applyLearnedPriceRule } from "./learning.ts";
 import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
 import { runKaelParallel, runKaelPurposeStage } from "./orchestrator.ts";
 import { updateKaelProgress } from "./streaming.ts";
@@ -111,7 +112,7 @@ export async function runKaelPipeline(
     }),
   ]);
 
-  const preliminaryComplexity: ComplexityLevel = "medium";
+  const preliminaryComplexity = "medium";
   const marketTelemetry = marketLookupTelemetry({
     serviceType: validServiceType,
     problem: problemSlug,
@@ -224,6 +225,16 @@ export async function runKaelPipeline(
     progress: 0.4,
     failureReason: visionResult.success || visionSkipped ? undefined : visionResult.failureReason,
   });
+  const learnedComplexity = await applyLearnedComplexityRule(
+    supabase,
+    secrets,
+    validServiceType,
+    problemSlug,
+    district,
+    analysis.complexity_hint,
+  );
+  const effectiveComplexity = learnedComplexity?.newComplexity ??
+    analysis.complexity_hint;
 
   const baselineStage = parallelRun.results.find((stage) =>
     stage.label === "baseline"
@@ -242,7 +253,7 @@ export async function runKaelPipeline(
       success: false,
       error: baselineStage.failureReason ?? "baseline stage failed",
     },
-    analysis.complexity_hint,
+    effectiveComplexity,
   );
   stageLogs.push({
     stage: "baseline",
@@ -308,16 +319,23 @@ export async function runKaelPipeline(
     status: "running",
     progress: 0.86,
   });
+  const learnedPrice = await applyLearnedPriceRule(
+    supabase,
+    secrets,
+    validServiceType,
+    problemSlug,
+    district,
+  );
   const synthesizedStage = await runKaelPurposeStage({
     label: "synthesis",
     purpose: "price_synthesis",
     timeoutMs: KAEL_ROUTING_CONFIG.price_synthesis.latencyBudgetMs,
     run: () =>
       Promise.resolve(synthesizePrice({
-        baselineMin: baselineResult.priceMin,
-        baselineMax: baselineResult.priceMax,
+        baselineMin: learnedPrice?.priceMin ?? baselineResult.priceMin,
+        baselineMax: learnedPrice?.priceMax ?? baselineResult.priceMax,
         market: marketResult.success ? marketResult.market : null,
-        complexityHint: analysis.complexity_hint,
+        complexityHint: effectiveComplexity,
       })),
   });
   const synthesized = synthesizedStage.value;
@@ -345,7 +363,7 @@ export async function runKaelPipeline(
       service_type: validServiceType,
       problem_category: problemSlug,
       problem_summary: analysis.problem_identified,
-      complexity: analysis.complexity_hint,
+      complexity: effectiveComplexity,
       price_min: synthesized.price_min,
       price_max: synthesized.price_max,
       confidence: synthesized.confidence,

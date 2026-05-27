@@ -14,6 +14,7 @@ export * from "./rate-limit.ts";
 export * from "./memory-sanitizer.ts";
 export * from "./memory.ts";
 export * from "./skills/registry.ts";
+export * from "./learning.ts";
 export * from "./provider-batch.ts";
 export * from "./cron/process-learning-queue.ts";
 export * from "./cron/process-batch-results.ts";

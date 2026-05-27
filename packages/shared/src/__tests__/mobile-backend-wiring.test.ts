@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
-const MOBILE_ROOT = resolve(__dirname, '../../../../apps/mobile')
+const ROOT = resolve(__dirname, '../../../../')
+const MOBILE_ROOT = resolve(ROOT, 'apps/mobile')
 const read = (rel: string) => readFileSync(resolve(MOBILE_ROOT, rel), 'utf-8')
+const readRoot = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8')
 
 describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('keeps mobile service paths on the Edge function contract, not Next /api routes', () => {
@@ -60,6 +62,49 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(api).toContain('function isAbortError')
     expect(api).not.toContain('instanceof DOMException')
     expect(api).not.toContain('await response.json()')
+  })
+
+  it('uses bounded retries for transient mobile-api failures only', () => {
+    const api = read('lib/api.ts')
+
+    expect(api).toContain('const MAX_RETRIES = 2')
+    expect(api).toContain('const BASE_RETRY_DELAY_MS = 500')
+    expect(api).toContain('for (let attempt = 0; attempt <= MAX_RETRIES; attempt++)')
+    expect(api).toContain('const retryBudget = isRetrySafeRequest(method, path) ? MAX_RETRIES : 0')
+    expect(api).toContain('shouldRetryResponse(response.status)')
+    expect(api).toContain('shouldRetryError(err)')
+    expect(api).toContain('await waitForRetry(method, path, attempt,')
+    expect(api).toContain('function isRetrySafeRequest(method: string, path: string)')
+    expect(api).toContain('function shouldRetryResponse(status: number)')
+    expect(api).toContain('return status === 408 || status === 425 || status === 429 || status >= 500')
+    expect(api).toContain('function shouldRetryError(err: unknown)')
+    expect(api).not.toContain('status >= 400')
+  })
+
+  it('applies learned Kael price and complexity rules inside the deployed Edge runtime', () => {
+    const edgeKael = readRoot('supabase/functions/mobile-api/_shared/kael.ts')
+    const edgeKaelTypes = readRoot('supabase/functions/mobile-api/_shared/kael/types.ts')
+    const edgeKaelLearning = readRoot('supabase/functions/mobile-api/_shared/kael/learning.ts')
+    const edgeKaelPipeline = readRoot('supabase/functions/mobile-api/_shared/kael/pipeline.ts')
+    const edgeEnv = readRoot('supabase/functions/mobile-api/_shared/env.ts')
+
+    expect(edgeEnv).toContain('learningEnabled')
+    expect(edgeEnv).toContain('LEARNING_ENABLED')
+    expect(edgeEnv).toContain('VIETMAP_API_KEY')
+    expect(edgeEnv).toContain('getEnv("GOOGLE_MAPS_API_KEY") ?? getEnv("GOOGLE_MAP_KEY")')
+
+    expect(edgeKael).toContain('export * from "./kael/index.ts"')
+    expect(edgeKaelTypes).toContain('vietmapApiKey?: string')
+    expect(edgeKaelTypes).toContain('learningEnabled?: boolean')
+    expect(edgeKaelLearning).toContain('function applyLearnedComplexityRule')
+    expect(edgeKaelLearning).toContain('function applyLearnedPriceRule')
+    expect(edgeKaelLearning).toContain('.from("learning_rules")')
+    expect(edgeKaelLearning).toContain('.eq("rule_type", "analysis_rule")')
+    expect(edgeKaelLearning).toContain('.eq("rule_type", "price_prior_update")')
+    expect(edgeKaelPipeline).toContain('const learnedComplexity = await applyLearnedComplexityRule')
+    expect(edgeKaelPipeline).toContain('const effectiveComplexity = learnedComplexity?.newComplexity ??')
+    expect(edgeKaelPipeline).toContain('const learnedPrice = await applyLearnedPriceRule')
+    expect(edgeKaelPipeline).toContain('baselineMin: learnedPrice?.priceMin ?? baselineResult.priceMin')
   })
 
   it('keeps mobile config publishable-only and away from hosted Next fallbacks', () => {
