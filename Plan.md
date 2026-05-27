@@ -3967,7 +3967,7 @@ docs/workflow/worker-cancellation.md (new)                     Phase 5.4
 Plan ID:        plan-kael-harness-agentic
 Created:        2026-05-25
 Owner:          Manh Tu (manhtu0407@gmail.com)
-Status:         DRAFT v0.1 → Tu approved 2026-05-25 → write Plan.md §23
+Status:         v2.0 F26 reconciled 2026-05-26 → PR #37-#40 audit gaps closed in §26
 Critical Alert: HIGH — touches Kael identity, provider routing, money-impacting workflow
 Decision log:   Conversation 2026-05-25 (Tu + Claude) chốt Harness 7/7 + Agentic 5/5
 Scope:          Build Harness (7 sub-systems) + Agentic behavior (5 cases) trên top
@@ -4526,7 +4526,7 @@ Worst case: 1 + 5 + 3 = **9s** (skip clarification, có vision).
 - [ ] Streaming events visible Supabase Realtime.
 - [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
 - [ ] api_logs.purpose populated 100%.
-- [ ] kael-security-sweep pass.
+- [x] kael-security-sweep pass.
 
 **Estimated Effort:** 4-6 ngày.
 
@@ -5571,13 +5571,19 @@ const WorkerAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] 2 sub-cases work.
-- [ ] Reason taxonomy admin tunable.
-- [ ] Anti-abuse thresholds enforced.
-- [ ] No autonomous suspension; admin action required.
-- [ ] Rebroadcast triggered.
-- [ ] Customer fallback options available.
-- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+- [x] 2 sub-cases work.
+- [x] Reason taxonomy admin tunable.
+- [x] Anti-abuse thresholds enforced.
+- [x] No autonomous suspension; admin action required.
+- [x] Rebroadcast triggered.
+- [x] Customer fallback options available.
+- [x] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+
+**Execution evidence (2026-05-25, P11):**
+
+- Local: API Vitest `51 files | 3 skipped`, `1083 passed | 59 skipped`; shared Vitest `13 files`, `520 passed`; API/shared/mobile `tsc --noEmit` passed.
+- Staging `xyylanuyflrjzbjzhqfl`: migrations `20260525140826` and `20260525230054` applied; final dry-run reports remote database up to date; P11 taxonomy/signature/no-show smoke passed.
+- Safety: no autonomous `is_suspended=true` or `verification_status='suspended'` in P11 migrations; anti-abuse opens L4 red flag/admin queue review only.
 
 **Estimated Effort:** 3-4 ngày.
 
@@ -5660,12 +5666,21 @@ const CustomerAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] 5 sub-cases work.
-- [ ] NEW RPC `cancel_job_after_accept_atomic` atomic.
-- [ ] Anti-abuse rules enforced.
-- [ ] Worker goodwill recorded (no rating penalty 4C).
-- [ ] Phase 0 no monetary penalty.
-- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+- [x] 5 sub-cases work.
+- [x] NEW RPC `cancel_job_after_accept_atomic` atomic.
+- [x] Anti-abuse rules enforced.
+- [x] Worker goodwill recorded (no rating penalty 4C).
+- [x] Phase 0 no monetary penalty.
+- [x] Blocking tests pass; scenario quality metric >= 95% where measured.
+
+**Execution evidence (2026-05-25, P12):**
+
+- Local RED/GREEN: P12 unit/router/runtime/schema gates first failed on missing Case 4 module, migration/RPC/types, and route 404; after implementation they passed.
+- Local final: API Vitest `52 files | 3 skipped`, `1095 passed | 59 skipped`; shared Vitest `13 files`, `520 passed`; API/shared/mobile `tsc --noEmit` passed; `git diff --check` passed with CRLF warnings only.
+- Staging `xyylanuyflrjzbjzhqfl`: migrations `20260525231655`, `20260525233112`, and `20260525233322` applied. Production `iwevizmsedyqozxlawwl` was not migrated in this pass.
+- Staging rollback smoke covered all 5 sub-cases: `4A before_a7`, `4B after_a7_before_worker_accept`, `4C after_worker_accept`, `4D after_worker_completed_trigger_dispute`, and `4E scheduled_job`; all returned `ok=true` and `phase0_no_monetary_penalty=true`. 4D kept `job_status=completed_by_worker` for P13 dispute handling; other cancellable paths returned `cancelled`.
+- Staging advisors: performance advisor reports `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
+- Safety: P12 files contain no Supabase management token, no autonomous customer fee/block fields, and no new worker suspension mutation. Worker goodwill is an audit note only; no rating penalty or money promise is created.
 
 **Estimated Effort:** 3-4 ngày.
 
@@ -5775,12 +5790,21 @@ const DisputeAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] 4 sub-cases work (5C deferred).
-- [ ] Kael NEUTRAL: no fault assignment.
-- [ ] Evidence locked immutable.
-- [ ] Admin decision outcomes enforce side effects.
-- [ ] Anti-abuse enforced.
-- [ ] Blocking tests pass; scenario quality metric ≥ 95% where measured.
+- [x] 4 sub-cases work (5C deferred).
+- [x] Kael NEUTRAL: no fault assignment.
+- [x] Evidence locked immutable.
+- [x] Admin decision outcomes enforce side effects.
+- [x] Anti-abuse enforced.
+- [x] Blocking tests pass; scenario quality metric >= 95% where measured.
+
+**P13 Evidence (2026-05-26, staging `xyylanuyflrjzbjzhqfl`):**
+
+- RED-first evidence: P13 helper test failed on missing `case-5-dispute`; schema/type tests failed on missing migration/types/contracts; router returned 404 for dispute endpoints; runtime service lacked `openDispute`.
+- GREEN scope: added `case-5-dispute.ts`, neutral summary/guard, evidence snapshot payload builder, dispute anti-abuse helper, 3 Edge routes, 3 Edge services, mobile/shared contracts, DB types, and migration `20260525234746_kael_dispute_case_p13.sql`.
+- DB scope: `evidence_snapshots` immutable table, `disputes` table, admin queue `dispute_review`, RPCs `open_dispute_atomic`, `submit_counter_statement_atomic`, `admin_decide_dispute_atomic`; admin decision can record optional admin-entered `refund_amount` / `worker_credit_amount`, but Kael never suggests amounts.
+- Local verification: targeted P13/schema/router/runtime tests passed; API `tsc --noEmit` passed; shared `tsc --noEmit` passed; full API Vitest passed `53 files | 3 skipped`, `1107 passed | 59 skipped`; full shared Vitest passed `13 files`, `520 passed`; `git diff --check` passed with CRLF warnings only; token sweep found no repo matches.
+- Staging verification: dry-run listed only P13 migration, migration applied, smoke returned `ok=true` for 5A completion rejected, 5B damage claim, 5D abusive behavior, 5E scope disagreement, and `DEFERRED_PHASE0` for 5C unpaid service. Smoke also proved immutable evidence update raises `evidence_snapshots are immutable once locked`, counter statement transitions to `admin_review`, and admin decision side effect suspended the worker profile when admin selected `temp_suspend_7d`.
+- Staging cleanup/advisors: synthetic smoke users/snapshots cleanup returned `0` leftovers; performance advisor reports `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
 
 **Estimated Effort:** 5-6 ngày (most complex).
 
@@ -5820,13 +5844,26 @@ const DisputeAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] api_logs.purpose 100% populated.
-- [ ] District normalization verified.
-- [ ] DeepSeek 402 recovered.
-- [ ] Worker district data consistent.
-- [ ] Migration chain documented.
-- [ ] Orphan jobs cleaned.
-- [ ] No English leak.
+- [x] api_logs.purpose 100% populated.
+- [x] District normalization verified.
+- [x] DeepSeek 402 recovered.
+- [x] Worker district data consistent.
+- [x] Migration chain documented.
+- [x] Orphan jobs cleaned.
+- [x] No English leak.
+
+**P14 Evidence (2026-05-26, staging `xyylanuyflrjzbjzhqfl`):**
+
+- Plan audit correction: active §23 has P0-P17 (18 phases) and five agentic cases P9-P13. P14 continued after P13 evidence.
+- RED/GREEN: district test first failed because `Quan 2` returned `null`; schema test first failed because P14 migration/type/doc did not exist; P11 lint-fix test first failed because no follow-up migration existed. After implementation, targeted gates passed.
+- Local verification: shared district Vitest `53/53` passed; schema Vitest `64/64` passed; DeepSeek 402 fallback/runtime gates passed `82/82`; API `tsc --noEmit` passed; shared `tsc --noEmit` passed; full API Vitest passed `53 files | 3 skipped`, `1109 passed | 59 skipped`; full shared Vitest passed `13 files`, `521 passed`.
+- Staging migrations applied: `20260526002253_backend_gaps_cleanup_p14.sql` and follow-up `20260526003315_fix_worker_cancellation_reason_category_ambiguity_p14.sql`.
+- Telemetry evidence: `api_logs` has `total_count=18`, `missing_purpose=0`; `purpose` is `NOT NULL` with `api_logs_purpose_non_empty`; 50 temporary P14 smoke log rows inserted with `missing_purpose=0` and then cleaned to `remaining=0`.
+- District evidence: `normalizeServiceAreaDistrict` covers q1-q12 variants, mapping legacy q2/q9 to `thu_duc`; staging worker seed districts changed from `['q7','hcmc_all']` to `['q7']`; invalid/empty/hcmc_all worker counts are `0`; worker/job district mismatch count is `0`.
+- DeepSeek 402 recovery evidence: local runtime test proves DeepSeek HTTP 402 falls back to Anthropic before local heuristic and succeeds.
+- Orphan cleanup evidence: Supabase Cron job `kael-cleanup-orphan-analyzing-jobs` is active on `17 * * * *` and runs `select public.cleanup_orphan_analyzing_jobs();`; smoke job stuck `analyzing` >24h was moved to `cancelled` with `orphan_analyzing_cleanup` event; smoke auth/profile/job/log leftovers are `false/0`.
+- Supabase verification: `db push --dry-run` showed only intended migrations before each push; `db lint --linked --fail-on error` returned `No schema errors found`; performance advisor returned `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
+- Safety sweeps: VN copy script found no forbidden English terms in `vi` copy string literals; exact Supabase token sweep found no repo matches; `git diff --check` passed with CRLF warnings only.
 
 **Estimated Effort:** 2-3 ngày.
 
@@ -5861,12 +5898,25 @@ const DisputeAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] 5 cases E2E pass staging.
-- [ ] Multi-actor scenarios work.
-- [ ] Realtime streaming verified.
-- [ ] Performance: p95 < 12s end-to-end intake.
-- [ ] Cost: < $0.30/transaction worst case.
-- [ ] Test report logged per `/log` format.
+- [x] 5 cases E2E pass staging.
+- [x] Multi-actor scenarios work.
+- [x] Realtime streaming verified.
+- [x] Performance: p95 < 12s end-to-end intake.
+- [x] Cost: < $0.30/transaction worst case.
+- [x] Test report logged per `/log` format.
+
+**P15 Evidence (2026-05-26, staging `xyylanuyflrjzbjzhqfl`):**
+
+- RED/GREEN: schema contract test first failed because `apps/api/scripts/kael-p15-staging-e2e.mjs` was missing; after adding the P15 harness, the contract test passed and `node --check` passed.
+- Staging deployment: `mobile-api` redeployed to staging before the matrix run; production `iwevizmsedyqozxlawwl` was not deployed or migrated.
+- Live run report: `docs/test-logs/2026-05-26_p15-staging-e2e.md`, run id `p15-1779757487092-397804`, status `passed`.
+- Case matrix passed: Case 1 `10` normal transactions, Case 2 `5` demanding-customer escalations, Case 3 `10` worker cancellation scenarios (`5` explicit + `5` no-show timer rows), Case 4 `5` customer cancellation sub-cases (`before_a7`, `after_a7_before_worker_accept`, `after_worker_accept`, `after_worker_completed_trigger_dispute`, `scheduled_job`), Case 5 `3` disputes (`completion_rejected`, `damage_claim`, `abusive_behavior_customer`) with admin queue + admin decision.
+- Multi-actor evidence: run created and used `5` customer auth users, `5` worker auth users, and `1` admin auth user. Workflow-sensitive actions went through Edge; direct DB was limited to fixtures, timer preconditions, realtime stimulus, metrics, and cleanup.
+- Realtime evidence: authenticated customer subscription received `jobs.kael_progress` update on staging.
+- Performance/cost evidence: intake latency `p50=6040ms`, `p95=6394ms`, `p99=9088ms`; cost `total=$0.008603`, `worst_transaction=$0.000482`, `provider_rows=60`, `jobs_with_logs=20`, below `$0.30` cap.
+- Cleanup evidence: scoped P15 cleanup returned `0` rows for jobs, events, broadcasts, messages, reviews, api logs, admin queue, interaction logs, worker/customer cancellation records, disputes, evidence snapshots, and profiles; independent post-run query also returned `p15_jobs=0`, `p15_profiles=0`, `p15_queues=0`, `p15_evidence=0`.
+- Local/static verification: P15 harness + schema gates passed `66/66`; API `tsc --noEmit` passed; `git diff --check` passed with CRLF warnings only; exact Supabase token sweep found no repo matches.
+- Supabase verification: `db lint --linked --fail-on error` returned `No schema errors found` after one transient login-role retry; performance advisor returned `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
 
 **Estimated Effort:** 3-5 ngày.
 
@@ -5893,13 +5943,25 @@ const DisputeAbuseRules = {
 
 **Acceptance Gate:**
 
-- [ ] kael-security-sweep pass.
-- [ ] kael-review pass.
-- [ ] No autonomous money-impacting action.
-- [ ] All PII filters working.
-- [ ] Charter LOCKED files unchanged.
-- [ ] Permission scope honored.
-- [ ] No STRUCTURES §10F violation.
+- [x] kael-security-sweep pass.
+- [x] kael-review pass.
+- [x] No autonomous money-impacting action.
+- [x] All PII filters working.
+- [x] Charter LOCKED files unchanged.
+- [x] Permission scope honored.
+- [x] No STRUCTURES §10F violation.
+
+**P16 Evidence (2026-05-26, staging `xyylanuyflrjzbjzhqfl`):**
+
+- Report: `docs/test-logs/2026-05-26_p16-prelaunch-verification.md`, status `passed`.
+- Charter/locked-doc audit: `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md`, `CLAUDE.md`, `README.md`, and locked charter files had no P16 changes.
+- Security sweep: exact Supabase access-token/JWT sweeps found no repo matches; key-name sweep found only `.env.example` names and fake `eyJ...` test-comment placeholders; no secret values were written to repo artifacts.
+- PII audit: sanitizer and memory tests cover phone, email, CCCD, bank, unit/floor/address filtering; no console statement was found logging full phone, CCCD, bank, raw message, token, secret, or authorization values.
+- STRUCTURES section 10F/11 audit: historical `20260521120000_geo_matching_and_worker_auto_suspend.sql` is superseded by active runtime; staging `request_worker_cancellation_atomic` contains no `is_suspended = true` and no `verification_status = 'suspended'`, while `admin_review_required` is present. P13 suspension remains explicit admin decision only.
+- Permission/runtime audit: mobile workflow writes remain behind Edge `mobile-api`; AI provider calls and secrets remain server-side; learning forbidden effects still reject auto-charge, auto-confirm booking, auto-cancel job, auto-approve worker, auto-suspend worker, auto-change final price, auto-expand scope, and hidden learning changes.
+- Performance/cost reused from live P15 matrix: p95 intake `6394ms` under `12000ms`; worst transaction `$0.000482` under `$0.30`.
+- Verification gates: full API Vitest passed `54 files | 3 skipped`, `1111 passed | 59 skipped`; full shared Vitest passed `13 files`, `521 passed`; API/shared/mobile `tsc --noEmit` passed; `node --check apps/api/scripts/kael-p15-staging-e2e.mjs` passed; `git diff --check` passed with CRLF warnings only.
+- Supabase verification: `db push --dry-run --linked` says remote database is up to date; `db lint --linked --fail-on error` returned `No schema errors found`; performance advisor returned `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
 
 **Estimated Effort:** 2-3 ngày.
 
@@ -5934,11 +5996,22 @@ Nếu 2+ metric fail → loại Perplexity #6, Anthropic làm main.
 
 **Acceptance Gate:**
 
-- [ ] Staging deploy successful.
-- [ ] Monitoring dashboards live.
-- [ ] A/B test #6 running.
-- [ ] 100-case collection in progress.
-- [ ] Production deploy plan ready.
+- [x] Staging deploy successful.
+- [x] Monitoring dashboards live.
+- [x] A/B test #6 running.
+- [x] 100-case collection in progress.
+- [x] Production deploy plan ready.
+
+**P17 Evidence (2026-05-26, staging `xyylanuyflrjzbjzhqfl`):**
+
+- Report: `docs/test-logs/2026-05-26_p17-staging-monitoring-ab.md`, status `passed`.
+- Migration `20260526012712_kael_p17_monitoring_ab_setup.sql` created with Supabase CLI, dry-run listed only that migration, and it was pushed to staging. Final dry-run returned `Remote database is up to date`.
+- `mobile-api` redeployed to staging `xyylanuyflrjzbjzhqfl`; unauth smoke for `/services` returned expected `401 AUTH_MISSING`, proving the deployed function is reachable and still auth-gated.
+- Monitoring dashboards live: `kael_monitoring_provider_daily` and `kael_monitoring_ab_price_synthesis`, both `security_invoker` views. Provider dashboard smoke returned historical provider rows for `intent_classification`, `market_lookup`, and `vision_analysis`.
+- A/B #6 running: experiment key `p17-price-synthesis-perplexity-vs-anthropic-2026-05-26`, status `running`, purpose `price_synthesis`, primary `perplexity`, comparison/fallback `anthropic`, sample target `100`, started `true`.
+- 100-case collection honesty: dashboard shows `collected_cases=0`, `completed_cases=0`, `threshold_decision=collecting`. No fake A/B case rows were inserted.
+- Production deploy plan ready in the P17 report, with Tu approval as the manual gate before touching production `iwevizmsedyqozxlawwl`.
+- Verification gates: P17 schema tests plus P15/P16 schema gates passed `3 files`, `147 passed`; API/shared `tsc --noEmit` passed; Supabase `db lint --linked --fail-on error` passed after transient CLI login retry; performance advisor returned `No issues found`; security advisor still reports only existing `auth_leaked_password_protection`.
 
 **Estimated Effort:** 2-3 ngày.
 
@@ -6016,6 +6089,7 @@ P17 → Production: Tu approve (manual gate)
 |---|---|---|---|
 | 0.1 DRAFT | 2026-05-25 | Tu + Claude (discussion 2026-05-25) | Initial draft based on Harness 7/7 + Agentic 5/5 discussion |
 | 1.0 | 2026-05-25 | Tu approved | Approve toàn bộ, write vào Plan.md §23 |
+| 2.0 | 2026-05-26 | Tu + Claude + Codex | Reconciled PR #37-#40 audit via Plan.md §26; production rollout, provider reruns, A/B #6 decision, and DB performance cleanup recorded without editing phase bodies |
 
 ---
 
@@ -6041,6 +6115,2423 @@ P17 → Production: Tu approve (manual gate)
 - §23.0-§23.24 (decisions + phases + cross-cutting) KHÔNG được edit mid-execution.
 - Nếu cần đổi → tạo §23 v2.0 + change log entry.
 - Tu approve trước khi áp dụng.
+
+---
+
+## 24. Cost Optimization Plan — Anthropic Usage Reduction — 2026-05-25
+
+### 24.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-cost-optimization-anthropic
+Created:        2026-05-25
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         v2.0 F26 reconciled 2026-05-26 → PR #37-#40 audit gaps closed in §26
+Critical Alert: MEDIUM — touches AI provider routing layer, quality measurable
+Decision log:   Conversation 2026-05-25 sau khi chốt §23
+Scope:          Implement 5 cost optimizations cho Anthropic usage, quality preserve 100%
+                (Nhóm A safe subset): T1.1 prompt caching, T1.2 cap output,
+                T2.1 market lookup cache, T3.1 batch learning, T5.2 Anthropic Batch API
+Out of scope:   Nhóm B (Haiku 4.5, skip Anthropic fallback, etc.) — defer
+                Nhóm C (memory compression, similar analysis cache, multi-purpose prompt) — defer
+                Switching DeepSeek Flash → Normal (Tu chốt KHÔNG switch)
+Effort total:   ~10-15 ngày agent build (sequential)
+Phase count:    6 phases (Q0 pre-plan + Q1-Q5 execution)
+Expected saving: ~65-75% Anthropic cost (estimated $40-80/tháng @ 1000 jobs → $10-20/tháng)
+```
+
+**Mục tiêu chính:**
+
+1. **Giảm Anthropic token cost ~65-75%** mà KHÔNG ảnh hưởng quality user-facing.
+2. **Preserve Kael behavior** — user thấy identical, backend operation transparent.
+3. **Setup baseline measurement** để verify quality trước/sau optimization.
+4. **Foundation cho scale 10K+ jobs/tháng** — không bị bottleneck cost khi tăng volume.
+
+**Authority refs (theo critical.md §0):**
+
+```
+1. RULES.md          (security/PII/AI/scope non-negotiable)
+2. critical.md       (execution protocols, §12 kael-ai-boundary)
+3. STRUCTURES.md     (§9 AI Provider Roles)
+4. Plan.md §23       (Kael Harness + Agentic — base layer §24 enhance lên)
+5. AGENTS.md         (workspace operating rules)
+6. THIS PLAN §24
+7. CLAUDE.md         (project identity)
+8. docs/**           (durable contracts)
+9. MEMORY.md         (last)
+```
+
+---
+
+### 24.1 Decisions Locked (discussion 2026-05-25)
+
+| # | Decision | Source |
+|---|---|---|
+| C1 | Optimize Anthropic, KHÔNG động DeepSeek (Flash giữ nguyên) | Tu chốt |
+| C2 | Quality preserve **100%** cho 5 options Nhóm A (zero impact) | Discussion |
+| C3 | Nhóm B (5-10% quality risk edge cases) defer cho đến khi Nhóm A stable 2-4 tuần production | Discussion |
+| C4 | Nhóm C (complex restructuring) defer cho đến scale > 5K jobs/tháng | Discussion |
+| C5 | Implement order: T1.1 caching → T1.2 cap → T2.1 cache market → T3.1 batch learning → T5.2 Batch API | ROI-based |
+| C6 | Baseline measurement bắt buộc trước changes — verify quality drop = 0% | C2 enforce |
+| C7 | Rollback strategy per option: env flag để disable từng optimization độc lập | Safety |
+| C8 | §24 là enhancement layer trên §23, KHÔNG thay thế. Codex hoàn thành §23 trước, rồi §24 | Sequencing |
+| C9 | A/B comparison framework cần build trước Q2 (baseline + after) | Quality verify |
+| C10 | Plan §24 immutable mid-execution như §23 | Plan integrity |
+
+---
+
+### 24.2 Quality Preservation Principle (Nhóm A/B/C)
+
+Per discussion, options chia 3 nhóm theo quality risk:
+
+#### Nhóm A — Zero quality impact (scope §24)
+
+| Option | Saving | Tại sao zero impact |
+|---|---|---|
+| **T1.1 Prompt Caching** | 90% input cost cho cached portion | Cached prompt = identical model output. Anthropic chỉ giảm giá phần cached. |
+| **T1.2 Cap Output Tokens** | 50-80% output cost | Cap calibrated đúng per purpose → cut nothing relevant. Cap quá chặt → drop quality. **Cần calibrate.** |
+| **T2.1 DB Cache Market Lookup** | 50-70% Perplexity calls | Response identical từ DB hay Perplexity. Risk: stale data. Mitigation: 24h TTL + manual invalidate. |
+| **T3.1 Batch Learning Hourly** | 95% learning call count | Learning logic identical, delay 1h. User-facing quality KHÔNG ảnh hưởng. |
+| **T5.2 Anthropic Batch API** | 50% background cost | Cùng model, output. Delay 24h cho background only. User không thấy. |
+
+#### Nhóm B — Small quality risk (defer §24, possibly future phase)
+
+| Option | Risk |
+|---|---|
+| T1.4 Haiku 4.5 vision | Vision quality drop 10-15% trên ảnh phức tạp |
+| T1.5 Haiku 4.5 fallback | Edge case detection drop |
+| T4.4 Skip Perplexity khi baseline confident | Miss market drift ~5% |
+| T4.6 Skip Anthropic fallback khi DeepSeek conf > 0.9 | DeepSeek overconfidence wrong ~5-10% |
+
+#### Nhóm C — High quality risk (defer hoàn toàn)
+
+| Option | Risk |
+|---|---|
+| T1.7 Memory compression | Hallucination |
+| T2.4 Similar Kael analysis cache | Lose personalization |
+| T5.1 Multi-purpose prompt batching | Loss modularity |
+| T6.3 Customer tier routing | Complexity |
+
+---
+
+### 24.3 Phase Ordering
+
+```
+Q0  Pre-Plan Context Loading (MANDATORY)
+├── Read order: critical.md → RULES.md → STRUCTURES.md → Plan.md §23 → Plan.md §24 → MEMORY.md
+├── Verify §23 implementation status — Q1 chỉ start sau khi §23 P3 (Provider Routing) done
+
+Q1  Baseline Measurement + Telemetry Setup
+├── Dep: §23 P3 done
+
+Q2  Quick Wins (T1.1 Prompt Caching + T1.2 Cap Output)
+├── Dep: Q1
+
+Q3  DB Caching Layer (T2.1 Market Lookup Cache)
+├── Dep: Q2
+
+Q4  Background Optimization (T3.1 Batch Learning + T5.2 Anthropic Batch API)
+├── Dep: Q3
+
+Q5  Validate + Compare + Production Rollout
+├── Dep: Q4
+```
+
+**Critical path:** Q0 → Q1 → Q2 → Q3 → Q4 → Q5 (sequential).
+
+**Estimated total effort:** 10-15 ngày.
+
+---
+
+### 24.4 Phase Q0 — Pre-Plan Context Loading ⚠️ MANDATORY
+
+**Goal:** AI agent có ngữ cảnh đầy đủ trước khi đụng code, verify §23 status.
+
+**Dependencies:** None.
+
+**Scope:** Đọc authority files + verify §23 P3 (Provider Routing) đã build xong.
+
+**Out of scope:** KHÔNG sửa file.
+
+**WBS:**
+
+- T0.1 Read `critical.md` § toàn bộ.
+- T0.2 Read `RULES.md` § toàn bộ.
+- T0.3 Read `STRUCTURES.md` §9 (AI Provider Roles).
+- T0.4 Read `Plan.md §23` — verify P3 status.
+- T0.5 Read `Plan.md §24` (this plan).
+- T0.6 Read `MEMORY.md` last.
+- T0.7 Verify §23 P3 done: routing.config.ts exists, orchestrator.ts exists, 11 purposes routed.
+- T0.8 Verify api_logs.purpose populated 100% (Q1 baseline cần data này).
+- T0.9 State preflight format per `critical.md` §5.
+
+**Build Instructions:** N/A.
+
+**Affected Areas:** None.
+
+**Skills/Protocols:** `kael-preflight`, `kael-clarify-with-docs`.
+
+**Tests:** N/A.
+
+**Verification Loop:** Output preflight phải verify §23 P3 done + telemetry working.
+
+**Foundation Enhancement:** N/A.
+
+**Acceptance Gate:**
+
+- [ ] §23 P3 verified done.
+- [ ] api_logs.purpose populated 100% (D30 verify).
+- [ ] Preflight stated.
+
+**Estimated Effort:** 30-60 phút.
+
+**Handoff Notes:** Nếu §23 P3 chưa done → STOP, ưu tiên §23 trước.
+
+---
+
+### 24.5 Phase Q1 — Baseline Measurement + Telemetry Setup
+
+**Goal:** Measure current Anthropic cost + quality baseline trước khi optimize.
+
+**Dependencies:** Q0, §23 P3 done.
+
+**Scope:**
+
+- Cost dashboard: per-day Anthropic + Perplexity + DeepSeek spending breakdown.
+- Quality baseline: 50 jobs collect → measure schema validation, satisfaction, advisory accuracy.
+- Comparison framework: before/after metric collection.
+- A/B flag infrastructure (env flag per option).
+
+**Out of scope:** KHÔNG implement optimization options.
+
+**WBS:**
+
+- T1.1 Cost dashboard query/view trên `api_logs`:
+  - Per-day: total cost per provider, calls count, avg latency, fail rate.
+  - Per-purpose: same metrics.
+  - SQL view `kael_cost_daily_summary` (new migration).
+- T1.2 Quality baseline measure (50 jobs from staging):
+  - Schema validation rate per purpose.
+  - Vietnamese tone score (heuristic).
+  - Customer satisfaction proxy (review rating average).
+  - Advisory accuracy (LS2 CaseReview data).
+  - Persist to `kael_quality_baseline` table (new).
+- T1.3 A/B flag infrastructure:
+  - Env flags: `KAEL_OPT_PROMPT_CACHE_ENABLED`, `KAEL_OPT_CAP_OUTPUT_ENABLED`, `KAEL_OPT_MARKET_CACHE_ENABLED`, `KAEL_OPT_BATCH_LEARNING_ENABLED`, `KAEL_OPT_BATCH_API_ENABLED`.
+  - Default all false (rollback-safe).
+  - Per-option toggle independent.
+- T1.4 Comparison metric collection helper:
+  - `kael_optimization_metrics` table track per-call: option_active flags, cost_before_estimate, cost_actual, quality_pass_fail.
+- T1.5 Cost projection calculator.
+
+**Build Instructions:**
+
+- Cost dashboard: SQL view + admin endpoint.
+- Baseline measurement: SQL script chạy 50 sample jobs từ staging.
+- A/B flags: env-based, NOT DB-based (faster rollback).
+- Metric collection: append-only.
+
+**Affected Areas:**
+
+- `supabase/migrations/*` (3 new tables/views).
+- `supabase/functions/mobile-api/_shared/kael/cost-tracking.ts` (NEW).
+- `supabase/functions/mobile-api/_shared/kael/orchestrator.ts` (UPDATE: hook metric collection).
+- `apps/api/src/admin/cost-dashboard.ts` (NEW endpoint, defer if no admin UI).
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-ai-boundary`, `kael-tdd`.
+
+**Tests (95% threshold):**
+
+- T1-Q1-test-1: Cost dashboard SQL view correct aggregates.
+- T1-Q1-test-2: Baseline 50 jobs success.
+- T1-Q1-test-3: A/B flag toggle independent per option.
+- T1-Q1-test-4: Metric collection: 1 Kael call → 1 metric row.
+- T1-Q1-test-5: Cost projection calculator math correct.
+- Target: 5/5 = 100%.
+
+**Verification Loop:** Baseline numbers vô lý → re-verify telemetry. Fix metric collection nếu thiếu data.
+
+**Foundation Enhancement:**
+
+- Verify api_logs schema complete (per D30 — purpose field populated).
+- Document baseline numbers trong `docs/cost-baseline-2026-05.md`.
+
+**Acceptance Gate:**
+
+- [ ] Cost dashboard working.
+- [ ] Baseline 50 jobs measured + persisted.
+- [ ] A/B flags ready (default false).
+- [ ] Metric collection working.
+- [ ] Tests 5/5 pass.
+
+**Estimated Effort:** 2-3 ngày.
+
+**Handoff Notes:** Baseline data là input cho Q5 validation. KHÔNG skip Q1.
+
+---
+
+### 24.6 Phase Q2 — Quick Wins (T1.1 Prompt Caching + T1.2 Cap Output Tokens)
+
+**Goal:** Implement 2 quick wins lowest risk, biggest immediate saving.
+
+**Dependencies:** Q1.
+
+**Scope:**
+
+- T1.1: Anthropic prompt caching cho static portion (charter + permission + memory static).
+- T1.2: Cap output tokens per purpose (config-driven).
+
+**Out of scope:** KHÔNG động Perplexity/DeepSeek. KHÔNG đụng learning/batch.
+
+#### T1.1 Prompt Caching detail
+
+**Anthropic API feature:** `cache_control: { type: "ephemeral" }` cho prompt blocks. Cached read = $0.30/M input ($3/M base, 10x cheaper).
+
+**Cache strategy:**
+
+```ts
+messages: [
+  {
+    role: "system",
+    content: [
+      {
+        type: "text",
+        text: charter.identity + charter.persona + charter.missionValues,
+        cache_control: { type: "ephemeral" }
+      },
+      {
+        type: "text",
+        text: permission.summary(actor, purpose),
+        cache_control: { type: "ephemeral" }
+      },
+      {
+        type: "text",
+        text: memory.staticContext(jobId),
+        cache_control: { type: "ephemeral" }
+      },
+      {
+        type: "text",
+        text: purpose.specificGuidance(purpose) + context.dynamic(),
+      }
+    ]
+  },
+  { role: "user", content: userInput }
+]
+```
+
+**Cached portion estimate:**
+- Charter: ~1500 tokens (static, locked).
+- Permission summary: ~500 tokens.
+- Memory static: ~500 tokens.
+- Total cached: ~2500 tokens of ~4500 total (~55%).
+
+**Cost per Anthropic call:**
+- Before: 4500 × $3/M = $0.0135 input.
+- After (cached hit): 2500 × $0.30/M + 2000 × $3/M = $0.00675 (~50% reduce).
+- Cache miss (first call): 4500 × $3.75/M = $0.017 (~25% more first call).
+
+**Cache hit rate estimate:** 70-80%.
+
+**Net saving per call:** ~50% input cost average.
+
+**WBS T1.1:**
+
+- T1.1.1 Identify cacheable blocks.
+- T1.1.2 Refactor `kael/system-prompt.ts` (P8) to emit cacheable structured prompt blocks.
+- T1.1.3 Update `kael/provider-client.ts` to accept structured prompt với cache_control.
+- T1.1.4 Add cache hit/miss tracking trong `api_logs.safe_metadata.cache_status`.
+- T1.1.5 Verify cache TTL behavior (Anthropic 5-min ephemeral).
+- T1.1.6 Toggle via env flag `KAEL_OPT_PROMPT_CACHE_ENABLED`.
+
+#### T1.2 Cap Output Tokens detail
+
+**Current:** Default 1024 tokens.
+
+**Calibrated caps per purpose:**
+
+| Purpose | Output cap | Rationale |
+|---|---|---|
+| intent_classification | 50 | JSON ngắn |
+| vision_analysis | 400 | Structured findings + severity |
+| clarification | 100 | 0-2 câu hỏi ngắn |
+| problem_synthesis | 250 | problem_summary + complexity + reasoning |
+| price_synthesis | 200 | min, max, confidence + brief reasoning |
+| advisory_generation | 150 | Max 1 advisory ≤ 150 char |
+| worker_brief | 600 | Core fields + reasoning |
+| scope_change | 500 | Worker challenge + customer card |
+| post_job_learning | 800 | Background analysis |
+| educational_response | 500 | Educational content |
+
+**Total token saving:** ~60% average (default 1024 → calibrated avg ~350).
+
+**WBS T1.2:**
+
+- T1.2.1 Add `max_tokens` config trong `routing.config.ts` per purpose.
+- T1.2.2 Update `provider-client.ts` to pass `max_tokens` from config.
+- T1.2.3 Track output token actual usage trong `api_logs.output_tokens`.
+- T1.2.4 Monitor schema validation rate per purpose — nếu fail rate > 5%, increase cap.
+- T1.2.5 Toggle via env flag `KAEL_OPT_CAP_OUTPUT_ENABLED`.
+
+**Build Instructions:**
+
+- Refactor system-prompt.ts emit structured blocks (T1.1.2).
+- Wrap provider-client.ts to accept either structured (cache) or single string (legacy).
+- All changes flag-gated.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/system-prompt.ts` (REFACTOR)
+- `supabase/functions/mobile-api/_shared/kael/provider-client.ts` (UPDATE)
+- `supabase/functions/mobile-api/_shared/kael/routing.config.ts` (ADD per-purpose max_tokens)
+- `supabase/functions/mobile-api/_shared/kael/orchestrator.ts` (PASS through max_tokens)
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-tdd`, `karpathy-guidelines`.
+
+**Tests (95% threshold):**
+
+- T2-test-1: Prompt caching: cache miss → cache hit (check api_logs).
+- T2-test-2: Cached call cost < uncached.
+- T2-test-3: max_tokens config respected.
+- T2-test-4: Schema validation rate post-cap ≥ baseline.
+- T2-test-5: Env flag toggle revert.
+- T2-test-6: Integration end-to-end pass.
+- T2-test-7: Cost saving measurable trên 10 sample jobs.
+- Target: ≥ 6.5/7 (93%).
+
+**Verification Loop:**
+
+- Schema fail rate tăng → increase max_tokens.
+- Cache hit rate < 50% → investigate.
+- Quality drop → rollback option.
+
+**Foundation Enhancement:**
+
+- Document caching strategy trong `docs/ai-cost-optimization.md`.
+- Plan caching cho Anthropic Haiku khi sang Q phase tương lai.
+
+**Acceptance Gate:**
+
+- [ ] Prompt caching working (cache hit rate ≥ 60%).
+- [ ] Output token cap calibrated.
+- [ ] No quality drop (schema validation ≥ baseline).
+- [ ] Cost saving ≥ 40% Anthropic input cost.
+- [ ] Env flags toggle.
+- [ ] Tests ≥ 95% pass.
+
+**Estimated Effort:** 3-4 ngày.
+
+**Handoff Notes:** Caching ROI biggest. T1.2 cap cần tune sau initial deploy.
+
+---
+
+### 24.7 Phase Q3 — DB Caching Layer (T2.1 Market Lookup Cache)
+
+**Goal:** Cache Perplexity market lookup per (district + service + problem) với 24h TTL → giảm 50-70% Perplexity calls.
+
+**Dependencies:** Q2.
+
+**Scope:**
+
+- NEW table `kael_market_cache` với composite key.
+- Cache read/write logic trong `kael/market.ts`.
+- Manual invalidate endpoint cho admin.
+- 24h TTL automatic expire.
+
+**Schema:**
+
+```sql
+CREATE TABLE kael_market_cache (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  district_code text NOT NULL,
+  service_type service_type NOT NULL,
+  problem_slug text NOT NULL,
+  complexity complexity_level,
+  market_range_min int NOT NULL,
+  market_range_max int NOT NULL,
+  confidence numeric NOT NULL,
+  sources_summary text,
+  perplexity_raw jsonb,
+  hit_count int DEFAULT 0,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  invalidated_at timestamptz,
+  UNIQUE (district_code, service_type, problem_slug, complexity)
+);
+
+CREATE INDEX kael_market_cache_lookup_idx
+  ON kael_market_cache (district_code, service_type, problem_slug, complexity)
+  WHERE invalidated_at IS NULL AND expires_at > now();
+```
+
+**Cache logic:**
+
+```
+Market lookup call:
+  1. Check cache by (district_code, service_type, problem_slug, complexity) + active TTL.
+  2. If hit: increment hit_count, return cached. Tag api_logs.safe_metadata.cache_status = 'hit'.
+  3. If miss: call Perplexity, cache result (TTL 24h), return.
+```
+
+**WBS:**
+
+- T3.1 Migration: `kael_market_cache` table + index.
+- T3.2 Update `kael/market.ts`: cache check + write + hit/miss tracking.
+- T3.3 Admin endpoint `POST /admin/market-cache/invalidate`.
+- T3.4 Background job: clean expired cache rows (daily).
+- T3.5 Toggle via env flag `KAEL_OPT_MARKET_CACHE_ENABLED`.
+
+**Build Instructions:**
+
+- Cache key normalize: district_code lowercase, problem_slug normalize whitespace.
+- Cache write: atomic upsert.
+- Stale check: cache age > 7 days → log warning.
+
+**Affected Areas:**
+
+- `supabase/migrations/*` (new table)
+- `supabase/functions/mobile-api/_shared/kael/market.ts` (UPDATE)
+- `supabase/functions/mobile-api/_shared/router.ts` (admin invalidate route)
+- `supabase/functions/mobile-api/_shared/services.ts` (admin handler)
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-ai-boundary`, `kael-tdd`.
+
+**Tests (95% threshold):**
+
+- T3-test-1: Cache miss → Perplexity call → cache write.
+- T3-test-2: Cache hit → no Perplexity call, return identical.
+- T3-test-3: Expired cache → cache miss → re-fetch.
+- T3-test-4: Invalidated cache → cache miss → re-fetch.
+- T3-test-5: Admin invalidate endpoint works.
+- T3-test-6: Hit count tracked.
+- T3-test-7: Background cleanup expired rows deleted.
+- T3-test-8: Env flag disable revert.
+- T3-test-9: Cost saving: 10 jobs same district+problem → 1 Perplexity call only.
+- Target: ≥ 8.5/9 (94%).
+
+**Verification Loop:**
+
+- Cache hit rate < 30% → check key normalization.
+- Stale data complaints → reduce TTL to 12h.
+
+**Foundation Enhancement:**
+
+- Document cache invalidation policy.
+- Future: similar pattern cho baseline price lookups.
+
+**Acceptance Gate:**
+
+- [ ] Cache table created.
+- [ ] Cache hit/miss logic working.
+- [ ] Hit rate ≥ 30% sau 100 jobs.
+- [ ] Admin invalidate endpoint works.
+- [ ] Cost saving ≥ 30% Perplexity reduction.
+- [ ] Env flag toggle.
+- [ ] Tests ≥ 95% pass.
+
+**Estimated Effort:** 2-3 ngày.
+
+**Handoff Notes:** TTL 24h conservative. Tăng 48-72h sau monitoring stable.
+
+---
+
+### 24.8 Phase Q4 — Background Optimization (T3.1 Batch Learning + T5.2 Anthropic Batch API)
+
+**Goal:** Batch background tasks để giảm 95% learning calls + 50% background cost via Anthropic Batch API.
+
+**Dependencies:** Q3, §23 P7 (Learning Skill Setup) done.
+
+**Scope:**
+
+- T3.1: Batch learning skills hourly thay vì per-job.
+- T5.2: Use Anthropic Batch API (50% off, 24h delay) cho post_job_learning + LS3-LS7 background.
+
+#### T3.1 Batch Learning Hourly detail
+
+**Current (after §23 P7):** Mỗi job trigger LS1+LS2+LS3+LS4+LS5 ngay sau A14.
+- 100 jobs/day × 5 skills = 500 learning calls/day.
+
+**Batch approach:**
+
+```
+1. Job completes A14 → INSERT row vào kael_learning_queue.
+2. Cron job hourly: SELECT batches, group by skill, batch process.
+3. Result: 24 batches/day × 5 skills = 120 calls/day (-76% reduction).
+```
+
+**Quality:** Learning logic identical. Delay max 1h cho rule promotion — acceptable (rules áp dụng jobs future).
+
+#### T5.2 Anthropic Batch API detail
+
+**Anthropic feature:** Submit batch of prompts, get results within 24h, **50% off**.
+
+**Applicable purposes (background only):**
+- post_job_learning (#10)
+- LS3-LS7 learning skills
+
+**NOT applicable:** User-facing purposes #1-#9, #11.
+
+**Batch API flow:**
+
+```
+1. Background job builds batch request file (JSONL).
+2. POST to Anthropic Batch API → batch_id.
+3. Poll every hour for status.
+4. When complete (within 24h): download results.
+5. Process results → write learning candidates.
+```
+
+**WBS T3.1:**
+
+- T4.1.1 Migration: `kael_learning_queue` table.
+- T4.1.2 Refactor `services.ts` A14 trigger: INSERT to queue instead of immediate.
+- T4.1.3 Implement cron job `kael/cron/process-learning-queue.ts` (hourly).
+- T4.1.4 Update LS1-LS5 to accept batched input.
+- T4.1.5 Toggle via env flag `KAEL_OPT_BATCH_LEARNING_ENABLED`.
+
+**WBS T5.2:**
+
+- T4.2.1 Implement Anthropic Batch API wrapper `kael/provider-batch.ts`.
+- T4.2.2 Refactor post_job_learning to use batch endpoint when flag enabled.
+- T4.2.3 Implement batch status polling cron (every hour).
+- T4.2.4 Result processor: download + parse + write learning candidates.
+- T4.2.5 Fallback realtime nếu batch fail > 48h.
+- T4.2.6 Toggle via env flag `KAEL_OPT_BATCH_API_ENABLED`.
+
+**Build Instructions:**
+
+- Cron: use Supabase pg_cron extension.
+- Batch queue: append-only, soft-delete after processed.
+- Batch API: handle 24h timeout gracefully, fallback realtime.
+- Quality verify: compare batch vs realtime trên 20 sample (must identical).
+
+**Affected Areas:**
+
+- `supabase/migrations/*` (kael_learning_queue + cron extension)
+- `supabase/functions/mobile-api/_shared/kael/cron/process-learning-queue.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/cron/process-batch-results.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/provider-batch.ts` (NEW)
+- `supabase/functions/mobile-api/_shared/kael/skills/LS1-LS7.ts` (UPDATE: batched input)
+- `supabase/functions/mobile-api/_shared/services.ts` (UPDATE: queue instead immediate)
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-ai-boundary`, `kael-tdd`, `kael-architecture-deepening`.
+
+**Tests (95% threshold):**
+
+- T4-test-1: A14 trigger → row inserted queue (not immediate).
+- T4-test-2: Cron job processes queue hourly.
+- T4-test-3: Batched LS1-LS5 process multiple evidence in 1 LLM call.
+- T4-test-4: Anthropic Batch API: submit → receive within 24h.
+- T4-test-5: Batch result identical vs realtime trên 20 sample.
+- T4-test-6: Cost saving: batched ≤ 50% realtime.
+- T4-test-7: Fallback realtime nếu batch fail > 48h.
+- T4-test-8: Env flag toggle revert immediate trigger.
+- T4-test-9: Integration end-to-end với batch enabled.
+- Target: ≥ 8.5/9 (94%).
+
+**Verification Loop:**
+
+- Batch differ realtime > 5% → investigate prompt drift.
+- Cron stuck → check pg_cron status.
+- Batch API delay > 24h → check Anthropic quota.
+
+**Foundation Enhancement:**
+
+- Document batch architecture trong `docs/ai-cost-optimization.md`.
+- Future: similar batch pattern cho non-critical synthesis.
+
+**Acceptance Gate:**
+
+- [ ] Learning queue + hourly cron working.
+- [ ] Batched LS1-LS5 outputs identical vs realtime.
+- [ ] Anthropic Batch API integration working.
+- [ ] Cost saving ≥ 70% learning + ≥ 40% background Anthropic.
+- [ ] Fallback realtime works.
+- [ ] Env flags toggle.
+- [ ] Tests ≥ 95% pass.
+
+**Estimated Effort:** 4-5 ngày.
+
+**Handoff Notes:** Background optimization compound saving với T1.1+T1.2+T2.1.
+
+---
+
+### 24.9 Phase Q5 — Validate + Compare + Production Rollout
+
+**Goal:** Verify quality preserve 100% + cost saving measurable + gradual production rollout.
+
+**Dependencies:** Q4.
+
+**Scope:**
+
+- A/B compare quality before/after 50 jobs.
+- Cost dashboard reading post-optimization.
+- Gradual rollout: 10% → 25% → 50% → 100%.
+- Rollback plan per option.
+
+**WBS:**
+
+- T5.1 Run 50 sample jobs với all optimizations enabled (staging).
+- T5.2 Compare quality vs baseline (Q1):
+  - Schema validation rate per purpose: ≥ baseline.
+  - Customer satisfaction proxy: ≥ baseline.
+  - Advisory accuracy: ≥ baseline.
+  - Latency: ≤ baseline (caching faster).
+- T5.3 Compare cost:
+  - Total Anthropic per 100 jobs: ≤ 35% baseline.
+  - Perplexity calls per 100 jobs: ≤ 50% baseline.
+  - Learning calls per day: ≤ 25% baseline.
+- T5.4 Quality drop detected → rollback option, identify root cause, re-test.
+- T5.5 Production rollout:
+  - Day 1: 10% jobs (canary).
+  - Day 3: 25% (no quality drop).
+  - Day 7: 50%.
+  - Day 14: 100%.
+- T5.6 Monitoring alerts:
+  - Schema validation rate drop > 5%.
+  - Customer satisfaction drop > 0.3 stars.
+  - Cost spike unexpected.
+- T5.7 Document final state trong `docs/cost-optimization-2026-XX-results.md`.
+
+**Build Instructions:**
+
+- A/B comparison: same job inputs run twice (with vs without optimization).
+- Rollout via env flag percentage gate.
+- Monitoring alerts: cron daily, push admin.
+
+**Affected Areas:**
+
+- Test scripts + comparison framework.
+- Monitoring infrastructure.
+- Documentation.
+
+**Skills/Protocols:** `kael-preflight`, `kael-diagnose`, `kael-review`, `kael-tdd`.
+
+**Tests (95% threshold):**
+
+- T5-test-1: A/B comparison: quality post ≥ baseline.
+- T5-test-2: Cost saving ≥ 65%.
+- T5-test-3: Latency improved or unchanged.
+- T5-test-4: Rollout 10% canary 10 jobs success.
+- T5-test-5: Rollback drill: disable 1 option, behavior reverts.
+- T5-test-6: Monitoring alerts trigger.
+- T5-test-7: Integration end-to-end all optimizations.
+- Target: ≥ 6.5/7 (93%).
+
+**Verification Loop:**
+
+- Quality drop → rollback specific option, investigate root cause.
+- Cost saving < expected → audit cache hit, output cap, batch process.
+
+**Foundation Enhancement:**
+
+- Document lessons learned trong `docs/agent-lessons.md`.
+- Setup recurring quarterly review.
+
+**Acceptance Gate:**
+
+- [ ] A/B: quality preserve 100% (no drop).
+- [ ] Cost saving ≥ 65% measured.
+- [ ] Gradual rollout 100% completed.
+- [ ] Monitoring alerts working.
+- [ ] Rollback drill verified per option.
+- [ ] Tests ≥ 95% pass.
+- [ ] kael-review pass.
+
+**Estimated Effort:** 3-5 ngày.
+
+**Handoff Notes:** Q5 hoàn tất = §24 done. Cost optimization production-ready.
+
+---
+
+### 24.10 Cross-cutting Concerns
+
+#### Quality preservation guarantee
+
+Per C2: Nhóm A options chọn vì zero quality impact. Verify mỗi option:
+
+| Option | Quality verification method |
+|---|---|
+| T1.1 Prompt caching | Compare 20 cached vs uncached outputs — byte-identical |
+| T1.2 Cap output | Schema validation rate per purpose ≥ baseline |
+| T2.1 Market cache | Compare cached vs fresh Perplexity — identical (same key) |
+| T3.1 Batch learning | Batched LS1-LS5 outputs ≥ 95% match vs realtime |
+| T5.2 Anthropic Batch API | Batched output identical vs realtime (Anthropic guarantee) |
+
+#### Rollback strategy
+
+Per C7: env flag per option:
+
+```
+KAEL_OPT_PROMPT_CACHE_ENABLED       # T1.1
+KAEL_OPT_CAP_OUTPUT_ENABLED         # T1.2
+KAEL_OPT_MARKET_CACHE_ENABLED       # T2.1
+KAEL_OPT_BATCH_LEARNING_ENABLED     # T3.1
+KAEL_OPT_BATCH_API_ENABLED          # T5.2
+```
+
+Default ALL false (rollback-safe). Enable progressively.
+
+#### Cost saving compound projection
+
+Baseline (estimated post-§23): $40-80/tháng @ 1000 jobs.
+
+| Stage | Options enabled | Expected saving | Projected cost |
+|---|---|---|---|
+| Q2 done | T1.1 + T1.2 | 40-50% | $20-40 |
+| Q3 done | + T2.1 | 50-60% | $16-32 |
+| Q4 done | + T3.1 + T5.2 | 65-75% | $10-20 |
+| Q5 stable | All | 70-80% | $8-16 |
+
+At scale 10K jobs/tháng: $80-160 thay vì $400-800.
+
+#### Skills Mapping Summary
+
+| Skill | Used in Phases |
+|---|---|
+| `kael-preflight` (mandatory) | ALL phases |
+| `kael-ai-boundary` | Q1, Q2, Q3, Q4 |
+| `kael-supabase` | Q1, Q3, Q4 |
+| `kael-tdd` | ALL phases except Q0 |
+| `kael-architecture-deepening` | Q4 (batch architecture) |
+| `kael-review` | ALL phases (acceptance gate) |
+| `kael-diagnose` | Q5 (issue resolution) |
+| `karpathy-guidelines` | ALL phases |
+
+#### Approval Gates Summary
+
+```
+Q0 → Q1: §23 P3 verified done + pre-plan output
+Q1 → Q2: Baseline measured + telemetry working
+Q2 → Q3: Caching + cap quality preserve verified
+Q3 → Q4: Market cache hit rate ≥ 30%
+Q4 → Q5: All optimizations working + flags toggle verified
+Q5 → Production: A/B verify quality preserve + cost saving ≥ 65% + Tu approve manual gate
+```
+
+---
+
+### 24.11 Change Log
+
+| Version | Date | Author | Change |
+|---|---|---|---|
+| 0.1 DRAFT | 2026-05-25 | Tu + Claude discussion | Initial draft based on Nhóm A 5 options |
+| 1.0 | 2026-05-25 | Tu approved | Approve toàn bộ, write vào Plan.md §24 |
+| 2.0 | 2026-05-26 | Tu + Claude + Codex | Reconciled PR #37-#40 audit via Plan.md §26; Q1-Q5 production rollout and quality/cost reruns recorded without editing phase bodies |
+
+---
+
+### 24.12 Notes for Future Agents
+
+**Khi resume work §24:**
+
+1. Read §24 đầy đủ.
+2. Verify §23 implementation status — §24 dependency.
+3. Check Change Log.
+4. Verify decisions C1-C10 vẫn align.
+5. Run preflight per `critical.md` §5.
+
+**Conflict resolution:**
+
+- §24 conflict với §23: §23 wins (base layer).
+- §24 conflict với `RULES.md` hoặc `critical.md`: STOP, ask Tu.
+- §24 conflict với code đã merge: re-read code, code wins, update plan addendum.
+
+**Plan immutable:**
+
+- §24.0-§24.11 KHÔNG được edit mid-execution per C10.
+- Nếu cần đổi → §24 v2.0 + Tu approve.
+
+**Quality monitoring post-deploy:**
+
+- Weekly: review schema validation rate trends.
+- Monthly: review cost dashboard, customer satisfaction.
+- Quarterly: consider Nhóm B (Haiku 4.5, skip rules) nếu scale > 5K jobs/tháng.
+
+---
+
+## 25. Source Trust + Multi-LLM Orchestration + Passive Learning — 2026-05-25
+
+### 25.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-source-trust-multi-llm
+Created:        2026-05-25 (drafted), 2026-05-26 (written to Plan.md)
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         v2.0 F26 reconciled 2026-05-26 → PR #37-#40 audit gaps closed in §26
+Critical Alert: MEDIUM-HIGH — touches AI price accuracy + customer trust
+Decision log:   Conversation 2026-05-25 sau khi chốt §24; Perplexity API doc verified 2026-05-25
+Scope:          Source trust enforcement (3-layer validation) + Multi-LLM blended synthesis
+                + Passive learning loop (Kael học từ Perplexity searches)
+                Phương án A: Baseline DB primary 70% + Perplexity supplementary 30%
+Out of scope:   Phương án B (Perplexity primary) — defer
+                Phương án C (loại Perplexity) — fallback only nếu A fail
+                Multi-city, service expansion
+Effort total:   ~12-18 ngày agent build (sequential)
+Phase count:    9 phases (R0 pre-plan + R1-R8 execution)
+Expected outcome: Customer thấy citations rõ ràng + Kael học từ market data over time
+                  + admin xem được source trust evolution
+```
+
+**Mục tiêu chính:**
+
+1. **Source uy tín đảm bảo** — Perplexity strict allowlist 20 Tier 1 Vietnamese domains.
+2. **Citation transparency** — Estimate Card v3 + admin audit thấy nguồn cụ thể per price.
+3. **Code-side validation** — không trust Perplexity blind, verify citations match whitelist.
+4. **Passive learning** — Kael học baseline price từ Perplexity searches over time qua LS1 MarketMemory.
+5. **Anti-poisoning** — outlier detection + source weighting + quarterly admin review.
+
+**Authority refs:**
+
+```
+1. RULES.md          (§2 AI wrapper, §3 validate output, §4 disclaimer, §8 no fake data)
+2. critical.md       (§12 kael-ai-boundary)
+3. STRUCTURES.md     (§9 Perplexity = market lookup, §10 evidence gate)
+4. Plan.md §23       (Harness P3 routing, P6 memory, P7 learning — base)
+5. Plan.md §24       (Cost optimization Q3 market cache — share infra)
+6. AGENTS.md
+7. THIS PLAN §25
+8. Perplexity API doc (verified 2026-05-25)
+```
+
+---
+
+### 25.1 Decisions Locked
+
+| # | Decision | Source |
+|---|---|---|
+| S1 | Phương án A: Baseline 70% + Perplexity 30% blend (NOT B, NOT C) | Tu chốt |
+| S2 | Tier 1 trusted domains: max 20 (Perplexity API limit) | API doc |
+| S3 | `search_domain_filter` allowlist mode (strict include only, KHÔNG denylist) | API doc verify |
+| S4 | Code-side citation validation MANDATORY (Layer 2) | Trust enforcement |
+| S5 | Passive learning via extend LS1 MarketMemory (outlier + source weighting) | Build on PR #12 |
+| S6 | NEW `source_trust_registry` table — admin tunable, quarterly review | Maintenance |
+| S7 | Extend `kael_market_artifacts.safe_metadata` schema với `citations[]` strict | Audit trail |
+| S8 | Source trust score decay (recent sources weight more, > 90 days weight 0.5) | Freshness |
+| S9 | Cold start fallback: admin baseline seed nếu không có Perplexity data | Survival |
+| S10 | Admin dashboard cho trust evolution — defer Phase R7 (optional) | Scope |
+| S11 | Validation MUST log per-call (admin audit) | Transparency |
+| S12 | §25 immutable mid-execution | Plan integrity |
+
+---
+
+### 25.2 Architecture — 3-Layer Validation
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ LAYER 1: Perplexity native filter                            │
+│ ─ search_domain_filter = [tier_1_domains] (max 20)           │
+│ ─ search_recency_filter = "month"                             │
+│ ─ system_prompt = strict instruction                          │
+│ ─ STRICT include-only (verified API doc)                      │
+└────────────────────────┬─────────────────────────────────────┘
+                         │ Perplexity response với citations[]
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│ LAYER 2: Code-side citation validator                         │
+│ ─ Parse citations[] from response                             │
+│ ─ Verify each URL match Tier 1 whitelist (defense in depth)  │
+│ ─ Reject citation nếu domain outside whitelist                │
+│ ─ Compute trust_score per citation                            │
+│ ─ Log validation result vào api_logs                          │
+└────────────────────────┬─────────────────────────────────────┘
+                         │ Validated citations với trust_score
+                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│ LAYER 3: Source-weighted blend (price synthesis)              │
+│ ─ Baseline DB: 70% weight (admin curated)                     │
+│ ─ Perplexity: 30% weight (live market signal)                 │
+│ ─ Each Perplexity citation weighted by trust_score            │
+│ ─ Outlier detection (median ± 2σ)                             │
+│ ─ Final price = weighted blend                                │
+└────────────────────────┬─────────────────────────────────────┘
+                         │ Final estimate + citations array
+                         ▼
+   Estimate Card v3 (citations[] visible to admin)
+   + kael_market_artifacts persist (passive learning input)
+                         │
+                         ▼
+   LS1 MarketMemory (hourly batch §24 Q4):
+   Aggregate artifacts → outlier reject → weighted median
+   → If evidence ≥ 5 + drift conf ≥ 0.6 → update baseline price_prior
+```
+
+---
+
+### 25.3 Phase Ordering
+
+```
+R0  Pre-Plan Context Loading (MANDATORY)
+├── Verify §23 P3+P6+P7 + §24 Q3 done
+
+R1  Source Research Spike (verify Tier 1 domains accessibility)
+├── Dep: R0
+
+R2  Perplexity Configuration (allowlist + system prompt + recency)
+├── Dep: R1
+
+R3  Citation Persistence Schema (extend kael_market_artifacts)
+├── Dep: R2
+
+R4  Code-Side Citation Validator (Layer 2)
+├── Dep: R3
+
+R5  Source Trust Registry (per-domain trust_score, admin tunable)
+├── Dep: R4
+
+R6  LS1 MarketMemory Extend (outlier + weighted aggregation)
+├── Dep: R5
+
+R7  Admin Source Trust Dashboard (optional, can defer)
+├── Dep: R6
+
+R8  A/B Test + Production Rollout
+├── Dep: R6 (R7 optional)
+```
+
+**Critical path:** R0 → R1 → R2 → R3 → R4 → R5 → R6 → R8. R7 optional parallel.
+
+**Estimated total effort:** 12-18 ngày.
+
+---
+
+### 25.4 Phase R0 — Pre-Plan Context Loading ⚠️ MANDATORY
+
+**Goal:** Verify §23 P3 + P6 + P7 + §24 Q3 done; load authority context.
+
+**Dependencies:** None.
+
+**Scope:** Read files; verify dependencies; state preflight.
+
+**WBS:**
+
+- T0.1 Read `critical.md` § toàn bộ.
+- T0.2 Read `RULES.md` §2, §3, §4, §8 (AI wrapper, validate, disclaimer, no fake).
+- T0.3 Read `STRUCTURES.md` §9 (Perplexity role), §10 (evidence gate).
+- T0.4 Read `Plan.md §23` — verify P3 routing, P6 memory, P7 LS1 status.
+- T0.5 Read `Plan.md §24` — verify Q3 market cache status.
+- T0.6 Read `Plan.md §25` (this plan).
+- T0.7 Read `MEMORY.md` last.
+- T0.8 Verify §23 P3 done: routing.config.ts có purpose #5 market_lookup.
+- T0.9 Verify §23 P6 done: kael_market_artifacts table exists, RLS clean.
+- T0.10 Verify §23 P7 done: LS1 MarketMemory implemented (PR #12 extend).
+- T0.11 Verify §24 Q3 done: kael_market_cache table exists.
+- T0.12 State preflight per `critical.md` §5.
+
+**Build Instructions:** N/A.
+
+**Affected Areas:** None.
+
+**Skills/Protocols:** `kael-preflight`, `kael-clarify-with-docs`.
+
+**Tests:** N/A.
+
+**Verification Loop:** Output preflight verify 4 dependencies.
+
+**Foundation Enhancement:** N/A.
+
+**Acceptance Gate:**
+
+- [ ] §23 P3/P6/P7 verified done.
+- [ ] §24 Q3 verified done.
+- [ ] Preflight stated.
+
+**Estimated Effort:** 30-60 phút.
+
+**Handoff Notes:** Nếu dependencies chưa done → STOP, ưu tiên §23/§24 trước.
+
+---
+
+### 25.5 Phase R1 — Source Research Spike
+
+**Goal:** Verify Tier 1 trusted Vietnamese domains accessibility via Perplexity test calls; document untrust list.
+
+**Dependencies:** R0.
+
+**Scope:**
+
+- Test API call Perplexity với candidate Tier 1 domains.
+- Verify accessibility, data quality, citation format.
+- Document untrust sources to avoid.
+- Output: `docs/foundation/source-trust-research.md`.
+
+**Candidate Tier 1 domains (verify trong R1):**
+
+| Domain | Loại | Trust hypothesis |
+|---|---|---|
+| btaskee.com | Competitor public price | High |
+| jupviec.vn | Competitor | High |
+| rada.com.vn | Competitor | High |
+| anvui.com | Marketplace | Medium-high |
+| 247shome.com | Competitor (verify exist) | Medium |
+| service.vn | Yellow pages | Medium |
+| tuoitre.vn | News | Medium (news bias) |
+| vnexpress.net | News | Medium |
+| thanhnien.vn | News | Medium |
+| ... + 10 more (research) | | |
+
+**Untrust list (document for code-side reject):**
+
+- FB group URLs (graph.facebook.com)
+- Personal blog hosts (blogspot.com, wordpress.com personal blogs)
+- Aggregator không có địa chỉ doanh nghiệp
+- Sites với "giá rẻ bất thường" pattern
+
+**WBS:**
+
+- T1.1 List candidate Tier 1 domains (20).
+- T1.2 Test API Perplexity call cho 5 sample queries với each domain in allowlist:
+  - "Giá sửa ống nước rò rỉ HCMC 2026"
+  - "Giá thay ổ cắm điện apartment HCMC"
+  - "Giá dọn nhà move-out HCMC 2026"
+  - "Giá sửa van xả bồn cầu HCMC"
+  - "Giá vệ sinh bếp gas dầu HCMC"
+- T1.3 Measure: accessibility (Perplexity returns content?), citation accuracy, recency, data quality.
+- T1.4 Document untrust patterns (sample queries → identify scam sites in unfiltered Perplexity output).
+- T1.5 Recommend final Tier 1 list (20 domains).
+- T1.6 Document `docs/foundation/source-trust-research.md`.
+
+**Build Instructions:**
+
+- Test queries Vietnamese.
+- API call with each candidate domain in `search_domain_filter`.
+- Save sample responses for review.
+- KHÔNG implement code-side filter yet (R4).
+
+**Affected Areas:**
+
+- `docs/foundation/source-trust-research.md` (NEW).
+- Test scripts trong `scripts/source-trust-research/` (NEW, scrap dir).
+
+**Skills/Protocols:** `kael-preflight`, `kael-clarify-with-docs`, `kael-prototype` (research is prototype).
+
+**Tests:** Research output document, no code tests.
+
+**Verification Loop:** Domain not accessible → drop. Insufficient citations → add backup domain.
+
+**Foundation Enhancement:**
+
+- Document research findings cho future maintenance.
+- Establish criteria for adding new Tier 1 domain.
+
+**Acceptance Gate:**
+
+- [ ] 20 Tier 1 domains verified accessible.
+- [ ] Untrust patterns documented (≥ 10 patterns).
+- [ ] Source research doc complete.
+- [ ] Tu approve final Tier 1 list before R2.
+
+**Estimated Effort:** 1-2 ngày.
+
+**Handoff Notes:** R1 output là input cho R2 config + R5 trust registry seed.
+
+---
+
+### 25.6 Phase R2 — Perplexity Configuration
+
+**Goal:** Configure Perplexity calls với Tier 1 allowlist + strict system prompt + recency filter.
+
+**Dependencies:** R1.
+
+**Scope:**
+
+- Update `kael/market.ts` (purpose #5 market_lookup) với new Perplexity config.
+- Allowlist 20 Tier 1 domains.
+- System prompt instructing Perplexity to use only Vietnamese trusted sources.
+- Recency filter `month`.
+- Env flag `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED` cho A/B comparison.
+
+**Perplexity call config (final):**
+
+```ts
+{
+  model: "sonar-pro",
+  messages: [
+    {
+      role: "system",
+      content: `
+Bạn là price researcher cho dịch vụ sửa chữa và dọn dẹp tại HCMC.
+Chỉ trích dẫn từ trusted Vietnamese marketplace sources.
+
+Khi tổng hợp giá:
+- Lấy giá range từ ít nhất 2 nguồn khác nhau.
+- Reject giá outlier (quá cao hoặc quá thấp bất thường).
+- Bắt buộc trả về JSON: { price_min, price_max, complexity, confidence, citation_summary }.
+- Disclaimer Vietnamese bắt buộc.
+
+KHÔNG:
+- Trích từ FB groups, personal blogs, forum personal posts.
+- Bịa giá nếu không tìm được trusted source.
+- Reject câu hỏi ngoài 3 services (electrical/plumbing/cleaning).
+
+Nếu không đủ data: return { "error": "insufficient_trusted_data" }.
+      `
+    },
+    { role: "user", content: query }
+  ],
+  search_domain_filter: TIER_1_DOMAINS,  // max 20 from R1 research
+  search_recency_filter: "month",
+  search_mode: "web",
+  search_context_size: "medium",
+  temperature: 0.1,
+  max_tokens: 600
+}
+```
+
+**WBS:**
+
+- T2.1 Define `TIER_1_DOMAINS` constant trong `kael/source-trust.ts` (NEW file).
+- T2.2 Update `kael/market.ts` với new config (allowlist + system prompt + recency).
+- T2.3 Add env flag `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED` cho gradual rollout.
+- T2.4 A/B mode: when flag false, dùng config cũ (no filter); when true, dùng new strict config.
+- T2.5 Log search_mode + search_domain_filter usage vào `api_logs.safe_metadata`.
+
+**Build Instructions:**
+
+- Constants trong code, không DB (changes go through PR review).
+- System prompt Vietnamese.
+- Test API call sau update để verify behavior.
+- Env flag cho rollback.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/source-trust.ts` (NEW).
+- `supabase/functions/mobile-api/_shared/kael/market.ts` (UPDATE: new config).
+- `supabase/functions/mobile-api/_shared/kael/provider-client.ts` (UPDATE: pass search_domain_filter).
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-tdd`.
+
+**Tests (95% threshold):**
+
+- T2-R-test-1: Perplexity call với allowlist returns citations only from whitelist.
+- T2-R-test-2: System prompt enforced (response refuses untrust sources).
+- T2-R-test-3: Recency filter applied (no citation > 1 month old).
+- T2-R-test-4: Env flag toggle: revert to old config.
+- T2-R-test-5: Insufficient data case: return error gracefully.
+- T2-R-test-6: Schema validation: response parse-able.
+- T2-R-test-7: Integration: end-to-end market_lookup với new config.
+- Target: ≥ 6.5/7 (93%).
+
+**Verification Loop:**
+
+- Citations leak outside whitelist → check Perplexity allowlist sync.
+- Insufficient data > 50% jobs → expand Tier 1 cẩn thận.
+
+**Foundation Enhancement:**
+
+- Document Tier 1 selection criteria trong `docs/ai-source-trust.md`.
+
+**Acceptance Gate:**
+
+- [ ] Perplexity config updated với allowlist.
+- [ ] System prompt Vietnamese strict.
+- [ ] Recency filter active.
+- [ ] Env flag toggle.
+- [ ] Tests ≥ 95% pass.
+
+**Estimated Effort:** 1-2 ngày.
+
+**Handoff Notes:** R2 only configures Perplexity. Code-side validation ở R4.
+
+---
+
+### 25.7 Phase R3 — Citation Persistence Schema
+
+**Goal:** Extend `kael_market_artifacts.safe_metadata` với strict `citations[]` schema để track source per query.
+
+**Dependencies:** R2.
+
+**Scope:**
+
+- Define citation Zod schema.
+- Extend `kael_market_artifacts.safe_metadata` JSONB structure.
+- Migration: thêm validation function (optional Postgres check) hoặc relying on code-side validation.
+- Update `kael/market.ts` to persist citations[] structured.
+
+**Citation schema:**
+
+```ts
+const CitationSchema = z.object({
+  url: z.string().url(),
+  domain: z.string(),
+  title: z.string().max(200).optional(),
+  snippet: z.string().max(500).optional(),
+  published_at: z.string().datetime().optional(),
+  trust_score: z.number().min(0).max(1),
+  tier: z.enum(['tier_1', 'tier_2', 'tier_3', 'unverified']),
+  validated_at: z.string().datetime(),
+});
+
+const MarketArtifactMetadata = z.object({
+  citations: z.array(CitationSchema).min(0).max(20),
+  perplexity_query: z.string().max(500),
+  perplexity_response_summary: z.string().max(1000),
+  validation_log: z.object({
+    total_citations: z.number(),
+    accepted: z.number(),
+    rejected: z.number(),
+    reject_reasons: z.array(z.string()),
+  }),
+});
+```
+
+**WBS:**
+
+- T3.1 Define `CitationSchema` trong `packages/shared/kael/schemas/citation.ts` (NEW).
+- T3.2 Define `MarketArtifactMetadata` schema extending.
+- T3.3 Migration: add optional check constraint `safe_metadata->'citations' IS NOT NULL` cho new rows.
+- T3.4 Update `kael/market.ts` to populate citations[] structured.
+- T3.5 Add domain extraction helper `extractDomain(url) → string`.
+
+**Build Instructions:**
+
+- Schema Zod strict.
+- Domain extraction: handle www, subdomain, query params strip.
+- Trust_score initial: assign based on tier (calculated từ source_trust_registry R5).
+- For R3, set tier='unverified' + trust_score=0.5 (default). R5 will populate per registry.
+
+**Affected Areas:**
+
+- `packages/shared/kael/schemas/citation.ts` (NEW).
+- `supabase/functions/mobile-api/_shared/kael/market.ts` (UPDATE).
+- `supabase/migrations/*` (optional check constraint).
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-tdd`.
+
+**Tests (95% threshold):**
+
+- T3-R-test-1: CitationSchema accept valid + reject invalid.
+- T3-R-test-2: extractDomain handle edge cases (www, subdomain, trailing slash).
+- T3-R-test-3: Market lookup populates citations[] structured.
+- T3-R-test-4: kael_market_artifacts row có citations[] persisted.
+- T3-R-test-5: Schema validation: citations array max 20.
+- Target: 5/5 = 100%.
+
+**Verification Loop:** Schema fail → tune. Domain extraction edge case → fix.
+
+**Foundation Enhancement:** Documentation citation schema usage.
+
+**Acceptance Gate:**
+
+- [ ] CitationSchema defined.
+- [ ] kael_market_artifacts persists citations[].
+- [ ] Tests 5/5 pass.
+
+**Estimated Effort:** 1-2 ngày.
+
+**Handoff Notes:** R3 schema ready. R4 validator will populate trust_score correctly.
+
+---
+
+### 25.8 Phase R4 — Code-Side Citation Validator (Layer 2)
+
+**Goal:** Implement defense-in-depth citation validation: verify URLs match Tier 1 whitelist, reject + log nếu outside.
+
+**Dependencies:** R3.
+
+**Scope:**
+
+- Validator function `validateCitations(citations[]) → ValidationResult`.
+- Reject citations outside whitelist.
+- Compute trust_score per citation.
+- Log validation result vào api_logs + kael_market_artifacts.
+- Defensive: even if Perplexity bypass allowlist (bug?), code catches.
+
+**Validator logic:**
+
+```ts
+function validateCitations(rawCitations: string[]): ValidationResult {
+  const validated = rawCitations.map(url => {
+    const domain = extractDomain(url);
+    const trust = lookupTrustScore(domain);
+
+    if (trust.tier === 'unverified' || trust.tier === 'tier_3') {
+      return { url, domain, accepted: false, reject_reason: 'untrust_domain', trust_score: 0 };
+    }
+
+    return {
+      url, domain, accepted: true,
+      tier: trust.tier,
+      trust_score: trust.score,
+      validated_at: new Date().toISOString(),
+    };
+  });
+
+  const accepted = validated.filter(c => c.accepted);
+  const rejected = validated.filter(c => !c.accepted);
+
+  // Quorum check: ≥ 2 accepted citations để trust price
+  if (accepted.length < 2) {
+    return {
+      result: 'insufficient_trusted_citations',
+      accepted, rejected,
+      action: 'fallback_baseline_only',
+    };
+  }
+
+  return { result: 'valid', accepted, rejected, action: 'proceed_with_blend' };
+}
+```
+
+**WBS:**
+
+- T4.1 Implement `validateCitations` trong `kael/source-trust.ts`.
+- T4.2 Implement `extractDomain` helper.
+- T4.3 Implement `lookupTrustScore(domain)` stub (R5 will plug registry).
+- T4.4 Integrate validator vào `kael/market.ts` post-Perplexity call.
+- T4.5 Log validation result vào api_logs.safe_metadata.
+- T4.6 Behavior khi insufficient_trusted_citations: fallback baseline only.
+
+**Build Instructions:**
+
+- Pure function (testable).
+- Conservative: reject if doubt.
+- Quorum ≥ 2 citations để trust price → reduce single-source bias.
+- Log mọi reject.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/source-trust.ts` (UPDATE: add validator).
+- `supabase/functions/mobile-api/_shared/kael/market.ts` (UPDATE: call validator).
+- `supabase/functions/mobile-api/_shared/kael/synthesis.ts` (UPDATE: handle insufficient).
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-security-sweep`, `kael-tdd`.
+
+**Tests (95% threshold):**
+
+- T4-R-test-1: validator accepts Tier 1 URLs.
+- T4-R-test-2: validator rejects Tier 3 URLs.
+- T4-R-test-3: validator rejects unknown domains.
+- T4-R-test-4: Quorum check: < 2 accepted → insufficient_trusted.
+- T4-R-test-5: extractDomain handle edge cases.
+- T4-R-test-6: Integration: full market_lookup → validator → blend.
+- T4-R-test-7: Security: simulated poisoning attempt → caught.
+- T4-R-test-8: Fallback path: insufficient_trusted → baseline_only.
+- Target: ≥ 7.5/8 (94%).
+
+**Verification Loop:** False rejection → tune. Missing trust score → fix R5.
+
+**Foundation Enhancement:** Validator pattern document, reusable.
+
+**Acceptance Gate:**
+
+- [ ] Validator implements.
+- [ ] Quorum check working.
+- [ ] Fallback path working.
+- [ ] Security negative test pass.
+- [ ] Tests ≥ 95% pass.
+
+**Estimated Effort:** 1-2 ngày.
+
+**Handoff Notes:** R4 = code-side defense. R5 plugs in trust score registry.
+
+---
+
+### 25.9 Phase R5 — Source Trust Registry
+
+**Goal:** Implement `source_trust_registry` table cho per-domain trust score, admin tunable, quarterly review.
+
+**Dependencies:** R4.
+
+**Scope:**
+
+- NEW table `source_trust_registry`.
+- Seed initial 20 Tier 1 domains từ R1 research.
+- Admin CRUD endpoint (defer if no admin UI).
+- Periodic review workflow (quarterly).
+- Trust score decay over time.
+
+**Schema:**
+
+```sql
+CREATE TABLE source_trust_registry (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  domain text UNIQUE NOT NULL,
+  tier text NOT NULL CHECK (tier IN ('tier_1', 'tier_2', 'tier_3', 'blocked')),
+  trust_score numeric NOT NULL CHECK (trust_score BETWEEN 0 AND 1),
+  description text,
+  added_by uuid REFERENCES profiles(id),
+  added_at timestamptz DEFAULT now(),
+  last_reviewed_at timestamptz,
+  last_reviewer_id uuid REFERENCES profiles(id),
+  review_notes text,
+  is_active boolean DEFAULT true,
+  effective_from timestamptz DEFAULT now(),
+  effective_until timestamptz,
+  metadata jsonb DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX source_trust_registry_lookup_idx
+  ON source_trust_registry (domain, is_active);
+
+ALTER TABLE source_trust_registry ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admin write source trust"
+  ON source_trust_registry FOR ALL
+  TO authenticated
+  USING (private.is_admin());
+```
+
+**Trust score decay:**
+
+```ts
+function effectiveTrustScore(registry: SourceTrustRegistry, now: Date): number {
+  const baseScore = registry.trust_score;
+  if (!registry.last_reviewed_at) return baseScore * 0.8;
+
+  const daysSinceReview = (now - registry.last_reviewed_at) / 86400000;
+
+  if (daysSinceReview < 90) return baseScore;
+  if (daysSinceReview < 180) return baseScore * 0.9;
+  if (daysSinceReview < 365) return baseScore * 0.7;
+  return baseScore * 0.5;
+}
+```
+
+**WBS:**
+
+- T5.1 Migration: `source_trust_registry` table + index + RLS.
+- T5.2 Seed initial 20 Tier 1 + 5-10 Tier 2 từ R1 research.
+- T5.3 Implement `lookupTrustScore(domain) → TrustScore` (replace R4 stub).
+- T5.4 Implement decay function `effectiveTrustScore`.
+- T5.5 Admin endpoint `POST /admin/source-trust/upsert` (CRUD).
+- T5.6 Admin endpoint `POST /admin/source-trust/review` (mark reviewed).
+- T5.7 Background job: weekly check for stale registries → alert admin.
+
+**Build Instructions:**
+
+- Registry là source of truth cho trust_score.
+- Decay applied at lookup time (no need cron update).
+- Seed data require Tu/admin approval before deploy.
+
+**Affected Areas:**
+
+- `supabase/migrations/*` (new table + seed).
+- `supabase/functions/mobile-api/_shared/kael/source-trust.ts` (UPDATE: registry lookup).
+- `supabase/functions/mobile-api/_shared/router.ts` (admin endpoints).
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-tdd`, `kael-security-sweep`.
+
+**Tests (95% threshold):**
+
+- T5-R-test-1: lookupTrustScore returns correct tier + score.
+- T5-R-test-2: Decay function: stale > 90 days → reduced score.
+- T5-R-test-3: Admin upsert endpoint works.
+- T5-R-test-4: RLS: customer/worker cannot modify registry.
+- T5-R-test-5: Unknown domain → tier='blocked', score=0.
+- T5-R-test-6: Background alert for stale registries.
+- T5-R-test-7: Seed 20 Tier 1 domains active.
+- Target: ≥ 6.5/7 (93%).
+
+**Verification Loop:** Registry sync issue → check seed migration.
+
+**Foundation Enhancement:** Document registry maintenance workflow trong `docs/source-trust-maintenance.md`.
+
+**Acceptance Gate:**
+
+- [ ] Registry table seeded.
+- [ ] Lookup function working.
+- [ ] Decay applied.
+- [ ] Admin CRUD working.
+- [ ] Tests ≥ 95% pass.
+
+**Estimated Effort:** 2-3 ngày.
+
+**Handoff Notes:** Registry ready. R6 will use trust scores for weighted aggregation.
+
+---
+
+### 25.10 Phase R6 — LS1 MarketMemory Extend (Outlier + Weighted Aggregation)
+
+**Goal:** Extend LS1 MarketMemory (PR #12 + §23 P7) với outlier detection + source-weighted aggregation cho passive learning loop.
+
+**Dependencies:** R5.
+
+**Scope:**
+
+- Read `kael_market_artifacts` với citations[] structured.
+- Apply source trust_score per citation as weights.
+- Outlier detection: reject prices outside median ± 2σ.
+- Compute weighted median for baseline candidate.
+- Update baseline price_prior nếu evidence + confidence threshold.
+- Integrate với existing PR #12 LS1 (extend, không replace).
+
+**Algorithm:**
+
+```python
+# Pseudocode for LS1 batch run
+def update_baseline_for(service, district, problem, complexity):
+  artifacts = read_artifacts(service, district, problem, complexity, days=90, min_evidence=5)
+
+  if len(artifacts) < MIN_EVIDENCE:
+    return None
+
+  observations = []
+  for artifact in artifacts:
+    for citation in artifact.citations:
+      if citation.trust_score == 0: continue
+      effective_score = apply_decay(citation, now)
+      observations.append({
+        price: artifact.market_range_max,
+        weight: effective_score,
+        recency: days_old(citation.published_at),
+      })
+
+  # Recency boost: recent observations weight more
+  for obs in observations:
+    if obs.recency < 30: obs.weight *= 1.2
+    elif obs.recency > 180: obs.weight *= 0.5
+
+  # Outlier rejection: median ± 2σ
+  prices = [o.price for o in observations]
+  median_price = median(prices)
+  stdev = std(prices)
+  filtered = [o for o in observations if abs(o.price - median_price) <= 2 * stdev]
+
+  if len(filtered) < MIN_EVIDENCE:
+    return None
+
+  # Weighted median
+  filtered.sort(key=lambda o: o.price)
+  total_weight = sum(o.weight for o in filtered)
+  cumsum = 0
+  for obs in filtered:
+    cumsum += obs.weight
+    if cumsum >= total_weight / 2:
+      weighted_median = obs.price
+      break
+
+  current_baseline = read_baseline(service, problem, complexity, district)
+  drift_pct = abs(weighted_median - current_baseline.median) / current_baseline.median
+
+  if drift_pct < DRIFT_THRESHOLD:
+    return None
+
+  confidence = compute_confidence(filtered, total_weight, drift_pct)
+  if confidence < CONFIDENCE_THRESHOLD:
+    return None
+
+  candidate = create_learning_candidate(
+    type='price_prior_update',
+    service, district, problem, complexity,
+    suggested_min=percentile(filtered, 25),
+    suggested_max=percentile(filtered, 75),
+    confidence, evidence_count=len(filtered),
+    audit_reason=f"Weighted median drift {drift_pct:.0%}",
+  )
+
+  if evidence_gate_pass(candidate):
+    promote_to_active_baseline(candidate)
+    log_to_learning_rule_versions(candidate)
+```
+
+**Constants:**
+
+```ts
+const MIN_EVIDENCE = 5;          // PR #12
+const CONFIDENCE_THRESHOLD = 0.6; // PR #12
+const DRIFT_THRESHOLD = 0.15;    // 15% drift to trigger update
+const RECENCY_BOOST = 1.2;       // < 30 days
+const RECENCY_PENALTY = 0.5;     // > 180 days
+const OUTLIER_SIGMA = 2;         // ± 2σ
+```
+
+**WBS:**
+
+- T6.1 Read existing LS1 implementation (PR #12 + §23 P7).
+- T6.2 Extend LS1 với citation-aware aggregation.
+- T6.3 Implement outlier detection function.
+- T6.4 Implement weighted median computation.
+- T6.5 Implement recency decay weighting.
+- T6.6 Integrate với existing learning candidate creation (PR #12 maybePromote pattern).
+- T6.7 Update audit_reason to include weighted median calculation summary.
+- T6.8 Add unit tests cho aggregation logic.
+- T6.9 Add integration test với 50 mock artifacts.
+
+**Build Instructions:**
+
+- Algorithm pure function (testable).
+- Mathematical correctness verified với test fixtures.
+- Outlier handling conservative (reject là an toàn hơn keep).
+- Recency decay không quá aggressive.
+
+**Affected Areas:**
+
+- `supabase/functions/mobile-api/_shared/kael/skills/LS1-market-memory.ts` (UPDATE).
+- `supabase/functions/mobile-api/_shared/kael/skills/LS1-aggregation.ts` (NEW: pure aggregation).
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-tdd`, `kael-architecture-deepening`.
+
+**Tests (95% threshold):**
+
+- T6-R-test-1: Outlier detection: artificial extreme value rejected.
+- T6-R-test-2: Weighted median: matches manual calculation.
+- T6-R-test-3: Recency decay: old artifacts weight less.
+- T6-R-test-4: Insufficient evidence: returns None.
+- T6-R-test-5: Drift below threshold: no update.
+- T6-R-test-6: Confidence below threshold: no promote.
+- T6-R-test-7: Integration: 50 mock artifacts → learning candidate generated.
+- T6-R-test-8: Audit trail: learning_rule_versions populated.
+- T6-R-test-9: Evidence gate integration: pass calls promote, fail keeps pending.
+- T6-R-test-10: Backward compat: PR #12 LS1 tests still pass.
+- Target: ≥ 9.5/10 (95%).
+
+**Verification Loop:**
+
+- Math wrong → fix algorithm với test fixtures.
+- False positive promote → tune thresholds.
+- False negative no promote → tune thresholds.
+
+**Foundation Enhancement:**
+
+- Document aggregation algorithm trong `docs/learning-aggregation.md`.
+
+**Acceptance Gate:**
+
+- [ ] Outlier detection working.
+- [ ] Weighted median correct.
+- [ ] Recency decay applied.
+- [ ] Backward compat: PR #12 LS1 tests pass.
+- [ ] Tests ≥ 95% pass.
+
+**Estimated Effort:** 3-4 ngày.
+
+**Handoff Notes:** R6 = passive learning core. Kael now learning từ Perplexity over time.
+
+---
+
+### 25.11 Phase R7 — Admin Source Trust Dashboard (OPTIONAL)
+
+**Goal:** Admin dashboard cho monitoring source trust evolution + baseline price drift.
+
+**Dependencies:** R6.
+
+**Scope (OPTIONAL):**
+
+- Dashboard endpoint: per source domain, hit count over time, accept/reject rate.
+- Baseline evolution timeline: how price_prior changed per (service, district, problem).
+- Stale source alerts.
+- Manual override for source trust score.
+
+**Defer if no admin UI infrastructure.**
+
+**WBS:**
+
+- T7.1 Dashboard endpoint `GET /admin/source-trust/dashboard`.
+- T7.2 Baseline evolution query.
+- T7.3 Stale source alert cron.
+- T7.4 Manual override endpoint.
+
+**Tests:** Basic CRUD tests.
+
+**Acceptance Gate:**
+
+- [ ] Dashboard endpoint working (nếu admin UI có).
+- [ ] Else: defer to future, document.
+
+**Estimated Effort:** 2-3 ngày (skip nếu defer).
+
+**Handoff Notes:** Optional. Skip không ảnh hưởng critical path.
+
+---
+
+### 25.12 Phase R8 — A/B Test + Production Rollout
+
+**Goal:** Verify quality preserved, gradually rollout to production.
+
+**Dependencies:** R6 (R7 optional).
+
+**Scope:**
+
+- A/B compare: với vs không source trust validation, sample 50 jobs.
+- Measure: price accuracy, citation transparency, customer confidence proxy.
+- Gradual rollout 10% → 25% → 50% → 100%.
+- Monitoring alerts.
+
+**WBS:**
+
+- T8.1 Run 50 jobs với KAEL_TRUST_PERPLEXITY_FILTER_ENABLED=true.
+- T8.2 Compare metrics vs baseline (flag false).
+- T8.3 Customer satisfaction proxy (review rating delta).
+- T8.4 Citation transparency: % jobs với ≥ 2 trusted citations.
+- T8.5 Rollout 10% canary.
+- T8.6 Progressive: 25% → 50% → 100%.
+- T8.7 Monitoring alerts cho insufficient_trusted_citations rate spike.
+
+**Acceptance Gate:**
+
+- [ ] Quality preserved (no rating drop).
+- [ ] Citation transparency ≥ 80% jobs có ≥ 2 trusted citations.
+- [ ] Rollout 100% completed.
+- [ ] Monitoring alerts working.
+- [ ] Tests ≥ 95% pass.
+
+**Estimated Effort:** 2-3 ngày.
+
+**Handoff Notes:** R8 hoàn tất = §25 done. Source trust production-ready.
+
+---
+
+### 25.13 Cross-cutting Concerns
+
+#### Trust validation guarantee
+
+```
+Layer 1 (Perplexity native filter):  20 Tier 1 domains, strict allowlist.
+Layer 2 (Code-side validator):       Defense-in-depth, reject outside whitelist.
+Layer 3 (Source-weighted blend):     Baseline 70% + Perplexity 30% với trust scores.
+
+Customer thấy: Estimate Card v3 với citations array, citations từ uy tín nguồn.
+Admin thấy: per-job audit trail, baseline evolution, source distribution.
+Kael học: passive update baseline price_prior over time via LS1.
+```
+
+#### Rollback strategy
+
+Per option env flag:
+
+```
+KAEL_TRUST_PERPLEXITY_FILTER_ENABLED   # R2
+KAEL_TRUST_CITATION_VALIDATOR_ENABLED  # R4
+KAEL_TRUST_REGISTRY_LOOKUP_ENABLED     # R5
+KAEL_TRUST_LS1_WEIGHTED_ENABLED        # R6
+```
+
+Default ALL false. Enable progressively after testing.
+
+#### Skills Mapping Summary
+
+| Skill | Used in Phases |
+|---|---|
+| `kael-preflight` (mandatory) | ALL phases |
+| `kael-ai-boundary` | R2, R4, R6 |
+| `kael-supabase` | R3, R5, R7 |
+| `kael-security-sweep` | R4 (defense-in-depth) |
+| `kael-tdd` | ALL except R0 |
+| `kael-prototype` | R1 (research) |
+| `kael-architecture-deepening` | R6 (aggregation deep module) |
+| `kael-review` | ALL phases acceptance gate |
+| `karpathy-guidelines` | ALL phases |
+
+#### Approval Gates Summary
+
+```
+R0 → R1: dependencies §23 P3+P6+P7, §24 Q3 verified
+R1 → R2: 20 Tier 1 domains researched + Tu approve final list
+R2 → R3: Perplexity config working (allowlist enforced)
+R3 → R4: Citation schema persisted
+R4 → R5: Validator working với stub trust lookup
+R5 → R6: Registry seeded + lookup working
+R6 → R7/R8: LS1 weighted aggregation working
+R7 → R8: Dashboard optional
+R8 → Production: A/B verify quality + citation transparency + Tu approve
+```
+
+---
+
+### 25.14 Change Log
+
+| Version | Date | Author | Change |
+|---|---|---|---|
+| 0.1 DRAFT | 2026-05-25 | Tu + Claude discussion + Perplexity API verified | Initial draft based on Phương án A |
+| 1.0 | 2026-05-26 | Tu approved | Approve toàn bộ, write vào Plan.md §25 |
+| 2.0 | 2026-05-26 | Tu + Claude + Codex | Reconciled PR #37-#40 audit via Plan.md §26; source trust registry, citation quorum, LS1 aggregation, and production DB apply recorded without editing phase bodies |
+
+---
+
+### 25.15 Notes for Future Agents
+
+**Khi resume work §25:**
+
+1. Read §25 đầy đủ.
+2. Verify §23 P3+P6+P7 + §24 Q3 done.
+3. Check Change Log.
+4. Verify decisions S1-S12 vẫn align.
+5. Run preflight per `critical.md` §5.
+
+**Conflict resolution:**
+
+- §25 conflict với §23/§24: existing wins (base layer).
+- §25 conflict với `RULES.md` hoặc `critical.md`: STOP, ask Tu.
+- §25 conflict với code đã merge: re-read code, code wins.
+
+**Plan immutable:**
+
+- §25.0-§25.13 KHÔNG được edit mid-execution per S12.
+- Nếu cần đổi → §25 v2.0 + Tu approve.
+
+**Trust maintenance post-deploy:**
+
+- Quarterly: admin review source_trust_registry, mark last_reviewed_at.
+- Monthly: review insufficient_trusted_citations rate spike.
+- Yearly: re-curate Tier 1 list (add new sources, remove stale).
+
+---
+
+## 26. Codex Gap Fixing Plan — Audit verify PR #37-#40 — 2026-05-26
+
+### 26.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-codex-gap-fixing
+Created:        2026-05-26
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         DRAFT v0.1 → Tu approved 2026-05-26 → write Plan.md §26
+Critical Alert: HIGH — production rollout decision + locked docs edit
+Trigger:        Audit verify PR #37 (P0-P17), #38 (P18 production fix), #39 (P19 + Q1),
+                #40 (Q2/Q3/Q4/Q5 + §25 R1+R2) → 10 gaps identified
+Scope:          Fix 10 gaps (5 verified + 5 newly found in deep verify) +
+                tune locked docs (STRUCTURES.md, RULES.md) align với reality
+Out of scope:   New features beyond fixing existing build
+Effort total:   ~17-25 ngày agent build (sequential)
+Phase count:    10 phases (F0 pre-read + F1-F9 fixes)
+```
+
+**Mục tiêu chính:**
+
+1. **Close 10 gaps** từ audit verify giữa Codex's PR #37-#40 và Plan §23+§24+§25 spec.
+2. **Align locked docs** (STRUCTURES.md §9, RULES.md §6) với reality (purposes mapping mới).
+3. **Production rollout gate** — Tu approve trước khi promote Q1-Q5 + R1-R2 lên prod.
+4. **Quality bar 95%+** mọi metric trước khi sign-off.
+
+**Authority refs:**
+
+```
+1. RULES.md          (§6 service scope, §3 validate AI output)
+2. critical.md       (§12 kael-ai-boundary, §15 kael-security-sweep)
+3. STRUCTURES.md     (§9 AI Provider Roles — sẽ tune ở F1)
+4. Plan.md §23-§25   (spec source of truth — sẽ bump version ở F8)
+5. AGENTS.md
+6. THIS PLAN §26
+7. CLAUDE.md         (Lock Notice — Tu approved F1 lock doc edits via this plan)
+8. docs/architecture/code-ownership-map.md
+9. MEMORY.md         (last)
+```
+
+---
+
+### 26.1 Gap Inventory (10 gaps verified)
+
+| # | Gap | Evidence | Severity |
+|---|---|---|---|
+| 1 | Production deploy stuck | Prod Edge v10, 71 migrations vs staging v67, 74 migrations | **HIGH** |
+| 2 | Q1.5 "11-purpose coverage" misleading | provider_logged=true cho 2/11 purposes only | MEDIUM |
+| 3 | 15% provider failure Q3 rerun | Q1 baseline 1.0 → Q3 100-job 0.85 success | MEDIUM |
+| 4 | §25 R3-R8 incomplete | R1+R2 done, R5 source_trust_registry table missing | MEDIUM |
+| 5 | A/B Perplexity #6 chưa run | `kael_ab_experiments` 1 row, `kael_ab_price_synthesis_cases` 0 rows | MEDIUM |
+| 6 | Tier 1 domains hardcoded | 20 domains trong source-trust.ts code, no DB table for admin tunable | MEDIUM |
+| 7 | 14 unindexed FK + 35+ unused indexes | Supabase advisor INFO findings | LOW |
+| 8 | Plan immutability violated | Codex added P18-P20, Q1.5 without v2.0 bump per spec §23.0/§24.0/§25.0 | LOW |
+| 9 | STRUCTURES.md §9 conflict reality | Provider role descriptions outdated vs purposes mapping | MEDIUM (will tune F1) |
+| 10 | RULES.md §6 wording slightly narrow | Educational/safety/legal topics broader than "service Q&A only" wording | LOW (will tune F1) |
+
+---
+
+### 26.2 High-Level Roadmap
+
+```
+F0 Pre-Read Mandatory (locked docs + plan + memory)
+   ↓
+F1 Locked Docs Tuning (STRUCTURES.md §9 + RULES.md §6 — Tu approved trong instruction)
+   ↓
+F2 Production Rollout Decision Gate (Tu manual approval)
+   ↓
+   ├─ F3 Extend Q1.5 Baseline 11 Purposes  ┐
+   ├─ F4 Fix 15% Provider Failure           ├─ parallel
+   └─ F5 Complete §25 R3-R7                 ┘
+   ↓
+F6 Run A/B Test Perplexity #6 (depend F3 baseline complete)
+   ↓
+   ├─ F7 DB Performance Cleanup             ┐
+   └─ F8 Plan Version Bump + Change Log     ┴─ parallel
+   ↓
+F9 Final E2E + Sign-off
+```
+
+**Critical path:** F0 → F1 → F2 → F5 → F6 → F9. Longest: F5 (4-6 ngày).
+
+**Parallel opportunities:** F3/F4/F5 sau F2; F7/F8 sau F6.
+
+**Estimated total effort:** 17-25 ngày sequential, 12-18 ngày với parallelization.
+
+---
+
+### 26.3 Phase F0 — Pre-Read Mandatory ⚠️ NEVER SKIP
+
+**Goal:** Codex agent có ngữ cảnh đầy đủ trước khi đụng code/docs.
+
+**Dependencies:** None.
+
+**Scope:** Read 8 authority files; state preflight per `critical.md §5`.
+
+**Out of scope:** KHÔNG sửa file nào trong F0.
+
+**Steps:**
+
+- Step 0.1 Read `critical.md` toàn bộ.
+- Step 0.2 Read `RULES.md` toàn bộ.
+- Step 0.3 Read `STRUCTURES.md` §9 + §10F + §11.
+- Step 0.4 Read `Plan.md §23 + §24 + §25` (base) + §26 (this plan).
+- Step 0.5 Read `MEMORY.md` last.
+- Step 0.6 Read `docs/architecture/code-ownership-map.md`.
+- Step 0.7 Read `docs/agent-lessons.md`.
+- Step 0.8 State preflight format per `critical.md §5`.
+
+**Skills/Protocols:** `kael-preflight`, `kael-clarify-with-docs`.
+
+**Acceptance Gate:**
+
+- [ ] All 8 authority files read.
+- [ ] Preflight stated.
+
+**Estimated Effort:** 30-60 phút.
+
+---
+
+### 26.4 Phase F1 — Locked Docs Tuning (Gap 9 + 10)
+
+**Goal:** Update STRUCTURES.md §9 + RULES.md §6 align với purposes mapping mới.
+
+**Dependencies:** F0.
+
+**Steps:**
+
+- Step 1.1 Update STRUCTURES.md §9 DeepSeek bullet:
+  Old: "DeepSeek: intent classification, simple FAQ, lightweight pre-screening"
+  New: "DeepSeek: primary cho intent classification, clarification, problem synthesis, advisory generation, worker brief, post-job learning, educational response. Text-based default với Anthropic fallback per ai_provider_routing config."
+- Step 1.2 Update STRUCTURES.md §9 Anthropic bullet:
+  Old: "Anthropic: vision analysis, problem identification, price synthesis, customer-facing explanation, worker pre-brief when needed"
+  New: "Anthropic: vision analysis (mandatory, no fallback), scope-change reasoning (Phase 2.0 final-price authority), and fallback cho DeepSeek/Perplexity failures per routing config."
+- Step 1.3 Update STRUCTURES.md §9 Perplexity bullet:
+  Old: "Perplexity: market price lookup only, HCMC repair price research"
+  New: "Perplexity: market price lookup AND price synthesis (purpose #6 under A/B test per Plan §23 D28); restricted to allowlist 20 Tier 1 Vietnamese sources per Plan §25 R1 research."
+- Step 1.4 Add effective date line cuối §9:
+  "Provider role mapping is sourced from `ai_provider_routing` (DB) + `routing.config.ts` (code). Effective 2026-05-26 per Plan.md §23 P3 + §25 R2. Tu approval recorded in §26 F1."
+- Step 1.5 Update RULES.md §6 wording:
+  Old: "Hard rule: Kael answers concise, relevant, safe Home Services questions inside the three active categories only."
+  New: "Hard rule: Kael answers Home Services questions (electrical, plumbing, cleaning) plus directly-tied educational responses, safety advisories, and legal-awareness warnings about the same three categories. Out-of-scope service requests get a polite decline."
+- Step 1.6 Verify diff `git diff origin/main -- STRUCTURES.md RULES.md` ≤ 30 lines total.
+
+**Build Instructions:**
+
+- KHÔNG add/remove sections.
+- Preserve LOCKED notice.
+- Use Edit tool surgical.
+
+**Affected Areas:** `STRUCTURES.md` + `RULES.md` (locked, Tu approved via §26).
+
+**Skills/Protocols:** `kael-preflight`, `kael-docs-execution`, `karpathy-guidelines`.
+
+**Tests:**
+
+- Step 1-test-1: Diff STRUCTURES.md chỉ §9 changes.
+- Step 1-test-2: Diff RULES.md chỉ §6 wording.
+- Step 1-test-3: LOCKED notice preserved.
+- Step 1-test-4: §9 mentions all 11 purposes / 3 providers.
+
+**Acceptance Gate:**
+
+- [ ] STRUCTURES.md §9 updated (3 bullets + effective date).
+- [ ] RULES.md §6 wording updated.
+- [ ] Total diff ≤ 30 lines.
+- [ ] Tests 4/4 pass.
+
+**Estimated Effort:** 1-1.5 ngày.
+
+---
+
+### 26.5 Phase F2 — Production Rollout Decision Gate (Gap 1)
+
+**Goal:** Deploy Q1-Q5 + R1-R2 lên production stuck on staging.
+
+**Dependencies:** F1.
+
+**Steps:**
+
+- Step 2.1 Risk assessment `docs/foundation/production-rollout-decision.md` (migrations safety, env flags default off, rollback plan, monitoring) (~1 ngày).
+- Step 2.2 Tu approve risk assessment + rollout authorization (manual gate).
+- Step 2.3 Apply migrations production (`iwevizmsedyqozxlawwl`) via `mcp__supabase__apply_migration` matching staging sequence (~0.5 ngày).
+- Step 2.4 Deploy mobile-api Edge function production (match staging code) (~0.5 ngày).
+- Step 2.5 Production smoke 5 real jobs với env flags OFF (~0.5 ngày).
+- Step 2.6 Document rollout `docs/test-logs/YYYY-MM-DD_f26-production-rollout.md` (~0.5 ngày).
+
+**Build Instructions:**
+
+- All env flags default off → behavior identical to current.
+- Smoke must pass with same staging metrics.
+- Migrations via mcp tool (audit trail).
+
+**Affected Areas:**
+
+- Production Supabase: migrations + Edge function.
+- `docs/foundation/production-rollout-decision.md` (NEW).
+- `docs/test-logs/YYYY-MM-DD_f26-production-rollout.md` (NEW).
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-security-sweep`, `kael-review`.
+
+**Tests:**
+
+- Step 2-test-1: Production migration count = staging count.
+- Step 2-test-2: Edge function version updated production.
+- Step 2-test-3: 5 smoke jobs successful.
+- Step 2-test-4: `api_logs.purpose` populated cho new calls.
+- Step 2-test-5: No production errors.
+
+**Acceptance Gate:**
+
+- [ ] Risk assessment doc reviewed by Tu.
+- [ ] Production migrations match staging.
+- [ ] Edge function deployed.
+- [ ] Smoke 5/5 pass.
+- [ ] kael-security-sweep pass.
+
+**Estimated Effort:** 2-3 ngày.
+
+**Handoff Notes:** F2 hard gate — Tu manual approve Step 2.2.
+
+---
+
+### 26.6 Phase F3 — Extend Q1.5 Baseline cho 11 Purposes (Gap 2)
+
+**Goal:** Q1.5 baseline thực sự cover 11 purposes với real data.
+
+**Dependencies:** F2.
+
+**Steps:**
+
+- Step 3.1 Read existing `kael-q1-baseline.mjs` (~0.5 ngày).
+- Step 3.2 Extend script: 50 jobs với photos (trigger vision), scope-change sim, A14 review (~1.5 ngày).
+- Step 3.3 Run extended baseline staging 50 jobs (~0.5 ngày).
+- Step 3.4 Verify `kael_quality_baseline` ≥ 8/11 provider_logged=true (~0.5 ngày).
+- Step 3.5 Update `docs/cost-baseline-2026-05.md` (~0.5 ngày).
+
+**Build Instructions:**
+
+- Staging fixture cleanup per P19 pattern.
+- Per-purpose cost/latency tracked.
+- Skipped purposes annotated `skipped=true`.
+
+**Affected Areas:**
+
+- `apps/api/scripts/kael-q1-baseline.mjs` (UPDATE).
+- `docs/cost-baseline-2026-05.md` (UPDATE).
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-tdd`.
+
+**Tests:** 5 tests covering script run, ≥ 8/11 coverage, skipped annotation, cost breakdown, cleanup.
+
+**Acceptance Gate:**
+
+- [ ] ≥ 8/11 purposes real data.
+- [ ] Cost baseline doc updated.
+- [ ] Tests 5/5 pass.
+
+**Estimated Effort:** 2-3 ngày.
+
+---
+
+### 26.7 Phase F4 — Investigate + Fix 15% Provider Failure (Gap 3)
+
+**Goal:** Root cause + fix success rate 0.85 → ≥ 0.95.
+
+**Dependencies:** F2.
+
+**Steps:**
+
+- Step 4.1 Query `api_logs` last 100 per provider × error_code (~0.5 ngày).
+- Step 4.2 Read 5 sample failed calls (~0.5 ngày).
+- Step 4.3 Document finding `docs/foundation/q3-failure-root-cause.md` (~0.5 ngày).
+- Step 4.4 Apply fix per finding (~1 ngày).
+- Step 4.5 Re-run 100-job staging baseline → success ≥ 0.95 (~0.5 ngày).
+
+**Build Instructions:**
+
+- Honest reporting per memory.
+- Minimal fix per karpathy.
+
+**Affected Areas:**
+
+- `docs/foundation/q3-failure-root-cause.md` (NEW).
+- Per finding: routing.ts / circuit-breaker.ts / provider-client.ts.
+
+**Skills/Protocols:** `kael-preflight`, `kael-diagnose`, `kael-tdd`.
+
+**Tests:** 4 tests: identify, fix minimal, re-run ≥ 0.95, no new failure.
+
+**Acceptance Gate:**
+
+- [ ] Root cause documented.
+- [ ] Fix applied + tested.
+- [ ] Success rate ≥ 0.95.
+
+**Estimated Effort:** 2-3 ngày.
+
+---
+
+### 26.8 Phase F5 — Complete §25 R3-R7 (Gap 4 + 6)
+
+**Goal:** Build R3-R7 source trust infrastructure.
+
+**Dependencies:** F1.
+
+**Steps:**
+
+- Step 5.1 R5 — Migration `source_trust_registry` per Plan §25.9 (~1 ngày).
+- Step 5.2 R5 — Seed 20 Tier 1 từ hardcoded list (~0.5 ngày).
+- Step 5.3 R5 — Replace source-trust.ts hardcoded với DB lookup (5-min cache) (~0.5 ngày).
+- Step 5.4 R5 — `lookupTrustScore` + decay function (~0.5 ngày).
+- Step 5.5 R4 — `validateCitations` với quorum ≥ 2 (~1 ngày).
+- Step 5.6 R4 — Wire validator vào market.ts post-Perplexity (~0.5 ngày).
+- Step 5.7 R3 — Verify citations[] populated cho 5 test jobs (~0.5 ngày).
+- Step 5.8 R6 — Extend LS1 với median ± 2σ outlier (~1 ngày).
+- Step 5.9 R6 — Weighted median trong `LS1-aggregation.ts` NEW (~0.5 ngày).
+- Step 5.10 R7 optional — Admin endpoints `/admin/source-trust/*` (~1 ngày).
+
+**Build Instructions:**
+
+- R5 cache via Map (5-min TTL).
+- R6 pure functions.
+- Backward compat: PR #12 LS1 tests pass.
+
+**Affected Areas:**
+
+- Migration: `source_trust_registry`.
+- `kael/source-trust.ts` (UPDATE).
+- `kael/market.ts` (UPDATE).
+- `kael/skills/LS1-aggregation.ts` (NEW).
+- `kael/skills/LS1-market-memory.ts` (UPDATE).
+- `kael/router.ts` (R7 routes optional).
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-ai-boundary`, `kael-security-sweep`, `kael-tdd`, `kael-architecture-deepening`.
+
+**Tests:** 10 tests covering registry seed, lookup, decay, validator quorum, citation persistence, outlier, weighted median, backward compat, RLS.
+
+**Acceptance Gate:**
+
+- [ ] R5 seeded + lookup working.
+- [ ] R4 validator quorum working.
+- [ ] R3 citations persisted (5 test jobs).
+- [ ] R6 outlier + weighted median working.
+- [ ] R7 admin (if approved).
+- [ ] Tests ≥ 9/10.
+
+**Estimated Effort:** 4-6 ngày.
+
+---
+
+### 26.9 Phase F6 — Run A/B Test Perplexity #6 (Gap 5)
+
+**Goal:** Execute A/B test price_synthesis 100 cases per D28.
+
+**Dependencies:** F3 + F5.
+
+**Steps:**
+
+- Step 6.1 Verify `kael_ab_experiments` config (~0.5 ngày).
+- Step 6.2 Build A/B runner `apps/api/scripts/kael-ab-pricesynth.mjs` (~1 ngày).
+- Step 6.3 Run 100 staging jobs split 50/50 (~1 ngày).
+- Step 6.4 Compute 4 metrics: schema_rate ≥95%, deviation_anthropic ≤25%, deviation_actual ≤30%, fallback_rate ≤10% (~0.5 ngày).
+- Step 6.5 Persist 100 case rows (~0.5 ngày).
+- Step 6.6 Decision report `docs/test-logs/YYYY-MM-DD_f26-ab-pricesynth-decision.md` (~0.5 ngày).
+
+**Build Instructions:**
+
+- Deterministic seed-based split.
+- Fixture cleanup.
+- Honest reporting.
+
+**Affected Areas:**
+
+- `apps/api/scripts/kael-ab-pricesynth.mjs` (NEW).
+- `kael_ab_price_synthesis_cases` (populate 100).
+- Decision report (NEW).
+- `routing.config.ts` (UPDATE nếu loại Perplexity #6).
+
+**Skills/Protocols:** `kael-preflight`, `kael-ai-boundary`, `kael-tdd`, `kael-review`.
+
+**Tests:** 6 tests covering 100 cases, balanced split, 4 metrics, math sample verify, decision committed, cleanup.
+
+**Acceptance Gate:**
+
+- [ ] 100 cases persisted.
+- [ ] 4 metrics computed.
+- [ ] Decision report committed.
+- [ ] Tu approve direction.
+
+**Estimated Effort:** 2-3 ngày.
+
+---
+
+### 26.10 Phase F7 — DB Performance Cleanup (Gap 7)
+
+**Goal:** Fix 14 unindexed FK + drop 35+ unused indexes.
+
+**Dependencies:** F6.
+
+**Steps:**
+
+- Step 7.1 Migration 14 FK indexes (~0.5 ngày).
+- Step 7.2 Verify pg_stat_user_indexes 0 scans last 7 days (~0.5 ngày).
+- Step 7.3 Migration drop unused (0 scans only) (~0.5 ngày).
+- Step 7.4 Apply staging + production (~0.5 ngày).
+- Step 7.5 Re-run advisor verify lints < 10 (~0.5 ngày).
+
+**Build Instructions:**
+
+- Migrations idempotent.
+- Verify 0 scans STRICTLY.
+
+**Affected Areas:** 2 new migrations.
+
+**Skills/Protocols:** `kael-preflight`, `kael-supabase`, `kael-tdd`.
+
+**Tests:** 4 tests covering FK indexes added, 0 scans verified, advisor reduce ≥ 30 lints, no query regression.
+
+**Acceptance Gate:**
+
+- [ ] 14 FK indexes added.
+- [ ] ≥ 30 unused dropped.
+- [ ] Advisor lints < 10.
+
+**Estimated Effort:** 1-2 ngày.
+
+---
+
+### 26.11 Phase F8 — Plan Version Bump + Change Log (Gap 8)
+
+**Goal:** Bump §23/§24/§25 to v2.0 với change log.
+
+**Dependencies:** F7.
+
+**Steps:**
+
+- Step 8.1 Plan.md §23 Status v2.0 + §23.24 change log row (~0.5 ngày).
+- Step 8.2 Plan.md §24 Status v2.0 + §24.11 row (~0.5 ngày).
+- Step 8.3 Plan.md §25 Status v2.0 + §25.14 row (~0.5 ngày).
+
+**Build Instructions:**
+
+- Edit only metadata + change log.
+- Preserve phase content immutable.
+- Reference PR #37-#40 + date.
+
+**Affected Areas:** Plan.md §23.0, §23.24, §24.0, §24.11, §25.0, §25.14.
+
+**Skills/Protocols:** `kael-preflight`, `kael-docs-execution`.
+
+**Tests:** 3 tests: v2.0 all plans, change log rows reference PRs, phase content unchanged.
+
+**Acceptance Gate:**
+
+- [ ] All 3 plans v2.0.
+- [ ] Change log rows added.
+
+**Estimated Effort:** 1 ngày.
+
+---
+
+### 26.12 Phase F9 — Final E2E + Sign-off
+
+**Goal:** Re-verify full pipeline + Tu sign-off.
+
+**Dependencies:** F1-F8.
+
+**Steps:**
+
+- Step 9.1 Re-run P15 E2E 5-case matrix staging (~0.5 ngày).
+- Step 9.2 Production smoke 5 real jobs (~0.5 ngày).
+- Step 9.3 Create `docs/test-logs/YYYY-MM-DD_f26-final-signoff.md` (~0.5 ngày).
+- Step 9.4 Tu manual review + sign-off.
+
+**Acceptance Gate:**
+
+- [ ] Staging E2E 5/5 pass.
+- [ ] Production smoke 5/5 pass.
+- [ ] All 10 gaps verified closed.
+- [ ] Tu sign-off recorded.
+
+**Estimated Effort:** 1-2 ngày.
+
+---
+
+### 26.13 Cross-cutting Concerns
+
+#### Skills Mapping Summary
+
+| Skill | Phases |
+|---|---|
+| `kael-preflight` (mandatory) | ALL |
+| `kael-docs-execution` | F1, F8 |
+| `kael-supabase` | F2, F5, F7 |
+| `kael-ai-boundary` | F3, F4, F5, F6 |
+| `kael-security-sweep` | F2, F5 |
+| `kael-tdd` | ALL except F0, F1 |
+| `kael-architecture-deepening` | F5 (R6 aggregation) |
+| `kael-diagnose` | F4 (root cause) |
+| `kael-review` | ALL acceptance gates |
+| `karpathy-guidelines` | ALL |
+
+#### Approval Gates Summary
+
+```
+F0 → F1: Pre-read output verified
+F1 → F2: Locked docs tuned
+F2 → F3/F4/F5: Production rollout success + Tu manual approval
+F3/F4/F5 → F6: Baseline + failure fix + R3-R7 complete
+F6 → F7/F8: A/B decision committed
+F7/F8 → F9: All fixes complete
+F9 → Done: Tu sign-off
+```
+
+#### Risk Management
+
+| Risk | Mitigation |
+|---|---|
+| F1 locked doc edit creep | Strict ≤ 30 lines diff, surgical only |
+| F2 production rollout breaks | Default OFF flags, rollback ready |
+| F4 failure root cause unclear | `kael-diagnose` protocol |
+| F5 R6 aggregation math bug | Unit tests + backward compat |
+| F6 A/B decision premature | Persist 100 cases trước decide |
+| F7 drop wrong index | Verify pg_stat 0 scans STRICT |
+| F8 plan content drift | Edit only metadata + change log |
+
+---
+
+### 26.14 Change Log
+
+| Version | Date | Author | Change |
+|---|---|---|---|
+| 0.1 DRAFT | 2026-05-26 | Tu + Claude (audit verify PR #37-#40) | Initial fixing plan based on 10 gaps |
+| 1.0 | 2026-05-26 | Tu approved | Approve toàn bộ, write Plan.md §26, Codex execute |
+
+---
+
+### 26.15 Notes for Future Agents
+
+**Khi resume work §26:**
+
+1. Read §26 đầy đủ.
+2. Verify F0 pre-read done.
+3. Check Change Log.
+4. Run preflight per `critical.md §5`.
+
+**Conflict resolution:**
+
+- §26 conflict với §23/§24/§25: existing wins (base layer).
+- §26 conflict với `RULES.md` hoặc `critical.md`: STOP, ask Tu.
+- §26 conflict với code: re-read code, code wins.
+
+**Plan immutable after Tu approval:**
+
+- §26.0-§26.13 KHÔNG edit mid-execution.
+- Nếu cần đổi → v2.0 + Tu approve.
+
+**Phase dependency:**
+
+```
+F0 → F1 → F2 → {F3, F4, F5} → F6 → {F7, F8} → F9
+```
+
+F2 is HARD GATE — Tu manual approve required before F3-F9 begin.
 
 ---
 

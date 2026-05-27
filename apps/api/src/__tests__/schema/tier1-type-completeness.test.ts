@@ -31,6 +31,30 @@ const EXPECTED_TABLES = [
   'kael_chat_turns',
   'device_push_tokens',
   'worker_cancellation_requests',
+  'ai_provider_routing',
+  'customer_kael_memory',
+  'worker_kael_memory',
+  'kael_admin_queue',
+  'kael_permission_audit',
+  'kael_advisory_audit',
+  'kael_memory_audit',
+  'kael_worker_qa_log',
+  'worker_scope_change_stats',
+  'worker_safety_patterns',
+  'legal_awareness_patterns',
+  'kael_memory_archive',
+  'kael_rule_application_log',
+  'kael_rule_lifecycle_log',
+  'kael_charter_audit',
+  'kael_interaction_log',
+  'worker_cancellation_reason_taxonomy',
+  'customer_cancellation_reason_taxonomy',
+  'customer_cancellation_records',
+  'evidence_snapshots',
+  'disputes',
+  'kael_quality_baseline',
+  'kael_market_cache',
+  'kael_optimization_metrics',
 ] as const satisfies readonly TableNames[]
 
 const EXPECTED_ENUMS = [
@@ -50,7 +74,7 @@ const EXPECTED_ENUMS = [
 
 describe('Database.public.Tables completeness', () => {
   it('has all aligned workflow tables', () => {
-    expect(EXPECTED_TABLES).toHaveLength(25)
+    expect(EXPECTED_TABLES).toHaveLength(49)
   })
 
   it.each(EXPECTED_TABLES)('table "%s" is a valid generated table key', (name) => {
@@ -182,6 +206,115 @@ describe('Insert type requirements', () => {
     expect(session.service_type).toBe('electrical')
     expect(turn.role).toBe('customer')
   })
+
+  it('P10 admin queue and interaction logs carry escalation state', () => {
+    const queue = {
+      actor_role: 'customer',
+      queue_type: 'demanding_customer',
+      priority: 'high',
+      escalation_level: 'hard',
+      reason_code: 'threat_complaint',
+    } satisfies Database['public']['Tables']['kael_admin_queue']['Insert']
+    const log = {
+      actor_role: 'customer',
+      interaction_type: 'demanding_customer',
+      nuance: 'pressure',
+      expected_nuance: 'pressure',
+      escalation_level: 'hard',
+      sanitized_excerpt: 'Da an danh',
+    } satisfies Database['public']['Tables']['kael_interaction_log']['Insert']
+
+    expect(queue.queue_type).toBe('demanding_customer')
+    expect(log.escalation_level).toBe('hard')
+  })
+
+  it('P11 worker cancellation taxonomy carries admin-tunable reason categories', () => {
+    const reason = {
+      code: 'higher_pay_elsewhere',
+      category: 'suspicious',
+      label_vi: 'Tho bao co viec khac tra cao hon',
+      is_active: true,
+      admin_tunable: true,
+    } satisfies Database['public']['Tables']['worker_cancellation_reason_taxonomy']['Insert']
+
+    expect(reason.category).toBe('suspicious')
+  })
+
+  it('P12 customer cancellation taxonomy and records carry Phase 0 policy fields', () => {
+    const reason = {
+      code: 'changed_mind',
+      category: 'no_penalty_phase_0',
+      label_vi: 'Khach doi y trong Phase 0',
+      is_active: true,
+      admin_tunable: true,
+    } satisfies Database['public']['Tables']['customer_cancellation_reason_taxonomy']['Insert']
+    const record = {
+      job_id: '00000000-0000-0000-0000-000000000000',
+      customer_id: '00000000-0000-0000-0000-000000000000',
+      sub_case: 'after_worker_accept',
+      reason_code: reason.code,
+      reason_category: reason.category,
+      phase0_no_monetary_penalty: true,
+      worker_goodwill: { required: true, kind: 'phase0_goodwill_note' },
+    } satisfies Database['public']['Tables']['customer_cancellation_records']['Insert']
+
+    expect(record.phase0_no_monetary_penalty).toBe(true)
+  })
+
+  it('P13 disputes and evidence snapshots carry locked neutral review fields', () => {
+    const snapshot = {
+      job_id: '00000000-0000-0000-0000-000000000000',
+      evidence_locked_at: '2026-05-26T00:00:00.000Z',
+      evidence_snapshot: {
+        chat_message_ids: [],
+        photo_urls: [],
+        status_timeline: [],
+        scope_changes: [],
+        kael_artifacts: [],
+      },
+    } satisfies Database['public']['Tables']['evidence_snapshots']['Insert']
+    const dispute = {
+      job_id: snapshot.job_id,
+      dispute_type: 'completion_rejected',
+      initiated_by: 'customer',
+      initiated_by_id: '00000000-0000-0000-0000-000000000000',
+      counter_party_id: '00000000-0000-0000-0000-000000000000',
+      initiator_statement: 'Customer says completion is not accepted.',
+      counter_party_response_deadline: '2026-05-27T00:00:00.000Z',
+      evidence_snapshot_id: '00000000-0000-0000-0000-000000000000',
+      kael_neutral_summary: 'Fact-only summary for admin review.',
+      admin_review: { priority: 'high' },
+      status: 'open',
+    } satisfies Database['public']['Tables']['disputes']['Insert']
+
+    expect(dispute.dispute_type).toBe('completion_rejected')
+  })
+
+  it('Q1 cost optimization baseline and metric tables carry telemetry state', () => {
+    const baseline = {
+      baseline_key: 'q1-staging-50-smoke',
+      source: 'staging_live_50',
+      sample_size: 50,
+      job_count: 50,
+      api_log_count: 100,
+      schema_validation_rate: 1,
+      provider_breakdown: { perplexity: { calls: 50 } },
+      purpose_breakdown: { market_lookup: { calls: 50 } },
+      cost_summary: { total_usd: 0.01 },
+    } satisfies Database['public']['Tables']['kael_quality_baseline']['Insert']
+    const metric = {
+      purpose: 'market_lookup',
+      provider: 'perplexity' as const,
+      option_flags: { KAEL_OPT_MARKET_CACHE_ENABLED: false },
+      enabled_options: [],
+      cost_before_estimate: 0.00015,
+      cost_actual: 0.00015,
+      quality_pass: true,
+    } satisfies Database['public']['Tables']['kael_optimization_metrics']['Insert']
+
+    expect(baseline.sample_size).toBe(50)
+    expect(metric.provider).toBe('perplexity')
+  })
 })
 
 describe('RPC type requirements', () => {
@@ -190,7 +323,7 @@ describe('RPC type requirements', () => {
       Database['public']['Functions']['request_worker_cancellation_atomic']['Returns'][number]
     const row = {
       ok: true,
-      error_code: null,
+      error_code: '',
       cancellation_id: '00000000-0000-0000-0000-000000000000',
       cancellation_status: 'approved',
       job_id_out: '00000000-0000-0000-0000-000000000000',
@@ -199,9 +332,64 @@ describe('RPC type requirements', () => {
       district_code: 'q7',
       worker_id_out: '00000000-0000-0000-0000-000000000000',
       created_at_ts: '2026-05-20T00:00:00.000Z',
+      reason_code: 'higher_pay_elsewhere',
+      reason_category: 'suspicious',
+      admin_review_required: true,
+      fallback_options: [],
+      abuse_signals: ['cancellation_rate_exceeded'],
     } satisfies WorkerCancellationRow
 
     expect(row.job_status).toBe('broadcasting')
+    expect(row.admin_review_required).toBe(true)
+  })
+
+  it('customer cancellation RPC returns Case 4 policy fields', () => {
+    type CustomerCancellationRow =
+      Database['public']['Functions']['request_customer_cancellation_atomic']['Returns'][number]
+    const row = {
+      ok: true,
+      error_code: '',
+      cancellation_id: '00000000-0000-0000-0000-000000000000',
+      job_id_out: '00000000-0000-0000-0000-000000000000',
+      job_status: 'cancelled',
+      sub_case: 'after_worker_accept',
+      reason_code: 'changed_mind',
+      reason_category: 'no_penalty_phase_0',
+      worker_id_out: '00000000-0000-0000-0000-000000000000',
+      admin_review_required: true,
+      phase0_no_monetary_penalty: true,
+      worker_goodwill: { required: true, kind: 'phase0_goodwill_note' },
+      abuse_signals: ['cancel_after_accept_threshold'],
+      created_at_ts: '2026-05-26T00:00:00.000Z',
+    } satisfies CustomerCancellationRow
+
+    expect(row.phase0_no_monetary_penalty).toBe(true)
+  })
+
+  it('dispute RPCs return evidence lock and admin-review fields', () => {
+    type OpenRow = Database['public']['Functions']['open_dispute_atomic']['Returns'][number]
+    const opened = {
+      ok: true,
+      error_code: '',
+      dispute_id: '00000000-0000-0000-0000-000000000000',
+      evidence_snapshot_id: '00000000-0000-0000-0000-000000000000',
+      dispute_status: 'open',
+      admin_review_required: true,
+      priority: 'high',
+      evidence_locked_at: '2026-05-26T00:00:00.000Z',
+      created_at_ts: '2026-05-26T00:00:00.000Z',
+    } satisfies OpenRow
+
+    type DecisionRow = Database['public']['Functions']['admin_decide_dispute_atomic']['Returns'][number]
+    const decided = {
+      ok: true,
+      error_code: '',
+      dispute_id: opened.dispute_id,
+      dispute_status: 'admin_decided',
+      decided_at_ts: '2026-05-26T01:00:00.000Z',
+    } satisfies DecisionRow
+
+    expect(decided.dispute_status).toBe('admin_decided')
   })
 })
 

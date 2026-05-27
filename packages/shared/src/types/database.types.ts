@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_provider_routing: {
+        Row: {
+          cost_ceiling_usd: number
+          created_at: string
+          daily_provider_cap_usd: number
+          fallback_model: string | null
+          fallback_provider: Database["public"]["Enums"]["api_provider"] | null
+          is_enabled: boolean
+          latency_budget_ms: number
+          primary_model: string
+          primary_provider: Database["public"]["Enums"]["api_provider"]
+          purpose: string
+          safe_metadata: Json
+          updated_at: string
+          user_visible: boolean
+        }
+        Insert: {
+          cost_ceiling_usd: number
+          created_at?: string
+          daily_provider_cap_usd?: number
+          fallback_model?: string | null
+          fallback_provider?: Database["public"]["Enums"]["api_provider"] | null
+          is_enabled?: boolean
+          latency_budget_ms: number
+          primary_model: string
+          primary_provider: Database["public"]["Enums"]["api_provider"]
+          purpose: string
+          safe_metadata?: Json
+          updated_at?: string
+          user_visible?: boolean
+        }
+        Update: {
+          cost_ceiling_usd?: number
+          created_at?: string
+          daily_provider_cap_usd?: number
+          fallback_model?: string | null
+          fallback_provider?: Database["public"]["Enums"]["api_provider"] | null
+          is_enabled?: boolean
+          latency_budget_ms?: number
+          primary_model?: string
+          primary_provider?: Database["public"]["Enums"]["api_provider"]
+          purpose?: string
+          safe_metadata?: Json
+          updated_at?: string
+          user_visible?: boolean
+        }
+        Relationships: []
+      }
       api_logs: {
         Row: {
           cost_usd: number | null
@@ -28,7 +76,7 @@ export type Database = {
           output_tokens: number | null
           prompt_version: string | null
           provider: Database["public"]["Enums"]["api_provider"]
-          purpose: string | null
+          purpose: string
           request_id: string | null
           safe_metadata: Json
           success: boolean
@@ -46,7 +94,7 @@ export type Database = {
           output_tokens?: number | null
           prompt_version?: string | null
           provider: Database["public"]["Enums"]["api_provider"]
-          purpose?: string | null
+          purpose: string
           request_id?: string | null
           safe_metadata?: Json
           success: boolean
@@ -64,7 +112,7 @@ export type Database = {
           output_tokens?: number | null
           prompt_version?: string | null
           provider?: Database["public"]["Enums"]["api_provider"]
-          purpose?: string | null
+          purpose?: string
           request_id?: string | null
           safe_metadata?: Json
           success?: boolean
@@ -124,6 +172,56 @@ export type Database = {
           },
         ]
       }
+      customer_kael_memory: {
+        Row: {
+          created_at: string
+          customer_id: string
+          home_context: Json
+          language: string
+          last_observed_at: string | null
+          memory_version: number
+          preference_summary: string
+          safe_metadata: Json
+          service_preferences: Json
+          trust_signals: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          home_context?: Json
+          language?: string
+          last_observed_at?: string | null
+          memory_version?: number
+          preference_summary?: string
+          safe_metadata?: Json
+          service_preferences?: Json
+          trust_signals?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          home_context?: Json
+          language?: string
+          last_observed_at?: string | null
+          memory_version?: number
+          preference_summary?: string
+          safe_metadata?: Json
+          service_preferences?: Json
+          trust_signals?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_kael_memory_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_profiles: {
         Row: {
           building_name: string | null
@@ -158,6 +256,268 @@ export type Database = {
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_cancellation_reason_taxonomy: {
+        Row: {
+          admin_tunable: boolean
+          category: string
+          code: string
+          created_at: string
+          is_active: boolean
+          label_vi: string
+          safe_metadata: Json
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          admin_tunable?: boolean
+          category: string
+          code: string
+          created_at?: string
+          is_active?: boolean
+          label_vi: string
+          safe_metadata?: Json
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          admin_tunable?: boolean
+          category?: string
+          code?: string
+          created_at?: string
+          is_active?: boolean
+          label_vi?: string
+          safe_metadata?: Json
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      customer_cancellation_records: {
+        Row: {
+          abuse_signals: string[]
+          admin_review_required: boolean
+          created_at: string
+          customer_id: string
+          id: string
+          job_id: string
+          phase0_no_monetary_penalty: boolean
+          reason_category: string
+          reason_code: string
+          reason_note: string | null
+          safe_metadata: Json
+          status: string
+          sub_case: string
+          updated_at: string
+          worker_goodwill: Json
+          worker_id: string | null
+        }
+        Insert: {
+          abuse_signals?: string[]
+          admin_review_required?: boolean
+          created_at?: string
+          customer_id: string
+          id?: string
+          job_id: string
+          phase0_no_monetary_penalty?: boolean
+          reason_category: string
+          reason_code: string
+          reason_note?: string | null
+          safe_metadata?: Json
+          status?: string
+          sub_case: string
+          updated_at?: string
+          worker_goodwill?: Json
+          worker_id?: string | null
+        }
+        Update: {
+          abuse_signals?: string[]
+          admin_review_required?: boolean
+          created_at?: string
+          customer_id?: string
+          id?: string
+          job_id?: string
+          phase0_no_monetary_penalty?: boolean
+          reason_category?: string
+          reason_code?: string
+          reason_note?: string | null
+          safe_metadata?: Json
+          status?: string
+          sub_case?: string
+          updated_at?: string
+          worker_goodwill?: Json
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_cancellation_records_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_cancellation_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_cancellation_records_reason_code_fkey"
+            columns: ["reason_code"]
+            isOneToOne: false
+            referencedRelation: "customer_cancellation_reason_taxonomy"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "customer_cancellation_records_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_snapshots: {
+        Row: {
+          created_at: string
+          evidence_locked_at: string
+          evidence_snapshot: Json
+          id: string
+          job_id: string
+        }
+        Insert: {
+          created_at?: string
+          evidence_locked_at?: string
+          evidence_snapshot?: Json
+          id?: string
+          job_id: string
+        }
+        Update: {
+          created_at?: string
+          evidence_locked_at?: string
+          evidence_snapshot?: Json
+          id?: string
+          job_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_snapshots_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disputes: {
+        Row: {
+          abuse_signals: string[]
+          admin_decision: Json | null
+          admin_decision_at: string | null
+          admin_decision_by: string | null
+          admin_review: Json
+          counter_party_id: string | null
+          counter_party_response_deadline: string
+          counter_party_statement: string | null
+          created_at: string
+          dispute_type: string
+          evidence_locked_at: string
+          evidence_snapshot_id: string
+          id: string
+          initiated_by: string
+          initiated_by_id: string
+          initiator_statement: string
+          job_id: string
+          kael_neutral_summary: string
+          resolved_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          abuse_signals?: string[]
+          admin_decision?: Json | null
+          admin_decision_at?: string | null
+          admin_decision_by?: string | null
+          admin_review?: Json
+          counter_party_id?: string | null
+          counter_party_response_deadline: string
+          counter_party_statement?: string | null
+          created_at?: string
+          dispute_type: string
+          evidence_locked_at?: string
+          evidence_snapshot_id: string
+          id?: string
+          initiated_by: string
+          initiated_by_id: string
+          initiator_statement: string
+          job_id: string
+          kael_neutral_summary: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          abuse_signals?: string[]
+          admin_decision?: Json | null
+          admin_decision_at?: string | null
+          admin_decision_by?: string | null
+          admin_review?: Json
+          counter_party_id?: string | null
+          counter_party_response_deadline?: string
+          counter_party_statement?: string | null
+          created_at?: string
+          dispute_type?: string
+          evidence_locked_at?: string
+          evidence_snapshot_id?: string
+          id?: string
+          initiated_by?: string
+          initiated_by_id?: string
+          initiator_statement?: string
+          job_id?: string
+          kael_neutral_summary?: string
+          resolved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disputes_admin_decision_by_fkey"
+            columns: ["admin_decision_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_counter_party_id_fkey"
+            columns: ["counter_party_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_evidence_snapshot_id_fkey"
+            columns: ["evidence_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_initiated_by_id_fkey"
+            columns: ["initiated_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -401,9 +761,13 @@ export type Database = {
           kael_complexity:
             | Database["public"]["Enums"]["complexity_level"]
             | null
+          kael_estimate_card_v3: Json | null
           kael_price_max: number | null
           kael_price_min: number | null
           kael_problem_identified: string | null
+          kael_progress: Json | null
+          kael_worker_brief_core: Json | null
+          kael_worker_brief_guidance: Json | null
           matched_at: string | null
           paid_at: string | null
           photo_urls: string[]
@@ -449,9 +813,13 @@ export type Database = {
           kael_complexity?:
             | Database["public"]["Enums"]["complexity_level"]
             | null
+          kael_estimate_card_v3?: Json | null
           kael_price_max?: number | null
           kael_price_min?: number | null
           kael_problem_identified?: string | null
+          kael_progress?: Json | null
+          kael_worker_brief_core?: Json | null
+          kael_worker_brief_guidance?: Json | null
           matched_at?: string | null
           paid_at?: string | null
           photo_urls?: string[]
@@ -497,9 +865,13 @@ export type Database = {
           kael_complexity?:
             | Database["public"]["Enums"]["complexity_level"]
             | null
+          kael_estimate_card_v3?: Json | null
           kael_price_max?: number | null
           kael_price_min?: number | null
           kael_problem_identified?: string | null
+          kael_progress?: Json | null
+          kael_worker_brief_core?: Json | null
+          kael_worker_brief_guidance?: Json | null
           matched_at?: string | null
           paid_at?: string | null
           photo_urls?: string[]
@@ -537,6 +909,485 @@ export type Database = {
           {
             foreignKeyName: "jobs_worker_id_fkey"
             columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_ab_experiments: {
+        Row: {
+          comparison_provider: Database["public"]["Enums"]["api_provider"]
+          created_at: string
+          ended_at: string | null
+          experiment_key: string
+          fallback_provider: Database["public"]["Enums"]["api_provider"] | null
+          id: string
+          metric_thresholds: Json
+          primary_provider: Database["public"]["Enums"]["api_provider"]
+          purpose: string
+          safe_metadata: Json
+          sample_target: number
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          comparison_provider: Database["public"]["Enums"]["api_provider"]
+          created_at?: string
+          ended_at?: string | null
+          experiment_key: string
+          fallback_provider?: Database["public"]["Enums"]["api_provider"] | null
+          id?: string
+          metric_thresholds?: Json
+          primary_provider: Database["public"]["Enums"]["api_provider"]
+          purpose: string
+          safe_metadata?: Json
+          sample_target?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          comparison_provider?: Database["public"]["Enums"]["api_provider"]
+          created_at?: string
+          ended_at?: string | null
+          experiment_key?: string
+          fallback_provider?: Database["public"]["Enums"]["api_provider"] | null
+          id?: string
+          metric_thresholds?: Json
+          primary_provider?: Database["public"]["Enums"]["api_provider"]
+          purpose?: string
+          safe_metadata?: Json
+          sample_target?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kael_ab_price_synthesis_cases: {
+        Row: {
+          actual_final_price: number | null
+          anthropic_price_max: number | null
+          anthropic_price_min: number | null
+          anthropic_schema_valid: boolean | null
+          case_key: string
+          created_at: string
+          district_code: string | null
+          exclusion_reason: string | null
+          experiment_id: string
+          fallback_used: boolean
+          id: string
+          job_id: string | null
+          perplexity_price_max: number | null
+          perplexity_price_min: number | null
+          perplexity_schema_valid: boolean | null
+          problem_slug: string | null
+          request_id: string | null
+          safe_metadata: Json
+          service_type: Database["public"]["Enums"]["service_type"] | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_final_price?: number | null
+          anthropic_price_max?: number | null
+          anthropic_price_min?: number | null
+          anthropic_schema_valid?: boolean | null
+          case_key: string
+          created_at?: string
+          district_code?: string | null
+          exclusion_reason?: string | null
+          experiment_id: string
+          fallback_used?: boolean
+          id?: string
+          job_id?: string | null
+          perplexity_price_max?: number | null
+          perplexity_price_min?: number | null
+          perplexity_schema_valid?: boolean | null
+          problem_slug?: string | null
+          request_id?: string | null
+          safe_metadata?: Json
+          service_type?: Database["public"]["Enums"]["service_type"] | null
+          source: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_final_price?: number | null
+          anthropic_price_max?: number | null
+          anthropic_price_min?: number | null
+          anthropic_schema_valid?: boolean | null
+          case_key?: string
+          created_at?: string
+          district_code?: string | null
+          exclusion_reason?: string | null
+          experiment_id?: string
+          fallback_used?: boolean
+          id?: string
+          job_id?: string | null
+          perplexity_price_max?: number | null
+          perplexity_price_min?: number | null
+          perplexity_schema_valid?: boolean | null
+          problem_slug?: string | null
+          request_id?: string | null
+          safe_metadata?: Json
+          service_type?: Database["public"]["Enums"]["service_type"] | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_ab_price_synthesis_cases_experiment_id_fkey"
+            columns: ["experiment_id"]
+            isOneToOne: false
+            referencedRelation: "kael_ab_experiments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_ab_price_synthesis_cases_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_market_cache: {
+        Row: {
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          confidence: number
+          created_at: string
+          district_code: string
+          expires_at: string
+          hit_count: number
+          id: string
+          invalidated_at: string | null
+          market_range_max: number
+          market_range_min: number
+          perplexity_raw: Json
+          problem_slug: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          sources_summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          complexity: Database["public"]["Enums"]["complexity_level"]
+          confidence: number
+          created_at?: string
+          district_code: string
+          expires_at: string
+          hit_count?: number
+          id?: string
+          invalidated_at?: string | null
+          market_range_max: number
+          market_range_min: number
+          perplexity_raw?: Json
+          problem_slug: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          sources_summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          complexity?: Database["public"]["Enums"]["complexity_level"]
+          confidence?: number
+          created_at?: string
+          district_code?: string
+          expires_at?: string
+          hit_count?: number
+          id?: string
+          invalidated_at?: string | null
+          market_range_max?: number
+          market_range_min?: number
+          perplexity_raw?: Json
+          problem_slug?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          sources_summary?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      kael_optimization_metrics: {
+        Row: {
+          cost_actual: number | null
+          cost_before_estimate: number | null
+          cost_delta_estimate: number
+          created_at: string
+          enabled_options: string[]
+          id: string
+          input_tokens: number | null
+          job_id: string | null
+          latency_ms: number | null
+          metric_source: string
+          model: string | null
+          option_flags: Json
+          output_tokens: number | null
+          provider: Database["public"]["Enums"]["api_provider"]
+          purpose: string
+          quality_pass: boolean | null
+          quality_signal: string | null
+          request_id: string | null
+          safe_metadata: Json
+        }
+        Insert: {
+          cost_actual?: number | null
+          cost_before_estimate?: number | null
+          created_at?: string
+          enabled_options?: string[]
+          id?: string
+          input_tokens?: number | null
+          job_id?: string | null
+          latency_ms?: number | null
+          metric_source?: string
+          model?: string | null
+          option_flags?: Json
+          output_tokens?: number | null
+          provider: Database["public"]["Enums"]["api_provider"]
+          purpose: string
+          quality_pass?: boolean | null
+          quality_signal?: string | null
+          request_id?: string | null
+          safe_metadata?: Json
+        }
+        Update: {
+          cost_actual?: number | null
+          cost_before_estimate?: number | null
+          created_at?: string
+          enabled_options?: string[]
+          id?: string
+          input_tokens?: number | null
+          job_id?: string | null
+          latency_ms?: number | null
+          metric_source?: string
+          model?: string | null
+          option_flags?: Json
+          output_tokens?: number | null
+          provider?: Database["public"]["Enums"]["api_provider"]
+          purpose?: string
+          quality_pass?: boolean | null
+          quality_signal?: string | null
+          request_id?: string | null
+          safe_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_optimization_metrics_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_admin_queue: {
+        Row: {
+          actor_id: string | null
+          actor_role: string
+          created_at: string
+          escalation_level: string
+          id: string
+          job_id: string | null
+          priority: string
+          queue_type: string
+          reason_code: string
+          response_summary: string | null
+          safe_metadata: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role: string
+          created_at?: string
+          escalation_level: string
+          id?: string
+          job_id?: string | null
+          priority: string
+          queue_type: string
+          reason_code: string
+          response_summary?: string | null
+          safe_metadata?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string
+          created_at?: string
+          escalation_level?: string
+          id?: string
+          job_id?: string | null
+          priority?: string
+          queue_type?: string
+          reason_code?: string
+          response_summary?: string | null
+          safe_metadata?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_admin_queue_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_admin_queue_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_advisory_audit: {
+        Row: {
+          actor_id: string | null
+          advisory_type: string
+          artifact_id: string | null
+          created_at: string
+          id: string
+          job_id: string | null
+          purpose: string
+          safe_metadata: Json
+          template_key: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          advisory_type: string
+          artifact_id?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          purpose: string
+          safe_metadata?: Json
+          template_key?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          advisory_type?: string
+          artifact_id?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          purpose?: string
+          safe_metadata?: Json
+          template_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_advisory_audit_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_advisory_audit_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_analysis_artifacts: {
+        Row: {
+          artifact_type: string
+          confidence: number | null
+          created_at: string
+          id: string
+          job_id: string | null
+          provider: Database["public"]["Enums"]["api_provider"] | null
+          safe_payload: Json
+          service_problem_id: string | null
+          service_type: Database["public"]["Enums"]["service_type"]
+          summary: string | null
+        }
+        Insert: {
+          artifact_type: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          provider?: Database["public"]["Enums"]["api_provider"] | null
+          safe_payload?: Json
+          service_problem_id?: string | null
+          service_type: Database["public"]["Enums"]["service_type"]
+          summary?: string | null
+        }
+        Update: {
+          artifact_type?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          provider?: Database["public"]["Enums"]["api_provider"] | null
+          safe_payload?: Json
+          service_problem_id?: string | null
+          service_type?: Database["public"]["Enums"]["service_type"]
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_analysis_artifacts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_analysis_artifacts_service_problem_id_fkey"
+            columns: ["service_problem_id"]
+            isOneToOne: false
+            referencedRelation: "service_problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_charter_audit: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          charter_version: string
+          created_at: string
+          file_name: string
+          id: string
+          operation: string
+          safe_metadata: Json
+          status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          charter_version: string
+          created_at?: string
+          file_name: string
+          id?: string
+          operation: string
+          safe_metadata?: Json
+          status: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          charter_version?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          operation?: string
+          safe_metadata?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_charter_audit_actor_id_fkey"
+            columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -662,56 +1513,68 @@ export type Database = {
           },
         ]
       }
-      kael_analysis_artifacts: {
+      kael_interaction_log: {
         Row: {
-          artifact_type: string
-          confidence: number | null
+          actor_id: string | null
+          actor_role: string
           created_at: string
+          escalation_level: string
+          expected_nuance: string
           id: string
+          interaction_type: string
           job_id: string | null
-          provider: Database["public"]["Enums"]["api_provider"] | null
-          safe_payload: Json
-          service_problem_id: string | null
-          service_type: Database["public"]["Enums"]["service_type"]
-          summary: string | null
+          legitimate_concern_signals: string[]
+          nuance: string
+          pressure_signals: string[]
+          safe_metadata: Json
+          sanitized_excerpt: string
+          strategy_ids: string[]
         }
         Insert: {
-          artifact_type: string
-          confidence?: number | null
+          actor_id?: string | null
+          actor_role: string
           created_at?: string
+          escalation_level: string
+          expected_nuance: string
           id?: string
+          interaction_type: string
           job_id?: string | null
-          provider?: Database["public"]["Enums"]["api_provider"] | null
-          safe_payload?: Json
-          service_problem_id?: string | null
-          service_type: Database["public"]["Enums"]["service_type"]
-          summary?: string | null
+          legitimate_concern_signals?: string[]
+          nuance: string
+          pressure_signals?: string[]
+          safe_metadata?: Json
+          sanitized_excerpt: string
+          strategy_ids?: string[]
         }
         Update: {
-          artifact_type?: string
-          confidence?: number | null
+          actor_id?: string | null
+          actor_role?: string
           created_at?: string
+          escalation_level?: string
+          expected_nuance?: string
           id?: string
+          interaction_type?: string
           job_id?: string | null
-          provider?: Database["public"]["Enums"]["api_provider"] | null
-          safe_payload?: Json
-          service_problem_id?: string | null
-          service_type?: Database["public"]["Enums"]["service_type"]
-          summary?: string | null
+          legitimate_concern_signals?: string[]
+          nuance?: string
+          pressure_signals?: string[]
+          safe_metadata?: Json
+          sanitized_excerpt?: string
+          strategy_ids?: string[]
         }
         Relationships: [
           {
-            foreignKeyName: "kael_analysis_artifacts_job_id_fkey"
-            columns: ["job_id"]
+            foreignKeyName: "kael_interaction_log_actor_id_fkey"
+            columns: ["actor_id"]
             isOneToOne: false
-            referencedRelation: "jobs"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "kael_analysis_artifacts_service_problem_id_fkey"
-            columns: ["service_problem_id"]
+            foreignKeyName: "kael_interaction_log_job_id_fkey"
+            columns: ["job_id"]
             isOneToOne: false
-            referencedRelation: "service_problems"
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -771,6 +1634,399 @@ export type Database = {
             columns: ["service_problem_id"]
             isOneToOne: false
             referencedRelation: "service_problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_memory_archive: {
+        Row: {
+          archived_from: string
+          archived_reason: string
+          created_at: string
+          id: string
+          memory_payload: Json
+          subject_id: string | null
+          subject_type: string
+        }
+        Insert: {
+          archived_from: string
+          archived_reason: string
+          created_at?: string
+          id?: string
+          memory_payload: Json
+          subject_id?: string | null
+          subject_type: string
+        }
+        Update: {
+          archived_from?: string
+          archived_reason?: string
+          created_at?: string
+          id?: string
+          memory_payload?: Json
+          subject_id?: string | null
+          subject_type?: string
+        }
+        Relationships: []
+      }
+      kael_memory_audit: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          layer: string
+          operation: string
+          purpose: string
+          safe_metadata: Json
+          subject_id: string | null
+          subject_type: string
+          token_count: number | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          layer: string
+          operation: string
+          purpose: string
+          safe_metadata?: Json
+          subject_id?: string | null
+          subject_type: string
+          token_count?: number | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          layer?: string
+          operation?: string
+          purpose?: string
+          safe_metadata?: Json
+          subject_id?: string | null
+          subject_type?: string
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_memory_audit_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_permission_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string
+          created_at: string
+          decision: string
+          id: string
+          job_id: string | null
+          purpose: string
+          reason_code: string
+          safe_metadata: Json
+          topic: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role: string
+          created_at?: string
+          decision: string
+          id?: string
+          job_id?: string | null
+          purpose: string
+          reason_code: string
+          safe_metadata?: Json
+          topic?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string
+          created_at?: string
+          decision?: string
+          id?: string
+          job_id?: string | null
+          purpose?: string
+          reason_code?: string
+          safe_metadata?: Json
+          topic?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_permission_audit_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_permission_audit_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_quality_baseline: {
+        Row: {
+          advisory_accuracy_score: number | null
+          api_log_count: number
+          avg_review_rating: number | null
+          baseline_key: string
+          cost_summary: Json
+          created_at: string
+          id: string
+          job_count: number
+          provider_breakdown: Json
+          purpose_breakdown: Json
+          safe_metadata: Json
+          sample_ended_at: string | null
+          sample_size: number
+          sample_started_at: string | null
+          schema_validation_rate: number | null
+          source: string
+          updated_at: string
+          vietnamese_tone_score: number | null
+        }
+        Insert: {
+          advisory_accuracy_score?: number | null
+          api_log_count?: number
+          avg_review_rating?: number | null
+          baseline_key: string
+          cost_summary?: Json
+          created_at?: string
+          id?: string
+          job_count?: number
+          provider_breakdown?: Json
+          purpose_breakdown?: Json
+          safe_metadata?: Json
+          sample_ended_at?: string | null
+          sample_size: number
+          sample_started_at?: string | null
+          schema_validation_rate?: number | null
+          source: string
+          updated_at?: string
+          vietnamese_tone_score?: number | null
+        }
+        Update: {
+          advisory_accuracy_score?: number | null
+          api_log_count?: number
+          avg_review_rating?: number | null
+          baseline_key?: string
+          cost_summary?: Json
+          created_at?: string
+          id?: string
+          job_count?: number
+          provider_breakdown?: Json
+          purpose_breakdown?: Json
+          safe_metadata?: Json
+          sample_ended_at?: string | null
+          sample_size?: number
+          sample_started_at?: string | null
+          schema_validation_rate?: number | null
+          source?: string
+          updated_at?: string
+          vietnamese_tone_score?: number | null
+        }
+        Relationships: []
+      }
+      kael_rule_application_log: {
+        Row: {
+          accuracy_delta: number | null
+          actor_id: string | null
+          actor_role: string | null
+          applied_count: number
+          applied_target: string
+          candidate_id: string | null
+          created_at: string
+          id: string
+          job_id: string | null
+          override_count: number
+          rule_id: string | null
+          safe_metadata: Json
+          satisfaction_delta: number | null
+          skill_id: string
+        }
+        Insert: {
+          accuracy_delta?: number | null
+          actor_id?: string | null
+          actor_role?: string | null
+          applied_count?: number
+          applied_target: string
+          candidate_id?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          override_count?: number
+          rule_id?: string | null
+          safe_metadata?: Json
+          satisfaction_delta?: number | null
+          skill_id: string
+        }
+        Update: {
+          accuracy_delta?: number | null
+          actor_id?: string | null
+          actor_role?: string | null
+          applied_count?: number
+          applied_target?: string
+          candidate_id?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          override_count?: number
+          rule_id?: string | null
+          safe_metadata?: Json
+          satisfaction_delta?: number | null
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_rule_application_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_rule_application_log_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "learning_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_rule_application_log_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_rule_application_log_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "learning_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_rule_lifecycle_log: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          candidate_id: string | null
+          created_at: string
+          id: string
+          job_id: string | null
+          next_state: string
+          previous_state: string | null
+          rule_id: string | null
+          safe_metadata: Json
+          skill_id: string
+          transition_reason: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          candidate_id?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          next_state: string
+          previous_state?: string | null
+          rule_id?: string | null
+          safe_metadata?: Json
+          skill_id: string
+          transition_reason: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          candidate_id?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string | null
+          next_state?: string
+          previous_state?: string | null
+          rule_id?: string | null
+          safe_metadata?: Json
+          skill_id?: string
+          transition_reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_rule_lifecycle_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_rule_lifecycle_log_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "learning_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_rule_lifecycle_log_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_rule_lifecycle_log_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "learning_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_worker_qa_log: {
+        Row: {
+          answer: Json
+          created_at: string
+          id: string
+          job_id: string
+          question: string
+          worker_id: string
+        }
+        Insert: {
+          answer: Json
+          created_at?: string
+          id?: string
+          job_id: string
+          question: string
+          worker_id: string
+        }
+        Update: {
+          answer?: Json
+          created_at?: string
+          id?: string
+          job_id?: string
+          question?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_worker_qa_log_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_worker_qa_log_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -908,6 +2164,42 @@ export type Database = {
           rule_payload?: Json
           rule_type?: string
           status?: Database["public"]["Enums"]["learning_rule_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      legal_awareness_patterns: {
+        Row: {
+          boundary_type: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          pattern_key: string
+          response_guidance: string
+          safe_metadata: Json
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          boundary_type: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          pattern_key: string
+          response_guidance: string
+          safe_metadata?: Json
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          boundary_type?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          pattern_key?: string
+          response_guidance?: string
+          safe_metadata?: Json
+          topic?: string
           updated_at?: string
         }
         Relationships: []
@@ -1299,12 +2591,17 @@ export type Database = {
         Row: {
           admin_decision_at: string | null
           admin_decision_by: string | null
+          admin_review_required: boolean
+          abuse_signals: string[]
           created_at: string
           evidence_photo_urls: string[]
+          fallback_options: Json
           id: string
           job_id: string
           kael_review: Json | null
           reason: string
+          reason_category: string | null
+          reason_code: string | null
           review_note: string | null
           status: string
           updated_at: string
@@ -1313,12 +2610,17 @@ export type Database = {
         Insert: {
           admin_decision_at?: string | null
           admin_decision_by?: string | null
+          admin_review_required?: boolean
+          abuse_signals?: string[]
           created_at?: string
           evidence_photo_urls?: string[]
+          fallback_options?: Json
           id?: string
           job_id: string
           kael_review?: Json | null
           reason: string
+          reason_category?: string | null
+          reason_code?: string | null
           review_note?: string | null
           status?: string
           updated_at?: string
@@ -1327,12 +2629,17 @@ export type Database = {
         Update: {
           admin_decision_at?: string | null
           admin_decision_by?: string | null
+          admin_review_required?: boolean
+          abuse_signals?: string[]
           created_at?: string
           evidence_photo_urls?: string[]
+          fallback_options?: Json
           id?: string
           job_id?: string
           kael_review?: Json | null
           reason?: string
+          reason_category?: string | null
+          reason_code?: string | null
           review_note?: string | null
           status?: string
           updated_at?: string
@@ -1354,9 +2661,105 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "worker_cancellation_requests_reason_code_fkey"
+            columns: ["reason_code"]
+            isOneToOne: false
+            referencedRelation: "worker_cancellation_reason_taxonomy"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "worker_cancellation_requests_worker_id_fkey"
             columns: ["worker_id"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_cancellation_reason_taxonomy: {
+        Row: {
+          admin_tunable: boolean
+          category: string
+          code: string
+          created_at: string
+          is_active: boolean
+          label_vi: string
+          safe_metadata: Json
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          admin_tunable?: boolean
+          category: string
+          code: string
+          created_at?: string
+          is_active?: boolean
+          label_vi: string
+          safe_metadata?: Json
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          admin_tunable?: boolean
+          category?: string
+          code?: string
+          created_at?: string
+          is_active?: boolean
+          label_vi?: string
+          safe_metadata?: Json
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      worker_kael_memory: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          language: string
+          last_observed_at: string | null
+          memory_version: number
+          red_flags: Json
+          reliability_signals: Json
+          safe_metadata: Json
+          service_skill_proficiency: Json
+          service_skill_summary: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          language?: string
+          last_observed_at?: string | null
+          memory_version?: number
+          red_flags?: Json
+          reliability_signals?: Json
+          safe_metadata?: Json
+          service_skill_proficiency?: Json
+          service_skill_summary?: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          language?: string
+          last_observed_at?: string | null
+          memory_version?: number
+          red_flags?: Json
+          reliability_signals?: Json
+          safe_metadata?: Json
+          service_skill_proficiency?: Json
+          service_skill_summary?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_kael_memory_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1451,9 +2854,159 @@ export type Database = {
           },
         ]
       }
+      worker_safety_patterns: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          pattern_key: string
+          response_guidance: string
+          safe_metadata: Json
+          service_type: string
+          severity: string
+          trigger_topic: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          pattern_key: string
+          response_guidance: string
+          safe_metadata?: Json
+          service_type: string
+          severity?: string
+          trigger_topic: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          pattern_key?: string
+          response_guidance?: string
+          safe_metadata?: Json
+          service_type?: string
+          severity?: string
+          trigger_topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      worker_scope_change_stats: {
+        Row: {
+          last_scope_change_at: string | null
+          scope_change_rate: number
+          scope_change_requests: number
+          total_completed_jobs: number
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          last_scope_change_at?: string | null
+          scope_change_rate?: number
+          scope_change_requests?: number
+          total_completed_jobs?: number
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          last_scope_change_at?: string | null
+          scope_change_rate?: number
+          scope_change_requests?: number
+          total_completed_jobs?: number
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_scope_change_stats_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      kael_cost_daily_summary: {
+        Row: {
+          avg_cost_per_call_usd: number | null
+          avg_input_tokens: number | null
+          avg_latency_ms: number | null
+          avg_output_tokens: number | null
+          call_count: number | null
+          day: string | null
+          failure_count: number | null
+          failure_rate: number | null
+          fallback_count: number | null
+          p95_latency_ms: number | null
+          provider: Database["public"]["Enums"]["api_provider"] | null
+          purpose: string | null
+          success_count: number | null
+          total_cost_usd: number | null
+        }
+        Relationships: []
+      }
+      kael_cost_projection_daily: {
+        Row: {
+          cost_per_job_usd: number | null
+          day: string | null
+          observed_calls: number | null
+          observed_cost_usd: number | null
+          observed_jobs: number | null
+          projected_10000_jobs_usd: number | null
+          projected_1000_jobs_usd: number | null
+        }
+        Relationships: []
+      }
+      kael_monitoring_ab_price_synthesis: {
+        Row: {
+          collected_cases: number | null
+          completed_cases: number | null
+          comparison_provider: Database["public"]["Enums"]["api_provider"] | null
+          experiment_id: string | null
+          experiment_key: string | null
+          failed_metric_count: number | null
+          fallback_provider: Database["public"]["Enums"]["api_provider"] | null
+          fallback_rate: number | null
+          metric_thresholds: Json | null
+          price_range_deviation_vs_actual: number | null
+          price_range_deviation_vs_anthropic: number | null
+          primary_provider: Database["public"]["Enums"]["api_provider"] | null
+          purpose: string | null
+          sample_target: number | null
+          schema_validation_rate: number | null
+          started_at: string | null
+          status: string | null
+          threshold_decision: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_ab_price_synthesis_cases_experiment_id_fkey"
+            columns: ["experiment_id"]
+            isOneToOne: false
+            referencedRelation: "kael_ab_experiments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_monitoring_provider_daily: {
+        Row: {
+          avg_latency_ms: number | null
+          call_count: number | null
+          day: string | null
+          failure_count: number | null
+          fallback_count: number | null
+          p95_latency_ms: number | null
+          provider: Database["public"]["Enums"]["api_provider"] | null
+          purpose: string | null
+          success_count: number | null
+          total_cost_usd: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_broadcast_atomic: {
@@ -1468,6 +3021,20 @@ export type Database = {
           ok: boolean
         }[]
       }
+      archive_stale_kael_memory: {
+        Args: { p_archive_before?: string }
+        Returns: {
+          archived_from: string
+          subject_id: string
+          subject_type: string
+        }[]
+      }
+      cleanup_orphan_analyzing_jobs: {
+        Args: { p_cutoff?: string }
+        Returns: {
+          cleaned_count: number
+        }[]
+      }
       cancel_job_before_accept_atomic: {
         Args: { p_customer_id: string; p_job_id: string }
         Returns: {
@@ -1477,16 +3044,77 @@ export type Database = {
           ok: boolean
         }[]
       }
+      cancel_job_after_accept_atomic: {
+        Args: {
+          p_abuse_signals?: string[]
+          p_customer_id: string
+          p_job_id: string
+          p_reason_category?: string
+          p_reason_code: string
+          p_reason_note?: string
+        }
+        Returns: {
+          abuse_signals: string[]
+          admin_review_required: boolean
+          cancellation_id: string
+          created_at_ts: string
+          error_code: string
+          job_id_out: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          phase0_no_monetary_penalty: boolean
+          reason_category: string
+          reason_code: string
+          sub_case: string
+          worker_goodwill: Json
+          worker_id_out: string | null
+        }[]
+      }
+      open_dispute_atomic: {
+        Args: {
+          p_dispute_type: string
+          p_evidence_photo_urls?: string[]
+          p_initiated_by: string
+          p_initiated_by_id: string
+          p_initiator_statement: string
+          p_job_id: string
+          p_kael_neutral_summary?: string | null
+        }
+        Returns: {
+          admin_review_required: boolean
+          created_at_ts: string
+          dispute_id: string
+          dispute_status: string
+          error_code: string | null
+          evidence_locked_at: string
+          evidence_snapshot_id: string
+          ok: boolean
+          priority: string
+        }[]
+      }
       confirm_kael_chat_atomic: {
         Args: { p_customer_id: string; p_session_id: string }
         Returns: {
-          district_code: string | null
-          error_code: string | null
-          job_id: string | null
-          job_status: Database["public"]["Enums"]["job_status"] | null
+          district_code: string
+          error_code: string
+          job_id: string
+          job_status: Database["public"]["Enums"]["job_status"]
           ok: boolean
-          service_type: Database["public"]["Enums"]["service_type"] | null
+          service_type: Database["public"]["Enums"]["service_type"]
         }[]
+      }
+      enqueue_worker_no_show_reviews: {
+        Args: { p_now?: string }
+        Returns: {
+          fallback_options: Json
+          job_id_out: string
+          reason_code: string
+          worker_id_out: string | null
+        }[]
+      }
+      increment_kael_market_cache_hit: {
+        Args: { p_cache_id: string }
+        Returns: undefined
       }
       decide_scope_change_atomic: {
         Args: {
@@ -1522,8 +3150,8 @@ export type Database = {
         }[]
       }
       distance_km: {
-        Args: { lat1: number; lng1: number; lat2: number; lng2: number }
-        Returns: number | null
+        Args: { lat1: number; lat2: number; lng1: number; lng2: number }
+        Returns: number
       }
       insert_notification_atomic: {
         Args: {
@@ -1560,9 +3188,9 @@ export type Database = {
           p_kael_computed_max: number
           p_kael_computed_min: number
           p_kael_review: Json
-          p_worker_id: string
           p_new_description: string
           p_reason: string
+          p_worker_id: string
         }
         Returns: {
           created_at_ts: string
@@ -1570,6 +3198,63 @@ export type Database = {
           ok: boolean
           scope_change_id: string
           scope_status: Database["public"]["Enums"]["scope_change_status"]
+        }[]
+      }
+      request_customer_cancellation_atomic: {
+        Args: {
+          p_customer_id: string
+          p_job_id: string
+          p_reason_code: string
+          p_reason_note?: string
+        }
+        Returns: {
+          abuse_signals: string[]
+          admin_review_required: boolean
+          cancellation_id: string
+          created_at_ts: string
+          error_code: string
+          job_id_out: string
+          job_status: Database["public"]["Enums"]["job_status"]
+          ok: boolean
+          phase0_no_monetary_penalty: boolean
+          reason_category: string
+          reason_code: string
+          sub_case: string
+          worker_goodwill: Json
+          worker_id_out: string
+        }[]
+      }
+      submit_counter_statement_atomic: {
+        Args: {
+          p_actor_id: string
+          p_dispute_id: string
+          p_statement: string
+        }
+        Returns: {
+          dispute_id: string
+          dispute_status: string
+          error_code: string | null
+          ok: boolean
+          updated_at_ts: string
+        }[]
+      }
+      admin_decide_dispute_atomic: {
+        Args: {
+          p_admin_id: string
+          p_customer_trust_impact?: string
+          p_dispute_id: string
+          p_outcome: string
+          p_reasoning?: string
+          p_refund_amount?: number | null
+          p_worker_action?: string
+          p_worker_credit_amount?: number | null
+        }
+        Returns: {
+          decided_at_ts: string
+          dispute_id: string
+          dispute_status: string
+          error_code: string | null
+          ok: boolean
         }[]
       }
       request_worker_cancellation_atomic: {
@@ -1580,16 +3265,21 @@ export type Database = {
           p_worker_id: string
         }
         Returns: {
+          abuse_signals: string[]
+          admin_review_required: boolean
           cancellation_id: string
           cancellation_status: string
           created_at_ts: string
-          district_code: string | null
-          error_code: string | null
+          district_code: string
+          error_code: string
+          fallback_options: Json
           job_id_out: string
-          job_status: Database["public"]["Enums"]["job_status"] | null
+          job_status: Database["public"]["Enums"]["job_status"]
           ok: boolean
-          service_type_out: Database["public"]["Enums"]["service_type"] | null
-          worker_id_out: string | null
+          reason_category: string
+          reason_code: string
+          service_type_out: Database["public"]["Enums"]["service_type"]
+          worker_id_out: string
         }[]
       }
       set_worker_availability_atomic: {

@@ -959,13 +959,16 @@ describe('frontend workflow provider wiring', () => {
 })
 
 describe('mobile push notification wiring', () => {
-  it('adds Expo Notifications to the mobile app configuration', () => {
+  it('keeps Expo Notifications runtime code while suppressing iOS push entitlements until provisioning is ready', () => {
     const mobilePackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'package.json'), 'utf-8'))
     const appConfig = read('app.config.ts')
     const appJson = read('app.json')
     expect(mobilePackage.dependencies['expo-notifications']).toBe('~0.32.17')
-    expect(appConfig).toContain("'expo-notifications'")
-    expect(appJson).toContain('"expo-notifications"')
+    expect(appConfig).toContain('withoutIosPushEntitlement')
+    expect(appConfig).toContain("delete config.modResults['aps-environment']")
+    expect(appConfig).toContain("delete attributes.SystemCapabilities?.['com.apple.Push']")
+    expect(appConfig).not.toContain("'expo-notifications'")
+    expect(appJson).not.toContain('"expo-notifications"')
   })
 
   it('registers Expo push tokens through the mobile API wrapper after authenticated profile load', () => {

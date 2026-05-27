@@ -4,6 +4,20 @@ import { describe, expect, it } from 'vitest'
 
 const ROOT = resolve(__dirname, '../../../../../')
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
+const listFilesUnder = (relDir: string): string[] => {
+  const absDir = resolve(ROOT, relDir)
+  return readdirSync(absDir, { withFileTypes: true })
+    .flatMap((entry) => {
+      const relPath = `${relDir}/${entry.name}`
+      return entry.isDirectory() ? listFilesUnder(relPath) : [relPath]
+    })
+}
+const readFilesUnder = (relDir: string): string[] =>
+  listFilesUnder(relDir)
+    .filter((relPath) => relPath.endsWith('.ts'))
+    .sort()
+    .map(read)
+const readEdgeKaelModules = () => readFilesUnder('supabase/functions/mobile-api/_shared/kael').join('\n')
 const readMigrations = () => {
   const dir = resolve(ROOT, 'supabase/migrations')
   return readdirSync(dir)
@@ -11,6 +25,14 @@ const readMigrations = () => {
     .sort()
     .map((name) => read(`supabase/migrations/${name}`))
     .join('\n')
+}
+const readMigrationByName = (needle: string) => {
+  const dir = resolve(ROOT, 'supabase/migrations')
+  const name = readdirSync(dir)
+    .filter((item) => item.endsWith('.sql') && item.includes(needle))
+    .sort()
+    .at(-1)
+  return name ? read(`supabase/migrations/${name}`) : ''
 }
 
 describe('mobile-api Edge schema compatibility', () => {
@@ -39,7 +61,7 @@ describe('mobile-api Edge schema compatibility', () => {
       'supabase/functions/mobile-api/_shared/router.ts',
       'supabase/functions/mobile-api/_shared/services.ts',
       'supabase/functions/_shared/domain.ts',
-    ].map(read).join('\n')
+    ].map(read).concat(readEdgeKaelModules()).join('\n')
 
     expect(functionFiles).not.toContain('packages/shared')
     expect(functionFiles).toContain('jobCreateSchema')
@@ -115,7 +137,7 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('uses the classified problem slug when fetching Kael price baselines', () => {
-    const edgeKael = read('supabase/functions/mobile-api/_shared/kael.ts')
+    const edgeKael = readEdgeKaelModules()
     const nextBaseline = read('apps/api/src/lib/kael/baseline.ts')
 
     expect(edgeKael).toContain('intent.problem_slug')
@@ -128,12 +150,12 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('persists the resolved service problem id on created jobs', () => {
-    const edgeKael = read('supabase/functions/mobile-api/_shared/kael.ts')
+    const edgeKael = readEdgeKaelModules()
     const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
     const nextPipeline = read('apps/api/src/lib/kael/pipeline.ts')
     const nextCreateJob = read('apps/api/src/lib/jobs/create-job.ts')
 
-    expect(edgeKael).toContain('serviceProblemId: baselineStage.result.serviceProblemId')
+    expect(edgeKael).toContain('serviceProblemId: baselineResult.serviceProblemId')
     expect(edgeServices).toContain('service_problem_id: pipeline.serviceProblemId')
     expect(nextPipeline).toContain('serviceProblemId: baselineResult.serviceProblemId')
     expect(nextCreateJob).toContain('service_problem_id: pipelineResult.serviceProblemId')
@@ -141,10 +163,10 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('keeps AI provider model ids away from known deprecation paths', () => {
     const source = [
-      'supabase/functions/mobile-api/_shared/kael.ts',
+      readEdgeKaelModules(),
       'apps/api/src/lib/jobs/create-job.ts',
       'apps/api/src/lib/kael/intent.ts',
-    ].map(read).join('\n')
+    ].map((source) => source.includes('\n') ? source : read(source)).join('\n')
 
     expect(source).toContain('deepseek-v4-flash')
     expect(source).not.toContain('deepseek-chat')
@@ -154,7 +176,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('uses the current canonical Perplexity Sonar endpoint in Edge and Next reference code', () => {
     const sources = [
-      read('supabase/functions/mobile-api/_shared/kael.ts'),
+      readEdgeKaelModules(),
       read('apps/api/src/lib/ai/providers/perplexity.ts'),
     ]
 
@@ -165,14 +187,14 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('does not carry raw provider error messages out of the Edge AI client', () => {
-    const edgeKael = read('supabase/functions/mobile-api/_shared/kael.ts')
+    const edgeKael = readEdgeKaelModules()
 
     expect(edgeKael).not.toContain('lastError.message')
     expect(edgeKael).toContain('error: code')
   })
 
   it('scrubs all customer-controlled text before Edge LLM prompts', () => {
-    const edgeKael = read('supabase/functions/mobile-api/_shared/kael.ts')
+    const edgeKael = readEdgeKaelModules()
 
     expect(edgeKael).toContain('const problemChips = input.problemChips.map(scrubSensitiveForLLM)')
     expect(edgeKael).toContain('const description = scrubSensitiveForLLM(input.description)')
@@ -189,7 +211,7 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('keeps the deployed Edge Kael prompt aligned with the product guardrails', () => {
-    const edgeKael = read('supabase/functions/mobile-api/_shared/kael.ts')
+    const edgeKael = readEdgeKaelModules()
 
     expect(edgeKael).toContain('KAEL_BUSINESS_GUARDRAILS')
     expect(edgeKael).toContain('Kael is the main AI assistant')
@@ -237,6 +259,291 @@ describe('mobile-api Edge schema compatibility', () => {
     }
     expect(migration).toContain('from authenticated')
     expect(migration).toContain('to service_role')
+  })
+
+  it('adds Kael Harness P1 memory tables with RLS and service-role writes only', () => {
+    const customer = read('supabase/migrations/20260525091142_customer_kael_memory.sql')
+    const worker = read('supabase/migrations/20260525091145_worker_kael_memory.sql')
+
+    expect(customer).toContain('create table if not exists public.customer_kael_memory')
+    expect(customer).toContain('customer_id uuid primary key references public.profiles(id) on delete cascade')
+    expect(customer).toContain('alter table public.customer_kael_memory enable row level security')
+    expect(customer).toContain('create policy "Customers view own kael memory"')
+    expect(customer).toContain('using ((select auth.uid()) = customer_id)')
+    expect(customer).toContain('create policy "Admins view customer kael memory"')
+    expect(customer).toContain('using (private.is_admin())')
+    expect(customer).toContain('revoke all on public.customer_kael_memory from authenticated')
+    expect(customer).toContain('grant select on public.customer_kael_memory to authenticated')
+    expect(customer).toContain('grant all on public.customer_kael_memory to service_role')
+
+    expect(worker).toContain('create table if not exists public.worker_kael_memory')
+    expect(worker).toContain('worker_id uuid primary key references public.profiles(id) on delete cascade')
+    expect(worker).toContain('alter table public.worker_kael_memory enable row level security')
+    expect(worker).toContain('create policy "Workers view own kael memory"')
+    expect(worker).toContain('using ((select auth.uid()) = worker_id)')
+    expect(worker).toContain('create policy "Admins view worker kael memory"')
+    expect(worker).toContain('using (private.is_admin())')
+    expect(worker).toContain('revoke all on public.worker_kael_memory from authenticated')
+    expect(worker).toContain('grant select on public.worker_kael_memory to authenticated')
+    expect(worker).toContain('grant all on public.worker_kael_memory to service_role')
+  })
+
+  it('adds Kael Harness P1 audit tables without user-writable DML grants', () => {
+    const migration = read('supabase/migrations/20260525091146_kael_audit_tables.sql')
+
+    for (const table of [
+      'kael_permission_audit',
+      'kael_advisory_audit',
+      'kael_memory_audit',
+    ]) {
+      expect(migration).toContain(`create table if not exists public.${table}`)
+      expect(migration).toContain(`alter table public.${table} enable row level security`)
+      expect(migration).toContain(`revoke all on public.${table} from authenticated`)
+      expect(migration).toContain(`grant select on public.${table} to authenticated`)
+      expect(migration).toContain(`grant all on public.${table} to service_role`)
+    }
+
+    expect(migration).toContain('create policy "Admins view kael permission audit"')
+    expect(migration).toContain('create policy "Admins view kael advisory audit"')
+    expect(migration).toContain('create policy "Admins view kael memory audit"')
+    expect(migration).toContain('using (private.is_admin())')
+  })
+
+  it('populates api_logs.purpose for current Edge Kael provider calls', () => {
+    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+    const logApiCall = read('apps/api/src/lib/kael/log-api-call.ts')
+    const createJob = read('apps/api/src/lib/jobs/create-job.ts')
+
+    expect(services).toContain('purpose: apiLogPurposeForPipelineStage(stage.stage)')
+    expect(services).toContain('purpose: "scope_change"')
+    expect(services).toContain('surface: "kael_chat"')
+    expect(services).toContain('return "intent_classification"')
+    expect(services).toContain('return "vision_analysis"')
+    expect(services).toContain('return "market_lookup"')
+    expect(logApiCall).toContain('purpose: string')
+    expect(logApiCall).toContain('purpose: log.purpose')
+    expect(createJob).toContain('purpose: apiLogPurposeForPipelineStage(stage.stage)')
+  })
+
+  it('adds P14 backend cleanup invariants for telemetry, worker districts, and orphan analyzing jobs', () => {
+    const migration = readMigrationByName('backend_gaps_cleanup_p14')
+    const databaseTypes = read('packages/shared/src/types/database.types.ts')
+    const migrationChain = read('docs/architecture/migration-chain.md')
+
+    expect(migration).toContain('alter table public.api_logs alter column purpose set not null')
+    expect(migration).toContain('add constraint api_logs_purpose_non_empty')
+    expect(migration).toContain('create or replace function public.cleanup_orphan_analyzing_jobs')
+    expect(migration).toContain("status = 'analyzing'")
+    expect(migration).toContain("status = 'cancelled'")
+    expect(migration).toContain('create extension if not exists pg_cron')
+    expect(migration).toContain('cron.schedule')
+    expect(migration).toContain('kael-cleanup-orphan-analyzing-jobs')
+    expect(migration).toContain("array_remove(districts, 'hcmc_all')")
+    expect(databaseTypes).toContain('cleanup_orphan_analyzing_jobs')
+    expect(databaseTypes).toContain('purpose: string')
+    expect(databaseTypes).not.toContain('purpose?: string | null')
+    expect(migrationChain).toContain('20260526002253_backend_gaps_cleanup_p14.sql')
+    expect(migrationChain).toContain('Direct writes to `cron.job` are intentionally avoided')
+  })
+
+  it('adds P3 routing and streaming schema without exposing user DML', () => {
+    const migrations = readMigrations()
+
+    expect(migrations).toContain('create table if not exists public.ai_provider_routing')
+    expect(migrations).toContain('alter table public.ai_provider_routing enable row level security')
+    expect(migrations).toContain('revoke insert, update, delete on public.ai_provider_routing from authenticated')
+    expect(migrations).toContain('grant select on public.ai_provider_routing to authenticated')
+    expect(migrations).toContain('grant all on public.ai_provider_routing to service_role')
+    expect(migrations).toContain('alter table public.jobs add column if not exists kael_progress jsonb')
+    expect(migrations).toContain('kael_progress_is_object')
+  })
+
+  it('adds P4 output-format schema with service-role writes and worker clarify route', () => {
+    const migrations = readMigrations()
+    const edgeKael = readEdgeKaelModules()
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+
+    expect(migrations).toMatch(/alter table public\.jobs[\s\S]*add column if not exists kael_estimate_card_v3 jsonb/)
+    expect(migrations).toMatch(/alter table public\.jobs[\s\S]*add column if not exists kael_worker_brief_core jsonb/)
+    expect(migrations).toMatch(/alter table public\.jobs[\s\S]*add column if not exists kael_worker_brief_guidance jsonb/)
+    expect(migrations).toContain('create table if not exists public.kael_worker_qa_log')
+    expect(migrations).toContain('create table if not exists public.worker_scope_change_stats')
+
+    for (const table of [
+      'public.kael_worker_qa_log',
+      'public.worker_scope_change_stats',
+    ]) {
+      expect(migrations).toContain(`alter table ${table} enable row level security`)
+      expect(migrations).toContain(`revoke insert, update, delete on ${table} from authenticated`)
+      expect(migrations).toContain(`grant all on ${table} to service_role`)
+    }
+
+    expect(edgeKael).toContain('runKaelOutputPipeline')
+    expect(edgeKael).toContain('estimate_card.v3')
+    expect(edgeKael).toContain('scope_change_worker_challenge.v1')
+    expect(edgeServices).toContain('askKaelForWorker')
+    expect(edgeServices).toContain('kael_worker_qa_log')
+    expect(edgeRouter).toContain('jobs.kaelClarify')
+    expect(edgeRouter).toContain('kael-clarify')
+  })
+
+  it('adds P5 permission policy migrations and keeps audits service-role append-only', () => {
+    const migrations = readMigrations()
+    const edgeKael = readEdgeKaelModules()
+
+    expect(migrations).toContain('create table if not exists public.kael_advisory_audit')
+    expect(migrations).toContain('create table if not exists public.worker_safety_patterns')
+    expect(migrations).toContain('create table if not exists public.legal_awareness_patterns')
+    expect(migrations).toContain('alter table public.worker_safety_patterns enable row level security')
+    expect(migrations).toContain('alter table public.legal_awareness_patterns enable row level security')
+    expect(migrations).toContain('grant all on public.kael_advisory_audit to service_role')
+    expect(migrations).toContain('grant all on public.worker_safety_patterns to service_role')
+    expect(migrations).toContain('grant all on public.legal_awareness_patterns to service_role')
+    expect(migrations).toContain('electrical_lockout_before_repair')
+    expect(migrations).toContain('deposit_and_payment_dispute_awareness')
+    expect(edgeKael).toContain('evaluateKaelPermissionGate')
+    expect(edgeKael).toContain('checkKaelActorRateLimit')
+    expect(edgeKael).toContain('educational_response')
+  })
+
+  it('adds P6 memory governance archive, routes, and sanitizer boundary', () => {
+    const migrations = readMigrations()
+    const edgeKael = readEdgeKaelModules()
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+
+    expect(migrations).toContain('create table if not exists public.kael_memory_archive')
+    expect(migrations).toContain('create or replace function public.archive_stale_kael_memory')
+    expect(migrations).toContain('customer_id uuid primary key references public.profiles(id) on delete cascade')
+    expect(migrations).toContain('worker_id uuid primary key references public.profiles(id) on delete cascade')
+    expect(migrations).toContain('grant all on public.kael_memory_archive to service_role')
+    expect(edgeKael).toContain('class KaelMemory')
+    expect(edgeKael).toContain('sanitizeMemoryObject')
+    expect(edgeKael).toContain('options.maxTotalTokens ?? 1500')
+    expect(edgeRouter).toContain('/me/kael-memory')
+    expect(edgeRouter).toContain('/workers/me/kael-memory')
+    expect(edgeServices).toContain('getMyKaelMemory')
+    expect(edgeServices).toContain('deleteMyKaelMemory')
+  })
+
+  it('adds P7 learning skill registry, logs, scope limits, and trigger wiring', () => {
+    const migrations = readMigrations()
+    const edgeKael = readEdgeKaelModules()
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+
+    expect(migrations).toContain('create table if not exists public.kael_rule_application_log')
+    expect(migrations).toContain('create table if not exists public.kael_rule_lifecycle_log')
+    for (const table of [
+      'public.kael_rule_application_log',
+      'public.kael_rule_lifecycle_log',
+    ]) {
+      expect(migrations).toContain(`alter table ${table} enable row level security`)
+      expect(migrations).toContain(`revoke insert, update, delete on ${table} from authenticated`)
+      expect(migrations).toContain(`grant select on ${table} to authenticated`)
+      expect(migrations).toContain(`grant all on ${table} to service_role`)
+    }
+
+    for (const file of [
+      'LS1-market-memory',
+      'LS2-case-review',
+      'LS3-worker-pattern',
+      'LS4-customer-preference',
+      'LS5-service-knowledge',
+      'LS6-safety-pattern',
+      'LS7-decline-reason',
+    ]) {
+      expect(edgeKael).toContain(file)
+    }
+    for (const effect of [
+      'auto_charge_payment',
+      'auto_confirm_booking',
+      'auto_cancel_job',
+      'auto_approve_worker',
+      'auto_suspend_worker',
+      'auto_change_final_price',
+      'auto_expand_service_scope',
+      'hide_learning_changes_from_admin',
+    ]) {
+      expect(edgeKael).toContain(effect)
+    }
+    for (const flag of [
+      'KAEL_LEARNING_KILL_SWITCH',
+      'KAEL_LEARNING_AB_PERCENTAGE',
+      'KAEL_LEARNING_AUTO_ROLLBACK',
+      'KAEL_LEARNING_READ_ENABLED',
+      'KAEL_LEARNING_WRITE_ENABLED',
+    ]) {
+      expect(edgeKael).toContain(flag)
+    }
+    expect(edgeKael).toContain('KAEL_LEARNING_SKILLS')
+    expect(edgeKael).toContain('transitionLearningLifecycle')
+    expect(edgeKael).toContain('shouldAutoRollbackLearningRule')
+    expect(edgeServices).toContain('queueLearningSkillTriggers')
+    expect(edgeServices).toContain("'post-A14'")
+    expect(edgeServices).toContain("'post-B6'")
+    expect(edgeServices).toContain("'post-B7'")
+    expect(edgeServices).toContain("'post-decline'")
+  })
+
+  it('consolidates Kael memory read policies after P6 to avoid multiple permissive RLS', () => {
+    const migrations = readMigrations()
+
+    expect(migrations).toContain('create policy "Customer or admin reads customer kael memory"')
+    expect(migrations).toContain('create policy "Worker or admin reads worker kael memory"')
+    expect(migrations).toContain('drop policy if exists "Customers view own kael memory"')
+    expect(migrations).toContain('drop policy if exists "Admins view customer kael memory"')
+    expect(migrations).toContain('drop policy if exists "Workers view own kael memory"')
+    expect(migrations).toContain('drop policy if exists "Admins view worker kael memory"')
+    expect(migrations).toContain('using (((select auth.uid()) = customer_id) or private.is_admin())')
+    expect(migrations).toContain('using (((select auth.uid()) = worker_id) or private.is_admin())')
+  })
+
+  it('adds P8 charter audit, prompt builder, self-check, and public charter route', () => {
+    const migrations = readMigrations()
+    const edgeKael = readEdgeKaelModules()
+    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+
+    expect(migrations).toContain('create table if not exists public.kael_charter_audit')
+    expect(migrations).toContain('alter table public.kael_charter_audit enable row level security')
+    expect(migrations).toContain('grant select on public.kael_charter_audit to authenticated')
+    expect(migrations).toContain('grant all on public.kael_charter_audit to service_role')
+    expect(edgeKael).toContain('buildKaelSystemPrompt')
+    expect(edgeKael).toContain('checkKaelResponse')
+    expect(edgeKael).toContain('runKaelSelfCheckPipeline')
+    expect(edgeKael).toContain('2026-05-25.p8')
+    expect(edgeRouter).toContain('kael.charter')
+    expect(edgeRouter).toContain('/kael/charter')
+    expect(edgeRouter).toContain('public: true')
+    expect(edgeServices).toContain('getKaelCharter')
+  })
+
+  it('adds P10 demanding-customer admin queue and interaction log with service-role writes only', () => {
+    const migrations = readMigrations()
+    const edgeKael = readEdgeKaelModules()
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+
+    for (const table of [
+      'public.kael_admin_queue',
+      'public.kael_interaction_log',
+    ]) {
+      expect(migrations).toContain(`create table if not exists ${table}`)
+      expect(migrations).toContain(`alter table ${table} enable row level security`)
+      expect(migrations).toContain(`revoke all on ${table} from authenticated`)
+      expect(migrations).toContain(`grant select on ${table} to authenticated`)
+      expect(migrations).toContain(`grant all on ${table} to service_role`)
+    }
+
+    expect(migrations).toContain('create policy "Admins view kael admin queue"')
+    expect(migrations).toContain('create policy "Admins view kael interaction log"')
+    expect(migrations).toContain('using (private.is_admin())')
+    expect(edgeKael).toContain('detectDemandingCustomerPatterns')
+    expect(edgeKael).toContain('buildDemandingCustomerResponse')
+    expect(edgeKael).toContain('recordDemandingCustomerInteraction')
+    expect(edgeServices).toContain('recordDemandingCustomerInteraction')
+    expect(edgeServices).toContain('maybeHandleDemandingCustomerKaelChatTurn')
+    expect(edgeServices).toContain('maybeHandleDemandingCustomerJobChat')
   })
 
   it('consolidates admin RLS reads without reopening authenticated workflow DML grants', () => {
@@ -454,8 +761,14 @@ describe('mobile-api Edge schema compatibility', () => {
     const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
     const nextBroadcasts = read('apps/api/src/app/api/workers/me/broadcasts/route.ts')
 
+    expect(edgeServices).toContain(
+      'jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)'
+    )
+    expect(nextBroadcasts).toContain(
+      'jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max)'
+    )
+
     for (const source of [edgeServices, nextBroadcasts]) {
-      expect(source).toContain('jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max)')
       expect(source).toMatch(/job\.status !== ["']broadcasting["']/)
     }
   })
@@ -624,6 +937,119 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeRouter).toContain('places.autocomplete')
     expect(edgeRouter).toContain('/places/autocomplete')
     expect(mobileServices).toContain("api.post<PlacesAutocompleteResponse>('/places/autocomplete', input)")
+  })
+
+  it('adds P11 worker cancellation taxonomy, no-show handling, and review-only abuse controls', () => {
+    const migration = readMigrationByName('kael_worker_cancel_case_p11')
+    const noShowFixMigration = readMigrationByName('fix_worker_no_show_reason_code_ambiguity')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeKaelModules = readEdgeKaelModules()
+    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+
+    expect(migration).toContain('create table if not exists public.worker_cancellation_reason_taxonomy')
+    expect(migration).toContain('grant select on public.worker_cancellation_reason_taxonomy to authenticated')
+    expect(migration).toContain('grant all on public.worker_cancellation_reason_taxonomy to service_role')
+    expect(migration).toContain("queue_type in ('demanding_customer', 'worker_cancellation_review', 'worker_no_show')")
+    expect(migration).toContain('drop function if exists public.request_worker_cancellation_atomic(uuid, uuid, text, text[])')
+    expect(migration).toContain('create function public.request_worker_cancellation_atomic')
+    expect(migration).toContain('reason_code text')
+    expect(migration).toContain('reason_category text')
+    expect(migration).toContain('admin_review_required boolean')
+    expect(migration).toContain('fallback_options jsonb')
+    expect(migration).toContain('abuse_signals text[]')
+    expect(migration).toContain('enqueue_worker_no_show_reviews')
+    expect(noShowFixMigration).toContain('q.reason_code as inserted_reason_code')
+    expect(noShowFixMigration).toContain('inserted.inserted_reason_code')
+    expect(migration).not.toContain('is_suspended = true')
+    expect(migration).not.toContain("verification_status = 'suspended'")
+    expect(edgeKaelModules).toContain('classifyWorkerCancellationReason')
+    expect(edgeKaelModules).toContain('detectWorkerNoShow')
+    expect(edgeKaelModules).toContain('recordWorkerCancellationReview')
+    expect(edgeServices).toContain('classifyWorkerCancellationReason')
+    expect(edgeServices).toContain('fallback_options')
+    expect(edgeServices).toContain('admin_review_required')
+    expect(sharedTypes).toContain('worker_cancellation_reason_taxonomy')
+    expect(sharedTypes).toContain('fallback_options: Json')
+  })
+
+  it('qualifies P11 worker cancellation reason category counts for Postgres lint', () => {
+    const migration = readMigrationByName('fix_worker_cancellation_reason_category_ambiguity_p14')
+
+    expect(migration).toContain('create or replace function public.request_worker_cancellation_atomic')
+    expect(migration).toContain('from public.worker_cancellation_requests as wcr')
+    expect(migration).toContain("wcr.reason_category = 'no_reason'")
+  })
+
+  it('adds P12 customer cancellation taxonomy, after-accept RPC, and Phase 0 review controls', () => {
+    const migration = readMigrationByName('kael_customer_cancel_case_p12')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeDomain = read('supabase/functions/_shared/domain.ts')
+    const edgeKaelModules = readEdgeKaelModules()
+    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+    const mobileServices = read('apps/mobile/lib/services.ts')
+
+    expect(migration).toContain('create table if not exists public.customer_cancellation_reason_taxonomy')
+    expect(migration).toContain('create table if not exists public.customer_cancellation_records')
+    expect(migration).toContain('grant select on public.customer_cancellation_reason_taxonomy to authenticated')
+    expect(migration).toContain('grant all on public.customer_cancellation_records to service_role')
+    expect(migration).toContain("queue_type in ('demanding_customer', 'worker_cancellation_review', 'worker_no_show', 'customer_cancellation_review')")
+    expect(migration).toContain('create function public.cancel_job_after_accept_atomic')
+    expect(migration).toContain('create function public.request_customer_cancellation_atomic')
+    expect(migration).toContain('phase0_no_monetary_penalty boolean')
+    expect(migration).toContain('worker_goodwill jsonb')
+    expect(migration).not.toContain('late_cancel_fee')
+    expect(migration).not.toContain('temp_block')
+    expect(edgeKaelModules).toContain('classifyCustomerCancellationReason')
+    expect(edgeKaelModules).toContain('determineCustomerCancellationSubCase')
+    expect(edgeServices).toContain('request_customer_cancellation_atomic')
+    expect(edgeServices).toContain('recordCustomerCancellationReview')
+    expect(edgeRouter).toContain('jobs.customerCancellation')
+    expect(edgeRouter).toContain('/customer-cancellation')
+    expect(edgeDomain).toContain('customerCancellationRequestSchema')
+    expect(mobileServices).toContain('/customer-cancellation')
+    expect(sharedTypes).toContain('customer_cancellation_reason_taxonomy')
+    expect(sharedTypes).toContain('customer_cancellation_records')
+    expect(sharedTypes).toContain('request_customer_cancellation_atomic')
+    expect(sharedTypes).toContain('cancel_job_after_accept_atomic')
+  })
+
+  it('adds P13 dispute tables, immutable evidence snapshots, neutral helpers, and admin RPCs', () => {
+    const migration = readMigrationByName('kael_dispute_case_p13')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeDomain = read('supabase/functions/_shared/domain.ts')
+    const edgeKaelModules = readEdgeKaelModules()
+    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+    const mobileServices = read('apps/mobile/lib/services.ts')
+
+    expect(migration).toContain('create table if not exists public.evidence_snapshots')
+    expect(migration).toContain('create table if not exists public.disputes')
+    expect(migration).toContain('create function public.open_dispute_atomic')
+    expect(migration).toContain('create function public.submit_counter_statement_atomic')
+    expect(migration).toContain('create function public.admin_decide_dispute_atomic')
+    expect(migration).toContain('raise exception')
+    expect(migration).toContain('dispute_review')
+    expect(migration).toContain('refund_amount')
+    expect(migration).toContain('worker_credit_amount')
+    expect(migration).not.toContain('auto_suspend')
+    expect(edgeKaelModules).toContain('buildNeutralDisputeSummary')
+    expect(edgeKaelModules).toContain('assertNeutralDisputeLanguage')
+    expect(edgeServices).toContain('open_dispute_atomic')
+    expect(edgeServices).toContain('buildNeutralDisputeSummary')
+    expect(edgeRouter).toContain('jobs.openDispute')
+    expect(edgeRouter).toContain('/disputes')
+    expect(edgeRouter).toContain('disputes.counterStatement')
+    expect(edgeRouter).toContain('disputes.adminDecision')
+    expect(edgeDomain).toContain('disputeOpenRequestSchema')
+    expect(edgeDomain).toContain('disputeCounterStatementSchema')
+    expect(edgeDomain).toContain('disputeAdminDecisionSchema')
+    expect(mobileServices).toContain('/disputes')
+    expect(sharedTypes).toContain('evidence_snapshots')
+    expect(sharedTypes).toContain('disputes')
+    expect(sharedTypes).toContain('open_dispute_atomic')
+    expect(sharedTypes).toContain('submit_counter_statement_atomic')
+    expect(sharedTypes).toContain('admin_decide_dispute_atomic')
   })
 
   it('splits Supabase box admin RLS policies so SELECT has one permissive path', () => {

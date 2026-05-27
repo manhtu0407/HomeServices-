@@ -83,6 +83,9 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
   it('applies learned Kael price and complexity rules inside the deployed Edge runtime', () => {
     const edgeKael = readRoot('supabase/functions/mobile-api/_shared/kael.ts')
+    const edgeKaelTypes = readRoot('supabase/functions/mobile-api/_shared/kael/types.ts')
+    const edgeKaelLearning = readRoot('supabase/functions/mobile-api/_shared/kael/learning.ts')
+    const edgeKaelPipeline = readRoot('supabase/functions/mobile-api/_shared/kael/pipeline.ts')
     const edgeEnv = readRoot('supabase/functions/mobile-api/_shared/env.ts')
 
     expect(edgeEnv).toContain('learningEnabled')
@@ -90,16 +93,18 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(edgeEnv).toContain('VIETMAP_API_KEY')
     expect(edgeEnv).toContain('getEnv("GOOGLE_MAPS_API_KEY") ?? getEnv("GOOGLE_MAP_KEY")')
 
-    expect(edgeKael).toContain('vietmapApiKey?: string')
-    expect(edgeKael).toContain('function applyLearnedComplexityRule')
-    expect(edgeKael).toContain('function applyLearnedPriceRule')
-    expect(edgeKael).toContain('.from("learning_rules")')
-    expect(edgeKael).toContain('.eq("rule_type", "analysis_rule")')
-    expect(edgeKael).toContain('.eq("rule_type", "price_prior_update")')
-    expect(edgeKael).toContain('const learnedComplexity = await applyLearnedComplexityRule')
-    expect(edgeKael).toContain('const effectiveComplexity = learnedComplexity?.newComplexity ?? analysis.complexity_hint')
-    expect(edgeKael).toContain('effectiveComplexity')
-    expect(edgeKael).toContain('learnedRuleId')
+    expect(edgeKael).toContain('export * from "./kael/index.ts"')
+    expect(edgeKaelTypes).toContain('vietmapApiKey?: string')
+    expect(edgeKaelTypes).toContain('learningEnabled?: boolean')
+    expect(edgeKaelLearning).toContain('function applyLearnedComplexityRule')
+    expect(edgeKaelLearning).toContain('function applyLearnedPriceRule')
+    expect(edgeKaelLearning).toContain('.from("learning_rules")')
+    expect(edgeKaelLearning).toContain('.eq("rule_type", "analysis_rule")')
+    expect(edgeKaelLearning).toContain('.eq("rule_type", "price_prior_update")')
+    expect(edgeKaelPipeline).toContain('const learnedComplexity = await applyLearnedComplexityRule')
+    expect(edgeKaelPipeline).toContain('const effectiveComplexity = learnedComplexity?.newComplexity ??')
+    expect(edgeKaelPipeline).toContain('const learnedPrice = await applyLearnedPriceRule')
+    expect(edgeKaelPipeline).toContain('baselineMin: learnedPrice?.priceMin ?? baselineResult.priceMin')
   })
 
   it('keeps mobile config publishable-only and away from hosted Next fallbacks', () => {

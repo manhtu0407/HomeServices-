@@ -1,8 +1,16 @@
 import {
   type AvailabilityToggleInput,
   availabilityToggleSchema,
+  type CustomerCancellationRequestInput,
+  customerCancellationRequestSchema,
   type CustomerScopeDecisionInput,
   customerScopeDecisionSchema,
+  type DisputeAdminDecisionInput,
+  disputeAdminDecisionSchema,
+  type DisputeCounterStatementInput,
+  disputeCounterStatementSchema,
+  type DisputeOpenRequestInput,
+  disputeOpenRequestSchema,
   type DevicePushTokenInput,
   devicePushTokenSchema,
   type JobCreateInput,
@@ -11,6 +19,8 @@ import {
   type JobMessageSendInput,
   jobMessageSendSchema,
   jobCreateSchema,
+  type KaelWorkerClarifyInput,
+  kaelWorkerClarifySchema,
   type KaelChatCreateInput,
   kaelChatCreateSchema,
   type KaelChatTurnInput,
@@ -38,6 +48,12 @@ import type {
   UserRole,
   WorkerVerificationStatus,
 } from "../../_shared/domain.ts";
+import type { KaelPublicCharterResponse } from "./kael/system-prompt.ts";
+import {
+  priceSynthesisAbCaseSchema,
+  type PriceSynthesisAbCaseInput,
+  type PriceSynthesisAbEvaluation,
+} from "./kael/price-synthesis-ab.ts";
 
 type KaelEstimate = {
   service_type: ServiceType;
@@ -75,6 +91,7 @@ type CreateJobResponse = {
   job_id: string;
   status: JobStatus;
   estimate: KaelEstimate;
+  estimate_card_v3?: Record<string, unknown>;
   fallback_used: boolean;
 };
 type KaelChatStatus = "active" | "estimate_ready" | "confirmed" | "abandoned";
@@ -178,6 +195,56 @@ type WorkerScopeChangeResponse = {
     disclaimer: string;
     fallback_used: boolean;
   };
+  anti_fraud?: Record<string, unknown>;
+  worker_challenge?: Record<string, unknown>;
+  customer_card?: Record<string, unknown>;
+};
+type WorkerKaelClarifyResponse = {
+  qa_id: string;
+  job_id: string;
+  remaining_questions: number;
+  answer: {
+    schema_version: "worker_qa_answer.v1";
+    text: string;
+    safety_notes: string[];
+  };
+};
+export type MarketCacheInvalidateInput = {
+  cache_id?: string;
+  district_code?: string;
+  service_type?: ServiceType;
+  problem_slug?: string;
+  complexity?: ComplexityLevel;
+};
+export type MarketCacheInvalidateResponse = {
+  invalidated_count: number;
+  invalidated_at: string;
+  filters: MarketCacheInvalidateInput;
+};
+export type KaelLearningQueueProcessInput = {
+  limit?: number;
+  force_realtime?: boolean;
+};
+export type KaelLearningQueueProcessResponse = {
+  selected: number;
+  submitted: number;
+  realtime_fallback: number;
+  batch_id?: string;
+  provider_batch_id?: string;
+  skipped_reason?: string;
+  error_code?: string;
+};
+export type KaelBatchResultsProcessInput = {
+  limit?: number;
+  force_poll?: boolean;
+};
+export type KaelBatchResultsProcessResponse = {
+  checked: number;
+  ended: number;
+  processed_items: number;
+  failed_items: number;
+  skipped_reason?: string;
+  error_code?: string;
 };
 type WorkerCancellationResponse = {
   cancellation_id: string;
@@ -187,6 +254,60 @@ type WorkerCancellationResponse = {
   broadcast_sent: boolean;
   message: string;
   created_at: string;
+  reason_code: string;
+  reason_category: string;
+  admin_review_required: boolean;
+  abuse_signals: string[];
+  fallback_options: {
+    id: string;
+    label_vi: string;
+    effect: string;
+    no_charge_phase0?: boolean;
+  }[];
+};
+type CustomerCancellationResponse = {
+  cancellation_id: string;
+  job_id: string;
+  status: "requested";
+  job_status: JobStatus;
+  sub_case:
+    | "before_a7"
+    | "after_a7_before_worker_accept"
+    | "after_worker_accept"
+    | "after_worker_completed_trigger_dispute"
+    | "scheduled_job";
+  reason_code: string;
+  reason_category: string;
+  admin_review_required: boolean;
+  phase0_no_monetary_penalty: boolean;
+  worker_goodwill: Record<string, unknown> | null;
+  abuse_signals: string[];
+  message: string;
+  created_at: string;
+};
+type DisputeOpenResponse = {
+  dispute_id: string;
+  job_id: string;
+  status: string;
+  dispute_type: string;
+  evidence_snapshot_id: string;
+  admin_review_required: boolean;
+  priority: "low" | "medium" | "high" | "critical";
+  evidence_locked_at: string;
+  message: string;
+  created_at: string;
+};
+type DisputeCounterStatementResponse = {
+  dispute_id: string;
+  status: string;
+  counter_party_statement_submitted: boolean;
+  updated_at: string;
+};
+type DisputeAdminDecisionResponse = {
+  dispute_id: string;
+  status: string;
+  outcome: string;
+  decided_at: string;
 };
 type WorkerCancellationDecisionResponse = {
   cancellation_id: string;
@@ -263,6 +384,7 @@ type BroadcastListResponse = {
     estimated_price_max: number | null;
     estimated_earning_min: number | null;
     estimated_earning_max: number | null;
+    worker_brief_core?: Record<string, unknown> | null;
     sent_at: string | null;
     expires_at: string | null;
     seconds_remaining: number | null;
@@ -280,6 +402,7 @@ type WorkerJobListResponse = {
     district: string | null;
     final_price: number | null;
     estimated_earning: number | null;
+    worker_brief_guidance?: Record<string, unknown> | null;
     created_at: string;
     matched_at: string | null;
     completed_at: string | null;
@@ -333,6 +456,9 @@ type JobDetailResponse = {
     kael_price_min: number | null;
     kael_price_max: number | null;
     kael_advisory: string | null;
+    kael_estimate_card_v3: Record<string, unknown> | null;
+    kael_worker_brief_core: Record<string, unknown> | null;
+    kael_worker_brief_guidance: Record<string, unknown> | null;
     final_price: number | null;
     completion_notes: string | null;
     completion_photo_urls: string[];
@@ -382,6 +508,9 @@ export type MobileApiAuthResult =
     user: { id: string; email?: string };
     role: UserRole;
     supabase: unknown;
+    requestUrl?: string;
+    requestHost?: string;
+    requestProjectRef?: string;
   }
   | {
     success: false;
@@ -416,7 +545,18 @@ export type PlacesAutocompleteResponse = {
   fallback_used: boolean;
 };
 
+export type KaelMemorySelfViewResponse = {
+  subject_type: "customer" | "worker";
+  memory: Record<string, unknown> | null;
+};
+
+export type KaelMemoryDeleteResponse = {
+  subject_type: "customer" | "worker";
+  deleted: true;
+};
+
 export type MobileApiServices = {
+  getKaelCharter(): Promise<KaelPublicCharterResponse> | KaelPublicCharterResponse;
   listServices(ctx: MobileApiContext): Promise<ServiceCatalogResponse>;
   placesAutocomplete(
     ctx: MobileApiContext,
@@ -470,11 +610,36 @@ export type MobileApiServices = {
     jobId: string,
     input: WorkerScopeChangeInput,
   ): Promise<WorkerScopeChangeResponse>;
+  askKaelForWorker(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: KaelWorkerClarifyInput,
+  ): Promise<WorkerKaelClarifyResponse>;
   requestWorkerCancellation(
     ctx: MobileApiContext,
     jobId: string,
     input: WorkerCancellationRequestInput,
   ): Promise<WorkerCancellationResponse>;
+  requestCustomerCancellation(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: CustomerCancellationRequestInput,
+  ): Promise<CustomerCancellationResponse>;
+  openDispute(
+    ctx: MobileApiContext,
+    jobId: string,
+    input: DisputeOpenRequestInput,
+  ): Promise<DisputeOpenResponse>;
+  submitDisputeCounterStatement(
+    ctx: MobileApiContext,
+    disputeId: string,
+    input: DisputeCounterStatementInput,
+  ): Promise<DisputeCounterStatementResponse>;
+  decideDispute(
+    ctx: MobileApiContext,
+    disputeId: string,
+    input: DisputeAdminDecisionInput,
+  ): Promise<DisputeAdminDecisionResponse>;
   attachJobMedia(
     ctx: MobileApiContext,
     jobId: string,
@@ -512,6 +677,9 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: WorkerRegisterInput,
   ): Promise<WorkerRegisterResponse>;
+  getMyKaelMemory(ctx: MobileApiContext): Promise<KaelMemorySelfViewResponse>;
+  getWorkerKaelMemory(ctx: MobileApiContext): Promise<KaelMemorySelfViewResponse>;
+  deleteMyKaelMemory(ctx: MobileApiContext): Promise<KaelMemoryDeleteResponse>;
   getWorkerProfile(ctx: MobileApiContext): Promise<WorkerProfileResponse>;
   updateWorkerAvailability(
     ctx: MobileApiContext,
@@ -523,6 +691,22 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     range: { from?: string; to?: string },
   ): Promise<EarningsResponse>;
+  invalidateMarketCache(
+    ctx: MobileApiContext,
+    input: MarketCacheInvalidateInput,
+  ): Promise<MarketCacheInvalidateResponse>;
+  evaluatePriceSynthesisAbCase(
+    ctx: MobileApiContext,
+    input: PriceSynthesisAbCaseInput,
+  ): Promise<PriceSynthesisAbEvaluation>;
+  processKaelLearningQueue(
+    ctx: MobileApiContext,
+    input: KaelLearningQueueProcessInput,
+  ): Promise<KaelLearningQueueProcessResponse>;
+  processKaelBatchResults(
+    ctx: MobileApiContext,
+    input: KaelBatchResultsProcessInput,
+  ): Promise<KaelBatchResultsProcessResponse>;
   listNotifications(ctx: MobileApiContext): Promise<NotificationListResponse>;
   markNotificationRead(
     ctx: MobileApiContext,
@@ -572,6 +756,11 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
       const route = matchRoute(request);
       if (!route) return jsonError("NOT_FOUND", "Không tìm thấy endpoint", 404);
 
+      if (isPublicRoute(route)) {
+        const data = await dispatchPublicRoute(route, request, deps.services);
+        return json(data, 200);
+      }
+
       const auth = await deps.authenticate(request, route.roles);
       if (!auth.success) {
         return jsonError(
@@ -581,7 +770,9 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
         );
       }
 
-      const data = await dispatchRoute(route, request, auth, deps.services);
+      const requestContext = requestRuntimeContext(request);
+      const ctx: MobileApiContext = { ...auth, ...requestContext };
+      const data = await dispatchRoute(route, request, ctx, deps.services);
       return json(
         data,
         ("successStatus" in route ? route.successStatus : undefined) ?? 200,
@@ -604,7 +795,10 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
   };
 }
 
+type PublicRoute = { kind: "kael.charter"; method: "GET"; public: true };
+
 type Route =
+  | PublicRoute
   | { kind: "services"; method: "GET"; roles?: UserRole[] }
   | {
     kind: "places.autocomplete";
@@ -649,11 +843,32 @@ type Route =
     roles: UserRole[];
   }
   | { kind: "jobs.cancel"; method: "POST"; jobId: string; roles: UserRole[] }
+  | {
+    kind: "jobs.customerCancellation";
+    method: "POST";
+    jobId: string;
+    roles: UserRole[];
+    successStatus: 201;
+  }
+  | {
+    kind: "jobs.openDispute";
+    method: "POST";
+    jobId: string;
+    roles: UserRole[];
+    successStatus: 201;
+  }
   | { kind: "jobs.accept"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.decline"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.status"; method: "PATCH"; jobId: string; roles: UserRole[] }
   | {
     kind: "jobs.scopeChange";
+    method: "POST";
+    jobId: string;
+    roles: UserRole[];
+    successStatus: 201;
+  }
+  | {
+    kind: "jobs.kaelClarify";
     method: "POST";
     jobId: string;
     roles: UserRole[];
@@ -699,6 +914,18 @@ type Route =
     roles: UserRole[];
   }
   | {
+    kind: "disputes.counterStatement";
+    method: "POST";
+    disputeId: string;
+    roles: UserRole[];
+  }
+  | {
+    kind: "disputes.adminDecision";
+    method: "POST";
+    disputeId: string;
+    roles: UserRole[];
+  }
+  | {
     kind: "jobs.confirmCompletion";
     method: "POST";
     jobId: string;
@@ -717,11 +944,18 @@ type Route =
     roles: UserRole[];
     successStatus: 201;
   }
+  | { kind: "me.kaelMemory"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.kaelMemory.delete"; method: "DELETE"; roles: UserRole[] }
   | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.kaelMemory"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.availability"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
+  | { kind: "admin.marketCache.invalidate"; method: "POST"; roles: UserRole[] }
+  | { kind: "admin.kaelAb.priceSynthesis"; method: "POST"; roles: UserRole[] }
+  | { kind: "admin.kaelLearning.processQueue"; method: "POST"; roles: UserRole[] }
+  | { kind: "admin.kaelLearning.processBatchResults"; method: "POST"; roles: UserRole[] }
   | { kind: "notifications"; method: "GET"; roles: UserRole[] }
   | { kind: "notifications.deviceToken"; method: "POST"; roles: UserRole[] }
   | {
@@ -738,11 +972,42 @@ function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/services") {
     return { kind: "services", method: "GET" };
   }
+  if (method === "GET" && path === "/kael/charter") {
+    return { kind: "kael.charter", method: "GET", public: true };
+  }
   if (method === "POST" && path === "/places/autocomplete") {
     return {
       kind: "places.autocomplete",
       method: "POST",
       roles: ["customer", "worker", "admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/market-cache/invalidate") {
+    return {
+      kind: "admin.marketCache.invalidate",
+      method: "POST",
+      roles: ["admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/kael-ab/price-synthesis") {
+    return {
+      kind: "admin.kaelAb.priceSynthesis",
+      method: "POST",
+      roles: ["admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/kael-learning/process-queue") {
+    return {
+      kind: "admin.kaelLearning.processQueue",
+      method: "POST",
+      roles: ["admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/kael-learning/process-batch-results") {
+    return {
+      kind: "admin.kaelLearning.processBatchResults",
+      method: "POST",
+      roles: ["admin"],
     };
   }
   if (method === "POST" && path === "/jobs") {
@@ -751,6 +1016,16 @@ function matchRoute(request: Request): Route | null {
       method: "POST",
       roles: ["customer", "admin"],
       successStatus: 201,
+    };
+  }
+  if (method === "GET" && path === "/me/kael-memory") {
+    return { kind: "me.kaelMemory", method: "GET", roles: ["customer", "worker", "admin"] };
+  }
+  if (method === "DELETE" && path === "/me/kael-memory") {
+    return {
+      kind: "me.kaelMemory.delete",
+      method: "DELETE",
+      roles: ["customer", "worker", "admin"],
     };
   }
   if (method === "POST" && path === "/kael/chat") {
@@ -816,6 +1091,9 @@ function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/workers/me") {
     return { kind: "workers.me", method: "GET", roles: ["worker", "admin"] };
   }
+  if (method === "GET" && path === "/workers/me/kael-memory") {
+    return { kind: "workers.kaelMemory", method: "GET", roles: ["worker", "admin"] };
+  }
   if (method === "PATCH" && path === "/workers/me/availability") {
     return { kind: "workers.availability", method: "PATCH", roles: ["worker", "admin"] };
   }
@@ -853,6 +1131,28 @@ function matchRoute(request: Request): Route | null {
         roles: ["customer", "admin"],
       };
     }
+    if (
+      action === "customer-cancellation" &&
+      method === "POST" &&
+      path.endsWith("/customer-cancellation")
+    ) {
+      return {
+        kind: "jobs.customerCancellation",
+        method: "POST",
+        jobId,
+        roles: ["customer", "admin"],
+        successStatus: 201,
+      };
+    }
+    if (action === "disputes" && method === "POST" && path.endsWith("/disputes")) {
+      return {
+        kind: "jobs.openDispute",
+        method: "POST",
+        jobId,
+        roles: ["customer", "worker", "admin"],
+        successStatus: 201,
+      };
+    }
     if (action === "accept" && method === "POST") {
       return { kind: "jobs.accept", method: "POST", jobId, roles: ["worker", "admin"] };
     }
@@ -865,6 +1165,15 @@ function matchRoute(request: Request): Route | null {
     if (action === "scope-change" && method === "POST") {
       return {
         kind: "jobs.scopeChange",
+        method: "POST",
+        jobId,
+        roles: ["worker", "admin"],
+        successStatus: 201,
+      };
+    }
+    if (action === "kael-clarify" && method === "POST") {
+      return {
+        kind: "jobs.kaelClarify",
         method: "POST",
         jobId,
         roles: ["worker", "admin"],
@@ -951,6 +1260,29 @@ function matchRoute(request: Request): Route | null {
     };
   }
 
+  const dispute = path.match(/^\/disputes\/([^/]+)\/([^/]+)$/);
+  if (dispute && method === "POST") {
+    const disputeId = safeDecodePathSegment(dispute[1] ?? "");
+    const action = dispute[2];
+    if (!disputeId) return null;
+    if (action === "counter-statement") {
+      return {
+        kind: "disputes.counterStatement",
+        method: "POST",
+        disputeId,
+        roles: ["customer", "worker", "admin"],
+      };
+    }
+    if (action === "admin-decision") {
+      return {
+        kind: "disputes.adminDecision",
+        method: "POST",
+        disputeId,
+        roles: ["admin"],
+      };
+    }
+  }
+
   const notification = path.match(/^\/notifications\/([^/]+)\/read$/);
   if (notification && method === "POST") {
     const notificationId = safeDecodePathSegment(notification[1] ?? "");
@@ -964,6 +1296,45 @@ function matchRoute(request: Request): Route | null {
   }
 
   return null;
+}
+
+function requestRuntimeContext(request: Request): Pick<
+  MobileApiContext,
+  "requestUrl" | "requestHost" | "requestProjectRef"
+> {
+  const parsed = safeRequestUrl(request.url);
+  const host = request.headers.get("host") ??
+    request.headers.get("x-forwarded-host") ??
+    parsed?.host;
+  return {
+    requestUrl: request.url,
+    requestHost: host ?? undefined,
+    requestProjectRef: request.headers.get("sb-project-ref") ??
+      request.headers.get("x-supabase-project-ref") ??
+      projectRefFromHost(host) ??
+      projectRefFromHost(parsed?.host),
+  };
+}
+
+function safeRequestUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+function projectRefFromHost(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const hostname = value.split(":")[0] ?? value;
+  const [projectRef, ...rest] = hostname.split(".");
+  return rest.join(".").endsWith("supabase.co") && projectRef
+    ? projectRef
+    : undefined;
+}
+
+function isPublicRoute(route: Route): route is PublicRoute {
+  return "public" in route && route.public === true;
 }
 
 function safeDecodePathSegment(segment: string): string | null {
@@ -989,6 +1360,26 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.placesAutocomplete(ctx, input.data);
     }
+    case "admin.marketCache.invalidate":
+      return services.invalidateMarketCache(
+        ctx,
+        marketCacheInvalidateInput(await readJson(request)),
+      );
+    case "admin.kaelAb.priceSynthesis": {
+      const input = priceSynthesisAbCaseSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Du lieu A/B khong hop le", 400);
+      return services.evaluatePriceSynthesisAbCase(ctx, input.data);
+    }
+    case "admin.kaelLearning.processQueue":
+      return services.processKaelLearningQueue(
+        ctx,
+        kaelLearningQueueProcessInput(await readJson(request)),
+      );
+    case "admin.kaelLearning.processBatchResults":
+      return services.processKaelBatchResults(
+        ctx,
+        kaelBatchResultsProcessInput(await readJson(request)),
+      );
     case "jobs.create": {
       const input = jobCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -1014,6 +1405,18 @@ async function dispatchRoute(
       return services.confirmSearch(ctx, route.jobId);
     case "jobs.cancel":
       return services.cancelJob(ctx, route.jobId);
+    case "jobs.customerCancellation": {
+      const input = customerCancellationRequestSchema.safeParse(
+        await readJson(request),
+      );
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.requestCustomerCancellation(ctx, route.jobId, input.data);
+    }
+    case "jobs.openDispute": {
+      const input = disputeOpenRequestSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.openDispute(ctx, route.jobId, input.data);
+    }
     case "jobs.accept":
       return services.acceptBroadcast(ctx, route.jobId);
     case "jobs.decline":
@@ -1026,6 +1429,11 @@ async function dispatchRoute(
       const input = workerScopeChangeSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.requestScopeChange(ctx, route.jobId, input.data);
+    }
+    case "jobs.kaelClarify": {
+      const input = kaelWorkerClarifySchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.askKaelForWorker(ctx, route.jobId, input.data);
     }
     case "jobs.workerCancellation": {
       const input = workerCancellationRequestSchema.safeParse(
@@ -1064,6 +1472,22 @@ async function dispatchRoute(
         input.data,
       );
     }
+    case "disputes.counterStatement": {
+      const input = disputeCounterStatementSchema.safeParse(
+        await readJson(request),
+      );
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.submitDisputeCounterStatement(
+        ctx,
+        route.disputeId,
+        input.data,
+      );
+    }
+    case "disputes.adminDecision": {
+      const input = disputeAdminDecisionSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.decideDispute(ctx, route.disputeId, input.data);
+    }
     case "jobs.confirmCompletion":
       return services.confirmCompletion(ctx, route.jobId);
     case "jobs.review": {
@@ -1079,6 +1503,10 @@ async function dispatchRoute(
         comment: input.data.comment,
       });
     }
+    case "me.kaelMemory":
+      return services.getMyKaelMemory(ctx);
+    case "me.kaelMemory.delete":
+      return services.deleteMyKaelMemory(ctx);
     case "workers.register": {
       const input = workerRegisterSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -1086,6 +1514,8 @@ async function dispatchRoute(
     }
     case "workers.me":
       return services.getWorkerProfile(ctx);
+    case "workers.kaelMemory":
+      return services.getWorkerKaelMemory(ctx);
     case "workers.availability": {
       const input = availabilityToggleSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -1116,6 +1546,17 @@ async function dispatchRoute(
   }
 }
 
+async function dispatchPublicRoute(
+  route: PublicRoute,
+  _request: Request,
+  services: MobileApiServices,
+): Promise<unknown> {
+  switch (route.kind) {
+    case "kael.charter":
+      return services.getKaelCharter();
+  }
+}
+
 async function readJson(request: Request): Promise<unknown> {
   const contentLength = request.headers.get("content-length");
   if (contentLength && Number(contentLength) > MAX_JSON_BODY_BYTES) {
@@ -1138,6 +1579,96 @@ async function readJson(request: Request): Promise<unknown> {
   } catch {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
+}
+
+function optionalSafeText(value: unknown, maxLength: number): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > maxLength) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  return trimmed.toLowerCase();
+}
+
+function marketCacheInvalidateInput(input: unknown): MarketCacheInvalidateInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  const record = input as Record<string, unknown>;
+  const cacheId = optionalSafeText(record.cache_id, 80);
+  const districtCode = optionalSafeText(record.district_code, 80);
+  const problemSlug = optionalSafeText(record.problem_slug, 120);
+  const serviceType = record.service_type;
+  const complexity = record.complexity;
+
+  if (
+    serviceType !== undefined &&
+    serviceType !== "electrical" &&
+    serviceType !== "plumbing" &&
+    serviceType !== "cleaning"
+  ) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  if (
+    complexity !== undefined &&
+    complexity !== "small" &&
+    complexity !== "medium" &&
+    complexity !== "large"
+  ) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  if (!cacheId && !districtCode && !problemSlug && !serviceType && !complexity) {
+    apiFailure("VALIDATION", "Cần ít nhất một bộ lọc cache", 400);
+  }
+
+  return {
+    ...(cacheId ? { cache_id: cacheId } : {}),
+    ...(districtCode ? { district_code: districtCode } : {}),
+    ...(problemSlug ? { problem_slug: problemSlug } : {}),
+    ...(serviceType ? { service_type: serviceType as ServiceType } : {}),
+    ...(complexity ? { complexity: complexity as ComplexityLevel } : {}),
+  };
+}
+
+function kaelLearningQueueProcessInput(input: unknown): KaelLearningQueueProcessInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  const record = input as Record<string, unknown>;
+  return {
+    limit: optionalPositiveInt(record.limit, 1, 100),
+    force_realtime: record.force_realtime === true,
+  };
+}
+
+function kaelBatchResultsProcessInput(input: unknown): KaelBatchResultsProcessInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  const record = input as Record<string, unknown>;
+  return {
+    limit: optionalPositiveInt(record.limit, 1, 50),
+    force_poll: record.force_poll === true,
+  };
+}
+
+function optionalPositiveInt(
+  value: unknown,
+  min: number,
+  max: number,
+): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const number = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(number) || number < min || number > max) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  return number;
 }
 
 function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {

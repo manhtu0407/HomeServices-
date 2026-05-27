@@ -7,6 +7,13 @@
 > Before any production migration, regenerate counts, pending migration chain,
 > and smoke evidence from the current staging and production state.
 
+> 2026-05-26 P18 update: Tu approved the post-P17 production promotion after
+> audit. Production `iwevizmsedyqozxlawwl` now has `71` migrations, all audited
+> P3-P17 tables/columns, `api_logs.purpose` populated for `67/67` existing rows,
+> and `mobile-api` redeployed at version `10`. The final production dry-run
+> reports `Remote database is up to date`; lint and performance advisors pass;
+> security advisor still reports only the existing Auth leaked-password warning.
+
 This checklist is the production safety gate for applying the Supabase migration chain from the verified staging database to the production `HomeServices` project.
 
 > 2026-05-18 staging backend note: this checklist predates the `mobile-api`
@@ -23,6 +30,7 @@ Production project:
 ```text
 name: HomeServices
 ref: iwevizmsedyqozxlawwl
+url: https://iwevizmsedyqozxlawwl.supabase.co
 region: ap-southeast-1
 ```
 
@@ -35,13 +43,28 @@ region: ap-southeast-1
 status: verified
 ```
 
-Local Supabase link after this preparation session:
+Local Supabase link after the Plan 26 F2 production rollout:
 
 ```text
 xyylanuyflrjzbjzhqfl
 ```
 
-Keep the local link pointed at staging unless Tu explicitly approves production migration execution.
+The link was temporarily switched to production for Tu-approved Plan 26 F2, then
+restored to staging after migration, Edge deploy, smoke, and advisor verification.
+
+Plan 26 F2 setup evidence:
+
+```text
+supabase_cli: 2.101.0
+login: completed with temporary process credential
+init: skipped/left intact because supabase/config.toml already exists
+link: completed for iwevizmsedyqozxlawwl
+secrets: no access token or DB password value written to repo files
+dry_run_status: exact expected three-migration chain, then remote up to date after apply
+edge_deploy: mobile-api production version 12 active
+smoke: 5/5 authenticated production jobs reached awaiting_customer_confirm; cleanup ok
+post_checks: schema lint clean, performance advisor clean, only existing Auth leaked-password warning
+```
 
 ## Production Preflight Results
 
@@ -192,9 +215,14 @@ Run only after Tu approval.
 ```powershell
 $env:SUPABASE_ACCESS_TOKEN="<temporary-token>"
 $env:SUPABASE_DB_PASSWORD="<production-db-password>"
-npx.cmd supabase link --project-ref iwevizmsedyqozxlawwl
-npx.cmd supabase db push --dry-run --linked
+supabase login --token $env:SUPABASE_ACCESS_TOKEN
+supabase init
+supabase link --project-ref iwevizmsedyqozxlawwl
+supabase db push --dry-run --linked
 ```
+
+If `supabase/config.toml` already exists, do not use `supabase init --force`
+unless the config diff has been reviewed.
 
 Stop if dry-run differs from:
 

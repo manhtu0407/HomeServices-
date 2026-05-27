@@ -1198,22 +1198,21 @@ Kael Price Check flow
 ```text
 DeepSeek
 -
-|- intent classification
-|- simple FAQ
-|- lightweight pre-screening
+|- primary text default for intent_classification, clarification, problem_synthesis, advisory_generation, worker_brief, post_job_learning, educational_response
+|- Anthropic fallback when `ai_provider_routing` / `routing.config.ts` allows it
 
 Anthropic
 -
-|- vision analysis
-|- problem identification
-|- price synthesis
-|- customer-facing explanation
-|- worker pre-brief when needed
+|- required vision_analysis with no fallback
+|- scope_change reasoning
+|- price_synthesis primary after F26 A/B rejected Perplexity for purpose #6
 
 Perplexity
 -
-|- market price lookup only
-|- HCMC repair price research
+|- market_lookup
+|- restricted to Tier 1 Vietnamese sources when source-trust filtering is enabled
+
+Provider role mapping is sourced from `ai_provider_routing` (DB) plus `routing.config.ts` (code). Effective 2026-05-26 per Plan.md §23 P3 and §25 R2; Tu approval is recorded in Plan.md §26 F1.
 ```
 
 ### Structured Kael Output

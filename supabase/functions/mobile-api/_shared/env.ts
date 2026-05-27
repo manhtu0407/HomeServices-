@@ -1,4 +1,4 @@
-import type { EdgeAiSecrets } from "./kael.ts";
+import type { EdgeAiSecrets } from "./kael/index.ts";
 
 export type EdgeEnv = EdgeAiSecrets & {
   supabaseUrl: string;
@@ -9,6 +9,9 @@ export function readEdgeEnv(
   getEnv: (name: string) => string | undefined,
 ): EdgeEnv {
   const supabaseUrl = getEnv("SUPABASE_URL");
+  const sourceTrustFlag = getEnv("KAEL_TRUST_PERPLEXITY_FILTER_ENABLED") ??
+    getEnv("KAEL_OPT_SOURCE_TRUST_ENABLED");
+  const sourceTrustExplicit = sourceTrustFlag !== undefined;
   const supabaseSecretKey = readSupabaseSecretKey(getEnv);
   if (!supabaseUrl) throw new Error("SUPABASE_URL is required");
   if (!supabaseSecretKey) throw new Error("SUPABASE secret key is required");
@@ -24,6 +27,10 @@ export function readEdgeEnv(
     learningEnabled:
       readBooleanFlag(getEnv("LEARNING_ENABLED")) ||
       readBooleanFlag(getEnv("KAEL_OPT_BATCH_LEARNING_ENABLED")),
+    sourceTrustPerplexityFilterEnabled: !sourceTrustExplicit
+      ? isStagingProjectUrl(supabaseUrl)
+      : envFlag(sourceTrustFlag),
+    sourceTrustPerplexityFilterExplicit: sourceTrustExplicit,
   };
 }
 
@@ -46,5 +53,12 @@ function readSupabaseSecretKey(
 }
 
 function readBooleanFlag(value: string | undefined): boolean {
-  return value?.trim().toLowerCase() === "true";
+  return typeof value === "string" &&
+    ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+const envFlag = readBooleanFlag;
+
+function isStagingProjectUrl(value: string): boolean {
+  return value.includes("xyylanuyflrjzbjzhqfl");
 }
