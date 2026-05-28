@@ -211,7 +211,7 @@ describe('Kael P7 learning skill setup', () => {
       },
     })
     const client = makeSequenceClient([
-      { data: { id: 'job-1', customer_id: 'customer-1', worker_id: 'worker-1' }, error: null },
+      { data: { id: 'job-1', status: 'paid', customer_id: 'customer-1', worker_id: 'worker-1' }, error: null },
       {
         data: [{
           ok: true,

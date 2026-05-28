@@ -11,6 +11,7 @@ import {
   calculateScopeChangeAnomaly,
   calculateScopeChangeMargin,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/scope-change'
+import { kaelArtifactProposalSchema } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
 
 describe('mobile-api Kael P4 output pipeline', () => {
   it('renders a sanitized Estimate Card v3 from a pipeline estimate', () => {
@@ -34,6 +35,35 @@ describe('mobile-api Kael P4 output pipeline', () => {
     expect(output.card.disclaimer).toBe(KAEL_PRICE_DISCLAIMER_V3)
     expect(output.card.problem_summary).not.toContain('0901234567')
     expect(output.card.problem_summary.toLowerCase()).not.toContain('vnd')
+    expect(kaelArtifactProposalSchema.parse(output.artifact_proposal)).toMatchObject({
+      artifact_type: 'estimate',
+      visibility: 'customer_review',
+      may_transition: false,
+    })
+  })
+
+  it('marks missing inspection information without allowing AI to transition workflow', () => {
+    const output = buildEstimateCardOutput({
+      estimate: {
+        service_type: 'electrical',
+        problem_category: 'unknown',
+        problem_summary: 'Ổ cắm nóng bất thường nhưng chưa có ảnh hiện trạng.',
+        complexity: 'medium',
+        price_min: 200000,
+        price_max: 350000,
+        confidence: 0.28,
+        advisory: null,
+        disclaimer: KAEL_PRICE_DISCLAIMER_V3,
+      },
+      priceSource: 'inspection_required',
+      baselineUsed: null,
+      needsInspectionReason: 'Thiếu ảnh và vị trí ổ cắm.',
+    })
+
+    const artifact = kaelArtifactProposalSchema.parse(output.artifact_proposal)
+    expect(artifact.missing_fields).toContain('inspection')
+    expect(artifact.recommended_next_question).toBeDefined()
+    expect(artifact.may_transition).toBe(false)
   })
 
   it('uses the generic Schema + Sanitizer + Fallback + Renderer pipeline', () => {

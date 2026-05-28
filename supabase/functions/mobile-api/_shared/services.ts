@@ -47,7 +47,7 @@ import {
   buildKaelOptimizationMetricRows,
   readKaelOptimizationFlags,
 } from "./kael/cost-tracking.ts";
-import { validateTransition } from "./lifecycle.ts";
+import { validateWorkflowCommand, validateWorkflowTransition } from "./workflow-orchestrator.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "./rate-limit.ts";
 import { requireJobAccess } from "./access.ts";
 import { sendPushToUser, sendPushToUsers } from "./push.ts";
@@ -61,6 +61,7 @@ import {
   buildEstimateCardOutput,
   buildScopeChangeOutputs,
   buildWorkerBriefOutput,
+  buildKaelMissingInfoArtifactProposal,
   buildDemandingCustomerResponse,
   buildCustomerCancellationPhase0Outcome,
   buildNeutralDisputeSummary,
@@ -587,6 +588,12 @@ async function createJob(
     baselineUsed:
       `${input.service_type}:${pipeline.serviceProblemId}:${estimate.complexity}`,
   });
+  const transition = validateWorkflowTransition({
+    event: "ai_estimate_ready",
+    from: "analyzing",
+    to: "awaiting_customer_confirm",
+  });
+  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
   const now = new Date().toISOString();
   const updated = await dbQuery<{ id: string }>(
     client
@@ -661,6 +668,19 @@ async function cancelAnalyzingJob(
   reasonCode: string,
 ): Promise<boolean> {
   const cancelledAt = new Date().toISOString();
+  const transition = validateWorkflowTransition({
+    event: "kael_failed",
+    from: "analyzing",
+    to: "cancelled",
+  });
+  if (!transition.valid) {
+    console.warn("mobile-api analyzing job cleanup transition rejected", {
+      jobId,
+      reasonCode,
+      error: transition.error,
+    });
+    return false;
+  }
   const cancelResult = await dbQuery(
     client
       .from("jobs")
@@ -940,7 +960,24 @@ async function confirmKaelChat(
   }
   const row = result.data?.[0];
   if (!row) apiFailure("DB_ERROR", "Không thể xác nhận phiên Kael", 500);
-  if (!asBoolean(row.ok)) mapConfirmKaelChatError(nullableString(row.error_code));
+  if (!asBoolean(row.ok)) {
+    const errorCode = nullableString(row.error_code);
+    const existingJobId = nullableString(row.job_id);
+    if (errorCode === "ALREADY_CONFIRMED" && existingJobId) {
+      const currentState = await readConfirmedKaelChatState(ctx, existingJobId);
+      if (currentState.status === "awaiting_customer_confirm") {
+        return {
+          session_id: sessionId,
+          ...(await confirmSearch(ctx, existingJobId)),
+        };
+      }
+      return {
+        session_id: sessionId,
+        ...currentState,
+      };
+    }
+    mapConfirmKaelChatError(errorCode);
+  }
 
   const jobId = asString(row.job_id);
   if (!jobId) apiFailure("DB_ERROR", "Phiên Kael chưa tạo được yêu cầu", 500);
@@ -955,6 +992,29 @@ async function confirmKaelChat(
   return {
     session_id: sessionId,
     ...confirmed,
+  };
+}
+
+async function readConfirmedKaelChatState(
+  ctx: MobileApiContext,
+  jobId: string,
+) {
+  const client = db(ctx);
+  const job = await requireJobAccess(client, jobId, ctx, {
+    requiredRole: "customer",
+    select: "id, status, customer_id",
+  });
+  const status = job.status as JobStatus;
+  const broadcastSent = status === "broadcasting"
+    ? await hasActiveBroadcast(client, jobId, new Date().toISOString())
+    : false;
+
+  return {
+    job_id: jobId,
+    status,
+    broadcast_sent: broadcastSent,
+    worker: null,
+    message: "Phiên Kael đã được xác nhận. Đang đồng bộ trạng thái hiện tại.",
   };
 }
 
@@ -1047,11 +1107,18 @@ async function advanceKaelChatEstimate(
 
   const district = normalizeServiceAreaDistrict(input.address_district);
   if (!district) {
+    const question =
+      "\u0042\u1ea1n cho Kael bi\u1ebft qu\u1eadn \u1edf TP.HCM \u0111\u1ec3 \u01b0\u1edbc t\u00ednh \u0111\u00fang khu v\u1ef1c v\u00e0 t\u00ecm th\u1ee3 ph\u00f9 h\u1ee3p.";
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "clarification",
-      text:
-        "Bạn cho Kael biết quận ở TP.HCM để ước tính đúng khu vực và tìm thợ phù hợp.",
+      text: question,
       nextStatus: "active",
+      metadata: {
+        artifact_proposal: buildKaelMissingInfoArtifactProposal({
+          missingFields: ["address_district"],
+          question,
+        }),
+      },
     });
     return;
   }
@@ -1059,11 +1126,18 @@ async function advanceKaelChatEstimate(
   const message = sanitizeForLLM(input.message ?? "");
   const problemChips = input.problem_chips?.filter(Boolean) ?? [];
   if (message.length < 10 && problemChips.length === 0) {
+    const question =
+      "\u0042\u1ea1n m\u00f4 t\u1ea3 r\u00f5 h\u01a1n v\u1ea5n \u0111\u1ec1 \u0111ang g\u1eb7p: v\u1ecb tr\u00ed, d\u1ea5u hi\u1ec7u v\u00e0 m\u1ee9c \u0111\u1ed9 \u1ea3nh h\u01b0\u1edfng trong c\u0103n h\u1ed9.";
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "clarification",
-      text:
-        "Bạn mô tả rõ hơn vấn đề đang gặp: vị trí, dấu hiệu và mức độ ảnh hưởng trong căn hộ.",
+      text: question,
       nextStatus: "active",
+      metadata: {
+        artifact_proposal: buildKaelMissingInfoArtifactProposal({
+          missingFields: ["description"],
+          question,
+        }),
+      },
     });
     return;
   }
@@ -1117,12 +1191,23 @@ async function advanceKaelChatEstimate(
   );
 
   if (!pipeline.success) {
+    const clarificationText = pipeline.code === "UNSUPPORTED"
+      ? pipeline.error
+      : "Kael chưa đủ dữ liệu an toàn để ước tính. Bạn mô tả thêm hoặc gửi ảnh rõ hơn.";
     await appendKaelSystemTurn(client, sessionId, {
       contentType: pipeline.code === "UNSUPPORTED" ? "error" : "clarification",
-      text: pipeline.code === "UNSUPPORTED"
-        ? pipeline.error
-        : "Kael chưa đủ dữ liệu an toàn để ước tính. Bạn mô tả thêm hoặc gửi ảnh rõ hơn.",
+      text: clarificationText,
       nextStatus: "active",
+      metadata: pipeline.code === "UNSUPPORTED"
+        ? undefined
+        : {
+          artifact_proposal: buildKaelMissingInfoArtifactProposal({
+            missingFields: ["description_or_photo"],
+            question: clarificationText,
+            confidence: 0.35,
+            artifactType: "ai_notes",
+          }),
+        },
     });
     return;
   }
@@ -1132,6 +1217,12 @@ async function advanceKaelChatEstimate(
     0,
   );
   const estimate = pipeline.estimate;
+  const estimateCardV3 = buildEstimateCardOutput({
+    estimate,
+    priceSource: estimatePriceSourceFromStageLogs(pipeline.stageLogs),
+    baselineUsed:
+      `${input.service_type}:${pipeline.serviceProblemId}:${estimate.complexity}`,
+  });
   await appendKaelSystemTurn(client, sessionId, {
     contentType: "estimate",
     text: formatKaelEstimateText(estimate),
@@ -1140,6 +1231,8 @@ async function advanceKaelChatEstimate(
     costUsd,
     metadata: {
       estimate,
+      estimate_card_v3: estimateCardV3,
+      artifact_proposal: estimateCardV3.artifact_proposal,
       fallback_used: pipeline.fallbackUsed,
       service_problem_id: pipeline.serviceProblemId,
       photo_count: input.photo_urls?.length ?? 0,
@@ -1361,10 +1454,11 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
         409,
       );
     }
-    const transition = validateTransition(
-      job.status as JobStatus,
-      "broadcasting",
-    );
+    const transition = validateWorkflowTransition({
+      event: "customer_confirmed_ticket",
+      from: job.status as JobStatus,
+      to: "broadcasting",
+    });
     if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
     rollbackStatus = job.status as JobStatus;
     const workerBriefCore = buildWorkerBriefOutput({
@@ -1529,6 +1623,17 @@ async function rollbackFailedBroadcastStart(
 
 async function cancelJob(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
+  const job = await requireJobAccess(client, jobId, ctx, {
+    requiredRole: "customer",
+    select: "id, status, customer_id",
+  });
+  const transition = validateWorkflowTransition({
+    event: "cancel_requested",
+    from: job.status as JobStatus,
+    to: "cancelled",
+  });
+  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
+
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("cancel_job_before_accept_atomic", {
       p_job_id: jobId,
@@ -1545,7 +1650,7 @@ async function cancelJob(ctx: MobileApiContext, jobId: string) {
     jobId,
     "customer_cancelled_before_accept",
     ctx,
-    null,
+    job.status as JobStatus,
     "cancelled",
   );
   return { job_id: jobId, status: row.job_status as JobStatus };
@@ -1557,6 +1662,59 @@ async function requestCustomerCancellation(
   input: CustomerCancellationRequestInput,
 ) {
   const client = db(ctx);
+  const job = await requireJobAccess(client, jobId, ctx, {
+    requiredRole: "customer",
+    select: "id, status, customer_id, worker_id",
+  });
+  const readExistingCancellation = async (jobStatus: JobStatus) => {
+    const existing = await dbQuery<Record<string, unknown>>(
+      client
+        .from("customer_cancellation_records")
+        .select(
+          "id, status, job_id, sub_case, reason_code, reason_category, worker_id, admin_review_required, phase0_no_monetary_penalty, worker_goodwill, abuse_signals, created_at",
+        )
+        .eq("job_id", jobId)
+        .eq("customer_id", ctx.user.id)
+        .in("status", ["requested", "dispute_pending"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    );
+    if (existing.error || !existing.data) return null;
+
+    const subCase = asCustomerCancellationSubCase(existing.data.sub_case);
+    const reasonCode = nullableString(existing.data.reason_code) ?? input.reason_code;
+    return {
+      cancellation_id: asString(existing.data.id),
+      job_id: jobId,
+      status: "requested" as const,
+      job_status: jobStatus,
+      sub_case: subCase,
+      reason_code: reasonCode,
+      reason_category: nullableString(existing.data.reason_category) ?? "needs_admin_review",
+      admin_review_required: asBoolean(existing.data.admin_review_required),
+      phase0_no_monetary_penalty: asBoolean(existing.data.phase0_no_monetary_penalty),
+      worker_goodwill: nullableRecord(existing.data.worker_goodwill) ??
+        buildCustomerCancellationPhase0Outcome({
+          subCase,
+          reasonCode,
+          workerId: nullableString(existing.data.worker_id),
+        }).workerGoodwill,
+      abuse_signals: asCustomerCancellationAbuseSignals(existing.data.abuse_signals),
+      message: "Yêu cầu hủy đang được xử lý.",
+      created_at: asString(existing.data.created_at),
+    };
+  };
+  const command = validateWorkflowCommand({
+    event: "customer_cancellation_requested",
+    status: job.status as JobStatus,
+  });
+  if (!command.valid) {
+    const existing = await readExistingCancellation(job.status as JobStatus);
+    if (existing) return existing;
+    apiFailure("INVALID_STATUS", command.error, 409);
+  }
+
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("request_customer_cancellation_atomic", {
       p_job_id: jobId,
@@ -1570,7 +1728,14 @@ async function requestCustomerCancellation(
   }
   const row = result.data?.[0];
   if (!row) apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy", 500);
-  if (!row.ok) mapCustomerCancellationError(nullableString(row.error_code));
+  if (!row.ok) {
+    const errorCode = nullableString(row.error_code);
+    if (errorCode === "ALREADY_REQUESTED") {
+      const existing = await readExistingCancellation(asJobStatus(row.job_status ?? job.status));
+      if (existing) return existing;
+    }
+    mapCustomerCancellationError(errorCode);
+  }
 
   const cancellationId = asString(row.cancellation_id);
   const subCase = asCustomerCancellationSubCase(row.sub_case);
@@ -1839,6 +2004,12 @@ async function acceptBroadcast(ctx: MobileApiContext, jobId: string) {
     }
     mapAcceptError(nullableString(row.error_code));
   }
+  const transition = validateWorkflowTransition({
+    event: "worker_accepted",
+    from: "broadcasting",
+    to: asJobStatus(row.job_status),
+  });
+  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
 
   await logJobEvent(
     client,
@@ -2015,7 +2186,11 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
       409,
     );
   }
-  const transition = validateTransition(job.status as JobStatus, input.status);
+  const transition = validateWorkflowTransition({
+    event: input.status === "completed_by_worker" ? "worker_completed" : "worker_status_advanced",
+    from: job.status as JobStatus,
+    to: input.status,
+  });
   if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
 
   const now = new Date().toISOString();
@@ -2096,6 +2271,12 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
       "id, status, customer_id, worker_id, service_type, description, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max",
   });
   const originalPriceMax = nullableNumber(job.kael_price_max);
+  const transition = validateWorkflowTransition({
+    event: "scope_change_requested",
+    from: job.status as JobStatus,
+    to: "scope_change_pending",
+  });
+  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
   if (originalPriceMax === null || originalPriceMax <= 0) {
     apiFailure(
       "KAEL_PRICE_MISSING",
@@ -2385,9 +2566,58 @@ async function requestWorkerCancellation(
   input: WorkerCancellationRequestInput,
 ) {
   const client = db(ctx);
-  const job = await requireJobAccess(client, jobId, ctx, {
-    requiredRole: "worker",
+  const readExistingCancellation = async (jobStatus: JobStatus) => {
+    const existing = await dbQuery<Record<string, unknown>>(
+      client
+        .from("worker_cancellation_requests")
+        .select(
+          "id, status, created_at, reason_code, reason_category, admin_review_required, fallback_options, abuse_signals",
+        )
+        .eq("job_id", jobId)
+        .eq("worker_id", ctx.user.id)
+        .in("status", ["requested", "reviewing_by_kael", "approved"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    );
+    if (existing.error || !existing.data) return null;
+
+    return {
+      cancellation_id: asString(existing.data.id),
+      job_id: jobId,
+      status: nullableString(existing.data.status) ?? "reviewing_by_kael",
+      job_status: jobStatus,
+      broadcast_sent: false,
+      message: "Yêu cầu hủy việc đang được xử lý.",
+      created_at: asString(existing.data.created_at),
+      reason_code: asWorkerCancellationReasonCode(existing.data.reason_code) ?? "changed_mind",
+      reason_category: asWorkerCancellationCategory(existing.data.reason_category) ?? "suspicious",
+      admin_review_required: asBoolean(existing.data.admin_review_required),
+      abuse_signals: asWorkerCancellationAbuseSignals(existing.data.abuse_signals),
+      fallback_options: asWorkerCancellationFallbackOptions(existing.data.fallback_options),
+    };
+  };
+  let job: Awaited<ReturnType<typeof requireJobAccess>>;
+  try {
+    job = await requireJobAccess(client, jobId, ctx, {
+      requiredRole: "worker",
+    });
+  } catch (error: unknown) {
+    const errorCode = typeof error === "object" && error !== null
+      ? nullableString((error as { code?: unknown }).code)
+      : null;
+    if (ctx.role === "worker" && errorCode === "NOT_FOUND") {
+      const existing = await readExistingCancellation("broadcasting");
+      if (existing?.status === "approved") return existing;
+    }
+    throw error;
+  }
+  const command = validateWorkflowCommand({
+    event: "worker_cancellation_requested",
+    status: job.status as JobStatus,
   });
+  if (!command.valid) apiFailure("INVALID_STATUS", command.error, 409);
+
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("request_worker_cancellation_atomic", {
       p_job_id: jobId,
@@ -2401,7 +2631,14 @@ async function requestWorkerCancellation(
   }
   const row = result.data?.[0];
   if (!row) apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy việc", 500);
-  if (!row.ok) mapWorkerCancellationRequestError(nullableString(row.error_code));
+  if (!row.ok) {
+    const errorCode = nullableString(row.error_code);
+    if (errorCode === "ALREADY_REQUESTED") {
+      const existing = await readExistingCancellation(asJobStatus(row.job_status ?? job.status));
+      if (existing) return existing;
+    }
+    mapWorkerCancellationRequestError(errorCode);
+  }
 
   const cancellationId = asString(row.cancellation_id);
   const cancellationStatus = asString(row.cancellation_status);
@@ -2549,6 +2786,15 @@ async function attachJobMedia(
     apiFailure("FORBIDDEN", "Bạn không có quyền gắn media cho yêu cầu này", 403);
   }
 
+  for (const asset of input.assets) {
+    const command = validateWorkflowCommand({
+      event: "job_media_attached",
+      status,
+      mediaStage: asset.stage,
+    });
+    if (!command.valid) apiFailure("INVALID_STATUS", command.error, 409);
+  }
+
   const serviceType = asServiceType(job.service_type);
   const rows = input.assets.map((asset) => {
     validateJobMediaPath(jobId, asset.stage, asset.object_path);
@@ -2568,13 +2814,42 @@ async function attachJobMedia(
     };
   });
 
-  const inserted = await dbQuery(
-    client.from("job_media_assets").insert(rows).select("id"),
+  const objectPaths = Array.from(new Set(rows.map((row) => row.object_path)));
+  const existingAssets = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("job_media_assets")
+      .select("object_path")
+      .eq("job_id", jobId)
+      .in("object_path", objectPaths),
   );
-  if (inserted.error) {
-    apiFailure("DB_ERROR", "Không thể lưu thông tin media", 500);
+  if (existingAssets.error) {
+    apiFailure("DB_ERROR", "Không thể kiểm tra media đã gắn", 500);
   }
-
+  const existingObjectPaths = new Set(
+    (existingAssets.data ?? []).map((asset) => nullableString(asset.object_path)).filter(Boolean),
+  );
+  const nextObjectPaths = new Set<string>();
+  const rowsToInsert = rows.filter((row) => {
+    if (existingObjectPaths.has(row.object_path) || nextObjectPaths.has(row.object_path)) {
+      return false;
+    }
+    nextObjectPaths.add(row.object_path);
+    return true;
+  });
+  const responseObjectPaths = new Set<string>();
+  const responseRows = rows.filter((row) => {
+    if (responseObjectPaths.has(row.object_path)) return false;
+    responseObjectPaths.add(row.object_path);
+    return true;
+  });
+  if (rowsToInsert.length > 0) {
+    const inserted = await dbQuery(
+      client.from("job_media_assets").insert(rowsToInsert).select("id"),
+    );
+    if (inserted.error) {
+      apiFailure("DB_ERROR", "Không thể lưu thông tin media", 500);
+    }
+  }
   const beforeRefs = rows
     .filter((row) => row.stage === "before" || row.stage === "kael_reference")
     .map((row) => storageRef(row.object_path));
@@ -2617,23 +2892,25 @@ async function attachJobMedia(
     }
   }
 
-  await logJobEvent(
-    client,
-    jobId,
-    "job_media_attached",
-    ctx,
-    status,
-    status,
-    {
-      count: rows.length,
-      stages: Array.from(new Set(rows.map((row) => row.stage))),
-    },
-  );
+  if (rowsToInsert.length > 0) {
+    await logJobEvent(
+      client,
+      jobId,
+      "job_media_attached",
+      ctx,
+      status,
+      status,
+      {
+        count: rowsToInsert.length,
+        stages: Array.from(new Set(rowsToInsert.map((row) => row.stage))),
+      },
+    );
+  }
 
   return {
     job_id: jobId,
     photo_urls: photoUrls,
-    media: rows.map((row) => ({
+    media: responseRows.map((row) => ({
       bucket_id: "job-media" as const,
       object_path: row.object_path,
       storage_ref: storageRef(row.object_path),
@@ -2802,6 +3079,12 @@ async function decideScopeChange(
 ) {
   const client = db(ctx);
   const nextJobStatus = scopeDecisionToJobStatus(input.decision);
+  const transition = validateWorkflowTransition({
+    event: "scope_change_decided",
+    from: "scope_change_pending",
+    to: nextJobStatus,
+  });
+  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("decide_scope_change_atomic", {
       p_scope_change_id: scopeChangeId,
@@ -2857,13 +3140,27 @@ async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "customer",
-    statuses: ["completed_by_worker"],
     select: "id, status, customer_id, worker_id, final_price",
   });
-  const transition = validateTransition(
-    job.status as JobStatus,
-    "confirmed_by_customer",
-  );
+  if (job.status === "confirmed_by_customer" || job.status === "reviewed") {
+    return {
+      job_id: jobId,
+      status: job.status as JobStatus,
+      final_price: nullableNumber(job.final_price),
+    };
+  }
+  if (job.status !== "completed_by_worker") {
+    apiFailure(
+      "INVALID_STATUS",
+      "Trạng thái yêu cầu đã thay đổi. Vui lòng tải lại và thử lại.",
+      409,
+    );
+  }
+  const transition = validateWorkflowTransition({
+    event: "customer_confirmed_completion",
+    from: job.status as JobStatus,
+    to: "confirmed_by_customer",
+  });
   if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
   const finalPrice = nullableNumber(job.final_price);
   // Phase 2.0 (2026-05-23): jobs.final_price là Kael-locked. Nếu null thì
@@ -2936,6 +3233,31 @@ async function submitReview(ctx: MobileApiContext, jobId: string, input: {
     select:
       "id, status, customer_id, worker_id, service_type, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, final_price",
   });
+  if (job.status === "reviewed") {
+    const existing = await dbQuery<Record<string, unknown>>(
+      client
+        .from("reviews")
+        .select("id")
+        .eq("job_id", jobId)
+        .eq("customer_id", ctx.user.id)
+        .maybeSingle(),
+    );
+    if (existing.error || !existing.data) {
+      apiFailure("INVALID_STATUS", "Yêu cầu đã được đánh giá nhưng chưa tìm thấy bản ghi đánh giá", 409);
+    }
+    return {
+      review_id: asString(existing.data.id),
+      job_id: jobId,
+      status: "reviewed" as JobStatus,
+    };
+  }
+  const transition = validateWorkflowTransition({
+    event: "review_submitted",
+    from: job.status as JobStatus,
+    to: "reviewed",
+  });
+  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
+
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("submit_review_atomic", {
       p_job_id: jobId,
@@ -2948,7 +3270,17 @@ async function submitReview(ctx: MobileApiContext, jobId: string, input: {
   if (result.error) apiFailure("DB_ERROR", "Không thể gửi đánh giá", 500);
   const row = result.data?.[0];
   if (!row) apiFailure("DB_ERROR", "Không thể gửi đánh giá", 500);
-  if (!row.ok) mapReviewError(nullableString(row.error_code));
+  if (!row.ok) {
+    const existingReviewId = nullableString(row.review_id);
+    if (nullableString(row.error_code) === "ALREADY_REVIEWED" && existingReviewId) {
+      return {
+        review_id: existingReviewId,
+        job_id: jobId,
+        status: asJobStatus(row.job_status ?? "reviewed"),
+      };
+    }
+    mapReviewError(nullableString(row.error_code));
+  }
 
   await logJobEvent(
     client,

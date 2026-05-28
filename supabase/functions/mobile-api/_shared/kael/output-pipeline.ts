@@ -5,6 +5,7 @@ import {
   calculateScopeChangeMargin,
   type ScopeChangeRiskConfig,
 } from "./scope-risk.ts";
+import { kaelArtifactProposalSchema } from "./artifact-contract.ts";
 
 export type EstimatePriceSource =
   | "perplexity_validated"
@@ -79,7 +80,7 @@ export function runKaelOutputPipeline<TInput, TSanitized, TOutput>(input: {
 export function buildEstimateCardOutput(input: {
   estimate: KaelEstimate;
   priceSource?: EstimatePriceSource;
-  baselineUsed: string;
+  baselineUsed: string | null;
   visionFindings?: string | null;
   marketSignals?: string | null;
   needsInspectionReason?: string | null;
@@ -104,7 +105,7 @@ export function buildEstimateCardOutput(input: {
     kael_reasoning: {
       vision_findings: optionalText(input.visionFindings, 300),
       market_signals: optionalText(input.marketSignals, 300),
-      baseline_used: sanitizeKaelText(input.baselineUsed, 100),
+      baseline_used: optionalText(input.baselineUsed, 100) ?? "inspection_required",
       complexity_reasoning: needsInspection
         ? "Thông tin hiện tại chưa đủ chắc chắn nên cần thợ kiểm tra trực tiếp."
         : "Kael đối chiếu mô tả, mức độ và baseline phù hợp trước khi đưa khoảng giá.",
@@ -122,9 +123,26 @@ export function buildEstimateCardOutput(input: {
       : optionalText(input.estimate.advisory, 150),
     disclaimer: PRICE_DISCLAIMER,
   };
+  const artifactProposal = kaelArtifactProposalSchema.parse({
+    artifact_type: "estimate",
+    visibility: "customer_review",
+    confidence: Math.max(0, Math.min(1, input.estimate.confidence)),
+    missing_fields: needsInspection ? ["inspection"] : [],
+    may_transition: false,
+    estimate: {
+      price_min: card.price_min,
+      price_max: card.price_max,
+      confidence: Math.max(0, Math.min(1, input.estimate.confidence)),
+      disclaimer: card.disclaimer,
+    },
+    recommended_next_question: needsInspection
+      ? "Bạn có thể gửi thêm ảnh hoặc mô tả vị trí hư hỏng để Kael kiểm tra chắc hơn không?"
+      : undefined,
+  });
   return {
     schema_version: "estimate_card.v3" as const,
     card,
+    artifact_proposal: artifactProposal,
   };
 }
 

@@ -2,7 +2,7 @@ import { type Dispatch, useEffect, useRef, useState } from 'react'
 import { Image } from 'expo-image'
 import { ActivityIndicator, Animated, Pressable, Text, TextInput, View, type ViewStyle } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
-import { type ServiceType } from '@home-services/shared'
+import { type ServiceType, type WorkflowArtifactMode } from '@home-services/shared'
 import {
   getCustomerThemeTokens,
   getReducedTransparencyCustomerTokens,
@@ -263,14 +263,22 @@ export function KaelChatComposer({
 export function KaelProcessCard({
   estimate,
   loading,
+  ticketMode,
   text,
 }: {
   estimate: NonNullable<KaelChatResponse['session']['estimate']> | null
   loading: boolean
+  ticketMode: WorkflowArtifactMode
   text: KaelChatText
 }) {
   const tokens = useKaelChatTokens()
   const status = loading ? text.loading : estimate ? text.nextAction.estimate_ready : text.agentStatus
+  const visibleSteps = processStepCount(ticketMode)
+  const steps = [
+    ['01', text.agentSteps.read],
+    ['02', text.agentSteps.missing],
+    ['03', text.agentSteps.confirm],
+  ] as const
 
   return (
     <View style={[styles.agentFocusCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'agent')]} testID="customer-kael-agentic-process">
@@ -286,12 +294,18 @@ export function KaelProcessCard({
         </View>
       </View>
       <View style={styles.agentSteps}>
-        <ProcessStepCard index="01" title={text.agentSteps.read} />
-        <ProcessStepCard index="02" title={text.agentSteps.missing} />
-        <ProcessStepCard index="03" title={text.agentSteps.confirm} />
+        {steps.slice(0, visibleSteps).map(([stepId, title]) => (
+          <ProcessStepCard index={stepId} key={stepId} title={title} />
+        ))}
       </View>
     </View>
   )
+}
+
+function processStepCount(ticketMode: WorkflowArtifactMode) {
+  if (ticketMode === 'basic' || ticketMode === 'partial') return 1
+  if (ticketMode === 'loading') return 2
+  return 3
 }
 
 export function KaelTraceCard({

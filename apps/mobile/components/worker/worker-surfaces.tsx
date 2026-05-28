@@ -19,6 +19,7 @@ import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { uploadJobMediaDrafts, uploadWorkerVerificationDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
+import { useServiceWorkflow } from '@/lib/use-service-workflow'
 
 const WORKER_XANHSM_REFERENCE_AUDIT = 'WORKER_XANHSM_REFERENCE_AUDIT: XanhSM map shell translated into Home Services worker production UI'
 const WORKER_PRODUCTION_CONTRACT = 'WORKER_PRODUCTION_CONTRACT: docs/design/worker-production-contract.md'
@@ -851,7 +852,15 @@ export function WorkerJobsSurface() {
     ? `${localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, language)} · ${jobVisibleAreaLabel}`
     : copy.jobs.emptyBody
   const activeJobBriefLines = deal?.broadcast ? buildWorkerBroadcastBrief(deal, deal.broadcast, selectors.currentStatus, language) : []
-  const showScopeChangeCard = Boolean(deal && selectors.currentStatus === 'scope_change_pending')
+  const workflow = useServiceWorkflow({
+    status: selectors.currentBackendStatus,
+    hasAiNotes: Boolean(deal?.estimate?.advisory),
+    hasCompletionEvidence: Boolean(deal?.completionNotes || deal?.completionPhotoUrls?.length),
+    hasCustomerInput: Boolean(deal),
+    hasEstimate: Boolean(deal?.estimate),
+    hasScopeChange: Boolean(deal?.scopeChange),
+  })
+  const showScopeChangeCard = Boolean(deal && workflow.artifacts.scope_change.mode === 'review')
   const showCompletionEvidenceCard = Boolean(deal && selectors.currentStatus === 'repairing')
   const acceptedJob = isAcceptedLocalWorkerDeal(deal)
   const showAcceptedActionPanel = Boolean(acceptedJob && deal?.broadcast && [

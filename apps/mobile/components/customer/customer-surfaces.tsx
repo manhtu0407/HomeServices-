@@ -15,7 +15,7 @@ import {
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, inferLocalDealDraftFromKael, type LocalCustomerSearchState, type LocalDeal, type LocalDealStatus, type LocalScopeChange, type LocalWorkflowSelectors, type ServiceType } from '@home-services/shared'
+import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, inferLocalDealDraftFromKael, type LocalCustomerSearchState, type LocalDeal, type LocalDealStatus, type LocalScopeChange, type LocalWorkflowSelectors, type ServiceType, type WorkflowArtifactMode } from '@home-services/shared'
 import { setPendingKaelChatDraft } from '@/components/customer/kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '@/components/customer/scope-change-modal/scope-change-hard-stop-modal'
 import { BookingWizard } from '@/components/customer/booking-wizard'
@@ -36,6 +36,7 @@ import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/co
 import { appCopy, languageDisplayName, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel, setAppLanguage, type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { useServiceWorkflow } from '@/lib/use-service-workflow'
 
 const CUSTOMER_V4_PRODUCTION_STANDARD = 'CUSTOMER_V4_PRODUCTION_STANDARD: accepted customer V4 production standard'
 const CUSTOMER_V4_VISUAL_CONTRACT = 'CUSTOMER_V4_VISUAL_CONTRACT: production surfaces replace old customer UI'
@@ -368,7 +369,7 @@ const customerCopy = {
       newRequest: 'New request',
       openPriceCheck: 'Open Kael chat',
       confirmDoneTitle: 'Confirm the job is done?',
-      confirmDoneBody: 'The system will record customer completion. Payment remains locked in this phase.',
+      confirmDoneBody: 'The system will record customer completion. Payment remains locked for now.',
       checkAgain: 'Check again',
       confirmDone: 'Confirm done',
       cancelTitle: 'Cancel request?',
@@ -1200,12 +1201,22 @@ export function CustomerHistorySurface() {
               ? copy.history.confirmed
               : copy.history.finalConfirm
             : copy.history.noWorker
-  const completionStatusLabel = selectors.canCustomerConfirmCompletion
+  const workflow = useServiceWorkflow({
+    status: selectors.currentBackendStatus,
+    hasAiNotes: Boolean(deal?.estimate?.advisory),
+    hasCompletionEvidence: Boolean(deal?.completionNotes || deal?.completionPhotoUrls?.length),
+    hasCustomerInput: Boolean(deal),
+    hasEstimate: Boolean(deal?.estimate),
+    hasScopeChange: Boolean(scopeChange),
+  })
+  const canConfirmCompletion = workflow.allowedActions.confirmCompletion && selectors.canCustomerConfirmCompletion
+  const canSubmitReview = workflow.allowedActions.submitReview && selectors.canCustomerSubmitReview
+  const completionStatusLabel = canConfirmCompletion
     ? copy.history.needCustomerConfirm
     : selectors.currentStatus === 'confirmed_by_customer'
       ? copy.history.confirmed
       : copy.history.waitingWorkerDone
-  const canCreateFreshRequest = !deal || selectors.currentStatus === 'confirmed_by_customer' || selectors.currentStatus === 'reviewed' || selectors.currentStatus === 'cancelled'
+  const canCreateFreshRequest = !deal || workflow.isDone || selectors.currentStatus === 'cancelled'
   const canEditNoWorkerRequest = selectors.customerSearchState === 'no_worker'
   const canCancelLocalRequest = selectors.canCustomerCancelDeal
   useEffect(() => {
@@ -1257,12 +1268,18 @@ export function CustomerHistorySurface() {
     if (!reviewRating) return
     void actions.submitReview({ rating: reviewRating, tags: [] })
   }
+  const focusReviewPanel = () => {
+    setActiveHistoryTab('done')
+  }
   const historyActionLabel = canEditNoWorkerRequest ? copy.history.editRequest : canCreateFreshRequest ? copy.history.newRequest : copy.history.openPriceCheck
   const showRepairTab = activeHistoryTab === 'repair'
   const showPriceTab = activeHistoryTab === 'price'
   const showChatTab = activeHistoryTab === 'chat'
   const showDoneTab = activeHistoryTab === 'done'
-  const isCompletedHistory = ['completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus ?? '')
+  const isCompletedHistory = workflow.isDone
+  const showScopeChangeArtifact = workflow.artifacts.scope_change.visible
+  const showCompletionEvidence = workflow.artifacts.completion_evidence.visible
+  const showReviewArtifact = workflow.artifacts.review.visible
   const historySubtitle = deal
     ? visibleStatusLabel
     : showPriceTab
@@ -1351,7 +1368,7 @@ export function CustomerHistorySurface() {
             </View>
           </View> : null}
           {!deal && showPriceTab ? <CustomerHistoryPriceEmptyPanel copy={copy} languageMode={languageMode} onConfirmSearch={continueOrCreate} tokens={tokens} /> : null}
-          {deal && showPriceTab ? <CustomerHistoryPricePanel canConfirmSearch={selectors.currentStatus === 'awaiting_customer_confirm'} copy={copy} deal={deal} estimateLabel={estimateLabel} languageMode={languageMode} onConfirmSearch={confirmSearchFromPriceTab} originalEstimateLabel={originalEstimateLabel} scopeChange={scopeChange} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
+          {deal && showPriceTab ? <CustomerHistoryPricePanel canConfirmSearch={workflow.allowedActions.confirmTicketAndEstimate && selectors.canConfirmCustomerSearch} copy={copy} deal={deal} estimateLabel={estimateLabel} languageMode={languageMode} onConfirmSearch={confirmSearchFromPriceTab} originalEstimateLabel={originalEstimateLabel} scopeChange={showScopeChangeArtifact ? scopeChange : null} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {!deal && showChatTab ? <CustomerHistoryChatEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
           {deal && showChatTab ? <CustomerHistoryChatPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {deal && showRepairTab ? (
@@ -1364,7 +1381,7 @@ export function CustomerHistorySurface() {
                   </Text>
                 </View>
                 <View style={styles.workerActions}>
-                  {selectors.canCustomerConfirmCompletion ? (
+                  {canConfirmCompletion ? (
                     <PrimaryButton label={copy.history.confirmDone} onPress={confirmCompletionReceived} compact />
                   ) : (
                     <PrimaryButton label={historyActionLabel} onPress={continueOrCreate} compact />
@@ -1390,7 +1407,7 @@ export function CustomerHistorySurface() {
             </View>
           ) : null}
           {!deal && showRepairTab ? <CustomerHistoryRepairEmptyTimeline languageMode={languageMode} tokens={tokens} /> : null}
-          {scopeChange && (showRepairTab || showPriceTab) ? (
+          {scopeChange && showScopeChangeArtifact && (showRepairTab || showPriceTab) ? (
             <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]}>
             <View style={styles.sectionTitle}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
@@ -1412,16 +1429,23 @@ export function CustomerHistorySurface() {
           ) : null}
           {showDoneTab ? (
             <View style={styles.historyDoneStack} testID="customer-history-done-stack">
-              <CustomerHistoryDoneHero canConfirmCompletion={selectors.canCustomerConfirmCompletion} canSubmitReview={selectors.canCustomerSubmitReview} copy={copy} deal={deal} isCompleted={isCompletedHistory} languageMode={languageMode} onConfirmCompletion={confirmCompletionReceived} onOpenChat={continueOrCreate} tokens={tokens} />
+              <CustomerHistoryDoneHero canConfirmCompletion={canConfirmCompletion} canSubmitReview={canSubmitReview} copy={copy} deal={deal} isCompleted={isCompletedHistory} languageMode={languageMode} onConfirmCompletion={confirmCompletionReceived} onOpenChat={continueOrCreate} onOpenReview={focusReviewPanel} tokens={tokens} />
               {deal && isCompletedHistory ? (
                 <CustomerCompletionPresenceMap copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} />
               ) : null}
               {!deal ? <CustomerHistoryDoneMapEmptyPanel copy={copy} tokens={tokens} /> : null}
               {deal && !isCompletedHistory ? <CustomerHistoryDoneMapEmptyPanel copy={copy} tokens={tokens} /> : null}
-              {deal ? <CustomerCompletionEvidencePanel copy={copy} languageMode={languageMode} tokens={tokens} /> : null}
-              <CustomerHistoryDoneTimeline completionStatusLabel={completionStatusLabel} languageMode={languageMode} status={selectors.currentStatus} tokens={tokens} />
-              {deal && (selectors.canCustomerSubmitReview || ['confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus ?? '')) ? (
-                <CustomerHistoryReviewPanel copy={copy} onRatingChange={setReviewRating} onSubmit={submitSelectedReview} rating={reviewRating} selectors={selectors} tokens={tokens} />
+              {deal && showCompletionEvidence ? <CustomerCompletionEvidencePanel copy={copy} languageMode={languageMode} tokens={tokens} /> : null}
+              <CustomerHistoryDoneTimeline
+                completionEvidenceMode={workflow.artifacts.completion_evidence.mode}
+                completionStatusLabel={completionStatusLabel}
+                isDone={workflow.isDone}
+                languageMode={languageMode}
+                reviewMode={workflow.artifacts.review.mode}
+                tokens={tokens}
+              />
+              {deal && showReviewArtifact ? (
+                <CustomerHistoryReviewPanel canSubmitReview={canSubmitReview} copy={copy} onRatingChange={setReviewRating} onSubmit={submitSelectedReview} rating={reviewRating} reviewMode={workflow.artifacts.review.mode} selectors={selectors} tokens={tokens} />
               ) : null}
             </View>
           ) : null}
@@ -1590,7 +1614,7 @@ function getCustomerTimeline(status: LocalDealStatus | null, language: AppLangua
 }
 
 function canReplaceCustomerDeal(status: LocalDealStatus): boolean {
-  return ['draft', 'cancelled', 'confirmed_by_customer', 'reviewed'].includes(status)
+  return ['draft', 'cancelled', 'reviewed'].includes(status)
 }
 
 function isCustomerHistoryTab(tab: unknown): tab is CustomerHistoryTab {
@@ -1620,7 +1644,7 @@ function formatVnd(value: number) {
 }
 
 function isTerminalCustomerDeal(status: LocalDealStatus): boolean {
-  return status === 'cancelled' || status === 'confirmed_by_customer' || status === 'reviewed'
+  return status === 'cancelled' || status === 'reviewed'
 }
 
 function V4Frame({
@@ -2171,6 +2195,7 @@ function CustomerHistoryDoneHero({
   languageMode,
   onConfirmCompletion,
   onOpenChat,
+  onOpenReview,
   tokens,
 }: {
   canConfirmCompletion: boolean
@@ -2181,9 +2206,10 @@ function CustomerHistoryDoneHero({
   languageMode: AppLanguage
   onConfirmCompletion: () => void
   onOpenChat: () => void
+  onOpenReview: () => void
   tokens: CustomerThemeTokens
 }) {
-  const title = isCompleted && deal
+  const title = deal
     ? `${localizedServiceLabel(deal.draft.serviceType, languageMode)}`
     : languageMode === 'en'
       ? 'No completed job yet'
@@ -2192,23 +2218,46 @@ function CustomerHistoryDoneHero({
     ? languageMode === 'en'
       ? 'Review the completion state, receipt map, and final confirmation timeline.'
       : 'Kiểm tra trạng thái hoàn tất, bản đồ biên nhận và timeline xác nhận cuối.'
-    : languageMode === 'en'
-      ? 'Appears after real completion is updated.'
-      : 'Chỉ hiện khi trạng thái hoàn tất được cập nhật.'
+    : deal
+      ? canSubmitReview
+        ? languageMode === 'en'
+          ? 'Review is open after customer confirmation.'
+          : 'Đánh giá đã mở sau khi khách xác nhận.'
+        : canConfirmCompletion
+          ? languageMode === 'en'
+            ? 'Confirm the completed work before review opens.'
+            : 'Xác nhận công việc hoàn tất trước khi đánh giá mở.'
+          : languageMode === 'en'
+            ? 'Completion details appear after the system confirms the right step.'
+            : 'Chi tiết hoàn tất chỉ hiện sau khi hệ thống xác nhận đúng bước.'
+      : languageMode === 'en'
+        ? 'Appears after real completion is updated.'
+        : 'Chỉ hiện khi trạng thái hoàn tất được cập nhật.'
+  const statusPillLabel = isCompleted
+    ? copy.history.filters[3]
+    : deal
+      ? canSubmitReview
+        ? copy.history.review
+        : canConfirmCompletion
+          ? copy.history.needCustomerConfirm
+          : copy.history.waitingWorkerDone
+      : appCopy[languageMode].common.noRequest
   const primaryLabel = canSubmitReview
     ? copy.history.review
     : canConfirmCompletion
       ? copy.history.confirmDone
       : isCompleted
         ? languageMode === 'en' ? 'View receipt' : 'Xem biên nhận'
-        : copy.history.newRequest
-  const primaryAction = canConfirmCompletion ? onConfirmCompletion : onOpenChat
+        : deal
+          ? copy.history.openPriceCheck
+          : copy.history.newRequest
+  const primaryAction = canSubmitReview ? onOpenReview : canConfirmCompletion ? onConfirmCompletion : isCompleted ? onOpenReview : onOpenChat
   return (
     <View style={[styles.historyHeroPanel, styles.historyHeroPanelCompact, customerHistoryHeroSurface(tokens)]} testID="customer-history-done-hero">
       <SubtleLiquidLight testID="customer-history-done-hero-liquid" variant="rim" />
       <View style={[styles.historyHeroStatusPill, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
         <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
-          {isCompleted ? copy.history.filters[3] : appCopy[languageMode].common.noRequest}
+          {statusPillLabel}
         </Text>
       </View>
       <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
@@ -2219,36 +2268,57 @@ function CustomerHistoryDoneHero({
       </Text>
       <View style={styles.historyHeroActions}>
         <PrimaryButton label={primaryLabel} onPress={primaryAction} compact />
-        <SecondaryButton label={isCompleted ? (languageMode === 'en' ? 'View receipt' : 'Xem biên nhận') : copy.history.openPriceCheck} onPress={onOpenChat} compact tone="primary" />
+        <SecondaryButton label={isCompleted ? (languageMode === 'en' ? 'View receipt' : 'Xem biên nhận') : copy.history.openPriceCheck} onPress={isCompleted ? onOpenReview : onOpenChat} compact tone="primary" />
       </View>
     </View>
   )
 }
 
 function CustomerHistoryDoneTimeline({
+  completionEvidenceMode,
   completionStatusLabel,
+  isDone,
   languageMode,
-  status,
+  reviewMode,
   tokens,
 }: {
+  completionEvidenceMode: WorkflowArtifactMode
   completionStatusLabel: string
+  isDone: boolean
   languageMode: AppLanguage
-  status: LocalDealStatus | null
+  reviewMode: WorkflowArtifactMode
   tokens: CustomerThemeTokens
 }) {
-  const isWorkerDone = status === 'completed_by_worker' || status === 'confirmed_by_customer' || status === 'reviewed'
-  const isCustomerDone = status === 'confirmed_by_customer' || status === 'reviewed'
-  const isReviewStep = status === 'confirmed_by_customer' || status === 'reviewed'
+  const isWorkerDone = ['review', 'final', 'done'].includes(completionEvidenceMode)
+  const isCustomerDone = ['review', 'final', 'done', 'blocked'].includes(reviewMode) || isDone
+  const isReviewReady = reviewMode === 'review'
+  const isReviewDone = reviewMode === 'final' || reviewMode === 'done' || isDone
+  const isReviewActive = isReviewReady || isReviewDone
+  const reviewMeta = languageMode === 'en'
+    ? isReviewDone
+      ? 'Review sent'
+      : reviewMode === 'blocked'
+        ? 'Waiting for payment confirmation'
+        : isReviewReady
+          ? 'Ready for service review'
+          : 'Opens after confirmation'
+    : isReviewDone
+      ? 'Đã gửi đánh giá'
+      : reviewMode === 'blocked'
+        ? 'Chờ xác nhận thanh toán'
+        : isReviewReady
+          ? 'Sẵn sàng đánh giá dịch vụ'
+          : 'Mở sau khi xác nhận'
   const rows: Array<readonly [string, string, boolean]> = languageMode === 'en'
     ? [
         ['Worker completed', isWorkerDone ? completionStatusLabel : 'Waiting for real completion state', isWorkerDone],
         ['Customer confirmed', isCustomerDone ? 'Customer receipt confirmed' : 'Not confirmed yet', isCustomerDone],
-        ['Review pending', isReviewStep ? 'Ready for service review' : 'Opens after confirmation', isReviewStep],
+        ['Review pending', reviewMeta, isReviewActive],
       ]
     : [
         ['Thợ hoàn tất', isWorkerDone ? completionStatusLabel : 'Chờ trạng thái hoàn tất thật', isWorkerDone],
         ['Khách xác nhận', isCustomerDone ? 'Đã xác nhận nhận việc' : 'Chưa xác nhận', isCustomerDone],
-        ['Chờ đánh giá', isReviewStep ? 'Sẵn sàng đánh giá dịch vụ' : 'Mở sau khi xác nhận', isReviewStep],
+        ['Chờ đánh giá', reviewMeta, isReviewActive],
       ]
 
   return (
@@ -2271,20 +2341,29 @@ function CustomerHistoryDoneTimeline({
 }
 
 function CustomerHistoryReviewPanel({
+  canSubmitReview,
   copy,
   onRatingChange,
   onSubmit,
   rating,
+  reviewMode,
   selectors,
   tokens,
 }: {
+  canSubmitReview: boolean
   copy: (typeof customerCopy)[AppLanguage]
   onRatingChange: (rating: 1 | 2 | 3 | 4 | 5) => void
   onSubmit: () => void
   rating: 1 | 2 | 3 | 4 | 5 | null
+  reviewMode: WorkflowArtifactMode
   selectors: LocalWorkflowSelectors
   tokens: CustomerThemeTokens
 }) {
+  const reviewValue = reviewMode === 'done' || reviewMode === 'final'
+    ? copy.history.reviewed
+    : canSubmitReview
+      ? copy.history.open
+      : copy.history.locked
   return (
     <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]}>
       <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
@@ -2292,9 +2371,9 @@ function CustomerHistoryReviewPanel({
       </Text>
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.payment} value={selectors.paymentLocked ? copy.history.locked : copy.history.open} />
-        <V4TicketCell label={copy.history.review} value={selectors.reviewLocked ? copy.history.locked : copy.history.open} />
+        <V4TicketCell label={copy.history.review} value={reviewValue} />
       </View>
-      {selectors.canCustomerSubmitReview ? (
+      {canSubmitReview ? (
         <View style={styles.workerActions} testID="customer-history-review-submit">
           <View style={styles.workerMetaRow}>
             {([1, 2, 3, 4, 5] as const).map((nextRating) => (

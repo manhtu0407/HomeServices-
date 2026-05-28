@@ -84,6 +84,7 @@ Worker UI must preserve address privacy before accept, avoid fake earnings, and 
 | Concern | Owner | Do Not Move To |
 |---|---|---|
 | Local deal status and selectors | `packages/shared/src/mobile-workflow.ts` | individual UI components |
+| Workflow phases, artifact lifecycle, action gates, and UI visibility contract | `packages/shared/src/workflow/**`, consumed by `apps/mobile/lib/use-service-workflow.ts` | per-screen data-existence checks or AI output payloads |
 | Service scope and problem chips | `packages/shared/src/constants.ts` | hardcoded route/surface arrays unless derived |
 | Input schemas | `packages/shared/src/validation.ts` | UI-only validation that bypasses shared schemas |
 | API response types | `apps/mobile/lib/api-types.ts` and shared exported contracts | ad hoc inline `any` shapes in surfaces |
@@ -111,7 +112,7 @@ apps/mobile/components/ui/
 | Kael charter and response style | `packages/shared/kael/charter/**`, `supabase/functions/mobile-api/_shared/kael/system-prompt.ts`, `self-check.ts`, `orchestrator.ts`, and `GET /kael/charter` | P8 charter source files define locked identity/persona/mission and tunable tone/language/forbidden/style rules. Edge mirrors the public-safe runtime prompt bundle without importing `packages/shared`, and `self-check.ts` owns deterministic response screening before fallback |
 | Kael learning skills | `supabase/functions/mobile-api/_shared/kael/skills/**`, queue call sites in `services.ts`, and `kael_rule_*_log` migrations | P7 learning is queued behind Edge/service-role flow. Skill registry owns immutable forbidden effects, allowed targets, evidence gates, lifecycle, runtime flags, A/B gating, and rollback signals. It must not execute learning inline during customer/worker workflow writes |
 | Kael monitoring and A/B dashboards | `public.kael_ab_experiments`, `public.kael_ab_price_synthesis_cases`, `public.kael_monitoring_provider_daily`, `public.kael_monitoring_ab_price_synthesis` | P17 monitoring is DB-owned. Service role writes experiment/case rows, admins read through `security_invoker` views, and sample collection must not fabricate provider or price data. |
-| Transition validity | `supabase/functions/mobile-api/_shared/lifecycle.ts` | keep backend state machine authoritative |
+| Transition validity | `supabase/functions/mobile-api/_shared/lifecycle.ts` plus event ownership in `workflow-orchestrator.ts` | keep backend state machine authoritative; AI and mobile may request actions but must not set phases directly |
 | Access checks | `supabase/functions/mobile-api/_shared/access.ts` | customer/worker/admin authorization |
 | Push helper | `supabase/functions/mobile-api/_shared/push.ts` | push is best-effort; notification rows remain source of truth |
 | Rate limit | `supabase/functions/mobile-api/_shared/rate-limit.ts` | protect AI/provider routes |

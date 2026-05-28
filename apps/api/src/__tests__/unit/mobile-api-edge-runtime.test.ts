@@ -350,6 +350,129 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(statusUpdateCall?.operations).toContainEqual(['eq', 'status', 'awaiting_customer_confirm'])
   })
 
+  it('returns current state for a duplicate Kael chat confirmation without rebroadcasting', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: false,
+          error_code: 'ALREADY_CONFIRMED',
+          job_id: 'job-1',
+          job_status: null,
+          service_type: 'plumbing',
+          district_code: null,
+        }],
+        error: null,
+      },
+      {
+        data: {
+          id: 'job-1',
+          status: 'broadcasting',
+          customer_id: 'customer-1',
+          worker_id: null,
+        },
+        error: null,
+      },
+      { data: [{ id: 'broadcast-1', expires_at: '2999-01-01T00:00:00.000Z' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1')).resolves.toMatchObject({
+      session_id: 'kael-session-1',
+      job_id: 'job-1',
+      status: 'broadcasting',
+      broadcast_sent: true,
+      worker: null,
+    })
+
+    expect(client.calls[0].operations).toContainEqual([
+      'rpc',
+      'confirm_kael_chat_atomic',
+      {
+        p_session_id: 'kael-session-1',
+        p_customer_id: 'customer-1',
+      },
+    ])
+    expect(client.calls.some((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'update')
+    )).toBe(false)
+    expect(client.calls.some((call) => call.table === 'job_broadcasts' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )).toBe(false)
+  })
+
+  it('finishes the pending search transition when a duplicate Kael confirmation finds the job still in ticket review', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: false,
+          error_code: 'ALREADY_CONFIRMED',
+          job_id: 'job-1',
+          job_status: null,
+          service_type: 'plumbing',
+          district_code: null,
+        }],
+        error: null,
+      },
+      {
+        data: {
+          id: 'job-1',
+          status: 'awaiting_customer_confirm',
+          customer_id: 'customer-1',
+          worker_id: null,
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'job-1',
+          status: 'awaiting_customer_confirm',
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          address_district: 'q7',
+          kael_problem_identified: 'Pipe leak',
+          kael_price_min: 150000,
+          kael_price_max: 250000,
+          final_price: null,
+        },
+        error: null,
+      },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+      { data: { address_lat: null, address_lng: null, problem_chips: ['leak'], service_problem_id: null, kael_problem_identified: 'Pipe leak' }, error: null },
+      { data: [], error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmKaelChat(ctx, 'kael-session-1')).resolves.toMatchObject({
+      session_id: 'kael-session-1',
+      job_id: 'job-1',
+      status: 'broadcasting',
+      broadcast_sent: false,
+    })
+
+    const statusUpdateCall = client.calls.find((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => {
+        const value = op[1] as { status?: string } | undefined
+        return op[0] === 'update' && value?.status === 'broadcasting'
+      })
+    )
+    expect(statusUpdateCall?.operations).toContainEqual(['eq', 'status', 'awaiting_customer_confirm'])
+    expect(client.calls.some((call) => call.table === 'kael_chat_sessions')).toBe(false)
+  })
+
   it('hard-stops Kael chat before provider calls when the session exceeds the AI budget cap', async () => {
     const client = makeSequenceClient([
       {
@@ -439,6 +562,210 @@ describe('mobile-api Edge runtime helpers', () => {
         return op[0] === 'update' && updateValue?.total_turns === 4
       })
     expect(budgetTurnUpdate?.[1]).not.toHaveProperty('estimate_ready_at')
+  })
+
+  it('records structured missing-field artifact metadata when Kael needs district context', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          status: 'active',
+          total_turns: 0,
+          safe_metadata: {},
+        },
+        error: null,
+      },
+      { data: { id: 'turn-customer' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      { data: { id: 'kael-session-1', total_cost_usd: 0 }, error: null },
+      { data: { id: 'kael-session-1', total_turns: 1, total_cost_usd: 0, safe_metadata: {} }, error: null },
+      { data: { id: 'turn-clarify' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          status: 'active',
+          started_at: '2026-05-20T00:00:00.000Z',
+          estimate_ready_at: null,
+          total_turns: 2,
+          total_cost_usd: 0,
+          safe_metadata: {},
+          created_at: '2026-05-20T00:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: [
+          {
+            id: 'turn-customer',
+            session_id: 'kael-session-1',
+            turn_index: 1,
+            role: 'customer',
+            content_type: 'text',
+            text_content: 'Ống nước rò dưới lavabo',
+            media_refs: [],
+            safe_metadata: {},
+            created_at: '2026-05-20T00:00:01.000Z',
+          },
+          {
+            id: 'turn-clarify',
+            session_id: 'kael-session-1',
+            turn_index: 2,
+            role: 'kael',
+            content_type: 'clarification',
+            text_content: 'Bạn cho Kael biết quận ở TP.HCM để ước tính đúng khu vực và tìm thợ phù hợp.',
+            media_refs: [],
+            safe_metadata: {
+              artifact_proposal: {
+                artifact_type: 'process_ticket',
+                visibility: 'partial',
+                confidence: 0.4,
+                missing_fields: ['address_district'],
+                may_transition: false,
+                recommended_next_question: 'Bạn cho Kael biết quận ở TP.HCM để ước tính đúng khu vực và tìm thợ phù hợp.',
+              },
+            },
+            created_at: '2026-05-20T00:00:02.000Z',
+          },
+        ],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).sendKaelChatTurn(ctx, 'kael-session-1', {
+      message: 'Ống nước rò dưới lavabo',
+      photo_urls: [],
+    })
+
+    expect(result.session.next_action).toBe('await_input')
+    expect(client.calls.some((call) => call.table === 'service_problems')).toBe(false)
+    const clarificationInsert = client.calls.find((call) =>
+      call.table === 'kael_chat_turns' &&
+      call.operations.some((op) => {
+        const value = op[1] as { content_type?: string } | undefined
+        return op[0] === 'insert' && value?.content_type === 'clarification'
+      })
+    )
+    const insertedTurn = clarificationInsert?.operations.find((op) => op[0] === 'insert')?.[1] as { safe_metadata?: Record<string, unknown> } | undefined
+    expect(insertedTurn?.safe_metadata?.artifact_proposal).toMatchObject({
+      artifact_type: 'process_ticket',
+      missing_fields: ['address_district'],
+      may_transition: false,
+    })
+  })
+
+  it('records structured artifact metadata when Kael needs more description before estimating', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          status: 'active',
+          total_turns: 0,
+          safe_metadata: { address_district: 'q7' },
+        },
+        error: null,
+      },
+      { data: { id: 'turn-customer' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      { data: { id: 'kael-session-1', total_cost_usd: 0 }, error: null },
+      { data: { id: 'kael-session-1', total_turns: 1, total_cost_usd: 0, safe_metadata: {} }, error: null },
+      { data: { id: 'turn-clarify' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          status: 'active',
+          started_at: '2026-05-20T00:00:00.000Z',
+          estimate_ready_at: null,
+          total_turns: 2,
+          total_cost_usd: 0,
+          safe_metadata: { address_district: 'q7' },
+          created_at: '2026-05-20T00:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: [
+          {
+            id: 'turn-customer',
+            session_id: 'kael-session-1',
+            turn_index: 1,
+            role: 'customer',
+            content_type: 'text',
+            text_content: 'Rò',
+            media_refs: [],
+            safe_metadata: {},
+            created_at: '2026-05-20T00:00:01.000Z',
+          },
+          {
+            id: 'turn-clarify',
+            session_id: 'kael-session-1',
+            turn_index: 2,
+            role: 'kael',
+            content_type: 'clarification',
+            text_content: 'Bạn mô tả rõ hơn vấn đề đang gặp: vị trí, dấu hiệu và mức độ ảnh hưởng trong căn hộ.',
+            media_refs: [],
+            safe_metadata: {
+              artifact_proposal: {
+                artifact_type: 'process_ticket',
+                visibility: 'partial',
+                confidence: 0.4,
+                missing_fields: ['description'],
+                may_transition: false,
+                recommended_next_question: 'Bạn mô tả rõ hơn vấn đề đang gặp: vị trí, dấu hiệu và mức độ ảnh hưởng trong căn hộ.',
+              },
+            },
+            created_at: '2026-05-20T00:00:02.000Z',
+          },
+        ],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).sendKaelChatTurn(ctx, 'kael-session-1', {
+      message: 'Rò',
+      photo_urls: [],
+    })
+
+    expect(result.session.next_action).toBe('await_input')
+    expect(client.calls.some((call) => call.table === 'service_problems')).toBe(false)
+    const clarificationInsert = client.calls.find((call) =>
+      call.table === 'kael_chat_turns' &&
+      call.operations.some((op) => {
+        const value = op[1] as { content_type?: string } | undefined
+        return op[0] === 'insert' && value?.content_type === 'clarification'
+      })
+    )
+    const insertedTurn = clarificationInsert?.operations.find((op) => op[0] === 'insert')?.[1] as { safe_metadata?: Record<string, unknown> } | undefined
+    expect(insertedTurn?.safe_metadata?.artifact_proposal).toMatchObject({
+      artifact_type: 'process_ticket',
+      missing_fields: ['description'],
+      may_transition: false,
+    })
   })
 
   it('hard-stops Kael chat and queues admin review for demanding customer pressure', async () => {
@@ -745,6 +1072,22 @@ describe('mobile-api Edge runtime helpers', () => {
         quality_pass: true,
       }),
     ]))
+    const kaelEstimateTurn = client.calls
+      .filter((call) => call.table === 'kael_chat_turns')
+      .map((call) => call.operations.find((op) => op[0] === 'insert')?.[1] as Record<string, unknown>)
+      .find((row) => row?.content_type === 'estimate')
+    expect(kaelEstimateTurn?.safe_metadata).toMatchObject({
+      artifact_proposal: {
+        artifact_type: 'estimate',
+        visibility: 'customer_review',
+        may_transition: false,
+      },
+      estimate_card_v3: {
+        artifact_proposal: {
+          may_transition: false,
+        },
+      },
+    })
   })
 
   it('requireJobAccess hides cross-customer jobs with 404', async () => {
@@ -2085,6 +2428,35 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(updateCall?.operations).toContainEqual(['maybeSingle'])
   })
 
+  it('treats duplicate customer completion confirmation as current state without writing again', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'confirmed_by_customer',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          final_price: 250000,
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmCompletion(ctx, 'job-1')).resolves.toEqual({
+      job_id: 'job-1',
+      status: 'confirmed_by_customer',
+      final_price: 250000,
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual(['jobs'])
+  })
+
   it('returns broadcast_state on job detail after expiring stale broadcasts', async () => {
     const client = makeSequenceClient([
       {
@@ -2187,12 +2559,12 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(scopeCall?.operations).toContainEqual(['in', 'status', ['waiting_customer_decision', 'reviewing_by_kael']])
   })
 
-  it('submits reviews through the atomic RPC so review insert and status update cannot split-brain', async () => {
+  it('treats duplicate review RPC responses as idempotent current state when a review exists', async () => {
     const client = makeSequenceClient([
       {
         data: {
           id: 'job-1',
-          status: 'confirmed_by_customer',
+          status: 'paid',
           customer_id: 'customer-1',
           worker_id: 'worker-1',
         },
@@ -2202,8 +2574,8 @@ describe('mobile-api Edge runtime helpers', () => {
         data: [{
           ok: false,
           error_code: 'ALREADY_REVIEWED',
-          review_id: null,
-          job_status: null,
+          review_id: 'review-1',
+          job_status: 'reviewed',
           reviewed_at_ts: null,
         }],
         error: null,
@@ -2219,9 +2591,10 @@ describe('mobile-api Edge runtime helpers', () => {
     await expect(createEdgeServices({}).submitReview(ctx, 'job-1', {
       rating: 5,
       tags: [],
-    })).rejects.toMatchObject({
-      code: 'ALREADY_REVIEWED',
-      status: 409,
+    })).resolves.toEqual({
+      review_id: 'review-1',
+      job_id: 'job-1',
+      status: 'reviewed',
     })
 
     expect(client.calls).toHaveLength(2)
@@ -2239,6 +2612,84 @@ describe('mobile-api Edge runtime helpers', () => {
         },
       ]],
     })
+    expect(client.calls.some((call) => call.table === 'job_events')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'rpc:insert_notification_atomic')).toBe(false)
+  })
+
+  it('keeps duplicate review idempotency in reviewed phase when RPC omits job status', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'paid',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      {
+        data: [{
+          ok: false,
+          error_code: 'ALREADY_REVIEWED',
+          review_id: 'review-1',
+        }],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).submitReview(ctx, 'job-1', {
+      rating: 5,
+      tags: [],
+    })).resolves.toEqual({
+      review_id: 'review-1',
+      job_id: 'job-1',
+      status: 'reviewed',
+    })
+  })
+
+  it('returns the existing review when the current job is already reviewed', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'reviewed',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          service_type: 'plumbing',
+          address_district: 'q7',
+          kael_problem_identified: 'Pipe leak',
+          kael_complexity: 'small',
+          kael_price_min: 150000,
+          kael_price_max: 250000,
+          final_price: 250000,
+        },
+        error: null,
+      },
+      { data: { id: 'review-1' }, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).submitReview(ctx, 'job-1', {
+      rating: 5,
+      tags: [],
+    })).resolves.toEqual({
+      review_id: 'review-1',
+      job_id: 'job-1',
+      status: 'reviewed',
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual(['jobs', 'reviews'])
   })
 
   it('P9 records normal transaction memory and thanks the customer after review', async () => {
@@ -2246,7 +2697,7 @@ describe('mobile-api Edge runtime helpers', () => {
       {
         data: {
           id: 'job-1',
-          status: 'confirmed_by_customer',
+          status: 'paid',
           customer_id: 'customer-1',
           worker_id: 'worker-1',
           service_type: 'plumbing',
@@ -2347,15 +2798,14 @@ describe('mobile-api Edge runtime helpers', () => {
       ])
   })
 
-  it('cancels jobs through an atomic RPC so stale broadcasts cannot survive API success', async () => {
+  it('rejects direct cancellation after worker accept before calling the cancel RPC', async () => {
     const client = makeSequenceClient([
       {
-        data: [{
-          ok: false,
-          error_code: 'INVALID_STATUS',
-          job_status: 'worker_matched',
-          cancelled_at_ts: null,
-        }],
+        data: {
+          id: 'job-1',
+          status: 'worker_matched',
+          customer_id: 'customer-1',
+        },
         error: null,
       },
     ])
@@ -2373,16 +2823,74 @@ describe('mobile-api Edge runtime helpers', () => {
 
     expect(client.calls).toEqual([
       {
-        table: 'rpc:cancel_job_before_accept_atomic',
+        table: 'jobs',
         operations: [[
-          'rpc',
-          'cancel_job_before_accept_atomic',
-          {
-            p_job_id: 'job-1',
-            p_customer_id: 'customer-1',
-          },
+          'select',
+          'id, status, customer_id',
+        ], [
+          'eq',
+          'id',
+          'job-1',
+        ], [
+          'single',
         ]],
       },
+    ])
+  })
+
+  it('validates pre-accept cancellation before using the atomic cancel RPC', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'broadcasting',
+          customer_id: 'customer-1',
+        },
+        error: null,
+      },
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          job_status: 'cancelled',
+          cancelled_at_ts: '2026-05-27T00:00:00.000Z',
+        }],
+        error: null,
+      },
+      { data: { id: 'event-1' }, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).cancelJob(ctx, 'job-1')).resolves.toEqual({
+      job_id: 'job-1',
+      status: 'cancelled',
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'jobs',
+      'rpc:cancel_job_before_accept_atomic',
+      'job_events',
+    ])
+    expect(client.calls[1]?.operations).toContainEqual([
+      'rpc',
+      'cancel_job_before_accept_atomic',
+      {
+        p_job_id: 'job-1',
+        p_customer_id: 'customer-1',
+      },
+    ])
+    expect(client.calls[2]?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        event_type: 'customer_cancelled_before_accept',
+        from_status: 'broadcasting',
+        to_status: 'cancelled',
+      }),
     ])
   })
 
@@ -2776,6 +3284,7 @@ describe('mobile-api Edge runtime helpers', () => {
         },
         error: null,
       },
+      { data: [], error: null },
       { data: [{ id: 'media-1' }], error: null },
       { data: null, error: null },
     ])
@@ -2807,6 +3316,368 @@ describe('mobile-api Edge runtime helpers', () => {
         op[0] === 'update' && JSON.stringify(op[1]).includes('completion_photo_urls')
       )
     )).toBe(false)
+  })
+
+  it('treats repeated media attach calls for the same object path as idempotent metadata sync', async () => {
+    const jobId = '11111111-1111-1111-1111-111111111111'
+    const objectPath = `${jobId}/before/photo.jpg`
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: jobId,
+          status: 'awaiting_customer_confirm',
+          service_type: 'plumbing',
+          customer_id: 'customer-1',
+          worker_id: null,
+          photo_urls: [],
+          completion_photo_urls: [],
+        },
+        error: null,
+      },
+      { data: [{ object_path: objectPath }], error: null },
+      { data: { id: jobId }, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).attachJobMedia(ctx, jobId, {
+      assets: [{
+        object_path: objectPath,
+        stage: 'before',
+        mime_type: 'image/jpeg',
+        file_size_bytes: 1234,
+      }],
+    })).resolves.toMatchObject({
+      job_id: jobId,
+      media: [expect.objectContaining({
+        object_path: objectPath,
+        storage_ref: `supabase://job-media/${objectPath}`,
+      })],
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'jobs',
+      'job_media_assets',
+      'jobs',
+    ])
+    expect(client.calls.some((call) =>
+      call.table === 'job_media_assets' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )).toBe(false)
+    expect(client.calls.some((call) => call.table === 'job_events')).toBe(false)
+  })
+
+  it('deduplicates repeated media object paths within one attach request', async () => {
+    const jobId = '11111111-1111-1111-1111-111111111111'
+    const objectPath = `${jobId}/before/photo.jpg`
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: jobId,
+          status: 'awaiting_customer_confirm',
+          service_type: 'plumbing',
+          customer_id: 'customer-1',
+          worker_id: null,
+          photo_urls: [],
+          completion_photo_urls: [],
+        },
+        error: null,
+      },
+      { data: [], error: null },
+      { data: [{ id: 'media-1' }], error: null },
+      { data: { id: jobId }, error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).attachJobMedia(ctx, jobId, {
+      assets: [
+        { object_path: objectPath, stage: 'before', mime_type: 'image/jpeg', file_size_bytes: 1234 },
+        { object_path: objectPath, stage: 'before', mime_type: 'image/jpeg', file_size_bytes: 1234 },
+      ],
+    })
+
+    expect(result).toMatchObject({
+      job_id: jobId,
+      photo_urls: [`supabase://job-media/${objectPath}`],
+    })
+    expect(result.media).toHaveLength(1)
+
+    const insertCall = client.calls.find((call) =>
+      call.table === 'job_media_assets' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )
+    expect(insertCall?.operations).toContainEqual([
+      'insert',
+      [expect.objectContaining({ object_path: objectPath })],
+    ])
+    expect(client.calls.find((call) => call.table === 'job_events')?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        event_type: 'job_media_attached',
+        safe_metadata: expect.objectContaining({ count: 1 }),
+      }),
+    ])
+  })
+
+  it('rejects completion media before the worker reaches repair/completion phase', async () => {
+    const jobId = '11111111-1111-1111-1111-111111111111'
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: jobId,
+          status: 'worker_on_way',
+          service_type: 'plumbing',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          photo_urls: [],
+          completion_photo_urls: [],
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).attachJobMedia(ctx, jobId, {
+      assets: [{
+        object_path: `${jobId}/after/evidence.jpg`,
+        stage: 'after',
+        mime_type: 'image/jpeg',
+        file_size_bytes: 1234,
+      }],
+    })).rejects.toMatchObject({
+      code: 'INVALID_STATUS',
+      status: 409,
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual(['jobs'])
+  })
+
+  it('rejects worker cancellation after the customer has confirmed completion before calling the RPC', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'confirmed_by_customer',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).requestWorkerCancellation(ctx, 'job-1', {
+      reason: 'Cannot continue after the job was already confirmed',
+      evidence_photo_urls: [],
+    })).rejects.toMatchObject({
+      code: 'INVALID_STATUS',
+      status: 409,
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual(['jobs'])
+  })
+
+  it('returns the existing worker cancellation request instead of duplicating side effects', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      {
+        data: [{
+          ok: false,
+          error_code: 'ALREADY_REQUESTED',
+          cancellation_id: 'worker-cancel-1',
+          cancellation_status: 'reviewing_by_kael',
+          job_status: 'worker_on_way',
+        }],
+        error: null,
+      },
+      {
+        data: {
+          id: 'worker-cancel-1',
+          status: 'reviewing_by_kael',
+          created_at: '2026-05-26T00:00:00.000Z',
+          reason_code: 'higher_pay_elsewhere',
+          reason_category: 'suspicious',
+          admin_review_required: true,
+          fallback_options: [{ id: 'wait_15_minutes' }],
+          abuse_signals: ['cancellation_rate_exceeded'],
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).requestWorkerCancellation(ctx, 'job-1', {
+      reason: 'Emergency reason that prevents continuing the job',
+      evidence_photo_urls: [],
+    })).resolves.toMatchObject({
+      cancellation_id: 'worker-cancel-1',
+      job_id: 'job-1',
+      status: 'reviewing_by_kael',
+      job_status: 'worker_on_way',
+      broadcast_sent: false,
+      reason_code: 'higher_pay_elsewhere',
+      reason_category: 'suspicious',
+      admin_review_required: true,
+      abuse_signals: ['cancellation_rate_exceeded'],
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'jobs',
+      'rpc:request_worker_cancellation_atomic',
+      'worker_cancellation_requests',
+    ])
+    expect(client.calls.some((call) => call.table === 'job_events')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'kael_admin_queue')).toBe(false)
+  })
+
+  it('returns the existing worker cancellation request when the duplicate RPC omits the cancellation id', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      {
+        data: [{
+          ok: false,
+          error_code: 'ALREADY_REQUESTED',
+          cancellation_id: null,
+          cancellation_status: 'reviewing_by_kael',
+          job_status: 'worker_on_way',
+        }],
+        error: null,
+      },
+      {
+        data: {
+          id: 'worker-cancel-1',
+          status: 'reviewing_by_kael',
+          created_at: '2026-05-26T00:00:00.000Z',
+          reason_code: 'higher_pay_elsewhere',
+          reason_category: 'suspicious',
+          admin_review_required: true,
+          fallback_options: [{ id: 'wait_15_minutes' }],
+          abuse_signals: ['cancellation_rate_exceeded'],
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).requestWorkerCancellation(ctx, 'job-1', {
+      reason: 'Emergency reason that prevents continuing the job',
+      evidence_photo_urls: [],
+    })).resolves.toMatchObject({
+      cancellation_id: 'worker-cancel-1',
+      job_id: 'job-1',
+      status: 'reviewing_by_kael',
+      job_status: 'worker_on_way',
+      broadcast_sent: false,
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'jobs',
+      'rpc:request_worker_cancellation_atomic',
+      'worker_cancellation_requests',
+    ])
+    expect(client.calls.some((call) => call.table === 'job_events')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'kael_admin_queue')).toBe(false)
+  })
+
+  it('returns an approved worker cancellation after the worker has already been released from the job', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'broadcasting',
+          customer_id: 'customer-1',
+          worker_id: null,
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'worker-cancel-1',
+          status: 'approved',
+          created_at: '2026-05-26T00:00:00.000Z',
+          reason_code: 'vehicle_breakdown_with_photo',
+          reason_category: 'legit_auto_approve',
+          admin_review_required: false,
+          fallback_options: [{ id: 'wait_15_minutes' }],
+          abuse_signals: [],
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).requestWorkerCancellation(ctx, 'job-1', {
+      reason: 'Vehicle breakdown with photo proof already submitted.',
+      evidence_photo_urls: ['supabase://job-media/job-1/cancellation_evidence/vehicle.jpg'],
+    })).resolves.toMatchObject({
+      cancellation_id: 'worker-cancel-1',
+      job_id: 'job-1',
+      status: 'approved',
+      job_status: 'broadcasting',
+      broadcast_sent: false,
+      reason_code: 'vehicle_breakdown_with_photo',
+      reason_category: 'legit_auto_approve',
+      admin_review_required: false,
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'jobs',
+      'worker_cancellation_requests',
+    ])
+    expect(client.calls.some((call) => call.table === 'rpc:request_worker_cancellation_atomic')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'job_events')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'kael_admin_queue')).toBe(false)
   })
 
   it('notifies the worker when the customer decides a scope change', async () => {
@@ -3085,6 +3956,15 @@ describe('mobile-api Edge runtime helpers', () => {
 
     const client = makeSequenceClient([
       {
+        data: {
+          id: 'job-1',
+          status: 'worker_matched',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      {
         data: [{
           ok: true,
           error_code: null,
@@ -3143,7 +4023,7 @@ describe('mobile-api Edge runtime helpers', () => {
       abuse_signals: ['cancel_after_accept_threshold'],
     })
 
-    expect(client.calls[0].operations).toContainEqual([
+    expect(client.calls.find((call) => call.table === 'rpc:request_customer_cancellation_atomic')?.operations).toContainEqual([
       'rpc',
       'request_customer_cancellation_atomic',
       expect.objectContaining({
@@ -3194,6 +4074,129 @@ describe('mobile-api Edge runtime helpers', () => {
       ])
     expect(JSON.stringify(client.calls)).not.toContain('customerPenaltyAmount')
     expect(JSON.stringify(client.calls)).not.toContain('workerCompensationAmount')
+  })
+
+  it('returns the existing customer cancellation request instead of duplicating side effects', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'completed_by_worker',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      {
+        data: [{
+          ok: false,
+          error_code: 'ALREADY_REQUESTED',
+          job_status: 'completed_by_worker',
+        }],
+        error: null,
+      },
+      {
+        data: {
+          id: 'customer-cancel-1',
+          status: 'dispute_pending',
+          job_id: 'job-1',
+          sub_case: 'after_worker_completed_trigger_dispute',
+          reason_code: 'not_completed',
+          reason_category: 'needs_admin_review',
+          worker_id: 'worker-1',
+          admin_review_required: true,
+          phase0_no_monetary_penalty: true,
+          worker_goodwill: { required: false, kind: 'none', worker_id: null, amount: null },
+          abuse_signals: [],
+          created_at: '2026-05-26T00:00:00.000Z',
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).requestCustomerCancellation(ctx, 'job-1', {
+      reason_code: 'not_completed',
+      reason_note: 'Cong viec chua hoan tat nhu thong tin ban dau.',
+    })).resolves.toMatchObject({
+      cancellation_id: 'customer-cancel-1',
+      job_id: 'job-1',
+      status: 'requested',
+      job_status: 'completed_by_worker',
+      sub_case: 'after_worker_completed_trigger_dispute',
+      reason_code: 'not_completed',
+      reason_category: 'needs_admin_review',
+      admin_review_required: true,
+      phase0_no_monetary_penalty: true,
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'jobs',
+      'rpc:request_customer_cancellation_atomic',
+      'customer_cancellation_records',
+    ])
+    expect(client.calls.some((call) => call.table === 'job_events')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'kael_admin_queue')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'rpc:insert_notification_atomic')).toBe(false)
+  })
+
+  it('returns an existing customer cancellation even after the job is already cancelled', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'cancelled',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'customer-cancel-1',
+          status: 'requested',
+          job_id: 'job-1',
+          sub_case: 'after_worker_accept',
+          reason_code: 'changed_mind',
+          reason_category: 'no_penalty_phase_0',
+          worker_id: 'worker-1',
+          admin_review_required: false,
+          phase0_no_monetary_penalty: true,
+          worker_goodwill: { required: true, kind: 'phase0_goodwill_note', worker_id: 'worker-1' },
+          abuse_signals: [],
+          created_at: '2026-05-26T00:00:00.000Z',
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).requestCustomerCancellation(ctx, 'job-1', {
+      reason_code: 'changed_mind',
+      reason_note: 'Toi bam lai nut huy sau khi yeu cau da duoc ghi nhan.',
+    })).resolves.toMatchObject({
+      cancellation_id: 'customer-cancel-1',
+      job_id: 'job-1',
+      status: 'requested',
+      job_status: 'cancelled',
+      sub_case: 'after_worker_accept',
+      reason_code: 'changed_mind',
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'jobs',
+      'customer_cancellation_records',
+    ])
   })
 
   it('opens a P13 dispute through the atomic RPC with a neutral summary and locked evidence id', async () => {
@@ -3476,6 +4479,40 @@ describe('mobile-api Edge runtime helpers', () => {
     })
 
     expect(client.calls.some((call) => call.table === 'job_broadcasts')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'worker_profiles')).toBe(false)
+  })
+
+  it('rejects confirm-search if the frontend tries to skip ticket review', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'estimate_ready',
+          customer_id: 'customer-1',
+          service_type: 'plumbing',
+          address_district: 'q7',
+          kael_price_max: 250000,
+          final_price: null,
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmSearch(ctx, 'job-1')).rejects.toMatchObject({
+      code: 'INVALID_STATUS',
+      status: 409,
+    })
+
+    expect(client.calls.some((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'update')
+    )).toBe(false)
     expect(client.calls.some((call) => call.table === 'worker_profiles')).toBe(false)
   })
 

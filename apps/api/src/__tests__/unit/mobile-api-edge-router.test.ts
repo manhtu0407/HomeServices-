@@ -980,7 +980,6 @@ describe('mobile-api Edge router contract', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         status: 'completed_by_worker',
-        final_price: 250000,
         completion_photo_urls: ['not-a-url'],
       }),
     }))
@@ -989,6 +988,58 @@ describe('mobile-api Edge router contract', () => {
     expect(await response.json()).toMatchObject({
       code: 'VALIDATION',
     })
+    expect(updateJobStatus).not.toHaveBeenCalled()
+  })
+
+  it('accepts completion media refs returned by the job media attach endpoint', async () => {
+    const updateJobStatus = vi.fn(async () => ({
+      job_id: 'job-1',
+      from_status: 'repairing' as const,
+      to_status: 'completed_by_worker' as const,
+      updated_at: '2026-05-20T00:00:00.000Z',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ updateJobStatus }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'completed_by_worker',
+        completion_photo_urls: ['supabase://job-media/job-1/after/photo.jpg'],
+      }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(updateJobStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'job-1',
+      {
+        status: 'completed_by_worker',
+        completion_photo_urls: ['supabase://job-media/job-1/after/photo.jpg'],
+      },
+    )
+  })
+
+  it('rejects non-completion storage refs for worker completion photos', async () => {
+    const updateJobStatus = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ updateJobStatus }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'completed_by_worker',
+        completion_photo_urls: ['supabase://job-media/job-1/scope_change_evidence/photo.jpg'],
+      }),
+    }))
+
+    expect(response.status).toBe(400)
     expect(updateJobStatus).not.toHaveBeenCalled()
   })
 
