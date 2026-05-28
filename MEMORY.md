@@ -372,3 +372,82 @@
 - Known residual issue: Supabase security advisor still reports `auth_leaked_password_protection` disabled. Attempting to enable it via Management API returned a Pro-plan requirement.
 - Auth residual: current mobile login uses role-first Supabase email/password, and `STRUCTURES.md` now marks phone OTP as a later production-auth upgrade after SMS provider setup. Do not claim phone OTP production readiness until SMS provider/Auth config and mobile OTP flow are intentionally completed.
 - Runtime caveat: payment/chat/media/realtime/distributed rate limiting remain locked or non-production-grade until explicitly built.
+
+## 2026-05-28 Production Bug Audit — Plan §27 chốt
+
+- **Audit method**: QA toàn diện với Expo Web (port 8081) trỏ vào production Supabase `iwevizmsedyqozxlawwl`, kết hợp curl direct mobile-api + Supabase MCP `execute_sql` + Claude_Preview MCP UI tools (screenshot/click/fill/eval/network). Login test customer `manhtu0407+customer@gmail.com` + worker `manhtu0407+worker@gmail.com`. Cleanup tổng 10+ test jobs về `cancelled`.
+- **Setup**: Node v22.18.0 portable + corepack pnpm 10.16.1 cài vào `/tmp/node-portable` (sandbox không có Node sẵn). `.claude/launch.json` + `.claude/start-mobile-web.cmd` wrapper inject Node dir vào PATH cho preview_start MCP.
+- **13 findings runtime**: 8 HIGH + 3 MEDIUM + 2 LOW. Plan §27 chốt 2026-05-28 với Tu approve điều kiện X0 robust hơn.
+  - F-04 HIGH dup jobs/sessions (no client_request_id)
+  - F-09 HIGH production `worker_profiles.districts` lưu display label thay vì slug → matching layer vỡ hoàn toàn
+  - F-14 HIGH `inferKaelChatDistrict` không parse substring district từ address có building prefix
+  - F-17 HIGH customer frontend KHÔNG hydrate active job từ backend sau refresh (vi phạm backend-as-truth)
+  - F-18..F-21 HIGH AI gate fail (AC repair / off-topic / prompt injection / service_type mismatch tất cả trả estimate thay vì decline) — vi phạm RULES.md #6 + #8
+  - F-23 HIGH no rate limit /kael/chat POST endpoint
+  - F-22 MEDIUM raw PII (phone/CCCD/address) lưu `kael_chat_turns.text_content` (sanitize only before LLM, không trước DB persist)
+  - F-15 MEDIUM Kael pipeline thiếu context window multi-turn (AI dùng latest message only, ignore turn 1+3 context)
+  - F-08 MEDIUM `normalizeDistrict` không strip diacritic cho ASCII "Binh Thanh" label match
+  - F-10 MEDIUM worker thiếu `home_lat/lng` cho geo fallback
+  - F-16 LOW history "Xong" tab pre-refresh show active deal
+  - F-11 LOW `confirmKaelChat` ALREADY_CONFIRMED code path không hit (deploy lag possible)
+- **Pass verified runtime**: backend `validateWorkflowTransition` reject mọi out-of-order/duplicate (8 case test pass); RLS isolation chính xác (customer chỉ đọc own jobs, worker không UPDATE jobs.final_price); AI artifact schema cấm workflow status keys; Kael final-price authority lock = `kael_price_max` at A7 confirm = 459000đ cho test job; disclaimer khớp RULES.md; double-confirm gate per RULES.md #7; multi-language VI↔EN switch chính xác; notifications body không có PII; estimate card render đúng 7 fields với confidence + platform fee 7.5% + tổng.
+- **Plan §27**: 9 phases (X0 pre-read robust → X1 AI gate → X2 idempotency+rate-limit → X3 matching unblock → X4 frontend hydrate → X5 PII+context → X6 UI polish → X7 E2E sign-off). Critical path X0 → X3 → X4 → X7. Parallel X1+X2+X3 sau X0. Effort 14-20 ngày sequential, 9-13 với parallelization. X3 là HARD GATE Tu approve trước khi migration production.
+- **Skill mapping**: X0 `kael-preflight`, X1 `kael-ai-boundary`, X2 `kael-supabase+kael-architecture-deepening`, X3 `kael-supabase`, X4 `kael-architecture-deepening`, X5 `kael-security-sweep`, X6 `kael-ui-rn-execution`, X7 `kael-review`.
+- **Test artifacts**: 35+ UI screenshots, 15+ network response bodies, 8+ MCP SQL queries (jobs, job_events, worker_profiles staging vs prod, kael_chat_turns PII verify, RLS tables list). Toàn bộ test job đã cleanup về `cancelled`.
+- **Out of scope X3+**: worker happy path end-to-end bị BLOCKED bởi F-09 cho đến khi production data fixed. Scope change UI, completion flow, review flow tất cả pending cho đến X3 done.
+
+## 2026-05-28 Deep audit PR #45 Orchestration UI/UX — Plan §27.16 addendum
+
+- **Trigger**: Tu yêu cầu audit deep UI/UX của PR #45 (commit 411ca74 "add workflow orchestration layer") đảm bảo verify đúng intent + không bias/lies/report-without-doing.
+- **PR #45 scope confirmed**: 35 files — 4 shared workflow contracts (workflow-phases, workflow-events, workflow-ui-rules, artifact-lifecycle), 1 hook `use-service-workflow.ts`, 7 mobile UI files (customer-surfaces, kael-chat-surface, agentic-parts, worker-surfaces, frontend-workflow-provider, state.ts), 5 Edge files (workflow-orchestrator, artifact-contract, services 418-line update, router, output-pipeline), 4 docs, 6 test files.
+- **Contract verification PASS**:
+  - `processStepCount(ticketMode)`: 1→2→3 UI verified runtime với screenshot session `d04aa942` (3 steps "01 Đọc / 02 Hỏi / 03 Chờ" ở phase kael_explaining).
+  - History 4 tabs Sửa/Giá/Chat/Xong all phase-gated honest empty state, KHÔNG có premature Done badge ở Xong tab khi job chưa reviewed.
+  - Backend validateWorkflowTransition reject 4 out-of-order + 1 idempotent case.
+  - AI artifact schema strict + may_transition literal(false) + FORBIDDEN_WORKFLOW_KEYS active.
+  - Theme dark mode + VI/EN language switch verified.
+  - ScopeChangeHardStopModal code contract verified (Phase 2.0 Kael final-price authority badge + hard-stop modal animationType=fade + onRequestClose=undefined).
+- **Deep audit FAIL — 4 finding mới**:
+  - **F-25 LOW**: Bottom tab "Đặt dịch vụ" yêu cầu 2 clicks lần đầu (Expo Web specific bundle reload artifact, defer fix).
+  - **F-26 HIGH UX**: Click service tile từ booking surface KHÔNG advance booking step, route về `/home` + surface = `customer-home-surface`. BookingWizard interactive A2-A7 không reachable Expo Web preview. Cần native verification.
+  - **F-27 HIGH UX**: Sign out clear localStorage + URL=/login NHƯNG UI stuck showing customer Profile until full reload. AuthProvider không re-mount khi storage clear.
+  - **F-28 HIGH**: Worker login → 57 calls `/rest/v1/profiles?select=role` (worker UUID) NHƯNG **0 calls** `/functions/v1/mobile-api/workers/me`. UI stuck "Chờ duyệt" + service cards "Chờ duyệt" dù backend confirmed approved/available. `workerRefresh` useEffect không fire reliably.
+- **Plan §27 v0.3 updated**: 17 findings tổng (10 HIGH + 4 MEDIUM + 3 LOW). X4 scope mở rộng cover F-27 + F-28 (2-3 ngày). X6 nhận F-26 (cần native test). Total effort 16-22 sequential / 10-14 parallel ngày.
+- **Audit anti-bias compliance**: mọi finding kèm runtime evidence (screenshot + network log + DOM eval + DB query). KHÔNG finding nào dựa vào code inspection only. F-25 marked LOW vì có thể Expo Web specific. F-26 propose native verification trước fix.
+- **Cleanup**: customer test login lại cleanup any pending jobs, không có active jobs còn lại trong audit.
+- **Evidence artifacts**: 50+ screenshots, network trace logs (worker session 57 profile + 0 worker API call pattern), DOM eval snapshots, code review ScopeChangeHardStopModal Phase 2.0 contract.
+
+## 2026-05-28 Worker Side Deep Audit — Plan §27.17 addendum (v0.4)
+
+- **Trigger**: Tu yêu cầu test thêm Worker section vì §27.16 chỉ test 1 screen rồi BLOCKED bởi F-28. Audit complete 5 tabs Worker + availability toggle + direct API.
+- **F-28 reproducibility update**: Fresh reload + clear localStorage → worker login OK + workerRefresh fired correctly + UI hydrate "Đã duyệt"/districts/radius/toggle. F-28 chỉ fail khi customer→worker session switch không full reload → downgrade từ "stuck forever" thành "intermittent" (cần clear session).
+- **Worker 5 tabs verified runtime**:
+  - Tab Nhà: ✓ Hydrate "Đã duyệt" pill + Bình Thạnh + 8km radius + 3 services "Kỹ năng" + toggle ON
+  - Tab Việc (3 sub-tabs): ✓ Phase-gated honest empty: Chờ nhận "Chưa có yêu cầu mới", Đang làm "Chưa nhận việc", Cần xử lý "Không có mục chặn + Ghi chú và ảnh nghiệm thu sẽ hiện..."
+  - Tab Nhắn: ❌ **F-29 MEDIUM**: empty hoàn toàn TRỐNG, KHÔNG có Vietnamese empty state copy (Customer Chat tab có copy "Chưa có trao đổi cho yêu cầu này")
+  - Tab Tiền: ❌ **F-30 HIGH FAKE DATA**: Bar chart 7 cột T2-T7+CN với chiều cao biến thiên dù backend `total_jobs_paid=0, gross_earnings=0` (verified curl). Vi phạm RULES.md #8.
+  - Tab Hồ sơ: ✓ Hydrate "Đã duyệt" + "Xác minh danh tính: Đã duyệt" + "Kỹ năng: Sửa điện · Sửa nước · Vệ..." + **"Khu vực làm việc: Bình Thạnh · Quận 1 · Th..."** ← F-09 visual confirmed runtime UI (labels không phải slugs)
+- **Worker availability toggle**: ✓ END-TO-END WORKS. Click `worker-availability-primary-action` → PATCH /workers/me/availability 200 → UI sync pill "Đã duyệt" → "Tạm tắt", toggle OFF, button "Bật nhận việc" active.
+- **Worker direct API 5 endpoints all PASS**: GET /workers/me, /broadcasts ([]), /jobs ([]), /earnings (all 0), PATCH /availability (200).
+- **Updated finding inventory**: 19 total (12 HIGH + 5 MEDIUM + 3 LOW). Plan §27 v0.4 updated.
+- **Adjusted effort**: X6 0.5-1 ngày → 1.5-2 ngày (thêm F-29 + F-30). Total 17-23 sequential / 11-15 parallel ngày.
+- **Anti-bias compliance v0.4**: F-28 downgrade dựa trên runtime evidence với fresh reload (KHÔNG bias đánh giá quá nặng). F-30 verified bằng concrete contradiction giữa backend earnings=0 và UI chart varying heights, không speculation. F-29 verified bằng compare Customer vs Worker chat empty state copy.
+- **Evidence artifacts**: 14 screenshots Worker UI deep (5 tabs + 3 sub-tabs + toggle before/after) + 5 curl API responses + DB worker_profiles cross-check.
+- **STILL UNTESTED runtime** (BLOCKED F-09): Worker accept broadcast B3 + status updates B5 + scope change B6 + completion B7 + customer joint A8-A14. Cần fix F-09 production data trước.
+
+## 2026-05-28 Worker Deep Audit v2 — Plan §27.18 (v0.5)
+
+- **Trigger**: Tu yêu cầu audit Worker một lần nữa thật deep. Focus direct API endpoint shape + schema integrity + auth boundary + F-09 root cause via code.
+- **Verified PASS 10 contracts**:
+  - Workflow transition shape (404 no info leak), enum strict, **Phase 2.0 final-price authority runtime block** với explicit error "Giá cuối do Kael xác định, thợ không được nhập"
+  - Phase 2.0 scope change reject worker-typed price_min/price_max
+  - Worker register schema strict (CCCD URLs required, real date, min/max constraints), ALREADY_FINALIZED 409 idempotent
+  - Expired JWT 401, cross-role 403, push token schema validation
+  - Worker schema separated from customer cancellation schema (different fields)
+- **F-09 root cause confirmed via code review**: `domain.ts:308 districts: z.array(z.string().min(1).max(50)).min(1).max(20)` — schema accept any string 1-50 chars, KHÔNG enforce slug format. Đây là root cause data integrity issue. Fix tại X3: thêm `districtSlugSchema` validation.
+- **New findings v0.5**:
+  - **F-31 INFO**: `workerScopeChangeSchema` request field `new_description` vs `JobDetailResponse.current_scope_change.requested_description` field naming inconsistency. Defer pending mobile-side verification.
+  - **F-32 MEDIUM**: Kael memory endpoints `/me/kael-memory` GET/DELETE + `/workers/me/kael-memory` GET tất cả trả 404 NOT_FOUND trên production dù router.ts define. Customer/Worker không thể view/delete Kael memory → privacy concern kết hợp F-22 raw PII storage. Possible deployment gap với F-11.
+- **Updated finding inventory (21 total)**: 12 HIGH + 6 MEDIUM + 3 LOW + 1 INFO. Plan §27 v0.5.
+- **Anti-bias compliance v0.5**: KHÔNG seed database (QA charter strict). Mọi finding kèm exact response body + HTTP code. F-09 traced runtime → schema code review để confirm root cause (KHÔNG speculation). F-32 verified 3 paths cùng 404 → consistent deployment gap pattern.
+- **STILL UNTESTED runtime** (cần Tu approve seed/data fix): Worker accept B3, status update B5, scope change B6, completion B7, customer joint A8-A14, A11 hard-stop modal trigger. Recommend X3 fix worker.districts trước khi runtime test 6 flows này.
