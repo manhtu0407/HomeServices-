@@ -19,6 +19,7 @@ import { localizedServiceLabel, type AppLanguage, useAppLanguage } from '@/lib/a
 import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { kaelChatService } from '@/lib/services'
+import { useServiceWorkflow } from '@/lib/use-service-workflow'
 import { inferKaelChatDistrict } from './address-district'
 import {
   EmptyKaelBriefCard,
@@ -250,9 +251,15 @@ export function KaelChatSurface() {
   const hasDraft = draft.trim().length > 0
   const hasInteraction = Boolean(routeSessionId || session || selectedService || hasDraft || addressLabel.trim() || error || loading)
   const showStarter = hasInteraction && turns.length === 0 && !loading && !session
-  const showProcess = hasInteraction || loading
-  const showTrace = Boolean(session || turns.length > 0 || estimate)
-  const showBrief = Boolean(session && !estimate)
+  const chatWorkflowStatus = session?.session.status === 'confirmed' ? 'broadcasting' : session?.session.status === 'estimate_ready' ? 'awaiting_customer_confirm' : null
+  const workflow = useServiceWorkflow({
+    status: chatWorkflowStatus, hasAiNotes: turns.length > 0, hasCustomerInput: hasInteraction, hasEstimate: Boolean(estimate), isLoading: loading, optimistic: confirming ? 'confirming_ticket' : null,
+  })
+  const showProcess = workflow.artifacts.process_ticket.visible
+  const showTrace = workflow.artifacts.ai_diagnosis.visible
+  const showBrief = Boolean(session && !estimate && workflow.artifacts.process_ticket.mode === 'partial')
+  const showEstimate = Boolean(estimate && workflow.artifacts.estimate.visible)
+  const canConfirmEstimate = workflow.allowedActions.confirmTicketAndEstimate && session?.session.next_action === 'estimate_ready'
 
   useEffect(() => {
     if (addressDistrict) addressDistrictRef.current = addressDistrict
@@ -360,7 +367,6 @@ export function KaelChatSurface() {
           type: 'confirmSucceeded',
           message: localizedGeneratedText(result.data.message || confirmationFallback, language, confirmationFallback),
           jobId: result.data.job_id,
-          status: result.data.status,
         })
         await actions.hydrateRemoteJobById(result.data.job_id)
       } else {
@@ -400,11 +406,7 @@ export function KaelChatSurface() {
 
           <View style={styles.turnList} testID="customer-kael-chat-history">
             {showProcess ? (
-              <KaelProcessCard
-                estimate={estimate}
-                loading={loading}
-                text={text}
-              />
+              <KaelProcessCard estimate={estimate} loading={loading} ticketMode={workflow.artifacts.process_ticket.mode} text={text} />
             ) : null}
             {showStarter ? (
               <>
@@ -468,9 +470,7 @@ export function KaelChatSurface() {
             {showBrief ? <EmptyKaelBriefCard language={language} selectedService={selectedService} text={text} /> : null}
           </View>
 
-          {estimate ? (
-            <EstimateCard estimate={estimate} language={language} onConfirm={confirmSearch} confirming={confirming} confirmed={session?.session.next_action === 'confirmed'} confirmArmed={confirmArmed} />
-          ) : null}
+          {showEstimate && estimate ? <EstimateCard canConfirm={canConfirmEstimate} estimate={estimate} language={language} onConfirm={confirmSearch} confirming={confirming} confirmed={session?.session.next_action === 'confirmed'} confirmArmed={confirmArmed} /> : null}
 
           {confirmedMessage ? (
             <View style={[styles.stateCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-confirmed">
@@ -555,14 +555,8 @@ function EstimateInline({
   )
 }
 
-function EstimateCard({
-  confirming,
-  confirmed,
-  confirmArmed,
-  estimate,
-  language,
-  onConfirm,
-}: {
+function EstimateCard({ canConfirm, confirming, confirmed, confirmArmed, estimate, language, onConfirm }: {
+  canConfirm: boolean
   confirming: boolean
   confirmed: boolean
   confirmArmed: boolean
@@ -577,6 +571,7 @@ function EstimateCard({
   const disclaimer = language === 'vi'
     ? LOCAL_WORKFLOW_PRICE_DISCLAIMER
     : localizedGeneratedText(estimate.disclaimer, language, text.estimateDisclaimerFallback)
+  const confirmDisabled = confirmed || confirming || !canConfirm
 
   return (
     <View style={[styles.estimateCard, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-estimate-card">
@@ -609,8 +604,8 @@ function EstimateCard({
           <Text style={[styles.confirmPromptText, { color: tokens.text }]}>{text.confirmPrompt}</Text>
         </View>
       ) : null}
-      <Pressable accessibilityRole="button" disabled={confirmed || confirming} onPress={onConfirm} style={({ pressed }) => [styles.primaryButton, { backgroundColor: confirmed ? tokens.disabled : tokens.primary }, pressed ? styles.pressed : null]} testID="customer-kael-chat-confirm">
-        <Text style={[styles.primaryButtonText, { color: confirmed ? tokens.subtleText : tokens.primaryText }]}>{confirming ? text.confirming : confirmed ? text.nextAction.confirmed : confirmArmed ? text.confirmArmed : text.confirm}</Text>
+      <Pressable accessibilityRole="button" disabled={confirmDisabled} onPress={onConfirm} style={({ pressed }) => [styles.primaryButton, { backgroundColor: confirmDisabled ? tokens.disabled : tokens.primary }, pressed ? styles.pressed : null]} testID="customer-kael-chat-confirm">
+        <Text style={[styles.primaryButtonText, { color: confirmDisabled ? tokens.subtleText : tokens.primaryText }]}>{confirming ? text.confirming : confirmed ? text.nextAction.confirmed : confirmArmed ? text.confirmArmed : text.confirm}</Text>
       </Pressable>
     </View>
   )

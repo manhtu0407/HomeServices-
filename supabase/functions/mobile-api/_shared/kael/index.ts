@@ -9,6 +9,7 @@ export * from "./orchestrator.ts";
 export * from "./streaming.ts";
 export * from "./scope-risk.ts";
 export * from "./output-pipeline.ts";
+export * from "./artifact-contract.ts";
 export * from "./permission-gate.ts";
 export * from "./rate-limit.ts";
 export * from "./memory-sanitizer.ts";

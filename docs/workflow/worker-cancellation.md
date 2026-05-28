@@ -29,6 +29,9 @@ Worker accepts job
   `scope_change_pending`.
 - Admin decision UI is still deferred to Edge admin + Supabase Studio/admin
   tooling. P11 requires admin review before any suspension.
+- Duplicate explicit cancel requests should return the existing cancellation
+  request state when Edge can verify the original worker request, without
+  writing duplicate job events, notifications, broadcasts, or admin queue rows.
 
 ## Difference vs B6 Scope Change
 

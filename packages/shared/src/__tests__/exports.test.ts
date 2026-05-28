@@ -23,6 +23,10 @@ describe('packages/shared barrel export completeness', () => {
     expect(indexSrc).toContain("from './constants'")
   })
 
+  it('re-exports from workflow contracts', () => {
+    expect(indexSrc).toContain("from './workflow'")
+  })
+
   it('re-exports validation schemas by name (not wildcard)', () => {
     // Named exports are safer — prevent re-export collisions
     expect(indexSrc).toContain('serviceTypeSchema')
@@ -94,6 +98,11 @@ describe('package.json export map', () => {
     expect(pkg.exports['./constants']).toContain('constants.ts')
   })
 
+  it('has ./workflow entry point', () => {
+    expect(pkg.exports['./workflow']).toBeDefined()
+    expect(pkg.exports['./workflow']).toContain('workflow/index.ts')
+  })
+
   it('all exported files actually exist', () => {
     for (const [key, path] of Object.entries(pkg.exports)) {
       const fullPath = resolve(PKG_ROOT, path as string)
@@ -111,6 +120,7 @@ describe('all source files exist', () => {
     'index.ts',
     'constants.ts',
     'validation.ts',
+    'workflow/index.ts',
     'types/index.ts',
     'types/database.types.ts',
     'types/ai.types.ts',

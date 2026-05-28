@@ -13,7 +13,7 @@
 Defined in init migration `supabase/migrations/20260511000000_init_schema.sql`
 and refined by `20260513114845_align_structures_workflow.sql`.
 
-Job status (16 values):
+Job status (17 values):
 ```
 draft, analyzing, estimate_ready, awaiting_customer_confirm,
 broadcasting, worker_matched, worker_on_way, arrived, inspecting,
@@ -49,6 +49,43 @@ Why fold rather than rename: keep mobile fold honest with backend; do not
 invent new statuses; UI can still show transitional labels via copy without
 introducing new persisted values.
 
+### 4. Shared workflow view model
+
+Defined in `packages/shared/src/workflow/**`. This layer maps backend
+`JobStatus` into product workflow phases, artifact modes, allowed actions, and
+phase-gated UI visibility. It does not create new persisted statuses and must
+not mutate backend state.
+
+Backend status `reviewed` maps to workflow phase `done`; do not introduce a
+separate user-visible `reviewed` phase.
+
+Customer/worker mobile surfaces should read this view model through
+`apps/mobile/lib/use-service-workflow.ts` instead of re-deciding progressive
+workflow visibility from ad hoc data existence checks.
+
+Edge transition ownership lives in `workflow-orchestrator.ts`; `ai_estimate_ready`
+and `ai_explanation_ready` are explicit Kael-owned events, while mobile/customer
+actions only request allowed backend transitions.
+
+Non-transition workflow commands such as cancellation requests and media attach
+are tracked separately as `WORKFLOW_COMMAND_EVENTS`; they may validate whether an
+action is allowed in the current phase without directly changing `jobs.status`.
+
+## Kael chat confirmation adapter boundary
+
+`confirm_kael_chat_atomic` is an intentional adapter boundary for the Kael-first
+intake path. It creates the initial `jobs` row from a confirmed Kael chat session
+and returns `awaiting_customer_confirm`; it is not a general workflow
+orchestrator replacement and must not be used for later phase skips. After the
+job exists, subsequent workflow-sensitive actions should pass through
+`workflow-orchestrator.ts` events/commands or the legacy lifecycle validator
+until fully migrated.
+Duplicate `ALREADY_CONFIRMED` retries return the current job state when the job
+already moved past ticket review. If the previous request stopped after job
+creation and the job is still `awaiting_customer_confirm`, the retry may complete
+the normal `confirmSearch` transition once; it must not create a duplicate
+broadcast or log a second transition after `broadcasting`.
+
 ## Payment skip (Phase 5.5)
 
 In Phase 0 the product has no payment rails. `lifecycle.ts` therefore allows
@@ -67,5 +104,10 @@ do not collapse them into a single identifier.
 ## Test coverage
 
 - `packages/shared/src/__tests__/mobile-workflow.test.ts` covers LocalDealStatus fold.
+- `packages/shared/src/__tests__/workflow-contract.test.ts` and
+  `workflow-scenarios.test.ts` cover workflow phases, artifact lifecycle, UI
+  visibility rules, and progressive behavior.
 - `apps/api/src/__tests__/unit/mobile-api-edge-runtime.test.ts` covers lifecycle transitions.
+- `apps/api/src/__tests__/unit/mobile-api-workflow-orchestrator.test.ts` covers
+  Edge workflow event ownership before mobile-api mutates job status.
 - New gate in Phase 5.7 asserts dock uses `replace(item.path)` and never `push(item.path)`.

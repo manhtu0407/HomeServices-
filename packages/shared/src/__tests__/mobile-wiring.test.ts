@@ -621,6 +621,7 @@ describe('customer frontend shell surfaces', () => {
     expect(stack).toContain('vietnameseSignalPattern')
     expect(stackState).toContain("case 'syncRouteService'")
     expect(stackState).toContain('state.session?.session.service_type !== action.service')
+    expect(stackState).toContain("status: 'confirmed'")
     expect(stack).toContain('catch (unknownError: unknown)')
     expect(stackState).toContain('sending: false')
     expect(stackState).toContain('confirming: false')
@@ -883,6 +884,60 @@ describe('customer frontend shell surfaces', () => {
   })
 })
 
+describe('customer Kael workflow view model wiring', () => {
+  const kaelChat = () => read('components/customer/kael-chat/kael-chat-surface.tsx')
+  const agenticParts = () => read('components/customer/kael-chat/agentic-parts.tsx')
+  const workflowHook = () => read('lib/use-service-workflow.ts')
+
+  it('derives Kael ticket visibility from the shared workflow view model', () => {
+    const src = kaelChat()
+    expect(src).toContain('useServiceWorkflow')
+    expect(src).toContain('const chatWorkflowStatus = session?.session.status === \'confirmed\'')
+    expect(src).toContain('status: chatWorkflowStatus')
+    expect(src).toContain('workflow.artifacts.process_ticket.visible')
+    expect(src).toContain('workflow.artifacts.estimate.visible')
+    expect(src).toContain('workflow.allowedActions.confirmTicketAndEstimate && session?.session.next_action === \'estimate_ready\'')
+    expect(src).toContain('ticketMode={workflow.artifacts.process_ticket.mode}')
+  })
+
+  it('keeps the mobile workflow adapter memoized and side-effect free', () => {
+    const src = workflowHook()
+    expect(src).toContain("import { useMemo } from 'react'")
+    expect(src).toContain('return useMemo(')
+    expect(src).toContain('buildWorkflowViewModel({')
+    expect(src).not.toContain('fetch(')
+    expect(src).not.toContain('supabase')
+  })
+
+  it('renders Kael process steps progressively from the ticket artifact mode', () => {
+    const src = agenticParts()
+    expect(src).toContain('type WorkflowArtifactMode')
+    expect(src).toContain('function processStepCount')
+    expect(src).toContain('steps.slice(0, visibleSteps)')
+  })
+})
+
+describe('customer history phase-gated workflow wiring', () => {
+  const shell = () => read('components/customer/customer-surfaces.tsx')
+
+  it('uses the shared workflow view model for customer history gates', () => {
+    const src = shell()
+    expect(src).toContain('useServiceWorkflow')
+    expect(src).toContain('status: selectors.currentBackendStatus')
+    expect(src).toContain("const canCreateFreshRequest = !deal || workflow.isDone || selectors.currentStatus === 'cancelled'")
+    expect(src).toContain('workflow.allowedActions.confirmTicketAndEstimate')
+    expect(src).toContain('workflow.artifacts.scope_change.visible')
+    expect(src).toContain('workflow.artifacts.completion_evidence.visible')
+    expect(src).toContain('workflow.artifacts.review.visible')
+    expect(src).toContain('const isCompletedHistory = workflow.isDone')
+    expect(src).toContain('scopeChange={showScopeChangeArtifact ? scopeChange : null}')
+    expect(src).toContain('const primaryLabel = canSubmitReview')
+    expect(src).toContain('const primaryAction = canSubmitReview ? onOpenReview : canConfirmCompletion ? onConfirmCompletion : isCompleted ? onOpenReview : onOpenChat')
+    expect(src).toContain('onPress={isCompleted ? onOpenReview : onOpenChat}')
+    expect(src).toContain("return ['draft', 'cancelled', 'reviewed'].includes(status)")
+  })
+})
+
 describe('frontend workflow provider wiring', () => {
   it('wraps Expo root below AuthProvider and above routed screens', () => {
     const src = read('app/_layout.tsx')
@@ -900,6 +955,16 @@ describe('frontend workflow provider wiring', () => {
     expect(src).not.toContain('createClient')
     expect(src).not.toContain('supabase.')
     expect(src).not.toContain('fetch(')
+  })
+
+  it('keeps deferred realtime status subscriptions out of the workflow provider to avoid duplicate phase updates', () => {
+    const provider = read('lib/frontend-workflow-provider.tsx')
+    const realtime = read('lib/realtime.ts')
+
+    expect(realtime).toContain('subscribeToJobStatus')
+    expect(realtime).toContain('Until then, do NOT wire it')
+    expect(provider).not.toContain('subscribeToJobStatus')
+    expect(provider).not.toContain('postgres_changes')
   })
 
   it('resets local workflow when the authenticated user changes', () => {
@@ -1340,6 +1405,9 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).toContain("const workerJobsTabKeys: WorkerJobsTab[] = ['waiting', 'active', 'needs']")
     expect(src).toContain("const [activeJobsTab, setActiveJobsTab] = useState<WorkerJobsTab>(requestedTab ?? 'active')")
     expect(src).toContain("const requestedTab = isWorkerJobsTab(params.tab) ? params.tab : null")
+    expect(src).toContain('useServiceWorkflow')
+    expect(src).toContain('status: selectors.currentBackendStatus')
+    expect(src).toContain("workflow.artifacts.scope_change.mode === 'review'")
     expect(src).toContain('worker-jobs-segment-${tab}')
     expect(src).not.toContain('worker-jobs-tab-overview')
     expect(src).toContain('worker-jobs-active-card')
@@ -2693,6 +2761,7 @@ describe('frontend-only workflow safety audit', () => {
     expect(customerShell).toContain('Xác nhận đã nhận việc?')
     expect(customerShell).toContain('canCreateFreshRequest')
     expect(customerShell).toContain('canEditNoWorkerRequest')
+    expect(customerShell).toContain('workflow.allowedActions.confirmTicketAndEstimate && selectors.canConfirmCustomerSearch')
     expect(customerShell).toContain('customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState, languageMode)')
     expect(customerShell).toContain('localizedCustomerAreaLabel')
     expect(customerShell).toContain("searchState === 'no_worker'")

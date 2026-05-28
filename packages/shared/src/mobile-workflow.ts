@@ -83,6 +83,7 @@ export type LocalWorkerBroadcast = {
 export type LocalDeal = {
   id: string
   status: LocalDealStatus
+  backendStatus?: JobStatus
   draft: LocalDealDraft
   estimate: LocalDealEstimate | null
   broadcast: LocalWorkerBroadcast | null
@@ -114,6 +115,7 @@ export type LocalWorkflowState = {
 export type LocalRemoteJobSnapshot = {
   id: string
   status: LocalDealStatus
+  backendStatus?: JobStatus
   serviceType: ServiceType
   description: string
   problemChips: string[]
@@ -172,6 +174,7 @@ export type LocalWorkflowAction =
 
 export type LocalWorkflowSelectors = {
   currentStatus: LocalDealStatus | null
+  currentBackendStatus: JobStatus | null
   scheduleMode: LocalScheduleMode
   customerSearchState: LocalCustomerSearchState
   hasLocalBroadcast: boolean
@@ -612,7 +615,8 @@ export function localWorkflowReducer(
     case 'customer_submit_review': {
       if (!state.deal) return withError(state, 'Không có phiếu để đánh giá')
       if (state.deal.status !== 'confirmed_by_customer') return invalidTransition(state, state.deal.status, 'reviewed')
-      return setStatus(state, 'confirmed_by_customer', 'reviewed')
+      if (!canSubmitCustomerReview(state.deal)) return withError(state, 'Đánh giá chỉ mở sau khi hệ thống xác nhận đúng bước')
+      return setCustomerReviewSubmitted(state)
     }
     case 'cancel_deal': {
       if (!state.deal) return state
@@ -661,10 +665,12 @@ export function selectLocalWorkflow(state: LocalWorkflowState): LocalWorkflowSel
                 ? 'active'
                 : 'idle'
   const hasWorkerActionGate = state.workerGate === 'local_deal_audit' || state.workerGate === 'remote_backend'
-  const canCustomerSubmitReview = Boolean(deal && status === 'confirmed_by_customer')
+  const backendStatus = deal?.backendStatus ?? status
+  const canCustomerSubmitReview = Boolean(deal && canSubmitCustomerReview(deal))
 
   return {
     currentStatus: status,
+    currentBackendStatus: backendStatus,
     scheduleMode: 'now_only',
     customerSearchState,
     hasLocalBroadcast: Boolean(broadcast),
@@ -694,11 +700,11 @@ export function validateLocalDealDraft(draft: LocalDealDraft): string | null {
 }
 
 function canReplaceLocalDeal(status: LocalDealStatus): boolean {
-  return ['draft', 'cancelled', 'confirmed_by_customer', 'reviewed'].includes(status)
+  return ['draft', 'cancelled', 'reviewed'].includes(status)
 }
 
 function canEditBookingDraft(status: LocalDealStatus): boolean {
-  return ['draft', 'cancelled', 'confirmed_by_customer', 'reviewed'].includes(status)
+  return ['draft', 'cancelled', 'reviewed'].includes(status)
 }
 
 function canCancelLocalDeal(status: LocalDealStatus): boolean {
@@ -707,6 +713,13 @@ function canCancelLocalDeal(status: LocalDealStatus): boolean {
 
 function canConfirmCustomerCompletion(deal: LocalDeal): boolean {
   return deal.status === 'completed_by_worker' && deal.broadcast?.status === 'accepted'
+}
+
+function canSubmitCustomerReview(deal: LocalDeal): boolean {
+  const backendStatus = deal.backendStatus ?? deal.status
+  return backendStatus === 'paid' ||
+    backendStatus === 'confirmed_by_customer' ||
+    (!deal.backendStatus && deal.status === 'confirmed_by_customer')
 }
 
 export function serviceLabel(serviceType: ServiceType | null): string {
@@ -774,6 +787,7 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
   return {
     id: job.id,
     status: job.status,
+    backendStatus: job.backendStatus,
     draft: {
       serviceType: job.serviceType,
       problemChips: job.problemChips,
@@ -951,6 +965,18 @@ function setStatus(
       status: to,
     },
     lastError: null,
+  }
+}
+
+function setCustomerReviewSubmitted(state: LocalWorkflowState): LocalWorkflowState {
+  const next = setStatus(state, 'confirmed_by_customer', 'reviewed')
+  if (!next.deal || !state.deal?.backendStatus) return next
+  return {
+    ...next,
+    deal: {
+      ...next.deal,
+      backendStatus: 'reviewed',
+    },
   }
 }
 

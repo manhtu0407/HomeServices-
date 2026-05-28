@@ -68,6 +68,103 @@ describe('mobile local workflow state machine', () => {
     expect(toLocalDealStatus('paid')).toBe('confirmed_by_customer')
   })
 
+  it('preserves backend-only settlement status when hydrating remote jobs', () => {
+    const state = reduce([{
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-paid',
+        backendStatus: 'paid',
+        status: toLocalDealStatus('paid'),
+        serviceType: 'plumbing',
+        description: 'Vòi nước lavabo rò liên tục.',
+        problemChips: [PROBLEM_CHIPS.plumbing[0]],
+        addressLabel: 'Quận 7, TP.HCM',
+        districtLabel: 'Quận 7',
+      },
+    }])
+    const selectors = selectLocalWorkflow(state)
+
+    expect(state.deal?.status).toBe('confirmed_by_customer')
+    expect(state.deal?.backendStatus).toBe('paid')
+    expect(selectors.currentStatus).toBe('confirmed_by_customer')
+    expect(selectors.currentBackendStatus).toBe('paid')
+  })
+
+  it('keeps review locked only while backend settlement is still payment_pending', () => {
+    const phaseZeroConfirmed = reduce([{
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-confirmed',
+        backendStatus: 'confirmed_by_customer',
+        status: toLocalDealStatus('confirmed_by_customer'),
+        serviceType: 'plumbing',
+        description: 'Vòi nước lavabo rò liên tục.',
+        problemChips: [PROBLEM_CHIPS.plumbing[0]],
+        addressLabel: 'Quận 7, TP.HCM',
+        districtLabel: 'Quận 7',
+      },
+    }])
+    const pendingPayment = reduce([{
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-payment-pending',
+        backendStatus: 'payment_pending',
+        status: toLocalDealStatus('payment_pending'),
+        serviceType: 'plumbing',
+        description: 'Vòi nước lavabo rò liên tục.',
+        problemChips: [PROBLEM_CHIPS.plumbing[0]],
+        addressLabel: 'Quận 7, TP.HCM',
+        districtLabel: 'Quận 7',
+      },
+    }])
+    const paid = reduce([{
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-paid',
+        backendStatus: 'paid',
+        status: toLocalDealStatus('paid'),
+        serviceType: 'plumbing',
+        description: 'Vòi nước lavabo rò liên tục.',
+        problemChips: [PROBLEM_CHIPS.plumbing[0]],
+        addressLabel: 'Quận 7, TP.HCM',
+        districtLabel: 'Quận 7',
+      },
+    }])
+
+    expect(selectLocalWorkflow(phaseZeroConfirmed).reviewLocked).toBe(false)
+    expect(selectLocalWorkflow(phaseZeroConfirmed).canCustomerSubmitReview).toBe(true)
+    expect(selectLocalWorkflow(pendingPayment).reviewLocked).toBe(true)
+    expect(selectLocalWorkflow(pendingPayment).canCustomerSubmitReview).toBe(false)
+    expect(selectLocalWorkflow(paid).reviewLocked).toBe(false)
+    expect(selectLocalWorkflow(paid).canCustomerSubmitReview).toBe(true)
+
+    const reviewed = localWorkflowReducer(paid, { type: 'customer_submit_review' })
+    expect(reviewed.deal?.status).toBe('reviewed')
+    expect(reviewed.deal?.backendStatus).toBe('reviewed')
+    expect(selectLocalWorkflow(reviewed).currentBackendStatus).toBe('reviewed')
+  })
+
+  it('does not optimistically submit review while backend settlement is payment_pending', () => {
+    const pendingPayment = reduce([{
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-payment-pending',
+        backendStatus: 'payment_pending',
+        status: toLocalDealStatus('payment_pending'),
+        serviceType: 'plumbing',
+        description: 'Vòi nước lavabo rò liên tục.',
+        problemChips: [PROBLEM_CHIPS.plumbing[0]],
+        addressLabel: 'Quận 7, TP.HCM',
+        districtLabel: 'Quận 7',
+      },
+    }])
+    const attempted = localWorkflowReducer(pendingPayment, { type: 'customer_submit_review' })
+
+    expect(attempted.deal?.status).toBe('confirmed_by_customer')
+    expect(attempted.deal?.backendStatus).toBe('payment_pending')
+    expect(attempted.lastError).toContain('hệ thống xác nhận đúng bước')
+  })
+
   it('starts empty and does not fabricate a booking, worker, price, payment, or review', () => {
     const state = createInitialLocalWorkflowState()
     const selectors = selectLocalWorkflow(state)
@@ -724,7 +821,7 @@ describe('mobile local workflow state machine', () => {
     expect(attemptedAfterConfirm.lastError).toContain('Không thể hủy')
   })
 
-  it('allows a clean new home service draft after customer confirmation', () => {
+  it('does not allow a clean new home service draft before the customer review completes', () => {
     const completed = reduce([
       ...validBookingActions,
       { type: 'confirm_customer_search' },
@@ -735,6 +832,26 @@ describe('mobile local workflow state machine', () => {
       { type: 'worker_start_repair' },
       { type: 'worker_complete_job' },
       { type: 'customer_confirm_completion' },
+    ])
+    const next = localWorkflowReducer(completed, { type: 'start_home_service', serviceType: 'electrical' })
+
+    expect(next.deal?.status).toBe('confirmed_by_customer')
+    expect(next.deal?.draft.serviceType).toBe('plumbing')
+    expect(next.lastError).toContain('Đang có yêu cầu đang chạy')
+  })
+
+  it('allows a clean new home service draft after the customer review completes', () => {
+    const completed = reduce([
+      ...validBookingActions,
+      { type: 'confirm_customer_search' },
+      { type: 'worker_accept_broadcast' },
+      { type: 'worker_start_travel' },
+      { type: 'worker_mark_arrived' },
+      { type: 'worker_start_inspection' },
+      { type: 'worker_start_repair' },
+      { type: 'worker_complete_job' },
+      { type: 'customer_confirm_completion' },
+      { type: 'customer_submit_review' },
     ])
     const next = localWorkflowReducer(completed, { type: 'start_home_service', serviceType: 'electrical' })
 

@@ -1710,7 +1710,7 @@ function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
   }
   if (Array.isArray(record.completion_photo_urls)) {
     const urls = record.completion_photo_urls;
-    if (urls.length > 10 || urls.some((value) => !isHttpUrl(value))) {
+    if (urls.length > 10 || urls.some((value) => !isCompletionPhotoRef(value))) {
       apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
     }
     result.completion_photo_urls = urls;
@@ -1729,6 +1729,22 @@ function isHttpUrl(value: unknown): value is string {
   try {
     const url = new URL(value);
     return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isCompletionPhotoRef(value: unknown): value is string {
+  if (isHttpUrl(value)) return true;
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    const pathParts = url.pathname.split("/").filter(Boolean);
+    return url.protocol === "supabase:" &&
+      url.hostname === "job-media" &&
+      pathParts.length >= 3 &&
+      pathParts[1] === "after" &&
+      !pathParts.some((part) => part === "." || part === "..");
   } catch {
     return false;
   }

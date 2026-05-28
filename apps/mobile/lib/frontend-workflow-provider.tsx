@@ -300,6 +300,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
         type: 'hydrate_remote_job',
         job: {
           ...dealToSnapshot(existing),
+          backendStatus: cancelled.data.status,
           status: toLocalDealStatus(cancelled.data.status),
           broadcast: existing.broadcast
             ? { ...existing.broadcast, status: 'cancelled', fullAddressVisible: false, fullAddressLabel: null }
@@ -386,6 +387,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
         workerGate: 'remote_backend',
         job: {
           ...dealToSnapshot(existing),
+          backendStatus: accepted.data.status,
           status: toLocalDealStatus(accepted.data.status),
           addressLabel: fullAddressLabel || existing.draft.addressLabel,
           broadcast: {
@@ -685,6 +687,7 @@ function isStaleBroadcastError(code: string) {
 function createJobResponseToSnapshot(data: CreateJobResponse, draft: LocalDealDraft): LocalRemoteJobSnapshot {
   return {
     id: data.job_id,
+    backendStatus: data.status,
     status: toLocalDealStatus(data.status),
     serviceType: data.estimate.service_type,
     description: draft.description,
@@ -704,6 +707,7 @@ function confirmSearchToSnapshot(data: ConfirmSearchResponse, deal: NonNullable<
   const broadcastSent = data.broadcast_sent
   return {
     ...snapshot,
+    backendStatus: data.status,
     status: toLocalDealStatus(data.status),
     broadcast: {
       status: broadcastSent ? 'sent' : 'expired',
@@ -751,6 +755,7 @@ function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
 
   return {
     id: job.id,
+    backendStatus: job.status,
     status: toLocalDealStatus(job.status),
     serviceType,
     description: job.description,
@@ -786,6 +791,7 @@ function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalR
     .join(', ')
   return {
     id: job.id,
+    backendStatus: job.status,
     status: toLocalDealStatus(job.status),
     serviceType: job.service_type,
     description: job.problem_summary ?? 'Yêu cầu sửa chữa',
@@ -802,6 +808,7 @@ function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalR
 function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): LocalRemoteJobSnapshot {
   return {
     id: deal.id,
+    backendStatus: deal.backendStatus,
     status: deal.status,
     serviceType: deal.draft.serviceType as ServiceType,
     description: deal.draft.description,

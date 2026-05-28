@@ -1,0 +1,39 @@
+import { useMemo } from 'react'
+import { buildWorkflowViewModel, type WorkflowViewModel, type WorkflowViewModelInput } from '@home-services/shared'
+
+export function useServiceWorkflow(input: WorkflowViewModelInput): WorkflowViewModel {
+  const {
+    hasAiNotes,
+    hasCompletionEvidence,
+    hasCustomerInput,
+    hasEstimate,
+    hasScopeChange,
+    isLoading,
+    optimistic,
+    status,
+  } = input
+
+  return useMemo(
+    () =>
+      buildWorkflowViewModel({
+        hasAiNotes,
+        hasCompletionEvidence,
+        hasCustomerInput,
+        hasEstimate,
+        hasScopeChange,
+        isLoading,
+        optimistic,
+        status,
+      }),
+    [
+      hasAiNotes,
+      hasCompletionEvidence,
+      hasCustomerInput,
+      hasEstimate,
+      hasScopeChange,
+      isLoading,
+      optimistic,
+      status,
+    ],
+  )
+}

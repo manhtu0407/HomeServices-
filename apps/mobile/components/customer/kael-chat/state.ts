@@ -29,7 +29,7 @@ export type KaelChatAction =
   | { type: 'sendFailed'; error: string }
   | { type: 'confirmArmed' }
   | { type: 'confirmStarted' }
-  | { type: 'confirmSucceeded'; message: string; jobId: string; status: string }
+  | { type: 'confirmSucceeded'; message: string; jobId: string }
   | { type: 'confirmFailed'; error: string }
 
 export function createInitialKaelChatState(routeService: ServiceType | null): KaelChatState {
@@ -129,7 +129,7 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
               session: {
                 ...state.session.session,
                 job_id: action.jobId,
-                status: action.status === 'broadcasting' ? 'confirmed' : state.session.session.status,
+                status: 'confirmed',
                 next_action: 'confirmed',
               },
             }
