@@ -6,6 +6,8 @@ It exists because generic AI-generated frontend design tends to collapse into Sa
 
 This file is locked after creation. AI agents MUST NOT edit `design.md` unless Tu explicitly requests that edit in the current conversation.
 
+> **Modularized 2026-05-29:** design.md core keeps the authority order, identity, goal, product surfaces, mandatory preflight, skill-adaptation protocol, scoring rubric, React Native rules, forbidden defaults, and review checklist. Detailed reference material (reference-app method, design lab, palette/typography, decoration/mascot/icons, motion grammar, per-screen recipes) now lives in `design/*.md` and loads on demand. Section numbers are preserved; moved sections below redirect to their reference file.
+
 ## 0. Authority Order
 
 Agents MUST read files in this order for UI, frontend, prototype, visual, motion, mascot, layout, or design-system tasks:
@@ -31,6 +33,21 @@ If `design.md` conflicts with `critical.md`, `RULES.md`, `STRUCTURES.md`, or Tu'
 - the recommended option.
 
 Do not proceed until Tu approves the direction.
+
+
+### Design Reference Files
+
+design.md core stays lean; load a reference file only when your task needs it:
+
+| Topic | File |
+|---|---|
+| Reference-app method (XanhSM / bTaskee / Grab) | `design/reference-method.md` |
+| Design lab (options, evidence, scoring, contract) | `design/design-lab.md` |
+| Palette Lab + Typography Lab | `design/palette-typography.md` |
+| Decoration + Kael Mascot + Icon System | `design/decoration-mascot-icons.md` |
+| Motion Grammar (kael-motion canonical source) | `design/motion.md` |
+| Screen recipes (App Shell to Empty States) | `design/screen-recipes.md` |
+| **Glass-Liquid Signature** — final house-style gate (neutral + 1 mint, spring/bubble) | `design/signature.md` |
 
 ## 1. Design Identity
 
@@ -78,70 +95,7 @@ These qualities must be designed together. Never choose palette alone. Never cho
 
 ## 3. Reference App Method
 
-Use reference apps as design evidence, not as copy targets.
-
-### Primary Reference: XanhSM
-
-Learn from XanhSM:
-
-- soft white / mint / cyan environment,
-- premium but friendly typography rhythm,
-- app-shell skeleton that feels native and service-oriented,
-- glassy bottom navigation with a central/emphasized action zone,
-- rounded service cards with useful imagery,
-- small decorative gradients that support hierarchy,
-- content cards with light shadows and low visual noise,
-- skeleton loading before content appears,
-- scrim + modal / bottom sheet choreography,
-- subtle active-tab glow / morph,
-- state transitions that make the app feel finished,
-- profile/account pages that stay clean even when content is dense,
-- spacing that lets dense service content remain breathable.
-
-Do not copy from XanhSM:
-
-- exact brand green,
-- vehicle assets,
-- transport-first map hierarchy when it does not serve Home Services,
-- exact promotion layouts,
-- exact icons,
-- exact copy,
-- exact card art,
-- exact tab labels,
-- exact animation timings unless validated for Home Services.
-
-### Secondary Reference: bTaskee
-
-Learn from bTaskee:
-
-- mascot as product recall,
-- central tab mascot treatment,
-- warm service-app friendliness,
-- service grid familiarity for Vietnamese users,
-- customer community / support patterns when useful.
-
-Do not copy:
-
-- orange-led brand system,
-- overly playful mascot tone,
-- broad service catalog complexity,
-- crowded promo-heavy home layout.
-
-### Secondary Reference: Grab
-
-Learn from Grab:
-
-- service workflow clarity,
-- quick action orientation,
-- operational state handling,
-- trip/job status clarity,
-- speed and action-first structure.
-
-Do not copy:
-
-- generic super-app sprawl,
-- map-first assumptions,
-- aggressive green dominance if it harms Home Services taste.
+> Moved to [`design/reference-method.md`](design/reference-method.md). Load it when extracting design evidence from XanhSM / bTaskee / Grab.
 
 ## 4. Product Surfaces
 
@@ -237,151 +191,7 @@ Agents MUST NOT apply a generic skill literally. Convert basic skills into scree
 
 ## 7. Design Lab Rule
 
-Design lab is mandatory before major screens and major visual systems.
-
-Major screens include:
-
-- Customer Home,
-- Customer Booking / Kael Price Check,
-- Kael Chat,
-- Customer Activity / History,
-- Customer Profile,
-- Worker Home,
-- Worker Job Request,
-- Worker Active Job,
-- Worker Earnings,
-- core bottom navigation,
-- mascot system,
-- global visual tokens.
-
-Design lab output is required before production build.
-
-Temporary runtime experiments live in:
-
-```text
-.tmp/design-lab/
-```
-
-Durable decisions live in:
-
-```text
-docs/design/
-```
-
-Production app files MUST NOT import from `.tmp/design-lab/`, `docs/design/`, prototype routes, or throwaway mockups.
-
-### Design Lab Options
-
-For major screens, create at least three options:
-
-```text
-Option A: Safe
-Option B: Balanced
-Option C: Bold
-```
-
-Each option must define:
-
-- layout skeleton,
-- palette treatment,
-- typography direction,
-- decoration treatment,
-- motion treatment,
-- component anatomy,
-- what was learned from XanhSM,
-- what is original to Home Services,
-- risks.
-
-Do not build production UI until Tu accepts a direction.
-
-### Design Lab Evidence Package
-
-Each major design lab must include evidence, not only taste descriptions.
-
-Required evidence:
-
-```text
-Reference frames:
-What was extracted:
-What was rejected:
-Home Services adaptation:
-Palette treatment:
-Typography treatment:
-Motion treatment:
-React Native feasibility:
-```
-
-When using a video reference, include timestamps or frame names when available. When using screenshots, identify the exact screen region being studied, such as bottom tab, skeleton, service card, profile list, modal, or transition state.
-
-Agents must separate observation from interpretation:
-
-```text
-Observation: XanhSM uses a mint/cyan glow behind the service shell.
-Interpretation: Home Services can use a restrained mint material layer behind Kael Price Check.
-Adaptation: Use a smaller, softer mint layer tied to address/search and Kael CTA, not a transport map glow.
-```
-
-Do not claim a reference was audited if no frame, screenshot, recording, or concrete source was inspected.
-
-### Design Option Output Template
-
-Each option must be presented in this format:
-
-```text
-Option name:
-Best for:
-Layout skeleton:
-Color system:
-Typography:
-Decoration:
-Motion:
-Kael mascot use:
-Customer impact:
-Worker impact:
-Production feasibility:
-Risks:
-Scores:
-Recommendation:
-```
-
-Avoid vague labels like "modern", "clean", or "beautiful" unless they are backed by component, color, spacing, and motion decisions.
-
-### After Acceptance
-
-After Tu accepts a design direction:
-
-1. Write a short production design contract in `docs/design/`.
-2. Update `design.md` only if the decision becomes a durable global rule.
-3. Build production UI.
-4. Delete or ignore temporary lab artifacts.
-5. Add static guards when needed to prevent prototype/lab imports.
-
-Prototype code is not design memory. Durable contracts are design memory.
-
-### Production Design Contract Template
-
-Before production implementation of a major accepted screen, write a short contract in `docs/design/` using this template:
-
-```text
-Screen:
-Workflow mapping:
-Accepted option:
-User emotion:
-Primary action:
-Layout anatomy:
-Component list:
-Color rules:
-Typography rules:
-Decoration rules:
-Motion rules:
-Loading/empty/error/success states:
-Accessibility/touch rules:
-Backend/state dependency:
-Forbidden regressions:
-Verification plan:
-```
-
-The production design contract is the handoff from taste exploration to implementation. Production code should follow the contract, not the temporary design lab artifact.
+> Moved to [`design/design-lab.md`](design/design-lab.md). Load it before running a design lab for major screens or visual systems.
 
 ## 8. Design Scoring Rubric
 
@@ -430,532 +240,71 @@ When a failure mode is found, revise the option before production implementation
 
 ## 9. Palette Lab
 
-Do not lock final colors too early. Palette must be proven in screen context.
-
-Required initial palette families:
-
-```text
-Palette A: Mint primary + white surface + cream warmth
-Palette B: Cream base + mint action + soft cyan depth
-Palette C: Premium mint gradient + neutral white/gray structure
-```
-
-Rules:
-
-- Mint is the leading brand exploration.
-- Cream is allowed as warmth, not as a beige app theme.
-- Cyan is allowed for depth and premium glow.
-- Accent colors must be sparse.
-- Warning, price uncertainty, and urgent states may use restrained warm accents.
-- Do not make the app one-note mint.
-- Do not use purple/blue AI SaaS gradients.
-- Do not use orange as primary unless Tu explicitly redirects.
-- Do not use decorative glow unless it supports hierarchy.
-
-Color must match:
-
-- typography weight,
-- service imagery,
-- mascot treatment,
-- motion,
-- card material,
-- app state.
-
-If color looks good alone but not inside the screen, reject it.
+> Moved to [`design/palette-typography.md`](design/palette-typography.md). Load it when choosing or validating color for a screen.
 
 ## 10. Typography Lab
 
-Do not lock one font direction yet. Major screens must test 2-3 typography directions before final lock.
-
-Required typography directions:
-
-```text
-Option A: Rounded modern
-Option B: Neutral premium
-Option C: Geometric clean
-```
-
-Rounded modern is a strong candidate and should remain an important reference.
-
-Typography rules:
-
-- Vietnamese readability is mandatory.
-- Do not use typography that feels rigid enterprise.
-- Do not use typography that feels childish.
-- Do not use typography that feels generic SaaS.
-- Do not overuse heavy bold weights.
-- Use strong headings sparingly.
-- Compact operational screens need clear hierarchy, not oversized type.
-- Labels, prices, service names, and status text must fit on small mobile screens.
-
-Typography acceptance:
-
-- feels premium but approachable,
-- supports Vietnamese diacritics cleanly,
-- remains legible at mobile sizes,
-- works with mint/cream palette,
-- does not overpower mascot or service cards.
+> Moved to [`design/palette-typography.md`](design/palette-typography.md). Load it when choosing or validating type for a screen.
 
 ## 11. Decoration System
 
-Decoration must be useful, restrained, and product-specific.
-
-Allowed decoration families:
-
-- Home repair service illustrations,
-- apartment / building / home context,
-- electrical, plumbing, and cleaning pictograms,
-- abstract mint / cream / cyan material layers,
-- Kael mascot,
-- service icons,
-- subtle brand glows,
-- small material highlights tied to hierarchy.
-
-Forbidden decoration:
-
-- random gradient orbs,
-- bokeh blobs,
-- decorative SVG scenes that do not explain the product,
-- SaaS bento cards as default,
-- busy marketing hero compositions,
-- stock-like imagery that does not reveal service context,
-- excessive banners,
-- decoration that competes with the primary action.
-
-Decoration must answer one of these:
-
-- What service is this?
-- What state is this?
-- What action is important?
-- What should feel trusted?
-- What should feel friendly?
-- What should feel premium?
-
-If decoration answers none of these, remove it.
+> Moved to [`design/decoration-mascot-icons.md`](design/decoration-mascot-icons.md).
 
 ## 12. Kael Mascot System
 
-Kael is the family assistant.
-
-Mascot direction:
-
-```text
-Hybrid mascot with a butler-like identity.
-```
-
-Kael should feel:
-
-- helpful,
-- calm,
-- smart,
-- premium,
-- approachable,
-- slightly charming,
-- not childish,
-- not robotic in a cold way,
-- not a generic AI orb.
-
-Recommended visual direction:
-
-- recognizable head / face as the primary icon,
-- small vest or butler cue,
-- simple shape language for animation,
-- expressive enough for chat and empty states,
-- clean enough for bottom tab at small size.
-
-Kael appears in:
-
-- center bottom tab / main action,
-- Kael Chat,
-- price-check guidance,
-- loading / thinking states,
-- empty states,
-- worker brief support,
-- critical explanation moments.
-
-Kael must not:
-
-- replace explicit user confirmation,
-- feel like a toy,
-- dominate every screen,
-- auto-loop loudly,
-- become a generic chatbot avatar.
+> Moved to [`design/decoration-mascot-icons.md`](design/decoration-mascot-icons.md).
 
 ## 13. Motion Grammar
 
-Motion is required only at key product moments. Less motion, higher quality.
-
-Required motion areas:
-
-- splash / loading,
-- skeleton loading,
-- bottom tab / Kael mascot,
-- primary CTA,
-- modal / bottom sheet,
-- screen transitions for major flows,
-- selected service / selected chip,
-- job state transition when useful.
-
-Forbidden motion:
-
-- noisy auto-loop on normal screens,
-- decorative motion that does not communicate state,
-- hover-only web motion,
-- heavy parallax,
-- slow transitions that block workflow,
-- unrelated effects per component.
-
-Recommended timing ranges:
-
-```text
-Screen enter: 180-260ms, opacity 0 -> 1, translateY 8 -> 0
-Tab switch: 160-240ms, active glow/lift/scale only
-Press feedback: scale 0.97-0.99, return within 120-180ms
-Bottom sheet: 220-320ms, slide up + scrim 0 -> 0.40/0.45
-Modal: 180-260ms, scale 0.97 -> 1 + opacity
-Skeleton shimmer: 1200-1600ms loop, low contrast
-Mascot reaction: 180-300ms, small lift/breathe, no noisy loop
-CTA success: 180-260ms, soft fill or check transition
-```
-
-Motion acceptance:
-
-- feels subtle but expensive,
-- reinforces hierarchy,
-- matches palette and material,
-- gives feedback after user action,
-- never hides latency dishonestly,
-- works on low-end devices.
+> Moved to [`design/motion.md`](design/motion.md). Canonical motion source; the kael-motion skill points here.
 
 ## 14. App Shell Recipe
 
-The app shell should learn from XanhSM's polished service-app skeleton.
-
-Required shell qualities:
-
-- native mobile first,
-- bottom navigation always clear,
-- center Kael action prominent,
-- active tab visually distinct,
-- light glass/material effect allowed when performance permits,
-- no web-style sidebar/dashboard shell,
-- safe-area aware,
-- keyboard aware,
-- accessible touch targets.
-
-Customer bottom tab candidate:
-
-```text
-Home
-Activity / History
-Kael / Price Check
-Chat / Support or Jobs depending phase
-Profile
-```
-
-Worker bottom tab candidate:
-
-```text
-Home
-Jobs
-Kael / Brief
-Earnings
-Profile
-```
-
-Final labels must follow `STRUCTURES.md` and Vietnamese user-facing copy rules.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 15. Customer Home Recipe
 
-Customer Home should combine address/search structure with Kael as the primary product action.
-
-Preferred direction:
-
-```text
-XanhSM-like address/search skeleton + Home Services Kael Price Check CTA.
-```
-
-Anatomy:
-
-- safe-area app header,
-- apartment/address context,
-- search or Kael input affordance,
-- Kael Price Check primary CTA,
-- service entries for electrical, plumbing, and cleaning,
-- active draft / active booking summary when present,
-- useful trust or estimate note,
-- promotional content only when it supports service conversion,
-- bottom tab with Kael center action.
-
-Rules:
-
-- do not make Home a marketing landing page,
-- do not overcrowd service catalog,
-- only electrical, plumbing, and cleaning are active,
-- future-service entries must stay hidden unless Tu explicitly approves a specific non-functional state,
-- address context must be visible but not dominate,
-- Kael should feel like the guide into price check.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 16. Booking / Price Check Recipe
 
-The booking flow is the core transaction path.
-
-Required workflow mapping:
-
-- A2 service/problem selection,
-- A3 description/media,
-- A4 clarification,
-- A5 price estimate,
-- A6 time selection,
-- A7 booking search confirmation.
-
-Design qualities:
-
-- clear step progression,
-- low anxiety,
-- high trust,
-- visible price disclaimer,
-- no exact price guarantee,
-- no hidden confirmation,
-- no autonomous money-impacting action.
-
-Visual recipe:
-
-- soft mint/cream surface,
-- focused cards,
-- strong but not oversized CTA,
-- clear selected state,
-- Kael guidance visible but not verbose,
-- estimate card visually distinct,
-- confirmation hard-stop before broadcast.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 17. Worker Home Recipe
 
-Worker Home shares the brand system but is more operational.
-
-Anatomy:
-
-- availability state,
-- today's jobs,
-- earnings summary,
-- incoming job card,
-- Kael brief entry,
-- status timeline,
-- job tabs/list,
-- profile/verification state.
-
-Rules:
-
-- worker actions must be quick and obvious,
-- countdown states must be visually strong,
-- full customer address must not show before accept,
-- Kael mascot may appear in brief/support contexts,
-- do not make worker app feel like an admin dashboard.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 18. Worker Job Request Recipe
 
-The worker job request is a high-speed decision screen.
-
-Required content:
-
-- service type,
-- general district/area,
-- problem summary,
-- Kael pre-brief,
-- estimated earning,
-- countdown,
-- accept,
-- decline/skip.
-
-Forbidden before accept:
-
-- full address,
-- unit number,
-- customer phone,
-- exact customer identity details.
-
-Motion:
-
-- countdown should be calm but visible,
-- accept press should give strong feedback,
-- expiry should transition clearly to expired/next state.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 19. Kael Chat Recipe
 
-Kael Chat must feel like a product surface, not a generic chatbot.
-
-Anatomy:
-
-- Kael header with mascot,
-- customer message bubbles,
-- Kael system/guidance bubbles,
-- media attach affordance when applicable,
-- clear input area,
-- safe keyboard behavior,
-- loading/thinking state,
-- structured estimate rendering when relevant.
-
-Rules:
-
-- no raw AI output to users,
-- Vietnamese user-facing text,
-- Kael scope limited to electrical/plumbing/cleaning Home Services intake, price check, worker brief, and approved support roles,
-- no autonomous booking/payment/cancel action,
-- critical actions must route to explicit confirmation screens.
-
-Motion:
-
-- message appear can fade/translate lightly,
-- Kael thinking can use mascot micro-motion,
-- no distracting looping assistant animation while user reads.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 20. Profile / Account Recipe
 
-Profile should feel clean and premium even with dense lists.
-
-Learn from XanhSM:
-
-- top identity card,
-- mint/green status card,
-- quick action tiles,
-- grouped list sections,
-- light dividers,
-- small line icons,
-- restrained banners,
-- low-noise scroll.
-
-Home Services adaptation:
-
-- apartment profile,
-- saved addresses,
-- payment placeholder later,
-- support,
-- worker verification if worker app,
-- settings,
-- Kael preferences only if approved.
-
-Avoid:
-
-- web dashboard panels,
-- heavy nested cards,
-- too many promo blocks,
-- decorative clutter.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 21. Activity / History Recipe
 
-Activity and History should prioritize operational clarity.
-
-Anatomy:
-
-- segmented filter tabs,
-- active/pending/completed/failed states,
-- job cards,
-- service icon,
-- date/time,
-- price range/final price when allowed,
-- status,
-- retry/rebook action when relevant.
-
-Rules:
-
-- empty state must be designed, not blank,
-- empty state may use Kael or service illustration,
-- cancelled/failed states must be explicit,
-- no fake successful booking/payment states.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 22. Modal / Bottom Sheet Recipe
 
-Bottom sheets and modals are core to the XanhSM-like motion grammar.
-
-Use for:
-
-- rating prompt,
-- confirmation,
-- scope change,
-- saved address,
-- payment method,
-- media permission,
-- worker accept details when appropriate.
-
-Rules:
-
-- scrim behind sheet,
-- rounded top corners,
-- clear title,
-- clear primary and secondary actions,
-- no hidden destructive action,
-- explicit confirmation for money-impacting actions,
-- accessible dismiss behavior unless it is a hard-stop confirmation.
-
-Motion:
-
-- sheet slides from bottom,
-- scrim fades in,
-- content settles without bounce excess,
-- dismiss reverses cleanly.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 23. Skeleton / Loading Recipe
 
-Skeletons are mandatory for content that loads asynchronously.
-
-Learn from XanhSM:
-
-- skeleton blocks match final layout,
-- shimmer is low contrast,
-- loading feels like real structure is arriving,
-- skeleton does not replace error handling.
-
-Rules:
-
-- no fake content,
-- no silent failure,
-- no spinner-only for major content,
-- show retry/error when loading fails.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 24. Empty State Recipe
 
-Empty states must be useful and visually polished.
-
-Anatomy:
-
-- illustration or Kael mascot,
-- short Vietnamese explanation,
-- primary action,
-- optional secondary action,
-- no blame language.
-
-Examples:
-
-- no booking yet,
-- no worker job yet,
-- no history,
-- no saved address,
-- no payment method,
-- no available worker.
-
-Empty state must not look like a generic placeholder from a web template.
+> Moved to [`design/screen-recipes.md`](design/screen-recipes.md).
 
 ## 25. Icon System
 
-Icons must support service recognition.
-
-Preferred icon style:
-
-- rounded,
-- clear,
-- lightly dimensional when useful,
-- consistent stroke/fill logic,
-- recognizable at mobile sizes,
-- works with mint/cream palette.
-
-Electrical and plumbing icons must be distinct and instantly recognizable.
-
-Avoid:
-
-- generic outline icons without product character,
-- filled blobs,
-- random mixed icon packs,
-- icons that become unclear at 24-32px.
+> Moved to [`design/decoration-mascot-icons.md`](design/decoration-mascot-icons.md).
 
 ## 26. React Native Implementation Rules
 

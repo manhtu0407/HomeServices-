@@ -59,3 +59,20 @@ A 90-100 / B 70-89 / C 50-69 / D 30-49 / F 0-29.
     - [ ] ...
 
     ### Proposed edits (await Tu approval; locked docs need explicit per-change approval)
+
+## Design Stack Coverage (added 2026-05-29)
+
+When auditing, also score the design docs:
+
+- **design.md core lean:** target <= ~400 lines; recipe/lab/palette/motion bodies live in `design/`, not the core.
+- **Reference index resolves:** every `design/*.md` listed in design.md "Design Reference Files" exists; every moved section (§3, §7, §9-§25) has a redirect stub.
+- **Motion single source:** `design/motion.md` is the only home for timing ranges; the `kael-motion` skill points to it, not a copy.
+- **Recipes complete:** each screen recipe in `design/screen-recipes.md` covers loading / empty / error / success + money-impacting confirmation where relevant.
+
+### Design red flags (instant deductions)
+- A service beyond electrical / plumbing / cleaning in any recipe or surface.
+- A money-impacting screen recipe without explicit-confirmation language.
+- A forbidden AI default (gradient orbs, bento-default, purple/blue AI gradient, card spam, fake stats) presented as allowed.
+- English user-facing copy in a recipe example.
+- Motion timing duplicated outside `design/motion.md`.
+- `design.md` or `design/` referencing a screen/file path that no longer exists.
