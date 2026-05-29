@@ -361,8 +361,8 @@ describe('apps/api source structure after move', () => {
     expect(exists('apps/api/tsconfig.json')).toBe(true)
   })
 
-  it('has vitest.config.ts', () => {
-    expect(exists('apps/api/vitest.config.ts')).toBe(true)
+  it('has vitest.config.mts (ESM config so Vite loads vitest/config without ERR_REQUIRE_ESM)', () => {
+    expect(exists('apps/api/vitest.config.mts')).toBe(true)
   })
 
   it('has proxy.ts (Next.js 16 — not middleware.ts at root)', () => {

@@ -22,5 +22,18 @@
       "Bash(git reset --hard*)",
       "Bash(rm -rf *)"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-frontend-gates.mjs\"",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
   }
 }
