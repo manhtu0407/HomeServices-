@@ -27,6 +27,7 @@ import {
 import { useAuth } from './auth-provider'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from './media-upload'
 import { jobService, notificationService, workerService } from './services'
+import { generateClientRequestId } from './client-request-id'
 import type { ApiResult } from './api'
 import type {
   ConfirmSearchResponse,
@@ -223,6 +224,19 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return hydrateJobResult(await jobService.getJob(jobId))
   }, [hydrateJobResult, setRemoteError])
 
+  // X4 (Plan.md §27.7 — 2026-05-29): F-17 — hydrate the customer's active job
+  // from the backend on cold start / refresh so a broadcasting/active deal is
+  // not silently lost (backend is the source of truth). Skips silently on
+  // failure or empty (no noisy error banner during normal "no active job").
+  const hydrateCustomerActiveJob = useCallback(async () => {
+    if (getRemoteJobId(stateRef.current)) return true
+    const result = await jobService.listMyActiveJob()
+    if (!result.success) return false
+    if (!result.data.active_job) return true
+    dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data.active_job) })
+    return true
+  }, [])
+
   const createRemoteJobFromDraft = useCallback(async (
     draftOverride?: LocalDealDraft,
     mediaItems: LocalMediaUploadDraft[] = [],
@@ -241,6 +255,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       photo_urls: [],
       address_building: draft.addressLabel.trim() || undefined,
       address_district: districtLabel,
+      // X2 (Plan.md §27.5 — 2026-05-29): one UUID per submit handler.
+      // Re-renders / retries reuse the same key so the Edge returns the
+      // existing job instead of creating duplicates.
+      client_request_id: generateClientRequestId(),
     }
 
     const created = await jobService.createJob(input)
@@ -580,6 +598,14 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }, 20_000)
     return () => clearInterval(interval)
   }, [role, sessionUserId, workerRefresh])
+
+  // X4 (Plan.md §27.7 — 2026-05-29): F-17 — on customer login / cold start,
+  // hydrate any active job from the backend once. The polling effect below
+  // then keeps it fresh while the deal is active.
+  useEffect(() => {
+    if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
+    if (isAppForeground()) void hydrateCustomerActiveJob()
+  }, [role, sessionUserId, hydrateCustomerActiveJob])
 
   const broadcast = state.deal?.broadcast
   const customerBroadcast = state.deal?.broadcast

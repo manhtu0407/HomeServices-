@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { normalizeDistrict } from './constants'
 
 export const serviceTypeSchema = z.enum(['electrical', 'plumbing', 'cleaning'])
 
@@ -12,6 +13,9 @@ export const jobCreateSchema = z.object({
   address_floor: z.string().max(10).optional(),
   address_district: z.string().max(100).optional(),
   scheduled_at: z.string().datetime().optional(),
+  // X2 (Plan.md §27.5 — 2026-05-29): mobile-generated UUID v4 per submit.
+  // Server returns the existing job on retry instead of creating duplicates.
+  client_request_id: z.string().uuid().optional(),
 })
 
 export const kaelChatCreateSchema = z.object({
@@ -22,6 +26,8 @@ export const kaelChatCreateSchema = z.object({
   photo_urls: z.array(z.string().url()).max(5).default([]),
   address_label: z.string().max(200).optional(),
   address_district: z.string().max(100).optional(),
+  // X2 (Plan.md §27.5 — 2026-05-29): mobile-generated UUID v4 per submit.
+  client_request_id: z.string().uuid().optional(),
 })
 
 export const kaelChatTurnSchema = z.object({
@@ -76,7 +82,23 @@ export const workerRegisterSchema = z.object({
   gender: z.enum(['male', 'female', 'other']).optional(),
   service_types: z.array(serviceTypeSchema).min(1).max(3),
   years_experience: z.number().int().min(0).max(60),
-  districts: z.array(z.string().min(1).max(50)).min(1).max(20),
+  // X3 (Plan.md §27.6 — 2026-05-29): reject inputs that don't normalize to
+  // a known HCMC district slug. Caller-facing input shape stays `string` so
+  // existing mobile UI keeps building districts from chip ids; the Edge
+  // service layer canonicalises before INSERT via `normalizeDistrict`.
+  districts: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .max(50)
+        .refine(
+          (value) => normalizeDistrict(value) !== 'hcmc_all',
+          'districts[] must be a known HCMC district slug (e.g. binh_thanh, q1, thu_duc)',
+        ),
+    )
+    .min(1)
+    .max(20),
   home_lat: z.number().min(-90).max(90).optional(),
   home_lng: z.number().min(-180).max(180).optional(),
   service_radius_km: z.number().int().min(1).max(30).optional(),

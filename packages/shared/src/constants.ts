@@ -206,14 +206,23 @@ export function normalizeDistrict(input: string | null | undefined): DistrictSlu
     return lower as DistrictSlug
   }
 
-  // 3. Vietnamese label (case-insensitive)
+  // 3. Vietnamese label (case-insensitive). X3 (Plan.md \u00a727.6 \u2014 2026-05-29):
+  // F-08 fix \u2014 also match the diacritic-stripped form so ASCII "Binh Thanh"
+  // returned by Google Places autocomplete matches "B\u00ecnh Th\u1ea1nh". Note: NFD
+  // does not decompose "\u0110"/"\u0111", so we map them explicitly to D/d.
+  const stripVi = (value: string) =>
+    value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').replace(/\u0110/g, 'D')
+  const inputStripped = stripVi(lower)
   for (const [slug, label] of Object.entries(HCMC_DISTRICTS)) {
     if (label.toLowerCase() === lower) return slug as DistrictSlug
+    if (stripVi(label.toLowerCase()) === inputStripped) {
+      return slug as DistrictSlug
+    }
   }
 
   // Keep numbered district parsing aligned with Edge domain.ts: "Quan 1",
   // "quan 1", "Q.1", and "q 1" all normalize to canonical slugs.
-  const normalized = lower.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const normalized = inputStripped
   const normalizedNumMatch = normalized.match(/^(?:quan|q)[\s.]*(\d+)$/i)
   if (normalizedNumMatch) {
     const districtNumber = normalizedNumMatch[1]
@@ -236,6 +245,30 @@ export function normalizeDistrict(input: string | null | undefined): DistrictSlu
     }
   }
 
+  return DEFAULT_DISTRICT
+}
+
+/**
+ * X3 (Plan.md §27.6 — 2026-05-29): F-14 fix. Free-form address labels like
+ * "Vinhomes Central Park, Bình Thạnh" need substring scanning to extract the
+ * district; `normalizeDistrict` alone returns hcmc_all because the whole
+ * string is neither a slug nor a label. We split by common separators and
+ * return the first piece that resolves to a real district.
+ */
+export function extractDistrictFromAddressLabel(
+  label: string | null | undefined,
+): DistrictSlug {
+  if (!label) return DEFAULT_DISTRICT
+  const direct = normalizeDistrict(label)
+  if (direct !== DEFAULT_DISTRICT) return direct
+  const pieces = label
+    .split(/[,–—·;|\/]/)
+    .map((piece) => piece.trim())
+    .filter(Boolean)
+  for (const piece of pieces) {
+    const candidate = normalizeDistrict(piece)
+    if (candidate !== DEFAULT_DISTRICT) return candidate
+  }
   return DEFAULT_DISTRICT
 }
 

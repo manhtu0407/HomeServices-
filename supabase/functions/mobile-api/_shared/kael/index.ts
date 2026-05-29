@@ -20,6 +20,9 @@ export * from "./provider-batch.ts";
 export * from "./cron/process-learning-queue.ts";
 export * from "./cron/process-batch-results.ts";
 export * from "./decline-templates.ts";
+// X5 (Plan.md §27.8 — 2026-05-29): expose the PII scrubber so the Edge
+// persist layer can strip phone/CCCD/address before writing chat turns.
+export { scrubSensitiveForLLM } from "./utils.ts";
 export * from "./system-prompt.ts";
 export * from "./self-check.ts";
 export * from "./price-synthesis-ab.ts";

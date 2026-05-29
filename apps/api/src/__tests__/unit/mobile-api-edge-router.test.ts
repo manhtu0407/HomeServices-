@@ -56,6 +56,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       fallback_used: false,
     })),
     getJob: vi.fn(),
+    listCustomerActiveJobs: vi.fn(),
     createKaelChat: vi.fn(),
     getKaelChat: vi.fn(),
     sendKaelChatTurn: vi.fn(),
@@ -424,6 +425,40 @@ describe('mobile-api Edge router contract', () => {
     expect(deleteResponse.status).toBe(200)
     expect(getMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
     expect(deleteMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+  })
+
+  it('X4 F-17: routes customer GET /me/jobs/active to listCustomerActiveJobs', async () => {
+    const listCustomerActiveJobs = vi.fn(async () => ({ active_job: null }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ listCustomerActiveJobs }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/jobs/active'))
+
+    expect(response.status).toBe(200)
+    expect(listCustomerActiveJobs).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+  })
+
+  it('X4 F-17: /me/jobs/active is role-gated to customer + admin', async () => {
+    const authenticate = vi.fn(async () => customerAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ listCustomerActiveJobs: vi.fn(async () => ({ active_job: null })) }),
+    })
+
+    await handler(new Request('https://example.test/mobile-api/me/jobs/active'))
+
+    // The router passes the route's allowed roles to authenticate(); worker is
+    // intentionally excluded so the real auth layer rejects it with 403.
+    expect(authenticate).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining(['customer', 'admin']),
+    )
+    expect(authenticate).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining(['worker']),
+    )
   })
 
   it('routes worker Kael memory self-view through the worker endpoint', async () => {
