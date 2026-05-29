@@ -8,6 +8,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint .",
     "eas:login": "npx eas-cli@latest login",
     "eas:whoami": "npx eas-cli@latest whoami",
     "testflight": "npx eas-cli@latest build -p ios --profile production --auto-submit",
@@ -43,9 +46,15 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.19.41",
     "@types/react": "~19.1.17",
     "@types/react-dom": "~19.1.11",
+    "eslint": "^9.39.4",
+    "eslint-config-expo": "^56.0.4",
+    "jest": "^29.7.0",
+    "jest-expo": "~54.0.17",
     "typescript": "~5.9.2"
   },
   "private": true
