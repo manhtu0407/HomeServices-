@@ -40,7 +40,12 @@ export type CreateJobResponse = {
   fallback_used: boolean
 }
 
-export type KaelChatStatus = 'active' | 'estimate_ready' | 'confirmed' | 'abandoned'
+export type KaelChatStatus =
+  | 'active'
+  | 'estimate_ready'
+  | 'confirmed'
+  | 'abandoned'
+  | 'unsupported'
 export type KaelChatNextAction =
   | 'await_input'
   | 'ask_photo'
@@ -153,6 +158,11 @@ export type JobDetailResponse = {
     evidence_photo_urls: string[]
     created_at: string | null
   } | null
+}
+
+// X4 (Plan.md §27.7 — 2026-05-29): F-17 customer active-job hydration.
+export type CustomerActiveJobResponse = {
+  active_job: JobDetailResponse | null
 }
 
 export type JobMessageResponse = {

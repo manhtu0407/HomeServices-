@@ -2797,8 +2797,13 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerShell).toContain('WorkerEarningsHero')
     expect(workerShell).toContain('WorkerEarningsTrend')
     expect(workerShell).toContain('buildWorkerEarningsDays')
-    expect(workerShell).toContain('emptyBarHeight')
-    expect(workerShell).toContain('emptySkeletonBarHeights')
+    // X6 (Plan.md §27.9 — 2026-05-29): F-30 — the empty earnings chart must NOT
+    // fabricate a varying trend. Bars sit at a uniform flat baseline and an
+    // honest empty label is shown when there is no settled earning.
+    expect(workerShell).toContain('EMPTY_FLAT_BAR_HEIGHT')
+    expect(workerShell).not.toContain('emptySkeletonBarHeights')
+    expect(workerShell).toContain('copy.earnings.chartEmpty')
+    expect(workerShell).toContain('worker-earnings-chart-empty-label')
     expect(workerShell).toContain('workerEarningsBarSurface(tokens, hasDailyEarnings)')
     expect(workerShell).toContain('workerEarningsLedgerSurface(tokens)')
     expect(workerShell).toContain('worker-earnings-real-api-data')

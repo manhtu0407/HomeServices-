@@ -48,7 +48,11 @@ import {
   readKaelOptimizationFlags,
 } from "./kael/cost-tracking.ts";
 import { validateWorkflowCommand, validateWorkflowTransition } from "./workflow-orchestrator.ts";
-import { AI_SESSION_LIMIT, checkRateLimit } from "./rate-limit.ts";
+import {
+  AI_SESSION_LIMIT,
+  checkKaelChatRateLimit,
+  checkRateLimit,
+} from "./rate-limit.ts";
 import { requireJobAccess } from "./access.ts";
 import { sendPushToUser, sendPushToUsers } from "./push.ts";
 import {
@@ -97,7 +101,9 @@ import {
   evaluatePriceSynthesisAbCase as runPriceSynthesisAbCase,
   type PriceSynthesisAbCaseInput,
   type PriceSynthesisAbEvaluation,
+  scrubSensitiveForLLM,
 } from "./kael/index.ts";
+import { evaluateMessageBoundary } from "./kael/boundary-guard.ts";
 
 type DbError = { code?: string; message?: string };
 type DbResult<T> = {
@@ -152,7 +158,12 @@ const MAPS_PROVIDER_TIMEOUT_MS = 5_000;
 type MapsGeoSource = "vietmap" | "google_maps";
 type GeocodeResult = { lat: number; lng: number; geoSource: MapsGeoSource };
 
-type KaelChatStatus = "active" | "estimate_ready" | "confirmed" | "abandoned";
+type KaelChatStatus =
+  | "active"
+  | "estimate_ready"
+  | "confirmed"
+  | "abandoned"
+  | "unsupported";
 type KaelChatNextAction =
   | "await_input"
   | "ask_photo"
@@ -207,6 +218,7 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     placesAutocomplete: (ctx, input) => placesAutocomplete(ctx, input, secrets),
     createJob: (ctx, input) => createJob(ctx, input, secrets),
     getJob,
+    listCustomerActiveJobs,
     createKaelChat: (ctx, input) => createKaelChat(ctx, input, secrets),
     getKaelChat,
     sendKaelChatTurn: (ctx, sessionId, input) =>
@@ -478,6 +490,20 @@ async function createJob(
   }
   const requestId = crypto.randomUUID();
 
+  // X2 (Plan.md §27.5 — 2026-05-29): idempotent re-POST. If the customer
+  // sends the same client_request_id again, return the existing job instead
+  // of inserting a duplicate row. Closes F-04 (3 parallel POSTs → 3 jobs).
+  if (input.client_request_id) {
+    const existingJobId = await findExistingJobByClientRequest(
+      client,
+      ctx.user.id,
+      input.client_request_id,
+    );
+    if (existingJobId) {
+      return buildExistingJobCreateResponse(ctx, existingJobId);
+    }
+  }
+
   const inserted = await dbQuery<{ id: string }>(
     client
       .from("jobs")
@@ -493,10 +519,26 @@ async function createJob(
         address_district: canonicalDistrict,
         scheduled_at: input.scheduled_at ?? null,
         status: "analyzing",
+        client_request_id: input.client_request_id ?? null,
       })
       .select("id")
       .single(),
   );
+
+  // Lost race against a concurrent POST with the same client_request_id ->
+  // fall back to the winner's row instead of bubbling a 23505 to the client.
+  if (
+    inserted.error?.code === "23505" && input.client_request_id
+  ) {
+    const recoveredId = await findExistingJobByClientRequest(
+      client,
+      ctx.user.id,
+      input.client_request_id,
+    );
+    if (recoveredId) {
+      return buildExistingJobCreateResponse(ctx, recoveredId);
+    }
+  }
 
   if (inserted.error || !inserted.data) {
     apiFailure("DB_ERROR", "Không thể tạo yêu cầu", 500);
@@ -741,15 +783,58 @@ async function createKaelChat(
     }, secrets);
   }
 
-  const rateCheck = checkRateLimit(
-    `kael_chat:${ctx.user.id}`,
-    AI_SESSION_LIMIT,
-  );
-  if (!rateCheck.allowed) {
-    apiFailure("RATE_LIMITED", "Vui lòng thử lại sau", 429);
+  const client = db(ctx);
+
+  // X2 (Plan.md §27.5 — 2026-05-29): idempotent re-POST runs BEFORE the
+  // rate limiter so harmless retries with the same client_request_id do not
+  // burn the user's per-minute quota. Closes F-04 for Kael chat.
+  if (input.client_request_id) {
+    const existingSessionId = await findExistingKaelSessionByClientRequest(
+      client,
+      ctx.user.id,
+      input.client_request_id,
+    );
+    if (existingSessionId) {
+      return getKaelChat(ctx, existingSessionId);
+    }
   }
 
-  const client = db(ctx);
+  // X2 (Plan.md §27.5 — 2026-05-29): DB-backed rate limit (5/min, 20/hour
+  // per user). The in-process token bucket would not survive Edge worker
+  // churn, so we delegate to a security-definer RPC. Closes F-23.
+  const rate = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("check_kael_chat_rate", { p_user_id: ctx.user.id }),
+  );
+  if (!rate.error) {
+    const row = rate.data?.[0];
+    if (row && asBoolean(row.allowed) === false) {
+      const reason = nullableString(row.reason);
+      console.warn("kael_chat rate limited", {
+        userId: ctx.user.id,
+        reason,
+        minute_count: row.minute_count,
+        hour_count: row.hour_count,
+      });
+      apiFailure(
+        "RATE_LIMITED",
+        reason === "hour"
+          ? "Bạn đã đạt giới hạn 20 phiên Kael trong 1 giờ. Vui lòng thử lại sau."
+          : "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.",
+        429,
+      );
+    }
+  } else {
+    // Don't fail the request if the limiter itself broke — log + fall back to
+    // the in-process best-effort bucket so we still rate limit warm workers.
+    console.warn("kael_chat DB rate limit fallback", {
+      errorCode: rate.error.code,
+    });
+    const fallback = checkKaelChatRateLimit(ctx.user.id);
+    if (!fallback.allowed) {
+      apiFailure("RATE_LIMITED", "Vui lòng thử lại sau", 429);
+    }
+  }
+
   const metadata = compactMetadata({
     problem_chips: input.problem_chips,
     address_label: input.address_label ?? null,
@@ -765,57 +850,197 @@ async function createKaelChat(
         service_type: input.service_type,
         status: "active",
         safe_metadata: metadata,
+        client_request_id: input.client_request_id ?? null,
       })
       .select(
         "id, job_id, customer_id, service_type, status, started_at, estimate_ready_at, total_turns, total_cost_usd, safe_metadata, created_at",
       )
       .single(),
   );
+  // Lost race against a concurrent create with the same client_request_id ->
+  // fall back to the winner instead of bubbling 23505 to the mobile client.
+  if (
+    sessionResult.error?.code === "23505" && input.client_request_id
+  ) {
+    const recoveredId = await findExistingKaelSessionByClientRequest(
+      client,
+      ctx.user.id,
+      input.client_request_id,
+    );
+    if (recoveredId) return getKaelChat(ctx, recoveredId);
+  }
   if (sessionResult.error || !sessionResult.data) {
     apiFailure("DB_ERROR", "Không thể tạo phiên Kael", 500);
   }
 
   if (input.message) {
     const message = sanitizeForLLM(input.message);
+    const sessionId = asString(sessionResult.data.id);
+    // X5 (Plan.md §27.8 — 2026-05-29): F-22. Scrub PII (phone/CCCD/address/
+    // building/unit) BEFORE persisting to kael_chat_turns.text_content so raw
+    // PII never lands in the DB. The in-memory `message` (also sanitized) is
+    // still used for boundary detection + analysis; the pipeline scrubs again
+    // before any LLM call.
     await insertKaelTurn(client, {
-      session_id: asString(sessionResult.data.id),
+      session_id: sessionId,
       turn_index: 1,
       role: "customer",
       content_type: "text",
-      text_content: message,
+      text_content: scrubSensitiveForLLM(message),
       media_refs: input.photo_urls,
       safe_metadata: {},
     });
-    await updateKaelSession(client, asString(sessionResult.data.id), {
+    await updateKaelSession(client, sessionId, {
       total_turns: 1,
       safe_metadata: metadata,
     });
-    const handledDemandingCustomer = await maybeHandleDemandingCustomerKaelChatTurn(
+    // X1 (Plan.md §27.4 — 2026-05-29): apply boundary guard FIRST so
+    // out-of-scope / injection / mismatch messages are declined before the
+    // demanding-customer empathy path can intercept and produce a
+    // misleading "wait_time_concern" style reply.
+    const boundaryHandled = await maybeApplyKaelBoundaryGuard(
       client,
-      {
-        sessionId: asString(sessionResult.data.id),
-        actorId: ctx.user.id,
-        jobId: null,
-        status: "active",
-        metadata,
-        message,
-        qaCount: 1,
-      },
+      sessionId,
+      message,
+      input.service_type,
     );
-    if (!handledDemandingCustomer) {
-      await advanceKaelChatEstimate(
-        ctx,
-        asString(sessionResult.data.id),
-        {
-          ...input,
-          message,
-        },
-        secrets,
-      );
+    if (!boundaryHandled) {
+      const handledDemandingCustomer =
+        await maybeHandleDemandingCustomerKaelChatTurn(
+          client,
+          {
+            sessionId,
+            actorId: ctx.user.id,
+            jobId: null,
+            status: "active",
+            metadata,
+            message,
+            qaCount: 1,
+          },
+        );
+      if (!handledDemandingCustomer) {
+        await advanceKaelChatEstimate(
+          ctx,
+          sessionId,
+          {
+            ...input,
+            message,
+          },
+          secrets,
+        );
+      }
     }
   }
 
   return getKaelChat(ctx, asString(sessionResult.data.id));
+}
+
+// X2 (Plan.md §27.5 — 2026-05-29): idempotent Kael chat session helpers.
+async function findExistingKaelSessionByClientRequest(
+  client: DbClient,
+  customerId: string,
+  clientRequestId: string,
+): Promise<string | null> {
+  const result = await dbQuery<{ id: string }>(
+    client
+      .from("kael_chat_sessions")
+      .select("id")
+      .eq("customer_id", customerId)
+      .eq("client_request_id", clientRequestId)
+      .maybeSingle(),
+  );
+  if (result.error || !result.data) return null;
+  return result.data.id;
+}
+
+// X2 (Plan.md §27.5 — 2026-05-29): idempotent job creation helpers.
+async function findExistingJobByClientRequest(
+  client: DbClient,
+  customerId: string,
+  clientRequestId: string,
+): Promise<string | null> {
+  const result = await dbQuery<{ id: string }>(
+    client
+      .from("jobs")
+      .select("id")
+      .eq("customer_id", customerId)
+      .eq("client_request_id", clientRequestId)
+      .maybeSingle(),
+  );
+  if (result.error || !result.data) return null;
+  return result.data.id;
+}
+
+async function buildExistingJobCreateResponse(
+  ctx: MobileApiContext,
+  jobId: string,
+) {
+  const client = db(ctx);
+  const job = await dbQuery<Record<string, unknown>>(
+    client
+      .from("jobs")
+      .select(
+        "id, status, service_type, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3",
+      )
+      .eq("id", jobId)
+      .single(),
+  );
+  if (job.error || !job.data) {
+    apiFailure("DB_ERROR", "Không thể tải lại yêu cầu đã tạo", 500);
+  }
+  const cardV3 = asRecord(job.data.kael_estimate_card_v3);
+  const cardEstimate = asRecord(cardV3.estimate);
+  const estimate = {
+    service_type: asServiceType(job.data.service_type),
+    problem_category: nullableString(cardEstimate.problem_category) ?? "",
+    problem_summary: nullableString(job.data.kael_problem_identified) ?? "",
+    complexity: asComplexity(job.data.kael_complexity),
+    price_min: asNumber(job.data.kael_price_min),
+    price_max: asNumber(job.data.kael_price_max),
+    confidence: asNumber(cardEstimate.confidence),
+    advisory: nullableString(job.data.kael_advisory),
+    disclaimer: PRICE_DISCLAIMER,
+  };
+  return {
+    job_id: asString(job.data.id),
+    status: asJobStatus(job.data.status),
+    estimate,
+    estimate_card_v3: Object.keys(cardV3).length > 0
+      ? (cardV3 as Record<string, unknown>)
+      : undefined,
+    fallback_used: false,
+  };
+}
+
+// X1 (Plan.md §27.4 — 2026-05-29): shared boundary entry point used by both
+// createKaelChat and sendKaelChatTurn. Returns true when the message was
+// declined (caller skips downstream processing); false otherwise.
+async function maybeApplyKaelBoundaryGuard(
+  client: DbClient,
+  sessionId: string,
+  message: string,
+  serviceType: ServiceType,
+): Promise<boolean> {
+  const boundary = evaluateMessageBoundary(message, serviceType);
+  if (boundary.ok) return false;
+  console.warn("kael_chat boundary decline", {
+    sessionId,
+    reason: boundary.reason,
+    signalCount: boundary.detectedSignals.length,
+  });
+  await appendKaelSystemTurn(client, sessionId, {
+    contentType: "error",
+    text: boundary.declineText,
+    nextStatus: "unsupported",
+    metadata: {
+      boundary_reason: boundary.reason,
+      boundary_signals: boundary.detectedSignals,
+      ...(boundary.suggestedService
+        ? { suggested_service: boundary.suggestedService }
+        : {}),
+    },
+  });
+  return true;
 }
 
 async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
@@ -880,7 +1105,10 @@ async function sendKaelChatTurn(
   const session = sessionResult.data;
   assertKaelSessionOwnership(session, ctx);
   const status = asKaelChatStatus(session.status);
-  if (status === "confirmed" || status === "abandoned") {
+  if (
+    status === "confirmed" || status === "abandoned" ||
+    status === "unsupported"
+  ) {
     apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận tin nhắn", 409);
   }
 
@@ -903,12 +1131,13 @@ async function sendKaelChatTurn(
     demanding_customer_qa_count: qaCount,
   });
   const message = sanitizeForLLM(input.message);
+  // X5 (Plan.md §27.8 — 2026-05-29): F-22. Scrub PII before persisting.
   await insertKaelTurn(client, {
     session_id: sessionId,
     turn_index: previousTurns + 1,
     role: "customer",
     content_type: input.photo_urls.length > 0 ? "photo_attached" : "text",
-    text_content: message,
+    text_content: scrubSensitiveForLLM(message),
     media_refs: input.photo_urls,
     safe_metadata: {},
   });
@@ -917,6 +1146,17 @@ async function sendKaelChatTurn(
     status: "active",
     safe_metadata: metadata,
   });
+
+  // X1 (Plan.md §27.4 — 2026-05-29): boundary guard BEFORE demanding-customer
+  // intercept, otherwise off-topic / injection / mismatch messages could
+  // bypass decline via empathy template.
+  const boundaryHandled = await maybeApplyKaelBoundaryGuard(
+    client,
+    sessionId,
+    message,
+    asServiceType(session.service_type),
+  );
+  if (boundaryHandled) return getKaelChat(ctx, sessionId);
 
   const handledDemandingCustomer = await maybeHandleDemandingCustomerKaelChatTurn(
     client,
@@ -962,7 +1202,23 @@ async function confirmKaelChat(
   if (!row) apiFailure("DB_ERROR", "Không thể xác nhận phiên Kael", 500);
   if (!asBoolean(row.ok)) {
     const errorCode = nullableString(row.error_code);
-    const existingJobId = nullableString(row.job_id);
+    let existingJobId = nullableString(row.job_id);
+    // X2 (Plan.md §27.5 — 2026-05-29): F-11 safety-net. The RPC normally
+    // returns the recovered job_id on ALREADY_CONFIRMED, but if it doesn't
+    // (e.g. session marked confirmed before the row update propagated), fall
+    // back to a direct session lookup so double-confirm still resolves to
+    // 200-with-current-state instead of bubbling 409 to the user.
+    if (errorCode === "ALREADY_CONFIRMED" && !existingJobId) {
+      const sessionLookup = await dbQuery<{ job_id: string | null }>(
+        client
+          .from("kael_chat_sessions")
+          .select("job_id")
+          .eq("id", sessionId)
+          .eq("customer_id", ctx.user.id)
+          .maybeSingle(),
+      );
+      existingJobId = nullableString(sessionLookup.data?.job_id ?? null);
+    }
     if (errorCode === "ALREADY_CONFIRMED" && existingJobId) {
       const currentState = await readConfirmedKaelChatState(ctx, existingJobId);
       if (currentState.status === "awaiting_customer_confirm") {
@@ -1142,6 +1398,33 @@ async function advanceKaelChatEstimate(
     return;
   }
 
+  // X1 (Plan.md §27.4 — 2026-05-29): boundary guard rejects
+  // out-of-scope / prompt-injection / service-mismatch BEFORE any provider
+  // call so cost stays zero for declined turns and Kael never emits an
+  // estimate that would violate RULES.md #6 (service scope) or #8 (no
+  // fake/off-topic data).
+  const boundary = evaluateMessageBoundary(message, input.service_type);
+  if (!boundary.ok) {
+    console.warn("kael_chat boundary decline", {
+      sessionId,
+      reason: boundary.reason,
+      signalCount: boundary.detectedSignals.length,
+    });
+    await appendKaelSystemTurn(client, sessionId, {
+      contentType: "error",
+      text: boundary.declineText,
+      nextStatus: "unsupported",
+      metadata: {
+        boundary_reason: boundary.reason,
+        boundary_signals: boundary.detectedSignals,
+        ...(boundary.suggestedService
+          ? { suggested_service: boundary.suggestedService }
+          : {}),
+      },
+    });
+    return;
+  }
+
   const requestId = crypto.randomUUID();
   let pipeline: PipelineResult;
   try {
@@ -1265,7 +1548,7 @@ async function appendKaelSystemTurn(
   input: {
     contentType: "clarification" | "estimate" | "error";
     text: string;
-    nextStatus: "active" | "estimate_ready";
+    nextStatus: "active" | "estimate_ready" | "unsupported";
     estimate?: unknown;
     costUsd?: number;
     metadata?: Record<string, unknown>;
@@ -1393,6 +1676,42 @@ async function getJob(ctx: MobileApiContext, jobId: string) {
     broadcast_state: broadcastState,
     current_scope_change: currentScopeChange,
   };
+}
+
+// X4 (Plan.md §27.7 — 2026-05-29): F-17 fix. Customer mobile must resume an
+// active job from the backend after a refresh / cold start instead of showing
+// "Chưa có yêu cầu". Returns the customer's most-recent non-terminal job (same
+// shape as GET /jobs/:id) or null when none is active.
+const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
+  "awaiting_customer_confirm",
+  "broadcasting",
+  "worker_matched",
+  "worker_on_way",
+  "arrived",
+  "inspecting",
+  "repairing",
+  "scope_change_pending",
+  "completed_by_worker",
+];
+
+async function listCustomerActiveJobs(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const result = await dbQuery<Array<{ id: string }>>(
+    client
+      .from("jobs")
+      .select("id")
+      .eq("customer_id", ctx.user.id)
+      .in("status", CUSTOMER_ACTIVE_JOB_STATUSES)
+      .order("created_at", { ascending: false })
+      .limit(1),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể tải yêu cầu đang hoạt động", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) return { active_job: null };
+  const detail = await getJob(ctx, row.id);
+  return { active_job: detail };
 }
 
 async function confirmSearch(ctx: MobileApiContext, jobId: string) {
@@ -5146,6 +5465,7 @@ function kaelNextAction(
   totalCostUsd: number,
 ): KaelChatNextAction {
   if (status === "confirmed") return "confirmed";
+  if (status === "unsupported") return "unsupported";
   if (totalCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) return "budget_exceeded";
   if (status === "estimate_ready") return "estimate_ready";
   if (lastContentType === "photo_request") return "ask_photo";
@@ -6211,7 +6531,8 @@ function asKaelChatStatus(value: unknown): KaelChatStatus {
     value === "active" ||
     value === "estimate_ready" ||
     value === "confirmed" ||
-    value === "abandoned"
+    value === "abandoned" ||
+    value === "unsupported"
   ) {
     return value;
   }

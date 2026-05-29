@@ -10,6 +10,7 @@ import type {
   EarningsResponse,
   ServiceCatalogResponse,
   CreateJobResponse,
+  CustomerActiveJobResponse,
   JobDetailResponse,
   JobMediaAttachInput,
   JobMediaAttachResponse,
@@ -69,6 +70,12 @@ export const jobService = {
 
   getJob(jobId: string) {
     return api.get<JobDetailResponse>(`/jobs/${jobId}`)
+  },
+
+  // X4 (Plan.md §27.7 — 2026-05-29): F-17 — resume the customer's active job
+  // from the backend after a refresh / cold start.
+  listMyActiveJob() {
+    return api.get<CustomerActiveJobResponse>('/me/jobs/active')
   },
 
   listMessages(jobId: string) {

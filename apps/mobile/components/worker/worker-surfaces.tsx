@@ -338,6 +338,8 @@ const workerCopy = {
       today: 'Hôm nay',
       month: 'Tháng này',
       noReconciliation: 'Chờ dữ liệu',
+      // X6 (Plan.md §27.9 — 2026-05-29): F-30 honest empty chart copy.
+      chartEmpty: 'Chưa có dữ liệu đối soát',
       summaryHint: 'Khi có đối soát',
       body: '',
       complete: 'Hoàn tất',
@@ -469,6 +471,8 @@ const workerCopy = {
       today: 'Today',
       month: 'This month',
       noReconciliation: 'Waiting for data',
+      // X6 (Plan.md §27.9 — 2026-05-29): F-30 honest empty chart copy.
+      chartEmpty: 'No reconciliation data yet',
       summaryHint: 'After reconciliation',
       body: '',
       complete: 'Completed',
@@ -1552,6 +1556,21 @@ function WorkerChatContent() {
           )}
           {!broadcast ? (
             <View style={styles.jobRoomStack} testID="worker-kael-empty-chat-canvas">
+              {/* X6 (Plan.md §27.9 — 2026-05-29): F-29 fix. The animated waiting
+                  room only appears after the reveal sequence is requested
+                  (reveal.requested starts at 0 with no job), so the Nhắn tab
+                  showed a fully blank screen. Always render an honest empty
+                  state with copy — parity with the customer chat empty state. */}
+              {!showJobRoomMessage ? (
+                <View style={[styles.workerChatStaticEmpty, workerOpaqueCardSurface(tokens, 'warm')]} testID="worker-chat-static-empty-state">
+                  <Text style={[styles.workerChatStaticEmptyTitle, { color: tokens.ink }]} numberOfLines={2}>
+                    {copy.chat.emptyTitle}
+                  </Text>
+                  <Text style={[styles.workerChatStaticEmptyBody, { color: tokens.muted }]} numberOfLines={3}>
+                    {copy.chat.emptyBody}
+                  </Text>
+                </View>
+              ) : null}
               {showJobRoomMessage ? (
                 <SequentialJobRoomReveal step={2} testID="worker-jobroom-waiting-room-reveal">
                   <JobRoomKaelMessage body={copy.chat.waitingBody} kicker={copy.chat.jobRoomTitle} testID="worker-jobroom-waiting-room" title={copy.chat.waitingTitle} />
@@ -1969,7 +1988,12 @@ function WorkerEarningsTrend() {
   const maxDailyValue = Math.max(...realDays.map((day) => day.netEarnings), 0)
   const hasDailyEarnings = maxDailyValue > 0
   const days = hasDailyEarnings ? realDays : buildWorkerEmptyEarningsDays(language)
-  const emptySkeletonBarHeights = [42, 78, 58, 104, 72, 122, 64]
+  // X6 (Plan.md §27.9 — 2026-05-29): F-30 fix. Previously the empty state drew
+  // bars at varying heights ([42,78,58,104,72,122,64]) which read as a real
+  // earnings trend even when backend earnings = 0 — a RULES.md #8 fake-data
+  // violation. When there is no settled earning, all bars now sit at a uniform
+  // flat baseline (clearly "no data") and an explicit empty label is shown.
+  const EMPTY_FLAT_BAR_HEIGHT = 10
 
   return (
     <View style={[styles.earningsTrendCard, workerEarningsTrendSurface(tokens)]} testID="worker-earnings-seven-day-chart">
@@ -1983,24 +2007,32 @@ function WorkerEarningsTrend() {
       <View style={[styles.earningsChartShell, workerEarningsChartSurface(tokens)]}>
         <View style={styles.earningsChartEmptyState} testID="worker-earnings-chart-empty-state">
           <View style={styles.earningsBarRail} testID={hasDailyEarnings ? 'worker-earnings-real-bar-shell' : 'worker-earnings-empty-bar-shell'}>
-            {days.map((day, index) => {
-              const emptyBarHeight = emptySkeletonBarHeights[index % emptySkeletonBarHeights.length]
-              return (
-                <View
-                  accessibilityLabel={hasDailyEarnings ? `${day.label}: ${formatWorkerMoney(day.netEarnings, language)}` : `${day.label}: ${copy.earnings.noReconciliation}`}
-                  key={day.date}
-                  style={[
-                    styles.earningsEmptyBar,
-                    workerEarningsBarSurface(tokens, hasDailyEarnings),
-                    {
-                      height: hasDailyEarnings ? Math.max(30, Math.round(42 + (day.netEarnings / maxDailyValue) * 76)) : emptyBarHeight,
-                      opacity: hasDailyEarnings ? 0.98 : 0.96,
-                    },
-                  ]}
-                />
-              )
-            })}
+            {days.map((day) => (
+              <View
+                accessibilityLabel={hasDailyEarnings ? `${day.label}: ${formatWorkerMoney(day.netEarnings, language)}` : `${day.label}: ${copy.earnings.chartEmpty}`}
+                key={day.date}
+                style={[
+                  styles.earningsEmptyBar,
+                  workerEarningsBarSurface(tokens, hasDailyEarnings),
+                  {
+                    height: hasDailyEarnings
+                      ? Math.max(30, Math.round(42 + (day.netEarnings / maxDailyValue) * 76))
+                      : EMPTY_FLAT_BAR_HEIGHT,
+                    opacity: hasDailyEarnings ? 0.98 : 0.4,
+                  },
+                ]}
+              />
+            ))}
           </View>
+          {!hasDailyEarnings ? (
+            <Text
+              style={[styles.earningsChartEmptyLabel, { color: tokens.muted }]}
+              numberOfLines={1}
+              testID="worker-earnings-chart-empty-label"
+            >
+              {copy.earnings.chartEmpty}
+            </Text>
+          ) : null}
         </View>
         <View style={styles.earningsDayRail}>
           {days.map((day) => (
@@ -5010,6 +5042,10 @@ const styles = StyleSheet.create({
   earningsRangePill: { alignSelf: 'flex-start', borderRadius: 999, fontSize: 12, fontWeight: '700', lineHeight: 16, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 7 },
   earningsChartShell: { borderRadius: 22, borderWidth: 1, gap: 11, justifyContent: 'space-between', minHeight: 154, paddingHorizontal: 14, paddingVertical: 13 },
   earningsChartEmptyState: { alignItems: 'center', flex: 1, gap: 8, justifyContent: 'center', minHeight: 124, overflow: 'hidden', position: 'relative' },
+  earningsChartEmptyLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.2, marginTop: 6, textAlign: 'center' },
+  workerChatStaticEmpty: { borderRadius: 22, borderWidth: 1, gap: 8, marginTop: 8, paddingHorizontal: 18, paddingVertical: 20 },
+  workerChatStaticEmptyTitle: { fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
+  workerChatStaticEmptyBody: { fontSize: 13, lineHeight: 19 },
   earningsBarRail: { alignItems: 'flex-end', alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-between', minHeight: 122, paddingHorizontal: 15 },
   earningsEmptyBar: { borderBottomLeftRadius: 8, borderBottomRightRadius: 8, borderTopLeftRadius: 12, borderTopRightRadius: 12, width: 28 },
   earningsDayRail: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15 },
