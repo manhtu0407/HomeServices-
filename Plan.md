@@ -9469,4 +9469,91 @@ Locked override: Tu approved 2026-05-29 — G1/G3/G4 được sửa critical.md,
 
 ---
 
-End of Plan.md
+## 29. Design + Context Upgrade — Modularize design.md + kael-motion + lean MEMORY — 2026-05-29
+
+### 29.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-design-context-upgrade-20260529
+Created:        2026-05-29
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         APPROVED 2026-05-29 — Tu duyệt nhánh A + C; nhánh B (glass-liquid-signature) DEFERRED
+Trigger:        Deep-dive 5 repo: taste-skill, design-motion-principles, claudedesignskills,
+                claude-mem, claude-context → lấy principle, không bê infra/web code
+Scope:          A (design.md split + kael-motion + anti-slop gate) + C (MEMORY.md progressive disclosure + /kael-mem)
+Out of scope:   B glass-liquid-signature (Tu sẽ cùng bàn kỹ — đây là chốt chặn cuối frontend);
+                claude-context vector code search; claude-mem worker service / Chroma install
+Effort:         ~1-1.5 ngày agent (thao tác doc/skill; verify structural)
+Phase count:    A1, A2, A3, C1, C2 + verify
+Skill mapping:  kael-docs-execution, kael-architecture-deepening, kael-ui-rn-execution, kael-review
+Locked override: Tu approved 2026-05-29 — design.md được sửa (như đợt critical.md §28)
+```
+
+**Mục tiêu:** đưa design.md về cùng pattern modular như critical.md (đỡ context, dễ audit) + thêm khung *motion create/audit + anti-slop* cho RN; làm gọn MEMORY.md theo progressive disclosure.
+
+### 29.0.1 Authority refs
+
+```
+1. critical.md (§0, §3 gates, protocols/ui.md = kael-ui-rn-execution)
+2. design.md (locked — A1 override approved 2026-05-29) + design/ refs sau split
+3. RULES.md (#5 VN-first, #8 data honesty), STRUCTURES.md (workflow mapping)
+4. MEMORY.md (đối tượng C1) + docs/memory/ (mới)
+5. Plan.md §28 (governance precedent) + §29 (this plan)
+```
+
+### 29.0.2 Decision Log
+
+- **D1** design.md split: Tu approved 2026-05-29 ("làm A") — locked-doc edit authorized.
+- **D2** **B glass-liquid-signature DEFERRED** — KHÔNG tự design. Tu xác nhận B là chốt chặn cuối giúp Codex/Claude Code hoàn thiện frontend; phải interview Tu về phong cách + cách design trước khi viết.
+- **D3** 4/5 repo là web (GSAP/Framer/CSS/WebGL) — HS lấy *principle*, port sang RN/Reanimated; không copy snippet.
+- **D4** "Variance" (taste-skill, frontend-design) BỊ BỎ — HS là single-brand (mint/cream glass). Chỉ lấy *anti-slop* + *preflight*.
+- **D5** claude-context (Milvus/Zilliz + embedding key) DEFERRED — chi phí + infra trái thuần-app/cost-conscious; `docs/architecture/code-ownership-map.md` thủ công đủ ở scale này.
+- **D6** claude-mem install nặng (worker service + Chroma:37777) KHÔNG dùng — chỉ áp *progressive disclosure* + capture command.
+- **D7** design/ refs nhóm theo "khi nào cần" (6 file); core giữ gate phổ quát (preflight/scoring/forbidden/checklist/RN rules).
+
+### 29.1 A1 — Split design.md → core + design/ references
+
+- **Core giữ:** intro, §0 authority, §1 identity, §2 goal, §4 surfaces, §5 preflight, §6 skill-adapt, §8 scoring rubric, §26 RN rules, §27 forbidden, §28 review checklist, §29 + reference index. Số mục giữ nguyên; mục moved thành redirect stub.
+- **Tách:** `design/reference-method.md` (§3), `design/design-lab.md` (§7), `design/palette-typography.md` (§9-10), `design/decoration-mascot-icons.md` (§11,12,25), `design/motion.md` (§13), `design/screen-recipes.md` (§14-24).
+- **Verify:** core ≤ ~400 dòng; nội dung moved byte-exact (sed từ git HEAD); cross-ref sống. Mục tiêu giảm ~60% always-loaded.
+
+### 29.2 A2 — kael-motion skill (create/audit + anti-slop)
+
+- Skill `kael-motion` (.claude + .agents) học design-motion-principles: mode **create** (chọn motion đúng moment) + **audit** (motion gap + anti-slop). RN/Reanimated. Anti-slop checklist map vào design `Motion Grammar` + RULES Performance Budget + Reduce Motion/Transparency. Thin wrapper trỏ `design/motion.md` (single source).
+
+### 29.3 A3 — Anti-slop gate + audit coverage
+
+- Thêm preflight "cái này có nên animate không?" + anti-slop gate vào `protocols/ui.md` (kael-ui-rn-execution).
+- Mở rộng `kael-doc-audit` rubric: chấm design.md + design/ drift (stale ref, recipe thiếu state, forbidden default rò rỉ).
+
+### 29.4 C1 — MEMORY.md progressive disclosure
+
+- MEMORY.md → recall index gọn (1 dòng/entry + link), chi tiết move sang `docs/memory/2026-05.md`. Giữ "read last" semantics; byte-exact move, không mất info. Mục tiêu: MEMORY.md ~475 → index ngắn.
+
+### 29.5 C2 — /kael-mem capture command
+
+- Command `/kael-mem` (.claude/commands) capture cuối session theo format chuẩn (date/title/bullets/honest-gaps), giống `revise-claude-md` của Anthropic; ghi vào `docs/memory/<period>.md` + cập nhật index.
+
+### 29.6 Verify
+
+- design.md core line count; 6 design/ refs tồn tại; kael-motion + /kael-mem discoverable; MEMORY index link sống; chạy kael-doc-audit thử. Report Changed/Verification/Risks/Next.
+
+### 29.7 Risks
+
+- **R1** Split design.md làm cross-ref (docs/design/*, AGENTS.md "đọc design.md") thành stale → giữ số mục + reference index trong core.
+- **R2** Dedup MEMORY.md mất ngữ cảnh nếu cắt sai → byte-exact move, index trỏ đủ.
+- **R3** kael-motion lệch RULES motion rules → map 1-1, RULES là canonical.
+
+### 29.8 B glass-liquid-signature (BUILT 2026-05-29)
+
+Tu chốt direction qua interview: classic/minimal, OS-grade (Apple Liquid Glass + Material expressive motion), **neutral base + 1 mint accent**, dark mode phải nổi; "liquid" = đi nhẹ, nhô lên như bong bóng bể. Code audit thật tìm gap 7→9: motion `withTiming` thay vì spring (entrance 440ms), `colors.ts` chỉ light (thiếu dark tokens), edge highlight trắng-cứng dùng cả dark, ~18 màu. Built: `design/signature.md` (spec + token neutral+mint light/dark + spring/bubble + dark fix + checklist ≥9/10), skill `glass-liquid-signature` (apply+audit, .claude+.agents), gold reference `design/reference/signature-glass-dock.tsx` (reference-only, không compile trong app — không có root tsconfig). Token là đề xuất trong hướng Tu chọn — **chờ Tu duyệt mắt trên Expo** trước khi tuyên bố 9/10. Option 1 scope: không đổi component production.
+
+### 29.9 Change Log
+
+- 2026-05-29 — Plan §29 tạo, APPROVED (A+C). design.md đọc full (1036 dòng), baseline MEMORY.md 475. Bắt đầu A1.
+- 2026-05-29 — A1 done: design.md 1036→384, 6 file design/ (byte-exact, numstat 35/687), reference index + stubs.
+- 2026-05-29 — A2 done: kael-motion skill (.claude + .agents), create/audit + anti-slop, verified live.
+- 2026-05-29 — A3 done: anti-slop gate vào protocols/ui.md; kael-doc-audit rubric + Design Stack Coverage (2 bản).
+- 2026-05-29 — C1 done: MEMORY.md 475→45 index; docs/memory/2026-05.md archive 35 mục byte-exact.
+- 2026-05-29 — C2 done: /kael-mem command; final verify pass (links resolve, skills/command live).
+- 2026-05-29 — B done: design/signature.md + glass-liquid-signature skill + gold reference dock. Direction Tu: neutral+mint classic OS-grade. Token chờ visual sign-off Expo. Tu chốt: bàn B xong → tạo 1 commit mới gộp A+C+B.

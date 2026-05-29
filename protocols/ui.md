@@ -102,6 +102,15 @@ For React Native work, the agent MUST consider:
 - mobile keyboard behavior,
 - accessibility/touch targets.
 
+### Anti-Slop UI Gate
+
+Before adding any animation or decorative effect, run the motion preflight (skill `kael-motion`; canonical `design/motion.md`):
+
+- **Should this animate at all?** Motion is required only at key product moments. If it is not one, ship it static.
+- **Reject AI-slop motion:** pulsing indicators, blur-everywhere entrances, hover-scale-on-everything, stagger-spam, bouncy springs on utility actions, uniform fade-ins, motion-on-mount for static content, animated blur radius, decorative infinite loops, glass-on-glass stacking, large parallax, spinning.
+- **Decoration must earn its place** (`design.md` §27 Forbidden AI Defaults + `design/decoration-mascot-icons.md`): no gradient orbs, bento-as-default, card spam, nested cards, fake stats.
+- **Honor** Reduce Motion / Reduce Transparency and the Performance Budget (60fps; no real-time blur in long lists).
+
 ### Output Format
 
 ```text
