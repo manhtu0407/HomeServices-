@@ -94,7 +94,12 @@ type CreateJobResponse = {
   estimate_card_v3?: Record<string, unknown>;
   fallback_used: boolean;
 };
-type KaelChatStatus = "active" | "estimate_ready" | "confirmed" | "abandoned";
+type KaelChatStatus =
+  | "active"
+  | "estimate_ready"
+  | "confirmed"
+  | "abandoned"
+  | "unsupported";
 type KaelChatNextAction =
   | "await_input"
   | "ask_photo"
@@ -489,6 +494,11 @@ type JobDetailResponse = {
   } | null;
 };
 
+// X4 (Plan.md §27.7 — 2026-05-29): F-17 customer active-job hydration.
+type CustomerActiveJobResponse = {
+  active_job: JobDetailResponse | null;
+};
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -567,6 +577,9 @@ export type MobileApiServices = {
     input: JobCreateInput,
   ): Promise<CreateJobResponse>;
   getJob(ctx: MobileApiContext, jobId: string): Promise<JobDetailResponse>;
+  listCustomerActiveJobs(
+    ctx: MobileApiContext,
+  ): Promise<CustomerActiveJobResponse>;
   createKaelChat(
     ctx: MobileApiContext,
     input: KaelChatCreateInput,
@@ -946,6 +959,7 @@ type Route =
   }
   | { kind: "me.kaelMemory"; method: "GET"; roles: UserRole[] }
   | { kind: "me.kaelMemory.delete"; method: "DELETE"; roles: UserRole[] }
+  | { kind: "me.jobs.active"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.kaelMemory"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.availability"; method: "PATCH"; roles: UserRole[] }
@@ -1017,6 +1031,9 @@ function matchRoute(request: Request): Route | null {
       roles: ["customer", "admin"],
       successStatus: 201,
     };
+  }
+  if (method === "GET" && path === "/me/jobs/active") {
+    return { kind: "me.jobs.active", method: "GET", roles: ["customer", "admin"] };
   }
   if (method === "GET" && path === "/me/kael-memory") {
     return { kind: "me.kaelMemory", method: "GET", roles: ["customer", "worker", "admin"] };
@@ -1503,6 +1520,8 @@ async function dispatchRoute(
         comment: input.data.comment,
       });
     }
+    case "me.jobs.active":
+      return services.listCustomerActiveJobs(ctx);
     case "me.kaelMemory":
       return services.getMyKaelMemory(ctx);
     case "me.kaelMemory.delete":

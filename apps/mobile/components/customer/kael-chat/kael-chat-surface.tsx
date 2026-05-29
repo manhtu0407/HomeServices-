@@ -19,6 +19,7 @@ import { localizedServiceLabel, type AppLanguage, useAppLanguage } from '@/lib/a
 import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { kaelChatService } from '@/lib/services'
+import { generateClientRequestId } from '@/lib/client-request-id'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
 import { inferKaelChatDistrict } from './address-district'
 import {
@@ -335,6 +336,9 @@ export function KaelChatSurface() {
             message: trimmed,
             problem_chips: [],
             photo_urls: [],
+            // X2 (Plan.md §27.5 — 2026-05-29): idempotent first-turn POST.
+            // Reuses existing session if a retry happens.
+            client_request_id: generateClientRequestId(),
             ...addressFields,
           })
 

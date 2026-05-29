@@ -47,7 +47,12 @@ export type CreateJobResponse = {
   fallback_used: boolean
 }
 
-export type KaelChatStatus = 'active' | 'estimate_ready' | 'confirmed' | 'abandoned'
+export type KaelChatStatus =
+  | 'active'
+  | 'estimate_ready'
+  | 'confirmed'
+  | 'abandoned'
+  | 'unsupported'
 
 export type KaelChatNextAction =
   | 'await_input'

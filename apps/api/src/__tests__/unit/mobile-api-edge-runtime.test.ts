@@ -186,6 +186,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'getWorkerKaelMemory',
       'getWorkerProfile',
       'invalidateMarketCache',
+      'listCustomerActiveJobs',
       'listJobMessages',
       'processKaelBatchResults',
       'processKaelLearningQueue',
