@@ -9321,4 +9321,152 @@ DL-F31: defer pending mobile-side field name verification
 
 ---
 
+## 28. AI Governance Upgrade — Discipline / Consistency / Focus — 2026-05-29
+
+### 28.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-governance-upgrade-20260529
+Created:        2026-05-29
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         APPROVED 2026-05-29 — Tu duyệt 5 mục + cấp quyền edit locked docs cho session upgrade này
+Trigger:        Deep-dive anthropics/claude-plugins-official (frontend-design + claude-md-management)
+                → đối chiếu craft skill chính chủ vs governance stack hiện tại
+Scope:          5 cải tiến (G1-G5) giúp Claude Code + Codex build có discipline/consistency/focus
+Out of scope:   Đổi nội dung hard-rules RULES.md, workflow STRUCTURES.md, design contract; cài plugin ngoài
+Effort:         ~2-3 ngày agent (thao tác doc/skill; không có runtime test → verify bằng structural evidence)
+Phase count:    7 (G0 pre-read/baseline + G1-G5 build + G6 verify/sign-off)
+Skill mapping:  kael-preflight, kael-docs-execution, kael-architecture-deepening, kael-review
+Locked override: Tu approved 2026-05-29 — G1/G3/G4 được sửa critical.md, RULES.md, CLAUDE.md
+```
+
+**Vấn đề (5 gap từ deep-dive 3 repo official):**
+
+1. Stack dựa vào "agent tự nhớ đọc" critical.md mỗi task, không auto-trigger như skill chính chủ (description-based) → **consistency** rủi ro.
+2. critical.md = monolith 1660 dòng nạp full mỗi session (gồm protocol hiếm dùng) → tốn context, hại **focus**.
+3. Lifecycle/runtime/scope lặp gần nguyên văn nhiều doc (baseline: "bounded slice" 4 file, runtime block 3 file, scope ~7 doc) → sửa 1 chỗ drift chỗ khác (hại **consistency**).
+4. Không có vòng audit phát hiện doc drift khỏi code → hại **effectiveness**.
+5. AGENTS.md (Codex entry) thiếu gates/forbidden/protocol-index → Codex kỷ luật yếu hơn Claude Code (hại **consistency** cross-agent).
+
+**Craft lessons áp dụng (Anthropic official):** `description` = cơ chế auto-trigger; progressive disclosure (SKILL ngắn + `references/` nạp khi cần); rubric chấm điểm để đo được; behavioral vs procedural chọn đúng loại.
+
+⚠️ **Anti-pattern phải tránh:** KHÔNG bê `frontend-design` ("never converge, mỗi lần một aesthetic") vào app — ngược với brand consistency của Home Services. design.md enforce ONE system là đúng.
+
+### 28.0.1 Authority refs (đọc theo thứ tự)
+
+```
+1. critical.md (§0 activation, §3 gates, §20 docs-execution, §24 forbidden, §25 checklist)
+2. RULES.md (#0 runtime, #5 VN-first, #6 scope — engineering doc giữ English)
+3. AGENTS.md (Codex entry — đối tượng G4)
+4. CLAUDE.md (lock notice — G1/G3 override approved 2026-05-29)
+5. skills.md + .agents/skills/karpathy-guidelines/SKILL.md (lifecycle source — đối tượng G3)
+6. Plan.md §28 (this plan)
+7. MEMORY.md (last)
+```
+
+### 28.0.2 Decision Log
+
+- **D1** critical.md split: Tu approved 2026-05-29 (locked-doc edit authorized cho session này, ghi rõ phạm vi G1/G3/G4).
+- **D2** Group protocols **theo task-class (8 file)** thay vì 1-file-mỗi-protocol (19 file) → cân bằng progressive disclosure vs file sprawl.
+- **D3** `kael-preflight` + `kael-review` **giữ trong core** (dùng mọi task → defer không tiết kiệm gì).
+- **D4** Skills **dual-location**: `.claude/skills/` (Claude Code auto-discover — bằng chứng: `supabase` skill hiện trong session list; `karpathy` ở `.agents/` KHÔNG hiện) + `.agents/skills/` (Codex). Single source = `protocols/`.
+- **D5** G5 = **build skill nội bộ `kael-doc-audit`** (tailored cho stack có locked docs) thay vì cài plugin `claude-md-management` ngoài → kiểm soát + không thêm dependency.
+- **D6** File protocol/skill mới = **technical English** (per RULES.md #5: engineering artifact English-first). Plan.md song ngữ như hiện hành.
+- **D7** Thư mục mới: `protocols/` ở repo root (cùng cấp critical.md, đúng vai "execution contract extension").
+
+### 28.1 Phase G0 — Pre-read + Baseline Snapshot ⚠️ NEVER SKIP
+
+- **Goal:** Có ngữ cảnh authority + baseline số liệu để G6 đo hiệu quả.
+- **Scope:** Đọc CLAUDE.md/critical.md/RULES.md/AGENTS.md/skills.md/karpathy; chụp baseline. KHÔNG edit.
+- **Baseline (2026-05-29):** critical.md=1660, AGENTS.md=179, RULES.md=275, skills.md=257, CLAUDE.md=149 dòng. Dup: "bounded slice"=4 file, runtime block=3 file, "electrical repair"=7 doc governance (+ code refs hợp lệ).
+- **Acceptance:** Authority đọc xong; baseline ghi nhận; không file edit.
+- **Status:** ✅ DONE.
+
+### 28.2 Phase G1 — Split critical.md → lean core + protocols/*.md
+
+- **Goal:** Giảm always-loaded context; protocol nạp theo task-class.
+- **Dependencies:** G0.
+- **Scope:** Giữ trong **core critical.md**: intro+lock, §0 activation (cập nhật: "load protocol file đã chọn từ §1"), authority/conflict/protocol-load, pre-edit status, §1 index (trỏ file `protocols/`), §2 classification, §3 gates, §4 survival/scope/runtime, **kael-preflight (§5)**, **kael-review (§8)**, §24 forbidden, §25 checklist. Di chuyển nội dung nguyên văn sang:
+  - `protocols/diagnose.md` (kael-diagnose)
+  - `protocols/tdd.md` (kael-tdd)
+  - `protocols/architecture.md` (architecture-deepening, code-enhancement, zoom-out)
+  - `protocols/ai-data-security.md` (ai-boundary, supabase, security-sweep)
+  - `protocols/ui.md` (ui-rn-execution)
+  - `protocols/prototype-clarify.md` (prototype, clarify-with-docs)
+  - `protocols/docs-workflow.md` (to-prd, issue-slicing, triage, docs-execution, handoff, compact-communication)
+  - `protocols/dormant.md` (8 dormant §23)
+- **Owner files:** `critical.md` (locked, approved), `protocols/*.md` (mới).
+- **Skills:** kael-architecture-deepening (deletion test cho cấu trúc), kael-docs-execution.
+- **Verify:** core ≤ ~750 dòng; mọi protocol cũ tồn tại đúng 1 nơi (grep tên không mất); §1 index link khớp file; nội dung protocol byte-giống bản cũ (di chuyển, không viết lại).
+- **Acceptance:** core mỏng hẳn; 8 file protocols tạo; không protocol nào biến mất; cross-ref sống.
+- **Effort:** ~1 ngày.
+
+### 28.3 Phase G2 — 5 auto-trigger skills (.claude + .agents)
+
+- **Goal:** Protocol hay dùng tự kích hoạt theo context, không phụ thuộc "agent nhớ".
+- **Dependencies:** G1 (protocols tồn tại).
+- **Scope:** Skill cho **kael-diagnose, kael-tdd, kael-ai-boundary, kael-supabase, kael-security-sweep**. Mỗi skill = wrapper mỏng: `description` (trigger sắc), output format inline, trỏ `protocols/*.md`. Đặt `.claude/skills/<name>/SKILL.md` + `.agents/skills/<name>/SKILL.md`. Reconcile: `.claude/commands/{review,security-audit,pre-flight,scope-check}` trỏ cùng protocol (tránh copy thứ 3).
+- **Skills:** kael-docs-execution.
+- **Verify:** skill hiện trong session skill list (Claude Code); `description` chứa trigger điều kiện; wrapper không lặp thân protocol.
+- **Acceptance:** 5 skill × 2 location; auto-discoverable; single-source giữ ở protocols.
+- **Effort:** ~0.5 ngày.
+
+### 28.4 Phase G3 — Single-source dedup (lifecycle / runtime / scope)
+
+- **Goal:** Mỗi khái niệm 1 nguồn chuẩn, chỗ khác link → hết drift.
+- **Dependencies:** G1.
+- **Scope:** Canonical: lifecycle Define→Ship → **critical.md §0**; runtime boundary → **RULES.md #0**; service scope → **RULES.md #6**. CLAUDE.md/AGENTS.md/skills.md/karpathy đổi bản restate dài thành tóm tắt 1 dòng + link canonical. Giữ code refs scope (chúng enforce, không phải prose).
+- **Owner files:** CLAUDE.md (locked, approved), AGENTS.md, skills.md, karpathy SKILL.md.
+- **Verify:** "bounded slice" full-block còn 1 nơi + link; runtime block còn 1; ý nghĩa không mất.
+- **Acceptance:** dup giảm về 1 canonical mỗi khái niệm; link sống.
+- **Effort:** ~0.5 ngày.
+
+### 28.5 Phase G4 — AGENTS.md gate parity cho Codex
+
+- **Goal:** Codex chạy cùng gates với Claude Code.
+- **Dependencies:** G3 (biết canonical để link, không restate).
+- **Scope:** Thêm vào AGENTS.md: pointer "trước khi sửa code, load critical.md core + protocol theo §1 index" + tóm tắt gates (No False Completion, Required Final Response, Git Rule, Forbidden Behaviors, Final Checklist) **link** critical.md làm source (không copy nội dung).
+- **Owner files:** AGENTS.md (không locked).
+- **Verify:** AGENTS.md trỏ đủ gates; không nhân bản nội dung critical.md.
+- **Acceptance:** Codex entry có parity gate qua link.
+- **Effort:** ~0.25 ngày.
+
+### 28.6 Phase G5 — Governance audit skill (kael-doc-audit)
+
+- **Goal:** Vòng audit phát hiện doc drift (path chết, scope lệch, protocol thừa, dup tái xuất, skill lệch protocol).
+- **Dependencies:** G1-G4 (audit cấu trúc mới).
+- **Scope:** Skill `kael-doc-audit` (.claude + .agents) phỏng claude-md-improver nhưng cho cả stack: rubric chấm điểm + red-flags Home-Services. `references/audit-rubric.md` chứa tiêu chí. Output báo cáo TRƯỚC, chỉ sửa sau khi Tu duyệt (giữ lock discipline).
+- **Skills:** kael-docs-execution.
+- **Verify:** chạy thử skill lên stack, ra báo cáo có điểm + issue cụ thể.
+- **Acceptance:** skill chạy được, báo cáo trước khi sửa, tôn trọng lock.
+- **Effort:** ~0.5 ngày.
+
+### 28.7 Phase G6 — Verify + Sign-off + Change Log
+
+- **Goal:** Chứng minh upgrade bằng evidence thật.
+- **Dependencies:** G1-G5.
+- **Scope:** Đo line-count core giảm; skills auto-discoverable; dup grep giảm; cross-ref không path chết; chạy kael-doc-audit. Cập nhật README progress log + MEMORY.md + change log §28.9.
+- **Verify:** số liệu before/after; danh sách link kiểm tra sống.
+- **Acceptance:** Changed/Verification/Risks/Next đầy đủ, chỉ report điều thật sự chạy.
+- **Effort:** ~0.25 ngày.
+
+### 28.8 Risks
+
+- **R1** Split critical.md làm cross-ref hiện có (Plan.md §27 trỏ "critical.md §12 ai-boundary"…) thành stale. **Mitig:** giữ số §; thêm bảng map "§ cũ → protocols/file" trong core.
+- **R2** Codex có thể không auto-load `.agents/skills` description giống Claude Code. **Mitig:** AGENTS.md trỏ tường minh; skill là bonus, không phải đường duy nhất.
+- **R3** Dedup mạnh tay làm mất sắc thái 1 doc. **Mitig:** chỉ gộp khối trùng nguyên văn, giữ phần đặc thù; surgical diff.
+- **R4** Governance không có test runtime → verify yếu hơn code. **Mitig:** structural evidence + kael-doc-audit + Tu review.
+
+### 28.9 Change Log
+
+- 2026-05-29 — Plan §28 tạo, APPROVED, G0 done.
+- 2026-05-29 — G1 done: critical.md 1660→580, protocols/ (8 file, 1226 dòng), numstat 41/1124, kept sections byte-identical.
+- 2026-05-29 — G2 done: 5 skill auto-trigger × (.claude + .agents); verified live trong session skill list.
+- 2026-05-29 — G3 done: lifecycle single-sourced về critical.md §0; "bounded slice" 4→1 doc; runtime/scope giữ defense-in-depth.
+- 2026-05-29 — G4 done: AGENTS.md "Execution Gates (parity)" trỏ critical.md.
+- 2026-05-29 — G5 done: kael-doc-audit skill + references/audit-rubric.md (report-first).
+- 2026-05-29 — G6 done: structural verify pass; chưa commit (Git Rule). Follow-up: mirror karpathy vào .claude/skills; chạy kael-doc-audit full report.
+
+---
+
 End of Plan.md

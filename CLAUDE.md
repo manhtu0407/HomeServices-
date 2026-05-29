@@ -82,14 +82,7 @@ Mobile and Supabase Edge workflow slices exist, but the product is not store-rea
 
 ## Agent Operating Model
 
-Use the best parts of `addyosmani/agent-skills` as Home Services operating behavior:
-
-- Define: clarify the real goal and out-of-scope items before planning.
-- Plan: break work into small, verifiable slices with dependencies and acceptance criteria.
-- Build: implement one bounded slice at a time, following existing repo patterns.
-- Verify: prove behavior with tests, type-checks, smoke checks, screenshots, or runtime evidence as appropriate.
-- Review: check correctness, simplicity, architecture, security, performance, and documentation impact.
-- Ship: report what changed, what was verified, what remains risky, and the next action.
+Use the best parts of `addyosmani/agent-skills` as Home Services operating behavior. The lifecycle is **Define → Plan → Build → Verify → Review → Ship**; canonical step definitions live in `critical.md` §0 (Agent-Skills Lifecycle), single-sourced there.
 
 When alignment is unclear, use an interview loop: state a hypothesis, give an honest confidence estimate, ask one focused question, then restate intent and wait for explicit confirmation.
 

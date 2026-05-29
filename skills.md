@@ -11,14 +11,7 @@ Use these skills whenever writing, reviewing, refactoring, debugging, or plannin
 
 ## Agent-Skills Distillation
 
-Use this lifecycle for non-trivial work:
-
-1. Define: clarify the real goal, user, success criteria, constraints, and explicit out-of-scope items.
-2. Plan: break work into small verifiable slices with dependency order and acceptance criteria.
-3. Build: implement one bounded slice at a time using existing repo patterns.
-4. Verify: prove the change with real evidence, not confidence.
-5. Review: check correctness, simplicity, architecture, security, performance, and documentation impact.
-6. Ship: report changed files, verification, known risks, and next action.
+Use this lifecycle for non-trivial work: **Define → Plan → Build → Verify → Review → Ship**. The canonical step definitions live in `critical.md` §0 (Agent-Skills Lifecycle) — single-sourced there; this doc does not restate the full list.
 
 Use these control loops when needed:
 

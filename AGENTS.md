@@ -21,16 +21,28 @@ If these sources conflict, stop and surface the conflict. Do not silently choose
 
 ## Agent Lifecycle
 
-Use this lightweight lifecycle from the agent-skills audit:
-
-- Define: clarify the real goal, constraints, and out-of-scope items.
-- Plan: split work into small verifiable slices with dependencies.
-- Build: implement one bounded slice at a time using existing repo patterns.
-- Verify: prove behavior with real evidence.
-- Review: check correctness, simplicity, architecture, security, performance, and docs impact.
-- Ship: report changed files, verification, risks, and next action.
+Use the lightweight lifecycle **Define → Plan → Build → Verify → Review → Ship**. Canonical step definitions: `critical.md` §0 (Agent-Skills Lifecycle) — single-sourced there.
 
 When alignment is unclear, ask one focused question at a time with a stated hypothesis and confidence level until Tu explicitly confirms. For non-trivial decisions, use a bounded doubt cycle: `CLAIM -> EXTRACT -> DOUBT -> RECONCILE -> STOP`.
+
+## Execution Gates (parity with `critical.md`)
+
+Codex and Claude Code MUST run the same gates. This section is a pointer, not a second copy — `critical.md` is the single source.
+
+Before editing code:
+
+- Run `kael-preflight` and state the pre-edit status (`critical.md` §5).
+- Classify the task (`critical.md` §2), then load only the matching protocol file from `protocols/` via the §1 index. `kael-preflight` (§5) and `kael-review` (§8) stay inline in `critical.md`.
+- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, plus `karpathy-guidelines`.
+
+Core quality gates (`critical.md` §3) — do not bypass:
+
+- **No False Completion**: never claim done if tests fail, build fails, verification did not run, or a required protocol was skipped.
+- **Required Final Response**: end with `Changed: / Verification: / Risks/Limitations: / Next Step:`; verification lists only commands actually run and their real results.
+- **Production-Ready** only when tests pass, build passes, `kael-review` passes, and no known critical limitation remains.
+- **Git Rule**: never commit, push, open a PR, amend history, or run destructive git unless Tu asks in the current conversation.
+
+After editing: run `kael-review` (`critical.md` §8), then self-check against Forbidden Behaviors (`critical.md` §24) and the Final Agent Checklist (`critical.md` §25).
 
 ## Runtime Boundary
 
