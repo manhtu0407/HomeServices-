@@ -4,6 +4,7 @@ Lean recall index — read last (per `critical.md` §0). Full entry detail lives
 
 ## Recall Index → `docs/memory/2026-05.md`
 
+- **2026-05-30/31** Recent PR Audit Gap Fix — branch from `origin/main`; fixed Stop hook `stop_hook_active` bypass/config detection, mobile stable idempotency retry keys, Edge duplicate-pending responses, DB rate-limit atomicity, backup table RLS, `hcmc_all` worker coverage, pump-water boundary, stale command docs, Plan supersession drift, README log, accented Kael charter, and mobile Jest/Babel runtime deps (`@babel/runtime`) so mobile type-check/test pass.
 - **2026-05-29** Glass-Liquid Signature (B, Plan §29.8) — direction neutral + 1 mint accent, classic OS-grade (Apple Liquid Glass + Material). Built design/signature.md + glass-liquid-signature skill + gold reference dock. Code audit found 7→9 gaps (timing not spring, no dark tokens, white edge-highlight in dark). Tokens pending Tu Expo visual sign-off.
 - **2026-05-29** Design + Context Upgrade (Plan §29 A+C) — design.md 1036→384 + `design/` refs, `kael-motion` skill, anti-slop UI gate, MEMORY.md 475→45 + `docs/memory/`, `/kael-mem` command. Sources design-motion-principles / taste-skill / claude-mem adapted; claude-context + glass-liquid-signature deferred.
 - **2026-05-29** Governance Upgrade — modularized critical.md (1660→580) + `protocols/`, auto-trigger `kael-*` skills (.claude + .agents), dedup lifecycle, AGENTS gate-parity, `kael-doc-audit`. Shipped on branch → PR #48.

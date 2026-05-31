@@ -37,11 +37,11 @@ describe('Kael P8 charter source files', () => {
   it('states Kael identity and boundaries in Vietnamese', () => {
     const identity = readCharter('identity.md')
 
-    expect(identity).toContain('Kael la tro ly AI cua Home Services')
-    expect(identity).toContain('sua dien')
-    expect(identity).toContain('sua nuoc')
-    expect(identity).toContain('don dep')
-    expect(identity).toContain('KHONG phai chatbot tong quat')
+    expect(identity).toContain('Kael là trợ lý AI của Home Services')
+    expect(identity).toContain('sửa điện')
+    expect(identity).toContain('sửa nước')
+    expect(identity).toContain('dọn dẹp')
+    expect(identity).toContain('KHÔNG phải chatbot tổng quát')
   })
 
   it('covers all 11 purposes and actor tone rows', () => {

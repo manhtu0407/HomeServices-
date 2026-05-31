@@ -19,7 +19,11 @@ import { localizedServiceLabel, type AppLanguage, useAppLanguage } from '@/lib/a
 import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { kaelChatService } from '@/lib/services'
-import { generateClientRequestId } from '@/lib/client-request-id'
+import {
+  clearStableClientRequestId,
+  stableClientRequestId,
+  type PendingClientRequestId,
+} from '@/lib/client-request-id'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
 import { inferKaelChatDistrict } from './address-district'
 import {
@@ -233,6 +237,7 @@ export function KaelChatSurface() {
   const routeSessionId = useMemo(() => firstParam(params.sessionId), [params.sessionId])
   const [state, dispatch] = useReducer(kaelChatReducer, routeService, createInitialKaelChatState)
   const addressDistrictRef = useRef<string | null>(null)
+  const pendingChatCreateClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const {
     addressLabel,
     confirmArmed,
@@ -329,18 +334,36 @@ export function KaelChatSurface() {
         address_label: addressPayload || undefined,
         address_district: payloadDistrict ?? undefined,
       }
-      const result = session
-        ? await kaelChatService.sendTurn(session.session.id, { message: trimmed, photo_urls: [], ...addressFields })
-        : await kaelChatService.create({
-            service_type: createService as ServiceType,
-            message: trimmed,
-            problem_chips: [],
-            photo_urls: [],
-            // X2 (Plan.md §27.5 — 2026-05-29): idempotent first-turn POST.
-            // Reuses existing session if a retry happens.
-            client_request_id: generateClientRequestId(),
-            ...addressFields,
-          })
+      let result: Awaited<ReturnType<typeof kaelChatService.create>>
+      if (session) {
+        result = await kaelChatService.sendTurn(session.session.id, { message: trimmed, photo_urls: [], ...addressFields })
+      } else {
+        const requestFingerprint = firstTurnClientRequestFingerprint(
+          createService as ServiceType,
+          trimmed,
+          addressPayload,
+          payloadDistrict,
+        )
+        result = await kaelChatService.create({
+          service_type: createService as ServiceType,
+          message: trimmed,
+          problem_chips: [],
+          photo_urls: [],
+          // X2 (Plan.md §27.5 — 2026-05-29): idempotent first-turn POST.
+          // Reuses existing session if a retry happens.
+          client_request_id: stableClientRequestId(
+            pendingChatCreateClientRequestRef,
+            requestFingerprint,
+          ),
+          ...addressFields,
+        })
+        if (result.success) {
+          clearStableClientRequestId(
+            pendingChatCreateClientRequestRef,
+            requestFingerprint,
+          )
+        }
+      }
 
       if (result.success) {
         dispatch({ type: 'sendSucceeded', session: result.data })
@@ -631,6 +654,22 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
+}
+
+function firstTurnClientRequestFingerprint(
+  serviceType: ServiceType,
+  message: string,
+  addressLabel: string,
+  addressDistrict: string | null | undefined,
+): string {
+  return JSON.stringify({
+    service_type: serviceType,
+    message,
+    problem_chips: [],
+    photo_urls: [],
+    address_label: addressLabel,
+    address_district: addressDistrict ?? null,
+  })
 }
 
 function parseServiceType(value: string | undefined): ServiceType | null {

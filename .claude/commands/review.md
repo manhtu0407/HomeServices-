@@ -1,37 +1,29 @@
 # Code Review
 
-Chạy SAU khi code xong, TRƯỚC khi commit. Đọc RULES.md và verify từng rule:
+Run after implementation and before commit. This command points to the current review contract instead of carrying a stale copy of old rules.
 
-## 10 Rules Check
+## Required Review Inputs
 
-- [ ] **Rule #1**: Secrets không ở client — không hardcode key, không expose ra browser/RN bundle
-- [ ] **Rule #2**: AI API calls qua centralized wrapper (`@/lib/ai/client`) — không gọi SDK trực tiếp
-- [ ] **Rule #3**: AI responses validated trước khi đến user — check format giá, off-topic, ngôn ngữ
-- [ ] **Rule #4**: Price estimates có disclaimer — "Đây là ước tính dựa trên thị trường..."
-- [ ] **Rule #5**: Vietnamese-first cho user-facing text — error messages, push notifications đều tiếng Việt
-- [ ] **Rule #6**: Kael chỉ trả lời về điện và nước — hard rule, polite decline cho dịch vụ khác
-- [ ] **Rule #7**: Không autonomous action — booking/payment/cancel phải có user confirm
-- [ ] **Rule #8**: Không fake data — fallback OK, nhưng không fabricate data khi API fail
-- [ ] **Rule #9**: Logging không chứa PII/secrets — chỉ IDs, status codes, metadata
-- [ ] **Rule #10**: Timeout cho mọi network call — Anthropic 20s, Perplexity 15s, DeepSeek 10s
+1. `critical.md` section 8 for the review protocol.
+2. `RULES.md` for hard product, runtime, security, language, and data honesty boundaries.
+3. `STRUCTURES.md` for workflow/state/backend contract impact.
+4. `design.md` and `protocols/frontend-test.md` for UI, motion, accessibility, and frontend gates when UI changed.
+5. `protocols/ai-data-security.md` when secrets, PII, prompts, memory, model providers, logs, uploads, or Edge auth are involved.
+6. `docs/architecture/code-ownership-map.md` for any code enhancement or refactor.
 
-## Security Invariants
+## Output
 
-- [ ] `.env` files gitignored, `.env.example` có key names không có values
-- [ ] Input validated + sanitized trước DB và LLM
-- [ ] PII không bị share ngoài những gì cần cho job
-- [ ] Rate limit considerations
-
-## Code Quality
-
-- [ ] Không over-engineering — giải pháp đơn giản nhất đạt yêu cầu
-- [ ] Không thêm features ngoài scope task
-- [ ] Không build thứ chỉ cần ở scale >10x hiện tại
-
-## Output format
+Lead with findings ordered by severity:
 
 ```
-✅ Passed: [list]
-❌ Failed: [list + specific fixes needed]
-⚠️ Warnings: [list]
+Findings:
+P1/P2/P3 - file:line - issue, impact, required fix
+
+Open questions:
+
+Verification reviewed:
+
+Residual risk:
 ```
+
+If there are no findings, say so explicitly and still list any unrun tests or remaining risk.

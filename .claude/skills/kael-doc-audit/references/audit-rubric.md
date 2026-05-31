@@ -28,7 +28,7 @@ Adapted from Anthropic `claude-md-improver`, retargeted from "one CLAUDE.md" to 
 
 ### 6. Skill Health (15)
 - Each skill has `name` + a trigger-shaped `description`.
-- Each kael-* skill points to a real `protocols/` section; output format matches the protocol.
+- Each protocol-wrapper kael-* skill points to a real `protocols/` section; standalone audit/context/design skills may point to `references/` or a self-contained workflow instead.
 - Skills mirrored in `.claude` (Claude Code) and `.agents` (Codex) where cross-agent parity is intended.
 
 ## Grades

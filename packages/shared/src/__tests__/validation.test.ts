@@ -6,6 +6,7 @@ import {
   kaelChatTurnSchema,
   placesAutocompleteSchema,
   workerScopeChangeSchema,
+  workerRegisterSchema,
   workerCancellationRequestSchema,
   workerCancellationDecisionSchema,
   jobMediaAttachSchema,
@@ -71,6 +72,39 @@ describe('serviceTypeSchema (Rule #6: electrical + plumbing + cleaning)', () => 
 // ===================================================================
 // jobCreateSchema — STRUCTURES.md A2/A3
 // ===================================================================
+
+describe('workerRegisterSchema districts', () => {
+  const validWorker = {
+    legal_name: 'Nguyen Van A',
+    date_of_birth: '1990-01-01',
+    service_types: ['plumbing'],
+    years_experience: 5,
+    districts: ['q7'],
+    cccd_front_url: 'https://example.test/front.jpg',
+    cccd_back_url: 'https://example.test/back.jpg',
+    selfie_url: 'https://example.test/selfie.jpg',
+    bank_account: '123456789',
+    bank_name: 'VCB',
+  }
+
+  it('accepts explicit hcmc_all city-wide worker coverage', () => {
+    const parsed = workerRegisterSchema.parse({
+      ...validWorker,
+      districts: ['hcmc_all'],
+    })
+
+    expect(parsed.districts).toEqual(['hcmc_all'])
+  })
+
+  it('still rejects unknown districts instead of silently granting hcmc_all', () => {
+    expect(() =>
+      workerRegisterSchema.parse({
+        ...validWorker,
+        districts: ['ha_noi'],
+      }),
+    ).toThrow()
+  })
+})
 
 describe('jobCreateSchema', () => {
   const validJob = {

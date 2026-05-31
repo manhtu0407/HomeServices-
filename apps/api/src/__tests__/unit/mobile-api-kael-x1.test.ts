@@ -71,6 +71,11 @@ describe('Kael X1 boundary guard — detectOutOfScope', () => {
 })
 
 describe('Kael X1 boundary guard — detectServiceMismatch', () => {
+  it('keeps water-pump pressure reports inside plumbing scope', () => {
+    expect(detectOutOfScope('may bom nuoc yeu ap trong can ho').detected).toBe(false)
+    expect(evaluateMessageBoundary('may bom nuoc yeu ap trong can ho', 'plumbing').ok).toBe(true)
+  })
+
   it('flags cleaning service when message describes electrical issue', () => {
     const result = detectServiceMismatch(
       'Cầu dao trip, ổ cắm phòng ngủ bị chập điện',

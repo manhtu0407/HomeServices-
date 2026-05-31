@@ -789,13 +789,20 @@ async function createKaelChat(
   // rate limiter so harmless retries with the same client_request_id do not
   // burn the user's per-minute quota. Closes F-04 for Kael chat.
   if (input.client_request_id) {
-    const existingSessionId = await findExistingKaelSessionByClientRequest(
+    const existingSession = await findExistingKaelSessionByClientRequest(
       client,
       ctx.user.id,
       input.client_request_id,
     );
-    if (existingSessionId) {
-      return getKaelChat(ctx, existingSessionId);
+    if (existingSession?.kind === "ready") {
+      return getKaelChat(ctx, existingSession.sessionId);
+    }
+    if (existingSession?.kind === "pending") {
+      apiFailure(
+        "SESSION_PENDING",
+        "Phiên Kael đang được tạo. Vui lòng thử lại sau.",
+        409,
+      );
     }
   }
 
@@ -862,12 +869,19 @@ async function createKaelChat(
   if (
     sessionResult.error?.code === "23505" && input.client_request_id
   ) {
-    const recoveredId = await findExistingKaelSessionByClientRequest(
+    const recovered = await findExistingKaelSessionByClientRequest(
       client,
       ctx.user.id,
       input.client_request_id,
     );
-    if (recoveredId) return getKaelChat(ctx, recoveredId);
+    if (recovered?.kind === "ready") return getKaelChat(ctx, recovered.sessionId);
+    if (recovered?.kind === "pending") {
+      apiFailure(
+        "SESSION_PENDING",
+        "Phiên Kael đang được tạo. Vui lòng thử lại sau.",
+        409,
+      );
+    }
   }
   if (sessionResult.error || !sessionResult.data) {
     apiFailure("DB_ERROR", "Không thể tạo phiên Kael", 500);
@@ -936,21 +950,34 @@ async function createKaelChat(
 }
 
 // X2 (Plan.md §27.5 — 2026-05-29): idempotent Kael chat session helpers.
+type ExistingKaelSessionByClientRequest =
+  | { kind: "ready"; sessionId: string }
+  | { kind: "pending" }
+  | null;
+
 async function findExistingKaelSessionByClientRequest(
   client: DbClient,
   customerId: string,
   clientRequestId: string,
-): Promise<string | null> {
-  const result = await dbQuery<{ id: string }>(
+): Promise<ExistingKaelSessionByClientRequest> {
+  const result = await dbQuery<Record<string, unknown>>(
     client
       .from("kael_chat_sessions")
-      .select("id")
+      .select("id, job_id, status, estimate_ready_at, total_turns")
       .eq("customer_id", customerId)
       .eq("client_request_id", clientRequestId)
       .maybeSingle(),
   );
   if (result.error || !result.data) return null;
-  return result.data.id;
+  const sessionId = asString(result.data.id);
+  if (!sessionId) return null;
+  const hasMaterializedTurn = (nullableNumber(result.data.total_turns) ?? 0) > 0;
+  const hasJob = nullableString(result.data.job_id) !== null;
+  const hasEstimate = nullableString(result.data.estimate_ready_at) !== null;
+  if (!hasMaterializedTurn && !hasJob && !hasEstimate) {
+    return { kind: "pending" };
+  }
+  return { kind: "ready", sessionId };
 }
 
 // X2 (Plan.md §27.5 — 2026-05-29): idempotent job creation helpers.
@@ -990,13 +1017,26 @@ async function buildExistingJobCreateResponse(
   }
   const cardV3 = asRecord(job.data.kael_estimate_card_v3);
   const cardEstimate = asRecord(cardV3.estimate);
+  const complexity = asComplexityOrNull(job.data.kael_complexity) ??
+    asComplexityOrNull(cardEstimate.complexity);
+  const priceMin = positiveNumberFrom(job.data.kael_price_min) ??
+    positiveNumberFrom(cardEstimate.price_min);
+  const priceMax = positiveNumberFrom(job.data.kael_price_max) ??
+    positiveNumberFrom(cardEstimate.price_max);
+  if (!complexity || priceMin === null || priceMax === null || priceMax < priceMin) {
+    apiFailure(
+      "JOB_PENDING",
+      "Yêu cầu đang được Kael phân tích. Vui lòng thử lại sau.",
+      409,
+    );
+  }
   const estimate = {
     service_type: asServiceType(job.data.service_type),
     problem_category: nullableString(cardEstimate.problem_category) ?? "",
     problem_summary: nullableString(job.data.kael_problem_identified) ?? "",
-    complexity: asComplexity(job.data.kael_complexity),
-    price_min: asNumber(job.data.kael_price_min),
-    price_max: asNumber(job.data.kael_price_max),
+    complexity,
+    price_min: priceMin,
+    price_max: priceMax,
     confidence: asNumber(cardEstimate.confidence),
     advisory: nullableString(job.data.kael_advisory),
     disclaimer: PRICE_DISCLAIMER,

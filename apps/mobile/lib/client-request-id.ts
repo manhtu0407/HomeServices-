@@ -14,6 +14,34 @@ export function generateClientRequestId(): string {
   return fallbackUuid()
 }
 
+export type PendingClientRequestId = {
+  fingerprint: string
+  id: string
+}
+
+export type PendingClientRequestRef = {
+  current: PendingClientRequestId | null
+}
+
+export function stableClientRequestId(
+  ref: PendingClientRequestRef,
+  fingerprint: string,
+): string {
+  if (!ref.current || ref.current.fingerprint !== fingerprint) {
+    ref.current = { fingerprint, id: generateClientRequestId() }
+  }
+  return ref.current.id
+}
+
+export function clearStableClientRequestId(
+  ref: PendingClientRequestRef,
+  fingerprint: string,
+): void {
+  if (ref.current?.fingerprint === fingerprint) {
+    ref.current = null
+  }
+}
+
 function fallbackUuid(): string {
   // RFC 4122 v4 layout: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx where y is one
   // of {8, 9, a, b}.

@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint .",
+    "lint:mobile": "eslint .",
     "eas:login": "npx eas-cli@latest login",
     "eas:whoami": "npx eas-cli@latest whoami",
     "testflight": "npx eas-cli@latest build -p ios --profile production --auto-submit",
@@ -19,6 +19,7 @@
     "submit:android:latest": "npx eas-cli@latest submit -p android --profile production --latest"
   },
   "dependencies": {
+    "@babel/runtime": "7.29.2",
     "@home-services/shared": "workspace:*",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.105.4",

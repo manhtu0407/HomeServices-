@@ -6,6 +6,8 @@ Plan này KHÔNG phải tài liệu marketing. Mỗi phase phải xuất ra evid
 
 ---
 
+> 2026-05-30 supersession: các đoạn lịch sử trong Plan về rating penalty / auto-suspend khi worker hủy việc KHÔNG còn là runtime truth hiện tại. Nguồn hiện hành là `docs/workflow/worker-cancellation.md`, `STRUCTURES.md`, và các mục P11/P13/P16 sau này: không có autonomous suspension, rating penalty, payment hold, hoặc punishment nếu chưa có phê duyệt mới của Tu.
+
 ## 0. Activation Protocol
 
 Trước khi đụng bất kỳ file nào, agent thực hiện plan này MUST:
@@ -69,7 +71,7 @@ Worker travel → arrived → inspecting → repairing → completed_by_worker �
 - Auto create broadcast cho candidate đầu + push notification.
 - Push notification cho customer "Đang tìm thợ thay thế".
 - Worker hủy bị trừ rating + log cancellation count.
-- Abuse protection: rate limit max 2 cancel / 24h, auto-suspend khi 5+ cancel / 7 ngày.
+- Abuse protection (superseded 2026-05-30): rate limit remains valid; auto-suspend/rating penalty language here is historical only and must not be implemented without renewed Tu approval.
 
 ---
 
@@ -239,7 +241,7 @@ Map dưới đây là visualization của §1. Đọc 1 lần để nắm tổng
   │   ─ Mark cancellation status='approved'         │ ← bỏ admin gate
   │   ─ Decrement worker rating -0.1                │
   │   ─ Count cancellations last 7d                 │
-  │     ≥5 → auto-suspend worker                    │
+  │     superseded: no auto-suspend without Tu       │
   │   ─ Job status: → 'broadcasting' (reset)        │
   │   ─ Clear worker_id, matched_at, arrived_at     │
   │   ─ Return prev worker_id + svc + dist + geo    │
@@ -332,7 +334,7 @@ Map này là **end-state** sau khi tất cả phase 1-4 hoàn tất. Codex imple
 | D7 | Push provider | Expo Push Service chính thức |
 | D8 | Kael chat persist | DB persist (kael_chat_sessions + kael_chat_turns tables) |
 | D9 | A6 scheduling | Now-only Phase 1. Slot scheduling defer Phase 2 |
-| D10 | Worker cancel abuse | max 2 cancel/24h + rating penalty 0.1/cancel + auto-suspend ≥ 5 cancel/7 ngày |
+| D10 | Worker cancel abuse | max 2 cancel/24h remains valid; rating penalty and auto-suspend are superseded historical ideas and must not be implemented without renewed Tu approval |
 | D11 | Tab layout customer | GIỮ NGUYÊN 5 tabs (Home/Book/Kael/History/Profile). Repurpose Book + Kael per §8.6. KaelChatSurface là stack screen ngoài tab bar |
 | D12 | Admin panel web app | DEFER hoàn toàn — KHÔNG build trong plan này. Admin actions qua Supabase Studio direct |
 | D13 | Phase ordering | Phase 1→2→3 sequential. Phase 4 parallel với 1-3. Phase 5 sau khi 1-4 done |
@@ -1301,7 +1303,7 @@ $$;
 - `service_radius_km` default 8 (covers HCMC central districts).
 - `problem_specializations` empty array = worker generalist; non-empty = focused.
 
-### 10.2 Migration — Worker cancellation auto + rate limit + rating penalty
+### 10.2 Migration — Worker cancellation auto + rate limit (historical; penalty/suspend superseded)
 
 **File**: `supabase/migrations/YYYYMMDDHHMMSS_worker_cancellation_auto.sql`
 
@@ -1319,8 +1321,8 @@ Update `request_worker_cancellation_atomic`:
 -- 5. Update jobs.status from current → 'broadcasting' (reset to find new worker)
 --    Also clear jobs.worker_id, jobs.matched_at, jobs.arrived_at (etc.)
 -- 6. Decrement worker rating by 0.1 (floor at 0)
--- 7. Check worker total cancellations last 7 days ≥ 5 → auto-suspend:
---    update worker_profiles set is_suspended = true, is_available = false
+-- 7. SUPERSEDED 2026-05-30: do not auto-suspend or apply rating penalty
+--    without renewed Tu approval.
 -- 8. Return previous worker_id + service_type + district + lat/lng + problem_slug
 --    (cho Edge findNextBestWorker dùng)
 ```
@@ -1457,16 +1459,16 @@ Step 4: Return top N
 - Unit: findNextBestWorker scoring với edge cases (no lat/lng, no specializations, single candidate).
 - Integration: full flow worker cancel → next match → broadcast → push.
 - Rate limit test: worker cancel 3 lần trong 24h → third fails.
-- Auto-suspend test: worker cancel 5 lần trong 7 ngày → suspended.
+- Auto-suspend test: SUPERSEDED by P11; no autonomous suspension without admin review/Tu approval.
 
 ### 10.8 Phase 3 Definition of Done
 
 - [ ] Geo migration applied staging + dry-run prod OK.
 - [ ] findNextBestWorker tested with realistic data.
 - [ ] Auto cancellation flow works end-to-end on staging.
-- [ ] Worker rating decreases on cancel.
+- [ ] Worker rating decreases on cancel. SUPERSEDED by later Tu direction; do not implement without renewed approval.
 - [ ] Rate limit enforced.
-- [ ] Auto-suspend triggers correctly.
+- [ ] Auto-suspend triggers correctly. SUPERSEDED by P11; no autonomous suspension.
 - [ ] Customer + new worker receive correct push notifications.
 - [ ] No PII in geo logs.
 - [ ] Address autocomplete UI works.
@@ -1834,9 +1836,9 @@ Claude (tôi) sẽ chạy checklist này sau mỗi phase. Codex KHÔNG ngại ch
 - [ ] distance_km() function returns correct values (test với HCMC coordinates).
 - [ ] findNextBestWorker returns ranked candidates.
 - [ ] requestWorkerCancellation auto-approves (no admin step).
-- [ ] Worker rating decremented after cancel.
+- [ ] Worker rating decremented after cancel. SUPERSEDED by later Tu direction; do not implement without renewed approval.
 - [ ] Rate limit: 3rd cancel in 24h returns INVALID_STATUS.
-- [ ] Auto-suspend: 5th cancel in 7d sets is_suspended=true + is_available=false.
+- [ ] Auto-suspend: SUPERSEDED by P11; admin review required before suspension.
 - [ ] Re-broadcast push delivered to new worker + customer.
 - [ ] Geocoding fallback: address with no Maps result → geo_source='fallback', match still works via district.
 
@@ -2021,7 +2023,7 @@ Plan §6 cấm Phase 1-3 bắt đầu trước khi 2 spike có output. Codex b�
 | Migration geo (`jobs.address_lat/lng`, `worker_profiles.home_lat/lng`, `service_radius_km`) | ❌ |
 | Migration `problem_specializations text[]` | ❌ |
 | SQL function `public.distance_km()` | ❌ |
-| Update `request_worker_cancellation_atomic` → auto-approve + rate limit + auto-suspend + return next candidates | ❌ |
+| Update `request_worker_cancellation_atomic` → auto-approve + rate limit + return next candidates; auto-suspend remains superseded/deferred | ❌ |
 | `supabase/functions/mobile-api/_shared/matching.ts` (`findNextBestWorker`) | ❌ KHÔNG TỒN TẠI |
 | Wire auto re-broadcast trong `requestWorkerCancellation` service | ❌ |
 | `apps/mobile/components/customer/address-autocomplete.tsx` | ❌ KHÔNG TỒN TẠI |
@@ -2171,14 +2173,14 @@ KHÔNG phải gap audit — deploy/release steps:
 
 | Cụm | Mục đích | Items | Phụ thuộc |
 |---|---|---|---|
-| **Cụm A** — Trust & Safety | Chống worker abuse cancel | #1 Rating penalty + #2 Auto-suspend | Standalone, làm trước được |
+| **Cụm A** — Trust & Safety | Chống worker abuse cancel | #1 Rating penalty + #2 Auto-suspend (both superseded/deferred; admin review required) | Standalone, làm trước được |
 | **Cụm B** — Geo Matching Upgrade | Chọn thợ gần nhất + chuyên môn nhất | #3 Geo schema + #4 distance_km + #5 Address autocomplete + Google geocoding | #4 và #5 phụ thuộc #3 |
 
 Đề xuất ưu tiên khi revisit: Cụm A trước (đơn giản hơn, chỉ migration + Edge logic), Cụm B sau (cần Google Maps API + UI mới + schema migration lớn).
 
 ---
 
-#### #1 — Worker rating penalty −0.1 mỗi cancel
+#### #1 — Worker rating penalty −0.1 mỗi cancel (superseded/deferred)
 
 - **Plan ref**: D10 + §10.2 + §10.8
 - **Status**: ⏸️ DEFERRED 2026-05-21 per Tu
@@ -2198,7 +2200,7 @@ KHÔNG phải gap audit — deploy/release steps:
   - Test: integration test trên staging với fake worker rating 4.5 → cancel → rating = 4.4.
   - Edge service: trả về `rating_after` trong response để client có thể display.
 
-#### #2 — Auto-suspend khi worker hủy ≥5 lần / 7 ngày
+#### #2 — Auto-suspend khi worker hủy ≥5 lần / 7 ngày (superseded/deferred)
 
 - **Plan ref**: D10 + §10.2 + §10.8
 - **Status**: ⏸️ DEFERRED 2026-05-21 per Tu
@@ -2223,7 +2225,7 @@ KHÔNG phải gap audit — deploy/release steps:
 - **Impact production**: 1 worker xấu có thể hủy job liên tục trong tuần mà không bị remove khỏi marketplace pool. Customer experience xấu, broadcast wasted, Kael phải re-match nhiều lần.
 - **Trigger revisit**: Đi cùng với #1. Không có #2 mà có #1 thì rating có giảm nhưng worker vẫn nhận việc → ít hiệu quả.
 - **Definition of done**:
-  - Migration update `request_worker_cancellation_atomic` thêm 7-day count + auto-suspend.
+  - SUPERSEDED by P11: do not add 7-day auto-suspend without renewed Tu approval and admin-review contract.
   - Edge service: thêm `notifyAdminWorkerSuspended` helper (tuỳ chọn — có thể defer admin notify).
   - Test: 5 cancels trong 7 ngày → 6th attempt → worker đã bị suspend (is_suspended=true).
   - Test: 4 cancels + 1 cancel cũ hơn 7 ngày → vẫn cho cancel (rolling window).
@@ -2377,7 +2379,7 @@ Google Cloud Console resources đã provisioned và secret đã set. Codex KHÔN
 #### 21.3.1.done — Codex local implementation update — 2026-05-21
 
 Scope completed in this local pass:
-- #2 Auto-suspend: new migration `20260521120000_geo_matching_and_worker_auto_suspend.sql` updates `request_worker_cancellation_atomic` with 7-day approved-cancel count and sets `is_suspended=true`, `is_available=false`, `verification_status='suspended'` when count >= 5.
+- #2 Auto-suspend: historical local update from 2026-05-21; SUPERSEDED by P11 / `docs/workflow/worker-cancellation.md`, which forbids autonomous suspension without admin review/Tu approval.
 - #3 Geo schema: migration adds `jobs.address_lat/address_lng/geo_source` and worker `home_lat/home_lng/service_radius_km/problem_specializations`; shared/mobile API types were aligned.
 - #4 Geo-ranked matching: Edge `queryEligibleWorkers` now loads job geo/problem keys, excludes suspended workers, scores rating + specialization + distance/radius fallback, and preserves district fallback when coordinates are missing.
 - #5 Partial: Edge proxy `POST /places/autocomplete` uses Places API (New), server geocoding uses `GOOGLE_MAPS_API_KEY` only in Edge, Kael chat carries `address_label`/district into the service wrapper, and mobile has an Edge-backed `AddressAutocomplete`.
@@ -9466,6 +9468,7 @@ Locked override: Tu approved 2026-05-29 — G1/G3/G4 được sửa critical.md,
 - 2026-05-29 — G4 done: AGENTS.md "Execution Gates (parity)" trỏ critical.md.
 - 2026-05-29 — G5 done: kael-doc-audit skill + references/audit-rubric.md (report-first).
 - 2026-05-29 — G6 done: structural verify pass; chưa commit (Git Rule). Follow-up: mirror karpathy vào .claude/skills; chạy kael-doc-audit full report.
+- 2026-05-30 — Follow-up fix: reconciled stale `.claude/commands/{pre-flight,scope-check,review,security-audit}.md`, clarified kael-doc-audit protocol-wrapper rubric, and marked known Plan drift as superseded instead of active truth.
 
 ---
 
@@ -9477,11 +9480,11 @@ Locked override: Tu approved 2026-05-29 — G1/G3/G4 được sửa critical.md,
 Plan ID:        plan-design-context-upgrade-20260529
 Created:        2026-05-29
 Owner:          Manh Tu (manhtu0407@gmail.com)
-Status:         APPROVED 2026-05-29 — Tu duyệt nhánh A + C; nhánh B (glass-liquid-signature) DEFERRED
+Status:         APPROVED 2026-05-29 — A + C built; B glass-liquid-signature later built in §29.8; signature tokens still need visual sign-off on Expo
 Trigger:        Deep-dive 5 repo: taste-skill, design-motion-principles, claudedesignskills,
                 claude-mem, claude-context → lấy principle, không bê infra/web code
 Scope:          A (design.md split + kael-motion + anti-slop gate) + C (MEMORY.md progressive disclosure + /kael-mem)
-Out of scope:   B glass-liquid-signature (Tu sẽ cùng bàn kỹ — đây là chốt chặn cuối frontend);
+Out of scope:   Historical at plan start: B glass-liquid-signature was deferred pending interview; see §29.8 for built spec/reference and remaining visual sign-off.
                 claude-context vector code search; claude-mem worker service / Chroma install
 Effort:         ~1-1.5 ngày agent (thao tác doc/skill; verify structural)
 Phase count:    A1, A2, A3, C1, C2 + verify
@@ -9504,7 +9507,7 @@ Locked override: Tu approved 2026-05-29 — design.md được sửa (như đợ
 ### 29.0.2 Decision Log
 
 - **D1** design.md split: Tu approved 2026-05-29 ("làm A") — locked-doc edit authorized.
-- **D2** **B glass-liquid-signature DEFERRED** — KHÔNG tự design. Tu xác nhận B là chốt chặn cuối giúp Codex/Claude Code hoàn thiện frontend; phải interview Tu về phong cách + cách design trước khi viết.
+- **D2** **B glass-liquid-signature initially DEFERRED, then BUILT in §29.8** — không tự design trước interview; sau interview Tu chốt direction, spec/reference/skill được tạo và vẫn chờ visual sign-off Expo trước khi tuyên bố 9/10.
 - **D3** 4/5 repo là web (GSAP/Framer/CSS/WebGL) — HS lấy *principle*, port sang RN/Reanimated; không copy snippet.
 - **D4** "Variance" (taste-skill, frontend-design) BỊ BỎ — HS là single-brand (mint/cream glass). Chỉ lấy *anti-slop* + *preflight*.
 - **D5** claude-context (Milvus/Zilliz + embedding key) DEFERRED — chi phí + infra trái thuần-app/cost-conscious; `docs/architecture/code-ownership-map.md` thủ công đủ ở scale này.

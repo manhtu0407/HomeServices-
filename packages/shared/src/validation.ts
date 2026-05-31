@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { normalizeDistrict } from './constants'
+import { HCMC_DISTRICTS, normalizeDistrict } from './constants'
 
 export const serviceTypeSchema = z.enum(['electrical', 'plumbing', 'cleaning'])
 
@@ -83,19 +83,21 @@ export const workerRegisterSchema = z.object({
   service_types: z.array(serviceTypeSchema).min(1).max(3),
   years_experience: z.number().int().min(0).max(60),
   // X3 (Plan.md §27.6 — 2026-05-29): reject inputs that don't normalize to
-  // a known HCMC district slug. Caller-facing input shape stays `string` so
-  // existing mobile UI keeps building districts from chip ids; the Edge
-  // service layer canonicalises before INSERT via `normalizeDistrict`.
+  // a known HCMC district slug. Explicit hcmc_all remains valid because broad
+  // city-wide worker coverage is supported by the matching path.
   districts: z
     .array(
       z
         .string()
         .min(1)
         .max(50)
-        .refine(
-          (value) => normalizeDistrict(value) !== 'hcmc_all',
-          'districts[] must be a known HCMC district slug (e.g. binh_thanh, q1, thu_duc)',
-        ),
+        .refine((value) => {
+          const canonical = normalizeDistrict(value)
+          const trimmed = value.trim().toLowerCase()
+          return canonical !== 'hcmc_all' ||
+            trimmed === 'hcmc_all' ||
+            trimmed === HCMC_DISTRICTS.hcmc_all.toLowerCase()
+        }, 'districts[] must be a known HCMC district slug (e.g. binh_thanh, q1, thu_duc, hcmc_all)'),
     )
     .min(1)
     .max(20),
