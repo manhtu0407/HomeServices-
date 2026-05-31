@@ -57,6 +57,11 @@ describe('normalizeDistrict', () => {
       expect(normalizeDistrict('quan 1')).toBe('q1')
     })
 
+    it('"District 7" (English autocomplete label) -> q7', () => {
+      expect(normalizeDistrict('District 7')).toBe('q7')
+      expect(normalizeDistrict('Dist. 7')).toBe('q7')
+    })
+
     it('"Quận 7" with proper UTF-8 diacritics -> q7', () => {
       expect(normalizeDistrict('Quận 7')).toBe('q7')
     })
@@ -89,6 +94,7 @@ describe('normalizeDistrict', () => {
         expect(normalizeServiceAreaDistrict(`Q${number}`)).toBe(expected)
         expect(normalizeServiceAreaDistrict(`Q. ${number}`)).toBe(expected)
         expect(normalizeServiceAreaDistrict(`Quan ${number}`)).toBe(expected)
+        expect(normalizeServiceAreaDistrict(`District ${number}`)).toBe(expected)
         expect(normalizeServiceAreaDistrict(`Quận ${number}`)).toBe(expected)
       }
     })
@@ -162,6 +168,7 @@ describe('normalizeServiceAreaDistrict', () => {
   it('keeps D31 dispatch district inputs canonical instead of silently storing drift', () => {
     expect(normalizeServiceAreaDistrict('q7')).toBe('q7')
     expect(normalizeServiceAreaDistrict('Quan 1')).toBe('q1')
+    expect(normalizeServiceAreaDistrict('District 7')).toBe('q7')
     expect(normalizeServiceAreaDistrict('Q.7')).toBe('q7')
     expect(normalizeServiceAreaDistrict('BT')).toBeNull()
     expect(normalizeServiceAreaDistrict('Quan 2')).toBe('thu_duc')

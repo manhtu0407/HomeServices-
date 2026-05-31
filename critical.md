@@ -247,11 +247,11 @@ The agent MUST NOT implement:
 
 - service expansion beyond electrical/plumbing/cleaning,
 - multi-city expansion,
-- autonomous booking,
+- raw-AI/client-side autonomous booking,
 - multi-agent orchestration,
 - custom memory system,
 - web consumer product,
-- L3/L4 autonomy,
+- L3/L4 autonomy outside the Tu-approved Kael Autonomy v2 server-side decision contract,
 - meta-orchestrator systems.
 
 If Tu asks for a scope-risk task, stop and discuss. If Tu explicitly approves, split the plan into small phases and proceed only within the approved scope. Hard security rules still apply.
@@ -527,11 +527,11 @@ Risk: phone numbers, CCCD, address, bank data, or raw descriptions leak.
 
 Prevention: use IDs, status codes, and safe metadata only.
 
-### 11. Money-Impacting Autonomous Actions
+### 11. Unvalidated Money-Impacting Autonomous Actions
 
-Risk: booking, payment, cancellation, or scope change happens without user confirmation.
+Risk: booking, payment, cancellation, or scope change happens from raw AI output, mobile UI, client-side code, or missing policy evidence.
 
-Prevention: enforce explicit confirmation at A7, A11, A12, and related states.
+Prevention: enforce server-side `KaelAutonomyDecision` validation with policy id, evidence, confidence, reversibility/appealability, and audit trail at A7, A11, A12, and related states.
 
 ### 12. Turning Next.js Into the Consumer Product
 

@@ -30,7 +30,7 @@ Rules for AI agents:
 - Next.js exists for backend, admin, and prototypes only.
 - User-facing app text must be Vietnamese.
 - Technical implementation notes may be English.
-- Every money-impacting action must require explicit confirmation.
+- Every money-impacting transition must be backed by a validated server-side decision, audit trail, and appeal/override path.
 - Every workflow step must have loading, empty, error, success, and retry considerations when implemented.
 
 Current phase note:
@@ -69,8 +69,8 @@ Not supported now
 |- Appliance repair
 |- General handyman marketplace
 |- Multi-city expansion
-|- Autonomous booking
-|- Autonomous payment
+|- Autonomous actions from raw AI output or client-side UI
+|- Payment provider execution beyond implemented rails
 |- Multi-agent orchestration
 |- Consumer web app
 ```
@@ -92,16 +92,17 @@ Kael = AI Price Check + camera-based problem understanding
 |- asks clarification when needed
 |- estimates market price range
 |- explains uncertainty
-|- prepares worker pre-brief after customer confirms booking search
+|- prepares worker pre-brief and starts matching when policy has enough evidence
 |- mediates scope-change explanation
 ```
 
-Kael is not currently:
+Kael is not:
 
 ```text
 Kael is not
 -
-|- an autonomous booking agent
+|- a raw-LLM status writer
+|- a client-side money/payment actor
 |- a payment agent
 |- a worker punishment system
 |- a multi-specialist orchestrator
@@ -123,7 +124,7 @@ Good patterns to adopt
 |- fast booking path
 |- transparent estimate before booking
 |- worker verification and profile trust
-|- clear confirmation before money-impacting actions
+|- clear audit, override, and appeal paths for money-impacting actions
 |- in-app chat as the source of truth
 |- photo/video evidence before and after job
 |- rating and feedback loop
@@ -141,7 +142,7 @@ Bad patterns to avoid
 |- overloaded service catalog
 |- unclear address handling
 |- hidden price changes
-|- scope change without explicit approval
+|- scope change without Kael policy decision, evidence, and appeal path
 |- weak support resolution
 |- no transaction evidence trail
 |- slow, heavy, confusing app flow
@@ -173,11 +174,11 @@ Customer app
 -
 |- collect problem description and media
 |- show Kael estimate
-|- require booking confirmation
+|- show Kael orchestration and audit trail
 |- show worker match
 |- support in-app chat
-|- handle scope-change approval
-|- confirm completion
+|- provide scope-change evidence/override/appeal
+|- provide completion evidence/appeal
 |- support payment placeholder
 |- collect review
 ```
@@ -297,7 +298,7 @@ Frontend build order
 |- Service/problem selection
 |- Problem description/media
 |- Kael estimate
-|- Booking confirmation
+|- Kael orchestration decision
 |- Searching/matching status
 |- Active job
 |- Scope change
@@ -486,14 +487,14 @@ Customer opens app
 |- Kael analyzes
 |- Kael asks clarification if needed
 |- Kael shows price estimate
-|- customer confirms booking search
-|- system broadcasts job
+|- Kael validates an autonomy decision
+|- system broadcasts job / starts matching
 |- worker accepts
 |- customer tracks job + chats
 |- worker reports scope change if needed
-|- customer approves/rejects scope change
+|- Kael decides scope change from policy/evidence, with appeal path
 |- worker completes
-|- customer confirms completion
+|- Kael confirms completion or opens dispute from evidence
 |- payment + review
 ```
 
@@ -673,7 +674,7 @@ Content
 Required disclaimer meaning
 -
 |- this is a market estimate
-|- final price is confirmed by the worker before work starts
+|- final price is computed by Kael from validated evidence before work starts
 
 Rules
 -
@@ -687,7 +688,7 @@ Rules
 ```text
 Purpose
 -
-|- let customer choose now or scheduled time
+|- future scheduling surface; current primary flow is on-demand
 
 Options
 -
@@ -697,15 +698,16 @@ Options
 Validation
 -
 |- unavailable time slots cannot be selected
+|- do not render fake/disabled schedule slots in the current primary transaction path
 |- default is now during early phase
 ```
 
-### A7. Confirm Booking Search
+### A7. Kael Starts Worker Search
 
 ```text
 Purpose
 -
-|- explicit confirmation before broadcasting job
+|- validated Kael autonomy decision before broadcasting job
 
 Summary shown
 -
@@ -719,11 +721,12 @@ Summary shown
 
 Hard rule
 -
-|- no job broadcast before customer confirms
+|- no job broadcast from raw AI output or client-side status writes
+|- broadcast requires `KaelAutonomyDecision(actor=kael_system, action=start_matching)`
 
 Events
 -
-|- customer_confirmed_booking_search
+|- kael_started_matching
 |- job_ready_for_broadcast
 ```
 
@@ -820,35 +823,37 @@ UI
 
 Hard rule
 -
-|- worker is blocked until customer decides
+|- worker is blocked until Kael emits a validated scope decision or an explicit admin override exists
+|- customer can add evidence, cancel, or appeal the Kael decision, but is not the default final authority
 |- no hidden price change
-|- no auto-approval
+|- no raw LLM auto-approval; only server-validated KaelAutonomyDecision may approve/reject scope
 |- worker does not propose price; Kael computes from original Kael context + worker reported scope (Phase 2.0 2026-05-23)
 
 Events
 -
 |- scope_change_requested
-|- customer_approved_scope_change
-|- customer_rejected_scope_change
+|- kael_decided_scope_change
+|- customer_appealed_scope_change
+|- admin_overrode_scope_change
 ```
 
-### A12. Completion Confirmation
+### A12. Completion Review
 
 ```text
 Purpose
 -
-|- customer confirms work was received before payment finalization
+|- Kael confirms work from worker/customer evidence or opens dispute before payment finalization
 
 Content
 -
 |- worker completion note
 |- completion photos
-|- final price (Kael-locked: set at A7 confirm baseline or latest A11 approved Kael-computed value)
-|- confirm received button
+|- final price (Kael-locked: set at A7 autonomy baseline or latest A11 Kael-computed value)
+|- audit / appeal / support actions
 
 Hard rule
 -
-|- payment cannot complete before customer confirmation in current phase
+|- payment cannot complete before a validated completion/payment decision
 |- final price source is Kael authority, not worker input (Phase 2.0 2026-05-23)
 ```
 
@@ -921,9 +926,9 @@ Worker opens app
 |- updates job status
 |- chats with customer
 |- requests scope change if issue differs
-|- waits for customer decision
+|- waits for Kael scope decision or override
 |- completes job with notes/photos
-|- earnings updated after customer confirmation
+|- earnings updated after Kael completion/payment decision
 ```
 
 ### B0. Worker Registration
@@ -1086,8 +1091,8 @@ Worker input
 Rules
 -
 |- worker does NOT propose price; Kael computes new estimate from worker reported scope (Phase 2.0 2026-05-23)
-|- worker cannot continue changed work until customer approves
-|- Kael computes + explains change to customer
+|- worker cannot continue changed work until Kael emits a validated scope decision or admin override
+|- Kael computes + explains change to customer, with accept/appeal path
 |- all scope change data is logged
 ```
 
@@ -1106,12 +1111,12 @@ Input
 State
 -
 |- completed_by_worker
-|- waiting_customer_confirmation
+|- kael_completion_review
 
 Rules
 -
 |- worker does NOT enter final price; Kael-locked value is authoritative (Phase 2.0 2026-05-23)
-|- final price source: jobs.final_price (set at A7 confirm baseline or latest A11 approved Kael-computed value)
+|- final price source: jobs.final_price (set at A7 Kael decision baseline or latest A11 Kael-computed scope decision)
 ```
 
 ### B8. Earnings
@@ -1131,7 +1136,7 @@ Content
 
 Rule
 -
-|- earnings finalization depends on customer confirmation/payment state
+|- earnings finalization depends on Kael completion/payment decision and provider capability
 ```
 
 ---
@@ -1175,7 +1180,31 @@ Admin does not approve every Kael learning event. Admin must be able to see, aud
 
 ## 9. Kael Workflow
 
-Kael is non-autonomous for money-impacting actions, but strong in analysis, clarification, pricing support, worker briefing, and evidence-gated learning.
+Kael is the default server-side workflow actor for money-impacting orchestration when policy has enough evidence. Raw LLM output remains non-authoritative: every transition requires a validated `KaelAutonomyDecision` with policy id, evidence, confidence, reversibility/appealability, and resulting event.
+
+### Kael Artifact Lifecycle
+
+```text
+Canonical artifacts
+-
+|- service_request
+|- process_ticket
+|- ai_diagnosis
+|- ai_notes
+|- estimate
+|- worker_brief
+|- provider_match
+|- booking
+|- scope_change
+|- cancellation_review
+|- completion_evidence
+|- completion_review
+|- dispute_decision
+|- payment_decision
+|- review
+```
+
+These artifacts are created or updated by Kael, workers, clients, or admin according to the workflow phase. They are audit records and phase-gated UI inputs, not direct status writers. Any artifact that implies money, booking, cancellation, scope, completion, dispute, or payment movement still requires a server-validated `KaelAutonomyDecision` or explicit admin override.
 
 ### Kael Price Check Flow
 
@@ -1190,7 +1219,7 @@ Kael Price Check flow
 |- compare search result with baseline
 |- synthesize structured price estimate
 |- generate at most one advisory
-|- create worker pre-brief after booking confirm
+|- create worker pre-brief after validated Kael matching decision
 ```
 
 ### AI Provider Roles
@@ -1251,7 +1280,7 @@ Kael output rules
 
 ## 10. Kael Evidence-Gated Self-Learning System
 
-This is the controlled learning system that lets Kael improve without becoming an autonomous booking/payment agent.
+This is the controlled learning system that lets Kael improve while keeping autonomy server-side, evidence-gated, reversible, and audited.
 
 Earlier conservative model rejected:
 
@@ -1269,8 +1298,8 @@ Approved model
 -
 |- self-learning is allowed
 |- learning must be evidence-gated
-|- learning can improve analysis behavior and price suggestions
-|- learning cannot autonomously execute booking/payment/cancel
+|- learning can improve analysis behavior, price suggestions, and autonomy policy evidence thresholds
+|- learning cannot execute booking/payment/cancel without a validated KaelAutonomyDecision
 |- learning cannot auto-approve worker punishment
 |- learning cannot expand supported service scope
 |- every learned change must be logged, reversible, and measurable
@@ -1302,8 +1331,8 @@ Inputs
 |- Kael estimate
 |- Perplexity context
 |- baseline used
-|- worker confirmed price
-|- final paid price
+|- worker confirmed facts/evidence
+|- Kael-locked final price
 |- scope change reason
 |- completion status
 |- customer rating
@@ -1370,10 +1399,10 @@ Evidence gate
 -
 |- similar pattern appears >= 5 times
 |- cases are completed transactions, not drafts
-|- final outcome is confirmed by customer/worker flow
+|- final outcome is confirmed by validated Kael completion/dispute/payment decision or explicit admin override
 |- no major contradiction from recent similar cases
 |- confidence is above configured threshold
-|- learning does not touch booking/payment/cancel autonomy
+|- learning changes to booking/payment/cancel policy require versioned evidence, rollback, and audit
 |- learning does not expose or depend on unsafe PII
 |- learning has a rollback path
 ```
@@ -1430,12 +1459,12 @@ Auto-promoted learned rule
 ```text
 Forbidden
 -
-|- auto-charge customer
-|- auto-confirm booking
-|- auto-cancel job
-|- auto-approve worker
+|- raw AI auto-charges customer
+|- raw AI auto-confirms booking
+|- raw AI auto-cancels job
+|- raw AI auto-approves worker
 |- auto-punish worker
-|- auto-change final price without customer confirmation
+|- raw AI changes final price without validated policy evidence
 |- auto-expand supported service scope
 |- hide learning changes from admin
 ```
@@ -1535,7 +1564,7 @@ Responsibility
 |- validate structured output
 |- return estimate card data
 |- compute scope-change estimate from worker reported scope (Phase 2.0 2026-05-23)
-|- own final-price authority across A7 baseline + A11 approved updates
+|- own final-price authority across A7 baseline + A11 Kael-decided updates
 
 Forbidden
 -
@@ -1551,14 +1580,15 @@ Forbidden
 Responsibility
 -
 |- job state transitions
-|- customer confirmations
+|- customer/worker inputs, overrides, and appeals
+|- KaelAutonomyDecision validation
 |- worker status updates
 |- completion states
 
 Forbidden
 -
-|- booking without A7 confirmation
-|- payment completion without A12 confirmation
+|- booking without A7 KaelAutonomyDecision
+|- payment completion without A12 completion/payment decision
 ```
 
 ### BroadcastMatchingModule
@@ -1601,12 +1631,13 @@ Responsibility
 |- worker scope-change request (description + reason + photos only; Phase 2.0 2026-05-23)
 |- delegate price re-computation to KaelPriceCheckModule (computeScopeChangeEstimate)
 |- persist Kael-computed price (kael_computed_min/max) for audit
-|- customer decision; on approve, lock jobs.final_price = Kael-computed max
+|- KaelAutonomyDecision decides scope from evidence/policy; customer can add evidence, appeal, cancel, or accept outcome
+|- on approved scope, lock jobs.final_price = Kael-computed max
 |- worker blocking until decision
 
 Forbidden
 -
-|- auto-approve scope change
+|- raw LLM output mutating scope status or price
 |- hidden price change
 |- worker-proposed price (Phase 2.0 2026-05-23)
 ```
@@ -1624,7 +1655,7 @@ Responsibility
 
 Forbidden
 -
-|- applying learning to booking/payment/cancel autonomy
+|- applying learning to booking/payment/cancel autonomy without versioned policy evidence
 |- hiding learned changes from admin
 ```
 
@@ -1637,7 +1668,7 @@ Backend hard rules
 |- all user input validated with Zod or equivalent
 |- database is source of truth
 |- no hardcoded VND prices
-|- no booking/payment/cancel without confirmation
+|- no booking/payment/cancel without validated server-side decision
 |- logs never contain PII
 |- learning events must be versioned and auditable
 |- idempotency required for job/broadcast/payment-like transitions
@@ -1655,7 +1686,7 @@ Frontend and backend must share these state machines. UI states must not invent 
 draft
 -> analyzing
 -> estimate_ready
--> awaiting_customer_confirm
+-> awaiting_customer_confirm (legacy/audit compatibility; UI treats as Kael orchestration)
 -> broadcasting
 -> worker_matched
 -> worker_on_way
@@ -1677,9 +1708,9 @@ Hard transition rules:
 Rules
 -
 |- draft cannot broadcast
-|- awaiting_customer_confirm cannot broadcast until A7
+|- matching/broadcast cannot start without validated KaelAutonomyDecision
 |- scope_change_pending blocks changed work
-|- completed_by_worker cannot become paid before A12
+|- completed_by_worker cannot become paid before A12 completion/payment decision
 |- cancelled jobs cannot resume without new job or explicit reschedule flow
 ```
 
@@ -1766,7 +1797,7 @@ queued
 
 ## 13. Matching And Broadcast Rules
 
-Matching starts only after customer confirms booking search at A7.
+Matching starts when Kael emits a validated `kael_started_matching` decision at A7. Customer input can improve or challenge the decision, but it is not the mandatory gate.
 
 Worker eligibility:
 
@@ -1871,9 +1902,9 @@ Evidence captured
 |- worker status timestamps
 |- chat messages
 |- scope change request
-|- customer scope decision
+|- customer/worker scope evidence or appeal
 |- completion notes/photos
-|- customer confirmation
+|- Kael completion/payment decision
 |- rating/review
 ```
 
@@ -1912,7 +1943,7 @@ PII rules
 Price principles
 -
 |- estimate before booking
-|- Kael owns final-price authority (Phase 2.0 2026-05-23): initial lock = kael_price_max at A7 confirm; updates only via Kael compute at approved A11 scope change
+|- Kael owns final-price authority (Phase 2.0 2026-05-23): initial lock = kael_price_max at A7 Kael decision; updates only via Kael-computed A11 scope decision
 |- worker does not enter or change final price; worker submits scope description + reason + photos and Kael recomputes
 |- estimate shown as range, not exact guarantee
 |- required disclaimer on every price estimate
@@ -1954,11 +1985,11 @@ Scope change flow (Phase 2.0 2026-05-23)
 |- worker inspects
 |- worker reports new issue/scope (description + reason + optional photos)
 |- Kael compute new estimate from original Kael context + worker reported scope
-|- customer sees hard-stop confirmation with Kael-computed new estimate (badge: computed by Kael)
-|- customer approves or rejects
-|- on approve, jobs.final_price relocked to Kael-computed max
-|- on reject, job cancelled (per migration 20260518181500)
-|- worker continues only if approved
+|- customer sees hard-stop review/appeal surface with Kael-computed new estimate (badge: computed by Kael)
+|- Kael decides approve/reject from policy/evidence; customer can accept outcome or appeal
+|- on Kael approve, jobs.final_price relocked to Kael-computed max
+|- on Kael reject, job cancelled (per migration 20260518181500)
+|- worker continues only if Kael decision or admin override allows it
 ```
 
 Scope change modal must show:
@@ -1985,8 +2016,8 @@ Forbidden pricing behavior
 |- hidden price change
 |- exact guarantee
 |- worker-entered final price (Phase 2.0 2026-05-23)
-|- final price change without customer A11 approval
-|- scope change without customer decision
+|- final price change without validated KaelAutonomyDecision or explicit admin override
+|- scope change without validated KaelAutonomyDecision, appeal path, and audit trail
 |- AI-fabricated market price
 ```
 
@@ -2022,9 +2053,9 @@ Worker notifications
 |- incoming job request
 |- job request expired
 |- customer sent message
-|- customer approved scope change
-|- customer rejected scope change
-|- customer confirmed completion
+|- Kael approved scope change / customer appealed
+|- Kael rejected scope change / customer appealed
+|- Kael confirmed completion or opened dispute
 |- earning updated
 ```
 
@@ -2092,7 +2123,7 @@ Reschedule rules
 |- reschedule is not the same as cancel
 |- reschedule must preserve evidence/history
 |- worker availability must be rechecked
-|- scheduled jobs still require explicit confirmation
+|- scheduled jobs require explicit schedule intent or a future policy-backed Kael decision
 ```
 
 Dispute:
@@ -2121,7 +2152,7 @@ Frontend contract
 |- user-facing text is Vietnamese
 |- future services are hidden unless Tu explicitly approves a specific non-functional state
 |- price UI always shows estimate disclaimer
-|- confirmation UI required for money-impacting actions
+|- audit/override/appeal UI required for money-impacting Kael decisions
 |- Kael messages visually differ from human chat
 |- Next.js is not consumer web product
 |- React Native is the primary app surface
@@ -2235,7 +2266,7 @@ React Native constraints
 
 ## 19. Backend Build Contract
 
-Backend owns business logic. Client displays state and submits user decisions.
+Backend owns business logic. Client displays state and submits user input, overrides, and appeals.
 
 ```text
 Backend contract
@@ -2246,7 +2277,7 @@ Backend contract
 |- AI calls are server-side only
 |- every network call has timeout
 |- every provider call logs safe metadata
-|- every money-impacting transition is explicit
+|- every money-impacting transition is validated, audited, reversible/appealable when policy allows
 |- every state transition is validated
 ```
 
@@ -2260,12 +2291,12 @@ Server responsibilities
 |- create draft job
 |- call Kael analysis
 |- create estimate
-|- confirm booking search
-|- broadcast job
+|- validate Kael autonomy decision
+|- start booking search / matching
 |- accept/decline worker request
 |- update job status
 |- create scope change request
-|- record customer scope decision
+|- record customer/worker scope evidence and Kael scope decision
 |- record completion
 |- record review
 |- create learning candidates
@@ -2293,11 +2324,11 @@ Idempotency required for
 -
 |- auth/profile creation
 |- OTP/profile creation later when SMS provider is enabled
-|- booking confirmation
+|- Kael matching decision
 |- job broadcast
 |- worker accept
 |- scope change decision
-|- completion confirmation
+|- Kael completion decision
 |- payment callback later
 |- learning rule promotion
 ```
@@ -2335,7 +2366,7 @@ Testing blueprint
 |- AI fallback tests
 |- Job lifecycle state tests
 |- Broadcast expiry tests
-|- Scope change approval/rejection tests
+|- Scope change Kael decision, accept, and appeal tests
 |- RLS customer/worker/admin tests
 |- Chat/evidence permission tests
 |- Learning candidate creation tests
@@ -2350,7 +2381,7 @@ Critical test cases:
 ```text
 Must test
 -
-|- customer cannot create booking without A7 confirm
+|- matching cannot start without validated A7 KaelAutonomyDecision
 |- worker cannot see full address before B3 accept
 |- worker cannot continue scope change before A11 decision
 |- price estimate always has disclaimer
@@ -2398,9 +2429,9 @@ This section prevents attractive but dangerous over-engineering.
 Do not build now
 -
 |- multi-agent orchestration
-|- autonomous booking
-|- autonomous payment
-|- autonomous cancellation
+|- raw-AI/client-side autonomous booking
+|- raw-AI/client-side autonomous payment
+|- raw-AI/client-side autonomous cancellation
 |- autonomous worker punishment
 |- service expansion beyond electrical/plumbing/cleaning
 |- multi-city support
@@ -2431,9 +2462,8 @@ defer unless Tu explicitly approves.
 Kael learning exception:
 
 ```text
-Evidence-gated self-learning is allowed only for analysis behavior and price suggestions.
-It must not become autonomous booking, autonomous payment, autonomous cancellation,
-worker punishment, or service expansion.
+Evidence-gated self-learning is allowed for analysis behavior, price suggestions, and policy evidence thresholds.
+It must not bypass `KaelAutonomyDecision`, punish workers automatically, or expand service scope.
 ```
 
 Current priority:
@@ -2444,5 +2474,5 @@ Priority
 |- build quality foundation
 |- get to first real transaction
 |- keep workflow simple enough to implement
-|- preserve trust through price transparency and explicit confirmation
+|- preserve trust through price transparency, audit trails, override, and appeal
 ```

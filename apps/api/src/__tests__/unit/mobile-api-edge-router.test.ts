@@ -40,7 +40,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     placesAutocomplete: vi.fn(async () => ({ suggestions: [], fallback_used: false })),
     createJob: vi.fn(async () => ({
       job_id: '22222222-2222-4222-8222-222222222222',
-      status: 'awaiting_customer_confirm' as const,
+      status: 'broadcasting' as const,
       estimate: {
         service_type: 'electrical' as const,
         problem_category: 'outlet_or_switch_broken',
@@ -51,7 +51,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
         confidence: 0.5,
         advisory: null,
         disclaimer:
-          'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.',
+          'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
       },
       fallback_used: false,
     })),
@@ -252,7 +252,7 @@ describe('mobile-api Edge router contract', () => {
       answer: {
         schema_version: 'worker_qa_answer.v1' as const,
         text: 'Kael gợi ý kiểm tra phần phát sinh và chụp ảnh rõ.',
-        safety_notes: ['Không bắt đầu phần phát sinh khi khách chưa duyệt.'],
+        safety_notes: ['Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.'],
       },
     }))
     const handler = createMobileApiHandler({
@@ -654,7 +654,7 @@ describe('mobile-api Edge router contract', () => {
   it('passes validated POST /jobs payload to the backend service', async () => {
     const createJob = vi.fn(async () => ({
       job_id: '22222222-2222-4222-8222-222222222222',
-      status: 'awaiting_customer_confirm' as const,
+      status: 'broadcasting' as const,
       estimate: {
         service_type: 'plumbing' as const,
         problem_category: 'pipe_leak',
@@ -665,7 +665,7 @@ describe('mobile-api Edge router contract', () => {
         confidence: 0.5,
         advisory: null,
         disclaimer:
-          'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.',
+          'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
       },
       fallback_used: true,
     }))
@@ -716,7 +716,7 @@ describe('mobile-api Edge router contract', () => {
           price_max: 350000,
           confidence: 0.7,
           advisory: null,
-          disclaimer: 'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.',
+          disclaimer: 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
         },
         started_at: '2026-05-20T00:00:00.000Z',
         estimate_ready_at: '2026-05-20T00:01:00.000Z',
@@ -853,7 +853,7 @@ describe('mobile-api Edge router contract', () => {
   it('lets admin QA exercise the customer job creation route explicitly', async () => {
     const createJob = vi.fn(async () => ({
       job_id: '22222222-2222-4222-8222-222222222222',
-      status: 'awaiting_customer_confirm' as const,
+      status: 'broadcasting' as const,
       estimate: {
         service_type: 'cleaning' as const,
         problem_category: 'home_cleaning',
@@ -863,7 +863,7 @@ describe('mobile-api Edge router contract', () => {
         price_max: 450000,
         confidence: 0.6,
         advisory: null,
-        disclaimer: 'Uoc tinh se duoc xac nhan truoc khi bat dau.',
+        disclaimer: 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
       },
       fallback_used: false,
     }))

@@ -231,7 +231,7 @@ export function normalizeDistrict(
   }
 
   const normalized = inputStripped;
-  const numMatch = normalized.match(/^(?:quan|q)[\s.]*(\d+)$/i);
+  const numMatch = normalized.match(/^(?:quan|q|district|dist)[\s.]*(\d+)$/i);
   if (numMatch) {
     const districtNumber = numMatch[1];
     if (districtNumber === "2" || districtNumber === "9") return "thu_duc";

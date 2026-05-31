@@ -65,6 +65,13 @@ describe('lifecycle — canTransition', () => {
     expect(canTransition('arrived', 'inspecting')).toBe(true)
   })
 
+  it('allows active customer-cancelled phases to terminate', () => {
+    expect(canTransition('arrived', 'cancelled')).toBe(true)
+    expect(canTransition('inspecting', 'cancelled')).toBe(true)
+    expect(canTransition('repairing', 'cancelled')).toBe(true)
+    expect(canTransition('scope_change_pending', 'cancelled')).toBe(true)
+  })
+
   it('allows inspecting → repairing', () => {
     expect(canTransition('inspecting', 'repairing')).toBe(true)
   })
@@ -141,7 +148,8 @@ describe('lifecycle — getValidTransitions', () => {
     const transitions = getValidTransitions('inspecting')
     expect(transitions).toContain('repairing')
     expect(transitions).toContain('scope_change_pending')
-    expect(transitions).toHaveLength(2)
+    expect(transitions).toContain('cancelled')
+    expect(transitions).toHaveLength(3)
   })
 })
 

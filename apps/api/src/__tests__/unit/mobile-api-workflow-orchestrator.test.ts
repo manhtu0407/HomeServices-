@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  validateKaelAutonomyTransition,
   validateWorkflowCommand,
   validateWorkflowTransition,
 } from '../../../../../supabase/functions/mobile-api/_shared/workflow-orchestrator'
@@ -9,16 +10,14 @@ import {
 describe('mobile-api workflow orchestrator wrapper', () => {
   it('validates the main Kael-led service workflow sequence through review', () => {
     const sequence = [
-      ['ai_estimate_ready', 'analyzing', 'awaiting_customer_confirm'],
-      ['ai_explanation_ready', 'estimate_ready', 'awaiting_customer_confirm'],
-      ['customer_confirmed_ticket', 'awaiting_customer_confirm', 'broadcasting'],
+      ['kael_started_matching', 'analyzing', 'broadcasting'],
       ['worker_accepted', 'broadcasting', 'worker_matched'],
       ['worker_status_advanced', 'worker_matched', 'worker_on_way'],
       ['worker_status_advanced', 'worker_on_way', 'arrived'],
       ['worker_status_advanced', 'arrived', 'inspecting'],
       ['worker_status_advanced', 'inspecting', 'repairing'],
       ['worker_completed', 'repairing', 'completed_by_worker'],
-      ['customer_confirmed_completion', 'completed_by_worker', 'confirmed_by_customer'],
+      ['kael_confirmed_completion', 'completed_by_worker', 'confirmed_by_customer'],
       ['review_submitted', 'confirmed_by_customer', 'reviewed'],
     ] as const
 
@@ -27,7 +26,129 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     }
   })
 
-  it('allows the existing customer confirmation transition without renaming statuses', () => {
+  it('accepts a validated Kael autonomy decision for transition ownership', () => {
+    const result = validateKaelAutonomyTransition({
+      decision: {
+        actor: 'kael_system',
+        action: 'start_matching',
+        policy_id: 'kael.autonomy.v2.estimate_to_matching',
+        evidence: [
+          {
+            kind: 'artifact',
+            reference_id: 'estimate-card-1',
+            summary: 'Kael estimate validated with supported service and HCMC district.',
+          },
+        ],
+        confidence: 0.86,
+        reversible: true,
+        appealable: true,
+        resulting_event: 'kael_started_matching',
+      },
+      from: 'analyzing',
+      to: 'broadcasting',
+    })
+
+    expect(result.valid).toBe(true)
+    if (result.valid) {
+      expect(result.event).toBe('kael_started_matching')
+      expect(result.decision.actor).toBe('kael_system')
+    }
+  })
+
+  it('accepts a validated Kael worker-cancellation decision for replacement matching', () => {
+    const result = validateKaelAutonomyTransition({
+      decision: {
+        actor: 'kael_system',
+        action: 'process_cancellation',
+        policy_id: 'kael.autonomy.v2.worker_cancel_to_rematch',
+        evidence: [
+          {
+            kind: 'worker_evidence',
+            reference_id: 'cancel-1',
+            summary: 'Worker cancellation classified by policy.',
+          },
+        ],
+        confidence: 0.92,
+        reversible: true,
+        appealable: true,
+        resulting_event: 'kael_processed_cancellation',
+      },
+      from: 'worker_on_way',
+      to: 'broadcasting',
+    })
+
+    expect(result.valid).toBe(true)
+    if (result.valid) {
+      expect(result.event).toBe('kael_processed_cancellation')
+      expect(result.decision.action).toBe('process_cancellation')
+    }
+  })
+
+  it('accepts a validated Kael customer-cancellation decision after worker acceptance', () => {
+    for (const from of ['arrived', 'inspecting', 'repairing', 'scope_change_pending'] as const) {
+      const result = validateKaelAutonomyTransition({
+        decision: {
+          actor: 'kael_system',
+          action: 'process_cancellation',
+          policy_id: 'kael.autonomy.v2.customer_cancel_after_accept',
+          evidence: [
+            {
+              kind: 'customer_input',
+              reference_id: `cancel-${from}`,
+              summary: 'Customer cancellation input was classified by server policy.',
+            },
+            {
+              kind: 'policy',
+              reference_id: 'STRUCTURES.md#cancellation',
+              summary: 'Kael can process active cancellation with audit and appeal.',
+            },
+          ],
+          confidence: 0.84,
+          reversible: true,
+          appealable: true,
+          resulting_event: 'kael_processed_cancellation',
+        },
+        from,
+        to: 'cancelled',
+      })
+
+      expect(result.valid).toBe(true)
+      if (result.valid) {
+        expect(result.event).toBe('kael_processed_cancellation')
+        expect(result.timestampColumn).toBe('cancelled_at')
+      }
+    }
+  })
+
+  it('rejects a Kael autonomy decision when action and resulting event do not match', () => {
+    const result = validateKaelAutonomyTransition({
+      decision: {
+        actor: 'kael_system',
+        action: 'start_matching',
+        policy_id: 'kael.autonomy.v2.estimate_to_matching',
+        evidence: [
+          {
+            kind: 'artifact',
+            reference_id: 'estimate-card-1',
+            summary: 'Estimate exists, but the event is for cancellation.',
+          },
+        ],
+        confidence: 0.86,
+        reversible: true,
+        appealable: true,
+        resulting_event: 'kael_processed_cancellation',
+      },
+      from: 'analyzing',
+      to: 'broadcasting',
+    })
+
+    expect(result.valid).toBe(false)
+    if (!result.valid) {
+      expect(result.error).toContain('workflow')
+    }
+  })
+
+  it('keeps the existing customer confirmation transition as a legacy recovery path', () => {
     const result = validateWorkflowTransition({
       event: 'customer_confirmed_ticket',
       from: 'awaiting_customer_confirm',
@@ -53,12 +174,12 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       to: 'scope_change_pending',
     })
     const scopeApproved = validateWorkflowTransition({
-      event: 'scope_change_decided',
+      event: 'kael_decided_scope_change',
       from: 'scope_change_pending',
       to: 'repairing',
     })
     const scopeRejected = validateWorkflowTransition({
-      event: 'scope_change_decided',
+      event: 'kael_decided_scope_change',
       from: 'scope_change_pending',
       to: 'cancelled',
     })
@@ -74,7 +195,11 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     )
     expect(servicesSource).toContain('event: "worker_accepted"')
     expect(servicesSource).toContain('event: "scope_change_requested"')
-    expect(servicesSource).toContain('event: "scope_change_decided"')
+    expect(servicesSource).toContain('resultingEvent: "kael_decided_scope_change"')
+    expect(servicesSource).toContain('function tryAutoApproveScopeChange')
+    expect(servicesSource).toContain('policyId: "kael.autonomy.v2.scope_change_auto_approve"')
+    expect(servicesSource).toContain('notifyCustomerScopeChangeDecided')
+    expect(servicesSource).toContain('scope_change_auto_approved')
   })
 
   it('rejects out-of-order completion transitions', () => {
@@ -100,7 +225,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     }
   })
 
-  it('does not allow customer confirmation to skip the ticket-review backend status', () => {
+  it('does not allow the legacy customer recovery path to skip ticket-review status', () => {
     const result = validateWorkflowTransition({
       event: 'customer_confirmed_ticket',
       from: 'estimate_ready',
@@ -110,11 +235,11 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     expect(result.valid).toBe(false)
   })
 
-  it('wraps AI estimate-ready job updates before exposing ticket review', () => {
+  it('wraps Kael estimate-ready job updates before autonomous matching', () => {
     const transition = validateWorkflowTransition({
-      event: 'ai_estimate_ready',
+      event: 'kael_started_matching',
       from: 'analyzing',
-      to: 'awaiting_customer_confirm',
+      to: 'broadcasting',
     })
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
@@ -122,7 +247,27 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     )
 
     expect(transition.valid).toBe(true)
-    expect(servicesSource).toContain('event: "ai_estimate_ready"')
+    expect(servicesSource).toContain('resultingEvent: "kael_started_matching"')
+    expect(servicesSource).toContain('policyId: "kael.autonomy.v2.chat_estimate_to_matching"')
+    expect(servicesSource).toContain('autonomyDecision ? "kael_started_matching" : "customer_confirmed_search"')
+  })
+
+  it('wraps legacy completion recovery in a Kael autonomy decision', () => {
+    const transition = validateWorkflowTransition({
+      event: 'kael_confirmed_completion',
+      from: 'completed_by_worker',
+      to: 'confirmed_by_customer',
+    })
+    const servicesSource = readFileSync(
+      join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
+      'utf8',
+    )
+
+    expect(transition.valid).toBe(true)
+    expect(servicesSource).toContain('function buildKaelCustomerAcceptedCompletionDecision')
+    expect(servicesSource).toContain('policyId: "kael.autonomy.v2.customer_completion_acceptance"')
+    expect(servicesSource).toContain('"kael_confirmed_completion"')
+    expect(servicesSource).toContain('customer_input: "accepted_completion"')
   })
 
   it('wraps Kael failure cleanup before cancelling an analyzing job', () => {
@@ -209,6 +354,16 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       status: 'worker_on_way',
       mediaStage: 'after',
     }).valid).toBe(false)
+    expect(validateWorkflowCommand({
+      event: 'job_media_attached',
+      status: 'broadcasting',
+      mediaStage: 'before',
+    }).valid).toBe(true)
+    expect(validateWorkflowCommand({
+      event: 'job_media_attached',
+      status: 'broadcasting',
+      mediaStage: 'kael_reference',
+    }).valid).toBe(true)
     expect(validateWorkflowCommand({
       event: 'job_media_attached',
       status: 'repairing',

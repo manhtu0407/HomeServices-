@@ -1,8 +1,9 @@
 import { type Dispatch, useEffect, useRef, useState } from 'react'
 import { Image } from 'expo-image'
-import { ActivityIndicator, Animated, Pressable, Text, TextInput, View, type ViewStyle } from 'react-native'
+import { ActivityIndicator, Pressable, Text, TextInput, View, type ViewStyle } from 'react-native'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
-import { type ServiceType, type WorkflowArtifactMode } from '@home-services/shared'
+import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, PLATFORM_FEE_CUSTOMER, type ServiceType, type WorkflowArtifactMode } from '@home-services/shared'
 import {
   getCustomerThemeTokens,
   getReducedTransparencyCustomerTokens,
@@ -16,6 +17,7 @@ import { type KaelChatResponse } from '@/lib/api-types'
 import { inferKaelChatDistrict } from './address-district'
 import { KaelAddressContextBar } from './address-context'
 import { kaelSurfacePaint } from './paint'
+import { type PendingKaelChatDraft } from './pending-intake'
 import { type KaelChatAction } from './state'
 import { styles } from './styles'
 
@@ -26,8 +28,8 @@ type KaelChatText = {
   addressPlaceholder: string
   agentStatus: string
   agentSteps: {
-    confirm: string
     missing: string
+    orchestrate: string
     read: string
   }
   attach: string
@@ -44,10 +46,34 @@ type KaelChatText = {
   emptyTicketBody: string
   emptyTicketTitle: string
   errorNoService: string
+  estimateDisclaimerFallback: string
+  estimateProblemFallback: string
+  estimateTitle: string
+  cancellationBody: string
+  complexity: {
+    large: string
+    medium: string
+    small: string
+  }
+  orchestrate: string
+  orchestrating: string
+  labels: {
+    advisory: string
+    cancellationNote: string
+    complexity: string
+    confidence: string
+    platformFee: string
+    price: string
+    problem: string
+    service: string
+    summaryTotal: string
+  }
   loading: string
   mic: string
   micHint: string
   nextAction: {
+    await_input: string
+    confirmed: string
     estimate_ready: string
   }
   send: string
@@ -68,6 +94,9 @@ type KaelChatText = {
 }
 
 type KaelChatTokens = ReturnType<typeof useKaelChatTokens>
+const vndFormatter = new Intl.NumberFormat('vi-VN')
+const PLATFORM_FEE_MULTIPLIER = 1 + PLATFORM_FEE_CUSTOMER
+const vietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i
 
 export function useKaelChatTokens() {
   const themeMode = useCustomerThemeMode()
@@ -159,12 +188,13 @@ export function KaelChatComposer({
   const hasComposerIntent = draft.trim().length > 0
   const [addressLifted, setAddressLifted] = useState(false)
   const [addressFocused, setAddressFocused] = useState(false)
-  const addressProgress = useRef(new Animated.Value(hasAddress || hasComposerIntent ? 1 : 0)).current
+  const addressProgress = useSharedValue(hasAddress || hasComposerIntent ? 1 : 0)
   const addressHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const addressVisible = addressLifted || addressFocused || hasAddress || hasComposerIntent
-  const addressSlotHeight = addressProgress.interpolate({ inputRange: [0, 1], outputRange: [5, 56] })
-  const addressSlotOpacity = addressProgress.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] })
-  const addressSlotLift = addressProgress.interpolate({ inputRange: [0, 1], outputRange: [34, 0] })
+  const addressSlotStyle = useAnimatedStyle(() => ({
+    opacity: 0.5 + addressProgress.value * 0.5,
+    transform: [{ translateY: 34 - addressProgress.value * 34 }],
+  }))
 
   const clearAddressHideTimer = () => {
     if (!addressHideTimerRef.current) return
@@ -178,11 +208,7 @@ export function KaelChatComposer({
   }
 
   useEffect(() => {
-    Animated.timing(addressProgress, {
-      duration: reduceMotion ? 1 : 220,
-      toValue: addressVisible ? 1 : 0,
-      useNativeDriver: false,
-    }).start()
+    addressProgress.value = withTiming(addressVisible ? 1 : 0, { duration: reduceMotion ? 1 : 220 })
   }, [addressProgress, addressVisible, reduceMotion])
 
   useEffect(() => {
@@ -209,7 +235,7 @@ export function KaelChatComposer({
             </View>
           </Pressable>
         )}
-        <Animated.View pointerEvents={addressVisible ? 'auto' : 'none'} style={[styles.addressLiftSlot, { height: addressSlotHeight, opacity: addressSlotOpacity, transform: [{ translateY: addressSlotLift }] }]}>
+        <Animated.View pointerEvents={addressVisible ? 'auto' : 'none'} style={[styles.addressLiftSlot, { height: addressVisible ? 56 : 5 }, addressSlotStyle]}>
           <KaelAddressContextBar
             addressLabel={addressLabel}
             language={language}
@@ -277,7 +303,7 @@ export function KaelProcessCard({
   const steps = [
     ['01', text.agentSteps.read],
     ['02', text.agentSteps.missing],
-    ['03', text.agentSteps.confirm],
+    ['03', text.agentSteps.orchestrate],
   ] as const
 
   return (
@@ -384,6 +410,37 @@ export function EmptyKaelBriefCard({ language, selectedService, text }: { langua
   )
 }
 
+export function KaelIntakeReceiptCard({ intake, language }: { intake: PendingKaelChatDraft; language: AppLanguage }) {
+  const tokens = useKaelChatTokens()
+  const serviceValue = intake.serviceType ? localizedServiceLabel(intake.serviceType, language) : (language === 'en' ? 'Needs service' : 'Cần chọn dịch vụ')
+  const addressValue = intake.addressLabel?.trim() || intake.districtLabel?.trim() || (language === 'en' ? 'Needs area' : 'Cần khu vực')
+  const mediaCount = intake.mediaCount ?? intake.photoDrafts?.length ?? 0
+  const mediaValue = language === 'en'
+    ? mediaCount > 0 ? `${mediaCount} queued for ticket evidence` : 'No media selected'
+    : mediaCount > 0 ? `${mediaCount} ảnh/video chờ đính kèm vào phiếu` : 'Chưa có ảnh/video'
+  const title = language === 'en' ? 'Kael received the intake' : 'Kael đã nhận thông tin'
+  const body = language === 'en'
+    ? 'Kael is analyzing the service, area, and description from the booking form. Selected media attaches after Kael creates the job evidence.'
+    : 'Kael đang phân tích dịch vụ, khu vực và mô tả từ phiếu bạn vừa điền. Ảnh/video đã chọn sẽ đính kèm sau khi Kael tạo bằng chứng công việc.'
+
+  return (
+    <View style={[styles.emptyTicketCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'brief')]} testID="customer-kael-chat-intake-receipt">
+      <Text style={[styles.emptyTicketPill, { backgroundColor: tokens.service, borderColor: tokens.border, color: tokens.primary }, kaelSurfacePaint(tokens, 'pill')]} numberOfLines={1}>
+        {title}
+      </Text>
+      <Text style={[styles.bodyText, { color: tokens.text }]} numberOfLines={3}>
+        {body}
+      </Text>
+      <View style={styles.briefGrid}>
+        <BriefField label={language === 'en' ? 'Service' : 'Dịch vụ'} value={serviceValue} />
+        <BriefField label={language === 'en' ? 'Area' : 'Khu vực'} value={addressValue} />
+        <BriefField label={language === 'en' ? 'Media' : 'Ảnh/video'} value={mediaValue} />
+        <BriefField label={language === 'en' ? 'Description' : 'Mô tả'} value={intake.message} wide />
+      </View>
+    </View>
+  )
+}
+
 function BriefField({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
   const tokens = useKaelChatTokens()
 
@@ -397,6 +454,127 @@ function BriefField({ label, value, wide = false }: { label: string; value: stri
       </Text>
     </View>
   )
+}
+
+export function EstimateInline({
+  estimate,
+  language,
+  text,
+}: {
+  estimate: NonNullable<KaelChatResponse['session']['estimate']>
+  language: AppLanguage
+  text: KaelChatText
+}) {
+  const tokens = useKaelChatTokens()
+
+  return (
+    <View style={[styles.inlineEstimate, { borderColor: tokens.border }]}>
+      <Text style={[styles.inlineEstimateText, { color: tokens.muted }]}>
+        {text.labels.price}: {formatPriceRange(estimate.price_min, estimate.price_max)}
+      </Text>
+    </View>
+  )
+}
+
+export function EstimateCard({
+  canStartOrchestration,
+  estimate,
+  language,
+  onStartOrchestration,
+  orchestrating,
+  orchestrationStarted,
+  text,
+}: {
+  canStartOrchestration: boolean
+  estimate: NonNullable<KaelChatResponse['session']['estimate']>
+  language: AppLanguage
+  onStartOrchestration: () => void
+  orchestrating: boolean
+  orchestrationStarted: boolean
+  text: KaelChatText
+}) {
+  const tokens = useKaelChatTokens()
+  const problem = localizedGeneratedText(estimate.problem_summary || estimate.problem_category, language, text.estimateProblemFallback)
+  const advisory = localizedOptionalGeneratedText(estimate.advisory, language)
+  const disclaimer = language === 'vi'
+    ? LOCAL_WORKFLOW_PRICE_DISCLAIMER
+    : localizedGeneratedText(estimate.disclaimer, language, text.estimateDisclaimerFallback)
+  const orchestrationBusy = orchestrating || (canStartOrchestration && !orchestrationStarted)
+  const actionLabel = orchestrationBusy
+    ? text.orchestrating
+    : orchestrationStarted
+      ? text.nextAction.confirmed
+      : text.nextAction.await_input
+
+  return (
+    <View style={[styles.estimateCard, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-estimate-card">
+      <View style={styles.estimateHeader}>
+        <Text style={[styles.sectionTitle, { color: tokens.text }]}>{text.estimateTitle}</Text>
+        <Text style={[styles.statusPill, { color: tokens.primary, borderColor: tokens.border, backgroundColor: tokens.service }]}>{text.nextAction.estimate_ready}</Text>
+      </View>
+      <InfoRow label={text.labels.service} value={localizedServiceLabel(estimate.service_type, language)} />
+      <InfoRow label={text.labels.problem} value={problem} />
+      <InfoRow label={text.labels.price} value={formatPriceRange(estimate.price_min, estimate.price_max)} />
+      <InfoRow label={text.labels.complexity} value={text.complexity[estimate.complexity]} />
+      <InfoRow label={text.labels.confidence} value={`${Math.round(estimate.confidence * 100)}%`} />
+      {advisory ? <InfoRow label={text.labels.advisory} value={advisory} /> : null}
+      <InfoRow label={text.labels.platformFee} value={formatPlatformFee(language)} />
+      <InfoRow
+        label={text.labels.summaryTotal}
+        value={formatPriceRange(
+          Math.round(estimate.price_min * PLATFORM_FEE_MULTIPLIER),
+          Math.round(estimate.price_max * PLATFORM_FEE_MULTIPLIER),
+        )}
+      />
+      <InfoRow label={text.labels.cancellationNote} value={text.cancellationBody} />
+      <Text style={[styles.disclaimer, { color: tokens.muted }]} testID="customer-kael-chat-price-disclaimer">
+        {disclaimer}
+      </Text>
+      <Pressable accessibilityRole="button" accessibilityState={{ busy: orchestrationBusy, disabled: true }} disabled onPress={onStartOrchestration} style={[styles.primaryButton, { backgroundColor: tokens.disabled }]} testID="customer-kael-chat-orchestration">
+        <Text style={[styles.primaryButtonText, { color: tokens.subtleText }]}>{actionLabel}</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  const tokens = useKaelChatTokens()
+  return (
+    <View style={styles.infoRow}>
+      <Text style={[styles.infoLabel, { color: tokens.muted }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[styles.infoValue, { color: tokens.text }]} numberOfLines={3}>
+        {value}
+      </Text>
+    </View>
+  )
+}
+
+function formatPriceRange(min: number, max: number) {
+  return `${vndFormatter.format(min)}đ - ${vndFormatter.format(max)}đ`
+}
+
+function formatPlatformFee(language: AppLanguage) {
+  const value = PLATFORM_FEE_CUSTOMER * 100
+  return language === 'vi' ? `~${String(value).replace('.', ',')}%` : `~${value}%`
+}
+
+function localizedGeneratedText(value: string, language: AppLanguage, fallback: string) {
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return fallback
+  if (language === 'en' && vietnameseSignalPattern.test(trimmed)) return fallback
+  if (language === 'vi' && /^[\x00-\x7F]*$/.test(trimmed)) return fallback
+  return trimmed
+}
+
+function localizedOptionalGeneratedText(value: string | null | undefined, language: AppLanguage) {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return null
+  if (language === 'en' && vietnameseSignalPattern.test(trimmed)) return null
+  if (language === 'vi' && /^[\x00-\x7F]*$/.test(trimmed)) return null
+  return trimmed
 }
 
 function ProcessStepCard({ index, title }: { index: string; title: string }) {

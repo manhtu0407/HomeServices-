@@ -269,7 +269,7 @@ describe('runKaelPipeline with DI providers', () => {
     if (result.success) {
       expect(result.estimate.disclaimer).toBeTruthy()
       expect(result.estimate.disclaimer).toContain('ước tính')
-      expect(result.estimate.disclaimer).toContain('xác nhận')
+      expect(result.estimate.disclaimer).toContain('Kael')
     }
   })
 

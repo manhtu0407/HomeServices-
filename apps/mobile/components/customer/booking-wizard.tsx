@@ -1,10 +1,9 @@
-// Phase 3.1 (plan §22.8.B, 2026-05-23): Booking tab dùng wizard A2-A7. Tu chốt
-// 2026-05-23: Booking phải là form theo bước, KHÁC Kael tab (Q&A) và Home
-// (shortcuts). Wizard reuses createRemoteJobFromDraft + confirmRemoteSearch
-// để giữ workflow honesty (no fake price, no auto-confirm).
+// Kael Autonomy v2: Booking is the A2/A3 intake form, not the price or matching
+// authority. Wizard hands structured intake to the full-screen Kael chat so
+// Kael can pre-analyze, ask for missing details, and orchestrate by policy.
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
-import { createContext, type ReactNode, use, useEffect, useMemo, useReducer, useState } from 'react'
+import { createContext, type ReactNode, use, useMemo, useReducer, useState } from 'react'
 import { useLocalSearchParams } from 'expo-router'
 import { Alert, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
@@ -14,11 +13,12 @@ import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { type GlassMode } from '@/components/ui/tokens'
 import { type AppLanguage, useAppLanguage } from '@/lib/app-language'
-import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { generateClientRequestId } from '@/lib/client-request-id'
 import { type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { AddressAutocomplete } from './address-autocomplete'
+import { setPendingKaelChatDraft } from './kael-chat/pending-intake'
 
-type WizardStep = 'service' | 'describe' | 'analyzing' | 'estimate' | 'time' | 'summary' | 'done'
+type WizardStep = 'service' | 'describe' | 'analyzing' | 'done'
 
 type WizardState = {
   step: WizardStep
@@ -27,7 +27,6 @@ type WizardState = {
   photoDrafts: LocalMediaUploadDraft[]
   addressLabel: string
   districtLabel: string | null
-  jobId: string | null
   isSubmitting: boolean
   error: string | null
 }
@@ -38,19 +37,9 @@ type WizardAction =
   | { type: 'add_photos'; drafts: LocalMediaUploadDraft[] }
   | { type: 'remove_photo'; index: number }
   | { type: 'update_address'; label: string; district: string | null }
-  | {
-      type: 'hydrate_active_deal'
-      addressLabel: string
-      description: string
-      districtLabel: string | null
-      jobId: string
-      serviceType: ServiceType | null
-      step: WizardStep
-    }
   | { type: 'goto'; step: WizardStep }
   | { type: 'set_submitting'; flag: boolean }
   | { type: 'set_error'; error: string | null }
-  | { type: 'set_job_id'; jobId: string }
   | { type: 'reset' }
 
 const INITIAL: WizardState = {
@@ -60,9 +49,14 @@ const INITIAL: WizardState = {
   photoDrafts: [],
   addressLabel: '',
   districtLabel: null,
-  jobId: null,
   isSubmitting: false,
   error: null,
+}
+
+function createInitialWizardState(routeServiceType: ServiceType | null): WizardState {
+  return routeServiceType
+    ? { ...INITIAL, serviceType: routeServiceType, step: 'describe', photoDrafts: [] }
+    : { ...INITIAL, photoDrafts: [] }
 }
 
 function mergePhotoDrafts(current: LocalMediaUploadDraft[], drafts: LocalMediaUploadDraft[]) {
@@ -89,34 +83,16 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       return { ...state, photoDrafts: state.photoDrafts.filter((_, index) => index !== action.index) }
     case 'update_address':
       return { ...state, addressLabel: action.label, districtLabel: action.district }
-    case 'hydrate_active_deal':
-      return {
-        ...state,
-        addressLabel: action.addressLabel,
-        description: action.description,
-        districtLabel: action.districtLabel,
-        error: null,
-        isSubmitting: false,
-        jobId: action.jobId,
-        serviceType: action.serviceType,
-        step: action.step,
-      }
     case 'goto':
       return { ...state, step: action.step }
     case 'set_submitting':
       return { ...state, isSubmitting: action.flag }
     case 'set_error':
       return { ...state, error: action.error }
-    case 'set_job_id':
-      return { ...state, jobId: action.jobId }
     case 'reset':
       return INITIAL
   }
 }
-
-const PLATFORM_FEE_PCT = 7.5
-const PRICE_DISCLAIMER =
-  'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
 
 const copyMap = {
   vi: {
@@ -133,24 +109,24 @@ const copyMap = {
       plumbing: 'Rò rỉ, nghẹt',
       cleaning: 'Dọn căn hộ',
     },
-    servicePreviewTitle: 'Bảng kiểm giá',
-    servicePreviewMeta: 'Ước tính',
-    servicePreviewPill: 'Kael nhận định',
-    servicePreviewBody: 'Kael sẽ tóm tắt vấn đề ở đây sau khi bạn chọn dịch vụ, mô tả và khu vực.',
+    servicePreviewTitle: 'Phiếu gửi Kael',
+    servicePreviewMeta: 'Thông tin đầu vào',
+    servicePreviewPill: 'Kael sẽ nhận',
+    servicePreviewBody: 'Kael sẽ nhận dịch vụ, mô tả, ảnh và khu vực rồi phân tích trong chat.',
     servicePreviewChips: {
       problem: 'Vấn đề: cần mô tả',
       media: 'Ảnh: chưa có',
       area: 'Khu vực: cần dữ liệu',
     },
-    servicePreviewWorkType: 'Dạng việc',
-    servicePreviewUrgency: 'Độ khẩn',
-    servicePreviewPrice: 'Biên giá',
-    servicePreviewConfirm: 'Cần xác nhận',
+    servicePreviewService: 'Dịch vụ',
+    servicePreviewDescription: 'Mô tả',
+    servicePreviewArea: 'Khu vực',
+    servicePreviewChat: 'Kael chat',
     flowSteps: [
       ['Chọn dịch vụ', 'Điện · Nước · Vệ sinh'],
       ['Mô tả', 'Vấn đề · Ảnh · Khu vực'],
-      ['Kiểm giá', 'Kael ước tính'],
-      ['Xác nhận', 'Gửi tìm thợ'],
+      ['Gửi Kael', 'Tạo phiếu đầu vào'],
+      ['Kael xử lý', 'Phân tích · Hỏi thêm'],
     ],
     describeStep: 'Mô tả vấn đề',
     describeTitle: 'Mô tả ngắn để Kael ước tính',
@@ -162,36 +138,15 @@ const copyMap = {
     descriptionTooShort: 'Mô tả cần ít nhất 10 ký tự để Kael phân tích.',
     next: 'Tiếp tục',
     back: 'Quay lại',
-    submitDescribe: 'Gửi cho Kael ước tính',
-    analyzingStep: 'Kael phân tích',
-    analyzingTitle: 'Kael đang ước tính…',
-    analyzingBody: 'Quá trình mất khoảng 5-15 giây. Vui lòng giữ màn hình mở.',
-    estimateStep: 'Ước tính Kael',
-    estimateTitle: 'Ước tính từ Kael',
-    estimateProblem: 'Vấn đề được nhận diện',
-    estimateComplexity: 'Mức độ',
-    estimatePrice: 'Ước tính giá',
-    estimateAdvisory: 'Gợi ý từ Kael',
-    estimateNoAdvisory: 'Không có cảnh báo bổ sung.',
-    pendingValue: 'Đang chờ Kael',
-    timeStep: 'Chọn thời gian',
-    timeTitle: 'Khi nào bạn cần thợ?',
-    timeNow: 'Tìm thợ ngay',
-    timeSchedule: 'Chỉ hỗ trợ đặt ngay',
-    timeScheduleHint: 'Kael chỉ gửi yêu cầu theo nhu cầu hiện tại để giữ thời gian phản hồi trung thực.',
-    summaryStep: 'Xác nhận tìm thợ',
-    summaryTitle: 'Tóm tắt trước khi tìm thợ',
-    summaryService: 'Dịch vụ',
-    summaryAddress: 'Địa điểm',
-    summaryEstimate: 'Ước tính dự kiến',
-    summaryFee: 'Phí nền tảng (~7,5%)',
-    summaryCancellation:
-      'Bạn có thể hủy miễn phí trước khi thợ nhận việc. Sau khi thợ nhận, hệ thống có thể áp dụng phí dịch vụ tối thiểu.',
-    confirmCta: 'Xác nhận tìm thợ',
+    submitDescribe: 'Gửi cho Kael phân tích',
+    analyzingStep: 'Chuyển sang Kael',
+    analyzingTitle: 'Đang mở Kael chat…',
+    analyzingBody: 'Kael sẽ nhận sẵn thông tin này để phân tích hoặc hỏi thêm, không bắt bạn nhập lại.',
+    pendingValue: 'Chưa có',
     photoPermissionTitle: 'Cần quyền truy cập ảnh',
     photoPermissionBody: 'Cho phép ứng dụng truy cập thư viện ảnh để gửi cho Kael.',
-    doneTitle: 'Đã gửi yêu cầu',
-    doneBody: 'Kael đang gửi yêu cầu tới các thợ phù hợp.',
+    doneTitle: 'Kael đã nhận phiếu',
+    doneBody: 'Tiếp tục trong Kael chat để xem phân tích và điều phối tự động.',
     doneOpenHistory: 'Mở hoạt động',
     resetWizard: 'Tạo yêu cầu khác',
   },
@@ -209,24 +164,24 @@ const copyMap = {
       plumbing: 'Leak, clog',
       cleaning: 'Apartment cleaning',
     },
-    servicePreviewTitle: 'Price check',
-    servicePreviewMeta: 'Estimate',
-    servicePreviewPill: 'Kael assessment',
-    servicePreviewBody: 'Kael will summarize the issue here after you choose a service, describe it, and add the area.',
+    servicePreviewTitle: 'Kael intake ticket',
+    servicePreviewMeta: 'Input',
+    servicePreviewPill: 'Kael receives',
+    servicePreviewBody: 'Kael receives the service, description, photos, and area, then analyzes them in chat.',
     servicePreviewChips: {
       problem: 'Problem: needs details',
       media: 'Photos: none yet',
       area: 'Area: needs data',
     },
-    servicePreviewWorkType: 'Work type',
-    servicePreviewUrgency: 'Urgency',
-    servicePreviewPrice: 'Price band',
-    servicePreviewConfirm: 'Needs confirmation',
+    servicePreviewService: 'Service',
+    servicePreviewDescription: 'Description',
+    servicePreviewArea: 'Area',
+    servicePreviewChat: 'Kael chat',
     flowSteps: [
       ['Choose service', 'Electrical · Plumbing · Cleaning'],
       ['Describe', 'Issue · Photos · Area'],
-      ['Check price', 'Kael estimate'],
-      ['Confirm', 'Send worker search'],
+      ['Send to Kael', 'Create intake ticket'],
+      ['Kael works', 'Analyze · Ask more'],
     ],
     describeStep: 'Describe the issue',
     describeTitle: 'A short description for Kael to estimate',
@@ -238,36 +193,15 @@ const copyMap = {
     descriptionTooShort: 'Description must be at least 10 characters.',
     next: 'Continue',
     back: 'Back',
-    submitDescribe: 'Send to Kael',
-    analyzingStep: 'Kael is analyzing',
-    analyzingTitle: 'Kael is estimating…',
-    analyzingBody: 'This usually takes 5-15 seconds. Keep the screen open.',
-    estimateStep: 'Kael estimate',
-    estimateTitle: 'Estimate from Kael',
-    estimateProblem: 'Identified problem',
-    estimateComplexity: 'Complexity',
-    estimatePrice: 'Estimated price',
-    estimateAdvisory: 'Kael advisory',
-    estimateNoAdvisory: 'No additional advisory.',
-    pendingValue: 'Pending',
-    timeStep: 'Pick a time',
-    timeTitle: 'When do you need the worker?',
-    timeNow: 'Find a worker now',
-    timeSchedule: 'On-demand only',
-    timeScheduleHint: 'Kael only sends current requests so response time stays honest.',
-    summaryStep: 'Confirm worker search',
-    summaryTitle: 'Summary before sending',
-    summaryService: 'Service',
-    summaryAddress: 'Location',
-    summaryEstimate: 'Estimated range',
-    summaryFee: 'Platform fee (~7.5%)',
-    summaryCancellation:
-      'You can cancel for free before a worker accepts. Once accepted, a minimum service fee may apply.',
-    confirmCta: 'Confirm worker search',
+    submitDescribe: 'Send for Kael analysis',
+    analyzingStep: 'Opening Kael',
+    analyzingTitle: 'Opening Kael chat…',
+    analyzingBody: 'Kael receives this intake directly, then analyzes it or asks for missing details.',
+    pendingValue: 'Not yet',
     photoPermissionTitle: 'Photo permission required',
     photoPermissionBody: 'Allow photo library access to attach evidence for Kael.',
-    doneTitle: 'Request sent',
-    doneBody: 'Kael is sending the request to eligible workers.',
+    doneTitle: 'Kael received the ticket',
+    doneBody: 'Continue in Kael chat to review analysis and automatic orchestration.',
     doneOpenHistory: 'Open activity',
     resetWizard: 'Create another request',
   },
@@ -277,31 +211,19 @@ type WizardCopy = (typeof copyMap)[AppLanguage]
 
 type BookingWizardProps = {
   mode?: GlassMode
+  onOpenKael: (serviceType: ServiceType) => void
   onOpenHistory: () => void
-  onWorkflowSessionStart?: () => void
 }
 
-export function BookingWizard({ mode = 'light', onOpenHistory, onWorkflowSessionStart }: BookingWizardProps) {
+export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: BookingWizardProps) {
   const language = useAppLanguage()
   const copy = copyMap[language]
   const params = useLocalSearchParams<{ serviceType?: string | string[] }>()
-  const { actions, selectors, state: wfState } = useFrontendWorkflow()
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
-  const [state, dispatch] = useReducer(reducer, INITIAL)
-  const [isConfirming, setIsConfirming] = useState(false)
-
-  const deal = wfState.deal
-  const remoteEstimate = deal?.estimate
-  const currentStatus = selectors.currentStatus
-  const routeServiceType = parseRouteServiceType(params.serviceType)
+  const routeServiceType = useMemo(() => parseRouteServiceType(params.serviceType), [params.serviceType])
+  const [state, dispatch] = useReducer(reducer, routeServiceType, createInitialWizardState)
   const visual = useMemo(() => getBookingWizardVisual(mode, reduceTransparency), [mode, reduceTransparency])
   const visualContext = useMemo(() => ({ mode, reduceMotion, reduceTransparency, visual }), [mode, reduceMotion, reduceTransparency, visual])
-
-  useEffect(() => {
-    if (state.step === 'analyzing' && remoteEstimate && currentStatus === 'awaiting_customer_confirm') {
-      dispatch({ type: 'goto', step: 'estimate' })
-    }
-  }, [state.step, remoteEstimate, currentStatus])
 
   const pickPhotos = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -336,44 +258,26 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onWorkflowSession
       return
     }
     if (!state.serviceType) return
-    onWorkflowSessionStart?.()
     dispatch({ type: 'set_submitting', flag: true })
     dispatch({ type: 'set_error', error: null })
     dispatch({ type: 'goto', step: 'analyzing' })
     try {
-      const draft = {
-        serviceType: state.serviceType,
-        problemChips: [copy.services[state.serviceType]],
-        description: state.description.trim(),
-        mediaCount: state.photoDrafts.length,
+      setPendingKaelChatDraft({
         addressLabel: state.addressLabel.trim(),
+        clientRequestId: generateClientRequestId(),
+        createdAt: new Date().toISOString(),
         districtLabel: state.districtLabel,
-        timeChoice: 'now' as const,
-        source: 'booking' as const,
-        needsServiceChoice: false,
-        inferredProblemLabel: copy.services[state.serviceType],
-        unsupportedServiceLabel: null,
-      }
-      const created = await actions.createRemoteJobFromDraft(draft, state.photoDrafts)
-      if (!created || !created.jobId) {
-        dispatch({ type: 'goto', step: 'describe' })
-        return
-      }
-      dispatch({ type: 'set_job_id', jobId: created.jobId })
+        locale: language,
+        mediaCount: state.photoDrafts.length,
+        message: state.description.trim(),
+        photoDrafts: state.photoDrafts,
+        problemChips: [],
+        serviceType: state.serviceType,
+        source: 'booking',
+      })
+      onOpenKael(state.serviceType)
     } finally {
       dispatch({ type: 'set_submitting', flag: false })
-    }
-  }
-
-  const confirmBooking = async () => {
-    setIsConfirming(true)
-    try {
-      const ok = await actions.confirmRemoteSearch()
-      if (ok) {
-        dispatch({ type: 'goto', step: 'done' })
-      }
-    } finally {
-      setIsConfirming(false)
     }
   }
 
@@ -381,10 +285,10 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onWorkflowSession
 
   return (
     <BookingWizardVisualContext.Provider value={visualContext}>
-      <View style={styles.wizardFlowShell} testID="booking-wizard-unlocked-four-step-flow">
+      <View style={styles.wizardFlowShell} testID="booking-wizard-intake-handoff-flow">
         <BookingFlowOverview activeIndex={activeFlowIndex} copy={copy} />
         {state.step === 'service' ? (
-          <ServiceStep copy={copy} initialServiceType={state.serviceType ?? routeServiceType} onSelect={(serviceType) => dispatch({ type: 'select_service', serviceType })} />
+          <ServiceStep key={state.serviceType ?? routeServiceType ?? 'none'} copy={copy} initialServiceType={state.serviceType ?? routeServiceType} onSelect={(serviceType) => dispatch({ type: 'select_service', serviceType })} />
         ) : state.step === 'describe' ? (
           <DescribeStep
             copy={copy}
@@ -397,24 +301,6 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onWorkflowSession
           />
         ) : state.step === 'analyzing' ? (
           <AnalyzingStep copy={copy} />
-        ) : state.step === 'estimate' ? (
-          <EstimateStep
-            copy={copy}
-            estimate={remoteEstimate}
-            onNext={() => dispatch({ type: 'goto', step: 'time' })}
-          />
-        ) : state.step === 'time' ? (
-          <TimeStep copy={copy} onNext={() => dispatch({ type: 'goto', step: 'summary' })} />
-        ) : state.step === 'summary' ? (
-          <SummaryStep
-            addressLabel={state.addressLabel}
-            copy={copy}
-            isConfirming={isConfirming}
-            onBack={() => dispatch({ type: 'goto', step: 'time' })}
-            onConfirm={() => void confirmBooking()}
-            serviceType={state.serviceType}
-            estimate={remoteEstimate}
-          />
         ) : (
           <DoneStep
             copy={copy}
@@ -429,8 +315,8 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onWorkflowSession
 
 function bookingFlowIndex(step: WizardStep) {
   if (step === 'service') return 0
-  if (step === 'describe' || step === 'analyzing') return 1
-  if (step === 'estimate' || step === 'time') return 2
+  if (step === 'describe') return 1
+  if (step === 'analyzing') return 2
   return 3
 }
 
@@ -544,7 +430,7 @@ function WizardCard({ children, testID }: { children: ReactNode; testID: string 
   if (isServiceStep) {
     return (
       <View style={[styles.card, styles.cardServiceStep]} testID={testID}>
-        <View pointerEvents="none" style={styles.hiddenMarker} testID="booking-wizard-production-glass-a2-a7" />
+        <View pointerEvents="none" style={styles.hiddenMarker} testID="booking-wizard-production-glass-intake-handoff" />
         {children}
       </View>
     )
@@ -554,10 +440,7 @@ function WizardCard({ children, testID }: { children: ReactNode; testID: string 
     <GlassSurface backgroundColor={visual.card} borderColor={visual.border} mode={mode} style={styles.card} testID={testID} variant="sheet">
       <View pointerEvents="none" style={[styles.cardWash, { backgroundColor: visual.aqua }]} testID="booking-wizard-liquid-wash" />
       <View pointerEvents="none" style={[styles.cardWarmWash, { backgroundColor: visual.warm }]} />
-      <View pointerEvents="none" style={styles.hiddenMarker} testID="booking-wizard-production-glass-a2-a7" />
-      {testID === 'booking-wizard-step-estimate' ? (
-        <View pointerEvents="none" style={styles.hiddenMarker} testID="customer-booking-checklist-liquid-rim" />
-      ) : null}
+      <View pointerEvents="none" style={styles.hiddenMarker} testID="booking-wizard-production-glass-intake-handoff" />
       {children}
     </GlassSurface>
   )
@@ -685,7 +568,7 @@ function WizardBackButton({ label, onPress, testID }: { label: string; onPress: 
 function BookingFlowOverview({ activeIndex, copy }: { activeIndex: number; copy: WizardCopy }) {
   const { mode, reduceTransparency, visual } = useBookingWizardVisual()
   return (
-    <View style={styles.flowOverview} testID="booking-wizard-four-step-overview">
+    <View style={styles.flowOverview} testID="booking-wizard-intake-handoff-overview">
       {copy.flowSteps.map(([title, meta], index) => {
         const active = index === activeIndex
         return (
@@ -823,10 +706,7 @@ function ServiceStep({
 }) {
   const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
   const [selectedService, setSelectedService] = useState<ServiceType | null>(initialServiceType)
-  const serviceChip = selectedService ? `${copy.summaryService}: ${copy.services[selectedService]}` : copy.servicePreviewChips.problem
-  useEffect(() => {
-    setSelectedService(initialServiceType)
-  }, [initialServiceType])
+  const serviceChip = selectedService ? `${copy.serviceStep}: ${copy.services[selectedService]}` : copy.servicePreviewChips.problem
 
   return (
     <WizardCard testID="booking-wizard-step-service">
@@ -862,7 +742,7 @@ function ServiceStep({
           </View>
         ))}
       </View>
-      <View style={[styles.previewPanel, bookingDiagnosisSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-service-price-preview">
+      <View style={[styles.previewPanel, bookingDiagnosisSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-intake-preview">
         <View style={[styles.previewPillRow, bookingDiagnosisPillSurface(visual, mode, reduceTransparency)]}>
           <View style={[styles.kaelBadge, { backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.22)' : 'rgba(255,255,255,0.72)' }]}>
             <Text style={[styles.kaelBadgeText, { color: visual.primary }]}>K</Text>
@@ -875,7 +755,7 @@ function ServiceStep({
           {copy.servicePreviewBody}
         </Text>
       </View>
-      <View style={[styles.estimateShell, bookingEstimateShellSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-service-price-shell">
+      <View style={[styles.estimateShell, bookingEstimateShellSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-intake-shell">
         <View style={styles.previewHeader}>
           <Text style={[styles.previewTitle, { color: visual.text }]} numberOfLines={1}>
             {copy.servicePreviewTitle}
@@ -884,11 +764,11 @@ function ServiceStep({
             {copy.servicePreviewMeta}
           </Text>
         </View>
-        <View style={styles.estimateGrid} testID="booking-wizard-service-price-grid">
-          <EstimateField label={copy.servicePreviewWorkType} value={copy.pendingValue} />
-          <EstimateField label={copy.servicePreviewUrgency} value={copy.pendingValue} />
-          <EstimateField label={copy.servicePreviewPrice} value={copy.pendingValue} />
-          <EstimateField label={copy.servicePreviewConfirm} value={copy.pendingValue} />
+        <View style={styles.estimateGrid} testID="booking-wizard-intake-grid">
+          <EstimateField label={copy.servicePreviewService} value={copy.pendingValue} />
+          <EstimateField label={copy.servicePreviewDescription} value={copy.pendingValue} />
+          <EstimateField label={copy.servicePreviewArea} value={copy.pendingValue} />
+          <EstimateField label={copy.servicePreviewChat} value={copy.pendingValue} />
         </View>
       </View>
       <WizardPrimaryButton
@@ -1170,34 +1050,6 @@ function AnalyzingStep({ copy }: { copy: WizardCopy }) {
   )
 }
 
-function EstimateStep({
-  copy,
-  estimate,
-  onNext,
-}: {
-  copy: WizardCopy
-  estimate: NonNullable<ReturnType<typeof useFrontendWorkflow>['state']['deal']>['estimate'] | undefined
-  onNext: () => void
-}) {
-  return (
-    <WizardCard testID="booking-wizard-step-estimate">
-      <WizardText kind="eyebrow">{copy.estimateStep}</WizardText>
-      <WizardText kind="title">{copy.estimateTitle}</WizardText>
-      <View style={styles.estimateGrid}>
-        <EstimateField label={copy.estimateProblem} tone="mint" value={estimate?.problemLabel ?? copy.pendingValue} />
-        <EstimateField label={copy.estimateComplexity} tone="water" value={estimate?.complexity ?? copy.pendingValue} />
-        <EstimateField label={copy.estimatePrice} tone="warm" value={estimate?.priceRangeLabel ?? copy.pendingValue} wide />
-      </View>
-      <View style={styles.estimateAdvisoryCard}>
-        <WizardText kind="label">{copy.estimateAdvisory}</WizardText>
-        <WizardText kind="value">{estimate?.advisory ?? copy.estimateNoAdvisory}</WizardText>
-      </View>
-      <WizardText kind="disclaimer">{estimate?.disclaimer ?? PRICE_DISCLAIMER}</WizardText>
-      <WizardPrimaryButton label={copy.next} onPress={onNext} testID="booking-wizard-estimate-next" />
-    </WizardCard>
-  )
-}
-
 type BookingFieldTone = 'mint' | 'water' | 'warm'
 
 function EstimateField({
@@ -1265,59 +1117,6 @@ function bookingFieldWashColor(visual: BookingWizardVisual, mode: GlassMode, ton
   return visual.aqua
 }
 
-function TimeStep({ copy, onNext }: { copy: WizardCopy; onNext: () => void }) {
-  const { mode, reduceTransparency, visual } = useBookingWizardVisual()
-  return (
-    <WizardCard testID="booking-wizard-step-time">
-      <WizardText kind="eyebrow">{copy.timeStep}</WizardText>
-      <WizardText kind="title">{copy.timeTitle}</WizardText>
-      <WizardPrimaryButton buttonStyle={styles.timeNowButton} label={copy.timeNow} onPress={onNext} testID="booking-wizard-time-now" />
-      <View style={[styles.scheduleDisabled, bookingFieldSurface(visual, mode, reduceTransparency, 'mint')]} testID="booking-wizard-time-schedule-placeholder">
-        <Text style={[styles.scheduleDisabledTitle, { color: visual.text }]}>{copy.timeSchedule}</Text>
-        <Text style={[styles.scheduleDisabledBody, { color: visual.muted }]}>{copy.timeScheduleHint}</Text>
-      </View>
-    </WizardCard>
-  )
-}
-
-function SummaryStep({
-  addressLabel,
-  copy,
-  estimate,
-  isConfirming,
-  onBack,
-  onConfirm,
-  serviceType,
-}: {
-  addressLabel: string
-  copy: WizardCopy
-  estimate: NonNullable<ReturnType<typeof useFrontendWorkflow>['state']['deal']>['estimate'] | undefined
-  isConfirming: boolean
-  onBack: () => void
-  onConfirm: () => void
-  serviceType: ServiceType | null
-}) {
-  const serviceLabel = serviceType ? copy.services[serviceType] : copy.pendingValue
-  return (
-    <WizardCard testID="booking-wizard-step-summary">
-      <WizardText kind="eyebrow">{copy.summaryStep}</WizardText>
-      <WizardText kind="title">{copy.summaryTitle}</WizardText>
-      <View style={styles.estimateGrid}>
-        <EstimateField label={copy.summaryService} tone="mint" value={serviceLabel} />
-        <EstimateField label={copy.summaryAddress} tone="water" value={addressLabel || copy.pendingValue} />
-        <EstimateField label={copy.summaryEstimate} tone="warm" value={estimate?.priceRangeLabel ?? copy.pendingValue} />
-        <EstimateField label={copy.summaryFee} tone="mint" value={`~${PLATFORM_FEE_PCT}%`} />
-      </View>
-      <WizardText kind="disclaimer">{copy.summaryCancellation}</WizardText>
-      <WizardText kind="disclaimer">{estimate?.disclaimer ?? PRICE_DISCLAIMER}</WizardText>
-      <View style={styles.actionRow}>
-        <WizardSecondaryButton disabled={isConfirming} label={copy.back} onPress={onBack} testID="booking-wizard-summary-back" />
-        <WizardPrimaryButton disabled={isConfirming} label={copy.confirmCta} onPress={onConfirm} testID="booking-wizard-confirm-search" />
-      </View>
-    </WizardCard>
-  )
-}
-
 function DoneStep({
   copy,
   onOpenHistory,
@@ -1338,7 +1137,6 @@ function DoneStep({
 }
 
 const styles = StyleSheet.create({
-  actionRow: { flexDirection: 'row', gap: 12 },
   backButton: {
     alignItems: 'center',
     borderRadius: 999,
@@ -1386,12 +1184,6 @@ const styles = StyleSheet.create({
   disclaimer: { color: '#52615C', fontSize: 12, fontStyle: 'italic', lineHeight: 16 },
   errorText: { color: '#B43F3F', fontSize: 13, fontWeight: '600' },
   errorSlot: { marginTop: -2 },
-  estimateAdvisoryCard: {
-    borderRadius: 18,
-    gap: 6,
-    paddingHorizontal: 1,
-    paddingVertical: 2,
-  },
   estimateField: {
     borderRadius: 18,
     borderWidth: 1,
@@ -1603,18 +1395,6 @@ const styles = StyleSheet.create({
     height: 9,
     overflow: 'hidden',
   },
-  scheduleDisabled: {
-    backgroundColor: '#EAF2EE',
-    borderColor: '#D8E2DC',
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 8,
-    minHeight: 88,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  scheduleDisabledBody: { color: '#52615C', fontSize: 12, lineHeight: 16 },
-  scheduleDisabledTitle: { color: '#1F2937', fontSize: 13, fontWeight: '700' },
   secondaryButton: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -1673,7 +1453,6 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
   stepEyebrow: { color: '#3F6F5A', fontSize: 12, fontWeight: '800', letterSpacing: 0, textTransform: 'uppercase' },
-  timeNowButton: { minHeight: 120 },
   title: { color: '#0F172A', fontSize: 19, fontWeight: '700', lineHeight: 25 },
   kaelBadge: {
     alignItems: 'center',

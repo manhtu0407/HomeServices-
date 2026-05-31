@@ -1,18 +1,19 @@
 import { type ReactNode } from 'react'
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 import { GlassSurface } from './glass-surface'
-import type { GlassMode } from './tokens'
+import type { GlassMaterial, GlassMode } from './tokens'
 
 type GlassModalSheetProps = {
   children: ReactNode
+  material?: GlassMaterial
   mode?: GlassMode
   style?: StyleProp<ViewStyle>
   testID?: string
 }
 
-export function GlassModalSheet({ children, mode = 'light', style, testID }: GlassModalSheetProps) {
+export function GlassModalSheet({ children, material = 'standard', mode = 'light', style, testID }: GlassModalSheetProps) {
   return (
-    <GlassSurface mode={mode} style={[styles.sheet, style]} testID={testID} variant="sheet">
+    <GlassSurface material={material} mode={mode} style={[styles.sheet, style]} testID={testID} variant="sheet">
       <View pointerEvents="none" style={styles.handle} />
       {children}
     </GlassSurface>

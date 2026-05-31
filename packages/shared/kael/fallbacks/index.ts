@@ -57,7 +57,7 @@ export function buildEstimateCardFallback(input: {
     },
     advisory: needsInspection
       ? 'Cần thợ kiểm tra trực tiếp trước khi chốt phạm vi.'
-      : 'Giá cuối cần được thợ xác nhận trước khi bắt đầu.',
+      : 'Giá cuối do Kael khóa theo policy; cập nhật khi có bằng chứng phạm vi mới.',
     disclaimer: KAEL_PRICE_DISCLAIMER_V3,
   }
 }
@@ -92,7 +92,7 @@ export function buildWorkerBriefFallback(input: WorkerBriefFallbackInput): Worke
       ],
       guidance: isGuidance
         ? [
-          'Kiểm tra đúng phạm vi đã được khách xác nhận.',
+          'Kiểm tra đúng phạm vi Kael đã chốt và khách có thể xem/khiếu nại.',
           'Nếu phát sinh thêm, gửi scope-change kèm lý do và ảnh trước khi làm.',
         ]
         : [
@@ -100,7 +100,7 @@ export function buildWorkerBriefFallback(input: WorkerBriefFallbackInput): Worke
           'Địa chỉ đầy đủ chỉ hiển thị sau khi nhận yêu cầu.',
         ],
       safety: [
-        'Không bắt đầu phần phát sinh khi khách chưa duyệt.',
+        'Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.',
       ],
     },
   }
@@ -130,7 +130,7 @@ export function buildScopeChangeCustomerCardFallback(input: {
     },
     kael_assessment: input.assessment ?? 'reasonable',
     decision_required: true,
-    advisory: 'Vui lòng duyệt hoặc từ chối trước khi thợ tiếp tục phần phát sinh.',
+    advisory: 'Kael đã tính lại theo phạm vi thợ báo cáo. Bạn có thể đồng ý hoặc khiếu nại nếu bằng chứng chưa đúng.',
     disclaimer: KAEL_PRICE_DISCLAIMER_V3,
   }
 }

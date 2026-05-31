@@ -47,7 +47,11 @@ import {
   buildKaelOptimizationMetricRows,
   readKaelOptimizationFlags,
 } from "./kael/cost-tracking.ts";
-import { validateWorkflowCommand, validateWorkflowTransition } from "./workflow-orchestrator.ts";
+import {
+  validateKaelAutonomyTransition,
+  validateWorkflowCommand,
+  validateWorkflowTransition,
+} from "./workflow-orchestrator.ts";
 import {
   AI_SESSION_LIMIT,
   checkKaelChatRateLimit,
@@ -63,6 +67,7 @@ import {
   PRICE_DISCLAIMER,
   type ScopeChangeKaelEstimate,
   buildEstimateCardOutput,
+  buildKaelAutonomyDecision,
   buildScopeChangeOutputs,
   buildWorkerBriefOutput,
   buildKaelMissingInfoArtifactProposal,
@@ -82,6 +87,7 @@ import {
   sanitizeKaelText,
   sanitizeMemoryObject,
   type EstimatePriceSource,
+  type KaelAutonomyDecision,
   type LearningSkillInput,
   type LearningSkillTrigger,
   getPublicKaelCharter,
@@ -112,6 +118,9 @@ type DbResult<T> = {
   count?: number | null;
 };
 type QueryLike = PromiseLike<DbResult<unknown>>;
+type ConfirmSearchOptions = {
+  autonomyDecision?: KaelAutonomyDecision;
+};
 
 type DbClient = {
   from(table: string): Chain;
@@ -630,26 +639,59 @@ async function createJob(
     baselineUsed:
       `${input.service_type}:${pipeline.serviceProblemId}:${estimate.complexity}`,
   });
-  const transition = validateWorkflowTransition({
-    event: "ai_estimate_ready",
+  const now = new Date().toISOString();
+  const lockedFinalPrice = estimate.price_max;
+  const workerBriefCore = buildWorkerBriefOutput({
+    stage: "core",
+    serviceType: input.service_type,
+    problemSummary: estimate.problem_summary,
+    district: canonicalDistrict,
+    estimatedEarningMin: Math.round(estimate.price_min * (1 - PLATFORM_FEE_WORKER)),
+    estimatedEarningMax: Math.round(lockedFinalPrice * (1 - PLATFORM_FEE_WORKER)),
+  });
+  const autonomyDecision = buildKaelAutonomyDecision({
+    action: "start_matching",
+    policyId: "kael.autonomy.v2.estimate_to_matching",
+    evidence: [
+      {
+        kind: "artifact",
+        reference_id: jobId,
+        summary: "Validated Kael estimate, supported service scope, and HCMC district.",
+      },
+      {
+        kind: "policy",
+        reference_id: "RULES.md#rule-7",
+        summary: "Kael Autonomy v2 allows server-validated matching after estimate.",
+      },
+    ],
+    confidence: estimate.confidence,
+    reversible: true,
+    appealable: true,
+    resultingEvent: "kael_started_matching",
+  });
+  const transition = validateKaelAutonomyTransition({
+    decision: autonomyDecision,
     from: "analyzing",
-    to: "awaiting_customer_confirm",
+    to: "broadcasting",
   });
   if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
-  const now = new Date().toISOString();
   const updated = await dbQuery<{ id: string }>(
     client
       .from("jobs")
       .update({
-        status: "awaiting_customer_confirm",
+        status: "broadcasting",
         kael_problem_identified: estimate.problem_summary,
         kael_complexity: estimate.complexity,
         kael_price_min: estimate.price_min,
         kael_price_max: estimate.price_max,
         kael_advisory: estimate.advisory,
         kael_estimate_card_v3: estimateCardV3,
+        kael_worker_brief_core: workerBriefCore,
+        final_price: lockedFinalPrice,
         service_problem_id: pipeline.serviceProblemId,
         estimate_ready_at: now,
+        broadcast_at: now,
+        confirmed_search_at: now,
       })
       .eq("id", jobId)
       .eq("status", "analyzing")
@@ -674,9 +716,74 @@ async function createJob(
     "estimate_ready",
     ctx,
     "analyzing",
-    "awaiting_customer_confirm",
+    "broadcasting",
     {
       fallback_used: pipeline.fallbackUsed,
+      autonomy_decision: autonomyDecision,
+    },
+  );
+
+  const broadcast = await createBroadcasts(
+    client,
+    jobId,
+    input.service_type,
+    canonicalDistrict,
+  );
+  if (!broadcast.success) {
+    if (broadcast.reasonCode === "DB_ERROR") {
+      const rolledBack = await rollbackFailedBroadcastStart(
+        client,
+        jobId,
+        ctx.user.id,
+        "analyzing",
+      );
+      if (!rolledBack) {
+        apiFailure(
+          "DB_ERROR",
+          "Không thể khôi phục yêu cầu sau lỗi gửi thợ",
+          500,
+        );
+      }
+      await logJobEvent(
+        client,
+        jobId,
+        "broadcast_start_failed",
+        ctx,
+        "broadcasting",
+        "analyzing",
+        { reason: broadcast.reason, autonomy_decision: autonomyDecision },
+      );
+      apiFailure("DB_ERROR", "Không thể gửi yêu cầu đến thợ", 500);
+    }
+    await logJobEvent(
+      client,
+      jobId,
+      "no_worker_found",
+      ctx,
+      "broadcasting",
+      null,
+      {
+        reason: broadcast.reason,
+        district: canonicalDistrict,
+        service_type: input.service_type,
+        autonomy_decision: autonomyDecision,
+      },
+    );
+  }
+
+  await logJobEvent(
+    client,
+    jobId,
+    "kael_started_matching",
+    ctx,
+    "analyzing",
+    "broadcasting",
+    {
+      broadcast_sent: broadcast.success,
+      ...(broadcast.success
+        ? { batch_id: broadcast.batchId, worker_count: broadcast.broadcastCount }
+        : { reason: broadcast.reason }),
+      autonomy_decision: autonomyDecision,
     },
   );
 
@@ -685,21 +792,29 @@ async function createJob(
     userId: ctx.user.id,
     jobId,
     eventType: "estimate_ready",
-    title: "Kael đã ước tính xong",
-    body: "Mở Hoạt động để kiểm tra giá và xác nhận tìm thợ.",
+    title: "Kael đang điều phối",
+    body: broadcast.success
+      ? "Kael đã chốt ước tính và đang gửi yêu cầu đến thợ phù hợp."
+      : "Kael đã chốt ước tính và sẽ tiếp tục theo dõi thợ phù hợp.",
     metadata: {
       service_type: input.service_type,
       price_min: estimate.price_min,
       price_max: estimate.price_max,
+      autonomy_decision_event: autonomyDecision.resulting_event,
+      broadcast_sent: broadcast.success,
     },
   });
 
   return {
     job_id: jobId,
-    status: "awaiting_customer_confirm" as JobStatus,
+    status: "broadcasting" as JobStatus,
     estimate,
     estimate_card_v3: estimateCardV3,
     fallback_used: pipeline.fallbackUsed,
+    broadcast_sent: broadcast.success,
+    message: broadcast.success
+      ? `Đã gửi yêu cầu đến ${broadcast.broadcastCount} thợ. Đang chờ phản hồi.`
+      : broadcast.reason,
   };
 }
 
@@ -1264,7 +1379,9 @@ async function confirmKaelChat(
       if (currentState.status === "awaiting_customer_confirm") {
         return {
           session_id: sessionId,
-          ...(await confirmSearch(ctx, existingJobId)),
+          ...(await confirmSearch(ctx, existingJobId, {
+            autonomyDecision: buildKaelChatMatchingDecision(sessionId, existingJobId),
+          })),
         };
       }
       return {
@@ -1284,11 +1401,44 @@ async function confirmKaelChat(
     nullableString(row.district_code),
     secrets,
   );
-  const confirmed = await confirmSearch(ctx, jobId);
+  const confirmed = await confirmSearch(ctx, jobId, {
+    autonomyDecision: buildKaelChatMatchingDecision(sessionId, jobId),
+  });
   return {
     session_id: sessionId,
     ...confirmed,
   };
+}
+
+function buildKaelChatMatchingDecision(
+  sessionId: string,
+  jobId: string,
+): KaelAutonomyDecision {
+  return buildKaelAutonomyDecision({
+    action: "start_matching",
+    policyId: "kael.autonomy.v2.chat_estimate_to_matching",
+    evidence: [
+      {
+        kind: "artifact",
+        reference_id: sessionId,
+        summary: "Validated Kael chat estimate and customer intake.",
+      },
+      {
+        kind: "artifact",
+        reference_id: jobId,
+        summary: "Server-created job has locked Kael estimate and district.",
+      },
+      {
+        kind: "policy",
+        reference_id: "RULES.md#rule-7",
+        summary: "Kael Autonomy v2 allows server-validated matching after estimate.",
+      },
+    ],
+    confidence: 0.86,
+    reversible: true,
+    appealable: true,
+    resultingEvent: "kael_started_matching",
+  });
 }
 
 async function readConfirmedKaelChatState(
@@ -1754,10 +1904,15 @@ async function listCustomerActiveJobs(ctx: MobileApiContext) {
   return { active_job: detail };
 }
 
-async function confirmSearch(ctx: MobileApiContext, jobId: string) {
+async function confirmSearch(
+  ctx: MobileApiContext,
+  jobId: string,
+  options: ConfirmSearchOptions = {},
+) {
   const client = db(ctx);
   const now = new Date().toISOString();
   let rollbackStatus: JobStatus | null = null;
+  const autonomyDecision = options.autonomyDecision;
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "customer",
     select:
@@ -1766,7 +1921,7 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
 
   // Phase 2.0 (2026-05-23): lock jobs.final_price = kael_price_max as initial
   // Kael baseline (only if not already locked, e.g. retry). Worker không có
-  // authority để override; chỉ A11 approve mới re-lock từ Kael compute mới.
+  // authority để override; chỉ A11 Kael scope decision re-locks từ Kael compute mới.
   const kaelPriceMax = nullableNumber(job.kael_price_max);
   const lockedFinalPrice = nullableNumber(job.final_price) ?? kaelPriceMax;
 
@@ -1813,11 +1968,17 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
         409,
       );
     }
-    const transition = validateWorkflowTransition({
-      event: "customer_confirmed_ticket",
-      from: job.status as JobStatus,
-      to: "broadcasting",
-    });
+    const transition = autonomyDecision
+      ? validateKaelAutonomyTransition({
+        decision: autonomyDecision,
+        from: job.status as JobStatus,
+        to: "broadcasting",
+      })
+      : validateWorkflowTransition({
+        event: "customer_confirmed_ticket",
+        from: job.status as JobStatus,
+        to: "broadcasting",
+      });
     if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
     rollbackStatus = job.status as JobStatus;
     const workerBriefCore = buildWorkerBriefOutput({
@@ -1862,10 +2023,11 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
     await logJobEvent(
       client,
       jobId,
-      "customer_confirmed_search",
+      autonomyDecision ? "kael_started_matching" : "customer_confirmed_search",
       ctx,
       job.status as JobStatus,
       "broadcasting",
+      autonomyDecision ? { autonomy_decision: autonomyDecision } : {},
     );
   }
 
@@ -1898,7 +2060,10 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
           ctx,
           "broadcasting",
           rollbackStatus,
-          { reason: broadcast.reason },
+          {
+            reason: broadcast.reason,
+            ...(autonomyDecision ? { autonomy_decision: autonomyDecision } : {}),
+          },
         );
       }
       apiFailure("DB_ERROR", "Không thể gửi yêu cầu đến thợ", 500);
@@ -1914,6 +2079,7 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
         reason: broadcast.reason,
         district,
         service_type: job.service_type,
+        ...(autonomyDecision ? { autonomy_decision: autonomyDecision } : {}),
       },
     );
     // Phase 2.3 (2026-05-23): notify customer when no eligible worker accepted.
@@ -1944,6 +2110,7 @@ async function confirmSearch(ctx: MobileApiContext, jobId: string) {
     {
       batch_id: broadcast.batchId,
       worker_count: broadcast.broadcastCount,
+      ...(autonomyDecision ? { autonomy_decision: autonomyDecision } : {}),
     },
   );
 
@@ -2120,6 +2287,42 @@ async function requestCustomerCancellation(
   const workerGoodwill = nullableRecord(row.worker_goodwill) ??
     phase0Outcome.workerGoodwill;
   const jobStatus = row.job_status as JobStatus | undefined;
+  const resultingJobStatus = jobStatus ?? "cancelled";
+  const autonomyDecision = resultingJobStatus !== job.status &&
+      subCase !== "after_worker_completed_trigger_dispute"
+    ? buildKaelAutonomyDecision({
+      action: "process_cancellation",
+      policyId: `kael.autonomy.v2.customer_cancel_${subCase}`,
+      evidence: [
+        {
+          kind: "customer_input",
+          reference_id: cancellationId,
+          summary: "Customer cancellation input was classified by server policy.",
+        },
+        {
+          kind: "job_event",
+          reference_id: jobId,
+          summary: "Current job phase determines cancellation outcome and audit path.",
+        },
+        {
+          kind: "policy",
+          reference_id: "STRUCTURES.md#cancellation",
+          summary: "Kael processes cancellation with reversible audit and appeal path.",
+        },
+      ],
+      confidence: adminReviewRequired ? 0.68 : 0.84,
+      reversible: true,
+      appealable: true,
+      resultingEvent: "kael_processed_cancellation",
+    })
+    : null;
+  const autonomyTransition = autonomyDecision
+    ? validateKaelAutonomyTransition({
+      decision: autonomyDecision,
+      from: job.status as JobStatus,
+      to: resultingJobStatus,
+    })
+    : null;
 
   await logJobEvent(
     client,
@@ -2137,8 +2340,32 @@ async function requestCustomerCancellation(
       admin_review_required: adminReviewRequired,
       phase0_no_monetary_penalty: true,
       worker_goodwill: workerGoodwill,
+      ...(autonomyDecision
+        ? {
+          autonomy_decision: autonomyDecision,
+          autonomy_transition_valid: autonomyTransition?.valid === true,
+          ...(autonomyTransition?.valid === false
+            ? { autonomy_transition_error: autonomyTransition.error }
+            : {}),
+        }
+        : {}),
     },
   );
+  if (autonomyDecision && autonomyTransition?.valid) {
+    await logJobEvent(
+      client,
+      jobId,
+      "kael_processed_cancellation",
+      ctx,
+      job.status as JobStatus,
+      resultingJobStatus,
+      {
+        cancellation_id: cancellationId,
+        sub_case: subCase,
+        autonomy_decision: autonomyDecision,
+      },
+    );
+  }
 
   const participants = await dbQuery<Record<string, unknown>>(
     client
@@ -2180,7 +2407,7 @@ async function requestCustomerCancellation(
     cancellation_id: cancellationId,
     job_id: jobId,
     status: "requested" as const,
-    job_status: jobStatus ?? "cancelled",
+    job_status: resultingJobStatus,
     sub_case: subCase,
     reason_code: reasonCode,
     reason_category: reasonCategory,
@@ -2537,11 +2764,12 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "worker",
+    select: "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls",
   });
   if (job.status === "scope_change_pending") {
     apiFailure(
       "SCOPE_CHANGE_PENDING",
-      "Không thể cập nhật trạng thái khi đang chờ xác nhận thay đổi phạm vi",
+      "Không thể cập nhật trạng thái khi Kael đang xét thay đổi phạm vi",
       409,
     );
   }
@@ -2556,8 +2784,8 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
   const update: Record<string, unknown> = { status: input.status };
   if (transition.timestampColumn) update[transition.timestampColumn] = now;
   if (input.status === "completed_by_worker") {
-    // Phase 2.0 (2026-05-23): jobs.final_price source = Kael (set at A7 confirm
-    // hoặc latest A11 approve). Worker payload không có final_price; preserve
+    // Phase 2.0 (2026-05-23): jobs.final_price source = Kael (set by A7
+    // autonomy decision or latest A11 scope decision). Worker payload không có final_price; preserve
     // existing jobs.final_price từ Kael-locked baseline.
     update.completion_notes = input.completion_notes ?? null;
     update.completion_photo_urls = input.completion_photo_urls ?? [];
@@ -2591,12 +2819,71 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
     job.status as JobStatus,
     input.status,
   );
-  await notifyCustomerJobStatus(
-    client,
-    jobId,
-    nullableString(job.customer_id),
-    input.status,
-  );
+  let finalStatus: JobStatus = input.status;
+  if (input.status === "completed_by_worker") {
+    const completionDecision = buildKaelCompletionDecision(jobId, input, nullableNumber(job.final_price));
+    if (completionDecision) {
+      const completionTransition = validateKaelAutonomyTransition({
+        decision: completionDecision,
+        from: "completed_by_worker",
+        to: "confirmed_by_customer",
+      });
+      if (completionTransition.valid) {
+        const confirmedAt = new Date().toISOString();
+        const confirmed = await dbQuery<{ id: string }>(
+          client
+            .from("jobs")
+            .update({ status: "confirmed_by_customer", confirmed_at: confirmedAt })
+            .eq("id", jobId)
+            .eq("worker_id", ctx.user.id)
+            .eq("status", "completed_by_worker")
+            .select("id")
+            .maybeSingle(),
+        );
+        if (!confirmed.error && confirmed.data) {
+          finalStatus = "confirmed_by_customer";
+          await logJobEvent(
+            client,
+            jobId,
+            "kael_confirmed_completion",
+            ctx,
+            "completed_by_worker",
+            "confirmed_by_customer",
+            { autonomy_decision: completionDecision },
+          );
+          await notifyKaelConfirmedCompletion(
+            client,
+            jobId,
+            nullableString(job.customer_id),
+            ctx.user.id,
+            nullableNumber(job.final_price),
+            completionDecision,
+          );
+        }
+      } else {
+        await logJobEvent(
+          client,
+          jobId,
+          "kael_completion_decision_rejected",
+          ctx,
+          "completed_by_worker",
+          "completed_by_worker",
+          {
+            autonomy_decision: completionDecision,
+            autonomy_transition_error: completionTransition.error,
+          },
+        );
+      }
+    }
+  }
+  if (input.status !== "completed_by_worker" || finalStatus === "completed_by_worker") {
+    await notifyCustomerJobStatus(
+      client,
+      jobId,
+      nullableString(job.customer_id),
+      input.status,
+    );
+  }
   if (input.status === "completed_by_worker") {
     await queueKaelLearningEvent(client, 'post-B7', {
       actor_id: ctx.user.id,
@@ -2613,9 +2900,48 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
   return {
     job_id: jobId,
     from_status: job.status as JobStatus,
-    to_status: input.status,
+    to_status: finalStatus,
     updated_at: now,
   };
+}
+
+function buildKaelCompletionDecision(
+  jobId: string,
+  input: {
+    completion_notes?: string;
+    completion_photo_urls?: string[];
+  },
+  finalPrice: number | null,
+): KaelAutonomyDecision | null {
+  const photoCount = input.completion_photo_urls?.length ?? 0;
+  const noteLength = input.completion_notes?.trim().length ?? 0;
+  if (finalPrice === null || finalPrice <= 0) return null;
+  if (photoCount === 0 && noteLength < 12) return null;
+  return buildKaelAutonomyDecision({
+    action: "confirm_completion",
+    policyId: "kael.autonomy.v2.worker_evidence_completion",
+    evidence: [
+      {
+        kind: "worker_evidence",
+        reference_id: jobId,
+        summary: `Worker submitted completion evidence: ${photoCount} photo(s), note length ${noteLength}.`,
+      },
+      {
+        kind: "system_check",
+        reference_id: jobId,
+        summary: "Final price is already Kael-locked before completion confirmation.",
+      },
+      {
+        kind: "policy",
+        reference_id: "STRUCTURES.md#completion",
+        summary: "Kael may confirm completion from validated worker evidence.",
+      },
+    ],
+    confidence: photoCount > 0 ? 0.86 : 0.74,
+    reversible: true,
+    appealable: true,
+    resultingEvent: "kael_confirmed_completion",
+  });
 }
 
 async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
@@ -2731,21 +3057,34 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
     },
   );
   const scopeChangeId = asString(row.scope_change_id);
-  await notifyCustomerScopeChangeRequested(
-    client,
+  const customerId = nullableString(job.customer_id);
+  const autoDecision = await tryAutoApproveScopeChange(client, ctx, {
+    customerId,
+    estimate,
     jobId,
-    nullableString(job.customer_id),
     scopeChangeId,
-  );
-  await logJobEvent(
-    client,
-    jobId,
-    "scope_change_notified",
-    ctx,
-    "scope_change_pending",
-    "scope_change_pending",
-    { scope_change_id: scopeChangeId },
-  );
+    scopeChangeOutputs,
+  });
+  if (autoDecision) {
+    await notifyCustomerScopeChangeDecided(client, jobId, customerId, scopeChangeId, "approve");
+    await notifyWorkerScopeDecision(client, jobId, scopeChangeId, "approve");
+  } else {
+    await notifyCustomerScopeChangeRequested(
+      client,
+      jobId,
+      customerId,
+      scopeChangeId,
+    );
+    await logJobEvent(
+      client,
+      jobId,
+      "scope_change_notified",
+      ctx,
+      "scope_change_pending",
+      "scope_change_pending",
+      { scope_change_id: scopeChangeId },
+    );
+  }
   await queueKaelLearningEvent(client, 'post-B6', {
     actor_id: ctx.user.id,
     actor_role: ctx.role,
@@ -2768,7 +3107,7 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
   return {
     scope_change_id: scopeChangeId,
     job_id: jobId,
-    status: row.scope_status as ScopeChangeStatus,
+    status: autoDecision?.status ?? (row.scope_status as ScopeChangeStatus),
     created_at: asString(row.created_at_ts),
     kael_estimate: {
       price_min: estimate.price_min,
@@ -2869,9 +3208,109 @@ function buildWorkerKaelAnswer(
       500,
     ),
     safety_notes: [
-      "Không bắt đầu phần phát sinh khi khách chưa duyệt.",
+      "Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.",
       "Không tự báo giá mới ngoài flow Kael trong app.",
     ],
+  };
+}
+
+async function tryAutoApproveScopeChange(
+  client: DbClient,
+  ctx: MobileApiContext,
+  input: {
+    customerId: string | null;
+    estimate: ScopeChangeKaelEstimate;
+    jobId: string;
+    scopeChangeId: string;
+    scopeChangeOutputs: ReturnType<typeof buildScopeChangeOutputs>;
+  },
+): Promise<{ status: ScopeChangeStatus; decidedAt: string | null } | null> {
+  const risk = input.scopeChangeOutputs.anti_fraud;
+  if (!input.customerId) return null;
+  if (risk.challenge_required || risk.admin_flag_required) return null;
+  if (input.estimate.confidence < 0.55) return null;
+
+  const autonomyDecision = buildKaelAutonomyDecision({
+    action: "decide_scope_change",
+    policyId: "kael.autonomy.v2.scope_change_auto_approve",
+    evidence: [
+      {
+        kind: "artifact",
+        reference_id: input.scopeChangeId,
+        summary: "Worker submitted scope-change artifact with Kael-computed price.",
+      },
+      {
+        kind: "system_check",
+        reference_id: input.jobId,
+        summary: "Anti-fraud and margin policy did not require challenge or admin review.",
+      },
+      {
+        kind: "policy",
+        reference_id: "STRUCTURES.md#A11",
+        summary: "Kael may decide scope change when backend policy has enough evidence.",
+      },
+    ],
+    confidence: input.estimate.confidence,
+    reversible: true,
+    appealable: true,
+    resultingEvent: "kael_decided_scope_change",
+  });
+  const transition = validateKaelAutonomyTransition({
+    decision: autonomyDecision,
+    from: "scope_change_pending",
+    to: "repairing",
+  });
+  if (!transition.valid) {
+    await logJobEvent(
+      client,
+      input.jobId,
+      "kael_scope_auto_decision_rejected",
+      ctx,
+      "scope_change_pending",
+      "scope_change_pending",
+      { scope_change_id: input.scopeChangeId, autonomy_decision: autonomyDecision, error: transition.error },
+    );
+    return null;
+  }
+
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("decide_scope_change_atomic", {
+      p_scope_change_id: input.scopeChangeId,
+      p_customer_id: input.customerId,
+      p_decision: "approve",
+    }),
+  );
+  const row = result.data?.[0];
+  if (result.error || !row || !row.ok) {
+    console.warn("mobile-api scope-change auto decision fell back to customer review", {
+      jobId: input.jobId,
+      errorCode: nullableString(row?.error_code),
+    });
+    return null;
+  }
+
+  await logJobEvent(
+    client,
+    input.jobId,
+    "scope_change_final_price_locked",
+    ctx,
+    "scope_change_pending",
+    "repairing",
+    { scope_change_id: input.scopeChangeId, autonomy_decision: autonomyDecision },
+  );
+  await logJobEvent(
+    client,
+    input.jobId,
+    "kael_decided_scope_change",
+    ctx,
+    "scope_change_pending",
+    "repairing",
+    { scope_change_id: input.scopeChangeId, autonomy_decision: autonomyDecision, automatic: true },
+  );
+
+  return {
+    status: row.scope_status as ScopeChangeStatus,
+    decidedAt: nullableString(row.decided_at_ts),
   };
 }
 
@@ -3021,6 +3460,40 @@ async function requestWorkerCancellation(
     adminReviewRequired,
     autoApprove: !adminReviewRequired && reasonCategory === "legit_auto_approve",
   };
+  const autonomyDecision = cancellationStatus === "approved"
+    ? buildKaelAutonomyDecision({
+      action: "process_cancellation",
+      policyId: "kael.autonomy.v2.worker_cancel_to_rematch",
+      evidence: [
+        {
+          kind: "worker_evidence",
+          reference_id: cancellationId,
+          summary: "Worker cancellation request classified by server policy.",
+        },
+        {
+          kind: "job_event",
+          reference_id: jobId,
+          summary: "Original worker assignment is released before replacement matching.",
+        },
+        {
+          kind: "policy",
+          reference_id: "docs/workflow/worker-cancellation.md",
+          summary: "Approved worker cancellation starts replacement matching without customer gate.",
+        },
+      ],
+      confidence: classification.autoApprove ? 0.92 : 0.72,
+      reversible: true,
+      appealable: true,
+      resultingEvent: "kael_processed_cancellation",
+    })
+    : null;
+  const autonomyTransition = autonomyDecision
+    ? validateKaelAutonomyTransition({
+      decision: autonomyDecision,
+      from: job.status as JobStatus,
+      to: (jobStatus ?? job.status) as JobStatus,
+    })
+    : null;
   const redFlagPatch: Record<string, boolean> = adminReviewRequired || abuseSignals.length > 0
     ? { worker_cancellation_abuse_review: true }
     : {};
@@ -3091,8 +3564,32 @@ async function requestWorkerCancellation(
       reason_category: reasonCategory,
       abuse_signals: abuseSignals,
       admin_review_required: abuse.adminReviewRequired,
+      ...(autonomyDecision
+        ? {
+          autonomy_decision: autonomyDecision,
+          autonomy_transition_valid: autonomyTransition?.valid === true,
+          ...(autonomyTransition?.valid === false
+            ? { autonomy_transition_error: autonomyTransition.error }
+            : {}),
+        }
+        : {}),
     },
   );
+  if (autonomyDecision && autonomyTransition?.valid) {
+    await logJobEvent(
+      client,
+      jobId,
+      "kael_processed_cancellation",
+      ctx,
+      job.status as JobStatus,
+      (jobStatus ?? job.status) as JobStatus,
+      {
+        cancellation_id: cancellationId,
+        broadcast_sent: broadcastSent,
+        autonomy_decision: autonomyDecision,
+      },
+    );
+  }
   if (cancellationStatus === "approved") {
     await recordWorkerCancellationReview(client, {
       jobId,
@@ -3438,8 +3935,35 @@ async function decideScopeChange(
 ) {
   const client = db(ctx);
   const nextJobStatus = scopeDecisionToJobStatus(input.decision);
-  const transition = validateWorkflowTransition({
-    event: "scope_change_decided",
+  const autonomyDecision = buildKaelAutonomyDecision({
+    action: "decide_scope_change",
+    policyId: `kael.autonomy.v2.scope_change_${input.decision}`,
+    evidence: [
+      {
+        kind: "artifact",
+        reference_id: scopeChangeId,
+        summary: "Scope change request submitted for atomic Kael policy decision.",
+      },
+      {
+        kind: "customer_input",
+        reference_id: scopeChangeId,
+        summary: input.decision === "approve"
+          ? "Customer accepted Kael scope decision."
+          : "Customer appealed or rejected the reported scope change.",
+      },
+      {
+        kind: "policy",
+        reference_id: "STRUCTURES.md#A11",
+        summary: "Scope changes require Kael policy decision, evidence, and appeal path.",
+      },
+    ],
+    confidence: input.decision === "approve" ? 0.72 : 0.55,
+    reversible: true,
+    appealable: true,
+    resultingEvent: "kael_decided_scope_change",
+  });
+  const transition = validateKaelAutonomyTransition({
+    decision: autonomyDecision,
     from: "scope_change_pending",
     to: nextJobStatus,
   });
@@ -3467,20 +3991,18 @@ async function decideScopeChange(
       ctx,
       "scope_change_pending",
       nextJobStatus,
-      { scope_change_id: scopeChangeId },
+      { scope_change_id: scopeChangeId, autonomy_decision: autonomyDecision },
     );
   }
 
   await logJobEvent(
     client,
     jobId,
-    input.decision === "approve"
-      ? "customer_approved_scope_change"
-      : "customer_rejected_scope_change",
+    "kael_decided_scope_change",
     ctx,
     "scope_change_pending",
     nextJobStatus,
-    { scope_change_id: scopeChangeId, decision: input.decision },
+    { scope_change_id: scopeChangeId, customer_input: input.decision, autonomy_decision: autonomyDecision },
   );
   await notifyWorkerScopeDecision(client, jobId, scopeChangeId, input.decision);
   return {
@@ -3499,7 +4021,7 @@ async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "customer",
-    select: "id, status, customer_id, worker_id, final_price",
+    select: "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls",
   });
   if (job.status === "confirmed_by_customer" || job.status === "reviewed") {
     return {
@@ -3515,8 +4037,17 @@ async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
       409,
     );
   }
-  const transition = validateWorkflowTransition({
-    event: "customer_confirmed_completion",
+  const autonomyDecision = buildKaelCustomerAcceptedCompletionDecision(
+    jobId,
+    nullableNumber(job.final_price),
+    {
+      completionNotes: nullableString(job.completion_notes),
+      completionPhotoUrls: asStringArray(job.completion_photo_urls),
+      customerId: ctx.user.id,
+    },
+  );
+  const transition = validateKaelAutonomyTransition({
+    decision: autonomyDecision,
     from: job.status as JobStatus,
     to: "confirmed_by_customer",
   });
@@ -3556,22 +4087,23 @@ async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
   await logJobEvent(
     client,
     jobId,
-    "customer_confirmed_completion",
+    "kael_confirmed_completion",
     ctx,
     job.status as JobStatus,
     "confirmed_by_customer",
+    { autonomy_decision: autonomyDecision, customer_input: "accepted_completion" },
   );
   // P9 keeps review prompting in the completion surface; A14 sends the customer notification.
-  // Phase 2.4 (2026-05-23): notify worker that customer confirmed completion.
+  // Kael Autonomy v2: notify worker that completion has been policy-confirmed.
   const workerId = nullableString(job.worker_id);
   if (workerId) {
     await insertUserNotification(client, {
       userId: workerId,
       jobId,
-      eventType: "customer_confirmed_completion",
-      title: "Khách đã xác nhận hoàn tất",
-      body: "Khách đã xác nhận việc hoàn tất. Đối soát thu nhập sẽ cập nhật.",
-      metadata: { final_price: finalPrice },
+      eventType: "kael_confirmed_completion",
+      title: "Kael đã xác nhận hoàn tất",
+      body: "Kael đã xác nhận công việc từ bằng chứng hoàn tất. Đối soát thu nhập sẽ cập nhật.",
+      metadata: { final_price: finalPrice, autonomy_decision: autonomyDecision },
     });
   }
   return {
@@ -3579,6 +4111,51 @@ async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
     status: "confirmed_by_customer" as JobStatus,
     final_price: finalPrice,
   };
+}
+
+function buildKaelCustomerAcceptedCompletionDecision(
+  jobId: string,
+  finalPrice: number | null,
+  input: {
+    completionNotes: string | null;
+    completionPhotoUrls: string[];
+    customerId: string;
+  },
+): KaelAutonomyDecision {
+  const photoCount = input.completionPhotoUrls.length;
+  const noteLength = input.completionNotes?.trim().length ?? 0;
+  return buildKaelAutonomyDecision({
+    action: "confirm_completion",
+    policyId: "kael.autonomy.v2.customer_completion_acceptance",
+    evidence: [
+      {
+        kind: "customer_input",
+        reference_id: input.customerId,
+        summary: "Customer accepted completion; server treats the action as input to Kael decision.",
+      },
+      {
+        kind: "worker_evidence",
+        reference_id: jobId,
+        summary: `Worker completion evidence on record: ${photoCount} photo(s), note length ${noteLength}.`,
+      },
+      {
+        kind: "system_check",
+        reference_id: jobId,
+        summary: finalPrice && finalPrice > 0
+          ? "Final price is already Kael-locked before completion confirmation."
+          : "Final price is missing and will be rejected before persistence.",
+      },
+      {
+        kind: "policy",
+        reference_id: "RULES.md#rule-7",
+        summary: "Kael Autonomy v2 keeps completion authority server-side and appealable.",
+      },
+    ],
+    confidence: photoCount > 0 || noteLength >= 12 ? 0.88 : 0.76,
+    reversible: true,
+    appealable: true,
+    resultingEvent: "kael_confirmed_completion",
+  });
 }
 
 async function submitReview(ctx: MobileApiContext, jobId: string, input: {
@@ -4684,9 +5261,43 @@ const CUSTOMER_STATUS_PUSH: Partial<Record<JobStatus, NotificationCopy>> = {
   completed_by_worker: {
     eventType: "completed_by_worker",
     title: "Thợ đã báo hoàn tất",
-    body: "Bạn có thể kiểm tra rồi xác nhận để thanh toán.",
+    body: "Kael đang kiểm tra bằng chứng hoàn tất và sẽ xác nhận hoặc mở tranh chấp theo policy.",
   },
 };
+
+async function notifyKaelConfirmedCompletion(
+  client: DbClient,
+  jobId: string,
+  customerId: string | null,
+  workerId: string | null,
+  finalPrice: number | null,
+  decision: KaelAutonomyDecision,
+) {
+  const metadata = {
+    final_price: finalPrice,
+    autonomy_decision: decision,
+  };
+  if (customerId) {
+    await insertUserNotification(client, {
+      userId: customerId,
+      jobId,
+      eventType: "kael_confirmed_completion",
+      title: "Kael đã xác nhận hoàn tất",
+      body: "Kael đã xác nhận công việc từ bằng chứng hoàn tất. Bạn có thể xem lại hoặc đánh giá trong Hoạt động.",
+      metadata,
+    });
+  }
+  if (workerId) {
+    await insertUserNotification(client, {
+      userId: workerId,
+      jobId,
+      eventType: "kael_confirmed_completion",
+      title: "Kael đã xác nhận hoàn tất",
+      body: "Kael đã xác nhận công việc từ bằng chứng hoàn tất. Đối soát thu nhập sẽ cập nhật.",
+      metadata,
+    });
+  }
+}
 
 async function notifyCustomerJobStatus(
   client: DbClient,
@@ -4757,6 +5368,52 @@ async function notifyCustomerScopeChangeRequested(
   });
   if (push.failed > 0) {
     console.warn("mobile-api scope-change customer push delivery had failures", {
+      jobId,
+      failed: push.failed,
+    });
+  }
+}
+
+async function notifyCustomerScopeChangeDecided(
+  client: DbClient,
+  jobId: string,
+  customerId: string | null,
+  scopeChangeId: string,
+  decision: "approve" | "reject",
+) {
+  if (!customerId || !scopeChangeId) return;
+  const approved = decision === "approve";
+  const title = approved
+    ? "Kael đã duyệt thay đổi phạm vi"
+    : "Kael đã từ chối thay đổi phạm vi";
+  const body = approved
+    ? "Kael đã cập nhật giá theo phạm vi mới. Bạn có thể xem lại hoặc khiếu nại trong Hoạt động."
+    : "Kael đã hủy phần phát sinh theo policy. Bạn có thể xem lại trong Hoạt động.";
+  const eventType = approved
+    ? "scope_change_auto_approved"
+    : "scope_change_auto_rejected";
+  await insertUserNotification(client, {
+    userId: customerId,
+    jobId,
+    eventType,
+    title,
+    body,
+    metadata: { scope_change_id: scopeChangeId, decision, actor: "kael_system" },
+  });
+
+  const push = await sendPushToUser(client, customerId, {
+    title,
+    body,
+    data: {
+      event_type: eventType,
+      job_id: jobId,
+      scope_change_id: scopeChangeId,
+      deep_link: `/(customer)/history?scope_change=${scopeChangeId}&job_id=${jobId}`,
+    },
+    sound: "default",
+  });
+  if (push.failed > 0) {
+    console.warn("mobile-api scope-change customer decision push delivery had failures", {
       jobId,
       failed: push.failed,
     });
@@ -4865,18 +5522,18 @@ async function notifyWorkerScopeDecision(
     ? "scope_change_approved"
     : "scope_change_rejected";
   const title = approved
-    ? "Khách đã duyệt thay đổi"
-    : "Khách đã từ chối thay đổi";
+    ? "Kael đã duyệt thay đổi"
+    : "Kael đã từ chối thay đổi";
   const body = approved
-    ? "Bạn có thể tiếp tục xử lý công việc."
-    : "Công việc đã được hủy theo quyết định của khách.";
+    ? "Bạn có thể tiếp tục xử lý công việc. Khách vẫn có đường khiếu nại nếu thông tin thực tế chưa đúng."
+    : "Công việc đã được hủy theo quyết định của Kael.";
   await insertUserNotification(client, {
     userId: workerId,
     jobId,
     eventType,
     title,
     body,
-    metadata: { scope_change_id: scopeChangeId, decision },
+    metadata: { scope_change_id: scopeChangeId, decision, actor: "kael_system" },
   });
 
   const push = await sendPushToUser(client, workerId, {

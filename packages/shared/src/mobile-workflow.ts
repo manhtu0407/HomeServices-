@@ -8,13 +8,14 @@ import {
 } from './constants'
 
 export const LOCAL_WORKFLOW_PRICE_DISCLAIMER =
-  'Đây là ước tính ban đầu. Giá thực tế sẽ được thợ xác nhận trước khi bắt đầu.'
+  'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
 
 // Local workflow keeps only statuses that create visible customer/worker UI
 // states. Backend-only settlement markers are folded by toLocalDealStatus():
-// estimate_ready -> awaiting_customer_confirm, payment_pending/paid ->
-// confirmed_by_customer. This keeps mobile honest while payment rails remain
-// outside the visible mobile workflow.
+// estimate_ready folds into the legacy awaiting_customer_confirm status for
+// old rows, but UI copy treats that state as Kael orchestration rather than a
+// customer gate. payment_pending/paid -> confirmed_by_customer keeps mobile
+// honest while payment rails remain outside the visible mobile workflow.
 export const LOCAL_DEAL_STATUSES = Object.freeze([
   'draft',
   'analyzing',
@@ -447,20 +448,23 @@ export function localWorkflowReducer(
     }
     case 'finish_local_analysis': {
       if (!state.deal) return withError(state, 'Không có phiếu để ước tính')
-      if (state.deal.status !== 'analyzing') return invalidTransition(state, state.deal.status, 'awaiting_customer_confirm')
+      if (state.deal.status !== 'analyzing') return invalidTransition(state, state.deal.status, 'broadcasting')
       return {
         ...state,
         deal: {
           ...state.deal,
-          status: 'awaiting_customer_confirm',
+          status: 'broadcasting',
           estimate: createLocalEstimate(state.deal.draft),
+          broadcast: createBroadcast(state.deal.draft),
         },
+        workerGate: 'local_deal_audit',
         lastError: null,
       }
     }
     case 'confirm_customer_search': {
+      if (state.deal && state.deal.status === 'broadcasting' && state.deal.broadcast && state.deal.estimate) return { ...state, lastError: null }
+      if (state.deal && state.deal.status !== 'awaiting_customer_confirm' && state.deal.status !== 'broadcasting') return invalidTransition(state, state.deal.status, 'broadcasting')
       if (!state.deal) return withError(state, 'Không có phiếu để tìm thợ')
-      if (state.deal.status !== 'awaiting_customer_confirm') return invalidTransition(state, state.deal.status, 'broadcasting')
       const validationMessage = validateLocalDealDraft(state.deal.draft)
       if (validationMessage) return withError(state, validationMessage)
       if (!state.deal.draft.serviceType) return withError(state, 'Chọn dịch vụ trước khi tìm thợ')
@@ -483,6 +487,7 @@ export function localWorkflowReducer(
       }
       if (state.deal.status !== 'broadcasting') return invalidTransition(state, state.deal.status, 'worker_matched')
       if (state.deal.broadcast?.status !== 'sent') return withError(state, 'Yêu cầu không còn ở trạng thái có thể nhận')
+      const canRevealFullAddress = hasSpecificWorkerRouteAddress(state.deal.draft.addressLabel, state.deal.draft.districtLabel)
       return {
         ...state,
         deal: {
@@ -491,8 +496,8 @@ export function localWorkflowReducer(
           broadcast: {
             ...state.deal.broadcast,
             status: 'accepted',
-            fullAddressVisible: true,
-            fullAddressLabel: state.deal.draft.addressLabel,
+            fullAddressVisible: canRevealFullAddress,
+            fullAddressLabel: canRevealFullAddress ? state.deal.draft.addressLabel : null,
           },
         },
         lastError: null,
@@ -674,7 +679,7 @@ export function selectLocalWorkflow(state: LocalWorkflowState): LocalWorkflowSel
     scheduleMode: 'now_only',
     customerSearchState,
     hasLocalBroadcast: Boolean(broadcast),
-    canConfirmCustomerSearch: Boolean(deal && status === 'awaiting_customer_confirm' && deal.estimate && validateLocalDealDraft(deal.draft) === null),
+    canConfirmCustomerSearch: false,
     canWorkerAccept: hasWorkerActionGate && status === 'broadcasting' && broadcast?.status === 'sent',
     canWorkerAdvance:
       hasWorkerActionGate &&
@@ -682,7 +687,10 @@ export function selectLocalWorkflow(state: LocalWorkflowState): LocalWorkflowSel
       Boolean(status && NEXT_WORKER_STATUS[status]),
     canWorkerSeeFullAddress: Boolean(broadcast?.status === 'accepted' && broadcast.fullAddressVisible && broadcast.fullAddressLabel),
     canCustomerCancelDeal: Boolean(deal && canCancelLocalDeal(deal.status)),
-    canCustomerConfirmCompletion: Boolean(deal && canConfirmCustomerCompletion(deal)),
+    // Kael Autonomy v2: customer completion is input/evidence, not the
+    // default final authority in the UI. The reducer action stays for legacy
+    // recovery tests and backend parity, but selectors keep it off-screen.
+    canCustomerConfirmCompletion: false,
     canCustomerSubmitReview,
     paymentLocked: true,
     reviewLocked: !canCustomerSubmitReview,
@@ -708,7 +716,18 @@ function canEditBookingDraft(status: LocalDealStatus): boolean {
 }
 
 function canCancelLocalDeal(status: LocalDealStatus): boolean {
-  return ['draft', 'analyzing', 'awaiting_customer_confirm', 'broadcasting'].includes(status)
+  return [
+    'draft',
+    'analyzing',
+    'awaiting_customer_confirm',
+    'broadcasting',
+    'worker_matched',
+    'worker_on_way',
+    'arrived',
+    'inspecting',
+    'repairing',
+    'scope_change_pending',
+  ].includes(status)
 }
 
 function canConfirmCustomerCompletion(deal: LocalDeal): boolean {
@@ -734,16 +753,16 @@ export function statusLabel(status: LocalDealStatus | null): string {
   const labels: Record<LocalDealStatus, string> = {
     draft: 'Nháp',
     analyzing: 'Kael đang phân tích',
-    awaiting_customer_confirm: 'Chờ khách xác nhận',
+    awaiting_customer_confirm: 'Kael đang điều phối',
     broadcasting: 'Đang gửi thợ',
     worker_matched: 'Thợ đã nhận',
     worker_on_way: 'Thợ đang đến',
     arrived: 'Thợ đã đến',
     inspecting: 'Đang kiểm tra',
     repairing: 'Đang sửa',
-    scope_change_pending: 'Chờ khách duyệt thay đổi',
+    scope_change_pending: 'Kael đang xét đổi phạm vi',
     completed_by_worker: 'Thợ báo hoàn tất',
-    confirmed_by_customer: 'Khách xác nhận xong',
+    confirmed_by_customer: 'Kael đã xác nhận hoàn tất',
     reviewed: 'Đã đánh giá',
     cancelled: 'Đã hủy',
   }
@@ -759,7 +778,7 @@ export function extractKnownDistrictLabel(input: string): string {
     if (normalized.includes(normalizeSearchText(label))) return label
   }
 
-  const numberedDistrict = normalized.match(/\b(?:quan|q)\s*\.?\s*(1[0-2]|\d)\b/)
+  const numberedDistrict = normalized.match(/\b(?:quan|q|district|dist)\s*\.?\s*(1[0-2]|\d)\b/)
   if (numberedDistrict) return `Quận ${numberedDistrict[1]}`
 
   return ''
@@ -767,6 +786,50 @@ export function extractKnownDistrictLabel(input: string): string {
 
 export function extractDistrictLabel(input: string): string {
   return extractKnownDistrictLabel(input) || GENERIC_AREA
+}
+
+export function hasSpecificWorkerRouteAddress(addressLabel: string | null | undefined, districtLabel = ''): boolean {
+  const normalizedAddress = stripGenericAddressTerms(addressLabel ?? '')
+  if (!normalizedAddress) return false
+
+  const detectedDistrict = extractKnownDistrictLabel(addressLabel ?? '') || extractKnownDistrictLabel(districtLabel) || districtLabel
+  let specificPart = normalizedAddress
+  const districtCandidates = [
+    detectedDistrict,
+    districtLabel,
+    ...Object.values(HCMC_DISTRICTS),
+  ]
+
+  for (const candidate of districtCandidates) {
+    const normalizedCandidate = stripGenericAddressTerms(candidate)
+    if (!normalizedCandidate) continue
+    specificPart = specificPart.replace(new RegExp(`\\b${escapeRegExp(normalizedCandidate)}\\b`, 'g'), ' ')
+  }
+
+  specificPart = specificPart
+    .replace(/\b(?:quan|q|district|dist)\s*\.?\s*(1[0-2]|\d)\b/g, ' ')
+    .replace(/\b(?:phuong|p|ward)\s*\.?\s*\d+\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return specificPart.replace(/\s+/g, '').length >= 3
+}
+
+function stripGenericAddressTerms(value: string): string {
+  return normalizeSearchText(value)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\btp\s*hcm\b/g, ' ')
+    .replace(/\btphcm\b/g, ' ')
+    .replace(/\bthanh\s*pho\s*ho\s*chi\s*minh\b/g, ' ')
+    .replace(/\bho\s*chi\s*minh\b/g, ' ')
+    .replace(/\bhcmc\b/g, ' ')
+    .replace(/\bviet\s*nam\b/g, ' ')
+    .replace(/\bvn\b/g, ' ')
+    .trim()
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function createDeal(draft: LocalDealDraft): LocalDeal {

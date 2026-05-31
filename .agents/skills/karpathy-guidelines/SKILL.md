@@ -164,7 +164,7 @@ Project constraints override generic advice:
 - Primary client is React Native / Expo.
 - Next.js is secondary: API routes and admin only.
 - Service scope is electrical, plumbing, and cleaning only.
-- Kael is the primary AI assistant for intake, diagnosis, price analysis, worker brief, and support; Kael never performs booking, payment, cancellation, or worker punishment without explicit user/admin confirmation.
+- Kael is the default workflow actor for intake, diagnosis, price analysis, matching, cancellation, scope, completion, dispute, and payment/refund decisions when server-side policy has enough data; raw AI output never mutates workflow status directly, and all Kael transitions must be schema-validated, audited, reversible/appealable where policy requires.
 - User-facing text should be Vietnamese-first.
 - No secrets in client code.
 - No PII in logs.

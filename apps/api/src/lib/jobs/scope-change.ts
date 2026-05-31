@@ -86,14 +86,15 @@ export async function requestScopeChange(
 }
 
 /**
- * A11 — Customer decides on scope change via `decide_scope_change_atomic` RPC.
+ * A11 — Legacy/appeal scope-change decision via `decide_scope_change_atomic` RPC.
  *
  * The PG function atomically:
  *   - Updates scope_change_requests.status to approved_by_customer / rejected_by_customer
  *   - Approve transitions job.status back to 'repairing' with decision text
  *   - Reject transitions the job to 'cancelled' to stop changed work
  *
- * Per RULES.md #7, customer MUST tap explicitly — no auto-decision.
+ * Kael Autonomy v2 owns the default decision; this helper remains for explicit
+ * override/appeal compatibility while the Next app trails the Edge runtime.
  */
 export async function decideScopeChange(
   supabase: SupabaseClient<Database>,

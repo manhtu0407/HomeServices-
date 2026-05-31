@@ -192,7 +192,7 @@ Backend route groups
 |- price baseline read
 |- Kael price-check request
 |- job draft
-|- booking confirm
+|- Kael autonomy matching decision
 |- broadcast/matching
 |- worker accept/decline
 |- chat/evidence
@@ -336,7 +336,7 @@ Future tests
 |- Kael output schema tests
 |- AI fallback tests
 |- mobile API client error handling tests
-|- booking confirmation guard tests
+|- Kael autonomy decision guard tests
 ```
 
 Critical acceptance cases:
@@ -344,13 +344,13 @@ Critical acceptance cases:
 ```text
 Must test
 -
-|- customer cannot create booking without explicit confirm
+|- booking intake routes into Kael pre-analysis without requiring the customer to re-enter details
 |- worker cannot see full address before accept
-|- worker cannot continue scope change before customer decision
+|- worker cannot continue scope change before Kael scope decision or admin override
 |- price estimate always has disclaimer
 |- out-of-scope service returns polite decline
 |- learning candidate cannot promote before evidence gate
-|- learning rule cannot affect booking/payment/cancel
+|- learning rule cannot affect booking/payment/cancel without validated server-side Kael policy
 |- learning rule can be rolled back
 ```
 

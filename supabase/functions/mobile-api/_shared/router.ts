@@ -93,6 +93,8 @@ type CreateJobResponse = {
   estimate: KaelEstimate;
   estimate_card_v3?: Record<string, unknown>;
   fallback_used: boolean;
+  broadcast_sent?: boolean;
+  message?: string;
 };
 type KaelChatStatus =
   | "active"

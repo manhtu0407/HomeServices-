@@ -20,7 +20,7 @@ The next implementation plan should use this as the decision baseline for the cu
 - A4: Kael clarification/loading/fallback states
 - A5: price estimate card
 
-Out of scope for the next UI slice unless Tu explicitly approves it: A6 time selection, A7 booking confirmation, matching, worker flow, payment, scope change, Kael learning, production Supabase migrations, and real AI/API calls.
+Out of scope for the historical A2-A5 slice unless Tu explicitly approves it: A6 time selection, A7 Kael orchestration/matching, worker flow, payment, scope change, Kael learning, production Supabase migrations, and real AI/API calls.
 
 ## Current Repo Readiness
 
@@ -121,7 +121,7 @@ type PriceCheckEstimateCard = {
 Required disclaimer meaning for every estimate:
 
 ```text
-Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.
+Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.
 ```
 
 Stable ASCII-normalized assertion text for tests:

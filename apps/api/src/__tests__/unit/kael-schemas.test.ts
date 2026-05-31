@@ -265,7 +265,7 @@ describe('kael-schemas — workerPrebriefSchema', () => {
 describe('kael-schemas — constants', () => {
   it('PRICE_DISCLAIMER contains required text', () => {
     expect(PRICE_DISCLAIMER).toContain('ước tính')
-    expect(PRICE_DISCLAIMER).toContain('thợ')
+    expect(PRICE_DISCLAIMER).toContain('Kael')
   })
 
   it('UNSUPPORTED_SERVICE_MESSAGE mentions electrical, plumbing, and cleaning', () => {

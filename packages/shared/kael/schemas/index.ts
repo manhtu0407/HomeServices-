@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const KAEL_PRICE_DISCLAIMER_V3 =
-  'Đây là mức giá ước tính dựa trên thị trường HCMC. Giá cuối được thợ xác nhận trước khi làm.'
+  'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
 
 export const kaelServiceTypeSchema = z.enum(['electrical', 'plumbing', 'cleaning'])
 export const kaelComplexitySchema = z.enum(['small', 'medium', 'large'])

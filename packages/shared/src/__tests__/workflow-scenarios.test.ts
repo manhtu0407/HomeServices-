@@ -6,7 +6,7 @@ describe('progressive service workflow scenarios', () => {
     const intake = buildWorkflowViewModel({ status: null, hasCustomerInput: true, hasAiNotes: true })
     const estimating = buildWorkflowViewModel({ status: 'analyzing', hasCustomerInput: true, hasAiNotes: true })
     const explaining = buildWorkflowViewModel({ status: 'estimate_ready', hasCustomerInput: true, hasAiNotes: true, hasEstimate: true })
-    const reviewTicket = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true, hasAiNotes: true, hasEstimate: true })
+    const kaelOrchestrating = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true, hasAiNotes: true, hasEstimate: true })
     const matching = buildWorkflowViewModel({ status: 'broadcasting', hasCustomerInput: true, hasAiNotes: true, hasEstimate: true })
     const workerDone = buildWorkflowViewModel({ status: 'completed_by_worker', hasCompletionEvidence: true, hasCustomerInput: true, hasEstimate: true })
     const customerConfirmed = buildWorkflowViewModel({ status: 'confirmed_by_customer', hasCompletionEvidence: true, hasCustomerInput: true, hasEstimate: true })
@@ -17,7 +17,8 @@ describe('progressive service workflow scenarios', () => {
     expect(intake.artifacts.process_ticket.mode).toBe('partial')
     expect(estimating.artifacts.process_ticket.mode).toBe('loading')
     expect(explaining.artifacts.ai_notes.mode).toBe('annotated')
-    expect(reviewTicket.allowedActions.confirmTicketAndEstimate).toBe(true)
+    expect(kaelOrchestrating.phase).toBe('matching')
+    expect(kaelOrchestrating.allowedActions.confirmTicketAndEstimate).toBe(false)
     expect(matching.artifacts.provider_match.mode).toBe('loading')
     expect(workerDone.artifacts.completion_evidence.mode).toBe('review')
     expect(customerConfirmed.artifacts.review.mode).toBe('review')
@@ -28,26 +29,26 @@ describe('progressive service workflow scenarios', () => {
     expect(reviewed.isDone).toBe(true)
   })
 
-  it('keeps provider matching hidden before backend confirmation', () => {
+  it('shows provider matching once Kael has enough data to orchestrate', () => {
     const collecting = buildWorkflowViewModel({ status: null, hasCustomerInput: true })
-    const reviewTicket = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true, hasEstimate: true })
+    const kaelOrchestrating = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true, hasEstimate: true })
 
     expect(collecting.artifacts.provider_match.visible).toBe(false)
-    expect(reviewTicket.artifacts.provider_match.visible).toBe(false)
-    expect(reviewTicket.allowedActions.confirmTicketAndEstimate).toBe(true)
+    expect(kaelOrchestrating.artifacts.provider_match.mode).toBe('loading')
+    expect(kaelOrchestrating.allowedActions.confirmTicketAndEstimate).toBe(false)
   })
 
-  it('does not reveal matching during optimistic ticket confirmation', () => {
-    const confirmingTicket = buildWorkflowViewModel({
+  it('does not restore the old ticket confirmation gate during optimistic matching state', () => {
+    const startingMatching = buildWorkflowViewModel({
       status: 'awaiting_customer_confirm',
       hasCustomerInput: true,
       hasEstimate: true,
-      optimistic: 'confirming_ticket',
+      optimistic: 'starting_matching',
     })
 
-    expect(confirmingTicket.phase).toBe('ticket_review')
-    expect(confirmingTicket.optimistic).toBe('confirming_ticket')
-    expect(confirmingTicket.artifacts.provider_match.visible).toBe(false)
+    expect(startingMatching.phase).toBe('matching')
+    expect(startingMatching.optimistic).toBe('starting_matching')
+    expect(startingMatching.artifacts.provider_match.mode).toBe('loading')
   })
 
   it('does not show late workflow artifacts early just because stale data exists', () => {
