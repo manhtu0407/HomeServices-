@@ -511,7 +511,7 @@ describeReal('Real Supabase — job events', () => {
     const events = [
       { event_type: 'status_change', actor_role: 'customer' as const, from_status: 'draft' as const, to_status: 'analyzing' as const },
       { event_type: 'status_change', actor_role: 'customer' as const, from_status: 'analyzing' as const, to_status: 'estimate_ready' as const },
-      { event_type: 'customer_confirmed_search', actor_role: 'customer' as const, from_status: 'awaiting_customer_confirm' as const, to_status: 'broadcasting' as const },
+      { event_type: 'kael_started_matching', actor_role: 'customer' as const, from_status: 'awaiting_customer_confirm' as const, to_status: 'broadcasting' as const },
       { event_type: 'worker_matched', actor_role: 'worker' as const, from_status: 'broadcasting' as const, to_status: 'worker_matched' as const },
     ]
 

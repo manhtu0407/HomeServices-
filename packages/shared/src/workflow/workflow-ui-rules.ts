@@ -14,7 +14,7 @@ export type WorkflowViewModelInput = {
   hasScopeChange?: boolean
   hasCompletionEvidence?: boolean
   isLoading?: boolean
-  optimistic?: 'confirming_ticket' | 'starting_matching' | null
+  optimistic?: 'starting_matching' | null
 }
 
 export type WorkflowArtifactView = {
@@ -43,8 +43,8 @@ export function buildWorkflowViewModel(input: WorkflowViewModelInput): WorkflowV
     optimistic: input.optimistic ?? null,
     artifacts,
     allowedActions: {
-      confirmTicketAndEstimate: phase === 'ticket_review' && artifacts.estimate.mode === 'review',
-      confirmCompletion: phase === 'completed_by_worker',
+      confirmTicketAndEstimate: false,
+      confirmCompletion: false,
       submitReview: phase === 'customer_confirmed_completion' || phase === 'paid',
     },
     isDone: phase === 'done',
@@ -69,10 +69,15 @@ function buildArtifactViews(
     ai_diagnosis: aiArtifactMode(phase, input),
     ai_notes: aiArtifactMode(phase, input),
     estimate: estimateMode(phase, input),
+    worker_brief: workerBriefMode(phase),
     provider_match: providerMatchMode(phase),
     booking: bookingMode(phase),
     scope_change: scopeChangeMode(phase, input),
+    cancellation_review: cancellationReviewMode(phase),
     completion_evidence: completionEvidenceMode(phase, input),
+    completion_review: completionReviewMode(phase, input),
+    dispute_decision: disputeDecisionMode(phase),
+    payment_decision: paymentDecisionMode(phase),
     review: reviewMode(phase),
   }
 
@@ -129,6 +134,14 @@ function providerMatchMode(phase: WorkflowPhase): WorkflowArtifactMode {
   return 'hidden'
 }
 
+function workerBriefMode(phase: WorkflowPhase): WorkflowArtifactMode {
+  if (phase === 'matching') return 'loading'
+  if (phase === 'worker_matched' || phase === 'worker_on_way' || phase === 'arrived' || phase === 'inspecting' || phase === 'repairing' || phase === 'scope_change_pending' || phase === 'completed_by_worker' || phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
+  if (phase === 'done') return 'done'
+  if (phase === 'cancelled') return 'blocked'
+  return 'hidden'
+}
+
 function bookingMode(phase: WorkflowPhase): WorkflowArtifactMode {
   if (phase === 'matching') return 'loading'
   if (phase === 'cancelled') return 'blocked'
@@ -146,9 +159,35 @@ function scopeChangeMode(phase: WorkflowPhase, input: WorkflowViewModelInput): W
   return 'hidden'
 }
 
+function cancellationReviewMode(phase: WorkflowPhase): WorkflowArtifactMode {
+  if (phase === 'cancelled') return 'final'
+  return 'hidden'
+}
+
 function completionEvidenceMode(phase: WorkflowPhase, _input: WorkflowViewModelInput): WorkflowArtifactMode {
   if (phase === 'completed_by_worker') return 'review'
   if (phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
+  if (phase === 'done') return 'done'
+  return 'hidden'
+}
+
+function completionReviewMode(phase: WorkflowPhase, input: WorkflowViewModelInput): WorkflowArtifactMode {
+  if (phase === 'completed_by_worker') return input.hasCompletionEvidence ? 'review' : 'hidden'
+  if (phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
+  if (phase === 'done') return 'done'
+  return 'hidden'
+}
+
+function disputeDecisionMode(phase: WorkflowPhase): WorkflowArtifactMode {
+  if (phase === 'completed_by_worker') return 'review'
+  if (phase === 'customer_confirmed_completion' || phase === 'payment_pending') return 'final'
+  if (phase === 'done') return 'done'
+  return 'hidden'
+}
+
+function paymentDecisionMode(phase: WorkflowPhase): WorkflowArtifactMode {
+  if (phase === 'customer_confirmed_completion') return 'review'
+  if (phase === 'payment_pending' || phase === 'paid') return 'final'
   if (phase === 'done') return 'done'
   return 'hidden'
 }

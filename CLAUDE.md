@@ -14,8 +14,8 @@ Claude Code, Codex, and other AI coding agents act as Tu's technical co-founder 
 - Product: Home Services mobile app for apartment residents in Ho Chi Minh City.
 - Supported services: electrical repair, plumbing repair, and home cleaning / housekeeping only.
 - Stage: pre-revenue, rebuilding toward the first real transaction.
-- Kael: the main assistant/product brand for intake, diagnosis, price analysis, market check, customer confirmation, worker brief, notification/support, and workflow assistance.
-- Kael must not autonomously book, charge, cancel, reassign, or change money-impacting workflow state without explicit user confirmation.
+- Kael: the main assistant/product brand and default workflow actor for intake, diagnosis, price analysis, market check, worker brief, notification/support, and orchestration.
+- Kael may autonomously book/search, decide scope/cancel/completion/payment/dispute outcomes, and reassign only through server-side validated `KaelAutonomyDecision` objects. Raw LLM output, mobile UI, and client-side code must not directly change money-impacting workflow state.
 
 ## Authority And Context Flow
 

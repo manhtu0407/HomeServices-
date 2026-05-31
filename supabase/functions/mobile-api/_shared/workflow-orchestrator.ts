@@ -1,20 +1,31 @@
 import type { JobStatus } from "../../_shared/domain.ts";
+import {
+  type KaelAutonomyDecision,
+  kaelAutonomyDecisionSchema,
+} from "./kael/artifact-contract.ts";
 import { validateTransition } from "./lifecycle.ts";
 
 export type WorkflowTransitionEvent =
   | "ai_estimate_ready"
   | "kael_failed"
   | "ai_explanation_ready"
+  | "kael_confirmed_ticket"
+  | "kael_started_matching"
   | "customer_confirmed_ticket"
   | "matching_started"
   | "worker_accepted"
   | "worker_status_advanced"
   | "scope_change_requested"
+  | "kael_decided_scope_change"
   | "scope_change_decided"
   | "worker_completed"
+  | "kael_confirmed_completion"
   | "customer_confirmed_completion"
+  | "kael_decided_payment"
   | "payment_confirmed"
+  | "kael_decided_dispute"
   | "review_submitted"
+  | "kael_processed_cancellation"
   | "cancel_requested";
 
 export type WorkflowCommandEvent =
@@ -70,10 +81,30 @@ export type WorkflowCommandResult =
     error: string;
   };
 
+export type KaelAutonomyTransitionInput = {
+  decision: KaelAutonomyDecision;
+  from: JobStatus;
+  to: JobStatus;
+};
+
+export type KaelAutonomyTransitionResult =
+  | (Extract<WorkflowTransitionResult, { valid: true }> & { decision: KaelAutonomyDecision })
+  | (Extract<WorkflowTransitionResult, { valid: false }> & { decision?: KaelAutonomyDecision });
+
 const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<readonly [JobStatus, JobStatus]>> = {
   ai_estimate_ready: [["analyzing", "awaiting_customer_confirm"]],
   kael_failed: [["analyzing", "cancelled"]],
   ai_explanation_ready: [["estimate_ready", "awaiting_customer_confirm"]],
+  kael_confirmed_ticket: [
+    ["analyzing", "broadcasting"],
+    ["estimate_ready", "broadcasting"],
+    ["awaiting_customer_confirm", "broadcasting"],
+  ],
+  kael_started_matching: [
+    ["analyzing", "broadcasting"],
+    ["estimate_ready", "broadcasting"],
+    ["awaiting_customer_confirm", "broadcasting"],
+  ],
   customer_confirmed_ticket: [["awaiting_customer_confirm", "broadcasting"]],
   matching_started: [["awaiting_customer_confirm", "broadcasting"]],
   worker_accepted: [["broadcasting", "worker_matched"]],
@@ -87,16 +118,44 @@ const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<
     ["inspecting", "scope_change_pending"],
     ["repairing", "scope_change_pending"],
   ],
+  kael_decided_scope_change: [
+    ["scope_change_pending", "repairing"],
+    ["scope_change_pending", "cancelled"],
+  ],
   scope_change_decided: [
     ["scope_change_pending", "repairing"],
     ["scope_change_pending", "cancelled"],
   ],
   worker_completed: [["repairing", "completed_by_worker"]],
+  kael_confirmed_completion: [["completed_by_worker", "confirmed_by_customer"]],
   customer_confirmed_completion: [["completed_by_worker", "confirmed_by_customer"]],
+  kael_decided_payment: [["confirmed_by_customer", "payment_pending"]],
   payment_confirmed: [["payment_pending", "paid"]],
+  kael_decided_dispute: [
+    ["completed_by_worker", "confirmed_by_customer"],
+    ["confirmed_by_customer", "reviewed"],
+  ],
   review_submitted: [
     ["confirmed_by_customer", "reviewed"],
     ["paid", "reviewed"],
+  ],
+  kael_processed_cancellation: [
+    ["draft", "cancelled"],
+    ["analyzing", "cancelled"],
+    ["awaiting_customer_confirm", "cancelled"],
+    ["broadcasting", "cancelled"],
+    ["worker_matched", "broadcasting"],
+    ["worker_on_way", "broadcasting"],
+    ["arrived", "broadcasting"],
+    ["inspecting", "broadcasting"],
+    ["repairing", "broadcasting"],
+    ["scope_change_pending", "broadcasting"],
+    ["worker_matched", "cancelled"],
+    ["worker_on_way", "cancelled"],
+    ["arrived", "cancelled"],
+    ["inspecting", "cancelled"],
+    ["repairing", "cancelled"],
+    ["scope_change_pending", "cancelled"],
   ],
   cancel_requested: [
     ["draft", "cancelled"],
@@ -104,6 +163,16 @@ const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<
     ["awaiting_customer_confirm", "cancelled"],
     ["broadcasting", "cancelled"],
   ],
+};
+
+const KAEL_AUTONOMY_ACTION_EVENTS: Record<KaelAutonomyDecision["action"], readonly WorkflowTransitionEvent[]> = {
+  confirm_ticket: ["kael_confirmed_ticket", "kael_started_matching"],
+  start_matching: ["kael_started_matching"],
+  process_cancellation: ["kael_processed_cancellation"],
+  decide_scope_change: ["kael_decided_scope_change"],
+  confirm_completion: ["kael_confirmed_completion"],
+  decide_payment: ["kael_decided_payment"],
+  decide_dispute: ["kael_decided_dispute"],
 };
 
 const CUSTOMER_CANCELLATION_REQUEST_STATUSES: readonly JobStatus[] = [
@@ -128,8 +197,8 @@ const WORKER_CANCELLATION_REQUEST_STATUSES: readonly JobStatus[] = [
 ];
 
 const MEDIA_STAGE_STATUSES: Record<WorkflowMediaStage, readonly JobStatus[]> = {
-  before: ["draft", "analyzing", "estimate_ready", "awaiting_customer_confirm"],
-  kael_reference: ["draft", "analyzing", "estimate_ready", "awaiting_customer_confirm"],
+  before: ["draft", "analyzing", "estimate_ready", "awaiting_customer_confirm", "broadcasting"],
+  kael_reference: ["draft", "analyzing", "estimate_ready", "awaiting_customer_confirm", "broadcasting"],
   after: ["repairing", "completed_by_worker"],
   cancellation_evidence: [
     "worker_matched",
@@ -152,7 +221,8 @@ function invalidWorkflowCommand(input: WorkflowCommandInput): WorkflowCommandRes
 }
 
 export function validateWorkflowTransition(input: WorkflowTransitionInput): WorkflowTransitionResult {
-  const eventAllowsTransition = WORKFLOW_EVENT_TRANSITIONS[input.event].some(
+  const allowedTransitions = WORKFLOW_EVENT_TRANSITIONS[input.event] ?? [];
+  const eventAllowsTransition = allowedTransitions.some(
     ([from, to]) => from === input.from && to === input.to,
   );
   if (!eventAllowsTransition) {
@@ -183,6 +253,43 @@ export function validateWorkflowTransition(input: WorkflowTransitionInput): Work
     to: input.to,
     timestampColumn: result.timestampColumn,
   };
+}
+
+export function validateKaelAutonomyTransition(
+  input: KaelAutonomyTransitionInput,
+): KaelAutonomyTransitionResult {
+  const decisionResult = kaelAutonomyDecisionSchema.safeParse(input.decision);
+  if (!decisionResult.success) {
+    return {
+      valid: false,
+      event: input.decision.resulting_event,
+      from: input.from,
+      to: input.to,
+      error: "Quyết định tự động của Kael không đạt schema kiểm soát.",
+    };
+  }
+
+  const decision = decisionResult.data;
+  const allowedEvents = KAEL_AUTONOMY_ACTION_EVENTS[decision.action];
+  if (!allowedEvents.includes(decision.resulting_event)) {
+    return {
+      valid: false,
+      event: decision.resulting_event,
+      from: input.from,
+      to: input.to,
+      decision,
+      error: "Quyết định tự động của Kael không khớp hành động workflow.",
+    };
+  }
+
+  const transition = validateWorkflowTransition({
+    event: decision.resulting_event,
+    from: input.from,
+    to: input.to,
+  });
+  return transition.valid
+    ? { ...transition, decision }
+    : { ...transition, decision };
 }
 
 export function validateWorkflowCommand(input: WorkflowCommandInput): WorkflowCommandResult {

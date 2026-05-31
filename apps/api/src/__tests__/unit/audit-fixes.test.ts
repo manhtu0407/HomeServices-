@@ -351,7 +351,7 @@ import { PRICE_DISCLAIMER, UNSUPPORTED_SERVICE_MESSAGE, kaelEstimateSchema } fro
 describe('kael schemas — Rule #4 disclaimer', () => {
   it('PRICE_DISCLAIMER exists and contains required text', () => {
     expect(PRICE_DISCLAIMER).toContain('ước tính')
-    expect(PRICE_DISCLAIMER).toContain('xác nhận')
+    expect(PRICE_DISCLAIMER).toContain('Kael')
   })
 
   it('UNSUPPORTED_SERVICE_MESSAGE is Vietnamese', () => {

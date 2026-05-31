@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { JOB_STATUSES } from '../constants'
 import {
   ARTIFACT_LIFECYCLE_BY_TYPE,
+  KAEL_AUTONOMY_ACTIONS,
+  KAEL_AUTONOMY_EVENTS,
+  KAEL_AUTONOMY_EVIDENCE_KINDS,
   WORKFLOW_ARTIFACT_MODES,
   WORKFLOW_ARTIFACT_TYPES,
+  WORKFLOW_ACTORS,
   WORKFLOW_COMMAND_EVENTS,
   WORKFLOW_EVENTS,
   WORKFLOW_PHASES,
@@ -14,6 +18,45 @@ import {
 } from '../workflow'
 
 describe('workflow phase contract', () => {
+  it('defines Kael as a first-class workflow actor without making raw AI a status writer', () => {
+    expect([...WORKFLOW_ACTORS]).toEqual([
+      'customer',
+      'worker',
+      'admin',
+      'kael_system',
+    ])
+  })
+
+  it('publishes the Kael autonomy decision interface without making it a raw artifact event', () => {
+    expect([...KAEL_AUTONOMY_ACTIONS]).toEqual([
+      'confirm_ticket',
+      'start_matching',
+      'process_cancellation',
+      'decide_scope_change',
+      'confirm_completion',
+      'decide_payment',
+      'decide_dispute',
+    ])
+    expect([...KAEL_AUTONOMY_EVENTS]).toEqual([
+      'kael_confirmed_ticket',
+      'kael_started_matching',
+      'kael_processed_cancellation',
+      'kael_decided_scope_change',
+      'kael_confirmed_completion',
+      'kael_decided_payment',
+      'kael_decided_dispute',
+    ])
+    expect([...KAEL_AUTONOMY_EVIDENCE_KINDS]).toEqual([
+      'artifact',
+      'job_event',
+      'policy',
+      'worker_evidence',
+      'customer_input',
+      'system_check',
+    ])
+    expect(WORKFLOW_EVENTS).not.toContain('kael_autonomy_decision')
+  })
+
   it('defines the Kael-led request to done phase list without renaming backend statuses', () => {
     expect([...WORKFLOW_PHASES]).toEqual([
       'intake_started',
@@ -45,7 +88,7 @@ describe('workflow phase contract', () => {
     expect(toWorkflowPhase('draft')).toBe('intake_started')
     expect(toWorkflowPhase('analyzing')).toBe('kael_estimating')
     expect(toWorkflowPhase('estimate_ready')).toBe('kael_explaining')
-    expect(toWorkflowPhase('awaiting_customer_confirm')).toBe('ticket_review')
+    expect(toWorkflowPhase('awaiting_customer_confirm')).toBe('matching')
     expect(toWorkflowPhase('broadcasting')).toBe('matching')
     expect(toWorkflowPhase('confirmed_by_customer')).toBe('customer_confirmed_completion')
     expect(toWorkflowPhase('payment_pending')).toBe('payment_pending')
@@ -65,7 +108,7 @@ describe('workflow phase contract', () => {
 })
 
 describe('workflow event contract', () => {
-  it('keeps events explicit about actor intent and backend confirmation points', () => {
+  it('keeps events explicit about actor intent and Kael autonomy points', () => {
     expect([...WORKFLOW_EVENTS]).toEqual([
       'customer_input_started',
       'customer_input_updated',
@@ -74,16 +117,23 @@ describe('workflow event contract', () => {
       'ai_estimate_ready',
       'kael_failed',
       'ai_explanation_ready',
+      'kael_confirmed_ticket',
+      'kael_started_matching',
       'customer_confirmed_ticket',
       'matching_started',
       'worker_accepted',
       'worker_status_advanced',
       'scope_change_requested',
+      'kael_decided_scope_change',
       'scope_change_decided',
       'worker_completed',
+      'kael_confirmed_completion',
       'customer_confirmed_completion',
+      'kael_decided_payment',
       'payment_confirmed',
+      'kael_decided_dispute',
       'review_submitted',
+      'kael_processed_cancellation',
       'cancel_requested',
     ])
   })
@@ -97,10 +147,15 @@ describe('artifact lifecycle contract', () => {
       'ai_diagnosis',
       'ai_notes',
       'estimate',
+      'worker_brief',
       'provider_match',
       'booking',
       'scope_change',
+      'cancellation_review',
       'completion_evidence',
+      'completion_review',
+      'dispute_decision',
+      'payment_decision',
       'review',
     ])
   })
@@ -135,10 +190,15 @@ describe('artifact lifecycle contract', () => {
     ])
   })
 
-  it('keeps estimate, matching, completion, and review artifacts separate', () => {
+  it('keeps estimate, matching, cancellation, completion, dispute, payment, and review artifacts separate', () => {
     expect(ARTIFACT_LIFECYCLE_BY_TYPE.estimate).toContain('review')
+    expect(ARTIFACT_LIFECYCLE_BY_TYPE.worker_brief).toContain('final')
     expect(ARTIFACT_LIFECYCLE_BY_TYPE.provider_match).toContain('loading')
+    expect(ARTIFACT_LIFECYCLE_BY_TYPE.cancellation_review).toContain('final')
     expect(ARTIFACT_LIFECYCLE_BY_TYPE.completion_evidence).toContain('review')
+    expect(ARTIFACT_LIFECYCLE_BY_TYPE.completion_review).toContain('review')
+    expect(ARTIFACT_LIFECYCLE_BY_TYPE.dispute_decision).toContain('review')
+    expect(ARTIFACT_LIFECYCLE_BY_TYPE.payment_decision).toContain('review')
     expect(ARTIFACT_LIFECYCLE_BY_TYPE.review).toContain('done')
   })
 
@@ -197,33 +257,35 @@ describe('workflow view model contract', () => {
     expect(workflow.allowedActions.confirmTicketAndEstimate).toBe(false)
   })
 
-  it('separates explaining from final ticket confirmation', () => {
+  it('keeps ticket artifacts visible while Kael orchestration replaces the customer confirmation gate', () => {
     const explaining = buildWorkflowViewModel({ status: 'estimate_ready', hasCustomerInput: true, hasEstimate: true })
-    const review = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true, hasEstimate: true })
+    const orchestrating = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true, hasEstimate: true })
 
     expect(explaining.phase).toBe('kael_explaining')
     expect(explaining.artifacts.estimate.mode).toBe('review')
     expect(explaining.artifacts.ai_notes.mode).toBe('loading')
     expect(explaining.allowedActions.confirmTicketAndEstimate).toBe(false)
-    expect(review.phase).toBe('ticket_review')
-    expect(review.allowedActions.confirmTicketAndEstimate).toBe(true)
+    expect(orchestrating.phase).toBe('matching')
+    expect(orchestrating.artifacts.provider_match.mode).toBe('loading')
+    expect(orchestrating.allowedActions.confirmTicketAndEstimate).toBe(false)
   })
 
-  it('does not show AI notes in review mode unless Kael produced notes', () => {
+  it('keeps AI notes hidden during orchestration unless Kael produced notes', () => {
     const withoutNotes = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true, hasEstimate: true })
     const withNotes = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true, hasAiNotes: true, hasEstimate: true })
 
     expect(withoutNotes.artifacts.ai_notes.visible).toBe(false)
     expect(withoutNotes.artifacts.ai_diagnosis.visible).toBe(false)
-    expect(withNotes.artifacts.ai_notes.mode).toBe('review')
-    expect(withNotes.artifacts.ai_diagnosis.mode).toBe('review')
+    expect(withNotes.artifacts.ai_notes.mode).toBe('final')
+    expect(withNotes.artifacts.ai_diagnosis.mode).toBe('final')
   })
 
-  it('does not allow ticket confirmation if the estimate artifact is missing', () => {
+  it('does not restore customer confirmation when an orchestration estimate is missing', () => {
     const workflow = buildWorkflowViewModel({ status: 'awaiting_customer_confirm', hasCustomerInput: true })
 
-    expect(workflow.phase).toBe('ticket_review')
-    expect(workflow.artifacts.estimate.mode).toBe('loading')
+    expect(workflow.phase).toBe('matching')
+    expect(workflow.artifacts.estimate.mode).toBe('hidden')
+    expect(workflow.artifacts.provider_match.mode).toBe('loading')
     expect(workflow.allowedActions.confirmTicketAndEstimate).toBe(false)
   })
 
@@ -243,8 +305,11 @@ describe('workflow view model contract', () => {
     const reviewed = buildWorkflowViewModel({ status: 'reviewed', hasCompletionEvidence: true })
 
     expect(workerDone.artifacts.completion_evidence.mode).toBe('review')
+    expect(workerDone.artifacts.completion_review.mode).toBe('review')
+    expect(workerDone.artifacts.dispute_decision.mode).toBe('review')
     expect(customerConfirmed.phase).toBe('customer_confirmed_completion')
     expect(customerConfirmed.isDone).toBe(false)
+    expect(customerConfirmed.artifacts.payment_decision.mode).toBe('review')
     expect(customerConfirmed.artifacts.review.mode).toBe('review')
     expect(customerConfirmed.allowedActions.submitReview).toBe(true)
     expect(paymentPending.artifacts.review.mode).toBe('blocked')

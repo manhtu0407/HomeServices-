@@ -17,14 +17,14 @@
 | Step | Surface | Key copy |
 |---|---|---|
 | A11 modal | ScopeChangeHardStopModal | `Approve scope change`, `Original estimate (Kael)`, `New estimate (Kael)`, `Computed by Kael` badge (Phase 2.0d). |
-| A12 confirm | CustomerHistorySurface Done tab | `Final price (locked by Kael)`, `No completion photos yet`, `No worker notes`. |
+| A12 completion review | CustomerHistorySurface Done tab | `Final price (locked by Kael)`, `No completion photos yet`, `No worker notes`. |
 | A14 review tags | CustomerHistorySurface review | `On time`, `Professional`, `Clean work`, `Explained clearly`, `Fair price`. |
 
 ## Worker workflow (EN-mode strings)
 
 | Step | Surface | Key copy |
 |---|---|---|
-| B6 scope change | IncomingRequestSheet | `New scope details`, `Reason for the change`, `Kael will compute the new price when the customer reviews the request.`, `Scope change photos (optional)`. |
+| B6 scope change | IncomingRequestSheet | `New scope details`, `Reason for the change`, `Kael computes the new price through policy review; the customer can add input or appeal.`, `Scope change photos (optional)`. |
 | B7 completion | IncomingRequestSheet | `Completion notes`, `After-completion photos (1-5)`, `Kael-locked price` badge. |
 | Notifications | EN body fallback uses Vietnamese until customer switches language; mobile notifications listener is language-aware after MEMORY.md confirms TS extraction. |
 

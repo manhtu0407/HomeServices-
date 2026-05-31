@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (!Number.isInteger(finalPrice) || finalPrice === null || finalPrice <= 0) {
     return apiError(
       'INVALID_STATUS',
-      'Thợ chưa nhập giá cuối cùng nên chưa thể xác nhận hoàn tất',
+      'Kael chưa chốt giá cuối cùng nên chưa thể xác nhận hoàn tất',
       409,
     )
   }

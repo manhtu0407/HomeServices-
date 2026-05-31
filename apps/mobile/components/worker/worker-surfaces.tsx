@@ -5,20 +5,25 @@ import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { createContext, type ReactNode, use, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from 'react'
 import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native'
-import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated'
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { HCMC_DISTRICTS, normalizeDistrict, type DistrictSlug, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus } from '@home-services/shared'
+import { HCMC_DISTRICTS, LOCAL_DEAL_ID, normalizeDistrict, type DistrictSlug, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus } from '@home-services/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import { GlassModalSheet } from '@/components/ui/glass-modal-sheet'
 import { GlassPressable } from '@/components/ui/glass-pressable'
+import { GlassSurface } from '@/components/ui/glass-surface'
+import { motionTokens } from '@/components/ui/motion-tokens'
 import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
+import type { GlassMaterial } from '@/components/ui/tokens'
 import { appCopy, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel, setAppLanguage, type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { uploadJobMediaDrafts, uploadWorkerVerificationDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
+import type { JobMessageResponse } from '@/lib/api-types'
+import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
 
 const WORKER_XANHSM_REFERENCE_AUDIT = 'WORKER_XANHSM_REFERENCE_AUDIT: XanhSM map shell translated into Home Services worker production UI'
@@ -29,7 +34,7 @@ const WORKER_FLEXIBLE_MAP_SHELL = 'WORKER_FLEXIBLE_MAP_SHELL: worker-map-google-
 const WORKER_DOCK_GLASS_MOTION = 'WORKER_DOCK_GLASS_MOTION: worker-dock-glass-aura worker-liquid-glass-dock worker-dock-kael-mascot-icon worker-dock-client-style-icon'
 const WORKER_GLASSMORPHISM_MOTION_LAYER = 'WORKER_GLASSMORPHISM_MOTION_LAYER: shared-glass-pressable static-depth-layer centered-metric-type'
 const WORKER_MAP_BALANCED_DIRECTION = 'WORKER_MAP_BALANCED_DIRECTION: docs/design/worker-map-operation-balanced-20260531.md vector-map-no-screenshot'
-const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kael-empty-chat-state worker-kael-local-chat-input submitWorkerKaelLocalDraft'
+const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kael-empty-chat-state worker-kael-chat-input submitWorkerChatMessage'
 const WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT = 'WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT: general area only until worker accepts'
 const WORKER_NO_FAKE_PAYMENT_DATA = 'WORKER_NO_FAKE_PAYMENT_DATA: worker-no-fake-payment-data'
 const WORKER_JOBROOM_KAEL_HANDOFF = 'WORKER_JOBROOM_KAEL_HANDOFF: worker-jobroom-kael-handoff worker-jobroom-waiting-room worker-jobroom-privacy-gate'
@@ -123,10 +128,8 @@ type WorkerIconName =
   | 'tools'
   | 'trend'
   | 'water'
-type WorkerChatMessage = { id: string; mine?: boolean; system?: boolean; text: string; who: string }
 type WorkerChatLocalState = {
   draft: string
-  messages: WorkerChatMessage[]
   reveal: { requested: number; step: number }
 }
 type WorkerBroadcastView = NonNullable<LocalDeal['broadcast']>
@@ -159,12 +162,45 @@ type WorkerHomeMapAction =
   | { type: 'zoom_in' }
   | { type: 'zoom_out' }
 type WorkerMapSurface = 'active' | 'home' | 'jobroom' | 'needs' | 'waiting'
+type WorkerHomeMaterialContrast = 'quiet' | 'recessed' | 'standard' | 'prominent'
+type WorkerHomeMaterialDepth = 'anchored' | 'content' | 'floating' | 'focus' | 'substrate'
+type WorkerHomeMaterialGroup = 'content' | 'control' | 'navigation' | 'surface'
+type WorkerHomeMaterialRole = 'glass-control' | 'glass-focus' | 'opaque-content' | 'substrate'
+type WorkerHomeMaterialSurface = 'cta' | 'dock' | 'map' | 'mapControl' | 'mapHud' | 'readiness' | 'sheet' | 'tile'
+
+const workerHomeLiquidMaterialSystem: {
+  accent: 'mint'
+  applePath: 'functional-layer-depth-hierarchy'
+  maxVisibleGlassLayers: 3
+  surfaces: Record<WorkerHomeMaterialSurface, {
+    blurCap?: 14 | 18 | 22 | 24 | 26
+    contrast: WorkerHomeMaterialContrast
+    depth: WorkerHomeMaterialDepth
+    glassLayer: 0 | 1 | 2 | 3
+    group: WorkerHomeMaterialGroup
+    role: WorkerHomeMaterialRole
+  }>
+} = {
+  accent: 'mint',
+  applePath: 'functional-layer-depth-hierarchy',
+  maxVisibleGlassLayers: 3,
+  surfaces: {
+    cta: { blurCap: 18, contrast: 'prominent', depth: 'focus', glassLayer: 3, group: 'control', role: 'glass-focus' },
+    dock: { blurCap: 24, contrast: 'prominent', depth: 'anchored', glassLayer: 3, group: 'navigation', role: 'glass-control' },
+    map: { blurCap: 22, contrast: 'standard', depth: 'substrate', glassLayer: 1, group: 'surface', role: 'substrate' },
+    mapControl: { blurCap: 18, contrast: 'standard', depth: 'floating', glassLayer: 2, group: 'control', role: 'glass-control' },
+    mapHud: { blurCap: 18, contrast: 'standard', depth: 'floating', glassLayer: 2, group: 'control', role: 'glass-control' },
+    readiness: { blurCap: 22, contrast: 'prominent', depth: 'focus', glassLayer: 1, group: 'surface', role: 'glass-focus' },
+    sheet: { blurCap: 26, contrast: 'prominent', depth: 'focus', glassLayer: 3, group: 'surface', role: 'glass-focus' },
+    tile: { contrast: 'quiet', depth: 'content', glassLayer: 0, group: 'content', role: 'opaque-content' },
+  },
+}
 
 let lastWorkerDockActive: WorkerActiveTab = 'home'
 const workerJobsTabKeys: WorkerJobsTab[] = ['waiting', 'active', 'needs']
 
 function createWorkerChatLocalState(): WorkerChatLocalState {
-  return { draft: '', messages: [], reveal: { requested: 0, step: 0 } }
+  return { draft: '', reveal: { requested: 0, step: 0 } }
 }
 
 function isWorkerJobsTab(value: unknown): value is WorkerJobsTab {
@@ -361,7 +397,7 @@ const workerCopy = {
       rating: 'Phản hồi',
       shiftTitle: 'Nhịp xử lý',
       shiftAction: '',
-      phases: ['Chờ duyệt', 'Tóm tắt', 'Xác nhận', 'Di chuyển'],
+      phases: ['Kael gửi', 'Tóm tắt', 'Nhận việc', 'Di chuyển'],
       nextTitle: 'Yêu cầu',
       serviceHeading: '',
       serviceSkillLabel: 'Kỹ năng',
@@ -377,8 +413,8 @@ const workerCopy = {
       title: 'Chưa có yêu cầu mới',
       area: 'Khu vực chung',
       briefTitle: 'Tóm tắt Kael',
-      brief: ['Chưa có yêu cầu mới từ khách.'],
-      customerEstimate: 'Khách ước tính',
+      brief: ['Kael chưa chuyển yêu cầu mới.'],
+      customerEstimate: 'Ước tính Kael',
       workerEarns: 'Thợ nhận',
       decline: 'Bỏ qua',
       accept: 'Nhận việc',
@@ -396,7 +432,7 @@ const workerCopy = {
       activeEmptyTitle: 'Chưa nhận việc',
       activeEmptyBody: 'Việc đã nhận và Phòng việc sẽ hiện tại đây.',
       needsEmptyTitle: 'Không có mục chặn',
-      needsEmptyBody: 'Phát sinh hoặc bước cần duyệt sẽ hiện ở đây.',
+      needsEmptyBody: 'Phát sinh hoặc quyết định Kael sẽ hiện ở đây.',
       scopeStatus: 'Kael đang xét',
       scopeTitle: 'Thay đổi phạm vi',
       scopeBody: 'Kael đang xét phạm vi mới; khách có thể cung cấp thêm dữ liệu, khiếu nại hoặc hủy nếu thực tế chưa đúng.',
@@ -429,6 +465,8 @@ const workerCopy = {
       emptyBody: 'Tin nhắn chỉ mở khi có yêu cầu thật hoặc thợ đã nhận việc.',
       input: 'Nhập...',
       send: 'Gửi',
+      sendErrorTitle: 'Chưa gửi được',
+      sendErrorBody: 'Kael chưa lưu được tin nhắn. Thử lại sau.',
       worker: 'Thợ',
       kael: 'Kael',
     },
@@ -494,7 +532,7 @@ const workerCopy = {
       rating: 'Feedback',
       shiftTitle: 'Work rhythm',
       shiftAction: '',
-      phases: ['Pending', 'Briefed', 'Confirm', 'Travel'],
+      phases: ['Kael sent', 'Briefed', 'Accept', 'Travel'],
       nextTitle: 'Request',
       serviceHeading: '',
       serviceSkillLabel: 'Skill',
@@ -510,8 +548,8 @@ const workerCopy = {
       title: 'No live request',
       area: 'General area',
       briefTitle: 'Kael brief',
-      brief: ['Waiting for a customer request.'],
-      customerEstimate: 'Customer estimate',
+      brief: ['Waiting for Kael to hand off a request.'],
+      customerEstimate: 'Kael estimate',
       workerEarns: 'Worker earns',
       decline: 'Skip',
       accept: 'Accept',
@@ -529,7 +567,7 @@ const workerCopy = {
       activeEmptyTitle: 'No accepted job',
       activeEmptyBody: 'Accepted work and JobRoom appear here.',
       needsEmptyTitle: 'Nothing blocked',
-      needsEmptyBody: 'Scope or approval blockers appear here.',
+      needsEmptyBody: 'Scope or Kael decision blockers appear here.',
       scopeStatus: 'Kael reviewing',
       scopeTitle: 'Scope change',
       scopeBody: 'Kael is reviewing the new scope; the customer can add evidence, appeal, or cancel if the facts are wrong.',
@@ -562,6 +600,8 @@ const workerCopy = {
       emptyBody: 'Messages open only for a real request or an accepted job.',
       input: 'Type...',
       send: 'Send',
+      sendErrorTitle: 'Message not sent',
+      sendErrorBody: 'Kael could not save this message. Try again.',
       worker: 'Worker',
       kael: 'Kael',
     },
@@ -901,6 +941,12 @@ function getWorkerThemeTokens(mode: WorkerThemeMode) {
   return mode === 'dark' ? darkLayer : lightLayer
 }
 
+function workerLiquidHomeCanvasBackgroundImage(mode: WorkerThemeMode) {
+  return mode === 'dark'
+    ? 'radial-gradient(circle at 50% 94%, rgba(105,222,198,0.07), transparent 28%), radial-gradient(circle at 54% 12%, rgba(105,222,198,0.08), transparent 29%), linear-gradient(180deg, #0E1413 0%, #121A18 100%)'
+    : 'radial-gradient(circle at 50% 94%, rgba(23,169,149,0.075), transparent 28%), radial-gradient(circle at 54% 12%, rgba(23,169,149,0.10), transparent 30%), linear-gradient(180deg, #F4F6F5 0%, #FBFCFB 100%)'
+}
+
 function getReducedTransparencyWorkerTokens(tokens: WorkerThemeTokens): WorkerThemeTokens {
   return {
     ...tokens,
@@ -914,6 +960,10 @@ function getReducedTransparencyWorkerTokens(tokens: WorkerThemeTokens): WorkerTh
   }
 }
 
+function workerHasReducedGlass(tokens: WorkerThemeTokens) {
+  return tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+}
+
 function useWorkerFrameCopy() {
   const language = useAppLanguage()
   return workerCopy[language]
@@ -921,7 +971,7 @@ function useWorkerFrameCopy() {
 
 function getWorkerVisibleDeal(deal: LocalDeal | null) {
   if (!deal?.broadcast) return null
-  return deal.broadcast.status === 'declined' || deal.broadcast.status === 'expired' ? null : deal
+  return deal.broadcast.status === 'declined' || deal.broadcast.status === 'expired' || deal.broadcast.status === 'reassigned' || deal.broadcast.status === 'cancelled' ? null : deal
 }
 
 function localizedWorkerVerificationStatus(status: WorkerVerificationStatus, language: WorkerLanguageMode) {
@@ -934,19 +984,17 @@ function isAcceptedLocalWorkerDeal(deal: LocalDeal | null) {
 
 export function WorkerHomeSurface() {
   const copy = useWorkerFrameCopy()
-  const language = useAppLanguage()
-  const { state, workerProfile } = useFrontendWorkflow()
+  const { state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const hasIncomingRequest = Boolean(deal?.broadcast && !isAcceptedLocalWorkerDeal(deal))
-  const profileValue = localizedWorkerVerificationStatus(workerProfile?.verification_status ?? 'draft', language)
 
   return (
-    <WorkerFrame active="home" eyebrow={copy.home.eyebrow} headerPill={profileValue} subtitle={copy.home.readinessSubtitle} title={copy.home.readinessTitle} testID="worker-home-surface">
+    <WorkerFrame active="home" eyebrow={copy.home.eyebrow} subtitle={copy.home.readinessSubtitle} title={copy.home.readinessTitle} testID="worker-home-surface">
       <WorkerMapStage />
       <WorkerReadinessActionPanel />
       <WorkerHomeServiceGrid />
       <WorkerHomeMiniGrid />
-      {hasIncomingRequest ? <IncomingRequestSheet /> : null}
+      {hasIncomingRequest ? <IncomingRequestSheet material="liquid" /> : null}
     </WorkerFrame>
   )
 }
@@ -1208,7 +1256,7 @@ function WorkerNeedsReviewCard() {
         <JobRoomMetaCell label={language === 'en' ? 'Current estimate' : 'Ước tính hiện tại'} value={originalPrice} />
         <JobRoomMetaCell label={language === 'en' ? 'Requested work' : 'Phần việc mới'} value={requestedScope} />
         <JobRoomMetaCell label={language === 'en' ? 'Reason' : 'Lý do'} value={reason} />
-        <JobRoomMetaCell label={language === 'en' ? 'Price review' : 'Giá chờ duyệt'} value={price} />
+        <JobRoomMetaCell label={language === 'en' ? 'Kael price decision' : 'Giá Kael xét'} value={price} />
       </View>
       <View style={styles.actionRow}>
         <PressButton secondary label={copy.jobs.jobRoomCta} onPress={() => replace('/(worker)/chat')} testID="worker-needs-open-jobroom" />
@@ -1362,8 +1410,10 @@ function WorkerFrame({
   const baseTokens = getWorkerThemeTokens(mode)
   const tokens = reduceTransparency ? getReducedTransparencyWorkerTokens(baseTokens) : baseTokens
   const frameWidth = Math.min(width, 430)
-  const canvasBackgroundImage =
-    mode === 'dark'
+  const liquidHome = active === 'home'
+  const canvasBackgroundImage = liquidHome
+    ? workerLiquidHomeCanvasBackgroundImage(mode)
+    : mode === 'dark'
       ? 'radial-gradient(circle at 50% 12%, rgba(105,222,198,0.12), transparent 30%), linear-gradient(180deg, #071312 0%, #0B1715 100%)'
       : 'radial-gradient(circle at 50% 12%, rgba(142,231,217,0.18), transparent 28%), linear-gradient(180deg, #F4FAF7 0%, #F7FBF8 100%)'
   const canvasLayer = {
@@ -1398,8 +1448,8 @@ function WorkerFrame({
       <SafeAreaView style={[styles.safe, canvasLayer, routeIsFocused ? null : styles.inactiveRouteSurface]} testID={testID}>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
         <View style={[styles.canvas, canvasLayer, { minHeight: frameHeight }]}>
-          {reduceTransparency || hideDock ? null : <AmbientBackdrop />}
-          {routeIsFocused && !hideDock && !reduceMotion && !reduceTransparency ? <WorkerSectionMotionField active={active} frameWidth={frameWidth} screenWidth={width} /> : null}
+          {reduceTransparency || hideDock || liquidHome ? null : <AmbientBackdrop />}
+          {routeIsFocused && !hideDock && !liquidHome && !reduceMotion && !reduceTransparency ? <WorkerSectionMotionField active={active} frameWidth={frameWidth} screenWidth={width} /> : null}
           <ScrollView
             ref={routeScrollRef}
             contentContainerStyle={[
@@ -1449,9 +1499,11 @@ function WorkerFrame({
 function WorkerScreenHeader({ active, eyebrow, headerIcon, headerPill, headerPillTone = 'cream', subtitle, title }: { active: WorkerActiveTab; eyebrow: string; headerIcon?: WorkerIconName; headerPill?: string; headerPillTone?: WorkerHeaderPillTone; subtitle?: string; title: string }) {
   const { tokens } = useWorkerUi()
   const showKicker = eyebrow.trim().toLocaleLowerCase() !== title.trim().toLocaleLowerCase()
-  const headerPillSurface = headerPillTone === 'mint'
-    ? { backgroundColor: tokens.mint, borderColor: tokens.mode === 'dark' ? tokens.borderStrong : 'rgba(13,134,119,0.12)', color: tokens.mode === 'dark' ? tokens.aqua : '#0B5C50' }
-    : { backgroundColor: tokens.cream, borderColor: tokens.border, color: tokens.primary }
+  const headerPillSurface = active === 'home'
+    ? workerHomeHeaderPillSurface(tokens)
+    : headerPillTone === 'mint'
+      ? { backgroundColor: tokens.mint, borderColor: tokens.mode === 'dark' ? tokens.borderStrong : 'rgba(13,134,119,0.12)', color: tokens.mode === 'dark' ? tokens.aqua : '#0B5C50' }
+      : { backgroundColor: tokens.cream, borderColor: tokens.border, color: tokens.primary }
 
   return (
     <View style={styles.workerTopRow} testID={`worker-${active}-title-row`}>
@@ -1560,6 +1612,7 @@ function ActiveWorkerJobCard({ body, briefLines, status, title }: { body: string
 function WorkerChatContent() {
   const { copy, language, tokens } = useWorkerUi()
   const { reduceMotion } = useGlassAccessibility()
+  const { session } = useAuth()
   const { selectors, state } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast ?? null
@@ -1568,11 +1621,12 @@ function WorkerChatContent() {
   const draft = chatLocalState.draft
   const jobRoomReveal = chatLocalState.reveal
   const activeDealChatKeyRef = useRef(dealChatKey)
-  const localMessageSequenceRef = useRef(0)
-  const renderedMessages = chatLocalState.messages
-  const hasAnyWorkerKaelMessage = Boolean(broadcast || renderedMessages.length > 0)
+  const workerChatJobId = getWorkerChatJobId(deal)
   const canSendWorkerKaelMessage = Boolean(deal && isAcceptedLocalWorkerDeal(deal))
-  const canComposeWorkerKaelMessage = !broadcast || canSendWorkerKaelMessage
+  const canComposeWorkerKaelMessage = Boolean(workerChatJobId && canSendWorkerKaelMessage)
+  const jobChat = useJobChatThread(workerChatJobId, canComposeWorkerKaelMessage)
+  const renderedMessages = jobChat.messages.map((message) => workerChatMessageFromJobMessage(message, session?.user.id ?? null, language))
+  const hasAnyWorkerKaelMessage = Boolean(broadcast || renderedMessages.length > 0)
   const chatInputPlaceholder = canSendWorkerKaelMessage ? copy.chat.input : broadcast ? copy.chat.lockedGate : copy.chat.waitingInput
   const visibleChatInputPlaceholder = ''
   const hiddenAddressLabel = workerActionCopy[language].hiddenAddress
@@ -1607,7 +1661,6 @@ function WorkerChatContent() {
   useEffect(() => {
     if (activeDealChatKeyRef.current === dealChatKey) return
     setChatLocalState(createWorkerChatLocalState())
-    localMessageSequenceRef.current = 0
     activeDealChatKeyRef.current = dealChatKey
   }, [dealChatKey])
 
@@ -1627,18 +1680,18 @@ function WorkerChatContent() {
     }
   }, [jobRoomReveal.step, maxRevealStep, reduceMotion, targetRevealStep])
 
-  const submitWorkerKaelLocalDraft = () => {
+  const submitWorkerChatMessage = async () => {
     if (!canComposeWorkerKaelMessage) return
     const value = draft.trim()
     if (!value) return
-    localMessageSequenceRef.current += 1
+    const sent = await jobChat.send(value)
+    if (!sent) {
+      Alert.alert(copy.chat.sendErrorTitle, copy.chat.sendErrorBody)
+      return
+    }
     setChatLocalState((current) => ({
       ...current,
       draft: '',
-      messages: [
-        ...current.messages,
-        { id: `worker-local-${dealChatKey}-${localMessageSequenceRef.current}`, mine: true, text: value, who: copy.chat.worker },
-      ],
       reveal: current.reveal.requested >= maxRevealStep ? current.reveal : { ...current.reveal, requested: maxRevealStep },
     }))
   }
@@ -1652,7 +1705,7 @@ function WorkerChatContent() {
     startJobRoomReveal()
     stabilizeWorkerChatWebLayout()
   }
-  const canSubmitWorkerDraft = Boolean(draft.trim() && canComposeWorkerKaelMessage)
+  const canSubmitWorkerDraft = Boolean(draft.trim() && canComposeWorkerKaelMessage && !jobChat.sending)
 
   return (
     <View style={styles.chatShell} testID="worker-chat-kael-relay">
@@ -1764,13 +1817,13 @@ function WorkerChatContent() {
               editable={canComposeWorkerKaelMessage}
               onChangeText={(value) => setChatLocalState((current) => current.draft === value ? current : { ...current, draft: value })}
               onFocus={focusWorkerKaelComposer}
-              onSubmitEditing={submitWorkerKaelLocalDraft}
+              onSubmitEditing={submitWorkerChatMessage}
               placeholder={visibleChatInputPlaceholder}
               placeholderTextColor={tokens.subtle}
               returnKeyType="send"
               selectionColor={tokens.primary}
               style={[styles.chatInput, styles.chatInputInvisibleFocus, { caretColor: tokens.primary, color: tokens.ink } as any]}
-              testID="worker-kael-local-chat-input"
+              testID="worker-kael-chat-input"
               value={draft}
             />
             <Pressable
@@ -1779,7 +1832,7 @@ function WorkerChatContent() {
               accessibilityState={{ disabled: !canSubmitWorkerDraft }}
               disabled={!canSubmitWorkerDraft}
               hitSlop={4}
-              onPress={submitWorkerKaelLocalDraft}
+              onPress={submitWorkerChatMessage}
               style={({ pressed }) => [
                 styles.sendButton,
                 { backgroundColor: canSubmitWorkerDraft ? tokens.primary : tokens.border },
@@ -2046,6 +2099,32 @@ function workerChatDealKey(deal: LocalDeal | null) {
     deal.draft.description,
     deal.draft.districtLabel,
   ].join('::')
+}
+
+function getWorkerChatJobId(deal: LocalDeal | null) {
+  const jobId = deal?.broadcast?.jobId ?? deal?.id ?? null
+  if (!jobId || jobId === LOCAL_DEAL_ID) return null
+  return jobId
+}
+
+function workerChatMessageFromJobMessage(message: JobMessageResponse, currentUserId: string | null, language: WorkerLanguageMode) {
+  const system = message.sender_role === 'kael'
+  const mine = Boolean(currentUserId && message.sender_id === currentUserId)
+  const who = system
+    ? 'Kael'
+    : message.sender_role === 'worker'
+      ? workerCopy[language].chat.worker
+      : language === 'en'
+        ? 'Customer'
+        : 'Khách'
+
+  return {
+    id: message.id,
+    mine,
+    system,
+    text: message.content,
+    who,
+  }
 }
 
 function WorkerEarningsHero() {
@@ -2875,14 +2954,71 @@ function createWorkerMapProviderModel({
 }): WorkerMapProviderModel {
   const lat = finiteMapNumber(workerLat)
   const lng = finiteMapNumber(workerLng)
+  const releasedFullAddressLabel = fullAddressLabel?.trim() || null
   return {
     areaLabel,
-    fullAddressLabel,
+    fullAddressLabel: releasedFullAddressLabel,
     mapMode,
     serviceRadius,
-    routeRequestReady: mapMode === 'route' && Boolean(fullAddressLabel),
+    routeRequestReady: mapMode === 'route' && Boolean(releasedFullAddressLabel),
     trafficEnabled,
     workerOrigin: lat !== null && lng !== null ? { lat, lng } : null,
+  }
+}
+
+function buildWorkerMapDirectionsUrl(destinationLabel: string) {
+  const destination = normalizeWorkerMapDirectionsDestination(destinationLabel)
+  const params = new URLSearchParams({
+    api: '1',
+    destination,
+    dir_action: 'navigate',
+    travelmode: 'driving',
+  })
+  return `https://www.google.com/maps/dir/?${params.toString()}`
+}
+
+function normalizeWorkerMapDirectionsDestination(destinationLabel: string) {
+  const fallback = destinationLabel.trim()
+  const parts = fallback.split(',').map((part) => part.trim()).filter(Boolean)
+  const routeParts = parts.filter((part) => !isFineGrainedAddressPart(part))
+  return routeParts.length >= 2 ? routeParts.join(', ') : fallback
+}
+
+function isFineGrainedAddressPart(part: string) {
+  const normalized = part
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (/^(tang|lau|floor)\s+[a-z0-9-]+$/.test(normalized)) return true
+  if (/^(phong|unit|apt)\s+[a-z0-9-]+$/.test(normalized)) return true
+  if (/^(can ho|can|apartment)\s+[a-z0-9-]+$/.test(normalized)) return true
+  return /^(can ho|can|apartment)\s+[a-z0-9-]+\s+[a-z0-9-]+$/.test(normalized) && /\d/.test(normalized)
+}
+
+async function openWorkerMapDirections(destinationLabel: string, language: WorkerLanguageMode) {
+  const destination = destinationLabel.trim()
+  if (!destination) {
+    Alert.alert(
+      language === 'en' ? 'Address unavailable' : 'Chưa có địa chỉ',
+      language === 'en'
+        ? 'Kael has not released a specific address for directions yet.'
+        : 'Kael chưa mở địa chỉ cụ thể để chỉ đường.',
+    )
+    return
+  }
+
+  try {
+    await Linking.openURL(buildWorkerMapDirectionsUrl(destination))
+  } catch {
+    Alert.alert(
+      language === 'en' ? 'Maps could not open' : 'Chưa mở được Maps',
+      language === 'en'
+        ? 'Try again after checking your Maps app or connection.'
+        : 'Hãy thử lại sau khi kiểm tra ứng dụng Maps hoặc kết nối.',
+    )
   }
 }
 
@@ -2936,6 +3072,8 @@ function WorkerMapProviderBridge({
 function WorkerMapStage() {
   const { copy, language, tokens } = useWorkerUi()
   const { selectors, state, workerProfile } = useFrontendWorkflow()
+  const { reduceMotion } = useGlassAccessibility()
+  const reduceGlass = workerHasReducedGlass(tokens)
   const [mapState, dispatchMap] = useReducer(workerHomeMapReducer, initialWorkerHomeMapState)
   const { centered: mapCentered, compassNorth: mapCompassNorth, expanded, layerDetailed: mapLayerDetailed, trafficEnabled, zoom: mapZoom } = mapState
   const deal = getWorkerVisibleDeal(state.deal)
@@ -2948,7 +3086,8 @@ function WorkerMapStage() {
   const workerAnchorLabel = workerProfile?.districts[0]
     ? localizedWorkerAreaLabel(workerProfile.districts[0], language)
     : appCopy[language].common.noData
-  const mapSearch = mapArea ? localizedWorkerAreaLabel(mapArea, language) : hasWorkerDistrict ? workerAnchorLabel : copy.home.mapSearch
+  const releasedAddressLabel = fullAddressLabel ? localizedWorkerAreaLabel(fullAddressLabel, language) : null
+  const mapSearch = releasedAddressLabel ?? (mapArea ? localizedWorkerAreaLabel(mapArea, language) : hasWorkerDistrict ? workerAnchorLabel : copy.home.mapSearch)
   const workerRadiusKm = workerProfile?.service_radius_km
   const workerRadiusLabel = Number.isFinite(workerRadiusKm)
     ? `${workerRadiusKm} km`
@@ -2964,13 +3103,13 @@ function WorkerMapStage() {
     workerLng: workerProfile?.home_lng,
   })
   const hasWorkerAnchor = hasWorkerDistrict || Boolean(providerModel.workerOrigin)
-  const hasMapContext = Boolean(mapArea || hasWorkerAnchor || hasWorkerRadius)
+  const hasMapContext = Boolean(fullAddressLabel || mapArea || hasWorkerAnchor || hasWorkerRadius)
   const mapActionLabel = language === 'en' ? 'Open work map' : 'Mở bản đồ nhận việc'
   const expandedTitle = fullAddressLabel
     ? language === 'en' ? 'Route to meeting point' : 'Đường đến điểm hẹn'
     : language === 'en' ? 'Work area map' : 'Bản đồ khu vực nhận việc'
   const expandedSubtitle = fullAddressLabel
-    ? `${language === 'en' ? 'Address' : 'Địa chỉ'}: ${localizedWorkerAreaLabel(fullAddressLabel, language)}`
+    ? `${language === 'en' ? 'Address' : 'Địa chỉ'}: ${releasedAddressLabel}`
     : `${language === 'en' ? 'Area' : 'Khu vực'}: ${mapSearch}${hasWorkerRadius ? ` · ${workerRadiusLabel}` : ''}`
   const availabilityHud = !workerProfile
     ? appCopy[language].common.noData
@@ -2983,48 +3122,46 @@ function WorkerMapStage() {
           : language === 'en' ? 'Pending' : 'Chờ duyệt'
 
   return (
-    <View style={[styles.mapStage, workerOpaqueCardSurface(tokens, 'depth')]} testID="worker-flexible-map-shell">
+    <GlassSurface material="liquid" mode={tokens.mode} style={[styles.mapStage, workerHomeLiquidHeroSurface(tokens)]} testID="worker-flexible-map-shell" variant="hero">
+      <LiquidSharpKeyline variant="hero" />
+      <LiquidSpecularLayer variant="hero" />
       <Pressable
         accessibilityHint={language === 'en' ? 'Shows a larger work map with controls.' : 'Mở bản đồ lớn với các công cụ điều hướng.'}
         accessibilityLabel={mapActionLabel}
         accessibilityRole="button"
         onPress={() => dispatchMap({ type: 'open' })}
-        style={({ pressed }) => [styles.workerMapPreviewPressable, pressed ? styles.pressed : null]}
+        style={({ pressed }) => [styles.workerMapPreviewPressable, reduceMotionAwarePressStyle(pressed, reduceMotion)]}
         testID="worker-map-open-expanded"
       >
-      <View style={[styles.mapViewport, workerMapViewportSurface(tokens)]} testID="worker-map-google-ready">
+      <View style={[styles.mapViewport, workerMapViewportSurface(tokens, 'liquid')]} testID="worker-map-google-ready">
+        <WorkerHomeMaterialSubstrate surface="map" />
+        <WorkerHomeMaterialDepthPlane surface="map" />
+        <WorkerHomeMapMaterialContours />
         <MapLineField />
         {routeUnlocked ? <WorkerMapRouteLine trafficEnabled={trafficEnabled} /> : hasMapContext ? <WorkerMapCoverageLine /> : null}
-        <View pointerEvents="none" style={[styles.mapFogTop, { backgroundColor: tokens.raised }]} />
-        <View pointerEvents="none" style={[styles.mapCyanVeil, { backgroundColor: tokens.aqua }]} />
-        <View pointerEvents="none" style={[styles.mapFogBottom, { backgroundColor: tokens.raised }]} />
+        {!reduceGlass ? <View pointerEvents="none" style={[styles.mapFogTop, { backgroundColor: tokens.raised }]} /> : null}
+        {!reduceGlass ? <View pointerEvents="none" style={[styles.mapCyanVeil, styles.mapCyanVeilLiquid, { backgroundColor: tokens.aqua }]} /> : null}
+        {!reduceGlass ? <View pointerEvents="none" style={[styles.mapFogBottom, { backgroundColor: tokens.raised }]} /> : null}
         <View style={styles.hiddenMarker} testID={mapPreview.replaceWithProvider} />
         <WorkerMapProviderBridge model={providerModel} />
+        <LiquidMapOptics />
+        <LiquidMapGlassOverlay />
+        <View pointerEvents="none" style={[styles.mapSharpInset, workerMapSharpInset(tokens)]} testID="worker-map-sharp-inset" />
         <View style={styles.workerMapTopHud} testID="worker-home-map-hud">
-          <View style={[styles.searchPill, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-map-search-pill-opaque">
+          <View style={[styles.searchPill, workerHomeLiquidControlSurface(tokens)]} testID="worker-map-search-pill-opaque">
             <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>
               {mapSearch}
             </Text>
           </View>
-          <View style={[styles.searchPill, workerOpaqueCardSurface(tokens, 'mint')]} testID="worker-map-availability-pill">
+          <View style={[styles.searchPill, workerHomeLiquidControlSurface(tokens, 'status')]} testID="worker-map-availability-pill">
             <Text style={[styles.mapChipTitle, { color: tokens.primary }]} numberOfLines={1}>
               {hasMapContext ? availabilityHud : appCopy[language].common.noData}
             </Text>
           </View>
         </View>
-        <WorkerMapControlStack />
-        {hasMapContext ? <View pointerEvents="none" style={[styles.homeMapZoneRing, { backgroundColor: tokens.aqua }]} /> : null}
-        {hasWorkerAnchor ? (
-          <View style={[styles.homeMapMarker, styles.homeMapMarkerWorker, { backgroundColor: tokens.raised, borderColor: tokens.primary }]} testID="worker-map-worker-marker">
-            <Icon name="brief" active small />
-          </View>
-        ) : null}
-        {hasMapContext ? (
-          <View style={[styles.homeMapMarker, styles.homeMapMarkerZone, { backgroundColor: tokens.primary, borderColor: tokens.glassBorder }]} testID="worker-map-zone-marker">
-            <Icon inverse name="pin" active small />
-          </View>
-        ) : null}
-        <View style={[styles.workerMapHudStack, styles.workerMapHudStrip, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-map-hud-stack">
+        <WorkerMapControlStack material="liquid" />
+        {!reduceGlass && hasMapContext ? <View pointerEvents="none" style={[styles.homeMapZoneRing, styles.homeMapZoneRingLiquid, { backgroundColor: tokens.aqua }]} /> : null}
+        <View style={[styles.workerMapHudStack, styles.workerMapHudStrip, workerHomeLiquidHudSurface(tokens)]} testID="worker-map-hud-stack">
           <View style={styles.workerMapInfoItem} testID="worker-map-hud-worker">
             <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{language === 'en' ? 'You' : 'Bạn'}</Text>
             {hasWorkerAnchor ? (
@@ -3040,9 +3177,28 @@ function WorkerMapStage() {
         </View>
       </View>
       </Pressable>
+      {routeUnlocked && fullAddressLabel ? (
+        <Pressable
+          accessibilityLabel={language === 'en' ? 'Start navigation from home map' : 'Bắt đầu dẫn đường từ bản đồ chính'}
+          accessibilityRole="button"
+          onPress={() => {
+            void openWorkerMapDirections(fullAddressLabel, language)
+          }}
+          style={({ pressed }) => [
+            styles.workerHomeMapNavigationCta,
+            { backgroundColor: tokens.primary },
+            reduceMotionAwarePressStyle(pressed, reduceMotion),
+          ]}
+          testID="worker-home-map-start-navigation"
+        >
+          <Text style={[styles.pressButtonTextPrimary, { color: tokens.primaryText }]} numberOfLines={1}>
+            {language === 'en' ? 'Start navigation' : 'Bắt đầu dẫn đường'}
+          </Text>
+        </Pressable>
+      ) : null}
       <Modal animationType="slide" onRequestClose={() => dispatchMap({ type: 'close' })} transparent visible={expanded}>
         <View style={styles.workerMapModalBackdrop}>
-          <GlassModalSheet mode={tokens.mode} style={[styles.workerMapModalSheet, workerMapModalSheetSurface(tokens)]} testID="worker-map-expanded-sheet">
+          <GlassModalSheet material="liquid" mode={tokens.mode} style={[styles.workerMapModalSheet, workerMapModalSheetSurface(tokens, 'liquid')]} testID="worker-map-expanded-sheet">
             <View style={styles.workerMapExpandedHeader}>
               <View style={styles.titleStack}>
                 <Text style={[styles.kicker, { color: tokens.primary }]}>{language === 'en' ? 'Operational map' : 'Bản đồ vận hành'}</Text>
@@ -3053,12 +3209,15 @@ function WorkerMapStage() {
                 <WorkerMapCloseGlyph />
               </Pressable>
             </View>
-            <View style={[styles.workerExpandedMapViewport, workerMapViewportSurface(tokens)]} testID="worker-map-expanded-vector">
+            <View style={[styles.workerExpandedMapViewport, workerMapViewportSurface(tokens, 'liquid')]} testID="worker-map-expanded-vector">
               <View pointerEvents="none" style={[styles.workerMapZoomLayer, { transform: [{ scale: mapZoom }, { rotate: mapCompassNorth ? '0deg' : '-7deg' }] }]}>
+                <WorkerHomeMaterialSubstrate surface="map" />
+                <WorkerHomeMaterialDepthPlane surface="map" />
+                <WorkerHomeMapMaterialContours expanded />
                 <MapLineField detailed={mapLayerDetailed} expanded />
                 {routeUnlocked ? <WorkerMapRouteLine expanded trafficEnabled={trafficEnabled} /> : hasMapContext ? <WorkerMapCoverageLine expanded /> : null}
                 <WorkerMapProviderBridge expanded model={providerModel} />
-                <View pointerEvents="none" style={[styles.mapCyanVeil, styles.expandedMapVeil, { backgroundColor: tokens.aqua }]} />
+                {!reduceGlass ? <View pointerEvents="none" style={[styles.mapCyanVeil, styles.expandedMapVeil, { backgroundColor: tokens.aqua }]} /> : null}
                 {hasMapContext ? (
                   <View style={[styles.homeMapMarker, styles.expandedMapMarkerZone, { backgroundColor: routeUnlocked ? tokens.primary : tokens.raised, borderColor: tokens.glassBorder }]}>
                     <Icon inverse={routeUnlocked} name={routeUnlocked ? 'pin' : 'shield'} active small />
@@ -3070,11 +3229,13 @@ function WorkerMapStage() {
                   </View>
                 ) : null}
               </View>
+              <LiquidMapGlassOverlay expanded />
               <WorkerMapControlStack
                 centered={mapCentered}
                 compassNorth={mapCompassNorth}
                 expanded
                 layerDetailed={mapLayerDetailed}
+                material="liquid"
                 onToggleCompass={() => dispatchMap({ type: 'toggle_compass' })}
                 onToggleLayer={() => dispatchMap({ type: 'toggle_layer' })}
                 showTraffic={routeUnlocked}
@@ -3091,7 +3252,7 @@ function WorkerMapStage() {
           </GlassModalSheet>
         </View>
       </Modal>
-    </View>
+    </GlassSurface>
   )
 }
 
@@ -3151,14 +3312,21 @@ function WorkerReadinessActionPanel() {
   const availabilityActionLabel = nextAvailability ? copy.frame.availabilityOn : copy.frame.availabilityOff
 
   return (
-    <View
+    <GlassSurface
+      material="liquid"
+      mode={tokens.mode}
       style={[
         styles.shiftCard,
-        workerReadinessPanelSurface(tokens),
+        workerHomeLiquidReadinessSurface(tokens),
       ]}
       testID="worker-readiness-action-panel"
+      variant="hero"
     >
-      <SubtleGlassHighlight />
+      <WorkerHomeMaterialSubstrate surface="readiness" />
+      <WorkerHomeMaterialDepthPlane surface="readiness" />
+      <LiquidSharpKeyline variant="panel" />
+      <LiquidSpecularLayer variant="panel" />
+      <LiquidPanelGlassOverlay variant="panel" />
       <View style={styles.hiddenMarker} testID="worker-unified-readiness-panel" />
       <View style={styles.rowBetween}>
         <View style={styles.titleStack}>
@@ -3168,28 +3336,109 @@ function WorkerReadinessActionPanel() {
             {readinessBody}
           </Text>
         </View>
-        <Pressable
-          accessibilityLabel={availabilityActionLabel}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: Boolean(workerProfile?.is_available), disabled: !canToggleAvailability }}
+        <WorkerAvailabilityLiquidToggle
+          checked={Boolean(workerProfile?.is_available)}
           disabled={!canToggleAvailability}
-          onPress={() => void actions.workerUpdateAvailability(nextAvailability)}
-          style={({ pressed }) => [
-            styles.toggleTrack,
-            { backgroundColor: workerProfile?.is_available ? tokens.primary : tokens.borderStrong },
-            { alignItems: workerProfile?.is_available ? 'flex-end' : 'flex-start' },
-            pressed ? styles.pressed : null,
-          ]}
-          testID="worker-availability-toggle"
-        >
-          <View style={[styles.toggleKnob, { backgroundColor: tokens.raised }]} />
-        </Pressable>
+          label={availabilityActionLabel}
+          onChange={(next) => actions.workerUpdateAvailability(next)}
+        />
       </View>
-      <View style={styles.shiftActionRow} testID="worker-readiness-primary-actions">
-        <PressButton disabled={!canToggleAvailability} label={availabilityActionLabel} onPress={() => void actions.workerUpdateAvailability(nextAvailability)} testID="worker-availability-primary-action" />
+      <View style={[styles.shiftActionRow, workerHomeReadinessActionWellSurface(tokens)]} testID="worker-readiness-primary-actions">
+        <PressButton disabled={!canToggleAvailability} label={availabilityActionLabel} material="liquid" onPress={() => void actions.workerUpdateAvailability(nextAvailability)} testID="worker-availability-primary-action" />
         <PressButton secondary label={copy.jobs.filters[0]} onPress={() => replace('/(worker)/jobs?tab=waiting')} testID="worker-home-open-waiting-jobs" />
       </View>
-    </View>
+    </GlassSurface>
+  )
+}
+
+function WorkerAvailabilityLiquidToggle({ checked, disabled, label, onChange }: { checked: boolean; disabled: boolean; label: string; onChange: (next: boolean) => Promise<boolean> }) {
+  const { tokens } = useWorkerUi()
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const [visualChecked, setVisualChecked] = useState(checked)
+  const [pending, setPending] = useState(false)
+  const progress = useSharedValue(checked ? 1 : 0)
+  const pressSquash = useSharedValue(1)
+
+  useEffect(() => {
+    cancelAnimation(progress)
+    setVisualChecked(checked)
+    setPending(false)
+    progress.value = reduceMotion
+      ? withTiming(checked ? 1 : 0, { duration: 120 })
+      : withSpring(checked ? 1 : 0, motionTokens.liquid.pill)
+  }, [checked, progress, reduceMotion])
+
+  const fillStyle = useAnimatedStyle(() => ({
+    opacity: reduceTransparency ? 1 : 0.22 + progress.value * 0.78,
+    transform: [
+      { translateX: -12 + progress.value * 12 },
+      { scaleX: 0.58 + progress.value * 0.42 },
+    ],
+  }))
+
+  const knobStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: progress.value * 26 },
+      { scaleX: pressSquash.value },
+      { scaleY: 2 - pressSquash.value },
+    ],
+  }))
+
+  const animateTo = (next: boolean) => {
+    cancelAnimation(progress)
+    progress.value = reduceMotion
+      ? withTiming(next ? 1 : 0, { duration: 100 })
+      : withSpring(next ? 1 : 0, motionTokens.liquid.pill)
+  }
+
+  const handlePress = async () => {
+    if (disabled || pending) return
+    const nextVisual = !checked
+    setVisualChecked(nextVisual)
+    setPending(true)
+    animateTo(nextVisual)
+    const updated = await onChange(nextVisual).catch(() => false)
+    if (!updated) {
+      setVisualChecked(checked)
+      animateTo(checked)
+    }
+    pressSquash.value = reduceMotion
+      ? withTiming(1, { duration: 80 })
+      : withSpring(1, motionTokens.liquid.press)
+    setPending(false)
+  }
+
+  const handlePressIn = () => {
+    if (disabled || pending || reduceMotion) return
+    pressSquash.value = withSpring(0.94, motionTokens.liquid.press)
+  }
+
+  const handlePressOut = () => {
+    pressSquash.value = reduceMotion
+      ? withTiming(1, { duration: 80 })
+      : withSpring(1, motionTokens.liquid.press)
+  }
+
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: visualChecked, disabled: disabled || pending }}
+      disabled={disabled || pending}
+      onPress={() => void handlePress()}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[
+        styles.toggleTrack,
+        workerHomeAvailabilityToggleTrackSurface(tokens, visualChecked, disabled || pending),
+      ]}
+      testID="worker-availability-toggle"
+    >
+      <Animated.View pointerEvents="none" style={[styles.toggleLiquidFill, workerHomeAvailabilityToggleFill(tokens, visualChecked), fillStyle]} />
+      <View pointerEvents="none" style={[styles.toggleTrackKeyline, workerHomeToggleTrackKeyline(tokens, visualChecked)]} />
+      <Animated.View pointerEvents="none" style={[styles.toggleKnob, workerHomeAvailabilityToggleKnob(tokens), knobStyle]} />
+      <View style={styles.hiddenMarker} testID="worker-availability-liquid-toggle-motion" />
+    </Pressable>
   )
 }
 
@@ -3232,12 +3481,13 @@ function WorkerHomeServiceTile({ meta, service, testID, title, tone }: { meta: s
     <Pressable
       accessibilityRole="button"
       onPress={() => replace('/(worker)/profile')}
-      style={({ pressed }) => [styles.workerServiceTile, workerServiceTileSurface(tokens, tone), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+      style={({ pressed }) => [styles.workerServiceTile, workerHomeOperationalTileSurface(tokens, tone), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
       testID={testID}
     >
-      <View style={styles.workerServiceImageStage}>
+      <View pointerEvents="none" style={[styles.operationalTileKeyline, workerOperationalTileKeyline(tokens)]} />
+      <WorkerHomeImageIconStage>
         <WorkerImageIcon frameSize={72} name={workerServiceImageIcons[service]} size={72} />
-      </View>
+      </WorkerHomeImageIconStage>
       <Text adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.workerServiceTitle, { color: tokens.ink }]} numberOfLines={2}>
         {title}
       </Text>
@@ -3261,23 +3511,47 @@ function WorkerHomeMiniGrid() {
       <Pressable
         accessibilityRole="button"
         onPress={() => replace('/(worker)/jobs?tab=waiting')}
-        style={({ pressed }) => [styles.workerMiniCard, workerServiceTileSurface(tokens, 'mint'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+        style={({ pressed }) => [styles.workerMiniCard, workerHomeOperationalTileSurface(tokens, 'mint'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
         testID="worker-home-mini-waiting"
       >
-        <WorkerImageIcon frameSize={50} name="navJobs" size={50} style={styles.workerMiniImageWrap} />
+        <View pointerEvents="none" style={[styles.operationalTileKeyline, workerOperationalTileKeyline(tokens)]} />
+        <WorkerHomeImageIconStage mini>
+          <WorkerImageIcon frameSize={50} name="navJobs" size={50} />
+        </WorkerHomeImageIconStage>
         <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>{copy.jobs.filters[0]}</Text>
         <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>{language === 'en' ? 'New requests' : 'Yêu cầu mới'}</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
         onPress={() => replace('/(worker)/profile')}
-        style={({ pressed }) => [styles.workerMiniCard, workerServiceTileSurface(tokens, 'cyan'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+        style={({ pressed }) => [styles.workerMiniCard, workerHomeOperationalTileSurface(tokens, 'cyan'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
         testID="worker-home-mini-profile"
       >
-        <WorkerImageIcon frameSize={50} name="profileVerified" size={50} style={styles.workerMiniImageWrap} />
+        <View pointerEvents="none" style={[styles.operationalTileKeyline, workerOperationalTileKeyline(tokens)]} />
+        <WorkerHomeImageIconStage mini>
+          <WorkerImageIcon frameSize={50} name="profileVerified" size={50} />
+        </WorkerHomeImageIconStage>
         <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>{profileStatus}</Text>
         <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>{copy.home.serviceProfileTitle}</Text>
       </Pressable>
+    </View>
+  )
+}
+
+function WorkerHomeImageIconStage({ children, mini = false }: { children: ReactNode; mini?: boolean }) {
+  const { tokens } = useWorkerUi()
+  const reduceGlass = workerHasReducedGlass(tokens)
+
+  return (
+    <View style={[mini ? styles.workerMiniImageStage : styles.workerServiceImageStage, workerOperationalIconStage(tokens)]}>
+      {!reduceGlass ? (
+        <View pointerEvents="none" style={[styles.workerOperationalIconAura, workerOperationalIconAura(tokens)]} />
+      ) : (
+        <View pointerEvents="none" style={styles.hiddenMarker} testID="worker-operational-icon-aura-reduced-transparency" />
+      )}
+      <View style={styles.workerOperationalIconContent}>
+        {children}
+      </View>
     </View>
   )
 }
@@ -3302,6 +3576,7 @@ function CompactWorkerPresenceMap({ density = 'regular', mode }: { density?: 'de
   )
   const mapMode: WorkerMapMode = hasReleasedAddress ? 'route' : hasBroadcast ? 'locked' : 'area'
   const fullAddressLabel = hasReleasedAddress && broadcast?.fullAddressLabel ? broadcast.fullAddressLabel : null
+  const releasedAddressLabel = fullAddressLabel ? localizedWorkerAreaLabel(fullAddressLabel, language) : null
   const areaLabel = area ? localizedWorkerAreaLabel(area, language) : (language === 'en' ? 'Waiting area' : 'Khu vực chờ')
   const privacyLabel = hasReleasedAddress
     ? (language === 'en' ? 'Route open' : 'Tuyến đã mở')
@@ -3309,15 +3584,15 @@ function CompactWorkerPresenceMap({ density = 'regular', mode }: { density?: 'de
       ? (language === 'en' ? 'Tracking' : 'Đang theo dõi')
       : (language === 'en' ? 'Tracking' : 'Đang theo dõi')
   const mapPrimary = hasReleasedAddress ? (language === 'en' ? 'Meeting point' : 'Điểm hẹn') : areaLabel
-  const compactDetailLabel = radiusLabel
+  const compactDetailLabel = releasedAddressLabel ?? (radiusLabel
     ? language === 'en' ? `${radiusLabel} in area` : `${radiusLabel} trong vùng`
-    : areaLabel
+    : areaLabel)
   const showEmptyWaitingMarker = mode === 'waiting' && !hasBroadcast && !hasReleasedAddress
   const expandedTitle = hasReleasedAddress
     ? (language === 'en' ? 'Route to meeting point' : 'Đường đến điểm hẹn')
     : (language === 'en' ? 'Work area map' : 'Bản đồ khu vực nhận việc')
   const expandedSubtitle = hasReleasedAddress
-    ? `${language === 'en' ? 'Area' : 'Khu vực'}: ${areaLabel}`
+    ? `${language === 'en' ? 'Address' : 'Địa chỉ'}: ${releasedAddressLabel ?? areaLabel}`
     : `${mapPrimary}${radiusLabel ? ` · ${radiusLabel}` : ''}`
   const mapActionLabel = language === 'en' ? 'Open map detail' : 'Mở bản đồ chi tiết'
   const providerModel = createWorkerMapProviderModel({
@@ -3380,8 +3655,8 @@ function CompactWorkerPresenceMap({ density = 'regular', mode }: { density?: 'de
       <WorkerExpandedMapModal
         centered={mapCentered}
         fullAddressLabel={fullAddressLabel}
-        hasMapContext={Boolean(area || radiusLabel || hasBroadcast)}
-        hasWorkerAnchor={hasReleasedAddress}
+        hasMapContext={Boolean(fullAddressLabel || area || radiusLabel || hasBroadcast)}
+        hasWorkerAnchor={Boolean(workerProfile?.districts[0] || providerModel.workerOrigin)}
         mapArea={areaLabel}
         mapMode={mapMode}
         onClose={() => dispatchMap({ type: 'close' })}
@@ -3472,7 +3747,7 @@ function incomingRequestDraftReducer(state: IncomingRequestDraftState, action: I
   }
 }
 
-function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
+function IncomingRequestSheet({ compact = false, material = 'standard' }: { compact?: boolean; material?: GlassMaterial }) {
   const { copy, language, tokens } = useWorkerUi()
   const { actions, selectors, state } = useFrontendWorkflow()
   const actionCopy = workerActionCopy[language]
@@ -3661,8 +3936,13 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
 
   return (
     <ReduceMotionAwareEntranceView delayMs={compact ? 40 : 80} distanceY={compact ? 8 : 14} testID="worker-request-sheet-motion">
-      <GlassModalSheet mode={tokens.mode} style={[styles.requestSheet, compact ? styles.requestSheetCompact : null]} testID="worker-request-sheet">
-      <SubtleGlassHighlight />
+      <GlassModalSheet material={material} mode={tokens.mode} style={[styles.requestSheet, material === 'liquid' ? workerHomeLiquidSheetSurface(tokens) : null, compact ? styles.requestSheetCompact : null]} testID="worker-request-sheet">
+      {material === 'liquid' ? <WorkerHomeMaterialSubstrate surface="sheet" /> : null}
+      {material === 'liquid' ? <WorkerHomeMaterialDepthPlane surface="sheet" /> : null}
+      <SubtleGlassHighlight liquid={material === 'liquid'} />
+      {material === 'liquid' ? <LiquidSharpKeyline variant="sheet" /> : null}
+      {material === 'liquid' ? <LiquidSpecularLayer variant="sheet" /> : null}
+      {material === 'liquid' ? <LiquidPanelGlassOverlay variant="sheet" /> : null}
       <MotionSweep />
       <View style={styles.hiddenMarker} testID="worker-no-live-request-empty-state" />
       <View style={styles.hiddenMarker} testID="worker-safe-address-gate" />
@@ -3701,23 +3981,16 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         <Metric label={copy.request.workerEarns} value={broadcast?.estimatedEarningLabel ?? appCopy[language].common.noData} />
       </View>
       {canRequestScopeChange ? (
-        <View style={styles.scopeRequestBox} testID="worker-scope-change-request">
-          <TextInput
-            accessibilityLabel={actionCopy.scopeDescription}
-            onChangeText={updateRequestDraft('scopeReasonDraft')}
-            placeholder={actionCopy.scopeDescription}
-            placeholderTextColor={tokens.subtle}
-            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
-            value={scopeReasonDraft}
-          />
-          <View style={styles.actionRow}>
-            <PressButton label={actionCopy.addScopePhoto} onPress={pickScopePhoto} secondary testID="worker-scope-change-add-photo" />
-            <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={1} testID="worker-scope-change-photo-count">
-              {scopePhotos.length > 0 ? actionCopy.scopePhotoCount(scopePhotos.length) : actionCopy.scopePhotoOptional}
-            </Text>
-          </View>
-          <PressButton disabled={isUploadingScope} label={isUploadingScope ? actionCopy.uploading : actionCopy.scopeSubmit} onPress={submitScopeChangeRequest} secondary testID="worker-scope-change-submit" />
-        </View>
+        <WorkerScopeChangeRequestBox
+          actionCopy={actionCopy}
+          isUploadingScope={isUploadingScope}
+          onPickPhoto={pickScopePhoto}
+          onSubmit={submitScopeChangeRequest}
+          onUpdateReason={updateRequestDraft('scopeReasonDraft')}
+          photoCount={scopePhotos.length}
+          reason={scopeReasonDraft}
+          tokens={tokens}
+        />
       ) : null}
       {selectors.currentStatus === 'scope_change_pending' ? (
         <Text style={[styles.bodyText, { color: tokens.muted }]} testID="worker-scope-change-waiting">
@@ -3725,36 +3998,23 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
         </Text>
       ) : null}
       {canRequestCancellation ? (
-        <View style={styles.scopeRequestBox} testID="worker-cancellation-request">
-          <TextInput
-            accessibilityLabel={actionCopy.cancelReason}
-            onChangeText={updateRequestDraft('cancellationReasonDraft')}
-            placeholder={actionCopy.cancelPlaceholder}
-            placeholderTextColor={tokens.subtle}
-            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
-            value={cancellationReasonDraft}
-          />
-          <PressButton label={actionCopy.cancelSubmit} onPress={submitCancellationRequest} secondary testID="worker-cancellation-submit" />
-        </View>
+        <WorkerCancellationRequestBox
+          actionCopy={actionCopy}
+          onSubmit={submitCancellationRequest}
+          onUpdateReason={updateRequestDraft('cancellationReasonDraft')}
+          reason={cancellationReasonDraft}
+          tokens={tokens}
+        />
       ) : null}
       {nextAction?.type === 'worker_complete_job' ? (
-        <View style={styles.scopeRequestBox} testID="worker-completion-evidence-blocker">
-          <TextInput
-            accessibilityLabel={actionCopy.completionNote}
-            onChangeText={updateRequestDraft('completionNoteDraft')}
-            placeholder={actionCopy.completionNote}
-            placeholderTextColor={tokens.subtle}
-            style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
-            testID="worker-completion-note-input"
-            value={completionNoteDraft}
-          />
-          <View style={styles.actionRow}>
-            <PressButton label={actionCopy.addCompletionPhoto} onPress={pickCompletionPhoto} secondary testID="worker-completion-add-photo" />
-            <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={1} testID="worker-completion-photo-count">
-              {completionPhotos.length > 0 ? actionCopy.completionPhotoCount(completionPhotos.length) : actionCopy.completionPhotoRequired}
-            </Text>
-          </View>
-        </View>
+        <WorkerCompletionEvidenceBox
+          actionCopy={actionCopy}
+          note={completionNoteDraft}
+          onPickPhoto={pickCompletionPhoto}
+          onUpdateNote={updateRequestDraft('completionNoteDraft')}
+          photoCount={completionPhotos.length}
+          tokens={tokens}
+        />
       ) : null}
       {selectors.canWorkerAccept ? (
         <View style={styles.actionRow}>
@@ -3768,6 +4028,110 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       ) : null}
       </GlassModalSheet>
     </ReduceMotionAwareEntranceView>
+  )
+}
+
+function WorkerScopeChangeRequestBox({
+  actionCopy,
+  isUploadingScope,
+  onPickPhoto,
+  onSubmit,
+  onUpdateReason,
+  photoCount,
+  reason,
+  tokens,
+}: {
+  actionCopy: (typeof workerActionCopy)[WorkerLanguageMode]
+  isUploadingScope: boolean
+  onPickPhoto: () => void
+  onSubmit: () => void
+  onUpdateReason: (value: string) => void
+  photoCount: number
+  reason: string
+  tokens: WorkerThemeTokens
+}) {
+  return (
+    <View style={styles.scopeRequestBox} testID="worker-scope-change-request">
+      <TextInput
+        accessibilityLabel={actionCopy.scopeDescription}
+        onChangeText={onUpdateReason}
+        placeholder={actionCopy.scopeDescription}
+        placeholderTextColor={tokens.subtle}
+        style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
+        value={reason}
+      />
+      <View style={styles.actionRow}>
+        <PressButton label={actionCopy.addScopePhoto} onPress={onPickPhoto} secondary testID="worker-scope-change-add-photo" />
+        <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={1} testID="worker-scope-change-photo-count">
+          {photoCount > 0 ? actionCopy.scopePhotoCount(photoCount) : actionCopy.scopePhotoOptional}
+        </Text>
+      </View>
+      <PressButton disabled={isUploadingScope} label={isUploadingScope ? actionCopy.uploading : actionCopy.scopeSubmit} onPress={onSubmit} secondary testID="worker-scope-change-submit" />
+    </View>
+  )
+}
+
+function WorkerCancellationRequestBox({
+  actionCopy,
+  onSubmit,
+  onUpdateReason,
+  reason,
+  tokens,
+}: {
+  actionCopy: (typeof workerActionCopy)[WorkerLanguageMode]
+  onSubmit: () => void
+  onUpdateReason: (value: string) => void
+  reason: string
+  tokens: WorkerThemeTokens
+}) {
+  return (
+    <View style={styles.scopeRequestBox} testID="worker-cancellation-request">
+      <TextInput
+        accessibilityLabel={actionCopy.cancelReason}
+        onChangeText={onUpdateReason}
+        placeholder={actionCopy.cancelPlaceholder}
+        placeholderTextColor={tokens.subtle}
+        style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
+        value={reason}
+      />
+      <PressButton label={actionCopy.cancelSubmit} onPress={onSubmit} secondary testID="worker-cancellation-submit" />
+    </View>
+  )
+}
+
+function WorkerCompletionEvidenceBox({
+  actionCopy,
+  note,
+  onPickPhoto,
+  onUpdateNote,
+  photoCount,
+  tokens,
+}: {
+  actionCopy: (typeof workerActionCopy)[WorkerLanguageMode]
+  note: string
+  onPickPhoto: () => void
+  onUpdateNote: (value: string) => void
+  photoCount: number
+  tokens: WorkerThemeTokens
+}) {
+  return (
+    <View style={styles.scopeRequestBox} testID="worker-completion-evidence-blocker">
+      <TextInput
+        accessibilityLabel={actionCopy.completionNote}
+        onChangeText={onUpdateNote}
+        placeholder={actionCopy.completionNote}
+        placeholderTextColor={tokens.subtle}
+        style={[styles.chatInput, { borderColor: tokens.border, color: tokens.ink }]}
+        testID="worker-completion-note-input"
+        value={note}
+      />
+      <View style={styles.actionRow}>
+        <PressButton label={actionCopy.addCompletionPhoto} onPress={onPickPhoto} secondary testID="worker-completion-add-photo" />
+        <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={1} testID="worker-completion-photo-count">
+          {photoCount > 0 ? actionCopy.completionPhotoCount(photoCount) : actionCopy.completionPhotoRequired}
+        </Text>
+      </View>
+    </View>
   )
 }
 
@@ -3818,10 +4182,12 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
   return (
     <View pointerEvents="box-none" style={[styles.dockWrap, { bottom, width: dockWidth }]}>
       <View pointerEvents="none" style={[styles.dockBackdropShield, { backgroundColor: tokens.canvas }]} testID="worker-dock-backdrop-shield" />
+      <View pointerEvents="none" style={[styles.workerHomeDockMaterialDepthPlane, workerHomeDockDepthSurface(tokens)]} testID="worker-home-material-depth-dock-anchored-layer-3" />
       <View pointerEvents="none" style={styles.hiddenMarker} testID="worker-dock-glass-aura" />
       <FloatingGlassTabBar<WorkerActiveTab, WorkerDockItem>
         activeKey={active}
         items={items}
+        material="liquid"
         mode={tokens.mode}
         onItemPress={(item) => {
           if (item.key === active) return
@@ -3830,7 +4196,7 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
         }}
         previousKey={lastWorkerDockActive}
         iconForItem={(item, focused) => <WorkerDockIcon focused={focused} name={item.icon} />}
-        style={styles.workerDock}
+        style={[styles.workerDock, workerHomeDockGlassSurface(tokens)]}
         testID="worker-liquid-glass-dock"
       />
     </View>
@@ -3975,11 +4341,13 @@ function WorkerSectionMotionField({
 
 function MapLineField({ compact = false, detailed = false, expanded = false }: { compact?: boolean; detailed?: boolean; expanded?: boolean }) {
   const { tokens } = useWorkerUi()
-  const opacityScale = detailed ? (expanded ? 1.28 : compact ? 1.02 : 1.12) : expanded ? 1.18 : compact ? 0.96 : 1.08
+  const opacityScale = detailed ? (expanded ? 1.42 : compact ? 1.1 : 1.24) : expanded ? 1.34 : compact ? 1.08 : 1.24
   const waterColor = tokens.mode === 'dark' ? tokens.cyan : 'rgba(202,239,249,0.68)'
   const parkColor = tokens.mode === 'dark' ? tokens.mint : 'rgba(151,230,206,0.36)'
-  const roadCasing = tokens.mode === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.88)'
-  const majorRoadCasing = tokens.mode === 'dark' ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.96)'
+  const roadCasing = tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.96)'
+  const majorRoadCasing = tokens.mode === 'dark' ? 'rgba(190,210,205,0.20)' : 'rgba(255,255,255,0.98)'
+  const roadInk = tokens.mode === 'dark' ? 'rgba(127,190,179,0.34)' : 'rgba(31,103,93,0.28)'
+  const majorRoadInk = tokens.mode === 'dark' ? 'rgba(105,222,198,0.35)' : 'rgba(17,120,108,0.34)'
 
   if (expanded) {
     return (
@@ -3994,19 +4362,19 @@ function MapLineField({ compact = false, detailed = false, expanded = false }: {
         <Rect x={188} y={488} width={112} height={58} rx={18} fill={tokens.mapBlock} opacity={0.28} />
         <Rect x={332} y={448} width={98} height={60} rx={18} fill={tokens.mapBlock} opacity={0.32} />
         <Path d="M-40 98 C64 142 138 130 220 102 S370 48 560 92" stroke={roadCasing} strokeWidth={8.4} strokeLinecap="round" opacity={0.62 * opacityScale} fill="none" />
-        <Path d="M-40 98 C64 142 138 130 220 102 S370 48 560 92" stroke={tokens.mapLine} strokeWidth={3.2} strokeLinecap="round" opacity={0.23 * opacityScale} fill="none" />
+        <Path d="M-40 98 C64 142 138 130 220 102 S370 48 560 92" stroke={roadInk} strokeWidth={3.2} strokeLinecap="round" opacity={0.36 * opacityScale} fill="none" />
         <Path d="M10 260 C86 210 180 252 246 216 S388 140 560 186" stroke={roadCasing} strokeWidth={8.2} strokeLinecap="round" opacity={0.58 * opacityScale} fill="none" />
-        <Path d="M10 260 C86 210 180 252 246 216 S388 140 560 186" stroke={tokens.mapLine} strokeWidth={3} strokeLinecap="round" opacity={0.22 * opacityScale} fill="none" />
+        <Path d="M10 260 C86 210 180 252 246 216 S388 140 560 186" stroke={roadInk} strokeWidth={3} strokeLinecap="round" opacity={0.34 * opacityScale} fill="none" />
         <Path d="M-20 404 C84 350 178 398 274 356 S416 264 560 318" stroke={roadCasing} strokeWidth={8.2} strokeLinecap="round" opacity={0.58 * opacityScale} fill="none" />
-        <Path d="M-20 404 C84 350 178 398 274 356 S416 264 560 318" stroke={tokens.mapLine} strokeWidth={3} strokeLinecap="round" opacity={0.22 * opacityScale} fill="none" />
+        <Path d="M-20 404 C84 350 178 398 274 356 S416 264 560 318" stroke={roadInk} strokeWidth={3} strokeLinecap="round" opacity={0.34 * opacityScale} fill="none" />
         <Path d="M-28 536 C90 490 210 544 296 486 S430 426 560 464" stroke={roadCasing} strokeWidth={8} strokeLinecap="round" opacity={0.5 * opacityScale} fill="none" />
-        <Path d="M-28 536 C90 490 210 544 296 486 S430 426 560 464" stroke={tokens.mapLine} strokeWidth={2.8} strokeLinecap="round" opacity={0.18 * opacityScale} fill="none" />
+        <Path d="M-28 536 C90 490 210 544 296 486 S430 426 560 464" stroke={roadInk} strokeWidth={2.8} strokeLinecap="round" opacity={0.28 * opacityScale} fill="none" />
         <Path d="M116 -42 C144 104 138 238 112 660 M252 -48 C236 110 238 264 266 660 M390 -40 C360 128 364 292 404 660" stroke={roadCasing} strokeWidth={6.2} strokeLinecap="round" opacity={0.36 * opacityScale} fill="none" />
-        <Path d="M116 -42 C144 104 138 238 112 660 M252 -48 C236 110 238 264 266 660 M390 -40 C360 128 364 292 404 660" stroke={tokens.mapLine} strokeWidth={2} strokeLinecap="round" opacity={0.15 * opacityScale} fill="none" />
+        <Path d="M116 -42 C144 104 138 238 112 660 M252 -48 C236 110 238 264 266 660 M390 -40 C360 128 364 292 404 660" stroke={roadInk} strokeWidth={2} strokeLinecap="round" opacity={0.26 * opacityScale} fill="none" />
         <Path d="M-34 468 C88 390 186 402 272 324 S398 144 560 176" stroke={majorRoadCasing} strokeWidth={12.4} strokeLinecap="round" opacity={0.78 * opacityScale} fill="none" />
-        <Path d="M-34 468 C88 390 186 402 272 324 S398 144 560 176" stroke={tokens.mapLine} strokeWidth={4.7} strokeLinecap="round" opacity={0.34 * opacityScale} fill="none" />
+        <Path d="M-34 468 C88 390 186 402 272 324 S398 144 560 176" stroke={majorRoadInk} strokeWidth={4.7} strokeLinecap="round" opacity={0.48 * opacityScale} fill="none" />
         <Path d="M-42 202 C94 258 184 238 280 184 S426 96 560 130" stroke={majorRoadCasing} strokeWidth={11.2} strokeLinecap="round" opacity={0.72 * opacityScale} fill="none" />
-        <Path d="M-42 202 C94 258 184 238 280 184 S426 96 560 130" stroke={tokens.mapLine} strokeWidth={4.2} strokeLinecap="round" opacity={0.3 * opacityScale} fill="none" />
+        <Path d="M-42 202 C94 258 184 238 280 184 S426 96 560 130" stroke={majorRoadInk} strokeWidth={4.2} strokeLinecap="round" opacity={0.44 * opacityScale} fill="none" />
         {detailed ? (
           <>
             <Rect x={82} y={124} width={86} height={48} rx={16} fill={tokens.mapBlock} opacity={0.26} />
@@ -4014,16 +4382,16 @@ function MapLineField({ compact = false, detailed = false, expanded = false }: {
             <Rect x={40} y={468} width={88} height={50} rx={16} fill={tokens.mapBlock} opacity={0.22} />
             <Rect x={300} y={548} width={82} height={42} rx={14} fill={tokens.mapBlock} opacity={0.2} />
             <Path d="M-28 318 C76 286 158 312 236 278 S382 198 548 234" stroke={roadCasing} strokeWidth={6.4} strokeLinecap="round" opacity={0.46 * opacityScale} fill="none" />
-            <Path d="M-28 318 C76 286 158 312 236 278 S382 198 548 234" stroke={tokens.mapLine} strokeWidth={2.2} strokeLinecap="round" opacity={0.18 * opacityScale} fill="none" />
+            <Path d="M-28 318 C76 286 158 312 236 278 S382 198 548 234" stroke={roadInk} strokeWidth={2.2} strokeLinecap="round" opacity={0.30 * opacityScale} fill="none" />
             <Path d="M66 -24 C96 132 88 282 48 648 M454 -28 C420 132 426 300 486 650" stroke={roadCasing} strokeWidth={5.2} strokeLinecap="round" opacity={0.3 * opacityScale} fill="none" />
-            <Path d="M66 -24 C96 132 88 282 48 648 M454 -28 C420 132 426 300 486 650" stroke={tokens.mapLine} strokeWidth={1.7} strokeLinecap="round" opacity={0.13 * opacityScale} fill="none" />
+            <Path d="M66 -24 C96 132 88 282 48 648 M454 -28 C420 132 426 300 486 650" stroke={roadInk} strokeWidth={1.7} strokeLinecap="round" opacity={0.24 * opacityScale} fill="none" />
             <Path d="M18 178 C92 212 160 198 226 160 S350 92 514 118" stroke={roadCasing} strokeWidth={5.8} strokeLinecap="round" opacity={0.34 * opacityScale} fill="none" />
-            <Path d="M18 178 C92 212 160 198 226 160 S350 92 514 118" stroke={tokens.mapLine} strokeWidth={1.9} strokeLinecap="round" opacity={0.14 * opacityScale} fill="none" />
+            <Path d="M18 178 C92 212 160 198 226 160 S350 92 514 118" stroke={roadInk} strokeWidth={1.9} strokeLinecap="round" opacity={0.24 * opacityScale} fill="none" />
             <Path d="M-18 586 C90 540 184 590 268 534 S420 480 552 506" stroke={roadCasing} strokeWidth={5.6} strokeLinecap="round" opacity={0.3 * opacityScale} fill="none" />
-            <Path d="M-18 586 C90 540 184 590 268 534 S420 480 552 506" stroke={tokens.mapLine} strokeWidth={1.8} strokeLinecap="round" opacity={0.12 * opacityScale} fill="none" />
-            <Circle cx={282} cy={184} r={5} fill={tokens.mapLine} opacity={0.22} />
-            <Circle cx={274} cy={356} r={4.6} fill={tokens.mapLine} opacity={0.2} />
-            <Circle cx={296} cy={486} r={4.2} fill={tokens.mapLine} opacity={0.18} />
+            <Path d="M-18 586 C90 540 184 590 268 534 S420 480 552 506" stroke={roadInk} strokeWidth={1.8} strokeLinecap="round" opacity={0.22 * opacityScale} fill="none" />
+            <Circle cx={282} cy={184} r={5} fill={roadInk} opacity={0.34} />
+            <Circle cx={274} cy={356} r={4.6} fill={roadInk} opacity={0.32} />
+            <Circle cx={296} cy={486} r={4.2} fill={roadInk} opacity={0.28} />
           </>
         ) : null}
       </Svg>
@@ -4038,11 +4406,11 @@ function MapLineField({ compact = false, detailed = false, expanded = false }: {
         <Rect x={212} y={22} width={82} height={38} rx={13} fill={tokens.mapBlock} opacity={0.34} />
         <Rect x={96} y={108} width={104} height={34} rx={13} fill={tokens.mapBlock} opacity={0.32} />
         <Path d="M-18 44 C54 68 102 64 160 48 S258 20 408 42" stroke={roadCasing} strokeWidth={7.2} strokeLinecap="round" opacity={0.58 * opacityScale} fill="none" />
-        <Path d="M-18 44 C54 68 102 64 160 48 S258 20 408 42" stroke={tokens.mapLine} strokeWidth={2.8} strokeLinecap="round" opacity={0.23 * opacityScale} fill="none" />
+        <Path d="M-18 44 C54 68 102 64 160 48 S258 20 408 42" stroke={roadInk} strokeWidth={2.8} strokeLinecap="round" opacity={0.34 * opacityScale} fill="none" />
         <Path d="M-10 116 C62 90 128 116 196 92 S292 58 408 82" stroke={roadCasing} strokeWidth={7.4} strokeLinecap="round" opacity={0.55 * opacityScale} fill="none" />
-        <Path d="M-10 116 C62 90 128 116 196 92 S292 58 408 82" stroke={tokens.mapLine} strokeWidth={2.8} strokeLinecap="round" opacity={0.22 * opacityScale} fill="none" />
+        <Path d="M-10 116 C62 90 128 116 196 92 S292 58 408 82" stroke={roadInk} strokeWidth={2.8} strokeLinecap="round" opacity={0.33 * opacityScale} fill="none" />
         <Path d="M-24 126 C42 96 104 92 162 70 S260 36 404 64" stroke={majorRoadCasing} strokeWidth={10.4} strokeLinecap="round" opacity={0.72 * opacityScale} fill="none" />
-        <Path d="M-24 126 C42 96 104 92 162 70 S260 36 404 64" stroke={tokens.mapLine} strokeWidth={4} strokeLinecap="round" opacity={0.32 * opacityScale} fill="none" />
+        <Path d="M-24 126 C42 96 104 92 162 70 S260 36 404 64" stroke={majorRoadInk} strokeWidth={4} strokeLinecap="round" opacity={0.46 * opacityScale} fill="none" />
       </Svg>
     )
   }
@@ -4057,15 +4425,15 @@ function MapLineField({ compact = false, detailed = false, expanded = false }: {
       <Rect x={42} y={152} width={84} height={42} rx={14} fill={tokens.mapBlock} opacity={0.36} />
       <Rect x={226} y={150} width={82} height={38} rx={14} fill={tokens.mapBlock} opacity={0.3} />
       <Path d="M-20 54 C40 80 92 80 150 64 S256 28 410 54" stroke={roadCasing} strokeWidth={7.2} strokeLinecap="round" opacity={0.58 * opacityScale} fill="none" />
-      <Path d="M-20 54 C40 80 92 80 150 64 S256 28 410 54" stroke={tokens.mapLine} strokeWidth={2.8} strokeLinecap="round" opacity={0.23 * opacityScale} fill="none" />
+      <Path d="M-20 54 C40 80 92 80 150 64 S256 28 410 54" stroke={roadInk} strokeWidth={2.8} strokeLinecap="round" opacity={0.34 * opacityScale} fill="none" />
       <Path d="M8 132 C68 108 126 132 182 112 S278 70 402 110" stroke={roadCasing} strokeWidth={7.4} strokeLinecap="round" opacity={0.55 * opacityScale} fill="none" />
-      <Path d="M8 132 C68 108 126 132 182 112 S278 70 402 110" stroke={tokens.mapLine} strokeWidth={2.8} strokeLinecap="round" opacity={0.22 * opacityScale} fill="none" />
+      <Path d="M8 132 C68 108 126 132 182 112 S278 70 402 110" stroke={roadInk} strokeWidth={2.8} strokeLinecap="round" opacity={0.33 * opacityScale} fill="none" />
       <Path d="M-12 188 C72 162 126 192 194 168 S294 128 410 154" stroke={roadCasing} strokeWidth={7.2} strokeLinecap="round" opacity={0.52 * opacityScale} fill="none" />
-      <Path d="M-12 188 C72 162 126 192 194 168 S294 128 410 154" stroke={tokens.mapLine} strokeWidth={2.7} strokeLinecap="round" opacity={0.2 * opacityScale} fill="none" />
+      <Path d="M-12 188 C72 162 126 192 194 168 S294 128 410 154" stroke={roadInk} strokeWidth={2.7} strokeLinecap="round" opacity={0.31 * opacityScale} fill="none" />
       <Path d="M80 -18 C98 48 100 106 84 234 M196 -18 C188 44 184 110 198 236" stroke={roadCasing} strokeWidth={5.4} strokeLinecap="round" opacity={0.34 * opacityScale} fill="none" />
-      <Path d="M80 -18 C98 48 100 106 84 234 M196 -18 C188 44 184 110 198 236" stroke={tokens.mapLine} strokeWidth={1.8} strokeLinecap="round" opacity={0.16 * opacityScale} fill="none" />
+      <Path d="M80 -18 C98 48 100 106 84 234 M196 -18 C188 44 184 110 198 236" stroke={roadInk} strokeWidth={1.8} strokeLinecap="round" opacity={0.27 * opacityScale} fill="none" />
       <Path d="M-24 162 C42 128 104 126 160 96 S250 42 404 82" stroke={majorRoadCasing} strokeWidth={10.6} strokeLinecap="round" opacity={0.74 * opacityScale} fill="none" />
-      <Path d="M-24 162 C42 128 104 126 160 96 S250 42 404 82" stroke={tokens.mapLine} strokeWidth={4.1} strokeLinecap="round" opacity={0.32 * opacityScale} fill="none" />
+      <Path d="M-24 162 C42 128 104 126 160 96 S250 42 404 82" stroke={majorRoadInk} strokeWidth={4.1} strokeLinecap="round" opacity={0.46 * opacityScale} fill="none" />
     </Svg>
   )
 }
@@ -4103,12 +4471,15 @@ function WorkerMapCoverageLine({ compact = false, expanded = false }: { compact?
   const corridorWidth = compact ? 22 : expanded ? 54 : 38
   const testID = expanded ? 'worker-map-coverage-line-expanded' : compact ? 'worker-map-coverage-line-compact' : 'worker-map-coverage-line-preview'
   const viewBox = expanded ? '0 0 520 620' : compact ? '0 0 390 156' : '0 0 390 216'
+  const corridorOpacity = expanded ? 0.18 : compact ? 0.20 : 0.19
+  const dashOpacity = expanded ? 0.46 : compact ? 0.40 : 0.38
+  const zoneOpacity = 0.16
 
   return (
     <Svg pointerEvents="none" style={StyleSheet.absoluteFill} testID={testID} viewBox={viewBox} preserveAspectRatio="none">
-      <Path d={path} stroke={tokens.aqua} strokeWidth={corridorWidth} strokeLinecap="round" strokeLinejoin="round" opacity={expanded ? 0.18 : 0.24} fill="none" />
-      <Path d={path} stroke={tokens.primary} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 11" opacity={0.46} fill="none" />
-      <Circle cx={compact ? 132 : expanded ? 212 : 154} cy={compact ? 98 : expanded ? 320 : 124} r={compact ? 38 : expanded ? 96 : 68} fill={tokens.mint} opacity={expanded ? 0.16 : 0.2} />
+      <Path d={path} stroke={tokens.aqua} strokeWidth={corridorWidth} strokeLinecap="round" strokeLinejoin="round" opacity={corridorOpacity} fill="none" />
+      <Path d={path} stroke={tokens.primary} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 11" opacity={dashOpacity} fill="none" />
+      <Circle cx={compact ? 132 : expanded ? 212 : 154} cy={compact ? 98 : expanded ? 320 : 124} r={compact ? 38 : expanded ? 96 : 68} fill={tokens.mint} opacity={zoneOpacity} />
     </Svg>
   )
 }
@@ -4122,6 +4493,7 @@ function WorkerMapControlStack({
   compassNorth = true,
   expanded = false,
   layerDetailed = false,
+  material = 'standard',
   onToggleCompass,
   onRecenter,
   onToggleLayer,
@@ -4137,6 +4509,7 @@ function WorkerMapControlStack({
   compassNorth?: boolean
   expanded?: boolean
   layerDetailed?: boolean
+  material?: GlassMaterial
   onToggleCompass?: () => void
   onRecenter?: () => void
   onToggleLayer?: () => void
@@ -4148,7 +4521,8 @@ function WorkerMapControlStack({
   zoomInDisabled?: boolean
   zoomOutDisabled?: boolean
 }) {
-  const { language } = useWorkerUi()
+  const { language, tokens } = useWorkerUi()
+  const controlMaterialStyle = material === 'liquid' ? workerHomeLiquidControlSurface(tokens, 'button') : null
   const expandedControls: { active?: boolean; disabled?: boolean; label: string; name: WorkerMapControlGlyphName; onPress?: () => void }[] = [
     { active: centered, label: language === 'en' ? 'Recenter' : 'Căn lại', name: 'target', onPress: onRecenter },
     { active: compassNorth, label: language === 'en' ? 'Compass' : 'La bàn', name: 'compass', onPress: onToggleCompass },
@@ -4162,7 +4536,8 @@ function WorkerMapControlStack({
     return (
       <View pointerEvents="none" style={styles.workerMapControlStack} testID="worker-map-preview-controls">
         {WORKER_MAP_PREVIEW_CONTROLS.map((name) => (
-          <View key={name} style={styles.workerMapControlButton}>
+          <View key={name} style={[styles.workerMapControlButton, controlMaterialStyle]}>
+            {material === 'liquid' ? <View pointerEvents="none" style={[styles.workerMapControlButtonKeyline, workerHomeMapControlButtonKeyline(tokens)]} /> : null}
             <WorkerMapControlGlyph name={name} />
           </View>
         ))}
@@ -4179,9 +4554,17 @@ function WorkerMapControlStack({
           disabled={control.disabled}
           key={control.name}
           onPress={control.onPress}
-          style={({ pressed }) => [styles.workerMapControlButton, control.active ? styles.workerMapControlButtonActive : null, control.disabled ? { opacity: 0.45 } : null, pressed ? styles.pressed : null]}
+          style={({ pressed }) => [
+            styles.workerMapControlButton,
+            controlMaterialStyle,
+            control.active ? styles.workerMapControlButtonActive : null,
+            material === 'liquid' && control.active ? workerHomeLiquidControlSurface(tokens, 'activeButton') : null,
+            control.disabled ? { opacity: 0.45 } : null,
+            pressed ? styles.pressed : null,
+          ]}
           testID={`worker-map-control-${control.name}`}
         >
+          {material === 'liquid' ? <View pointerEvents="none" style={[styles.workerMapControlButtonKeyline, workerHomeMapControlButtonKeyline(tokens, control.active)]} /> : null}
           <WorkerMapControlGlyph active={control.active} name={control.name} />
         </Pressable>
       ))}
@@ -4354,7 +4737,7 @@ function WorkerMapRouteSummary({
 }) {
   const { language, tokens } = useWorkerUi()
   const lockedAreaOnly = mapMode === 'locked'
-  const routeDestinationLabel = providerModel.fullAddressLabel ?? fullAddressLabel
+  const routeDestinationLabel = (providerModel.fullAddressLabel ?? fullAddressLabel)?.trim() || null
   const canOpenExternalRoute = providerModel.routeRequestReady && Boolean(routeDestinationLabel)
   const title = canOpenExternalRoute
     ? language === 'en' ? 'Route to meeting point' : 'Đường đến điểm hẹn'
@@ -4374,7 +4757,7 @@ function WorkerMapRouteSummary({
       ? language === 'en' ? 'Centered' : 'Đã căn'
     : language === 'en' ? 'Area' : 'Khu vực'
   const note = canOpenExternalRoute
-    ? language === 'en' ? 'Use the released address from the job state.' : 'Dùng địa chỉ đã được mở từ trạng thái công việc.'
+    ? language === 'en' ? 'Open turn-by-turn directions using the released job address.' : 'Mở chỉ đường từng bước bằng địa chỉ đã được mở từ công việc.'
     : language === 'en' ? 'Exact route opens only after accepting a job.' : 'Tuyến chi tiết chỉ mở sau khi nhận việc.'
 
   return (
@@ -4397,8 +4780,7 @@ function WorkerMapRouteSummary({
             accessibilityRole="button"
             onPress={() => {
               if (!routeDestinationLabel) return
-              const query = encodeURIComponent(localizedWorkerAreaLabel(routeDestinationLabel, language))
-              void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`)
+              void openWorkerMapDirections(routeDestinationLabel, language)
             }}
             style={[styles.workerMapSummaryButton, { backgroundColor: tokens.primary }]}
             testID="worker-map-open-external-route"
@@ -4420,11 +4802,162 @@ function WorkerMapRouteSummary({
   )
 }
 
-function SubtleGlassHighlight() {
+function SubtleGlassHighlight({ liquid = false }: { liquid?: boolean } = {}) {
   const { tokens } = useWorkerUi()
 
   if (tokens.glassHighlight === 'transparent') return null
-  return <View pointerEvents="none" style={[styles.glassTopHighlight, { backgroundColor: tokens.glassHighlight }]} />
+  return <View pointerEvents="none" style={[styles.glassTopHighlight, { backgroundColor: liquid ? workerLiquidEdgeHighlight(tokens) : tokens.glassHighlight, opacity: liquid ? (tokens.mode === 'dark' ? 1 : 0.92) : undefined }]} />
+}
+
+function LiquidSharpKeyline({ variant = 'hero' }: { variant?: 'hero' | 'panel' | 'sheet' } = {}) {
+  const { tokens } = useWorkerUi()
+
+  if (tokens.glassHighlight === 'transparent') return null
+  return <View pointerEvents="none" style={[styles.liquidSharpKeyline, variant === 'panel' ? styles.liquidSharpKeylinePanel : null, variant === 'sheet' ? styles.liquidSharpKeylineSheet : null, workerLiquidSharpKeyline(tokens)]} testID={`worker-liquid-sharp-keyline-${variant}`} />
+}
+
+function LiquidSpecularLayer({ variant = 'hero' }: { variant?: 'hero' | 'panel' | 'sheet' } = {}) {
+  const { tokens } = useWorkerUi()
+
+  if (tokens.glassHighlight === 'transparent') return null
+  return (
+    <>
+      <View pointerEvents="none" style={[styles.liquidSpecularBand, variant === 'panel' ? styles.liquidSpecularBandPanel : null, workerLiquidSpecularBand(tokens, variant)]} />
+      <View pointerEvents="none" style={[styles.liquidRefractionPool, variant === 'panel' ? styles.liquidRefractionPoolPanel : null, workerLiquidRefractionPool(tokens, variant)]} />
+    </>
+  )
+}
+
+function LiquidMapOptics() {
+  const { tokens } = useWorkerUi()
+
+  if (tokens.glassHighlight === 'transparent') return null
+  return (
+    <>
+      <View pointerEvents="none" style={[styles.mapLiquidLens, workerMapLiquidLens(tokens)]} testID="worker-map-liquid-lens" />
+      <View pointerEvents="none" style={[styles.mapLiquidSpecularArc, workerMapLiquidSpecularArc(tokens)]} />
+    </>
+  )
+}
+
+function LiquidMapGlassOverlay({ expanded = false }: { expanded?: boolean } = {}) {
+  const { tokens } = useWorkerUi()
+
+  if (tokens.glassHighlight === 'transparent') return null
+  return (
+    <>
+      <View pointerEvents="none" style={[styles.mapLiquidGlassOverlay, expanded ? styles.mapLiquidGlassOverlayExpanded : null, workerMapLiquidGlassOverlay(tokens)]} testID={expanded ? 'worker-map-liquid-glass-overlay-expanded' : 'worker-map-liquid-glass-overlay'} />
+      <View pointerEvents="none" style={[styles.mapLiquidGlassEdge, expanded ? styles.mapLiquidGlassOverlayExpanded : null, workerMapLiquidGlassEdge(tokens)]} />
+    </>
+  )
+}
+
+function LiquidPanelGlassOverlay({ variant }: { variant: 'panel' | 'sheet' }) {
+  const { tokens } = useWorkerUi()
+
+  if (tokens.glassHighlight === 'transparent') return null
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        styles.liquidPanelGlassOverlay,
+        variant === 'sheet' ? styles.liquidPanelGlassOverlaySheet : null,
+        workerPanelLiquidGlassOverlay(tokens, variant),
+      ]}
+      testID={`worker-liquid-panel-glass-overlay-${variant}`}
+    />
+  )
+}
+
+function WorkerHomeMaterialDepthPlane({ surface }: { surface: 'map' | 'readiness' | 'sheet' }) {
+  const { tokens } = useWorkerUi()
+  const layer = workerHomeLiquidMaterialSystem.surfaces[surface].glassLayer
+  const depth = workerHomeMaterialDepth(surface)
+
+  if (tokens.glassHighlight === 'transparent') {
+    return <View pointerEvents="none" style={styles.hiddenMarker} testID={`worker-home-material-depth-${surface}-opaque-fallback`} />
+  }
+
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        styles.workerHomeMaterialDepthPlane,
+        surface === 'sheet' ? styles.workerHomeMaterialDepthPlaneSheet : null,
+        workerHomeMaterialDepthPlaneSurface(tokens, surface),
+      ]}
+      testID={`worker-home-material-depth-${surface}-${depth}-layer-${layer}`}
+    />
+  )
+}
+
+function WorkerHomeMaterialSubstrate({ surface }: { surface: 'map' | 'readiness' | 'sheet' }) {
+  const { tokens } = useWorkerUi()
+  const role = workerHomeMaterialRole(surface)
+  const layer = workerHomeLiquidMaterialSystem.surfaces[surface].glassLayer
+
+  if (tokens.glassHighlight === 'transparent') {
+    return <View pointerEvents="none" style={styles.hiddenMarker} testID={`worker-home-material-${surface}-opaque-fallback`} />
+  }
+
+  return (
+    <>
+      <View
+        pointerEvents="none"
+        style={[
+          styles.workerHomeMaterialSubstrate,
+          surface === 'readiness' || surface === 'sheet' ? styles.workerHomeMaterialSubstrateReadiness : null,
+          workerHomeMaterialSubstrateSurface(tokens, surface),
+        ]}
+        testID={`worker-home-material-${surface}-${role}-layer-${layer}`}
+      />
+      <View
+        pointerEvents="none"
+        style={[
+          styles.workerHomeMaterialTopEdge,
+          surface === 'readiness' || surface === 'sheet' ? styles.workerHomeMaterialTopEdgeReadiness : null,
+          workerHomeMaterialTopEdge(tokens, surface),
+        ]}
+      />
+      <View
+        pointerEvents="none"
+        style={[
+          styles.workerHomeMaterialBottomEdge,
+          surface === 'readiness' || surface === 'sheet' ? styles.workerHomeMaterialBottomEdgeReadiness : null,
+          workerHomeMaterialBottomEdge(tokens, surface),
+        ]}
+      />
+    </>
+  )
+}
+
+function WorkerHomeMapMaterialContours({ expanded = false }: { expanded?: boolean } = {}) {
+  const { tokens } = useWorkerUi()
+  const viewBox = expanded ? '0 0 520 620' : '0 0 390 216'
+  const contourColor = tokens.mode === 'dark' ? 'rgba(190,210,205,0.11)' : 'rgba(20,73,66,0.10)'
+  const contourHighlight = tokens.mode === 'dark' ? 'rgba(105,222,198,0.09)' : 'rgba(255,255,255,0.58)'
+  const gridColor = tokens.mode === 'dark' ? 'rgba(190,210,205,0.055)' : 'rgba(20,73,66,0.055)'
+
+  if (expanded) {
+    return (
+      <Svg pointerEvents="none" preserveAspectRatio="none" style={styles.workerHomeMapMaterialContours} testID="worker-home-map-material-contours-expanded" viewBox={viewBox}>
+        <Path d="M28 124 C120 62 208 86 292 58 S430 18 520 74" stroke={contourHighlight} strokeLinecap="round" strokeWidth={1.4} opacity={0.68} fill="none" />
+        <Path d="M-20 216 C104 156 204 170 302 132 S430 102 560 146" stroke={contourColor} strokeLinecap="round" strokeWidth={1.1} opacity={0.68} fill="none" />
+        <Path d="M-18 384 C98 318 210 352 312 292 S450 236 548 272" stroke={contourColor} strokeLinecap="round" strokeWidth={1.1} opacity={0.58} fill="none" />
+        <Path d="M82 -24 C112 142 108 324 68 652 M222 -40 C206 152 220 340 252 660 M414 -30 C374 134 392 332 472 664" stroke={gridColor} strokeLinecap="round" strokeWidth={1} opacity={0.66} fill="none" />
+        <Path d="M52 520 C156 464 264 518 348 456 S456 412 540 436" stroke={contourHighlight} strokeLinecap="round" strokeWidth={1} opacity={0.46} fill="none" />
+      </Svg>
+    )
+  }
+
+  return (
+    <Svg pointerEvents="none" preserveAspectRatio="none" style={styles.workerHomeMapMaterialContours} testID="worker-home-map-material-contours" viewBox={viewBox}>
+      <Path d="M18 42 C76 18 126 28 184 20 S292 -4 390 34" stroke={contourHighlight} strokeLinecap="round" strokeWidth={1.2} opacity={0.62} fill="none" />
+      <Path d="M-14 92 C64 54 132 74 198 48 S304 20 408 58" stroke={contourColor} strokeLinecap="round" strokeWidth={1} opacity={0.62} fill="none" />
+      <Path d="M-18 172 C78 126 142 166 220 132 S314 106 408 138" stroke={contourColor} strokeLinecap="round" strokeWidth={1} opacity={0.52} fill="none" />
+      <Path d="M70 -18 C88 56 90 136 70 234 M178 -18 C166 58 174 142 204 236 M310 -18 C284 60 298 144 354 238" stroke={gridColor} strokeLinecap="round" strokeWidth={0.9} opacity={0.62} fill="none" />
+    </Svg>
+  )
 }
 
 function MotionSweep({ testID }: { testID?: string }) {
@@ -4881,17 +5414,26 @@ function ListRow({ icon, meta, title }: { icon: WorkerIconName; meta: string; ti
 function PressButton({
   disabled = false,
   label,
+  material = 'standard',
   onPress,
   secondary = false,
   testID,
 }: {
   disabled?: boolean
   label: string
+  material?: GlassMaterial
   onPress: () => void
   secondary?: boolean
   testID?: string
 }) {
   const { tokens } = useWorkerUi()
+  const reduceGlass = workerHasReducedGlass(tokens)
+  const disabledLiquidPrimary = disabled && material === 'liquid' && !secondary
+  const primarySurface = disabledLiquidPrimary
+    ? workerHomeDisabledPrimaryButtonSurface(tokens)
+    : material === 'liquid'
+      ? workerHomeLiquidPrimaryButtonSurface(tokens)
+      : workerPrimaryButtonSurface(tokens)
 
   return (
     <GlassPressable
@@ -4900,19 +5442,21 @@ function PressButton({
       accessibilityState={{ disabled }}
       active={!secondary}
       disabled={disabled}
+      material={material}
       mode={tokens.mode}
       onPress={onPress}
       pressedStyle={!secondary ? styles.pressButtonPressedPrimary : null}
       style={[
         styles.pressButton,
         secondary ? styles.pressButtonSecondary : null,
-        secondary ? workerSecondaryButtonSurface(tokens) : workerPrimaryButtonSurface(tokens),
-        disabled ? styles.disabledButton : null,
+        secondary ? workerSecondaryButtonSurface(tokens) : primarySurface,
+        disabled ? (disabledLiquidPrimary ? styles.disabledButtonLiquid : styles.disabledButton) : null,
       ]}
       testID={testID}
       variant="control"
     >
-      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[secondary ? styles.pressButtonTextSecondary : styles.pressButtonTextPrimary, { color: secondary ? tokens.primary : tokens.primaryText }]}>{label}</Text>
+      {material === 'liquid' && !secondary && !disabled && !reduceGlass ? <View pointerEvents="none" style={[styles.liquidButtonSheen, workerHomeLiquidButtonSheen(tokens)]} /> : null}
+      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[secondary ? styles.pressButtonTextSecondary : styles.pressButtonTextPrimary, { color: secondary ? tokens.primary : disabledLiquidPrimary ? tokens.muted : tokens.primaryText }]}>{label}</Text>
     </GlassPressable>
   )
 }
@@ -5489,20 +6033,546 @@ function workerSegmentShellSurface(tokens: WorkerThemeTokens) {
   } as any
 }
 
-function workerReadinessPanelSurface(tokens: WorkerThemeTokens) {
+function workerLiquidEdgeHighlight(tokens: WorkerThemeTokens) {
+  return tokens.mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.46)'
+}
+
+function workerHomeMaterialRole(surface: WorkerHomeMaterialSurface) {
+  return workerHomeLiquidMaterialSystem.surfaces[surface].role
+}
+
+function workerHomeMaterialDepth(surface: WorkerHomeMaterialSurface) {
+  return workerHomeLiquidMaterialSystem.surfaces[surface].depth
+}
+
+function workerHomeMaterialContrast(surface: WorkerHomeMaterialSurface) {
+  return workerHomeLiquidMaterialSystem.surfaces[surface].contrast
+}
+
+function workerHomeMaterialDepthShadow(tokens: WorkerThemeTokens, surface: WorkerHomeMaterialSurface) {
+  const depth = workerHomeMaterialDepth(surface)
   const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+
+  if (reduceTransparency) return 'none'
+
+  if (tokens.mode === 'dark') {
+    if (depth === 'anchored') return '0 20px 42px rgba(0,0,0,0.34), 0 0 0 1px rgba(190,210,205,0.10), inset 0 1px 0 rgba(190,210,205,0.11)'
+    if (depth === 'focus') return '0 24px 56px rgba(0,0,0,0.32), 0 0 38px rgba(105,222,198,0.055), inset 0 1px 0 rgba(190,210,205,0.14), inset 0 -18px 28px rgba(105,222,198,0.045)'
+    if (depth === 'floating') return '0 12px 26px rgba(0,0,0,0.24), 0 0 0 1px rgba(190,210,205,0.055), inset 0 1px 0 rgba(190,210,205,0.10)'
+    if (depth === 'content') return '0 7px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(190,210,205,0.055)'
+    return '0 18px 42px rgba(0,0,0,0.26), 0 0 0 1px rgba(190,210,205,0.070), inset 0 1px 0 rgba(190,210,205,0.12)'
+  }
+
+  if (depth === 'anchored') return '0 20px 42px rgba(20,73,66,0.12), 0 0 0 1px rgba(255,255,255,0.72), inset 0 1px 0 rgba(255,255,255,0.46)'
+  if (depth === 'focus') return '0 24px 54px rgba(20,73,66,0.13), 0 0 42px rgba(76,222,199,0.072), inset 0 1px 0 rgba(255,255,255,0.88), inset 0 -18px 28px rgba(20,117,105,0.038)'
+  if (depth === 'floating') return '0 12px 26px rgba(20,73,66,0.10), 0 0 0 1px rgba(255,255,255,0.66), inset 0 1px 0 rgba(255,255,255,0.58)'
+  if (depth === 'content') return '0 7px 16px rgba(17,70,61,0.030), inset 0 1px 0 rgba(255,255,255,0.78)'
+  return '0 18px 42px rgba(20,73,66,0.11), 0 0 0 1px rgba(255,255,255,0.76), inset 0 1px 0 rgba(255,255,255,0.82)'
+}
+
+function workerHomeMaterialSubstrateSurface(tokens: WorkerThemeTokens, surface: 'map' | 'readiness' | 'sheet') {
+  const map = surface === 'map'
   const gradient = tokens.mode === 'dark'
-    ? 'radial-gradient(circle at 82% 18%, rgba(105,222,198,0.18), transparent 26%), radial-gradient(circle at 8% 96%, rgba(224,160,107,0.16), transparent 34%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(13,29,27,0.92))'
-    : 'radial-gradient(circle at 86% 12%, rgba(195,255,242,0.88), transparent 31%), radial-gradient(circle at 8% 100%, rgba(255,232,184,0.50), transparent 36%), linear-gradient(180deg, rgba(255,253,248,0.98), rgba(244,255,250,0.92))'
+    ? map
+      ? 'radial-gradient(circle at 32% 38%, rgba(105,222,198,0.10), transparent 28%), radial-gradient(circle at 76% 18%, rgba(190,210,205,0.06), transparent 32%), linear-gradient(155deg, rgba(24,32,30,0.46), rgba(12,18,17,0.08))'
+      : 'radial-gradient(circle at 76% 18%, rgba(105,222,198,0.11), transparent 30%), linear-gradient(145deg, rgba(190,210,205,0.045), rgba(0,0,0,0))'
+    : map
+      ? 'radial-gradient(circle at 32% 38%, rgba(23,169,149,0.12), transparent 28%), radial-gradient(circle at 76% 18%, rgba(255,255,255,0.78), transparent 32%), linear-gradient(155deg, rgba(255,255,255,0.44), rgba(236,244,242,0.08))'
+      : 'radial-gradient(circle at 76% 18%, rgba(23,169,149,0.10), transparent 30%), linear-gradient(145deg, rgba(255,255,255,0.52), rgba(255,255,255,0))'
 
   return {
-    backgroundColor: tokens.mode === 'dark' ? '#122724' : '#FFFDF8',
-    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.20)' : 'rgba(15,130,115,0.13)',
+    backgroundColor: tokens.mode === 'dark'
+      ? map ? 'rgba(190,210,205,0.022)' : 'rgba(190,210,205,0.026)'
+      : map ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.24)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+    opacity: map ? 0.9 : 0.82,
+  } as any
+}
+
+function workerHomeMaterialDepthPlaneSurface(tokens: WorkerThemeTokens, surface: 'map' | 'readiness' | 'sheet') {
+  const map = surface === 'map'
+  const sheet = surface === 'sheet'
+  const contrast = workerHomeMaterialContrast(surface)
+  const gradient = tokens.mode === 'dark'
+    ? map
+      ? 'linear-gradient(180deg, rgba(190,210,205,0.09), rgba(190,210,205,0.018) 32%, rgba(0,0,0,0) 66%, rgba(0,117,106,0.08)), radial-gradient(circle at 78% 18%, rgba(105,222,198,0.10), transparent 30%)'
+      : 'linear-gradient(180deg, rgba(190,210,205,0.075), rgba(190,210,205,0.018) 36%, rgba(0,0,0,0) 64%, rgba(0,117,106,0.07)), radial-gradient(circle at 86% 18%, rgba(105,222,198,0.12), transparent 32%)'
+    : map
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.18) 33%, rgba(255,255,255,0) 63%, rgba(20,117,105,0.065)), radial-gradient(circle at 80% 18%, rgba(147,255,232,0.20), transparent 31%)'
+      : 'linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.20) 36%, rgba(255,255,255,0) 64%, rgba(20,117,105,0.055)), radial-gradient(circle at 86% 18%, rgba(147,255,232,0.24), transparent 33%)'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.016)' : 'rgba(255,255,255,0.13)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+    opacity: map ? 0.42 : contrast === 'prominent' ? (sheet ? 0.82 : 0.88) : 0.76,
+  } as any
+}
+
+function workerHomeMaterialTopEdge(tokens: WorkerThemeTokens, surface: 'map' | 'readiness' | 'sheet') {
+  const readiness = surface === 'readiness' || surface === 'sheet'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(90deg, rgba(190,210,205,0), rgba(190,210,205,0.16) 22%, rgba(105,222,198,0.10) 56%, rgba(190,210,205,0))'
+    : 'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.90) 22%, rgba(194,255,243,0.48) 56%, rgba(255,255,255,0))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(255,255,255,0.72)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+    opacity: readiness ? 0.58 : 0.66,
+  } as any
+}
+
+function workerHomeMaterialBottomEdge(tokens: WorkerThemeTokens, surface: 'map' | 'readiness' | 'sheet') {
+  const readiness = surface === 'readiness' || surface === 'sheet'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(90deg, rgba(0,0,0,0), rgba(0,117,106,0.16) 40%, rgba(0,0,0,0))'
+    : 'linear-gradient(90deg, rgba(255,255,255,0), rgba(0,117,106,0.10) 40%, rgba(255,255,255,0))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(0,117,106,0.10)' : 'rgba(0,117,106,0.08)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+    opacity: readiness ? 0.44 : 0.5,
+  } as any
+}
+
+function workerLiquidSharpKeyline(tokens: WorkerThemeTokens) {
+  return {
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.18)' : 'rgba(255,255,255,0.82)',
+    boxShadow: tokens.mode === 'dark'
+      ? 'inset 0 1px 0 rgba(190,210,205,0.12), inset 0 -1px 0 rgba(0,0,0,0.14)'
+      : 'inset 0 1px 0 rgba(255,255,255,0.96), inset 0 -1px 0 rgba(20,117,105,0.08)',
+  } as any
+}
+
+function workerLiquidSpecularBand(tokens: WorkerThemeTokens, variant: 'hero' | 'panel' | 'sheet') {
+  const panel = variant === 'panel'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(105deg, rgba(190,210,205,0), rgba(190,210,205,0.10) 42%, rgba(105,222,198,0.06) 56%, rgba(190,210,205,0) 78%)'
+    : 'linear-gradient(105deg, rgba(255,255,255,0), rgba(255,255,255,0.76) 42%, rgba(207,255,243,0.36) 56%, rgba(255,255,255,0) 78%)'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.08)' : 'rgba(255,255,255,0.70)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+    opacity: panel ? 0.50 : 0.58,
+  } as any
+}
+
+function workerLiquidRefractionPool(tokens: WorkerThemeTokens, variant: 'hero' | 'panel' | 'sheet') {
+  const panel = variant === 'panel'
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 50% 50%, rgba(105,222,198,0.10), transparent 62%)'
+    : 'radial-gradient(circle at 50% 50%, rgba(23,169,149,0.13), transparent 62%)'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.06)' : 'rgba(23,169,149,0.08)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+    opacity: panel ? 0.54 : 0.62,
+  } as any
+}
+
+function workerMapLiquidLens(tokens: WorkerThemeTokens) {
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(118deg, rgba(190,210,205,0), rgba(190,210,205,0.045) 46%, rgba(105,222,198,0.045) 60%, rgba(190,210,205,0) 82%)'
+    : 'linear-gradient(118deg, rgba(255,255,255,0), rgba(255,255,255,0.34) 46%, rgba(23,169,149,0.08) 60%, rgba(255,255,255,0) 82%)'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.025)' : 'rgba(255,255,255,0.22)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+  } as any
+}
+
+function workerMapLiquidGlassOverlay(tokens: WorkerThemeTokens) {
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(112deg, rgba(190,210,205,0) 8%, rgba(190,210,205,0.07) 34%, rgba(105,222,198,0.08) 47%, rgba(190,210,205,0.026) 58%, rgba(190,210,205,0) 78%), radial-gradient(circle at 20% 18%, rgba(105,222,198,0.08), transparent 28%), radial-gradient(circle at 82% 70%, rgba(190,210,205,0.05), transparent 34%)'
+    : 'linear-gradient(112deg, rgba(255,255,255,0) 8%, rgba(255,255,255,0.40) 34%, rgba(147,255,232,0.18) 47%, rgba(255,255,255,0.12) 58%, rgba(255,255,255,0) 78%), radial-gradient(circle at 20% 18%, rgba(255,255,255,0.44), transparent 28%), radial-gradient(circle at 82% 70%, rgba(76,222,199,0.11), transparent 34%)'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.018)' : 'rgba(255,255,255,0.08)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+    opacity: tokens.mode === 'dark' ? 0.46 : 0.52,
+  } as any
+}
+
+function workerMapLiquidGlassEdge(tokens: WorkerThemeTokens) {
+  return {
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.20)' : 'rgba(255,255,255,0.82)',
+    boxShadow: tokens.mode === 'dark'
+      ? 'inset 0 1px 0 rgba(190,210,205,0.17), inset 0 -1px 0 rgba(105,222,198,0.11), inset 1px 0 0 rgba(190,210,205,0.07)'
+      : 'inset 0 1px 0 rgba(255,255,255,0.96), inset 0 -1px 0 rgba(76,222,199,0.18), inset 1px 0 0 rgba(255,255,255,0.52)',
+  } as any
+}
+
+function workerMapLiquidSpecularArc(tokens: WorkerThemeTokens) {
+  return {
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.11)' : 'rgba(255,255,255,0.68)',
+    boxShadow: tokens.mode === 'dark'
+      ? '0 14px 34px rgba(0,0,0,0.14)'
+      : '0 14px 30px rgba(255,255,255,0.42)',
+  } as any
+}
+
+function workerPanelLiquidGlassOverlay(tokens: WorkerThemeTokens, variant: 'panel' | 'sheet') {
+  const sheet = variant === 'sheet'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(128deg, rgba(190,210,205,0) 10%, rgba(190,210,205,0.095) 34%, rgba(105,222,198,0.16) 50%, rgba(190,210,205,0.045) 61%, rgba(190,210,205,0) 82%), radial-gradient(circle at 84% 14%, rgba(105,222,198,0.17), transparent 26%)'
+    : 'linear-gradient(128deg, rgba(255,255,255,0) 10%, rgba(255,255,255,0.62) 34%, rgba(147,255,232,0.36) 50%, rgba(255,255,255,0.22) 61%, rgba(255,255,255,0) 82%), radial-gradient(circle at 84% 14%, rgba(76,222,199,0.24), transparent 27%)'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.035)' : 'rgba(255,255,255,0.20)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+    opacity: sheet ? 0.72 : 0.86,
+  } as any
+}
+
+function workerMapSharpInset(tokens: WorkerThemeTokens) {
+  return {
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.72)',
+    boxShadow: tokens.mode === 'dark'
+      ? 'inset 0 1px 0 rgba(190,210,205,0.12), inset 0 -1px 0 rgba(0,0,0,0.18)'
+      : 'inset 0 1px 0 rgba(255,255,255,0.90), inset 0 -1px 0 rgba(20,117,105,0.08)',
+  } as any
+}
+
+function workerHomeLiquidHeroSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 62% 20%, rgba(105,222,198,0.08), transparent 31%), linear-gradient(155deg, rgba(24,32,30,0.82), rgba(15,22,21,0.58) 62%, rgba(20,28,26,0.70))'
+    : 'radial-gradient(circle at 62% 20%, rgba(23,169,149,0.07), transparent 31%), linear-gradient(155deg, rgba(255,255,255,0.78), rgba(242,246,245,0.46) 64%, rgba(255,255,255,0.62))'
+
+  return {
+    backgroundColor: reduceTransparency ? (tokens.mode === 'dark' ? '#161D1B' : '#FFFFFF') : tokens.mode === 'dark' ? 'rgba(22,29,27,0.56)' : 'rgba(255,255,255,0.40)',
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.13)' : 'rgba(255,255,255,0.58)',
     borderWidth: 1,
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 14px 30px rgba(0,0,0,0.24)' : '0 14px 30px rgba(17,70,61,0.09)',
+    boxShadow: reduceTransparency ? 'none' : workerHomeMaterialDepthShadow(tokens, 'map'),
     background: reduceTransparency ? undefined : gradient,
     backgroundImage: reduceTransparency ? undefined : gradient,
     experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerHomeLiquidControlSurface(tokens: WorkerThemeTokens, tone: 'activeButton' | 'button' | 'control' | 'status' = 'control') {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const active = tone === 'activeButton'
+  const status = tone === 'status'
+  const gradient = tokens.mode === 'dark'
+    ? active
+      ? 'linear-gradient(145deg, rgba(105,222,198,0.18), rgba(22,29,27,0.84))'
+      : 'linear-gradient(145deg, rgba(31,42,40,0.86), rgba(22,29,27,0.70))'
+    : active
+      ? 'linear-gradient(145deg, rgba(232,252,247,0.92), rgba(255,255,255,0.70))'
+      : 'linear-gradient(145deg, rgba(255,255,255,0.78), rgba(246,248,248,0.58))'
+
+  return {
+    backgroundColor: reduceTransparency
+      ? tokens.mode === 'dark' ? '#161D1B' : '#FFFFFF'
+      : tokens.mode === 'dark'
+        ? active ? 'rgba(105,222,198,0.14)' : 'rgba(22,29,27,0.68)'
+        : status ? 'rgba(255,255,255,0.68)' : 'rgba(255,255,255,0.62)',
+    borderColor: reduceTransparency ? tokens.borderStrong : active ? (tokens.mode === 'dark' ? 'rgba(105,222,198,0.26)' : 'rgba(23,169,149,0.20)') : workerLiquidEdgeHighlight(tokens),
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : workerHomeMaterialDepthShadow(tokens, active ? 'cta' : status ? 'mapHud' : 'mapControl'),
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerHomeLiquidHudSurface(tokens: WorkerThemeTokens) {
+  return {
+    ...workerHomeLiquidControlSurface(tokens),
+    borderRadius: 20,
+    boxShadow: workerHomeMaterialDepthShadow(tokens, 'mapHud'),
+  } as any
+}
+
+function workerHomeDockGlassSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  return {
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.52)',
+    boxShadow: reduceTransparency ? 'none' : workerHomeMaterialDepthShadow(tokens, 'dock'),
+  } as any
+}
+
+function workerHomeDockDepthSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 48% 14%, rgba(105,222,198,0.10), transparent 34%), linear-gradient(180deg, rgba(190,210,205,0.055), rgba(0,0,0,0))'
+    : 'radial-gradient(circle at 48% 14%, rgba(147,255,232,0.24), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.74), rgba(255,255,255,0))'
+
+  return {
+    backgroundColor: reduceTransparency ? tokens.canvas : tokens.mode === 'dark' ? 'rgba(190,210,205,0.035)' : 'rgba(255,255,255,0.34)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    boxShadow: reduceTransparency ? 'none' : workerHomeMaterialDepthShadow(tokens, 'dock'),
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerHomeHeaderPillSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  return {
+    backgroundColor: reduceTransparency
+      ? tokens.mode === 'dark' ? '#161D1B' : '#FFFFFF'
+      : tokens.mode === 'dark' ? 'rgba(190,210,205,0.045)' : 'rgba(255,255,255,0.58)',
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.11)' : 'rgba(20,73,66,0.10)',
+    color: tokens.primary,
+  } as any
+}
+
+function workerHomeMapControlButtonKeyline(tokens: WorkerThemeTokens, active = false) {
+  return {
+    borderColor: active
+      ? tokens.mode === 'dark' ? 'rgba(105,222,198,0.28)' : 'rgba(255,255,255,0.82)'
+      : tokens.mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(255,255,255,0.72)',
+    boxShadow: tokens.mode === 'dark'
+      ? active ? 'inset 0 1px 0 rgba(190,210,205,0.14), inset 0 -1px 0 rgba(0,117,106,0.22)' : 'inset 0 1px 0 rgba(190,210,205,0.09)'
+      : active ? 'inset 0 1px 0 rgba(255,255,255,0.90), inset 0 -1px 0 rgba(0,117,106,0.12)' : 'inset 0 1px 0 rgba(255,255,255,0.78)',
+  } as any
+}
+
+function workerHomeToggleTrackKeyline(tokens: WorkerThemeTokens, active = false) {
+  return {
+    borderColor: active
+      ? tokens.mode === 'dark' ? 'rgba(190,210,205,0.24)' : 'rgba(255,255,255,0.72)'
+      : tokens.mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(20,73,66,0.10)',
+    boxShadow: tokens.mode === 'dark'
+      ? active ? 'inset 0 1px 0 rgba(190,210,205,0.16), inset 0 -1px 0 rgba(0,0,0,0.18)' : 'inset 0 1px 0 rgba(190,210,205,0.08)'
+      : active ? 'inset 0 1px 0 rgba(255,255,255,0.76), inset 0 -1px 0 rgba(0,117,106,0.14)' : 'inset 0 1px 0 rgba(255,255,255,0.60)',
+  } as any
+}
+
+function workerHomeAvailabilityToggleTrackSurface(tokens: WorkerThemeTokens, active = false, disabled = false) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const offGradient = tokens.mode === 'dark'
+    ? 'linear-gradient(145deg, rgba(190,210,205,0.08), rgba(22,29,27,0.82))'
+    : 'linear-gradient(145deg, rgba(255,255,255,0.92), rgba(235,245,242,0.76))'
+  const activeGradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 76% 44%, rgba(190,210,205,0.24), transparent 30%), linear-gradient(135deg, rgba(105,222,198,0.82), rgba(0,117,106,0.96))'
+    : 'radial-gradient(circle at 76% 44%, rgba(255,255,255,0.52), transparent 30%), linear-gradient(135deg, rgba(71,204,184,0.82), rgba(0,130,116,0.96))'
+  const gradient = active ? activeGradient : offGradient
+
+  return {
+    backgroundColor: reduceTransparency
+      ? active ? tokens.primary : tokens.raised
+      : active ? tokens.primary : tokens.mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(255,255,255,0.82)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: reduceTransparency ? tokens.borderStrong : active ? tokens.primary : tokens.border,
+    boxShadow: reduceTransparency
+      ? 'none'
+      : active
+        ? tokens.mode === 'dark' ? '0 12px 28px rgba(0,117,106,0.22), inset 0 1px 0 rgba(190,210,205,0.18)' : '0 14px 30px rgba(0,117,106,0.18), inset 0 1px 0 rgba(255,255,255,0.62)'
+        : tokens.mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.09)' : 'inset 0 1px 0 rgba(255,255,255,0.70)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+    opacity: disabled ? 0.72 : 1,
+  } as any
+}
+
+function workerHomeAvailabilityToggleFill(tokens: WorkerThemeTokens, active = false) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(135deg, rgba(105,222,198,0.78), rgba(0,117,106,0.96))'
+    : 'linear-gradient(135deg, rgba(112,231,211,0.80), rgba(0,130,116,0.98))'
+
+  return {
+    backgroundColor: reduceTransparency
+      ? active ? tokens.primary : tokens.raised
+      : active ? tokens.primary : tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(112,231,211,0.22)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerHomeAvailabilityToggleKnob(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#F5FFFC' : '#FFFFFF',
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.18)' : 'rgba(255,255,255,0.82)',
+    boxShadow: reduceTransparency
+      ? 'none'
+      : tokens.mode === 'dark' ? '0 6px 14px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.52)' : '0 6px 16px rgba(20,73,66,0.16), inset 0 1px 0 rgba(255,255,255,0.96)',
+  } as any
+}
+
+function workerHomeLiquidReadinessSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 82% 16%, rgba(105,222,198,0.11), transparent 28%), linear-gradient(160deg, rgba(24,33,31,0.96), rgba(15,22,21,0.88) 64%, rgba(22,29,27,0.94))'
+    : 'radial-gradient(circle at 82% 16%, rgba(23,169,149,0.085), transparent 30%), linear-gradient(160deg, rgba(255,255,255,0.96), rgba(245,248,247,0.74) 64%, rgba(255,255,255,0.86))'
+
+  return {
+    backgroundColor: reduceTransparency ? (tokens.mode === 'dark' ? '#161D1B' : '#FFFFFF') : tokens.mode === 'dark' ? 'rgba(22,29,27,0.78)' : 'rgba(255,255,255,0.66)',
+    borderColor: reduceTransparency ? tokens.borderStrong : workerLiquidEdgeHighlight(tokens),
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : workerHomeMaterialDepthShadow(tokens, 'readiness'),
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerHomeDisabledPrimaryButtonSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(145deg, rgba(190,210,205,0.08), rgba(22,29,27,0.74))'
+    : 'linear-gradient(145deg, rgba(255,255,255,0.72), rgba(239,245,243,0.64))'
+
+  return {
+    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.70)' : 'rgba(246,249,248,0.76)',
+    borderColor: reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(20,73,66,0.09)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.08)' : 'inset 0 1px 0 rgba(255,255,255,0.76)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerHomeReadinessActionWellSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(145deg, rgba(190,210,205,0.045), rgba(22,29,27,0.10))'
+    : 'linear-gradient(145deg, rgba(255,255,255,0.54), rgba(244,249,248,0.18))'
+
+  return {
+    backgroundColor: reduceTransparency
+      ? tokens.mode === 'dark' ? '#161D1B' : '#FFFFFF'
+      : tokens.mode === 'dark' ? 'rgba(190,210,205,0.035)' : 'rgba(255,255,255,0.34)',
+    borderColor: reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(190,210,205,0.08)' : 'rgba(255,255,255,0.62)',
+    borderRadius: 21,
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.06)' : 'inset 0 1px 0 rgba(255,255,255,0.62)',
+    padding: 4,
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerHomeLiquidPrimaryButtonSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(135deg, #69DEC6, #00756A)'
+    : 'linear-gradient(135deg, #17A995, #00756A)'
+
+  return {
+    backgroundColor: reduceTransparency ? tokens.primary : tokens.mode === 'dark' ? '#69DEC6' : '#17A995',
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.30)',
+    boxShadow: reduceTransparency ? 'none' : workerHomeMaterialDepthShadow(tokens, 'cta'),
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerHomeLiquidButtonSheen(tokens: WorkerThemeTokens) {
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,0.24), rgba(255,255,255,0))'
+    : 'linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,0.54), rgba(255,255,255,0))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.38)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+  } as any
+}
+
+function workerHomeLiquidSheetSurface(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 86% 10%, rgba(105,222,198,0.08), transparent 28%), linear-gradient(180deg, rgba(22,29,27,0.96), rgba(15,22,21,0.94))'
+    : 'radial-gradient(circle at 86% 10%, rgba(23,169,149,0.08), transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,248,248,0.94))'
+
+  return {
+    backgroundColor: reduceTransparency ? (tokens.mode === 'dark' ? '#161D1B' : '#FFFFFF') : tokens.mode === 'dark' ? 'rgba(22,29,27,0.78)' : 'rgba(255,255,255,0.70)',
+    borderColor: reduceTransparency ? tokens.borderStrong : workerLiquidEdgeHighlight(tokens),
+    boxShadow: reduceTransparency ? 'none' : workerHomeMaterialDepthShadow(tokens, 'sheet'),
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerHomeOperationalTileSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  void tone
+  const primaryWeight = 0.026
+  const accent = tokens.mode === 'dark'
+    ? `rgba(190,210,205,${primaryWeight})`
+    : `rgba(255,255,255,0.58)`
+  const mintAura = tokens.mode === 'dark'
+    ? 'rgba(105,222,198,0.10)'
+    : 'rgba(76,222,199,0.10)'
+  const gradient = tokens.mode === 'dark'
+    ? `radial-gradient(circle at 50% 38%, ${mintAura}, transparent 48%), radial-gradient(circle at 74% 20%, ${accent}, transparent 32%), linear-gradient(180deg, rgba(22,29,27,0.98), rgba(16,24,23,0.92))`
+    : `radial-gradient(circle at 50% 38%, ${mintAura}, transparent 48%), radial-gradient(circle at 74% 20%, ${accent}, transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,249,248,0.94))`
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#16211F' : '#FAFFFD',
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(20,73,66,0.08)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : workerHomeMaterialDepthShadow(tokens, 'tile'),
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerOperationalTileKeyline(tokens: WorkerThemeTokens) {
+  return {
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.09)' : 'rgba(255,255,255,0.64)',
+    boxShadow: tokens.mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.06)' : 'inset 0 1px 0 rgba(255,255,255,0.70)',
+  } as any
+}
+
+function workerOperationalIconStage(tokens: WorkerThemeTokens) {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 72% 36%, rgba(105,222,198,0.10), transparent 44%), linear-gradient(145deg, rgba(190,210,205,0.055), rgba(22,29,27,0.08))'
+    : 'radial-gradient(circle at 72% 36%, rgba(76,222,199,0.20), transparent 42%), linear-gradient(145deg, rgba(255,255,255,0.94), rgba(241,254,251,0.72))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.035)' : 'rgba(245,255,252,0.72)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.07)' : 'rgba(20,117,105,0.08)',
+    boxShadow: reduceTransparency
+      ? 'none'
+      : tokens.mode === 'dark'
+        ? '0 0 0 5px rgba(105,222,198,0.045), 0 10px 22px rgba(0,0,0,0.12), inset 0 1px 0 rgba(190,210,205,0.06)'
+        : '0 0 0 5px rgba(76,222,199,0.070), 0 12px 24px rgba(23,169,149,0.080), inset 0 1px 0 rgba(255,255,255,0.82)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function workerOperationalIconAura(tokens: WorkerThemeTokens) {
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 50% 50%, rgba(105,222,198,0.17), transparent 62%)'
+    : 'radial-gradient(circle at 50% 50%, rgba(76,222,199,0.20), transparent 64%)'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.06)' : 'rgba(76,222,199,0.08)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
   } as any
 }
 
@@ -5620,7 +6690,19 @@ function workerIconBubbleSurface(tokens: WorkerThemeTokens, tone: WorkerTone = '
   } as any
 }
 
-function workerMapViewportSurface(tokens: WorkerThemeTokens) {
+function workerMapViewportSurface(tokens: WorkerThemeTokens, material: GlassMaterial = 'standard') {
+  if (material === 'liquid') {
+    return {
+      backgroundColor: tokens.mode === 'dark' ? '#161D1B' : '#F6F7F7',
+      borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(255,255,255,0.58)',
+      borderWidth: 1,
+      experimental_backgroundImage:
+        tokens.mode === 'dark'
+          ? 'radial-gradient(circle at 34% 42%, rgba(105,222,198,0.10), transparent 25%), radial-gradient(circle at 78% 22%, rgba(190,210,205,0.06), transparent 30%), linear-gradient(145deg, #161D1B, #101615 58%, #18201E)'
+          : 'radial-gradient(circle at 34% 42%, rgba(23,169,149,0.13), transparent 25%), radial-gradient(circle at 78% 22%, rgba(255,255,255,0.74), transparent 30%), linear-gradient(145deg, #FFFFFF 0%, #EEF2F1 58%, #F7F8F8 100%)',
+    } as any
+  }
+
   return {
     backgroundColor: tokens.mode === 'dark' ? tokens.depth : '#ECFFF8',
     experimental_backgroundImage:
@@ -5630,7 +6712,11 @@ function workerMapViewportSurface(tokens: WorkerThemeTokens) {
   } as any
 }
 
-function workerMapModalSheetSurface(tokens: WorkerThemeTokens) {
+function workerMapModalSheetSurface(tokens: WorkerThemeTokens, material: GlassMaterial = 'standard') {
+  if (material === 'liquid') {
+    return workerHomeLiquidSheetSurface(tokens)
+  }
+
   const backgroundColor = tokens.mode === 'dark' ? 'rgba(18,39,36,0.96)' : 'rgba(252,255,252,0.96)'
   const gradient = tokens.mode === 'dark'
     ? 'linear-gradient(180deg, rgba(24,51,47,0.97), rgba(13,29,27,0.96))'
@@ -5664,15 +6750,34 @@ const styles = StyleSheet.create({
   screenTitle: { fontSize: 25, fontWeight: '700', letterSpacing: 0, lineHeight: 27 },
   workerTopRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 47, paddingTop: 0 },
   screenHeaderAction: { alignItems: 'center', borderRadius: 18, borderWidth: 1, height: 46, justifyContent: 'center', width: 46 },
-  screenHeaderPill: { borderRadius: 999, borderWidth: 1, flexShrink: 0, fontSize: 12, fontWeight: '700', lineHeight: 14, maxWidth: 126, overflow: 'hidden', paddingHorizontal: 11, paddingVertical: 8 },
+  screenHeaderPill: { borderCurve: 'continuous', borderRadius: 999, borderWidth: 1, flexShrink: 0, fontSize: 12, fontWeight: '700', lineHeight: 14, maxWidth: 126, overflow: 'hidden', paddingHorizontal: 11, paddingVertical: 8 },
   glassTopHighlight: { height: 1, left: 16, opacity: 0.82, position: 'absolute', right: 16, top: 0, zIndex: 0 },
+  liquidSharpKeyline: { borderCurve: 'continuous', borderRadius: 24, borderWidth: 1, bottom: 0, left: 0, opacity: 0.92, position: 'absolute', right: 0, top: 0, zIndex: 1 },
+  liquidSharpKeylinePanel: { borderRadius: 24 },
+  liquidSharpKeylineSheet: { borderRadius: 32 },
+  liquidSpecularBand: { height: 88, left: -62, position: 'absolute', right: -62, top: -28, transform: [{ rotate: '-8deg' }], zIndex: 0 },
+  liquidSpecularBandPanel: { height: 78, top: -22 },
+  liquidRefractionPool: { borderRadius: 999, height: 164, opacity: 0.74, position: 'absolute', right: -76, top: 18, width: 230, zIndex: 0 },
+  liquidRefractionPoolPanel: { height: 132, right: -58, top: -8, width: 178 },
+  liquidPanelGlassOverlay: { borderCurve: 'continuous', borderRadius: 24, bottom: 0, left: 0, position: 'absolute', right: 0, top: 0, zIndex: 0 },
+  liquidPanelGlassOverlaySheet: { borderRadius: 32 },
+  workerHomeMaterialDepthPlane: { borderCurve: 'continuous', borderRadius: 24, bottom: 0, left: 0, overflow: 'hidden', position: 'absolute', right: 0, top: 0, zIndex: 0 },
+  workerHomeMaterialDepthPlaneSheet: { borderRadius: 32 },
+  workerHomeMaterialSubstrate: { borderCurve: 'continuous', borderRadius: 24, bottom: 0, left: 0, overflow: 'hidden', position: 'absolute', right: 0, top: 0, zIndex: 0 },
+  workerHomeMaterialSubstrateReadiness: { borderRadius: 24 },
+  workerHomeMaterialTopEdge: { height: 1.5, left: 18, position: 'absolute', right: 18, top: 1, zIndex: 2 },
+  workerHomeMaterialTopEdgeReadiness: { left: 20, right: 20, top: 1 },
+  workerHomeMaterialBottomEdge: { bottom: 1, height: 1, left: 24, position: 'absolute', right: 24, zIndex: 2 },
+  workerHomeMaterialBottomEdgeReadiness: { bottom: 1, left: 22, right: 22 },
+  workerHomeMapMaterialContours: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0, zIndex: 0 },
   glassSheen: { height: '170%', left: -72, opacity: 0.42, position: 'absolute', top: -46, transform: [{ rotate: '11deg' }], width: 58, zIndex: 0 },
   glassMotionRibbon: { borderRadius: 999, height: 168, left: 16, position: 'absolute', top: -168, width: 58, zIndex: 0 },
   glassMotionRibbonCompact: { height: 118, left: 8, top: -118, width: 38 },
   glassMotionCore: { borderRadius: 999, height: 118, left: 56, position: 'absolute', top: -118, width: 13, zIndex: 0 },
   glassMotionCoreCompact: { height: 86, left: 36, top: -86, width: 9 },
-  mapStage: { borderRadius: 24, minHeight: 196, overflow: 'hidden', padding: 0, position: 'relative' },
-  workerMapPreviewPressable: { borderRadius: 24, overflow: 'hidden' },
+  mapStage: { borderCurve: 'continuous', borderRadius: 24, minHeight: 196, overflow: 'hidden', padding: 0, position: 'relative' },
+  workerMapPreviewPressable: { borderCurve: 'continuous', borderRadius: 24, overflow: 'hidden' },
+  workerHomeMapNavigationCta: { alignItems: 'center', borderCurve: 'continuous', borderRadius: 16, justifyContent: 'center', marginBottom: 12, marginHorizontal: 12, marginTop: 10, minHeight: 44, paddingHorizontal: 14, position: 'relative', zIndex: 5 },
   workerMapTopHud: { flexDirection: 'row', gap: 8, left: 12, maxWidth: '78%', position: 'absolute', top: 12, zIndex: 4 },
   searchPill: { alignItems: 'center', borderRadius: 999, flexDirection: 'row', gap: 8, minHeight: 38, paddingHorizontal: 12 },
   searchText: { flex: 1, fontSize: 15, fontWeight: '600' },
@@ -5680,10 +6785,11 @@ const styles = StyleSheet.create({
   workerMapHudStrip: { backgroundColor: 'rgba(255,255,255,0.78)', borderRadius: 20, flexWrap: 'nowrap', gap: 0, justifyContent: 'space-between', overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 9 },
   workerMapHudChip: { borderRadius: 999, minHeight: 36, overflow: 'hidden', paddingHorizontal: 11, paddingVertical: 8 },
   workerMapInfoItem: { flex: 1, minWidth: 0 },
-  mapViewport: { borderRadius: 24, minHeight: 196, overflow: 'hidden', position: 'relative' },
+  mapViewport: { borderCurve: 'continuous', borderRadius: 24, minHeight: 196, overflow: 'hidden', position: 'relative' },
   workerMapControlStack: { gap: 8, position: 'absolute', right: 12, top: 12, zIndex: 6 },
   workerMapControlStackExpanded: { right: 14, top: 14 },
-  workerMapControlButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.88)', borderColor: 'rgba(31,103,93,0.16)', borderRadius: 14, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
+  workerMapControlButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.88)', borderColor: 'rgba(31,103,93,0.16)', borderCurve: 'continuous', borderRadius: 14, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
+  workerMapControlButtonKeyline: { borderCurve: 'continuous', borderRadius: 13, borderWidth: 1, bottom: 2, left: 2, position: 'absolute', right: 2, top: 2 },
   workerMapControlButtonActive: { backgroundColor: 'rgba(220,251,243,0.95)' },
   workerMapZoomLayer: { ...StyleSheet.absoluteFillObject },
   workerMapModalBackdrop: {
@@ -5701,7 +6807,7 @@ const styles = StyleSheet.create({
   workerMapModalSheet: { borderRadius: 28, gap: 12, maxHeight: '92%', paddingBottom: 16, paddingHorizontal: 16, paddingTop: 14 },
   workerMapExpandedHeader: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between', paddingHorizontal: 2 },
   workerMapCloseButton: { alignItems: 'center', borderRadius: 999, borderWidth: 1, flexShrink: 0, height: 38, justifyContent: 'center', marginRight: 12, width: 38 },
-  workerExpandedMapViewport: { borderRadius: 24, minHeight: 520, overflow: 'hidden', position: 'relative' },
+  workerExpandedMapViewport: { borderCurve: 'continuous', borderRadius: 24, minHeight: 520, overflow: 'hidden', position: 'relative' },
   expandedMapVeil: { height: 210, left: '58%', opacity: 0.2, top: 102, width: 210 },
   expandedMapMarkerZone: { right: '14%', top: '28%' },
   expandedMapMarkerWorker: { left: '20%', top: '68%' },
@@ -5726,13 +6832,19 @@ const styles = StyleSheet.create({
   compactMapMarkerEmpty: { opacity: 0.92 },
   compactMapMarkerZone: { right: '18%', top: '34%' },
   compactMapMarkerWorker: { left: '31%', top: '48%' },
-  mapFogTop: { height: 92, left: 0, opacity: 0.16, position: 'absolute', right: 0, top: 0 },
-  mapFogBottom: { bottom: -6, height: 86, left: 0, opacity: 0.24, position: 'absolute', right: 0 },
+  mapFogTop: { height: 68, left: 0, opacity: 0.06, position: 'absolute', right: 0, top: 0 },
+  mapFogBottom: { bottom: -6, height: 62, left: 0, opacity: 0.08, position: 'absolute', right: 0 },
   mapCyanVeil: { borderRadius: 999, height: 158, left: '52%', marginLeft: -79, opacity: 0.23, position: 'absolute', top: 94, width: 158 },
-  homeMapMarker: { alignItems: 'center', borderRadius: 18, borderWidth: 2, height: 46, justifyContent: 'center', position: 'absolute', width: 46, zIndex: 4 },
-  homeMapMarkerWorker: { left: '31%', top: '38%' },
-  homeMapMarkerZone: { right: '24%', top: '32%' },
+  mapCyanVeilLiquid: { opacity: 0.13 },
+  mapLiquidLens: { height: 214, left: '-10%', opacity: 0.36, position: 'absolute', right: '-18%', top: -30, transform: [{ rotate: '-10deg' }], zIndex: 2 },
+  mapLiquidSpecularArc: { borderRadius: 999, borderWidth: 1, height: 164, left: '26%', opacity: 0.42, position: 'absolute', top: 22, transform: [{ rotate: '-8deg' }], width: 250, zIndex: 2 },
+  mapLiquidGlassOverlay: { borderCurve: 'continuous', borderRadius: 24, bottom: 0, left: 0, position: 'absolute', right: 0, top: 0, zIndex: 3 },
+  mapLiquidGlassOverlayExpanded: { borderRadius: 24 },
+  mapLiquidGlassEdge: { borderCurve: 'continuous', borderRadius: 24, borderWidth: 1, bottom: 1, left: 1, position: 'absolute', right: 1, top: 1, zIndex: 3 },
+  mapSharpInset: { borderCurve: 'continuous', borderRadius: 24, borderWidth: 1, bottom: 0, left: 0, opacity: 0.94, position: 'absolute', right: 0, top: 0, zIndex: 3 },
+  homeMapMarker: { alignItems: 'center', borderRadius: 18, borderWidth: 2, height: 46, justifyContent: 'center', overflow: 'hidden', position: 'absolute', width: 46, zIndex: 4 },
   homeMapZoneRing: { borderRadius: 999, height: 136, left: '22%', opacity: 0.22, position: 'absolute', top: '34%', width: 136, zIndex: 1 },
+  homeMapZoneRingLiquid: { opacity: 0.16 },
   homeMapZoneHalo: { borderRadius: 999, height: 102, opacity: 0.24, position: 'absolute', width: 102 },
   mapChipTop: { left: 6, position: 'absolute', top: 15 },
   mapZonePill: { borderRadius: 22, left: 6, maxWidth: '64%', paddingHorizontal: 12, paddingVertical: 9, position: 'absolute', top: 9 },
@@ -5743,7 +6855,7 @@ const styles = StyleSheet.create({
   mapFeatureTitle: { fontSize: 17, fontWeight: '600', letterSpacing: 0 },
   mapFeatureMeta: { fontSize: 11, fontWeight: '600', lineHeight: 14, marginTop: 4 },
   mapFeatureIcon: { alignItems: 'center', borderRadius: 999, bottom: 12, height: 50, justifyContent: 'center', position: 'absolute', right: 12, width: 50 },
-  shiftCard: { borderRadius: 24, gap: 10, overflow: 'hidden', padding: 14, position: 'relative' },
+  shiftCard: { borderCurve: 'continuous', borderRadius: 24, gap: 10, overflow: 'hidden', padding: 14, position: 'relative' },
   shiftActionRow: { flexDirection: 'row', gap: 10 },
   rowBetween: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   identityRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
@@ -5751,18 +6863,24 @@ const styles = StyleSheet.create({
   titleStack: { flex: 1, gap: 4 },
   heroTitle: { fontSize: 18, fontWeight: '600', letterSpacing: 0 },
   bodyText: { fontSize: 13, fontWeight: '600', lineHeight: 18 },
-  toggleTrack: { alignItems: 'flex-end', borderRadius: 999, height: 32, justifyContent: 'center', padding: 4, width: 58 },
-  toggleKnob: { borderRadius: 999, height: 24, width: 24 },
+  toggleTrack: { borderRadius: 999, borderWidth: 1, height: 32, overflow: 'hidden', position: 'relative', width: 58 },
+  toggleLiquidFill: { borderRadius: 999, bottom: 3, left: 3, position: 'absolute', top: 3, width: 52, zIndex: 0 },
+  toggleTrackKeyline: { borderRadius: 999, borderWidth: 1, bottom: 1, left: 1, position: 'absolute', right: 1, top: 1, zIndex: 1 },
+  toggleKnob: { borderRadius: 999, borderWidth: 1, height: 24, left: 4, position: 'absolute', top: 4, width: 24, zIndex: 2 },
   workerImageIconStage: { alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   workerServiceGrid: { flexDirection: 'row', gap: 10 },
-  workerServiceTile: { borderRadius: 22, borderWidth: 1, flex: 1, minHeight: 122, overflow: 'hidden', padding: 11, position: 'relative' },
+  workerServiceTile: { borderCurve: 'continuous', borderRadius: 22, borderWidth: 1, flex: 1, minHeight: 122, overflow: 'hidden', padding: 11, position: 'relative' },
   workerServiceIcon: { alignItems: 'center', borderRadius: 16, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
-  workerServiceImageStage: { alignItems: 'center', alignSelf: 'stretch', height: 58, justifyContent: 'center', marginBottom: 2, marginTop: -2 },
-  workerServiceTitle: { fontSize: 14, fontWeight: '600', letterSpacing: 0, lineHeight: 16, marginTop: 2 },
+  operationalTileKeyline: { borderCurve: 'continuous', borderRadius: 21, borderWidth: 1, bottom: 1, left: 1, opacity: 0.72, position: 'absolute', right: 1, top: 1 },
+  workerServiceImageStage: { alignItems: 'center', alignSelf: 'stretch', borderCurve: 'continuous', borderRadius: 18, borderWidth: 1, height: 58, justifyContent: 'center', marginBottom: 2, marginTop: -2, overflow: 'visible', position: 'relative' },
+  workerServiceTitle: { fontSize: 14, fontWeight: '700', letterSpacing: 0, lineHeight: 16, marginTop: 2 },
   workerServiceMeta: { fontSize: 10, fontWeight: '700', letterSpacing: 0, marginTop: 3 },
   workerMiniGrid: { flexDirection: 'row', gap: 10 },
-  workerMiniCard: { borderRadius: 22, borderWidth: 1, flex: 1, gap: 4, minHeight: 98, overflow: 'hidden', padding: 11, position: 'relative' },
+  workerMiniCard: { borderCurve: 'continuous', borderRadius: 22, borderWidth: 1, flex: 1, gap: 4, minHeight: 98, overflow: 'hidden', padding: 11, position: 'relative' },
   workerMiniIcon: { alignItems: 'center', borderRadius: 16, borderWidth: 1, height: 38, justifyContent: 'center', marginBottom: 3, width: 38 },
+  workerMiniImageStage: { alignItems: 'center', borderCurve: 'continuous', borderRadius: 17, borderWidth: 1, height: 54, justifyContent: 'center', marginBottom: 4, marginLeft: -1, overflow: 'visible', position: 'relative', width: 58 },
+  workerOperationalIconAura: { borderRadius: 23, bottom: -7, left: -7, opacity: 0.72, position: 'absolute', right: -7, top: -7, zIndex: 0 },
+  workerOperationalIconContent: { alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 },
   workerMiniImageWrap: { alignSelf: 'flex-start', marginBottom: 2, marginLeft: -2 },
   workerMiniTitle: { fontSize: 15.5, fontWeight: '600', letterSpacing: 0, lineHeight: 18 },
   workerMiniMeta: { fontSize: 10.5, fontWeight: '700', letterSpacing: 0, lineHeight: 14 },
@@ -5790,13 +6908,15 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: 'row', gap: 8 },
   scopeRequestBox: { gap: 8 },
   actionRow: { flexDirection: 'row', gap: 9 },
-  pressButton: { alignItems: 'center', borderRadius: 17, flex: 1, justifyContent: 'center', minHeight: 48 },
+  pressButton: { alignItems: 'center', borderCurve: 'continuous', borderRadius: 17, flex: 1, justifyContent: 'center', minHeight: 48, overflow: 'hidden', position: 'relative' },
   emptyActionPill: { alignItems: 'center', borderRadius: 17, borderWidth: 1, flex: 1, justifyContent: 'center', minHeight: 48 },
   pressButtonPressedPrimary: { filter: Platform.OS === 'web' ? 'brightness(0.98)' : undefined } as any,
   pressButtonSecondary: { borderRadius: 15, minHeight: 44 },
+  liquidButtonSheen: { height: 78, left: -34, opacity: 0.72, position: 'absolute', top: -18, transform: [{ rotate: '-12deg' }], width: 118, zIndex: 1 },
   disabledButton: { opacity: 0.52 },
-  pressButtonTextPrimary: { fontSize: 14, fontWeight: '700' },
-  pressButtonTextSecondary: { fontSize: 13, fontWeight: '700' },
+  disabledButtonLiquid: { opacity: 1 },
+  pressButtonTextPrimary: { fontSize: 14, fontWeight: '700', position: 'relative', zIndex: 2 },
+  pressButtonTextSecondary: { fontSize: 13, fontWeight: '700', position: 'relative', zIndex: 2 },
   operationalBand: { flexDirection: 'row', gap: 12 },
   quickPanel: { borderRadius: 25, flex: 1, gap: 5, minHeight: 132, overflow: 'hidden', padding: 14, position: 'relative' },
   quickValue: { fontSize: 23, fontVariant: ['tabular-nums'], fontWeight: '600' },
@@ -5977,6 +7097,7 @@ const styles = StyleSheet.create({
   verificationFileText: { fontSize: 11, fontWeight: '600', lineHeight: 14, textAlign: 'center' },
   dockWrap: { alignSelf: 'center', minHeight: workerDockHeight, position: 'absolute', zIndex: 30 },
   dockBackdropShield: { borderRadius: 38, bottom: -10, height: 90, left: -6, opacity: 0.86, position: 'absolute', right: -6, zIndex: -2 },
+  workerHomeDockMaterialDepthPlane: { borderCurve: 'continuous', borderRadius: 36, bottom: -6, left: -6, opacity: 0.82, position: 'absolute', right: -6, top: -6, zIndex: -1 },
   workerDock: { alignItems: 'center', borderRadius: 32, borderWidth: 1, flexDirection: 'row', gap: 5, height: workerDockHeight, justifyContent: 'space-around', overflow: 'hidden', padding: 7, position: 'relative' },
   workerDockAssetImage: { opacity: 0.74 },
   workerDockAssetImageFocused: { opacity: 1 },

@@ -14,14 +14,14 @@ void CUSTOMER_DARK_DOCK_LAYER_V4
 
 const CUSTOMER_TAB_COPY = {
   vi: {
-    booking: 'Đặt',
+    booking: 'Yêu cầu',
     history: 'Hoạt động',
     home: 'Trang chủ',
     kael: 'Kael',
     profile: 'Hồ sơ',
   },
   en: {
-    booking: 'Book',
+    booking: 'Request',
     history: 'Activity',
     home: 'Home',
     kael: 'Kael',

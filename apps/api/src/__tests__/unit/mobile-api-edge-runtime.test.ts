@@ -341,6 +341,14 @@ describe('mobile-api Edge runtime helpers', () => {
         p_customer_id: 'customer-1',
       },
     ])
+    const addressUpdateCall = client.calls.find((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => {
+        const value = op[1] as { address_building?: string } | undefined
+        return op[0] === 'update' && value?.address_building === 'Landmark 81, Bình Thạnh'
+      })
+    )
+    expect(addressUpdateCall?.operations).toContainEqual(['eq', 'id', 'job-1'])
     const statusUpdateCall = client.calls.find((call) =>
       call.table === 'jobs' &&
       call.operations.some((op) => {
@@ -2450,7 +2458,7 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(updateCall?.operations).toContainEqual(['maybeSingle'])
   })
 
-  it('blocks customer completion when worker did not persist final price', async () => {
+  it('blocks customer completion when Kael has not locked final price', async () => {
     const client = makeSequenceClient([
       { data: { id: 'job-1', status: 'completed_by_worker', customer_id: 'customer-1', final_price: null }, error: null },
     ])
@@ -3135,7 +3143,7 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('persists Kael review before notifying the customer about a worker scope change', async () => {
+  it('persists Kael review before notifying the customer when scope-change confidence is below auto-decision policy', async () => {
     // Phase 2.0 (plan §22.7.B, 2026-05-23): computeScopeChangeEstimate schema
     // returns complexity_assessment + price_min/max + problem_summary.
     const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
@@ -3147,9 +3155,9 @@ describe('mobile-api Edge runtime helpers', () => {
               complexity_assessment: 'medium',
               price_min: 200000,
               price_max: 350000,
-              confidence: 0.72,
+              confidence: 0.42,
               problem_summary: 'Phần phát sinh: ống chính cần thay đoạn lớn.',
-              advisory: 'Cần khách xác nhận trước khi thợ tiếp tục.',
+              advisory: 'Cần Kael quyết định trước khi thợ tiếp tục.',
             }),
           }],
           usage: { input_tokens: 120, output_tokens: 48 },
@@ -3230,7 +3238,7 @@ describe('mobile-api Edge runtime helpers', () => {
           problem_summary: expect.any(String),
           advisory: expect.any(String),
           complexity_assessment: 'medium',
-          confidence: 0.72,
+          confidence: 0.42,
         }),
       }),
     ])
@@ -3746,7 +3754,7 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(client.calls.some((call) => call.table === 'kael_admin_queue')).toBe(false)
   })
 
-  it('notifies the worker when the customer decides a scope change', async () => {
+  it('notifies the worker when a scope change decision is recorded', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
     )
@@ -3796,7 +3804,7 @@ describe('mobile-api Edge runtime helpers', () => {
         p_user_id: 'worker-1',
         p_job_id: 'job-1',
         p_event_type: 'scope_change_approved',
-        p_safe_metadata: { scope_change_id: 'scope-1', decision: 'approve' },
+        p_safe_metadata: expect.objectContaining({ scope_change_id: 'scope-1', decision: 'approve', actor: 'kael_system' }),
       }),
     ])
     expect(fetchMock).toHaveBeenCalledWith(
@@ -3816,7 +3824,7 @@ describe('mobile-api Edge runtime helpers', () => {
     )).toBe(false)
   })
 
-  it('fails A11 approve atomically when the Kael computed max is missing', async () => {
+  it('fails A11 Kael scope decision atomically when the Kael computed max is missing', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
     )
@@ -4054,6 +4062,7 @@ describe('mobile-api Edge runtime helpers', () => {
         error: null,
       },
       { data: null, error: null },
+      { data: null, error: null },
       { data: { customer_id: 'customer-1', worker_id: 'worker-1' }, error: null },
       { data: { trust_signals: {}, safe_metadata: {} }, error: null },
       { data: { customer_id: 'customer-1' }, error: null },
@@ -4104,6 +4113,30 @@ describe('mobile-api Edge runtime helpers', () => {
         job_id: 'job-1',
         event_type: 'customer_requested_cancellation',
         to_status: 'cancelled',
+        safe_metadata: expect.objectContaining({
+          autonomy_decision: expect.objectContaining({
+            actor: 'kael_system',
+            action: 'process_cancellation',
+            resulting_event: 'kael_processed_cancellation',
+          }),
+          autonomy_transition_valid: true,
+        }),
+      }),
+    ])
+    expect(client.calls.filter((call) => call.table === 'job_events')[1]?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        job_id: 'job-1',
+        event_type: 'kael_processed_cancellation',
+        from_status: 'worker_matched',
+        to_status: 'cancelled',
+        safe_metadata: expect.objectContaining({
+          cancellation_id: 'customer-cancel-1',
+          autonomy_decision: expect.objectContaining({
+            actor: 'kael_system',
+            action: 'process_cancellation',
+          }),
+        }),
       }),
     ])
     expect(client.calls.find((call) =>
@@ -4582,7 +4615,7 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(client.calls.some((call) => call.table === 'worker_profiles')).toBe(false)
   })
 
-  it('rejects A7 confirm-search before broadcasting when Kael baseline max is missing', async () => {
+  it('rejects A7 matching start before broadcasting when Kael baseline max is missing', async () => {
     const client = makeSequenceClient([
       {
         data: {

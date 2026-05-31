@@ -105,7 +105,7 @@ describe('Kael P4 output schemas', () => {
       challenge_required: true,
       challenge_reason: 'Mức tăng cao và thiếu ảnh hiện trường.',
       requested_evidence: ['Ảnh cận cảnh phần hỏng', 'Giải thích phần phát sinh'],
-      worker_message: 'Kael cần thêm bằng chứng trước khi gửi khách duyệt.',
+      worker_message: 'Kael cần thêm bằng chứng trước khi ra quyết định phạm vi.',
     }).success).toBe(true)
 
     expect(scopeChangeCustomerCardSchema.safeParse(

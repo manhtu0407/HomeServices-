@@ -178,7 +178,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     // Phase 1.3 (plan §22.6.D, 2026-05-23): inline customer scope-change
     // decide buttons removed; the hard-stop modal owns the decision callsite.
     expect(customer).not.toContain('customer-scope-change-decision')
-    expect(customer).toContain('actions.customerConfirmCompletion')
+    expect(customer).not.toContain('actions.customerConfirmCompletion')
     expect(customer).toContain('actions.decideScopeChange')
     expect(worker).toContain('actions.workerAcceptBroadcast')
     expect(worker).toContain('actions.workerDeclineBroadcast')
@@ -198,7 +198,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(mediaUpload).not.toContain("from('worker-verification').getPublicUrl")
   })
 
-  it('carries active scope-change details from job detail into customer decision UI', () => {
+  it('carries active scope-change details from job detail into Kael decision UI', () => {
     const apiTypes = read('lib/api-types.ts')
     const provider = read('lib/frontend-workflow-provider.tsx')
     const customer = read('components/customer/customer-surfaces.tsx')
@@ -211,7 +211,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain('scopeChangeFromJobDetail')
     expect(provider).toContain('data.current_scope_change')
     expect(provider).toContain('evidencePhotoUrls: scope.evidence_photo_urls')
-    expect(customer).toContain('scopeChange.requestedDescription ?? copy.history.needsConfirm')
+    expect(customer).toContain('scopeChange.requestedDescription ?? copy.history.kaelReviewing')
     // Phase 1.3 (plan §22.6.D, 2026-05-23): A11 decision callsite consolidated
     // into the hard-stop modal. Phase 2.0 (plan §22.7.B): worker no longer
     // submits price for scope change — Kael computes it server-side.

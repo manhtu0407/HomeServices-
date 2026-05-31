@@ -9,11 +9,12 @@ type RouteParams = { params: Promise<{ id: string }> }
 /**
  * POST /api/scope-changes/[id]/decide — A11
  *
- * Customer approves or rejects a worker's scope change request.
+ * Legacy/appeal path for a worker's scope change request.
  * Approve resumes repairing. Reject cancels the job until original-scope
  * continuation is modeled explicitly.
  *
- * Per RULES.md #7 — no autonomous money action. Customer MUST tap to approve.
+ * Kael Autonomy v2 owns the default decision; this route remains for explicit
+ * override/appeal compatibility while the Next app trails the Edge runtime.
  */
 export async function POST(request: Request, { params }: RouteParams) {
   const auth = await authenticateRequest(request, ['customer'])

@@ -103,9 +103,9 @@ Required checks:
 
 Every response or UI state containing a price estimate must include this Vietnamese disclaimer:
 
-> "Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu."
+> "Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới."
 
-Do not remove the disclaimer. Do not promise an exact price before worker confirmation.
+Do not remove the disclaimer. Do not promise an exact price outside a server-validated Kael policy decision.
 
 ---
 
@@ -142,19 +142,17 @@ Hard rule: Kael answers Home Services questions for electrical repair, plumbing 
 
 ---
 
-## Rule #7: No Autonomous Money Or Booking Actions Without Confirmation
+## Rule #7: Kael Autonomy V2 Requires Validated Server Decisions
 
-Kael must not perform any action that affects money, booking state, cancellation, reassignment, or scope without explicit user confirmation.
+Kael is the default workflow actor for orchestration when backend policy has enough data. Kael may create/update tickets, lock estimates, start matching, re-match, process cancellation, decide scope changes, confirm completion, and issue payment/refund/dispute decisions.
 
-Explicit confirmation is required for:
-- creating a booking/search,
-- accepting a price-affecting scope change,
-- payment,
-- cancellation,
-- completion confirmation,
-- review submission when tied to workflow completion.
+Autonomy is only valid through a server-side `KaelAutonomyDecision`:
+- `actor = kael_system`,
+- action and resulting event are schema-validated,
+- `policy_id`, evidence, confidence, reversible/appealable flags, and audit metadata are recorded,
+- raw LLM output, mobile UI, and client-side code cannot directly set workflow status or money-impacting state.
 
-There is no exception in the current phase.
+Client, worker, and admin actions are inputs, override/appeal paths, and audit controls unless a specific contract marks the action as a physical-world requirement.
 
 ---
 

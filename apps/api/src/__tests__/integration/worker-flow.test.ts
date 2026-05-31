@@ -3,9 +3,9 @@
  *
  * Hits a Supabase project directly (no mocks). Verifies:
  *   B0 register → B1 admin approve → B2 availability →
- *   A7 customer confirm-search → broadcast created →
+ *   legacy confirm-search recovery → broadcast created →
  *   B3 worker accept → B5 status updates → B7 complete →
- *   A12 customer confirm → A14 review → B8 earnings.
+ *   legacy confirm-completion recovery → A14 review → B8 earnings.
  *
  * Skips automatically when env credentials are missing — does NOT silently
  * pass. Run locally with:
@@ -222,9 +222,9 @@ describeReal('Worker Flow B0-B8 — real Supabase integration', () => {
     createdJobId = data!.id
   })
 
-  // ─── A7 + Broadcast: Customer confirms search → broadcast row created ──
+  // ─── Legacy recovery + Broadcast: confirm-search → broadcast row created ──
 
-  it('A7: customer confirm-search transitions broadcasting + broadcast row created', async () => {
+  it('legacy confirm-search recovery transitions broadcasting + broadcast row created', async () => {
     expect(createdJobId).not.toBeNull()
     const now = new Date().toISOString()
     const { error: jobErr } = await supabase
@@ -318,9 +318,9 @@ describeReal('Worker Flow B0-B8 — real Supabase integration', () => {
     expect(error).toBeNull()
   })
 
-  // ─── A12: Customer confirms (Bug #3: no auto-pay) ────────────────
+  // ─── Legacy completion recovery (Bug #3: no auto-pay) ────────────
 
-  it('A12: customer confirms → confirmed_by_customer (NOT auto-pay)', async () => {
+  it('legacy confirm-completion recovery → confirmed_by_customer (NOT auto-pay)', async () => {
     const { error } = await supabase
       .from('jobs')
       .update({ status: 'confirmed_by_customer', confirmed_at: new Date().toISOString() })

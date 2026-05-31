@@ -1,14 +1,13 @@
 import { render, screen, fireEvent } from '@testing-library/react-native'
 
-// A7 is the booking confirmation — the step that actually launches the worker
-// search. The money-safety contract: the wizard must NOT call confirmRemoteSearch
-// on its own; it fires only on the explicit final confirm press. This test drives
-// the real wizard against a mocked frontend-workflow provider (a reusable harness
-// for any workflow-coupled surface).
+// Kael Autonomy v2 routes structured intake to the full-screen Kael chat. The
+// wizard should not create a job or require the old confirmRemoteSearch gate.
 
 let mockConfirmRemoteSearch: jest.Mock
 let mockCreateRemoteJobFromDraft: jest.Mock
+let mockRouteParams: Record<string, string | string[] | undefined>
 let mockWorkflowValue: any
+const mockSetPendingKaelChatDraft = jest.fn()
 
 jest.mock('@/lib/frontend-workflow-provider', () => ({
   useFrontendWorkflow: () => mockWorkflowValue,
@@ -17,7 +16,10 @@ jest.mock('@/lib/app-language', () => ({
   useAppLanguage: () => 'vi',
 }))
 jest.mock('expo-router', () => ({
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => mockRouteParams,
+}))
+jest.mock('../kael-chat/pending-intake', () => ({
+  setPendingKaelChatDraft: (draft: unknown) => mockSetPendingKaelChatDraft(draft),
 }))
 jest.mock('../address-autocomplete', () => {
   const React = require('react')
@@ -42,7 +44,7 @@ function buildWorkflow() {
       createRemoteJobFromDraft: mockCreateRemoteJobFromDraft,
       confirmRemoteSearch: mockConfirmRemoteSearch,
     },
-    selectors: { currentStatus: 'awaiting_customer_confirm' },
+    selectors: { currentStatus: 'broadcasting' },
     state: {
       deal: {
         estimate: {
@@ -58,10 +60,12 @@ function buildWorkflow() {
 }
 
 beforeEach(() => {
+  mockRouteParams = {}
+  mockSetPendingKaelChatDraft.mockClear()
   buildWorkflow()
 })
 
-async function driveToSummary() {
+function submitDescribe(onOpenKael: jest.Mock) {
   fireEvent.press(screen.getByTestId('booking-wizard-service-electrical'))
   fireEvent.press(screen.getByTestId('booking-wizard-service-next'))
   fireEvent.changeText(
@@ -70,32 +74,55 @@ async function driveToSummary() {
   )
   fireEvent.press(screen.getByTestId('mock-address-set'))
   fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
-  // async createRemoteJobFromDraft + the analyzing→estimate effect
-  fireEvent.press(await screen.findByTestId('booking-wizard-estimate-next'))
-  fireEvent.press(screen.getByTestId('booking-wizard-time-now'))
-  await screen.findByTestId('booking-wizard-step-summary')
+  expect(onOpenKael).toHaveBeenCalledWith('electrical')
 }
 
-describe('BookingWizard A7 confirm', () => {
+describe('BookingWizard Kael autonomy', () => {
   it('does not call any booking action just by mounting and choosing a service', () => {
-    render(<BookingWizard onOpenHistory={jest.fn()} />)
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={jest.fn()} />)
     fireEvent.press(screen.getByTestId('booking-wizard-service-electrical'))
     fireEvent.press(screen.getByTestId('booking-wizard-service-next'))
     expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
     expect(mockConfirmRemoteSearch).not.toHaveBeenCalled()
   })
 
-  it('reaches the summary without auto-confirming the worker search', async () => {
-    render(<BookingWizard onOpenHistory={jest.fn()} />)
-    await driveToSummary()
+  it('hands structured intake to Kael chat without creating a remote job', () => {
+    const onOpenKael = jest.fn()
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+    submitDescribe(onOpenKael)
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      addressLabel: 'Quận 1, TP.HCM',
+      districtLabel: 'Quận 1',
+      mediaCount: 0,
+      message: 'Đèn phòng khách bị chập, có mùi khét nhẹ',
+      problemChips: [],
+      serviceType: 'electrical',
+      source: 'booking',
+    }))
+    expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
     expect(mockConfirmRemoteSearch).not.toHaveBeenCalled()
   })
 
-  it('confirms the worker search only on an explicit confirm press', async () => {
-    render(<BookingWizard onOpenHistory={jest.fn()} />)
-    await driveToSummary()
-    fireEvent.press(screen.getByTestId('booking-wizard-confirm-search'))
-    await screen.findByTestId('booking-wizard-step-done')
-    expect(mockConfirmRemoteSearch).toHaveBeenCalledTimes(1)
+  it('uses the service route as a direct describe handoff instead of making the user reselect', () => {
+    mockRouteParams = { serviceType: 'plumbing' }
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={jest.fn()} />)
+    expect(screen.getByTestId('booking-wizard-step-describe')).toBeTruthy()
+    expect(screen.queryByTestId('booking-wizard-step-service')).toBeNull()
+  })
+
+  it('keeps activity action out of the pre-analysis handoff path', () => {
+    const onOpenHistory = jest.fn()
+    const onOpenKael = jest.fn()
+    render(<BookingWizard onOpenHistory={onOpenHistory} onOpenKael={onOpenKael} />)
+    submitDescribe(onOpenKael)
+    expect(onOpenHistory).not.toHaveBeenCalled()
+  })
+
+  it('does not expose the old confirm-search CTA in the autonomous path', () => {
+    const onOpenKael = jest.fn()
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+    submitDescribe(onOpenKael)
+    expect(screen.queryByTestId('booking-wizard-confirm-search')).toBeNull()
+    expect(mockConfirmRemoteSearch).not.toHaveBeenCalled()
   })
 })

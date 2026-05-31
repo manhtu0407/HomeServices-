@@ -1,22 +1,23 @@
 import { type ServiceType } from '@home-services/shared'
 import { type KaelChatResponse } from '@/lib/api-types'
+import { type PendingKaelChatDraft } from './pending-intake'
 
 export type KaelChatState = {
   selectedService: ServiceType | null
   session: KaelChatResponse | null
+  pendingIntake: PendingKaelChatDraft | null
   draft: string
   addressLabel: string
   loading: boolean
   sending: boolean
-  confirming: boolean
-  confirmArmed: boolean
+  orchestrating: boolean
   error: string | null
-  confirmedMessage: string | null
+  orchestrationMessage: string | null
 }
 
 export type KaelChatAction =
   | { type: 'syncRouteService'; service: ServiceType | null; routeSessionId?: string }
-  | { type: 'applyPendingDraft'; service: ServiceType | null; message: string }
+  | { type: 'applyPendingDraft'; intake: PendingKaelChatDraft }
   | { type: 'loadSessionStarted' }
   | { type: 'loadSessionSucceeded'; session: KaelChatResponse }
   | { type: 'loadSessionFailed'; error: string }
@@ -27,23 +28,22 @@ export type KaelChatAction =
   | { type: 'sendStarted' }
   | { type: 'sendSucceeded'; session: KaelChatResponse }
   | { type: 'sendFailed'; error: string }
-  | { type: 'confirmArmed' }
-  | { type: 'confirmStarted' }
-  | { type: 'confirmSucceeded'; message: string; jobId: string }
-  | { type: 'confirmFailed'; error: string }
+  | { type: 'orchestrationStarted' }
+  | { type: 'orchestrationSucceeded'; message: string; jobId: string }
+  | { type: 'orchestrationFailed'; error: string }
 
 export function createInitialKaelChatState(routeService: ServiceType | null): KaelChatState {
   return {
     selectedService: routeService,
     session: null,
+    pendingIntake: null,
     draft: '',
     addressLabel: '',
     loading: false,
     sending: false,
-    confirming: false,
-    confirmArmed: false,
+    orchestrating: false,
     error: null,
-    confirmedMessage: null,
+    orchestrationMessage: null,
   }
 }
 
@@ -56,8 +56,7 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
           ...state,
           selectedService: action.service,
           session: null,
-          confirmArmed: false,
-          confirmedMessage: null,
+          orchestrationMessage: null,
           error: null,
         }
       }
@@ -65,8 +64,11 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
     case 'applyPendingDraft':
       return {
         ...state,
-        selectedService: action.service ?? state.selectedService,
-        draft: action.message,
+        selectedService: action.intake.serviceType ?? state.selectedService,
+        pendingIntake: action.intake,
+        draft: '',
+        addressLabel: action.intake.addressLabel ?? state.addressLabel,
+        error: null,
       }
     case 'loadSessionStarted':
       return { ...state, loading: true, error: null }
@@ -101,8 +103,7 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
         ...state,
         sending: true,
         error: null,
-        confirmArmed: false,
-        confirmedMessage: null,
+        orchestrationMessage: null,
       }
     case 'sendSucceeded':
       return {
@@ -114,15 +115,13 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
       }
     case 'sendFailed':
       return { ...state, sending: false, error: action.error }
-    case 'confirmArmed':
-      return { ...state, confirmArmed: true, error: null }
-    case 'confirmStarted':
-      return { ...state, confirming: true, error: null }
-    case 'confirmSucceeded':
+    case 'orchestrationStarted':
+      return { ...state, orchestrating: true, error: null }
+    case 'orchestrationSucceeded':
       return {
         ...state,
-        confirming: false,
-        confirmedMessage: action.message,
+        orchestrating: false,
+        orchestrationMessage: action.message,
         session: state.session
           ? {
               ...state.session,
@@ -135,8 +134,8 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
             }
           : state.session,
       }
-    case 'confirmFailed':
-      return { ...state, confirming: false, error: action.error }
+    case 'orchestrationFailed':
+      return { ...state, orchestrating: false, error: action.error }
     default:
       return state
   }

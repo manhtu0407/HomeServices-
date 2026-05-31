@@ -27,7 +27,7 @@ export const JOB_STATUS_TO_WORKFLOW_PHASE = Object.freeze({
   draft: 'intake_started',
   analyzing: 'kael_estimating',
   estimate_ready: 'kael_explaining',
-  awaiting_customer_confirm: 'ticket_review',
+  awaiting_customer_confirm: 'matching',
   broadcasting: 'matching',
   worker_matched: 'worker_matched',
   worker_on_way: 'worker_on_way',

@@ -223,7 +223,7 @@ export function normalizeDistrict(input: string | null | undefined): DistrictSlu
   // Keep numbered district parsing aligned with Edge domain.ts: "Quan 1",
   // "quan 1", "Q.1", and "q 1" all normalize to canonical slugs.
   const normalized = inputStripped
-  const normalizedNumMatch = normalized.match(/^(?:quan|q)[\s.]*(\d+)$/i)
+  const normalizedNumMatch = normalized.match(/^(?:quan|q|district|dist)[\s.]*(\d+)$/i)
   if (normalizedNumMatch) {
     const districtNumber = normalizedNumMatch[1]
     if (districtNumber === '2' || districtNumber === '9') return 'thu_duc'
@@ -235,7 +235,7 @@ export function normalizeDistrict(input: string | null | undefined): DistrictSlu
 
   // 4. Numbered district: "quận 1", "Q.1", "q 1", "quan 1"
   // Match leading "qu(ận|an|.)?" then digits.
-  const numMatch = lower.match(/^(?:qu[aâă]n|q)[\s\.]*(\d+)$/i)
+  const numMatch = lower.match(/^(?:qu[aâă]n|q|district|dist)[\s\.]*(\d+)$/i)
   if (numMatch) {
     const districtNumber = numMatch[1]
     if (districtNumber === '2' || districtNumber === '9') return 'thu_duc'

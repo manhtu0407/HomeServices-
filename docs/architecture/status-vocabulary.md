@@ -64,26 +64,29 @@ Customer/worker mobile surfaces should read this view model through
 workflow visibility from ad hoc data existence checks.
 
 Edge transition ownership lives in `workflow-orchestrator.ts`; `ai_estimate_ready`
-and `ai_explanation_ready` are explicit Kael-owned events, while mobile/customer
-actions only request allowed backend transitions.
+and `ai_explanation_ready` are AI artifact events, while `kael_started_matching`
+and the other `kael_*` autonomy events are validated server-side workflow
+decisions. Mobile/customer actions only submit input, override, appeal, or
+request allowed backend transitions.
 
 Non-transition workflow commands such as cancellation requests and media attach
 are tracked separately as `WORKFLOW_COMMAND_EVENTS`; they may validate whether an
 action is allowed in the current phase without directly changing `jobs.status`.
 
-## Kael chat confirmation adapter boundary
+## Kael chat autonomy adapter boundary
 
 `confirm_kael_chat_atomic` is an intentional adapter boundary for the Kael-first
-intake path. It creates the initial `jobs` row from a confirmed Kael chat session
-and returns `awaiting_customer_confirm`; it is not a general workflow
-orchestrator replacement and must not be used for later phase skips. After the
-job exists, subsequent workflow-sensitive actions should pass through
+intake path. It creates the initial `jobs` row from a Kael chat session and may
+return legacy `awaiting_customer_confirm` compatibility, but UI must label that
+state as Kael orchestration rather than a customer gate. It is not a general
+workflow orchestrator replacement and must not be used for later phase skips.
+After the job exists, subsequent workflow-sensitive actions should pass through
 `workflow-orchestrator.ts` events/commands or the legacy lifecycle validator
 until fully migrated.
 Duplicate `ALREADY_CONFIRMED` retries return the current job state when the job
 already moved past ticket review. If the previous request stopped after job
-creation and the job is still `awaiting_customer_confirm`, the retry may complete
-the normal `confirmSearch` transition once; it must not create a duplicate
+creation and the job is still legacy `awaiting_customer_confirm`, the retry may
+complete one idempotent matching transition; it must not create a duplicate
 broadcast or log a second transition after `broadcasting`.
 
 ## Payment skip (Phase 5.5)

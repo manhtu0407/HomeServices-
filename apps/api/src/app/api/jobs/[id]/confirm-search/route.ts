@@ -9,11 +9,11 @@ import { normalizeServiceAreaDistrict, type JobStatus } from '@home-services/sha
 type RouteParams = { params: Promise<{ id: string }> }
 
 /**
- * POST /api/jobs/[id]/confirm-search — A7
+ * POST /api/jobs/[id]/confirm-search — legacy/manual recovery
  *
- * Customer confirms booking search. Transitions job to 'broadcasting' and
- * creates broadcast rows for top eligible workers. Job stays 'broadcasting'
- * until a worker accepts (B3) — no auto-match.
+ * Manual recovery route for older/reference clients. The mobile production
+ * path lets Kael own the default estimate-to-matching transition through a
+ * validated autonomy decision.
  */
 export async function POST(request: Request, { params }: RouteParams) {
   const auth = await authenticateRequest(request, ['customer'])

@@ -190,7 +190,7 @@ export function buildWorkerBriefOutput(input: {
       ],
       guidance: isGuidance
         ? [
-          "Kiểm tra đúng phạm vi đã được khách xác nhận.",
+          "Kiểm tra đúng phạm vi Kael đã chốt và khách có thể xem/khiếu nại.",
           "Nếu phát sinh thêm, gửi scope-change kèm lý do và ảnh trước khi làm.",
         ]
         : [
@@ -198,7 +198,7 @@ export function buildWorkerBriefOutput(input: {
           "Địa chỉ đầy đủ chỉ hiển thị sau khi nhận yêu cầu.",
         ],
       safety: [
-        "Không bắt đầu phần phát sinh khi khách chưa duyệt.",
+        "Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.",
       ],
     },
   };
@@ -243,16 +243,16 @@ export function buildScopeChangeOutputs(input: {
     challenge_required: challengeRequired,
     challenge_reason: challengeReasons.length > 0
       ? challengeReasons.join(", ")
-      : "scope_change_requires_customer_confirmation",
+      : "scope_change_requires_kael_decision",
     requested_evidence: challengeRequired
       ? [
         "Ảnh cận cảnh phần phát sinh",
         "Giải thích phần khác so với phạm vi ban đầu",
       ]
-      : ["Giữ mô tả rõ ràng để khách dễ quyết định"],
+      : ["Giữ mô tả rõ ràng để Kael quyết định và khách dễ kiểm tra"],
     worker_message: challengeRequired
-      ? "Kael cần thêm bằng chứng trước khi gửi khách duyệt."
-      : "Kael đã ghi nhận phạm vi phát sinh để khách quyết định.",
+      ? "Kael cần thêm bằng chứng trước khi ra quyết định phạm vi."
+      : "Kael đã ghi nhận phạm vi phát sinh và đang quyết định theo policy.",
   };
   const newPriceMin = Math.max(1, Math.round(input.newPriceMin));
   const newPriceMax = Math.max(newPriceMin, Math.round(input.newPriceMax));
@@ -270,8 +270,8 @@ export function buildScopeChangeOutputs(input: {
     kael_assessment: margin.assessment,
     decision_required: true as const,
     advisory: margin.assessment === "reasonable"
-      ? "Vui lòng duyệt hoặc từ chối trước khi thợ tiếp tục phần phát sinh."
-      : "Mức phát sinh cần được xem kỹ trước khi quyết định.",
+      ? "Kael đã tính lại theo phạm vi thợ báo cáo. Khách có thể đồng ý hoặc khiếu nại nếu bằng chứng chưa đúng."
+      : "Mức phát sinh cần được Kael xem kỹ cùng bằng chứng trước khi ra quyết định.",
     disclaimer: PRICE_DISCLAIMER,
   };
   return {

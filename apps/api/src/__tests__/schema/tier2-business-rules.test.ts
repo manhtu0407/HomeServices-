@@ -33,7 +33,7 @@ describe('Job lifecycle matches STRUCTURES.md state machine', () => {
     expect(Constants.public.Enums.job_status).toEqual([...WORKFLOW_STATES])
   })
 
-  it('contains explicit customer confirmation and scope-change gates', () => {
+  it('keeps legacy compatibility statuses while Kael owns the default gates', () => {
     expect(Constants.public.Enums.job_status).toContain('awaiting_customer_confirm')
     expect(Constants.public.Enums.job_status).toContain('scope_change_pending')
     expect(Constants.public.Enums.job_status).toContain('confirmed_by_customer')
@@ -41,7 +41,7 @@ describe('Job lifecycle matches STRUCTURES.md state machine', () => {
 })
 
 describe('Scope change is a dedicated state machine', () => {
-  it('requires customer decision states', () => {
+  it('keeps legacy customer-decision enum values for appeal/recovery compatibility', () => {
     expect(Constants.public.Enums.scope_change_status).toEqual([
       'requested_by_worker',
       'reviewing_by_kael',

@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  buildKaelAutonomyDecision,
   buildKaelMissingInfoArtifactProposal,
+  kaelAutonomyDecisionSchema,
   kaelArtifactProposalSchema,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
 
@@ -24,6 +26,32 @@ describe('Kael artifact proposal contract', () => {
     expect(result.may_transition).toBe(false)
   })
 
+  it('accepts lifecycle artifact proposals without giving them transition authority', () => {
+    const lifecycleTypes = [
+      'worker_brief',
+      'cancellation_review',
+      'completion_review',
+      'dispute_decision',
+      'payment_decision',
+    ] as const
+
+    for (const artifact_type of lifecycleTypes) {
+      const result = kaelArtifactProposalSchema.parse({
+        artifact_type,
+        visibility: artifact_type === 'worker_brief' ? 'worker_visible' : 'internal',
+        confidence: 0.74,
+        missing_fields: [],
+        may_transition: false,
+        ticket_patch: {
+          summary: `${artifact_type} draft`,
+        },
+      })
+
+      expect(result.artifact_type).toBe(artifact_type)
+      expect(result.may_transition).toBe(false)
+    }
+  })
+
   it('rejects AI output that attempts to mutate workflow phase directly', () => {
     const result = kaelArtifactProposalSchema.safeParse({
       artifact_type: 'estimate',
@@ -31,6 +59,45 @@ describe('Kael artifact proposal contract', () => {
       confidence: 0.9,
       missing_fields: [],
       may_transition: true,
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts a separate server-side Kael autonomy decision for workflow transitions', () => {
+    const decision = buildKaelAutonomyDecision({
+      action: 'start_matching',
+      policyId: 'kael.autonomy.v2.estimate_to_matching',
+      evidence: [
+        {
+          kind: 'artifact',
+          reference_id: 'estimate-card-1',
+          summary: 'Estimate, service scope, and HCMC district were validated server-side.',
+        },
+      ],
+      confidence: 0.91,
+      resultingEvent: 'kael_started_matching',
+      reversible: true,
+      appealable: true,
+    })
+
+    expect(kaelAutonomyDecisionSchema.parse(decision)).toMatchObject({
+      actor: 'kael_system',
+      action: 'start_matching',
+      resulting_event: 'kael_started_matching',
+    })
+  })
+
+  it('rejects Kael autonomy decisions without audit evidence', () => {
+    const result = kaelAutonomyDecisionSchema.safeParse({
+      actor: 'kael_system',
+      action: 'start_matching',
+      policy_id: 'kael.autonomy.v2.estimate_to_matching',
+      evidence: [],
+      confidence: 0.8,
+      reversible: true,
+      appealable: true,
+      resulting_event: 'kael_started_matching',
     })
 
     expect(result.success).toBe(false)

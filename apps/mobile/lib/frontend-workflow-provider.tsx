@@ -5,9 +5,11 @@ import {
   LOCAL_DEAL_ID,
   createInitialLocalWorkflowState,
   extractKnownDistrictLabel,
+  hasSpecificWorkerRouteAddress,
   localWorkflowReducer,
   selectLocalWorkflow,
   toLocalDealStatus,
+  type CustomerCancellationRequestInput,
   type CustomerScopeDecisionInput,
   type JobCreateInput,
   type JobStatus,
@@ -161,7 +163,7 @@ const initialNotificationState: NotificationState = {
   notifications: [],
   unreadCount: 0,
 }
-const REQUIRED_PRICE_DISCLAIMER = 'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
+const REQUIRED_PRICE_DISCLAIMER = 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
 
 function notificationStateReducer(state: NotificationState, action: NotificationStateAction): NotificationState {
   switch (action.type) {
@@ -196,7 +198,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const [notificationState, setNotificationState] = useReducer(notificationStateReducer, initialNotificationState)
   const { notifications, unreadCount: notificationUnreadCount } = notificationState
   const notificationsRef = useRef<NotificationListResponse['notifications']>([])
-  const locallyReadNotificationIdsRef = useRef(new Set<string>())
+  const locallyReadNotificationIdsRef = useRef<Set<string> | null>(null)
+  if (locallyReadNotificationIdsRef.current === null) {
+    locallyReadNotificationIdsRef.current = new Set<string>()
+  }
   const pendingJobCreateClientRequestRef = useRef<PendingClientRequestId | null>(null)
 
   useEffect(() => {
@@ -320,9 +325,33 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       dispatch({ type: 'cancel_deal' })
       return true
     }
+    const existing = stateRef.current.deal
+    if (existing && !usesBeforeAcceptCancelEndpoint(existing.status)) {
+      const requested = await jobService.requestCustomerCancellation(jobId, defaultCustomerCancellationInput(language))
+      if (!requested.success) return setRemoteError(requested.error)
+      const cancelledByPolicy = requested.data.job_status === 'cancelled'
+      dispatch({
+        type: 'hydrate_remote_job',
+        job: {
+          ...dealToSnapshot(existing),
+          backendStatus: requested.data.job_status,
+          status: toLocalDealStatus(requested.data.job_status),
+          broadcast: existing.broadcast
+            ? {
+                ...existing.broadcast,
+                status: cancelledByPolicy ? 'cancelled' : existing.broadcast.status,
+                fullAddressVisible: cancelledByPolicy ? false : existing.broadcast.fullAddressVisible,
+                fullAddressLabel: cancelledByPolicy ? null : existing.broadcast.fullAddressLabel,
+                secondsRemaining: cancelledByPolicy ? 0 : existing.broadcast.secondsRemaining,
+              }
+            : null,
+        },
+      })
+      await refreshCurrentJob()
+      return true
+    }
     const cancelled = await jobService.cancelJob(jobId)
     if (!cancelled.success) return setRemoteError(cancelled.error)
-    const existing = stateRef.current.deal
     if (existing) {
       dispatch({
         type: 'hydrate_remote_job',
@@ -337,7 +366,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       })
     }
     return true
-  }, [setRemoteError])
+  }, [language, refreshCurrentJob, setRemoteError])
 
   const workerRefresh = useCallback(async () => {
     if (role !== 'worker' && role !== 'admin') return true
@@ -409,7 +438,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
     const existing = stateRef.current.deal
     if (existing?.broadcast) {
-      const fullAddressLabel = formatFullAddress(accepted.data.full_address)
+      const fullAddressLabel = formatReleasedFullAddress(accepted.data.full_address)
       dispatch({
         type: 'hydrate_remote_job',
         workerGate: 'remote_backend',
@@ -421,8 +450,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
           broadcast: {
             ...existing.broadcast,
             status: 'accepted',
-            fullAddressVisible: true,
-            fullAddressLabel,
+            fullAddressVisible: Boolean(fullAddressLabel),
+            fullAddressLabel: fullAddressLabel || null,
           },
         },
       })
@@ -468,9 +497,33 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (!jobId) return setRemoteError('Không có yêu cầu để hủy')
     const result = await workerService.requestWorkerCancellation(jobId, input)
     if (!result.success) return setRemoteError(result.error)
+    if (result.data.status === 'approved') {
+      const existing = stateRef.current.deal
+      if (existing) {
+        dispatch({
+          type: 'hydrate_remote_job',
+          job: {
+            ...dealToSnapshot(existing),
+            backendStatus: result.data.job_status,
+            status: toLocalDealStatus(result.data.job_status),
+            broadcast: existing.broadcast
+              ? {
+                ...existing.broadcast,
+                status: 'cancelled',
+                fullAddressVisible: false,
+                fullAddressLabel: null,
+                secondsRemaining: 0,
+              }
+              : null,
+          },
+        })
+      }
+      await workerRefresh()
+      return true
+    }
     await refreshCurrentJob()
     return true
-  }, [refreshCurrentJob, setRemoteError])
+  }, [refreshCurrentJob, setRemoteError, workerRefresh])
 
   const workerSubmitRegistration = useCallback(async (input: WorkerRegisterInput) => {
     const result = await workerService.register(input)
@@ -530,9 +583,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     const shouldDecrementUnread = Boolean(
       currentNotification &&
       currentNotification.status !== 'read' &&
-      !locallyReadNotificationIdsRef.current.has(notificationId),
+      !locallyReadNotificationIdsRef.current!.has(notificationId),
     )
-    locallyReadNotificationIdsRef.current.add(notificationId)
+    locallyReadNotificationIdsRef.current!.add(notificationId)
     notificationsRef.current = markNotificationListRead(notificationsRef.current, notificationId, result.data.read_at)
     setNotificationState({
       type: 'mark_read',
@@ -695,6 +748,24 @@ function getRemoteJobId(state: LocalWorkflowState) {
   return id
 }
 
+function usesBeforeAcceptCancelEndpoint(status: JobStatus) {
+  return status === 'draft' ||
+    status === 'analyzing' ||
+    status === 'estimate_ready' ||
+    status === 'awaiting_customer_confirm' ||
+    status === 'broadcasting'
+}
+
+function defaultCustomerCancellationInput(language: AppLanguage): CustomerCancellationRequestInput {
+  return {
+    reason_code: 'changed_mind',
+    reason_note: language === 'en'
+      ? 'Customer requested cancellation from the mobile workflow.'
+      : 'Khách yêu cầu hủy từ ứng dụng.',
+    requested_at: new Date().toISOString(),
+  }
+}
+
 function jobCreateClientRequestFingerprint(
   draft: LocalDealDraft,
   districtLabel: string,
@@ -734,6 +805,7 @@ function isStaleBroadcastError(code: string) {
 }
 
 function createJobResponseToSnapshot(data: CreateJobResponse, draft: LocalDealDraft): LocalRemoteJobSnapshot {
+  const estimate = estimateFromCreateResponse(data)
   return {
     id: data.job_id,
     backendStatus: data.status,
@@ -744,10 +816,25 @@ function createJobResponseToSnapshot(data: CreateJobResponse, draft: LocalDealDr
     addressLabel: draft.addressLabel,
     districtLabel: draft.districtLabel || draft.addressLabel,
     mediaCount: draft.mediaCount,
-    estimate: estimateFromCreateResponse(data),
-    broadcast: null,
+    estimate,
+    broadcast: data.status === 'broadcasting'
+      ? {
+          status: data.broadcast_sent === false ? 'expired' : 'sent',
+          jobId: data.job_id,
+          serviceType: data.estimate.service_type,
+          problemSummary: estimate.problemLabel,
+          generalArea: draft.districtLabel || 'Khu vực TP.HCM',
+          prebrief: [
+            estimate.problemLabel,
+            data.message ?? 'Kael đang gửi yêu cầu đến thợ phù hợp.',
+          ],
+          fullAddressVisible: false,
+          fullAddressLabel: null,
+          secondsRemaining: data.broadcast_sent === false ? 0 : null,
+        }
+      : null,
     scopeChange: null,
-    finalPrice: null,
+    finalPrice: data.status === 'broadcasting' ? data.estimate.price_max : null,
   }
 }
 
@@ -779,16 +866,19 @@ function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
   const job = data.job
   const serviceType = job.service_type
   const districtLabel = districtLabelFromValue(job.address_district)
-  const addressLabel = [job.address_building, job.address_floor, job.address_unit, districtLabel]
-    .filter(Boolean)
-    .join(', ')
+  const addressLabel = formatStoredJobAddress({
+    building: job.address_building,
+    floor: job.address_floor,
+    unit: job.address_unit,
+    district: job.address_district,
+  })
   const estimate = job.kael_price_min && job.kael_price_max
     ? {
         problemLabel: job.kael_problem_identified ?? job.problem_chips[0] ?? 'Yêu cầu sửa chữa',
         complexity: job.kael_complexity ?? 'unknown',
         priceRangeLabel: formatPriceRange(job.kael_price_min, job.kael_price_max),
         confidenceLabel: 'Kael ước tính',
-        advisory: job.kael_advisory ?? 'Giá thực tế do thợ xác nhận trước khi bắt đầu.',
+        advisory: job.kael_advisory ?? 'Kael giữ giá theo policy và cập nhật khi có bằng chứng phạm vi mới.',
         disclaimer: REQUIRED_PRICE_DISCLAIMER,
         hasVndPrice: true,
       } satisfies LocalDealEstimate
@@ -800,6 +890,7 @@ function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
     districtLabel,
     addressLabel,
     data.broadcast_state,
+    hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
   )
 
   return {
@@ -835,9 +926,12 @@ function workerBroadcastToSnapshot(broadcast: WorkerBroadcastsResponse['broadcas
 
 function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalRemoteJobSnapshot {
   const districtLabel = districtLabelFromValue(job.district)
-  const addressLabel = [job.address_building, job.address_floor, job.address_unit, districtLabel]
-    .filter(Boolean)
-    .join(', ')
+  const addressLabel = formatStoredJobAddress({
+    building: job.address_building,
+    floor: job.address_floor,
+    unit: job.address_unit,
+    district: job.district,
+  })
   return {
     id: job.id,
     backendStatus: job.status,
@@ -848,7 +942,15 @@ function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalR
     addressLabel: addressLabel || districtLabel,
     districtLabel,
     estimate: null,
-    broadcast: broadcastFromJobStatus(job.status, job.service_type, job.problem_summary ?? 'Yêu cầu sửa chữa', districtLabel, addressLabel || districtLabel),
+    broadcast: broadcastFromJobStatus(
+      job.status,
+      job.service_type,
+      job.problem_summary ?? 'Yêu cầu sửa chữa',
+      districtLabel,
+      addressLabel || districtLabel,
+      undefined,
+      hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
+    ),
     scopeChange: null,
     finalPrice: job.final_price,
   }
@@ -894,7 +996,7 @@ function estimateFromCreateResponse(data: CreateJobResponse): LocalDealEstimate 
     complexity: data.estimate.complexity,
     priceRangeLabel: formatPriceRange(data.estimate.price_min, data.estimate.price_max),
     confidenceLabel: `${Math.round(data.estimate.confidence * 100)}%`,
-    advisory: data.estimate.advisory ?? 'Giá thực tế do thợ xác nhận trước khi bắt đầu.',
+    advisory: data.estimate.advisory ?? 'Kael giữ giá theo policy và cập nhật khi có bằng chứng phạm vi mới.',
     disclaimer: REQUIRED_PRICE_DISCLAIMER,
     hasVndPrice: true,
     fallbackUsed: data.fallback_used,
@@ -908,10 +1010,12 @@ function broadcastFromJobStatus(
   districtLabel: string,
   addressLabel: string,
   broadcastState: JobDetailResponse['broadcast_state'] = null,
+  releasedFullAddressLabel: string | null = hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
 ) {
   if (status === 'awaiting_customer_confirm' || status === 'cancelled' || status === 'reviewed') return null
   const accepted = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'paid', 'payment_pending'].includes(status)
   const expiredBroadcast = status === 'broadcasting' && broadcastState?.active_count === 0
+  const canRevealFullAddress = accepted && Boolean(releasedFullAddressLabel)
   return {
     status: expiredBroadcast ? 'expired' as const : accepted ? 'accepted' as const : 'sent' as const,
     serviceType,
@@ -923,8 +1027,8 @@ function broadcastFromJobStatus(
         ? 'Chưa có thợ phản hồi.'
         : accepted ? 'Yêu cầu đã được nhận.' : 'Đang chờ thợ phản hồi.',
     ],
-    fullAddressVisible: accepted,
-    fullAddressLabel: accepted ? addressLabel : null,
+    fullAddressVisible: canRevealFullAddress,
+    fullAddressLabel: canRevealFullAddress ? releasedFullAddressLabel : null,
     secondsRemaining: expiredBroadcast ? 0 : status === 'broadcasting' ? broadcastState?.seconds_remaining ?? null : null,
   }
 }
@@ -935,7 +1039,32 @@ function districtLabelFromValue(value: string | null | undefined) {
 }
 
 function formatFullAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
-  return [address.building, address.floor, address.unit, districtLabelFromValue(address.district)].filter(Boolean).join(', ')
+  return formatStoredJobAddress(address)
+}
+
+function formatReleasedFullAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
+  const label = formatFullAddress(address)
+  const district = address.district ? districtLabelFromValue(address.district) : ''
+  return hasSpecificWorkerRouteAddress(label, district) ? label : ''
+}
+
+function formatStoredJobAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
+  const district = address.district ? districtLabelFromValue(address.district) : ''
+  const baseParts = [address.building, address.floor, address.unit]
+    .flatMap((part) => {
+      const trimmed = part?.trim()
+      return trimmed ? [trimmed] : []
+    })
+  const baseLabel = baseParts.join(', ')
+  const shouldAppendDistrict = Boolean(district && !addressLabelContainsDistrict(baseLabel, district))
+  return [...baseParts, ...(shouldAppendDistrict ? [district] : [])].join(', ')
+}
+
+function addressLabelContainsDistrict(addressLabel: string, districtLabel: string) {
+  if (!addressLabel || !districtLabel) return false
+  const addressDistrict = extractKnownDistrictLabel(addressLabel)
+  const expectedDistrict = extractKnownDistrictLabel(districtLabel) || districtLabel
+  return Boolean(addressDistrict && addressDistrict === expectedDistrict)
 }
 
 function sameWorkerProfile(left: WorkerProfileResponse | null, right: WorkerProfileResponse) {

@@ -4,7 +4,7 @@ import type { ComplexityLevel, ServiceType } from "../../../_shared/domain.ts";
 export type { ComplexityLevel, ServiceType };
 
 export const PRICE_DISCLAIMER =
-  "Đây là mức giá ước tính dựa trên thị trường HCMC. Giá cuối được thợ xác nhận trước khi làm.";
+  "Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.";
 
 export const UNSUPPORTED_SERVICE_MESSAGE =
   "Chúng tôi hiện chỉ hỗ trợ sửa điện, sửa nước và vệ sinh. Vui lòng quay lại khi chúng tôi mở rộng dịch vụ.";

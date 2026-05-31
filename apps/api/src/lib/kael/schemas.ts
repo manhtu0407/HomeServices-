@@ -54,7 +54,7 @@ export const workerPrebriefSchema = z.object({
 export type WorkerPrebrief = z.infer<typeof workerPrebriefSchema>
 
 export const PRICE_DISCLAIMER =
-  'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
+  'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
 
 export const UNSUPPORTED_SERVICE_MESSAGE =
   'Chúng tôi hiện chỉ hỗ trợ sửa điện, sửa nước và vệ sinh. Vui lòng quay lại khi chúng tôi mở rộng dịch vụ.'

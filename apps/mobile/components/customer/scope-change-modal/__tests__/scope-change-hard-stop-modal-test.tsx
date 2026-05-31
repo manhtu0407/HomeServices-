@@ -3,10 +3,10 @@ import type { LocalScopeChange } from '@home-services/shared'
 import { ScopeChangeHardStopModal } from '../scope-change-hard-stop-modal'
 
 // A11 scope-change hard stop is the highest-risk money surface: the worker is
-// blocked until the customer explicitly decides, and the price shown is
+// blocked until Kael has a policy-checked decision, and the price shown is
 // Kael-computed. These tests lock that contract — the customer must see the
-// before/after scope + estimate, and no approve/reject may fire without an
-// explicit press (no auto-advance through a money-impacting state).
+// before/after scope + estimate, and agreement/appeal actions fire only from an
+// explicit press.
 
 const tokens = {
   aqua: '#CFF8EF',
@@ -65,9 +65,9 @@ function setup(overrides: { scopeChange?: LocalScopeChange | null; visible?: boo
 }
 
 describe('ScopeChangeHardStopModal (A11 hard stop)', () => {
-  it('tells the customer the worker is paused awaiting their decision', () => {
+  it('tells the customer the worker is paused awaiting Kael decision', () => {
     setup()
-    expect(screen.getByText(/Thợ đang chờ quyết định của bạn/)).toBeOnTheScreen()
+    expect(screen.getByText(/Thợ đang chờ quyết định của Kael/)).toBeOnTheScreen()
   })
 
   it('shows the old vs new scope and old vs new Kael estimate', () => {
@@ -79,9 +79,9 @@ describe('ScopeChangeHardStopModal (A11 hard stop)', () => {
     expect(screen.getByText('450.000đ - 650.000đ')).toBeOnTheScreen()
   })
 
-  it('shows the market-price disclaimer (price honesty)', () => {
+  it('shows the Kael policy price disclaimer (price honesty)', () => {
     setup()
-    expect(screen.getByText(/ước tính dựa trên thị trường/)).toBeOnTheScreen()
+    expect(screen.getByText(/ước tính do Kael tính theo dữ liệu hiện có/)).toBeOnTheScreen()
   })
 
   it('does not auto-approve or auto-reject on mount', () => {
@@ -109,6 +109,6 @@ describe('ScopeChangeHardStopModal (A11 hard stop)', () => {
     // the specific computed range must be absent…
     expect(screen.queryByText('450.000đ - 650.000đ')).toBeNull()
     // …and the new-estimate slot falls back to a pending label instead of a fake number
-    expect(screen.getAllByText('Cần xác nhận').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Kael đang xét').length).toBeGreaterThan(0)
   })
 })

@@ -1,9 +1,9 @@
 /**
  * Full-flow integration test — simulates the complete customer journey:
  *
- * Customer tạo job → Kael phân tích + ước giá → Customer confirm search (A7)
+ * Customer tạo job → Kael phân tích + ước giá → legacy confirm-search recovery
  * → Worker matched → Worker cập nhật status (on_way → arrived → inspecting → repairing → completed)
- * → Customer confirm completion (A12) → Customer review
+ * → legacy confirm-completion recovery → Customer review
  *
  * Test này chứng minh toàn bộ API routes chain together đúng,
  * API contracts khớp nhau, và state machine transitions hợp lệ.
@@ -596,7 +596,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     expect(body.estimate.disclaimer).toContain('ước tính')
 
     // Rule #4: disclaimer luôn có
-    expect(body.estimate.disclaimer).toContain('thợ')
+    expect(body.estimate.disclaimer).toContain('Kael')
 
     console.log(`✓ Job created: ${body.job_id}`)
     console.log(`  Estimate: ${body.estimate.price_min.toLocaleString()}đ - ${body.estimate.price_max.toLocaleString()}đ`)
@@ -761,7 +761,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
 
     console.log(`Step 2 ✓ Job detail — status: ${detailBody.job.status}`)
 
-    // ── Step 3: Customer confirm search (A7 gate) ──
+    // ── Step 3: legacy confirm-search recovery route ──
     const searchRes = await confirmSearch(makeRequest('POST'), makeParams(jobId))
     const searchBody = await searchRes.json()
 
@@ -769,9 +769,9 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     expect(['broadcasting', 'worker_matched']).toContain(searchBody.status)
 
     if (searchBody.worker) {
-      console.log(`Step 3 ✓ A7 confirmed → Worker matched: ${searchBody.worker.full_name} (★${searchBody.worker.rating})`)
+      console.log(`Step 3 ✓ legacy recovery → Worker matched: ${searchBody.worker.full_name} (★${searchBody.worker.rating})`)
     } else {
-      console.log(`Step 3 ✓ A7 confirmed → Broadcasting (no worker found)`)
+      console.log(`Step 3 ✓ legacy recovery → Broadcasting (no worker found)`)
     }
 
     // ── Step 4: Worker updates status chain ──
@@ -809,7 +809,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
 
     console.log(`Step 5 ✓ Worker completed — Kael final price preserved`)
 
-    // ── Step 6: Customer confirm completion (A12 gate) ──
+    // ── Step 6: legacy confirm-completion recovery route ──
     currentMockRole = 'customer'
     currentMockUserId = 'customer-001'
 
@@ -820,7 +820,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     expect(confirmBody.status).toBe('confirmed_by_customer')
     expect(confirmBody.final_price).toBe(createBody.estimate.price_max)
 
-    console.log(`Step 6 ✓ A12 confirmed — no auto-pay (Bug #3 fix)`)
+    console.log(`Step 6 ✓ legacy completion recovery — no auto-pay (Bug #3 fix)`)
 
     // ── Step 7: Customer submits review ──
 
@@ -839,7 +839,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
     console.log(`\n══════ WORKFLOW COMPLETE ══════`)
     console.log(`  7/7 steps passed`)
     console.log(`  Job: ${jobId}`)
-    console.log(`  Flow: draft → analyzing → estimate → A7 → broadcasting → matched → on_way → arrived → inspecting → repairing → completed → A12 → confirmed → reviewed`)
+    console.log(`  Flow: draft → analyzing → estimate → legacy recovery → broadcasting → matched → on_way → arrived → inspecting → repairing → completed → legacy completion recovery → confirmed → reviewed`)
   })
 
   describe('State machine enforcement', () => {
@@ -861,7 +861,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       expect(res.status).toBe(409)
       expect(body.code).toBe('INVALID_STATUS')
 
-      console.log('✓ State machine blocks A7 confirm from wrong status')
+      console.log('✓ State machine blocks A7 matching start from wrong status')
     })
 
     it('Không thể confirm completion khi chưa completed_by_worker', async () => {
@@ -880,7 +880,7 @@ describe('Full Customer Journey — End-to-End Flow', () => {
       expect(res.status).toBe(409)
       expect(body.code).toBe('INVALID_STATUS')
 
-      console.log('✓ State machine blocks A12 confirm before worker completion')
+      console.log('✓ State machine blocks A12 completion review before worker completion')
     })
 
     it('Worker completed_by_worker preserves Kael final_price', async () => {

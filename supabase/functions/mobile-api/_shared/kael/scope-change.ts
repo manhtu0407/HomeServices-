@@ -191,19 +191,12 @@ function buildScopeChangeFallbackReview(
       : "reasonable";
   const recommendation: ScopeChangeReviewBody["recommendation"] =
     priceAssessment === "high_risk" ? "ask_worker" : "approve";
-  const riskNotes = priceAssessment === "reasonable"
-    ? ["Khách vẫn cần xác nhận giá mới trước khi thợ tiếp tục."]
-    : [
-      "Giá mới tăng so với ước tính ban đầu.",
-      "Nên yêu cầu thợ giải thích rõ phần phát sinh trước khi duyệt.",
-    ];
-  void riskNotes;
   return {
     version: "scope-change-review.2026-05-20.v1",
     recommendation,
     price_assessment: priceAssessment,
     problem_summary:
-      "Kael đã ghi nhận phạm vi thợ báo phát sinh tại hiện trường. Vui lòng xem mô tả, lý do và mức giá mới trước khi quyết định.",
+      "Kael đã ghi nhận phạm vi thợ báo phát sinh tại hiện trường và sẽ quyết định dựa trên mô tả, lý do, mức giá mới, cùng bằng chứng liên quan.",
     advisory: null,
     complexity_assessment: priceAssessment === "reasonable" ? "medium" : "large",
     confidence: priceAssessment === "reasonable" ? 0.55 : 0.35,

@@ -1,4 +1,5 @@
-import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image } from 'expo-image'
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { LocalScopeChange } from '@home-services/shared'
 import type { AppLanguage } from '@/lib/app-language'
 
@@ -30,45 +31,45 @@ type ScopeChangeHardStopModalProps = {
   visible: boolean
 }
 
-// Phase 2.0 (2026-05-23): Kael now owns final price authority. newEstimate
-// label clarifies the value is Kael-computed from worker's reported scope, not
-// worker-typed. Kael badge visualises the source.
+// Kael Autonomy v2: Kael owns final price authority and scope decisions. The
+// modal shows the computed decision surface while customer actions become
+// agreement/appeal inputs rather than the final authority.
 const copy = {
   vi: {
-    approve: 'Duyệt thay đổi',
+    approve: 'Đồng ý quyết định',
     currentEstimate: 'Ước tính ban đầu (Kael)',
     currentScope: 'Phạm vi ban đầu',
     explanation: 'Đánh giá của Kael',
     fallback: 'Cần kiểm tra trong ứng dụng trước khi quyết định.',
-    hardStop: 'Thợ đang chờ quyết định của bạn. Phần việc thay đổi chỉ được tiếp tục sau khi bạn duyệt.',
+    hardStop: 'Thợ đang chờ quyết định của Kael. Bạn có thể đồng ý hoặc khiếu nại nếu thông tin thực tế chưa đúng.',
     kaelBadge: 'Kael tự tính',
     kaelBadgeHint: 'Ước tính mới do Kael tính lại dựa trên phạm vi thợ báo cáo.',
     newEstimate: 'Ước tính mới (Kael)',
     newScope: 'Phạm vi mới',
-    pending: 'Cần xác nhận',
-    priceDisclaimer: 'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.',
+    pending: 'Kael đang xét',
+    priceDisclaimer: 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
     reason: 'Lý do từ thợ',
-    reject: 'Không duyệt',
+    reject: 'Khiếu nại',
     risk: 'Lưu ý',
-    title: 'Duyệt thay đổi phạm vi',
+    title: 'Kael xét đổi phạm vi',
   },
   en: {
-    approve: 'Approve change',
+    approve: 'Accept decision',
     currentEstimate: 'Original estimate (Kael)',
     currentScope: 'Original scope',
     explanation: 'Kael review',
     fallback: 'Review this in the app before deciding.',
-    hardStop: 'The worker is waiting for your decision. Changed work can continue only after you approve it.',
+    hardStop: 'The worker is waiting for Kael decision. You can accept it or appeal if the real-world information is wrong.',
     kaelBadge: 'Computed by Kael',
     kaelBadgeHint: 'The new estimate is recomputed by Kael based on the scope the worker reported.',
     newEstimate: 'New estimate (Kael)',
     newScope: 'New scope',
-    pending: 'Needs confirmation',
-    priceDisclaimer: 'This is a market-based estimate. The actual price will be confirmed by the worker before starting.',
+    pending: 'Kael reviewing',
+    priceDisclaimer: 'This is a Kael estimate from the current evidence. Kael may update it when new scope evidence is added.',
     reason: 'Worker reason',
-    reject: 'Do not approve',
+    reject: 'Appeal',
     risk: 'Notes',
-    title: 'Approve scope change',
+    title: 'Kael scope review',
   },
 } satisfies Record<AppLanguage, Record<string, string>>
 

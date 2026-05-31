@@ -7,9 +7,14 @@ export const kaelArtifactTypeSchema = z.enum([
   "ai_notes",
   "estimate",
   "provider_match",
+  "worker_brief",
   "booking",
   "scope_change",
+  "cancellation_review",
   "completion_evidence",
+  "completion_review",
+  "dispute_decision",
+  "payment_decision",
   "review",
 ]);
 
@@ -30,6 +35,45 @@ export const kaelArtifactEstimateSchema = z.object({
   message: "price_max must be >= price_min",
   path: ["price_max"],
 });
+
+export const kaelAutonomyActionSchema = z.enum([
+  "confirm_ticket",
+  "start_matching",
+  "process_cancellation",
+  "decide_scope_change",
+  "confirm_completion",
+  "decide_payment",
+  "decide_dispute",
+]);
+
+export const kaelAutonomyEventSchema = z.enum([
+  "kael_confirmed_ticket",
+  "kael_started_matching",
+  "kael_processed_cancellation",
+  "kael_decided_scope_change",
+  "kael_confirmed_completion",
+  "kael_decided_payment",
+  "kael_decided_dispute",
+]);
+
+export const kaelAutonomyEvidenceSchema = z.object({
+  kind: z.enum(["artifact", "job_event", "policy", "worker_evidence", "customer_input", "system_check"]),
+  reference_id: z.string().min(1).max(160),
+  summary: z.string().min(1).max(280).optional(),
+}).strict();
+
+export const kaelAutonomyDecisionSchema = z.object({
+  actor: z.literal("kael_system"),
+  action: kaelAutonomyActionSchema,
+  policy_id: z.string().min(3).max(120),
+  evidence: z.array(kaelAutonomyEvidenceSchema).min(1).max(12),
+  confidence: z.number().min(0).max(1),
+  reversible: z.boolean(),
+  appealable: z.boolean(),
+  resulting_event: kaelAutonomyEventSchema,
+}).strict();
+
+export type KaelAutonomyDecision = z.infer<typeof kaelAutonomyDecisionSchema>;
 
 const FORBIDDEN_WORKFLOW_KEYS = new Set([
   "status",
@@ -96,6 +140,27 @@ export const kaelArtifactProposalSchema = z.object({
 });
 
 export type KaelArtifactProposal = z.infer<typeof kaelArtifactProposalSchema>;
+
+export function buildKaelAutonomyDecision(input: {
+  action: z.infer<typeof kaelAutonomyActionSchema>;
+  policyId: string;
+  evidence: readonly z.infer<typeof kaelAutonomyEvidenceSchema>[];
+  confidence: number;
+  resultingEvent: z.infer<typeof kaelAutonomyEventSchema>;
+  reversible: boolean;
+  appealable: boolean;
+}): KaelAutonomyDecision {
+  return kaelAutonomyDecisionSchema.parse({
+    actor: "kael_system",
+    action: input.action,
+    policy_id: input.policyId,
+    evidence: [...input.evidence],
+    confidence: Math.max(0, Math.min(1, input.confidence)),
+    reversible: input.reversible,
+    appealable: input.appealable,
+    resulting_event: input.resultingEvent,
+  });
+}
 
 export function buildKaelMissingInfoArtifactProposal(input: {
   missingFields: readonly string[];

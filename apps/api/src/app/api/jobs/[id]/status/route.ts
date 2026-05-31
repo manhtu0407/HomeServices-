@@ -62,7 +62,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   if (job.status === 'scope_change_pending') {
-    return apiError('SCOPE_CHANGE_PENDING', 'Không thể cập nhật trạng thái khi đang chờ xác nhận thay đổi phạm vi', 409)
+    return apiError('SCOPE_CHANGE_PENDING', 'Không thể cập nhật trạng thái khi Kael đang xét thay đổi phạm vi', 409)
   }
 
   const transition = validateTransition(job.status as JobStatus, input.status)

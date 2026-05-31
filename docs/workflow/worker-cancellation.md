@@ -14,8 +14,10 @@ Worker accepts job
   -> Edge requestWorkerCancellation for explicit cancel
   -> request_worker_cancellation_atomic records taxonomy, fallback options,
      and abuse signals, then returns the job to broadcasting for replacement
-  -> Edge logs the event, notifies customer, writes worker memory red flag when
-     needed, and opens kael_admin_queue for review-only abuse handling
+  -> Edge validates/logs `KaelAutonomyDecision(action=process_cancellation,
+     resulting_event=kael_processed_cancellation)`, notifies customer, writes
+     worker memory red flag when needed, and opens kael_admin_queue for
+     review-only abuse handling
   -> no-show timer enqueue_worker_no_show_reviews opens admin review and
      fallback options without mutating money, status, or suspension state
 ```
@@ -38,7 +40,7 @@ Worker accepts job
 | Concern | B6 scope change | B6b cancellation |
 |---|---|---|
 | Trigger | Real scope differs from original estimate | Worker cannot finish, or no-show timer detects stale match |
-| Customer impact | Customer decides via A11 modal with Kael-computed price | Kael searches replacement; customer fallback options are wait 15 minutes, reschedule, or cancel no charge in Phase 0 |
+| Customer impact | Kael decides from scope evidence and policy; customer can add evidence, appeal, or cancel from A11 | Kael searches replacement; customer fallback options are wait 15 minutes, reschedule, or cancel no charge in Phase 0 |
 | Final price | Kael compute | Unchanged; job either reassigns or cancels |
 | Abuse handling | Price/risk review | Review-only red flag and `kael_admin_queue`; no autonomous suspension |
 

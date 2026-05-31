@@ -13,7 +13,7 @@ Use for UI work in the current Expo React Native app and in Next.js support/admi
 - Target surface: Expo React Native app, admin, prototype, or API support.
 - User flow step.
 - Copy requirements.
-- Confirmation requirements.
+- Decision/audit requirements.
 - Verification method.
 - `design.md` when the task touches visual design, layout, motion, mascot, design tokens, frontend styling, or prototype UI.
 
@@ -25,7 +25,7 @@ Use for UI work in the current Expo React Native app and in Next.js support/admi
 4. State skill adaptations from `design.md` before using generic design/frontend skills.
 5. Use Vietnamese for all user-facing text.
 6. Use terms from `STRUCTURES.md`.
-7. Preserve explicit confirmation for booking/payment/scope changes.
+7. Preserve audit, override, and appeal visibility for booking/payment/scope changes.
 8. Verify UI impact across related screens/components.
 9. For small UI tasks, use test-after or visual/manual verification.
 10. For React Native work, check mobile constraints and the Edge/mobile runtime boundary.
@@ -41,12 +41,12 @@ Customer flow:
 - A4 Kael clarification.
 - A5 Price estimate card.
 - A6 Time selection.
-- A7 Customer confirms booking search.
+- A7 Kael starts worker search.
 - A8 Searching for worker.
 - A9 Worker matched.
 - A10 Active job and chat.
-- A11 Scope change confirmation.
-- A12 Completion confirmation.
+- A11 Scope change decision.
+- A12 Completion/payment decision.
 - A13 Payment.
 - A14 Worker rating.
 
@@ -62,26 +62,27 @@ Worker flow:
 - B7 Complete job.
 - B8 Earnings.
 
-Critical confirmations:
+Critical decision surfaces:
 
-- A7 customer booking confirmation.
+- A7 Kael matching decision.
 - B2 worker accept.
-- A11 customer scope change confirmation.
+- A11 Kael scope change decision plus customer/worker appeal.
 - B5 worker completion signal.
-- A12 customer completion/payment confirmation.
+- A12 Kael completion/payment decision plus customer/worker appeal.
 
 ### Money-Impacting UI Rule
 
-Any booking, payment, cancellation, or scope change UI MUST include explicit user confirmation. The UI MUST NOT auto-advance through money-impacting states.
+Any booking, payment, cancellation, or scope change UI MUST show the Kael decision state, audit/appeal/override affordances, and honest capability limits. The UI MUST NOT directly mutate money-impacting state from raw AI output or client-side-only actions.
 
-Scope change A11 is a critical confirmation protocol:
+Scope change A11 is a critical decision protocol:
 
 - full-screen or equivalent hard-stop state,
 - old scope vs new scope,
 - old price reference vs new price reference,
 - clear reason,
-- continue or cancel,
-- worker blocked until customer decision.
+- Kael decision and evidence,
+- continue/cancel/appeal where policy allows,
+- worker blocked until Kael decision or override.
 
 B2 worker accept countdown MUST later be tested for expiry and auto-decline behavior when implemented.
 
@@ -129,7 +130,7 @@ Related UI risk:
 - English user-facing copy.
 - Generic SaaS/Bento/web design default instead of `design.md`.
 - Next.js becomes consumer web product.
-- Auto-confirming money-impacting actions.
+- Client-side auto-confirming money-impacting actions without validated Kael decision.
 - UI change verified only in one narrow state.
 
 ### Anti-Patterns
