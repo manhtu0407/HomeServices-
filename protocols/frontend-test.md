@@ -32,7 +32,7 @@ Run and report real output:
 - `pnpm --filter @home-services/mobile type-check`
 - `pnpm --filter @home-services/mobile test`  (jest-expo + RNTL; config `apps/mobile/jest.config.js`, setup `apps/mobile/jest.setup.ts`)
 
-The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`, wired in `.claude/settings.json`) re-runs these whenever `apps/mobile` code changed and blocks a false "done" on a red gate. Lint (`pnpm --filter @home-services/mobile lint`, eslint-config-expo) is available but is **not** in the gate yet — see Limitations.
+The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`, wired in `.claude/settings.json`) re-runs these whenever `apps/mobile` code or gate-relevant mobile config changed and blocks a false "done" on a red gate. Lint (`pnpm --filter @home-services/mobile lint:mobile`, eslint-config-expo) is available for manual debt work but is **not** in the root Turbo gate yet — see Limitations.
 
 ### G4 — UI/UX validation (RN reality)
 Verify on iOS and Android (simulator or device via `expo start`), not a browser:
@@ -79,6 +79,6 @@ Evidence (screenshots/logs):
 - Auto-advancing money-impacting steps in tests or UI.
 
 ## Limitations (current, honest)
-- Available now: static (`type-check`), component/unit (jest-expo + RNTL), and lint (`eslint` + eslint-config-expo).
-- ESLint runs but is NOT a gate yet: ~31 pre-existing errors + ~35 warnings (the app was never linted) must be cleaned first; only then add `lint` to the Stop hook.
+- Available now: static (`type-check`), component/unit (jest-expo + RNTL), and manual lint (`lint:mobile`, eslint-config-expo).
+- ESLint is intentionally NOT a root `turbo lint` gate yet: pre-existing mobile lint debt must be cleaned first; only then expose a package `lint` script and add it to the Stop hook.
 - Not set up: Maestro/Detox E2E and visual regression. Validate those dimensions manually and say so.

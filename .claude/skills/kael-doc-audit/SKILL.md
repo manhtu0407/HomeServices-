@@ -25,7 +25,7 @@ Locked docs (`CLAUDE.md`, `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md
 - **Drift**: file paths that no longer exist; `§N` cross-references that do not resolve; protocols referenced but missing.
 - **Scope**: any service beyond electrical / plumbing / cleaning; any money/booking/scope-change path missing explicit-confirmation language.
 - **Duplication**: lifecycle / runtime / scope blocks re-emerging verbatim outside their canonical home.
-- **Skill <-> protocol coherence**: every kael-* skill points to a real `protocols/` section and its output format still matches.
+- **Skill <-> protocol coherence**: every protocol-wrapper kael-* skill points to a real `protocols/` section and its output format still matches; standalone audit/context/design skills may point to `references/` or their own workflow.
 - **Context economy**: always-loaded files (CLAUDE.md, critical.md core) stay lean; protocol bodies do not creep back into the core.
 - **Lock integrity**: no locked doc changed without an approval trail in a change log.
 

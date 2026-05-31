@@ -329,13 +329,19 @@ export const workerRegisterSchema = z.object({
   // were `z.string().min(1).max(50)` — any 1..50 char string — which let
   // mobile/admin paths drift to label form ("Bình Thạnh") instead of the
   // slug form ("binh_thanh") that the matching layer compares exactly. We
-  // reject inputs that don't normalize to a known district; the Edge
-  // service layer canonicalises before INSERT via `normalizeDistrict`.
+  // reject unknown inputs while preserving explicit hcmc_all because broad
+  // city-wide coverage is supported by the matching path.
   districts: z
     .array(
       z.string().min(1).max(50).refine(
-        (value) => normalizeDistrict(value) !== "hcmc_all",
-        "districts[] must be a known HCMC district slug (e.g. binh_thanh, q1, thu_duc)",
+        (value) => {
+          const canonical = normalizeDistrict(value);
+          const trimmed = value.trim().toLowerCase();
+          return canonical !== "hcmc_all" ||
+            trimmed === "hcmc_all" ||
+            trimmed === HCMC_DISTRICTS.hcmc_all.toLowerCase();
+        },
+        "districts[] must be a known HCMC district slug (e.g. binh_thanh, q1, thu_duc, hcmc_all)",
       ),
     )
     .min(1)

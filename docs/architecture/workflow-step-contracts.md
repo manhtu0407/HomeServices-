@@ -50,7 +50,7 @@
 | Backend dependency | `jobs.kael_price_min/max/advisory` via `dealToSnapshot` |
 | State transition | Wizard `goto time` on continue |
 | Validation | Always shows price disclaimer (Rule #4) |
-| Failure modes | If `estimate` is null, shows fallback dash values |
+| Failure modes | If `estimate` is null, show a localized loading/unavailable state; never show dash values, zero price, or fake complexity |
 
 ## A6 — Time selection
 

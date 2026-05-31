@@ -1091,6 +1091,71 @@ describe('mobile-api Edge runtime helpers', () => {
     })
   })
 
+  it('returns JOB_PENDING instead of a fake estimate for duplicate in-flight job creates', async () => {
+    const client = makeSequenceClient([
+      { data: { id: 'job-pending' }, error: null },
+      {
+        data: {
+          id: 'job-pending',
+          status: 'analyzing',
+          service_type: 'plumbing',
+          kael_problem_identified: null,
+          kael_complexity: null,
+          kael_price_min: null,
+          kael_price_max: null,
+          kael_advisory: null,
+          kael_estimate_card_v3: null,
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).createJob(ctx, {
+      service_type: 'plumbing',
+      description: 'Ong nuoc ro ri duoi lavabo can tho toi kiem tra',
+      problem_chips: ['pipe_leak'],
+      photo_urls: [],
+      address_district: 'q7',
+      client_request_id: '00000000-0000-4000-8000-000000000001',
+    })).rejects.toMatchObject({ code: 'JOB_PENDING', status: 409 })
+  })
+
+  it('returns SESSION_PENDING instead of a half-created empty Kael chat session', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'kael-session-pending',
+          job_id: null,
+          status: 'active',
+          estimate_ready_at: null,
+          total_turns: 0,
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).createKaelChat(ctx, {
+      service_type: 'electrical',
+      message: 'Den phong tam chap chon can kiem tra',
+      problem_chips: [],
+      photo_urls: [],
+      client_request_id: '00000000-0000-4000-8000-000000000002',
+    })).rejects.toMatchObject({ code: 'SESSION_PENDING', status: 409 })
+    expect(client.calls.map((call) => call.table)).toEqual(['kael_chat_sessions'])
+  })
+
   it('requireJobAccess hides cross-customer jobs with 404', async () => {
     const client = makeSequenceClient([
       {

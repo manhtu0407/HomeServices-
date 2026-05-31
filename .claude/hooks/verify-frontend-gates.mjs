@@ -9,13 +9,13 @@
 // rule the harness enforces, not one the model can choose to skip.
 //
 // Safety rails (must never brick a session):
-//   - Honors `stop_hook_active`: if we already blocked once this chain, allow the
-//     stop (no infinite loop).
+//   - Re-runs even when `stop_hook_active` is true. That payload means a prior
+//     stop was blocked; it must not become a bypass for still-red gates.
 //   - Fails OPEN on infrastructure problems (no git / no pnpm / deps not
 //     installed): it blocks ONLY on a genuine gate failure, never on its own
 //     inability to run.
-//   - Acts only when mobile code actually changed; docs/chat/backend turns pass
-//     through untouched.
+//   - Acts only when mobile code or gate-relevant mobile config changed;
+//     docs/chat/backend turns pass through untouched.
 //
 // Verified by direct node execution (stop_hook_active / no-change / green /
 // red / pnpm-missing scenarios). Live firing inside the Claude Code runtime
@@ -37,6 +37,9 @@ function readStdin() {
   })
 }
 
+const MOBILE_GATE_PATH_PATTERN =
+  /^apps\/mobile\/(?:.*\.(?:ts|tsx|js|jsx|json|mjs|cjs)|package\.json|tsconfig(?:\.[^/]*)?\.json|jest\.config\.[cm]?js|jest\.setup\.ts|babel\.config\.[cm]?js|metro\.config\.[cm]?js|eslint\.config\.[cm]?js|app\.config\.(?:ts|js)|app\.json|eas\.json)$/
+
 function allowStop(note) {
   if (note) console.error(`[verify-frontend-gates] ${note}`)
   process.exit(0)
@@ -51,12 +54,9 @@ try {
   allowStop('unreadable hook payload; not blocking')
 }
 
-// 1) Loop guard: never block a stop that our own block already triggered.
-if (input.stop_hook_active) allowStop()
-
 const projectDir = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd()
 
-// 2) Did mobile code actually change? (staged or unstaged)
+// 1) Did mobile code or gate-relevant config actually change? (staged or unstaged)
 let status = ''
 try {
   status = execSync('git status --porcelain -- apps/mobile', {
@@ -69,10 +69,11 @@ try {
 }
 const mobileCodeChanged = status
   .split('\n')
-  .some((line) => /apps\/mobile\/.*\.(ts|tsx|js|jsx)$/.test(line.trim()))
+  .map((line) => line.trim().slice(3).split(' -> ').pop().replace(/\\/g, '/'))
+  .some((path) => MOBILE_GATE_PATH_PATTERN.test(path))
 if (!mobileCodeChanged) process.exit(0)
 
-// 3) Can we run the gate at all? If not, fail OPEN.
+// 2) Can we run the gate at all? If not, fail OPEN.
 if (!existsSync(join(projectDir, 'apps', 'mobile', 'node_modules', '.bin', 'jest'))) {
   allowStop('mobile deps not installed; cannot verify, not blocking')
 }
@@ -82,7 +83,7 @@ try {
   allowStop('pnpm unavailable; cannot verify, not blocking')
 }
 
-// 4) Run the real gates. A non-zero exit here is a genuine red gate.
+// 3) Run the real gates. A non-zero exit here is a genuine red gate.
 const gates = [
   ['type-check', 'pnpm --filter @home-services/mobile type-check'],
   ['test', 'pnpm --filter @home-services/mobile test'],

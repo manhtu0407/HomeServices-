@@ -27,7 +27,11 @@ import {
 import { useAuth } from './auth-provider'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from './media-upload'
 import { jobService, notificationService, workerService } from './services'
-import { generateClientRequestId } from './client-request-id'
+import {
+  clearStableClientRequestId,
+  stableClientRequestId,
+  type PendingClientRequestId,
+} from './client-request-id'
 import type { ApiResult } from './api'
 import type {
   ConfirmSearchResponse,
@@ -193,6 +197,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const { notifications, unreadCount: notificationUnreadCount } = notificationState
   const notificationsRef = useRef<NotificationListResponse['notifications']>([])
   const locallyReadNotificationIdsRef = useRef(new Set<string>())
+  const pendingJobCreateClientRequestRef = useRef<PendingClientRequestId | null>(null)
 
   useEffect(() => {
     stateRef.current = state
@@ -248,6 +253,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     const districtLabel = extractKnownDistrictLabel(draft.districtLabel) || extractKnownDistrictLabel(draft.addressLabel)
     if (!districtLabel) return setRemoteError('Địa chỉ cần có quận TP.HCM rõ ràng')
 
+    const requestFingerprint = jobCreateClientRequestFingerprint(draft, districtLabel)
     const input: JobCreateInput = {
       service_type: draft.serviceType,
       description: draft.description.trim(),
@@ -258,7 +264,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       // X2 (Plan.md §27.5 — 2026-05-29): one UUID per submit handler.
       // Re-renders / retries reuse the same key so the Edge returns the
       // existing job instead of creating duplicates.
-      client_request_id: generateClientRequestId(),
+      client_request_id: stableClientRequestId(
+        pendingJobCreateClientRequestRef,
+        requestFingerprint,
+      ),
     }
 
     const created = await jobService.createJob(input)
@@ -266,6 +275,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       setRemoteError(created.error)
       return null
     }
+    clearStableClientRequestId(pendingJobCreateClientRequestRef, requestFingerprint)
     dispatch({ type: 'hydrate_remote_job', job: createJobResponseToSnapshot(created.data, draft) })
     if (mediaItems.length === 0) return { jobId: created.data.job_id }
 
@@ -683,6 +693,19 @@ function getRemoteJobId(state: LocalWorkflowState) {
   const id = state.deal?.broadcast?.jobId ?? state.deal?.id ?? null
   if (!id || id === LOCAL_DEAL_ID) return null
   return id
+}
+
+function jobCreateClientRequestFingerprint(
+  draft: LocalDealDraft,
+  districtLabel: string,
+): string {
+  return JSON.stringify({
+    service_type: draft.serviceType,
+    description: draft.description.trim(),
+    problem_chips: draft.problemChips,
+    address_building: draft.addressLabel.trim(),
+    address_district: districtLabel,
+  })
 }
 
 const WORKER_OPERATIONAL_JOB_STATUSES = new Set<JobStatus>([

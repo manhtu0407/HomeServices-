@@ -111,6 +111,11 @@ const OUT_OF_SCOPE_KEYWORDS: readonly string[] = [
   "lam bai tap",
 ];
 
+const IN_SCOPE_PLUMBING_PUMP_KEYWORDS: readonly string[] = [
+  "may bom nuoc",
+  "bom nuoc",
+];
+
 // Service-specific keyword catalogue. Used for mismatch heuristic.
 const SERVICE_KEYWORDS: Record<ServiceType, readonly string[]> = {
   electrical: [
@@ -202,6 +207,12 @@ function containsKeyword(normalized: string, keyword: string): boolean {
   return pattern.test(normalized);
 }
 
+function isSupportedWaterPumpMention(normalized: string): boolean {
+  return IN_SCOPE_PLUMBING_PUMP_KEYWORDS.some((keyword) =>
+    containsKeyword(normalized, keyword)
+  );
+}
+
 export function detectPromptInjection(
   text: string,
 ): { detected: boolean; signals: string[] } {
@@ -218,6 +229,9 @@ export function detectOutOfScope(
   const normalized = normalize(text);
   const signals: string[] = [];
   for (const keyword of OUT_OF_SCOPE_KEYWORDS) {
+    if (keyword === "may bom" && isSupportedWaterPumpMention(normalized)) {
+      continue;
+    }
     if (containsKeyword(normalized, keyword)) {
       signals.push(`oos:${keyword}`);
       if (signals.length >= 3) break;

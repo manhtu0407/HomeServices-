@@ -1,38 +1,25 @@
 # Scope Check
 
-Đánh giá một feature hoặc task mới có nên build bây giờ không.
+Use this as a wrapper around `critical.md`, `RULES.md`, and `STRUCTURES.md`; those files are the source of truth.
 
-## Checklist
+## Supported Now
 
-### 1. "Don't Build Now" List
-Feature có nằm trong danh sách sau không?
-- Multi-agent orchestration
-- Autonomous booking (Kael tự book)
-- Custom memory system
-- Review Agent / CI Review Agent
-- L3/L4 autonomy
-- Mở rộng sang web platform
-- Expand sang dịch vụ khác (ngoài điện + nước)
-- Multi-city
-- Bất kỳ "meta-orchestrator" nào
+- electrical repair
+- plumbing repair
+- home cleaning / housekeeping
+- HCMC apartment-first flows that move the product toward a trustworthy first real transaction
 
-Nếu CÓ → 🔴 DEFER ngay.
+## Defer Or Escalate
 
-### 2. Heuristic
-- Cần hơn 1 tuần build? VÀ
-- Chỉ cần thiết ở scale >10x hiện tại?
+- unsupported service categories
+- autonomous booking, payment, cancellation, reassignment, suspension, or punishment
+- fake workers, fake prices, fake queues, fake ratings, fake earnings, or placeholder production data
+- multi-city, web platform expansion, broad orchestration, or future-service surfaces unless Tu explicitly assigns them
 
-Nếu CẢ HAI đúng → 🔴 DEFER.
-
-### 3. Survival Test
-"Cái này có đóng góp trực tiếp vào việc đạt giao dịch thật đầu tiên không?"
-
-Nếu KHÔNG → 🟡 DISCUSS với cộng sự.
-
-## Output
+## Decision
 
 ```
-🟢 BUILD — [lý do: trong scope + survival-critical]
-🟡 DISCUSS — [borderline, cần cộng sự quyết định + 2–3 options]
-🔴 DEFER — [lý do postpone + khi nào nên revisit]
+BUILD: in current scope and tied to the transaction path
+DISCUSS: borderline, needs Tu decision
+DEFER: out of scope or future-scale work
 ```

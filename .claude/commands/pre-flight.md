@@ -1,21 +1,33 @@
 # Pre-Flight Check
 
-Chạy TRƯỚC khi bắt đầu bất kỳ coding task nào. Đọc STRUCTURES.md và RULES.md, sau đó verify:
+Run before any coding task. This command is a thin wrapper over the canonical sources; do not restate older product rules here.
 
-1. **Scope check**: Feature này thuộc sửa điện hoặc sửa nước không? Nếu không → STOP.
-2. **"Don't build" check**: Xem STRUCTURES.md mục 7 (Future Roadmap). Feature có trong danh sách "don't build now" không? Nếu có → STOP.
-3. **Survival test**: "Cái này có đưa chúng ta đến giao dịch thật đầu tiên không? Hay nó chỉ thỏa mãn về mặt kỹ thuật?" Nếu không liên quan → flag ngay.
-4. **Applicable rules**: Liệt kê rule numbers từ RULES.md áp dụng cho task này.
-5. **Security**: Có implications về secrets, PII, hoặc input validation không?
+## Canonical Inputs
 
-## Output format
+1. Read `critical.md` sections 4-7 for objective, protocol selection, preflight proof, and task classification.
+2. Read `RULES.md` for non-negotiable runtime, product, language, data honesty, and security boundaries.
+3. Read `STRUCTURES.md` for workflow/state/backend contracts when the task touches product behavior.
+4. For code changes, read `docs/architecture/code-ownership-map.md` and map owner route, UI surface, provider/state, Edge boundary, shared contract, and tests.
+5. Use `protocols/diagnose.md`, `protocols/tdd.md`, `protocols/frontend-test.md`, and `protocols/ai-data-security.md` when their triggers apply.
+
+## Scope Gate
+
+Supported services are only:
+
+- electrical repair
+- plumbing repair
+- home cleaning / housekeeping
+
+Anything outside those services, outside HCMC apartments, or outside the path toward a trustworthy first real transaction must be stopped or explicitly escalated to Tu.
+
+## Output
 
 ```
-✅ Scope: [pass/fail + reason]
-✅ Not on "don't build" list: [pass/fail]
-✅ Survival test: [pass/fail + cách nó đóng góp vào transaction đầu tiên]
-📋 Applicable rules: [Rule #X, #Y, #Z]
-🔒 Security notes: [concerns hoặc "None"]
+Task class:
+Canonical docs read:
+Applicable protocols:
+Service/scope status:
+Runtime boundary:
+Security/PII notes:
+Verification plan:
 ```
-
-Nếu bất kỳ check nào FAIL → dừng lại, báo cáo cho cộng sự, đề xuất hướng khác.

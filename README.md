@@ -5,6 +5,13 @@
 > DB/RPC/Storage/Realtime -> AI providers. Do not use Vercel or hosted
 > Next.js as the mobile runtime; `apps/api` is reference/parity code only.
 
+### 2026-05-30 — Recent PR Audit Gap Fix
+
+- **Task**: Close review gaps from recent PR updates after rebasing the audit branch to `origin/main`.
+- **What landed**: Stop-hook false-completion guard reruns gates even when `stop_hook_active`; mobile config changes now trigger the gate; mobile lint remains manual as `lint:mobile` until debt is cleared; job/chat idempotency retries reuse stable client request IDs; duplicate in-flight job/chat creates return pending errors instead of fake estimate/session data; Kael chat rate-limit RPC is serialized per user; worker district backup table is protected; explicit `hcmc_all` worker coverage is accepted while unknown districts still fail; pump-water plumbing is no longer rejected as out of scope.
+- **Docs**: Stale command docs reconciled to canonical protocols, Plan supersession notes added for worker cancellation auto-suspend/rating penalty drift, Kael charter/system prompt accented, and frontend-test docs updated for the lint script state.
+- **Verification**: See branch verification output for targeted unit/static tests and `git diff --check`. Follow-up 2026-05-31 added direct `@babel/runtime` for the Expo mobile Jest/Babel runtime; mobile `type-check` and `test` now pass after hydrating dev dependencies from the lockfile.
+
 ### 2026-05-17 — Kael Two Supporting Services (MarketMemory + CaseReview)
 
 - **Task**: Build Kael's two supporting services per STRUCTURES.md §10A/§10B. Real working loop end-to-end, not just code that looks pretty.
