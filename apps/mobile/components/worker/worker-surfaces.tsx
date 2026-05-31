@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { createContext, type ReactNode, use, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from 'react'
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
@@ -28,6 +28,7 @@ const WORKER_THEME_LANGUAGE_STORE = 'WORKER_THEME_LANGUAGE_STORE: worker-theme-l
 const WORKER_FLEXIBLE_MAP_SHELL = 'WORKER_FLEXIBLE_MAP_SHELL: worker-map-google-ready flexible-map-preview'
 const WORKER_DOCK_GLASS_MOTION = 'WORKER_DOCK_GLASS_MOTION: worker-dock-glass-aura worker-liquid-glass-dock worker-dock-kael-mascot-icon worker-dock-client-style-icon'
 const WORKER_GLASSMORPHISM_MOTION_LAYER = 'WORKER_GLASSMORPHISM_MOTION_LAYER: shared-glass-pressable static-depth-layer centered-metric-type'
+const WORKER_MAP_BALANCED_DIRECTION = 'WORKER_MAP_BALANCED_DIRECTION: docs/design/worker-map-operation-balanced-20260531.md vector-map-no-screenshot'
 const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kael-empty-chat-state worker-kael-local-chat-input submitWorkerKaelLocalDraft'
 const WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT = 'WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT: general area only until worker accepts'
 const WORKER_NO_FAKE_PAYMENT_DATA = 'WORKER_NO_FAKE_PAYMENT_DATA: worker-no-fake-payment-data'
@@ -41,7 +42,45 @@ const workerDockBottomMargin = 6
 const workerDockClearance = workerDockHeight + workerDockBottomMargin + 76
 const workerFrameHorizontalPadding = 14.8
 const workerJobRoomRevealDelayMs = 360
+const workerAmbientMintWashStyle = {
+  opacity: 0.18,
+  transform: [{ rotate: '-8deg' }],
+}
+const workerAmbientLineWashStyle = {
+  opacity: 0.12,
+}
 const kaelHead = require('../../assets/kael-model-8a-head.png')
+const workerImageIcons = {
+  navEarnings: require('../../assets/worker-image-icons/nav-earnings.png'),
+  navHome: require('../../assets/worker-image-icons/nav-home.png'),
+  navJobs: require('../../assets/worker-image-icons/nav-jobs.png'),
+  navProfile: require('../../assets/worker-image-icons/nav-profile.png'),
+  profileAvatar: require('../../assets/worker-image-icons/profile-avatar-core.png'),
+  profileIdentity: require('../../assets/worker-image-icons/profile-identity.png'),
+  profileServiceArea: require('../../assets/worker-image-icons/profile-service-area.png'),
+  profileSkills: require('../../assets/worker-image-icons/profile-skills.png'),
+  profileVerified: require('../../assets/worker-image-icons/profile-verified.png'),
+  serviceCleaning: require('../../assets/worker-image-icons/service-cleaning.png'),
+  serviceElectrical: require('../../assets/worker-image-icons/service-electrical.png'),
+  servicePlumbing: require('../../assets/worker-image-icons/service-plumbing.png'),
+  settingLanguage: require('../../assets/worker-image-icons/setting-language.png'),
+  settingTheme: require('../../assets/worker-image-icons/setting-theme.png'),
+  utilityBell: require('../../assets/worker-image-icons/utility-bell.png'),
+  utilityCalendar: require('../../assets/worker-image-icons/utility-calendar.png'),
+  utilityCamera: require('../../assets/worker-image-icons/utility-camera.png'),
+  utilityChat: require('../../assets/worker-image-icons/utility-chat.png'),
+  utilityClock: require('../../assets/worker-image-icons/utility-clock.png'),
+  utilityDocument: require('../../assets/worker-image-icons/utility-document.png'),
+  utilityEarningsLedger: require('../../assets/worker-image-icons/utility-earnings-ledger-core.png'),
+  utilityEarningsWallet: require('../../assets/worker-image-icons/utility-earnings-wallet-core.png'),
+  utilityEvidence: require('../../assets/worker-image-icons/utility-evidence-core.png'),
+  utilityIdentity: require('../../assets/worker-image-icons/utility-identity.png'),
+  utilityMap: require('../../assets/worker-image-icons/utility-map.png'),
+  utilityShield: require('../../assets/worker-image-icons/utility-shield.png'),
+  utilityScope: require('../../assets/worker-image-icons/utility-scope-core.png'),
+  utilityTools: require('../../assets/worker-image-icons/utility-tools.png'),
+  utilityWallet: require('../../assets/worker-image-icons/utility-wallet.png'),
+} as const
 
 type WorkerThemeMode = 'dark' | 'light'
 type WorkerLanguageMode = AppLanguage
@@ -53,6 +92,7 @@ type WorkerTone = 'base' | 'cream' | 'cyan' | 'depth' | 'mint' | 'raised' | 'str
 type WorkerKaelChatTone = 'agent' | 'avatar' | 'brief' | 'bubble' | 'composer' | 'header' | 'icon' | 'send' | 'status' | 'step'
 type WorkerHeaderPillTone = 'cream' | 'mint'
 type WorkerDockIconName = 'apartment' | 'document' | 'kael' | 'payment' | 'person'
+type WorkerImageIconName = keyof typeof workerImageIcons
 type WorkerIconName =
   | 'back'
   | 'bank'
@@ -63,6 +103,7 @@ type WorkerIconName =
   | 'check'
   | 'clock'
   | 'document'
+  | 'evidence'
   | 'faucet'
   | 'globe'
   | 'home'
@@ -89,6 +130,35 @@ type WorkerChatLocalState = {
   reveal: { requested: number; step: number }
 }
 type WorkerBroadcastView = NonNullable<LocalDeal['broadcast']>
+type WorkerMapMode = 'area' | 'locked' | 'route'
+type WorkerMapPoint = { lat: number; lng: number }
+type WorkerMapProviderModel = {
+  areaLabel: string
+  fullAddressLabel: string | null
+  mapMode: WorkerMapMode
+  serviceRadius: number | null
+  routeRequestReady: boolean
+  trafficEnabled: boolean
+  workerOrigin: WorkerMapPoint | null
+}
+type WorkerHomeMapState = {
+  centered: boolean
+  compassNorth: boolean
+  expanded: boolean
+  layerDetailed: boolean
+  trafficEnabled: boolean
+  zoom: number
+}
+type WorkerHomeMapAction =
+  | { type: 'close' }
+  | { type: 'open' }
+  | { type: 'recenter' }
+  | { type: 'toggle_compass' }
+  | { type: 'toggle_layer' }
+  | { type: 'toggle_traffic' }
+  | { type: 'zoom_in' }
+  | { type: 'zoom_out' }
+type WorkerMapSurface = 'active' | 'home' | 'jobroom' | 'needs' | 'waiting'
 
 let lastWorkerDockActive: WorkerActiveTab = 'home'
 const workerJobsTabKeys: WorkerJobsTab[] = ['waiting', 'active', 'needs']
@@ -104,6 +174,37 @@ const workerMoneyFormatters = {
   en: new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }),
   vi: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }),
 } as const
+const workerServiceImageIcons: Record<Extract<ServiceType, 'cleaning' | 'electrical' | 'plumbing'>, WorkerImageIconName> = {
+  cleaning: 'serviceCleaning',
+  electrical: 'serviceElectrical',
+  plumbing: 'servicePlumbing',
+}
+const workerDockImageIcons: Record<Exclude<WorkerDockIconName, 'kael'>, WorkerImageIconName> = {
+  apartment: 'navHome',
+  document: 'navJobs',
+  payment: 'navEarnings',
+  person: 'navProfile',
+}
+const workerUtilityImageIcons: Partial<Record<WorkerIconName, WorkerImageIconName>> = {
+  bank: 'utilityWallet',
+  brief: 'utilityScope',
+  chat: 'utilityChat',
+  clock: 'utilityClock',
+  document: 'utilityDocument',
+  evidence: 'utilityEvidence',
+  jobs: 'utilityCalendar',
+  map: 'utilityMap',
+  money: 'utilityWallet',
+  person: 'utilityIdentity',
+  pin: 'utilityMap',
+  shield: 'utilityShield',
+  tools: 'utilityTools',
+}
+const workerEarningsImageIcons: Partial<Record<WorkerIconName, WorkerImageIconName>> = {
+  bank: 'utilityEarningsWallet',
+  document: 'utilityEarningsLedger',
+  money: 'utilityEarningsWallet',
+}
 const workerServiceAreaAnchors: Array<{ lat: number; lng: number; slug: Exclude<DistrictSlug, 'hcmc_all'> }> = [
   { slug: 'q1', lat: 10.7757, lng: 106.7004 },
   { slug: 'q3', lat: 10.7844, lng: 106.6841 },
@@ -289,16 +390,16 @@ const workerCopy = {
       filters: ['Chờ nhận', 'Đang làm', 'Cần xử lý'],
       emptyStatus: 'Đang theo dõi',
       emptyTitle: 'Chưa có việc đang làm',
-      emptyBody: 'Kael sẽ đưa yêu cầu mới vào đây khi có khách xác nhận tìm thợ.',
+      emptyBody: 'Kael sẽ đưa yêu cầu mới vào đây khi phiếu đủ dữ liệu để điều phối.',
       waitingEmptyTitle: 'Chưa có yêu cầu mới',
       waitingEmptyBody: 'Yêu cầu mới sẽ hiện ở mục Chờ nhận.',
       activeEmptyTitle: 'Chưa nhận việc',
       activeEmptyBody: 'Việc đã nhận và Phòng việc sẽ hiện tại đây.',
       needsEmptyTitle: 'Không có mục chặn',
       needsEmptyBody: 'Phát sinh hoặc bước cần duyệt sẽ hiện ở đây.',
-      scopeStatus: 'Khách quyết định',
+      scopeStatus: 'Kael đang xét',
       scopeTitle: 'Thay đổi phạm vi',
-      scopeBody: 'Thợ chờ khách xác nhận trước khi tiếp tục phần việc mới.',
+      scopeBody: 'Kael đang xét phạm vi mới; khách có thể cung cấp thêm dữ liệu, khiếu nại hoặc hủy nếu thực tế chưa đúng.',
       jobRoomCta: 'Mở phòng việc',
     },
     chat: {
@@ -308,7 +409,7 @@ const workerCopy = {
       relaySubtitle: 'Kael chuyển tiếp với khách',
       acceptedPill: 'Đã nhận',
       waitingTitle: 'Đang chờ Kael đưa việc',
-      waitingBody: 'Khi khách xác nhận tìm thợ, Kael sẽ mở tóm tắt công việc, khu vực chung và ghi chú việc.',
+      waitingBody: 'Khi Kael có phiếu đủ dữ liệu, Phòng việc sẽ mở tóm tắt công việc, khu vực chung và ghi chú việc.',
       waitingInput: 'Nhắn trong Phòng việc...',
       handoffTitle: 'Kael giao việc',
       privacyGate: 'Địa chỉ chi tiết chỉ mở sau khi thợ chấp nhận.',
@@ -343,7 +444,7 @@ const workerCopy = {
       summaryHint: 'Khi có đối soát',
       body: '',
       complete: 'Hoàn tất',
-      waiting: 'Chờ khách',
+      waiting: 'Chờ Kael',
       ledgerTitle: 'Sổ đối soát',
       rows: [
         ['Sổ đối soát', appCopy.vi.common.noData],
@@ -422,16 +523,16 @@ const workerCopy = {
       filters: ['Pending', 'Active', 'Needs review'],
       emptyStatus: 'Watching',
       emptyTitle: 'No active job',
-      emptyBody: 'Kael will place new requests here after a customer confirms worker search.',
+      emptyBody: 'Kael will place new requests here when a ticket has enough data to orchestrate.',
       waitingEmptyTitle: 'No new request',
       waitingEmptyBody: 'New requests appear in the Pending tab.',
       activeEmptyTitle: 'No accepted job',
       activeEmptyBody: 'Accepted work and JobRoom appear here.',
       needsEmptyTitle: 'Nothing blocked',
       needsEmptyBody: 'Scope or approval blockers appear here.',
-      scopeStatus: 'Customer decides',
+      scopeStatus: 'Kael reviewing',
       scopeTitle: 'Scope change',
-      scopeBody: 'Wait for the customer decision before continuing the changed scope.',
+      scopeBody: 'Kael is reviewing the new scope; the customer can add evidence, appeal, or cancel if the facts are wrong.',
       jobRoomCta: 'Open JobRoom',
     },
     chat: {
@@ -441,7 +542,7 @@ const workerCopy = {
       relaySubtitle: 'Kael relays with the customer',
       acceptedPill: 'Accepted',
       waitingTitle: 'Waiting for Kael to hand off a job',
-      waitingBody: 'When a customer confirms worker search, JobRoom opens the job brief, general area, and job notes.',
+      waitingBody: 'When Kael has enough ticket data, JobRoom opens the job brief, general area, and job notes.',
       waitingInput: 'Message in JobRoom...',
       handoffTitle: 'Kael handoff',
       privacyGate: 'Detailed address opens only after acceptance.',
@@ -476,7 +577,7 @@ const workerCopy = {
       summaryHint: 'After reconciliation',
       body: '',
       complete: 'Completed',
-      waiting: 'Waiting',
+      waiting: 'Waiting for Kael',
       ledgerTitle: 'Ledger',
       rows: [
         ['Ledger', appCopy.en.common.noData],
@@ -650,7 +751,7 @@ const workerActionCopy = {
     scopePhotoCount: (count: number) => `${count} ảnh phát sinh đã chọn`,
     addScopePhoto: 'Thêm ảnh phát sinh',
     scopeSubmit: 'Yêu cầu đổi phạm vi',
-    scopeWaiting: 'Chờ khách quyết định thay đổi phạm vi.',
+    scopeWaiting: 'Chờ Kael quyết định thay đổi phạm vi.',
     uploading: 'Đang tải ảnh...',
     cancelReason: 'Lý do cần hủy',
     cancelPlaceholder: 'Lý do hủy và tìm thợ thay thế',
@@ -673,14 +774,14 @@ const workerActionCopy = {
       completionPermissionTitle: 'Cần quyền chọn ảnh',
       completionPermissionBody: 'Cho phép truy cập ảnh để thêm ảnh nghiệm thu.',
       completeTitle: 'Xác nhận báo hoàn tất?',
-      completeBody: 'Hệ thống sẽ báo khách kiểm tra và xác nhận. Thanh toán vẫn khóa ở giai đoạn này.',
+      completeBody: 'Kael sẽ kiểm tra bằng chứng hoàn tất và tự chuyển sang bước phù hợp. Thanh toán vẫn khóa ở giai đoạn này.',
       scopeDescriptionTitle: 'Cần mô tả phạm vi mới',
-      scopeDescriptionBody: 'Nhập rõ phần phát sinh để khách quyết định.',
+      scopeDescriptionBody: 'Nhập rõ phần phát sinh để Kael quyết định từ bằng chứng.',
       scopeUploadTitle: 'Chưa tải được ảnh phát sinh',
       scopePermissionTitle: 'Cần quyền chọn ảnh',
       scopePermissionBody: 'Cho phép truy cập ảnh để thêm bằng chứng phát sinh.',
       scopeConfirmTitle: 'Gửi yêu cầu đổi phạm vi?',
-      scopeConfirmBody: 'Hệ thống sẽ khóa tiến độ cho tới khi khách duyệt hoặc từ chối.',
+      scopeConfirmBody: 'Hệ thống sẽ khóa tiến độ cho tới khi Kael ra quyết định phạm vi.',
       cancelReasonTitle: 'Cần lý do hủy',
       cancelReasonBody: 'Nhập lý do cụ thể. Hệ thống sẽ hủy lượt nhận việc này và bắt đầu tìm thợ thay thế sau khi gửi.',
       cancelConfirmTitle: 'Gửi yêu cầu hủy việc?',
@@ -700,7 +801,7 @@ const workerActionCopy = {
     scopePhotoCount: (count: number) => `${count} scope photo${count === 1 ? '' : 's'} selected`,
     addScopePhoto: 'Add scope photo',
     scopeSubmit: 'Request scope change',
-    scopeWaiting: 'Waiting for the customer to decide on the scope change.',
+    scopeWaiting: 'Waiting for Kael to decide on the scope change.',
     uploading: 'Uploading photos...',
     cancelReason: 'Cancellation reason',
     cancelPlaceholder: 'Reason for replacement search',
@@ -723,14 +824,14 @@ const workerActionCopy = {
       completionPermissionTitle: 'Photo permission required',
       completionPermissionBody: 'Allow photo access to add completion evidence.',
       completeTitle: 'Mark job complete?',
-      completeBody: 'The customer will be asked to review and confirm. Payment remains locked at this stage.',
+      completeBody: 'Kael will review the completion evidence and either confirm completion or open a dispute. Payment remains locked at this stage.',
       scopeDescriptionTitle: 'New scope details required',
-      scopeDescriptionBody: 'Describe the added work so the customer can decide.',
+      scopeDescriptionBody: 'Describe the added work so Kael can decide from the evidence.',
       scopeUploadTitle: 'Scope photo upload failed',
       scopePermissionTitle: 'Photo permission required',
       scopePermissionBody: 'Allow photo access to add scope-change evidence.',
       scopeConfirmTitle: 'Send scope change request?',
-      scopeConfirmBody: 'Progress will stay locked until the customer approves or rejects it.',
+      scopeConfirmBody: 'Progress stays locked until Kael decides the scope change.',
       cancelReasonTitle: 'Cancellation reason required',
       cancelReasonBody: 'Enter a specific reason. The system will cancel this worker assignment and begin replacement search after you send.',
       cancelConfirmTitle: 'Send cancellation request?',
@@ -741,6 +842,20 @@ const workerActionCopy = {
 
 const mapPreview = {
   replaceWithProvider: 'google-maps-camera-ready',
+}
+const workerMapProviderBridgeTestIDs = {
+  area: 'worker-map-provider-area-fallback',
+  bridge: 'worker-map-vietmap-provider-bridge',
+  origin: 'worker-map-provider-worker-origin',
+  route: 'worker-map-provider-route-ready',
+} as const
+const initialWorkerHomeMapState: WorkerHomeMapState = {
+  centered: true,
+  compassNorth: true,
+  expanded: false,
+  layerDetailed: true,
+  trafficEnabled: false,
+  zoom: 1,
 }
 
 type WorkerCopy = (typeof workerCopy)[WorkerLanguageMode]
@@ -855,7 +970,7 @@ export function WorkerJobsSurface() {
   const jobBody = deal
     ? `${localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, language)} · ${jobVisibleAreaLabel}`
     : copy.jobs.emptyBody
-  const activeJobBriefLines = deal?.broadcast ? buildWorkerBroadcastBrief(deal, deal.broadcast, selectors.currentStatus, language) : []
+  const activeJobBriefLines = deal?.broadcast ? buildWorkerBroadcastBrief(deal, deal.broadcast, selectors.currentStatus, language, selectors.canWorkerSeeFullAddress) : []
   const workflow = useServiceWorkflow({
     status: selectors.currentBackendStatus,
     hasAiNotes: Boolean(deal?.estimate?.advisory),
@@ -996,6 +1111,7 @@ function WorkerNeedsReviewCard() {
   if (!hasScopeBlocker && !hasCompletionEvidenceBlocker) {
     return (
       <>
+        <CompactWorkerPresenceMap mode="needs" />
         <WorkerNeedsEmptyCard
           body={copy.jobs.needsEmptyBody}
           icon="brief"
@@ -1007,7 +1123,7 @@ function WorkerNeedsReviewCard() {
         />
         <WorkerNeedsEmptyCard
           body={language === 'en' ? 'Completion notes and photos appear here when a job reaches the finish step.' : 'Ghi chú và ảnh nghiệm thu sẽ hiện ở đây khi việc tới bước hoàn tất.'}
-          icon="document"
+          icon="evidence"
           label={language === 'en' ? 'Completion media' : 'Ảnh nghiệm thu'}
           labelTone="mint"
           testID="worker-completion-evidence-empty"
@@ -1020,11 +1136,11 @@ function WorkerNeedsReviewCard() {
 
   if (hasCompletionEvidenceBlocker) {
     return (
-    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-completion-evidence-blocker-card">
+      <>
+        <CompactWorkerPresenceMap mode="needs" />
+        <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-completion-evidence-blocker-card">
         <View style={styles.identityRow}>
-          <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
-            <Icon name="document" active />
-          </View>
+          <WorkerUtilityIcon active frameSize={48} icon="evidence" size={48} style={styles.needsInlineImageIcon} />
           <View style={styles.titleStack}>
             <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
               {language === 'en' ? 'Update needed' : 'Cần cập nhật'}
@@ -1047,6 +1163,7 @@ function WorkerNeedsReviewCard() {
           <PressButton secondary label={actionCopy.completeLater} onPress={() => replace('/(worker)/jobs')} testID="worker-needs-completion-later" />
         </View>
       </View>
+      </>
     )
   }
 
@@ -1061,11 +1178,11 @@ function WorkerNeedsReviewCard() {
   const scopeSummary = reason === appCopy[language].common.noData ? requestedScope : `${requestedScope}. ${reason}`
 
   return (
+    <>
+    <CompactWorkerPresenceMap mode="needs" />
     <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-scope-change-active">
       <View style={styles.identityRow}>
-        <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
-          <Icon name="brief" active />
-        </View>
+        <WorkerUtilityIcon active frameSize={48} icon="brief" size={48} style={styles.needsInlineImageIcon} />
         <View style={styles.titleStack}>
           <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.cream, borderColor: tokens.border, borderWidth: 1, color: tokens.copper }]} numberOfLines={1}>
             {copy.jobs.scopeStatus}
@@ -1097,6 +1214,7 @@ function WorkerNeedsReviewCard() {
         <PressButton secondary label={copy.jobs.jobRoomCta} onPress={() => replace('/(worker)/chat')} testID="worker-needs-open-jobroom" />
       </View>
     </View>
+    </>
   )
 }
 
@@ -1107,8 +1225,8 @@ function WorkerNeedsInlineEmptyCard() {
   return (
     <View style={[styles.needsReviewCard, workerJobCardSurface(tokens, 'warm')]} testID="worker-jobs-active-needs-inline-empty-card">
       <SubtleGlassHighlight />
-      <View style={styles.jobTopRow}>
-        <View style={styles.titleStack}>
+      <View style={[styles.jobTopRow, styles.needsTopRow]}>
+        <View style={[styles.titleStack, styles.needsTextStack]}>
           <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.cream, borderColor: tokens.border, borderWidth: 1, color: tokens.copper }]} numberOfLines={1}>
             {copy.jobs.filters[2]}
           </Text>
@@ -1153,8 +1271,9 @@ function WorkerNeedsEmptyCard({
   return (
     <View style={[styles.needsReviewCard, workerJobCardSurface(tokens, tone)]} testID={testID}>
       <SubtleGlassHighlight />
-      <View style={styles.jobTopRow}>
-        <View style={styles.titleStack}>
+      <View style={[styles.jobTopRow, styles.needsTopRow]}>
+        <WorkerUtilityIcon active frameSize={64} icon={icon} size={64} small style={styles.needsImageIcon} />
+        <View style={[styles.titleStack, styles.needsTextStack]}>
           <Text style={[styles.statusPill, { alignSelf: 'flex-start' }, pillSurface]} numberOfLines={1}>
             {label}
           </Text>
@@ -1164,9 +1283,6 @@ function WorkerNeedsEmptyCard({
           <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
             {body}
           </Text>
-        </View>
-        <View style={[styles.readinessBadge, styles.needsIconBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
-          <Icon name={icon} active small />
         </View>
       </View>
     </View>
@@ -1190,7 +1306,6 @@ export function WorkerEarningsSurface() {
     <WorkerFrame
       active="earnings"
       eyebrow={copy.earnings.eyebrow}
-      headerIcon="trend"
       subtitle={copy.earnings.subtitle}
       title={copy.earnings.title}
       testID="worker-earnings-surface"
@@ -1472,7 +1587,7 @@ function WorkerChatContent() {
     { label: copy.chat.statusLabel, value: jobStatusLabel },
   ] : []
   const jobRoomGate = canSendWorkerKaelMessage ? copy.chat.acceptedGate : broadcast ? copy.chat.lockedGate : copy.chat.waitingBody
-  const jobBriefLines = broadcast ? buildWorkerBroadcastBrief(deal, broadcast, selectors.currentStatus, language) : []
+  const jobBriefLines = broadcast ? buildWorkerBroadcastBrief(deal, broadcast, selectors.currentStatus, language, selectors.canWorkerSeeFullAddress) : []
   const maxRevealStep = broadcast ? 4 : 3
   const targetRevealStep = Math.min(maxRevealStep, jobRoomReveal.requested)
   const showJobRoomProcess = jobRoomReveal.step >= 1
@@ -1608,6 +1723,7 @@ function WorkerChatContent() {
                       <JobRoomMetaCell key={item.label} label={item.label} value={item.value} />
                     ))}
                   </View>
+                  <CompactWorkerPresenceMap density="dense" mode="jobroom" />
                   <View style={[styles.jobRoomGate, workerOpaqueCardSurface(tokens, canSendWorkerKaelMessage ? 'cyan' : 'warm')]} testID="worker-jobroom-privacy-gate">
                     <Icon name={canSendWorkerKaelMessage ? 'check' : 'shield'} active={canSendWorkerKaelMessage} small />
                     <View style={styles.titleStack}>
@@ -1737,8 +1853,8 @@ function JobRoomProcessCard({ broadcast, canSend, onAdvance }: { broadcast: Work
         ? ['Read request', 'Keep privacy', 'Await accept']
         : ['Đọc yêu cầu', 'Giữ riêng tư', 'Chờ nhận']
     : language === 'en'
-      ? ['Wait customer', 'Build brief', 'Open room']
-      : ['Chờ khách', 'Dựng tóm tắt', 'Mở phòng']
+      ? ['Kael routes', 'Build brief', 'Open room']
+      : ['Kael điều phối', 'Dựng tóm tắt', 'Mở phòng']
 
   return (
     <Pressable accessibilityLabel={status} accessibilityRole="button" onPress={onAdvance} style={({ pressed }) => [styles.jobRoomProcessTapTarget, pressed ? styles.pressed : null]} testID="worker-jobroom-agentic-process-trigger">
@@ -1846,16 +1962,17 @@ function JobRoomMetaCell({ label, value }: { label: string; value: string }) {
   )
 }
 
-function buildWorkerBroadcastBrief(deal: LocalDeal | null, broadcast: WorkerBroadcastView, status: LocalDealStatus | null, language: WorkerLanguageMode): string[] {
+function buildWorkerBroadcastBrief(deal: LocalDeal | null, broadcast: WorkerBroadcastView, status: LocalDealStatus | null, language: WorkerLanguageMode, canWorkerSeeFullAddress: boolean): string[] {
   const serviceLabel = localizedServiceLabel(broadcast.serviceType, language)
   const problemLabel = localizedWorkerProblemSummary(broadcast, language)
   const areaLabel = localizedWorkerAreaLabel(broadcast.generalArea, language)
   const fullAddressLabel = broadcast.fullAddressVisible ? broadcast.fullAddressLabel ?? null : null
+  const canRevealFullAddress = Boolean(canWorkerSeeFullAddress && isAcceptedLocalWorkerDeal(deal) && fullAddressLabel)
   const addressGate = language === 'en'
-    ? isAcceptedLocalWorkerDeal(deal) && fullAddressLabel
+    ? canRevealFullAddress && fullAddressLabel
       ? `Address: ${localizedWorkerAreaLabel(fullAddressLabel, language)}.`
       : `${areaLabel}. Detailed address is hidden until acceptance.`
-    : isAcceptedLocalWorkerDeal(deal) && fullAddressLabel
+    : canRevealFullAddress && fullAddressLabel
       ? `Địa chỉ: ${localizedWorkerAreaLabel(fullAddressLabel, language)}.`
       : `Khu vực: ${areaLabel}. Địa chỉ chi tiết vẫn ẩn trước khi nhận.`
   const statusLine = localizedStatusLabel(status, language)
@@ -2149,10 +2266,10 @@ function WorkerProfileContent() {
     ? workerProfile.districts.map((district) => localizedWorkerAreaLabel(district, language)).join(' · ')
     : appCopy[language].common.noData
   const verificationStatus = workerProfile?.verification_status ?? 'draft'
-  const profileRows = [
-    [language === 'en' ? 'Identity verification' : 'Xác minh danh tính', localizedWorkerVerificationStatus(verificationStatus, language)],
-    [language === 'en' ? 'Service skills' : 'Kỹ năng dịch vụ', serviceSkillsLabel],
-    [language === 'en' ? 'Working area' : 'Khu vực làm việc', workingAreaLabel],
+  const profileRows: Array<{ icon: WorkerImageIconName; meta: string; title: string }> = [
+    { icon: 'profileIdentity', meta: localizedWorkerVerificationStatus(verificationStatus, language), title: language === 'en' ? 'Identity verification' : 'Xác minh danh tính' },
+    { icon: 'profileSkills', meta: serviceSkillsLabel, title: language === 'en' ? 'Service skills' : 'Kỹ năng dịch vụ' },
+    { icon: 'profileServiceArea', meta: workingAreaLabel, title: language === 'en' ? 'Working area' : 'Khu vực làm việc' },
   ]
   const profileStatusValue = localizedWorkerVerificationStatus(verificationStatus, language)
   const submittedProfileValue = workerProfile && verificationStatus !== 'draft'
@@ -2173,7 +2290,7 @@ function WorkerProfileContent() {
         <SubtleGlassHighlight />
         <View style={styles.profileHeroTop}>
           <View style={styles.profileAvatarHero}>
-            <Icon inverse name="person" />
+            <WorkerImageIcon frameSize={50} name="profileAvatar" size={50} />
           </View>
           <View style={styles.profileTitleStack}>
             <Text style={[styles.profileName, { color: tokens.ink }]} numberOfLines={1}>
@@ -2201,6 +2318,7 @@ function WorkerProfileContent() {
 
       <View style={styles.profileMiniGrid} testID="worker-profile-mini-status-grid">
         <View style={[styles.profileMiniCard, workerProfileMiniSurface(tokens)]}>
+          <WorkerImageIcon frameSize={48} name="profileVerified" size={48} style={styles.profileMiniImage} />
           <Text style={[styles.profileMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
             {profileStatusValue}
           </Text>
@@ -2209,6 +2327,7 @@ function WorkerProfileContent() {
           </Text>
         </View>
         <View style={[styles.profileMiniCard, workerProfileMiniSurface(tokens)]}>
+          <WorkerImageIcon frameSize={48} name="profileIdentity" size={48} style={styles.profileMiniImage} />
           <Text style={[styles.profileMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
             {submittedProfileValue}
           </Text>
@@ -2232,8 +2351,8 @@ function WorkerProfileContent() {
       ) : null}
 
       <View style={[styles.listCard, styles.profileListCard, workerOpaqueCardSurface(tokens)]} testID="worker-profile-list-groups">
-        {profileRows.map((row, index) => (
-          <ProfileListRow key={row[0]} icon={index === 0 ? 'shield' : index === 1 ? 'tools' : 'map'} title={row[0]} meta={row[1]} />
+        {profileRows.map((row) => (
+          <ProfileListRow key={row.title} icon={row.icon} title={row.title} meta={row.meta} />
         ))}
       </View>
 
@@ -2725,7 +2844,7 @@ function VerificationFileButton({ file, label, onPress, testID }: { file?: Local
       ]}
       testID={testID}
     >
-      <Icon name="document" small />
+      <WorkerUtilityIcon frameSize={28} icon="document" size={28} small />
       <Text style={[styles.verificationFileText, { color: file ? tokens.primary : tokens.muted }]} numberOfLines={2}>
         {file?.fileName ?? label}
       </Text>
@@ -2733,23 +2852,126 @@ function VerificationFileButton({ file, label, onPress, testID }: { file?: Local
   )
 }
 
+function finiteMapNumber(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function createWorkerMapProviderModel({
+  areaLabel,
+  fullAddressLabel,
+  mapMode,
+  serviceRadius,
+  trafficEnabled,
+  workerLat,
+  workerLng,
+}: {
+  areaLabel: string
+  fullAddressLabel: string | null
+  mapMode: WorkerMapMode
+  serviceRadius: number | null
+  trafficEnabled: boolean
+  workerLat: number | null | undefined
+  workerLng: number | null | undefined
+}): WorkerMapProviderModel {
+  const lat = finiteMapNumber(workerLat)
+  const lng = finiteMapNumber(workerLng)
+  return {
+    areaLabel,
+    fullAddressLabel,
+    mapMode,
+    serviceRadius,
+    routeRequestReady: mapMode === 'route' && Boolean(fullAddressLabel),
+    trafficEnabled,
+    workerOrigin: lat !== null && lng !== null ? { lat, lng } : null,
+  }
+}
+
+function workerHomeMapReducer(state: WorkerHomeMapState, action: WorkerHomeMapAction): WorkerHomeMapState {
+  switch (action.type) {
+    case 'close':
+      return { ...state, expanded: false }
+    case 'open':
+      return { ...state, centered: false, expanded: true }
+    case 'recenter':
+      return { ...state, centered: true, compassNorth: true, zoom: 1 }
+    case 'toggle_compass':
+      return { ...state, compassNorth: !state.compassNorth }
+    case 'toggle_layer':
+      return { ...state, layerDetailed: !state.layerDetailed }
+    case 'toggle_traffic':
+      return { ...state, trafficEnabled: !state.trafficEnabled }
+    case 'zoom_in':
+      return { ...state, zoom: Math.min(1.28, Number((state.zoom + 0.14).toFixed(2))) }
+    case 'zoom_out':
+      return { ...state, zoom: Math.max(0.86, Number((state.zoom - 0.14).toFixed(2))) }
+    default:
+      return state
+  }
+}
+
+function WorkerMapProviderBridge({
+  compact = false,
+  expanded = false,
+  model,
+}: {
+  compact?: boolean
+  expanded?: boolean
+  model: WorkerMapProviderModel
+}) {
+  const surfaceTestID = expanded
+    ? 'worker-map-provider-expanded-surface'
+    : compact
+      ? 'worker-map-provider-compact-surface'
+      : 'worker-map-provider-preview-surface'
+
+  return (
+    <View pointerEvents="none" style={styles.hiddenMarker} testID={workerMapProviderBridgeTestIDs.bridge}>
+      <View style={styles.hiddenMarker} testID={surfaceTestID} />
+      <View style={styles.hiddenMarker} testID={model.routeRequestReady ? workerMapProviderBridgeTestIDs.route : workerMapProviderBridgeTestIDs.area} />
+      {model.workerOrigin ? <View style={styles.hiddenMarker} testID={workerMapProviderBridgeTestIDs.origin} /> : null}
+    </View>
+  )
+}
+
 function WorkerMapStage() {
   const { copy, language, tokens } = useWorkerUi()
-  const { state, workerProfile } = useFrontendWorkflow()
+  const { selectors, state, workerProfile } = useFrontendWorkflow()
+  const [mapState, dispatchMap] = useReducer(workerHomeMapReducer, initialWorkerHomeMapState)
+  const { centered: mapCentered, compassNorth: mapCompassNorth, expanded, layerDetailed: mapLayerDetailed, trafficEnabled, zoom: mapZoom } = mapState
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast
   const mapArea = broadcast?.generalArea ?? deal?.draft.districtLabel
-  const hasWorkerAnchor = Boolean(workerProfile?.districts[0])
+  const fullAddressLabel = selectors.canWorkerSeeFullAddress && broadcast?.fullAddressVisible && broadcast.fullAddressLabel ? broadcast.fullAddressLabel : null
+  const routeUnlocked = Boolean(fullAddressLabel)
+  const mapMode: WorkerMapMode = routeUnlocked ? 'route' : broadcast ? 'locked' : 'area'
+  const hasWorkerDistrict = Boolean(workerProfile?.districts[0])
   const workerAnchorLabel = workerProfile?.districts[0]
     ? localizedWorkerAreaLabel(workerProfile.districts[0], language)
     : appCopy[language].common.noData
-  const mapSearch = mapArea ? localizedWorkerAreaLabel(mapArea, language) : hasWorkerAnchor ? workerAnchorLabel : copy.home.mapSearch
+  const mapSearch = mapArea ? localizedWorkerAreaLabel(mapArea, language) : hasWorkerDistrict ? workerAnchorLabel : copy.home.mapSearch
   const workerRadiusKm = workerProfile?.service_radius_km
   const workerRadiusLabel = Number.isFinite(workerRadiusKm)
     ? `${workerRadiusKm} km`
     : appCopy[language].common.noData
-  const hasWorkerRadius = Number.isFinite(workerRadiusKm)
+  const hasWorkerRadius = typeof workerRadiusKm === 'number' && Number.isFinite(workerRadiusKm)
+  const providerModel = createWorkerMapProviderModel({
+    areaLabel: mapSearch,
+    fullAddressLabel,
+    mapMode,
+    serviceRadius: hasWorkerRadius ? workerRadiusKm : null,
+    trafficEnabled,
+    workerLat: workerProfile?.home_lat,
+    workerLng: workerProfile?.home_lng,
+  })
+  const hasWorkerAnchor = hasWorkerDistrict || Boolean(providerModel.workerOrigin)
   const hasMapContext = Boolean(mapArea || hasWorkerAnchor || hasWorkerRadius)
+  const mapActionLabel = language === 'en' ? 'Open work map' : 'Mở bản đồ nhận việc'
+  const expandedTitle = fullAddressLabel
+    ? language === 'en' ? 'Route to meeting point' : 'Đường đến điểm hẹn'
+    : language === 'en' ? 'Work area map' : 'Bản đồ khu vực nhận việc'
+  const expandedSubtitle = fullAddressLabel
+    ? `${language === 'en' ? 'Address' : 'Địa chỉ'}: ${localizedWorkerAreaLabel(fullAddressLabel, language)}`
+    : `${language === 'en' ? 'Area' : 'Khu vực'}: ${mapSearch}${hasWorkerRadius ? ` · ${workerRadiusLabel}` : ''}`
   const availabilityHud = !workerProfile
     ? appCopy[language].common.noData
     : workerProfile.is_suspended
@@ -2762,13 +2984,22 @@ function WorkerMapStage() {
 
   return (
     <View style={[styles.mapStage, workerOpaqueCardSurface(tokens, 'depth')]} testID="worker-flexible-map-shell">
+      <Pressable
+        accessibilityHint={language === 'en' ? 'Shows a larger work map with controls.' : 'Mở bản đồ lớn với các công cụ điều hướng.'}
+        accessibilityLabel={mapActionLabel}
+        accessibilityRole="button"
+        onPress={() => dispatchMap({ type: 'open' })}
+        style={({ pressed }) => [styles.workerMapPreviewPressable, pressed ? styles.pressed : null]}
+        testID="worker-map-open-expanded"
+      >
       <View style={[styles.mapViewport, workerMapViewportSurface(tokens)]} testID="worker-map-google-ready">
         <MapLineField />
-        {hasMapContext ? <WorkerMapRouteLine /> : null}
+        {routeUnlocked ? <WorkerMapRouteLine trafficEnabled={trafficEnabled} /> : hasMapContext ? <WorkerMapCoverageLine /> : null}
         <View pointerEvents="none" style={[styles.mapFogTop, { backgroundColor: tokens.raised }]} />
         <View pointerEvents="none" style={[styles.mapCyanVeil, { backgroundColor: tokens.aqua }]} />
         <View pointerEvents="none" style={[styles.mapFogBottom, { backgroundColor: tokens.raised }]} />
         <View style={styles.hiddenMarker} testID={mapPreview.replaceWithProvider} />
+        <WorkerMapProviderBridge model={providerModel} />
         <View style={styles.workerMapTopHud} testID="worker-home-map-hud">
           <View style={[styles.searchPill, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-map-search-pill-opaque">
             <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>
@@ -2781,25 +3012,26 @@ function WorkerMapStage() {
             </Text>
           </View>
         </View>
-        {hasMapContext ? (
-          <View style={[styles.homeMapMarker, styles.homeMapMarkerZone, { backgroundColor: tokens.raised, borderColor: tokens.glassBorder }]} testID="worker-map-zone-marker">
-            <View style={[styles.homeMapZoneHalo, { backgroundColor: tokens.aqua }]} />
-            <Icon name="pin" active small />
-          </View>
-        ) : null}
+        <WorkerMapControlStack />
+        {hasMapContext ? <View pointerEvents="none" style={[styles.homeMapZoneRing, { backgroundColor: tokens.aqua }]} /> : null}
         {hasWorkerAnchor ? (
-          <View style={[styles.homeMapMarker, styles.homeMapMarkerWorker, { backgroundColor: tokens.primary, borderColor: tokens.glassBorder }]} testID="worker-map-worker-marker">
-            <Icon inverse name="brief" small />
+          <View style={[styles.homeMapMarker, styles.homeMapMarkerWorker, { backgroundColor: tokens.raised, borderColor: tokens.primary }]} testID="worker-map-worker-marker">
+            <Icon name="brief" active small />
           </View>
         ) : null}
-        <View style={styles.workerMapHudStack} testID="worker-map-hud-stack">
-          <View style={[styles.workerMapHudChip, workerOpaqueCardSurface(tokens, 'mint')]} testID="worker-map-hud-worker">
+        {hasMapContext ? (
+          <View style={[styles.homeMapMarker, styles.homeMapMarkerZone, { backgroundColor: tokens.primary, borderColor: tokens.glassBorder }]} testID="worker-map-zone-marker">
+            <Icon inverse name="pin" active small />
+          </View>
+        ) : null}
+        <View style={[styles.workerMapHudStack, styles.workerMapHudStrip, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-map-hud-stack">
+          <View style={styles.workerMapInfoItem} testID="worker-map-hud-worker">
             <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{language === 'en' ? 'You' : 'Bạn'}</Text>
             {hasWorkerAnchor ? (
               <Text style={[styles.mapChipMeta, { color: tokens.muted }]} numberOfLines={1}>{workerAnchorLabel}</Text>
             ) : null}
           </View>
-          <View style={[styles.workerMapHudChip, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-map-hud-zone">
+          <View style={styles.workerMapInfoItem} testID="worker-map-hud-zone">
             <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{language === 'en' ? 'Work area' : 'Khu vực nhận việc'}</Text>
             {hasWorkerRadius ? (
               <Text style={[styles.mapChipMeta, { color: tokens.muted }]} numberOfLines={1}>{workerRadiusLabel}</Text>
@@ -2807,6 +3039,58 @@ function WorkerMapStage() {
           </View>
         </View>
       </View>
+      </Pressable>
+      <Modal animationType="slide" onRequestClose={() => dispatchMap({ type: 'close' })} transparent visible={expanded}>
+        <View style={styles.workerMapModalBackdrop}>
+          <GlassModalSheet mode={tokens.mode} style={[styles.workerMapModalSheet, workerMapModalSheetSurface(tokens)]} testID="worker-map-expanded-sheet">
+            <View style={styles.workerMapExpandedHeader}>
+              <View style={styles.titleStack}>
+                <Text style={[styles.kicker, { color: tokens.primary }]}>{language === 'en' ? 'Operational map' : 'Bản đồ vận hành'}</Text>
+                <Text style={[styles.heroTitle, { color: tokens.ink }]} numberOfLines={1}>{expandedTitle}</Text>
+                <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2}>{expandedSubtitle}</Text>
+              </View>
+              <Pressable accessibilityLabel={language === 'en' ? 'Close map' : 'Đóng bản đồ'} accessibilityRole="button" onPress={() => dispatchMap({ type: 'close' })} style={[styles.workerMapCloseButton, { borderColor: tokens.borderStrong, backgroundColor: tokens.raised }]} testID="worker-map-close-expanded">
+                <WorkerMapCloseGlyph />
+              </Pressable>
+            </View>
+            <View style={[styles.workerExpandedMapViewport, workerMapViewportSurface(tokens)]} testID="worker-map-expanded-vector">
+              <View pointerEvents="none" style={[styles.workerMapZoomLayer, { transform: [{ scale: mapZoom }, { rotate: mapCompassNorth ? '0deg' : '-7deg' }] }]}>
+                <MapLineField detailed={mapLayerDetailed} expanded />
+                {routeUnlocked ? <WorkerMapRouteLine expanded trafficEnabled={trafficEnabled} /> : hasMapContext ? <WorkerMapCoverageLine expanded /> : null}
+                <WorkerMapProviderBridge expanded model={providerModel} />
+                <View pointerEvents="none" style={[styles.mapCyanVeil, styles.expandedMapVeil, { backgroundColor: tokens.aqua }]} />
+                {hasMapContext ? (
+                  <View style={[styles.homeMapMarker, styles.expandedMapMarkerZone, { backgroundColor: routeUnlocked ? tokens.primary : tokens.raised, borderColor: tokens.glassBorder }]}>
+                    <Icon inverse={routeUnlocked} name={routeUnlocked ? 'pin' : 'shield'} active small />
+                  </View>
+                ) : null}
+                {hasWorkerAnchor ? (
+                  <View style={[styles.homeMapMarker, styles.expandedMapMarkerWorker, { backgroundColor: tokens.raised, borderColor: tokens.primary }]}>
+                    <Icon name="tools" small />
+                  </View>
+                ) : null}
+              </View>
+              <WorkerMapControlStack
+                centered={mapCentered}
+                compassNorth={mapCompassNorth}
+                expanded
+                layerDetailed={mapLayerDetailed}
+                onToggleCompass={() => dispatchMap({ type: 'toggle_compass' })}
+                onToggleLayer={() => dispatchMap({ type: 'toggle_layer' })}
+                showTraffic={routeUnlocked}
+                trafficEnabled={trafficEnabled}
+                onRecenter={() => dispatchMap({ type: 'recenter' })}
+                onToggleTraffic={() => dispatchMap({ type: 'toggle_traffic' })}
+                onZoomIn={() => dispatchMap({ type: 'zoom_in' })}
+                onZoomOut={() => dispatchMap({ type: 'zoom_out' })}
+                zoomInDisabled={mapZoom >= 1.28}
+                zoomOutDisabled={mapZoom <= 0.86}
+              />
+              <WorkerMapRouteSummary centered={mapCentered} fullAddressLabel={fullAddressLabel} mapArea={mapSearch} mapMode={mapMode} onRecenter={() => dispatchMap({ type: 'recenter' })} providerModel={providerModel} radiusLabel={hasWorkerRadius ? workerRadiusLabel : null} trafficEnabled={trafficEnabled} />
+            </View>
+          </GlassModalSheet>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -2823,7 +3107,7 @@ function WorkerMapFeatureCard({ icon, mapFeatureMeta, title, tone }: { icon: Wor
         {mapFeatureMeta}
       </Text>
       <View style={[styles.mapFeatureIcon, { backgroundColor: tokens.glassStrong }]}>
-        <Icon name={icon} active />
+        <WorkerUtilityIcon active frameSize={48} icon={icon} size={48} />
       </View>
     </View>
   )
@@ -2915,9 +3199,9 @@ function WorkerHomeServiceGrid() {
   const workerServiceTypes = workerProfile?.service_types ?? []
   const canShowApprovedSkills = Boolean(workerProfile?.is_approved && workerProfile?.verification_status === 'approved')
   const serviceCandidates = [
-    { service: 'electrical' as const, icon: 'plug' as const, title: copy.home.electricianCard, tone: 'mint' as const, testID: 'worker-shell-service-electrical' },
-    { service: 'plumbing' as const, icon: 'faucet' as const, title: copy.home.plumberCard, tone: 'cyan' as const, testID: 'worker-shell-service-plumbing' },
-    { service: 'cleaning' as const, icon: 'broom' as const, title: copy.home.cleaningCard, tone: 'cream' as const, testID: 'worker-shell-service-cleaning' },
+    { service: 'electrical' as const, title: copy.home.electricianCard, tone: 'mint' as const, testID: 'worker-shell-service-electrical' },
+    { service: 'plumbing' as const, title: copy.home.plumberCard, tone: 'cyan' as const, testID: 'worker-shell-service-plumbing' },
+    { service: 'cleaning' as const, title: copy.home.cleaningCard, tone: 'cream' as const, testID: 'worker-shell-service-cleaning' },
   ]
 
   return (
@@ -2926,9 +3210,9 @@ function WorkerHomeServiceGrid() {
         const approvedForService = canShowApprovedSkills && workerServiceTypes.includes(item.service)
         return (
           <WorkerHomeServiceTile
-            icon={item.icon}
             key={item.testID}
             meta={approvedForService ? copy.home.serviceSkillLabel : copy.home.servicePendingLabel}
+            service={item.service}
             title={item.title}
             tone={item.tone}
             testID={item.testID}
@@ -2939,7 +3223,7 @@ function WorkerHomeServiceGrid() {
   )
 }
 
-function WorkerHomeServiceTile({ icon, meta, testID, title, tone }: { icon: WorkerIconName; meta: string; testID?: string; title: string; tone: WorkerTone }) {
+function WorkerHomeServiceTile({ meta, service, testID, title, tone }: { meta: string; service: Extract<ServiceType, 'cleaning' | 'electrical' | 'plumbing'>; testID?: string; title: string; tone: WorkerTone }) {
   const { tokens } = useWorkerUi()
   const { replace } = useRouter()
   const { reduceMotion } = useGlassAccessibility()
@@ -2951,8 +3235,8 @@ function WorkerHomeServiceTile({ icon, meta, testID, title, tone }: { icon: Work
       style={({ pressed }) => [styles.workerServiceTile, workerServiceTileSurface(tokens, tone), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
       testID={testID}
     >
-      <View style={[styles.workerServiceIcon, workerIconBubbleSurface(tokens, tone)]}>
-        <Icon name={icon} active />
+      <View style={styles.workerServiceImageStage}>
+        <WorkerImageIcon frameSize={72} name={workerServiceImageIcons[service]} size={72} />
       </View>
       <Text adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.workerServiceTitle, { color: tokens.ink }]} numberOfLines={2}>
         {title}
@@ -2980,9 +3264,7 @@ function WorkerHomeMiniGrid() {
         style={({ pressed }) => [styles.workerMiniCard, workerServiceTileSurface(tokens, 'mint'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
         testID="worker-home-mini-waiting"
       >
-        <View style={[styles.workerMiniIcon, workerIconBubbleSurface(tokens, 'mint')]}>
-          <Icon name="jobs" active small />
-        </View>
+        <WorkerImageIcon frameSize={50} name="navJobs" size={50} style={styles.workerMiniImageWrap} />
         <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>{copy.jobs.filters[0]}</Text>
         <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>{language === 'en' ? 'New requests' : 'Yêu cầu mới'}</Text>
       </Pressable>
@@ -2992,9 +3274,7 @@ function WorkerHomeMiniGrid() {
         style={({ pressed }) => [styles.workerMiniCard, workerServiceTileSurface(tokens, 'cyan'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
         testID="worker-home-mini-profile"
       >
-        <View style={[styles.workerMiniIcon, workerIconBubbleSurface(tokens, 'cyan')]}>
-          <Icon name="shield" active small />
-        </View>
+        <WorkerImageIcon frameSize={50} name="profileVerified" size={50} style={styles.workerMiniImageWrap} />
         <Text style={[styles.workerMiniTitle, { color: tokens.ink }]} numberOfLines={1}>{profileStatus}</Text>
         <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>{copy.home.serviceProfileTitle}</Text>
       </Pressable>
@@ -3002,79 +3282,118 @@ function WorkerHomeMiniGrid() {
   )
 }
 
-function CompactWorkerPresenceMap({ density = 'regular', mode }: { density?: 'dense' | 'regular'; mode: 'active' | 'waiting' }) {
+function CompactWorkerPresenceMap({ density = 'regular', mode }: { density?: 'dense' | 'regular'; mode: Exclude<WorkerMapSurface, 'home'> }) {
   const { language, tokens } = useWorkerUi()
-  const { selectors, state } = useFrontendWorkflow()
+  const { selectors, state, workerProfile } = useFrontendWorkflow()
+  const [mapState, dispatchMap] = useReducer(workerHomeMapReducer, initialWorkerHomeMapState)
+  const { centered: mapCentered, expanded, trafficEnabled } = mapState
   const deal = getWorkerVisibleDeal(state.deal)
   const broadcast = deal?.broadcast ?? null
   const hasBroadcast = Boolean(broadcast)
   const area = broadcast?.generalArea ?? deal?.draft.districtLabel
+  const workerRadiusKm = workerProfile?.service_radius_km
+  const hasWorkerRadius = typeof workerRadiusKm === 'number' && Number.isFinite(workerRadiusKm)
+  const radiusLabel = hasWorkerRadius ? `${workerRadiusKm} km` : null
   const hasReleasedAddress = Boolean(
-    mode === 'active' &&
+    mode !== 'waiting' &&
       selectors.canWorkerSeeFullAddress &&
       broadcast?.fullAddressVisible &&
       broadcast.fullAddressLabel,
   )
+  const mapMode: WorkerMapMode = hasReleasedAddress ? 'route' : hasBroadcast ? 'locked' : 'area'
+  const fullAddressLabel = hasReleasedAddress && broadcast?.fullAddressLabel ? broadcast.fullAddressLabel : null
   const areaLabel = area ? localizedWorkerAreaLabel(area, language) : (language === 'en' ? 'Waiting area' : 'Khu vực chờ')
   const privacyLabel = hasReleasedAddress
-    ? (language === 'en' ? 'Address available' : 'Điểm hẹn đã mở')
+    ? (language === 'en' ? 'Route open' : 'Tuyến đã mở')
     : hasBroadcast
-      ? (language === 'en' ? 'Address locked' : 'Địa chỉ khóa')
-      : (language === 'en' ? 'No request' : 'Chưa có yêu cầu')
+      ? (language === 'en' ? 'Tracking' : 'Đang theo dõi')
+      : (language === 'en' ? 'Tracking' : 'Đang theo dõi')
   const mapPrimary = hasReleasedAddress ? (language === 'en' ? 'Meeting point' : 'Điểm hẹn') : areaLabel
-  const mapContextLabel = hasReleasedAddress
-    ? (language === 'en' ? 'Route' : 'Tuyến đến')
-    : hasBroadcast
-      ? (language === 'en' ? 'Customer area' : 'Khu vực khách')
-      : (language === 'en' ? 'Service area' : 'Khu vực nhận việc')
-  const mapStateLabel = hasReleasedAddress
-    ? areaLabel
-    : hasBroadcast
-      ? (language === 'en' ? 'Locked' : 'Đã khóa')
-      : appCopy[language].common.noRequest
+  const compactDetailLabel = radiusLabel
+    ? language === 'en' ? `${radiusLabel} in area` : `${radiusLabel} trong vùng`
+    : areaLabel
   const showEmptyWaitingMarker = mode === 'waiting' && !hasBroadcast && !hasReleasedAddress
+  const expandedTitle = hasReleasedAddress
+    ? (language === 'en' ? 'Route to meeting point' : 'Đường đến điểm hẹn')
+    : (language === 'en' ? 'Work area map' : 'Bản đồ khu vực nhận việc')
+  const expandedSubtitle = hasReleasedAddress
+    ? `${language === 'en' ? 'Area' : 'Khu vực'}: ${areaLabel}`
+    : `${mapPrimary}${radiusLabel ? ` · ${radiusLabel}` : ''}`
+  const mapActionLabel = language === 'en' ? 'Open map detail' : 'Mở bản đồ chi tiết'
+  const providerModel = createWorkerMapProviderModel({
+    areaLabel,
+    fullAddressLabel,
+    mapMode,
+    serviceRadius: hasWorkerRadius ? workerRadiusKm : null,
+    trafficEnabled,
+    workerLat: workerProfile?.home_lat,
+    workerLng: workerProfile?.home_lng,
+  })
 
   return (
     <View style={[styles.compactPresenceMap, density === 'dense' ? styles.compactPresenceMapDense : null, workerOpaqueCardSurface(tokens, 'depth')]} testID={`worker-jobs-${mode}-presence-map`}>
-      <View style={[styles.compactMapViewport, density === 'dense' ? styles.compactMapViewportDense : null, workerMapViewportSurface(tokens)]}>
+      <Pressable
+        accessibilityHint={language === 'en' ? 'Shows a larger map with operational controls.' : 'Mở bản đồ lớn với công cụ vận hành.'}
+        accessibilityLabel={mapActionLabel}
+        accessibilityRole="button"
+        onPress={() => dispatchMap({ type: 'open' })}
+        style={({ pressed }) => [styles.compactMapViewport, density === 'dense' ? styles.compactMapViewportDense : null, workerMapViewportSurface(tokens), pressed ? styles.pressed : null]}
+        testID={`worker-jobs-${mode}-map-open-expanded`}
+      >
         <MapLineField compact />
-        {hasReleasedAddress ? <WorkerMapRouteLine compact /> : null}
+        {hasReleasedAddress ? <WorkerMapRouteLine compact trafficEnabled={trafficEnabled} /> : <WorkerMapCoverageLine compact />}
+        <WorkerMapProviderBridge compact model={providerModel} />
         <View pointerEvents="none" style={[styles.mapCyanVeil, styles.compactMapVeil, { backgroundColor: tokens.aqua }]} />
-        <View style={styles.workerMapTopHud}>
+        <View style={styles.compactMapTopHud}>
           <View style={[styles.searchPill, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-map-zone-pill-opaque">
-            <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{mapPrimary}</Text>
-          </View>
-          <View style={[styles.searchPill, workerOpaqueCardSurface(tokens, hasReleasedAddress ? 'mint' : 'cream')]}>
             <Text style={[styles.mapChipTitle, { color: hasReleasedAddress ? tokens.primary : tokens.copper }]} numberOfLines={1}>{privacyLabel}</Text>
           </View>
+        </View>
+        <View pointerEvents="none" style={styles.compactMapControlMini} testID="worker-map-compact-preview-control">
+          <WorkerMapControlGlyph name="target" />
         </View>
         {hasReleasedAddress || hasBroadcast || showEmptyWaitingMarker ? (
           <View
             style={[
               styles.compactMapMarker,
-              styles.compactMapMarkerZone,
+              styles.compactMapMarkerWorker,
               showEmptyWaitingMarker ? styles.compactMapMarkerEmpty : null,
-              { backgroundColor: showEmptyWaitingMarker ? tokens.glassStrong : tokens.mint, borderColor: showEmptyWaitingMarker ? tokens.glassBorder : tokens.borderStrong },
+              { backgroundColor: tokens.raised, borderColor: showEmptyWaitingMarker ? tokens.glassBorder : tokens.primary },
             ]}
-            testID={hasReleasedAddress ? 'worker-map-route-after-accept' : hasBroadcast ? 'worker-map-address-locked-before-accept' : 'worker-map-waiting-area-marker'}
+            testID={showEmptyWaitingMarker ? 'worker-map-waiting-area-marker' : undefined}
           >
-            <Icon name={hasReleasedAddress ? 'pin' : hasBroadcast ? 'shield' : 'pin'} active={!showEmptyWaitingMarker} small />
+            <Icon name={hasReleasedAddress ? 'tools' : 'pin'} active={!showEmptyWaitingMarker} small />
           </View>
         ) : null}
-        {hasReleasedAddress ? (
-          <View style={[styles.compactMapMarker, styles.compactMapMarkerWorker, { backgroundColor: tokens.raised, borderColor: tokens.primary }]}>
-            <Icon name="tools" small />
+        {hasReleasedAddress || hasBroadcast ? (
+          <View
+            style={[styles.compactMapMarker, styles.compactMapMarkerZone, { backgroundColor: hasReleasedAddress ? tokens.primary : tokens.raised, borderColor: hasReleasedAddress ? tokens.glassBorder : tokens.borderStrong }]}
+            testID={hasReleasedAddress ? 'worker-map-route-after-accept' : 'worker-map-address-locked-before-accept'}
+          >
+            <Icon inverse={hasReleasedAddress} name={hasReleasedAddress ? 'pin' : 'shield'} active small />
           </View>
         ) : null}
-        <View style={styles.workerMapHudStack}>
-          <View style={[styles.workerMapHudChip, workerOpaqueCardSurface(tokens, 'mint')]}>
-            <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{mapContextLabel}</Text>
-          </View>
-          <View style={[styles.workerMapHudChip, workerOpaqueCardSurface(tokens, 'raised')]}>
-            <Text style={[styles.mapChipTitle, { color: tokens.ink }]} numberOfLines={1}>{mapStateLabel}</Text>
-          </View>
+        <View style={[styles.compactMapInfoStrip, workerOpaqueCardSurface(tokens, 'raised')]} testID="worker-map-compact-route-strip">
+          <Text style={[styles.mapChipTitle, { color: tokens.primary }]} numberOfLines={1}>{compactDetailLabel}</Text>
         </View>
-      </View>
+      </Pressable>
+      <WorkerExpandedMapModal
+        centered={mapCentered}
+        fullAddressLabel={fullAddressLabel}
+        hasMapContext={Boolean(area || radiusLabel || hasBroadcast)}
+        hasWorkerAnchor={hasReleasedAddress}
+        mapArea={areaLabel}
+        mapMode={mapMode}
+        onClose={() => dispatchMap({ type: 'close' })}
+        onRecenter={() => dispatchMap({ type: 'recenter' })}
+        onToggleTraffic={() => dispatchMap({ type: 'toggle_traffic' })}
+        providerModel={providerModel}
+        radiusLabel={radiusLabel}
+        subtitle={expandedSubtitle}
+        title={expandedTitle}
+        trafficEnabled={trafficEnabled}
+        visible={expanded}
+      />
     </View>
   )
 }
@@ -3166,7 +3485,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   const broadcast = deal?.broadcast ?? null
   const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus, language) : null
   const localizedProblemSummary = broadcast ? localizedWorkerProblemSummary(broadcast, language) : copy.request.title
-  const workerBriefLines = broadcast ? buildWorkerBroadcastBrief(deal, broadcast, selectors.currentStatus, language) : copy.request.brief
+  const workerBriefLines = broadcast ? buildWorkerBroadcastBrief(deal, broadcast, selectors.currentStatus, language, selectors.canWorkerSeeFullAddress) : copy.request.brief
   const canRequestScopeChange = selectors.currentStatus === 'inspecting' || selectors.currentStatus === 'repairing'
   const hasBroadcast = Boolean(broadcast)
   const canRequestCancellation = Boolean(hasBroadcast && !selectors.canWorkerAccept && [
@@ -3360,10 +3679,7 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
       </View>
 
       <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={2} style={[styles.requestTitle, { color: tokens.ink }]}>{localizedProblemSummary}</Text>
-      <View style={styles.areaRow} testID={canRenderFullAddress ? 'worker-full-address-after-accept' : 'worker-general-area-before-accept'}>
-        <Icon name="map" small />
-        <Text numberOfLines={2} style={[styles.areaText, { color: tokens.muted }]}>{addressLabel}</Text>
-      </View>
+      <WorkerRequestAddressRow addressLabel={addressLabel} canRenderFullAddress={canRenderFullAddress} tokens={tokens} />
 
       <View style={[styles.kaelBrief, workerDiagnosisSurface(tokens)]} testID="worker-kael-brief">
         <View style={styles.identityRow}>
@@ -3455,6 +3771,23 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   )
 }
 
+function WorkerRequestAddressRow({
+  addressLabel,
+  canRenderFullAddress,
+  tokens,
+}: {
+  addressLabel: string
+  canRenderFullAddress: boolean
+  tokens: WorkerThemeTokens
+}) {
+  return (
+    <View style={styles.areaRow} testID={canRenderFullAddress ? 'worker-full-address-after-accept' : 'worker-general-area-before-accept'}>
+      <Icon name="map" small />
+      <Text numberOfLines={2} style={[styles.areaText, { color: tokens.muted }]}>{addressLabel}</Text>
+    </View>
+  )
+}
+
 function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
   const { replace } = useRouter()
   const insets = useSafeAreaInsets()
@@ -3505,15 +3838,18 @@ function WorkerDockOverlay({ active }: { active: WorkerActiveTab }) {
 }
 
 function WorkerDockIcon({ focused, name }: { focused: boolean; name: WorkerDockIconName }) {
-  const { tokens } = useWorkerUi()
-  const color = focused ? tokens.primary : tokens.subtle
-  const accent = focused ? tokens.copper : tokens.subtle
-
   if (name === 'kael') {
     return <Image contentFit="contain" source={kaelHead} style={styles.workerDockKaelImage} testID="worker-dock-kael-mascot-icon" />
   }
 
-  return <WorkerDockGlyph accent={accent} color={color} name={name} />
+  return (
+    <WorkerImageIcon
+      frameSize={34}
+      name={workerDockImageIcons[name]}
+      size={focused ? 34 : 31}
+      style={[styles.workerDockAssetImage, focused ? styles.workerDockAssetImageFocused : null]}
+    />
+  )
 }
 
 function WorkerDockGlyph({ accent, color, name }: { accent: string; color: string; name: Exclude<WorkerDockIconName, 'kael'> }) {
@@ -3555,20 +3891,13 @@ function WorkerDockGlyph({ accent, color, name }: { accent: string; color: strin
 
 function AmbientBackdrop() {
   const { tokens } = useWorkerUi()
-  const mintWashStyle = {
-    opacity: 0.18,
-    transform: [{ rotate: '-8deg' }],
-  }
-  const lineWashStyle = {
-    opacity: 0.12,
-  }
 
   return (
     <>
       <View style={[styles.backdropWarm, { backgroundColor: tokens.cream }]} />
-      <View style={[styles.backdropMint, { backgroundColor: tokens.aqua }, mintWashStyle]} />
+      <View style={[styles.backdropMint, { backgroundColor: tokens.aqua }, workerAmbientMintWashStyle]} />
       <View style={[styles.backdropCyan, { backgroundColor: tokens.cyan }]} />
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, lineWashStyle]}>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, workerAmbientLineWashStyle]}>
         <Svg style={StyleSheet.absoluteFill} viewBox="0 0 390 844" preserveAspectRatio="none">
           <Path d="M-10 210 C74 178 128 230 198 190 S332 132 420 164" stroke={tokens.line} strokeWidth={2.2} opacity={0.42} fill="none" />
           <Path d="M42 78 C118 124 126 174 88 238 S92 366 176 394 S302 378 410 424" stroke={tokens.line} strokeWidth={1.8} opacity={0.28} fill="none" />
@@ -3644,36 +3973,450 @@ function WorkerSectionMotionField({
   )
 }
 
-function MapLineField({ compact = false }: { compact?: boolean }) {
+function MapLineField({ compact = false, detailed = false, expanded = false }: { compact?: boolean; detailed?: boolean; expanded?: boolean }) {
   const { tokens } = useWorkerUi()
-  const opacityScale = compact ? 0.96 : 1.08
+  const opacityScale = detailed ? (expanded ? 1.28 : compact ? 1.02 : 1.12) : expanded ? 1.18 : compact ? 0.96 : 1.08
+  const waterColor = tokens.mode === 'dark' ? tokens.cyan : 'rgba(202,239,249,0.68)'
+  const parkColor = tokens.mode === 'dark' ? tokens.mint : 'rgba(151,230,206,0.36)'
+  const roadCasing = tokens.mode === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.88)'
+  const majorRoadCasing = tokens.mode === 'dark' ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.96)'
+
+  if (expanded) {
+    return (
+      <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 520 620" preserveAspectRatio="none">
+        <Path d="M382 -40 C460 66 520 156 528 286 L528 660 L424 660 C456 472 444 178 382 -40Z" fill={waterColor} opacity={0.58} />
+        <Path d="M86 190 C150 116 252 154 250 242 C248 334 128 350 70 288 C28 242 40 210 86 190Z" fill={parkColor} opacity={0.74} />
+        <Path d="M276 338 C336 304 420 338 424 404 C428 482 322 494 274 440 C246 410 244 366 276 338Z" fill={parkColor} opacity={0.44} />
+        <Rect x={34} y={44} width={92} height={56} rx={18} fill={tokens.mapBlock} opacity={0.44} />
+        <Rect x={152} y={52} width={118} height={58} rx={18} fill={tokens.mapBlock} opacity={0.38} />
+        <Rect x={318} y={70} width={82} height={52} rx={16} fill={tokens.mapBlock} opacity={0.34} />
+        <Rect x={42} y={370} width={124} height={64} rx={18} fill={tokens.mapBlock} opacity={0.36} />
+        <Rect x={188} y={488} width={112} height={58} rx={18} fill={tokens.mapBlock} opacity={0.28} />
+        <Rect x={332} y={448} width={98} height={60} rx={18} fill={tokens.mapBlock} opacity={0.32} />
+        <Path d="M-40 98 C64 142 138 130 220 102 S370 48 560 92" stroke={roadCasing} strokeWidth={8.4} strokeLinecap="round" opacity={0.62 * opacityScale} fill="none" />
+        <Path d="M-40 98 C64 142 138 130 220 102 S370 48 560 92" stroke={tokens.mapLine} strokeWidth={3.2} strokeLinecap="round" opacity={0.23 * opacityScale} fill="none" />
+        <Path d="M10 260 C86 210 180 252 246 216 S388 140 560 186" stroke={roadCasing} strokeWidth={8.2} strokeLinecap="round" opacity={0.58 * opacityScale} fill="none" />
+        <Path d="M10 260 C86 210 180 252 246 216 S388 140 560 186" stroke={tokens.mapLine} strokeWidth={3} strokeLinecap="round" opacity={0.22 * opacityScale} fill="none" />
+        <Path d="M-20 404 C84 350 178 398 274 356 S416 264 560 318" stroke={roadCasing} strokeWidth={8.2} strokeLinecap="round" opacity={0.58 * opacityScale} fill="none" />
+        <Path d="M-20 404 C84 350 178 398 274 356 S416 264 560 318" stroke={tokens.mapLine} strokeWidth={3} strokeLinecap="round" opacity={0.22 * opacityScale} fill="none" />
+        <Path d="M-28 536 C90 490 210 544 296 486 S430 426 560 464" stroke={roadCasing} strokeWidth={8} strokeLinecap="round" opacity={0.5 * opacityScale} fill="none" />
+        <Path d="M-28 536 C90 490 210 544 296 486 S430 426 560 464" stroke={tokens.mapLine} strokeWidth={2.8} strokeLinecap="round" opacity={0.18 * opacityScale} fill="none" />
+        <Path d="M116 -42 C144 104 138 238 112 660 M252 -48 C236 110 238 264 266 660 M390 -40 C360 128 364 292 404 660" stroke={roadCasing} strokeWidth={6.2} strokeLinecap="round" opacity={0.36 * opacityScale} fill="none" />
+        <Path d="M116 -42 C144 104 138 238 112 660 M252 -48 C236 110 238 264 266 660 M390 -40 C360 128 364 292 404 660" stroke={tokens.mapLine} strokeWidth={2} strokeLinecap="round" opacity={0.15 * opacityScale} fill="none" />
+        <Path d="M-34 468 C88 390 186 402 272 324 S398 144 560 176" stroke={majorRoadCasing} strokeWidth={12.4} strokeLinecap="round" opacity={0.78 * opacityScale} fill="none" />
+        <Path d="M-34 468 C88 390 186 402 272 324 S398 144 560 176" stroke={tokens.mapLine} strokeWidth={4.7} strokeLinecap="round" opacity={0.34 * opacityScale} fill="none" />
+        <Path d="M-42 202 C94 258 184 238 280 184 S426 96 560 130" stroke={majorRoadCasing} strokeWidth={11.2} strokeLinecap="round" opacity={0.72 * opacityScale} fill="none" />
+        <Path d="M-42 202 C94 258 184 238 280 184 S426 96 560 130" stroke={tokens.mapLine} strokeWidth={4.2} strokeLinecap="round" opacity={0.3 * opacityScale} fill="none" />
+        {detailed ? (
+          <>
+            <Rect x={82} y={124} width={86} height={48} rx={16} fill={tokens.mapBlock} opacity={0.26} />
+            <Rect x={342} y={238} width={74} height={50} rx={16} fill={tokens.mapBlock} opacity={0.24} />
+            <Rect x={40} y={468} width={88} height={50} rx={16} fill={tokens.mapBlock} opacity={0.22} />
+            <Rect x={300} y={548} width={82} height={42} rx={14} fill={tokens.mapBlock} opacity={0.2} />
+            <Path d="M-28 318 C76 286 158 312 236 278 S382 198 548 234" stroke={roadCasing} strokeWidth={6.4} strokeLinecap="round" opacity={0.46 * opacityScale} fill="none" />
+            <Path d="M-28 318 C76 286 158 312 236 278 S382 198 548 234" stroke={tokens.mapLine} strokeWidth={2.2} strokeLinecap="round" opacity={0.18 * opacityScale} fill="none" />
+            <Path d="M66 -24 C96 132 88 282 48 648 M454 -28 C420 132 426 300 486 650" stroke={roadCasing} strokeWidth={5.2} strokeLinecap="round" opacity={0.3 * opacityScale} fill="none" />
+            <Path d="M66 -24 C96 132 88 282 48 648 M454 -28 C420 132 426 300 486 650" stroke={tokens.mapLine} strokeWidth={1.7} strokeLinecap="round" opacity={0.13 * opacityScale} fill="none" />
+            <Path d="M18 178 C92 212 160 198 226 160 S350 92 514 118" stroke={roadCasing} strokeWidth={5.8} strokeLinecap="round" opacity={0.34 * opacityScale} fill="none" />
+            <Path d="M18 178 C92 212 160 198 226 160 S350 92 514 118" stroke={tokens.mapLine} strokeWidth={1.9} strokeLinecap="round" opacity={0.14 * opacityScale} fill="none" />
+            <Path d="M-18 586 C90 540 184 590 268 534 S420 480 552 506" stroke={roadCasing} strokeWidth={5.6} strokeLinecap="round" opacity={0.3 * opacityScale} fill="none" />
+            <Path d="M-18 586 C90 540 184 590 268 534 S420 480 552 506" stroke={tokens.mapLine} strokeWidth={1.8} strokeLinecap="round" opacity={0.12 * opacityScale} fill="none" />
+            <Circle cx={282} cy={184} r={5} fill={tokens.mapLine} opacity={0.22} />
+            <Circle cx={274} cy={356} r={4.6} fill={tokens.mapLine} opacity={0.2} />
+            <Circle cx={296} cy={486} r={4.2} fill={tokens.mapLine} opacity={0.18} />
+          </>
+        ) : null}
+      </Svg>
+    )
+  }
+
+  if (compact) {
+    return (
+      <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 390 156" preserveAspectRatio="none">
+        <Path d="M292 -20 C350 34 388 82 398 156 L398 176 L308 176 C326 118 326 54 292 -20Z" fill={waterColor} opacity={0.58} />
+        <Rect x={30} y={20} width={74} height={34} rx={12} fill={tokens.mapBlock} opacity={0.42} />
+        <Rect x={212} y={22} width={82} height={38} rx={13} fill={tokens.mapBlock} opacity={0.34} />
+        <Rect x={96} y={108} width={104} height={34} rx={13} fill={tokens.mapBlock} opacity={0.32} />
+        <Path d="M-18 44 C54 68 102 64 160 48 S258 20 408 42" stroke={roadCasing} strokeWidth={7.2} strokeLinecap="round" opacity={0.58 * opacityScale} fill="none" />
+        <Path d="M-18 44 C54 68 102 64 160 48 S258 20 408 42" stroke={tokens.mapLine} strokeWidth={2.8} strokeLinecap="round" opacity={0.23 * opacityScale} fill="none" />
+        <Path d="M-10 116 C62 90 128 116 196 92 S292 58 408 82" stroke={roadCasing} strokeWidth={7.4} strokeLinecap="round" opacity={0.55 * opacityScale} fill="none" />
+        <Path d="M-10 116 C62 90 128 116 196 92 S292 58 408 82" stroke={tokens.mapLine} strokeWidth={2.8} strokeLinecap="round" opacity={0.22 * opacityScale} fill="none" />
+        <Path d="M-24 126 C42 96 104 92 162 70 S260 36 404 64" stroke={majorRoadCasing} strokeWidth={10.4} strokeLinecap="round" opacity={0.72 * opacityScale} fill="none" />
+        <Path d="M-24 126 C42 96 104 92 162 70 S260 36 404 64" stroke={tokens.mapLine} strokeWidth={4} strokeLinecap="round" opacity={0.32 * opacityScale} fill="none" />
+      </Svg>
+    )
+  }
 
   return (
-    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 360 360" preserveAspectRatio="none">
-      <Path d="M52 -14 C96 52 130 102 154 174 S194 296 252 390" stroke={tokens.mapLine} strokeWidth={4.4} opacity={0.24 * opacityScale} fill="none" />
-      <Path d="M84 52 C144 88 206 92 292 76 S370 58 410 82" stroke={tokens.mapLine} strokeWidth={3.8} opacity={0.21 * opacityScale} fill="none" />
-      <Path d="M24 166 C82 134 128 172 184 154 S270 104 354 136" stroke={tokens.mapLine} strokeWidth={3.6} opacity={0.28 * opacityScale} fill="none" />
-      <Path d="M-16 248 C58 208 124 248 194 222 S292 174 388 204" stroke={tokens.mapLine} strokeWidth={3.7} opacity={0.24 * opacityScale} fill="none" />
-      <Path d="M120 26 L116 126 M204 56 L186 176 M298 24 L278 132 M314 128 L330 262" stroke={tokens.mapLine} strokeWidth={2.4} opacity={0.15 * opacityScale} fill="none" />
-      <Rect x={50} y={92} width={48} height={34} rx={12} fill={tokens.mapBlock} opacity={0.42} />
-      <Rect x={220} y={84} width={60} height={38} rx={13} fill={tokens.mapBlock} opacity={0.38} />
-      <Rect x={136} y={220} width={62} height={38} rx={13} fill={tokens.mapBlock} opacity={0.32} />
+    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 390 216" preserveAspectRatio="none">
+      <Path d="M294 -20 C354 44 390 104 394 172 L394 238 L300 238 C328 178 326 86 294 -20Z" fill={waterColor} opacity={0.58} />
+      <Path d="M66 78 C104 38 164 66 166 116 C168 166 96 180 60 144 C36 120 42 94 66 78Z" fill={parkColor} opacity={0.74} />
+      <Rect x={18} y={24} width={58} height={38} rx={12} fill={tokens.mapBlock} opacity={0.44} />
+      <Rect x={92} y={22} width={84} height={46} rx={14} fill={tokens.mapBlock} opacity={0.38} />
+      <Rect x={208} y={30} width={68} height={42} rx={13} fill={tokens.mapBlock} opacity={0.34} />
+      <Rect x={42} y={152} width={84} height={42} rx={14} fill={tokens.mapBlock} opacity={0.36} />
+      <Rect x={226} y={150} width={82} height={38} rx={14} fill={tokens.mapBlock} opacity={0.3} />
+      <Path d="M-20 54 C40 80 92 80 150 64 S256 28 410 54" stroke={roadCasing} strokeWidth={7.2} strokeLinecap="round" opacity={0.58 * opacityScale} fill="none" />
+      <Path d="M-20 54 C40 80 92 80 150 64 S256 28 410 54" stroke={tokens.mapLine} strokeWidth={2.8} strokeLinecap="round" opacity={0.23 * opacityScale} fill="none" />
+      <Path d="M8 132 C68 108 126 132 182 112 S278 70 402 110" stroke={roadCasing} strokeWidth={7.4} strokeLinecap="round" opacity={0.55 * opacityScale} fill="none" />
+      <Path d="M8 132 C68 108 126 132 182 112 S278 70 402 110" stroke={tokens.mapLine} strokeWidth={2.8} strokeLinecap="round" opacity={0.22 * opacityScale} fill="none" />
+      <Path d="M-12 188 C72 162 126 192 194 168 S294 128 410 154" stroke={roadCasing} strokeWidth={7.2} strokeLinecap="round" opacity={0.52 * opacityScale} fill="none" />
+      <Path d="M-12 188 C72 162 126 192 194 168 S294 128 410 154" stroke={tokens.mapLine} strokeWidth={2.7} strokeLinecap="round" opacity={0.2 * opacityScale} fill="none" />
+      <Path d="M80 -18 C98 48 100 106 84 234 M196 -18 C188 44 184 110 198 236" stroke={roadCasing} strokeWidth={5.4} strokeLinecap="round" opacity={0.34 * opacityScale} fill="none" />
+      <Path d="M80 -18 C98 48 100 106 84 234 M196 -18 C188 44 184 110 198 236" stroke={tokens.mapLine} strokeWidth={1.8} strokeLinecap="round" opacity={0.16 * opacityScale} fill="none" />
+      <Path d="M-24 162 C42 128 104 126 160 96 S250 42 404 82" stroke={majorRoadCasing} strokeWidth={10.6} strokeLinecap="round" opacity={0.74 * opacityScale} fill="none" />
+      <Path d="M-24 162 C42 128 104 126 160 96 S250 42 404 82" stroke={tokens.mapLine} strokeWidth={4.1} strokeLinecap="round" opacity={0.32 * opacityScale} fill="none" />
     </Svg>
   )
 }
 
-function WorkerMapRouteLine({ compact = false }: { compact?: boolean }) {
+function WorkerMapRouteLine({ compact = false, expanded = false, trafficEnabled = false }: { compact?: boolean; expanded?: boolean; trafficEnabled?: boolean }) {
   const { tokens } = useWorkerUi()
   const routePath = compact
-    ? 'M70 128 C116 98 158 116 194 86 S280 58 330 82'
-    : 'M68 130 C116 99 158 116 194 86 S282 58 334 82'
+    ? 'M46 122 C94 94 134 100 178 74 S276 40 348 62'
+    : expanded
+      ? 'M112 446 C178 378 214 396 286 302 S360 146 440 148'
+      : 'M42 164 C98 126 132 130 176 102 S270 52 354 80'
+  const routeColor = expanded ? '#1A73E8' : tokens.primary
+  const routeTestID = expanded ? 'worker-map-route-line-expanded' : compact ? 'worker-map-route-line-compact' : 'worker-map-route-line-preview'
+  const routeViewBox = expanded ? '0 0 520 620' : compact ? '0 0 390 156' : '0 0 390 216'
 
   return (
-    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 390 196" preserveAspectRatio="none">
-      <Path d={routePath} stroke={tokens.raised} strokeWidth={compact ? 9 : 12} strokeLinecap="round" opacity={0.82} fill="none" />
-      <Path d={routePath} stroke={tokens.primary} strokeWidth={compact ? 5 : 6.5} strokeLinecap="round" opacity={0.9} fill="none" />
-      <Path d={routePath} stroke={tokens.aqua} strokeWidth={compact ? 1.7 : 2.2} strokeLinecap="round" opacity={0.35} fill="none" />
+    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} testID={routeTestID} viewBox={routeViewBox} preserveAspectRatio="none">
+      {expanded ? <Path d="M112 446 C156 360 214 350 272 298 S356 156 442 152" stroke={tokens.aqua} strokeWidth={5.2} strokeLinecap="round" strokeDasharray="8 8" opacity={0.44} fill="none" /> : null}
+      <Path d={routePath} stroke={tokens.raised} strokeWidth={compact ? 10 : expanded ? 16 : 12} strokeLinecap="round" strokeLinejoin="round" opacity={0.88} fill="none" />
+      <Path d={routePath} stroke={routeColor} strokeWidth={compact ? 5.4 : expanded ? 8 : 6.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.94} fill="none" />
+      <Path d={routePath} stroke={tokens.aqua} strokeWidth={compact ? 1.9 : expanded ? 2.6 : 2.2} strokeLinecap="round" opacity={0.38} fill="none" />
+      {trafficEnabled ? <Path d={expanded ? 'M336 204 C362 170 394 150 440 148' : compact ? 'M270 48 C298 48 324 56 348 62' : 'M270 60 C298 60 324 68 354 80'} stroke={tokens.copper} strokeWidth={expanded ? 5.4 : 4.2} strokeLinecap="round" opacity={0.9} fill="none" /> : null}
     </Svg>
+  )
+}
+
+function WorkerMapCoverageLine({ compact = false, expanded = false }: { compact?: boolean; expanded?: boolean }) {
+  const { tokens } = useWorkerUi()
+  const path = compact
+    ? 'M48 124 C94 96 132 98 172 76 S266 42 344 64'
+    : expanded
+      ? 'M112 446 C178 378 214 396 286 302 S360 146 440 148'
+      : 'M46 164 C98 126 132 130 176 102 S270 52 354 80'
+  const width = compact ? 2.8 : expanded ? 4.4 : 3.5
+  const corridorWidth = compact ? 22 : expanded ? 54 : 38
+  const testID = expanded ? 'worker-map-coverage-line-expanded' : compact ? 'worker-map-coverage-line-compact' : 'worker-map-coverage-line-preview'
+  const viewBox = expanded ? '0 0 520 620' : compact ? '0 0 390 156' : '0 0 390 216'
+
+  return (
+    <Svg pointerEvents="none" style={StyleSheet.absoluteFill} testID={testID} viewBox={viewBox} preserveAspectRatio="none">
+      <Path d={path} stroke={tokens.aqua} strokeWidth={corridorWidth} strokeLinecap="round" strokeLinejoin="round" opacity={expanded ? 0.18 : 0.24} fill="none" />
+      <Path d={path} stroke={tokens.primary} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 11" opacity={0.46} fill="none" />
+      <Circle cx={compact ? 132 : expanded ? 212 : 154} cy={compact ? 98 : expanded ? 320 : 124} r={compact ? 38 : expanded ? 96 : 68} fill={tokens.mint} opacity={expanded ? 0.16 : 0.2} />
+    </Svg>
+  )
+}
+
+type WorkerMapControlGlyphName = 'compass' | 'layers' | 'minus' | 'plus' | 'target' | 'traffic'
+
+const WORKER_MAP_PREVIEW_CONTROLS: readonly WorkerMapControlGlyphName[] = ['target', 'layers']
+
+function WorkerMapControlStack({
+  centered = false,
+  compassNorth = true,
+  expanded = false,
+  layerDetailed = false,
+  onToggleCompass,
+  onRecenter,
+  onToggleLayer,
+  onToggleTraffic,
+  onZoomIn,
+  onZoomOut,
+  showTraffic = false,
+  trafficEnabled = false,
+  zoomInDisabled = false,
+  zoomOutDisabled = false,
+}: {
+  centered?: boolean
+  compassNorth?: boolean
+  expanded?: boolean
+  layerDetailed?: boolean
+  onToggleCompass?: () => void
+  onRecenter?: () => void
+  onToggleLayer?: () => void
+  onToggleTraffic?: () => void
+  onZoomIn?: () => void
+  onZoomOut?: () => void
+  showTraffic?: boolean
+  trafficEnabled?: boolean
+  zoomInDisabled?: boolean
+  zoomOutDisabled?: boolean
+}) {
+  const { language } = useWorkerUi()
+  const expandedControls: { active?: boolean; disabled?: boolean; label: string; name: WorkerMapControlGlyphName; onPress?: () => void }[] = [
+    { active: centered, label: language === 'en' ? 'Recenter' : 'Căn lại', name: 'target', onPress: onRecenter },
+    { active: compassNorth, label: language === 'en' ? 'Compass' : 'La bàn', name: 'compass', onPress: onToggleCompass },
+    ...(showTraffic ? [{ active: trafficEnabled, label: language === 'en' ? 'Traffic' : 'Giao thông', name: 'traffic' as const, onPress: onToggleTraffic }] : []),
+    { active: layerDetailed, label: language === 'en' ? 'Layers' : 'Lớp bản đồ', name: 'layers', onPress: onToggleLayer },
+    { disabled: zoomInDisabled, label: language === 'en' ? 'Zoom in' : 'Phóng to', name: 'plus', onPress: onZoomIn },
+    { disabled: zoomOutDisabled, label: language === 'en' ? 'Zoom out' : 'Thu nhỏ', name: 'minus', onPress: onZoomOut },
+  ]
+
+  if (!expanded) {
+    return (
+      <View pointerEvents="none" style={styles.workerMapControlStack} testID="worker-map-preview-controls">
+        {WORKER_MAP_PREVIEW_CONTROLS.map((name) => (
+          <View key={name} style={styles.workerMapControlButton}>
+            <WorkerMapControlGlyph name={name} />
+          </View>
+        ))}
+        </View>
+    )
+  }
+
+  return (
+    <View style={[styles.workerMapControlStack, styles.workerMapControlStackExpanded]} testID="worker-map-expanded-controls">
+      {expandedControls.map((control) => (
+        <Pressable
+          accessibilityLabel={control.label}
+          accessibilityRole="button"
+          disabled={control.disabled}
+          key={control.name}
+          onPress={control.onPress}
+          style={({ pressed }) => [styles.workerMapControlButton, control.active ? styles.workerMapControlButtonActive : null, control.disabled ? { opacity: 0.45 } : null, pressed ? styles.pressed : null]}
+          testID={`worker-map-control-${control.name}`}
+        >
+          <WorkerMapControlGlyph active={control.active} name={control.name} />
+        </Pressable>
+      ))}
+    </View>
+  )
+}
+
+function WorkerMapControlGlyph({ active = false, name }: { active?: boolean; name: WorkerMapControlGlyphName }) {
+  const { tokens } = useWorkerUi()
+  const color = active ? tokens.primary : tokens.ink
+  const accent = active ? tokens.copper : tokens.muted
+
+  return (
+    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+      {name === 'target' ? (
+        <>
+          <Circle cx={12} cy={12} r={3.2} stroke={color} strokeWidth={2} />
+          <Path d="M12 3.8v3M12 17.2v3M3.8 12h3M17.2 12h3" stroke={accent} strokeWidth={2} strokeLinecap="round" />
+        </>
+      ) : null}
+      {name === 'layers' ? (
+        <>
+          <Path d="m12 4.4 8 4.1-8 4.1-8-4.1 8-4.1Z" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+          <Path d="m4 12.3 8 4.1 8-4.1M4 16.1l8 4.1 8-4.1" stroke={accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      ) : null}
+      {name === 'traffic' ? (
+        <>
+          <Path d="M5 17.5 C9 10.5 14 14.5 19 6.5" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+          <Path d="M6 6.5h3.5M14.5 17.5H18" stroke={accent} strokeWidth={2} strokeLinecap="round" />
+        </>
+      ) : null}
+      {name === 'compass' ? (
+        <>
+          <Path d="M12 3.8 16.4 12 12 20.2 7.6 12 12 3.8Z" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
+          <Path d="M12 7.2v4.8l3.1 1.6" stroke={accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      ) : null}
+      {name === 'plus' ? <Path d="M12 5.5v13M5.5 12h13" stroke={color} strokeWidth={2.2} strokeLinecap="round" /> : null}
+      {name === 'minus' ? <Path d="M5.5 12h13" stroke={color} strokeWidth={2.2} strokeLinecap="round" /> : null}
+    </Svg>
+  )
+}
+
+function WorkerMapCloseGlyph() {
+  const { tokens } = useWorkerUi()
+
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" stroke={tokens.ink} strokeWidth={2.5} strokeLinecap="round" />
+    </Svg>
+  )
+}
+
+function WorkerExpandedMapModal({
+  centered,
+  fullAddressLabel,
+  hasMapContext,
+  hasWorkerAnchor,
+  mapArea,
+  mapMode,
+  onClose,
+  onRecenter,
+  onToggleTraffic,
+  providerModel,
+  radiusLabel,
+  subtitle,
+  title,
+  trafficEnabled,
+  visible,
+}: {
+  centered: boolean
+  fullAddressLabel: string | null
+  hasMapContext: boolean
+  hasWorkerAnchor: boolean
+  mapArea: string
+  mapMode: WorkerMapMode
+  onClose: () => void
+  onRecenter: () => void
+  onToggleTraffic: () => void
+  providerModel: WorkerMapProviderModel
+  radiusLabel: string | null
+  subtitle: string
+  title: string
+  trafficEnabled: boolean
+  visible: boolean
+}) {
+  const { language, tokens } = useWorkerUi()
+  const routeUnlocked = mapMode === 'route'
+  const [mapState, dispatchMap] = useReducer(workerHomeMapReducer, initialWorkerHomeMapState)
+  const { compassNorth: mapCompassNorth, layerDetailed: mapLayerDetailed, zoom: mapZoom } = mapState
+  const recenterMap = () => {
+    dispatchMap({ type: 'recenter' })
+    onRecenter()
+  }
+
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
+      <View style={styles.workerMapModalBackdrop}>
+        <GlassModalSheet mode={tokens.mode} style={[styles.workerMapModalSheet, workerMapModalSheetSurface(tokens)]} testID="worker-map-expanded-sheet">
+          <View style={styles.workerMapExpandedHeader}>
+            <View style={styles.titleStack}>
+              <Text style={[styles.kicker, { color: tokens.primary }]}>{language === 'en' ? 'Operational map' : 'Bản đồ vận hành'}</Text>
+              <Text style={[styles.heroTitle, { color: tokens.ink }]} numberOfLines={1}>{title}</Text>
+              <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2}>{subtitle}</Text>
+            </View>
+            <Pressable accessibilityLabel={language === 'en' ? 'Close map' : 'Đóng bản đồ'} accessibilityRole="button" onPress={onClose} style={[styles.workerMapCloseButton, { borderColor: tokens.borderStrong, backgroundColor: tokens.raised }]} testID="worker-map-close-expanded">
+              <WorkerMapCloseGlyph />
+            </Pressable>
+          </View>
+          <View style={[styles.workerExpandedMapViewport, workerMapViewportSurface(tokens)]} testID="worker-map-expanded-vector">
+            <View pointerEvents="none" style={[styles.workerMapZoomLayer, { transform: [{ scale: mapZoom }, { rotate: mapCompassNorth ? '0deg' : '-7deg' }] }]}>
+              <MapLineField detailed={mapLayerDetailed} expanded />
+              {routeUnlocked ? <WorkerMapRouteLine expanded trafficEnabled={trafficEnabled} /> : hasMapContext ? <WorkerMapCoverageLine expanded /> : null}
+              <WorkerMapProviderBridge expanded model={providerModel} />
+              <View pointerEvents="none" style={[styles.mapCyanVeil, styles.expandedMapVeil, { backgroundColor: tokens.aqua }]} />
+              {hasMapContext ? (
+                <View style={[styles.homeMapMarker, styles.expandedMapMarkerZone, { backgroundColor: routeUnlocked ? tokens.primary : tokens.raised, borderColor: tokens.glassBorder }]}>
+                  <Icon inverse={routeUnlocked} name={routeUnlocked ? 'pin' : 'shield'} active small />
+                </View>
+              ) : null}
+              {hasWorkerAnchor ? (
+                <View style={[styles.homeMapMarker, styles.expandedMapMarkerWorker, { backgroundColor: tokens.raised, borderColor: tokens.primary }]}>
+                  <Icon name="tools" small />
+                </View>
+              ) : null}
+            </View>
+            <WorkerMapControlStack
+              centered={centered}
+              compassNorth={mapCompassNorth}
+              expanded
+              layerDetailed={mapLayerDetailed}
+              onToggleCompass={() => dispatchMap({ type: 'toggle_compass' })}
+              onToggleLayer={() => dispatchMap({ type: 'toggle_layer' })}
+              showTraffic={routeUnlocked}
+              trafficEnabled={trafficEnabled}
+              onRecenter={recenterMap}
+              onToggleTraffic={onToggleTraffic}
+              onZoomIn={() => dispatchMap({ type: 'zoom_in' })}
+              onZoomOut={() => dispatchMap({ type: 'zoom_out' })}
+              zoomInDisabled={mapZoom >= 1.28}
+              zoomOutDisabled={mapZoom <= 0.86}
+            />
+            <WorkerMapRouteSummary centered={centered} fullAddressLabel={fullAddressLabel} mapArea={mapArea} mapMode={mapMode} onRecenter={recenterMap} providerModel={providerModel} radiusLabel={radiusLabel} trafficEnabled={trafficEnabled} />
+          </View>
+        </GlassModalSheet>
+      </View>
+    </Modal>
+  )
+}
+
+function WorkerMapRouteSummary({
+  centered,
+  fullAddressLabel,
+  mapArea,
+  mapMode,
+  onRecenter,
+  providerModel,
+  radiusLabel,
+  trafficEnabled,
+}: {
+  centered: boolean
+  fullAddressLabel: string | null
+  mapArea: string
+  mapMode?: WorkerMapMode
+  onRecenter?: () => void
+  providerModel: WorkerMapProviderModel
+  radiusLabel: string | null
+  trafficEnabled: boolean
+}) {
+  const { language, tokens } = useWorkerUi()
+  const lockedAreaOnly = mapMode === 'locked'
+  const routeDestinationLabel = providerModel.fullAddressLabel ?? fullAddressLabel
+  const canOpenExternalRoute = providerModel.routeRequestReady && Boolean(routeDestinationLabel)
+  const title = canOpenExternalRoute
+    ? language === 'en' ? 'Route to meeting point' : 'Đường đến điểm hẹn'
+    : language === 'en' ? 'Area preview only' : 'Chỉ hiện khu vực nhận việc'
+  const detail = canOpenExternalRoute
+    ? localizedWorkerAreaLabel(routeDestinationLabel ?? mapArea, language)
+    : radiusLabel
+      ? `${mapArea} · ${radiusLabel}`
+      : mapArea
+  const badge = trafficEnabled
+    ? language === 'en' ? 'Traffic' : 'Giao thông'
+    : canOpenExternalRoute
+      ? 'Maps'
+    : lockedAreaOnly
+      ? language === 'en' ? 'Locked' : 'Khóa'
+      : centered
+      ? language === 'en' ? 'Centered' : 'Đã căn'
+    : language === 'en' ? 'Area' : 'Khu vực'
+  const note = canOpenExternalRoute
+    ? language === 'en' ? 'Use the released address from the job state.' : 'Dùng địa chỉ đã được mở từ trạng thái công việc.'
+    : language === 'en' ? 'Exact route opens only after accepting a job.' : 'Tuyến chi tiết chỉ mở sau khi nhận việc.'
+
+  return (
+    <View style={[styles.workerMapRouteSummary, { borderColor: tokens.border, backgroundColor: tokens.raised }]} testID="worker-map-route-summary">
+      <View style={styles.hiddenMarker} testID={canOpenExternalRoute ? workerMapProviderBridgeTestIDs.route : workerMapProviderBridgeTestIDs.area} />
+      <View style={styles.workerMapSummaryHeader}>
+        <View style={styles.titleStack}>
+          <Text style={[styles.mapRouteSummaryTitle, { color: tokens.ink }]} numberOfLines={1}>{title}</Text>
+          <Text style={[styles.mapRouteSummaryDetail, { color: tokens.muted }]} numberOfLines={2}>{detail}</Text>
+        </View>
+        <View style={[styles.workerMapSummaryBadge, { backgroundColor: trafficEnabled ? tokens.cream : tokens.mint, borderColor: trafficEnabled ? tokens.border : tokens.borderStrong }]}>
+          <Text style={[styles.mapChipTitle, { color: trafficEnabled ? tokens.copper : tokens.primary }]} numberOfLines={1}>{badge}</Text>
+        </View>
+      </View>
+      <Text style={[styles.mapRouteSummaryNote, { color: tokens.subtle }]} numberOfLines={2}>{note}</Text>
+      {canOpenExternalRoute ? (
+        <View style={styles.workerMapSummaryActions}>
+          <Pressable
+            accessibilityLabel={language === 'en' ? 'Open route in Maps' : 'Mở tuyến trong Maps'}
+            accessibilityRole="button"
+            onPress={() => {
+              if (!routeDestinationLabel) return
+              const query = encodeURIComponent(localizedWorkerAreaLabel(routeDestinationLabel, language))
+              void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`)
+            }}
+            style={[styles.workerMapSummaryButton, { backgroundColor: tokens.primary }]}
+            testID="worker-map-open-external-route"
+          >
+            <Text style={[styles.pressButtonTextPrimary, { color: tokens.primaryText }]} numberOfLines={1}>{language === 'en' ? 'Start navigation' : 'Bắt đầu dẫn đường'}</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={language === 'en' ? 'Recenter route' : 'Căn lại tuyến'}
+            accessibilityRole="button"
+            onPress={onRecenter}
+            style={[styles.workerMapSummaryButton, styles.workerMapSummaryButtonSecondary, { backgroundColor: tokens.raised, borderColor: tokens.border }]}
+            testID="worker-map-recenter-route"
+          >
+            <Text style={[styles.pressButtonTextSecondary, { color: tokens.primary }]} numberOfLines={1}>{language === 'en' ? 'Recenter' : 'Căn lại'}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
   )
 }
 
@@ -3708,7 +4451,7 @@ function ThemeToggle() {
       testID="worker-dark-mode-toggle"
     >
       <View style={styles.preferenceTitle}>
-        <Icon name={mode === 'light' ? 'moon' : 'sun'} small />
+        <WorkerImageIcon frameSize={44} name="settingTheme" size={44} style={styles.preferenceImage} />
         <View style={styles.preferenceCopy}>
           <Text style={[styles.listTitle, { color: tokens.ink }]} numberOfLines={1}>
             {copy.profile.theme}
@@ -3737,7 +4480,7 @@ function LanguageToggle() {
       testID="worker-language-toggle"
     >
       <View style={styles.preferenceTitle}>
-        <Icon name="globe" small />
+        <WorkerImageIcon frameSize={44} name="settingLanguage" size={44} style={styles.preferenceImage} />
         <View style={styles.preferenceCopy}>
           <Text style={[styles.listTitle, { color: tokens.ink }]} numberOfLines={1}>
             {copy.profile.language}
@@ -3900,7 +4643,7 @@ function JobActivityCard({
       <SubtleGlassHighlight />
       <View style={styles.identityRow}>
         <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
-          <Icon name={icon} active small />
+          <WorkerUtilityIcon active frameSize={42} icon={icon} size={42} small />
         </View>
         <View style={styles.titleStack}>
           <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
@@ -3949,9 +4692,7 @@ function WorkerEmptyJobPanel({
       <SubtleGlassHighlight />
       <View style={styles.jobTop}>
         <View style={styles.identityRow}>
-          <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
-            <Icon name={icon} active small />
-          </View>
+          <WorkerUtilityIcon active frameSize={46} icon={icon} size={46} small style={styles.jobPanelImageIcon} />
           <View style={styles.titleStack}>
             <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
               {status}
@@ -3974,9 +4715,11 @@ function WorkerEmptyJobPanel({
           {secondaryActionLabel && secondaryActionPath ? (
             <PressButton secondary label={secondaryActionLabel} onPress={() => replace(secondaryActionPath)} testID={`${testID ?? 'worker-empty-job'}-secondary-action`} />
           ) : (
-            <Text style={[styles.bodyText, { color: tokens.subtle, flex: 1, textAlign: 'center' }]} numberOfLines={2}>
-              {language === 'en' ? 'No request yet' : 'Chưa có yêu cầu'}
-            </Text>
+            <View style={[styles.emptyActionPill, workerSecondaryButtonSurface(tokens)]}>
+              <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.pressButtonTextSecondary, { color: tokens.primary }]}>
+                {language === 'en' ? 'No request yet' : 'Chưa có yêu cầu'}
+              </Text>
+            </View>
           )}
         </View>
       ) : null}
@@ -4004,7 +4747,7 @@ function QuickPanel({ icon, title, tone, value }: { icon: WorkerIconName; title:
 
   return (
     <View style={[styles.quickPanel, workerOpaqueCardSurface(tokens, tone)]}>
-      <Icon name={icon} />
+      <WorkerUtilityIcon frameSize={50} icon={icon} size={50} />
       <Text adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.quickValue, { color: tokens.ink }]} numberOfLines={1}>
         {value}
       </Text>
@@ -4042,8 +4785,8 @@ function EarningsLedgerRow({ icon, meta, title }: { icon: WorkerIconName; meta: 
 
   return (
     <View style={styles.earningsListRow}>
-      <View style={[styles.earningsListIcon, { backgroundColor: tokens.mint, borderColor: tokens.border }]}>
-        <Icon name={icon} small />
+      <View style={styles.earningsListIcon}>
+        <WorkerEarningsLedgerIcon icon={icon} />
       </View>
       <Text style={[styles.earningsListTitle, { color: tokens.ink }]} numberOfLines={1}>
         {title}
@@ -4055,12 +4798,60 @@ function EarningsLedgerRow({ icon, meta, title }: { icon: WorkerIconName; meta: 
   )
 }
 
-function ProfileListRow({ icon, meta, title }: { icon: WorkerIconName; meta: string; title: string }) {
+function WorkerEarningsLedgerIcon({ icon }: { icon: WorkerIconName }) {
+  const imageIcon = workerEarningsImageIcons[icon]
+
+  if (imageIcon) {
+    return <WorkerImageIcon frameSize={34} name={imageIcon} size={34} style={styles.earningsListImageIcon} />
+  }
+
+  return <WorkerUtilityIcon frameSize={34} icon={icon} size={34} small />
+}
+
+function WorkerUtilityIcon({
+  active,
+  frameSize,
+  icon,
+  inverse,
+  size,
+  small,
+  style,
+}: {
+  active?: boolean
+  frameSize: number
+  icon: WorkerIconName
+  inverse?: boolean
+  size: number
+  small?: boolean
+  style?: StyleProp<ViewStyle>
+}) {
+  const imageIcon = workerUtilityImageIcons[icon]
+
+  if (imageIcon) {
+    return <WorkerImageIcon frameSize={frameSize} name={imageIcon} size={size} style={style} />
+  }
+
+  return <Icon active={active} inverse={inverse} name={icon} small={small} />
+}
+
+function WorkerImageIcon({ frameSize, name, size, style }: { frameSize?: number; name: WorkerImageIconName; size: number; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View pointerEvents="none" style={[styles.workerImageIconStage, { height: frameSize ?? size, width: frameSize ?? size }, style]}>
+      <Image
+        contentFit="contain"
+        source={workerImageIcons[name]}
+        style={{ height: size, width: size }}
+      />
+    </View>
+  )
+}
+
+function ProfileListRow({ icon, meta, title }: { icon: WorkerImageIconName; meta: string; title: string }) {
   const { tokens } = useWorkerUi()
 
   return (
     <View style={styles.profileListRow}>
-      <Icon name={icon} small />
+      <WorkerImageIcon frameSize={44} name={icon} size={44} style={styles.profileListImage} />
       <Text style={[styles.profileListTitle, { color: tokens.ink }]} numberOfLines={1}>
         {title}
       </Text>
@@ -4839,6 +5630,19 @@ function workerMapViewportSurface(tokens: WorkerThemeTokens) {
   } as any
 }
 
+function workerMapModalSheetSurface(tokens: WorkerThemeTokens) {
+  const backgroundColor = tokens.mode === 'dark' ? 'rgba(18,39,36,0.96)' : 'rgba(252,255,252,0.96)'
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(24,51,47,0.97), rgba(13,29,27,0.96))'
+    : 'linear-gradient(180deg, rgba(252,255,252,0.98), rgba(244,252,248,0.96))'
+
+  return {
+    backgroundColor,
+    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.22)' : 'rgba(20,117,105,0.14)',
+    experimental_backgroundImage: gradient,
+  } as any
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   inactiveRouteSurface: { display: 'none' },
@@ -4868,27 +5672,67 @@ const styles = StyleSheet.create({
   glassMotionCore: { borderRadius: 999, height: 118, left: 56, position: 'absolute', top: -118, width: 13, zIndex: 0 },
   glassMotionCoreCompact: { height: 86, left: 36, top: -86, width: 9 },
   mapStage: { borderRadius: 24, minHeight: 196, overflow: 'hidden', padding: 0, position: 'relative' },
+  workerMapPreviewPressable: { borderRadius: 24, overflow: 'hidden' },
   workerMapTopHud: { flexDirection: 'row', gap: 8, left: 12, maxWidth: '78%', position: 'absolute', top: 12, zIndex: 4 },
   searchPill: { alignItems: 'center', borderRadius: 999, flexDirection: 'row', gap: 8, minHeight: 38, paddingHorizontal: 12 },
   searchText: { flex: 1, fontSize: 15, fontWeight: '600' },
   workerMapHudStack: { bottom: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8, left: 12, position: 'absolute', right: 12, zIndex: 4 },
+  workerMapHudStrip: { backgroundColor: 'rgba(255,255,255,0.78)', borderRadius: 20, flexWrap: 'nowrap', gap: 0, justifyContent: 'space-between', overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 9 },
   workerMapHudChip: { borderRadius: 999, minHeight: 36, overflow: 'hidden', paddingHorizontal: 11, paddingVertical: 8 },
+  workerMapInfoItem: { flex: 1, minWidth: 0 },
   mapViewport: { borderRadius: 24, minHeight: 196, overflow: 'hidden', position: 'relative' },
+  workerMapControlStack: { gap: 8, position: 'absolute', right: 12, top: 12, zIndex: 6 },
+  workerMapControlStackExpanded: { right: 14, top: 14 },
+  workerMapControlButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.88)', borderColor: 'rgba(31,103,93,0.16)', borderRadius: 14, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
+  workerMapControlButtonActive: { backgroundColor: 'rgba(220,251,243,0.95)' },
+  workerMapZoomLayer: { ...StyleSheet.absoluteFillObject },
+  workerMapModalBackdrop: {
+    backgroundColor: 'rgba(5,19,17,0.46)',
+    bottom: Platform.OS === 'web' ? 0 : undefined,
+    flex: 1,
+    justifyContent: 'flex-end',
+    left: Platform.OS === 'web' ? 0 : undefined,
+    padding: 12,
+    position: Platform.OS === 'web' ? 'fixed' as any : undefined,
+    right: Platform.OS === 'web' ? 0 : undefined,
+    top: Platform.OS === 'web' ? 0 : undefined,
+    zIndex: Platform.OS === 'web' ? 1000 : undefined,
+  },
+  workerMapModalSheet: { borderRadius: 28, gap: 12, maxHeight: '92%', paddingBottom: 16, paddingHorizontal: 16, paddingTop: 14 },
+  workerMapExpandedHeader: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between', paddingHorizontal: 2 },
+  workerMapCloseButton: { alignItems: 'center', borderRadius: 999, borderWidth: 1, flexShrink: 0, height: 38, justifyContent: 'center', marginRight: 12, width: 38 },
+  workerExpandedMapViewport: { borderRadius: 24, minHeight: 520, overflow: 'hidden', position: 'relative' },
+  expandedMapVeil: { height: 210, left: '58%', opacity: 0.2, top: 102, width: 210 },
+  expandedMapMarkerZone: { right: '14%', top: '28%' },
+  expandedMapMarkerWorker: { left: '20%', top: '68%' },
+  workerMapRouteSummary: { borderRadius: 18, borderWidth: 1, bottom: 36, gap: 4, left: 36, paddingHorizontal: 11, paddingVertical: 6, position: 'absolute', right: 36, zIndex: 8 },
+  workerMapSummaryHeader: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
+  workerMapSummaryBadge: { borderRadius: 999, borderWidth: 1, flexShrink: 0, paddingHorizontal: 8, paddingVertical: 5 },
+  workerMapSummaryActions: { flexDirection: 'row', gap: 10 },
+  workerMapSummaryButton: { alignItems: 'center', borderRadius: 15, flex: 1, justifyContent: 'center', minHeight: 42, paddingHorizontal: 14 },
+  workerMapSummaryButtonSecondary: { borderWidth: 1 },
+  mapRouteSummaryTitle: { fontSize: 14.5, fontWeight: '700', letterSpacing: 0, lineHeight: 16 },
+  mapRouteSummaryDetail: { fontSize: 11, fontWeight: '700', lineHeight: 13, marginTop: 1 },
+  mapRouteSummaryNote: { fontSize: 10, fontWeight: '600', lineHeight: 12, marginTop: 0 },
   compactPresenceMap: { borderRadius: 28, minHeight: 194, overflow: 'hidden', padding: 10, position: 'relative' },
   compactPresenceMapDense: { borderRadius: 24, minHeight: 152, padding: 8 },
   compactMapViewport: { borderRadius: 24, minHeight: 174, overflow: 'hidden', position: 'relative' },
   compactMapViewportDense: { borderRadius: 20, minHeight: 136 },
+  compactMapTopHud: { flexDirection: 'row', gap: 8, left: 12, maxWidth: '58%', position: 'absolute', top: 12, zIndex: 4 },
+  compactMapControlMini: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.88)', borderColor: 'rgba(31,103,93,0.16)', borderRadius: 14, borderWidth: 1, height: 38, justifyContent: 'center', position: 'absolute', right: 12, top: 12, width: 38, zIndex: 5 },
+  compactMapInfoStrip: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.78)', borderRadius: 18, bottom: 22, left: 12, maxWidth: '62%', paddingHorizontal: 10, paddingVertical: 8, position: 'absolute', zIndex: 5 },
   compactMapVeil: { left: '54%', opacity: 0.24, top: 42 },
   compactMapMarker: { alignItems: 'center', borderRadius: 999, borderWidth: 1, height: 46, justifyContent: 'center', position: 'absolute', width: 46 },
   compactMapMarkerEmpty: { opacity: 0.92 },
-  compactMapMarkerZone: { left: '30%', top: '48%' },
-  compactMapMarkerWorker: { right: '20%', top: '28%' },
+  compactMapMarkerZone: { right: '18%', top: '34%' },
+  compactMapMarkerWorker: { left: '31%', top: '48%' },
   mapFogTop: { height: 92, left: 0, opacity: 0.16, position: 'absolute', right: 0, top: 0 },
   mapFogBottom: { bottom: -6, height: 86, left: 0, opacity: 0.24, position: 'absolute', right: 0 },
   mapCyanVeil: { borderRadius: 999, height: 158, left: '52%', marginLeft: -79, opacity: 0.23, position: 'absolute', top: 94, width: 158 },
   homeMapMarker: { alignItems: 'center', borderRadius: 18, borderWidth: 2, height: 46, justifyContent: 'center', position: 'absolute', width: 46, zIndex: 4 },
-  homeMapMarkerWorker: { right: '24%', top: '32%' },
-  homeMapMarkerZone: { left: '23%', top: '48%' },
+  homeMapMarkerWorker: { left: '31%', top: '38%' },
+  homeMapMarkerZone: { right: '24%', top: '32%' },
+  homeMapZoneRing: { borderRadius: 999, height: 136, left: '22%', opacity: 0.22, position: 'absolute', top: '34%', width: 136, zIndex: 1 },
   homeMapZoneHalo: { borderRadius: 999, height: 102, opacity: 0.24, position: 'absolute', width: 102 },
   mapChipTop: { left: 6, position: 'absolute', top: 15 },
   mapZonePill: { borderRadius: 22, left: 6, maxWidth: '64%', paddingHorizontal: 12, paddingVertical: 9, position: 'absolute', top: 9 },
@@ -4903,19 +5747,23 @@ const styles = StyleSheet.create({
   shiftActionRow: { flexDirection: 'row', gap: 10 },
   rowBetween: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   identityRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  jobPanelImageIcon: { flexShrink: 0 },
   titleStack: { flex: 1, gap: 4 },
   heroTitle: { fontSize: 18, fontWeight: '600', letterSpacing: 0 },
   bodyText: { fontSize: 13, fontWeight: '600', lineHeight: 18 },
   toggleTrack: { alignItems: 'flex-end', borderRadius: 999, height: 32, justifyContent: 'center', padding: 4, width: 58 },
   toggleKnob: { borderRadius: 999, height: 24, width: 24 },
+  workerImageIconStage: { alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   workerServiceGrid: { flexDirection: 'row', gap: 10 },
-  workerServiceTile: { borderRadius: 22, borderWidth: 1, flex: 1, minHeight: 96, overflow: 'hidden', padding: 11, position: 'relative' },
+  workerServiceTile: { borderRadius: 22, borderWidth: 1, flex: 1, minHeight: 122, overflow: 'hidden', padding: 11, position: 'relative' },
   workerServiceIcon: { alignItems: 'center', borderRadius: 16, borderWidth: 1, height: 38, justifyContent: 'center', width: 38 },
-  workerServiceTitle: { fontSize: 14, fontWeight: '600', letterSpacing: 0, lineHeight: 16, marginTop: 9 },
+  workerServiceImageStage: { alignItems: 'center', alignSelf: 'stretch', height: 58, justifyContent: 'center', marginBottom: 2, marginTop: -2 },
+  workerServiceTitle: { fontSize: 14, fontWeight: '600', letterSpacing: 0, lineHeight: 16, marginTop: 2 },
   workerServiceMeta: { fontSize: 10, fontWeight: '700', letterSpacing: 0, marginTop: 3 },
   workerMiniGrid: { flexDirection: 'row', gap: 10 },
   workerMiniCard: { borderRadius: 22, borderWidth: 1, flex: 1, gap: 4, minHeight: 98, overflow: 'hidden', padding: 11, position: 'relative' },
   workerMiniIcon: { alignItems: 'center', borderRadius: 16, borderWidth: 1, height: 38, justifyContent: 'center', marginBottom: 3, width: 38 },
+  workerMiniImageWrap: { alignSelf: 'flex-start', marginBottom: 2, marginLeft: -2 },
   workerMiniTitle: { fontSize: 15.5, fontWeight: '600', letterSpacing: 0, lineHeight: 18 },
   workerMiniMeta: { fontSize: 10.5, fontWeight: '700', letterSpacing: 0, lineHeight: 14 },
   metricRow: { flexDirection: 'row', gap: 8 },
@@ -4943,6 +5791,7 @@ const styles = StyleSheet.create({
   scopeRequestBox: { gap: 8 },
   actionRow: { flexDirection: 'row', gap: 9 },
   pressButton: { alignItems: 'center', borderRadius: 17, flex: 1, justifyContent: 'center', minHeight: 48 },
+  emptyActionPill: { alignItems: 'center', borderRadius: 17, borderWidth: 1, flex: 1, justifyContent: 'center', minHeight: 48 },
   pressButtonPressedPrimary: { filter: Platform.OS === 'web' ? 'brightness(0.98)' : undefined } as any,
   pressButtonSecondary: { borderRadius: 15, minHeight: 44 },
   disabledButton: { opacity: 0.52 },
@@ -4969,7 +5818,10 @@ const styles = StyleSheet.create({
   jobDiagnosisBox: { borderRadius: 22, gap: 10, padding: 15 },
   flowCard: { borderRadius: 28, gap: 10, overflow: 'hidden', padding: 16, position: 'relative' },
   needsReviewCard: { borderRadius: 24, borderWidth: 1, gap: 13, overflow: 'hidden', padding: 16, position: 'relative' },
-  needsIconBadge: { height: 48, width: 48 },
+  needsTopRow: { alignItems: 'center', justifyContent: 'flex-start', minHeight: 96 },
+  needsTextStack: { flex: 1, minWidth: 0 },
+  needsImageIcon: { flexShrink: 0 },
+  needsInlineImageIcon: { flexShrink: 0, marginTop: -3 },
   needsReviewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   statusPill: { borderRadius: 999, fontSize: 12, fontWeight: '700', overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
   cardTitle: { fontSize: 18, fontWeight: '600', letterSpacing: 0, lineHeight: 24 },
@@ -5060,7 +5912,8 @@ const styles = StyleSheet.create({
   listCard: { borderRadius: 29, gap: 4, overflow: 'hidden', padding: 10, position: 'relative' },
   earningsLedgerCard: { borderRadius: 29, gap: 6, overflow: 'hidden', padding: 10, position: 'relative' },
   earningsListRow: { alignItems: 'center', borderRadius: 16, flexDirection: 'row', gap: 10, minHeight: 56, paddingHorizontal: 10, paddingVertical: 7 },
-  earningsListIcon: { alignItems: 'center', borderRadius: 13, borderWidth: 1, height: 30, justifyContent: 'center', width: 30 },
+  earningsListIcon: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
+  earningsListImageIcon: { flexShrink: 0 },
   earningsListTitle: { flex: 1, fontSize: 13.5, fontWeight: '700', letterSpacing: 0, lineHeight: 18 },
   earningsListMeta: { flexShrink: 0, fontSize: 11.5, fontWeight: '700', letterSpacing: 0, lineHeight: 15, maxWidth: 116, textAlign: 'right' },
   listRow: { alignItems: 'center', flexDirection: 'row', gap: 11, minHeight: 54, paddingHorizontal: 8 },
@@ -5073,15 +5926,10 @@ const styles = StyleSheet.create({
   avatarWrap: { alignItems: 'center', borderRadius: 999, height: 56, justifyContent: 'center', width: 56 },
   profileAvatarHero: {
     alignItems: 'center',
-    backgroundColor: '#08786E',
-    borderColor: 'rgba(255,255,255,0.72)',
     borderRadius: 20,
-    borderWidth: 1,
-    boxShadow: '0 12px 22px rgba(10,119,105,0.20)',
     height: 52,
     justifyContent: 'center',
     width: 52,
-    experimental_backgroundImage: 'linear-gradient(135deg, #08786E, #38D8BA)',
   } as any,
   profileTitleStack: { flex: 1, gap: 3, minWidth: 0 },
   profileName: { fontSize: 23, fontWeight: '600', letterSpacing: 0, lineHeight: 28 },
@@ -5093,18 +5941,21 @@ const styles = StyleSheet.create({
   skillPill: { borderRadius: 999, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 13 },
   skillText: { fontSize: 13, fontWeight: '600' },
   profileMiniGrid: { flexDirection: 'row', gap: 10 },
-  profileMiniCard: { borderRadius: 20, borderWidth: 1, flex: 1, gap: 3, minHeight: 84, overflow: 'hidden', paddingHorizontal: 14, paddingTop: 21 },
+  profileMiniCard: { borderRadius: 20, borderWidth: 1, flex: 1, gap: 2, minHeight: 118, overflow: 'hidden', paddingBottom: 14, paddingHorizontal: 14, paddingTop: 14 },
+  profileMiniImage: { alignSelf: 'flex-start', marginLeft: -4 },
   profileMiniTitle: { fontSize: 16, fontWeight: '600', letterSpacing: 0, lineHeight: 18 },
   profileMiniMeta: { fontSize: 11, fontWeight: '700', letterSpacing: 0, lineHeight: 15 },
   profileSyncPreview: { borderRadius: 24, borderWidth: 1, gap: 4, overflow: 'hidden', padding: 14 },
   profileSyncPreviewTop: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
   profileListCard: { borderRadius: 29, gap: 8, paddingHorizontal: 12, paddingVertical: 14 },
-  profileListRow: { alignItems: 'center', borderRadius: 16, flexDirection: 'row', gap: 12, minHeight: 48, paddingHorizontal: 4 },
+  profileListRow: { alignItems: 'center', borderRadius: 16, flexDirection: 'row', gap: 12, minHeight: 52, paddingHorizontal: 4 },
+  profileListImage: { flexShrink: 0 },
   profileListTitle: { flex: 1, fontSize: 14.5, fontWeight: '600', letterSpacing: 0, lineHeight: 20 },
   profileListMeta: { flexShrink: 0, fontSize: 12, fontWeight: '600', letterSpacing: 0, lineHeight: 16, maxWidth: 146, textAlign: 'right' },
   preferenceCard: { borderRadius: 29, gap: 2, overflow: 'hidden', paddingHorizontal: 13, paddingVertical: 12, position: 'relative' },
   preferenceRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 54, paddingHorizontal: 3 },
   preferenceTitle: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 11 },
+  preferenceImage: { flexShrink: 0 },
   preferenceCopy: { flex: 1, gap: 2, minWidth: 0 },
   preferenceMetaAction: { flexShrink: 0, fontSize: 12, fontWeight: '600', maxWidth: 112, textAlign: 'right' },
   verificationCard: { borderRadius: 29, gap: 10, overflow: 'hidden', padding: 14, position: 'relative' },
@@ -5127,6 +5978,8 @@ const styles = StyleSheet.create({
   dockWrap: { alignSelf: 'center', minHeight: workerDockHeight, position: 'absolute', zIndex: 30 },
   dockBackdropShield: { borderRadius: 38, bottom: -10, height: 90, left: -6, opacity: 0.86, position: 'absolute', right: -6, zIndex: -2 },
   workerDock: { alignItems: 'center', borderRadius: 32, borderWidth: 1, flexDirection: 'row', gap: 5, height: workerDockHeight, justifyContent: 'space-around', overflow: 'hidden', padding: 7, position: 'relative' },
+  workerDockAssetImage: { opacity: 0.74 },
+  workerDockAssetImageFocused: { opacity: 1 },
   workerDockKaelImage: { height: 29, width: 29 },
   motionSweep: { borderRadius: 999, height: 76, position: 'absolute', top: -18, width: 96 },
   pressed: { opacity: 0.78 },
