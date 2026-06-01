@@ -15,7 +15,7 @@ import {
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { LOCAL_DEAL_ID, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type LocalCustomerSearchState, type LocalDeal, type LocalDealStatus, type LocalScopeChange, type LocalWorkflowSelectors, type ServiceType, type WorkflowArtifactMode } from '@home-services/shared'
+import { LOCAL_DEAL_ID, LOCAL_WORKFLOW_PRICE_DISCLAIMER, hasLocalDealCompletionEvidence, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type LocalCustomerSearchState, type LocalDeal, type LocalDealStatus, type LocalScopeChange, type LocalWorkflowSelectors, type ServiceType, type WorkflowArtifactMode, type WorkflowPhaseContext } from '@home-services/shared'
 import { ScopeChangeHardStopModal } from '@/components/customer/scope-change-modal/scope-change-hard-stop-modal'
 import { BookingWizard } from '@/components/customer/booking-wizard'
 import {
@@ -164,9 +164,9 @@ const customerCopy = {
       quickActiveMeta: 'Theo dõi trạng thái',
       quickHistoryMeta: 'Xem tiến trình',
       quickAddressMeta: 'Kiểm tra khu vực',
-      quickTrustMeta: 'Ước tính có audit',
+      quickTrustMeta: 'Ước tính đã kiểm chứng',
       noActiveMeta: 'Chưa có yêu cầu',
-      trustTitle: 'Kael giữ audit giá',
+      trustTitle: 'Kael kiểm chứng giá',
       trustBody: 'Giá do Kael tính từ dữ liệu hiện có. Kael cập nhật khi có bằng chứng phạm vi mới.',
       notification: (count: number) => `Kael có ${count} cập nhật chưa đọc`,
       activeA11y: (service: string) => `Mở yêu cầu ${service} đang xử lý`,
@@ -218,6 +218,8 @@ const customerCopy = {
       confirmed: 'Kael đã xác nhận',
       finalConfirm: 'Kael đang xét hoàn tất',
       noWorker: 'Chưa có thợ được ghép',
+      cancelledState: 'Yêu cầu đã hủy',
+      cancelledBody: 'Kael hiển thị trạng thái hủy đã ghi nhận và cổng chính sách đang khóa giao dịch này. Luồng cũ không được mở lại; bạn có thể tạo yêu cầu mới khi cần.',
       orchestrationStatus: 'Kael đang điều phối',
       waitingWorkerDone: 'Chờ thợ hoàn tất',
       editRequest: 'Chỉnh yêu cầu',
@@ -225,7 +227,7 @@ const customerCopy = {
       openPriceCheck: 'Mở chat Kael',
       cancelTitle: 'Hủy yêu cầu?',
       cancelSearching: 'Yêu cầu tìm thợ sẽ dừng và địa chỉ chi tiết vẫn bị ẩn khỏi thợ.',
-      cancelActive: 'Kael sẽ xử lý yêu cầu hủy theo policy, ghi audit và báo cho thợ nếu việc đã được nhận.',
+      cancelActive: 'Kael sẽ xử lý yêu cầu hủy theo chính sách, ghi dấu vết kiểm tra và báo cho thợ nếu việc đã được nhận.',
       cancelDraft: 'Phiếu sẽ đóng. Bạn có thể tạo yêu cầu mới khi cần.',
       keep: 'Giữ lại',
       cancelRequest: 'Hủy yêu cầu',
@@ -250,7 +252,7 @@ const customerCopy = {
       chatEmpty: 'Chưa có trao đổi cho yêu cầu này',
       openOrchestration: 'Mở điều phối',
       orchestrationTitle: 'Kael đang điều phối',
-      orchestrationBody: 'Kael tự chuyển yêu cầu sang tìm thợ khi policy đủ dữ liệu. Bạn có thể theo dõi, hủy hoặc khiếu nại nếu cần.',
+      orchestrationBody: 'Kael tự chuyển yêu cầu sang tìm thợ khi dữ liệu đủ theo chính sách. Bạn có thể theo dõi, hủy hoặc khiếu nại nếu cần.',
       paymentReview: 'Thanh toán & đánh giá',
       payment: 'Thanh toán',
       review: 'Đánh giá',
@@ -380,6 +382,8 @@ const customerCopy = {
       confirmed: 'Kael confirmed',
       finalConfirm: 'Kael reviewing completion',
       noWorker: 'No worker matched',
+      cancelledState: 'Request cancelled',
+      cancelledBody: 'Kael shows the recorded cancellation state and the policy gate locking this transaction. This workflow is not reopened; create a new request when needed.',
       orchestrationStatus: 'Kael orchestrating',
       waitingWorkerDone: 'Waiting for worker completion',
       editRequest: 'Edit request',
@@ -908,7 +912,7 @@ export function CustomerBookingEntrySurface() {
               </Text>
             </View>
             <Text style={[styles.bookingDiagnosisBody, { color: tokens.text }]} numberOfLines={4}>
-              {activeDeal?.estimate?.advisory ?? entryCopy.diagnosisValue}
+              {localizedCustomerGeneratedText(activeDeal?.estimate?.advisory, languageMode, entryCopy.diagnosisValue)}
             </Text>
           </View>
           <View style={[styles.bookingCheckPanel, customerOpaqueSurface(tokens)]} testID="customer-booking-intake-handoff-panel">
@@ -1009,8 +1013,11 @@ export function CustomerHistorySurface() {
   const newScopeLabel = scopeChange?.requestedDescription ?? copy.history.kaelReviewing
   const timeline = getCustomerTimeline(selectors.currentStatus, languageMode)
   const visibleStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState, languageMode)
+  const isCancelledStatus = selectors.currentStatus === 'cancelled'
   const workerStateLabel =
-    selectors.customerSearchState === 'searching'
+    isCancelledStatus
+      ? copy.history.cancelledState
+      : selectors.customerSearchState === 'searching'
       ? copy.history.workerWaiting
       : selectors.customerSearchState === 'no_worker'
         ? copy.history.workerNone
@@ -1026,18 +1033,26 @@ export function CustomerHistorySurface() {
   const workflow = useServiceWorkflow({
     status: selectors.currentBackendStatus,
     hasAiNotes: Boolean(deal?.estimate?.advisory),
-    hasCompletionEvidence: Boolean(deal?.completionNotes || deal?.completionPhotoUrls?.length),
+    hasCompletionEvidence: hasLocalDealCompletionEvidence(deal),
     hasCustomerInput: Boolean(deal),
     hasEstimate: Boolean(deal?.estimate),
     hasScopeChange: Boolean(scopeChange),
   })
   const canSubmitReview = workflow.allowedActions.submitReview && selectors.canCustomerSubmitReview
-  const completionStatusLabel = selectors.currentStatus === 'confirmed_by_customer'
-    ? copy.history.confirmed
-    : copy.history.waitingWorkerDone
+  const completionEvidenceMode = workflow.artifacts.completion_evidence.mode
+  const completionStatusLabel =
+    selectors.currentStatus === 'reviewed'
+      ? copy.history.reviewed
+      : completionEvidenceMode === 'blocked'
+        ? workflowBlockedReasonLabel('completion_evidence_required', languageMode)
+        : completionEvidenceMode === 'final' || selectors.currentStatus === 'confirmed_by_customer'
+          ? copy.history.confirmed
+          : selectors.currentStatus === 'completed_by_worker'
+            ? copy.history.finalConfirm
+            : copy.history.waitingWorkerDone
   const canCreateFreshRequest = !deal || workflow.isDone || selectors.currentStatus === 'cancelled'
   const canEditNoWorkerRequest = selectors.customerSearchState === 'no_worker'
-  const canCancelLocalRequest = selectors.canCustomerCancelDeal
+  const canCancelLocalRequest = selectors.canCustomerCancelDeal && !isCancelledStatus
   const selectHistoryTab = (tab: CustomerHistoryTab) => {
     setSelectedHistoryTab(tab)
     replace(tab === 'repair' ? openHistoryPath : `${openHistoryPath}?tab=${tab}`)
@@ -1066,7 +1081,7 @@ export function CustomerHistorySurface() {
     ])
   }
   const submitSelectedReview = () => {
-    if (!reviewRating) return
+    if (!reviewRating || !canSubmitReview) return
     void actions.submitReview({ rating: reviewRating, tags: [] })
   }
   const focusReviewPanel = () => {
@@ -1078,8 +1093,14 @@ export function CustomerHistorySurface() {
   const showChatTab = activeHistoryTab === 'chat'
   const showDoneTab = activeHistoryTab === 'done'
   const isCompletedHistory = workflow.isDone
-  const showScopeChangeArtifact = workflow.artifacts.scope_change.visible
-  const showCompletionEvidence = workflow.artifacts.completion_evidence.visible
+  const hasCompletionEvidenceOutcome =
+    workflow.artifacts.completion_evidence.visible &&
+    workflow.artifacts.completion_evidence.mode !== 'basic'
+  const hasCompletionOutcome = hasCompletionEvidenceOutcome || workflow.artifacts.payment_decision.visible || workflow.artifacts.review.visible || workflow.isDone
+  const showScopeChangeArtifact =
+    workflow.artifacts.scope_change.visible &&
+    workflow.artifacts.scope_change.mode !== 'basic'
+  const showCompletionEvidence = hasCompletionEvidenceOutcome
   const showReviewArtifact = workflow.artifacts.review.visible
   const historySubtitle = deal
     ? visibleStatusLabel
@@ -1133,6 +1154,8 @@ export function CustomerHistorySurface() {
             </View>
           </View>
           <CustomerHistoryTabs activeTab={activeHistoryTab} labels={copy.history.filters} onTabChange={selectHistoryTab} tokens={tokens} />
+          {deal ? <CustomerHistoryPhaseContextPanel languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
+          {deal && isCancelledStatus ? <CustomerHistoryCancellationContextPanel copy={copy} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {showRepairTab ? <View style={[styles.historyHeroPanel, customerHistoryHeroSurface(tokens)]} testID="customer-history-repair-hero-panel">
             <SubtleLiquidLight testID="customer-history-repair-hero-liquid" variant="rim" />
             <View style={[styles.historyHeroStatusPill, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
@@ -1171,7 +1194,7 @@ export function CustomerHistorySurface() {
           {!deal && showPriceTab ? <CustomerHistoryPriceEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
           {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} deal={deal} estimateLabel={estimateLabel} languageMode={languageMode} onOpenKael={continueOrCreate} originalEstimateLabel={originalEstimateLabel} scopeChange={showScopeChangeArtifact ? scopeChange : null} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {!deal && showChatTab ? <CustomerHistoryChatEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
-          {deal && showChatTab ? <CustomerHistoryChatPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
+          {deal && showChatTab ? <CustomerHistoryChatPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} phaseContext={workflow.phaseContext} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {deal && showRepairTab ? (
             <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-worker-placeholder">
               <View style={styles.workerCard}>
@@ -1205,7 +1228,7 @@ export function CustomerHistorySurface() {
           ) : null}
           {!deal && showRepairTab ? <CustomerHistoryRepairEmptyTimeline languageMode={languageMode} tokens={tokens} /> : null}
           {scopeChange && showScopeChangeArtifact && (showRepairTab || showPriceTab) ? (
-            <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]}>
+            <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-scope-change-panel">
             <View style={styles.sectionTitle}>
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                 {copy.history.scope}
@@ -1226,12 +1249,12 @@ export function CustomerHistorySurface() {
           ) : null}
           {showDoneTab ? (
             <View style={styles.historyDoneStack} testID="customer-history-done-stack">
-              <CustomerHistoryDoneHero canSubmitReview={canSubmitReview} copy={copy} deal={deal} isCompleted={isCompletedHistory} languageMode={languageMode} onOpenChat={continueOrCreate} onOpenReview={focusReviewPanel} tokens={tokens} />
+              <CustomerHistoryDoneHero canSubmitReview={canSubmitReview} completionStatusLabel={completionStatusLabel} copy={copy} deal={deal} hasCompletionOutcome={hasCompletionOutcome} isCompleted={isCompletedHistory} languageMode={languageMode} onOpenChat={continueOrCreate} onOpenReview={focusReviewPanel} tokens={tokens} />
               {deal && isCompletedHistory ? (
                 <CustomerCompletionPresenceMap copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} />
               ) : null}
               {!deal ? <CustomerHistoryDoneMapEmptyPanel copy={copy} tokens={tokens} /> : null}
-              {deal && !isCompletedHistory ? <CustomerHistoryDoneMapEmptyPanel copy={copy} tokens={tokens} /> : null}
+              {deal && !isCompletedHistory ? <CustomerHistoryDoneMapEmptyPanel copy={copy} statusLabel={completionStatusLabel} tokens={tokens} /> : null}
               {deal && showCompletionEvidence ? <CustomerCompletionEvidencePanel completionStatusLabel={completionStatusLabel} copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} /> : null}
               <CustomerHistoryDoneTimeline
                 completionEvidenceMode={workflow.artifacts.completion_evidence.mode}
@@ -1434,6 +1457,23 @@ function localizedCustomerAreaLabel(area: string | null | undefined, language: A
     .replace(/Quận\s*(\d+)/gi, 'District $1')
     .replace(/TP\.?\s*HCM|Thành phố Hồ Chí Minh/gi, 'HCMC')
   return mapped.trim() || fallback
+}
+
+const customerVietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i
+
+function localizedCustomerGeneratedText(value: string | null | undefined, language: AppLanguage, fallback: string) {
+  const trimmed = value?.trim()
+  if (!trimmed) return fallback
+  if (language === 'en' && customerVietnameseSignalPattern.test(trimmed)) return fallback
+  if (language === 'vi' && /^[\x00-\x7F]*$/.test(trimmed)) return fallback
+  return trimmed
+}
+
+function localizedCustomerComplexityLabel(complexity: string | null | undefined, language: AppLanguage, fallback: string) {
+  if (complexity === 'small') return language === 'en' ? 'Small' : 'Nhỏ'
+  if (complexity === 'medium') return language === 'en' ? 'Medium' : 'Vừa'
+  if (complexity === 'large') return language === 'en' ? 'Large' : 'Lớn'
+  return fallback
 }
 
 function formatVnd(value: number) {
@@ -1779,6 +1819,102 @@ function CustomerHistoryTabs({
   )
 }
 
+function CustomerHistoryPhaseContextPanel({
+  languageMode,
+  phaseContext,
+  tokens,
+}: {
+  languageMode: AppLanguage
+  phaseContext: WorkflowPhaseContext
+  tokens: CustomerThemeTokens
+}) {
+  const visibleSections = orderWorkflowPhaseSectionsForSummary(phaseContext, phaseContext.sections.filter((section) => section.visible && section.role !== 'worker'))
+  const primarySection = visibleSections.find((section) => section.id === phaseContext.primaryArtifact?.id) ?? visibleSections[0] ?? null
+  const primaryArtifact = primarySection?.title[languageMode] ?? (languageMode === 'en' ? 'No live artifact' : 'Chưa có dấu mốc sống')
+  const blockedReason = phaseContext.blockedReason
+    ? workflowBlockedReasonLabel(phaseContext.blockedReason, languageMode)
+    : workflowAllowedActionsLabel(phaseContext.allowedActions, languageMode)
+  const nextEvent = phaseContext.nextExpectedEvent
+    ? workflowEventLabel(phaseContext.nextExpectedEvent, languageMode)
+    : languageMode === 'en'
+      ? 'No next event'
+      : 'Không có sự kiện kế tiếp'
+  const sectionSummary = workflowPhaseSectionSummary(visibleSections, languageMode)
+
+  return (
+    <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-phase-context">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {phaseContext.title[languageMode]}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {workflowSourceOfTruthLabel(phaseContext.sourceOfTruth, languageMode)}
+        </Text>
+      </View>
+      <Text style={[styles.historyDisclaimerText, { color: tokens.muted }]} numberOfLines={3}>
+        {phaseContext.intent[languageMode]}
+      </Text>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={languageMode === 'en' ? 'Artifact' : 'Dấu mốc'} value={primaryArtifact} />
+        <V4TicketCell label={languageMode === 'en' ? 'Next' : 'Tiếp theo'} value={nextEvent} />
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={languageMode === 'en' ? 'Gate' : 'Cổng'} value={blockedReason} />
+        <V4TicketCell label={languageMode === 'en' ? 'Live sections' : 'Mục đang sống'} value={sectionSummary} valueLines={4} />
+      </View>
+    </View>
+  )
+}
+
+function CustomerHistoryCancellationContextPanel({
+  copy,
+  languageMode,
+  phaseContext,
+  tokens,
+  visibleStatusLabel,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]
+  languageMode: AppLanguage
+  phaseContext: WorkflowPhaseContext
+  tokens: CustomerThemeTokens
+  visibleStatusLabel: string
+}) {
+  return (
+    <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-cancellation-context">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {copy.history.cancelledState}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {workflowSourceOfTruthLabel(phaseContext.sourceOfTruth, languageMode)}
+        </Text>
+      </View>
+      <Text style={[styles.historyDisclaimerText, { color: tokens.muted }]} numberOfLines={3}>
+        {copy.history.cancelledBody}
+      </Text>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.ticket.status} value={visibleStatusLabel} />
+        <V4TicketCell label={languageMode === 'en' ? 'Gate' : 'Cổng'} value={workflowBlockedReasonLabel('job_cancelled', languageMode)} />
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={languageMode === 'en' ? 'Artifact' : 'Dấu mốc'} value={phaseContext.primaryArtifact?.title[languageMode] ?? copy.history.cancelledState} />
+        <V4TicketCell label={languageMode === 'en' ? 'Next' : 'Tiếp theo'} value={copy.history.newRequest} />
+      </View>
+    </View>
+  )
+}
+
+function workflowPhaseSectionSummary(sections: WorkflowPhaseContext['sections'], languageMode: AppLanguage) {
+  const labels = sections.slice(0, 3).map((section) => {
+    const mode = section.mode ? workflowArtifactModeLabel(section.mode, languageMode) : workflowSourceOfTruthLabel(section.sourceOfTruth, languageMode)
+    return `${section.title[languageMode]} · ${mode}`
+  })
+  if (sections.length > 3) {
+    labels.push(languageMode === 'en' ? `+${sections.length - 3} more` : `+${sections.length - 3} mục nữa`)
+  }
+  return labels.length > 0 ? labels.join('\n') : (languageMode === 'en' ? 'No visible section yet' : 'Chưa có mục hiển thị')
+}
+
 function CustomerHistoryRepairEmptyTimeline({
   languageMode,
   tokens,
@@ -1844,7 +1980,7 @@ function CustomerHistoryPriceEmptyPanel({
         <SubtleLiquidLight testID="customer-history-tab-liquid-selector" variant="tab" />
         <View style={styles.sectionTitle}>
           <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-            {languageMode === 'en' ? 'Kael price audit' : 'Kael audit giá'}
+            {languageMode === 'en' ? 'Kael price audit' : 'Kael kiểm chứng giá'}
           </Text>
           <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
             {languageMode === 'en' ? 'Evidence-based' : 'Dựa trên bằng chứng'}
@@ -1904,11 +2040,15 @@ function CustomerHistoryChatEmptyPanel({
 
 function CustomerHistoryDoneMapEmptyPanel({
   copy,
+  statusLabel,
   tokens,
 }: {
   copy: (typeof customerCopy)[AppLanguage]
+  statusLabel?: string
   tokens: CustomerThemeTokens
 }) {
+  const visibleStatusLabel = statusLabel ?? copy.history.kaelReviewing
+
   return (
     <View style={[styles.presenceMapCard, styles.presenceMapCardCompact, customerHistoryPanelSurface(tokens)]} testID="customer-history-done-empty-timeline">
       <View style={styles.sectionTitle}>
@@ -1916,7 +2056,7 @@ function CustomerHistoryDoneMapEmptyPanel({
           {copy.history.presenceTitle}
         </Text>
         <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-          {copy.history.kaelReviewing}
+          {visibleStatusLabel}
         </Text>
       </View>
       <View style={[styles.presenceMapViewport, styles.presenceMapViewportCompact, customerHistoryMapViewportSurface(tokens)]}>
@@ -1929,7 +2069,7 @@ function CustomerHistoryDoneMapEmptyPanel({
           </View>
           <View style={[styles.presenceMapControl, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
             <Text style={[styles.presenceMapControlText, { color: tokens.primary }]} numberOfLines={1}>
-              {copy.history.kaelReviewing}
+              {visibleStatusLabel}
             </Text>
           </View>
         </View>
@@ -1957,20 +2097,22 @@ function CustomerCompletionEvidencePanel({
   languageMode: AppLanguage
   tokens: CustomerThemeTokens
 }) {
-  const emptyValue = appCopy[languageMode].common.noData
+  const intakeMissingValue = languageMode === 'en' ? 'No intake media sent' : 'Không gửi ảnh ban đầu'
+  const completionMissingValue = languageMode === 'en' ? 'Waiting for completion evidence' : 'Chờ bằng chứng hoàn tất'
+  const notesMissingValue = languageMode === 'en' ? 'Waiting for worker notes' : 'Chờ ghi chú thợ'
   const intakePhotoCount = deal.draft.mediaCount
   const completionPhotoCount = deal.completionPhotoUrls?.length ?? 0
   const beforeValue = intakePhotoCount > 0
     ? languageMode === 'en'
       ? `${intakePhotoCount} intake photo${intakePhotoCount === 1 ? '' : 's'}`
       : `${intakePhotoCount} ảnh lúc gửi`
-    : emptyValue
+    : intakeMissingValue
   const afterValue = completionPhotoCount > 0
     ? languageMode === 'en'
       ? `${completionPhotoCount} completion photo${completionPhotoCount === 1 ? '' : 's'}`
       : `${completionPhotoCount} ảnh hoàn tất`
-    : emptyValue
-  const notesValue = deal.completionNotes?.trim() || emptyValue
+    : completionMissingValue
+  const notesValue = deal.completionNotes?.trim() || notesMissingValue
 
   return (
     <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-completion-evidence-panel">
@@ -1979,7 +2121,7 @@ function CustomerCompletionEvidencePanel({
           {copy.history.evidence}
         </Text>
         <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-          {copy.history.kaelReviewing}
+          {completionStatusLabel}
         </Text>
       </View>
       <View style={styles.twoCol}>
@@ -1996,8 +2138,10 @@ function CustomerCompletionEvidencePanel({
 
 function CustomerHistoryDoneHero({
   canSubmitReview,
+  completionStatusLabel,
   copy,
   deal,
+  hasCompletionOutcome,
   isCompleted,
   languageMode,
   onOpenChat,
@@ -2005,8 +2149,10 @@ function CustomerHistoryDoneHero({
   tokens,
 }: {
   canSubmitReview: boolean
+  completionStatusLabel: string
   copy: (typeof customerCopy)[AppLanguage]
   deal: LocalDeal | null
+  hasCompletionOutcome: boolean
   isCompleted: boolean
   languageMode: AppLanguage
   onOpenChat: () => void
@@ -2022,6 +2168,10 @@ function CustomerHistoryDoneHero({
     ? languageMode === 'en'
       ? 'Review the completion state, receipt map, and Kael decision timeline.'
       : 'Kiểm tra trạng thái hoàn tất, bản đồ biên nhận và timeline quyết định của Kael.'
+    : hasCompletionOutcome && deal
+      ? languageMode === 'en'
+        ? 'Completion follows the synced gate; payment, chat, and review remain controlled by the current phase.'
+        : 'Hoàn tất đang theo cổng đồng bộ; thanh toán, chat và đánh giá vẫn do giai đoạn hiện tại kiểm soát.'
     : deal
       ? canSubmitReview
         ? languageMode === 'en'
@@ -2035,6 +2185,8 @@ function CustomerHistoryDoneHero({
         : 'Chỉ hiện khi trạng thái hoàn tất được cập nhật.'
   const statusPillLabel = isCompleted
     ? copy.history.filters[3]
+    : hasCompletionOutcome
+      ? completionStatusLabel
     : deal
       ? canSubmitReview
         ? copy.history.review
@@ -2086,8 +2238,8 @@ function CustomerHistoryDoneTimeline({
   tokens: CustomerThemeTokens
 }) {
   const isWorkerDone = ['review', 'final', 'done'].includes(completionEvidenceMode)
-  const isCustomerDone = ['review', 'final', 'done', 'blocked'].includes(reviewMode) || isDone
-  const isReviewReady = reviewMode === 'review'
+  const isCustomerDone = isWorkerDone && (['review', 'final', 'done', 'blocked'].includes(reviewMode) || isDone)
+  const isReviewReady = isWorkerDone && reviewMode === 'review'
   const isReviewDone = reviewMode === 'final' || reviewMode === 'done' || isDone
   const isReviewActive = isReviewReady || isReviewDone
   const reviewMeta = languageMode === 'en'
@@ -2160,13 +2312,18 @@ function CustomerHistoryReviewPanel({
     : canSubmitReview
       ? copy.history.open
       : copy.history.locked
+  const paymentValue = selectors.currentBackendStatus === 'paid'
+    ? copy.history.open
+    : selectors.paymentLocked
+      ? copy.history.locked
+      : copy.history.open
   return (
-    <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]}>
+    <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-review-panel">
       <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
         {copy.history.paymentReview}
       </Text>
       <View style={styles.twoCol}>
-        <V4TicketCell label={copy.history.payment} value={selectors.paymentLocked ? copy.history.locked : copy.history.open} />
+        <V4TicketCell label={copy.history.payment} value={paymentValue} />
         <V4TicketCell label={copy.history.review} value={reviewValue} />
       </View>
       {canSubmitReview ? (
@@ -2222,11 +2379,10 @@ function CustomerHistoryPricePanel({
   const finalPriceLabel = deal.finalPrice && deal.finalPrice > 0
     ? formatVnd(deal.finalPrice)
     : copy.history.waitingWorkerPrice
-  const problemLabel = deal.estimate?.problemLabel
-    ?? localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel, deal.draft.serviceType, languageMode)
-  const urgencyLabel = deal.estimate?.complexity && deal.estimate.complexity !== 'unknown'
-    ? deal.estimate.complexity
-    : copy.history.kaelReviewing
+  const problemFallback = localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel, deal.draft.serviceType, languageMode)
+  const problemLabel = localizedCustomerGeneratedText(deal.estimate?.problemLabel, languageMode, problemFallback)
+  const urgencyLabel = localizedCustomerComplexityLabel(deal.estimate?.complexity, languageMode, copy.history.kaelReviewing)
+  const priceSummary = localizedCustomerGeneratedText(deal.estimate?.advisory, languageMode, copy.history.priceDisclaimer)
   const priceGrid = [
     [languageMode === 'en' ? 'Price band' : 'Biên giá', estimateLabel],
     [languageMode === 'en' ? 'Urgency' : 'Độ khẩn', urgencyLabel],
@@ -2252,7 +2408,7 @@ function CustomerHistoryPricePanel({
           </Text>
         </View>
         <Text style={[styles.bookingDiagnosisBody, { color: tokens.text }]} numberOfLines={4}>
-            {deal.estimate?.advisory ?? copy.history.priceDisclaimer}
+            {priceSummary}
         </Text>
       </View>
       <View style={styles.bookingGrid} testID="customer-history-price-check-grid">
@@ -2293,6 +2449,7 @@ function CustomerHistoryChatPanel({
   deal,
   languageMode,
   onOpenKael,
+  phaseContext,
   tokens,
   visibleStatusLabel,
 }: {
@@ -2300,24 +2457,32 @@ function CustomerHistoryChatPanel({
   deal: LocalDeal
   languageMode: AppLanguage
   onOpenKael: () => void
+  phaseContext: WorkflowPhaseContext
   tokens: CustomerThemeTokens
   visibleStatusLabel: string
 }) {
   const { session } = useAuth()
   const [draft, setDraft] = useState('')
   const jobId = getCustomerChatJobId(deal)
-  const jobChat = useJobChatThread(jobId, Boolean(jobId))
+  const chatSection = phaseContext.sections.find((section) => section.id === 'job_chat')
+  const chatCanRead = Boolean(jobId && chatSection?.visible)
+  const chatCanSend = Boolean(chatCanRead && !chatSection?.lockedReason)
+  const jobChat = useJobChatThread(jobId, chatCanRead)
   const renderedMessages = jobChat.messages.map((message) => customerChatMessageFromJobMessage(message, session?.user.id ?? null, languageMode))
-  const chatCanSend = Boolean(jobId && canCustomerUseJobChat(deal))
+  const lockedReason = !chatCanSend && chatSection?.lockedReason
+    ? workflowBlockedReasonLabel(chatSection.lockedReason, languageMode)
+    : null
   const statusValue = visibleStatusLabel
   const issueValue = localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel, deal.draft.serviceType, languageMode)
   const descriptionValue = deal.draft.description.trim() || copy.history.chatEmpty
-  const kaelSummaryValue = deal.estimate?.advisory ?? copy.history.chatEmpty
+  const kaelSummaryValue = localizedCustomerGeneratedText(deal.estimate?.advisory, languageMode, copy.history.chatEmpty)
   const canSend = Boolean(chatCanSend && draft.trim() && !jobChat.sending)
   const sendLabel = languageMode === 'en' ? 'Send message' : 'Gửi tin nhắn'
   const inputLabel = chatCanSend
     ? languageMode === 'en' ? 'Message worker through Kael' : 'Nhắn với thợ qua Kael'
-    : languageMode === 'en' ? 'Chat opens after Kael matches a worker' : 'Chat mở sau khi Kael ghép thợ'
+    : chatCanRead
+      ? languageMode === 'en' ? 'Chat is read-only after the payment gate' : 'Chat chỉ còn đọc lại sau cổng thanh toán'
+      : languageMode === 'en' ? 'Chat opens after Kael matches a worker' : 'Chat mở sau khi Kael ghép thợ'
   const sendErrorTitle = languageMode === 'en' ? 'Message not sent' : 'Chưa gửi được'
   const sendErrorBody = languageMode === 'en' ? 'Kael could not save this message. Try again.' : 'Kael chưa lưu được tin nhắn. Thử lại sau.'
   const submitMessage = async () => {
@@ -2413,6 +2578,11 @@ function CustomerHistoryChatPanel({
           <IconGlyph name="send" color={canSend ? tokens.primaryText : tokens.subtleText} accent={tokens.aqua} />
         </Pressable>
       </View>
+      {lockedReason ? (
+        <Text style={[styles.sectionMeta, { color: tokens.muted }]} testID="customer-history-chat-locked-reason">
+          {lockedReason}
+        </Text>
+      ) : null}
       <PrimaryButton label={copy.history.openPriceCheck} onPress={onOpenKael} compact />
     </View>
   )
@@ -2422,18 +2592,6 @@ function getCustomerChatJobId(deal: LocalDeal) {
   const jobId = deal.broadcast?.jobId ?? deal.id
   if (!jobId || jobId === LOCAL_DEAL_ID) return null
   return jobId
-}
-
-function canCustomerUseJobChat(deal: LocalDeal) {
-  const status = deal.backendStatus
-  return status === 'worker_matched' ||
-    status === 'worker_on_way' ||
-    status === 'arrived' ||
-    status === 'inspecting' ||
-    status === 'repairing' ||
-    status === 'scope_change_pending' ||
-    status === 'completed_by_worker' ||
-    status === 'confirmed_by_customer'
 }
 
 function customerChatMessageFromJobMessage(message: JobMessageResponse, currentUserId: string | null, languageMode: AppLanguage) {
@@ -2514,14 +2672,14 @@ function CustomerCompletionPresenceMap({
   )
 }
 
-function V4TicketCell({ label, testID, value }: { label: string; testID?: string; value: string }) {
+function V4TicketCell({ label, testID, value, valueLines = 2 }: { label: string; testID?: string; value: string; valueLines?: number }) {
   const tokens = useCustomerTokens()
   return (
     <View style={[styles.ticketCell, customerOpaqueSurface(tokens)]} testID={testID}>
       <Text style={[styles.ticketLabel, { color: tokens.muted }]} numberOfLines={1}>
         {label}
       </Text>
-      <Text style={[styles.ticketValue, { color: tokens.text }]} numberOfLines={2}>
+      <Text style={[styles.ticketValue, { color: tokens.text }]} numberOfLines={valueLines}>
         {value}
       </Text>
     </View>

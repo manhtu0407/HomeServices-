@@ -4,11 +4,13 @@ import {
   type WorkflowArtifactType,
   WORKFLOW_ARTIFACT_TYPES,
 } from './artifact-lifecycle'
+import { buildWorkflowPhaseContext, isWorkflowJobChatReadable, isWorkflowJobChatSendable, type WorkflowAllowedActionsSnapshot, type WorkflowPhaseContext } from './workflow-phase-context'
 import { type WorkflowPhase, toWorkflowPhase } from './workflow-phases'
 
 export type WorkflowViewModelInput = {
   status: JobStatus | null
   hasCustomerInput?: boolean
+  hasPendingIntake?: boolean
   hasEstimate?: boolean
   hasAiNotes?: boolean
   hasScopeChange?: boolean
@@ -26,27 +28,29 @@ export type WorkflowViewModel = {
   phase: WorkflowPhase
   optimistic: WorkflowViewModelInput['optimistic']
   artifacts: Record<WorkflowArtifactType, WorkflowArtifactView>
-  allowedActions: {
-    confirmTicketAndEstimate: boolean
-    confirmCompletion: boolean
-    submitReview: boolean
-  }
+  allowedActions: WorkflowAllowedActionsSnapshot
+  phaseContext: WorkflowPhaseContext
   isDone: boolean
 }
 
 export function buildWorkflowViewModel(input: WorkflowViewModelInput): WorkflowViewModel {
   const phase = resolveWorkflowPhase(input)
   const artifacts = buildArtifactViews(phase, input)
+  const optimistic = input.optimistic ?? null
+  const allowedActions = {
+    confirmTicketAndEstimate: false,
+    confirmCompletion: false,
+    jobChatRead: isWorkflowJobChatReadable(phase),
+    jobChatSend: isWorkflowJobChatSendable(phase),
+    submitReview: (phase === 'customer_confirmed_completion' || phase === 'paid') && input.hasCompletionEvidence === true,
+  }
 
   return {
     phase,
-    optimistic: input.optimistic ?? null,
+    optimistic,
     artifacts,
-    allowedActions: {
-      confirmTicketAndEstimate: false,
-      confirmCompletion: false,
-      submitReview: phase === 'customer_confirmed_completion' || phase === 'paid',
-    },
+    allowedActions,
+    phaseContext: buildWorkflowPhaseContext({ phase, artifacts, allowedActions, hasPendingIntake: input.hasPendingIntake, optimistic }),
     isDone: phase === 'done',
   }
 }
@@ -76,7 +80,7 @@ function buildArtifactViews(
     cancellation_review: cancellationReviewMode(phase),
     completion_evidence: completionEvidenceMode(phase, input),
     completion_review: completionReviewMode(phase, input),
-    dispute_decision: disputeDecisionMode(phase),
+    dispute_decision: disputeDecisionMode(phase, input),
     payment_decision: paymentDecisionMode(phase),
     review: reviewMode(phase),
   }
@@ -92,7 +96,7 @@ function buildArtifactViews(
 function serviceRequestMode(phase: WorkflowPhase, input: WorkflowViewModelInput): WorkflowArtifactMode {
   if (phase === 'cancelled') return 'blocked'
   if (phase === 'done') return 'done'
-  if (input.hasCustomerInput || input.status) return 'basic'
+  if (input.hasCustomerInput || input.hasPendingIntake || input.status) return 'basic'
   return 'hidden'
 }
 
@@ -151,6 +155,7 @@ function bookingMode(phase: WorkflowPhase): WorkflowArtifactMode {
 }
 
 function scopeChangeMode(phase: WorkflowPhase, input: WorkflowViewModelInput): WorkflowArtifactMode {
+  if (!input.hasScopeChange && (phase === 'inspecting' || phase === 'repairing')) return 'basic'
   if (!input.hasScopeChange && phase !== 'scope_change_pending') return 'hidden'
   if (phase === 'scope_change_pending') return 'review'
   if (phase === 'cancelled') return 'blocked'
@@ -164,24 +169,25 @@ function cancellationReviewMode(phase: WorkflowPhase): WorkflowArtifactMode {
   return 'hidden'
 }
 
-function completionEvidenceMode(phase: WorkflowPhase, _input: WorkflowViewModelInput): WorkflowArtifactMode {
-  if (phase === 'completed_by_worker') return 'review'
-  if (phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
-  if (phase === 'done') return 'done'
+function completionEvidenceMode(phase: WorkflowPhase, input: WorkflowViewModelInput): WorkflowArtifactMode {
+  if (phase === 'repairing') return 'basic'
+  if (phase === 'completed_by_worker') return input.hasCompletionEvidence ? 'review' : 'blocked'
+  if (phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return input.hasCompletionEvidence ? 'final' : 'blocked'
+  if (phase === 'done') return input.hasCompletionEvidence ? 'done' : 'blocked'
   return 'hidden'
 }
 
 function completionReviewMode(phase: WorkflowPhase, input: WorkflowViewModelInput): WorkflowArtifactMode {
   if (phase === 'completed_by_worker') return input.hasCompletionEvidence ? 'review' : 'hidden'
-  if (phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return 'final'
-  if (phase === 'done') return 'done'
+  if (phase === 'customer_confirmed_completion' || phase === 'payment_pending' || phase === 'paid') return input.hasCompletionEvidence ? 'final' : 'hidden'
+  if (phase === 'done') return input.hasCompletionEvidence ? 'done' : 'hidden'
   return 'hidden'
 }
 
-function disputeDecisionMode(phase: WorkflowPhase): WorkflowArtifactMode {
-  if (phase === 'completed_by_worker') return 'review'
-  if (phase === 'customer_confirmed_completion' || phase === 'payment_pending') return 'final'
-  if (phase === 'done') return 'done'
+function disputeDecisionMode(phase: WorkflowPhase, input: WorkflowViewModelInput): WorkflowArtifactMode {
+  if (phase === 'completed_by_worker') return input.hasCompletionEvidence ? 'review' : 'hidden'
+  if (phase === 'customer_confirmed_completion' || phase === 'payment_pending') return input.hasCompletionEvidence ? 'final' : 'hidden'
+  if (phase === 'done') return input.hasCompletionEvidence ? 'done' : 'hidden'
   return 'hidden'
 }
 

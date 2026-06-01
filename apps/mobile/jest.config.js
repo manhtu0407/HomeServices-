@@ -12,5 +12,6 @@ module.exports = {
   // the same way the app does. Metro reads tsconfig paths; jest does not.
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^@babel/runtime/(.*)$': '<rootDir>/node_modules/@babel/runtime/$1',
   },
 }

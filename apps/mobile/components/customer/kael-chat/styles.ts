@@ -488,6 +488,22 @@ export const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0,
   },
+  secondaryButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    marginTop: 10,
+    minHeight: 42,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  secondaryButtonText: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
   safe: {
     alignItems: 'center',
     flex: 1,

@@ -4,8 +4,10 @@ import { resolve } from 'path'
 
 const ROOT = resolve(__dirname, '../../../../')
 const MOBILE_ROOT = resolve(ROOT, 'apps/mobile')
+const EDGE_SHARED_ROOT = resolve(ROOT, 'supabase/functions/mobile-api/_shared')
 const read = (rel: string) => readFileSync(resolve(MOBILE_ROOT, rel), 'utf-8')
 const readRoot = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8')
+const readEdgeShared = (rel: string) => readFileSync(resolve(EDGE_SHARED_ROOT, rel), 'utf-8')
 
 describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('keeps mobile service paths on the Edge function contract, not Next /api routes', () => {
@@ -242,6 +244,18 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(operationalStatusSet).not.toContain("'confirmed_by_customer'")
     expect(operationalStatusSet).not.toContain("'payment_pending'")
     expect(operationalStatusSet).not.toContain("'paid'")
+  })
+
+  it('keeps customer active hydration alive through completion, payment, and review gates', () => {
+    const services = readEdgeShared('services.ts')
+    const customerActiveStatusSet = services.match(/CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus\[] = \[([\s\S]*?)\]/)?.[1] ?? ''
+
+    expect(customerActiveStatusSet).toContain('"completed_by_worker"')
+    expect(customerActiveStatusSet).toContain('"confirmed_by_customer"')
+    expect(customerActiveStatusSet).toContain('"payment_pending"')
+    expect(customerActiveStatusSet).toContain('"paid"')
+    expect(customerActiveStatusSet).not.toContain('"reviewed"')
+    expect(customerActiveStatusSet).not.toContain('"cancelled"')
   })
 
   it('keeps visible mobile copy away from backend and server implementation language', () => {

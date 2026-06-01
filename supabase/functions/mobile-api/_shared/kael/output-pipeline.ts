@@ -252,7 +252,7 @@ export function buildScopeChangeOutputs(input: {
       : ["Giữ mô tả rõ ràng để Kael quyết định và khách dễ kiểm tra"],
     worker_message: challengeRequired
       ? "Kael cần thêm bằng chứng trước khi ra quyết định phạm vi."
-      : "Kael đã ghi nhận phạm vi phát sinh và đang quyết định theo policy.",
+      : "Kael đã ghi nhận phạm vi phát sinh và đang quyết định theo chính sách.",
   };
   const newPriceMin = Math.max(1, Math.round(input.newPriceMin));
   const newPriceMax = Math.max(newPriceMin, Math.round(input.newPriceMax));

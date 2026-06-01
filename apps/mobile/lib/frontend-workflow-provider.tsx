@@ -64,7 +64,7 @@ type FrontendWorkflowActions = {
   workerDeclineBroadcast: () => Promise<boolean>
   workerUpdateStatus: (
     status: WorkerStatusUpdate,
-    extras?: { completion_notes?: string; completion_photo_urls?: string[]; final_price?: number },
+    extras?: { completion_notes?: string; completion_photo_urls?: string[] },
   ) => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeInput) => Promise<boolean>
   requestWorkerCancellation: (input: WorkerCancellationRequestInput) => Promise<boolean>
@@ -219,9 +219,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   const hydrateJobResult = useCallback((result: ApiResult<JobDetailResponse>) => {
     if (!result.success) return setRemoteError(result.error)
-    dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data) })
+    dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data, role === 'worker' || role === 'admin') })
     return true
-  }, [setRemoteError])
+  }, [role, setRemoteError])
 
   const hydrateRemoteJobById = useCallback(async (jobId: string) => {
     if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
@@ -243,7 +243,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     const result = await jobService.listMyActiveJob()
     if (!result.success) return false
     if (!result.data.active_job) return true
-    dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data.active_job) })
+    dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(result.data.active_job, false) })
     return true
   }, [])
 
@@ -292,7 +292,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }
     const refreshed = await jobService.getJob(created.data.job_id)
     if (refreshed.success) {
-      dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(refreshed.data) })
+      dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(refreshed.data, false) })
     }
     return { jobId: created.data.job_id }
   }, [language, setRemoteError])
@@ -313,7 +313,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (confirmed.data.broadcast_sent) {
       const refreshed = await jobService.getJob(jobId)
       if (refreshed.success) {
-        dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(refreshed.data) })
+        dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(refreshed.data, false) })
       }
     }
     return true
@@ -834,7 +834,7 @@ function createJobResponseToSnapshot(data: CreateJobResponse, draft: LocalDealDr
         }
       : null,
     scopeChange: null,
-    finalPrice: data.status === 'broadcasting' ? data.estimate.price_max : null,
+    finalPrice: data.final_price ?? null,
   }
 }
 
@@ -862,7 +862,7 @@ function confirmSearchToSnapshot(data: ConfirmSearchResponse, deal: NonNullable<
   }
 }
 
-function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
+function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief = false): LocalRemoteJobSnapshot {
   const job = data.job
   const serviceType = job.service_type
   const districtLabel = districtLabelFromValue(job.address_district)
@@ -878,7 +878,7 @@ function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
         complexity: job.kael_complexity ?? 'unknown',
         priceRangeLabel: formatPriceRange(job.kael_price_min, job.kael_price_max),
         confidenceLabel: 'Kael ước tính',
-        advisory: job.kael_advisory ?? 'Kael giữ giá theo policy và cập nhật khi có bằng chứng phạm vi mới.',
+        advisory: job.kael_advisory ?? 'Kael giữ giá theo chính sách và cập nhật khi có bằng chứng phạm vi mới.',
         disclaimer: REQUIRED_PRICE_DISCLAIMER,
         hasVndPrice: true,
       } satisfies LocalDealEstimate
@@ -891,6 +891,9 @@ function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
     addressLabel,
     data.broadcast_state,
     hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
+    includeWorkerBrief
+      ? workerBriefLinesFromRecord(job.kael_worker_brief_guidance ?? job.kael_worker_brief_core)
+      : [],
   )
 
   return {
@@ -907,6 +910,8 @@ function jobDetailToSnapshot(data: JobDetailResponse): LocalRemoteJobSnapshot {
     broadcast,
     scopeChange: scopeChangeFromJobDetail(data),
     finalPrice: job.final_price,
+    completionPhotoUrls: job.completion_photo_urls,
+    completionNotes: job.completion_notes,
   }
 }
 
@@ -918,6 +923,7 @@ function workerBroadcastToSnapshot(broadcast: WorkerBroadcastsResponse['broadcas
     serviceType: broadcast.service_type,
     problemSummary: broadcast.problem_summary ?? 'Yêu cầu sửa chữa',
     generalArea: districtLabelFromValue(broadcast.district),
+    prebrief: workerBriefLinesFromRecord(broadcast.worker_brief_core),
     secondsRemaining: broadcast.seconds_remaining,
     estimatedPriceLabel: formatNullablePriceRange(broadcast.estimated_price_min, broadcast.estimated_price_max),
     estimatedEarningLabel: formatNullablePriceRange(broadcast.estimated_earning_min, broadcast.estimated_earning_max),
@@ -932,6 +938,16 @@ function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalR
     unit: job.address_unit,
     district: job.district,
   })
+  const broadcast = broadcastFromJobStatus(
+    job.status,
+    job.service_type,
+    job.problem_summary ?? 'Yêu cầu sửa chữa',
+    districtLabel,
+    addressLabel || districtLabel,
+    undefined,
+    hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
+    workerBriefLinesFromRecord(job.worker_brief_guidance),
+  )
   return {
     id: job.id,
     backendStatus: job.status,
@@ -942,17 +958,17 @@ function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalR
     addressLabel: addressLabel || districtLabel,
     districtLabel,
     estimate: null,
-    broadcast: broadcastFromJobStatus(
-      job.status,
-      job.service_type,
-      job.problem_summary ?? 'Yêu cầu sửa chữa',
-      districtLabel,
-      addressLabel || districtLabel,
-      undefined,
-      hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
-    ),
+    broadcast: broadcast
+      ? {
+          ...broadcast,
+          estimatedPriceLabel: formatNullableSinglePrice(job.final_price),
+          estimatedEarningLabel: formatNullableSinglePrice(job.estimated_earning),
+        }
+      : null,
     scopeChange: null,
     finalPrice: job.final_price,
+    completionPhotoUrls: job.completion_photo_urls,
+    completionNotes: job.completion_notes,
   }
 }
 
@@ -971,6 +987,8 @@ function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): LocalRem
     broadcast: deal.broadcast,
     scopeChange: deal.scopeChange,
     finalPrice: deal.finalPrice ?? null,
+    completionPhotoUrls: deal.completionPhotoUrls ?? [],
+    completionNotes: deal.completionNotes ?? null,
   }
 }
 
@@ -996,7 +1014,7 @@ function estimateFromCreateResponse(data: CreateJobResponse): LocalDealEstimate 
     complexity: data.estimate.complexity,
     priceRangeLabel: formatPriceRange(data.estimate.price_min, data.estimate.price_max),
     confidenceLabel: `${Math.round(data.estimate.confidence * 100)}%`,
-    advisory: data.estimate.advisory ?? 'Kael giữ giá theo policy và cập nhật khi có bằng chứng phạm vi mới.',
+    advisory: data.estimate.advisory ?? 'Kael giữ giá theo chính sách và cập nhật khi có bằng chứng phạm vi mới.',
     disclaimer: REQUIRED_PRICE_DISCLAIMER,
     hasVndPrice: true,
     fallbackUsed: data.fallback_used,
@@ -1011,26 +1029,72 @@ function broadcastFromJobStatus(
   addressLabel: string,
   broadcastState: JobDetailResponse['broadcast_state'] = null,
   releasedFullAddressLabel: string | null = hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
+  prebriefOverride: string[] = [],
 ) {
   if (status === 'awaiting_customer_confirm' || status === 'cancelled' || status === 'reviewed') return null
   const accepted = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'paid', 'payment_pending'].includes(status)
   const expiredBroadcast = status === 'broadcasting' && broadcastState?.active_count === 0
   const canRevealFullAddress = accepted && Boolean(releasedFullAddressLabel)
+  const prebrief = prebriefOverride.length > 0
+    ? prebriefOverride
+    : [
+        problemSummary,
+        expiredBroadcast
+          ? 'Chưa có thợ phản hồi.'
+          : accepted ? 'Yêu cầu đã được nhận.' : 'Đang chờ thợ phản hồi.',
+      ]
   return {
     status: expiredBroadcast ? 'expired' as const : accepted ? 'accepted' as const : 'sent' as const,
     serviceType,
     problemSummary,
     generalArea: districtLabel || 'Khu vực TP.HCM',
-    prebrief: [
-      problemSummary,
-      expiredBroadcast
-        ? 'Chưa có thợ phản hồi.'
-        : accepted ? 'Yêu cầu đã được nhận.' : 'Đang chờ thợ phản hồi.',
-    ],
+    prebrief,
     fullAddressVisible: canRevealFullAddress,
     fullAddressLabel: canRevealFullAddress ? releasedFullAddressLabel : null,
     secondsRemaining: expiredBroadcast ? 0 : status === 'broadcasting' ? broadcastState?.seconds_remaining ?? null : null,
   }
+}
+
+function workerBriefLinesFromRecord(record: Record<string, unknown> | null | undefined) {
+  const brief = unwrapWorkerBriefRecord(record)
+  const sections = isRecord(brief?.sections) ? brief.sections : null
+  if (!sections) return []
+  return uniqueStrings([
+    ...stringArrayFromRecord(sections, 'guidance'),
+    ...stringArrayFromRecord(sections, 'safety'),
+    ...stringArrayFromRecord(sections, 'context'),
+  ]).slice(0, 4)
+}
+
+function unwrapWorkerBriefRecord(record: Record<string, unknown> | null | undefined) {
+  if (!record) return null
+  return isRecord(record.brief) ? record.brief : record
+}
+
+function stringArrayFromRecord(record: Record<string, unknown>, key: string) {
+  const value = record[key]
+  if (!Array.isArray(value)) return []
+  const lines: string[] = []
+  for (const item of value) {
+    if (typeof item !== 'string') continue
+    const line = item.trim()
+    if (line) lines.push(line)
+  }
+  return lines
+}
+
+function uniqueStrings(lines: string[]) {
+  const seen = new Set<string>()
+  return lines.filter((line) => {
+    const normalized = line.toLowerCase()
+    if (seen.has(normalized)) return false
+    seen.add(normalized)
+    return true
+  })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function districtLabelFromValue(value: string | null | undefined) {
@@ -1180,6 +1244,11 @@ function localizeWorkflowError(error: string, language: AppLanguage) {
 function formatNullablePriceRange(min: number | null, max: number | null) {
   if (min === null || max === null) return undefined
   return formatPriceRange(min, max)
+}
+
+function formatNullableSinglePrice(value: number | null) {
+  if (value === null) return undefined
+  return formatVnd(value)
 }
 
 function formatPriceRange(min: number, max: number) {

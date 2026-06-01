@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useReducer, useState } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { useGlassAccessibility } from './accessibility-motion'
@@ -15,13 +15,13 @@ export type FloatingGlassTabItem<Key extends string> = {
 }
 
 type FloatingGlassTabBarProps<Key extends string, Item extends FloatingGlassTabItem<Key> = FloatingGlassTabItem<Key>> = {
-  activeKey: Key
+  activeKey: Key | null
   iconForItem: (item: Item, focused: boolean) => ReactNode
   items: Item[]
   material?: GlassMaterial
   mode?: GlassMode
   onItemPress: (item: Item) => void
-  previousKey?: Key
+  previousKey?: Key | null
   style?: StyleProp<ViewStyle>
   testID?: string
 }
@@ -29,6 +29,7 @@ type FloatingGlassTabBarProps<Key extends string, Item extends FloatingGlassTabI
 const rememberedDockActiveKey = new Map<string, string>()
 const pendingDockTransitionById = new Map<string, { from: string; to: string }>()
 const pendingDockTransitionTtlMs = 700
+const LIQUID_PILL_ICON_CENTER_TOP = -1
 
 export function FloatingGlassTabBar<Key extends string, Item extends FloatingGlassTabItem<Key> = FloatingGlassTabItem<Key>>({
   activeKey,
@@ -43,8 +44,8 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
 }: FloatingGlassTabBarProps<Key, Item>) {
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const liquidMaterial = material === 'liquid'
-  const previousActiveKeyRef = useRef(activeKey)
   const pendingTransition = useMemo(() => {
+    if (activeKey === null) return null
     if (!testID) return null
     const pending = pendingDockTransitionById.get(testID)
     if (!pending) return null
@@ -53,19 +54,18 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
   }, [activeKey, testID])
   const [optimisticTransition, setOptimisticTransition] = useState<{ from: Key; to: Key } | null>(() => pendingTransition)
   const displayActiveKey = optimisticTransition?.to ?? activeKey
-  const activeKeyChanged = previousActiveKeyRef.current !== activeKey
-  const routePreviousKey = previousActiveKeyRef.current !== displayActiveKey ? previousActiveKeyRef.current : undefined
+  const hasDisplayActive = displayActiveKey !== null
   const rememberedPreviousKey = testID ? rememberedDockActiveKey.get(testID) as Key | undefined : undefined
-  const effectivePreviousKey = optimisticTransition?.from ?? (previousKey && previousKey !== displayActiveKey
-    ? previousKey
-    : routePreviousKey && routePreviousKey !== displayActiveKey
-      ? routePreviousKey
+  const effectivePreviousKey = hasDisplayActive
+    ? optimisticTransition?.from ?? (previousKey && previousKey !== displayActiveKey
+      ? previousKey
       : rememberedPreviousKey && rememberedPreviousKey !== displayActiveKey
         ? rememberedPreviousKey
-        : previousKey)
+        : previousKey ?? undefined)
+    : undefined
   const [barWidth, setBarWidth] = useState(0)
   const [transitionVisible, dispatchTransitionVisibility] = useReducer((_: boolean, next: boolean) => next, Boolean(effectivePreviousKey && effectivePreviousKey !== displayActiveKey))
-  const activeIndex = Math.max(0, items.findIndex((item) => item.key === displayActiveKey))
+  const activeIndex = hasDisplayActive ? Math.max(0, items.findIndex((item) => item.key === displayActiveKey)) : 0
   const canUsePreviousKey = Boolean(effectivePreviousKey) && effectivePreviousKey !== displayActiveKey
   const previousIndex = canUsePreviousKey && effectivePreviousKey ? Math.max(0, items.findIndex((item) => item.key === effectivePreviousKey)) : activeIndex
   const effectiveBarWidth = barWidth > 0 ? barWidth : 392
@@ -75,6 +75,14 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
   const travelOpacity = useSharedValue(1)
   const pillScaleX = useSharedValue(1)
   const pillScaleY = useSharedValue(1)
+  const surfaceSheenAnimatedStyle = useAnimatedStyle(() => {
+    if (!liquidMaterial || reduceMotion || reduceTransparency || previousIndex === activeIndex) return { opacity: 0 }
+    const progress = travelProgress.value
+    return {
+      opacity: Math.min(travelOpacity.value * 0.68, 0.48),
+      transform: [{ translateX: -84 + progress * 168 }, { rotate: '-12deg' }],
+    }
+  }, [activeIndex, liquidMaterial, previousIndex, reduceMotion, reduceTransparency, travelOpacity, travelProgress])
   const slotMetrics = useMemo(() => {
     const itemCount = Math.max(items.length, 1)
     const dockPadding = 9
@@ -87,33 +95,23 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
   const bridgeMetrics = useMemo(() => {
     const previousLeft = slotMetrics.slotLeft(previousIndex)
     const activeLeft = slotMetrics.slotLeft(activeIndex)
-    return {
-      left: Math.min(previousLeft, activeLeft),
-      width: Math.abs(previousLeft - activeLeft) + slotMetrics.pillWidth,
-    }
+    return { left: Math.min(previousLeft, activeLeft), width: Math.abs(previousLeft - activeLeft) + slotMetrics.pillWidth }
   }, [activeIndex, previousIndex, slotMetrics])
-  const travelStartLeft = useMemo(() => {
-    return slotMetrics.slotLeft(previousIndex)
-  }, [previousIndex, slotMetrics])
-  const transitionActive = transitionVisible || Boolean(
-    (optimisticTransition && optimisticTransition.from !== optimisticTransition.to) ||
-    activeKeyChanged,
-  )
-  useEffect(() => {
-    previousActiveKeyRef.current = activeKey
-  }, [activeKey])
+  const travelStartLeft = useMemo(() => slotMetrics.slotLeft(previousIndex), [previousIndex, slotMetrics])
+  const transitionActive = hasDisplayActive && (transitionVisible || Boolean(optimisticTransition && optimisticTransition.from !== optimisticTransition.to))
+  const transitionDirection = activeIndex >= previousIndex ? 1 : -1
 
   useEffect(() => {
     if (reduceMotion || previousIndex === activeIndex) {
       dispatchTransitionVisibility(false)
-      if (testID) rememberedDockActiveKey.set(testID, displayActiveKey)
+      if (testID && displayActiveKey) rememberedDockActiveKey.set(testID, displayActiveKey)
       return
     }
 
     dispatchTransitionVisibility(true)
     const timer = setTimeout(() => {
       dispatchTransitionVisibility(false)
-      if (testID) rememberedDockActiveKey.set(testID, displayActiveKey)
+      if (testID && displayActiveKey) rememberedDockActiveKey.set(testID, displayActiveKey)
     }, 560)
     return () => clearTimeout(timer)
   }, [activeIndex, displayActiveKey, previousIndex, reduceMotion, testID])
@@ -142,31 +140,36 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
     }
 
     bridgeOpacity.value = 0
-    bridgeScaleX.value = 0.42
+    bridgeScaleX.value = 0.26
     travelOpacity.value = 0
     travelProgress.value = 0
-    pillScaleX.value = 0.78
-    pillScaleY.value = 1.06
+    pillScaleX.value = 0.68
+    pillScaleY.value = 1.08
     if (liquidMaterial) {
       bridgeOpacity.value = withSequence(
-        withTiming(reduceTransparency ? 0.30 : 0.50, { duration: 110 }),
-        withTiming(0, { duration: 260 }),
+        withTiming(reduceTransparency ? 0.48 : 0.90, { duration: 80 }),
+        withTiming(reduceTransparency ? 0.30 : 0.62, { duration: 180 }),
+        withTiming(0, { duration: 180 }),
       )
       bridgeScaleX.value = withSequence(
-        withSpring(1, motionTokens.liquid.pill),
-        withSpring(0.72, motionTokens.liquid.press),
+        withTiming(1.04, { duration: 155 }),
+        withSpring(0.985, motionTokens.liquid.press),
       )
-      travelProgress.value = withSpring(1, motionTokens.liquid.pill)
+      travelProgress.value = withSequence(
+        withTiming(0.92, { duration: 190 }),
+        withSpring(1, motionTokens.liquid.press),
+      )
       travelOpacity.value = withSequence(
-        withTiming(reduceTransparency ? 0.42 : 0.58, { duration: 90 }),
-        withTiming(0, { duration: 260 }),
+        withTiming(reduceTransparency ? 0.56 : 0.92, { duration: 70 }),
+        withTiming(reduceTransparency ? 0.48 : 0.84, { duration: 180 }),
+        withTiming(0, { duration: 220 }),
       )
       pillScaleX.value = withSequence(
-        withSpring(1.08, motionTokens.liquid.pill),
+        withSpring(1.18, motionTokens.liquid.pill),
         withSpring(1, motionTokens.liquid.press),
       )
       pillScaleY.value = withSequence(
-        withSpring(0.955, motionTokens.liquid.pill),
+        withSpring(0.92, motionTokens.liquid.pill),
         withSpring(1, motionTokens.liquid.press),
       )
     } else {
@@ -210,10 +213,17 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
     }
   }, [activeIndex, bridgeOpacity, bridgeScaleX, liquidMaterial, pillScaleX, pillScaleY, previousIndex, reduceMotion, reduceTransparency, travelOpacity, travelProgress])
 
-  const bridgeAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: bridgeOpacity.value,
-    transform: [{ scaleX: bridgeScaleX.value }],
-  }), [bridgeOpacity, bridgeScaleX])
+  const bridgeAnimatedStyle = useAnimatedStyle(() => {
+    const scaleX = bridgeScaleX.value
+    const directionalOffset = ((1 - scaleX) * bridgeMetrics.width) / 2
+    return {
+      opacity: bridgeOpacity.value,
+      transform: [
+        { translateX: transitionDirection >= 0 ? -directionalOffset : directionalOffset },
+        { scaleX },
+      ],
+    }
+  }, [bridgeMetrics.width, bridgeOpacity, bridgeScaleX, transitionDirection])
   const travelAnimatedStyle = useAnimatedStyle(() => {
     if (reduceMotion) return { opacity: 0 }
     const previousLeft = slotMetrics.slotLeft(previousIndex)
@@ -227,20 +237,21 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
       ],
     }
   }, [activeIndex, barWidth, items.length, pillScaleX, pillScaleY, previousIndex, reduceMotion, travelOpacity, travelProgress])
-
   const pressItem = (item: Item) => {
     if (item.key !== displayActiveKey) {
       if (testID) {
-        const pendingTransition = { from: displayActiveKey, to: item.key }
-        pendingDockTransitionById.set(testID, pendingTransition)
-        setTimeout(() => {
-          const current = pendingDockTransitionById.get(testID)
-          if (current?.from === pendingTransition.from && current.to === pendingTransition.to) pendingDockTransitionById.delete(testID)
-        }, pendingDockTransitionTtlMs)
+        if (displayActiveKey) {
+          const pendingTransition = { from: displayActiveKey, to: item.key }
+          pendingDockTransitionById.set(testID, pendingTransition)
+          setTimeout(() => {
+            const current = pendingDockTransitionById.get(testID)
+            if (current?.from === pendingTransition.from && current.to === pendingTransition.to) pendingDockTransitionById.delete(testID)
+          }, pendingDockTransitionTtlMs)
+        }
       }
-      setOptimisticTransition({ from: displayActiveKey, to: item.key })
+      if (displayActiveKey) setOptimisticTransition({ from: displayActiveKey, to: item.key })
     }
-    if (testID && item.key !== displayActiveKey) rememberedDockActiveKey.set(testID, displayActiveKey)
+    if (testID && item.key !== displayActiveKey && displayActiveKey) rememberedDockActiveKey.set(testID, displayActiveKey)
     onItemPress(item)
   }
 
@@ -260,6 +271,7 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
         <>
           <View pointerEvents="none" style={[styles.liquidDockDepth, liquidDockDepthStyle(mode)]} testID="liquid-toolbar-depth" />
           <View pointerEvents="none" style={[styles.liquidDockRim, liquidDockRimStyle(mode)]} testID="liquid-toolbar-rim" />
+          <Animated.View pointerEvents="none" style={[styles.liquidDockSpecularSheen, liquidDockSpecularSheenStyle(mode), surfaceSheenAnimatedStyle]} testID="liquid-toolbar-specular-sheen" />
         </>
       ) : null}
       <View pointerEvents="none" style={styles.hiddenMarker} testID="liquid-toolbar-selection" />
@@ -271,21 +283,16 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
           style={[
             styles.liquidBridge,
             {
-              backgroundColor: reduceTransparency
-                ? mode === 'dark'
-                  ? '#14372F'
-                  : '#E2F8F1'
-                : mode === 'dark'
-                  ? 'rgba(105,222,198,0.09)'
-                  : 'rgba(128,244,222,0.26)',
               left: bridgeMetrics.left,
               width: bridgeMetrics.width,
             },
+            liquidBridgeSurfaceStyle(mode, reduceTransparency, transitionDirection),
             bridgeAnimatedStyle,
           ]}
           testID="liquid-toolbar-bridge"
         >
-          <View style={[styles.liquidBridgeGlow, { backgroundColor: reduceTransparency ? (mode === 'dark' ? '#1E4A41' : '#F4FFFB') : mode === 'dark' ? 'rgba(105,222,198,0.11)' : 'rgba(255,255,255,0.34)' }]} />
+          <View style={[styles.liquidBridgeGlow, { backgroundColor: reduceTransparency ? (mode === 'dark' ? '#1E4A41' : '#F4FFFB') : mode === 'dark' ? 'rgba(105,222,198,0.13)' : 'rgba(255,255,255,0.48)' }]} />
+          <View pointerEvents="none" style={[styles.liquidBridgeHead, liquidBridgeHeadStyle(mode, reduceTransparency, transitionDirection)]} testID="liquid-toolbar-directional-head" />
         </Animated.View>
       ) : null}
       {!reduceMotion && transitionActive ? (
@@ -304,7 +311,7 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
       ) : null}
       {items.map((item) => (
         <FloatingGlassTabItemButton
-          focused={item.key === displayActiveKey}
+          focused={displayActiveKey !== null && item.key === displayActiveKey}
           iconForItem={iconForItem}
           item={item}
           key={item.key}
@@ -385,7 +392,8 @@ function FloatingGlassTabItemButton<Key extends string, Item extends FloatingGla
 }
 
 function liquidPillBaseStyle(mode: GlassMode, reduceTransparency: boolean) {
-  const lightLiquidGradient = 'radial-gradient(circle at 34% 18%, rgba(255,255,255,0.98), transparent 31%), radial-gradient(circle at 70% 82%, rgba(20,169,151,0.14), transparent 34%), linear-gradient(145deg, rgba(250,255,253,0.88), rgba(104,232,209,0.42))'
+  const lightLiquidGradient = 'radial-gradient(circle at 34% 16%, rgba(255,255,255,0.94), transparent 30%), radial-gradient(circle at 68% 78%, rgba(23,169,149,0.24), transparent 38%), linear-gradient(145deg, rgba(255,255,255,0.38), rgba(104,232,209,0.29))'
+  const darkLiquidGradient = 'radial-gradient(circle at 34% 16%, rgba(190,210,205,0.18), transparent 30%), radial-gradient(circle at 68% 78%, rgba(105,222,198,0.18), transparent 38%), linear-gradient(145deg, rgba(105,222,198,0.20), rgba(0,117,106,0.18))'
   return [
     styles.liquidPill,
     {
@@ -394,38 +402,91 @@ function liquidPillBaseStyle(mode: GlassMode, reduceTransparency: boolean) {
           ? '#163F36'
           : '#DDF6EF'
         : mode === 'dark'
-          ? 'rgba(105,222,198,0.16)'
-          : 'rgba(0,0,0,0)',
-      backgroundImage: !reduceTransparency && mode === 'light' ? lightLiquidGradient : undefined,
+          ? 'rgba(105,222,198,0.22)'
+          : 'rgba(122,238,219,0.19)',
+      backgroundImage: !reduceTransparency ? (mode === 'light' ? lightLiquidGradient : darkLiquidGradient) : undefined,
       borderColor: reduceTransparency
         ? mode === 'dark'
           ? 'rgba(105,222,198,0.22)'
           : 'rgba(8,120,110,0.12)'
-        : 'rgba(255,255,255,0)',
-      borderWidth: reduceTransparency ? 1 : 0,
-      experimental_backgroundImage: !reduceTransparency && mode === 'light' ? lightLiquidGradient : undefined,
+        : mode === 'dark'
+          ? 'rgba(190,210,205,0.24)'
+          : 'rgba(255,255,255,0.98)',
+      borderWidth: 1,
+      boxShadow: mode === 'dark'
+        ? 'inset 0 1px 0 rgba(190,210,205,0.22), inset 0 -10px 18px rgba(0,117,106,0.16)'
+        : '0 0 0 2px rgba(255,255,255,0.56), 0 16px 28px rgba(41,173,151,0.17), inset 0 1px 0 rgba(255,255,255,0.98), inset 0 -10px 18px rgba(7,120,106,0.12)',
+      experimental_backgroundImage: !reduceTransparency ? (mode === 'light' ? lightLiquidGradient : darkLiquidGradient) : undefined,
     } as any,
   ]
 }
 
 function liquidDockDepthStyle(mode: GlassMode) {
   return {
-    backgroundColor: mode === 'dark' ? 'rgba(22,29,27,0.62)' : 'rgba(255,255,255,0.48)',
+    backdropFilter: mode === 'dark' ? 'blur(18px) saturate(1.28)' : 'blur(20px) saturate(1.85) contrast(1.06)',
+    backgroundColor: mode === 'dark' ? 'rgba(22,29,27,0.30)' : 'rgba(255,255,255,0.055)',
     backgroundImage: mode === 'dark'
-      ? 'radial-gradient(circle at 20% 22%, rgba(190,210,205,0.08), transparent 26%), radial-gradient(circle at 48% 8%, rgba(105,222,198,0.10), transparent 31%), linear-gradient(180deg, rgba(22,29,27,0.44), rgba(22,29,27,0.18))'
-      : 'radial-gradient(circle at 22% 18%, rgba(255,255,255,0.98), transparent 25%), radial-gradient(circle at 50% 4%, rgba(23,169,149,0.08), transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.36))',
+      ? 'radial-gradient(circle at 20% 22%, rgba(190,210,205,0.065), transparent 26%), radial-gradient(circle at 48% 8%, rgba(105,222,198,0.075), transparent 31%), linear-gradient(180deg, rgba(22,29,27,0.24), rgba(22,29,27,0.07))'
+      : 'radial-gradient(circle at 22% 18%, rgba(255,255,255,0.36), transparent 26%), radial-gradient(circle at 50% 4%, rgba(23,169,149,0.028), transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.020))',
     experimental_backgroundImage: mode === 'dark'
-      ? 'radial-gradient(circle at 20% 22%, rgba(190,210,205,0.08), transparent 26%), radial-gradient(circle at 48% 8%, rgba(105,222,198,0.10), transparent 31%), linear-gradient(180deg, rgba(22,29,27,0.44), rgba(22,29,27,0.18))'
-      : 'radial-gradient(circle at 22% 18%, rgba(255,255,255,0.98), transparent 25%), radial-gradient(circle at 50% 4%, rgba(23,169,149,0.08), transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.36))',
+      ? 'radial-gradient(circle at 20% 22%, rgba(190,210,205,0.065), transparent 26%), radial-gradient(circle at 48% 8%, rgba(105,222,198,0.075), transparent 31%), linear-gradient(180deg, rgba(22,29,27,0.24), rgba(22,29,27,0.07))'
+      : 'radial-gradient(circle at 22% 18%, rgba(255,255,255,0.36), transparent 26%), radial-gradient(circle at 50% 4%, rgba(23,169,149,0.028), transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.020))',
+    WebkitBackdropFilter: mode === 'dark' ? 'blur(18px) saturate(1.28)' : 'blur(20px) saturate(1.85) contrast(1.06)',
   } as any
 }
 
 function liquidDockRimStyle(mode: GlassMode) {
   return {
-    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(255,255,255,0.82)',
+    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.13)' : 'rgba(255,255,255,0.76)',
     boxShadow: mode === 'dark'
       ? '0 10px 24px rgba(0,0,0,0.18)'
-      : '0 8px 18px rgba(255,255,255,0.42)',
+      : '0 8px 18px rgba(255,255,255,0.36)',
+  } as any
+}
+
+function liquidDockSpecularSheenStyle(mode: GlassMode) {
+  const gradient = mode === 'dark'
+    ? 'linear-gradient(90deg, transparent 0%, rgba(190,210,205,0.10) 42%, rgba(255,255,255,0.15) 50%, rgba(105,222,198,0.06) 58%, transparent 100%)'
+    : 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.38) 42%, rgba(255,255,255,0.86) 50%, rgba(147,255,232,0.18) 58%, transparent 100%)'
+
+  return {
+    backgroundColor: 'transparent',
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+  } as any
+}
+
+function liquidBridgeSurfaceStyle(mode: GlassMode, reduceTransparency: boolean, direction: number) {
+  if (reduceTransparency) {
+    return {
+      backgroundColor: mode === 'dark' ? '#14372F' : '#E2F8F1',
+    } as any
+  }
+
+  const forwardGradient = mode === 'dark'
+    ? 'linear-gradient(90deg, rgba(105,222,198,0.040), rgba(105,222,198,0.18) 48%, rgba(190,210,205,0.22) 100%)'
+    : 'linear-gradient(90deg, rgba(122,238,219,0.18), rgba(255,255,255,0.78) 48%, rgba(128,244,222,0.86) 100%)'
+  const backwardGradient = mode === 'dark'
+    ? 'linear-gradient(90deg, rgba(190,210,205,0.22), rgba(105,222,198,0.18) 52%, rgba(105,222,198,0.040) 100%)'
+    : 'linear-gradient(90deg, rgba(128,244,222,0.86), rgba(255,255,255,0.78) 52%, rgba(122,238,219,0.18) 100%)'
+  const gradient = direction >= 0 ? forwardGradient : backwardGradient
+
+  return {
+    backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.15)' : 'rgba(128,244,222,0.46)',
+    backgroundImage: gradient,
+    boxShadow: mode === 'dark'
+      ? '0 8px 18px rgba(0,0,0,0.12), inset 0 1px 0 rgba(190,210,205,0.12)'
+      : '0 8px 18px rgba(41,173,151,0.14), inset 0 1px 0 rgba(255,255,255,0.78)',
+    experimental_backgroundImage: gradient,
+  } as any
+}
+
+function liquidBridgeHeadStyle(mode: GlassMode, reduceTransparency: boolean, direction: number) {
+  return {
+    backgroundColor: reduceTransparency
+      ? mode === 'dark' ? '#CFF7EE' : '#FFFFFF'
+      : mode === 'dark' ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.96)',
+    [direction >= 0 ? 'right' : 'left']: 6,
   } as any
 }
 
@@ -443,8 +504,9 @@ function liquidPillFill(mode: GlassMode, reduceTransparency: boolean, phase: 'se
     return (
       <>
         <View style={[styles.liquidPillKeyline, liquidPillKeylineStyle(mode)]} />
+        <View style={[styles.liquidSettledMintWash, liquidSettledMintWashStyle(mode)]} />
         <View style={[styles.liquidPillFloor, liquidPillFloorStyle(mode)]} />
-        <View style={[styles.liquidSheen, { backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.68)' }]} />
+        <View style={[styles.liquidSheen, { backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.78)' }]} />
       </>
     )
   }
@@ -452,25 +514,31 @@ function liquidPillFill(mode: GlassMode, reduceTransparency: boolean, phase: 'se
   return (
     <>
       <View style={[styles.liquidPillKeyline, liquidPillKeylineStyle(mode)]} />
-      <View style={[styles.liquidTrail, { backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.10)' : 'rgba(163,255,235,0.22)' }]} />
-      <View style={[styles.liquidCore, { backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(68,232,204,0.30)' }]} />
-      <View style={[styles.liquidSheen, { backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.52)' }]} />
+      <View style={[styles.liquidTrail, { backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(163,255,235,0.34)' }]} />
+      <View style={[styles.liquidCore, { backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.28)' : 'rgba(68,232,204,0.38)' }]} />
+      <View style={[styles.liquidSheen, { backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.66)' }]} />
     </>
   )
 }
 
 function liquidPillKeylineStyle(mode: GlassMode) {
   return {
-    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.20)' : 'rgba(255,255,255,0.88)',
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.28)' : 'rgba(255,255,255,0.98)',
     boxShadow: mode === 'dark'
-      ? 'inset 0 1px 0 rgba(190,210,205,0.16), inset 0 -1px 0 rgba(0,117,106,0.20)'
-      : 'inset 0 1px 0 rgba(255,255,255,0.94), inset 0 -1px 0 rgba(8,120,110,0.14)',
+      ? 'inset 0 1px 0 rgba(190,210,205,0.22), inset 0 -1px 0 rgba(0,117,106,0.26)'
+      : '0 0 0 1px rgba(255,255,255,0.46), inset 0 1px 0 rgba(255,255,255,0.98), inset 0 -1px 0 rgba(8,120,110,0.18)',
   } as any
 }
 
 function liquidPillFloorStyle(mode: GlassMode) {
   return {
-    backgroundColor: mode === 'dark' ? 'rgba(0,117,106,0.18)' : 'rgba(0,117,106,0.16)',
+    backgroundColor: mode === 'dark' ? 'rgba(0,117,106,0.26)' : 'rgba(0,117,106,0.24)',
+  } as any
+}
+
+function liquidSettledMintWashStyle(mode: GlassMode) {
+  return {
+    backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.16)' : 'rgba(58,230,202,0.22)',
   } as any
 }
 
@@ -495,7 +563,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 50,
     position: 'relative',
-    zIndex: 2,
+    zIndex: 4,
   },
   itemFocused: {
     transform: [{ translateY: -2 }],
@@ -531,7 +599,7 @@ const styles = StyleSheet.create({
   liquidCore: {
     borderRadius: 999,
     height: 36,
-    opacity: 0.40,
+    opacity: 0.34,
     position: 'absolute',
     right: 6,
     top: 6,
@@ -540,32 +608,40 @@ const styles = StyleSheet.create({
   liquidBridge: {
     borderCurve: 'continuous',
     borderRadius: 999,
-    height: 49,
+    height: 51,
     overflow: 'hidden',
     position: 'absolute',
-    top: 8,
-    zIndex: 1,
+    top: LIQUID_PILL_ICON_CENTER_TOP,
+    zIndex: 2,
   },
   liquidBridgeGlow: {
     borderRadius: 999,
     bottom: 8,
     left: 12,
-    opacity: 0.56,
+    opacity: 0.68,
     position: 'absolute',
     right: 12,
     top: 8,
+  },
+  liquidBridgeHead: {
+    borderRadius: 999,
+    bottom: 6,
+    position: 'absolute',
+    top: 6,
+    width: 36,
+    zIndex: 4,
   },
   liquidPill: {
     borderCurve: 'continuous',
     borderRadius: 25,
     borderWidth: 0,
-    boxShadow: '0 13px 24px rgba(41,173,151,0.16), inset 0 1px 0 rgba(255,255,255,0.98), inset 0 -10px 18px rgba(7,120,106,0.10)',
+    boxShadow: '0 16px 28px rgba(41,173,151,0.16), inset 0 1px 0 rgba(255,255,255,0.98), inset 0 -10px 18px rgba(7,120,106,0.10)',
     height: 51,
     left: '50%',
     marginLeft: -30.5,
     overflow: 'hidden',
     position: 'absolute',
-    top: 7,
+    top: LIQUID_PILL_ICON_CENTER_TOP,
     width: 61,
     zIndex: 0,
   },
@@ -573,7 +649,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     bottom: 2,
     left: 2,
-    opacity: 0.96,
+    opacity: 0.84,
     position: 'absolute',
     right: 2,
     top: 2,
@@ -583,20 +659,38 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 15,
     left: 22,
-    opacity: 0.70,
+    opacity: 0.76,
     position: 'absolute',
     right: 22,
     top: 5,
     zIndex: 0,
+  },
+  liquidDockSpecularSheen: {
+    borderRadius: 999,
+    height: 86,
+    left: 0,
+    position: 'absolute',
+    top: -12,
+    width: 78,
+    zIndex: 1,
   },
   liquidPillFloor: {
     borderRadius: 999,
     bottom: 1,
     height: 14,
     left: 8,
-    opacity: 0.54,
+    opacity: 0.58,
     position: 'absolute',
     right: 8,
+  },
+  liquidSettledMintWash: {
+    borderRadius: 999,
+    height: 44,
+    opacity: 0.52,
+    position: 'absolute',
+    right: -6,
+    top: 6,
+    width: 50,
   },
   liquidPillKeyline: {
     borderRadius: 25,
@@ -610,13 +704,13 @@ const styles = StyleSheet.create({
   travelingLiquidPill: {
     left: 0,
     marginLeft: 0,
-    zIndex: 1,
+    zIndex: 3,
   },
   travelingLiquidPillVisible: {
     opacity: 1,
   },
   settledLiquidPill: {
-    opacity: 0.78,
+    opacity: 0.96,
     zIndex: 0,
   },
   settledLiquidPillHidden: {
@@ -626,7 +720,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 11,
     left: 12,
-    opacity: 0.52,
+    opacity: 0.58,
     position: 'absolute',
     right: 12,
     top: 6,
@@ -635,7 +729,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 30,
     left: 7,
-    opacity: 0.72,
+    opacity: 0.68,
     position: 'absolute',
     top: 11,
     width: 44,

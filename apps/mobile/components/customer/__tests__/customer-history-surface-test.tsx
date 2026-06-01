@@ -1,0 +1,355 @@
+import { render, screen } from '@testing-library/react-native'
+import type { LocalCustomerSearchState, LocalDeal, LocalDealStatus, LocalScopeChange, LocalWorkflowSelectors } from '@home-services/shared'
+
+let mockRouteParams: Record<string, string | string[] | undefined>
+let mockWorkflowValue: any
+const mockReplace = jest.fn()
+const mockUseJobChatThread = jest.fn()
+
+jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
+
+jest.mock('expo-image', () => {
+  const React = require('react')
+  const { View } = require('react-native')
+  return {
+    Image: (props: any) => React.createElement(View, props),
+  }
+})
+
+jest.mock('expo-router', () => ({
+  useLocalSearchParams: () => mockRouteParams,
+  useRouter: () => ({ replace: mockReplace }),
+}))
+
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react')
+  const { View } = require('react-native')
+  return {
+    SafeAreaView: ({ children, ...props }: any) => React.createElement(View, props, children),
+    useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
+  }
+})
+
+jest.mock('@/lib/auth-provider', () => ({
+  useAuth: () => ({ session: { user: { id: 'customer_test_1' } } }),
+}))
+
+jest.mock('@/lib/frontend-workflow-provider', () => ({
+  useFrontendWorkflow: () => mockWorkflowValue,
+}))
+
+jest.mock('@/lib/use-job-chat-thread', () => ({
+  useJobChatThread: (jobId: string | null, enabled: boolean) => mockUseJobChatThread(jobId, enabled),
+}))
+
+jest.mock('@/lib/app-language', () => {
+  const actual = jest.requireActual('@/lib/app-language')
+  return {
+    ...actual,
+    useAppLanguage: () => 'vi',
+  }
+})
+
+import { CustomerHistorySurface } from '../customer-surfaces'
+
+function buildDeal(status: LocalDealStatus, backendStatus: LocalDeal['backendStatus'] = status): LocalDeal {
+  const accepted = status !== 'broadcasting'
+  const hasCompletionEvidence =
+    status === 'completed_by_worker' ||
+    status === 'confirmed_by_customer' ||
+    status === 'reviewed' ||
+    backendStatus === 'confirmed_by_customer' ||
+    backendStatus === 'payment_pending' ||
+    backendStatus === 'paid' ||
+    backendStatus === 'reviewed'
+
+  return {
+    backendStatus,
+    broadcast: {
+      broadcastId: 'broadcast_test_1',
+      estimatedEarningLabel: '120.000đ - 180.000đ',
+      estimatedPriceLabel: '180.000đ - 260.000đ',
+      fullAddressLabel: accepted ? 'Tòa A, Quận 1' : null,
+      fullAddressVisible: accepted,
+      generalArea: 'Quận 1',
+      jobId: 'job_test_1',
+      prebrief: ['Kael đã tóm tắt phạm vi và giữ địa chỉ chi tiết theo chính sách.'],
+      problemSummary: 'Ổ cắm chập chờn',
+      secondsRemaining: status === 'broadcasting' ? 45 : null,
+      serviceType: 'electrical',
+      status: accepted ? 'accepted' : 'sent',
+    },
+    completionNotes: hasCompletionEvidence ? 'Đã thay ổ cắm và kiểm tra tải.' : null,
+    completionPhotoUrls: hasCompletionEvidence ? ['storage://job_test_1/after.jpg'] : [],
+    draft: {
+      addressLabel: 'Tòa A, Quận 1',
+      description: 'Ổ cắm phòng khách chập chờn và có mùi khét nhẹ',
+      districtLabel: 'Quận 1',
+      inferredProblemLabel: null,
+      mediaCount: 1,
+      needsServiceChoice: false,
+      problemChips: ['ổ cắm/công tắc hỏng'],
+      serviceType: 'electrical',
+      source: 'kael',
+      timeChoice: 'now',
+      unsupportedServiceLabel: null,
+    },
+    estimate: {
+      advisory: 'Kael có thể cập nhật nếu bằng chứng phạm vi thay đổi.',
+      complexity: 'medium',
+      confidenceLabel: '84%',
+      disclaimer: 'Giá do Kael khóa theo bằng chứng hiện có.',
+      hasVndPrice: true,
+      priceRangeLabel: '180.000đ - 260.000đ',
+      problemLabel: 'Ổ cắm chập chờn',
+    },
+    finalPrice: backendStatus === 'payment_pending' ? 260000 : null,
+    id: 'job_test_1',
+    scopeChange: null,
+    status,
+  }
+}
+
+function customerSearchStateForStatus(status: LocalDealStatus): LocalCustomerSearchState {
+  if (status === 'broadcasting') return 'searching'
+  if (status === 'worker_matched') return 'matched'
+  if (status === 'completed_by_worker' || status === 'confirmed_by_customer' || status === 'reviewed') return 'completed'
+  if (['worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending'].includes(status)) return 'active'
+  return 'idle'
+}
+
+function buildWorkflow(deal: LocalDeal | null) {
+  const currentStatus = deal?.status ?? null
+  const canCustomerSubmitReview = deal?.backendStatus === 'paid' || deal?.backendStatus === 'confirmed_by_customer'
+  const selectors: LocalWorkflowSelectors = {
+    canConfirmCustomerSearch: false,
+    canCustomerCancelDeal: Boolean(deal && currentStatus !== 'reviewed'),
+    canCustomerConfirmCompletion: false,
+    canCustomerSubmitReview,
+    canWorkerAccept: false,
+    canWorkerAdvance: false,
+    canWorkerSeeFullAddress: Boolean(deal?.broadcast?.fullAddressVisible),
+    currentBackendStatus: deal?.backendStatus ?? currentStatus,
+    currentStatus,
+    customerSearchState: currentStatus ? customerSearchStateForStatus(currentStatus) : 'idle',
+    draftValidationMessage: null,
+    hasLocalBroadcast: Boolean(deal?.broadcast),
+    paymentLocked: true,
+    reviewLocked: !canCustomerSubmitReview,
+    scheduleMode: 'now_only',
+  }
+
+  mockWorkflowValue = {
+    actions: {
+      cancelRemoteJob: jest.fn(async () => true),
+      decideScopeChange: jest.fn(async () => true),
+      submitReview: jest.fn(async () => true),
+    },
+    selectors,
+    state: {
+      deal,
+      lastError: null,
+      lastRemoteSyncAt: null,
+      workerGate: 'remote_backend',
+    },
+  }
+}
+
+function buildScopeChange(): LocalScopeChange {
+  return {
+    createdAt: '2026-06-01T00:00:00.000Z',
+    evidencePhotoUrls: ['storage://job_test_1/scope.jpg'],
+    id: 'scope_test_1',
+    kaelReview: null,
+    priceMax: 320000,
+    priceMin: 260000,
+    reason: 'Cần thay thêm ổ cắm sau khi tháo mặt che.',
+    requestedDescription: 'Thay thêm ổ cắm bị cháy chân tiếp xúc.',
+    status: 'reviewing_by_kael',
+  }
+}
+
+beforeEach(() => {
+  mockReplace.mockClear()
+  mockUseJobChatThread.mockClear()
+  mockUseJobChatThread.mockReturnValue({
+    error: null,
+    loading: false,
+    messages: [],
+    refresh: jest.fn(),
+    sendMessage: jest.fn(async () => true),
+    sending: false,
+  })
+  mockRouteParams = { tab: 'chat' }
+  buildWorkflow(buildDeal('broadcasting'))
+})
+
+describe('CustomerHistorySurface phase context', () => {
+  it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-phase-context')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-chat-tab-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-chat-input').props.editable).toBe(false)
+    expect(screen.getByTestId('customer-history-chat-locked-reason')).toHaveTextContent('Chat cần công việc thật')
+    expect(mockUseJobChatThread).toHaveBeenCalledWith('job_test_1', false)
+  })
+
+  it('loads job chat read-only after payment gate instead of reopening send authority', () => {
+    mockRouteParams = { tab: 'chat' }
+    buildWorkflow(buildDeal('confirmed_by_customer', 'payment_pending'))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-chat-input').props.editable).toBe(false)
+    expect(screen.getByTestId('customer-history-chat-locked-reason')).toHaveTextContent('Chat chỉ còn đọc lại')
+    expect(mockUseJobChatThread).toHaveBeenCalledWith('job_test_1', true)
+  })
+
+  it('shows job-chat as an unlocked phase action during active work', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('worker_on_way'))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-phase-context')).toHaveTextContent(/Nhắn trong chat công việc/)
+  })
+
+  it('shows completion evidence on the done tab from worker-submitted fields', () => {
+    mockRouteParams = { tab: 'done' }
+    buildWorkflow(buildDeal('completed_by_worker'))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-phase-context')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/1.*hoàn tất/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Đã thay ổ cắm/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Kael đang xét hoàn tất/)
+  })
+
+  it('does not treat the repairing-phase completion evidence input as a completion outcome', () => {
+    mockRouteParams = { tab: 'done' }
+    buildWorkflow(buildDeal('repairing'))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-phase-context')).toHaveTextContent(/Bằng chứng hoàn tất/)
+    expect(screen.queryByTestId('customer-history-completion-evidence-panel')).toBeNull()
+    expect(screen.getByTestId('customer-history-done-hero')).toHaveTextContent(/Chờ thợ hoàn tất/)
+  })
+
+  it('keeps basic scope-change context separate from a submitted scope artifact', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('inspecting'))
+
+    const { rerender } = render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-phase-context')).toHaveTextContent(/Thay đổi phạm vi/)
+    expect(screen.queryByTestId('customer-history-scope-change-panel')).toBeNull()
+
+    const scopedDeal = buildDeal('scope_change_pending')
+    scopedDeal.scopeChange = buildScopeChange()
+    buildWorkflow(scopedDeal)
+    rerender(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-scope-change-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-scope-change-panel')).toHaveTextContent(/Cần thay thêm ổ cắm/)
+  })
+
+  it('shows an honest blocked reason when completion evidence is missing', () => {
+    mockRouteParams = { tab: 'done' }
+    const deal = buildDeal('completed_by_worker')
+    deal.completionNotes = null
+    deal.completionPhotoUrls = []
+    buildWorkflow(deal)
+
+    const { rerender } = render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Cần bằng chứng hoàn tất/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Chờ bằng chứng hoàn tất/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Chờ ghi chú thợ/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).not.toHaveTextContent(/Kael đang xét hoàn tất/)
+    expect(screen.getByTestId('customer-history-done-timeline')).toHaveTextContent(/Chờ quyết định/)
+    expect(screen.getByTestId('customer-history-done-timeline')).not.toHaveTextContent(/Đã ghi quyết định hoàn tất/)
+
+    deal.completionNotes = 'Đã thay ổ cắm và kiểm tra tải.'
+    deal.completionPhotoUrls = []
+    buildWorkflow(deal)
+    rerender(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Cần bằng chứng hoàn tất/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Chờ bằng chứng hoàn tất/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).not.toHaveTextContent(/Kael đang xét hoàn tất/)
+  })
+
+  it('marks completion evidence as confirmed after Kael/backend confirmation', () => {
+    mockRouteParams = { tab: 'done' }
+    buildWorkflow(buildDeal('confirmed_by_customer'))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Kael đã xác nhận/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).not.toHaveTextContent(/Kael đang xét hoàn tất/)
+  })
+
+  it('keeps review submit locked during payment_pending and opens it after paid', () => {
+    mockRouteParams = { tab: 'done' }
+    buildWorkflow(buildDeal('confirmed_by_customer', 'payment_pending'))
+
+    const { rerender } = render(<CustomerHistorySurface />)
+
+    expect(screen.queryByTestId('customer-history-review-submit')).toBeNull()
+    expect(screen.getAllByText('Khóa').length).toBeGreaterThan(0)
+    expect(screen.getByTestId('customer-history-done-hero')).toHaveTextContent(/Kael đã xác nhận/)
+    expect(screen.getByTestId('customer-history-done-hero')).not.toHaveTextContent(/Chờ thợ hoàn tất/)
+
+    buildWorkflow(buildDeal('confirmed_by_customer', 'paid'))
+    rerender(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-review-submit')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-review-panel')).toHaveTextContent(/Thanh toán/)
+    expect(screen.getByTestId('customer-history-review-panel')).toHaveTextContent(/Mở/)
+  })
+
+  it('keeps review locked when a confirmed job is missing completion evidence', () => {
+    mockRouteParams = { tab: 'done' }
+    const deal = buildDeal('confirmed_by_customer')
+    deal.completionNotes = null
+    deal.completionPhotoUrls = []
+    buildWorkflow(deal)
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.queryByTestId('customer-history-review-submit')).toBeNull()
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Cần bằng chứng hoàn tất/)
+    expect(screen.getAllByText('Khóa').length).toBeGreaterThan(0)
+    expect(screen.getByTestId('customer-history-done-timeline')).not.toHaveTextContent(/Sẵn sàng đánh giá/)
+  })
+
+  it('localizes hydrated estimate complexity instead of showing backend enum copy', () => {
+    mockRouteParams = { tab: 'price' }
+    buildWorkflow(buildDeal('worker_on_way'))
+
+    render(<CustomerHistorySurface />)
+
+    const pricePanel = screen.getByTestId('customer-history-price-tab-panel')
+    expect(pricePanel).toHaveTextContent(/Vừa/)
+    expect(pricePanel).not.toHaveTextContent('medium')
+  })
+
+  it('shows cancelled transactions as a locked policy state without reopening cancellation', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('cancelled'))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-phase-context')).toHaveTextContent(/Giao dịch đã hủy/)
+    expect(screen.getByTestId('customer-history-cancellation-context')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-cancellation-context')).toHaveTextContent(/Yêu cầu đã hủy/)
+    expect(screen.getByTestId('customer-history-cancellation-context')).toHaveTextContent(/Công việc đã hủy/)
+    expect(screen.getByTestId('customer-history-worker-placeholder')).toHaveTextContent(/Yêu cầu đã hủy/)
+    expect(screen.queryByTestId('customer-history-cancel-local-deal')).toBeNull()
+    expect(screen.getByTestId('customer-history-cancellation-context')).not.toHaveTextContent(/Kael đã xác nhận/)
+  })
+})

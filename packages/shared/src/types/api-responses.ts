@@ -44,6 +44,7 @@ export type CreateJobResponse = {
   status: JobStatus
   estimate: KaelEstimate
   estimate_card_v3?: Record<string, unknown>
+  final_price?: number | null
   fallback_used: boolean
   broadcast_sent?: boolean
   message?: string
@@ -282,7 +283,7 @@ export type WorkerProfileResponse = {
   districts: string[]
   home_lat: number | null
   home_lng: number | null
-  service_radius_km: number
+  service_radius_km: number | null
   problem_specializations: string[]
   years_experience: number
   rating: number
@@ -423,6 +424,8 @@ export type WorkerJobListResponse = {
     district: string | null
     final_price: number | null
     estimated_earning: number | null
+    completion_notes: string | null
+    completion_photo_urls: string[]
     worker_brief_guidance?: Record<string, unknown> | null
     created_at: string
     matched_at: string | null

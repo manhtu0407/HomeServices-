@@ -53,6 +53,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
         disclaimer:
           'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
       },
+      final_price: 250000,
       fallback_used: false,
     })),
     getJob: vi.fn(),
@@ -667,6 +668,7 @@ describe('mobile-api Edge router contract', () => {
         disclaimer:
           'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
       },
+      final_price: 350000,
       fallback_used: true,
     }))
     const handler = createMobileApiHandler({
@@ -865,6 +867,7 @@ describe('mobile-api Edge router contract', () => {
         advisory: null,
         disclaimer: 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
       },
+      final_price: 450000,
       fallback_used: false,
     }))
     const handler = createMobileApiHandler({
@@ -1026,6 +1029,51 @@ describe('mobile-api Edge router contract', () => {
     expect(updateJobStatus).not.toHaveBeenCalled()
   })
 
+  it('requires worker completion notes and photos before service mutation', async () => {
+    const updateJobStatus = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ updateJobStatus }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'completed_by_worker',
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({
+      code: 'VALIDATION',
+    })
+    expect(updateJobStatus).not.toHaveBeenCalled()
+  })
+
+  it('rejects worker completion when notes exist but photos are missing', async () => {
+    const updateJobStatus = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ updateJobStatus }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'completed_by_worker',
+        completion_notes: 'Đã thay ổ cắm và kiểm tra tải.',
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({
+      code: 'VALIDATION',
+    })
+    expect(updateJobStatus).not.toHaveBeenCalled()
+  })
+
   it('accepts completion media refs returned by the job media attach endpoint', async () => {
     const updateJobStatus = vi.fn(async () => ({
       job_id: 'job-1',
@@ -1043,6 +1091,7 @@ describe('mobile-api Edge router contract', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         status: 'completed_by_worker',
+        completion_notes: 'Đã thay ổ cắm và kiểm tra tải.',
         completion_photo_urls: ['supabase://job-media/job-1/after/photo.jpg'],
       }),
     }))
@@ -1053,6 +1102,7 @@ describe('mobile-api Edge router contract', () => {
       'job-1',
       {
         status: 'completed_by_worker',
+        completion_notes: 'Đã thay ổ cắm và kiểm tra tải.',
         completion_photo_urls: ['supabase://job-media/job-1/after/photo.jpg'],
       },
     )

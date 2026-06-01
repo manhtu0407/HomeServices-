@@ -810,6 +810,7 @@ async function createJob(
     status: "broadcasting" as JobStatus,
     estimate,
     estimate_card_v3: estimateCardV3,
+    final_price: lockedFinalPrice,
     fallback_used: pipeline.fallbackUsed,
     broadcast_sent: broadcast.success,
     message: broadcast.success
@@ -1122,7 +1123,7 @@ async function buildExistingJobCreateResponse(
     client
       .from("jobs")
       .select(
-        "id, status, service_type, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3",
+        "id, status, service_type, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, final_price",
       )
       .eq("id", jobId)
       .single(),
@@ -1163,6 +1164,7 @@ async function buildExistingJobCreateResponse(
     estimate_card_v3: Object.keys(cardV3).length > 0
       ? (cardV3 as Record<string, unknown>)
       : undefined,
+    final_price: nullableNumber(job.data.final_price),
     fallback_used: false,
   };
 }
@@ -1882,6 +1884,9 @@ const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "repairing",
   "scope_change_pending",
   "completed_by_worker",
+  "confirmed_by_customer",
+  "payment_pending",
+  "paid",
 ];
 
 async function listCustomerActiveJobs(ctx: MobileApiContext) {
@@ -4755,7 +4760,7 @@ async function listWorkerJobs(ctx: MobileApiContext) {
     db(ctx)
       .from("jobs")
       .select(
-        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, created_at, matched_at, completed_at",
+        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, completion_notes, completion_photo_urls, created_at, matched_at, completed_at",
       )
       .eq("worker_id", ctx.user.id)
       .order("created_at", { ascending: false })
@@ -4801,6 +4806,8 @@ async function listWorkerJobs(ctx: MobileApiContext) {
         estimated_earning: finalPrice
           ? Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER))
           : null,
+        completion_notes: nullableString(row.completion_notes),
+        completion_photo_urls: asStringArray(row.completion_photo_urls),
         worker_brief_guidance:
           nullableRecord(row.kael_worker_brief_guidance) ?? fallbackBrief,
         created_at: asString(row.created_at),
@@ -5261,7 +5268,7 @@ const CUSTOMER_STATUS_PUSH: Partial<Record<JobStatus, NotificationCopy>> = {
   completed_by_worker: {
     eventType: "completed_by_worker",
     title: "Thợ đã báo hoàn tất",
-    body: "Kael đang kiểm tra bằng chứng hoàn tất và sẽ xác nhận hoặc mở tranh chấp theo policy.",
+    body: "Kael đang kiểm tra bằng chứng hoàn tất và sẽ xác nhận hoặc mở tranh chấp theo chính sách.",
   },
 };
 
@@ -5388,7 +5395,7 @@ async function notifyCustomerScopeChangeDecided(
     : "Kael đã từ chối thay đổi phạm vi";
   const body = approved
     ? "Kael đã cập nhật giá theo phạm vi mới. Bạn có thể xem lại hoặc khiếu nại trong Hoạt động."
-    : "Kael đã hủy phần phát sinh theo policy. Bạn có thể xem lại trong Hoạt động.";
+    : "Kael đã hủy phần phát sinh theo chính sách. Bạn có thể xem lại trong Hoạt động.";
   const eventType = approved
     ? "scope_change_auto_approved"
     : "scope_change_auto_rejected";
@@ -6950,7 +6957,7 @@ function blankWorkerProfile(workerId: string) {
     districts: [],
     home_lat: null,
     home_lng: null,
-    service_radius_km: 8,
+    service_radius_km: null,
     problem_specializations: [],
     years_experience: 0,
     rating: 0,

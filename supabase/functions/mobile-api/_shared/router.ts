@@ -92,6 +92,7 @@ type CreateJobResponse = {
   status: JobStatus;
   estimate: KaelEstimate;
   estimate_card_v3?: Record<string, unknown>;
+  final_price?: number | null;
   fallback_used: boolean;
   broadcast_sent?: boolean;
   message?: string;
@@ -409,6 +410,8 @@ type WorkerJobListResponse = {
     district: string | null;
     final_price: number | null;
     estimated_earning: number | null;
+    completion_notes: string | null;
+    completion_photo_urls: string[];
     worker_brief_guidance?: Record<string, unknown> | null;
     created_at: string;
     matched_at: string | null;
@@ -434,6 +437,9 @@ type WorkerProfileResponse = {
   is_suspended: boolean;
   service_types: ServiceType[];
   districts: string[];
+  home_lat: number | null;
+  home_lng: number | null;
+  service_radius_km: number | null;
   years_experience: number;
   rating: number;
   total_jobs: number;
@@ -1737,6 +1743,17 @@ function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
     result.completion_photo_urls = urls;
   } else if (record.completion_photo_urls !== undefined) {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  if (status === "completed_by_worker") {
+    const note = result.completion_notes?.trim() ?? "";
+    const photos = result.completion_photo_urls ?? [];
+    if (note.length < 5 || photos.length === 0) {
+      apiFailure(
+        "VALIDATION",
+        "Cần ghi chú và ảnh hoàn tất trước khi báo hoàn tất",
+        400,
+      );
+    }
   }
   return result;
 }

@@ -2,6 +2,10 @@
 
 Lean recall index — read last (per `critical.md` §0). Full entry detail lives in `docs/memory/<period>.md`; fetch only the entry you need (progressive disclosure, adapted from claude-mem without its worker service / vector DB). Add new entries with the `/kael-mem` command. Newest first.
 
+## Recall Index -> `docs/memory/2026-06.md`
+
+- **2026-06-01** Rich Phase Context + Workflow Orchestrator UI implementation - built the shared pure `WorkflowPhaseContext`, wired it through shared/mobile workflow view models, made Customer Kael chat + Activity phase-aware, made Worker waiting/active/chat/Needs phase-aware, aligned provider/API/Edge completion-evidence and Kael-owned price authority, added broad tests, and ran an 8h continuous audit loop. Next session should continue with native RN QA and the UI/UX product pass on top of this phase/artifact lifecycle rather than rebuilding the skeleton.
+
 ## Recall Index → `docs/memory/2026-05.md`
 
 - **2026-05-31** Kael Autonomy v2 frontend/workflow reset — changed contract from customer-gated money/booking/completion to server-validated Kael default autonomy; BookingWizard now hands structured intake/media to Kael chat immediately via route `replace`; Kael chat pre-analyzes, auto-starts estimate-ready sessions into matching, uploads intake photos after job creation, and hydrates Activity; Edge adds `KaelAutonomyDecision` for matching, customer/worker cancellation, scope, and completion confirmation. Follow-up audit fixed post-broadcast intake media attach, lifecycle artifact schema parity, stale worker/customer price authority copy, scope-change wording, Kael chat `confirm*` UI naming, worker/customer JobRoom chat evidence trail via Edge messages, legacy customer Kael local composer removal, and worker map address handoff/directions after accept. Native device QA still pending.

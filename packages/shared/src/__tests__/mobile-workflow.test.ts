@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { JOB_STATUSES, PROBLEM_CHIPS } from '../constants'
 import {
   createInitialLocalWorkflowState,
+  hasLocalDealCompletionEvidence,
   hasSpecificWorkerRouteAddress,
   inferLocalDealDraftFromKael,
   isLocalDealStatus,
@@ -625,6 +626,48 @@ describe('mobile local workflow state machine', () => {
     expect(selectLocalWorkflow(state).canWorkerAdvance).toBe(false)
   })
 
+  it('hydrates completion evidence from remote job snapshots without changing authority', () => {
+    const state = localWorkflowReducer(createInitialLocalWorkflowState(), {
+      type: 'hydrate_remote_job',
+      job: {
+        id: 'job-completed',
+        backendStatus: 'completed_by_worker',
+        status: 'completed_by_worker',
+        serviceType: 'cleaning',
+        description: 'Deep clean after move-out',
+        problemChips: ['Move-out cleaning'],
+        addressLabel: 'Block A, Quận 7',
+        districtLabel: 'Quận 7',
+        completionNotes: 'Đã chụp ảnh sau khi hoàn tất.',
+        completionPhotoUrls: ['job-media/after/photo-1.jpg'],
+        finalPrice: 350000,
+      },
+    })
+
+    expect(state.deal?.completionNotes).toBe('Đã chụp ảnh sau khi hoàn tất.')
+    expect(state.deal?.completionPhotoUrls).toEqual(['job-media/after/photo-1.jpg'])
+    expect(selectLocalWorkflow(state).canCustomerConfirmCompletion).toBe(false)
+  })
+
+  it('requires both worker notes and completion photos before evidence is considered complete', () => {
+    expect(hasLocalDealCompletionEvidence({
+      completionNotes: 'Đã thay ổ cắm và kiểm tra tải.',
+      completionPhotoUrls: ['job-media/after/photo-1.jpg'],
+    })).toBe(true)
+    expect(hasLocalDealCompletionEvidence({
+      completionNotes: 'Đã thay ổ cắm và kiểm tra tải.',
+      completionPhotoUrls: [],
+    })).toBe(false)
+    expect(hasLocalDealCompletionEvidence({
+      completionNotes: null,
+      completionPhotoUrls: ['job-media/after/photo-1.jpg'],
+    })).toBe(false)
+    expect(hasLocalDealCompletionEvidence({
+      completionNotes: 'ok',
+      completionPhotoUrls: ['job-media/after/photo-1.jpg'],
+    })).toBe(false)
+  })
+
   it('marks a stale remote worker broadcast as expired when backend no longer returns it', () => {
     const state = localWorkflowReducer(createInitialLocalWorkflowState(), {
       type: 'hydrate_remote_broadcast',
@@ -635,6 +678,10 @@ describe('mobile local workflow state machine', () => {
         serviceType: 'plumbing',
         problemSummary: 'Pipe leak',
         generalArea: 'Quận 7',
+        prebrief: [
+          'Đọc nhanh phạm vi Kael đã chốt.',
+          'Địa chỉ chi tiết vẫn ẩn trước khi nhận.',
+        ],
         secondsRemaining: 25,
         estimatedPriceLabel: '150.000đ - 350.000đ',
         estimatedEarningLabel: '135.000đ - 315.000đ',
@@ -645,6 +692,7 @@ describe('mobile local workflow state machine', () => {
 
     expect(expired.deal?.status).toBe('broadcasting')
     expect(expired.deal?.broadcast?.status).toBe('expired')
+    expect(expired.deal?.broadcast?.prebrief).toContain('Đọc nhanh phạm vi Kael đã chốt.')
     expect(expired.deal?.broadcast?.secondsRemaining).toBe(0)
     expect(expired.workerGate).toBe('backend_pending')
     expect(selectors.canWorkerAccept).toBe(false)
