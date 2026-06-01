@@ -3,7 +3,7 @@ import { Image } from 'expo-image'
 import { ActivityIndicator, Pressable, Text, TextInput, View, type ViewStyle } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
-import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, PLATFORM_FEE_CUSTOMER, type ServiceType, type WorkflowArtifactMode } from '@home-services/shared'
+import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, PLATFORM_FEE_CUSTOMER, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type ServiceType, type WorkflowArtifactMode, type WorkflowPhaseContext } from '@home-services/shared'
 import {
   getCustomerThemeTokens,
   getReducedTransparencyCustomerTokens,
@@ -328,6 +328,40 @@ export function KaelProcessCard({
   )
 }
 
+export function KaelPhaseContextCard({
+  language,
+  phaseContext,
+}: {
+  language: AppLanguage
+  phaseContext: WorkflowPhaseContext
+}) {
+  const tokens = useKaelChatTokens()
+  const visibleSections = orderWorkflowPhaseSectionsForSummary(phaseContext, phaseContext.sections.filter((section) => section.visible && section.role !== 'worker'))
+  const primarySection = visibleSections.find((section) => section.id === phaseContext.primaryArtifact?.id) ?? visibleSections[0] ?? null
+  const primaryArtifact = primarySection?.title[language] ?? localizedArtifactFallback(language)
+  const blocked = phaseContext.blockedReason ? workflowBlockedReasonLabel(phaseContext.blockedReason, language) : workflowAllowedActionsLabel(phaseContext.allowedActions, language)
+  const nextEvent = phaseContext.nextExpectedEvent ? workflowEventLabel(phaseContext.nextExpectedEvent, language) : localizedDoneEvent(language)
+  const sectionSummary = workflowSectionSummary(visibleSections, language)
+
+  return (
+    <View style={[styles.traceCard, { backgroundColor: tokens.raised, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'trace')]} testID="customer-kael-chat-phase-context">
+      <Text style={[styles.traceTitle, { color: tokens.primary }]} numberOfLines={1}>
+        {phaseContext.title[language]}
+      </Text>
+      <Text style={[styles.bodyText, { color: tokens.text }]} numberOfLines={3}>
+        {phaseContext.intent[language]}
+      </Text>
+      <View style={styles.briefGrid}>
+        <BriefField label={language === 'en' ? 'Source' : 'Nguồn'} value={workflowSourceOfTruthLabel(phaseContext.sourceOfTruth, language)} />
+        <BriefField label={language === 'en' ? 'Artifact' : 'Dấu mốc'} value={primaryArtifact} />
+        <BriefField label={language === 'en' ? 'Next' : 'Tiếp theo'} value={nextEvent} />
+        <BriefField label={language === 'en' ? 'Gate' : 'Cổng'} value={blocked} />
+        <BriefField label={language === 'en' ? 'Live sections' : 'Mục đang sống'} value={sectionSummary} wide />
+      </View>
+    </View>
+  )
+}
+
 function processStepCount(ticketMode: WorkflowArtifactMode) {
   if (ticketMode === 'basic' || ticketMode === 'partial') return 1
   if (ticketMode === 'loading') return 2
@@ -414,10 +448,13 @@ export function KaelIntakeReceiptCard({ intake, language }: { intake: PendingKae
   const tokens = useKaelChatTokens()
   const serviceValue = intake.serviceType ? localizedServiceLabel(intake.serviceType, language) : (language === 'en' ? 'Needs service' : 'Cần chọn dịch vụ')
   const addressValue = intake.addressLabel?.trim() || intake.districtLabel?.trim() || (language === 'en' ? 'Needs area' : 'Cần khu vực')
+  const sourceValue = intake.source === 'kael'
+    ? language === 'en' ? 'Kael chat' : 'Tin nhắn Kael'
+    : language === 'en' ? 'Booking form' : 'Phiếu đặt'
   const mediaCount = intake.mediaCount ?? intake.photoDrafts?.length ?? 0
   const mediaValue = language === 'en'
-    ? mediaCount > 0 ? `${mediaCount} queued for ticket evidence` : 'No media selected'
-    : mediaCount > 0 ? `${mediaCount} ảnh/video chờ đính kèm vào phiếu` : 'Chưa có ảnh/video'
+    ? mediaCount > 0 ? `${mediaCount} selected for ticket evidence` : 'No media selected'
+    : mediaCount > 0 ? `${mediaCount} ảnh/video đã chọn cho bằng chứng phiếu` : 'Chưa có ảnh/video'
   const title = language === 'en' ? 'Kael received the intake' : 'Kael đã nhận thông tin'
   const body = language === 'en'
     ? 'Kael is analyzing the service, area, and description from the booking form. Selected media attaches after Kael creates the job evidence.'
@@ -434,6 +471,7 @@ export function KaelIntakeReceiptCard({ intake, language }: { intake: PendingKae
       <View style={styles.briefGrid}>
         <BriefField label={language === 'en' ? 'Service' : 'Dịch vụ'} value={serviceValue} />
         <BriefField label={language === 'en' ? 'Area' : 'Khu vực'} value={addressValue} />
+        <BriefField label={language === 'en' ? 'Source' : 'Nguồn'} value={sourceValue} />
         <BriefField label={language === 'en' ? 'Media' : 'Ảnh/video'} value={mediaValue} />
         <BriefField label={language === 'en' ? 'Description' : 'Mô tả'} value={intake.message} wide />
       </View>
@@ -454,6 +492,25 @@ function BriefField({ label, value, wide = false }: { label: string; value: stri
       </Text>
     </View>
   )
+}
+
+function localizedArtifactFallback(language: AppLanguage) {
+  return language === 'en' ? 'No live artifact yet' : 'Chưa có dấu mốc sống'
+}
+
+function localizedDoneEvent(language: AppLanguage) {
+  return language === 'en' ? 'No next event' : 'Không có sự kiện kế tiếp'
+}
+
+function workflowSectionSummary(sections: WorkflowPhaseContext['sections'], language: AppLanguage) {
+  const labels = sections.slice(0, 4).map((section) => {
+    const mode = section.mode ? workflowArtifactModeLabel(section.mode, language) : workflowSourceOfTruthLabel(section.sourceOfTruth, language)
+    return `${section.title[language]} · ${mode}`
+  })
+  if (sections.length > 4) {
+    labels.push(language === 'en' ? `+${sections.length - 4} more` : `+${sections.length - 4} mục nữa`)
+  }
+  return labels.length > 0 ? labels.join('\n') : (language === 'en' ? 'No visible section yet' : 'Chưa có mục hiển thị')
 }
 
 export function EstimateInline({
@@ -499,12 +556,14 @@ export function EstimateCard({
   const disclaimer = language === 'vi'
     ? LOCAL_WORKFLOW_PRICE_DISCLAIMER
     : localizedGeneratedText(estimate.disclaimer, language, text.estimateDisclaimerFallback)
-  const orchestrationBusy = orchestrating || (canStartOrchestration && !orchestrationStarted)
+  const orchestrationBusy = orchestrating
   const actionLabel = orchestrationBusy
     ? text.orchestrating
     : orchestrationStarted
       ? text.nextAction.confirmed
-      : text.nextAction.await_input
+      : canStartOrchestration
+        ? text.nextAction.estimate_ready
+        : text.nextAction.await_input
 
   return (
     <View style={[styles.estimateCard, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-estimate-card">

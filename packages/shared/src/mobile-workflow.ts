@@ -138,6 +138,7 @@ export type LocalRemoteBroadcastSnapshot = {
   serviceType: ServiceType
   problemSummary: string
   generalArea: string
+  prebrief?: string[]
   secondsRemaining: number | null
   estimatedPriceLabel?: string
   estimatedEarningLabel?: string
@@ -192,6 +193,10 @@ export type LocalWorkflowSelectors = {
 }
 
 export const LOCAL_DEAL_ID = 'local-session-deal'
+export function hasLocalDealCompletionEvidence(deal: Pick<LocalDeal, 'completionNotes' | 'completionPhotoUrls'> | null | undefined): boolean {
+  return Boolean((deal?.completionNotes?.trim().length ?? 0) >= 5 && (deal?.completionPhotoUrls?.length ?? 0) > 0)
+}
+
 const GENERIC_AREA = 'Khu vực TP.HCM'
 const NEXT_WORKER_STATUS: Partial<Record<LocalDealStatus, LocalDealStatus>> = {
   worker_matched: 'worker_on_way',
@@ -874,6 +879,11 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
 }
 
 function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot): LocalDeal {
+  const remotePrebrief: string[] = []
+  for (const line of broadcast.prebrief ?? []) {
+    const trimmed = line.trim()
+    if (trimmed) remotePrebrief.push(trimmed)
+  }
   const draft: LocalDealDraft = {
     ...emptyDraft('booking', broadcast.serviceType),
     description: broadcast.problemSummary,
@@ -894,7 +904,7 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
       serviceType: broadcast.serviceType,
       problemSummary: broadcast.problemSummary,
       generalArea: broadcast.generalArea,
-      prebrief: [
+      prebrief: remotePrebrief.length > 0 ? remotePrebrief : [
         `${serviceLabel(broadcast.serviceType)} · ${broadcast.problemSummary}`,
         `Khu vực: ${broadcast.generalArea}. Địa chỉ chi tiết vẫn ẩn trước khi nhận.`,
       ],

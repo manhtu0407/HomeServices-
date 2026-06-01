@@ -54,6 +54,8 @@ const copy = {
     emptyTicketTitle: 'Phiếu Kael',
     errorNoService: 'Chọn một dịch vụ trước khi gửi mô tả.',
     errorUnknown: 'Kael chưa thể cập nhật phiên này. Vui lòng thử lại.',
+    retryIntake: 'Thử gửi lại phiếu',
+    retryOrchestration: 'Thử lại với Kael',
     estimateTitle: 'Ước tính của Kael',
     estimateProblemFallback: 'Kael đã phân loại vấn đề.',
     addressPlaceholder: 'Ví dụ: Quận 7, tên tòa nhà/căn hộ',
@@ -80,7 +82,7 @@ const copy = {
     traceMissingEmpty: 'Gửi mô tả thật để Kael hỏi đúng phần còn thiếu.',
     traceMissingActive: 'Kael sẽ hỏi thêm ảnh, khu vực hoặc dấu hiệu an toàn khi cần.',
     traceMissingReady: 'Đủ thông tin để xem ước tính.',
-    traceDecisionBody: 'Kael tự điều phối bằng quyết định đã kiểm policy; bạn có thể theo dõi, hủy hoặc khiếu nại.',
+    traceDecisionBody: 'Kael tự điều phối bằng quyết định đã kiểm theo chính sách; bạn có thể theo dõi, hủy hoặc khiếu nại.',
     traceDone: 'Xong',
     traceQuestion: 'Cần hỏi',
     traceLocked: 'Khóa',
@@ -91,7 +93,7 @@ const copy = {
     briefServicePending: 'Chưa chọn dịch vụ',
     briefClarityPending: 'Cần mô tả thật',
     briefClaritySelected: 'Sẵn sàng nhận mô tả',
-    briefSafetyBody: 'Kael chuẩn bị phiếu, ghi audit trail và tự chuyển sang tìm thợ khi đủ dữ liệu.',
+    briefSafetyBody: 'Kael chuẩn bị phiếu, ghi dấu vết kiểm tra và tự chuyển sang tìm thợ khi đủ dữ liệu.',
     welcome: 'Mình là Kael. Cậu cứ mô tả sự cố trong căn hộ, mình sẽ giúp gom thông tin, hỏi thêm khi cần và chuẩn bị bước điều phối.',
     labels: {
       advisory: 'Lưu ý',
@@ -134,6 +136,8 @@ const copy = {
     emptyTicketTitle: 'Kael ticket',
     errorNoService: 'Choose a service before sending details.',
     errorUnknown: 'Kael could not update this session. Please try again.',
+    retryIntake: 'Retry intake',
+    retryOrchestration: 'Retry with Kael',
     estimateTitle: 'Kael estimate',
     estimateProblemFallback: 'Kael classified the issue.',
     addressPlaceholder: 'Example: District 7, building/apartment',
@@ -213,6 +217,7 @@ function usePendingIntakeSession({
   language,
   pendingChatCreateClientRequestRef,
   pendingIntake,
+  pendingIntakeRetryNonce,
   pendingIntakeSentRef,
   routeSessionId,
   selectedService,
@@ -227,6 +232,7 @@ function usePendingIntakeSession({
   language: AppLanguage
   pendingChatCreateClientRequestRef: MutableRefObject<PendingClientRequestId | null>
   pendingIntake: KaelChatState['pendingIntake']
+  pendingIntakeRetryNonce: number
   pendingIntakeSentRef: MutableRefObject<string | null>
   routeSessionId?: string
   selectedService: ServiceType | null
@@ -296,7 +302,7 @@ function usePendingIntakeSession({
     return () => {
       cancelled = true
     }
-  }, [addressDistrict, addressDistrictRef, addressLabel, dispatch, language, pendingChatCreateClientRequestRef, pendingIntake, pendingIntakeSentRef, routeSessionId, selectedService, sending, session, text.errorNoService, text.errorUnknown])
+  }, [addressDistrict, addressDistrictRef, addressLabel, dispatch, language, pendingChatCreateClientRequestRef, pendingIntake, pendingIntakeRetryNonce, pendingIntakeSentRef, routeSessionId, selectedService, sending, session, text.errorNoService, text.errorUnknown])
 }
 
 export function KaelChatSurface() {
@@ -313,6 +319,7 @@ export function KaelChatSurface() {
   const routeService = useMemo(() => parseServiceType(firstParam(params.serviceType)), [params.serviceType])
   const routeSessionId = useMemo(() => firstParam(params.sessionId), [params.sessionId])
   const [state, dispatch] = useReducer(kaelChatReducer, routeService, createInitialKaelChatState)
+  const [pendingIntakeRetryNonce, bumpPendingIntakeRetryNonce] = useReducer((value: number) => value + 1, 0)
   const addressDistrictRef = useRef<string | null>(null)
   const pendingChatCreateClientRequestRef = useRef<PendingClientRequestId | null>(null)
   const pendingIntakeSentRef = useRef<string | null>(null)
@@ -336,10 +343,18 @@ export function KaelChatSurface() {
   const addressDistrict = useMemo(() => inferKaelChatDistrict(addressLabel), [addressLabel])
   const hasDraft = draft.trim().length > 0
   const hasInteraction = Boolean(routeSessionId || session || selectedService || hasDraft || pendingIntake || addressLabel.trim() || error || loading)
+  const hasPendingIntakeOnly = Boolean(pendingIntake && !routeSessionId && !session)
+  const hasKaelSessionContext = Boolean(routeSessionId || session || turns.length > 0)
   const showStarter = hasInteraction && turns.length === 0 && !loading && !session
-  const chatWorkflowStatus = session?.session.status === 'confirmed' || session?.session.status === 'estimate_ready' ? 'broadcasting' : null
+  const chatWorkflowStatus = session?.session.status === 'confirmed' ? 'broadcasting' : null
   const workflow = useServiceWorkflow({
-    status: chatWorkflowStatus, hasAiNotes: turns.length > 0, hasCustomerInput: hasInteraction, hasEstimate: Boolean(estimate), isLoading: loading, optimistic: orchestrating ? 'starting_matching' : null,
+    status: chatWorkflowStatus,
+    hasAiNotes: hasPendingIntakeOnly ? false : turns.length > 0,
+    hasCustomerInput: hasPendingIntakeOnly ? false : hasKaelSessionContext,
+    hasPendingIntake: hasPendingIntakeOnly,
+    hasEstimate: Boolean(estimate),
+    isLoading: hasPendingIntakeOnly ? false : loading,
+    optimistic: orchestrating ? 'starting_matching' : null,
   })
   const showProcess = workflow.artifacts.process_ticket.visible
   const showTrace = workflow.artifacts.ai_diagnosis.visible
@@ -374,6 +389,7 @@ export function KaelChatSurface() {
     language,
     pendingChatCreateClientRequestRef,
     pendingIntake,
+    pendingIntakeRetryNonce,
     pendingIntakeSentRef,
     routeSessionId,
     selectedService,
@@ -505,7 +521,12 @@ export function KaelChatSurface() {
         error: localizedKaelChatError(errorMessage(unknownError, text.errorUnknown), language),
       })
     }
-  }, [actions, estimate, language, orchestrating, pendingIntake?.photoDrafts, session, text.confirmed, text.errorUnknown, text.noWorkerConfirmed])
+  }, [actions, estimate, language, orchestrating, pendingIntake, session, text.confirmed, text.errorUnknown, text.noWorkerConfirmed])
+
+  const retryPendingIntake = useCallback(() => {
+    pendingIntakeSentRef.current = null
+    bumpPendingIntakeRetryNonce()
+  }, [])
 
   useEffect(() => {
     if (!session || !estimate || orchestrating || orchestrationMessage) return
@@ -539,11 +560,13 @@ export function KaelChatSurface() {
           language={language}
           loading={loading}
           onStartOrchestration={startKaelOrchestration}
+          onRetryPendingIntake={retryPendingIntake}
           onOpenHistory={(target) => replace(target)}
           orchestrating={orchestrating}
           orchestrationMessage={orchestrationMessage}
           pendingIntake={pendingIntake}
           selectedService={selectedService}
+          sending={sending}
           session={session}
           text={text}
           tokens={tokens}
@@ -600,10 +623,6 @@ function parseServiceType(value: string | undefined): ServiceType | null {
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message.trim().length > 0 ? error.message : fallback
-}
-
-function localizedRoleCustomer(language: AppLanguage) {
-  return language === 'en' ? 'You' : 'Bạn'
 }
 
 function localizedGeneratedText(value: string, language: AppLanguage, fallback: string) {

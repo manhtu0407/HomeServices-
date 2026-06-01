@@ -115,8 +115,8 @@ const glassStyleByVariant: Record<GlassVariant, GlassStyle> = {
 
 function liquidEdgeHighlightStyle(mode: GlassMode): ViewStyle {
   return {
-    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.30)',
-    opacity: mode === 'dark' ? 1 : 0.94,
+    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.46)',
+    opacity: mode === 'dark' ? 1 : 0.98,
   }
 }
 
@@ -144,12 +144,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.88)',
   } as any,
   webLiquidNavBackingDark: {
-    backgroundColor: 'rgba(22,29,27,0.78)',
-    borderColor: 'rgba(190,210,205,0.14)',
-  },
+    backdropFilter: 'blur(24px) saturate(1.45) contrast(1.04)',
+    backgroundColor: 'rgba(22,29,27,0.42)',
+    borderColor: 'rgba(190,210,205,0.16)',
+    WebkitBackdropFilter: 'blur(24px) saturate(1.45) contrast(1.04)',
+  } as any,
   webLiquidNavBackingLight: {
-    backgroundColor: 'rgba(255,255,255,0.64)',
-    backgroundImage: 'radial-gradient(circle at 52% 0%, rgba(23,169,149,0.10), transparent 36%)',
-    borderColor: 'rgba(255,255,255,0.30)',
+    backdropFilter: 'blur(24px) saturate(1.95) contrast(1.07)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundImage: 'radial-gradient(circle at 18% 8%, rgba(255,255,255,0.38), transparent 28%), radial-gradient(circle at 52% 106%, rgba(23,169,149,0.040), transparent 44%), linear-gradient(180deg, rgba(255,255,255,0.085), rgba(255,255,255,0.024))',
+    borderColor: 'rgba(255,255,255,0.70)',
+    WebkitBackdropFilter: 'blur(24px) saturate(1.95) contrast(1.07)',
   } as any,
 })

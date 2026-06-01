@@ -10,6 +10,7 @@ import {
   EstimateCard,
   EstimateInline,
   KaelIntakeReceiptCard,
+  KaelPhaseContextCard,
   KaelProcessCard,
   KaelTraceCard,
   useKaelChatTokens,
@@ -25,6 +26,8 @@ const vietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵ
 type KaelChatThreadText = Parameters<typeof KaelProcessCard>[0]['text'] & {
   history: string
   loading: string
+  retryIntake: string
+  retryOrchestration: string
   turnFallback: string
   welcome: string
 }
@@ -47,11 +50,13 @@ export function KaelChatThread({
   language,
   loading,
   onStartOrchestration,
+  onRetryPendingIntake,
   onOpenHistory,
   orchestrating,
   orchestrationMessage,
   pendingIntake,
   selectedService,
+  sending,
   session,
   text,
   tokens,
@@ -67,11 +72,13 @@ export function KaelChatThread({
   language: AppLanguage
   loading: boolean
   onStartOrchestration: () => Promise<void>
+  onRetryPendingIntake: () => void
   onOpenHistory: (target: string) => void
   orchestrating: boolean
   orchestrationMessage: string | null
   pendingIntake: KaelChatState['pendingIntake']
   selectedService: ServiceType | null
+  sending: boolean
   session: KaelChatResponse | null
   text: KaelChatThreadText
   tokens: ReturnType<typeof useKaelChatTokens>
@@ -79,6 +86,8 @@ export function KaelChatThread({
   visibility: KaelChatVisibility
   workflow: ReturnType<typeof useServiceWorkflow>
 }) {
+  const canRetryPendingIntake = Boolean(pendingIntake && !session && !visibility.canStartOrchestration)
+
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.threadScroll}>
       <View style={styles.hiddenMarker} testID="customer-kael-chat-service-picker" />
@@ -90,6 +99,7 @@ export function KaelChatThread({
       ) : null}
       <View style={styles.turnList} testID="customer-kael-chat-history">
         {pendingIntake ? <KaelIntakeReceiptCard intake={pendingIntake} language={language} /> : null}
+        {pendingIntake || visibility.showProcess || visibility.showEstimate || orchestrationMessage ? <KaelPhaseContextCard language={language} phaseContext={workflow.phaseContext} /> : null}
         {visibility.showProcess ? <KaelProcessCard estimate={estimate} loading={loading} ticketMode={workflow.artifacts.process_ticket.mode} text={text} /> : null}
         {visibility.showStarter ? <KaelChatStarter dispatch={dispatch} language={language} selectedService={selectedService} text={text} tokens={tokens} /> : null}
         {turns.map((turn) => <ChatTurn key={turn.id} language={language} text={text} turn={turn} />)}
@@ -112,6 +122,30 @@ export function KaelChatThread({
       {error ? (
         <View style={[styles.errorCard, { backgroundColor: tokens.warm, borderColor: tokens.copper }]} testID="customer-kael-chat-error">
           <Text style={[styles.errorText, { color: tokens.text }]}>{error}</Text>
+          {visibility.canStartOrchestration && !orchestrationMessage ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ busy: orchestrating, disabled: orchestrating }}
+              disabled={orchestrating}
+              onPress={() => void onStartOrchestration()}
+              style={({ pressed }) => [styles.secondaryButton, { borderColor: tokens.copper }, pressed ? styles.pressed : null]}
+              testID="customer-kael-chat-orchestration-retry"
+            >
+              <Text style={[styles.secondaryButtonText, { color: tokens.text }]}>{text.retryOrchestration}</Text>
+            </Pressable>
+          ) : null}
+          {!visibility.canStartOrchestration && canRetryPendingIntake ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ busy: sending, disabled: sending }}
+              disabled={sending}
+              onPress={onRetryPendingIntake}
+              style={({ pressed }) => [styles.secondaryButton, { borderColor: tokens.copper }, pressed ? styles.pressed : null]}
+              testID="customer-kael-chat-intake-retry"
+            >
+              <Text style={[styles.secondaryButtonText, { color: tokens.text }]}>{text.retryIntake}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </ScrollView>

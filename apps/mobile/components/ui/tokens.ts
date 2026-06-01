@@ -97,13 +97,13 @@ export function createGlassSurfaceStyle({
     ? isDark ? '#161D1B' : '#FFFFFF'
     : isDark ? '#112522' : '#FFFDF8'
   const liquidGlassBackground = isDark
-    ? 'rgba(22,29,27,0.55)'
+    ? 'rgba(22,29,27,0.38)'
     : variant === 'nav'
-      ? 'rgba(255,255,255,0.64)'
-      : 'rgba(255,255,255,0.60)'
+      ? 'rgba(255,255,255,0.10)'
+      : 'rgba(255,255,255,0.46)'
   const standardGlassBackground = isDark ? 'rgba(16,36,32,0.72)' : variant === 'nav' ? 'rgba(255,255,255,0.78)' : 'rgba(255,255,255,0.70)'
   const glassBackground = isLiquid ? liquidGlassBackground : standardGlassBackground
-  const liquidBorderColor = isDark ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.30)'
+  const liquidBorderColor = isDark ? 'rgba(190,210,205,0.16)' : variant === 'nav' ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.34)'
   const standardBorderColor = isDark ? 'rgba(255,255,255,0.14)' : variant === 'nav' ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.78)'
 
   return {
