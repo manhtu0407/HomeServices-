@@ -1,9 +1,12 @@
-import { type ReactNode, use, useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { type ReactNode, use, useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react'
 import { Image } from 'expo-image'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import {
   Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,11 +14,13 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { LOCAL_DEAL_ID, LOCAL_WORKFLOW_PRICE_DISCLAIMER, hasLocalDealCompletionEvidence, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type LocalCustomerSearchState, type LocalDeal, type LocalDealStatus, type LocalScopeChange, type LocalWorkflowSelectors, type ServiceType, type WorkflowArtifactMode, type WorkflowPhaseContext } from '@home-services/shared'
+import { LOCAL_DEAL_ID, LOCAL_WORKFLOW_PRICE_DISCLAIMER, hasLocalDealCompletionEvidence, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type LocalCustomerSearchState, type LocalDeal, type LocalDealStatus, type LocalScopeChange, type LocalWorkflowSelectors, type ServiceType, type WorkflowArtifactMode, type WorkflowPhaseContext } from '@home-services/shared'
 import { ScopeChangeHardStopModal } from '@/components/customer/scope-change-modal/scope-change-hard-stop-modal'
 import { BookingWizard } from '@/components/customer/booking-wizard'
 import {
@@ -31,13 +36,18 @@ import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassCard } from '@/components/ui/glass-card'
 import { GlassPressable } from '@/components/ui/glass-pressable'
+import { GlassSurface } from '@/components/ui/glass-surface'
+import { motionTokens } from '@/components/ui/motion-tokens'
 import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { appCopy, languageDisplayName, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel, setAppLanguage, type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
+import { generateClientRequestId } from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { customerFeedbackService } from '@/lib/services'
 import type { JobMessageResponse } from '@/lib/api-types'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
+import { setPendingKaelChatDraft } from './kael-chat/pending-intake'
 
 const CUSTOMER_V4_PRODUCTION_STANDARD = 'CUSTOMER_V4_PRODUCTION_STANDARD: accepted customer V4 production standard'
 const CUSTOMER_V4_VISUAL_CONTRACT = 'CUSTOMER_V4_VISUAL_CONTRACT: production surfaces replace old customer UI'
@@ -49,11 +59,27 @@ const CUSTOMER_LAYER_ECOLOGY_V4 = 'CUSTOMER_LAYER_ECOLOGY_V4: glass mint surface
 const SEMANTIC_LAYER_SWITCH_V4 = 'SEMANTIC_LAYER_SWITCH_V4: light/dark swaps semantic V4 layers'
 const COPY_DENSITY_COMPACT = 'COPY_DENSITY_COMPACT: structure first, no feature explanations'
 const KAEL_CHAT_ROUTE_SHIM_CONTRACT = 'KAEL_CHAT_ROUTE_SHIM_CONTRACT: legacy customer Kael tab redirects to full-screen KaelChatSurface'
+const CUSTOMER_APPLE_DARK_ASSET_APPEARANCE = 'CUSTOMER_APPLE_DARK_ASSET_APPEARANCE: client PNG assets use base/elevated dark backing, neutral rim, softened white values, no hard inversion'
+const CUSTOMER_APPLE_IOS26_CLIENT_SECTIONS = 'CUSTOMER_APPLE_IOS26_CLIENT_SECTIONS: Home Request Activity use Apple Foundation hierarchy, standard content materials, and Liquid Glass only for controls/navigation'
+const CUSTOMER_WORKER_TYPOGRAPHY_PARITY = 'CUSTOMER_WORKER_TYPOGRAPHY_PARITY: customer surfaces use the worker app system-font rhythm, 600/700 weights, and zero letter spacing'
+const CUSTOMER_ACTIVITY_APPLE_IOS26_SURFACE = 'CUSTOMER_ACTIVITY_APPLE_IOS26_SURFACE: Activity uses Apple-style hero material, edge highlight, status lens, and standard-material timeline rail'
 const CUSTOMER_DECORATIVE_MOTION_ENABLED = false
-const customerDockHeight = 70
-const customerDockBottomMargin = 6
+void CUSTOMER_APPLE_DARK_ASSET_APPEARANCE
+void CUSTOMER_APPLE_IOS26_CLIENT_SECTIONS
+void CUSTOMER_WORKER_TYPOGRAPHY_PARITY
+void CUSTOMER_ACTIVITY_APPLE_IOS26_SURFACE
+const customerWorkerTypography = {
+  body: { fontWeight: '600' as const, letterSpacing: 0 },
+  label: { fontWeight: '700' as const, letterSpacing: 0 },
+  screenTitle: { fontWeight: '700' as const, letterSpacing: 0 },
+  sectionTitle: { fontWeight: '600' as const, letterSpacing: 0 },
+}
+const customerDockHeight = 56
+const customerDockBottomMargin = 18
 const customerDockBottomClearance = customerDockHeight + customerDockBottomMargin + 76
 const customerFrameHorizontalPadding = 16
+const customerDockHiddenListeners = new Set<() => void>()
+let customerDockHiddenSnapshot = false
 const openBookingPath = '/(customer)/booking'
 const openKaelChatPath = '/(customer)/kael-chat'
 const openHistoryPath = '/(customer)/history'
@@ -72,11 +98,45 @@ const customerMapPinStyle = {
 const customerHistoryTabKeys: CustomerHistoryTab[] = ['repair', 'price', 'chat', 'done']
 const kaelModel8A = require('../../assets/kael-model-8a.png')
 const kaelModel8AHead = require('../../assets/kael-model-8a-head.png')
+const clientImageIcons = {
+  activity: require('../../assets/client-image-icons/client-activity.png'),
+  address: require('../../assets/client-image-icons/client-address.png'),
+  booking: require('../../assets/client-image-icons/client-booking.png'),
+  evidence: require('../../assets/client-image-icons/client-evidence.png'),
+  external: require('../../assets/client-image-icons/client-external.png'),
+  feedback: require('../../assets/client-image-icons/client-feedback.png'),
+  home: require('../../assets/client-image-icons/client-home.png'),
+  identity: require('../../assets/client-image-icons/client-identity.png'),
+  kael: require('../../assets/client-image-icons/client-kael.png'),
+  language: require('../../assets/client-image-icons/client-language.png'),
+  logout: require('../../assets/client-image-icons/client-logout-v2.png'),
+  password: require('../../assets/client-image-icons/client-password.png'),
+  payment: require('../../assets/client-image-icons/client-payment.png'),
+  phone: require('../../assets/client-image-icons/client-phone-v2.png'),
+  privacy: require('../../assets/client-image-icons/client-privacy.png'),
+  profile: require('../../assets/client-image-icons/client-profile.png'),
+  request: require('../../assets/client-image-icons/client-request.png'),
+  serviceCleaning: require('../../assets/client-image-icons/client-service-cleaning.png'),
+  serviceElectrical: require('../../assets/client-image-icons/client-service-electrical.png'),
+  servicePlumbing: require('../../assets/client-image-icons/client-service-plumbing.png'),
+  theme: require('../../assets/client-image-icons/client-theme.png'),
+} as const
 const vndFormatter = new Intl.NumberFormat('vi-VN')
 
 type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
 type CustomerHistoryTab = 'chat' | 'done' | 'price' | 'repair'
+type CustomerProfileEditField = 'address' | 'nickname'
+type CustomerAccountInfoDraft = {
+  birthDate: string
+  email: string
+  fullName: string
+  gender: string
+  phone: string
+  salutation: string
+}
+type CustomerGenderValue = 'female' | 'male' | 'other'
 type SurfaceTone = 'base' | 'raised' | 'service' | 'water' | 'warm' | 'depth' | 'ghost' | 'disabled'
+type ClientImageIconName = keyof typeof clientImageIcons
 type IconName =
   | 'apartment'
   | 'boltPanel'
@@ -92,11 +152,16 @@ type IconName =
   | 'external'
   | 'faucet'
   | 'filter'
+  | 'feedback'
   | 'history'
+  | 'identity'
   | 'kael'
+  | 'language'
+  | 'logout'
   | 'menu'
   | 'map'
   | 'moon'
+  | 'password'
   | 'notification'
   | 'payment'
   | 'person'
@@ -104,12 +169,68 @@ type IconName =
   | 'phone'
   | 'plug'
   | 'review'
+  | 'request'
   | 'send'
   | 'support'
   | 'ticket'
+  | 'theme'
   | 'waterPipe'
 
+const customerGenderOptions: readonly CustomerGenderValue[] = ['male', 'female', 'other']
+
+const clientImageIconByGlyph: Partial<Record<IconName, ClientImageIconName>> = {
+  apartment: 'home',
+  boltPanel: 'serviceElectrical',
+  broom: 'serviceCleaning',
+  calendar: 'activity',
+  chat: 'kael',
+  cleaning: 'serviceCleaning',
+  clock: 'activity',
+  document: 'booking',
+  external: 'external',
+  feedback: 'feedback',
+  faucet: 'servicePlumbing',
+  history: 'activity',
+  identity: 'identity',
+  kael: 'kael',
+  language: 'language',
+  logout: 'logout',
+  map: 'address',
+  password: 'password',
+  payment: 'payment',
+  person: 'profile',
+  phone: 'phone',
+  plug: 'serviceElectrical',
+  privacy: 'privacy',
+  request: 'request',
+  support: 'kael',
+  ticket: 'booking',
+  theme: 'theme',
+  waterPipe: 'servicePlumbing',
+}
+
 let lastCustomerDockActive: CustomerDockActive = 'home'
+
+function getCustomerDockHiddenSnapshot() {
+  return customerDockHiddenSnapshot
+}
+
+function subscribeCustomerDockHidden(listener: () => void) {
+  customerDockHiddenListeners.add(listener)
+  return () => {
+    customerDockHiddenListeners.delete(listener)
+  }
+}
+
+function setCustomerDockHiddenSnapshot(hidden: boolean) {
+  if (customerDockHiddenSnapshot === hidden) return
+  customerDockHiddenSnapshot = hidden
+  customerDockHiddenListeners.forEach((listener) => listener())
+}
+
+function useCustomerDockHidden() {
+  return useSyncExternalStore(subscribeCustomerDockHidden, getCustomerDockHiddenSnapshot, getCustomerDockHiddenSnapshot)
+}
 
 function kaelChatPath(serviceType?: ServiceType | null) {
   return serviceType ? `${openKaelChatPath}?serviceType=${serviceType}` : openKaelChatPath
@@ -134,14 +255,267 @@ function localizedProfileName(rawName: string, languageMode: AppLanguage) {
   return languageMode === 'vi' && /^customer(\s+qa)?$/i.test(trimmed) ? '' : trimmed
 }
 
+function readCustomerProfileMetric(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Math.floor(value)
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10)
+    if (Number.isFinite(parsed) && parsed > 0) return parsed
+  }
+  return null
+}
+
+function readCustomerMetadataString(metadata: Record<string, unknown>, ...keys: string[]) {
+  for (const key of keys) {
+    const value = metadata[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return ''
+}
+
+function formatCustomerBirthDateInput(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`
+}
+
+function isValidCustomerBirthDate(value: string) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value)
+  if (!match) return false
+  const day = Number(match[1])
+  const month = Number(match[2])
+  const year = Number(match[3])
+  const currentYear = new Date().getFullYear()
+  if (year < 1900 || year > currentYear || month < 1 || month > 12 || day < 1) return false
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const daysByMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  return day <= daysByMonth[month - 1]
+}
+
+function normalizeCustomerGender(value: string) {
+  const normalized = value.trim().toLowerCase()
+  if (normalized === 'male' || normalized === 'nam') return 'male'
+  if (normalized === 'female' || normalized === 'nữ' || normalized === 'nu') return 'female'
+  if (normalized === 'other' || normalized === 'khác' || normalized === 'khac') return 'other'
+  return ''
+}
+
+const customerProfileEditorCopy = {
+  vi: {
+    address: {
+      error: 'Nhập địa chỉ cụ thể hơn.',
+      helper: 'Kael dùng địa chỉ này để điền nhanh khi tạo yêu cầu.',
+      placeholder: 'Nhập địa chỉ căn hộ',
+      title: 'Địa chỉ mặc định',
+    },
+    cancel: 'Hủy',
+    nickname: {
+      error: 'Nhập ít nhất 2 ký tự.',
+      helper: 'Bạn có thể đặt tên thân mật, không cần là tên thật.',
+      placeholder: 'Nhập biệt danh',
+      title: 'Biệt danh',
+    },
+    save: 'Lưu',
+    saveError: 'Không thể lưu hồ sơ. Vui lòng thử lại.',
+    saving: 'Đang lưu',
+  },
+  en: {
+    address: {
+      error: 'Enter a more specific address.',
+      helper: 'Kael uses this address to prefill future requests.',
+      placeholder: 'Enter apartment address',
+      title: 'Default address',
+    },
+    cancel: 'Cancel',
+    nickname: {
+      error: 'Enter at least 2 characters.',
+      helper: 'Use a friendly nickname; it does not need to be your legal name.',
+      placeholder: 'Enter nickname',
+      title: 'Nickname',
+    },
+    save: 'Save',
+    saveError: 'Could not save profile. Please try again.',
+    saving: 'Saving',
+  },
+} as const
+
+const customerAccountInfoCopy = {
+  vi: {
+    birthDate: 'Ngày sinh',
+    birthDateInvalid: 'Ngày sinh chưa hợp lệ.',
+    birthDatePlaceholder: 'DD/MM/YYYY',
+    close: 'Đóng',
+    email: 'Email (không bắt buộc)',
+    emailInvalid: 'Email chưa hợp lệ.',
+    emailNote: 'Bạn sẽ nhận lịch sử yêu cầu và hóa đơn qua email này.',
+    fieldRequired: 'Nhập ít nhất một thông tin để cập nhật.',
+    fullName: 'Họ tên',
+    fullNameInvalid: 'Họ tên cần ít nhất 2 ký tự.',
+    fullNamePlaceholder: 'Nhập họ tên',
+    gender: 'Giới tính',
+    genderOptions: { female: 'Nữ', male: 'Nam', other: 'Khác' },
+    identityBody: 'Chưa cần cho yêu cầu hiện tại; Kael vẫn dùng thông tin cơ bản để hỗ trợ.',
+    identityTitle: 'Xác thực danh tính',
+    metaComplete: 'Đã cập nhật',
+    metaEmpty: 'Bổ sung',
+    metaPartial: (count: number) => `${count}/3 đã lưu`,
+    phone: 'Số điện thoại',
+    phoneInvalid: 'Số điện thoại chưa hợp lệ.',
+    phonePlaceholder: 'Nhập số điện thoại',
+    salutation: 'Xưng hô',
+    salutationPlaceholder: 'Chọn danh xưng',
+    save: 'Cập nhật',
+    saveError: 'Không thể cập nhật thông tin. Vui lòng thử lại.',
+    saving: 'Đang cập nhật',
+    shortFieldInvalid: 'Thông tin này quá dài.',
+    title: 'Cập nhật tài khoản',
+  },
+  en: {
+    birthDate: 'Birth date',
+    birthDateInvalid: 'Enter a valid birth date.',
+    birthDatePlaceholder: 'DD/MM/YYYY',
+    close: 'Close',
+    email: 'Email (optional)',
+    emailInvalid: 'Enter a valid email.',
+    emailNote: 'Request history and invoices will be sent to this email.',
+    fieldRequired: 'Enter at least one detail to update.',
+    fullName: 'Full name',
+    fullNameInvalid: 'Full name needs at least 2 characters.',
+    fullNamePlaceholder: 'Enter full name',
+    gender: 'Gender',
+    genderOptions: { female: 'Female', male: 'Male', other: 'Other' },
+    identityBody: 'Not required for current requests; Kael still uses the basic profile details.',
+    identityTitle: 'Identity verification',
+    metaComplete: 'Updated',
+    metaEmpty: 'Add details',
+    metaPartial: (count: number) => `${count}/3 saved`,
+    phone: 'Phone number',
+    phoneInvalid: 'Enter a valid phone number.',
+    phonePlaceholder: 'Enter phone number',
+    salutation: 'Salutation',
+    salutationPlaceholder: 'Choose salutation',
+    save: 'Update',
+    saveError: 'Could not update account information. Please try again.',
+    saving: 'Updating',
+    shortFieldInvalid: 'This detail is too long.',
+    title: 'Update account',
+  },
+} as const
+
+const customerFeedbackCopy = {
+  vi: {
+    cancel: 'Hủy',
+    errorRequired: 'Nhập ít nhất 8 ký tự để Kael hiểu rõ hơn.',
+    helper: 'Tốt, xấu, khó chịu hay thiếu sót đều được. Kael sẽ ghi nhận để cải thiện trải nghiệm thật.',
+    placeholder: 'Điều gì Kael làm tốt hoặc cần sửa?',
+    rowMeta: 'Gửi cho Kael',
+    rowMetaSent: 'Đã ghi nhận',
+    rowTitle: 'Góp ý',
+    saveError: 'Kael chưa lưu được góp ý. Vui lòng thử lại.',
+    saving: 'Đang gửi',
+    submit: 'Gửi góp ý',
+    title: 'Góp ý cho Kael',
+  },
+  en: {
+    cancel: 'Cancel',
+    errorRequired: 'Enter at least 8 characters so Kael has enough context.',
+    helper: 'Good, bad, frustrating, or missing details are all welcome. Kael records this to improve the real experience.',
+    placeholder: 'What did Kael do well or need to fix?',
+    rowMeta: 'Send to Kael',
+    rowMetaSent: 'Received',
+    rowTitle: 'Feedback',
+    saveError: 'Kael could not save this feedback. Please try again.',
+    saving: 'Sending',
+    submit: 'Send feedback',
+    title: 'Feedback for Kael',
+  },
+} as const
+
+const customerPasswordCopy = {
+  vi: {
+    cancel: 'Hủy',
+    confirmLabel: 'Nhập lại mật khẩu',
+    confirmPlaceholder: 'Nhập lại mật khẩu mới',
+    currentLabel: 'Mật khẩu hiện tại',
+    currentPlaceholder: 'Nhập mật khẩu hiện tại',
+    currentRequiredError: 'Nhập mật khẩu hiện tại để tiếp tục.',
+    mismatchError: 'Hai mật khẩu chưa khớp.',
+    passwordLabel: 'Mật khẩu mới',
+    passwordPlaceholder: 'Nhập mật khẩu mới',
+    rowMeta: 'Cập nhật',
+    rowMetaUpdated: 'Đã cập nhật',
+    rowTitle: 'Mật khẩu',
+    save: 'Đổi mật khẩu',
+    saveError: 'Không thể cập nhật mật khẩu. Vui lòng thử lại.',
+    saving: 'Đang cập nhật',
+    shortError: 'Mật khẩu cần 8-72 ký tự.',
+    title: 'Đổi mật khẩu',
+    helper: 'Đặt mật khẩu mới cho tài khoản này. Kael sẽ không lưu hoặc hiển thị mật khẩu của bạn.',
+  },
+  en: {
+    cancel: 'Cancel',
+    confirmLabel: 'Confirm password',
+    confirmPlaceholder: 'Enter the new password again',
+    currentLabel: 'Current password',
+    currentPlaceholder: 'Enter current password',
+    currentRequiredError: 'Enter your current password to continue.',
+    mismatchError: 'Passwords do not match.',
+    passwordLabel: 'New password',
+    passwordPlaceholder: 'Enter new password',
+    rowMeta: 'Update',
+    rowMetaUpdated: 'Updated',
+    rowTitle: 'Password',
+    save: 'Update password',
+    saveError: 'Could not update password. Please try again.',
+    saving: 'Updating',
+    shortError: 'Password needs 8-72 characters.',
+    title: 'Update password',
+    helper: 'Set a new password for this account. Kael does not store or display your password.',
+  },
+} as const
+
+const customerProfileCareCopy = {
+  vi: {
+    interactionLabel: 'Tương tác Kael',
+    interactionReady: 'Sẵn sàng',
+    savingsLabel: 'Tiết kiệm',
+    savingsPending: 'Chờ kiểm giá',
+    serviceLabel: 'Dịch vụ đã dùng',
+    servicePending: 'Chưa có',
+    title: 'Tín hiệu tin cậy',
+  },
+  en: {
+    interactionLabel: 'Kael touchpoints',
+    interactionReady: 'Ready',
+    savingsLabel: 'Savings',
+    savingsPending: 'Awaiting check',
+    serviceLabel: 'Services used',
+    servicePending: 'No request yet',
+    title: 'Trust Signals',
+  },
+} as const
+
+const customerProfileSectionCopy = {
+  vi: {
+    identity: 'Tài khoản căn hộ',
+    profileStatus: 'Hồ sơ',
+    settings: 'Thiết lập và hỗ trợ',
+  },
+  en: {
+    identity: 'Apartment Account',
+    profileStatus: 'Profile',
+    settings: 'Settings and Support',
+  },
+} as const
+
 const customerCopy = {
   vi: {
     home: {
       title: 'Home Services',
-      subtitle: 'Kael sẵn sàng điều phối',
+      subtitle: 'Kael sẵn sàng phục vụ tận tình!',
       searchA11y: 'Mở Kael tạo yêu cầu',
       searchText: 'Bạn cần sửa gì?',
-      commandKicker: 'Kể Kael sự cố',
+      commandKicker: 'Kael',
       commandSubtitle: 'Mở chat nhanh để Kael gom thông tin',
       commandTitle: 'Ổ cắm bị nóng, nước rò, hay cần dọn nhà?',
       commandBody: 'Kael nhận thông tin, phân tích và tự điều phối khi đủ dữ liệu.',
@@ -305,7 +679,7 @@ const customerCopy = {
       subtitle: 'Kael is ready to orchestrate',
       searchA11y: 'Open Kael service chat',
       searchText: 'What needs fixing?',
-      commandKicker: 'Tell Kael',
+      commandKicker: 'Kael',
       commandSubtitle: 'Open quick chat so Kael can collect details',
       commandTitle: 'Outlet, leak, or cleaning?',
       commandBody: 'Kael receives the details, analyzes them, and orchestrates when data is sufficient.',
@@ -471,9 +845,9 @@ export function CustomerHomeSurface() {
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
   const { reduceMotion } = useGlassAccessibility()
-  const { actions, dispatch, notificationUnreadCount, notifications, selectors, state } = useFrontendWorkflow()
+  const { dispatch, selectors, state } = useFrontendWorkflow()
+  const [homeCommandDraft, setHomeCommandDraft] = useState('')
   const activeDeal = state.deal
-  const visibleNotifications = notifications.slice(0, 2)
   const canStartNewDeal = !activeDeal || canReplaceCustomerDeal(activeDeal.status)
   const isTerminalDeal = activeDeal ? isTerminalCustomerDeal(activeDeal.status) : false
   const activeDealRoute =
@@ -483,21 +857,13 @@ export function CustomerHomeSurface() {
   const activeDealStatusLabel = customerVisibleStatusLabel(selectors.currentStatus, selectors.customerSearchState, languageMode)
   const customerMetadata = session?.user.user_metadata ?? {}
   const rawDefaultAddress = typeof customerMetadata.default_address === 'string' ? customerMetadata.default_address.trim() : ''
-  const homeAreaValue = activeDeal?.draft.districtLabel
-    ? localizedCustomerAreaLabel(activeDeal.draft.districtLabel, languageMode, copy.home.contextFallback)
-    : rawDefaultAddress
-      ? localizedCustomerAreaLabel(rawDefaultAddress, languageMode, copy.home.contextFallback)
-      : copy.home.contextFallback
+  const homeAreaValue = customerHomeAreaDisplayLabel(activeDeal, rawDefaultAddress, languageMode, copy.home.contextFallback)
   const homeAddressMeta = activeDeal
     ? copy.home.addressActiveMeta
     : rawDefaultAddress
       ? languageMode === 'en' ? 'Default address' : 'Địa chỉ mặc định'
       : copy.home.addressHint
-  const rawDisplayName = typeof customerMetadata.full_name === 'string'
-    ? customerMetadata.full_name
-    : typeof customerMetadata.name === 'string'
-      ? customerMetadata.name
-      : ''
+  const rawDisplayName = readCustomerMetadataString(customerMetadata, 'nickname', 'preferred_name', 'full_name', 'name')
   const displayName = localizedProfileName(rawDisplayName, languageMode)
   const homeTitle = languageMode === 'en'
     ? displayName ? `${displayName}'s home` : 'Your home'
@@ -527,11 +893,35 @@ export function CustomerHomeSurface() {
     }
     replace(activeDealRoute)
   }
+  const submitHomeCommand = () => {
+    const message = homeCommandDraft.trim()
+    if (!message) {
+      openHomeCommand()
+      return
+    }
+    if (!canStartNewDeal) {
+      replace(activeDealRoute)
+      return
+    }
+    if (isTerminalDeal) dispatch({ type: 'reset_workflow' })
+    setPendingKaelChatDraft({
+      clientRequestId: generateClientRequestId(),
+      createdAt: new Date().toISOString(),
+      locale: languageMode,
+      mediaCount: 0,
+      message,
+      problemChips: [],
+      serviceType: null,
+      source: 'kael',
+    })
+    setHomeCommandDraft('')
+    push(openKaelChatPath)
+  }
   const homeCommandActionLabel = canStartNewDeal ? copy.home.intakeCta : copy.home.quickActive
-  const homeShortcuts: Array<{ icon: IconName; meta: string; onPress: () => void; testID: string; title: string; tone: SurfaceTone }> = [
+  const homeShortcuts: Array<{ icon: IconName; meta: string | null; onPress: () => void; testID: string; title: string; tone: SurfaceTone }> = [
     {
-      icon: 'menu',
-      meta: activeDeal ? activeDealStatusLabel : copy.home.noActiveMeta,
+      icon: 'request',
+      meta: activeDeal ? activeDealStatusLabel : null,
       onPress: () => replace(activeDeal ? activeDealRoute : openHistoryPath),
       testID: 'customer-home-shortcut-active',
       title: copy.home.quickActive,
@@ -562,13 +952,12 @@ export function CustomerHomeSurface() {
       tone: 'warm',
     },
   ]
-
   return (
     <V4Frame active="home" testID="customer-home-surface">
       {({ tokens }) => (
         <>
           <View style={styles.v4Content}>
-            <View pointerEvents="none" style={[styles.customerSectionLiquidWash, { backgroundColor: tokens.aqua }]} testID="customer-section-liquid-wash-home" />
+            <View style={styles.hiddenMarker} testID="customer-home-ios26-foundation-section" />
             <View style={styles.homeTopRow} testID="customer-home-title-row">
               <View style={styles.titleBlock}>
                 <Text adjustsFontSizeToFit minimumFontScale={0.82} style={[styles.screenTitle, { color: tokens.text }]} numberOfLines={1}>
@@ -578,15 +967,6 @@ export function CustomerHomeSurface() {
                   {copy.home.subtitle}
                 </Text>
               </View>
-              <Pressable
-                accessibilityLabel={copy.home.notification(notificationUnreadCount)}
-                accessibilityRole="button"
-                onPress={() => replace(openHistoryPath)}
-                style={({ pressed }) => [styles.homeBell, customerHomeFrameSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
-                testID="customer-home-notification-entry"
-              >
-                <IconGlyph name="notification" color={tokens.primary} accent={tokens.copper} />
-              </Pressable>
             </View>
             <View style={styles.homeSheet}>
               <View style={styles.hiddenMarker} testID="customer-home-signature-v4" />
@@ -597,20 +977,18 @@ export function CustomerHomeSurface() {
               <ReduceMotionAwareEntranceView delayMs={100} distanceY={16} style={styles.homeHeroStack} testID="customer-home-hero-motion">
                 <Pressable accessibilityLabel={`${copy.home.contextLabel}. ${homeAreaValue}`} accessibilityRole="button" onPress={() => replace(openProfilePath)} style={({ pressed }) => [styles.homeAddressCard, customerHomeFrameSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-address-card">
                   <View style={styles.homeAddressCopy}>
-                    <Text style={[styles.homeAddressValue, { color: tokens.text }]} numberOfLines={1}>
+                    <Text style={[styles.homeAddressValue, { color: tokens.text }]} testID="customer-home-address-value">
                       {homeAreaValue}
                     </Text>
                     <Text style={[styles.homeAddressMeta, { color: tokens.muted }]} numberOfLines={1}>
                       {homeAddressMeta}
                     </Text>
                   </View>
-                  <IconGlyph name="chevron" color={tokens.primary} accent={tokens.aqua} />
+                  <MappedIcon name="chevron" color={tokens.primary} accent={tokens.aqua} />
                 </Pressable>
-                <GlassCard mode={tokens.mode} style={[styles.homeCommandHero, customerHomeHeroSurface(tokens)]} testID="customer-home-layered-hero">
+                <GlassCard material="liquid" mode={tokens.mode} style={[styles.homeCommandHero, customerHomeHeroSurface(tokens)]} testID="customer-home-layered-hero">
                   <View style={styles.homeCommandHitArea} testID="customer-home-kael-command">
                     <SubtleGlassHighlight />
-                    <SubtleLiquidLight testID="customer-home-command-liquid-light" />
-                    <View style={[styles.homeCommandWash, { backgroundColor: tokens.aqua }]} />
                     <View style={styles.homeCommandHeader} testID="customer-home-prototype-kael-mini-top">
                       <KaelMascot variant="head" size={44} material="opaque" />
                       <View style={styles.homeCommandCopy}>
@@ -621,31 +999,36 @@ export function CustomerHomeSurface() {
                           {copy.home.commandSubtitle}
                         </Text>
                       </View>
-                      <Pressable accessibilityLabel={homeCommandActionLabel} accessibilityRole="button" onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandOpen, customerHomeControlSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-open">
-                        <IconGlyph name="external" color={tokens.primary} accent={tokens.copper} />
+                      <Pressable accessibilityLabel={homeCommandActionLabel} accessibilityRole="button" onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandOpen, customerHomeIconOnlySurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-open">
+                        <MappedIcon name="external" color={tokens.primary} accent={tokens.copper} />
                       </Pressable>
                     </View>
                     <View style={[styles.homeCommandPrompt, customerHomePromptSurface(tokens)]} testID="customer-home-kael-command-prompt">
-                      <Text style={[styles.homeCommandPromptText, { color: tokens.subtleText }]} numberOfLines={2}>
-                        {copy.home.commandTitle}
-                      </Text>
+                      <TextInput
+                        accessibilityLabel={copy.home.commandTitle}
+                        multiline
+                        onChangeText={setHomeCommandDraft}
+                        onSubmitEditing={submitHomeCommand}
+                        placeholder={copy.home.commandTitle}
+                        placeholderTextColor={tokens.subtleText}
+                        returnKeyType="send"
+                        selectionColor={tokens.primary}
+                        style={[styles.homeCommandPromptInput, { caretColor: tokens.primary, color: tokens.text } as any]}
+                        testID="customer-home-kael-command-input"
+                        value={homeCommandDraft}
+                      />
                       <View style={styles.homeCommandPromptActions}>
                         <Pressable accessibilityLabel={copy.kael.attach} accessibilityRole="button" onPress={() => openKaelChatFlow()} style={({ pressed }) => [styles.homeCommandAttach, customerHomeControlSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-command-attach">
                           <Text style={[styles.homeCommandAttachText, { color: tokens.primary }]} numberOfLines={1}>
                             {copy.kael.attach}
                           </Text>
                         </Pressable>
-                        <Pressable accessibilityLabel={copy.home.commandSend} accessibilityRole="button" hitSlop={4} onPress={openHomeCommand} style={({ pressed }) => [styles.homeCommandSend, customerHomeSendSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-command-send">
+                        <Pressable accessibilityLabel={copy.home.commandSend} accessibilityRole="button" hitSlop={4} onPress={submitHomeCommand} style={({ pressed }) => [styles.homeCommandSend, customerHomeSendSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-home-kael-command-send">
                           <Text style={[styles.homeCommandSendText, { color: tokens.primaryText }]} numberOfLines={1}>
                             {copy.home.commandSend}
                           </Text>
                         </Pressable>
                       </View>
-                    </View>
-                    <View style={styles.chipRow} testID="customer-home-kael-command-chips">
-                      <SmallChip label={localizedServiceLabel('electrical', languageMode)} tone="service" />
-                      <SmallChip label={localizedServiceLabel('plumbing', languageMode)} tone="service" />
-                      <SmallChip label={localizedServiceLabel('cleaning', languageMode)} tone="service" />
                     </View>
                     <View style={styles.hiddenMarker} testID="customer-home-ticket-decor" />
                   </View>
@@ -666,62 +1049,37 @@ export function CustomerHomeSurface() {
                   <V4ServiceCard homeTile icon="broom" meta={copy.home.serviceMetaCleaning} showMeta={false} title={localizedServiceLabel('cleaning', languageMode)} testID="customer-shell-service-cleaning" tone="warm" onPress={() => openBookingFlow('cleaning')} />
                 </View>
               </ReduceMotionAwareEntranceView>
-              <ReduceMotionAwareEntranceView delayMs={205} distanceY={10} style={styles.homeShortcutGrid} testID="customer-home-shortcuts">
+              <ReduceMotionAwareEntranceView delayMs={185} distanceY={10} style={styles.homeShortcutGrid} testID="customer-home-shortcuts">
                 <View style={styles.hiddenMarker} testID="customer-home-real-shortcuts" />
                 {homeShortcuts.slice(0, 2).map((item) => (
-                  <Pressable accessibilityLabel={`${item.title}. ${item.meta}`} accessibilityRole="button" key={item.testID} onPress={item.onPress} style={({ pressed }) => [styles.homeShortcutTile, customerHomeShortcutSurface(tokens, item.tone), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={item.testID}>
-                    <IconShell icon={item.icon} tone={item.tone} size={30} />
+                  <Pressable accessibilityLabel={item.meta ? `${item.title}. ${item.meta}` : item.title} accessibilityRole="button" key={item.testID} onPress={item.onPress} style={({ pressed }) => [styles.homeShortcutTile, customerHomeShortcutSurface(tokens, item.tone), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={item.testID}>
+                    <View style={styles.homeTileIconStage} testID={`${item.testID}-icon-stage`}>
+                      <IconShell icon={item.icon} tone={item.tone} size={33} />
+                    </View>
                     <View style={styles.homeShortcutCopy}>
                       <Text style={[styles.homeShortcutTitle, { color: tokens.text }]} numberOfLines={1}>
                         {item.title}
                       </Text>
-                      <Text style={[styles.homeShortcutMeta, { color: tokens.muted }]} numberOfLines={1}>
-                        {item.meta}
-                      </Text>
+                      {item.meta ? (
+                        <Text style={[styles.homeShortcutMeta, { color: tokens.muted }]} numberOfLines={1}>
+                          {item.meta}
+                        </Text>
+                      ) : null}
                     </View>
                   </Pressable>
                 ))}
               </ReduceMotionAwareEntranceView>
-              {visibleNotifications.length > 0 ? (
-                <View style={[styles.notificationInlineCard, customerOpaqueSurface(tokens)]} testID="customer-notification-inbox-live">
-                  <IconGlyph name="notification" color={tokens.primary} accent={tokens.copper} />
-                  <View style={styles.notificationInlineBody}>
-                    <Text style={[styles.notificationInlineText, { color: tokens.text }]} numberOfLines={1}>
-                      {copy.home.notification(notificationUnreadCount)}
-                    </Text>
-                    {visibleNotifications.map((item) => (
-                      <Pressable
-                        accessibilityLabel={`${item.title}. ${item.body}`}
-                        accessibilityRole="button"
-                        key={item.id}
-                        onPress={() => {
-                          void actions.markNotificationRead(item.id)
-                          if (item.job_id) replace(openHistoryPath)
-                        }}
-                        style={styles.notificationInlineItem}
-                      >
-                        <Text style={[styles.notificationInlineItemText, { color: tokens.muted }]} numberOfLines={1}>
-                          {item.title}: {item.body}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              ) : null}
               {activeDeal ? (
                 <Pressable
                   accessibilityLabel={copy.home.activeA11y(localizedServiceLabel(activeDeal.draft.serviceType, languageMode))}
                   accessibilityRole="button"
                   onPress={() => replace(activeDealRoute)}
-                  style={[styles.ticketCard, customerOpaqueSurface(tokens)]}
+                  style={[styles.ticketCard, customerHomeActiveDealSurface(tokens)]}
                   testID="customer-home-active-local-deal"
                 >
                   <View style={styles.sectionTitle}>
                     <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                       {localizedServiceLabel(activeDeal.draft.serviceType, languageMode)}
-                    </Text>
-                    <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-                      {activeDealStatusLabel}
                     </Text>
                   </View>
                   <View style={styles.twoCol}>
@@ -775,7 +1133,6 @@ export function CustomerBookingEntrySurface() {
         serviceChoose: 'Choose service',
         serviceSelected: 'Selected',
         startKaelCheck: 'Open Kael chat',
-        step: '2 steps + Kael',
         title: 'Start with Kael',
       }
     : {
@@ -795,7 +1152,6 @@ export function CustomerBookingEntrySurface() {
         serviceChoose: 'Chọn dịch vụ',
         serviceSelected: 'Đã chọn',
         startKaelCheck: 'Mở chat Kael',
-        step: '2 bước + Kael',
         title: 'Bắt đầu với Kael',
       }
   const activeServiceType = activeDeal?.draft.serviceType ?? null
@@ -804,7 +1160,6 @@ export function CustomerBookingEntrySurface() {
   const mediaChipLabel = mediaCount > 0
     ? `${languageMode === 'en' ? 'Media' : 'Ảnh/video'}: ${mediaCount}`
     : (languageMode === 'en' ? 'Media: none yet' : 'Ảnh/video: chưa có')
-  const bookingPillLabel = entryCopy.step
   const serviceMetaForBooking = (serviceType: ServiceType) => {
     if (activeDeal?.draft.serviceType === serviceType) return entryCopy.serviceSelected
     return activeDeal ? entryCopy.serviceChange : entryCopy.serviceChoose
@@ -845,6 +1200,7 @@ export function CustomerBookingEntrySurface() {
         {({ tokens }) => (
           <View style={styles.bookingStack}>
             <View pointerEvents="none" style={[styles.customerSectionLiquidWash, { backgroundColor: tokens.aqua }]} testID="customer-section-liquid-wash-booking" />
+            <View style={styles.hiddenMarker} testID="customer-booking-ios26-foundation-section" />
             <View style={styles.bookingTopRow} testID="customer-booking-title-row">
               <View style={styles.titleBlock}>
                 <Text style={[styles.screenTitle, { color: tokens.text }]} numberOfLines={1}>
@@ -852,11 +1208,6 @@ export function CustomerBookingEntrySurface() {
                 </Text>
                 <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={1}>
                   {entryCopy.intakeHandoffSubtitle}
-                </Text>
-              </View>
-              <View style={[styles.bookingStepPill, customerMintPillSurface(tokens)]}>
-                <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
-                  {bookingPillLabel}
                 </Text>
               </View>
             </View>
@@ -876,7 +1227,8 @@ export function CustomerBookingEntrySurface() {
     <V4Frame active="booking" testID="customer-booking-entry-surface">
       {({ tokens }) => (
         <View style={styles.bookingStack}>
-          <View pointerEvents="none" style={[styles.customerSectionLiquidWash, { backgroundColor: tokens.aqua }]} testID="customer-section-liquid-wash-booking" />
+          <View style={styles.hiddenMarker} testID="customer-section-liquid-wash-booking" />
+          <View style={styles.hiddenMarker} testID="customer-booking-ios26-foundation-section" />
           <View style={styles.bookingTopRow} testID="customer-booking-title-row">
             <View style={styles.titleBlock}>
               <Text style={[styles.screenTitle, { color: tokens.text }]} numberOfLines={1}>
@@ -884,11 +1236,6 @@ export function CustomerBookingEntrySurface() {
               </Text>
               <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={1}>
                 {entryCopy.intakeHandoffSubtitle}
-              </Text>
-            </View>
-            <View style={[styles.bookingStepPill, customerMintPillSurface(tokens)]}>
-              <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
-                {bookingPillLabel}
               </Text>
             </View>
           </View>
@@ -921,9 +1268,6 @@ export function CustomerBookingEntrySurface() {
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                 {entryCopy.checklist}
               </Text>
-              <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-                {entryCopy.estimateLabel}
-              </Text>
             </View>
             <View style={styles.bookingGrid} testID="customer-booking-intake-handoff-grid">
               {entryCopy.checklistItems.map((item, index) => (
@@ -949,7 +1293,7 @@ export function CustomerBookingEntrySurface() {
               accessibilityLabel={`${entryCopy.activeTitle}. ${activeDealStatusLabel}`}
               accessibilityRole="button"
               onPress={() => replace(activeDealRoute)}
-              style={({ pressed }) => [styles.ticketCard, customerOpaqueSurface(tokens), pressed ? styles.pressed : null]}
+              style={({ pressed }) => [styles.ticketCard, customerBookingActiveRequestSurface(tokens), pressed ? styles.pressed : null]}
               testID="customer-booking-active-request"
             >
               <View style={styles.sectionTitle}>
@@ -1075,9 +1419,14 @@ export function CustomerHistorySurface() {
       : selectors.hasLocalBroadcast
       ? copy.history.cancelSearching
       : copy.history.cancelDraft
+    const cancelRequest = () => void actions.cancelRemoteJob()
+    if (Platform.OS === 'web') {
+      if (confirmCustomerHistoryCancellation(copy.history.cancelTitle, cancelMessage)) cancelRequest()
+      return
+    }
     Alert.alert(copy.history.cancelTitle, cancelMessage, [
       { text: copy.history.keep, style: 'cancel' },
-      { text: copy.history.cancelRequest, style: 'destructive', onPress: () => void actions.cancelRemoteJob() },
+      { text: copy.history.cancelRequest, style: 'destructive', onPress: cancelRequest },
     ])
   }
   const submitSelectedReview = () => {
@@ -1102,7 +1451,8 @@ export function CustomerHistorySurface() {
     workflow.artifacts.scope_change.mode !== 'basic'
   const showCompletionEvidence = hasCompletionEvidenceOutcome
   const showReviewArtifact = workflow.artifacts.review.visible
-  const historySubtitle = deal
+  const isDraftHistoryDeal = deal?.status === 'draft'
+  const historySubtitle = deal && !isDraftHistoryDeal
     ? visibleStatusLabel
     : showPriceTab
       ? (languageMode === 'en' ? 'Price and orchestration' : 'Bảng giá và điều phối')
@@ -1111,21 +1461,13 @@ export function CustomerHistorySurface() {
         : showDoneTab
           ? (languageMode === 'en' ? 'Completed work' : 'Công việc đã hoàn tất')
           : (languageMode === 'en' ? 'Track apartment requests' : 'Theo dõi yêu cầu của căn hộ')
-  const historyPillLabel = deal
-    ? copy.history.open
-    : showPriceTab
-      ? copy.history.filters[1]
-      : showChatTab
-        ? copy.history.filters[2]
-        : showDoneTab
-          ? copy.history.filters[3]
-          : appCopy[languageMode].common.noRequest
+  const showActivityStatusLens = Boolean(deal && !isDraftHistoryDeal)
 
   return (
     <V4Frame active="activity" testID="customer-history-surface">
       {({ tokens }) => (
         <View style={styles.plainContent}>
-          <View pointerEvents="none" style={[styles.customerSectionLiquidWash, { backgroundColor: tokens.aqua }]} testID="customer-section-liquid-wash-activity" />
+          <View style={styles.hiddenMarker} testID="customer-activity-ios26-foundation-section" />
           <View style={styles.hiddenMarker} testID="customer-history-empty-state" />
           <ScopeChangeHardStopModal
             language={languageMode}
@@ -1147,29 +1489,30 @@ export function CustomerHistorySurface() {
                 {historySubtitle}
               </Text>
             </View>
-            <View style={[styles.bookingStepPill, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
-              <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
-                {historyPillLabel}
-              </Text>
-            </View>
           </View>
-          <CustomerHistoryTabs activeTab={activeHistoryTab} labels={copy.history.filters} onTabChange={selectHistoryTab} tokens={tokens} />
           {deal ? <CustomerHistoryPhaseContextPanel languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
           {deal && isCancelledStatus ? <CustomerHistoryCancellationContextPanel copy={copy} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
-          {showRepairTab ? <View style={[styles.historyHeroPanel, customerHistoryHeroSurface(tokens)]} testID="customer-history-repair-hero-panel">
-            <SubtleLiquidLight testID="customer-history-repair-hero-liquid" variant="rim" />
-            <View style={[styles.historyHeroStatusPill, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
-              <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
-                {deal ? visibleStatusLabel : appCopy[languageMode].common.noRequest}
-              </Text>
-            </View>
-            <View style={styles.sectionTitle}>
-              <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-                {deal ? localizedServiceLabel(deal.draft.serviceType, languageMode) : localizedStatusLabel(null, languageMode)}
-              </Text>
-              <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-                {deal ? visibleStatusLabel : (languageMode === 'en' ? 'From Kael' : 'Từ Kael')}
-              </Text>
+          {showRepairTab ? <View style={[styles.historyHeroPanel, styles.activityHeroPanel, customerActivityHeroSurface(tokens)]} testID="customer-history-repair-hero-panel">
+            <View pointerEvents="none" style={styles.hiddenMarker} testID="customer-history-apple-ios26-surface-system" />
+            <View pointerEvents="none" style={[styles.activityMaterialEdge, customerActivityEdgeHighlightSurface(tokens)]} testID="customer-history-hero-edge-highlight" />
+            <View style={styles.activityHeroTop}>
+              <View style={styles.activityHeroCopy}>
+                <Text style={[styles.cardHeadline, styles.activityHeroTitle, { color: tokens.text }]} numberOfLines={1} testID="customer-history-repair-hero-title">
+                  {deal ? localizedServiceLabel(deal.draft.serviceType, languageMode) : localizedStatusLabel(null, languageMode)}
+                </Text>
+                {!deal ? (
+                  <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={1}>
+                    {historySubtitle}
+                  </Text>
+                ) : null}
+              </View>
+              {showActivityStatusLens ? (
+                <View style={[styles.activityStatusLens, customerActivityStatusLensSurface(tokens)]} testID="customer-history-activity-status-lens">
+                  <Text style={[styles.activityStatusText, { color: tokens.primary }]} numberOfLines={1}>
+                    {visibleStatusLabel}
+                  </Text>
+                </View>
+              ) : null}
             </View>
             <Text style={[styles.historyHeroBody, { color: tokens.muted }]} numberOfLines={3}>
               {deal
@@ -1182,8 +1525,8 @@ export function CustomerHistorySurface() {
             </Text>
             {deal ? (
               <View style={styles.twoCol}>
-                <V4TicketCell label={copy.ticket.issue} value={localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, languageMode)} />
-                <V4TicketCell label={copy.ticket.area} value={localizedCustomerAreaLabel(deal.draft.districtLabel, languageMode, copy.ticket.unknown)} />
+                <V4TicketCell label={copy.ticket.issue} value={localizedProblemLabel(deal.draft.problemChips[0], deal.draft.serviceType, languageMode)} variant="activity" />
+                <V4TicketCell label={copy.ticket.area} value={localizedCustomerAreaLabel(deal.draft.districtLabel, languageMode, copy.ticket.unknown)} variant="activity" />
               </View>
             ) : null}
             <View style={styles.historyHeroActions}>
@@ -1212,16 +1555,22 @@ export function CustomerHistorySurface() {
             </View>
           ) : null}
           {deal && showRepairTab ? (
-            <View style={[styles.flowCard, styles.historyTimelineCard, customerHistoryPanelSurface(tokens)]}>
+            <View style={[styles.flowCard, styles.historyTimelineCard, styles.activityTimelineCard, customerActivityTimelinePanelSurface(tokens)]} testID="customer-history-activity-timeline">
+              <View pointerEvents="none" style={[styles.activityMaterialEdge, customerActivityEdgeHighlightSurface(tokens)]} testID="customer-history-timeline-edge-highlight" />
+              <View pointerEvents="none" style={[styles.activityTimelineRail, customerActivityTimelineRailSurface(tokens)]} testID="customer-history-activity-timeline-rail" />
               <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
                 {copy.history.progress}
               </Text>
               {timeline.map((item) => (
-                <View key={item.label} style={styles.timelineRow}>
-                  <View style={[styles.timelineDot, { backgroundColor: item.active ? tokens.primary : tokens.borderStrong }]} />
-                  <Text style={[styles.timelineText, { color: tokens.text }]} numberOfLines={1}>
-                    {item.label}
-                  </Text>
+                <View key={item.label} style={[styles.timelineRow, styles.activityTimelineRow]}>
+                  <View style={styles.activityTimelineMarker}>
+                    <View style={[styles.timelineDot, styles.activityTimelineDot, customerActivityTimelineDotSurface(tokens, item.active)]} />
+                  </View>
+                  <View style={styles.activityTimelineCopy}>
+                    <Text style={[styles.timelineText, { color: item.active ? tokens.text : tokens.muted }]} numberOfLines={1}>
+                      {item.label}
+                    </Text>
+                  </View>
                 </View>
               ))}
             </View>
@@ -1238,12 +1587,12 @@ export function CustomerHistorySurface() {
               </Text>
             </View>
             <View style={styles.twoCol}>
-              <V4TicketCell label={copy.ticket.current} value={visibleStatusLabel} />
-              <V4TicketCell label={copy.ticket.update} value={scopeChange.requestedDescription ?? copy.history.kaelReviewing} />
+              <V4TicketCell label={copy.ticket.current} value={visibleStatusLabel} variant="activity" />
+              <V4TicketCell label={copy.ticket.update} value={scopeChange.requestedDescription ?? copy.history.kaelReviewing} variant="activity" />
             </View>
               <View style={styles.twoCol}>
-                <V4TicketCell label={copy.history.reason} value={scopeChange.reason ?? copy.history.workerNoReason} />
-                <V4TicketCell label={copy.history.newPrice} value={scopeChange.priceMin && scopeChange.priceMax ? `${formatVnd(scopeChange.priceMin)} - ${formatVnd(scopeChange.priceMax)}` : copy.history.kaelReviewing} />
+                <V4TicketCell label={copy.history.reason} value={scopeChange.reason ?? copy.history.workerNoReason} variant="activity" />
+                <V4TicketCell label={copy.history.newPrice} value={scopeChange.priceMin && scopeChange.priceMax ? `${formatVnd(scopeChange.priceMin)} - ${formatVnd(scopeChange.priceMax)}` : copy.history.kaelReviewing} variant="activity" />
               </View>
             </View>
           ) : null}
@@ -1281,64 +1630,324 @@ export function CustomerHistorySurface() {
 }
 
 export function CustomerProfileSurface() {
-  const { role, session, signOut } = useAuth()
+  const { session, signOut, updateCustomerProfile, updatePassword } = useAuth()
   const themeMode = useCustomerThemeMode()
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
+  const profileEditorCopy = customerProfileEditorCopy[languageMode]
+  const { reduceMotion } = useGlassAccessibility()
+  const [profileEditorField, setProfileEditorField] = useState<CustomerProfileEditField | null>(null)
+  const [profileEditorValue, setProfileEditorValue] = useState('')
+  const [profileEditorError, setProfileEditorError] = useState<string | null>(null)
+  const [profileEditorSaving, setProfileEditorSaving] = useState(false)
+  const [accountInfoOpen, setAccountInfoOpen] = useState(false)
+  const [accountInfoDraft, setAccountInfoDraft] = useState<CustomerAccountInfoDraft>({
+    birthDate: '',
+    email: '',
+    fullName: '',
+    gender: '',
+    phone: '',
+    salutation: '',
+  })
+  const [accountInfoError, setAccountInfoError] = useState<string | null>(null)
+  const [accountInfoSaving, setAccountInfoSaving] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackValue, setFeedbackValue] = useState('')
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
+  const [feedbackSaving, setFeedbackSaving] = useState(false)
+  const [feedbackSent, setFeedbackSent] = useState(false)
+  const [passwordOpen, setPasswordOpen] = useState(false)
+  const [passwordCurrent, setPasswordCurrent] = useState('')
+  const [passwordValue, setPasswordValue] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordUpdated, setPasswordUpdated] = useState(false)
   const toggleLanguage = () => setAppLanguage(languageMode === 'vi' ? 'en' : 'vi')
   const toggleTheme = () => setCustomerThemeMode(themeMode === 'light' ? 'dark' : 'light')
-  const profileRoleLabel = role === 'customer' || role === 'admin' ? copy.profile.customer : copy.profile.unknownRole
   const customerMetadata = session?.user.user_metadata ?? {}
-  const rawDisplayName = typeof customerMetadata.full_name === 'string' && customerMetadata.full_name.trim()
-    ? customerMetadata.full_name.trim()
-    : typeof customerMetadata.name === 'string' && customerMetadata.name.trim()
-      ? customerMetadata.name.trim()
-      : ''
-  const rawPhone = typeof customerMetadata.phone_number === 'string' && customerMetadata.phone_number.trim()
-    ? customerMetadata.phone_number.trim()
-    : typeof customerMetadata.phone === 'string' && customerMetadata.phone.trim()
-      ? customerMetadata.phone.trim()
-      : ''
-  const rawAddress = typeof customerMetadata.default_address === 'string' ? customerMetadata.default_address.trim() : ''
-  const profileDisplayName = localizedProfileName(rawDisplayName, languageMode) || appCopy[languageMode].common.noData
-  const profilePhone = rawPhone || (languageMode === 'en' ? 'Not verified' : 'Chưa xác minh')
+  const rawNickname = readCustomerMetadataString(customerMetadata, 'nickname', 'preferred_name')
+  const rawFullName = readCustomerMetadataString(customerMetadata, 'full_name', 'name')
+  const rawPhone = readCustomerMetadataString(customerMetadata, 'phone_number', 'phone')
+  const rawAddress = readCustomerMetadataString(customerMetadata, 'default_address')
+  const rawSalutation = readCustomerMetadataString(customerMetadata, 'salutation')
+  const rawGender = readCustomerMetadataString(customerMetadata, 'gender')
+  const rawBirthDate = readCustomerMetadataString(customerMetadata, 'birth_date', 'birthDate')
+  const rawEmail = readCustomerMetadataString(customerMetadata, 'contact_email', 'email') || session?.user.email?.trim() || ''
+  const kaelInteractionCount = readCustomerProfileMetric(customerMetadata.kael_interaction_count ?? customerMetadata.kaelInteractions)
+  const completedServiceCount = readCustomerProfileMetric(customerMetadata.completed_service_count ?? customerMetadata.completedServices)
+  const priceSavingsVnd = readCustomerProfileMetric(customerMetadata.price_savings_vnd ?? customerMetadata.priceSavingsVnd)
+  const closeProfileEditor = useCallback(() => {
+    if (profileEditorSaving) return
+    setProfileEditorField(null)
+    setProfileEditorValue('')
+    setProfileEditorError(null)
+  }, [profileEditorSaving])
+  const openProfileEditor = useCallback((field: CustomerProfileEditField) => {
+    setProfileEditorField(field)
+    setProfileEditorError(null)
+    setProfileEditorValue(field === 'nickname' ? rawNickname : rawAddress)
+  }, [rawAddress, rawNickname])
+  const submitProfileEditor = useCallback(async () => {
+    if (!profileEditorField || profileEditorSaving) return
+
+    const value = profileEditorValue.trim()
+    const fieldCopy = profileEditorCopy[profileEditorField]
+    const validValue = profileEditorField === 'nickname'
+      ? value.length >= 2 && value.length <= 80
+      : value.length >= 6 && value.length <= 180
+
+    if (!validValue) {
+      setProfileEditorError(fieldCopy.error)
+      return
+    }
+
+    setProfileEditorSaving(true)
+    setProfileEditorError(null)
+    try {
+      const payload = profileEditorField === 'nickname'
+        ? { nickname: value }
+        : { defaultAddress: value }
+      const result = await updateCustomerProfile(payload)
+      if (!result.success) {
+        setProfileEditorError(result.error ?? profileEditorCopy.saveError)
+        return
+      }
+
+      setProfileEditorField(null)
+      setProfileEditorValue('')
+    } catch {
+      setProfileEditorError(profileEditorCopy.saveError)
+    } finally {
+      setProfileEditorSaving(false)
+    }
+  }, [profileEditorCopy, profileEditorField, profileEditorSaving, profileEditorValue, updateCustomerProfile])
+  const accountInfoCopy = customerAccountInfoCopy[languageMode]
+  const feedbackCopy = customerFeedbackCopy[languageMode]
+  const passwordCopy = customerPasswordCopy[languageMode]
+  const openAccountInfo = useCallback(() => {
+    setAccountInfoDraft({
+      birthDate: formatCustomerBirthDateInput(rawBirthDate),
+      email: rawEmail,
+      fullName: rawFullName,
+      gender: normalizeCustomerGender(rawGender),
+      phone: rawPhone,
+      salutation: rawSalutation,
+    })
+    setAccountInfoError(null)
+    setAccountInfoOpen(true)
+  }, [rawBirthDate, rawEmail, rawFullName, rawGender, rawPhone, rawSalutation])
+  const closeAccountInfo = useCallback(() => {
+    if (accountInfoSaving) return
+    setAccountInfoOpen(false)
+    setAccountInfoError(null)
+  }, [accountInfoSaving])
+  const updateAccountInfoDraft = useCallback((field: keyof CustomerAccountInfoDraft, value: string) => {
+    setAccountInfoDraft((current) => ({ ...current, [field]: value }))
+    if (accountInfoError) setAccountInfoError(null)
+  }, [accountInfoError])
+  const submitAccountInfo = useCallback(async () => {
+    if (accountInfoSaving) return
+
+    const fullName = accountInfoDraft.fullName.trim()
+    const phone = accountInfoDraft.phone.trim()
+    const email = accountInfoDraft.email.trim()
+    const salutation = accountInfoDraft.salutation.trim()
+    const gender = accountInfoDraft.gender.trim()
+    const birthDate = accountInfoDraft.birthDate.trim()
+    const phoneDigits = phone.replace(/\D/g, '')
+    const hasAnyValue = Boolean(fullName || phone || email || salutation || gender || birthDate)
+
+    if (!hasAnyValue) {
+      setAccountInfoError(accountInfoCopy.fieldRequired)
+      return
+    }
+    if (fullName && (fullName.length < 2 || fullName.length > 80)) {
+      setAccountInfoError(accountInfoCopy.fullNameInvalid)
+      return
+    }
+    if (salutation.length > 40) {
+      setAccountInfoError(accountInfoCopy.shortFieldInvalid)
+      return
+    }
+    if (gender && !normalizeCustomerGender(gender)) {
+      setAccountInfoError(accountInfoCopy.shortFieldInvalid)
+      return
+    }
+    if (birthDate && !isValidCustomerBirthDate(birthDate)) {
+      setAccountInfoError(accountInfoCopy.birthDateInvalid)
+      return
+    }
+    if (phone && (phoneDigits.length < 9 || phoneDigits.length > 12 || !/^[+0-9().\-\s]+$/.test(phone))) {
+      setAccountInfoError(accountInfoCopy.phoneInvalid)
+      return
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAccountInfoError(accountInfoCopy.emailInvalid)
+      return
+    }
+
+    setAccountInfoSaving(true)
+    setAccountInfoError(null)
+    try {
+      const result = await updateCustomerProfile({
+        birthDate: birthDate || undefined,
+        email: email || undefined,
+        fullName: fullName || undefined,
+        gender: gender || undefined,
+        phone: phone || undefined,
+        salutation: salutation || undefined,
+      })
+      if (!result.success) {
+        setAccountInfoError(result.error ?? accountInfoCopy.saveError)
+        return
+      }
+
+      setAccountInfoOpen(false)
+    } catch {
+      setAccountInfoError(accountInfoCopy.saveError)
+    } finally {
+      setAccountInfoSaving(false)
+    }
+  }, [accountInfoCopy, accountInfoDraft, accountInfoSaving, updateCustomerProfile])
+  const openFeedback = useCallback(() => {
+    setFeedbackValue('')
+    setFeedbackError(null)
+    setFeedbackOpen(true)
+  }, [])
+  const closeFeedback = useCallback(() => {
+    if (feedbackSaving) return
+    setFeedbackOpen(false)
+    setFeedbackError(null)
+  }, [feedbackSaving])
+  const submitFeedback = useCallback(async () => {
+    if (feedbackSaving) return
+    const message = feedbackValue.trim()
+
+    if (message.length < 8 || message.length > 1200) {
+      setFeedbackError(feedbackCopy.errorRequired)
+      return
+    }
+
+    setFeedbackSaving(true)
+    setFeedbackError(null)
+    try {
+      const result = await customerFeedbackService.submit({
+        language: languageMode,
+        message,
+        source: 'profile',
+      })
+      if (!result.success) {
+        setFeedbackError(result.error || feedbackCopy.saveError)
+        return
+      }
+
+      setFeedbackSent(true)
+      setFeedbackOpen(false)
+      setFeedbackValue('')
+    } catch {
+      setFeedbackError(feedbackCopy.saveError)
+    } finally {
+      setFeedbackSaving(false)
+    }
+  }, [feedbackCopy, feedbackSaving, feedbackValue, languageMode])
+  const openPasswordSheet = useCallback(() => {
+    setPasswordCurrent('')
+    setPasswordValue('')
+    setPasswordConfirm('')
+    setPasswordError(null)
+    setPasswordOpen(true)
+  }, [])
+  const closePasswordSheet = useCallback(() => {
+    if (passwordSaving) return
+    setPasswordOpen(false)
+    setPasswordError(null)
+  }, [passwordSaving])
+  const submitPassword = useCallback(async () => {
+    if (passwordSaving) return
+
+    if (!passwordCurrent) {
+      setPasswordError(passwordCopy.currentRequiredError)
+      return
+    }
+    if (passwordValue.length < 8 || passwordValue.length > 72) {
+      setPasswordError(passwordCopy.shortError)
+      return
+    }
+    if (passwordValue !== passwordConfirm) {
+      setPasswordError(passwordCopy.mismatchError)
+      return
+    }
+
+    setPasswordSaving(true)
+    setPasswordError(null)
+    try {
+      const result = await updatePassword({
+        currentPassword: passwordCurrent,
+        newPassword: passwordValue,
+      })
+      if (!result.success) {
+        setPasswordError(result.error || passwordCopy.saveError)
+        return
+      }
+
+      setPasswordUpdated(true)
+      setPasswordOpen(false)
+      setPasswordCurrent('')
+      setPasswordValue('')
+      setPasswordConfirm('')
+    } catch {
+      setPasswordError(passwordCopy.saveError)
+    } finally {
+      setPasswordSaving(false)
+    }
+  }, [passwordConfirm, passwordCopy, passwordCurrent, passwordSaving, passwordValue, updatePassword])
+  const profileNickname = localizedProfileName(rawNickname, languageMode) || appCopy[languageMode].common.noData
   const profileAddress = rawAddress || appCopy[languageMode].common.noData
-  const profileTitle = languageMode === 'en' ? 'Customer profile' : 'Hồ sơ khách'
-  const profileSubtitle = languageMode === 'en' ? 'Information used for requests' : 'Thông tin dùng cho yêu cầu'
-  const syncStatus = rawPhone ? (languageMode === 'en' ? 'Added' : 'Đã thêm') : (languageMode === 'en' ? 'Not verified' : 'Chưa xác minh')
-  const setupSteps = [
+  const accountInfoSavedCount = [rawFullName, rawPhone, rawEmail].filter(Boolean).length
+  const profileAccountInfoMeta = accountInfoSavedCount >= 3
+    ? accountInfoCopy.metaComplete
+    : accountInfoSavedCount > 0
+      ? accountInfoCopy.metaPartial(accountInfoSavedCount)
+      : accountInfoCopy.metaEmpty
+  const profileCareCopy = customerProfileCareCopy[languageMode]
+  const profileSectionCopy = customerProfileSectionCopy[languageMode]
+  const profileCareStats = [
     {
-      active: Boolean(session),
-      meta: session ? (languageMode === 'en' ? 'Created' : 'Đã tạo') : appCopy[languageMode].common.noData,
-      title: languageMode === 'en' ? 'Account' : 'Tài khoản',
+      icon: 'kael' as const,
+      label: profileCareCopy.interactionLabel,
+      value: kaelInteractionCount ? `${kaelInteractionCount}` : profileCareCopy.interactionReady,
     },
     {
-      active: Boolean(rawPhone),
-      meta: rawPhone ? (languageMode === 'en' ? 'Added' : 'Đã thêm') : (languageMode === 'en' ? 'Waiting OTP' : 'Chờ OTP'),
-      title: languageMode === 'en' ? 'Phone' : 'Điện thoại',
+      icon: 'request' as const,
+      label: profileCareCopy.serviceLabel,
+      value: completedServiceCount ? `${completedServiceCount}` : profileCareCopy.servicePending,
     },
     {
-      active: Boolean(rawAddress),
-      meta: rawAddress ? (languageMode === 'en' ? 'On profile' : 'Từ hồ sơ') : appCopy[languageMode].common.noData,
-      title: languageMode === 'en' ? 'Address' : 'Địa chỉ',
+      icon: 'payment' as const,
+      label: profileCareCopy.savingsLabel,
+      value: priceSavingsVnd ? formatVnd(priceSavingsVnd) : profileCareCopy.savingsPending,
     },
-  ] as const
+  ]
+  const profileFallbackTitle = languageMode === 'en' ? 'Customer profile' : 'Hồ sơ khách'
+  const profileTitle = localizedProfileName(rawNickname, languageMode) || localizedProfileName(rawFullName, languageMode) || profileFallbackTitle
+  const profileSubtitle = languageMode === 'en' ? 'Basic information' : 'Thông tin cơ bản'
+  const profileEditorConfig = profileEditorField ? profileEditorCopy[profileEditorField] : null
+  const profileEditorIsAddress = profileEditorField === 'address'
 
   return (
     <V4Frame active="profile" testID="customer-profile-surface">
       {({ tokens }) => (
         <View style={styles.plainContent}>
-          <View pointerEvents="none" style={[styles.customerSectionLiquidWash, { backgroundColor: tokens.aqua }]} testID="customer-section-liquid-wash-profile" />
           <ReduceMotionAwareEntranceView delayMs={70} distanceY={10} testID="customer-profile-hero-motion">
-            <View style={[styles.profilePrototypeHero, customerProfileHeroSurface(tokens)]} testID="customer-profile-hero">
-              <SubtleGlassHighlight />
+            <GlassCard material="liquid" mode={tokens.mode} style={[styles.profilePrototypeHero, customerProfileHeroSurface(tokens)]} testID="customer-profile-hero">
+              <ProfileLiquidChrome testID="customer-profile-identity-liquid-card" variant="hero" />
               <View style={styles.hiddenMarker} testID="customer-profile-empty-state" />
-              <SubtleLiquidLight testID="customer-profile-identity-liquid-card" variant="profile" />
               <View style={styles.profilePrototypeTop}>
                 <View style={styles.profilePrototypeTitleRow}>
-                  <IconShell icon="person" size={52} tone="service" />
+                  <IconShell icon="person" size={54} tone="service" />
                   <View style={styles.profilePrototypeTitleCopy}>
-                    <Text style={[styles.profilePrototypeTitle, { color: tokens.text }]} numberOfLines={1}>
+                    <Text style={[styles.profilePrototypeTitle, { color: tokens.text }]} numberOfLines={1} testID="customer-profile-hero-title">
                       {profileTitle}
                     </Text>
                     <Text style={[styles.homeShortcutMeta, { color: tokens.muted }]} numberOfLines={1}>
@@ -1346,65 +1955,642 @@ export function CustomerProfileSurface() {
                     </Text>
                   </View>
                 </View>
-                <View style={[styles.profileButton, customerMintPillSurface(tokens)]}>
-                  <Text style={[styles.profileButtonText, { color: tokens.primary }]} numberOfLines={1}>
-                    {profileRoleLabel}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.profileSetupSteps} testID="profileSetupSteps">
-                {setupSteps.map((step) => (
-                  <CustomerProfileSetupStep active={step.active} key={step.title} meta={step.meta} title={step.title} />
-                ))}
               </View>
               <View style={styles.hiddenMarker} testID="customer-admin-audit-switch" />
-            </View>
+            </GlassCard>
           </ReduceMotionAwareEntranceView>
           <View style={styles.hiddenMarker} testID="customer-profile-setup-card" />
           <View style={styles.hiddenMarker} testID="customer-shell-honest-profile-save" />
-          <ReduceMotionAwareEntranceView delayMs={120} distanceY={8} testID="customer-profile-sync-motion">
-            <View style={[styles.syncPreview, customerProfilePanelSurface(tokens)]} testID="customer-profile-sync-preview">
-              <View style={styles.syncPreviewTop}>
-                <Text style={[styles.syncPreviewTitle, { color: tokens.text }]} numberOfLines={1}>
-                  {languageMode === 'en' ? 'Synced from setup' : 'Đồng bộ từ thiết lập'}
-                </Text>
-                <View style={[styles.bookingStepPill, rawPhone ? customerMintPillSurface(tokens) : customerWarmPillSurface(tokens), { minWidth: 0 }]}>
-                  <Text style={[styles.bookingStepText, { color: rawPhone ? tokens.primary : tokens.mode === 'dark' ? '#F3D7A9' : '#7B552D' }]} numberOfLines={1}>
-                    {syncStatus}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.homeTrustBody, { color: tokens.muted }]} numberOfLines={2}>
-                {languageMode === 'en'
-                  ? 'Setup details stay here and can be adjusted before sending a request.'
-                  : 'Thông tin thiết lập nằm ở đây và có thể chỉnh trước khi gửi yêu cầu.'}
-              </Text>
-            </View>
+          <ReduceMotionAwareEntranceView delayMs={125} distanceY={8} style={[styles.profileActions, styles.profileCareWideWrap]} testID="customer-profile-care-card-motion">
+            <CustomerProfileCareCard
+              copy={profileCareCopy}
+              stats={profileCareStats}
+            />
           </ReduceMotionAwareEntranceView>
           <ReduceMotionAwareEntranceView delayMs={165} distanceY={8} style={styles.profileActions} testID="customer-profile-list-motion">
-            <View style={[styles.listCard, customerProfilePanelSurface(tokens)]} testID="customer-profile-checklist">
+            <View style={[styles.listCard, styles.profileGlassListCard, customerProfilePanelSurface(tokens)]} testID="customer-profile-checklist">
+              <ProfileLiquidChrome testID="customer-profile-identity-panel-liquid" variant="panel" />
+              <Text style={[styles.profileListSectionTitle, { color: tokens.muted }]} numberOfLines={1}>
+                {profileSectionCopy.identity}
+              </Text>
               <View style={styles.hiddenMarker} testID="customer-profile-unified-functions" />
               <View style={styles.hiddenMarker} testID="customer-profile-privacy-shell" />
-              <ListRow compact icon="person" title={languageMode === 'en' ? 'Display name' : 'Tên hiển thị'} meta={profileDisplayName} />
-              <ListRow compact icon="phone" title={languageMode === 'en' ? 'Phone number' : 'Số điện thoại'} meta={profilePhone} />
-              <ListRow compact icon="map" title={languageMode === 'en' ? 'Default address' : 'Địa chỉ mặc định'} meta={profileAddress} testID="customer-utility-saved-address" />
+              <ActionRow compact icon="identity" title={profileEditorCopy.nickname.title} meta={profileNickname} onPress={() => openProfileEditor('nickname')} testID="customer-profile-edit-nickname" />
+              <ActionRow compact icon="phone" title={languageMode === 'en' ? 'Information' : 'Thông tin'} meta={profileAccountInfoMeta} onPress={openAccountInfo} testID="customer-profile-open-account-info" />
+              <ActionRow compact icon="map" title={profileEditorCopy.address.title} meta={profileAddress} onPress={() => openProfileEditor('address')} testID="customer-utility-saved-address" />
               <View style={styles.hiddenMarker} testID="customer-profile-evidence-shell" />
             </View>
           </ReduceMotionAwareEntranceView>
           <ReduceMotionAwareEntranceView delayMs={205} distanceY={8} style={styles.profileActions} testID="customer-profile-actions-motion">
-            <View style={[styles.listCard, customerProfilePanelSurface(tokens)]}>
-              <ActionRow compact icon="moon" title={copy.profile.interface} meta={themeMode === 'light' ? copy.profile.light : copy.profile.dark} onPress={toggleTheme} testID="customer-dark-mode-toggle-profile" />
-              <ActionRow compact icon="menu" title={appCopy[languageMode].common.appLanguage} meta={languageDisplayName(languageMode)} onPress={toggleLanguage} testID="customer-language-toggle" />
-              <ActionRow compact icon="external" title={copy.profile.signOut} meta={copy.profile.switchAccount} onPress={() => void signOut()} testID="customer-profile-sign-out" />
+            <View style={[styles.listCard, styles.profileGlassListCard, customerProfilePanelSurface(tokens)]}>
+              <ProfileLiquidChrome testID="customer-profile-settings-panel-liquid" variant="panel" />
+              <Text style={[styles.profileListSectionTitle, { color: tokens.muted }]} numberOfLines={1}>
+                {profileSectionCopy.settings}
+              </Text>
+              <ActionRow compact icon="theme" title={copy.profile.interface} meta={themeMode === 'light' ? copy.profile.light : copy.profile.dark} onPress={toggleTheme} testID="customer-dark-mode-toggle-profile" />
+              <ActionRow compact icon="language" title={appCopy[languageMode].common.appLanguage} meta={languageDisplayName(languageMode)} onPress={toggleLanguage} testID="customer-language-toggle" />
+              <ActionRow compact icon="feedback" title={feedbackCopy.rowTitle} meta={feedbackSent ? feedbackCopy.rowMetaSent : feedbackCopy.rowMeta} onPress={openFeedback} testID="customer-profile-open-feedback" />
+              <ActionRow compact icon="password" title={passwordCopy.rowTitle} meta={passwordUpdated ? passwordCopy.rowMetaUpdated : passwordCopy.rowMeta} onPress={openPasswordSheet} testID="customer-profile-open-password" />
+              <ActionRow compact icon="logout" title={copy.profile.signOut} meta={copy.profile.switchAccount} onPress={() => void signOut()} testID="customer-profile-sign-out" />
               <View style={styles.hiddenMarker} testID="customer-utility-ticket-wallet" />
               <View style={styles.hiddenMarker} testID="customer-utility-support-entry" />
               <View style={styles.hiddenMarker} testID="customer-profile-payment-placeholder" />
               <View style={styles.hiddenMarker} testID="customer-profile-review-placeholder" />
             </View>
           </ReduceMotionAwareEntranceView>
+          {profileEditorConfig ? (
+            <Modal animationType="fade" onRequestClose={closeProfileEditor} transparent visible>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.profileEditorScrim}>
+                <View style={[styles.profileEditorSheet, customerProfilePanelSurface(tokens)]} testID="customer-profile-editor-sheet">
+                  <ProfileLiquidChrome testID="customer-profile-editor-sheet-liquid" variant="panel" />
+                  <Text style={[styles.profileEditorTitle, { color: tokens.text }]} numberOfLines={1}>
+                    {profileEditorConfig.title}
+                  </Text>
+                  <Text style={[styles.profileEditorHelper, { color: tokens.muted }]}>
+                    {profileEditorConfig.helper}
+                  </Text>
+                  <TextInput
+                    accessibilityLabel={profileEditorConfig.title}
+                    autoCapitalize="sentences"
+                    editable={!profileEditorSaving}
+                    keyboardType="default"
+                    multiline={profileEditorIsAddress}
+                    numberOfLines={profileEditorIsAddress ? 3 : 1}
+                    onChangeText={(nextValue) => {
+                      setProfileEditorValue(nextValue)
+                      if (profileEditorError) setProfileEditorError(null)
+                    }}
+                    onSubmitEditing={profileEditorIsAddress ? undefined : () => void submitProfileEditor()}
+                    placeholder={profileEditorConfig.placeholder}
+                    placeholderTextColor={tokens.subtleText}
+                    returnKeyType={profileEditorIsAddress ? 'default' : 'done'}
+                    style={[
+                      styles.profileEditorInput,
+                      profileEditorIsAddress ? styles.profileEditorInputMultiline : null,
+                      customerProfileInputSurface(tokens),
+                      {
+                        color: tokens.text,
+                      },
+                    ]}
+                    testID="customer-profile-editor-input"
+                    textAlignVertical={profileEditorIsAddress ? 'top' : 'center'}
+                    value={profileEditorValue}
+                  />
+                  {profileEditorError ? (
+                    <Text accessibilityRole="alert" style={[styles.profileEditorError, { color: tokens.danger }]} testID="customer-profile-editor-error">
+                      {profileEditorError}
+                    </Text>
+                  ) : null}
+                  <View style={styles.profileEditorButtonRow}>
+                    <Pressable
+                      accessibilityLabel={profileEditorCopy.cancel}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: profileEditorSaving }}
+                      disabled={profileEditorSaving}
+                      onPress={closeProfileEditor}
+                      style={({ pressed }) => [
+                        styles.profileEditorButton,
+                        styles.profileEditorSecondaryButton,
+                        customerProfileSecondaryButtonSurface(tokens),
+                        reduceMotionAwarePressStyle(pressed, reduceMotion),
+                        profileEditorSaving ? styles.disabled : null,
+                      ]}
+                      testID="customer-profile-editor-cancel"
+                    >
+                      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorSecondaryText, { color: tokens.primary }]}>
+                        {profileEditorCopy.cancel}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityLabel={profileEditorCopy.save}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: profileEditorSaving }}
+                      disabled={profileEditorSaving}
+                      onPress={() => void submitProfileEditor()}
+                      style={({ pressed }) => [
+                        styles.profileEditorButton,
+                        styles.profileEditorPrimaryButton,
+                        customerProfilePrimaryButtonSurface(tokens),
+                        reduceMotionAwarePressStyle(pressed, reduceMotion),
+                        profileEditorSaving ? styles.disabled : null,
+                      ]}
+                      testID="customer-profile-editor-save"
+                    >
+                      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorPrimaryText, { color: tokens.primaryText }]}>
+                        {profileEditorSaving ? profileEditorCopy.saving : profileEditorCopy.save}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </KeyboardAvoidingView>
+            </Modal>
+          ) : null}
+          {accountInfoOpen ? (
+            <Modal animationType="fade" onRequestClose={closeAccountInfo} transparent visible>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.profileEditorScrim}>
+                <View style={[styles.accountInfoSheet, customerProfilePanelSurface(tokens)]} testID="customer-account-info-sheet">
+                  <ProfileLiquidChrome testID="customer-account-info-sheet-liquid" variant="panel" />
+                  <View style={styles.accountInfoHeader}>
+                    <Pressable
+                      accessibilityLabel={accountInfoCopy.close}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: accountInfoSaving }}
+                      disabled={accountInfoSaving}
+                      onPress={closeAccountInfo}
+                      style={({ pressed }) => [styles.accountInfoBackButton, reduceMotionAwarePressStyle(pressed, reduceMotion), accountInfoSaving ? styles.disabled : null]}
+                      testID="customer-account-info-close"
+                    >
+                      <Text style={[styles.accountInfoBackText, { color: tokens.text }]} numberOfLines={1}>
+                        ‹
+                      </Text>
+                    </Pressable>
+                    <Text style={[styles.accountInfoTitle, { color: tokens.text }]} numberOfLines={1}>
+                      {accountInfoCopy.title}
+                    </Text>
+                    <View style={styles.accountInfoHeaderSpacer} />
+                  </View>
+                  <ScrollView
+                    automaticallyAdjustKeyboardInsets
+                    contentContainerStyle={styles.accountInfoFields}
+                    keyboardDismissMode="interactive"
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <AccountInfoField
+                      editable={!accountInfoSaving}
+                      label={accountInfoCopy.salutation}
+                      onChangeText={(value) => updateAccountInfoDraft('salutation', value)}
+                      placeholder={accountInfoCopy.salutationPlaceholder}
+                      testID="customer-account-salutation-input"
+                      tokens={tokens}
+                      value={accountInfoDraft.salutation}
+                    />
+                    <AccountInfoField
+                      editable={!accountInfoSaving}
+                      label={accountInfoCopy.fullName}
+                      onChangeText={(value) => updateAccountInfoDraft('fullName', value)}
+                      placeholder={accountInfoCopy.fullNamePlaceholder}
+                      testID="customer-account-full-name-input"
+                      tokens={tokens}
+                      value={accountInfoDraft.fullName}
+                    />
+                    <AccountInfoGenderSegment
+                      disabled={accountInfoSaving}
+                      labels={accountInfoCopy.genderOptions}
+                      onSelect={(value) => updateAccountInfoDraft('gender', value)}
+                      selected={normalizeCustomerGender(accountInfoDraft.gender)}
+                      title={accountInfoCopy.gender}
+                      tokens={tokens}
+                    />
+                    <AccountInfoField
+                      editable={!accountInfoSaving}
+                      keyboardType="number-pad"
+                      label={accountInfoCopy.birthDate}
+                      onChangeText={(value) => updateAccountInfoDraft('birthDate', formatCustomerBirthDateInput(value))}
+                      placeholder={accountInfoCopy.birthDatePlaceholder}
+                      testID="customer-account-birth-date-input"
+                      tokens={tokens}
+                      value={accountInfoDraft.birthDate}
+                    />
+                    <AccountInfoField
+                      editable={!accountInfoSaving}
+                      keyboardType="phone-pad"
+                      label={accountInfoCopy.phone}
+                      onChangeText={(value) => updateAccountInfoDraft('phone', value)}
+                      placeholder={accountInfoCopy.phonePlaceholder}
+                      testID="customer-account-phone-input"
+                      tokens={tokens}
+                      value={accountInfoDraft.phone}
+                    />
+                    <AccountInfoField
+                      autoCapitalize="none"
+                      editable={!accountInfoSaving}
+                      keyboardType="email-address"
+                      label={accountInfoCopy.email}
+                      onChangeText={(value) => updateAccountInfoDraft('email', value)}
+                      placeholder="name@example.com"
+                      testID="customer-account-email-input"
+                      tokens={tokens}
+                      value={accountInfoDraft.email}
+                    />
+                    <Text style={[styles.accountInfoNote, { color: tokens.muted }]} numberOfLines={3}>
+                      {accountInfoCopy.emailNote}
+                    </Text>
+                    <View style={[styles.accountInfoVerification, customerProfileVerificationSurface(tokens)]}>
+                      <MappedIcon name="privacy" color={tokens.primary} accent={tokens.aqua} size={24} />
+                      <View style={styles.accountInfoVerificationCopy}>
+                        <Text style={[styles.accountInfoVerificationTitle, { color: tokens.primary }]} numberOfLines={1}>
+                          {accountInfoCopy.identityTitle}
+                        </Text>
+                        <Text style={[styles.accountInfoVerificationBody, { color: tokens.muted }]} numberOfLines={2}>
+                          {accountInfoCopy.identityBody}
+                        </Text>
+                      </View>
+                    </View>
+                  </ScrollView>
+                  {accountInfoError ? (
+                    <Text accessibilityRole="alert" style={[styles.profileEditorError, { color: tokens.danger }]} testID="customer-account-info-error">
+                      {accountInfoError}
+                    </Text>
+                  ) : null}
+                  <Pressable
+                    accessibilityLabel={accountInfoCopy.save}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: accountInfoSaving }}
+                    disabled={accountInfoSaving}
+                    onPress={() => void submitAccountInfo()}
+                    style={({ pressed }) => [
+                      styles.accountInfoSaveButton,
+                      customerProfilePrimaryButtonSurface(tokens),
+                      reduceMotionAwarePressStyle(pressed, reduceMotion),
+                      accountInfoSaving ? styles.disabled : null,
+                    ]}
+                    testID="customer-account-info-save"
+                  >
+                    <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorPrimaryText, { color: tokens.primaryText }]}>
+                      {accountInfoSaving ? accountInfoCopy.saving : accountInfoCopy.save}
+                    </Text>
+                  </Pressable>
+                </View>
+              </KeyboardAvoidingView>
+            </Modal>
+          ) : null}
+          {feedbackOpen ? (
+            <Modal animationType="fade" onRequestClose={closeFeedback} transparent visible>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.profileEditorScrim}>
+                <View style={[styles.profileEditorSheet, customerProfilePanelSurface(tokens)]} testID="customer-feedback-sheet">
+                  <ProfileLiquidChrome testID="customer-feedback-sheet-liquid" variant="panel" />
+                  <Text style={[styles.profileEditorTitle, { color: tokens.text }]} numberOfLines={1}>
+                    {feedbackCopy.title}
+                  </Text>
+                  <Text style={[styles.profileEditorHelper, { color: tokens.muted }]}>
+                    {feedbackCopy.helper}
+                  </Text>
+                  <TextInput
+                    accessibilityLabel={feedbackCopy.title}
+                    autoCapitalize="sentences"
+                    editable={!feedbackSaving}
+                    maxLength={1200}
+                    multiline
+                    numberOfLines={5}
+                    onChangeText={(nextValue) => {
+                      setFeedbackValue(nextValue)
+                      if (feedbackError) setFeedbackError(null)
+                    }}
+                    placeholder={feedbackCopy.placeholder}
+                    placeholderTextColor={tokens.subtleText}
+                    returnKeyType="default"
+                    style={[
+                      styles.profileEditorInput,
+                      styles.feedbackInput,
+                      customerProfileInputSurface(tokens),
+                      {
+                        color: tokens.text,
+                      },
+                    ]}
+                    testID="customer-feedback-input"
+                    textAlignVertical="top"
+                    value={feedbackValue}
+                  />
+                  {feedbackError ? (
+                    <Text accessibilityRole="alert" style={[styles.profileEditorError, { color: tokens.danger }]} testID="customer-feedback-error">
+                      {feedbackError}
+                    </Text>
+                  ) : null}
+                  <View style={styles.profileEditorButtonRow}>
+                    <Pressable
+                      accessibilityLabel={feedbackCopy.cancel}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: feedbackSaving }}
+                      disabled={feedbackSaving}
+                      onPress={closeFeedback}
+                      style={({ pressed }) => [
+                        styles.profileEditorButton,
+                        styles.profileEditorSecondaryButton,
+                        customerProfileSecondaryButtonSurface(tokens),
+                        reduceMotionAwarePressStyle(pressed, reduceMotion),
+                        feedbackSaving ? styles.disabled : null,
+                      ]}
+                      testID="customer-feedback-cancel"
+                    >
+                      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorSecondaryText, { color: tokens.primary }]}>
+                        {feedbackCopy.cancel}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityLabel={feedbackCopy.submit}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: feedbackSaving }}
+                      disabled={feedbackSaving}
+                      onPress={() => void submitFeedback()}
+                      style={({ pressed }) => [
+                        styles.profileEditorButton,
+                        styles.profileEditorPrimaryButton,
+                        customerProfilePrimaryButtonSurface(tokens),
+                        reduceMotionAwarePressStyle(pressed, reduceMotion),
+                        feedbackSaving ? styles.disabled : null,
+                      ]}
+                      testID="customer-feedback-submit"
+                    >
+                      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorPrimaryText, { color: tokens.primaryText }]}>
+                        {feedbackSaving ? feedbackCopy.saving : feedbackCopy.submit}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </KeyboardAvoidingView>
+            </Modal>
+          ) : null}
+          {passwordOpen ? (
+            <Modal animationType="fade" onRequestClose={closePasswordSheet} transparent visible>
+              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.profileEditorScrim}>
+                <View style={[styles.profileEditorSheet, customerProfilePanelSurface(tokens)]} testID="customer-password-sheet">
+                  <ProfileLiquidChrome testID="customer-password-sheet-liquid" variant="panel" />
+                  <Text style={[styles.profileEditorTitle, { color: tokens.text }]} numberOfLines={1}>
+                    {passwordCopy.title}
+                  </Text>
+                  <Text style={[styles.profileEditorHelper, { color: tokens.muted }]}>
+                    {passwordCopy.helper}
+                  </Text>
+                  <View style={styles.passwordField}>
+                    <Text style={[styles.passwordFieldLabel, { color: tokens.text }]} numberOfLines={1}>
+                      {passwordCopy.currentLabel}
+                    </Text>
+                    <TextInput
+                      accessibilityLabel={passwordCopy.currentLabel}
+                      autoCapitalize="none"
+                      autoComplete="current-password"
+                      autoCorrect={false}
+                      editable={!passwordSaving}
+                      maxLength={72}
+                      onChangeText={(nextValue) => {
+                        setPasswordCurrent(nextValue)
+                        if (passwordError) setPasswordError(null)
+                      }}
+                      placeholder={passwordCopy.currentPlaceholder}
+                      placeholderTextColor={tokens.subtleText}
+                      returnKeyType="next"
+                      secureTextEntry
+                      style={[
+                        styles.profileEditorInput,
+                        customerProfileInputSurface(tokens),
+                        {
+                          color: tokens.text,
+                        },
+                      ]}
+                      testID="customer-password-current-input"
+                      textContentType="password"
+                      value={passwordCurrent}
+                    />
+                  </View>
+                  <View style={styles.passwordField}>
+                    <Text style={[styles.passwordFieldLabel, { color: tokens.text }]} numberOfLines={1}>
+                      {passwordCopy.passwordLabel}
+                    </Text>
+                    <TextInput
+                      accessibilityLabel={passwordCopy.passwordLabel}
+                      autoCapitalize="none"
+                      autoComplete="new-password"
+                      autoCorrect={false}
+                      editable={!passwordSaving}
+                      maxLength={72}
+                      onChangeText={(nextValue) => {
+                        setPasswordValue(nextValue)
+                        if (passwordError) setPasswordError(null)
+                      }}
+                      placeholder={passwordCopy.passwordPlaceholder}
+                      placeholderTextColor={tokens.subtleText}
+                      returnKeyType="next"
+                      secureTextEntry
+                      style={[
+                        styles.profileEditorInput,
+                        customerProfileInputSurface(tokens),
+                        {
+                          color: tokens.text,
+                        },
+                      ]}
+                      testID="customer-password-new-input"
+                      textContentType="newPassword"
+                      value={passwordValue}
+                    />
+                  </View>
+                  <View style={styles.passwordField}>
+                    <Text style={[styles.passwordFieldLabel, { color: tokens.text }]} numberOfLines={1}>
+                      {passwordCopy.confirmLabel}
+                    </Text>
+                    <TextInput
+                      accessibilityLabel={passwordCopy.confirmLabel}
+                      autoCapitalize="none"
+                      autoComplete="new-password"
+                      autoCorrect={false}
+                      editable={!passwordSaving}
+                      maxLength={72}
+                      onChangeText={(nextValue) => {
+                        setPasswordConfirm(nextValue)
+                        if (passwordError) setPasswordError(null)
+                      }}
+                      onSubmitEditing={() => void submitPassword()}
+                      placeholder={passwordCopy.confirmPlaceholder}
+                      placeholderTextColor={tokens.subtleText}
+                      returnKeyType="done"
+                      secureTextEntry
+                      style={[
+                        styles.profileEditorInput,
+                        customerProfileInputSurface(tokens),
+                        {
+                          color: tokens.text,
+                        },
+                      ]}
+                      testID="customer-password-confirm-input"
+                      textContentType="newPassword"
+                      value={passwordConfirm}
+                    />
+                  </View>
+                  {passwordError ? (
+                    <Text accessibilityRole="alert" style={[styles.profileEditorError, { color: tokens.danger }]} testID="customer-password-error">
+                      {passwordError}
+                    </Text>
+                  ) : null}
+                  <View style={styles.profileEditorButtonRow}>
+                    <Pressable
+                      accessibilityLabel={passwordCopy.cancel}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: passwordSaving }}
+                      disabled={passwordSaving}
+                      onPress={closePasswordSheet}
+                      style={({ pressed }) => [
+                        styles.profileEditorButton,
+                        styles.profileEditorSecondaryButton,
+                        customerProfileSecondaryButtonSurface(tokens),
+                        reduceMotionAwarePressStyle(pressed, reduceMotion),
+                        passwordSaving ? styles.disabled : null,
+                      ]}
+                      testID="customer-password-cancel"
+                    >
+                      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorSecondaryText, { color: tokens.primary }]}>
+                        {passwordCopy.cancel}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityLabel={passwordCopy.save}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: passwordSaving }}
+                      disabled={passwordSaving}
+                      onPress={() => void submitPassword()}
+                      style={({ pressed }) => [
+                        styles.profileEditorButton,
+                        styles.profileEditorPrimaryButton,
+                        customerProfilePrimaryButtonSurface(tokens),
+                        reduceMotionAwarePressStyle(pressed, reduceMotion),
+                        passwordSaving ? styles.disabled : null,
+                      ]}
+                      testID="customer-password-save"
+                    >
+                      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorPrimaryText, { color: tokens.primaryText }]}>
+                        {passwordSaving ? passwordCopy.saving : passwordCopy.save}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </KeyboardAvoidingView>
+            </Modal>
+          ) : null}
         </View>
       )}
     </V4Frame>
+  )
+}
+
+function AccountInfoField({
+  autoCapitalize = 'sentences',
+  editable,
+  keyboardType = 'default',
+  label,
+  onChangeText,
+  placeholder,
+  testID,
+  tokens,
+  value,
+}: {
+  autoCapitalize?: 'none' | 'sentences'
+  editable: boolean
+  keyboardType?: 'default' | 'email-address' | 'number-pad' | 'phone-pad'
+  label: string
+  onChangeText: (value: string) => void
+  placeholder: string
+  testID: string
+  tokens: CustomerThemeTokens
+  value: string
+}) {
+  return (
+    <View style={[styles.accountInfoField, customerProfileInputSurface(tokens)]}>
+      <Text style={[styles.accountInfoFieldLabel, { color: tokens.text }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <TextInput
+        accessibilityLabel={label}
+        autoCapitalize={autoCapitalize}
+        editable={editable}
+        keyboardType={keyboardType}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={tokens.subtleText}
+        returnKeyType="done"
+        style={[styles.accountInfoFieldInput, { color: tokens.text }]}
+        testID={testID}
+        value={value}
+      />
+    </View>
+  )
+}
+
+function AccountInfoGenderSegment({
+  disabled,
+  labels,
+  onSelect,
+  selected,
+  title,
+  tokens,
+}: {
+  disabled: boolean
+  labels: Record<CustomerGenderValue, string>
+  onSelect: (value: CustomerGenderValue) => void
+  selected: string
+  title: string
+  tokens: CustomerThemeTokens
+}) {
+  const { reduceMotion } = useGlassAccessibility()
+
+  return (
+    <View style={[styles.accountInfoField, customerProfileInputSurface(tokens)]} testID="customer-account-gender-segment">
+      <Text style={[styles.accountInfoFieldLabel, { color: tokens.text }]} numberOfLines={1}>
+        {title}
+      </Text>
+      <View style={styles.accountInfoSegmentRow}>
+        {customerGenderOptions.map((option) => {
+          const active = selected === option
+          return (
+            <Pressable
+              accessibilityLabel={labels[option]}
+              accessibilityRole="button"
+              accessibilityState={{ disabled, selected: active }}
+              disabled={disabled}
+              key={option}
+              onPress={() => onSelect(option)}
+              style={({ pressed }) => [
+                styles.accountInfoSegmentButton,
+                customerProfileSegmentSurface(tokens, active),
+                reduceMotionAwarePressStyle(pressed, reduceMotion),
+                disabled ? styles.disabled : null,
+              ]}
+              testID={`customer-account-gender-${option}`}
+            >
+              <Text style={[styles.accountInfoSegmentText, { color: active ? tokens.primary : tokens.muted }]} numberOfLines={1}>
+                {labels[option]}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </View>
+    </View>
+  )
+}
+
+function CustomerProfileCareCard({
+  copy,
+  stats,
+}: {
+  copy: (typeof customerProfileCareCopy)[AppLanguage]
+  stats: Array<{ icon: IconName; label: string; value: string }>
+}) {
+  const tokens = useCustomerTokens()
+
+  return (
+    <View style={[styles.profileCareCard, customerProfileCareCardSurface(tokens)]} testID="customer-profile-home-care-card">
+      <ProfileLiquidChrome testID="customer-profile-care-card-liquid" variant="care" />
+      <View style={styles.profileCareHeader} testID="customer-profile-care-header-motion">
+        <Text style={[styles.profileCareTitle, { color: tokens.text }]} numberOfLines={1}>
+          {copy.title}
+        </Text>
+      </View>
+      <View style={styles.profileCareStats}>
+        {stats.map((item, index) => (
+          <View key={item.label} style={[styles.profileCareStat, customerProfileCareStatSurface(tokens)]} testID={`customer-profile-care-stat-motion-${index}`}>
+            <View style={[styles.profileCareStatIcon, customerProfileCarePillSurface(tokens)]}>
+              <MappedIcon name={item.icon} color={tokens.primary} accent={tokens.primary} size={22} />
+            </View>
+            <View style={styles.profileCareStatCopy}>
+              <Text style={[styles.profileCareStatLabel, { color: tokens.text }]} numberOfLines={1}>
+                {item.label}
+              </Text>
+            </View>
+            <Text style={[styles.profileCareStatValue, { color: tokens.primary }]} numberOfLines={1} testID={`customer-profile-insight-${index}`}>
+              {item.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
   )
 }
 
@@ -1416,10 +2602,14 @@ export function CustomerV4DockOverlay({ active }: { active: CustomerDockActive }
   const baseTokens = getCustomerThemeTokens(themeMode)
   const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(baseTokens) : baseTokens
   const frameWidth = Math.min(width, 430)
+  const hidden = useCustomerDockHidden()
+  useEffect(() => {
+    setCustomerDockHiddenSnapshot(false)
+  }, [active])
 
   return (
     <CustomerThemeContext.Provider value={tokens}>
-      <V4Dock active={active} bottomInset={insets.bottom} frameWidth={frameWidth} screenWidth={width} />
+      <V4Dock active={active} bottomInset={insets.bottom} frameWidth={frameWidth} hidden={hidden} screenWidth={width} />
     </CustomerThemeContext.Provider>
   )
 }
@@ -1457,6 +2647,13 @@ function localizedCustomerAreaLabel(area: string | null | undefined, language: A
     .replace(/Quận\s*(\d+)/gi, 'District $1')
     .replace(/TP\.?\s*HCM|Thành phố Hồ Chí Minh/gi, 'HCMC')
   return mapped.trim() || fallback
+}
+
+function customerHomeAreaDisplayLabel(deal: LocalDeal | null, defaultAddress: string, language: AppLanguage, fallback: string) {
+  const activeAddress = deal?.draft.addressLabel.trim()
+  const activeDistrict = deal?.draft.districtLabel.trim()
+  const value = activeAddress || activeDistrict || defaultAddress.trim()
+  return localizedCustomerAreaLabel(value, language, fallback)
 }
 
 const customerVietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i
@@ -1500,26 +2697,68 @@ function V4Frame({
   const baseTokens = getCustomerThemeTokens(themeMode)
   const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(baseTokens) : baseTokens
   const frameWidth = Math.min(width, 430)
+  const appleIOS26MainSection = active === 'home' || active === 'booking' || active === 'activity'
   const pulse = useSharedValue(0)
   const settle = useSharedValue(0)
   useEffect(() => {
     pulse.value = 0
-    pulse.value = withTiming(1, { duration: 220 })
     settle.value = 1
-    settle.value = withDelay(80, withTiming(0, { duration: 300 }))
-  }, [active, pulse, settle])
+    if (reduceMotion) {
+      pulse.value = withTiming(1, { duration: 120 })
+      settle.value = withTiming(0, { duration: 120 })
+      return
+    }
+    pulse.value = withSpring(1, motionTokens.liquid.entrance)
+    settle.value = withDelay(60, withSpring(0, motionTokens.liquid.press))
+  }, [active, pulse, reduceMotion, settle])
   const motionFieldStyle = useAnimatedStyle(() => ({
-    opacity: reduceMotion ? 0 : 0.07 + pulse.value * 0.05,
-    transform: [{ translateY: settle.value * 2 }, { scale: 0.96 + pulse.value * 0.05 }],
+    opacity: reduceMotion ? 0 : 0.05 + pulse.value * 0.04,
+    transform: [{ translateY: settle.value * 2 }, { scale: 0.98 + pulse.value * 0.025 }],
   }))
-  const experimentalBackgroundImage =
+  const lastCustomerScrollYRef = useRef(0)
+  const setCustomerDockHiddenSafely = useCallback((hidden: boolean) => {
+    setCustomerDockHiddenSnapshot(hidden)
+  }, [])
+  const handleCustomerDockScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const nextY = Math.max(0, event.nativeEvent.contentOffset.y)
+    const deltaY = nextY - lastCustomerScrollYRef.current
+
+    if (nextY <= 12) {
+      setCustomerDockHiddenSafely(false)
+    } else if (deltaY > 8 && nextY > 34) {
+      setCustomerDockHiddenSafely(true)
+    } else if (deltaY < -7) {
+      setCustomerDockHiddenSafely(false)
+    }
+
+    lastCustomerScrollYRef.current = nextY
+  }, [setCustomerDockHiddenSafely])
+  useEffect(() => {
+    lastCustomerScrollYRef.current = 0
+    setCustomerDockHiddenSafely(false)
+  }, [active, setCustomerDockHiddenSafely])
+  const profileCanvasBackgroundImage =
     themeMode === 'dark'
-      ? 'radial-gradient(circle at 50% 12%, rgba(105,222,198,0.16), transparent 30%), linear-gradient(180deg, #071312 0%, #141B18 100%)'
-      : 'radial-gradient(circle at 50% 12%, rgba(142,231,217,0.35), transparent 28%), linear-gradient(180deg, #f2fbf7 0%, #fff9ee 100%)'
+      ? 'radial-gradient(circle at 52% 10%, rgba(230,244,240,0.055), transparent 30%), radial-gradient(circle at 72% 88%, rgba(105,222,198,0.045), transparent 28%), linear-gradient(180deg, #0B0F0E 0%, #111614 100%)'
+      : 'radial-gradient(circle at 50% 12%, rgba(142,231,217,0.18), transparent 28%), radial-gradient(circle at 76% 84%, rgba(105,222,198,0.075), transparent 28%), linear-gradient(180deg, #F4FAF7 0%, #F7FBF8 100%)'
+  const defaultCanvasBackgroundImage =
+    themeMode === 'dark'
+      ? 'radial-gradient(circle at 50% 12%, rgba(105,222,198,0.08), transparent 30%), linear-gradient(180deg, #0B0F0E 0%, #111614 100%)'
+      : 'radial-gradient(circle at 50% 12%, rgba(23,169,149,0.08), transparent 30%), linear-gradient(180deg, #F8FBF5 0%, #F4F7F6 100%)'
+  const appleIOS26CanvasBackgroundImage =
+    themeMode === 'dark'
+      ? 'radial-gradient(circle at 50% 4%, rgba(190,210,205,0.060), transparent 28%), radial-gradient(circle at 50% 34%, rgba(105,222,198,0.035), transparent 34%), linear-gradient(180deg, #0E1413 0%, #111816 58%, #0B0F0E 100%)'
+      : 'radial-gradient(circle at 50% -4%, rgba(255,255,255,0.98), transparent 28%), radial-gradient(circle at 50% 24%, rgba(0,200,179,0.070), transparent 34%), linear-gradient(180deg, #F7F8F8 0%, #F1F3F2 100%)'
+  const experimentalBackgroundImage = active === 'profile'
+    ? profileCanvasBackgroundImage
+    : appleIOS26MainSection
+      ? appleIOS26CanvasBackgroundImage
+      : defaultCanvasBackgroundImage
   const canvasLayer = {
     backgroundColor: tokens.canvas,
     experimental_backgroundImage: reduceTransparency ? undefined : experimentalBackgroundImage,
   } as any
+  const scrollLayer = active === 'profile' || appleIOS26MainSection ? canvasLayer : { backgroundColor: tokens.canvas }
 
   return (
     <SafeAreaView style={[styles.safeArea, canvasLayer]} testID={testID}>
@@ -1545,8 +2784,11 @@ function V4Frame({
           contentInsetAdjustmentBehavior="automatic"
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
+          onScroll={handleCustomerDockScroll}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
-          style={[styles.scroll, { backgroundColor: tokens.canvas }]}
+          style={[styles.scroll, scrollLayer]}
+          testID="customer-v4-scroll"
         >
           <View style={styles.hiddenMarker} testID="customer-dark-layer-ecology" />
           <View style={styles.hiddenMarker} testID="customer-shell-motion-field" />
@@ -1554,6 +2796,14 @@ function V4Frame({
           <View style={styles.hiddenMarker} testID="customer-client-prototype-parity-source" />
           <View style={styles.hiddenMarker} testID={CUSTOMER_NO_PROTOTYPE_SAMPLE_CLIENT_STATS} />
           <View style={styles.hiddenMarker} testID="customer-client-card-press-feedback" />
+          {appleIOS26MainSection ? (
+            <>
+              <View style={styles.hiddenMarker} testID="customer-apple-ios26-client-main-sections" />
+              <View style={styles.hiddenMarker} testID={`customer-${active}-ios26-main-section`} />
+              <View style={styles.hiddenMarker} testID="customer-ios26-standard-content-material" />
+              <View style={styles.hiddenMarker} testID="customer-ios26-liquid-control-layer" />
+            </>
+          ) : null}
           {children({ tokens, mode: themeMode })}
         </ScrollView>
         {reduceMotion || reduceTransparency ? null : <MotionSweep frameWidth={frameWidth} screenWidth={width} />}
@@ -1566,11 +2816,13 @@ function V4Dock({
   active,
   bottomInset,
   frameWidth,
+  hidden,
   screenWidth,
 }: {
   active: CustomerDockActive
   bottomInset: number
   frameWidth: number
+  hidden: boolean
   screenWidth: number
 }) {
   const { replace } = useRouter()
@@ -1580,56 +2832,114 @@ function V4Dock({
     if (timer) clearTimeout(timer)
     navigationTimerRef.current = null
   }, [])
-  const { reduceTransparency } = useGlassAccessibility()
+  const { reduceMotion } = useGlassAccessibility()
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
   const tokens = useCustomerTokens()
-  const dockWidth = Math.max(0, Math.min(frameWidth - 32, 392))
+  const dockWidth = Math.max(0, Math.min(frameWidth - 40, 360))
+  const dockActionSize = 56
+  const dockGap = 10
+  const dockMainWidth = Math.max(dockWidth - dockActionSize - dockGap, 0)
   const dockLeft = Math.max((screenWidth - dockWidth) / 2, 16)
   const bottom = Math.max(bottomInset + customerDockBottomMargin, customerDockBottomMargin)
+  const dockTranslateY = useSharedValue(hidden ? 80 : 0)
+  const dockScale = useSharedValue(hidden ? 0.97 : 1)
+  const dockOpacity = useSharedValue(hidden ? 0 : 1)
+  const dockMotionStyle = useAnimatedStyle(() => ({
+    opacity: dockOpacity.value,
+    transform: reduceMotion
+      ? []
+      : [
+        { translateY: dockTranslateY.value },
+        { scale: dockScale.value },
+      ],
+  }), [reduceMotion])
   type CustomerDockItem = FloatingGlassTabItem<CustomerDockActive> & {
     icon: IconName
-    path: '/(customer)/home' | '/(customer)/booking' | '/(customer)/kael-chat' | '/(customer)/history' | '/(customer)/profile'
+    path: '/(customer)/home' | '/(customer)/booking' | '/(customer)/history' | '/(customer)/profile'
   }
   const items: CustomerDockItem[] = [
     { accessibilityLabel: copy.navA11y.home, key: 'home', icon: 'apartment', label: copy.nav.home, path: '/(customer)/home', testID: 'customer-v4-dock-home' },
     { accessibilityLabel: copy.navA11y.booking, key: 'booking', icon: 'document', label: copy.nav.booking, path: openBookingPath, testID: 'customer-v4-dock-booking' },
-    { accessibilityLabel: copy.navA11y.kael, key: 'kael', icon: 'kael', label: copy.nav.kael, path: openKaelChatPath, testID: 'customer-v4-dock-kael' },
     { accessibilityLabel: copy.navA11y.activity, key: 'activity', icon: 'history', label: copy.nav.activity, path: '/(customer)/history', testID: 'customer-v4-dock-activity' },
     { accessibilityLabel: copy.navA11y.profile, key: 'profile', icon: 'person', label: copy.nav.profile, path: '/(customer)/profile', testID: 'customer-v4-dock-profile' },
   ]
+  const navigateWithLiquidDelay = useCallback((path: CustomerDockItem['path'] | typeof openKaelChatPath) => {
+    clearNavigationTimer()
+    navigationTimerRef.current = setTimeout(() => {
+      replace(path)
+      navigationTimerRef.current = null
+    }, 90)
+  }, [clearNavigationTimer, replace])
 
   useEffect(() => clearNavigationTimer, [clearNavigationTimer])
 
+  useEffect(() => {
+    if (reduceMotion) {
+      dockOpacity.value = withTiming(hidden ? 0 : 1, { duration: 120 })
+      dockTranslateY.value = 0
+      dockScale.value = 1
+      return
+    }
+
+    dockOpacity.value = withTiming(hidden ? 0 : 1, { duration: hidden ? 95 : 145 })
+    dockTranslateY.value = withSpring(hidden ? 80 : 0, hidden ? motionTokens.liquid.press : motionTokens.liquid.entrance)
+    dockScale.value = withSpring(hidden ? 0.97 : 1, hidden ? motionTokens.liquid.press : motionTokens.liquid.entrance)
+  }, [dockOpacity, dockScale, dockTranslateY, hidden, reduceMotion])
+
   return (
-    <View pointerEvents="box-none" style={[styles.dockWrap, { bottom, left: dockLeft, width: dockWidth }]}>
-      <View pointerEvents="none" style={[styles.dockBackdropShield, { backgroundColor: tokens.canvas }]} testID="customer-dock-backdrop-shield" />
+    <Animated.View pointerEvents={hidden ? 'none' : 'box-none'} style={[styles.dockWrap, { bottom, left: dockLeft, width: dockWidth }, dockMotionStyle]} testID="customer-dock-motion-shell">
       <View pointerEvents="none" style={styles.hiddenMarker} testID="customer-dock-glass-aura" />
-      <FloatingGlassTabBar<CustomerDockActive, CustomerDockItem>
-        activeKey={active}
-        items={items}
-        mode={tokens.mode}
-        onItemPress={(item) => {
-          if (item.key === active) return
-          lastCustomerDockActive = active
-          clearNavigationTimer()
-          navigationTimerRef.current = setTimeout(() => {
-            replace(item.path)
-            navigationTimerRef.current = null
-          }, 90)
-        }}
-        previousKey={lastCustomerDockActive}
-        iconForItem={(item, focused) =>
-          item.icon === 'kael' ? (
-            <Image contentFit="contain" source={kaelModel8AHead} style={styles.dockKaelImage} />
-          ) : (
-            <IconGlyph name={item.icon} color={focused ? tokens.primary : tokens.subtleText} accent={focused ? tokens.copper : tokens.subtleText} />
-          )
-        }
-        style={styles.glassDock}
-        testID="customer-liquid-glass-dock"
-      />
-    </View>
+      <View style={styles.customerDockSplitRow} testID="customer-dock-split-toolbar">
+        <FloatingGlassTabBar<CustomerDockActive, CustomerDockItem>
+          activeKey={active === 'kael' ? null : active}
+          appearance="appleLiquid"
+          items={items}
+          material="liquid"
+          mode={tokens.mode}
+          onItemPress={(item) => {
+            if (item.key === active) return
+            lastCustomerDockActive = active
+            navigateWithLiquidDelay(item.path)
+          }}
+          previousKey={active === 'kael' || lastCustomerDockActive === 'kael' ? null : lastCustomerDockActive}
+          iconForItem={(item, focused) => (
+            <MappedIcon
+              name={item.icon}
+              color={focused ? tokens.primary : customerDockInactiveTint(tokens)}
+              accent={focused ? tokens.primary : customerDockInactiveTint(tokens)}
+              size={24}
+            />
+          )}
+          style={[styles.glassDock, styles.customerDockMainCluster, { width: dockMainWidth }, customerDockMainClusterSurface(tokens)]}
+          testID="customer-liquid-glass-dock"
+        />
+        <Pressable
+          accessibilityLabel={copy.navA11y.kael}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: active === 'kael' }}
+          onPress={() => {
+            if (active === 'kael') return
+            lastCustomerDockActive = active
+            navigateWithLiquidDelay(openKaelChatPath)
+          }}
+          style={({ pressed }) => [styles.customerDockKaelActionPressable, reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+          testID="customer-v4-dock-kael"
+        >
+          <GlassSurface
+            material="liquid"
+            mode={tokens.mode}
+            style={[styles.customerDockKaelActionGlass, customerDockKaelActionSurface(tokens, active === 'kael')]}
+            testID="customer-dock-kael-action-glass"
+            variant="nav"
+          >
+            <View pointerEvents="none" style={[styles.customerDockKaelActionEdge, customerDockKaelActionEdgeSurface(tokens)]} testID="customer-dock-kael-action-edge" />
+            <View pointerEvents="none" style={[styles.customerDockKaelActionAura, customerDockKaelActionAuraSurface(tokens, active === 'kael')]} testID="customer-dock-kael-action-aura" />
+            <MappedIcon name="kael" color={active === 'kael' ? tokens.primary : customerDockInactiveTint(tokens)} accent={tokens.primary} size={29} />
+          </GlassSurface>
+        </Pressable>
+      </View>
+    </Animated.View>
   )
 }
 
@@ -1638,11 +2948,11 @@ function MotionSweep({ frameWidth, screenWidth }: { frameWidth: number; screenWi
   const sweep = useSharedValue(0)
   useEffect(() => {
     sweep.value = 0
-    sweep.value = withDelay(80, withTiming(1, { duration: 420 }))
+    sweep.value = withDelay(60, withTiming(1, { duration: 300 }))
   }, [sweep])
   const sweepStyle = useAnimatedStyle(() => ({
-    opacity: 0.16 * (1 - sweep.value),
-    transform: [{ translateX: -120 + sweep.value * (frameWidth + 240) }, { rotate: '8deg' }],
+    opacity: 0.1 * (1 - sweep.value),
+    transform: [{ translateX: -120 + sweep.value * (frameWidth + 240) }, { rotate: '-8deg' }],
   }), [frameWidth])
   if (tokens.glassHighlight === 'transparent') return null
   const left = Math.max((screenWidth - frameWidth) / 2, 0)
@@ -1683,7 +2993,7 @@ function V4MapBackdrop({ presence = false }: { presence?: boolean }) {
           <View style={[styles.mapRoute, { backgroundColor: tokens.primary }, routeStyle]} />
           <View style={[styles.mapRouteSoft, { backgroundColor: tokens.aqua }]} />
           <View style={[styles.mapVehicle, customerOpaqueSurface(tokens), vehicleStyle]}>
-            <IconGlyph name="estimate" color={tokens.primary} accent={tokens.copper} />
+            <MappedIcon name="estimate" color={tokens.primary} accent={tokens.copper} />
           </View>
         </>
       ) : null}
@@ -1695,10 +3005,10 @@ function V4MapBackdrop({ presence = false }: { presence?: boolean }) {
       <View style={[styles.mapRoom, styles.mapRoomThree, { borderColor: tokens.borderStrong }]} />
       {presence ? <View style={[styles.mapPin, { backgroundColor: tokens.primary, borderColor: tokens.glassBorder }, customerMapPinStyle]} /> : null}
       <View style={[styles.mapNode, styles.mapNodeElectric, customerOpaqueSurface(tokens)]}>
-        <IconGlyph name="boltPanel" color={tokens.primary} accent={tokens.copper} />
+        <MappedIcon name="boltPanel" color={tokens.primary} accent={tokens.copper} size={29} />
       </View>
       <View style={[styles.mapNode, styles.mapNodeWater, customerOpaqueSurface(tokens)]}>
-        <IconGlyph name="waterPipe" color={tokens.primary} accent={tokens.aqua} />
+        <MappedIcon name="waterPipe" color={tokens.primary} accent={tokens.aqua} size={29} />
       </View>
     </View>
   )
@@ -1725,7 +3035,9 @@ function V4ServiceCard({ compact = false, homeTile = false, icon, meta, onPress,
       testID={testID}
     >
       <View pointerEvents="none" style={[styles.glassRing, { borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.16)' : 'rgba(8,120,110,0.10)' }]} />
-      <IconShell icon={icon} tone={iconTone} size={compact ? 34 : 38} />
+      <View style={homeTile ? styles.homeTileIconStage : undefined} testID={homeTile ? `${testID}-icon-stage` : undefined}>
+        <IconShell icon={icon} tone={iconTone} size={homeTile ? 42 : compact ? 34 : 38} />
+      </View>
       <Text style={[styles.serviceTitle, homeTile ? styles.serviceTitleHome : null, { color: tokens.text }]} numberOfLines={2}>
         {title}
       </Text>
@@ -1735,87 +3047,6 @@ function V4ServiceCard({ compact = false, homeTile = false, icon, meta, onPress,
         </Text>
       ) : null}
     </Pressable>
-  )
-}
-
-function CustomerHistoryTabs({
-  activeTab,
-  labels,
-  onTabChange,
-  tokens,
-}: {
-  activeTab: CustomerHistoryTab
-  labels: readonly string[]
-  onTabChange: (tab: CustomerHistoryTab) => void
-  tokens: CustomerThemeTokens
-}) {
-  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
-  const [shellWidth, setShellWidth] = useState(0)
-  const activeIndex = Math.max(0, customerHistoryTabKeys.indexOf(activeTab))
-  const pillWidth = shellWidth > 0 ? Math.max((shellWidth - 24) / Math.max(labels.length, 1), 0) : 0
-  const pillLeft = 6 + activeIndex * (pillWidth + 6)
-  const tabProgress = useSharedValue(pillLeft)
-  useEffect(() => {
-    if (reduceMotion) {
-      tabProgress.value = pillLeft
-      return
-    }
-    tabProgress.value = withTiming(pillLeft, { duration: 210 })
-  }, [pillLeft, reduceMotion, tabProgress])
-  const liquidTabStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: tabProgress.value }],
-  }), [tabProgress])
-
-  return (
-    <View
-      onLayout={(event) => {
-        const nextWidth = event.nativeEvent.layout.width
-        setShellWidth((current) => Math.abs(current - nextWidth) > 0.5 ? nextWidth : current)
-      }}
-      style={[styles.filterRow, glassSurface(tokens, 'strong')]}
-      testID="customer-history-filter-shell"
-    >
-      <SubtleGlassHighlight />
-      <SubtleLiquidLight testID="customer-history-tab-liquid-selector" variant="tab" />
-      {pillWidth > 0 ? (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.filterLiquidPill,
-            {
-              backgroundColor: reduceTransparency ? tokens.service : tokens.service,
-              width: pillWidth,
-            },
-            liquidTabStyle,
-          ]}
-          testID="customer-history-tab-active-liquid-pill"
-        >
-          {!reduceTransparency ? <View style={[styles.filterLiquidSheen, { backgroundColor: tokens.glassHighlight }]} /> : null}
-        </Animated.View>
-      ) : null}
-      {labels.map((label, index) => {
-        const tab = customerHistoryTabKeys[index] ?? 'repair'
-        const selected = tab === activeTab
-        return (
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            key={tab}
-            onPress={() => onTabChange(tab)}
-            style={({ pressed }) => [
-              styles.filterChip,
-              selected ? { backgroundColor: 'transparent', borderColor: 'transparent' } : { backgroundColor: tokens.raised, borderColor: 'transparent' },
-              pressed ? styles.pressed : null,
-            ]}
-            testID={`customer-history-tab-${tab}`}
-          >
-            <Text style={[styles.filterText, { color: selected ? tokens.primary : tokens.muted }]} numberOfLines={1}>
-              {label}
-            </Text>
-          </Pressable>
-        )
-      })}
-    </View>
   )
 }
 
@@ -1839,28 +3070,27 @@ function CustomerHistoryPhaseContextPanel({
     : languageMode === 'en'
       ? 'No next event'
       : 'Không có sự kiện kế tiếp'
+  const reportBody = workflowPhaseReportBody(phaseContext, languageMode)
   const sectionSummary = workflowPhaseSectionSummary(visibleSections, languageMode)
 
   return (
-    <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-phase-context">
-      <View style={styles.sectionTitle}>
-        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+    <View style={[styles.flowCard, styles.historyReportCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-phase-context">
+      <View style={styles.historyReportHeader}>
+        <Text style={[styles.cardHeadline, styles.historyReportTitle, { color: tokens.text }]} numberOfLines={1} testID="customer-history-phase-title">
           {phaseContext.title[languageMode]}
         </Text>
-        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-          {workflowSourceOfTruthLabel(phaseContext.sourceOfTruth, languageMode)}
+        <Text style={[styles.historyReportBadge, { color: tokens.primary }]} numberOfLines={1}>
+          {languageMode === 'en' ? 'Report' : 'Báo cáo'}
         </Text>
       </View>
-      <Text style={[styles.historyDisclaimerText, { color: tokens.muted }]} numberOfLines={3}>
-        {phaseContext.intent[languageMode]}
+      <Text style={[styles.historyDisclaimerText, styles.historyReportBody, { color: tokens.muted }]} numberOfLines={2} testID="customer-history-phase-body">
+        {reportBody}
       </Text>
-      <View style={styles.twoCol}>
-        <V4TicketCell label={languageMode === 'en' ? 'Artifact' : 'Dấu mốc'} value={primaryArtifact} />
-        <V4TicketCell label={languageMode === 'en' ? 'Next' : 'Tiếp theo'} value={nextEvent} />
-      </View>
-      <View style={styles.twoCol}>
-        <V4TicketCell label={languageMode === 'en' ? 'Gate' : 'Cổng'} value={blockedReason} />
-        <V4TicketCell label={languageMode === 'en' ? 'Live sections' : 'Mục đang sống'} value={sectionSummary} valueLines={4} />
+      <View style={styles.historyReportGrid}>
+        <V4TicketCell label={languageMode === 'en' ? 'Artifact' : 'Dấu mốc'} testID="customer-history-phase-artifact-cell" value={primaryArtifact} variant="report" />
+        <V4TicketCell label={languageMode === 'en' ? 'Next' : 'Tiếp theo'} value={nextEvent} variant="report" />
+        <V4TicketCell label={languageMode === 'en' ? 'Gate' : 'Cổng'} value={blockedReason} variant="report" />
+        <V4TicketCell label={languageMode === 'en' ? 'Live sections' : 'Mục đang sống'} testID="customer-history-phase-live-cell" value={sectionSummary} valueLines={2} variant="report" />
       </View>
     </View>
   )
@@ -1893,26 +3123,102 @@ function CustomerHistoryCancellationContextPanel({
         {copy.history.cancelledBody}
       </Text>
       <View style={styles.twoCol}>
-        <V4TicketCell label={copy.ticket.status} value={visibleStatusLabel} />
-        <V4TicketCell label={languageMode === 'en' ? 'Gate' : 'Cổng'} value={workflowBlockedReasonLabel('job_cancelled', languageMode)} />
+        <V4TicketCell label={copy.ticket.status} value={visibleStatusLabel} variant="activity" />
+        <V4TicketCell label={languageMode === 'en' ? 'Gate' : 'Cổng'} value={workflowBlockedReasonLabel('job_cancelled', languageMode)} variant="activity" />
       </View>
       <View style={styles.twoCol}>
-        <V4TicketCell label={languageMode === 'en' ? 'Artifact' : 'Dấu mốc'} value={phaseContext.primaryArtifact?.title[languageMode] ?? copy.history.cancelledState} />
-        <V4TicketCell label={languageMode === 'en' ? 'Next' : 'Tiếp theo'} value={copy.history.newRequest} />
+        <V4TicketCell label={languageMode === 'en' ? 'Artifact' : 'Dấu mốc'} value={phaseContext.primaryArtifact?.title[languageMode] ?? copy.history.cancelledState} variant="activity" />
+        <V4TicketCell label={languageMode === 'en' ? 'Next' : 'Tiếp theo'} value={copy.history.newRequest} variant="activity" />
       </View>
     </View>
   )
 }
 
 function workflowPhaseSectionSummary(sections: WorkflowPhaseContext['sections'], languageMode: AppLanguage) {
-  const labels = sections.slice(0, 3).map((section) => {
-    const mode = section.mode ? workflowArtifactModeLabel(section.mode, languageMode) : workflowSourceOfTruthLabel(section.sourceOfTruth, languageMode)
-    return `${section.title[languageMode]} · ${mode}`
-  })
-  if (sections.length > 3) {
-    labels.push(languageMode === 'en' ? `+${sections.length - 3} more` : `+${sections.length - 3} mục nữa`)
+  const labels = sections.slice(0, 2).map((section) => section.title[languageMode])
+  if (sections.length > 2) {
+    labels.push(languageMode === 'en' ? `+${sections.length - 2} more` : `+${sections.length - 2} mục`)
   }
-  return labels.length > 0 ? labels.join('\n') : (languageMode === 'en' ? 'No visible section yet' : 'Chưa có mục hiển thị')
+  return labels.length > 0 ? labels.join(' · ') : (languageMode === 'en' ? 'No visible section yet' : 'Chưa có mục hiển thị')
+}
+
+function workflowPhaseReportBody(phaseContext: WorkflowPhaseContext, languageMode: AppLanguage) {
+  const reportBodies: Partial<Record<WorkflowPhaseContext['phase'], Record<AppLanguage, string>>> = {
+    intake_started: {
+      en: 'Kael has the intake. A real job is not open yet.',
+      vi: 'Kael đã nhận thông tin; chưa mở công việc thật.',
+    },
+    kael_collecting: {
+      en: 'Kael is shaping the ticket before analysis.',
+      vi: 'Kael đang gom dữ liệu để lập phiếu.',
+    },
+    kael_estimating: {
+      en: 'Kael is preparing the estimate.',
+      vi: 'Kael đang chuẩn bị ước tính.',
+    },
+    kael_explaining: {
+      en: 'Estimate is ready; matching is waiting for system approval.',
+      vi: 'Ước tính đã sẵn sàng; chờ hệ thống mở điều phối.',
+    },
+    ticket_review: {
+      en: 'Kael is reviewing the ticket before matching.',
+      vi: 'Kael đang rà soát phiếu trước khi điều phối.',
+    },
+    matching: {
+      en: 'Kael sent the ticket. Waiting for a worker.',
+      vi: 'Kael đã gửi phiếu. Đang chờ thợ nhận việc.',
+    },
+    worker_matched: {
+      en: 'A worker accepted. Track travel and chat if needed.',
+      vi: 'Thợ đã nhận việc; theo dõi di chuyển và chat khi cần.',
+    },
+    worker_on_way: {
+      en: 'The worker is on the way. Watch the timeline.',
+      vi: 'Thợ đang di chuyển; theo dõi timeline.',
+    },
+    arrived: {
+      en: 'The worker has arrived and can inspect the issue.',
+      vi: 'Thợ đã đến và có thể kiểm tra hiện trạng.',
+    },
+    inspecting: {
+      en: 'Inspection is active; scope changes still need Kael.',
+      vi: 'Đang kiểm tra; đổi phạm vi vẫn cần Kael.',
+    },
+    repairing: {
+      en: 'Work is active; completion still needs evidence.',
+      vi: 'Công việc đang chạy; hoàn tất cần bằng chứng.',
+    },
+    scope_change_pending: {
+      en: 'Kael is reviewing the scope change.',
+      vi: 'Kael đang rà soát thay đổi phạm vi.',
+    },
+    completed_by_worker: {
+      en: 'Worker evidence is in; Kael reviews completion.',
+      vi: 'Thợ đã gửi bằng chứng; Kael rà soát hoàn tất.',
+    },
+    customer_confirmed_completion: {
+      en: 'Completion is confirmed; payment and review follow the synced state.',
+      vi: 'Hoàn tất đã xác nhận; thanh toán và đánh giá theo trạng thái.',
+    },
+    payment_pending: {
+      en: 'Payment is pending before review opens.',
+      vi: 'Đang chờ thanh toán trước khi mở đánh giá.',
+    },
+    paid: {
+      en: 'Payment is done; review can open when allowed.',
+      vi: 'Đã thanh toán; đánh giá sẽ mở khi được phép.',
+    },
+    done: {
+      en: 'The transaction is closed.',
+      vi: 'Giao dịch đã đóng.',
+    },
+    cancelled: {
+      en: 'The request is cancelled; no recovery is simulated.',
+      vi: 'Yêu cầu đã hủy; không giả lập phục hồi.',
+    },
+  }
+
+  return reportBodies[phaseContext.phase]?.[languageMode] ?? phaseContext.intent[languageMode]
 }
 
 function CustomerHistoryRepairEmptyTimeline({
@@ -1924,11 +3230,15 @@ function CustomerHistoryRepairEmptyTimeline({
 }) {
   const emptyTimeline = getCustomerTimeline(null, languageMode).slice(0, 3)
   return (
-    <View style={[styles.flowCard, styles.historyTimelineCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-repair-empty-timeline">
+    <View style={[styles.flowCard, styles.historyTimelineCard, styles.activityTimelineCard, customerActivityTimelinePanelSurface(tokens)]} testID="customer-history-repair-empty-timeline">
+      <View pointerEvents="none" style={[styles.activityMaterialEdge, customerActivityEdgeHighlightSurface(tokens)]} testID="customer-history-empty-timeline-edge-highlight" />
+      <View pointerEvents="none" style={[styles.activityTimelineRail, customerActivityTimelineRailSurface(tokens)]} testID="customer-history-activity-empty-timeline-rail" />
       {emptyTimeline.map((item) => (
-        <View key={item.label} style={styles.timelineRow}>
-          <View style={[styles.timelineDot, { backgroundColor: tokens.borderStrong }]} />
-          <View style={styles.listCopy}>
+        <View key={item.label} style={[styles.timelineRow, styles.activityTimelineRow]}>
+          <View style={styles.activityTimelineMarker}>
+            <View style={[styles.timelineDot, styles.activityTimelineDot, customerActivityTimelineDotSurface(tokens, false)]} />
+          </View>
+          <View style={styles.activityTimelineCopy}>
             <Text style={[styles.timelineText, { color: tokens.text }]} numberOfLines={1}>
               {item.label}
             </Text>
@@ -1965,7 +3275,7 @@ function CustomerHistoryPriceEmptyPanel({
     <>
       <View style={[styles.bookingDiagnosisPanel, customerBookingDiagnosisSurface(tokens)]} testID="customer-history-price-empty-kael-summary">
         <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]}>
-          <IconGlyph name="kael" color={tokens.primary} accent={tokens.copper} />
+          <MappedIcon name="kael" color={tokens.primary} accent={tokens.copper} size={25} />
           <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
             {languageMode === 'en' ? 'Kael price summary' : 'Kael tóm tắt giá'}
           </Text>
@@ -1989,10 +3299,10 @@ function CustomerHistoryPriceEmptyPanel({
         <View style={styles.bookingGrid}>
           {priceRows.map(([label, value]) => (
             <View key={label} style={[styles.priceBox, customerHistoryPriceBoxSurface(tokens)]}>
-              <Text style={[styles.priceBoxLabel, { color: tokens.muted }]} numberOfLines={1}>
+              <Text style={[styles.priceBoxLabel, styles.activityPriceBoxLabel, { color: tokens.muted }]} numberOfLines={1}>
                 {label}
               </Text>
-              <Text style={[styles.priceBoxValue, { color: tokens.text }]} numberOfLines={2}>
+              <Text style={[styles.priceBoxValue, styles.activityPriceBoxValue, { color: tokens.text }]} numberOfLines={2}>
                 {value}
               </Text>
             </View>
@@ -2074,7 +3384,7 @@ function CustomerHistoryDoneMapEmptyPanel({
           </View>
         </View>
         <View style={[styles.presenceBadge, styles.presenceBadgeHome, { backgroundColor: tokens.service, borderColor: tokens.border }]} testID="customer-presence-map-done-empty-no-worker-badge">
-          <IconGlyph name="apartment" color={tokens.primary} accent={tokens.aqua} />
+          <MappedIcon name="apartment" color={tokens.primary} accent={tokens.aqua} size={25} />
           <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
             {copy.history.presenceHome}
           </Text>
@@ -2125,12 +3435,12 @@ function CustomerCompletionEvidencePanel({
         </Text>
       </View>
       <View style={styles.twoCol}>
-        <V4TicketCell label={copy.history.evidenceBefore} value={beforeValue} />
-        <V4TicketCell label={copy.history.evidenceAfter} value={afterValue} />
+        <V4TicketCell label={copy.history.evidenceBefore} value={beforeValue} variant="activity" />
+        <V4TicketCell label={copy.history.evidenceAfter} value={afterValue} variant="activity" />
       </View>
       <View style={styles.twoCol}>
-        <V4TicketCell label={languageMode === 'en' ? 'Worker notes' : 'Ghi chú thợ'} value={notesValue} />
-        <V4TicketCell label={copy.ticket.status} value={completionStatusLabel} />
+        <V4TicketCell label={languageMode === 'en' ? 'Worker notes' : 'Ghi chú thợ'} value={notesValue} variant="activity" />
+        <V4TicketCell label={copy.ticket.status} value={completionStatusLabel} variant="activity" />
       </View>
     </View>
   )
@@ -2183,7 +3493,7 @@ function CustomerHistoryDoneHero({
       : languageMode === 'en'
         ? 'Appears after real completion is updated.'
         : 'Chỉ hiện khi trạng thái hoàn tất được cập nhật.'
-  const statusPillLabel = isCompleted
+  const statusLabel = isCompleted
     ? copy.history.filters[3]
     : hasCompletionOutcome
       ? completionStatusLabel
@@ -2191,7 +3501,7 @@ function CustomerHistoryDoneHero({
       ? canSubmitReview
         ? copy.history.review
         : copy.history.waitingWorkerDone
-      : appCopy[languageMode].common.noRequest
+      : null
   const primaryLabel = canSubmitReview
     ? copy.history.review
     : isCompleted
@@ -2203,14 +3513,14 @@ function CustomerHistoryDoneHero({
   return (
     <View style={[styles.historyHeroPanel, styles.historyHeroPanelCompact, customerHistoryHeroSurface(tokens)]} testID="customer-history-done-hero">
       <SubtleLiquidLight testID="customer-history-done-hero-liquid" variant="rim" />
-      <View style={[styles.historyHeroStatusPill, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
-        <Text style={[styles.bookingStepText, { color: tokens.primary }]} numberOfLines={1}>
-          {statusPillLabel}
-        </Text>
-      </View>
       <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
         {title}
       </Text>
+      {statusLabel ? (
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {statusLabel}
+        </Text>
+      ) : null}
       <Text style={[styles.historyHeroBody, styles.historyHeroBodyCompact, { color: tokens.muted }]} numberOfLines={2}>
         {body}
       </Text>
@@ -2239,7 +3549,7 @@ function CustomerHistoryDoneTimeline({
 }) {
   const isWorkerDone = ['review', 'final', 'done'].includes(completionEvidenceMode)
   const isCustomerDone = isWorkerDone && (['review', 'final', 'done', 'blocked'].includes(reviewMode) || isDone)
-  const isReviewReady = isWorkerDone && reviewMode === 'review'
+  const isReviewReady = reviewMode === 'review'
   const isReviewDone = reviewMode === 'final' || reviewMode === 'done' || isDone
   const isReviewActive = isReviewReady || isReviewDone
   const reviewMeta = languageMode === 'en'
@@ -2323,8 +3633,8 @@ function CustomerHistoryReviewPanel({
         {copy.history.paymentReview}
       </Text>
       <View style={styles.twoCol}>
-        <V4TicketCell label={copy.history.payment} value={paymentValue} />
-        <V4TicketCell label={copy.history.review} value={reviewValue} />
+        <V4TicketCell label={copy.history.payment} value={paymentValue} variant="activity" />
+        <V4TicketCell label={copy.history.review} value={reviewValue} variant="activity" />
       </View>
       {canSubmitReview ? (
         <View style={styles.workerActions} testID="customer-history-review-submit">
@@ -2402,7 +3712,7 @@ function CustomerHistoryPricePanel({
       </View>
       <View style={[styles.bookingDiagnosisPanel, customerBookingDiagnosisSurface(tokens)]} testID="customer-history-price-kael-summary">
         <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]}>
-          <IconGlyph name="kael" color={tokens.primary} accent={tokens.copper} />
+          <MappedIcon name="kael" color={tokens.primary} accent={tokens.copper} size={25} />
           <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
             {languageMode === 'en' ? 'Kael price summary' : 'Kael tóm tắt giá'}
           </Text>
@@ -2414,23 +3724,23 @@ function CustomerHistoryPricePanel({
       <View style={styles.bookingGrid} testID="customer-history-price-check-grid">
         {priceGrid.map(([label, value]) => (
           <View key={label} style={[styles.priceBox, customerHistoryPriceBoxSurface(tokens)]}>
-            <Text style={[styles.priceBoxLabel, { color: tokens.muted }]} numberOfLines={1}>
+            <Text style={[styles.priceBoxLabel, styles.activityPriceBoxLabel, { color: tokens.muted }]} numberOfLines={1}>
               {label}
             </Text>
-            <Text style={[styles.priceBoxValue, { color: tokens.text }]} numberOfLines={2}>
+            <Text style={[styles.priceBoxValue, styles.activityPriceBoxValue, { color: tokens.text }]} numberOfLines={2}>
               {value}
             </Text>
           </View>
         ))}
       </View>
       <View style={styles.twoCol}>
-        <V4TicketCell label={copy.history.filters[1]} value={originalEstimateLabel} />
-        <V4TicketCell label={copy.ticket.finalPrice} value={finalPriceLabel} />
+        <V4TicketCell label={copy.history.filters[1]} value={originalEstimateLabel} variant="activity" />
+        <V4TicketCell label={copy.ticket.finalPrice} value={finalPriceLabel} variant="activity" />
       </View>
       {scopeChange ? (
         <View style={styles.twoCol}>
-          <V4TicketCell label={copy.history.reason} value={scopeChange.reason ?? copy.history.workerNoReason} />
-          <V4TicketCell label={copy.history.newPrice} value={scopePrice} />
+          <V4TicketCell label={copy.history.reason} value={scopeChange.reason ?? copy.history.workerNoReason} variant="activity" />
+          <V4TicketCell label={copy.history.newPrice} value={scopePrice} variant="activity" />
         </View>
       ) : null}
       <Text style={[styles.historyDisclaimerText, { color: tokens.muted }]} numberOfLines={3} testID="customer-history-price-disclaimer">
@@ -2438,7 +3748,7 @@ function CustomerHistoryPricePanel({
       </Text>
       <View style={styles.twoCol}>
         <PrimaryButton label={copy.history.openOrchestration} onPress={onOpenKael} compact testID="customer-history-price-open-kael" />
-        <V4TicketCell label={copy.history.openOrchestration} testID="customer-history-price-kael-status" value={visibleStatusLabel} />
+        <V4TicketCell label={copy.history.openOrchestration} testID="customer-history-price-kael-status" value={visibleStatusLabel} variant="activity" />
       </View>
     </View>
   )
@@ -2575,7 +3885,7 @@ function CustomerHistoryChatPanel({
           ]}
           testID="customer-history-chat-send"
         >
-          <IconGlyph name="send" color={canSend ? tokens.primaryText : tokens.subtleText} accent={tokens.aqua} />
+          <MappedIcon name="send" color={canSend ? tokens.primaryText : tokens.subtleText} accent={tokens.aqua} />
         </Pressable>
       </View>
       {lockedReason ? (
@@ -2652,49 +3962,69 @@ function CustomerCompletionPresenceMap({
           </View>
         </View>
         <View style={[styles.presenceBadge, styles.presenceBadgeHome, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
-          <IconGlyph name="apartment" color={tokens.primary} accent={tokens.aqua} />
+          <MappedIcon name="apartment" color={tokens.primary} accent={tokens.aqua} size={25} />
           <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
             {copy.history.presenceHome}
           </Text>
         </View>
         <View style={[styles.presenceBadge, styles.presenceBadgeWorker, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
-          <IconGlyph name="check" color={tokens.primary} accent={tokens.copper} />
+          <MappedIcon name="check" color={tokens.primary} accent={tokens.copper} />
           <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
             {copy.history.presenceWorker}
           </Text>
         </View>
       </View>
       <View style={styles.twoCol}>
-        <V4TicketCell label={copy.ticket.area} value={addressLabel} />
-        <V4TicketCell label={copy.ticket.status} value={visibleStatusLabel} />
+        <V4TicketCell label={copy.ticket.area} value={addressLabel} variant="activity" />
+        <V4TicketCell label={copy.ticket.status} value={visibleStatusLabel} variant="activity" />
       </View>
     </View>
   )
 }
 
-function V4TicketCell({ label, testID, value, valueLines = 2 }: { label: string; testID?: string; value: string; valueLines?: number }) {
+type V4TicketCellVariant = 'default' | 'activity' | 'report'
+
+function V4TicketCell({
+  label,
+  testID,
+  value,
+  valueLines = 2,
+  variant = 'default',
+}: {
+  label: string
+  testID?: string
+  value: string
+  valueLines?: number
+  variant?: V4TicketCellVariant
+}) {
   const tokens = useCustomerTokens()
+  const activityVariant = variant === 'activity'
+  const reportVariant = variant === 'report'
   return (
-    <View style={[styles.ticketCell, customerOpaqueSurface(tokens)]} testID={testID}>
-      <Text style={[styles.ticketLabel, { color: tokens.muted }]} numberOfLines={1}>
+    <View style={[styles.ticketCell, reportVariant ? styles.reportTicketCell : null, customerOpaqueSurface(tokens)]} testID={testID}>
+      <Text
+        style={[
+          styles.ticketLabel,
+          activityVariant ? styles.activityTicketLabel : null,
+          reportVariant ? styles.reportTicketLabel : null,
+          { color: tokens.muted },
+        ]}
+        numberOfLines={1}
+        testID={testID ? `${testID}-label` : undefined}
+      >
         {label}
       </Text>
-      <Text style={[styles.ticketValue, { color: tokens.text }]} numberOfLines={valueLines}>
+      <Text
+        style={[
+          styles.ticketValue,
+          activityVariant ? styles.activityTicketValue : null,
+          reportVariant ? styles.reportTicketValue : null,
+          { color: tokens.text },
+        ]}
+        numberOfLines={valueLines}
+        testID={testID ? `${testID}-value` : undefined}
+      >
         {value}
-      </Text>
-    </View>
-  )
-}
-
-function CustomerProfileSetupStep({ active, meta, title }: { active: boolean; meta: string; title: string }) {
-  const tokens = useCustomerTokens()
-  return (
-    <View style={[styles.profileSetupStep, active ? customerMintPillSurface(tokens) : { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="CustomerProfileSetupStep">
-      <Text style={[styles.profileSetupStepTitle, { color: tokens.text }]} numberOfLines={1}>
-        {title}
-      </Text>
-      <Text style={[styles.profileSetupStepMeta, { color: active ? tokens.primary : tokens.muted }]} numberOfLines={1}>
-        {meta}
       </Text>
     </View>
   )
@@ -2718,7 +4048,7 @@ function QuickCard({ icon, testID, title }: { icon: IconName; testID?: string; t
   const tokens = useCustomerTokens()
   return (
     <View style={[styles.quickCard, customerOpaqueSurface(tokens)]} testID={testID}>
-      <IconGlyph name={icon} color={tokens.primary} accent={tokens.copper} />
+      <MappedIcon name={icon} color={tokens.primary} accent={tokens.copper} size={29} />
       <Text style={[styles.quickTitle, { color: tokens.text }]} numberOfLines={2}>
         {title}
       </Text>
@@ -2728,9 +4058,12 @@ function QuickCard({ icon, testID, title }: { icon: IconName; testID?: string; t
 
 function ListRow({ compact = false, icon, meta, testID, title }: { compact?: boolean; icon: IconName; meta: string; testID?: string; title: string }) {
   const tokens = useCustomerTokens()
+  const compactRowSurface = compact ? customerProfileRowSurface(tokens) : null
   return (
-    <View style={[styles.listRow, compact ? styles.profileListRow : null]} testID={testID}>
-      <IconGlyph name={icon} color={tokens.primary} accent={tokens.copper} />
+    <View style={[styles.listRow, compact ? styles.profileListRow : null, compactRowSurface]} testID={testID}>
+      <View style={[styles.profileRowIconStage, customerProfileRowIconSurface(tokens)]}>
+        <MappedIcon name={icon} color={tokens.primary} accent={tokens.primary} size={compact ? 24 : 26} />
+      </View>
       <View style={[styles.listCopy, compact ? styles.profileListCopy : null]}>
         <Text style={[styles.listTitle, compact ? styles.profileListTitle : null, { color: tokens.text }]} numberOfLines={1}>
           {title}
@@ -2764,9 +4097,13 @@ function ActionRow({
   title: string
 }) {
   const tokens = useCustomerTokens()
+  const { reduceMotion } = useGlassAccessibility()
+  const compactRowSurface = compact ? customerProfileRowSurface(tokens) : null
   return (
-    <Pressable accessibilityLabel={title} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.listRow, compact ? styles.profileListRow : null, pressed ? styles.pressed : null]} testID={testID}>
-      <IconGlyph name={icon} color={tokens.primary} accent={tokens.copper} />
+    <Pressable accessibilityLabel={meta ? `${title}. ${meta}` : title} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.listRow, compact ? styles.profileListRow : null, compactRowSurface, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={testID}>
+      <View style={[styles.profileRowIconStage, customerProfileRowIconSurface(tokens)]}>
+        <MappedIcon name={icon} color={tokens.primary} accent={tokens.primary} size={compact ? 24 : 26} />
+      </View>
       <View style={[styles.listCopy, compact ? styles.profileListCopy : null]}>
         <Text style={[styles.listTitle, compact ? styles.profileListTitle : null, { color: tokens.text }]} numberOfLines={1}>
           {title}
@@ -2806,14 +4143,72 @@ function IconButton({ accessibilityLabel, icon, markerTestID }: { accessibilityL
   return (
     <View accessibilityLabel={accessibilityLabel} accessibilityRole="image" style={[styles.iconButton, glassSurface(tokens, 'strong')]} testID={markerTestID}>
       <SubtleGlassHighlight />
-      <IconGlyph name={icon} color={tokens.primary} accent={tokens.copper} />
+      <MappedIcon name={icon} color={tokens.primary} accent={tokens.copper} size={30} />
     </View>
   )
+}
+
+function ClientImageIcon({ chrome = 'inline', name, size }: { chrome?: 'inline' | 'shell'; name: ClientImageIconName; size: number }) {
+  const tokens = useCustomerTokens()
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const imageSize = Math.round(size * 1.28)
+  const showInlineBacking = chrome === 'inline'
+  return (
+    <View
+      pointerEvents="none"
+      style={[styles.clientImageIconStage, { height: size, width: size }]}
+      testID="customer-client-asset-appearance-adaptive"
+    >
+      {showInlineBacking ? (
+        <View
+          pointerEvents="none"
+          style={[styles.clientImageAssetBacking, customerClientAssetBackingSurface(tokens, 'inline')]}
+          testID={tokens.mode === 'dark' ? 'customer-client-asset-dark-elevated-base' : undefined}
+        />
+      ) : null}
+      <Image
+        contentFit="contain"
+        source={clientImageIcons[name]}
+        style={[styles.clientImageIcon, customerClientAssetImageTone(tokens), { height: imageSize, width: imageSize }]}
+      />
+      {tokens.mode === 'dark' && !reduceTransparency ? (
+        <View pointerEvents="none" style={[styles.clientImageAssetSoftener, customerClientAssetSoftenerSurface(tokens)]} testID="customer-client-asset-dark-softener" />
+      ) : null}
+    </View>
+  )
+}
+
+function MappedIcon({ accent, color, name, size = 25 }: { accent: string; color: string; name: IconName; size?: number }) {
+  const imageName = clientImageIconByGlyph[name]
+  if (imageName) return <ClientImageIcon name={imageName} size={size} />
+  return <IconGlyph name={name} color={color} accent={accent} />
 }
 
 function IconShell({ icon, tone = 'service', size = 46 }: { icon: IconName; tone?: SurfaceTone; size?: number }) {
   const tokens = useCustomerTokens()
   const accent = tone === 'water' ? tokens.aqua : tone === 'warm' ? tokens.copper : tokens.copper
+  const imageName = clientImageIconByGlyph[icon]
+
+  if (imageName) {
+    return (
+      <View
+        style={[
+          styles.iconShell,
+          styles.clientImageIconShell,
+          customerClientAssetBackingSurface(tokens, 'shell'),
+          {
+            borderRadius: Math.max(14, Math.round(size * 0.36)),
+            height: size,
+            width: size,
+          },
+        ]}
+        testID="customer-client-asset-elevated-shell"
+      >
+        <ClientImageIcon chrome="shell" name={imageName} size={Math.round(size * 0.98)} />
+      </View>
+    )
+  }
+
   return (
     <View
       style={[
@@ -2826,7 +4221,7 @@ function IconShell({ icon, tone = 'service', size = 46 }: { icon: IconName; tone
         },
       ]}
     >
-      <IconGlyph name={icon} color={tokens.primary} accent={accent} />
+      <MappedIcon name={icon} color={tokens.primary} accent={accent} size={Math.round(size * 0.96)} />
     </View>
   )
 }
@@ -2916,6 +4311,10 @@ function useCustomerTokens(): CustomerThemeTokens {
   return use(CustomerThemeContext)
 }
 
+function customerReduceTransparency(tokens: CustomerThemeTokens) {
+  return tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+}
+
 function getLayerSurface(tokens: CustomerThemeTokens, tone: SurfaceTone) {
   switch (tone) {
     case 'base':
@@ -2938,7 +4337,7 @@ function getLayerSurface(tokens: CustomerThemeTokens, tone: SurfaceTone) {
 }
 
 function customerSmallChipSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'base') {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const reduceTransparency = customerReduceTransparency(tokens)
   const isWater = tone === 'water'
   const isWarm = tone === 'warm'
   const isService = tone === 'service'
@@ -2965,57 +4364,143 @@ function customerSmallChipTextColor(tokens: CustomerThemeTokens, tone: SurfaceTo
   return tokens.text
 }
 
+function confirmCustomerHistoryCancellation(title: string, message: string) {
+  const runtime = globalThis as unknown as {
+    confirm?: (message?: string) => boolean
+    window?: { confirm?: (message?: string) => boolean }
+  }
+  const confirmDialog = runtime.confirm ?? runtime.window?.confirm
+  return confirmDialog ? confirmDialog(`${title}\n\n${message}`) : false
+}
+
+function customerLiquidEdgeHighlight(tokens: CustomerThemeTokens) {
+  return tokens.mode === 'dark' ? 'rgba(190,210,205,0.13)' : 'rgba(255,255,255,0.58)'
+}
+
+function customerLiquidShadow(tokens: CustomerThemeTokens, surface: 'control' | 'cta' | 'hero' | 'panel' | 'tile' = 'panel') {
+  if (customerReduceTransparency(tokens)) return 'none'
+  if (tokens.mode === 'dark') {
+    if (surface === 'hero') return '0 22px 56px rgba(0,0,0,0.32), inset 0 1px 0 rgba(190,210,205,0.10)'
+    if (surface === 'cta') return '0 16px 32px rgba(0,117,106,0.22), inset 0 1px 0 rgba(190,210,205,0.14)'
+    if (surface === 'control') return '0 10px 22px rgba(0,0,0,0.20), inset 0 1px 0 rgba(190,210,205,0.09)'
+    return '0 12px 34px rgba(0,0,0,0.28), inset 0 1px 0 rgba(190,210,205,0.08)'
+  }
+  if (surface === 'hero') return '0 18px 38px rgba(31,92,82,0.05), inset 0 1px 0 rgba(255,255,255,0.84)'
+  if (surface === 'cta') return '0 14px 30px rgba(0,117,106,0.18), inset 0 1px 0 rgba(255,255,255,0.62)'
+  if (surface === 'control') return '0 10px 22px rgba(31,92,82,0.04), inset 0 1px 0 rgba(255,255,255,0.70)'
+  if (surface === 'tile') return '0 10px 22px rgba(31,92,82,0.04), inset 0 1px 0 rgba(255,255,255,0.76)'
+  return '0 12px 28px rgba(31,92,82,0.05), inset 0 1px 0 rgba(255,255,255,0.72)'
+}
+
+type CustomerAppleIOS26MaterialRole = 'control' | 'field' | 'hero' | 'panel' | 'tile'
+
+function customerAppleIOS26SectionWashSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle, rgba(105,222,198,0.10), rgba(190,210,205,0.026) 44%, transparent 72%)'
+    : 'radial-gradient(circle, rgba(76,222,199,0.12), rgba(255,255,255,0.20) 44%, transparent 72%)'
+
+  return {
+    backgroundColor: reduceTransparency ? 'transparent' : tokens.mode === 'dark' ? 'rgba(105,222,198,0.055)' : 'rgba(76,222,199,0.075)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+    opacity: reduceTransparency ? 0 : tokens.mode === 'dark' ? 0.055 : 0.070,
+  } as any
+}
+
+function customerAppleIOS26MaterialSurface(tokens: CustomerThemeTokens, role: CustomerAppleIOS26MaterialRole = 'panel') {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const dark = tokens.mode === 'dark'
+  const hero = role === 'hero'
+  const control = role === 'control'
+  const tile = role === 'tile'
+  const field = role === 'field'
+  const lightGradient = hero
+    ? 'radial-gradient(circle at 72% 10%, rgba(0,200,179,0.080), transparent 31%), linear-gradient(180deg, rgba(255,255,255,0.78), rgba(246,248,248,0.60))'
+    : control
+      ? 'linear-gradient(145deg, rgba(255,255,255,0.74), rgba(246,248,248,0.58))'
+      : field
+        ? 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,248,248,0.94))'
+        : tile
+          ? 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,248,248,0.92))'
+          : 'linear-gradient(180deg, rgba(255,255,255,0.97), rgba(247,248,248,0.94))'
+  const darkGradient = hero
+    ? 'radial-gradient(circle at 72% 10%, rgba(105,222,198,0.070), transparent 31%), linear-gradient(180deg, rgba(24,31,29,0.82), rgba(17,22,21,0.68))'
+    : control
+      ? 'linear-gradient(145deg, rgba(31,42,40,0.74), rgba(22,29,27,0.62))'
+      : field
+        ? 'linear-gradient(180deg, rgba(24,31,29,0.96), rgba(15,20,19,0.92))'
+        : tile
+          ? 'linear-gradient(180deg, rgba(23,29,27,0.94), rgba(17,22,21,0.90))'
+          : 'linear-gradient(180deg, rgba(22,29,27,0.96), rgba(15,20,19,0.92))'
+
+  return {
+    backdropFilter: reduceTransparency || (!hero && !control) ? undefined : dark ? 'blur(18px) saturate(1.18)' : 'blur(20px) saturate(1.42)',
+    backgroundColor: reduceTransparency
+      ? dark ? '#161D1B' : '#FFFFFF'
+      : dark
+        ? hero ? 'rgba(22,29,27,0.70)' : control ? 'rgba(22,29,27,0.66)' : field ? 'rgba(24,31,29,0.96)' : 'rgba(22,29,27,0.92)'
+        : hero ? 'rgba(255,255,255,0.58)' : control ? 'rgba(255,255,255,0.62)' : field ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.94)',
+    borderColor: reduceTransparency
+      ? tokens.borderStrong
+      : dark
+        ? hero || control ? 'rgba(190,210,205,0.14)' : 'rgba(190,210,205,0.10)'
+        : hero || control ? 'rgba(255,255,255,0.66)' : 'rgba(20,73,66,0.08)',
+    boxShadow: reduceTransparency
+      ? 'none'
+      : dark
+        ? hero
+          ? '0 20px 46px rgba(0,0,0,0.30), inset 0 1px 0 rgba(190,210,205,0.10)'
+          : control
+            ? '0 10px 22px rgba(0,0,0,0.18), inset 0 1px 0 rgba(190,210,205,0.09)'
+            : tile
+              ? '0 8px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(190,210,205,0.055)'
+              : '0 12px 28px rgba(0,0,0,0.24), inset 0 1px 0 rgba(190,210,205,0.060)'
+        : hero
+          ? '0 18px 36px rgba(31,92,82,0.050), inset 0 1px 0 rgba(255,255,255,0.82)'
+          : control
+            ? '0 10px 20px rgba(31,92,82,0.035), inset 0 1px 0 rgba(255,255,255,0.72)'
+            : tile
+              ? '0 7px 16px rgba(31,92,82,0.035), inset 0 1px 0 rgba(255,255,255,0.70)'
+              : '0 10px 24px rgba(31,92,82,0.045), inset 0 1px 0 rgba(255,255,255,0.72)',
+    background: reduceTransparency ? undefined : dark ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : dark ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : dark ? darkGradient : lightGradient,
+    WebkitBackdropFilter: reduceTransparency || (!hero && !control) ? undefined : dark ? 'blur(18px) saturate(1.18)' : 'blur(20px) saturate(1.42)',
+  } as any
+}
+
 function glassSurface(tokens: CustomerThemeTokens, tone: 'default' | 'strong' | 'warm' | 'service' | 'water' | 'depth' = 'default') {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const warmAccent = tokens.mode === 'dark' ? 'rgba(224,160,107,0.20)' : 'rgba(255,184,102,0.23)'
-  const softWarmAccent = tokens.mode === 'dark' ? 'rgba(224,160,107,0.13)' : 'rgba(255,184,102,0.14)'
-  const mintWash = tokens.mode === 'dark' ? 'rgba(105,222,198,0.17)' : 'rgba(183,246,231,0.34)'
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const warmAccent = tokens.mode === 'dark' ? 'rgba(224,160,107,0.10)' : 'rgba(187,116,61,0.08)'
+  const mintWash = tokens.mode === 'dark' ? 'rgba(105,222,198,0.075)' : 'rgba(23,169,149,0.070)'
+  const waterWash = tokens.mode === 'dark' ? 'rgba(130,221,226,0.070)' : 'rgba(81,187,192,0.070)'
   const backgroundColor =
     tone === 'strong'
       ? tokens.glassStrong
       : tone === 'warm'
         ? tokens.glassWarm
-        : tone === 'service'
-          ? tokens.mode === 'dark'
-            ? 'rgba(23,59,53,0.72)'
-            : 'rgba(220,243,236,0.68)'
-          : tone === 'water'
-            ? tokens.mode === 'dark'
-              ? 'rgba(21,54,58,0.72)'
-              : 'rgba(232,249,251,0.68)'
-            : tone === 'depth'
-              ? tokens.mode === 'dark'
-                ? 'rgba(13,27,26,0.70)'
-                : 'rgba(234,246,241,0.70)'
-              : tokens.glass
+        : tone === 'depth'
+          ? tokens.mode === 'dark' ? 'rgba(19,25,24,0.70)' : 'rgba(255,255,255,0.62)'
+          : tokens.glass
   const experimentalBackgroundImage =
     tokens.mode === 'dark'
       ? tone === 'warm'
-        ? `radial-gradient(circle at 84% 42%, ${warmAccent}, transparent 31%), radial-gradient(circle at 18% 88%, ${mintWash}, transparent 38%), linear-gradient(120deg, rgba(59,41,27,0.70), rgba(18,34,32,0.68))`
-        : tone === 'service'
-          ? `radial-gradient(circle at 88% 16%, ${softWarmAccent}, transparent 22%), radial-gradient(circle at 74% 62%, rgba(105,222,198,0.18), transparent 34%), linear-gradient(145deg, rgba(23,59,53,0.78), rgba(12,26,25,0.68))`
-          : tone === 'water'
-            ? `radial-gradient(circle at 92% 12%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 78% 62%, rgba(105,222,198,0.16), transparent 34%), linear-gradient(145deg, rgba(21,54,58,0.76), rgba(12,26,25,0.68))`
-            : `radial-gradient(circle at 94% 10%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 10% 92%, ${mintWash}, transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.78), rgba(12,26,25,0.68))`
+        ? `radial-gradient(circle at 86% 16%, ${warmAccent}, transparent 28%), linear-gradient(145deg, rgba(30,37,34,0.66), rgba(22,29,27,0.50))`
+        : tone === 'water'
+          ? `radial-gradient(circle at 86% 14%, ${waterWash}, transparent 30%), linear-gradient(145deg, rgba(30,38,35,0.62), rgba(22,29,27,0.50))`
+          : `radial-gradient(circle at 86% 14%, ${mintWash}, transparent 30%), linear-gradient(145deg, rgba(30,38,35,0.62), rgba(22,29,27,0.50))`
       : tone === 'warm'
-        ? `radial-gradient(circle at 84% 42%, ${warmAccent}, transparent 31%), radial-gradient(circle at 18% 88%, ${mintWash}, transparent 38%), linear-gradient(120deg, rgba(201,248,237,0.62), rgba(255,243,205,0.48))`
-        : tone === 'service'
-          ? `radial-gradient(circle at 88% 16%, ${softWarmAccent}, transparent 22%), radial-gradient(circle at 74% 62%, rgba(22,185,168,0.26), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,248,241,0.56))`
-          : tone === 'water'
-            ? `radial-gradient(circle at 92% 12%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 78% 62%, rgba(33,165,177,0.28), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,249,247,0.58))`
-            : `radial-gradient(circle at 94% 10%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 10% 92%, ${mintWash}, transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(224,248,242,0.34))`
+        ? `radial-gradient(circle at 86% 16%, ${warmAccent}, transparent 28%), linear-gradient(145deg, rgba(255,255,255,0.72), rgba(246,248,248,0.48))`
+        : tone === 'water'
+          ? `radial-gradient(circle at 86% 14%, ${waterWash}, transparent 30%), linear-gradient(145deg, rgba(255,255,255,0.74), rgba(246,248,248,0.50))`
+          : `radial-gradient(circle at 86% 14%, ${mintWash}, transparent 30%), linear-gradient(145deg, rgba(255,255,255,0.74), rgba(246,248,248,0.50))`
 
   return {
     backgroundColor,
     borderColor: tokens.glassBorder,
-    boxShadow:
-      reduceTransparency
-        ? 'none'
-        : tone === 'default' || tone === 'strong'
-        ? tokens.mode === 'dark'
-          ? '0 10px 24px rgba(0,0,0,0.18)'
-          : '0 10px 24px rgba(13,70,65,0.07)'
-        : 'none',
+    boxShadow: reduceTransparency ? 'none' : tone === 'default' || tone === 'strong' ? customerLiquidShadow(tokens, 'panel') : 'none',
     experimental_backgroundImage: reduceTransparency ? undefined : experimentalBackgroundImage,
   }
 }
@@ -3030,85 +4515,229 @@ function customerMessageSurface(tokens: CustomerThemeTokens) {
 
 function customerOpaqueSurface(tokens: CustomerThemeTokens) {
   return {
-    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,43,40,0.94)' : 'rgba(255,253,248,0.96)',
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(23,29,27,0.94)' : 'rgba(255,255,255,0.96)',
     borderColor: tokens.border,
-    boxShadow: tokens.mode === 'dark' ? '0 8px 22px rgba(0,0,0,0.18)' : '0 8px 22px rgba(17,70,61,0.06)',
+    boxShadow: customerLiquidShadow(tokens, 'panel'),
     experimental_backgroundImage:
       tokens.mode === 'dark'
-        ? 'linear-gradient(180deg, rgba(22,43,40,0.96), rgba(18,39,36,0.94))'
-        : 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,255,252,0.88))',
+        ? 'linear-gradient(180deg, rgba(23,29,27,0.96), rgba(17,22,21,0.94))'
+        : 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,248,248,0.92))',
   }
 }
 
-function customerHomeFrameSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,255,252,0.90))'
-  const darkGradient = 'linear-gradient(180deg, rgba(22,43,40,0.96), rgba(18,39,36,0.94))'
+function customerWorkerMintOperationalTileSurface(tokens: CustomerThemeTokens, mintBoost: 'home' | 'standard' = 'standard') {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const specularCatch = tokens.mode === 'dark' ? 'rgba(190,210,205,0.026)' : 'rgba(255,255,255,0.58)'
+  const homeBoost = mintBoost === 'home'
+  const mintAura = tokens.mode === 'dark'
+    ? homeBoost ? 'rgba(105,222,198,0.12)' : 'rgba(105,222,198,0.10)'
+    : homeBoost ? 'rgba(76,222,199,0.12)' : 'rgba(76,222,199,0.10)'
+  const secondaryMintAura = tokens.mode === 'dark'
+    ? homeBoost ? 'rgba(105,222,198,0.048)' : 'rgba(105,222,198,0.044)'
+    : homeBoost ? 'rgba(76,222,199,0.061)' : 'rgba(76,222,199,0.055)'
+  const gradient = tokens.mode === 'dark'
+    ? `radial-gradient(circle at 50% 38%, ${mintAura}, transparent 48%), ${homeBoost ? `radial-gradient(circle at 86% 92%, ${secondaryMintAura}, transparent 46%), ` : ''}radial-gradient(circle at 74% 20%, ${specularCatch}, transparent 32%), linear-gradient(180deg, rgba(22,29,27,0.98), rgba(16,24,23,0.92))`
+    : `radial-gradient(circle at 50% 38%, ${mintAura}, transparent 48%), ${homeBoost ? `radial-gradient(circle at 86% 92%, ${secondaryMintAura}, transparent 46%), ` : ''}radial-gradient(circle at 74% 20%, ${specularCatch}, transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,249,248,0.94))`
 
   return {
-    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,43,40,0.96)' : reduceTransparency ? '#FFFDF8' : 'rgba(255,253,248,0.96)',
-    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.18)' : 'rgba(38,126,111,0.15)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 22px rgba(0,0,0,0.18)' : '0 10px 22px rgba(17,70,61,0.07), inset 0 1px 0 rgba(255,255,255,0.92)',
-    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: tokens.mode === 'dark' ? '#16211F' : homeBoost ? '#F8FFFC' : '#FAFFFD',
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.10)' : homeBoost ? 'rgba(20,117,105,0.092)' : 'rgba(20,73,66,0.08)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : customerLiquidShadow(tokens, 'tile'),
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function customerWorkerMintPanelSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 86% 0%, rgba(230,244,240,0.056), transparent 34%), linear-gradient(180deg, rgba(24,31,29,0.72), rgba(13,17,16,0.56))'
+    : 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(240,255,251,0.86))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,29,27,0.66)' : '#F8FFFC',
+    borderColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.12)' : 'rgba(35,96,84,0.13)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 15px 34px rgba(0,0,0,0.31), inset 0 1px 0 rgba(230,244,240,0.08)' : '0 10px 24px rgba(17,70,61,0.07)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function customerBookingActiveRequestSurface(tokens: CustomerThemeTokens) {
+  return customerHomeActiveDealSurface(tokens)
+}
+
+function customerHomeFrameSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const base = customerAppleIOS26MaterialSurface(tokens, 'control')
+  const lightGradient = 'radial-gradient(circle at 18% 50%, rgba(76,222,199,0.16), transparent 46%), radial-gradient(circle at 82% 12%, rgba(255,255,255,0.74), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.96), rgba(244,255,251,0.90))'
+  const darkGradient = 'radial-gradient(circle at 18% 50%, rgba(105,222,198,0.10), transparent 48%), radial-gradient(circle at 82% 12%, rgba(230,244,240,0.080), transparent 34%), linear-gradient(180deg, rgba(24,31,29,0.82), rgba(17,24,22,0.72))'
+  const gradient = tokens.mode === 'dark' ? darkGradient : lightGradient
+
+  return {
+    ...base,
+    background: reduceTransparency ? undefined : gradient,
+    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.74)' : '#F9FFFC',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.15)' : 'rgba(255,255,255,0.82)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark'
+      ? '0 12px 26px rgba(0,0,0,0.22), inset 0 1px 0 rgba(190,210,205,0.10)'
+      : '0 12px 26px rgba(31,92,82,0.045), inset 0 1px 0 rgba(255,255,255,0.88)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function customerHomeActiveDealSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const lightGradient = 'radial-gradient(circle at 30% 24%, rgba(76,222,199,0.20), transparent 44%), radial-gradient(circle at 88% 84%, rgba(76,222,199,0.10), transparent 48%), radial-gradient(circle at 80% 10%, rgba(255,255,255,0.70), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.97), rgba(244,255,251,0.92))'
+  const darkGradient = 'radial-gradient(circle at 30% 24%, rgba(105,222,198,0.13), transparent 44%), radial-gradient(circle at 88% 84%, rgba(105,222,198,0.06), transparent 48%), radial-gradient(circle at 80% 10%, rgba(230,244,240,0.075), transparent 34%), linear-gradient(180deg, rgba(24,31,29,0.86), rgba(17,24,22,0.76))'
+  const gradient = tokens.mode === 'dark' ? darkGradient : lightGradient
+
+  return {
+    background: reduceTransparency ? undefined : gradient,
+    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.78)' : '#F8FFFC',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(20,117,105,0.12)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark'
+      ? '0 13px 28px rgba(0,0,0,0.24), inset 0 1px 0 rgba(190,210,205,0.10)'
+      : '0 12px 26px rgba(31,92,82,0.055), inset 0 1px 0 rgba(255,255,255,0.86)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
   } as any
 }
 
 function customerHomeHeroSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = 'radial-gradient(circle at 86% 12%, rgba(193,251,242,0.68), transparent 36%), linear-gradient(140deg, rgba(240,255,250,0.86), rgba(255,248,232,0.80))'
-  const darkGradient = 'radial-gradient(circle at 86% 12%, rgba(105,222,198,0.18), transparent 36%), linear-gradient(140deg, rgba(18,48,43,0.92), rgba(38,32,23,0.82))'
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const base = customerAppleIOS26MaterialSurface(tokens, 'hero')
+  const lightGradient = 'radial-gradient(circle at 82% 8%, rgba(76,222,199,0.12), transparent 34%), radial-gradient(circle at 16% 96%, rgba(255,255,255,0.60), transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.74), rgba(244,255,251,0.60))'
+  const darkGradient = 'radial-gradient(circle at 82% 8%, rgba(105,222,198,0.085), transparent 34%), radial-gradient(circle at 16% 96%, rgba(190,210,205,0.045), transparent 32%), linear-gradient(180deg, rgba(24,31,29,0.78), rgba(17,22,21,0.66))'
+  const gradient = tokens.mode === 'dark' ? darkGradient : lightGradient
 
   return {
-    backgroundColor: tokens.mode === 'dark' ? 'rgba(18,48,43,0.92)' : reduceTransparency ? '#F7FFF9' : 'rgba(248,255,250,0.84)',
-    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.22)' : reduceTransparency ? 'rgba(38,126,111,0.16)' : 'rgba(255,255,255,0.82)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 12px 30px rgba(0,0,0,0.20)' : '0 18px 38px rgba(21,89,78,0.08), inset 0 1px 0 rgba(255,255,255,0.88)',
-    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    ...base,
+    background: reduceTransparency ? undefined : gradient,
+    backgroundColor: reduceTransparency ? base.backgroundColor : tokens.mode === 'dark' ? 'rgba(22,29,27,0.70)' : 'rgba(255,255,255,0.60)',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.15)' : 'rgba(255,255,255,0.72)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark'
+      ? '0 20px 46px rgba(0,0,0,0.30), inset 0 1px 0 rgba(190,210,205,0.10)'
+      : '0 18px 38px rgba(31,92,82,0.058), inset 0 1px 0 rgba(255,255,255,0.84)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
   } as any
 }
 
 function customerHomePromptSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,255,252,0.86))'
-  const darkGradient = 'linear-gradient(180deg, rgba(22,43,40,0.96), rgba(18,39,36,0.92))'
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const lightGradient = 'radial-gradient(circle at 80% 18%, rgba(76,222,199,0.13), transparent 42%), radial-gradient(circle at 12% 0%, rgba(255,255,255,0.72), transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243,255,251,0.92))'
+  const darkGradient = 'radial-gradient(circle at 80% 18%, rgba(105,222,198,0.080), transparent 42%), radial-gradient(circle at 12% 0%, rgba(190,210,205,0.070), transparent 32%), linear-gradient(180deg, rgba(24,31,29,0.96), rgba(15,20,19,0.92))'
+  const gradient = tokens.mode === 'dark' ? darkGradient : lightGradient
 
   return {
-    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,43,40,0.96)' : reduceTransparency ? '#FFFDF8' : 'rgba(255,253,248,0.94)',
-    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.18)' : 'rgba(38,126,111,0.15)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.16)' : '0 10px 22px rgba(17,70,61,0.07), inset 0 1px 0 rgba(255,255,255,0.92)',
-    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    ...customerAppleIOS26MaterialSurface(tokens, 'field'),
+    background: reduceTransparency ? undefined : gradient,
+    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(24,31,29,0.96)' : '#F8FFFC',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(15,133,118,0.12)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark'
+      ? '0 8px 18px rgba(0,0,0,0.16), inset 0 1px 0 rgba(190,210,205,0.070)'
+      : '0 10px 24px rgba(31,92,82,0.040), inset 0 1px 0 rgba(255,255,255,0.80)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
   } as any
 }
 
 function customerHomeControlSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = 'linear-gradient(180deg, rgba(225,252,245,0.94), rgba(211,247,239,0.86))'
-  const darkGradient = 'linear-gradient(180deg, rgba(23,59,53,0.96), rgba(16,45,42,0.92))'
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const lightGradient = 'radial-gradient(circle at 50% 44%, rgba(76,222,199,0.10), transparent 54%), radial-gradient(circle at 34% 8%, rgba(255,255,255,0.72), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,252,249,0.92))'
+  const darkGradient = 'radial-gradient(circle at 50% 44%, rgba(105,222,198,0.070), transparent 54%), radial-gradient(circle at 34% 8%, rgba(190,210,205,0.090), transparent 34%), linear-gradient(180deg, rgba(25,33,31,0.94), rgba(18,24,22,0.88))'
+  const gradient = tokens.mode === 'dark' ? darkGradient : lightGradient
 
   return {
-    backgroundColor: tokens.mode === 'dark' ? '#173B35' : reduceTransparency ? '#DCFBF3' : 'rgba(220,251,243,0.90)',
-    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.24)' : 'rgba(13,134,119,0.18)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.18)' : '0 8px 18px rgba(17,70,61,0.08), inset 0 1px 0 rgba(255,255,255,0.82)',
+    ...customerAppleIOS26MaterialSurface(tokens, 'control'),
+    background: reduceTransparency ? undefined : gradient,
+    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.66)' : 'rgba(255,255,255,0.66)',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.13)' : 'rgba(15,133,118,0.11)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark'
+      ? 'inset 0 1px 0 rgba(190,210,205,0.075)'
+      : '0 8px 18px rgba(31,92,82,0.030), inset 0 1px 0 rgba(255,255,255,0.80)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function customerHomeIconOnlySurface(tokens: CustomerThemeTokens) {
+  return {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    boxShadow: 'none',
+    experimental_backgroundImage: undefined,
+    opacity: tokens.mode === 'dark' ? 0.95 : 1,
+  } as any
+}
+
+function customerClientAssetBackingSurface(tokens: CustomerThemeTokens, placement: 'inline' | 'shell') {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const shell = placement === 'shell'
+  const lightGradient = shell
+    ? 'radial-gradient(circle at 72% 36%, rgba(76,222,199,0.20), transparent 42%), linear-gradient(145deg, rgba(255,255,255,0.94), rgba(241,254,251,0.72))'
+    : 'radial-gradient(circle at 50% 42%, rgba(255,255,255,0.28), transparent 68%)'
+  const darkGradient = shell
+    ? 'radial-gradient(circle at 72% 36%, rgba(105,222,198,0.10), transparent 44%), linear-gradient(145deg, rgba(190,210,205,0.055), rgba(22,29,27,0.08))'
+    : 'radial-gradient(circle at 50% 42%, rgba(230,244,240,0.13), rgba(190,210,205,0.055) 44%, transparent 72%)'
+
+  return {
+    backgroundColor: reduceTransparency
+      ? tokens.mode === 'dark' ? '#171D1B' : shell ? '#FFFFFF' : 'transparent'
+      : tokens.mode === 'dark'
+        ? shell ? 'rgba(190,210,205,0.035)' : 'rgba(230,244,240,0.055)'
+        : shell ? 'rgba(245,255,252,0.72)' : 'rgba(255,255,255,0.12)',
     background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: reduceTransparency
+      ? tokens.borderStrong
+      : tokens.mode === 'dark'
+        ? shell ? 'rgba(190,210,205,0.07)' : 'rgba(190,210,205,0.15)'
+        : shell ? 'rgba(20,117,105,0.08)' : 'transparent',
+    borderWidth: tokens.mode === 'dark' || shell ? 1 : 0,
+    boxShadow: reduceTransparency
+      ? 'none'
+      : tokens.mode === 'dark'
+        ? shell
+          ? '0 0 0 5px rgba(105,222,198,0.045), 0 10px 22px rgba(0,0,0,0.12), inset 0 1px 0 rgba(190,210,205,0.06)'
+          : 'inset 0 1px 0 rgba(230,244,240,0.08)'
+        : shell
+          ? '0 0 0 5px rgba(76,222,199,0.070), 0 12px 24px rgba(23,169,149,0.080), inset 0 1px 0 rgba(255,255,255,0.82)'
+          : 'none',
     experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
   } as any
 }
 
+function customerClientAssetImageTone(tokens: CustomerThemeTokens) {
+  return {
+    opacity: tokens.mode === 'dark' ? 0.91 : 1,
+    transform: [{ scale: tokens.mode === 'dark' ? 0.985 : 1 }],
+  } as any
+}
+
+function customerClientAssetSoftenerSurface(tokens: CustomerThemeTokens) {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(11,15,14,0.070)' : 'transparent',
+    borderColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.055)' : 'transparent',
+  } as any
+}
+
 function customerHomeSendSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = 'linear-gradient(135deg, #0B5C50, #0E9C88)'
-  const darkGradient = 'linear-gradient(135deg, #69DEC6, #22BDA5)'
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const lightGradient = 'linear-gradient(135deg, #17A995, #00756A)'
+  const darkGradient = 'linear-gradient(135deg, #69DEC6, #00756A)'
 
   return {
-    backgroundColor: tokens.mode === 'dark' ? '#69DEC6' : '#0B5C50',
-    borderColor: tokens.mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.34)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 18px rgba(0,0,0,0.22)' : '0 12px 22px rgba(9,121,106,0.20), inset 0 1px 0 rgba(255,255,255,0.24)',
+    backgroundColor: reduceTransparency ? tokens.primary : tokens.mode === 'dark' ? '#69DEC6' : '#17A995',
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.30)',
+    boxShadow: customerLiquidShadow(tokens, 'cta'),
     background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
@@ -3116,63 +4745,39 @@ function customerHomeSendSurface(tokens: CustomerThemeTokens) {
 }
 
 function customerBookingDiagnosisSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = 'radial-gradient(circle at 94% 18%, rgba(255,244,219,0.64), transparent 30%), linear-gradient(135deg, rgba(223,253,246,0.96), rgba(255,247,226,0.82))'
-  const darkGradient = 'radial-gradient(circle at 94% 18%, rgba(224,160,107,0.15), transparent 30%), linear-gradient(135deg, rgba(17,54,48,0.96), rgba(38,32,23,0.82))'
-
-  return {
-    backgroundColor: tokens.mode === 'dark' ? 'rgba(17,54,48,0.94)' : 'rgba(229,252,246,0.94)',
-    borderColor: tokens.mode === 'dark' ? tokens.borderStrong : 'rgba(13,134,119,0.16)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.16)' : '0 12px 26px rgba(17,70,61,0.055)',
-    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-  } as any
+  return customerAppleIOS26MaterialSurface(tokens, 'panel')
 }
 
 function customerHistoryHeroSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = 'radial-gradient(circle at 84% 12%, rgba(189,255,241,0.82), transparent 36%), radial-gradient(circle at 96% 70%, rgba(255,236,198,0.50), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.94), rgba(238,255,250,0.88))'
-  const darkGradient = 'radial-gradient(circle at 82% 12%, rgba(105,222,198,0.18), transparent 36%), radial-gradient(circle at 96% 70%, rgba(224,160,107,0.13), transparent 34%), linear-gradient(145deg, rgba(22,43,40,0.96), rgba(13,29,27,0.92))'
+  return customerAppleIOS26MaterialSurface(tokens, 'hero')
+}
+
+function customerActivityHeroSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const lightGradient = 'radial-gradient(circle at 86% 14%, rgba(23,169,149,0.12), transparent 31%), linear-gradient(135deg, rgba(255,255,255,0.66), rgba(241,255,251,0.52))'
+  const darkGradient = 'radial-gradient(circle at 84% 16%, rgba(105,222,198,0.090), transparent 31%), radial-gradient(circle at 24% 8%, rgba(230,244,240,0.080), transparent 34%), linear-gradient(135deg, rgba(28,36,33,0.70), rgba(12,16,15,0.54))'
 
   return {
-    backgroundColor: tokens.mode === 'dark' ? 'rgba(20,44,40,0.96)' : 'rgba(255,255,255,0.94)',
-    borderColor: tokens.mode === 'dark' ? tokens.borderStrong : 'rgba(13,134,119,0.15)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 16px 32px rgba(0,0,0,0.20)' : '0 18px 38px rgba(17,70,61,0.095)',
+    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.54)' : 'rgba(255,255,255,0.48)',
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(230,244,240,0.18)' : 'rgba(255,255,255,0.86)',
+    borderWidth: 1,
+    boxShadow: customerLiquidShadow(tokens, 'hero'),
     background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
   } as any
+}
+
+function customerActivityTimelinePanelSurface(tokens: CustomerThemeTokens) {
+  return customerWorkerMintPanelSurface(tokens)
 }
 
 function customerHistoryPanelSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = 'radial-gradient(circle at 92% 10%, rgba(215,255,246,0.56), transparent 32%), linear-gradient(180deg, rgba(255,253,248,0.98), rgba(247,255,252,0.92))'
-  const darkGradient = 'radial-gradient(circle at 92% 10%, rgba(105,222,198,0.12), transparent 32%), linear-gradient(180deg, rgba(22,43,40,0.96), rgba(17,36,34,0.94))'
-
-  return {
-    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,43,40,0.96)' : 'rgba(255,253,248,0.97)',
-    borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(35,96,84,0.12)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 24px rgba(0,0,0,0.18)' : '0 12px 30px rgba(17,70,61,0.075)',
-    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-  } as any
+  return customerWorkerMintPanelSurface(tokens)
 }
 
 function customerHistoryPriceBoxSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = 'radial-gradient(circle at 90% 18%, rgba(202,255,242,0.58), transparent 38%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,255,252,0.92))'
-  const darkGradient = 'radial-gradient(circle at 90% 18%, rgba(105,222,198,0.12), transparent 38%), linear-gradient(180deg, rgba(19,43,42,0.98), rgba(17,36,34,0.94))'
-
-  return {
-    backgroundColor: tokens.mode === 'dark' ? 'rgba(19,43,42,0.96)' : 'rgba(255,255,255,0.96)',
-    borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(35,96,84,0.13)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.14)' : '0 8px 20px rgba(17,70,61,0.055)',
-    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-  } as any
+  return customerAppleIOS26MaterialSurface(tokens, 'tile')
 }
 
 function customerHistoryChatBubbleSurface(tokens: CustomerThemeTokens, role: 'kael' | 'other' | 'user') {
@@ -3197,181 +4802,340 @@ function customerHistoryChatBubbleSurface(tokens: CustomerThemeTokens, role: 'ka
 }
 
 function customerHistoryMapViewportSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = 'radial-gradient(circle at 72% 18%, rgba(190,252,240,0.84), transparent 34%), radial-gradient(circle at 22% 70%, rgba(220,250,244,0.62), transparent 32%), linear-gradient(145deg, rgba(250,255,253,0.98), rgba(241,253,249,0.90))'
-  const darkGradient = 'radial-gradient(circle at 72% 18%, rgba(105,222,198,0.18), transparent 34%), radial-gradient(circle at 22% 70%, rgba(80,190,202,0.10), transparent 32%), linear-gradient(145deg, rgba(15,38,36,0.98), rgba(18,39,36,0.92))'
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const lightGradient = 'radial-gradient(circle at 72% 18%, rgba(0,200,179,0.055), transparent 34%), linear-gradient(145deg, rgba(250,255,253,0.98), rgba(247,248,248,0.92))'
+  const darkGradient = 'radial-gradient(circle at 72% 18%, rgba(105,222,198,0.050), transparent 34%), linear-gradient(145deg, rgba(19,25,24,0.98), rgba(17,22,21,0.92))'
 
   return {
-    backgroundColor: tokens.mode === 'dark' ? '#102B29' : '#F2FFFA',
-    borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(13,134,119,0.12)',
+    backgroundColor: tokens.mode === 'dark' ? tokens.depthSurface : '#F7F8F8',
+    borderColor: tokens.border,
     background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerActivityEdgeHighlightSurface(tokens: CustomerThemeTokens) {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.78)',
+  }
+}
+
+function customerActivityStatusLensSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(145deg, rgba(31,42,40,0.78), rgba(22,29,27,0.62))'
+    : 'linear-gradient(145deg, rgba(255,255,255,0.82), rgba(246,248,248,0.62))'
+
+  return {
+    ...customerAppleIOS26MaterialSurface(tokens, 'control'),
+    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.70)' : 'rgba(255,255,255,0.70)',
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.15)' : 'rgba(255,255,255,0.72)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function customerActivityTimelineRailSurface(tokens: CustomerThemeTokens) {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.11)' : 'rgba(8,120,110,0.09)',
+  }
+}
+
+function customerActivityTimelineDotSurface(tokens: CustomerThemeTokens, active: boolean) {
+  return {
+    backgroundColor: active ? tokens.primary : tokens.mode === 'dark' ? 'rgba(190,210,205,0.18)' : 'rgba(197,226,220,0.92)',
+    borderColor: active ? tokens.mode === 'dark' ? 'rgba(190,210,205,0.18)' : 'rgba(255,255,255,0.86)' : tokens.mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(255,255,255,0.80)',
+    boxShadow: active && !customerReduceTransparency(tokens)
+      ? tokens.mode === 'dark' ? '0 0 0 5px rgba(105,222,198,0.070)' : '0 0 0 5px rgba(23,169,149,0.080)'
+      : 'none',
   } as any
 }
 
 function customerHomeServiceTileSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'service') {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const isWater = tone === 'water'
-  const isWarm = tone === 'warm'
-  const lightGradient = isWarm
-    ? 'radial-gradient(circle at 86% 24%, rgba(255,232,184,0.70), transparent 34%), linear-gradient(180deg, rgba(255,253,248,0.98), rgba(255,248,232,0.88))'
-    : isWater
-      ? 'radial-gradient(circle at 84% 24%, rgba(183,243,247,0.82), transparent 34%), linear-gradient(180deg, rgba(248,255,254,0.98), rgba(231,251,249,0.90))'
-      : 'radial-gradient(circle at 84% 24%, rgba(177,249,234,0.86), transparent 34%), linear-gradient(180deg, rgba(247,255,251,0.98), rgba(226,250,242,0.90))'
-  const darkGradient = isWarm
-    ? 'radial-gradient(circle at 82% 22%, rgba(224,160,107,0.20), transparent 34%), linear-gradient(180deg, rgba(34,29,23,0.98), rgba(18,39,36,0.88))'
-    : isWater
-      ? 'radial-gradient(circle at 82% 22%, rgba(80,190,202,0.18), transparent 34%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(15,44,45,0.88))'
-      : 'radial-gradient(circle at 82% 22%, rgba(105,222,198,0.18), transparent 34%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(13,29,27,0.90))'
-
-  return {
-    backgroundColor: tokens.mode === 'dark'
-      ? isWarm ? '#221D17' : isWater ? '#102B2C' : '#122724'
-      : isWarm ? '#FFF8EA' : isWater ? '#F0FEFF' : '#F0FFF9',
-    borderColor: tokens.mode === 'dark'
-      ? isWarm ? 'rgba(244,190,122,0.22)' : 'rgba(138,235,217,0.18)'
-      : isWarm ? 'rgba(176,118,44,0.22)' : isWater ? 'rgba(35,156,168,0.20)' : 'rgba(38,126,111,0.15)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.20)' : '0 10px 22px rgba(17,70,61,0.07), inset 0 1px 0 rgba(255,255,255,0.92)',
-    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-  } as any
+  void tone
+  return customerWorkerMintOperationalTileSurface(tokens, 'home')
 }
 
 function customerBookingServiceTileSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'service') {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const isWater = tone === 'water'
-  const isWarm = tone === 'warm'
-  const lightGradient = isWarm
-    ? 'radial-gradient(circle at 82% 22%, rgba(255,230,178,0.68), transparent 36%), linear-gradient(180deg, rgba(255,254,250,0.98), rgba(255,247,230,0.88))'
-    : isWater
-      ? 'radial-gradient(circle at 82% 22%, rgba(181,241,247,0.78), transparent 36%), linear-gradient(180deg, rgba(250,255,254,0.98), rgba(232,251,250,0.90))'
-      : 'radial-gradient(circle at 82% 22%, rgba(177,249,234,0.82), transparent 36%), linear-gradient(180deg, rgba(250,255,252,0.98), rgba(226,250,242,0.90))'
-  const darkGradient = isWarm
-    ? 'radial-gradient(circle at 80% 20%, rgba(224,160,107,0.18), transparent 36%), linear-gradient(180deg, rgba(34,29,23,0.98), rgba(18,39,36,0.88))'
-    : isWater
-      ? 'radial-gradient(circle at 80% 20%, rgba(80,190,202,0.17), transparent 36%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(15,44,45,0.88))'
-      : 'radial-gradient(circle at 80% 20%, rgba(105,222,198,0.17), transparent 36%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(13,29,27,0.90))'
-
-  return {
-    backgroundColor: tokens.mode === 'dark'
-      ? isWarm ? '#221D17' : isWater ? '#102B2C' : '#122724'
-      : isWarm ? '#FFF7E8' : isWater ? '#F0FEFF' : '#F0FFF9',
-    borderColor: tokens.mode === 'dark'
-      ? isWarm ? 'rgba(224,160,107,0.20)' : 'rgba(105,222,198,0.16)'
-      : isWarm ? 'rgba(202,145,75,0.20)' : isWater ? 'rgba(35,156,168,0.18)' : 'rgba(15,130,115,0.16)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.20)' : '0 10px 24px rgba(17,70,61,0.075)',
-    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-  } as any
+  void tone
+  return customerWorkerMintOperationalTileSurface(tokens)
 }
 
 function customerSelectedServiceTileSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'service') {
-  const isWarm = tone === 'warm'
-  const isWater = tone === 'water'
+  void tone
   return {
-    borderColor: tokens.mode === 'dark'
-      ? isWarm ? 'rgba(244,190,122,0.34)' : 'rgba(138,235,217,0.34)'
-      : isWarm ? 'rgba(176,118,44,0.30)' : isWater ? 'rgba(35,156,168,0.30)' : 'rgba(13,134,119,0.30)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.34)' : 'rgba(13,134,119,0.30)',
     boxShadow: tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
       ? 'none'
       : tokens.mode === 'dark'
         ? '0 12px 24px rgba(0,0,0,0.22)'
-        : isWarm
-          ? '0 12px 24px rgba(176,118,44,0.11)'
-          : '0 12px 24px rgba(9,121,106,0.12)',
+        : '0 12px 24px rgba(9,121,106,0.12)',
   }
 }
 
 function customerHomeShortcutSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'service') {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const isWater = tone === 'water'
-  const lightGradient = isWater
-    ? 'radial-gradient(circle at 92% 10%, rgba(183,243,247,0.70), transparent 32%), linear-gradient(180deg, rgba(244,255,253,0.96), rgba(232,250,248,0.88))'
-    : 'radial-gradient(circle at 92% 10%, rgba(177,249,234,0.74), transparent 32%), linear-gradient(180deg, rgba(245,255,250,0.96), rgba(231,250,244,0.88))'
-  const darkGradient = isWater
-    ? 'radial-gradient(circle at 88% 10%, rgba(80,190,202,0.16), transparent 32%), linear-gradient(180deg, rgba(18,39,36,0.96), rgba(15,44,45,0.88))'
-    : 'radial-gradient(circle at 88% 10%, rgba(105,222,198,0.17), transparent 32%), linear-gradient(180deg, rgba(18,39,36,0.96), rgba(13,29,27,0.90))'
+  void tone
+  return customerWorkerMintOperationalTileSurface(tokens, 'home')
+}
+
+function customerMintPillSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  return tokens.mode === 'dark'
+    ? { backgroundColor: tokens.service, borderColor: tokens.borderStrong }
+    : { backgroundColor: reduceTransparency ? '#DCFBF3' : 'rgba(232,252,247,0.78)', borderColor: 'rgba(23,169,149,0.16)' }
+}
+
+function customerDockInactiveTint(tokens: CustomerThemeTokens) {
+  return tokens.mode === 'dark' ? 'rgba(190,210,205,0.62)' : 'rgba(92,106,102,0.72)'
+}
+
+function customerDockMainClusterSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 18% 8%, rgba(190,210,205,0.070), transparent 32%), radial-gradient(circle at 80% 102%, rgba(255,255,255,0.035), transparent 42%), linear-gradient(180deg, rgba(31,42,40,0.24), rgba(22,29,27,0.075))'
+    : 'radial-gradient(circle at 18% 8%, rgba(255,255,255,0.36), transparent 34%), radial-gradient(circle at 84% 108%, rgba(255,255,255,0.10), transparent 42%), linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.012))'
 
   return {
-    backgroundColor: tokens.mode === 'dark' ? isWater ? '#102B2C' : '#122724' : isWater ? '#F0FEFF' : '#F2FFF9',
-    borderColor: tokens.mode === 'dark' ? 'rgba(138,235,217,0.18)' : isWater ? 'rgba(35,156,168,0.20)' : 'rgba(38,126,111,0.15)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.18)' : '0 10px 22px rgba(17,70,61,0.07), inset 0 1px 0 rgba(255,255,255,0.92)',
+    backdropFilter: reduceTransparency ? undefined : tokens.mode === 'dark' ? 'blur(22px) saturate(1.22) contrast(1.03)' : 'blur(24px) saturate(1.76) contrast(1.04)',
+    backgroundColor: reduceTransparency
+      ? tokens.mode === 'dark' ? '#161D1B' : '#FFFFFF'
+      : tokens.mode === 'dark' ? 'rgba(22,29,27,0.20)' : 'rgba(255,255,255,0.028)',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.72)',
+    boxShadow: reduceTransparency
+      ? 'none'
+      : tokens.mode === 'dark'
+        ? '0 13px 28px rgba(0,0,0,0.20), inset 0 1px 0 rgba(190,210,205,0.14), inset 0 -1px 0 rgba(190,210,205,0.035)'
+        : '0 8px 18px rgba(31,92,82,0.025), 0 2px 8px rgba(255,255,255,0.24), inset 0 1px 0 rgba(255,255,255,0.86), inset 0 -1px 0 rgba(20,73,66,0.025)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+    WebkitBackdropFilter: reduceTransparency ? undefined : tokens.mode === 'dark' ? 'blur(22px) saturate(1.22) contrast(1.03)' : 'blur(24px) saturate(1.76) contrast(1.04)',
+  } as any
+}
+
+function customerDockKaelActionSurface(tokens: CustomerThemeTokens, active: boolean) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const gradient = tokens.mode === 'dark'
+    ? active
+      ? 'radial-gradient(circle at 32% 14%, rgba(190,210,205,0.18), transparent 34%), radial-gradient(circle at 72% 78%, rgba(255,255,255,0.060), transparent 44%), linear-gradient(145deg, rgba(31,42,40,0.22), rgba(22,29,27,0.070))'
+      : 'radial-gradient(circle at 32% 14%, rgba(190,210,205,0.14), transparent 34%), radial-gradient(circle at 72% 78%, rgba(255,255,255,0.045), transparent 44%), linear-gradient(145deg, rgba(31,42,40,0.18), rgba(22,29,27,0.060))'
+    : active
+      ? 'radial-gradient(circle at 30% 12%, rgba(255,255,255,0.94), transparent 36%), radial-gradient(circle at 72% 78%, rgba(255,255,255,0.24), transparent 44%), linear-gradient(145deg, rgba(255,255,255,0.30), rgba(255,255,255,0.080))'
+      : 'radial-gradient(circle at 30% 12%, rgba(255,255,255,0.82), transparent 36%), radial-gradient(circle at 72% 78%, rgba(255,255,255,0.18), transparent 44%), linear-gradient(145deg, rgba(255,255,255,0.22), rgba(255,255,255,0.060))'
+
+  return {
+    backdropFilter: reduceTransparency ? undefined : tokens.mode === 'dark' ? 'blur(22px) saturate(1.18)' : 'blur(24px) saturate(1.64) contrast(1.04)',
+    backgroundColor: reduceTransparency
+      ? tokens.mode === 'dark' ? '#161D1B' : '#FFFFFF'
+      : tokens.mode === 'dark'
+        ? active ? 'rgba(31,42,40,0.22)' : 'rgba(31,42,40,0.18)'
+        : active ? 'rgba(255,255,255,0.24)' : 'rgba(255,255,255,0.16)',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: reduceTransparency
+      ? tokens.borderStrong
+      : tokens.mode === 'dark'
+        ? active ? 'rgba(190,210,205,0.24)' : 'rgba(190,210,205,0.18)'
+        : active ? 'rgba(255,255,255,0.94)' : 'rgba(255,255,255,0.84)',
+    boxShadow: reduceTransparency
+      ? 'none'
+      : tokens.mode === 'dark'
+        ? '0 14px 26px rgba(0,0,0,0.18), inset 0 1px 0 rgba(190,210,205,0.18), inset 0 -1px 0 rgba(190,210,205,0.04)'
+        : '0 0 0 1px rgba(255,255,255,0.58), 0 10px 20px rgba(31,92,82,0.024), 0 2px 10px rgba(255,255,255,0.28), inset 0 1px 0 rgba(255,255,255,0.96), inset 0 -1px 0 rgba(20,73,66,0.035)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+    WebkitBackdropFilter: reduceTransparency ? undefined : tokens.mode === 'dark' ? 'blur(22px) saturate(1.18)' : 'blur(24px) saturate(1.64) contrast(1.04)',
+  } as any
+}
+
+function customerDockKaelActionEdgeSurface(tokens: CustomerThemeTokens) {
+  return {
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.20)' : 'rgba(255,255,255,0.92)',
+    boxShadow: tokens.mode === 'dark'
+      ? '0 0 0 1px rgba(190,210,205,0.07), inset 0 1px 0 rgba(190,210,205,0.16), inset 0 -1px 0 rgba(190,210,205,0.035)'
+      : '0 0 0 1px rgba(255,255,255,0.58), inset 0 1px 0 rgba(255,255,255,0.92), inset 0 -1px 0 rgba(20,73,66,0.030)',
+  } as any
+}
+
+function customerDockKaelActionAuraSurface(tokens: CustomerThemeTokens, active: boolean) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle, rgba(190,210,205,0.10), rgba(255,255,255,0.026) 48%, transparent 76%)'
+    : 'radial-gradient(circle, rgba(255,255,255,0.34), rgba(255,255,255,0.080) 48%, transparent 76%)'
+
+  return {
+    backgroundColor: reduceTransparency
+      ? 'transparent'
+      : tokens.mode === 'dark'
+        ? active ? 'rgba(190,210,205,0.070)' : 'rgba(190,210,205,0.045)'
+        : active ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.080)',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function customerProfileHeroSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const lightGradient = 'radial-gradient(circle at 86% 14%, rgba(23,169,149,0.12), transparent 31%), linear-gradient(135deg, rgba(255,255,255,0.66), rgba(241,255,251,0.52))'
+  const darkGradient = 'radial-gradient(circle at 84% 16%, rgba(105,222,198,0.090), transparent 31%), radial-gradient(circle at 24% 8%, rgba(230,244,240,0.080), transparent 34%), linear-gradient(135deg, rgba(28,36,33,0.70), rgba(12,16,15,0.54))'
+
+  return {
+    backgroundColor: reduceTransparency ? (tokens.mode === 'dark' ? '#161D1B' : '#F8FFFC') : tokens.mode === 'dark' ? 'rgba(22,29,27,0.54)' : 'rgba(255,255,255,0.48)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.18)' : 'rgba(255,255,255,0.86)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : customerLiquidShadow(tokens, 'hero'),
     background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
   } as any
 }
 
-function customerMintPillSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  return tokens.mode === 'dark'
-    ? { backgroundColor: tokens.service, borderColor: tokens.borderStrong }
-    : { backgroundColor: reduceTransparency ? '#DCFBF3' : 'rgba(220,251,243,0.92)', borderColor: 'rgba(13,134,119,0.16)' }
-}
-
-function customerWarmPillSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  return tokens.mode === 'dark'
-    ? { backgroundColor: tokens.warm, borderColor: 'rgba(224,160,107,0.24)' }
-    : { backgroundColor: reduceTransparency ? '#FFF4DB' : 'rgba(255,244,219,0.90)', borderColor: 'rgba(176,118,44,0.18)' }
-}
-
-function customerProfileHeroSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  return tokens.mode === 'dark'
-    ? glassSurface(tokens)
-    : {
-        backgroundColor: reduceTransparency ? 'rgba(255,253,248,0.98)' : 'rgba(255,255,255,0.74)',
-        borderColor: reduceTransparency ? tokens.borderStrong : 'rgba(255,255,255,0.86)',
-        boxShadow: reduceTransparency ? 'none' : '0 18px 38px rgba(17,70,61,0.11)',
-        experimental_backgroundImage: reduceTransparency
-          ? undefined
-          : 'radial-gradient(circle at 84% 6%, rgba(197,255,242,0.84), transparent 36%), linear-gradient(145deg, rgba(255,255,255,0.95), rgba(239,255,251,0.88))',
-      }
-}
-
 function customerProfilePanelSurface(tokens: CustomerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  return tokens.mode === 'dark'
-    ? customerOpaqueSurface(tokens)
-    : {
-        backgroundColor: reduceTransparency ? '#FFFDF8' : 'rgba(255,253,248,0.94)',
-        borderColor: 'rgba(35,96,84,0.12)',
-        boxShadow: reduceTransparency ? 'none' : '0 10px 28px rgba(17,70,61,0.08)',
-      }
+  return customerWorkerMintPanelSurface(tokens)
+}
+
+function customerProfileCareCardSurface(tokens: CustomerThemeTokens) {
+  return customerWorkerMintPanelSurface(tokens)
+}
+
+function customerProfileCarePillSurface(tokens: CustomerThemeTokens) {
+  return customerProfileRowIconSurface(tokens)
+}
+
+function customerProfileCareStatSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const lightGradient = 'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.96), transparent 48%), linear-gradient(145deg, rgba(255,255,255,0.82), rgba(232,255,249,0.48))'
+  const darkGradient = 'radial-gradient(circle at 50% 0%, rgba(230,244,240,0.070), transparent 48%), linear-gradient(145deg, rgba(230,244,240,0.055), rgba(13,17,16,0.54))'
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,29,27,0.54)' : 'rgba(255,255,255,0.58)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.12)' : 'rgba(255,255,255,0.72)',
+    boxShadow: reduceTransparency
+      ? 'none'
+      : tokens.mode === 'dark'
+        ? 'inset 0 1px 0 rgba(230,244,240,0.10), 0 14px 24px rgba(0,0,0,0.26)'
+        : 'inset 0 1px 0 rgba(255,255,255,0.86), 0 12px 24px rgba(17,70,61,0.08)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerProfileRowSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const lightGradient = 'linear-gradient(180deg, rgba(255,255,255,0.72), rgba(230,255,248,0.30))'
+  const darkGradient = 'linear-gradient(180deg, rgba(230,244,240,0.040), rgba(105,222,198,0.016))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.020)' : 'rgba(255,255,255,0.42)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.065)' : 'rgba(16,131,115,0.070)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? 'inset 0 1px 0 rgba(230,244,240,0.050)' : 'inset 0 1px 0 rgba(255,255,255,0.66)',
+    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function customerProfileRowIconSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 72% 36%, rgba(105,222,198,0.10), transparent 44%), linear-gradient(145deg, rgba(190,210,205,0.055), rgba(22,29,27,0.08))'
+    : 'radial-gradient(circle at 72% 36%, rgba(76,222,199,0.20), transparent 42%), linear-gradient(145deg, rgba(255,255,255,0.94), rgba(241,254,251,0.72))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.035)' : 'rgba(245,255,252,0.72)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.07)' : 'rgba(20,117,105,0.08)',
+    boxShadow: reduceTransparency
+      ? 'none'
+      : tokens.mode === 'dark'
+        ? '0 0 0 4px rgba(105,222,198,0.040), inset 0 1px 0 rgba(190,210,205,0.06)'
+        : '0 0 0 4px rgba(76,222,199,0.060), inset 0 1px 0 rgba(255,255,255,0.82)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function customerProfileInputSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(230,244,240,0.040), rgba(105,222,198,0.016))'
+    : 'linear-gradient(180deg, rgba(255,255,255,0.72), rgba(230,255,248,0.30))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.024)' : 'rgba(255,255,255,0.50)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.082)' : 'rgba(16,131,115,0.090)',
+    borderWidth: 1,
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? 'inset 0 1px 0 rgba(230,244,240,0.055)' : 'inset 0 1px 0 rgba(255,255,255,0.66)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function customerProfileSegmentSurface(tokens: CustomerThemeTokens, active: boolean) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const activeGradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 50% 38%, rgba(105,222,198,0.10), transparent 48%), linear-gradient(180deg, rgba(22,29,27,0.98), rgba(16,24,23,0.92))'
+    : 'radial-gradient(circle at 50% 38%, rgba(76,222,199,0.10), transparent 48%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,249,248,0.94))'
+  const inactiveGradient = tokens.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(230,244,240,0.024), rgba(105,222,198,0.010))'
+    : 'linear-gradient(180deg, rgba(255,255,255,0.54), rgba(230,255,248,0.20))'
+
+  return {
+    backgroundColor: active
+      ? tokens.mode === 'dark' ? '#16211F' : '#FAFFFD'
+      : tokens.mode === 'dark' ? 'rgba(230,244,240,0.020)' : 'rgba(255,255,255,0.42)',
+    borderColor: active
+      ? tokens.mode === 'dark' ? 'rgba(138,235,217,0.34)' : 'rgba(13,134,119,0.30)'
+      : tokens.mode === 'dark' ? 'rgba(230,244,240,0.060)' : 'rgba(16,131,115,0.070)',
+    boxShadow: reduceTransparency
+      ? 'none'
+      : active
+        ? tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(190,210,205,0.08)' : '0 8px 18px rgba(9,121,106,0.08), inset 0 1px 0 rgba(255,255,255,0.78)'
+        : 'none',
+    background: reduceTransparency ? undefined : active ? activeGradient : inactiveGradient,
+    backgroundImage: reduceTransparency ? undefined : active ? activeGradient : inactiveGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : active ? activeGradient : inactiveGradient,
+  } as any
+}
+
+function customerProfileVerificationSurface(tokens: CustomerThemeTokens) {
+  return customerWorkerMintOperationalTileSurface(tokens)
+}
+
+function customerProfilePrimaryButtonSurface(tokens: CustomerThemeTokens) {
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 36% 8%, rgba(255,255,255,0.16), transparent 35%), linear-gradient(180deg, #63E6D0, #40CDB8)'
+    : 'radial-gradient(circle at 36% 8%, rgba(255,255,255,0.34), transparent 35%), linear-gradient(180deg, #0E8D7D, #087F70)'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? '#63E6D0' : '#087F70',
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.18)' : 'rgba(255,255,255,0.42)',
+    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.16)' : '0 10px 22px rgba(9,121,106,0.13), inset 0 1px 0 rgba(255,255,255,0.30)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function customerProfileSecondaryButtonSurface(tokens: CustomerThemeTokens) {
+  return customerProfileInputSurface(tokens)
 }
 
 function customerIconSurface(tokens: CustomerThemeTokens, tone: SurfaceTone = 'service') {
-  const isWater = tone === 'water'
-  const isWarm = tone === 'warm'
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
-  const lightGradient = isWarm
-    ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.94), transparent 28%), linear-gradient(145deg, #FFF1D6, #F3D28D)'
-    : isWater
-      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #E4FCFA, #AEEBEF)'
-      : 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #C9F8EA, #8FE7D2)'
-  const darkGradient = 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.10), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.20), rgba(18,39,36,0.82))'
+  void tone
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const lightGradient = 'radial-gradient(circle at 72% 36%, rgba(76,222,199,0.20), transparent 42%), linear-gradient(145deg, rgba(255,255,255,0.94), rgba(241,254,251,0.72))'
+  const darkGradient = 'radial-gradient(circle at 72% 36%, rgba(105,222,198,0.10), transparent 44%), linear-gradient(145deg, rgba(190,210,205,0.055), rgba(22,29,27,0.08))'
   return {
-    backgroundColor: tokens.mode === 'dark'
-      ? isWater
-        ? '#15363A'
-        : isWarm
-          ? '#3B291B'
-          : '#173B35'
-      : isWater
-        ? '#E8FCFA'
-        : isWarm
-          ? '#FFF8EB'
-          : '#DCFBF3',
-    borderColor: isWater
-      ? tokens.mode === 'dark' ? 'rgba(118,220,227,0.22)' : 'rgba(33,140,178,0.22)'
-      : isWarm
-        ? tokens.mode === 'dark' ? 'rgba(224,160,107,0.24)' : 'rgba(176,118,44,0.22)'
-        : tokens.borderStrong,
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.20)' : '0 8px 18px rgba(17,70,61,0.08)',
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.035)' : 'rgba(245,255,252,0.72)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.07)' : 'rgba(20,117,105,0.08)',
+    boxShadow: reduceTransparency
+      ? 'none'
+      : tokens.mode === 'dark'
+        ? '0 0 0 5px rgba(105,222,198,0.045), 0 10px 22px rgba(0,0,0,0.12), inset 0 1px 0 rgba(190,210,205,0.06)'
+        : '0 0 0 5px rgba(76,222,199,0.070), 0 12px 24px rgba(23,169,149,0.080), inset 0 1px 0 rgba(255,255,255,0.82)',
     background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
     experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
@@ -3382,6 +5146,103 @@ function SubtleGlassHighlight() {
   const tokens = useCustomerTokens()
   if (tokens.glassHighlight === 'transparent') return null
   return <View pointerEvents="none" style={[styles.glassTopHighlight, { backgroundColor: tokens.glassHighlight }]} />
+}
+
+function ProfileLiquidChrome({ testID, variant }: { testID?: string; variant: 'care' | 'hero' | 'panel' }) {
+  const tokens = useCustomerTokens()
+  const reduceTransparency = customerReduceTransparency(tokens)
+  const sheenColor = tokens.mode === 'dark' ? 'rgba(230,244,240,0.12)' : 'rgba(255,255,255,0.64)'
+  const lensColor = tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(105,222,198,0.20)'
+  const outerEdgeSurface = customerProfileChromeCrispShellSurface(tokens, variant)
+  const innerInsetSurface = customerProfileChromeInnerInsetSurface(tokens, variant)
+  const topGlintSurface = customerProfileChromeTopEdgeSurface(tokens)
+  const bottomEdgeSurface = customerProfileChromeBottomEdgeSurface(tokens)
+  const lensStyle = variant === 'hero'
+    ? styles.profileHeroLiquidLens
+    : variant === 'care'
+      ? styles.profileCareLiquidLens
+      : styles.profilePanelLiquidLens
+  const sheenStyle = variant === 'hero'
+    ? styles.profileHeroLiquidSheen
+    : variant === 'care'
+      ? styles.profileCareLiquidSheen
+      : styles.profilePanelLiquidSheen
+  const edgeStyle = variant === 'hero'
+    ? styles.profileHeroLiquidEdge
+    : variant === 'care'
+      ? styles.profileCareLiquidEdge
+      : styles.profilePanelLiquidEdge
+
+  return (
+    <>
+      <SubtleGlassHighlight />
+      {reduceTransparency ? null : (
+        <>
+          {variant === 'hero' ? null : <View pointerEvents="none" style={[lensStyle, { backgroundColor: lensColor }]} testID={testID} />}
+          <View pointerEvents="none" style={[styles.profileLiquidSheen, sheenStyle, { backgroundColor: sheenColor }]} />
+          <View pointerEvents="none" style={[styles.profileLiquidOuterEdge, edgeStyle, outerEdgeSurface]} />
+          <View pointerEvents="none" style={[styles.profileLiquidInnerEdge, innerInsetSurface]} />
+          <View pointerEvents="none" style={[styles.profileLiquidTopGlint, topGlintSurface]} />
+          <View pointerEvents="none" style={[styles.profileLiquidBottomEdge, bottomEdgeSurface]} />
+        </>
+      )}
+    </>
+  )
+}
+
+function customerProfileChromeRadius(variant: 'care' | 'hero' | 'panel') {
+  if (variant === 'hero') return 30
+  return 29
+}
+
+function customerProfileChromeInsetRadius(variant: 'care' | 'hero' | 'panel') {
+  return Math.max(customerProfileChromeRadius(variant) - 4, 15)
+}
+
+function customerProfileChromeCrispShellSurface(tokens: CustomerThemeTokens, variant: 'care' | 'hero' | 'panel') {
+  return {
+    borderColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.19)' : 'rgba(255,255,255,0.88)',
+    borderRadius: customerProfileChromeRadius(variant),
+    boxShadow: tokens.mode === 'dark'
+      ? 'inset 0 1px 0 rgba(230,244,240,0.15), inset 0 -1px 0 rgba(105,222,198,0.045)'
+      : 'inset 0 1px 0 rgba(255,255,255,0.96), inset 0 -1px 0 rgba(9,121,106,0.13)',
+  } as any
+}
+
+function customerProfileChromeInnerInsetSurface(tokens: CustomerThemeTokens, variant: 'care' | 'hero' | 'panel') {
+  return {
+    borderColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.085)' : 'rgba(9,121,106,0.075)',
+    borderRadius: customerProfileChromeInsetRadius(variant),
+    boxShadow: tokens.mode === 'dark'
+      ? 'inset 0 1px 0 rgba(190,210,205,0.060)'
+      : 'inset 0 1px 0 rgba(255,255,255,0.72)',
+  } as any
+}
+
+function customerProfileChromeTopEdgeSurface(tokens: CustomerThemeTokens) {
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(90deg, rgba(230,244,240,0), rgba(230,244,240,0.20) 22%, rgba(105,222,198,0.060) 58%, rgba(230,244,240,0))'
+    : 'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.90) 22%, rgba(195,255,243,0.48) 58%, rgba(255,255,255,0))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(230,244,240,0.11)' : 'rgba(255,255,255,0.76)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+  } as any
+}
+
+function customerProfileChromeBottomEdgeSurface(tokens: CustomerThemeTokens) {
+  const gradient = tokens.mode === 'dark'
+    ? 'linear-gradient(90deg, rgba(0,0,0,0), rgba(105,222,198,0.075) 50%, rgba(0,0,0,0))'
+    : 'linear-gradient(90deg, rgba(255,255,255,0), rgba(9,121,106,0.12) 50%, rgba(255,255,255,0))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.045)' : 'rgba(9,121,106,0.080)',
+    background: gradient,
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+  } as any
 }
 
 function SubtleLiquidLight({ testID, variant = 'soft' }: { testID?: string; variant?: 'profile' | 'rim' | 'soft' | 'tab' }) {
@@ -3667,6 +5528,112 @@ const styles = StyleSheet.create({
     width: 112,
     zIndex: 0,
   },
+  profileLiquidOuterEdge: {
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    bottom: 0,
+    left: 0,
+    opacity: 0.94,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 3,
+  },
+  profileLiquidInnerEdge: {
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    bottom: 4,
+    left: 4,
+    opacity: 0.56,
+    position: 'absolute',
+    right: 4,
+    top: 4,
+    zIndex: 3,
+  },
+  profileLiquidTopGlint: {
+    borderRadius: 999,
+    height: 1,
+    left: 18,
+    opacity: 0.92,
+    position: 'absolute',
+    right: 18,
+    top: 1,
+    zIndex: 4,
+  },
+  profileLiquidBottomEdge: {
+    borderRadius: 999,
+    bottom: 1,
+    height: 1,
+    left: 20,
+    opacity: 0.60,
+    position: 'absolute',
+    right: 20,
+    zIndex: 4,
+  },
+  profileLiquidSheen: {
+    borderRadius: 999,
+    opacity: 0.72,
+    position: 'absolute',
+    transform: [{ rotate: '13deg' }],
+    zIndex: 0,
+  },
+  profileHeroLiquidSheen: {
+    bottom: -46,
+    left: 30,
+    top: -48,
+    width: 42,
+  },
+  profileCareLiquidSheen: {
+    bottom: -56,
+    left: 52,
+    top: -60,
+    width: 50,
+  },
+  profilePanelLiquidSheen: {
+    bottom: -44,
+    left: 28,
+    top: -44,
+    width: 34,
+  },
+  profileHeroLiquidEdge: {
+    borderRadius: 30,
+  },
+  profileCareLiquidEdge: {
+    borderRadius: 29,
+  },
+  profilePanelLiquidEdge: {
+    borderRadius: 29,
+  },
+  profileHeroLiquidLens: {
+    borderRadius: 999,
+    height: 142,
+    opacity: 0.60,
+    position: 'absolute',
+    right: -46,
+    top: -32,
+    width: 184,
+    zIndex: 0,
+  },
+  profileCareLiquidLens: {
+    borderRadius: 999,
+    height: 142,
+    opacity: 0.18,
+    position: 'absolute',
+    right: -46,
+    top: -32,
+    width: 184,
+    zIndex: 0,
+  },
+  profilePanelLiquidLens: {
+    borderRadius: 999,
+    height: 118,
+    opacity: 0.16,
+    position: 'absolute',
+    right: -42,
+    top: -28,
+    width: 162,
+    zIndex: 0,
+  },
   motionSweep: {
     bottom: -40,
     position: 'absolute',
@@ -3724,16 +5691,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     zIndex: 30,
   },
-  dockBackdropShield: {
-    borderRadius: 36,
-    bottom: -10,
-    height: 88,
-    left: -6,
-    opacity: 0.86,
-    position: 'absolute',
-    right: -6,
-    zIndex: -2,
-  },
   dockGlassAura: {
     borderRadius: 999,
     bottom: -14,
@@ -3753,16 +5710,74 @@ const styles = StyleSheet.create({
     width: 88,
     zIndex: -1,
   },
+  customerDockSplitRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+    minHeight: customerDockHeight,
+    position: 'relative',
+    width: '100%',
+    zIndex: 2,
+  },
   glassDock: {
     alignItems: 'center',
-    borderRadius: 29,
+    borderCurve: 'continuous',
+    borderRadius: 28,
     borderWidth: 1,
-    boxShadow: '0 8px 20px rgba(13,70,65,0.07), inset 0 1px 0 rgba(255,255,255,0.62)',
+    boxShadow: '0 7px 16px rgba(13,70,65,0.035), inset 0 1px 0 rgba(255,255,255,0.58)',
     flexDirection: 'row',
-    gap: 4,
-    minHeight: 64,
+    gap: 0,
+    height: customerDockHeight,
+    justifyContent: 'space-around',
+    minHeight: customerDockHeight,
     overflow: 'hidden',
-    padding: 7,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    position: 'relative',
+  },
+  customerDockMainCluster: {
+    flexShrink: 1,
+  },
+  customerDockKaelActionPressable: {
+    alignItems: 'center',
+    flexShrink: 0,
+    height: 56,
+    justifyContent: 'center',
+    width: 56,
+    zIndex: 2,
+  },
+  customerDockKaelActionGlass: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 28,
+    borderWidth: 1,
+    height: 56,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+    width: 56,
+  },
+  customerDockKaelActionEdge: {
+    borderCurve: 'continuous',
+    borderRadius: 27,
+    borderWidth: 1,
+    bottom: 1,
+    left: 1,
+    position: 'absolute',
+    right: 1,
+    top: 1,
+    zIndex: 1,
+  },
+  customerDockKaelActionAura: {
+    borderRadius: 999,
+    height: 50,
+    opacity: 0.50,
+    position: 'absolute',
+    right: -9,
+    top: -7,
+    width: 50,
+    zIndex: 0,
   },
   dockBottomReflection: {
     borderRadius: 999,
@@ -3818,6 +5833,26 @@ const styles = StyleSheet.create({
     width: 218,
     zIndex: 0,
   },
+  profileSectionMintWash: {
+    height: 268,
+    opacity: 0.08,
+    right: -132,
+    top: 10,
+    width: 278,
+  },
+  profileSectionGlassSlab: {
+    borderBottomLeftRadius: 132,
+    borderCurve: 'continuous',
+    borderTopLeftRadius: 36,
+    height: 292,
+    opacity: 0.055,
+    position: 'absolute',
+    right: -88,
+    top: -2,
+    transform: [{ rotate: '-7deg' }],
+    width: 182,
+    zIndex: 0,
+  },
   homeTopRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -3833,18 +5868,8 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: 0,
+    ...customerWorkerTypography.screenTitle,
     lineHeight: 29,
-  },
-  homeBell: {
-    alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 44,
   },
   plainContent: {
     gap: 12,
@@ -3899,8 +5924,7 @@ const styles = StyleSheet.create({
   },
   presenceMapControlText: {
     fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0,
+    ...customerWorkerTypography.label,
     lineHeight: 14,
   },
   presenceBadge: {
@@ -4068,8 +6092,7 @@ const styles = StyleSheet.create({
   searchText: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
   },
   homeMapSpace: {
     height: 112,
@@ -4103,14 +6126,12 @@ const styles = StyleSheet.create({
   },
   homeAddressValue: {
     fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0,
+    ...customerWorkerTypography.label,
     lineHeight: 20,
   },
   homeAddressMeta: {
     fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
     lineHeight: 15,
   },
   homeCommandHero: {
@@ -4162,8 +6183,7 @@ const styles = StyleSheet.create({
   },
   homeCommandBody: {
     fontSize: 14,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
     lineHeight: 20,
     position: 'relative',
     zIndex: 2,
@@ -4214,8 +6234,7 @@ const styles = StyleSheet.create({
   homeCommandComposerText: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
     lineHeight: 18,
     minWidth: 0,
   },
@@ -4235,13 +6254,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  homeCommandPromptText: {
+  homeCommandPromptInput: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderWidth: 0,
+    boxShadow: 'none',
+    flex: 1,
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0,
     lineHeight: 19,
+    minHeight: 38,
     minWidth: 0,
-  },
+    outlineColor: 'transparent',
+    outlineOffset: 0,
+    outlineStyle: 'none',
+    outlineWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    textAlignVertical: 'top',
+  } as any,
   homeCommandAttach: {
     alignItems: 'center',
     borderRadius: 14,
@@ -4266,17 +6298,7 @@ const styles = StyleSheet.create({
   },
   homeCommandSendText: {
     fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0,
-  },
-  homeCommandWash: {
-    borderRadius: 999,
-    height: 164,
-    opacity: 0.1,
-    position: 'absolute',
-    right: -62,
-    top: -44,
-    width: 164,
+    ...customerWorkerTypography.label,
   },
   twoCol: {
     flexDirection: 'row',
@@ -4294,6 +6316,17 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     marginTop: 2,
     textAlign: 'center',
+  },
+  smallChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  smallChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0,
   },
   bookingCheckPanel: {
     borderRadius: 22,
@@ -4315,27 +6348,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 2,
   },
-  bookingStepPill: {
-    alignItems: 'center',
-    borderRadius: 999,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 34,
-    minWidth: 92,
-    paddingHorizontal: 12,
-  },
-  bookingStepText: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0,
-    lineHeight: 15,
-  },
   bookingGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     position: 'relative',
     zIndex: 1,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   priceBox: {
     borderRadius: 20,
@@ -4354,11 +6377,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
     lineHeight: 14,
   },
+  activityPriceBoxLabel: {
+    fontWeight: '700',
+  },
   priceBoxValue: {
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0,
     lineHeight: 19,
+  },
+  activityPriceBoxValue: {
+    fontWeight: '500',
   },
   bookingCheckRow: {
     alignItems: 'center',
@@ -4416,6 +6445,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   historyHeroPanel: {
+    borderCurve: 'continuous',
     borderRadius: 28,
     borderWidth: 1,
     gap: 14,
@@ -4424,23 +6454,69 @@ const styles = StyleSheet.create({
     padding: 16,
     position: 'relative',
   },
+  activityHeroPanel: {
+    borderRadius: 32,
+    gap: 15,
+    minHeight: 184,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+  },
+  activityHeroTop: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    minHeight: 42,
+    position: 'relative',
+    zIndex: 2,
+  },
+  activityHeroCopy: {
+    flex: 1,
+    gap: 4,
+    justifyContent: 'center',
+    minHeight: 42,
+    minWidth: 0,
+  },
+  activityHeroTitle: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  activityMaterialEdge: {
+    borderRadius: 999,
+    height: 1,
+    left: 18,
+    opacity: 0.78,
+    position: 'absolute',
+    right: 18,
+    top: 1,
+    zIndex: 1,
+  },
+  activityStatusLens: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexShrink: 0,
+    justifyContent: 'center',
+    maxWidth: 126,
+    minHeight: 34,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    position: 'relative',
+    zIndex: 2,
+  },
+  activityStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 15,
+  },
   historyHeroPanelCompact: {
     gap: 10,
     padding: 14,
   },
-  historyHeroStatusPill: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    borderRadius: 999,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 36,
-    paddingHorizontal: 12,
-  },
   historyHeroBody: {
     fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
     lineHeight: 19,
   },
   historyHeroBodyCompact: {
@@ -4511,8 +6587,7 @@ const styles = StyleSheet.create({
   },
   historyDisclaimerText: {
     fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
     lineHeight: 17,
   },
   homeShortcutGrid: {
@@ -4520,7 +6595,13 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
+  homeTileIconStage: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+  },
   homeShortcutTile: {
+    alignItems: 'center',
     borderRadius: 20,
     borderWidth: 1,
     flexBasis: '47%',
@@ -4533,20 +6614,23 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   homeShortcutCopy: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
     gap: 3,
     minWidth: 0,
   },
   homeShortcutTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0,
+    ...customerWorkerTypography.label,
     lineHeight: 17,
+    textAlign: 'center',
   },
   homeShortcutMeta: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0,
     lineHeight: 15,
+    textAlign: 'center',
   },
   homeTrustNote: {
     alignItems: 'center',
@@ -4572,8 +6656,7 @@ const styles = StyleSheet.create({
   },
   homeTrustBody: {
     fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
     lineHeight: 17,
   },
   homeServicesBlock: {
@@ -4582,46 +6665,13 @@ const styles = StyleSheet.create({
   },
   homeServicesTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0,
+    ...customerWorkerTypography.sectionTitle,
     lineHeight: 22,
   },
   homeServicesMeta: {
     fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0,
+    ...customerWorkerTypography.label,
     lineHeight: 16,
-  },
-  notificationInlineCard: {
-    alignItems: 'center',
-    borderRadius: 22,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    minHeight: 56,
-    overflow: 'hidden',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  notificationInlineText: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 18,
-  },
-  notificationInlineBody: {
-    flex: 1,
-    gap: 3,
-  },
-  notificationInlineItem: {
-    minHeight: 18,
-    justifyContent: 'center',
-  },
-  notificationInlineItemText: {
-    fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: 0,
-    lineHeight: 18,
   },
   serviceCard: {
     alignItems: 'center',
@@ -4638,7 +6688,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   serviceCardHome: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     borderRadius: 22,
     gap: 9,
     justifyContent: 'center',
@@ -4654,8 +6704,7 @@ const styles = StyleSheet.create({
   },
   serviceTitle: {
     fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0,
+    ...customerWorkerTypography.label,
     lineHeight: 16,
     textAlign: 'center',
   },
@@ -4663,7 +6712,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     fontWeight: '700',
     lineHeight: 15,
-    textAlign: 'left',
+    textAlign: 'center',
   },
   sectionTitle: {
     alignItems: 'center',
@@ -4672,13 +6721,11 @@ const styles = StyleSheet.create({
   },
   sectionHeading: {
     fontSize: 18,
-    fontWeight: '600',
-    letterSpacing: 0,
+    ...customerWorkerTypography.sectionTitle,
   },
   sectionMeta: {
     fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
   },
   smallServiceGrid: {
     flexDirection: 'row',
@@ -4697,8 +6744,7 @@ const styles = StyleSheet.create({
   },
   smallServiceText: {
     fontSize: 10,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
   },
   paymentRail: {
     borderRadius: 24,
@@ -4753,8 +6799,7 @@ const styles = StyleSheet.create({
   },
   paymentMeta: {
     fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
   },
   kicker: {
     fontSize: 11,
@@ -4793,20 +6838,41 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 12,
   },
+  reportTicketCell: {
+    borderRadius: 18,
+    flexBasis: '47%',
+    flexGrow: 1,
+    gap: 4,
+    minHeight: 66,
+    minWidth: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
   ticketLabel: {
     fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
+  },
+  activityTicketLabel: {
+    fontWeight: '700',
+  },
+  reportTicketLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 14,
   },
   ticketValue: {
     fontSize: 14,
+    fontVariant: ['tabular-nums'],
     fontWeight: '600',
     letterSpacing: 0,
   },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  activityTicketValue: {
+    fontWeight: '500',
+  },
+  reportTicketValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 17,
   },
   composer: {
     alignItems: 'center',
@@ -4823,8 +6889,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 1,
     fontSize: 15,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
     minWidth: 0,
     minHeight: 40,
     paddingHorizontal: 8,
@@ -4836,48 +6901,6 @@ const styles = StyleSheet.create({
     height: 42,
     justifyContent: 'center',
     width: 42,
-  },
-  filterRow: {
-    borderRadius: 20,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 7,
-    overflow: 'hidden',
-    padding: 6,
-  },
-  filterChip: {
-    alignItems: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 38,
-    paddingHorizontal: 8,
-    position: 'relative',
-    zIndex: 2,
-  },
-  filterLiquidPill: {
-    borderRadius: 16,
-    bottom: 6,
-    left: 0,
-    overflow: 'hidden',
-    position: 'absolute',
-    top: 6,
-    zIndex: 0,
-  },
-  filterLiquidSheen: {
-    borderRadius: 999,
-    height: 14,
-    left: 14,
-    opacity: 0.48,
-    position: 'absolute',
-    right: 14,
-    top: 4,
-  },
-  filterText: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0,
   },
   flowCard: {
     borderRadius: 22,
@@ -4891,8 +6914,51 @@ const styles = StyleSheet.create({
     gap: 4,
     padding: 8,
   },
+  historyReportCard: {
+    borderCurve: 'continuous',
+    borderRadius: 26,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  historyReportHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+    minHeight: 24,
+  },
+  historyReportTitle: {
+    flex: 1,
+    fontSize: 18,
+    lineHeight: 23,
+    minWidth: 0,
+  },
+  historyReportBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 15,
+  },
+  historyReportBody: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  historyReportGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
   historyTimelineCard: {
     paddingVertical: 16,
+  },
+  activityTimelineCard: {
+    borderCurve: 'continuous',
+    borderRadius: 30,
+    gap: 2,
+    paddingHorizontal: 18,
+    paddingVertical: 17,
+    position: 'relative',
   },
   historyDoneTimelineCard: {
     gap: 12,
@@ -4904,6 +6970,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     minHeight: 32,
+  },
+  activityTimelineRow: {
+    gap: 12,
+    minHeight: 52,
+    position: 'relative',
+    zIndex: 2,
+  },
+  activityTimelineRail: {
+    borderRadius: 999,
+    bottom: 31,
+    left: 23,
+    position: 'absolute',
+    top: 34,
+    width: 2,
+    zIndex: 0,
+  },
+  activityTimelineMarker: {
+    alignItems: 'center',
+    flexShrink: 0,
+    width: 14,
+  },
+  activityTimelineDot: {
+    borderWidth: 2,
+    height: 13,
+    width: 13,
+  },
+  activityTimelineCopy: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0,
   },
   timelineRowDone: {
     gap: 11,
@@ -4924,8 +7020,7 @@ const styles = StyleSheet.create({
   },
   timelineText: {
     fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
   },
   timelineTextCompact: {
     fontSize: 12,
@@ -4990,11 +7085,14 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   profilePrototypeHero: {
+    borderCurve: 'continuous',
     borderRadius: 30,
     borderWidth: 1,
-    gap: 12,
+    gap: 14,
+    minHeight: 114,
     overflow: 'hidden',
-    padding: 15,
+    paddingHorizontal: 18,
+    paddingVertical: 17,
     position: 'relative',
   },
   profilePrototypeTop: {
@@ -5002,6 +7100,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'space-between',
+    position: 'relative',
+    zIndex: 4,
   },
   profilePrototypeTitleRow: {
     alignItems: 'center',
@@ -5016,36 +7116,9 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   profilePrototypeTitle: {
-    fontSize: 23,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 27,
-  },
-  profileSetupSteps: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  profileSetupStep: {
-    borderRadius: 18,
-    borderWidth: 1,
-    flex: 1,
-    gap: 3,
-    minHeight: 52,
-    overflow: 'hidden',
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-  },
-  profileSetupStepTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0,
-    lineHeight: 13,
-  },
-  profileSetupStepMeta: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 12,
+    fontSize: 24,
+    ...customerWorkerTypography.screenTitle,
+    lineHeight: 29,
   },
   profileIdentityRow: {
     alignItems: 'center',
@@ -5064,38 +7137,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     letterSpacing: 0,
-    minWidth: 0,
-  },
-  profileButton: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-  },
-  profileButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0,
-  },
-  syncPreview: {
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 10,
-    overflow: 'hidden',
-    padding: 14,
-  },
-  syncPreviewTop: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  syncPreviewTitle: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0,
-    lineHeight: 19,
     minWidth: 0,
   },
   statusCard: {
@@ -5133,11 +7174,11 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
   },
   metricValue: {
     fontSize: 16,
+    fontVariant: ['tabular-nums'],
     fontWeight: '600',
     letterSpacing: 0,
   },
@@ -5166,10 +7207,345 @@ const styles = StyleSheet.create({
     gap: 0,
     overflow: 'hidden',
     padding: 6,
+    position: 'relative',
+  },
+  profileGlassListCard: {
+    borderCurve: 'continuous',
+    borderRadius: 29,
+    gap: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 14,
+  },
+  profileListSectionTitle: {
+    fontSize: 11,
+    ...customerWorkerTypography.label,
+    lineHeight: 14,
+    paddingHorizontal: 6,
+    paddingBottom: 2,
+    position: 'relative',
+    zIndex: 2,
   },
   profileActions: {
-    borderRadius: 24,
+    borderCurve: 'continuous',
+    borderRadius: 29,
     overflow: 'hidden',
+  },
+  profileCareWideWrap: {
+    marginHorizontal: -5,
+    overflow: 'visible',
+  },
+  profileCareCard: {
+    borderCurve: 'continuous',
+    borderRadius: 29,
+    borderWidth: 1,
+    gap: 11,
+    minHeight: 146,
+    overflow: 'hidden',
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+    position: 'relative',
+  },
+  profileCareHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+    position: 'relative',
+    zIndex: 2,
+  },
+  profileCareTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 21,
+    minWidth: 0,
+  },
+  profileCareStats: {
+    borderRadius: 18,
+    flexDirection: 'row',
+    gap: 8,
+    position: 'relative',
+    zIndex: 2,
+  },
+  profileCareStat: {
+    alignItems: 'center',
+    borderRadius: 15,
+    borderWidth: 1,
+    flex: 1,
+    gap: 5,
+    justifyContent: 'center',
+    minHeight: 74,
+    paddingHorizontal: 6,
+    paddingVertical: 7,
+  },
+  profileCareStatIcon: {
+    alignItems: 'center',
+    borderRadius: 13,
+    borderWidth: 1,
+    flexShrink: 0,
+    height: 31,
+    justifyContent: 'center',
+    width: 31,
+  },
+  profileCareStatCopy: {
+    alignItems: 'center',
+    gap: 2,
+    minWidth: 0,
+  },
+  profileCareStatLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 13,
+    textAlign: 'center',
+  },
+  profileCareStatValue: {
+    fontSize: 12.5,
+    ...customerWorkerTypography.label,
+    lineHeight: 15,
+    maxWidth: 84,
+    textAlign: 'center',
+  },
+  profileEditorScrim: {
+    backgroundColor: 'rgba(8,20,17,0.28)',
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 16,
+  },
+  profileEditorSheet: {
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 12,
+    overflow: 'hidden',
+    padding: 16,
+    position: 'relative',
+  },
+  profileEditorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 22,
+    position: 'relative',
+    zIndex: 2,
+  },
+  profileEditorHelper: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 17,
+    position: 'relative',
+    zIndex: 2,
+  },
+  profileEditorInput: {
+    borderCurve: 'continuous',
+    borderRadius: 18,
+    borderWidth: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 20,
+    minHeight: 52,
+    overflow: 'hidden',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    position: 'relative',
+    zIndex: 2,
+  },
+  profileEditorInputMultiline: {
+    minHeight: 92,
+  },
+  feedbackInput: {
+    minHeight: 132,
+  },
+  passwordField: {
+    gap: 6,
+  },
+  passwordFieldLabel: {
+    fontSize: 12.5,
+    ...customerWorkerTypography.label,
+    lineHeight: 16,
+  },
+  profileEditorError: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 16,
+  },
+  profileEditorButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    position: 'relative',
+    zIndex: 2,
+  },
+  profileEditorButton: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 999,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 46,
+    paddingHorizontal: 14,
+  },
+  profileEditorPrimaryButton: {
+    boxShadow: '0 12px 24px rgba(41,173,151,0.18)',
+  },
+  profileEditorSecondaryButton: {
+    boxShadow: 'none',
+  },
+  profileEditorPrimaryText: {
+    fontSize: 14,
+    ...customerWorkerTypography.label,
+    lineHeight: 17,
+  },
+  profileEditorSecondaryText: {
+    fontSize: 14,
+    ...customerWorkerTypography.label,
+    lineHeight: 17,
+  },
+  accountInfoSheet: {
+    borderRadius: 30,
+    borderWidth: 1,
+    gap: 10,
+    maxHeight: '88%',
+    overflow: 'hidden',
+    paddingBottom: 14,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    position: 'relative',
+  },
+  accountInfoHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    minHeight: 42,
+    position: 'relative',
+    zIndex: 2,
+  },
+  accountInfoBackButton: {
+    alignItems: 'center',
+    borderRadius: 999,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  accountInfoBackText: {
+    fontSize: 28,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 30,
+  },
+  accountInfoTitle: {
+    flex: 1,
+    fontSize: 16,
+    ...customerWorkerTypography.label,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  accountInfoHeaderSpacer: {
+    width: 38,
+  },
+  accountInfoFields: {
+    gap: 8,
+    paddingBottom: 4,
+    paddingTop: 2,
+  },
+  accountInfoField: {
+    borderCurve: 'continuous',
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 6,
+    minHeight: 76,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    position: 'relative',
+    zIndex: 2,
+  },
+  accountInfoFieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 16,
+  },
+  accountInfoFieldInput: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 19,
+    minHeight: 30,
+    paddingHorizontal: 0,
+    paddingVertical: 2,
+  },
+  accountInfoSegmentRow: {
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 38,
+  },
+  accountInfoSegmentButton: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 999,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 38,
+    paddingHorizontal: 10,
+  },
+  accountInfoSegmentText: {
+    fontSize: 12,
+    ...customerWorkerTypography.label,
+    lineHeight: 15,
+  },
+  accountInfoNote: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 15,
+    paddingTop: 10,
+  },
+  accountInfoVerification: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    minHeight: 64,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    position: 'relative',
+    zIndex: 2,
+  },
+  accountInfoVerificationCopy: {
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  accountInfoVerificationTitle: {
+    fontSize: 13,
+    ...customerWorkerTypography.label,
+    lineHeight: 17,
+  },
+  accountInfoVerificationBody: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 15,
+  },
+  accountInfoSaveButton: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 999,
+    borderWidth: 1,
+    boxShadow: '0 12px 24px rgba(41,173,151,0.18)',
+    justifyContent: 'center',
+    minHeight: 46,
+    paddingHorizontal: 14,
+    position: 'relative',
+    zIndex: 2,
   },
   listRow: {
     alignItems: 'center',
@@ -5179,21 +7555,34 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: 10,
     paddingVertical: 7,
+    position: 'relative',
+    zIndex: 2,
   },
   profileListRow: {
-    minHeight: 52,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
+    borderCurve: 'continuous',
+    borderRadius: 16,
+    minHeight: 58,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  profileRowIconStage: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 32,
+    justifyContent: 'center',
+    overflow: 'visible',
+    width: 32,
   },
   listCopy: {
     flex: 1,
     gap: 3,
   },
   profileListCopy: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
+    gap: 3,
+    minWidth: 0,
   },
   listTitle: {
     fontSize: 15,
@@ -5202,26 +7591,28 @@ const styles = StyleSheet.create({
   },
   profileListTitle: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    lineHeight: 16,
+    lineHeight: 18,
   },
   listMeta: {
     fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: 0,
+    ...customerWorkerTypography.body,
   },
   profileListMeta: {
     flexShrink: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
-    maxWidth: '54%',
-    textAlign: 'right',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 15,
+    maxWidth: '100%',
+    textAlign: 'left',
   },
   listMetaCompact: {
     fontSize: 11,
     lineHeight: 13,
+  },
+  disabled: {
+    opacity: 0.56,
   },
   chevron: {
     fontSize: 24,
@@ -5269,6 +7660,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
+  clientImageIconShell: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    boxShadow: 'none',
+    overflow: 'visible',
+  },
+  clientImageIconStage: {
+    alignItems: 'center',
+    flexShrink: 0,
+    justifyContent: 'center',
+    overflow: 'visible',
+    position: 'relative',
+  },
+  clientImageIcon: {
+    flexShrink: 0,
+    position: 'relative',
+    zIndex: 2,
+  },
+  clientImageAssetBacking: {
+    borderRadius: 999,
+    borderWidth: 1,
+    bottom: 2,
+    left: 2,
+    position: 'absolute',
+    right: 2,
+    top: 2,
+    zIndex: 0,
+  },
+  clientImageAssetSoftener: {
+    borderRadius: 999,
+    borderWidth: 1,
+    bottom: 0,
+    left: 0,
+    opacity: 0.72,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 3,
+  },
   kaelMascotFrame: {
     alignItems: 'center',
     borderWidth: 1,
@@ -5303,17 +7733,6 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0,
-  },
-  smallChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  smallChipText: {
-    fontSize: 11,
-    fontWeight: '700',
     letterSpacing: 0,
   },
 })

@@ -266,6 +266,12 @@ export type ReviewResponse = {
   status: JobStatus
 }
 
+export type CustomerKaelFeedbackResponse = {
+  feedback_id: string
+  status: 'new'
+  created_at: string
+}
+
 export type WorkerProfileResponse = {
   id: string
   verification_status: WorkerVerificationStatus

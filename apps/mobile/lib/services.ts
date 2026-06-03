@@ -18,6 +18,7 @@ import type {
   JobMessageSendResponse,
   ConfirmKaelChatResponse,
   CustomerCancellationResponse,
+  CustomerKaelFeedbackResponse,
   DisputeAdminDecisionResponse,
   DisputeCounterStatementResponse,
   DisputeOpenResponse,
@@ -48,6 +49,7 @@ import type {
   DisputeOpenRequestInput,
   JobCreateInput,
   JobStatus,
+  CustomerKaelFeedbackInput,
   KaelWorkerClarifyInput,
   KaelChatCreateInput,
   KaelChatTurnInput,
@@ -173,6 +175,12 @@ export const kaelChatService = {
 
   confirm(sessionId: string) {
     return api.post<ConfirmKaelChatResponse>(`/kael/chat/${sessionId}/confirm`)
+  },
+}
+
+export const customerFeedbackService = {
+  submit(input: CustomerKaelFeedbackInput) {
+    return api.post<CustomerKaelFeedbackResponse>('/me/kael-feedback', input)
   },
 }
 

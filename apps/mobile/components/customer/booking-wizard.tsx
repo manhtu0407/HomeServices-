@@ -3,20 +3,33 @@
 // Kael can pre-analyze, ask for missing details, and orchestrate by policy.
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
-import { createContext, type ReactNode, use, useMemo, useReducer, useState } from 'react'
+import { createContext, type ReactNode, use, useEffect, useMemo, useReducer, useState } from 'react'
 import { useLocalSearchParams } from 'expo-router'
-import { Alert, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native'
-import Svg, { Path } from 'react-native-svg'
+import { Alert, Pressable, StyleSheet, Text, TextInput, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native'
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated'
 import { type ServiceType } from '@home-services/shared'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
+import { motionTokens } from '@/components/ui/motion-tokens'
 import { type GlassMode } from '@/components/ui/tokens'
 import { type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { AddressAutocomplete } from './address-autocomplete'
 import { setPendingKaelChatDraft } from './kael-chat/pending-intake'
+
+const bookingServiceImageIcons: Record<ServiceType, number> = {
+  cleaning: require('../../assets/client-image-icons/client-service-cleaning.png'),
+  electrical: require('../../assets/client-image-icons/client-service-electrical.png'),
+  plumbing: require('../../assets/client-image-icons/client-service-plumbing.png'),
+}
+const bookingServiceOrder: readonly ServiceType[] = ['electrical', 'plumbing', 'cleaning']
+const bookingServiceSegmentWidthPercent = 100 / bookingServiceOrder.length
+const BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL = 'BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL: standard content material, segmented selected service, Liquid Glass reserved for primary controls'
+const BOOKING_WIZARD_APPLE_IOS26_COMPONENT_SYSTEM = 'BOOKING_WIZARD_APPLE_IOS26_COMPONENT_SYSTEM: description field, photo picker, address control, progress, and action buttons use one Apple-style component material system'
+void BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL
+void BOOKING_WIZARD_APPLE_IOS26_COMPONENT_SYSTEM
 
 type WizardStep = 'service' | 'describe' | 'analyzing' | 'done'
 
@@ -111,13 +124,6 @@ const copyMap = {
     },
     servicePreviewTitle: 'Phiếu gửi Kael',
     servicePreviewMeta: 'Thông tin đầu vào',
-    servicePreviewPill: 'Kael sẽ nhận',
-    servicePreviewBody: 'Kael sẽ nhận dịch vụ, mô tả, ảnh và khu vực rồi phân tích trong chat.',
-    servicePreviewChips: {
-      problem: 'Vấn đề: cần mô tả',
-      media: 'Ảnh: chưa có',
-      area: 'Khu vực: cần dữ liệu',
-    },
     servicePreviewService: 'Dịch vụ',
     servicePreviewDescription: 'Mô tả',
     servicePreviewArea: 'Khu vực',
@@ -141,7 +147,7 @@ const copyMap = {
     submitDescribe: 'Gửi cho Kael phân tích',
     analyzingStep: 'Chuyển sang Kael',
     analyzingTitle: 'Đang mở Kael chat…',
-    analyzingBody: 'Kael sẽ nhận sẵn thông tin này để phân tích hoặc hỏi thêm, không bắt bạn nhập lại.',
+    analyzingBody: 'Thông tin này được chuyển sang chat để Kael phân tích hoặc hỏi thêm, không bắt bạn nhập lại.',
     pendingValue: 'Chưa có',
     photoPermissionTitle: 'Cần quyền truy cập ảnh',
     photoPermissionBody: 'Cho phép ứng dụng truy cập thư viện ảnh để gửi cho Kael.',
@@ -166,13 +172,6 @@ const copyMap = {
     },
     servicePreviewTitle: 'Kael intake ticket',
     servicePreviewMeta: 'Input',
-    servicePreviewPill: 'Kael receives',
-    servicePreviewBody: 'Kael receives the service, description, photos, and area, then analyzes them in chat.',
-    servicePreviewChips: {
-      problem: 'Problem: needs details',
-      media: 'Photos: none yet',
-      area: 'Area: needs data',
-    },
     servicePreviewService: 'Service',
     servicePreviewDescription: 'Description',
     servicePreviewArea: 'Area',
@@ -286,6 +285,7 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: Boo
   return (
     <BookingWizardVisualContext.Provider value={visualContext}>
       <View style={styles.wizardFlowShell} testID="booking-wizard-intake-handoff-flow">
+        <View pointerEvents="none" style={styles.hiddenMarker} testID="booking-wizard-apple-ios26-intake-material" />
         <BookingFlowOverview activeIndex={activeFlowIndex} copy={copy} />
         {state.step === 'service' ? (
           <ServiceStep key={state.serviceType ?? routeServiceType ?? 'none'} copy={copy} initialServiceType={state.serviceType ?? routeServiceType} onSelect={(serviceType) => dispatch({ type: 'select_service', serviceType })} />
@@ -354,67 +354,67 @@ function getBookingWizardVisual(mode: GlassMode, reduceTransparency: boolean): B
   if (reduceTransparency) {
     return dark
       ? {
-          aqua: '#1E4A41',
-          border: 'rgba(255,255,255,0.12)',
-          borderStrong: 'rgba(105,222,198,0.24)',
-          card: '#102420',
+          aqua: '#16322D',
+          border: 'rgba(190,210,205,0.12)',
+          borderStrong: 'rgba(105,222,198,0.22)',
+          card: '#161D1B',
           danger: '#F5A3A3',
-          disabled: '#1B322E',
-          muted: '#9DBCB5',
-          primary: '#8AEBD9',
-          primaryText: '#06221D',
-          row: '#132A26',
-          rowStrong: '#183C35',
-          text: '#EEF8F4',
-          warm: '#CBA56E',
+          disabled: '#1D2522',
+          muted: '#A9B7B3',
+          primary: '#5BE0CB',
+          primaryText: '#08201D',
+          row: '#171D1B',
+          rowStrong: '#14342F',
+          text: '#F1F6F4',
+          warm: '#1F211D',
         }
       : {
-          aqua: '#CFF8EF',
+          aqua: '#EAF8F5',
           border: 'rgba(35,96,84,0.13)',
-          borderStrong: 'rgba(13,134,119,0.24)',
-          card: '#FFFEFA',
+          borderStrong: 'rgba(8,120,110,0.22)',
+          card: '#FFFFFF',
           danger: '#B43F3F',
-          disabled: '#EAF2EE',
+          disabled: '#EEF3F1',
           muted: '#647672',
           primary: '#087F70',
           primaryText: '#FFFFFF',
-          row: '#FFFEFA',
-          rowStrong: '#DDFBF2',
+          row: '#FFFFFF',
+          rowStrong: '#E8F8F4',
           text: '#12231F',
-          warm: '#FFF4DB',
+          warm: '#F7F3EC',
         }
   }
 
   return dark
     ? {
-        aqua: 'rgba(105,222,198,0.18)',
-        border: 'rgba(255,255,255,0.14)',
+        aqua: 'rgba(105,222,198,0.050)',
+        border: 'rgba(190,210,205,0.12)',
         borderStrong: 'rgba(105,222,198,0.26)',
-        card: 'rgba(16,36,32,0.74)',
+        card: 'rgba(22,29,27,0.92)',
         danger: '#F5A3A3',
-        disabled: 'rgba(29,61,54,0.72)',
-        muted: '#9DBCB5',
-        primary: '#8AEBD9',
-        primaryText: '#06221D',
-        row: 'rgba(18,39,36,0.82)',
-        rowStrong: 'rgba(32,72,64,0.78)',
-        text: '#EEF8F4',
-        warm: 'rgba(203,165,110,0.22)',
+        disabled: 'rgba(29,37,34,0.86)',
+        muted: '#A9B7B3',
+        primary: '#63E6D0',
+        primaryText: '#08201D',
+        row: 'rgba(23,29,27,0.92)',
+        rowStrong: 'rgba(20,52,47,0.82)',
+        text: '#F1F6F4',
+        warm: 'rgba(224,160,107,0.055)',
       }
     : {
-        aqua: 'rgba(66,216,189,0.32)',
+        aqua: 'rgba(0,200,179,0.050)',
         border: 'rgba(35,96,84,0.13)',
         borderStrong: 'rgba(13,134,119,0.22)',
-        card: 'rgba(255,253,248,0.92)',
+        card: 'rgba(255,255,255,0.94)',
         danger: '#B43F3F',
-        disabled: 'rgba(229,241,235,0.86)',
+        disabled: 'rgba(238,243,241,0.92)',
         muted: '#647672',
         primary: '#087F70',
         primaryText: '#FFFFFF',
-        row: 'rgba(255,254,250,0.96)',
-        rowStrong: 'rgba(220,251,243,0.94)',
+        row: 'rgba(255,255,255,0.96)',
+        rowStrong: 'rgba(232,248,244,0.90)',
         text: '#12231F',
-        warm: 'rgba(255,244,219,0.90)',
+        warm: 'rgba(187,116,61,0.045)',
       }
 }
 
@@ -424,8 +424,9 @@ function parseRouteServiceType(value: string | string[] | undefined): ServiceTyp
 }
 
 function WizardCard({ children, testID }: { children: ReactNode; testID: string }) {
-  const { mode, visual } = useBookingWizardVisual()
+  const { mode, reduceTransparency, visual } = useBookingWizardVisual()
   const isServiceStep = testID === 'booking-wizard-step-service'
+  const isDescribeStep = testID === 'booking-wizard-step-describe'
 
   if (isServiceStep) {
     return (
@@ -437,9 +438,28 @@ function WizardCard({ children, testID }: { children: ReactNode; testID: string 
   }
 
   return (
-    <GlassSurface backgroundColor={visual.card} borderColor={visual.border} mode={mode} style={styles.card} testID={testID} variant="sheet">
-      <View pointerEvents="none" style={[styles.cardWash, { backgroundColor: visual.aqua }]} testID="booking-wizard-liquid-wash" />
-      <View pointerEvents="none" style={[styles.cardWarmWash, { backgroundColor: visual.warm }]} />
+    <GlassSurface
+      backgroundColor={visual.card}
+      borderColor={isDescribeStep ? visual.borderStrong : visual.border}
+      material="standard"
+      mode={mode}
+      style={[styles.card, isDescribeStep ? bookingDescribeCardSurface(visual, mode, reduceTransparency) : null]}
+      testID={testID}
+      variant="sheet"
+    >
+      <View
+        pointerEvents="none"
+        style={[styles.cardWash, isDescribeStep ? styles.cardDescribeWash : null, { backgroundColor: visual.aqua }]}
+        testID="booking-wizard-liquid-wash"
+      />
+      <View
+        pointerEvents="none"
+        style={[
+          styles.cardWarmWash,
+          isDescribeStep ? styles.cardDescribeLowerWash : null,
+          { backgroundColor: isDescribeStep ? visual.aqua : visual.warm },
+        ]}
+      />
       <View pointerEvents="none" style={styles.hiddenMarker} testID="booking-wizard-production-glass-intake-handoff" />
       {children}
     </GlassSurface>
@@ -488,7 +508,7 @@ function WizardPrimaryButton({
   onPress: () => void
   testID: string
 }) {
-  const { reduceMotion, visual } = useBookingWizardVisual()
+  const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
   return (
     <Pressable
       accessibilityRole="button"
@@ -497,13 +517,14 @@ function WizardPrimaryButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.primaryButton,
-        { backgroundColor: visual.primary },
+        bookingPrimaryButtonSurface(visual, mode, reduceTransparency),
         buttonStyle,
         disabled ? styles.primaryButtonDisabled : null,
         reduceMotionAwarePressStyle(pressed, reduceMotion),
       ]}
       testID={testID}
     >
+      <View pointerEvents="none" style={[styles.buttonSheen, bookingButtonSheenSurface(mode)]} />
       <Text style={[styles.primaryButtonText, { color: visual.primaryText }]} numberOfLines={1}>
         {label}
       </Text>
@@ -522,7 +543,7 @@ function WizardSecondaryButton({
   onPress: () => void
   testID: string
 }) {
-  const { reduceMotion, visual } = useBookingWizardVisual()
+  const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
   return (
     <Pressable
       accessibilityRole="button"
@@ -530,7 +551,7 @@ function WizardSecondaryButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.secondaryButton,
-        { backgroundColor: visual.row, borderColor: visual.borderStrong },
+        bookingSecondaryButtonSurface(visual, mode, reduceTransparency),
         disabled ? styles.primaryButtonDisabled : null,
         reduceMotionAwarePressStyle(pressed, reduceMotion),
       ]}
@@ -544,7 +565,7 @@ function WizardSecondaryButton({
 }
 
 function WizardBackButton({ label, onPress, testID }: { label: string; onPress: () => void; testID: string }) {
-  const { reduceMotion, visual } = useBookingWizardVisual()
+  const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
   return (
     <Pressable
       accessibilityLabel={label}
@@ -553,7 +574,7 @@ function WizardBackButton({ label, onPress, testID }: { label: string; onPress: 
       onPress={onPress}
       style={({ pressed }) => [
         styles.backButton,
-        { backgroundColor: visual.row, borderColor: visual.borderStrong },
+        bookingSecondaryButtonSurface(visual, mode, reduceTransparency),
         reduceMotionAwarePressStyle(pressed, reduceMotion),
       ]}
       testID={testID}
@@ -565,10 +586,58 @@ function WizardBackButton({ label, onPress, testID }: { label: string; onPress: 
   )
 }
 
+function bookingPrimaryButtonSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 36% 8%, rgba(255,255,255,0.34), transparent 35%), linear-gradient(180deg, #0E8D7D, #087F70)'
+  const darkGradient = 'radial-gradient(circle at 36% 8%, rgba(255,255,255,0.16), transparent 35%), linear-gradient(180deg, #63E6D0, #40CDB8)'
+
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: visual.primary,
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.18)' : 'rgba(255,255,255,0.42)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.16)' : '0 10px 22px rgba(9,121,106,0.13), inset 0 1px 0 rgba(255,255,255,0.30)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function bookingSecondaryButtonSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 50% 42%, rgba(76,222,199,0.095), transparent 54%), radial-gradient(circle at 34% 8%, rgba(255,255,255,0.76), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,252,249,0.92))'
+  const darkGradient = 'radial-gradient(circle at 50% 42%, rgba(105,222,198,0.075), transparent 54%), radial-gradient(circle at 34% 8%, rgba(190,210,205,0.10), transparent 34%), linear-gradient(180deg, rgba(25,33,31,0.94), rgba(18,24,22,0.88))'
+
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: visual.row,
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.13)' : 'rgba(15,133,118,0.11)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.075)' : '0 8px 18px rgba(31,92,82,0.035), inset 0 1px 0 rgba(255,255,255,0.80)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function bookingDescribeCardSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 86% 6%, rgba(76,222,199,0.11), transparent 35%), radial-gradient(circle at 16% 98%, rgba(244,237,224,0.20), transparent 28%), linear-gradient(180deg, rgba(255,255,255,0.97), rgba(248,255,252,0.92))'
+  const darkGradient = 'radial-gradient(circle at 86% 6%, rgba(105,222,198,0.075), transparent 35%), radial-gradient(circle at 16% 98%, rgba(224,160,107,0.045), transparent 28%), linear-gradient(180deg, rgba(22,29,27,0.92), rgba(15,20,19,0.88))'
+
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: visual.card,
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 18px 38px rgba(0,0,0,0.26), inset 0 1px 0 rgba(190,210,205,0.075)' : '0 18px 38px rgba(17,70,61,0.060), inset 0 1px 0 rgba(255,255,255,0.82)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function bookingButtonSheenSurface(mode: GlassMode) {
+  return {
+    backgroundColor: mode === 'dark' ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.42)',
+  }
+}
+
 function BookingFlowOverview({ activeIndex, copy }: { activeIndex: number; copy: WizardCopy }) {
   const { mode, reduceTransparency, visual } = useBookingWizardVisual()
   return (
-    <View style={styles.flowOverview} testID="booking-wizard-intake-handoff-overview">
+    <View style={[styles.flowOverview, bookingFlowOverviewSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-intake-handoff-overview">
+      <View pointerEvents="none" style={styles.hiddenMarker} testID="booking-wizard-flow-apple-progress-rail" />
       {copy.flowSteps.map(([title, meta], index) => {
         const active = index === activeIndex
         return (
@@ -600,44 +669,50 @@ function BookingFlowOverview({ activeIndex, copy }: { activeIndex: number; copy:
   )
 }
 
+function bookingFlowOverviewSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(240,255,251,0.86))'
+  const darkGradient = 'radial-gradient(circle at 86% 0%, rgba(230,244,240,0.056), transparent 34%), linear-gradient(180deg, rgba(24,31,29,0.72), rgba(13,17,16,0.56))'
+
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: mode === 'dark' ? 'rgba(22,29,27,0.66)' : '#F8FFFC',
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: mode === 'dark' ? 'rgba(230,244,240,0.12)' : 'rgba(35,96,84,0.13)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 15px 34px rgba(0,0,0,0.31), inset 0 1px 0 rgba(230,244,240,0.08)' : '0 10px 24px rgba(17,70,61,0.07)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function bookingMintOperationalTileSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const specularCatch = mode === 'dark' ? 'rgba(190,210,205,0.026)' : 'rgba(255,255,255,0.58)'
+  const mintAura = mode === 'dark' ? 'rgba(105,222,198,0.10)' : 'rgba(76,222,199,0.10)'
+  const gradient = mode === 'dark'
+    ? `radial-gradient(circle at 50% 38%, ${mintAura}, transparent 48%), radial-gradient(circle at 74% 20%, ${specularCatch}, transparent 32%), linear-gradient(180deg, rgba(22,29,27,0.98), rgba(16,24,23,0.92))`
+    : `radial-gradient(circle at 50% 38%, ${mintAura}, transparent 48%), radial-gradient(circle at 74% 20%, ${specularCatch}, transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,249,248,0.94))`
+
+  return {
+    background: reduceTransparency ? undefined : gradient,
+    backgroundColor: mode === 'dark' ? '#16211F' : '#FAFFFD',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(20,73,66,0.08)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 7px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(190,210,205,0.055)' : '0 10px 22px rgba(31,92,82,0.04), inset 0 1px 0 rgba(255,255,255,0.76)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
 function bookingFlowStepSurface(
   visual: BookingWizardVisual,
   mode: GlassMode,
   reduceTransparency: boolean,
-  index: number,
+  _index: number,
   active: boolean,
 ) {
-  const tone = index === 2 ? 'warm' : index === 1 ? 'water' : 'mint'
-  const isWarm = tone === 'warm'
-  const isWater = tone === 'water'
-  const lightGradient = isWarm
-    ? 'radial-gradient(circle at 86% 20%, rgba(255,230,178,0.72), transparent 38%), linear-gradient(180deg, rgba(255,254,250,0.98), rgba(255,248,231,0.90))'
-    : isWater
-      ? 'radial-gradient(circle at 86% 20%, rgba(181,241,247,0.82), transparent 38%), linear-gradient(180deg, rgba(250,255,254,0.98), rgba(231,251,250,0.92))'
-      : 'radial-gradient(circle at 86% 20%, rgba(177,249,234,0.84), transparent 38%), linear-gradient(180deg, rgba(250,255,252,0.98), rgba(225,250,242,0.92))'
-  const darkGradient = isWarm
-    ? 'radial-gradient(circle at 84% 18%, rgba(224,160,107,0.18), transparent 38%), linear-gradient(180deg, rgba(34,29,23,0.96), rgba(18,39,36,0.88))'
-    : isWater
-      ? 'radial-gradient(circle at 84% 18%, rgba(80,190,202,0.18), transparent 38%), linear-gradient(180deg, rgba(18,39,36,0.96), rgba(15,44,45,0.88))'
-      : 'radial-gradient(circle at 84% 18%, rgba(105,222,198,0.18), transparent 38%), linear-gradient(180deg, rgba(18,39,36,0.96), rgba(13,29,27,0.90))'
+  if (active) return bookingMintOperationalTileSurface(visual, mode, reduceTransparency)
 
   return {
-    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    backgroundColor: mode === 'dark'
-      ? isWarm ? '#221D17' : isWater ? '#102B2C' : active ? '#183C35' : '#122724'
-      : isWarm ? '#FFF7E8' : isWater ? '#F0FEFF' : active ? visual.rowStrong : '#F0FFF9',
-    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    borderColor: active
-      ? visual.borderStrong
-      : mode === 'dark'
-        ? isWarm ? 'rgba(224,160,107,0.22)' : 'rgba(105,222,198,0.18)'
-        : isWarm ? 'rgba(202,145,75,0.22)' : isWater ? 'rgba(35,156,168,0.20)' : 'rgba(15,130,115,0.18)',
-    boxShadow: mode === 'dark'
-      ? '0 10px 22px rgba(0,0,0,0.18)'
-      : isWarm
-        ? '0 12px 24px rgba(176,118,44,0.10)'
-        : '0 12px 24px rgba(9,121,106,0.10)',
-    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    boxShadow: 'none',
   } as any
 }
 
@@ -648,50 +723,31 @@ function bookingFlowBadgeSurface(
   index: number,
   active: boolean,
 ) {
-  const tone = index === 2 ? 'warm' : index === 1 ? 'water' : 'mint'
-  const isWarm = tone === 'warm'
-  const isWater = tone === 'water'
-  const lightGradient = isWarm
-    ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.94), transparent 28%), linear-gradient(145deg, #FFF1D6, #F3D28D)'
-    : isWater
-      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #E4FCFA, #AEEBEF)'
-      : 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #C9F8EA, #8FE7D2)'
+  const lightGradient = 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.82), transparent 28%), linear-gradient(145deg, rgba(255,255,255,0.96), rgba(238,243,241,0.92))'
 
   return {
     background: reduceTransparency || active ? undefined : mode === 'dark' ? undefined : lightGradient,
     backgroundColor: active
       ? visual.primary
-      : mode === 'dark'
-        ? isWater ? '#15363A' : isWarm ? '#3B291B' : '#173B35'
-        : isWater ? '#E8FCFA' : isWarm ? '#FFF8EB' : '#DCFBF3',
+      : mode === 'dark' ? '#1D2522' : '#EEF3F1',
     backgroundImage: reduceTransparency || active ? undefined : mode === 'dark' ? undefined : lightGradient,
-    borderColor: active
-      ? visual.borderStrong
-      : mode === 'dark'
-        ? isWarm ? 'rgba(224,160,107,0.24)' : 'rgba(105,222,198,0.20)'
-        : isWarm ? 'rgba(202,145,75,0.24)' : isWater ? 'rgba(35,156,168,0.22)' : 'rgba(15,130,115,0.20)',
+    borderColor: active ? visual.borderStrong : visual.border,
     experimental_backgroundImage: reduceTransparency || active ? undefined : mode === 'dark' ? undefined : lightGradient,
   } as any
 }
 
-function bookingFlowTextColor(visual: BookingWizardVisual, mode: GlassMode, index: number) {
+function bookingFlowTextColor(visual: BookingWizardVisual, mode: GlassMode, _index: number) {
   if (mode === 'dark') return visual.primary
-  if (index === 2) return '#9A691D'
-  if (index === 1) return '#087B89'
   return visual.primary
 }
 
-function bookingFlowTitleColor(visual: BookingWizardVisual, mode: GlassMode, index: number) {
+function bookingFlowTitleColor(visual: BookingWizardVisual, mode: GlassMode, _index: number) {
   if (mode === 'dark') return visual.text
-  if (index === 2) return '#1F211D'
-  if (index === 1) return '#102527'
   return visual.text
 }
 
-function bookingFlowMetaColor(visual: BookingWizardVisual, mode: GlassMode, index: number) {
+function bookingFlowMetaColor(visual: BookingWizardVisual, mode: GlassMode, _index: number) {
   if (mode === 'dark') return visual.muted
-  if (index === 2) return '#756547'
-  if (index === 1) return '#557377'
   return visual.muted
 }
 
@@ -706,55 +762,98 @@ function ServiceStep({
 }) {
   const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
   const [selectedService, setSelectedService] = useState<ServiceType | null>(initialServiceType)
-  const serviceChip = selectedService ? `${copy.serviceStep}: ${copy.services[selectedService]}` : copy.servicePreviewChips.problem
+  const [railWidth, setRailWidth] = useState(0)
+  const selectedIndex = selectedService ? bookingServiceOrder.indexOf(selectedService) : -1
+  const segmentWidth = railWidth > 0 ? railWidth / bookingServiceOrder.length : 0
+  const thumbTranslateX = useSharedValue(0)
+  const thumbOpacity = useSharedValue(selectedIndex >= 0 ? 1 : 0)
+  const thumbAnimatedStyle = useAnimatedStyle(() => (
+    railWidth > 0
+      ? {
+          opacity: thumbOpacity.value,
+          transform: [{ translateX: thumbTranslateX.value }],
+        }
+      : { opacity: thumbOpacity.value }
+  ), [railWidth])
+
+  useEffect(() => {
+    thumbOpacity.value = selectedIndex >= 0
+      ? withTiming(1, { duration: reduceMotion ? 80 : 120 })
+      : withTiming(0, { duration: 80 })
+    if (railWidth <= 0 || selectedIndex < 0) return
+
+    const targetX = selectedIndex * segmentWidth
+    thumbTranslateX.value = reduceMotion
+      ? withTiming(targetX, { duration: 120 })
+      : withSpring(targetX, motionTokens.liquid.pill)
+
+    return () => {
+      cancelAnimation(thumbOpacity)
+      cancelAnimation(thumbTranslateX)
+    }
+  }, [railWidth, reduceMotion, segmentWidth, selectedIndex, thumbOpacity, thumbTranslateX])
+
+  const handleRailLayout = (event: LayoutChangeEvent) => setRailWidth(event.nativeEvent.layout.width)
 
   return (
     <WizardCard testID="booking-wizard-step-service">
-      <View style={styles.serviceGrid}>
-        {(['electrical', 'plumbing', 'cleaning'] as const).map((service) => (
-          <Pressable
-            accessibilityLabel={copy.services[service]}
-            accessibilityRole="button"
-            key={service}
-            onPress={() => setSelectedService(service)}
-            style={({ pressed }) => [
-              styles.serviceCard,
-              bookingServiceCardSurface(visual, mode, reduceTransparency, service, selectedService === service),
-              reduceMotionAwarePressStyle(pressed, reduceMotion),
+      <GlassSurface
+        backgroundColor={mode === 'dark' ? 'rgba(22,29,27,0.56)' : 'rgba(255,255,255,0.18)'}
+        borderColor={mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.74)'}
+        material={reduceTransparency ? 'standard' : 'liquid'}
+        mode={mode}
+        onLayout={handleRailLayout}
+        style={[styles.serviceSegmentedRail, bookingServiceRailSurface(visual, mode, reduceTransparency)]}
+        testID="booking-wizard-service-segmented-control"
+        variant="control"
+      >
+        <View pointerEvents="none" style={[styles.serviceSegmentAura, { backgroundColor: visual.aqua }]} testID="booking-wizard-service-mint-aura" />
+        {selectedIndex >= 0 ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.serviceSegmentThumb,
+              railWidth > 0
+                ? { width: segmentWidth }
+                : {
+                    left: `${selectedIndex * bookingServiceSegmentWidthPercent}%`,
+                    width: `${bookingServiceSegmentWidthPercent}%`,
+                  },
+              bookingServiceThumbSurface(visual, mode, reduceTransparency),
+              railWidth > 0 ? thumbAnimatedStyle : null,
             ]}
-            testID={`booking-wizard-service-${service}`}
+            testID="booking-wizard-service-slider-thumb"
           >
-            <View style={[styles.serviceIconDisk, bookingServiceIconSurface(visual, mode, reduceTransparency, service)]}>
-              <ServiceGlyph service={service} color={visual.primary} accent={bookingServiceGlyphAccent(visual, mode, service)} />
-            </View>
-            <Text style={[styles.serviceCardText, { color: visual.text }]} numberOfLines={2}>
-              {copy.services[service]}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <View style={styles.previewChipRow} testID="booking-wizard-service-pending-chips">
-        {[serviceChip, copy.servicePreviewChips.media, copy.servicePreviewChips.area].map((label, index) => (
-          <View key={label} style={[styles.previewChip, bookingPreviewChipSurface(visual, mode, reduceTransparency, index)]}>
-            <Text style={[styles.previewChipText, { color: bookingPreviewChipTextColor(visual, mode, index) }]} numberOfLines={1}>
-              {label}
-            </Text>
-          </View>
-        ))}
-      </View>
-      <View style={[styles.previewPanel, bookingDiagnosisSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-intake-preview">
-        <View style={[styles.previewPillRow, bookingDiagnosisPillSurface(visual, mode, reduceTransparency)]}>
-          <View style={[styles.kaelBadge, { backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.22)' : 'rgba(255,255,255,0.72)' }]}>
-            <Text style={[styles.kaelBadgeText, { color: visual.primary }]}>K</Text>
-          </View>
-          <Text style={[styles.previewPillText, { color: visual.primary }]} numberOfLines={1}>
-            {copy.servicePreviewPill}
-          </Text>
+            <View pointerEvents="none" style={[styles.serviceSegmentThumbSheen, bookingServiceThumbSheenSurface(mode)]} />
+          </Animated.View>
+        ) : null}
+        <View style={styles.serviceSegmentRow}>
+          {bookingServiceOrder.map((service) => {
+            const selected = selectedService === service
+            return (
+              <Pressable
+                accessibilityLabel={copy.services[service]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                key={service}
+                onPress={() => setSelectedService(service)}
+                style={({ pressed }) => [
+                  styles.serviceSegment,
+                  reduceMotionAwarePressStyle(pressed, reduceMotion),
+                ]}
+                testID={`booking-wizard-service-${service}`}
+              >
+                <View style={[styles.serviceIconDisk, bookingServiceIconSurface(visual, mode, reduceTransparency, service, selected)]}>
+                  <BookingServiceImageIcon service={service} />
+                </View>
+                <Text style={[styles.serviceCardText, { color: selected ? visual.text : visual.muted }]} numberOfLines={1}>
+                  {copy.services[service]}
+                </Text>
+              </Pressable>
+            )
+          })}
         </View>
-        <Text style={[styles.previewBody, { color: visual.text }]} numberOfLines={3}>
-          {copy.servicePreviewBody}
-        </Text>
-      </View>
+      </GlassSurface>
       <View style={[styles.estimateShell, bookingEstimateShellSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-intake-shell">
         <View style={styles.previewHeader}>
           <Text style={[styles.previewTitle, { color: visual.text }]} numberOfLines={1}>
@@ -764,11 +863,11 @@ function ServiceStep({
             {copy.servicePreviewMeta}
           </Text>
         </View>
-        <View style={styles.estimateGrid} testID="booking-wizard-intake-grid">
-          <EstimateField label={copy.servicePreviewService} value={copy.pendingValue} />
-          <EstimateField label={copy.servicePreviewDescription} value={copy.pendingValue} />
-          <EstimateField label={copy.servicePreviewArea} value={copy.pendingValue} />
-          <EstimateField label={copy.servicePreviewChat} value={copy.pendingValue} />
+        <View style={[styles.estimateGrid, bookingEstimateGridSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-intake-grid">
+          <EstimateField label={copy.servicePreviewService} testID="booking-wizard-intake-service-field" value={copy.pendingValue} />
+          <EstimateField label={copy.servicePreviewDescription} testID="booking-wizard-intake-description-field" value={copy.pendingValue} />
+          <EstimateField label={copy.servicePreviewArea} testID="booking-wizard-intake-area-field" value={copy.pendingValue} />
+          <EstimateField label={copy.servicePreviewChat} testID="booking-wizard-intake-chat-field" value={copy.pendingValue} />
         </View>
       </View>
       <WizardPrimaryButton
@@ -790,162 +889,177 @@ function bookingServiceTone(service: ServiceType) {
 }
 
 function bookingServiceCardSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean, service: ServiceType, selected: boolean) {
-  const tone = bookingServiceTone(service)
-  const isWater = tone === 'water'
-  const isWarm = tone === 'warm'
-  const lightGradient = isWarm
-    ? 'radial-gradient(circle at 84% 20%, rgba(255,230,178,0.70), transparent 38%), linear-gradient(180deg, rgba(255,254,250,0.98), rgba(255,248,231,0.88))'
-    : isWater
-      ? 'radial-gradient(circle at 84% 20%, rgba(181,241,247,0.78), transparent 38%), linear-gradient(180deg, rgba(250,255,254,0.98), rgba(232,251,250,0.90))'
-      : 'radial-gradient(circle at 84% 20%, rgba(177,249,234,0.82), transparent 38%), linear-gradient(180deg, rgba(250,255,252,0.98), rgba(226,250,242,0.90))'
-  const darkGradient = isWarm
-    ? 'radial-gradient(circle at 82% 18%, rgba(224,160,107,0.18), transparent 38%), linear-gradient(180deg, rgba(34,29,23,0.98), rgba(18,39,36,0.88))'
-    : isWater
-      ? 'radial-gradient(circle at 82% 18%, rgba(80,190,202,0.17), transparent 38%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(15,44,45,0.88))'
-      : 'radial-gradient(circle at 82% 18%, rgba(105,222,198,0.17), transparent 38%), linear-gradient(180deg, rgba(18,39,36,0.98), rgba(13,29,27,0.90))'
+  void service
+  const base = bookingMintOperationalTileSurface(visual, mode, reduceTransparency)
 
   return {
-    backgroundColor: mode === 'dark'
-      ? isWarm ? '#221D17' : isWater ? '#102B2C' : '#122724'
-      : isWarm ? '#FFF7E8' : isWater ? '#F0FEFF' : '#F0FFF9',
-    borderColor: selected
-      ? mode === 'dark'
-        ? isWarm ? 'rgba(244,190,122,0.34)' : 'rgba(138,235,217,0.34)'
-        : isWarm ? 'rgba(176,118,44,0.30)' : isWater ? 'rgba(35,156,168,0.30)' : 'rgba(13,134,119,0.30)'
-      : mode === 'dark'
-        ? isWarm ? 'rgba(224,160,107,0.20)' : 'rgba(105,222,198,0.16)'
-        : isWarm ? 'rgba(202,145,75,0.20)' : isWater ? 'rgba(35,156,168,0.18)' : 'rgba(15,130,115,0.16)',
-    boxShadow: mode === 'dark'
-      ? '0 10px 22px rgba(0,0,0,0.20)'
+    ...base,
+    borderColor: selected ? visual.borderStrong : base.borderColor,
+    boxShadow: selected && !reduceTransparency
+      ? mode === 'dark' ? '0 12px 24px rgba(0,0,0,0.20), inset 0 1px 0 rgba(190,210,205,0.08)' : '0 12px 24px rgba(9,121,106,0.12), inset 0 1px 0 rgba(255,255,255,0.78)'
+      : base.boxShadow,
+  } as any
+}
+
+function bookingServiceRailSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 18% 10%, rgba(255,255,255,0.72), transparent 28%), radial-gradient(circle at 50% 50%, rgba(76,222,199,0.12), transparent 56%), linear-gradient(180deg, rgba(255,255,255,0.48), rgba(255,255,255,0.18))'
+  const darkGradient = 'radial-gradient(circle at 18% 8%, rgba(190,210,205,0.12), transparent 30%), radial-gradient(circle at 50% 50%, rgba(105,222,198,0.090), transparent 54%), linear-gradient(180deg, rgba(22,29,27,0.58), rgba(15,20,19,0.42))'
+
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: reduceTransparency ? visual.row : mode === 'dark' ? 'rgba(22,29,27,0.54)' : 'rgba(255,255,255,0.38)',
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.84)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 16px 34px rgba(0,0,0,0.24), inset 0 1px 0 rgba(190,210,205,0.12)' : '0 16px 34px rgba(31,92,82,0.060), inset 0 1px 0 rgba(255,255,255,0.86)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function bookingServiceThumbSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 38% 8%, rgba(255,255,255,0.90), transparent 36%), radial-gradient(circle at 50% 92%, rgba(76,222,199,0.18), transparent 52%), linear-gradient(180deg, rgba(255,255,255,0.70), rgba(245,249,248,0.42))'
+  const darkGradient = 'radial-gradient(circle at 38% 8%, rgba(190,210,205,0.20), transparent 36%), radial-gradient(circle at 50% 92%, rgba(105,222,198,0.12), transparent 52%), linear-gradient(180deg, rgba(38,48,45,0.62), rgba(22,29,27,0.46))'
+
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: reduceTransparency ? visual.rowStrong : mode === 'dark' ? 'rgba(32,43,40,0.64)' : 'rgba(255,255,255,0.62)',
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.18)' : 'rgba(255,255,255,0.86)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 12px 26px rgba(0,0,0,0.28), inset 0 1px 0 rgba(190,210,205,0.18)' : '0 12px 26px rgba(31,92,82,0.085), inset 0 1px 0 rgba(255,255,255,0.92)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function bookingServiceThumbSheenSurface(mode: GlassMode) {
+  return {
+    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.52)',
+  }
+}
+
+function bookingServiceIconSurface(_visual: BookingWizardVisual, mode: GlassMode, _reduceTransparency: boolean, _service: ServiceType, selected = false) {
+  const lightGradient = 'radial-gradient(circle at 72% 36%, rgba(76,222,199,0.20), transparent 42%), linear-gradient(145deg, rgba(255,255,255,0.94), rgba(241,254,251,0.72))'
+  const darkGradient = 'radial-gradient(circle at 72% 36%, rgba(105,222,198,0.10), transparent 44%), linear-gradient(145deg, rgba(190,210,205,0.055), rgba(22,29,27,0.08))'
+
+  return {
+    background: _reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.035)' : 'rgba(245,255,252,0.72)',
+    backgroundImage: _reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.07)' : 'rgba(20,117,105,0.08)',
+    boxShadow: _reduceTransparency
+      ? 'none'
       : selected
-        ? isWarm ? '0 12px 24px rgba(176,118,44,0.11)' : '0 12px 24px rgba(9,121,106,0.12)'
-        : '0 10px 24px rgba(17,70,61,0.075)',
-    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-  } as any
-}
-
-function bookingServiceIconSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean, service: ServiceType) {
-  const tone = bookingServiceTone(service)
-  const isWater = tone === 'water'
-  const isWarm = tone === 'warm'
-  const lightGradient = isWarm
-    ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.94), transparent 28%), linear-gradient(145deg, #FFF1D6, #F3D28D)'
-    : isWater
-      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #E4FCFA, #AEEBEF)'
-      : 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #C9F8EA, #8FE7D2)'
-  const darkGradient = 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.10), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.20), rgba(18,39,36,0.82))'
-
-  return {
-    backgroundColor: mode === 'dark'
-      ? isWater ? '#15363A' : isWarm ? '#3B291B' : '#173B35'
-      : isWater ? '#E8FCFA' : isWarm ? '#FFF8EB' : '#DCFBF3',
-    borderColor: mode === 'dark'
-      ? isWarm ? 'rgba(224,160,107,0.24)' : 'rgba(118,220,227,0.22)'
-      : isWarm ? 'rgba(176,118,44,0.22)' : isWater ? 'rgba(33,140,178,0.22)' : visual.borderStrong,
-    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-  } as any
-}
-
-function bookingServiceGlyphAccent(visual: BookingWizardVisual, mode: GlassMode, service: ServiceType) {
-  if (service === 'cleaning') return mode === 'dark' ? '#F3D7A9' : '#9A6B25'
-  if (service === 'plumbing') return mode === 'dark' ? visual.primary : '#0A8A92'
-  return visual.primary
-}
-
-function bookingDiagnosisSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
-  const lightGradient = 'radial-gradient(circle at 94% 18%, rgba(255,244,219,0.64), transparent 30%), linear-gradient(135deg, rgba(223,253,246,0.96), rgba(255,247,226,0.82))'
-  const darkGradient = 'radial-gradient(circle at 94% 18%, rgba(224,160,107,0.15), transparent 30%), linear-gradient(135deg, rgba(17,54,48,0.96), rgba(38,32,23,0.82))'
-
-  return {
-    backgroundColor: mode === 'dark' ? 'rgba(17,54,48,0.94)' : 'rgba(229,252,246,0.94)',
-    borderColor: mode === 'dark' ? visual.borderStrong : 'rgba(13,134,119,0.16)',
-    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.16)' : '0 12px 26px rgba(17,70,61,0.055)',
-    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-  } as any
-}
-
-function bookingDiagnosisPillSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
-  const lightGradient = 'linear-gradient(135deg, rgba(210,252,241,0.98), rgba(232,255,249,0.94))'
-  const darkGradient = 'linear-gradient(135deg, rgba(23,72,63,0.92), rgba(15,48,43,0.88))'
-  return {
-    backgroundColor: mode === 'dark' ? 'rgba(23,72,63,0.90)' : 'rgba(220,251,243,0.94)',
-    borderColor: mode === 'dark' ? visual.borderStrong : 'rgba(13,134,119,0.18)',
-    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+        ? mode === 'dark'
+          ? '0 0 0 5px rgba(105,222,198,0.045), 0 10px 22px rgba(0,0,0,0.12), inset 0 1px 0 rgba(190,210,205,0.06)'
+          : '0 0 0 5px rgba(76,222,199,0.070), 0 12px 24px rgba(23,169,149,0.080), inset 0 1px 0 rgba(255,255,255,0.82)'
+        : mode === 'dark'
+          ? 'inset 0 1px 0 rgba(190,210,205,0.06)'
+          : 'inset 0 1px 0 rgba(255,255,255,0.82)',
+    experimental_backgroundImage: _reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
   } as any
 }
 
 function bookingEstimateShellSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
-  const lightGradient = 'radial-gradient(circle at 92% 10%, rgba(255,248,226,0.42), transparent 28%), linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,253,248,0.92))'
-  const darkGradient = 'radial-gradient(circle at 92% 10%, rgba(224,160,107,0.10), transparent 28%), linear-gradient(180deg, rgba(22,43,40,0.96), rgba(18,39,36,0.94))'
+  const lightGradient = 'radial-gradient(circle at 80% 18%, rgba(76,222,199,0.20), transparent 42%), radial-gradient(circle at 16% 92%, rgba(76,222,199,0.10), transparent 46%), linear-gradient(180deg, rgba(255,255,255,0.95), rgba(238,255,251,0.90))'
+  const darkGradient = 'radial-gradient(circle at 80% 18%, rgba(105,222,198,0.13), transparent 42%), radial-gradient(circle at 16% 92%, rgba(105,222,198,0.06), transparent 46%), linear-gradient(180deg, rgba(24,31,29,0.72), rgba(13,17,16,0.56))'
 
   return {
-    backgroundColor: mode === 'dark' ? 'rgba(22,43,40,0.96)' : 'rgba(255,253,248,0.96)',
-    borderColor: mode === 'dark' ? visual.border : 'rgba(28,106,94,0.13)',
-    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 10px 24px rgba(0,0,0,0.18)' : '0 12px 28px rgba(17,70,61,0.06)',
+    backgroundColor: mode === 'dark' ? 'rgba(22,29,27,0.66)' : '#F4FFFB',
+    borderColor: mode === 'dark' ? 'rgba(230,244,240,0.12)' : 'rgba(15,133,118,0.16)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 15px 34px rgba(0,0,0,0.31), inset 0 1px 0 rgba(230,244,240,0.08)' : '0 14px 30px rgba(17,70,61,0.060), inset 0 1px 0 rgba(255,255,255,0.78)',
     background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
     backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
     experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
   } as any
 }
 
-function bookingPreviewChipSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean, index: number) {
-  const tone = index === 1 ? 'water' : index === 2 ? 'warm' : 'service'
-  const isWater = tone === 'water'
-  const isWarm = tone === 'warm'
+function bookingEstimateGridSurface(_visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 74% 96%, rgba(76,222,199,0.20), transparent 48%), linear-gradient(180deg, rgba(238,255,250,0.78), rgba(232,255,248,0.66))'
+  const darkGradient = 'radial-gradient(circle at 74% 96%, rgba(105,222,198,0.12), transparent 48%), linear-gradient(180deg, rgba(21,30,28,0.72), rgba(15,22,20,0.62))'
 
   return {
-    backgroundColor: mode === 'dark'
-      ? isWarm ? 'rgba(64,42,24,0.86)' : isWater ? 'rgba(18,60,64,0.82)' : 'rgba(19,64,55,0.82)'
-      : isWarm ? 'rgba(255,244,219,0.94)' : isWater ? 'rgba(232,252,253,0.94)' : 'rgba(220,251,243,0.94)',
-    borderColor: mode === 'dark'
-      ? isWarm ? 'rgba(224,160,107,0.24)' : 'rgba(105,222,198,0.20)'
-      : isWarm ? 'rgba(176,118,44,0.18)' : isWater ? 'rgba(35,156,168,0.18)' : 'rgba(13,134,119,0.18)',
-    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 6px 14px rgba(0,0,0,0.16)' : '0 8px 18px rgba(17,70,61,0.055)',
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: mode === 'dark' ? 'rgba(21,30,28,0.70)' : 'rgba(232,255,248,0.72)',
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(15,133,118,0.12)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.055)' : 'inset 0 1px 0 rgba(255,255,255,0.46)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function bookingInputShellSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 74% 18%, rgba(76,222,199,0.16), transparent 40%), radial-gradient(circle at 18% 2%, rgba(255,255,255,0.76), transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(241,255,251,0.90))'
+  const darkGradient = 'radial-gradient(circle at 74% 18%, rgba(105,222,198,0.11), transparent 42%), radial-gradient(circle at 18% 2%, rgba(190,210,205,0.095), transparent 32%), linear-gradient(180deg, rgba(22,29,27,0.98), rgba(16,24,23,0.92))'
+
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: mode === 'dark' ? '#16211F' : '#F7FFFC',
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.11)' : 'rgba(15,133,118,0.12)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 7px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(190,210,205,0.070)' : '0 10px 24px rgba(31,92,82,0.045), inset 0 1px 0 rgba(255,255,255,0.82)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function bookingComponentEdgeSurface(mode: GlassMode) {
+  return {
+    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(255,255,255,0.78)',
   }
 }
 
-function bookingPreviewChipTextColor(visual: BookingWizardVisual, mode: GlassMode, index: number) {
-  if (index === 2) return mode === 'dark' ? '#F3D7A9' : '#6F4C22'
-  return visual.primary
+function bookingTextInputFocusSurface(mode: GlassMode) {
+  return {
+    caretColor: mode === 'dark' ? '#63E6D0' : '#087F70',
+    outlineColor: mode === 'dark' ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.96)',
+    outlineOffset: -1,
+    outlineStyle: 'solid',
+    outlineWidth: 1,
+  } as any
 }
 
-function ServiceGlyph({ accent, color, service }: { accent: string; color: string; service: ServiceType }) {
-  if (service === 'electrical') {
-    return (
-      <Svg width={26} height={26} viewBox="0 0 26 26" accessibilityRole="image">
-        <Path d="M9.4 5.8v5.2M16.6 5.8V11" stroke={accent} strokeWidth={1.9} strokeLinecap="round" />
-        <Path d="M8.2 10.8h9.6v3.3a4.8 4.8 0 0 1-9.6 0v-3.3Z" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
-        <Path d="M13 18.9v2.3" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
-      </Svg>
-    )
-  }
+function bookingPhotoGroupSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 80% 4%, rgba(76,222,199,0.15), transparent 40%), radial-gradient(circle at 18% 92%, rgba(255,255,255,0.82), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.92), rgba(238,255,251,0.88))'
+  const darkGradient = 'radial-gradient(circle at 80% 4%, rgba(105,222,198,0.10), transparent 40%), radial-gradient(circle at 18% 92%, rgba(190,210,205,0.060), transparent 34%), linear-gradient(180deg, rgba(24,31,29,0.74), rgba(13,17,16,0.58))'
 
-  if (service === 'plumbing') {
-    return (
-      <Svg width={26} height={26} viewBox="0 0 26 26" accessibilityRole="image">
-        <Path d="M5.8 8.7h6.8c2.4 0 4.2 1.7 4.2 4.1v1" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
-        <Path d="M7.8 6.1h5M10.3 6.1v2.6M5.7 11.8h4.6" stroke={accent} strokeWidth={1.9} strokeLinecap="round" />
-        <Path d="M16.8 14.7c1.2 1.2 1.8 2.1 1.8 2.9a1.85 1.85 0 0 1-3.7 0c0-.8.7-1.7 1.9-2.9Z" stroke={accent} strokeWidth={1.9} strokeLinejoin="round" />
-      </Svg>
-    )
-  }
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: mode === 'dark' ? 'rgba(22,29,27,0.66)' : '#F4FFFB',
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: mode === 'dark' ? 'rgba(230,244,240,0.12)' : 'rgba(15,133,118,0.15)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 15px 34px rgba(0,0,0,0.31), inset 0 1px 0 rgba(230,244,240,0.08)' : '0 14px 30px rgba(17,70,61,0.060), inset 0 1px 0 rgba(255,255,255,0.76)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
 
-  return (
-    <Svg width={26} height={26} viewBox="0 0 26 26" accessibilityRole="image">
-      <Path d="M17.1 5.8 10.3 14" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
-      <Path d="m9.4 13.6 4.4 3.7" stroke={accent} strokeWidth={1.9} strokeLinecap="round" />
-      <Path d="M7.8 14.9 13 19.3l-1.3 1.5c-1.5.6-3.1.5-5-.5l-1.4-1.1 2.5-4.3Z" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
-      <Path d="m6.8 18.6 2.4 2" stroke={accent} strokeWidth={1.9} strokeLinecap="round" />
-    </Svg>
-  )
+function bookingPhotoTileSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  return {
+    backgroundColor: visual.row,
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(20,73,66,0.10)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 8px 16px rgba(0,0,0,0.16)' : '0 8px 16px rgba(31,92,82,0.035)',
+  } as any
+}
+
+function bookingPhotoAddSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 50% 34%, rgba(76,222,199,0.20), transparent 54%), radial-gradient(circle at 30% 8%, rgba(255,255,255,0.78), transparent 36%), linear-gradient(180deg, rgba(255,255,255,0.94), rgba(241,255,251,0.78))'
+  const darkGradient = 'radial-gradient(circle at 50% 34%, rgba(105,222,198,0.12), transparent 54%), radial-gradient(circle at 30% 8%, rgba(190,210,205,0.12), transparent 36%), linear-gradient(180deg, rgba(28,38,35,0.88), rgba(18,24,22,0.76))'
+
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: visual.row,
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(15,133,118,0.14)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.080)' : '0 8px 18px rgba(31,92,82,0.045), inset 0 1px 0 rgba(255,255,255,0.80)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function bookingPhotoRemoveSurface(mode: GlassMode) {
+  return {
+    backgroundColor: mode === 'dark' ? 'rgba(15,20,19,0.82)' : 'rgba(12,24,22,0.68)',
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.18)' : 'rgba(255,255,255,0.62)',
+  }
+}
+
+function BookingServiceImageIcon({ service }: { service: ServiceType }) {
+  return <Image contentFit="contain" source={bookingServiceImageIcons[service]} style={styles.serviceImageIcon} />
 }
 
 function DescribeStep({
@@ -965,9 +1079,10 @@ function DescribeStep({
   onSubmit: () => void
   state: WizardState
 }) {
-  const { reduceMotion, visual } = useBookingWizardVisual()
+  const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
   return (
     <WizardCard testID="booking-wizard-step-describe">
+      <View pointerEvents="none" style={styles.hiddenMarker} testID="booking-wizard-apple-ios26-component-system" />
       <View style={styles.stepHeaderWithAction}>
         <View style={styles.stepHeaderCopy}>
           <WizardText kind="eyebrow">{copy.describeStep}</WizardText>
@@ -976,28 +1091,38 @@ function DescribeStep({
         <WizardBackButton label={copy.back} onPress={onBack} testID="booking-wizard-describe-back" />
       </View>
       <View style={styles.formGroup}>
-        <TextInput
-          accessibilityLabel={copy.describeTitle}
-          multiline
-          numberOfLines={4}
-          onChangeText={(description) => dispatch({ type: 'update_description', description })}
-          placeholder={copy.describePlaceholder}
-          placeholderTextColor={visual.muted}
-          style={[styles.input, styles.describeInput, { backgroundColor: visual.row, borderColor: visual.borderStrong, color: visual.text }]}
-          value={state.description}
-        />
+        <WizardText kind="label">{copy.describeStep}</WizardText>
+        <View style={[styles.fieldShell, bookingInputShellSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-description-field-shell">
+          <View pointerEvents="none" style={[styles.fieldEdgeHighlight, bookingComponentEdgeSurface(mode)]} />
+          <TextInput
+            accessibilityLabel={copy.describeTitle}
+            multiline
+            numberOfLines={4}
+            onChangeText={(description) => dispatch({ type: 'update_description', description })}
+            placeholder={copy.describePlaceholder}
+            placeholderTextColor={visual.muted}
+            style={[styles.input, styles.describeInput, bookingTextInputFocusSurface(mode), { color: visual.text }]}
+            value={state.description}
+          />
+        </View>
       </View>
-      <View style={styles.photoGroup}>
+      <View style={[styles.photoGroup, bookingPhotoGroupSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-photo-rail">
+        <View pointerEvents="none" style={[styles.fieldEdgeHighlight, bookingComponentEdgeSurface(mode)]} />
         <WizardText kind="label">{copy.photosLabel}</WizardText>
         <View style={styles.photoRow}>
           {state.photoDrafts.map((photo, index) => (
-            <View key={photo.uri} style={[styles.photoTile, { borderColor: visual.borderStrong }]}>
+            <View key={photo.uri} style={[styles.photoTile, bookingPhotoTileSurface(visual, mode, reduceTransparency)]}>
               <Image accessibilityLabel={`photo-${index}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.photoImage} />
               <Pressable
                 accessibilityLabel={`remove-photo-${index}`}
                 accessibilityRole="button"
+                hitSlop={8}
                 onPress={() => dispatch({ type: 'remove_photo', index })}
-                style={styles.photoRemove}
+                style={({ pressed }) => [
+                  styles.photoRemove,
+                  bookingPhotoRemoveSurface(mode),
+                  reduceMotionAwarePressStyle(pressed, reduceMotion),
+                ]}
                 testID={`booking-wizard-photo-remove-${index}`}
               >
                 <Text style={styles.photoRemoveText}>×</Text>
@@ -1011,7 +1136,7 @@ function DescribeStep({
               onPress={onPickPhotos}
               style={({ pressed }) => [
                 styles.photoAdd,
-                { backgroundColor: visual.disabled, borderColor: visual.borderStrong },
+                bookingPhotoAddSurface(visual, mode, reduceTransparency),
                 reduceMotionAwarePressStyle(pressed, reduceMotion),
               ]}
               testID="booking-wizard-photo-add"
@@ -1037,36 +1162,64 @@ function DescribeStep({
 }
 
 function AnalyzingStep({ copy }: { copy: WizardCopy }) {
-  const { visual } = useBookingWizardVisual()
+  const { mode, reduceTransparency, visual } = useBookingWizardVisual()
   return (
     <WizardCard testID="booking-wizard-step-analyzing">
       <WizardText kind="eyebrow">{copy.analyzingStep}</WizardText>
       <WizardText kind="title">{copy.analyzingTitle}</WizardText>
       <WizardText kind="body">{copy.analyzingBody}</WizardText>
-      <View style={[styles.progressTrack, { backgroundColor: visual.disabled }]} testID="booking-wizard-kael-progress">
-        <View style={[styles.progressFill, { backgroundColor: visual.primary }]} />
+      <View style={[styles.progressTrack, bookingProgressTrackSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-kael-progress">
+        <View style={[styles.progressFill, bookingProgressFillSurface(visual, mode, reduceTransparency)]}>
+          <View pointerEvents="none" style={[styles.progressSheen, bookingButtonSheenSurface(mode)]} />
+        </View>
       </View>
     </WizardCard>
   )
+}
+
+function bookingProgressTrackSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'linear-gradient(180deg, rgba(238,243,241,0.96), rgba(229,236,233,0.92))'
+  const darkGradient = 'linear-gradient(180deg, rgba(29,37,34,0.96), rgba(17,22,21,0.92))'
+
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: visual.disabled,
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.070)' : 'inset 0 1px 0 rgba(255,255,255,0.74)',
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
+}
+
+function bookingProgressFillSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'linear-gradient(90deg, #087F70, #17A995)'
+  const darkGradient = 'linear-gradient(90deg, #40CDB8, #63E6D0)'
+
+  return {
+    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: visual.primary,
+    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+  } as any
 }
 
 type BookingFieldTone = 'mint' | 'water' | 'warm'
 
 function EstimateField({
   label,
+  testID,
   tone = 'mint',
   value,
   wide,
 }: {
   label: string
+  testID?: string
   tone?: BookingFieldTone
   value: string
   wide?: boolean
 }) {
   const { mode, reduceTransparency, visual } = useBookingWizardVisual()
   return (
-    <View style={[styles.estimateField, bookingFieldSurface(visual, mode, reduceTransparency, tone), wide ? styles.estimateFieldWide : null]}>
-      <View pointerEvents="none" style={[styles.estimateFieldWash, { backgroundColor: bookingFieldWashColor(visual, mode, tone) }]} />
+    <View style={[styles.estimateField, bookingFieldSurface(visual, mode, reduceTransparency, tone), wide ? styles.estimateFieldWide : null]} testID={testID}>
       <WizardText kind="label" numberOfLines={1}>{label}</WizardText>
       <WizardText kind="value" numberOfLines={2}>{value}</WizardText>
     </View>
@@ -1081,40 +1234,17 @@ function bookingFieldSurface(
 ) {
   const isWater = tone === 'water'
   const isWarm = tone === 'warm'
-  const lightGradient = isWarm
-    ? 'radial-gradient(circle at 82% 18%, rgba(255,229,176,0.76), transparent 38%), linear-gradient(180deg, rgba(255,254,249,0.98), rgba(255,247,230,0.91))'
-    : isWater
-      ? 'radial-gradient(circle at 82% 18%, rgba(174,235,239,0.82), transparent 38%), linear-gradient(180deg, rgba(250,255,254,0.98), rgba(232,251,250,0.92))'
-      : 'radial-gradient(circle at 82% 18%, rgba(167,246,228,0.84), transparent 38%), linear-gradient(180deg, rgba(250,255,252,0.98), rgba(224,250,242,0.92))'
-  const darkGradient = isWarm
-    ? 'radial-gradient(circle at 82% 18%, rgba(224,160,107,0.18), transparent 38%), linear-gradient(180deg, rgba(37,31,24,0.96), rgba(22,43,38,0.88))'
-    : isWater
-      ? 'radial-gradient(circle at 82% 18%, rgba(80,190,202,0.18), transparent 38%), linear-gradient(180deg, rgba(18,43,43,0.96), rgba(15,43,45,0.88))'
-      : 'radial-gradient(circle at 82% 18%, rgba(105,222,198,0.18), transparent 38%), linear-gradient(180deg, rgba(18,43,36,0.96), rgba(13,35,31,0.90))'
+  void visual
+  void reduceTransparency
 
   return {
-    background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    backgroundColor: mode === 'dark'
-      ? isWarm ? '#251F18' : isWater ? '#102B2C' : '#122B24'
-      : isWarm ? '#FFF7E6' : isWater ? '#F0FEFF' : '#F0FFF9',
-    backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    borderColor: mode === 'dark'
-      ? isWarm ? 'rgba(224,160,107,0.28)' : 'rgba(105,222,198,0.22)'
-      : isWarm ? 'rgba(202,145,75,0.26)' : isWater ? 'rgba(35,156,168,0.24)' : 'rgba(15,130,115,0.23)',
-    boxShadow: mode === 'dark'
-      ? '0 12px 24px rgba(0,0,0,0.20)'
-      : isWarm
-        ? '0 14px 28px rgba(176,118,44,0.11)'
-        : '0 14px 28px rgba(9,121,106,0.11)',
-    experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
+    backgroundColor: 'transparent',
+    borderBottomColor: mode === 'dark'
+      ? isWarm ? 'rgba(224,160,107,0.075)' : 'rgba(190,210,205,0.075)'
+      : isWarm ? 'rgba(187,116,61,0.060)' : isWater ? 'rgba(81,187,192,0.060)' : 'rgba(15,133,118,0.075)',
+    borderWidth: 0,
+    boxShadow: 'none',
   } as any
-}
-
-function bookingFieldWashColor(visual: BookingWizardVisual, mode: GlassMode, tone: BookingFieldTone) {
-  if (mode === 'dark') return tone === 'warm' ? 'rgba(224,160,107,0.16)' : 'rgba(105,222,198,0.16)'
-  if (tone === 'warm') return 'rgba(255,229,176,0.42)'
-  if (tone === 'water') return 'rgba(174,235,239,0.44)'
-  return visual.aqua
 }
 
 function DoneStep({
@@ -1143,14 +1273,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: 'center',
     minHeight: 40,
+    overflow: 'hidden',
     paddingHorizontal: 12,
+    position: 'relative',
   },
   backButtonText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
   },
-  body: { color: '#52615C', fontSize: 14, lineHeight: 20 },
+  body: { color: '#52615C', fontSize: 14, fontWeight: '600', letterSpacing: 0, lineHeight: 20 },
+  buttonSheen: {
+    borderRadius: 999,
+    height: 1,
+    left: 18,
+    opacity: 0.74,
+    position: 'absolute',
+    right: 18,
+    top: 2,
+  },
   card: {
     gap: 16,
     minHeight: 320,
@@ -1163,10 +1304,25 @@ const styles = StyleSheet.create({
     overflow: 'visible',
     padding: 0,
   },
+  cardDescribeLowerWash: {
+    bottom: -48,
+    height: 156,
+    opacity: 0.085,
+    right: 20,
+    top: undefined,
+    width: 156,
+  },
+  cardDescribeWash: {
+    height: 210,
+    opacity: 0.18,
+    right: -78,
+    top: -76,
+    width: 210,
+  },
   cardWarmWash: {
     borderRadius: 999,
     height: 122,
-    opacity: 0.32,
+    opacity: 0.12,
     position: 'absolute',
     right: -42,
     top: 132,
@@ -1175,7 +1331,7 @@ const styles = StyleSheet.create({
   cardWash: {
     borderRadius: 999,
     height: 180,
-    opacity: 0.28,
+    opacity: 0.16,
     position: 'absolute',
     right: -70,
     top: -68,
@@ -1185,47 +1341,59 @@ const styles = StyleSheet.create({
   errorText: { color: '#B43F3F', fontSize: 13, fontWeight: '600' },
   errorSlot: { marginTop: -2 },
   estimateField: {
-    borderRadius: 18,
-    borderWidth: 1,
-    boxShadow: '0 7px 16px rgba(17,70,61,0.035)',
-    flexBasis: '47%',
-    flexGrow: 1,
-    gap: 7,
-    minHeight: 86,
-    overflow: 'hidden',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    alignItems: 'center',
+    borderRadius: 0,
+    borderWidth: 0,
+    boxShadow: 'none',
+    flexBasis: '100%',
+    flexDirection: 'row',
+    flexGrow: 0,
+    gap: 10,
+    justifyContent: 'space-between',
+    minHeight: 27,
+    overflow: 'visible',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     position: 'relative',
   },
   estimateFieldWash: {
     borderRadius: 999,
-    height: 96,
-    opacity: 0.42,
+    height: 82,
+    opacity: 0.11,
     position: 'absolute',
-    right: -42,
-    top: -34,
-    width: 96,
+    right: -36,
+    top: -32,
+    width: 82,
   },
   estimateFieldWide: {
     flexBasis: '100%',
   },
   estimateGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    borderCurve: 'continuous',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'column',
+    gap: 10,
+    overflow: 'hidden',
+    padding: 12,
   },
   estimateShell: {
-    borderRadius: 22,
+    borderRadius: 24,
     borderWidth: 1,
     gap: 12,
     overflow: 'hidden',
-    padding: 16,
+    padding: 14,
   },
   estimateValue: { color: '#1F2937', fontSize: 15, fontWeight: '700', lineHeight: 19 },
   flowOverview: {
+    borderCurve: 'continuous',
+    borderRadius: 24,
+    borderWidth: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 9,
+    gap: 4,
+    overflow: 'hidden',
+    padding: 4,
   },
   flowStepBadge: {
     alignItems: 'center',
@@ -1237,22 +1405,22 @@ const styles = StyleSheet.create({
   },
   flowStepBadgeText: {
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 0,
   },
   flowStepCard: {
     alignItems: 'center',
     borderCurve: 'continuous',
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    flexBasis: '47%',
+    flexBasis: '48%',
     flexDirection: 'row',
     flexGrow: 1,
-    gap: 9,
-    minHeight: 64,
+    gap: 8,
+    minHeight: 58,
     overflow: 'hidden',
-    paddingHorizontal: 11,
-    paddingVertical: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 8,
   },
   flowStepCopy: {
     flex: 1,
@@ -1267,18 +1435,34 @@ const styles = StyleSheet.create({
   },
   flowStepTitle: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
     lineHeight: 17,
   },
   formGroup: { gap: 9 },
+  fieldEdgeHighlight: {
+    borderRadius: 999,
+    height: 1,
+    left: 14,
+    opacity: 0.72,
+    position: 'absolute',
+    right: 14,
+    top: 1,
+  },
+  fieldShell: {
+    borderCurve: 'continuous',
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    position: 'relative',
+  },
   hiddenMarker: { height: 0, opacity: 0, position: 'absolute', width: 0 },
   input: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D8E2DC',
-    borderRadius: 18,
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
     fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0,
     minHeight: 96,
     paddingHorizontal: 14,
     paddingVertical: 13,
@@ -1290,26 +1474,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#EAF2EE',
     borderColor: '#9FB7AC',
-    borderRadius: 18,
-    borderStyle: 'dashed',
+    borderCurve: 'continuous',
+    borderRadius: 20,
     borderWidth: 1,
     height: 84,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: 84,
   },
   photoAddText: { color: '#3F6F5A', fontSize: 12, fontWeight: '600', textAlign: 'center' },
-  photoGroup: { gap: 10, marginTop: 1 },
+  photoGroup: {
+    borderCurve: 'continuous',
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 10,
+    marginTop: 1,
+    overflow: 'hidden',
+    padding: 12,
+    position: 'relative',
+  },
   photoImage: { height: '100%', width: '100%' },
   photoRemove: {
     alignItems: 'center',
     backgroundColor: 'rgba(15,23,42,0.7)',
     borderRadius: 999,
-    height: 22,
+    borderWidth: 1,
+    height: 28,
     justifyContent: 'center',
+    overflow: 'hidden',
     position: 'absolute',
-    right: 4,
-    top: 4,
-    width: 22,
+    right: 5,
+    top: 5,
+    width: 28,
   },
   photoRemoveText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -1317,37 +1513,18 @@ const styles = StyleSheet.create({
   primaryButton: {
     alignItems: 'center',
     backgroundColor: '#256B47',
-    borderRadius: 20,
-    boxShadow: '0 16px 28px rgba(9,121,106,0.22)',
+    borderRadius: 999,
+    borderWidth: 1,
+    boxShadow: '0 10px 22px rgba(9,121,106,0.13), inset 0 1px 0 rgba(255,255,255,0.26)',
     flex: 1,
     justifyContent: 'center',
-    minHeight: 56,
+    minHeight: 48,
+    overflow: 'hidden',
     paddingHorizontal: 14,
+    position: 'relative',
   },
   primaryButtonDisabled: { opacity: 0.68 },
   primaryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  previewBody: {
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  previewChip: {
-    alignItems: 'center',
-    borderRadius: 999,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 32,
-    paddingHorizontal: 11,
-  },
-  previewChipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
-  },
-  previewChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
   previewHeader: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -1355,56 +1532,44 @@ const styles = StyleSheet.create({
   },
   previewMeta: {
     fontSize: 12,
-    fontWeight: '800',
-  },
-  previewPanel: {
-    borderRadius: 22,
-    borderWidth: 1,
-    boxShadow: '0 12px 26px rgba(17,70,61,0.055)',
-    gap: 10,
-    overflow: 'hidden',
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-  },
-  previewPillRow: {
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    minHeight: 34,
-    paddingHorizontal: 10,
-  },
-  previewPillText: {
-    flex: 1,
-    fontSize: 12,
     fontWeight: '700',
   },
   previewTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   progressFill: {
     borderRadius: 999,
     height: '100%',
+    overflow: 'hidden',
+    position: 'relative',
     width: '62%',
+  },
+  progressSheen: {
+    height: 1,
+    left: 10,
+    opacity: 0.78,
+    position: 'absolute',
+    right: 10,
+    top: 1,
   },
   progressTrack: {
     borderRadius: 999,
-    height: 9,
+    height: 10,
     overflow: 'hidden',
   },
   secondaryButton: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderColor: '#256B47',
-    borderRadius: 18,
+    borderRadius: 999,
     borderWidth: 1,
     flex: 1,
     justifyContent: 'center',
-    minHeight: 50,
+    minHeight: 46,
+    overflow: 'hidden',
     paddingHorizontal: 14,
+    position: 'relative',
   },
   secondaryButtonText: { color: '#256B47', fontSize: 14, fontWeight: '700' },
   serviceCard: {
@@ -1427,10 +1592,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 16,
     borderWidth: 1,
-    height: 36,
+    height: 34,
     justifyContent: 'center',
-    marginBottom: 2,
-    width: 36,
+    overflow: 'visible',
+    width: 34,
+  },
+  serviceImageIcon: {
+    flexShrink: 0,
+    height: 34,
+    width: 34,
   },
   serviceMetaText: {
     fontSize: 10,
@@ -1440,6 +1610,61 @@ const styles = StyleSheet.create({
   },
   serviceStepIntro: {
     gap: 3,
+  },
+  serviceSegment: {
+    alignItems: 'center',
+    borderRadius: 20,
+    flex: 1,
+    gap: 3,
+    justifyContent: 'center',
+    minHeight: 66,
+    minWidth: 0,
+    paddingHorizontal: 4,
+    paddingVertical: 7,
+  },
+  serviceSegmentAura: {
+    borderRadius: 999,
+    bottom: 8,
+    left: 26,
+    opacity: 0.26,
+    position: 'absolute',
+    right: 26,
+    top: 8,
+  },
+  serviceSegmentedRail: {
+    borderCurve: 'continuous',
+    borderRadius: 30,
+    borderWidth: 1,
+    minHeight: 74,
+    overflow: 'hidden',
+    padding: 4,
+    position: 'relative',
+  },
+  serviceSegmentRow: {
+    flexDirection: 'row',
+    gap: 0,
+    position: 'relative',
+    zIndex: 2,
+  },
+  serviceSegmentThumb: {
+    borderCurve: 'continuous',
+    borderRadius: 26,
+    borderWidth: 1,
+    bottom: 4,
+    left: 0,
+    overflow: 'hidden',
+    position: 'absolute',
+    top: 4,
+    zIndex: 1,
+  },
+  serviceSegmentThumbSheen: {
+    borderRadius: 999,
+    height: 1,
+    left: 14,
+    opacity: 0.78,
+    position: 'absolute',
+    right: 14,
+    top: 2,
   },
   stepHeader: { gap: 5, marginBottom: 1 },
   stepHeaderCopy: {
@@ -1452,19 +1677,8 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 1,
   },
-  stepEyebrow: { color: '#3F6F5A', fontSize: 12, fontWeight: '800', letterSpacing: 0, textTransform: 'uppercase' },
+  stepEyebrow: { color: '#3F6F5A', fontSize: 12, fontWeight: '700', letterSpacing: 0, textTransform: 'uppercase' },
   title: { color: '#0F172A', fontSize: 19, fontWeight: '700', lineHeight: 25 },
-  kaelBadge: {
-    alignItems: 'center',
-    borderRadius: 999,
-    height: 22,
-    justifyContent: 'center',
-    width: 22,
-  },
-  kaelBadgeText: {
-    fontSize: 12,
-    fontWeight: '900',
-  },
   wizardFlowShell: {
     gap: 16,
   },

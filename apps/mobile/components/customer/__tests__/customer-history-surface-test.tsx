@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react-native'
+import { fireEvent, render, screen } from '@testing-library/react-native'
+import { Platform, StyleSheet } from 'react-native'
 import type { LocalCustomerSearchState, LocalDeal, LocalDealStatus, LocalScopeChange, LocalWorkflowSelectors } from '@home-services/shared'
 
 let mockRouteParams: Record<string, string | string[] | undefined>
@@ -185,10 +186,52 @@ beforeEach(() => {
 })
 
 describe('CustomerHistorySurface phase context', () => {
+  it('does not show the Kael source pill in the empty repair hero', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(null)
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-repair-hero-panel')).not.toHaveTextContent(/Từ Kael|From Kael/)
+    expect(screen.getByTestId('customer-history-apple-ios26-surface-system')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-hero-edge-highlight')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-section-liquid-wash-activity')).toBeNull()
+    expect(screen.queryByTestId('customer-history-hero-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-history-repair-hero-liquid')).toBeNull()
+    expect(screen.getByTestId('customer-history-activity-empty-timeline-rail')).toBeOnTheScreen()
+  })
+
+  it('removes draft copy from the repair hero and enlarges the service title', () => {
+    mockRouteParams = { tab: 'repair' }
+    const draftDeal = buildDeal('draft')
+    draftDeal.draft.serviceType = 'cleaning'
+    buildWorkflow(draftDeal)
+
+    render(<CustomerHistorySurface />)
+
+    const hero = screen.getByTestId('customer-history-repair-hero-panel')
+    const titleStyle = StyleSheet.flatten(screen.getByTestId('customer-history-repair-hero-title').props.style)
+    expect(hero).toHaveTextContent(/Vệ sinh/)
+    expect(hero).not.toHaveTextContent(/Nháp/)
+    expect(screen.getByTestId('customer-history-title-row')).not.toHaveTextContent(/Nháp/)
+    expect(screen.queryByTestId('customer-history-activity-status-lens')).toBeNull()
+    expect(titleStyle.fontSize).toBe(20)
+    expect(titleStyle.lineHeight).toBe(24)
+  })
+
   it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {
     render(<CustomerHistorySurface />)
 
     expect(screen.getByTestId('customer-history-phase-context')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-phase-context')).not.toHaveTextContent(/Luồng điều phối/)
+    expect(screen.getByTestId('customer-history-phase-context')).toHaveTextContent(/Báo cáo/)
+    expect(screen.getByTestId('customer-history-phase-body')).toHaveTextContent(/Kael đã gửi phiếu/)
+    expect(screen.getByTestId('customer-history-phase-live-cell')).not.toHaveTextContent(/Đang xử lý|Luồng điều phối/)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-title').props.style).fontSize).toBe(18)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-live-cell-value').props.style).fontSize).toBe(13)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-live-cell-value').props.style).lineHeight).toBe(17)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-artifact-cell-label').props.style).fontWeight).toBe('700')
+    expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-artifact-cell-value').props.style).fontWeight).toBe('600')
     expect(screen.getByTestId('customer-history-chat-tab-panel')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-history-chat-input').props.editable).toBe(false)
     expect(screen.getByTestId('customer-history-chat-locked-reason')).toHaveTextContent('Chat cần công việc thật')
@@ -312,7 +355,7 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-review-panel')).toHaveTextContent(/Mở/)
   })
 
-  it('keeps review locked when a confirmed job is missing completion evidence', () => {
+  it('preserves review submit access when an already-confirmed job is missing backfilled completion evidence', () => {
     mockRouteParams = { tab: 'done' }
     const deal = buildDeal('confirmed_by_customer')
     deal.completionNotes = null
@@ -321,10 +364,10 @@ describe('CustomerHistorySurface phase context', () => {
 
     render(<CustomerHistorySurface />)
 
-    expect(screen.queryByTestId('customer-history-review-submit')).toBeNull()
+    expect(screen.getByTestId('customer-history-review-submit')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Cần bằng chứng hoàn tất/)
-    expect(screen.getAllByText('Khóa').length).toBeGreaterThan(0)
-    expect(screen.getByTestId('customer-history-done-timeline')).not.toHaveTextContent(/Sẵn sàng đánh giá/)
+    expect(screen.getByTestId('customer-history-review-panel')).toHaveTextContent(/Mở/)
+    expect(screen.getByTestId('customer-history-done-timeline')).toHaveTextContent(/Sẵn sàng đánh giá/)
   })
 
   it('localizes hydrated estimate complexity instead of showing backend enum copy', () => {
@@ -351,5 +394,30 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-worker-placeholder')).toHaveTextContent(/Yêu cầu đã hủy/)
     expect(screen.queryByTestId('customer-history-cancel-local-deal')).toBeNull()
     expect(screen.getByTestId('customer-history-cancellation-context')).not.toHaveTextContent(/Kael đã xác nhận/)
+  })
+
+  it('lets the in-app browser confirm and run customer cancellation', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('broadcasting'))
+    const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(Platform, 'OS')
+    const runtime = globalThis as unknown as { confirm?: unknown }
+    const originalConfirm = runtime.confirm
+    const confirmSpy = jest.fn(() => true)
+    Object.defineProperty(Platform, 'OS', { configurable: true, get: () => 'web' })
+    runtime.confirm = confirmSpy
+
+    try {
+      render(<CustomerHistorySurface />)
+
+      fireEvent.press(screen.getByTestId('customer-history-cancel-local-deal'))
+
+      expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Hủy yêu cầu?'))
+      expect(mockWorkflowValue.actions.cancelRemoteJob).toHaveBeenCalledTimes(1)
+    } finally {
+      if (originalPlatformDescriptor) {
+        Object.defineProperty(Platform, 'OS', originalPlatformDescriptor)
+      }
+      runtime.confirm = originalConfirm
+    }
   })
 })

@@ -205,11 +205,58 @@ describe('mobile-api Edge runtime helpers', () => {
       'requestCustomerCancellation',
       'requestWorkerCancellation',
       'submitDisputeCounterStatement',
+      'submitCustomerKaelFeedback',
       'submitReview',
       'decideDispute',
       'updateJobStatus',
       'updateWorkerAvailability',
     ].sort())
+  })
+
+  it('stores customer Kael feedback with a scrubbed learning copy', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'feedback-1',
+          status: 'new',
+          created_at: '2026-06-02T00:00:00.000Z',
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).submitCustomerKaelFeedback(ctx, {
+      language: 'vi',
+      message: 'Kael nên nhắc rõ hơn qua số 0901234567 khi biên giá thay đổi.',
+      source: 'profile',
+    })
+
+    expect(result).toEqual({
+      feedback_id: 'feedback-1',
+      status: 'new',
+      created_at: '2026-06-02T00:00:00.000Z',
+    })
+    expect(client.calls).toHaveLength(1)
+    expect(client.calls[0].table).toBe('customer_kael_feedback')
+    expect(client.calls[0].operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        customer_id: 'customer-1',
+        language: 'vi',
+        message: 'Kael nên nhắc rõ hơn qua số 0901234567 khi biên giá thay đổi.',
+        message_scrubbed: expect.stringContaining('[phone]'),
+        source: 'profile',
+        status: 'new',
+      }),
+    ])
+    expect(client.calls[0].operations).toContainEqual(['select', 'id, status, created_at'])
+    expect(client.calls[0].operations).toContainEqual(['maybeSingle'])
   })
 
   it('returns a safe Places autocomplete fallback when no Maps provider key is configured', async () => {
@@ -2456,6 +2503,90 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(updateCall?.operations).toContainEqual(['eq', 'status', 'repairing'])
     expect(updateCall?.operations).toContainEqual(['select', 'id'])
     expect(updateCall?.operations).toContainEqual(['maybeSingle'])
+  })
+
+  it('reuses stored completion photos when a worker retries completion after media attach', async () => {
+    const storedAfterPhotos = ['supabase://job-media/job-1/after/photo-1.jpg']
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'repairing',
+          customer_id: null,
+          worker_id: 'worker-1',
+          final_price: null,
+          completion_notes: null,
+          completion_photo_urls: storedAfterPhotos,
+        },
+        error: null,
+      },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
+      status: 'completed_by_worker',
+      completion_notes: 'Đã thay ổ cắm và kiểm tra tải.',
+    })).resolves.toMatchObject({
+      job_id: 'job-1',
+      from_status: 'repairing',
+      to_status: 'completed_by_worker',
+    })
+
+    const updateCall = client.calls.find((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'update')
+    )
+    expect(updateCall?.operations).toContainEqual([
+      'update',
+      expect.objectContaining({
+        status: 'completed_by_worker',
+        completion_notes: 'Đã thay ổ cắm và kiểm tra tải.',
+        completion_photo_urls: storedAfterPhotos,
+      }),
+    ])
+  })
+
+  it('rejects worker completion when neither payload nor stored after-photos exist', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'repairing',
+          customer_id: null,
+          worker_id: 'worker-1',
+          final_price: null,
+          completion_notes: null,
+          completion_photo_urls: [],
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
+      status: 'completed_by_worker',
+      completion_notes: 'Đã thay ổ cắm và kiểm tra tải.',
+    })).rejects.toMatchObject({
+      code: 'VALIDATION',
+      status: 400,
+    })
+    expect(client.calls.some((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'update')
+    )).toBe(false)
   })
 
   it('blocks customer completion when Kael has not locked final price', async () => {

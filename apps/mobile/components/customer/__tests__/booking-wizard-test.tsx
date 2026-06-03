@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react-native'
+import { StyleSheet } from 'react-native'
 
 // Kael Autonomy v2 routes structured intake to the full-screen Kael chat. The
 // wizard should not create a job or require the old confirmRemoteSearch gate.
@@ -80,7 +81,21 @@ function submitDescribe(onOpenKael: jest.Mock) {
 describe('BookingWizard Kael autonomy', () => {
   it('does not call any booking action just by mounting and choosing a service', () => {
     render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={jest.fn()} />)
+    expect(screen.getByTestId('booking-wizard-flow-apple-progress-rail')).toBeTruthy()
+    expect(screen.getByTestId('booking-wizard-service-segmented-control')).toBeTruthy()
+    const intakeShellStyle = StyleSheet.flatten(screen.getByTestId('booking-wizard-intake-shell').props.style) as Record<string, unknown>
+    const intakeGridStyle = StyleSheet.flatten(screen.getByTestId('booking-wizard-intake-grid').props.style) as Record<string, unknown>
+    const serviceFieldStyle = StyleSheet.flatten(screen.getByTestId('booking-wizard-intake-service-field').props.style) as Record<string, unknown>
+    expect(String(intakeShellStyle.backgroundImage ?? intakeShellStyle.background ?? intakeShellStyle.experimental_backgroundImage)).toContain('rgba(76,222,199,0.20)')
+    expect(String(intakeGridStyle.backgroundImage ?? intakeGridStyle.background ?? intakeGridStyle.experimental_backgroundImage)).toContain('rgba(76,222,199,0.20)')
+    expect(intakeGridStyle.overflow).toBe('hidden')
+    expect(serviceFieldStyle.backgroundColor).toBe('transparent')
+    expect(serviceFieldStyle.borderWidth).toBe(0)
+    expect(serviceFieldStyle.flexGrow).toBe(0)
+    expect(screen.getByTestId('booking-wizard-intake-description-field')).toBeTruthy()
+    expect(screen.queryByTestId('booking-wizard-service-slider-thumb')).toBeNull()
     fireEvent.press(screen.getByTestId('booking-wizard-service-electrical'))
+    expect(screen.getByTestId('booking-wizard-service-slider-thumb')).toBeTruthy()
     fireEvent.press(screen.getByTestId('booking-wizard-service-next'))
     expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
     expect(mockConfirmRemoteSearch).not.toHaveBeenCalled()
@@ -107,6 +122,9 @@ describe('BookingWizard Kael autonomy', () => {
     mockRouteParams = { serviceType: 'plumbing' }
     render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={jest.fn()} />)
     expect(screen.getByTestId('booking-wizard-step-describe')).toBeTruthy()
+    expect(screen.getByTestId('booking-wizard-apple-ios26-component-system')).toBeTruthy()
+    expect(screen.getByTestId('booking-wizard-description-field-shell')).toBeTruthy()
+    expect(screen.getByTestId('booking-wizard-photo-rail')).toBeTruthy()
     expect(screen.queryByTestId('booking-wizard-step-service')).toBeNull()
   })
 

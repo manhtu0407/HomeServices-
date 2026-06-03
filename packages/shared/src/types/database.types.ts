@@ -222,6 +222,53 @@ export type Database = {
           },
         ]
       }
+      customer_kael_feedback: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          language: string
+          message: string
+          message_scrubbed: string
+          safe_metadata: Json
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          language?: string
+          message: string
+          message_scrubbed: string
+          safe_metadata?: Json
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          language?: string
+          message?: string
+          message_scrubbed?: string
+          safe_metadata?: Json
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_kael_feedback_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_profiles: {
         Row: {
           building_name: string | null

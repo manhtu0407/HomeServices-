@@ -3,6 +3,8 @@ import {
   availabilityToggleSchema,
   type CustomerCancellationRequestInput,
   customerCancellationRequestSchema,
+  type CustomerKaelFeedbackInput,
+  customerKaelFeedbackSchema,
   type CustomerScopeDecisionInput,
   customerScopeDecisionSchema,
   type DisputeAdminDecisionInput,
@@ -167,6 +169,11 @@ type ConfirmCompletionResponse = {
   final_price: number | null;
 };
 type ReviewResponse = { review_id: string; job_id: string; status: JobStatus };
+type CustomerKaelFeedbackResponse = {
+  feedback_id: string;
+  status: "new";
+  created_at: string;
+};
 type WorkerRegisterResponse = {
   worker_id: string;
   verification_status: WorkerVerificationStatus;
@@ -694,6 +701,10 @@ export type MobileApiServices = {
     jobId: string,
     input: Omit<ReviewInput, "job_id">,
   ): Promise<ReviewResponse>;
+  submitCustomerKaelFeedback(
+    ctx: MobileApiContext,
+    input: CustomerKaelFeedbackInput,
+  ): Promise<CustomerKaelFeedbackResponse>;
   registerWorker(
     ctx: MobileApiContext,
     input: WorkerRegisterInput,
@@ -967,6 +978,12 @@ type Route =
   }
   | { kind: "me.kaelMemory"; method: "GET"; roles: UserRole[] }
   | { kind: "me.kaelMemory.delete"; method: "DELETE"; roles: UserRole[] }
+  | {
+    kind: "me.kaelFeedback";
+    method: "POST";
+    roles: UserRole[];
+    successStatus: 201;
+  }
   | { kind: "me.jobs.active"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.kaelMemory"; method: "GET"; roles: UserRole[] }
@@ -1042,6 +1059,14 @@ function matchRoute(request: Request): Route | null {
   }
   if (method === "GET" && path === "/me/jobs/active") {
     return { kind: "me.jobs.active", method: "GET", roles: ["customer", "admin"] };
+  }
+  if (method === "POST" && path === "/me/kael-feedback") {
+    return {
+      kind: "me.kaelFeedback",
+      method: "POST",
+      roles: ["customer", "admin"],
+      successStatus: 201,
+    };
   }
   if (method === "GET" && path === "/me/kael-memory") {
     return { kind: "me.kaelMemory", method: "GET", roles: ["customer", "worker", "admin"] };
@@ -1530,6 +1555,11 @@ async function dispatchRoute(
     }
     case "me.jobs.active":
       return services.listCustomerActiveJobs(ctx);
+    case "me.kaelFeedback": {
+      const input = customerKaelFeedbackSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.submitCustomerKaelFeedback(ctx, input.data);
+    }
     case "me.kaelMemory":
       return services.getMyKaelMemory(ctx);
     case "me.kaelMemory.delete":
@@ -1746,11 +1776,10 @@ function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
   }
   if (status === "completed_by_worker") {
     const note = result.completion_notes?.trim() ?? "";
-    const photos = result.completion_photo_urls ?? [];
-    if (note.length < 5 || photos.length === 0) {
+    if (note.length < 5) {
       apiFailure(
         "VALIDATION",
-        "Cần ghi chú và ảnh hoàn tất trước khi báo hoàn tất",
+        "Cần ghi chú hoàn tất trước khi báo hoàn tất",
         400,
       );
     }

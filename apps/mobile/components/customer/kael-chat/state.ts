@@ -1,11 +1,13 @@
 import { type ServiceType } from '@home-services/shared'
 import { type KaelChatResponse } from '@/lib/api-types'
+import { type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { type PendingKaelChatDraft } from './pending-intake'
 
 export type KaelChatState = {
   selectedService: ServiceType | null
   session: KaelChatResponse | null
   pendingIntake: PendingKaelChatDraft | null
+  composerPhotoDrafts: LocalMediaUploadDraft[]
   draft: string
   addressLabel: string
   loading: boolean
@@ -18,6 +20,9 @@ export type KaelChatState = {
 export type KaelChatAction =
   | { type: 'syncRouteService'; service: ServiceType | null; routeSessionId?: string }
   | { type: 'applyPendingDraft'; intake: PendingKaelChatDraft }
+  | { type: 'addComposerPhotos'; drafts: LocalMediaUploadDraft[] }
+  | { type: 'appendDraft'; segment: string }
+  | { type: 'composerPhotosUploaded' }
   | { type: 'loadSessionStarted' }
   | { type: 'loadSessionSucceeded'; session: KaelChatResponse }
   | { type: 'loadSessionFailed'; error: string }
@@ -26,7 +31,7 @@ export type KaelChatAction =
   | { type: 'setDraft'; value: string; clearTransientError: boolean }
   | { type: 'showTransientError'; error: string }
   | { type: 'sendStarted' }
-  | { type: 'sendSucceeded'; session: KaelChatResponse }
+  | { type: 'sendSucceeded'; session: KaelChatResponse; clearDraft?: boolean }
   | { type: 'sendFailed'; error: string }
   | { type: 'orchestrationStarted' }
   | { type: 'orchestrationSucceeded'; message: string; jobId: string }
@@ -37,6 +42,7 @@ export function createInitialKaelChatState(routeService: ServiceType | null): Ka
     selectedService: routeService,
     session: null,
     pendingIntake: null,
+    composerPhotoDrafts: [],
     draft: '',
     addressLabel: '',
     loading: false,
@@ -70,6 +76,12 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
         addressLabel: action.intake.addressLabel ?? state.addressLabel,
         error: null,
       }
+    case 'addComposerPhotos':
+      return { ...state, composerPhotoDrafts: mergeComposerPhotoDrafts(state.composerPhotoDrafts, action.drafts) }
+    case 'appendDraft':
+      return { ...state, draft: appendKaelDraftSegment(state.draft, action.segment), error: null }
+    case 'composerPhotosUploaded':
+      return { ...state, composerPhotoDrafts: [] }
     case 'loadSessionStarted':
       return { ...state, loading: true, error: null }
     case 'loadSessionSucceeded':
@@ -111,7 +123,7 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
         sending: false,
         session: action.session,
         selectedService: action.session.session.service_type,
-        draft: '',
+        draft: action.clearDraft === false ? state.draft : '',
       }
     case 'sendFailed':
       return { ...state, sending: false, error: action.error }
@@ -139,4 +151,23 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
     default:
       return state
   }
+}
+
+function mergeComposerPhotoDrafts(current: LocalMediaUploadDraft[], drafts: LocalMediaUploadDraft[]) {
+  const seenUris = new Set(current.map((photo) => photo.uri))
+  const merged = [...current]
+  for (const draft of drafts) {
+    if (seenUris.has(draft.uri)) continue
+    seenUris.add(draft.uri)
+    merged.push(draft)
+    if (merged.length >= 5) break
+  }
+  return merged
+}
+
+function appendKaelDraftSegment(draft: string, segment: string) {
+  const cleanDraft = draft.trim()
+  const cleanSegment = segment.trim()
+  if (!cleanSegment) return cleanDraft
+  return cleanDraft ? `${cleanDraft} ${cleanSegment}` : cleanSegment
 }
