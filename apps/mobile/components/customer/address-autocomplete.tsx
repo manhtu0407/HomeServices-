@@ -2,6 +2,8 @@ import { useEffect, useReducer, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { extractKnownDistrictLabel } from '@home-services/shared'
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
+import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { type AppLanguage } from '@/lib/app-language'
 import { placesService } from '@/lib/services'
 import type { PlacesAutocompleteResponse } from '@/lib/api-types'
@@ -22,6 +24,8 @@ const EMPTY_ADDRESS_LOOKUP_STATE: AddressLookupState = {
   fallbackUsed: false,
   suggestions: EMPTY_ADDRESS_SUGGESTIONS,
 }
+const ADDRESS_AUTOCOMPLETE_APPLE_IOS26_COMPONENT_SYSTEM = 'ADDRESS_AUTOCOMPLETE_APPLE_IOS26_COMPONENT_SYSTEM: address input and suggestions use Apple-style grouped field material, edge highlight, press state, and reduce-transparency fallback'
+void ADDRESS_AUTOCOMPLETE_APPLE_IOS26_COMPONENT_SYSTEM
 
 function addressLookupReducer(_state: AddressLookupState, action: AddressLookupAction): AddressLookupState {
   switch (action.type) {
@@ -56,6 +60,7 @@ const copy = {
 export function AddressAutocomplete({ language, onChange, value }: AddressAutocompleteProps) {
   const mode = useCustomerThemeMode()
   const tokens = getCustomerThemeTokens(mode)
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const text = copy[language]
   const [{ fallbackUsed, suggestions }, dispatchLookup] = useReducer(addressLookupReducer, EMPTY_ADDRESS_LOOKUP_STATE)
   const [open, setOpen] = useState(false)
@@ -98,25 +103,35 @@ export function AddressAutocomplete({ language, onChange, value }: AddressAutoco
 
   return (
     <View style={addressStyles.shell} testID="customer-address-autocomplete">
+      <View pointerEvents="none" style={addressStyles.hiddenMarker} testID="customer-address-apple-ios26-component-system" />
       <Text style={[addressStyles.label, { color: tokens.muted }]}>{text.label}</Text>
-      <TextInput
-        autoCapitalize="words"
-        onChangeText={updateValue}
-        onFocus={() => setOpen(true)}
-        placeholder={text.placeholder}
-        placeholderTextColor={tokens.subtleText}
-        style={[addressStyles.input, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
-        testID="customer-address-autocomplete-input"
-        value={value}
-      />
+      <View style={[addressStyles.fieldShell, addressFieldSurface(tokens, reduceTransparency)]} testID="customer-address-apple-ios26-field">
+        <View pointerEvents="none" style={[addressStyles.edgeHighlight, addressEdgeHighlightSurface(tokens)]} />
+        <TextInput
+          autoCapitalize="words"
+          onChangeText={updateValue}
+          onFocus={() => setOpen(true)}
+          placeholder={text.placeholder}
+          placeholderTextColor={tokens.subtleText}
+          style={[addressStyles.input, addressInputFocusSurface(tokens), { color: tokens.text }]}
+          testID="customer-address-autocomplete-input"
+          value={value}
+        />
+      </View>
       {open && suggestions.length > 0 ? (
-        <View style={[addressStyles.suggestions, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-address-autocomplete-suggestions">
+        <View style={[addressStyles.suggestions, addressSuggestionsSurface(tokens, reduceTransparency)]} testID="customer-address-autocomplete-suggestions">
+          <View pointerEvents="none" style={addressStyles.hiddenMarker} testID="customer-address-apple-ios26-suggestion-surface" />
           {suggestions.map((suggestion) => (
             <Pressable
               accessibilityRole="button"
               key={suggestion.place_id}
               onPress={() => selectSuggestion(suggestion)}
-              style={({ pressed }) => [addressStyles.suggestionButton, pressed ? addressStyles.pressed : null]}
+              style={({ pressed }) => [
+                addressStyles.suggestionButton,
+                addressSuggestionSurface(tokens, reduceTransparency),
+                pressed ? addressStyles.pressed : null,
+                reduceMotionAwarePressStyle(pressed, reduceMotion),
+              ]}
               testID="customer-address-autocomplete-suggestion"
             >
               <Text numberOfLines={1} style={[addressStyles.suggestionTitle, { color: tokens.text }]}>
@@ -132,7 +147,7 @@ export function AddressAutocomplete({ language, onChange, value }: AddressAutoco
         </View>
       ) : null}
       {fallbackUsed ? (
-        <Text style={[addressStyles.fallback, { color: tokens.muted }]} testID="customer-address-autocomplete-fallback">
+        <Text style={[addressStyles.fallback, addressFallbackSurface(tokens, reduceTransparency), { color: tokens.muted }]} testID="customer-address-autocomplete-fallback">
           {text.fallback}
         </Text>
       ) : null}
@@ -140,17 +155,107 @@ export function AddressAutocomplete({ language, onChange, value }: AddressAutoco
   )
 }
 
+type AddressTokens = ReturnType<typeof getCustomerThemeTokens>
+
+function addressFieldSurface(tokens: AddressTokens, reduceTransparency: boolean) {
+  const dark = tokens.mode === 'dark'
+  const lightGradient = 'radial-gradient(circle at 76% 18%, rgba(76,222,199,0.13), transparent 42%), radial-gradient(circle at 18% 0%, rgba(255,255,255,0.78), transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(242,255,251,0.92))'
+  const darkGradient = 'radial-gradient(circle at 76% 18%, rgba(105,222,198,0.085), transparent 42%), radial-gradient(circle at 18% 0%, rgba(190,210,205,0.085), transparent 32%), linear-gradient(180deg, rgba(24,31,29,0.96), rgba(15,20,19,0.92))'
+
+  return {
+    background: reduceTransparency ? undefined : dark ? darkGradient : lightGradient,
+    backgroundColor: reduceTransparency ? tokens.base : dark ? 'rgba(24,31,29,0.96)' : '#F8FFFC',
+    backgroundImage: reduceTransparency ? undefined : dark ? darkGradient : lightGradient,
+    borderColor: dark ? 'rgba(190,210,205,0.12)' : 'rgba(15,133,118,0.12)',
+    boxShadow: reduceTransparency ? 'none' : dark ? 'inset 0 1px 0 rgba(190,210,205,0.070)' : '0 9px 22px rgba(31,92,82,0.040), inset 0 1px 0 rgba(255,255,255,0.80)',
+    experimental_backgroundImage: reduceTransparency ? undefined : dark ? darkGradient : lightGradient,
+  } as any
+}
+
+function addressSuggestionsSurface(tokens: AddressTokens, reduceTransparency: boolean) {
+  const dark = tokens.mode === 'dark'
+  const lightGradient = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,248,248,0.94))'
+  const darkGradient = 'linear-gradient(180deg, rgba(23,29,27,0.97), rgba(16,21,20,0.93))'
+
+  return {
+    background: reduceTransparency ? undefined : dark ? darkGradient : lightGradient,
+    backgroundColor: reduceTransparency ? tokens.raised : dark ? 'rgba(23,29,27,0.97)' : 'rgba(255,255,255,0.97)',
+    backgroundImage: reduceTransparency ? undefined : dark ? darkGradient : lightGradient,
+    borderColor: dark ? 'rgba(190,210,205,0.12)' : 'rgba(20,73,66,0.09)',
+    boxShadow: reduceTransparency ? 'none' : dark ? '0 12px 26px rgba(0,0,0,0.22), inset 0 1px 0 rgba(190,210,205,0.070)' : '0 12px 26px rgba(31,92,82,0.050), inset 0 1px 0 rgba(255,255,255,0.78)',
+    experimental_backgroundImage: reduceTransparency ? undefined : dark ? darkGradient : lightGradient,
+  } as any
+}
+
+function addressSuggestionSurface(tokens: AddressTokens, reduceTransparency: boolean) {
+  return {
+    backgroundColor: reduceTransparency ? tokens.raised : 'transparent',
+    borderBottomColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.070)' : 'rgba(20,73,66,0.060)',
+  }
+}
+
+function addressFallbackSurface(tokens: AddressTokens, reduceTransparency: boolean) {
+  const dark = tokens.mode === 'dark'
+  return {
+    backgroundColor: reduceTransparency ? tokens.base : dark ? 'rgba(24,31,29,0.72)' : 'rgba(255,255,255,0.72)',
+    borderColor: dark ? 'rgba(190,210,205,0.10)' : 'rgba(20,73,66,0.08)',
+  }
+}
+
+function addressEdgeHighlightSurface(tokens: AddressTokens) {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(255,255,255,0.78)',
+  }
+}
+
+function addressInputFocusSurface(tokens: AddressTokens) {
+  return {
+    caretColor: tokens.primary,
+    outlineColor: tokens.mode === 'dark' ? 'rgba(255,255,255,0.46)' : 'rgba(255,255,255,0.96)',
+    outlineOffset: -1,
+    outlineStyle: 'solid',
+    outlineWidth: 1,
+  } as any
+}
+
 const addressStyles = StyleSheet.create({
+  edgeHighlight: {
+    borderRadius: 999,
+    height: 1,
+    left: 14,
+    opacity: 0.72,
+    position: 'absolute',
+    right: 14,
+    top: 1,
+  },
   fallback: {
+    borderCurve: 'continuous',
+    borderRadius: 16,
+    borderWidth: 1,
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 17,
     marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  fieldShell: {
+    borderCurve: 'continuous',
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  hiddenMarker: {
+    height: 0,
+    opacity: 0,
+    position: 'absolute',
+    width: 0,
   },
   input: {
-    borderRadius: 18,
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0,
@@ -160,7 +265,7 @@ const addressStyles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
     lineHeight: 14,
     textTransform: 'uppercase',
@@ -173,6 +278,7 @@ const addressStyles = StyleSheet.create({
     marginTop: 16,
   },
   suggestionButton: {
+    borderBottomWidth: 1,
     gap: 2,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -183,13 +289,14 @@ const addressStyles = StyleSheet.create({
     letterSpacing: 0,
   },
   suggestions: {
-    borderRadius: 16,
+    borderCurve: 'continuous',
+    borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
   },
   suggestionTitle: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
   },
 })

@@ -1,18 +1,19 @@
 import { type ReactNode } from 'react'
 import { type StyleProp, type ViewStyle } from 'react-native'
 import { GlassSurface } from './glass-surface'
-import type { GlassMode } from './tokens'
+import type { GlassMaterial, GlassMode } from './tokens'
 
 type GlassCardProps = {
   children: ReactNode
+  material?: GlassMaterial
   mode?: GlassMode
   style?: StyleProp<ViewStyle>
   testID?: string
 }
 
-export function GlassCard({ children, mode = 'light', style, testID }: GlassCardProps) {
+export function GlassCard({ children, material = 'standard', mode = 'light', style, testID }: GlassCardProps) {
   return (
-    <GlassSurface mode={mode} style={style} testID={testID} variant="hero">
+    <GlassSurface material={material} mode={mode} style={style} testID={testID} variant="hero">
       {children}
     </GlassSurface>
   )

@@ -1,6 +1,7 @@
-import { type Dispatch, useEffect, useRef, useState } from 'react'
+import { memo, type Dispatch, useCallback, useEffect, useRef, useState } from 'react'
 import { Image } from 'expo-image'
-import { ActivityIndicator, Pressable, Text, TextInput, View, type ViewStyle } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, Text, TextInput, View, type ListRenderItemInfo, type ViewStyle } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, PLATFORM_FEE_CUSTOMER, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type ServiceType, type WorkflowArtifactMode, type WorkflowPhaseContext } from '@home-services/shared'
@@ -22,7 +23,21 @@ import { type KaelChatAction } from './state'
 import { styles } from './styles'
 
 const kaelModel8AHead = require('../../../assets/kael-model-8a-head.png')
-const ADDRESS_AUTO_HIDE_DELAY_MS = 1000
+const clientChatArchiveIcon = require('../../../assets/client-image-icons/client-booking.png')
+const ADDRESS_AUTO_HIDE_DELAY_MS = 180
+
+type KaelWebSpeechRecognition = {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  maxAlternatives: number
+  onend: (() => void) | null
+  onerror: ((event: { error?: string }) => void) | null
+  onresult: ((event: { results?: ArrayLike<ArrayLike<{ transcript?: string }>> }) => void) | null
+  start: () => void
+  stop?: () => void
+}
+type KaelWebSpeechRecognitionConstructor = new () => KaelWebSpeechRecognition
 
 type KaelChatText = {
   addressPlaceholder: string
@@ -34,6 +49,19 @@ type KaelChatText = {
   }
   attach: string
   attachHint: string
+  archiveActiveMeta: string
+  archiveCurrentChat: string
+  archiveDraftMeta: string
+  archiveEmptyBody: string
+  archiveEmptySubtitle: string
+  archiveEmptyTitle: string
+  archiveHistoryMeta: string
+  archiveLoadingChat: string
+  archiveNoService: string
+  archiveOpen: string
+  archivePendingIntake: string
+  archiveServiceRequest: string
+  archiveTitle: string
   back: string
   briefClarityLabel: string
   briefClarityPending: string
@@ -94,9 +122,67 @@ type KaelChatText = {
 }
 
 type KaelChatTokens = ReturnType<typeof useKaelChatTokens>
+export type KaelChatArchiveItem = {
+  id: string
+  meta: string
+  subtitle: string
+  targetPath?: string
+  title: string
+}
+const EMPTY_KAEL_CHAT_ARCHIVE_ITEMS: KaelChatArchiveItem[] = []
 const vndFormatter = new Intl.NumberFormat('vi-VN')
 const PLATFORM_FEE_MULTIPLIER = 1 + PLATFORM_FEE_CUSTOMER
 const vietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i
+
+function kaelChatAttachmentFallbackName(language: AppLanguage) {
+  return language === 'en' ? 'selected image' : 'ảnh đã chọn'
+}
+
+function kaelChatAttachmentDraftLine(language: AppLanguage, fileName: string) {
+  const cleanName = fileName.trim() || kaelChatAttachmentFallbackName(language)
+  return language === 'en' ? `Selected image: ${cleanName}` : `Ảnh đã chọn: ${cleanName}`
+}
+
+function kaelChatAttachmentPermissionBody(language: AppLanguage) {
+  return language === 'en'
+    ? 'Allow photo library access so Kael can keep this image with the request evidence.'
+    : 'Cho phép truy cập thư viện ảnh để Kael giữ ảnh này cùng bằng chứng yêu cầu.'
+}
+
+function kaelChatAttachmentReadyBody(language: AppLanguage) {
+  return language === 'en'
+    ? 'Kael added the image name to your message. The real image stays local and attaches after Kael creates the request evidence.'
+    : 'Kael đã thêm tên ảnh vào tin nhắn. Ảnh thật vẫn ở máy và sẽ gắn vào bằng chứng sau khi Kael tạo phiếu.'
+}
+
+function kaelChatMicListeningBody(language: AppLanguage) {
+  return language === 'en'
+    ? 'Listening now. Kael will add the transcript to the message box.'
+    : 'Đang nghe. Kael sẽ thêm nội dung nhận được vào ô nhắn.'
+}
+
+function kaelChatMicUnavailableBody(language: AppLanguage) {
+  return language === 'en'
+    ? 'Voice dictation is not available on this device yet. Type the details so Kael can keep context.'
+    : 'Thiết bị này chưa mở đọc giọng nói. Nhập mô tả để Kael giữ bối cảnh.'
+}
+
+function getKaelWebSpeechRecognition(): KaelWebSpeechRecognitionConstructor | null {
+  if (Platform.OS !== 'web') return null
+  const speechGlobal = globalThis as unknown as {
+    SpeechRecognition?: KaelWebSpeechRecognitionConstructor
+    webkitSpeechRecognition?: KaelWebSpeechRecognitionConstructor
+    window?: {
+      SpeechRecognition?: KaelWebSpeechRecognitionConstructor
+      webkitSpeechRecognition?: KaelWebSpeechRecognitionConstructor
+    }
+  }
+  return speechGlobal.SpeechRecognition
+    ?? speechGlobal.webkitSpeechRecognition
+    ?? speechGlobal.window?.SpeechRecognition
+    ?? speechGlobal.window?.webkitSpeechRecognition
+    ?? null
+}
 
 export function useKaelChatTokens() {
   const themeMode = useCustomerThemeMode()
@@ -129,32 +215,170 @@ function kaelStatePaint(tokens: KaelChatTokens, tone: 'done' | 'locked' | 'quest
 }
 
 export function KaelChatHeader({
+  archiveItems = EMPTY_KAEL_CHAT_ARCHIVE_ITEMS,
+  onOpenArchiveItem,
   onBack,
   reduceMotion,
   text,
-  themeMode,
   tokens,
 }: {
+  archiveItems?: KaelChatArchiveItem[]
+  onOpenArchiveItem?: (item: KaelChatArchiveItem) => void
   onBack: () => void
   reduceMotion: boolean
   text: KaelChatText
-  themeMode: ReturnType<typeof useCustomerThemeMode>
   tokens: ReturnType<typeof useKaelChatTokens>
 }) {
-  const headerBackdrop = tokens.mode === 'dark' ? 'rgba(18,48,43,0.96)' : 'rgba(238,253,249,0.96)'
-  const headerBorder = tokens.mode === 'dark' ? 'rgba(105,222,198,0.26)' : 'rgba(8,139,124,0.30)'
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const archiveSubtitle = archiveItems[0]?.title ?? text.archiveEmptySubtitle
+  const panelBackground = tokens.mode === 'dark' ? 'rgba(17,31,29,0.60)' : 'rgba(255,255,255,0.50)'
+
+  const handleArchiveItemPress = useCallback((item: KaelChatArchiveItem) => {
+    setArchiveOpen(false)
+    onOpenArchiveItem?.(item)
+  }, [onOpenArchiveItem])
+
+  const renderArchiveItem = useCallback(({ item, index }: ListRenderItemInfo<KaelChatArchiveItem>) => (
+    <KaelArchiveRow
+      index={index}
+      item={item}
+      onPress={handleArchiveItemPress}
+      reduceMotion={reduceMotion}
+      tokens={tokens}
+    />
+  ), [handleArchiveItemPress, reduceMotion, tokens])
+  const archiveKeyExtractor = useCallback((item: KaelChatArchiveItem) => item.id, [])
 
   return (
-    <GlassSurface backgroundColor={headerBackdrop} borderColor={headerBorder} mode={themeMode} style={[styles.headerGlass, kaelSurfacePaint(tokens, 'header')]} testID="customer-kael-chat-glass-header" variant="hero">
-      <View style={[styles.header, styles.headerMinimal]}>
-        <Pressable accessibilityLabel={text.back} accessibilityRole="button" onPress={onBack} style={({ pressed }) => [styles.closeButton, { borderColor: tokens.border, backgroundColor: tokens.raised }, kaelSurfacePaint(tokens, 'icon'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-close">
+    <View style={styles.chatTopChrome} testID="customer-kael-chat-glass-header">
+      <View style={styles.chatTopUtilityRow} testID="customer-chat-reference-top-controls">
+        <Pressable accessibilityLabel={text.back} accessibilityRole="button" hitSlop={4} onPress={onBack} style={({ pressed }) => [styles.chatRoundButton, { borderColor: tokens.border }, kaelSurfacePaint(tokens, 'icon'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-close">
           <ChatBackIcon color={tokens.primary} />
         </Pressable>
-        <View style={styles.headerSpacer} />
+        <View style={styles.chatArchiveDock} testID="customer-kael-chat-session-archive-dock">
+          <Pressable
+            accessibilityLabel={`${text.archiveTitle}. ${archiveSubtitle}`}
+            accessibilityHint={text.archiveOpen}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: archiveOpen }}
+            hitSlop={4}
+            onPress={() => setArchiveOpen((open) => !open)}
+            style={({ pressed }) => [
+              styles.chatArchiveToolbar,
+              { borderColor: tokens.border },
+              kaelSurfacePaint(tokens, 'header'),
+              reduceMotionAwarePressStyle(pressed, reduceMotion),
+            ]}
+            testID="customer-kael-chat-session-archive-toolbar"
+          >
+            <View style={styles.chatArchiveIconStage} testID="customer-kael-chat-session-archive-image-stage">
+              <Image
+                contentFit="contain"
+                source={clientChatArchiveIcon}
+                style={styles.chatArchiveImageIcon}
+                testID="customer-kael-chat-session-archive-image-icon"
+              />
+            </View>
+            <View style={styles.chatArchiveToolbarCopy}>
+              <Text style={[styles.chatArchiveToolbarTitle, { color: tokens.text }]} numberOfLines={1}>
+                {text.archiveTitle}
+              </Text>
+              <Text style={[styles.chatArchiveToolbarSubtitle, { color: tokens.muted }]} numberOfLines={1}>
+                {archiveSubtitle}
+              </Text>
+            </View>
+            <ChatChevronIcon color={tokens.primary} open={archiveOpen} />
+          </Pressable>
+
+          {archiveOpen ? (
+            <GlassSurface
+              backgroundColor={panelBackground}
+              borderColor={tokens.borderStrong}
+              material="liquid"
+              mode={tokens.mode}
+              style={[styles.chatArchivePanel, kaelSurfacePaint(tokens, 'header')]}
+              testID="customer-kael-chat-session-archive-panel"
+              variant="control"
+            >
+              {archiveItems.length > 0 ? (
+                <FlatList
+                  contentContainerStyle={styles.chatArchivePanelList}
+                  data={archiveItems}
+                  keyExtractor={archiveKeyExtractor}
+                  nestedScrollEnabled
+                  renderItem={renderArchiveItem}
+                  scrollEnabled={archiveItems.length > 3}
+                  showsVerticalScrollIndicator={archiveItems.length > 3}
+                  style={styles.chatArchivePanelScroll}
+                  testID="customer-kael-chat-session-archive-scroll"
+                />
+              ) : (
+                <View style={styles.chatArchiveEmpty} testID="customer-kael-chat-session-archive-empty">
+                  <Text style={[styles.chatArchiveItemTitle, { color: tokens.text }]} numberOfLines={1}>
+                    {text.archiveEmptyTitle}
+                  </Text>
+                  <Text style={[styles.chatArchiveItemSubtitle, { color: tokens.muted }]} numberOfLines={2}>
+                    {text.archiveEmptyBody}
+                  </Text>
+                </View>
+              )}
+            </GlassSurface>
+          ) : null}
+        </View>
+        <View accessibilityLabel="Kael" accessible style={[styles.chatKaelBubble, { borderColor: tokens.border }, kaelSurfacePaint(tokens, 'icon')]} testID="customer-kael-chat-kael-bubble">
+          <Image contentFit="contain" source={kaelModel8AHead} style={styles.chatKaelBubbleImage} />
+        </View>
       </View>
-    </GlassSurface>
+    </View>
   )
 }
+
+const KaelArchiveRow = memo(function KaelArchiveRow({
+  index,
+  item,
+  onPress,
+  reduceMotion,
+  tokens,
+}: {
+  index: number
+  item: KaelChatArchiveItem
+  onPress: (item: KaelChatArchiveItem) => void
+  reduceMotion: boolean
+  tokens: KaelChatTokens
+}) {
+  const active = index === 0
+  const handlePress = useCallback(() => {
+    onPress(item)
+  }, [item, onPress])
+
+  return (
+    <Pressable
+      accessibilityLabel={`${item.title}. ${item.subtitle}. ${item.meta}`}
+      accessibilityRole="button"
+      onPress={handlePress}
+      style={({ pressed }) => [
+        styles.chatArchiveItem,
+        { backgroundColor: tokens.raised, borderColor: active ? tokens.borderStrong : tokens.border },
+        kaelSurfacePaint(tokens, 'field'),
+        reduceMotionAwarePressStyle(pressed, reduceMotion),
+      ]}
+      testID={`customer-kael-chat-session-archive-item-${index}`}
+    >
+      <View style={[styles.chatArchiveItemMarker, { backgroundColor: active ? tokens.primary : tokens.service, borderColor: tokens.border }]} />
+      <View style={styles.chatArchiveItemCopy}>
+        <Text style={[styles.chatArchiveItemTitle, { color: tokens.text }]} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={[styles.chatArchiveItemSubtitle, { color: tokens.muted }]} numberOfLines={1}>
+          {item.subtitle}
+        </Text>
+      </View>
+      <Text style={[styles.chatArchiveItemMeta, { color: tokens.primary }]} numberOfLines={1}>
+        {item.meta}
+      </Text>
+    </Pressable>
+  )
+})
 
 export function KaelChatComposer({
   addressLabel,
@@ -184,13 +408,16 @@ export function KaelChatComposer({
   tokens: ReturnType<typeof useKaelChatTokens>
 }) {
   const canSend = draft.trim().length > 0
-  const hasAddress = addressLabel.trim().length > 0
-  const hasComposerIntent = draft.trim().length > 0
+  const addressPillLabel = language === 'en' ? 'Address context' : 'Địa chỉ'
+  const inputAccessibilityLabel = text.composerPlaceholder || (language === 'en' ? 'Message Kael' : 'Nhắn Kael')
   const [addressLifted, setAddressLifted] = useState(false)
   const [addressFocused, setAddressFocused] = useState(false)
-  const addressProgress = useSharedValue(hasAddress || hasComposerIntent ? 1 : 0)
+  const [composerFocused, setComposerFocused] = useState(false)
+  const [composerInputHeight, setComposerInputHeight] = useState(28)
+  const addressProgress = useSharedValue(0)
   const addressHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const addressVisible = addressLifted || addressFocused || hasAddress || hasComposerIntent
+  const speechRecognitionRef = useRef<KaelWebSpeechRecognition | null>(null)
+  const addressVisible = addressLifted || addressFocused || composerFocused
   const addressSlotStyle = useAnimatedStyle(() => ({
     opacity: 0.5 + addressProgress.value * 0.5,
     transform: [{ translateY: 34 - addressProgress.value * 34 }],
@@ -207,12 +434,85 @@ export function KaelChatComposer({
     setAddressLifted(true)
   }
 
+  const appendDraftNote = useCallback((note: string) => {
+    dispatch({
+      type: 'appendDraft',
+      segment: note,
+    })
+  }, [dispatch])
+
+  const handleAttachPress = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert(text.attach, kaelChatAttachmentPermissionBody(language))
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: false,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.86,
+      selectionLimit: 1,
+    })
+    if (result.canceled || !result.assets[0]) return
+    const asset = result.assets[0]
+    const fileName = asset.fileName?.trim() || kaelChatAttachmentFallbackName(language)
+    dispatch({
+      type: 'addComposerPhotos',
+      drafts: [{
+        uri: asset.uri,
+        type: 'image',
+        fileName,
+        mimeType: asset.mimeType ?? undefined,
+        fileSizeBytes: asset.fileSize ?? undefined,
+      }],
+    })
+    appendDraftNote(kaelChatAttachmentDraftLine(language, fileName))
+    Alert.alert(text.attach, kaelChatAttachmentReadyBody(language))
+  }, [appendDraftNote, dispatch, language, text.attach])
+
+  const handleMicPress = useCallback(() => {
+    const SpeechRecognition = getKaelWebSpeechRecognition()
+    if (!SpeechRecognition) {
+      Alert.alert(text.mic, kaelChatMicUnavailableBody(language))
+      return
+    }
+    try {
+      speechRecognitionRef.current?.stop?.()
+      const recognition = new SpeechRecognition()
+      speechRecognitionRef.current = recognition
+      recognition.continuous = false
+      recognition.interimResults = false
+      recognition.lang = language === 'en' ? 'en-US' : 'vi-VN'
+      recognition.maxAlternatives = 1
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript?.trim()
+        if (transcript) appendDraftNote(transcript)
+      }
+      recognition.onerror = () => {
+        Alert.alert(text.mic, kaelChatMicUnavailableBody(language))
+      }
+      recognition.onend = () => {
+        if (speechRecognitionRef.current === recognition) speechRecognitionRef.current = null
+      }
+      recognition.start()
+      Alert.alert(text.mic, kaelChatMicListeningBody(language))
+    } catch {
+      speechRecognitionRef.current = null
+      Alert.alert(text.mic, kaelChatMicUnavailableBody(language))
+    }
+  }, [appendDraftNote, language, text.mic])
+
   useEffect(() => {
     addressProgress.value = withTiming(addressVisible ? 1 : 0, { duration: reduceMotion ? 1 : 220 })
   }, [addressProgress, addressVisible, reduceMotion])
 
+  useEffect(() => () => {
+    speechRecognitionRef.current?.stop?.()
+    speechRecognitionRef.current = null
+  }, [])
+
   useEffect(() => {
-    if (!addressLifted || addressFocused || hasAddress || hasComposerIntent) return undefined
+    if (!addressLifted || addressFocused || composerFocused) return undefined
     const timer = setTimeout(() => {
       setAddressLifted(false)
     }, ADDRESS_AUTO_HIDE_DELAY_MS)
@@ -223,45 +523,34 @@ export function KaelChatComposer({
         addressHideTimerRef.current = null
       }
     }
-  }, [addressFocused, addressLifted, hasAddress, hasComposerIntent])
+  }, [addressFocused, addressLifted, composerFocused])
 
   return (
-    <GlassSurface borderColor={tokens.borderStrong} mode={themeMode} style={[styles.composerGlass, kaelSurfacePaint(tokens, 'composer')]} testID="customer-kael-chat-glass-composer" variant="sheet">
-      <View style={styles.addressLiftFrame}>
-        {addressVisible ? null : (
-          <Pressable accessibilityLabel={text.addressPlaceholder} accessibilityRole="button" hitSlop={12} onPress={revealAddress} onPressIn={revealAddress} style={({ pressed }) => [styles.addressRevealHandle, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-address-reveal">
-            <View style={[styles.addressRevealCue, { backgroundColor: tokens.service, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'icon')]}>
-              <ChatChevronUpIcon color={tokens.primary} />
-            </View>
-          </Pressable>
-        )}
-        <Animated.View pointerEvents={addressVisible ? 'auto' : 'none'} style={[styles.addressLiftSlot, { height: addressVisible ? 56 : 5 }, addressSlotStyle]}>
-          <KaelAddressContextBar
-            addressLabel={addressLabel}
-            language={language}
-            onBlur={() => setAddressFocused(false)}
-            onChangeText={(value) => {
-              const nextDistrict = inferKaelChatDistrict(value)
-              if (nextDistrict) onAddressDistrict(nextDistrict)
-              dispatch({ type: 'setAddress', value })
-            }}
-            onFocus={() => {
-              setAddressFocused(true)
-              revealAddress()
-            }}
-            placeholder={text.addressPlaceholder}
-            tokens={tokens}
-          />
-        </Animated.View>
-      </View>
-      <View style={styles.composer}>
-        <Pressable accessibilityLabel={text.attach} accessibilityRole="button" onPress={() => dispatch({ type: 'showTransientError', error: text.attachHint })} style={({ pressed }) => [styles.attachButton, { borderColor: tokens.border, backgroundColor: tokens.service }, kaelSurfacePaint(tokens, 'icon'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-attach">
-          <ChatPlusIcon color={tokens.primary} />
-        </Pressable>
-        <Pressable accessibilityLabel={text.mic} accessibilityRole="button" onPress={() => dispatch({ type: 'showTransientError', error: text.micHint })} style={({ pressed }) => [styles.micButton, { borderColor: tokens.border, backgroundColor: tokens.service }, kaelSurfacePaint(tokens, 'icon'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-mic">
-          <ChatMicIcon color={tokens.primary} />
-        </Pressable>
+    <View style={styles.chatComposerTouchWrap} testID="customer-kael-composer-sequential-trigger">
+      <GlassSurface borderColor={tokens.borderStrong} material="liquid" mode={themeMode} style={[styles.composerGlass, kaelSurfacePaint(tokens, 'composer')]} testID="customer-kael-chat-glass-composer" variant="sheet">
+        <View pointerEvents="none" style={[styles.chatComposerKeyline, { borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.88)' }]} testID="customer-chat-reference-composer-keyline" />
+        <View style={styles.addressLiftFrame}>
+          <Animated.View pointerEvents={addressVisible ? 'auto' : 'none'} style={[styles.addressLiftSlot, { height: addressVisible ? 56 : 0 }, addressSlotStyle]} testID="customer-kael-chat-address-slot">
+            <KaelAddressContextBar
+              addressLabel={addressLabel}
+              language={language}
+              onBlur={() => setAddressFocused(false)}
+              onChangeText={(value) => {
+                const nextDistrict = inferKaelChatDistrict(value)
+                if (nextDistrict) onAddressDistrict(nextDistrict)
+                dispatch({ type: 'setAddress', value })
+              }}
+              onFocus={() => {
+                setAddressFocused(true)
+                revealAddress()
+              }}
+              placeholder={text.addressPlaceholder}
+              tokens={tokens}
+            />
+          </Animated.View>
+        </View>
         <TextInput
+          accessibilityLabel={inputAccessibilityLabel}
           multiline
           onChangeText={(value) => {
             dispatch({
@@ -270,20 +559,72 @@ export function KaelChatComposer({
               clearTransientError: error === text.errorNoService || error === text.attachHint,
             })
           }}
+          onContentSizeChange={(event) => setComposerInputHeight(Math.min(76, Math.max(28, event.nativeEvent.contentSize.height)))}
           placeholder={text.composerPlaceholder}
           placeholderTextColor={tokens.subtleText}
-          onFocus={revealAddress}
+          onBlur={() => setComposerFocused(false)}
+          onFocus={() => {
+            setComposerFocused(true)
+            revealAddress()
+          }}
+          onSubmitEditing={() => void onSend()}
+          returnKeyType="send"
+          scrollEnabled={false}
           selectionColor={tokens.primary}
-          style={[styles.input, styles.inputInvisibleFocus, { caretColor: tokens.primary, color: tokens.text } as any]}
+          style={[styles.input, styles.inputInvisibleFocus, { caretColor: tokens.primary, color: tokens.text, height: composerInputHeight } as any]}
           testID="customer-kael-chat-input"
           value={draft}
         />
-        <Pressable accessibilityLabel={sending ? text.sending : text.send} accessibilityRole="button" disabled={sending || !canSend} onPress={onSend} style={({ pressed }) => [styles.sendButton, { backgroundColor: canSend ? tokens.primary : tokens.disabled }, canSend ? kaelSurfacePaint(tokens, 'send') : null, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-send">
-          {sending ? <ActivityIndicator color={tokens.primaryText} size="small" /> : <ChatSendIcon color={canSend ? tokens.primaryText : tokens.subtleText} />}
-        </Pressable>
-      </View>
-    </GlassSurface>
+        <View style={styles.chatComposerControlRow} testID="customer-chat-reference-composer-tools">
+          <Pressable accessibilityLabel={text.attach} accessibilityRole="button" hitSlop={4} onPress={() => void handleAttachPress()} style={({ pressed }) => [styles.attachButton, { borderColor: tokens.border }, kaelSurfacePaint(tokens, 'icon'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-attach">
+            <ChatPlusIcon color={tokens.primary} />
+          </Pressable>
+          <Pressable accessibilityLabel={addressPillLabel} accessibilityRole="button" hitSlop={4} onPress={revealAddress} style={({ pressed }) => [styles.chatModePill, { borderColor: tokens.border }, kaelSurfacePaint(tokens, 'status'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-chat-reference-mode-pill">
+            <View pointerEvents="none" style={[styles.chatModePillGlassLayer, chatModePillGlassLayer(tokens)]} testID="customer-chat-mode-pill-glass-layer" />
+            <Text style={[styles.chatModeText, { color: tokens.primary }, chatModePillTextHighlight(tokens)]} numberOfLines={1}>
+              Kael
+            </Text>
+          </Pressable>
+          <View style={styles.chatComposerControlSpacer} />
+          <View style={styles.chatComposerRightActions} testID="customer-chat-reference-composer-right-actions">
+            <Pressable accessibilityLabel={text.mic} accessibilityRole="button" hitSlop={4} onPress={handleMicPress} style={({ pressed }) => [styles.micButton, { borderColor: tokens.border }, kaelSurfacePaint(tokens, 'icon'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-mic">
+              <ChatMicIcon color={tokens.primary} />
+            </Pressable>
+            <Pressable accessibilityLabel={sending ? text.sending : text.send} accessibilityRole="button" accessibilityState={{ busy: sending, disabled: sending || !canSend }} disabled={sending || !canSend} hitSlop={4} onPress={onSend} style={({ pressed }) => [styles.sendButton, { backgroundColor: canSend ? tokens.primary : tokens.raised, borderColor: canSend ? tokens.borderStrong : tokens.border }, canSend ? kaelSurfacePaint(tokens, 'send') : kaelSurfacePaint(tokens, 'icon'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-send">
+              {sending ? <ActivityIndicator color={tokens.primaryText} size="small" /> : <ChatSendIcon color={canSend ? tokens.primaryText : tokens.subtleText} />}
+            </Pressable>
+          </View>
+        </View>
+      </GlassSurface>
+    </View>
   )
+}
+
+function chatModePillGlassLayer(tokens: KaelChatTokens): ViewStyle {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const gradient = tokens.mode === 'dark'
+    ? 'radial-gradient(circle at 72% 16%, rgba(245,255,252,0.18), transparent 38%), linear-gradient(145deg, rgba(245,255,252,0.12), rgba(105,222,198,0.09))'
+    : 'radial-gradient(circle at 72% 10%, rgba(255,255,255,0.98), transparent 42%), linear-gradient(145deg, rgba(255,255,255,0.96), rgba(235,255,250,0.78))'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(245,255,252,0.12)' : 'rgba(255,255,255,0.92)',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    boxShadow: reduceTransparency
+      ? 'none'
+      : tokens.mode === 'dark'
+        ? 'inset 0 1px 0 rgba(190,210,205,0.16)'
+        : '0 8px 20px rgba(13,134,119,0.06), inset 0 1px 0 rgba(255,255,255,0.98)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as ViewStyle
+}
+
+function chatModePillTextHighlight(tokens: KaelChatTokens): ViewStyle {
+  return {
+    textShadowColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.20)' : 'rgba(255,255,255,0.86)',
+    textShadowOffset: { height: 1, width: 0 },
+    textShadowRadius: tokens.mode === 'dark' ? 8 : 5,
+  } as ViewStyle
 }
 
 export function KaelProcessCard({
@@ -298,7 +639,7 @@ export function KaelProcessCard({
   text: KaelChatText
 }) {
   const tokens = useKaelChatTokens()
-  const status = loading ? text.loading : estimate ? text.nextAction.estimate_ready : text.agentStatus
+  const status = loading ? text.loading : estimate ? text.orchestrate : text.agentStatus
   const visibleSteps = processStepCount(ticketMode)
   const steps = [
     ['01', text.agentSteps.read],
@@ -344,7 +685,7 @@ export function KaelPhaseContextCard({
   const sectionSummary = workflowSectionSummary(visibleSections, language)
 
   return (
-    <View style={[styles.traceCard, { backgroundColor: tokens.raised, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'trace')]} testID="customer-kael-chat-phase-context">
+    <View style={[styles.traceCard, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'phaseContext')]} testID="customer-kael-chat-phase-context">
       <Text style={[styles.traceTitle, { color: tokens.primary }]} numberOfLines={1}>
         {phaseContext.title[language]}
       </Text>
@@ -352,11 +693,11 @@ export function KaelPhaseContextCard({
         {phaseContext.intent[language]}
       </Text>
       <View style={styles.briefGrid}>
-        <BriefField label={language === 'en' ? 'Source' : 'Nguồn'} value={workflowSourceOfTruthLabel(phaseContext.sourceOfTruth, language)} />
-        <BriefField label={language === 'en' ? 'Artifact' : 'Dấu mốc'} value={primaryArtifact} />
-        <BriefField label={language === 'en' ? 'Next' : 'Tiếp theo'} value={nextEvent} />
-        <BriefField label={language === 'en' ? 'Gate' : 'Cổng'} value={blocked} />
-        <BriefField label={language === 'en' ? 'Live sections' : 'Mục đang sống'} value={sectionSummary} wide />
+        <BriefField label={language === 'en' ? 'Source' : 'Nguồn'} surfaceTone="mint" value={workflowSourceOfTruthLabel(phaseContext.sourceOfTruth, language)} />
+        <BriefField label={language === 'en' ? 'Artifact' : 'Dấu mốc'} surfaceTone="mint" value={primaryArtifact} />
+        <BriefField label={language === 'en' ? 'Next' : 'Tiếp theo'} surfaceTone="mint" value={nextEvent} />
+        <BriefField label={language === 'en' ? 'Gate' : 'Cổng'} surfaceTone="mint" value={blocked} />
+        <BriefField label={language === 'en' ? 'Live sections' : 'Mục đang sống'} surfaceTone="mint" value={sectionSummary} wide />
       </View>
     </View>
   )
@@ -424,66 +765,182 @@ export function KaelTraceCard({
 
 export function EmptyKaelBriefCard({ language, selectedService, text }: { language: AppLanguage; selectedService: ServiceType | null; text: KaelChatText }) {
   const tokens = useKaelChatTokens()
-  const serviceValue = selectedService ? localizedServiceLabel(selectedService, language) : text.briefServicePending
-  const clarityValue = selectedService ? text.briefClaritySelected : text.briefClarityPending
+  const preview = kaelEstimatePreviewCopy[language]
+  const serviceValue = selectedService ? localizedServiceLabel(selectedService, language) : preview.servicePending
+  const sampleRows = selectedService ? { ...preview.sampleRows, service: undefined } : preview.sampleRows
+  const rows = buildEstimatePreviewRows({
+    cancellationBody: text.cancellationBody,
+    labels: text.labels,
+    language,
+    problemValue: preview.problemPending,
+    sampleRows,
+    serviceValue,
+  })
 
   return (
     <View style={[styles.emptyTicketCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'brief')]} testID="customer-kael-chat-empty-ticket-summary">
-      <Text style={[styles.emptyTicketPill, { backgroundColor: tokens.service, borderColor: tokens.border, color: tokens.primary }, kaelSurfacePaint(tokens, 'pill')]} numberOfLines={1}>
-        {text.emptyTicketTitle}
-      </Text>
-      <Text style={[styles.bodyText, { color: tokens.text }]}>
-        {text.emptyTicketBody}
-      </Text>
-      <View style={styles.briefGrid}>
-        <BriefField label={text.briefServiceLabel} value={serviceValue} />
-        <BriefField label={text.briefClarityLabel} value={clarityValue} />
-        <BriefField label={text.briefSafetyLabel} value={text.briefSafetyBody} wide />
+      <View style={styles.estimateHeader}>
+        <Text style={[styles.sectionTitle, { color: tokens.text }]}>{preview.title}</Text>
+        <Text style={[styles.statusPill, { color: tokens.primary, borderColor: tokens.border, backgroundColor: tokens.service }, kaelSurfacePaint(tokens, 'pill')]} numberOfLines={1}>
+          {preview.status}
+        </Text>
       </View>
+      <EstimatePreviewRows rows={rows} />
     </View>
   )
 }
 
 export function KaelIntakeReceiptCard({ intake, language }: { intake: PendingKaelChatDraft; language: AppLanguage }) {
   const tokens = useKaelChatTokens()
-  const serviceValue = intake.serviceType ? localizedServiceLabel(intake.serviceType, language) : (language === 'en' ? 'Needs service' : 'Cần chọn dịch vụ')
-  const addressValue = intake.addressLabel?.trim() || intake.districtLabel?.trim() || (language === 'en' ? 'Needs area' : 'Cần khu vực')
-  const sourceValue = intake.source === 'kael'
-    ? language === 'en' ? 'Kael chat' : 'Tin nhắn Kael'
-    : language === 'en' ? 'Booking form' : 'Phiếu đặt'
-  const mediaCount = intake.mediaCount ?? intake.photoDrafts?.length ?? 0
-  const mediaValue = language === 'en'
-    ? mediaCount > 0 ? `${mediaCount} selected for ticket evidence` : 'No media selected'
-    : mediaCount > 0 ? `${mediaCount} ảnh/video đã chọn cho bằng chứng phiếu` : 'Chưa có ảnh/video'
-  const title = language === 'en' ? 'Kael received the intake' : 'Kael đã nhận thông tin'
-  const body = language === 'en'
-    ? 'Kael is analyzing the service, area, and description from the booking form. Selected media attaches after Kael creates the job evidence.'
-    : 'Kael đang phân tích dịch vụ, khu vực và mô tả từ phiếu bạn vừa điền. Ảnh/video đã chọn sẽ đính kèm sau khi Kael tạo bằng chứng công việc.'
+  const preview = kaelEstimatePreviewCopy[language]
+  const serviceValue = intake.serviceType ? localizedServiceLabel(intake.serviceType, language) : preview.servicePending
+  const firstProblemChip = (intake.problemChips ?? []).find((chip) => chip.trim().length > 0)?.trim()
+  const problemValue = firstProblemChip || (intake.message.trim() ? preview.problemFromDescription : preview.problemPending)
+  const rows = buildEstimatePreviewRows({
+    language,
+    problemValue,
+    serviceValue,
+  })
 
   return (
     <View style={[styles.emptyTicketCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'brief')]} testID="customer-kael-chat-intake-receipt">
-      <Text style={[styles.emptyTicketPill, { backgroundColor: tokens.service, borderColor: tokens.border, color: tokens.primary }, kaelSurfacePaint(tokens, 'pill')]} numberOfLines={1}>
-        {title}
-      </Text>
-      <Text style={[styles.bodyText, { color: tokens.text }]} numberOfLines={3}>
-        {body}
-      </Text>
-      <View style={styles.briefGrid}>
-        <BriefField label={language === 'en' ? 'Service' : 'Dịch vụ'} value={serviceValue} />
-        <BriefField label={language === 'en' ? 'Area' : 'Khu vực'} value={addressValue} />
-        <BriefField label={language === 'en' ? 'Source' : 'Nguồn'} value={sourceValue} />
-        <BriefField label={language === 'en' ? 'Media' : 'Ảnh/video'} value={mediaValue} />
-        <BriefField label={language === 'en' ? 'Description' : 'Mô tả'} value={intake.message} wide />
+      <View style={styles.estimateHeader}>
+        <Text style={[styles.sectionTitle, { color: tokens.text }]}>{preview.title}</Text>
+        <Text style={[styles.statusPill, { color: tokens.primary, borderColor: tokens.border, backgroundColor: tokens.service }, kaelSurfacePaint(tokens, 'pill')]} numberOfLines={1}>
+          {preview.status}
+        </Text>
       </View>
+      <EstimatePreviewRows rows={rows} />
     </View>
   )
 }
 
-function BriefField({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
+const kaelEstimatePreviewCopy = {
+  vi: {
+    cancellationBody: 'Bạn có thể hủy miễn phí trước khi thợ nhận việc. Sau khi thợ nhận, có thể áp dụng phí dịch vụ tối thiểu.',
+    confidencePending: 'Chờ đủ dữ liệu',
+    labels: {
+      cancellationNote: 'Chính sách hủy',
+      complexity: 'Mức độ',
+      confidence: 'Độ tin cậy',
+      platformFee: 'Phí nền tảng',
+      price: 'Khoảng giá',
+      problem: 'Vấn đề',
+      service: 'Dịch vụ',
+      summaryTotal: 'Tổng dự kiến',
+    },
+    platformFeePending: 'Hiển thị khi có ước tính',
+    pricePending: 'Chờ Kael ước tính',
+    problemFromDescription: 'Kael đang phân loại từ mô tả.',
+    problemPending: 'Chưa có',
+    sampleRows: {
+      cancellationNote: 'Bạn có thể hủy miễn phí trước khi thợ nhận việc.',
+      complexity: 'Kael sẽ phân loại nhẹ, vừa hoặc nặng.',
+      confidence: 'Kael sẽ cập nhật theo độ rõ của mô tả, ảnh hoặc video.',
+      platformFee: 'Chỉ hiện khi có ước tính thật.',
+      price: 'Kael sẽ ước tính sau khi có mô tả và bằng chứng.',
+      problem: 'Kael sẽ tóm tắt: ví dụ ổ cắm chập, nước rò, hoặc cần dọn nhà.',
+      service: 'Kael sẽ ghi: Sửa điện, Sửa nước hoặc Vệ sinh.',
+      summaryTotal: 'Kael sẽ tính sau khi đủ dữ liệu.',
+    },
+    servicePending: 'Chưa có',
+    status: 'Thông tin đầu vào',
+    summaryPending: 'Chờ Kael tính',
+    title: 'Phiếu gửi Kael',
+    typePending: 'Chờ Kael phân loại',
+  },
+  en: {
+    cancellationBody: 'Free cancellation before a worker accepts. After acceptance, a minimum service fee may apply.',
+    confidencePending: 'Waiting for enough data',
+    labels: {
+      cancellationNote: 'Cancellation policy',
+      complexity: 'Complexity',
+      confidence: 'Confidence',
+      platformFee: 'Platform fee',
+      price: 'Price range',
+      problem: 'Problem',
+      service: 'Service',
+      summaryTotal: 'Estimated total',
+    },
+    platformFeePending: 'Shown after a real estimate',
+    pricePending: 'Waiting for Kael estimate',
+    problemFromDescription: 'Kael is classifying from the description.',
+    problemPending: 'Not available yet',
+    sampleRows: {
+      cancellationNote: 'You can cancel for free before a worker accepts.',
+      complexity: 'Kael will classify it as light, medium, or heavy.',
+      confidence: 'Kael will update this from the clarity of the text, photos, or video.',
+      platformFee: 'Shown only after a real estimate.',
+      price: 'Kael will estimate after it has a description and evidence.',
+      problem: 'Kael will summarize examples like a faulty outlet, water leak, or cleaning need.',
+      service: 'Kael will record electrical, plumbing, or cleaning.',
+      summaryTotal: 'Kael will calculate this after enough data.',
+    },
+    servicePending: 'Not available yet',
+    status: 'Input details',
+    summaryPending: 'Waiting for Kael calculation',
+    title: 'Kael intake ticket',
+    typePending: 'Waiting for Kael classification',
+  },
+} as const
+
+function buildEstimatePreviewRows({
+  cancellationBody,
+  labels,
+  language,
+  problemValue,
+  sampleRows,
+  serviceValue,
+}: {
+  cancellationBody?: string
+  labels?: KaelChatText['labels']
+  language: AppLanguage
+  problemValue: string
+  sampleRows?: Partial<Record<keyof typeof kaelEstimatePreviewCopy.vi.sampleRows, string>>
+  serviceValue: string
+}) {
+  const preview = kaelEstimatePreviewCopy[language]
+  const rowLabels = labels ?? preview.labels
+
+  return [
+    { label: rowLabels.service, value: sampleRows?.service ?? serviceValue },
+    { label: rowLabels.problem, value: sampleRows?.problem ?? problemValue },
+    { label: rowLabels.price, value: sampleRows?.price ?? preview.pricePending },
+    { label: rowLabels.complexity, value: sampleRows?.complexity ?? preview.typePending },
+    { label: rowLabels.confidence, value: sampleRows?.confidence ?? preview.confidencePending },
+    { label: rowLabels.platformFee, value: sampleRows?.platformFee ?? preview.platformFeePending },
+    { label: rowLabels.summaryTotal, value: sampleRows?.summaryTotal ?? preview.summaryPending },
+    { label: rowLabels.cancellationNote, value: sampleRows?.cancellationNote ?? cancellationBody ?? preview.cancellationBody },
+  ]
+}
+
+function EstimatePreviewRows({ rows }: { rows: Array<{ label: string; value: string }> }) {
+  return (
+    <View style={styles.estimatePreviewRows}>
+      {rows.map((row) => (
+        <InfoRow key={row.label} label={row.label} value={row.value} />
+      ))}
+    </View>
+  )
+}
+
+function BriefField({
+  label,
+  surfaceTone = 'default',
+  value,
+  wide = false,
+}: {
+  label: string
+  surfaceTone?: 'default' | 'mint'
+  value: string
+  wide?: boolean
+}) {
   const tokens = useKaelChatTokens()
+  const paintTone = surfaceTone === 'mint' ? 'phaseField' : 'field'
+  const borderColor = surfaceTone === 'mint' ? tokens.borderStrong : tokens.border
 
   return (
-    <View style={[styles.briefField, wide ? styles.briefFieldWide : null, { backgroundColor: tokens.raised, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'field')]}>
+    <View style={[styles.briefField, wide ? styles.briefFieldWide : null, { backgroundColor: tokens.raised, borderColor }, kaelSurfacePaint(tokens, paintTone)]}>
       <Text style={[styles.briefFieldLabel, { color: tokens.muted }]} numberOfLines={1}>
         {label}
       </Text>
@@ -562,14 +1019,15 @@ export function EstimateCard({
     : orchestrationStarted
       ? text.nextAction.confirmed
       : canStartOrchestration
-        ? text.nextAction.estimate_ready
+        ? text.orchestrate
         : text.nextAction.await_input
 
   return (
-    <View style={[styles.estimateCard, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-estimate-card">
+    <View style={[styles.estimateCard, styles.estimateMintCard, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'phaseContext')]} testID="customer-kael-chat-estimate-card">
+      <View style={[styles.estimateMintAura, { backgroundColor: tokens.aqua }]} testID="customer-kael-chat-estimate-mint-aura" />
+      <View style={[styles.estimateMintEdge, { backgroundColor: tokens.glassHighlight }]} />
       <View style={styles.estimateHeader}>
         <Text style={[styles.sectionTitle, { color: tokens.text }]}>{text.estimateTitle}</Text>
-        <Text style={[styles.statusPill, { color: tokens.primary, borderColor: tokens.border, backgroundColor: tokens.service }]}>{text.nextAction.estimate_ready}</Text>
       </View>
       <InfoRow label={text.labels.service} value={localizedServiceLabel(estimate.service_type, language)} />
       <InfoRow label={text.labels.problem} value={problem} />
@@ -697,6 +1155,14 @@ function ChatBackIcon({ color }: { color: string }) {
   )
 }
 
+function ChatChevronIcon({ color, open }: { color: string; open: boolean }) {
+  return (
+    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none" style={open ? styles.chatArchiveChevronOpen : undefined}>
+      <Path d="m7 10 5 5 5-5" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
 function ChatPlusIcon({ color }: { color: string }) {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
@@ -710,14 +1176,6 @@ function ChatMicIcon({ color }: { color: string }) {
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
       <Path d="M12 3.5a3.3 3.3 0 0 0-3.3 3.3v4.4a3.3 3.3 0 0 0 6.6 0V6.8A3.3 3.3 0 0 0 12 3.5Z" stroke={color} strokeWidth={2} />
       <Path d="M5.7 10.7a6.3 6.3 0 0 0 12.6 0M12 17v3.5M9.2 20.5h5.6" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  )
-}
-
-function ChatChevronUpIcon({ color }: { color: string }) {
-  return (
-    <Svg width={14} height={14} viewBox="0 0 14 14" fill="none">
-      <Path d="m3.5 8 3.5-3.5L10.5 8" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   )
 }

@@ -42,7 +42,7 @@ export function buildWorkflowViewModel(input: WorkflowViewModelInput): WorkflowV
     confirmCompletion: false,
     jobChatRead: isWorkflowJobChatReadable(phase),
     jobChatSend: isWorkflowJobChatSendable(phase),
-    submitReview: (phase === 'customer_confirmed_completion' || phase === 'paid') && input.hasCompletionEvidence === true,
+    submitReview: phase === 'customer_confirmed_completion' || phase === 'paid',
   }
 
   return {

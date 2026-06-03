@@ -246,14 +246,14 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(operationalStatusSet).not.toContain("'paid'")
   })
 
-  it('keeps customer active hydration alive through completion, payment, and review gates', () => {
+  it('keeps customer active hydration alive through completion and payment gates without treating paid jobs as active', () => {
     const services = readEdgeShared('services.ts')
     const customerActiveStatusSet = services.match(/CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus\[] = \[([\s\S]*?)\]/)?.[1] ?? ''
 
     expect(customerActiveStatusSet).toContain('"completed_by_worker"')
     expect(customerActiveStatusSet).toContain('"confirmed_by_customer"')
     expect(customerActiveStatusSet).toContain('"payment_pending"')
-    expect(customerActiveStatusSet).toContain('"paid"')
+    expect(customerActiveStatusSet).not.toContain('"paid"')
     expect(customerActiveStatusSet).not.toContain('"reviewed"')
     expect(customerActiveStatusSet).not.toContain('"cancelled"')
   })

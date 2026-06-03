@@ -18,6 +18,7 @@ type AuthState = {
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>
   signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   updateCustomerProfile: (profile: CustomerProfileDraft) => Promise<{ success: boolean; error?: string }>
+  updatePassword: (passwords: CustomerPasswordUpdateDraft) => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<UserRole | null>
 }
@@ -25,9 +26,20 @@ type AuthState = {
 type AuthSnapshot = Pick<AuthState, 'session' | 'role' | 'loading' | 'profileStatus' | 'authError'>
 
 type CustomerProfileDraft = {
+  birthDate?: string
   defaultAddress?: string
   displayName?: string
+  email?: string
+  fullName?: string
+  gender?: string
+  nickname?: string
   phone?: string
+  salutation?: string
+}
+
+type CustomerPasswordUpdateDraft = {
+  currentPassword: string
+  newPassword: string
 }
 
 const INITIAL_AUTH_SNAPSHOT: AuthSnapshot = {
@@ -47,6 +59,7 @@ const AuthContext = createContext<AuthState>({
   signInWithGoogle: async () => ({ success: false, error: 'Đăng nhập Google chưa sẵn sàng' }),
   signInWithPassword: async () => ({ success: false, error: 'Đăng nhập chưa sẵn sàng' }),
   updateCustomerProfile: async () => ({ success: false, error: 'Lưu hồ sơ khách chưa sẵn sàng' }),
+  updatePassword: async () => ({ success: false, error: 'Đổi mật khẩu chưa sẵn sàng' }),
   signOut: async () => undefined,
   refreshProfile: async () => null,
 })
@@ -321,13 +334,25 @@ function useAuthController(): AuthState {
       return { success: false, error }
     }
 
+    const birthDate = profile.birthDate?.trim()
     const displayName = profile.displayName?.trim()
+    const email = profile.email?.trim()
+    const fullName = profile.fullName?.trim()
+    const gender = profile.gender?.trim()
+    const nickname = profile.nickname?.trim()
     const phone = profile.phone?.trim()
+    const salutation = profile.salutation?.trim()
     const defaultAddress = profile.defaultAddress?.trim()
     const nextMetadata = {
       ...session.user.user_metadata,
       ...(displayName ? { full_name: displayName, name: displayName } : {}),
+      ...(fullName ? { full_name: fullName, name: fullName } : {}),
+      ...(nickname ? { nickname, preferred_name: nickname } : {}),
+      ...(salutation ? { salutation } : {}),
+      ...(gender ? { gender } : {}),
+      ...(birthDate ? { birth_date: birthDate } : {}),
       ...(phone ? { phone_number: phone } : {}),
+      ...(email ? { contact_email: email } : {}),
       ...(defaultAddress ? { default_address: defaultAddress } : {}),
     }
 
@@ -345,6 +370,54 @@ function useAuthController(): AuthState {
       return { success: true }
     } catch {
       const message = 'Không thể kết nối dịch vụ hồ sơ. Vui lòng thử lại sau.'
+      patchAuth({ authError: message, loading: false })
+      return { success: false, error: message }
+    }
+  }, [session])
+
+  const updatePassword = useCallback(async ({ currentPassword, newPassword }: CustomerPasswordUpdateDraft) => {
+    if (!supabase || !session?.user) {
+      const error = 'Dịch vụ tài khoản chưa sẵn sàng. Vui lòng thử lại sau.'
+      patchAuth({ authError: error, loading: false })
+      return { success: false, error }
+    }
+
+    const email = session.user.email?.trim().toLowerCase()
+    if (!email || !isValidEmail(email)) {
+      const error = 'Tài khoản này chưa hỗ trợ đổi mật khẩu bằng mật khẩu hiện tại.'
+      patchAuth({ authError: error, loading: false })
+      return { success: false, error }
+    }
+    if (!currentPassword || !newPassword) {
+      const error = 'Nhập mật khẩu hiện tại và mật khẩu mới để tiếp tục.'
+      patchAuth({ authError: error, loading: false })
+      return { success: false, error }
+    }
+
+    patchAuth({ loading: true, authError: null })
+    try {
+      const { data: reauthData, error: reauthError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      })
+      if (reauthError || reauthData.session?.user.id !== session.user.id) {
+        const message = 'Mật khẩu hiện tại không đúng.'
+        patchAuth({ authError: message, loading: false })
+        return { success: false, error: message }
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) {
+        const message = 'Không thể cập nhật mật khẩu. Vui lòng thử lại sau.'
+        patchAuth({ authError: message, loading: false })
+        return { success: false, error: message }
+      }
+
+      const { data } = await supabase.auth.getSession()
+      patchAuth({ session: data.session ?? reauthData.session ?? session, loading: false })
+      return { success: true }
+    } catch {
+      const message = 'Không thể kết nối dịch vụ tài khoản. Vui lòng thử lại sau.'
       patchAuth({ authError: message, loading: false })
       return { success: false, error: message }
     }
@@ -377,8 +450,8 @@ function useAuthController(): AuthState {
   }, [fetchRole, session?.user])
 
   const authValue = useMemo(
-    () => ({ session, role, loading, profileStatus, authError, signInWithGoogle, signInWithPassword, updateCustomerProfile, signOut, refreshProfile }),
-    [authError, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, updateCustomerProfile],
+    () => ({ session, role, loading, profileStatus, authError, signInWithGoogle, signInWithPassword, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
+    [authError, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, updateCustomerProfile, updatePassword],
   )
 
   return authValue

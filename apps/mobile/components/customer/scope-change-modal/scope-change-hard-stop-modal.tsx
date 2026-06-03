@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
   },
   infoBlock: {
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
     textTransform: 'uppercase',
   },
@@ -287,13 +287,13 @@ const styles = StyleSheet.create({
   },
   kaelBadgeHint: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 16,
   },
   kaelBadgeLabel: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
   },
   infoValue: {
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   },
   noteLabel: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
     textTransform: 'uppercase',
   },
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   },
   primaryText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
   },
   riskList: {
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
   },
   sheet: {
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 21,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0,
     lineHeight: 27,
   },

@@ -16,6 +16,7 @@ import {
 import {
   type DevicePushTokenInput,
   type CustomerCancellationRequestInput,
+  type CustomerKaelFeedbackInput,
   type DisputeAdminDecisionInput,
   type DisputeCounterStatementInput,
   type DisputeOpenRequestInput,
@@ -253,6 +254,7 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     decideScopeChange,
     confirmCompletion,
     submitReview,
+    submitCustomerKaelFeedback,
     getKaelCharter,
     registerWorker,
     getMyKaelMemory,
@@ -1886,7 +1888,6 @@ const CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus[] = [
   "completed_by_worker",
   "confirmed_by_customer",
   "payment_pending",
-  "paid",
 ];
 
 async function listCustomerActiveJobs(ctx: MobileApiContext) {
@@ -2787,13 +2788,34 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
 
   const now = new Date().toISOString();
   const update: Record<string, unknown> = { status: input.status };
+  let completionEvidenceForDecision: {
+    completion_notes?: string;
+    completion_photo_urls?: string[];
+  } | null = null;
   if (transition.timestampColumn) update[transition.timestampColumn] = now;
   if (input.status === "completed_by_worker") {
     // Phase 2.0 (2026-05-23): jobs.final_price source = Kael (set by A7
     // autonomy decision or latest A11 scope decision). Worker payload không có final_price; preserve
     // existing jobs.final_price từ Kael-locked baseline.
-    update.completion_notes = input.completion_notes ?? null;
-    update.completion_photo_urls = input.completion_photo_urls ?? [];
+    const completionNotes = (input.completion_notes ?? nullableString(job.completion_notes) ?? "").trim();
+    const completionPhotoUrls = mergeLimitedRefs(
+      asStringArray(job.completion_photo_urls),
+      input.completion_photo_urls ?? [],
+      10,
+    );
+    if (completionNotes.length < 5 || completionPhotoUrls.length === 0) {
+      apiFailure(
+        "VALIDATION",
+        "Cần ghi chú và ảnh hoàn tất trước khi báo hoàn tất",
+        400,
+      );
+    }
+    completionEvidenceForDecision = {
+      completion_notes: completionNotes,
+      completion_photo_urls: completionPhotoUrls,
+    };
+    update.completion_notes = completionNotes;
+    update.completion_photo_urls = completionPhotoUrls;
   }
 
   const updated = await dbQuery<{ id: string }>(
@@ -2826,7 +2848,11 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
   );
   let finalStatus: JobStatus = input.status;
   if (input.status === "completed_by_worker") {
-    const completionDecision = buildKaelCompletionDecision(jobId, input, nullableNumber(job.final_price));
+    const completionDecision = buildKaelCompletionDecision(
+      jobId,
+      completionEvidenceForDecision ?? input,
+      nullableNumber(job.final_price),
+    );
     if (completionDecision) {
       const completionTransition = validateKaelAutonomyTransition({
         decision: completionDecision,
@@ -2898,7 +2924,7 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
       worker_id: ctx.user.id,
       scope_change_requested: false,
       worker_report: {
-        has_photos: (input.completion_photo_urls ?? []).length > 0,
+        has_photos: (completionEvidenceForDecision?.completion_photo_urls ?? input.completion_photo_urls ?? []).length > 0,
       },
     });
   }
@@ -4272,6 +4298,45 @@ async function submitReview(ctx: MobileApiContext, jobId: string, input: {
     review_id: asString(row.review_id),
     job_id: jobId,
     status: row.job_status as JobStatus,
+  };
+}
+
+async function submitCustomerKaelFeedback(
+  ctx: MobileApiContext,
+  input: CustomerKaelFeedbackInput,
+) {
+  const client = db(ctx);
+  const now = new Date().toISOString();
+  const message = input.message.trim();
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("customer_kael_feedback")
+      .insert({
+        customer_id: ctx.user.id,
+        language: input.language,
+        message,
+        message_scrubbed: scrubSensitiveForLLM(message),
+        safe_metadata: {
+          kael_feedback_version: "v1",
+          submitted_from: "customer_profile",
+        },
+        source: input.source,
+        status: "new",
+      })
+      .select("id, status, created_at")
+      .maybeSingle(),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể gửi góp ý cho Kael", 500);
+  }
+  if (!result.data) {
+    apiFailure("DB_ERROR", "Không thể gửi góp ý cho Kael", 500);
+  }
+
+  return {
+    feedback_id: asString(result.data.id),
+    status: "new" as const,
+    created_at: nullableString(result.data.created_at) ?? now,
   };
 }
 

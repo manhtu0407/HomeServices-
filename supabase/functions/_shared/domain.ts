@@ -296,6 +296,12 @@ export const placesAutocompleteSchema = z.object({
   session_token: z.string().max(120).optional(),
 });
 
+export const customerKaelFeedbackSchema = z.object({
+  message: z.string().trim().min(8).max(1200),
+  source: z.enum(["profile"]).default("profile"),
+  language: z.enum(["vi", "en"]).default("vi"),
+});
+
 export const jobMessageSendSchema = z.object({
   content: z.string().min(1).max(5000),
 });
@@ -458,6 +464,9 @@ export type JobCreateInput = z.infer<typeof jobCreateSchema>;
 export type KaelChatCreateInput = z.infer<typeof kaelChatCreateSchema>;
 export type KaelChatTurnInput = z.infer<typeof kaelChatTurnSchema>;
 export type PlacesAutocompleteInput = z.infer<typeof placesAutocompleteSchema>;
+export type CustomerKaelFeedbackInput = z.infer<
+  typeof customerKaelFeedbackSchema
+>;
 export type JobMessageSendInput = z.infer<typeof jobMessageSendSchema>;
 export type ReviewInput = z.infer<typeof reviewSchema>;
 export type WorkerRegisterInput = z.infer<typeof workerRegisterSchema>;

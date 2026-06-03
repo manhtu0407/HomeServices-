@@ -81,6 +81,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     decideWorkerCancellation: vi.fn(),
     confirmCompletion: vi.fn(),
     submitReview: vi.fn(),
+    submitCustomerKaelFeedback: vi.fn(),
     registerWorker: vi.fn(),
     getMyKaelMemory: vi.fn(),
     getWorkerKaelMemory: vi.fn(),
@@ -243,6 +244,55 @@ describe('mobile-api Edge router contract', () => {
       expect.objectContaining({ role: 'customer' }),
       'notification-1',
     )
+  })
+
+  it('routes customer profile feedback through authenticated mobile API services', async () => {
+    const submitCustomerKaelFeedback = vi.fn(async () => ({
+      feedback_id: 'feedback-1',
+      status: 'new' as const,
+      created_at: '2026-06-02T00:00:00.000Z',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ submitCustomerKaelFeedback }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/kael-feedback', {
+      body: JSON.stringify({
+        language: 'vi',
+        message: 'Kael cần giải thích biên giá rõ hơn.',
+        source: 'profile',
+      }),
+      method: 'POST',
+    }))
+
+    expect(response.status).toBe(201)
+    expect(await response.json()).toMatchObject({ feedback_id: 'feedback-1', status: 'new' })
+    expect(submitCustomerKaelFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      {
+        language: 'vi',
+        message: 'Kael cần giải thích biên giá rõ hơn.',
+        source: 'profile',
+      },
+    )
+  })
+
+  it('rejects short customer profile feedback before service dispatch', async () => {
+    const submitCustomerKaelFeedback = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ submitCustomerKaelFeedback }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/kael-feedback', {
+      body: JSON.stringify({ message: 'short' }),
+      method: 'POST',
+    }))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: 'VALIDATION' })
+    expect(submitCustomerKaelFeedback).not.toHaveBeenCalled()
   })
 
   it('routes worker Kael clarification through the job-scoped worker endpoint', async () => {
@@ -1051,8 +1101,13 @@ describe('mobile-api Edge router contract', () => {
     expect(updateJobStatus).not.toHaveBeenCalled()
   })
 
-  it('rejects worker completion when notes exist but photos are missing', async () => {
-    const updateJobStatus = vi.fn()
+  it('lets note-only worker completion retries reach the service so stored after-photos can be reused', async () => {
+    const updateJobStatus = vi.fn(async () => ({
+      job_id: 'job-1',
+      from_status: 'repairing' as const,
+      to_status: 'completed_by_worker' as const,
+      updated_at: '2026-05-20T00:00:00.000Z',
+    }))
     const handler = createMobileApiHandler({
       authenticate: vi.fn(async () => workerAuth),
       services: makeServices({ updateJobStatus }),
@@ -1067,11 +1122,15 @@ describe('mobile-api Edge router contract', () => {
       }),
     }))
 
-    expect(response.status).toBe(400)
-    expect(await response.json()).toMatchObject({
-      code: 'VALIDATION',
-    })
-    expect(updateJobStatus).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    expect(updateJobStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'job-1',
+      {
+        status: 'completed_by_worker',
+        completion_notes: 'Đã thay ổ cắm và kiểm tra tải.',
+      },
+    )
   })
 
   it('accepts completion media refs returned by the job media attach endpoint', async () => {
