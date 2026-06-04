@@ -10185,3 +10185,273 @@ v0.2 — 2026-06-04 — Tu chốt D-OPEN-1..5 + D6. C2 → full autonomy (γ′)
                     B3 → Perplexity sourcing; roadmap tuần tự; admin api+mobile; không hoãn (B5/C2 in-scope).
                     Effort ~60.5d seq. Autonomy flag bật prod chỉ sau D5+K-FINAL. Codex build, Claude verify. READY.
 ```
+
+---
+
+## 32. Kael Perceived Performance + Worker Parity + B2C Anti-Disintermediation + Interaction Design — 2026-06-04
+
+### 32.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-perceived-perf-worker-parity-antileak-20260604
+Created:        2026-06-04
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Branch:         claude/adoring-leavitt-5d0ad6 (worktree)
+File location:  Plan.md §32 (durable, canonical) + 2 companion docs (xem dưới)
+Status:         DESIGN LOCKED v0.8 — Tu chốt D1–D14. CHƯA execute. Codex build, Claude verify. Build sau §31.
+Trigger:        Tu yêu cầu fix perceived-performance cho Kael (streaming/thinking-state/TTFT) →
+                mở rộng thành parity worker + B2C anti-disintermediation + interaction-design (session adoring-leavitt).
+Scope:          (Part A) perceived-perf customer chat A4/A5; (Part B) worker Kael chat felt-parity + perceived-perf;
+                (§32.6) B2C anti-disintermediation & retention; (§32.7) apartment access app-only;
+                (§32.8) flexible-not-slop interaction principle cho 4 scenario + worker chatbot.
+Out of scope:   Đổi runtime boundary (Expo→Edge→DB giữ nguyên); payment rail thật (defer); building/tower integration
+                (B2C thuần — KHÔNG xin được toà); learning/post-job paths; admin Kael monitoring.
+Companion docs: docs/design/kael-perceived-performance-streaming-20260604.md   (per-step File/Action/Acceptance đầy đủ)
+                docs/architecture/kael-worker-functional-audit-20260604.md     (functional audit + parity matrix + reuse)
+Effort:         Chưa ước lượng agent-day (chốt ở Phase 0/WBF.0). Part A trước, Part B sau, §32.6–8 đan vào B-FUNC.
+Skill mapping:  karpathy-guidelines (mọi phase) + kael-ai-boundary, kael-motion, glass-liquid-signature,
+                kael-frontend-test, kael-supabase, kael-tdd, kael-security-sweep (xem §32.11).
+```
+
+**Mục tiêu chính (đo được, không tô hồng):**
+
+1. **Perceived-perf THẬT, không ảo thuật rỗng:** thinking-state nối với stage backend THẬT (không phải label đoán client-side); TTFT-thinking-state < 800ms; token-streaming cho text hội thoại; mọi phase frontend có **recording app thật** (D6).
+2. **Worker Kael chat đạt felt-parity với customer**, điều chỉnh theo vai trò (job-assist/advisory, KHÔNG price-intake), reuse pattern customer, **giữ customer chat nguyên vẹn** (sibling, zero regression).
+3. **Giảm rủi ro mất khách (disintermediation) trong B2C thuần** bằng moat giá-trị/tiện-lợi/kiểm-soát-liên-hệ — KHÔNG phụ thuộc toà.
+4. **Kael xử 4 scenario căng "linh hoạt mà không slop":** deterministic spine + bounded LLM ở rìa + guards.
+
+**Nguyên tắc xuyên suốt:** Tiền/scope/outcome **luôn trên gạch structured** (scope-change + `buildKaelAutonomyDecision`); LLM đề xuất trong rào, không bao giờ tự mutate money-state (tuân RULES.md #2/#3/#8). Perceived-perf là **frontend outcome có bằng chứng**, không phải metric backend. Stage-streaming trước token-streaming.
+
+---
+
+### 32.0.1 Authority refs (đọc theo thứ tự bắt buộc trước khi execute)
+
+```
+1. critical.md          (§0 lifecycle, §8 verify, §12 ai-boundary, §14 supabase, §15 security)
+2. RULES.md             (#2 server-side AI, #3 validate output, #6 scope, #8 no fake data, #9 PII, #10 timeout/retry, autonomy/money boundary)
+3. STRUCTURES.md        (§9 Kael workflow + providers, §12 state machines, §15 final-price authority; nếu pin /kael/chat contract → §32.9 flag)
+4. design.md (+ design/*)(motion/loading contract — mọi motion phase phải tuân; glass-liquid-signature)
+5. docs/architecture/code-ownership-map.md  (map phase → owner files TRƯỚC khi edit)
+6. docs/design/kael-perceived-performance-streaming-20260604.md   (companion — per-step detail)
+7. docs/architecture/kael-worker-functional-audit-20260604.md     (companion — audit/parity/reuse)
+8. CLAUDE.md            (lock notice; runtime boundary)
+9. MEMORY.md            (last)
+```
+
+---
+
+### 32.0.2 Decision Log (Tu chốt 2026-06-04 trừ khi ghi khác)
+
+- **D1** — Lưu progress theo shape `kael_progress` trên `kael_chat_sessions` (customer); sibling cho worker (xem D12).
+- **D2** — Tier-1 live channel = **scoped fast-poll** (~800ms, dừng on terminal), KHÔNG đảo quyết định defer Realtime.
+- **D3** — Đi tới **Tier-2 SSE** thật (Edge `Deno.serve` hỗ trợ ReadableStream; mobile `expo/fetch` reader).
+- **D4** — Token-stream BẬT cho field **chỉ khi** là một `callAI` text completion streamable — khảo sát từng call (Phase 0.4), không hardcode. Giá ước tính (synthesizePrice thuần) KHÔNG bao giờ stream.
+- **D5** — **Codex build, Claude verify** result (mỗi step có dòng Verify).
+- **D6** — Mọi phase frontend **không DONE** nếu thiếu recording app thật (VISIBLE DONE).
+- **D7** — Thinking-state dùng pattern **"Thought for {n}s"**: stepper collapse thành disclosure tap-mở-lại, `{n}` đo THẬT, copy "phân tích" không "suy nghĩ" (pipeline ≠ chain-of-thought).
+- **D8** — (SUPERSEDED 2026-06-04) Trước: "không thêm section Plan.md". Tu override → **consolidate hết vào Plan.md §32** (section này). Companion docs giữ per-step detail.
+- **D9** — Phủ **CẢ hai actor** (customer + worker), không customer-only.
+- **D10** — Worker Kael = **bounded advisory chatbot** (real callAI, zero quyền tiền/scope), KHÔNG negotiator có quyền tiền (reject option 3, vi phạm RULES).
+- **D11** — **Parity principle:** cái gì customer chatbot có thì worker cũng có, điều chỉnh theo vai trò. (Audit: workflow/lifecycle ĐÃ parity; chatbot/capability CHƯA.)
+- **D12** — **Core felt-parity (option 1)** + **sibling tables** `kael_worker_chat_sessions`/`turns` (reuse DESIGN/patterns customer, KHÔNG role-flag bảng customer-bound). Endpoint nhỏ (feedback/consent/memory-delete) = fast-follow WBF.7.
+- **D13** — **B2C anti-disintermediation = moat giá-trị/tiện-lợi/kiểm-soát-liên-hệ, KHÔNG access-control toà** (B2C thuần không xin được toà). Tier 1 (chat-guard + risk memory) làm ngay (cưỡi B-FUNC); Tier 2 (re-book, guarantee) phần phụ thuộc payment → defer. Chấp nhận một sàn leak; KHÔNG đốt niềm tin worker.
+- **D14** — **Kael interaction = flexible-not-slop**: deterministic spine (escalate/approve/penalty/who-decides/evidence-lock — không bao giờ LLM) + bounded LLM ở rìa (detection nuance + phrasing) + guards (self-check, neutrality assertion, stopAiLoop, fallback-template, admin-decides). Chi phối B-FUNC + 4 scenario.
+
+---
+
+### 32.0.3 Definition of Done — Gates (áp dụng MỌI phase)
+
+```text
+G1 — Real path proof:    Bằng chứng end-to-end trên staging/DB thật (row/cost/log thật), không mock.
+G2 — Closure proof:      Output phase được CONSUMED downstream (progress row → mobile đọc & render; turn → session;
+                         decision → state qua gate). Chống "bảng mồ côi / loop hở".
+G3 — VISIBLE DONE (D6):  Phase frontend có recording app thật (light/dark/reduced-motion) chứng minh thấy được ở UI.
+G4 — Honesty gate:       Không fake stage/label; stage fail→copy trung thực; không lộ provider name; không PII trong row/log.
+G5 — Money-state gate:   (Part B/§32.6/§32.8) Không có path nào để LLM/UI tự đổi giá/scope/status/money. Negative test bắt buộc.
+```
+
+---
+
+### 32.1 Audit Findings (consolidated, evidence-cited)
+
+**32.1.1 Perceived-perf gap.** Luồng chat đồng bộ: `api.ts:74` `await response.text()` buffer hết; Edge `services.ts:1763` `await runKaelPipeline` block tới hết pipeline. Budget (`routing.config.ts:36-41`): intent 2.5s → ∥(vision 4.5s, market 4s) → synth 3s ⇒ 4–10s. ⇒ TTFT-estimate < 800ms **bất khả thi** đồng bộ. "Streaming" hiện tại = typewriter cosmetic SAU full response (`thread.tsx:395`).
+
+**32.1.2 Thinking-state đứt 3 chỗ.** Backend ghi stage thật vào `jobs.kael_progress` (`streaming.ts`, gọi trong `pipeline.ts`) nhưng: (1) chat handler KHÔNG truyền `progressJobId` (`services.ts:1763`, chat `job_id:null`) → early-return; (2) mobile không đọc; (3) Realtime defer, chat poll 8s (`realtime.ts`). Live-activity label là đoán client-side (`thread.tsx:434`).
+
+**32.1.3 Worker-Kael functional reality.** MỌI `callAI` trong Kael = customer estimate (intent×2/vision/market/price-synth) + **scope-change×2**. Worker LLM = scope-change ONLY. Dispatch/brief/autonomy/protection đều **deterministic** (brief `buildWorkerBriefOutput` sync no-await; autonomy `buildKaelAutonomyDecision` 28+ site → validate → atomic RPC). "Worker Kael chatbot" = stub: `askKaelForWorker`→`buildWorkerKaelAnswer` template, 3×/job, no LLM; relay chat = human↔customer.
+
+**32.1.4 Parity.** Workflow/lifecycle ĐÃ parity (`workflow-phase-context.ts` role-aware `customer|worker|shared`; shared `useServiceWorkflow`). Chatbot/capability CHƯA: customer có `kaelChatService` (create/list/get/sendTurn/confirm) + feedback + training-consent + memory-delete; worker chỉ có `kael-clarify` 3×/job. (Memory read+delete worker ĐÃ có: `DELETE /me/kael-memory` role-aware → `worker_kael_memory`; gap thật = feedback + training-consent + chat session.)
+
+**32.1.5 Reuse.** `kael_chat_sessions` (mig 20260520130514) `customer_id`/`service_type` NOT NULL + customer RLS + turn role `customer|kael|system` → KHÔNG role-flag an toàn. Handlers booking-coupled (`runKaelPipeline`) nhưng pattern-rich (idempotency, rate-limit RPC `check_kael_chat_rate` 5/min·20/hr, turn lifecycle, cost, self-check). Mobile `kael-chat/` nửa reuse (thread/thinking-state/progressive-text/composer/glass dùng lại; estimate/booking không). ⇒ **sibling table** reuse design.
+
+**32.1.6 Interaction scenarios.** 5 file `agentic/`: case-1 normal (happy-path choreography, notification budget max 5 + silent statuses), + 4 scenario căng: case-2 demanding (keyword→`renderEmpathyTemplateV2`+stopAiLoop+admin), case-3 worker-cancel (classify→auto-approve/admin+abuse), case-4 customer-cancel (classify→category+sub-case+Phase0 no-penalty), case-5 dispute (route→**neutral fact-summary** "does not decide outcome"+`assertNeutralDisputeLanguage` guard+evidence-lock→admin). Gần như KHÔNG LLM (1 soft `llmSentiment` assist không tự bấm hard).
+
+**32.1.7 Anti-disintermediation reality.** Relay chat (`sendJobMessage:4250`) lưu tin worker NGUYÊN VĂN; lớp quét duy nhất `maybeHandleDemandingCustomerJobChat:4293` **chỉ chạy cho customer** → tin worker không bị giám sát. Regex ẩn SĐT/email ĐÃ có (`utils.ts`, `memory-sanitizer.ts`, agentic case 2/3/4/5) nhưng KHÔNG áp lên relay chat sống. **Tin tốt:** worker KHÔNG được cấp SĐT khách (`JOB_DETAIL_SELECT` không có phone; relay dùng `sender_id`) → kênh liên hệ đã in-app-only. Đã có: address privacy gate (trước accept), scope-change anti-fraud, cancel abuse/no-show, `worker_kael_memory.red_flags`, `kael_admin_queue`. CHƯA có: arrival geofence (nút `arrived` thủ công), access coordination, re-book-same-worker-in-app.
+
+---
+
+### 32.2 Reframes (3 pivot chiến lược)
+
+1. **Stage-streaming > token-streaming.** Kael price-check là pipeline đa-stage trả JSON estimate, không phải chat 1-LLM long-form. Đòn giá trị nhất = stream tiến trình stage THẬT (backend đã tính sẵn). Token-streaming chỉ đáng cho text hội thoại (clarification/advisory/worker-assist). Tách TTFT: **TTF-thinking-state < 800ms (khả thi)** vs TTF-estimate 4–10s (pipeline-bound).
+2. **B2C moat = value/convenience/contact, KHÔNG access-control.** B2C thuần không kiểm soát được cửa/toà. Kênh liên hệ đã in-app-only → khoá nốt + nâng giá trị ở lại. Không chặn được 100% (gặp ngoài đời); mục tiêu = chặn leak lười + bỏ ma sát ở lại + nâng giá trị ở lại + phí công bằng.
+3. **Flexible-not-slop.** Rủi ro hiện tại KHÔNG phải AI-slop (gần như không có AI) mà là **rigidity** (keyword giòn + template chết). Sửa = bounded LLM ở rìa giữ deterministic spine + guards (D14). Đừng nhét LLM ngây thơ vào money/dispute.
+
+---
+
+### 32.3 Part A — Customer Perceived-Performance
+
+Phases (per-step detail ở companion doc §3):
+- **P0 Pre-plan** (read-only): đọc governance stack + restate rule/reframe/3-breaks; **0.4 inventory mọi `callAI`** → phân loại structured vs streamable (resolve D4).
+- **P1 Tier-1 backend:** migration `kael_progress jsonb` vào `kael_chat_sessions` + RLS; generalize `updateKaelProgress` target `{table,id}` (`streaming.ts:37`); chat handler truyền session progress target; route `GET /kael/chat/:id/progress`.
+- **P2 Tier-1 frontend (visible):** `kaelChatProgressService` + fast-poll while sending (~800ms, cleanup); stage→copy map (§32.5); feed stage THẬT vào `KaelLiveActivityIndicator` (local guess chỉ là fallback trước first event); honesty (fail→neutral, ẩn vision khi skip); a11y live-region.
+- **P2M Thinking-state motion (visible):** instant ack + first-paint <800ms; **stage stepper tick dần** (mint check + dim); avatar micro-motion; **"Thought for {n}s" collapse** (D7) tap mở lại; Reduce Motion/Transparency; perf budget.
+- **P3 Tier-2 SSE backend:** spike Edge wall-clock; `sse.ts` (text/event-stream + heartbeat); streaming variant `/kael/chat/:id/stream` emit stage/token/result/error; token chỉ field streamable (D4); JSON fallback giữ nguyên.
+- **P4 Tier-2 frontend (visible):** `kael-stream.ts` (`expo/fetch` reader + SSE parse), tách khỏi `api.ts` buffered; reconnect: drop → re-fetch final session qua JSON `GET /kael/chat/:id` (idempotent), **KHÔNG token-replay v1** (cần `id:` event + per-turn buffer → defer); render stage + token incremental; **đo TTFT thật**; degrade về poll/JSON.
+- **P4M Streaming-text motion (visible):** caret `▍` mép stream; token-driven reveal (thay timer 110ms cứng); auto-scroll follow; completion settle glass-liquid.
+- **P5 Cross-cutting:** contrast; Reduce Motion/Transparency full; honesty+security audit; TTFT acceptance; test log.
+
+---
+
+### 32.4 Part B — Worker Kael Chat at Felt-Parity (D9–D12)
+
+Guardrail toàn Part B (RULES #2/#3/#6/#8, `kael-ai-boundary`): **advisory-only, zero quyền tiền/scope**; tiền/scope redirect về scope-change + autonomy rails. Mọi turn Zod + self-check; fallback template khi AI fail. **G5 money-state gate bắt buộc.**
+
+**B-FUNC — build worker chat session felt-parity (sibling, reuse pattern):**
+- **WBF.0** (design, no code): đọc kael-ai-boundary + charter + self-check + customer chat stack + `askKaelForWorker`; ra boundary spec + reuse/adaptation map. **Tu sign-off.**
+- **WBF.1** schema sibling: `kael_worker_chat_sessions` (job-scoped, `worker_id NOT NULL`, worker statuses, idempotency/cost) + `kael_worker_chat_turns` (role `worker|kael|system`; content-type text/clarification/guidance/photo_request/photo_attached/error — no estimate; **`media_refs text[]`** cho ảnh bằng-chứng-tại-chỗ để WBF.5 attach có chỗ lưu) mirror customer design + indexes; worker RLS (`worker_id=auth.uid()`, read-only client, service-role write) + worker rate-limit RPC.
+- **WBF.2** routing: thêm `worker_assist` purpose (cheap primary, Anthropic fallback, budget/ceiling/maxTokens/cap).
+- **WBF.3** backend: `kael/worker-assist.ts` advisory engine (callAI + Zod + self-check + cost + fallback, zero autonomy) + handlers `create/send/get/list WorkerKaelChat` mirror customer (idempotency, rate-limit, lifecycle) nhưng job-scoped advisory (no runKaelPipeline); routes `/workers/me/kael/chat` (+`/:id`).
+- **WBF.4** safety suite (**money-state gate, trước UI**): refuse set price/scope/status → redirect scope-change; prompt-injection; out-of-scope; no provider name; PII-safe; RLS isolation worker A≠B.
+- **WBF.5** mobile: extract shared chat primitives từ `kael-chat/` (thread/thinking-state/progressive-text/composer/glass) → worker chat surface (job-assist + history), **distinct với relay chat**, conform `worker-production-contract.md`; **parity UX:** đính ảnh (bằng chứng tại chỗ — giá trị cao), mic, clarification affordances.
+- **WBF.6** wiring: `workerKaelChatService` mirror `kaelChatService`; route + nav.
+- **WBF.7** fast-follow capability parity: `/workers/me/kael-feedback` + `/workers/me/kael-training-consent` (get/set) + UI tối thiểu. (Memory-delete worker ĐÃ có qua `DELETE /me/kael-memory` role-aware — KHÔNG thêm endpoint trùng.)
+
+**B-PERF — perceived-perf trên worker (sau B-FUNC, reuse Part A + §2A motion):**
+- **WBP.1** scope-change thinking-state: emit 2-step progress (`reviewing`→`estimating`) qua generalized `updateKaelProgress` → scope-change-scoped target; mobile thay static `'Kael đang xét'` (`worker-surfaces.tsx:460`) bằng state thật + honesty copy.
+- **WBP.2** advisory chat thinking-state + **token streaming** (worker_assist là single callAI completion → đây là chỗ beat-4 token-stream phát huy đầy đủ); reuse P3/P4 contract + caret/settle.
+- **WBP.2M** worker motion (stepper scope-change; caret/settle advisory; "Thought for {n}s") conform worker contract + glass-liquid + kael-motion.
+- **WBP.close** Phase-5 gates scope worker.
+
+---
+
+### 32.5 Stage → Copy Contract + SSE Event Contract + Reference Choreography
+
+**Reference choreography (Claude/ChatGPT turn, 5 beat — acceptance cho motion phase):** (1) instant ack; (2) fast thinking paint <800ms; (3) discrete steps tick off (1 dòng active nhấn, dòng xong dim); (4) token stream + caret; (5) clean settle (collapse "Thought for Xs"). Stage Kael map 1:1 vào step-row.
+
+**Stage→copy (VI primary, EN switch; phản ánh stage THẬT, fail→neutral, no provider name, district HCMC):**
+
+| stage/status | VI | EN |
+|---|---|---|
+| intent_classification running | 🧭 Đang đọc và phân loại yêu cầu… | Reading and classifying… |
+| vision_analysis running (chỉ khi có ảnh) | 🖼️ Đang phân tích mô tả và hình ảnh… | Analyzing description & photos… |
+| market_lookup running | 🔍 Đang tra cứu giá thị trường khu {district}… | Checking market rates in {district}… |
+| problem_synthesis running | 📚 Đang đối chiếu khung giá chuẩn… | Matching standard price bands… |
+| price_synthesis running | 🧠 Đang tổng hợp ước tính và rủi ro… | Synthesizing estimate & risks… |
+| any failed/fallback | ⚙️ Đang dùng dữ liệu nội bộ của Kael… | Using Kael's internal data… |
+
+**SSE event contract (Tier-2):**
+```
+event: stage   data: {"stage":"market_lookup","status":"running","progress":0.32,"district":"Quận 7"}
+event: token   data: {"field":"clarification","delta":"…"}   // chỉ field streamable (D4)
+event: result  data: { <full Zod-validated session> }
+event: error   data: {"code":"AI_FAILED","message":"<friendly VI>"}
+: heartbeat   // ~10s
+```
+
+**Reconnect v1:** contract KHÔNG có `id:` → KHÔNG token-replay. Drop → client re-fetch turn đã persist qua `GET /kael/chat/:id` (idempotent, xem P4). Replay token-level cần thêm `id:` mọi event + per-turn buffer keyed by `Last-Event-ID` → defer.
+
+---
+
+### 32.6 B2C Anti-Disintermediation & Retention (D13 — 4 trụ, không phụ thuộc toà)
+
+**Trụ 1 — Làm chủ kênh liên hệ (đã có, khoá nốt):** liên hệ chỉ in-app (đã đúng, không lộ phone). **Chat-guard:** áp regex SĐT/email có sẵn + keyword VN solicitation ("gọi em", "số riêng", "tiền mặt", "khỏi qua app", "trực tiếp", "zalo") cho **CẢ 2 chiều** (vá lỗ customer-only ở `sendJobMessage`). Worker→khách: ẩn liên hệ + Kael nudge + tăng điểm rủi ro. (Sau) số ẩn/proxy nếu cần voice. → **Tier 1, cưỡi B-FUNC** (Kael nudge dùng worker advisory engine).
+**Trụ 2 — Ở lại tiện hơn rời đi:** **re-book-same-worker IN-APP 1 chạm** (giết lý do xin số); lưu **hồ sơ tiếp cận căn hộ** in-app (re-book tức thì); loyalty worker (chuỗi on-platform → ưu tiên/bậc phí thấp). → phần re-book phụ thuộc UX customer, Tier 2.
+**Trụ 3 — Rời đi đắt với KHÁCH (moat thật):** bảo hành on-platform (hỏng X ngày → sửa free/hoàn); bảo vệ thanh toán (khi có rails — defer); hoà giải + thợ thẩm định + rating history chỉ on-platform; Kael cho khách **CẢM** được lớp bảo vệ. → phụ thuộc payment, Tier 2/defer.
+**Trụ 4 — Phí công bằng:** phí thấp + bảo vệ thật → đi ngoài không bõ. Phí cao mới đẻ động cơ né.
+**Risk memory:** điểm rủi ro leak trong `worker_kael_memory.red_flags` (solicitation, cancel-after-match trùng khách-không-quay-lại, "khách không phản hồi" lặp) → de-prioritize matching + `kael_admin_queue`. → **Tier 1.**
+**Honesty/tension:** không chặn 100% (gặp ngoài đời); cưỡng chế **gated bằng bằng chứng** (autonomy + admin queue), KHÔNG nuke worker khan hiếm vì tín hiệu yếu. Tier 1 (chat-guard + risk memory) ngay; Tier 2 (re-book + guarantee) khi có volume/payment.
+
+---
+
+### 32.7 Apartment Access — "Last 50 Meters" (app-only, B2C thuần)
+
+Reframe: địa chỉ+map đưa thợ TỚI TOÀ; cái đưa tới CỬA là bắt tay tiếp cận do nền tảng điều phối. **Pure B2C ⇒ KHÔNG dựa lễ tân/pass-toà.** Chỉ app-only:
+- **Hồ sơ tiếp cận nhà của khách** (intake hỏi 1 lần/địa chỉ: vào kiểu gì, gửi xe, cách báo) — reuse `kael_chat_pre_intake_memory`.
+- **Thả thông tin 3 nấc:** khu (trước accept, đã có) → toà + hướng dẫn (sau accept) → **chính xác căn hộ khi check-in tại sảnh**, time-boxed (giảm tích luỹ địa chỉ dùng lại).
+- **Check-in xác minh vị trí** (nâng nút `arrived` thủ công `lifecycle.ts:16`): geofence quanh toà → báo khách "thợ đã tới sảnh, cho lên?" → khách duyệt → mở căn hộ. Gắn no-show detection. **Caveat:** GPS chung cư HCMC kém → fallback bấm tay + ảnh sảnh.
+- **Bắt tay cho phép vào:** khách "Cho thợ lên"; job nhạy cảm/lần đầu → tuỳ chọn **"Gặp ở sảnh"** (không lộ căn hộ).
+- **Xác minh danh tính 2 chiều tại cửa** (job in-app + badge + ảnh; khách xác nhận "đúng thợ").
+- **DEFER (cần toà hợp tác, B2C thuần không có):** visitor pass/QR lễ tân chấp nhận. KHÔNG chặn giao dịch đầu vì nó.
+
+Vai trò: app-only access = tiện-ích-vận-hành + tín hiệu no-show, **không phải access-control moat**. Moat thật ở §32.6 trụ 2/3.
+
+---
+
+### 32.8 Kael Interaction Design — Flexible-Not-Slop (D14, chi phối 4 scenario + worker chatbot)
+
+**Xương sống deterministic — KHÔNG bao giờ LLM:** quyết định chính sách (escalate? auto-approve? admin? ai quyết? penalty? evidence-lock?). Dispute → Kael **không phán kết quả** (admin). Nền chống-slop.
+**LLM ở RÌA, có rào:** (a) **detection** — thay keyword giòn bằng LLM classifier xuất ĐÚNG signal có cấu trúc (escalation level/reason code/concern type) → nuance tốt hơn, nuôi cùng policy deterministic (mở rộng pattern `llmSentiment` soft: LLM nuance, KHÔNG tự bấm hard); (b) **phrasing** — LLM sinh câu trong strategy đã chọn (strategy+escalation vẫn deterministic), self-check, fallback template.
+**Guards (phổ cập hoá cái đã có):** self-check trước mọi egress; neutrality assertion (`assertNeutralDisputeLanguage`) mở rộng sang scenario cảm tính; `stopAiLoop` khi hard-escalation; structured output + Zod + fallback; "Kael đề xuất trong rào, không quyết tiền/scope/outcome".
+
+| Scenario | LLM ĐƯỢC | LLM KHÔNG BAO GIỜ |
+|---|---|---|
+| Demanding (case-2) | hiểu nuance + phrasing empathy | tự quyết escalation; editorial |
+| Worker/Customer cancel (case-3/4) | hiểu narrative lý do | quyết penalty/approval (luật + Phase 0) |
+| Dispute (case-5) | tóm tắt **sự thật trung lập** | phán lỗi/kết quả (admin only) |
+| Worker advisory (B-FUNC) | tư vấn/giải thích/phrasing | chạm tiền/scope (structured rails) |
+
+Cùng nguyên tắc bảo perceived-perf không thành slop: không label stage giả, không Kael lảm nhảm (§32.0.3 G4).
+
+---
+
+### 32.9 Risks + Locked-Doc Impact
+
+- **RN streaming:** global `fetch` không có readable body → `expo/fetch`; transport mới, device-verified, JSON fallback. (Expo ~54.0.33, RN 0.81.5; chưa cài lib SSE.)
+- **Edge wall-clock (P3.0 spike):** SSE mở 4–10s; verify tier limit trước Tier-2. Tier-1 không vướng.
+- **Cost:** zero provider call thêm (progress là telemetry sẵn; SSE forward việc đã làm); worker advisory thêm callAI có budget/cap riêng.
+- **GPS chung cư:** geofence cần fallback.
+- **Locked-doc (cần Tu approve, KHÔNG tự sửa):** `STRUCTURES.md` nếu pin `/kael/chat` response contract → cần note streaming variant + worker chat routes; `design.md` → stage-streaming loading pattern + "Thought for {n}s". `code-ownership-map.md` (không lock) → mở `streaming.ts` note job→job/session/scope-scoped + thêm worker chat owner.
+
+---
+
+### 32.10 Sequencing / Build Order
+
+```
+Part A (customer): P0 → P1 → P2 → P2M → P3 → P4 → P4M → P5   [chứng minh cơ chế progress/SSE/motion]
+   ↓ reuse cơ chế
+Part B (worker):   WBF.0 → WBF.1 → WBF.2 → WBF.3 → WBF.4(gate) → WBF.5 → WBF.6 → WBF.7
+                   → WBP.1 → WBP.2 → WBP.2M → WBP.close
+Đan vào B-FUNC:    §32.6 Tier-1 (chat-guard + risk memory) — dùng worker advisory engine
+                   §32.7 app-only access (intake profile + arrival check-in) — phối hợp lifecycle
+Xuyên suốt:        §32.8 flexible-not-slop chi phối worker chatbot + bất kỳ LLM nào thêm vào 4 scenario
+Defer:             §32.6 Tier-2 (re-book/guarantee, phụ thuộc payment); §32.7 visitor-pass (cần toà)
+```
+Build sau §31 (Kael AI core). Codex build read-only trước (P0 + WBF.0), Claude verify trước khi động code.
+
+---
+
+### 32.11 Skills Mapping + Verification
+
+```
+karpathy-guidelines     mọi phase (surgical diff, assumptions explicit)
+kael-ai-boundary        WBF.2/3/4, §32.8 (callAI, structured output, self-check, no money-state)
+kael-supabase           P1, WBF.1, §32.6 risk-memory (migration + RLS + regen types + RLS tests)
+kael-motion             P2M, P4M, WBP.2M (Reanimated, Reduce Motion, perf budget)
+glass-liquid-signature  mọi motion surface (conform design.md)
+kael-frontend-test      P2/P4, WBF.5, WBP.* (RNTL + recording = G3 VISIBLE DONE)
+kael-tdd                mọi backend phase (failing test first, ≥2 layer)
+kael-security-sweep     WBF.4 (money-state gate), §32.6 (no PII, no provider name), §32.7 (privacy gate)
+```
+Verification: mỗi phase có G1–G5 (§32.0.3) + dòng "Verify (Claude)" ở companion doc. Frontend phase bắt buộc recording app thật.
+
+---
+
+### 32.12 Change Log
+
+```text
+v0.8 — 2026-06-04 — Consolidate session adoring-leavitt vào Plan.md §32 (Tu override D8). Gồm: perceived-perf
+                    Part A (P0–P5+2M/4M), worker felt-parity Part B (B-FUNC WBF.0–7 + B-PERF WBP.*),
+                    B2C anti-disintermediation 4 trụ (§32.6), apartment access app-only (§32.7),
+                    flexible-not-slop interaction (§32.8). Decisions D1–D14 locked. Companion docs giữ per-step detail.
+                    CHƯA execute — Codex build sau §31, Claude verify.
+```
