@@ -34,24 +34,6 @@ const readMigrationByName = (needle: string) => {
     .at(-1)
   return name ? read(`supabase/migrations/${name}`) : ''
 }
-const publicSchemaNames = (source: string, section: 'Tables' | 'Views' | 'Functions') => {
-  const lines = source.split('\n')
-  const start = lines.findIndex((line) => line === `    ${section}: {`)
-  const names: string[] = []
-
-  for (const line of lines.slice(start + 1)) {
-    if (/^    (Tables|Views|Functions|Enums|CompositeTypes): \{/.test(line)) break
-    const match = /^      ([A-Za-z0-9_]+): \{/.exec(line)
-    if (match) names.push(match[1])
-  }
-
-  return names.sort()
-}
-const stringUnionMembers = (source: string, typeName: string) => {
-  const match = new RegExp(`export type ${typeName} =([\\s\\S]*?);`).exec(source)
-
-  return match ? [...match[1].matchAll(/"([^"]+)"/g)].map((item) => item[1]).sort() : []
-}
 
 describe('mobile-api Edge schema compatibility', () => {
   it('allows rejected scope-change decisions written by the atomic RPC', () => {
@@ -74,7 +56,6 @@ describe('mobile-api Edge schema compatibility', () => {
     const functionFiles = [
       'supabase/functions/mobile-api/index.ts',
       'supabase/functions/mobile-api/_shared/auth.ts',
-      'supabase/functions/mobile-api/_shared/db-types.ts',
       'supabase/functions/mobile-api/_shared/kael.ts',
       'supabase/functions/mobile-api/_shared/lifecycle.ts',
       'supabase/functions/mobile-api/_shared/router.ts',
@@ -85,20 +66,6 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(functionFiles).not.toContain('packages/shared')
     expect(functionFiles).toContain('jobCreateSchema')
     expect(functionFiles).toContain('normalizeDistrict')
-  })
-
-  it('keeps Edge DB name guards local to the function tree', () => {
-    const dbTypes = read('supabase/functions/mobile-api/_shared/db-types.ts')
-    const sharedTypes = read('packages/shared/src/types/database.types.ts')
-
-    expect(dbTypes).not.toContain('packages/shared')
-    expect(dbTypes).toContain('export type PublicTableName')
-    expect(dbTypes).toContain('export type PublicRpcName')
-    expect(stringUnionMembers(dbTypes, 'PublicTableName')).toEqual([
-      ...publicSchemaNames(sharedTypes, 'Tables'),
-      ...publicSchemaNames(sharedTypes, 'Views'),
-    ].sort())
-    expect(stringUnionMembers(dbTypes, 'PublicRpcName')).toEqual(publicSchemaNames(sharedTypes, 'Functions'))
   })
 
   it('does not ship mojibake Vietnamese error messages from mobile-api Edge runtime', () => {
@@ -292,67 +259,6 @@ describe('mobile-api Edge schema compatibility', () => {
     }
     expect(migration).toContain('from authenticated')
     expect(migration).toContain('to service_role')
-  })
-
-  it('hardens residual public grants and future public default privileges', () => {
-    const anonRevoke = readMigrationByName('revoke_anon_public_grants')
-    const residualDml = readMigrationByName('revoke_residual_authenticated_dml')
-    const defaultPrivileges = readMigrationByName('harden_default_privileges_public')
-    const followup = readMigrationByName('harden_public_grants_followup')
-    const convergenceSql = [anonRevoke, residualDml, defaultPrivileges, followup].join('\n')
-
-    expect(followup).toContain('new forward migration')
-    expect(convergenceSql).toContain('revoke all on all tables    in schema public from anon')
-    expect(convergenceSql).toContain('revoke all on all sequences in schema public from anon')
-    expect(convergenceSql).toContain('revoke all on all tables    in schema public from public')
-    expect(convergenceSql).toContain('revoke all on all sequences in schema public from public')
-    expect(convergenceSql).toContain('revoke execute on all functions in schema public from public')
-    expect(convergenceSql).toContain('revoke execute on all functions in schema public from anon')
-    expect(convergenceSql).toContain('revoke execute on all functions in schema public from authenticated')
-    expect(convergenceSql).toContain('grant execute on all functions in schema public to service_role')
-    expect(convergenceSql).toContain('revoke usage on schema public from public')
-    expect(convergenceSql).toContain('revoke usage on schema public from anon')
-    expect(convergenceSql).toContain('grant usage on schema public to authenticated')
-    expect(convergenceSql).toContain('grant usage on schema public to service_role')
-
-    for (const tableOrView of [
-      'public.kael_market_artifacts',
-      'public.service_knowledge_boxes',
-      'public.kael_cost_daily_summary',
-      'public.kael_cost_projection_daily',
-      'public.kael_monitoring_ab_price_synthesis',
-      'public.kael_monitoring_provider_daily',
-    ]) {
-      expect(convergenceSql).toContain(`revoke all on ${tableOrView}`)
-      expect(convergenceSql).toContain(`grant select on ${tableOrView}`)
-    }
-    expect(residualDml).not.toContain('source_trust_registry from authenticated')
-    expect(residualDml).not.toContain('customer_kael_feedback from authenticated')
-
-    expect(convergenceSql).toContain('revoke all on tables from anon, authenticated, service_role')
-    expect(convergenceSql).toContain('revoke all on sequences from anon, authenticated, service_role')
-    expect(convergenceSql).toContain('revoke execute on functions from public, anon, authenticated, service_role')
-    expect(convergenceSql).toContain('alter default privileges for role postgres\n  revoke execute on functions from public, anon, authenticated, service_role')
-    expect(defaultPrivileges).not.toContain('grant select on tables to authenticated')
-  })
-
-  it('keeps customer Kael feedback read policy advisor-clean', () => {
-    const migration = readMigrationByName('combine_customer_kael_feedback_select_policy')
-
-    expect(migration).toContain('drop policy if exists "Customers read own Kael feedback"')
-    expect(migration).toContain('drop policy if exists "Admins read Kael feedback"')
-    expect(migration).toContain('create policy "Customers or admins read Kael feedback"')
-    expect(migration).toContain('customer_id = (select auth.uid())')
-    expect(migration).toContain('or (select private.is_admin())')
-  })
-
-  it('removes authenticated table DDL-style privileges while preserving explicit exceptions', () => {
-    const migration = readMigrationByName('revoke_authenticated_table_ddl_privileges')
-
-    expect(migration).toContain('revoke truncate, references, trigger on all tables in schema public')
-    expect(migration).toContain('from authenticated')
-    expect(migration).toContain('grant select, insert, update, delete on public.source_trust_registry')
-    expect(migration).toContain('grant update (status, safe_metadata) on public.customer_kael_feedback')
   })
 
   it('adds Kael Harness P1 memory tables with RLS and service-role writes only', () => {
@@ -943,7 +849,6 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('adds service-role Kael chat persistence and confirm RPC for the Kael-first workflow', () => {
     const migration = read('supabase/migrations/20260520130514_kael_chat_sessions.sql')
-    const preIntakeMigration = read('supabase/migrations/20260604103000_kael_chat_pre_intake_memory.sql')
     const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
     const mobileApiTypes = read('apps/mobile/lib/api-types.ts')
@@ -965,57 +870,10 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeServices).toContain('KAEL_CHAT_HARD_COST_CAP_USD')
     expect(edgeServices).toContain('getKaelChatCostUsd')
     expect(edgeServices).toContain('"budget_exceeded"')
-    expect(edgeServices).toContain('appendPreIntakeKaelTurn')
-    expect(edgeServices).toContain('listKaelChats')
     expect(edgeRouter).toContain('kael.chat.create')
-    expect(edgeRouter).toContain('kael.chat.list')
     expect(edgeRouter).toContain('kael.chat.confirm')
     expect(edgeRouter).toContain('"budget_exceeded"')
-    expect(preIntakeMigration).toContain('alter column service_type drop not null')
-    expect(preIntakeMigration).toContain('kael_chat_sessions_service_required_for_deal_check')
-    expect(preIntakeMigration).toContain('kael_chat_sessions_customer_updated_idx')
     expect(mobileApiTypes).toContain("'budget_exceeded'")
-    expect(mobileApiTypes).toContain("'await_service'")
-  })
-
-  it('adds consent-gated Kael training and non-training ledgers behind mobile-api', () => {
-    const migration = read('supabase/migrations/20260604113000_kael_training_consent.sql')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
-    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
-    const mobileServices = read('apps/mobile/lib/services.ts')
-    const sharedTypes = read('packages/shared/src/types/database.types.ts')
-    const sharedIndex = read('packages/shared/src/index.ts')
-
-    for (const table of [
-      'public.customer_kael_training_consent',
-      'public.kael_training_events',
-      'public.kael_training_excluded_events',
-    ]) {
-      expect(migration).toContain(`alter table ${table} enable row level security`)
-      expect(migration).toContain(`grant all on ${table} to service_role`)
-    }
-
-    expect(migration).toContain('allow_training boolean not null default false')
-    expect(migration).toContain("check (exclusion_reason in ('customer_opt_out', 'consent_missing', 'consent_lookup_failed'))")
-    expect(migration).toContain('grant select on public.customer_kael_training_consent to authenticated')
-    expect(migration).toContain('grant select on public.kael_training_events to authenticated')
-    expect(migration).toContain('grant select on public.kael_training_excluded_events to authenticated')
-    expect(migration).toContain('Shared Kael training ledger for scrubbed customer data only after explicit training consent')
-    expect(migration).toContain('Scrubbed audit ledger for customer data that must not be used for training')
-    expect(edgeRouter).toContain('/me/kael-training-consent')
-    expect(edgeRouter).toContain('kaelTrainingConsentSchema')
-    expect(edgeServices).toContain('getKaelTrainingConsent')
-    expect(edgeServices).toContain('updateKaelTrainingConsent')
-    expect(edgeServices).toContain('recordKaelTrainingLedger')
-    expect(edgeServices).toContain('kael_training_excluded_events')
-    expect(edgeServices).toContain('if (!ledger.trainingAllowed) return')
-    expect(mobileServices).toContain('kaelTrainingConsentService')
-    expect(mobileServices).toContain("'/me/kael-training-consent'")
-    expect(sharedTypes).toContain('customer_kael_training_consent')
-    expect(sharedTypes).toContain('kael_training_events')
-    expect(sharedTypes).toContain('kael_training_excluded_events')
-    expect(sharedIndex).toContain('kaelTrainingConsentSchema')
-    expect(sharedIndex).toContain('KaelTrainingConsentInput')
   })
 
   it('hardens worker cancellation approval and job-media upload stages after PR review', () => {

@@ -139,23 +139,12 @@ describe('CustomerBookingEntrySurface active request material', () => {
     const gridStyle = StyleSheet.flatten(screen.getByTestId('booking-wizard-intake-grid').props.style) as Record<string, unknown>
     const serviceFieldStyle = StyleSheet.flatten(screen.getByTestId('booking-wizard-intake-service-field').props.style) as Record<string, unknown>
 
-    expect(screen.getByTestId('booking-wizard-intake-shell-apple-edge')).toBeOnTheScreen()
-    expect(screen.getByTestId('booking-wizard-intake-grid-apple-edge')).toBeOnTheScreen()
-    expect(String(shellStyle.backgroundImage ?? shellStyle.background ?? shellStyle.experimental_backgroundImage)).toContain('rgba(255,255,255,0.88)')
-    expect(String(gridStyle.backgroundImage ?? gridStyle.background ?? gridStyle.experimental_backgroundImage)).toContain('rgba(255,255,255,0.64)')
-    expect(String(shellStyle.borderColor)).toContain('rgba(255,255,255')
-    expect(String(gridStyle.borderColor)).toContain('rgba(255,255,255')
+    expect(String(shellStyle.backgroundImage ?? shellStyle.background ?? shellStyle.experimental_backgroundImage)).toContain('rgba(76,222,199,0.20)')
+    expect(String(gridStyle.backgroundImage ?? gridStyle.background ?? gridStyle.experimental_backgroundImage)).toContain('rgba(76,222,199,0.20)')
     expect(gridStyle.overflow).toBe('hidden')
     expect(serviceFieldStyle.backgroundColor).toBe('transparent')
     expect(serviceFieldStyle.borderWidth).toBe(0)
-    expect(serviceFieldStyle.flexBasis).toBeUndefined()
-    expect(screen.getByTestId('booking-wizard-intake-problem-field')).toBeOnTheScreen()
-    expect(screen.getByTestId('booking-wizard-intake-price-field')).toBeOnTheScreen()
-    expect(screen.getByTestId('booking-wizard-intake-complexity-field')).toBeOnTheScreen()
-    expect(screen.getByTestId('booking-wizard-intake-confidence-field')).toBeOnTheScreen()
-    expect(screen.getByTestId('booking-wizard-intake-platform-fee-field')).toBeOnTheScreen()
-    expect(screen.getByTestId('booking-wizard-intake-total-field')).toBeOnTheScreen()
-    expect(screen.getByTestId('booking-wizard-intake-policy-field')).toBeOnTheScreen()
+    expect(screen.getByTestId('booking-wizard-intake-chat-field')).toBeOnTheScreen()
   })
 
   it('restores the original intake top and applies mint material only to the lower active request card', () => {

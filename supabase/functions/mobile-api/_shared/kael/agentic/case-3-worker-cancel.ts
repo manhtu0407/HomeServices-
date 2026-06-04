@@ -81,7 +81,7 @@ export type RecordWorkerCancellationReviewInput = {
 };
 
 export type WorkerCancellationReviewDbClient = {
-  from(table: import("../../db-types.ts").PublicTableName): {
+  from(table: string): {
     select(columns?: string): WorkerCancellationReviewQuery;
     insert(value: unknown): PromiseLike<WorkerCancellationDbResult>;
     upsert(value: unknown): PromiseLike<WorkerCancellationDbResult>;

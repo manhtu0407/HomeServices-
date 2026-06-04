@@ -1,5 +1,4 @@
 import { checkRateLimit, type RateLimitConfig } from "./rate-limit.ts";
-import type { PublicTableName } from "./db-types.ts";
 
 type DbError = { code?: string; message?: string };
 type DbResult<T> = {
@@ -24,7 +23,7 @@ type Chain = {
 };
 
 export type PushDbClient = {
-  from(table: PublicTableName): Chain;
+  from(table: string): Chain;
 };
 
 export type PushPayload = {

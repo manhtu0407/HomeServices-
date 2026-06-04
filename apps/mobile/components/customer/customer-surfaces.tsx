@@ -43,7 +43,7 @@ import { appCopy, languageDisplayName, localizedProblemLabel, localizedServiceLa
 import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-import { customerFeedbackService, kaelTrainingConsentService } from '@/lib/services'
+import { customerFeedbackService } from '@/lib/services'
 import type { JobMessageResponse } from '@/lib/api-types'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
@@ -272,17 +272,6 @@ function readCustomerMetadataString(metadata: Record<string, unknown>, ...keys: 
   return ''
 }
 
-function resolveTrainingConsentError(
-  result: { code?: string; error?: string; status?: number },
-  copy: { endpointError: string; saveError: string },
-) {
-  const rawError = result.error ?? ''
-  if (result.code === 'NOT_FOUND' || result.status === 404 || rawError.toLowerCase().includes('endpoint')) {
-    return copy.endpointError
-  }
-  return rawError || copy.saveError
-}
-
 function formatCustomerBirthDateInput(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 8)
   if (digits.length <= 2) return digits
@@ -439,56 +428,6 @@ const customerFeedbackCopy = {
     saving: 'Sending',
     submit: 'Send feedback',
     title: 'Feedback for Kael',
-  },
-} as const
-
-const customerTrainingConsentCopy = {
-  vi: {
-    allow: 'Đồng ý',
-    close: 'Đóng',
-    deny: 'Không đồng ý',
-    endpointError: 'Kael chưa kết nối được quyền huấn luyện. Bạn có thể đóng cửa sổ và thử lại sau.',
-    helper: 'Cho phép Home Services dùng các cuộc trò chuyện và tương tác với Kael để cải thiện mô hình cho mọi người. Khi bạn không đồng ý, lịch sử chat và phiên giao dịch vẫn được giữ trong tài khoản, nhưng không dùng để huấn luyện.',
-    learnMore: 'Tìm hiểu thêm',
-    loading: 'Đang kiểm tra',
-    rowMetaAllowed: 'Đồng ý huấn luyện',
-    rowMetaDenied: 'Không dùng để huấn luyện',
-    rowTitle: 'Dữ liệu huấn luyện',
-    saveError: 'Kael chưa cập nhật được lựa chọn này. Vui lòng thử lại.',
-    saving: 'Đang lưu',
-    title: 'Cải thiện Kael cho mọi người',
-  },
-  en: {
-    allow: 'Allow',
-    close: 'Close',
-    deny: 'Do not allow',
-    endpointError: 'Kael cannot reach training permissions yet. You can close this and try again later.',
-    helper: 'Allow Home Services to use your Kael conversations and interactions to improve the model for everyone. If you do not allow this, chat history and transactions stay in your account, but are not used for training.',
-    learnMore: 'Learn more',
-    loading: 'Checking',
-    rowMetaAllowed: 'Training allowed',
-    rowMetaDenied: 'Not used for training',
-    rowTitle: 'Training data',
-    saveError: 'Kael could not update this choice. Please try again.',
-    saving: 'Saving',
-    title: 'Improve Kael for everyone',
-  },
-} as const
-
-const customerPrivacyPolicyCopy = {
-  vi: {
-    close: 'Đóng',
-    helper: 'Phần này đã có chỗ trong hồ sơ. Nội dung chính sách chưa được cập nhật.',
-    rowMeta: 'Chưa có nội dung',
-    rowTitle: 'Chính sách quyền riêng tư',
-    title: 'Chính sách quyền riêng tư',
-  },
-  en: {
-    close: 'Close',
-    helper: 'This profile section is ready. The policy text has not been added yet.',
-    rowMeta: 'No content yet',
-    rowTitle: 'Privacy Policy',
-    title: 'Privacy Policy',
   },
 } as const
 
@@ -1717,12 +1656,6 @@ export function CustomerProfileSurface() {
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
   const [feedbackSaving, setFeedbackSaving] = useState(false)
   const [feedbackSent, setFeedbackSent] = useState(false)
-  const [trainingConsentOpen, setTrainingConsentOpen] = useState(false)
-  const [trainingConsentAllowed, setTrainingConsentAllowed] = useState(false)
-  const [trainingConsentLoading, setTrainingConsentLoading] = useState(true)
-  const [trainingConsentSaving, setTrainingConsentSaving] = useState(false)
-  const [trainingConsentError, setTrainingConsentError] = useState<string | null>(null)
-  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false)
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [passwordCurrent, setPasswordCurrent] = useState('')
   const [passwordValue, setPasswordValue] = useState('')
@@ -1791,31 +1724,7 @@ export function CustomerProfileSurface() {
   }, [profileEditorCopy, profileEditorField, profileEditorSaving, profileEditorValue, updateCustomerProfile])
   const accountInfoCopy = customerAccountInfoCopy[languageMode]
   const feedbackCopy = customerFeedbackCopy[languageMode]
-  const trainingConsentCopy = customerTrainingConsentCopy[languageMode]
-  const privacyPolicyCopy = customerPrivacyPolicyCopy[languageMode]
   const passwordCopy = customerPasswordCopy[languageMode]
-  useEffect(() => {
-    let active = true
-    setTrainingConsentLoading(true)
-    kaelTrainingConsentService.get()
-      .then((result) => {
-        if (!active) return
-        if (result.success) {
-          setTrainingConsentAllowed(result.data.consent.allow_training)
-        } else {
-          setTrainingConsentAllowed(false)
-        }
-      })
-      .catch(() => {
-        if (active) setTrainingConsentAllowed(false)
-      })
-      .finally(() => {
-        if (active) setTrainingConsentLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [session?.user.id])
   const openAccountInfo = useCallback(() => {
     setAccountInfoDraft({
       birthDate: formatCustomerBirthDateInput(rawBirthDate),
@@ -1942,46 +1851,6 @@ export function CustomerProfileSurface() {
       setFeedbackSaving(false)
     }
   }, [feedbackCopy, feedbackSaving, feedbackValue, languageMode])
-  const openTrainingConsent = useCallback(() => {
-    setTrainingConsentError(null)
-    setTrainingConsentOpen(true)
-  }, [])
-  const closeTrainingConsent = useCallback(() => {
-    setTrainingConsentOpen(false)
-    setTrainingConsentError(null)
-  }, [])
-  const openTrainingConsentPrivacyPolicy = useCallback(() => {
-    setTrainingConsentOpen(false)
-    setTrainingConsentError(null)
-    setPrivacyPolicyOpen(true)
-  }, [])
-  const submitTrainingConsent = useCallback(async (allowTraining: boolean) => {
-    if (trainingConsentSaving) return
-    setTrainingConsentSaving(true)
-    setTrainingConsentError(null)
-    try {
-      const result = await kaelTrainingConsentService.set({
-        allow_training: allowTraining,
-        source: 'profile',
-      })
-      if (!result.success) {
-        setTrainingConsentError(resolveTrainingConsentError(result, trainingConsentCopy))
-        return
-      }
-      setTrainingConsentAllowed(result.data.consent.allow_training)
-      setTrainingConsentOpen(false)
-    } catch {
-      setTrainingConsentError(trainingConsentCopy.saveError)
-    } finally {
-      setTrainingConsentSaving(false)
-    }
-  }, [trainingConsentCopy, trainingConsentSaving])
-  const openPrivacyPolicy = useCallback(() => {
-    setPrivacyPolicyOpen(true)
-  }, [])
-  const closePrivacyPolicy = useCallback(() => {
-    setPrivacyPolicyOpen(false)
-  }, [])
   const openPasswordSheet = useCallback(() => {
     setPasswordCurrent('')
     setPasswordValue('')
@@ -2041,11 +1910,6 @@ export function CustomerProfileSurface() {
     : accountInfoSavedCount > 0
       ? accountInfoCopy.metaPartial(accountInfoSavedCount)
       : accountInfoCopy.metaEmpty
-  const trainingConsentMeta = trainingConsentLoading
-    ? trainingConsentCopy.loading
-    : trainingConsentAllowed
-      ? trainingConsentCopy.rowMetaAllowed
-      : trainingConsentCopy.rowMetaDenied
   const profileCareCopy = customerProfileCareCopy[languageMode]
   const profileSectionCopy = customerProfileSectionCopy[languageMode]
   const profileCareStats = [
@@ -2081,7 +1945,7 @@ export function CustomerProfileSurface() {
               <View style={styles.hiddenMarker} testID="customer-profile-empty-state" />
               <View style={styles.profilePrototypeTop}>
                 <View style={styles.profilePrototypeTitleRow}>
-                  <IconShell bareImage icon="person" size={54} testID="customer-profile-hero-icon-shell" tone="service" />
+                  <IconShell icon="person" size={54} tone="service" />
                   <View style={styles.profilePrototypeTitleCopy}>
                     <Text style={[styles.profilePrototypeTitle, { color: tokens.text }]} numberOfLines={1} testID="customer-profile-hero-title">
                       {profileTitle}
@@ -2126,8 +1990,6 @@ export function CustomerProfileSurface() {
               <ActionRow compact icon="theme" title={copy.profile.interface} meta={themeMode === 'light' ? copy.profile.light : copy.profile.dark} onPress={toggleTheme} testID="customer-dark-mode-toggle-profile" />
               <ActionRow compact icon="language" title={appCopy[languageMode].common.appLanguage} meta={languageDisplayName(languageMode)} onPress={toggleLanguage} testID="customer-language-toggle" />
               <ActionRow compact icon="feedback" title={feedbackCopy.rowTitle} meta={feedbackSent ? feedbackCopy.rowMetaSent : feedbackCopy.rowMeta} onPress={openFeedback} testID="customer-profile-open-feedback" />
-              <ActionRow compact icon="privacy" title={trainingConsentCopy.rowTitle} meta={trainingConsentMeta} onPress={openTrainingConsent} testID="customer-profile-open-training-consent" />
-              <ActionRow compact icon="document" title={privacyPolicyCopy.rowTitle} meta={privacyPolicyCopy.rowMeta} onPress={openPrivacyPolicy} testID="customer-profile-open-privacy-policy" />
               <ActionRow compact icon="password" title={passwordCopy.rowTitle} meta={passwordUpdated ? passwordCopy.rowMetaUpdated : passwordCopy.rowMeta} onPress={openPasswordSheet} testID="customer-profile-open-password" />
               <ActionRow compact icon="logout" title={copy.profile.signOut} meta={copy.profile.switchAccount} onPress={() => void signOut()} testID="customer-profile-sign-out" />
               <View style={styles.hiddenMarker} testID="customer-utility-ticket-wallet" />
@@ -2439,134 +2301,6 @@ export function CustomerProfileSurface() {
               </KeyboardAvoidingView>
             </Modal>
           ) : null}
-          {trainingConsentOpen ? (
-            <Modal animationType="fade" onRequestClose={closeTrainingConsent} transparent visible>
-              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.profileEditorScrim}>
-                <Pressable
-                  accessibilityLabel={trainingConsentCopy.close}
-                  accessibilityRole="button"
-                  onPress={closeTrainingConsent}
-                  style={styles.profileEditorScrimDismiss}
-                  testID="customer-training-consent-scrim-close"
-                />
-                <View style={[styles.profileEditorSheet, customerProfilePanelSurface(tokens)]} testID="customer-training-consent-sheet">
-                  <ProfileLiquidChrome testID="customer-training-consent-sheet-liquid" variant="panel" />
-                  <View style={styles.profileEditorHeader}>
-                    <Text style={[styles.profileEditorTitle, styles.profileEditorHeaderTitle, { color: tokens.text }]} numberOfLines={1}>
-                      {trainingConsentCopy.title}
-                    </Text>
-                    <Pressable
-                      accessibilityLabel={trainingConsentCopy.close}
-                      accessibilityRole="button"
-                      onPress={closeTrainingConsent}
-                      style={({ pressed }) => [styles.profileEditorCloseButton, reduceMotionAwarePressStyle(pressed, reduceMotion)]}
-                      testID="customer-training-consent-close"
-                    >
-                      <Text style={[styles.profileEditorCloseText, { color: tokens.text }]} numberOfLines={1}>
-                        ×
-                      </Text>
-                    </Pressable>
-                  </View>
-                  <Text style={[styles.profileEditorHelper, { color: tokens.muted }]}>
-                    {trainingConsentCopy.helper}
-                  </Text>
-                  <Pressable
-                    accessibilityLabel={trainingConsentCopy.learnMore}
-                    accessibilityRole="button"
-                    onPress={openTrainingConsentPrivacyPolicy}
-                    style={({ pressed }) => [
-                      styles.profileEditorLearnMoreButton,
-                      customerProfilePrimaryButtonSurface(tokens),
-                      reduceMotionAwarePressStyle(pressed, reduceMotion),
-                    ]}
-                    testID="customer-training-consent-learn-more"
-                  >
-                    <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorPrimaryText, { color: tokens.primaryText }]}>
-                      {trainingConsentCopy.learnMore}
-                    </Text>
-                  </Pressable>
-                  {trainingConsentError ? (
-                    <Text accessibilityRole="alert" style={[styles.profileEditorError, { color: tokens.danger }]} testID="customer-training-consent-error">
-                      {trainingConsentError}
-                    </Text>
-                  ) : null}
-                  <View style={styles.profileEditorButtonRow}>
-                    <Pressable
-                      accessibilityLabel={trainingConsentCopy.deny}
-                      accessibilityRole="button"
-                      accessibilityState={{ disabled: trainingConsentSaving }}
-                      disabled={trainingConsentSaving}
-                      onPress={() => void submitTrainingConsent(false)}
-                      style={({ pressed }) => [
-                        styles.profileEditorButton,
-                        styles.profileEditorSecondaryButton,
-                        customerProfileSecondaryButtonSurface(tokens),
-                        reduceMotionAwarePressStyle(pressed, reduceMotion),
-                        trainingConsentSaving ? styles.disabled : null,
-                      ]}
-                      testID="customer-training-consent-deny"
-                    >
-                      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorSecondaryText, { color: tokens.primary }]}>
-                        {trainingConsentSaving ? trainingConsentCopy.saving : trainingConsentCopy.deny}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityLabel={trainingConsentCopy.allow}
-                      accessibilityRole="button"
-                      accessibilityState={{ disabled: trainingConsentSaving }}
-                      disabled={trainingConsentSaving}
-                      onPress={() => void submitTrainingConsent(true)}
-                      style={({ pressed }) => [
-                        styles.profileEditorButton,
-                        styles.profileEditorPrimaryButton,
-                        customerProfilePrimaryButtonSurface(tokens),
-                        reduceMotionAwarePressStyle(pressed, reduceMotion),
-                        trainingConsentSaving ? styles.disabled : null,
-                      ]}
-                      testID="customer-training-consent-allow"
-                    >
-                      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorPrimaryText, { color: tokens.primaryText }]}>
-                        {trainingConsentSaving ? trainingConsentCopy.saving : trainingConsentCopy.allow}
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </KeyboardAvoidingView>
-            </Modal>
-          ) : null}
-          {privacyPolicyOpen ? (
-            <Modal animationType="fade" onRequestClose={closePrivacyPolicy} transparent visible>
-              <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.profileEditorScrim}>
-                <View style={[styles.profileEditorSheet, customerProfilePanelSurface(tokens)]} testID="customer-privacy-policy-sheet">
-                  <ProfileLiquidChrome testID="customer-privacy-policy-sheet-liquid" variant="panel" />
-                  <Text style={[styles.profileEditorTitle, { color: tokens.text }]} numberOfLines={1}>
-                    {privacyPolicyCopy.title}
-                  </Text>
-                  <Text style={[styles.profileEditorHelper, { color: tokens.muted }]}>
-                    {privacyPolicyCopy.helper}
-                  </Text>
-                  <View style={styles.profileEditorButtonRow}>
-                    <Pressable
-                      accessibilityLabel={privacyPolicyCopy.close}
-                      accessibilityRole="button"
-                      onPress={closePrivacyPolicy}
-                      style={({ pressed }) => [
-                        styles.profileEditorButton,
-                        styles.profileEditorPrimaryButton,
-                        customerProfilePrimaryButtonSurface(tokens),
-                        reduceMotionAwarePressStyle(pressed, reduceMotion),
-                      ]}
-                      testID="customer-privacy-policy-close"
-                    >
-                      <Text adjustsFontSizeToFit minimumFontScale={0.84} numberOfLines={1} style={[styles.profileEditorPrimaryText, { color: tokens.primaryText }]}>
-                        {privacyPolicyCopy.close}
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </KeyboardAvoidingView>
-            </Modal>
-          ) : null}
           {passwordOpen ? (
             <Modal animationType="fade" onRequestClose={closePasswordSheet} transparent visible>
               <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.profileEditorScrim}>
@@ -2842,8 +2576,8 @@ function CustomerProfileCareCard({
       <View style={styles.profileCareStats}>
         {stats.map((item, index) => (
           <View key={item.label} style={[styles.profileCareStat, customerProfileCareStatSurface(tokens)]} testID={`customer-profile-care-stat-motion-${index}`}>
-            <View style={[styles.profileCareStatIcon, customerProfileCarePillSurface(tokens)]} testID={`customer-profile-care-stat-icon-${index}`}>
-              <MappedIcon bareImage name={item.icon} color={tokens.primary} accent={tokens.primary} size={22} />
+            <View style={[styles.profileCareStatIcon, customerProfileCarePillSurface(tokens)]}>
+              <MappedIcon name={item.icon} color={tokens.primary} accent={tokens.primary} size={22} />
             </View>
             <View style={styles.profileCareStatCopy}>
               <Text style={[styles.profileCareStatLabel, { color: tokens.text }]} numberOfLines={1}>
@@ -4414,7 +4148,7 @@ function IconButton({ accessibilityLabel, icon, markerTestID }: { accessibilityL
   )
 }
 
-function ClientImageIcon({ chrome = 'inline', name, size }: { chrome?: 'bare' | 'inline' | 'shell'; name: ClientImageIconName; size: number }) {
+function ClientImageIcon({ chrome = 'inline', name, size }: { chrome?: 'inline' | 'shell'; name: ClientImageIconName; size: number }) {
   const tokens = useCustomerTokens()
   const reduceTransparency = customerReduceTransparency(tokens)
   const imageSize = Math.round(size * 1.28)
@@ -4437,20 +4171,20 @@ function ClientImageIcon({ chrome = 'inline', name, size }: { chrome?: 'bare' | 
         source={clientImageIcons[name]}
         style={[styles.clientImageIcon, customerClientAssetImageTone(tokens), { height: imageSize, width: imageSize }]}
       />
-      {tokens.mode === 'dark' && !reduceTransparency && chrome !== 'bare' ? (
+      {tokens.mode === 'dark' && !reduceTransparency ? (
         <View pointerEvents="none" style={[styles.clientImageAssetSoftener, customerClientAssetSoftenerSurface(tokens)]} testID="customer-client-asset-dark-softener" />
       ) : null}
     </View>
   )
 }
 
-function MappedIcon({ accent, bareImage = false, color, name, size = 25 }: { accent: string; bareImage?: boolean; color: string; name: IconName; size?: number }) {
+function MappedIcon({ accent, color, name, size = 25 }: { accent: string; color: string; name: IconName; size?: number }) {
   const imageName = clientImageIconByGlyph[name]
-  if (imageName) return <ClientImageIcon chrome={bareImage ? 'bare' : 'inline'} name={imageName} size={size} />
+  if (imageName) return <ClientImageIcon name={imageName} size={size} />
   return <IconGlyph name={name} color={color} accent={accent} />
 }
 
-function IconShell({ bareImage = false, icon, testID, tone = 'service', size = 46 }: { bareImage?: boolean; icon: IconName; testID?: string; tone?: SurfaceTone; size?: number }) {
+function IconShell({ icon, tone = 'service', size = 46 }: { icon: IconName; tone?: SurfaceTone; size?: number }) {
   const tokens = useCustomerTokens()
   const accent = tone === 'water' ? tokens.aqua : tone === 'warm' ? tokens.copper : tokens.copper
   const imageName = clientImageIconByGlyph[icon]
@@ -4461,14 +4195,14 @@ function IconShell({ bareImage = false, icon, testID, tone = 'service', size = 4
         style={[
           styles.iconShell,
           styles.clientImageIconShell,
-          bareImage ? null : customerClientAssetBackingSurface(tokens, 'shell'),
+          customerClientAssetBackingSurface(tokens, 'shell'),
           {
             borderRadius: Math.max(14, Math.round(size * 0.36)),
             height: size,
             width: size,
           },
         ]}
-        testID={testID ?? 'customer-client-asset-elevated-shell'}
+        testID="customer-client-asset-elevated-shell"
       >
         <ClientImageIcon chrome="shell" name={imageName} size={Math.round(size * 0.98)} />
       </View>
@@ -4796,18 +4530,18 @@ function customerWorkerMintOperationalTileSurface(tokens: CustomerThemeTokens, m
   const specularCatch = tokens.mode === 'dark' ? 'rgba(190,210,205,0.026)' : 'rgba(255,255,255,0.58)'
   const homeBoost = mintBoost === 'home'
   const mintAura = tokens.mode === 'dark'
-    ? homeBoost ? 'rgba(105,222,198,0.138)' : 'rgba(105,222,198,0.10)'
-    : homeBoost ? 'rgba(76,222,199,0.138)' : 'rgba(76,222,199,0.10)'
+    ? homeBoost ? 'rgba(105,222,198,0.12)' : 'rgba(105,222,198,0.10)'
+    : homeBoost ? 'rgba(76,222,199,0.12)' : 'rgba(76,222,199,0.10)'
   const secondaryMintAura = tokens.mode === 'dark'
-    ? homeBoost ? 'rgba(105,222,198,0.055)' : 'rgba(105,222,198,0.044)'
-    : homeBoost ? 'rgba(76,222,199,0.070)' : 'rgba(76,222,199,0.055)'
+    ? homeBoost ? 'rgba(105,222,198,0.048)' : 'rgba(105,222,198,0.044)'
+    : homeBoost ? 'rgba(76,222,199,0.061)' : 'rgba(76,222,199,0.055)'
   const gradient = tokens.mode === 'dark'
     ? `radial-gradient(circle at 50% 38%, ${mintAura}, transparent 48%), ${homeBoost ? `radial-gradient(circle at 86% 92%, ${secondaryMintAura}, transparent 46%), ` : ''}radial-gradient(circle at 74% 20%, ${specularCatch}, transparent 32%), linear-gradient(180deg, rgba(22,29,27,0.98), rgba(16,24,23,0.92))`
     : `radial-gradient(circle at 50% 38%, ${mintAura}, transparent 48%), ${homeBoost ? `radial-gradient(circle at 86% 92%, ${secondaryMintAura}, transparent 46%), ` : ''}radial-gradient(circle at 74% 20%, ${specularCatch}, transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,249,248,0.94))`
 
   return {
     backgroundColor: tokens.mode === 'dark' ? '#16211F' : homeBoost ? '#F8FFFC' : '#FAFFFD',
-    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.10)' : homeBoost ? 'rgba(20,117,105,0.106)' : 'rgba(20,73,66,0.08)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.10)' : homeBoost ? 'rgba(20,117,105,0.092)' : 'rgba(20,73,66,0.08)',
     borderWidth: 1,
     boxShadow: reduceTransparency ? 'none' : customerLiquidShadow(tokens, 'tile'),
     background: reduceTransparency ? undefined : gradient,
@@ -5241,8 +4975,8 @@ function customerDockKaelActionAuraSurface(tokens: CustomerThemeTokens, active: 
 
 function customerProfileHeroSurface(tokens: CustomerThemeTokens) {
   const reduceTransparency = customerReduceTransparency(tokens)
-  const lightGradient = 'radial-gradient(circle at 86% 14%, rgba(23,169,149,0.138), transparent 31%), linear-gradient(135deg, rgba(255,255,255,0.66), rgba(241,255,251,0.52))'
-  const darkGradient = 'radial-gradient(circle at 84% 16%, rgba(105,222,198,0.104), transparent 31%), radial-gradient(circle at 24% 8%, rgba(230,244,240,0.080), transparent 34%), linear-gradient(135deg, rgba(28,36,33,0.70), rgba(12,16,15,0.54))'
+  const lightGradient = 'radial-gradient(circle at 86% 14%, rgba(23,169,149,0.12), transparent 31%), linear-gradient(135deg, rgba(255,255,255,0.66), rgba(241,255,251,0.52))'
+  const darkGradient = 'radial-gradient(circle at 84% 16%, rgba(105,222,198,0.090), transparent 31%), radial-gradient(circle at 24% 8%, rgba(230,244,240,0.080), transparent 34%), linear-gradient(135deg, rgba(28,36,33,0.70), rgba(12,16,15,0.54))'
 
   return {
     backgroundColor: reduceTransparency ? (tokens.mode === 'dark' ? '#161D1B' : '#F8FFFC') : tokens.mode === 'dark' ? 'rgba(22,29,27,0.54)' : 'rgba(255,255,255,0.48)',
@@ -5264,14 +4998,7 @@ function customerProfileCareCardSurface(tokens: CustomerThemeTokens) {
 }
 
 function customerProfileCarePillSurface(tokens: CustomerThemeTokens) {
-  void tokens
-  return {
-    backgroundColor: 'transparent',
-    borderColor: 'transparent',
-    borderWidth: 0,
-    boxShadow: 'none',
-    experimental_backgroundImage: undefined,
-  } as any
+  return customerProfileRowIconSurface(tokens)
 }
 
 function customerProfileCareStatSurface(tokens: CustomerThemeTokens) {
@@ -6411,7 +6138,6 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 1,
     boxShadow: '0 18px 38px rgba(21,89,78,0.08)',
-    marginHorizontal: -5,
     minHeight: 214,
     overflow: 'hidden',
     padding: 16,
@@ -7587,9 +7313,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     padding: 16,
   },
-  profileEditorScrimDismiss: {
-    ...StyleSheet.absoluteFillObject,
-  },
   profileEditorSheet: {
     borderRadius: 28,
     borderWidth: 1,
@@ -7598,14 +7321,6 @@ const styles = StyleSheet.create({
     padding: 16,
     position: 'relative',
   },
-  profileEditorHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    minHeight: 38,
-    position: 'relative',
-    zIndex: 2,
-  },
   profileEditorTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -7613,22 +7328,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     position: 'relative',
     zIndex: 2,
-  },
-  profileEditorHeaderTitle: {
-    flex: 1,
-  },
-  profileEditorCloseButton: {
-    alignItems: 'center',
-    borderRadius: 999,
-    height: 38,
-    justifyContent: 'center',
-    width: 38,
-  },
-  profileEditorCloseText: {
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 28,
   },
   profileEditorHelper: {
     fontSize: 12.5,
@@ -7676,17 +7375,6 @@ const styles = StyleSheet.create({
   profileEditorButtonRow: {
     flexDirection: 'row',
     gap: 10,
-    position: 'relative',
-    zIndex: 2,
-  },
-  profileEditorLearnMoreButton: {
-    alignItems: 'center',
-    borderCurve: 'continuous',
-    borderRadius: 999,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 42,
-    paddingHorizontal: 14,
     position: 'relative',
     zIndex: 2,
   },

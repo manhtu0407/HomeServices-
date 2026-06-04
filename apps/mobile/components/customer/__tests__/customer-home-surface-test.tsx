@@ -157,9 +157,6 @@ describe('CustomerHomeSurface address context', () => {
   it('hands a real home command draft directly to Kael chat', () => {
     render(<CustomerHomeSurface />)
 
-    const commandHeroStyle = StyleSheet.flatten(screen.getByTestId('customer-home-layered-hero').props.style) as Record<string, unknown>
-    expect(commandHeroStyle.marginHorizontal).toBe(-5)
-
     fireEvent.changeText(screen.getByTestId('customer-home-kael-command-input'), 'Ổ cắm phòng khách bị nóng')
     fireEvent.press(screen.getByTestId('customer-home-kael-command-send'))
 
@@ -190,12 +187,10 @@ describe('CustomerHomeSurface address context', () => {
     const serviceTitleStyle = StyleSheet.flatten(within(screen.getByTestId('customer-shell-service-electrical')).getByText('Sửa điện').props.style) as Record<string, unknown>
     const shortcutTitleStyle = StyleSheet.flatten(within(screen.getByTestId('customer-home-shortcut-active')).getByText('Yêu cầu').props.style) as Record<string, unknown>
 
-    expect(String(serviceCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.138)')
-    expect(String(serviceCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.070)')
-    expect(String(shortcutCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.138)')
-    expect(String(shortcutCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.070)')
-    expect(serviceCardStyle.borderColor).toBe('rgba(20,117,105,0.106)')
-    expect(shortcutCardStyle.borderColor).toBe('rgba(20,117,105,0.106)')
+    expect(String(serviceCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.12)')
+    expect(String(serviceCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.061)')
+    expect(String(shortcutCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.12)')
+    expect(String(shortcutCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.061)')
     expect(serviceCardStyle.alignItems).toBe('center')
     expect(shortcutCardStyle.alignItems).toBe('center')
     expect(serviceIconStageStyle.alignItems).toBe('center')

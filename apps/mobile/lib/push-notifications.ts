@@ -1,5 +1,4 @@
 import Constants from 'expo-constants'
-import * as Device from 'expo-device'
 import { Platform } from 'react-native'
 import type { UserRole } from '@home-services/shared'
 import type { DevicePushTokenInput } from './api-types'
@@ -46,7 +45,6 @@ export function addPushNotificationResponseListener(openPath: (path: string) => 
 
 export async function setupPushNotifications(input: { role: UserRole | null }): Promise<PushSetupResult> {
   if (Platform.OS === 'web') return { status: 'unsupported' }
-  if (!Device.isDevice) return { status: 'unavailable' }
 
   const Notifications = loadExpoNotifications()
   if (!Notifications) return { status: 'unavailable' }

@@ -13,7 +13,7 @@ type Chain = {
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2>;
 };
-type DbClient = { from(table: import("../db-types.ts").PublicTableName): Chain };
+type DbClient = { from(table: string): Chain };
 
 export type MemoryLayerName = "L1" | "L2" | "L3" | "L4" | "L5" | "L6";
 export type MemoryActor = "customer" | "worker" | "system";

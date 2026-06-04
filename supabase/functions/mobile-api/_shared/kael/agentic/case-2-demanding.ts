@@ -30,7 +30,7 @@ export type DemandingCustomerCaseResponse = {
 };
 
 export type DemandingInteractionDbClient = {
-  from(table: import("../../db-types.ts").PublicTableName): {
+  from(table: string): {
     insert(value: unknown): PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }>;
   };
 };

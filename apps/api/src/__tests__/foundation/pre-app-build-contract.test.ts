@@ -1,5 +1,4 @@
-import { execSync } from 'child_process'
-import { existsSync, readFileSync } from 'fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
 import { extname, resolve } from 'path'
 import { describe, expect, it } from 'vitest'
 
@@ -152,10 +151,41 @@ const textExtensions = new Set([
 ])
 
 function collectRepoTextFiles() {
-  return execSync('git ls-files', { cwd: ROOT, encoding: 'utf-8' })
-    .split(/\r?\n/)
-    .filter(Boolean)
-    .filter((path) => scanRoots.some((root) => path === root || path.startsWith(`${root}/`)))
-    .filter((path) => textExtensions.has(extname(path)))
-    .map((path) => resolve(ROOT, path))
+  const files: string[] = []
+
+  for (const scanRoot of scanRoots) {
+    collect(resolve(ROOT, scanRoot), files)
+  }
+
+  return files
+}
+
+function collect(path: string, files: string[]) {
+  if (!existsSync(path)) return
+
+  const stat = statSync(path)
+
+  if (stat.isFile()) {
+    if (textExtensions.has(extname(path))) {
+      files.push(path)
+    }
+    return
+  }
+
+  if (!stat.isDirectory()) return
+
+  for (const entry of readdirSync(path)) {
+    if (
+      entry === 'node_modules' ||
+      entry === '.next' ||
+      entry === '.expo' ||
+      entry === '.turbo' ||
+      entry === 'dist' ||
+      entry === 'settings.local.json' ||
+      entry === 'worktrees'
+    ) {
+      continue
+    }
+    collect(resolve(path, entry), files)
+  }
 }

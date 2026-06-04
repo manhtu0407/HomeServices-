@@ -22,7 +22,6 @@ const mockReplace = jest.fn()
 const mockHydrateRemoteJobById = jest.fn()
 const mockKaelChatCreate = jest.fn()
 const mockKaelChatGet = jest.fn()
-const mockKaelChatList = jest.fn()
 const mockKaelChatSendTurn = jest.fn()
 const mockKaelChatConfirm = jest.fn()
 let mockWorkflowState: any = {
@@ -74,7 +73,6 @@ jest.mock('@/lib/services', () => ({
     confirm: (...args: unknown[]) => mockKaelChatConfirm(...args),
     create: (...args: unknown[]) => mockKaelChatCreate(...args),
     get: (...args: unknown[]) => mockKaelChatGet(...args),
-    list: (...args: unknown[]) => mockKaelChatList(...args),
     sendTurn: (...args: unknown[]) => mockKaelChatSendTurn(...args),
   },
 }))
@@ -200,11 +198,6 @@ const threadText = {
   ...estimateText,
   activityOrchestrating: 'Orchestrating',
   activityResearch: 'Researching',
-  activitySteps: {
-    orchestrating: ['Check decision', 'Send request', 'Watch response'],
-    research: ['Read details', 'Check scope', 'Prepare answer'],
-    thinking: ['Read message', 'Find scope', 'Ask clearly'],
-  },
   activityThinking: 'Thinking',
   history: 'Open activity',
   loading: 'Loading',
@@ -234,6 +227,7 @@ const composerText = {
   attachHint: 'Them ghi chu bang chu truoc.',
   back: 'Dong',
   composerPlaceholder: '',
+  errorNoService: 'Chon dich vu truoc.',
   mic: 'Mic',
   micHint: 'Mic chua san sang.',
   send: 'Gui',
@@ -309,41 +303,6 @@ function buildKaelChatResponse(overrides: Partial<KaelChatResponse['session']> =
   }
 }
 
-function buildPreIntakeKaelChatResponse(userText: string, kaelText: string): KaelChatResponse {
-  return buildPreIntakeKaelChatResponseFromTexts([userText], kaelText)
-}
-
-function buildPreIntakeKaelChatResponseFromTexts(userTexts: string[], kaelText: string): KaelChatResponse {
-  const response = buildKaelChatResponse({
-    next_action: 'await_service',
-    service_type: null,
-    total_turns: userTexts.length * 2,
-  })
-  const turns = userTexts.flatMap((userText, index) => {
-    const customerTurn = response.turns[0]
-    const kaelTurn = response.turns[1]
-    const turnBase = index * 2
-    return [
-      {
-        ...customerTurn,
-        id: `turn_customer_${index + 1}`,
-        text_content: userText,
-        turn_index: turnBase + 1,
-      },
-      {
-        ...kaelTurn,
-        id: `turn_kael_${index + 1}`,
-        text_content: kaelText,
-        turn_index: turnBase + 2,
-      },
-    ]
-  })
-  return {
-    session: response.session,
-    turns,
-  }
-}
-
 function ComposerHarness({
   initialDraft = '',
   onSend = jest.fn(async () => undefined),
@@ -400,8 +359,6 @@ describe('Kael agentic phase cards', () => {
     mockHydrateRemoteJobById.mockResolvedValue(undefined)
     mockKaelChatCreate.mockReset()
     mockKaelChatGet.mockReset()
-    mockKaelChatList.mockReset()
-    mockKaelChatList.mockResolvedValue({ success: true, data: { sessions: [] } })
     mockKaelChatSendTurn.mockReset()
     mockKaelChatConfirm.mockReset()
     takePendingKaelChatDraft()
@@ -533,141 +490,6 @@ describe('Kael agentic phase cards', () => {
     })
     expect(screen.getByTestId('customer-kael-chat-input').props.value).toBe('Cau du thong tin chu?')
     expect(mockKaelChatCreate).toHaveBeenCalledTimes(1)
-  })
-
-  it('does not render the old missing-service warning banner in Kael chat', async () => {
-    setPendingKaelChatDraft({
-      addressLabel: '',
-      districtLabel: null,
-      locale: 'vi',
-      mediaCount: 0,
-      message: 'Can Kael hoi them thong tin truoc',
-      photoDrafts: [],
-      problemChips: [],
-      serviceType: null,
-      source: 'kael',
-    })
-
-    render(<KaelChatSurface />)
-
-    await waitFor(() => expect(screen.getByTestId('customer-kael-chat-intake-receipt')).toBeOnTheScreen())
-
-    expect(mockKaelChatCreate).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('customer-kael-chat-error')).toBeNull()
-  })
-
-  it('introduces Kael on open and does not treat unsent draft text as a sent turn', async () => {
-    render(<KaelChatSurface />)
-
-    await waitFor(() => expect(mockKaelChatList).toHaveBeenCalledTimes(1))
-    expect(screen.getByTestId('customer-kael-chat-welcome-turn')).toBeOnTheScreen()
-
-    fireEvent.changeText(screen.getByTestId('customer-kael-chat-input'), 'Hi')
-
-    expect(mockKaelChatCreate).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('customer-kael-chat-turn-customer')).toBeNull()
-    expect(screen.getByTestId('customer-kael-chat-input').props.value).toBe('Hi')
-    expect(screen.getByTestId('customer-kael-chat-welcome-turn')).toBeOnTheScreen()
-  })
-
-  it('answers a greeting locally before creating a Kael chat session', async () => {
-    render(<KaelChatSurface />)
-
-    fireEvent.changeText(screen.getByTestId('customer-kael-chat-input'), 'Hi')
-    fireEvent.press(screen.getByTestId('customer-kael-chat-send'))
-
-    await waitFor(() => expect(screen.getByText('Hi')).toBeOnTheScreen())
-    expect(mockKaelChatCreate).not.toHaveBeenCalled()
-    expect(mockKaelChatSendTurn).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('customer-kael-chat-error')).toBeNull()
-    expect(screen.getByTestId('customer-kael-chat-turn-body-local_kael_2').props.accessibilityLabel).toContain('Kael')
-    expect(screen.getByTestId('customer-kael-chat-service-picker-inline')).toBeOnTheScreen()
-
-    fireEvent.press(screen.getByTestId('customer-kael-chat-service-electrical'))
-    expect(screen.getByTestId('customer-kael-chat-input').props.value).toBe('')
-  })
-
-  it('keeps a manual unclassified message as a flexible Kael intake before service choice', async () => {
-    mockKaelChatCreate.mockResolvedValueOnce({
-      success: true,
-      data: buildPreIntakeKaelChatResponse('Can Kael hoi them thong tin truoc', 'Kael da nhan mo ta nay.'),
-    })
-    mockKaelChatSendTurn.mockResolvedValueOnce({
-      success: true,
-      data: buildPreIntakeKaelChatResponseFromTexts([
-        'Can Kael hoi them thong tin truoc',
-        'Them thong tin: o phong khach',
-      ], 'Kael da nhan mo ta nay.'),
-    })
-    mockKaelChatSendTurn.mockResolvedValueOnce({ success: true, data: buildKaelChatResponse() })
-    render(<KaelChatSurface />)
-
-    fireEvent.changeText(screen.getByTestId('customer-kael-chat-input'), 'Can Kael hoi them thong tin truoc')
-    fireEvent.press(screen.getByTestId('customer-kael-chat-send'))
-
-    await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledWith(expect.objectContaining({
-      message: 'Can Kael hoi them thong tin truoc',
-      service_type: undefined,
-    })))
-    expect(screen.queryByTestId('customer-kael-chat-error')).toBeNull()
-    expect(screen.getByText('Can Kael hoi them thong tin truoc')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-kael-chat-turn-body-turn_kael_1').props.accessibilityLabel).toContain('Kael')
-    expect(screen.getByTestId('customer-kael-chat-service-picker-inline')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-kael-chat-input').props.value).toBe('')
-
-    fireEvent.changeText(screen.getByTestId('customer-kael-chat-input'), 'Them thong tin: o phong khach')
-    fireEvent.press(screen.getByTestId('customer-kael-chat-send'))
-    await waitFor(() => expect(mockKaelChatSendTurn).toHaveBeenCalledWith('kael_session_test_1', expect.objectContaining({
-      message: 'Them thong tin: o phong khach',
-      service_type: undefined,
-    })))
-    expect(screen.getByText('Them thong tin: o phong khach')).toBeOnTheScreen()
-
-    fireEvent.press(screen.getByTestId('customer-kael-chat-service-electrical'))
-    expect(screen.getByTestId('customer-kael-chat-input').props.value).toBe('Can Kael hoi them thong tin truoc Them thong tin: o phong khach')
-
-    fireEvent.press(screen.getByTestId('customer-kael-chat-send'))
-
-    await waitFor(() => expect(mockKaelChatSendTurn).toHaveBeenLastCalledWith('kael_session_test_1', expect.objectContaining({
-      message: 'Can Kael hoi them thong tin truoc Them thong tin: o phong khach',
-      service_type: 'electrical',
-    })))
-  })
-
-  it('keeps an advisory Kael answer conversational instead of showing a ticket immediately', async () => {
-    mockKaelChatCreate.mockResolvedValueOnce({
-      success: true,
-      data: {
-        ...buildKaelChatResponse({
-          next_action: 'await_input',
-          service_type: 'electrical',
-        }),
-        turns: [
-          {
-            ...buildKaelChatResponse().turns[0],
-            text_content: 'Bóng đèn nhà tôi đang bật ổn định thì tự nhiên bị cháy thì tôi nên làm gì?',
-          },
-          {
-            ...buildKaelChatResponse().turns[1],
-            text_content: 'Trước hết tắt công tắc hoặc CB khu vực đèn và để bóng nguội.',
-          },
-        ],
-      },
-    })
-    render(<KaelChatSurface />)
-
-    fireEvent.changeText(screen.getByTestId('customer-kael-chat-input'), 'Bóng đèn nhà tôi đang bật ổn định thì tự nhiên bị cháy thì tôi nên làm gì?')
-    fireEvent.press(screen.getByTestId('customer-kael-chat-send'))
-
-    await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledWith(expect.objectContaining({
-      service_type: 'electrical',
-    })))
-
-    expect(screen.getByTestId('customer-kael-chat-turn-body-turn_kael_1').props.accessibilityLabel).toContain('tắt công tắc')
-    expect(screen.queryByTestId('customer-kael-chat-empty-ticket-summary')).toBeNull()
-    expect(screen.queryByTestId('customer-kael-agentic-process')).toBeNull()
-    expect(screen.queryByTestId('customer-kael-agentic-trace')).toBeNull()
-    expect(screen.queryByTestId('customer-kael-chat-phase-context')).toBeNull()
   })
 
   it('routes a real Kael service session from the archive toolbar into Activity', async () => {
@@ -817,10 +639,8 @@ describe('Kael agentic phase cards', () => {
     expect(screen.getByText('Thông tin đầu vào')).toBeOnTheScreen()
     expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
     expect(screen.getByText('Ổ cắm/công tắc hỏng')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ ước tính sau khi có mô tả và bằng chứng.')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ phân loại nhẹ, vừa hoặc nặng.')).toBeOnTheScreen()
-    expect(screen.getByText('Chỉ hiện khi có ước tính thật.')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ tính sau khi đủ dữ liệu.')).toBeOnTheScreen()
+    expect(screen.getByText('Chờ Kael ước tính')).toBeOnTheScreen()
+    expect(screen.getByText('Hiển thị khi có ước tính')).toBeOnTheScreen()
     expect(card).not.toHaveTextContent(/\d{2,3}\.000đ/)
     expect(card).not.toHaveTextContent(/\d+%/)
   })
@@ -1064,59 +884,11 @@ describe('Kael agentic phase cards', () => {
         jest.advanceTimersByTime(1200)
       })
 
-      expect(screen.getByTestId('customer-kael-chat-turn-body-turn_kael_progressive').props.children).not.toBe(kaelAnswer)
-
-      act(() => {
-        jest.advanceTimersByTime(3600)
-      })
-
       expect(screen.getByTestId('customer-kael-chat-turn-body-turn_kael_progressive').props.children).toBe(kaelAnswer)
     } finally {
       jest.runOnlyPendingTimers()
       jest.useRealTimers()
     }
-  })
-
-  it('shows concrete Kael work steps while a real send request is running', () => {
-    render(
-      <KaelChatThread
-        addressDistrict="District 1"
-        dispatch={jest.fn()}
-        error={null}
-        estimate={null}
-        historyTarget="/(customer)/history"
-        language="en"
-        loading={false}
-        onOpenHistory={jest.fn()}
-        onRetryPendingIntake={jest.fn()}
-        onStartOrchestration={jest.fn()}
-        orchestrating={false}
-        orchestrationMessage={null}
-        pendingIntake={null}
-        reduceMotion={false}
-        selectedService="electrical"
-        sending
-        session={null}
-        text={threadText}
-        tokens={threadTokens}
-        turns={[]}
-        visibility={{
-          canStartOrchestration: false,
-          showBrief: false,
-          showEstimate: false,
-          showProcess: false,
-          showStarter: false,
-          showTrace: false,
-        }}
-        workflow={buildWorkflowViewModel({ status: null })}
-      />,
-    )
-
-    expect(screen.getByTestId('customer-kael-chat-live-activity')).toBeOnTheScreen()
-    expect(screen.getByText('Researching')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-kael-chat-live-activity-step-0')).toHaveTextContent('Read details')
-    expect(screen.getByTestId('customer-kael-chat-live-activity-step-1')).toHaveTextContent('Check scope')
-    expect(screen.getByTestId('customer-kael-chat-live-activity-step-2')).toHaveTextContent('Prepare answer')
   })
 
   it('lets a failed Booking handoff retry pending intake without unlocking orchestration', () => {

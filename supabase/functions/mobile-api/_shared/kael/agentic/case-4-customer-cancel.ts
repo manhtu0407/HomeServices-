@@ -86,7 +86,7 @@ export type RecordCustomerCancellationReviewInput = {
 };
 
 export type CustomerCancellationReviewDbClient = {
-  from(table: import("../../db-types.ts").PublicTableName): {
+  from(table: string): {
     select(columns?: string): CustomerCancellationReviewQuery;
     insert(value: unknown): CustomerCancellationReviewQuery;
     upsert(value: unknown): CustomerCancellationReviewQuery;

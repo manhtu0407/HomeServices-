@@ -30,9 +30,7 @@ describe('shared and Edge domain contracts stay in parity', () => {
 
     for (const typeName of [
       'KaelChatResponse',
-      'KaelChatListResponse',
       'ConfirmKaelChatResponse',
-      'KaelTrainingConsentResponse',
       'JobMessageListResponse',
       'JobMessageSendResponse',
       'WorkerCancellationResponse',
@@ -46,7 +44,6 @@ describe('shared and Edge domain contracts stay in parity', () => {
     }
 
     expect(apiResponses).toContain("'budget_exceeded'")
-    expect(apiResponses).toContain("'await_service'")
   })
 
   it('keeps job chat message validation available on shared and Edge domains', () => {
@@ -55,7 +52,5 @@ describe('shared and Edge domain contracts stay in parity', () => {
 
     expect(shared).toContain('export const jobMessageSendSchema')
     expect(edge).toContain('export const jobMessageSendSchema')
-    expect(shared).toContain('export const kaelTrainingConsentSchema')
-    expect(edge).toContain('export const kaelTrainingConsentSchema')
   })
 })
