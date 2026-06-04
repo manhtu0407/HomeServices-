@@ -9632,3 +9632,556 @@ kael-ai-boundary (primary) · kael-tdd · kael-security-sweep · kael-architectu
 ```text
 v1.0 — 2026-06-04 — P1–P3 implemented + verified (deno check + 24 new tests). Flag OFF default. Staging smoke pending Tu env.
 ```
+
+---
+
+## 31. Kael AI Core → 100% — Feedback/Eval · Knowledge/RAG · Agentic Orchestrator · Prompt/Guardrails — 2026-06-04
+
+### 31.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-ai-core-to-100-20260604
+Created:        2026-06-04
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Branch:         claude/distracted-babbage-eb8cf4 (worktree)
+File location:  Plan.md §31 (durable) — single-source addendum
+Status:         DECISIONS LOCKED v0.2 — Tu approved D-OPEN-1..5 + D6 (2026-06-04). Build tuần tự bằng Codex; Claude verify result. READY — execute K0→A→B→C→D→K-FINAL.
+Trigger:        Audit 4 hạng mục AI core do Tu yêu cầu (2026-06-04, session distracted-babbage). Verdict: A=60%, B=25%, C=70%, D=85%.
+Scope:          Nâng THẬT 4 hạng mục lên 100% — (A) Evaluation & Feedback Loop, (B) Knowledge Base (RAG) luật/tiêu chuẩn, (C) Agentic Orchestrator (full autonomy), (D) System Prompt & Guardrails.
+Out of scope:   Mở rộng service ngoài electrical/plumbing/cleaning; đổi runtime boundary (Expo→Supabase Edge→DB); đổi model mặc định; tích hợp payment rail thật (Kael quyết payment outcome, nhưng money-movement provider tách riêng).
+Effort total:   ~60.5 agent-day sequential (Tu D-OPEN-3: tuần tự, không song song). Xem §31.9.
+Phase count:    26 — K0 (1) + Track A (6) + Track B (6) + Track C (6) + Track D (6) + K-FINAL (1).
+Skill mapping:  karpathy-guidelines (mọi phase) + kael-ai-boundary, kael-supabase, kael-tdd, kael-security-sweep, kael-diagnose, kael-doc-audit, kael-frontend-test, kael-motion, glass-liquid-signature (xem §31.11).
+```
+
+**Mục tiêu chính (đo được, không tô hồng):**
+
+1. **Track A → 100%:** Vòng feedback KHÉP KÍN end-to-end (job xong → candidate → gate → active rule trong `learning_rules` → pipeline đọc lại) + auto-rollback chạy thật + offline eval harness chặn regression.
+2. **Track B → 100%:** Knowledge tan toàn/pháp lý/dịch vụ được Kael ĐỌC THẬT lúc runtime + nội dung thật (không phải 5 dòng seed) + retrieval (key-based trước, pgvector RAG sau khi corpus xứng đáng) + citation/audit.
+3. **Track C → 100%:** Kael **tự chủ hoàn toàn** (full operational autonomy) — tự quyết scope/cancel/completion/payment/dispute/reassign KHÔNG cần người duyệt — qua `KaelAutonomyDecision` validated server-side. "Safety" = invariant gate deterministic + escalation hẹp, KHÔNG phải human-in-the-loop. (Tu D-OPEN-1: full autonomy, chỉ chặn vi phạm pháp luật + bất biến tài chính/an toàn.)
+4. **Track D → 100%:** Charter single-source + mọi egress AI qua self-check + semantic guardrail (LLM-assist bounded) + red-team regression corpus + observability.
+
+**Nguyên tắc xuyên suốt:** Mỗi hạng mục hiện "trông như đã build" nhưng có phần chạy hở (A loop hở, B bảng mồ côi). Plan này tồn tại để **đóng đúng các phần hở đó với bằng chứng**, không để lặp lại "cảm giác ảo". Xem §31.0.3.
+
+---
+
+### 31.0.1 Authority refs (đọc theo thứ tự bắt buộc trước khi execute)
+
+```
+1. critical.md                 (§0 lifecycle, §3 doubt-loop, §5 preflight, §8 verify, §12 ai-boundary, §14 supabase, §15 security)
+2. RULES.md                    (#2 server-side AI, #3 validate AI output, #4 structured-output, #6 scope, #7 confirmation,
+                                #8 no fake data, #9 PII, #10 timeout/retry, + autonomy/money-state boundary)
+3. STRUCTURES.md               (§9 Kael workflow + AI providers, §11 KaelPriceCheckModule + backend modules,
+                                §12 state machines, §15 pricing + Kael final-price authority, §21 learning, "do-not-build-now")
+4. design.md (+ design/*)       (chỉ đọc khi phase chạm UI — A4 admin review, B4 admin CRUD)
+5. AGENTS.md
+6. CLAUDE.md                    (lock notice — locked docs cấm edit trừ Tu approve explicit; runtime boundary)
+7. protocols/ai-data-security.md
+8. Plan.md §22–§30             (precedent: §23 Harness+Agentic, §24 cost-opt, §25 source-trust, §26 codex-gaps, §30 clarification)
+9. docs/architecture/code-ownership-map.md   (map mỗi phase → owner files TRƯỚC khi edit)
+10. docs/architecture/status-vocabulary.md
+11. MEMORY.md                  (last — fresh session facts)
+```
+
+---
+
+### 31.0.2 Decision Log
+
+- **D1** (Claude→Tu, 2026-06-04) Plan chia theo 4 **track song song** (A/B/C/D) thay vì trộn, để Tu duyệt/cắt từng track độc lập.
+- **D2** (Claude) Track A là **ưu tiên #1**: loop hở khiến toàn bộ LS1–LS7 thành trang trí; đóng loop có ROI cao nhất cho "Kael biết học".
+- **D3** (Claude) Track B chia 2 nhịp: **B1 (wire bảng có sẵn vào runtime) làm ngay** vì rủi ro an toàn thật; **B5 (pgvector RAG) hoãn** tới khi corpus đủ lớn (RAG cho 5 dòng = lãng phí, per audit).
+- **D4** (Claude) Track C giữ **nguyên tắc bất biến**: raw LLM KHÔNG bao giờ tự đổi money-state; mọi "agency" chạy trong sandbox + 3 gate cứng (schema + state-machine + permission). Tuân thủ RULES.md.
+- **D5** (Claude) Mọi behavior mới ship **flag-gated OFF mặc định** (precedent [[project_plan_kael_learning_pr12]] + §30 D3), để diff flag-off byte-identical → zero regression.
+- **✅ D-OPEN-1 RESOLVED** (Tu, 2026-06-04): **Full autonomy (γ′)** — Kael tự quyết mọi outcome vận hành, KHÔNG cần người duyệt. Cơ chế an toàn = invariant gate deterministic (I1–I5) + escalation hẹp (legal-risk / evidence-chain vỡ / high-stakes low-confidence), KHÔNG phải human approval. Raw LLM vẫn không trực tiếp mutate money-state — đó là *cách thực thi* autonomy an toàn, không phải giới hạn. Xem §31.6 C2.
+- **✅ D-OPEN-2 RESOLVED** (Tu, 2026-06-04): Claude **tự tìm nguồn** qua **Perplexity integration có sẵn** (`source-trust.ts` + sonar) — research → lọc/chấm nguồn → draft corpus có citation → Tu sign-off từng dòng an toàn/pháp lý. Xem §31.5 B3.
+- **✅ D-OPEN-3 RESOLVED** (Tu, 2026-06-04): **Tuần tự** A→B→C→D, không song song. Xem §31.2.
+- **✅ D-OPEN-4 RESOLVED** (Tu, 2026-06-04): **Không hoãn** phase nào — B5 pgvector RAG + C2 full autonomy đều in-scope.
+- **✅ D-OPEN-5 RESOLVED** (Tu, 2026-06-04): Admin surface **cả hai** — `apps/api` (Next.js) + `apps/mobile` screen. Xem A4/B4.
+- **✅ D6** (Tu, 2026-06-04): Build bằng **Codex**; **Claude verify result** (review + anti-illusion gate §31.0.3). Plan này là contract cho Codex.
+
+---
+
+### 31.0.3 Definition of Done — Anti-Illusion Gates (áp dụng MỌI phase)
+
+Một phase chỉ "DONE" khi đạt **cả 4** gate sau. Unit test xanh KHÔNG đủ.
+
+```text
+G1 — Real path proof:   Bằng chứng end-to-end trên STAGING thật (row DB thật / cost thật / log thật),
+                        không phải mock. (per [[feedback_mock_vs_real_tests]], [[feedback_integration_caught_bug]])
+G2 — Closure proof:     Chứng minh OUTPUT của phase được CONSUMED ở downstream (vd: rule active → pipeline đọc;
+                        knowledge row → có mặt trong prompt; decision → đổi state qua gate). Chống "bảng mồ côi / loop hở".
+G3 — Negative proof:    Test đường thất bại + đường bị chặn (schema sai → quarantine; gate fail → đúng next_state;
+                        flag OFF → no-op). Log mọi nhánh, KHÔNG silent (per [[feedback_no_operational_silence]]).
+G4 — Honest report:     Report nêu rõ cái gì CHƯA test, cái gì skip, residual risk (per [[feedback_no_hiding_gaps]],
+                        [[feedback_honest_reporting]]). Cập nhật README/test-log qua /log + /test-report.
+```
+
+Mỗi phase có dòng **"Anti-Illusion Gate"** cụ thể hoá G1–G4 cho phase đó.
+
+---
+
+### 31.1 Current-State Baseline (audit 2026-06-04, evidence-anchored)
+
+| Track | Hạng mục | % | Đã có (evidence) | Phần CHẠY HỞ phải đóng |
+|---|---|---|---|---|
+| A | Evaluation & Feedback Loop | 60% | LS1–LS7 + evidence gate + lifecycle 11-state + rollback fn + flags (`skills/registry.ts`); trigger wired (`services.ts:2869/3041/4383`); queue→Batch API (`cron/process-learning-queue.ts` + `process-batch-results.ts`); read-side live (`learning.ts`, `pipeline.ts:260/354`) | `processBatchResults` KHÔNG promote: không parse output, không gọi `evaluateLearningEvidenceGate`, không ghi `learning_rules`. Không offline eval. manual_review không có admin path. |
+| B | Knowledge Base (RAG) luật/tiêu chuẩn | 25% | Bảng `worker_safety_patterns` (3), `legal_awareness_patterns` (2), `service_knowledge_boxes` (3), `price_baselines`; KaelMemory L1–L6 (`memory.ts`) | Grep 3 bảng tri thức trong `supabase/functions` = **0 match** → runtime không đọc. Không pgvector/embedding. Nội dung = seed mỏng. legal redirect hardcode ở `permission-gate.ts` (dup nguồn). |
+| C | Agentic Orchestrator | 70% | Provider router (`routing.ts`), stage orchestrator (`orchestrator.ts`), pipeline (`pipeline.ts`), 5 case (`agentic/*`), autonomy schema + gate (`artifact-contract.ts` + `workflow-orchestrator.ts`), 8 call-site (`services.ts`) | Logic rải khắp `services.ts`, không có orchestrator cấp cao + telemetry hợp nhất. Không có decision audit/replay. Autonomy = pure policy (chưa có LLM-propose-in-sandbox nếu Tu muốn). |
+| D | System Prompt & Guardrails | 85% | Charter (`system-prompt.ts` + `packages/shared/kael/charter/*`), boundary-guard, permission-gate, self-check, artifact-contract, sanitizers, rate-limit, circuit-breaker | self-check = substring list ngắn (né bằng paraphrase); injection = regex (miss biến thể mới, code tự thừa nhận); charter code vs charter-files chưa single-source; egress self-check opt-in per-stage; chưa có red-team corpus. |
+
+---
+
+### 31.2 High-Level Roadmap (Tuần tự — Tu D-OPEN-3)
+
+```
+K0 → A1→A2→A3→A4→A5→A6 → B1→B2→B3→B4→B5→B6 → C1→C2→C3→C4→C5→C6 → D1→D2→D3→D4→D5→D6 → K-FINAL
+```
+
+Build **tuần tự**: mỗi phase phải đóng Anti-Illusion Gate (§31.0.3) TRƯỚC khi sang phase kế. Không bắt đầu phase N+1 khi phase N chưa có closure proof.
+
+**Thứ tự có chủ đích (dependency thật vẫn được tôn trọng trong chuỗi):**
+- **A trước:** đóng feedback loop + eval harness (A5) trước, vì B6 (retrieval eval) và C/D đều dùng A5 để chứng minh "tăng thật".
+- **B trước C:** knowledge (B) nằm trong prompt mà orchestrator (C) điều phối + autonomy decision tham chiếu (safety/legal trước khi quyết).
+- **C trước D:** full autonomy (C2) là bề mặt rủi ro lớn nhất → D3/D4/D5 (semantic guard + injection classifier + red-team) phủ adversarial lên chính autonomy vừa mở.
+
+**🔒 Safety ordering (quan trọng — full autonomy build trước guardrail trong chuỗi tuần tự):**
+C2 build behind flag `KAEL_AUTONOMY_FULL_ENABLED=OFF`. **Cờ này CHỈ bật ở production SAU khi D5 (red-team) + K-FINAL (E2E) pass.** Trong lúc đó C2 vẫn có invariant fuzz nội bộ (C2.4) làm proof. ⇒ Tuần tự + full autonomy + an toàn cùng đạt: code autonomy xong ở C, nhưng chỉ "sống" sau khi D phủ phòng thủ.
+
+**Critical path:** K0 → A1 → A2 → A4 → A5 → B1 → B3 → C1 → C2 → D5 → K-FINAL.
+
+---
+
+### 31.3 Phase K0 — Pre-read + Baseline Snapshot + Instrumentation ⚠️ NEVER SKIP
+
+**Goal:** Có đủ authority context + chụp baseline số liệu THẬT trước khi sửa, để sau này chứng minh "tăng thật" chứ không phải "cảm giác ảo".
+
+**Dependencies:** None. **Out of scope:** không sửa file logic nào.
+
+**Steps:**
+- [ ] **K0.1** Đọc đủ authority refs §31.0.1 theo thứ tự; ghi pre-edit status block (critical.md §5).
+- [ ] **K0.2** Map mỗi track → owner files qua `docs/architecture/code-ownership-map.md`; note file chưa có owner row → cần thêm.
+- [ ] **K0.3** `git status` + `git log --oneline -10` + `git diff --name-only main...HEAD`; xác nhận branch sạch.
+- [ ] **K0.4** Baseline số liệu staging (read-only Supabase MCP, `xyylanuyflrjzbjzhqfl`): đếm row `learning_rules` (status='active'), `learning_candidates`, `kael_rule_lifecycle_log`, `kael_learning_queue` theo state; row `worker_safety_patterns`/`legal_awareness_patterns`/`service_knowledge_boxes`. Lưu snapshot vào `docs/test-logs/2026-06-04_kael-core-baseline.md`.
+- [ ] **K0.5** Confirm flags hiện tại (giá trị thật trên staging): `KAEL_LEARNING_READ_ENABLED`, `..._WRITE_ENABLED`, `..._KILL_SWITCH`, `..._AB_PERCENTAGE`, `..._AUTO_ROLLBACK`, `KAEL_OPT_BATCH_LEARNING_ENABLED`, `KAEL_OPT_BATCH_API_ENABLED`.
+- [ ] **K0.6** Chạy full test sweep baseline (apps/api vitest + apps/mobile jest + packages/shared + `deno check` edge) → ghi pass/fail count làm mốc (per [[project_pr6_monorepo_tests]] honesty).
+- [ ] **K0.7** Xác nhận portable Node/pnpm chạy được (per [[env_node_toolchain_access]]).
+
+**Anti-Illusion Gate:** Baseline doc tồn tại với số liệu thật; mọi phase sau phải so với mốc này. **Effort:** 0.5 ngày.
+
+---
+
+### 31.4 Track A — Evaluation & Feedback Loop → 100%
+
+> Hiện 60%. Đóng loop + eval + monitoring + admin path. Đây là ưu tiên #1 (D2).
+
+#### A1 — Đóng promotion loop (batch result → gate → active rule)
+
+**Goal:** Một candidate hợp lệ tự động (hoặc qua manual-review) trở thành row `active` trong `learning_rules` mà pipeline đọc lại được.
+**Why-gap:** `process-batch-results.ts:106-117` chỉ ghi lifecycle_log + mark "processed"; không có đường ghi `learning_rules` ở runtime. Bảng `learning_candidates`/`learning_rule_versions` ĐÃ tồn tại (migration `20260513114845` L465/489/512) — thiếu code ghi.
+**Steps:**
+- [ ] **A1.1** Reconcile reference impl `apps/api/src/lib/learning/{case-review,market-memory,hook,types}.ts` vs edge runtime → chốt **1 module promotion canonical** cho edge (tránh duplicate per [[feedback_duplicate_types]]).
+- [ ] **A1.2** Viết `parseBatchLearningResult(message)`: parse JSON output LLM bằng **brace-counting parser** (per [[feedback_safeParseJSON_regex]]), validate qua `learningSkillCandidateSchema`. Output sai → quarantine + audit, KHÔNG dùng.
+- [ ] **A1.3** Viết RPC migration `promote_learning_candidate(...)` SECURITY DEFINER, **service_role only**: re-validate `forbidden_effects` + `allowed_targets` server-side (không tin LLM/client per RULES.md #3), ghi atomic `learning_candidates` → `learning_rules` (status='active', active_version++) → `learning_rule_versions` (per [[feedback_race_conditions]]).
+- [ ] **A1.4** Trong `processBatchResults` success path: parse (A1.2) → aggregate evidence (A2) → `evaluateLearningEvidenceGate` → nếu promote && !manual_review_required → gọi RPC A1.3; nếu manual_review_required (LS5/6/7) → state `manual_review` + enqueue admin (A4), KHÔNG auto-active.
+- [ ] **A1.5** Tôn trọng flag: chỉ ghi khi `KAEL_LEARNING_WRITE_ENABLED && !KILL_SWITCH`; tôn trọng `AB_PERCENTAGE` qua `shouldRunLearningForActor`.
+- [ ] **A1.6** `transitionLearningLifecycle` cho mọi bước (candidate→pending_evidence→evidence_gate_check→auto_promoted|manual_review→active); reject transition sai (đã có fn, wire vào).
+- [ ] **A1.7** Negative branches: gate fail → đúng `next_state` + `reason` vào lifecycle_log (no silent drop per [[feedback_no_operational_silence]]).
+
+**Owner files:** `supabase/functions/mobile-api/_shared/kael/cron/process-batch-results.ts`, `.../skills/registry.ts` (export gate/lifecycle), `.../learning.ts`, migration mới `2026XXXX_promote_learning_candidate_rpc.sql`, `apps/api/src/lib/learning/*` (reconcile).
+**Skills:** kael-supabase (primary), kael-tdd, kael-ai-boundary, kael-security-sweep, karpathy-guidelines.
+**Tests + Anti-Illusion Gate:**
+- **G1/G2:** Integration THẬT trên staging: seed ≥5 completed reviewed job cùng (service,problem,district) → chạy `processLearningQueue` → `processBatchResults` → ASSERT row `learning_rules` active MỚI xuất hiện (so baseline K0.4) → chạy `runKaelPipeline` cùng scope → ASSERT `applyLearnedPriceRule` trả đúng rule đó. In rule_id + before/after price band.
+- **G3:** output schema-sai → quarantine (test); flag OFF → 0 row ghi (test); forbidden_effect trong candidate → RPC reject (test).
+- **G4:** report nêu rõ batch latency, cost, % candidate promote vs reject.
+**Effort:** 3 ngày.
+
+#### A2 — Evidence aggregation engine (multi-job accumulation)
+
+**Goal:** Candidate tích luỹ evidence qua NHIỀU completed transaction trong recency window trước khi qua gate (đúng tinh thần MIN_EVIDENCE=5, CONFIDENCE_THRESHOLD=0.6 per [[project_kael_evidence_gate]]).
+**Why-gap:** `evaluateLearningEvidenceGate` nhận `LearningEvidenceSnapshot` nhưng chưa có engine tính snapshot từ dữ liệu thật; `skills/LS1-aggregation.ts` tồn tại nhưng chưa wire vào promotion.
+**Steps:**
+- [ ] **A2.1** Viết `aggregateCandidateEvidence(skillId, scopeKey, window)`: query completed+reviewed jobs liên quan → `evidence_count`, `completed_transaction_count`, `recent_contradiction_ratio`.
+- [ ] **A2.2** Confidence = IQR/median trên phân phối (price prior) hoặc tỉ lệ đồng thuận (pattern) — per evidence-gate spec; clamp [0,1].
+- [ ] **A2.3** Recency window 90 ngày (config); loại job ngoài window; `quality_filter` bỏ outlier/dispute.
+- [ ] **A2.4** Wire `LS1-aggregation.ts` làm nguồn cho price_prior; LS2–LS7 dùng aggregation tương ứng.
+- [ ] **A2.5** Cache snapshot per scope (tránh recompute mỗi batch item).
+
+**Owner files:** `.../kael/skills/LS1-aggregation.ts`, `.../learning.ts`, `.../skills/registry.ts`.
+**Skills:** kael-tdd, kael-supabase, karpathy-guidelines.
+**Anti-Illusion Gate:** **G2** test với 4 evidence → gate trả `insufficient_evidence`; với 5 đủ chất lượng → `gate_passed`; với contradiction>0.2 → `manual_review`. **G1** chạy trên seed staging thật. **Effort:** 2 ngày.
+
+#### A3 — Monitoring + auto-rollback (chạy thật)
+
+**Goal:** Rule active được theo dõi accuracy/satisfaction thật; rule degrade tự rollback.
+**Why-gap:** `recordLearningPerformanceSample` + `shouldAutoRollbackLearningRule` là pure fn chưa ai feed/gọi.
+**Steps:**
+- [ ] **A3.1** Sau mỗi job dùng rule (pipeline applied): ghi `applied_count`; nếu Kael bị override (final khác band) → `override_count`.
+- [ ] **A3.2** `accuracy_delta` = so dự đoán band vs `final_price` thật; `satisfaction_delta` = từ review rating của job dùng rule.
+- [ ] **A3.3** Migration bảng/cột performance sample nếu chưa đủ; ghi per rule_id + window.
+- [ ] **A3.4** Cron `monitorLearningRules`: chạy `shouldAutoRollbackLearningRule` → rule vượt ngưỡng (accuracy_drop≥10% hoặc satisfaction_drop≥0.3 trong 30 ngày) → `transitionLearningLifecycle(active→monitoring→degraded→rolled_back→archived)` + audit + notify admin.
+- [ ] **A3.5** Tôn trọng `KAEL_LEARNING_AUTO_ROLLBACK` flag.
+
+**Owner files:** `.../kael/learning.ts`, `.../kael/cron/*` (cron mới), `.../pipeline.ts` (ghi applied), migration performance.
+**Skills:** kael-supabase, kael-tdd, kael-diagnose.
+**Anti-Illusion Gate:** **G2** seed rule "xấu" (accuracy drop giả lập) → cron rollback → ASSERT rule status='rolled_back' + pipeline KHÔNG còn áp dụng. **Effort:** 2 ngày.
+
+#### A4 — Admin review surface cho manual_review candidates
+
+**Goal:** Candidate `manual_review` (LS5/LS6/LS7 + low-confidence) có đường người duyệt; approve→promote, reject→archived. Không để dead-end (illusion thứ 2).
+**Why-gap:** `notifyManualReviewIfConfigured` chỉ tạo notification; không có endpoint list/approve/reject. `kael_admin_queue` tồn tại nhưng chưa nối learning.
+**Steps:**
+- [ ] **A4.1** Endpoint (apps/api admin surface per CLAUDE.md) `GET /admin/kael/learning/candidates?state=manual_review` — list + payload + evidence snapshot.
+- [ ] **A4.2** `POST /admin/kael/learning/candidates/:id/approve` → gọi RPC promote (A1.3) với `actor_role=admin`; `.../reject` → `rejected→archived` + lý do.
+- [ ] **A4.3** Auth: admin-only (`private.is_admin()`), audit vào `kael_permission_audit`.
+- [ ] **A4.4** UI admin **cả hai surface** (Tu D-OPEN-5): (a) `apps/api` Next.js admin; (b) `apps/mobile` admin screen — list + diff (giá cũ/mới, pattern) + Approve/Reject. design preflight + glass-liquid-signature + kael-motion + kael-frontend-test.
+- [ ] **A4.5** SLA surfacing: candidate `manual_review` > N ngày → cảnh báo (chống "kẹt im lặng").
+
+**Owner files:** `apps/api/src/...admin`, `apps/mobile` admin screen (required), `.../kael/learning.ts`, migration RLS `kael_admin_queue` ↔ learning.
+**Skills:** kael-supabase, kael-security-sweep, kael-tdd, (UI) glass-liquid-signature + kael-frontend-test + kael-motion.
+**Anti-Illusion Gate:** **G1** admin thật approve 1 candidate trên staging → ASSERT thành active rule + pipeline đọc. **G3** non-admin gọi → 403 + audit. **Effort:** 2.5 ngày.
+
+#### A5 — Offline Evaluation Harness (golden dataset + regression + CI gate)
+
+**Goal:** Đo CHẤT LƯỢNG Kael (diagnosis/price/decline) so ground-truth, chặn regression trước mỗi đổi prompt/route/model. Đây là "Evaluation" đúng nghĩa user hỏi, tách khỏi learning loop.
+**Why-gap:** Hiện chỉ có cost-baseline (`kael-q1-baseline.mjs`) + A/B price; KHÔNG có golden eval.
+**Steps:**
+- [ ] **A5.1** Xây golden dataset ≥60 case (20 điện/20 nước/20 dọn + ≥15 OOS/injection/mismatch) — fixtures: input (desc/chips/ảnh) → expected (service_type, complexity band, price band, decline?).
+- [ ] **A5.2** Runner `kael-eval.mjs`: 2 mode — (a) deterministic (provider mock) cho CI nhanh; (b) live (real provider) chạy định kỳ (per [[feedback_mock_vs_real_tests]]).
+- [ ] **A5.3** Scoring: service accuracy, complexity accuracy, **price-band hit rate**, decline precision/recall (cho guardrail), latency, cost/case.
+- [ ] **A5.4** Threshold gate + report `docs/test-logs/<date>_kael-eval.md`; lưu lịch sử để thấy xu hướng.
+- [ ] **A5.5** Wire vào CI/preflight: đổi `prompts.ts`/`routing.config.ts`/model → bắt buộc chạy eval, regress quá ngưỡng → fail.
+
+**Owner files:** `apps/api/scripts/kael-eval.mjs`, `apps/api/src/__tests__/fixtures/kael-golden/*`, `apps/api/src/__tests__/schema/` (gate), docs/test-logs.
+**Skills:** kael-tdd, kael-ai-boundary, kael-diagnose, karpathy-guidelines.
+**Anti-Illusion Gate:** **G1** chạy live mode 1 lần, lưu điểm thật. **G2** cố tình làm hỏng 1 prompt → eval gate FAIL (chứng minh gate có răng). **Effort:** 3 ngày.
+
+#### A6 — Loop observability + honesty surface
+
+**Goal:** Nhìn được sức khoẻ loop bằng số; tự lộ dead-end.
+**Steps:**
+- [ ] **A6.1** Query/view: candidate created/promoted/rejected/rolled_back per skill per tuần; applied/override; eval-score trend.
+- [ ] **A6.2** "Loop health" report (mở rộng `/log` hoặc command mới): liệt kê candidate kẹt manual_review > N ngày, queue failed, batch error.
+- [ ] **A6.3** Alert ngưỡng (promote rate=0 trong X ngày dù có completed jobs → cảnh báo loop có thể hở lại).
+
+**Owner files:** migration view, `.claude/commands/` (report), docs.
+**Skills:** kael-supabase, kael-doc-audit. **Anti-Illusion Gate:** **G2** report hiển thị đúng số so K0 baseline. **Effort:** 1.5 ngày.
+
+---
+
+### 31.5 Track B — Knowledge Base (RAG) luật/tiêu chuẩn → 100%
+
+> Hiện 25%. Wire bảng có sẵn → nội dung thật → retrieval → RAG (sau) → citation.
+
+#### B1 — Wire knowledge tables vào runtime retrieval + prompt
+
+**Goal:** Kael ĐỌC THẬT `worker_safety_patterns` + `legal_awareness_patterns` + `service_knowledge_boxes` và bơm vào đúng prompt (worker brief, advisory, educational, decline).
+**Why-gap:** Grep = 0 match trong `supabase/functions` → 3 bảng mồ côi.
+**Steps:**
+- [ ] **B1.1** Viết `retrieveServiceKnowledge(serviceType, problemSlug)`, `retrieveSafetyPatterns(serviceType, topic)`, `retrieveLegalAwareness(topic)` — query theo index có sẵn (`worker_safety_patterns_lookup_idx`, `legal_awareness_patterns_lookup_idx`), filter `is_enabled`.
+- [ ] **B1.2** Inject vào prompt builder: `buildAdvisory` + worker-brief stage + `buildKaelSystemPrompt` (mục "Knowledge summary" mới, sanitized).
+- [ ] **B1.3** Token budget hoá (theo `memory.ts` pattern) — knowledge chiếm ngân sách có giới hạn, ưu tiên severity 'urgent'>'warning'>'advisory'.
+- [ ] **B1.4** Wire vào memory L5 "domain memory" như nguồn thứ 2 cạnh `learning_rules` (hiện L5 chỉ đọc learning_rules limit 5).
+- [ ] **B1.5** Flag `KAEL_OPT_KNOWLEDGE_RETRIEVAL_ENABLED` (OFF mặc định, D5 precedent).
+- [ ] **B1.6** Self-check vẫn chạy trên output (Rule #3) — knowledge không bypass guardrail.
+
+**Owner files:** `.../kael/advisory.ts`, `.../kael/system-prompt.ts`, `.../kael/memory.ts`, `.../kael/prompts.ts`, new `.../kael/knowledge.ts`, `.../kael/cost-tracking.ts` (flag).
+**Skills:** kael-ai-boundary (primary), kael-supabase, kael-tdd, kael-security-sweep.
+**Anti-Illusion Gate:** **G2** test live staging: job điện → worker-brief CHỨA guidance từ `electrical_lockout_before_repair`; câu hỏi pháp lý → decline dùng `professional_legal_advice_redirect`. In ra prompt thật (sanitized) có knowledge. **G3** flag OFF → prompt byte-identical. **Effort:** 2 ngày.
+
+#### B2 — Single-source legal/safety boundaries vào guardrail
+
+**Goal:** Xoá dup: legal redirect hardcode ở `permission-gate.ts` → đọc từ `legal_awareness_patterns`.
+**Steps:**
+- [ ] **B2.1** Map `forbiddenTopicDecision(legal_advice)` → `legal_awareness_patterns(boundary_type='redirect_required')` content.
+- [ ] **B2.2** `emergency_redirect` ↔ pattern `boundary_type='emergency_redirect'`.
+- [ ] **B2.3** Fallback an toàn nếu DB unavailable (giữ copy cứng làm fallback, log dùng fallback — no silent).
+- [ ] **B2.4** Test parity: copy DB == copy cũ (no behavior change ngoài nguồn).
+
+**Owner files:** `.../kael/permission-gate.ts`, `.../kael/knowledge.ts`.
+**Skills:** kael-ai-boundary, kael-security-sweep, kael-tdd.
+**Anti-Illusion Gate:** **G2** đổi 1 row DB → response đổi theo (chứng minh đọc DB thật, không hardcode). **Effort:** 1 ngày.
+
+#### B3 — Nội dung corpus thật via Perplexity-sourced research (Tu D-OPEN-2)
+
+**Goal:** Thay 5 dòng seed bằng corpus thật, phủ electrical/plumbing/cleaning + ranh giới pháp lý/tiêu dùng HCMC apartment. **Claude tự tìm nguồn qua Perplexity** (integration có sẵn), Tu sign-off.
+**Why-gap:** 3 safety + 2 legal = seed, không phải knowledge base.
+**Steps:**
+- [ ] **B3.1** Research qua **Perplexity/sonar có sẵn** (`source-trust.ts` + `market.ts` pattern) hoặc skill `deep-research`: truy TCVN/QCVN điện hạ áp, quy chuẩn cấp/thoát nước, ranh giới tư vấn pháp lý/tiêu dùng VN. Dùng **source-trust scoring** để lọc; mỗi claim giữ URL/nguồn. KHÔNG bịa (RULES.md #8).
+- [ ] **B3.2** Soạn safety patterns/service (mỗi service ≥8–12 pattern thật: cảnh báo, bước an toàn, khi nào dừng/đẩy admin) — mỗi row gắn `source` + `confidence` từ source-trust.
+- [ ] **B3.3** Soạn legal_awareness đủ ca: deposit/refund/dispute boundary, không kết luận trách nhiệm, redirect luật sư/115/113.
+- [ ] **B3.4** `service_knowledge_boxes` nâng taxonomy-pointer → diagnosis hint per problem_slug (gắn `service_problems`).
+- [ ] **B3.5** Migration seed idempotent (on conflict update) + version/`source` metadata. **Tu sign-off từng dòng an toàn/pháp lý (BLOCKING gate)** — Claude trình draft + citation, Tu duyệt.
+
+**Owner files:** migration `2026XXXX_kael_knowledge_corpus.sql`, docs `docs/foundation/kael-knowledge-corpus.md` (nguồn + citation + lý do), `.../kael/source-trust.ts` (reuse).
+**Skills:** kael-ai-boundary, kael-supabase, kael-doc-audit, deep-research.
+**Anti-Illusion Gate:** **G4** mỗi row có `source` URL thật + source-trust score; Tu sign-off (BLOCKING). **G1** corpus load staging → B1 retrieval trả nội dung mới. **Effort:** 4 ngày (research + duyệt).
+
+#### B4 — Knowledge governance (admin CRUD + versioning + review) — nối LS5/LS6
+
+**Goal:** Knowledge sửa được an toàn: admin CRUD + version + review; LS5 (service knowledge) / LS6 (safety) candidate đổ vào đúng đây.
+**Steps:**
+- [ ] **B4.1** Admin CRUD knowledge (dùng chung surface A4 — cả `apps/api` + `apps/mobile`): create/update/disable + version history.
+- [ ] **B4.2** LS5/LS6 candidate (manual_review) → khi admin approve → ghi `service_knowledge_boxes`/`worker_safety_patterns` (đóng nhánh LS5/LS6 hiện chỉ phát signal).
+- [ ] **B4.3** Versioning + rollback knowledge row; audit mọi thay đổi.
+- [ ] **B4.4** RLS: chỉ service_role ghi qua RPC; admin review; authenticated read active.
+
+**Owner files:** apps/api admin, migration governance, `.../kael/skills/LS5-*.ts`/`LS6-*.ts` (nối promote).
+**Skills:** kael-supabase, kael-security-sweep, kael-tdd.
+**Anti-Illusion Gate:** **G2** LS6 candidate → admin approve → row safety mới → B1 retrieval dùng được (đóng end-to-end LS6). **Effort:** 2.5 ngày.
+
+#### B5 — True RAG upgrade (pgvector embeddings + semantic retrieval + citation)
+
+**Goal:** Nâng key-lookup → semantic RAG trên corpus B3. (Tu D-OPEN-4: không hoãn — chạy ngay sau B3/B4 đã dựng corpus thật.)
+**Note thực thi:** Vì tuần tự, B5 đứng sau B3/B4 nên corpus đã sẵn. Nếu B3 ra ít chunk vẫn build pgvector nhưng B6 đo độ lợi honest (không "RAG cho oai").
+**Steps:**
+- [ ] **B5.1** `create extension vector`; thêm cột `embedding vector(N)` + index (ivfflat/hnsw) cho knowledge tables.
+- [ ] **B5.2** Pipeline embed (server-side, qua callAI provider embedding) khi insert/update knowledge; backfill corpus.
+- [ ] **B5.3** `retrieveKnowledgeSemantic(queryText, k)` — embed query → similarity search → top-k + threshold; hybrid với key-filter (service_type).
+- [ ] **B5.4** Citation: trả `knowledge_id` + score; log "đã dùng knowledge X cho turn Y" (audit + cho B6 eval).
+- [ ] **B5.5** Cost/latency budget cho embedding; cache; fallback key-lookup khi vector lỗi.
+
+**Owner files:** migration pgvector, `.../kael/knowledge.ts`, provider embedding client.
+**Skills:** kael-supabase, supabase-postgres-best-practices, kael-ai-boundary, kael-tdd.
+**Anti-Illusion Gate:** **G1** truy vấn ngữ nghĩa (không trùng keyword) vẫn trả đúng knowledge; **G2** citation_id log ra. **Effort:** 4 ngày.
+
+#### B6 — Retrieval eval (knowledge có cải thiện output không?) — dùng A5
+
+**Goal:** Chứng minh knowledge nâng chất lượng, không phải thêm cho có.
+**Steps:**
+- [ ] **B6.1** Mở rộng golden set (A5) với case cần safety/legal đúng.
+- [ ] **B6.2** A/B: knowledge ON vs OFF → so decline precision, safety-mention rate, không tăng cost/latency quá ngân sách.
+- [ ] **B6.3** Nếu OFF tốt ngang ON → báo cáo trung thực + cân nhắc rollback (chống illusion "RAG cho oai").
+
+**Owner files:** `apps/api/scripts/kael-eval.mjs` (extend), fixtures.
+**Skills:** kael-tdd, kael-ai-boundary. **Anti-Illusion Gate:** **G4** report ON-vs-OFF số thật. **Effort:** 1.5 ngày.
+
+---
+
+### 31.6 Track C — Agentic Orchestrator → 100%
+
+> Hiện 70%. Hợp nhất orchestrator + **full autonomy (γ′)** (Kael tự quyết, invariant gate I1–I5) + audit/replay + escalation. Autonomy flag bật prod chỉ sau D5 + K-FINAL.
+
+#### C1 — Top-level orchestrator hợp nhất + telemetry
+
+**Goal:** Một entrypoint orchestrator điều phối pipeline + case + autonomy, thay vì logic rải khắp `services.ts` (8+ call-site).
+**Steps:**
+- [ ] **C1.1** Viết `KaelOrchestrator` facade: nhận event/context → chọn case (1–5) → chạy stage → tạo decision → gate → trả kết quả + telemetry, dùng lại `runKaelPurposeStage`/`runKaelParallel` (không viết lại).
+- [ ] **C1.2** Chuyển call-site `services.ts` sang facade dần (surgical, giữ behavior); flag để so sánh.
+- [ ] **C1.3** Telemetry hợp nhất: mỗi run log purpose, provider, latency, cost, fallback, gate result (1 schema).
+- [ ] **C1.4** Không đổi state-machine/permission (chỉ tổ chức lại lời gọi).
+
+**Owner files:** new `.../kael/orchestrator-facade.ts`, `.../services.ts` (refactor call-site), `.../kael/streaming.ts`.
+**Skills:** kael-diagnose, kael-tdd, karpathy-guidelines (Surgical Changes — đây là refactor, dễ regress).
+**Anti-Illusion Gate:** **G1** trước/sau refactor: cùng input → output + state-transition identical (golden snapshot); **G3** flag so sánh path cũ/mới. **Effort:** 2.5 ngày.
+
+#### C2 — Full Autonomy via Validated Decision Objects + Invariant Gate (Tu D-OPEN-1: γ′)
+
+**Goal:** Kael **tự quyết mọi outcome vận hành** (confirm_ticket, start_matching, scope_change, completion, payment, dispute, cancellation, reassign) **không cần người duyệt**. An toàn = LLM đề xuất `KaelAutonomyDecision`, một **invariant gate deterministic** validate trước khi áp; gate chỉ ALLOW / REJECT (bắt Kael quyết lại) / ESCALATE (hẹp). KHÔNG human approval trong happy path.
+
+**Nguyên tắc bất biến — KHÔNG bao giờ xảy ra bất kể LLM "muốn" gì (ranh giới "không vi phạm pháp luật"):**
+- **I1** Không charge/release payment nếu thiếu chuỗi bằng chứng completion + confirmation hợp lệ (anti-fraud, luật tài chính).
+- **I2** Không bịa dữ liệu (RULES.md #8); decision phải có `evidence[]` trỏ artifact/job-event THẬT.
+- **I3** Không hành động ngoài scope điện/nước/dọn; không tư vấn pháp lý/y tế/tài chính (redirect).
+- **I4** Không lộ PII; decision payload sanitized.
+- **I5** Chuỗi LLM KHÔNG trực tiếp mutate DB — luôn qua decision object validated server-side. (Đây là *cách thực thi* autonomy an toàn, KHÔNG giới hạn quyền quyết của Kael.)
+
+**Escalation hẹp (giữ autonomy tối đa — chỉ đẩy admin khi thật cần):**
+- High-stakes (payment lớn / dispute) **và** confidence < ngưỡng → escalate. Low-stakes thì Kael tự quyết kể cả confidence vừa.
+- Evidence-chain vỡ (I1/I2) → xin thêm bằng chứng hoặc escalate, KHÔNG bịa.
+- Topic legal-risk → redirect (per `legal_awareness_patterns` B2).
+
+**Steps:**
+- [ ] **C2.1** Prompt + structured-output schema để LLM **đề xuất** `KaelAutonomyDecision` cho cả 7 action (Rule #4), kèm evidence + confidence + reversible/appealable.
+- [ ] **C2.2** `gateAutonomyDecision()` deterministic (thứ tự): `kaelAutonomyDecisionSchema` → `validateKaelAutonomyTransition` (state-machine) → `evaluateKaelPermissionGate` (authority) → **invariant check I1–I5** → evidence-sufficiency theo action → ALLOW | REJECT (re-decide + feedback) | ESCALATE (`kael_admin_queue`).
+- [ ] **C2.3** RPC apply server-side (service_role): chỉ áp decision đã ALLOW; mọi mutate money-state đi qua đây (siết I5). Atomic + status-check (per [[feedback_race_conditions]]).
+- [ ] **C2.4** **Invariant fuzz (core proof):** ≥1000 proposal độc hại/ngẫu nhiên (gồm cố vượt I1–I5, prompt-injection–đẻ-decision) → ASSERT 0 phá invariant; mọi reject/escalate có audit.
+- [ ] **C2.5** Confidence calibration: ngưỡng escalation theo stakes; log cho A3/A5 tinh chỉnh.
+- [ ] **C2.6** Ship sau flag `KAEL_AUTONOMY_FULL_ENABLED` (OFF). **Cờ chỉ BẬT production SAU khi D5 red-team + K-FINAL pass** (§31.2 safety ordering) — build ở C, bật sau D.
+
+**Owner files:** `.../kael/prompts.ts`, `.../kael/artifact-contract.ts`, `.../workflow-orchestrator.ts`, `.../kael/orchestrator-facade.ts`, `.../services.ts`, migration RPC apply-decision.
+**Skills:** kael-ai-boundary (primary), kael-security-sweep, kael-tdd, kael-diagnose, karpathy-guidelines.
+**Anti-Illusion Gate:** **G3 TRỌNG TÂM** — invariant fuzz ≥1000 chứng minh không phá I1–I5; **G1** live staging Kael tự chạy 1 giao dịch đủ vòng (confirm→match→complete→payment) KHÔNG người chạm; **G4** report rõ ca escalate + lý do. **Effort:** 5 ngày (invariant gate + fuzz).
+
+#### C3 — Decision audit trail + replay
+
+**Steps:**
+- [ ] **C3.1** Mỗi decision (policy hoặc LLM-proposed) log: input context (sanitized), evidence, confidence, gate result, resulting_event → bảng audit.
+- [ ] **C3.2** Replay tool: tái dựng quyết định từ log để debug (per [[feedback_honest_reporting]] — truy vết được).
+- [ ] **C3.3** Link với `kael_interaction_log` hiện có.
+
+**Owner files:** migration decision-audit, `.../kael/*`. **Skills:** kael-supabase, kael-diagnose. **Anti-Illusion Gate:** **G2** replay 1 quyết định thật cho ra cùng gate result. **Effort:** 2 ngày.
+
+#### C4 — Escalation + degradation paths
+
+**Steps:**
+- [ ] **C4.1** confidence < threshold hoặc evidence thiếu → escalate `kael_admin_queue` thay vì fallback im lặng.
+- [ ] **C4.2** Provider all-fail → degradation mode rõ ràng (decline lịch sự + log), không fake success (#8).
+- [ ] **C4.3** Notify admin + SLA cho item escalated.
+
+**Owner files:** `.../kael/orchestrator-facade.ts`, `.../services.ts`, `kael_admin_queue` wiring. **Skills:** kael-ai-boundary, kael-supabase. **Anti-Illusion Gate:** **G3** ép low-confidence → có row admin_queue thật. **Effort:** 2 ngày.
+
+#### C5 — Orchestrator resilience (retry/timeout/circuit hợp nhất)
+
+**Steps:**
+- [ ] **C5.1** Chuẩn hoá retry bounded + timeout per stage (đã có `withDbTimeout`, circuit-breaker) vào 1 policy.
+- [ ] **C5.2** Test chaos: provider timeout/500/circuit-open → fallback đúng, cost bounded (per [[feedback_race_conditions]] + Rule #10).
+- [ ] **C5.3** Cost ceiling per request enforce (đã có `costCeilingUsd` — verify mọi path).
+
+**Owner files:** `.../kael/orchestrator.ts`, `routing.ts`, `circuit-breaker.ts`, `rate-limit.ts`. **Skills:** kael-diagnose, kael-security-sweep, kael-tdd. **Anti-Illusion Gate:** **G1/G3** chaos test thật. **Effort:** 1.5 ngày.
+
+#### C6 — Agentic scenario test harness (5 case E2E + autonomy conformance)
+
+**Steps:**
+- [ ] **C6.1** E2E mỗi case (normal/demanding/worker-cancel/customer-cancel/dispute) từ event → decision → state thật.
+- [ ] **C6.2** Conformance: mọi `KAEL_AUTONOMY_ACTION_EVENTS` mapping được test + state-machine không có transition mồ côi.
+- [ ] **C6.3** Wire vào CI + A5 eval.
+
+**Owner files:** `apps/api/src/__tests__/`, fixtures. **Skills:** kael-tdd, kael-ai-boundary. **Anti-Illusion Gate:** **G1** 5 case chạy staging có evidence. **Effort:** 2.5 ngày.
+
+---
+
+### 31.7 Track D — System Prompt & Guardrails → 100%
+
+> Hiện 85%. Single-source charter + egress coverage + semantic guard + injection classifier + red-team + observability.
+
+#### D1 — Charter single-source + versioning + conformance test
+
+**Goal:** Charter trong code (`system-prompt.ts`) và file (`packages/shared/kael/charter/*`) là 1 nguồn; output tuân charter có test.
+**Steps:**
+- [ ] **D1.1** Audit: `system-prompt.ts` hardcode identity/persona/mission vs `charter/{tone-matrix.yaml,language-rules.md,forbidden-language.json}` — xác định nguồn thật đang dùng.
+- [ ] **D1.2** Single-source: charter-files là nguồn, `system-prompt.ts` load (hoặc generate test so khớp); bump `KAEL_CHARTER_VERSION`.
+- [ ] **D1.3** Conformance test: forbidden categories trong prompt == `forbidden-language.json`; mission/persona khớp.
+
+**Owner files:** `.../kael/system-prompt.ts`, `packages/shared/kael/charter/*`, tests. **Skills:** kael-ai-boundary, kael-doc-audit, kael-tdd. **Anti-Illusion Gate:** **G2** đổi `forbidden-language.json` → prompt + self-check đổi theo (chứng minh single-source). **Effort:** 1.5 ngày.
+
+#### D2 — Egress audit: mọi AI output qua self-check
+
+**Goal:** Không có đường output AI nào tới user mà bỏ qua `runKaelSelfCheckPipeline`.
+**Steps:**
+- [ ] **D2.1** Liệt kê MỌI egress AI→user (chat turn, advisory, worker-brief, decline, clarification, scope-change).
+- [ ] **D2.2** Xác nhận từng cái qua self-check; cái nào opt-in/thiếu → wire vào (orchestrator self-check hiện per-stage opt-in).
+- [ ] **D2.3** Test coverage: mỗi egress có negative test (forbidden phrase → fallback).
+
+**Owner files:** `.../kael/output-pipeline.ts`, `.../kael/orchestrator.ts`, `.../services.ts`, `.../kael/self-check.ts`. **Skills:** kael-ai-boundary, kael-security-sweep, kael-tdd. **Anti-Illusion Gate:** **G2** inject câu cấm vào từng egress (test) → đều bị chặn. **Effort:** 1.5 ngày.
+
+#### D3 — Semantic guardrail layer (LLM-assist, bounded cost)
+
+**Goal:** Nâng self-check từ substring → semantic, giữ list cứng làm fast-path + fallback.
+**Steps:**
+- [ ] **D3.1** Classifier rẻ (haiku) chấm output: fear/accusatory/absolute/AI-self-ref/exact-price — chỉ chạy khi qua fast-path nghi ngờ (bounded cost).
+- [ ] **D3.2** Fail → regenerate→fallback (pipeline có sẵn).
+- [ ] **D3.3** Cost cap + flag-gated; fallback về substring khi classifier lỗi (no silent).
+- [ ] **D3.4** Eval (A5) decline/guardrail precision-recall trước/sau.
+
+**Owner files:** `.../kael/self-check.ts`, `routing.config.ts`, `cost-tracking.ts`. **Skills:** kael-ai-boundary, kael-tdd, kael-diagnose. **Anti-Illusion Gate:** **G1** paraphrase né-substring bị semantic bắt (test thật). **Effort:** 3 ngày.
+
+#### D4 — AI injection classifier layered on boundary-guard
+
+**Goal:** Bổ sung lớp AI cho injection (code `boundary-guard.ts:9` tự thừa nhận hoãn).
+**Steps:**
+- [ ] **D4.1** Sau regex fast-path (giữ, cost 0), nếu nghi ngờ → classifier injection.
+- [ ] **D4.2** Giữ "decline = cost 0" cho case regex bắt được; chỉ tốn cho biên.
+- [ ] **D4.3** Red-team injection corpus (nối D5).
+
+**Owner files:** `.../kael/boundary-guard.ts`, `routing.config.ts`. **Skills:** kael-security-sweep, kael-ai-boundary, kael-tdd. **Anti-Illusion Gate:** **G3** biến thể injection mới (không match regex) bị classifier chặn. **Effort:** 2.5 ngày.
+
+#### D5 — Red-team regression corpus
+
+**Goal:** 1 bộ adversarial chạy CI: injection, jailbreak, scope-evasion, price-extraction, PII-extraction, fear-bait.
+**Steps:**
+- [ ] **D5.1** Soạn ≥40 adversarial case (gồm biến thể tiếng Việt không dấu).
+- [ ] **D5.2** Runner + threshold (0 bypass cho money/PII/scope); report.
+- [ ] **D5.3** Wire CI: đổi guardrail/prompt → chạy red-team.
+
+**Owner files:** `apps/api/src/__tests__/security/kael-redteam/*`, runner. **Skills:** kael-security-sweep, kael-ai-boundary, kael-tdd. **Anti-Illusion Gate:** **G3** corpus phải có case ĐANG bypass được hôm nay (nếu có) → ghi nhận trung thực, fix, rồi xanh. **Effort:** 2.5 ngày.
+
+#### D6 — Guardrail observability + feed feedback loop
+
+**Steps:**
+- [ ] **D6.1** Log mọi guardrail-trip (rule nào, input class) → bảng/analytics.
+- [ ] **D6.2** Feed sang Track A (LS7 decline-reason) + red-team (case mới từ trip thật).
+- [ ] **D6.3** Dashboard trip-rate theo loại.
+
+**Owner files:** `.../kael/*` audit, migration, docs. **Skills:** kael-supabase, kael-doc-audit. **Anti-Illusion Gate:** **G2** trip thật xuất hiện trong analytics + sinh case red-team. **Effort:** 1.5 ngày.
+
+---
+
+### 31.8 Phase K-FINAL — Cross-track Integration + E2E + Honesty Sign-off
+
+**Goal:** 4 track hoạt động cùng nhau, chứng minh 100% bằng E2E thật, report trung thực.
+**Steps:**
+- [ ] **KF.1** E2E full: 1 giao dịch thật staging → Kael dùng knowledge (B) trong prompt → decision qua orchestrator+gate (C) → output qua guardrail (D) → job xong → candidate (A) → promote → pipeline đọc rule mới. 1 đường dây xuyên 4 track.
+- [ ] **KF.2** Chạy toàn bộ: A5 eval + D5 red-team + C6 scenario + full test sweep → so K0 baseline.
+- [ ] **KF.3** Cập nhật `% mỗi track` với BẰNG CHỨNG (không tự phong 100%); cái nào chưa 100% → ghi rõ còn thiếu gì (per [[feedback_no_hiding_gaps]]).
+- [ ] **KF.4** `/log` + `/test-report` + README; cập nhật `code-ownership-map.md` cho file mới.
+- [ ] **KF.5** Tu sign-off từng track.
+
+**Anti-Illusion Gate:** **G1–G4 toàn phần.** Không track nào được tuyên 100% nếu thiếu closure proof. **Effort:** 2 ngày.
+
+---
+
+### 31.9 Effort Summary
+
+```text
+K0                         0.5
+Track A (A1..A6)           3 + 2 + 2 + 3 + 3 + 1.5     = 14.5
+Track B (B1..B6)           2 + 1 + 4 + 3 + 4 + 1.5     = 15.5
+Track C (C1..C6)           2.5 + 5 + 2 + 2 + 1.5 + 2.5 = 15.5
+Track D (D1..D6)           1.5 + 1.5 + 3 + 2.5 + 2.5 + 1.5 = 12.5
+K-FINAL                    2.0
+------------------------------------------------------------
+Sequential total           ~60.5 agent-day (Tu D-OPEN-3: tuần tự, không song song)
+```
+
+**Lưu ý:** C2 (full autonomy + invariant fuzz ≥1000), B3 (Perplexity sourcing + Tu sign-off), B5 (pgvector) là 3 phase nặng/rủi ro nhất. Autonomy flag chỉ BẬT production sau D5 + K-FINAL (§31.2 safety ordering).
+
+---
+
+### 31.10 Risks + Mitigation
+
+| Risk | Track | Mitigation |
+|---|---|---|
+| Đóng loop sai → rule rác tự active hại giá | A | RPC re-validate forbidden_effects server-side; evidence gate 5+conf0.6; auto-rollback A3; flag-gated AB nhỏ |
+| Promote không atomic → race (per [[feedback_race_conditions]]) | A | RPC SECURITY DEFINER 1 transaction; status-check |
+| Nội dung pháp lý/an toàn bịa (RULES.md #8) | B | D-OPEN-2 nguồn thật + Tu sign-off từng dòng + `source` truy vết |
+| pgvector over-engineer cho corpus nhỏ | B | B5 chạy sau B3/B4 (corpus đã sẵn); B6 đo độ lợi honest (ON vs OFF); B1 key-lookup nền |
+| Full autonomy nới quyền money-state (RULES.md) | C | Invariant gate I1–I5 + state-machine + permission; fuzz ≥1000; flag BẬT prod chỉ sau D5+K-FINAL |
+| Autonomy (C) build trước guardrail (D) trong chuỗi tuần tự | C/D | C2 ship flag OFF; cờ bật prod chỉ sau D5 red-team + K-FINAL; C2 tự có invariant fuzz nội bộ |
+| Refactor orchestrator regress | C | golden snapshot before/after; flag so path; Surgical Changes |
+| Semantic guard tăng cost/latency | D | chỉ chạy khi fast-path nghi ngờ; cost cap; flag; eval A5 |
+| "Cảm giác ảo" tái diễn | ALL | Anti-Illusion Gate G1–G4 mọi phase; closure proof bắt buộc |
+
+---
+
+### 31.11 Skills Mapping Summary
+
+`karpathy-guidelines` (Think Before Coding / Simplicity First / Surgical Changes / Goal-Driven) áp dụng **mọi phase**. Primary skill theo track:
+- **A:** kael-supabase + kael-tdd + kael-ai-boundary + kael-security-sweep
+- **B:** kael-ai-boundary + kael-supabase + kael-doc-audit (+ supabase-postgres-best-practices cho B5)
+- **C:** kael-ai-boundary + kael-diagnose + kael-security-sweep + kael-tdd
+- **D:** kael-ai-boundary + kael-security-sweep + kael-tdd + kael-doc-audit
+- **UI (A4/B4):** glass-liquid-signature + kael-motion + kael-frontend-test
+Mỗi phase mở đầu bằng pre-flight (critical.md §5) + đọc `code-ownership-map.md` row liên quan.
+
+---
+
+### 31.12 Decisions — RESOLVED (Tu, 2026-06-04)
+
+- [x] **D-OPEN-1:** Full autonomy (γ′) — Kael tự quyết, an toàn bằng invariant gate I1–I5, KHÔNG human-in-loop. → §31.6 C2.
+- [x] **D-OPEN-2:** Claude tự tìm nguồn qua Perplexity + source-trust; Tu sign-off. → §31.5 B3.
+- [x] **D-OPEN-3:** Tuần tự A→B→C→D. → §31.2.
+- [x] **D-OPEN-4:** Không hoãn phase nào — B5 pgvector + C2 full autonomy in-scope.
+- [x] **D-OPEN-5:** Admin cả `apps/api` + `apps/mobile`. → A4/B4.
+- [x] **D6:** Codex build, Claude verify result (review + anti-illusion gate).
+
+---
+
+### 31.13 Change Log
+
+```text
+v0.1 — 2026-06-04 — Claude draft đầu tiên. 26 phase, 4 track. Audit baseline A60/B25/C70/D85.
+                    Chờ Tu review + chốt D-OPEN-1..5. CHƯA execute.
+v0.2 — 2026-06-04 — Tu chốt D-OPEN-1..5 + D6. C2 → full autonomy (γ′) + invariant gate I1–I5 + fuzz≥1000;
+                    B3 → Perplexity sourcing; roadmap tuần tự; admin api+mobile; không hoãn (B5/C2 in-scope).
+                    Effort ~60.5d seq. Autonomy flag bật prod chỉ sau D5+K-FINAL. Codex build, Claude verify. READY.
+```
