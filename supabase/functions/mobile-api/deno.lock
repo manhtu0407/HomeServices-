@@ -1,5 +1,5 @@
 {
-  "version": "5",
+  "version": "4",
   "specifiers": {
     "npm:@supabase/supabase-js@2.105.4": "2.105.4",
     "npm:zod@4.4.3": "4.4.3"
@@ -62,7 +62,6 @@
   },
   "workspace": {
     "dependencies": [
-      "npm:@supabase/supabase-js@2.105.4",
       "npm:zod@4.4.3"
     ]
   }

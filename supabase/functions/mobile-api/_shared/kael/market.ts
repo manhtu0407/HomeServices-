@@ -18,8 +18,8 @@ import { safeParseJSON } from "./utils.ts";
 const MARKET_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 type MarketCacheClient = {
-  from(table: import("../db-types.ts").PublicTableName): MarketCacheQuery;
-  rpc?(name: import("../db-types.ts").PublicRpcName, args?: Record<string, unknown>): PromiseLike<unknown>;
+  from(table: string): MarketCacheQuery;
+  rpc?(name: string, args?: Record<string, unknown>): PromiseLike<unknown>;
 };
 
 type MarketCacheQuery = {

@@ -1,15 +1,12 @@
 import { type ServiceType } from '@home-services/shared'
-import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
+import { type KaelChatResponse } from '@/lib/api-types'
 import { type LocalMediaUploadDraft } from '@/lib/media-upload'
-import { isLocalGreetingOnly } from './local-rhythm'
 import { type PendingKaelChatDraft } from './pending-intake'
 
 export type KaelChatState = {
   selectedService: ServiceType | null
   session: KaelChatResponse | null
   pendingIntake: PendingKaelChatDraft | null
-  localTurns: KaelChatTurn[]
-  localDraftMessage: string | null
   composerPhotoDrafts: LocalMediaUploadDraft[]
   draft: string
   addressLabel: string
@@ -33,8 +30,6 @@ export type KaelChatAction =
   | { type: 'setAddress'; value: string }
   | { type: 'setDraft'; value: string; clearTransientError: boolean }
   | { type: 'showTransientError'; error: string }
-  | { type: 'showLocalGreeting'; userMessage: string; kaelMessage: string }
-  | { type: 'showLocalGuidance'; userMessage: string; kaelMessage: string }
   | { type: 'sendStarted' }
   | { type: 'sendSucceeded'; session: KaelChatResponse; clearDraft?: boolean }
   | { type: 'sendFailed'; error: string }
@@ -47,8 +42,6 @@ export function createInitialKaelChatState(routeService: ServiceType | null): Ka
     selectedService: routeService,
     session: null,
     pendingIntake: null,
-    localTurns: [],
-    localDraftMessage: null,
     composerPhotoDrafts: [],
     draft: '',
     addressLabel: '',
@@ -97,33 +90,16 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
         loading: false,
         session: action.session,
         selectedService: action.session.session.service_type,
-        localTurns: [],
-        localDraftMessage: null,
       }
     case 'loadSessionFailed':
       return { ...state, loading: false, error: action.error }
-    case 'selectService': {
-      const shouldResetSessionForService = Boolean(
-        state.session?.session.service_type &&
-        state.session.session.service_type !== action.service,
-      )
-      const preIntakeDraft = state.session && !state.session.session.service_type
-        ? preIntakeCustomerDraft(state.session.turns)
-        : ''
-      const shouldRestorePreIntakeDraft = Boolean(preIntakeDraft && state.draft.trim().length === 0)
+    case 'selectService':
       return {
         ...state,
         selectedService: action.service,
-        session: shouldResetSessionForService ? null : state.session,
-        draft: shouldRestorePreIntakeDraft
-          ? preIntakeDraft
-          : !state.session && state.localDraftMessage && state.draft.trim().length === 0
-            ? state.localDraftMessage
-            : state.draft,
-        localDraftMessage: shouldRestorePreIntakeDraft || (!state.session && state.localDraftMessage && state.draft.trim().length === 0) ? null : state.localDraftMessage,
+        session: !state.session || state.session.session.service_type !== action.service ? null : state.session,
         error: null,
       }
-    }
     case 'setAddress':
       return { ...state, addressLabel: action.value }
     case 'setDraft':
@@ -134,39 +110,6 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
       }
     case 'showTransientError':
       return { ...state, error: action.error }
-    case 'showLocalGreeting':
-      return {
-        ...state,
-        draft: '',
-        error: null,
-        localTurns: [
-          ...state.localTurns,
-          ...createLocalGuidanceTurns({
-            kaelMessage: action.kaelMessage,
-            startIndex: state.localTurns.length,
-            userMessage: action.userMessage,
-          }),
-        ],
-        orchestrationMessage: null,
-        sending: false,
-      }
-    case 'showLocalGuidance':
-      return {
-        ...state,
-        draft: '',
-        error: null,
-        localDraftMessage: appendKaelDraftSegment(state.localDraftMessage ?? '', action.userMessage),
-        localTurns: [
-          ...state.localTurns,
-          ...createLocalGuidanceTurns({
-            kaelMessage: action.kaelMessage,
-            startIndex: state.localTurns.length,
-            userMessage: action.userMessage,
-          }),
-        ],
-        orchestrationMessage: null,
-        sending: false,
-      }
     case 'sendStarted':
       return {
         ...state,
@@ -181,8 +124,6 @@ export function kaelChatReducer(state: KaelChatState, action: KaelChatAction): K
         session: action.session,
         selectedService: action.session.session.service_type,
         draft: action.clearDraft === false ? state.draft : '',
-        localTurns: [],
-        localDraftMessage: null,
       }
     case 'sendFailed':
       return { ...state, sending: false, error: action.error }
@@ -229,49 +170,4 @@ function appendKaelDraftSegment(draft: string, segment: string) {
   const cleanSegment = segment.trim()
   if (!cleanSegment) return cleanDraft
   return cleanDraft ? `${cleanDraft} ${cleanSegment}` : cleanSegment
-}
-
-function preIntakeCustomerDraft(turns: KaelChatTurn[]) {
-  return turns
-    .filter((turn) => turn.role === 'customer' && turn.text_content?.trim())
-    .map((turn) => turn.text_content?.trim() ?? '')
-    .filter((message) => !isLocalGreetingOnly(message))
-    .join(' ')
-    .trim()
-}
-
-function createLocalGuidanceTurns({
-  kaelMessage,
-  startIndex,
-  userMessage,
-}: {
-  kaelMessage: string
-  startIndex: number
-  userMessage: string
-}): KaelChatTurn[] {
-  const createdAt = '1970-01-01T00:00:00.000Z'
-  return [
-    {
-      content_type: 'text',
-      created_at: createdAt,
-      estimate: null,
-      id: `local_customer_${startIndex + 1}`,
-      media_refs: [],
-      role: 'customer',
-      session_id: 'local_pre_service',
-      text_content: userMessage,
-      turn_index: startIndex + 1,
-    },
-    {
-      content_type: 'clarification',
-      created_at: createdAt,
-      estimate: null,
-      id: `local_kael_${startIndex + 2}`,
-      media_refs: [],
-      role: 'kael',
-      session_id: 'local_pre_service',
-      text_content: kaelMessage,
-      turn_index: startIndex + 2,
-    },
-  ]
 }

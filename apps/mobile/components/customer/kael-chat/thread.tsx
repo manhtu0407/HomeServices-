@@ -23,18 +23,13 @@ import { styles } from './styles'
 const kaelModel8AHead = require('../../../assets/kael-model-8a-head.png')
 const supportedServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']
 const vietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i
-const LIVE_ACTIVITY_SWEEP_MS = 2400
-const KAEL_REVEAL_FRAME_MS = 110
+const LIVE_ACTIVITY_SWEEP_MS = 1400
+const KAEL_REVEAL_FRAME_MS = 22
 const KAEL_REVEAL_TARGET_FRAMES = 42
 
 type KaelChatThreadText = Parameters<typeof KaelProcessCard>[0]['text'] & {
   activityOrchestrating: string
   activityResearch: string
-  activitySteps: {
-    orchestrating: readonly string[]
-    research: readonly string[]
-    thinking: readonly string[]
-  }
   activityThinking: string
   history: string
   loading: string
@@ -48,7 +43,6 @@ export type KaelChatVisibility = {
   canStartOrchestration: boolean
   showBrief: boolean
   showEstimate: boolean
-  showPhaseContext?: boolean
   showProcess: boolean
   showStarter: boolean
   showTrace: boolean
@@ -117,7 +111,7 @@ export function KaelChatThread({
 }) {
   const canRetryPendingIntake = Boolean(pendingIntake && !session && !visibility.canStartOrchestration)
   const latestKaelTurnId = useMemo(() => latestAssistantTurnId(turns), [turns])
-  const liveActivity = resolveKaelLiveActivityLabel({
+  const liveActivityLabel = resolveKaelLiveActivityLabel({
     orchestrating,
     pendingIntake,
     selectedService,
@@ -128,7 +122,7 @@ export function KaelChatThread({
   const lifecyclePanel = resolveKaelLifecyclePanel({
     error,
     estimate,
-    liveActivityLabel: liveActivity?.label ?? null,
+    liveActivityLabel,
     loading,
     orchestrationMessage,
     pendingIntake,
@@ -143,14 +137,13 @@ export function KaelChatThread({
       <View style={styles.turnList} testID="customer-kael-chat-history">
         {lifecyclePanel === 'starter' ? <KaelChatStarter dispatch={dispatch} language={language} selectedService={selectedService} text={text} tokens={tokens} /> : null}
         {turns.map((turn) => <ChatTurn key={turn.id} language={language} reduceMotion={reduceMotion} reveal={turn.id === latestKaelTurnId && turn.role !== 'customer'} text={text} turn={turn} />)}
-        {!selectedService && !session?.session.service_type && turns.length > 0 ? <KaelServiceChoiceRail dispatch={dispatch} language={language} tokens={tokens} /> : null}
         {lifecyclePanel === 'loading' ? (
           <View style={[styles.stateCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-kael-chat-loading">
             <ActivityIndicator color={tokens.primary} />
             <Text style={[styles.bodyText, { color: tokens.muted }]}>{text.loading}</Text>
           </View>
         ) : null}
-        {lifecyclePanel === 'liveActivity' && liveActivity ? <KaelLiveActivityIndicator label={liveActivity.label} reduceMotion={reduceMotion} steps={liveActivity.steps} tokens={tokens} /> : null}
+        {lifecyclePanel === 'liveActivity' && liveActivityLabel ? <KaelLiveActivityIndicator label={liveActivityLabel} reduceMotion={reduceMotion} tokens={tokens} /> : null}
         {lifecyclePanel === 'orchestrationStarted' && orchestrationMessage ? (
           <View style={[styles.stateCard, styles.orchestrationStartedCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'phaseContext')]} testID="customer-kael-chat-orchestration-started">
             <View style={[styles.orchestrationStartedAura, { backgroundColor: tokens.aqua }]} testID="customer-kael-chat-orchestration-mint-aura" />
@@ -229,53 +222,39 @@ function KaelChatStarter({
           <Text style={[styles.turnText, { color: tokens.text }]}>{text.welcome}</Text>
         </View>
       </View>
-      {!selectedService ? <KaelServiceChoiceRail dispatch={dispatch} language={language} tokens={tokens} /> : null}
+      {!selectedService ? (
+        <View style={styles.contextRail} testID="customer-kael-chat-service-picker-inline">
+          <View style={styles.chatQuickServices}>
+            {supportedServices.map((service) => (
+              <Pressable
+                accessibilityRole="button"
+                key={service}
+                onPress={() => dispatch({ type: 'selectService', service })}
+                style={({ pressed }) => [
+                  styles.serviceChip,
+                  { backgroundColor: tokens.service, borderColor: tokens.border },
+                  kaelSurfacePaint(tokens, 'pill'),
+                  pressed ? styles.pressed : null,
+                ]}
+                testID={`customer-kael-chat-service-${service}`}
+              >
+                <Text style={[styles.chipText, { color: tokens.text }]} numberOfLines={1}>{localizedServiceLabel(service, language)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
     </>
-  )
-}
-
-function KaelServiceChoiceRail({
-  dispatch,
-  language,
-  tokens,
-}: {
-  dispatch: Dispatch<KaelChatAction>
-  language: AppLanguage
-  tokens: ReturnType<typeof useKaelChatTokens>
-}) {
-  return (
-    <View style={styles.contextRail} testID="customer-kael-chat-service-picker-inline">
-      <View style={styles.chatQuickServices}>
-        {supportedServices.map((service) => (
-          <Pressable
-            accessibilityRole="button"
-            key={service}
-            onPress={() => dispatch({ type: 'selectService', service })}
-            style={({ pressed }) => [
-              styles.serviceChip,
-              { backgroundColor: tokens.service, borderColor: tokens.border },
-              kaelSurfacePaint(tokens, 'pill'),
-              pressed ? styles.pressed : null,
-            ]}
-            testID={`customer-kael-chat-service-${service}`}
-          >
-            <Text style={[styles.chipText, { color: tokens.text }]} numberOfLines={1}>{localizedServiceLabel(service, language)}</Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
   )
 }
 
 function KaelLiveActivityIndicator({
   label,
   reduceMotion,
-  steps,
   tokens,
 }: {
   label: string
   reduceMotion: boolean
-  steps: readonly string[]
   tokens: ReturnType<typeof useKaelChatTokens>
 }) {
   const sweep = useSharedValue(0)
@@ -308,23 +287,9 @@ function KaelLiveActivityIndicator({
       </View>
       <View style={[styles.liveActivityBubble, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'status')]}>
         {reduceMotion ? null : <Animated.View pointerEvents="none" style={[styles.liveActivitySheen, { backgroundColor: tokens.glassHighlight }, sheenStyle]} />}
-        <View style={styles.liveActivityHeader}>
-          <Animated.Text style={[styles.liveActivityText, { color: tokens.text }, pulseStyle]} testID="customer-kael-chat-live-activity-label">
-            {label}
-          </Animated.Text>
-        </View>
-        <View style={styles.liveActivitySteps}>
-          {steps.slice(0, 3).map((step, index) => (
-            <Text
-              key={`${index}:${step}`}
-              numberOfLines={1}
-              style={[styles.liveActivityStep, { backgroundColor: tokens.raised, borderColor: tokens.border, color: tokens.muted }]}
-              testID={`customer-kael-chat-live-activity-step-${index}`}
-            >
-              {step}
-            </Text>
-          ))}
-        </View>
+        <Animated.Text style={[styles.liveActivityText, { color: tokens.text }, pulseStyle]} testID="customer-kael-chat-live-activity-label">
+          {label}
+        </Animated.Text>
       </View>
     </View>
   )
@@ -446,12 +411,10 @@ function resolveKaelLiveActivityLabel({
   session: KaelChatResponse | null
   text: KaelChatThreadText
 }) {
-  if (orchestrating) return { label: text.activityOrchestrating, steps: text.activitySteps.orchestrating }
+  if (orchestrating) return text.activityOrchestrating
   if (!sending) return null
   const hasServiceContext = Boolean(selectedService || pendingIntake?.serviceType || session?.session.service_type)
-  return hasServiceContext
-    ? { label: text.activityResearch, steps: text.activitySteps.research }
-    : { label: text.activityThinking, steps: text.activitySteps.thinking }
+  return hasServiceContext ? text.activityResearch : text.activityThinking
 }
 
 function resolveKaelLifecyclePanel({
@@ -485,7 +448,7 @@ function resolveKaelLifecyclePanel({
   if (visibility.showProcess) return 'process'
   if (visibility.showTrace) return 'trace'
   if (visibility.showStarter) return 'starter'
-  return session && visibility.showPhaseContext && workflow.phaseContext.primaryArtifact ? 'phaseContext' : null
+  return session && workflow.phaseContext.primaryArtifact ? 'phaseContext' : null
 }
 
 function localizedRoleCustomer(language: AppLanguage) {

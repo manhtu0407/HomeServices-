@@ -50,7 +50,6 @@ export type KaelChatStatus =
   | 'abandoned'
   | 'unsupported'
 export type KaelChatNextAction =
-  | 'await_service'
   | 'await_input'
   | 'ask_photo'
   | 'ask_video'
@@ -87,7 +86,7 @@ export type KaelChatSession = {
   id: string
   job_id: string | null
   customer_id: string
-  service_type: ServiceType | null
+  service_type: ServiceType
   status: KaelChatStatus
   estimate: KaelEstimate | null
   started_at: string
@@ -100,24 +99,6 @@ export type KaelChatSession = {
 export type KaelChatResponse = {
   session: KaelChatSession
   turns: KaelChatTurn[]
-}
-
-export type KaelChatSessionSummary = KaelChatSession & {
-  created_at: string
-  updated_at: string
-}
-
-export type KaelChatListResponse = {
-  sessions: KaelChatSessionSummary[]
-}
-
-export type KaelTrainingConsentResponse = {
-  consent: {
-    allow_training: boolean
-    source: 'profile'
-    decided_at: string | null
-    updated_at: string | null
-  }
 }
 
 export type PlacesAutocompleteResponse = {
