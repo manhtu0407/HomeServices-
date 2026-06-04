@@ -2,10 +2,13 @@ import type { AIImageContent, AIMessage } from '@home-services/shared'
 
 export const PROMPT_VERSIONS = {
   intent: '2026-05-19.v2',
+  intake_diagnosis: '2026-06-04.v1',
   vision: '2026-05-19.v2',
   pricing: '2026-05-19.v2',
   prebrief: '2026-05-14.v1',
 } as const
+
+export const KAEL_INTAKE_DIAGNOSIS_PROMPT_VERSION = PROMPT_VERSIONS.intake_diagnosis
 
 export const KAEL_BUSINESS_GUARDRAILS = `Kael is the main AI assistant for this home-services product.
 Scope is strictly HCMC home services for exactly three service boxes: electrical repair, plumbing repair, and home cleaning.
@@ -48,6 +51,70 @@ Problem slugs for cleaning: standard_home_cleaning, kitchen_deep_clean, bathroom
       content: `Service: ${serviceType}
 Problem chips: ${problemChips.join(', ')}
 Description: ${description}`,
+    },
+  ]
+}
+
+// Intake-diagnosis (2026-06-04): an upgraded intent classifier that also decides
+// whether Kael should ask ONE specific clarification question before estimating,
+// using recent conversation context. Drives smart clarification (STRUCTURES.md A4)
+// + LLM-assisted scope/sentiment signals. Returns intentResultSchema shape.
+export function buildIntakeDiagnosisMessages(
+  serviceType: string,
+  problemChips: string[],
+  description: string,
+  conversationContext?: string,
+): AIMessage[] {
+  return [
+    {
+      role: 'system',
+      content: `${KAEL_BUSINESS_GUARDRAILS}
+${KAEL_RESPONSE_STYLE}
+
+You are Kael's intake-diagnosis step for a Ho Chi Minh City home-service app.
+Supported services: electrical repair, plumbing repair, home cleaning. Nothing else.
+Your job: understand the customer's problem from the selected service, problem chips,
+their description, and the recent conversation, then decide if you can estimate
+reliably or must ask ONE focused clarification question first.
+
+Respond ONLY with valid JSON matching this schema:
+{
+  "service_type": "electrical" | "plumbing" | "cleaning" | "unsupported",
+  "problem_slug": "string (snake_case problem category)",
+  "confidence": number (0-1, how confident the classification is),
+  "needs_clarification": boolean,
+  "missing_slots": string[] (subset of: location, symptom, severity, duration, photo, district),
+  "clarification_question_vi": string | null,
+  "scope_signal": "in_scope" | "out_of_scope" | "service_mismatch",
+  "suggested_service": "electrical" | "plumbing" | "cleaning" | null,
+  "customer_sentiment": "neutral" | "detail_oriented" | "pressure"
+}
+
+Rules:
+- needs_clarification = true ONLY when the description is too vague/empty to estimate
+  reliably (confidence would be low) AND a single question would meaningfully improve it.
+- clarification_question_vi: when needs_clarification, ONE short, SPECIFIC Vietnamese
+  question about the single most important missing slot. Max ~140 chars. Reference the
+  customer's actual problem. NEVER a generic "vui lòng cung cấp thêm thông tin".
+  Good: "Cầu dao có tự nhảy lại sau khi bạn bật lên không?" / "Rò rỉ ở một vòi hay nhiều vị trí?"
+  When needs_clarification is false, set clarification_question_vi to null.
+- missing_slots: list only genuinely missing context; empty array when enough is known.
+- scope_signal: "out_of_scope" if not electrical/plumbing/cleaning at all;
+  "service_mismatch" if it clearly belongs to a different one of the three than selected
+  (set suggested_service); otherwise "in_scope".
+- customer_sentiment: "pressure" if pushy/aggressive/discount-threat, "detail_oriented" if
+  asking for breakdowns/credentials/specifics, else "neutral".
+- Do not re-ask anything already answered earlier in the conversation.
+
+Problem slugs for electrical: power_outage_one_room, power_outage_whole_unit, outlet_or_switch_broken, breaker_trip, flickering_light, install_device, other_electrical
+Problem slugs for plumbing: pipe_leak, clogged_drain_or_sink, toilet_flush_issue, faucet_broken, weak_water_pressure, install_or_replace_fixture, other_plumbing
+Problem slugs for cleaning: standard_home_cleaning, kitchen_deep_clean, bathroom_deep_clean, deep_cleaning, post_repair_cleaning, window_cleaning, other_cleaning`,
+    },
+    {
+      role: 'user',
+      content: `Service: ${serviceType}
+Problem chips: ${problemChips.join(', ')}
+${conversationContext ? `Recent conversation:\n${conversationContext}\n` : ''}Latest customer message: ${description}`,
     },
   ]
 }

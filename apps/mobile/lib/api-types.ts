@@ -76,6 +76,9 @@ export type KaelChatTurn = {
   text_content: string | null
   media_refs: string[]
   estimate: KaelEstimate | null
+  // Smart clarification (2026-06-04): present on content_type='clarification' turns
+  // when the backend surfaces what Kael still needs. Drives the slot-hint chips.
+  clarification?: { question: string | null; missing_slots: string[] } | null
   created_at: string
 }
 

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, ServiceType } from '@home-services/shared'
-import { classifyIntent as defaultClassifyIntent } from './intent'
+import { classifyIntent as defaultClassifyIntent, diagnoseIntake as defaultDiagnoseIntake } from './intent'
 import { analyzeDescription as defaultAnalyzeDescription } from './vision'
 import { searchMarketPrice as defaultSearchMarketPrice, synthesizePrice } from './pricing'
 import { fetchBaseline } from './baseline'
@@ -15,10 +15,17 @@ export type PipelineInput = {
   description: string
   district: string
   photoUrls?: string[]
+  // Smart-clarification intake-diagnosis (2026-06-04). When enabled, the intent
+  // stage uses diagnoseIntake (conversation-aware) and the pipeline may short-circuit
+  // to ask ONE clarification question or flag a scope mismatch before vision/market.
+  intakeDiagnosisEnabled?: boolean
+  conversationContext?: string
+  clarificationCount?: number
 }
 
 export type PipelineProviders = {
   classifyIntent?: typeof defaultClassifyIntent
+  diagnoseIntake?: typeof defaultDiagnoseIntake
   analyzeDescription?: typeof defaultAnalyzeDescription
   searchMarketPrice?: typeof defaultSearchMarketPrice
 }
@@ -31,9 +38,33 @@ export type PipelineStageLog = {
   fallbackUsed: boolean
 }
 
+export type PipelineClarification = {
+  question: string | null
+  missingSlots: string[]
+  customerSentiment?: 'neutral' | 'detail_oriented' | 'pressure'
+}
+
 export type PipelineResult =
-  | { success: true; estimate: KaelEstimate; serviceProblemId: string; fallbackUsed: boolean; stageLogs: PipelineStageLog[] }
-  | { success: false; error: string; code: string; stageLogs: PipelineStageLog[] }
+  | {
+      success: true
+      estimate: KaelEstimate
+      serviceProblemId: string
+      fallbackUsed: boolean
+      stageLogs: PipelineStageLog[]
+      customerSentiment?: 'neutral' | 'detail_oriented' | 'pressure'
+    }
+  | {
+      success: false
+      error: string
+      code: string
+      stageLogs: PipelineStageLog[]
+      clarification?: PipelineClarification
+      suggestedService?: ServiceType
+    }
+
+// Max clarification questions per session (STRUCTURES.md A4 "ask 0-2 questions").
+// Past the cap, Kael proceeds to a best-effort estimate instead of looping.
+export const CLARIFICATION_CAP = 2
 
 function timed<T>(fn: () => Promise<T>): Promise<{ result: T; ms: number }> {
   const start = Date.now()
@@ -48,15 +79,18 @@ export async function runKaelPipeline(
   const { serviceType, problemChips, description, district } = input
   const photoUrls = input.photoUrls ?? []
   const classifyIntent = providers?.classifyIntent ?? defaultClassifyIntent
+  const diagnoseIntake = providers?.diagnoseIntake ?? defaultDiagnoseIntake
   const analyzeDescription = providers?.analyzeDescription ?? defaultAnalyzeDescription
   const searchMarketPrice = providers?.searchMarketPrice ?? defaultSearchMarketPrice
 
   const stageLogs: PipelineStageLog[] = []
   let fallbackUsed = false
 
-  // Stage 1: Intent classification
+  // Stage 1: Intent classification (or conversation-aware intake-diagnosis).
   const { result: intentResult, ms: intentMs } = await timed(() =>
-    classifyIntent(serviceType, problemChips, description),
+    input.intakeDiagnosisEnabled
+      ? diagnoseIntake(serviceType, problemChips, description, input.conversationContext)
+      : classifyIntent(serviceType, problemChips, description),
   )
   const intent = intentResult.success ? intentResult.intent : intentResult.fallback
   if (!intentResult.success) fallbackUsed = true
@@ -69,12 +103,39 @@ export async function runKaelPipeline(
     fallbackUsed: !intentResult.success,
   })
 
-  if (intent.service_type === 'unsupported') {
+  if (intent.service_type === 'unsupported' || intent.scope_signal === 'out_of_scope') {
     return {
       success: false,
       error: UNSUPPORTED_SERVICE_MESSAGE,
       code: 'UNSUPPORTED',
       stageLogs,
+    }
+  }
+
+  // Intake-diagnosis short-circuits — only when diagnosis mode produced the signals.
+  // Stop BEFORE vision/market so a clarification/mismatch turn costs no downstream AI.
+  if (input.intakeDiagnosisEnabled) {
+    if (intent.scope_signal === 'service_mismatch') {
+      return {
+        success: false,
+        error: 'Mô tả của bạn không khớp với dịch vụ đang chọn.',
+        code: 'SERVICE_MISMATCH',
+        stageLogs,
+        suggestedService: intent.suggested_service ?? undefined,
+      }
+    }
+    if (intent.needs_clarification && (input.clarificationCount ?? 0) < CLARIFICATION_CAP) {
+      return {
+        success: false,
+        error: intent.clarification_question_vi ?? 'Bạn mô tả rõ hơn vấn đề đang gặp giúp Kael nhé.',
+        code: 'NEEDS_CLARIFICATION',
+        stageLogs,
+        clarification: {
+          question: intent.clarification_question_vi ?? null,
+          missingSlots: intent.missing_slots ?? [],
+          customerSentiment: intent.customer_sentiment,
+        },
+      }
     }
   }
 
@@ -173,7 +234,14 @@ export async function runKaelPipeline(
     disclaimer: PRICE_DISCLAIMER,
   }
 
-  return { success: true, estimate, serviceProblemId: baselineResult.serviceProblemId, fallbackUsed, stageLogs }
+  return {
+    success: true,
+    estimate,
+    serviceProblemId: baselineResult.serviceProblemId,
+    fallbackUsed,
+    stageLogs,
+    customerSentiment: input.intakeDiagnosisEnabled ? intent.customer_sentiment : undefined,
+  }
 }
 
 function buildAdvisory(severityIndicators: string[]): string | null {

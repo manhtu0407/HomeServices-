@@ -111,6 +111,7 @@ import {
   scrubSensitiveForLLM,
 } from "./kael/index.ts";
 import { evaluateMessageBoundary } from "./kael/boundary-guard.ts";
+import { runKaelSelfCheckPipeline } from "./kael/self-check.ts";
 
 type DbError = { code?: string; message?: string };
 type DbResult<T> = {
@@ -1485,6 +1486,9 @@ async function maybeHandleDemandingCustomerKaelChatTurn(
     message: input.message,
     qaCount: input.qaCount,
     cancelCount: asNumber(input.metadata.demanding_customer_cancel_count),
+    // LLM-assist (2026-06-04): prior-turn intake-diagnosis sentiment fills a keyword
+    // gap (soft only). Keyword detection above stays the primary, deterministic path.
+    llmSentiment: asKaelStoredSentiment(input.metadata.last_customer_sentiment),
   });
   if (!alreadyHardStopped && detection.expectedNuance === "none") return false;
 
@@ -1539,6 +1543,8 @@ async function advanceKaelChatEstimate(
   secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
+  const llmClarificationEnabled =
+    readKaelOptimizationFlags().KAEL_OPT_LLM_CLARIFICATION_ENABLED;
   const currentCostUsd = await getKaelChatCostUsd(client, sessionId);
   if (currentCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) {
     await appendKaelSystemTurn(client, sessionId, {
@@ -1575,7 +1581,9 @@ async function advanceKaelChatEstimate(
 
   const message = sanitizeForLLM(input.message ?? "");
   const problemChips = input.problem_chips?.filter(Boolean) ?? [];
-  if (message.length < 10 && problemChips.length === 0) {
+  // When smart clarification is on, let intake-diagnosis ask a CONTEXTUAL question
+  // instead of this generic length-heuristic prompt (STRUCTURES.md A4).
+  if (!llmClarificationEnabled && message.length < 10 && problemChips.length === 0) {
     const question =
       "\u0042\u1ea1n m\u00f4 t\u1ea3 r\u00f5 h\u01a1n v\u1ea5n \u0111\u1ec1 \u0111ang g\u1eb7p: v\u1ecb tr\u00ed, d\u1ea5u hi\u1ec7u v\u00e0 m\u1ee9c \u0111\u1ed9 \u1ea3nh h\u01b0\u1edfng trong c\u0103n h\u1ed9.";
     await appendKaelSystemTurn(client, sessionId, {
@@ -1619,6 +1627,14 @@ async function advanceKaelChatEstimate(
     return;
   }
 
+  let conversationContext: string | undefined;
+  let priorClarificationCount = 0;
+  if (llmClarificationEnabled) {
+    const convo = await buildKaelConversationContext(client, sessionId);
+    conversationContext = convo.context;
+    priorClarificationCount = convo.clarificationCount;
+  }
+
   const requestId = crypto.randomUUID();
   let pipeline: PipelineResult;
   try {
@@ -1629,6 +1645,9 @@ async function advanceKaelChatEstimate(
         description: message,
         district,
         photoUrls: input.photo_urls ?? [],
+        intakeDiagnosisEnabled: llmClarificationEnabled,
+        conversationContext,
+        clarificationCount: priorClarificationCount,
       },
       client,
       sourceTrustSecretsForRequest(secrets, ctx),
@@ -1668,6 +1687,55 @@ async function advanceKaelChatEstimate(
   );
 
   if (!pipeline.success) {
+    // Smart clarification (2026-06-04): intake-diagnosis asked for ONE specific
+    // missing detail. Self-check the AI question before showing it (RULES.md #3);
+    // fall back to a safe template if it fails screening — never raw AI text.
+    if (pipeline.code === "NEEDS_CLARIFICATION") {
+      const checked = runKaelSelfCheckPipeline({
+        text: pipeline.clarification?.question ?? "",
+        actor: "customer",
+        language: "vi",
+        fallbackText:
+          "Bạn mô tả rõ hơn vấn đề đang gặp: vị trí, dấu hiệu và mức độ ảnh hưởng trong căn hộ.",
+      });
+      const missingSlots = pipeline.clarification?.missingSlots ?? [];
+      const sentiment = pipeline.clarification?.customerSentiment;
+      await appendKaelSystemTurn(client, sessionId, {
+        contentType: "clarification",
+        text: checked.text,
+        nextStatus: "active",
+        metadata: {
+          artifact_proposal: buildKaelMissingInfoArtifactProposal({
+            missingFields: missingSlots.length > 0 ? missingSlots : ["description"],
+            question: checked.text,
+            confidence: 0.4,
+            artifactType: "ai_notes",
+          }),
+          clarification_source: checked.used_fallback ? "fallback" : "ai",
+          ...(sentiment ? { customer_sentiment: sentiment } : {}),
+        },
+        ...(sentiment
+          ? { sessionMetadata: { last_customer_sentiment: sentiment } }
+          : {}),
+      });
+      return;
+    }
+    if (pipeline.code === "SERVICE_MISMATCH") {
+      const suggested = pipeline.suggestedService;
+      const mismatchText = suggested
+        ? `Mô tả của bạn nghiêng về dịch vụ ${kaelServiceLabelVi(suggested)}. Bạn quay lại chọn đúng dịch vụ để Kael ước tính chính xác.`
+        : "Mô tả của bạn không khớp với dịch vụ đang chọn. Bạn quay lại chọn đúng dịch vụ phù hợp để Kael ước tính.";
+      await appendKaelSystemTurn(client, sessionId, {
+        contentType: "error",
+        text: mismatchText,
+        nextStatus: "unsupported",
+        metadata: {
+          boundary_reason: "service_mismatch_llm",
+          ...(suggested ? { suggested_service: suggested } : {}),
+        },
+      });
+      return;
+    }
     const clarificationText = pipeline.code === "UNSUPPORTED"
       ? pipeline.error
       : "Kael chưa đủ dữ liệu an toàn để ước tính. Bạn mô tả thêm hoặc gửi ảnh rõ hơn.";
@@ -1716,7 +1784,61 @@ async function advanceKaelChatEstimate(
       budget_soft_cap_reached:
         currentCostUsd + costUsd >= KAEL_CHAT_SOFT_COST_CAP_USD,
     },
+    ...(pipeline.customerSentiment
+      ? { sessionMetadata: { last_customer_sentiment: pipeline.customerSentiment } }
+      : {}),
   });
+}
+
+// Smart clarification (2026-06-04): build a compact, PII-scrubbed conversation
+// context from recent turns and count prior Kael clarification questions so the
+// pipeline can cap re-asks (STRUCTURES.md A4 "ask 0-2 questions").
+async function buildKaelConversationContext(
+  client: DbClient,
+  sessionId: string,
+): Promise<{ context: string | undefined; clarificationCount: number }> {
+  const turnsResult = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("kael_chat_turns")
+      .select("turn_index, role, content_type, text_content")
+      .eq("session_id", sessionId)
+      .order("turn_index", { ascending: true }),
+  );
+  const rows = turnsResult.data ?? [];
+  const clarificationCount = rows.filter((row) =>
+    asString(row.content_type) === "clarification" &&
+    asKaelTurnRole(row.role) !== "customer"
+  ).length;
+  const recent = rows
+    .map((row) => ({
+      role: asKaelTurnRole(row.role),
+      text: nullableString(row.text_content),
+    }))
+    .filter((turn): turn is { role: KaelChatTurnRole; text: string } =>
+      Boolean(turn.text)
+    )
+    .slice(-8)
+    .map((turn) => `${turn.role === "customer" ? "khách" : "kael"}: ${turn.text}`);
+  return {
+    context: recent.length > 0 ? recent.join("\n") : undefined,
+    clarificationCount,
+  };
+}
+
+function kaelServiceLabelVi(service: string): string {
+  return service === "electrical"
+    ? "sửa điện"
+    : service === "plumbing"
+    ? "sửa nước"
+    : "vệ sinh nhà";
+}
+
+function asKaelStoredSentiment(
+  value: unknown,
+): "neutral" | "detail_oriented" | "pressure" | undefined {
+  return value === "neutral" || value === "detail_oriented" || value === "pressure"
+    ? value
+    : undefined;
 }
 
 async function getKaelChatCostUsd(
@@ -6164,17 +6286,33 @@ function mapConfirmKaelChatError(errorCode: string | null): never {
 
 function serializeKaelTurn(row: Record<string, unknown>) {
   const metadata = asRecord(row.safe_metadata);
+  const contentType = asKaelContentType(row.content_type);
   return {
     id: asString(row.id),
     session_id: asString(row.session_id),
     turn_index: asNumber(row.turn_index),
     role: asKaelTurnRole(row.role),
-    content_type: asKaelContentType(row.content_type),
+    content_type: contentType,
     text_content: nullableString(row.text_content),
     media_refs: asStringArray(row.media_refs),
     estimate: serializeKaelEstimate(metadata.estimate),
+    // Smart clarification (2026-06-04): surface what Kael still needs so the mobile
+    // thread can render slot-hint chips. Drawn from the missing-info artifact proposal.
+    clarification: serializeKaelClarification(contentType, metadata.artifact_proposal),
     created_at: asString(row.created_at),
   };
+}
+
+function serializeKaelClarification(
+  contentType: string,
+  artifactProposal: unknown,
+): { question: string | null; missing_slots: string[] } | null {
+  if (contentType !== "clarification") return null;
+  const proposal = asRecord(artifactProposal);
+  const question = nullableString(proposal.recommended_next_question);
+  const missingSlots = asStringArray(proposal.missing_fields);
+  if (!question && missingSlots.length === 0) return null;
+  return { question, missing_slots: missingSlots };
 }
 
 function serializeKaelSession(
