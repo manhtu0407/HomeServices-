@@ -10280,7 +10280,7 @@ G5 — Money-state gate:   (Part B/§32.6/§32.8) Không có path nào để LLM
 
 **32.1.3 Worker-Kael functional reality.** MỌI `callAI` trong Kael = customer estimate (intent×2/vision/market/price-synth) + **scope-change×2**. Worker LLM = scope-change ONLY. Dispatch/brief/autonomy/protection đều **deterministic** (brief `buildWorkerBriefOutput` sync no-await; autonomy `buildKaelAutonomyDecision` 28+ site → validate → atomic RPC). "Worker Kael chatbot" = stub: `askKaelForWorker`→`buildWorkerKaelAnswer` template, 3×/job, no LLM; relay chat = human↔customer.
 
-**32.1.4 Parity.** Workflow/lifecycle ĐÃ parity (`workflow-phase-context.ts` role-aware `customer|worker|shared`; shared `useServiceWorkflow`). Chatbot/capability CHƯA: customer có `kaelChatService` (create/list/get/sendTurn/confirm) + feedback + training-consent + memory-delete; worker chỉ có `kael-clarify` 3×/job + memory read-only.
+**32.1.4 Parity.** Workflow/lifecycle ĐÃ parity (`workflow-phase-context.ts` role-aware `customer|worker|shared`; shared `useServiceWorkflow`). Chatbot/capability CHƯA: customer có `kaelChatService` (create/list/get/sendTurn/confirm) + feedback + training-consent + memory-delete; worker chỉ có `kael-clarify` 3×/job. (Memory read+delete worker ĐÃ có: `DELETE /me/kael-memory` role-aware → `worker_kael_memory`; gap thật = feedback + training-consent + chat session.)
 
 **32.1.5 Reuse.** `kael_chat_sessions` (mig 20260520130514) `customer_id`/`service_type` NOT NULL + customer RLS + turn role `customer|kael|system` → KHÔNG role-flag an toàn. Handlers booking-coupled (`runKaelPipeline`) nhưng pattern-rich (idempotency, rate-limit RPC `check_kael_chat_rate` 5/min·20/hr, turn lifecycle, cost, self-check). Mobile `kael-chat/` nửa reuse (thread/thinking-state/progressive-text/composer/glass dùng lại; estimate/booking không). ⇒ **sibling table** reuse design.
 
@@ -10306,7 +10306,7 @@ Phases (per-step detail ở companion doc §3):
 - **P2 Tier-1 frontend (visible):** `kaelChatProgressService` + fast-poll while sending (~800ms, cleanup); stage→copy map (§32.5); feed stage THẬT vào `KaelLiveActivityIndicator` (local guess chỉ là fallback trước first event); honesty (fail→neutral, ẩn vision khi skip); a11y live-region.
 - **P2M Thinking-state motion (visible):** instant ack + first-paint <800ms; **stage stepper tick dần** (mint check + dim); avatar micro-motion; **"Thought for {n}s" collapse** (D7) tap mở lại; Reduce Motion/Transparency; perf budget.
 - **P3 Tier-2 SSE backend:** spike Edge wall-clock; `sse.ts` (text/event-stream + heartbeat); streaming variant `/kael/chat/:id/stream` emit stage/token/result/error; token chỉ field streamable (D4); JSON fallback giữ nguyên.
-- **P4 Tier-2 frontend (visible):** `kael-stream.ts` (`expo/fetch` reader + SSE parse), tách khỏi `api.ts` buffered; reconnect (idempotent `client_request_id`/Last-Event-ID); render stage + token incremental; **đo TTFT thật**; degrade về poll/JSON.
+- **P4 Tier-2 frontend (visible):** `kael-stream.ts` (`expo/fetch` reader + SSE parse), tách khỏi `api.ts` buffered; reconnect: drop → re-fetch final session qua JSON `GET /kael/chat/:id` (idempotent), **KHÔNG token-replay v1** (cần `id:` event + per-turn buffer → defer); render stage + token incremental; **đo TTFT thật**; degrade về poll/JSON.
 - **P4M Streaming-text motion (visible):** caret `▍` mép stream; token-driven reveal (thay timer 110ms cứng); auto-scroll follow; completion settle glass-liquid.
 - **P5 Cross-cutting:** contrast; Reduce Motion/Transparency full; honesty+security audit; TTFT acceptance; test log.
 
@@ -10318,13 +10318,13 @@ Guardrail toàn Part B (RULES #2/#3/#6/#8, `kael-ai-boundary`): **advisory-only,
 
 **B-FUNC — build worker chat session felt-parity (sibling, reuse pattern):**
 - **WBF.0** (design, no code): đọc kael-ai-boundary + charter + self-check + customer chat stack + `askKaelForWorker`; ra boundary spec + reuse/adaptation map. **Tu sign-off.**
-- **WBF.1** schema sibling: `kael_worker_chat_sessions` (job-scoped, `worker_id NOT NULL`, worker statuses, idempotency/cost) + `kael_worker_chat_turns` (role `worker|kael|system`; content-type text/clarification/guidance/error — no estimate) mirror customer design + indexes; worker RLS (`worker_id=auth.uid()`, read-only client, service-role write) + worker rate-limit RPC.
+- **WBF.1** schema sibling: `kael_worker_chat_sessions` (job-scoped, `worker_id NOT NULL`, worker statuses, idempotency/cost) + `kael_worker_chat_turns` (role `worker|kael|system`; content-type text/clarification/guidance/photo_request/photo_attached/error — no estimate; **`media_refs text[]`** cho ảnh bằng-chứng-tại-chỗ để WBF.5 attach có chỗ lưu) mirror customer design + indexes; worker RLS (`worker_id=auth.uid()`, read-only client, service-role write) + worker rate-limit RPC.
 - **WBF.2** routing: thêm `worker_assist` purpose (cheap primary, Anthropic fallback, budget/ceiling/maxTokens/cap).
 - **WBF.3** backend: `kael/worker-assist.ts` advisory engine (callAI + Zod + self-check + cost + fallback, zero autonomy) + handlers `create/send/get/list WorkerKaelChat` mirror customer (idempotency, rate-limit, lifecycle) nhưng job-scoped advisory (no runKaelPipeline); routes `/workers/me/kael/chat` (+`/:id`).
 - **WBF.4** safety suite (**money-state gate, trước UI**): refuse set price/scope/status → redirect scope-change; prompt-injection; out-of-scope; no provider name; PII-safe; RLS isolation worker A≠B.
 - **WBF.5** mobile: extract shared chat primitives từ `kael-chat/` (thread/thinking-state/progressive-text/composer/glass) → worker chat surface (job-assist + history), **distinct với relay chat**, conform `worker-production-contract.md`; **parity UX:** đính ảnh (bằng chứng tại chỗ — giá trị cao), mic, clarification affordances.
 - **WBF.6** wiring: `workerKaelChatService` mirror `kaelChatService`; route + nav.
-- **WBF.7** fast-follow capability parity: `/workers/me/kael-feedback`, `/workers/me/kael-training-consent` (get/set), worker `kael-memory` delete + UI tối thiểu.
+- **WBF.7** fast-follow capability parity: `/workers/me/kael-feedback` + `/workers/me/kael-training-consent` (get/set) + UI tối thiểu. (Memory-delete worker ĐÃ có qua `DELETE /me/kael-memory` role-aware — KHÔNG thêm endpoint trùng.)
 
 **B-PERF — perceived-perf trên worker (sau B-FUNC, reuse Part A + §2A motion):**
 - **WBP.1** scope-change thinking-state: emit 2-step progress (`reviewing`→`estimating`) qua generalized `updateKaelProgress` → scope-change-scoped target; mobile thay static `'Kael đang xét'` (`worker-surfaces.tsx:460`) bằng state thật + honesty copy.
@@ -10357,6 +10357,8 @@ event: result  data: { <full Zod-validated session> }
 event: error   data: {"code":"AI_FAILED","message":"<friendly VI>"}
 : heartbeat   // ~10s
 ```
+
+**Reconnect v1:** contract KHÔNG có `id:` → KHÔNG token-replay. Drop → client re-fetch turn đã persist qua `GET /kael/chat/:id` (idempotent, xem P4). Replay token-level cần thêm `id:` mọi event + per-turn buffer keyed by `Last-Event-ID` → defer.
 
 ---
 

@@ -54,7 +54,7 @@ Tu's principle: anything the customer chatbot has, the worker chatbot must have 
 | Chat history / archive | ✅ list sessions | ❌ | missing |
 | Streaming / thinking-state | ❌ (Part A builds it) | ❌ (Part B) | both pending — in plan |
 | Kael memory: read | ✅ `/me/kael-memory` | ✅ `/workers/me/kael-memory` | ok |
-| Kael memory: delete (data right) | ✅ DELETE | ❌ | missing |
+| Kael memory: delete (data right) | ✅ `DELETE /me/kael-memory` | ✅ **same role-aware endpoint** — route roles `[customer,worker,admin]`; `deleteMyKaelMemory` switches to `worker_kael_memory` for `ctx.role==='worker'` | ok (do not duplicate) |
 | Kael training consent | ✅ get/set `/me/kael-training-consent` | ❌ | missing |
 | Kael feedback (rate Kael) | ✅ `/me/kael-feedback` | ❌ | missing |
 | Kael charter | ✅ shared `/kael/charter` | ✅ shared | ok |
