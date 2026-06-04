@@ -19,9 +19,11 @@ import type {
   ConfirmKaelChatResponse,
   CustomerCancellationResponse,
   CustomerKaelFeedbackResponse,
+  KaelTrainingConsentResponse,
   DisputeAdminDecisionResponse,
   DisputeCounterStatementResponse,
   DisputeOpenResponse,
+  KaelChatListResponse,
   KaelChatResponse,
   NotificationListResponse,
   NotificationReadResponse,
@@ -50,6 +52,7 @@ import type {
   JobCreateInput,
   JobStatus,
   CustomerKaelFeedbackInput,
+  KaelTrainingConsentInput,
   KaelWorkerClarifyInput,
   KaelChatCreateInput,
   KaelChatTurnInput,
@@ -161,6 +164,10 @@ export const jobService = {
 }
 
 export const kaelChatService = {
+  list() {
+    return api.get<KaelChatListResponse>('/kael/chat')
+  },
+
   create(input: KaelChatCreateInput) {
     return api.post<KaelChatResponse>('/kael/chat', input)
   },
@@ -181,6 +188,16 @@ export const kaelChatService = {
 export const customerFeedbackService = {
   submit(input: CustomerKaelFeedbackInput) {
     return api.post<CustomerKaelFeedbackResponse>('/me/kael-feedback', input)
+  },
+}
+
+export const kaelTrainingConsentService = {
+  get() {
+    return api.get<KaelTrainingConsentResponse>('/me/kael-training-consent')
+  },
+
+  set(input: KaelTrainingConsentInput) {
+    return api.patch<KaelTrainingConsentResponse>('/me/kael-training-consent', input)
   },
 }
 

@@ -943,6 +943,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('adds service-role Kael chat persistence and confirm RPC for the Kael-first workflow', () => {
     const migration = read('supabase/migrations/20260520130514_kael_chat_sessions.sql')
+    const preIntakeMigration = read('supabase/migrations/20260604103000_kael_chat_pre_intake_memory.sql')
     const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
     const mobileApiTypes = read('apps/mobile/lib/api-types.ts')
@@ -964,10 +965,57 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeServices).toContain('KAEL_CHAT_HARD_COST_CAP_USD')
     expect(edgeServices).toContain('getKaelChatCostUsd')
     expect(edgeServices).toContain('"budget_exceeded"')
+    expect(edgeServices).toContain('appendPreIntakeKaelTurn')
+    expect(edgeServices).toContain('listKaelChats')
     expect(edgeRouter).toContain('kael.chat.create')
+    expect(edgeRouter).toContain('kael.chat.list')
     expect(edgeRouter).toContain('kael.chat.confirm')
     expect(edgeRouter).toContain('"budget_exceeded"')
+    expect(preIntakeMigration).toContain('alter column service_type drop not null')
+    expect(preIntakeMigration).toContain('kael_chat_sessions_service_required_for_deal_check')
+    expect(preIntakeMigration).toContain('kael_chat_sessions_customer_updated_idx')
     expect(mobileApiTypes).toContain("'budget_exceeded'")
+    expect(mobileApiTypes).toContain("'await_service'")
+  })
+
+  it('adds consent-gated Kael training and non-training ledgers behind mobile-api', () => {
+    const migration = read('supabase/migrations/20260604113000_kael_training_consent.sql')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const mobileServices = read('apps/mobile/lib/services.ts')
+    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+    const sharedIndex = read('packages/shared/src/index.ts')
+
+    for (const table of [
+      'public.customer_kael_training_consent',
+      'public.kael_training_events',
+      'public.kael_training_excluded_events',
+    ]) {
+      expect(migration).toContain(`alter table ${table} enable row level security`)
+      expect(migration).toContain(`grant all on ${table} to service_role`)
+    }
+
+    expect(migration).toContain('allow_training boolean not null default false')
+    expect(migration).toContain("check (exclusion_reason in ('customer_opt_out', 'consent_missing', 'consent_lookup_failed'))")
+    expect(migration).toContain('grant select on public.customer_kael_training_consent to authenticated')
+    expect(migration).toContain('grant select on public.kael_training_events to authenticated')
+    expect(migration).toContain('grant select on public.kael_training_excluded_events to authenticated')
+    expect(migration).toContain('Shared Kael training ledger for scrubbed customer data only after explicit training consent')
+    expect(migration).toContain('Scrubbed audit ledger for customer data that must not be used for training')
+    expect(edgeRouter).toContain('/me/kael-training-consent')
+    expect(edgeRouter).toContain('kaelTrainingConsentSchema')
+    expect(edgeServices).toContain('getKaelTrainingConsent')
+    expect(edgeServices).toContain('updateKaelTrainingConsent')
+    expect(edgeServices).toContain('recordKaelTrainingLedger')
+    expect(edgeServices).toContain('kael_training_excluded_events')
+    expect(edgeServices).toContain('if (!ledger.trainingAllowed) return')
+    expect(mobileServices).toContain('kaelTrainingConsentService')
+    expect(mobileServices).toContain("'/me/kael-training-consent'")
+    expect(sharedTypes).toContain('customer_kael_training_consent')
+    expect(sharedTypes).toContain('kael_training_events')
+    expect(sharedTypes).toContain('kael_training_excluded_events')
+    expect(sharedIndex).toContain('kaelTrainingConsentSchema')
+    expect(sharedIndex).toContain('KaelTrainingConsentInput')
   })
 
   it('hardens worker cancellation approval and job-media upload stages after PR review', () => {

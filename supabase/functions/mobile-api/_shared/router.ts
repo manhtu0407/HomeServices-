@@ -5,6 +5,8 @@ import {
   customerCancellationRequestSchema,
   type CustomerKaelFeedbackInput,
   customerKaelFeedbackSchema,
+  type KaelTrainingConsentInput,
+  kaelTrainingConsentSchema,
   type CustomerScopeDecisionInput,
   customerScopeDecisionSchema,
   type DisputeAdminDecisionInput,
@@ -118,6 +120,7 @@ type KaelChatStatus =
   | "abandoned"
   | "unsupported";
 type KaelChatNextAction =
+  | "await_service"
   | "await_input"
   | "ask_photo"
   | "ask_video"
@@ -149,7 +152,7 @@ type KaelChatSessionResponse = {
   id: string;
   job_id: string | null;
   customer_id: string;
-  service_type: ServiceType;
+  service_type: ServiceType | null;
   status: KaelChatStatus;
   estimate: KaelEstimate | null;
   started_at: string;
@@ -161,6 +164,13 @@ type KaelChatSessionResponse = {
 type KaelChatResponse = {
   session: KaelChatSessionResponse;
   turns: KaelChatTurnResponse[];
+};
+type KaelChatSessionSummaryResponse = KaelChatSessionResponse & {
+  created_at: string;
+  updated_at: string;
+};
+type KaelChatListResponse = {
+  sessions: KaelChatSessionSummaryResponse[];
 };
 type ConfirmSearchResponse = {
   job_id: string;
@@ -592,6 +602,15 @@ export type KaelMemoryDeleteResponse = {
   deleted: true;
 };
 
+export type KaelTrainingConsentResponse = {
+  consent: {
+    allow_training: boolean;
+    source: "profile";
+    decided_at: string | null;
+    updated_at: string | null;
+  };
+};
+
 export type MobileApiServices = {
   getHealth(
     ctx: Pick<MobileApiContext, "requestUrl" | "requestHost" | "requestProjectRef">,
@@ -614,6 +633,7 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: KaelChatCreateInput,
   ): Promise<KaelChatResponse>;
+  listKaelChats(ctx: MobileApiContext): Promise<KaelChatListResponse>;
   getKaelChat(
     ctx: MobileApiContext,
     sessionId: string,
@@ -720,6 +740,13 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: CustomerKaelFeedbackInput,
   ): Promise<CustomerKaelFeedbackResponse>;
+  getKaelTrainingConsent(
+    ctx: MobileApiContext,
+  ): Promise<KaelTrainingConsentResponse>;
+  updateKaelTrainingConsent(
+    ctx: MobileApiContext,
+    input: KaelTrainingConsentInput,
+  ): Promise<KaelTrainingConsentResponse>;
   registerWorker(
     ctx: MobileApiContext,
     input: WorkerRegisterInput,
@@ -867,6 +894,11 @@ type Route =
     successStatus: 201;
   }
   | {
+    kind: "kael.chat.list";
+    method: "GET";
+    roles: UserRole[];
+  }
+  | {
     kind: "kael.chat.get";
     method: "GET";
     sessionId: string;
@@ -1001,6 +1033,8 @@ type Route =
     roles: UserRole[];
     successStatus: 201;
   }
+  | { kind: "me.kaelTrainingConsent"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.kaelTrainingConsent.update"; method: "PATCH"; roles: UserRole[] }
   | { kind: "me.jobs.active"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.kaelMemory"; method: "GET"; roles: UserRole[] }
@@ -1088,6 +1122,12 @@ function matchRoute(request: Request): Route | null {
       successStatus: 201,
     };
   }
+  if (method === "GET" && path === "/me/kael-training-consent") {
+    return { kind: "me.kaelTrainingConsent", method: "GET", roles: ["customer", "admin"] };
+  }
+  if (method === "PATCH" && path === "/me/kael-training-consent") {
+    return { kind: "me.kaelTrainingConsent.update", method: "PATCH", roles: ["customer", "admin"] };
+  }
   if (method === "GET" && path === "/me/kael-memory") {
     return { kind: "me.kaelMemory", method: "GET", roles: ["customer", "worker", "admin"] };
   }
@@ -1104,6 +1144,13 @@ function matchRoute(request: Request): Route | null {
       method: "POST",
       roles: ["customer", "admin"],
       successStatus: 201,
+    };
+  }
+  if (method === "GET" && path === "/kael/chat") {
+    return {
+      kind: "kael.chat.list",
+      method: "GET",
+      roles: ["customer", "admin"],
     };
   }
   const kaelChat = path.match(/^\/kael\/chat\/([^/]+)(?:\/([^/]+))?$/);
@@ -1460,6 +1507,8 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.createKaelChat(ctx, input.data);
     }
+    case "kael.chat.list":
+      return services.listKaelChats(ctx);
     case "kael.chat.get":
       return services.getKaelChat(ctx, route.sessionId);
     case "kael.chat.turn": {
@@ -1579,6 +1628,13 @@ async function dispatchRoute(
       const input = customerKaelFeedbackSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.submitCustomerKaelFeedback(ctx, input.data);
+    }
+    case "me.kaelTrainingConsent":
+      return services.getKaelTrainingConsent(ctx);
+    case "me.kaelTrainingConsent.update": {
+      const input = kaelTrainingConsentSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.updateKaelTrainingConsent(ctx, input.data);
     }
     case "me.kaelMemory":
       return services.getMyKaelMemory(ctx);

@@ -11,6 +11,7 @@ import {
   workerCancellationDecisionSchema,
   jobMediaAttachSchema,
   devicePushTokenSchema,
+  kaelTrainingConsentSchema,
   reviewSchema,
   chatMessageSchema,
   sanitizeForLLM,
@@ -223,6 +224,20 @@ describe('kaelChat schemas', () => {
     expect(result.address_label).toContain('Landmark')
   })
 
+  it('accepts a pre-intake Kael chat message before service choice', () => {
+    const result = kaelChatCreateSchema.parse({
+      message: 'Hi',
+      photo_urls: [],
+    })
+
+    expect(result.service_type).toBeUndefined()
+    expect(result.message).toBe('Hi')
+  })
+
+  it('rejects an empty Kael chat create payload', () => {
+    expect(() => kaelChatCreateSchema.parse({})).toThrow()
+  })
+
   it('validates Places autocomplete input for the Edge proxy', () => {
     expect(placesAutocompleteSchema.parse({ input: 'Bình Thạnh' }).input).toBe('Bình Thạnh')
     expect(() => placesAutocompleteSchema.parse({ input: 'x' })).toThrow()
@@ -372,6 +387,27 @@ describe('workflow support schemas', () => {
         }],
       })
     ).not.toThrow()
+  })
+
+  it('validates Kael training consent as an explicit boolean choice', () => {
+    expect(kaelTrainingConsentSchema.parse({
+      allow_training: true,
+    })).toEqual({
+      allow_training: true,
+      source: 'profile',
+    })
+    expect(kaelTrainingConsentSchema.parse({
+      allow_training: false,
+      source: 'profile',
+    })).toEqual({
+      allow_training: false,
+      source: 'profile',
+    })
+    expect(() =>
+      kaelTrainingConsentSchema.parse({
+        allow_training: 'yes',
+      })
+    ).toThrow()
   })
 
   it('validates device push token registration payloads', () => {

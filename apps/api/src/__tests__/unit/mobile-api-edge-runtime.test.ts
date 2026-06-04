@@ -182,6 +182,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'getHealth',
       'getKaelCharter',
       'getKaelChat',
+      'getKaelTrainingConsent',
       'getMyKaelMemory',
       'getWorkerEarnings',
       'getWorkerKaelMemory',
@@ -189,6 +190,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'invalidateMarketCache',
       'listCustomerActiveJobs',
       'listJobMessages',
+      'listKaelChats',
       'processKaelBatchResults',
       'processKaelLearningQueue',
       'sendKaelChatTurn',
@@ -210,6 +212,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'submitReview',
       'decideDispute',
       'updateJobStatus',
+      'updateKaelTrainingConsent',
       'updateWorkerAvailability',
     ].sort())
   })
@@ -248,6 +251,8 @@ describe('mobile-api Edge runtime helpers', () => {
         },
         error: null,
       },
+      { data: null, error: null },
+      { data: { id: 'excluded-1' }, error: null },
     ])
     const ctx: MobileApiContext = {
       success: true,
@@ -267,7 +272,7 @@ describe('mobile-api Edge runtime helpers', () => {
       status: 'new',
       created_at: '2026-06-02T00:00:00.000Z',
     })
-    expect(client.calls).toHaveLength(1)
+    expect(client.calls).toHaveLength(3)
     expect(client.calls[0].table).toBe('customer_kael_feedback')
     expect(client.calls[0].operations).toContainEqual([
       'insert',
@@ -281,6 +286,132 @@ describe('mobile-api Edge runtime helpers', () => {
       }),
     ])
     expect(client.calls[0].operations).toContainEqual(['select', 'id, status, created_at'])
+    expect(client.calls[0].operations).toContainEqual(['maybeSingle'])
+    expect(client.calls[1].table).toBe('customer_kael_training_consent')
+    expect(client.calls[1].operations).toContainEqual(['eq', 'customer_id', 'customer-1'])
+    expect(client.calls[2].table).toBe('kael_training_excluded_events')
+    expect(client.calls[2].operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        customer_id: 'customer-1',
+        event_type: 'customer_feedback_submitted',
+        exclusion_reason: 'consent_missing',
+        payload_scrubbed: expect.objectContaining({
+          message_scrubbed: expect.stringContaining('[phone]'),
+        }),
+        source: 'customer_kael_feedback',
+        source_id: 'feedback-1',
+      }),
+    ])
+  })
+
+  it('stores scrubbed Kael feedback in the shared training ledger only after opt-in', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'feedback-1',
+          status: 'new',
+          created_at: '2026-06-02T00:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: {
+          allow_training: true,
+          decided_at: '2026-06-04T00:00:00.000Z',
+          updated_at: '2026-06-04T00:00:00.000Z',
+        },
+        error: null,
+      },
+      { data: { id: 'training-1' }, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await createEdgeServices({}).submitCustomerKaelFeedback(ctx, {
+      language: 'vi',
+      message: 'Kael nên nhắc rõ hơn qua số 0901234567 khi biên giá thay đổi.',
+      source: 'profile',
+    })
+
+    expect(client.calls.map((call) => call.table)).toEqual([
+      'customer_kael_feedback',
+      'customer_kael_training_consent',
+      'kael_training_events',
+    ])
+    expect(client.calls[2].operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        customer_id: 'customer-1',
+        event_type: 'customer_feedback_submitted',
+        payload_scrubbed: expect.objectContaining({
+          message_scrubbed: expect.stringContaining('[phone]'),
+        }),
+        source: 'customer_kael_feedback',
+        source_id: 'feedback-1',
+      }),
+    ])
+  })
+
+  it('defaults Kael training consent to opt-out when no preference exists', async () => {
+    const client = makeSequenceClient([{ data: null, error: null }])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).getKaelTrainingConsent(ctx)).resolves.toEqual({
+      consent: {
+        allow_training: false,
+        decided_at: null,
+        source: 'profile',
+        updated_at: null,
+      },
+    })
+    expect(client.calls[0].table).toBe('customer_kael_training_consent')
+    expect(client.calls[0].operations).toContainEqual(['eq', 'customer_id', 'customer-1'])
+  })
+
+  it('updates Kael training consent through a service-role upsert', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          allow_training: true,
+          decided_at: '2026-06-04T00:00:00.000Z',
+          source: 'profile',
+          updated_at: '2026-06-04T00:00:00.000Z',
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).updateKaelTrainingConsent(ctx, {
+      allow_training: true,
+      source: 'profile',
+    })).resolves.toMatchObject({ consent: { allow_training: true, source: 'profile' } })
+    expect(client.calls[0].table).toBe('customer_kael_training_consent')
+    expect(client.calls[0].operations).toContainEqual([
+      'upsert',
+      expect.objectContaining({
+        allow_training: true,
+        consent_version: '2026-06-04.v1',
+        customer_id: 'customer-1',
+        source: 'profile',
+      }),
+    ])
+    expect(client.calls[0].operations).toContainEqual(['select', 'allow_training, source, decided_at, updated_at'])
     expect(client.calls[0].operations).toContainEqual(['maybeSingle'])
   })
 
@@ -645,6 +776,124 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(budgetTurnUpdate?.[1]).not.toHaveProperty('estimate_ready_at')
   })
 
+  it('persists a pre-intake Kael greeting without calling the AI pipeline', async () => {
+    const client = makeSequenceClient([
+      { data: [{ allowed: true, reason: null, minute_count: 1, hour_count: 1 }], error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      { data: { id: 'turn-customer' }, error: null },
+      { data: { id: 'turn-kael' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: null,
+          status: 'active',
+          started_at: '2026-06-04T00:00:00.000Z',
+          estimate_ready_at: null,
+          total_turns: 2,
+          total_cost_usd: 0,
+          safe_metadata: { flow_state: 'pre_intake' },
+          created_at: '2026-06-04T00:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: [
+          {
+            id: 'turn-customer',
+            session_id: 'kael-session-1',
+            turn_index: 1,
+            role: 'customer',
+            content_type: 'text',
+            text_content: 'Hi',
+            media_refs: [],
+            safe_metadata: { pre_intake: true },
+            created_at: '2026-06-04T00:00:01.000Z',
+          },
+          {
+            id: 'turn-kael',
+            session_id: 'kael-session-1',
+            turn_index: 2,
+            role: 'kael',
+            content_type: 'clarification',
+            text_content: 'Chao ban, minh la Kael.',
+            media_refs: [],
+            safe_metadata: { pre_intake: true },
+            created_at: '2026-06-04T00:00:02.000Z',
+          },
+        ],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).createKaelChat(ctx, {
+      message: 'Hi',
+      photo_urls: [],
+      problem_chips: [],
+    })
+
+    expect(result.session.service_type).toBeNull()
+    expect(result.session.next_action).toBe('await_service')
+    expect(result.turns).toHaveLength(2)
+    expect(client.calls.some((call) => call.table === 'service_problems')).toBe(false)
+    expect(client.calls.filter((call) => call.table === 'kael_chat_turns')).toHaveLength(3)
+    const sessionInsert = client.calls.find((call) =>
+      call.table === 'kael_chat_sessions' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )
+    expect(sessionInsert?.operations.find((op) => op[0] === 'insert')?.[1]).toMatchObject({
+      customer_id: 'customer-1',
+      service_type: null,
+    })
+  })
+
+  it('lists recent Kael chat sessions for the authenticated customer archive', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: null,
+          status: 'active',
+          started_at: '2026-06-04T00:00:00.000Z',
+          estimate_ready_at: null,
+          total_turns: 2,
+          total_cost_usd: 0,
+          safe_metadata: {},
+          created_at: '2026-06-04T00:00:00.000Z',
+          updated_at: '2026-06-04T00:00:02.000Z',
+        }],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).listKaelChats(ctx)
+
+    expect(result.sessions[0]).toMatchObject({
+      id: 'kael-session-1',
+      service_type: null,
+      next_action: 'await_service',
+    })
+    expect(client.calls[0].operations).toContainEqual(['eq', 'customer_id', 'customer-1'])
+    expect(client.calls[0].operations).toContainEqual(['order', 'updated_at', { ascending: false }])
+    expect(client.calls[0].operations).toContainEqual(['limit', 8])
+  })
+
   it('records structured missing-field artifact metadata when Kael needs district context', async () => {
     const client = makeSequenceClient([
       {
@@ -745,6 +994,98 @@ describe('mobile-api Edge runtime helpers', () => {
       missing_fields: ['address_district'],
       may_transition: false,
     })
+  })
+
+  it('answers electrical advice questions before asking district or proposing a ticket', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: 'electrical',
+          status: 'active',
+          total_turns: 0,
+          safe_metadata: {},
+        },
+        error: null,
+      },
+      { data: { id: 'turn-customer' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      { data: { id: 'kael-session-1', total_cost_usd: 0 }, error: null },
+      { data: { id: 'kael-session-1', total_turns: 1, total_cost_usd: 0, safe_metadata: {} }, error: null },
+      { data: { id: 'turn-advisory' }, error: null },
+      { data: { id: 'kael-session-1' }, error: null },
+      {
+        data: {
+          id: 'kael-session-1',
+          job_id: null,
+          customer_id: 'customer-1',
+          service_type: 'electrical',
+          status: 'active',
+          started_at: '2026-06-04T00:00:00.000Z',
+          estimate_ready_at: null,
+          total_turns: 2,
+          total_cost_usd: 0,
+          safe_metadata: {},
+          created_at: '2026-06-04T00:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: [
+          {
+            id: 'turn-customer',
+            session_id: 'kael-session-1',
+            turn_index: 1,
+            role: 'customer',
+            content_type: 'text',
+            text_content: 'Bóng đèn nhà tôi đang bật ổn định thì tự nhiên bị cháy thì tôi nên làm gì?',
+            media_refs: [],
+            safe_metadata: {},
+            created_at: '2026-06-04T00:00:01.000Z',
+          },
+          {
+            id: 'turn-advisory',
+            session_id: 'kael-session-1',
+            turn_index: 2,
+            role: 'kael',
+            content_type: 'clarification',
+            text_content: 'Trước hết tắt công tắc hoặc CB khu vực đèn và để bóng nguội.',
+            media_refs: [],
+            safe_metadata: { advisory_only: true },
+            created_at: '2026-06-04T00:00:02.000Z',
+          },
+        ],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    const result = await createEdgeServices({}).sendKaelChatTurn(ctx, 'kael-session-1', {
+      message: 'Bóng đèn nhà tôi đang bật ổn định thì tự nhiên bị cháy thì tôi nên làm gì?',
+      photo_urls: [],
+    })
+
+    expect(result.session.next_action).toBe('await_input')
+    expect(client.calls.some((call) => call.table === 'service_problems')).toBe(false)
+    const clarificationInsert = client.calls.find((call) =>
+      call.table === 'kael_chat_turns' &&
+      call.operations.some((op) => {
+        const value = op[1] as { content_type?: string } | undefined
+        return op[0] === 'insert' && value?.content_type === 'clarification'
+      })
+    )
+    const insertedTurn = clarificationInsert?.operations.find((op) => op[0] === 'insert')?.[1] as { safe_metadata?: Record<string, unknown>; text_content?: string } | undefined
+    expect(insertedTurn?.text_content).toContain('tắt công tắc')
+    expect(insertedTurn?.text_content).not.toContain('quận')
+    expect(insertedTurn?.safe_metadata).toMatchObject({ advisory_only: true })
+    expect(insertedTurn?.safe_metadata).not.toHaveProperty('artifact_proposal')
   })
 
   it('records structured artifact metadata when Kael needs more description before estimating', async () => {
@@ -2951,6 +3292,8 @@ describe('mobile-api Edge runtime helpers', () => {
         error: null,
       },
       { data: null, error: null },
+      { data: null, error: null },
+      { data: { id: 'excluded-1' }, error: null },
       { data: { service_preferences: {}, trust_signals: {}, safe_metadata: {} }, error: null },
       { data: null, error: null },
       { data: { service_skill_proficiency: {}, reliability_signals: {}, safe_metadata: {} }, error: null },
@@ -3016,6 +3359,16 @@ describe('mobile-api Edge runtime helpers', () => {
       .filter((call) => call.table === 'kael_memory_audit')
       .map((call) => (call.operations.find((op) => op[0] === 'insert')?.[1] as Record<string, unknown>)?.layer)
     expect(memoryAuditLayers).toEqual(['L2', 'L3', 'L4', 'L5'])
+    expect(client.calls.find((call) => call.table === 'kael_training_excluded_events')?.operations)
+      .toContainEqual([
+        'insert',
+        expect.objectContaining({
+          event_type: 'post-A14',
+          exclusion_reason: 'consent_missing',
+          source: 'job_review',
+        }),
+      ])
+    expect(client.calls.some((call) => call.table === 'kael_learning_queue')).toBe(false)
     expect(client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')?.operations)
       .toContainEqual([
         'rpc',

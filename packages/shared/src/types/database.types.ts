@@ -172,6 +172,47 @@ export type Database = {
           },
         ]
       }
+      customer_kael_training_consent: {
+        Row: {
+          allow_training: boolean
+          consent_version: string
+          created_at: string
+          customer_id: string
+          decided_at: string | null
+          safe_metadata: Json
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          allow_training?: boolean
+          consent_version?: string
+          created_at?: string
+          customer_id: string
+          decided_at?: string | null
+          safe_metadata?: Json
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          allow_training?: boolean
+          consent_version?: string
+          created_at?: string
+          customer_id?: string
+          decided_at?: string | null
+          safe_metadata?: Json
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_kael_training_consent_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_cancellation_reason_taxonomy: {
         Row: {
           admin_tunable: boolean
@@ -1484,7 +1525,7 @@ export type Database = {
           id: string
           job_id: string | null
           safe_metadata: Json
-          service_type: Database["public"]["Enums"]["service_type"]
+          service_type: Database["public"]["Enums"]["service_type"] | null
           started_at: string
           status: string
           total_cost_usd: number
@@ -1500,7 +1541,7 @@ export type Database = {
           id?: string
           job_id?: string | null
           safe_metadata?: Json
-          service_type: Database["public"]["Enums"]["service_type"]
+          service_type?: Database["public"]["Enums"]["service_type"] | null
           started_at?: string
           status?: string
           total_cost_usd?: number
@@ -1516,7 +1557,7 @@ export type Database = {
           id?: string
           job_id?: string | null
           safe_metadata?: Json
-          service_type?: Database["public"]["Enums"]["service_type"]
+          service_type?: Database["public"]["Enums"]["service_type"] | null
           started_at?: string
           status?: string
           total_cost_usd?: number
@@ -1997,6 +2038,91 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_training_events: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          event_type: string
+          id: string
+          payload_scrubbed: Json
+          safe_metadata: Json
+          source: string
+          source_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          event_type: string
+          id?: string
+          payload_scrubbed?: Json
+          safe_metadata?: Json
+          source: string
+          source_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          event_type?: string
+          id?: string
+          payload_scrubbed?: Json
+          safe_metadata?: Json
+          source?: string
+          source_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_training_events_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_training_excluded_events: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          event_type: string
+          exclusion_reason: string
+          id: string
+          payload_scrubbed: Json
+          safe_metadata: Json
+          source: string
+          source_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          event_type: string
+          exclusion_reason?: string
+          id?: string
+          payload_scrubbed?: Json
+          safe_metadata?: Json
+          source: string
+          source_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          event_type?: string
+          exclusion_reason?: string
+          id?: string
+          payload_scrubbed?: Json
+          safe_metadata?: Json
+          source?: string
+          source_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_training_excluded_events_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
