@@ -1,6 +1,6 @@
 import type { EdgeAiSecrets, PipelineInput, PipelineResult, PipelineStageLog, SupabaseLike } from "./types.ts";
-import { PRICE_DISCLAIMER, UNSUPPORTED_SERVICE_MESSAGE } from "./types.ts";
-import { classifyIntent, buildFallbackIntent } from "./intent.ts";
+import { CLARIFICATION_CAP, PRICE_DISCLAIMER, UNSUPPORTED_SERVICE_MESSAGE } from "./types.ts";
+import { buildFallbackIntent, classifyIntent, diagnoseIntake } from "./intent.ts";
 import { analyzeDescription } from "./vision.ts";
 import { marketLookupTelemetry, searchMarketPrice } from "./market.ts";
 import { fetchBaselineCandidates, normalizeProblemSlugForService, pickBaselineCandidate, synthesizePrice } from "./synthesis.ts";
@@ -40,7 +40,10 @@ export async function runKaelPipeline(
     label: "intent",
     purpose: "intent_classification",
     timeoutMs: KAEL_ROUTING_CONFIG.intent_classification.latencyBudgetMs,
-    run: () => classifyIntent(serviceType, problemChips, description, secrets),
+    run: () =>
+      input.intakeDiagnosisEnabled
+        ? diagnoseIntake(serviceType, problemChips, description, secrets, input.conversationContext)
+        : classifyIntent(serviceType, problemChips, description, secrets),
     fallback: () => ({
       success: false as const,
       fallback: buildFallbackIntent(serviceType, problemChips, description),
@@ -77,13 +80,42 @@ export async function runKaelPipeline(
     failureReason: intentStage.success ? undefined : intentStage.failureReason,
   });
 
-  if (intent.service_type === "unsupported") {
+  if (intent.service_type === "unsupported" || intent.scope_signal === "out_of_scope") {
     return {
       success: false,
       error: UNSUPPORTED_SERVICE_MESSAGE,
       code: "UNSUPPORTED",
       stageLogs,
     };
+  }
+
+  // Intake-diagnosis short-circuits — only when diagnosis mode produced the signals.
+  // Stop BEFORE the parallel vision/market block so a clarification/mismatch turn
+  // costs no downstream AI.
+  if (input.intakeDiagnosisEnabled) {
+    if (intent.scope_signal === "service_mismatch") {
+      return {
+        success: false,
+        error: "Mô tả của bạn không khớp với dịch vụ đang chọn.",
+        code: "SERVICE_MISMATCH",
+        stageLogs,
+        suggestedService: intent.suggested_service ?? undefined,
+      };
+    }
+    if (intent.needs_clarification && (input.clarificationCount ?? 0) < CLARIFICATION_CAP) {
+      return {
+        success: false,
+        error: intent.clarification_question_vi ??
+          "Bạn mô tả rõ hơn vấn đề đang gặp giúp Kael nhé.",
+        code: "NEEDS_CLARIFICATION",
+        stageLogs,
+        clarification: {
+          question: intent.clarification_question_vi ?? null,
+          missingSlots: intent.missing_slots ?? [],
+          customerSentiment: intent.customer_sentiment,
+        },
+      };
+    }
   }
 
   const validServiceType = intent.service_type;
@@ -359,6 +391,7 @@ export async function runKaelPipeline(
     fallbackUsed,
     stageLogs,
     serviceProblemId: baselineResult.serviceProblemId,
+    customerSentiment: input.intakeDiagnosisEnabled ? intent.customer_sentiment : undefined,
     estimate: {
       service_type: validServiceType,
       problem_category: problemSlug,

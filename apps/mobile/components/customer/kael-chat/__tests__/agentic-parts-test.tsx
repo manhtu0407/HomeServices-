@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { Alert, StyleSheet } from 'react-native'
 import { buildWorkflowViewModel, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@home-services/shared'
-import { type KaelChatResponse } from '@/lib/api-types'
+import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { KaelChatSurface } from '../kael-chat-surface'
 import { setPendingKaelChatDraft, takePendingKaelChatDraft } from '../pending-intake'
 import {
@@ -14,7 +14,7 @@ import {
   KaelPhaseContextCard,
 } from '../agentic-parts'
 import { styles } from '../styles'
-import { KaelChatThread } from '../thread'
+import { ChatTurn, KaelChatThread } from '../thread'
 
 let mockRouteParams: Record<string, string | string[] | undefined> = {}
 let mockAppLanguage: 'vi' | 'en' = 'vi'
@@ -942,5 +942,63 @@ describe('Kael agentic phase cards', () => {
 
     fireEvent.press(screen.getByTestId('customer-kael-chat-intake-retry'))
     expect(retryPendingIntake).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('ChatTurn — clarification rendering (A4)', () => {
+  const clarifyText = { turnFallback: 'Kael đang xử lý' } as any
+
+  function clarificationTurn(overrides: Partial<KaelChatTurn> = {}): KaelChatTurn {
+    return {
+      id: 'turn-1',
+      session_id: 'sess-1',
+      turn_index: 2,
+      role: 'kael',
+      content_type: 'clarification',
+      text_content: 'Cầu dao có tự nhảy lại sau khi bạn bật lên không?',
+      media_refs: [],
+      estimate: null,
+      clarification: {
+        question: 'Cầu dao có tự nhảy lại sau khi bạn bật lên không?',
+        missing_slots: ['symptom', 'severity'],
+      },
+      created_at: '2026-06-04T00:00:00Z',
+      ...overrides,
+    }
+  }
+
+  it('renders a distinct clarification affordance with the question and slot hints', () => {
+    render(<ChatTurn language="vi" reduceMotion reveal={false} text={clarifyText} turn={clarificationTurn()} />)
+    expect(screen.getByTestId('customer-kael-chat-clarification-turn-1')).toBeTruthy()
+    expect(screen.getByText('Kael đang hỏi')).toBeTruthy()
+    expect(screen.getByText('Cầu dao có tự nhảy lại sau khi bạn bật lên không?')).toBeTruthy()
+    expect(screen.getByTestId('customer-kael-chat-clarification-slot-symptom')).toBeTruthy()
+    expect(screen.getByText('dấu hiệu')).toBeTruthy()
+    expect(screen.getByText('mức độ')).toBeTruthy()
+  })
+
+  it('does not apply the clarification affordance to a normal Kael text turn', () => {
+    render(
+      <ChatTurn
+        language="vi"
+        reduceMotion
+        reveal={false}
+        text={clarifyText}
+        turn={clarificationTurn({ content_type: 'text', clarification: null, text_content: 'Xin chào bạn' })}
+      />,
+    )
+    expect(screen.queryByTestId('customer-kael-chat-clarification-turn-1')).toBeNull()
+  })
+
+  it('still renders the question when slot data is absent (graceful)', () => {
+    render(<ChatTurn language="vi" reduceMotion reveal={false} text={clarifyText} turn={clarificationTurn({ clarification: null })} />)
+    expect(screen.getByTestId('customer-kael-chat-clarification-turn-1')).toBeTruthy()
+    expect(screen.queryByTestId('customer-kael-chat-clarification-slot-symptom')).toBeNull()
+  })
+
+  it('localizes the clarification label and slot hints in English', () => {
+    render(<ChatTurn language="en" reduceMotion reveal={false} text={clarifyText} turn={clarificationTurn()} />)
+    expect(screen.getByText('Kael is asking')).toBeTruthy()
+    expect(screen.getByText('symptom')).toBeTruthy()
   })
 })

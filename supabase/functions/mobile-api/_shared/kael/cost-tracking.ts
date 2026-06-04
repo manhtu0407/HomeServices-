@@ -6,6 +6,9 @@ export const KAEL_OPTIMIZATION_FLAG_NAMES = [
   "KAEL_OPT_MARKET_CACHE_ENABLED",
   "KAEL_OPT_BATCH_LEARNING_ENABLED",
   "KAEL_OPT_BATCH_API_ENABLED",
+  // Smart-clarification intake-diagnosis (2026-06-04). Off = legacy hardcoded
+  // clarification path; on = conversation-aware diagnose + ONE specific question.
+  "KAEL_OPT_LLM_CLARIFICATION_ENABLED",
 ] as const;
 
 export type KaelOptimizationFlagName =
@@ -43,6 +46,7 @@ export function readKaelOptimizationFlags(
     KAEL_OPT_MARKET_CACHE_ENABLED: envFlag(getEnv("KAEL_OPT_MARKET_CACHE_ENABLED")),
     KAEL_OPT_BATCH_LEARNING_ENABLED: envFlag(getEnv("KAEL_OPT_BATCH_LEARNING_ENABLED")),
     KAEL_OPT_BATCH_API_ENABLED: envFlag(getEnv("KAEL_OPT_BATCH_API_ENABLED")),
+    KAEL_OPT_LLM_CLARIFICATION_ENABLED: envFlag(getEnv("KAEL_OPT_LLM_CLARIFICATION_ENABLED")),
   };
 }
 

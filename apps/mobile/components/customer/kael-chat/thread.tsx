@@ -295,7 +295,7 @@ function KaelLiveActivityIndicator({
   )
 }
 
-function ChatTurn({
+export function ChatTurn({
   language,
   reduceMotion,
   reveal,
@@ -310,10 +310,18 @@ function ChatTurn({
 }) {
   const tokens = useKaelChatTokens()
   const isCustomer = turn.role === 'customer'
+  // A4 (STRUCTURES.md): clarification turns get a distinct affordance so the
+  // customer knows Kael is asking a specific question they should answer.
+  const isClarification = !isCustomer && turn.content_type === 'clarification'
+  const missingSlots = isClarification ? (turn.clarification?.missing_slots ?? []) : []
   const rawBody = turn.text_content ?? turn.estimate?.problem_summary ?? text.turnFallback
   const body = isCustomer ? rawBody : localizedGeneratedText(rawBody, language, text.turnFallback)
   const visibleBody = useProgressiveKaelText(body, reveal && !isCustomer, reduceMotion)
-  const who = isCustomer ? localizedRoleCustomer(language) : 'Kael'
+  const who = isCustomer
+    ? localizedRoleCustomer(language)
+    : isClarification
+      ? localizedClarifyLabel(language)
+      : 'Kael'
 
   return (
     <View style={[styles.turnRow, isCustomer ? styles.turnRowCustomer : null]} testID={`customer-kael-chat-turn-${turn.role}`}>
@@ -322,9 +330,27 @@ function ChatTurn({
           <Image source={kaelModel8AHead} style={styles.turnAvatarImage} />
         </View>
       )}
-      <View style={[styles.turnBubble, isCustomer ? styles.customerTurn : styles.kaelTurn, !isCustomer ? styles.turnBubbleWithAvatar : null, { backgroundColor: isCustomer ? tokens.service : tokens.raised, borderColor: isCustomer ? tokens.borderStrong : tokens.border }, kaelSurfacePaint(tokens, isCustomer ? 'customerBubble' : 'kaelBubble')]}>
+      <View
+        accessibilityHint={isClarification ? localizedClarifyHint(language) : undefined}
+        style={[styles.turnBubble, isCustomer ? styles.customerTurn : styles.kaelTurn, !isCustomer ? styles.turnBubbleWithAvatar : null, { backgroundColor: isCustomer ? tokens.service : tokens.raised, borderColor: isClarification ? tokens.primary : isCustomer ? tokens.borderStrong : tokens.border }, kaelSurfacePaint(tokens, isCustomer ? 'customerBubble' : 'kaelBubble')]}
+        testID={isClarification ? `customer-kael-chat-clarification-${turn.id}` : undefined}
+      >
         <Text style={[styles.turnRole, { color: tokens.primary }]} numberOfLines={1}>{who}</Text>
         <Text accessibilityLabel={body} style={[styles.turnText, { color: tokens.text }]} testID={`customer-kael-chat-turn-body-${turn.id}`}>{visibleBody || ' '}</Text>
+        {missingSlots.length > 0 ? (
+          <View style={[styles.chatQuickServices, { marginTop: 8 }]} testID={`customer-kael-chat-clarification-slots-${turn.id}`}>
+            <Text style={[styles.turnRole, { color: tokens.muted, marginRight: 2 }]}>{localizedClarifyHintPrefix(language)}</Text>
+            {missingSlots.map((slot) => (
+              <View
+                key={slot}
+                style={[styles.serviceChip, { backgroundColor: tokens.service, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'pill')]}
+                testID={`customer-kael-chat-clarification-slot-${slot}`}
+              >
+                <Text style={[styles.chipText, { color: tokens.text }]} numberOfLines={1}>{localizedSlotLabel(slot, language)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
         {turn.estimate ? <EstimateInline estimate={turn.estimate} language={language} text={text} /> : null}
       </View>
     </View>
@@ -427,6 +453,33 @@ function resolveKaelLifecyclePanel({
 
 function localizedRoleCustomer(language: AppLanguage) {
   return language === 'en' ? 'You' : 'Bạn'
+}
+
+const KAEL_SLOT_LABELS: Record<string, { vi: string; en: string }> = {
+  location: { vi: 'vị trí', en: 'location' },
+  symptom: { vi: 'dấu hiệu', en: 'symptom' },
+  severity: { vi: 'mức độ', en: 'severity' },
+  duration: { vi: 'thời gian', en: 'duration' },
+  photo: { vi: 'hình ảnh', en: 'photo' },
+  district: { vi: 'khu vực', en: 'district' },
+}
+
+function localizedClarifyLabel(language: AppLanguage) {
+  return language === 'en' ? 'Kael is asking' : 'Kael đang hỏi'
+}
+
+function localizedClarifyHint(language: AppLanguage) {
+  return language === 'en' ? 'Kael is asking for more detail' : 'Kael đang hỏi thêm chi tiết'
+}
+
+function localizedClarifyHintPrefix(language: AppLanguage) {
+  return language === 'en' ? 'Kael needs:' : 'Kael cần thêm:'
+}
+
+function localizedSlotLabel(slot: string, language: AppLanguage) {
+  const entry = KAEL_SLOT_LABELS[slot]
+  if (!entry) return slot
+  return language === 'en' ? entry.en : entry.vi
 }
 
 function localizedGeneratedText(value: string, language: AppLanguage, fallback: string) {
