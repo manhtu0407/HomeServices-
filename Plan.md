@@ -9560,3 +9560,75 @@ Tu chốt direction qua interview: classic/minimal, OS-grade (Apple Liquid Glass
 - 2026-05-29 — C1 done: MEMORY.md 475→45 index; docs/memory/2026-05.md archive 35 mục byte-exact.
 - 2026-05-29 — C2 done: /kael-mem command; final verify pass (links resolve, skills/command live).
 - 2026-05-29 — B done: design/signature.md + glass-liquid-signature skill + gold reference dock. Direction Tu: neutral+mint classic OS-grade. Token chờ visual sign-off Expo. Tu chốt: bàn B xong → tạo 1 commit mới gộp A+C+B.
+
+---
+
+## 30. Kael Smart Clarification + LLM-Assisted Intake Gates — 2026-06-04
+
+### 30.0 Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-smart-clarification-20260604
+Created:        2026-06-04
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         DONE — backend+frontend implemented + STAGING BEHAVIOR-VERIFIED 2026-06-04 (flag-gated). Staging xyylanuyflrjzbjzhqfl: v87 deployed + flag ON.
+Trigger:        Tu — Kael "đã hoạt động nhưng chưa linh hoạt": input mơ hồ → không hiểu ngữ cảnh để hỏi lại
+Scope:          Smart clarification (LLM-driven, A4) + LLM-assist 2 keyword gates (boundary + demanding) + multi-turn context (closes §27 F-15)
+Out of scope:   Worker flows, payment, autonomy contract, service expansion; staging deploy (Tu go)
+Effort:         ~1 session agent
+Phase count:    3 (P1 backend, P2 frontend, P3 verify/docs)
+```
+
+**Vấn đề (verified in code):** Kael chat = estimate pipeline 1 lượt; "clarification" = 3 string cứng + heuristic `message.length<10` (vi phạm STRUCTURES.md A4 "never generic"); `intent.needs_clarification` tính nhưng không ai đọc; không có multi-turn context (F-15); 2 gate (boundary/demanding) keyword-thuần.
+
+**Outcome:** Kael nhận input mơ hồ → hỏi **1 câu cụ thể theo ngữ cảnh** (A4) + nhớ context xuyên turn; gate boundary/demanding có LLM-assist với keyword fast-path + fallback. Server-side, schema-validated, autonomy/price boundary KHÔNG đổi.
+
+### 30.0.1 Decision Log
+
+- **D1** (Tu) Scope = "Clarification thông minh" (LLM-driven, consume needs_clarification+confidence, slot-filling, 3–5 turn context, contextual question A4).
+- **D2** (Tu) Keyword gates = "Có, kèm fallback" (LLM-assist trên; keyword = fast-path + fallback).
+- **D3** Ship **gated** sau `KAEL_OPT_LLM_CLARIFICATION_ENABLED` (OFF mặc định = zero behavior change).
+- **D4** Tách `diagnoseIntake` riêng (KHÔNG mutate `classifyIntent`) → flag-off path byte-identical, zero regression.
+- **D5** Demanding LLM-assist = one-turn-lag sentiment (gate `qaCount>=2`, **soft-only** — hard escalation vẫn 100% keyword). Lý do: diagnosis chạy trong pipeline, sau gate demanding.
+- **D6** Edge diagnose dùng `maxTokens:320` raw (route intent cap quá chặt cho structured JSON).
+- **D7** Frontend slot chips = informational hint (không phải nút answer); khách trả lời ở composer như cũ (backend chưa cấp answer-options).
+
+### 30.0.2 Authority refs
+critical.md (§0/§3/§5/§8/§24/§25) · RULES.md (#2/#3/#4/#6/#7/#8/#9/#10) · protocols/ai-data-security.md · STRUCTURES.md (A2–A6/A4, §9 Kael workflow+providers, §11 KaelPriceCheckModule, §12, §21) · design.md (§5/§27) + design/signature.md+motion.md · code-ownership-map.md · Plan.md §27 (F-15).
+
+### 30.1 Phases (built + owner files)
+
+**P1 — Backend core (Tasks #1–#4):**
+- Intake-diagnosis: `kael/types.ts` + `apps/api/src/lib/kael/schemas.ts` (`intentResultSchema` +5 optional fields: missing_slots, clarification_question_vi, scope_signal, suggested_service, customer_sentiment); `kael/prompts.ts` (`buildIntakeDiagnosisMessages` + `KAEL_INTAKE_DIAGNOSIS_PROMPT_VERSION=2026-06-04.v1`); `kael/intent.ts` (`diagnoseIntake`, classifyIntent untouched). Both edge + apps/api parity.
+- Pipeline short-circuit: `kael/pipeline.ts` (+ `apps/api` parity) — sau intent, trước vision/market: out_of_scope→UNSUPPORTED, service_mismatch→SERVICE_MISMATCH, needs_clarification && count<`CLARIFICATION_CAP`(2)→NEEDS_CLARIFICATION; surface `customerSentiment`.
+- Chat wiring: `_shared/services.ts` `advanceKaelChatEstimate` — flag-gated; fetch turns→conversationContext + count; handle codes; **self-check câu hỏi qua `runKaelSelfCheckPipeline`** (Rule #3, no raw AI). Flag `KAEL_OPT_LLM_CLARIFICATION_ENABLED` in `kael/cost-tracking.ts` + `.env.example`.
+- Demanding assist: `kael/agentic/demanding-customer-detect.ts` (+llmSentiment, soft-only, qaCount>=2); store/read `last_customer_sentiment` in session metadata (merge-safe).
+
+**P2 — Frontend (Task #6):**
+- `_shared/services.ts` `serializeKaelTurn` surface `clarification{question,missing_slots}`; `apps/mobile/lib/api-types.ts` `KaelChatTurn.clarification?`; `kael-chat/thread.tsx` `ChatTurn` render riêng (mint "Kael đang hỏi" + accent + light slot chips, no glass-heavy); design preflight + glass-liquid/kael-motion/kael-frontend-test.
+
+**P3 — Verify/docs (Task #7):** deno check edge + full test sweep + this §30.
+
+### 30.2 Skills mapping
+kael-ai-boundary (primary) · kael-tdd · kael-security-sweep · kael-architecture-deepening · kael-review · karpathy-guidelines · (P2) glass-liquid-signature + kael-motion + kael-frontend-test. kael-supabase = verified no-migration.
+
+### 30.3 Verification evidence (2026-06-04, real runs)
+- **Edge `deno check supabase/functions/mobile-api/index.ts`: PASS** (full graph compiles — closes edge type-check gap).
+- apps/api: `tsc` TC=0; vitest **1355 passed, 59 skipped (integration—no creds), 0 fail**.
+- apps/mobile: `tsc` TC=0; jest kael-chat **21 pass** (4 new clarification render). Full jest 120 pass.
+- packages/shared: 578 pass.
+- **24 new tests** (intake-diagnosis 7, pipeline-clarification 5, flag 2, demanding-assist 6, clarification render 4).
+- Flag OFF → behavior unchanged (tested).
+
+### 30.4 Remaining + Known issues
+- **Staging DB contract VERIFIED (2026-06-04, read-only via Supabase MCP, staging `xyylanuyflrjzbjzhqfl`):** `kael_chat_turns.content_type` CHECK includes `'clarification'`; `kael_chat_sessions.status` CHECK includes `'unsupported'`; role/cost_usd/latency_ms/text_content columns present → staging DB sẽ chấp nhận clarification + mismatch turns code ghi (no migration needed). mobile-api deployed = **v86** (OLD code, pre-clarification).
+- **Staging behavioral smoke (flag-on): ✅ PASSED 2026-06-04** (Tu cấp access token → `supabase functions deploy mobile-api` v87 + `secrets set KAEL_OPT_LLM_CLARIFICATION_ENABLED=true` + disposable test customer auth → `/kael/chat`).
+  - Turn 1 (vague "nhà bị hư cái đó rồi…"): `content_type=clarification`, câu hỏi **cụ thể** "Bạn có thể mô tả cụ thể hư hỏng gì không? Ví dụ: mất điện, đèn nhấp nháy, hay ổ cắm hỏng?" (≠ generic), `missing_slots=["symptom"]`, `next_action=await_input`.
+  - Turn 2 (follow-up "cái cầu dao ấy, bật lên là nó nhảy lại liền"): Kael dùng **multi-turn context** → `breaker_trip` estimate 300k–700k, `next_action=estimate_ready`. F-15 closed end-to-end.
+  - Test user cleaned up. **Staging state hiện tại: v87 deployed + flag ON** (revert: `secrets set KAEL_OPT_LLM_CLARIFICATION_ENABLED=false`).
+- **Pre-existing failures (NOT this work, confirmed via git stash):** mobile-wiring.test.ts ×2 (worker-surfaces visual contract + create-job final_price extraction); worker-home-surface-test.tsx ×2 (WorkerChatSurface media picker + message submit). Files untouched bởi §30.
+
+### 30.5 Change Log
+```text
+v1.0 — 2026-06-04 — P1–P3 implemented + verified (deno check + 24 new tests). Flag OFF default. Staging smoke pending Tu env.
+```

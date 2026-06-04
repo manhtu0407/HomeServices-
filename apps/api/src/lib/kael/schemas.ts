@@ -1,10 +1,33 @@
 import { z } from 'zod'
 
+// Smart-clarification intake-diagnosis slots (2026-06-04). The pieces of context
+// Kael may still need before a reliable estimate. Used to drive ONE specific
+// follow-up question (STRUCTURES.md A4), never a generic "please add more info".
+export const KAEL_INTAKE_MISSING_SLOTS = [
+  'location',
+  'symptom',
+  'severity',
+  'duration',
+  'photo',
+  'district',
+] as const
+
 export const intentResultSchema = z.object({
   service_type: z.enum(['electrical', 'plumbing', 'cleaning', 'unsupported']),
   problem_slug: z.string().min(1).max(100),
   confidence: z.number().min(0).max(1),
   needs_clarification: z.boolean(),
+  // Intake-diagnosis fields (2026-06-04). Optional so legacy AI responses and the
+  // deterministic fallback stay valid (additive, backward compatible). Consumers
+  // default at read time.
+  missing_slots: z
+    .array(z.enum(['location', 'symptom', 'severity', 'duration', 'photo', 'district']))
+    .max(4)
+    .optional(),
+  clarification_question_vi: z.string().max(160).nullable().optional(),
+  scope_signal: z.enum(['in_scope', 'out_of_scope', 'service_mismatch']).optional(),
+  suggested_service: z.enum(['electrical', 'plumbing', 'cleaning']).nullable().optional(),
+  customer_sentiment: z.enum(['neutral', 'detail_oriented', 'pressure']).optional(),
 })
 
 export type IntentResult = z.infer<typeof intentResultSchema>

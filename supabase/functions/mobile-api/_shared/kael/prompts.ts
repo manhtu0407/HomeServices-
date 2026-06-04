@@ -85,6 +85,72 @@ Description: ${description}`,
   ];
 }
 
+export const KAEL_INTAKE_DIAGNOSIS_PROMPT_VERSION = "2026-06-04.v1";
+
+// Intake-diagnosis (2026-06-04): upgraded intent classifier that also decides
+// whether Kael should ask ONE specific clarification question before estimating,
+// using recent conversation context. Drives smart clarification (STRUCTURES.md A4)
+// + LLM-assisted scope/sentiment signals. Returns intentResultSchema shape.
+export function buildIntakeDiagnosisMessages(
+  serviceType: string,
+  problemChips: string[],
+  description: string,
+  conversationContext?: string,
+): AIMessage[] {
+  return [
+    {
+      role: "system",
+      content: `${KAEL_BUSINESS_GUARDRAILS}
+${KAEL_RESPONSE_STYLE}
+
+You are Kael's intake-diagnosis step for a Ho Chi Minh City home-service app.
+Supported services: electrical repair, plumbing repair, home cleaning. Nothing else.
+Understand the customer's problem from the selected service, problem chips, their
+description, and the recent conversation, then decide if you can estimate reliably
+or must ask ONE focused clarification question first.
+
+Respond ONLY with valid JSON matching this schema:
+{
+  "service_type": "electrical" | "plumbing" | "cleaning" | "unsupported",
+  "problem_slug": "string (snake_case problem category)",
+  "confidence": number (0-1),
+  "needs_clarification": boolean,
+  "missing_slots": string[] (subset of: location, symptom, severity, duration, photo, district),
+  "clarification_question_vi": string | null,
+  "scope_signal": "in_scope" | "out_of_scope" | "service_mismatch",
+  "suggested_service": "electrical" | "plumbing" | "cleaning" | null,
+  "customer_sentiment": "neutral" | "detail_oriented" | "pressure"
+}
+
+Rules:
+- needs_clarification = true ONLY when the description is too vague/empty to estimate
+  reliably AND a single question would meaningfully improve it.
+- clarification_question_vi: when needs_clarification, ONE short, SPECIFIC Vietnamese
+  question about the single most important missing slot. Max ~140 chars. Reference the
+  customer's actual problem. NEVER a generic "vui lòng cung cấp thêm thông tin".
+  Good: "Cầu dao có tự nhảy lại sau khi bạn bật lên không?" / "Rò rỉ ở một vòi hay nhiều vị trí?"
+  When needs_clarification is false, set clarification_question_vi to null.
+- missing_slots: list only genuinely missing context; empty array when enough is known.
+- scope_signal: "out_of_scope" if not electrical/plumbing/cleaning at all;
+  "service_mismatch" if it clearly belongs to a different one of the three than selected
+  (set suggested_service); otherwise "in_scope".
+- customer_sentiment: "pressure" if pushy/aggressive/discount-threat, "detail_oriented" if
+  asking for breakdowns/credentials/specifics, else "neutral".
+- Do not re-ask anything already answered earlier in the conversation.
+
+Allowed electrical problem_slug values: ${PROBLEM_SLUGS_BY_SERVICE.electrical.join(", ")}.
+Allowed plumbing problem_slug values: ${PROBLEM_SLUGS_BY_SERVICE.plumbing.join(", ")}.
+Allowed cleaning problem_slug values: ${PROBLEM_SLUGS_BY_SERVICE.cleaning.join(", ")}.`,
+    },
+    {
+      role: "user",
+      content: `Service: ${serviceType}
+Problem chips: ${problemChips.join(", ")}
+${conversationContext ? `Recent conversation:\n${conversationContext}\n` : ""}Latest customer message: ${description}`,
+    },
+  ];
+}
+
 export function buildVisionMessages(
   description: string,
   intentContext: string,

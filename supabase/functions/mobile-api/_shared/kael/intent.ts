@@ -1,11 +1,11 @@
 import { sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { AIMessage, AIProvider, EdgeAiSecrets, IntentAttemptLog, IntentResult } from "./types.ts";
 import { intentResultSchema } from "./types.ts";
-import { buildIntentMessages } from "./prompts.ts";
+import { buildIntakeDiagnosisMessages, buildIntentMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { providerCandidatesForPurpose } from "./routing.ts";
-import { hasUnsupportedRepairIntent, safeParseJSON, timed } from "./utils.ts";
+import { hasUnsupportedRepairIntent, safeParseJSON, scrubSensitiveForLLM, timed } from "./utils.ts";
 
 export async function classifyIntent(
   serviceType: string,
@@ -96,6 +96,119 @@ async function classifyIntentWithProvider(
         ...baseLog,
         success: false,
         failureReason: "AI intent JSON validation failed",
+        inputTokens: attempt.result.usage.inputTokens,
+        outputTokens: attempt.result.usage.outputTokens,
+        costUsd: attempt.result.usage.costUsd,
+      },
+    };
+  }
+
+  return {
+    success: true,
+    intent: validated.data,
+    log: {
+      ...baseLog,
+      success: true,
+      inputTokens: attempt.result.usage.inputTokens,
+      outputTokens: attempt.result.usage.outputTokens,
+      costUsd: attempt.result.usage.costUsd,
+    },
+  };
+}
+
+// Intake-diagnosis (2026-06-04): upgraded classifier that also decides whether to
+// ask ONE clarification question, using recent conversation context. Same provider
+// loop + fallback contract as classifyIntent; separate function so the legacy
+// classifyIntent path stays byte-identical when the clarification flag is off.
+export async function diagnoseIntake(
+  serviceType: string,
+  problemChips: string[],
+  description: string,
+  secrets: EdgeAiSecrets,
+  conversationContext?: string,
+): Promise<
+  | { success: true; intent: IntentResult; attempts: IntentAttemptLog[] }
+  | {
+    success: false;
+    fallback: IntentResult;
+    failureReason: string;
+    attempts: IntentAttemptLog[];
+  }
+> {
+  const messages = buildIntakeDiagnosisMessages(
+    sanitizeForLLM(serviceType),
+    problemChips.map(sanitizeForLLM),
+    description,
+    conversationContext ? scrubSensitiveForLLM(conversationContext) : undefined,
+  );
+  const attempts: IntentAttemptLog[] = [];
+
+  for (const candidate of providerCandidatesForPurpose("intent_classification")) {
+    const attempt = await diagnoseIntakeWithProvider(candidate, messages, secrets);
+    attempts.push(attempt.log);
+    if (attempt.success) {
+      return { success: true, intent: attempt.intent, attempts };
+    }
+  }
+
+  return {
+    success: false,
+    fallback: buildFallbackIntent(serviceType, problemChips, description),
+    failureReason: attempts.map((attempt) =>
+      `${attempt.provider ?? "unknown"}:${attempt.failureReason ?? "failed"}`
+    ).join("; "),
+    attempts,
+  };
+}
+
+async function diagnoseIntakeWithProvider(
+  route: { provider: AIProvider; model: string; latencyBudgetMs: number },
+  messages: AIMessage[],
+  secrets: EdgeAiSecrets,
+): Promise<
+  | { success: true; intent: IntentResult; log: IntentAttemptLog }
+  | { success: false; log: IntentAttemptLog }
+> {
+  // Raw maxTokens (not maxTokensForPurpose) so the richer structured diagnosis JSON
+  // is not truncated by the intent route's tighter output cap.
+  const attempt = await timed(() =>
+    callAI({
+      purpose: "intent_classification",
+      provider: route.provider,
+      model: route.model,
+      messages,
+      maxTokens: 320,
+      temperature: 0.2,
+      timeoutMs: route.latencyBudgetMs,
+      maxRetries: 0,
+    }, secrets)
+  );
+  const baseLog = {
+    provider: route.provider,
+    model: route.model,
+    latencyMs: attempt.ms,
+  };
+
+  if (!attempt.result.success) {
+    return {
+      success: false,
+      log: {
+        ...baseLog,
+        success: false,
+        failureReason: `AI call failed: ${attempt.result.code}`,
+      },
+    };
+  }
+
+  const parsed = safeParseJSON(attempt.result.content);
+  const validated = parsed ? intentResultSchema.safeParse(parsed) : null;
+  if (!validated?.success) {
+    return {
+      success: false,
+      log: {
+        ...baseLog,
+        success: false,
+        failureReason: "AI intake-diagnosis JSON validation failed",
         inputTokens: attempt.result.usage.inputTokens,
         outputTokens: attempt.result.usage.outputTokens,
         costUsd: attempt.result.usage.costUsd,

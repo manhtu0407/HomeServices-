@@ -1,5 +1,5 @@
 import { callAI } from '@/lib/ai/client'
-import { buildIntentMessages } from './prompts'
+import { buildIntakeDiagnosisMessages, buildIntentMessages } from './prompts'
 import { intentResultSchema, type IntentResult } from './schemas'
 import { safeParseJSON } from './parsing'
 import { sanitizeForLLM, scrubSensitiveForLLM } from '@home-services/shared'
@@ -28,6 +28,70 @@ export async function classifyIntent(
       messages,
       maxTokens: 200,
       temperature: 0.1,
+    })
+
+    if (!result.success) {
+      failures.push(`${candidate.provider}: AI call failed: ${result.code} - ${result.error}`)
+      continue
+    }
+
+    const parsed = safeParseJSON(result.content)
+    if (!parsed) {
+      failures.push(`${candidate.provider}: JSON parse failed on AI response`)
+      continue
+    }
+
+    const validated = intentResultSchema.safeParse(parsed)
+    if (!validated.success) {
+      failures.push(
+        `${candidate.provider}: Schema validation failed: ${validated.error.issues[0]?.message ?? 'unknown'}`,
+      )
+      continue
+    }
+
+    return { success: true, intent: validated.data }
+  }
+
+  return {
+    success: false,
+    fallback: buildFallbackIntent(serviceType, problemChips),
+    failureReason: failures.join('; '),
+  }
+}
+
+// Intake-diagnosis (2026-06-04): upgraded classifier that also decides whether to
+// ask ONE clarification question, using recent conversation context. Same provider
+// loop + fallback contract as classifyIntent; separate function so the legacy
+// classifyIntent path stays byte-identical when the clarification flag is off.
+export async function diagnoseIntake(
+  serviceType: string,
+  problemChips: string[],
+  description: string,
+  conversationContext?: string,
+): Promise<IntentClassifyResult> {
+  const sanitized = scrubSensitiveForLLM(description)
+  const sanitizedChips = problemChips.map(scrubSensitiveForLLM)
+  const sanitizedContext = conversationContext
+    ? scrubSensitiveForLLM(conversationContext)
+    : undefined
+  const messages = buildIntakeDiagnosisMessages(
+    sanitizeForLLM(serviceType),
+    sanitizedChips,
+    sanitized,
+    sanitizedContext,
+  )
+
+  const failures: string[] = []
+  for (const candidate of [
+    { provider: 'deepseek' as const, model: 'deepseek-v4-flash' },
+    { provider: 'anthropic' as const, model: 'claude-sonnet-4-6' },
+  ]) {
+    const result = await callAI({
+      provider: candidate.provider,
+      model: candidate.model,
+      messages,
+      maxTokens: 320,
+      temperature: 0.2,
     })
 
     if (!result.success) {

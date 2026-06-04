@@ -28,6 +28,9 @@ export type DemandingCustomerDetectionInput = {
   readonly message: string;
   readonly qaCount: number;
   readonly cancelCount?: number;
+  // LLM-assist (2026-06-04): intake-diagnosis sentiment from the prior turn. Used
+  // only to fill a keyword gap (soft); keyword detection stays the primary path.
+  readonly llmSentiment?: "neutral" | "detail_oriented" | "pressure";
 };
 
 export type DemandingCustomerDetection = {
@@ -37,6 +40,7 @@ export type DemandingCustomerDetection = {
   readonly pressureSignals: readonly DemandingCustomerPressureSignal[];
   readonly pressureScore: number;
   readonly escalationLevel: DemandingCustomerEscalationLevel;
+  readonly llmAssisted: boolean;
 };
 
 const LEGITIMATE_PATTERNS: ReadonlyArray<{
@@ -105,12 +109,23 @@ export function detectDemandingCustomerPatterns(
   ]);
   const pressureScore = scorePressure(pressureSignals, input);
   const escalationLevel = resolveEscalation(pressureSignals, pressureScore, input.qaCount);
-  const expectedNuance: DemandingCustomerExpectedNuance = pressureSignals.length > 0 ||
+  const keywordNuance: DemandingCustomerExpectedNuance = pressureSignals.length > 0 ||
       pressureScore >= 0.5
     ? "pressure"
     : legitimateConcernSignals.length > 0
     ? "detail_oriented"
     : "none";
+  // LLM-assist (2026-06-04): in an established conversation (qaCount >= 2), let the
+  // intake-diagnosis sentiment fill a keyword gap. Soft only — hard escalation still
+  // depends on deterministic keyword signals via escalationLevel above, so the LLM
+  // can make Kael more attentive but never trigger a hard stop on its own.
+  const llmAssisted = keywordNuance === "none" &&
+    input.qaCount >= 2 &&
+    input.llmSentiment !== undefined &&
+    input.llmSentiment !== "neutral";
+  const expectedNuance: DemandingCustomerExpectedNuance = llmAssisted
+    ? (input.llmSentiment as DemandingCustomerExpectedNuance)
+    : keywordNuance;
   const nuance: DemandingCustomerNuance =
     expectedNuance === "pressure" && legitimateConcernSignals.length > 0
       ? "mixed"
@@ -123,6 +138,7 @@ export function detectDemandingCustomerPatterns(
     pressureSignals,
     pressureScore,
     escalationLevel,
+    llmAssisted,
   };
 }
 

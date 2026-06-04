@@ -9,11 +9,34 @@ export const PRICE_DISCLAIMER =
 export const UNSUPPORTED_SERVICE_MESSAGE =
   "Chúng tôi hiện chỉ hỗ trợ sửa điện, sửa nước và vệ sinh. Vui lòng quay lại khi chúng tôi mở rộng dịch vụ.";
 
+// Smart-clarification intake-diagnosis slots (2026-06-04). Pieces of context Kael
+// may still need before a reliable estimate, used to drive ONE specific follow-up
+// question (STRUCTURES.md A4), never a generic "please add more info".
+export const KAEL_INTAKE_MISSING_SLOTS = [
+  "location",
+  "symptom",
+  "severity",
+  "duration",
+  "photo",
+  "district",
+] as const;
+
 export const intentResultSchema = z.object({
   service_type: z.enum(["electrical", "plumbing", "cleaning", "unsupported"]),
   problem_slug: z.string().min(1).max(100),
   confidence: z.number().min(0).max(1),
   needs_clarification: z.boolean(),
+  // Intake-diagnosis fields (2026-06-04). Optional so legacy AI responses and the
+  // deterministic fallback stay valid (additive, backward compatible). Consumers
+  // default at read time.
+  missing_slots: z
+    .array(z.enum(["location", "symptom", "severity", "duration", "photo", "district"]))
+    .max(4)
+    .optional(),
+  clarification_question_vi: z.string().max(160).nullable().optional(),
+  scope_signal: z.enum(["in_scope", "out_of_scope", "service_mismatch"]).optional(),
+  suggested_service: z.enum(["electrical", "plumbing", "cleaning"]).nullable().optional(),
+  customer_sentiment: z.enum(["neutral", "detail_oriented", "pressure"]).optional(),
 });
 
 export const visionResultSchema = z.object({
@@ -208,7 +231,23 @@ export type PipelineInput = {
   district: string;
   photoUrls?: string[];
   progressJobId?: string;
+  // Smart-clarification intake-diagnosis (2026-06-04). When enabled, the intent
+  // stage uses diagnoseIntake (conversation-aware) and the pipeline may short-circuit
+  // to ask ONE clarification question or flag a scope mismatch before vision/market.
+  intakeDiagnosisEnabled?: boolean;
+  conversationContext?: string;
+  clarificationCount?: number;
 };
+
+export type PipelineClarification = {
+  question: string | null;
+  missingSlots: string[];
+  customerSentiment?: "neutral" | "detail_oriented" | "pressure";
+};
+
+// Max clarification questions per session (STRUCTURES.md A4 "ask 0-2 questions").
+// Past the cap, Kael proceeds to a best-effort estimate instead of looping.
+export const CLARIFICATION_CAP = 2;
 
 export type PipelineStageLog = {
   stage: "intent" | "vision" | "baseline" | "market" | "synthesis";
@@ -311,12 +350,15 @@ export type PipelineResult =
     serviceProblemId: string;
     fallbackUsed: boolean;
     stageLogs: PipelineStageLog[];
+    customerSentiment?: "neutral" | "detail_oriented" | "pressure";
   }
   | {
     success: false;
     error: string;
     code: string;
     stageLogs: PipelineStageLog[];
+    clarification?: PipelineClarification;
+    suggestedService?: ServiceType;
   };
 
 export type SupabaseLike = {
