@@ -23,6 +23,7 @@ import {
   type JobCreateInput,
   type JobMediaAttachInput,
   type JobMessageSendInput,
+  type KaelTrainingConsentInput,
   type KaelWorkerClarifyInput,
   type KaelChatCreateInput,
   type KaelChatTurnInput,
@@ -43,6 +44,7 @@ import {
   type MobileApiContext,
   type PlacesAutocompleteResponse,
   type MobileApiServices,
+  type EdgeHealthResponse,
 } from "./router.ts";
 import {
   buildKaelOptimizationMetricRows,
@@ -111,6 +113,7 @@ import {
   scrubSensitiveForLLM,
 } from "./kael/index.ts";
 import { evaluateMessageBoundary } from "./kael/boundary-guard.ts";
+import type { PublicRpcName, PublicTableName } from "./db-types.ts";
 import { runKaelSelfCheckPipeline } from "./kael/self-check.ts";
 
 type DbError = { code?: string; message?: string };
@@ -125,8 +128,12 @@ type ConfirmSearchOptions = {
 };
 
 type DbClient = {
-  from(table: string): Chain;
-  rpc(name: string, args?: Record<string, unknown>): QueryLike;
+  from(table: PublicTableName): Chain;
+  rpc(name: PublicRpcName, args?: Record<string, unknown>): QueryLike;
+};
+type EdgeRuntimeSecrets = EdgeAiSecrets & {
+  supabaseUrl?: string;
+  supabaseSecretKey?: string;
 };
 
 const ACTIVE_WORKER_JOB_STATUSES: JobStatus[] = [
@@ -156,6 +163,10 @@ const DEFAULT_WORKER_CANDIDATE_POOL_SIZE = 50;
 const STAGING_PROJECT_REF = "xyylanuyflrjzbjzhqfl";
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 const KAEL_CHAT_HARD_COST_CAP_USD = 1;
+const KAEL_PRE_INTAKE_GREETING_RESPONSE =
+  "Chào bạn, mình là Kael. Mình đang ở đây để giúp kiểm tra sự cố trong căn hộ. Bạn cứ mô tả ngắn vấn đề, hoặc chọn Sửa điện, Sửa nước, Vệ sinh để bắt đầu.";
+const KAEL_PRE_INTAKE_GUIDANCE_RESPONSE =
+  "Kael đã nhận mô tả này. Hiện mình chỉ hỗ trợ sửa điện, sửa nước và vệ sinh nhà. Chọn dịch vụ phù hợp bên dưới; mình sẽ dùng lại mô tả để hỏi đúng phần còn thiếu.";
 const VIETMAP_AUTOCOMPLETE_URL = "https://maps.vietmap.vn/api/autocomplete/v4";
 const VIETMAP_SEARCH_URL = "https://maps.vietmap.vn/api/search/v4";
 const VIETMAP_PLACE_URL = "https://maps.vietmap.vn/api/place/v4";
@@ -176,6 +187,7 @@ type KaelChatStatus =
   | "abandoned"
   | "unsupported";
 type KaelChatNextAction =
+  | "await_service"
   | "await_input"
   | "ask_photo"
   | "ask_video"
@@ -223,14 +235,16 @@ type Chain = {
   ): PromiseLike<TResult1 | TResult2>;
 };
 
-export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
+export function createEdgeServices(secrets: EdgeRuntimeSecrets): MobileApiServices {
   return {
+    getHealth: (ctx) => getHealth(ctx, secrets),
     listServices,
     placesAutocomplete: (ctx, input) => placesAutocomplete(ctx, input, secrets),
     createJob: (ctx, input) => createJob(ctx, input, secrets),
     getJob,
     listCustomerActiveJobs,
     createKaelChat: (ctx, input) => createKaelChat(ctx, input, secrets),
+    listKaelChats,
     getKaelChat,
     sendKaelChatTurn: (ctx, sessionId, input) =>
       sendKaelChatTurn(ctx, sessionId, input, secrets),
@@ -256,6 +270,8 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     confirmCompletion,
     submitReview,
     submitCustomerKaelFeedback,
+    getKaelTrainingConsent,
+    updateKaelTrainingConsent,
     getKaelCharter,
     registerWorker,
     getMyKaelMemory,
@@ -277,6 +293,43 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     markNotificationRead,
     registerDevicePushToken,
   };
+}
+
+function getHealth(
+  ctx: Pick<MobileApiContext, "requestProjectRef">,
+  secrets: EdgeRuntimeSecrets,
+): EdgeHealthResponse {
+  const supabaseEnv = secrets.supabaseUrl && secrets.supabaseSecretKey
+    ? "ok"
+    : "missing";
+  const providerEnv = secrets.anthropicApiKey || secrets.perplexityApiKey ||
+      secrets.deepseekApiKey
+    ? "ok"
+    : "missing";
+  return {
+    status: supabaseEnv === "ok" && providerEnv === "ok" ? "ok" : "degraded",
+    service: "mobile-api",
+    checked_at: new Date().toISOString(),
+    project_ref: ctx.requestProjectRef ?? projectRefFromSupabaseUrl(secrets.supabaseUrl),
+    checks: {
+      edge: "ok",
+      supabase_env: supabaseEnv,
+      provider_env: providerEnv,
+    },
+  };
+}
+
+function projectRefFromSupabaseUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    const hostname = new URL(value).hostname;
+    const [projectRef, ...rest] = hostname.split(".");
+    return rest.join(".").endsWith("supabase.co") && projectRef
+      ? projectRef
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function getKaelCharter() {
@@ -521,7 +574,7 @@ async function createJob(
       .from("jobs")
       .insert({
         customer_id: ctx.user.id,
-        service_type: input.service_type,
+        service_type: input.service_type ?? null,
         description: sanitizeForLLM(input.description),
         problem_chips: input.problem_chips,
         photo_urls: input.photo_urls,
@@ -894,6 +947,7 @@ async function createKaelChat(
   if (input.session_id) {
     if (!input.message) return getKaelChat(ctx, input.session_id);
     return sendKaelChatTurn(ctx, input.session_id, {
+      service_type: input.service_type,
       message: input.message,
       problem_chips: input.problem_chips,
       photo_urls: input.photo_urls,
@@ -962,6 +1016,7 @@ async function createKaelChat(
   }
 
   const metadata = compactMetadata({
+    flow_state: input.service_type ? "service_intake" : "pre_intake",
     problem_chips: input.problem_chips,
     address_label: input.address_label ?? null,
     address_district: input.address_district ?? null,
@@ -973,7 +1028,7 @@ async function createKaelChat(
       .from("kael_chat_sessions")
       .insert({
         customer_id: ctx.user.id,
-        service_type: input.service_type,
+        service_type: input.service_type ?? null,
         status: "active",
         safe_metadata: metadata,
         client_request_id: input.client_request_id ?? null,
@@ -1009,6 +1064,16 @@ async function createKaelChat(
   if (input.message) {
     const message = sanitizeForLLM(input.message);
     const sessionId = asString(sessionResult.data.id);
+    if (!input.service_type) {
+      await appendPreIntakeKaelTurn(client, {
+        sessionId,
+        previousTurns: 0,
+        message,
+        photoUrls: input.photo_urls,
+        sessionMetadata: metadata,
+      });
+      return getKaelChat(ctx, sessionId);
+    }
     // X5 (Plan.md §27.8 — 2026-05-29): F-22. Scrub PII (phone/CCCD/address/
     // building/unit) BEFORE persisting to kael_chat_turns.text_content so raw
     // PII never lands in the DB. The in-memory `message` (also sanitized) is
@@ -1057,6 +1122,7 @@ async function createKaelChat(
           sessionId,
           {
             ...input,
+            service_type: input.service_type,
             message,
           },
           secrets,
@@ -1203,6 +1269,25 @@ async function maybeApplyKaelBoundaryGuard(
   return true;
 }
 
+async function listKaelChats(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const query = client
+    .from("kael_chat_sessions")
+    .select(
+      "id, job_id, customer_id, service_type, status, started_at, estimate_ready_at, total_turns, total_cost_usd, safe_metadata, created_at, updated_at",
+    )
+    .eq("customer_id", ctx.user.id)
+    .order("updated_at", { ascending: false })
+    .limit(8);
+  const sessionsResult = await dbQuery<Array<Record<string, unknown>>>(query);
+  if (sessionsResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải danh sách phiên Kael", 500);
+  }
+  return {
+    sessions: (sessionsResult.data ?? []).map(serializeKaelSessionSummary),
+  };
+}
+
 async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
   const client = db(ctx);
   const sessionResult = await dbQuery<Record<string, unknown>>(
@@ -1274,9 +1359,18 @@ async function sendKaelChatTurn(
 
   const previousTurns = asNumber(session.total_turns);
   const previousMetadata = asRecord(session.safe_metadata);
+  const existingServiceType = nullableServiceType(session.service_type);
+  if (
+    existingServiceType && input.service_type &&
+    existingServiceType !== input.service_type
+  ) {
+    apiFailure("SERVICE_MISMATCH", "Phiên Kael đã chọn dịch vụ khác", 409);
+  }
+  const activeServiceType = input.service_type ?? existingServiceType;
   const qaCount = asNumber(previousMetadata.demanding_customer_qa_count) + 1;
   const metadata = compactMetadata({
     ...previousMetadata,
+    flow_state: activeServiceType ? "service_intake" : "pre_intake",
     problem_chips: input.problem_chips ??
       asStringArray(previousMetadata.problem_chips),
     address_label: input.address_label ??
@@ -1291,6 +1385,16 @@ async function sendKaelChatTurn(
     demanding_customer_qa_count: qaCount,
   });
   const message = sanitizeForLLM(input.message);
+  if (!activeServiceType) {
+    await appendPreIntakeKaelTurn(client, {
+      sessionId,
+      previousTurns,
+      message,
+      photoUrls: input.photo_urls,
+      sessionMetadata: metadata,
+    });
+    return getKaelChat(ctx, sessionId);
+  }
   // X5 (Plan.md §27.8 — 2026-05-29): F-22. Scrub PII before persisting.
   await insertKaelTurn(client, {
     session_id: sessionId,
@@ -1303,6 +1407,7 @@ async function sendKaelChatTurn(
   });
   await updateKaelSession(client, sessionId, {
     total_turns: previousTurns + 1,
+    service_type: activeServiceType,
     status: "active",
     safe_metadata: metadata,
   });
@@ -1314,7 +1419,7 @@ async function sendKaelChatTurn(
     client,
     sessionId,
     message,
-    asServiceType(session.service_type),
+    activeServiceType,
   );
   if (boundaryHandled) return getKaelChat(ctx, sessionId);
 
@@ -1333,7 +1438,7 @@ async function sendKaelChatTurn(
   if (handledDemandingCustomer) return getKaelChat(ctx, sessionId);
 
   await advanceKaelChatEstimate(ctx, sessionId, {
-    service_type: asServiceType(session.service_type),
+    service_type: activeServiceType,
     message,
     problem_chips: asStringArray(metadata.problem_chips),
     photo_urls: asStringArray(metadata.photo_urls),
@@ -1561,6 +1666,25 @@ async function advanceKaelChatEstimate(
     return;
   }
 
+  const message = sanitizeForLLM(input.message ?? "");
+  const problemChips = input.problem_chips?.filter(Boolean) ?? [];
+  const advisoryResponse = maybeBuildKaelServiceAdvisoryResponse(
+    message,
+    input.service_type,
+  );
+  if (advisoryResponse) {
+    await appendKaelSystemTurn(client, sessionId, {
+      contentType: "clarification",
+      text: advisoryResponse,
+      nextStatus: "active",
+      metadata: {
+        advisory_only: true,
+        advisory_service: input.service_type,
+      },
+    });
+    return;
+  }
+
   const district = normalizeServiceAreaDistrict(input.address_district);
   if (!district) {
     const question =
@@ -1579,8 +1703,6 @@ async function advanceKaelChatEstimate(
     return;
   }
 
-  const message = sanitizeForLLM(input.message ?? "");
-  const problemChips = input.problem_chips?.filter(Boolean) ?? [];
   // When smart clarification is on, let intake-diagnosis ask a CONTEXTUAL question
   // instead of this generic length-heuristic prompt (STRUCTURES.md A4).
   if (!llmClarificationEnabled && message.length < 10 && problemChips.length === 0) {
@@ -1858,6 +1980,81 @@ async function getKaelChatCostUsd(
   return asNumber(sessionResult.data.total_cost_usd);
 }
 
+function maybeBuildKaelServiceAdvisoryResponse(
+  message: string,
+  serviceType: ServiceType,
+) {
+  const normalized = normalizeKaelPreIntakeText(message);
+  if (!normalized) return null;
+  const asksForAdvice = [
+    "nen lam gi",
+    "phai lam gi",
+    "phai lam sao",
+    "lam sao",
+    "xu ly the nao",
+    "co nguy hiem",
+    "tu van",
+    "giup toi",
+  ].some((signal) => normalized.includes(signal));
+  if (!asksForAdvice) return null;
+
+  if (
+    serviceType === "electrical" &&
+    hasKaelAdvisorySignal(normalized, [
+      "bong den",
+      "den",
+      "chay",
+      "chap",
+      "khet",
+      "tia lua",
+      "dien",
+      "cb",
+      "cong tac",
+      "o cam",
+    ])
+  ) {
+    return "Trước hết tắt công tắc hoặc CB khu vực đèn và để bóng nguội. Đừng chạm vào đui đèn hoặc dây điện khi chưa ngắt điện. Nếu có mùi khét, vết đen, tia lửa hoặc bóng tiếp tục cháy lại, ngừng dùng điểm đèn đó và gửi thêm ảnh/vị trí đèn để Kael hỏi tiếp phần cần kiểm tra.";
+  }
+
+  if (
+    serviceType === "plumbing" &&
+    hasKaelAdvisorySignal(normalized, [
+      "nuoc",
+      "ro",
+      "ong",
+      "lavabo",
+      "bon rua",
+      "ngap",
+      "voi",
+      "thoat san",
+    ])
+  ) {
+    return "Trước hết khóa van nước gần khu vực rò nếu có thể, lau khô sàn để tránh trượt và tránh bật thiết bị điện gần chỗ ẩm. Bạn gửi thêm vị trí rò, mức nước chảy và ảnh khu vực để Kael hỏi tiếp phần cần kiểm tra.";
+  }
+
+  if (
+    serviceType === "cleaning" &&
+    hasKaelAdvisorySignal(normalized, [
+      "don",
+      "ve sinh",
+      "mui",
+      "ban",
+      "nam moc",
+      "can ho",
+      "bep",
+      "nha tam",
+    ])
+  ) {
+    return "Trước hết gom vật dụng cá nhân, mở thoáng khu vực nếu có mùi và tránh trộn nhiều loại hóa chất tẩy rửa với nhau. Bạn mô tả khu vực cần vệ sinh, mức bẩn và có cần xử lý mùi/nấm mốc không để Kael hỏi tiếp phần cần kiểm tra.";
+  }
+
+  return null;
+}
+
+function hasKaelAdvisorySignal(normalized: string, signals: readonly string[]) {
+  return signals.some((signal) => normalized.includes(signal));
+}
+
 async function appendKaelSystemTurn(
   client: DbClient,
   sessionId: string,
@@ -1908,6 +2105,105 @@ async function appendKaelSystemTurn(
     });
   }
   await updateKaelSession(client, sessionId, sessionUpdate);
+}
+
+async function appendPreIntakeKaelTurn(
+  client: DbClient,
+  input: {
+    sessionId: string;
+    previousTurns: number;
+    message: string;
+    photoUrls: string[];
+    sessionMetadata: Record<string, unknown>;
+  },
+) {
+  await insertKaelTurn(client, {
+    session_id: input.sessionId,
+    turn_index: input.previousTurns + 1,
+    role: "customer",
+    content_type: input.photoUrls.length > 0 ? "photo_attached" : "text",
+    text_content: scrubSensitiveForLLM(input.message),
+    media_refs: input.photoUrls,
+    safe_metadata: { pre_intake: true },
+  });
+  await insertKaelTurn(client, {
+    session_id: input.sessionId,
+    turn_index: input.previousTurns + 2,
+    role: "kael",
+    content_type: "clarification",
+    text_content: preIntakeKaelReply(input.message),
+    media_refs: [],
+    safe_metadata: { pre_intake: true },
+  });
+  await updateKaelSession(client, input.sessionId, {
+    total_turns: input.previousTurns + 2,
+    status: "active",
+    safe_metadata: compactMetadata({
+      ...input.sessionMetadata,
+      flow_state: "pre_intake",
+    }),
+  });
+}
+
+function preIntakeKaelReply(message: string) {
+  return isKaelGreetingOnly(message)
+    ? KAEL_PRE_INTAKE_GREETING_RESPONSE
+    : KAEL_PRE_INTAKE_GUIDANCE_RESPONSE;
+}
+
+function isKaelGreetingOnly(value: string) {
+  const normalized = normalizeKaelPreIntakeText(value);
+  if (!normalized) return false;
+  const greetingPhrases = new Set([
+    "hi",
+    "hello",
+    "hey",
+    "alo",
+    "chao",
+    "xin chao",
+    "hi kael",
+    "hello kael",
+    "chao kael",
+    "kael oi",
+    "co ai khong",
+    "ban co o day khong",
+  ]);
+  if (greetingPhrases.has(normalized)) return true;
+  const greetingTokens = new Set([
+    "hi",
+    "hello",
+    "hey",
+    "alo",
+    "chao",
+    "xin",
+    "kael",
+    "oi",
+    "ban",
+    "co",
+    "ai",
+    "khong",
+    "day",
+  ]);
+  const tokens = normalized.split(" ").filter(Boolean);
+  return tokens.length > 0 &&
+    tokens.length <= 5 &&
+    tokens.every((token) => greetingTokens.has(token)) &&
+    tokens.some((token) =>
+      token === "hi" || token === "hello" || token === "hey" ||
+      token === "alo" || token === "chao"
+    );
+}
+
+function normalizeKaelPreIntakeText(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function insertKaelTurn(
@@ -4455,11 +4751,69 @@ async function submitCustomerKaelFeedback(
     apiFailure("DB_ERROR", "Không thể gửi góp ý cho Kael", 500);
   }
 
+  await recordKaelTrainingLedger(client, {
+    customerId: ctx.user.id,
+    eventType: "customer_feedback_submitted",
+    payloadScrubbed: {
+      language: input.language,
+      message_scrubbed: scrubSensitiveForLLM(message),
+      source: input.source,
+    },
+    safeMetadata: {
+      kael_feedback_version: "v1",
+      source_table: "customer_kael_feedback",
+    },
+    source: "customer_kael_feedback",
+    sourceId: asString(result.data.id),
+  });
+
   return {
     feedback_id: asString(result.data.id),
     status: "new" as const,
     created_at: nullableString(result.data.created_at) ?? now,
   };
+}
+
+async function getKaelTrainingConsent(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const state = await readCustomerTrainingConsent(client, ctx.user.id);
+  return {
+    consent: {
+      allow_training: state.allowTraining,
+      source: "profile" as const,
+      decided_at: state.decidedAt,
+      updated_at: state.updatedAt,
+    },
+  };
+}
+
+async function updateKaelTrainingConsent(
+  ctx: MobileApiContext,
+  input: KaelTrainingConsentInput,
+) {
+  const client = db(ctx);
+  const now = new Date().toISOString();
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("customer_kael_training_consent")
+      .upsert({
+        allow_training: input.allow_training,
+        consent_version: "2026-06-04.v1",
+        customer_id: ctx.user.id,
+        decided_at: now,
+        safe_metadata: {
+          updated_from: "mobile_profile",
+        },
+        source: input.source,
+        updated_at: now,
+      })
+      .select("allow_training, source, decided_at, updated_at")
+      .maybeSingle(),
+  );
+  if (result.error || !result.data) {
+    apiFailure("DB_ERROR", "Không thể cập nhật quyền huấn luyện", 500);
+  }
+  return kaelTrainingConsentResponseFromRow(result.data);
 }
 
 type NormalTransactionMemoryInput = {
@@ -6156,6 +6510,22 @@ async function queueKaelLearningEvent(
   event: LearningSkillTrigger,
   input: LearningSkillInput,
 ) {
+  const customerId = nullableString(input.customer_id);
+  if (customerId) {
+    const ledger = await recordKaelTrainingLedger(client, {
+      customerId,
+      eventType: event,
+      payloadScrubbed: safeTrainingPayload(input),
+      safeMetadata: {
+        learning_event: event,
+        source_table: "kael_rule_lifecycle_log",
+      },
+      source: trainingSourceForLearningEvent(event),
+      sourceId: nullableString(input.job_id),
+    });
+    if (!ledger.trainingAllowed) return;
+  }
+
   const flags = readKaelOptimizationFlags();
   const queueFn = flags.KAEL_OPT_BATCH_LEARNING_ENABLED
     ? queueLearningForBatch
@@ -6167,6 +6537,146 @@ async function queueKaelLearningEvent(
       errorName: error instanceof Error ? error.name : typeof error,
     });
   });
+}
+
+type KaelTrainingSource =
+  | "customer_kael_feedback"
+  | "kael_learning_queue"
+  | "kael_chat"
+  | "job_review"
+  | "worker_completion"
+  | "scope_change";
+
+type KaelTrainingExclusionReason =
+  | "customer_opt_out"
+  | "consent_missing"
+  | "consent_lookup_failed";
+
+type TrainingConsentState = {
+  allowTraining: boolean;
+  decidedAt: string | null;
+  exclusionReason: KaelTrainingExclusionReason;
+  updatedAt: string | null;
+};
+
+async function readCustomerTrainingConsent(
+  client: DbClient,
+  customerId: string,
+): Promise<TrainingConsentState> {
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("customer_kael_training_consent")
+      .select("allow_training, decided_at, updated_at")
+      .eq("customer_id", customerId)
+      .maybeSingle(),
+  );
+  if (result.error) {
+    console.warn("mobile-api kael training consent lookup failed", {
+      customerId,
+      errorCode: result.error.code,
+    });
+    return {
+      allowTraining: false,
+      decidedAt: null,
+      exclusionReason: "consent_lookup_failed",
+      updatedAt: null,
+    };
+  }
+  if (!result.data) {
+    return {
+      allowTraining: false,
+      decidedAt: null,
+      exclusionReason: "consent_missing",
+      updatedAt: null,
+    };
+  }
+  const allowTraining = result.data.allow_training === true;
+  return {
+    allowTraining,
+    decidedAt: nullableString(result.data.decided_at),
+    exclusionReason: "customer_opt_out",
+    updatedAt: nullableString(result.data.updated_at),
+  };
+}
+
+function kaelTrainingConsentResponseFromRow(row: Record<string, unknown>) {
+  return {
+    consent: {
+      allow_training: row.allow_training === true,
+      source: "profile" as const,
+      decided_at: nullableString(row.decided_at),
+      updated_at: nullableString(row.updated_at),
+    },
+  };
+}
+
+async function recordKaelTrainingLedger(
+  client: DbClient,
+  input: {
+    customerId: string | null;
+    eventType: string;
+    payloadScrubbed: Record<string, unknown>;
+    safeMetadata?: Record<string, unknown>;
+    source: KaelTrainingSource;
+    sourceId?: string | null;
+  },
+): Promise<{ trainingAllowed: boolean }> {
+  if (!input.customerId) return { trainingAllowed: true };
+
+  const consent = await readCustomerTrainingConsent(client, input.customerId);
+  const row = {
+    customer_id: input.customerId,
+    event_type: input.eventType,
+    payload_scrubbed: safeTrainingPayload(input.payloadScrubbed),
+    safe_metadata: safeTrainingPayload({
+      consent_checked_at: new Date().toISOString(),
+      consent_version: "2026-06-04.v1",
+      ...(input.safeMetadata ?? {}),
+    }),
+    source: input.source,
+    source_id: input.sourceId ?? null,
+  };
+
+  if (!consent.allowTraining) {
+    await dbQuery(
+      client.from("kael_training_excluded_events").insert({
+        ...row,
+        exclusion_reason: consent.exclusionReason,
+      }),
+    ).catch(() => {
+      console.warn("mobile-api kael training excluded ledger failed", {
+        customerId: input.customerId,
+        eventType: input.eventType,
+      });
+    });
+    return { trainingAllowed: false };
+  }
+
+  const result = await dbQuery(
+    client.from("kael_training_events").insert(row),
+  );
+  if (result.error) {
+    console.warn("mobile-api kael training ledger failed", {
+      customerId: input.customerId,
+      eventType: input.eventType,
+      errorCode: result.error.code,
+    });
+    return { trainingAllowed: false };
+  }
+  return { trainingAllowed: true };
+}
+
+function trainingSourceForLearningEvent(
+  event: LearningSkillTrigger,
+): KaelTrainingSource {
+  if (event === "post-A14") return "job_review";
+  if (event === "post-B7") return "worker_completion";
+  if (event === "post-B6") return "scope_change";
+  return "kael_learning_queue";
+}
+
+function safeTrainingPayload(value: Record<string, unknown>) {
+  return sanitizeMemoryObject(value);
 }
 
 async function logMemoryAudit(
@@ -6323,18 +6833,32 @@ function serializeKaelSession(
   const status = asKaelChatStatus(row.status);
   const lastTurn = turns[turns.length - 1];
   const totalCostUsd = asNumber(row.total_cost_usd);
+  const serviceType = nullableServiceType(row.service_type);
   return {
     id: asString(row.id),
     job_id: nullableString(row.job_id),
     customer_id: asString(row.customer_id),
-    service_type: asServiceType(row.service_type),
+    service_type: serviceType,
     status,
     estimate,
     started_at: asString(row.started_at),
     estimate_ready_at: nullableString(row.estimate_ready_at),
     total_turns: asNumber(row.total_turns),
     total_cost_usd: totalCostUsd,
-    next_action: kaelNextAction(status, lastTurn?.content_type, totalCostUsd),
+    next_action: kaelNextAction(
+      status,
+      serviceType,
+      lastTurn?.content_type,
+      totalCostUsd,
+    ),
+  };
+}
+
+function serializeKaelSessionSummary(row: Record<string, unknown>) {
+  return {
+    ...serializeKaelSession(row, null, []),
+    created_at: asString(row.created_at),
+    updated_at: asString(row.updated_at),
   };
 }
 
@@ -6368,11 +6892,13 @@ function serializeJobMessage(row: Record<string, unknown>) {
 
 function kaelNextAction(
   status: KaelChatStatus,
+  serviceType: ServiceType | null,
   lastContentType: string | undefined,
   totalCostUsd: number,
 ): KaelChatNextAction {
   if (status === "confirmed") return "confirmed";
   if (status === "unsupported") return "unsupported";
+  if (!serviceType) return "await_service";
   if (totalCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) return "budget_exceeded";
   if (status === "estimate_ready") return "estimate_ready";
   if (lastContentType === "photo_request") return "ask_photo";
@@ -7407,6 +7933,12 @@ function asServiceType(value: unknown): ServiceType {
   if (value === "plumbing") return "plumbing";
   if (value === "cleaning") return "cleaning";
   return "electrical";
+}
+
+function nullableServiceType(value: unknown): ServiceType | null {
+  return value === "electrical" || value === "plumbing" || value === "cleaning"
+    ? value
+    : null;
 }
 
 function asServiceTypeArray(value: unknown): ServiceType[] {

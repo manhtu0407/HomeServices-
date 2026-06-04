@@ -125,9 +125,20 @@ const copyMap = {
     servicePreviewTitle: 'Phiếu gửi Kael',
     servicePreviewMeta: 'Thông tin đầu vào',
     servicePreviewService: 'Dịch vụ',
-    servicePreviewDescription: 'Mô tả',
-    servicePreviewArea: 'Khu vực',
-    servicePreviewChat: 'Kael chat',
+    servicePreviewProblem: 'Vấn đề',
+    servicePreviewPrice: 'Khoảng giá',
+    servicePreviewComplexity: 'Mức độ',
+    servicePreviewConfidence: 'Độ tin cậy',
+    servicePreviewPlatformFee: 'Phí nền tảng',
+    servicePreviewTotal: 'Tổng dự kiến',
+    servicePreviewPolicy: 'Chính sách hủy',
+    servicePreviewProblemBody: 'Kael sẽ tóm tắt: ví dụ ổ cắm chập, nước rò, hoặc cần dọn nhà.',
+    servicePreviewPriceBody: 'Kael sẽ ước tính sau khi có mô tả và bằng chứng.',
+    servicePreviewComplexityBody: 'Kael sẽ phân loại nhẹ, vừa hoặc nặng.',
+    servicePreviewConfidenceBody: 'Kael sẽ cập nhật theo độ rõ của mô tả, ảnh hoặc video.',
+    servicePreviewPlatformFeeBody: 'Chỉ hiện khi có ước tính thật.',
+    servicePreviewTotalBody: 'Kael sẽ tính sau khi đủ dữ liệu.',
+    servicePreviewPolicyBody: 'Bạn có thể hủy miễn phí trước khi thợ nhận việc.',
     flowSteps: [
       ['Chọn dịch vụ', 'Điện · Nước · Vệ sinh'],
       ['Mô tả', 'Vấn đề · Ảnh · Khu vực'],
@@ -173,9 +184,20 @@ const copyMap = {
     servicePreviewTitle: 'Kael intake ticket',
     servicePreviewMeta: 'Input',
     servicePreviewService: 'Service',
-    servicePreviewDescription: 'Description',
-    servicePreviewArea: 'Area',
-    servicePreviewChat: 'Kael chat',
+    servicePreviewProblem: 'Problem',
+    servicePreviewPrice: 'Price range',
+    servicePreviewComplexity: 'Complexity',
+    servicePreviewConfidence: 'Confidence',
+    servicePreviewPlatformFee: 'Platform fee',
+    servicePreviewTotal: 'Estimated total',
+    servicePreviewPolicy: 'Cancellation policy',
+    servicePreviewProblemBody: 'Kael will summarize examples like a faulty outlet, water leak, or cleaning need.',
+    servicePreviewPriceBody: 'Kael will estimate after it has a description and evidence.',
+    servicePreviewComplexityBody: 'Kael will classify it as light, medium, or heavy.',
+    servicePreviewConfidenceBody: 'Kael will update this from the clarity of the text, photos, or video.',
+    servicePreviewPlatformFeeBody: 'Shown only after a real estimate.',
+    servicePreviewTotalBody: 'Kael will calculate this after enough data.',
+    servicePreviewPolicyBody: 'Free cancellation before a worker accepts.',
     flowSteps: [
       ['Choose service', 'Electrical · Plumbing · Cleaning'],
       ['Describe', 'Issue · Photos · Area'],
@@ -638,6 +660,13 @@ function BookingFlowOverview({ activeIndex, copy }: { activeIndex: number; copy:
   return (
     <View style={[styles.flowOverview, bookingFlowOverviewSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-intake-handoff-overview">
       <View pointerEvents="none" style={styles.hiddenMarker} testID="booking-wizard-flow-apple-progress-rail" />
+      {!reduceTransparency ? (
+        <>
+          <View pointerEvents="none" style={[styles.flowLiquidAura, bookingFlowLiquidAuraSurface(mode)]} testID="booking-wizard-flow-liquid-aura" />
+          <View pointerEvents="none" style={[styles.flowLiquidSheen, bookingFlowLiquidSheenSurface(mode)]} />
+          <View pointerEvents="none" style={[styles.flowLiquidEdge, bookingFlowLiquidEdgeSurface(mode)]} testID="booking-wizard-flow-liquid-edge" />
+        </>
+      ) : null}
       {copy.flowSteps.map(([title, meta], index) => {
         const active = index === activeIndex
         return (
@@ -649,7 +678,10 @@ function BookingFlowOverview({ activeIndex, copy }: { activeIndex: number; copy:
             ]}
             testID={`booking-wizard-flow-step-${index + 1}`}
           >
-            <View style={[styles.flowStepBadge, bookingFlowBadgeSurface(visual, mode, reduceTransparency, index, active)]}>
+            {active && !reduceTransparency ? (
+              <View pointerEvents="none" style={[styles.flowStepLiquidLens, bookingFlowStepLensSurface(mode)]} testID={`booking-wizard-flow-step-${index + 1}-liquid-lens`} />
+            ) : null}
+            <View style={[styles.flowStepBadge, bookingFlowBadgeSurface(visual, mode, reduceTransparency, index, active)]} testID={`booking-wizard-flow-badge-${index + 1}`}>
               <Text style={[styles.flowStepBadgeText, { color: active ? visual.primaryText : bookingFlowTextColor(visual, mode, index) }]} numberOfLines={1}>
                 {index + 1}
               </Text>
@@ -669,33 +701,72 @@ function BookingFlowOverview({ activeIndex, copy }: { activeIndex: number; copy:
   )
 }
 
-function bookingFlowOverviewSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
-  const lightGradient = 'linear-gradient(180deg, rgba(255,255,255,0.94), rgba(240,255,251,0.86))'
-  const darkGradient = 'radial-gradient(circle at 86% 0%, rgba(230,244,240,0.056), transparent 34%), linear-gradient(180deg, rgba(24,31,29,0.72), rgba(13,17,16,0.56))'
+function bookingFlowOverviewSurface(_visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 17% 15%, rgba(255,255,255,0.96), transparent 28%), radial-gradient(circle at 88% 86%, rgba(76,222,199,0.18), transparent 34%), linear-gradient(180deg, rgba(255,255,255,0.82), rgba(239,255,251,0.68))'
+  const darkGradient = 'radial-gradient(circle at 17% 15%, rgba(230,244,240,0.075), transparent 30%), radial-gradient(circle at 88% 86%, rgba(105,222,198,0.11), transparent 36%), linear-gradient(180deg, rgba(24,31,29,0.70), rgba(13,17,16,0.58))'
 
   return {
     background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    backgroundColor: mode === 'dark' ? 'rgba(22,29,27,0.66)' : '#F8FFFC',
+    backgroundColor: mode === 'dark' ? 'rgba(22,29,27,0.66)' : 'rgba(248,255,252,0.92)',
     backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    borderColor: mode === 'dark' ? 'rgba(230,244,240,0.12)' : 'rgba(35,96,84,0.13)',
-    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 15px 34px rgba(0,0,0,0.31), inset 0 1px 0 rgba(230,244,240,0.08)' : '0 10px 24px rgba(17,70,61,0.07)',
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.86)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 16px 36px rgba(0,0,0,0.30), inset 0 1px 0 rgba(190,210,205,0.13), inset 0 -1px 0 rgba(0,0,0,0.16)' : '0 16px 34px rgba(17,70,61,0.075), inset 0 1px 0 rgba(255,255,255,0.92), inset 0 -1px 0 rgba(20,73,66,0.055)',
     experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
   } as any
 }
 
-function bookingMintOperationalTileSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
-  const specularCatch = mode === 'dark' ? 'rgba(190,210,205,0.026)' : 'rgba(255,255,255,0.58)'
-  const mintAura = mode === 'dark' ? 'rgba(105,222,198,0.10)' : 'rgba(76,222,199,0.10)'
+function bookingFlowLiquidAuraSurface(mode: GlassMode) {
   const gradient = mode === 'dark'
-    ? `radial-gradient(circle at 50% 38%, ${mintAura}, transparent 48%), radial-gradient(circle at 74% 20%, ${specularCatch}, transparent 32%), linear-gradient(180deg, rgba(22,29,27,0.98), rgba(16,24,23,0.92))`
-    : `radial-gradient(circle at 50% 38%, ${mintAura}, transparent 48%), radial-gradient(circle at 74% 20%, ${specularCatch}, transparent 32%), linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,249,248,0.94))`
+    ? 'radial-gradient(circle, rgba(105,222,198,0.15), rgba(105,222,198,0.045) 42%, transparent 72%)'
+    : 'radial-gradient(circle, rgba(76,222,199,0.22), rgba(76,222,199,0.06) 42%, transparent 72%)'
+
+  return {
+    background: gradient,
+    backgroundColor: mode === 'dark' ? 'rgba(105,222,198,0.08)' : 'rgba(76,222,199,0.10)',
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+  } as any
+}
+
+function bookingFlowLiquidSheenSurface(mode: GlassMode) {
+  const gradient = mode === 'dark'
+    ? 'linear-gradient(112deg, transparent 8%, rgba(190,210,205,0.11) 38%, transparent 68%)'
+    : 'linear-gradient(112deg, transparent 8%, rgba(255,255,255,0.56) 38%, transparent 68%)'
+
+  return {
+    background: gradient,
+    backgroundColor: 'transparent',
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+  } as any
+}
+
+function bookingFlowLiquidEdgeSurface(mode: GlassMode) {
+  const gradient = mode === 'dark'
+    ? 'linear-gradient(90deg, transparent, rgba(190,210,205,0.18), transparent)'
+    : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.94), transparent)'
+
+  return {
+    background: gradient,
+    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(255,255,255,0.62)',
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+  } as any
+}
+
+function bookingMintOperationalTileSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const specularCatch = mode === 'dark' ? 'rgba(190,210,205,0.070)' : 'rgba(255,255,255,0.72)'
+  const mintAura = mode === 'dark' ? 'rgba(105,222,198,0.14)' : 'rgba(76,222,199,0.17)'
+  const gradient = mode === 'dark'
+    ? `radial-gradient(circle at 18% 18%, ${specularCatch}, transparent 30%), radial-gradient(circle at 76% 72%, ${mintAura}, transparent 45%), linear-gradient(180deg, rgba(28,38,35,0.78), rgba(17,27,25,0.68))`
+    : `radial-gradient(circle at 18% 18%, ${specularCatch}, transparent 30%), radial-gradient(circle at 76% 72%, ${mintAura}, transparent 45%), linear-gradient(180deg, rgba(255,255,255,0.78), rgba(246,255,252,0.66))`
 
   return {
     background: reduceTransparency ? undefined : gradient,
-    backgroundColor: mode === 'dark' ? '#16211F' : '#FAFFFD',
+    backgroundColor: mode === 'dark' ? 'rgba(22,33,31,0.82)' : 'rgba(255,255,255,0.74)',
     backgroundImage: reduceTransparency ? undefined : gradient,
-    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(20,73,66,0.08)',
-    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 7px 16px rgba(0,0,0,0.10), inset 0 1px 0 rgba(190,210,205,0.055)' : '0 10px 22px rgba(31,92,82,0.04), inset 0 1px 0 rgba(255,255,255,0.76)',
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.18)' : 'rgba(255,255,255,0.88)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 9px 20px rgba(0,0,0,0.16), inset 0 1px 0 rgba(190,210,205,0.12)' : '0 12px 26px rgba(31,92,82,0.060), inset 0 1px 0 rgba(255,255,255,0.92)',
     experimental_backgroundImage: reduceTransparency ? undefined : gradient,
   } as any
 }
@@ -709,10 +780,17 @@ function bookingFlowStepSurface(
 ) {
   if (active) return bookingMintOperationalTileSurface(visual, mode, reduceTransparency)
 
+  const gradient = mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(230,244,240,0.026), rgba(230,244,240,0.010))'
+    : 'linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0.10))'
+
   return {
-    backgroundColor: 'transparent',
+    background: reduceTransparency ? undefined : gradient,
+    backgroundColor: reduceTransparency ? 'transparent' : mode === 'dark' ? 'rgba(255,255,255,0.018)' : 'rgba(255,255,255,0.18)',
+    backgroundImage: reduceTransparency ? undefined : gradient,
     borderColor: 'transparent',
     boxShadow: 'none',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
   } as any
 }
 
@@ -720,19 +798,43 @@ function bookingFlowBadgeSurface(
   visual: BookingWizardVisual,
   mode: GlassMode,
   reduceTransparency: boolean,
-  index: number,
+  _index: number,
   active: boolean,
 ) {
-  const lightGradient = 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.82), transparent 28%), linear-gradient(145deg, rgba(255,255,255,0.96), rgba(238,243,241,0.92))'
+  const activeGradient = mode === 'dark'
+    ? 'radial-gradient(circle at 28% 18%, rgba(255,255,255,0.22), transparent 30%), linear-gradient(145deg, rgba(23,169,149,0.98), rgba(0,117,106,0.92))'
+    : 'radial-gradient(circle at 28% 18%, rgba(255,255,255,0.68), transparent 30%), linear-gradient(145deg, rgba(23,169,149,1), rgba(0,117,106,0.92))'
+  const inactiveGradient = mode === 'dark'
+    ? 'radial-gradient(circle at 24% 18%, rgba(190,210,205,0.11), transparent 28%), linear-gradient(145deg, rgba(29,37,34,0.88), rgba(18,25,23,0.74))'
+    : 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, rgba(255,255,255,0.94), rgba(238,243,241,0.82))'
+  const gradient = active ? activeGradient : inactiveGradient
 
   return {
-    background: reduceTransparency || active ? undefined : mode === 'dark' ? undefined : lightGradient,
+    background: reduceTransparency ? undefined : gradient,
     backgroundColor: active
       ? visual.primary
-      : mode === 'dark' ? '#1D2522' : '#EEF3F1',
-    backgroundImage: reduceTransparency || active ? undefined : mode === 'dark' ? undefined : lightGradient,
-    borderColor: active ? visual.borderStrong : visual.border,
-    experimental_backgroundImage: reduceTransparency || active ? undefined : mode === 'dark' ? undefined : lightGradient,
+      : mode === 'dark' ? 'rgba(29,37,34,0.78)' : 'rgba(255,255,255,0.70)',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: active
+      ? mode === 'dark' ? 'rgba(105,222,198,0.35)' : 'rgba(255,255,255,0.82)'
+      : mode === 'dark' ? 'rgba(190,210,205,0.13)' : 'rgba(20,73,66,0.10)',
+    boxShadow: reduceTransparency ? 'none' : active
+      ? mode === 'dark' ? '0 7px 16px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.16)' : '0 8px 18px rgba(9,121,106,0.18), inset 0 1px 0 rgba(255,255,255,0.36)'
+      : mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.08)' : '0 5px 12px rgba(31,92,82,0.045), inset 0 1px 0 rgba(255,255,255,0.70)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as any
+}
+
+function bookingFlowStepLensSurface(mode: GlassMode) {
+  const gradient = mode === 'dark'
+    ? 'radial-gradient(circle at 42% 30%, rgba(190,210,205,0.11), transparent 32%), radial-gradient(circle at 84% 80%, rgba(105,222,198,0.13), transparent 44%)'
+    : 'radial-gradient(circle at 42% 30%, rgba(255,255,255,0.84), transparent 32%), radial-gradient(circle at 84% 80%, rgba(76,222,199,0.22), transparent 44%)'
+
+  return {
+    background: gradient,
+    backgroundColor: 'transparent',
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
   } as any
 }
 
@@ -794,6 +896,7 @@ function ServiceStep({
   }, [railWidth, reduceMotion, segmentWidth, selectedIndex, thumbOpacity, thumbTranslateX])
 
   const handleRailLayout = (event: LayoutChangeEvent) => setRailWidth(event.nativeEvent.layout.width)
+  const previewRows = buildBookingPreviewRows(copy, selectedService)
 
   return (
     <WizardCard testID="booking-wizard-step-service">
@@ -855,6 +958,12 @@ function ServiceStep({
         </View>
       </GlassSurface>
       <View style={[styles.estimateShell, bookingEstimateShellSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-intake-shell">
+        {!reduceTransparency ? (
+          <>
+            <View pointerEvents="none" style={[styles.estimateShellTopEdge, bookingAppleGlassTopEdgeSurface(mode)]} testID="booking-wizard-intake-shell-apple-edge" />
+            <View pointerEvents="none" style={[styles.estimateShellInnerRing, bookingAppleGlassInsetSurface(mode)]} />
+          </>
+        ) : null}
         <View style={styles.previewHeader}>
           <Text style={[styles.previewTitle, { color: visual.text }]} numberOfLines={1}>
             {copy.servicePreviewTitle}
@@ -864,10 +973,15 @@ function ServiceStep({
           </Text>
         </View>
         <View style={[styles.estimateGrid, bookingEstimateGridSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-intake-grid">
-          <EstimateField label={copy.servicePreviewService} testID="booking-wizard-intake-service-field" value={copy.pendingValue} />
-          <EstimateField label={copy.servicePreviewDescription} testID="booking-wizard-intake-description-field" value={copy.pendingValue} />
-          <EstimateField label={copy.servicePreviewArea} testID="booking-wizard-intake-area-field" value={copy.pendingValue} />
-          <EstimateField label={copy.servicePreviewChat} testID="booking-wizard-intake-chat-field" value={copy.pendingValue} />
+          {!reduceTransparency ? (
+            <>
+              <View pointerEvents="none" style={[styles.estimateGridTopEdge, bookingAppleGlassTopEdgeSurface(mode)]} testID="booking-wizard-intake-grid-apple-edge" />
+              <View pointerEvents="none" style={[styles.estimateGridInnerRing, bookingAppleGlassInsetSurface(mode)]} />
+            </>
+          ) : null}
+          {previewRows.map((row) => (
+            <EstimateField key={row.testID} label={row.label} testID={row.testID} value={row.value} />
+          ))}
         </View>
       </View>
       <WizardPrimaryButton
@@ -880,6 +994,51 @@ function ServiceStep({
       />
     </WizardCard>
   )
+}
+
+function buildBookingPreviewRows(copy: WizardCopy, selectedService: ServiceType | null) {
+  return [
+    {
+      label: copy.servicePreviewService,
+      testID: 'booking-wizard-intake-service-field',
+      value: selectedService ? copy.services[selectedService] : copy.pendingValue,
+    },
+    {
+      label: copy.servicePreviewProblem,
+      testID: 'booking-wizard-intake-problem-field',
+      value: copy.servicePreviewProblemBody,
+    },
+    {
+      label: copy.servicePreviewPrice,
+      testID: 'booking-wizard-intake-price-field',
+      value: copy.servicePreviewPriceBody,
+    },
+    {
+      label: copy.servicePreviewComplexity,
+      testID: 'booking-wizard-intake-complexity-field',
+      value: copy.servicePreviewComplexityBody,
+    },
+    {
+      label: copy.servicePreviewConfidence,
+      testID: 'booking-wizard-intake-confidence-field',
+      value: copy.servicePreviewConfidenceBody,
+    },
+    {
+      label: copy.servicePreviewPlatformFee,
+      testID: 'booking-wizard-intake-platform-fee-field',
+      value: copy.servicePreviewPlatformFeeBody,
+    },
+    {
+      label: copy.servicePreviewTotal,
+      testID: 'booking-wizard-intake-total-field',
+      value: copy.servicePreviewTotalBody,
+    },
+    {
+      label: copy.servicePreviewPolicy,
+      testID: 'booking-wizard-intake-policy-field',
+      value: copy.servicePreviewPolicyBody,
+    },
+  ] as const
 }
 
 function bookingServiceTone(service: ServiceType) {
@@ -957,14 +1116,14 @@ function bookingServiceIconSurface(_visual: BookingWizardVisual, mode: GlassMode
   } as any
 }
 
-function bookingEstimateShellSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
-  const lightGradient = 'radial-gradient(circle at 80% 18%, rgba(76,222,199,0.20), transparent 42%), radial-gradient(circle at 16% 92%, rgba(76,222,199,0.10), transparent 46%), linear-gradient(180deg, rgba(255,255,255,0.95), rgba(238,255,251,0.90))'
-  const darkGradient = 'radial-gradient(circle at 80% 18%, rgba(105,222,198,0.13), transparent 42%), radial-gradient(circle at 16% 92%, rgba(105,222,198,0.06), transparent 46%), linear-gradient(180deg, rgba(24,31,29,0.72), rgba(13,17,16,0.56))'
+function bookingEstimateShellSurface(_visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  const lightGradient = 'radial-gradient(circle at 82% 18%, rgba(76,222,199,0.11), transparent 42%), radial-gradient(circle at 12% 92%, rgba(255,255,255,0.86), transparent 42%), linear-gradient(180deg, rgba(255,255,255,0.88), rgba(244,255,252,0.72))'
+  const darkGradient = 'radial-gradient(circle at 82% 18%, rgba(105,222,198,0.085), transparent 42%), radial-gradient(circle at 12% 92%, rgba(190,210,205,0.070), transparent 42%), linear-gradient(180deg, rgba(24,31,29,0.66), rgba(13,17,16,0.54))'
 
   return {
-    backgroundColor: mode === 'dark' ? 'rgba(22,29,27,0.66)' : '#F4FFFB',
-    borderColor: mode === 'dark' ? 'rgba(230,244,240,0.12)' : 'rgba(15,133,118,0.16)',
-    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 15px 34px rgba(0,0,0,0.31), inset 0 1px 0 rgba(230,244,240,0.08)' : '0 14px 30px rgba(17,70,61,0.060), inset 0 1px 0 rgba(255,255,255,0.78)',
+    backgroundColor: mode === 'dark' ? 'rgba(22,29,27,0.62)' : 'rgba(255,255,255,0.70)',
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.92)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? '0 18px 38px rgba(0,0,0,0.30), inset 0 1px 0 rgba(190,210,205,0.13), inset 0 -1px 0 rgba(0,0,0,0.16)' : '0 18px 38px rgba(17,70,61,0.070), inset 0 1px 0 rgba(255,255,255,0.94), inset 0 -1px 0 rgba(20,73,66,0.045)',
     background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
     backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
     experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
@@ -972,17 +1131,36 @@ function bookingEstimateShellSurface(visual: BookingWizardVisual, mode: GlassMod
 }
 
 function bookingEstimateGridSurface(_visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
-  const lightGradient = 'radial-gradient(circle at 74% 96%, rgba(76,222,199,0.20), transparent 48%), linear-gradient(180deg, rgba(238,255,250,0.78), rgba(232,255,248,0.66))'
-  const darkGradient = 'radial-gradient(circle at 74% 96%, rgba(105,222,198,0.12), transparent 48%), linear-gradient(180deg, rgba(21,30,28,0.72), rgba(15,22,20,0.62))'
+  const lightGradient = 'radial-gradient(circle at 78% 92%, rgba(76,222,199,0.13), transparent 48%), radial-gradient(circle at 20% 8%, rgba(255,255,255,0.82), transparent 42%), linear-gradient(180deg, rgba(255,255,255,0.64), rgba(240,255,251,0.50))'
+  const darkGradient = 'radial-gradient(circle at 78% 92%, rgba(105,222,198,0.09), transparent 48%), radial-gradient(circle at 20% 8%, rgba(190,210,205,0.07), transparent 42%), linear-gradient(180deg, rgba(21,30,28,0.66), rgba(15,22,20,0.54))'
 
   return {
     background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    backgroundColor: mode === 'dark' ? 'rgba(21,30,28,0.70)' : 'rgba(232,255,248,0.72)',
+    backgroundColor: mode === 'dark' ? 'rgba(21,30,28,0.62)' : 'rgba(255,255,255,0.50)',
     backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
-    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(15,133,118,0.12)',
-    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.055)' : 'inset 0 1px 0 rgba(255,255,255,0.46)',
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(255,255,255,0.88)',
+    boxShadow: reduceTransparency ? 'none' : mode === 'dark' ? 'inset 0 1px 0 rgba(190,210,205,0.12), inset 0 -1px 0 rgba(0,0,0,0.12)' : 'inset 0 1px 0 rgba(255,255,255,0.88), inset 0 -1px 0 rgba(20,73,66,0.040)',
     experimental_backgroundImage: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,
   } as any
+}
+
+function bookingAppleGlassTopEdgeSurface(mode: GlassMode) {
+  const gradient = mode === 'dark'
+    ? 'linear-gradient(90deg, transparent, rgba(190,210,205,0.18), transparent)'
+    : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.96), transparent)'
+
+  return {
+    background: gradient,
+    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(255,255,255,0.70)',
+    backgroundImage: gradient,
+    experimental_backgroundImage: gradient,
+  } as any
+}
+
+function bookingAppleGlassInsetSurface(mode: GlassMode) {
+  return {
+    borderColor: mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(255,255,255,0.62)',
+  }
 }
 
 function bookingInputShellSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
@@ -1220,8 +1398,8 @@ function EstimateField({
   const { mode, reduceTransparency, visual } = useBookingWizardVisual()
   return (
     <View style={[styles.estimateField, bookingFieldSurface(visual, mode, reduceTransparency, tone), wide ? styles.estimateFieldWide : null]} testID={testID}>
-      <WizardText kind="label" numberOfLines={1}>{label}</WizardText>
-      <WizardText kind="value" numberOfLines={2}>{value}</WizardText>
+      <Text style={[styles.estimateFieldLabelText, { color: visual.muted }]} numberOfLines={1}>{label}</Text>
+      <Text style={[styles.estimateFieldValueText, { color: visual.text }]} numberOfLines={4}>{value}</Text>
     </View>
   )
 }
@@ -1341,20 +1519,38 @@ const styles = StyleSheet.create({
   errorText: { color: '#B43F3F', fontSize: 13, fontWeight: '600' },
   errorSlot: { marginTop: -2 },
   estimateField: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     borderRadius: 0,
     borderWidth: 0,
     boxShadow: 'none',
-    flexBasis: '100%',
     flexDirection: 'row',
     flexGrow: 0,
-    gap: 10,
-    justifyContent: 'space-between',
-    minHeight: 27,
+    flexShrink: 0,
+    gap: 12,
+    justifyContent: 'flex-start',
+    minHeight: 30,
     overflow: 'visible',
     paddingHorizontal: 0,
     paddingVertical: 0,
     position: 'relative',
+  },
+  estimateFieldLabelText: {
+    flexShrink: 0,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 15,
+    paddingTop: 2,
+    textTransform: 'uppercase',
+    width: 108,
+  },
+  estimateFieldValueText: {
+    flex: 1,
+    fontSize: 13.5,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 19,
+    minWidth: 0,
   },
   estimateFieldWash: {
     borderRadius: 999,
@@ -1373,16 +1569,64 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     flexDirection: 'column',
-    gap: 10,
+    gap: 9,
     overflow: 'hidden',
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    position: 'relative',
+  },
+  estimateGridInnerRing: {
+    borderCurve: 'continuous',
+    borderRadius: 16,
+    borderWidth: 1,
+    bottom: 2,
+    left: 2,
+    opacity: 0.44,
+    position: 'absolute',
+    right: 2,
+    top: 2,
+    zIndex: 1,
+  },
+  estimateGridTopEdge: {
+    borderRadius: 999,
+    height: 1,
+    left: 18,
+    opacity: 0.86,
+    position: 'absolute',
+    right: 18,
+    top: 1,
+    zIndex: 2,
   },
   estimateShell: {
+    borderCurve: 'continuous',
     borderRadius: 24,
     borderWidth: 1,
     gap: 12,
     overflow: 'hidden',
     padding: 14,
+    position: 'relative',
+  },
+  estimateShellInnerRing: {
+    borderCurve: 'continuous',
+    borderRadius: 21,
+    borderWidth: 1,
+    bottom: 3,
+    left: 3,
+    opacity: 0.48,
+    position: 'absolute',
+    right: 3,
+    top: 3,
+    zIndex: 1,
+  },
+  estimateShellTopEdge: {
+    borderRadius: 999,
+    height: 1,
+    left: 22,
+    opacity: 0.9,
+    position: 'absolute',
+    right: 22,
+    top: 1,
+    zIndex: 2,
   },
   estimateValue: { color: '#1F2937', fontSize: 15, fontWeight: '700', lineHeight: 19 },
   flowOverview: {
@@ -1391,9 +1635,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4,
+    gap: 6,
     overflow: 'hidden',
-    padding: 4,
+    padding: 6,
+    position: 'relative',
+  },
+  flowLiquidAura: {
+    borderRadius: 999,
+    height: 142,
+    opacity: 0.9,
+    position: 'absolute',
+    right: -42,
+    top: 22,
+    width: 142,
+  },
+  flowLiquidEdge: {
+    borderRadius: 999,
+    height: 1,
+    left: 18,
+    opacity: 0.9,
+    position: 'absolute',
+    right: 18,
+    top: 1,
+  },
+  flowLiquidSheen: {
+    height: 170,
+    left: 78,
+    opacity: 0.46,
+    position: 'absolute',
+    top: -54,
+    transform: [{ rotate: '-8deg' }],
+    width: 72,
   },
   flowStepBadge: {
     alignItems: 'center',
@@ -1402,6 +1674,7 @@ const styles = StyleSheet.create({
     height: 28,
     justifyContent: 'center',
     width: 28,
+    zIndex: 1,
   },
   flowStepBadgeText: {
     fontSize: 12,
@@ -1417,15 +1690,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexGrow: 1,
     gap: 8,
-    minHeight: 58,
+    minHeight: 62,
     overflow: 'hidden',
-    paddingHorizontal: 9,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    position: 'relative',
+    zIndex: 1,
   },
   flowStepCopy: {
     flex: 1,
     gap: 2,
     minWidth: 0,
+    zIndex: 1,
+  },
+  flowStepLiquidLens: {
+    bottom: -18,
+    borderRadius: 999,
+    left: -18,
+    opacity: 0.78,
+    position: 'absolute',
+    right: -18,
+    top: -18,
   },
   flowStepMeta: {
     fontSize: 11,

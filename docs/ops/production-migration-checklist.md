@@ -14,6 +14,15 @@
 > reports `Remote database is up to date`; lint and performance advisors pass;
 > security advisor still reports only the existing Auth leaked-password warning.
 
+> 2026-06-04 update: branch `claude/nostalgic-bardeen-ac835c` applied the
+> public grant/default privilege hardening follow-up chain through
+> `20260604100550` to production, redeployed `mobile-api`, and added a
+> public-safe `GET /mobile-api/health` readiness smoke. Current evidence lives in
+> `docs/test-logs/2026-06-04_nostalgic-bardeen-production-convergence.md`.
+> Follow-up Auth hardening was attempted through Supabase Management API on
+> staging and production; both returned HTTP `402` because leaked-password
+> protection requires a Pro plan or higher.
+
 This checklist is the production safety gate for applying the Supabase migration chain from the verified staging database to the production `HomeServices` project.
 
 > 2026-05-18 staging backend note: this checklist predates the `mobile-api`
@@ -31,6 +40,7 @@ Production project:
 name: HomeServices
 ref: iwevizmsedyqozxlawwl
 url: https://iwevizmsedyqozxlawwl.supabase.co
+edge_health: https://iwevizmsedyqozxlawwl.functions.supabase.co/mobile-api/health
 region: ap-southeast-1
 ```
 
@@ -39,6 +49,7 @@ Staging project:
 ```text
 name: HomeServices Staging
 ref: xyylanuyflrjzbjzhqfl
+edge_health: https://xyylanuyflrjzbjzhqfl.functions.supabase.co/mobile-api/health
 region: ap-southeast-1
 status: verified
 ```

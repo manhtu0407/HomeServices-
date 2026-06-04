@@ -6,6 +6,8 @@ const mockSignOut = jest.fn()
 const mockUpdateCustomerProfile = jest.fn()
 const mockUpdatePassword = jest.fn()
 const mockSubmitCustomerFeedback = jest.fn()
+const mockGetTrainingConsent = jest.fn()
+const mockUpdateTrainingConsent = jest.fn()
 const mockReplace = jest.fn()
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
@@ -52,6 +54,10 @@ jest.mock('@/lib/services', () => ({
   customerFeedbackService: {
     submit: (...args: unknown[]) => mockSubmitCustomerFeedback(...args),
   },
+  kaelTrainingConsentService: {
+    get: (...args: unknown[]) => mockGetTrainingConsent(...args),
+    set: (...args: unknown[]) => mockUpdateTrainingConsent(...args),
+  },
 }))
 
 jest.mock('@/lib/app-language', () => {
@@ -80,6 +86,21 @@ beforeEach(() => {
     status: 201,
     success: true,
   })
+  mockGetTrainingConsent.mockClear()
+  mockGetTrainingConsent.mockImplementation(() => new Promise(() => undefined))
+  mockUpdateTrainingConsent.mockClear()
+  mockUpdateTrainingConsent.mockResolvedValue({
+    data: {
+      consent: {
+        allow_training: true,
+        decided_at: '2026-06-04T00:00:00.000Z',
+        source: 'profile',
+        updated_at: '2026-06-04T00:00:00.000Z',
+      },
+    },
+    status: 200,
+    success: true,
+  })
   mockUpdateCustomerProfile.mockClear()
   mockUpdateCustomerProfile.mockResolvedValue({ success: true })
   mockUpdatePassword.mockClear()
@@ -99,6 +120,12 @@ describe('CustomerProfileSurface editable rows', () => {
     expect(screen.queryByTestId('customer-section-liquid-wash-profile')).toBeNull()
     expect(screen.queryByTestId('customer-profile-mint-glass-slab')).toBeNull()
     expect(screen.queryByTestId('customer-profile-identity-liquid-card')).toBeNull()
+    const heroStyle = StyleSheet.flatten(screen.getByTestId('customer-profile-hero').props.style) as Record<string, unknown>
+    expect(String(heroStyle.backgroundImage ?? heroStyle.background ?? heroStyle.experimental_backgroundImage)).toContain('rgba(23,169,149,0.138)')
+    const heroIconShellStyle = StyleSheet.flatten(screen.getByTestId('customer-profile-hero-icon-shell').props.style) as Record<string, unknown>
+    expect(heroIconShellStyle.borderWidth).toBe(0)
+    expect(heroIconShellStyle.backgroundColor).toBe('transparent')
+    expect(heroIconShellStyle.boxShadow).toBe('none')
     expect(screen.getByText('Tài khoản căn hộ')).toBeOnTheScreen()
     expect(screen.getByText('Thiết lập và hỗ trợ')).toBeOnTheScreen()
     expect(screen.queryByText('Hồ sơ khách')).toBeNull()
@@ -126,6 +153,12 @@ describe('CustomerProfileSurface editable rows', () => {
     expect(screen.getByTestId('customer-profile-care-stat-motion-0')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-profile-care-stat-motion-1')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-profile-care-stat-motion-2')).toBeOnTheScreen()
+    for (const index of [0, 1, 2]) {
+      const statIconStyle = StyleSheet.flatten(screen.getByTestId(`customer-profile-care-stat-icon-${index}`).props.style) as Record<string, unknown>
+      expect(statIconStyle.backgroundColor).toBe('transparent')
+      expect(statIconStyle.borderWidth).toBe(0)
+      expect(statIconStyle.boxShadow).toBe('none')
+    }
     expect(screen.getByTestId('customer-profile-insight-0')).toHaveTextContent('Sẵn sàng')
     expect(screen.getByTestId('customer-profile-insight-1')).toHaveTextContent('Chưa có')
     expect(screen.getByTestId('customer-profile-insight-2')).toHaveTextContent('Chờ kiểm giá')
@@ -238,6 +271,140 @@ describe('CustomerProfileSurface editable rows', () => {
     fireEvent.press(screen.getByTestId('customer-feedback-submit'))
 
     expect(screen.getByTestId('customer-feedback-error')).toBeOnTheScreen()
+    expect(mockSubmitCustomerFeedback).not.toHaveBeenCalled()
+  })
+
+  it('loads Kael training consent and lets the customer opt in', async () => {
+    mockGetTrainingConsent.mockResolvedValueOnce({
+      data: {
+        consent: {
+          allow_training: false,
+          decided_at: null,
+          source: 'profile',
+          updated_at: null,
+        },
+      },
+      status: 200,
+      success: true,
+    })
+
+    render(<CustomerProfileSurface />)
+
+    await waitFor(() => {
+      expect(mockGetTrainingConsent).toHaveBeenCalledTimes(1)
+    })
+
+    fireEvent.press(screen.getByTestId('customer-profile-open-training-consent'))
+    expect(screen.getByTestId('customer-training-consent-sheet')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('customer-training-consent-allow'))
+
+    await waitFor(() => {
+      expect(mockUpdateTrainingConsent).toHaveBeenCalledWith({
+        allow_training: true,
+        source: 'profile',
+      })
+    })
+    await waitFor(() => {
+      expect(screen.queryByTestId('customer-training-consent-sheet')).toBeNull()
+    })
+  })
+
+  it('keeps the Kael training consent sheet dismissible when the endpoint is unavailable', async () => {
+    mockGetTrainingConsent.mockResolvedValueOnce({
+      code: 'NOT_FOUND',
+      error: 'Không tìm thấy endpoint',
+      status: 404,
+      success: false,
+    })
+    mockUpdateTrainingConsent.mockResolvedValueOnce({
+      code: 'NOT_FOUND',
+      error: 'Không tìm thấy endpoint',
+      status: 404,
+      success: false,
+    })
+
+    render(<CustomerProfileSurface />)
+
+    await waitFor(() => {
+      expect(mockGetTrainingConsent).toHaveBeenCalledTimes(1)
+    })
+
+    fireEvent.press(screen.getByTestId('customer-profile-open-training-consent'))
+    fireEvent.press(screen.getByTestId('customer-training-consent-allow'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('customer-training-consent-error')).toBeOnTheScreen()
+    })
+    expect(screen.getByTestId('customer-training-consent-error')).not.toHaveTextContent(/endpoint/i)
+
+    fireEvent.press(screen.getByTestId('customer-training-consent-close'))
+
+    expect(screen.queryByTestId('customer-training-consent-sheet')).toBeNull()
+  })
+
+  it('opens Privacy Policy directly from the Kael training consent learn-more action', () => {
+    render(<CustomerProfileSurface />)
+
+    fireEvent.press(screen.getByTestId('customer-profile-open-training-consent'))
+    expect(screen.getByText('Cải thiện Kael cho mọi người')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-training-consent-learn-more')).toHaveTextContent('Tìm hiểu thêm')
+
+    fireEvent.press(screen.getByTestId('customer-training-consent-learn-more'))
+
+    expect(screen.queryByTestId('customer-training-consent-sheet')).toBeNull()
+    expect(screen.getByTestId('customer-privacy-policy-sheet')).toBeOnTheScreen()
+    expect(mockUpdateTrainingConsent).not.toHaveBeenCalled()
+  })
+
+  it('lets the customer keep collected Kael data out of training', async () => {
+    mockGetTrainingConsent.mockResolvedValueOnce({
+      data: {
+        consent: {
+          allow_training: true,
+          decided_at: '2026-06-04T00:00:00.000Z',
+          source: 'profile',
+          updated_at: '2026-06-04T00:00:00.000Z',
+        },
+      },
+      status: 200,
+      success: true,
+    })
+    mockUpdateTrainingConsent.mockResolvedValueOnce({
+      data: {
+        consent: {
+          allow_training: false,
+          decided_at: '2026-06-04T00:00:00.000Z',
+          source: 'profile',
+          updated_at: '2026-06-04T00:00:00.000Z',
+        },
+      },
+      status: 200,
+      success: true,
+    })
+
+    render(<CustomerProfileSurface />)
+
+    fireEvent.press(screen.getByTestId('customer-profile-open-training-consent'))
+    fireEvent.press(screen.getByTestId('customer-training-consent-deny'))
+
+    await waitFor(() => {
+      expect(mockUpdateTrainingConsent).toHaveBeenCalledWith({
+        allow_training: false,
+        source: 'profile',
+      })
+    })
+  })
+
+  it('opens the Privacy Policy section without policy content yet', () => {
+    render(<CustomerProfileSurface />)
+
+    fireEvent.press(screen.getByTestId('customer-profile-open-privacy-policy'))
+    expect(screen.getByTestId('customer-privacy-policy-sheet')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('customer-privacy-policy-close'))
+    expect(screen.queryByTestId('customer-privacy-policy-sheet')).toBeNull()
+    expect(mockUpdateTrainingConsent).not.toHaveBeenCalled()
     expect(mockSubmitCustomerFeedback).not.toHaveBeenCalled()
   })
 

@@ -78,7 +78,7 @@ export type KaelPermissionGateDecision = KaelPermissionGateRequest & {
 };
 
 type AuditClient = {
-  from(table: string): {
+  from(table: import("../db-types.ts").PublicTableName): {
     insert(value: Record<string, unknown>): PromiseLike<unknown>;
   };
 };

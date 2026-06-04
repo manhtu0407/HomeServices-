@@ -593,8 +593,8 @@ type DbError = { code?: string; message?: string };
 type DbResult<T = unknown> = { data: T | null; error: DbError | null; count?: number | null };
 type QueryLike = PromiseLike<DbResult<unknown>>;
 type LearningQueueDbClient = {
-  from(table: string): { insert(value: unknown): QueryLike };
-  rpc?(name: string, args?: Record<string, unknown>): QueryLike;
+  from(table: import("../../db-types.ts").PublicTableName): { insert(value: unknown): QueryLike };
+  rpc?(name: import("../../db-types.ts").PublicRpcName, args?: Record<string, unknown>): QueryLike;
 };
 
 export type QueueLearningSummary = {

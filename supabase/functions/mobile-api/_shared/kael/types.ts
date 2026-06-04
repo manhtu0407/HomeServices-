@@ -362,7 +362,7 @@ export type PipelineResult =
   };
 
 export type SupabaseLike = {
-  from(table: string): QueryBuilderLike;
+  from(table: import("../db-types.ts").PublicTableName): QueryBuilderLike;
 };
 
 export type QueryBuilderLike = {

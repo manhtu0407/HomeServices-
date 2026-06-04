@@ -10,7 +10,7 @@ export type KaelProgressUpdate = {
 };
 
 type ProgressClient = {
-  from(table: string): {
+  from(table: import("../db-types.ts").PublicTableName): {
     update?: (payload: Record<string, unknown>) => {
       eq?: (column: "id", value: string) => PromiseLike<{ data?: unknown; error?: unknown }>;
     };

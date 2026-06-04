@@ -211,7 +211,22 @@ describe('Kael P7 learning skill setup', () => {
       },
     })
     const client = makeSequenceClient([
-      { data: { id: 'job-1', status: 'paid', customer_id: 'customer-1', worker_id: 'worker-1' }, error: null },
+      {
+        data: {
+          id: 'job-1',
+          status: 'paid',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          service_type: 'electrical',
+          address_district: 'Quận 7',
+          kael_problem_identified: 'Ổ cắm chập',
+          kael_complexity: 'moderate',
+          kael_price_min: 200000,
+          kael_price_max: 350000,
+          final_price: 300000,
+        },
+        error: null,
+      },
       {
         data: [{
           ok: true,
@@ -221,6 +236,8 @@ describe('Kael P7 learning skill setup', () => {
         }],
         error: null,
       },
+      { data: null, error: null },
+      { data: { allow_training: true, decided_at: '2026-06-04T00:00:00.000Z', updated_at: '2026-06-04T00:00:00.000Z' }, error: null },
       { data: null, error: null },
       { data: null, error: null },
     ])

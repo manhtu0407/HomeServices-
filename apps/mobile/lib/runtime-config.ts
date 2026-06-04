@@ -31,9 +31,14 @@ function envString(...keys: string[]) {
 const supabaseUrl = envString('EXPO_PUBLIC_SUPABASE_URL') || extraString('supabaseUrl')
 const supabasePublishableKey = envString('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || extraString('supabasePublishableKey')
 const configuredApiBaseUrl = envString('EXPO_PUBLIC_API_BASE_URL') || extraString('apiBaseUrl')
+const sentryDsn = envString('EXPO_PUBLIC_SENTRY_DSN') || extraString('sentryDsn')
+const sentryEnvironment =
+  envString('EXPO_PUBLIC_SENTRY_ENVIRONMENT', 'APP_ENV', 'EAS_BUILD_PROFILE') || extraString('sentryEnvironment')
 
 export const mobileRuntimeConfig = {
   apiBaseUrl: configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : ''),
+  sentryDsn,
+  sentryEnvironment,
   supabasePublishableKey,
   supabaseUrl,
 }

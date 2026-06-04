@@ -73,7 +73,6 @@ type KaelChatText = {
   composerPlaceholder: string
   emptyTicketBody: string
   emptyTicketTitle: string
-  errorNoService: string
   estimateDisclaimerFallback: string
   estimateProblemFallback: string
   estimateTitle: string
@@ -556,7 +555,7 @@ export function KaelChatComposer({
             dispatch({
               type: 'setDraft',
               value,
-              clearTransientError: error === text.errorNoService || error === text.attachHint,
+              clearTransientError: error === text.attachHint,
             })
           }}
           onContentSizeChange={(event) => setComposerInputHeight(Math.min(76, Math.max(28, event.nativeEvent.contentSize.height)))}
@@ -795,10 +794,12 @@ export function KaelIntakeReceiptCard({ intake, language }: { intake: PendingKae
   const preview = kaelEstimatePreviewCopy[language]
   const serviceValue = intake.serviceType ? localizedServiceLabel(intake.serviceType, language) : preview.servicePending
   const firstProblemChip = (intake.problemChips ?? []).find((chip) => chip.trim().length > 0)?.trim()
-  const problemValue = firstProblemChip || (intake.message.trim() ? preview.problemFromDescription : preview.problemPending)
+  const problemValue = firstProblemChip || preview.sampleRows.problem
+  const sampleRows = { ...preview.sampleRows, problem: undefined, service: undefined }
   const rows = buildEstimatePreviewRows({
     language,
     problemValue,
+    sampleRows,
     serviceValue,
   })
 
@@ -831,7 +832,6 @@ const kaelEstimatePreviewCopy = {
     },
     platformFeePending: 'Hiển thị khi có ước tính',
     pricePending: 'Chờ Kael ước tính',
-    problemFromDescription: 'Kael đang phân loại từ mô tả.',
     problemPending: 'Chưa có',
     sampleRows: {
       cancellationNote: 'Bạn có thể hủy miễn phí trước khi thợ nhận việc.',
@@ -864,7 +864,6 @@ const kaelEstimatePreviewCopy = {
     },
     platformFeePending: 'Shown after a real estimate',
     pricePending: 'Waiting for Kael estimate',
-    problemFromDescription: 'Kael is classifying from the description.',
     problemPending: 'Not available yet',
     sampleRows: {
       cancellationNote: 'You can cancel for free before a worker accepts.',

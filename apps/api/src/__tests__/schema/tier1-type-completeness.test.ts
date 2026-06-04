@@ -33,11 +33,15 @@ const EXPECTED_TABLES = [
   'worker_cancellation_requests',
   'ai_provider_routing',
   'customer_kael_memory',
+  'customer_kael_feedback',
+  'customer_kael_training_consent',
   'worker_kael_memory',
   'kael_admin_queue',
   'kael_permission_audit',
   'kael_advisory_audit',
   'kael_memory_audit',
+  'kael_training_events',
+  'kael_training_excluded_events',
   'kael_worker_qa_log',
   'worker_scope_change_stats',
   'worker_safety_patterns',
@@ -74,7 +78,7 @@ const EXPECTED_ENUMS = [
 
 describe('Database.public.Tables completeness', () => {
   it('has all aligned workflow tables', () => {
-    expect(EXPECTED_TABLES).toHaveLength(49)
+    expect(EXPECTED_TABLES).toHaveLength(53)
   })
 
   it.each(EXPECTED_TABLES)('table "%s" is a valid generated table key', (name) => {
@@ -196,6 +200,10 @@ describe('Insert type requirements', () => {
       customer_id: '00000000-0000-0000-0000-000000000000',
       service_type: 'electrical' as const,
     } satisfies Database['public']['Tables']['kael_chat_sessions']['Insert']
+    const preIntakeSession = {
+      customer_id: '00000000-0000-0000-0000-000000000000',
+      service_type: null,
+    } satisfies Database['public']['Tables']['kael_chat_sessions']['Insert']
     const turn = {
       session_id: '00000000-0000-0000-0000-000000000000',
       turn_index: 1,
@@ -204,6 +212,7 @@ describe('Insert type requirements', () => {
     } satisfies Database['public']['Tables']['kael_chat_turns']['Insert']
 
     expect(session.service_type).toBe('electrical')
+    expect(preIntakeSession.service_type).toBeNull()
     expect(turn.role).toBe('customer')
   })
 
@@ -214,6 +223,7 @@ describe('Insert type requirements', () => {
       priority: 'high',
       escalation_level: 'hard',
       reason_code: 'threat_complaint',
+      response_summary: 'Khach hang gay ap luc; da ghi nhan va chuyen admin.',
     } satisfies Database['public']['Tables']['kael_admin_queue']['Insert']
     const log = {
       actor_role: 'customer',
@@ -282,6 +292,7 @@ describe('Insert type requirements', () => {
       initiator_statement: 'Customer says completion is not accepted.',
       counter_party_response_deadline: '2026-05-27T00:00:00.000Z',
       evidence_snapshot_id: '00000000-0000-0000-0000-000000000000',
+      evidence_locked_at: snapshot.evidence_locked_at,
       kael_neutral_summary: 'Fact-only summary for admin review.',
       admin_review: { priority: 'high' },
       status: 'open',

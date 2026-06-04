@@ -271,7 +271,7 @@ export const jobCreateSchema = z.object({
 });
 
 export const kaelChatCreateSchema = z.object({
-  service_type: serviceTypeSchema,
+  service_type: serviceTypeSchema.optional(),
   session_id: z.string().uuid().optional(),
   message: z.string().min(1).max(5000).optional(),
   problem_chips: z.array(z.string().max(100)).max(10).default([]),
@@ -281,9 +281,17 @@ export const kaelChatCreateSchema = z.object({
   // X2 (Plan.md §27.5 — 2026-05-29): optional UUID for idempotent session
   // creation. Same semantics as jobCreateSchema.client_request_id.
   client_request_id: z.string().uuid().optional(),
+}).superRefine((value, ctx) => {
+  if (value.service_type || value.session_id || value.message?.trim()) return;
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: "Kael chat needs a service, session, or message",
+    path: ["message"],
+  });
 });
 
 export const kaelChatTurnSchema = z.object({
+  service_type: serviceTypeSchema.optional(),
   message: z.string().min(1).max(5000),
   problem_chips: z.array(z.string().max(100)).max(10).optional(),
   photo_urls: z.array(z.string().url()).max(5).default([]),
@@ -300,6 +308,11 @@ export const customerKaelFeedbackSchema = z.object({
   message: z.string().trim().min(8).max(1200),
   source: z.enum(["profile"]).default("profile"),
   language: z.enum(["vi", "en"]).default("vi"),
+});
+
+export const kaelTrainingConsentSchema = z.object({
+  allow_training: z.boolean(),
+  source: z.enum(["profile"]).default("profile"),
 });
 
 export const jobMessageSendSchema = z.object({
@@ -466,6 +479,9 @@ export type KaelChatTurnInput = z.infer<typeof kaelChatTurnSchema>;
 export type PlacesAutocompleteInput = z.infer<typeof placesAutocompleteSchema>;
 export type CustomerKaelFeedbackInput = z.infer<
   typeof customerKaelFeedbackSchema
+>;
+export type KaelTrainingConsentInput = z.infer<
+  typeof kaelTrainingConsentSchema
 >;
 export type JobMessageSendInput = z.infer<typeof jobMessageSendSchema>;
 export type ReviewInput = z.infer<typeof reviewSchema>;

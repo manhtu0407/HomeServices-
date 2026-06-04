@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { ExpoConfig, ConfigContext } from 'expo/config'
-import { withEntitlementsPlist, withXcodeProject, type ConfigPlugin } from 'expo/config-plugins'
 
 const configDir = __dirname
 const repoRoot = resolve(configDir, '../..')
@@ -50,29 +49,24 @@ const supabasePublishableKey = fromEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
 const configuredApiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
 const apiBaseUrl =
   configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : '')
-
-const withoutIosPushEntitlement: ConfigPlugin = (expoConfig) => {
-  const configWithoutEntitlement = withEntitlementsPlist(expoConfig, (config) => {
-    delete config.modResults['aps-environment']
-    return config
-  })
-
-  return withXcodeProject(configWithoutEntitlement, (config) => {
-    const project = config.modResults
-    const projectAttributes = project.getFirstProject()?.firstProject?.attributes as
-      | { TargetAttributes?: Record<string, { SystemCapabilities?: Record<string, unknown> }> }
-      | undefined
-
-    const targetAttributes = projectAttributes?.TargetAttributes
-    if (targetAttributes) {
-      for (const attributes of Object.values(targetAttributes)) {
-        delete attributes.SystemCapabilities?.['com.apple.Push']
-      }
-    }
-
-    return config
-  })
-}
+const sentryDsn = fromEnv('EXPO_PUBLIC_SENTRY_DSN')
+const sentryEnvironment = fromEnv('EXPO_PUBLIC_SENTRY_ENVIRONMENT', 'APP_ENV', 'EAS_BUILD_PROFILE') || 'production'
+const sentryOrganization = fromEnv('SENTRY_ORG', 'SENTRY_ORGANIZATION')
+const sentryProject = fromEnv('SENTRY_PROJECT')
+const sentryUrl = fromEnv('SENTRY_URL') || 'https://sentry.io/'
+const sentryPlugins =
+  sentryOrganization && sentryProject
+    ? ([
+        [
+          '@sentry/react-native/expo',
+          {
+            organization: sentryOrganization,
+            project: sentryProject,
+            url: sentryUrl,
+          },
+        ],
+      ] as NonNullable<ExpoConfig['plugins']>)
+    : []
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -126,12 +120,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'Home Services cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa.',
       },
     ],
-    withoutIosPushEntitlement as unknown as string,
+    'expo-notifications',
+    ...sentryPlugins,
   ],
   extra: {
     supabaseUrl,
     supabasePublishableKey,
     apiBaseUrl,
+    sentryDsn,
+    sentryEnvironment,
     eas: {
       projectId: 'df74d6a3-f85b-4b40-85ef-fe3162023d6e',
     },

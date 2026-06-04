@@ -28,6 +28,17 @@ const adminAuth: MobileApiAuthResult = {
 
 function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServices {
   return {
+    getHealth: vi.fn(async () => ({
+      status: 'ok' as const,
+      service: 'mobile-api' as const,
+      checked_at: '2026-06-04T00:00:00.000Z',
+      project_ref: 'test-project',
+      checks: {
+        edge: 'ok' as const,
+        supabase_env: 'ok' as const,
+        provider_env: 'ok' as const,
+      },
+    })),
     getKaelCharter: vi.fn(async () => ({
       charter_version: '2026-05-25.p8',
       identity_summary: 'Kael is the Home Services assistant.',
@@ -59,6 +70,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     getJob: vi.fn(),
     listCustomerActiveJobs: vi.fn(),
     createKaelChat: vi.fn(),
+    listKaelChats: vi.fn(),
     getKaelChat: vi.fn(),
     sendKaelChatTurn: vi.fn(),
     confirmKaelChat: vi.fn(),
@@ -82,6 +94,22 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     confirmCompletion: vi.fn(),
     submitReview: vi.fn(),
     submitCustomerKaelFeedback: vi.fn(),
+    getKaelTrainingConsent: vi.fn(async () => ({
+      consent: {
+        allow_training: false,
+        decided_at: null,
+        source: 'profile' as const,
+        updated_at: null,
+      },
+    })),
+    updateKaelTrainingConsent: vi.fn(async () => ({
+      consent: {
+        allow_training: true,
+        decided_at: '2026-06-04T00:00:00.000Z',
+        source: 'profile' as const,
+        updated_at: '2026-06-04T00:00:00.000Z',
+      },
+    })),
     registerWorker: vi.fn(),
     getMyKaelMemory: vi.fn(),
     getWorkerKaelMemory: vi.fn(),
@@ -133,6 +161,42 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
 }
 
 describe('mobile-api Edge router contract', () => {
+  it('answers health without auth or product data', async () => {
+    const authenticate = vi.fn()
+    const getHealth = vi.fn(async () => ({
+      status: 'ok' as const,
+      service: 'mobile-api' as const,
+      checked_at: '2026-06-04T00:00:00.000Z',
+      project_ref: 'xyylanuyflrjzbjzhqfl',
+      checks: {
+        edge: 'ok' as const,
+        supabase_env: 'ok' as const,
+        provider_env: 'ok' as const,
+      },
+    }))
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ getHealth }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/health'))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      status: 'ok',
+      service: 'mobile-api',
+      checked_at: '2026-06-04T00:00:00.000Z',
+      project_ref: 'xyylanuyflrjzbjzhqfl',
+      checks: {
+        edge: 'ok',
+        supabase_env: 'ok',
+        provider_env: 'ok',
+      },
+    })
+    expect(authenticate).not.toHaveBeenCalled()
+    expect(getHealth).toHaveBeenCalledOnce()
+  })
+
   it('answers OPTIONS preflight without auth', async () => {
     const authenticate = vi.fn()
     const handler = createMobileApiHandler({ authenticate, services: makeServices() })
@@ -293,6 +357,71 @@ describe('mobile-api Edge router contract', () => {
     expect(response.status).toBe(400)
     expect(await response.json()).toMatchObject({ code: 'VALIDATION' })
     expect(submitCustomerKaelFeedback).not.toHaveBeenCalled()
+  })
+
+  it('routes Kael training consent reads through authenticated mobile API services', async () => {
+    const getKaelTrainingConsent = vi.fn(async () => ({
+      consent: {
+        allow_training: false,
+        decided_at: null,
+        source: 'profile' as const,
+        updated_at: null,
+      },
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ getKaelTrainingConsent }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/kael-training-consent'))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ consent: { allow_training: false } })
+    expect(getKaelTrainingConsent).toHaveBeenCalledWith(expect.objectContaining({ role: 'customer' }))
+  })
+
+  it('routes Kael training consent updates through authenticated mobile API services', async () => {
+    const updateKaelTrainingConsent = vi.fn(async () => ({
+      consent: {
+        allow_training: true,
+        decided_at: '2026-06-04T00:00:00.000Z',
+        source: 'profile' as const,
+        updated_at: '2026-06-04T00:00:00.000Z',
+      },
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ updateKaelTrainingConsent }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/kael-training-consent', {
+      body: JSON.stringify({ allow_training: true, source: 'profile' }),
+      method: 'PATCH',
+    }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ consent: { allow_training: true } })
+    expect(updateKaelTrainingConsent).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      { allow_training: true, source: 'profile' },
+    )
+  })
+
+  it('rejects malformed Kael training consent before service dispatch', async () => {
+    const updateKaelTrainingConsent = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ updateKaelTrainingConsent }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/kael-training-consent', {
+      body: JSON.stringify({ allow_training: 'yes' }),
+      method: 'PATCH',
+    }))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: 'VALIDATION' })
+    expect(updateKaelTrainingConsent).not.toHaveBeenCalled()
   })
 
   it('routes worker Kael clarification through the job-scoped worker endpoint', async () => {
@@ -802,6 +931,48 @@ describe('mobile-api Edge router contract', () => {
     )
   })
 
+  it('routes pre-intake Kael greetings without requiring service_type', async () => {
+    const createKaelChat = vi.fn<MobileApiServices['createKaelChat']>(async () => ({
+      session: {
+        id: 'kael-session-1',
+        status: 'active' as const,
+        service_type: null,
+        job_id: null,
+        customer_id: customerAuth.user.id,
+        estimate: null,
+        started_at: '2026-06-04T00:00:00.000Z',
+        estimate_ready_at: null,
+        total_turns: 2,
+        total_cost_usd: 0,
+        next_action: 'await_service' as const,
+      },
+      turns: [],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ createKaelChat }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Hi',
+        photo_urls: [],
+        client_request_id: '00000000-0000-4000-8000-000000000004',
+      }),
+    }))
+
+    expect(response.status).toBe(201)
+    const input = createKaelChat.mock.calls[0]?.[1]
+    expect(input).toMatchObject({
+      message: 'Hi',
+      photo_urls: [],
+      client_request_id: '00000000-0000-4000-8000-000000000004',
+    })
+    expect(input?.service_type).toBeUndefined()
+  })
+
   it('routes Kael chat history reads through customer auth', async () => {
     const getKaelChat = vi.fn(async () => ({
       session: {
@@ -832,6 +1003,39 @@ describe('mobile-api Edge router contract', () => {
     expect(getKaelChat).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
       'kael-session-1',
+    )
+  })
+
+  it('routes Kael chat session list through customer auth', async () => {
+    const listKaelChats = vi.fn(async () => ({
+      sessions: [{
+        id: 'kael-session-1',
+        status: 'active' as const,
+        service_type: null,
+        job_id: null,
+        customer_id: customerAuth.user.id,
+        estimate: null,
+        started_at: '2026-06-04T00:00:00.000Z',
+        estimate_ready_at: null,
+        total_turns: 2,
+        total_cost_usd: 0,
+        next_action: 'await_service' as const,
+        created_at: '2026-06-04T00:00:00.000Z',
+        updated_at: '2026-06-04T00:00:02.000Z',
+      }],
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ listKaelChats }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat', {
+      method: 'GET',
+    }))
+
+    expect(response.status).toBe(200)
+    expect(listKaelChats).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
     )
   })
 

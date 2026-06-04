@@ -1,33 +1,21 @@
-import { type Dispatch, type MutableRefObject, useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
+import { type Dispatch, type MutableRefObject, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import {
-  KeyboardAvoidingView,
-  Platform,
-  useWindowDimensions,
-  View,
-} from 'react-native'
+import { KeyboardAvoidingView, Platform, useWindowDimensions, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { inferLocalDealDraftFromKael, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type LocalDeal, type ServiceType } from '@home-services/shared'
+import { inferLocalDealDraftFromKael, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@home-services/shared'
 import { useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
-import { localizedServiceLabel, type AppLanguage, useAppLanguage } from '@/lib/app-language'
-import { type KaelChatResponse } from '@/lib/api-types'
+import { type AppLanguage, useAppLanguage } from '@/lib/app-language'
+import { type KaelChatResponse, type KaelChatSessionSummary } from '@/lib/api-types'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { kaelChatService } from '@/lib/services'
-import {
-  clearStableClientRequestId,
-  stableClientRequestId,
-  type PendingClientRequestId,
-} from '@/lib/client-request-id'
+import { clearStableClientRequestId, stableClientRequestId, type PendingClientRequestId } from '@/lib/client-request-id'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
 import { inferKaelChatDistrict } from './address-district'
-import {
-  KaelChatComposer,
-  type KaelChatArchiveItem,
-  KaelChatHeader,
-  useKaelChatTokens,
-} from './agentic-parts'
+import { buildKaelChatArchiveItems } from './archive'
+import { KaelChatComposer, KaelChatHeader, useKaelChatTokens } from './agentic-parts'
+import { isLocalGreetingOnly } from './local-rhythm'
 import { takePendingKaelChatDraft } from './pending-intake'
 import { createInitialKaelChatState, kaelChatReducer, type KaelChatAction, type KaelChatState } from './state'
 import { styles } from './styles'
@@ -59,10 +47,13 @@ const copy = {
     archiveNoService: 'Chưa chọn dịch vụ',
     archiveOpen: 'Mở phiên lưu',
     archivePendingIntake: 'Phiếu đang gửi',
+    archiveSavedChat: 'Phiên đã lưu',
+    archiveSavedMeta: 'Mở lại',
     archiveServiceRequest: 'Phiên đặt dịch vụ',
     archiveTitle: 'Phiên Kael',
     activityOrchestrating: 'Đang điều phối',
     activityResearch: 'Đang nghiên cứu',
+    activitySteps: { orchestrating: ['Kiểm tra quyết định', 'Gửi yêu cầu', 'Theo dõi phản hồi'], research: ['Đọc mô tả', 'Kiểm tra phạm vi', 'Chuẩn bị phản hồi'], thinking: ['Đọc tin nhắn', 'Khoanh phạm vi', 'Hỏi rõ phần thiếu'] },
     activityThinking: 'Đang nghĩ',
     back: 'Đóng',
     composerPlaceholder: '',
@@ -71,8 +62,10 @@ const copy = {
     confirmed: 'Đã tạo yêu cầu. Kael đang tự điều phối thợ phù hợp.',
     emptyTicketBody: 'Phiếu sẽ hiện ở đây sau khi bạn gửi mô tả thật.',
     emptyTicketTitle: 'Phiếu Kael',
-    errorNoService: 'Chọn một dịch vụ trước khi gửi mô tả.',
     errorUnknown: 'Kael chưa thể cập nhật phiên này. Vui lòng thử lại.',
+    flexibleGuidance: 'Kael đã nhận mô tả này. Hiện mình chỉ hỗ trợ sửa điện, sửa nước và vệ sinh nhà. Chọn dịch vụ phù hợp bên dưới; mình sẽ dùng lại mô tả để hỏi đúng phần còn thiếu.',
+    greetingResponse: 'Chào bạn, mình là Kael. Mình đang ở đây để giúp kiểm tra sự cố trong căn hộ. Bạn cứ mô tả ngắn vấn đề, hoặc chọn Sửa điện, Sửa nước, Vệ sinh để bắt đầu.',
+    unsupportedGuidance: 'Kael đã nhận mô tả này, nhưng hiện mình chỉ hỗ trợ sửa điện, sửa nước và vệ sinh nhà. Nếu sự cố thuộc một trong ba nhóm đó, hãy chọn dịch vụ phù hợp để mình xử lý tiếp.',
     retryIntake: 'Thử gửi lại phiếu',
     retryOrchestration: 'Thử lại với Kael',
     estimateTitle: 'Ước tính của Kael',
@@ -157,10 +150,13 @@ const copy = {
     archiveNoService: 'No service chosen',
     archiveOpen: 'Open saved sessions',
     archivePendingIntake: 'Sending ticket',
+    archiveSavedChat: 'Saved session',
+    archiveSavedMeta: 'Open again',
     archiveServiceRequest: 'Service session',
     archiveTitle: 'Kael sessions',
     activityOrchestrating: 'Orchestrating',
     activityResearch: 'Researching',
+    activitySteps: { orchestrating: ['Check decision', 'Send request', 'Watch response'], research: ['Read details', 'Check scope', 'Prepare answer'], thinking: ['Read message', 'Find scope', 'Ask clearly'] },
     activityThinking: 'Thinking',
     back: 'Close',
     composerPlaceholder: '',
@@ -169,8 +165,10 @@ const copy = {
     confirmed: 'Request created. Kael is orchestrating a suitable worker.',
     emptyTicketBody: 'The ticket appears here after you send real details.',
     emptyTicketTitle: 'Kael ticket',
-    errorNoService: 'Choose a service before sending details.',
     errorUnknown: 'Kael could not update this session. Please try again.',
+    flexibleGuidance: 'Kael received this description. I currently support electrical repair, plumbing repair, and home cleaning only. Choose the matching service below; I will reuse your description and ask for the missing part.',
+    greetingResponse: 'Hi, I am Kael. I am here to help check apartment issues. Describe the problem briefly, or choose Electrical repair, Plumbing repair, or Home cleaning to start.',
+    unsupportedGuidance: 'Kael received this description, but I currently support electrical repair, plumbing repair, and home cleaning only. If this belongs to one of those services, choose it below and I will continue.',
     retryIntake: 'Retry intake',
     retryOrchestration: 'Retry with Kael',
     estimateTitle: 'Kael estimate',
@@ -279,11 +277,7 @@ function usePendingIntakeSession({
     if (!trimmed) return
     const createService = pendingIntake.serviceType ?? selectedService ?? inferLocalDealDraftFromKael(trimmed).serviceType
     if (!createService) {
-      const missingServiceKey = `missing-service:${pendingIntake.clientRequestId ?? trimmed}`
-      if (pendingIntakeSentRef.current !== missingServiceKey) {
-        pendingIntakeSentRef.current = missingServiceKey
-        dispatch({ type: 'showTransientError', error: text.errorNoService })
-      }
+      pendingIntakeSentRef.current = `missing-service:${pendingIntake.clientRequestId ?? trimmed}`
       return
     }
 
@@ -335,7 +329,7 @@ function usePendingIntakeSession({
     return () => {
       cancelled = true
     }
-  }, [addressDistrict, addressDistrictRef, addressLabel, dispatch, language, pendingChatCreateClientRequestRef, pendingIntake, pendingIntakeRetryNonce, pendingIntakeSentRef, routeSessionId, selectedService, session, text.errorNoService, text.errorUnknown])
+  }, [addressDistrict, addressDistrictRef, addressLabel, dispatch, language, pendingChatCreateClientRequestRef, pendingIntake, pendingIntakeRetryNonce, pendingIntakeSentRef, routeSessionId, selectedService, session, text.errorUnknown])
 }
 
 export function KaelChatSurface() {
@@ -352,6 +346,7 @@ export function KaelChatSurface() {
   const routeService = useMemo(() => parseServiceType(firstParam(params.serviceType)), [params.serviceType])
   const routeSessionId = useMemo(() => firstParam(params.sessionId), [params.sessionId])
   const [state, dispatch] = useReducer(kaelChatReducer, routeService, createInitialKaelChatState)
+  const [savedSessions, setSavedSessions] = useState<KaelChatSessionSummary[]>([])
   const [pendingIntakeRetryNonce, bumpPendingIntakeRetryNonce] = useReducer((value: number) => value + 1, 0)
   const addressDistrictRef = useRef<string | null>(null)
   const pendingChatCreateClientRequestRef = useRef<PendingClientRequestId | null>(null)
@@ -366,6 +361,7 @@ export function KaelChatSurface() {
     draft,
     error,
     loading,
+    localTurns,
     pendingIntake,
     selectedService,
     sending,
@@ -373,6 +369,7 @@ export function KaelChatSurface() {
   } = state
   const estimate = session?.session.estimate ?? session?.turns.find((turn) => turn.estimate)?.estimate ?? null
   const turns = session?.turns ?? []
+  const visibleTurns = session ? turns : localTurns
   const historyTarget = session?.session.job_id ? `/(customer)/history?job_id=${encodeURIComponent(session.session.job_id)}` : '/(customer)/history'
   const archiveItems = useMemo(
     () => buildKaelChatArchiveItems({
@@ -381,18 +378,17 @@ export function KaelChatSurface() {
       language,
       pendingIntake,
       routeSessionId,
+      savedSessions,
       selectedService,
       session,
       text,
     }),
-    [frontendWorkflowState.deal, historyTarget, language, pendingIntake, routeSessionId, selectedService, session, text],
+    [frontendWorkflowState.deal, historyTarget, language, pendingIntake, routeSessionId, savedSessions, selectedService, session, text],
   )
   const addressDistrict = useMemo(() => inferKaelChatDistrict(addressLabel), [addressLabel])
-  const hasDraft = draft.trim().length > 0
-  const hasInteraction = Boolean(routeSessionId || session || selectedService || hasDraft || pendingIntake || addressLabel.trim() || error || loading)
   const hasPendingIntakeOnly = Boolean(pendingIntake && !routeSessionId && !session)
   const hasKaelSessionContext = Boolean(routeSessionId || session || turns.length > 0)
-  const showStarter = hasInteraction && turns.length === 0 && !loading && !session
+  const showStarter = !routeSessionId && !pendingIntake && visibleTurns.length === 0 && !loading && !session && !error
   const chatWorkflowStatus = session?.session.status === 'confirmed' ? 'broadcasting' : null
   const workflow = useServiceWorkflow({
     status: chatWorkflowStatus,
@@ -403,16 +399,31 @@ export function KaelChatSurface() {
     isLoading: hasPendingIntakeOnly ? false : loading,
     optimistic: orchestrating ? 'starting_matching' : null,
   })
-  const showProcess = workflow.artifacts.process_ticket.visible
-  const showTrace = workflow.artifacts.ai_diagnosis.visible
-  const showBrief = Boolean(session && !estimate && workflow.artifacts.process_ticket.mode === 'partial')
+  const hasStructuredKaelArtifact = Boolean(estimate || session?.session.job_id || session?.session.status === 'confirmed')
+  const showProcess = workflow.artifacts.process_ticket.visible && hasStructuredKaelArtifact
+  const showTrace = workflow.artifacts.ai_diagnosis.visible && hasStructuredKaelArtifact
+  const showBrief = Boolean(session && !estimate && hasStructuredKaelArtifact && workflow.artifacts.process_ticket.mode === 'partial')
   const showEstimate = Boolean(estimate && workflow.artifacts.estimate.visible)
+  const showPhaseContext = Boolean(session && hasStructuredKaelArtifact)
   const canStartOrchestration = Boolean(estimate && session?.session.next_action === 'estimate_ready')
-  const threadVisibility: KaelChatVisibility = { canStartOrchestration, showBrief, showEstimate, showProcess, showStarter, showTrace }
+  const threadVisibility: KaelChatVisibility = { canStartOrchestration, showBrief, showEstimate, showPhaseContext, showProcess, showStarter, showTrace }
 
   useEffect(() => {
     if (addressDistrict) addressDistrictRef.current = addressDistrict
   }, [addressDistrict])
+
+  useEffect(() => {
+    let cancelled = false
+    void kaelChatService.list()
+      .then((result) => {
+        if (cancelled || !result.success) return
+        setSavedSessions(result.data.sessions)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     dispatch({ type: 'syncRouteService', service: routeService, routeSessionId })
@@ -475,11 +486,12 @@ export function KaelChatSurface() {
   const sendTurn = async () => {
     const trimmed = draft.trim()
     if (!trimmed || sending) return
-    const createService = selectedService ?? inferLocalDealDraftFromKael(trimmed).serviceType
-    if (!createService && !session) {
-      dispatch({ type: 'showTransientError', error: text.errorNoService })
+    if (!session && !selectedService && isLocalGreetingOnly(trimmed)) {
+      dispatch({ type: 'showLocalGreeting', userMessage: trimmed, kaelMessage: text.greetingResponse })
       return
     }
+    const inferredDraft = inferLocalDealDraftFromKael(trimmed)
+    const createService = selectedService ?? inferredDraft.serviceType
 
     dispatch({ type: 'sendStarted' })
 
@@ -494,16 +506,17 @@ export function KaelChatSurface() {
       }
       let result: Awaited<ReturnType<typeof kaelChatService.create>>
       if (session) {
-        result = await kaelChatService.sendTurn(session.session.id, { message: trimmed, photo_urls: [], ...addressFields })
+        const promoteService = !session.session.service_type && selectedService ? selectedService : undefined
+        result = await kaelChatService.sendTurn(session.session.id, { service_type: promoteService, message: trimmed, photo_urls: [], ...addressFields })
       } else {
         const requestFingerprint = firstTurnClientRequestFingerprint(
-          createService as ServiceType,
+          createService,
           trimmed,
           addressPayload,
           payloadDistrict,
         )
         result = await kaelChatService.create({
-          service_type: createService as ServiceType,
+          service_type: createService ?? undefined,
           message: trimmed,
           problem_chips: [],
           photo_urls: [],
@@ -629,7 +642,7 @@ export function KaelChatSurface() {
             session={session}
             text={text}
             tokens={tokens}
-            turns={turns}
+            turns={visibleTurns}
             visibility={threadVisibility}
             workflow={workflow}
           />
@@ -656,67 +669,6 @@ export function KaelChatSurface() {
   )
 }
 
-function buildKaelChatArchiveItems({
-  deal,
-  historyTarget,
-  language,
-  pendingIntake,
-  routeSessionId,
-  selectedService,
-  session,
-  text,
-}: {
-  deal: LocalDeal | null
-  historyTarget: string
-  language: AppLanguage
-  pendingIntake: KaelChatState['pendingIntake']
-  routeSessionId: string | undefined
-  selectedService: ServiceType | null
-  session: KaelChatResponse | null
-  text: KaelChatSurfaceText
-}): KaelChatArchiveItem[] {
-  const items: KaelChatArchiveItem[] = []
-
-  if (session) {
-    items.push({
-      id: `chat:${session.session.id}`,
-      meta: text.archiveActiveMeta,
-      subtitle: localizedServiceLabel(session.session.service_type, language),
-      title: text.archiveCurrentChat,
-    })
-  } else if (routeSessionId) {
-    items.push({
-      id: `chat:${routeSessionId}`,
-      meta: text.loading,
-      subtitle: selectedService ? localizedServiceLabel(selectedService, language) : text.archiveNoService,
-      title: text.archiveLoadingChat,
-    })
-  }
-
-  const serviceRequestJobId = session?.session.job_id ?? deal?.broadcast?.jobId ?? null
-  if (session?.session.job_id || deal) {
-    const serviceType = deal?.draft.serviceType ?? session?.session.service_type ?? selectedService
-    items.push({
-      id: `request:${serviceRequestJobId ?? deal?.id ?? 'current'}`,
-      meta: text.archiveHistoryMeta,
-      subtitle: serviceType ? localizedServiceLabel(serviceType, language) : text.archiveNoService,
-      targetPath: serviceRequestJobId ? `/(customer)/history?job_id=${encodeURIComponent(serviceRequestJobId)}` : historyTarget,
-      title: text.archiveServiceRequest,
-    })
-  }
-
-  if (pendingIntake && !session) {
-    items.push({
-      id: `pending:${pendingIntake.clientRequestId ?? pendingIntake.source}:${pendingIntake.serviceType ?? 'service'}:${pendingIntake.mediaCount}`,
-      meta: text.archiveDraftMeta,
-      subtitle: pendingIntake.serviceType ? localizedServiceLabel(pendingIntake.serviceType, language) : text.archiveNoService,
-      title: text.archivePendingIntake,
-    })
-  }
-
-  return items
-}
-
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
@@ -736,7 +688,7 @@ function mergeKaelChatMediaDrafts(...groups: LocalMediaUploadDraft[][]) {
 }
 
 function firstTurnClientRequestFingerprint(
-  serviceType: ServiceType,
+  serviceType: ServiceType | null,
   message: string,
   addressLabel: string,
   addressDistrict: string | null | undefined,
