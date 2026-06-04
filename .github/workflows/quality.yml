@@ -1,0 +1,112 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "codex/**"
+      - "claude/**"
+
+permissions:
+  contents: read
+
+jobs:
+  static-and-tests:
+    name: Static Gates And Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.16.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Diff hygiene
+        run: git diff --check
+
+      - name: Secret pattern scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -n -E '(sk-[A-Za-z0-9]{20,}|sbp_[A-Za-z0-9]{20,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,})' -- \
+            ':!pnpm-lock.yaml' \
+            ':!skills-lock.json'; then
+            echo "Potential secret-looking token found. Replace it with an env var name or test placeholder."
+            exit 1
+          fi
+
+      - name: Shared type-check
+        run: pnpm --filter @home-services/shared type-check
+
+      - name: API type-check
+        run: pnpm --filter @home-services/api type-check
+
+      - name: Mobile type-check
+        run: pnpm --filter @home-services/mobile type-check
+
+      - name: Shared tests
+        run: pnpm --filter @home-services/shared test
+
+      - name: API tests
+        run: pnpm --filter @home-services/api test
+
+      - name: Mobile tests
+        run: pnpm --filter @home-services/mobile test -- --runInBand
+
+  supabase-staging-dry-run:
+    name: Supabase Staging Dry Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_STAGING_PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+      SUPABASE_STAGING_DB_PASSWORD: ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.16.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Skip when staging secrets are unavailable
+        if: ${{ env.SUPABASE_ACCESS_TOKEN == '' || env.SUPABASE_STAGING_PROJECT_REF == '' || env.SUPABASE_STAGING_DB_PASSWORD == '' }}
+        run: echo "Skipping Supabase dry-run because staging credentials are not configured."
+
+      - name: Supabase migration dry-run
+        if: ${{ env.SUPABASE_ACCESS_TOKEN != '' && env.SUPABASE_STAGING_PROJECT_REF != '' && env.SUPABASE_STAGING_DB_PASSWORD != '' }}
+        run: |
+          pnpm exec supabase link \
+            --project-ref "$SUPABASE_STAGING_PROJECT_REF" \
+            --password "$SUPABASE_STAGING_DB_PASSWORD" \
+            --yes
+          pnpm exec supabase db push \
+            --dry-run \
+            --linked \
+            --password "$SUPABASE_STAGING_DB_PASSWORD" \
+            --yes

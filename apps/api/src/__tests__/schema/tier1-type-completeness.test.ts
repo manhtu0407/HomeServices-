@@ -214,6 +214,7 @@ describe('Insert type requirements', () => {
       priority: 'high',
       escalation_level: 'hard',
       reason_code: 'threat_complaint',
+      response_summary: 'Khach hang gay ap luc; da ghi nhan va chuyen admin.',
     } satisfies Database['public']['Tables']['kael_admin_queue']['Insert']
     const log = {
       actor_role: 'customer',
@@ -282,6 +283,7 @@ describe('Insert type requirements', () => {
       initiator_statement: 'Customer says completion is not accepted.',
       counter_party_response_deadline: '2026-05-27T00:00:00.000Z',
       evidence_snapshot_id: '00000000-0000-0000-0000-000000000000',
+      evidence_locked_at: snapshot.evidence_locked_at,
       kael_neutral_summary: 'Fact-only summary for admin review.',
       admin_review: { priority: 'high' },
       status: 'open',

@@ -179,6 +179,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'deleteMyKaelMemory',
       'evaluatePriceSynthesisAbCase',
       'getJob',
+      'getHealth',
       'getKaelCharter',
       'getKaelChat',
       'getMyKaelMemory',
@@ -211,6 +212,30 @@ describe('mobile-api Edge runtime helpers', () => {
       'updateJobStatus',
       'updateWorkerAvailability',
     ].sort())
+  })
+
+  it('builds a public-safe Edge health payload without exposing secrets', async () => {
+    const result = await createEdgeServices({
+      supabaseUrl: 'https://xyylanuyflrjzbjzhqfl.supabase.co',
+      supabaseSecretKey: 'sb_secret_should_not_leak',
+      anthropicApiKey: 'anthropic_should_not_leak',
+      perplexityApiKey: 'perplexity_should_not_leak',
+      deepseekApiKey: 'deepseek_should_not_leak',
+    } as never).getHealth({
+      requestProjectRef: 'xyylanuyflrjzbjzhqfl',
+    })
+
+    expect(result).toMatchObject({
+      status: 'ok',
+      service: 'mobile-api',
+      project_ref: 'xyylanuyflrjzbjzhqfl',
+      checks: {
+        edge: 'ok',
+        supabase_env: 'ok',
+        provider_env: 'ok',
+      },
+    })
+    expect(JSON.stringify(result)).not.toContain('should_not_leak')
   })
 
   it('stores customer Kael feedback with a scrubbed learning copy', async () => {

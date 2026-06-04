@@ -28,6 +28,17 @@ const adminAuth: MobileApiAuthResult = {
 
 function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServices {
   return {
+    getHealth: vi.fn(async () => ({
+      status: 'ok' as const,
+      service: 'mobile-api' as const,
+      checked_at: '2026-06-04T00:00:00.000Z',
+      project_ref: 'test-project',
+      checks: {
+        edge: 'ok' as const,
+        supabase_env: 'ok' as const,
+        provider_env: 'ok' as const,
+      },
+    })),
     getKaelCharter: vi.fn(async () => ({
       charter_version: '2026-05-25.p8',
       identity_summary: 'Kael is the Home Services assistant.',
@@ -133,6 +144,42 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
 }
 
 describe('mobile-api Edge router contract', () => {
+  it('answers health without auth or product data', async () => {
+    const authenticate = vi.fn()
+    const getHealth = vi.fn(async () => ({
+      status: 'ok' as const,
+      service: 'mobile-api' as const,
+      checked_at: '2026-06-04T00:00:00.000Z',
+      project_ref: 'xyylanuyflrjzbjzhqfl',
+      checks: {
+        edge: 'ok' as const,
+        supabase_env: 'ok' as const,
+        provider_env: 'ok' as const,
+      },
+    }))
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ getHealth }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/health'))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      status: 'ok',
+      service: 'mobile-api',
+      checked_at: '2026-06-04T00:00:00.000Z',
+      project_ref: 'xyylanuyflrjzbjzhqfl',
+      checks: {
+        edge: 'ok',
+        supabase_env: 'ok',
+        provider_env: 'ok',
+      },
+    })
+    expect(authenticate).not.toHaveBeenCalled()
+    expect(getHealth).toHaveBeenCalledOnce()
+  })
+
   it('answers OPTIONS preflight without auth', async () => {
     const authenticate = vi.fn()
     const handler = createMobileApiHandler({ authenticate, services: makeServices() })

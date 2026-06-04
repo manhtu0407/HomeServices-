@@ -34,6 +34,24 @@ const readMigrationByName = (needle: string) => {
     .at(-1)
   return name ? read(`supabase/migrations/${name}`) : ''
 }
+const publicSchemaNames = (source: string, section: 'Tables' | 'Views' | 'Functions') => {
+  const lines = source.split('\n')
+  const start = lines.findIndex((line) => line === `    ${section}: {`)
+  const names: string[] = []
+
+  for (const line of lines.slice(start + 1)) {
+    if (/^    (Tables|Views|Functions|Enums|CompositeTypes): \{/.test(line)) break
+    const match = /^      ([A-Za-z0-9_]+): \{/.exec(line)
+    if (match) names.push(match[1])
+  }
+
+  return names.sort()
+}
+const stringUnionMembers = (source: string, typeName: string) => {
+  const match = new RegExp(`export type ${typeName} =([\\s\\S]*?);`).exec(source)
+
+  return match ? [...match[1].matchAll(/"([^"]+)"/g)].map((item) => item[1]).sort() : []
+}
 
 describe('mobile-api Edge schema compatibility', () => {
   it('allows rejected scope-change decisions written by the atomic RPC', () => {
@@ -56,6 +74,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const functionFiles = [
       'supabase/functions/mobile-api/index.ts',
       'supabase/functions/mobile-api/_shared/auth.ts',
+      'supabase/functions/mobile-api/_shared/db-types.ts',
       'supabase/functions/mobile-api/_shared/kael.ts',
       'supabase/functions/mobile-api/_shared/lifecycle.ts',
       'supabase/functions/mobile-api/_shared/router.ts',
@@ -66,6 +85,20 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(functionFiles).not.toContain('packages/shared')
     expect(functionFiles).toContain('jobCreateSchema')
     expect(functionFiles).toContain('normalizeDistrict')
+  })
+
+  it('keeps Edge DB name guards local to the function tree', () => {
+    const dbTypes = read('supabase/functions/mobile-api/_shared/db-types.ts')
+    const sharedTypes = read('packages/shared/src/types/database.types.ts')
+
+    expect(dbTypes).not.toContain('packages/shared')
+    expect(dbTypes).toContain('export type PublicTableName')
+    expect(dbTypes).toContain('export type PublicRpcName')
+    expect(stringUnionMembers(dbTypes, 'PublicTableName')).toEqual([
+      ...publicSchemaNames(sharedTypes, 'Tables'),
+      ...publicSchemaNames(sharedTypes, 'Views'),
+    ].sort())
+    expect(stringUnionMembers(dbTypes, 'PublicRpcName')).toEqual(publicSchemaNames(sharedTypes, 'Functions'))
   })
 
   it('does not ship mojibake Vietnamese error messages from mobile-api Edge runtime', () => {
@@ -259,6 +292,67 @@ describe('mobile-api Edge schema compatibility', () => {
     }
     expect(migration).toContain('from authenticated')
     expect(migration).toContain('to service_role')
+  })
+
+  it('hardens residual public grants and future public default privileges', () => {
+    const anonRevoke = readMigrationByName('revoke_anon_public_grants')
+    const residualDml = readMigrationByName('revoke_residual_authenticated_dml')
+    const defaultPrivileges = readMigrationByName('harden_default_privileges_public')
+    const followup = readMigrationByName('harden_public_grants_followup')
+    const convergenceSql = [anonRevoke, residualDml, defaultPrivileges, followup].join('\n')
+
+    expect(followup).toContain('new forward migration')
+    expect(convergenceSql).toContain('revoke all on all tables    in schema public from anon')
+    expect(convergenceSql).toContain('revoke all on all sequences in schema public from anon')
+    expect(convergenceSql).toContain('revoke all on all tables    in schema public from public')
+    expect(convergenceSql).toContain('revoke all on all sequences in schema public from public')
+    expect(convergenceSql).toContain('revoke execute on all functions in schema public from public')
+    expect(convergenceSql).toContain('revoke execute on all functions in schema public from anon')
+    expect(convergenceSql).toContain('revoke execute on all functions in schema public from authenticated')
+    expect(convergenceSql).toContain('grant execute on all functions in schema public to service_role')
+    expect(convergenceSql).toContain('revoke usage on schema public from public')
+    expect(convergenceSql).toContain('revoke usage on schema public from anon')
+    expect(convergenceSql).toContain('grant usage on schema public to authenticated')
+    expect(convergenceSql).toContain('grant usage on schema public to service_role')
+
+    for (const tableOrView of [
+      'public.kael_market_artifacts',
+      'public.service_knowledge_boxes',
+      'public.kael_cost_daily_summary',
+      'public.kael_cost_projection_daily',
+      'public.kael_monitoring_ab_price_synthesis',
+      'public.kael_monitoring_provider_daily',
+    ]) {
+      expect(convergenceSql).toContain(`revoke all on ${tableOrView}`)
+      expect(convergenceSql).toContain(`grant select on ${tableOrView}`)
+    }
+    expect(residualDml).not.toContain('source_trust_registry from authenticated')
+    expect(residualDml).not.toContain('customer_kael_feedback from authenticated')
+
+    expect(convergenceSql).toContain('revoke all on tables from anon, authenticated, service_role')
+    expect(convergenceSql).toContain('revoke all on sequences from anon, authenticated, service_role')
+    expect(convergenceSql).toContain('revoke execute on functions from public, anon, authenticated, service_role')
+    expect(convergenceSql).toContain('alter default privileges for role postgres\n  revoke execute on functions from public, anon, authenticated, service_role')
+    expect(defaultPrivileges).not.toContain('grant select on tables to authenticated')
+  })
+
+  it('keeps customer Kael feedback read policy advisor-clean', () => {
+    const migration = readMigrationByName('combine_customer_kael_feedback_select_policy')
+
+    expect(migration).toContain('drop policy if exists "Customers read own Kael feedback"')
+    expect(migration).toContain('drop policy if exists "Admins read Kael feedback"')
+    expect(migration).toContain('create policy "Customers or admins read Kael feedback"')
+    expect(migration).toContain('customer_id = (select auth.uid())')
+    expect(migration).toContain('or (select private.is_admin())')
+  })
+
+  it('removes authenticated table DDL-style privileges while preserving explicit exceptions', () => {
+    const migration = readMigrationByName('revoke_authenticated_table_ddl_privileges')
+
+    expect(migration).toContain('revoke truncate, references, trigger on all tables in schema public')
+    expect(migration).toContain('from authenticated')
+    expect(migration).toContain('grant select, insert, update, delete on public.source_trust_registry')
+    expect(migration).toContain('grant update (status, safe_metadata) on public.customer_kael_feedback')
   })
 
   it('adds Kael Harness P1 memory tables with RLS and service-role writes only', () => {

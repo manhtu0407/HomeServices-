@@ -1,6 +1,7 @@
 import type { JobStatus, UserRole } from "../../_shared/domain.ts";
 import { JOB_STATUSES } from "../../_shared/domain.ts";
 import { apiFailure, type MobileApiContext } from "./router.ts";
+import type { PublicTableName } from "./db-types.ts";
 
 type DbError = { code?: string; message?: string };
 type DbResult<T> = {
@@ -18,7 +19,7 @@ export type JobAccessRecord = Record<string, unknown> & {
 };
 
 export type JobAccessDbClient = {
-  from(table: string): JobAccessChain;
+  from(table: PublicTableName): JobAccessChain;
 };
 
 type JobAccessChain = {

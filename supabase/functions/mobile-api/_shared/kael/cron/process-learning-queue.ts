@@ -26,7 +26,7 @@ type QueryBuilder<T = unknown> = {
 };
 
 export type LearningQueueDbClient = {
-  from(table: string): QueryBuilder;
+  from(table: import("../../db-types.ts").PublicTableName): QueryBuilder;
 };
 
 export type QueuedLearningRow = {

@@ -89,6 +89,18 @@ type ServiceCatalogResponse = {
   }[];
 };
 
+export type EdgeHealthResponse = {
+  status: "ok" | "degraded";
+  service: "mobile-api";
+  checked_at: string;
+  project_ref: string | null;
+  checks: {
+    edge: "ok";
+    supabase_env: "ok" | "missing";
+    provider_env: "ok" | "missing";
+  };
+};
+
 type CreateJobResponse = {
   job_id: string;
   status: JobStatus;
@@ -581,6 +593,9 @@ export type KaelMemoryDeleteResponse = {
 };
 
 export type MobileApiServices = {
+  getHealth(
+    ctx: Pick<MobileApiContext, "requestUrl" | "requestHost" | "requestProjectRef">,
+  ): Promise<EdgeHealthResponse> | EdgeHealthResponse;
   getKaelCharter(): Promise<KaelPublicCharterResponse> | KaelPublicCharterResponse;
   listServices(ctx: MobileApiContext): Promise<ServiceCatalogResponse>;
   placesAutocomplete(
@@ -827,7 +842,9 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
   };
 }
 
-type PublicRoute = { kind: "kael.charter"; method: "GET"; public: true };
+type PublicRoute =
+  | { kind: "health"; method: "GET"; public: true }
+  | { kind: "kael.charter"; method: "GET"; public: true };
 
 type Route =
   | PublicRoute
@@ -1010,6 +1027,9 @@ function matchRoute(request: Request): Route | null {
 
   if (method === "GET" && path === "/services") {
     return { kind: "services", method: "GET" };
+  }
+  if (method === "GET" && path === "/health") {
+    return { kind: "health", method: "GET", public: true };
   }
   if (method === "GET" && path === "/kael/charter") {
     return { kind: "kael.charter", method: "GET", public: true };
@@ -1605,10 +1625,12 @@ async function dispatchRoute(
 
 async function dispatchPublicRoute(
   route: PublicRoute,
-  _request: Request,
+  request: Request,
   services: MobileApiServices,
 ): Promise<unknown> {
   switch (route.kind) {
+    case "health":
+      return services.getHealth(requestRuntimeContext(request));
     case "kael.charter":
       return services.getKaelCharter();
   }

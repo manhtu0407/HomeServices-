@@ -90,7 +90,7 @@ type SourceTrustQuery = {
 };
 
 type SourceTrustClient = {
-  from(table: string): SourceTrustQuery;
+  from(table: import("../db-types.ts").PublicTableName): SourceTrustQuery;
 };
 
 let registryCache:

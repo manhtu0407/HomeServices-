@@ -43,6 +43,7 @@ import {
   type MobileApiContext,
   type PlacesAutocompleteResponse,
   type MobileApiServices,
+  type EdgeHealthResponse,
 } from "./router.ts";
 import {
   buildKaelOptimizationMetricRows,
@@ -111,6 +112,7 @@ import {
   scrubSensitiveForLLM,
 } from "./kael/index.ts";
 import { evaluateMessageBoundary } from "./kael/boundary-guard.ts";
+import type { PublicRpcName, PublicTableName } from "./db-types.ts";
 
 type DbError = { code?: string; message?: string };
 type DbResult<T> = {
@@ -124,8 +126,12 @@ type ConfirmSearchOptions = {
 };
 
 type DbClient = {
-  from(table: string): Chain;
-  rpc(name: string, args?: Record<string, unknown>): QueryLike;
+  from(table: PublicTableName): Chain;
+  rpc(name: PublicRpcName, args?: Record<string, unknown>): QueryLike;
+};
+type EdgeRuntimeSecrets = EdgeAiSecrets & {
+  supabaseUrl?: string;
+  supabaseSecretKey?: string;
 };
 
 const ACTIVE_WORKER_JOB_STATUSES: JobStatus[] = [
@@ -222,8 +228,9 @@ type Chain = {
   ): PromiseLike<TResult1 | TResult2>;
 };
 
-export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
+export function createEdgeServices(secrets: EdgeRuntimeSecrets): MobileApiServices {
   return {
+    getHealth: (ctx) => getHealth(ctx, secrets),
     listServices,
     placesAutocomplete: (ctx, input) => placesAutocomplete(ctx, input, secrets),
     createJob: (ctx, input) => createJob(ctx, input, secrets),
@@ -276,6 +283,43 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     markNotificationRead,
     registerDevicePushToken,
   };
+}
+
+function getHealth(
+  ctx: Pick<MobileApiContext, "requestProjectRef">,
+  secrets: EdgeRuntimeSecrets,
+): EdgeHealthResponse {
+  const supabaseEnv = secrets.supabaseUrl && secrets.supabaseSecretKey
+    ? "ok"
+    : "missing";
+  const providerEnv = secrets.anthropicApiKey || secrets.perplexityApiKey ||
+      secrets.deepseekApiKey
+    ? "ok"
+    : "missing";
+  return {
+    status: supabaseEnv === "ok" && providerEnv === "ok" ? "ok" : "degraded",
+    service: "mobile-api",
+    checked_at: new Date().toISOString(),
+    project_ref: ctx.requestProjectRef ?? projectRefFromSupabaseUrl(secrets.supabaseUrl),
+    checks: {
+      edge: "ok",
+      supabase_env: supabaseEnv,
+      provider_env: providerEnv,
+    },
+  };
+}
+
+function projectRefFromSupabaseUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    const hostname = new URL(value).hostname;
+    const [projectRef, ...rest] = hostname.split(".");
+    return rest.join(".").endsWith("supabase.co") && projectRef
+      ? projectRef
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function getKaelCharter() {
