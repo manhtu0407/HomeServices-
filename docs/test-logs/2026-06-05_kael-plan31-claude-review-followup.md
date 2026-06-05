@@ -17,12 +17,12 @@ Partial closure with production safety applied.
 
 | Finding | Status | Evidence |
 |---|---|---|
-| Production full-autonomy flag was enabled too early | Fixed in production | `supabase secrets list --project-ref iwevizmsedyqozxlawwl` shows `KAEL_AUTONOMY_FULL_ENABLED` digest equal to the known `false` digest and equal to `KAEL_LEARNING_KILL_SWITCH` |
+| Production full-autonomy flag was enabled too early | Fixed in production | `supabase secrets list --project-ref iwevizmsedyqozxlawwl` showed `KAEL_AUTONOMY_FULL_ENABLED` digest equal to the known `false` digest and equal to `KAEL_LEARNING_KILL_SWITCH` |
 | Invariant gate was wired to too few service decision sites | Fixed locally, not deployed in this follow-up | `services.ts` now uses `runPolicyAutonomyGate` for customer cancellation, worker cancellation, worker completion confirmation, scope auto-approval, customer scope decision, and customer completion confirmation |
 | Customer/worker cancellation had mutation-before-audit order | Fixed locally | New cancellation requests now read existing rows first, then write `kael_autonomy_decision_audit`, then call the mutating cancellation RPC. Runtime tests assert audit-before-RPC order for both customer and worker cancellation. |
 | Production rollout lacks real durable live closure rows | Confirmed, not claimed | Production query shows `learning_rules=0`, `learning_candidates=0`, `kael_autonomy_decision_audit=0`, `kael_guardrail_trip_audit=0`, `kael_knowledge_usage_log=0` |
 | Temporary worker district backup table remained in production | Fixed in production | Migration `20260605006000_drop_worker_profiles_districts_backup_x3.sql`; production `to_regclass(...)` returned empty |
-| Auth leaked-password protection warning | Still not fixed here | Local Supabase CLI v2.98.2 does not expose `advisors`; previous advisor finding remains a dashboard/Auth setting |
+| Auth leaked-password protection warning | Still not fixed here | Local Supabase CLI v2.98.2 did not expose `advisors`; previous advisor finding remains a dashboard/Auth setting |
 
 ## Production Actions
 
@@ -69,9 +69,10 @@ Changed locally:
 ## Verification
 
 - API targeted runtime/gate: passed, 3 files / 123 tests.
-- API targeted schema/facade: passed, 4 files / 183 tests.
+- API targeted schema/facade: passed, 4 files / 166 tests on the clean branch; later local follow-up passed 4 files / 183 tests.
 - API type-check: passed.
-- Full API Vitest: passed, 90 files / 1487 tests, 3 files / 59 tests skipped.
+- Full API Vitest on the clean branch: passed, 89 files / 1456 tests, 3 files / 59 tests skipped.
+- Later local full API Vitest: passed, 90 files / 1487 tests, 3 files / 59 tests skipped.
 - Shared type-check: passed.
 - Full shared Vitest: passed, 15 files / 586 tests.
 - Production DB lint: passed, no schema errors.
