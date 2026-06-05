@@ -1129,7 +1129,7 @@ describe('Kael agentic phase cards', () => {
     expect(screen.queryByTestId('customer-kael-chat-phase-context')).toBeNull()
   })
 
-  it('reveals the latest Kael answer progressively instead of mounting it all at once', () => {
+  it('reveals the latest Kael answer progressively instead of mounting it all at once', async () => {
     jest.useFakeTimers()
 
     try {
@@ -1196,13 +1196,17 @@ describe('Kael agentic phase cards', () => {
       const visibleAnswer = screen.getByTestId('customer-kael-chat-turn-body-turn_kael_progressive')
       expect(visibleAnswer.props.children).not.toBe(kaelAnswer)
 
-      act(() => {
+      await act(async () => {
         jest.advanceTimersByTime(1200)
+        await Promise.resolve()
       })
 
       expect(screen.getByTestId('customer-kael-chat-turn-body-turn_kael_progressive').props.children).toBe(kaelAnswer)
     } finally {
-      jest.runOnlyPendingTimers()
+      await act(async () => {
+        jest.runOnlyPendingTimers()
+        await Promise.resolve()
+      })
       jest.useRealTimers()
     }
   })

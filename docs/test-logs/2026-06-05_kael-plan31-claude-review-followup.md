@@ -63,13 +63,18 @@ Changed locally:
   - Updated fixtures for real `scope_changes` lookup and `kael_autonomy_decision_audit` insert order.
 - `apps/api/src/__tests__/unit/mobile-api-kael-orchestrator-facade.test.ts`
   - Static proof now asserts all current service policy labels.
+- `apps/api/src/__tests__/schema/tier1-type-completeness.test.ts` and `packages/shared/src/types/database.types.ts`
+  - Removed the dropped backup table from runtime type contract expectations.
 
 ## Verification
 
 - API targeted runtime/gate: passed, 3 files / 123 tests.
-- API targeted schema/facade: passed, 4 files / 166 tests.
+- API targeted schema/facade: passed, 4 files / 166 tests on the clean branch; later local follow-up passed 4 files / 183 tests.
 - API type-check: passed.
-- Full API Vitest on this clean branch: passed, 89 files / 1456 tests, 3 files / 59 tests skipped.
+- Full API Vitest on the clean branch: passed, 89 files / 1456 tests, 3 files / 59 tests skipped.
+- Later local full API Vitest: passed, 90 files / 1487 tests, 3 files / 59 tests skipped.
+- Shared type-check: passed.
+- Full shared Vitest: passed, 15 files / 586 tests.
 - Production DB lint: passed, no schema errors.
 - Secret scan for the provided Perplexity key: no real key match in repo; only dummy adversarial fixtures matched.
 - `git diff --check`: exit 0 with CRLF warnings only.

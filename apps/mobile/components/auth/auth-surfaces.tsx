@@ -112,7 +112,7 @@ const authCopy = {
     workerLoginSubtitle: 'Đăng nhập hoặc tạo hồ sơ thợ mới',
     workerVerificationHeading: 'Xác thực thợ',
     workerVerificationSubtitle: 'Hồ sơ quyết định quyền nhận việc',
-    titleLogin: 'Home help, matched right!',
+    titleLogin: 'Việc nhà đúng người, đúng lúc!',
     bodyLogin: '',
     recovery: 'Hồ sơ vai trò chưa sẵn sàng. Tải lại hồ sơ hoặc đăng xuất để đăng nhập tài khoản khác.',
     refresh: 'Tải lại hồ sơ',

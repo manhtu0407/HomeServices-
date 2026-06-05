@@ -1,9 +1,60 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Database, Enums, Tables, TablesInsert, TablesUpdate } from '@/lib/database.types'
 import { Constants } from '@/lib/database.types'
 
 type TableNames = keyof Database['public']['Tables']
 type EnumNames = keyof Database['public']['Enums']
+
+const ROOT = resolve(__dirname, '../../../../../')
+const MIGRATIONS_DIR = resolve(ROOT, 'supabase/migrations')
+const SHARED_DATABASE_TYPES = resolve(ROOT, 'packages/shared/src/types/database.types.ts')
+const DROPPED_PUBLIC_TABLES = new Set(['worker_profiles_districts_backup_x3'])
+const DROPPED_PUBLIC_FUNCTIONS = new Set(['normalize_district_value'])
+
+const readText = (path: string) => readFileSync(path, 'utf-8').replace(/\r\n/g, '\n')
+const listMigrationSql = () =>
+  readdirSync(MIGRATIONS_DIR)
+    .filter((name) => name.endsWith('.sql'))
+    .sort()
+    .map((name) => readText(resolve(MIGRATIONS_DIR, name)))
+    .join('\n')
+
+function uniqueMatches(source: string, pattern: RegExp, groupIndex = 1) {
+  return [...source.matchAll(pattern)]
+    .map((match) => match[groupIndex])
+    .filter(Boolean)
+    .toSorted()
+}
+
+function generatedPublicKeys(sectionName: 'Tables' | 'Functions') {
+  const keys: string[] = []
+  let section: string | null = null
+  for (const line of readText(SHARED_DATABASE_TYPES).split('\n')) {
+    if (/^\s{4}Tables: \{/.test(line)) {
+      section = 'Tables'
+      continue
+    }
+    if (/^\s{4}Views: \{/.test(line)) {
+      section = 'Views'
+      continue
+    }
+    if (/^\s{4}Functions: \{/.test(line)) {
+      section = 'Functions'
+      continue
+    }
+    if (/^\s{4}Enums: \{/.test(line)) {
+      section = 'Enums'
+      continue
+    }
+    if (section === sectionName) {
+      const key = line.match(/^\s{6}([a-zA-Z0-9_]+): \{/)
+      if (key) keys.push(key[1])
+    }
+  }
+  return keys.toSorted()
+}
 
 const EXPECTED_TABLES = [
   'profiles',
@@ -26,14 +77,27 @@ const EXPECTED_TABLES = [
   'service_knowledge_boxes',
   'kael_market_artifacts',
   'job_media_assets',
+  'kael_ai_batches',
+  'kael_ai_batch_items',
   'kael_analysis_artifacts',
+  'kael_autonomy_decision_audit',
   'kael_chat_sessions',
   'kael_chat_turns',
+  'kael_chat_pre_intake_memory',
+  'kael_chat_rate_limit_log',
+  'kael_guardrail_trip_audit',
+  'kael_knowledge_usage_log',
+  'kael_learning_queue',
+  'kael_worker_chat_rate_limit_log',
+  'kael_worker_chat_sessions',
+  'kael_worker_chat_turns',
   'device_push_tokens',
   'worker_cancellation_requests',
   'ai_provider_routing',
   'customer_kael_memory',
+  'worker_kael_feedback',
   'worker_kael_memory',
+  'worker_kael_training_consent',
   'kael_admin_queue',
   'kael_permission_audit',
   'kael_advisory_audit',
@@ -55,6 +119,7 @@ const EXPECTED_TABLES = [
   'kael_quality_baseline',
   'kael_market_cache',
   'kael_optimization_metrics',
+  'source_trust_registry',
 ] as const satisfies readonly TableNames[]
 
 const EXPECTED_ENUMS = [
@@ -74,12 +139,36 @@ const EXPECTED_ENUMS = [
 
 describe('Database.public.Tables completeness', () => {
   it('has all aligned workflow tables', () => {
-    expect(EXPECTED_TABLES).toHaveLength(49)
+    expect(EXPECTED_TABLES).toHaveLength(63)
   })
 
   it.each(EXPECTED_TABLES)('table "%s" is a valid generated table key', (name) => {
     const tableName: TableNames = name
     expect(tableName).toBeTruthy()
+  })
+
+  it('keeps generated public table keys aligned with migration-created tables', () => {
+    const migrations = listMigrationSql()
+    const migrationTables = uniqueMatches(
+      migrations,
+      /create\s+table\s+if\s+not\s+exists\s+public\.([a-zA-Z0-9_]+)/gi,
+    ).filter((name) => !DROPPED_PUBLIC_TABLES.has(name))
+    const generatedTables = new Set(generatedPublicKeys('Tables'))
+    const missing = migrationTables.filter((table) => !generatedTables.has(table))
+
+    expect(missing).toEqual([])
+  })
+
+  it('keeps generated public RPC keys aligned with live migration-created functions', () => {
+    const migrations = listMigrationSql()
+    const migrationFunctions = uniqueMatches(
+      migrations,
+      /create\s+(?:or\s+replace\s+)?function\s+public\.([a-zA-Z0-9_]+)/gi,
+    ).filter((name) => !DROPPED_PUBLIC_FUNCTIONS.has(name))
+    const generatedFunctions = new Set(generatedPublicKeys('Functions'))
+    const missing = migrationFunctions.filter((fn) => !generatedFunctions.has(fn))
+
+    expect(missing).toEqual([])
   })
 })
 
@@ -205,6 +294,151 @@ describe('Insert type requirements', () => {
 
     expect(session.service_type).toBe('electrical')
     expect(turn.role).toBe('customer')
+  })
+
+  it('worker Kael chat tables and rate RPC stay job-scoped', () => {
+    const workerId = '00000000-0000-0000-0000-000000000001'
+    const jobId = '00000000-0000-0000-0000-000000000002'
+    const sessionId = '00000000-0000-0000-0000-000000000003'
+    const session = {
+      worker_id: workerId,
+      job_id: jobId,
+      client_request_id: 'client-request-1',
+    } satisfies Database['public']['Tables']['kael_worker_chat_sessions']['Insert']
+    const turn = {
+      session_id: sessionId,
+      job_id: jobId,
+      turn_index: 1,
+      role: 'worker',
+      content_type: 'text',
+    } satisfies Database['public']['Tables']['kael_worker_chat_turns']['Insert']
+    const rateLog = {
+      worker_id: workerId,
+    } satisfies Database['public']['Tables']['kael_worker_chat_rate_limit_log']['Insert']
+    const rateArgs = {
+      p_worker_id: workerId,
+    } satisfies Database['public']['Functions']['check_kael_worker_chat_rate']['Args']
+    const rateRow = {
+      allowed: true,
+      minute_count: 1,
+      hour_count: 1,
+      reason: null,
+    } satisfies Database['public']['Functions']['check_kael_worker_chat_rate']['Returns'][number]
+
+    expect(session.job_id).toBe(jobId)
+    expect(turn.job_id).toBe(jobId)
+    expect(rateLog.worker_id).toBe(workerId)
+    expect(rateArgs.p_worker_id).toBe(workerId)
+    expect(rateRow.allowed).toBe(true)
+  })
+
+  it('worker Kael feedback and training consent tables carry worker-owned parity data', () => {
+    const workerId = '00000000-0000-0000-0000-000000000001'
+    const feedback = {
+      worker_id: workerId,
+      raw_message: 'Kael helped me answer the customer clearly.',
+      scrubbed_message: 'Kael helped me answer the customer clearly.',
+    } satisfies Database['public']['Tables']['worker_kael_feedback']['Insert']
+    const consent = {
+      worker_id: workerId,
+      training_consent: true,
+    } satisfies Database['public']['Tables']['worker_kael_training_consent']['Insert']
+
+    expect(feedback.worker_id).toBe(workerId)
+    expect(consent.training_consent).toBe(true)
+  })
+
+  it('Kael optimization and knowledge artifacts stay represented in generated types', () => {
+    const userId = '00000000-0000-0000-0000-000000000001'
+    const jobId = '00000000-0000-0000-0000-000000000002'
+    const batchId = '00000000-0000-0000-0000-000000000003'
+    const queue = {
+      event_type: 'post-A14',
+      skill_id: 'LS5',
+      job_id: jobId,
+    } satisfies Database['public']['Tables']['kael_learning_queue']['Insert']
+    const batch = {
+      provider: 'anthropic' as const,
+      purpose: 'post_job_learning',
+    } satisfies Database['public']['Tables']['kael_ai_batches']['Insert']
+    const batchItem = {
+      batch_id: batchId,
+      custom_id: 'learning_1',
+      skill_id: 'LS5',
+    } satisfies Database['public']['Tables']['kael_ai_batch_items']['Insert']
+    const sourceTrust = {
+      domain: 'tuoitre.vn',
+      tier: 'tier_1',
+      trust_score: 1,
+    } satisfies Database['public']['Tables']['source_trust_registry']['Insert']
+    const knowledgeUsage = {
+      citation_id: 'service_knowledge_boxes:electrical',
+      knowledge_table: 'service_knowledge_boxes',
+    } satisfies Database['public']['Tables']['kael_knowledge_usage_log']['Insert']
+    const preIntake = {
+      customer_id: userId,
+      address_fingerprint: 'safe-address-fingerprint',
+    } satisfies Database['public']['Tables']['kael_chat_pre_intake_memory']['Insert']
+    const rateLog = {
+      user_id: userId,
+    } satisfies Database['public']['Tables']['kael_chat_rate_limit_log']['Insert']
+    expect(queue.job_id).toBe(jobId)
+    expect(batch.provider).toBe('anthropic')
+    expect(batchItem.batch_id).toBe(batchId)
+    expect(sourceTrust.domain).toBe('tuoitre.vn')
+    expect(knowledgeUsage.knowledge_table).toBe('service_knowledge_boxes')
+    expect(preIntake.customer_id).toBe(userId)
+    expect(rateLog.user_id).toBe(userId)
+  })
+
+  it('does not expose dropped migration backup tables as runtime contract types', () => {
+    type DroppedBackupTable = Extract<TableNames, 'worker_profiles_districts_backup_x3'>
+    const backupTableDropped: DroppedBackupTable extends never ? true : never = true
+    expect(listMigrationSql()).toContain('drop table if exists public.worker_profiles_districts_backup_x3')
+    expect(backupTableDropped).toBe(true)
+  })
+
+  it('Kael autonomy, guardrail, and knowledge RPC types match service-role boundaries', () => {
+    const jobId = '00000000-0000-0000-0000-000000000002'
+    const auditId = '00000000-0000-0000-0000-000000000004'
+    const autonomyAudit = {
+      actor_role: 'system',
+      decision_source: 'policy',
+      from_status: 'estimate_ready' as const,
+      to_status: 'broadcasting' as const,
+      gate_result: 'allow',
+      reason_code: 'ALLOW_AUTONOMY_DECISION',
+    } satisfies Database['public']['Tables']['kael_autonomy_decision_audit']['Insert']
+    const guardrail = {
+      actor_role: 'system',
+      surface: 'self-check',
+      reason_code: 'SAFE_TEMPLATE_REQUIRED',
+      source: 'self_check',
+    } satisfies Database['public']['Tables']['kael_guardrail_trip_audit']['Insert']
+    const chatRateArgs = {
+      p_user_id: '00000000-0000-0000-0000-000000000001',
+    } satisfies Database['public']['Functions']['check_kael_chat_rate']['Args']
+    const matchArgs = {
+      p_query_embedding: '[0,0,0]',
+      p_service_type: 'electrical',
+    } satisfies Database['public']['Functions']['match_kael_knowledge']['Args']
+    const applyKnowledgeArgs = {
+      p_candidate_id: '00000000-0000-0000-0000-000000000005',
+      p_admin_id: '00000000-0000-0000-0000-000000000006',
+    } satisfies Database['public']['Functions']['apply_approved_learning_candidate_to_knowledge']['Args']
+    const applyAutonomyArgs = {
+      p_job_id: jobId,
+      p_gate_audit_id: auditId,
+      p_expected_from: 'estimate_ready' as const,
+      p_to_status: 'broadcasting' as const,
+    } satisfies Database['public']['Functions']['apply_kael_autonomy_decision']['Args']
+
+    expect(autonomyAudit.to_status).toBe('broadcasting')
+    expect(guardrail.source).toBe('self_check')
+    expect(chatRateArgs.p_user_id).toBeTruthy()
+    expect(matchArgs.p_query_embedding).toContain('[')
+    expect(applyKnowledgeArgs.p_admin_id).toBeTruthy()
+    expect(applyAutonomyArgs.p_gate_audit_id).toBe(auditId)
   })
 
   it('P10 admin queue and interaction logs carry escalation state', () => {

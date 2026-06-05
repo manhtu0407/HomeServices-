@@ -8,6 +8,10 @@
 module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  // React Native Testing Library suites share enough RN/Expo globals that
+  // parallel workers can starve async UI tests on Windows. Serial execution is
+  // both faster and deterministic for the current mobile gate.
+  maxWorkers: 1,
   // Mirror the tsconfig "@/*" path alias so component tests can import app code
   // the same way the app does. Metro reads tsconfig paths; jest does not.
   moduleNameMapper: {

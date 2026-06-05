@@ -5,6 +5,13 @@
 > DB/RPC/Storage/Realtime -> AI providers. Do not use Vercel or hosted
 > Next.js as the mobile runtime; `apps/api` is reference/parity code only.
 
+### 2026-06-05 -- Kael Section 32 Local Completion Audit
+
+- **Task**: Execute and audit Plan.md section 32 from PR #60: customer perceived-performance, worker Kael felt-parity, anti-disintermediation, apartment access, and flexible-not-slop interaction rules.
+- **What landed locally**: Section-32 progress/SSE/customer-chat wiring, worker sibling chat contracts, worker advisory safety/idempotency fixes, generated Supabase type drift coverage, worker mobile stale-job SSE guards, Reduce Transparency worker surface handling, SDK-compatible Expo Doctor fixes, a staging-only Section 32 smoke harness, a staging-only Android recording harness with names-only env examples, deterministic mobile Jest config, and evidence docs.
+- **Verification**: Local API/shared/mobile type-check and test gates pass, targeted mobile ESLint passes, default mobile Jest now passes serially, and Expo Doctor now passes 18/18. See `docs/test-logs/2026-06-04_kael-section32-local-verification.md` and `docs/test-logs/2026-06-05_kael-section32-completion-audit.md`.
+- **Open gates**: Do not mark section 32 complete yet. Follow-up migration `20260605005000_scope_worker_kael_chat_idempotency_by_job.sql` still needs staging lint/apply proof, the staging smoke harness has not run live, and the authenticated native section-32 chat/stream/worker recordings are still missing.
+
 ### 2026-05-30 — Recent PR Audit Gap Fix
 
 - **Task**: Close review gaps from recent PR updates after rebasing the audit branch to `origin/main`.

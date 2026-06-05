@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { Alert } from 'react-native'
 import type { LocalDeal } from '@home-services/shared'
 import { LOCAL_WORKFLOW_PRICE_DISCLAIMER } from '@home-services/shared'
@@ -176,6 +176,15 @@ function buildAcceptedDeal(): LocalDeal {
     ...deal,
     broadcast: deal.broadcast ? { ...deal.broadcast, status: 'accepted' } : null,
     status: 'worker_matched',
+  }
+}
+
+function buildAcceptedDealForJob(jobId: string): LocalDeal {
+  const deal = buildAcceptedDeal()
+  return {
+    ...deal,
+    broadcast: deal.broadcast ? { ...deal.broadcast, broadcastId: `broadcast_${jobId}`, jobId } : null,
+    id: jobId,
   }
 }
 
@@ -586,8 +595,7 @@ describe('WorkerChatSurface', () => {
   })
 
   it('uses the worker profile name with English Claude-style time greetings', () => {
-    jest.useFakeTimers()
-    jest.setSystemTime(new Date('2026-06-01T12:10:00+07:00'))
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(new Date('2026-06-01T12:10:00+07:00').getTime())
     mockPathname = '/(worker)/chat'
     mockAppLanguage = 'vi'
     buildWorkflow({ workerProfile: buildWorkerProfile({ legal_name: '  Phan   Manh Tu  ' }) })
@@ -597,12 +605,11 @@ describe('WorkerChatSurface', () => {
     expect(screen.getByText('Lunch, Phan Manh Tu')).toBeOnTheScreen()
     expect(screen.getByText('Lunch, Phan Manh Tu').props.numberOfLines).toBe(1)
     expect(screen.queryByText(/Chào buổi/)).toBeNull()
-    jest.useRealTimers()
+    nowSpy.mockRestore()
   })
 
   it('keeps the standalone greeting honest when the worker profile has no name', () => {
-    jest.useFakeTimers()
-    jest.setSystemTime(new Date('2026-06-01T15:30:00+07:00'))
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(new Date('2026-06-01T15:30:00+07:00').getTime())
     mockPathname = '/(worker)/chat'
     buildWorkflow({ workerProfile: buildWorkerProfile({ legal_name: null }) })
 
@@ -610,7 +617,7 @@ describe('WorkerChatSurface', () => {
 
     expect(screen.getByText('Afternoon, there')).toBeOnTheScreen()
     expect(screen.queryByText(/Worker QA/)).toBeNull()
-    jest.useRealTimers()
+    nowSpy.mockRestore()
   })
 
   it('lets the standalone Kael chat composer accept a message without faking a backend JobRoom send', async () => {
@@ -783,6 +790,190 @@ describe('WorkerChatSurface', () => {
     expect(screen.getAllByText(/20%/).length).toBeGreaterThan(0)
     resolveStream(undefined)
     await waitFor(() => expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalled())
+  })
+
+  it('does not render stale worker Kael progress from a different job session', async () => {
+    mockWorkerKaelChatService.create.mockResolvedValueOnce({
+      data: {
+        session: {
+          closed_at: null,
+          id: 'worker-kael-session-stale',
+          job_id: 'job_other',
+          progress: {
+            current_stage: 'worker_assist',
+            failure_reason: null,
+            progress: 0.8,
+            status: 'running',
+            updated_at: '2026-06-04T00:00:01.000Z',
+          },
+          safe_metadata: {},
+          started_at: '2026-06-04T00:00:00.000Z',
+          status: 'active',
+          total_cost_usd: 0,
+          total_turns: 2,
+          worker_id: 'worker_test_1',
+        },
+        turns: [
+          {
+            content_type: 'guidance',
+            created_at: '2026-06-04T00:00:01.000Z',
+            id: 'turn-kael-stale',
+            media_refs: [],
+            role: 'kael',
+            safe_metadata: {},
+            session_id: 'worker-kael-session-stale',
+            text_content: 'Stale advisory from another job must stay hidden.',
+            turn_index: 2,
+          },
+        ],
+      },
+      status: 201,
+      success: true,
+    })
+    mockPathname = '/(worker)/chat'
+    buildWorkflow({ deal: buildAcceptedDeal() })
+
+    render(<WorkerChatSurface />)
+
+    fireEvent.changeText(screen.getByTestId('worker-kael-chat-input'), 'Need current-job advice')
+    await waitFor(() => expect(screen.getByTestId('worker-kael-send-button').props.accessibilityState.disabled).toBe(false))
+    fireEvent.press(screen.getByTestId('worker-kael-send-button'))
+
+    await waitFor(() => expect(mockWorkerKaelChatService.create).toHaveBeenCalled())
+    expect(mockWorkerKaelChatService.streamTurn).not.toHaveBeenCalled()
+    expect(screen.queryByText(/80%/)).toBeNull()
+    expect(screen.queryByText('Stale advisory from another job must stay hidden.')).toBeNull()
+  })
+
+  it('ignores late worker Kael SSE state after switching active jobs', async () => {
+    let streamHandlers: any
+    let resolveStream!: (value: unknown) => void
+    mockWorkerKaelChatService.streamTurn.mockImplementationOnce((_sessionId: string, _input: { message: string }, handlers?: any) => {
+      streamHandlers = handlers
+      return new Promise((resolve) => {
+        resolveStream = resolve
+      }).then(() => ({
+        data: {
+          session: {
+            closed_at: null,
+            id: 'worker-kael-session-1',
+            job_id: 'job_test_1',
+            progress: {
+              current_stage: 'worker_assist',
+              failure_reason: null,
+              progress: 1,
+              status: 'completed',
+              updated_at: '2026-06-04T00:00:02.000Z',
+            },
+            safe_metadata: {},
+            started_at: '2026-06-04T00:00:00.000Z',
+            status: 'active',
+            total_cost_usd: 0,
+            total_turns: 2,
+            worker_id: 'worker_test_1',
+          },
+          turns: [],
+        },
+        status: 200,
+        success: true,
+      }))
+    })
+    mockPathname = '/(worker)/chat'
+    buildWorkflow({ deal: buildAcceptedDeal() })
+
+    const view = render(<WorkerChatSurface />)
+
+    fireEvent.changeText(screen.getByTestId('worker-kael-chat-input'), 'Need old-job advice')
+    await waitFor(() => expect(screen.getByTestId('worker-kael-send-button').props.accessibilityState.disabled).toBe(false))
+    fireEvent.press(screen.getByTestId('worker-kael-send-button'))
+    await waitFor(() => expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalled())
+
+    buildWorkflow({ deal: buildAcceptedDealForJob('job_other') })
+    view.rerender(<WorkerChatSurface />)
+    await waitFor(() => expect(mockUseJobChatThread).toHaveBeenLastCalledWith('job_other', true))
+
+    act(() => {
+      streamHandlers?.onStage?.({
+        progress: {
+          current_stage: 'worker_assist',
+          failure_reason: null,
+          progress: 0.2,
+          status: 'running',
+          updated_at: '2026-06-04T00:00:03.000Z',
+        },
+        type: 'stage',
+      })
+      streamHandlers?.onToken?.({ delta: 'Late stale worker token', field: 'worker_assist', type: 'token' })
+    })
+
+    expect(screen.queryByText(/20%/)).toBeNull()
+    expect(screen.queryByText(/Late stale worker token/)).toBeNull()
+
+    await act(async () => {
+      resolveStream(undefined)
+    })
+    expect(screen.queryByText(/Late stale worker token/)).toBeNull()
+  })
+
+  it('clears worker Kael progress when the final stream payload belongs to another job', async () => {
+    let resolveStream!: (value: unknown) => void
+    mockWorkerKaelChatService.streamTurn.mockImplementationOnce((_sessionId: string, _input: { message: string }, handlers?: any) => {
+      handlers?.onStage?.({
+        progress: {
+          current_stage: 'worker_assist',
+          failure_reason: null,
+          progress: 0.4,
+          status: 'running',
+          updated_at: '2026-06-04T00:00:01.000Z',
+        },
+        type: 'stage',
+      })
+      return new Promise((resolve) => {
+        resolveStream = resolve
+      }).then(() => ({
+        data: {
+          session: {
+            closed_at: null,
+            id: 'worker-kael-session-other',
+            job_id: 'job_other',
+            progress: {
+              current_stage: 'worker_assist',
+              failure_reason: null,
+              progress: 1,
+              status: 'completed',
+              updated_at: '2026-06-04T00:00:02.000Z',
+            },
+            safe_metadata: {},
+            started_at: '2026-06-04T00:00:00.000Z',
+            status: 'active',
+            total_cost_usd: 0,
+            total_turns: 2,
+            worker_id: 'worker_test_1',
+          },
+          turns: [],
+        },
+        status: 200,
+        success: true,
+      }))
+    })
+    mockPathname = '/(worker)/chat'
+    buildWorkflow({ deal: buildAcceptedDeal() })
+
+    render(<WorkerChatSurface />)
+
+    fireEvent.changeText(screen.getByTestId('worker-kael-chat-input'), 'Need current-job advice')
+    await waitFor(() => expect(screen.getByTestId('worker-kael-send-button').props.accessibilityState.disabled).toBe(false))
+    fireEvent.press(screen.getByTestId('worker-kael-send-button'))
+
+    await waitFor(() => expect(screen.getByTestId('worker-kael-chat-progress')).toBeOnTheScreen())
+    expect(screen.getAllByText(/40%/).length).toBeGreaterThan(0)
+
+    await act(async () => {
+      resolveStream(undefined)
+    })
+
+    await waitFor(() => expect(screen.queryByTestId('worker-kael-chat-progress')).toBeNull())
+    expect(screen.queryByText(/40%/)).toBeNull()
   })
 
   it('submits accepted worker messages through the worker Kael advisory chat', async () => {
@@ -1164,9 +1355,11 @@ describe('WorkerProfileSurface', () => {
     expect(screen.getByTestId('worker-profile-level-signal-jobs')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-profile-level-signal-rating')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-profile-level-signal-recommendation')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-profile-level-signal-jobs')).toHaveTextContent(/0/)
-    expect(screen.getByTestId('worker-profile-level-signal-rating')).toHaveTextContent(/0\/5/)
-    expect(screen.getByTestId('worker-profile-level-signal-recommendation')).toHaveTextContent(/0%/)
+    expect(screen.getByTestId('worker-profile-level-signal-jobs')).toHaveTextContent(/Ch\u01b0a c\u00f3/)
+    expect(screen.getByTestId('worker-profile-level-signal-rating')).toHaveTextContent(/Ch\u01b0a c\u00f3/)
+    expect(screen.getByTestId('worker-profile-level-signal-recommendation')).toHaveTextContent(/Ch\u01b0a c\u00f3/)
+    expect(screen.getByTestId('worker-profile-level-signal-rating')).not.toHaveTextContent(/0\/5/)
+    expect(screen.getByTestId('worker-profile-level-signal-recommendation')).not.toHaveTextContent(/0%/)
     expect(screen.getAllByTestId('worker-profile-level-signal-glass-layer')).toHaveLength(3)
     expect(screen.getByTestId('worker-profile-level-ladder')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-profile-level-rail')).toBeOnTheScreen()
@@ -1200,6 +1393,19 @@ describe('WorkerProfileSurface', () => {
     expect(screen.getByTestId('worker-profile-level-signal-rating')).toHaveTextContent(/4\.9\/5/)
     expect(screen.getByTestId('worker-profile-level-signal-recommendation')).toHaveTextContent(/60%/)
     expect(screen.queryByText('--')).toBeNull()
+  })
+
+  it('keeps empty worker trust signals in the selected English mode', () => {
+    mockPathname = '/(worker)/profile'
+    mockAppLanguage = 'en'
+    buildWorkflow({ workerProfile: buildWorkerProfile({ rating: 0, total_jobs: 0 }) })
+
+    render(<WorkerProfileSurface />)
+
+    expect(screen.getByTestId('worker-profile-level-signal-jobs')).toHaveTextContent(/Not yet/)
+    expect(screen.getByTestId('worker-profile-level-signal-rating')).toHaveTextContent(/Not yet/)
+    expect(screen.getByTestId('worker-profile-level-signal-recommendation')).toHaveTextContent(/Not yet/)
+    expect(screen.queryByText(/Ch\u01b0a c\u00f3/)).toBeNull()
   })
 
   it('keeps later worker rewards mysterious until level five opens the next requirement', () => {

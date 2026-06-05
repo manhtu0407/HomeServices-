@@ -1,7 +1,7 @@
 # Kael Worker Advisory Boundary Spec
 
 Date: 2026-06-04
-Status: WBF.0 read-only artifact for Plan.md section 32. Code not started.
+Status: WBF.0 read-only artifact for Plan.md section 32. Code had not started when this spec was written; see the 2026-06-05 continuation status below.
 Source: PR #60, Plan.md section 32, `docs/design/kael-perceived-performance-streaming-20260604.md`, `docs/architecture/kael-worker-functional-audit-20260604.md`.
 
 ## Purpose
@@ -209,3 +209,20 @@ Tests:
 ## Open Gate Before Code
 
 Plan.md section 32 says this build happens after section 31 and after read-only P0/WBF.0 verification. The current worktree has uncommitted section 31 changes from another session. Code changes should wait until Tu or Claude confirms that this dependency is satisfied or explicitly overrides it for this branch.
+
+## 2026-06-05 Continuation Status
+
+The "code not started" and "open gate before code" notes above are historical. The active goal later proceeded under Tu's explicit direction and after Plan31 evidence landed on `origin/main` (`b09592e6`, `#61 Complete Kael AI core rollout`).
+
+Current local Section 32 implementation status:
+
+- Worker Kael chat sibling schema, worker advisory routing/engine/handlers, safety tests, worker mobile surface/wiring, feedback, and training-consent parity are implemented locally.
+- A follow-up migration `supabase/migrations/20260605005000_scope_worker_kael_chat_idempotency_by_job.sql` now scopes worker chat idempotency by `worker_id + job_id + client_request_id` and adds `kael_worker_chat_turns.job_id`.
+- The Edge service now scopes client-request recovery by job and persists worker advisory answer model metadata to `ai_model`, not a non-existent top-level `model` field.
+- Worker mobile live SSE/pending/progress state is job-scoped and clears progress when final stream payloads mismatch the active job.
+- Local evidence is tracked in `docs/test-logs/2026-06-04_kael-section32-local-verification.md` and `docs/test-logs/2026-06-05_kael-section32-completion-audit.md`.
+
+Remaining honest blockers:
+
+- Staging proof is not closed for the follow-up migration/service fix because the current host lacks staging Supabase credentials/access token.
+- Native visible proof is still partial; there is no authenticated Section 32 customer/worker journey recording yet.

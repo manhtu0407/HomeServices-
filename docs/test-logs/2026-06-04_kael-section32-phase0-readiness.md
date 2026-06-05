@@ -2,7 +2,7 @@
 
 Document type: read-only readiness audit
 Date: 2026-06-04
-Status: P0 materially complete; code gate not open
+Status: P0 materially complete; original code gate was not open at creation time. A 2026-06-05 continuation superseded that blocker after Tu explicitly directed Codex to proceed and Plan31 evidence was recorded.
 
 ## Scope
 
@@ -135,3 +135,14 @@ If Tu wants section 32 implementation to proceed in parallel with the unfinished
 2. Avoid touching section 31 dirty learning/knowledge implementation paths except where progress plumbing requires the same Kael pipeline types.
 3. Run targeted Edge/router/shared tests after each small step.
 4. Do not claim frontend phases done without native Expo evidence.
+
+## 2026-06-05 Continuation Status
+
+The "code gate not open" finding above is historical. It was superseded during the active goal:
+
+- Tu explicitly directed Codex to proceed with PR #60 / `Plan.md §32` despite the busy worktree.
+- `origin/main` later advanced to `b09592e6` (`#61 Complete Kael AI core rollout`).
+- Section 31 evidence was updated in `docs/test-logs/2026-06-05_kael-plan31-staging-apply.md`, `docs/test-logs/2026-06-05_kael-plan31-p15-staging-e2e.md`, `docs/test-logs/2026-06-05_kael-plan31-production-rollout.md`, and `docs/test-logs/2026-06-04_kael-plan31-requirement-matrix.md`.
+- Section 32 local implementation evidence now lives in `docs/test-logs/2026-06-04_kael-section32-local-verification.md` and `docs/test-logs/2026-06-05_kael-section32-completion-audit.md`.
+
+Current honest status: P0/WBF.0 are no longer the blocker. Remaining blockers to full Section 32 completion are G1 staging proof for the 2026-06-05 follow-up migration/service fix and G3 authenticated native visible journey proof.

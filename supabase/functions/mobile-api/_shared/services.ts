@@ -105,6 +105,7 @@ import {
   sanitizeMemoryObject,
   type EstimatePriceSource,
   type KaelAutonomyDecision,
+  type KaelPermissionGateRequest,
   type LearningSkillInput,
   type LearningSkillTrigger,
   getPublicKaelCharter,
@@ -132,7 +133,7 @@ import {
   scrubSensitiveForLLM,
   runWorkerAssist,
   type WorkerAssistAnswer,
-  type KaelPermissionGateRequest,
+  type WorkerAssistProviderAttempt,
 } from "./kael/index.ts";
 import { evaluateMessageBoundary } from "./kael/boundary-guard.ts";
 import {
@@ -4151,6 +4152,7 @@ async function createWorkerKaelChat(
     const existing = await findExistingWorkerKaelSessionByClientRequest(
       client,
       ctx.user.id,
+      input.job_id,
       input.client_request_id,
     );
     if (existing) return getWorkerKaelChat(ctx, existing);
@@ -4181,6 +4183,7 @@ async function createWorkerKaelChat(
     const recovered = await findExistingWorkerKaelSessionByClientRequest(
       client,
       ctx.user.id,
+      input.job_id,
       input.client_request_id,
     );
     if (recovered) return getWorkerKaelChat(ctx, recovered);
@@ -4374,6 +4377,7 @@ async function requireWorkerKaelChatJob(
 async function findExistingWorkerKaelSessionByClientRequest(
   client: DbClient,
   workerId: string,
+  jobId: string,
   clientRequestId: string,
 ): Promise<string | null> {
   const result = await dbQuery<Record<string, unknown>>(
@@ -4381,6 +4385,7 @@ async function findExistingWorkerKaelSessionByClientRequest(
       .from("kael_worker_chat_sessions")
       .select("id")
       .eq("worker_id", workerId)
+      .eq("job_id", jobId)
       .eq("client_request_id", clientRequestId)
       .maybeSingle(),
   );
@@ -4473,12 +4478,13 @@ async function appendWorkerKaelAnswerTurn(
       redirect_scope_change: answer.redirect_scope_change,
       fallback_used: answer.fallback_used,
       guardrail_reason: answer.guardrail_reason ?? null,
+      provider_attempts: formatWorkerAssistProviderAttempts(answer.provider_attempts ?? []),
       provider: answer.provider ?? null,
       model: answer.model ?? null,
       latency_ms: answer.latency_ms ?? null,
     }),
     ai_provider: answer.provider ?? null,
-    model: answer.model ?? null,
+    ai_model: answer.model ?? null,
     latency_ms: answer.latency_ms ?? null,
     cost_usd: answer.cost_usd ?? 0,
   });
@@ -4503,6 +4509,21 @@ async function appendWorkerKaelAnswerTurn(
   if (update.error || !update.data) {
     apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 c\u1eadp nh\u1eadt phi\u00ean Kael", 500);
   }
+}
+
+function formatWorkerAssistProviderAttempts(
+  attempts: readonly WorkerAssistProviderAttempt[],
+) {
+  return attempts.map((attempt) =>
+    [
+      attempt.role,
+      attempt.provider,
+      attempt.result,
+      attempt.code ?? "ok",
+      `timeout=${attempt.timeout_ms}`,
+      attempt.latency_ms !== undefined ? `latency=${attempt.latency_ms}` : "latency=n/a",
+    ].join(":")
+  );
 }
 
 async function readWorkerKaelRecentTurns(

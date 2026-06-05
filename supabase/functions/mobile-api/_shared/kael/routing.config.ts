@@ -44,7 +44,7 @@ export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> 
   scope_change: config("scope_change", anthropic(), undefined, 0.01, 4_000, true, 500),
   post_job_learning: config("post_job_learning", deepseek(), anthropic(), 0.012, 15_000, false, 800),
   educational_response: config("educational_response", deepseek(), anthropic(), 0.003, 2_000, true, 500),
-  worker_assist: config("worker_assist", deepseek(), anthropic(), 0.004, 2_000, true, 180),
+  worker_assist: config("worker_assist", deepseek(), anthropic(), 0.004, 5_000, true, 180),
 });
 
 export function maxTokensForPurpose(

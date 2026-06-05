@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { createContext, memo, type ReactNode, use, useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from 'react'
-import { Alert, FlatList, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, type StyleProp, type ViewStyle } from 'react-native'
+import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
@@ -933,6 +933,7 @@ type WorkerUiContextValue = {
   copy: WorkerCopy
   language: WorkerLanguageMode
   mode: WorkerThemeMode
+  reduceTransparency: boolean
   tokens: WorkerThemeTokens
 }
 
@@ -1770,7 +1771,7 @@ function WorkerFrame({
     (active === 'chat' && pathname.endsWith('/chat')) ||
     (active === 'earnings' && pathname.endsWith('/earnings')) ||
     (active === 'profile' && pathname.endsWith('/profile'))
-  const workerUiValue = useMemo(() => ({ copy, language, mode, tokens }), [copy, language, mode, tokens])
+  const workerUiValue = useMemo(() => ({ copy, language, mode, reduceTransparency, tokens }), [copy, language, mode, reduceTransparency, tokens])
   const routeScrollRef = useRef<ScrollView | null>(null)
   const lastScrollYRef = useRef(0)
   const dockRouteResetKey = `${active}:${pathname}`
@@ -1872,7 +1873,7 @@ function WorkerFrame({
 }
 
 function WorkerScreenHeader({ active, eyebrow, headerIcon, headerPill, headerPillTone = 'cream', subtitle, title }: { active: WorkerActiveTab; eyebrow: string; headerIcon?: WorkerIconName; headerPill?: string; headerPillTone?: WorkerHeaderPillTone; subtitle?: string; title: string }) {
-  const { tokens } = useWorkerUi()
+  const { reduceTransparency, tokens } = useWorkerUi()
   const showKicker = eyebrow.trim().toLocaleLowerCase() !== title.trim().toLocaleLowerCase()
   const headerPillSurface = active === 'home'
     ? workerHomeHeaderPillSurface(tokens)
@@ -1902,7 +1903,7 @@ function WorkerScreenHeader({ active, eyebrow, headerIcon, headerPill, headerPil
           {headerPill}
         </Text>
       ) : headerIcon ? (
-        <View style={[styles.screenHeaderAction, workerOpaqueCardSurface(tokens, 'mint')]}>
+        <View style={[styles.screenHeaderAction, workerOpaqueCardSurface(tokens, 'mint', reduceTransparency)]}>
           <Icon name={headerIcon} active small />
         </View>
       ) : null}
@@ -2095,7 +2096,7 @@ function useWorkerChatComposerActions({
 }
 
 function WorkerChatContent() {
-  const { copy, language, tokens } = useWorkerUi()
+  const { copy, language, reduceTransparency, tokens } = useWorkerUi()
   const { reduceMotion } = useGlassAccessibility()
   const { session } = useAuth()
   const { selectors, state, workerProfile } = useFrontendWorkflow()
@@ -2106,10 +2107,10 @@ function WorkerChatContent() {
   const [workerKaelChat, setWorkerKaelChat] = useState<WorkerKaelChatResponse | null>(null)
   const [workerKaelChatError, setWorkerKaelChatError] = useState<string | null>(null)
   const [workerKaelChatLoading, setWorkerKaelChatLoading] = useState(false)
-  const [workerKaelChatSending, setWorkerKaelChatSending] = useState(false)
-  const [workerKaelLiveProgress, setWorkerKaelLiveProgress] = useState<KaelChatProgress | null>(null)
-  const [workerKaelPendingMessage, setWorkerKaelPendingMessage] = useState<string | null>(null)
-  const [workerKaelStreamingText, setWorkerKaelStreamingText] = useState('')
+  const [workerKaelChatSendingJobId, setWorkerKaelChatSendingJobId] = useState<string | null>(null)
+  const [workerKaelLiveProgress, setWorkerKaelLiveProgress] = useState<{ jobId: string; progress: KaelChatProgress } | null>(null)
+  const [workerKaelPendingMessage, setWorkerKaelPendingMessage] = useState<{ jobId: string; text: string } | null>(null)
+  const [workerKaelStreamingText, setWorkerKaelStreamingText] = useState<{ jobId: string; text: string } | null>(null)
   const [workerKaelFeedbackOpen, setWorkerKaelFeedbackOpen] = useState(false)
   const [workerKaelFeedbackValue, setWorkerKaelFeedbackValue] = useState('')
   const [workerKaelFeedbackError, setWorkerKaelFeedbackError] = useState<string | null>(null)
@@ -2122,6 +2123,8 @@ function WorkerChatContent() {
   const activeDealChatKeyRef = useRef(dealChatKey)
   const localMessageIdRef = useRef(0)
   const workerChatJobId = getWorkerChatJobId(deal)
+  const activeWorkerChatJobIdRef = useRef<string | null>(workerChatJobId)
+  const workerKaelChatSending = Boolean(workerChatJobId && workerKaelChatSendingJobId === workerChatJobId)
   const canSendWorkerKaelMessage = Boolean(deal && isAcceptedLocalWorkerDeal(deal))
   const workflow = useServiceWorkflow({
     status: selectors.currentBackendStatus,
@@ -2141,13 +2144,14 @@ function WorkerChatContent() {
   const activeWorkerKaelChatState = workerKaelChat?.session.job_id === workerChatJobId ? workerKaelChat : null
   const visibleWorkerKaelChatError = workerChatJobId && chatCanRead ? workerKaelChatError : null
   const visibleWorkerKaelChatLoading = Boolean(workerChatJobId && chatCanRead && workerKaelChatLoading)
-  const visibleWorkerKaelLiveProgress = workerChatJobId && chatCanRead ? workerKaelLiveProgress : null
-  const visibleWorkerKaelStreamingText = workerChatJobId && chatCanRead ? workerKaelStreamingText : ''
+  const visibleWorkerKaelLiveProgress = workerChatJobId && chatCanRead && workerKaelLiveProgress?.jobId === workerChatJobId ? workerKaelLiveProgress.progress : null
+  const visibleWorkerKaelStreamingText = workerChatJobId && chatCanRead && workerKaelStreamingText?.jobId === workerChatJobId ? workerKaelStreamingText.text : ''
   const workerKaelMessages = activeWorkerKaelChatState
     ? activeWorkerKaelChatState.turns.map((turn) => workerChatMessageFromWorkerKaelTurn(turn, language))
     : []
   const workerKaelPendingMessages = workerKaelPendingMessage
-    ? [{ id: 'worker-kael-pending-message', mine: true, system: false, text: workerKaelPendingMessage, who: copy.chat.worker }]
+    && workerKaelPendingMessage.jobId === workerChatJobId
+    ? [{ id: 'worker-kael-pending-message', mine: true, system: false, text: workerKaelPendingMessage.text, who: copy.chat.worker }]
     : []
   const renderedMessages = [
     ...chatLocalState.localMessages,
@@ -2205,6 +2209,16 @@ function WorkerChatContent() {
     setChatLocalState,
     startJobRoomReveal,
   })
+  useEffect(() => {
+    activeWorkerChatJobIdRef.current = workerChatJobId
+  }, [workerChatJobId])
+  const isActiveWorkerChatJob = useCallback((jobId: string | null) => Boolean(jobId && activeWorkerChatJobIdRef.current === jobId), [])
+  const clearWorkerKaelTransientState = useCallback((jobId: string) => {
+    setWorkerKaelChatSendingJobId((current) => (current === jobId ? null : current))
+    setWorkerKaelLiveProgress((current) => (current?.jobId === jobId ? null : current))
+    setWorkerKaelPendingMessage((current) => (current?.jobId === jobId ? null : current))
+    setWorkerKaelStreamingText((current) => (current?.jobId === jobId ? null : current))
+  }, [])
   const advanceJobRoomReveal = () => {
     setChatLocalState((current) => {
       const nextRequested = Math.min(maxRevealStep, Math.max(current.reveal.requested, current.reveal.step + 1))
@@ -2217,7 +2231,12 @@ function WorkerChatContent() {
       media_refs: [],
       language: chatLanguage,
     })
-    return result.success ? result.data : null
+    if (!isActiveWorkerChatJob(jobId)) {
+      clearWorkerKaelTransientState(jobId)
+      return null
+    }
+    if (!result.success || result.data.session.job_id !== jobId) return null
+    return result.data
   }
 
   useEffect(() => {
@@ -2226,10 +2245,10 @@ function WorkerChatContent() {
     setWorkerKaelChat(null)
     setWorkerKaelChatError(null)
     setWorkerKaelChatLoading(false)
-    setWorkerKaelChatSending(false)
+    setWorkerKaelChatSendingJobId(null)
     setWorkerKaelLiveProgress(null)
     setWorkerKaelPendingMessage(null)
-    setWorkerKaelStreamingText('')
+    setWorkerKaelStreamingText(null)
     activeDealChatKeyRef.current = dealChatKey
   }, [dealChatKey])
 
@@ -2321,16 +2340,21 @@ function WorkerChatContent() {
       return
     }
     if (!workerChatJobId) return
-    setWorkerKaelChatSending(true)
+    const activeJobId = workerChatJobId
+    setWorkerKaelChatSendingJobId(activeJobId)
     setWorkerKaelChatError(null)
     setWorkerKaelLiveProgress(null)
-    setWorkerKaelStreamingText('')
-    setWorkerKaelPendingMessage(value)
+    setWorkerKaelStreamingText(null)
+    setWorkerKaelPendingMessage({ jobId: activeJobId, text: value })
     let mediaRefs: string[] = []
     if (chatLocalState.mediaDrafts.length > 0) {
-      const uploaded = await uploadJobMediaDrafts(workerChatJobId, chatLocalState.mediaDrafts, 'before')
+      const uploaded = await uploadJobMediaDrafts(activeJobId, chatLocalState.mediaDrafts, 'before')
+      if (!isActiveWorkerChatJob(activeJobId)) {
+        clearWorkerKaelTransientState(activeJobId)
+        return
+      }
       if (!uploaded.success) {
-        setWorkerKaelChatSending(false)
+        setWorkerKaelChatSendingJobId(null)
         setWorkerKaelPendingMessage(null)
         setWorkerKaelChatError(uploaded.error)
         Alert.alert(copy.chat.sendErrorTitle, uploaded.error)
@@ -2338,11 +2362,15 @@ function WorkerChatContent() {
       }
       mediaRefs = uploaded.mediaRefs
     }
-    const activeWorkerKaelChat = workerKaelChat?.session.job_id === workerChatJobId
+    const activeWorkerKaelChat = workerKaelChat?.session.job_id === activeJobId
       ? workerKaelChat
-      : await createWorkerKaelChatSessionForStream(workerChatJobId, language)
+      : await createWorkerKaelChatSessionForStream(activeJobId, language)
+    if (!isActiveWorkerChatJob(activeJobId)) {
+      clearWorkerKaelTransientState(activeJobId)
+      return
+    }
     if (!activeWorkerKaelChat) {
-      setWorkerKaelChatSending(false)
+      setWorkerKaelChatSendingJobId(null)
       setWorkerKaelPendingMessage(null)
       setWorkerKaelChatError(workerKaelChatErrorCopy(language))
       Alert.alert(copy.chat.sendErrorTitle, copy.chat.sendErrorBody)
@@ -2351,19 +2379,38 @@ function WorkerChatContent() {
     setWorkerKaelChat(activeWorkerKaelChat)
     const turnInput = { message: value, media_refs: mediaRefs, language }
     const result = await workerKaelChatService.streamTurn(activeWorkerKaelChat.session.id, turnInput, {
-      onStage: (event) => setWorkerKaelLiveProgress(event.progress),
+      onStage: (event) => {
+        if (isActiveWorkerChatJob(activeJobId)) setWorkerKaelLiveProgress({ jobId: activeJobId, progress: event.progress })
+      },
       onToken: (event) => {
-        if (event.field === 'worker_assist') setWorkerKaelStreamingText((current) => `${current}${event.delta}`)
+        if (event.field === 'worker_assist' && isActiveWorkerChatJob(activeJobId)) {
+          setWorkerKaelStreamingText((current) => ({
+            jobId: activeJobId,
+            text: current?.jobId === activeJobId ? `${current.text}${event.delta}` : event.delta,
+          }))
+        }
       },
       onResult: (event) => {
+        if (event.data.session.job_id !== activeJobId || !isActiveWorkerChatJob(activeJobId)) return
         setWorkerKaelChat(event.data)
-        setWorkerKaelLiveProgress(event.data.session.progress)
+        setWorkerKaelLiveProgress(event.data.session.progress ? { jobId: activeJobId, progress: event.data.session.progress } : null)
       },
     })
-    setWorkerKaelChatSending(false)
+    if (!isActiveWorkerChatJob(activeJobId)) {
+      clearWorkerKaelTransientState(activeJobId)
+      return
+    }
+    setWorkerKaelChatSendingJobId(null)
     setWorkerKaelPendingMessage(null)
-    setWorkerKaelStreamingText('')
+    setWorkerKaelStreamingText(null)
     if (!result.success) {
+      setWorkerKaelLiveProgress(null)
+      setWorkerKaelChatError(workerKaelChatErrorCopy(language))
+      Alert.alert(copy.chat.sendErrorTitle, copy.chat.sendErrorBody)
+      return
+    }
+    if (result.data.session.job_id !== activeJobId) {
+      setWorkerKaelLiveProgress(null)
       setWorkerKaelChatError(workerKaelChatErrorCopy(language))
       Alert.alert(copy.chat.sendErrorTitle, copy.chat.sendErrorBody)
       return
@@ -2442,7 +2489,7 @@ function WorkerChatContent() {
               {showReferenceWelcome ? (
                 <WorkerChatReferenceWelcome greeting={workerGreeting} />
               ) : !showJobRoomMessage && renderedMessages.length === 0 ? (
-                <View style={[styles.workerChatStaticEmpty, workerOpaqueCardSurface(tokens, 'warm')]} testID="worker-chat-static-empty-state">
+                <View style={[styles.workerChatStaticEmpty, workerOpaqueCardSurface(tokens, 'warm', reduceTransparency)]} testID="worker-chat-static-empty-state">
                   <Text style={[styles.workerChatStaticEmptyTitle, { color: tokens.ink }]} numberOfLines={2}>
                     {copy.chat.emptyTitle}
                   </Text>
@@ -2498,7 +2545,7 @@ function WorkerChatContent() {
                     ))}
                   </View>
                   <CompactWorkerPresenceMap density="dense" mode="jobroom" />
-                  <View style={[styles.jobRoomGate, workerOpaqueCardSurface(tokens, chatCanSend ? 'cyan' : 'warm')]} testID="worker-jobroom-privacy-gate">
+                  <View style={[styles.jobRoomGate, workerOpaqueCardSurface(tokens, chatCanSend ? 'cyan' : 'warm', reduceTransparency)]} testID="worker-jobroom-privacy-gate">
                     <Icon name={chatCanSend ? 'check' : 'shield'} active={chatCanSend} small />
                     <View style={styles.titleStack}>
                       <Text style={[styles.bodyText, { color: tokens.ink }]} numberOfLines={2}>
@@ -2687,11 +2734,11 @@ function WorkerKaelParityPanel({
   onSubmitFeedback: () => void
   onToggleConsent: () => void
 }) {
-  const { language, tokens } = useWorkerUi()
+  const { language, reduceTransparency, tokens } = useWorkerUi()
   const { reduceMotion } = useGlassAccessibility()
 
   return (
-    <View style={[styles.workerKaelParityPanel, workerOpaqueCardSurface(tokens, 'mint')]} testID="worker-kael-parity-panel">
+    <View style={[styles.workerKaelParityPanel, workerOpaqueCardSurface(tokens, 'mint', reduceTransparency)]} testID="worker-kael-parity-panel">
       <View style={styles.rowBetween}>
         <View style={styles.titleStack}>
           <Text style={[styles.workerKaelParityTitle, { color: tokens.ink }]} numberOfLines={1}>
@@ -2707,7 +2754,7 @@ function WorkerKaelParityPanel({
           accessibilityState={{ busy: consentSaving, checked: consent, disabled: consentSaving }}
           disabled={consentSaving}
           onPress={onToggleConsent}
-          style={({ pressed }) => [styles.workerKaelMiniButton, { borderColor: tokens.border }, workerOpaqueCardSurface(tokens, consent ? 'cyan' : 'warm'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+          style={({ pressed }) => [styles.workerKaelMiniButton, { borderColor: tokens.border }, workerOpaqueCardSurface(tokens, consent ? 'cyan' : 'warm', reduceTransparency), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
           testID="worker-kael-training-consent-toggle"
         >
           <Text style={[styles.workerKaelMiniButtonText, { color: consent ? tokens.primary : tokens.copper }]} numberOfLines={1}>
@@ -2720,7 +2767,7 @@ function WorkerKaelParityPanel({
           accessibilityLabel={language === 'en' ? 'Send Kael feedback' : 'G\u1eedi ph\u1ea3n h\u1ed3i Kael'}
           accessibilityRole="button"
           onPress={onOpenFeedback}
-          style={({ pressed }) => [styles.workerKaelMiniButton, { borderColor: tokens.border }, workerOpaqueCardSurface(tokens, 'cream'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+          style={({ pressed }) => [styles.workerKaelMiniButton, { borderColor: tokens.border }, workerOpaqueCardSurface(tokens, 'cream', reduceTransparency), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
           testID="worker-kael-feedback-open"
         >
           <Text style={[styles.workerKaelMiniButtonText, { color: tokens.primary }]} numberOfLines={1}>
@@ -2925,10 +2972,10 @@ function JobRoomBriefBlock({ body, lines, testID, title }: { body?: string; line
 }
 
 function JobRoomMetaCell({ label, value, valueLines = 2 }: { label: string; value: string; valueLines?: number }) {
-  const { tokens } = useWorkerUi()
+  const { reduceTransparency, tokens } = useWorkerUi()
 
   return (
-    <View style={[styles.jobRoomMetaCell, workerOpaqueCardSurface(tokens, 'raised')]}>
+    <View style={[styles.jobRoomMetaCell, workerOpaqueCardSurface(tokens, 'raised', reduceTransparency)]}>
       <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
         {label}
       </Text>
@@ -3449,18 +3496,6 @@ function WorkerProfileLevelCard({ workerProfile }: { workerProfile: WorkerProfil
   const handleLevelRailScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     railScrollX.value = event.nativeEvent.contentOffset.x
   }, [railScrollX])
-  const keyLevelMilestone = useCallback((milestone: WorkerProfileLevelMilestone) => String(milestone.level), [])
-  const renderLevelChip = useCallback(({ item: milestone }: { item: WorkerProfileLevelMilestone }) => (
-    <WorkerProfileLevelChip
-      language={language}
-      milestone={milestone}
-      onSelect={handleSelectLevel}
-      reduceMotion={reduceMotion}
-      selected={milestone.level === selectedMilestone.level}
-      tokens={tokens}
-    />
-  ), [handleSelectLevel, language, reduceMotion, selectedMilestone.level, tokens])
-
   useEffect(() => {
     cancelAnimation(detailReveal)
     detailReveal.value = 0
@@ -3547,22 +3582,31 @@ function WorkerProfileLevelCard({ workerProfile }: { workerProfile: WorkerProfil
             {language === 'en' ? `Level ${workerProfileLevelMax} max` : `Cấp tối đa ${workerProfileLevelMax}`}
           </Text>
         </View>
-        <FlatList
-          data={model.milestones}
+        <ScrollView
           horizontal
-          initialNumToRender={workerProfileLevelMax}
-          keyExtractor={keyLevelMilestone}
-          ItemSeparatorComponent={WorkerProfileLevelRailSpacer}
           onContentSizeChange={handleLevelRailContentSize}
           onLayout={handleLevelRailLayout}
           onScroll={handleLevelRailScroll}
-          renderItem={renderLevelChip}
           scrollEventThrottle={16}
           showsHorizontalScrollIndicator={false}
           style={styles.profileLevelRail}
           contentContainerStyle={styles.profileLevelRailContent}
           testID="worker-profile-level-rail"
-        />
+        >
+          {model.milestones.map((milestone, index) => (
+            <View key={milestone.level} style={styles.profileLevelRailItem}>
+              {index > 0 ? <WorkerProfileLevelRailSpacer /> : null}
+              <WorkerProfileLevelChip
+                language={language}
+                milestone={milestone}
+                onSelect={handleSelectLevel}
+                reduceMotion={reduceMotion}
+                selected={milestone.level === selectedMilestone.level}
+                tokens={tokens}
+              />
+            </View>
+          ))}
+        </ScrollView>
         {showRailIndicator ? (
           <View
             pointerEvents="none"
@@ -3814,7 +3858,7 @@ function workerDateKey(date: Date) {
   return date.toISOString().slice(0, 10)
 }
 
-function workerChatGreetingLabel(workerProfile: WorkerProfileResponse | null, _language: WorkerLanguageMode, referenceDate = new Date()) {
+function workerChatGreetingLabel(workerProfile: WorkerProfileResponse | null, _language: WorkerLanguageMode, referenceDate = new Date(Date.now())) {
   const displayName = workerChatDisplayName(workerProfile)
   const hour = referenceDate.getHours()
   const dayPart = hour < 11
@@ -7301,7 +7345,7 @@ function workerChatModePillTextHighlight(tokens: WorkerThemeTokens) {
   }
 }
 
-function workerOpaqueCardSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
+function workerOpaqueCardSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base', reduceTransparency = false) {
   const isWarm = tone === 'cream' || tone === 'warm'
   const isMint = tone === 'mint'
   const isCyan = tone === 'cyan'
@@ -7340,7 +7384,7 @@ function workerOpaqueCardSurface(tokens: WorkerThemeTokens, tone: WorkerTone = '
     borderColor: tokens.border,
     borderWidth: 1,
     boxShadow: tokens.mode === 'dark' ? '0 8px 22px rgba(0,0,0,0.18)' : '0 8px 22px rgba(17,70,61,0.06)',
-    experimental_backgroundImage: experimentalBackgroundImage,
+    experimental_backgroundImage: reduceTransparency ? undefined : experimentalBackgroundImage,
   } as any
 }
 
@@ -8586,21 +8630,23 @@ function buildWorkerProfileLevelModel(
         ? 'Kael ranks with feedback, service fit, area, and availability; total jobs help break ties.'
         : 'Kael xếp hạng bằng phản hồi, kỹ năng, khu vực và trạng thái nhận việc; số việc hỗ trợ khi cần phân hạng.'
   const recommendationPercent = workerProfile ? Math.round(progress * 100) : 0
+  const hasCompletedJobs = completedJobs > 0
+  const emptySignalValue = language === 'en' ? 'Not yet' : 'Ch\u01b0a c\u00f3'
   const signals: WorkerProfileLevelSignal[] = [
     {
       id: 'jobs',
       label: language === 'en' ? 'Completed jobs' : 'Việc hoàn tất',
-      value: `${completedJobs}`,
+      value: hasCompletedJobs ? `${completedJobs}` : emptySignalValue,
     },
     {
       id: 'rating',
       label: language === 'en' ? 'Feedback' : 'Phản hồi',
-      value: hasRating ? `${rating.toFixed(1)}/5` : '0/5',
+      value: hasRating ? `${rating.toFixed(1)}/5` : emptySignalValue,
     },
     {
       id: 'recommendation',
       label: language === 'en' ? 'Ranking signal' : 'Tín hiệu đề xuất',
-      value: `${recommendationPercent}%`,
+      value: hasCompletedJobs ? `${recommendationPercent}%` : emptySignalValue,
     },
   ]
   const milestones = buildWorkerProfileLevelMilestones({
@@ -9505,6 +9551,7 @@ const styles = StyleSheet.create({
   profileLevelLadderMax: { flexShrink: 0, fontSize: 11.5, fontWeight: '700', letterSpacing: 0, lineHeight: 15 },
   profileLevelRail: { height: 104, marginHorizontal: -3 },
   profileLevelRailContent: { alignItems: 'center', paddingBottom: 16, paddingHorizontal: 3, paddingTop: 6 },
+  profileLevelRailItem: { alignItems: 'center', flexDirection: 'row' },
   profileLevelRailSpacer: { width: 8 },
   profileLevelScrollIndicatorSlot: { height: 18, justifyContent: 'center', marginBottom: 4, marginTop: -18, paddingHorizontal: 5, position: 'relative', zIndex: 2 },
   profileLevelScrollIndicatorTrack: { borderCurve: 'continuous', borderRadius: 999, borderWidth: 1, height: 10, overflow: 'hidden', position: 'relative' },

@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { EdgeAiSecrets, AIRequest, AIResponse, AIError } from "./types.ts";
 import { callAI as defaultCallAI } from "./provider-client.ts";
-import { chooseProvider } from "./routing.ts";
+import { providerCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
+import { maxTokensForPurpose } from "./routing.config.ts";
 import { buildKaelSystemPrompt } from "./system-prompt.ts";
 import { evaluateKaelPermissionGate } from "./permission-gate.ts";
 import { runKaelSelfCheckPipeline } from "./self-check.ts";
@@ -47,13 +48,23 @@ export type WorkerAssistAnswer = {
   readonly latency_ms?: number;
   readonly cost_usd?: number;
   readonly guardrail_reason?: string;
+  readonly provider_attempts?: readonly WorkerAssistProviderAttempt[];
 };
 
-const workerAssistResponseSchema = z.object({
+export type WorkerAssistProviderAttempt = {
+  readonly provider: string;
+  readonly role: "primary" | "fallback";
+  readonly timeout_ms: number;
+  readonly result: "success" | "error" | "schema_invalid";
+  readonly code?: string;
+  readonly latency_ms?: number;
+};
+
+const workerAssistResponseSchema = z.preprocess(normalizeWorkerAssistPayload, z.object({
   text: z.string().trim().min(1).max(700),
   safety_notes: z.array(z.string().trim().min(1).max(180)).max(3).default([]),
   redirect_scope_change: z.boolean().default(false),
-}).strict();
+}).strip());
 
 const FALLBACK_TEXT =
   "Kael ch\u1ec9 c\u00f3 th\u1ec3 h\u01b0\u1edbng d\u1eabn theo vi\u1ec7c \u0111\u00e3 nh\u1eadn trong app. H\u00e3y ki\u1ec3m tra ph\u1ea1m vi, ghi b\u1eb1ng ch\u1ee9ng th\u1ef1c t\u1ebf, v\u00e0 g\u1eedi scope-change n\u1ebfu c\u00f3 ph\u1ea7n ph\u00e1t sinh.";
@@ -84,12 +95,95 @@ export async function runWorkerAssist(
     return fallbackAnswer(permission.reasonCode, shouldRedirectToScopeChange(input.question), language);
   }
 
-  const route = chooseProvider("worker_assist");
-  const request: AIRequest = {
+  const routes = providerCandidatesForPurpose("worker_assist");
+  let lastProviderFailure = "AI_UNAVAILABLE";
+  const providerAttempts: WorkerAssistProviderAttempt[] = [];
+
+  for (const route of routes) {
+    const request = buildWorkerAssistRequest(input, route, language);
+    const result = await (input.callAI ?? defaultCallAI)(request, input.secrets);
+    if (!result.success) {
+      lastProviderFailure = `AI_${result.code}`;
+      providerAttempts.push(providerAttempt(route, "error", {
+        code: result.code,
+      }));
+      continue;
+    }
+
+    const parsedObject = parseJsonObject(result.content);
+    const parsed = workerAssistResponseSchema.safeParse(parsedObject);
+    if (!parsed.success) {
+      lastProviderFailure = "AI_RESPONSE_INVALID";
+      providerAttempts.push(providerAttempt(route, "schema_invalid", {
+        latencyMs: result.latencyMs,
+        code: describeWorkerAssistShape(parsedObject, parsed.error.issues),
+      }));
+      continue;
+    }
+
+    providerAttempts.push(providerAttempt(route, "success", {
+      latencyMs: result.latencyMs,
+    }));
+
+    const guarded = guardWorkerAssistText(parsed.data.text);
+    if (!guarded.allowed) {
+      return fallbackAnswer(
+        guarded.reason ?? "WORKER_ASSIST_GUARD",
+        true,
+        language,
+        providerAttempts,
+      );
+    }
+
+    const checked = runKaelSelfCheckPipeline({
+      text: guarded.text,
+      actor: "worker",
+      language,
+      semanticGuardEnabled: true,
+      fallbackText: fallbackTextForLanguage(language),
+    });
+    if (checked.used_fallback || !checked.allowed) {
+      return fallbackAnswer(
+        checked.reason ?? "SELF_CHECK",
+        parsed.data.redirect_scope_change,
+        language,
+        providerAttempts,
+      );
+    }
+
+    return {
+      schema_version: "worker_assist_answer.v1",
+      text: checked.text,
+      safety_notes: normalizeSafetyNotes(parsed.data.safety_notes, language),
+      redirect_scope_change:
+        parsed.data.redirect_scope_change || shouldRedirectToScopeChange(input.question),
+      fallback_used: false,
+      provider: route.provider,
+      model: route.model,
+      latency_ms: result.latencyMs,
+      cost_usd: result.usage.costUsd,
+      provider_attempts: providerAttempts,
+    };
+  }
+
+  return fallbackAnswer(
+    lastProviderFailure,
+    shouldRedirectToScopeChange(input.question),
+    language,
+    providerAttempts,
+  );
+}
+
+function buildWorkerAssistRequest(
+  input: WorkerAssistInput,
+  route: ProviderChoice,
+  language: KaelPromptLanguage,
+): AIRequest {
+  return {
     purpose: "worker_assist",
     provider: route.provider,
     model: route.model,
-    maxTokens: route.latencyBudgetMs <= 2_000 ? 220 : 320,
+    maxTokens: maxTokensForPurpose("worker_assist", 220),
     temperature: 0.2,
     timeoutMs: route.latencyBudgetMs,
     maxRetries: 1,
@@ -115,45 +209,6 @@ export async function runWorkerAssist(
       },
     ],
   };
-
-  const result = await (input.callAI ?? defaultCallAI)(request, input.secrets);
-  if (!result.success) {
-    return fallbackAnswer(`AI_${result.code}`, shouldRedirectToScopeChange(input.question), language);
-  }
-
-  const parsed = workerAssistResponseSchema.safeParse(parseJsonObject(result.content));
-  if (!parsed.success) {
-    return fallbackAnswer("AI_RESPONSE_INVALID", shouldRedirectToScopeChange(input.question), language);
-  }
-
-  const guarded = guardWorkerAssistText(parsed.data.text);
-  if (!guarded.allowed) {
-    return fallbackAnswer(guarded.reason ?? "WORKER_ASSIST_GUARD", true, language);
-  }
-
-  const checked = runKaelSelfCheckPipeline({
-    text: guarded.text,
-    actor: "worker",
-    language,
-    semanticGuardEnabled: true,
-    fallbackText: fallbackTextForLanguage(language),
-  });
-  if (checked.used_fallback || !checked.allowed) {
-    return fallbackAnswer(checked.reason ?? "SELF_CHECK", parsed.data.redirect_scope_change, language);
-  }
-
-  return {
-    schema_version: "worker_assist_answer.v1",
-    text: checked.text,
-    safety_notes: normalizeSafetyNotes(parsed.data.safety_notes, language),
-    redirect_scope_change:
-      parsed.data.redirect_scope_change || shouldRedirectToScopeChange(input.question),
-    fallback_used: false,
-    provider: route.provider,
-    model: route.model,
-    latency_ms: result.latencyMs,
-    cost_usd: result.usage.costUsd,
-  };
 }
 
 export function guardWorkerAssistText(text: string): {
@@ -173,6 +228,7 @@ function fallbackAnswer(
   reason: string,
   redirectScopeChange: boolean,
   language: KaelPromptLanguage,
+  providerAttempts: readonly WorkerAssistProviderAttempt[] = [],
 ): WorkerAssistAnswer {
   return {
     schema_version: "worker_assist_answer.v1",
@@ -181,7 +237,113 @@ function fallbackAnswer(
     redirect_scope_change: redirectScopeChange,
     fallback_used: true,
     guardrail_reason: reason,
+    provider_attempts: providerAttempts,
   };
+}
+
+function providerAttempt(
+  route: ProviderChoice,
+  result: WorkerAssistProviderAttempt["result"],
+  options: { code?: string; latencyMs?: number } = {},
+): WorkerAssistProviderAttempt {
+  return {
+    provider: route.provider,
+    role: route.role,
+    timeout_ms: route.latencyBudgetMs,
+    result,
+    ...(options.code ? { code: options.code } : {}),
+    ...(options.latencyMs !== undefined ? { latency_ms: options.latencyMs } : {}),
+  };
+}
+
+function normalizeWorkerAssistPayload(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  const text = firstString(
+    record.text,
+    record.answer,
+    record.message,
+    record.guidance,
+    record.advisory,
+    record.response,
+    record.content,
+  );
+  const safetyNotes = normalizeProviderSafetyNotes(record);
+  const redirectScopeChange = firstBoolean(
+    record.redirect_scope_change,
+    record.redirectScopeChange,
+    record.scope_change_required,
+    record.scopeChangeRequired,
+    record.requires_scope_change,
+    record.requiresScopeChange,
+  );
+  return {
+    ...record,
+    ...(text ? { text } : {}),
+    safety_notes: safetyNotes ?? [],
+    redirect_scope_change: redirectScopeChange ?? false,
+  };
+}
+
+function normalizeProviderSafetyNotes(record: Record<string, unknown>) {
+  for (const value of [record.safety_notes, record.safetyNotes]) {
+    if (Array.isArray(value)) {
+      const notes = value
+        .map((item) =>
+          typeof item === "string"
+            ? item
+            : item && typeof item === "object"
+            ? firstString(
+              (item as Record<string, unknown>).text,
+              (item as Record<string, unknown>).note,
+              (item as Record<string, unknown>).message,
+            )
+            : undefined
+        )
+        .filter((item): item is string => Boolean(item && item.trim()))
+        .slice(0, 3);
+      return notes.length > 0 ? notes : undefined;
+    }
+  }
+  const note = firstString(record.safety_note, record.safetyNote);
+  return note ? [note] : undefined;
+}
+
+function firstString(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function firstBoolean(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (["true", "yes", "1"].includes(normalized)) return true;
+      if (["false", "no", "0"].includes(normalized)) return false;
+    }
+  }
+  return undefined;
+}
+
+function describeWorkerAssistShape(
+  value: unknown,
+  issues: readonly z.ZodIssue[],
+) {
+  const shape = !value || typeof value !== "object"
+    ? `type=${typeof value}`
+    : Array.isArray(value)
+    ? `array:${value.length}`
+    : `keys=${Object.keys(value as Record<string, unknown>).slice(0, 8).join("|") || "none"}`;
+  const issueSummary = issues
+    .slice(0, 3)
+    .map((issue) => `${issue.path.join(".") || "root"}:${issue.code}`)
+    .join("|");
+  return `schema:${shape}${issueSummary ? `:${issueSummary}` : ""}`.slice(0, 180);
 }
 
 function normalizeSafetyNotes(notes: readonly string[], language: KaelPromptLanguage) {
