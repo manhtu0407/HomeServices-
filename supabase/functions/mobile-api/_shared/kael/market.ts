@@ -1,10 +1,14 @@
 import type { AICacheStatus, ComplexityLevel, EdgeAiSecrets, MarketPriceResult, ServiceType } from "./types.ts";
 import { marketPriceResultSchema } from "./types.ts";
-import { buildPricingMessages } from "./prompts.ts";
+import { appendKnowledgeContextToMessages, buildPricingMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
 import { readKaelOptimizationFlags } from "./cost-tracking.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { providerCandidatesForPurpose } from "./routing.ts";
+import {
+  retrieveKaelKnowledgeContextIfEnabled,
+  type KaelKnowledgeContext,
+} from "./knowledge.ts";
 import {
   isSourceTrustPerplexityFilterEnabled,
   trustedPerplexityMarketConfig,
@@ -76,6 +80,7 @@ export async function searchMarketPrice(
   district: string,
   secrets: EdgeAiSecrets,
   supabase?: unknown,
+  options: { knowledgeContext?: KaelKnowledgeContext } = {},
 ): Promise<
   {
     success: true;
@@ -128,6 +133,15 @@ export async function searchMarketPrice(
   }
 
   const failures: string[] = [];
+  const knowledgeContext = options.knowledgeContext ??
+    (hasMarketProviderSecrets(secrets)
+      ? await retrieveKaelKnowledgeContextIfEnabled(cacheClient, {
+        serviceType,
+        problemSlug: cacheKey.problem_slug,
+        safetyTopic: "worker_safety_advisory",
+        legalTopic: "legal_safety_awareness",
+      }, secrets)
+      : undefined);
   let lastAttempt: {
     provider: "anthropic" | "perplexity" | "deepseek";
     model: string;
@@ -142,17 +156,31 @@ export async function searchMarketPrice(
         district,
       }, cacheClient)
       : null;
+    const routeSafeMetadata = mergeMarketSafeMetadata(
+      trustedConfig?.safeMetadata,
+      knowledgeContext?.safeMetadata,
+    );
     lastAttempt = {
       provider: route.provider,
       model: trustedConfig?.model ?? route.model,
-      safeMetadata: trustedConfig?.safeMetadata,
+      safeMetadata: routeSafeMetadata,
     };
     const result = await callAI({
       purpose: "market_lookup",
       provider: route.provider,
       model: trustedConfig?.model ?? route.model,
-      messages: trustedConfig?.messages ??
-        buildPricingMessages(serviceType, problem, complexity, district),
+      messages: trustedConfig?.messages
+        ? appendKnowledgeContextToMessages(
+          trustedConfig.messages,
+          knowledgeContext?.promptContext,
+        )
+        : buildPricingMessages(
+          serviceType,
+          problem,
+          complexity,
+          district,
+          knowledgeContext?.promptContext,
+        ),
       maxTokens: trustedConfig?.maxTokens ?? maxTokensForPurpose("market_lookup", 300),
       temperature: 0.1,
       timeoutMs: trustedConfig?.timeoutMs ?? route.latencyBudgetMs,
@@ -166,7 +194,7 @@ export async function searchMarketPrice(
     if (!result.success) {
       const failureReason = `${route.provider}:AI call failed: ${result.code}`;
       if (trustedConfig) {
-        return trustedMarketFailure(failureReason, trustedConfig);
+        return trustedMarketFailure(failureReason, trustedConfig, routeSafeMetadata);
       }
       failures.push(failureReason);
       continue;
@@ -176,7 +204,7 @@ export async function searchMarketPrice(
     if (isInsufficientTrustedData(parsed)) {
       const failureReason = `${route.provider}:insufficient_trusted_data`;
       if (trustedConfig) {
-        return trustedMarketFailure(failureReason, trustedConfig);
+        return trustedMarketFailure(failureReason, trustedConfig, routeSafeMetadata);
       }
       failures.push(failureReason);
       continue;
@@ -185,7 +213,7 @@ export async function searchMarketPrice(
     if (!validated?.success) {
       const failureReason = `${route.provider}:AI market JSON validation failed`;
       if (trustedConfig) {
-        return trustedMarketFailure(failureReason, trustedConfig);
+        return trustedMarketFailure(failureReason, trustedConfig, routeSafeMetadata);
       }
       failures.push(failureReason);
       continue;
@@ -193,7 +221,7 @@ export async function searchMarketPrice(
     if (validated.data.market_range_max < validated.data.market_range_min) {
       const failureReason = `${route.provider}:market_range_max < market_range_min`;
       if (trustedConfig) {
-        return trustedMarketFailure(failureReason, trustedConfig);
+        return trustedMarketFailure(failureReason, trustedConfig, routeSafeMetadata);
       }
       failures.push(failureReason);
       continue;
@@ -204,6 +232,7 @@ export async function searchMarketPrice(
       : null;
     const safeMetadata = mergeMarketSafeMetadata(
       trustedConfig?.safeMetadata,
+      knowledgeContext?.safeMetadata,
       citationValidation?.safeMetadata,
     );
     if (trustedConfig && citationValidation && !citationValidation.quorumMet) {
@@ -341,6 +370,12 @@ function isSourceTrustPerplexityFilterEnabledForSecrets(
 ): boolean {
   return secrets.sourceTrustPerplexityFilterEnabled === true ||
     isSourceTrustPerplexityFilterEnabled();
+}
+
+function hasMarketProviderSecrets(secrets: EdgeAiSecrets): boolean {
+  return Boolean(
+    secrets.perplexityApiKey || secrets.anthropicApiKey || secrets.deepseekApiKey,
+  );
 }
 
 function asMarketCacheClient(value: unknown): MarketCacheClient | undefined {

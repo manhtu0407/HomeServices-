@@ -1,4 +1,5 @@
 import { sanitizeMemoryObject, sanitizeMemoryText } from "./memory-sanitizer.ts";
+import { isKaelKnowledgeRetrievalEnabled } from "./knowledge.ts";
 
 type DbResult<T> = { data: T | null; error: { code?: string; message?: string } | null };
 type Chain = {
@@ -179,15 +180,59 @@ export class KaelMemory {
   }
 
   private async fetchDomainMemory(): Promise<MemoryLayer> {
-    const result = await query<Array<Record<string, unknown>>>(
-      this.client
-        .from("learning_rules")
-        .select("id, rule_type, rule_payload, status")
-        .eq("status", "active")
-        .limit(5),
-    );
+    const knowledgeEnabled = isKaelKnowledgeRetrievalEnabled();
+    const [result, serviceKnowledge, safetyPatterns, legalAwareness] = await Promise.all([
+      query<Array<Record<string, unknown>>>(
+        this.client
+          .from("learning_rules")
+          .select("id, rule_type, rule_payload, status")
+          .eq("status", "active")
+          .limit(5),
+      ),
+      knowledgeEnabled
+        ? query<Array<Record<string, unknown>>>(
+          this.client
+            .from("service_knowledge_boxes")
+            .select("service_type, slug, label_vi, purpose, safe_metadata, is_active")
+            .eq("is_active", true)
+            .limit(3),
+        )
+        : Promise.resolve({ data: [], error: null }),
+      knowledgeEnabled
+        ? query<Array<Record<string, unknown>>>(
+          this.client
+            .from("worker_safety_patterns")
+            .select("pattern_key, service_type, trigger_topic, severity, response_guidance, safe_metadata")
+            .eq("is_enabled", true)
+            .limit(3),
+        )
+        : Promise.resolve({ data: [], error: null }),
+      knowledgeEnabled
+        ? query<Array<Record<string, unknown>>>(
+          this.client
+            .from("legal_awareness_patterns")
+            .select("pattern_key, topic, boundary_type, response_guidance, safe_metadata")
+            .eq("is_enabled", true)
+            .limit(2),
+        )
+        : Promise.resolve({ data: [], error: null }),
+    ]);
     await this.audit("domain", null, "read", "L5", "memory_context");
-    const data = sanitizeMemoryObject(result.data ?? []);
+    const data = sanitizeMemoryObject([
+      ...(result.data ?? []),
+      ...(serviceKnowledge.data ?? []).map((row) => ({
+        source: "service_knowledge_boxes",
+        ...row,
+      })),
+      ...(safetyPatterns.data ?? []).map((row) => ({
+        source: "worker_safety_patterns",
+        ...row,
+      })),
+      ...(legalAwareness.data ?? []).map((row) => ({
+        source: "legal_awareness_patterns",
+        ...row,
+      })),
+    ]);
     return constrainLayer({
       layer: "L5",
       included: !result.error,

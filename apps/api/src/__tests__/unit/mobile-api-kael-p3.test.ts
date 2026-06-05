@@ -199,6 +199,94 @@ describe('mobile-api Kael P3 orchestrator and streaming', () => {
       },
     ])
   })
+
+  it('updates kael_chat_sessions.kael_progress when given a session progress target', async () => {
+    const updates: Array<{ table: string; payload: Record<string, unknown>; id: unknown }> = []
+    const client = {
+      from(table: string) {
+        return {
+          update(payload: Record<string, unknown>) {
+            return {
+              eq(column: string, value: unknown) {
+                expect(column).toBe('id')
+                updates.push({ table, payload, id: value })
+                return Promise.resolve({ data: null, error: null })
+              },
+            }
+          },
+        }
+      },
+    }
+
+    await updateKaelProgress(client, { table: 'kael_chat_sessions', id: 'session-1' }, {
+      stage: 'market_lookup',
+      status: 'running',
+      progress: 0.32,
+    })
+
+    expect(updates).toEqual([
+      {
+        table: 'kael_chat_sessions',
+        id: 'session-1',
+        payload: {
+          kael_progress: expect.objectContaining({
+            current_stage: 'market_lookup',
+            status: 'running',
+            progress: 0.32,
+          }),
+        },
+      },
+    ])
+  })
+
+  it('updates scope_change_requests.kael_progress for scope-change perceived performance', async () => {
+    const updates: Array<{ table: string; payload: Record<string, unknown>; id: unknown }> = []
+    const client = {
+      from(table: string) {
+        return {
+          update(payload: Record<string, unknown>) {
+            return {
+              eq(column: string, value: unknown) {
+                expect(column).toBe('id')
+                updates.push({ table, payload, id: value })
+                return Promise.resolve({ data: null, error: null })
+              },
+            }
+          },
+        }
+      },
+    }
+
+    await updateKaelProgress(client, { table: 'scope_change_requests', id: 'scope-1' }, {
+      stage: 'scope_estimating',
+      status: 'running',
+      progress: 0.68,
+    })
+
+    expect(updates).toEqual([
+      {
+        table: 'scope_change_requests',
+        id: 'scope-1',
+        payload: {
+          kael_progress: expect.objectContaining({
+            current_stage: 'scope_estimating',
+            status: 'running',
+            progress: 0.68,
+          }),
+        },
+      },
+    ])
+  })
+
+  it('lets chat sessions carry pipeline stage progress without writing jobs', () => {
+    const pipelineSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+      'utf8',
+    )
+
+    expect(pipelineSource).toContain('const progressTarget = input.progressTarget ?? input.progressJobId')
+    expect(pipelineSource).not.toMatch(/updateKaelProgress\(supabase, input\.progressJobId/)
+  })
 })
 
 function delayedValue<T>(value: T, ms: number): Promise<T> {

@@ -13,6 +13,12 @@ export default function Home() {
           migration work. React Native production traffic should call
           Supabase Auth and the mobile-api Edge Function directly.
         </p>
+        <a
+          className="inline-flex min-h-11 items-center rounded-xl bg-emerald-400 px-4 text-sm font-bold text-zinc-950"
+          href="/admin/kael-learning"
+        >
+          Mở duyệt học Kael
+        </a>
       </main>
     </div>
   );

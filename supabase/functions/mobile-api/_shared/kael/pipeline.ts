@@ -5,11 +5,15 @@ import { analyzeDescription } from "./vision.ts";
 import { marketLookupTelemetry, searchMarketPrice } from "./market.ts";
 import { fetchBaselineCandidates, normalizeProblemSlugForService, pickBaselineCandidate, synthesizePrice } from "./synthesis.ts";
 import { buildAdvisory } from "./advisory.ts";
-import { applyLearnedComplexityRule, applyLearnedPriceRule } from "./learning.ts";
+import {
+  applyLearnedComplexityRule,
+  applyLearnedPriceRule,
+} from "./learning.ts";
 import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
 import { runKaelParallel, runKaelPurposeStage } from "./orchestrator.ts";
 import { updateKaelProgress } from "./streaming.ts";
 import { sanitizeVisionPhotoUrls, scrubSensitiveForLLM } from "./utils.ts";
+import { retrieveKaelKnowledgeContextIfEnabled } from "./knowledge.ts";
 
 type EstimateParallelValue =
   | { kind: "vision"; result: Awaited<ReturnType<typeof analyzeDescription>> }
@@ -29,9 +33,11 @@ export async function runKaelPipeline(
   const description = scrubSensitiveForLLM(input.description);
   const photoUrls = sanitizeVisionPhotoUrls(input.photoUrls ?? []);
   const stageLogs: PipelineStageLog[] = [];
+  const learningApplications: Extract<PipelineResult, { success: true }>["learningApplications"] = [];
   let fallbackUsed = false;
+  const progressTarget = input.progressTarget ?? input.progressJobId;
 
-  await updateKaelProgress(supabase, input.progressJobId, {
+  await updateKaelProgress(supabase, progressTarget, {
     stage: "intent_classification",
     status: "running",
     progress: 0.1,
@@ -73,7 +79,7 @@ export async function runKaelPipeline(
         index === intentStage.attempts.length - 1,
     });
   });
-  await updateKaelProgress(supabase, input.progressJobId, {
+  await updateKaelProgress(supabase, progressTarget, {
     stage: "intent_classification",
     status: intentStage.success ? "completed" : "failed",
     progress: 0.2,
@@ -125,19 +131,38 @@ export async function runKaelPipeline(
   );
   const problemSlug = normalizedProblem.slug;
   fallbackUsed ||= normalizedProblem.normalized;
+  const knowledgeContext = await retrieveKaelKnowledgeContextIfEnabled(supabase, {
+    serviceType: validServiceType,
+    problemSlug,
+    safetyTopic: "worker_safety_advisory",
+    legalTopic: "legal_safety_awareness",
+    queryText: `${problemChips.join(" ")} ${description}`.trim(),
+    usageContext: {
+      jobId: typeof progressTarget === "string"
+        ? progressTarget
+        : progressTarget?.table === "jobs"
+        ? progressTarget.id ?? null
+        : null,
+      sessionId: typeof progressTarget === "object" &&
+          progressTarget.table === "kael_chat_sessions"
+        ? progressTarget.id ?? null
+        : null,
+      surface: "kael_pipeline",
+    },
+  }, secrets);
 
   await Promise.all([
-    updateKaelProgress(supabase, input.progressJobId, {
+    updateKaelProgress(supabase, progressTarget, {
       stage: "vision_analysis",
       status: "running",
       progress: 0.3,
     }),
-    updateKaelProgress(supabase, input.progressJobId, {
+    updateKaelProgress(supabase, progressTarget, {
       stage: "market_lookup",
       status: "running",
       progress: 0.32,
     }),
-    updateKaelProgress(supabase, input.progressJobId, {
+    updateKaelProgress(supabase, progressTarget, {
       stage: "problem_synthesis",
       status: "running",
       progress: 0.34,
@@ -193,6 +218,7 @@ export async function runKaelPipeline(
           district,
           secrets,
           supabase,
+          { knowledgeContext },
         ),
       }),
       fallback: () => ({
@@ -251,7 +277,7 @@ export async function runKaelPipeline(
       cacheStatus: visionResult.success ? visionResult.cacheStatus : undefined,
     });
   }
-  await updateKaelProgress(supabase, input.progressJobId, {
+  await updateKaelProgress(supabase, progressTarget, {
     stage: "vision_analysis",
     status: visionResult.success || visionSkipped ? "completed" : "failed",
     progress: 0.4,
@@ -296,7 +322,7 @@ export async function runKaelPipeline(
       : baselineResult?.error ?? baselineStage.failureReason,
     fallbackUsed: false,
   });
-  await updateKaelProgress(supabase, input.progressJobId, {
+  await updateKaelProgress(supabase, progressTarget, {
     stage: "problem_synthesis",
     status: baselineResult?.success ? "completed" : "failed",
     progress: 0.6,
@@ -339,14 +365,14 @@ export async function runKaelPipeline(
     cacheStatus: marketResult.success ? marketResult.cacheStatus : undefined,
     safeMetadata: marketResult.safeMetadata,
   });
-  await updateKaelProgress(supabase, input.progressJobId, {
+  await updateKaelProgress(supabase, progressTarget, {
     stage: "market_lookup",
     status: marketResult.success ? "completed" : "failed",
     progress: 0.78,
     failureReason: marketResult.success ? undefined : marketResult.failureReason,
   });
 
-  await updateKaelProgress(supabase, input.progressJobId, {
+  await updateKaelProgress(supabase, progressTarget, {
     stage: "price_synthesis",
     status: "running",
     progress: 0.86,
@@ -358,6 +384,21 @@ export async function runKaelPipeline(
     problemSlug,
     district,
   );
+  if (learnedPrice) {
+    learningApplications.push({
+      ruleId: learnedPrice.ruleId,
+      ruleVersion: learnedPrice.ruleVersion,
+      skillId: "LS1",
+      appliedTarget: "price_prior",
+      safeMetadata: {
+        service_type: validServiceType,
+        problem_slug: problemSlug,
+        district,
+        applied_price_min: learnedPrice.priceMin,
+        applied_price_max: learnedPrice.priceMax,
+      },
+    });
+  }
   const synthesizedStage = await runKaelPurposeStage({
     label: "synthesis",
     purpose: "price_synthesis",
@@ -380,7 +421,7 @@ export async function runKaelPipeline(
     success: true,
     fallbackUsed: false,
   });
-  await updateKaelProgress(supabase, input.progressJobId, {
+  await updateKaelProgress(supabase, progressTarget, {
     stage: "price_synthesis",
     status: "completed",
     progress: 1,
@@ -392,6 +433,8 @@ export async function runKaelPipeline(
     stageLogs,
     serviceProblemId: baselineResult.serviceProblemId,
     customerSentiment: input.intakeDiagnosisEnabled ? intent.customer_sentiment : undefined,
+    knowledgeContext: knowledgeContext.safeMetadata ? knowledgeContext : undefined,
+    learningApplications,
     estimate: {
       service_type: validServiceType,
       problem_category: problemSlug,
@@ -400,7 +443,7 @@ export async function runKaelPipeline(
       price_min: synthesized.price_min,
       price_max: synthesized.price_max,
       confidence: synthesized.confidence,
-      advisory: buildAdvisory(analysis.severity_indicators),
+      advisory: buildAdvisory(analysis.severity_indicators, knowledgeContext.safetyGuidance),
       disclaimer: PRICE_DISCLAIMER,
     },
   };

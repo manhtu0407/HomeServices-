@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
+import { monitorLearningRules } from '../../../../../supabase/functions/mobile-api/_shared/kael/cron/monitor-learning-rules'
+import {
+  recordLearningReviewOutcome,
+  recordLearningRuleApplication,
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/learning'
 import {
   ALLOWED_LEARNING_TARGETS,
   FORBIDDEN_LEARNING_EFFECTS,
@@ -252,6 +257,329 @@ describe('Kael P7 learning skill setup', () => {
     ])
     expect(JSON.stringify(queueCall)).not.toContain('0901234567')
   })
+
+  it('A3 records rule application and review outcome samples without raw review text', async () => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get(name: string) {
+          return ({
+            KAEL_LEARNING_READ_ENABLED: 'true',
+            KAEL_LEARNING_WRITE_ENABLED: 'true',
+            KAEL_LEARNING_KILL_SWITCH: 'false',
+          } as Record<string, string>)[name]
+        },
+      },
+    })
+    const client = makeSequenceClient([
+      { data: null, error: null },
+      {
+        data: [{
+          id: 'application-1',
+          rule_id: 'rule-1',
+          skill_id: 'LS1',
+          applied_target: 'price_prior',
+          safe_metadata: {
+            applied_price_min: 200000,
+            applied_price_max: 300000,
+          },
+        }],
+        error: null,
+      },
+      { data: null, error: null },
+    ])
+
+    await expect(recordLearningRuleApplication(client as never, {
+      ruleId: 'rule-1',
+      ruleVersion: 2,
+      skillId: 'LS1',
+      jobId: 'job-1',
+      actorRole: 'system',
+      appliedTarget: 'price_prior',
+      safeMetadata: {
+        applied_price_min: 200000,
+        applied_price_max: 300000,
+      },
+    })).resolves.toEqual({ inserted: true })
+    await expect(recordLearningReviewOutcome(client as never, {
+      jobId: 'job-1',
+      finalPrice: 360000,
+      rating: 3,
+    })).resolves.toEqual({ source_applications: 1, inserted_samples: 1 })
+
+    const applicationInsert = client.calls[0]
+    expect(applicationInsert.table).toBe('kael_rule_application_log')
+    expect(applicationInsert.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        applied_count: 1,
+        override_count: 0,
+        safe_metadata: expect.objectContaining({
+          applied_price_min: 200000,
+          applied_price_max: 300000,
+        }),
+      }),
+    ])
+    const outcomeInsert = client.calls[2]
+    expect(outcomeInsert.operations).toContainEqual([
+      'insert',
+      expect.arrayContaining([
+        expect.objectContaining({
+          override_count: 1,
+          accuracy_delta: 0.2,
+          satisfaction_delta: 0.4,
+          safe_metadata: expect.objectContaining({
+            source: 'review_outcome',
+          }),
+        }),
+      ]),
+    ])
+    expect(JSON.stringify(client.calls)).not.toContain('raw comment')
+  })
+
+  it('A3 monitor rolls back degraded active rules through the service-role RPC', async () => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get(name: string) {
+          return ({
+            KAEL_LEARNING_READ_ENABLED: 'true',
+            KAEL_LEARNING_WRITE_ENABLED: 'true',
+            KAEL_LEARNING_AB_PERCENTAGE: '100',
+            KAEL_LEARNING_AUTO_ROLLBACK: 'true',
+          } as Record<string, string>)[name]
+        },
+      },
+    })
+    const client = makeSequenceClient([
+      {
+        data: [{
+          id: 'rule-1',
+          rule_type: 'price_prior_update',
+          status: 'active',
+          rollback_available: true,
+        }],
+        error: null,
+      },
+      {
+        data: [
+          { rule_id: 'rule-1', skill_id: 'LS1', applied_count: 1, override_count: 1, accuracy_delta: 0.12, satisfaction_delta: 0.4 },
+          { rule_id: 'rule-1', skill_id: 'LS1', applied_count: 1, override_count: 1, accuracy_delta: 0.14, satisfaction_delta: 0.35 },
+        ],
+        error: null,
+      },
+      { data: [{ ok: true, error_code: null, rule_id: 'rule-1' }], error: null },
+      { data: [{ id: 'candidate-stale', status: 'manual_review', created_at: '2026-05-30T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'queue-failed', queue_state: 'failed', error_code: 'BATCH_SUBMIT_FAILED' }], error: null },
+      { data: [{ id: 'batch-failed', status: 'failed', error_code: 'REMOTE_ERROR' }], error: null },
+    ])
+
+    await expect(monitorLearningRules(client, {
+      now: new Date('2026-06-04T00:00:00.000Z'),
+      limit: 5,
+    })).resolves.toEqual({
+      checked: 1,
+      monitored: 1,
+      rolled_back: 1,
+      loop_health: expect.objectContaining({
+        manual_review_sla_days: 3,
+        manual_review_overdue_count: 1,
+        manual_review_overdue_ids: ['candidate-stale'],
+        failed_queue_count: 1,
+        failed_queue_ids: ['queue-failed'],
+        failed_batch_count: 1,
+        failed_batch_ids: ['batch-failed'],
+        error_codes: [],
+      }),
+    })
+
+    const rollbackRpc = client.calls.find((call) => call.table === 'rpc:rollback_learning_rule')
+    expect(rollbackRpc?.operations).toContainEqual([
+      'rpc',
+      'rollback_learning_rule',
+      expect.objectContaining({
+        p_rule_id: 'rule-1',
+        p_skill_id: 'LS1',
+        p_reason: 'monitorLearningRules',
+        p_safe_metadata: expect.objectContaining({
+          accuracy_drop_pct: 13,
+          satisfaction_drop_pts: 0.375,
+        }),
+      }),
+    ])
+  })
+
+  it('A3 monitor respects the auto-rollback flag before reading rules', async () => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get(name: string) {
+          return ({
+            KAEL_LEARNING_READ_ENABLED: 'true',
+            KAEL_LEARNING_WRITE_ENABLED: 'true',
+            KAEL_LEARNING_AB_PERCENTAGE: '100',
+            KAEL_LEARNING_AUTO_ROLLBACK: 'false',
+          } as Record<string, string>)[name]
+        },
+      },
+    })
+    const client = makeSequenceClient([])
+
+    await expect(monitorLearningRules(client)).resolves.toEqual({
+      checked: 0,
+      monitored: 0,
+      rolled_back: 0,
+      skipped_reason: 'auto_rollback_disabled',
+    })
+    expect(client.calls).toHaveLength(0)
+  })
+
+  it('A4 admin lists and reviews manual learning candidates through review RPCs', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          id: 'candidate-1',
+          candidate_type: 'service_knowledge_candidate',
+          affected_service: 'cleaning',
+          affected_problem: 'deep_clean',
+          affected_district: 'q7',
+          suggested_payload: {
+            skill_id: 'LS5',
+            evidence_snapshot: { evidence_count: 3 },
+          },
+          confidence: 0.7,
+          evidence_count: 3,
+          status: 'manual_review',
+          audit_reason: null,
+          created_at: '2026-06-04T00:00:00.000Z',
+          updated_at: '2026-06-04T00:00:00.000Z',
+          promoted_at: null,
+          rolled_back_at: null,
+        }],
+        error: null,
+      },
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          candidate_id: 'candidate-1',
+          rule_id: 'rule-1',
+          rule_version: 1,
+          status: 'auto_promoted',
+        }],
+        error: null,
+      },
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          knowledge_table: 'service_knowledge_boxes',
+          record_key: 'cleaning',
+          knowledge_version: 2,
+        }],
+        error: null,
+      },
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          candidate_id: 'candidate-2',
+          status: 'archived',
+        }],
+        error: null,
+      },
+    ])
+    const services = createEdgeServices({})
+    const ctx = makeCtx('admin', 'admin-1', client)
+
+    await expect(services.listKaelLearningCandidates(ctx, {
+      state: 'manual_review',
+      limit: 5,
+    })).resolves.toMatchObject({
+      candidates: [{
+        id: 'candidate-1',
+        status: 'manual_review',
+        evidence_snapshot: { evidence_count: 3 },
+      }],
+    })
+    await expect(services.approveKaelLearningCandidate(ctx, 'candidate-1', {
+      review_note: 'approved',
+    })).resolves.toMatchObject({
+      ok: true,
+      candidate_id: 'candidate-1',
+      rule_id: 'rule-1',
+      rule_version: 1,
+      knowledge_apply: {
+        ok: true,
+        knowledge_table: 'service_knowledge_boxes',
+        record_key: 'cleaning',
+        knowledge_version: 2,
+      },
+    })
+    await expect(services.rejectKaelLearningCandidate(ctx, 'candidate-2', {
+      reason: 'insufficient_evidence',
+    })).resolves.toMatchObject({
+      ok: true,
+      candidate_id: 'candidate-2',
+      status: 'archived',
+    })
+
+    expect(client.calls[0]).toMatchObject({ table: 'learning_candidates' })
+    expect(client.calls[0].operations).toContainEqual(['eq', 'status', 'manual_review'])
+    expect(client.calls.find((call) => call.table === 'learning_rules')).toBeUndefined()
+    expect(client.calls.find((call) => call.table === 'rpc:admin_approve_learning_candidate')?.operations)
+      .toContainEqual([
+        'rpc',
+        'admin_approve_learning_candidate',
+        expect.objectContaining({
+          p_candidate_id: 'candidate-1',
+          p_admin_id: 'admin-1',
+        }),
+      ])
+    expect(client.calls.find((call) => call.table === 'rpc:apply_approved_learning_candidate_to_knowledge')?.operations)
+      .toContainEqual([
+        'rpc',
+        'apply_approved_learning_candidate_to_knowledge',
+        expect.objectContaining({
+          p_candidate_id: 'candidate-1',
+          p_admin_id: 'admin-1',
+        }),
+      ])
+    expect(client.calls.find((call) => call.table === 'rpc:admin_reject_learning_candidate')?.operations)
+      .toContainEqual([
+        'rpc',
+        'admin_reject_learning_candidate',
+        expect.objectContaining({
+          p_candidate_id: 'candidate-2',
+          p_admin_id: 'admin-1',
+          p_reason: 'insufficient_evidence',
+        }),
+      ])
+  })
+
+  it('A4 audits non-admin learning candidate review attempts before denying', async () => {
+    const client = makeSequenceClient([{ data: null, error: null }])
+    const services = createEdgeServices({})
+    const ctx = makeCtx('customer', 'customer-1', client)
+
+    await expect(services.approveKaelLearningCandidate(ctx, 'candidate-1', {
+      review_note: 'not allowed',
+    })).rejects.toMatchObject({
+      code: 'AUTH_FORBIDDEN',
+      status: 403,
+    })
+
+    expect(client.calls[0]).toMatchObject({ table: 'kael_permission_audit' })
+    expect(client.calls[0].operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        actor_id: 'customer-1',
+        actor_role: 'customer',
+        purpose: 'kael_learning_admin_review',
+        action: 'approve',
+        decision: 'deny',
+        reason_code: 'admin_required',
+        safe_metadata: { candidate_id: 'candidate-1' },
+      }),
+    ])
+  })
 })
 
 function gatePass() {
@@ -353,6 +681,26 @@ function makeQuery(call: QueryCall, results: QueryResult[]) {
     },
     eq(column: string, value: unknown) {
       call.operations.push(['eq', column, value])
+      return query
+    },
+    in(column: string, values: unknown[]) {
+      call.operations.push(['in', column, values])
+      return query
+    },
+    gte(column: string, value: unknown) {
+      call.operations.push(['gte', column, value])
+      return query
+    },
+    lte(column: string, value: unknown) {
+      call.operations.push(['lte', column, value])
+      return query
+    },
+    order(column: string, options?: unknown) {
+      call.operations.push(['order', column, options])
+      return query
+    },
+    limit(count: number) {
+      call.operations.push(['limit', count])
       return query
     },
     maybeSingle() {

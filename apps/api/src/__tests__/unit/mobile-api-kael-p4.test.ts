@@ -118,6 +118,7 @@ describe('mobile-api Kael P4 output pipeline', () => {
       },
       estimatedEarningMin: 180000,
       estimatedEarningMax: 300000,
+      knowledgeSafetyGuidance: ['Safety warning: Khoa nuoc khu vuc lien quan truoc khi thao tac.'],
     })
     const guidance = buildWorkerBriefOutput({
       stage: 'guidance',
@@ -136,6 +137,7 @@ describe('mobile-api Kael P4 output pipeline', () => {
 
     expect(JSON.stringify(core.brief)).not.toContain('Sunrise City')
     expect(JSON.stringify(core.brief)).not.toContain('18.02')
+    expect(core.brief.sections.safety[0]).toContain('Khoa nuoc')
     expect(JSON.stringify(guidance.brief)).toContain('Sunrise City')
     expect(JSON.stringify(guidance.brief)).toContain('18.02')
   })

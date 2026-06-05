@@ -318,6 +318,58 @@ describe('Insert type requirements', () => {
 })
 
 describe('RPC type requirements', () => {
+  it('Kael learning promotion RPC returns candidate and rule ids', () => {
+    type PromotionRow =
+      Database['public']['Functions']['promote_learning_candidate']['Returns'][number]
+    const row = {
+      ok: true,
+      error_code: null,
+      candidate_id: '00000000-0000-0000-0000-000000000000',
+      rule_id: '11111111-1111-4111-8111-111111111111',
+      rule_version: 1,
+    } satisfies PromotionRow
+
+    expect(row.ok).toBe(true)
+    expect(row.rule_version).toBe(1)
+  })
+
+  it('Kael learning rollback RPC returns rolled-back rule id', () => {
+    type RollbackRow =
+      Database['public']['Functions']['rollback_learning_rule']['Returns'][number]
+    const row = {
+      ok: true,
+      error_code: null,
+      rule_id: '11111111-1111-4111-8111-111111111111',
+    } satisfies RollbackRow
+
+    expect(row.ok).toBe(true)
+    expect(row.rule_id).toBe('11111111-1111-4111-8111-111111111111')
+  })
+
+  it('Kael learning admin review RPCs return candidate review status', () => {
+    type ApproveRow =
+      Database['public']['Functions']['admin_approve_learning_candidate']['Returns'][number]
+    type RejectRow =
+      Database['public']['Functions']['admin_reject_learning_candidate']['Returns'][number]
+    const approved = {
+      ok: true,
+      error_code: null,
+      candidate_id: '00000000-0000-0000-0000-000000000000',
+      rule_id: '11111111-1111-4111-8111-111111111111',
+      rule_version: 2,
+      status: 'auto_promoted',
+    } satisfies ApproveRow
+    const rejected = {
+      ok: true,
+      error_code: null,
+      candidate_id: '00000000-0000-0000-0000-000000000000',
+      status: 'archived',
+    } satisfies RejectRow
+
+    expect(approved.rule_version).toBe(2)
+    expect(rejected.status).toBe('archived')
+  })
+
   it('worker cancellation RPC return includes auto-reassignment fields', () => {
     type WorkerCancellationRow =
       Database['public']['Functions']['request_worker_cancellation_atomic']['Returns'][number]

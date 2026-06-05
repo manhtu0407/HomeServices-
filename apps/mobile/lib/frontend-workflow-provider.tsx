@@ -39,6 +39,7 @@ import type {
   ConfirmSearchResponse,
   CreateJobResponse,
   EarningsResponse,
+  AddressAccessView,
   JobDetailResponse,
   NotificationListResponse,
   WorkerCancellationRequestInput,
@@ -49,6 +50,15 @@ import type {
 import { useAppLanguage, type AppLanguage } from './app-language'
 
 type WorkerStatusUpdate = Extract<JobStatus, 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'completed_by_worker'>
+type WorkerAccessCheckInInput = {
+  mode: 'geofence' | 'manual_photo'
+  lat?: number
+  lng?: number
+  accuracy_m?: number
+  photo_urls?: string[]
+  note?: string
+  checked_in_at?: string
+}
 
 type FrontendWorkflowActions = {
   createRemoteJobFromDraft: (
@@ -64,7 +74,7 @@ type FrontendWorkflowActions = {
   workerDeclineBroadcast: () => Promise<boolean>
   workerUpdateStatus: (
     status: WorkerStatusUpdate,
-    extras?: { completion_notes?: string; completion_photo_urls?: string[] },
+    extras?: { completion_notes?: string; completion_photo_urls?: string[]; access_check_in?: WorkerAccessCheckInInput },
   ) => Promise<boolean>
   requestScopeChange: (input: WorkerScopeChangeInput) => Promise<boolean>
   requestWorkerCancellation: (input: WorkerCancellationRequestInput) => Promise<boolean>
@@ -438,7 +448,16 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
     const existing = stateRef.current.deal
     if (existing?.broadcast) {
-      const fullAddressLabel = formatReleasedFullAddress(accepted.data.full_address)
+      const addressAccess = accepted.data.address_access
+      const fullAddressLabel = addressAccess.exact_unit_released
+        ? formatReleasedFullAddress(accepted.data.full_address)
+        : ''
+      const stagedAddressLabel = formatStoredJobAddress({
+        building: accepted.data.full_address.building,
+        floor: null,
+        unit: null,
+        district: accepted.data.full_address.district,
+      })
       dispatch({
         type: 'hydrate_remote_job',
         workerGate: 'remote_backend',
@@ -446,12 +465,14 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
           ...dealToSnapshot(existing),
           backendStatus: accepted.data.status,
           status: toLocalDealStatus(accepted.data.status),
-          addressLabel: fullAddressLabel || existing.draft.addressLabel,
+          addressLabel: fullAddressLabel || stagedAddressLabel || existing.draft.addressLabel,
           broadcast: {
             ...existing.broadcast,
             status: 'accepted',
+            generalArea: stagedAddressLabel || existing.broadcast.generalArea,
             fullAddressVisible: Boolean(fullAddressLabel),
             fullAddressLabel: fullAddressLabel || null,
+            addressAccess,
           },
         },
       })
@@ -655,11 +676,16 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   useEffect(() => {
     if (!sessionUserId || (role !== 'worker' && role !== 'admin')) return
-    if (isAppForeground()) void workerRefresh()
+    const initialRefresh = setTimeout(() => {
+      if (isAppForeground()) void workerRefresh()
+    }, 0)
     const interval = setInterval(() => {
       if (isAppForeground()) void workerRefresh()
     }, 20_000)
-    return () => clearInterval(interval)
+    return () => {
+      clearTimeout(initialRefresh)
+      clearInterval(interval)
+    }
   }, [role, sessionUserId, workerRefresh])
 
   // X4 (Plan.md §27.7 — 2026-05-29): F-17 — on customer login / cold start,
@@ -890,10 +916,11 @@ function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief = false
     districtLabel,
     addressLabel,
     data.broadcast_state,
-    hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
+    job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
     includeWorkerBrief
       ? workerBriefLinesFromRecord(job.kael_worker_brief_guidance ?? job.kael_worker_brief_core)
       : [],
+    job.address_access,
   )
 
   return {
@@ -945,8 +972,9 @@ function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalR
     districtLabel,
     addressLabel || districtLabel,
     undefined,
-    hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
+    job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
     workerBriefLinesFromRecord(job.worker_brief_guidance),
+    job.address_access,
   )
   return {
     id: job.id,
@@ -1003,6 +1031,7 @@ function scopeChangeFromJobDetail(data: JobDetailResponse): LocalScopeChange | n
     priceMin: scope.kael_computed_min ?? scope.price_min,
     priceMax: scope.kael_computed_max ?? scope.price_max,
     kaelReview: scope.kael_review,
+    kaelProgress: scope.kael_progress ?? data.job.kael_progress ?? null,
     evidencePhotoUrls: scope.evidence_photo_urls,
     createdAt: scope.created_at,
   }
@@ -1030,11 +1059,16 @@ function broadcastFromJobStatus(
   broadcastState: JobDetailResponse['broadcast_state'] = null,
   releasedFullAddressLabel: string | null = hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
   prebriefOverride: string[] = [],
+  addressAccess: AddressAccessView | null = null,
 ) {
   if (status === 'awaiting_customer_confirm' || status === 'cancelled' || status === 'reviewed') return null
   const accepted = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'paid', 'payment_pending'].includes(status)
   const expiredBroadcast = status === 'broadcasting' && broadcastState?.active_count === 0
-  const canRevealFullAddress = accepted && Boolean(releasedFullAddressLabel)
+  const canRevealFullAddress = accepted && Boolean(releasedFullAddressLabel) && (addressAccess?.exact_unit_released ?? true)
+  const stagedGeneralArea = accepted && addressAccess && addressAccess.release_stage !== 'area_only'
+    ? addressLabel
+    : districtLabel
+  districtLabel = stagedGeneralArea || districtLabel
   const prebrief = prebriefOverride.length > 0
     ? prebriefOverride
     : [
@@ -1051,6 +1085,7 @@ function broadcastFromJobStatus(
     prebrief,
     fullAddressVisible: canRevealFullAddress,
     fullAddressLabel: canRevealFullAddress ? releasedFullAddressLabel : null,
+    addressAccess,
     secondsRemaining: expiredBroadcast ? 0 : status === 'broadcasting' ? broadcastState?.seconds_remaining ?? null : null,
   }
 }

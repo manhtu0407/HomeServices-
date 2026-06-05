@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 import { type ServiceType } from '@home-services/shared'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
-import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
+import { type KaelChatProgress, type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
 import {
   EmptyKaelBriefCard,
@@ -31,6 +31,14 @@ type KaelChatThreadText = Parameters<typeof KaelProcessCard>[0]['text'] & {
   activityOrchestrating: string
   activityResearch: string
   activityThinking: string
+  activityStage: {
+    fallback: string
+    intent: string
+    market: string
+    price: string
+    problem: string
+    vision: string
+  }
   history: string
   loading: string
   retryIntake: string
@@ -76,9 +84,14 @@ export function KaelChatThread({
   orchestrating,
   orchestrationMessage,
   pendingIntake,
+  progress,
+  progressElapsedMs = null,
+  progressTrace = [],
   selectedService,
   sending,
   session,
+  streamingField = null,
+  streamingText = '',
   text,
   tokens,
   turns,
@@ -99,9 +112,14 @@ export function KaelChatThread({
   orchestrating: boolean
   orchestrationMessage: string | null
   pendingIntake: KaelChatState['pendingIntake']
+  progress: KaelChatProgress | null
+  progressElapsedMs?: number | null
+  progressTrace?: KaelChatProgress[]
   selectedService: ServiceType | null
   sending: boolean
   session: KaelChatResponse | null
+  streamingField?: 'clarification' | 'advisory' | 'worker_assist' | null
+  streamingText?: string
   text: KaelChatThreadText
   tokens: ReturnType<typeof useKaelChatTokens>
   turns: KaelChatTurn[]
@@ -111,9 +129,13 @@ export function KaelChatThread({
 }) {
   const canRetryPendingIntake = Boolean(pendingIntake && !session && !visibility.canStartOrchestration)
   const latestKaelTurnId = useMemo(() => latestAssistantTurnId(turns), [turns])
+  const [thoughtTraceExpanded, setThoughtTraceExpanded] = useState(false)
   const liveActivityLabel = resolveKaelLiveActivityLabel({
     orchestrating,
     pendingIntake,
+    progress,
+    addressDistrict,
+    language,
     selectedService,
     sending,
     session,
@@ -130,6 +152,13 @@ export function KaelChatThread({
     visibility,
     workflow,
   })
+  const liveProgressTrace = progressTrace.length > 0 ? progressTrace : progress ? [progress] : []
+  const showThoughtDisclosure = !sending && Boolean(estimate) && progressTrace.length > 0 && progressElapsedMs !== null
+  const showStreamingTokenTurn = sending && streamingText.length > 0
+
+  useEffect(() => {
+    setThoughtTraceExpanded(false)
+  }, [progressElapsedMs, session?.session.id])
 
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.threadScroll}>
@@ -143,7 +172,26 @@ export function KaelChatThread({
             <Text style={[styles.bodyText, { color: tokens.muted }]}>{text.loading}</Text>
           </View>
         ) : null}
-        {lifecyclePanel === 'liveActivity' && liveActivityLabel ? <KaelLiveActivityIndicator label={liveActivityLabel} reduceMotion={reduceMotion} tokens={tokens} /> : null}
+        {lifecyclePanel === 'liveActivity' && liveActivityLabel ? (
+          <KaelLiveActivityIndicator
+            addressDistrict={addressDistrict}
+            label={liveActivityLabel}
+            language={language}
+            progressTrace={liveProgressTrace}
+            reduceMotion={reduceMotion}
+            text={text}
+            tokens={tokens}
+          />
+        ) : null}
+        {showStreamingTokenTurn ? (
+          <KaelStreamingTokenTurn
+            body={streamingText}
+            field={streamingField}
+            language={language}
+            reduceMotion={reduceMotion}
+            tokens={tokens}
+          />
+        ) : null}
         {lifecyclePanel === 'orchestrationStarted' && orchestrationMessage ? (
           <View style={[styles.stateCard, styles.orchestrationStartedCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'phaseContext')]} testID="customer-kael-chat-orchestration-started">
             <View style={[styles.orchestrationStartedAura, { backgroundColor: tokens.aqua }]} testID="customer-kael-chat-orchestration-mint-aura" />
@@ -155,6 +203,18 @@ export function KaelChatThread({
           </View>
         ) : null}
         {lifecyclePanel === 'pendingIntake' && pendingIntake ? <KaelIntakeReceiptCard intake={pendingIntake} language={language} /> : null}
+        {showThoughtDisclosure ? (
+          <KaelThoughtDisclosure
+            addressDistrict={addressDistrict}
+            elapsedMs={progressElapsedMs}
+            expanded={thoughtTraceExpanded}
+            language={language}
+            onToggle={() => setThoughtTraceExpanded((value) => !value)}
+            progressTrace={progressTrace}
+            text={text}
+            tokens={tokens}
+          />
+        ) : null}
         {lifecyclePanel === 'estimate' && estimate ? (
           <EstimateCard canStartOrchestration={visibility.canStartOrchestration} estimate={estimate} language={language} onStartOrchestration={onStartOrchestration} orchestrating={orchestrating} orchestrationStarted={session?.session.next_action === 'confirmed'} text={text} />
         ) : null}
@@ -249,12 +309,20 @@ function KaelChatStarter({
 }
 
 function KaelLiveActivityIndicator({
+  addressDistrict,
   label,
+  language,
+  progressTrace,
   reduceMotion,
+  text,
   tokens,
 }: {
+  addressDistrict: string | null
   label: string
+  language: AppLanguage
+  progressTrace: KaelChatProgress[]
   reduceMotion: boolean
+  text: KaelChatThreadText
   tokens: ReturnType<typeof useKaelChatTokens>
 }) {
   const sweep = useSharedValue(0)
@@ -285,11 +353,177 @@ function KaelLiveActivityIndicator({
       <View style={[styles.turnAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
         <Image source={kaelModel8AHead} style={styles.turnAvatarImage} />
       </View>
-      <View style={[styles.liveActivityBubble, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'status')]}>
+      <View style={[styles.liveActivityBubble, progressTrace.length > 0 ? styles.liveActivityStepperBubble : null, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'status')]}>
         {reduceMotion ? null : <Animated.View pointerEvents="none" style={[styles.liveActivitySheen, { backgroundColor: tokens.glassHighlight }, sheenStyle]} />}
         <Animated.Text style={[styles.liveActivityText, { color: tokens.text }, pulseStyle]} testID="customer-kael-chat-live-activity-label">
           {label}
         </Animated.Text>
+        {progressTrace.length > 0 ? (
+          <KaelProgressTrace
+            addressDistrict={addressDistrict}
+            language={language}
+            progressTrace={progressTrace}
+            settled={false}
+            text={text}
+            tokens={tokens}
+          />
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
+function KaelThoughtDisclosure({
+  addressDistrict,
+  elapsedMs,
+  expanded,
+  language,
+  onToggle,
+  progressTrace,
+  text,
+  tokens,
+}: {
+  addressDistrict: string | null
+  elapsedMs: number
+  expanded: boolean
+  language: AppLanguage
+  onToggle: () => void
+  progressTrace: KaelChatProgress[]
+  text: KaelChatThreadText
+  tokens: ReturnType<typeof useKaelChatTokens>
+}) {
+  const seconds = Math.max(1, Math.round(elapsedMs / 1000))
+  const label = language === 'en'
+    ? `Kael analyzed in ${seconds}s`
+    : `Kael \u0111\u00e3 ph\u00e2n t\u00edch trong ${seconds}s`
+
+  return (
+    <View style={styles.turnRow} testID="customer-kael-chat-thought-summary-row">
+      <View style={[styles.turnAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+        <Image source={kaelModel8AHead} style={styles.turnAvatarImage} />
+      </View>
+      <View style={[styles.thoughtDisclosureCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'status')]}>
+        <Pressable
+          accessibilityLabel={label}
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          onPress={onToggle}
+          style={({ pressed }) => [styles.thoughtDisclosureButton, pressed ? styles.pressed : null]}
+          testID="customer-kael-chat-thought-disclosure"
+        >
+          <Text style={[styles.liveActivityText, { color: tokens.text }]} testID="customer-kael-chat-thought-label">{label}</Text>
+          <Text style={[styles.thoughtDisclosureChevron, { color: tokens.muted }]}>{expanded ? '^' : 'v'}</Text>
+        </Pressable>
+        {expanded ? (
+          <View testID="customer-kael-chat-thought-trace">
+            <KaelProgressTrace
+              addressDistrict={addressDistrict}
+              language={language}
+              progressTrace={progressTrace}
+              settled
+              text={text}
+              tokens={tokens}
+            />
+          </View>
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
+function KaelProgressTrace({
+  addressDistrict,
+  language,
+  progressTrace,
+  settled,
+  text,
+  tokens,
+}: {
+  addressDistrict: string | null
+  language: AppLanguage
+  progressTrace: KaelChatProgress[]
+  settled: boolean
+  text: KaelChatThreadText
+  tokens: ReturnType<typeof useKaelChatTokens>
+}) {
+  return (
+    <View style={styles.liveActivityStepList} testID={settled ? 'customer-kael-chat-progress-trace-settled' : 'customer-kael-chat-progress-trace'}>
+      {progressTrace.map((entry) => {
+        const label = resolveKaelProgressLabel(entry, addressDistrict, language, text) ?? text.activityStage.fallback
+        const isDone = entry.status === 'completed'
+        const isFailed = entry.status === 'failed'
+        return (
+          <View
+            accessibilityLabel={`${label}, ${localizedKaelProgressStatus(entry.status, language)}`}
+            accessible
+            key={`${entry.current_stage}-${entry.updated_at}`}
+            style={[styles.liveActivityStepRow, settled || isDone || isFailed ? styles.liveActivityStepRowSettled : null]}
+            testID={`customer-kael-chat-progress-step-${entry.current_stage}`}
+          >
+            <View
+              style={[
+                styles.liveActivityStepDot,
+                {
+                  backgroundColor: isFailed ? tokens.copper : isDone ? tokens.primary : tokens.aqua,
+                  borderColor: isFailed ? tokens.copper : tokens.borderStrong,
+                },
+              ]}
+              testID={`customer-kael-chat-progress-step-dot-${entry.current_stage}-${entry.status}`}
+            />
+            <Text style={[styles.liveActivityStepText, { color: settled || isDone || isFailed ? tokens.muted : tokens.text }]}>{label}</Text>
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+function KaelStreamingTokenTurn({
+  body,
+  field,
+  language,
+  reduceMotion,
+  tokens,
+}: {
+  body: string
+  field: 'clarification' | 'advisory' | 'worker_assist' | null
+  language: AppLanguage
+  reduceMotion: boolean
+  tokens: ReturnType<typeof useKaelChatTokens>
+}) {
+  const caret = useSharedValue(1)
+
+  useEffect(() => {
+    if (reduceMotion) {
+      caret.value = 1
+      return
+    }
+    caret.value = withRepeat(
+      withTiming(0.18, { duration: 620, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      true,
+    )
+  }, [caret, reduceMotion])
+
+  const caretStyle = useAnimatedStyle(() => ({
+    opacity: reduceMotion ? 0 : caret.value,
+  }))
+
+  return (
+    <View accessibilityLiveRegion="polite" style={styles.turnRow} testID="customer-kael-chat-streaming-token-turn">
+      <View style={[styles.turnAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+        <Image source={kaelModel8AHead} style={styles.turnAvatarImage} />
+      </View>
+      <View style={[styles.turnBubble, styles.kaelTurn, styles.turnBubbleWithAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'kaelBubble')]}>
+        <Text style={[styles.turnRole, { color: tokens.primary }]} numberOfLines={1}>{localizedStreamingTokenRole(field, language)}</Text>
+        <Text accessibilityLabel={body} style={[styles.turnText, { color: tokens.text }]} testID="customer-kael-chat-streaming-token-body">
+          {body}
+          {reduceMotion ? null : (
+            <Animated.Text style={[styles.streamingCaret, { color: tokens.primary }, caretStyle]} testID="customer-kael-chat-streaming-caret">
+              {'\u258d'}
+            </Animated.Text>
+          )}
+        </Text>
       </View>
     </View>
   )
@@ -397,15 +631,21 @@ function latestAssistantTurnId(turns: KaelChatTurn[]) {
 }
 
 function resolveKaelLiveActivityLabel({
+  addressDistrict,
+  language,
   orchestrating,
   pendingIntake,
+  progress,
   selectedService,
   sending,
   session,
   text,
 }: {
+  addressDistrict: string | null
+  language: AppLanguage
   orchestrating: boolean
   pendingIntake: KaelChatState['pendingIntake']
+  progress: KaelChatProgress | null
   selectedService: ServiceType | null
   sending: boolean
   session: KaelChatResponse | null
@@ -413,8 +653,32 @@ function resolveKaelLiveActivityLabel({
 }) {
   if (orchestrating) return text.activityOrchestrating
   if (!sending) return null
+  const progressLabel = resolveKaelProgressLabel(progress, addressDistrict, language, text)
+  if (progressLabel) return progressLabel
   const hasServiceContext = Boolean(selectedService || pendingIntake?.serviceType || session?.session.service_type)
   return hasServiceContext ? text.activityResearch : text.activityThinking
+}
+
+function resolveKaelProgressLabel(
+  progress: KaelChatProgress | null,
+  addressDistrict: string | null,
+  language: AppLanguage,
+  text: KaelChatThreadText,
+) {
+  if (!progress) return null
+  if (progress.status === 'failed') return text.activityStage.fallback
+  const stageLabels: Partial<Record<KaelChatProgress['current_stage'], string>> = {
+    intent_classification: text.activityStage.intent,
+    market_lookup: text.activityStage.market,
+    price_synthesis: text.activityStage.price,
+    problem_synthesis: text.activityStage.problem,
+    vision_analysis: text.activityStage.vision,
+  }
+  const stageText = stageLabels[progress.current_stage]
+  if (!stageText) return null
+  const district = addressDistrict?.trim()
+  const districtFallback = language === 'en' ? 'your area' : 'khu vực của bạn'
+  return stageText.replace('{district}', district || (stageText.includes('{district}') ? districtFallback : ''))
 }
 
 function resolveKaelLifecyclePanel({
@@ -468,12 +732,33 @@ function localizedClarifyLabel(language: AppLanguage) {
   return language === 'en' ? 'Kael is asking' : 'Kael đang hỏi'
 }
 
+function localizedStreamingTokenRole(
+  field: 'clarification' | 'advisory' | 'worker_assist' | null,
+  language: AppLanguage,
+) {
+  if (field === 'clarification') return localizedClarifyLabel(language)
+  return 'Kael'
+}
+
 function localizedClarifyHint(language: AppLanguage) {
   return language === 'en' ? 'Kael is asking for more detail' : 'Kael đang hỏi thêm chi tiết'
 }
 
 function localizedClarifyHintPrefix(language: AppLanguage) {
   return language === 'en' ? 'Kael needs:' : 'Kael cần thêm:'
+}
+
+function localizedKaelProgressStatus(status: KaelChatProgress['status'], language: AppLanguage) {
+  if (language === 'en') {
+    if (status === 'completed') return 'completed'
+    if (status === 'failed') return 'using fallback'
+    if (status === 'queued') return 'queued'
+    return 'running'
+  }
+  if (status === 'completed') return '\u0111\u00e3 xong'
+  if (status === 'failed') return '\u0111ang d\u00f9ng d\u1eef li\u1ec7u d\u1ef1 ph\u00f2ng'
+  if (status === 'queued') return '\u0111ang ch\u1edd'
+  return '\u0111ang ch\u1ea1y'
 }
 
 function localizedSlotLabel(slot: string, language: AppLanguage) {

@@ -27,6 +27,9 @@ export function readEdgeEnv(
     learningEnabled:
       readBooleanFlag(getEnv("LEARNING_ENABLED")) ||
       readBooleanFlag(getEnv("KAEL_OPT_BATCH_LEARNING_ENABLED")),
+    knowledgeRetrievalEnabled: readBooleanFlag(
+      getEnv("KAEL_OPT_KNOWLEDGE_RETRIEVAL_ENABLED"),
+    ),
     sourceTrustPerplexityFilterEnabled: !sourceTrustExplicit
       ? isStagingProjectUrl(supabaseUrl)
       : envFlag(sourceTrustFlag),

@@ -102,6 +102,7 @@ export const KAEL_PURPOSES = [
   "scope_change",
   "post_job_learning",
   "educational_response",
+  "worker_assist",
 ] as const;
 
 export type KaelPurpose = (typeof KAEL_PURPOSES)[number];
@@ -220,6 +221,7 @@ export type EdgeAiSecrets = {
   vietmapApiKey?: string;
   googleMapsApiKey?: string;
   learningEnabled?: boolean;
+  knowledgeRetrievalEnabled?: boolean;
   sourceTrustPerplexityFilterEnabled?: boolean;
   sourceTrustPerplexityFilterExplicit?: boolean;
 };
@@ -231,6 +233,10 @@ export type PipelineInput = {
   district: string;
   photoUrls?: string[];
   progressJobId?: string;
+  progressTarget?: {
+    table: "jobs" | "kael_chat_sessions";
+    id: string | undefined;
+  };
   // Smart-clarification intake-diagnosis (2026-06-04). When enabled, the intent
   // stage uses diagnoseIntake (conversation-aware) and the pipeline may short-circuit
   // to ask ONE clarification question or flag a scope mismatch before vision/market.
@@ -276,6 +282,14 @@ export type KaelEstimate = {
   confidence: number;
   advisory: string | null;
   disclaimer: string;
+};
+
+export type PipelineKnowledgeContext = {
+  promptContext: string | null;
+  safeMetadata?: Record<string, unknown>;
+  serviceSummaries: string[];
+  safetyGuidance: string[];
+  legalGuidance: string[];
 };
 
 export type ScopeChangeReviewInput = {
@@ -350,7 +364,15 @@ export type PipelineResult =
     serviceProblemId: string;
     fallbackUsed: boolean;
     stageLogs: PipelineStageLog[];
+    knowledgeContext?: PipelineKnowledgeContext;
     customerSentiment?: "neutral" | "detail_oriented" | "pressure";
+    learningApplications?: Array<{
+      ruleId: string;
+      ruleVersion: number;
+      skillId: "LS1";
+      appliedTarget: "price_prior";
+      safeMetadata: Record<string, unknown>;
+    }>;
   }
   | {
     success: false;

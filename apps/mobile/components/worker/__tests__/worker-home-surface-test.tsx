@@ -13,6 +13,18 @@ let mockRouteParams: Record<string, string | string[] | undefined>
 let mockAppLanguage = 'vi'
 const mockReplace = jest.fn()
 const mockUseJobChatThread = jest.fn()
+const mockWorkerKaelChatService = {
+  create: jest.fn(),
+  get: jest.fn(),
+  getTrainingConsent: jest.fn(),
+  list: jest.fn(),
+  sendTurn: jest.fn(),
+  setTrainingConsent: jest.fn(),
+  streamTurn: jest.fn(),
+  submitFeedback: jest.fn(),
+}
+
+const pendingWorkerKaelServiceCall = () => new Promise<never>(() => undefined)
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
@@ -55,6 +67,19 @@ jest.mock('@/lib/auth-provider', () => ({
 
 jest.mock('@/lib/use-job-chat-thread', () => ({
   useJobChatThread: (jobId: string | null, enabled: boolean) => mockUseJobChatThread(jobId, enabled),
+}))
+
+jest.mock('@/lib/services', () => ({
+  workerKaelChatService: {
+    create: (...args: unknown[]) => mockWorkerKaelChatService.create(...args),
+    get: (...args: unknown[]) => mockWorkerKaelChatService.get(...args),
+    getTrainingConsent: (...args: unknown[]) => mockWorkerKaelChatService.getTrainingConsent(...args),
+    list: (...args: unknown[]) => mockWorkerKaelChatService.list(...args),
+    sendTurn: (...args: unknown[]) => mockWorkerKaelChatService.sendTurn(...args),
+    setTrainingConsent: (...args: unknown[]) => mockWorkerKaelChatService.setTrainingConsent(...args),
+    streamTurn: (...args: unknown[]) => mockWorkerKaelChatService.streamTurn(...args),
+    submitFeedback: (...args: unknown[]) => mockWorkerKaelChatService.submitFeedback(...args),
+  },
 }))
 
 jest.mock('@/lib/app-language', () => {
@@ -267,6 +292,95 @@ beforeEach(() => {
     send: jest.fn(async () => true),
     sendMessage: jest.fn(async () => true),
     sending: false,
+  })
+  mockWorkerKaelChatService.create.mockReset()
+  mockWorkerKaelChatService.get.mockReset()
+  mockWorkerKaelChatService.getTrainingConsent.mockReset()
+  mockWorkerKaelChatService.list.mockReset()
+  mockWorkerKaelChatService.sendTurn.mockReset()
+  mockWorkerKaelChatService.setTrainingConsent.mockReset()
+  mockWorkerKaelChatService.streamTurn.mockReset()
+  mockWorkerKaelChatService.submitFeedback.mockReset()
+  mockWorkerKaelChatService.list.mockImplementation(pendingWorkerKaelServiceCall)
+  mockWorkerKaelChatService.getTrainingConsent.mockImplementation(pendingWorkerKaelServiceCall)
+  mockWorkerKaelChatService.create.mockResolvedValue({
+    data: {
+      session: {
+        closed_at: null,
+        id: 'worker-kael-session-1',
+        job_id: 'job_test_1',
+        progress: null,
+        safe_metadata: {},
+        started_at: '2026-06-04T00:00:00.000Z',
+        status: 'active',
+        total_cost_usd: 0,
+        total_turns: 0,
+        worker_id: 'worker_test_1',
+      },
+      turns: [],
+    },
+    status: 201,
+    success: true,
+  })
+  mockWorkerKaelChatService.streamTurn.mockImplementation(async (sessionId: string, input: { message: string }, handlers?: any) => {
+    handlers?.onStage?.({
+      progress: {
+        current_stage: 'worker_assist',
+        failure_reason: null,
+        progress: 0.2,
+        status: 'running',
+        updated_at: '2026-06-04T00:00:01.000Z',
+      },
+      type: 'stage',
+    })
+    return {
+      data: {
+      session: {
+        closed_at: null,
+        id: sessionId,
+        job_id: 'job_test_1',
+        progress: {
+          current_stage: 'worker_assist',
+          failure_reason: null,
+          progress: 1,
+          status: 'completed',
+          updated_at: '2026-06-04T00:00:02.000Z',
+        },
+        safe_metadata: {},
+        started_at: '2026-06-04T00:00:00.000Z',
+        status: 'active',
+        total_cost_usd: 0,
+        total_turns: 2,
+        worker_id: 'worker_test_1',
+      },
+        turns: [
+          {
+            content_type: 'text',
+            created_at: '2026-06-04T00:00:00.000Z',
+            id: 'turn-worker-default',
+            media_refs: [],
+            role: 'worker',
+            safe_metadata: {},
+            session_id: sessionId,
+            text_content: input.message,
+            turn_index: 1,
+          },
+          {
+            content_type: 'guidance',
+            created_at: '2026-06-04T00:00:01.000Z',
+            id: 'turn-kael-default',
+            media_refs: [],
+            role: 'kael',
+            safe_metadata: {},
+            session_id: sessionId,
+            text_content: 'Kael saved this advisory. Keep the next step inside the app.',
+            turn_index: 2,
+          },
+        ],
+      },
+      status: 200,
+      success: true,
+    }
   })
   const imagePicker = jest.requireMock('expo-image-picker')
   imagePicker.requestMediaLibraryPermissionsAsync.mockReset()
@@ -499,20 +613,21 @@ describe('WorkerChatSurface', () => {
     jest.useRealTimers()
   })
 
-  it('lets the standalone Kael chat composer accept a message without faking a backend JobRoom send', () => {
+  it('lets the standalone Kael chat composer accept a message without faking a backend JobRoom send', async () => {
     mockPathname = '/(worker)/chat'
     buildWorkflow()
 
     render(<WorkerChatSurface />)
 
     expect(screen.getByTestId('worker-kael-chat-input').props.editable).toBe(true)
-    fireEvent.changeText(screen.getByTestId('worker-kael-chat-input'), 'Kael ơi')
+    fireEvent.changeText(screen.getByTestId('worker-kael-chat-input'), 'Kael oi')
     expect(screen.getByTestId('worker-kael-send-button').props.accessibilityState.disabled).toBe(false)
 
     fireEvent.press(screen.getByTestId('worker-kael-send-button'))
 
-    expect(screen.getByText('Kael ơi')).toBeOnTheScreen()
-    expect(screen.getByText(/Phòng việc thật/)).toBeOnTheScreen()
+    await waitFor(() => expect(screen.getByText('Kael oi')).toBeOnTheScreen())
+    expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
+    expect(mockWorkerKaelChatService.streamTurn).not.toHaveBeenCalled()
     expect(mockUseJobChatThread).toHaveBeenCalledWith(null, false)
   })
 
@@ -535,6 +650,48 @@ describe('WorkerChatSurface', () => {
     await waitFor(() => expect(screen.getByTestId('worker-kael-chat-input').props.value).toContain('repair-note.jpg'))
     expect(screen.getByTestId('worker-kael-send-button').props.accessibilityState.disabled).toBe(false)
     alertSpy.mockRestore()
+  })
+
+  it('lets workers submit Kael feedback from the chat surface', async () => {
+    mockWorkerKaelChatService.submitFeedback.mockResolvedValueOnce({
+      data: { created_at: '2026-06-04T00:00:00.000Z', feedback_id: 'feedback-1', status: 'new' },
+      status: 201,
+      success: true,
+    })
+    mockPathname = '/(worker)/chat'
+    buildWorkflow()
+
+    render(<WorkerChatSurface />)
+
+    fireEvent.press(screen.getByTestId('worker-kael-feedback-open'))
+    fireEvent.changeText(screen.getByTestId('worker-kael-feedback-input'), 'Kael should explain worker scope rails better.')
+    fireEvent.press(screen.getByTestId('worker-kael-feedback-submit'))
+
+    await waitFor(() => expect(mockWorkerKaelChatService.submitFeedback).toHaveBeenCalledWith({
+      language: 'vi',
+      message: 'Kael should explain worker scope rails better.',
+      source: 'worker_chat',
+    }))
+  })
+
+  it('lets workers toggle Kael training consent from the chat surface', async () => {
+    mockWorkerKaelChatService.setTrainingConsent.mockResolvedValueOnce({
+      data: { training_consent: true, updated_at: '2026-06-04T00:00:00.000Z', worker_id: 'worker_test_1' },
+      status: 200,
+      success: true,
+    })
+    mockPathname = '/(worker)/chat'
+    buildWorkflow()
+
+    render(<WorkerChatSurface />)
+
+    fireEvent.press(screen.getByTestId('worker-kael-training-consent-toggle'))
+
+    await waitFor(() => expect(mockWorkerKaelChatService.setTrainingConsent).toHaveBeenCalledWith({
+      language: 'vi',
+      source: 'worker_chat',
+      training_consent: true,
+    }))
   })
 
   it('keeps the mic control usable with an honest fallback when dictation is unavailable', () => {
@@ -560,8 +717,76 @@ describe('WorkerChatSurface', () => {
     expect(mockUseJobChatThread).toHaveBeenCalledWith('job_test_1', true)
   })
 
-  it('submits accepted worker messages through the backend JobRoom thread', async () => {
-    const send = jest.fn(async () => true)
+  it('shows worker Kael advisory progress from SSE stage events while a reply is running', async () => {
+    let resolveStream!: (value: unknown) => void
+    mockWorkerKaelChatService.streamTurn.mockImplementationOnce((_sessionId: string, input: { message: string }, handlers?: any) => {
+      handlers?.onStage?.({
+        progress: {
+          current_stage: 'worker_assist',
+          failure_reason: null,
+          progress: 0.2,
+          status: 'running',
+          updated_at: '2026-06-04T00:00:01.000Z',
+        },
+        type: 'stage',
+      })
+      return new Promise((resolve) => {
+        resolveStream = resolve
+      }).then(() => ({
+        data: {
+          session: {
+            closed_at: null,
+            id: 'worker-kael-session-1',
+            job_id: 'job_test_1',
+            progress: {
+              current_stage: 'worker_assist',
+              failure_reason: null,
+              progress: 1,
+              status: 'completed',
+              updated_at: '2026-06-04T00:00:02.000Z',
+            },
+            safe_metadata: {},
+            started_at: '2026-06-04T00:00:00.000Z',
+            status: 'active',
+            total_cost_usd: 0,
+            total_turns: 2,
+            worker_id: 'worker_test_1',
+          },
+          turns: [
+            {
+              content_type: 'text',
+              created_at: '2026-06-04T00:00:00.000Z',
+              id: 'turn-worker-progress',
+              media_refs: [],
+              role: 'worker',
+              safe_metadata: {},
+              session_id: 'worker-kael-session-1',
+              text_content: input.message,
+              turn_index: 1,
+            },
+          ],
+        },
+        status: 200,
+        success: true,
+      }))
+    })
+    mockPathname = '/(worker)/chat'
+    buildWorkflow({ deal: buildAcceptedDeal() })
+
+    render(<WorkerChatSurface />)
+
+    fireEvent.changeText(screen.getByTestId('worker-kael-chat-input'), 'Need advice')
+    await waitFor(() => expect(screen.getByTestId('worker-kael-send-button').props.accessibilityState.disabled).toBe(false))
+    fireEvent.press(screen.getByTestId('worker-kael-send-button'))
+
+    await waitFor(() => expect(screen.getByTestId('worker-kael-chat-progress')).toBeOnTheScreen())
+    expect(screen.getAllByText(/20%/).length).toBeGreaterThan(0)
+    resolveStream(undefined)
+    await waitFor(() => expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalled())
+  })
+
+  it('submits accepted worker messages through the worker Kael advisory chat', async () => {
+    const send = jest.fn(async (_message?: string) => true)
     mockUseJobChatThread.mockReturnValue({
       error: null,
       loading: false,
@@ -570,6 +795,67 @@ describe('WorkerChatSurface', () => {
       send,
       sendMessage: jest.fn(async () => true),
       sending: false,
+    })
+    mockWorkerKaelChatService.streamTurn.mockImplementationOnce(async (_sessionId: string, input: { message: string }, handlers?: any) => {
+      handlers?.onStage?.({
+        progress: {
+          current_stage: 'worker_assist',
+          failure_reason: null,
+          progress: 0.2,
+          status: 'running',
+          updated_at: '2026-06-04T00:00:01.000Z',
+        },
+        type: 'stage',
+      })
+      await send(input.message)
+      return {
+        data: {
+          session: {
+            closed_at: null,
+            id: 'worker-kael-session-1',
+            job_id: 'job_test_1',
+            progress: {
+              current_stage: 'worker_assist',
+              failure_reason: null,
+              progress: 1,
+              status: 'completed',
+              updated_at: '2026-06-04T00:00:02.000Z',
+            },
+            safe_metadata: {},
+            started_at: '2026-06-04T00:00:00.000Z',
+            status: 'active',
+            total_cost_usd: 0,
+            total_turns: 2,
+            worker_id: 'worker_test_1',
+          },
+          turns: [
+            {
+              content_type: 'text',
+              created_at: '2026-06-04T00:00:00.000Z',
+              id: 'turn-worker-1',
+              media_refs: [],
+              role: 'worker',
+              safe_metadata: {},
+              session_id: 'worker-kael-session-1',
+              text_content: 'worker arrived',
+              turn_index: 1,
+            },
+            {
+              content_type: 'guidance',
+              created_at: '2026-06-04T00:00:01.000Z',
+              id: 'turn-kael-1',
+              media_refs: [],
+              role: 'kael',
+              safe_metadata: { safety_notes: ['Keep pricing inside the app.'] },
+              session_id: 'worker-kael-session-1',
+              text_content: 'Kael saved this advisory. Send scope-change in the app if new work appears.',
+              turn_index: 2,
+            },
+          ],
+        },
+        status: 200,
+        success: true,
+      }
     })
     mockPathname = '/(worker)/chat'
     buildWorkflow({ deal: buildAcceptedDeal() })
@@ -580,6 +866,11 @@ describe('WorkerChatSurface', () => {
     fireEvent.press(screen.getByTestId('worker-kael-send-button'))
 
     await waitFor(() => expect(send).toHaveBeenCalledWith('ÄÃ£ tá»›i nÆ¡i'))
+    expect(mockWorkerKaelChatService.streamTurn).toHaveBeenCalledWith(
+      'worker-kael-session-1',
+      expect.objectContaining({ language: 'vi', media_refs: [], message: 'ÄÃ£ tá»›i nÆ¡i' }),
+      expect.any(Object),
+    )
   })
 
   it('keeps worker chat readable but locks sending after the payment gate', () => {

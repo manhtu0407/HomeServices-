@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/router'
 import {
@@ -116,6 +116,51 @@ describe('Kael P6 memory governance', () => {
 
     expect(classifyMemoryStaleness('2026-02-20T00:00:00.000Z', new Date('2026-05-25T00:00:00.000Z'))).toBe('stale')
     expect(classifyMemoryStaleness('2025-01-01T00:00:00.000Z', new Date('2026-05-25T00:00:00.000Z'))).toBe('archive')
+  })
+
+  it('adds B1 runtime knowledge tables to L5 domain memory only when the flag is enabled', async () => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get: (name: string) => name === 'KAEL_OPT_KNOWLEDGE_RETRIEVAL_ENABLED' ? 'true' : undefined,
+      },
+    })
+    try {
+      const client = makeTableClient({
+        learning_rules: [{ data: [], error: null }],
+        service_knowledge_boxes: [{ data: [{
+          service_type: 'plumbing',
+          slug: 'plumbing',
+          label_vi: 'Sua nuoc',
+          purpose: 'Runtime service knowledge.',
+          is_active: true,
+        }], error: null }],
+        worker_safety_patterns: [{ data: [{
+          pattern_key: 'plumbing_floor_protection_before_repair',
+          service_type: 'plumbing',
+          trigger_topic: 'worker_safety_advisory',
+          severity: 'warning',
+          response_guidance: 'Khoa nuoc khu vuc lien quan truoc khi thao tac.',
+        }], error: null }],
+        legal_awareness_patterns: [{ data: [{
+          pattern_key: 'professional_legal_advice_redirect',
+          topic: 'legal_advice',
+          boundary_type: 'redirect_required',
+          response_guidance: 'Redirect legal advice requests.',
+        }], error: null }],
+        kael_memory_audit: [{ data: { id: 'audit-l5' }, error: null }],
+      })
+
+      const context = await new KaelMemory(client).getContext({
+        actor: 'system',
+        actorId: 'system',
+      })
+
+      expect(JSON.stringify(context.layers.L5.data)).toContain('worker_safety_patterns')
+      expect(client.calls.map((call) => call.table)).toContain('service_knowledge_boxes')
+      expect(client.calls.map((call) => call.table)).toContain('legal_awareness_patterns')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('returns sanitized self-view memory and denies cross-user reads by construction', async () => {

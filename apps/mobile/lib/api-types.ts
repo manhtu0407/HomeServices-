@@ -1,4 +1,14 @@
-import type { BroadcastStatus, ComplexityLevel, JobStatus, ScopeChangeStatus, ServiceType, WorkerVerificationStatus } from '@home-services/shared'
+import type { ApartmentAccessProfileInput, BroadcastStatus, ComplexityLevel, JobStatus, LearningCandidateStatus, ScopeChangeStatus, ServiceType, WorkerVerificationStatus } from '@home-services/shared'
+
+export type AddressAccessView = {
+  release_stage: 'area_only' | 'building_released' | 'unit_released'
+  exact_unit_released: boolean
+  check_in_required: boolean
+  identity_check_required: boolean
+  customer_handoff_required: boolean
+  evidence_mode: 'none' | 'geofence' | 'manual_photo'
+  access_profile: ApartmentAccessProfileInput
+}
 
 export type ServiceCatalogResponse = {
   services: {
@@ -127,6 +137,7 @@ export type JobDetailResponse = {
     address_unit: string | null
     address_floor: string | null
     address_district: string | null
+    address_access: AddressAccessView
     scheduled_at: string | null
     kael_problem_identified: string | null
     kael_complexity: ComplexityLevel | null
@@ -136,6 +147,7 @@ export type JobDetailResponse = {
     kael_estimate_card_v3: Record<string, unknown> | null
     kael_worker_brief_core: Record<string, unknown> | null
     kael_worker_brief_guidance: Record<string, unknown> | null
+    kael_progress: KaelChatProgress | null
     final_price: number | null
     completion_notes: string | null
     completion_photo_urls: string[]
@@ -161,6 +173,7 @@ export type JobDetailResponse = {
     kael_computed_min: number | null
     kael_computed_max: number | null
     kael_review: Record<string, unknown> | null
+    kael_progress: KaelChatProgress | null
     evidence_photo_urls: string[]
     created_at: string | null
   } | null
@@ -275,6 +288,33 @@ export type CustomerKaelFeedbackResponse = {
   created_at: string
 }
 
+export type KaelChatProgress = {
+  current_stage:
+    | 'intent_classification'
+    | 'vision_analysis'
+    | 'clarification'
+    | 'problem_synthesis'
+    | 'market_lookup'
+    | 'price_synthesis'
+    | 'advisory_generation'
+    | 'worker_brief'
+    | 'worker_assist'
+    | 'scope_change'
+    | 'scope_reviewing'
+    | 'scope_estimating'
+    | 'post_job_learning'
+    | 'educational_response'
+  status: 'queued' | 'running' | 'completed' | 'failed'
+  progress: number
+  failure_reason?: string | null
+  updated_at: string
+}
+
+export type KaelChatProgressResponse = {
+  session_id: string
+  progress: KaelChatProgress | null
+}
+
 export type WorkerProfileResponse = {
   id: string
   verification_status: WorkerVerificationStatus
@@ -343,6 +383,7 @@ export type AcceptBroadcastResponse = {
     floor: string | null
     district: string | null
   }
+  address_access: AddressAccessView
 }
 
 export type DeclineBroadcastResponse = {
@@ -379,6 +420,54 @@ export type WorkerKaelClarifyResponse = {
     text: string
     safety_notes: string[]
   }
+}
+
+export type WorkerKaelChatStatus = 'active' | 'closed' | 'escalated' | 'error'
+
+export type WorkerKaelChatTurn = {
+  id: string
+  session_id: string
+  turn_index: number
+  role: 'worker' | 'kael' | 'system'
+  content_type: 'text' | 'clarification' | 'guidance' | 'photo_request' | 'photo_attached' | 'error'
+  text_content: string | null
+  media_refs: string[]
+  safe_metadata: Record<string, unknown>
+  created_at: string
+}
+
+export type WorkerKaelChatSession = {
+  id: string
+  job_id: string
+  worker_id: string
+  status: WorkerKaelChatStatus
+  started_at: string
+  closed_at: string | null
+  total_turns: number
+  total_cost_usd: number
+  progress: KaelChatProgress | null
+  safe_metadata: Record<string, unknown>
+}
+
+export type WorkerKaelChatResponse = {
+  session: WorkerKaelChatSession
+  turns: WorkerKaelChatTurn[]
+}
+
+export type WorkerKaelChatListResponse = {
+  sessions: WorkerKaelChatSession[]
+}
+
+export type WorkerKaelFeedbackResponse = {
+  feedback_id: string
+  status: 'new'
+  created_at: string
+}
+
+export type WorkerKaelTrainingConsentResponse = {
+  worker_id: string
+  training_consent: boolean
+  updated_at: string | null
 }
 
 export type WorkerCancellationRequestInput = {
@@ -475,6 +564,49 @@ export type DevicePushTokenResponse = {
   updated_at: string
 }
 
+export type KaelLearningCandidateSummary = {
+  id: string
+  candidate_type: string
+  affected_service: ServiceType | null
+  affected_problem: string | null
+  affected_district: string | null
+  confidence: number
+  evidence_count: number
+  status: LearningCandidateStatus
+  audit_reason: string | null
+  created_at: string
+  updated_at: string
+  promoted_at: string | null
+  rolled_back_at: string | null
+  suggested_payload: Record<string, unknown>
+  evidence_snapshot: Record<string, unknown> | null
+}
+
+export type KaelLearningCandidateListResponse = {
+  candidates: KaelLearningCandidateSummary[]
+}
+
+export type KaelLearningCandidateApproveResponse = {
+  ok: boolean
+  candidate_id: string
+  rule_id: string | null
+  rule_version: number | null
+  status: string
+  knowledge_apply: {
+    ok: boolean
+    error_code: string | null
+    knowledge_table: string | null
+    record_key: string | null
+    knowledge_version: number | null
+  } | null
+}
+
+export type KaelLearningCandidateRejectResponse = {
+  ok: boolean
+  candidate_id: string
+  status: string
+}
+
 export type CustomerScopeDecisionResponse = {
   scope_change_id: string
   job_id: string
@@ -492,6 +624,7 @@ export type WorkerJobListResponse = {
     address_unit: string | null
     address_floor: string | null
     district: string | null
+    address_access: AddressAccessView
     final_price: number | null
     estimated_earning: number | null
     completion_notes: string | null

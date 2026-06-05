@@ -7,6 +7,7 @@ export const KAEL_PURPOSES = [
   'price_synthesis',
   'advisory_generation',
   'worker_brief',
+  'worker_assist',
   'scope_change',
   'post_job_learning',
   'educational_response',
@@ -157,6 +158,7 @@ const ACTIONS_BY_PURPOSE: Record<KaelPurpose, readonly KaelAction[]> = {
   price_synthesis: ['synthesize_price'],
   advisory_generation: ['generate_advisory'],
   worker_brief: ['generate_worker_brief'],
+  worker_assist: ['read_context', 'generate_advisory', 'ask_clarification'],
   scope_change: ['review_scope_change'],
   post_job_learning: ['write_memory', 'create_learning_candidate'],
   educational_response: ['generate_advisory', 'read_context'],
@@ -171,6 +173,7 @@ const TOPICS_BY_PURPOSE: Record<KaelPurpose, readonly KaelTopic[]> = {
   price_synthesis: ['price_estimate', 'service_pricing_general_info'],
   advisory_generation: ['safety_advisory', 'worker_safety_advisory', 'legal_safety_awareness'],
   worker_brief: ['worker_brief', 'job_status', 'safety_advisory'],
+  worker_assist: ['worker_brief', 'job_status', 'safety_advisory', 'worker_safety_advisory', 'scope_change', 'app_usage_help'],
   scope_change: ['scope_change', 'safety_advisory'],
   post_job_learning: [...SERVICE_TOPICS, 'scope_change', 'worker_safety_advisory'],
   educational_response: [...SERVICE_TOPICS, ...EDUCATIONAL_TOPICS, 'worker_safety_advisory', 'support_redirect'],
@@ -248,7 +251,7 @@ function customerRule(
   actor: KaelActorRole,
   jobRelation: KaelJobRelation,
 ) {
-  if (purpose === 'post_job_learning' || purpose === 'worker_brief') {
+  if (purpose === 'post_job_learning' || purpose === 'worker_brief' || purpose === 'worker_assist') {
     return denyRule(purpose, actor, jobRelation, 'DENY_CUSTOMER_PURPOSE', 'cannot_do_action')
   }
   if (
@@ -269,6 +272,11 @@ function workerRule(
     return jobRelation === 'own_worker_job'
       ? allowRule(purpose, actor, jobRelation, TOPICS_BY_PURPOSE[purpose], 'ALLOW_WORKER_BRIEF')
       : denyRule(purpose, actor, jobRelation, 'DENY_WORKER_PRE_ACCEPT_PII', 'cannot_do_action')
+  }
+  if (purpose === 'worker_assist') {
+    return jobRelation === 'own_worker_job'
+      ? allowRule(purpose, actor, jobRelation, TOPICS_BY_PURPOSE[purpose], 'ALLOW_WORKER_ASSIST')
+      : denyRule(purpose, actor, jobRelation, 'DENY_WORKER_JOB_REQUIRED', 'cannot_do_action')
   }
   if (purpose === 'scope_change') {
     return jobRelation === 'own_worker_job'

@@ -32,6 +32,7 @@ function makeScopeChange(overrides: Partial<LocalScopeChange> = {}): LocalScopeC
     reason: 'Dây âm tường bị chập, phải đi lại dây mới',
     priceMin: 450000,
     priceMax: 650000,
+    kaelProgress: null,
     kaelReview: {
       problem_summary: 'Chập dây âm tường, có rủi ro cháy',
       advisory: 'Nên thay đoạn dây cũ',

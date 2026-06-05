@@ -76,6 +76,7 @@ export const LEARNING_CANDIDATE_STATUSES = Object.freeze([
   'created',
   'pending_evidence',
   'evidence_gate_passed',
+  'manual_review',
   'auto_promoted',
   'rejected',
   'rolled_back',

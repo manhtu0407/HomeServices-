@@ -1,4 +1,8 @@
 import type { KaelPurpose } from "./types.ts";
+import {
+  retrieveLegalBoundaryPattern,
+  type LegalBoundaryType,
+} from "./knowledge.ts";
 
 export type KaelActorRole = "customer" | "worker" | "admin" | "system";
 export type KaelJobRelation = "none" | "own_customer_job" | "own_worker_job" | "admin_review";
@@ -83,6 +87,8 @@ type AuditClient = {
   };
 };
 
+type BoundaryClient = Parameters<typeof retrieveLegalBoundaryPattern>[0];
+
 const DECLINE_TEMPLATES: Record<DeclineTemplateKey, string> = {
   out_of_scope_service:
     "Hiện Kael chỉ hỗ trợ sửa điện, sửa nước và dọn dẹp tại các căn hộ HCMC. Bạn vui lòng quay lại khi Kael mở thêm dịch vụ.",
@@ -127,6 +133,7 @@ const ACTIONS_BY_PURPOSE: Record<KaelPurpose, readonly KaelAction[]> = {
   price_synthesis: ["synthesize_price"],
   advisory_generation: ["generate_advisory"],
   worker_brief: ["generate_worker_brief"],
+  worker_assist: ["read_context", "generate_advisory", "ask_clarification"],
   scope_change: ["review_scope_change"],
   post_job_learning: ["write_memory", "create_learning_candidate"],
   educational_response: ["generate_advisory", "read_context"],
@@ -162,6 +169,11 @@ export function evaluateKaelPermissionGate(
     if (request.purpose === "worker_brief" && request.jobRelation === "own_worker_job") {
       return allow(request, "ALLOW_WORKER_BRIEF");
     }
+    if (request.purpose === "worker_assist" && request.jobRelation === "own_worker_job") {
+      return ACTIONS_BY_PURPOSE.worker_assist.includes(request.action)
+        ? allow(request, "ALLOW_WORKER_ASSIST")
+        : deny(request, "DENY_WORKER_ASSIST_ACTION", "cannot_do_action");
+    }
     if (request.purpose === "scope_change" && request.jobRelation === "own_worker_job") {
       return allow(request, "ALLOW_WORKER_SCOPE_CHANGE");
     }
@@ -177,6 +189,32 @@ export function evaluateKaelPermissionGate(
   return ACTIONS_BY_PURPOSE[request.purpose].includes(request.action)
     ? allow(request, `ALLOW_${request.purpose.toUpperCase()}`)
     : deny(request, "DENY_ACTION_NOT_ALLOWED", "cannot_do_action");
+}
+
+export async function evaluateKaelPermissionGateWithBoundaries(
+  request: KaelPermissionGateRequest,
+  client?: BoundaryClient,
+): Promise<KaelPermissionGateDecision> {
+  if (
+    request.actor === "worker" &&
+    request.jobRelation === "none" &&
+    (request.purpose === "worker_brief" || request.topic === "other_jobs_specific")
+  ) {
+    return deny(request, "DENY_WORKER_PRE_ACCEPT_PII", "cannot_do_action");
+  }
+
+  const forbidden = await forbiddenTopicDecisionWithBoundaries(
+    request.topic,
+    client,
+  );
+  if (forbidden) {
+    return deny(request, forbidden.reasonCode, forbidden.template, {
+      responseText: forbidden.responseText,
+      safeMetadata: forbidden.safeMetadata,
+    });
+  }
+
+  return evaluateKaelPermissionGate(request);
 }
 
 export function renderDeclineTemplate(
@@ -246,6 +284,10 @@ function deny(
   request: KaelPermissionGateRequest,
   reasonCode: string,
   declineTemplateKey: DeclineTemplateKey,
+  options: {
+    responseText?: string | null;
+    safeMetadata?: Record<string, unknown>;
+  } = {},
 ): KaelPermissionGateDecision {
   return {
     ...request,
@@ -253,7 +295,64 @@ function deny(
     decision: "deny",
     reasonCode,
     declineTemplateKey,
-    responseText: renderDeclineTemplate(declineTemplateKey),
+    responseText: options.responseText ?? renderDeclineTemplate(declineTemplateKey),
+    safeMetadata: options.safeMetadata,
+  };
+}
+
+async function forbiddenTopicDecisionWithBoundaries(
+  topic: KaelTopic,
+  client?: BoundaryClient,
+): Promise<{
+  reasonCode: string;
+  template: DeclineTemplateKey;
+  responseText?: string | null;
+  safeMetadata?: Record<string, unknown>;
+} | null> {
+  if (topic === "legal_advice") {
+    return boundaryDecision(
+      topic,
+      "redirect_required",
+      "DENY_LEGAL_ADVICE",
+      "legal_advice_redirect",
+      client,
+    );
+  }
+  if (topic === "medical_advice") {
+    const emergency = await boundaryDecision(
+      topic,
+      "emergency_redirect",
+      "DENY_MEDICAL_ADVICE",
+      "emergency_redirect",
+      client,
+    );
+    return emergency.responseText
+      ? emergency
+      : {
+        reasonCode: "DENY_MEDICAL_ADVICE",
+        template: "unsafe_or_sensitive",
+        safeMetadata: emergency.safeMetadata,
+      };
+  }
+  return forbiddenTopicDecision(topic);
+}
+
+async function boundaryDecision(
+  topic: KaelTopic,
+  boundaryType: LegalBoundaryType,
+  reasonCode: string,
+  fallbackTemplate: DeclineTemplateKey,
+  client?: BoundaryClient,
+) {
+  const boundary = await retrieveLegalBoundaryPattern(client, {
+    topic,
+    boundaryType,
+  });
+  return {
+    reasonCode,
+    template: fallbackTemplate,
+    responseText: boundary.guidance,
+    safeMetadata: boundary.safeMetadata,
   };
 }
 

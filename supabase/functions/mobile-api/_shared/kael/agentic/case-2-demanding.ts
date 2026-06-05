@@ -3,6 +3,7 @@ import type {
   DemandingCustomerEscalationLevel,
 } from "./demanding-customer-detect.ts";
 import { renderEmpathyTemplateV2 } from "../decline-templates.ts";
+import { detectForbiddenAiDecisionText } from "../ai-boundary-contract.ts";
 
 export type DemandingCustomerStrategyId =
   | "transparency_expansion"
@@ -51,7 +52,7 @@ export function buildDemandingCustomerResponse(
   if (detection.escalationLevel === "hard") {
     return {
       strategyIds: ["hard_escalation", "defensive_documentation"],
-      responseText: renderEmpathyTemplateV2("complaint_threat_acknowledge"),
+      responseText: safeDemandingResponseText(renderEmpathyTemplateV2("complaint_threat_acknowledge")),
       adminQueuePriority: "high",
       stopAiLoop: true,
       defensiveLogRequired: true,
@@ -62,7 +63,7 @@ export function buildDemandingCustomerResponse(
   if (detection.escalationLevel === "soft") {
     return {
       strategyIds: ["empathy_factual", "soft_escalation", "defensive_documentation"],
-      responseText: renderEmpathyTemplateV2("pressure_acknowledge"),
+      responseText: safeDemandingResponseText(renderEmpathyTemplateV2("pressure_acknowledge")),
       adminQueuePriority: "medium",
       stopAiLoop: false,
       defensiveLogRequired: true,
@@ -92,12 +93,17 @@ export function buildDemandingCustomerResponse(
       (credentialText ? ` ${credentialText}` : "");
   return {
     strategyIds: ["transparency_expansion", "empathy_factual", "defensive_documentation"],
-    responseText,
+    responseText: safeDemandingResponseText(responseText),
     adminQueuePriority: "none",
     stopAiLoop: false,
     defensiveLogRequired: true,
     showTransparency: true,
   };
+}
+
+function safeDemandingResponseText(text: string) {
+  if (detectForbiddenAiDecisionText(text).allowed) return text;
+  return renderEmpathyTemplateV2("pressure_acknowledge");
 }
 
 export async function recordDemandingCustomerInteraction(

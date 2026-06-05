@@ -309,9 +309,42 @@ class P15Harness {
       }
     }
     if (!response.ok) {
+      const diagnostics = await this.captureFailedCreateJobDiagnostics(method, path, body)
+      if (diagnostics) {
+        this.results.limitations.push(`failure diagnostics: ${JSON.stringify(diagnostics)}`)
+      }
       throw new Error(`${method} ${path} failed ${response.status}: ${JSON.stringify(json)}`)
     }
     return { status: response.status, json, durationMs }
+  }
+
+  async captureFailedCreateJobDiagnostics(method, path, body) {
+    if (method !== 'POST' || path !== '/jobs') return null
+    if (!body || typeof body !== 'object') return null
+    const description = typeof body.description === 'string' ? body.description : ''
+    if (!description.includes(this.runId)) return null
+
+    const { data: jobs, error: jobError } = await this.admin
+      .from('jobs')
+      .select('id, status, service_type, created_at')
+      .ilike('description', `%${this.runId}%`)
+      .order('created_at', { ascending: false })
+      .limit(5)
+    if (jobError) return { job_query_error: jobError.message }
+
+    const jobIds = (jobs ?? []).map((job) => job.id).filter(Boolean)
+    if (jobIds.length === 0) return { jobs: [] }
+
+    const { data: audits, error: auditError } = await this.admin
+      .from('kael_autonomy_decision_audit')
+      .select('job_id, gate_result, reason_code, from_status, to_status, resulting_event, confidence, safe_metadata, created_at')
+      .in('job_id', jobIds)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    return {
+      jobs,
+      audits: auditError ? { error: auditError.message } : audits,
+    }
   }
 
   async run() {
@@ -630,6 +663,7 @@ class P15Harness {
     const scenario = SERVICE_SCENARIOS[scenarioIndex % SERVICE_SCENARIOS.length]
     const create = await this.api(customer, 'POST', '/jobs', {
       ...scenario,
+      description: `${scenario.description} Run ${this.runId}.`,
       address_building: 'P15 Staging Tower',
       address_unit: `A-${scenarioIndex + 1}01`,
       address_floor: `${scenarioIndex + 1}`,
@@ -640,14 +674,24 @@ class P15Harness {
     this.fixtures.jobIds.push(jobId)
     this.fixtures.intakeJobIds.push(jobId)
     this.results.timings.intakeMs.push(create.durationMs)
-    assert(create.json?.status === 'awaiting_customer_confirm', `${caseId}: job not awaiting customer confirm`)
+    assert(
+      create.json?.status === 'awaiting_customer_confirm' || create.json?.status === 'broadcasting',
+      `${caseId}: job not ready for matching; status=${create.json?.status}`,
+    )
     assert(create.json?.estimate?.price_max > 0, `${caseId}: missing Kael estimate`)
 
-    const confirmed = await this.api(customer, 'POST', `/jobs/${jobId}/confirm-search`)
-    assert(
-      confirmed.json?.broadcast_sent === true,
-      `${caseId}: broadcast was not sent; message=${confirmed.json?.message ?? 'none'}`,
-    )
+    if (create.json?.status === 'awaiting_customer_confirm') {
+      const confirmed = await this.api(customer, 'POST', `/jobs/${jobId}/confirm-search`)
+      assert(
+        confirmed.json?.broadcast_sent === true,
+        `${caseId}: broadcast was not sent; message=${confirmed.json?.message ?? 'none'}`,
+      )
+    } else {
+      assert(
+        create.json?.broadcast_sent === true,
+        `${caseId}: autonomous broadcast was not sent; message=${create.json?.message ?? 'none'}`,
+      )
+    }
     const worker = await this.findBroadcastWorker(jobId)
     const accepted = await this.api(worker, 'POST', `/jobs/${jobId}/accept`)
     assert(accepted.json?.status === 'worker_matched', `${caseId}: worker accept did not match`)
@@ -671,6 +715,7 @@ class P15Harness {
   }
 
   async completeMatchedJob(customer, worker, jobId, review) {
+    let completionFinalStatus = null
     const steps = [
       { status: 'worker_on_way' },
       { status: 'arrived' },
@@ -684,10 +729,22 @@ class P15Harness {
     ]
     for (const step of steps) {
       const res = await this.api(worker, 'PATCH', `/jobs/${jobId}/status`, step)
-      assert(res.json?.to_status === step.status, `status update did not reach ${step.status}`)
+      const actualStatus = res.json?.to_status ?? res.json?.status
+      const expectedStatuses = step.status === 'completed_by_worker'
+        ? ['completed_by_worker', 'confirmed_by_customer']
+        : [step.status]
+      assert(
+        expectedStatuses.includes(actualStatus),
+        `status update did not reach ${step.status}; actual=${actualStatus ?? 'missing'}`,
+      )
+      if (step.status === 'completed_by_worker') {
+        completionFinalStatus = actualStatus
+      }
     }
-    const confirmed = await this.api(customer, 'POST', `/jobs/${jobId}/confirm-completion`)
-    assert(confirmed.json?.status === 'confirmed_by_customer', 'customer confirm did not set confirmed_by_customer')
+    if (completionFinalStatus !== 'confirmed_by_customer') {
+      const confirmed = await this.api(customer, 'POST', `/jobs/${jobId}/confirm-completion`)
+      assert(confirmed.json?.status === 'confirmed_by_customer', 'customer confirm did not set confirmed_by_customer')
+    }
     if (review) {
       const reviewed = await this.api(customer, 'POST', `/jobs/${jobId}/review`, {
         rating: 5,
@@ -732,7 +789,7 @@ class P15Harness {
       customer_id: customer.id,
       worker_id: worker?.id ?? null,
       service_type,
-      description: `P15 staging fixture ${status} for ${service_type}`,
+      description: `P15 staging fixture ${this.runId} ${status} for ${service_type}`,
       problem_chips: ['p15_fixture'],
       photo_urls: [],
       address_building: 'P15 Staging Tower',
@@ -840,47 +897,67 @@ class P15Harness {
     const jobIds = Array.from(new Set(this.fixtures.jobIds))
     if (jobIds.length === 0) return true
     const cli = this.config.supabaseCli
+    const workdir = this.config.supabaseWorkdir
     const token = this.config.supabaseAccessToken
     if (!cli || !existsSync(cli)) {
       this.results.limitations.push('Cleanup SQL skipped because P15_SUPABASE_CLI was unavailable.')
       return false
     }
+    if (!workdir || !existsSync(workdir)) {
+      this.results.limitations.push('Cleanup SQL skipped because P15_SUPABASE_WORKDIR was unavailable.')
+      return false
+    }
     const uuidArray = `array[${jobIds.map((id) => `'${id}'`).join(',')}]::uuid[]`
+    const runIdSql = this.runId.replace(/'/g, "''")
+    const jobPredicate = jobIds.length > 0
+      ? `(id = any(${uuidArray}) or description like '%${runIdSql}%')`
+      : `description like '%${runIdSql}%'`
     const sql = `
 begin;
 alter table public.evidence_snapshots disable trigger evidence_snapshots_immutable;
-delete from public.disputes where job_id = any(${uuidArray});
-delete from public.evidence_snapshots where job_id = any(${uuidArray});
+delete from public.disputes where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.evidence_snapshots where job_id in (select id from public.jobs where ${jobPredicate});
 alter table public.evidence_snapshots enable trigger evidence_snapshots_immutable;
-delete from public.kael_admin_queue where job_id = any(${uuidArray});
-delete from public.kael_interaction_log where job_id = any(${uuidArray});
-delete from public.worker_cancellation_requests where job_id = any(${uuidArray});
-delete from public.customer_cancellation_records where job_id = any(${uuidArray});
-delete from public.scope_change_requests where job_id = any(${uuidArray});
-delete from public.job_media_assets where job_id = any(${uuidArray});
-delete from public.chat_messages where job_id = any(${uuidArray});
-delete from public.job_events where job_id = any(${uuidArray});
-delete from public.job_broadcasts where job_id = any(${uuidArray});
-delete from public.api_logs where job_id = any(${uuidArray});
-delete from public.notifications where job_id = any(${uuidArray});
-delete from public.reviews where job_id = any(${uuidArray});
-delete from public.jobs where id = any(${uuidArray});
+delete from public.kael_admin_queue where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.kael_autonomy_decision_audit where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.kael_guardrail_trip_audit where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.kael_knowledge_usage_log where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.kael_interaction_log where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.worker_cancellation_requests where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.customer_cancellation_records where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.scope_change_requests where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.job_media_assets where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.chat_messages where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.job_events where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.job_broadcasts where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.api_logs where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.notifications where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.reviews where job_id in (select id from public.jobs where ${jobPredicate});
+delete from public.jobs where ${jobPredicate};
 commit;
 `
     const tempDir = await mkdtemp(resolve(tmpdir(), 'p15-cleanup-'))
     const sqlPath = resolve(tempDir, 'cleanup.sql')
     await writeFile(sqlPath, sql, 'utf8')
     try {
+      const args = [
+        'db',
+        'query',
+        '--linked',
+        '--file',
+        sqlPath,
+        '--output',
+        'json',
+        '--workdir',
+        workdir,
+      ]
       const result = spawnSync(
-        process.platform === 'win32' ? (process.env.ComSpec ?? 'cmd.exe') : cli,
-        process.platform === 'win32'
-          ? ['/d', '/c', `""${cli}" db query --linked --file "${sqlPath}" --output json"`]
-          : ['db', 'query', '--linked', '--file', sqlPath, '--output', 'json'],
+        cli,
+        args,
         {
           cwd: REPO_ROOT,
           env: token ? { ...process.env, SUPABASE_ACCESS_TOKEN: token } : process.env,
           encoding: 'utf8',
-          windowsVerbatimArguments: process.platform === 'win32',
           maxBuffer: 10 * 1024 * 1024,
         },
       )
@@ -897,6 +974,13 @@ commit;
     const jobIds = Array.from(new Set(this.fixtures.jobIds))
     const userIds = Array.from(new Set(this.fixtures.users))
     const tableCounts = {}
+    const { count: runJobCount, error: runJobError } = await this.admin
+      .from('jobs')
+      .select('id', { count: 'exact', head: true })
+      .ilike('description', `%${this.runId}%`)
+    if (runJobError) throw new Error(`cleanup run job count: ${runJobError.message}`)
+    tableCounts.jobs_by_run = runJobCount ?? 0
+
     if (jobIds.length > 0) {
       for (const table of [
         'jobs',
@@ -1011,13 +1095,22 @@ function loadConfig() {
   ).replace(/\/$/, '')
   assertStagingUrl(supabaseUrl, 'P15_SUPABASE_URL')
   assertStagingUrl(apiBaseUrl, 'P15_API_BASE_URL')
+  const supabaseCli = requireEnv('P15_SUPABASE_CLI')
+  const supabaseWorkdir = requireEnv('P15_SUPABASE_WORKDIR')
+  if (!existsSync(supabaseCli)) {
+    throw new Error(`P15_SUPABASE_CLI does not exist: ${supabaseCli}`)
+  }
+  if (!existsSync(supabaseWorkdir)) {
+    throw new Error(`P15_SUPABASE_WORKDIR does not exist: ${supabaseWorkdir}`)
+  }
   return {
     supabaseUrl,
     anonKey,
     serviceRoleKey,
     apiBaseUrl,
     reportPath: resolve(REPO_ROOT, readEnv('P15_REPORT_PATH') ?? DEFAULT_REPORT_PATH),
-    supabaseCli: readEnv('P15_SUPABASE_CLI'),
+    supabaseCli,
+    supabaseWorkdir,
     supabaseAccessToken: readEnv('SUPABASE_ACCESS_TOKEN'),
   }
 }

@@ -1052,6 +1052,89 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(sharedTypes).toContain('admin_decide_dispute_atomic')
   })
 
+  it('adds Section 32 disintermediation risk queue without hard worker punishment', () => {
+    const migration = readMigrationByName('disintermediation_admin_queue')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const guardStart = edgeServices.indexOf('async function recordWorkerDisintermediationRisk')
+    const guardEnd = edgeServices.indexOf('async function maybeHandleDemandingCustomerJobChat')
+    const guardBlock = edgeServices.slice(guardStart, guardEnd)
+
+    expect(migration).toContain('disintermediation_risk')
+    expect(edgeServices).toContain('evaluateJobChatContactGuard')
+    expect(edgeServices).toContain('maybeHandleJobChatContactGuard')
+    expect(edgeServices).toContain('recordWorkerDisintermediationRisk')
+    expect(guardBlock).toContain('queue_type: "disintermediation_risk"')
+    expect(guardBlock).toContain('disintermediation_contact_leak')
+    expect(guardBlock).not.toContain('is_suspended')
+    expect(guardBlock).not.toContain('verification_status')
+  })
+
+  it('adds Section 32 apartment access staged release without worker-side exact unit leakage', () => {
+    const migration = readMigrationByName('apartment_access_release')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const mobileProvider = read('apps/mobile/lib/frontend-workflow-provider.tsx')
+    const workerSurface = read('apps/mobile/components/worker/worker-surfaces.tsx')
+
+    expect(migration).toContain('create table if not exists public.kael_chat_pre_intake_memory')
+    expect(migration).toContain('access_profile jsonb not null')
+    expect(migration).toContain('apartment_access_profile jsonb not null')
+    expect(migration).toContain('apartment_access_state jsonb not null')
+    expect(migration).toContain('for each row execute function update_updated_at()')
+    expect(migration).not.toContain('private.set_updated_at()')
+    expect(migration).toContain('Exact unit unlocks only after valid lobby/last-50m check-in')
+    expect(edgeServices).toContain('projectAddressAccess(row, "worker")')
+    expect(edgeServices).toContain('forcedStage: "building_released"')
+    expect(edgeServices).toContain('buildUnitReleaseAccessState')
+    expect(edgeServices).toContain('apartment_access_release: true')
+    expect(edgeRouter).toContain('parseWorkerAccessCheckIn')
+    expect(edgeRouter).toContain('mode === "manual_photo" && (!photoUrls || photoUrls.length === 0)')
+    expect(mobileProvider).toContain('job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress')
+    expect(workerSurface).toContain('Exact unit unlocks after lobby check-in and identity check.')
+  })
+
+  it('keeps Plan31 production advisor fixes for helper search paths and RLS initplan', () => {
+    const migration = read('supabase/migrations/20260605003000_fix_plan31_post_advisor_warnings.sql')
+
+    expect(migration).toContain('create or replace function private.kael_b4_service_label_vi')
+    expect(migration).toContain('create or replace function private.kael_b4_json_int')
+    expect(migration).toContain('set search_path = pg_catalog')
+    expect(migration).toContain('using (customer_id = (select auth.uid()) or (select private.is_admin()))')
+  })
+
+  it('locks Section 32 LLM boundary to edge phrasing while decisions stay deterministic', () => {
+    const boundaryContract = read('supabase/functions/mobile-api/_shared/kael/ai-boundary-contract.ts')
+    const workerAssist = read('supabase/functions/mobile-api/_shared/kael/worker-assist.ts')
+    const demanding = read('supabase/functions/mobile-api/_shared/kael/agentic/case-2-demanding.ts')
+    const workerCancel = read('supabase/functions/mobile-api/_shared/kael/agentic/case-3-worker-cancel.ts')
+    const customerCancel = read('supabase/functions/mobile-api/_shared/kael/agentic/case-4-customer-cancel.ts')
+    const dispute = read('supabase/functions/mobile-api/_shared/kael/agentic/case-5-dispute.ts')
+    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+
+    expect(boundaryContract).toContain('KAEL_DETERMINISTIC_DECISION_SURFACES')
+    expect(boundaryContract).toContain('"scope_change_decision"')
+    expect(boundaryContract).toContain('"dispute_outcome"')
+    expect(boundaryContract).toContain('"penalty_or_compensation"')
+    expect(workerAssist).toContain('workerAssistResponseSchema')
+    expect(workerAssist).toContain('detectForbiddenAiDecisionText')
+    expect(workerAssist).toContain('runKaelSelfCheckPipeline')
+    expect(workerAssist).toContain('fallbackAnswer')
+    expect(demanding).toContain('safeDemandingResponseText')
+    expect(dispute).toContain('assertNeutralDisputeLanguage')
+    expect(dispute).toContain('detectForbiddenAiDecisionText')
+    for (const source of [demanding, workerCancel, customerCancel, dispute]) {
+      expect(source).not.toContain('callAI(')
+      expect(source).not.toContain('chooseProvider(')
+    }
+    expect(customerCancel).toContain('customerPenaltyAmount: null')
+    expect(customerCancel).toContain('workerCompensationAmount: null')
+    expect(workerCancel).toContain('autonomous_suspension: false')
+    expect(services).toContain('validateKaelAutonomyTransition')
+    expect(services).toContain('open_dispute_atomic')
+    expect(services).toContain('request_customer_cancellation_atomic')
+    expect(services).toContain('request_worker_cancellation_atomic')
+  })
+
   it('splits Supabase box admin RLS policies so SELECT has one permissive path', () => {
     const migration = read('supabase/migrations/20260519122000_consolidate_box_admin_rls_policies.sql')
 

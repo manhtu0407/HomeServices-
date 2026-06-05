@@ -8,7 +8,7 @@ import { Alert, FlatList, Linking, Modal, Platform, Pressable, ScrollView, Style
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { HCMC_DISTRICTS, LOCAL_DEAL_ID, LOCAL_WORKFLOW_PRICE_DISCLAIMER, hasLocalDealCompletionEvidence, normalizeDistrict, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type DistrictSlug, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus, type WorkflowPhaseContext } from '@home-services/shared'
+import { HCMC_DISTRICTS, LOCAL_DEAL_ID, LOCAL_WORKFLOW_PRICE_DISCLAIMER, hasLocalDealCompletionEvidence, normalizeDistrict, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type DistrictSlug, type LocalDeal, type LocalDealStatus, type LocalKaelProgress, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus, type WorkflowPhaseContext } from '@home-services/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import { GlassModalSheet } from '@/components/ui/glass-modal-sheet'
@@ -18,11 +18,11 @@ import { motionTokens } from '@/components/ui/motion-tokens'
 import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import type { GlassMaterial } from '@/components/ui/tokens'
 import { appCopy, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel, setAppLanguage, type AppLanguage, useAppLanguage } from '@/lib/app-language'
-import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
+import type { EarningsResponse, JobMessageResponse, KaelChatProgress, WorkerKaelChatResponse, WorkerKaelChatTurn, WorkerProfileResponse } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { uploadJobMediaDrafts, uploadWorkerVerificationDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
-import type { JobMessageResponse } from '@/lib/api-types'
+import { workerKaelChatService } from '@/lib/services'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
 
@@ -34,6 +34,7 @@ const WORKER_FLEXIBLE_MAP_SHELL = 'WORKER_FLEXIBLE_MAP_SHELL: worker-map-google-
 const WORKER_DOCK_GLASS_MOTION = 'WORKER_DOCK_GLASS_MOTION: worker-dock-glass-aura worker-liquid-glass-dock worker-dock-kael-mascot-icon worker-dock-client-style-icon'
 const WORKER_GLASSMORPHISM_MOTION_LAYER = 'WORKER_GLASSMORPHISM_MOTION_LAYER: shared-glass-pressable static-depth-layer centered-metric-type'
 const WORKER_MAP_BALANCED_DIRECTION = 'WORKER_MAP_BALANCED_DIRECTION: docs/design/worker-map-operation-balanced-20260531.md vector-map-no-screenshot'
+void WORKER_MAP_BALANCED_DIRECTION
 const WORKER_CHATBOX_EMPTY_COMPOSER = 'WORKER_CHATBOX_EMPTY_COMPOSER: worker-kael-empty-chat-state worker-kael-chat-input submitWorkerChatMessage'
 const WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT = 'WORKER_NO_FULL_ADDRESS_BEFORE_ACCEPT: general area only until worker accepts'
 const WORKER_NO_FAKE_PAYMENT_DATA = 'WORKER_NO_FAKE_PAYMENT_DATA: worker-no-fake-payment-data'
@@ -135,6 +136,7 @@ type WorkerIconName =
 type WorkerChatLocalState = {
   draft: string
   localMessages: WorkerChatLocalMessage[]
+  mediaDrafts: LocalMediaUploadDraft[]
   reveal: { requested: number; step: number }
 }
 type WorkerChatLocalMessage = {
@@ -224,7 +226,7 @@ let lastWorkerDockActive: WorkerActiveTab = 'home'
 const workerJobsTabKeys: WorkerJobsTab[] = ['waiting', 'active', 'needs']
 
 function createWorkerChatLocalState(): WorkerChatLocalState {
-  return { draft: '', localMessages: [], reveal: { requested: 0, step: 0 } }
+  return { draft: '', localMessages: [], mediaDrafts: [], reveal: { requested: 0, step: 0 } }
 }
 
 function isWorkerJobsTab(value: unknown): value is WorkerJobsTab {
@@ -265,7 +267,7 @@ const workerEarningsImageIcons: Partial<Record<WorkerIconName, WorkerImageIconNa
   document: 'utilityEarningsLedger',
   money: 'utilityEarningsWallet',
 }
-const workerServiceAreaAnchors: Array<{ lat: number; lng: number; slug: Exclude<DistrictSlug, 'hcmc_all'> }> = [
+const workerServiceAreaAnchors: { lat: number; lng: number; slug: Exclude<DistrictSlug, 'hcmc_all'> }[] = [
   { slug: 'q1', lat: 10.7757, lng: 106.7004 },
   { slug: 'q3', lat: 10.7844, lng: 106.6841 },
   { slug: 'q7', lat: 10.7355, lng: 106.7218 },
@@ -322,6 +324,7 @@ type WorkerThemeTokens = {
   primaryText: string
   aqua: string
   copper: string
+  danger: string
   line: string
   mapLine: string
   mapBlock: string
@@ -354,6 +357,7 @@ const lightLayer: WorkerThemeTokens = {
   primaryText: '#FFFFFF',
   aqua: '#51BBC0',
   copper: '#BB743D',
+  danger: '#B43F3F',
   line: 'rgba(35,96,84,0.13)',
   mapLine: 'rgba(39,108,96,0.13)',
   mapBlock: 'rgba(255,255,255,0.56)',
@@ -386,6 +390,7 @@ const darkLayer: WorkerThemeTokens = {
   primaryText: '#08201D',
   aqua: '#82DDE2',
   copper: '#E2A56E',
+  danger: '#FF9A8C',
   line: 'rgba(190,210,205,0.09)',
   mapLine: 'rgba(190,210,205,0.15)',
   mapBlock: 'rgba(255,255,255,0.055)',
@@ -1031,7 +1036,7 @@ export function WorkerJobsSurface() {
   const { replace } = useRouter()
   const { selectors, state } = useFrontendWorkflow()
   const requestedTab = isWorkerJobsTab(params.tab) ? params.tab : defaultWorkerJobsTab
-  const [activeJobsTab, setActiveJobsTab] = useState<WorkerJobsTab>(requestedTab)
+  const activeJobsTab = requestedTab
   const deal = getWorkerVisibleDeal(state.deal)
   const jobTitle = deal ? localizedServiceLabel(deal.draft.serviceType, language) : copy.jobs.emptyTitle
   const hiddenAddressLabel = workerActionCopy[language].hiddenAddress
@@ -1074,11 +1079,7 @@ export function WorkerJobsSurface() {
       ? (language === 'en' ? 'Accepted jobs and the next action' : 'Việc đã nhận và bước tiếp theo')
       : (language === 'en' ? 'Blocked work that needs a decision' : 'Việc đang chặn tiến trình')
   const jobsFrameSubtitle = activeJobsTab === 'active' ? copy.jobs.subtitle : jobsFrameSubtitleFallback
-  useEffect(() => {
-    setActiveJobsTab((current) => current === requestedTab ? current : requestedTab)
-  }, [requestedTab])
   const selectJobsTab = (tab: WorkerJobsTab) => {
-    setActiveJobsTab(tab)
     replace(`/(worker)/jobs?tab=${tab}`)
   }
 
@@ -1348,6 +1349,63 @@ function selectWorkerPhasePrimarySection(
   return visibleSections.find((section) => section.id === phaseContext.primaryArtifact?.id) ?? visibleSections[0] ?? null
 }
 
+function resolveWorkerScopeProgressLabel(progress: LocalKaelProgress | null, language: WorkerLanguageMode) {
+  if (!progress) return language === 'en' ? 'Kael is reviewing' : 'Kael đang xét'
+  if (progress.status === 'failed') return language === 'en' ? 'Needs retry' : 'Cần thử lại'
+  if (progress.current_stage === 'scope_reviewing') {
+    return language === 'en' ? 'Kael is reviewing evidence' : 'Kael đang rà soát bằng chứng'
+  }
+  if (progress.current_stage === 'scope_estimating') {
+    if (progress.status === 'completed') {
+      return language === 'en' ? 'Kael estimate ready' : 'Kael đã tính xong'
+    }
+    return language === 'en' ? 'Kael is estimating' : 'Kael đang tính phạm vi'
+  }
+  return language === 'en' ? 'Kael is reviewing' : 'Kael đang xét'
+}
+
+function resolveWorkerScopeProgressBody(
+  progress: LocalKaelProgress | null,
+  fallbackBody: string,
+  language: WorkerLanguageMode,
+) {
+  if (!progress) return fallbackBody
+  if (progress.status === 'failed') {
+    return language === 'en'
+      ? 'Kael could not finish this scope review yet. The job stays app-owned and price changes must be retried from the job room.'
+      : 'Kael chưa hoàn tất phần xét phạm vi này. Việc vẫn thuộc app và thay đổi giá cần thử lại trong phòng việc.'
+  }
+  if (progress.current_stage === 'scope_reviewing') {
+    return language === 'en'
+      ? 'Kael is checking the worker report and attached evidence before any price decision appears.'
+      : 'Kael đang kiểm tra mô tả của thợ và bằng chứng đã gửi trước khi hiện quyết định giá.'
+  }
+  if (progress.current_stage === 'scope_estimating') {
+    if (progress.status === 'completed') {
+      return language === 'en'
+        ? 'Kael has prepared the scope estimate. The customer still decides inside the app before work continues.'
+        : 'Kael đã chuẩn bị ước tính phạm vi. Khách vẫn quyết định trong app trước khi tiếp tục.'
+    }
+    return language === 'en'
+      ? 'Kael is turning the reviewed evidence into an app-owned scope estimate.'
+      : 'Kael đang chuyển bằng chứng đã rà soát thành ước tính phạm vi thuộc app.'
+  }
+  return fallbackBody
+}
+
+function resolveWorkerScopeProgressValue(progress: LocalKaelProgress | null, language: WorkerLanguageMode) {
+  if (!progress) return language === 'en' ? 'Waiting for live state' : 'Chờ trạng thái thật'
+  const percent = `${Math.round(Math.max(0, Math.min(1, progress.progress)) * 100)}%`
+  const status = progress.status === 'completed'
+    ? (language === 'en' ? 'done' : 'xong')
+    : progress.status === 'failed'
+      ? (language === 'en' ? 'failed' : 'lỗi')
+      : progress.status === 'queued'
+        ? (language === 'en' ? 'queued' : 'đang chờ')
+        : (language === 'en' ? 'running' : 'đang chạy')
+  return `${percent} · ${status}`
+}
+
 function WorkerNeedsReviewCard() {
   const { copy, language, tokens } = useWorkerUi()
   const { replace } = useRouter()
@@ -1505,9 +1563,13 @@ function WorkerNeedsReviewCard() {
   }
 
   const requestedScope = scopeChange?.requestedDescription ?? copy.jobs.scopeBody
+  const scopeProgress = scopeChange?.kaelProgress ?? null
+  const scopeProgressLabel = resolveWorkerScopeProgressLabel(scopeProgress, language)
+  const scopeProgressBody = resolveWorkerScopeProgressBody(scopeProgress, copy.jobs.scopeBody, language)
+  const scopeProgressValue = resolveWorkerScopeProgressValue(scopeProgress, language)
   const missingReasonLabel = language === 'en' ? 'Waiting for worker evidence' : 'Chờ bằng chứng từ thợ'
   const missingEstimateLabel = language === 'en' ? 'Waiting for Kael estimate' : 'Chờ Kael ước tính'
-  const pendingPriceDecisionLabel = language === 'en' ? 'Kael is reviewing' : 'Kael đang xét'
+  const pendingPriceDecisionLabel = scopeProgressLabel
   const reason = scopeChange?.reason?.trim() || missingReasonLabel
   const originalScope = deal?.draft.description || deal?.draft.inferredProblemLabel || copy.jobs.scopeBody
   const originalPrice = deal?.estimate?.priceRangeLabel ?? missingEstimateLabel
@@ -1525,7 +1587,7 @@ function WorkerNeedsReviewCard() {
         <WorkerUtilityIcon active frameSize={48} icon="brief" size={48} style={styles.needsInlineImageIcon} />
         <View style={styles.titleStack}>
           <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.cream, borderColor: tokens.border, borderWidth: 1, color: tokens.copper }]} numberOfLines={1}>
-            {copy.jobs.scopeStatus}
+            {scopeProgressLabel}
           </Text>
           <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
             {copy.jobs.scopeTitle}
@@ -1533,7 +1595,7 @@ function WorkerNeedsReviewCard() {
         </View>
       </View>
       <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
-        {copy.jobs.scopeBody}
+        {scopeProgressBody}
       </Text>
       <View style={[styles.jobDiagnosisBox, workerDiagnosisSurface(tokens)]} testID="worker-scope-change-kael-summary">
         <Text style={[styles.kaelBriefTitle, { color: tokens.ink }]} numberOfLines={1}>
@@ -1548,6 +1610,7 @@ function WorkerNeedsReviewCard() {
         <JobRoomMetaCell label={language === 'en' ? 'Current estimate' : 'Ước tính hiện tại'} value={originalPrice} />
         <JobRoomMetaCell label={language === 'en' ? 'Requested work' : 'Phần việc mới'} value={requestedScope} />
         <JobRoomMetaCell label={language === 'en' ? 'Reason' : 'Lý do'} value={reason} />
+        <JobRoomMetaCell label={language === 'en' ? 'Kael progress' : 'Tiến trình Kael'} value={scopeProgressValue} />
         <JobRoomMetaCell label={language === 'en' ? 'Kael price decision' : 'Giá Kael xét'} value={price} />
       </View>
       <View style={styles.actionRow}>
@@ -1710,21 +1773,18 @@ function WorkerFrame({
   const workerUiValue = useMemo(() => ({ copy, language, mode, tokens }), [copy, language, mode, tokens])
   const routeScrollRef = useRef<ScrollView | null>(null)
   const lastScrollYRef = useRef(0)
-  const dockHiddenRef = useRef(false)
-  const [dockHidden, setDockHidden] = useState(false)
   const dockRouteResetKey = `${active}:${pathname}`
-  const dockHiddenRouteKeyRef = useRef(dockRouteResetKey)
-  if (dockHiddenRouteKeyRef.current !== dockRouteResetKey) {
-    dockHiddenRouteKeyRef.current = dockRouteResetKey
+  const [dockState, setDockState] = useState({ hidden: false, routeKey: dockRouteResetKey })
+  const dockHidden = dockState.routeKey === dockRouteResetKey ? dockState.hidden : false
+  useEffect(() => {
     lastScrollYRef.current = 0
-    dockHiddenRef.current = false
-    if (dockHidden) setDockHidden(false)
-  }
+  }, [dockRouteResetKey])
   const setDockHiddenSafely = useCallback((nextHidden: boolean) => {
-    if (dockHiddenRef.current === nextHidden) return
-    dockHiddenRef.current = nextHidden
-    setDockHidden(nextHidden)
-  }, [])
+    setDockState((current) => {
+      if (current.routeKey === dockRouteResetKey && current.hidden === nextHidden) return current
+      return { hidden: nextHidden, routeKey: dockRouteResetKey }
+    })
+  }, [dockRouteResetKey])
   const handleWorkerDockScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (hideDock || !routeIsFocused) return
 
@@ -1979,9 +2039,20 @@ function useWorkerChatComposerActions({
     if (result.canceled || !result.assets[0]) return
     const asset = result.assets[0]
     const fileName = asset.fileName ?? asset.uri.split('/').pop() ?? workerChatAttachmentFallbackName(language)
+    const draft: LocalMediaUploadDraft = {
+      fileName,
+      fileSizeBytes: asset.fileSize ?? undefined,
+      mimeType: asset.mimeType ?? undefined,
+      type: 'image',
+      uri: asset.uri,
+    }
+    setChatLocalState((current) => ({
+      ...current,
+      mediaDrafts: [...current.mediaDrafts, draft].slice(-5),
+    }))
     appendDraftNote(workerChatAttachmentDraftLine(language, fileName))
     Alert.alert(attachLabel, workerChatAttachmentReadyBody(language, chatCanSend))
-  }, [appendDraftNote, attachLabel, chatCanEdit, chatCanSend, chatInputPlaceholder, language, startJobRoomReveal])
+  }, [appendDraftNote, attachLabel, chatCanEdit, chatCanSend, chatInputPlaceholder, language, setChatLocalState, startJobRoomReveal])
 
   const handleWorkerMicPress = useCallback(() => {
     startJobRoomReveal()
@@ -2032,6 +2103,20 @@ function WorkerChatContent() {
   const broadcast = deal?.broadcast ?? null
   const dealChatKey = workerChatDealKey(deal)
   const [chatLocalState, setChatLocalState] = useState(createWorkerChatLocalState)
+  const [workerKaelChat, setWorkerKaelChat] = useState<WorkerKaelChatResponse | null>(null)
+  const [workerKaelChatError, setWorkerKaelChatError] = useState<string | null>(null)
+  const [workerKaelChatLoading, setWorkerKaelChatLoading] = useState(false)
+  const [workerKaelChatSending, setWorkerKaelChatSending] = useState(false)
+  const [workerKaelLiveProgress, setWorkerKaelLiveProgress] = useState<KaelChatProgress | null>(null)
+  const [workerKaelPendingMessage, setWorkerKaelPendingMessage] = useState<string | null>(null)
+  const [workerKaelStreamingText, setWorkerKaelStreamingText] = useState('')
+  const [workerKaelFeedbackOpen, setWorkerKaelFeedbackOpen] = useState(false)
+  const [workerKaelFeedbackValue, setWorkerKaelFeedbackValue] = useState('')
+  const [workerKaelFeedbackError, setWorkerKaelFeedbackError] = useState<string | null>(null)
+  const [workerKaelFeedbackSaving, setWorkerKaelFeedbackSaving] = useState(false)
+  const [workerKaelFeedbackSent, setWorkerKaelFeedbackSent] = useState(false)
+  const [workerTrainingConsent, setWorkerTrainingConsent] = useState(false)
+  const [workerTrainingConsentSaving, setWorkerTrainingConsentSaving] = useState(false)
   const draft = chatLocalState.draft
   const jobRoomReveal = chatLocalState.reveal
   const activeDealChatKeyRef = useRef(dealChatKey)
@@ -2053,8 +2138,21 @@ function WorkerChatContent() {
   const chatCanEdit = chatCanSend || chatIsStandalonePreview
   const chatLockedReason = chatSection?.lockedReason ? workflowBlockedReasonLabel(chatSection.lockedReason, language) : null
   const jobChat = useJobChatThread(workerChatJobId, chatCanRead)
+  const activeWorkerKaelChatState = workerKaelChat?.session.job_id === workerChatJobId ? workerKaelChat : null
+  const visibleWorkerKaelChatError = workerChatJobId && chatCanRead ? workerKaelChatError : null
+  const visibleWorkerKaelChatLoading = Boolean(workerChatJobId && chatCanRead && workerKaelChatLoading)
+  const visibleWorkerKaelLiveProgress = workerChatJobId && chatCanRead ? workerKaelLiveProgress : null
+  const visibleWorkerKaelStreamingText = workerChatJobId && chatCanRead ? workerKaelStreamingText : ''
+  const workerKaelMessages = activeWorkerKaelChatState
+    ? activeWorkerKaelChatState.turns.map((turn) => workerChatMessageFromWorkerKaelTurn(turn, language))
+    : []
+  const workerKaelPendingMessages = workerKaelPendingMessage
+    ? [{ id: 'worker-kael-pending-message', mine: true, system: false, text: workerKaelPendingMessage, who: copy.chat.worker }]
+    : []
   const renderedMessages = [
     ...chatLocalState.localMessages,
+    ...workerKaelMessages,
+    ...workerKaelPendingMessages,
     ...jobChat.messages.map((message) => workerChatMessageFromJobMessage(message, session?.user.id ?? null, language)),
   ]
   const hasAnyWorkerKaelMessage = Boolean(broadcast || renderedMessages.length > 0)
@@ -2089,6 +2187,11 @@ function WorkerChatContent() {
   const showJobRoomMessage = jobRoomReveal.step >= 2
   const showJobRoomBrief = jobRoomReveal.step >= 3
   const showJobRoomDetails = jobRoomReveal.step >= 4
+  const showWorkerKaelStatusOutsideReveal = Boolean(
+    broadcast &&
+    !showJobRoomDetails &&
+    (visibleWorkerKaelChatError || visibleWorkerKaelChatLoading || workerKaelChatSending || visibleWorkerKaelLiveProgress),
+  )
   const startJobRoomReveal = () => {
     setChatLocalState((current) => current.reveal.requested >= 1 ? current : { ...current, reveal: { ...current.reveal, requested: 1 } })
   }
@@ -2108,12 +2211,77 @@ function WorkerChatContent() {
       return nextRequested === current.reveal.requested ? current : { ...current, reveal: { ...current.reveal, requested: nextRequested } }
     })
   }
+  const createWorkerKaelChatSessionForStream = async (jobId: string, chatLanguage: WorkerLanguageMode) => {
+    const result = await workerKaelChatService.create({
+      job_id: jobId,
+      media_refs: [],
+      language: chatLanguage,
+    })
+    return result.success ? result.data : null
+  }
 
   useEffect(() => {
     if (activeDealChatKeyRef.current === dealChatKey) return
     setChatLocalState(createWorkerChatLocalState())
+    setWorkerKaelChat(null)
+    setWorkerKaelChatError(null)
+    setWorkerKaelChatLoading(false)
+    setWorkerKaelChatSending(false)
+    setWorkerKaelLiveProgress(null)
+    setWorkerKaelPendingMessage(null)
+    setWorkerKaelStreamingText('')
     activeDealChatKeyRef.current = dealChatKey
   }, [dealChatKey])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!workerChatJobId || !chatCanRead) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void (async () => {
+      const listResult = await workerKaelChatService.list()
+      if (cancelled) return
+      if (!listResult.success) {
+        setWorkerKaelChatLoading(false)
+        setWorkerKaelChatError(workerKaelChatErrorCopy(language))
+        return
+      }
+      const sessionForJob = listResult.data.sessions.find((item) => item.job_id === workerChatJobId)
+      if (!sessionForJob) {
+        setWorkerKaelChat(null)
+        setWorkerKaelChatLoading(false)
+        return
+      }
+      const chatResult = await workerKaelChatService.get(sessionForJob.id)
+      if (cancelled) return
+      setWorkerKaelChatLoading(false)
+      if (chatResult.success) {
+        setWorkerKaelChatError(null)
+        setWorkerKaelChat(chatResult.data)
+      } else {
+        setWorkerKaelChatError(workerKaelChatErrorCopy(language))
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [chatCanRead, language, workerChatJobId])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const result = await workerKaelChatService.getTrainingConsent()
+      if (cancelled) return
+      if (result.success) setWorkerTrainingConsent(result.data.training_consent)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (jobRoomReveal.step >= targetRevealStep) return
@@ -2143,6 +2311,7 @@ function WorkerChatContent() {
       setChatLocalState((current) => ({
         ...current,
         draft: '',
+        mediaDrafts: [],
         localMessages: [
           ...current.localMessages,
           { id: workerMessageId, mine: true, system: false, text: value, who: copy.chat.worker },
@@ -2151,22 +2320,102 @@ function WorkerChatContent() {
       }))
       return
     }
-    const sent = await jobChat.send(value)
-    if (!sent) {
+    if (!workerChatJobId) return
+    setWorkerKaelChatSending(true)
+    setWorkerKaelChatError(null)
+    setWorkerKaelLiveProgress(null)
+    setWorkerKaelStreamingText('')
+    setWorkerKaelPendingMessage(value)
+    let mediaRefs: string[] = []
+    if (chatLocalState.mediaDrafts.length > 0) {
+      const uploaded = await uploadJobMediaDrafts(workerChatJobId, chatLocalState.mediaDrafts, 'before')
+      if (!uploaded.success) {
+        setWorkerKaelChatSending(false)
+        setWorkerKaelPendingMessage(null)
+        setWorkerKaelChatError(uploaded.error)
+        Alert.alert(copy.chat.sendErrorTitle, uploaded.error)
+        return
+      }
+      mediaRefs = uploaded.mediaRefs
+    }
+    const activeWorkerKaelChat = workerKaelChat?.session.job_id === workerChatJobId
+      ? workerKaelChat
+      : await createWorkerKaelChatSessionForStream(workerChatJobId, language)
+    if (!activeWorkerKaelChat) {
+      setWorkerKaelChatSending(false)
+      setWorkerKaelPendingMessage(null)
+      setWorkerKaelChatError(workerKaelChatErrorCopy(language))
       Alert.alert(copy.chat.sendErrorTitle, copy.chat.sendErrorBody)
       return
     }
+    setWorkerKaelChat(activeWorkerKaelChat)
+    const turnInput = { message: value, media_refs: mediaRefs, language }
+    const result = await workerKaelChatService.streamTurn(activeWorkerKaelChat.session.id, turnInput, {
+      onStage: (event) => setWorkerKaelLiveProgress(event.progress),
+      onToken: (event) => {
+        if (event.field === 'worker_assist') setWorkerKaelStreamingText((current) => `${current}${event.delta}`)
+      },
+      onResult: (event) => {
+        setWorkerKaelChat(event.data)
+        setWorkerKaelLiveProgress(event.data.session.progress)
+      },
+    })
+    setWorkerKaelChatSending(false)
+    setWorkerKaelPendingMessage(null)
+    setWorkerKaelStreamingText('')
+    if (!result.success) {
+      setWorkerKaelChatError(workerKaelChatErrorCopy(language))
+      Alert.alert(copy.chat.sendErrorTitle, copy.chat.sendErrorBody)
+      return
+    }
+    setWorkerKaelChat(result.data)
     setChatLocalState((current) => ({
       ...current,
       draft: '',
+      mediaDrafts: [],
       reveal: current.reveal.requested >= maxRevealStep ? current.reveal : { ...current.reveal, requested: maxRevealStep },
     }))
+  }
+  const submitWorkerKaelFeedback = async () => {
+    if (workerKaelFeedbackSaving) return
+    const message = workerKaelFeedbackValue.trim()
+    if (message.length < 8) {
+      setWorkerKaelFeedbackError(workerKaelFeedbackRequiredCopy(language))
+      return
+    }
+    setWorkerKaelFeedbackSaving(true)
+    setWorkerKaelFeedbackError(null)
+    const result = await workerKaelChatService.submitFeedback({
+      language,
+      message,
+      source: 'worker_chat',
+    })
+    setWorkerKaelFeedbackSaving(false)
+    if (!result.success) {
+      setWorkerKaelFeedbackError(workerKaelFeedbackSaveErrorCopy(language))
+      return
+    }
+    setWorkerKaelFeedbackSent(true)
+    setWorkerKaelFeedbackOpen(false)
+    setWorkerKaelFeedbackValue('')
+  }
+  const toggleWorkerTrainingConsent = async () => {
+    if (workerTrainingConsentSaving) return
+    const nextConsent = !workerTrainingConsent
+    setWorkerTrainingConsentSaving(true)
+    const result = await workerKaelChatService.setTrainingConsent({
+      language,
+      source: 'worker_chat',
+      training_consent: nextConsent,
+    })
+    setWorkerTrainingConsentSaving(false)
+    if (result.success) setWorkerTrainingConsent(result.data.training_consent)
   }
   const focusWorkerKaelComposer = () => {
     if (!chatIsStandalonePreview) startJobRoomReveal()
     stabilizeWorkerChatWebLayout()
   }
-  const canSubmitWorkerDraft = Boolean(draft.trim() && chatCanEdit && !jobChat.sending)
+  const canSubmitWorkerDraft = Boolean(draft.trim() && chatCanEdit && !jobChat.sending && !workerKaelChatSending)
 
   return (
     <View style={[styles.chatShell, showReferenceWelcome ? styles.chatShellReference : null]} testID="worker-chat-kael-relay">
@@ -2207,6 +2456,7 @@ function WorkerChatContent() {
                   {renderedMessages.map((message) => (
                     <ChatBubble key={message.id} {...message} />
                   ))}
+                  <WorkerKaelChatStatusBubble error={visibleWorkerKaelChatError} loading={visibleWorkerKaelChatLoading} progress={visibleWorkerKaelLiveProgress ?? activeWorkerKaelChatState?.session.progress ?? null} sending={workerKaelChatSending} streamingText={visibleWorkerKaelStreamingText} />
                 </View>
               ) : null}
               {showJobRoomMessage ? (
@@ -2222,6 +2472,7 @@ function WorkerChatContent() {
                       {renderedMessages.map((message) => (
                         <ChatBubble key={message.id} {...message} />
                       ))}
+                      <WorkerKaelChatStatusBubble error={visibleWorkerKaelChatError} loading={visibleWorkerKaelChatLoading} progress={visibleWorkerKaelLiveProgress ?? activeWorkerKaelChatState?.session.progress ?? null} sending={workerKaelChatSending} streamingText={visibleWorkerKaelStreamingText} />
                     </View>
                   ) : null}
                 </SequentialJobRoomReveal>
@@ -2265,6 +2516,7 @@ function WorkerChatContent() {
                       {renderedMessages.map((message) => (
                         <ChatBubble key={message.id} {...message} />
                       ))}
+                      <WorkerKaelChatStatusBubble error={visibleWorkerKaelChatError} loading={visibleWorkerKaelChatLoading} progress={visibleWorkerKaelLiveProgress ?? activeWorkerKaelChatState?.session.progress ?? null} sending={workerKaelChatSending} streamingText={visibleWorkerKaelStreamingText} />
                     </View>
                   ) : null}
                 </SequentialJobRoomReveal>
@@ -2272,6 +2524,33 @@ function WorkerChatContent() {
             </View>
           )}
           </View>
+
+          {showWorkerKaelStatusOutsideReveal ? (
+            <View style={styles.chatStack}>
+              <WorkerKaelChatStatusBubble error={visibleWorkerKaelChatError} loading={visibleWorkerKaelChatLoading} progress={visibleWorkerKaelLiveProgress ?? activeWorkerKaelChatState?.session.progress ?? null} sending={workerKaelChatSending} streamingText={visibleWorkerKaelStreamingText} />
+            </View>
+          ) : null}
+
+        <WorkerKaelParityPanel
+          consent={workerTrainingConsent}
+          consentSaving={workerTrainingConsentSaving}
+          feedbackError={workerKaelFeedbackError}
+          feedbackOpen={workerKaelFeedbackOpen}
+          feedbackSaving={workerKaelFeedbackSaving}
+          feedbackSent={workerKaelFeedbackSent}
+          feedbackValue={workerKaelFeedbackValue}
+          onCancelFeedback={() => {
+            setWorkerKaelFeedbackOpen(false)
+            setWorkerKaelFeedbackError(null)
+          }}
+          onChangeFeedback={(value) => {
+            setWorkerKaelFeedbackValue(value)
+            if (workerKaelFeedbackError) setWorkerKaelFeedbackError(null)
+          }}
+          onOpenFeedback={() => setWorkerKaelFeedbackOpen(true)}
+          onSubmitFeedback={submitWorkerKaelFeedback}
+          onToggleConsent={toggleWorkerTrainingConsent}
+        />
 
         <WorkerChatComposerDock
           canEdit={chatCanEdit}
@@ -2381,6 +2660,108 @@ function WorkerChatComposerDock({
   )
 }
 
+function WorkerKaelParityPanel({
+  consent,
+  consentSaving,
+  feedbackError,
+  feedbackOpen,
+  feedbackSaving,
+  feedbackSent,
+  feedbackValue,
+  onCancelFeedback,
+  onChangeFeedback,
+  onOpenFeedback,
+  onSubmitFeedback,
+  onToggleConsent,
+}: {
+  consent: boolean
+  consentSaving: boolean
+  feedbackError: string | null
+  feedbackOpen: boolean
+  feedbackSaving: boolean
+  feedbackSent: boolean
+  feedbackValue: string
+  onCancelFeedback: () => void
+  onChangeFeedback: (value: string) => void
+  onOpenFeedback: () => void
+  onSubmitFeedback: () => void
+  onToggleConsent: () => void
+}) {
+  const { language, tokens } = useWorkerUi()
+  const { reduceMotion } = useGlassAccessibility()
+
+  return (
+    <View style={[styles.workerKaelParityPanel, workerOpaqueCardSurface(tokens, 'mint')]} testID="worker-kael-parity-panel">
+      <View style={styles.rowBetween}>
+        <View style={styles.titleStack}>
+          <Text style={[styles.workerKaelParityTitle, { color: tokens.ink }]} numberOfLines={1}>
+            {language === 'en' ? 'Kael controls' : 'Tu\u1ef3 ch\u1ecdn Kael'}
+          </Text>
+          <Text style={[styles.workerKaelParityBody, { color: tokens.muted }]} numberOfLines={2}>
+            {workerKaelTrainingConsentBody(language, consent)}
+          </Text>
+        </View>
+        <Pressable
+          accessibilityLabel={workerKaelTrainingConsentLabel(language, consent)}
+          accessibilityRole="button"
+          accessibilityState={{ busy: consentSaving, checked: consent, disabled: consentSaving }}
+          disabled={consentSaving}
+          onPress={onToggleConsent}
+          style={({ pressed }) => [styles.workerKaelMiniButton, { borderColor: tokens.border }, workerOpaqueCardSurface(tokens, consent ? 'cyan' : 'warm'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+          testID="worker-kael-training-consent-toggle"
+        >
+          <Text style={[styles.workerKaelMiniButtonText, { color: consent ? tokens.primary : tokens.copper }]} numberOfLines={1}>
+            {workerKaelTrainingConsentLabel(language, consent)}
+          </Text>
+        </Pressable>
+      </View>
+      <View style={styles.workerKaelParityActions}>
+        <Pressable
+          accessibilityLabel={language === 'en' ? 'Send Kael feedback' : 'G\u1eedi ph\u1ea3n h\u1ed3i Kael'}
+          accessibilityRole="button"
+          onPress={onOpenFeedback}
+          style={({ pressed }) => [styles.workerKaelMiniButton, { borderColor: tokens.border }, workerOpaqueCardSurface(tokens, 'cream'), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+          testID="worker-kael-feedback-open"
+        >
+          <Text style={[styles.workerKaelMiniButtonText, { color: tokens.primary }]} numberOfLines={1}>
+            {feedbackSent
+              ? language === 'en' ? 'Feedback sent' : '\u0110\u00e3 g\u1eedi'
+              : language === 'en' ? 'Feedback' : 'Ph\u1ea3n h\u1ed3i'}
+          </Text>
+        </Pressable>
+      </View>
+      {feedbackOpen ? (
+        <View style={styles.workerKaelFeedbackForm} testID="worker-kael-feedback-form">
+          <TextInput
+            accessibilityLabel={language === 'en' ? 'Kael feedback' : 'Ph\u1ea3n h\u1ed3i Kael'}
+            editable={!feedbackSaving}
+            multiline
+            onChangeText={onChangeFeedback}
+            placeholder={language === 'en' ? 'What should Kael improve for worker jobs?' : 'Kael n\u00ean c\u1ea3i thi\u1ec7n g\u00ec cho th\u1ee3?'}
+            placeholderTextColor={tokens.subtle}
+            style={[styles.workerKaelFeedbackInput, { borderColor: tokens.border, color: tokens.ink }]}
+            testID="worker-kael-feedback-input"
+            value={feedbackValue}
+          />
+          {feedbackError ? (
+            <Text accessibilityRole="alert" style={[styles.workerKaelFeedbackError, { color: tokens.danger }]} testID="worker-kael-feedback-error">
+              {feedbackError}
+            </Text>
+          ) : null}
+          <View style={styles.workerKaelParityActions}>
+            <Pressable accessibilityRole="button" disabled={feedbackSaving} onPress={onCancelFeedback} style={({ pressed }) => [styles.workerKaelMiniButton, { borderColor: tokens.border }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="worker-kael-feedback-cancel">
+              <Text style={[styles.workerKaelMiniButtonText, { color: tokens.muted }]}>{language === 'en' ? 'Cancel' : 'Hu\u1ef7'}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" disabled={feedbackSaving} onPress={onSubmitFeedback} style={({ pressed }) => [styles.workerKaelMiniButton, { borderColor: tokens.borderStrong, backgroundColor: tokens.primary }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="worker-kael-feedback-submit">
+              <Text style={[styles.workerKaelMiniButtonText, { color: tokens.primaryText }]}>{feedbackSaving ? (language === 'en' ? 'Sending' : '\u0110ang g\u1eedi') : (language === 'en' ? 'Send' : 'G\u1eedi')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
 function WorkerChatReferenceWelcome({ greeting }: { greeting: string }) {
   const { tokens } = useWorkerUi()
 
@@ -2397,12 +2778,6 @@ function WorkerChatReferenceWelcome({ greeting }: { greeting: string }) {
       </View>
     </ReduceMotionAwareEntranceView>
   )
-}
-
-function blurFocusedWebControl() {
-  if (Platform.OS !== 'web') return
-  const activeElement = (globalThis as typeof globalThis & { document?: { activeElement?: { blur?: () => void } | null } }).document?.activeElement
-  activeElement?.blur?.()
 }
 
 function resetWorkerChatWebScrollPosition() {
@@ -2570,13 +2945,23 @@ function buildWorkerBroadcastBrief(deal: LocalDeal | null, broadcast: WorkerBroa
   const areaLabel = localizedWorkerAreaLabel(broadcast.generalArea, language)
   const fullAddressLabel = broadcast.fullAddressVisible ? broadcast.fullAddressLabel ?? null : null
   const canRevealFullAddress = Boolean(canWorkerSeeFullAddress && isAcceptedLocalWorkerDeal(deal) && fullAddressLabel)
+  const addressAccess = broadcast.addressAccess ?? null
+  const hasAcceptedBuildingAccess = Boolean(isAcceptedLocalWorkerDeal(deal) && addressAccess?.release_stage === 'building_released')
   const addressGate = language === 'en'
     ? canRevealFullAddress && fullAddressLabel
       ? `Address: ${localizedWorkerAreaLabel(fullAddressLabel, language)}.`
-      : `${areaLabel}. Detailed address is hidden until acceptance.`
+      : hasAcceptedBuildingAccess
+        ? `${areaLabel}. Exact unit unlocks after lobby check-in and identity check.`
+        : `${areaLabel}. Detailed address is hidden until acceptance.`
     : canRevealFullAddress && fullAddressLabel
       ? `Địa chỉ: ${localizedWorkerAreaLabel(fullAddressLabel, language)}.`
       : `Khu vực: ${areaLabel}. Địa chỉ chi tiết vẫn ẩn trước khi nhận.`
+  const stagedAddressGate = hasAcceptedBuildingAccess && !canRevealFullAddress
+    ? language === 'en'
+      ? `${areaLabel}. Exact unit unlocks after lobby check-in and identity check.`
+      : `Khu v\u1ef1c: ${areaLabel}. C\u0103n h\u1ed9 ch\u1ec9 m\u1edf sau check-in s\u1ea3nh v\u00e0 x\u00e1c nh\u1eadn danh t\u00ednh.`
+    : addressGate
+  const accessLine = buildWorkerApartmentAccessBriefLine(addressAccess, language)
   const statusLine = localizedStatusLabel(status, language)
   const mediaLine = deal?.draft.mediaCount
     ? language === 'en'
@@ -2587,11 +2972,35 @@ function buildWorkerBroadcastBrief(deal: LocalDeal | null, broadcast: WorkerBroa
   const artifactBriefLines = localizedWorkerBriefLines(broadcast.prebrief, language)
   const briefLines = [
     `${serviceLabel} · ${problemLabel}`,
-    addressGate,
+    stagedAddressGate,
+    accessLine,
     ...artifactBriefLines,
     mediaLine ?? statusLine,
-  ]
+  ].filter((line): line is string => Boolean(line))
   return briefLines.slice(0, 4)
+}
+
+function buildWorkerApartmentAccessBriefLine(
+  addressAccess: WorkerBroadcastView['addressAccess'] | null | undefined,
+  language: WorkerLanguageMode,
+) {
+  if (!addressAccess || addressAccess.release_stage === 'area_only') return null
+  const profile = addressAccess.access_profile ?? {}
+  const detail = [
+    profile.entry_method,
+    profile.guard_note,
+    profile.parking_note,
+    profile.building_note,
+    profile.customer_handoff_note,
+  ].find((item) => typeof item === 'string' && item.trim().length > 0)?.trim()
+  if (language === 'en') {
+    return detail
+      ? `App-only access: ${detail}. Verify identity at the door.`
+      : 'App-only access. Verify identity at the door.'
+  }
+  return detail
+    ? `V\u00e0o nh\u00e0 qua app: ${detail}. Ki\u1ec3m tra danh t\u00ednh \u1edf c\u1eeda.`
+    : `V\u00e0o nh\u00e0 qua app. Ki\u1ec3m tra danh t\u00ednh \u1edf c\u1eeda.`
 }
 
 function uniqueWorkerBriefLines(lines: string[]) {
@@ -2706,6 +3115,95 @@ function workerChatMessageFromJobMessage(message: JobMessageResponse, currentUse
     text: message.content,
     who,
   }
+}
+
+function workerChatMessageFromWorkerKaelTurn(turn: WorkerKaelChatTurn, language: WorkerLanguageMode) {
+  const mine = turn.role === 'worker'
+  const text = workerKaelTurnText(turn, language)
+  return {
+    id: `worker-kael-${turn.id}`,
+    mine,
+    system: !mine,
+    text,
+    who: mine ? workerCopy[language].chat.worker : workerCopy[language].chat.kael,
+  }
+}
+
+function workerKaelTurnText(turn: WorkerKaelChatTurn, language: WorkerLanguageMode) {
+  const base = turn.text_content?.trim() ||
+    (language === 'en' ? 'Kael saved this advisory turn.' : 'Kael \u0111\u00e3 l\u01b0u l\u01b0\u1ee3t t\u01b0 v\u1ea5n n\u00e0y.')
+  const notes = workerKaelSafetyNotes(turn.safe_metadata).slice(0, 2)
+  if (notes.length === 0 || turn.role === 'worker') return base
+  return `${base}\n${notes.map((note) => `- ${note}`).join('\n')}`
+}
+
+function workerKaelSafetyNotes(metadata: Record<string, unknown>) {
+  const raw = metadata.safety_notes
+  return Array.isArray(raw)
+    ? raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : []
+}
+
+function workerKaelChatErrorCopy(language: WorkerLanguageMode) {
+  return language === 'en'
+    ? 'Kael could not load the advisory chat. Try again shortly.'
+    : 'Kael ch\u01b0a t\u1ea3i \u0111\u01b0\u1ee3c chat t\u01b0 v\u1ea5n. Th\u1eed l\u1ea1i sau \u00edt ph\u00fat.'
+}
+
+function workerKaelChatStatusCopy(language: WorkerLanguageMode, sending: boolean) {
+  if (sending) {
+    return language === 'en'
+      ? 'Kael is checking the accepted job context.'
+      : 'Kael \u0111ang ki\u1ec3m tra ng\u1eef c\u1ea3nh vi\u1ec7c \u0111\u00e3 nh\u1eadn.'
+  }
+  return language === 'en'
+    ? 'Loading Kael advisory chat.'
+    : '\u0110ang t\u1ea3i chat t\u01b0 v\u1ea5n Kael.'
+}
+
+function workerKaelChatProgressCopy(progress: KaelChatProgress | null, language: WorkerLanguageMode) {
+  if (!progress) return null
+  const percent = `${Math.round(Math.max(0, Math.min(1, progress.progress)) * 100)}%`
+  if (progress.status === 'failed') {
+    return language === 'en' ? `Kael advisory stopped at ${percent}.` : `Tư vấn Kael dừng ở ${percent}.`
+  }
+  if (progress.current_stage === 'worker_assist') {
+    if (progress.status === 'completed') {
+      return language === 'en' ? 'Kael advisory is ready.' : 'Kael đã có tư vấn.'
+    }
+    return language === 'en'
+      ? `Kael is checking this job: ${percent}.`
+      : `Kael đang xét việc này: ${percent}.`
+  }
+  return language === 'en' ? `Kael is working: ${percent}.` : `Kael đang xử lý: ${percent}.`
+}
+
+function workerKaelTrainingConsentLabel(language: WorkerLanguageMode, consent: boolean) {
+  if (language === 'en') return consent ? 'Training on' : 'Training off'
+  return consent ? 'Cho ph\u00e9p h\u1ecdc' : 'T\u1eaft h\u1ecdc'
+}
+
+function workerKaelTrainingConsentBody(language: WorkerLanguageMode, consent: boolean) {
+  if (language === 'en') {
+    return consent
+      ? 'Worker advisory feedback may be reviewed to improve Kael.'
+      : 'Kael will save feedback, but not use it for training review without consent.'
+  }
+  return consent
+    ? 'Ph\u1ea3n h\u1ed3i t\u01b0 v\u1ea5n c\u00f3 th\u1ec3 \u0111\u01b0\u1ee3c r\u00e0 so\u00e1t \u0111\u1ec3 c\u1ea3i thi\u1ec7n Kael.'
+    : 'Kael l\u01b0u ph\u1ea3n h\u1ed3i, nh\u01b0ng kh\u00f4ng d\u00f9ng cho review hu\u1ea5n luy\u1ec7n n\u1ebfu ch\u01b0a cho ph\u00e9p.'
+}
+
+function workerKaelFeedbackRequiredCopy(language: WorkerLanguageMode) {
+  return language === 'en'
+    ? 'Feedback needs at least 8 characters.'
+    : 'Ph\u1ea3n h\u1ed3i c\u1ea7n \u00edt nh\u1ea5t 8 k\u00fd t\u1ef1.'
+}
+
+function workerKaelFeedbackSaveErrorCopy(language: WorkerLanguageMode) {
+  return language === 'en'
+    ? 'Kael could not save this feedback. Try again.'
+    : 'Kael ch\u01b0a l\u01b0u \u0111\u01b0\u1ee3c ph\u1ea3n h\u1ed3i. Th\u1eed l\u1ea1i sau.'
 }
 
 function workerChatStandaloneInputLabel(language: WorkerLanguageMode) {
@@ -3352,7 +3850,7 @@ function WorkerProfileContent() {
     ? workerProfile.districts.map((district) => localizedWorkerAreaLabel(district, language)).join(' · ')
     : appCopy[language].common.noData
   const verificationStatus = workerProfile?.verification_status ?? 'draft'
-  const profileRows: Array<{ icon: WorkerImageIconName; meta: string; title: string }> = [
+  const profileRows: { icon: WorkerImageIconName; meta: string; title: string }[] = [
     { icon: 'profileIdentity', meta: localizedWorkerVerificationStatus(verificationStatus, language), title: language === 'en' ? 'Identity verification' : 'Xác minh danh tính' },
     { icon: 'profileSkills', meta: serviceSkillsLabel, title: language === 'en' ? 'Service skills' : 'Kỹ năng dịch vụ' },
     { icon: 'profileServiceArea', meta: workingAreaLabel, title: language === 'en' ? 'Working area' : 'Khu vực làm việc' },
@@ -4309,24 +4807,6 @@ function WorkerMapStage() {
         </View>
       </Modal>
     </GlassSurface>
-  )
-}
-
-function WorkerMapFeatureCard({ icon, mapFeatureMeta, title, tone }: { icon: WorkerIconName; mapFeatureMeta: string; title: string; tone: WorkerTone }) {
-  const { tokens } = useWorkerUi()
-
-  return (
-    <View style={[styles.mapFeatureCard, workerOpaqueCardSurface(tokens, tone)]}>
-      <Text style={[styles.mapFeatureTitle, { color: tokens.ink }]} numberOfLines={2}>
-        {title}
-      </Text>
-      <Text style={[styles.mapFeatureMeta, { color: tokens.muted }]} numberOfLines={1}>
-        {mapFeatureMeta}
-      </Text>
-      <View style={[styles.mapFeatureIcon, { backgroundColor: tokens.glassStrong }]}>
-        <WorkerUtilityIcon active frameSize={48} icon={icon} size={48} />
-      </View>
-    </View>
   )
 }
 
@@ -5385,43 +5865,6 @@ function WorkerDockIcon({ focused, name }: { focused: boolean; name: WorkerDockI
   )
 }
 
-function WorkerDockGlyph({ accent, color, name }: { accent: string; color: string; name: Exclude<WorkerDockIconName, 'kael'> }) {
-  if (name === 'apartment') {
-    return (
-      <Svg width={26} height={26} viewBox="0 0 26 26" fill="none" testID="worker-dock-client-style-icon">
-        <Path d="M5.5 12.5 13 6l7.5 6.5v7.2c0 1-.8 1.8-1.8 1.8H7.3c-1 0-1.8-.8-1.8-1.8v-7.2Z" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" />
-        <Path d="M11 21.5v-5h4v5" stroke={accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-      </Svg>
-    )
-  }
-
-  if (name === 'person') {
-    return (
-      <Svg width={26} height={26} viewBox="0 0 26 26" fill="none" testID="worker-dock-client-style-icon">
-        <Path d="M7.5 20c.9-2.5 2.9-3.8 5.5-3.8s4.6 1.3 5.5 3.8" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
-        <Circle cx={13} cy={9.5} r={3.3} stroke={color} strokeWidth={1.9} />
-      </Svg>
-    )
-  }
-
-  if (name === 'payment') {
-    return (
-      <Svg width={25} height={25} viewBox="0 0 25 25" fill="none" testID="worker-dock-client-style-icon">
-        <Path d="M5.4 9.5 12.5 5l7.1 4.5" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-        <Path d="M7 10.5h11M8.2 10.5v6.2M12.5 10.5v6.2M16.8 10.5v6.2M6.5 18.5h12" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-        <Path d="M12.5 7.8h.1" stroke={accent} strokeWidth={3} strokeLinecap="round" />
-      </Svg>
-    )
-  }
-
-  return (
-    <Svg width={25} height={25} viewBox="0 0 25 25" fill="none" testID="worker-dock-client-style-icon">
-      <Rect x={6} y={6} width={13} height={13} rx={3.2} stroke={color} strokeWidth={1.9} />
-      <Path d="M9.5 11h6M9.5 15h4" stroke={accent} strokeWidth={1.8} strokeLinecap="round" />
-    </Svg>
-  )
-}
-
 function AmbientBackdrop() {
   const { tokens } = useWorkerUi()
 
@@ -6177,27 +6620,8 @@ function LanguageToggle() {
   )
 }
 
-function TimelineCard() {
-  const { copy, language, tokens } = useWorkerUi()
-  const { selectors, state } = useFrontendWorkflow()
-  const deal = getWorkerVisibleDeal(state.deal)
-  const phases = getWorkerTimeline(deal ? selectors.currentStatus : null, language)
-
-  return (
-    <View style={[styles.timelineCard, workerOpaqueCardSurface(tokens)]}>
-      <SectionHeader title={copy.home.shiftTitle} action={copy.home.shiftAction} />
-      {phases.map((item) => (
-        <View key={item.label} style={styles.timelineItem}>
-          <View style={[styles.timelineRail, { backgroundColor: item.active ? tokens.primary : tokens.border }]} />
-          <Text style={[styles.timelineText, { color: item.active ? tokens.ink : tokens.subtle }]}>{item.label}</Text>
-        </View>
-      ))}
-    </View>
-  )
-}
-
 function getWorkerTimeline(status: LocalDealStatus | null, language: WorkerLanguageMode) {
-  const steps: Array<{ label: string; statuses: LocalDealStatus[] }> = language === 'en' ? [
+  const steps: { label: string; statuses: LocalDealStatus[] }[] = language === 'en' ? [
     { label: 'Waiting request', statuses: ['broadcasting'] },
     { label: 'Accepted', statuses: ['worker_matched'] },
     { label: 'On the way', statuses: ['worker_on_way'] },
@@ -6218,6 +6642,7 @@ function getWorkerTimeline(status: LocalDealStatus | null, language: WorkerLangu
     active: activeIndex >= index,
   }))
 }
+void getWorkerTimeline
 
 function SegmentFilter({
   activeTab,
@@ -6311,44 +6736,6 @@ function SegmentFilter({
   )
 }
 
-function JobActivityCard({
-  body,
-  icon,
-  status,
-  testID,
-  title,
-  tone,
-}: {
-  body: string
-  icon: WorkerIconName
-  status: string
-  testID?: string
-  title: string
-  tone: WorkerTone
-}) {
-  const { tokens } = useWorkerUi()
-
-  return (
-    <View style={[styles.activeJobCard, workerJobCardSurface(tokens, tone)]} testID={testID}>
-      <WorkerJobsCardChrome tone={tone} />
-      <View style={styles.identityRow}>
-        <View style={[styles.readinessBadge, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
-          <WorkerUtilityIcon active frameSize={42} icon={icon} size={42} small />
-        </View>
-        <View style={styles.titleStack}>
-          <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
-            {status}
-          </Text>
-          <Text adjustsFontSizeToFit minimumFontScale={0.8} numberOfLines={2} style={[styles.cardTitle, { color: tokens.ink }]}>
-            {title}
-          </Text>
-        </View>
-      </View>
-      {body ? <Text numberOfLines={3} style={[styles.bodyText, { color: tokens.muted }]}>{body}</Text> : null}
-    </View>
-  )
-}
-
 function WorkerEmptyJobPanel({
   body,
   icon,
@@ -6427,29 +6814,41 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
-function QuickPanel({ icon, title, tone, value }: { icon: WorkerIconName; title: string; tone: WorkerTone; value: string }) {
-  const { tokens } = useWorkerUi()
-
+function WorkerKaelChatStatusBubble({
+  error,
+  loading,
+  progress,
+  sending,
+  streamingText,
+}: {
+  error: string | null
+  loading: boolean
+  progress: KaelChatProgress | null
+  sending: boolean
+  streamingText: string
+}) {
+  const { language, tokens } = useWorkerUi()
+  if (!error && !loading && !sending) return null
+  const progressText = workerKaelChatProgressCopy(progress, language)
+  const visibleStreamingText = streamingText.trim()
+  const statusText = error ?? (visibleStreamingText ? `${visibleStreamingText} |` : progressText ?? workerKaelChatStatusCopy(language, sending))
   return (
-    <View style={[styles.quickPanel, workerOpaqueCardSurface(tokens, tone)]}>
-      <WorkerUtilityIcon frameSize={50} icon={icon} size={50} />
-      <Text adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.quickValue, { color: tokens.ink }]} numberOfLines={1}>
-        {value}
-      </Text>
-      <Text adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.quickTitle, { color: tokens.ink }]} numberOfLines={1}>
-        {title}
-      </Text>
-    </View>
-  )
-}
-
-function SectionHeader({ action = '', title }: { action?: string; title: string }) {
-  const { tokens } = useWorkerUi()
-
-  return (
-    <View style={styles.rowBetween}>
-      <Text style={[styles.sectionTitle, { color: tokens.ink }]}>{title}</Text>
-      {action ? <Text style={[styles.sectionAction, { color: tokens.primary }]}>{action}</Text> : null}
+    <View testID="worker-kael-chat-status">
+      <ChatBubble
+        system
+        text={statusText}
+        who={workerCopy[language].chat.kael}
+      />
+      {progress && !error ? (
+        <View style={[styles.workerKaelProgressPanel, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="worker-kael-chat-progress">
+          <View style={styles.workerKaelProgressTrack}>
+            <View style={[styles.workerKaelProgressFill, { backgroundColor: tokens.primary, width: `${Math.round(Math.max(0, Math.min(1, progress.progress)) * 100)}%` }]} />
+          </View>
+          <Text style={[styles.workerKaelProgressText, { color: tokens.muted }]} numberOfLines={1}>
+            {progressText}
+          </Text>
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -6541,22 +6940,6 @@ function ProfileListRow({ icon, meta, title }: { icon: WorkerImageIconName; meta
         {title}
       </Text>
       <Text adjustsFontSizeToFit minimumFontScale={0.84} style={[styles.profileListMeta, { color: tokens.muted }]} numberOfLines={1}>
-        {meta}
-      </Text>
-    </View>
-  )
-}
-
-function ListRow({ icon, meta, title }: { icon: WorkerIconName; meta: string; title: string }) {
-  const { tokens } = useWorkerUi()
-
-  return (
-    <View style={styles.listRow}>
-      <Icon name={icon} small />
-      <Text style={[styles.listTitle, { color: tokens.ink }]} numberOfLines={1}>
-        {title}
-      </Text>
-      <Text style={[styles.listMeta, { color: tokens.muted }]} numberOfLines={1}>
         {meta}
       </Text>
     </View>
@@ -6795,78 +7178,6 @@ function useWorkerUi() {
   const context = use(WorkerUiContext)
   if (!context) throw new Error('useWorkerUi must be used inside WorkerFrame')
   return context
-}
-
-function glassSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
-  const warmAccent = tokens.mode === 'dark' ? 'rgba(224,160,107,0.20)' : 'rgba(255,184,102,0.23)'
-  const softWarmAccent = tokens.mode === 'dark' ? 'rgba(224,160,107,0.13)' : 'rgba(255,184,102,0.14)'
-  const mintWash = tokens.mode === 'dark' ? 'rgba(105,222,198,0.17)' : 'rgba(183,246,231,0.34)'
-  const reducedBackgroundColor =
-    tone === 'raised' || tone === 'strong'
-      ? tokens.glassStrong
-      : tone === 'cream' || tone === 'warm'
-        ? tokens.warm
-        : tone === 'mint'
-          ? tokens.mint
-          : tone === 'cyan'
-            ? tokens.cyan
-            : tone === 'depth'
-              ? tokens.depth
-              : tokens.base
-  const backgroundColor =
-    reduceTransparency
-      ? reducedBackgroundColor
-      : tone === 'raised' || tone === 'strong'
-      ? tokens.glassStrong
-      : tone === 'cream' || tone === 'warm'
-        ? tokens.mode === 'dark'
-          ? 'rgba(59,41,27,0.72)'
-          : 'rgba(255,240,222,0.70)'
-        : tone === 'mint'
-          ? tokens.mode === 'dark'
-            ? 'rgba(24,56,50,0.58)'
-            : 'rgba(220,243,236,0.68)'
-          : tone === 'cyan'
-            ? tokens.mode === 'dark'
-              ? 'rgba(21,54,58,0.72)'
-              : 'rgba(232,249,251,0.68)'
-            : tone === 'depth'
-              ? tokens.mode === 'dark'
-                ? 'rgba(13,27,26,0.70)'
-                : 'rgba(234,246,241,0.70)'
-              : tokens.glass
-  const experimentalBackgroundImage =
-    tokens.mode === 'dark'
-      ? tone === 'cream' || tone === 'warm'
-        ? `radial-gradient(circle at 84% 42%, ${warmAccent}, transparent 31%), radial-gradient(circle at 18% 88%, ${mintWash}, transparent 38%), linear-gradient(120deg, rgba(48,39,30,0.62), rgba(18,23,22,0.58))`
-        : tone === 'mint'
-          ? `radial-gradient(circle at 88% 16%, ${softWarmAccent}, transparent 22%), radial-gradient(circle at 74% 62%, rgba(105,222,198,0.11), transparent 34%), linear-gradient(145deg, rgba(24,56,50,0.60), rgba(13,17,16,0.58))`
-        : tone === 'cyan'
-            ? `radial-gradient(circle at 92% 12%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 78% 62%, rgba(130,221,226,0.10), transparent 34%), linear-gradient(145deg, rgba(23,47,49,0.58), rgba(13,17,16,0.58))`
-            : `radial-gradient(circle at 94% 10%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 10% 92%, ${mintWash}, transparent 34%), linear-gradient(145deg, rgba(24,31,29,0.62), rgba(13,17,16,0.58))`
-      : tone === 'cream' || tone === 'warm'
-        ? `radial-gradient(circle at 84% 42%, ${warmAccent}, transparent 31%), radial-gradient(circle at 18% 88%, ${mintWash}, transparent 38%), linear-gradient(120deg, rgba(201,248,237,0.62), rgba(255,243,205,0.48))`
-        : tone === 'mint'
-          ? `radial-gradient(circle at 88% 16%, ${softWarmAccent}, transparent 22%), radial-gradient(circle at 74% 62%, rgba(22,185,168,0.26), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,248,241,0.56))`
-        : tone === 'cyan'
-            ? `radial-gradient(circle at 92% 12%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 78% 62%, rgba(33,165,177,0.28), transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(221,249,247,0.58))`
-            : `radial-gradient(circle at 94% 10%, ${softWarmAccent}, transparent 20%), radial-gradient(circle at 10% 92%, ${mintWash}, transparent 34%), linear-gradient(145deg, rgba(255,255,255,0.50), rgba(224,248,242,0.34))`
-
-  return {
-    backgroundColor,
-    borderColor: tokens.glassBorder,
-    borderWidth: 1,
-    boxShadow:
-      reduceTransparency
-        ? 'none'
-        : tone === 'raised' || tone === 'strong'
-        ? tokens.mode === 'dark'
-          ? '0 10px 26px rgba(0,0,0,0.18)'
-          : '0 10px 26px rgba(13,70,65,0.07)'
-        : 'none',
-    experimental_backgroundImage: reduceTransparency ? undefined : experimentalBackgroundImage,
-  }
 }
 
 function messageBubbleSurface(tokens: WorkerThemeTokens, { mine, system }: { mine: boolean; system: boolean }) {
@@ -7267,16 +7578,6 @@ function workerSecondaryButtonSurface(tokens: WorkerThemeTokens) {
       : tokens.mode === 'dark'
       ? 'linear-gradient(180deg, rgba(24,31,29,0.72), rgba(13,17,16,0.62))'
       : undefined,
-  } as any
-}
-
-function workerSegmentShellSurface(tokens: WorkerThemeTokens) {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
-  return {
-    backgroundColor: reduceTransparency ? tokens.raised : tokens.mode === 'dark' ? 'rgba(22,29,27,0.58)' : 'rgba(255,255,255,0.76)',
-    borderColor: reduceTransparency ? tokens.border : tokens.mode === 'dark' ? 'rgba(230,244,240,0.14)' : 'rgba(255,255,255,0.88)',
-    borderWidth: 1,
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 12px 30px rgba(0,0,0,0.24)' : '0 12px 30px rgba(17,70,61,0.095)',
   } as any
 }
 
@@ -8123,43 +8424,6 @@ function workerOperationalIconAura(tokens: WorkerThemeTokens) {
   } as any
 }
 
-function workerServiceTileSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'base') {
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
-  const isWarm = tone === 'cream' || tone === 'warm'
-  const isCyan = tone === 'cyan'
-  const isMint = tone === 'mint'
-  const lightGradient = isWarm
-    ? 'radial-gradient(circle at 86% 24%, rgba(255,232,184,0.70), transparent 34%), linear-gradient(180deg, rgba(255,253,248,0.98), rgba(255,248,232,0.88))'
-    : isCyan
-      ? 'radial-gradient(circle at 84% 24%, rgba(183,243,247,0.82), transparent 34%), linear-gradient(180deg, rgba(248,255,254,0.98), rgba(231,251,249,0.90))'
-      : isMint
-        ? 'radial-gradient(circle at 84% 24%, rgba(177,249,234,0.86), transparent 34%), linear-gradient(180deg, rgba(247,255,251,0.98), rgba(226,250,242,0.90))'
-        : 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,255,252,0.88))'
-  const darkGradient = isWarm
-    ? 'radial-gradient(circle at 82% 22%, rgba(226,165,110,0.16), transparent 34%), linear-gradient(180deg, rgba(48,39,30,0.82), rgba(18,23,22,0.70))'
-    : isCyan
-      ? 'radial-gradient(circle at 82% 22%, rgba(130,221,226,0.13), transparent 34%), linear-gradient(180deg, rgba(23,47,49,0.78), rgba(15,20,19,0.68))'
-      : 'radial-gradient(circle at 82% 22%, rgba(105,222,198,0.12), transparent 34%), linear-gradient(180deg, rgba(24,31,29,0.76), rgba(13,17,16,0.68))'
-
-  return {
-    backgroundColor: tokens.mode === 'dark'
-      ? isWarm ? '#2A241D' : isCyan ? '#172F31' : isMint ? '#183832' : '#171D1B'
-      : isWarm ? '#FFF8EA' : isCyan ? '#F0FEFF' : isMint ? '#F0FFF9' : '#F8FFFC',
-    borderColor: tokens.mode === 'dark'
-      ? isWarm ? 'rgba(226,165,110,0.16)' : isCyan ? 'rgba(130,221,226,0.14)' : 'rgba(230,244,240,0.12)'
-      : isWarm ? 'rgba(202,145,75,0.20)' : isCyan ? 'rgba(35,156,168,0.18)' : 'rgba(15,130,115,0.16)',
-    borderWidth: 1,
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 10px 22px rgba(0,0,0,0.20)' : '0 10px 24px rgba(17,70,61,0.085)',
-    background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,
-    experimental_backgroundImage: reduceTransparency
-      ? undefined
-      : tokens.mode === 'dark'
-        ? darkGradient
-        : lightGradient,
-  } as any
-}
-
 function workerProfileHeroSurface(tokens: WorkerThemeTokens) {
   const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
   const gradient = tokens.mode === 'dark'
@@ -8783,31 +9047,6 @@ function workerProfileFileButtonSurface(tokens: WorkerThemeTokens, selected: boo
   } as any
 }
 
-function workerIconBubbleSurface(tokens: WorkerThemeTokens, tone: WorkerTone = 'mint') {
-  const isWarm = tone === 'cream' || tone === 'warm'
-  const isCyan = tone === 'cyan'
-  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
-  const lightGradient = isWarm
-    ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.94), transparent 28%), linear-gradient(145deg, #FFF1D6, #F3D28D)'
-    : isCyan
-      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #E4FCFA, #AEEBEF)'
-      : 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.92), transparent 28%), linear-gradient(145deg, #C9F8EA, #8FE7D2)'
-  return {
-    backgroundColor: isWarm ? tokens.cream : isCyan ? tokens.cyan : tokens.mint,
-    borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.22)' : isWarm ? 'rgba(202,145,75,0.22)' : 'rgba(15,130,115,0.20)',
-    boxShadow: reduceTransparency ? 'none' : tokens.mode === 'dark' ? '0 8px 18px rgba(0,0,0,0.20)' : '0 8px 18px rgba(17,70,61,0.08)',
-    background: reduceTransparency ? undefined : tokens.mode === 'dark'
-      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.12), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.12), rgba(24,31,29,0.70))'
-      : lightGradient,
-    backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark'
-      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.12), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.12), rgba(24,31,29,0.70))'
-      : lightGradient,
-    experimental_backgroundImage: reduceTransparency ? undefined : tokens.mode === 'dark'
-      ? 'radial-gradient(circle at 24% 18%, rgba(255,255,255,0.12), transparent 28%), linear-gradient(145deg, rgba(105,222,198,0.12), rgba(24,31,29,0.70))'
-      : lightGradient,
-  } as any
-}
-
 function workerMapViewportSurface(tokens: WorkerThemeTokens, material: GlassMaterial = 'standard') {
   if (material === 'liquid') {
     return {
@@ -9145,9 +9384,22 @@ const styles = StyleSheet.create({
   chatStack: { gap: 10 },
   chatBubble: { alignSelf: 'flex-start', borderRadius: 22, maxWidth: '88%', padding: 12 },
   chatBubbleMine: { alignSelf: 'flex-end' },
+  workerKaelProgressPanel: { alignSelf: 'flex-start', borderRadius: 16, borderWidth: 1, gap: 6, marginTop: 6, minWidth: 188, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 8 },
+  workerKaelProgressTrack: { backgroundColor: 'rgba(148,163,184,0.22)', borderRadius: 999, height: 5, overflow: 'hidden', width: '100%' },
+  workerKaelProgressFill: { borderRadius: 999, height: 5, minWidth: 5 },
+  workerKaelProgressText: { fontSize: 11.5, fontWeight: '700', letterSpacing: 0, lineHeight: 15 },
   chatWho: { fontSize: 11.5, fontWeight: '600' },
   chatText: { fontSize: 13.5, fontWeight: '600', lineHeight: 19, marginTop: 3 },
   chatComposerTouchWrap: { marginHorizontal: 0, marginTop: 10 },
+  workerKaelParityPanel: { borderRadius: 18, borderWidth: 1, gap: 10, marginTop: 10, overflow: 'hidden', padding: 10 },
+  workerKaelParityTitle: { fontSize: 13, fontWeight: '700', letterSpacing: 0 },
+  workerKaelParityBody: { fontSize: 11, fontWeight: '700', lineHeight: 15 },
+  workerKaelParityActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  workerKaelMiniButton: { alignItems: 'center', borderRadius: 14, borderWidth: 1, minHeight: 34, justifyContent: 'center', minWidth: 92, paddingHorizontal: 10, paddingVertical: 7 },
+  workerKaelMiniButtonText: { fontSize: 11, fontWeight: '700', letterSpacing: 0 },
+  workerKaelFeedbackForm: { gap: 8 },
+  workerKaelFeedbackInput: { borderRadius: 14, borderWidth: 1, fontSize: 12, fontWeight: '700', minHeight: 74, paddingHorizontal: 10, paddingVertical: 9, textAlignVertical: 'top' },
+  workerKaelFeedbackError: { fontSize: 11, fontWeight: '700', lineHeight: 15 },
   chatComposer: { alignSelf: 'stretch', borderCurve: 'continuous', borderRadius: 24, borderWidth: 1, gap: 5, minHeight: 79, overflow: 'hidden', paddingBottom: 3, paddingHorizontal: 9, paddingTop: 5, position: 'relative', zIndex: 2 },
   workerChatComposerKeyline: { borderCurve: 'continuous', borderRadius: 22, borderWidth: 1, bottom: 3, left: 3, opacity: 0.78, position: 'absolute', right: 3, top: 3, zIndex: 1 },
   chatComposerControlRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 42, position: 'relative', zIndex: 2 },

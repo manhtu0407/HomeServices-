@@ -3,7 +3,8 @@ import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 
 const MOBILE_ROOT = resolve(__dirname, '../../../../apps/mobile')
-const read = (rel: string) => readFileSync(resolve(MOBILE_ROOT, rel), 'utf-8')
+const readSource = (path: string) => readFileSync(path, 'utf-8').replace(/\r\n/g, '\n')
+const read = (rel: string) => readSource(resolve(MOBILE_ROOT, rel))
 const exists = (rel: string) => existsSync(resolve(MOBILE_ROOT, rel))
 const countOccurrences = (source: string, value: string) => source.split(value).length - 1
 
@@ -44,6 +45,16 @@ describe('screen files existence (STRUCTURES.md mapping)', () => {
     expect(exists('app/(auth)/_layout.tsx')).toBe(true)
     expect(exists('app/(customer)/_layout.tsx')).toBe(true)
     expect(exists('app/(worker)/_layout.tsx')).toBe(true)
+    expect(exists('app/(admin)/_layout.tsx')).toBe(true)
+  })
+
+  it('admin dashboard exists for Kael learning review', () => {
+    expect(exists('app/(admin)/dashboard.tsx')).toBe(true)
+    const src = read('app/(admin)/dashboard.tsx')
+    expect(src).toContain('adminLearningService.listCandidates')
+    expect(src).toContain('adminLearningService.approveCandidate')
+    expect(src).toContain('adminLearningService.rejectCandidate')
+    expect(src).not.toContain('fetch(')
   })
 })
 
@@ -71,6 +82,8 @@ describe('all screens export default function', () => {
     'app/(worker)/chat.tsx',
     'app/(worker)/earnings.tsx',
     'app/(worker)/profile.tsx',
+    'app/(admin)/_layout.tsx',
+    'app/(admin)/dashboard.tsx',
   ]
 
   it.each(allScreens)('%s has default export', (file) => {
@@ -588,6 +601,7 @@ describe('customer frontend shell surfaces', () => {
     const pendingIntake = read('components/customer/kael-chat/pending-intake.ts')
     const stackParts = read('components/customer/kael-chat/agentic-parts.tsx')
     const stackStyles = read('components/customer/kael-chat/styles.ts')
+    const services = read('lib/services.ts')
     expect(src).toContain('KAEL_CHAT_ROUTE_SHIM_CONTRACT')
     expect(src).toContain('export function CustomerKaelSurface')
     expect(src).toContain('replace(openKaelChatPath)')
@@ -633,6 +647,8 @@ describe('customer frontend shell surfaces', () => {
     expect(stack).toContain('kaelChatService.create')
     expect(stack).toContain('kaelChatService.sendTurn')
     expect(stack).toContain('kaelChatService.confirm')
+    expect(services).toContain('export const kaelChatProgressService')
+    expect(services).toContain('api.get<KaelChatProgressResponse>(`/kael/chat/${sessionId}/progress`)')
     expect(exists('components/customer/address-autocomplete.tsx')).toBe(true)
     expect(stackUi).toContain('chatQuickServices')
     expect(stack).not.toContain('AddressAutocomplete')
@@ -1887,7 +1903,7 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).toContain("const defaultWorkerJobsTab: WorkerJobsTab = 'waiting'")
     expect(src).toContain("const workerJobsTabKeys: WorkerJobsTab[] = ['waiting', 'active', 'needs']")
     expect(src).toContain("const requestedTab = isWorkerJobsTab(params.tab) ? params.tab : defaultWorkerJobsTab")
-    expect(src).toContain("const [activeJobsTab, setActiveJobsTab] = useState<WorkerJobsTab>(requestedTab)")
+    expect(src).toContain('const activeJobsTab = requestedTab')
     expect(src).toContain("replace(`/(worker)/jobs?tab=${tab}`)")
     expect(src).toContain("path: '/(worker)/jobs?tab=waiting'")
     expect(src).toContain("replace('/(worker)/jobs?tab=active')")
@@ -3378,9 +3394,9 @@ describe('frontend-only workflow safety audit', () => {
   const appLanguageStore = read('lib/app-language.ts')
   const apiTypes = read('lib/api-types.ts')
   const frontendWorkflowProvider = read('lib/frontend-workflow-provider.tsx')
-  const edgeRouter = readFileSync(resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared/router.ts'), 'utf-8')
-  const edgeServices = readFileSync(resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared/services.ts'), 'utf-8')
-  const sharedApiTypes = readFileSync(resolve(__dirname, '../types/api-responses.ts'), 'utf-8')
+  const edgeRouter = readSource(resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared/router.ts'))
+  const edgeServices = readSource(resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared/services.ts'))
+  const sharedApiTypes = readSource(resolve(__dirname, '../types/api-responses.ts'))
 
   it('uses one shared app language store with matching VI/EN dictionary keys', () => {
     expect(appLanguageStore).toContain('APP_LANGUAGE_STORAGE_KEY')
@@ -3584,7 +3600,7 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerShell).toContain('WorkerEarningsTrend')
     expect(workerShell).not.toContain('1 ' + 'local')
     expect(workerShell).toContain('selectors.canWorkerSeeFullAddress')
-    const workflow = readFileSync(resolve(__dirname, '../mobile-workflow.ts'), 'utf-8')
+    const workflow = readSource(resolve(__dirname, '../mobile-workflow.ts'))
     expect(workflow).toContain("broadcast?.status === 'accepted'")
     expect(workflow).toContain("state.workerGate === 'local_deal_audit'")
     expect(workflow).toContain("status: 'expired'")
@@ -3629,8 +3645,9 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerShell).toContain('if (!chatCanEdit) return')
     expect(workerShell).toContain('if (!chatCanSend) {')
     expect(workerShell).toContain('workerChatStandaloneReply(language)')
-    expect(workerShell).toContain('if (!sent) {')
-    expect(workerShell).toContain('const canSubmitWorkerDraft = Boolean(draft.trim() && chatCanEdit && !jobChat.sending)')
+    expect(workerShell).toContain('workerKaelChatService.streamTurn')
+    expect(workerShell).toContain('if (!result.success) {')
+    expect(workerShell).toContain('const canSubmitWorkerDraft = Boolean(draft.trim() && chatCanEdit && !jobChat.sending && !workerKaelChatSending)')
     expect(workerShell).toContain('function WorkerChatComposerDock')
     expect(workerShell).toContain('canEdit={chatCanEdit}')
     expect(workerShell).toContain('editable={canEdit}')
@@ -3717,12 +3734,15 @@ describe('frontend-only workflow safety audit', () => {
     expect(frontendWorkflowProvider).not.toContain('finalPrice: data.status ===')
     expect(frontendWorkflowProvider).toContain('estimatedPriceLabel: formatNullableSinglePrice(job.final_price)')
     expect(frontendWorkflowProvider).toContain('estimatedEarningLabel: formatNullableSinglePrice(job.estimated_earning)')
-    expect(frontendWorkflowProvider).toContain('extras?: { completion_notes?: string; completion_photo_urls?: string[] }')
+    expect(frontendWorkflowProvider).toContain('extras?: { completion_notes?: string; completion_photo_urls?: string[]; access_check_in?: WorkerAccessCheckInInput }')
+    expect(frontendWorkflowProvider).toContain('job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress')
+    expect(frontendWorkflowProvider).toContain('addressAccess,')
     expect(frontendWorkflowProvider).not.toContain('final_price?: number')
     const workerStatusUpdateSchema = edgeRouter.slice(edgeRouter.indexOf('function workerStatusUpdateSchema'), edgeRouter.indexOf('function isPositiveInteger'))
     expect(workerStatusUpdateSchema).toContain('if (record.final_price !== undefined)')
     expect(workerStatusUpdateSchema).toContain('result.completion_notes = record.completion_notes.slice(0, 2000)')
     expect(workerStatusUpdateSchema).toContain('result.completion_photo_urls = urls')
+    expect(workerStatusUpdateSchema).toContain('result.access_check_in = parseWorkerAccessCheckIn(record.access_check_in)')
     expect(workerStatusUpdateSchema).toContain('if (status === "completed_by_worker")')
     expect(workerStatusUpdateSchema).toContain('Cần ghi chú hoàn tất trước khi báo hoàn tất')
     const createJobResponseType = edgeRouter.slice(edgeRouter.indexOf('type CreateJobResponse'), edgeRouter.indexOf('type KaelChatStatus'))
@@ -3731,6 +3751,8 @@ describe('frontend-only workflow safety audit', () => {
     expect(createJobReturn).toContain('final_price: lockedFinalPrice')
     const listWorkerJobs = edgeServices.slice(edgeServices.indexOf('async function listWorkerJobs'), edgeServices.indexOf('async function getWorkerEarnings'))
     expect(listWorkerJobs).toContain('completion_notes, completion_photo_urls')
+    expect(listWorkerJobs).toContain('projectAddressAccess(row, "worker")')
+    expect(listWorkerJobs).toContain('address_access: addressProjection.addressAccess')
     expect(listWorkerJobs).toContain('completion_notes: nullableString(row.completion_notes)')
     expect(listWorkerJobs).toContain('completion_photo_urls: asStringArray(row.completion_photo_urls)')
   })

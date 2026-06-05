@@ -120,6 +120,47 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     }
   })
 
+  it('covers all Kael autonomy action to workflow event mappings including payment and dispute', () => {
+    const cases = [
+      ['confirm_ticket', 'kael_confirmed_ticket', 'awaiting_customer_confirm', 'broadcasting'],
+      ['start_matching', 'kael_started_matching', 'analyzing', 'broadcasting'],
+      ['process_cancellation', 'kael_processed_cancellation', 'worker_matched', 'broadcasting'],
+      ['decide_scope_change', 'kael_decided_scope_change', 'scope_change_pending', 'repairing'],
+      ['confirm_completion', 'kael_confirmed_completion', 'completed_by_worker', 'confirmed_by_customer'],
+      ['decide_payment', 'kael_decided_payment', 'confirmed_by_customer', 'payment_pending'],
+      ['decide_dispute', 'kael_decided_dispute', 'confirmed_by_customer', 'reviewed'],
+    ] as const
+
+    for (const [action, resulting_event, from, to] of cases) {
+      const result = validateKaelAutonomyTransition({
+        decision: {
+          actor: 'kael_system',
+          action,
+          policy_id: `kael.autonomy.v2.${action}`,
+          evidence: [
+            {
+              kind: 'policy',
+              reference_id: `STRUCTURES.md#${action}`,
+              summary: `Policy evidence for ${action}.`,
+            },
+          ],
+          confidence: 0.9,
+          reversible: true,
+          appealable: true,
+          resulting_event,
+        },
+        from,
+        to,
+      })
+
+      expect(result.valid).toBe(true)
+      if (result.valid) {
+        expect(result.event).toBe(resulting_event)
+        expect(result.decision.action).toBe(action)
+      }
+    }
+  })
+
   it('rejects a Kael autonomy decision when action and resulting event do not match', () => {
     const result = validateKaelAutonomyTransition({
       decision: {

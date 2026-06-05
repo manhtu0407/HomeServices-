@@ -4,6 +4,11 @@ import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kae
 import { maxTokensForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
 import { marketLookupTelemetry, searchMarketPrice } from '../../../../../supabase/functions/mobile-api/_shared/kael/market'
 import {
+  isKaelKnowledgeRetrievalEnabled,
+  retrieveKaelKnowledgeContext,
+  retrieveKnowledgeSemantic,
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/knowledge'
+import {
   effectiveTrustScore,
   isSourceTrustPerplexityFilterEnabled,
   lookupTrustScore,
@@ -116,6 +121,17 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     expect(isSourceTrustPerplexityFilterEnabled(() => undefined)).toBe(false)
   })
 
+  it('keeps B1 runtime knowledge retrieval behind an explicit OFF-by-default flag', () => {
+    expect(isKaelKnowledgeRetrievalEnabled(null, () => undefined)).toBe(false)
+    expect(isKaelKnowledgeRetrievalEnabled(null, (name) =>
+      name === 'KAEL_OPT_KNOWLEDGE_RETRIEVAL_ENABLED' ? 'yes' : undefined
+    )).toBe(true)
+    expect(isKaelKnowledgeRetrievalEnabled(
+      { knowledgeRetrievalEnabled: false },
+      () => 'true',
+    )).toBe(false)
+  })
+
   it('keeps Section 25 R2 Perplexity allowlist config behind the env flag', async () => {
     stubDenoEnv({ KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'false' })
     let body: Record<string, unknown> | undefined
@@ -150,6 +166,156 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
       expect(result.model).toBe('sonar')
       expect(result.safeMetadata).toBeUndefined()
     }
+  })
+
+  it('retrieves B1 runtime knowledge context from service, safety, and legal tables without raw PII', async () => {
+    const { client, calls } = makeKnowledgeClient()
+
+    const context = await retrieveKaelKnowledgeContext(client, {
+      serviceType: 'plumbing',
+      problemSlug: 'pipe_leak',
+      safetyTopic: 'worker_safety_advisory',
+      legalTopic: 'legal_safety_awareness',
+    })
+
+    expect(context.promptContext).toContain('Runtime knowledge')
+    expect(context.promptContext).toContain('Khóa nước khu vực liên quan')
+    expect(context.promptContext).not.toContain('0901234567')
+    expect(context.safeMetadata).toMatchObject({
+      knowledge_context_source: 'db',
+      service_knowledge_count: 1,
+      safety_pattern_count: 1,
+      legal_awareness_count: 1,
+      knowledge_context_problem_slug: 'pipe_leak',
+    })
+    expect(calls.map((call) => call.table).sort()).toEqual([
+      'legal_awareness_patterns',
+      'service_knowledge_boxes',
+      'worker_safety_patterns',
+      'worker_safety_patterns',
+    ].sort())
+  })
+
+  it('injects B1 runtime knowledge into market prompts and records safe metadata', async () => {
+    stubDenoEnv({
+      KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'false',
+      KAEL_OPT_KNOWLEDGE_RETRIEVAL_ENABLED: 'true',
+    })
+    let body: Record<string, unknown> | undefined
+    vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+      body = JSON.parse(String((init as RequestInit).body))
+      return jsonResponse({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              market_range_min: 180000,
+              market_range_max: 320000,
+              confidence: 0.72,
+              sources_summary: 'Market source summary.',
+            }),
+          },
+        }],
+        usage: { prompt_tokens: 60, completion_tokens: 30 },
+      })
+    }))
+    const { client } = makeKnowledgeClient()
+
+    const result = await searchMarketPrice(
+      'plumbing',
+      'pipe_leak',
+      'small',
+      'q7',
+      { perplexityApiKey: 'pplx-test', sourceTrustPerplexityFilterEnabled: false },
+      client,
+    )
+
+    const messages = body?.messages as Array<Record<string, unknown>>
+    expect(messages[0]?.content).toContain('Runtime knowledge')
+    expect(messages[0]?.content).toContain('Khóa nước khu vực liên quan')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.safeMetadata).toMatchObject({
+        knowledge_context_source: 'db',
+        service_knowledge_count: 1,
+        safety_pattern_count: 1,
+        legal_awareness_count: 1,
+      })
+    }
+  })
+
+  it('B5 retrieves semantic knowledge with citation ids and safe metadata', async () => {
+    const { client, calls } = makeSemanticKnowledgeClient(false)
+
+    const result = await retrieveKnowledgeSemantic(client, {
+      queryText: 'nước rò sát ổ cắm trong căn hộ',
+      serviceType: 'plumbing',
+      limit: 3,
+      minSimilarity: 0.62,
+      usageContext: {
+        jobId: '11111111-1111-4111-8111-111111111111',
+        sessionId: '22222222-2222-4222-8222-222222222222',
+        surface: 'kael_chat',
+      },
+    })
+
+    expect(calls[0]).toMatchObject({
+      table: 'rpc:match_kael_knowledge',
+      operations: [[
+        'rpc',
+        'match_kael_knowledge',
+        expect.objectContaining({
+          p_service_type: 'plumbing',
+          p_limit: 3,
+          p_min_similarity: 0.62,
+        }),
+      ]],
+    })
+    expect(result.rows).toEqual([
+      expect.objectContaining({
+        knowledge_table: 'worker_safety_patterns',
+        citation_id: 'worker_safety_patterns:plumbing_leak_near_electric_risk',
+        similarity: 0.81,
+      }),
+    ])
+    expect(result.safeMetadata).toMatchObject({
+      semantic_retrieval_source: 'pgvector',
+      semantic_retrieval_count: 1,
+      semantic_retrieval_top_citation_ids: [
+        'worker_safety_patterns:plumbing_leak_near_electric_risk',
+      ],
+    })
+    expect(calls[1]).toMatchObject({
+      table: 'kael_knowledge_usage_log',
+      operations: [[
+        'insert',
+        [expect.objectContaining({
+          job_id: '11111111-1111-4111-8111-111111111111',
+          session_id: '22222222-2222-4222-8222-222222222222',
+          knowledge_table: 'worker_safety_patterns',
+          citation_id: 'worker_safety_patterns:plumbing_leak_near_electric_risk',
+          safe_metadata: expect.objectContaining({
+            source: 'retrieveKnowledgeSemantic',
+            surface: 'kael_chat',
+          }),
+        })],
+      ]],
+    })
+  })
+
+  it('B5 falls back safely when semantic retrieval RPC fails', async () => {
+    const { client } = makeSemanticKnowledgeClient(true)
+
+    const result = await retrieveKnowledgeSemantic(client, {
+      queryText: 'ổ cắm bị ướt',
+      serviceType: 'electrical',
+    })
+
+    expect(result.rows).toEqual([])
+    expect(result.errorCode).toBe('match_kael_knowledge:DB_DOWN')
+    expect(result.safeMetadata).toMatchObject({
+      semantic_retrieval_source: 'fallback_key_lookup',
+      semantic_retrieval_error_code: 'match_kael_knowledge:DB_DOWN',
+    })
   })
 
   it('applies Section 25 R2 trusted Perplexity allowlist, recency, prompt, and safe metadata', async () => {
@@ -528,6 +694,72 @@ function makeMarketTrustClient() {
   }
 }
 
+function makeKnowledgeClient() {
+  const calls: Array<{ table: string; operations: unknown[][] }> = []
+  const rowsByTable: Record<string, unknown[]> = {
+    service_knowledge_boxes: [{
+      service_type: 'plumbing',
+      slug: 'plumbing',
+      label_vi: 'Sửa nước',
+      purpose: 'Plumbing repair knowledge. Phone 0901234567 must be scrubbed.',
+      safe_metadata: { source: 'test' },
+      is_active: true,
+    }],
+    worker_safety_patterns: [{
+      pattern_key: 'plumbing_floor_protection_before_repair',
+      service_type: 'plumbing',
+      trigger_topic: 'worker_safety_advisory',
+      severity: 'warning',
+      response_guidance: 'Khóa nước khu vực liên quan và chụp ảnh bằng chứng trước khi đổi phạm vi.',
+      safe_metadata: { source: 'test' },
+      is_enabled: true,
+    }],
+    legal_awareness_patterns: [{
+      pattern_key: 'deposit_and_payment_dispute_awareness',
+      topic: 'legal_safety_awareness',
+      boundary_type: 'awareness_only',
+      response_guidance: 'Kael chỉ giải thích ranh giới an toàn trong app; không tư vấn pháp lý.',
+      safe_metadata: { source: 'test' },
+      is_enabled: true,
+    }],
+  }
+  return {
+    calls,
+    client: {
+      from: (table: string) => makeTableQuery(table, calls, rowsByTable[table] ?? []),
+      rpc: () => thenable({ data: null, error: null }),
+    },
+  }
+}
+
+function makeSemanticKnowledgeClient(fail: boolean) {
+  const calls: Array<{ table: string; operations: unknown[][] }> = []
+  const rows = [{
+    knowledge_table: 'worker_safety_patterns',
+    knowledge_id: 'knowledge-1',
+    record_key: 'plumbing_leak_near_electric_risk',
+    service_type: 'plumbing',
+    title: 'Safety warning',
+    content: 'Nếu nước rò gần ổ cắm, ưu tiên cách ly khu vực.',
+    citation_id: 'worker_safety_patterns:plumbing_leak_near_electric_risk',
+    similarity: 0.81,
+    safe_metadata: { source_refs: ['S1', 'S3'] },
+  }]
+  return {
+    calls,
+    client: {
+      from: (table: string) => makeTableQuery(table, calls, []),
+      rpc: (name: string, args?: Record<string, unknown>) => {
+        const call = { table: `rpc:${name}`, operations: [['rpc', name, args]] as unknown[][] }
+        calls.push(call)
+        return thenable(fail
+          ? { data: null, error: { code: 'DB_DOWN', message: 'down' } }
+          : { data: rows, error: null })
+      },
+    },
+  }
+}
+
 function makeTableQuery(
   table: string,
   calls: Array<{ table: string; operations: unknown[][] }>,
@@ -574,10 +806,21 @@ function makeTableQuery(
     ) => Promise.resolve(
       mode === 'insert' || mode === 'upsert'
         ? { data: null, error: null }
-        : { data, error: null },
+        : { data: applyEqFilters(data, call.operations), error: null },
     ).then(onfulfilled, onrejected),
   }
   return query
+}
+
+function applyEqFilters(data: unknown, operations: unknown[][]) {
+  if (!Array.isArray(data)) return data
+  const eqFilters = operations.filter((operation) => operation[0] === 'eq')
+  return data.filter((row) => {
+    if (!row || typeof row !== 'object') return false
+    return eqFilters.every((operation) =>
+      (row as Record<string, unknown>)[String(operation[1])] === operation[2]
+    )
+  })
 }
 
 function makeMarketCacheClient(cacheRow: Record<string, unknown> | null) {

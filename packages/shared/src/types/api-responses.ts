@@ -6,6 +6,17 @@ import type {
   BroadcastStatus,
   ScopeChangeStatus,
 } from '../constants'
+import type { ApartmentAccessProfileInput, KaelChatProgress } from '../validation'
+
+export type AddressAccessView = {
+  release_stage: 'area_only' | 'building_released' | 'unit_released'
+  exact_unit_released: boolean
+  check_in_required: boolean
+  identity_check_required: boolean
+  customer_handoff_required: boolean
+  evidence_mode: 'none' | 'geofence' | 'manual_photo'
+  access_profile: ApartmentAccessProfileInput
+}
 
 export type KaelEstimate = {
   service_type: ServiceType
@@ -128,6 +139,7 @@ export type JobDetailResponse = {
     address_unit: string | null
     address_floor: string | null
     address_district: string | null
+    address_access: AddressAccessView
     scheduled_at: string | null
     kael_problem_identified: string | null
     kael_complexity: ComplexityLevel | null
@@ -137,6 +149,7 @@ export type JobDetailResponse = {
     kael_estimate_card_v3: Record<string, unknown> | null
     kael_worker_brief_core: Record<string, unknown> | null
     kael_worker_brief_guidance: Record<string, unknown> | null
+    kael_progress: KaelChatProgress | null
     final_price: number | null
     completion_notes: string | null
     completion_photo_urls: string[]
@@ -162,6 +175,7 @@ export type JobDetailResponse = {
     kael_computed_min: number | null
     kael_computed_max: number | null
     kael_review: Record<string, unknown> | null
+    kael_progress: KaelChatProgress | null
     evidence_photo_urls: string[]
     created_at: string | null
   } | null
@@ -338,6 +352,7 @@ export type AcceptBroadcastResponse = {
     floor: string | null
     district: string | null
   }
+  address_access: AddressAccessView
   anti_fraud?: Record<string, unknown>
   worker_challenge?: Record<string, unknown>
   customer_card?: Record<string, unknown>
@@ -422,6 +437,7 @@ export type WorkerJobListResponse = {
     address_unit: string | null
     address_floor: string | null
     district: string | null
+    address_access: AddressAccessView
     final_price: number | null
     estimated_earning: number | null
     completion_notes: string | null

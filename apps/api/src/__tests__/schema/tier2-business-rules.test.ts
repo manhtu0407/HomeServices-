@@ -96,6 +96,7 @@ describe('Kael learning boundaries', () => {
       'created',
       'pending_evidence',
       'evidence_gate_passed',
+      'manual_review',
       'auto_promoted',
       'rejected',
       'rolled_back',
