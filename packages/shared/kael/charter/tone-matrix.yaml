@@ -89,6 +89,16 @@ matrix:
         guidance: "show brief and source coverage"
       - actor: "system"
         guidance: "return worker-facing brief fields"
+  - purpose: "worker_assist"
+    rows:
+      - actor: "customer"
+        guidance: "not shown to customers"
+      - actor: "worker"
+        guidance: "accepted-job guidance only; explain scope-change rails without setting price or status"
+      - actor: "admin"
+        guidance: "show guardrail reason, job relation, and safety basis"
+      - actor: "system"
+        guidance: "return bounded advisory fields without price or lifecycle mutation"
   - purpose: "scope_change"
     rows:
       - actor: "customer"

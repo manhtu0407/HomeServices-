@@ -26,6 +26,17 @@ export type BoundaryDecision =
     suggestedService?: ServiceType;
   };
 
+export type BoundaryInjectionClassifier = (input: {
+  readonly text: string;
+  readonly normalizedText: string;
+  readonly selectedService: ServiceType;
+}) => { detected: boolean; signals: readonly string[] };
+
+export type BoundaryGuardOptions = {
+  readonly semanticInjectionClassifierEnabled?: boolean;
+  readonly injectionClassifier?: BoundaryInjectionClassifier;
+};
+
 const SUPPORTED_SERVICES: readonly ServiceType[] = [
   "electrical",
   "plumbing",
@@ -288,6 +299,7 @@ export function detectServiceMismatch(
 export function evaluateMessageBoundary(
   text: string,
   selectedService: ServiceType,
+  options: BoundaryGuardOptions = {},
 ): BoundaryDecision {
   const trimmed = text.trim();
   if (trimmed.length === 0) return { ok: true };
@@ -300,6 +312,24 @@ export function evaluateMessageBoundary(
       declineText: DECLINE_COPY.prompt_injection,
       detectedSignals: injection.signals,
     };
+  }
+
+  if (options.semanticInjectionClassifierEnabled) {
+    const normalizedText = normalize(trimmed);
+    const semanticInjection = options.injectionClassifier
+      ? options.injectionClassifier({ text: trimmed, normalizedText, selectedService })
+      : classifySemanticPromptInjection(normalizedText);
+    if (semanticInjection.detected) {
+      return {
+        ok: false,
+        reason: "prompt_injection",
+        declineText: DECLINE_COPY.prompt_injection,
+        detectedSignals: [
+          "semantic_injection_classifier",
+          ...semanticInjection.signals,
+        ],
+      };
+    }
   }
 
   const outOfScope = detectOutOfScope(trimmed);
@@ -330,4 +360,26 @@ export function evaluateMessageBoundary(
   }
 
   return { ok: true };
+}
+
+function classifySemanticPromptInjection(
+  normalizedText: string,
+): { detected: boolean; signals: string[] } {
+  const signals: string[] = [];
+  if (/\bnhap vai\b.*\b(?:quan tri vien|admin|nguoi kiem duyet)\b/.test(normalizedText)) {
+    signals.push("roleplay_admin");
+  }
+  if (/\b(?:huong dan|chi dan|lenh|quy tac)\s+an\b/.test(normalizedText)) {
+    signals.push("hidden_instruction_request");
+  }
+  if (/\b(?:xuat|in|doc|tra ve)\b.*\b(?:toan bo|day du)\b.*\b(?:system|prompt|quy tac)\b/.test(normalizedText)) {
+    signals.push("system_prompt_exfiltration");
+  }
+  if (/\btra loi nhu\b.*\b(?:khong co gioi han|khong bi rang buoc)\b/.test(normalizedText)) {
+    signals.push("constraint_bypass");
+  }
+  if (/\b(?:cap quyen|quyen)\s+(?:admin|quan tri)\b/.test(normalizedText)) {
+    signals.push("privilege_escalation_prompt");
+  }
+  return { detected: signals.length > 0, signals };
 }

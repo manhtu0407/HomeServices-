@@ -60,6 +60,19 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     listCustomerActiveJobs: vi.fn(),
     createKaelChat: vi.fn(),
     getKaelChat: vi.fn(),
+    getKaelChatProgress: vi.fn(async () => ({
+      session_id: 'session-1',
+      progress: {
+        current_stage: 'market_lookup',
+        status: 'running' as const,
+        progress: 0.32,
+        failure_reason: null,
+        updated_at: '2026-06-04T00:00:00.000Z',
+      },
+    })),
+    streamKaelChatTurn: vi.fn(async () => new Response(new ReadableStream(), {
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+    })),
     sendKaelChatTurn: vi.fn(),
     confirmKaelChat: vi.fn(),
     confirmSearch: vi.fn(),
@@ -69,6 +82,13 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     updateJobStatus: vi.fn(),
     requestScopeChange: vi.fn(),
     askKaelForWorker: vi.fn(),
+    createWorkerKaelChat: vi.fn(),
+    listWorkerKaelChats: vi.fn(),
+    getWorkerKaelChat: vi.fn(),
+    sendWorkerKaelChatTurn: vi.fn(),
+    submitWorkerKaelFeedback: vi.fn(),
+    getWorkerKaelTrainingConsent: vi.fn(),
+    setWorkerKaelTrainingConsent: vi.fn(),
     decideScopeChange: vi.fn(),
     requestCustomerCancellation: vi.fn(),
     requestWorkerCancellation: vi.fn(),
@@ -90,10 +110,28 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     updateWorkerAvailability: vi.fn(),
     listWorkerBroadcasts: vi.fn(),
     listWorkerJobs: vi.fn(),
+    streamWorkerKaelChatTurn: vi.fn(async () => new Response(new ReadableStream(), {
+      headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+    })),
     getWorkerEarnings: vi.fn(),
     invalidateMarketCache: vi.fn(),
     processKaelLearningQueue: vi.fn(async () => ({ selected: 0, submitted: 0, realtime_fallback: 0 })),
     processKaelBatchResults: vi.fn(async () => ({ checked: 0, ended: 0, processed_items: 0, failed_items: 0 })),
+    monitorKaelLearningRules: vi.fn(async () => ({ checked: 0, monitored: 0, rolled_back: 0 })),
+    listKaelLearningCandidates: vi.fn(async () => ({ candidates: [] })),
+    approveKaelLearningCandidate: vi.fn(async () => ({
+      ok: true,
+      candidate_id: 'candidate-1',
+      rule_id: 'rule-1',
+      rule_version: 1,
+      status: 'auto_promoted',
+      knowledge_apply: null,
+    })),
+    rejectKaelLearningCandidate: vi.fn(async () => ({
+      ok: true,
+      candidate_id: 'candidate-1',
+      status: 'archived',
+    })),
     evaluatePriceSynthesisAbCase: vi.fn(async () => ({
       case_key: 'router-test-case',
       purpose: 'price_synthesis' as const,
@@ -611,7 +649,7 @@ describe('mobile-api Edge router contract', () => {
     )
   })
 
-  it('routes Q4 learning queue processors through admin-only mobile API services', async () => {
+  it('routes Q4 learning queue processors and A3 monitor through admin-only mobile API services', async () => {
     const processKaelLearningQueue = vi.fn(async () => ({
       selected: 2,
       submitted: 2,
@@ -624,10 +662,19 @@ describe('mobile-api Edge router contract', () => {
       processed_items: 2,
       failed_items: 0,
     }))
+    const monitorKaelLearningRules = vi.fn(async () => ({
+      checked: 1,
+      monitored: 1,
+      rolled_back: 1,
+    }))
     const authenticate = vi.fn(async () => adminAuth)
     const handler = createMobileApiHandler({
       authenticate,
-      services: makeServices({ processKaelLearningQueue, processKaelBatchResults }),
+      services: makeServices({
+        processKaelLearningQueue,
+        processKaelBatchResults,
+        monitorKaelLearningRules,
+      }),
     })
 
     const queueResponse = await handler(new Request('https://example.test/mobile-api/admin/kael-learning/process-queue', {
@@ -640,9 +687,15 @@ describe('mobile-api Edge router contract', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ limit: 1, force_poll: true }),
     }))
+    const monitorResponse = await handler(new Request('https://example.test/mobile-api/admin/kael-learning/monitor-rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 3 }),
+    }))
 
     expect(queueResponse.status).toBe(200)
     expect(resultsResponse.status).toBe(200)
+    expect(monitorResponse.status).toBe(200)
     expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['admin'])
     expect(processKaelLearningQueue).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'admin' }),
@@ -651,6 +704,91 @@ describe('mobile-api Edge router contract', () => {
     expect(processKaelBatchResults).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'admin' }),
       { limit: 1, force_poll: true },
+    )
+    expect(monitorKaelLearningRules).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      { limit: 3 },
+    )
+  })
+
+  it('routes A4 manual learning candidate list and review through admin-only mobile API services', async () => {
+    const listKaelLearningCandidates = vi.fn(async () => ({
+      candidates: [{
+        id: 'candidate-1',
+        candidate_type: 'service_knowledge_candidate',
+        affected_service: 'cleaning' as const,
+        affected_problem: 'deep_clean',
+        affected_district: 'q7',
+        confidence: 0.7,
+        evidence_count: 3,
+        status: 'manual_review' as const,
+        audit_reason: null,
+        created_at: '2026-06-04T00:00:00.000Z',
+        updated_at: '2026-06-04T00:00:00.000Z',
+        promoted_at: null,
+        rolled_back_at: null,
+        suggested_payload: { skill_id: 'LS5' },
+        evidence_snapshot: { evidence_count: 3 },
+      }],
+    }))
+    const approveKaelLearningCandidate = vi.fn(async () => ({
+      ok: true,
+      candidate_id: 'candidate-1',
+      rule_id: 'rule-1',
+      rule_version: 2,
+      status: 'auto_promoted',
+      knowledge_apply: {
+        ok: true,
+        error_code: null,
+        knowledge_table: 'service_knowledge_boxes',
+        record_key: 'plumbing',
+        knowledge_version: 1,
+      },
+    }))
+    const rejectKaelLearningCandidate = vi.fn(async () => ({
+      ok: true,
+      candidate_id: 'candidate-2',
+      status: 'archived',
+    }))
+    const authenticate = vi.fn(async () => adminAuth)
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({
+        listKaelLearningCandidates,
+        approveKaelLearningCandidate,
+        rejectKaelLearningCandidate,
+      }),
+    })
+
+    const listResponse = await handler(new Request('https://example.test/mobile-api/admin/kael/learning/candidates?state=manual_review&limit=10'))
+    const approveResponse = await handler(new Request('https://example.test/mobile-api/admin/kael/learning/candidates/candidate-1/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ review_note: 'approved after admin check' }),
+    }))
+    const rejectResponse = await handler(new Request('https://example.test/mobile-api/admin/kael-learning/candidates/candidate-2/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: 'insufficient_evidence' }),
+    }))
+
+    expect(listResponse.status).toBe(200)
+    expect(approveResponse.status).toBe(200)
+    expect(rejectResponse.status).toBe(200)
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer', 'worker', 'admin'])
+    expect(listKaelLearningCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      { state: 'manual_review', limit: 10 },
+    )
+    expect(approveKaelLearningCandidate).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      'candidate-1',
+      { review_note: 'approved after admin check' },
+    )
+    expect(rejectKaelLearningCandidate).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+      'candidate-2',
+      { reason: 'insufficient_evidence' },
     )
   })
 
@@ -832,6 +970,126 @@ describe('mobile-api Edge router contract', () => {
     expect(getKaelChat).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
       'kael-session-1',
+    )
+  })
+
+  it('routes Kael chat progress polling through customer auth', async () => {
+    const getKaelChatProgress = vi.fn(async () => ({
+      session_id: 'kael-session-1',
+      progress: {
+        current_stage: 'market_lookup',
+        status: 'running' as const,
+        progress: 0.32,
+        failure_reason: null,
+        updated_at: '2026-06-04T00:00:00.000Z',
+      },
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ getKaelChatProgress }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/kael-session-1/progress', {
+      method: 'GET',
+    }))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      session_id: 'kael-session-1',
+      progress: {
+        current_stage: 'market_lookup',
+        status: 'running',
+        progress: 0.32,
+      },
+    })
+    expect(getKaelChatProgress).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      'kael-session-1',
+    )
+  })
+
+  it('blocks workers from polling customer Kael chat progress', async () => {
+    const getKaelChatProgress = vi.fn()
+    const authenticate = vi.fn(async (_request: Request, roles?: string[]): Promise<MobileApiAuthResult> => {
+      expect(roles).toEqual(['customer', 'admin'])
+      return {
+        success: false,
+        status: 403,
+        error: 'Forbidden',
+      }
+    })
+    const handler = createMobileApiHandler({
+      authenticate,
+      services: makeServices({ getKaelChatProgress }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/kael-session-1/progress', {
+      method: 'GET',
+    }))
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ code: 'AUTH_FORBIDDEN' })
+    expect(authenticate).toHaveBeenCalledOnce()
+    expect(getKaelChatProgress).not.toHaveBeenCalled()
+  })
+
+  it('routes Kael chat SSE stream without wrapping the Response as JSON', async () => {
+    const streamKaelChatTurn = vi.fn(async () => new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: result\ndata: {"ok":true}\n\n'))
+          controller.close()
+        },
+      }),
+      { headers: { 'Content-Type': 'text/event-stream; charset=utf-8' } },
+    ))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ streamKaelChatTurn }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/kael-session-1/stream', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Outlet still sparks.' }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('text/event-stream; charset=utf-8')
+    expect(await response.text()).toContain('event: result')
+    expect(streamKaelChatTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'customer' }),
+      'kael-session-1',
+      { message: 'Outlet still sparks.', photo_urls: [], apartment_access_profile: {} },
+    )
+  })
+
+  it('routes worker Kael advisory SSE stream without wrapping the Response as JSON', async () => {
+    const streamWorkerKaelChatTurn = vi.fn(async () => new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: result\ndata: {"ok":true}\n\n'))
+          controller.close()
+        },
+      }),
+      { headers: { 'Content-Type': 'text/event-stream; charset=utf-8' } },
+    ))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ streamWorkerKaelChatTurn }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael/chat/worker-session-1/stream', {
+      method: 'POST',
+      body: JSON.stringify({ language: 'vi', media_refs: [], message: 'Need scope advice.' }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('text/event-stream; charset=utf-8')
+    expect(await response.text()).toContain('event: result')
+    expect(streamWorkerKaelChatTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'worker-session-1',
+      { language: 'vi', media_refs: [], message: 'Need scope advice.' },
     )
   })
 
@@ -1165,6 +1423,67 @@ describe('mobile-api Edge router contract', () => {
         completion_photo_urls: ['supabase://job-media/job-1/after/photo.jpg'],
       },
     )
+  })
+
+  it('passes worker apartment access check-in evidence through status updates', async () => {
+    const updateJobStatus = vi.fn(async () => ({
+      job_id: 'job-1',
+      from_status: 'worker_on_way' as const,
+      to_status: 'arrived' as const,
+      updated_at: '2026-06-04T00:00:00.000Z',
+    }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ updateJobStatus }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'arrived',
+        access_check_in: {
+          mode: 'manual_photo',
+          photo_urls: ['supabase://job-media/job-1/after/lobby.jpg'],
+          note: 'Đã đến sảnh.',
+        },
+      }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(updateJobStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'worker' }),
+      'job-1',
+      {
+        status: 'arrived',
+        access_check_in: {
+          mode: 'manual_photo',
+          photo_urls: ['supabase://job-media/job-1/after/lobby.jpg'],
+          note: 'Đã đến sảnh.',
+        },
+      },
+    )
+  })
+
+  it('rejects manual apartment access check-in without photo evidence', async () => {
+    const updateJobStatus = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => workerAuth),
+      services: makeServices({ updateJobStatus }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/jobs/job-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'arrived',
+        access_check_in: { mode: 'manual_photo' },
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: 'VALIDATION' })
+    expect(updateJobStatus).not.toHaveBeenCalled()
   })
 
   it('rejects non-completion storage refs for worker completion photos', async () => {

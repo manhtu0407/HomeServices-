@@ -44,8 +44,10 @@ export type {
 } from './types/api-responses'
 export {
   serviceTypeSchema,
+  apartmentAccessProfileSchema,
   jobCreateSchema,
   kaelChatCreateSchema,
+  kaelChatProgressSchema,
   kaelChatTurnSchema,
   placesAutocompleteSchema,
   customerKaelFeedbackSchema,
@@ -56,6 +58,10 @@ export {
   availabilityToggleSchema,
   workerScopeChangeSchema,
   kaelWorkerClarifySchema,
+  workerKaelChatCreateSchema,
+  workerKaelChatTurnSchema,
+  workerKaelFeedbackSchema,
+  workerKaelTrainingConsentSchema,
   customerCancellationRequestSchema,
   disputeOpenRequestSchema,
   disputeCounterStatementSchema,
@@ -70,8 +76,10 @@ export {
 } from './validation'
 export type {
   JobCreateInput,
+  ApartmentAccessProfileInput,
   KaelChatCreateInput,
   KaelChatTurnInput,
+  KaelChatProgress,
   PlacesAutocompleteInput,
   CustomerKaelFeedbackInput,
   ReviewInput,
@@ -81,6 +89,10 @@ export type {
   AvailabilityToggleInput,
   WorkerScopeChangeInput,
   KaelWorkerClarifyInput,
+  WorkerKaelChatCreateInput,
+  WorkerKaelChatTurnInput,
+  WorkerKaelFeedbackInput,
+  WorkerKaelTrainingConsentInput,
   WorkerCancellationRequestInput,
   WorkerCancellationDecisionInput,
   JobMediaAttachInput,

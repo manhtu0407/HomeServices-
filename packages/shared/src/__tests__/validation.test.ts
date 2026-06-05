@@ -3,6 +3,7 @@ import {
   serviceTypeSchema,
   jobCreateSchema,
   kaelChatCreateSchema,
+  kaelChatProgressSchema,
   kaelChatTurnSchema,
   placesAutocompleteSchema,
   workerScopeChangeSchema,
@@ -241,6 +242,52 @@ describe('kaelChat schemas', () => {
       kaelChatTurnSchema.parse({
         message: 'Quá nhiều ảnh',
         photo_urls: Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.jpg`),
+      })
+    ).toThrow()
+  })
+})
+
+describe('kaelChatProgressSchema', () => {
+  it('accepts safe Kael progress telemetry only', () => {
+    const parsed = kaelChatProgressSchema.parse({
+      current_stage: 'market_lookup',
+      status: 'running',
+      progress: 0.32,
+      failure_reason: null,
+      updated_at: '2026-06-04T13:58:30.716Z',
+    })
+
+    expect(parsed.current_stage).toBe('market_lookup')
+    expect(parsed.progress).toBe(0.32)
+    expect(kaelChatProgressSchema.parse({
+      current_stage: 'scope_estimating',
+      status: 'running',
+      progress: 0.68,
+      failure_reason: null,
+      updated_at: '2026-06-04T13:58:30.716Z',
+    }).current_stage).toBe('scope_estimating')
+  })
+
+  it('rejects out-of-range progress and unknown raw/provider fields', () => {
+    expect(() =>
+      kaelChatProgressSchema.parse({
+        current_stage: 'price_synthesis',
+        status: 'running',
+        progress: 1.2,
+        failure_reason: null,
+        updated_at: '2026-06-04T13:58:30.716Z',
+      })
+    ).toThrow()
+
+    expect(() =>
+      kaelChatProgressSchema.parse({
+        current_stage: 'price_synthesis',
+        status: 'running',
+        progress: 0.9,
+        failure_reason: null,
+        updated_at: '2026-06-04T13:58:30.716Z',
+        provider: 'anthropic',
+        raw_customer_text: 'Ống nước căn 1201 bị rò',
       })
     ).toThrow()
   })

@@ -80,6 +80,27 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(env.sourceTrustPerplexityFilterExplicit).toBe(true)
   })
 
+  it('keeps the B1 knowledge retrieval flag off by default and explicit at the Edge boundary', () => {
+    const defaultEnv = readEdgeEnv((name) => {
+      const values: Record<string, string> = {
+        SUPABASE_URL: 'https://project.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+      }
+      return values[name]
+    })
+    const enabledEnv = readEdgeEnv((name) => {
+      const values: Record<string, string> = {
+        SUPABASE_URL: 'https://project.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+        KAEL_OPT_KNOWLEDGE_RETRIEVAL_ENABLED: '1',
+      }
+      return values[name]
+    })
+
+    expect(defaultEnv.knowledgeRetrievalEnabled).toBe(false)
+    expect(enabledEnv.knowledgeRetrievalEnabled).toBe(true)
+  })
+
   it('accepts the Section 25 R2 source trust rollout alias at the Edge boundary', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
@@ -165,6 +186,7 @@ describe('mobile-api Edge runtime helpers', () => {
 
     expect(Object.keys(services).sort()).toEqual([
       'acceptBroadcast',
+      'approveKaelLearningCandidate',
       'askKaelForWorker',
       'attachJobMedia',
       'cancelJob',
@@ -173,6 +195,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'confirmSearch',
       'createKaelChat',
       'createJob',
+      'createWorkerKaelChat',
       'decideScopeChange',
       'decideWorkerCancellation',
       'declineBroadcast',
@@ -181,22 +204,32 @@ describe('mobile-api Edge runtime helpers', () => {
       'getJob',
       'getKaelCharter',
       'getKaelChat',
+      'getKaelChatProgress',
       'getMyKaelMemory',
       'getWorkerEarnings',
+      'getWorkerKaelChat',
       'getWorkerKaelMemory',
+      'getWorkerKaelTrainingConsent',
       'getWorkerProfile',
       'invalidateMarketCache',
       'listCustomerActiveJobs',
       'listJobMessages',
+      'listKaelLearningCandidates',
+      'listWorkerKaelChats',
       'processKaelBatchResults',
       'processKaelLearningQueue',
       'sendKaelChatTurn',
       'sendJobMessage',
+      'sendWorkerKaelChatTurn',
+      'setWorkerKaelTrainingConsent',
+      'streamKaelChatTurn',
+      'streamWorkerKaelChatTurn',
       'listNotifications',
       'listServices',
       'listWorkerBroadcasts',
       'listWorkerJobs',
       'markNotificationRead',
+      'monitorKaelLearningRules',
       'openDispute',
       'placesAutocomplete',
       'registerDevicePushToken',
@@ -204,9 +237,11 @@ describe('mobile-api Edge runtime helpers', () => {
       'requestScopeChange',
       'requestCustomerCancellation',
       'requestWorkerCancellation',
+      'rejectKaelLearningCandidate',
       'submitDisputeCounterStatement',
       'submitCustomerKaelFeedback',
       'submitReview',
+      'submitWorkerKaelFeedback',
       'decideDispute',
       'updateJobStatus',
       'updateWorkerAvailability',
@@ -358,6 +393,7 @@ describe('mobile-api Edge runtime helpers', () => {
         error: null,
       },
       { data: { safe_metadata: { address_label: 'Landmark 81, Bình Thạnh' } }, error: null },
+      { data: null, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7', kael_price_max: 250000, final_price: null }, error: null },
       { data: { id: 'job-1' }, error: null },
@@ -1362,6 +1398,230 @@ describe('mobile-api Edge runtime helpers', () => {
     )
   })
 
+  it('redacts worker contact solicitation, records risk memory, and queues soft admin evidence', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          customer_id: 'customer-contact-guard',
+          worker_id: 'worker-contact-guard',
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'message-1',
+          job_id: 'job-1',
+          sender_id: 'worker-contact-guard',
+          sender_role: 'worker',
+          content: 'Kael redacted contact content.',
+          is_read: false,
+          created_at: '2026-05-20T00:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'message-kael-1',
+          job_id: 'job-1',
+          sender_id: null,
+          sender_role: 'kael',
+          content: 'Kael keeps contact, evidence, and payment in app.',
+          is_read: false,
+          created_at: '2026-05-20T00:00:01.000Z',
+        },
+        error: null,
+      },
+      {
+        data: {
+          red_flags: { disintermediation_risk_count: 1 },
+          reliability_signals: {},
+          safe_metadata: {},
+        },
+        error: null,
+      },
+      { data: { worker_id: 'worker-contact-guard' }, error: null },
+      { data: { id: 'queue-1' }, error: null },
+      { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-1', user_id: 'customer-contact-guard', push_token: 'ExponentPushToken[customer-contact-guard]' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-contact-guard' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).sendJobMessage(ctx, 'job-1', {
+      content: 'Goi em 0901234567 qua Zalo, khoi qua app cung duoc.',
+    })).resolves.toMatchObject({
+      message: {
+        id: 'message-1',
+        sender_role: 'worker',
+      },
+    })
+
+    const chatInserts = client.calls
+      .filter((call) => call.table === 'chat_messages')
+      .flatMap((call) => call.operations.filter((op) => op[0] === 'insert'))
+    const workerInsert = chatInserts.find((op) =>
+      (op[1] as Record<string, unknown>).sender_role === 'worker'
+    )?.[1] as Record<string, unknown> | undefined
+    const kaelInsert = chatInserts.find((op) =>
+      (op[1] as Record<string, unknown>).sender_role === 'kael'
+    )?.[1] as Record<string, unknown> | undefined
+    expect(workerInsert).toMatchObject({
+      job_id: 'job-1',
+      sender_id: 'worker-contact-guard',
+      sender_role: 'worker',
+      content: expect.stringContaining('Kael'),
+    })
+    expect(JSON.stringify(workerInsert)).not.toContain('0901234567')
+    expect(JSON.stringify(workerInsert)).not.toContain('Zalo')
+    expect(kaelInsert).toMatchObject({
+      job_id: 'job-1',
+      sender_id: null,
+      sender_role: 'kael',
+      content: expect.stringContaining('app'),
+    })
+
+    const memoryUpsert = client.calls
+      .find((call) => call.table === 'worker_kael_memory' && call.operations.some((op) => op[0] === 'upsert'))
+      ?.operations.find((op) => op[0] === 'upsert')?.[1] as Record<string, unknown> | undefined
+    expect(memoryUpsert).toMatchObject({
+      worker_id: 'worker-contact-guard',
+      red_flags: expect.objectContaining({
+        disintermediation_contact_leak: true,
+        disintermediation_risk_count: 2,
+        last_disintermediation_job_id: 'job-1',
+        last_disintermediation_signals: expect.arrayContaining(['phone', 'zalo', 'off_app']),
+      }),
+      reliability_signals: expect.objectContaining({
+        app_channel_guard_triggered: true,
+      }),
+      safe_metadata: expect.objectContaining({
+        last_disintermediation_guard: expect.objectContaining({
+          job_id: 'job-1',
+          signals: expect.arrayContaining(['phone', 'zalo', 'off_app']),
+        }),
+      }),
+    })
+    expect(JSON.stringify(memoryUpsert)).not.toContain('0901234567')
+
+    expect(client.calls.find((call) => call.table === 'kael_admin_queue')?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        job_id: 'job-1',
+        actor_id: 'worker-contact-guard',
+        actor_role: 'worker',
+        queue_type: 'disintermediation_risk',
+        priority: 'medium',
+        escalation_level: 'soft',
+        reason_code: 'worker_contact_or_off_app_solicitation',
+        safe_metadata: expect.objectContaining({
+          signals: expect.arrayContaining(['phone', 'zalo', 'off_app']),
+        }),
+      }),
+    ])
+    expect(JSON.stringify(client.calls)).not.toContain('0901234567')
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.not.stringContaining('0901234567'),
+      }),
+    )
+  })
+
+  it('redacts customer contact solicitation without adding worker risk evidence', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_matched',
+          customer_id: 'customer-contact-customer',
+          worker_id: 'worker-contact-customer',
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'message-1',
+          job_id: 'job-1',
+          sender_id: 'customer-contact-customer',
+          sender_role: 'customer',
+          content: 'Kael redacted contact content.',
+          is_read: false,
+          created_at: '2026-05-20T00:00:00.000Z',
+        },
+        error: null,
+      },
+      {
+        data: {
+          id: 'message-kael-1',
+          job_id: 'job-1',
+          sender_id: null,
+          sender_role: 'kael',
+          content: 'Kael keeps contact and payment in app.',
+          is_read: false,
+          created_at: '2026-05-20T00:00:01.000Z',
+        },
+        error: null,
+      },
+      { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
+      { data: [{ id: 'token-1', user_id: 'worker-contact-customer', push_token: 'ExponentPushToken[worker-contact-customer]' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-contact-customer' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).sendJobMessage(ctx, 'job-1', {
+      content: 'Trao doi qua worker@example.com hoac Zalo, khoi qua app nhe.',
+    })).resolves.toMatchObject({
+      message: {
+        id: 'message-1',
+        sender_role: 'customer',
+      },
+    })
+
+    const customerInsert = client.calls
+      .filter((call) => call.table === 'chat_messages')
+      .flatMap((call) => call.operations.filter((op) => op[0] === 'insert'))
+      .find((op) => (op[1] as Record<string, unknown>).sender_role === 'customer')?.[1] as
+        | Record<string, unknown>
+        | undefined
+    expect(customerInsert).toMatchObject({
+      job_id: 'job-1',
+      sender_id: 'customer-contact-customer',
+      sender_role: 'customer',
+      content: expect.stringContaining('Kael'),
+    })
+    expect(JSON.stringify(client.calls)).not.toContain('worker@example.com')
+    expect(client.calls.some((call) => call.table === 'worker_kael_memory')).toBe(false)
+    expect(client.calls.some((call) => call.table === 'kael_admin_queue')).toBe(false)
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://exp.host/--/api/v2/push/send',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.not.stringContaining('worker@example.com'),
+      }),
+    )
+  })
+
   it('adds a Kael admin-wait message and defensive logs for hard demanding job chat', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
@@ -1996,13 +2256,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: { id: 'job-1' }, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
-      { data: null, error: null },
-      { data: null, error: null },
-      { data: null, error: null },
-      { data: null, error: null },
-      { data: null, error: null },
       { reject: new Error('DB timeout after 10000ms') },
-      { data: null, error: null },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
     ])
@@ -2735,6 +2989,13 @@ describe('mobile-api Edge runtime helpers', () => {
             confidence: 0.8,
             fallback_used: false,
           },
+          kael_progress: {
+            current_stage: 'scope_estimating',
+            status: 'completed',
+            progress: 1,
+            failure_reason: null,
+            updated_at: '2026-06-04T13:58:30.716Z',
+          },
           evidence_photo_urls: ['supabase://job-media/job-1/scope_change_evidence/a.jpg'],
           created_at: '2026-05-17T00:01:00.000Z',
         }],
@@ -2755,6 +3016,10 @@ describe('mobile-api Edge runtime helpers', () => {
         requested_description: 'Replace damaged breaker',
         price_min: 250000,
         kael_computed_max: 350000,
+        kael_progress: expect.objectContaining({
+          current_stage: 'scope_estimating',
+          status: 'completed',
+        }),
         evidence_photo_urls: ['supabase://job-media/job-1/scope_change_evidence/a.jpg'],
       },
     })
@@ -3161,6 +3426,18 @@ describe('mobile-api Edge runtime helpers', () => {
     await expect(createEdgeServices({}).acceptBroadcast(ctx, 'job-1')).resolves.toMatchObject({
       job_id: 'job-1',
       status: 'worker_matched',
+      full_address: {
+        building: 'River Gate',
+        unit: null,
+        floor: null,
+        district: 'q7',
+      },
+      address_access: {
+        release_stage: 'building_released',
+        exact_unit_released: false,
+        check_in_required: true,
+        evidence_mode: 'none',
+      },
     })
 
     const notificationCall = client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')
@@ -3181,6 +3458,51 @@ describe('mobile-api Edge runtime helpers', () => {
         body: expect.stringContaining('/(customer)/history?job_id=job-1'),
       }),
     )
+  })
+
+  it('masks exact apartment unit after accept until the worker check-in evidence releases it', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          ok: true,
+          error_code: null,
+          job_status: 'worker_matched',
+          address_building: 'River Gate',
+          address_unit: '1201',
+          address_floor: '12',
+          address_district: 'q7',
+        }],
+        error: null,
+      },
+      { data: null, error: null },
+      { data: { customer_id: null }, error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).acceptBroadcast(ctx, 'job-1')).resolves.toMatchObject({
+      job_id: 'job-1',
+      status: 'worker_matched',
+      full_address: {
+        building: 'River Gate',
+        unit: null,
+        floor: null,
+        district: 'q7',
+      },
+      address_access: {
+        release_stage: 'building_released',
+        exact_unit_released: false,
+        check_in_required: true,
+        identity_check_required: true,
+        customer_handoff_required: true,
+        evidence_mode: 'none',
+      },
+    })
   })
 
   it('notifies the customer when a worker arrives', async () => {
@@ -3236,6 +3558,128 @@ describe('mobile-api Edge runtime helpers', () => {
         body: expect.stringContaining('/(customer)/history?job_id=job-1'),
       }),
     )
+  })
+
+  it('unlocks exact unit only when arrived status carries check-in evidence', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          customer_id: null,
+          worker_id: 'worker-1',
+          apartment_access_state: { release_stage: 'building_released' },
+        },
+        error: null,
+      },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
+      status: 'arrived',
+      access_check_in: {
+        mode: 'manual_photo',
+        photo_urls: ['supabase://job-media/job-1/after/lobby.jpg'],
+        note: 'Đã đến sảnh và gặp bảo vệ.',
+      },
+    })).resolves.toMatchObject({
+      job_id: 'job-1',
+      from_status: 'worker_on_way',
+      to_status: 'arrived',
+    })
+
+    const updateCall = client.calls.find((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'update')
+    )
+    expect(updateCall?.operations).toContainEqual([
+      'update',
+      expect.objectContaining({
+        status: 'arrived',
+        apartment_access_state: expect.objectContaining({
+          release_stage: 'unit_released',
+          exact_unit_released: true,
+          check_in_required: false,
+          evidence_mode: 'manual_photo',
+          check_in: expect.objectContaining({
+            mode: 'manual_photo',
+            photo_urls: ['supabase://job-media/job-1/after/lobby.jpg'],
+          }),
+        }),
+      }),
+    ])
+    const eventCall = client.calls.find((call) =>
+      call.table === 'job_events' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )
+    expect(eventCall?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        event_type: 'worker_status_update',
+        safe_metadata: expect.objectContaining({
+          apartment_access_release: true,
+          release_stage: 'unit_released',
+          evidence_mode: 'manual_photo',
+        }),
+      }),
+    ])
+  })
+
+  it('keeps worker job list exact unit locked before check-in release', async () => {
+    const client = makeSequenceClient([
+      {
+        data: [{
+          id: 'job-1',
+          status: 'worker_matched',
+          service_type: 'plumbing',
+          kael_problem_identified: 'Pipe leak',
+          address_building: 'River Gate',
+          address_unit: '1201',
+          address_floor: '12',
+          address_district: 'q7',
+          apartment_access_profile: { entry_method: 'Đăng ký ở quầy lễ tân' },
+          apartment_access_state: { release_stage: 'building_released', exact_unit_released: false },
+          kael_price_min: 150000,
+          kael_price_max: 250000,
+          kael_worker_brief_guidance: null,
+          final_price: null,
+          completion_notes: null,
+          completion_photo_urls: [],
+          created_at: '2026-06-04T00:00:00.000Z',
+          matched_at: '2026-06-04T00:01:00.000Z',
+          completed_at: null,
+        }],
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).listWorkerJobs(ctx)).resolves.toMatchObject({
+      jobs: [{
+        id: 'job-1',
+        address_building: 'River Gate',
+        address_unit: null,
+        address_floor: null,
+        district: 'q7',
+        address_access: {
+          release_stage: 'building_released',
+          exact_unit_released: false,
+          access_profile: { entry_method: 'Đăng ký ở quầy lễ tân' },
+        },
+      }],
+    })
   })
 
   it('P9 keeps worker_on_way silent for the customer notification budget', async () => {
@@ -3373,10 +3817,28 @@ describe('mobile-api Edge runtime helpers', () => {
         }),
       }),
     ])
-    expect(client.calls.some((call) =>
-      call.table === 'scope_change_requests' &&
-      call.operations.some((op) => op[0] === 'update')
-    )).toBe(false)
+    const progressCalls = client.calls.filter((call) =>
+      call.operations.some((op) => {
+        const value = op[1] as { kael_progress?: unknown } | undefined
+        return op[0] === 'update' && value?.kael_progress !== undefined
+      })
+    )
+    expect(progressCalls.map((call) => call.table)).toEqual(expect.arrayContaining([
+      'jobs',
+      'scope_change_requests',
+    ]))
+    const scopeProgressCall = progressCalls.find((call) => call.table === 'scope_change_requests')
+    expect(scopeProgressCall?.operations).toContainEqual([
+      'update',
+      {
+        kael_progress: expect.objectContaining({
+          current_stage: 'scope_estimating',
+          status: 'completed',
+          progress: 1,
+        }),
+      },
+    ])
+    expect(scopeProgressCall?.operations).toContainEqual(['eq', 'id', 'scope-1'])
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.anthropic.com/v1/messages',
       expect.objectContaining({ method: 'POST' }),
@@ -5287,6 +5749,9 @@ function makeQuery(call: QueryCall, results: QueryResult[]) {
       onfulfilled?: ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,
       onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
     ): PromiseLike<TResult1 | TResult2> {
+      if (isKaelProgressUpdate(call)) {
+        return Promise.resolve({ data: { id: 'kael-progress-ok' }, error: null }).then(onfulfilled, onrejected)
+      }
       const next = results.shift() ?? { data: null, error: null }
       if ('reject' in next) {
         return Promise.reject(next.reject).then(onfulfilled, onrejected)
@@ -5295,4 +5760,11 @@ function makeQuery(call: QueryCall, results: QueryResult[]) {
     },
   }
   return query
+}
+
+function isKaelProgressUpdate(call: QueryCall) {
+  return call.operations.some((op) => {
+    const value = op[1] as { kael_progress?: unknown } | undefined
+    return op[0] === 'update' && value?.kael_progress !== undefined
+  })
 }

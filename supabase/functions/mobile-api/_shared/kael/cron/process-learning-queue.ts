@@ -18,15 +18,18 @@ type QueryBuilder<T = unknown> = {
   update(value: unknown): QueryBuilder<T>;
   eq(column: string, value: unknown): QueryBuilder<T>;
   in(column: string, values: unknown[]): QueryBuilder<T>;
+  gte(column: string, value: unknown): QueryBuilder<T>;
   lte(column: string, value: unknown): QueryBuilder<T>;
   order(column: string, options?: Record<string, unknown>): QueryBuilder<T>;
   limit(count: number): QueryBuilder<T>;
   single(): QueryBuilder<T>;
+  maybeSingle(): QueryBuilder<T>;
   then: QueryLike<T>["then"];
 };
 
 export type LearningQueueDbClient = {
   from(table: string): QueryBuilder;
+  rpc?(name: string, args?: Record<string, unknown>): QueryBuilder | QueryLike;
 };
 
 export type QueuedLearningRow = {
@@ -224,6 +227,20 @@ function buildBatchRequest(row: QueuedLearningRow, model?: string): AnthropicBat
             skill_id: row.skill_id,
             candidate: row.candidate_payload,
             input: row.input_payload,
+            expected_output: {
+              format: "json_object",
+              root: "candidate",
+              instruction:
+                "Return exactly {\"candidate\": <candidate>} with no prose. Preserve the candidate schema fields and only add safe aggregate evidence under candidate.payload.evidence_snapshot when available.",
+              evidence_snapshot: {
+                evidence_count: "integer count of safe reviewed transactions",
+                confidence: "number from 0 to 1",
+                completed_transaction_count: "integer count of completed/reviewed transactions",
+                recent_contradiction_ratio: "number from 0 to 1",
+              },
+              forbidden:
+                "Do not return raw chat text, addresses, phone numbers, payment data, final-price mutations, booking actions, or expanded service scope.",
+            },
           }),
         },
       ],

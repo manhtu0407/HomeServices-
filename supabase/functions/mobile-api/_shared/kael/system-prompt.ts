@@ -21,6 +21,7 @@ export type BuildKaelSystemPromptInput = {
   readonly language?: KaelPromptLanguage;
   readonly permissionSummary?: string;
   readonly memorySummary?: string;
+  readonly knowledgeSummary?: string;
 };
 
 const LOCKED_FILES = [
@@ -93,6 +94,7 @@ const PURPOSE_GUIDANCE: Record<KaelPurpose, string> = {
   price_synthesis: "Use allowed baselines and market context; avoid exact guarantees unless backend has Kael-locked value.",
   advisory_generation: "Give a short practical note; safety notes only when relevant to the service.",
   worker_brief: "Prepare worker guidance in one to three bullets with issue, access, and evidence.",
+  worker_assist: "Advise the worker on the accepted job only; explain brief, safety, and scope-change rails without setting price or status.",
   scope_change: "Review worker-reported scope evidence; Kael computes the updated estimate and avoids accusing language.",
   post_job_learning: "Store only sanitized aggregates and lifecycle evidence; do not reveal learning internals.",
   educational_response: "Answer only supported home-service questions; reject unrelated topics briefly.",
@@ -128,6 +130,7 @@ export function buildKaelSystemPrompt(input: BuildKaelSystemPromptInput): string
   const context = input.contextSummary?.trim() || "No extra context supplied.";
   const permission = input.permissionSummary?.trim() || "Use only the current purpose, actor authority, sanitized job context, and allowed Home Services scope.";
   const memory = input.memorySummary?.trim() || "No memory summary supplied.";
+  const knowledge = input.knowledgeSummary?.trim() || "No runtime knowledge supplied.";
 
   return [
     IDENTITY,
@@ -148,6 +151,10 @@ export function buildKaelSystemPrompt(input: BuildKaelSystemPromptInput): string
     [
       "Memory summary",
       memory,
+    ].join("\n"),
+    [
+      "Knowledge summary",
+      knowledge,
     ].join("\n"),
     [
       "Context summary",

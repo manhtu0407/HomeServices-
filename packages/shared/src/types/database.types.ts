@@ -1449,6 +1449,7 @@ export type Database = {
           estimate_ready_at: string | null
           id: string
           job_id: string | null
+          kael_progress: Json | null
           safe_metadata: Json
           service_type: Database["public"]["Enums"]["service_type"]
           started_at: string
@@ -1464,6 +1465,7 @@ export type Database = {
           estimate_ready_at?: string | null
           id?: string
           job_id?: string | null
+          kael_progress?: Json | null
           safe_metadata?: Json
           service_type: Database["public"]["Enums"]["service_type"]
           started_at?: string
@@ -1479,6 +1481,7 @@ export type Database = {
           estimate_ready_at?: string | null
           id?: string
           job_id?: string | null
+          kael_progress?: Json | null
           safe_metadata?: Json
           service_type?: Database["public"]["Enums"]["service_type"]
           started_at?: string
@@ -2455,6 +2458,7 @@ export type Database = {
           job_id: string
           kael_computed_max: number | null
           kael_computed_min: number | null
+          kael_progress: Json | null
           kael_review: Json | null
           original_summary: string | null
           price_max: number | null
@@ -2473,6 +2477,7 @@ export type Database = {
           job_id: string
           kael_computed_max?: number | null
           kael_computed_min?: number | null
+          kael_progress?: Json | null
           kael_review?: Json | null
           original_summary?: string | null
           price_max?: number | null
@@ -2491,6 +2496,7 @@ export type Database = {
           job_id?: string
           kael_computed_max?: number | null
           kael_computed_min?: number | null
+          kael_progress?: Json | null
           kael_review?: Json | null
           original_summary?: string | null
           price_max?: number | null
@@ -3163,6 +3169,73 @@ export type Database = {
         Args: { p_cache_id: string }
         Returns: undefined
       }
+      admin_approve_learning_candidate: {
+        Args: {
+          p_admin_id: string
+          p_candidate_id: string
+          p_review_note?: string | null
+        }
+        Returns: {
+          candidate_id: string | null
+          error_code: string | null
+          ok: boolean
+          rule_id: string | null
+          rule_version: number | null
+          status: string | null
+        }[]
+      }
+      admin_reject_learning_candidate: {
+        Args: {
+          p_admin_id: string
+          p_candidate_id: string
+          p_reason: string
+        }
+        Returns: {
+          candidate_id: string | null
+          error_code: string | null
+          ok: boolean
+          status: string | null
+        }[]
+      }
+      promote_learning_candidate: {
+        Args: {
+          p_actor_id?: string | null
+          p_actor_role?: string | null
+          p_affected_district: string
+          p_affected_problem: string
+          p_affected_service: Database["public"]["Enums"]["service_type"]
+          p_audit_reason?: string | null
+          p_candidate_payload: Json
+          p_candidate_type: string
+          p_confidence: number
+          p_effects?: string[] | null
+          p_evidence_count: number
+          p_job_id?: string | null
+          p_rule_payload: Json
+          p_skill_id: string
+          p_target: string
+        }
+        Returns: {
+          candidate_id: string | null
+          error_code: string | null
+          ok: boolean
+          rule_id: string | null
+          rule_version: number | null
+        }[]
+      }
+      rollback_learning_rule: {
+        Args: {
+          p_reason?: string | null
+          p_rule_id: string
+          p_safe_metadata?: Json
+          p_skill_id: string
+        }
+        Returns: {
+          error_code: string | null
+          ok: boolean
+          rule_id: string | null
+        }[]
+      }
       decide_scope_change_atomic: {
         Args: {
           p_customer_id: string
@@ -3388,6 +3461,7 @@ export type Database = {
         | "created"
         | "pending_evidence"
         | "evidence_gate_passed"
+        | "manual_review"
         | "auto_promoted"
         | "rejected"
         | "rolled_back"
@@ -3584,6 +3658,7 @@ export const Constants = {
         "created",
         "pending_evidence",
         "evidence_gate_passed",
+        "manual_review",
         "auto_promoted",
         "rejected",
         "rolled_back",

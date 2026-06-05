@@ -40,7 +40,7 @@ describe('Kael foundation charter and permissions', () => {
     }
   })
 
-  it('defines the 11 locked Kael purposes for the future permission matrix', () => {
+  it('defines the 12 locked Kael purposes for the future permission matrix', () => {
     expect(KAEL_PURPOSES).toEqual([
       'intent_classification',
       'vision_analysis',
@@ -50,6 +50,7 @@ describe('Kael foundation charter and permissions', () => {
       'price_synthesis',
       'advisory_generation',
       'worker_brief',
+      'worker_assist',
       'scope_change',
       'post_job_learning',
       'educational_response',

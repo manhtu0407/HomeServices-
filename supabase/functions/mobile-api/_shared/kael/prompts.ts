@@ -193,8 +193,9 @@ export function buildPricingMessages(
   problem: string,
   complexity: ComplexityLevel,
   district: string,
+  knowledgeContext?: string | null,
 ): AIMessage[] {
-  return [
+  return appendKnowledgeContextToMessages([
     {
       role: "system",
       content:
@@ -213,6 +214,31 @@ Complexity: ${complexity}
 District: ${district}
 Location: Ho Chi Minh City, Vietnam`,
     },
+  ], knowledgeContext);
+}
+
+export function appendKnowledgeContextToMessages(
+  messages: AIMessage[],
+  knowledgeContext?: string | null,
+): AIMessage[] {
+  const context = knowledgeContext?.trim();
+  if (!context) return messages;
+  if (messages.length === 0) {
+    return [{ role: "system", content: context }];
+  }
+  const [first, ...rest] = messages;
+  if (first.role === "system" && typeof first.content === "string") {
+    return [
+      {
+        ...first,
+        content: `${first.content}\n\n${context}`,
+      },
+      ...rest,
+    ];
+  }
+  return [
+    { role: "system", content: context },
+    ...messages,
   ];
 }
 

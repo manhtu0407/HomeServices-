@@ -20,6 +20,7 @@ describe('Kael P8 charter, prompt, and self-check', () => {
 
     expect(prompt).toContain('Kael Identity')
     expect(prompt).toContain('Permission summary')
+    expect(prompt).toContain('Knowledge summary')
     expect(prompt).toContain('scope_change')
     expect(prompt.split(/\s+/).length).toBeLessThan(3000)
     expect(buildKaelSystemPrompt({
@@ -38,6 +39,11 @@ describe('Kael P8 charter, prompt, and self-check', () => {
 
     expect(prompt).toContain('actor=worker')
     expect(prompt).toContain('one to three bullets')
+    expect(buildKaelSystemPrompt({
+      purpose: 'worker_brief',
+      actor: 'worker',
+      knowledgeSummary: 'Runtime knowledge: ngat nguon truoc khi kiem tra.',
+    })).toContain('Runtime knowledge')
   })
 
   it('T8-test-4/5/6/7/8/10: self-check catches forbidden output and passes valid VI copy', () => {
@@ -90,6 +96,23 @@ describe('Kael P8 charter, prompt, and self-check', () => {
     expect(result.fallbackUsed).toBe(true)
     expect(result.failureReason).toBe('ai_self_reference')
     expect(result.value).toBe('Kael tam thoi chua the tra loi noi dung nay.')
+  })
+
+  it('runs semantic self-check in orchestrator output paths by default', async () => {
+    const result = await runKaelPurposeStage({
+      label: 'semantic-style-check',
+      purpose: 'educational_response',
+      timeoutMs: 100,
+      run: async () => 'Neu khong sua ngay nha ban se chay lon va hong het.',
+      selfCheck: {
+        actor: 'customer',
+        fallbackText: 'Kael tam thoi chua the tra loi noi dung nay.',
+      },
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.fallbackUsed).toBe(true)
+    expect(result.failureReason).toBe('semantic_guardrail')
   })
 
   it('T8-test-11: exposes public sanitized charter without auth', async () => {

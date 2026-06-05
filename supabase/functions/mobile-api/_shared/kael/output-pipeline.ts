@@ -159,6 +159,7 @@ export function buildWorkerBriefOutput(input: {
   } | null;
   estimatedEarningMin?: number | null;
   estimatedEarningMax?: number | null;
+  knowledgeSafetyGuidance?: readonly string[];
 }) {
   const isGuidance = input.stage === "guidance";
   const district = sanitizeKaelText(
@@ -166,6 +167,10 @@ export function buildWorkerBriefOutput(input: {
     100,
   );
   const problemSummary = sanitizeKaelText(input.problemSummary, 200);
+  const knowledgeSafety = (input.knowledgeSafetyGuidance ?? [])
+    .map(cleanWorkerBriefKnowledgeLine)
+    .filter((line) => line.length > 0)
+    .slice(0, 2);
   const brief: WorkerBrief = {
     schema_version: "worker_brief.v1",
     stage: input.stage,
@@ -198,6 +203,7 @@ export function buildWorkerBriefOutput(input: {
           "Địa chỉ đầy đủ chỉ hiển thị sau khi nhận yêu cầu.",
         ],
       safety: [
+        ...knowledgeSafety,
         "Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.",
       ],
     },
@@ -206,6 +212,12 @@ export function buildWorkerBriefOutput(input: {
     schema_version: "worker_brief_output.v1" as const,
     brief,
   };
+}
+
+function cleanWorkerBriefKnowledgeLine(value: string): string {
+  return sanitizeKaelText(value, 220)
+    .replace(/^Safety\s+(?:urgent|warning|advisory):\s*/i, "")
+    .trim();
 }
 
 export function buildScopeChangeOutputs(input: {

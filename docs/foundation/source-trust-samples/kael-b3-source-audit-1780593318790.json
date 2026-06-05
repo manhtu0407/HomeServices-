@@ -1,0 +1,461 @@
+{
+  "run_id": "kael-b3-source-audit-1780593318790",
+  "started_at": "2026-06-04T17:14:20.822Z",
+  "ended_at": "2026-06-04T17:15:18.790Z",
+  "perplexity_url": "https://api.perplexity.ai/v1/sonar",
+  "corpus_doc": "docs/foundation/kael-knowledge-corpus.md",
+  "source_count": 8,
+  "summary": {
+    "ok_sources": 8,
+    "on_domain_sources": 7,
+    "direct_url_sources": 6,
+    "verified_sources": 8,
+    "failed_sources": 0,
+    "outside_domain_url_count": 0
+  },
+  "results": [
+    {
+      "ref": "S1",
+      "source_label": "VSQI, `TCVN 7447-4-41:2010` page",
+      "trust_proposal": "1.00 official standards catalog",
+      "evidence_used": "The standard is active and covers low-voltage electrical installations and protection against electric shock.",
+      "url": "https://tieuchuan.vsqi.gov.vn/tieuchuan/view?sohieu=TCVN+7447-4-41%3A2010",
+      "domain": "vsqi.gov.vn",
+      "host": "tieuchuan.vsqi.gov.vn",
+      "live_status": "ok",
+      "on_domain_signal": true,
+      "direct_url_signal": true,
+      "verified_signal": true,
+      "on_domain_url_count": 4,
+      "citation_count": 2,
+      "search_result_count": 2,
+      "outside_domain_urls": [],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "citations": [
+          "https://tieuchuan.vsqi.gov.vn/tieuchuan/view?sohieu=TCVN+7447-4-41%3A2010",
+          "https://tieuchuan.vsqi.gov.vn/tieuchuan/view?sohieu=TCVN+7447-5-55%3A2015"
+        ],
+        "search_results": [
+          {
+            "title": "Tiêu chuẩn: TCVN 7447-4-41:2010 - Hệ thống lắp đặt điện hạ áp ...",
+            "url": "https://tieuchuan.vsqi.gov.vn/tieuchuan/view?sohieu=TCVN+7447-4-41%3A2010"
+          },
+          {
+            "title": "Tiêu chuẩn: TCVN 7447-5-55:2015 - Hệ thống lắp đặt điện hạ áp ...",
+            "url": "https://tieuchuan.vsqi.gov.vn/tieuchuan/view?sohieu=TCVN+7447-5-55%3A2015"
+          }
+        ],
+        "content_length": 1011,
+        "error": null
+      },
+      "direct_url": {
+        "ok": true,
+        "method": "HEAD",
+        "status": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "final_url_host_matches": true,
+        "error": null
+      }
+    },
+    {
+      "ref": "S2",
+      "source_label": "Cong Bao/Chinhphu.vn, `15/2023/TT-BXD`",
+      "trust_proposal": "1.00 official legal gazette",
+      "evidence_used": "The circular was issued by Ministry of Construction and took effect on 2024-07-01 for QCVN 07:2023/BXD.",
+      "url": "https://congbao.chinhphu.vn/van-ban/thong-tu-so-15-2023-tt-bxd-41111.htm",
+      "domain": "chinhphu.vn",
+      "host": "congbao.chinhphu.vn",
+      "live_status": "ok",
+      "on_domain_signal": true,
+      "direct_url_signal": true,
+      "verified_signal": true,
+      "on_domain_url_count": 2,
+      "citation_count": 1,
+      "search_result_count": 1,
+      "outside_domain_urls": [],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "citations": [
+          "https://vanban.chinhphu.vn/?pageid=27160&docid=209582"
+        ],
+        "search_results": [
+          {
+            "title": "Thông tư số 15/2023/TT-BXD của Bộ Xây dựng: Ban hành QCVN 07 ...",
+            "url": "https://vanban.chinhphu.vn/?pageid=27160&docid=209582"
+          }
+        ],
+        "content_length": 940,
+        "error": null
+      },
+      "direct_url": {
+        "ok": true,
+        "method": "HEAD",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "final_url_host_matches": true,
+        "error": null
+      }
+    },
+    {
+      "ref": "S3",
+      "source_label": "VSQI construction standards catalog, `QCVN 07:2023/BXD`",
+      "trust_proposal": "1.00 official standards catalog",
+      "evidence_used": "QCVN 07:2023/BXD is the active national technical regulation for technical infrastructure systems; S2 records its legal issuance and effective date.",
+      "url": "https://tieuchuanxaydung.vsqi.gov.vn/quychuan/view?sohieu=QCVN+07%3A2023%2FBXD",
+      "domain": "vsqi.gov.vn",
+      "host": "tieuchuanxaydung.vsqi.gov.vn",
+      "live_status": "ok",
+      "on_domain_signal": false,
+      "direct_url_signal": true,
+      "verified_signal": true,
+      "on_domain_url_count": 0,
+      "citation_count": 0,
+      "search_result_count": 0,
+      "outside_domain_urls": [],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "citations": [],
+        "search_results": [],
+        "content_length": 722,
+        "error": null
+      },
+      "direct_url": {
+        "ok": true,
+        "method": "HEAD",
+        "status": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "final_url_host_matches": true,
+        "error": null
+      }
+    },
+    {
+      "ref": "S4",
+      "source_label": "CDC, Cleaning and Disinfecting with Bleach",
+      "trust_proposal": "0.95 public-health authority",
+      "evidence_used": "Do not mix bleach/disinfectants with other cleaners; ventilate; clean dirty surfaces first; use PPE as label directs.",
+      "url": "https://www.cdc.gov/hygiene/about/cleaning-and-disinfecting-with-bleach.html",
+      "domain": "cdc.gov",
+      "host": "cdc.gov",
+      "live_status": "ok",
+      "on_domain_signal": true,
+      "direct_url_signal": true,
+      "verified_signal": true,
+      "on_domain_url_count": 20,
+      "citation_count": 10,
+      "search_result_count": 10,
+      "outside_domain_urls": [],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "citations": [
+          "https://www.cdc.gov/hygiene/about/cleaning-and-disinfecting-with-bleach.html",
+          "https://www.cdc.gov/hygiene/about/when-and-how-to-clean-and-disinfect-your-home.html",
+          "https://www.cdc.gov/hygiene/about/how-to-clean-and-disinfect-early-care-and-education-settings.html",
+          "https://www.cdc.gov/natural-disasters/safety/how-to-safely-clean-and-sanitize-with-bleach.html",
+          "https://www.cdc.gov/hygiene/cleaning-disinfecting/index.html",
+          "https://www.cdc.gov/hygiene/about/when-and-how-to-clean-and-disinfect-a-facility.html",
+          "https://www.cdc.gov/hygiene/about/clean-sanitize-store-infant-feeding-items.html",
+          "https://www.cdc.gov/mmwr/volumes/69/wr/mm6923e2.htm",
+          "https://www.cdc.gov/hygiene/index.html",
+          "https://www.cdc.gov/healthcare-associated-infections/hcp/cleaning-global/procedures.html"
+        ],
+        "search_results": [
+          {
+            "title": "Cleaning and Disinfecting with Bleach - CDC",
+            "url": "https://www.cdc.gov/hygiene/about/cleaning-and-disinfecting-with-bleach.html"
+          },
+          {
+            "title": "When and How to Clean and Disinfect Your Home - CDC",
+            "url": "https://www.cdc.gov/hygiene/about/when-and-how-to-clean-and-disinfect-your-home.html"
+          },
+          {
+            "title": "How To Clean and Disinfect Early Care and Education Settings - CDC",
+            "url": "https://www.cdc.gov/hygiene/about/how-to-clean-and-disinfect-early-care-and-education-settings.html"
+          },
+          {
+            "title": "How to Safely Clean and Sanitize with Bleach - CDC",
+            "url": "https://www.cdc.gov/natural-disasters/safety/how-to-safely-clean-and-sanitize-with-bleach.html"
+          },
+          {
+            "title": "Cleaning and Disinfecting - CDC",
+            "url": "https://www.cdc.gov/hygiene/cleaning-disinfecting/index.html"
+          },
+          {
+            "title": "When and How to Clean and Disinfect a Facility - CDC",
+            "url": "https://www.cdc.gov/hygiene/about/when-and-how-to-clean-and-disinfect-a-facility.html"
+          },
+          {
+            "title": "How to Clean, Sanitize, and Store Infant Feeding Items - CDC",
+            "url": "https://www.cdc.gov/hygiene/about/clean-sanitize-store-infant-feeding-items.html"
+          },
+          {
+            "title": "Knowledge and Practices Regarding Safe Household Cleaning ...",
+            "url": "https://www.cdc.gov/mmwr/volumes/69/wr/mm6923e2.htm"
+          },
+          {
+            "title": "Water, Sanitation, and Environmentally Related Hygiene (WASH)",
+            "url": "https://www.cdc.gov/hygiene/index.html"
+          },
+          {
+            "title": "Environmental Cleaning Procedures | HAIs - CDC",
+            "url": "https://www.cdc.gov/healthcare-associated-infections/hcp/cleaning-global/procedures.html"
+          }
+        ],
+        "content_length": 1163,
+        "error": null
+      },
+      "direct_url": {
+        "ok": true,
+        "method": "HEAD",
+        "status": 200,
+        "content_type": "text/html",
+        "final_url_host_matches": true,
+        "error": null
+      }
+    },
+    {
+      "ref": "S5",
+      "source_label": "US EPA, Biological Contaminants and Indoor Air Quality",
+      "trust_proposal": "0.95 public-health/environment authority",
+      "evidence_used": "Ventilation and source control reduce indoor biological pollutants; cleaning products should not be mixed.",
+      "url": "https://www.epa.gov/indoor-air-quality-iaq/biological-contaminants-and-indoor-air-quality",
+      "domain": "epa.gov",
+      "host": "epa.gov",
+      "live_status": "ok",
+      "on_domain_signal": true,
+      "direct_url_signal": false,
+      "verified_signal": true,
+      "on_domain_url_count": 16,
+      "citation_count": 8,
+      "search_result_count": 8,
+      "outside_domain_urls": [],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "citations": [
+          "https://www.epa.gov/indoor-air-quality-iaq/biological-contaminants-and-indoor-air-quality",
+          "https://www.epa.gov/indoor-air-quality-iaq/improving-indoor-air-quality",
+          "https://www.epa.gov/indoor-air-quality-iaq/introduction-indoor-air-quality",
+          "https://www.epa.gov/indoor-air-quality-iaq/inside-story-guide-indoor-air-quality",
+          "https://19january2021snapshot.epa.gov/indoor-air-quality-iaq/addressing-indoor-environmental-concerns-during-remodeling_.html",
+          "https://www.epa.gov/indoor-air-quality-iaq/indoor-pollutants-and-sources",
+          "https://www.epa.gov/indoor-air-quality-iaq/remodeling-your-home-and-indoor-air-quality",
+          "https://www.epa.gov/indoor-air-quality-iaq/office-building-occupants-guide-indoor-air-quality"
+        ],
+        "search_results": [
+          {
+            "title": "Biological Contaminants and Indoor Air Quality | US EPA",
+            "url": "https://www.epa.gov/indoor-air-quality-iaq/biological-contaminants-and-indoor-air-quality"
+          },
+          {
+            "title": "Improving Indoor Air Quality | US EPA",
+            "url": "https://www.epa.gov/indoor-air-quality-iaq/improving-indoor-air-quality"
+          },
+          {
+            "title": "Introduction to Indoor Air Quality | US EPA",
+            "url": "https://www.epa.gov/indoor-air-quality-iaq/introduction-indoor-air-quality"
+          },
+          {
+            "title": "The Inside Story: A Guide to Indoor Air Quality | US EPA",
+            "url": "https://www.epa.gov/indoor-air-quality-iaq/inside-story-guide-indoor-air-quality"
+          },
+          {
+            "title": "Addressing Indoor Environmental Concerns During Remodeling",
+            "url": "https://19january2021snapshot.epa.gov/indoor-air-quality-iaq/addressing-indoor-environmental-concerns-during-remodeling_.html"
+          },
+          {
+            "title": "Indoor Pollutants and Sources | US EPA",
+            "url": "https://www.epa.gov/indoor-air-quality-iaq/indoor-pollutants-and-sources"
+          },
+          {
+            "title": "Remodeling Your Home and Indoor Air Quality | US EPA",
+            "url": "https://www.epa.gov/indoor-air-quality-iaq/remodeling-your-home-and-indoor-air-quality"
+          },
+          {
+            "title": "An Office Building Occupant's Guide to Indoor Air Quality | US EPA",
+            "url": "https://www.epa.gov/indoor-air-quality-iaq/office-building-occupants-guide-indoor-air-quality"
+          }
+        ],
+        "content_length": 1095,
+        "error": null
+      },
+      "direct_url": {
+        "ok": false,
+        "method": "HEAD_THEN_GET",
+        "status": null,
+        "content_type": null,
+        "final_url_host_matches": false,
+        "error": "TypeError"
+      }
+    },
+    {
+      "ref": "S6",
+      "source_label": "VBPL, Law 19/2023/QH15 on consumer protection",
+      "trust_proposal": "1.00 official legal database mirror",
+      "evidence_used": "Businesses must ensure safety/quality and warn about unsafe goods/services; consumer information must be protected.",
+      "url": "https://vbpl.vn/botaichinh/Pages/vbpq-toanvan.aspx?ItemID=161263",
+      "domain": "vbpl.vn",
+      "host": "vbpl.vn",
+      "live_status": "ok",
+      "on_domain_signal": true,
+      "direct_url_signal": false,
+      "verified_signal": true,
+      "on_domain_url_count": 2,
+      "citation_count": 1,
+      "search_result_count": 1,
+      "outside_domain_urls": [],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "citations": [
+          "https://vbpl.vn/botaichinh/Pages/vbpq-luocdo.aspx?ItemID=161263"
+        ],
+        "search_results": [
+          {
+            "title": "Luật 19/2023/QH15 Luật Bảo vệ quyền lợi người tiêu dùng",
+            "url": "https://vbpl.vn/botaichinh/Pages/vbpq-luocdo.aspx?ItemID=161263"
+          }
+        ],
+        "content_length": 1037,
+        "error": null
+      },
+      "direct_url": {
+        "ok": false,
+        "method": "GET",
+        "status": 404,
+        "content_type": "text/html; charset=utf-8",
+        "final_url_host_matches": true,
+        "error": null
+      }
+    },
+    {
+      "ref": "S7",
+      "source_label": "Chinhphu.vn HCMC emergency hotline article",
+      "trust_proposal": "0.95 official government portal",
+      "evidence_used": "In emergencies in HCMC, residents can call 113, 114, or 115 and be routed to the appropriate authority.",
+      "url": "https://tphcm.chinhphu.vn/tphcm-nang-cap-he-thong-ba-tong-dai-khan-cap-113-114-115-10120674.htm",
+      "domain": "chinhphu.vn",
+      "host": "tphcm.chinhphu.vn",
+      "live_status": "ok",
+      "on_domain_signal": true,
+      "direct_url_signal": true,
+      "verified_signal": true,
+      "on_domain_url_count": 2,
+      "citation_count": 1,
+      "search_result_count": 1,
+      "outside_domain_urls": [],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "citations": [
+          "https://tphcm.chinhphu.vn/tphcm-nang-cap-he-thong-ba-tong-dai-khan-cap-113-114-115-10120674.htm"
+        ],
+        "search_results": [
+          {
+            "title": "TPHCM nâng cấp hệ thống ba tổng đài khẩn cấp 113-114-115",
+            "url": "https://tphcm.chinhphu.vn/tphcm-nang-cap-he-thong-ba-tong-dai-khan-cap-113-114-115-10120674.htm"
+          }
+        ],
+        "content_length": 902,
+        "error": null
+      },
+      "direct_url": {
+        "ok": true,
+        "method": "HEAD",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "final_url_host_matches": true,
+        "error": null
+      }
+    },
+    {
+      "ref": "S8",
+      "source_label": "EVNHCMC electrical safety article",
+      "trust_proposal": "0.90 local utility",
+      "evidence_used": "Household electrical equipment should be inspected/maintained and replaced when damaged; unplug heat-generating devices when not in use.",
+      "url": "https://evnhcmc.vn/Tintuc/chitiet/5",
+      "domain": "evnhcmc.vn",
+      "host": "evnhcmc.vn",
+      "live_status": "ok",
+      "on_domain_signal": true,
+      "direct_url_signal": true,
+      "verified_signal": true,
+      "on_domain_url_count": 20,
+      "citation_count": 10,
+      "search_result_count": 10,
+      "outside_domain_urls": [],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "citations": [
+          "https://cskh.evnhcmc.vn/Tintuc/chitiet/26",
+          "https://evnhcmc.vn/Tintuc/chitiet/839",
+          "https://evnhcmc.vn/Tintuc/chitiet/198",
+          "https://www.evnhcmc.vn/Tintuc/chitiet/1093",
+          "https://evnhcmc.vn/Tintuc/chitiet/880",
+          "https://www.evnhcmc.vn/Tintuc/chitiet/605",
+          "https://www.evnhcmc.vn/Tintuc/chitiet/1304",
+          "https://www.evnhcmc.vn/Tintuc/chitiet/684",
+          "https://evnhcmc.vn/Tintuc/chitiet/1120",
+          "https://www.evnhcmc.vn/Tintuc/chitiet/614"
+        ],
+        "search_results": [
+          {
+            "title": "Thí điểm về cơ chế phối hợp giữa Cơ quan nhà nước và điện lực ...",
+            "url": "https://cskh.evnhcmc.vn/Tintuc/chitiet/26"
+          },
+          {
+            "title": "Tổng công ty Điện lực TP.HCM cung cấp dịch vụ điện trên toàn địa ...",
+            "url": "https://evnhcmc.vn/Tintuc/chitiet/839"
+          },
+          {
+            "title": "Danh sách đơn vị Điện lực trực thuộc EVNHCMC được giao ủy ...",
+            "url": "https://evnhcmc.vn/Tintuc/chitiet/198"
+          },
+          {
+            "title": "EVNHCMC đảm bảo cung cấp điện trong các ngày Lễ Noel 2025 và ...",
+            "url": "https://www.evnhcmc.vn/Tintuc/chitiet/1093"
+          },
+          {
+            "title": "Untitled",
+            "url": "https://evnhcmc.vn/Tintuc/chitiet/880"
+          },
+          {
+            "title": "Tuổi trẻ Công ty Điện lực Gia Định: Xung kích, tình nguyện, sáng tạo",
+            "url": "https://www.evnhcmc.vn/Tintuc/chitiet/605"
+          },
+          {
+            "title": "CÔNG TY THÍ NGHIỆM ĐIỆN LỰC TPHCM ĐẨY ... - EVNHCMC",
+            "url": "https://www.evnhcmc.vn/Tintuc/chitiet/1304"
+          },
+          {
+            "title": "Ghi nhận và lan tỏa những tấm gương tiêu biểu tại Công ty Điện lực ...",
+            "url": "https://www.evnhcmc.vn/Tintuc/chitiet/684"
+          },
+          {
+            "title": "THÔNG BÁO THAY ĐỔI THỜI GIAN NGỪNG CẤP ĐIỆN    ",
+            "url": "https://evnhcmc.vn/Tintuc/chitiet/1120"
+          },
+          {
+            "title": "EVNHCMC THÔNG BÁO CÁC KÊNH THANH TOÁN CHÍNH THỨC",
+            "url": "https://www.evnhcmc.vn/Tintuc/chitiet/614"
+          }
+        ],
+        "content_length": 1033,
+        "error": null
+      },
+      "direct_url": {
+        "ok": true,
+        "method": "HEAD",
+        "status": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "final_url_host_matches": true,
+        "error": null
+      }
+    }
+  ]
+}

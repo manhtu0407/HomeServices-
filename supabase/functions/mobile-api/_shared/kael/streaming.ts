@@ -1,12 +1,24 @@
 import type { KaelPurpose } from "./types.ts";
 
 export type KaelProgressStatus = "queued" | "running" | "completed" | "failed";
+export type KaelProgressStage = KaelPurpose | "scope_reviewing" | "scope_estimating";
 
 export type KaelProgressUpdate = {
-  readonly stage: KaelPurpose;
+  readonly stage: KaelProgressStage;
   readonly status: KaelProgressStatus;
   readonly progress: number;
   readonly failureReason?: string;
+};
+
+export type KaelProgressTable =
+  | "jobs"
+  | "kael_chat_sessions"
+  | "kael_worker_chat_sessions"
+  | "scope_change_requests";
+
+export type KaelProgressTarget = {
+  readonly table: KaelProgressTable;
+  readonly id: string | undefined;
 };
 
 type ProgressClient = {
@@ -19,10 +31,11 @@ type ProgressClient = {
 
 export async function updateKaelProgress(
   client: unknown,
-  jobId: string | undefined,
+  target: string | KaelProgressTarget | undefined,
   update: KaelProgressUpdate,
 ): Promise<void> {
-  if (!jobId) return;
+  const progressTarget = normalizeProgressTarget(target);
+  if (!progressTarget?.id) return;
   if (!isProgressClient(client)) return;
   const progress = Math.max(0, Math.min(1, update.progress));
   const kaelProgress = {
@@ -34,21 +47,31 @@ export async function updateKaelProgress(
   };
 
   try {
-    const table = client.from("jobs");
+    const table = client.from(progressTarget.table);
     const updateQuery = table.update?.({ kael_progress: kaelProgress });
-    const result = await updateQuery?.eq?.("id", jobId);
+    const result = await updateQuery?.eq?.("id", progressTarget.id);
     if (result?.error) {
       console.warn("Kael progress update failed", {
-        jobId,
+        targetTable: progressTarget.table,
+        targetId: progressTarget.id,
         stage: update.stage,
       });
     }
   } catch {
     console.warn("Kael progress update threw", {
-      jobId,
+      targetTable: progressTarget.table,
+      targetId: progressTarget.id,
       stage: update.stage,
     });
   }
+}
+
+function normalizeProgressTarget(
+  target: string | KaelProgressTarget | undefined,
+): KaelProgressTarget | null {
+  if (!target) return null;
+  if (typeof target === "string") return { table: "jobs", id: target };
+  return target;
 }
 
 function isProgressClient(client: unknown): client is ProgressClient {

@@ -24,7 +24,7 @@ describe('Kael P5 permission matrix and response policy', () => {
     )
 
     expect(KAEL_PERMISSION_MATRIX_VERSION).toBe('2026-05-25.p5')
-    expect(KAEL_PURPOSES).toHaveLength(11)
+    expect(KAEL_PURPOSES).toHaveLength(12)
     expect(KAEL_ACTOR_ROLES).toHaveLength(4)
     expect(KAEL_JOB_RELATIONS).toHaveLength(4)
     expect(KAEL_PERMISSION_RULES).toHaveLength(expectedCount)
@@ -82,6 +82,30 @@ describe('Kael P5 permission matrix and response policy', () => {
       decision: 'deny',
       reasonCode: 'DENY_WORKER_PRE_ACCEPT_PII',
       declineTemplateKey: 'cannot_do_action',
+    })
+  })
+
+  it('allows worker assist only on an accepted worker job', () => {
+    expect(resolveKaelPermission({
+      purpose: 'worker_assist',
+      actor: 'worker',
+      jobRelation: 'own_worker_job',
+      topic: 'worker_brief',
+      action: 'generate_advisory',
+    })).toMatchObject({
+      decision: 'allow',
+      reasonCode: 'ALLOW_WORKER_ASSIST',
+    })
+
+    expect(resolveKaelPermission({
+      purpose: 'worker_assist',
+      actor: 'worker',
+      jobRelation: 'none',
+      topic: 'worker_brief',
+      action: 'generate_advisory',
+    })).toMatchObject({
+      decision: 'deny',
+      reasonCode: 'DENY_WORKER_JOB_REQUIRED',
     })
   })
 

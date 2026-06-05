@@ -2,6 +2,7 @@ import type {
   BroadcastStatus,
   ComplexityLevel,
   JobStatus,
+  LearningCandidateStatus,
   MessageSender,
   ScopeChangeStatus,
   ServiceType,
@@ -9,6 +10,7 @@ import type {
 } from "../../_shared/domain.ts";
 import {
   HCMC_DISTRICTS,
+  kaelChatProgressSchema,
   normalizeDistrict,
   normalizeServiceAreaDistrict,
   PLATFORM_FEE_WORKER,
@@ -20,12 +22,17 @@ import {
   type DisputeAdminDecisionInput,
   type DisputeCounterStatementInput,
   type DisputeOpenRequestInput,
+  type ApartmentAccessProfileInput,
   type JobCreateInput,
   type JobMediaAttachInput,
   type JobMessageSendInput,
   type KaelWorkerClarifyInput,
   type KaelChatCreateInput,
   type KaelChatTurnInput,
+  type WorkerKaelChatCreateInput,
+  type WorkerKaelChatTurnInput,
+  type WorkerKaelFeedbackInput,
+  type WorkerKaelTrainingConsentInput,
   type PlacesAutocompleteInput,
   sanitizeForLLM,
   type WorkerCancellationDecisionInput,
@@ -36,6 +43,14 @@ import {
   apiFailure,
   type KaelBatchResultsProcessInput,
   type KaelBatchResultsProcessResponse,
+  type KaelLearningMonitorInput,
+  type KaelLearningMonitorResponse,
+  type KaelLearningCandidateApproveResponse,
+  type KaelLearningCandidateListInput,
+  type KaelLearningCandidateListResponse,
+  type KaelLearningCandidateRejectResponse,
+  type KaelLearningCandidateReviewInput,
+  type KaelLearningCandidateSummary,
   type KaelLearningQueueProcessInput,
   type KaelLearningQueueProcessResponse,
   type MarketCacheInvalidateInput,
@@ -43,6 +58,7 @@ import {
   type MobileApiContext,
   type PlacesAutocompleteResponse,
   type MobileApiServices,
+  type WorkerStatusUpdateInput,
 } from "./router.ts";
 import {
   buildKaelOptimizationMetricRows,
@@ -95,10 +111,15 @@ import {
   NORMAL_TRANSACTION_SILENT_STATUSES,
   processBatchResults,
   processLearningQueue,
+  monitorLearningRules,
   queueLearningForBatch,
   queueLearningSkillTriggers,
+  recordLearningRuleApplication,
+  recordLearningReviewOutcome,
   recordDemandingCustomerInteraction,
+  runKaelAutonomyOrchestrator,
   type ScopeChangeRiskConfig,
+  updateKaelProgress,
   type WorkerCancellationAbuseSignal,
   type WorkerCancellationExpectedCategory,
   type WorkerCancellationReasonCode,
@@ -109,9 +130,19 @@ import {
   type PriceSynthesisAbCaseInput,
   type PriceSynthesisAbEvaluation,
   scrubSensitiveForLLM,
+  runWorkerAssist,
+  type WorkerAssistAnswer,
 } from "./kael/index.ts";
 import { evaluateMessageBoundary } from "./kael/boundary-guard.ts";
-import { runKaelSelfCheckPipeline } from "./kael/self-check.ts";
+import {
+  auditKaelGuardrailTrip,
+  runKaelSelfCheckPipeline,
+} from "./kael/self-check.ts";
+import {
+  createSseResponse,
+  encodeSseEvent,
+  encodeSseHeartbeat,
+} from "./sse.ts";
 
 type DbError = { code?: string; message?: string };
 type DbResult<T> = {
@@ -123,6 +154,30 @@ type QueryLike = PromiseLike<DbResult<unknown>>;
 type ConfirmSearchOptions = {
   autonomyDecision?: KaelAutonomyDecision;
 };
+type AddressAccessStage = "area_only" | "building_released" | "unit_released";
+type AddressAccessEvidenceMode = "none" | "geofence" | "manual_photo";
+type AddressParts = {
+  building: string | null;
+  unit: string | null;
+  floor: string | null;
+  district: string | null;
+};
+type AddressAccessView = {
+  release_stage: AddressAccessStage;
+  exact_unit_released: boolean;
+  check_in_required: boolean;
+  identity_check_required: boolean;
+  customer_handoff_required: boolean;
+  evidence_mode: AddressAccessEvidenceMode;
+  access_profile: ApartmentAccessProfileInput;
+};
+type AddressAccessProjection = {
+  fullAddress: AddressParts;
+  addressAccess: AddressAccessView;
+};
+type WorkerAccessCheckInInput = NonNullable<
+  WorkerStatusUpdateInput["access_check_in"]
+>;
 
 type DbClient = {
   from(table: string): Chain;
@@ -151,11 +206,14 @@ const JOB_CHAT_SEND_STATUSES: JobStatus[] = [
 ];
 
 const JOB_DETAIL_SELECT =
-  "id, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, kael_worker_brief_core, kael_worker_brief_guidance, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at";
+  "id, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, kael_worker_brief_core, kael_worker_brief_guidance, kael_progress, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at";
 const DEFAULT_WORKER_CANDIDATE_POOL_SIZE = 50;
 const STAGING_PROJECT_REF = "xyylanuyflrjzbjzhqfl";
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
 const KAEL_CHAT_HARD_COST_CAP_USD = 1;
+const KAEL_CHAT_STREAM_POLL_MS = 800;
+const KAEL_CHAT_STREAM_MAX_MS = 15_000;
+const KAEL_CHAT_STREAM_HEARTBEAT_MS = 10_000;
 const VIETMAP_AUTOCOMPLETE_URL = "https://maps.vietmap.vn/api/autocomplete/v4";
 const VIETMAP_SEARCH_URL = "https://maps.vietmap.vn/api/search/v4";
 const VIETMAP_PLACE_URL = "https://maps.vietmap.vn/api/place/v4";
@@ -232,6 +290,9 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     listCustomerActiveJobs,
     createKaelChat: (ctx, input) => createKaelChat(ctx, input, secrets),
     getKaelChat,
+    getKaelChatProgress,
+    streamKaelChatTurn: (ctx, sessionId, input) =>
+      streamKaelChatTurn(ctx, sessionId, input, secrets),
     sendKaelChatTurn: (ctx, sessionId, input) =>
       sendKaelChatTurn(ctx, sessionId, input, secrets),
     confirmKaelChat: (ctx, sessionId) => confirmKaelChat(ctx, sessionId, secrets),
@@ -243,6 +304,17 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     requestScopeChange: (ctx, jobId, input) =>
       requestScopeChange(ctx, jobId, input, secrets),
     askKaelForWorker,
+    createWorkerKaelChat: (ctx, input) =>
+      createWorkerKaelChat(ctx, input, secrets),
+    listWorkerKaelChats,
+    getWorkerKaelChat,
+    sendWorkerKaelChatTurn: (ctx, sessionId, input) =>
+      sendWorkerKaelChatTurn(ctx, sessionId, input, secrets),
+    streamWorkerKaelChatTurn: (ctx, sessionId, input) =>
+      streamWorkerKaelChatTurn(ctx, sessionId, input, secrets),
+    submitWorkerKaelFeedback,
+    getWorkerKaelTrainingConsent,
+    setWorkerKaelTrainingConsent,
     requestCustomerCancellation,
     requestWorkerCancellation,
     openDispute,
@@ -273,6 +345,14 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
       processKaelLearningQueueAdmin(ctx, input, secrets),
     processKaelBatchResults: (ctx, input) =>
       processKaelBatchResultsAdmin(ctx, input, secrets),
+    monitorKaelLearningRules: (ctx, input) =>
+      monitorKaelLearningRulesAdmin(ctx, input),
+    listKaelLearningCandidates: (ctx, input) =>
+      listKaelLearningCandidatesAdmin(ctx, input),
+    approveKaelLearningCandidate: (ctx, candidateId, input) =>
+      approveKaelLearningCandidateAdmin(ctx, candidateId, input),
+    rejectKaelLearningCandidate: (ctx, candidateId, input) =>
+      rejectKaelLearningCandidateAdmin(ctx, candidateId, input),
     listNotifications,
     markNotificationRead,
     registerDevicePushToken,
@@ -529,6 +609,10 @@ async function createJob(
         address_unit: input.address_unit ?? null,
         address_floor: input.address_floor ?? null,
         address_district: canonicalDistrict,
+        apartment_access_profile: sanitizeApartmentAccessProfile(
+          input.apartment_access_profile,
+        ),
+        apartment_access_state: buildInitialApartmentAccessState(),
         scheduled_at: input.scheduled_at ?? null,
         status: "analyzing",
         client_request_id: input.client_request_id ?? null,
@@ -556,6 +640,13 @@ async function createJob(
     apiFailure("DB_ERROR", "Không thể tạo yêu cầu", 500);
   }
   const jobId = inserted.data.id;
+  await persistApartmentAccessProfileFromMetadata(client, {
+    customerId: ctx.user.id,
+    jobId,
+    addressLabel: input.address_building ?? null,
+    district: canonicalDistrict,
+    profile: sanitizeApartmentAccessProfile(input.apartment_access_profile),
+  });
   await geocodeJobAddressForMatching(client, jobId, {
     addressLabel: input.address_building ?? null,
     district: canonicalDistrict,
@@ -651,6 +742,7 @@ async function createJob(
     district: canonicalDistrict,
     estimatedEarningMin: Math.round(estimate.price_min * (1 - PLATFORM_FEE_WORKER)),
     estimatedEarningMax: Math.round(lockedFinalPrice * (1 - PLATFORM_FEE_WORKER)),
+    knowledgeSafetyGuidance: pipeline.knowledgeContext?.safetyGuidance,
   });
   const autonomyDecision = buildKaelAutonomyDecision({
     action: "start_matching",
@@ -672,12 +764,40 @@ async function createJob(
     appealable: true,
     resultingEvent: "kael_started_matching",
   });
-  const transition = validateKaelAutonomyTransition({
+  const autonomyRun = await runKaelAutonomyOrchestrator({
+    label: "estimate_to_matching",
     decision: autonomyDecision,
     from: "analyzing",
     to: "broadcasting",
+    authority: {
+      purpose: "price_synthesis",
+      actor: "customer",
+      jobRelation: "own_customer_job",
+      action: "synthesize_price",
+      topic: "price_estimate",
+      actorId: ctx.user.id,
+      jobId,
+    },
+    knownEvidenceReferences: [jobId, "RULES.md#rule-7"],
+    source: "policy",
+    audit: {
+      client,
+      jobId,
+      actorId: ctx.user.id,
+      actorRole: ctx.role,
+      source: "policy",
+    },
   });
-  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
+  if (autonomyRun.gate.result !== "allow") {
+    const transitionError = autonomyRun.gate.audit.safe_metadata.transition_error;
+    apiFailure(
+      "INVALID_STATUS",
+      typeof transitionError === "string"
+        ? transitionError
+        : "Kael autonomy decision rejected by invariant gate.",
+      409,
+    );
+  }
   const updated = await dbQuery<{ id: string }>(
     client
       .from("jobs")
@@ -712,6 +832,8 @@ async function createJob(
       409,
     );
   }
+
+  await recordPipelineLearningApplications(client, jobId, pipeline);
 
   await logJobEvent(
     client,
@@ -886,6 +1008,25 @@ async function cancelAnalyzingJob(
   return true;
 }
 
+async function recordPipelineLearningApplications(
+  client: DbClient,
+  jobId: string,
+  pipeline: PipelineResult,
+) {
+  if (!pipeline.success || !pipeline.learningApplications?.length) return;
+  await Promise.all(pipeline.learningApplications.map((application) =>
+    recordLearningRuleApplication(client, {
+      ruleId: application.ruleId,
+      ruleVersion: application.ruleVersion,
+      skillId: application.skillId,
+      jobId,
+      actorRole: "system",
+      appliedTarget: application.appliedTarget,
+      safeMetadata: application.safeMetadata,
+    })
+  ));
+}
+
 async function createKaelChat(
   ctx: MobileApiContext,
   input: KaelChatCreateInput,
@@ -899,6 +1040,7 @@ async function createKaelChat(
       photo_urls: input.photo_urls,
       address_label: input.address_label,
       address_district: input.address_district,
+      apartment_access_profile: input.apartment_access_profile,
     }, secrets);
   }
 
@@ -965,6 +1107,9 @@ async function createKaelChat(
     problem_chips: input.problem_chips,
     address_label: input.address_label ?? null,
     address_district: input.address_district ?? null,
+    apartment_access_profile: sanitizeApartmentAccessProfile(
+      input.apartment_access_profile,
+    ),
     photo_urls: input.photo_urls,
     demanding_customer_qa_count: input.message ? 1 : undefined,
   });
@@ -1036,6 +1181,7 @@ async function createKaelChat(
       sessionId,
       message,
       input.service_type,
+      { actorId: ctx.user.id, jobId: null },
     );
     if (!boundaryHandled) {
       const handledDemandingCustomer =
@@ -1180,13 +1326,32 @@ async function maybeApplyKaelBoundaryGuard(
   sessionId: string,
   message: string,
   serviceType: ServiceType,
+  auditContext: {
+    readonly actorId: string | null;
+    readonly jobId: string | null;
+  } = { actorId: null, jobId: null },
 ): Promise<boolean> {
-  const boundary = evaluateMessageBoundary(message, serviceType);
+  const boundary = evaluateMessageBoundary(message, serviceType, {
+    semanticInjectionClassifierEnabled: true,
+  });
   if (boundary.ok) return false;
   console.warn("kael_chat boundary decline", {
     sessionId,
     reason: boundary.reason,
     signalCount: boundary.detectedSignals.length,
+  });
+  await auditGuardrailTripBestEffort(client, {
+    jobId: auditContext.jobId,
+    actorId: auditContext.actorId,
+    actorRole: "customer",
+    surface: "kael_chat_boundary",
+    reason: boundary.reason,
+    source: "boundary_guard",
+    safeMetadata: {
+      session_id: sessionId,
+      service_type: serviceType,
+      boundary_signals: boundary.detectedSignals,
+    },
   });
   await appendKaelSystemTurn(client, sessionId, {
     contentType: "error",
@@ -1243,6 +1408,243 @@ async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
   };
 }
 
+async function getKaelChatProgress(
+  ctx: MobileApiContext,
+  sessionId: string,
+) {
+  return readKaelChatProgressSnapshot(ctx, sessionId);
+}
+
+async function readKaelChatProgressSnapshot(
+  ctx: MobileApiContext,
+  sessionId: string,
+) {
+  const client = db(ctx);
+  const sessionResult = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_chat_sessions")
+      .select("id, customer_id, kael_progress")
+      .eq("id", sessionId)
+      .single(),
+  );
+  if (sessionResult.error || !sessionResult.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
+  }
+  assertKaelSessionOwnership(sessionResult.data, ctx);
+
+  return {
+    session_id: sessionId,
+    progress: parseKaelProgressSnapshot(sessionResult.data.kael_progress, sessionId),
+  };
+}
+
+function parseKaelProgressSnapshot(raw: unknown, contextId: string) {
+  const rawProgress = nullableRecord(raw);
+  const parsedProgress = rawProgress
+    ? kaelChatProgressSchema.safeParse(rawProgress)
+    : null;
+  if (parsedProgress && !parsedProgress.success) {
+    console.warn("mobile-api Kael progress invalid", { contextId });
+  }
+  return parsedProgress?.success
+    ? {
+      ...parsedProgress.data,
+      failure_reason: parsedProgress.data.failure_reason ?? null,
+    }
+    : null;
+}
+
+async function streamKaelChatTurn(
+  ctx: MobileApiContext,
+  sessionId: string,
+  input: KaelChatTurnInput,
+  secrets: EdgeAiSecrets,
+) {
+  // Preflight ownership before returning a 200 event stream so unauthorized
+  // callers still receive the normal JSON auth/error path.
+  await getKaelChat(ctx, sessionId);
+
+  const encoder = new TextEncoder();
+  let stopped = false;
+  let lastProgressSignature: string | null = null;
+  let lastHeartbeatAt = Date.now();
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const write = (chunk: string) => {
+        if (stopped) return;
+        controller.enqueue(encoder.encode(chunk));
+      };
+      const emit = (event: string, data: unknown) => {
+        write(encodeSseEvent({ event, data }));
+      };
+      const close = () => {
+        if (stopped) return;
+        stopped = true;
+        controller.close();
+      };
+      const emitProgressIfChanged = async () => {
+        const snapshot = await readKaelChatProgressSnapshot(ctx, sessionId);
+        const progress = snapshot.progress;
+        if (!progress) return;
+        const signature = `${progress.current_stage}:${progress.status}:${progress.progress}:${progress.updated_at}`;
+        if (signature === lastProgressSignature) return;
+        lastProgressSignature = signature;
+        emit("stage", {
+          stage: progress.current_stage,
+          status: progress.status,
+          progress: progress.progress,
+          failure_reason: progress.failure_reason ?? null,
+          updated_at: progress.updated_at,
+        });
+      };
+
+      const resultPromise = sendKaelChatTurn(ctx, sessionId, input, secrets)
+        .then(async (result) => {
+          await emitProgressIfChanged();
+          // Token events remain disabled until provider-client/callAI exposes a
+          // real streaming mode; the authoritative object is always final.
+          emit("result", result);
+          close();
+        })
+        .catch((err) => {
+          emit("error", kaelChatStreamErrorPayload(err));
+          close();
+        });
+
+      void (async () => {
+        const startedAt = Date.now();
+        while (!stopped && Date.now() - startedAt < KAEL_CHAT_STREAM_MAX_MS) {
+          await emitProgressIfChanged();
+          const now = Date.now();
+          if (now - lastHeartbeatAt >= KAEL_CHAT_STREAM_HEARTBEAT_MS) {
+            write(encodeSseHeartbeat());
+            lastHeartbeatAt = now;
+          }
+          await sleep(KAEL_CHAT_STREAM_POLL_MS);
+        }
+        await resultPromise;
+      })().catch((err) => {
+        emit("error", kaelChatStreamErrorPayload(err));
+        close();
+      });
+    },
+    cancel() {
+      stopped = true;
+    },
+  });
+
+  return createSseResponse(stream);
+}
+
+async function streamWorkerKaelChatTurn(
+  ctx: MobileApiContext,
+  sessionId: string,
+  input: WorkerKaelChatTurnInput,
+  secrets: EdgeAiSecrets,
+) {
+  await readWorkerKaelChatProgressSnapshot(ctx, sessionId);
+
+  const encoder = new TextEncoder();
+  let stopped = false;
+  let lastProgressSignature: string | null = null;
+  let lastHeartbeatAt = Date.now();
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const write = (chunk: string) => {
+        if (stopped) return;
+        controller.enqueue(encoder.encode(chunk));
+      };
+      const emit = (event: string, data: unknown) => {
+        write(encodeSseEvent({ event, data }));
+      };
+      const close = () => {
+        if (stopped) return;
+        stopped = true;
+        controller.close();
+      };
+      const emitProgressIfChanged = async () => {
+        const snapshot = await readWorkerKaelChatProgressSnapshot(ctx, sessionId);
+        const progress = snapshot.progress;
+        if (!progress) return;
+        const signature = `${progress.current_stage}:${progress.status}:${progress.progress}:${progress.updated_at}`;
+        if (signature === lastProgressSignature) return;
+        lastProgressSignature = signature;
+        emit("stage", {
+          stage: progress.current_stage,
+          status: progress.status,
+          progress: progress.progress,
+          failure_reason: progress.failure_reason ?? null,
+          updated_at: progress.updated_at,
+        });
+      };
+
+      const resultPromise = sendWorkerKaelChatTurn(ctx, sessionId, input, secrets)
+        .then(async (result) => {
+          await emitProgressIfChanged();
+          // Token events stay disabled until callAI exposes real provider token
+          // streaming for worker_assist. The final result remains authoritative.
+          emit("result", result);
+          close();
+        })
+        .catch((err) => {
+          emit("error", kaelChatStreamErrorPayload(err));
+          close();
+        });
+
+      void (async () => {
+        const startedAt = Date.now();
+        while (!stopped && Date.now() - startedAt < KAEL_CHAT_STREAM_MAX_MS) {
+          await emitProgressIfChanged();
+          const now = Date.now();
+          if (now - lastHeartbeatAt >= KAEL_CHAT_STREAM_HEARTBEAT_MS) {
+            write(encodeSseHeartbeat());
+            lastHeartbeatAt = now;
+          }
+          await sleep(KAEL_CHAT_STREAM_POLL_MS);
+        }
+        await resultPromise;
+      })().catch((err) => {
+        emit("error", kaelChatStreamErrorPayload(err));
+        close();
+      });
+    },
+    cancel() {
+      stopped = true;
+    },
+  });
+
+  return createSseResponse(stream);
+}
+
+async function readWorkerKaelChatProgressSnapshot(
+  ctx: MobileApiContext,
+  sessionId: string,
+) {
+  const client = db(ctx);
+  const session = await readWorkerKaelSession(client, ctx, sessionId);
+  return {
+    session_id: sessionId,
+    progress: serializeWorkerKaelSession(session).progress,
+  };
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function kaelChatStreamErrorPayload(err: unknown) {
+  const code = typeof (err as { code?: unknown })?.code === "string"
+    ? (err as { code: string }).code
+    : "STREAM_ERROR";
+  return {
+    code,
+    message:
+      "Kael ch\u01b0a th\u1ec3 ph\u00e1t lu\u1ed3ng c\u1eadp nh\u1eadt. B\u1ea1n th\u1eed l\u1ea1i sau \u00edt ph\u00fat.",
+  };
+}
+
 async function sendKaelChatTurn(
   ctx: MobileApiContext,
   sessionId: string,
@@ -1283,6 +1685,10 @@ async function sendKaelChatTurn(
       nullableString(previousMetadata.address_label),
     address_district: input.address_district ??
       nullableString(previousMetadata.address_district),
+    apartment_access_profile: mergeApartmentAccessProfiles(
+      previousMetadata.apartment_access_profile,
+      input.apartment_access_profile,
+    ),
     photo_urls: mergeLimitedRefs(
       asStringArray(previousMetadata.photo_urls),
       input.photo_urls,
@@ -1315,6 +1721,7 @@ async function sendKaelChatTurn(
     sessionId,
     message,
     asServiceType(session.service_type),
+    { actorId: ctx.user.id, jobId: nullableString(session.job_id) },
   );
   if (boundaryHandled) return getKaelChat(ctx, sessionId);
 
@@ -1403,6 +1810,7 @@ async function confirmKaelChat(
     client,
     sessionId,
     jobId,
+    ctx.user.id,
     nullableString(row.district_code),
     secrets,
   );
@@ -1543,6 +1951,7 @@ async function advanceKaelChatEstimate(
   secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
+  const progressTarget = { table: "kael_chat_sessions" as const, id: sessionId };
   const llmClarificationEnabled =
     readKaelOptimizationFlags().KAEL_OPT_LLM_CLARIFICATION_ENABLED;
   const currentCostUsd = await getKaelChatCostUsd(client, sessionId);
@@ -1557,6 +1966,12 @@ async function advanceKaelChatEstimate(
         hard_cap_usd: KAEL_CHAT_HARD_COST_CAP_USD,
         total_cost_usd: currentCostUsd,
       },
+    });
+    await updateKaelProgress(client, progressTarget, {
+      stage: "intent_classification",
+      status: "failed",
+      progress: 0,
+      failureReason: "budget_exceeded",
     });
     return;
   }
@@ -1575,6 +1990,11 @@ async function advanceKaelChatEstimate(
           question,
         }),
       },
+    });
+    await updateKaelProgress(client, progressTarget, {
+      stage: "clarification",
+      status: "completed",
+      progress: 1,
     });
     return;
   }
@@ -1597,6 +2017,11 @@ async function advanceKaelChatEstimate(
         }),
       },
     });
+    await updateKaelProgress(client, progressTarget, {
+      stage: "clarification",
+      status: "completed",
+      progress: 1,
+    });
     return;
   }
 
@@ -1605,12 +2030,27 @@ async function advanceKaelChatEstimate(
   // call so cost stays zero for declined turns and Kael never emits an
   // estimate that would violate RULES.md #6 (service scope) or #8 (no
   // fake/off-topic data).
-  const boundary = evaluateMessageBoundary(message, input.service_type);
+  const boundary = evaluateMessageBoundary(message, input.service_type, {
+    semanticInjectionClassifierEnabled: true,
+  });
   if (!boundary.ok) {
     console.warn("kael_chat boundary decline", {
       sessionId,
       reason: boundary.reason,
       signalCount: boundary.detectedSignals.length,
+    });
+    await auditGuardrailTripBestEffort(client, {
+      jobId: null,
+      actorId: ctx.user.id,
+      actorRole: "customer",
+      surface: "kael_chat_boundary",
+      reason: boundary.reason,
+      source: "boundary_guard",
+      safeMetadata: {
+        session_id: sessionId,
+        service_type: input.service_type,
+        boundary_signals: boundary.detectedSignals,
+      },
     });
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "error",
@@ -1623,6 +2063,12 @@ async function advanceKaelChatEstimate(
           ? { suggested_service: boundary.suggestedService }
           : {}),
       },
+    });
+    await updateKaelProgress(client, progressTarget, {
+      stage: "intent_classification",
+      status: "failed",
+      progress: 1,
+      failureReason: boundary.reason,
     });
     return;
   }
@@ -1638,6 +2084,11 @@ async function advanceKaelChatEstimate(
   const requestId = crypto.randomUUID();
   let pipeline: PipelineResult;
   try {
+    await updateKaelProgress(client, progressTarget, {
+      stage: "intent_classification",
+      status: "queued",
+      progress: 0,
+    });
     pipeline = await runKaelPipeline(
       {
         serviceType: input.service_type,
@@ -1648,11 +2099,18 @@ async function advanceKaelChatEstimate(
         intakeDiagnosisEnabled: llmClarificationEnabled,
         conversationContext,
         clarificationCount: priorClarificationCount,
+        progressTarget,
       },
       client,
       sourceTrustSecretsForRequest(secrets, ctx),
     );
   } catch {
+    await updateKaelProgress(client, progressTarget, {
+      stage: "intent_classification",
+      status: "failed",
+      progress: 0,
+      failureReason: "pipeline_error",
+    });
     await appendKaelSystemTurn(client, sessionId, {
       contentType: "error",
       text: "Kael chưa thể phân tích lúc này. Bạn thử gửi lại sau ít phút.",
@@ -1695,9 +2153,27 @@ async function advanceKaelChatEstimate(
         text: pipeline.clarification?.question ?? "",
         actor: "customer",
         language: "vi",
+        semanticGuardEnabled: true,
         fallbackText:
           "Bạn mô tả rõ hơn vấn đề đang gặp: vị trí, dấu hiệu và mức độ ảnh hưởng trong căn hộ.",
       });
+      if (checked.used_fallback || !checked.allowed) {
+        await auditGuardrailTripBestEffort(client, {
+          jobId: null,
+          actorId: ctx.user.id,
+          actorRole: "customer",
+          surface: "kael_chat_clarification",
+          reason: checked.reason ?? "self_check",
+          guardrailLabel: checked.guardrailLabel ?? null,
+          source: checked.reason === "semantic_guardrail"
+            ? "semantic_self_check"
+            : "self_check",
+          safeMetadata: {
+            session_id: sessionId,
+            clarification_source: "ai",
+          },
+        });
+      }
       const missingSlots = pipeline.clarification?.missingSlots ?? [];
       const sentiment = pipeline.clarification?.customerSentiment;
       await appendKaelSystemTurn(client, sessionId, {
@@ -1718,6 +2194,11 @@ async function advanceKaelChatEstimate(
           ? { sessionMetadata: { last_customer_sentiment: sentiment } }
           : {}),
       });
+      await updateKaelProgress(client, progressTarget, {
+        stage: "clarification",
+        status: "completed",
+        progress: 1,
+      });
       return;
     }
     if (pipeline.code === "SERVICE_MISMATCH") {
@@ -1733,6 +2214,12 @@ async function advanceKaelChatEstimate(
           boundary_reason: "service_mismatch_llm",
           ...(suggested ? { suggested_service: suggested } : {}),
         },
+      });
+      await updateKaelProgress(client, progressTarget, {
+        stage: "intent_classification",
+        status: "failed",
+        progress: 1,
+        failureReason: "service_mismatch",
       });
       return;
     }
@@ -1753,6 +2240,12 @@ async function advanceKaelChatEstimate(
             artifactType: "ai_notes",
           }),
         },
+    });
+    await updateKaelProgress(client, progressTarget, {
+      stage: pipeline.code === "UNSUPPORTED" ? "intent_classification" : "clarification",
+      status: pipeline.code === "UNSUPPORTED" ? "failed" : "completed",
+      progress: 1,
+      failureReason: pipeline.code === "UNSUPPORTED" ? "unsupported" : undefined,
     });
     return;
   }
@@ -1956,6 +2449,7 @@ async function getJob(ctx: MobileApiContext, jobId: string) {
   const currentScopeChange = job.status === "scope_change_pending"
     ? await getCurrentScopeChange(client, jobId)
     : null;
+  const addressProjection = projectAddressAccess(job, ctx.role);
 
   return {
     job: {
@@ -1965,10 +2459,11 @@ async function getJob(ctx: MobileApiContext, jobId: string) {
       description: asString(job.description),
       problem_chips: asStringArray(job.problem_chips),
       photo_urls: asStringArray(job.photo_urls),
-      address_building: nullableString(job.address_building),
-      address_unit: nullableString(job.address_unit),
-      address_floor: nullableString(job.address_floor),
-      address_district: nullableString(job.address_district),
+      address_building: addressProjection.fullAddress.building,
+      address_unit: addressProjection.fullAddress.unit,
+      address_floor: addressProjection.fullAddress.floor,
+      address_district: addressProjection.fullAddress.district,
+      address_access: addressProjection.addressAccess,
       scheduled_at: nullableString(job.scheduled_at),
       kael_problem_identified: nullableString(job.kael_problem_identified),
       kael_complexity: nullableComplexity(job.kael_complexity),
@@ -1978,6 +2473,7 @@ async function getJob(ctx: MobileApiContext, jobId: string) {
       kael_estimate_card_v3: nullableRecord(job.kael_estimate_card_v3),
       kael_worker_brief_core: nullableRecord(job.kael_worker_brief_core),
       kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
+      kael_progress: parseKaelProgressSnapshot(job.kael_progress, jobId),
       final_price: nullableNumber(job.final_price),
       completion_notes: nullableString(job.completion_notes),
       completion_photo_urls: asStringArray(job.completion_photo_urls),
@@ -2735,15 +3231,14 @@ async function acceptBroadcast(ctx: MobileApiContext, jobId: string) {
   );
   await notifyCustomerWorkerMatched(client, jobId, ctx.user.id);
   await persistWorkerBriefGuidanceAfterAccept(client, jobId, row);
+  const addressProjection = projectAddressAccess(row, ctx.role, {
+    forcedStage: "building_released",
+  });
   return {
     job_id: jobId,
     status: row.job_status as JobStatus,
-    full_address: {
-      building: nullableString(row.address_building),
-      unit: nullableString(row.address_unit),
-      floor: nullableString(row.address_floor),
-      district: nullableString(row.address_district),
-    },
+    full_address: addressProjection.fullAddress,
+    address_access: addressProjection.addressAccess,
   };
 }
 
@@ -2756,7 +3251,7 @@ async function persistWorkerBriefGuidanceAfterAccept(
     client
       .from("jobs")
       .select(
-        "id, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, kael_price_min, kael_price_max, final_price",
+        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, final_price",
       )
       .eq("id", jobId)
       .maybeSingle(),
@@ -2767,6 +3262,21 @@ async function persistWorkerBriefGuidanceAfterAccept(
   const finalPrice = nullableNumber(job.final_price) ??
     nullableNumber(job.kael_price_max);
   const priceMin = nullableNumber(job.kael_price_min);
+  const addressProjection = projectAddressAccess(
+    {
+      ...job,
+      address_building: nullableString(acceptedRow.address_building) ??
+        nullableString(job.address_building),
+      address_floor: nullableString(acceptedRow.address_floor) ??
+        nullableString(job.address_floor),
+      address_unit: nullableString(acceptedRow.address_unit) ??
+        nullableString(job.address_unit),
+      address_district: nullableString(acceptedRow.address_district) ??
+        nullableString(job.address_district),
+    },
+    "worker",
+    { forcedStage: "building_released" },
+  );
   const guidance = buildWorkerBriefOutput({
     stage: "guidance",
     serviceType: asServiceType(job.service_type),
@@ -2774,20 +3284,7 @@ async function persistWorkerBriefGuidanceAfterAccept(
       nullableString(job.kael_problem_identified) ??
         "\u0059\u00eau c\u1ea7u c\u1ea7n th\u1ee3 ki\u1ec3m tra",
     district: nullableString(job.address_district),
-    fullAddress: {
-      building:
-        nullableString(acceptedRow.address_building) ??
-          nullableString(job.address_building),
-      floor:
-        nullableString(acceptedRow.address_floor) ??
-          nullableString(job.address_floor),
-      unit:
-        nullableString(acceptedRow.address_unit) ??
-          nullableString(job.address_unit),
-      district:
-        nullableString(acceptedRow.address_district) ??
-          nullableString(job.address_district),
-    },
+    fullAddress: addressProjection.fullAddress,
     estimatedEarningMin: priceMin === null
       ? null
       : Math.round(priceMin * (1 - PLATFORM_FEE_WORKER)),
@@ -2877,22 +3374,15 @@ async function declineBroadcast(ctx: MobileApiContext, jobId: string) {
   return { job_id: jobId, declined: true as const };
 }
 
-async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
-  status: Extract<
-    JobStatus,
-    | "worker_on_way"
-    | "arrived"
-    | "inspecting"
-    | "repairing"
-    | "completed_by_worker"
-  >;
-  completion_notes?: string;
-  completion_photo_urls?: string[];
-}) {
+async function updateJobStatus(
+  ctx: MobileApiContext,
+  jobId: string,
+  input: WorkerStatusUpdateInput,
+) {
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "worker",
-    select: "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls",
+    select: "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district",
   });
   if (job.status === "scope_change_pending") {
     apiFailure(
@@ -2914,7 +3404,24 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
     completion_notes?: string;
     completion_photo_urls?: string[];
   } | null = null;
+  let accessReleaseMetadata: Record<string, unknown> | null = null;
   if (transition.timestampColumn) update[transition.timestampColumn] = now;
+  if (input.access_check_in) {
+    if (input.status !== "arrived") {
+      apiFailure("VALIDATION", "D\u1eef li\u1ec7u check-in kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+    }
+    const accessState = buildUnitReleaseAccessState(
+      job.apartment_access_state,
+      input.access_check_in,
+      now,
+    );
+    update.apartment_access_state = accessState;
+    accessReleaseMetadata = {
+      apartment_access_release: true,
+      release_stage: "unit_released",
+      evidence_mode: input.access_check_in.mode,
+    };
+  }
   if (input.status === "completed_by_worker") {
     // Phase 2.0 (2026-05-23): jobs.final_price source = Kael (set by A7
     // autonomy decision or latest A11 scope decision). Worker payload không có final_price; preserve
@@ -2967,6 +3474,7 @@ async function updateJobStatus(ctx: MobileApiContext, jobId: string, input: {
     ctx,
     job.status as JobStatus,
     input.status,
+    accessReleaseMetadata ?? {},
   );
   let finalStatus: JobStatus = input.status;
   if (input.status === "completed_by_worker") {
@@ -3123,18 +3631,47 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
     );
   }
 
-  const estimate = await computeScopeChangeEstimate({
-    serviceType: asServiceType(job.service_type),
-    district: nullableString(job.address_district),
-    originalDescription: nullableString(job.description) ?? "",
-    originalProblemSummary: nullableString(job.kael_problem_identified),
-    originalComplexity: asComplexityOrNull(job.kael_complexity),
-    originalPriceMin: nullableNumber(job.kael_price_min),
-    originalPriceMax,
-    workerReportedDescription: input.new_description,
-    workerReason: input.reason,
-  }, secrets);
+  const jobScopeProgressTarget = { table: "jobs" as const, id: jobId };
+  await updateKaelProgress(client, jobScopeProgressTarget, {
+    stage: "scope_reviewing",
+    status: "running",
+    progress: 0.24,
+  });
+
+  let estimate: Awaited<ReturnType<typeof computeScopeChangeEstimate>>;
+  try {
+    estimate = await computeScopeChangeEstimate({
+      serviceType: asServiceType(job.service_type),
+      district: nullableString(job.address_district),
+      originalDescription: nullableString(job.description) ?? "",
+      originalProblemSummary: nullableString(job.kael_problem_identified),
+      originalComplexity: asComplexityOrNull(job.kael_complexity),
+      originalPriceMin: nullableNumber(job.kael_price_min),
+      originalPriceMax,
+      workerReportedDescription: input.new_description,
+      workerReason: input.reason,
+    }, secrets);
+  } catch (error) {
+    await updateKaelProgress(client, jobScopeProgressTarget, {
+      stage: "scope_reviewing",
+      status: "failed",
+      progress: 0.24,
+      failureReason: "scope_review_failed",
+    });
+    throw error;
+  }
+  await updateKaelProgress(client, jobScopeProgressTarget, {
+    stage: "scope_estimating",
+    status: "running",
+    progress: 0.68,
+  });
   if (estimate.price_max <= 0 || estimate.price_max < estimate.price_min) {
+    await updateKaelProgress(client, jobScopeProgressTarget, {
+      stage: "scope_estimating",
+      status: "failed",
+      progress: 0.68,
+      failureReason: "scope_estimate_invalid",
+    });
     apiFailure(
       "KAEL_PRICE_MISSING",
       "Kael chưa thể tính giá phát sinh hợp lệ",
@@ -3176,11 +3713,45 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
     }),
   );
   if (result.error) {
+    await updateKaelProgress(client, jobScopeProgressTarget, {
+      stage: "scope_estimating",
+      status: "failed",
+      progress: 0.72,
+      failureReason: "scope_request_rpc_failed",
+    });
     apiFailure("DB_ERROR", "Không thể tạo yêu cầu thay đổi", 500);
   }
   const row = result.data?.[0];
-  if (!row) apiFailure("DB_ERROR", "Không thể tạo yêu cầu thay đổi", 500);
-  if (!row.ok) mapScopeRequestError(nullableString(row.error_code));
+  if (!row) {
+    await updateKaelProgress(client, jobScopeProgressTarget, {
+      stage: "scope_estimating",
+      status: "failed",
+      progress: 0.72,
+      failureReason: "scope_request_missing_row",
+    });
+    apiFailure("DB_ERROR", "Không thể tạo yêu cầu thay đổi", 500);
+  }
+  if (!row.ok) {
+    await updateKaelProgress(client, jobScopeProgressTarget, {
+      stage: "scope_estimating",
+      status: "failed",
+      progress: 0.72,
+      failureReason: nullableString(row.error_code) ?? "scope_request_rejected",
+    });
+    mapScopeRequestError(nullableString(row.error_code));
+  }
+  const scopeChangeId = asString(row.scope_change_id);
+  const scopeProgressTarget = { table: "scope_change_requests" as const, id: scopeChangeId };
+  await updateKaelProgress(client, scopeProgressTarget, {
+    stage: "scope_estimating",
+    status: "completed",
+    progress: 1,
+  });
+  await updateKaelProgress(client, jobScopeProgressTarget, {
+    stage: "scope_estimating",
+    status: "completed",
+    progress: 1,
+  });
   await logJobEvent(
     client,
     jobId,
@@ -3206,10 +3777,9 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
     null,
     "scope_change_pending",
     {
-      scope_change_id: row.scope_change_id,
+      scope_change_id: scopeChangeId,
     },
   );
-  const scopeChangeId = asString(row.scope_change_id);
   const customerId = nullableString(job.customer_id);
   const autoDecision = await tryAutoApproveScopeChange(client, ctx, {
     customerId,
@@ -3364,6 +3934,537 @@ function buildWorkerKaelAnswer(
       "Không bắt đầu phần phát sinh khi Kael chưa quyết định hoặc chưa có override hợp lệ.",
       "Không tự báo giá mới ngoài flow Kael trong app.",
     ],
+  };
+}
+
+async function createWorkerKaelChat(
+  ctx: MobileApiContext,
+  input: WorkerKaelChatCreateInput,
+  secrets: EdgeAiSecrets,
+) {
+  const client = db(ctx);
+  const job = await requireWorkerKaelChatJob(client, ctx, input.job_id);
+
+  if (input.client_request_id) {
+    const existing = await findExistingWorkerKaelSessionByClientRequest(
+      client,
+      ctx.user.id,
+      input.client_request_id,
+    );
+    if (existing) return getWorkerKaelChat(ctx, existing);
+  }
+
+  await enforceWorkerKaelChatRateLimit(client, ctx);
+
+  const sessionResult = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_chat_sessions")
+      .insert({
+        worker_id: ctx.user.id,
+        job_id: input.job_id,
+        status: "active",
+        client_request_id: input.client_request_id ?? null,
+        safe_metadata: compactMetadata({
+          source: "worker_kael_chat",
+          language: input.language,
+          initial_media_count: input.media_refs.length,
+        }),
+      })
+      .select(WORKER_KAEL_SESSION_SELECT)
+      .single(),
+  );
+  if (
+    sessionResult.error?.code === "23505" && input.client_request_id
+  ) {
+    const recovered = await findExistingWorkerKaelSessionByClientRequest(
+      client,
+      ctx.user.id,
+      input.client_request_id,
+    );
+    if (recovered) return getWorkerKaelChat(ctx, recovered);
+  }
+  if (sessionResult.error || !sessionResult.data) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea1o phi\u00ean Kael cho th\u1ee3", 500);
+  }
+
+  const sessionId = asString(sessionResult.data.id);
+  if (input.message) {
+    await sendWorkerKaelChatTurn(ctx, sessionId, {
+      message: input.message,
+      media_refs: input.media_refs,
+      language: input.language,
+    }, secrets, { prefetchedJob: job, skipRateLimit: true });
+  }
+  return getWorkerKaelChat(ctx, sessionId);
+}
+
+async function listWorkerKaelChats(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("kael_worker_chat_sessions")
+      .select(WORKER_KAEL_SESSION_SELECT)
+      .eq("worker_id", ctx.user.id)
+      .order("updated_at", { ascending: false })
+      .limit(20),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea3i danh s\u00e1ch chat Kael", 500);
+  }
+  return {
+    sessions: (result.data ?? []).map(serializeWorkerKaelSession),
+  };
+}
+
+async function getWorkerKaelChat(
+  ctx: MobileApiContext,
+  sessionId: string,
+) {
+  const client = db(ctx);
+  const session = await readWorkerKaelSession(client, ctx, sessionId);
+  const turnsResult = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("kael_worker_chat_turns")
+      .select(WORKER_KAEL_TURN_SELECT)
+      .eq("session_id", sessionId)
+      .order("turn_index", { ascending: true }),
+  );
+  if (turnsResult.error) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea3i l\u1ecbch s\u1eed Kael", 500);
+  }
+  return {
+    session: serializeWorkerKaelSession(session),
+    turns: (turnsResult.data ?? []).map(serializeWorkerKaelTurn),
+  };
+}
+
+async function sendWorkerKaelChatTurn(
+  ctx: MobileApiContext,
+  sessionId: string,
+  input: WorkerKaelChatTurnInput,
+  secrets: EdgeAiSecrets,
+  options: { prefetchedJob?: Record<string, unknown>; skipRateLimit?: boolean } = {},
+) {
+  const client = db(ctx);
+  if (!options.skipRateLimit) {
+    await enforceWorkerKaelChatRateLimit(client, ctx);
+  }
+  const session = await readWorkerKaelSession(client, ctx, sessionId);
+  if (asWorkerKaelChatStatus(session.status) !== "active") {
+    apiFailure("INVALID_STATUS", "Phi\u00ean Kael n\u00e0y kh\u00f4ng c\u00f2n nh\u1eadn tin nh\u1eafn", 409);
+  }
+
+  const job = options.prefetchedJob ??
+    await requireWorkerKaelChatJob(client, ctx, asString(session.job_id));
+  await updateKaelProgress(client, {
+    table: "kael_worker_chat_sessions",
+    id: sessionId,
+  }, {
+    stage: "worker_assist",
+    status: "running",
+    progress: 0.2,
+  });
+
+  const previousTurns = asNumber(session.total_turns);
+  const safeMessage = scrubSensitiveForLLM(sanitizeForLLM(input.message));
+  await insertWorkerKaelTurn(client, {
+    session_id: sessionId,
+    job_id: asString(session.job_id),
+    turn_index: previousTurns + 1,
+    role: "worker",
+    content_type: input.media_refs.length > 0 ? "photo_attached" : "text",
+    text_content: safeMessage,
+    media_refs: input.media_refs,
+    safe_metadata: {},
+  });
+
+  const recentTurns = await readWorkerKaelRecentTurns(client, sessionId);
+  let answer: WorkerAssistAnswer;
+  try {
+    answer = await runWorkerAssist({
+      job: {
+        id: asString(job.id),
+        status: nullableString(job.status),
+        service_type: nullableString(job.service_type),
+        description: nullableString(job.description),
+        address_district: nullableString(job.address_district),
+        kael_problem_identified: nullableString(job.kael_problem_identified),
+        kael_complexity: nullableString(job.kael_complexity),
+        kael_worker_brief_core: nullableRecord(job.kael_worker_brief_core),
+        kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
+      },
+      question: safeMessage,
+      language: input.language,
+      mediaRefs: input.media_refs,
+      previousTurns: recentTurns,
+      secrets,
+    });
+  } catch (err) {
+    await updateKaelProgress(client, {
+      table: "kael_worker_chat_sessions",
+      id: sessionId,
+    }, {
+      stage: "worker_assist",
+      status: "failed",
+      progress: 1,
+      failureReason: "worker_assist_failed",
+    });
+    throw err;
+  }
+
+  await updateKaelProgress(client, {
+    table: "kael_worker_chat_sessions",
+    id: sessionId,
+  }, {
+    stage: "worker_assist",
+    status: "running",
+    progress: 0.8,
+  });
+
+  if (answer.guardrail_reason && isWorkerAssistGuardrailReason(answer.guardrail_reason)) {
+    await auditGuardrailTripBestEffort(client, {
+      jobId: asString(session.job_id),
+      actorId: ctx.user.id,
+      actorRole: "worker",
+      surface: "worker_kael_chat",
+      reason: answer.guardrail_reason,
+      guardrailLabel: answer.guardrail_reason,
+      source: answer.guardrail_reason === "MONEY_OR_STATUS_MUTATION"
+        ? "boundary_guard"
+        : "semantic_self_check",
+      safeMetadata: {
+        session_id: sessionId,
+      },
+    });
+  }
+
+  await appendWorkerKaelAnswerTurn(client, session, answer);
+  await updateKaelProgress(client, {
+    table: "kael_worker_chat_sessions",
+    id: sessionId,
+  }, {
+    stage: "worker_assist",
+    status: "completed",
+    progress: 1,
+  });
+  return getWorkerKaelChat(ctx, sessionId);
+}
+
+const WORKER_KAEL_SESSION_SELECT =
+  "id, job_id, worker_id, status, started_at, closed_at, total_turns, total_cost_usd, kael_progress, safe_metadata, created_at, updated_at";
+const WORKER_KAEL_TURN_SELECT =
+  "id, session_id, job_id, turn_index, role, content_type, text_content, media_refs, safe_metadata, created_at";
+
+async function requireWorkerKaelChatJob(
+  client: DbClient,
+  ctx: MobileApiContext,
+  jobId: string,
+) {
+  const job = await requireJobAccess(client, jobId, ctx, {
+    requiredRole: "worker",
+    statuses: ACTIVE_WORKER_JOB_STATUSES,
+    select:
+      "id, status, customer_id, worker_id, service_type, description, address_district, kael_problem_identified, kael_complexity, kael_worker_brief_core, kael_worker_brief_guidance",
+  });
+  return job;
+}
+
+async function findExistingWorkerKaelSessionByClientRequest(
+  client: DbClient,
+  workerId: string,
+  clientRequestId: string,
+): Promise<string | null> {
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_chat_sessions")
+      .select("id")
+      .eq("worker_id", workerId)
+      .eq("client_request_id", clientRequestId)
+      .maybeSingle(),
+  );
+  if (result.error || !result.data) return null;
+  return asString(result.data.id);
+}
+
+async function enforceWorkerKaelChatRateLimit(
+  client: DbClient,
+  ctx: MobileApiContext,
+) {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("check_kael_worker_chat_rate", { p_worker_id: ctx.user.id }),
+  );
+  if (result.error) {
+    console.warn("worker Kael chat rate limit unavailable", {
+      errorCode: result.error.code,
+    });
+    return;
+  }
+  const row = result.data?.[0];
+  if (row && asBoolean(row.allowed) === false) {
+    const reason = nullableString(row.reason);
+    apiFailure(
+      "RATE_LIMITED",
+      reason === "hour"
+        ? "B\u1ea1n \u0111\u00e3 \u0111\u1ea1t gi\u1edbi h\u1ea1n Kael trong 1 gi\u1edd. Vui l\u00f2ng th\u1eed l\u1ea1i sau."
+        : "B\u1ea1n \u0111ang g\u1eedi qu\u00e1 nhanh. Vui l\u00f2ng th\u1eed l\u1ea1i sau \u00edt ph\u00fat.",
+      429,
+    );
+  }
+}
+
+async function readWorkerKaelSession(
+  client: DbClient,
+  ctx: MobileApiContext,
+  sessionId: string,
+) {
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_chat_sessions")
+      .select(WORKER_KAEL_SESSION_SELECT)
+      .eq("id", sessionId)
+      .single(),
+  );
+  if (result.error || !result.data) {
+    apiFailure("NOT_FOUND", "Kh\u00f4ng t\u00ecm th\u1ea5y phi\u00ean Kael", 404);
+  }
+  if (ctx.role === "worker" && nullableString(result.data.worker_id) !== ctx.user.id) {
+    apiFailure("NOT_FOUND", "Kh\u00f4ng t\u00ecm th\u1ea5y phi\u00ean Kael", 404);
+  }
+  return result.data;
+}
+
+async function insertWorkerKaelTurn(
+  client: DbClient,
+  value: Record<string, unknown>,
+) {
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_chat_turns")
+      .insert(value)
+      .select("id")
+      .single(),
+  );
+  if (result.error || !result.data) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 l\u01b0u l\u01b0\u1ee3t chat Kael", 500);
+  }
+  return result.data;
+}
+
+async function appendWorkerKaelAnswerTurn(
+  client: DbClient,
+  session: Record<string, unknown>,
+  answer: WorkerAssistAnswer,
+) {
+  const sessionId = asString(session.id);
+  const nextIndex = asNumber(session.total_turns) + 2;
+  await insertWorkerKaelTurn(client, {
+    session_id: sessionId,
+    job_id: asString(session.job_id),
+    turn_index: nextIndex,
+    role: "kael",
+    content_type: answer.redirect_scope_change ? "guidance" : "text",
+    text_content: answer.text,
+    media_refs: [],
+    safe_metadata: compactMetadata({
+      schema_version: answer.schema_version,
+      safety_notes: answer.safety_notes,
+      redirect_scope_change: answer.redirect_scope_change,
+      fallback_used: answer.fallback_used,
+      guardrail_reason: answer.guardrail_reason ?? null,
+      provider: answer.provider ?? null,
+      model: answer.model ?? null,
+      latency_ms: answer.latency_ms ?? null,
+    }),
+    ai_provider: answer.provider ?? null,
+    model: answer.model ?? null,
+    latency_ms: answer.latency_ms ?? null,
+    cost_usd: answer.cost_usd ?? 0,
+  });
+
+  const update = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_chat_sessions")
+      .update({
+        total_turns: nextIndex,
+        total_cost_usd: asNumber(session.total_cost_usd) + (answer.cost_usd ?? 0),
+        status: answer.fallback_used ? "active" : "active",
+        safe_metadata: compactMetadata({
+          ...asRecord(session.safe_metadata),
+          latest_redirect_scope_change: answer.redirect_scope_change,
+          latest_fallback_used: answer.fallback_used,
+        }),
+      })
+      .eq("id", sessionId)
+      .select("id")
+      .maybeSingle(),
+  );
+  if (update.error || !update.data) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 c\u1eadp nh\u1eadt phi\u00ean Kael", 500);
+  }
+}
+
+async function readWorkerKaelRecentTurns(
+  client: DbClient,
+  sessionId: string,
+) {
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("kael_worker_chat_turns")
+      .select("role, text_content")
+      .eq("session_id", sessionId)
+      .order("turn_index", { ascending: false })
+      .limit(8),
+  );
+  if (result.error) return [];
+  return (result.data ?? [])
+    .reverse()
+    .map((row) => ({
+      role: asWorkerKaelTurnRole(row.role),
+      text: nullableString(row.text_content),
+    }));
+}
+
+function serializeWorkerKaelSession(row: Record<string, unknown>) {
+  const rawProgress = nullableRecord(row.kael_progress);
+  const parsedProgress = rawProgress
+    ? kaelChatProgressSchema.safeParse(rawProgress)
+    : null;
+  return {
+    id: asString(row.id),
+    job_id: asString(row.job_id),
+    worker_id: asString(row.worker_id),
+    status: asWorkerKaelChatStatus(row.status),
+    started_at: asString(row.started_at),
+    closed_at: nullableString(row.closed_at),
+    total_turns: asNumber(row.total_turns),
+    total_cost_usd: asNumber(row.total_cost_usd),
+    progress: parsedProgress?.success
+      ? {
+        ...parsedProgress.data,
+        failure_reason: parsedProgress.data.failure_reason ?? null,
+      }
+      : null,
+    safe_metadata: asRecord(row.safe_metadata),
+  };
+}
+
+function serializeWorkerKaelTurn(row: Record<string, unknown>) {
+  return {
+    id: asString(row.id),
+    session_id: asString(row.session_id),
+    turn_index: asNumber(row.turn_index),
+    role: asWorkerKaelTurnRole(row.role),
+    content_type: asWorkerKaelContentType(row.content_type),
+    text_content: nullableString(row.text_content),
+    media_refs: asStringArray(row.media_refs),
+    safe_metadata: asRecord(row.safe_metadata),
+    created_at: asString(row.created_at),
+  };
+}
+
+function asWorkerKaelChatStatus(
+  value: unknown,
+): "active" | "closed" | "escalated" | "error" {
+  return value === "closed" || value === "escalated" || value === "error"
+    ? value
+    : "active";
+}
+
+function asWorkerKaelTurnRole(value: unknown): "worker" | "kael" | "system" {
+  return value === "worker" || value === "system" ? value : "kael";
+}
+
+function asWorkerKaelContentType(
+  value: unknown,
+): "text" | "photo_attached" | "guidance" | "error" | "clarification" | "photo_request" {
+  if (
+    value === "clarification" || value === "guidance" ||
+    value === "photo_request" || value === "photo_attached" ||
+    value === "error"
+  ) {
+    return value;
+  }
+  return "text";
+}
+
+async function submitWorkerKaelFeedback(
+  ctx: MobileApiContext,
+  input: WorkerKaelFeedbackInput,
+) {
+  const client = db(ctx);
+  const rawMessage = sanitizeForLLM(input.message).slice(0, 1200);
+  const scrubbedMessage = scrubSensitiveForLLM(rawMessage).slice(0, 1200);
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("worker_kael_feedback")
+      .insert({
+        worker_id: ctx.user.id,
+        source: input.source,
+        language: input.language,
+        raw_message: rawMessage,
+        scrubbed_message: scrubbedMessage || "[scrubbed]",
+        status: "new",
+        safe_metadata: {
+          kael_feedback_version: "worker.v1",
+        },
+      })
+      .select("id, created_at")
+      .single(),
+  );
+  if (result.error || !result.data) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 l\u01b0u ph\u1ea3n h\u1ed3i Kael", 500);
+  }
+  return {
+    feedback_id: asString(result.data.id),
+    status: "new" as const,
+    created_at: asString(result.data.created_at),
+  };
+}
+
+async function getWorkerKaelTrainingConsent(ctx: MobileApiContext) {
+  const result = await dbQuery<Record<string, unknown>>(
+    db(ctx)
+      .from("worker_kael_training_consent")
+      .select("worker_id, training_consent, updated_at")
+      .eq("worker_id", ctx.user.id)
+      .maybeSingle(),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea3i tu\u1ef3 ch\u1ecdn Kael", 500);
+  }
+  return {
+    worker_id: ctx.user.id,
+    training_consent: result.data ? asBoolean(result.data.training_consent) : false,
+    updated_at: result.data ? nullableString(result.data.updated_at) : null,
+  };
+}
+
+async function setWorkerKaelTrainingConsent(
+  ctx: MobileApiContext,
+  input: WorkerKaelTrainingConsentInput,
+) {
+  const result = await dbQuery<Record<string, unknown>>(
+    db(ctx)
+      .from("worker_kael_training_consent")
+      .upsert({
+        worker_id: ctx.user.id,
+        training_consent: input.training_consent,
+        source: input.source,
+        language: input.language,
+        safe_metadata: {
+          kael_training_consent_version: "worker.v1",
+        },
+      })
+      .select("worker_id, training_consent, updated_at")
+      .single(),
+  );
+  if (result.error || !result.data) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 l\u01b0u tu\u1ef3 ch\u1ecdn Kael", 500);
+  }
+  return {
+    worker_id: asString(result.data.worker_id),
+    training_consent: asBoolean(result.data.training_consent),
+    updated_at: nullableString(result.data.updated_at),
   };
 }
 
@@ -3972,6 +5073,8 @@ async function sendJobMessage(
   }
   const content = input.content.trim();
   if (!content) apiFailure("VALIDATION", "Nội dung tin nhắn không hợp lệ", 400);
+  const contactGuard = evaluateJobChatContactGuard(content);
+  const storedContent = contactGuard.flagged ? contactGuard.redactedContent : content;
 
   const result = await dbQuery<Record<string, unknown>>(
     client
@@ -3980,7 +5083,7 @@ async function sendJobMessage(
         job_id: jobId,
         sender_id: ctx.user.id,
         sender_role: ctx.role,
-        content,
+        content: storedContent,
       })
       .select("id, job_id, sender_id, sender_role, content, is_read, created_at")
       .single(),
@@ -3989,9 +5092,136 @@ async function sendJobMessage(
     apiFailure("DB_ERROR", "Không thể gửi tin nhắn", 500);
   }
   const message = serializeJobMessage(result.data);
-  await maybeHandleDemandingCustomerJobChat(client, job, ctx, content);
+  await maybeHandleJobChatContactGuard(client, job, ctx, contactGuard);
+  if (!contactGuard.flagged) {
+    await maybeHandleDemandingCustomerJobChat(client, job, ctx, content);
+  }
   await notifyJobMessageRecipient(client, job, ctx, message.id);
   return { message };
+}
+
+type JobChatContactGuard = {
+  flagged: boolean;
+  redactedContent: string;
+  signals: string[];
+};
+
+const JOB_CHAT_CONTACT_REDACTED =
+  "Kael đã ẩn nội dung có dấu hiệu xin liên hệ hoặc thanh toán ngoài app.";
+
+const JOB_CHAT_CONTACT_PATTERNS: { id: string; pattern: RegExp }[] = [
+  { id: "phone", pattern: /\b(?:\+?84|0)(?:[\s.-]?\d){8,10}\b/i },
+  { id: "email", pattern: /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i },
+  { id: "sdt", pattern: /\b(?:sdt|số điện thoại|so dien thoai)\b/i },
+  { id: "zalo", pattern: /\b(?:zalo|za lo)\b/i },
+  { id: "call_direct", pattern: /\b(?:gọi em|goi em|gọi anh|goi anh|gọi riêng|goi rieng|số riêng|so rieng)\b/i },
+  { id: "cash", pattern: /\b(?:tiền mặt|tien mat|cash)\b/i },
+  { id: "off_app", pattern: /\b(?:khỏi qua app|khoi qua app|không qua app|khong qua app|ngoài app|ngoai app|trực tiếp|truc tiep|ra ngoài app|ra ngoai app)\b/i },
+];
+
+function evaluateJobChatContactGuard(content: string): JobChatContactGuard {
+  const normalized = normalizeGuardText(content);
+  const signals = JOB_CHAT_CONTACT_PATTERNS
+    .filter((entry) => entry.pattern.test(content) || entry.pattern.test(normalized))
+    .map((entry) => entry.id);
+  return {
+    flagged: signals.length > 0,
+    redactedContent: JOB_CHAT_CONTACT_REDACTED,
+    signals,
+  };
+}
+
+function normalizeGuardText(content: string) {
+  return content
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function maybeHandleJobChatContactGuard(
+  client: DbClient,
+  job: Record<string, unknown>,
+  ctx: MobileApiContext,
+  guard: JobChatContactGuard,
+) {
+  if (!guard.flagged) return;
+  await insertKaelJobMessage(
+    client,
+    asString(job.id),
+    ctx.role === "worker"
+      ? "Kael giữ liên hệ, bằng chứng và thanh toán trong app để bảo vệ cả khách và thợ. Nếu phát sinh phạm vi, hãy gửi scope-change trong phòng việc."
+      : "Kael giữ liên hệ, bằng chứng và thanh toán trong app để bảo vệ giao dịch. Nếu cần trao đổi thêm, hãy nhắn ngay tại phòng việc này.",
+  );
+  if (ctx.role !== "worker") return;
+  await recordWorkerDisintermediationRisk(client, {
+    jobId: asString(job.id),
+    signals: guard.signals,
+    workerId: ctx.user.id,
+  });
+}
+
+async function recordWorkerDisintermediationRisk(
+  client: DbClient,
+  input: { jobId: string; signals: string[]; workerId: string },
+) {
+  const observedAt = new Date().toISOString();
+  const existing = await dbQuery<Record<string, unknown>>(
+    client
+      .from("worker_kael_memory")
+      .select("red_flags, reliability_signals, safe_metadata")
+      .eq("worker_id", input.workerId)
+      .maybeSingle(),
+  );
+  const redFlags = nullableRecord(existing.data?.red_flags) ?? {};
+  const reliabilitySignals = nullableRecord(existing.data?.reliability_signals) ?? {};
+  const safeMetadata = nullableRecord(existing.data?.safe_metadata) ?? {};
+  const previousCount = asNumber(redFlags.disintermediation_risk_count);
+  await dbQuery(
+    client.from("worker_kael_memory").upsert({
+      worker_id: input.workerId,
+      red_flags: {
+        ...redFlags,
+        disintermediation_contact_leak: true,
+        disintermediation_risk_count: previousCount + 1,
+        last_disintermediation_at: observedAt,
+        last_disintermediation_job_id: input.jobId,
+        last_disintermediation_signals: input.signals,
+      },
+      reliability_signals: {
+        ...reliabilitySignals,
+        app_channel_guard_triggered: true,
+      },
+      safe_metadata: {
+        ...safeMetadata,
+        last_disintermediation_guard: {
+          job_id: input.jobId,
+          observed_at: observedAt,
+          signals: input.signals,
+        },
+      },
+      last_observed_at: observedAt,
+    }),
+  );
+  await dbQuery(
+    client.from("kael_admin_queue").insert({
+      job_id: input.jobId,
+      actor_id: input.workerId,
+      actor_role: "worker",
+      queue_type: "disintermediation_risk",
+      priority: "medium",
+      status: "open",
+      escalation_level: "soft",
+      reason_code: "worker_contact_or_off_app_solicitation",
+      response_summary: "worker_chat_contact_guard_triggered",
+      safe_metadata: {
+        guard: "chat_contact_redaction",
+        signals: input.signals,
+      },
+    }),
+  );
 }
 
 async function maybeHandleDemandingCustomerJobChat(
@@ -4380,6 +5610,11 @@ async function submitReview(ctx: MobileApiContext, jobId: string, input: {
     "reviewed",
     { rating: input.rating },
   );
+  await recordLearningReviewOutcome(client, {
+    jobId,
+    finalPrice: nullableNumber(job.final_price),
+    rating: input.rating,
+  });
   await queueKaelLearningEvent(client, 'post-A14', {
     actor_id: ctx.user.id,
     actor_role: ctx.role,
@@ -4947,7 +6182,7 @@ async function listWorkerJobs(ctx: MobileApiContext) {
     db(ctx)
       .from("jobs")
       .select(
-        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, completion_notes, completion_photo_urls, created_at, matched_at, completed_at",
+        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, completion_notes, completion_photo_urls, created_at, matched_at, completed_at",
       )
       .eq("worker_id", ctx.user.id)
       .order("created_at", { ascending: false })
@@ -4961,18 +6196,14 @@ async function listWorkerJobs(ctx: MobileApiContext) {
       const finalPrice = nullableNumber(row.final_price);
       const max = finalPrice ?? nullableNumber(row.kael_price_max);
       const min = nullableNumber(row.kael_price_min);
+      const addressProjection = projectAddressAccess(row, "worker");
       const fallbackBrief = buildWorkerBriefOutput({
         stage: "guidance",
         serviceType: row.service_type as ServiceType,
         problemSummary:
           nullableString(row.kael_problem_identified) ?? "Yêu cầu cần thợ kiểm tra",
         district: nullableString(row.address_district),
-        fullAddress: {
-          building: nullableString(row.address_building),
-          floor: nullableString(row.address_floor),
-          unit: nullableString(row.address_unit),
-          district: nullableString(row.address_district),
-        },
+        fullAddress: addressProjection.fullAddress,
         estimatedEarningMin: min === null
           ? null
           : Math.round(min * (1 - PLATFORM_FEE_WORKER)),
@@ -4985,10 +6216,11 @@ async function listWorkerJobs(ctx: MobileApiContext) {
         status: row.status as JobStatus,
         service_type: row.service_type as ServiceType,
         problem_summary: nullableString(row.kael_problem_identified),
-        address_building: nullableString(row.address_building),
-        address_unit: nullableString(row.address_unit),
-        address_floor: nullableString(row.address_floor),
-        district: nullableString(row.address_district),
+        address_building: addressProjection.fullAddress.building,
+        address_unit: addressProjection.fullAddress.unit,
+        address_floor: addressProjection.fullAddress.floor,
+        district: addressProjection.fullAddress.district,
+        address_access: addressProjection.addressAccess,
         final_price: finalPrice,
         estimated_earning: finalPrice
           ? Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER))
@@ -5129,6 +6361,207 @@ async function processKaelBatchResultsAdmin(
     limit: input.limit,
     forcePoll: input.force_poll,
   });
+}
+
+async function monitorKaelLearningRulesAdmin(
+  ctx: MobileApiContext,
+  input: KaelLearningMonitorInput,
+): Promise<KaelLearningMonitorResponse> {
+  if (ctx.role !== "admin") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được theo dõi rule Kael", 403);
+  }
+  return monitorLearningRules(db(ctx), {
+    limit: input.limit,
+  });
+}
+
+async function listKaelLearningCandidatesAdmin(
+  ctx: MobileApiContext,
+  input: KaelLearningCandidateListInput,
+): Promise<KaelLearningCandidateListResponse> {
+  if (ctx.role !== "admin") {
+    await denyKaelLearningCandidateAdminAccess(ctx, "list", null);
+  }
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx)
+      .from("learning_candidates")
+      .select(
+        "id,candidate_type,affected_service,affected_problem,affected_district,suggested_payload,confidence,evidence_count,status,audit_reason,created_at,updated_at,promoted_at,rolled_back_at",
+      )
+      .eq("status", input.state)
+      .order("created_at", { ascending: false })
+      .limit(input.limit ?? 50),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể tải danh sách ứng viên learning Kael", 500);
+  }
+  return {
+    candidates: (result.data ?? []).map(kaelLearningCandidateSummary),
+  };
+}
+
+async function approveKaelLearningCandidateAdmin(
+  ctx: MobileApiContext,
+  candidateId: string,
+  input: KaelLearningCandidateReviewInput,
+): Promise<KaelLearningCandidateApproveResponse> {
+  if (ctx.role !== "admin") {
+    await denyKaelLearningCandidateAdminAccess(ctx, "approve", candidateId);
+  }
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("admin_approve_learning_candidate", {
+      p_candidate_id: candidateId,
+      p_admin_id: ctx.user.id,
+      p_review_note: input.review_note ?? null,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể duyệt ứng viên learning Kael", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) {
+    apiFailure("DB_ERROR", "Không thể duyệt ứng viên learning Kael", 500);
+  }
+  if (row.ok !== true) {
+    mapLearningCandidateReviewError(nullableString(row.error_code), "approve");
+  }
+  const knowledgeApplyResult = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("apply_approved_learning_candidate_to_knowledge", {
+      p_candidate_id: candidateId,
+      p_admin_id: ctx.user.id,
+    }),
+  );
+  if (knowledgeApplyResult.error) {
+    apiFailure("DB_ERROR", "Không thể áp dụng tri thức Kael đã duyệt", 500);
+  }
+  const knowledgeApplyRow = knowledgeApplyResult.data?.[0] ?? null;
+  return {
+    ok: true,
+    candidate_id: asString(row.candidate_id) || candidateId,
+    rule_id: nullableString(row.rule_id),
+    rule_version: nullableNumber(row.rule_version),
+    status: asString(row.status) || "auto_promoted",
+    knowledge_apply: knowledgeApplyRow
+      ? {
+        ok: knowledgeApplyRow.ok === true,
+        error_code: nullableString(knowledgeApplyRow.error_code),
+        knowledge_table: nullableString(knowledgeApplyRow.knowledge_table),
+        record_key: nullableString(knowledgeApplyRow.record_key),
+        knowledge_version: nullableNumber(knowledgeApplyRow.knowledge_version),
+      }
+      : null,
+  };
+}
+
+async function rejectKaelLearningCandidateAdmin(
+  ctx: MobileApiContext,
+  candidateId: string,
+  input: KaelLearningCandidateReviewInput,
+): Promise<KaelLearningCandidateRejectResponse> {
+  if (ctx.role !== "admin") {
+    await denyKaelLearningCandidateAdminAccess(ctx, "reject", candidateId);
+  }
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    db(ctx).rpc("admin_reject_learning_candidate", {
+      p_candidate_id: candidateId,
+      p_admin_id: ctx.user.id,
+      p_reason: input.reason,
+    }),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể từ chối ứng viên learning Kael", 500);
+  }
+  const row = result.data?.[0];
+  if (!row) {
+    apiFailure("DB_ERROR", "Không thể từ chối ứng viên learning Kael", 500);
+  }
+  if (row.ok !== true) {
+    mapLearningCandidateReviewError(nullableString(row.error_code), "reject");
+  }
+  return {
+    ok: true,
+    candidate_id: asString(row.candidate_id) || candidateId,
+    status: asString(row.status) || "archived",
+  };
+}
+
+async function denyKaelLearningCandidateAdminAccess(
+  ctx: MobileApiContext,
+  action: "list" | "approve" | "reject",
+  candidateId: string | null,
+): Promise<never> {
+  const result = await dbQuery<null>(
+    db(ctx).from("kael_permission_audit").insert({
+      actor_id: ctx.user.id,
+      actor_role: ctx.role,
+      purpose: "kael_learning_admin_review",
+      action,
+      topic: "learning_candidate",
+      decision: "deny",
+      reason_code: "admin_required",
+      safe_metadata: {
+        ...(candidateId ? { candidate_id: candidateId } : {}),
+      },
+    }),
+  );
+  if (result.error) {
+    console.warn("mobile-api learning admin deny audit failed", {
+      action,
+      errorCode: result.error.code,
+    });
+  }
+  apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được review ứng viên learning Kael", 403);
+}
+
+function kaelLearningCandidateSummary(
+  row: Record<string, unknown>,
+): KaelLearningCandidateSummary {
+  const payload = nullableRecord(row.suggested_payload) ?? {};
+  return {
+    id: asString(row.id),
+    candidate_type: asString(row.candidate_type),
+    affected_service: nullableServiceType(row.affected_service),
+    affected_problem: nullableString(row.affected_problem),
+    affected_district: nullableString(row.affected_district),
+    confidence: asNumber(row.confidence),
+    evidence_count: Math.max(0, Math.trunc(asNumber(row.evidence_count))),
+    status: asLearningCandidateStatus(row.status),
+    audit_reason: nullableString(row.audit_reason),
+    created_at: asString(row.created_at),
+    updated_at: asString(row.updated_at),
+    promoted_at: nullableString(row.promoted_at),
+    rolled_back_at: nullableString(row.rolled_back_at),
+    suggested_payload: payload,
+    evidence_snapshot: nullableRecord(payload.evidence_snapshot),
+  };
+}
+
+function mapLearningCandidateReviewError(
+  code: string | null,
+  action: "approve" | "reject",
+): never {
+  const normalized = code ?? "REVIEW_FAILED";
+  const message = action === "approve"
+    ? "Không thể duyệt ứng viên learning Kael"
+    : "Không thể từ chối ứng viên learning Kael";
+  if (normalized === "CANDIDATE_NOT_FOUND") {
+    apiFailure("NOT_FOUND", "Không tìm thấy ứng viên learning Kael", 404);
+  }
+  if (normalized === "ADMIN_REQUIRED") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ admin mới được review ứng viên learning Kael", 403);
+  }
+  if (
+    normalized === "INVALID_INPUT" ||
+    normalized === "INVALID_PAYLOAD" ||
+    normalized === "UNKNOWN_SKILL" ||
+    normalized === "TARGET_NOT_ALLOWED" ||
+    normalized === "FORBIDDEN_EFFECT" ||
+    normalized === "UNSUPPORTED_CANDIDATE_TYPE" ||
+    normalized === "CANDIDATE_TYPE_MISMATCH"
+  ) {
+    apiFailure("VALIDATION", message, 400, { reason_code: normalized });
+  }
+  apiFailure("LEARNING_REVIEW_FAILED", message, 409, { reason_code: normalized });
 }
 
 async function listNotifications(ctx: MobileApiContext) {
@@ -5913,7 +7346,7 @@ async function getCurrentScopeChange(client: DbClient, jobId: string) {
     client
       .from("scope_change_requests")
       .select(
-        "id, status, requested_description, reason, price_min, price_max, kael_computed_min, kael_computed_max, kael_review, evidence_photo_urls, created_at",
+        "id, status, requested_description, reason, price_min, price_max, kael_computed_min, kael_computed_max, kael_review, kael_progress, evidence_photo_urls, created_at",
       )
       .eq("job_id", jobId)
       .in("status", ["waiting_customer_decision", "reviewing_by_kael"])
@@ -5939,6 +7372,7 @@ async function getCurrentScopeChange(client: DbClient, jobId: string) {
     kael_computed_min: nullableNumber(row.kael_computed_min),
     kael_computed_max: nullableNumber(row.kael_computed_max),
     kael_review: nullableRecord(row.kael_review),
+    kael_progress: parseKaelProgressSnapshot(row.kael_progress, asString(row.id)),
     evidence_photo_urls: asStringArray(row.evidence_photo_urls),
     created_at: nullableString(row.created_at),
   };
@@ -6149,6 +7583,55 @@ async function logJobEvent(
   ).catch(() => {
     console.warn("mobile-api job event log failed", { jobId, eventType });
   });
+}
+
+async function auditGuardrailTripBestEffort(
+  client: DbClient,
+  input: {
+    readonly jobId: string | null;
+    readonly actorId: string | null;
+    readonly actorRole: "customer" | "worker";
+    readonly surface: string;
+    readonly reason: string;
+    readonly guardrailLabel?: string | null;
+    readonly source:
+      | "self_check"
+      | "semantic_self_check"
+      | "boundary_guard"
+      | "autonomy_gate";
+    readonly safeMetadata?: Record<string, unknown>;
+  },
+) {
+  await auditKaelGuardrailTrip(client, {
+    jobId: input.jobId,
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    surface: input.surface,
+    reason: input.reason,
+    guardrailLabel: input.guardrailLabel ?? null,
+    source: input.source,
+    safeMetadata: input.safeMetadata,
+  }).catch((error) => {
+    console.warn("mobile-api kael guardrail audit failed", {
+      surface: input.surface,
+      reason: input.reason,
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+  });
+}
+
+function isWorkerAssistGuardrailReason(reason: string) {
+  return reason === "MONEY_OR_STATUS_MUTATION" ||
+    reason === "SELF_CHECK" ||
+    reason === "semantic_guardrail" ||
+    reason === "exact_vnd" ||
+    reason === "language_mismatch" ||
+    reason === "sentence_too_long" ||
+    reason === "fear_language" ||
+    reason === "absolute_claim" ||
+    reason === "ai_self_reference" ||
+    reason === "accusatory_in_dispute" ||
+    reason === "aggressive_response";
 }
 
 async function queueKaelLearningEvent(
@@ -6778,10 +8261,290 @@ function assertKaelSessionOwnership(
   apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
 }
 
+const APARTMENT_ACCESS_PROFILE_KEYS = [
+  "entry_method",
+  "parking_note",
+  "guard_note",
+  "building_note",
+  "customer_handoff_note",
+] as const satisfies ReadonlyArray<keyof ApartmentAccessProfileInput>;
+
+const ADDRESS_BUILDING_RELEASE_STATUSES: readonly JobStatus[] = [
+  "worker_matched",
+  "worker_on_way",
+  "arrived",
+  "inspecting",
+  "repairing",
+  "scope_change_pending",
+  "completed_by_worker",
+  "confirmed_by_customer",
+  "payment_pending",
+  "paid",
+  "reviewed",
+];
+
+function buildInitialApartmentAccessState() {
+  return {
+    release_stage: "area_only",
+    exact_unit_released: false,
+    check_in_required: true,
+    identity_check_required: true,
+    customer_handoff_required: true,
+    evidence_mode: "none",
+  };
+}
+
+function sanitizeApartmentAccessProfile(
+  input: unknown,
+): ApartmentAccessProfileInput {
+  const record = nullableRecord(input) ?? {};
+  const profile: ApartmentAccessProfileInput = {};
+  for (const key of APARTMENT_ACCESS_PROFILE_KEYS) {
+    const value = sanitizeApartmentAccessText(record[key], 300);
+    if (value) profile[key] = value;
+  }
+  return profile;
+}
+
+function mergeApartmentAccessProfiles(
+  previous: unknown,
+  incoming: unknown,
+): ApartmentAccessProfileInput {
+  return {
+    ...sanitizeApartmentAccessProfile(previous),
+    ...sanitizeApartmentAccessProfile(incoming),
+  };
+}
+
+function sanitizeApartmentAccessText(
+  value: unknown,
+  maxLength: number,
+): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = sanitizeForLLM(value).trim().slice(0, maxLength);
+  if (!trimmed) return undefined;
+  if (evaluateJobChatContactGuard(trimmed).flagged) {
+    return undefined;
+  }
+  return trimmed;
+}
+
+function isEmptyApartmentAccessProfile(profile: ApartmentAccessProfileInput) {
+  return APARTMENT_ACCESS_PROFILE_KEYS.every((key) => !profile[key]);
+}
+
+async function persistApartmentAccessProfileFromMetadata(
+  client: DbClient,
+  input: {
+    customerId: string;
+    jobId: string;
+    addressLabel: string | null;
+    district: string | null;
+    profile: ApartmentAccessProfileInput;
+  },
+) {
+  const fingerprint = apartmentAddressFingerprint(
+    input.addressLabel,
+    input.district,
+  );
+  if (!fingerprint) return;
+
+  let profile = sanitizeApartmentAccessProfile(input.profile);
+  if (isEmptyApartmentAccessProfile(profile)) {
+    const existing = await dbQuery<Record<string, unknown>>(
+      client
+        .from("kael_chat_pre_intake_memory")
+        .select("access_profile")
+        .eq("customer_id", input.customerId)
+        .eq("address_fingerprint", fingerprint)
+        .maybeSingle(),
+    ).catch((error) => {
+      console.warn("mobile-api apartment access memory lookup failed", {
+        jobId: input.jobId,
+        errorName: error instanceof Error ? error.name : typeof error,
+      });
+      return { data: null, error: { code: "LOOKUP_FAILED" } };
+    });
+    if (!existing.error && existing.data) {
+      profile = sanitizeApartmentAccessProfile(existing.data.access_profile);
+    }
+  }
+  if (isEmptyApartmentAccessProfile(profile)) return;
+
+  const jobUpdate = await dbQuery<{ id: string }>(
+    client
+      .from("jobs")
+      .update({
+        apartment_access_profile: profile,
+        apartment_access_state: buildInitialApartmentAccessState(),
+      })
+      .eq("id", input.jobId)
+      .select("id")
+      .maybeSingle(),
+  );
+  if (jobUpdate.error) {
+    console.warn("mobile-api apartment access job update failed", {
+      jobId: input.jobId,
+      errorCode: jobUpdate.error.code,
+    });
+  }
+
+  await dbQuery(
+    client
+      .from("kael_chat_pre_intake_memory")
+      .upsert({
+        customer_id: input.customerId,
+        address_fingerprint: fingerprint,
+        address_label_safe: sanitizeApartmentAccessText(
+          input.addressLabel,
+          200,
+        ) ?? null,
+        address_district: input.district,
+        access_profile: profile,
+        last_used_job_id: input.jobId,
+      }),
+  ).catch((error) => {
+    console.warn("mobile-api apartment access memory upsert failed", {
+      jobId: input.jobId,
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+  });
+}
+
+function apartmentAddressFingerprint(
+  addressLabel: string | null,
+  district: string | null,
+) {
+  if (!addressLabel?.trim()) return null;
+  const normalized = normalizeGuardText(
+    [district, addressLabel].filter(Boolean).join("|"),
+  );
+  return normalized.length > 0 ? normalized.slice(0, 160) : null;
+}
+
+function projectAddressAccess(
+  row: Record<string, unknown>,
+  role: MobileApiContext["role"],
+  options: { forcedStage?: AddressAccessStage } = {},
+): AddressAccessProjection {
+  const rawAddress = readAddressParts(row);
+  const profile = sanitizeApartmentAccessProfile(row.apartment_access_profile);
+  const state = asRecord(row.apartment_access_state);
+  const exactUnitReleased = state.exact_unit_released === true;
+  const rowStatus = asJobStatus(row.job_status ?? row.status);
+  const releasedStage = exactUnitReleased
+    ? "unit_released"
+    : ADDRESS_BUILDING_RELEASE_STATUSES.includes(rowStatus)
+    ? "building_released"
+    : "area_only";
+  const stage = options.forcedStage ?? releasedStage;
+  const evidenceMode = accessEvidenceMode(state);
+  const workerAddress = stage === "unit_released"
+    ? rawAddress
+    : stage === "building_released"
+    ? {
+      building: redactWorkerBuilding(rawAddress.building) ??
+        rawAddress.district,
+      unit: null,
+      floor: null,
+      district: rawAddress.district,
+    }
+    : {
+      building: null,
+      unit: null,
+      floor: null,
+      district: rawAddress.district,
+    };
+
+  return {
+    fullAddress: role === "worker" ? workerAddress : rawAddress,
+    addressAccess: buildAddressAccessView(
+      profile,
+      role === "worker" ? stage : releasedStage,
+      evidenceMode,
+    ),
+  };
+}
+
+function readAddressParts(row: Record<string, unknown>): AddressParts {
+  return {
+    building: nullableString(row.address_building),
+    unit: nullableString(row.address_unit),
+    floor: nullableString(row.address_floor),
+    district: nullableString(row.address_district),
+  };
+}
+
+function buildAddressAccessView(
+  profile: ApartmentAccessProfileInput,
+  stage: AddressAccessStage,
+  evidenceMode: AddressAccessEvidenceMode,
+): AddressAccessView {
+  const exact = stage === "unit_released";
+  return {
+    release_stage: stage,
+    exact_unit_released: exact,
+    check_in_required: !exact,
+    identity_check_required: true,
+    customer_handoff_required: true,
+    evidence_mode: exact ? evidenceMode : "none",
+    access_profile: profile,
+  };
+}
+
+function accessEvidenceMode(
+  state: Record<string, unknown>,
+): AddressAccessEvidenceMode {
+  const direct = nullableString(state.evidence_mode);
+  if (direct === "geofence" || direct === "manual_photo") return direct;
+  const checkIn = nullableRecord(state.check_in);
+  const mode = nullableString(checkIn?.mode);
+  return mode === "geofence" || mode === "manual_photo" ? mode : "none";
+}
+
+function redactWorkerBuilding(value: string | null) {
+  if (!value) return null;
+  const redacted = value
+    .replace(/(?:căn\s*hộ|can\s*ho|căn|can|phòng|phong|unit|apt|apartment)\s*[:#-]?\s*[A-Za-z0-9./-]+/gi, "")
+    .replace(/(?:tầng|tang|lầu|lau|floor)\s*[:#-]?\s*[A-Za-z0-9./-]+/gi, "")
+    .replace(/\s*,\s*,+/g, ", ")
+    .replace(/^[\s,.-]+|[\s,.-]+$/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return redacted || null;
+}
+
+function buildUnitReleaseAccessState(
+  previous: unknown,
+  checkIn: WorkerAccessCheckInInput,
+  now: string,
+) {
+  return compactMetadata({
+    ...asRecord(previous),
+    release_stage: "unit_released",
+    exact_unit_released: true,
+    check_in_required: false,
+    identity_check_required: true,
+    customer_handoff_required: true,
+    evidence_mode: checkIn.mode,
+    unit_released_at: now,
+    check_in: compactMetadata({
+      mode: checkIn.mode,
+      lat: checkIn.lat,
+      lng: checkIn.lng,
+      accuracy_m: checkIn.accuracy_m,
+      photo_urls: checkIn.photo_urls,
+      note: sanitizeApartmentAccessText(checkIn.note, 300),
+      checked_in_at: checkIn.checked_in_at ?? now,
+    }),
+  });
+}
+
 async function geocodeConfirmedKaelJob(
   client: DbClient,
   sessionId: string,
   jobId: string,
+  customerId: string,
   district: string | null,
   secrets: EdgeAiSecrets,
 ) {
@@ -6801,6 +8564,13 @@ async function geocodeConfirmedKaelJob(
     return;
   }
   const metadata = asRecord(session.data?.safe_metadata);
+  await persistApartmentAccessProfileFromMetadata(client, {
+    customerId,
+    jobId,
+    addressLabel: nullableString(metadata.address_label),
+    district,
+    profile: sanitizeApartmentAccessProfile(metadata.apartment_access_profile),
+  });
   await geocodeJobAddressForMatching(client, jobId, {
     addressLabel: nullableString(metadata.address_label),
     district,
@@ -7407,6 +9177,28 @@ function asServiceType(value: unknown): ServiceType {
   if (value === "plumbing") return "plumbing";
   if (value === "cleaning") return "cleaning";
   return "electrical";
+}
+
+function nullableServiceType(value: unknown): ServiceType | null {
+  return value === "electrical" || value === "plumbing" || value === "cleaning"
+    ? value
+    : null;
+}
+
+function asLearningCandidateStatus(value: unknown): LearningCandidateStatus {
+  if (
+    value === "created" ||
+    value === "pending_evidence" ||
+    value === "evidence_gate_passed" ||
+    value === "manual_review" ||
+    value === "auto_promoted" ||
+    value === "rejected" ||
+    value === "rolled_back" ||
+    value === "archived"
+  ) {
+    return value;
+  }
+  return "created";
 }
 
 function asServiceTypeArray(value: unknown): ServiceType[] {

@@ -23,7 +23,9 @@ const mockHydrateRemoteJobById = jest.fn()
 const mockKaelChatCreate = jest.fn()
 const mockKaelChatGet = jest.fn()
 const mockKaelChatSendTurn = jest.fn()
+const mockKaelChatStreamSendTurn = jest.fn()
 const mockKaelChatConfirm = jest.fn()
+const mockKaelChatProgressGet = jest.fn()
 let mockWorkflowState: any = {
   deal: null,
   lastError: null,
@@ -74,6 +76,12 @@ jest.mock('@/lib/services', () => ({
     create: (...args: unknown[]) => mockKaelChatCreate(...args),
     get: (...args: unknown[]) => mockKaelChatGet(...args),
     sendTurn: (...args: unknown[]) => mockKaelChatSendTurn(...args),
+  },
+  kaelChatProgressService: {
+    get: (...args: unknown[]) => mockKaelChatProgressGet(...args),
+  },
+  kaelChatStreamService: {
+    sendTurn: (...args: unknown[]) => mockKaelChatStreamSendTurn(...args),
   },
 }))
 
@@ -199,6 +207,14 @@ const threadText = {
   activityOrchestrating: 'Orchestrating',
   activityResearch: 'Researching',
   activityThinking: 'Thinking',
+  activityStage: {
+    fallback: 'Using internal data',
+    intent: 'Reading request',
+    market: 'Checking market rates in {district}',
+    price: 'Synthesizing estimate',
+    problem: 'Matching standard price bands',
+    vision: 'Analyzing photos',
+  },
   history: 'Open activity',
   loading: 'Loading',
   retryIntake: 'Retry intake',
@@ -360,7 +376,9 @@ describe('Kael agentic phase cards', () => {
     mockKaelChatCreate.mockReset()
     mockKaelChatGet.mockReset()
     mockKaelChatSendTurn.mockReset()
+    mockKaelChatStreamSendTurn.mockReset()
     mockKaelChatConfirm.mockReset()
+    mockKaelChatProgressGet.mockReset()
     takePendingKaelChatDraft()
   })
 
@@ -509,6 +527,75 @@ describe('Kael agentic phase cards', () => {
 
     fireEvent.press(screen.getByTestId('customer-kael-chat-session-archive-item-1'))
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/history?job_id=job_archive_1')
+  })
+
+  it('fast-polls real Kael progress while a follow-up turn is sending and cleans up after resolve', async () => {
+    let resolveSend: ((value: unknown) => void) | undefined
+    mockAppLanguage = 'en'
+    mockRouteParams = { sessionId: 'kael_session_test_1' }
+    mockKaelChatGet.mockResolvedValueOnce({
+      success: true,
+      data: buildKaelChatResponse(),
+    })
+    mockKaelChatStreamSendTurn.mockImplementation(() => new Promise((resolve) => {
+      resolveSend = resolve
+    }))
+    mockKaelChatProgressGet.mockResolvedValue({
+      success: true,
+      data: {
+        session_id: 'kael_session_test_1',
+        progress: {
+          current_stage: 'market_lookup',
+          failure_reason: null,
+          progress: 0.32,
+          status: 'running',
+          updated_at: '2026-06-04T00:00:00.000Z',
+        },
+      },
+    })
+
+    render(<KaelChatSurface />)
+    await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith('kael_session_test_1'))
+
+    jest.useFakeTimers()
+    try {
+      await act(async () => {
+        fireEvent.changeText(screen.getByTestId('customer-kael-chat-input'), 'Outlet still sparks near the kitchen')
+        await Promise.resolve()
+      })
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('customer-kael-chat-send'))
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(mockKaelChatStreamSendTurn).toHaveBeenCalled()
+      expect(mockKaelChatProgressGet).toHaveBeenCalledWith('kael_session_test_1')
+      expect(screen.getByTestId('customer-kael-chat-live-activity-label')).toHaveTextContent('Kael is checking market rates in your area.')
+
+      await act(async () => {
+        jest.advanceTimersByTime(800)
+        await Promise.resolve()
+      })
+      expect(mockKaelChatProgressGet).toHaveBeenCalledTimes(2)
+
+      await act(async () => {
+        resolveSend?.({ success: true, data: buildKaelChatResponse({ total_turns: 3 }) })
+        await Promise.resolve()
+      })
+      const callCountAfterResolve = mockKaelChatProgressGet.mock.calls.length
+
+      await act(async () => {
+        jest.advanceTimersByTime(1600)
+        await Promise.resolve()
+      })
+      expect(mockKaelChatProgressGet).toHaveBeenCalledTimes(callCountAfterResolve)
+    } finally {
+      act(() => {
+        jest.runOnlyPendingTimers()
+      })
+      jest.useRealTimers()
+    }
   })
 
   it('opens the customer media picker from attach and turns the selected image into a sendable evidence note', async () => {
@@ -699,6 +786,7 @@ describe('Kael agentic phase cards', () => {
         orchestrating={false}
         orchestrationMessage="Đã gửi yêu cầu đến 1 thợ. Đang chờ phản hồi."
         pendingIntake={null}
+        progress={null}
         selectedService="electrical"
         sending={false}
         session={null}
@@ -741,6 +829,7 @@ describe('Kael agentic phase cards', () => {
         orchestrating={false}
         orchestrationMessage={null}
         pendingIntake={null}
+        progress={null}
         reduceMotion
         selectedService="electrical"
         sending
@@ -764,6 +853,231 @@ describe('Kael agentic phase cards', () => {
     expect(screen.getByTestId('customer-kael-chat-live-activity-label')).toHaveTextContent('Researching')
   })
 
+  it('uses polled Kael progress as the live activity label when available', () => {
+    render(
+      <KaelChatThread
+        addressDistrict="District 7"
+        dispatch={jest.fn()}
+        error={null}
+        estimate={null}
+        historyTarget="/(customer)/history"
+        language="en"
+        loading={false}
+        onOpenHistory={jest.fn()}
+        onRetryPendingIntake={jest.fn()}
+        onStartOrchestration={jest.fn()}
+        orchestrating={false}
+        orchestrationMessage={null}
+        pendingIntake={null}
+        progress={{
+          current_stage: 'market_lookup',
+          failure_reason: null,
+          progress: 0.32,
+          status: 'running',
+          updated_at: '2026-06-04T00:00:00.000Z',
+        }}
+        reduceMotion
+        selectedService="electrical"
+        sending
+        session={null}
+        text={threadText}
+        tokens={threadTokens}
+        turns={[]}
+        visibility={{
+          canStartOrchestration: false,
+          showBrief: false,
+          showEstimate: false,
+          showProcess: false,
+          showStarter: false,
+          showTrace: false,
+        }}
+        workflow={buildWorkflowViewModel({ status: null })}
+      />,
+    )
+
+    expect(screen.getByTestId('customer-kael-chat-live-activity-label')).toHaveTextContent('Checking market rates in District 7')
+  })
+
+  it('renders the real stage trace as a stepper without inventing missed stages', () => {
+    render(
+      <KaelChatThread
+        addressDistrict="District 7"
+        dispatch={jest.fn()}
+        error={null}
+        estimate={null}
+        historyTarget="/(customer)/history"
+        language="en"
+        loading={false}
+        onOpenHistory={jest.fn()}
+        onRetryPendingIntake={jest.fn()}
+        onStartOrchestration={jest.fn()}
+        orchestrating={false}
+        orchestrationMessage={null}
+        pendingIntake={null}
+        progress={{
+          current_stage: 'market_lookup',
+          failure_reason: null,
+          progress: 0.32,
+          status: 'running',
+          updated_at: '2026-06-04T00:00:01.000Z',
+        }}
+        progressTrace={[
+          {
+            current_stage: 'intent_classification',
+            failure_reason: null,
+            progress: 0.2,
+            status: 'completed',
+            updated_at: '2026-06-04T00:00:00.000Z',
+          },
+          {
+            current_stage: 'market_lookup',
+            failure_reason: null,
+            progress: 0.32,
+            status: 'running',
+            updated_at: '2026-06-04T00:00:01.000Z',
+          },
+        ]}
+        reduceMotion
+        selectedService="electrical"
+        sending
+        session={null}
+        text={threadText}
+        tokens={threadTokens}
+        turns={[]}
+        visibility={{
+          canStartOrchestration: false,
+          showBrief: false,
+          showEstimate: false,
+          showProcess: false,
+          showStarter: false,
+          showTrace: false,
+        }}
+        workflow={buildWorkflowViewModel({ status: null })}
+      />,
+    )
+
+    expect(screen.getByTestId('customer-kael-chat-progress-trace')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-kael-chat-progress-step-intent_classification')).toHaveTextContent('Reading request')
+    expect(screen.getByTestId('customer-kael-chat-progress-step-dot-intent_classification-completed')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-kael-chat-progress-step-market_lookup')).toHaveTextContent('Checking market rates in District 7')
+    expect(screen.getByTestId('customer-kael-chat-progress-step-dot-market_lookup-running')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-kael-chat-progress-step-price_synthesis')).toBeNull()
+  })
+
+  it('collapses completed thinking into a measured disclosure and re-expands the trace', () => {
+    render(
+      <KaelChatThread
+        addressDistrict="District 7"
+        dispatch={jest.fn()}
+        error={null}
+        estimate={estimate}
+        historyTarget="/(customer)/history"
+        language="en"
+        loading={false}
+        onOpenHistory={jest.fn()}
+        onRetryPendingIntake={jest.fn()}
+        onStartOrchestration={jest.fn()}
+        orchestrating={false}
+        orchestrationMessage={null}
+        pendingIntake={null}
+        progress={null}
+        progressElapsedMs={4200}
+        progressTrace={[
+          {
+            current_stage: 'intent_classification',
+            failure_reason: null,
+            progress: 0.2,
+            status: 'completed',
+            updated_at: '2026-06-04T00:00:00.000Z',
+          },
+          {
+            current_stage: 'price_synthesis',
+            failure_reason: null,
+            progress: 1,
+            status: 'completed',
+            updated_at: '2026-06-04T00:00:04.000Z',
+          },
+        ]}
+        reduceMotion
+        selectedService="electrical"
+        sending={false}
+        session={buildKaelChatResponse({
+          estimate,
+          estimate_ready_at: '2026-06-04T00:00:04.000Z',
+          next_action: 'estimate_ready',
+          status: 'estimate_ready',
+        })}
+        text={threadText}
+        tokens={threadTokens}
+        turns={buildKaelChatResponse().turns}
+        visibility={{
+          canStartOrchestration: true,
+          showBrief: false,
+          showEstimate: true,
+          showProcess: false,
+          showStarter: false,
+          showTrace: false,
+        }}
+        workflow={buildWorkflowViewModel({ hasEstimate: true, status: 'estimate_ready' })}
+      />,
+    )
+
+    expect(screen.getByTestId('customer-kael-chat-thought-label')).toHaveTextContent('Kael analyzed in 4s')
+    expect(screen.queryByTestId('customer-kael-chat-thought-trace')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('customer-kael-chat-thought-disclosure'))
+
+    expect(screen.getByTestId('customer-kael-chat-thought-trace')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-kael-chat-progress-trace-settled')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-kael-chat-progress-step-price_synthesis')).toHaveTextContent('Synthesizing estimate')
+  })
+
+  it('renders streamed token text with a caret and removes the caret for Reduce Motion', () => {
+    const baseProps = {
+      addressDistrict: 'District 7',
+      dispatch: jest.fn(),
+      error: null,
+      estimate: null,
+      historyTarget: '/(customer)/history',
+      language: 'en' as const,
+      loading: false,
+      onOpenHistory: jest.fn(),
+      onRetryPendingIntake: jest.fn(),
+      onStartOrchestration: jest.fn(),
+      orchestrating: false,
+      orchestrationMessage: null,
+      pendingIntake: null,
+      progress: null,
+      selectedService: 'electrical' as const,
+      sending: true,
+      session: null,
+      streamingField: 'clarification' as const,
+      streamingText: 'Can you share one clear photo?',
+      text: threadText,
+      tokens: threadTokens,
+      turns: [],
+      visibility: {
+        canStartOrchestration: false,
+        showBrief: false,
+        showEstimate: false,
+        showProcess: false,
+        showStarter: false,
+        showTrace: false,
+      },
+      workflow: buildWorkflowViewModel({ status: null }),
+    }
+
+    const { rerender } = render(<KaelChatThread {...baseProps} reduceMotion={false} />)
+
+    expect(screen.getByTestId('customer-kael-chat-streaming-token-body')).toHaveProp('accessibilityLabel', 'Can you share one clear photo?')
+    expect(screen.getByTestId('customer-kael-chat-streaming-caret')).toBeOnTheScreen()
+
+    rerender(<KaelChatThread {...baseProps} reduceMotion />)
+
+    expect(screen.getByTestId('customer-kael-chat-streaming-token-body')).toHaveProp('accessibilityLabel', 'Can you share one clear photo?')
+    expect(screen.queryByTestId('customer-kael-chat-streaming-caret')).toBeNull()
+  })
+
   it('renders only one lifecycle panel for the current Kael phase', () => {
     render(
       <KaelChatThread
@@ -780,6 +1094,7 @@ describe('Kael agentic phase cards', () => {
         orchestrating={false}
         orchestrationMessage={null}
         pendingIntake={null}
+        progress={null}
         reduceMotion
         selectedService="electrical"
         sending={false}
@@ -835,6 +1150,7 @@ describe('Kael agentic phase cards', () => {
           orchestrating={false}
           orchestrationMessage={null}
           pendingIntake={null}
+          progress={null}
           reduceMotion={false}
           selectedService="electrical"
           sending={false}
@@ -919,6 +1235,7 @@ describe('Kael agentic phase cards', () => {
           serviceType: 'electrical',
           source: 'booking',
         }}
+        progress={null}
         selectedService="electrical"
         sending={false}
         session={null}

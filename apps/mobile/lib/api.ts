@@ -13,7 +13,7 @@ export type ApiResult<T> =
   | { success: true; data: T; status: number }
   | { success: false; error: string; code: string; status: number }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+export async function getMobileApiAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
@@ -30,6 +30,30 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
     headers['Authorization'] = `Bearer ${token}`
   }
   return headers
+}
+
+export function mobileApiUrl(path: string) {
+  return `${API_BASE_URL}${path}`
+}
+
+export function mobileApiConfigError(): ApiResult<never> | null {
+  if (!API_BASE_URL) {
+    return {
+      success: false,
+      error: 'Dá»‹ch vá»¥ chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh',
+      code: 'CONFIG_MISSING',
+      status: 0,
+    }
+  }
+  if (!MOBILE_API_BASE_PATH.test(API_BASE_URL)) {
+    return {
+      success: false,
+      error: 'ÄÆ°á»ng káº¿t ná»‘i chÆ°a Ä‘Ãºng',
+      code: 'CONFIG_INVALID',
+      status: 0,
+    }
+  }
+  return null
 }
 
 async function request<T>(
@@ -61,7 +85,7 @@ async function request<T>(
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
     try {
-      const headers = await getAuthHeaders()
+      const headers = await getMobileApiAuthHeaders()
       const url = `${API_BASE_URL}${path}`
 
       const response = await fetch(url, {

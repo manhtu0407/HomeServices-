@@ -40,6 +40,21 @@ export type LocalWorkerBroadcastStatus = 'pending' | 'sent' | 'accepted' | 'decl
 export type LocalWorkerGate = 'backend_pending' | 'local_deal_audit' | 'remote_backend'
 export type LocalScheduleMode = 'now_only'
 export type LocalCustomerSearchState = 'idle' | 'searching' | 'no_worker' | 'matched' | 'active' | 'completed'
+export type LocalAddressAccess = {
+  release_stage: 'area_only' | 'building_released' | 'unit_released'
+  exact_unit_released: boolean
+  check_in_required: boolean
+  identity_check_required: boolean
+  customer_handoff_required: boolean
+  evidence_mode: 'none' | 'geofence' | 'manual_photo'
+  access_profile: {
+    entry_method?: string
+    parking_note?: string
+    guard_note?: string
+    building_note?: string
+    customer_handoff_note?: string
+  }
+}
 
 export type LocalDealDraft = {
   serviceType: ServiceType | null
@@ -76,6 +91,7 @@ export type LocalWorkerBroadcast = {
   prebrief: string[]
   fullAddressVisible: boolean
   fullAddressLabel: string | null
+  addressAccess?: LocalAddressAccess | null
   secondsRemaining: number | null
   estimatedPriceLabel?: string
   estimatedEarningLabel?: string
@@ -102,8 +118,17 @@ export type LocalScopeChange = {
   priceMin: number | null
   priceMax: number | null
   kaelReview: Record<string, unknown> | null
+  kaelProgress: LocalKaelProgress | null
   evidencePhotoUrls: string[]
   createdAt: string | null
+}
+
+export type LocalKaelProgress = {
+  current_stage: string
+  status: 'queued' | 'running' | 'completed' | 'failed'
+  progress: number
+  failure_reason?: string | null
+  updated_at: string
 }
 
 export type LocalWorkflowState = {

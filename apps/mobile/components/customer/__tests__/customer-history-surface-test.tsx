@@ -162,6 +162,7 @@ function buildScopeChange(): LocalScopeChange {
     evidencePhotoUrls: ['storage://job_test_1/scope.jpg'],
     id: 'scope_test_1',
     kaelReview: null,
+    kaelProgress: null,
     priceMax: 320000,
     priceMin: 260000,
     reason: 'Cần thay thêm ổ cắm sau khi tháo mặt che.',

@@ -44,7 +44,7 @@ describe('Kael P8 charter source files', () => {
     expect(identity).toContain('KHÔNG phải chatbot tổng quát')
   })
 
-  it('covers all 11 purposes and actor tone rows', () => {
+  it('covers all 12 purposes and actor tone rows', () => {
     const matrix = readCharter('tone-matrix.yaml')
     for (const purpose of [
       'intent_classification',
@@ -55,6 +55,7 @@ describe('Kael P8 charter source files', () => {
       'price_synthesis',
       'advisory_generation',
       'worker_brief',
+      'worker_assist',
       'scope_change',
       'post_job_learning',
       'educational_response',

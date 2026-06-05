@@ -1,6 +1,5 @@
 // ESLint flat config for the Expo mobile app (ESLint 9 + eslint-config-expo).
-// Kept minimal: the Expo preset already covers React, React Native, hooks, and
-// import rules. We only add ignore globs and jest globals for test files.
+// Kept minimal: the Expo preset covers React, React Native, hooks, and imports.
 const expoConfig = require('eslint-config-expo/flat')
 
 module.exports = [
@@ -9,23 +8,32 @@ module.exports = [
     ignores: ['node_modules/**', '.expo/**', 'dist/**', 'coverage/**', 'expo-env.d.ts'],
   },
   {
+    rules: {
+      // React Compiler lint does not model Reanimated shared-value writes yet.
+      // Keep the core Hooks rules on, but avoid treating `.value` animation
+      // assignments as immutable React state.
+      'react-hooks/immutability': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+    },
+  },
+  {
     files: ['**/__tests__/**', '**/*-test.ts', '**/*-test.tsx', 'jest.setup.ts'],
     languageOptions: {
       globals: {
-        jest: 'readonly',
-        describe: 'readonly',
-        it: 'readonly',
-        test: 'readonly',
-        expect: 'readonly',
-        beforeEach: 'readonly',
+        afterAll: 'readonly',
         afterEach: 'readonly',
         beforeAll: 'readonly',
-        afterAll: 'readonly',
+        beforeEach: 'readonly',
+        describe: 'readonly',
+        expect: 'readonly',
+        it: 'readonly',
+        jest: 'readonly',
+        test: 'readonly',
       },
     },
     rules: {
-      // jest.mock factories are hoisted and must use require(); the system-under-test
-      // import is intentionally placed after the jest.mock calls.
+      // jest.mock factories are hoisted and must use require(); SUT imports are
+      // intentionally placed after jest.mock calls in RN component tests.
       '@typescript-eslint/no-require-imports': 'off',
       'import/first': 'off',
     },

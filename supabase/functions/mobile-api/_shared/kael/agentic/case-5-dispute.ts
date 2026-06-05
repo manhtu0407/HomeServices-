@@ -1,3 +1,5 @@
+import { detectForbiddenAiDecisionText } from "../ai-boundary-contract.ts";
+
 export type DisputeType =
   | "completion_rejected"
   | "damage_claim"
@@ -152,6 +154,9 @@ export function assertNeutralDisputeLanguage(summary: string): {
     "refund",
     "compensation",
   ].filter((term) => normalized.includes(term));
+  for (const violation of detectForbiddenAiDecisionText(summary).violations) {
+    violations.push(violation.reason);
+  }
   return { ok: violations.length === 0, violations };
 }
 

@@ -15,6 +15,7 @@ import {
   disputeOpenRequestSchema,
   type DevicePushTokenInput,
   devicePushTokenSchema,
+  type ApartmentAccessProfileInput,
   type JobCreateInput,
   type JobMediaAttachInput,
   jobMediaAttachSchema,
@@ -27,6 +28,14 @@ import {
   kaelChatCreateSchema,
   type KaelChatTurnInput,
   kaelChatTurnSchema,
+  type WorkerKaelChatCreateInput,
+  workerKaelChatCreateSchema,
+  type WorkerKaelChatTurnInput,
+  workerKaelChatTurnSchema,
+  type WorkerKaelFeedbackInput,
+  workerKaelFeedbackSchema,
+  type WorkerKaelTrainingConsentInput,
+  workerKaelTrainingConsentSchema,
   type PlacesAutocompleteInput,
   placesAutocompleteSchema,
   type ReviewInput,
@@ -39,11 +48,13 @@ import {
   workerRegisterSchema,
   type WorkerScopeChangeInput,
   workerScopeChangeSchema,
+  LEARNING_CANDIDATE_STATUSES,
 } from "../../_shared/domain.ts";
 import type {
   BroadcastStatus,
   ComplexityLevel,
   JobStatus,
+  LearningCandidateStatus,
   MessageSender,
   ScopeChangeStatus,
   ServiceType,
@@ -150,6 +161,16 @@ type KaelChatResponse = {
   session: KaelChatSessionResponse;
   turns: KaelChatTurnResponse[];
 };
+type KaelChatProgressResponse = {
+  session_id: string;
+  progress: {
+    current_stage: string;
+    status: "queued" | "running" | "completed" | "failed";
+    progress: number;
+    failure_reason: string | null;
+    updated_at: string;
+  } | null;
+};
 type ConfirmSearchResponse = {
   job_id: string;
   status: JobStatus;
@@ -184,6 +205,15 @@ type AvailabilityToggleResponse = {
   is_available: boolean;
   updated_at: string;
 };
+type AddressAccessView = {
+  release_stage: "area_only" | "building_released" | "unit_released";
+  exact_unit_released: boolean;
+  check_in_required: boolean;
+  identity_check_required: boolean;
+  customer_handoff_required: boolean;
+  evidence_mode: "none" | "geofence" | "manual_photo";
+  access_profile: ApartmentAccessProfileInput;
+};
 type AcceptBroadcastResponse = {
   job_id: string;
   status: JobStatus;
@@ -193,6 +223,7 @@ type AcceptBroadcastResponse = {
     floor: string | null;
     district: string | null;
   };
+  address_access: AddressAccessView;
 };
 type DeclineBroadcastResponse = { job_id: string; declined: true };
 type WorkerScopeChangeResponse = {
@@ -223,6 +254,53 @@ type WorkerKaelClarifyResponse = {
     text: string;
     safety_notes: string[];
   };
+};
+type WorkerKaelChatStatus = "active" | "closed" | "escalated" | "error";
+type WorkerKaelChatTurnResponse = {
+  id: string;
+  session_id: string;
+  turn_index: number;
+  role: "worker" | "kael" | "system";
+  content_type: "text" | "clarification" | "guidance" | "photo_request" | "photo_attached" | "error";
+  text_content: string | null;
+  media_refs: string[];
+  safe_metadata: Record<string, unknown>;
+  created_at: string;
+};
+type WorkerKaelChatSessionResponse = {
+  id: string;
+  job_id: string;
+  worker_id: string;
+  status: WorkerKaelChatStatus;
+  started_at: string;
+  closed_at: string | null;
+  total_turns: number;
+  total_cost_usd: number;
+  progress: {
+    current_stage: string;
+    status: "queued" | "running" | "completed" | "failed";
+    progress: number;
+    failure_reason: string | null;
+    updated_at: string;
+  } | null;
+  safe_metadata: Record<string, unknown>;
+};
+type WorkerKaelChatResponse = {
+  session: WorkerKaelChatSessionResponse;
+  turns: WorkerKaelChatTurnResponse[];
+};
+type WorkerKaelChatListResponse = {
+  sessions: WorkerKaelChatSessionResponse[];
+};
+type WorkerKaelFeedbackResponse = {
+  feedback_id: string;
+  status: "new";
+  created_at: string;
+};
+type WorkerKaelTrainingConsentResponse = {
+  worker_id: string;
+  training_consent: boolean;
+  updated_at: string | null;
 };
 export type MarketCacheInvalidateInput = {
   cache_id?: string;
@@ -260,6 +338,74 @@ export type KaelBatchResultsProcessResponse = {
   failed_items: number;
   skipped_reason?: string;
   error_code?: string;
+};
+export type KaelLearningMonitorInput = {
+  limit?: number;
+};
+export type KaelLearningMonitorResponse = {
+  checked: number;
+  monitored: number;
+  rolled_back: number;
+  loop_health?: {
+    checked_at: string;
+    manual_review_sla_days: number;
+    manual_review_overdue_count: number;
+    manual_review_overdue_ids: string[];
+    failed_queue_count: number;
+    failed_queue_ids: string[];
+    failed_batch_count: number;
+    failed_batch_ids: string[];
+    error_codes: string[];
+  };
+  skipped_reason?: string;
+  error_code?: string;
+};
+export type KaelLearningCandidateListInput = {
+  state: LearningCandidateStatus;
+  limit?: number;
+};
+export type KaelLearningCandidateSummary = {
+  id: string;
+  candidate_type: string;
+  affected_service: ServiceType | null;
+  affected_problem: string | null;
+  affected_district: string | null;
+  confidence: number;
+  evidence_count: number;
+  status: LearningCandidateStatus;
+  audit_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  promoted_at: string | null;
+  rolled_back_at: string | null;
+  suggested_payload: Record<string, unknown>;
+  evidence_snapshot: Record<string, unknown> | null;
+};
+export type KaelLearningCandidateListResponse = {
+  candidates: KaelLearningCandidateSummary[];
+};
+export type KaelLearningCandidateReviewInput = {
+  review_note?: string;
+  reason?: string;
+};
+export type KaelLearningCandidateApproveResponse = {
+  ok: boolean;
+  candidate_id: string;
+  rule_id: string | null;
+  rule_version: number | null;
+  status: string;
+  knowledge_apply: {
+    ok: boolean;
+    error_code: string | null;
+    knowledge_table: string | null;
+    record_key: string | null;
+    knowledge_version: number | null;
+  } | null;
+};
+export type KaelLearningCandidateRejectResponse = {
+  ok: boolean;
+  candidate_id: string;
+  status: string;
 };
 type WorkerCancellationResponse = {
   cancellation_id: string;
@@ -415,6 +561,7 @@ type WorkerJobListResponse = {
     address_unit: string | null;
     address_floor: string | null;
     district: string | null;
+    address_access: AddressAccessView;
     final_price: number | null;
     estimated_earning: number | null;
     completion_notes: string | null;
@@ -470,6 +617,7 @@ type JobDetailResponse = {
     address_unit: string | null;
     address_floor: string | null;
     address_district: string | null;
+    address_access: AddressAccessView;
     scheduled_at: string | null;
     kael_problem_identified: string | null;
     kael_complexity: ComplexityLevel | null;
@@ -479,6 +627,7 @@ type JobDetailResponse = {
     kael_estimate_card_v3: Record<string, unknown> | null;
     kael_worker_brief_core: Record<string, unknown> | null;
     kael_worker_brief_guidance: Record<string, unknown> | null;
+    kael_progress: KaelChatProgressResponse["progress"];
     final_price: number | null;
     completion_notes: string | null;
     completion_photo_urls: string[];
@@ -504,6 +653,7 @@ type JobDetailResponse = {
     kael_computed_min: number | null;
     kael_computed_max: number | null;
     kael_review: Record<string, unknown> | null;
+    kael_progress: KaelChatProgressResponse["progress"];
     evidence_photo_urls: string[];
     created_at: string | null;
   } | null;
@@ -558,6 +708,15 @@ export type WorkerStatusUpdateInput = {
   status: WorkerStatusUpdate;
   completion_notes?: string;
   completion_photo_urls?: string[];
+  access_check_in?: {
+    mode: "geofence" | "manual_photo";
+    lat?: number;
+    lng?: number;
+    accuracy_m?: number;
+    photo_urls?: string[];
+    note?: string;
+    checked_in_at?: string;
+  };
 };
 
 export type PlacesAutocompleteResponse = {
@@ -603,6 +762,15 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     sessionId: string,
   ): Promise<KaelChatResponse>;
+  getKaelChatProgress(
+    ctx: MobileApiContext,
+    sessionId: string,
+  ): Promise<KaelChatProgressResponse>;
+  streamKaelChatTurn(
+    ctx: MobileApiContext,
+    sessionId: string,
+    input: KaelChatTurnInput,
+  ): Promise<Response> | Response;
   sendKaelChatTurn(
     ctx: MobileApiContext,
     sessionId: string,
@@ -643,6 +811,36 @@ export type MobileApiServices = {
     jobId: string,
     input: KaelWorkerClarifyInput,
   ): Promise<WorkerKaelClarifyResponse>;
+  createWorkerKaelChat(
+    ctx: MobileApiContext,
+    input: WorkerKaelChatCreateInput,
+  ): Promise<WorkerKaelChatResponse>;
+  listWorkerKaelChats(ctx: MobileApiContext): Promise<WorkerKaelChatListResponse>;
+  getWorkerKaelChat(
+    ctx: MobileApiContext,
+    sessionId: string,
+  ): Promise<WorkerKaelChatResponse>;
+  sendWorkerKaelChatTurn(
+    ctx: MobileApiContext,
+    sessionId: string,
+    input: WorkerKaelChatTurnInput,
+  ): Promise<WorkerKaelChatResponse>;
+  streamWorkerKaelChatTurn(
+    ctx: MobileApiContext,
+    sessionId: string,
+    input: WorkerKaelChatTurnInput,
+  ): Promise<Response> | Response;
+  submitWorkerKaelFeedback(
+    ctx: MobileApiContext,
+    input: WorkerKaelFeedbackInput,
+  ): Promise<WorkerKaelFeedbackResponse>;
+  getWorkerKaelTrainingConsent(
+    ctx: MobileApiContext,
+  ): Promise<WorkerKaelTrainingConsentResponse>;
+  setWorkerKaelTrainingConsent(
+    ctx: MobileApiContext,
+    input: WorkerKaelTrainingConsentInput,
+  ): Promise<WorkerKaelTrainingConsentResponse>;
   requestWorkerCancellation(
     ctx: MobileApiContext,
     jobId: string,
@@ -739,6 +937,24 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: KaelBatchResultsProcessInput,
   ): Promise<KaelBatchResultsProcessResponse>;
+  monitorKaelLearningRules(
+    ctx: MobileApiContext,
+    input: KaelLearningMonitorInput,
+  ): Promise<KaelLearningMonitorResponse>;
+  listKaelLearningCandidates(
+    ctx: MobileApiContext,
+    input: KaelLearningCandidateListInput,
+  ): Promise<KaelLearningCandidateListResponse>;
+  approveKaelLearningCandidate(
+    ctx: MobileApiContext,
+    candidateId: string,
+    input: KaelLearningCandidateReviewInput,
+  ): Promise<KaelLearningCandidateApproveResponse>;
+  rejectKaelLearningCandidate(
+    ctx: MobileApiContext,
+    candidateId: string,
+    input: KaelLearningCandidateReviewInput,
+  ): Promise<KaelLearningCandidateRejectResponse>;
   listNotifications(ctx: MobileApiContext): Promise<NotificationListResponse>;
   markNotificationRead(
     ctx: MobileApiContext,
@@ -805,6 +1021,7 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
       const requestContext = requestRuntimeContext(request);
       const ctx: MobileApiContext = { ...auth, ...requestContext };
       const data = await dispatchRoute(route, request, ctx, deps.services);
+      if (data instanceof Response) return data;
       return json(
         data,
         ("successStatus" in route ? route.successStatus : undefined) ?? 200,
@@ -852,6 +1069,18 @@ type Route =
   | {
     kind: "kael.chat.get";
     method: "GET";
+    sessionId: string;
+    roles: UserRole[];
+  }
+  | {
+    kind: "kael.chat.progress";
+    method: "GET";
+    sessionId: string;
+    roles: UserRole[];
+  }
+  | {
+    kind: "kael.chat.stream";
+    method: "POST";
     sessionId: string;
     roles: UserRole[];
   }
@@ -987,6 +1216,14 @@ type Route =
   | { kind: "me.jobs.active"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.kaelMemory"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.kaelChat.create"; method: "POST"; roles: UserRole[]; successStatus: 201 }
+  | { kind: "workers.kaelChat.list"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.kaelChat.get"; method: "GET"; sessionId: string; roles: UserRole[] }
+  | { kind: "workers.kaelChat.stream"; method: "POST"; sessionId: string; roles: UserRole[] }
+  | { kind: "workers.kaelChat.turn"; method: "POST"; sessionId: string; roles: UserRole[] }
+  | { kind: "workers.kaelFeedback"; method: "POST"; roles: UserRole[]; successStatus: 201 }
+  | { kind: "workers.kaelTrainingConsent.get"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.kaelTrainingConsent.set"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.availability"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
@@ -995,6 +1232,20 @@ type Route =
   | { kind: "admin.kaelAb.priceSynthesis"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelLearning.processQueue"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelLearning.processBatchResults"; method: "POST"; roles: UserRole[] }
+  | { kind: "admin.kaelLearning.monitorRules"; method: "POST"; roles: UserRole[] }
+  | { kind: "admin.kaelLearning.candidates.list"; method: "GET"; roles: UserRole[] }
+  | {
+    kind: "admin.kaelLearning.candidates.approve";
+    method: "POST";
+    candidateId: string;
+    roles: UserRole[];
+  }
+  | {
+    kind: "admin.kaelLearning.candidates.reject";
+    method: "POST";
+    candidateId: string;
+    roles: UserRole[];
+  }
   | { kind: "notifications"; method: "GET"; roles: UserRole[] }
   | { kind: "notifications.deviceToken"; method: "POST"; roles: UserRole[] }
   | {
@@ -1047,6 +1298,40 @@ function matchRoute(request: Request): Route | null {
       kind: "admin.kaelLearning.processBatchResults",
       method: "POST",
       roles: ["admin"],
+    };
+  }
+  if (method === "POST" && path === "/admin/kael-learning/monitor-rules") {
+    return {
+      kind: "admin.kaelLearning.monitorRules",
+      method: "POST",
+      roles: ["admin"],
+    };
+  }
+  if (
+    method === "GET" &&
+    (path === "/admin/kael/learning/candidates" ||
+      path === "/admin/kael-learning/candidates")
+  ) {
+    return {
+      kind: "admin.kaelLearning.candidates.list",
+      method: "GET",
+      roles: ["customer", "worker", "admin"],
+    };
+  }
+  const learningCandidate = path.match(
+    /^\/admin\/(?:kael\/learning|kael-learning)\/candidates\/([^/]+)\/(approve|reject)$/,
+  );
+  if (learningCandidate && method === "POST") {
+    const candidateId = safeDecodePathSegment(learningCandidate[1] ?? "");
+    const action = learningCandidate[2];
+    if (!candidateId) return null;
+    return {
+      kind: action === "approve"
+        ? "admin.kaelLearning.candidates.approve"
+        : "admin.kaelLearning.candidates.reject",
+      method: "POST",
+      candidateId,
+      roles: ["customer", "worker", "admin"],
     };
   }
   if (method === "POST" && path === "/jobs") {
@@ -1107,6 +1392,22 @@ function matchRoute(request: Request): Route | null {
         roles: ["customer", "admin"],
       };
     }
+    if (action === "progress" && method === "GET") {
+      return {
+        kind: "kael.chat.progress",
+        method: "GET",
+        sessionId,
+        roles: ["customer", "admin"],
+      };
+    }
+    if (action === "stream" && method === "POST") {
+      return {
+        kind: "kael.chat.stream",
+        method: "POST",
+        sessionId,
+        roles: ["customer", "admin"],
+      };
+    }
     if (action === "confirm" && method === "POST") {
       return {
         kind: "kael.chat.confirm",
@@ -1143,6 +1444,63 @@ function matchRoute(request: Request): Route | null {
   }
   if (method === "GET" && path === "/workers/me/kael-memory") {
     return { kind: "workers.kaelMemory", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "GET" && path === "/workers/me/kael/chat") {
+    return { kind: "workers.kaelChat.list", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "POST" && path === "/workers/me/kael-feedback") {
+    return {
+      kind: "workers.kaelFeedback",
+      method: "POST",
+      roles: ["worker", "admin"],
+      successStatus: 201,
+    };
+  }
+  if (method === "GET" && path === "/workers/me/kael-training-consent") {
+    return { kind: "workers.kaelTrainingConsent.get", method: "GET", roles: ["worker", "admin"] };
+  }
+  if (method === "PATCH" && path === "/workers/me/kael-training-consent") {
+    return { kind: "workers.kaelTrainingConsent.set", method: "PATCH", roles: ["worker", "admin"] };
+  }
+  if (method === "POST" && path === "/workers/me/kael/chat") {
+    return {
+      kind: "workers.kaelChat.create",
+      method: "POST",
+      roles: ["worker", "admin"],
+      successStatus: 201,
+    };
+  }
+  const workerKaelChatStream = path.match(/^\/workers\/me\/kael\/chat\/([^/]+)\/stream$/);
+  if (workerKaelChatStream) {
+    const sessionId = safeDecodePathSegment(workerKaelChatStream[1] ?? "");
+    if (!sessionId) return null;
+    return {
+      kind: "workers.kaelChat.stream",
+      method: "POST",
+      sessionId,
+      roles: ["worker", "admin"],
+    };
+  }
+  const workerKaelChat = path.match(/^\/workers\/me\/kael\/chat\/([^/]+)$/);
+  if (workerKaelChat) {
+    const sessionId = safeDecodePathSegment(workerKaelChat[1] ?? "");
+    if (!sessionId) return null;
+    if (method === "GET") {
+      return {
+        kind: "workers.kaelChat.get",
+        method: "GET",
+        sessionId,
+        roles: ["worker", "admin"],
+      };
+    }
+    if (method === "POST") {
+      return {
+        kind: "workers.kaelChat.turn",
+        method: "POST",
+        sessionId,
+        roles: ["worker", "admin"],
+      };
+    }
   }
   if (method === "PATCH" && path === "/workers/me/availability") {
     return { kind: "workers.availability", method: "PATCH", roles: ["worker", "admin"] };
@@ -1430,6 +1788,28 @@ async function dispatchRoute(
         ctx,
         kaelBatchResultsProcessInput(await readJson(request)),
       );
+    case "admin.kaelLearning.monitorRules":
+      return services.monitorKaelLearningRules(
+        ctx,
+        kaelLearningMonitorInput(await readJson(request)),
+      );
+    case "admin.kaelLearning.candidates.list":
+      return services.listKaelLearningCandidates(
+        ctx,
+        kaelLearningCandidateListInput(new URL(request.url)),
+      );
+    case "admin.kaelLearning.candidates.approve":
+      return services.approveKaelLearningCandidate(
+        ctx,
+        route.candidateId,
+        kaelLearningCandidateReviewInput(await readJson(request), "approve"),
+      );
+    case "admin.kaelLearning.candidates.reject":
+      return services.rejectKaelLearningCandidate(
+        ctx,
+        route.candidateId,
+        kaelLearningCandidateReviewInput(await readJson(request), "reject"),
+      );
     case "jobs.create": {
       const input = jobCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -1442,6 +1822,13 @@ async function dispatchRoute(
     }
     case "kael.chat.get":
       return services.getKaelChat(ctx, route.sessionId);
+    case "kael.chat.progress":
+      return services.getKaelChatProgress(ctx, route.sessionId);
+    case "kael.chat.stream": {
+      const input = kaelChatTurnSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.streamKaelChatTurn(ctx, route.sessionId, input.data);
+    }
     case "kael.chat.turn": {
       const input = kaelChatTurnSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -1573,6 +1960,37 @@ async function dispatchRoute(
       return services.getWorkerProfile(ctx);
     case "workers.kaelMemory":
       return services.getWorkerKaelMemory(ctx);
+    case "workers.kaelChat.create": {
+      const input = workerKaelChatCreateSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.createWorkerKaelChat(ctx, input.data);
+    }
+    case "workers.kaelChat.list":
+      return services.listWorkerKaelChats(ctx);
+    case "workers.kaelChat.get":
+      return services.getWorkerKaelChat(ctx, route.sessionId);
+    case "workers.kaelChat.stream": {
+      const input = workerKaelChatTurnSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.streamWorkerKaelChatTurn(ctx, route.sessionId, input.data);
+    }
+    case "workers.kaelChat.turn": {
+      const input = workerKaelChatTurnSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.sendWorkerKaelChatTurn(ctx, route.sessionId, input.data);
+    }
+    case "workers.kaelFeedback": {
+      const input = workerKaelFeedbackSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.submitWorkerKaelFeedback(ctx, input.data);
+    }
+    case "workers.kaelTrainingConsent.get":
+      return services.getWorkerKaelTrainingConsent(ctx);
+    case "workers.kaelTrainingConsent.set": {
+      const input = workerKaelTrainingConsentSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.setWorkerKaelTrainingConsent(ctx, input.data);
+    }
     case "workers.availability": {
       const input = availabilityToggleSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -1715,6 +2133,71 @@ function kaelBatchResultsProcessInput(input: unknown): KaelBatchResultsProcessIn
   };
 }
 
+function kaelLearningMonitorInput(input: unknown): KaelLearningMonitorInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+  }
+  const record = input as Record<string, unknown>;
+  return {
+    limit: optionalPositiveInt(record.limit, 1, 100),
+  };
+}
+
+function kaelLearningCandidateListInput(url: URL): KaelLearningCandidateListInput {
+  const state = learningCandidateStatusParam(url.searchParams.get("state")) ??
+    "manual_review";
+  return {
+    state,
+    limit: optionalPositiveInt(url.searchParams.get("limit"), 1, 100),
+  };
+}
+
+function learningCandidateStatusParam(
+  value: string | null,
+): LearningCandidateStatus | null {
+  if (value === null || value === "") return null;
+  const normalized = value.trim().toLowerCase();
+  return LEARNING_CANDIDATE_STATUSES.includes(normalized as LearningCandidateStatus)
+    ? normalized as LearningCandidateStatus
+    : apiFailure("VALIDATION", "Dữ liệu ứng viên learning không hợp lệ", 400);
+}
+
+function kaelLearningCandidateReviewInput(
+  input: unknown,
+  action: "approve" | "reject",
+): KaelLearningCandidateReviewInput {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Dữ liệu review learning không hợp lệ", 400);
+  }
+  const record = input as Record<string, unknown>;
+  if (action === "approve") {
+    return {
+      review_note: optionalBoundedText(record.review_note, 1000),
+    };
+  }
+  return {
+    reason: requiredBoundedText(record.reason, 200),
+  };
+}
+
+function optionalBoundedText(value: unknown, maxLength: number): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") {
+    apiFailure("VALIDATION", "Dữ liệu review learning không hợp lệ", 400);
+  }
+  const trimmed = value.trim();
+  if (trimmed.length > maxLength) {
+    apiFailure("VALIDATION", "Dữ liệu review learning không hợp lệ", 400);
+  }
+  return trimmed || undefined;
+}
+
+function requiredBoundedText(value: unknown, maxLength: number): string {
+  const text = optionalBoundedText(value, maxLength);
+  if (!text) apiFailure("VALIDATION", "Dữ liệu review learning không hợp lệ", 400);
+  return text;
+}
+
 function optionalPositiveInt(
   value: unknown,
   min: number,
@@ -1774,6 +2257,9 @@ function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
   } else if (record.completion_photo_urls !== undefined) {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
+  if (record.access_check_in !== undefined) {
+    result.access_check_in = parseWorkerAccessCheckIn(record.access_check_in);
+  }
   if (status === "completed_by_worker") {
     const note = result.completion_notes?.trim() ?? "";
     if (note.length < 5) {
@@ -1785,6 +2271,93 @@ function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
     }
   }
   return result;
+}
+
+function parseWorkerAccessCheckIn(
+  value: unknown,
+): NonNullable<WorkerStatusUpdateInput["access_check_in"]> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+  }
+  const record = value as Record<string, unknown>;
+  const mode = record.mode;
+  if (mode !== "geofence" && mode !== "manual_photo") {
+    apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+  }
+
+  let photoUrls: string[] | undefined;
+  if (record.photo_urls !== undefined) {
+    const rawPhotoUrls = record.photo_urls;
+    if (!Array.isArray(rawPhotoUrls)) {
+      apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+    }
+    if (
+      rawPhotoUrls.length > 5 ||
+      rawPhotoUrls.some((item) => !isCompletionPhotoRef(item))
+    ) {
+      apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+    }
+    photoUrls = rawPhotoUrls as string[];
+  }
+
+  const lat = optionalBoundedNumber(record.lat, -90, 90);
+  const lng = optionalBoundedNumber(record.lng, -180, 180);
+  const accuracy = optionalBoundedNumber(record.accuracy_m, 0, 5000);
+  const note = optionalText(record.note, 300);
+  const checkedInAt = optionalIsoString(record.checked_in_at);
+  if (mode === "geofence" && (lat === undefined || lng === undefined)) {
+    apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+  }
+  if (mode === "manual_photo" && (!photoUrls || photoUrls.length === 0)) {
+    apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+  }
+
+  return {
+    mode,
+    ...(lat === undefined ? {} : { lat }),
+    ...(lng === undefined ? {} : { lng }),
+    ...(accuracy === undefined ? {} : { accuracy_m: accuracy }),
+    ...(photoUrls && photoUrls.length > 0 ? { photo_urls: photoUrls } : {}),
+    ...(note === undefined ? {} : { note }),
+    ...(checkedInAt === undefined ? {} : { checked_in_at: checkedInAt }),
+  };
+}
+
+function optionalBoundedNumber(
+  value: unknown,
+  min: number,
+  max: number,
+): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < min ||
+    value > max
+  ) {
+    apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+  }
+  return value;
+}
+
+function optionalText(value: unknown, maxLength: number): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string" || value.length > maxLength) {
+    apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+  }
+  return value.trim() || undefined;
+}
+
+function optionalIsoString(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") {
+    apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+  }
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) {
+    apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+  }
+  return new Date(parsed).toISOString();
 }
 
 function isPositiveInteger(value: unknown): value is number {

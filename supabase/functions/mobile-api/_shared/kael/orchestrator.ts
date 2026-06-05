@@ -1,5 +1,6 @@
 import type { KaelPurpose } from "./types.ts";
 import { checkKaelResponse } from "./self-check.ts";
+import type { KaelSemanticGuardClassifier } from "./self-check.ts";
 import type { KaelPromptActor, KaelPromptLanguage } from "./system-prompt.ts";
 
 export type KaelOrchestratorStage<T> = {
@@ -15,6 +16,8 @@ export type KaelOrchestratorStage<T> = {
     readonly actor: KaelPromptActor;
     readonly language?: KaelPromptLanguage;
     readonly fallbackText: string;
+    readonly semanticGuardEnabled?: boolean;
+    readonly semanticClassifier?: KaelSemanticGuardClassifier;
   };
 };
 
@@ -72,6 +75,8 @@ export async function runKaelPurposeStage<T>(
         text: value,
         actor: stage.selfCheck.actor,
         language: stage.selfCheck.language,
+        semanticGuardEnabled: stage.selfCheck.semanticGuardEnabled ?? true,
+        semanticClassifier: stage.selfCheck.semanticClassifier,
       });
       if (!checked.allowed) {
         return {

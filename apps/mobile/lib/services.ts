@@ -1,4 +1,5 @@
 import { api } from './api'
+import { streamKaelChatTurn, streamWorkerKaelChatTurn, type KaelChatStreamHandlers, type WorkerKaelChatStreamHandlers } from './kael-stream'
 import type {
   AcceptBroadcastResponse,
   AvailabilityToggleResponse,
@@ -23,6 +24,10 @@ import type {
   DisputeCounterStatementResponse,
   DisputeOpenResponse,
   KaelChatResponse,
+  KaelChatProgressResponse,
+  KaelLearningCandidateApproveResponse,
+  KaelLearningCandidateListResponse,
+  KaelLearningCandidateRejectResponse,
   NotificationListResponse,
   NotificationReadResponse,
   PlacesAutocompleteResponse,
@@ -37,6 +42,10 @@ import type {
   WorkerCancellationDecisionResponse,
   WorkerCancellationRequestInput,
   WorkerCancellationResponse,
+  WorkerKaelChatListResponse,
+  WorkerKaelChatResponse,
+  WorkerKaelFeedbackResponse,
+  WorkerKaelTrainingConsentResponse,
   WorkerKaelClarifyResponse,
   WorkerScopeChangeResponse,
 } from './api-types'
@@ -56,10 +65,23 @@ import type {
   PlacesAutocompleteInput,
   ReviewInput,
   WorkerRegisterInput,
+  WorkerKaelChatCreateInput,
+  WorkerKaelFeedbackInput,
+  WorkerKaelTrainingConsentInput,
+  WorkerKaelChatTurnInput,
   WorkerScopeChangeInput,
 } from '@home-services/shared'
 
 type WorkerStatusUpdate = Extract<JobStatus, 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'completed_by_worker'>
+type WorkerAccessCheckInInput = {
+  mode: 'geofence' | 'manual_photo'
+  lat?: number
+  lng?: number
+  accuracy_m?: number
+  photo_urls?: string[]
+  note?: string
+  checked_in_at?: string
+}
 
 export const jobService = {
   getServices() {
@@ -103,6 +125,7 @@ export const jobService = {
   updateStatus(jobId: string, status: WorkerStatusUpdate, extras?: {
     completion_notes?: string
     completion_photo_urls?: string[]
+    access_check_in?: WorkerAccessCheckInInput
   }) {
     // Phase 2.0 (2026-05-23): worker không nhập final_price; Kael giữ authority.
     return api.patch<StatusUpdateResponse>(`/jobs/${jobId}/status`, {
@@ -175,6 +198,52 @@ export const kaelChatService = {
 
   confirm(sessionId: string) {
     return api.post<ConfirmKaelChatResponse>(`/kael/chat/${sessionId}/confirm`)
+  },
+}
+
+export const kaelChatProgressService = {
+  get(sessionId: string) {
+    return api.get<KaelChatProgressResponse>(`/kael/chat/${sessionId}/progress`)
+  },
+}
+
+export const kaelChatStreamService = {
+  sendTurn(sessionId: string, input: KaelChatTurnInput, handlers?: KaelChatStreamHandlers) {
+    return streamKaelChatTurn(sessionId, input, handlers)
+  },
+}
+
+export const workerKaelChatService = {
+  create(input: WorkerKaelChatCreateInput) {
+    return api.post<WorkerKaelChatResponse>('/workers/me/kael/chat', input)
+  },
+
+  list() {
+    return api.get<WorkerKaelChatListResponse>('/workers/me/kael/chat')
+  },
+
+  get(sessionId: string) {
+    return api.get<WorkerKaelChatResponse>(`/workers/me/kael/chat/${sessionId}`)
+  },
+
+  sendTurn(sessionId: string, input: WorkerKaelChatTurnInput) {
+    return api.post<WorkerKaelChatResponse>(`/workers/me/kael/chat/${sessionId}`, input)
+  },
+
+  streamTurn(sessionId: string, input: WorkerKaelChatTurnInput, handlers?: WorkerKaelChatStreamHandlers) {
+    return streamWorkerKaelChatTurn(sessionId, input, handlers)
+  },
+
+  submitFeedback(input: WorkerKaelFeedbackInput) {
+    return api.post<WorkerKaelFeedbackResponse>('/workers/me/kael-feedback', input)
+  },
+
+  getTrainingConsent() {
+    return api.get<WorkerKaelTrainingConsentResponse>('/workers/me/kael-training-consent')
+  },
+
+  setTrainingConsent(input: WorkerKaelTrainingConsentInput) {
+    return api.patch<WorkerKaelTrainingConsentResponse>('/workers/me/kael-training-consent', input)
   },
 }
 
@@ -260,5 +329,26 @@ export const notificationService = {
 
   registerDeviceToken(input: DevicePushTokenInput) {
     return api.post<DevicePushTokenResponse>('/notifications/device-token', input)
+  },
+}
+
+export const adminLearningService = {
+  listCandidates(state: string = 'manual_review') {
+    const params = new URLSearchParams({ state })
+    return api.get<KaelLearningCandidateListResponse>(`/admin/kael/learning/candidates?${params.toString()}`)
+  },
+
+  approveCandidate(candidateId: string, input: { review_note?: string } = {}) {
+    return api.post<KaelLearningCandidateApproveResponse>(
+      `/admin/kael/learning/candidates/${encodeURIComponent(candidateId)}/approve`,
+      input,
+    )
+  },
+
+  rejectCandidate(candidateId: string, input: { reason: string }) {
+    return api.post<KaelLearningCandidateRejectResponse>(
+      `/admin/kael/learning/candidates/${encodeURIComponent(candidateId)}/reject`,
+      input,
+    )
   },
 }

@@ -39,12 +39,22 @@ function extractFinalEnumValues(enumName: string): string[] {
     .filter(Boolean)
 
   const alterRe = new RegExp(
-    `alter\\s+type\\s+${enumName}\\s+add\\s+value\\s+(?:if\\s+not\\s+exists\\s+)?'([^']+)'`,
+    `alter\\s+type\\s+(?:public\\.)?${enumName}\\s+add\\s+value\\s+(?:if\\s+not\\s+exists\\s+)?'([^']+)'(?:\\s+(before|after)\\s+'([^']+)')?`,
     'gi'
   )
   for (const alter of SQL.matchAll(alterRe)) {
     const value = alter[1]
-    if (!values.includes(value)) values.push(value)
+    const position = alter[2]?.toLowerCase()
+    const anchor = alter[3]
+    if (values.includes(value)) continue
+    const anchorIndex = anchor ? values.indexOf(anchor) : -1
+    if (anchorIndex >= 0 && position === 'before') {
+      values.splice(anchorIndex, 0, value)
+    } else if (anchorIndex >= 0 && position === 'after') {
+      values.splice(anchorIndex + 1, 0, value)
+    } else {
+      values.push(value)
+    }
   }
 
   return values
