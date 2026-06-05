@@ -32,6 +32,10 @@ export type PushSetupResult =
   | { status: 'error'; message: string }
 
 export function addPushNotificationResponseListener(openPath: (path: string) => void): NotificationSubscription {
+  if (pushNotificationsDisabledForRuntime()) {
+    return { remove: () => undefined }
+  }
+
   const Notifications = loadExpoNotifications()
   if (!Notifications?.addNotificationResponseReceivedListener) {
     return { remove: () => undefined }
@@ -44,6 +48,7 @@ export function addPushNotificationResponseListener(openPath: (path: string) => 
 }
 
 export async function setupPushNotifications(input: { role: UserRole | null }): Promise<PushSetupResult> {
+  if (pushNotificationsDisabledForRuntime()) return { status: 'unsupported' }
   if (Platform.OS === 'web') return { status: 'unsupported' }
 
   const Notifications = loadExpoNotifications()
@@ -87,6 +92,10 @@ export async function setupPushNotifications(input: { role: UserRole | null }): 
   } catch (error) {
     return { status: 'error', message: error instanceof Error ? error.message : 'Push setup failed' }
   }
+}
+
+function pushNotificationsDisabledForRuntime() {
+  return process.env.EXPO_PUBLIC_DISABLE_PUSH_NOTIFICATIONS === '1'
 }
 
 export function toNotificationPath(data: NotificationData) {

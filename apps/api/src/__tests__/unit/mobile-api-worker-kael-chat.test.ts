@@ -17,6 +17,11 @@ const job = {
   kael_complexity: 'medium',
 }
 
+const DEFAULT_EXPECTED_EN_NOTES = [
+  'Do not quote a new price outside the Kael flow in the app.',
+  'Do not change lifecycle status without real evidence.',
+]
+
 describe('mobile-api worker Kael chat sibling backend', () => {
   it('returns bounded worker-assist JSON without price or lifecycle mutation', async () => {
     const answer = await runWorkerAssist({
@@ -64,6 +69,159 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(answer.fallback_used).toBe(true)
     expect(answer.redirect_scope_change).toBe(true)
     expect(answer.guardrail_reason).toBe('MONEY_OR_STATUS_MUTATION')
+  })
+
+  it('accepts provider JSON with harmless metadata keys', async () => {
+    const answer = await runWorkerAssist({
+      job,
+      question: 'What should I inspect first at the leak?',
+      language: 'en',
+      secrets: {},
+      callAI: async () => ({
+        success: true,
+        content: JSON.stringify({
+          schema_version: 'worker_assist_answer.v1',
+          text: 'Inspect the shutoff valve, visible pipe joints, and wet cabinet surfaces before moving any part.',
+          safety_notes: ['Keep the work inside the accepted job and document what you find.'],
+          redirect_scope_change: false,
+        }),
+        usage: { inputTokens: 90, outputTokens: 35, costUsd: 0.00008 },
+        latencyMs: 96,
+      }),
+    })
+
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      provider: 'deepseek',
+      model: expect.any(String),
+      cost_usd: 0.00008,
+    })
+  })
+
+  it('normalizes provider JSON that uses answer aliases instead of the strict text key', async () => {
+    const answer = await runWorkerAssist({
+      job,
+      question: 'What should I inspect first at the leak?',
+      language: 'en',
+      secrets: {},
+      callAI: async () => ({
+        success: true,
+        content: JSON.stringify({
+          answer: 'Inspect the shutoff valve and visible pipe joints before moving any part.',
+          safety_note: 'Keep the work inside the accepted job and document what you find.',
+          scope_change_required: false,
+        }),
+        usage: { inputTokens: 82, outputTokens: 28, costUsd: 0.00006 },
+        latencyMs: 88,
+      }),
+    })
+
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      provider: 'deepseek',
+      cost_usd: 0.00006,
+    })
+    expect(answer.text).toContain('shutoff valve')
+    expect(answer.safety_notes).toContain('Keep the work inside the accepted job and document what you find.')
+  })
+
+  it('normalizes oversized or mixed-type provider safety notes before validation', async () => {
+    const answer = await runWorkerAssist({
+      job,
+      question: 'What should I inspect first at the leak?',
+      language: 'en',
+      secrets: {},
+      callAI: async () => ({
+        success: true,
+        content: JSON.stringify({
+          text: 'Inspect the shutoff valve and visible pipe joints before moving any part.',
+          safety_notes: [
+            'Document visible water before changing anything.',
+            { text: 'Keep communication inside the app.' },
+            '',
+            'Save evidence before continuing.',
+            'This fourth note should be trimmed.',
+          ],
+          redirect_scope_change: false,
+        }),
+        usage: { inputTokens: 84, outputTokens: 30, costUsd: 0.00007 },
+        latencyMs: 91,
+      }),
+    })
+
+    expect(answer.fallback_used).toBe(false)
+    expect(answer.safety_notes).toHaveLength(3)
+    expect(answer.safety_notes).toContain('Keep communication inside the app.')
+  })
+
+  it('defaults malformed provider notes and string redirect flags to safe values', async () => {
+    const answer = await runWorkerAssist({
+      job,
+      question: 'What should I inspect first at the leak?',
+      language: 'en',
+      secrets: {},
+      callAI: async () => ({
+        success: true,
+        content: JSON.stringify({
+          text: 'Inspect the shutoff valve and visible pipe joints before moving any part.',
+          safety_notes: [{ label: 'not a supported note shape' }],
+          redirect_scope_change: 'no',
+        }),
+        usage: { inputTokens: 84, outputTokens: 30, costUsd: 0.00007 },
+        latencyMs: 91,
+      }),
+    })
+
+    expect(answer.fallback_used).toBe(false)
+    expect(answer.redirect_scope_change).toBe(false)
+    expect(answer.safety_notes).toEqual(expect.arrayContaining(DEFAULT_EXPECTED_EN_NOTES))
+  })
+
+  it('tries the fallback provider when the primary worker-assist call times out', async () => {
+    const attemptedProviders: string[] = []
+    const attemptedTimeouts: Array<number | undefined> = []
+
+    const answer = await runWorkerAssist({
+      job,
+      question: 'What should I inspect first at the lavabo leak before touching any parts?',
+      language: 'en',
+      secrets: {},
+      callAI: async (request) => {
+        attemptedProviders.push(request.provider)
+        attemptedTimeouts.push(request.timeoutMs)
+        if (request.provider === 'deepseek') {
+          return {
+            success: false,
+            provider: request.provider,
+            code: 'TIMEOUT',
+            error: 'TIMEOUT',
+          }
+        }
+        return {
+          success: true,
+          content: JSON.stringify({
+            text: 'Inspect the shutoff valve, visible pipe joints, and wet cabinet surfaces before moving any part.',
+            safety_notes: ['Keep the work inside the accepted job and document what you find.'],
+            redirect_scope_change: false,
+          }),
+          usage: { inputTokens: 120, outputTokens: 45, costUsd: 0.00042 },
+          latencyMs: 620,
+        }
+      },
+    })
+
+    expect(attemptedProviders).toEqual(['deepseek', 'anthropic'])
+    expect(Math.min(...attemptedTimeouts.map((value) => value ?? 0))).toBeGreaterThanOrEqual(4000)
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      provider: 'anthropic',
+      model: expect.any(String),
+      cost_usd: 0.00042,
+      provider_attempts: [
+        expect.objectContaining({ provider: 'deepseek', role: 'primary', result: 'error', code: 'TIMEOUT' }),
+        expect.objectContaining({ provider: 'anthropic', role: 'fallback', result: 'success' }),
+      ],
+    })
   })
 
   it('guards text that attempts a money or lifecycle mutation', () => {
@@ -115,9 +273,25 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(services).toContain('submitWorkerKaelFeedback')
     expect(services).toContain('setWorkerKaelTrainingConsent')
     expect(services).toContain('isWorkerAssistGuardrailReason')
+    expect(services).toContain('.eq("job_id", jobId)')
+    expect(services).toContain('ai_model: answer.model ?? null')
     expect(migration).toContain('create table if not exists public.kael_worker_chat_sessions')
     expect(migration).toContain('create table if not exists public.kael_worker_chat_turns')
     expect(migration).toContain('check_kael_worker_chat_rate')
+  })
+
+  it('scopes worker Kael chat idempotency to the active job', () => {
+    const migration = readFileSync(
+      new URL('../../../../../supabase/migrations/20260605005000_scope_worker_kael_chat_idempotency_by_job.sql', import.meta.url),
+      'utf8',
+    )
+
+    expect(migration).toContain('drop index if exists public.kael_worker_chat_sessions_worker_idempotency_idx')
+    expect(migration).toContain('alter table public.kael_worker_chat_turns')
+    expect(migration).toContain('add column if not exists job_id uuid references public.jobs on delete cascade')
+    expect(migration).toContain('alter column job_id set not null')
+    expect(migration).toContain('(worker_id, job_id, client_request_id)')
+    expect(migration).toContain('where client_request_id is not null')
   })
 
   it('ships worker feedback and training-consent storage behind service-role writes', () => {

@@ -5,7 +5,7 @@ Scope: Plan.md Section 31 K0 through K-FINAL audit after Codex implementation pa
 
 ## Summary
 
-This matrix maps every Plan Section 31 phase to concrete evidence and the remaining anti-illusion proof. Local code, type, and test gates are green. A 2026-06-05 continuation applied staging migrations, deployed Edge, ran SQL smokes, and passed the full P15 staging E2E harness. A later 2026-06-05 production rollout promoted the verified Plan31 chain to production `iwevizmsedyqozxlawwl`; see `2026-06-05_kael-plan31-production-rollout.md`.
+This matrix maps every Plan Section 31 phase to concrete evidence and the remaining anti-illusion proof. Local code, type, and test gates are green. A 2026-06-05 continuation applied staging migrations, deployed Edge, ran SQL smokes, and passed the full P15 staging E2E harness. A later 2026-06-05 production rollout promoted the verified Plan31 chain to production `iwevizmsedyqozxlawwl`; Claude review follow-up then reset the production full-autonomy flag to false and added migration `20260605006000`; see `2026-06-05_kael-plan31-claude-review-followup.md`.
 
 ## Phase Matrix
 
@@ -25,7 +25,7 @@ This matrix maps every Plan Section 31 phase to concrete evidence and the remain
 | B5 | pgvector semantic retrieval + citation audit | `20260604213000_kael_b5_pgvector_rag.sql`, embedding backfill, `knowledge.ts`, B5/Q2-Q3 tests; staging `match_kael_knowledge` returned 5 matches with citation IDs | Durable usage rows require non-cleaned live job traffic |
 | B6 | Knowledge retrieval eval | `kael-eval.mjs` knowledge ON/OFF passed; report updated | Live-provider retrieval eval |
 | C1 | Top-level orchestrator facade + telemetry | `orchestrator-facade.ts`, facade tests, services wiring; P15 staging E2E passed with autonomy v2 behavior; production Edge v25 deployed after flags | Natural production autonomy traffic is still pending |
-| C2 | Full autonomy via gated decision objects | `autonomy-gate.ts`, apply RPC migration, >=1000 malicious proposal fuzz test; staging `KAEL_AUTONOMY_FULL_ENABLED` set and P15 passed; production autonomy flag enabled and negative apply smoke failed closed | Positive production apply requires a real audited job event |
+| C2 | Full autonomy via gated decision objects | `autonomy-gate.ts`, apply RPC migration, >=1000 malicious proposal fuzz test; staging `KAEL_AUTONOMY_FULL_ENABLED` set and P15 passed; production flag was reset to false after Claude review; local follow-up proves C2 policy actions reject while the flag is off and allow only when explicitly enabled | Positive production apply requires a real audited job event; local follow-up code is not deployed from the dirty Section32 worktree |
 | C3 | Decision audit trail + replay | `kael_autonomy_decision_audit`, replay helper/test; Edge C3 audit hook added; staging smoke row `ALLOW_AUTONOMY_DECISION` inserted | Long-lived real job audit rows were cleaned by P15 cleanup; smoke row is no-user-data |
 | C4 | Escalation and degradation | `kael_admin_queue` wiring in autonomy gate and services, runtime tests | Staging low-confidence/evidence-broken queue row |
 | C5 | Retry/timeout/circuit/cost resilience | Orchestrator tests, routing/cost tests, API full suite | Provider chaos against staging configuration |
@@ -54,9 +54,9 @@ This matrix maps every Plan Section 31 phase to concrete evidence and the remain
 
 ## Production Rollout Snapshot
 
-- Production migrations applied: 17 Plan31 core migrations plus two forward-fix migrations, latest `20260605004000`.
-- Production Edge: `mobile-api` v25 active after Plan31 flags were set.
-- Plan31 production flags present: learning read/write, kill switch false, AB percentage, auto rollback, knowledge retrieval, and full autonomy.
+- Production migrations applied: 17 Plan31 core migrations plus three forward-fix migrations, latest `20260605006000`.
+- Production Edge: `mobile-api` v28 active after a clean redeploy from commit `54745f12`.
+- Plan31 production flags present: learning read/write, kill switch false, AB percentage, auto rollback, knowledge retrieval; full autonomy is present but currently set false after Claude review.
 - Production row/RPC proof: safety/legal/service knowledge rows `26/9/3`; Plan31 RPCs present; learning/audit tables exist and remain empty before real traffic.
 - Production smoke: `/kael/charter` returned HTTP 200; `match_kael_knowledge` returned 5 citations; autonomy negative apply returned `audit_not_found` without mutation.
 - Production remote gates: dry-run up to date; schema lint no errors; performance advisors no issues; security advisor only retains the existing Auth leaked-password protection warning.

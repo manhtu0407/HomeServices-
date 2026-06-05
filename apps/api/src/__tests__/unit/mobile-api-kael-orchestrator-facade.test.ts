@@ -57,7 +57,7 @@ describe('Kael orchestrator facade', () => {
     expect(result.telemetry.latency_ms).toBeGreaterThanOrEqual(0)
   })
 
-  it('keeps services.ts on the facade for the first start_matching policy call-site', () => {
+  it('keeps services.ts on the facade for all current autonomy policy decision call-sites', () => {
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
@@ -65,6 +65,17 @@ describe('Kael orchestrator facade', () => {
 
     expect(servicesSource).toContain('runKaelAutonomyOrchestrator')
     expect(servicesSource).toContain('label: "estimate_to_matching"')
+    expect(servicesSource).toContain('async function runPolicyAutonomyGate')
+    for (const label of [
+      'customer_process_cancellation',
+      'worker_evidence_confirm_completion',
+      'scope_change_auto_approve',
+      'worker_process_cancellation',
+      'scope_change_customer_',
+      'customer_confirm_completion',
+    ]) {
+      expect(servicesSource).toContain(label)
+    }
     expect(servicesSource).toContain('knownEvidenceReferences: [jobId, "RULES.md#rule-7"]')
     expect(servicesSource).toContain('audit: {')
     expect(servicesSource).toContain('jobId,')
@@ -114,6 +125,7 @@ describe('Kael orchestrator facade', () => {
       knownEvidenceReferences: ['dispute-snapshot-1', 'customer-confirmed-event-1', 'STRUCTURES.md#dispute'],
       amountVnd: 2_000_000,
       source: 'policy',
+      featureFlags: { fullAutonomyEnabled: true },
       audit: {
         client,
         jobId: 'job-1',

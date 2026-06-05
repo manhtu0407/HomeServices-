@@ -92,25 +92,26 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
     const pillWidth = appleLiquidAppearance ? 65 : 61
     const innerWidth = Math.max(effectiveBarWidth - dockPadding * 2, 0)
     const slotWidth = innerWidth / itemCount
-    const slotLeft = (index: number) => dockPadding + (slotWidth * index) + ((slotWidth - pillWidth) / 2)
-    return { pillWidth, slotLeft, slotWidth }
+    return { dockPadding, pillWidth, slotWidth }
   }, [appleLiquidAppearance, effectiveBarWidth, items.length])
+  const { dockPadding, pillWidth, slotWidth } = slotMetrics
+  const slotLeftForIndex = (index: number) => dockPadding + (slotWidth * index) + ((slotWidth - pillWidth) / 2)
   const bridgeMetrics = useMemo(() => {
-    const previousLeft = slotMetrics.slotLeft(previousIndex)
-    const activeLeft = slotMetrics.slotLeft(activeIndex)
-    return { left: Math.min(previousLeft, activeLeft), width: Math.abs(previousLeft - activeLeft) + slotMetrics.pillWidth }
-  }, [activeIndex, previousIndex, slotMetrics])
-  const travelStartLeft = useMemo(() => slotMetrics.slotLeft(previousIndex), [previousIndex, slotMetrics])
+    const previousLeft = slotLeftForIndex(previousIndex)
+    const activeLeft = slotLeftForIndex(activeIndex)
+    return { left: Math.min(previousLeft, activeLeft), width: Math.abs(previousLeft - activeLeft) + pillWidth }
+  }, [activeIndex, pillWidth, previousIndex, slotLeftForIndex])
+  const travelStartLeft = useMemo(() => slotLeftForIndex(previousIndex), [previousIndex, slotLeftForIndex])
   const transitionActive = hasDisplayActive && (transitionVisible || Boolean(optimisticTransition && optimisticTransition.from !== optimisticTransition.to))
   const transitionDirection = activeIndex >= previousIndex ? 1 : -1
   const transitionVisibilityMs = appleLiquidAppearance ? 420 : 560
   const optimisticTransitionMs = appleLiquidAppearance ? 470 : 620
   const sliderTranslateX = useDerivedValue(() => {
-    const targetX = slotMetrics.slotLeft(activeIndex)
+    const targetX = dockPadding + (slotWidth * activeIndex) + ((slotWidth - pillWidth) / 2)
     return reduceMotion
       ? withTiming(targetX, { duration: 120 })
       : withSpring(targetX, motionTokens.liquid.pill)
-  }, [activeIndex, reduceMotion, slotMetrics])
+  }, [activeIndex, dockPadding, pillWidth, reduceMotion, slotWidth])
   const sliderOpacity = useDerivedValue(() => withTiming(hasDisplayActive ? 1 : 0, { duration: hasDisplayActive && reduceMotion ? 80 : 120 }), [hasDisplayActive, reduceMotion])
   const segmentedSliderAnimatedStyle = useAnimatedStyle(() => ({
     opacity: sliderOpacity.value,
@@ -270,8 +271,8 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
   }, [bridgeMetrics.width, bridgeOpacity, bridgeScaleX, transitionDirection])
   const travelAnimatedStyle = useAnimatedStyle(() => {
     if (reduceMotion) return { opacity: 0 }
-    const previousLeft = slotMetrics.slotLeft(previousIndex)
-    const activeLeft = slotMetrics.slotLeft(activeIndex)
+    const previousLeft = dockPadding + (slotWidth * previousIndex) + ((slotWidth - pillWidth) / 2)
+    const activeLeft = dockPadding + (slotWidth * activeIndex) + ((slotWidth - pillWidth) / 2)
     return {
       opacity: travelOpacity.value,
       transform: [
@@ -280,7 +281,7 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
         { scaleY: pillScaleY.value },
       ],
     }
-  }, [activeIndex, barWidth, items.length, pillScaleX, pillScaleY, previousIndex, reduceMotion, travelOpacity, travelProgress])
+  }, [activeIndex, dockPadding, pillScaleX, pillScaleY, pillWidth, previousIndex, reduceMotion, slotWidth, travelOpacity, travelProgress])
   const pressItem = (item: Item) => {
     if (item.key !== displayActiveKey) {
       if (testID) {
@@ -334,7 +335,7 @@ export function FloatingGlassTabBar<Key extends string, Item extends FloatingGla
           style={[
             liquidPillBaseStyle(mode, reduceTransparency, appearance),
             styles.segmentedLiquidSliderThumb,
-            { width: slotMetrics.pillWidth },
+            { width: pillWidth },
             segmentedSliderAnimatedStyle,
           ]}
           testID="liquid-toolbar-slider-thumb"

@@ -74,7 +74,7 @@ import {
   checkKaelChatRateLimit,
   checkRateLimit,
 } from "./rate-limit.ts";
-import { requireJobAccess } from "./access.ts";
+import { requireJobAccess, type JobAccessRecord } from "./access.ts";
 import { sendPushToUser, sendPushToUsers } from "./push.ts";
 import {
   computeScopeChangeEstimate,
@@ -105,6 +105,7 @@ import {
   sanitizeMemoryObject,
   type EstimatePriceSource,
   type KaelAutonomyDecision,
+  type KaelPermissionGateRequest,
   type LearningSkillInput,
   type LearningSkillTrigger,
   getPublicKaelCharter,
@@ -132,6 +133,7 @@ import {
   scrubSensitiveForLLM,
   runWorkerAssist,
   type WorkerAssistAnswer,
+  type WorkerAssistProviderAttempt,
 } from "./kael/index.ts";
 import { evaluateMessageBoundary } from "./kael/boundary-guard.ts";
 import {
@@ -153,6 +155,23 @@ type DbResult<T> = {
 type QueryLike = PromiseLike<DbResult<unknown>>;
 type ConfirmSearchOptions = {
   autonomyDecision?: KaelAutonomyDecision;
+};
+type PolicyAutonomyGateInput = {
+  amountVnd?: number | null;
+  authority: KaelPermissionGateRequest;
+  client: DbClient;
+  ctx: MobileApiContext;
+  decision: KaelAutonomyDecision;
+  from: JobStatus;
+  jobId: string | null;
+  knownEvidenceReferences: readonly string[];
+  label: string;
+  to: JobStatus;
+};
+type CustomerCancellationPreview = {
+  subCase: CustomerCancellationSubCase;
+  shouldGateAutonomy: boolean;
+  to: JobStatus;
 };
 type AddressAccessStage = "area_only" | "building_released" | "unit_released";
 type AddressAccessEvidenceMode = "none" | "geofence" | "manual_photo";
@@ -357,6 +376,191 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     markNotificationRead,
     registerDevicePushToken,
   };
+}
+
+async function runPolicyAutonomyGate(input: PolicyAutonomyGateInput) {
+  return runKaelAutonomyOrchestrator({
+    label: input.label,
+    decision: input.decision,
+    from: input.from,
+    to: input.to,
+    authority: input.authority,
+    knownEvidenceReferences: input.knownEvidenceReferences,
+    source: "policy",
+    amountVnd: input.amountVnd ?? null,
+    audit: {
+      client: input.client,
+      jobId: input.jobId,
+      actorId: input.ctx.user.id,
+      actorRole: input.ctx.role,
+      source: "policy",
+    },
+  });
+}
+
+function previewCustomerCancellation(
+  job: JobAccessRecord,
+  now = new Date(),
+): CustomerCancellationPreview | null {
+  const status = job.status as JobStatus;
+  if (status === "completed_by_worker") {
+    return {
+      subCase: "after_worker_completed_trigger_dispute",
+      shouldGateAutonomy: false,
+      to: status,
+    };
+  }
+  if (isFutureTimestamp(job.scheduled_at, now)) {
+    return { subCase: "scheduled_job", shouldGateAutonomy: true, to: "cancelled" };
+  }
+  if (status === "awaiting_customer_confirm") {
+    return { subCase: "before_a7", shouldGateAutonomy: true, to: "cancelled" };
+  }
+  if (status === "broadcasting") {
+    return { subCase: "after_a7_before_worker_accept", shouldGateAutonomy: true, to: "cancelled" };
+  }
+  if (
+    status === "worker_matched" ||
+    status === "worker_on_way" ||
+    status === "arrived" ||
+    status === "inspecting" ||
+    status === "repairing" ||
+    status === "scope_change_pending"
+  ) {
+    return { subCase: "after_worker_accept", shouldGateAutonomy: true, to: "cancelled" };
+  }
+  return null;
+}
+
+function isFutureTimestamp(value: unknown, now: Date) {
+  const text = nullableString(value);
+  if (!text) return false;
+  const time = Date.parse(text);
+  return Number.isFinite(time) && time > now.getTime();
+}
+
+async function gateCustomerCancellationBeforeMutation(input: {
+  client: DbClient;
+  ctx: MobileApiContext;
+  job: JobAccessRecord;
+  jobId: string;
+  preview: CustomerCancellationPreview;
+  request: CustomerCancellationRequestInput;
+}) {
+  if (!input.preview.shouldGateAutonomy) return null;
+  const localClassification = classifyCustomerCancellationReason({
+    reasonCode: input.request.reason_code,
+    reason: input.request.reason_note ?? input.request.reason_code,
+  });
+  const decision = buildKaelAutonomyDecision({
+    action: "process_cancellation",
+    policyId: `kael.autonomy.v2.customer_cancel_${input.preview.subCase}`,
+    evidence: [
+      {
+        kind: "customer_input",
+        reference_id: input.ctx.user.id,
+        summary: "Customer cancellation input was validated before any cancellation mutation.",
+      },
+      {
+        kind: "job_event",
+        reference_id: input.jobId,
+        summary: "Current job phase predicts the cancellation outcome before the atomic RPC.",
+      },
+      {
+        kind: "policy",
+        reference_id: "STRUCTURES.md#cancellation",
+        summary: "Kael processes cancellation only after the autonomy gate allows the transition.",
+      },
+    ],
+    confidence: localClassification.adminReviewRequired ? 0.68 : 0.84,
+    reversible: true,
+    appealable: true,
+    resultingEvent: "kael_processed_cancellation",
+  });
+  const run = await runPolicyAutonomyGate({
+    label: "customer_process_cancellation",
+    client: input.client,
+    ctx: input.ctx,
+    jobId: input.jobId,
+    decision,
+    from: input.job.status as JobStatus,
+    to: input.preview.to,
+    authority: {
+      purpose: "scope_change",
+      actor: input.ctx.role,
+      jobRelation: "own_customer_job",
+      action: "review_scope_change",
+      topic: "job_status",
+      actorId: input.ctx.user.id,
+      jobId: input.jobId,
+    },
+    knownEvidenceReferences: [input.ctx.user.id, input.jobId, "STRUCTURES.md#cancellation"],
+  });
+  if (run.gate.result !== "allow") {
+    apiFailure("INVALID_STATUS", run.gate.audit.reason_code, 409);
+  }
+  return { decision, run };
+}
+
+async function gateWorkerCancellationBeforeMutation(input: {
+  client: DbClient;
+  ctx: MobileApiContext;
+  job: JobAccessRecord;
+  jobId: string;
+  request: WorkerCancellationRequestInput;
+}) {
+  const localClassification = classifyWorkerCancellationReason({
+    reason: input.request.reason,
+    evidencePhotoUrls: input.request.evidence_photo_urls,
+  });
+  const decision = buildKaelAutonomyDecision({
+    action: "process_cancellation",
+    policyId: "kael.autonomy.v2.worker_cancel_to_rematch",
+    evidence: [
+      {
+        kind: "worker_evidence",
+        reference_id: input.ctx.user.id,
+        summary: "Worker cancellation input was classified before any release or rebroadcast mutation.",
+      },
+      {
+        kind: "job_event",
+        reference_id: input.jobId,
+        summary: "Current worker assignment is checked before replacement matching.",
+      },
+      {
+        kind: "policy",
+        reference_id: "docs/workflow/worker-cancellation.md",
+        summary: "Approved worker cancellation may start replacement matching only after the autonomy gate allows it.",
+      },
+    ],
+    confidence: localClassification.autoApprove ? 0.92 : 0.72,
+    reversible: true,
+    appealable: true,
+    resultingEvent: "kael_processed_cancellation",
+  });
+  const run = await runPolicyAutonomyGate({
+    label: "worker_process_cancellation",
+    client: input.client,
+    ctx: input.ctx,
+    jobId: input.jobId,
+    decision,
+    from: input.job.status as JobStatus,
+    to: "broadcasting",
+    authority: {
+      purpose: "scope_change",
+      actor: input.ctx.role,
+      jobRelation: "own_worker_job",
+      action: "review_scope_change",
+      topic: "job_status",
+      actorId: input.ctx.user.id,
+      jobId: input.jobId,
+    },
+    knownEvidenceReferences: [input.ctx.user.id, input.jobId, "docs/workflow/worker-cancellation.md"],
+  });
+  if (run.gate.result !== "allow") {
+    apiFailure("INVALID_STATUS", run.gate.audit.reason_code, 409);
+  }
+  return { decision, localClassification, run };
 }
 
 function getKaelCharter() {
@@ -2814,7 +3018,7 @@ async function requestCustomerCancellation(
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "customer",
-    select: "id, status, customer_id, worker_id",
+    select: "id, status, customer_id, worker_id, scheduled_at",
   });
   const readExistingCancellation = async (jobStatus: JobStatus) => {
     const existing = await dbQuery<Record<string, unknown>>(
@@ -2864,6 +3068,21 @@ async function requestCustomerCancellation(
     if (existing) return existing;
     apiFailure("INVALID_STATUS", command.error, 409);
   }
+  const existingCancellation = await readExistingCancellation(job.status as JobStatus);
+  if (existingCancellation) return existingCancellation;
+
+  const cancellationPreview = previewCustomerCancellation(job);
+  if (!cancellationPreview) {
+    apiFailure("INVALID_STATUS", "Cannot determine safe cancellation flow", 409);
+  }
+  const preAutonomy = await gateCustomerCancellationBeforeMutation({
+    client,
+    ctx,
+    job,
+    jobId,
+    preview: cancellationPreview,
+    request: input,
+  });
 
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("request_customer_cancellation_atomic", {
@@ -2912,41 +3131,8 @@ async function requestCustomerCancellation(
     phase0Outcome.workerGoodwill;
   const jobStatus = row.job_status as JobStatus | undefined;
   const resultingJobStatus = jobStatus ?? "cancelled";
-  const autonomyDecision = resultingJobStatus !== job.status &&
-      subCase !== "after_worker_completed_trigger_dispute"
-    ? buildKaelAutonomyDecision({
-      action: "process_cancellation",
-      policyId: `kael.autonomy.v2.customer_cancel_${subCase}`,
-      evidence: [
-        {
-          kind: "customer_input",
-          reference_id: cancellationId,
-          summary: "Customer cancellation input was classified by server policy.",
-        },
-        {
-          kind: "job_event",
-          reference_id: jobId,
-          summary: "Current job phase determines cancellation outcome and audit path.",
-        },
-        {
-          kind: "policy",
-          reference_id: "STRUCTURES.md#cancellation",
-          summary: "Kael processes cancellation with reversible audit and appeal path.",
-        },
-      ],
-      confidence: adminReviewRequired ? 0.68 : 0.84,
-      reversible: true,
-      appealable: true,
-      resultingEvent: "kael_processed_cancellation",
-    })
-    : null;
-  const autonomyTransition = autonomyDecision
-    ? validateKaelAutonomyTransition({
-      decision: autonomyDecision,
-      from: job.status as JobStatus,
-      to: resultingJobStatus,
-    })
-    : null;
+  const autonomyDecision = preAutonomy?.decision ?? null;
+  const autonomyRun = preAutonomy?.run ?? null;
 
   await logJobEvent(
     client,
@@ -2967,15 +3153,16 @@ async function requestCustomerCancellation(
       ...(autonomyDecision
         ? {
           autonomy_decision: autonomyDecision,
-          autonomy_transition_valid: autonomyTransition?.valid === true,
-          ...(autonomyTransition?.valid === false
-            ? { autonomy_transition_error: autonomyTransition.error }
+          autonomy_gate_result: autonomyRun?.gate.result ?? null,
+          autonomy_transition_valid: autonomyRun?.gate.result === "allow",
+          ...(autonomyRun?.gate.result !== "allow"
+            ? { autonomy_transition_error: autonomyRun?.gate.audit.reason_code ?? "AUTONOMY_GATE_NOT_RUN" }
             : {}),
         }
         : {}),
     },
   );
-  if (autonomyDecision && autonomyTransition?.valid) {
+  if (autonomyDecision && autonomyRun?.gate.result === "allow") {
     await logJobEvent(
       client,
       jobId,
@@ -3484,12 +3671,27 @@ async function updateJobStatus(
       nullableNumber(job.final_price),
     );
     if (completionDecision) {
-      const completionTransition = validateKaelAutonomyTransition({
+      const completionRun = await runPolicyAutonomyGate({
+        label: "worker_evidence_confirm_completion",
+        client,
+        ctx,
+        jobId,
         decision: completionDecision,
         from: "completed_by_worker",
         to: "confirmed_by_customer",
+        amountVnd: nullableNumber(job.final_price),
+        authority: {
+          purpose: "scope_change",
+          actor: ctx.role,
+          jobRelation: "own_worker_job",
+          action: "review_scope_change",
+          topic: "job_status",
+          actorId: ctx.user.id,
+          jobId,
+        },
+        knownEvidenceReferences: [jobId, "STRUCTURES.md#completion"],
       });
-      if (completionTransition.valid) {
+      if (completionRun.gate.result === "allow") {
         const confirmedAt = new Date().toISOString();
         const confirmed = await dbQuery<{ id: string }>(
           client
@@ -3531,7 +3733,8 @@ async function updateJobStatus(
           "completed_by_worker",
           {
             autonomy_decision: completionDecision,
-            autonomy_transition_error: completionTransition.error,
+            autonomy_gate_result: completionRun.gate.result,
+            autonomy_transition_error: completionRun.gate.audit.reason_code,
           },
         );
       }
@@ -3949,6 +4152,7 @@ async function createWorkerKaelChat(
     const existing = await findExistingWorkerKaelSessionByClientRequest(
       client,
       ctx.user.id,
+      input.job_id,
       input.client_request_id,
     );
     if (existing) return getWorkerKaelChat(ctx, existing);
@@ -3979,6 +4183,7 @@ async function createWorkerKaelChat(
     const recovered = await findExistingWorkerKaelSessionByClientRequest(
       client,
       ctx.user.id,
+      input.job_id,
       input.client_request_id,
     );
     if (recovered) return getWorkerKaelChat(ctx, recovered);
@@ -4172,6 +4377,7 @@ async function requireWorkerKaelChatJob(
 async function findExistingWorkerKaelSessionByClientRequest(
   client: DbClient,
   workerId: string,
+  jobId: string,
   clientRequestId: string,
 ): Promise<string | null> {
   const result = await dbQuery<Record<string, unknown>>(
@@ -4179,6 +4385,7 @@ async function findExistingWorkerKaelSessionByClientRequest(
       .from("kael_worker_chat_sessions")
       .select("id")
       .eq("worker_id", workerId)
+      .eq("job_id", jobId)
       .eq("client_request_id", clientRequestId)
       .maybeSingle(),
   );
@@ -4271,12 +4478,13 @@ async function appendWorkerKaelAnswerTurn(
       redirect_scope_change: answer.redirect_scope_change,
       fallback_used: answer.fallback_used,
       guardrail_reason: answer.guardrail_reason ?? null,
+      provider_attempts: formatWorkerAssistProviderAttempts(answer.provider_attempts ?? []),
       provider: answer.provider ?? null,
       model: answer.model ?? null,
       latency_ms: answer.latency_ms ?? null,
     }),
     ai_provider: answer.provider ?? null,
-    model: answer.model ?? null,
+    ai_model: answer.model ?? null,
     latency_ms: answer.latency_ms ?? null,
     cost_usd: answer.cost_usd ?? 0,
   });
@@ -4301,6 +4509,21 @@ async function appendWorkerKaelAnswerTurn(
   if (update.error || !update.data) {
     apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 c\u1eadp nh\u1eadt phi\u00ean Kael", 500);
   }
+}
+
+function formatWorkerAssistProviderAttempts(
+  attempts: readonly WorkerAssistProviderAttempt[],
+) {
+  return attempts.map((attempt) =>
+    [
+      attempt.role,
+      attempt.provider,
+      attempt.result,
+      attempt.code ?? "ok",
+      `timeout=${attempt.timeout_ms}`,
+      attempt.latency_ms !== undefined ? `latency=${attempt.latency_ms}` : "latency=n/a",
+    ].join(":")
+  );
 }
 
 async function readWorkerKaelRecentTurns(
@@ -4509,12 +4732,27 @@ async function tryAutoApproveScopeChange(
     appealable: true,
     resultingEvent: "kael_decided_scope_change",
   });
-  const transition = validateKaelAutonomyTransition({
+  const autonomyRun = await runPolicyAutonomyGate({
+    label: "scope_change_auto_approve",
+    client,
+    ctx,
+    jobId: input.jobId,
     decision: autonomyDecision,
     from: "scope_change_pending",
     to: "repairing",
+    amountVnd: input.estimate.price_max,
+    authority: {
+      purpose: "scope_change",
+      actor: ctx.role,
+      jobRelation: "own_worker_job",
+      action: "review_scope_change",
+      topic: "scope_change",
+      actorId: ctx.user.id,
+      jobId: input.jobId,
+    },
+    knownEvidenceReferences: [input.scopeChangeId, input.jobId, "STRUCTURES.md#A11"],
   });
-  if (!transition.valid) {
+  if (autonomyRun.gate.result !== "allow") {
     await logJobEvent(
       client,
       input.jobId,
@@ -4522,7 +4760,12 @@ async function tryAutoApproveScopeChange(
       ctx,
       "scope_change_pending",
       "scope_change_pending",
-      { scope_change_id: input.scopeChangeId, autonomy_decision: autonomyDecision, error: transition.error },
+      {
+        scope_change_id: input.scopeChangeId,
+        autonomy_decision: autonomyDecision,
+        autonomy_gate_result: autonomyRun.gate.result,
+        error: autonomyRun.gate.audit.reason_code,
+      },
     );
     return null;
   }
@@ -4669,6 +4912,15 @@ async function requestWorkerCancellation(
     status: job.status as JobStatus,
   });
   if (!command.valid) apiFailure("INVALID_STATUS", command.error, 409);
+  const existingCancellation = await readExistingCancellation(job.status as JobStatus);
+  if (existingCancellation) return existingCancellation;
+  const preAutonomy = await gateWorkerCancellationBeforeMutation({
+    client,
+    ctx,
+    job,
+    jobId,
+    request: input,
+  });
 
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("request_worker_cancellation_atomic", {
@@ -4695,10 +4947,7 @@ async function requestWorkerCancellation(
   const cancellationId = asString(row.cancellation_id);
   const cancellationStatus = asString(row.cancellation_status);
   const jobStatus = row.job_status as JobStatus | undefined;
-  const localClassification = classifyWorkerCancellationReason({
-    reason: input.reason,
-    evidencePhotoUrls: input.evidence_photo_urls,
-  });
+  const localClassification = preAutonomy.localClassification;
   const reasonCategory = asWorkerCancellationCategory(row.reason_category) ??
     localClassification.category;
   const reasonCode = asWorkerCancellationReasonCode(row.reason_code) ??
@@ -4714,40 +4963,8 @@ async function requestWorkerCancellation(
     adminReviewRequired,
     autoApprove: !adminReviewRequired && reasonCategory === "legit_auto_approve",
   };
-  const autonomyDecision = cancellationStatus === "approved"
-    ? buildKaelAutonomyDecision({
-      action: "process_cancellation",
-      policyId: "kael.autonomy.v2.worker_cancel_to_rematch",
-      evidence: [
-        {
-          kind: "worker_evidence",
-          reference_id: cancellationId,
-          summary: "Worker cancellation request classified by server policy.",
-        },
-        {
-          kind: "job_event",
-          reference_id: jobId,
-          summary: "Original worker assignment is released before replacement matching.",
-        },
-        {
-          kind: "policy",
-          reference_id: "docs/workflow/worker-cancellation.md",
-          summary: "Approved worker cancellation starts replacement matching without customer gate.",
-        },
-      ],
-      confidence: classification.autoApprove ? 0.92 : 0.72,
-      reversible: true,
-      appealable: true,
-      resultingEvent: "kael_processed_cancellation",
-    })
-    : null;
-  const autonomyTransition = autonomyDecision
-    ? validateKaelAutonomyTransition({
-      decision: autonomyDecision,
-      from: job.status as JobStatus,
-      to: (jobStatus ?? job.status) as JobStatus,
-    })
-    : null;
+  const autonomyDecision = cancellationStatus === "approved" ? preAutonomy.decision : null;
+  const autonomyRun = cancellationStatus === "approved" ? preAutonomy.run : null;
   const redFlagPatch: Record<string, boolean> = adminReviewRequired || abuseSignals.length > 0
     ? { worker_cancellation_abuse_review: true }
     : {};
@@ -4821,15 +5038,16 @@ async function requestWorkerCancellation(
       ...(autonomyDecision
         ? {
           autonomy_decision: autonomyDecision,
-          autonomy_transition_valid: autonomyTransition?.valid === true,
-          ...(autonomyTransition?.valid === false
-            ? { autonomy_transition_error: autonomyTransition.error }
+          autonomy_gate_result: autonomyRun?.gate.result ?? null,
+          autonomy_transition_valid: autonomyRun?.gate.result === "allow",
+          ...(autonomyRun?.gate.result !== "allow"
+            ? { autonomy_transition_error: autonomyRun?.gate.audit.reason_code ?? "AUTONOMY_GATE_NOT_RUN" }
             : {}),
         }
         : {}),
     },
   );
-  if (autonomyDecision && autonomyTransition?.valid) {
+  if (autonomyDecision && autonomyRun?.gate.result === "allow") {
     await logJobEvent(
       client,
       jobId,
@@ -5318,6 +5536,14 @@ async function decideScopeChange(
 ) {
   const client = db(ctx);
   const nextJobStatus = scopeDecisionToJobStatus(input.decision);
+  const scopeRow = await dbQuery<Record<string, unknown>>(
+    client
+      .from("scope_changes")
+      .select("job_id")
+      .eq("id", scopeChangeId)
+      .maybeSingle(),
+  );
+  const scopeJobId = nullableString(scopeRow.data?.job_id);
   const autonomyDecision = buildKaelAutonomyDecision({
     action: "decide_scope_change",
     policyId: `kael.autonomy.v2.scope_change_${input.decision}`,
@@ -5335,6 +5561,11 @@ async function decideScopeChange(
           : "Customer appealed or rejected the reported scope change.",
       },
       {
+        kind: "system_check",
+        reference_id: scopeJobId ?? scopeChangeId,
+        summary: "Scope-change ownership and current job transition are checked by the atomic RPC.",
+      },
+      {
         kind: "policy",
         reference_id: "STRUCTURES.md#A11",
         summary: "Scope changes require Kael policy decision, evidence, and appeal path.",
@@ -5345,12 +5576,28 @@ async function decideScopeChange(
     appealable: true,
     resultingEvent: "kael_decided_scope_change",
   });
-  const transition = validateKaelAutonomyTransition({
+  const autonomyRun = await runPolicyAutonomyGate({
+    label: `scope_change_customer_${input.decision}`,
+    client,
+    ctx,
+    jobId: scopeJobId,
     decision: autonomyDecision,
     from: "scope_change_pending",
     to: nextJobStatus,
+    authority: {
+      purpose: "scope_change",
+      actor: ctx.role,
+      jobRelation: "own_customer_job",
+      action: "review_scope_change",
+      topic: "scope_change",
+      actorId: ctx.user.id,
+      jobId: scopeJobId,
+    },
+    knownEvidenceReferences: [scopeChangeId, scopeJobId ?? scopeChangeId, "STRUCTURES.md#A11"],
   });
-  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
+  if (autonomyRun.gate.result !== "allow") {
+    apiFailure("INVALID_STATUS", autonomyRun.gate.audit.reason_code, 409);
+  }
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("decide_scope_change_atomic", {
       p_scope_change_id: scopeChangeId,
@@ -5429,12 +5676,29 @@ async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
       customerId: ctx.user.id,
     },
   );
-  const transition = validateKaelAutonomyTransition({
+  const autonomyRun = await runPolicyAutonomyGate({
+    label: "customer_confirm_completion",
+    client,
+    ctx,
+    jobId,
     decision: autonomyDecision,
     from: job.status as JobStatus,
     to: "confirmed_by_customer",
+    amountVnd: nullableNumber(job.final_price),
+    authority: {
+      purpose: "scope_change",
+      actor: ctx.role,
+      jobRelation: "own_customer_job",
+      action: "review_scope_change",
+      topic: "job_status",
+      actorId: ctx.user.id,
+      jobId,
+    },
+    knownEvidenceReferences: [ctx.user.id, jobId, "RULES.md#rule-7"],
   });
-  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
+  if (autonomyRun.gate.result !== "allow") {
+    apiFailure("INVALID_STATUS", autonomyRun.gate.audit.reason_code, 409);
+  }
   const finalPrice = nullableNumber(job.final_price);
   // Phase 2.0 (2026-05-23): jobs.final_price là Kael-locked. Nếu null thì
   // confirmSearch chưa set baseline — chặn confirm để giữ trust.

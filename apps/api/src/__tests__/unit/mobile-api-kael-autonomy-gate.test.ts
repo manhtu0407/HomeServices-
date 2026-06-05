@@ -45,6 +45,36 @@ function startMatchingDecision(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function scopeChangeDecision(overrides: Record<string, unknown> = {}) {
+  return {
+    actor: 'kael_system',
+    action: 'decide_scope_change',
+    policy_id: 'kael.autonomy.v2.scope_change_approve',
+    evidence: [
+      {
+        kind: 'artifact',
+        reference_id: 'scope-1',
+        summary: 'Scope change request submitted for atomic Kael policy decision.',
+      },
+      {
+        kind: 'system_check',
+        reference_id: jobId,
+        summary: 'Atomic RPC checks customer ownership and current job status.',
+      },
+      {
+        kind: 'policy',
+        reference_id: 'STRUCTURES.md#A11',
+        summary: 'Scope changes require Kael policy decision, evidence, and appeal path.',
+      },
+    ],
+    confidence: 0.84,
+    reversible: true,
+    appealable: true,
+    resulting_event: 'kael_decided_scope_change',
+    ...overrides,
+  }
+}
+
 function gateInput(overrides: Partial<KaelAutonomyGateInput> = {}): KaelAutonomyGateInput {
   return {
     decision: startMatchingDecision(),
@@ -75,6 +105,47 @@ describe('Kael autonomy invariant gate', () => {
     ])
   })
 
+  it('keeps C2 full-autonomy policy actions disabled while the production flag is off', () => {
+    const result = gateAutonomyDecision(gateInput({
+      decision: scopeChangeDecision(),
+      from: 'scope_change_pending',
+      to: 'repairing',
+      authority: {
+        ...baseAuthority(),
+        purpose: 'scope_change',
+        action: 'review_scope_change',
+        topic: 'scope_change',
+      },
+      knownEvidenceReferences: ['scope-1', jobId, 'STRUCTURES.md#A11'],
+      source: 'policy',
+      featureFlags: { fullAutonomyEnabled: false },
+    }))
+
+    expect(result.result).toBe('reject')
+    expect(result.audit.reason_code).toBe('AUTONOMY_FULL_FLAG_OFF')
+    expect(result.audit.safe_metadata.flag).toBe('KAEL_AUTONOMY_FULL_ENABLED')
+  })
+
+  it('allows C2 policy autonomy only when the full-autonomy flag is explicitly enabled', () => {
+    const result = gateAutonomyDecision(gateInput({
+      decision: scopeChangeDecision(),
+      from: 'scope_change_pending',
+      to: 'repairing',
+      authority: {
+        ...baseAuthority(),
+        purpose: 'scope_change',
+        action: 'review_scope_change',
+        topic: 'scope_change',
+      },
+      knownEvidenceReferences: ['scope-1', jobId, 'STRUCTURES.md#A11'],
+      source: 'policy',
+      featureFlags: { fullAutonomyEnabled: true },
+    }))
+
+    expect(result.result).toBe('allow')
+    expect(result.audit.reason_code).toBe('ALLOW_AUTONOMY_DECISION')
+  })
+
   it('rejects high-stakes payment decisions without completion and confirmation evidence', () => {
     const result = gateAutonomyDecision(gateInput({
       decision: {
@@ -103,6 +174,7 @@ describe('Kael autonomy invariant gate', () => {
       },
       knownEvidenceReferences: ['STRUCTURES.md#payment'],
       amountVnd: 1_200_000,
+      featureFlags: { fullAutonomyEnabled: true },
     }))
 
     expect(result.result).toBe('reject')
@@ -135,6 +207,7 @@ describe('Kael autonomy invariant gate', () => {
       },
       knownEvidenceReferences: ['dispute-snapshot-1', 'customer-confirmed-event-1', 'STRUCTURES.md#dispute'],
       amountVnd: 2_000_000,
+      featureFlags: { fullAutonomyEnabled: true },
     }))
 
     expect(result.result).toBe('escalate')
