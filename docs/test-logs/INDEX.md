@@ -4,6 +4,7 @@ Newest test reports first.
 
 | Date | Report | Result | Bugs | Notes |
 |------|--------|--------|------|-------|
+| 2026-06-05 | [Kael Plan 31 Claude Review Follow-up](2026-06-05_kael-plan31-claude-review-followup.md) | production safety fixed; local autonomy gate follow-up passed | early prod autonomy flag, backup table, policy flag semantics fixed; live closure still open | Production flag reset false, migration `20260605006000`, clean-branch API 1456 passed; local code not deployed due dirty Section32 worktree |
 | 2026-06-05 | [Kael Plan 31 Production Rollout](2026-06-05_kael-plan31-production-rollout.md) | passed | 2 production advisor/lint fixes | Production migrations to `20260605004000`, Edge `mobile-api` v25, Plan31 flags set, RAG/autonomy smoke passed, final advisors clean except existing Auth warning |
 | 2026-06-05 | [Kael Plan 31 Staging Apply And K-FINAL Evidence](2026-06-05_kael-plan31-staging-apply.md) | staging migrations, Edge deploy, SQL smokes, and P15 E2E passed | 2 audit bugs fixed | Fixed apartment-access trigger function, rollback RPC ambiguity, P15 harness cleanup/autonomy drift; no production deploy claim |
 | 2026-06-05 | [Kael Plan 31 P15 Staging E2E](2026-06-05_kael-plan31-p15-staging-e2e.md) | passed | 0 product bugs in final run | 33-case staging matrix, realtime verified, p95/cost under limits, cleanup 0 |

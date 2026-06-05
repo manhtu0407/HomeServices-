@@ -74,6 +74,13 @@ const HIGH_STAKES_ACTIONS = new Set<KaelAutonomyDecision["action"]>([
   "decide_payment",
   "decide_dispute",
 ]);
+const FLAG_GATED_FULL_AUTONOMY_ACTIONS = new Set<KaelAutonomyDecision["action"]>([
+  "process_cancellation",
+  "decide_scope_change",
+  "confirm_completion",
+  "decide_payment",
+  "decide_dispute",
+]);
 const HIGH_STAKES_AMOUNT_VND = 1_000_000;
 const HIGH_STAKES_CONFIDENCE_MIN = 0.82;
 
@@ -124,6 +131,12 @@ export function gateAutonomyDecision(input: KaelAutonomyGateInput): KaelAutonomy
 
   if (!decision.policy_id.startsWith("kael.autonomy.")) {
     return blocked(input, "reject", "POLICY_ID_INVALID", decision);
+  }
+
+  if (!fullAutonomyEnabled && FLAG_GATED_FULL_AUTONOMY_ACTIONS.has(decision.action)) {
+    return blocked(input, "reject", "AUTONOMY_FULL_FLAG_OFF", decision, {
+      flag: "KAEL_AUTONOMY_FULL_ENABLED",
+    });
   }
 
   const transition = validateKaelAutonomyTransition({
