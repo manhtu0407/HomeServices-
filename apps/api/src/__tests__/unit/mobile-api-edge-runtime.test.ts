@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createMobileApiHandler,
   type MobileApiContext,
@@ -11,6 +11,14 @@ import { sendPushToUsers } from '../../../../../supabase/functions/mobile-api/_s
 import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
 
 describe('mobile-api Edge runtime helpers', () => {
+  beforeEach(() => {
+    vi.stubGlobal('Deno', {
+      env: {
+        get: vi.fn((name: string) => name === 'KAEL_AUTONOMY_FULL_ENABLED' ? 'true' : undefined),
+      },
+    })
+  })
+
   afterEach(() => {
     vi.unstubAllGlobals()
   })
@@ -4176,16 +4184,6 @@ describe('mobile-api Edge runtime helpers', () => {
         error: null,
       },
       {
-        data: [{
-          ok: false,
-          error_code: 'ALREADY_REQUESTED',
-          cancellation_id: 'worker-cancel-1',
-          cancellation_status: 'reviewing_by_kael',
-          job_status: 'worker_on_way',
-        }],
-        error: null,
-      },
-      {
         data: {
           id: 'worker-cancel-1',
           status: 'reviewing_by_kael',
@@ -4223,7 +4221,6 @@ describe('mobile-api Edge runtime helpers', () => {
 
     expect(client.calls.map((call) => call.table)).toEqual([
       'jobs',
-      'rpc:request_worker_cancellation_atomic',
       'worker_cancellation_requests',
     ])
     expect(client.calls.some((call) => call.table === 'job_events')).toBe(false)
@@ -4239,16 +4236,6 @@ describe('mobile-api Edge runtime helpers', () => {
           customer_id: 'customer-1',
           worker_id: 'worker-1',
         },
-        error: null,
-      },
-      {
-        data: [{
-          ok: false,
-          error_code: 'ALREADY_REQUESTED',
-          cancellation_id: null,
-          cancellation_status: 'reviewing_by_kael',
-          job_status: 'worker_on_way',
-        }],
         error: null,
       },
       {
@@ -4285,7 +4272,6 @@ describe('mobile-api Edge runtime helpers', () => {
 
     expect(client.calls.map((call) => call.table)).toEqual([
       'jobs',
-      'rpc:request_worker_cancellation_atomic',
       'worker_cancellation_requests',
     ])
     expect(client.calls.some((call) => call.table === 'job_events')).toBe(false)
@@ -4358,6 +4344,8 @@ describe('mobile-api Edge runtime helpers', () => {
     // updates jobs.final_price to the Kael-locked value before the
     // notification flow. The sequence below adds those two DB rounds.
     const client = makeSequenceClient([
+      { data: { job_id: 'job-1' }, error: null },
+      { data: null, error: null },
       {
         data: [{
           ok: true,
@@ -4424,6 +4412,8 @@ describe('mobile-api Edge runtime helpers', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const client = makeSequenceClient([
+      { data: { job_id: 'job-1' }, error: null },
+      { data: null, error: null },
       {
         data: [{
           ok: false,
@@ -4449,8 +4439,10 @@ describe('mobile-api Edge runtime helpers', () => {
       status: 409,
     })
 
-    expect(client.calls).toHaveLength(1)
-    expect(client.calls[0].table).toBe('rpc:decide_scope_change_atomic')
+    expect(client.calls).toHaveLength(3)
+    expect(client.calls[0].table).toBe('scope_changes')
+    expect(client.calls[1].table).toBe('kael_autonomy_decision_audit')
+    expect(client.calls[2].table).toBe('rpc:decide_scope_change_atomic')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -4470,6 +4462,8 @@ describe('mobile-api Edge runtime helpers', () => {
         },
         error: null,
       },
+      { data: null, error: null },
+      { data: null, error: null },
       {
         data: [{
           ok: true,
@@ -4552,6 +4546,11 @@ describe('mobile-api Edge runtime helpers', () => {
       call.table === 'job_broadcasts' &&
       call.operations.some((op) => op[0] === 'insert')
     )
+    const workerCancelCallOrder = client.calls.map((call) => call.table)
+    expect(workerCancelCallOrder.indexOf('worker_cancellation_requests'))
+      .toBeLessThan(workerCancelCallOrder.indexOf('kael_autonomy_decision_audit'))
+    expect(workerCancelCallOrder.indexOf('kael_autonomy_decision_audit'))
+      .toBeLessThan(workerCancelCallOrder.indexOf('rpc:request_worker_cancellation_atomic'))
     const insertOp = broadcastInsert?.operations.find((op) => op[0] === 'insert')
     expect(insertOp?.[1]).toEqual([
       expect.objectContaining({ worker_id: 'worker-new', job_id: 'job-1' }),
@@ -4631,6 +4630,8 @@ describe('mobile-api Edge runtime helpers', () => {
         },
         error: null,
       },
+      { data: null, error: null },
+      { data: null, error: null },
       {
         data: [{
           ok: true,
@@ -4700,6 +4701,11 @@ describe('mobile-api Edge runtime helpers', () => {
         p_reason_code: 'changed_mind',
       }),
     ])
+    const customerCancelCallOrder = client.calls.map((call) => call.table)
+    expect(customerCancelCallOrder.indexOf('customer_cancellation_records'))
+      .toBeLessThan(customerCancelCallOrder.indexOf('kael_autonomy_decision_audit'))
+    expect(customerCancelCallOrder.indexOf('kael_autonomy_decision_audit'))
+      .toBeLessThan(customerCancelCallOrder.indexOf('rpc:request_customer_cancellation_atomic'))
     expect(client.calls.find((call) => call.table === 'job_events')?.operations).toContainEqual([
       'insert',
       expect.objectContaining({
@@ -4780,14 +4786,6 @@ describe('mobile-api Edge runtime helpers', () => {
         error: null,
       },
       {
-        data: [{
-          ok: false,
-          error_code: 'ALREADY_REQUESTED',
-          job_status: 'completed_by_worker',
-        }],
-        error: null,
-      },
-      {
         data: {
           id: 'customer-cancel-1',
           status: 'dispute_pending',
@@ -4829,7 +4827,6 @@ describe('mobile-api Edge runtime helpers', () => {
 
     expect(client.calls.map((call) => call.table)).toEqual([
       'jobs',
-      'rpc:request_customer_cancellation_atomic',
       'customer_cancellation_records',
     ])
     expect(client.calls.some((call) => call.table === 'job_events')).toBe(false)
@@ -5000,6 +4997,8 @@ describe('mobile-api Edge runtime helpers', () => {
 
   it('maps scope-change decision races to STATUS_CHANGED instead of DB_ERROR', async () => {
     const client = makeSequenceClient([
+      { data: { job_id: 'job-1' }, error: null },
+      { data: null, error: null },
       {
         data: [{
           ok: false,

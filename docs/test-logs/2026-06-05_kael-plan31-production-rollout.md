@@ -5,7 +5,9 @@ Scope: Promote Plan.md Section 31 Kael AI core database, flags, and `mobile-api`
 
 ## Result
 
-Passed. Production `iwevizmsedyqozxlawwl` now has the Plan31 core migration chain, two production post-advisor fix migrations, Plan31 runtime flags, and `mobile-api` redeployed after flag enablement.
+Passed at the time of rollout. Production `iwevizmsedyqozxlawwl` received the Plan31 core migration chain, two production post-advisor fix migrations, Plan31 runtime flags, and `mobile-api` redeployed after flag enablement.
+
+Follow-up on 2026-06-05 after Claude review: `KAEL_AUTONOMY_FULL_ENABLED` was reset to `false`, migration `20260605006000_drop_worker_profiles_districts_backup_x3.sql` was applied, and `mobile-api` was clean-redeployed as v28 from commit `54745f12`. See `2026-06-05_kael-plan31-claude-review-followup.md` for the current safety state.
 
 ## Target
 
@@ -106,11 +108,13 @@ Edge deploys:
 - Pre-rollout production `mobile-api`: v22
 - First Plan31 deploy: v23
 - Final redeploy after setting flags: v25, status `ACTIVE`
+- Claude follow-up clean redeploy after resetting full autonomy false: v28, status `ACTIVE`
 
 ## Final Production Snapshot
 
-- migration total: `111`
-- latest migration: `20260605004000`
+- migration total at rollout: `111`
+- latest migration at rollout: `20260605004000`
+- latest migration after Claude follow-up: `20260605006000`
 - Plan31 core count: `17`
 - Plan31 rows:
   - `worker_safety_patterns=26`
