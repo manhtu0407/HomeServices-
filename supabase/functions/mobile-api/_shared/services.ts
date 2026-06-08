@@ -5311,15 +5311,18 @@ async function sendJobMessage(
   }
   const message = serializeJobMessage(result.data);
   await maybeHandleJobChatContactGuard(client, job, ctx, contactGuard);
-  // §32.6 fix (Claude verify 2026-06-07): run the demanding-customer detector on
-  // the raw content even when the contact guard fired. A single message can be
-  // BOTH a contact/off-app solicitation AND a pressure/demand signal; the two
-  // escalations are additive, not mutually exclusive. maybeHandleDemandingCustomerJobChat
-  // is already customer-role-gated and reads the raw text independent of redaction,
-  // so removing the previous `if (!contactGuard.flagged)` short-circuit only adds the
-  // missing pressure-path log/escalation; it never double-handles a non-demanding leak
-  // (the detector early-returns when expectedNuance === "none").
-  await maybeHandleDemandingCustomerJobChat(client, job, ctx, content);
+  // §32.6 (Claude verify 2026-06-07): run the demanding-customer detector even when
+  // the contact guard fired — a message can be BOTH a contact/off-app solicitation
+  // AND a pressure/demand, and the two escalations are additive. Feed CONTACT-REDACTED
+  // text when flagged so an email/phone never reaches kael_interaction_log
+  // (sanitizeInteractionExcerpt strips digits but not emails). The detector early-returns
+  // when expectedNuance === "none", so a pure non-demanding leak adds nothing.
+  await maybeHandleDemandingCustomerJobChat(
+    client,
+    job,
+    ctx,
+    contactGuard.flagged ? redactJobChatContactPatterns(content) : content,
+  );
   await notifyJobMessageRecipient(client, job, ctx, message.id);
   return { message };
 }
@@ -5363,6 +5366,20 @@ function normalizeGuardText(content: string) {
     .replace(/đ/g, "d")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+// §32.6 (Claude verify 2026-06-07): replace every contact/off-app pattern with a
+// placeholder so a contact-solicitation message can still be fed to the demanding
+// detector without leaking an email/phone into kael_interaction_log.
+function redactJobChatContactPatterns(content: string): string {
+  let redacted = content;
+  for (const entry of JOB_CHAT_CONTACT_PATTERNS) {
+    redacted = redacted.replace(
+      new RegExp(entry.pattern.source, "gi"),
+      "[lien he da an]",
+    );
+  }
+  return redacted;
 }
 
 async function maybeHandleJobChatContactGuard(
