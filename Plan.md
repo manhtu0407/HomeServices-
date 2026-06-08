@@ -10500,4 +10500,232 @@ v0.9 — 2026-06-07 — EXECUTED by Codex (PR #61/#62/#63 merged→main) + VERIF
 - Run the test suites (`apps/api` Vitest, mobile Jest, Deno edge) on a real toolchain to confirm the cited tests pass on the merged tree (Claude read them statically only).
 - Field-tune the §32.7 geofence radius on a real HCMC tower (GPS drift) once the gate is built.
 
-**Honest bottom line.** §32 is materially implemented and largely correct (§32.6 + Part A are genuinely done with real tests), but it is **not "complete"**: §32.7's customer-gated, location-verified release — the actual "last 50 meters" moat — is partial and broken; §32.8's phrasing-LLM/universal-self-check are not built (acceptable but should not be implied done); and the 7-migration deploy-order is an unmitigated live prod risk until applied. The merge of a PR titled "Complete … production proof" overstates the real state.
+**Honest bottom line (updated 2026-06-08, PR #64).** §32 is materially implemented and now substantially more complete. §32.6 + Part A were already real + tested; since then Claude has built + verified (**apps/api 1496 tests green, single-fork**) the §32.7 **backend** safety mechanism — geofence distance gate + customer-authorize handshake + worker notification — so the "last 50 meters" moat is now correct + protective at the backend, and §32.8 case-2 self-check is in. **Still NOT "complete":** the §32.7 **mobile UI** (worker check-in send + customer "Cho thợ lên" button) is unbuilt, so the flow is not yet usable end-to-end on device; §32.6 de-prioritize-matching + §32.3 first-turn remain; and the deploy-order migrations **plus the new Edge code** (authorize route + notification) are a live prod risk until applied/deployed. **Careful remaining-step notes: §32.14 below.**
+
+### §32.14 Remaining Build Steps — detailed notes (2026-06-08, PR #64)
+
+> Carefully-grounded handoff for the next build session (Claude or Codex). Every `file:line` was read on the `claude/section32-supplements` branch; line numbers drift after edits — re-grep the named symbol, do not trust the number blindly. Standing constraints: **no fabrication** (only report a test green if it actually ran green), follow this plan + the real merged code, and **do not touch the login-gates redesign** (Tu is reworking it).
+>
+> Toolchain for the build worktree `C:/tmp/home-services-s32-supplements`: `export PATH="$HOME/AppData/Local/Temp/hs-node/node-v22.11.0-win-x64:$PATH"`. On Windows always run Vitest/Jest single-fork (`--no-file-parallelism` / `--runInBand`) to avoid the fork kill-EPERM teardown flake.
+
+**Status snapshot.** Backend safety mechanism for the "last 50 meters" (§32.7) is **built + verified green** on this branch: geofence distance gate, the check-in→authorize handshake, and the worker notification. `apps/api` = **1496 passed, 0 failed** (single-fork). What remains is mostly **mobile UI** (the backend is dead until the app sends/calls it) plus two backend/UX gaps and the deploy/operational steps.
+
+**Recommended build order** (each step independently shippable + testable):
+1. Worker check-in UI — manual_photo (HIGH) — makes the handshake reachable from the worker side.
+2. Customer "Cho thợ lên" button + mobile `authorizeApartmentAccess` service (HIGH) — closes the loop; unit only releases after this tap.
+3. §32.6 de-prioritize matching (MEDIUM, backend, quick).
+4. §32.3 first-turn perceived-perf (MEDIUM, mobile).
+5. Low-priority: geofence UI (needs `expo-location`), meeting-point/no-show, copy-drift reconcile.
+
+---
+
+**Contract reference (grounded, do not re-derive).** `access_check_in` shape is identical on both sides — mobile `WorkerAccessCheckInInput` (`apps/mobile/lib/services.ts:76-84`) and backend `WorkerStatusUpdateInput.access_check_in` (`router.ts:711-719`):
+`{ mode: 'geofence' | 'manual_photo'; lat?; lng?; accuracy_m?; photo_urls?: string[]; note?; checked_in_at? }`.
+Backend validator `parseWorkerAccessCheckIn` (`router.ts:2297-2343`) enforces:
+- `mode === 'geofence'` ⇒ **`lat` AND `lng` required** (`:2329`); `lat∈[-90,90]`, `lng∈[-180,180]`.
+- `mode === 'manual_photo'` ⇒ **`photo_urls` required, non-empty** (`:2332`); array **≤5**, and **each item must pass `isCompletionPhotoRef`** (`:2315-2319`) — i.e. an **uploaded job-media ref, not a raw local URI**. So manual_photo MUST upload first, then send the returned refs.
+- `accuracy_m∈[0,5000]`, `note≤300 chars`, `checked_in_at` optional ISO.
+Server then geofence-gates `mode:'geofence'` against the job's geocoded `address_lat/address_lng` within `ACCESS_GEOFENCE_RADIUS_KM = 0.15` (`services.ts`, worker status handler) and records a check-in via `buildCheckInAccessState` (`exact_unit_released:false`, `worker_checked_in:true`, `release_stage:'building_released'`) — the exact unit is **NOT** released here.
+
+---
+
+**Step 1 — Worker check-in UI (manual_photo).** [HIGH · §32.7 · mobile]
+- *Why:* the mobile service/types already accept `access_check_in` (`frontend-workflow-provider.tsx:77`, `services.ts:128`), but the UI calls `actions.workerUpdateStatus(nextStatus)` with **no** extras at the "arrived" transition — `worker-surfaces.tsx` `confirmWorkerProgressAction` (~`:5436-5442`) and the secondary next-status call (~`:1985`). So the entire check-in / unit-release path is dead in the real app.
+- *Build:* on the `worker_mark_arrived` action, capture a lobby/landmark photo and **upload it via the same path the completion flow uses** (`worker-surfaces.tsx` ~`:5462-5474`: ImagePicker → `uploadJobMediaDrafts(jobId, drafts, stage)` → refs), then call `actions.workerUpdateStatus('arrived', { access_check_in: { mode: 'manual_photo', photo_urls: <uploaded refs> } })`. Confirm whether a dedicated check-in media **stage** is needed or an existing stage suffices (the refs only need to be `isCompletionPhotoRef`-valid; the stage is an upload-pipeline concern — verify against the media-stage enum before adding a new one).
+- *UX:* show the worker that arrival now means "Tôi đã tới sảnh" (lobby check-in), and that the exact unit unlocks only after the customer taps "Cho thợ lên" (Step 2). Keep it one tap + one photo; do not block on geofence in this step.
+- *Test:* `apps/mobile` Jest, single-fork. Mock ImagePicker + `uploadJobMediaDrafts`; assert `workerUpdateStatus` is called with `access_check_in.mode === 'manual_photo'` and non-empty `photo_urls`. Mirror the existing completion-flow test setup.
+- *Decision pending:* manual_photo (this step, recommended — no native dep, fully testable) vs geofence (Step 5 — needs `expo-location`, **not installed**, can't verify on device here). Default = manual_photo first.
+
+**Step 2 — Customer "Cho thợ lên" authorize button + mobile service.** [HIGH · §32.7 · mobile]
+- *Backend is DONE:* `POST /jobs/:id/access/authorize` (roles `customer`/`admin`) → `authorizeApartmentAccess` → `requireJobAccess` → idempotent if already released → **`ACCESS_NOT_READY` (409)** if no prior worker check-in → `buildAuthorizedReleaseAccessState` (`exact_unit_released:true`, `customer_authorized:true`) → `logJobEvent('apartment_access_authorized')` → best-effort `insert_notification_atomic` to `job.worker_id` (event `apartment_access_authorized`, title "Khách đã cho phép lên"). Response: `{ job_id, release_stage, already_authorized }`.
+- *Mobile gap:* `apps/mobile/lib/services.ts` has **no** `authorizeApartmentAccess` method yet — add it (POST to the route) + the response type, and surface it through the workflow provider like the other job actions.
+- *UI:* in the customer active-job view (`customer-surfaces.tsx`), render a "Cho thợ lên" button that appears **only when the worker has checked in** (`job.apartment_access_state.worker_checked_in === true` / status `arrived` with a check-in present) and the unit is not yet released. On tap → call the service → on success the unit releases and the worker is notified; reflect the new state on refetch. Handle `ACCESS_NOT_READY` gracefully (button shouldn't be tappable before check-in).
+- *Test:* `apps/mobile` Jest — assert the button is hidden pre-check-in, visible post-check-in, and that tapping calls the authorize service. Optionally an `apps/api` route test already covers the backend (authorize-after-check-in releases; authorize-before-check-in → `ACCESS_NOT_READY`).
+
+**Step 3 — §32.6 consume the disintermediation risk score in matching (de-prioritize half).** [MEDIUM · backend]
+- *Why:* `worker_kael_memory.red_flags.disintermediation_risk_count` is **written** (`services.ts` ~`:5399-5409`) but **never read**; `findEligibleWorkers`/`rankEligibleWorkers` (~`:7660-7724`) query `worker_profiles` only. Plan §32.6 deliverable is "→ de-prioritize matching + admin queue"; only the admin-queue half exists.
+- *Build:* batch-load `red_flags` for the candidate set in the ranking path and apply a **soft** ranking penalty when `disintermediation_risk_count >= threshold (2–3, evidence-gated)` — **penalty, not exclusion** (plan: "không nuke worker khan hiếm vì tín hiệu yếu"). Log the de-prioritization with context (no silent matching changes).
+- *Test:* `apps/api` Vitest — a high-risk worker ranks **below** an equal-rating clean worker; a single weak signal does not exclude.
+
+**Step 4 — §32.3 first-turn perceived-perf.** [MEDIUM · mobile]
+- *Why:* on the session-create turn neither the progress poll nor SSE runs (`progressSessionId` null at `kael-chat-surface.tsx:486`; `create()` non-streaming at ~`:336/:592`), so the real stepper + streaming caret + post-turn "Thought for {n}s" only appear from **turn 2**. First impression is the flat one.
+- *Build:* route the first turn through a streaming create, OR start a short progress poll keyed on the returned session id the moment `create()` resolves. RNTL test on the create path asserting the stepper/streaming shows on turn 1.
+
+**Step 5 — Low-priority.**
+- *Geofence UI (§32.7):* add `expo-location` + permission handling, capture GPS on arrival, send `{ mode:'geofence', lat, lng, accuracy_m }`. Native dep → verify on a device; backend gate already enforces the 150 m radius.
+- *Meeting-point + no-show (§32.7):* add a `meeting_point` field to `apartmentAccessProfileSchema` (`validation.ts:7-11`) that suppresses unit release when set ("Gặp ở sảnh"); emit a structured no-show event if an un-authorized check-in times out.
+- *Copy drift (§32.3/§32.5):* implemented stage/disclosure copy ("Kael analyzed in {n}s", fuller sentences) differs from the locked contract ("Thought for {n}s", terse + emoji). Reconcile to the contract OR have Tu ratify the current wording, then update tests.
+
+---
+
+**Deploy gate (must precede ANY release that depends on §32).** [Tu/Codex — operational]
+- The new Edge code on this branch — `authorizeApartmentAccess` + the `/jobs/:id/access/authorize` route + the geofence gate + the check-in/authorize handshake rename + the worker notification — lives in `services.ts`/`router.ts`, so **`mobile-api` must be redeployed**. **No new migration is required** (it reuses `jobs.apartment_access_state` jsonb, free-text `job_events.event_type`, and free-text `notifications.event_type` via `insert_notification_atomic`).
+- **BUT** the 7 prior §32 migrations must already be applied **in order first** (`docs/ops/section32-deploy-order.md`): `20260604223000, 224500, 225500, 230500, 231500, 232500, 20260605005000`. Deploying the merged Edge against an un-migrated DB is a live-prod failure (e.g. the worker-turn insert needs `job_id NOT NULL` from `20260605005000`).
+
+**Operational gaps (Tu/Codex run — not buildable here).**
+- Apply the migrations + deploy `mobile-api` + run `kael-section32-staging-smoke.mjs` (`SECTION32_RUN_LIVE=1`) → close **G1**.
+- Run `scripts/section32-android-native-recording.ps1` (`SECTION32_NATIVE_RUN=1`) with staging creds → authenticated native recordings → close **G3**.
+- Field-tune `ACCESS_GEOFENCE_RADIUS_KM` (0.15) on a real HCMC tower once Step 5 geofence UI exists (GPS drift in tower cores).
+- Re-run the cited `apps/api` Vitest / mobile Jest / Deno edge suites on a real toolchain to confirm green on the merged tree.
+
+---
+
+## 33. Kael Price Visualization (A5 estimate) — 2026-06-08
+
+### 33.0 Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-price-visualization-20260608
+Created:        2026-06-08
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         PLAN-FIRST, scope+approach locked Tu 2026-06-08. CHƯA execute. Codex build, Claude verify.
+Trigger:        Tu nâng cấp "Visualize" của Kael. Audit hợp nhất: kế hoạch 4-tầng vốn viết cho stack Next.js/web
+                (Recharts/Mermaid/Vitest-only/XSS) — sai stack; ~3/4 đã build (Data Contract, Orchestrator Binding,
+                PII/number Safety). Gap thật = tầng mã-hoá-thị-giác (chart), hiện estimate render bằng InfoRow text.
+Scope:          A5 estimate — PriceRangeBand + ConfidenceGauge bằng react-native-svg THUẦN, ăn view-model
+                deterministic suy ra từ session.estimate client đã có. v1 FRONTEND-ONLY (không đụng Edge/DB/prompt).
+Out of scope:   Đường "giá trung bình thị trường" (Option B — defer, gate bằng audit synthesis + Source-Trust §25);
+                scope-change delta; timeline lifecycle. KHÔNG Recharts/Mermaid (không chạy RN). KHÔNG /schemas mới.
+Companion doc:  docs/design/kael-price-visualization-20260608.md (per-step File/Action/Acceptance/Evidence/Verify)
+Build priority: Track độc lập (chạy lúc nào cũng được; không chặn §34–§36).
+Authority refs: như §32.0.1 + RULES #3 (Zod), #8 (no fake — không vẽ market line giả), #9 (no PII). design.md (LOCKED).
+Skill mapping:  karpathy-guidelines, kael-frontend-test (RNTL+recording), kael-motion, glass-liquid-signature, kael-tdd.
+```
+
+**Mục tiêu:** biến estimate card từ "tin tôi đi" thành "tự nhìn thấy" — khoảng giá + độ tin cậy trực quan, trung thực với dữ liệu đang có, KHÔNG bịa dải thị trường.
+
+### 33.1 Decisions Locked (Tu chốt 2026-06-08)
+- **D1** charting = **react-native-svg thuần** (đã là dep; 0 bundle bloat; kiểm soát glass-liquid). Reject victory-native/gifted-charts.
+- **D2** scope = **price-in-market + confidence only**.
+- **D3** workflow = **plan-first; Codex build, Claude verify**.
+- **D4** (senior, locked) v1 **frontend-only & honest**: client KHÔNG có dải thị trường đáng tin → vẽ "market average" lúc này = bịa (RULES #8). Dải thị trường thật = **Option B (deferred)**. Component đặt tên `PriceRangeBand`, không gọi "market comparison".
+- **D5** giữ `InfoRow` text làm nguồn accessible chính; chart augment + tự mang accessibilityLabel.
+
+### 33.2 Phases (detail ở companion doc)
+- **P0** read governance + đọc `design.md` (chart pattern? nếu chưa có → FLAG Tu) + audit `synthesis.ts/market.ts` xem có band đáng tin (scope Option B).
+- **P1** L1 `kaelPriceVisualModelSchema` + `buildPriceVisualModel()` total function (Vitest, coverage ≥90%).
+- **P2/P2M** L2 chart primitives (svg) + entrance motion + Reduce Motion/Transparency + dark.
+- **P3** wire vào `EstimateCard` (trên InfoRow, không thay) + VISIBLE DONE recording.
+- **P4** close (honesty/security/a11y/perf). Gates: §32.0.3 G1/G3/G4.
+
+---
+
+## 34. Kael Worker On-Site Vision + Advisory — 2026-06-08
+
+### 34.0 Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-worker-onsite-vision-20260608
+Created:        2026-06-08
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         PLAN-FIRST, scope locked Tu 2026-06-08. CHƯA execute. Codex build, Claude verify.
+Trigger:        Tu: thợ phát hiện biến số on-site → trao đổi Kael → Vision phải đủ mạnh để xác định rõ. Audit: worker
+                advisory chat (§32 B-FUNC) ĐÃ build nhưng MÙ — worker-assist.ts:416 chỉ nhét media_ref_count, messages
+                text-only (:202-209), không gửi ảnh cho VLM. Vision (analyzeDescription) chỉ chạy ở customer pipeline.ts:187.
+Scope:          Nối vision vào worker-assist (reuse gateway sẵn có) → vision pass → finding Zod → đẩy structured
+                findings vào context advisory. Giữ nguyên mọi guardrail advisory.
+Out of scope:   OCR/Object-Detection (Google Vision/Textract/YOLO — Tu xác nhận không có use case; no self-host infra).
+                Vision KHÔNG mở quyền tiền/scope/status. Scope-change photo-evidence = follow-up riêng.
+Companion doc:  docs/design/kael-worker-onsite-vision-20260608.md
+Build priority: 1 (làm trước §35, §36).
+Authority refs: như §32.0.1 + RULES #2/#3/#6/#8/#9; advisory boundary docs/architecture/kael-worker-advisory-boundary-spec-20260604.md.
+Skill mapping:  kael-ai-boundary, kael-security-sweep (RLS worker-media, prompt-injection-via-image), kael-supabase
+                (signed-URL access), kael-frontend-test, kael-tdd, karpathy-guidelines.
+```
+
+**Mục tiêu:** thợ gửi ảnh + hỏi "cái này là gì" → Kael THẤY → triage/định hướng (có phải scope-change không) → trung thực về độ chắc, để con người xác minh phần an toàn.
+
+### 34.1 Decisions Locked (Tu chốt 2026-06-08)
+- **D1** reuse vision gateway (`analyzeDescription`/`fetchVisionImageBlocks`); KHÔNG build hệ vision/OCR mới.
+- **D2** (default, confirm P0) **Option 1: tách vision pass → structured finding → advisory** (giữ "tách nhìn khỏi suy luận"; worker_assist provider-flexible; finding Zod độc lập). Option 2 (1-call vision-capable) = optimize sau.
+- **D3** (honesty boundary, LOCKED) finding kèm `confidence` + `requires_direct_verification`; an toàn (đặc biệt ĐIỆN) = giả thuyết-cần-xác-minh, KHÔNG khẳng định chắc; KHÔNG bao giờ mở quyền tiền/scope/status (guard cũ giữ nguyên).
+
+### 34.2 Phases (detail ở companion doc)
+- **P0** confirm worker-media signed/service-role URL (private Storage) + provider/budget worker_assist + electrical phrasing.
+- **P1** `workerVisionFindingSchema` (visionResult + confidence + requires_direct_verification).
+- **P2** worker-assist chạy vision pass trên mediaRefs → inject structured findings; cost log; fallback honest.
+- **P3** safety suite (**HARD GATE trước UI**): no money/scope/status; electrical false-certainty; prompt-injection-via-image; RLS worker A≠B; no PII/provider name.
+- **P4** mobile worker surface: attach ảnh + render finding trung thực (confidence/"cần xác minh") + VISIBLE DONE recording.
+- **P5** close. Gates: §32.0.3 G1–G5 (G5 money-state bắt buộc).
+
+---
+
+## 35. Kael Chat UX Quick-Wins — 2026-06-08
+
+### 35.0 Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-chat-ux-quickwins-20260608
+Created:        2026-06-08
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         PLAN-FIRST, scope locked Tu 2026-06-08. CHƯA execute. Codex build, Claude verify.
+Trigger:        Audit UI/UX vs Claude/ChatGPT: thread dùng ScrollView không auto-scroll (thread.tsx:164); tin user
+                không hiện ngay (không có optimistic turn trong state.ts). Đã có (mạnh, đừng build lại): SSE streaming,
+                thinking-state, sessions/history, feedback/consent, a11y.
+Scope:          (1) optimistic user bubble (instant ack); (2) auto-scroll tới mới nhất + jump-to-latest.
+Out of scope:   KHÔNG biến Kael thành chatbot mở (markdown/code render, regenerate tự do, browse). 4 gap còn lại của
+                audit (virtualization FlatList, stop/huỷ turn, copy/share/lưu ước tính, edit-and-resend) = FLAG fast-follow.
+Companion doc:  docs/design/kael-chat-ux-quickwins-20260608.md
+Build priority: 2 (sau §34).
+Authority refs: như §32.0.1 + RULES #8 (optimistic chỉ là text của user, không fake Kael). design.md + kael-motion.
+Skill mapping:  kael-frontend-test (RNTL+recording), kael-motion (Reduce Motion scroll), karpathy-guidelines.
+```
+
+**Mục tiêu:** đóng 2 khoảng cách tương tác đắt nhất/rẻ nhất để chat cảm giác chuyên nghiệp ngang chuẩn hiện đại, KHÔNG đánh mất định vị task-assistant.
+
+### 35.1 Decisions Locked (Tu chốt 2026-06-08)
+- **D1** giữ `ScrollView`; auto-scroll qua ref + `scrollToEnd` on content-size + detector scrolled-up cho jump-to-latest. **FlatList virtualization = fast-follow** (gắn liền nhưng refactor lớn hơn).
+- **D2** optimistic turn reconcile theo `client_request_id` (không nhân đôi khi server trả; fail không mất draft).
+
+### 35.2 Phases (detail ở companion doc)
+- **P0** read chat owners + kael-motion; xác nhận client_request_id sẵn ở send time.
+- **P1** optimistic user bubble (state.ts + reconcile + RNTL).
+- **P2** auto-scroll + jump-to-latest + Reduce Motion.
+- **P3** VISIBLE DONE recording (light/dark/RM) + close. Gates: §32.0.3 G3/G4.
+
+---
+
+## 36. Kael Voice — STT (on-device) + ElevenLabs TTS — 2026-06-08
+
+### 36.0 Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-voice-stt-tts-20260608
+Created:        2026-06-08
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Status:         SPIKE-GATED. Scope locked Tu 2026-06-08 (kết hợp STT on-device + ElevenLabs TTS). CHƯA execute —
+                Phase 0 spike PHẢI qua gate Tu trước khi build. Codex build, Claude verify.
+Trigger:        Tu hỏi voice (Kael nói / user ghi âm) + ElevenLabs. Audit: voice gần như vắng trên app thật — mic
+                composer chỉ chạy web (agentic-parts.tsx:170-185); package.json KHÔNG có lib audio/speech nào.
+Scope:          (B) STT on-device thay mic web-only, đổ vào draft; (C) ElevenLabs TTS server-side cho giọng Kael,
+                CHỈ đọc text advisory/clarification — KHÔNG đọc số tiền.
+Out of scope:   Cloud STT (giữ on-device, không upload audio). TTS đọc giá/quyết định. Voice là path duy nhất.
+Companion doc:  docs/design/kael-voice-stt-tts-20260608.md
+Build priority: 3 (sau §34, §35). Lower survival priority; spike có thể chạy song song.
+Authority refs: như §32.0.1 + RULES #2 (key ElevenLabs server-side), #8 (không đọc giá sai), #9 (audio on-device, no upload).
+Skill mapping:  kael-security-sweep (key server-side, no PII/audio upload), kael-ai-boundary (TTS không phát giá/quyết định),
+                kael-frontend-test (recording device thật), kael-supabase (secret+route), karpathy-guidelines.
+```
+
+**Mục tiêu:** voice là delight/accessibility, KHÔNG phải nhu cầu giao dịch đầu → chứng minh giá trị + chi phí ở spike trước khi build; STT trước (thực dụng hơn), TTS sau (gate chất lượng VN + chi phí).
+
+### 36.1 Decisions Locked (Tu chốt 2026-06-08)
+- **D1** STT = **on-device** (không cloud) → 0 chi phí/lần + audio không rời máy (RULES #9). STT làm trước.
+- **D2** TTS = ElevenLabs **chỉ qua Edge** (key server-side); cache theo text-hash; **strip giá/số tiền trước khi synth** (reuse `stripVndPatterns`) → Kael không bao giờ đọc số tiền.
+- **D3** voice luôn optional; text là path chính; honor Reduce Motion cho speaking-state.
+
+### 36.2 Phases (detail ở companion doc)
+- **P0 SPIKE (HARD GATE — Tu sign-off):** STT module trên Expo SDK54/dev-build + VN locale; chất lượng giọng VN ElevenLabs; cost/char + latency + cache; xác nhận strip-before-synth. TTS có thể defer nếu chất lượng/chi phí fail trong khi STT vẫn chạy.
+- **P1** STT on-device (input) — thay mic web-only, đổ vào draft; permission; mic không bắt buộc để gửi; mirror worker.
+- **P2** TTS Edge route ElevenLabs (nếu gate qua): key EdgeAiSecrets, strip price, cache, owner-access-checked.
+- **P3** mobile playback (`expo-audio`) + nút play CHỈ trên turn advisory/clarification (không trên price).
+- **P4** close (security/honesty/a11y/cost). Gates: §32.0.3 G3/G4 + no-price-spoken negative test.
+
+---
+
+### §33–§36 Change Log
+```text
+v0.1 — 2026-06-08 — Thêm 4 plan pointer (Claude): §33 price-viz, §34 worker on-site vision, §35 chat UX quick-wins,
+                    §36 voice STT+TTS. Tất cả PLAN-FIRST, Codex build + Claude verify; companion docs giữ per-step detail.
+                    Sequencing build: §34 → §35 → §36 (spike-gated); §33 track độc lập. CHƯA execute.
+```
