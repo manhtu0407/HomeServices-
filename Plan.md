@@ -10458,16 +10458,16 @@ v0.8 — 2026-06-04 — Consolidate session adoring-leavitt vào Plan.md §32 (T
 
 ---
 
-## 33. Worker Map → Real Map Provider (MapLibre + VietMap via Edge proxy) — 2026-06-08
+## 37. Worker Map → Real Map Provider (MapLibre + VietMap via Edge proxy) — 2026-06-08
 
-### 33.0 Plan Metadata + Mục tiêu
+### 37.0 Plan Metadata + Mục tiêu
 
 ```text
 Plan ID:        plan-worker-map-real-provider-maplibre-vietmap-20260608
 Created:        2026-06-08
 Owner:          Manh Tu (manhtu0407@gmail.com)
 Branch:         claude/goofy-jemison-21c7f8 (worktree)
-File location:  Plan.md §33 (durable, canonical) + companion doc (tạo ở MP0)
+File location:  Plan.md §37 (durable, canonical) + companion doc (tạo ở MP0)
 Status:         DESIGN DRAFT v0.2 — Tu chốt Hướng B + Option-1 (Edge proxy) 2026-06-08. VietMap key ĐÃ
                 provision trong Supabase. Renderer = VietMap official RN SDK (custom styleURL → Edge proxy),
                 WebView fallback. CHƯA execute. Còn MP0 spike (ToS proxy + SDK apikey behavior). Codex build, Claude verify.
@@ -10482,7 +10482,7 @@ Out of scope:   Đổi runtime boundary (Expo→Edge→DB giữ nguyên); rebuil
 Companion docs: docs/design/worker-map-real-provider-20260608.md  (tạo ở MP0 — per-step File/Action/Acceptance)
 Effort:         Chưa ước lượng — chốt ở MP0 sau spike (proxy latency/cost + maplibre Expo compat).
 Skill mapping:  karpathy-guidelines (mọi phase) + glass-liquid-signature, kael-motion, kael-frontend-test,
-                kael-supabase, kael-security-sweep, kael-tdd (xem 33.8).
+                kael-supabase, kael-security-sweep, kael-tdd (xem 37.8).
 ```
 
 **Mục tiêu chính (đo được, không tô hồng):**
@@ -10493,11 +10493,11 @@ Skill mapping:  karpathy-guidelines (mọi phase) + glass-liquid-signature, kael
 4. **Degrade an toàn** về area/radius khi thiếu toạ độ/provider (giữ pattern + test hiện có).
 5. Mọi phase frontend có **recording device thật** (VISIBLE DONE) — iOS + Android, không tin web preview.
 
-**Nguyên tắc xuyên suốt:** **Reuse backend geo ĐÃ có** (đừng build lại) — §33 chủ yếu là *frontend + thin coord-exposure API + tile-proxy*. Map key **chỉ sống ở Edge** (RULES.md line 41). Glass chrome (controls/HUD/route-summary/pulse) tái dùng làm overlay; chỉ thay lớp substrate SVG.
+**Nguyên tắc xuyên suốt:** **Reuse backend geo ĐÃ có** (đừng build lại) — §37 chủ yếu là *frontend + thin coord-exposure API + tile-proxy*. Map key **chỉ sống ở Edge** (RULES.md line 41). Glass chrome (controls/HUD/route-summary/pulse) tái dùng làm overlay; chỉ thay lớp substrate SVG.
 
 ---
 
-### 33.0.1 Authority refs (đọc theo thứ tự bắt buộc trước khi execute)
+### 37.0.1 Authority refs (đọc theo thứ tự bắt buộc trước khi execute)
 
 ```
 1. RULES.md            (#0 mobile boundary + "no Maps keys in RN bundle" line 41; #1 no secrets client;
@@ -10507,7 +10507,7 @@ Skill mapping:  karpathy-guidelines (mọi phase) + glass-liquid-signature, kael
 4. design.md (+design/*)(glass-liquid signature; motion/loading contract cho map chrome)
 5. docs/design/worker-map-operation-balanced-20260531.md
                         (privacy states + degrade — GIỮ; điểm "SVG-only, no real map / no key in mobile"
-                         được §33 SUPERSEDE sau khi Tu chốt Hướng B + giải bằng Edge proxy. Doc này KHÔNG locked.)
+                         được §37 SUPERSEDE sau khi Tu chốt Hướng B + giải bằng Edge proxy. Doc này KHÔNG locked.)
 6. docs/foundation/geo-data-spike.md  (geocoding server-only, district fallback)
 7. docs/architecture/code-ownership-map.md  (B2 map owner line 72; B4 line 74; "Edge-only Maps keys" line 144)
 8. CLAUDE.md           (lock notice; runtime boundary)
@@ -10516,7 +10516,7 @@ Skill mapping:  karpathy-guidelines (mọi phase) + glass-liquid-signature, kael
 
 ---
 
-### 33.0.2 Decision Log (Tu chốt 2026-06-08 trừ khi ghi khác)
+### 37.0.2 Decision Log (Tu chốt 2026-06-08 trừ khi ghi khác)
 
 - **D1 — KEY-HANDLING = Option-1 Edge proxy (✅ Tu LOCKED 2026-06-08).** VietMap key chỉ ở Edge secrets (ĐÃ provision trong Supabase); mobile trỏ `styleURL` → `mobile-api/map/style`; Edge **rewrite** URL tiles/glyphs/sprite trong style.json về proxy + inject key server-side. **RULES.md:41 compliant, KHÔNG sửa locked doc.** Option-2 (key trong bundle) đã loại — Tu không muốn phải amend luật. **KHÔNG nhúng bất kỳ key nào vào app.** (Đính chính hiểu lầm: cả 2 option đều phục vụ MỌI user+worker; "restricted key" = khoá theo app, KHÔNG phải "chỉ Tu dùng".)
 - **D2 — Provider = VietMap (verified 2026-06-08).** Backend ĐÃ ưu tiên (`env.ts:25`). Style vector MapLibre có sẵn: `https://maps.vietmap.vn/maps/styles/tm|lm|dm|hm|tf/style.json?apikey=` (default/light/dark/hybrid/traffic). VietMap khuyến nghị giới hạn key bằng referer+IP → hợp proxy (1 IP Edge), KHÔNG hợp bundle (mobile đa-IP) ⇒ củng cố Option-1. Google chỉ fallback server-side cho geocoding/directions.
@@ -10530,7 +10530,7 @@ Skill mapping:  karpathy-guidelines (mọi phase) + glass-liquid-signature, kael
 
 ---
 
-### 33.0.3 Definition of Done — Gates (áp dụng MỌI phase)
+### 37.0.3 Definition of Done — Gates (áp dụng MỌI phase)
 
 ```text
 G1 — Real map proof:   MapView render tiles VietMap THẬT trên device; pin/route/circle chiếu từ coords thật (recording).
@@ -10542,22 +10542,22 @@ G5 — VISIBLE DONE:     Recording iOS + Android, light/dark/reduce-motion/reduc
 
 ---
 
-### 33.1 Verify Findings (evidence-cited — session goofy-jemison, 2026-06-08)
+### 37.1 Verify Findings (evidence-cited — session goofy-jemison, 2026-06-08)
 
-Đây là lý do §33 tồn tại. Kết quả verify worker maps:
+Đây là lý do §37 tồn tại. Kết quả verify worker maps:
 
-- **33.1.1 Không có map SDK.** `apps/mobile/package.json:21` — chỉ `react-native-svg` + `reanimated`; không `react-native-maps`/`expo-maps`/Mapbox/MapLibre/VietMap. ⇒ cắm key vào **không** render được gì.
-- **33.1.2 "Map" = vỏ SVG/View vẽ tay.** `WorkerMapStage` (`worker-surfaces.tsx:4680`), `CompactWorkerPresenceMap` (`:5145`): contours/route/coverage vẽ tay; `WorkerMapProviderBridge` (`:4609`) chỉ render **View ẩn để test** (`hiddenMarker`, `pointerEvents=none`); placeholder `replaceWithProvider:'google-maps-camera-ready'` (`:912`).
-- **33.1.3 Marker đặt cứng `%`, không theo địa lý.** `expandedMapMarkerZone {right:'14%',top:'28%'}` (`:9211`); toạ độ HCMC thật chỉ điền vào ô form xác minh (`:4166`); zoom = `scale` CSS kẹp 0.86–1.28 (`:4811`).
-- **33.1.4 Toạ độ job KHÔNG xuống client.** `api-responses.ts:298` có `home_lat/lng` (thợ) nhưng KHÔNG có `address_lat/lng` của job ⇒ map không có dữ liệu chấm job kể cả muốn.
-- **33.1.5 Directions = mở app ngoài bằng text.** `openWorkerMapDirections` (`:4562`), `buildWorkerMapDirectionsUrl` (`:4527`) dùng text địa chỉ (lược tầng/căn); không polyline trong app.
-- **33.1.6 Không geolocation.** `expo-location` vắng toàn repo; `app.config.ts:99` không có permission vị trí.
-- **33.1.7 Backend geo ĐÃ XÂY (reuse, đừng làm lại).** Geocode 2 provider `services.ts:8844/8884/8942`; distance-rank `rankEligibleWorkers:7754` + SQL `distance_km` (mig `20260521120000`); places autocomplete `services.ts:651-765`; env đọc `VIETMAP_API_KEY`+`GOOGLE_MAPS_API_KEY` `env.ts:25-26`; cột coords có sẵn.
-- **33.1.8 Test chỉ chứng minh vỏ.** `worker-home-surface-test.tsx:483-508` assert marker ẩn + pulse dot vị-trí-cứng + privacy state; KHÔNG thể chứng minh map thật.
+- **37.1.1 Không có map SDK.** `apps/mobile/package.json:21` — chỉ `react-native-svg` + `reanimated`; không `react-native-maps`/`expo-maps`/Mapbox/MapLibre/VietMap. ⇒ cắm key vào **không** render được gì.
+- **37.1.2 "Map" = vỏ SVG/View vẽ tay.** `WorkerMapStage` (`worker-surfaces.tsx:4680`), `CompactWorkerPresenceMap` (`:5145`): contours/route/coverage vẽ tay; `WorkerMapProviderBridge` (`:4609`) chỉ render **View ẩn để test** (`hiddenMarker`, `pointerEvents=none`); placeholder `replaceWithProvider:'google-maps-camera-ready'` (`:912`).
+- **37.1.3 Marker đặt cứng `%`, không theo địa lý.** `expandedMapMarkerZone {right:'14%',top:'28%'}` (`:9211`); toạ độ HCMC thật chỉ điền vào ô form xác minh (`:4166`); zoom = `scale` CSS kẹp 0.86–1.28 (`:4811`).
+- **37.1.4 Toạ độ job KHÔNG xuống client.** `api-responses.ts:298` có `home_lat/lng` (thợ) nhưng KHÔNG có `address_lat/lng` của job ⇒ map không có dữ liệu chấm job kể cả muốn.
+- **37.1.5 Directions = mở app ngoài bằng text.** `openWorkerMapDirections` (`:4562`), `buildWorkerMapDirectionsUrl` (`:4527`) dùng text địa chỉ (lược tầng/căn); không polyline trong app.
+- **37.1.6 Không geolocation.** `expo-location` vắng toàn repo; `app.config.ts:99` không có permission vị trí.
+- **37.1.7 Backend geo ĐÃ XÂY (reuse, đừng làm lại).** Geocode 2 provider `services.ts:8844/8884/8942`; distance-rank `rankEligibleWorkers:7754` + SQL `distance_km` (mig `20260521120000`); places autocomplete `services.ts:651-765`; env đọc `VIETMAP_API_KEY`+`GOOGLE_MAPS_API_KEY` `env.ts:25-26`; cột coords có sẵn.
+- **37.1.8 Test chỉ chứng minh vỏ.** `worker-home-surface-test.tsx:483-508` assert marker ẩn + pulse dot vị-trí-cứng + privacy state; KHÔNG thể chứng minh map thật.
 
 ---
 
-### 33.2 Central Tension — RULES.md #0 vs "map thật" (giải ở P0)
+### 37.2 Central Tension — RULES.md #0 vs "map thật" (giải ở P0)
 
 Map SDK cần tiles ⇒ cần key app với tới được. `RULES.md:41` (locked) **cấm Maps key trong bundle**. Hai đường compliant:
 
@@ -10568,7 +10568,7 @@ Map SDK cần tiles ⇒ cần key app với tới được. `RULES.md:41` (locke
 
 ---
 
-### 33.3 Architecture Target
+### 37.3 Architecture Target
 
 ```text
 Expo RN (MapLibre MapView + glass overlay)
@@ -10581,9 +10581,9 @@ Expo RN (MapLibre MapView + glass overlay)
 
 ---
 
-### 33.4 Phases
+### 37.4 Phases
 
-- **MP0 — Spike + BUILD GATE ⚠️ CODEX: KHÔNG VIẾT CODE APP TRƯỚC KHI MP0 PASS (read-only).** D1 đã LOCK Option-1 (không còn chờ Tu sign-off). MP0 = chứng minh Option-1 khả thi TRƯỚC khi đụng bất kỳ code app/Edge thật nào. Đọc authority (33.0.1) rồi làm **4 việc, mỗi việc có tiêu chí pass**:
+- **MP0 — Spike + BUILD GATE ⚠️ CODEX: KHÔNG VIẾT CODE APP TRƯỚC KHI MP0 PASS (read-only).** D1 đã LOCK Option-1 (không còn chờ Tu sign-off). MP0 = chứng minh Option-1 khả thi TRƯỚC khi đụng bất kỳ code app/Edge thật nào. Đọc authority (37.0.1) rồi làm **4 việc, mỗi việc có tiêu chí pass**:
   1. **ToS proxy** — đọc điều khoản VietMap (hoặc hỏi support): gói hiện tại có CHO phục vụ tiles qua backend proxy + chịu tải dồn 1 IP Edge không? *Pass:* có xác nhận bằng điều khoản/văn bản. *Nếu CẤM → STOP, báo Tu* (cân nhắc Option-2 cần amend RULES, hoặc đổi cách). Đây là rủi ro chặn lớn nhất → làm ĐẦU TIÊN.
   2. **Edge `/map/style` rewrite (prototype, CHƯA vào app)** — dựng thử endpoint fetch `maps.vietmap.vn/maps/styles/tm/style.json?apikey=`, **rewrite mọi URL tiles/glyphs/sprite về proxy**, inject key server-side. *Pass:* trả style.json hợp lệ, **grep payload = 0 apikey lộ**, tiles/glyphs/sprite tải được qua proxy.
   3. **VietMap SDK + styleURL ngoài** — thử `@vietmap/vietmap-gl-react-native` `MapView styleURL=<proxy>`; xác nhận SDK có/không tự gắn apikey lên sub-request (nếu có → proxy nhận/bỏ qua dummy key); glyphs/sprite hiển thị. *Pass:* map VietMap render THẬT qua proxy trên 1 device, **key KHÔNG có trong app**.
@@ -10599,7 +10599,7 @@ Expo RN (MapLibre MapView + glass overlay)
 
 ---
 
-### 33.5 Contracts (chốt chi tiết ở companion doc)
+### 37.5 Contracts (chốt chi tiết ở companion doc)
 
 ```text
 Coord exposure (JobDetailResponse, CHỈ post-accept):
@@ -10610,27 +10610,27 @@ Directions (post-accept): POST /directions {jobId} -> {polyline, eta_minutes, di
 
 ---
 
-### 33.6 Risks + Locked-Doc Impact
+### 37.6 Risks + Locked-Doc Impact
 
 - **VietMap ToS cho proxy/cache tiles** — docs chỉ nói "set referer + IP limit", KHÔNG nói rõ cho/cấm proxy. MP0 phải xác nhận (đọc ToS / hỏi VietMap) gói có cho phục vụ tiles qua backend + chịu được tải dồn 1 IP Edge.
 - **SDK behavior với custom styleURL** — cần verify native SDK có tự gắn apikey lên sub-request không (nếu có, proxy nhận/bỏ qua dummy key); glyphs/sprite có proxy được không. MP0 spike.
 - **Edge proxy cost/latency** — mọi tile qua Edge → cache bắt buộc (Storage/CDN); spike MP0 đo latency thật.
 - **`@vietmap/vietmap-gl-react-native` + Expo newArch 0.81 compat** — có Expo guide nhưng vẫn cần dev client / prebuild (không phải Expo Go) → ảnh hưởng quy trình EAS. Nếu vướng → fallback WebView. MP0 spike.
 - **GPS chung cư HCMC kém** — MP4 fallback bấm tay.
-- **Locked-doc (cần Tu approve, KHÔNG tự sửa):** `RULES.md:41` — chỉ Option-2 mới cần amend (Option-1 né được). `design.md` nếu pin "map = SVG-only" → cần note. `docs/design/worker-map-operation-balanced-20260531.md` (KHÔNG locked) → đánh dấu §33 supersede điểm "no real map", GIỮ privacy/degrade. `code-ownership-map.md` (KHÔNG locked) → cập nhật owner B2/B4 + thêm owner map-proxy.
+- **Locked-doc (cần Tu approve, KHÔNG tự sửa):** `RULES.md:41` — chỉ Option-2 mới cần amend (Option-1 né được). `design.md` nếu pin "map = SVG-only" → cần note. `docs/design/worker-map-operation-balanced-20260531.md` (KHÔNG locked) → đánh dấu §37 supersede điểm "no real map", GIỮ privacy/degrade. `code-ownership-map.md` (KHÔNG locked) → cập nhật owner B2/B4 + thêm owner map-proxy.
 
 ---
 
-### 33.7 Sequencing / Build Order
+### 37.7 Sequencing / Build Order
 
 ```
 MP0 (⚠️ BUILD GATE: 4-việc spike PASS + renderer CHỐT) → MP1 → MP2 → MP3 → MP4 → MP5 → MP6 → MP7
 ```
-**⚠️ CODEX: MP0 read-only. KHÔNG viết code app/Edge thật cho tới khi MP0 PASS + companion doc có kết luận renderer (native vs WebView).** Claude verify MP0 trước khi sang MP1. §33 đụng chung `worker-surfaces.tsx` với §32 → phối hợp tránh xung đột edit.
+**⚠️ CODEX: MP0 read-only. KHÔNG viết code app/Edge thật cho tới khi MP0 PASS + companion doc có kết luận renderer (native vs WebView).** Claude verify MP0 trước khi sang MP1. §37 đụng chung `worker-surfaces.tsx` với §32 → phối hợp tránh xung đột edit.
 
 ---
 
-### 33.8 Skills Mapping + Verification
+### 37.8 Skills Mapping + Verification
 
 ```
 karpathy-guidelines     mọi phase (surgical diff, assumptions explicit)
@@ -10641,11 +10641,11 @@ glass-liquid-signature  MP3 — map chrome overlay conform design.md
 kael-motion             MP3 — camera/marker motion, Reduce Motion, perf budget
 kael-tdd                MP1/MP2/MP5 — failing test first, ≥2 layer
 ```
-Verification: mỗi phase G1–G5 (33.0.3) + dòng "Verify (Claude)" ở companion doc. Frontend phase bắt buộc recording device thật.
+Verification: mỗi phase G1–G5 (37.0.3) + dòng "Verify (Claude)" ở companion doc. Frontend phase bắt buộc recording device thật.
 
 ---
 
-### 33.9 Change Log
+### 37.9 Change Log
 
 ```text
 v0.1 — 2026-06-08 — Tạo từ verify worker maps (session goofy-jemison). Kết luận: map = vỏ SVG, không SDK;
@@ -10660,5 +10660,8 @@ v0.2 — 2026-06-08 — Tu LOCK Option-1 (Edge proxy); VietMap key ĐÃ provisio
                     Risk mới: VietMap ToS cho proxy? + SDK apikey behavior + Expo dev-client → dồn vào MP0 spike.
 v0.3 — 2026-06-08 — Theo yêu cầu Tu: nâng MP0 thành BUILD GATE chặn cứng cho Codex (KHÔNG viết code app trước
                     khi MP0 pass). MP0 thành 4-việc spike có tiêu chí pass (ToS proxy → /map/style rewrite →
-                    SDK+styleURL ngoài → Expo compat) + chốt renderer ở companion doc. Sequencing §33.7 ghi rõ gate.
+                    SDK+styleURL ngoài → Expo compat) + chốt renderer ở companion doc. Sequencing §37.7 ghi rõ gate.
+v0.4 — 2026-06-08 — RENUMBER §33 → §37 (Tu đồng ý). Lý do: §33–§36 đã có chủ trên branch section32-supplements
+                    (price-viz/vision/chat-ux/voice, PR #64). Map plan dời xuống §37 để hết đụng số khi cả hai
+                    merge về main. Chỉ đổi số, nội dung giữ nguyên.
 ```
