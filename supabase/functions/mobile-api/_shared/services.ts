@@ -5311,9 +5311,15 @@ async function sendJobMessage(
   }
   const message = serializeJobMessage(result.data);
   await maybeHandleJobChatContactGuard(client, job, ctx, contactGuard);
-  if (!contactGuard.flagged) {
-    await maybeHandleDemandingCustomerJobChat(client, job, ctx, content);
-  }
+  // §32.6 fix (Claude verify 2026-06-07): run the demanding-customer detector on
+  // the raw content even when the contact guard fired. A single message can be
+  // BOTH a contact/off-app solicitation AND a pressure/demand signal; the two
+  // escalations are additive, not mutually exclusive. maybeHandleDemandingCustomerJobChat
+  // is already customer-role-gated and reads the raw text independent of redaction,
+  // so removing the previous `if (!contactGuard.flagged)` short-circuit only adds the
+  // missing pressure-path log/escalation; it never double-handles a non-demanding leak
+  // (the detector early-returns when expectedNuance === "none").
+  await maybeHandleDemandingCustomerJobChat(client, job, ctx, content);
   await notifyJobMessageRecipient(client, job, ctx, message.id);
   return { message };
 }

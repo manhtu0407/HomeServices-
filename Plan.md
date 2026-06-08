@@ -10454,4 +10454,48 @@ v0.8 — 2026-06-04 — Consolidate session adoring-leavitt vào Plan.md §32 (T
                     B2C anti-disintermediation 4 trụ (§32.6), apartment access app-only (§32.7),
                     flexible-not-slop interaction (§32.8). Decisions D1–D14 locked. Companion docs giữ per-step detail.
                     CHƯA execute — Codex build sau §31, Claude verify.
+v0.9 — 2026-06-07 — EXECUTED by Codex (PR #61/#62/#63 merged→main) + VERIFIED by Claude (6-agent adversarial
+                    workflow + code-read; tests NOT run in-env — no Deno/node). Implementation materially real
+                    (~70%); §32.7 apartment-access partial/BROKEN, §32.8 partial/over-claimed, deploy-order risk
+                    live (7 migrations). See §32.13 for verdict + remaining-gap build plan.
 ```
+
+---
+
+### 32.13 Verification Verdict + Remaining-Gap Build Plan (Claude, 2026-06-07)
+
+**Method + honesty.** Verified the merged build (`origin/main` @ `08d887e8`, PR #63) by adversarial code-reading (6 parallel verifier agents + lead synthesis) against §32 + companion docs. Every claim below is grounded in `file:line` of the merged tree. **Tests were NOT run** (this env has no Deno/node toolchain per [[env_node_toolchain_access]]) — "tested: real_tests" means a real test FILE with real assertions exists, not that it was executed here. Nothing in this section is asserted without reading the actual code. Do **not** mark §32 complete (Codex's own audit `docs/test-logs/2026-06-05_kael-section32-completion-audit.md` agrees: G1 staging + G3 native proof open).
+
+**Verdict by area:**
+
+| Area | Status | Evidence headline |
+|---|---|---|
+| §32.6 anti-disintermediation | ✅ complete, real tests | bidirectional chat guard before role branch (`services.ts:5294`), redaction + role nudge + worker risk write (`:5362-5442`), 2 runtime tests (`mobile-api-edge-runtime.test.ts:1409-1631`) |
+| §32.3 Part A customer UI | ✅ complete, real tests | real-progress poll 800ms (`kael-chat-surface.tsx:368-402`), stepper + "Thought for {n}s" real elapsed (`thread.tsx:376-479`), SSE consume + caret (`kael-stream.ts:86-167`, `thread.tsx:481-530`), RNTL tests (`agentic-parts-test.tsx:959-1078`) |
+| §32.8 flexible-not-slop | 🟡 partial / over-claimed | spine deterministic + detection-LLM real + egress guards blocking (`case-2:104`, dispute `services.ts:3258`); but phrasing-LLM NOT built (templates only), self-check not on case-2 egress |
+| §32.7 apartment access | 🔴 partial / BROKEN | data model + staged disclosure real (`services.ts:8689-8731`); geofence has NO distance check, customer authorize handshake MISSING, worker UI never sends check-in |
+| Deploy order | ⚠️ live risk | **7** migrations must apply before Edge deploy — see `docs/ops/section32-deploy-order.md` |
+
+**Built by Claude this pass (branch `claude/section32-supplements`, unverified-by-run — needs CI/Codex type-check + test):**
+1. `docs/ops/section32-deploy-order.md` — the 7-migration must-apply-before-deploy checklist + failure modes (the highest-value safe artifact; prevents the live prod-breakage landmine).
+2. `services.ts` §32.6 fix — removed the `if (!contactGuard.flagged)` short-circuit so a message that is BOTH contact-solicitation AND demanding triggers both escalations (detector is customer-gated + reads raw text). Trivial, bounded.
+
+**FOR CODEX to build + test** (Claude did NOT build these — they are security-critical, core-logic, or mobile-dependency; building them blind without a test run would violate "no fabrication"). Prioritized; each grounded in verification `file:line` + a concrete fix:
+
+- **[HIGH · §32.7] Geofence distance gate.** Today `buildUnitReleaseAccessState` (`services.ts:8781`) + `parseWorkerAccessCheckIn` (`router.ts:2276-2324`) range-check lat/lng only (−90..90) and release the exact unit from anywhere — "geofence" is a label with no geometry. Fix: geocode the building (reuse coords from `geocodeJobAddressForMatching`) and gate release on `distanceKmBetween` (`services.ts:7791`) within a configurable radius (`ACCESS_GEOFENCE_RADIUS_M`, default ~150m for HCMC GPS drift); reject out-of-radius with a VALIDATION error. Test: out-of-radius rejected, in-radius releases.
+- **[HIGH · §32.7] Customer authorization handshake ("Cho thợ lên").** MISSING entirely — the unit releases on the worker's self-reported `arrived`+check-in alone; `customer_handoff_required:true` is written (`services.ts:8752`) but nothing consumes it. Fix: add a customer-only route `POST /jobs/:id/access/authorize` (RLS `customer_id=auth.uid()`) that flips `customer_authorized` in `apartment_access_state`; split release into "check-in pending authorization" → final "unit_released" gated on BOTH worker check-in AND customer authorize; add the customer UI button. Positive/negative tests. (This is the core "last 50 meters" safety mechanism the plan §32.7 designed; without it the feature inverts its own intent.)
+- **[HIGH · §32.7] Wire worker UI to send `access_check_in`.** `worker-surfaces.tsx:1985,5440` call `workerUpdateStatus('arrived')` with NO check-in extras, so the whole check-in/unit-release path is dead in the real app. Fix: on `worker_mark_arrived`, capture GPS via `expo-location` (geofence mode) or prompt a lobby photo (manual_photo fallback), then `workerUpdateStatus('arrived', { access_check_in: {...} })`. Adds `expo-location` dep + permission handling. RNTL test.
+- **[MEDIUM · §32.6] Consume risk score in matching (de-prioritize half).** `worker_kael_memory.red_flags.disintermediation_risk_count` is written (`services.ts:5399-5409`) but never read; `findEligibleWorkers`/`rankEligibleWorkers` (`:7660-7724`) query `worker_profiles` only. Plan §32.6 deliverable is "→ de-prioritize matching + admin queue" — only the queue half exists. Fix: batch-load `red_flags` for candidates in the ranking path and apply a SOFT ranking penalty when `disintermediation_risk_count >= threshold (2-3, evidence-gated)` — penalty, not exclusion (plan: "không nuke worker khan hiếm vì tín hiệu yếu"). Test: high-risk worker ranks below an equal-rating clean worker.
+- **[MEDIUM · §32.8] Self-check on the case-2 demanding egress.** case-2 `responseText` is inserted (`services.ts:~2126`, `~5468`) with `detectForbiddenAiDecisionText` but WITHOUT `runKaelSelfCheckPipeline`, so the plan's "self-check trước mọi egress" is not literally true. Fix: run `runKaelSelfCheckPipeline` (actor "customer", fallback safe template) before both inserts. Cheap (no provider call).
+- **[MEDIUM · §32.3] First-turn perceived-perf.** On the session-create turn, neither the progress poll nor SSE runs (`progressSessionId` is null at `kael-chat-surface.tsx:486`; create() is non-streaming at `:336/:592`), so the real stepper + streaming caret + post-turn "Thought for {n}s" only appear from turn 2. Fix: route the first turn through a streaming create, or start a short progress poll keyed on the returned session id once create() resolves. RNTL test on the create path.
+- **[MEDIUM · §32.8 + §32.6 + deploy] Behavioral / regression tests.** Several guards are CI-verified only by source-string grep (`mobile-api-edge-schema.test.ts:1119`): (a) case-2 egress fallback on a money-leaking `responseText`; (b) dispute path returns the neutrality guard on a non-neutral summary; (c) worker-turn insert supplies `job_id` (NOT NULL since `20260605005000`); (d) the contact-guard `queue_type:'disintermediation_risk'` literal is a member of the `kael_admin_queue` CHECK list. Add real behavioral assertions so a rename/drop fails CI.
+- **[LOW · §32.7] Meeting-point ("Gặp ở sảnh") + no-show wiring.** No `meeting_point` field in `apartmentAccessProfileSchema` (`validation.ts:7-11`); no-show not tied to check-in. Add the schema field (suppress unit release when set) + structured no-show event on un-authorized check-in timeout.
+- **[LOW · §32.3] Copy drift.** Implemented stage/disclosure copy ("Kael analyzed in {n}s", fuller stage sentences) differs from the §32.5/§32.3 locked contract ("Thought for {n}s", terse + emoji). Reconcile to the contract OR have Tu ratify the current wording, then update tests.
+
+**Operational gaps (Tu/Codex must run — NOT code, NOT buildable here):**
+- Apply the 7 §32 migrations to staging in order, deploy `mobile-api`, run `kael-section32-staging-smoke.mjs` (`SECTION32_RUN_LIVE=1`) → close **G1**. (Deploy order: `docs/ops/section32-deploy-order.md`.)
+- Run `scripts/section32-android-native-recording.ps1` (`SECTION32_NATIVE_RUN=1`) with staging creds → capture authenticated native recordings of the §32 flows → close **G3**.
+- Run the test suites (`apps/api` Vitest, mobile Jest, Deno edge) on a real toolchain to confirm the cited tests pass on the merged tree (Claude read them statically only).
+- Field-tune the §32.7 geofence radius on a real HCMC tower (GPS drift) once the gate is built.
+
+**Honest bottom line.** §32 is materially implemented and largely correct (§32.6 + Part A are genuinely done with real tests), but it is **not "complete"**: §32.7's customer-gated, location-verified release — the actual "last 50 meters" moat — is partial and broken; §32.8's phrasing-LLM/universal-self-check are not built (acceptable but should not be implied done); and the 7-migration deploy-order is an unmitigated live prod risk until applied. The merge of a PR titled "Complete … production proof" overstates the real state.
