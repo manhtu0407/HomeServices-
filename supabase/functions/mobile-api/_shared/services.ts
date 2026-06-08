@@ -320,6 +320,7 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     acceptBroadcast,
     declineBroadcast,
     updateJobStatus,
+    authorizeApartmentAccess,
     requestScopeChange: (ctx, jobId, input) =>
       requestScopeChange(ctx, jobId, input, secrets),
     askKaelForWorker,
@@ -3634,15 +3635,15 @@ async function updateJobStatus(
         );
       }
     }
-    const accessState = buildUnitReleaseAccessState(
+    const accessState = buildCheckInAccessState(
       job.apartment_access_state,
       input.access_check_in,
       now,
     );
     update.apartment_access_state = accessState;
     accessReleaseMetadata = {
-      apartment_access_release: true,
-      release_stage: "unit_released",
+      apartment_access_release: false,
+      release_stage: "checked_in_awaiting_customer_authorization",
       evidence_mode: input.access_check_in.mode,
     };
   }
@@ -8849,20 +8850,89 @@ function redactWorkerBuilding(value: string | null) {
 // if field recordings show a different real-world drift.
 const ACCESS_GEOFENCE_RADIUS_KM = 0.15;
 
-function buildUnitReleaseAccessState(
+// §32.7 (Claude verify 2026-06-08): the customer authorizes "Cho thợ lên" — this is the
+// only path that releases the exact unit, and only after the worker has checked in.
+// Route POST /jobs/:id/access/authorize is gated to the customer (+ admin) role.
+async function authorizeApartmentAccess(ctx: MobileApiContext, jobId: string) {
+  const client = db(ctx);
+  const job = await requireJobAccess(client, jobId, ctx, {
+    select:
+      "id, status, customer_id, worker_id, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district",
+  });
+  const state = asRecord(job.apartment_access_state);
+  if (state.exact_unit_released === true) {
+    return {
+      job_id: jobId,
+      release_stage: "unit_released" as const,
+      already_authorized: true as const,
+    };
+  }
+  const workerCheckedIn = state.worker_checked_in === true ||
+    nullableRecord(state.check_in) !== null;
+  if (!workerCheckedIn) {
+    apiFailure(
+      "ACCESS_NOT_READY",
+      "Thợ chưa check-in tại sảnh nên chưa thể mở căn hộ.",
+      409,
+    );
+  }
+  const now = new Date().toISOString();
+  const accessState = buildAuthorizedReleaseAccessState(state, now);
+  const updated = await dbQuery<{ id: string }>(
+    client
+      .from("jobs")
+      .update({ apartment_access_state: accessState })
+      .eq("id", jobId)
+      .select("id")
+      .maybeSingle(),
+  );
+  if (updated.error) {
+    apiFailure("DB_ERROR", "Không thể mở quyền vào căn hộ", 500);
+  }
+  if (!updated.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy công việc", 404);
+  }
+  await logJobEvent(
+    client,
+    jobId,
+    "apartment_access_authorized",
+    ctx,
+    job.status as JobStatus,
+    job.status as JobStatus,
+    {
+      apartment_access_release: true,
+      release_stage: "unit_released",
+      customer_authorized: true,
+    },
+  );
+  return {
+    job_id: jobId,
+    release_stage: "unit_released" as const,
+    already_authorized: false as const,
+  };
+}
+
+// §32.7 (Claude verify 2026-06-08): a worker check-in records arrival but does NOT
+// release the exact unit. exact_unit_released stays false (projectAddressAccess keeps the
+// worker at building_released) until the CUSTOMER authorizes via
+// POST /jobs/:id/access/authorize. This closes the "worker self-reports arrival and the
+// app reveals the unit with no customer consent" gap.
+function buildCheckInAccessState(
   previous: unknown,
   checkIn: WorkerAccessCheckInInput,
   now: string,
 ) {
   return compactMetadata({
     ...asRecord(previous),
-    release_stage: "unit_released",
-    exact_unit_released: true,
+    release_stage: "building_released",
+    exact_unit_released: false,
+    worker_checked_in: true,
+    worker_checked_in_at: now,
+    customer_authorization_required: true,
     check_in_required: false,
     identity_check_required: true,
     customer_handoff_required: true,
     evidence_mode: checkIn.mode,
-    unit_released_at: now,
     check_in: compactMetadata({
       mode: checkIn.mode,
       lat: checkIn.lat,
@@ -8872,6 +8942,24 @@ function buildUnitReleaseAccessState(
       note: sanitizeApartmentAccessText(checkIn.note, 300),
       checked_in_at: checkIn.checked_in_at ?? now,
     }),
+  });
+}
+
+// §32.7 (Claude verify 2026-06-08): the customer authorizing entry releases the exact
+// unit — only reachable after a worker check-in (enforced in authorizeApartmentAccess).
+function buildAuthorizedReleaseAccessState(previous: unknown, now: string) {
+  return compactMetadata({
+    ...asRecord(previous),
+    release_stage: "unit_released",
+    exact_unit_released: true,
+    worker_checked_in: true,
+    customer_authorized: true,
+    customer_authorized_at: now,
+    customer_authorization_required: false,
+    check_in_required: false,
+    identity_check_required: true,
+    customer_handoff_required: false,
+    unit_released_at: now,
   });
 }
 

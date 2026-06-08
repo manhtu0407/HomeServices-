@@ -197,6 +197,7 @@ describe('mobile-api Edge runtime helpers', () => {
       'approveKaelLearningCandidate',
       'askKaelForWorker',
       'attachJobMedia',
+      'authorizeApartmentAccess',
       'cancelJob',
       'confirmKaelChat',
       'confirmCompletion',
@@ -3629,7 +3630,7 @@ describe('mobile-api Edge runtime helpers', () => {
     )
   })
 
-  it('unlocks exact unit only when arrived status carries check-in evidence', async () => {
+  it('records a worker check-in without releasing the exact unit (awaits customer authorization)', async () => {
     const client = makeSequenceClient([
       {
         data: {
@@ -3673,8 +3674,9 @@ describe('mobile-api Edge runtime helpers', () => {
       expect.objectContaining({
         status: 'arrived',
         apartment_access_state: expect.objectContaining({
-          release_stage: 'unit_released',
-          exact_unit_released: true,
+          release_stage: 'building_released',
+          exact_unit_released: false,
+          worker_checked_in: true,
           check_in_required: false,
           evidence_mode: 'manual_photo',
           check_in: expect.objectContaining({
@@ -3693,12 +3695,82 @@ describe('mobile-api Edge runtime helpers', () => {
       expect.objectContaining({
         event_type: 'worker_status_update',
         safe_metadata: expect.objectContaining({
-          apartment_access_release: true,
-          release_stage: 'unit_released',
+          apartment_access_release: false,
+          release_stage: 'checked_in_awaiting_customer_authorization',
           evidence_mode: 'manual_photo',
         }),
       }),
     ])
+  })
+
+  it('releases the exact unit only after the customer authorizes a worker check-in', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'arrived',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          apartment_access_state: {
+            release_stage: 'building_released',
+            exact_unit_released: false,
+            worker_checked_in: true,
+            check_in: { mode: 'manual_photo' },
+          },
+        },
+        error: null,
+      },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+    await expect(createEdgeServices({}).authorizeApartmentAccess(ctx, 'job-1')).resolves.toMatchObject({
+      job_id: 'job-1',
+      release_stage: 'unit_released',
+      already_authorized: false,
+    })
+    const updateCall = client.calls.find((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'update')
+    )
+    expect(updateCall?.operations).toContainEqual([
+      'update',
+      expect.objectContaining({
+        apartment_access_state: expect.objectContaining({
+          release_stage: 'unit_released',
+          exact_unit_released: true,
+          customer_authorized: true,
+        }),
+      }),
+    ])
+  })
+
+  it('rejects customer apartment authorization before the worker has checked in', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          apartment_access_state: { release_stage: 'building_released', exact_unit_released: false },
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+    await expect(createEdgeServices({}).authorizeApartmentAccess(ctx, 'job-1'))
+      .rejects.toMatchObject({ code: 'ACCESS_NOT_READY', status: 409 })
   })
 
   it('keeps worker job list exact unit locked before check-in release', async () => {
