@@ -3569,7 +3569,7 @@ async function updateJobStatus(
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "worker",
-    select: "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district",
+    select: "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district, address_lat, address_lng",
   });
   if (job.status === "scope_change_pending") {
     apiFailure(
@@ -3596,6 +3596,43 @@ async function updateJobStatus(
   if (input.access_check_in) {
     if (input.status !== "arrived") {
       apiFailure("VALIDATION", "D\u1eef li\u1ec7u check-in kh\u00f4ng h\u1ee3p l\u1ec7", 400);
+    }
+    // §32.7 (Claude verify 2026-06-08): a geofence check-in must be physically near the
+    // job's geocoded building before the exact unit is released — otherwise a worker could
+    // unlock the unit from anywhere (lat/lng were only range-checked before). manual_photo
+    // check-ins rely on the lobby photo and are not distance-gated here.
+    if (input.access_check_in.mode === "geofence") {
+      const buildingLat = nullableNumber(job.address_lat);
+      const buildingLng = nullableNumber(job.address_lng);
+      const checkInLat = nullableNumber(input.access_check_in.lat);
+      const checkInLng = nullableNumber(input.access_check_in.lng);
+      if (buildingLat === null || buildingLng === null) {
+        apiFailure(
+          "VALIDATION",
+          "Chưa có toạ độ toà nhà để xác minh check-in. Hãy dùng ảnh sảnh.",
+          400,
+        );
+      }
+      if (checkInLat === null || checkInLng === null) {
+        apiFailure(
+          "VALIDATION",
+          "Check-in geofence thiếu toạ độ. Hãy bật vị trí hoặc dùng ảnh sảnh.",
+          400,
+        );
+      }
+      const distanceKm = distanceKmBetween(
+        checkInLat,
+        checkInLng,
+        buildingLat,
+        buildingLng,
+      );
+      if (distanceKm > ACCESS_GEOFENCE_RADIUS_KM) {
+        apiFailure(
+          "VALIDATION",
+          "Check-in ở quá xa địa chỉ công việc. Hãy đến đúng toà rồi check-in lại, hoặc dùng ảnh sảnh.",
+          400,
+        );
+      }
     }
     const accessState = buildUnitReleaseAccessState(
       job.apartment_access_state,
@@ -8805,6 +8842,12 @@ function redactWorkerBuilding(value: string | null) {
     .trim();
   return redacted || null;
 }
+
+// §32.7 (Claude verify 2026-06-08): a geofence check-in must be within this radius of
+// the job's geocoded building before the exact unit is released. ~150 m absorbs HCMC
+// apartment-tower GPS drift while still blocking a release from across town. Tune here
+// if field recordings show a different real-world drift.
+const ACCESS_GEOFENCE_RADIUS_KM = 0.15;
 
 function buildUnitReleaseAccessState(
   previous: unknown,

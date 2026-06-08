@@ -1406,6 +1406,67 @@ describe('mobile-api Edge runtime helpers', () => {
     )
   })
 
+  it('blocks a geofence apartment check-in beyond the building radius (no unit release)', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          customer_id: 'customer-geo',
+          worker_id: 'worker-geo',
+          apartment_access_profile: null,
+          apartment_access_state: { release_stage: 'building_released' },
+          address_building: 'Toà A',
+          address_unit: '12-08',
+          address_floor: '12',
+          address_district: 'q1',
+          address_lat: 10.7769,
+          address_lng: 106.7009,
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-geo' },
+      role: 'worker',
+      supabase: client,
+    }
+    // Check-in ~12 km from the building must be rejected: the exact unit is never released.
+    await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
+      status: 'arrived',
+      access_check_in: { mode: 'geofence', lat: 10.85, lng: 106.62, accuracy_m: 20 },
+    })).rejects.toMatchObject({ code: 'VALIDATION', status: 400 })
+    expect(JSON.stringify(client.calls)).not.toContain('unit_released')
+  })
+
+  it('rejects a geofence apartment check-in when the building has no geocoded coordinates', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          customer_id: 'customer-geo',
+          worker_id: 'worker-geo',
+          apartment_access_state: { release_stage: 'building_released' },
+          address_lat: null,
+          address_lng: null,
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-geo' },
+      role: 'worker',
+      supabase: client,
+    }
+    await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
+      status: 'arrived',
+      access_check_in: { mode: 'geofence', lat: 10.7769, lng: 106.7009, accuracy_m: 10 },
+    })).rejects.toMatchObject({ code: 'VALIDATION', status: 400 })
+  })
+
   it('redacts worker contact solicitation, records risk memory, and queues soft admin evidence', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ data: [{ status: 'ok', id: 'ticket-1' }] }))
