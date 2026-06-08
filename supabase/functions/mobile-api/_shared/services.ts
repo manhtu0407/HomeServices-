@@ -2125,7 +2125,7 @@ async function maybeHandleDemandingCustomerKaelChatTurn(
   });
   await appendKaelSystemTurn(client, input.sessionId, {
     contentType: "clarification",
-    text: response.responseText,
+    text: selfCheckDemandingResponseText(response.responseText),
     nextStatus: response.stopAiLoop
       ? "active"
       : input.status === "estimate_ready"
@@ -5465,6 +5465,23 @@ async function recordWorkerDisintermediationRisk(
   );
 }
 
+// §32.8 (Claude verify 2026-06-07): self-check the demanding-customer response text
+// before it reaches a user, so "self-check before every egress" holds for case-2 too
+// (not only worker-assist). Template responses pass through unchanged; if the text ever
+// becomes LLM-phrased and trips the guard, fall back to a neutral acknowledgement.
+const DEMANDING_RESPONSE_SELF_CHECK_FALLBACK =
+  "Kael đã ghi nhận và lưu lại đầy đủ trao đổi của bạn. Nếu cần, bạn có thể yêu cầu admin can thiệp.";
+function selfCheckDemandingResponseText(responseText: string): string {
+  const checked = runKaelSelfCheckPipeline({
+    text: responseText,
+    actor: "customer",
+    language: "vi",
+    semanticGuardEnabled: true,
+    fallbackText: DEMANDING_RESPONSE_SELF_CHECK_FALLBACK,
+  });
+  return checked.text;
+}
+
 async function maybeHandleDemandingCustomerJobChat(
   client: DbClient,
   job: Record<string, unknown>,
@@ -5488,7 +5505,11 @@ async function maybeHandleDemandingCustomerJobChat(
     detection,
     response,
   });
-  await insertKaelJobMessage(client, asString(job.id), response.responseText);
+  await insertKaelJobMessage(
+    client,
+    asString(job.id),
+    selfCheckDemandingResponseText(response.responseText),
+  );
 }
 
 async function insertKaelJobMessage(
