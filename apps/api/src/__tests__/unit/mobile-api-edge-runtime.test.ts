@@ -3722,6 +3722,7 @@ describe('mobile-api Edge runtime helpers', () => {
       },
       { data: { id: 'job-1' }, error: null },
       { data: null, error: null },
+      { data: [{ notification_id: 'n-1' }], error: null },
     ])
     const ctx: MobileApiContext = {
       success: true,
@@ -3746,6 +3747,17 @@ describe('mobile-api Edge runtime helpers', () => {
           exact_unit_released: true,
           customer_authorized: true,
         }),
+      }),
+    ])
+    const notifyCall = client.calls.find((call) =>
+      call.table === 'rpc:insert_notification_atomic'
+    )
+    expect(notifyCall?.operations).toContainEqual([
+      'rpc',
+      'insert_notification_atomic',
+      expect.objectContaining({
+        p_user_id: 'worker-1',
+        p_event_type: 'apartment_access_authorized',
       }),
     ])
   })

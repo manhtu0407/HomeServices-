@@ -8905,6 +8905,27 @@ async function authorizeApartmentAccess(ctx: MobileApiContext, jobId: string) {
       customer_authorized: true,
     },
   );
+  // §32.7 (Claude verify 2026-06-08): tell the worker the customer has authorized so the
+  // exact unit is now visible — otherwise the worker would only learn on a manual refetch.
+  // Best-effort: a notification failure must not block the authorization.
+  const workerId = nullableString(job.worker_id);
+  if (workerId) {
+    const notified = await dbQuery<Array<Record<string, unknown>>>(
+      client.rpc("insert_notification_atomic", {
+        p_user_id: workerId,
+        p_job_id: jobId,
+        p_event_type: "apartment_access_authorized",
+        p_title: "Khách đã cho phép lên",
+        p_body: "Bạn có thể xem địa chỉ căn hộ và lên gặp khách.",
+        p_safe_metadata: { release_stage: "unit_released" },
+      }),
+    );
+    if (notified.error) {
+      console.warn("mobile-api apartment access authorize notification failed", {
+        jobId,
+      });
+    }
+  }
   return {
     job_id: jobId,
     release_stage: "unit_released" as const,
