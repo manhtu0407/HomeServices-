@@ -320,6 +320,7 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     acceptBroadcast,
     declineBroadcast,
     updateJobStatus,
+    authorizeApartmentAccess,
     requestScopeChange: (ctx, jobId, input) =>
       requestScopeChange(ctx, jobId, input, secrets),
     askKaelForWorker,
@@ -2125,7 +2126,7 @@ async function maybeHandleDemandingCustomerKaelChatTurn(
   });
   await appendKaelSystemTurn(client, input.sessionId, {
     contentType: "clarification",
-    text: response.responseText,
+    text: selfCheckDemandingResponseText(response.responseText),
     nextStatus: response.stopAiLoop
       ? "active"
       : input.status === "estimate_ready"
@@ -3569,7 +3570,7 @@ async function updateJobStatus(
   const client = db(ctx);
   const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "worker",
-    select: "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district",
+    select: "id, status, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district, address_lat, address_lng",
   });
   if (job.status === "scope_change_pending") {
     apiFailure(
@@ -3597,15 +3598,52 @@ async function updateJobStatus(
     if (input.status !== "arrived") {
       apiFailure("VALIDATION", "D\u1eef li\u1ec7u check-in kh\u00f4ng h\u1ee3p l\u1ec7", 400);
     }
-    const accessState = buildUnitReleaseAccessState(
+    // §32.7 (Claude verify 2026-06-08): a geofence check-in must be physically near the
+    // job's geocoded building before the exact unit is released — otherwise a worker could
+    // unlock the unit from anywhere (lat/lng were only range-checked before). manual_photo
+    // check-ins rely on the lobby photo and are not distance-gated here.
+    if (input.access_check_in.mode === "geofence") {
+      const buildingLat = nullableNumber(job.address_lat);
+      const buildingLng = nullableNumber(job.address_lng);
+      const checkInLat = nullableNumber(input.access_check_in.lat);
+      const checkInLng = nullableNumber(input.access_check_in.lng);
+      if (buildingLat === null || buildingLng === null) {
+        apiFailure(
+          "VALIDATION",
+          "Chưa có toạ độ toà nhà để xác minh check-in. Hãy dùng ảnh sảnh.",
+          400,
+        );
+      }
+      if (checkInLat === null || checkInLng === null) {
+        apiFailure(
+          "VALIDATION",
+          "Check-in geofence thiếu toạ độ. Hãy bật vị trí hoặc dùng ảnh sảnh.",
+          400,
+        );
+      }
+      const distanceKm = distanceKmBetween(
+        checkInLat,
+        checkInLng,
+        buildingLat,
+        buildingLng,
+      );
+      if (distanceKm > ACCESS_GEOFENCE_RADIUS_KM) {
+        apiFailure(
+          "VALIDATION",
+          "Check-in ở quá xa địa chỉ công việc. Hãy đến đúng toà rồi check-in lại, hoặc dùng ảnh sảnh.",
+          400,
+        );
+      }
+    }
+    const accessState = buildCheckInAccessState(
       job.apartment_access_state,
       input.access_check_in,
       now,
     );
     update.apartment_access_state = accessState;
     accessReleaseMetadata = {
-      apartment_access_release: true,
-      release_stage: "unit_released",
+      apartment_access_release: false,
+      release_stage: "checked_in_awaiting_customer_authorization",
       evidence_mode: input.access_check_in.mode,
     };
   }
@@ -5311,6 +5349,13 @@ async function sendJobMessage(
   }
   const message = serializeJobMessage(result.data);
   await maybeHandleJobChatContactGuard(client, job, ctx, contactGuard);
+  // §32.6 (Claude verify 2026-06-08): keep the demanding-customer detector OFF for
+  // contact-guarded messages. The additive attempt (PR #64) re-ran the raw text through
+  // the detector and (a) leaked an email into kael_interaction_log (excerpt sanitizer
+  // strips only digits) and (b) miscategorized off-app PAYMENT phrases ("trả tiền" /
+  // "tiền mặt") as demand_refund pressure -> a spurious "demanding" escalation + unrelated
+  // pressure reply. The contact guard already redacts, nudges, and records disintermediation
+  // risk, so the mutually-exclusive design is the correct, protective behaviour.
   if (!contactGuard.flagged) {
     await maybeHandleDemandingCustomerJobChat(client, job, ctx, content);
   }
@@ -5442,6 +5487,23 @@ async function recordWorkerDisintermediationRisk(
   );
 }
 
+// §32.8 (Claude verify 2026-06-07): self-check the demanding-customer response text
+// before it reaches a user, so "self-check before every egress" holds for case-2 too
+// (not only worker-assist). Template responses pass through unchanged; if the text ever
+// becomes LLM-phrased and trips the guard, fall back to a neutral acknowledgement.
+const DEMANDING_RESPONSE_SELF_CHECK_FALLBACK =
+  "Kael đã ghi nhận và lưu lại đầy đủ trao đổi của bạn. Nếu cần, bạn có thể yêu cầu admin can thiệp.";
+function selfCheckDemandingResponseText(responseText: string): string {
+  const checked = runKaelSelfCheckPipeline({
+    text: responseText,
+    actor: "customer",
+    language: "vi",
+    semanticGuardEnabled: true,
+    fallbackText: DEMANDING_RESPONSE_SELF_CHECK_FALLBACK,
+  });
+  return checked.text;
+}
+
 async function maybeHandleDemandingCustomerJobChat(
   client: DbClient,
   job: Record<string, unknown>,
@@ -5465,7 +5527,11 @@ async function maybeHandleDemandingCustomerJobChat(
     detection,
     response,
   });
-  await insertKaelJobMessage(client, asString(job.id), response.responseText);
+  await insertKaelJobMessage(
+    client,
+    asString(job.id),
+    selfCheckDemandingResponseText(response.responseText),
+  );
 }
 
 async function insertKaelJobMessage(
@@ -8778,20 +8844,116 @@ function redactWorkerBuilding(value: string | null) {
   return redacted || null;
 }
 
-function buildUnitReleaseAccessState(
+// §32.7 (Claude verify 2026-06-08): a geofence check-in must be within this radius of
+// the job's geocoded building before the exact unit is released. ~150 m absorbs HCMC
+// apartment-tower GPS drift while still blocking a release from across town. Tune here
+// if field recordings show a different real-world drift.
+const ACCESS_GEOFENCE_RADIUS_KM = 0.15;
+
+// §32.7 (Claude verify 2026-06-08): the customer authorizes "Cho thợ lên" — this is the
+// only path that releases the exact unit, and only after the worker has checked in.
+// Route POST /jobs/:id/access/authorize is gated to the customer (+ admin) role.
+async function authorizeApartmentAccess(ctx: MobileApiContext, jobId: string) {
+  const client = db(ctx);
+  const job = await requireJobAccess(client, jobId, ctx, {
+    select:
+      "id, status, customer_id, worker_id, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district",
+  });
+  const state = asRecord(job.apartment_access_state);
+  if (state.exact_unit_released === true) {
+    return {
+      job_id: jobId,
+      release_stage: "unit_released" as const,
+      already_authorized: true as const,
+    };
+  }
+  const workerCheckedIn = state.worker_checked_in === true ||
+    nullableRecord(state.check_in) !== null;
+  if (!workerCheckedIn) {
+    apiFailure(
+      "ACCESS_NOT_READY",
+      "Thợ chưa check-in tại sảnh nên chưa thể mở căn hộ.",
+      409,
+    );
+  }
+  const now = new Date().toISOString();
+  const accessState = buildAuthorizedReleaseAccessState(state, now);
+  const updated = await dbQuery<{ id: string }>(
+    client
+      .from("jobs")
+      .update({ apartment_access_state: accessState })
+      .eq("id", jobId)
+      .select("id")
+      .maybeSingle(),
+  );
+  if (updated.error) {
+    apiFailure("DB_ERROR", "Không thể mở quyền vào căn hộ", 500);
+  }
+  if (!updated.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy công việc", 404);
+  }
+  await logJobEvent(
+    client,
+    jobId,
+    "apartment_access_authorized",
+    ctx,
+    job.status as JobStatus,
+    job.status as JobStatus,
+    {
+      apartment_access_release: true,
+      release_stage: "unit_released",
+      customer_authorized: true,
+    },
+  );
+  // §32.7 (Claude verify 2026-06-08): tell the worker the customer has authorized so the
+  // exact unit is now visible — otherwise the worker would only learn on a manual refetch.
+  // Best-effort: a notification failure must not block the authorization.
+  const workerId = nullableString(job.worker_id);
+  if (workerId) {
+    const notified = await dbQuery<Array<Record<string, unknown>>>(
+      client.rpc("insert_notification_atomic", {
+        p_user_id: workerId,
+        p_job_id: jobId,
+        p_event_type: "apartment_access_authorized",
+        p_title: "Khách đã cho phép lên",
+        p_body: "Bạn có thể xem địa chỉ căn hộ và lên gặp khách.",
+        p_safe_metadata: { release_stage: "unit_released" },
+      }),
+    );
+    if (notified.error) {
+      console.warn("mobile-api apartment access authorize notification failed", {
+        jobId,
+      });
+    }
+  }
+  return {
+    job_id: jobId,
+    release_stage: "unit_released" as const,
+    already_authorized: false as const,
+  };
+}
+
+// §32.7 (Claude verify 2026-06-08): a worker check-in records arrival but does NOT
+// release the exact unit. exact_unit_released stays false (projectAddressAccess keeps the
+// worker at building_released) until the CUSTOMER authorizes via
+// POST /jobs/:id/access/authorize. This closes the "worker self-reports arrival and the
+// app reveals the unit with no customer consent" gap.
+function buildCheckInAccessState(
   previous: unknown,
   checkIn: WorkerAccessCheckInInput,
   now: string,
 ) {
   return compactMetadata({
     ...asRecord(previous),
-    release_stage: "unit_released",
-    exact_unit_released: true,
+    release_stage: "building_released",
+    exact_unit_released: false,
+    worker_checked_in: true,
+    worker_checked_in_at: now,
+    customer_authorization_required: true,
     check_in_required: false,
     identity_check_required: true,
     customer_handoff_required: true,
     evidence_mode: checkIn.mode,
-    unit_released_at: now,
     check_in: compactMetadata({
       mode: checkIn.mode,
       lat: checkIn.lat,
@@ -8801,6 +8963,24 @@ function buildUnitReleaseAccessState(
       note: sanitizeApartmentAccessText(checkIn.note, 300),
       checked_in_at: checkIn.checked_in_at ?? now,
     }),
+  });
+}
+
+// §32.7 (Claude verify 2026-06-08): the customer authorizing entry releases the exact
+// unit — only reachable after a worker check-in (enforced in authorizeApartmentAccess).
+function buildAuthorizedReleaseAccessState(previous: unknown, now: string) {
+  return compactMetadata({
+    ...asRecord(previous),
+    release_stage: "unit_released",
+    exact_unit_released: true,
+    worker_checked_in: true,
+    customer_authorized: true,
+    customer_authorized_at: now,
+    customer_authorization_required: false,
+    check_in_required: false,
+    identity_check_required: true,
+    customer_handoff_required: false,
+    unit_released_at: now,
   });
 }
 

@@ -801,6 +801,14 @@ export type MobileApiServices = {
     jobId: string,
     input: WorkerStatusUpdateInput,
   ): Promise<StatusUpdateResponse>;
+  authorizeApartmentAccess(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<{
+    job_id: string;
+    release_stage: string;
+    already_authorized: boolean;
+  }>;
   requestScopeChange(
     ctx: MobileApiContext,
     jobId: string,
@@ -1121,6 +1129,7 @@ type Route =
   | { kind: "jobs.accept"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.decline"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.status"; method: "PATCH"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.accessAuthorize"; method: "POST"; jobId: string; roles: UserRole[] }
   | {
     kind: "jobs.scopeChange";
     method: "POST";
@@ -1515,6 +1524,16 @@ function matchRoute(request: Request): Route | null {
     return { kind: "workers.earnings", method: "GET", roles: ["worker", "admin"] };
   }
 
+  const accessAuthorize = path.match(/^\/jobs\/([^/]+)\/access\/authorize$/);
+  if (method === "POST" && accessAuthorize) {
+    return {
+      kind: "jobs.accessAuthorize",
+      method: "POST",
+      jobId: safeDecodePathSegment(accessAuthorize[1] ?? ""),
+      roles: ["customer", "admin"],
+    };
+  }
+
   const job = path.match(/^\/jobs\/([^/]+)(?:\/([^/]+))?$/);
   if (job) {
     const jobId = safeDecodePathSegment(job[1] ?? "");
@@ -1862,6 +1881,8 @@ async function dispatchRoute(
       const input = workerStatusUpdateSchema(await readJson(request));
       return services.updateJobStatus(ctx, route.jobId, input);
     }
+    case "jobs.accessAuthorize":
+      return services.authorizeApartmentAccess(ctx, route.jobId);
     case "jobs.scopeChange": {
       const input = workerScopeChangeSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
