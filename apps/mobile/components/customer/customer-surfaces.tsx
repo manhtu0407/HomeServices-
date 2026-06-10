@@ -617,6 +617,10 @@ const customerCopy = {
       reason: 'Lý do',
       workerNoReason: 'Thợ chưa ghi lý do',
       newPrice: 'Giá mới',
+      accessTitle: 'Thợ đã tới sảnh',
+      accessCheckedInBody: 'Thợ đã check-in tại sảnh. Bấm "Cho thợ lên" để mở số căn hộ chính xác cho thợ.',
+      accessAuthorizeCta: 'Cho thợ lên',
+      accessReleasedBody: 'Bạn đã cho thợ lên — thợ đã thấy số căn hộ chính xác.',
       kaelReviewing: 'Kael đang xét',
       evidence: 'Bằng chứng hoàn tất',
       evidenceBefore: 'Ảnh trước',
@@ -781,6 +785,10 @@ const customerCopy = {
       reason: 'Reason',
       workerNoReason: 'No worker reason yet',
       newPrice: 'New price',
+      accessTitle: 'Worker at the lobby',
+      accessCheckedInBody: 'The worker checked in at the lobby. Tap "Let the worker up" to reveal your exact unit.',
+      accessAuthorizeCta: 'Let the worker up',
+      accessReleasedBody: 'You let the worker up — they can now see your exact unit.',
       kaelReviewing: 'Kael reviewing',
       evidence: 'Completion evidence',
       evidenceBefore: 'Before',
@@ -1397,6 +1405,23 @@ export function CustomerHistorySurface() {
   const canCreateFreshRequest = !deal || workflow.isDone || selectors.currentStatus === 'cancelled'
   const canEditNoWorkerRequest = selectors.customerSearchState === 'no_worker'
   const canCancelLocalRequest = selectors.canCustomerCancelDeal && !isCancelledStatus
+  // §32.7: "Cho thợ lên" appears only after the worker's lobby check-in and before the
+  // exact unit is released; the release itself is the backend-authorized handshake.
+  const addressAccess = deal?.broadcast?.addressAccess ?? null
+  const workerAccessReleased = Boolean(addressAccess?.exact_unit_released)
+  const canAuthorizeWorkerAccess = Boolean(
+    addressAccess?.worker_checked_in && !workerAccessReleased && !isCancelledStatus && !workflow.isDone,
+  )
+  const isAuthorizingAccessRef = useRef(false)
+  const authorizeWorkerAccess = async () => {
+    if (isAuthorizingAccessRef.current) return
+    isAuthorizingAccessRef.current = true
+    try {
+      await actions.authorizeApartmentAccess()
+    } finally {
+      isAuthorizingAccessRef.current = false
+    }
+  }
   const selectHistoryTab = (tab: CustomerHistoryTab) => {
     setSelectedHistoryTab(tab)
     replace(tab === 'repair' ? openHistoryPath : `${openHistoryPath}?tab=${tab}`)
@@ -1552,6 +1577,19 @@ export function CustomerHistorySurface() {
                   {canCancelLocalRequest ? <SecondaryButton label={copy.history.cancelRequest} onPress={confirmCancelLocalDeal} compact testID="customer-history-cancel-local-deal" /> : null}
                 </View>
               </View>
+            </View>
+          ) : null}
+          {deal && showRepairTab && (canAuthorizeWorkerAccess || workerAccessReleased) ? (
+            <View style={[styles.flowCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-apartment-access-panel">
+              <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+                {copy.history.accessTitle}
+              </Text>
+              <Text style={[styles.listMeta, { color: tokens.muted }]} numberOfLines={2} testID="customer-history-apartment-access-body">
+                {workerAccessReleased ? copy.history.accessReleasedBody : copy.history.accessCheckedInBody}
+              </Text>
+              {canAuthorizeWorkerAccess ? (
+                <PrimaryButton compact label={copy.history.accessAuthorizeCta} onPress={() => void authorizeWorkerAccess()} testID="customer-history-authorize-access" />
+              ) : null}
             </View>
           ) : null}
           {deal && showRepairTab ? (

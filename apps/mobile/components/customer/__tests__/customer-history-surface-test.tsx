@@ -142,6 +142,7 @@ function buildWorkflow(deal: LocalDeal | null) {
 
   mockWorkflowValue = {
     actions: {
+      authorizeApartmentAccess: jest.fn(async () => true),
       cancelRemoteJob: jest.fn(async () => true),
       decideScopeChange: jest.fn(async () => true),
       submitReview: jest.fn(async () => true),
@@ -420,5 +421,66 @@ describe('CustomerHistorySurface phase context', () => {
       }
       runtime.confirm = originalConfirm
     }
+  })
+})
+
+describe('CustomerHistorySurface apartment access (§32.7)', () => {
+  function withAddressAccess(deal: LocalDeal, overrides: Record<string, unknown> = {}): LocalDeal {
+    return {
+      ...deal,
+      broadcast: deal.broadcast
+        ? {
+          ...deal.broadcast,
+          addressAccess: {
+            access_profile: {},
+            check_in_required: true,
+            customer_handoff_required: true,
+            evidence_mode: 'none' as const,
+            exact_unit_released: false,
+            identity_check_required: true,
+            release_stage: 'building_released' as const,
+            worker_checked_in: false,
+            ...overrides,
+          },
+        }
+        : null,
+    }
+  }
+
+  beforeEach(() => {
+    mockRouteParams = {}
+  })
+
+  it('hides the "Cho thợ lên" panel before the worker checks in', () => {
+    buildWorkflow(withAddressAccess(buildDeal('arrived')))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.queryByTestId('customer-history-apartment-access-panel')).toBeNull()
+    expect(screen.queryByTestId('customer-history-authorize-access')).toBeNull()
+  })
+
+  it('shows "Cho thợ lên" after the worker lobby check-in and calls the authorize action', () => {
+    buildWorkflow(withAddressAccess(buildDeal('arrived'), { worker_checked_in: true }))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-apartment-access-panel')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('customer-history-authorize-access'))
+    expect(mockWorkflowValue.actions.authorizeApartmentAccess).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the released note without an authorize button once the unit is released', () => {
+    buildWorkflow(withAddressAccess(buildDeal('arrived'), {
+      exact_unit_released: true,
+      release_stage: 'unit_released' as const,
+      worker_checked_in: true,
+    }))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-apartment-access-panel')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-history-authorize-access')).toBeNull()
+    expect(screen.getByTestId('customer-history-apartment-access-body')).toHaveTextContent(/Bạn đã cho thợ lên/)
   })
 })

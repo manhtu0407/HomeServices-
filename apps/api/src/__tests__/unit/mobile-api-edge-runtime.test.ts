@@ -3703,6 +3703,107 @@ describe('mobile-api Edge runtime helpers', () => {
     ])
   })
 
+  it('accepts a manual_photo check-in whose refs live in the dedicated access_check_in stage (§32.7)', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'worker_on_way',
+          // Dedicated ids: the in-memory push rate limiter persists across tests in
+          // this file, so reusing customer-1 here would starve later push assertions.
+          customer_id: 'customer-checkin-stage',
+          worker_id: 'worker-checkin-stage',
+          apartment_access_state: { release_stage: 'building_released' },
+        },
+        error: null,
+      },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-checkin-stage' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
+      status: 'arrived',
+      access_check_in: {
+        mode: 'manual_photo',
+        photo_urls: ['supabase://job-media/job-1/access_check_in/lobby.jpg'],
+      },
+    })).resolves.toMatchObject({
+      job_id: 'job-1',
+      from_status: 'worker_on_way',
+      to_status: 'arrived',
+    })
+
+    const updateCall = client.calls.find((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'update')
+    )
+    expect(updateCall?.operations).toContainEqual([
+      'update',
+      expect.objectContaining({
+        apartment_access_state: expect.objectContaining({
+          worker_checked_in: true,
+          exact_unit_released: false,
+          check_in: expect.objectContaining({
+            photo_urls: ['supabase://job-media/job-1/access_check_in/lobby.jpg'],
+          }),
+        }),
+      }),
+    ])
+  })
+
+  it('attaches an access_check_in photo while worker_on_way without touching completion evidence (§32.7)', async () => {
+    const jobId = '11111111-1111-1111-1111-111111111111'
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: jobId,
+          status: 'worker_on_way',
+          service_type: 'plumbing',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          photo_urls: [],
+          completion_photo_urls: [],
+        },
+        error: null,
+      },
+      { data: [], error: null },
+      { data: [{ id: 'asset-1' }], error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).attachJobMedia(ctx, jobId, {
+      assets: [{
+        object_path: `${jobId}/access_check_in/lobby.jpg`,
+        stage: 'access_check_in',
+        mime_type: 'image/jpeg',
+      }],
+    })).resolves.toMatchObject({
+      job_id: jobId,
+      media: [expect.objectContaining({ stage: 'access_check_in' })],
+    })
+
+    // A lobby photo must never merge into intake photos or completion evidence.
+    expect(client.calls.some((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) =>
+        op[0] === 'update' &&
+        (JSON.stringify(op[1]).includes('completion_photo_urls') || JSON.stringify(op[1]).includes('"photo_urls"'))
+      )
+    )).toBe(false)
+  })
+
   it('releases the exact unit only after the customer authorizes a worker check-in', async () => {
     const client = makeSequenceClient([
       {
@@ -4650,6 +4751,7 @@ describe('mobile-api Edge runtime helpers', () => {
         error: null,
       },
       { data: [], error: null },
+      { data: [], error: null },
       { data: [{ id: 'broadcast-new', worker_id: 'worker-new' }], error: null },
       { data: [{ notification_id: 'notification-worker', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
       { data: [{ id: 'token-worker', user_id: 'worker-new', push_token: 'ExponentPushToken[worker]' }], error: null },
@@ -5425,6 +5527,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: { address_lat: null, address_lng: null, problem_chips: ['pipe_leak'], service_problem_id: null, kael_problem_identified: null }, error: null },
       { data: [{ id: 'worker-1', rating: 4.8, total_jobs: 12, service_types: ['plumbing'], districts: ['q7'] }], error: null },
       { data: [], error: null },
+      { data: [], error: null },
       { data: [{ id: 'broadcast-1', worker_id: 'worker-1' }], error: null },
       { data: [{ notification_id: 'notification-1', created_at_ts: '2026-05-20T00:00:00.000Z' }], error: null },
       { data: [{ id: 'token-1', user_id: 'worker-1', push_token: 'ExponentPushToken[worker]' }], error: null },
@@ -5461,6 +5564,97 @@ describe('mobile-api Edge runtime helpers', () => {
         body: expect.stringContaining('/(worker)/jobs?broadcast_id=broadcast-1'),
       }),
     )
+  })
+
+  it('soft-deprioritizes a high-disintermediation-risk worker in matching without excluding them (§32.6)', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7', kael_price_max: 250000, final_price: null }, error: null },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+      { data: { address_lat: null, address_lng: null, problem_chips: [], service_problem_id: null, kael_problem_identified: null }, error: null },
+      {
+        data: [
+          // worker-risky would win the tie-break (more jobs) without the penalty.
+          { id: 'worker-risky', rating: 4.8, total_jobs: 30, service_types: ['plumbing'], districts: ['q7'] },
+          { id: 'worker-clean', rating: 4.8, total_jobs: 12, service_types: ['plumbing'], districts: ['q7'] },
+        ],
+        error: null,
+      },
+      { data: [], error: null },
+      { data: [{ worker_id: 'worker-risky', red_flags: { disintermediation_risk_count: 3 } }], error: null },
+      { data: [{ id: 'broadcast-1', worker_id: 'worker-clean' }, { id: 'broadcast-2', worker_id: 'worker-risky' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmSearch(ctx, 'job-1')).resolves.toMatchObject({
+      job_id: 'job-1',
+      status: 'broadcasting',
+      broadcast_sent: true,
+    })
+
+    const riskCall = client.calls.find((call) => call.table === 'worker_kael_memory')
+    expect(riskCall?.operations).toContainEqual(['select', 'worker_id, red_flags'])
+    const insertOp = client.calls.find((call) =>
+      call.table === 'job_broadcasts' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )?.operations.find((op) => op[0] === 'insert')
+    const insertedWorkers = (insertOp?.[1] as Array<{ worker_id: string }>).map((row) => row.worker_id)
+    // Penalty: equal-rating clean worker ranks first; risky worker is demoted, NOT excluded.
+    expect(insertedWorkers).toEqual(['worker-clean', 'worker-risky'])
+  })
+
+  it('does not penalize matching rank for a single weak disintermediation signal (§32.6)', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [] }))
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const client = makeSequenceClient([
+      { data: { id: 'job-1', status: 'awaiting_customer_confirm', customer_id: 'customer-1', service_type: 'plumbing', address_district: 'q7', kael_price_max: 250000, final_price: null }, error: null },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+      { data: { address_lat: null, address_lng: null, problem_chips: [], service_problem_id: null, kael_problem_identified: null }, error: null },
+      {
+        data: [
+          { id: 'worker-risky', rating: 4.8, total_jobs: 30, service_types: ['plumbing'], districts: ['q7'] },
+          { id: 'worker-clean', rating: 4.8, total_jobs: 12, service_types: ['plumbing'], districts: ['q7'] },
+        ],
+        error: null,
+      },
+      { data: [], error: null },
+      { data: [{ worker_id: 'worker-risky', red_flags: { disintermediation_risk_count: 1 } }], error: null },
+      { data: [{ id: 'broadcast-1', worker_id: 'worker-risky' }, { id: 'broadcast-2', worker_id: 'worker-clean' }], error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).confirmSearch(ctx, 'job-1')).resolves.toMatchObject({
+      job_id: 'job-1',
+      status: 'broadcasting',
+      broadcast_sent: true,
+    })
+
+    const insertOp = client.calls.find((call) =>
+      call.table === 'job_broadcasts' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )?.operations.find((op) => op[0] === 'insert')
+    const insertedWorkers = (insertOp?.[1] as Array<{ worker_id: string }>).map((row) => row.worker_id)
+    // Below the threshold (count 1 < 2) the ranking is untouched.
+    expect(insertedWorkers).toEqual(['worker-risky', 'worker-clean'])
   })
 
   it('blocks duplicate confirm-search retries when another retry already took the broadcast lease', async () => {
@@ -5559,6 +5753,7 @@ describe('mobile-api Edge runtime helpers', () => {
       { data: null, error: null },
       { data: { address_lat: null, address_lng: null, problem_chips: ['pipe_leak'], service_problem_id: null, kael_problem_identified: null }, error: null },
       { data: [{ id: 'worker-1' }], error: null },
+      { data: [], error: null },
       { data: [], error: null },
       { data: null, error: { code: 'PGRST500', message: 'insert failed' } },
       { data: { id: 'job-1' }, error: null },

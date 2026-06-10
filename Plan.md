@@ -10458,6 +10458,11 @@ v0.9 — 2026-06-07 — EXECUTED by Codex (PR #61/#62/#63 merged→main) + VERIF
                     workflow + code-read; tests NOT run in-env — no Deno/node). Implementation materially real
                     (~70%); §32.7 apartment-access partial/BROKEN, §32.8 partial/over-claimed, deploy-order risk
                     live (7 migrations). See §32.13 for verdict + remaining-gap build plan.
+v1.0 — 2026-06-10 — Execute §32.14 Steps 1–4 (Claude, Tu approve): worker check-in UI (manual_photo), customer
+                    "Cho thợ lên" + mobile authorizeApartmentAccess, §32.6 matching soft-penalty, §32.3 first-turn
+                    perceived-perf (option chốt: progress-poll-on-create, streaming-create = follow-up). Step 5
+                    skip (Tu 2026-06-10). Staging deploy gate (7 migrations + Edge + smoke) chạy cùng session,
+                    STAGING ONLY.
 ```
 
 ---
@@ -10485,11 +10490,11 @@ v0.9 — 2026-06-07 — EXECUTED by Codex (PR #61/#62/#63 merged→main) + VERIF
 **FOR CODEX to build + test** (Claude did NOT build these — they are security-critical, core-logic, or mobile-dependency; building them blind without a test run would violate "no fabrication"). Prioritized; each grounded in verification `file:line` + a concrete fix:
 
 - **[DONE · §32.7] Geofence distance gate** — BUILT + verified by Claude. The worker status handler now fetches the job's geocoded `address_lat/address_lng` and distance-gates a `geofence` unit-release check-in via `distanceKmBetween` within `ACCESS_GEOFENCE_RADIUS_KM` (~150 m), rejecting out-of-radius **and** no-building-coords check-ins with VALIDATION; `manual_photo` unchanged. 2 service-level tests added; full apps/api 1494 green. (Field-tuning the radius on a real HCMC tower remains operational.)
-- **[BACKEND DONE · §32.7] Customer authorization handshake ("Cho thợ lên").** BUILT + verified by Claude — the core "last 50 meters" fix. Worker check-in now records arrival WITHOUT releasing the unit (`buildCheckInAccessState`, `exact_unit_released:false`; `projectAddressAccess` keeps the worker at `building_released`). New `POST /jobs/:id/access/authorize` (gated customer/admin) → `authorizeApartmentAccess` releases the exact unit (`buildAuthorizedReleaseAccessState`) **only after** a worker check-in, rejecting authorize-before-check-in with `ACCESS_NOT_READY`. 4 service-level tests (check-in-no-release, authorize-releases, authorize-before-check-in-rejected, + the geofence pair); full apps/api **1496 green**. **Remaining (mobile, next):** customer "Cho thợ lên" button calling the route + the worker check-in UI below.
-- **[HIGH · §32.7] Wire worker UI to send `access_check_in`.** `worker-surfaces.tsx:1985,5440` call `workerUpdateStatus('arrived')` with NO check-in extras, so the whole check-in/unit-release path is dead in the real app. Fix: on `worker_mark_arrived`, capture GPS via `expo-location` (geofence mode) or prompt a lobby photo (manual_photo fallback), then `workerUpdateStatus('arrived', { access_check_in: {...} })`. Adds `expo-location` dep + permission handling. RNTL test.
-- **[MEDIUM · §32.6] Consume risk score in matching (de-prioritize half).** `worker_kael_memory.red_flags.disintermediation_risk_count` is written (`services.ts:5399-5409`) but never read; `findEligibleWorkers`/`rankEligibleWorkers` (`:7660-7724`) query `worker_profiles` only. Plan §32.6 deliverable is "→ de-prioritize matching + admin queue" — only the queue half exists. Fix: batch-load `red_flags` for candidates in the ranking path and apply a SOFT ranking penalty when `disintermediation_risk_count >= threshold (2-3, evidence-gated)` — penalty, not exclusion (plan: "không nuke worker khan hiếm vì tín hiệu yếu"). Test: high-risk worker ranks below an equal-rating clean worker.
+- **[BACKEND DONE · §32.7] Customer authorization handshake ("Cho thợ lên").** BUILT + verified by Claude — the core "last 50 meters" fix. Worker check-in now records arrival WITHOUT releasing the unit (`buildCheckInAccessState`, `exact_unit_released:false`; `projectAddressAccess` keeps the worker at `building_released`). New `POST /jobs/:id/access/authorize` (gated customer/admin) → `authorizeApartmentAccess` releases the exact unit (`buildAuthorizedReleaseAccessState`) **only after** a worker check-in, rejecting authorize-before-check-in with `ACCESS_NOT_READY`. 4 service-level tests (check-in-no-release, authorize-releases, authorize-before-check-in-rejected, + the geofence pair); full apps/api **1496 green**. **Mobile side DONE 2026-06-10 (Claude):** `jobService.authorizeApartmentAccess` + provider action + "Cho thợ lên" panel in `CustomerHistorySurface` keyed on the new `address_access.worker_checked_in` projection field (button only after check-in, released note after release); 3 RNTL tests green.
+- **[DONE 2026-06-10 · §32.7] Wire worker UI to send `access_check_in`.** BUILT + verified by Claude (manual_photo mode): `useWorkerArrivalCheckIn` hook wires BOTH call sites (`confirmWorkerProgressAction` + `ActiveWorkerJobCard`) — alert → lobby photo → upload to the NEW dedicated `access_check_in` media stage → `workerUpdateStatus('arrived', { access_check_in })`; explicit-confirm skip path keeps the job moving with the unit locked. New stage required a migration (`20260610075217`, applied to staging) because stage `after` is status-gated to repairing+ AND merges into `completion_photo_urls` — it also fixes the pre-existing `scope_change_evidence` CHECK gap (scope photos violated the live constraint). 3 RNTL tests + 2 service tests; mobile Jest 145 green. Geofence mode stays Step-5 (needs `expo-location`).
+- **[DONE 2026-06-10 · §32.6] Consume risk score in matching (de-prioritize half).** BUILT + verified by Claude: `queryEligibleWorkers` batch-loads `worker_kael_memory.red_flags` (fail-open on read error), `rankEligibleWorkers` applies a SOFT −15 score penalty at `disintermediation_risk_count >= 2` — penalty not exclusion; de-prioritization logged with job + worker ids. 2 Vitest tests (high-risk ranks below equal clean worker; count 1 has no effect); apps/api 128-file targeted run green (3 pre-existing fixture sequences updated for the extra read).
 - **[DONE · §32.8] Self-check on the case-2 demanding egress** — BUILT + verified by Claude (see "Built + VERIFIED" above); no longer a gap.
-- **[MEDIUM · §32.3] First-turn perceived-perf.** On the session-create turn, neither the progress poll nor SSE runs (`progressSessionId` is null at `kael-chat-surface.tsx:486`; create() is non-streaming at `:336/:592`), so the real stepper + streaming caret + post-turn "Thought for {n}s" only appear from turn 2. Fix: route the first turn through a streaming create, or start a short progress poll keyed on the returned session id once create() resolves. RNTL test on the create path.
+- **[DONE 2026-06-10 · §32.3] First-turn perceived-perf.** BUILT + verified by Claude per the locked poll-first option: `fetchFirstTurnProgress` one-shot fetches the terminal `kael_progress` snapshot the moment create() resolves (both create paths — pending-intake auto-create + composer first turn), so turn 1 gets the REAL stage trace for the post-turn stepper + "Thought for {n}s" disclosure (`showThoughtDisclosure` requires a non-empty trace). The during-create live stepper is impossible without a session id — streaming-create stays the follow-up. RNTL test green.
 - **[MEDIUM · §32.8 + §32.6 + deploy] Behavioral / regression tests.** Several guards are CI-verified only by source-string grep (`mobile-api-edge-schema.test.ts:1119`): (a) case-2 egress fallback on a money-leaking `responseText`; (b) dispute path returns the neutrality guard on a non-neutral summary; (c) worker-turn insert supplies `job_id` (NOT NULL since `20260605005000`); (d) the contact-guard `queue_type:'disintermediation_risk'` literal is a member of the `kael_admin_queue` CHECK list. Add real behavioral assertions so a rename/drop fails CI.
 - **[LOW · §32.7] Meeting-point ("Gặp ở sảnh") + no-show wiring.** No `meeting_point` field in `apartmentAccessProfileSchema` (`validation.ts:7-11`); no-show not tied to check-in. Add the schema field (suppress unit release when set) + structured no-show event on un-authorized check-in timeout.
 - **[LOW · §32.3] Copy drift.** Implemented stage/disclosure copy ("Kael analyzed in {n}s", fuller stage sentences) differs from the §32.5/§32.3 locked contract ("Thought for {n}s", terse + emoji). Reconcile to the contract OR have Tu ratify the current wording, then update tests.
@@ -10508,7 +10513,7 @@ v0.9 — 2026-06-07 — EXECUTED by Codex (PR #61/#62/#63 merged→main) + VERIF
 >
 > Toolchain for the build worktree `C:/tmp/home-services-s32-supplements`: `export PATH="$HOME/AppData/Local/Temp/hs-node/node-v22.11.0-win-x64:$PATH"`. On Windows always run Vitest/Jest single-fork (`--no-file-parallelism` / `--runInBand`) to avoid the fork kill-EPERM teardown flake.
 
-**Status snapshot.** Backend safety mechanism for the "last 50 meters" (§32.7) is **built + verified green** on this branch: geofence distance gate, the check-in→authorize handshake, and the worker notification. `apps/api` = **1496 passed, 0 failed** (single-fork). What remains is mostly **mobile UI** (the backend is dead until the app sends/calls it) plus two backend/UX gaps and the deploy/operational steps.
+**Status snapshot (updated 2026-06-10, Claude executed Steps 1–4).** The "last 50 meters" flow is now **wired end-to-end in code**: worker lobby check-in UI (manual_photo, dedicated `access_check_in` media stage + migration `20260610075217`), customer "Cho thợ lên" button, §32.6 matching soft-penalty, §32.3 first-turn progress trace. Evidence: mobile Jest **145/145**, mobile type-check clean, targeted apps/api Vitest **128/128** (full-suite run had 7 unrelated route-security timeouts under load that pass in isolation 28/28), shared Vitest green except one **pre-existing** wiring drift (`value: \`${completedJobs}\`` absent at HEAD — flagged separately, not from this change). Step 5 skipped (Tu 2026-06-10). Remaining: deploy/operational below.
 
 **Recommended build order** (each step independently shippable + testable):
 1. Worker check-in UI — manual_photo (HIGH) — makes the handshake reachable from the worker side.
@@ -10549,7 +10554,7 @@ Server then geofence-gates `mode:'geofence'` against the job's geocoded `address
 
 **Step 4 — §32.3 first-turn perceived-perf.** [MEDIUM · mobile]
 - *Why:* on the session-create turn neither the progress poll nor SSE runs (`progressSessionId` null at `kael-chat-surface.tsx:486`; `create()` non-streaming at ~`:336/:592`), so the real stepper + streaming caret + post-turn "Thought for {n}s" only appear from **turn 2**. First impression is the flat one.
-- *Build:* route the first turn through a streaming create, OR start a short progress poll keyed on the returned session id the moment `create()` resolves. RNTL test on the create path asserting the stepper/streaming shows on turn 1.
+- *Build (RECOMMENDED option locked 2026-06-10, simplicity-first):* start a short progress poll keyed on the returned session id the moment `create()` resolves — smaller diff, reuses the existing poll infra (`kael_progress` is written server-side from the create turn already). Routing the first turn through a streaming create stays a follow-up optimization, NOT this step. RNTL test on the create path asserting the stepper/streaming shows on turn 1.
 
 **Step 5 — Low-priority.**
 - *Geofence UI (§32.7):* add `expo-location` + permission handling, capture GPS on arrival, send `{ mode:'geofence', lat, lng, accuracy_m }`. Native dep → verify on a device; backend gate already enforces the 150 m radius.
@@ -10558,9 +10563,9 @@ Server then geofence-gates `mode:'geofence'` against the job's geocoded `address
 
 ---
 
-**Deploy gate (must precede ANY release that depends on §32).** [Tu/Codex — operational]
-- The new Edge code on this branch — `authorizeApartmentAccess` + the `/jobs/:id/access/authorize` route + the geofence gate + the check-in/authorize handshake rename + the worker notification — lives in `services.ts`/`router.ts`, so **`mobile-api` must be redeployed**. **No new migration is required** (it reuses `jobs.apartment_access_state` jsonb, free-text `job_events.event_type`, and free-text `notifications.event_type` via `insert_notification_atomic`).
-- **BUT** the 7 prior §32 migrations must already be applied **in order first** (`docs/ops/section32-deploy-order.md`): `20260604223000, 224500, 225500, 230500, 231500, 232500, 20260605005000`. Deploying the merged Edge against an un-migrated DB is a live-prod failure (e.g. the worker-turn insert needs `job_id NOT NULL` from `20260605005000`).
+**Deploy gate (must precede ANY release that depends on §32).** [Tu/Codex — operational; STAGING migration half CLOSED 2026-06-10]
+- **Staging migrations: DONE.** Verified via MCP 2026-06-10: all 7 §32 migrations + the 3 same-batch ones are applied on staging `xyylanuyflrjzbjzhqfl`, and the new `20260610075217_apartment_access_checkin_media_stage` was applied + constraint/policy verified live (it also fixed the pre-existing `scope_change_evidence` CHECK violation). **Production is untouched** (Tu scoped staging-only) — the production DB still needs the same list + `20260610075217` before any production Edge deploy.
+- **Staging Edge: STILL PENDING.** Staging `mobile-api` is v100, updated 2026-06-05 — it predates PR #64's authorize handshake AND today's changes (matching penalty, `access_check_in` stage validation, `worker_checked_in` projection). Redeploy `mobile-api` (needs `SUPABASE_ACCESS_TOKEN` + CLI — not available to the agent env), then run the smoke (needs the staging service-role key, also not agent-available): `SECTION32_RUN_LIVE=1 node apps/api/scripts/kael-section32-staging-smoke.mjs`.
 
 **Operational gaps (Tu/Codex run — not buildable here).**
 - Apply the migrations + deploy `mobile-api` + run `kael-section32-staging-smoke.mjs` (`SECTION32_RUN_LIVE=1`) → close **G1**.
@@ -10857,9 +10862,9 @@ Expo RN (MapLibre MapView + glass overlay)
 
 ### 37.4 Phases
 
-- **MP0 — Spike + BUILD GATE ⚠️ CODEX: KHÔNG VIẾT CODE APP TRƯỚC KHI MP0 PASS (read-only).** D1 đã LOCK Option-1 (không còn chờ Tu sign-off). MP0 = chứng minh Option-1 khả thi TRƯỚC khi đụng bất kỳ code app/Edge thật nào. Đọc authority (37.0.1) rồi làm **4 việc, mỗi việc có tiêu chí pass**:
+- **MP0 — Spike + BUILD GATE ⚠️ CODEX: KHÔNG VIẾT CODE APP TRƯỚC KHI MP0 PASS (read-only).** D1 đã LOCK Option-1 (không còn chờ Tu sign-off). MP0 = chứng minh Option-1 khả thi TRƯỚC khi đụng bất kỳ code app/Edge thật nào. **Owner split (2026-06-10):** việc 1–2 env-agnostic (agent không cần device làm được — research + prototype/tests); việc 3–4 **bắt buộc device thật + Expo dev-client** (Tu/Codex chạy theo handoff trong companion doc). Đọc authority (37.0.1) rồi làm **4 việc, mỗi việc có tiêu chí pass**:
   1. **ToS proxy** — đọc điều khoản VietMap (hoặc hỏi support): gói hiện tại có CHO phục vụ tiles qua backend proxy + chịu tải dồn 1 IP Edge không? *Pass:* có xác nhận bằng điều khoản/văn bản. *Nếu CẤM → STOP, báo Tu* (cân nhắc Option-2 cần amend RULES, hoặc đổi cách). Đây là rủi ro chặn lớn nhất → làm ĐẦU TIÊN.
-  2. **Edge `/map/style` rewrite (prototype, CHƯA vào app)** — dựng thử endpoint fetch `maps.vietmap.vn/maps/styles/tm/style.json?apikey=`, **rewrite mọi URL tiles/glyphs/sprite về proxy**, inject key server-side. *Pass:* trả style.json hợp lệ, **grep payload = 0 apikey lộ**, tiles/glyphs/sprite tải được qua proxy.
+  2. **Edge `/map/style` rewrite (prototype, CHƯA vào app)** — dựng thử endpoint fetch `maps.vietmap.vn/maps/styles/tm/style.json?apikey=`, **rewrite mọi URL tiles/glyphs/sprite về proxy**, inject key server-side. **Dựng như spike module/function staging RIÊNG (vd `map-proxy-spike`) — KHÔNG đụng `mobile-api` production function cho tới MP2;** logic rewrite viết thuần (pure function) để unit-test được không cần key. *Pass:* trả style.json hợp lệ, **grep payload = 0 apikey lộ**, tiles/glyphs/sprite tải được qua proxy.
   3. **VietMap SDK + styleURL ngoài** — thử `@vietmap/vietmap-gl-react-native` `MapView styleURL=<proxy>`; xác nhận SDK có/không tự gắn apikey lên sub-request (nếu có → proxy nhận/bỏ qua dummy key); glyphs/sprite hiển thị. *Pass:* map VietMap render THẬT qua proxy trên 1 device, **key KHÔNG có trong app**.
   4. **Expo compat** — cần dev-client/prebuild hay không → ảnh hưởng EAS. *Pass:* dựng được dev build chạy SDK. *Nếu native vướng không gỡ được →* **chốt fallback WebView + VietMap GL JS** (cùng proxy việc 2).
   **Output MP0:** companion doc `docs/design/worker-map-real-provider-20260608.md` ghi kết quả 4 việc + **CHỐT renderer native-hay-WebView** + ước lượng effort MP1–MP7. **Claude verify MP0 → chỉ khi PASS mới sang MP1.**
@@ -10898,8 +10903,9 @@ Directions (post-accept): POST /directions {jobId} -> {polyline, eta_minutes, di
 ### 37.7 Sequencing / Build Order
 
 ```
-MP0 (⚠️ BUILD GATE: 4-việc spike PASS + renderer CHỐT) → MP1 → MP2 → MP3 → MP4 → MP5 → MP6 → MP7
+MP0 (⚠️ BUILD GATE: 4-việc spike PASS + renderer CHỐT) → (MP1 ∥ MP2) → MP3 → MP4 → MP5 → MP6 → MP7
 ```
+**Parallel note (2026-06-10):** MP1 (coord-exposure API) và MP2 (Edge map proxy) độc lập nhau — chạy song song được sau MP0 để rút wall-clock. Ràng buộc thật: MP3 cần MP2 (tiles); MP5 cần MP1 (coords) + MP2.
 **⚠️ CODEX: MP0 read-only. KHÔNG viết code app/Edge thật cho tới khi MP0 PASS + companion doc có kết luận renderer (native vs WebView).** Claude verify MP0 trước khi sang MP1. §37 đụng chung `worker-surfaces.tsx` với §32 → phối hợp tránh xung đột edit.
 
 ---
@@ -10938,4 +10944,14 @@ v0.3 — 2026-06-08 — Theo yêu cầu Tu: nâng MP0 thành BUILD GATE chặn c
 v0.4 — 2026-06-08 — RENUMBER §33 → §37 (Tu đồng ý). Lý do: §33–§36 đã có chủ trên branch section32-supplements
                     (price-viz/vision/chat-ux/voice, PR #64). Map plan dời xuống §37 để hết đụng số khi cả hai
                     merge về main. Chỉ đổi số, nội dung giữ nguyên.
+v0.5 — 2026-06-10 — Optimization review (Claude, Tu approve): MP0 owner-split (việc 1–2 env-agnostic, việc 3–4
+                    device-bound → handoff); MP0 việc 2 chạy trên spike function staging riêng + pure rewrite
+                    function để unit-test không cần key; §37.7 ghi MP1 ∥ MP2 song song (MP3 cần MP2, MP5 cần
+                    MP1+MP2). Execute MP0 việc 1–2 bắt đầu cùng ngày.
+v0.6 — 2026-06-10 — MP0 việc 1–2 DONE (Claude). Việc 1 ToS verdict = SILENT (docs VietMap khuyến nghị backend
+                    integration + cho cache, nhưng KHÔNG có ToS công khai và tilemap docs giả định key client;
+                    comparables quốc tế cấm pattern này) → Tu gửi email xác nhận (template + decision rule ở
+                    companion doc); production tile traffic GATE trên văn bản trả lời. Việc 2 = spike function
+                    `map-proxy-spike` (pure rewrite + passthrough, KHÔNG đụng mobile-api) + 8 unit tests GREEN.
+                    Việc 3–4 = handoff device-bound (companion doc §MP0). GATE VẪN ĐÓNG — chưa sang MP1.
 ```

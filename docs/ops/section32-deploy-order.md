@@ -1,5 +1,7 @@
 # Section 32 — Deploy Order (must-apply migrations before the Edge deploy)
 
+> **STATUS UPDATE 2026-06-10 (Claude, verified live via Supabase MCP):** STAGING (`xyylanuyflrjzbjzhqfl`) has ALL migrations #1–#7 + the same-batch three applied, plus the new `20260610075217_apartment_access_checkin_media_stage` (applied + CHECK/policy verified — it also fixes the pre-existing `scope_change_evidence` CHECK gap). **Staging `mobile-api` is still v100 (updated 2026-06-05)** — it predates the PR #64 authorize handshake and the 2026-06-10 changes, so the Edge redeploy + smoke (steps below) remain open. **PRODUCTION (`iwevizmsedyqozxlawwl`) was deliberately not touched** — this full checklist (now 8 migrations: #1–#7 + `20260610075217`) still applies verbatim before any production Edge deploy.
+
 Date: 2026-06-07
 Author: Claude (verification of the merged PR #63 build), repo state `origin/main` @ `08d887e8`.
 Status: operational checklist. NOT executed against any DB in this session — see "Honesty" below.
