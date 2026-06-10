@@ -2399,18 +2399,18 @@ function isHttpUrl(value: unknown): value is string {
 }
 
 function isCompletionPhotoRef(value: unknown): value is string {
-  return isJobMediaStageRef(value, "after");
+  return isHttpUrl(value) || isSupabaseJobMediaStageRef(value, "after");
 }
 
-// §32.7: lobby check-in photos live in their own `access_check_in` stage so they
-// never merge into completion evidence; legacy `after` refs stay accepted.
+// §32.7 (Codex review PR #66): the check-in gates the customer unit-release handshake,
+// so its refs MUST be uploads into the controlled access_check_in stage — no arbitrary
+// http(s) URLs and no completion-stage refs. (The completion validator keeps its legacy
+// http acceptance; this new flow has no legacy to honor.)
 function isAccessCheckInPhotoRef(value: unknown): value is string {
-  return isJobMediaStageRef(value, "access_check_in") ||
-    isJobMediaStageRef(value, "after");
+  return isSupabaseJobMediaStageRef(value, "access_check_in");
 }
 
-function isJobMediaStageRef(value: unknown, stage: string): value is string {
-  if (isHttpUrl(value)) return true;
+function isSupabaseJobMediaStageRef(value: unknown, stage: string): value is string {
   if (typeof value !== "string") return false;
   try {
     const url = new URL(value);

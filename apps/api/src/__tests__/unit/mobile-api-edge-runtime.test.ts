@@ -3656,7 +3656,7 @@ describe('mobile-api Edge runtime helpers', () => {
       status: 'arrived',
       access_check_in: {
         mode: 'manual_photo',
-        photo_urls: ['supabase://job-media/job-1/after/lobby.jpg'],
+        photo_urls: ['supabase://job-media/job-1/access_check_in/lobby.jpg'],
         note: 'Đã đến sảnh và gặp bảo vệ.',
       },
     })).resolves.toMatchObject({
@@ -3681,7 +3681,7 @@ describe('mobile-api Edge runtime helpers', () => {
           evidence_mode: 'manual_photo',
           check_in: expect.objectContaining({
             mode: 'manual_photo',
-            photo_urls: ['supabase://job-media/job-1/after/lobby.jpg'],
+            photo_urls: ['supabase://job-media/job-1/access_check_in/lobby.jpg'],
           }),
         }),
       }),
@@ -3816,7 +3816,7 @@ describe('mobile-api Edge runtime helpers', () => {
             release_stage: 'building_released',
             exact_unit_released: false,
             worker_checked_in: true,
-            check_in: { mode: 'manual_photo' },
+            check_in: { mode: 'manual_photo', worker_id: 'worker-1' },
           },
         },
         error: null,
@@ -3884,6 +3884,120 @@ describe('mobile-api Edge runtime helpers', () => {
     }
     await expect(createEdgeServices({}).authorizeApartmentAccess(ctx, 'job-1'))
       .rejects.toMatchObject({ code: 'ACCESS_NOT_READY', status: 409 })
+  })
+
+  it('rejects apartment authorization once the job is no longer active (§32.7, Codex P1)', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'cancelled',
+          customer_id: 'customer-1',
+          worker_id: 'worker-1',
+          apartment_access_state: {
+            release_stage: 'building_released',
+            exact_unit_released: false,
+            worker_checked_in: true,
+            check_in: { mode: 'manual_photo', worker_id: 'worker-1' },
+          },
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+    await expect(createEdgeServices({}).authorizeApartmentAccess(ctx, 'job-1'))
+      .rejects.toMatchObject({ code: 'ACCESS_NOT_READY', status: 409 })
+    expect(client.calls.some((call) =>
+      call.operations.some((op) => op[0] === 'update')
+    )).toBe(false)
+  })
+
+  it('rejects apartment authorization when the check-in belongs to a replaced worker (§32.7, Codex P1)', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'arrived',
+          customer_id: 'customer-1',
+          worker_id: 'worker-replacement',
+          apartment_access_state: {
+            release_stage: 'building_released',
+            exact_unit_released: false,
+            worker_checked_in: true,
+            check_in: { mode: 'manual_photo', worker_id: 'worker-cancelled' },
+          },
+        },
+        error: null,
+      },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'customer-1' },
+      role: 'customer',
+      supabase: client,
+    }
+    await expect(createEdgeServices({}).authorizeApartmentAccess(ctx, 'job-1'))
+      .rejects.toMatchObject({ code: 'ACCESS_NOT_READY', status: 409 })
+    expect(client.calls.some((call) =>
+      call.operations.some((op) => op[0] === 'update')
+    )).toBe(false)
+  })
+
+  it('accepts a same-status arrived check-in retry after the skip path (§32.7, Codex P2)', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          id: 'job-1',
+          status: 'arrived',
+          // Dedicated ids: the in-memory push rate limiter persists across tests in
+          // this file (see the access_check_in stage test above).
+          customer_id: 'customer-checkin-retry',
+          worker_id: 'worker-checkin-retry',
+          apartment_access_state: { release_stage: 'building_released' },
+        },
+        error: null,
+      },
+      { data: { id: 'job-1' }, error: null },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-checkin-retry' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
+      status: 'arrived',
+      access_check_in: {
+        mode: 'manual_photo',
+        photo_urls: ['supabase://job-media/job-1/access_check_in/lobby.jpg'],
+      },
+    })).resolves.toMatchObject({
+      job_id: 'job-1',
+      from_status: 'arrived',
+      to_status: 'arrived',
+    })
+
+    const updateCall = client.calls.find((call) =>
+      call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'update')
+    )
+    expect(updateCall?.operations).toContainEqual([
+      'update',
+      expect.objectContaining({
+        apartment_access_state: expect.objectContaining({
+          worker_checked_in: true,
+          exact_unit_released: false,
+          check_in: expect.objectContaining({ worker_id: 'worker-checkin-retry' }),
+        }),
+      }),
+    ])
   })
 
   it('keeps worker job list exact unit locked before check-in release', async () => {
@@ -4734,6 +4848,7 @@ describe('mobile-api Edge runtime helpers', () => {
         }],
         error: null,
       },
+      { data: { id: 'job-1' }, error: null },
       {
         data: [
           { worker_id: 'worker-cancelled' },
