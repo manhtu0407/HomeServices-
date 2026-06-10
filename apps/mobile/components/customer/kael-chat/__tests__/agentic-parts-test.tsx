@@ -510,6 +510,53 @@ describe('Kael agentic phase cards', () => {
     expect(mockKaelChatCreate).toHaveBeenCalledTimes(1)
   })
 
+  it('fetches the terminal Kael progress once after the first-turn create resolves (§32.3 first-turn)', async () => {
+    let resolveCreate: ((value: unknown) => void) | undefined
+    mockKaelChatCreate.mockImplementation(() => new Promise((resolve) => {
+      resolveCreate = resolve
+    }))
+    mockKaelChatProgressGet.mockResolvedValue({
+      success: true,
+      data: {
+        session_id: 'kael_session_test_1',
+        progress: {
+          current_stage: 'price_synthesis',
+          failure_reason: null,
+          progress: 1,
+          status: 'completed',
+          updated_at: '2026-06-10T00:00:00.000Z',
+        },
+      },
+    })
+    setPendingKaelChatDraft({
+      addressLabel: 'Quan 7, TP.HCM',
+      districtLabel: 'Quan 7',
+      locale: 'vi',
+      mediaCount: 0,
+      message: 'Bong den nha toi bi hu roi',
+      photoDrafts: [],
+      problemChips: ['Bong den hu'],
+      serviceType: 'electrical',
+      source: 'booking',
+    })
+
+    render(<KaelChatSurface />)
+
+    await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledTimes(1))
+    // No session id exists during the create turn, so the live poll cannot run yet.
+    expect(mockKaelChatProgressGet).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveCreate?.({ success: true, data: buildKaelChatResponse() })
+      await Promise.resolve()
+    })
+
+    // One-shot terminal fetch keyed on the returned session id — turn 1 gets the
+    // real stage trace for the post-turn disclosure instead of an empty one.
+    await waitFor(() => expect(mockKaelChatProgressGet).toHaveBeenCalledWith('kael_session_test_1'))
+    expect(mockKaelChatProgressGet).toHaveBeenCalledTimes(1)
+  })
+
   it('routes a real Kael service session from the archive toolbar into Activity', async () => {
     mockRouteParams = { sessionId: 'kael_session_test_1' }
     mockKaelChatGet.mockResolvedValueOnce({

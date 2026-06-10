@@ -14,6 +14,7 @@ import type {
   CustomerActiveJobResponse,
   JobDetailResponse,
   JobMediaAttachInput,
+  ApartmentAccessAuthorizeResponse,
   JobMediaAttachResponse,
   JobMessageListResponse,
   JobMessageSendResponse,
@@ -132,6 +133,12 @@ export const jobService = {
       status,
       ...extras,
     })
+  },
+
+  // §32.7: customer "Cho thợ lên" — releases the exact unit. Backend rejects with
+  // ACCESS_NOT_READY (409) when the worker has not checked in at the lobby yet.
+  authorizeApartmentAccess(jobId: string) {
+    return api.post<ApartmentAccessAuthorizeResponse>(`/jobs/${jobId}/access/authorize`)
   },
 
   requestScopeChange(jobId: string, input: WorkerScopeChangeInput) {

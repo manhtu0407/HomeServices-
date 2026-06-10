@@ -421,6 +421,19 @@ describe('workflow support schemas', () => {
     ).not.toThrow()
   })
 
+  it('accepts the §32.7 worker lobby check-in photo as its own media stage', () => {
+    expect(() =>
+      jobMediaAttachSchema.parse({
+        assets: [{
+          object_path: '11111111-1111-1111-1111-111111111111/access_check_in/lobby.jpg',
+          stage: 'access_check_in',
+          mime_type: 'image/jpeg',
+          file_size_bytes: 1200,
+        }],
+      })
+    ).not.toThrow()
+  })
+
   it('validates device push token registration payloads', () => {
     expect(devicePushTokenSchema.parse({
       platform: 'ios',

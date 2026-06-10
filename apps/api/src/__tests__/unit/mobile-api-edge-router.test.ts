@@ -80,6 +80,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     acceptBroadcast: vi.fn(),
     declineBroadcast: vi.fn(),
     updateJobStatus: vi.fn(),
+    authorizeApartmentAccess: vi.fn(),
     requestScopeChange: vi.fn(),
     askKaelForWorker: vi.fn(),
     createWorkerKaelChat: vi.fn(),

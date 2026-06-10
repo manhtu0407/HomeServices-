@@ -855,6 +855,16 @@ const workerActionCopy = {
       cancelReasonBody: 'Nhập lý do cụ thể. Hệ thống sẽ hủy lượt nhận việc này và bắt đầu tìm thợ thay thế sau khi gửi.',
       cancelConfirmTitle: 'Gửi yêu cầu hủy việc?',
       cancelConfirmBody: 'Sau khi gửi, lượt nhận việc của bạn sẽ được hủy và hệ thống tự động tìm thợ thay thế cho khách.',
+      arrivalCheckInTitle: 'Xác nhận đã tới sảnh?',
+      arrivalCheckInBody: 'Thêm 1 ảnh sảnh hoặc cửa tòa nhà để check-in. Số căn hộ chính xác chỉ mở sau khi khách bấm "Cho thợ lên".',
+      arrivalPickPhoto: 'Thêm ảnh sảnh',
+      arrivalSkip: 'Tiếp tục không check-in',
+      arrivalSkipConfirmTitle: 'Bỏ qua check-in?',
+      arrivalSkipConfirmBody: 'Không check-in thì khách không thể mở số căn hộ trong app — bạn sẽ cần gặp khách ở sảnh.',
+      arrivalSkipConfirmCta: 'Vẫn báo đã đến',
+      arrivalPermissionTitle: 'Cần quyền chọn ảnh',
+      arrivalPermissionBody: 'Cho phép truy cập ảnh để thêm ảnh check-in tại sảnh.',
+      arrivalUploadTitle: 'Chưa tải được ảnh check-in',
     },
   },
   en: {
@@ -905,6 +915,16 @@ const workerActionCopy = {
       cancelReasonBody: 'Enter a specific reason. The system will cancel this worker assignment and begin replacement search after you send.',
       cancelConfirmTitle: 'Send cancellation request?',
       cancelConfirmBody: 'After you send, this worker assignment will be cancelled and the system will automatically search for a replacement.',
+      arrivalCheckInTitle: 'Confirm lobby arrival?',
+      arrivalCheckInBody: 'Add one lobby or building-entrance photo to check in. The exact unit number unlocks only after the customer taps "Let the worker up".',
+      arrivalPickPhoto: 'Add lobby photo',
+      arrivalSkip: 'Continue without check-in',
+      arrivalSkipConfirmTitle: 'Skip check-in?',
+      arrivalSkipConfirmBody: 'Without a check-in the customer cannot release the exact unit in-app — you will need to meet them in the lobby.',
+      arrivalSkipConfirmCta: 'Mark arrived anyway',
+      arrivalPermissionTitle: 'Photo permission required',
+      arrivalPermissionBody: 'Allow photo access to add the lobby check-in photo.',
+      arrivalUploadTitle: 'Check-in photo upload failed',
     },
   },
 } as const
@@ -1935,6 +1955,7 @@ function ActiveWorkerJobCard({ body, briefLines, status, title }: { body: string
   const { actions, selectors } = useFrontendWorkflow()
   const { copy, language, tokens } = useWorkerUi()
   const { replace } = useRouter()
+  const confirmArrivalCheckIn = useWorkerArrivalCheckIn()
   const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus, language) : null
   const nextStatus = nextAction && nextAction.type !== 'worker_complete_job' ? workerStatusForAction(nextAction.type) : null
   const needsCompletionEvidence = nextAction?.type === 'worker_complete_job'
@@ -1982,7 +2003,18 @@ function ActiveWorkerJobCard({ body, briefLines, status, title }: { body: string
       <View style={styles.actionRow}>
         <PressButton label={copy.jobs.jobRoomCta} onPress={() => replace('/(worker)/chat')} testID="worker-jobs-open-jobroom" />
         {nextAction && nextStatus ? (
-          <PressButton secondary label={nextAction.label} onPress={() => void actions.workerUpdateStatus(nextStatus)} testID="worker-jobs-next-status-action" />
+          <PressButton
+            secondary
+            label={nextAction.label}
+            onPress={() => {
+              if (nextAction.type === 'worker_mark_arrived') {
+                confirmArrivalCheckIn()
+                return
+              }
+              void actions.workerUpdateStatus(nextStatus)
+            }}
+            testID="worker-jobs-next-status-action"
+          />
         ) : null}
         {needsCompletionEvidence ? (
           <PressButton secondary label={nextAction.label} onPress={() => replace('/(worker)/jobs?tab=needs')} testID="worker-jobs-completion-evidence-route" />
@@ -5306,6 +5338,58 @@ function workerStatusForAction(action: WorkerProgressAction): Extract<LocalDealS
   return null
 }
 
+// §32.7: arrival = lobby check-in (manual_photo). The check-in records arrival WITHOUT
+// releasing the exact unit — that releases only after the customer authorizes (A10
+// "Cho thợ lên"). Skipping the photo keeps the job moving but leaves the unit locked.
+function useWorkerArrivalCheckIn() {
+  const { actions, state } = useFrontendWorkflow()
+  const { language } = useWorkerUi()
+  const actionCopy = workerActionCopy[language]
+  const jobId = getWorkerVisibleDeal(state.deal)?.id ?? ''
+  return useCallback(() => {
+    const markArrivedWithoutCheckIn = () => {
+      Alert.alert(actionCopy.alerts.arrivalSkipConfirmTitle, actionCopy.alerts.arrivalSkipConfirmBody, [
+        { text: actionCopy.review, style: 'cancel' },
+        { text: actionCopy.alerts.arrivalSkipConfirmCta, onPress: () => void actions.workerUpdateStatus('arrived') },
+      ])
+    }
+    const pickPhotoAndCheckIn = async () => {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert(actionCopy.alerts.arrivalPermissionTitle, actionCopy.alerts.arrivalPermissionBody)
+        return
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsMultipleSelection: false,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.86,
+        selectionLimit: 1,
+      })
+      if (result.canceled || !result.assets[0]) return
+      const asset = result.assets[0]
+      const uploaded = await uploadJobMediaDrafts(jobId, [{
+        uri: asset.uri,
+        type: 'image',
+        fileName: asset.fileName ?? asset.uri.split('/').pop(),
+        mimeType: asset.mimeType ?? undefined,
+        fileSizeBytes: asset.fileSize ?? undefined,
+      }], 'access_check_in')
+      if (!uploaded.success) {
+        Alert.alert(actionCopy.alerts.arrivalUploadTitle, uploaded.error)
+        return
+      }
+      await actions.workerUpdateStatus('arrived', {
+        access_check_in: { mode: 'manual_photo', photo_urls: uploaded.mediaRefs },
+      })
+    }
+    Alert.alert(actionCopy.alerts.arrivalCheckInTitle, actionCopy.alerts.arrivalCheckInBody, [
+      { text: actionCopy.review, style: 'cancel' },
+      { text: actionCopy.alerts.arrivalSkip, onPress: markArrivedWithoutCheckIn },
+      { text: actionCopy.alerts.arrivalPickPhoto, onPress: () => void pickPhotoAndCheckIn() },
+    ])
+  }, [actionCopy, actions, jobId])
+}
+
 type IncomingRequestDraftField =
   | 'cancellationReasonDraft'
   | 'completionNoteDraft'
@@ -5358,6 +5442,7 @@ function IncomingRequestSheet({ compact = false, material = 'standard' }: { comp
   const { copy, language, tokens } = useWorkerUi()
   const { actions, selectors, state } = useFrontendWorkflow()
   const actionCopy = workerActionCopy[language]
+  const confirmArrivalCheckIn = useWorkerArrivalCheckIn()
   const [requestDrafts, requestDraftDispatch] = useReducer(incomingRequestDraftReducer, EMPTY_INCOMING_REQUEST_DRAFTS)
   const [isUploadingScope, setIsUploadingScope] = useState(false)
   const { cancellationReasonDraft, completionNoteDraft, completionPhotos, scopePhotos, scopeReasonDraft } = requestDrafts
@@ -5436,6 +5521,10 @@ function IncomingRequestSheet({ compact = false, material = 'standard' }: { comp
   const confirmWorkerProgressAction = (action: { label: string; type: WorkerProgressAction }) => {
     const nextStatus = workerStatusForAction(action.type)
     if (!nextStatus) return
+    if (action.type === 'worker_mark_arrived') {
+      confirmArrivalCheckIn()
+      return
+    }
     if (action.type !== 'worker_complete_job') {
       void actions.workerUpdateStatus(nextStatus)
       return

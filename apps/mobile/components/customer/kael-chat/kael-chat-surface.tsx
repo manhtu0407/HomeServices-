@@ -348,6 +348,7 @@ function usePendingIntakeSession({
           clearStableClientRequestId(pendingChatCreateClientRequestRef, requestFingerprint)
         }
         dispatch({ type: 'sendSucceeded', session: result.data, clearDraft: false })
+        fetchFirstTurnProgress(result.data.session.id, dispatch)
       } else {
         dispatch({ type: 'sendFailed', error: localizedKaelChatError(result.error, language) })
       }
@@ -363,6 +364,22 @@ function usePendingIntakeSession({
       cancelled = true
     }
   }, [addressDistrict, addressDistrictRef, addressLabel, dispatch, language, pendingChatCreateClientRequestRef, pendingIntake, pendingIntakeRetryNonce, pendingIntakeSentRef, routeSessionId, selectedService, session, text.errorNoService, text.errorUnknown])
+}
+
+// §32.3 first-turn perceived-perf (§32.14 Step 4): the create turn has no session id
+// until the response lands, so the live poll/SSE never runs and turn 1 ends with an
+// empty stage trace. Fetch the terminal progress snapshot once the session id exists so
+// the real post-turn stepper + "Thought for {n}s" disclosure appear from the very first
+// turn. progressCleared keeps the live stepper from re-opening after the turn is done.
+function fetchFirstTurnProgress(sessionId: string, dispatch: Dispatch<KaelChatAction>) {
+  void kaelChatProgressService
+    .get(sessionId)
+    .then((result) => {
+      if (!result.success || !result.data.progress) return
+      dispatch({ type: 'progressUpdated', progress: result.data.progress })
+      dispatch({ type: 'progressCleared' })
+    })
+    .catch(() => undefined)
 }
 
 function useKaelChatProgressPolling(
@@ -559,6 +576,7 @@ export function KaelChatSurface() {
     }
 
     dispatch({ type: 'sendStarted' })
+    const wasFirstTurn = !session
 
     try {
       const addressPayload = addressLabel.trim()
@@ -612,6 +630,7 @@ export function KaelChatSurface() {
 
       if (result.success) {
         dispatch({ type: 'sendSucceeded', session: result.data })
+        if (wasFirstTurn) fetchFirstTurnProgress(result.data.session.id, dispatch)
       } else {
         dispatch({ type: 'sendFailed', error: localizedKaelChatError(result.error, language) })
       }

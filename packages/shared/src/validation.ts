@@ -249,7 +249,7 @@ export const workerCancellationDecisionSchema = z.object({
 export const jobMediaAttachSchema = z.object({
   assets: z.array(z.object({
     object_path: z.string().min(10).max(500),
-    stage: z.enum(['before', 'after', 'kael_reference', 'cancellation_evidence', 'scope_change_evidence']),
+    stage: z.enum(['before', 'after', 'kael_reference', 'cancellation_evidence', 'scope_change_evidence', 'access_check_in']),
     mime_type: z.string().min(3).max(120).optional(),
     file_size_bytes: z.number().int().min(0).max(26_214_400).optional(),
   })).min(1).max(5),

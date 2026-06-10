@@ -3,6 +3,7 @@ import type { ApartmentAccessProfileInput, BroadcastStatus, ComplexityLevel, Job
 export type AddressAccessView = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
+  worker_checked_in: boolean
   check_in_required: boolean
   identity_check_required: boolean
   customer_handoff_required: boolean
@@ -509,7 +510,7 @@ export type WorkerCancellationDecisionResponse = {
   message: string
 }
 
-export type JobMediaStage = 'before' | 'after' | 'kael_reference' | 'cancellation_evidence' | 'scope_change_evidence'
+export type JobMediaStage = 'before' | 'after' | 'kael_reference' | 'cancellation_evidence' | 'scope_change_evidence' | 'access_check_in'
 
 export type JobMediaAttachInput = {
   assets: {
@@ -518,6 +519,12 @@ export type JobMediaAttachInput = {
     mime_type?: string
     file_size_bytes?: number
   }[]
+}
+
+export type ApartmentAccessAuthorizeResponse = {
+  job_id: string
+  release_stage: string
+  already_authorized: boolean
 }
 
 export type JobMediaAttachResponse = {

@@ -81,6 +81,7 @@ type FrontendWorkflowActions = {
   workerSubmitRegistration: (input: WorkerRegisterInput) => Promise<boolean>
   decideScopeChange: (scopeChangeId: string, input: CustomerScopeDecisionInput) => Promise<boolean>
   customerConfirmCompletion: () => Promise<boolean>
+  authorizeApartmentAccess: () => Promise<boolean>
   submitReview: (input: Omit<ReviewInput, 'job_id'>) => Promise<boolean>
   workerUpdateAvailability: (isAvailable: boolean) => Promise<boolean>
   refreshNotifications: () => Promise<boolean>
@@ -569,6 +570,16 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [refreshCurrentJob, setRemoteError])
 
+  // §32.7: customer "Cho thợ lên" — releases the exact unit after the worker's lobby check-in.
+  const authorizeApartmentAccess = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để mở quyền vào căn hộ')
+    const authorized = await jobService.authorizeApartmentAccess(jobId)
+    if (!authorized.success) return setRemoteError(authorized.error)
+    await refreshCurrentJob()
+    return true
+  }, [refreshCurrentJob, setRemoteError])
+
   const submitReview = useCallback(async (input: Omit<ReviewInput, 'job_id'>) => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để đánh giá')
@@ -632,11 +643,13 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerSubmitRegistration,
     decideScopeChange,
     customerConfirmCompletion,
+    authorizeApartmentAccess,
     submitReview,
     workerUpdateAvailability,
     refreshNotifications,
     markNotificationRead,
   }), [
+    authorizeApartmentAccess,
     cancelRemoteJob,
     confirmRemoteSearch,
     createRemoteJobFromDraft,

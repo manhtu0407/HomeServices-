@@ -208,6 +208,7 @@ type AvailabilityToggleResponse = {
 type AddressAccessView = {
   release_stage: "area_only" | "building_released" | "unit_released";
   exact_unit_released: boolean;
+  worker_checked_in: boolean;
   check_in_required: boolean;
   identity_check_required: boolean;
   customer_handoff_required: boolean;
@@ -485,7 +486,7 @@ type JobMediaAttachResponse = {
     bucket_id: "job-media";
     object_path: string;
     storage_ref: string;
-    stage: "before" | "after" | "kael_reference" | "cancellation_evidence" | "scope_change_evidence";
+    stage: "before" | "after" | "kael_reference" | "cancellation_evidence" | "scope_change_evidence" | "access_check_in";
   }[];
 };
 type JobMessageResponse = {
@@ -1526,10 +1527,12 @@ function matchRoute(request: Request): Route | null {
 
   const accessAuthorize = path.match(/^\/jobs\/([^/]+)\/access\/authorize$/);
   if (method === "POST" && accessAuthorize) {
+    const accessAuthorizeJobId = safeDecodePathSegment(accessAuthorize[1] ?? "");
+    if (!accessAuthorizeJobId) return null;
     return {
       kind: "jobs.accessAuthorize",
       method: "POST",
-      jobId: safeDecodePathSegment(accessAuthorize[1] ?? ""),
+      jobId: accessAuthorizeJobId,
       roles: ["customer", "admin"],
     };
   }
@@ -2314,7 +2317,7 @@ function parseWorkerAccessCheckIn(
     }
     if (
       rawPhotoUrls.length > 5 ||
-      rawPhotoUrls.some((item) => !isCompletionPhotoRef(item))
+      rawPhotoUrls.some((item) => !isAccessCheckInPhotoRef(item))
     ) {
       apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
     }
@@ -2396,7 +2399,18 @@ function isHttpUrl(value: unknown): value is string {
 }
 
 function isCompletionPhotoRef(value: unknown): value is string {
-  if (isHttpUrl(value)) return true;
+  return isHttpUrl(value) || isSupabaseJobMediaStageRef(value, "after");
+}
+
+// §32.7 (Codex review PR #66): the check-in gates the customer unit-release handshake,
+// so its refs MUST be uploads into the controlled access_check_in stage — no arbitrary
+// http(s) URLs and no completion-stage refs. (The completion validator keeps its legacy
+// http acceptance; this new flow has no legacy to honor.)
+function isAccessCheckInPhotoRef(value: unknown): value is string {
+  return isSupabaseJobMediaStageRef(value, "access_check_in");
+}
+
+function isSupabaseJobMediaStageRef(value: unknown, stage: string): value is string {
   if (typeof value !== "string") return false;
   try {
     const url = new URL(value);
@@ -2404,7 +2418,7 @@ function isCompletionPhotoRef(value: unknown): value is string {
     return url.protocol === "supabase:" &&
       url.hostname === "job-media" &&
       pathParts.length >= 3 &&
-      pathParts[1] === "after" &&
+      pathParts[1] === stage &&
       !pathParts.some((part) => part === "." || part === "..");
   } catch {
     return false;

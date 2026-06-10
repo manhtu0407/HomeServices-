@@ -184,6 +184,7 @@ type AddressParts = {
 type AddressAccessView = {
   release_stage: AddressAccessStage;
   exact_unit_released: boolean;
+  worker_checked_in: boolean;
   check_in_required: boolean;
   identity_check_required: boolean;
   customer_handoff_required: boolean;
@@ -3579,12 +3580,22 @@ async function updateJobStatus(
       409,
     );
   }
-  const transition = validateWorkflowTransition({
+  // §32.7 (Codex review PR #66): a check-in can legitimately arrive as `arrived -> arrived`
+  // — the client retries after losing the response of a successful flip, or the worker
+  // first took the explicit "continue without check-in" path and checks in afterwards.
+  // The transition validator rejects same-status moves, so treat this case as a
+  // check-in-only command instead of a transition.
+  const isSameStatusCheckIn = input.status === "arrived" &&
+    job.status === "arrived" &&
+    Boolean(input.access_check_in);
+  const transition = isSameStatusCheckIn ? null : validateWorkflowTransition({
     event: input.status === "completed_by_worker" ? "worker_completed" : "worker_status_advanced",
     from: job.status as JobStatus,
     to: input.status,
   });
-  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
+  if (transition && !transition.valid) {
+    apiFailure("INVALID_STATUS", transition.error, 409);
+  }
 
   const now = new Date().toISOString();
   const update: Record<string, unknown> = { status: input.status };
@@ -3593,7 +3604,7 @@ async function updateJobStatus(
     completion_photo_urls?: string[];
   } | null = null;
   let accessReleaseMetadata: Record<string, unknown> | null = null;
-  if (transition.timestampColumn) update[transition.timestampColumn] = now;
+  if (transition?.timestampColumn) update[transition.timestampColumn] = now;
   if (input.access_check_in) {
     if (input.status !== "arrived") {
       apiFailure("VALIDATION", "D\u1eef li\u1ec7u check-in kh\u00f4ng h\u1ee3p l\u1ec7", 400);
@@ -3639,6 +3650,7 @@ async function updateJobStatus(
       job.apartment_access_state,
       input.access_check_in,
       now,
+      nullableString(job.worker_id) ?? ctx.user.id,
     );
     update.apartment_access_state = accessState;
     accessReleaseMetadata = {
@@ -5024,6 +5036,24 @@ async function requestWorkerCancellation(
     : "Đã gửi yêu cầu hủy việc.";
 
   if (cancellationStatus === "approved") {
+    // §32.7 (Codex review PR #66): the replacement search reuses the job row, so the
+    // cancelled worker's check-in (or an authorized unit release) must not carry over
+    // to the next assignee. Fail-open with a warn — authorize is also defended by the
+    // per-worker check-in binding, so a failed reset cannot release the unit by itself.
+    const accessReset = await dbQuery(
+      client
+        .from("jobs")
+        .update({ apartment_access_state: {} })
+        .eq("id", jobId)
+        .select("id")
+        .maybeSingle(),
+    );
+    if (accessReset.error) {
+      console.warn("mobile-api apartment access reset failed after worker cancellation", {
+        jobId,
+        errorCode: accessReset.error.code,
+      });
+    }
     const district = normalizeServiceAreaDistrict(nullableString(row.district_code) ?? "");
     if (district) {
       const previousRecipients = await listBroadcastRecipientWorkerIds(client, jobId);
@@ -7777,17 +7807,66 @@ async function queryEligibleWorkers(
       .map((job) => asString(job.worker_id))
       .filter(Boolean),
   );
+  const riskCounts = await loadDisintermediationRiskCounts(client, candidateIds);
+  const deprioritizedIds = candidateIds.filter((id) =>
+    (riskCounts.get(id) ?? 0) >= DISINTERMEDIATION_RISK_PENALTY_THRESHOLD
+  );
+  if (deprioritizedIds.length > 0) {
+    // §32.6: no silent matching changes — record which candidates got the soft penalty.
+    console.info("mobile-api matching soft-deprioritized workers (disintermediation risk)", {
+      jobId: options.jobId ?? null,
+      workerIds: deprioritizedIds,
+    });
+  }
   return {
     success: true as const,
     workers: rankEligibleWorkers(
       candidates.filter((worker) => !busyWorkerIds.has(asString(worker.id))),
       jobGeo,
+      riskCounts,
     )
       .slice(0, limit)
       .map((worker) => ({
         id: asString(worker.id),
       })),
   };
+}
+
+// §32.6: matching consumes the disintermediation risk signal as a SOFT ranking
+// penalty — never an exclusion ("không nuke worker khan hiếm vì tín hiệu yếu").
+// Threshold 2 = a single weak signal has no effect; the 15-point penalty ranks a
+// flagged worker below an equal-rating clean worker (~1.5 rating stars) without
+// removing them from the pool.
+const DISINTERMEDIATION_RISK_PENALTY_THRESHOLD = 2;
+const DISINTERMEDIATION_RISK_SCORE_PENALTY = 15;
+
+async function loadDisintermediationRiskCounts(
+  client: DbClient,
+  workerIds: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (workerIds.length === 0) return counts;
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("worker_kael_memory")
+      .select("worker_id, red_flags")
+      .in("worker_id", workerIds),
+  );
+  if (result.error) {
+    // Fail open: a risk-signal read failure must not block matching.
+    console.warn("mobile-api disintermediation risk load failed", {
+      errorCode: result.error.code,
+      workerCount: workerIds.length,
+    });
+    return counts;
+  }
+  for (const row of result.data ?? []) {
+    const workerId = asString(row.worker_id);
+    const redFlags = nullableRecord(row.red_flags) ?? {};
+    const count = asNumber(redFlags.disintermediation_risk_count);
+    if (workerId && count > 0) counts.set(workerId, count);
+  }
+  return counts;
 }
 
 async function loadJobGeoForMatching(client: DbClient, jobId: string) {
@@ -7820,6 +7899,7 @@ async function loadJobGeoForMatching(client: DbClient, jobId: string) {
 function rankEligibleWorkers(
   workers: Array<Record<string, unknown>>,
   jobGeo: Awaited<ReturnType<typeof loadJobGeoForMatching>>,
+  riskCounts: Map<string, number> = new Map(),
 ) {
   return workers
     .map((worker) => {
@@ -7839,11 +7919,16 @@ function rankEligibleWorkers(
       const distanceScore = distanceKm === null || distanceKm <= radius
         ? 0
         : -(distanceKm - radius) * 2;
+      const riskCount = riskCounts.get(asString(worker.id)) ?? 0;
+      const riskPenalty = riskCount >= DISINTERMEDIATION_RISK_PENALTY_THRESHOLD
+        ? DISINTERMEDIATION_RISK_SCORE_PENALTY
+        : 0;
       return {
         worker,
         rating,
         totalJobs,
-        score: rating * 10 + (specializationMatch ? 20 : 0) + distanceScore,
+        score: rating * 10 + (specializationMatch ? 20 : 0) + distanceScore -
+          riskPenalty,
       };
     })
     .sort((left, right) =>
@@ -8541,7 +8626,7 @@ function validateJobMediaPath(
 ) {
   const expectedPrefix = `${jobId}/${stage}/`;
   const safePathPattern =
-    /^[0-9a-fA-F-]{36}\/(?:before|after|kael_reference|cancellation_evidence|scope_change_evidence)\/[A-Za-z0-9._-]+$/;
+    /^[0-9a-fA-F-]{36}\/(?:before|after|kael_reference|cancellation_evidence|scope_change_evidence|access_check_in)\/[A-Za-z0-9._-]+$/;
   if (
     !objectPath.startsWith(expectedPrefix) ||
     objectPath.includes("..") ||
@@ -8769,6 +8854,15 @@ function projectAddressAccess(
     : "area_only";
   const stage = options.forcedStage ?? releasedStage;
   const evidenceMode = accessEvidenceMode(state);
+  // §32.7 (Codex review PR #66): a check-in belongs to the worker who made it — after a
+  // replacement, the previous assignee's check-in must not show as the new worker's.
+  const checkInRecord = nullableRecord(state.check_in);
+  const checkInWorkerId = nullableString(checkInRecord?.worker_id);
+  const rowWorkerId = nullableString(row.worker_id);
+  const workerCheckedIn =
+    (state.worker_checked_in === true || checkInRecord !== null) &&
+    (checkInWorkerId === null || rowWorkerId === null ||
+      checkInWorkerId === rowWorkerId);
   const workerAddress = stage === "unit_released"
     ? rawAddress
     : stage === "building_released"
@@ -8792,6 +8886,7 @@ function projectAddressAccess(
       profile,
       role === "worker" ? stage : releasedStage,
       evidenceMode,
+      workerCheckedIn,
     ),
   };
 }
@@ -8809,12 +8904,18 @@ function buildAddressAccessView(
   profile: ApartmentAccessProfileInput,
   stage: AddressAccessStage,
   evidenceMode: AddressAccessEvidenceMode,
+  workerCheckedIn: boolean,
 ): AddressAccessView {
   const exact = stage === "unit_released";
   return {
     release_stage: stage,
     exact_unit_released: exact,
-    check_in_required: !exact,
+    // §32.7: the customer "Cho thợ lên" button keys on this — it must appear only
+    // after a worker check-in and before the unit is released.
+    worker_checked_in: workerCheckedIn,
+    // §32.7 (Codex review PR #66): checked-in-but-not-yet-authorized must not keep
+    // claiming a check-in is required — the stored state already says it happened.
+    check_in_required: !exact && !workerCheckedIn,
     identity_check_required: true,
     customer_handoff_required: true,
     evidence_mode: exact ? evidenceMode : "none",
@@ -8859,6 +8960,16 @@ async function authorizeApartmentAccess(ctx: MobileApiContext, jobId: string) {
     select:
       "id, status, customer_id, worker_id, apartment_access_profile, apartment_access_state, address_building, address_unit, address_floor, address_district",
   });
+  // §32.7 (Codex review PR #66): the unit may only be released while the job is still
+  // running — a stale client or direct POST after cancellation/completion must not
+  // disclose the exact unit to a worker who is no longer on an active assignment.
+  if (!ACTIVE_WORKER_JOB_STATUSES.includes(job.status as JobStatus)) {
+    apiFailure(
+      "ACCESS_NOT_READY",
+      "Yêu cầu không còn hoạt động nên không thể mở quyền vào căn hộ.",
+      409,
+    );
+  }
   const state = asRecord(job.apartment_access_state);
   if (state.exact_unit_released === true) {
     return {
@@ -8867,8 +8978,16 @@ async function authorizeApartmentAccess(ctx: MobileApiContext, jobId: string) {
       already_authorized: true as const,
     };
   }
-  const workerCheckedIn = state.worker_checked_in === true ||
-    nullableRecord(state.check_in) !== null;
+  // §32.7 (Codex review PR #66): the check-in must belong to the CURRENT worker —
+  // after a replacement, the previous assignee's check-in must not unlock the unit
+  // for the next one. Pre-binding states (no worker_id on the check-in) are rejected
+  // too; the worker simply re-checks-in (same-status check-in is supported).
+  const checkInWorkerId = nullableString(nullableRecord(state.check_in)?.worker_id);
+  const currentWorkerId = nullableString(job.worker_id);
+  const workerCheckedIn = (state.worker_checked_in === true ||
+    nullableRecord(state.check_in) !== null) &&
+    checkInWorkerId !== null && currentWorkerId !== null &&
+    checkInWorkerId === currentWorkerId;
   if (!workerCheckedIn) {
     apiFailure(
       "ACCESS_NOT_READY",
@@ -8942,6 +9061,7 @@ function buildCheckInAccessState(
   previous: unknown,
   checkIn: WorkerAccessCheckInInput,
   now: string,
+  workerId: string | null,
 ) {
   return compactMetadata({
     ...asRecord(previous),
@@ -8956,6 +9076,9 @@ function buildCheckInAccessState(
     evidence_mode: checkIn.mode,
     check_in: compactMetadata({
       mode: checkIn.mode,
+      // §32.7 (Codex review PR #66): bind the check-in to the worker who made it so a
+      // replacement assignment cannot inherit it (authorize verifies the match).
+      worker_id: workerId ?? undefined,
       lat: checkIn.lat,
       lng: checkIn.lng,
       accuracy_m: checkIn.accuracy_m,
