@@ -133,6 +133,8 @@
   - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on missing `auth-client-register-email` before the Register with Email checkpoint.
   - `jest --runInBand lib/__tests__/auth-provider-test.tsx` passed: 3 tests after the Register with Email checkpoint.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Register with Email checkpoint.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on `auth-client-onboarding-save` showing `Lưu và tiếp tục` before the Onboarding CTA checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Onboarding CTA checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Worker Reputation & Performance checkpoint when portable `pnpm.CMD` was unavailable.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 6 tests after the customer email login boundary.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/ui/__tests__/kael-primitives-test.tsx` passed: 9 tests.
@@ -173,6 +175,7 @@
   - `tsc --noEmit` from `apps/mobile` passed after the Memory & Preferences edit CTA checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Login with Email CTA checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Register with Email checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Onboarding CTA checkpoint.
   - `node -e "JSON.parse(require('fs').readFileSync('apps/mobile/design/tokens.json','utf8'))"` passed after the Agentic Center workflow rail checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Approval Queue action checkpoint: 17 suites, 175 tests.
   - Mobile Jest from `apps/mobile` passed after the Memory & Preferences self-view wiring: 17 suites, 176 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
@@ -182,6 +185,7 @@
   - Mobile Jest from `apps/mobile` passed after the Welcome service chips/dots checkpoint: 17 suites, 179 tests.
   - Mobile Jest from `apps/mobile` passed after the Login with Email CTA checkpoint: 17 suites, 179 tests.
   - Mobile Jest from `apps/mobile` passed after the Register with Email checkpoint: 17 suites, 181 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the Onboarding CTA checkpoint: 17 suites, 181 tests.
   - `vitest run src/__tests__/mobile-backend-wiring.test.ts src/__tests__/monorepo-wiring.test.ts` from `packages/shared` passed after the Register with Email checkpoint: 72 tests.
   - Added-line token grep for the Memory & Preferences diff returned no raw style matches.
   - Added-line token grep for the Commanding Home diff returned no raw style matches.
@@ -191,12 +195,13 @@
   - Product-scope grep for the Welcome diff found no unsupported/fake service copy.
   - Product-scope grep for the Login with Email CTA diff found no new unsupported service or fake-stats UI in the changed auth code.
   - Security/product grep for the Register with Email diff found no secrets and no client-controlled role in the signup payload; role still comes from the hardened DB trigger.
+  - Product-scope grep for the Onboarding CTA diff found no fake stats, unsupported services, or mixed-language Vietnamese CTA regressions in the changed auth code.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity rename, Agentic Center wiring/summary/Commanding Home greeting/Active Case command actions/live workflow card/phase rail/approval actions/memory self-view/edit CTA/token move, separated Kael Orb token/label refinement, Group A welcome service chips/dots, login email CTA, customer-safe email registration, and customer onboarding, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings period/reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests including real approval action/gate/memory self-view/edit CTA/notification split/active-case action behavior, API/shared AI identity tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
+Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity rename, Agentic Center wiring/summary/Commanding Home greeting/Active Case command actions/live workflow card/phase rail/approval actions/memory self-view/edit CTA/token move, separated Kael Orb token/label refinement, Group A welcome service chips/dots, login email CTA, customer-safe email registration, onboarding start CTA, and customer onboarding, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings period/reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests including real approval action/gate/memory self-view/edit CTA/notification split/active-case action behavior, API/shared AI identity tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
 
 ## Next
 

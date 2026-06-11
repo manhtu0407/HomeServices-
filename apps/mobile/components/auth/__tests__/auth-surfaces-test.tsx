@@ -175,6 +175,7 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-client-onboarding-step-profile')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-client-onboarding-step-contact')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-client-onboarding-step-address')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-client-onboarding-save')).toHaveTextContent('Bắt đầu sử dụng')
 
     fireEvent.changeText(screen.getByTestId('auth-client-onboarding-display-name'), 'Tu Phan')
     fireEvent.changeText(screen.getByTestId('auth-client-onboarding-phone'), '0909000001')
