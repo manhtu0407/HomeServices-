@@ -3966,25 +3966,33 @@ function WorkerEarningsLedger() {
   const acceptedDeal = isAcceptedLocalWorkerDeal(deal) ? deal : null
   const hasSettledEarnings = hasWorkerSettledEarnings(workerEarnings)
   const payoutAccountTitle = language === 'en' ? 'Payout account' : 'Tài khoản nhận tiền'
+  const periodValue = formatWorkerEarningsPeriod(workerEarnings)
   const rows = hasSettledEarnings && workerEarnings
     ? [
-        [copy.earnings.ledgerTitle, `${workerEarnings.total_jobs_paid} ${language === 'en' ? 'items' : 'mục'}`],
-        [language === 'en' ? 'Gross earnings' : 'Tổng trước phí', formatWorkerMoney(workerEarnings.gross_earnings, language)],
-        [language === 'en' ? 'Net earnings' : 'Thực nhận', formatWorkerMoney(workerEarnings.net_earnings, language)],
-        [payoutAccountTitle, appCopy[language].common.noData],
+        ...(periodValue ? [{ id: 'period', title: language === 'en' ? 'Period' : 'Kỳ đối soát', meta: periodValue }] : []),
+        { id: 'ledger', title: copy.earnings.ledgerTitle, meta: `${workerEarnings.total_jobs_paid} ${language === 'en' ? 'items' : 'mục'}` },
+        { id: 'gross', title: language === 'en' ? 'Gross earnings' : 'Tổng trước phí', meta: formatWorkerMoney(workerEarnings.gross_earnings, language) },
+        { id: 'net', title: language === 'en' ? 'Net earnings' : 'Thực nhận', meta: formatWorkerMoney(workerEarnings.net_earnings, language) },
+        { id: 'payout', title: payoutAccountTitle, meta: appCopy[language].common.noData },
       ]
     : acceptedDeal
     ? [
-        [copy.earnings.ledgerTitle, localizedStatusLabel(selectors.currentStatus, language)],
-        [payoutAccountTitle, appCopy[language].common.noData],
+        { id: 'ledger', title: copy.earnings.ledgerTitle, meta: localizedStatusLabel(selectors.currentStatus, language) },
+        { id: 'payout', title: payoutAccountTitle, meta: appCopy[language].common.noData },
       ]
-    : copy.earnings.rows
+    : copy.earnings.rows.map(([title, meta], index) => ({ id: `empty-${index}`, title, meta }))
 
   return (
     <View style={[styles.earningsLedgerCard, workerEarningsLedgerSurface(tokens)]} testID="worker-earnings-ledger">
       <WorkerEarningsMaterialChrome testID="worker-earnings-ledger-crisp-shell" variant="ledger" />
       {rows.map((row, index) => (
-        <EarningsLedgerRow key={row[0]} icon={earningsLedgerIcon(row[0], copy.earnings.ledgerTitle, payoutAccountTitle, index)} title={row[0]} meta={row[1]} />
+        <EarningsLedgerRow
+          key={`${row.id}-${row.title}`}
+          icon={earningsLedgerIcon(row.title, copy.earnings.ledgerTitle, payoutAccountTitle, index)}
+          meta={row.meta}
+          testID={row.id === 'period' ? 'worker-earnings-period-row' : undefined}
+          title={row.title}
+        />
       ))}
     </View>
   )
@@ -4143,6 +4151,12 @@ function hasWorkerSettledEarnings(workerEarnings: ReturnType<typeof useFrontendW
     workerEarnings.gross_earnings > 0 ||
     workerEarnings.net_earnings > 0
   ))
+}
+
+function formatWorkerEarningsPeriod(workerEarnings: EarningsResponse | null) {
+  if (!workerEarnings?.from_date && !workerEarnings?.to_date) return null
+  if (workerEarnings.from_date && workerEarnings.to_date) return `${workerEarnings.from_date} - ${workerEarnings.to_date}`
+  return workerEarnings.from_date ?? workerEarnings.to_date
 }
 
 function buildWorkerEarningsDays(language: WorkerLanguageMode, workerEarnings: EarningsResponse | null, referenceDate = new Date()) {
@@ -7262,18 +7276,28 @@ function ChatBubble({ mine = false, system = false, text, who }: { mine?: boolea
   )
 }
 
-function EarningsLedgerRow({ icon, meta, title }: { icon: WorkerIconName; meta: string; title: string }) {
+function EarningsLedgerRow({ icon, meta, testID, title }: { icon: WorkerIconName; meta: string; testID?: string; title: string }) {
   const { tokens } = useWorkerUi()
 
   return (
-    <View style={[styles.earningsListRow, workerEarningsRowSurface(tokens)]}>
+    <View style={[styles.earningsListRow, workerEarningsRowSurface(tokens)]} testID={testID}>
       <View style={styles.earningsListIcon}>
         <WorkerEarningsLedgerIcon icon={icon} />
       </View>
-      <Text style={[styles.earningsListTitle, { color: tokens.ink }]} numberOfLines={1}>
+      <Text
+        style={[styles.earningsListTitle, { color: tokens.ink }]}
+        numberOfLines={1}
+        testID={testID ? `${testID}-title` : undefined}
+      >
         {title}
       </Text>
-      <Text adjustsFontSizeToFit minimumFontScale={0.86} style={[styles.earningsListMeta, { color: tokens.muted }]} numberOfLines={1}>
+      <Text
+        adjustsFontSizeToFit
+        minimumFontScale={0.86}
+        style={[styles.earningsListMeta, { color: tokens.muted }]}
+        numberOfLines={1}
+        testID={testID ? `${testID}-meta` : undefined}
+      >
         {meta}
       </Text>
     </View>

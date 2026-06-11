@@ -1466,10 +1466,12 @@ describe('WorkerEarningsSurface', () => {
           },
         ],
         gross_earnings: 1350000,
+        from_date: '2026-06-01',
         net_earnings: 1285000,
         pending_payment_amount: 350000,
         pending_payment_count: 1,
         platform_fee_total: 65000,
+        to_date: '2026-06-07',
         total_jobs_paid: 6,
       },
     })
@@ -1481,6 +1483,7 @@ describe('WorkerEarningsSurface', () => {
     expect(screen.getByTestId('worker-earnings-pending-cell')).toHaveTextContent(/350\.000/)
     expect(screen.getByTestId('worker-earnings-platform-fee-cell')).toHaveTextContent(/65\.000/)
     expect(screen.getByTestId('worker-earnings-real-bar-shell')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-earnings-period-row-meta')).toHaveTextContent('2026-06-01 - 2026-06-07')
     expect(screen.queryByTestId('worker-earnings-chart-empty-label')).toBeNull()
     expect(screen.queryByText('0')).toBeNull()
     expect(screen.queryByText('--')).toBeNull()
