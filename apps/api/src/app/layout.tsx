@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Home Services",
+  title: "NestScout",
   description: "Nền tảng dịch vụ sửa điện, sửa nước tại HCMC",
 };
 

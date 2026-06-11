@@ -30,7 +30,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
   return {
     getKaelCharter: vi.fn(async () => ({
       charter_version: '2026-05-25.p8',
-      identity_summary: 'Kael is the Home Services assistant.',
+      identity_summary: 'Kael is the NestScout assistant.',
       locked_files: ['identity.md', 'persona.md', 'mission-values.md'],
       tunable_files: ['tone-matrix.yaml', 'language-rules.md', 'forbidden-language.json', 'style-guidelines.md'],
       forbidden_categories: ['ai_self_reference'],

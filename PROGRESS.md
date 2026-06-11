@@ -23,6 +23,7 @@
 - Added runtime handoff tokens under `apps/mobile/design`.
 - Repointed shared mobile color/theme seams toward the NestScout primary token `#0DAE9A`.
 - Changed visible app config name and permission copy to NestScout while keeping identifiers unchanged.
+- Updated Kael charter, system prompt, public charter summary, and API metadata title to NestScout while preserving the three supported service boundaries.
 - Wired the customer Kael Orb route to a real-data Agentic Center surface and kept full chat on `/(customer)/kael-chat`.
 - Added focused RNTL coverage for Agentic Center empty, active-case, preference, notification, and chat-route behavior.
 - Added the Phase 1 hidden `/(design-gallery)` route with action buttons, chips, inputs, media/voice controls, cards, aura, bottom navigation sample, and Kael Orb sample.
@@ -124,6 +125,11 @@
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job Acceptance service row.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 51 tests after the Worker Reputation & Performance checkpoint.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center token move.
+  - `vitest run src/__tests__/kael-charter-p8.test.ts` from `packages/shared` passed: 5 tests after the NestScout AI identity rename.
+  - `vitest run src/__tests__/unit/mobile-api-kael-p8.test.ts --root .` from `apps/api` passed: 9 tests after the NestScout AI prompt/public-charter rename.
+  - `vitest run src/__tests__/unit/mobile-api-edge-router.test.ts --root .` from `apps/api` passed: 46 tests after the NestScout public-charter route mock update.
+  - `tsc --noEmit -p tsconfig.json` from `apps/api` passed after the NestScout AI identity rename.
+  - `tsc --noEmit -p tsconfig.json` from `packages/shared` passed after the NestScout AI identity rename.
   - `rg -n "#[0-9A-Fa-f]{3,8}|rgba\\(|boxShadow:\\s*'|backgroundColor:\\s*'|borderRadius:\\s*\\d|padding:\\s*\\d|margin:\\s*\\d|fontSize:\\s*\\d" apps/mobile/components/customer/agentic-center-surface.tsx` returned no matches.
   - Mobile Jest from `apps/mobile` passed after the Worker Reputation & Performance checkpoint: 17 suites, 173 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
@@ -131,7 +137,7 @@
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary/live workflow card/approval actions/memory phone/token move, Group A welcome and customer onboarding, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings period/reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
+Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity rename, Agentic Center wiring/summary/live workflow card/approval actions/memory phone/token move, Group A welcome and customer onboarding, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings period/reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, API/shared AI identity tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
 
 ## Next
 
@@ -143,6 +149,7 @@ Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/sum
 
 - Pre-existing dirty worktree includes auth/prototype/asset changes. Do not overwrite them.
 - Portable `pnpm.CMD` disappeared from the temp Node folder during this session; use direct `apps/mobile/node_modules/.bin` commands until it is restored.
+- `apps/api/node_modules/.bin/vitest.CMD` resolves to a missing local module in this workspace; use the root Vitest binary with `--root .` from `apps/api`.
 - React Doctor cannot currently run because the available script depends on missing `pnpm`/`npx` and no direct `react-doctor` binary exists in `apps/mobile/node_modules/.bin`.
 - Official mascot state assets are missing; use existing Kael model assets unless the zip or repo provides better final exports.
 - No local native recording was found in the repo during Phase 0.
