@@ -2143,17 +2143,25 @@ function ActiveWorkerJobCard({ body, briefLines, deal, status, title }: { body: 
   const nextAction = selectors.canWorkerAdvance ? getNextWorkerAction(selectors.currentStatus, language) : null
   const nextStatus = nextAction && nextAction.type !== 'worker_complete_job' ? workerStatusForAction(nextAction.type) : null
   const needsCompletionEvidence = nextAction?.type === 'worker_complete_job'
+  const referenceJobId = workerActiveJobReferenceId(deal, language)
+  const referenceProblem = workerActiveJobProblemLabel(deal, language)
+  const referenceTitle = referenceJobId === appCopy[language].common.noData
+    ? referenceJobId
+    : language === 'en' ? `Job #${referenceJobId}` : `Đơn #${referenceJobId}`
 
   return (
     <View style={[styles.activeJobCard, workerJobCardSurface(tokens)]} testID="worker-jobs-active-card">
       <WorkerJobsCardChrome />
-      <View style={styles.rowBetween}>
+      <View style={styles.rowBetween} testID="worker-jobs-active-reference-card">
         <View style={styles.titleStack}>
           <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
             {status}
           </Text>
-          <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
-            {title}
+          <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2} testID="worker-jobs-active-reference-id">
+            {referenceTitle}
+          </Text>
+          <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2} testID="worker-jobs-active-reference-problem">
+            {referenceProblem}
           </Text>
         </View>
         {nextAction ? (
@@ -2163,7 +2171,7 @@ function ActiveWorkerJobCard({ body, briefLines, deal, status, title }: { body: 
         ) : null}
       </View>
       <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
-        {body}
+        {title} · {body}
       </Text>
       <WorkerActiveJobListRow deal={deal} status={status} />
       {briefLines.length > 0 ? (
@@ -2186,7 +2194,7 @@ function ActiveWorkerJobCard({ body, briefLines, deal, status, title }: { body: 
       ) : null}
       <CompactWorkerPresenceMap mode="active" />
       <View style={styles.actionRow}>
-        <PressButton label={copy.jobs.jobRoomCta} onPress={() => replace('/(worker)/chat')} testID="worker-jobs-open-jobroom" />
+        <PressButton label={copy.jobs.filters[1]} onPress={() => replace('/(worker)/chat')} testID="worker-jobs-open-jobroom" />
         {nextAction && nextStatus ? (
           <PressButton secondary label={nextAction.label} onPress={() => void actions.workerUpdateStatus(nextStatus)} testID="worker-jobs-next-status-action" />
         ) : null}
@@ -2201,8 +2209,7 @@ function ActiveWorkerJobCard({ body, briefLines, deal, status, title }: { body: 
 function WorkerActiveJobListRow({ deal, status }: { deal: LocalDeal | null; status: string }) {
   const { copy, language } = useWorkerUi()
   const broadcast = deal?.broadcast ?? null
-  const jobId = broadcast?.jobId ?? deal?.id ?? null
-  const jobValue = jobId && jobId !== LOCAL_DEAL_ID ? jobId : appCopy[language].common.noData
+  const jobValue = workerActiveJobReferenceId(deal, language)
   const areaValue = localizedWorkerAreaLabel(
     broadcast?.fullAddressVisible && broadcast.fullAddressLabel
       ? broadcast.fullAddressLabel
@@ -2210,6 +2217,7 @@ function WorkerActiveJobListRow({ deal, status }: { deal: LocalDeal | null; stat
     language,
   )
   const serviceValue = localizedServiceLabel(deal?.draft.serviceType ?? broadcast?.serviceType ?? null, language)
+  const timeValue = workerJobTimeLabel(deal, language)
   const earningValue = broadcast?.estimatedEarningLabel ?? broadcast?.estimatedPriceLabel ?? deal?.estimate?.priceRangeLabel ?? copy.earnings.waiting
 
   return (
@@ -2217,10 +2225,30 @@ function WorkerActiveJobListRow({ deal, status }: { deal: LocalDeal | null; stat
       <JobRoomMetaCell label={language === 'en' ? 'Job' : 'Mã việc'} testID="worker-jobs-active-list-id" value={jobValue} />
       <JobRoomMetaCell label={copy.chat.serviceLabel} testID="worker-jobs-active-list-service" value={serviceValue} />
       <JobRoomMetaCell label={language === 'en' ? 'Area' : 'Khu vực'} testID="worker-jobs-active-list-area" value={areaValue} />
+      <JobRoomMetaCell label={language === 'en' ? 'Time' : 'Thời gian'} testID="worker-jobs-active-list-time" value={timeValue} />
       <JobRoomMetaCell label={copy.home.status} testID="worker-jobs-active-list-status" value={status} />
       <JobRoomMetaCell label={copy.request.workerEarns} testID="worker-jobs-active-list-earning" value={earningValue} />
     </View>
   )
+}
+
+function workerActiveJobReferenceId(deal: LocalDeal | null, language: WorkerLanguageMode) {
+  const jobId = deal?.broadcast?.jobId ?? deal?.id ?? null
+  return jobId && jobId !== LOCAL_DEAL_ID ? jobId : appCopy[language].common.noData
+}
+
+function workerActiveJobProblemLabel(deal: LocalDeal | null, language: WorkerLanguageMode) {
+  return localizedProblemLabel(
+    deal?.draft.problemChips[0] ?? deal?.draft.inferredProblemLabel ?? deal?.broadcast?.problemSummary,
+    deal?.draft.serviceType ?? deal?.broadcast?.serviceType ?? null,
+    language,
+  )
+}
+
+function workerJobTimeLabel(deal: LocalDeal | null, language: WorkerLanguageMode) {
+  if (!deal) return appCopy[language].common.noData
+  if (deal.draft.timeChoice === 'now') return language === 'en' ? 'Now' : 'Nhận ngay'
+  return language === 'en' ? 'Waiting for real schedule' : 'Chờ lịch thật'
 }
 
 function useWorkerChatComposerActions({

@@ -1278,6 +1278,23 @@ describe('WorkerJobsSurface', () => {
     expect(screen.queryByText('4.9')).toBeNull()
   })
 
+  it('aligns the active Jobs card to the reference list skeleton without fabricating another job', () => {
+    mockAppLanguage = 'en'
+    mockPathname = '/(worker)/jobs'
+    mockRouteParams = { tab: 'active' }
+    buildWorkflow({ deal: buildAcceptedDeal() })
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getAllByTestId('worker-jobs-active-card')).toHaveLength(1)
+    expect(screen.getByTestId('worker-jobs-active-reference-id')).toHaveTextContent('Job #job_test_1')
+    expect(screen.getByTestId('worker-jobs-active-reference-problem')).toHaveTextContent('Outlet or switch issue')
+    expect(screen.getByTestId('worker-jobs-active-list-time-value')).toHaveTextContent('Now')
+    expect(screen.getByTestId('worker-jobs-active-list-earning-value')).toHaveTextContent('120.000đ - 180.000đ')
+    expect(screen.getByTestId('worker-jobs-open-jobroom')).toHaveTextContent('Active')
+    expect(screen.queryByText(/Tomorrow|7h|9h|430/i)).toBeNull()
+  })
+
   it('renders safety checklist gates from the active workflow without a worker price input', () => {
     mockPathname = '/(worker)/jobs'
     mockRouteParams = { tab: 'active' }

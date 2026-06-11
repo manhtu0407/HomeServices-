@@ -91,6 +91,8 @@
   - Kept Worker Home service shortcuts limited to electrical, plumbing, and cleaning despite the reference's extra icon slot.
   - Added the active Jobs real job row from the accepted deal id, service, area, status, and worker earning estimate.
   - Kept the Jobs row free of fake schedule, queue counts, worker ratings, and extra job records because the current provider exposes one real `state.deal`.
+  - Aligned the active Jobs card to the reference list skeleton with real job id, problem, area, `timeChoice`, status, and worker earning.
+  - Kept the Jobs screen from fabricating the reference's second job, tomorrow schedule, or extra price when the provider exposes only one real deal.
   - Added worker safety/checklist gates to active jobs.
   - Kept scope and completion actions tied to existing workflow/evidence state.
   - Kept worker pricing input out of the checklist path.
@@ -169,6 +171,9 @@
   - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "greets the worker"` failed before the Worker Home real-profile greeting/online-copy checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "greets the worker"` passed after the Worker Home real-profile greeting/online-copy checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 52 tests after the Worker Home real-profile greeting/online-copy checkpoint.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "aligns the active Jobs card"` failed on missing `worker-jobs-active-reference-id` before the Jobs reference-list checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "aligns the active Jobs card"` passed after the Jobs reference-list checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 53 tests after the Jobs reference-list checkpoint.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center token move.
   - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `customer-agentic-center-phase-rail` before the Agentic Center workflow rail change.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center workflow rail checkpoint.
@@ -211,6 +216,8 @@
   - Mobile Jest from `apps/mobile` passed after the Home greeting/prompt checkpoint: 17 suites, 182 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `tsc --noEmit` from `apps/mobile` passed after the Worker Home real-profile greeting/online-copy checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Worker Home real-profile greeting/online-copy checkpoint: 17 suites, 184 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `tsc --noEmit` from `apps/mobile` passed after the Jobs reference-list checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Jobs reference-list checkpoint: 17 suites, 185 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `vitest run src/__tests__/mobile-backend-wiring.test.ts src/__tests__/monorepo-wiring.test.ts` from `packages/shared` passed after the Register with Email checkpoint: 72 tests.
   - Added-line token grep for the Memory & Preferences diff returned no raw style matches.
   - Added-line token grep for the Commanding Home diff returned no raw style matches.
