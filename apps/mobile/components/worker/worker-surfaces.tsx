@@ -4008,6 +4008,15 @@ function WorkerProfileLevelCard({ workerProfile }: { workerProfile: WorkerProfil
   const progressWidth = `${Math.max(workerProfile ? 8 : 0, Math.round(model.progress * 100))}%`
   const progressNow = Math.min(model.points, model.nextThreshold)
   const selectedMilestone = model.milestones.find((milestone) => milestone.level === selectedLevel) ?? model.milestones[0]!
+  const hasLevelProgress = Boolean(workerProfile && model.points > 0)
+  const progressValueLabel = hasLevelProgress
+    ? `${progressNow} / ${model.nextThreshold} ${language === 'en' ? 'pts' : 'điểm'}`
+    : language === 'en'
+      ? 'Progress opens after the first completed job'
+      : 'Tiến trình mở sau việc hoàn tất đầu tiên'
+  const progressBadgeLabel = hasLevelProgress
+    ? language === 'en' ? 'Real progress' : 'Tiến trình thật'
+    : language === 'en' ? 'Waiting' : 'Đang chờ'
   const detailReveal = useSharedValue(1)
   const railScrollX = useSharedValue(0)
   const railScrollableWidth = Math.max(0, railContentWidth - railViewportWidth)
@@ -4069,8 +4078,8 @@ function WorkerProfileLevelCard({ workerProfile }: { workerProfile: WorkerProfil
           </Text>
         </View>
         <View style={styles.profileLevelCopy}>
-          <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
-            {language === 'en' ? 'Worker level' : 'Cấp thợ'}
+          <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1} testID="worker-profile-level-current-kicker">
+            {language === 'en' ? 'Current worker level' : 'Cấp thợ hiện tại'}
           </Text>
           <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={1} testID="worker-profile-level-title">
             {model.title}
@@ -4087,6 +4096,14 @@ function WorkerProfileLevelCard({ workerProfile }: { workerProfile: WorkerProfil
         testID="worker-profile-level-progress"
       >
         <View style={[styles.profileLevelProgressFill, workerProfileProgressFillSurface(tokens), { width: progressWidth }]} testID="worker-profile-level-progress-fill" />
+      </View>
+      <View style={styles.profileSyncPreviewTop} testID="worker-profile-level-progress-value">
+        <Text style={[styles.profileLevelNext, { color: tokens.primary, flex: 1 }]} numberOfLines={1}>
+          {progressValueLabel}
+        </Text>
+        <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
+          {progressBadgeLabel}
+        </Text>
       </View>
       <Text style={[styles.profileLevelNext, { color: tokens.muted }]} numberOfLines={2} testID="worker-profile-level-next">
         {model.nextLabel}

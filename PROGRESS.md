@@ -144,6 +144,8 @@
   - Updated Worker Profile overview hero to display the real `workerProfile.legal_name` with normalized spacing when available.
   - Aligned Worker Overview to the reference status-card structure with three official worker profile image cards for approval, submitted profile, and skills.
   - Added a Worker Overview quick summary from real completed jobs, rating, and recommendation signal, keeping missing trust data as `Chưa có` / `Not yet`.
+  - Aligned Worker Level Journey with a current-level label and real progress copy from the profile-derived level model.
+  - Kept zero-progress worker levels as waiting copy instead of showing `0 / 15` as a fake-looking metric.
   - Added Worker Reputation & Performance panel from real `rating`, `total_jobs`, availability, and suspension state only.
   - Kept worker reputation rating/jobs as honest waiting states when no completed-job feedback exists.
   - Added customer usage ranking and money protection insight panels from real metadata only.
@@ -193,6 +195,11 @@
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Worker Overview status-card checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Worker Overview status-card checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Worker Overview status-card checkpoint: 17 suites, 191 tests.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx -t "derives worker level progress"` failed on missing `worker-profile-level-current-kicker` before the Worker Level Journey progress-copy checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx -t "derives worker level progress|empty worker trust signals"` passed after the Worker Level Journey progress-copy checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Worker Level Journey progress-copy checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Level Journey progress-copy checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker Level Journey progress-copy checkpoint: 17 suites, 191 tests.
   - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "greets the worker"` failed before the Worker Home real-profile greeting/online-copy checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "greets the worker"` passed after the Worker Home real-profile greeting/online-copy checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 52 tests after the Worker Home real-profile greeting/online-copy checkpoint.

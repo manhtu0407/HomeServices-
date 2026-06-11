@@ -1754,6 +1754,9 @@ describe('WorkerProfileSurface', () => {
     render(<WorkerProfileSurface />)
 
     expect(screen.getByTestId('worker-profile-level-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-profile-level-current-kicker')).toHaveTextContent(/C\u1ea5p th\u1ee3 hi\u1ec7n t\u1ea1i/)
+    expect(screen.getByTestId('worker-profile-level-progress-value')).toHaveTextContent(/24\s*\/\s*30/)
+    expect(screen.getByTestId('worker-profile-level-progress-value')).toHaveTextContent(/Ti\u1ebfn tr\u00ecnh th\u1eadt/)
     expect(screen.getByTestId('worker-profile-level-progress').props.accessibilityValue.now).toBeGreaterThan(0)
     expect(screen.getByTestId('worker-profile-level-signal-jobs')).toHaveTextContent(/24/)
     expect(screen.getByTestId('worker-profile-level-signal-rating')).toHaveTextContent(/4\.9\/5/)
@@ -1790,6 +1793,7 @@ describe('WorkerProfileSurface', () => {
     expect(screen.getByTestId('worker-profile-level-signal-jobs')).toHaveTextContent(/Not yet/)
     expect(screen.getByTestId('worker-profile-level-signal-rating')).toHaveTextContent(/Not yet/)
     expect(screen.getByTestId('worker-profile-level-signal-recommendation')).toHaveTextContent(/Not yet/)
+    expect(screen.getByTestId('worker-profile-level-progress-value')).not.toHaveTextContent(/0\s*\/\s*15/)
     expect(screen.queryByText(/Ch\u01b0a c\u00f3/)).toBeNull()
     expect(screen.queryByText('????')).toBeNull()
   })
