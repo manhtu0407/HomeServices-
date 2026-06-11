@@ -2842,6 +2842,8 @@ function WorkerChatContent() {
             </View>
           ) : null}
 
+        <WorkerChatMediaDraftPreviewRail drafts={chatLocalState.mediaDrafts} />
+
         <WorkerKaelParityPanel
           consent={workerTrainingConsent}
           consentSaving={workerTrainingConsentSaving}
@@ -2877,6 +2879,25 @@ function WorkerChatContent() {
           placeholder={visibleChatInputPlaceholder}
         />
       </View>
+    </View>
+  )
+}
+
+function WorkerChatMediaDraftPreviewRail({ drafts }: { drafts: LocalMediaUploadDraft[] }) {
+  const { language, tokens } = useWorkerUi()
+  if (drafts.length === 0) return null
+  const fallbackName = language === 'en' ? 'Evidence photo' : 'Ảnh bằng chứng'
+
+  return (
+    <View style={styles.completionPhotoPreviewRail} testID="worker-chat-media-preview-rail">
+      {drafts.map((draft, index) => (
+        <View key={`${draft.uri}-${index}`} style={[styles.completionPhotoPreviewTile, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]} testID={`worker-chat-media-preview-${index}`}>
+          <Image contentFit="cover" source={{ uri: draft.uri }} style={styles.completionPhotoPreviewImage} testID={`worker-chat-media-preview-image-${index}`} />
+          <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
+            {draft.fileName ?? fallbackName}
+          </Text>
+        </View>
+      ))}
     </View>
   )
 }

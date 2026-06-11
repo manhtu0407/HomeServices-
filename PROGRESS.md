@@ -99,6 +99,8 @@
   - Added completion evidence preview rail from local image-picker drafts before upload.
   - Kept Evidence Upload tied to real local media draft URI/file names and the existing upload/status action path.
   - Added focused RNTL coverage for address gate, scope gate, completion evidence, and no fake placeholder values.
+  - Added the JobRoom on-site media preview rail from real ImagePicker local draft URI/file names before the worker sends the advisory.
+  - Kept on-site advisory media on the existing `uploadJobMediaDrafts(..., 'before')` path and did not fake upload/streaming before send.
   - Added Worker Earnings reconciliation strip and period row from `EarningsResponse` paid jobs, pending payout, platform fee, `from_date`, and `to_date` fields.
   - Added submitted job summary/report card from real completion notes, completion media, status, and Kael price gate.
   - Added Worker Kael on-site advisory rail inside accepted JobRoom details for status, address release, scope/price gate, and evidence gate.
@@ -174,6 +176,9 @@
   - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "aligns the active Jobs card"` failed on missing `worker-jobs-active-reference-id` before the Jobs reference-list checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "aligns the active Jobs card"` passed after the Jobs reference-list checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 53 tests after the Jobs reference-list checkpoint.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "previews selected JobRoom media"` failed on missing `worker-chat-media-preview-rail` before the On-site Advisory Chat media preview checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "previews selected JobRoom media"` passed after the On-site Advisory Chat media preview checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 54 tests after the On-site Advisory Chat media preview checkpoint.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center token move.
   - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `customer-agentic-center-phase-rail` before the Agentic Center workflow rail change.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center workflow rail checkpoint.
@@ -218,6 +223,8 @@
   - Mobile Jest from `apps/mobile` passed after the Worker Home real-profile greeting/online-copy checkpoint: 17 suites, 184 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `tsc --noEmit` from `apps/mobile` passed after the Jobs reference-list checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Jobs reference-list checkpoint: 17 suites, 185 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `tsc --noEmit` from `apps/mobile` passed after the On-site Advisory Chat media preview checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the On-site Advisory Chat media preview checkpoint: 17 suites, 186 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `vitest run src/__tests__/mobile-backend-wiring.test.ts src/__tests__/monorepo-wiring.test.ts` from `packages/shared` passed after the Register with Email checkpoint: 72 tests.
   - Added-line token grep for the Memory & Preferences diff returned no raw style matches.
   - Added-line token grep for the Commanding Home diff returned no raw style matches.

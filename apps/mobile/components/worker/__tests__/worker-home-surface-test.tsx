@@ -700,6 +700,36 @@ describe('WorkerChatSurface', () => {
     alertSpy.mockRestore()
   })
 
+  it('previews selected JobRoom media before streaming the on-site advisory', async () => {
+    const imagePicker = jest.requireMock('expo-image-picker')
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+    imagePicker.launchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ fileName: 'onsite-burnt-wire.jpg', fileSize: 4321, mimeType: 'image/jpeg', uri: 'file:///onsite-burnt-wire.jpg' }],
+    })
+    mockPathname = '/(worker)/chat'
+    buildWorkflow({ deal: buildAcceptedDeal() })
+
+    render(<WorkerChatSurface />)
+
+    fireEvent.press(screen.getByTestId('worker-kael-chat-attach'))
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('worker-chat-media-preview-rail')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-chat-media-preview-0')).toHaveTextContent('onsite-burnt-wire.jpg')
+    expect(screen.getByTestId('worker-chat-media-preview-image-0').props.source).toEqual({ uri: 'file:///onsite-burnt-wire.jpg' })
+    expect(screen.getByTestId('worker-kael-chat-input').props.value).toContain('onsite-burnt-wire.jpg')
+    expect(screen.getByTestId('worker-kael-send-button').props.accessibilityState.disabled).toBe(false)
+    expect(mockWorkerKaelChatService.streamTurn).not.toHaveBeenCalled()
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    })
+    alertSpy.mockRestore()
+  })
+
   it('lets workers submit Kael feedback from the chat surface', async () => {
     mockWorkerKaelChatService.submitFeedback.mockResolvedValueOnce({
       data: { created_at: '2026-06-04T00:00:00.000Z', feedback_id: 'feedback-1', status: 'new' },
