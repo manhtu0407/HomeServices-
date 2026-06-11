@@ -539,6 +539,7 @@ const workerCopy = {
       title: 'Thu nhập',
       subtitle: 'Theo dõi tiền công dễ hiểu hơn',
       today: 'Hôm nay',
+      period: 'Kỳ này',
       month: 'Tháng này',
       noReconciliation: 'Chờ dữ liệu',
       // X6 (Plan.md §27.9 — 2026-05-29): F-30 honest empty chart copy.
@@ -713,6 +714,7 @@ const workerCopy = {
       title: 'Earnings',
       subtitle: 'Track payout clearly',
       today: 'Today',
+      period: 'This period',
       month: 'This month',
       noReconciliation: 'Waiting for data',
       // X6 (Plan.md §27.9 — 2026-05-29): F-30 honest empty chart copy.
@@ -4191,9 +4193,11 @@ function WorkerEarningsSummary() {
   const hasSettledEarnings = hasWorkerSettledEarnings(workerEarnings)
   const todayNet = getTodayWorkerNetEarnings(workerEarnings)
   const todayLabel = copy.earnings.today
+  const periodLabel = copy.earnings.period
   const monthLabel = copy.earnings.month
   const todayValue = todayNet > 0 ? formatWorkerMoney(todayNet, language) : empty
-  const monthValue = hasSettledEarnings && workerEarnings ? formatWorkerMoney(workerEarnings.net_earnings, language) : empty
+  const periodValue = hasSettledEarnings && workerEarnings ? formatWorkerMoney(workerEarnings.net_earnings, language) : empty
+  const monthValue = empty
 
   return (
     <View style={styles.earningsSummaryGrid} testID="worker-earnings-day-month-summary">
@@ -4204,6 +4208,18 @@ function WorkerEarningsSummary() {
         </Text>
         <Text adjustsFontSizeToFit minimumFontScale={0.88} style={[styles.earningsSummaryValue, { color: tokens.ink }]} numberOfLines={1}>
           {todayValue}
+        </Text>
+        <Text style={[styles.earningsSummaryHint, { color: tokens.muted }]} numberOfLines={1}>
+          {copy.earnings.summaryHint}
+        </Text>
+      </View>
+      <View style={[styles.earningsSummaryCell, workerEarningsMiniSurface(tokens)]} testID="worker-earnings-period-total-cell">
+        <WorkerEarningsMaterialChrome testID="worker-earnings-summary-crisp-shell" variant="cell" />
+        <Text style={[styles.earningsSummaryLabel, { color: tokens.subtle }]} numberOfLines={1}>
+          {periodLabel}
+        </Text>
+        <Text adjustsFontSizeToFit minimumFontScale={0.88} style={[styles.earningsSummaryValue, { color: tokens.ink }]} numberOfLines={1}>
+          {periodValue}
         </Text>
         <Text style={[styles.earningsSummaryHint, { color: tokens.muted }]} numberOfLines={1}>
           {copy.earnings.summaryHint}

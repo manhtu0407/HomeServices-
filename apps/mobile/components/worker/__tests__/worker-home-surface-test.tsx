@@ -1523,7 +1523,7 @@ describe('WorkerEarningsSurface', () => {
     expect(screen.getByTestId('worker-earnings-chart-crisp-shell')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-earnings-chart-empty-label')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-earnings-day-month-summary')).toBeOnTheScreen()
-    expect(screen.getAllByTestId('worker-earnings-summary-crisp-shell')).toHaveLength(2)
+    expect(screen.getAllByTestId('worker-earnings-summary-crisp-shell')).toHaveLength(3)
     expect(screen.getByTestId('worker-earnings-ledger')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-earnings-ledger-crisp-shell')).toBeOnTheScreen()
     expect(screen.queryByText('7 ngày gần nhất')).toBeNull()
@@ -1568,6 +1568,37 @@ describe('WorkerEarningsSurface', () => {
     expect(screen.queryByTestId('worker-earnings-chart-empty-label')).toBeNull()
     expect(screen.queryByText('0')).toBeNull()
     expect(screen.queryByText('--')).toBeNull()
+  })
+
+  it('uses a three-part earnings summary without fabricating monthly totals', () => {
+    mockAppLanguage = 'en'
+    mockPathname = '/(worker)/earnings'
+    buildWorkflow({
+      workerEarnings: {
+        ...buildNoEarnings(),
+        daily_earnings: [
+          {
+            date: new Date().toISOString().slice(0, 10),
+            gross_earnings: 470000,
+            net_earnings: 450000,
+            paid_job_count: 2,
+            platform_fee_total: 20000,
+          },
+        ],
+        from_date: '2026-06-01',
+        net_earnings: 1285000,
+        to_date: '2026-06-07',
+        total_jobs_paid: 6,
+      },
+    })
+
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getAllByTestId('worker-earnings-summary-crisp-shell')).toHaveLength(3)
+    expect(screen.getByTestId('worker-earnings-today-cell')).toHaveTextContent(/450,000 VND/)
+    expect(screen.getByTestId('worker-earnings-period-total-cell')).toHaveTextContent(/1,285,000 VND/)
+    expect(screen.getByTestId('worker-earnings-month-cell')).toHaveTextContent(/Waiting for data/)
+    expect(screen.queryByText(/6,250,000|6\.250\.000/)).toBeNull()
   })
 })
 
