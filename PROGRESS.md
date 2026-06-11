@@ -123,8 +123,8 @@
   - Aligned Worker Earnings to the reference three-part summary using real today and period net earnings while leaving month as waiting until monthly backend data exists.
   - Added the `Xem chi tiết thu nhập` / `View income details` action to open the real reconciliation strip and ledger inline.
   - Kept the unbacked reference monthly total out of the UI.
-  - Aligned Worker Rating to the customer-rating reference using real `workerProfile.rating` and `workerProfile.total_jobs`.
-  - Added the rating star strip, exact aggregate score, and honest disabled review-details CTA while keeping tips as `Chưa có` until the mobile API exposes real tip/review-detail fields.
+  - Aligned Worker Rating to the reference using real aggregate worker score and completed-job count.
+  - Added the star strip, exact score, positive pulse copy, and enabled review CTA that opens a real aggregate detail panel while tips stay `Chưa có` until the mobile API exposes gratuity/review-detail fields.
   - Aligned Worker Safety & Checklist to the reference with service-derived safety steps for electrical/plumbing/cleaning.
   - Kept checklist completion as an honest disabled internal check so it does not advance job status, price, completion, or payment without the existing field-step/evidence gates.
   - Aligned Evidence & Scope Change to the reference old/new scope summary from real scope-change state.
@@ -352,6 +352,11 @@
   - Mobile Jest from `apps/mobile` passed after the Worker pay detail CTA checkpoint: 17 suites, 195 tests.
   - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "customer rating panel"` failed on the old reputation/performance panel before the Worker Rating reference checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "customer rating panel"` passed after the Worker Rating reference checkpoint.
+  - Red first: focused Worker review panel test failed before the aggregate review CTA checkpoint because `worker-profile-review-pulse` was missing and the review CTA was disabled.
+  - Focused Worker review panel test passed after the aggregate review CTA checkpoint.
+  - Worker suite passed: 59 tests after the Worker review CTA checkpoint.
+  - Mobile type-check passed after the Worker review CTA checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker review CTA checkpoint: 17 suites, 195 tests.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 57 tests after the Worker Rating reference checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Worker Rating reference checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Worker Rating reference checkpoint: 17 suites, 189 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.

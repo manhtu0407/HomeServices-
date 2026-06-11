@@ -3916,6 +3916,7 @@ function WorkerProfileReputationPanel({
   workerProfile: WorkerProfileResponse | null
 }) {
   const { language, tokens } = useWorkerUi()
+  const [showReviewDetails, setShowReviewDetails] = useState(false)
   const completedJobs = Math.max(0, workerProfile?.total_jobs ?? 0)
   const rawRating = Number(workerProfile?.rating ?? 0)
   const hasJobs = completedJobs > 0
@@ -3926,6 +3927,8 @@ function WorkerProfileReputationPanel({
   const ratingTitle = language === 'en' ? 'Customer rating' : '\u0110\u00e1nh gi\u00e1 c\u1ee7a kh\u00e1ch h\u00e0ng'
   const ratingSummary = hasRating ? `${rating.toFixed(1)}/5` : emptyValue
   const starSummary = hasRating ? workerProfileRatingStars(rating) : emptyValue
+  const reviewDetailScore = hasRating ? `${Math.min(5, Math.max(1, rawRating)).toFixed(1)}/5` : emptyValue
+  const reviewDetailCount = hasJobs ? `${completedJobs}` : emptyValue
   const hasSettledEarnings = hasWorkerSettledEarnings(workerEarnings)
   const earningsValue = hasSettledEarnings && workerEarnings ? formatWorkerMoney(workerEarnings.net_earnings, language) : emptyValue
   const earningsPeriod = formatWorkerEarningsPeriod(workerEarnings) ?? (language === 'en' ? 'Waiting for real reconciliation data' : 'Ch\u1edd d\u1eef li\u1ec7u \u0111\u1ed1i so\u00e1t th\u1eadt')
@@ -3950,11 +3953,16 @@ function WorkerProfileReputationPanel({
             : 'Ho\u00e0n t\u1ea5t vi\u1ec7c th\u1eadt \u0111\u1ea7u ti\u00ean \u0111\u1ec3 m\u1edf ph\u00e2n t\u00edch hi\u1ec7u su\u1ea5t.'
   const detailNote = hasRating
     ? language === 'en'
-      ? 'Review details and tips open only when the system has real data.'
-      : 'Chi ti\u1ebft \u0111\u00e1nh gi\u00e1 v\u00e0 ti\u1ec1n boa ch\u1ec9 m\u1edf khi h\u1ec7 th\u1ed1ng c\u00f3 d\u1eef li\u1ec7u th\u1eadt.'
+      ? 'Summary opens from real score and completed jobs; tips wait for API data.'
+      : 'T\u00f3m t\u1eaft m\u1edf t\u1eeb \u0111i\u1ec3m v\u00e0 s\u1ed1 vi\u1ec7c th\u1eadt; ti\u1ec1n boa ch\u1edd d\u1eef li\u1ec7u API.'
     : language === 'en'
       ? 'Customer rating opens after real completed jobs.'
       : '\u0110\u00e1nh gi\u00e1 m\u1edf sau vi\u1ec7c ho\u00e0n t\u1ea5t th\u1eadt.'
+  const reviewPulse = hasRating
+    ? language === 'en'
+      ? `Excellent work. Score ${reviewDetailScore} from ${reviewDetailCount} completed jobs.`
+      : `Tuy\u1ec7t v\u1eddi! \u0110i\u1ec3m ${reviewDetailScore} t\u1eeb ${reviewDetailCount} vi\u1ec7c ho\u00e0n t\u1ea5t.`
+    : detailNote
   const availabilityValue = !workerProfile
     ? emptyValue
     : workerProfile.is_suspended
@@ -4008,6 +4016,9 @@ function WorkerProfileReputationPanel({
           {ratingSummary}
         </Text>
       </View>
+      <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2} testID="worker-profile-review-pulse">
+        {reviewPulse}
+      </Text>
       <View style={styles.profileLevelSignalGrid}>
         {stats.map((stat) => (
           <View key={stat.id} style={[styles.profileLevelSignal, workerProfileLevelSignalSurface(tokens)]} testID={`worker-profile-reputation-${stat.id}`}>
@@ -4055,8 +4066,26 @@ function WorkerProfileReputationPanel({
         {detailNote}
       </Text>
       <View style={styles.actionRow}>
-        <PressButton disabled label={language === 'en' ? 'View reviews' : 'Xem \u0111\u00e1nh gi\u00e1'} onPress={() => undefined} secondary testID="worker-profile-reputation-review-action" />
+        <PressButton disabled={!hasRating} label={language === 'en' ? 'View reviews' : 'Xem \u0111\u00e1nh gi\u00e1'} onPress={() => setShowReviewDetails(true)} secondary testID="worker-profile-reputation-review-action" />
       </View>
+      {showReviewDetails && hasRating ? (
+        <View style={[styles.profileLevelDetail, workerProfileLevelMilestoneSurface(tokens, 'reached')]} testID="worker-profile-review-detail-panel">
+          <View style={[styles.profileLevelMilestoneBadge, workerProfileLevelMilestoneBadgeSurface(tokens, 'reached')]}>
+            <WorkerImageIcon frameSize={42} name="utilityShield" size={42} />
+          </View>
+          <View style={styles.profileLevelMilestoneCopy}>
+            <Text style={[styles.profileLevelMilestoneTitle, { color: tokens.ink }]} numberOfLines={1}>
+              {language === 'en' ? 'Review summary' : 'T\u00f3m t\u1eaft \u0111\u00e1nh gi\u00e1'}
+            </Text>
+            <Text style={[styles.profileLevelMilestoneText, { color: tokens.primary }]} numberOfLines={1}>
+              {reviewDetailScore}
+            </Text>
+            <Text style={[styles.profileLevelMilestoneText, { color: tokens.muted }]} numberOfLines={2}>
+              {language === 'en' ? `${reviewDetailCount} completed jobs; tips wait for API data.` : `${reviewDetailCount} vi\u1ec7c ho\u00e0n t\u1ea5t; ti\u1ec1n boa ch\u1edd d\u1eef li\u1ec7u API.`}
+            </Text>
+          </View>
+        </View>
+      ) : null}
       {!hasReputationData ? (
         <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2} testID="worker-profile-reputation-empty">
           {language === 'en' ? 'Rating and performance open after real completed jobs.' : '\u0110\u00e1nh gi\u00e1 v\u00e0 hi\u1ec7u su\u1ea5t ch\u1ec9 m\u1edf sau vi\u1ec7c ho\u00e0n t\u1ea5t th\u1eadt.'}
