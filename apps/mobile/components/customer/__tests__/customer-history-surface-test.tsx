@@ -220,6 +220,27 @@ describe('CustomerHistorySurface phase context', () => {
     expect(titleStyle.lineHeight).toBe(24)
   })
 
+  it('shows a real case command overview without leaking unreleased address or fake ETA', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('broadcasting'))
+
+    const { rerender } = render(<CustomerHistorySurface />)
+
+    const commandPanel = screen.getByTestId('customer-history-case-command-panel')
+    expect(commandPanel).toHaveTextContent(/Trung tâm ca việc/)
+    expect(screen.getByTestId('customer-history-case-command-cell-1-value')).toHaveTextContent('84%')
+    expect(screen.getByTestId('customer-history-case-command-cell-3-value')).toHaveTextContent('180.000đ - 260.000đ')
+    expect(screen.getByTestId('customer-history-case-command-cell-4-value')).toHaveTextContent('Quận 1')
+    expect(screen.getByTestId('customer-history-case-command-cell-5-value')).toHaveTextContent('Chờ tín hiệu di chuyển thật')
+    expect(commandPanel).not.toHaveTextContent(/Tòa A/)
+    expect(commandPanel).not.toHaveTextContent('--')
+
+    buildWorkflow(buildDeal('worker_on_way'))
+    rerender(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-case-command-cell-4-value')).toHaveTextContent('Tòa A, Quận 1')
+  })
+
   it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {
     render(<CustomerHistorySurface />)
 

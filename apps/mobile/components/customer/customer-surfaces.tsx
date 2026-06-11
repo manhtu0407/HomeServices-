@@ -667,6 +667,15 @@ const customerCopy = {
       editRequest: 'Chỉnh yêu cầu',
       newRequest: 'Tạo yêu cầu mới',
       openPriceCheck: 'Mở chat Kael',
+      caseCommandMeta: 'Từ dữ liệu thật',
+      caseCommandTitle: 'Trung tâm ca việc',
+      caseConfidence: 'Độ tin cậy',
+      caseEta: 'ETA',
+      caseEtaPending: 'Chờ tín hiệu di chuyển thật',
+      caseId: 'Mã việc',
+      caseLocation: 'Vị trí',
+      caseMatching: 'Ghép thợ',
+      caseQuote: 'Biên giá',
       cancelTitle: 'Hủy yêu cầu?',
       cancelSearching: 'Yêu cầu tìm thợ sẽ dừng và địa chỉ chi tiết vẫn bị ẩn khỏi thợ.',
       cancelActive: 'Kael sẽ xử lý yêu cầu hủy theo chính sách, ghi dấu vết kiểm tra và báo cho thợ nếu việc đã được nhận.',
@@ -831,6 +840,15 @@ const customerCopy = {
       editRequest: 'Edit request',
       newRequest: 'New request',
       openPriceCheck: 'Open Kael chat',
+      caseCommandMeta: 'From real data',
+      caseCommandTitle: 'Case Command Center',
+      caseConfidence: 'Confidence',
+      caseEta: 'ETA',
+      caseEtaPending: 'Awaiting live travel signal',
+      caseId: 'Job ID',
+      caseLocation: 'Location',
+      caseMatching: 'Matching',
+      caseQuote: 'Price band',
       cancelTitle: 'Cancel request?',
       cancelSearching: 'The worker search will stop and the detailed address stays hidden.',
       cancelActive: 'Kael will process this cancellation by policy, record the audit trail, and notify the worker if the job was accepted.',
@@ -1602,6 +1620,7 @@ export function CustomerHistorySurface() {
               <SecondaryButton label={languageMode === 'en' ? 'View chat' : 'Xem chat'} onPress={() => push(kaelChatPath(deal?.draft.serviceType))} compact tone="primary" />
             </View>
           </View> : null}
+          {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
           {!deal && showPriceTab ? <CustomerHistoryPriceEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
           {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} deal={deal} estimateLabel={estimateLabel} languageMode={languageMode} onOpenKael={continueOrCreate} originalEstimateLabel={originalEstimateLabel} scopeChange={showScopeChangeArtifact ? scopeChange : null} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {!deal && showChatTab ? <CustomerHistoryChatEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
@@ -3300,6 +3319,60 @@ function CustomerHistoryCancellationContextPanel({
         <V4TicketCell label={languageMode === 'en' ? 'Artifact' : 'Dấu mốc'} value={phaseContext.primaryArtifact?.title[languageMode] ?? copy.history.cancelledState} variant="activity" />
         <V4TicketCell label={languageMode === 'en' ? 'Next' : 'Tiếp theo'} value={copy.history.newRequest} variant="activity" />
       </View>
+    </View>
+  )
+}
+
+function CustomerHistoryCaseCommandPanel({
+  copy,
+  deal,
+  languageMode,
+  tokens,
+  visibleStatusLabel,
+  workerStateLabel,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]
+  deal: LocalDeal
+  languageMode: AppLanguage
+  tokens: CustomerThemeTokens
+  visibleStatusLabel: string
+  workerStateLabel: string
+}) {
+  const broadcast = deal.broadcast
+  const releasedAddress = broadcast?.fullAddressVisible && broadcast.fullAddressLabel
+    ? broadcast.fullAddressLabel
+    : null
+  const safeLocation = releasedAddress ?? broadcast?.generalArea ?? deal.draft.districtLabel
+  const jobId = broadcast?.jobId || (deal.id === LOCAL_DEAL_ID ? copy.history.kaelReviewing : deal.id)
+  const confidenceLabel = deal.estimate?.confidenceLabel?.trim() || copy.history.kaelReviewing
+  const quoteLabel = deal.estimate?.priceRangeLabel || broadcast?.estimatedPriceLabel || copy.history.kaelReviewing
+  const rows = [
+    [copy.history.caseId, jobId],
+    [copy.history.caseConfidence, confidenceLabel],
+    [copy.history.caseMatching, workerStateLabel],
+    [copy.history.caseQuote, quoteLabel],
+    [copy.history.caseLocation, localizedCustomerAreaLabel(safeLocation, languageMode, copy.ticket.unknown)],
+    [copy.history.caseEta, copy.history.caseEtaPending],
+  ] as const
+
+  return (
+    <View style={[styles.historyCheckPanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-case-command-panel">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {copy.history.caseCommandTitle}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {copy.history.caseCommandMeta}
+        </Text>
+      </View>
+      <View style={styles.bookingGrid} testID="customer-history-case-command-grid">
+        {rows.map(([label, value], index) => (
+          <V4TicketCell key={label} label={label} testID={`customer-history-case-command-cell-${index}`} value={value} variant="activity" />
+        ))}
+      </View>
+      <Text style={[styles.historyDisclaimerText, { color: tokens.muted }]} numberOfLines={2} testID="customer-history-case-command-status">
+        {visibleStatusLabel}
+      </Text>
     </View>
   )
 }
