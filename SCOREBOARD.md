@@ -21,7 +21,7 @@ Legend:
 | A | 1.3 Login with Email | Partial | Partial | TBD | Focused auth test verifies role-first entry and customer email fallback remains explicit | In progress |
 | A | 1.4 Register with Email | Partial | Partial | TBD | Worker create UI remains honest unavailable state; no auth sign-up API exposed in provider | In progress |
 | A | 1.5 Onboarding | Partial | Partial | TBD | Existing customer profile setup remains wired to `updateCustomerProfile`; native screenshot pending | In progress |
-| B | 2.1 Home | Partial | Partial | TBD | Existing route has real greeting/address/services/dock; native screenshot pending | In progress |
+| B | 2.1 Home | Partial | Partial | TBD | Customer Home focused test passed: 4 real shortcuts, 3 supported services, active status/estimate from real deal data | In progress |
 | B | 2.2 Search & Filter / Book | Partial | Partial | TBD | Booking wizard remains wired to real service/problem/address handoff | In progress |
 | B | 2.3 Media / Voice Note | Partial | Partial | TBD | Focused booking test verifies photo rail + honest voice capsule | In progress |
 | B | 2.4 Kael Live Performance Chat | Partial | Partial | TBD | Existing Kael chat uses server service wrappers and honest mic unavailable path; native screenshot pending | In progress |
@@ -35,14 +35,14 @@ Legend:
 | C | 2.12 Job in Progress | Partial | Partial | TBD | Activity command overview and worker checklist reflect active workflow gates | In progress |
 | D | 3.1 Worker Home | Partial | Partial | TBD | Existing worker home remains wired to real readiness/jobs; focused worker suite passed | In progress |
 | D | 3.2 Jobs | Partial | Partial | TBD | Worker active jobs now include safety checklist gates; focused worker suite passed | In progress |
-| D | 3.4 Kael On-site Advisory Chat | TBD | TBD | TBD | None yet | Not started |
+| D | 3.4 Kael On-site Advisory Chat | Partial | Partial | TBD | Worker JobRoom on-site advisory rail reads real status, address release, scope, and evidence gates; focused worker suite passed | In progress |
 | D | 3.4 Evidence Upload | Partial | Partial | TBD | Existing completion evidence box remains wired; checklist routes completion guidance to evidence state | In progress |
-| D | 3.5 Earnings | TBD | TBD | TBD | None yet | Not started |
+| D | 3.5 Earnings | Partial | Partial | TBD | Earnings reconciliation strip reads paid jobs, pending payout, platform fee, and daily chart data from `EarningsResponse`; focused worker suite passed | In progress |
 | D | 3.6 Worker Rating | Partial | Partial | TBD | Worker profile no longer shows placeholder locked milestone copy; focused worker suite passed | In progress |
 | D | 3.7 Safety & Checklist | Partial | Partial | TBD | Safety checklist renders address/scope/completion gates from real workflow state; focused worker suite passed | In progress |
 | D | 3.8 Evidence & Scope Change | Partial | Partial | TBD | Existing scope/evidence boxes preserved; checklist does not add direct price input | In progress |
-| D | 3.8 Job Summary | TBD | TBD | TBD | None yet | Not started |
-| D | 3.9 Summary & Report | TBD | TBD | TBD | None yet | Not started |
+| D | 3.8 Job Summary | Partial | Partial | TBD | Submitted job summary reads completion note/media/status and waits for Kael price reconciliation; focused worker suite passed | In progress |
+| D | 3.9 Summary & Report | Partial | Partial | TBD | Worker report card is read-only from real completion evidence; no fake report generation or final price input | In progress |
 | E | 5.1 Customer Home / Commanding Home | Partial | Partial | TBD | Agentic Center summary row and Kael Orb route focused test passed | In progress |
 | E | 5.2 Active Case Command Center | Partial | Partial | TBD | Active-case summary values use real deal/approval/preference state; focused test passed | In progress |
 | E | 5.3 Approval Queue | Partial | Partial | TBD | Approval count is real state length or honest text empty state; focused test passed | In progress |
