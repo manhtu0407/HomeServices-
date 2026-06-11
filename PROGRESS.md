@@ -58,6 +58,7 @@
 - Continued Group C:
   - Added a real-data customer case command overview to Activity.
   - Aligned the active Case Overview CTA to the reference `Tiếp tục với Kael` / `Continue with Kael` copy while preserving the real Kael chat route.
+  - Added the Case Overview reference hero inside the command panel with the real job id, real service/status, Kael head cue, and a panel-level `Tiếp tục với Kael` CTA routed to the existing Kael chat path.
   - Kept worker address privacy gated by workflow state.
   - Kept ETA honest by waiting for live travel signal instead of deriving fake arrival copy from timers.
   - Added a Matching Score panel to Activity from real estimate confidence, broadcast state, intake media count, area, and Kael prebrief.

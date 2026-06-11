@@ -1932,7 +1932,7 @@ export function CustomerHistorySurface() {
               <SecondaryButton label={languageMode === 'en' ? 'View chat' : 'Xem chat'} onPress={() => push(kaelChatPath(deal?.draft.serviceType))} compact tone="primary" />
             </View>
           </View> : null}
-          {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
+          {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} phaseContext={workflow.phaseContext} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {deal && showRepairTab && customerCancelRequiresKaelPolicy(deal.status) ? <CustomerHistoryJobAcceptancePanel copy={copy} deal={deal} languageMode={languageMode} onOpenJobChat={() => selectHistoryTab('chat')} phaseContext={workflow.phaseContext} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
@@ -3804,6 +3804,7 @@ function CustomerHistoryCaseCommandPanel({
   copy,
   deal,
   languageMode,
+  onOpenKael,
   phaseContext,
   tokens,
   visibleStatusLabel,
@@ -3812,6 +3813,7 @@ function CustomerHistoryCaseCommandPanel({
   copy: (typeof customerCopy)[AppLanguage]
   deal: LocalDeal
   languageMode: AppLanguage
+  onOpenKael: () => void
   phaseContext: WorkflowPhaseContext
   tokens: CustomerThemeTokens
   visibleStatusLabel: string
@@ -3822,7 +3824,13 @@ function CustomerHistoryCaseCommandPanel({
     ? broadcast.fullAddressLabel
     : null
   const safeLocation = releasedAddress ?? broadcast?.generalArea ?? deal.draft.districtLabel
-  const jobId = broadcast?.jobId || (deal.id === LOCAL_DEAL_ID ? copy.history.kaelReviewing : deal.id)
+  const rawJobId = (broadcast?.jobId || (deal.id === LOCAL_DEAL_ID ? '' : deal.id)).trim()
+  const jobId = rawJobId.length > 0 ? rawJobId : copy.history.kaelReviewing
+  const displayJobId = rawJobId.length > 0
+    ? rawJobId.startsWith('#')
+      ? rawJobId
+      : `#${rawJobId}`
+    : jobId
   const confidenceLabel = deal.estimate?.confidenceLabel?.trim() || copy.history.kaelReviewing
   const quoteLabel = deal.estimate?.priceRangeLabel || broadcast?.estimatedPriceLabel || copy.history.kaelReviewing
   const nextLabel = phaseContext.nextExpectedEvent
@@ -3848,6 +3856,20 @@ function CustomerHistoryCaseCommandPanel({
           {copy.history.caseCommandMeta}
         </Text>
       </View>
+      <View style={[styles.bookingDiagnosisPanel, customerBookingDiagnosisSurface(tokens)]} testID="customer-history-case-command-hero">
+        <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]}>
+          <KaelMascot material="opaque" size={34} variant="head" />
+          <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1} testID="customer-history-case-command-hero-job-id">
+            {displayJobId}
+          </Text>
+        </View>
+        <Text style={[styles.bookingDiagnosisBody, { color: tokens.text }]} numberOfLines={2} testID="customer-history-case-command-hero-summary">
+          {localizedServiceLabel(deal.draft.serviceType, languageMode)} · {visibleStatusLabel}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={1} testID="customer-history-case-command-hero-worker">
+          {workerStateLabel}
+        </Text>
+      </View>
       <View style={styles.bookingGrid} testID="customer-history-case-command-grid">
         {rows.map(([label, value], index) => (
           <V4TicketCell key={label} label={label} testID={`customer-history-case-command-cell-${index}`} value={value} variant="activity" />
@@ -3856,6 +3878,9 @@ function CustomerHistoryCaseCommandPanel({
       <Text style={[styles.historyDisclaimerText, { color: tokens.muted }]} numberOfLines={2} testID="customer-history-case-command-status">
         {visibleStatusLabel}
       </Text>
+      <View style={styles.historyHeroActions}>
+        <PrimaryButton label={copy.history.continueWithKael} onPress={onOpenKael} compact testID="customer-history-case-command-open-kael" />
+      </View>
     </View>
   )
 }
