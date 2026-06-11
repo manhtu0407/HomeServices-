@@ -1374,11 +1374,13 @@ describe('WorkerProfileSurface', () => {
     fireEvent.press(screen.getByTestId('worker-profile-level-chip-4'))
     expect(screen.getByTestId('worker-profile-level-selected-requirement')).toHaveTextContent(/50/)
     fireEvent.press(screen.getByTestId('worker-profile-level-chip-5'))
-    expect(screen.getByTestId('worker-profile-level-selected-requirement')).toHaveTextContent(/\?\?\?\?/)
+    expect(screen.getByTestId('worker-profile-level-selected-requirement')).toHaveTextContent(/Mở sau các mốc thật trước đó/)
+    expect(screen.getByTestId('worker-profile-level-chip-5')).toHaveTextContent(/Đang khóa/)
     expect(screen.getByTestId('worker-profile-preference-crisp-shell')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-profile-sign-out')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-profile-service-area-crisp-shell')).toBeNull()
     expect(screen.queryByText('--')).toBeNull()
+    expect(screen.queryByText('????')).toBeNull()
   })
 
   it('derives worker level progress from real completed jobs and feedback', () => {
@@ -1406,9 +1408,10 @@ describe('WorkerProfileSurface', () => {
     expect(screen.getByTestId('worker-profile-level-signal-rating')).toHaveTextContent(/Not yet/)
     expect(screen.getByTestId('worker-profile-level-signal-recommendation')).toHaveTextContent(/Not yet/)
     expect(screen.queryByText(/Ch\u01b0a c\u00f3/)).toBeNull()
+    expect(screen.queryByText('????')).toBeNull()
   })
 
-  it('keeps later worker rewards mysterious until level five opens the next requirement', () => {
+  it('keeps later worker rewards locked until level five opens the next requirement', () => {
     mockPathname = '/(worker)/profile'
     buildWorkflow({ workerProfile: buildWorkerProfile({ rating: 5, total_jobs: 100 }) })
 
@@ -1416,12 +1419,13 @@ describe('WorkerProfileSurface', () => {
 
     expect(screen.getByTestId('worker-profile-level-title')).toHaveTextContent(/tinh/)
     expect(screen.getByTestId('worker-profile-level-selected-requirement')).toHaveTextContent(/160/)
-    expect(screen.getByTestId('worker-profile-level-selected-reward')).toHaveTextContent(/\?\?\?\?/)
+    expect(screen.getByTestId('worker-profile-level-selected-reward')).toHaveTextContent(/Chi tiết quyền lợi mở theo tiến trình thật/)
     fireEvent.press(screen.getByTestId('worker-profile-level-chip-5'))
     expect(screen.getByTestId('worker-profile-level-selected-requirement')).toHaveTextContent(/100/)
-    expect(screen.getByTestId('worker-profile-level-selected-reward')).toHaveTextContent(/\?\?\?\?/)
+    expect(screen.getByTestId('worker-profile-level-selected-reward')).toHaveTextContent(/Chi tiết quyền lợi mở theo tiến trình thật/)
     fireEvent.press(screen.getByTestId('worker-profile-level-chip-7'))
-    expect(screen.getByTestId('worker-profile-level-selected-requirement')).toHaveTextContent(/\?\?\?\?/)
+    expect(screen.getByTestId('worker-profile-level-selected-requirement')).toHaveTextContent(/Mở sau các mốc thật trước đó/)
+    expect(screen.queryByText('????')).toBeNull()
   })
 
   it('keeps the verification form as a crisp profile panel when a worker can submit', () => {

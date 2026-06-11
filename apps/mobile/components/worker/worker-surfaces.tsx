@@ -8693,8 +8693,8 @@ function buildWorkerProfileLevelMilestones({
 
     return {
       level,
-      requirement: requirementVisible ? workerProfileLevelRequirement(level, threshold, language) : '????',
-      reward: rewardVisible ? workerProfileLevelReward(level, language) : '????',
+      requirement: requirementVisible ? workerProfileLevelRequirement(level, threshold, language) : workerProfileLockedRequirementText(language),
+      reward: rewardVisible ? workerProfileLevelReward(level, language) : workerProfileLockedRewardText(language),
       state,
       stateLabel: workerProfileLevelStateLabel(state, language),
       title: requirementVisible ? titles[index] ?? `${language === 'en' ? 'Level' : 'Cấp'} ${level}` : `${language === 'en' ? 'Level' : 'Cấp'} ${level}`,
@@ -8718,8 +8718,20 @@ function workerProfileLevelStateLabel(state: WorkerProfileLevelMilestoneState, l
   if (state === 'current') return language === 'en' ? 'Current' : 'Hiện tại'
   if (state === 'reached') return language === 'en' ? 'Unlocked' : 'Đã mở'
   if (state === 'next') return language === 'en' ? 'Next' : 'Tiếp theo'
-  if (state === 'mystery') return '????'
+  if (state === 'mystery') return language === 'en' ? 'Locked' : 'Đang khóa'
   return language === 'en' ? 'Path' : 'Lộ trình'
+}
+
+function workerProfileLockedRequirementText(language: WorkerLanguageMode) {
+  return language === 'en'
+    ? 'Unlocks after earlier real milestones.'
+    : 'Mở sau các mốc thật trước đó.'
+}
+
+function workerProfileLockedRewardText(language: WorkerLanguageMode) {
+  return language === 'en'
+    ? 'Reward details unlock with real progress.'
+    : 'Chi tiết quyền lợi mở theo tiến trình thật.'
 }
 
 function workerProfileLevelRequirement(level: number, threshold: number, language: WorkerLanguageMode) {
@@ -8749,7 +8761,7 @@ function workerProfileLevelReward(level: number, language: WorkerLanguageMode) {
         'Tín hiệu phân hạng tốt hơn khi hồ sơ tương đương.',
       ]
 
-  return rewards[level - 1] ?? '????'
+  return rewards[level - 1] ?? workerProfileLockedRewardText(language)
 }
 
 function workerProfileLevelOrbSurface(tokens: WorkerThemeTokens) {
