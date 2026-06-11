@@ -112,7 +112,7 @@ function buildActiveDeal(): LocalDeal {
   }
 }
 
-function buildWorkflow(deal: LocalDeal | null) {
+function buildWorkflow(deal: LocalDeal | null, options: { notificationUnreadCount?: number } = {}) {
   const selectors: LocalWorkflowSelectors = {
     canConfirmCustomerSearch: false,
     canCustomerCancelDeal: Boolean(deal),
@@ -135,6 +135,8 @@ function buildWorkflow(deal: LocalDeal | null) {
     actions: {},
     dispatch: jest.fn(),
     selectors,
+    notificationUnreadCount: options.notificationUnreadCount ?? 0,
+    notifications: [],
     state: {
       deal,
       lastError: null,
@@ -161,6 +163,22 @@ describe('CustomerHomeSurface address context', () => {
 
     expect(screen.getByText('Xin chào, Anh Hoàng')).toBeOnTheScreen()
     expect(screen.getByText('Bạn cần Kael giúp việc gì hôm nay?')).toBeOnTheScreen()
+  })
+
+  it('anchors the reference home header to Kael and real unread notifications', () => {
+    mockSessionMetadata = { full_name: 'Anh Hoàng' }
+    buildWorkflow(null, { notificationUnreadCount: 2 })
+
+    render(<CustomerHomeSurface />)
+
+    expect(within(screen.getByTestId('customer-home-title-avatar')).getByTestId('kael-model-8a-head.png')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-home-notification-button')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-home-notification-badge')).toHaveTextContent('2')
+
+    fireEvent.press(screen.getByTestId('customer-home-notification-button'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/history')
+    expect(mockPush).not.toHaveBeenCalled()
   })
 
   it('hands a real home command draft directly to Kael chat', () => {
@@ -215,6 +233,7 @@ describe('CustomerHomeSurface address context', () => {
   it('renders all four real customer home shortcuts without fake counters', () => {
     render(<CustomerHomeSurface />)
 
+    expect(screen.getByText('Dịch vụ phổ biến')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-home-shortcut-active')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-home-shortcut-history')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-home-shortcut-address')).toBeOnTheScreen()
@@ -251,6 +270,8 @@ describe('CustomerHomeSurface address context', () => {
     render(<CustomerHomeSurface />)
 
     const activeCardStyle = StyleSheet.flatten(screen.getByTestId('customer-home-active-local-deal').props.style) as Record<string, unknown>
+    expect(screen.getByTestId('customer-home-active-order-heading')).toHaveTextContent(/Theo dõi đơn hàng/)
+    expect(screen.getByTestId('customer-home-active-order-id')).toHaveTextContent(/job_test_1/)
     expect(screen.getByTestId('customer-home-active-local-deal')).toHaveTextContent(/Vệ sinh/)
     expect(screen.getByTestId('customer-home-active-local-deal')).not.toHaveTextContent(/Nháp/)
     expect(screen.getByTestId('customer-home-active-status')).toBeOnTheScreen()

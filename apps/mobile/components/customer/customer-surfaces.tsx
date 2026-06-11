@@ -94,6 +94,13 @@ const customerDockKaelActionAuraOffsetTop = component.bottomNav.orb.auraOffsetTo
 const customerDockBottomMargin = 18
 const customerDockBottomClearance = Math.max(customerDockHeight, customerDockKaelActionOuterSize) + customerDockBottomMargin + 76
 const customerFrameHorizontalPadding = 16
+const customerHomeTitleAvatarSize = 44
+const customerHomeNotificationButtonSize = 42
+const customerHomeNotificationBadgeMinWidth = 18
+const customerHomeNotificationBadgeOffset = -2
+const customerHomeNotificationBadgePadding = 4
+const customerHomeNotificationBadgeFontSize = 11
+const customerHomeNotificationBadgeLineHeight = 14
 const customerDockHiddenListeners = new Set<() => void>()
 let customerDockHiddenSnapshot = false
 const openBookingPath = '/(customer)/booking'
@@ -707,7 +714,7 @@ const customerCopy = {
       serviceMetaPlumbing: 'Rò rỉ, nghẹt',
       serviceMetaCleaning: 'Dọn căn hộ',
       serviceSectionMeta: '3 nhóm đang hỗ trợ',
-      serviceSectionTitle: 'Dịch vụ',
+      serviceSectionTitle: 'Dịch vụ phổ biến',
       intakeCta: 'Mở Kael',
       quickActive: 'Yêu cầu',
       quickHistory: 'Hoạt động',
@@ -718,6 +725,8 @@ const customerCopy = {
       quickAddressMeta: 'Kiểm tra khu vực',
       quickTrustMeta: 'Ước tính đã kiểm chứng',
       noActiveMeta: 'Chưa có yêu cầu',
+      activeSectionTitle: 'Theo dõi đơn hàng',
+      activeOrderId: (id: string) => `Đơn của bạn ${id}`,
       trustTitle: 'Kael kiểm chứng giá',
       trustBody: 'Giá do Kael tính từ dữ liệu hiện có. Kael cập nhật khi có bằng chứng phạm vi mới.',
       notification: (count: number) => `Kael có ${count} cập nhật chưa đọc`,
@@ -957,7 +966,7 @@ const customerCopy = {
       serviceMetaPlumbing: 'Leak, clog',
       serviceMetaCleaning: 'Apartment cleaning',
       serviceSectionMeta: '3 supported groups',
-      serviceSectionTitle: 'Services',
+      serviceSectionTitle: 'Popular services',
       intakeCta: 'Open Kael',
       quickActive: 'Request',
       quickHistory: 'Activity',
@@ -968,6 +977,8 @@ const customerCopy = {
       quickAddressMeta: 'Check area',
       quickTrustMeta: 'Audited estimate',
       noActiveMeta: 'No active request',
+      activeSectionTitle: 'Track order',
+      activeOrderId: (id: string) => `Your order ${id}`,
       trustTitle: 'Kael keeps price audit',
       trustBody: 'Prices are Kael estimates from current evidence. Kael updates them when new scope evidence is added.',
       notification: (count: number) => `Kael has ${count} unread updates`,
@@ -1195,7 +1206,7 @@ export function CustomerHomeSurface() {
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
   const { reduceMotion } = useGlassAccessibility()
-  const { dispatch, selectors, state } = useFrontendWorkflow()
+  const { dispatch, notificationUnreadCount = 0, selectors, state } = useFrontendWorkflow()
   const [homeCommandDraft, setHomeCommandDraft] = useState('')
   const activeDeal = state.deal
   const canStartNewDeal = !activeDeal || canReplaceCustomerDeal(activeDeal.status)
@@ -1219,6 +1230,7 @@ export function CustomerHomeSurface() {
     ? displayName ? `Hi, ${displayName}` : 'Hi there'
     : displayName ? `Xin chào, ${displayName}` : 'Xin chào'
   const customerTitle = homeTitle
+  const activeOrderReference = activeDeal ? customerHomeOrderReference(activeDeal) : null
   const openKaelChatFlow = (serviceType?: ServiceType) => {
     if (!canStartNewDeal) {
       replace(activeDealRoute)
@@ -1268,6 +1280,7 @@ export function CustomerHomeSurface() {
     push(openKaelChatPath)
   }
   const homeCommandActionLabel = canStartNewDeal ? copy.home.intakeCta : copy.home.quickActive
+  const notificationBadge = notificationUnreadCount > 0 ? customerIntegerFormatters[languageMode].format(notificationUnreadCount) : null
   const homeShortcuts: Array<{ icon: IconName; meta: string | null; onPress: () => void; testID: string; title: string; tone: SurfaceTone }> = [
     {
       icon: 'request',
@@ -1309,14 +1322,35 @@ export function CustomerHomeSurface() {
           <View style={styles.v4Content}>
             <View style={styles.hiddenMarker} testID="customer-home-ios26-foundation-section" />
             <View style={styles.homeTopRow} testID="customer-home-title-row">
-              <View style={styles.titleBlock}>
-                <Text adjustsFontSizeToFit minimumFontScale={0.82} style={[styles.screenTitle, { color: tokens.text }]} numberOfLines={1}>
-                  {customerTitle}
-                </Text>
-                <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={1}>
-                  {copy.home.subtitle}
-                </Text>
+              <View style={styles.homeIdentityCluster}>
+                <View style={styles.homeTitleAvatar} testID="customer-home-title-avatar">
+                  <KaelMascot variant="head" size={customerHomeTitleAvatarSize} material="opaque" />
+                </View>
+                <View style={styles.titleBlock}>
+                  <Text adjustsFontSizeToFit minimumFontScale={0.82} style={[styles.screenTitle, { color: tokens.text }]} numberOfLines={1}>
+                    {customerTitle}
+                  </Text>
+                  <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={1}>
+                    {copy.home.subtitle}
+                  </Text>
+                </View>
               </View>
+              <Pressable
+                accessibilityLabel={notificationUnreadCount > 0 ? copy.home.notification(notificationUnreadCount) : copy.home.quickHistory}
+                accessibilityRole="button"
+                onPress={() => replace(openHistoryPath)}
+                style={({ pressed }) => [styles.homeNotificationButton, customerHomeControlSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+                testID="customer-home-notification-button"
+              >
+                <MappedIcon name="notification" color={tokens.primary} accent={tokens.aqua} size={24} />
+                {notificationBadge ? (
+                  <View style={[styles.homeNotificationBadge, { backgroundColor: tokens.primary, borderColor: tokens.raised }]} testID="customer-home-notification-badge">
+                    <Text style={[styles.homeNotificationBadgeText, { color: tokens.primaryText }]} numberOfLines={1}>
+                      {notificationBadge}
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
             </View>
             <View style={styles.homeSheet}>
               <View style={styles.hiddenMarker} testID="customer-home-signature-v4" />
@@ -1428,7 +1462,17 @@ export function CustomerHomeSurface() {
                   testID="customer-home-active-local-deal"
                 >
                   <View style={styles.sectionTitle}>
-                    <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+                    <View style={styles.titleBlock} testID="customer-home-active-order-heading">
+                      <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+                        {copy.home.activeSectionTitle}
+                      </Text>
+                      {activeOrderReference ? (
+                        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1} testID="customer-home-active-order-id">
+                          {copy.home.activeOrderId(activeOrderReference)}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={1}>
                       {localizedServiceLabel(activeDeal.draft.serviceType, languageMode)}
                     </Text>
                   </View>
@@ -3250,6 +3294,11 @@ function customerHomeAreaDisplayLabel(deal: LocalDeal | null, defaultAddress: st
   const activeDistrict = deal?.draft.districtLabel.trim()
   const value = activeAddress || activeDistrict || defaultAddress.trim()
   return localizedCustomerAreaLabel(value, language, fallback)
+}
+
+function customerHomeOrderReference(deal: LocalDeal) {
+  const candidate = deal.broadcast?.jobId?.trim() || deal.id.trim()
+  return candidate && candidate !== LOCAL_DEAL_ID ? candidate : null
 }
 
 const customerVietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i
@@ -6519,6 +6568,16 @@ function IconGlyph({ name, color, accent }: { name: IconName; color: string; acc
     )
   }
 
+  if (name === 'notification') {
+    return (
+      <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+        <Path d="M8.2 17.2h8.6l-.8-1.4v-4.1a3.5 3.5 0 0 0-7 0v4.1l-.8 1.4Z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+        <Path d="M11.2 19c.4.7 2.2.7 2.6 0M12.5 6.4V5.2" stroke={accent} strokeWidth={1.8} strokeLinecap="round" />
+        <Circle cx={17.3} cy={7.7} r={1.6} fill={accent} opacity={0.84} />
+      </Svg>
+    )
+  }
+
   return (
     <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
       <Rect x={6} y={6} width={13} height={13} rx={3.2} stroke={color} strokeWidth={1.9} />
@@ -6962,6 +7021,44 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 10,
     paddingHorizontal: 2,
+  },
+  homeIdentityCluster: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minWidth: 0,
+  },
+  homeTitleAvatar: {
+    height: customerHomeTitleAvatarSize,
+    width: customerHomeTitleAvatarSize,
+  },
+  homeNotificationButton: {
+    alignItems: 'center',
+    borderRadius: customerHomeNotificationButtonSize / 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: customerHomeNotificationButtonSize,
+    justifyContent: 'center',
+    overflow: 'visible',
+    position: 'relative',
+    width: customerHomeNotificationButtonSize,
+  },
+  homeNotificationBadge: {
+    alignItems: 'center',
+    borderRadius: customerHomeNotificationBadgeMinWidth / 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    minHeight: customerHomeNotificationBadgeMinWidth,
+    minWidth: customerHomeNotificationBadgeMinWidth,
+    paddingHorizontal: customerHomeNotificationBadgePadding,
+    position: 'absolute',
+    right: customerHomeNotificationBadgeOffset,
+    top: customerHomeNotificationBadgeOffset,
+  },
+  homeNotificationBadgeText: {
+    fontSize: customerHomeNotificationBadgeFontSize,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: customerHomeNotificationBadgeLineHeight,
   },
   titleBlock: {
     flex: 1,
