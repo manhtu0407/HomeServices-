@@ -98,6 +98,25 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-login-password-input')).toBeOnTheScreen()
   })
 
+  it('submits customer email login through the real auth provider boundary', async () => {
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByText('Tiếp tục'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
+    fireEvent.press(screen.getByTestId('auth-client-email-fallback-toggle'))
+    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    await waitFor(() => {
+      expect(mockSignInWithPassword).toHaveBeenCalledWith('tu@example.com', 'secret123')
+    })
+
+    fireEvent.press(screen.getByTestId('auth-customer-forgot-password'))
+
+    expect(screen.getByText('Đặt lại mật khẩu chưa sẵn sàng.')).toBeOnTheScreen()
+  })
+
   it('surfaces Kael onboarding and saves real customer profile fields', async () => {
     mockAuthOverride = {
       profileStatus: 'profile_missing',

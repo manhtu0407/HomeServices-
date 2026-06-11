@@ -247,7 +247,7 @@ const authCopy = {
       customerSetupUnavailable: 'Chưa lưu được hồ sơ khách. Vui lòng thử lại.',
       googleUnavailable: 'Chưa mở được đăng nhập Google. Vui lòng thử lại.',
       phoneUnavailable: 'Đăng nhập số điện thoại chưa sẵn sàng.',
-      resetPasswordUnavailable: 'Đặt lại mật khẩu thợ chưa sẵn sàng.',
+      resetPasswordUnavailable: 'Đặt lại mật khẩu chưa sẵn sàng.',
     },
   },
   en: {
@@ -381,7 +381,7 @@ const authCopy = {
       customerSetupUnavailable: 'Customer profile could not be saved. Please try again.',
       googleUnavailable: 'Google sign-in could not open. Please try again.',
       phoneUnavailable: 'Phone sign-in is not ready.',
-      resetPasswordUnavailable: 'Worker password reset is not ready.',
+      resetPasswordUnavailable: 'Password reset is not ready.',
     },
   },
 } as const
@@ -858,6 +858,13 @@ function UnauthenticatedRoleForm({
               <WorkerVerificationPreview copy={copy} />
             ) : null}
           </>
+        ) : null}
+        {isCustomerPasswordFallback && showCustomerEmailFallback ? (
+          <View style={styles.customerPasswordFoot} testID="auth-customer-password-foot">
+            <Pressable accessibilityRole="button" onPress={onForgotPassword} testID="auth-customer-forgot-password">
+              <Text style={styles.customerPasswordFootAction}>{copy.forgotPassword}</Text>
+            </Pressable>
+          </View>
         ) : null}
         {visibleError ? <Text style={styles.errorText}>{visibleError}</Text> : null}
         {isWorker ? (
@@ -2013,6 +2020,8 @@ const styles = StyleSheet.create({
   workerCredentialMeta: { color: authTokens.muted, fontSize: 12, fontWeight: '700', marginTop: 2 },
   workerVerifyServiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 2 },
   workerVerifyServiceChip: { backgroundColor: authTokens.mint, borderColor: authTokens.border, borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 12, fontWeight: '800', overflow: 'hidden', paddingHorizontal: 11, paddingVertical: 8 },
+  customerPasswordFoot: { alignItems: 'flex-end', marginTop: -2, zIndex: 1 },
+  customerPasswordFootAction: { color: authTokens.primary, fontSize: 12, fontWeight: '900', lineHeight: 16 },
   authFootCta: { alignItems: 'center', backgroundColor: 'rgba(226,255,249,0.78)', borderColor: 'rgba(13,134,119,0.13)', borderRadius: 20, borderWidth: 1, gap: 8, marginTop: 2, padding: 12, zIndex: 1 },
   authFootCtaText: { color: authTokens.primary, fontSize: 11.5, fontWeight: '700', lineHeight: 15, textAlign: 'center' },
   authFootLinkButton: { alignItems: 'center', borderRadius: 999, minHeight: 28, paddingHorizontal: 12 },
