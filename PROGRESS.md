@@ -33,7 +33,9 @@
   - Added the NestScout/Kael welcome screen before role selection.
   - Kept role-first auth behavior and real password/Google actions intact.
   - Kept phone/register unavailable states honest because the auth provider does not expose phone OTP or Supabase sign-up.
-  - Added focused RNTL coverage for welcome, role-gate transition, and customer email fallback.
+  - Added the customer onboarding Kael hero and setup steps on the real `updateCustomerProfile` path.
+  - Kept onboarding fields seeded from real session metadata and saved through the existing auth provider.
+  - Added focused RNTL coverage for welcome, role-gate transition, customer email fallback, and customer onboarding save.
 - Started Group B:
   - Added the required media/voice note slot to the booking describe step.
   - Kept photo picking wired to the existing image picker.
@@ -89,7 +91,7 @@
 - Verification for this checkpoint:
   - `pnpm --filter @home-services/mobile type-check` passed.
   - `tsc --noEmit` from `apps/mobile` passed when portable `pnpm.CMD` was unavailable.
-  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 3 tests.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 4 tests after the customer onboarding hero.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/ui/__tests__/kael-primitives-test.tsx` passed: 9 tests.
   - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
   - `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx` passed: 5 tests.
@@ -100,13 +102,13 @@
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job in Progress panel.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 50 tests after the Earnings period row.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
-  - Mobile Jest from `apps/mobile` passed after the Earnings period row: 17 suites, 165 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the customer onboarding hero: 17 suites, 166 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings period/reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
+Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome and customer onboarding, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings period/reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
 
 ## Next
 

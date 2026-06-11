@@ -165,6 +165,14 @@ const authCopy = {
     customerGoogleFallback: 'Đăng nhập bằng Google',
     customerSetupHeading: 'Xác nhận thông tin',
     customerSetupSubtitle: 'Dùng khi gửi yêu cầu và liên hệ',
+    customerSetupWelcomeTitle: 'Xin chào mừng!',
+    customerSetupWelcomeSubtitle: 'Kael dùng hồ sơ này để chuẩn bị đúng địa chỉ và liên hệ khi bạn đặt dịch vụ.',
+    customerSetupProfileStep: 'Hồ sơ',
+    customerSetupProfileStepMeta: 'Tên gọi',
+    customerSetupContactStep: 'Liên hệ',
+    customerSetupContactStepMeta: 'Số thật',
+    customerSetupAddressStep: 'Địa chỉ',
+    customerSetupAddressStepMeta: 'Căn hộ',
     customerDisplayName: 'Tên hiển thị',
     customerDisplayNamePlaceholder: 'Nhập tên của bạn',
     customerPhoneContact: 'Số điện thoại',
@@ -287,6 +295,14 @@ const authCopy = {
     customerGoogleFallback: 'Sign in with Google',
     customerSetupHeading: 'Confirm details',
     customerSetupSubtitle: 'Used for requests and contact',
+    customerSetupWelcomeTitle: 'Welcome in!',
+    customerSetupWelcomeSubtitle: 'Kael uses this profile to prepare the right address and contact details for service requests.',
+    customerSetupProfileStep: 'Profile',
+    customerSetupProfileStepMeta: 'Name',
+    customerSetupContactStep: 'Contact',
+    customerSetupContactStepMeta: 'Real number',
+    customerSetupAddressStep: 'Address',
+    customerSetupAddressStepMeta: 'Apartment',
     customerDisplayName: 'Display name',
     customerDisplayNamePlaceholder: 'Enter your name',
     customerPhoneContact: 'Phone number',
@@ -1150,6 +1166,7 @@ function CustomerOnboardingPanel({
   return (
     <View style={styles.formStack} testID="auth-client-onboarding">
       <AuthTopRow onBack={onBack} subtitle={copy.customerSetupSubtitle} title={copy.customerSetupHeading} />
+      <CustomerOnboardingHero copy={copy} />
       <View style={[styles.loginForm, styles.setupForm, styles.customerSetupForm]} testID="auth-client-onboarding-core-form">
         <View pointerEvents="none" style={styles.customerSetupCoolGlow} />
         <View pointerEvents="none" style={styles.customerSetupWarmGlow} />
@@ -1210,9 +1227,30 @@ function CustomerOnboardingPanel({
   )
 }
 
-function SetupStep({ active = false, label, value }: { active?: boolean; label: string; value: string }) {
+function CustomerOnboardingHero({ copy }: { copy: AuthCopy }) {
+  const { reduceTransparency } = useGlassAccessibility()
+
   return (
-    <View style={[styles.setupStep, active ? styles.setupStepActive : null]}>
+    <View style={[styles.setupHero, styles.customerSetupHero, reduceTransparency ? styles.customerSetupHeroReduced : null]} testID="auth-client-onboarding-hero">
+      <View style={styles.customerSetupHeroTop}>
+        <KaelMascot size={82} state="understood" style={styles.customerSetupKael} testID="auth-client-onboarding-kael" />
+        <View style={styles.titleStack}>
+          <Text style={styles.customerSetupHeroTitle}>{copy.customerSetupWelcomeTitle}</Text>
+          <Text style={styles.customerSetupHeroSubtitle}>{copy.customerSetupWelcomeSubtitle}</Text>
+        </View>
+      </View>
+      <View style={styles.setupSteps}>
+        <SetupStep active label={copy.customerSetupProfileStep} testID="auth-client-onboarding-step-profile" value={copy.customerSetupProfileStepMeta} />
+        <SetupStep active label={copy.customerSetupContactStep} testID="auth-client-onboarding-step-contact" value={copy.customerSetupContactStepMeta} />
+        <SetupStep label={copy.customerSetupAddressStep} testID="auth-client-onboarding-step-address" value={copy.customerSetupAddressStepMeta} />
+      </View>
+    </View>
+  )
+}
+
+function SetupStep({ active = false, label, testID, value }: { active?: boolean; label: string; testID?: string; value: string }) {
+  return (
+    <View style={[styles.setupStep, active ? styles.setupStepActive : null]} testID={testID}>
       <Text style={styles.setupStepLabel} numberOfLines={1}>{label}</Text>
       <Text style={styles.setupStepValue} numberOfLines={1}>{value}</Text>
     </View>
@@ -1887,6 +1925,12 @@ const styles = StyleSheet.create({
   loginFormGlow: { backgroundColor: 'rgba(206,255,244,0.34)', borderRadius: 999, height: 104, position: 'absolute', right: -40, top: -38, width: 136 },
   setupHero: { backgroundColor: 'rgba(235,255,250,0.82)', borderColor: 'rgba(255,255,255,0.82)', borderRadius: 30, borderWidth: 1, boxShadow: authTokens.softShadow, gap: 13, overflow: 'hidden', padding: 15 },
   setupHeroTop: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+  customerSetupHero: { backgroundColor: 'rgba(241,255,251,0.90)', borderColor: 'rgba(132,230,210,0.30)', boxShadow: '0 16px 32px rgba(17,70,61,0.09), inset 0 1px 0 rgba(255,255,255,0.94)' },
+  customerSetupHeroReduced: { backgroundColor: authTokens.milk, borderColor: authTokens.border, boxShadow: 'none' },
+  customerSetupHeroTop: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+  customerSetupKael: { marginLeft: -3 },
+  customerSetupHeroTitle: { color: authTokens.cookie, fontSize: 20, fontWeight: '900', letterSpacing: 0, lineHeight: 24 },
+  customerSetupHeroSubtitle: { color: authTokens.cookieSoft, fontSize: 12.5, fontWeight: '700', lineHeight: 17 },
   setupSteps: { flexDirection: 'row', gap: 8 },
   setupStep: { backgroundColor: 'rgba(255,255,255,0.78)', borderColor: authTokens.border, borderRadius: 18, borderWidth: 1, flex: 1, gap: 2, minHeight: 62, paddingHorizontal: 9, paddingVertical: 9 },
   setupStepActive: { backgroundColor: authTokens.mint },

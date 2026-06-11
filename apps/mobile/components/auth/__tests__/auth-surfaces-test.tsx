@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 
 const mockReplace = jest.fn()
 const mockRefreshProfile = jest.fn(async () => null)
@@ -6,6 +6,7 @@ const mockSignInWithGoogle = jest.fn(async () => ({ success: true }))
 const mockSignInWithPassword = jest.fn(async () => ({ success: false, error: 'Không thể đăng nhập' }))
 const mockSignOut = jest.fn(async () => undefined)
 const mockUpdateCustomerProfile = jest.fn(async () => ({ success: true }))
+let mockAuthOverride: Record<string, unknown> = {}
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
@@ -43,6 +44,7 @@ jest.mock('@/lib/auth-provider', () => ({
     signInWithPassword: mockSignInWithPassword,
     signOut: mockSignOut,
     updateCustomerProfile: mockUpdateCustomerProfile,
+    ...mockAuthOverride,
   }),
 }))
 
@@ -57,6 +59,7 @@ jest.mock('@/lib/app-language', () => {
 import { LoginRoleSurface } from '../auth-surfaces'
 
 beforeEach(() => {
+  mockAuthOverride = {}
   jest.clearAllMocks()
 })
 
@@ -93,5 +96,43 @@ describe('LoginRoleSurface', () => {
 
     expect(screen.getByTestId('auth-login-email-input')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-login-password-input')).toBeOnTheScreen()
+  })
+
+  it('surfaces Kael onboarding and saves real customer profile fields', async () => {
+    mockAuthOverride = {
+      profileStatus: 'profile_missing',
+      role: null,
+      session: {
+        user: {
+          app_metadata: { provider: 'google' },
+          user_metadata: {
+            full_name: 'Tu',
+            phone_number: '0909000000',
+          },
+        },
+      },
+    }
+
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByTestId('auth-client-onboarding')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-client-onboarding-kael-understood')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-client-onboarding-step-profile')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-client-onboarding-step-contact')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-client-onboarding-step-address')).toBeOnTheScreen()
+
+    fireEvent.changeText(screen.getByTestId('auth-client-onboarding-display-name'), 'Tu Phan')
+    fireEvent.changeText(screen.getByTestId('auth-client-onboarding-phone'), '0909000001')
+    fireEvent.changeText(screen.getByTestId('auth-client-onboarding-address'), 'Landmark 81, Bình Thạnh')
+    fireEvent.press(screen.getByTestId('auth-client-onboarding-save'))
+
+    await waitFor(() => {
+      expect(mockUpdateCustomerProfile).toHaveBeenCalledWith({
+        defaultAddress: 'Landmark 81, Bình Thạnh',
+        displayName: 'Tu Phan',
+        phone: '0909000001',
+      })
+    })
+    expect(mockRefreshProfile).toHaveBeenCalled()
   })
 })
