@@ -312,6 +312,14 @@ describe('CustomerAgenticCenterSurface', () => {
     expect(screen.getByText('0901234567')).toBeTruthy()
   })
 
+  it('routes the Memory and Preferences edit action to the real profile surface', () => {
+    render(<CustomerAgenticCenterSurface />)
+
+    fireEvent.press(screen.getByTestId('customer-agentic-center-memory-edit-action'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile')
+  })
+
   it('renders Kael memory self-view preferences without exposing unsafe metadata', () => {
     buildWorkflow(null)
     mockWorkflowValue.customerKaelMemory = {

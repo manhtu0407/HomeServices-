@@ -18,7 +18,6 @@ import type { KaelMemoryPayload } from '@/lib/api-types'
 
 const kaelHead = require('../../assets/kael-model-8a-head.png')
 const KAEL_CHAT_PATH = '/(customer)/kael-chat'
-const CUSTOMER_HOME_PATH = '/(customer)/home'
 const CUSTOMER_HISTORY_PATH = '/(customer)/history'
 const CUSTOMER_PROFILE_PATH = '/(customer)/profile'
 
@@ -53,6 +52,7 @@ const copy = {
     heroReady: 'Kael đang sẵn sàng hỗ trợ bạn.',
     activity: 'Xem hoạt động',
     profile: 'Hồ sơ',
+    editProfile: 'Chỉnh sửa hồ sơ',
     summaryActive: 'Việc đang chạy',
     summaryApprovals: 'Cần duyệt',
     summaryNotifications: 'Thông báo',
@@ -102,6 +102,7 @@ const copy = {
     heroReady: 'Kael is ready to support you.',
     activity: 'View activity',
     profile: 'Profile',
+    editProfile: 'Edit profile',
     summaryActive: 'Active case',
     summaryApprovals: 'Approvals',
     summaryNotifications: 'Notifications',
@@ -244,8 +245,8 @@ export function CustomerAgenticCenterSurface() {
           {preferences.length > 0 ? preferences.map((item) => <InfoRow key={item.label} label={item.label} tokens={tokens} value={item.value} />) : <EmptyState body={memoryEmptyBody} title={memoryEmptyTitle} tokens={tokens} />}
         </CenterSection>
 
-        <Pressable accessibilityLabel={language === 'en' ? 'Back to home' : 'Về trang chủ'} accessibilityRole="button" onPress={() => replace(CUSTOMER_HOME_PATH)} style={({ pressed }) => [styles.homeLink, centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-agentic-center-home">
-          <Text style={[styles.homeLinkText, { color: tokens.primary }]}>{language === 'en' ? 'Home' : 'Trang chủ'}</Text>
+        <Pressable accessibilityLabel={text.editProfile} accessibilityRole="button" onPress={() => replace(CUSTOMER_PROFILE_PATH)} style={({ pressed }) => [styles.homeLink, centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-agentic-center-memory-edit-action">
+          <Text style={[styles.homeLinkText, { color: tokens.primary }]}>{text.editProfile}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
