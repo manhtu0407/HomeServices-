@@ -177,6 +177,10 @@ describe('CustomerAgenticCenterSurface', () => {
     expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('1')
     expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('1')
     expect(screen.getByTestId('customer-agentic-center-summary-memory-value')).toHaveTextContent('2')
+    expect(screen.getByTestId('customer-agentic-center-phase-title-value')).toHaveTextContent('Matching worker')
+    expect(screen.getByTestId('customer-agentic-center-phase-artifact-value')).toHaveTextContent('Provider match')
+    expect(screen.getByTestId('customer-agentic-center-phase-next-value')).toHaveTextContent('Worker accepts')
+    expect(screen.getByTestId('customer-agentic-center-phase-gate-value')).toHaveTextContent('Waiting for worker acceptance')
     expect(screen.getAllByText('2').length).toBeGreaterThan(1)
   })
 

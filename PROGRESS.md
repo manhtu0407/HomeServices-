@@ -85,6 +85,7 @@
 - Continued Group E:
   - Added Agentic Center real summary cells for active case, approvals, and memory.
   - Summary values come from live workflow/preference state, with text empty states instead of fake zeroes.
+  - Added the Agentic Center live workflow card from `WorkflowPhaseContext` for source, phase, artifact, next event, and action gate.
   - Added focused RNTL coverage for empty and active summary values.
 - Continued Group F:
   - Fixed worker locked milestone copy so it no longer renders placeholder question marks.
@@ -103,7 +104,7 @@
   - Kept Booking and Kael chat on the existing pending-intake, media picker, server service wrapper, and progress polling paths; no remote job creation, confirm-search action, direct provider call, fake schedule slot, fake media count, or fake payment option was added.
 - Verification for this checkpoint:
   - `pnpm --filter @home-services/mobile type-check` passed.
-  - `tsc --noEmit` from `apps/mobile` passed when portable `pnpm.CMD` was unavailable.
+  - `tsc --noEmit` from `apps/mobile` passed after the Agentic Center live workflow checkpoint when portable `pnpm.CMD` was unavailable.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 6 tests after the customer email login boundary.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/ui/__tests__/kael-primitives-test.tsx` passed: 9 tests.
   - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
@@ -114,14 +115,14 @@
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests.
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job Acceptance service row.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 50 tests after the Earnings period row.
-  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
-  - Mobile Jest from `apps/mobile` passed after the Job Acceptance service checkpoint: 17 suites, 170 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests after the Agentic Center live workflow card.
+  - Mobile Jest from `apps/mobile` passed after the Agentic Center live workflow checkpoint: 17 suites, 170 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome and customer onboarding, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings period/reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
+Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary/live workflow card, Group A welcome and customer onboarding, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings period/reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
 
 ## Next
 

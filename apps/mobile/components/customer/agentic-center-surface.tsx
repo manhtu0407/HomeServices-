@@ -3,7 +3,7 @@ import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import type { LocalDeal, LocalDealStatus } from '@home-services/shared'
+import { hasLocalDealCompletionEvidence, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type LocalDeal, type LocalDealStatus, type WorkflowPhaseContext } from '@home-services/shared'
 import { getCustomerThemeTokens, getReducedTransparencyCustomerTokens, useCustomerThemeMode, type CustomerThemeTokens } from '@/components/customer/customer-theme'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassSurface } from '@/components/ui/glass-surface'
@@ -13,6 +13,7 @@ import { color, component, radius, spacing, typography } from '@/design/theme'
 import { localizedServiceLabel, localizedStatusLabel, useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
+import { useServiceWorkflow } from '@/lib/use-service-workflow'
 
 const kaelHead = require('../../assets/kael-model-8a-head.png')
 const KAEL_CHAT_PATH = '/(customer)/kael-chat'
@@ -108,6 +109,14 @@ export function CustomerAgenticCenterSurface() {
   const { width } = useWindowDimensions()
   const frameWidth = Math.min(width, 720)
   const deal = state.deal
+  const workflow = useServiceWorkflow({
+    status: selectors.currentBackendStatus,
+    hasAiNotes: Boolean(deal?.estimate?.advisory),
+    hasCompletionEvidence: hasLocalDealCompletionEvidence(deal),
+    hasCustomerInput: Boolean(deal),
+    hasEstimate: Boolean(deal?.estimate),
+    hasScopeChange: Boolean(deal?.scopeChange),
+  })
   const metadata = session?.user.user_metadata ?? {}
   const preferences = getPreferenceRows(metadata, language, text)
   const approvals = getApprovalRows({
@@ -142,7 +151,12 @@ export function CustomerAgenticCenterSurface() {
         <CommandSummary rows={summaryRows} tokens={tokens} />
 
         <CenterSection title={text.activeCase} tokens={tokens}>
-          {deal ? <ActiveCaseCard deal={deal} language={language} status={selectors.currentStatus} text={text} tokens={tokens} /> : <EmptyState body={text.activeEmptyBody} title={text.activeEmptyTitle} tokens={tokens} />}
+          {deal ? (
+            <View style={styles.stack}>
+              <ActiveCaseCard deal={deal} language={language} status={selectors.currentStatus} text={text} tokens={tokens} />
+              <WorkflowPhaseCommandCard language={language} phaseContext={workflow.phaseContext} tokens={tokens} />
+            </View>
+          ) : <EmptyState body={text.activeEmptyBody} title={text.activeEmptyTitle} tokens={tokens} />}
         </CenterSection>
 
         <CenterSection title={text.approvalQueue} tokens={tokens}>
@@ -197,11 +211,41 @@ function EmptyState({ body, title, tokens }: { body: string; title: string; toke
   )
 }
 
-function InfoRow({ label, tokens, value }: { label: string; tokens: CustomerThemeTokens; value: string }) {
+function WorkflowPhaseCommandCard({ language, phaseContext, tokens }: { language: AppLanguage; phaseContext: WorkflowPhaseContext; tokens: CustomerThemeTokens }) {
+  const visibleSections = orderWorkflowPhaseSectionsForSummary(phaseContext, phaseContext.sections.filter((section) => section.visible && section.role !== 'worker'))
+  const primarySection = visibleSections.find((section) => section.id === phaseContext.primaryArtifact?.id) ?? visibleSections[0] ?? null
+  const primaryArtifact = primarySection?.title[language] ?? (language === 'en' ? 'No live artifact' : 'Chưa có dấu mốc sống')
+  const nextEvent = phaseContext.nextExpectedEvent
+    ? workflowEventLabel(phaseContext.nextExpectedEvent, language)
+    : language === 'en' ? 'No pending event' : 'Không có sự kiện chờ'
+  const gate = phaseContext.blockedReason
+    ? workflowBlockedReasonLabel(phaseContext.blockedReason, language)
+    : workflowAllowedActionsLabel(phaseContext.allowedActions, language)
+
   return (
-    <View style={[styles.infoRow, centerInfoRowSurface(tokens)]}>
+    <View style={[styles.phaseCard, centerInfoRowSurface(tokens)]} testID="customer-agentic-center-phase-card">
+      <Text style={[styles.phaseTitle, { color: tokens.text }]}>
+        {language === 'en' ? 'Kael workflow' : 'Luồng Kael'}
+      </Text>
+      <Text style={[styles.phaseIntent, { color: tokens.muted }]}>
+        {phaseContext.intent[language]}
+      </Text>
+      <View style={styles.phaseGrid}>
+        <InfoRow label={language === 'en' ? 'Source' : 'Nguồn'} testID="customer-agentic-center-phase-source" tokens={tokens} value={workflowSourceOfTruthLabel(phaseContext.sourceOfTruth, language)} />
+        <InfoRow label={language === 'en' ? 'Phase' : 'Giai đoạn'} testID="customer-agentic-center-phase-title" tokens={tokens} value={phaseContext.title[language]} />
+        <InfoRow label={language === 'en' ? 'Artifact' : 'Dấu mốc'} testID="customer-agentic-center-phase-artifact" tokens={tokens} value={primaryArtifact} />
+        <InfoRow label={language === 'en' ? 'Next' : 'Tiếp theo'} testID="customer-agentic-center-phase-next" tokens={tokens} value={nextEvent} />
+        <InfoRow label={language === 'en' ? 'Action gate' : 'Cổng hành động'} testID="customer-agentic-center-phase-gate" tokens={tokens} value={gate} />
+      </View>
+    </View>
+  )
+}
+
+function InfoRow({ label, testID, tokens, value }: { label: string; testID?: string; tokens: CustomerThemeTokens; value: string }) {
+  return (
+    <View style={[styles.infoRow, centerInfoRowSurface(tokens)]} testID={testID}>
       <Text style={[styles.infoLabel, { color: tokens.muted }]}>{label}</Text>
-      <Text style={[styles.infoValue, { color: tokens.text }]}>{value}</Text>
+      <Text style={[styles.infoValue, { color: tokens.text }]} testID={testID ? `${testID}-value` : undefined}>{value}</Text>
     </View>
   )
 }
@@ -481,6 +525,28 @@ const styles = StyleSheet.create({
     lineHeight: typography.h3.lineHeight,
   },
   stack: {
+    gap: spacing.sm,
+  },
+  phaseCard: {
+    borderCurve: 'continuous',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  phaseTitle: {
+    fontSize: typography.label.fontSize,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: typography.label.lineHeight,
+  },
+  phaseIntent: {
+    fontSize: typography.caption.fontSize,
+    fontWeight: typography.caption.fontWeight,
+    letterSpacing: 0,
+    lineHeight: typography.caption.lineHeight,
+  },
+  phaseGrid: {
     gap: spacing.sm,
   },
   infoRow: {
