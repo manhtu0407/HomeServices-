@@ -29,7 +29,7 @@ Legend:
 | C | 2.6 Matching & AI Score | Partial | Partial | TBD | Activity Matching Score panel reads estimate confidence, broadcast worker signal, intake evidence count, area, and Kael prebrief from real state; focused history test passed | In progress |
 | C | 2.7 Kael Helper for Options | Partial | Partial | TBD | Agentic Center links to full Kael chat; server-backed chat path preserved | In progress |
 | C | 2.8 Worker Offers & Quote | Partial | Partial | TBD | Price tab quote sheet reads broadcast price, Kael estimate, scope-change price, and final-price state; focused history test passed; no fake offer/worker stats added | In progress |
-| C | 2.9 Location & ETA | Partial | Partial | TBD | Address stays area-only until released; ETA uses honest live-signal waiting copy | In progress |
+| C | 2.9 Location & ETA | Partial | Partial | TBD | Activity Location & ETA panel reads address-release state and search signal, releases full address only after policy, and keeps ETA pending until a real travel signal exists; focused history test passed | In progress |
 | C | 2.10 Live Job Alert | Partial | Partial | TBD | Existing notification/approval state surfaced in Agentic Center; push simulation not added | In progress |
 | C | 2.11 Job Acceptance | Partial | Partial | TBD | Activity command overview reflects worker accepted/on-way state through existing deal data | In progress |
 | C | 2.12 Job in Progress | Partial | Partial | TBD | Activity command overview and worker checklist reflect active workflow gates | In progress |

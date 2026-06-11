@@ -674,6 +674,15 @@ const customerCopy = {
       caseEtaPending: 'Chờ tín hiệu di chuyển thật',
       caseId: 'Mã việc',
       caseLocation: 'Vị trí',
+      locationEtaTitle: 'Vị trí & ETA',
+      locationEtaMeta: 'Theo quyền địa chỉ',
+      locationAddressGate: 'Quyền địa chỉ',
+      locationAddressHidden: 'Ẩn địa chỉ chi tiết',
+      locationAddressReleased: 'Đã mở theo chính sách',
+      locationLiveSignal: 'Tín hiệu hiện tại',
+      locationSearchCountdown: (seconds: number) => `Tìm thợ còn ${seconds} giây`,
+      locationWorkerAcceptedSignal: 'Thợ đã nhận việc',
+      locationNoSignal: 'Chờ tín hiệu thật',
       caseMatching: 'Ghép thợ',
       caseQuote: 'Biên giá',
       matchingScoreTitle: 'Điểm ghép thợ',
@@ -862,6 +871,15 @@ const customerCopy = {
       caseEtaPending: 'Awaiting live travel signal',
       caseId: 'Job ID',
       caseLocation: 'Location',
+      locationEtaTitle: 'Location & ETA',
+      locationEtaMeta: 'By address permission',
+      locationAddressGate: 'Address gate',
+      locationAddressHidden: 'Detailed address hidden',
+      locationAddressReleased: 'Released by policy',
+      locationLiveSignal: 'Current signal',
+      locationSearchCountdown: (seconds: number) => `Worker search: ${seconds}s left`,
+      locationWorkerAcceptedSignal: 'Worker accepted',
+      locationNoSignal: 'Awaiting real signal',
       caseMatching: 'Matching',
       caseQuote: 'Price band',
       matchingScoreTitle: 'Matching score',
@@ -1656,6 +1674,7 @@ export function CustomerHistorySurface() {
           </View> : null}
           {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
+          {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {!deal && showPriceTab ? <CustomerHistoryPriceEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
           {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} deal={deal} estimateLabel={estimateLabel} languageMode={languageMode} onOpenKael={continueOrCreate} originalEstimateLabel={originalEstimateLabel} scopeChange={showScopeChangeArtifact ? scopeChange : null} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {!deal && showChatTab ? <CustomerHistoryChatEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
@@ -3459,6 +3478,83 @@ function CustomerHistoryMatchingScorePanel({
         <V4TicketCell label={copy.history.caseLocation} testID="customer-history-matching-area" value={areaLabel} variant="activity" />
       </View>
       <V4TicketCell label={copy.history.matchingPrebrief} testID="customer-history-matching-prebrief" value={prebrief} variant="activity" />
+    </View>
+  )
+}
+
+function CustomerHistoryLocationEtaPanel({
+  copy,
+  deal,
+  languageMode,
+  tokens,
+  visibleStatusLabel,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]
+  deal: LocalDeal
+  languageMode: AppLanguage
+  tokens: CustomerThemeTokens
+  visibleStatusLabel: string
+}) {
+  const broadcast = deal.broadcast
+  const releasedAddress = broadcast?.fullAddressVisible && broadcast.fullAddressLabel
+    ? broadcast.fullAddressLabel
+    : null
+  const safeAddress = releasedAddress ?? broadcast?.generalArea ?? deal.draft.districtLabel
+  const addressLabel = localizedCustomerAreaLabel(safeAddress, languageMode, copy.ticket.unknown)
+  const addressGateLabel = releasedAddress ? copy.history.locationAddressReleased : copy.history.locationAddressHidden
+  const hasWorkerAnchor = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker'].includes(deal.status)
+  const liveSignalLabel =
+    deal.status === 'broadcasting' && typeof broadcast?.secondsRemaining === 'number' && broadcast.secondsRemaining > 0
+      ? copy.history.locationSearchCountdown(broadcast.secondsRemaining)
+      : hasWorkerAnchor
+        ? copy.history.locationWorkerAcceptedSignal
+        : copy.history.locationNoSignal
+
+  return (
+    <View style={[styles.presenceMapCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-location-eta-panel">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {copy.history.locationEtaTitle}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {copy.history.locationEtaMeta}
+        </Text>
+      </View>
+      <View style={[styles.presenceMapViewport, customerHistoryMapViewportSurface(tokens)]}>
+        <V4MapBackdrop presence={hasWorkerAnchor} />
+        <View style={styles.presenceMapHud} testID="customer-history-location-map-hud">
+          <View style={[styles.presenceMapControl, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
+            <Text style={[styles.presenceMapControlText, { color: tokens.primary }]} numberOfLines={1}>
+              {copy.history.locationEtaTitle}
+            </Text>
+          </View>
+          <View style={[styles.presenceMapControl, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+            <Text style={[styles.presenceMapControlText, { color: tokens.primary }]} numberOfLines={1}>
+              {visibleStatusLabel}
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.presenceBadge, styles.presenceBadgeHome, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
+          <MappedIcon name="apartment" color={tokens.primary} accent={tokens.aqua} size={25} />
+          <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
+            {copy.history.presenceHome}
+          </Text>
+        </View>
+        <View style={[styles.presenceBadge, styles.presenceBadgeWorker, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+          <MappedIcon name={hasWorkerAnchor ? 'check' : 'estimate'} color={tokens.primary} accent={tokens.copper} />
+          <Text style={[styles.presenceBadgeText, { color: tokens.text }]} numberOfLines={1}>
+            {liveSignalLabel}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.history.caseLocation} testID="customer-history-location-address" value={addressLabel} variant="activity" />
+        <V4TicketCell label={copy.history.locationAddressGate} testID="customer-history-location-address-gate" value={addressGateLabel} variant="activity" />
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.history.caseEta} testID="customer-history-location-eta" value={copy.history.caseEtaPending} variant="activity" />
+        <V4TicketCell label={copy.history.locationLiveSignal} testID="customer-history-location-live-signal" value={liveSignalLabel} variant="activity" />
+      </View>
     </View>
   )
 }

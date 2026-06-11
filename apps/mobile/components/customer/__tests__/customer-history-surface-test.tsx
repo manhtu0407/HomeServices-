@@ -273,6 +273,29 @@ describe('CustomerHistorySurface phase context', () => {
     expect(quotePanel).not.toHaveTextContent(/★★★★★|4\.9|rating|0 offer|3 thợ|Thợ A/i)
   })
 
+  it('shows location and ETA gates without treating search countdown as travel ETA', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('broadcasting'))
+
+    const { rerender } = render(<CustomerHistorySurface />)
+
+    const locationPanel = screen.getByTestId('customer-history-location-eta-panel')
+    expect(locationPanel).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-location-address-value')).toHaveTextContent('Quận 1')
+    expect(screen.getByTestId('customer-history-location-address-gate-value')).toHaveTextContent(/Ẩn địa chỉ chi tiết/)
+    expect(screen.getByTestId('customer-history-location-eta-value')).toHaveTextContent(/Chờ tín hiệu di chuyển thật/)
+    expect(screen.getByTestId('customer-history-location-live-signal-value')).toHaveTextContent(/Tìm thợ còn 45 giây/)
+    expect(locationPanel).not.toHaveTextContent(/Tòa A/)
+
+    buildWorkflow(buildDeal('worker_on_way'))
+    rerender(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-location-address-value')).toHaveTextContent('Tòa A, Quận 1')
+    expect(screen.getByTestId('customer-history-location-address-gate-value')).toHaveTextContent(/Đã mở theo chính sách/)
+    expect(screen.getByTestId('customer-history-location-eta-value')).toHaveTextContent(/Chờ tín hiệu di chuyển thật/)
+    expect(screen.getByTestId('customer-history-location-live-signal-value')).not.toHaveTextContent(/45/)
+  })
+
   it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {
     render(<CustomerHistorySurface />)
 
