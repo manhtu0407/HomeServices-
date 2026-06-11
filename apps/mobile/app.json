@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Home Services",
+    "name": "NestScout",
     "slug": "home-services",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -21,8 +21,8 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "Home Services cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.",
-        "NSPhotoLibraryUsageDescription": "Home Services cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh."
+        "NSCameraUsageDescription": "NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.",
+        "NSPhotoLibraryUsageDescription": "NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh."
       }
     },
     "android": {
@@ -44,8 +44,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Home Services cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa.",
-          "cameraPermission": "Home Services cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa."
+          "photosPermission": "NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa.",
+          "cameraPermission": "NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa."
         }
       ]
     ],

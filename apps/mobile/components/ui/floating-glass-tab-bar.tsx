@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useReducer, useState } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, { cancelAnimation, useAnimatedStyle, useDerivedValue, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
+import { color } from '@/design/theme'
 import { useGlassAccessibility } from './accessibility-motion'
 import { GlassSurface } from './glass-surface'
 import { motionTokens } from './motion-tokens'
@@ -429,14 +430,14 @@ function FloatingGlassTabItemButton<Key extends string, Item extends FloatingGla
     ? focused
       ? mode === 'dark'
         ? '#DFF8F3'
-        : '#08786C'
+        : color.brand.primaryDark
       : mode === 'dark'
         ? '#9DB0AB'
         : '#74847F'
     : focused
     ? mode === 'dark'
       ? '#CFF7EE'
-      : '#034D44'
+      : color.brand.primaryDeep
     : mode === 'dark'
       ? '#8FB0AA'
       : '#66827B'

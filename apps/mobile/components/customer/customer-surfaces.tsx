@@ -38,6 +38,8 @@ import { GlassCard } from '@/components/ui/glass-card'
 import { GlassPressable } from '@/components/ui/glass-pressable'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { motionTokens } from '@/components/ui/motion-tokens'
+import { NESTSCOUT_BRAND } from '@/design/brand'
+import { color } from '@/design/theme'
 import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { appCopy, languageDisplayName, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel, setAppLanguage, type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
@@ -82,6 +84,7 @@ const customerDockHiddenListeners = new Set<() => void>()
 let customerDockHiddenSnapshot = false
 const openBookingPath = '/(customer)/booking'
 const openKaelChatPath = '/(customer)/kael-chat'
+const openKaelCenterPath = '/(customer)/kael'
 const openHistoryPath = '/(customer)/history'
 const openProfilePath = '/(customer)/profile'
 const customerAmbientLineStyle = {
@@ -511,7 +514,7 @@ const customerProfileSectionCopy = {
 const customerCopy = {
   vi: {
     home: {
-      title: 'Home Services',
+      title: NESTSCOUT_BRAND.appName,
       subtitle: 'Kael sẵn sàng phục vụ tận tình!',
       searchA11y: 'Mở Kael tạo yêu cầu',
       searchText: 'Bạn cần sửa gì?',
@@ -675,7 +678,7 @@ const customerCopy = {
   },
   en: {
     home: {
-      title: 'Home Services',
+      title: NESTSCOUT_BRAND.appName,
       subtitle: 'Kael is ready to orchestrate',
       searchA11y: 'Open Kael service chat',
       searchText: 'What needs fixing?',
@@ -737,7 +740,7 @@ const customerCopy = {
       assistantMoreDetail: 'Kael needs a little more detail before creating a ticket.',
       assistantMoreDetailHint: 'Add the room, visible symptom, impact level, or photo context in Kael chat.',
       unsupportedSummary: 'Kael cannot create a ticket for a service outside the current scope.',
-      unsupportedHint: 'Home Services currently supports electrical repair, plumbing repair, and home cleaning only.',
+      unsupportedHint: 'NestScout currently supports electrical repair, plumbing repair, and home cleaning only.',
       quickServiceA11y: (service: string) => `Start ${service} chat with Kael`,
       needDetail: 'Kael needs a clearer description before creating a ticket.',
       needService: 'Choose a service',
@@ -2864,7 +2867,7 @@ function V4Dock({
     { accessibilityLabel: copy.navA11y.activity, key: 'activity', icon: 'history', label: copy.nav.activity, path: '/(customer)/history', testID: 'customer-v4-dock-activity' },
     { accessibilityLabel: copy.navA11y.profile, key: 'profile', icon: 'person', label: copy.nav.profile, path: '/(customer)/profile', testID: 'customer-v4-dock-profile' },
   ]
-  const navigateWithLiquidDelay = useCallback((path: CustomerDockItem['path'] | typeof openKaelChatPath) => {
+  const navigateWithLiquidDelay = useCallback((path: CustomerDockItem['path'] | typeof openKaelChatPath | typeof openKaelCenterPath) => {
     clearNavigationTimer()
     navigationTimerRef.current = setTimeout(() => {
       replace(path)
@@ -2921,7 +2924,7 @@ function V4Dock({
           onPress={() => {
             if (active === 'kael') return
             lastCustomerDockActive = active
-            navigateWithLiquidDelay(openKaelChatPath)
+            navigateWithLiquidDelay(openKaelCenterPath)
           }}
           style={({ pressed }) => [styles.customerDockKaelActionPressable, reduceMotionAwarePressStyle(pressed, reduceMotion)]}
           testID="customer-v4-dock-kael"
@@ -4358,7 +4361,7 @@ function customerSmallChipSurface(tokens: CustomerThemeTokens, tone: SurfaceTone
 }
 
 function customerSmallChipTextColor(tokens: CustomerThemeTokens, tone: SurfaceTone = 'base') {
-  if (tone === 'water') return tokens.mode === 'dark' ? '#8AEBD9' : '#08786E'
+  if (tone === 'water') return tokens.mode === 'dark' ? '#8AEBD9' : tokens.primary
   if (tone === 'warm') return tokens.mode === 'dark' ? '#F3D7A9' : '#6F4C22'
   if (tone === 'service') return tokens.primary
   return tokens.text
@@ -4731,11 +4734,11 @@ function customerClientAssetSoftenerSurface(tokens: CustomerThemeTokens) {
 
 function customerHomeSendSurface(tokens: CustomerThemeTokens) {
   const reduceTransparency = customerReduceTransparency(tokens)
-  const lightGradient = 'linear-gradient(135deg, #17A995, #00756A)'
-  const darkGradient = 'linear-gradient(135deg, #69DEC6, #00756A)'
+  const lightGradient = `linear-gradient(135deg, ${color.mint.mint500}, ${color.brand.primary})`
+  const darkGradient = `linear-gradient(135deg, ${color.mint.mint300}, ${color.brand.primary})`
 
   return {
-    backgroundColor: reduceTransparency ? tokens.primary : tokens.mode === 'dark' ? '#69DEC6' : '#17A995',
+    backgroundColor: reduceTransparency ? tokens.primary : tokens.mode === 'dark' ? color.mint.mint300 : color.brand.primary,
     borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.30)',
     boxShadow: customerLiquidShadow(tokens, 'cta'),
     background: reduceTransparency ? undefined : tokens.mode === 'dark' ? darkGradient : lightGradient,

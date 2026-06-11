@@ -1,4 +1,5 @@
 import type { ViewStyle } from 'react-native'
+import { color } from '@/design/theme'
 
 export type GlassVariant = 'nav' | 'control' | 'hero' | 'sheet' | 'subtle'
 export type GlassMode = 'dark' | 'light'
@@ -94,8 +95,8 @@ export function createGlassSurfaceStyle({
   const isDark = mode === 'dark'
   const isLiquid = material === 'liquid'
   const fallbackBackground = isLiquid
-    ? isDark ? '#161D1B' : '#FFFFFF'
-    : isDark ? '#112522' : '#FFFDF8'
+    ? isDark ? '#161D1B' : color.surface.base
+    : isDark ? '#112522' : color.mint.white
   const liquidGlassBackground = isDark
     ? 'rgba(22,29,27,0.38)'
     : variant === 'nav'
@@ -119,7 +120,7 @@ export function createGlassSurfaceStyle({
 
 export function createOpaqueRowStyle({ mode = 'light' }: { mode?: GlassMode } = {}): ViewStyle {
   return {
-    backgroundColor: mode === 'dark' ? '#122724' : '#FFFDF8',
+    backgroundColor: mode === 'dark' ? '#122724' : color.mint.white,
     borderColor: mode === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(210,232,225,0.82)',
     borderCurve: 'continuous',
     borderWidth: 1,

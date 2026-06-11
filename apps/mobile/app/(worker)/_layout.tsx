@@ -1,5 +1,6 @@
 import { Redirect, Tabs } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
+import { color } from '@/design/theme'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage } from '@/lib/app-language'
 
@@ -26,7 +27,7 @@ const WORKER_TAB_COPY = {
 } as const
 
 const dockTokens = {
-  active: '#08786E',
+  active: color.brand.primary,
 }
 
 export default function WorkerLayout() {

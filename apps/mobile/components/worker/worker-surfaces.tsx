@@ -17,6 +17,7 @@ import { GlassSurface } from '@/components/ui/glass-surface'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import type { GlassMaterial } from '@/components/ui/tokens'
+import { color } from '@/design/theme'
 import { appCopy, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel, setAppLanguage, type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import type { EarningsResponse, JobMessageResponse, KaelChatProgress, WorkerKaelChatResponse, WorkerKaelChatTurn, WorkerProfileResponse } from '@/lib/api-types'
 import { useAuth } from '@/lib/auth-provider'
@@ -335,13 +336,13 @@ type WorkerThemeTokens = {
 
 const lightLayer: WorkerThemeTokens = {
   mode: 'light',
-  canvas: '#F8FBF5',
-  base: '#FFFDF7',
-  raised: '#FFFFFF',
-  strong: '#FBFFFC',
-  depth: '#E5F1EB',
-  mint: '#DCFBF3',
-  cyan: '#E8FCFA',
+  canvas: color.background,
+  base: color.mint.white,
+  raised: color.surface.raised,
+  strong: color.surface.soft,
+  depth: color.mint.auraSoft,
+  mint: color.surface.mint,
+  cyan: color.mint.mint50,
   cream: '#FFF8EB',
   warm: '#FFF8EB',
   glass: 'rgba(255,255,255,0.58)',
@@ -350,14 +351,14 @@ const lightLayer: WorkerThemeTokens = {
   glassHighlight: 'rgba(255,255,255,0.70)',
   border: 'rgba(35,96,84,0.13)',
   borderStrong: 'rgba(8,120,110,0.22)',
-  ink: '#12231F',
-  muted: '#647672',
-  subtle: '#7D958F',
-  primary: '#08786E',
-  primaryText: '#FFFFFF',
-  aqua: '#51BBC0',
+  ink: color.text.primary,
+  muted: color.text.secondary,
+  subtle: color.text.muted,
+  primary: color.brand.primary,
+  primaryText: color.text.inverse,
+  aqua: color.accent.aqua,
   copper: '#BB743D',
-  danger: '#B43F3F',
+  danger: color.accent.destructive,
   line: 'rgba(35,96,84,0.13)',
   mapLine: 'rgba(39,108,96,0.13)',
   mapBlock: 'rgba(255,255,255,0.56)',
@@ -386,7 +387,7 @@ const darkLayer: WorkerThemeTokens = {
   ink: '#F1F6F4',
   muted: '#A9B7B3',
   subtle: '#83938F',
-  primary: '#63E6D0',
+  primary: color.mint.mint300,
   primaryText: '#08201D',
   aqua: '#82DDE2',
   copper: '#E2A56E',
@@ -7521,11 +7522,11 @@ function workerEarningsBarSurface(tokens: WorkerThemeTokens, hasDailyEarnings: b
   const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
   const gradient = tokens.mode === 'dark'
     ? hasDailyEarnings
-      ? 'linear-gradient(180deg, #69DEC6, #08786E)'
+      ? `linear-gradient(180deg, ${color.mint.mint300}, ${color.brand.primary})`
       : 'linear-gradient(180deg, rgba(105,222,198,0.96), rgba(8,120,110,0.78))'
     : hasDailyEarnings
-      ? 'linear-gradient(180deg, #3ED8BC, #08786E)'
-      : 'linear-gradient(180deg, #42DCC4 0%, #16BCA9 54%, #08786E 100%)'
+      ? `linear-gradient(180deg, ${color.mint.mint500}, ${color.brand.primary})`
+      : `linear-gradient(180deg, ${color.accent.aqua} 0%, ${color.brand.primary} 54%, ${color.brand.primaryDark} 100%)`
 
   return {
     backgroundColor: hasDailyEarnings ? tokens.primary : tokens.mode === 'dark' ? '#69DEC6' : '#16BCA9',
@@ -7597,8 +7598,8 @@ function workerDiagnosisSurface(tokens: WorkerThemeTokens) {
 function workerPrimaryButtonSurface(tokens: WorkerThemeTokens) {
   const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
   const gradient = tokens.mode === 'dark'
-    ? 'linear-gradient(135deg, #69DEC6, #08786E)'
-    : 'linear-gradient(135deg, #08786E, #0AA895)'
+    ? `linear-gradient(135deg, ${color.mint.mint300}, ${color.brand.primary})`
+    : `linear-gradient(135deg, ${color.brand.primaryDark}, ${color.brand.primary})`
   return {
     backgroundColor: reduceTransparency ? tokens.primary : tokens.mode === 'dark' ? tokens.aqua : '#0B5C50',
     borderColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.24)' : 'rgba(255,255,255,0.28)',
@@ -8155,11 +8156,11 @@ function workerHomeReadinessActionWellSurface(tokens: WorkerThemeTokens) {
 function workerHomeLiquidPrimaryButtonSurface(tokens: WorkerThemeTokens) {
   const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.shadow === 'none'
   const gradient = tokens.mode === 'dark'
-    ? 'linear-gradient(135deg, #69DEC6, #00756A)'
-    : 'linear-gradient(135deg, #17A995, #00756A)'
+    ? `linear-gradient(135deg, ${color.mint.mint300}, ${color.brand.primary})`
+    : `linear-gradient(135deg, ${color.mint.mint500}, ${color.brand.primary})`
 
   return {
-    backgroundColor: reduceTransparency ? tokens.primary : tokens.mode === 'dark' ? '#69DEC6' : '#17A995',
+    backgroundColor: reduceTransparency ? tokens.primary : tokens.mode === 'dark' ? color.mint.mint300 : color.brand.primary,
     borderColor: reduceTransparency ? tokens.borderStrong : tokens.mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.30)',
     boxShadow: reduceTransparency ? 'none' : workerHomeMaterialDepthShadow(tokens, 'cta'),
     background: reduceTransparency ? undefined : gradient,
@@ -8776,8 +8777,8 @@ function workerProfileProgressTrackSurface(tokens: WorkerThemeTokens) {
 
 function workerProfileProgressFillSurface(tokens: WorkerThemeTokens) {
   const gradient = tokens.mode === 'dark'
-    ? 'linear-gradient(90deg, #69DEC6, #0AA895)'
-    : 'linear-gradient(90deg, #B7FFF0, #17A995)'
+    ? `linear-gradient(90deg, ${color.mint.mint300}, ${color.brand.primary})`
+    : `linear-gradient(90deg, ${color.mint.auraStrong}, ${color.brand.primary})`
 
   return {
     backgroundColor: tokens.primary,

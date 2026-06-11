@@ -13,6 +13,7 @@ import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { type GlassMode } from '@/components/ui/tokens'
+import { color } from '@/design/theme'
 import { type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { type LocalMediaUploadDraft } from '@/lib/media-upload'
@@ -1191,8 +1192,8 @@ function bookingProgressTrackSurface(visual: BookingWizardVisual, mode: GlassMod
 }
 
 function bookingProgressFillSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
-  const lightGradient = 'linear-gradient(90deg, #087F70, #17A995)'
-  const darkGradient = 'linear-gradient(90deg, #40CDB8, #63E6D0)'
+  const lightGradient = `linear-gradient(90deg, ${color.brand.primaryDark}, ${color.brand.primary})`
+  const darkGradient = `linear-gradient(90deg, ${color.mint.mint500}, ${color.mint.mint300})`
 
   return {
     background: reduceTransparency ? undefined : mode === 'dark' ? darkGradient : lightGradient,

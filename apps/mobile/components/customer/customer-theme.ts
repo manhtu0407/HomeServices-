@@ -1,5 +1,6 @@
 import { createContext, useEffect, useSyncExternalStore } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { color } from '@/design/theme'
 
 const CUSTOMER_THEME_STORAGE_KEY = 'customer.theme.mode.v4'
 
@@ -37,13 +38,13 @@ export type CustomerThemeTokens = {
 
 const lightLayer: CustomerThemeTokens = {
   mode: 'light',
-  canvas: '#F8FBF5',
-  base: '#FFFDF7',
-  raised: '#FFFFFF',
-  service: '#DCFBF3',
-  water: '#E8FCFA',
+  canvas: color.background,
+  base: color.mint.white,
+  raised: color.surface.raised,
+  service: color.surface.mint,
+  water: color.mint.mint50,
   warm: '#FFF8EB',
-  depthSurface: '#E5F1EB',
+  depthSurface: color.mint.auraSoft,
   ghost: 'rgba(255,253,248,0.78)',
   glass: 'rgba(255,255,255,0.58)',
   glassStrong: 'rgba(255,255,255,0.74)',
@@ -52,17 +53,17 @@ const lightLayer: CustomerThemeTokens = {
   glassHighlight: 'rgba(255,255,255,0.70)',
   glassShadow: '0 12px 30px rgba(13,70,65,0.09)',
   glassFloatShadow: '0 8px 20px rgba(13,70,65,0.07)',
-  disabled: '#E5EEEA',
+  disabled: color.surface.disabled,
   border: 'rgba(35,96,84,0.13)',
   borderStrong: 'rgba(8,120,110,0.22)',
-  text: '#12231F',
-  muted: '#647672',
-  subtleText: '#7D958F',
-  primary: '#08786E',
-  primaryText: '#FFFFFF',
-  aqua: '#51BBC0',
+  text: color.text.primary,
+  muted: color.text.secondary,
+  subtleText: color.text.muted,
+  primary: color.brand.primary,
+  primaryText: color.text.inverse,
+  aqua: color.accent.aqua,
   copper: '#BB743D',
-  danger: '#C94F45',
+  danger: color.accent.destructive,
 }
 
 const darkLayer: CustomerThemeTokens = {
@@ -88,7 +89,7 @@ const darkLayer: CustomerThemeTokens = {
   text: '#F1F6F4',
   muted: '#A9B7B3',
   subtleText: '#83938F',
-  primary: '#63E6D0',
+  primary: color.mint.mint300,
   primaryText: '#08201D',
   aqua: '#82DDE2',
   copper: '#E2A56E',

@@ -303,7 +303,7 @@ describe('CustomerProfileSurface editable rows', () => {
 })
 
 describe('CustomerV4DockOverlay', () => {
-  it('splits four main sections from the Kael Chat action', async () => {
+  it('splits four main sections from the Kael Orb action', async () => {
     render(<CustomerV4DockOverlay active="home" />)
 
     expect(screen.getByTestId('customer-dock-motion-shell')).toHaveProp('pointerEvents', 'box-none')
@@ -334,7 +334,7 @@ describe('CustomerV4DockOverlay', () => {
     mockReplace.mockClear()
     fireEvent.press(screen.getByTestId('customer-v4-dock-kael'))
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat')
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael')
     })
   })
 

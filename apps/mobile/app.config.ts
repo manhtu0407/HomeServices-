@@ -76,7 +76,7 @@ const withoutIosPushEntitlement: ConfigPlugin = (expoConfig) => {
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Home Services',
+  name: 'NestScout',
   slug: 'home-services',
   version: '0.1.0',
   orientation: 'portrait',
@@ -98,9 +98,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     infoPlist: {
       NSCameraUsageDescription:
-        'Home Services cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.',
+        'NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.',
       NSPhotoLibraryUsageDescription:
-        'Home Services cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
+        'NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
     },
   },
   android: {
@@ -121,9 +121,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-image-picker',
       {
         photosPermission:
-          'Home Services cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa.',
+          'NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa.',
         cameraPermission:
-          'Home Services cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa.',
+          'NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa.',
       },
     ],
     withoutIosPushEntitlement as unknown as string,
