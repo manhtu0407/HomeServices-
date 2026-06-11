@@ -4,6 +4,7 @@ import type { LocalCustomerSearchState, LocalDeal, LocalDealStatus, LocalScopeCh
 
 let mockRouteParams: Record<string, string | string[] | undefined>
 let mockWorkflowValue: any
+const mockPush = jest.fn()
 const mockReplace = jest.fn()
 const mockUseJobChatThread = jest.fn()
 
@@ -19,7 +20,7 @@ jest.mock('expo-image', () => {
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }))
 
 jest.mock('react-native-safe-area-context', () => {
@@ -174,6 +175,7 @@ function buildScopeChange(): LocalScopeChange {
 }
 
 beforeEach(() => {
+  mockPush.mockClear()
   mockReplace.mockClear()
   mockUseJobChatThread.mockClear()
   mockUseJobChatThread.mockReturnValue({
@@ -235,6 +237,8 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-case-command-cell-4-value')).toHaveTextContent('Quận 1')
     expect(screen.getByTestId('customer-history-case-command-cell-5-value')).toHaveTextContent('Chờ tín hiệu di chuyển thật')
     expect(screen.getByTestId('customer-history-case-command-cell-6-value')).toHaveTextContent(/Thợ nhận việc/)
+    fireEvent.press(screen.getAllByText('Tiếp tục với Kael')[0])
+    expect(mockPush).toHaveBeenCalledWith('/(customer)/kael-chat?serviceType=electrical')
     expect(commandPanel).not.toHaveTextContent(/Tòa A/)
     expect(commandPanel).not.toHaveTextContent('--')
 

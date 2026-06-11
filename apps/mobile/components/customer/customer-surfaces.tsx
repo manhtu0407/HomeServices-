@@ -697,6 +697,7 @@ const customerCopy = {
       editRequest: 'Chỉnh yêu cầu',
       newRequest: 'Tạo yêu cầu mới',
       openPriceCheck: 'Mở chat Kael',
+      continueWithKael: 'Tiếp tục với Kael',
       caseCommandMeta: 'Từ dữ liệu thật',
       caseCommandTitle: 'Trung tâm ca việc',
       caseConfidence: 'Độ tin cậy',
@@ -919,6 +920,7 @@ const customerCopy = {
       editRequest: 'Edit request',
       newRequest: 'New request',
       openPriceCheck: 'Open Kael chat',
+      continueWithKael: 'Continue with Kael',
       caseCommandMeta: 'From real data',
       caseCommandTitle: 'Case Command Center',
       caseConfidence: 'Confidence',
@@ -1654,7 +1656,7 @@ export function CustomerHistorySurface() {
   const focusReviewPanel = () => {
     selectHistoryTab('done')
   }
-  const historyActionLabel = canEditNoWorkerRequest ? copy.history.editRequest : canCreateFreshRequest ? copy.history.newRequest : copy.history.openPriceCheck
+  const historyActionLabel = canEditNoWorkerRequest ? copy.history.editRequest : canCreateFreshRequest ? copy.history.newRequest : copy.history.continueWithKael
   const showRepairTab = activeHistoryTab === 'repair'
   const showPriceTab = activeHistoryTab === 'price'
   const showChatTab = activeHistoryTab === 'chat'

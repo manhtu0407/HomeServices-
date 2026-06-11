@@ -51,6 +51,7 @@
   - Added focused RNTL coverage that the booking handoff includes the voice capsule.
 - Continued Group C:
   - Added a real-data customer case command overview to Activity.
+  - Aligned the active Case Overview CTA to the reference `Tiếp tục với Kael` / `Continue with Kael` copy while preserving the real Kael chat route.
   - Kept worker address privacy gated by workflow state.
   - Kept ETA honest by waiting for live travel signal instead of deriving fake arrival copy from timers.
   - Added a Matching Score panel to Activity from real estimate confidence, broadcast state, intake media count, area, and Kael prebrief.
