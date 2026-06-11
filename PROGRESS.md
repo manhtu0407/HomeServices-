@@ -39,24 +39,47 @@
   - Kept photo picking wired to the existing image picker.
   - Kept voice honest: the booking form shows a voice capsule, but pressing it explains that voice is handled in Kael chat when supported instead of recording fake audio.
   - Added focused RNTL coverage that the booking handoff includes the voice capsule.
+- Continued Group C:
+  - Added a real-data customer case command overview to Activity.
+  - Kept worker address privacy gated by workflow state.
+  - Kept ETA honest by waiting for live travel signal instead of deriving fake arrival copy from timers.
+  - Added focused RNTL coverage for private address, released address, and no placeholder markers.
+- Continued Group D:
+  - Added worker safety/checklist gates to active jobs.
+  - Kept scope and completion actions tied to existing workflow/evidence state.
+  - Kept worker pricing input out of the checklist path.
+  - Added focused RNTL coverage for address gate, scope gate, completion evidence, and no fake placeholder values.
+- Continued Group E:
+  - Added Agentic Center real summary cells for active case, approvals, and memory.
+  - Summary values come from live workflow/preference state, with text empty states instead of fake zeroes.
+  - Added focused RNTL coverage for empty and active summary values.
+- Continued Group F:
+  - Fixed worker locked milestone copy so it no longer renders placeholder question marks.
+  - Added customer usage ranking and money protection insight panels from real metadata only.
+  - Kept missing profile metrics as honest waiting states.
+  - Added focused RNTL coverage for worker locked milestones and customer profile metrics.
 - Verification for this checkpoint:
   - `pnpm --filter @home-services/mobile type-check` passed.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 3 tests.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/ui/__tests__/kael-primitives-test.tsx` passed: 9 tests.
   - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests.
+  - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 16 tests.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 44 tests.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
   - Mobile Jest from `apps/mobile` passed: 17 suites, 148 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring, the Group A welcome checkpoint, and the first Group B booking media/voice checkpoint are implemented. Focused type-check, auth tests, booking tests, primitive tests, and the latest full mobile Jest gate pass.
+Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome, Group B booking media/voice, Group C activity case overview, Group D worker safety checklist, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, primitive tests, customer profile/history tests, worker tests, Agentic Center tests, React Doctor, and the latest full mobile Jest gate pass.
 
 ## Next
 
-1. Run the full mobile Jest/Doctor gates for the Group B booking checkpoint.
-2. Commit the Group B booking checkpoint without staging pre-existing prototype work.
-3. Continue into Customer Core home/chat refinements.
+1. Continue Worker flow screens: earnings, job summary/report, and worker Kael advisory polish.
+2. Re-run broad mobile Jest/type-check after the next implementation batch.
+3. Keep committing only verified checkpoint files, leaving prototype trash unstaged.
 
 ## Open Risks
 

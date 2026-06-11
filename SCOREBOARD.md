@@ -25,34 +25,34 @@ Legend:
 | B | 2.2 Search & Filter / Book | Partial | Partial | TBD | Booking wizard remains wired to real service/problem/address handoff | In progress |
 | B | 2.3 Media / Voice Note | Partial | Partial | TBD | Focused booking test verifies photo rail + honest voice capsule | In progress |
 | B | 2.4 Kael Live Performance Chat | Partial | Partial | TBD | Existing Kael chat uses server service wrappers and honest mic unavailable path; native screenshot pending | In progress |
-| C | 2.5 Case Overview | TBD | TBD | TBD | None yet | Not started |
-| C | 2.6 Matching & AI Score | TBD | TBD | TBD | None yet | Not started |
-| C | 2.7 Kael Helper for Options | TBD | TBD | TBD | None yet | Not started |
-| C | 2.8 Worker Offers & Quote | TBD | TBD | TBD | None yet | Not started |
-| C | 2.9 Location & ETA | TBD | TBD | TBD | None yet | Not started |
-| C | 2.10 Live Job Alert | TBD | TBD | TBD | None yet | Not started |
-| C | 2.11 Job Acceptance | TBD | TBD | TBD | None yet | Not started |
-| C | 2.12 Job in Progress | TBD | TBD | TBD | None yet | Not started |
-| D | 3.1 Worker Home | TBD | TBD | TBD | None yet | Not started |
-| D | 3.2 Jobs | TBD | TBD | TBD | None yet | Not started |
+| C | 2.5 Case Overview | Partial | Partial | TBD | Customer Activity command overview reads real deal, status, quote, and address-release state; focused history test passed | In progress |
+| C | 2.6 Matching & AI Score | Partial | Partial | TBD | Matching/status surfaces use existing workflow labels; no fake worker rating/count added | In progress |
+| C | 2.7 Kael Helper for Options | Partial | Partial | TBD | Agentic Center links to full Kael chat; server-backed chat path preserved | In progress |
+| C | 2.8 Worker Offers & Quote | Partial | Partial | TBD | Price range reads system estimate only; no worker-entered price field added | In progress |
+| C | 2.9 Location & ETA | Partial | Partial | TBD | Address stays area-only until released; ETA uses honest live-signal waiting copy | In progress |
+| C | 2.10 Live Job Alert | Partial | Partial | TBD | Existing notification/approval state surfaced in Agentic Center; push simulation not added | In progress |
+| C | 2.11 Job Acceptance | Partial | Partial | TBD | Activity command overview reflects worker accepted/on-way state through existing deal data | In progress |
+| C | 2.12 Job in Progress | Partial | Partial | TBD | Activity command overview and worker checklist reflect active workflow gates | In progress |
+| D | 3.1 Worker Home | Partial | Partial | TBD | Existing worker home remains wired to real readiness/jobs; focused worker suite passed | In progress |
+| D | 3.2 Jobs | Partial | Partial | TBD | Worker active jobs now include safety checklist gates; focused worker suite passed | In progress |
 | D | 3.4 Kael On-site Advisory Chat | TBD | TBD | TBD | None yet | Not started |
-| D | 3.4 Evidence Upload | TBD | TBD | TBD | None yet | Not started |
+| D | 3.4 Evidence Upload | Partial | Partial | TBD | Existing completion evidence box remains wired; checklist routes completion guidance to evidence state | In progress |
 | D | 3.5 Earnings | TBD | TBD | TBD | None yet | Not started |
-| D | 3.6 Worker Rating | TBD | TBD | TBD | None yet | Not started |
-| D | 3.7 Safety & Checklist | TBD | TBD | TBD | None yet | Not started |
-| D | 3.8 Evidence & Scope Change | TBD | TBD | TBD | None yet | Not started |
+| D | 3.6 Worker Rating | Partial | Partial | TBD | Worker profile no longer shows placeholder locked milestone copy; focused worker suite passed | In progress |
+| D | 3.7 Safety & Checklist | Partial | Partial | TBD | Safety checklist renders address/scope/completion gates from real workflow state; focused worker suite passed | In progress |
+| D | 3.8 Evidence & Scope Change | Partial | Partial | TBD | Existing scope/evidence boxes preserved; checklist does not add direct price input | In progress |
 | D | 3.8 Job Summary | TBD | TBD | TBD | None yet | Not started |
 | D | 3.9 Summary & Report | TBD | TBD | TBD | None yet | Not started |
-| E | 5.1 Customer Home / Commanding Home | Partial | Partial | TBD | `pnpm --filter @home-services/mobile type-check`; focused Agentic Center test passed | In progress |
-| E | 5.2 Active Case Command Center | Partial | Partial | TBD | Active-case real-data RNTL test passed | In progress |
-| E | 5.3 Approval Queue | Partial | Partial | TBD | Empty-state and unread-count RNTL coverage passed | In progress |
-| E | 5.4 Memory & Preferences | Partial | Partial | TBD | Real metadata RNTL coverage passed | In progress |
-| F | Worker Overview | TBD | TBD | TBD | None yet | Not started |
-| F | Worker Level Journey | TBD | TBD | TBD | None yet | Not started |
-| F | Worker Reputation & Performance | TBD | TBD | TBD | None yet | Not started |
-| F | Customer Overview | TBD | TBD | TBD | None yet | Not started |
-| F | Customer Usage Ranking | TBD | TBD | TBD | None yet | Not started |
-| F | Customer Money Protection | TBD | TBD | TBD | None yet | Not started |
+| E | 5.1 Customer Home / Commanding Home | Partial | Partial | TBD | Agentic Center summary row and Kael Orb route focused test passed | In progress |
+| E | 5.2 Active Case Command Center | Partial | Partial | TBD | Active-case summary values use real deal/approval/preference state; focused test passed | In progress |
+| E | 5.3 Approval Queue | Partial | Partial | TBD | Approval count is real state length or honest text empty state; focused test passed | In progress |
+| E | 5.4 Memory & Preferences | Partial | Partial | TBD | Memory count is real preference length or honest text empty state; focused test passed | In progress |
+| F | Worker Overview | Partial | Partial | TBD | Worker profile route remains real-data only; locked milestone placeholder fixed | In progress |
+| F | Worker Level Journey | Partial | Partial | TBD | Locked milestone copy is localized and honest; no placeholder markers | In progress |
+| F | Worker Reputation & Performance | Partial | Partial | TBD | Existing reputation fields remain data-gated; no fake chart/radar added | In progress |
+| F | Customer Overview | Partial | Partial | TBD | Customer profile insight panels use existing profile metadata; focused customer profile test passed | In progress |
+| F | Customer Usage Ranking | Partial | Partial | TBD | Usage ranking reads real metadata aliases only, otherwise waiting state | In progress |
+| F | Customer Money Protection | Partial | Partial | TBD | Money protection reads real metadata aliases only, otherwise waiting state | In progress |
 
 ## Current Known Scoring Risks
 
@@ -60,4 +60,4 @@ Legend:
 - The hidden `/(design-gallery)` foundation route renders the base component set, but no native screenshot has been captured against the official Component System page yet.
 - Missing official Kael state assets block full visual match for mascot-heavy screens.
 - Missing final NestScout logo decision blocks final splash/welcome fidelity.
-- Profile screens must use real data only; missing metrics require honest empty/loading/error states.
+- Profile screens now have honest data-gated insight panels, but native screenshot comparison is still pending.
