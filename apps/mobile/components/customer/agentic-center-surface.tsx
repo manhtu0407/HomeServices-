@@ -60,6 +60,9 @@ const copy = {
     activeCase: 'Việc đang chạy',
     activeEmptyTitle: 'Chưa có yêu cầu đang chạy',
     activeEmptyBody: 'Bắt đầu bằng chat Kael để tạo phiếu thật cho điện, nước hoặc vệ sinh.',
+    caseId: 'Mã phiếu',
+    caseMessage: 'Nhắn Kael',
+    caseJourney: 'Xem hành trình',
     approvalQueue: 'Hàng đợi cần duyệt',
     approvalEmptyTitle: 'Không có mục cần duyệt',
     approvalEmptyBody: 'Khi có đổi phạm vi, hoàn tất, thanh toán hoặc thông báo thật, Kael sẽ đưa vào đây.',
@@ -106,6 +109,9 @@ const copy = {
     activeCase: 'Active case',
     activeEmptyTitle: 'No active request',
     activeEmptyBody: 'Start with Kael chat to create a real ticket for electrical, plumbing, or cleaning.',
+    caseId: 'Case ID',
+    caseMessage: 'Message Kael',
+    caseJourney: 'View journey',
     approvalQueue: 'Approval queue',
     approvalEmptyTitle: 'Nothing needs approval',
     approvalEmptyBody: 'Scope, completion, payment, or real unread notices appear here when they exist.',
@@ -211,6 +217,10 @@ export function CustomerAgenticCenterSurface() {
             <View style={styles.stack}>
               <ActiveCaseCard deal={deal} language={language} status={selectors.currentStatus} text={text} tokens={tokens} />
               <WorkflowPhaseCommandCard language={language} phaseContext={workflow.phaseContext} tokens={tokens} />
+              <View style={styles.activeCaseActions}>
+                <CenterButton label={text.caseMessage} onPress={() => replace(KAEL_CHAT_PATH)} reduceMotion={reduceMotion} testID="customer-agentic-center-active-chat-action" tokens={tokens} />
+                <CenterButton label={text.caseJourney} onPress={() => replace(CUSTOMER_HISTORY_PATH)} reduceMotion={reduceMotion} testID="customer-agentic-center-active-history-action" tokens={tokens} />
+              </View>
             </View>
           ) : <EmptyState body={text.activeEmptyBody} title={text.activeEmptyTitle} tokens={tokens} />}
         </CenterSection>
@@ -260,6 +270,7 @@ function ActiveCaseCard({ deal, language, status, text, tokens }: { deal: LocalD
 
   return (
     <View style={styles.stack}>
+      <InfoRow label={text.caseId} tokens={tokens} value={deal.id} />
       <InfoRow label={text.service} tokens={tokens} value={service} />
       <InfoRow label={text.status} tokens={tokens} value={statusLabel} />
       <InfoRow label={text.estimate} tokens={tokens} value={estimateLabel} />
@@ -380,9 +391,9 @@ function ApprovalActionRow({ item, onPress, onPrimaryPress, reduceMotion, tokens
   )
 }
 
-function CenterButton({ label, onPress, primary = false, reduceMotion, tokens }: { label: string; onPress: () => void; primary?: boolean; reduceMotion: boolean; tokens: CustomerThemeTokens }) {
+function CenterButton({ label, onPress, primary = false, reduceMotion, testID, tokens }: { label: string; onPress: () => void; primary?: boolean; reduceMotion: boolean; testID?: string; tokens: CustomerThemeTokens }) {
   return (
-    <Pressable accessibilityLabel={label} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.actionButton, primary ? centerPrimaryButtonSurface(tokens) : centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]}>
+    <Pressable accessibilityLabel={label} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.actionButton, primary ? centerPrimaryButtonSurface(tokens) : centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={testID}>
       <Text style={[styles.actionButtonText, { color: primary ? tokens.primaryText : tokens.primary }]} numberOfLines={1}>
         {label}
       </Text>
@@ -705,6 +716,11 @@ const styles = StyleSheet.create({
     width: component.agenticCenter.mascotImageSize,
   },
   actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  activeCaseActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,

@@ -230,6 +230,21 @@ describe('CustomerAgenticCenterSurface', () => {
     expect(screen.queryByTestId('customer-agentic-center-approval-unread')).toBeNull()
   })
 
+  it('renders Active Case command id and case-level actions', () => {
+    buildWorkflow(buildDeal())
+
+    render(<CustomerAgenticCenterSurface />)
+
+    expect(screen.getByText('Case ID')).toBeTruthy()
+    expect(screen.getByText('job_test_1')).toBeTruthy()
+
+    fireEvent.press(screen.getByTestId('customer-agentic-center-active-chat-action'))
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat')
+
+    fireEvent.press(screen.getByTestId('customer-agentic-center-active-history-action'))
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/history')
+  })
+
   it('routes the center primary action to the real Kael chat route', () => {
     render(<CustomerAgenticCenterSurface />)
 
