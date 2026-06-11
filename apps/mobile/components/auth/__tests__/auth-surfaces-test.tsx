@@ -101,6 +101,7 @@ describe('LoginRoleSurface', () => {
 
     expect(screen.getByTestId('auth-login-email-input')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-login-password-input')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-login-submit')).toHaveTextContent('Đăng nhập')
   })
 
   it('submits customer email login through the real auth provider boundary', async () => {

@@ -140,6 +140,7 @@ const authCopy = {
     refresh: 'Tải lại hồ sơ',
     signOut: 'Đăng xuất',
     submit: 'Tiếp tục',
+    customerEmailSubmit: 'Đăng nhập',
     workerSubmit: 'Đăng nhập',
     changeRole: 'Quay lại',
     email: 'Email',
@@ -277,6 +278,7 @@ const authCopy = {
     refresh: 'Refresh profile',
     signOut: 'Sign out',
     submit: 'Continue',
+    customerEmailSubmit: 'Sign in',
     workerSubmit: 'Sign in',
     changeRole: 'Back',
     email: 'Email',
@@ -767,7 +769,8 @@ function UnauthenticatedRoleForm({
   const isCustomerPasswordFallback = selectedEntryRole === 'customer' && !isCustomerPhoneMode
   const [showCustomerEmailFallback, setShowCustomerEmailFallback] = useState(false)
   const canUsePasswordLogin = isWorker || (isCustomerPasswordFallback && showCustomerEmailFallback)
-  const primarySubmitLabel = isWorkerCreateMode ? copy.workerCreateUnavailableCta : submitLabel
+  const isCustomerEmailPasswordOpen = isCustomerPasswordFallback && showCustomerEmailFallback
+  const primarySubmitLabel = isWorkerCreateMode ? copy.workerCreateUnavailableCta : isCustomerEmailPasswordOpen ? copy.customerEmailSubmit : submitLabel
 
   return (
     <View style={styles.formStack}>

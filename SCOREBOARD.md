@@ -18,7 +18,7 @@ Legend:
 |---|---|---:|---:|---:|---|---|
 | A | 1.1 Splash Screen | Partial | Partial | TBD | Expo app name/permissions, Kael charter/system prompt, public charter summary, and API metadata title now use NestScout; final splash logo asset still missing | In progress |
 | A | 1.2 Welcome | Partial | Partial | TBD | Welcome shows NestScout, Kael mascot, supported-service chips for electrical/plumbing/cleaning only, and reference step dots; focused auth test, type-check, and full mobile Jest passed | In progress |
-| A | 1.3 Login with Email | Partial | Partial | TBD | Customer email fallback submits through `signInWithPassword`; reset password stays an honest unavailable state; focused auth test passed | In progress |
+| A | 1.3 Login with Email | Partial | Partial | TBD | Customer email fallback now uses the explicit `Đăng nhập`/`Sign in` CTA and submits through `signInWithPassword`; reset password stays an honest unavailable state; red-first focused auth test and focused auth pass recorded | In progress |
 | A | 1.4 Register with Email | Partial | Partial | TBD | Worker create UI now shows a review-boundary checklist, removes fake upload/action copy, and keeps submit on the real unavailable path because no mobile sign-up API is exposed; focused auth test passed | In progress |
 | A | 1.5 Onboarding | Partial | Partial | TBD | Customer setup shows Kael onboarding hero/steps and saves real session/profile fields through `updateCustomerProfile`; focused auth test passed | In progress |
 | B | 2.1 Home | Partial | Partial | TBD | Customer Home focused test passed: 4 real shortcuts, 3 supported services, active status/estimate from real deal data | In progress |
