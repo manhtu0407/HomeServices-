@@ -1366,6 +1366,7 @@ function WorkerSafetyChecklistCard({
   status: LocalDealStatus | null
 }) {
   const { copy, language, tokens } = useWorkerUi()
+  const [checklistDone, setChecklistDone] = useState(false)
   const scopeValue = status === 'scope_change_pending'
     ? copy.jobs.safetyScopeReviewing
     : status === 'inspecting' || status === 'repairing'
@@ -1394,6 +1395,10 @@ function WorkerSafetyChecklistCard({
     },
   ] as const
   const checklistItems = workerSafetyChecklistItems(serviceType, language)
+  const checklistDoneNote = language === 'en'
+    ? 'Checklist acknowledged internally; job status still waits for field steps and evidence.'
+    : 'Đã ghi nhận checklist nội bộ; trạng thái việc vẫn chờ bước hiện trường và bằng chứng.'
+  const checklistDoneLabel = language === 'en' ? 'Checklist noted' : 'Đã ghi nhận'
 
   return (
     <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-safety-checklist-card">
@@ -1425,10 +1430,10 @@ function WorkerSafetyChecklistCard({
         ))}
       </View>
       <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2} testID="worker-safety-checklist-note">
-        {copy.jobs.safetyChecklistLocked}
+        {checklistDone ? checklistDoneNote : copy.jobs.safetyChecklistLocked}
       </Text>
       <View style={styles.actionRow}>
-        <PressButton disabled label={copy.jobs.safetyChecklistAction} onPress={() => undefined} secondary testID="worker-safety-checklist-complete-action" />
+        <PressButton disabled={checklistDone} label={checklistDone ? checklistDoneLabel : copy.jobs.safetyChecklistAction} onPress={() => setChecklistDone(true)} secondary testID="worker-safety-checklist-complete-action" />
       </View>
     </View>
   )

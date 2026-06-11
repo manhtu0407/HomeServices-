@@ -1391,8 +1391,11 @@ describe('WorkerJobsSurface', () => {
     expect(screen.getByTestId('worker-safety-reference-item-0')).toHaveTextContent(/Ngắt nguồn điện/)
     expect(screen.getByTestId('worker-safety-reference-item-2')).toHaveTextContent(/Sử dụng đồ bảo hộ/)
     expect(screen.getByTestId('worker-safety-reference-item-4')).toHaveTextContent(/Xác nhận an toàn/)
-    fireEvent.press(screen.getByTestId('worker-safety-checklist-complete-action'))
+    const checklistAction = screen.getByTestId('worker-safety-checklist-complete-action')
+    expect(checklistAction.props.accessibilityState).toMatchObject({ disabled: false })
+    fireEvent.press(checklistAction)
     expect(mockWorkflowValue.actions.workerUpdateStatus).not.toHaveBeenCalled()
+    expect(screen.getByTestId('worker-safety-checklist-note')).toHaveTextContent(/Đã ghi nhận/)
     expect(screen.getByTestId('worker-safety-checklist-complete-action').props.accessibilityState).toMatchObject({ disabled: true })
   })
 

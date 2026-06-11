@@ -126,7 +126,7 @@
   - Aligned Worker Rating to the reference using real aggregate worker score and completed-job count.
   - Added the star strip, exact score, positive pulse copy, and enabled review CTA that opens a real aggregate detail panel while tips stay `Chưa có` until the mobile API exposes gratuity/review-detail fields.
   - Aligned Worker Safety & Checklist to the reference with service-derived safety steps for electrical/plumbing/cleaning.
-  - Kept checklist completion as an honest disabled internal check so it does not advance job status, price, completion, or payment without the existing field-step/evidence gates.
+  - Changed checklist completion from disabled-only to a one-tap internal acknowledgement that locks again after press and still does not advance job status, price, completion, or payment without the existing field-step/evidence gates.
   - Aligned Evidence & Scope Change to the reference old/new scope summary from real scope-change state.
   - Computed the displayed price delta from the real Kael estimate label and `LocalScopeChange.priceMin`; kept worker price input absent.
   - Added submitted job summary/report card from real completion notes, completion media, status, and Kael price gate.
@@ -362,6 +362,11 @@
   - Mobile Jest from `apps/mobile` passed after the Worker Rating reference checkpoint: 17 suites, 189 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "service-derived safety checklist"` failed on missing `worker-safety-reference-list` before the Safety & Checklist reference checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "service-derived safety checklist"` passed after the Safety & Checklist reference checkpoint.
+  - Red first: focused Worker safety test failed before the internal acknowledgement checkpoint because the complete action was disabled.
+  - Focused Worker safety test passed after the internal acknowledgement checkpoint.
+  - Worker suite passed: 59 tests after the Worker safety acknowledgement checkpoint.
+  - Mobile type-check passed after the Worker safety acknowledgement checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker safety acknowledgement checkpoint: 17 suites, 195 tests.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 58 tests after the Safety & Checklist reference checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Safety & Checklist reference checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Safety & Checklist reference checkpoint: 17 suites, 190 tests.
