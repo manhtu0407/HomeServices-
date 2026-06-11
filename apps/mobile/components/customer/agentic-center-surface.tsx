@@ -22,11 +22,23 @@ const CUSTOMER_HISTORY_PATH = '/(customer)/history'
 const CUSTOMER_PROFILE_PATH = '/(customer)/profile'
 
 type AgenticApprovalIconKey = 'completion' | 'payment' | 'scope_change'
+type AgenticPreferenceIconKey = 'address' | 'displayName' | 'language' | 'lastUpdated' | 'memory' | 'phone' | 'service' | 'time'
 
 const approvalIconSources: Record<AgenticApprovalIconKey, ImageSource> = {
   completion: require('../../assets/client-image-icons/client-evidence.png'),
   payment: require('../../assets/client-image-icons/client-payment.png'),
   scope_change: require('../../assets/client-image-icons/client-request.png'),
+}
+
+const preferenceIconSources: Record<AgenticPreferenceIconKey, ImageSource> = {
+  address: require('../../assets/client-image-icons/client-address.png'),
+  displayName: require('../../assets/client-image-icons/client-profile.png'),
+  language: require('../../assets/client-image-icons/client-language.png'),
+  lastUpdated: require('../../assets/client-image-icons/client-request.png'),
+  memory: require('../../assets/client-image-icons/client-kael.png'),
+  phone: require('../../assets/client-image-icons/client-phone-v2.png'),
+  service: require('../../assets/client-image-icons/client-booking.png'),
+  time: require('../../assets/client-image-icons/client-activity.png'),
 }
 
 type AgenticApprovalRow = {
@@ -41,6 +53,7 @@ type AgenticApprovalRow = {
 }
 
 type AgenticPreferenceRow = {
+  id: AgenticPreferenceIconKey
   label: string
   value: string
 }
@@ -75,7 +88,7 @@ const copy = {
     approvalQueueCount: 'việc cần bạn duyệt',
     approvalEmptyTitle: 'Không có mục cần duyệt',
     approvalEmptyBody: 'Khi có đổi phạm vi, hoàn tất, thanh toán hoặc thông báo thật, Kael sẽ đưa vào đây.',
-    memory: 'Bộ nhớ và tùy chọn',
+    memory: 'Kael nhớ về bạn',
     memoryEmptyTitle: 'Chưa có dữ liệu tùy chọn',
     memoryEmptyBody: 'Địa chỉ và tên hiển thị sẽ hiện ở đây sau khi được lưu trong hồ sơ thật.',
     memoryUnavailableTitle: 'Chưa tải được bộ nhớ Kael',
@@ -127,7 +140,7 @@ const copy = {
     approvalQueueCount: 'items need approval',
     approvalEmptyTitle: 'Nothing needs approval',
     approvalEmptyBody: 'Scope, completion, payment, or real unread notices appear here when they exist.',
-    memory: 'Memory and preferences',
+    memory: 'Kael remembers you',
     memoryEmptyTitle: 'No saved preference data',
     memoryEmptyBody: 'Address and display name appear here after they are saved on the real profile.',
     memoryUnavailableTitle: 'Kael memory unavailable',
@@ -260,7 +273,7 @@ export function CustomerAgenticCenterSurface() {
         </CenterSection>
 
         <CenterSection title={text.memory} tokens={tokens}>
-          {preferences.length > 0 ? preferences.map((item) => <InfoRow key={item.label} label={item.label} tokens={tokens} value={item.value} />) : <EmptyState body={memoryEmptyBody} title={memoryEmptyTitle} tokens={tokens} />}
+          {preferences.length > 0 ? preferences.map((item) => <PreferenceInfoRow key={`${item.id}-${item.label}`} item={item} tokens={tokens} />) : <EmptyState body={memoryEmptyBody} title={memoryEmptyTitle} tokens={tokens} />}
         </CenterSection>
 
         <Pressable accessibilityLabel={text.editProfile} accessibilityRole="button" onPress={() => replace(CUSTOMER_PROFILE_PATH)} style={({ pressed }) => [styles.homeLink, centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-agentic-center-memory-edit-action">
@@ -433,6 +446,20 @@ function ApprovalActionRow({ item, onPress, onPrimaryPress, reduceMotion, tokens
   )
 }
 
+function PreferenceInfoRow({ item, tokens }: { item: AgenticPreferenceRow; tokens: CustomerThemeTokens }) {
+  return (
+    <View style={[styles.approvalRow, centerInfoRowSurface(tokens)]} testID={`customer-agentic-center-memory-row-${item.id}`}>
+      <View style={[styles.approvalIconFrame, centerOrbSurface(tokens)]} testID={`customer-agentic-center-memory-row-${item.id}-icon`}>
+        <Image contentFit="contain" source={preferenceIconSources[item.id]} style={styles.approvalIconImage} />
+      </View>
+      <View style={styles.approvalCopy}>
+        <Text style={[styles.infoLabel, { color: tokens.muted }]}>{item.label}</Text>
+        <Text style={[styles.infoValue, { color: tokens.text }]}>{item.value}</Text>
+      </View>
+    </View>
+  )
+}
+
 function CenterButton({ label, onPress, primary = false, reduceMotion, testID, tokens }: { label: string; onPress: () => void; primary?: boolean; reduceMotion: boolean; testID?: string; tokens: CustomerThemeTokens }) {
   return (
     <Pressable accessibilityLabel={label} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.actionButton, primary ? centerPrimaryButtonSurface(tokens) : centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={testID}>
@@ -545,21 +572,21 @@ function getPreferenceRows(metadata: Record<string, unknown>, language: AppLangu
     const timePreference = servicePreferences ? readFirstMemoryString(servicePreferences, memoryTimeKeys) : ''
     const lastObservedAt = formatMemoryDate(readMemoryString(customerKaelMemory, 'last_observed_at'), language)
 
-    if (summary) rows.push({ label: text.memorySummary, value: summary })
+    if (summary) rows.push({ id: 'memory', label: text.memorySummary, value: summary })
     if (memoryLanguage === 'vi' || memoryLanguage === 'en') {
-      rows.push({ label: text.languagePreference, value: languageDisplayName(memoryLanguage) })
+      rows.push({ id: 'language', label: text.languagePreference, value: languageDisplayName(memoryLanguage) })
     }
-    if (serviceType) rows.push({ label: text.servicePreference, value: localizedServiceLabel(serviceType, language) })
-    if (preferredArea) rows.push({ label: text.preferredArea, value: localizedProfileValue(preferredArea, language) })
-    if (timePreference) rows.push({ label: text.timePreference, value: localizedProfileValue(timePreference, language) })
-    if (lastObservedAt) rows.push({ label: text.lastUpdated, value: lastObservedAt })
+    if (serviceType) rows.push({ id: 'service', label: text.servicePreference, value: localizedServiceLabel(serviceType, language) })
+    if (preferredArea) rows.push({ id: 'address', label: text.preferredArea, value: localizedProfileValue(preferredArea, language) })
+    if (timePreference) rows.push({ id: 'time', label: text.timePreference, value: localizedProfileValue(timePreference, language) })
+    if (lastObservedAt) rows.push({ id: 'lastUpdated', label: text.lastUpdated, value: lastObservedAt })
   }
   const name = readMetadataString(metadata, 'nickname', 'preferred_name', 'full_name', 'name')
   const address = readMetadataString(metadata, 'default_address', 'address_label', 'address')
   const phone = readMetadataString(metadata, 'phone_number', 'phone', 'contact_phone')
-  if (name) rows.push({ label: text.displayName, value: localizedProfileValue(name, language) })
-  if (address) rows.push({ label: text.address, value: localizedProfileValue(address, language) })
-  if (phone) rows.push({ label: language === 'en' ? 'Contact phone' : 'Số liên hệ', value: phone })
+  if (name) rows.push({ id: 'displayName', label: text.displayName, value: localizedProfileValue(name, language) })
+  if (address) rows.push({ id: 'address', label: text.address, value: localizedProfileValue(address, language) })
+  if (phone) rows.push({ id: 'phone', label: language === 'en' ? 'Contact phone' : 'Số liên hệ', value: phone })
   return rows
 }
 

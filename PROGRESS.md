@@ -135,6 +135,7 @@
   - Rendered Kael memory summary, language, service preference, preferred area, time preference, and last-observed date from the sanitized self-view payload only.
   - Kept memory `safe_metadata` and raw unsafe metadata out of the UI while preserving real profile metadata fallback rows.
   - Changed the Memory & Preferences CTA from Home to Edit profile and routed it to the real customer profile surface.
+  - Aligned Memory & Preferences to the reference `Kael nhớ về bạn` / `Kael remembers you` card, with 3D image icons from the client icon system for real memory/profile rows and the existing Edit profile route.
   - Moved Agentic Center screen-specific dimensions, borders, and shadows into `component.agenticCenter` tokens; targeted raw color/rgba/boxShadow/style grep for the surface is clean.
   - Refined the separated customer Kael Orb to use `component.bottomNav.orb` tokens, keep a 76px outer hit target with a 64px inner glass orb, show the official Kael label, and route to Agentic Center.
   - Added focused RNTL coverage for empty and active summary values.
@@ -220,6 +221,9 @@
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "Commanding Home greeting|Active Case command id"` passed after replacing raw Agentic Center Kael images with `KaelMascot` state callsites.
   - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `customer-agentic-center-memory-edit-action` before the Memory & Preferences edit CTA checkpoint.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 11 tests after the Memory & Preferences edit CTA checkpoint.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "saved contact phone"` failed on missing `Kael remembers you` before the Memory & Preferences reference-card checkpoint.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "saved contact phone"` passed after the Memory & Preferences reference-card checkpoint.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 11 tests after the Memory & Preferences reference-card checkpoint.
   - `vitest run src/__tests__/kael-charter-p8.test.ts` from `packages/shared` passed: 5 tests after the NestScout AI identity rename.
   - `vitest run src/__tests__/unit/mobile-api-kael-p8.test.ts --root .` from `apps/api` passed: 9 tests after the NestScout AI prompt/public-charter rename.
   - `vitest run src/__tests__/unit/mobile-api-edge-router.test.ts --root .` from `apps/api` passed: 46 tests after the NestScout public-charter route mock update.
@@ -233,6 +237,7 @@
   - `tsc --noEmit` from `apps/mobile` passed after the Commanding Home greeting/notification split.
   - `tsc --noEmit` from `apps/mobile` passed after the Active Case command id/actions checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Memory & Preferences edit CTA checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Memory & Preferences reference-card checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Commanding Home reference alignment.
   - `tsc --noEmit` from `apps/mobile` passed after the Active Case reference-card / Mascot-state checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Login with Email CTA checkpoint.
@@ -246,6 +251,7 @@
   - Mobile Jest from `apps/mobile` passed after the Commanding Home reference alignment: 17 suites, 191 tests.
   - Mobile Jest from `apps/mobile` passed after the Active Case reference-card / Mascot-state checkpoint: 17 suites, 191 tests.
   - Mobile Jest from `apps/mobile` passed after the Approval Queue reference alignment: 17 suites, 191 tests.
+  - Mobile Jest from `apps/mobile` passed after the Memory & Preferences reference-card checkpoint: 17 suites, 191 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - Mobile Jest from `apps/mobile` passed after the Active Case command id/actions checkpoint: 17 suites, 178 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - Mobile Jest from `apps/mobile` passed after the Memory & Preferences edit CTA checkpoint: 17 suites, 179 tests.
   - Mobile Jest from `apps/mobile` passed after the Welcome service chips/dots checkpoint: 17 suites, 179 tests.

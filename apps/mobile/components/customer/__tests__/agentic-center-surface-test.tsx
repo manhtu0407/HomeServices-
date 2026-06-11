@@ -325,6 +325,10 @@ describe('CustomerAgenticCenterSurface', () => {
 
     render(<CustomerAgenticCenterSurface />)
 
+    expect(screen.getByText('Kael remembers you')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-memory-row-displayName-icon')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-memory-row-address-icon')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-memory-row-phone-icon')).toBeTruthy()
     expect(screen.getByText('Contact phone')).toBeTruthy()
     expect(screen.getByText('0901234567')).toBeTruthy()
   })
