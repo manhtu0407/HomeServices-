@@ -1239,6 +1239,23 @@ describe('WorkerJobsSurface', () => {
     expect(screen.queryByText('8 km')).toBeNull()
   })
 
+  it('renders the active Jobs row from the real accepted job data', () => {
+    mockAppLanguage = 'en'
+    mockPathname = '/(worker)/jobs'
+    mockRouteParams = { tab: 'active' }
+    buildWorkflow({ deal: buildAcceptedDeal() })
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-jobs-active-list-row')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-jobs-active-list-id-value')).toHaveTextContent('job_test_1')
+    expect(screen.getByTestId('worker-jobs-active-list-service-value')).toHaveTextContent('Electrical repair')
+    expect(screen.getByTestId('worker-jobs-active-list-area-value')).toHaveTextContent('District 1')
+    expect(screen.getByTestId('worker-jobs-active-list-status-value')).toHaveTextContent('Worker accepted')
+    expect(screen.getByTestId('worker-jobs-active-list-earning-value')).toHaveTextContent('120.000đ - 180.000đ')
+    expect(screen.queryByText('4.9')).toBeNull()
+  })
+
   it('renders safety checklist gates from the active workflow without a worker price input', () => {
     mockPathname = '/(worker)/jobs'
     mockRouteParams = { tab: 'active' }

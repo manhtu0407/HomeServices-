@@ -1201,7 +1201,7 @@ export function WorkerJobsSurface() {
         <WorkerJobsLiquidSection testID="worker-jobs-active-liquid-section">
           {acceptedJob ? (
             <>
-              <ActiveWorkerJobCard body={jobBody} briefLines={activeJobBriefLines} status={activeJobStatus} title={jobTitle} />
+              <ActiveWorkerJobCard body={jobBody} briefLines={activeJobBriefLines} deal={deal} status={activeJobStatus} title={jobTitle} />
               <WorkerPhaseContextCard phaseContext={workflow.phaseContext} testID="worker-jobs-active-phase-context" />
               <WorkerSafetyChecklistCard
                 canSeeFullAddress={Boolean(fullJobAddressLabel)}
@@ -2134,7 +2134,7 @@ function WorkerStandaloneHeader() {
   )
 }
 
-function ActiveWorkerJobCard({ body, briefLines, status, title }: { body: string; briefLines: string[]; status: string; title: string }) {
+function ActiveWorkerJobCard({ body, briefLines, deal, status, title }: { body: string; briefLines: string[]; deal: LocalDeal | null; status: string; title: string }) {
   const { actions, selectors } = useFrontendWorkflow()
   const { copy, language, tokens } = useWorkerUi()
   const { replace } = useRouter()
@@ -2163,6 +2163,7 @@ function ActiveWorkerJobCard({ body, briefLines, status, title }: { body: string
       <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
         {body}
       </Text>
+      <WorkerActiveJobListRow deal={deal} status={status} />
       {briefLines.length > 0 ? (
         <View style={[styles.jobDiagnosisBox, workerDiagnosisSurface(tokens)]} testID="worker-active-job-kael-summary">
           <View style={styles.identityRow}>
@@ -2191,6 +2192,31 @@ function ActiveWorkerJobCard({ body, briefLines, status, title }: { body: string
           <PressButton secondary label={nextAction.label} onPress={() => replace('/(worker)/jobs?tab=needs')} testID="worker-jobs-completion-evidence-route" />
         ) : null}
       </View>
+    </View>
+  )
+}
+
+function WorkerActiveJobListRow({ deal, status }: { deal: LocalDeal | null; status: string }) {
+  const { copy, language } = useWorkerUi()
+  const broadcast = deal?.broadcast ?? null
+  const jobId = broadcast?.jobId ?? deal?.id ?? null
+  const jobValue = jobId && jobId !== LOCAL_DEAL_ID ? jobId : appCopy[language].common.noData
+  const areaValue = localizedWorkerAreaLabel(
+    broadcast?.fullAddressVisible && broadcast.fullAddressLabel
+      ? broadcast.fullAddressLabel
+      : broadcast?.generalArea ?? deal?.draft.districtLabel,
+    language,
+  )
+  const serviceValue = localizedServiceLabel(deal?.draft.serviceType ?? broadcast?.serviceType ?? null, language)
+  const earningValue = broadcast?.estimatedEarningLabel ?? broadcast?.estimatedPriceLabel ?? deal?.estimate?.priceRangeLabel ?? copy.earnings.waiting
+
+  return (
+    <View style={styles.needsReviewGrid} testID="worker-jobs-active-list-row">
+      <JobRoomMetaCell label={language === 'en' ? 'Job' : 'Mã việc'} testID="worker-jobs-active-list-id" value={jobValue} />
+      <JobRoomMetaCell label={copy.chat.serviceLabel} testID="worker-jobs-active-list-service" value={serviceValue} />
+      <JobRoomMetaCell label={language === 'en' ? 'Area' : 'Khu vực'} testID="worker-jobs-active-list-area" value={areaValue} />
+      <JobRoomMetaCell label={copy.home.status} testID="worker-jobs-active-list-status" value={status} />
+      <JobRoomMetaCell label={copy.request.workerEarns} testID="worker-jobs-active-list-earning" value={earningValue} />
     </View>
   )
 }
@@ -3238,10 +3264,10 @@ function JobRoomMetaCell({ label, testID, value, valueLines = 2 }: { label: stri
 
   return (
     <View style={[styles.jobRoomMetaCell, workerOpaqueCardSurface(tokens, 'raised', reduceTransparency)]} testID={testID}>
-      <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
+      <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1} testID={testID ? `${testID}-label` : undefined}>
         {label}
       </Text>
-      <Text style={[styles.jobRoomMetaValue, { color: tokens.ink }]} numberOfLines={valueLines}>
+      <Text style={[styles.jobRoomMetaValue, { color: tokens.ink }]} numberOfLines={valueLines} testID={testID ? `${testID}-value` : undefined}>
         {value}
       </Text>
     </View>
