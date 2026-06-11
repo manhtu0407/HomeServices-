@@ -45,7 +45,7 @@ type KaelChatThreadText = Parameters<typeof KaelProcessCard>[0]['text'] & {
   livePerformanceMeta: string
   livePerformanceNoEvidence: string
   livePerformancePendingStage: string
-  livePerformancePhotoCount: (count: number) => string
+  livePerformanceMediaCount: (count: number) => string
   livePerformanceService: string
   livePerformanceSignals: string
   livePerformanceStage: string
@@ -340,7 +340,13 @@ function KaelLivePerformancePanel({
         <View style={styles.livePerformanceMediaRail} testID="customer-kael-live-performance-media-rail">
           {pendingPhotos.slice(0, 3).map((photo, index) => (
             <View key={`${photo.uri}-${index}`} style={[styles.livePerformancePhotoTile, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
-              <Image accessibilityLabel={`kael-evidence-${index + 1}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.livePerformancePhoto} />
+              {photo.type === 'video' ? (
+                <View style={[styles.livePerformanceVideoTileBody, { backgroundColor: tokens.service }]} testID={`customer-kael-live-performance-video-${index}`}>
+                  <Text style={[styles.livePerformanceVideoLabel, { color: tokens.primary }]}>Video</Text>
+                </View>
+              ) : (
+                <Image accessibilityLabel={`kael-evidence-${index + 1}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.livePerformancePhoto} />
+              )}
             </View>
           ))}
         </View>
@@ -351,7 +357,7 @@ function KaelLivePerformancePanel({
       )}
       <View style={styles.briefGrid}>
         <LivePerformanceCell label={text.livePerformanceService} testID="customer-kael-live-performance-service" tokens={tokens} value={service ? localizedServiceLabel(service, language) : text.briefServicePending} />
-        <LivePerformanceCell label={text.livePerformanceEvidence} testID="customer-kael-live-performance-evidence" tokens={tokens} value={evidenceCount > 0 ? text.livePerformancePhotoCount(evidenceCount) : text.livePerformanceNoEvidence} />
+        <LivePerformanceCell label={text.livePerformanceEvidence} testID="customer-kael-live-performance-evidence" tokens={tokens} value={evidenceCount > 0 ? text.livePerformanceMediaCount(evidenceCount) : text.livePerformanceNoEvidence} />
         {problemSignals.length > 0 ? (
           <LivePerformanceCell label={text.livePerformanceSignals} testID="customer-kael-live-performance-signals" tokens={tokens} value={signalValue} />
         ) : null}

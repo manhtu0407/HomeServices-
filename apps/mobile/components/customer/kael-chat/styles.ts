@@ -1007,6 +1007,18 @@ export const styles = StyleSheet.create({
     gap: 3,
     minWidth: 0,
   },
+  livePerformanceVideoLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0,
+    lineHeight: 14,
+  },
+  livePerformanceVideoTileBody: {
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'center',
+    width: '100%',
+  },
   liveActivityStepDot: {
     borderRadius: 999,
     borderWidth: 1,

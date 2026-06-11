@@ -213,15 +213,15 @@ const threadText = {
     market: 'Checking market rates in {district}',
     price: 'Synthesizing estimate',
     problem: 'Matching standard price bands',
-    vision: 'Analyzing photos',
+    vision: 'Analyzing photos/videos',
   },
   history: 'Open activity',
   livePerformanceEvidence: 'Evidence',
   livePerformanceEstimateReady: 'Estimate is ready',
   livePerformanceMeta: 'Real session details',
-  livePerformanceNoEvidence: 'No real photo yet',
+  livePerformanceNoEvidence: 'No real photo/video yet',
   livePerformancePendingStage: 'Sending ticket to Kael',
-  livePerformancePhotoCount: (count: number) => `${count} photo${count === 1 ? '' : 's'}`,
+  livePerformanceMediaCount: (count: number) => `${count} evidence item${count === 1 ? '' : 's'}`,
   livePerformanceService: 'Service',
   livePerformanceStage: 'Kael stage',
   livePerformanceSignals: 'Signals',
@@ -1000,7 +1000,7 @@ describe('Kael agentic phase cards', () => {
           message: 'Outlet sparks near the kitchen',
           photoDrafts: [
             { uri: 'file://photo-1.jpg', type: 'image' },
-            { uri: 'file://photo-2.jpg', type: 'image' },
+            { uri: 'file://clip-1.mp4', type: 'video' },
           ],
           problemChips: ['Burned outlet'],
           serviceType: 'electrical',
@@ -1050,9 +1050,10 @@ describe('Kael agentic phase cards', () => {
 
     expect(screen.getByTestId('customer-kael-live-performance-panel')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-kael-live-performance-service')).toHaveTextContent(/Electrical repair/)
-    expect(screen.getByTestId('customer-kael-live-performance-evidence')).toHaveTextContent(/2 photos/)
+    expect(screen.getByTestId('customer-kael-live-performance-evidence')).toHaveTextContent(/2 evidence items/)
     expect(screen.getByTestId('customer-kael-live-performance-signals')).toHaveTextContent(/Burned outlet/)
-    expect(screen.getByTestId('customer-kael-live-performance-stage')).toHaveTextContent(/Analyzing photos/)
+    expect(screen.getByTestId('customer-kael-live-performance-stage')).toHaveTextContent(/Analyzing photos\/videos/)
+    expect(screen.getByTestId('customer-kael-live-performance-video-1')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-kael-live-performance-media-empty')).toBeNull()
   })
 
