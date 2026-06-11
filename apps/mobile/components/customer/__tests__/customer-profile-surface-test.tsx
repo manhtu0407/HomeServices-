@@ -129,6 +129,13 @@ describe('CustomerProfileSurface editable rows', () => {
     expect(screen.getByTestId('customer-profile-insight-0')).toHaveTextContent('Sẵn sàng')
     expect(screen.getByTestId('customer-profile-insight-1')).toHaveTextContent('Chưa có')
     expect(screen.getByTestId('customer-profile-insight-2')).toHaveTextContent('Chờ kiểm giá')
+    expect(screen.getByTestId('customer-profile-ranking-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-profile-ranking-card-empty')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-profile-ranking-card-value-0')).toHaveTextContent('Chờ dữ liệu')
+    expect(screen.getByTestId('customer-profile-money-protection-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-profile-money-protection-card-empty')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-profile-money-protection-card-value-0')).toHaveTextContent('Chờ dữ liệu')
+    expect(screen.queryByText('--')).toBeNull()
 
     expect(screen.queryByTestId('customer-profile-home-care-cta')).toBeNull()
   })
@@ -141,6 +148,11 @@ describe('CustomerProfileSurface editable rows', () => {
       phone_number: '0901234567',
       completed_service_count: 2,
       price_savings_vnd: 150000,
+      fair_price_service_count: 2,
+      money_protection_score: 92,
+      protected_value_vnd: 2150000,
+      usage_rank_level: 3,
+      usage_rank_points: 620,
     }
 
     render(<CustomerProfileSurface />)
@@ -148,6 +160,14 @@ describe('CustomerProfileSurface editable rows', () => {
     expect(screen.getByTestId('customer-profile-insight-0')).toHaveTextContent('4')
     expect(screen.getByTestId('customer-profile-insight-1')).toHaveTextContent('2')
     expect(screen.getByTestId('customer-profile-insight-2')).toHaveTextContent('150.000đ')
+    expect(screen.getByTestId('customer-profile-ranking-card-value-0')).toHaveTextContent('Hạng 3')
+    expect(screen.getByTestId('customer-profile-ranking-card-value-1')).toHaveTextContent('620')
+    expect(screen.getByTestId('customer-profile-ranking-card-value-2')).toHaveTextContent('2')
+    expect(screen.queryByTestId('customer-profile-ranking-card-empty')).toBeNull()
+    expect(screen.getByTestId('customer-profile-money-protection-card-value-0')).toHaveTextContent('92/100')
+    expect(screen.getByTestId('customer-profile-money-protection-card-value-1')).toHaveTextContent('2.150.000đ')
+    expect(screen.getByTestId('customer-profile-money-protection-card-value-2')).toHaveTextContent('2')
+    expect(screen.queryByTestId('customer-profile-money-protection-card-empty')).toBeNull()
   })
 
   it.each([

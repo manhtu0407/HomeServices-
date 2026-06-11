@@ -140,6 +140,17 @@ type CustomerAccountInfoDraft = {
 type CustomerGenderValue = 'female' | 'male' | 'other'
 type SurfaceTone = 'base' | 'raised' | 'service' | 'water' | 'warm' | 'depth' | 'ghost' | 'disabled'
 type ClientImageIconName = keyof typeof clientImageIcons
+type CustomerProfileInsightCopy = {
+  empty: string
+  subtitle: string
+  title: string
+}
+type CustomerProfileInsightStat = {
+  available: boolean
+  icon: IconName
+  label: string
+  value: string
+}
 type IconName =
   | 'apartment'
   | 'boltPanel'
@@ -495,6 +506,60 @@ const customerProfileCareCopy = {
     serviceLabel: 'Services used',
     servicePending: 'No request yet',
     title: 'Trust Signals',
+  },
+} as const
+
+const customerProfileRankingCopy = {
+  vi: {
+    empty: 'Kael sẽ cập nhật khi NestScout có lịch sử sử dụng thật.',
+    pointsLabel: 'Điểm sử dụng',
+    pointsPending: 'Chờ dữ liệu',
+    rankLabel: 'Hạng hiện tại',
+    rankPending: 'Chờ dữ liệu',
+    rankValue: (level: number) => `Hạng ${level}`,
+    serviceLabel: 'Dịch vụ đúng giá',
+    servicePending: 'Chưa có',
+    subtitle: 'Không dùng điểm mẫu hoặc xếp hạng tự suy diễn.',
+    title: 'Xếp hạng sử dụng',
+  },
+  en: {
+    empty: 'Kael updates this when NestScout has real usage history.',
+    pointsLabel: 'Usage points',
+    pointsPending: 'Awaiting data',
+    rankLabel: 'Current rank',
+    rankPending: 'Awaiting data',
+    rankValue: (level: number) => `Rank ${level}`,
+    serviceLabel: 'Fair-price services',
+    servicePending: 'No service yet',
+    subtitle: 'No sample score or inferred ranking is shown.',
+    title: 'Usage Ranking',
+  },
+} as const
+
+const customerProfileMoneyCopy = {
+  vi: {
+    empty: 'Chỉ số bảo vệ dòng tiền sẽ mở khi có giao dịch và kiểm giá thật.',
+    fairPriceLabel: 'Dịch vụ đúng giá',
+    fairPricePending: 'Chờ kiểm giá',
+    protectedValueLabel: 'Giá trị đã bảo vệ',
+    protectedValuePending: 'Chờ dữ liệu',
+    scoreLabel: 'Chỉ số bảo vệ',
+    scorePending: 'Chờ dữ liệu',
+    scoreValue: (score: number) => `${score}/100`,
+    subtitle: 'Dựa trên kiểm giá, thanh toán và tranh chấp thật.',
+    title: 'Bảo vệ dòng tiền',
+  },
+  en: {
+    empty: 'Money protection opens after real transactions and price checks.',
+    fairPriceLabel: 'Fair-price services',
+    fairPricePending: 'Awaiting check',
+    protectedValueLabel: 'Protected value',
+    protectedValuePending: 'Awaiting data',
+    scoreLabel: 'Protection score',
+    scorePending: 'Awaiting data',
+    scoreValue: (score: number) => `${score}/100`,
+    subtitle: 'Based on real price checks, payments, and disputes.',
+    title: 'Money Protection',
   },
 } as const
 
@@ -1680,6 +1745,11 @@ export function CustomerProfileSurface() {
   const kaelInteractionCount = readCustomerProfileMetric(customerMetadata.kael_interaction_count ?? customerMetadata.kaelInteractions)
   const completedServiceCount = readCustomerProfileMetric(customerMetadata.completed_service_count ?? customerMetadata.completedServices)
   const priceSavingsVnd = readCustomerProfileMetric(customerMetadata.price_savings_vnd ?? customerMetadata.priceSavingsVnd)
+  const usageRankLevel = readCustomerProfileMetric(customerMetadata.usage_rank_level ?? customerMetadata.usageRankLevel ?? customerMetadata.customer_usage_rank_level ?? customerMetadata.customerUsageRankLevel)
+  const usageRankPoints = readCustomerProfileMetric(customerMetadata.usage_rank_points ?? customerMetadata.usageRankPoints ?? customerMetadata.customer_usage_points ?? customerMetadata.customerUsagePoints)
+  const fairPriceServiceCount = readCustomerProfileMetric(customerMetadata.fair_price_service_count ?? customerMetadata.fairPriceServiceCount ?? customerMetadata.fair_priced_service_count ?? customerMetadata.fairPricedServiceCount)
+  const moneyProtectionScore = readCustomerProfileMetric(customerMetadata.money_protection_score ?? customerMetadata.moneyProtectionScore ?? customerMetadata.fair_price_score ?? customerMetadata.fairPriceScore)
+  const protectedValueVnd = readCustomerProfileMetric(customerMetadata.protected_value_vnd ?? customerMetadata.protectedValueVnd ?? customerMetadata.money_protected_vnd ?? customerMetadata.moneyProtectedVnd ?? customerMetadata.price_protected_vnd ?? customerMetadata.priceProtectedVnd)
   const closeProfileEditor = useCallback(() => {
     if (profileEditorSaving) return
     setProfileEditorField(null)
@@ -1914,6 +1984,8 @@ export function CustomerProfileSurface() {
       ? accountInfoCopy.metaPartial(accountInfoSavedCount)
       : accountInfoCopy.metaEmpty
   const profileCareCopy = customerProfileCareCopy[languageMode]
+  const profileRankingCopy = customerProfileRankingCopy[languageMode]
+  const profileMoneyCopy = customerProfileMoneyCopy[languageMode]
   const profileSectionCopy = customerProfileSectionCopy[languageMode]
   const profileCareStats = [
     {
@@ -1930,6 +2002,46 @@ export function CustomerProfileSurface() {
       icon: 'payment' as const,
       label: profileCareCopy.savingsLabel,
       value: priceSavingsVnd ? formatVnd(priceSavingsVnd) : profileCareCopy.savingsPending,
+    },
+  ]
+  const profileRankingStats = [
+    {
+      available: Boolean(usageRankLevel),
+      icon: 'request' as const,
+      label: profileRankingCopy.rankLabel,
+      value: usageRankLevel ? profileRankingCopy.rankValue(usageRankLevel) : profileRankingCopy.rankPending,
+    },
+    {
+      available: Boolean(usageRankPoints),
+      icon: 'kael' as const,
+      label: profileRankingCopy.pointsLabel,
+      value: usageRankPoints ? `${usageRankPoints}` : profileRankingCopy.pointsPending,
+    },
+    {
+      available: Boolean(fairPriceServiceCount),
+      icon: 'payment' as const,
+      label: profileRankingCopy.serviceLabel,
+      value: fairPriceServiceCount ? `${fairPriceServiceCount}` : profileRankingCopy.servicePending,
+    },
+  ]
+  const profileMoneyStats = [
+    {
+      available: Boolean(moneyProtectionScore),
+      icon: 'privacy' as const,
+      label: profileMoneyCopy.scoreLabel,
+      value: moneyProtectionScore ? profileMoneyCopy.scoreValue(moneyProtectionScore) : profileMoneyCopy.scorePending,
+    },
+    {
+      available: Boolean(protectedValueVnd),
+      icon: 'payment' as const,
+      label: profileMoneyCopy.protectedValueLabel,
+      value: protectedValueVnd ? formatVnd(protectedValueVnd) : profileMoneyCopy.protectedValuePending,
+    },
+    {
+      available: Boolean(fairPriceServiceCount),
+      icon: 'check' as const,
+      label: profileMoneyCopy.fairPriceLabel,
+      value: fairPriceServiceCount ? `${fairPriceServiceCount}` : profileMoneyCopy.fairPricePending,
     },
   ]
   const profileFallbackTitle = languageMode === 'en' ? 'Customer profile' : 'Hồ sơ khách'
@@ -1970,7 +2082,13 @@ export function CustomerProfileSurface() {
               stats={profileCareStats}
             />
           </ReduceMotionAwareEntranceView>
-          <ReduceMotionAwareEntranceView delayMs={165} distanceY={8} style={styles.profileActions} testID="customer-profile-list-motion">
+          <ReduceMotionAwareEntranceView delayMs={150} distanceY={8} style={styles.profileActions} testID="customer-profile-ranking-card-motion">
+            <CustomerProfileInsightPanel copy={profileRankingCopy} stats={profileRankingStats} testID="customer-profile-ranking-card" />
+          </ReduceMotionAwareEntranceView>
+          <ReduceMotionAwareEntranceView delayMs={175} distanceY={8} style={styles.profileActions} testID="customer-profile-money-protection-card-motion">
+            <CustomerProfileInsightPanel copy={profileMoneyCopy} stats={profileMoneyStats} testID="customer-profile-money-protection-card" />
+          </ReduceMotionAwareEntranceView>
+          <ReduceMotionAwareEntranceView delayMs={205} distanceY={8} style={styles.profileActions} testID="customer-profile-list-motion">
             <View style={[styles.listCard, styles.profileGlassListCard, customerProfilePanelSurface(tokens)]} testID="customer-profile-checklist">
               <ProfileLiquidChrome testID="customer-profile-identity-panel-liquid" variant="panel" />
               <Text style={[styles.profileListSectionTitle, { color: tokens.muted }]} numberOfLines={1}>
@@ -1984,7 +2102,7 @@ export function CustomerProfileSurface() {
               <View style={styles.hiddenMarker} testID="customer-profile-evidence-shell" />
             </View>
           </ReduceMotionAwareEntranceView>
-          <ReduceMotionAwareEntranceView delayMs={205} distanceY={8} style={styles.profileActions} testID="customer-profile-actions-motion">
+          <ReduceMotionAwareEntranceView delayMs={245} distanceY={8} style={styles.profileActions} testID="customer-profile-actions-motion">
             <View style={[styles.listCard, styles.profileGlassListCard, customerProfilePanelSurface(tokens)]}>
               <ProfileLiquidChrome testID="customer-profile-settings-panel-liquid" variant="panel" />
               <Text style={[styles.profileListSectionTitle, { color: tokens.muted }]} numberOfLines={1}>
@@ -2593,6 +2711,55 @@ function CustomerProfileCareCard({
           </View>
         ))}
       </View>
+    </View>
+  )
+}
+
+function CustomerProfileInsightPanel({
+  copy,
+  stats,
+  testID,
+}: {
+  copy: CustomerProfileInsightCopy
+  stats: CustomerProfileInsightStat[]
+  testID: string
+}) {
+  const tokens = useCustomerTokens()
+  const hasRealData = stats.some((item) => item.available)
+
+  return (
+    <View style={[styles.profileInsightPanel, customerOpaqueSurface(tokens)]} testID={testID}>
+      <View style={styles.profileInsightHeader}>
+        <View style={styles.profileInsightHeaderCopy}>
+          <Text style={[styles.profileInsightTitle, { color: tokens.text }]} numberOfLines={1}>
+            {copy.title}
+          </Text>
+          <Text style={[styles.profileInsightSubtitle, { color: tokens.muted }]} numberOfLines={2}>
+            {copy.subtitle}
+          </Text>
+        </View>
+        <View style={[styles.profileInsightStatusDot, { backgroundColor: hasRealData ? tokens.primary : tokens.borderStrong }]} />
+      </View>
+      <View style={styles.profileInsightStats}>
+        {stats.map((item, index) => (
+          <View key={item.label} style={[styles.profileInsightStat, customerProfileCareStatSurface(tokens)]} testID={`${testID}-metric-${index}`}>
+            <View style={[styles.profileCareStatIcon, customerProfileCarePillSurface(tokens)]}>
+              <MappedIcon name={item.icon} color={item.available ? tokens.primary : tokens.subtleText} accent={tokens.primary} size={21} />
+            </View>
+            <Text style={[styles.profileInsightStatLabel, { color: tokens.muted }]} numberOfLines={1}>
+              {item.label}
+            </Text>
+            <Text style={[styles.profileInsightStatValue, { color: item.available ? tokens.primary : tokens.subtleText }]} numberOfLines={1} testID={`${testID}-value-${index}`}>
+              {item.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+      {!hasRealData ? (
+        <Text style={[styles.profileInsightEmpty, { color: tokens.muted }]} testID={`${testID}-empty`}>
+          {copy.empty}
+        </Text>
+      ) : null}
     </View>
   )
 }
@@ -7309,6 +7476,78 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     maxWidth: 84,
     textAlign: 'center',
+  },
+  profileInsightPanel: {
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 12,
+    minHeight: 148,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  profileInsightHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  profileInsightHeaderCopy: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0,
+  },
+  profileInsightTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 20,
+  },
+  profileInsightSubtitle: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 16,
+  },
+  profileInsightStatusDot: {
+    borderRadius: 999,
+    height: 10,
+    width: 10,
+  },
+  profileInsightStats: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  profileInsightStat: {
+    alignItems: 'center',
+    borderRadius: 15,
+    borderWidth: 1,
+    flex: 1,
+    gap: 5,
+    justifyContent: 'center',
+    minHeight: 78,
+    paddingHorizontal: 6,
+    paddingVertical: 7,
+  },
+  profileInsightStatLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 13,
+    maxWidth: 82,
+    textAlign: 'center',
+  },
+  profileInsightStatValue: {
+    fontSize: 12.5,
+    ...customerWorkerTypography.label,
+    lineHeight: 15,
+    maxWidth: 84,
+    textAlign: 'center',
+  },
+  profileInsightEmpty: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 16,
   },
   profileEditorScrim: {
     backgroundColor: 'rgba(8,20,17,0.28)',
