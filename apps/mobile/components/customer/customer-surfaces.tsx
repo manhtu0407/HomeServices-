@@ -3742,6 +3742,7 @@ function CustomerHistoryLiveAlertPanel({
   const unreadLabel = notificationUnreadCount > 0 ? copy.history.liveAlertMetaUnread(notificationUnreadCount) : copy.history.liveAlertUnreadEmpty
   const title = liveNotification?.title?.trim() || phaseContext.primaryArtifact?.title[languageMode] || copy.history.liveAlertFallbackTitle
   const body = liveNotification?.body?.trim() || phaseContext.intent[languageMode] || copy.history.liveAlertFallbackBody
+  const artifactLabel = phaseContext.primaryArtifact?.title[languageMode] ?? title
   const nextLabel = phaseContext.nextExpectedEvent
     ? workflowEventLabel(phaseContext.nextExpectedEvent, languageMode)
     : copy.history.confirmed
@@ -3770,6 +3771,7 @@ function CustomerHistoryLiveAlertPanel({
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.liveAlertSource} testID="customer-history-live-alert-source" value={sourceLabel} variant="activity" />
         <V4TicketCell label={copy.history.liveAlertUnread} testID="customer-history-live-alert-unread" value={notificationUnreadCount > 0 ? String(notificationUnreadCount) : copy.history.liveAlertUnreadEmpty} variant="activity" />
+        <V4TicketCell label={languageMode === 'en' ? 'Artifact' : 'Dấu mốc'} testID="customer-history-live-alert-artifact" value={artifactLabel} variant="activity" />
       </View>
       <V4TicketCell label={copy.history.liveAlertNext} testID="customer-history-live-alert-next" value={nextLabel} variant="activity" />
     </View>

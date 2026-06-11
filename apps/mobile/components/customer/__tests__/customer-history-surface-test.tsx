@@ -329,6 +329,7 @@ describe('CustomerHistorySurface phase context', () => {
     expect(alertPanel).toHaveTextContent(/Có thay đổi phạm vi cần xem trong yêu cầu thật/)
     expect(screen.getByTestId('customer-history-live-alert-source-value')).toHaveTextContent(/Thông báo thật/)
     expect(screen.getByTestId('customer-history-live-alert-unread-value')).toHaveTextContent('1')
+    expect(screen.getByTestId('customer-history-live-alert-artifact-value')).toHaveTextContent(/Thay đổi phạm vi/)
     expect(screen.getByTestId('customer-history-live-alert-next-value')).toHaveTextContent(/Kael quyết định phạm vi/)
     expect(alertPanel).not.toHaveTextContent(/push giả|fake|0 thông báo/i)
   })
