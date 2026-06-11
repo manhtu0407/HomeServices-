@@ -740,7 +740,10 @@ describe('WorkerChatSurface', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     imagePicker.launchImageLibraryAsync.mockResolvedValueOnce({
       canceled: false,
-      assets: [{ fileName: 'onsite-burnt-wire.jpg', fileSize: 4321, mimeType: 'image/jpeg', uri: 'file:///onsite-burnt-wire.jpg' }],
+      assets: [
+        { fileName: 'onsite-burnt-wire.jpg', fileSize: 4321, mimeType: 'image/jpeg', uri: 'file:///onsite-burnt-wire.jpg' },
+        { fileName: 'onsite-valve.jpg', fileSize: 5321, mimeType: 'image/jpeg', uri: 'file:///onsite-valve.jpg' },
+      ],
     })
     mockPathname = '/(worker)/chat'
     buildWorkflow({ deal: buildAcceptedDeal() })
@@ -756,7 +759,10 @@ describe('WorkerChatSurface', () => {
     expect(screen.getByTestId('worker-chat-media-preview-rail')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-chat-media-preview-0')).toHaveTextContent('onsite-burnt-wire.jpg')
     expect(screen.getByTestId('worker-chat-media-preview-image-0').props.source).toEqual({ uri: 'file:///onsite-burnt-wire.jpg' })
+    expect(screen.getByTestId('worker-chat-media-preview-1')).toHaveTextContent('onsite-valve.jpg')
+    expect(screen.getByTestId('worker-chat-media-preview-image-1').props.source).toEqual({ uri: 'file:///onsite-valve.jpg' })
     expect(screen.getByTestId('worker-kael-chat-input').props.value).toContain('onsite-burnt-wire.jpg')
+    expect(screen.getByTestId('worker-kael-chat-input').props.value).toContain('onsite-valve.jpg')
     expect(screen.getByTestId('worker-kael-send-button').props.accessibilityState.disabled).toBe(false)
     expect(mockWorkerKaelChatService.streamTurn).not.toHaveBeenCalled()
     await act(async () => {

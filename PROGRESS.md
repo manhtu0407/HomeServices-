@@ -116,6 +116,7 @@
   - Aligned Evidence Upload CTA to the reference report action copy (`Gửi báo cáo hoàn thành` / `Send completion report`) while preserving the existing completion status/update flow.
   - Added focused RNTL coverage for address gate, scope gate, completion evidence, and no fake placeholder values.
   - Added the JobRoom on-site media preview rail from real ImagePicker local draft URI/file names before the worker sends the advisory.
+  - Expanded the JobRoom on-site media picker to keep up to 5 real selected image drafts for the multi-photo reference rail before the existing `before`-stage upload.
   - Kept on-site advisory media on the existing `uploadJobMediaDrafts(..., 'before')` path and did not fake upload/streaming before send.
   - Added Worker Earnings reconciliation strip and period row from `EarningsResponse` paid jobs, pending payout, platform fee, `from_date`, and `to_date` fields.
   - Aligned Worker Earnings to the reference three-part summary using real today and period net earnings while leaving month as waiting until monthly backend data exists.

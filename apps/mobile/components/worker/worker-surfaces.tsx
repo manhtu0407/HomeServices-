@@ -2365,26 +2365,27 @@ function useWorkerChatComposerActions({
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: false,
+      allowsMultipleSelection: true,
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.86,
-      selectionLimit: 1,
+      selectionLimit: 5,
     })
     if (result.canceled || !result.assets[0]) return
-    const asset = result.assets[0]
-    const fileName = asset.fileName ?? asset.uri.split('/').pop() ?? workerChatAttachmentFallbackName(language)
-    const draft: LocalMediaUploadDraft = {
-      fileName,
-      fileSizeBytes: asset.fileSize ?? undefined,
-      mimeType: asset.mimeType ?? undefined,
-      type: 'image',
-      uri: asset.uri,
-    }
+    const drafts = result.assets.slice(0, 5).map((asset) => {
+      const fileName = asset.fileName ?? asset.uri.split('/').pop() ?? workerChatAttachmentFallbackName(language)
+      return {
+        fileName,
+        fileSizeBytes: asset.fileSize ?? undefined,
+        mimeType: asset.mimeType ?? undefined,
+        type: 'image' as const,
+        uri: asset.uri,
+      }
+    })
     setChatLocalState((current) => ({
       ...current,
-      mediaDrafts: [...current.mediaDrafts, draft].slice(-5),
+      mediaDrafts: [...current.mediaDrafts, ...drafts].slice(-5),
     }))
-    appendDraftNote(workerChatAttachmentDraftLine(language, fileName))
+    appendDraftNote(drafts.map((draft) => workerChatAttachmentDraftLine(language, draft.fileName)).join('\n'))
     Alert.alert(attachLabel, workerChatAttachmentReadyBody(language, chatCanSend))
   }, [appendDraftNote, attachLabel, chatCanEdit, chatCanSend, chatInputPlaceholder, language, setChatLocalState, startJobRoomReveal])
 
