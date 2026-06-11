@@ -125,6 +125,7 @@ describe('BookingWizard Kael autonomy', () => {
     expect(screen.getByTestId('booking-wizard-apple-ios26-component-system')).toBeTruthy()
     expect(screen.getByTestId('booking-wizard-description-field-shell')).toBeTruthy()
     expect(screen.getByTestId('booking-wizard-photo-rail')).toBeTruthy()
+    expect(screen.getByTestId('booking-wizard-voice-capsule')).toBeTruthy()
     expect(screen.queryByTestId('booking-wizard-step-service')).toBeNull()
   })
 

@@ -9,6 +9,7 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View, type LayoutChangeE
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated'
 import { type ServiceType } from '@home-services/shared'
 import { GlassSurface } from '@/components/ui/glass-surface'
+import { KaelVoiceInputCapsule } from '@/components/ui/kael-primitives'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { motionTokens } from '@/components/ui/motion-tokens'
@@ -140,6 +141,9 @@ const copyMap = {
     describePlaceholder: 'Ví dụ: bóng đèn phòng khách bị chập, có mùi khét nhẹ.',
     photosLabel: 'Ảnh hỗ trợ (tối đa 5)',
     pickPhotos: 'Thêm ảnh',
+    voiceLabel: 'Ghi chú giọng nói',
+    voiceUnavailableTitle: 'Ghi chú giọng nói chưa sẵn sàng',
+    voiceUnavailableBody: 'Bạn nhập mô tả hoặc mở chat Kael để dùng mic khi thiết bị hỗ trợ.',
     addressLabel: 'Khu vực căn hộ',
     addressMissing: 'Cần địa chỉ quận TP.HCM rõ ràng để Kael ước tính đúng.',
     descriptionTooShort: 'Mô tả cần ít nhất 10 ký tự để Kael phân tích.',
@@ -188,6 +192,9 @@ const copyMap = {
     describePlaceholder: 'Example: living room ceiling light is short-circuiting and smells slightly burned.',
     photosLabel: 'Photos (up to 5)',
     pickPhotos: 'Add photos',
+    voiceLabel: 'Voice note',
+    voiceUnavailableTitle: 'Voice note is not ready',
+    voiceUnavailableBody: 'Type the details here or open Kael chat to use the microphone when the device supports it.',
     addressLabel: 'Apartment area',
     addressMissing: 'Kael needs a clear HCMC district to estimate accurately.',
     descriptionTooShort: 'Description must be at least 10 characters.',
@@ -1147,6 +1154,15 @@ function DescribeStep({
           ) : null}
         </View>
       </View>
+      <Pressable
+        accessibilityLabel={copy.voiceLabel}
+        accessibilityRole="button"
+        onPress={() => Alert.alert(copy.voiceUnavailableTitle, copy.voiceUnavailableBody)}
+        style={({ pressed }) => [reduceMotionAwarePressStyle(pressed, reduceMotion)]}
+        testID="booking-wizard-voice-capsule"
+      >
+        <KaelVoiceInputCapsule label={copy.voiceLabel} />
+      </Pressable>
       <AddressAutocomplete
         language={language}
         onChange={(label, district) => dispatch({ type: 'update_address', label, district })}

@@ -220,7 +220,7 @@ export function KaelVoiceInputCapsule({ label = 'Nhấn để nói...', testID }
         ))}
       </View>
       <View style={styles.micCircle}>
-        <Text style={styles.micText}>mic</Text>
+        <MicIcon />
       </View>
     </View>
   )
@@ -282,6 +282,14 @@ function PathIcon() {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
       <Path d="M12 16V5m0 0 4 4m-4-4-4 4M5 16v2.5A2.5 2.5 0 0 0 7.5 21h9A2.5 2.5 0 0 0 19 18.5V16" stroke={color.brand.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} />
+    </Svg>
+  )
+}
+
+function MicIcon() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Zm6-4v1a6 6 0 0 1-12 0v-1m6 7v4m-3 0h6" stroke={color.brand.primaryDark} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.1} />
     </Svg>
   )
 }
@@ -441,12 +449,6 @@ const styles = StyleSheet.create({
     height: 36,
     justifyContent: 'center',
     width: 36,
-  },
-  micText: {
-    color: color.brand.primaryDark,
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0,
   },
   pressed: {
     opacity: 0.78,

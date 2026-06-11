@@ -21,10 +21,10 @@ Legend:
 | A | 1.3 Login with Email | Partial | Partial | TBD | Focused auth test verifies role-first entry and customer email fallback remains explicit | In progress |
 | A | 1.4 Register with Email | Partial | Partial | TBD | Worker create UI remains honest unavailable state; no auth sign-up API exposed in provider | In progress |
 | A | 1.5 Onboarding | Partial | Partial | TBD | Existing customer profile setup remains wired to `updateCustomerProfile`; native screenshot pending | In progress |
-| B | 2.1 Home | TBD | TBD | TBD | None yet | Not started |
-| B | 2.2 Search & Filter / Book | TBD | TBD | TBD | None yet | Not started |
-| B | 2.3 Media / Voice Note | TBD | TBD | TBD | None yet | Not started |
-| B | 2.4 Kael Live Performance Chat | TBD | TBD | TBD | None yet | Not started |
+| B | 2.1 Home | Partial | Partial | TBD | Existing route has real greeting/address/services/dock; native screenshot pending | In progress |
+| B | 2.2 Search & Filter / Book | Partial | Partial | TBD | Booking wizard remains wired to real service/problem/address handoff | In progress |
+| B | 2.3 Media / Voice Note | Partial | Partial | TBD | Focused booking test verifies photo rail + honest voice capsule | In progress |
+| B | 2.4 Kael Live Performance Chat | Partial | Partial | TBD | Existing Kael chat uses server service wrappers and honest mic unavailable path; native screenshot pending | In progress |
 | C | 2.5 Case Overview | TBD | TBD | TBD | None yet | Not started |
 | C | 2.6 Matching & AI Score | TBD | TBD | TBD | None yet | Not started |
 | C | 2.7 Kael Helper for Options | TBD | TBD | TBD | None yet | Not started |

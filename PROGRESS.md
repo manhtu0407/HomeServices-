@@ -34,9 +34,15 @@
   - Kept role-first auth behavior and real password/Google actions intact.
   - Kept phone/register unavailable states honest because the auth provider does not expose phone OTP or Supabase sign-up.
   - Added focused RNTL coverage for welcome, role-gate transition, and customer email fallback.
+- Started Group B:
+  - Added the required media/voice note slot to the booking describe step.
+  - Kept photo picking wired to the existing image picker.
+  - Kept voice honest: the booking form shows a voice capsule, but pressing it explains that voice is handled in Kael chat when supported instead of recording fake audio.
+  - Added focused RNTL coverage that the booking handoff includes the voice capsule.
 - Verification for this checkpoint:
   - `pnpm --filter @home-services/mobile type-check` passed.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 3 tests.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/ui/__tests__/kael-primitives-test.tsx` passed: 9 tests.
   - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
   - Mobile Jest from `apps/mobile` passed: 17 suites, 148 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
@@ -44,13 +50,13 @@
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring, and the Group A welcome checkpoint are implemented. Focused type-check, auth tests, primitive tests, and the latest full mobile Jest gate pass.
+Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring, the Group A welcome checkpoint, and the first Group B booking media/voice checkpoint are implemented. Focused type-check, auth tests, booking tests, primitive tests, and the latest full mobile Jest gate pass.
 
 ## Next
 
-1. Run the full mobile Jest/Doctor gates for the Group A auth checkpoint.
-2. Commit the Group A auth checkpoint without staging pre-existing prototype work.
-3. Continue into Customer Core screens.
+1. Run the full mobile Jest/Doctor gates for the Group B booking checkpoint.
+2. Commit the Group B booking checkpoint without staging pre-existing prototype work.
+3. Continue into Customer Core home/chat refinements.
 
 ## Open Risks
 
