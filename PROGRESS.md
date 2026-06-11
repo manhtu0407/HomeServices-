@@ -112,6 +112,8 @@
   - Aligned Evidence & Scope Change to the reference old/new scope summary from real scope-change state.
   - Computed the displayed price delta from the real Kael estimate label and `LocalScopeChange.priceMin`; kept worker price input absent.
   - Added submitted job summary/report card from real completion notes, completion media, status, and Kael price gate.
+  - Aligned Job Summary / Summary & Report to the Kael report checklist structure from real completion status, note, media, and price gate.
+  - Added the report detail CTA to the existing worker Kael chat path while keeping report generation, final price input, and fake receipt data absent.
   - Added Worker Kael on-site advisory rail inside accepted JobRoom details for status, address release, scope/price gate, and evidence gate.
 - Continued Group E:
   - Added Agentic Center real summary cells for active case, approvals, and notifications.
@@ -259,6 +261,11 @@
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Evidence & Scope Change reference checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Evidence & Scope Change reference checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Evidence & Scope Change reference checkpoint: 17 suites, 191 tests.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "submitted job summary report"` failed on missing `worker-job-summary-report-checklist` before the Summary & Report checklist checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "submitted job summary report"` passed after the Summary & Report checklist checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Summary & Report checklist checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Summary & Report checklist checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Summary & Report checklist checkpoint: 17 suites, 191 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `vitest run src/__tests__/mobile-backend-wiring.test.ts src/__tests__/monorepo-wiring.test.ts` from `packages/shared` passed after the Register with Email checkpoint: 72 tests.
   - Added-line token grep for the Memory & Preferences diff returned no raw style matches.
   - Added-line token grep for the Commanding Home diff returned no raw style matches.

@@ -478,7 +478,7 @@ const workerCopy = {
       safetyCompletionPending: 'Mở ở bước sửa',
       safetyCompletionReady: 'Cần ghi chú và ảnh trước khi hoàn tất',
       safetyCompletionSubmitted: 'Đã gửi bằng chứng thật',
-      summaryReportTitle: 'Báo cáo công việc',
+      summaryReportTitle: 'Báo cáo từ Kael',
       summaryReportMeta: 'Từ bằng chứng thật',
       summaryReportBody: 'Kael giữ báo cáo đọc từ ghi chú, ảnh nghiệm thu và trạng thái hệ thống. Không có giá cuối nếu hệ thống chưa đối soát.',
       summaryStatusTitle: 'Trạng thái',
@@ -655,7 +655,7 @@ const workerCopy = {
       safetyCompletionPending: 'Opens during repair',
       safetyCompletionReady: 'Needs notes and photos before completion',
       safetyCompletionSubmitted: 'Real evidence submitted',
-      summaryReportTitle: 'Job report',
+      summaryReportTitle: 'Kael report',
       summaryReportMeta: 'From real evidence',
       summaryReportBody: 'Kael keeps this report from notes, completion photos, and system status. No final price appears before reconciliation.',
       summaryStatusTitle: 'Status',
@@ -1840,6 +1840,7 @@ function WorkerNeedsReviewCard() {
 
 function WorkerJobSummaryReportCard({ deal, status }: { deal: LocalDeal; status: LocalDealStatus | null }) {
   const { copy, language, tokens } = useWorkerUi()
+  const { replace } = useRouter()
   const note = deal.completionNotes?.trim() || copy.jobs.summaryPriceWaiting
   const photoCount = deal.completionPhotoUrls?.length ?? 0
   const mediaValue = photoCount > 0
@@ -1852,12 +1853,17 @@ function WorkerJobSummaryReportCard({ deal, status }: { deal: LocalDeal; status:
     : status
       ? localizedStatusLabel(status, language)
       : copy.jobs.summaryPriceWaiting
-  const problemValue = localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel ?? deal.draft.description, deal.draft.serviceType, language)
   const finalPriceValue = deal.finalPrice && deal.finalPrice > 0
     ? formatWorkerMoney(deal.finalPrice, language)
     : deal.scopeChange?.priceMin && deal.scopeChange.priceMax
       ? `${formatWorkerMoney(deal.scopeChange.priceMin, language)} - ${formatWorkerMoney(deal.scopeChange.priceMax, language)}`
       : copy.jobs.summaryPriceWaiting
+  const summaryRows = [
+    { id: 'status', label: copy.jobs.summaryStatusTitle, value: statusValue },
+    { id: 'note', label: copy.jobs.summaryNoteTitle, value: note },
+    { id: 'media', label: copy.jobs.summaryMediaTitle, value: mediaValue },
+    { id: 'price', label: copy.jobs.summaryPriceTitle, value: finalPriceValue },
+  ] as const
 
   return (
     <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-job-summary-report-card">
@@ -1873,16 +1879,18 @@ function WorkerJobSummaryReportCard({ deal, status }: { deal: LocalDeal; status:
           </Text>
         </View>
       </View>
-      <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
-        {copy.jobs.summaryReportBody}
-      </Text>
-      <View style={styles.needsReviewGrid}>
-        <JobRoomMetaCell label={copy.jobs.summaryStatusTitle} testID="worker-job-summary-report-status" value={statusValue} />
-        <JobRoomMetaCell label={copy.chat.serviceLabel} value={localizedServiceLabel(deal.draft.serviceType, language)} />
-        <JobRoomMetaCell label={copy.chat.problemLabel} value={problemValue} valueLines={3} />
-        <JobRoomMetaCell label={copy.jobs.summaryNoteTitle} testID="worker-job-summary-report-note" value={note} valueLines={3} />
-        <JobRoomMetaCell label={copy.jobs.summaryMediaTitle} testID="worker-job-summary-report-media" value={mediaValue} />
-        <JobRoomMetaCell label={copy.jobs.summaryPriceTitle} testID="worker-job-summary-report-price" value={finalPriceValue} />
+      <View style={[styles.jobDiagnosisBox, workerDiagnosisSurface(tokens)]} testID="worker-job-summary-report-checklist">
+        {summaryRows.map((row) => (
+          <View key={row.id} style={styles.briefItem} testID={`worker-job-summary-report-${row.id}`}>
+            <WorkerUtilityIcon active frameSize={18} icon="check" size={18} small />
+            <Text style={[styles.briefText, { color: tokens.muted }]} numberOfLines={2}>
+              {row.label}: {row.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <View style={styles.actionRow}>
+        <PressButton label={language === 'en' ? 'View details' : 'Xem chi tiết'} onPress={() => replace('/(worker)/chat')} testID="worker-job-summary-report-detail-action" />
       </View>
     </View>
   )
