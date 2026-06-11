@@ -38,6 +38,7 @@
   - Kept role-first auth behavior and real password/Google actions intact.
   - Kept phone/register unavailable states honest because the auth provider does not expose phone OTP or Supabase sign-up.
   - Locked Customer Email Login to the existing `signInWithPassword` provider boundary and added a truthful reset-unavailable affordance.
+  - Aligned Customer Email Login copy to the reference welcome-back state while keeping Apple/Facebook absent because no real provider is exposed.
   - Added the customer onboarding Kael hero and setup steps on the real `updateCustomerProfile` path.
   - Kept onboarding fields seeded from real session metadata and saved through the existing auth provider.
   - Converted Worker Register/Create Profile into an honest review-boundary checklist because the mobile auth provider exposes no worker create-account API.
@@ -182,6 +183,11 @@
   - Mobile Jest from `apps/mobile` passed after the Welcome reference-order/token checkpoint: 17 suites, 192 tests; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on `auth-login-submit` showing `Tiếp tục` before the Login with Email CTA checkpoint.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 6 tests after the Login with Email CTA checkpoint.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "customer password form"` failed on missing `Chào mừng trở lại!` before the Login with Email reference-copy checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "customer password form"` passed after the Login with Email reference-copy checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Login with Email reference-copy checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Login with Email reference-copy checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Login with Email reference-copy checkpoint: 17 suites, 192 tests.
   - Red first: `jest --runInBand lib/__tests__/auth-provider-test.tsx` failed on missing `signUpWithEmail` before the Register with Email checkpoint.
   - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on missing `auth-client-register-email` before the Register with Email checkpoint.
   - `jest --runInBand lib/__tests__/auth-provider-test.tsx` passed: 3 tests after the Register with Email checkpoint.

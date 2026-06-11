@@ -98,7 +98,11 @@ describe('LoginRoleSurface', () => {
     fireEvent.press(screen.getByText('Tiếp tục'))
     fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
 
+    expect(screen.getByText('Chào mừng trở lại!')).toBeOnTheScreen()
+    expect(screen.getByText('Đăng nhập để tiếp tục cùng Kael')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-client-google-primary')).toBeOnTheScreen()
+    expect(screen.queryByText('Apple')).toBeNull()
+    expect(screen.queryByText('Facebook')).toBeNull()
     expect(screen.queryByTestId('auth-login-email-input')).toBeNull()
 
     fireEvent.press(screen.getByTestId('auth-client-email-fallback-toggle'))
