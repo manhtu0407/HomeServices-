@@ -486,6 +486,28 @@ describe('WorkerHomeSurface', () => {
     expect(screen.queryByText('4.9')).toBeNull()
   })
 
+  it('greets the worker from the real profile and keeps home services in scope', () => {
+    buildWorkflow({
+      workerProfile: buildWorkerProfile({
+        is_approved: true,
+        is_available: true,
+        legal_name: '  Tu   Rooftop  ',
+        service_types: ['electrical', 'plumbing', 'cleaning'],
+        verification_status: 'approved',
+      }),
+    })
+
+    render(<WorkerHomeSurface />)
+
+    expect(screen.getByText('Xin chào, Tu Rooftop')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-readiness-availability-value')).toHaveTextContent(/Bạn đang trực tuyến/)
+    expect(screen.getByTestId('worker-shell-service-electrical')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-shell-service-plumbing')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-shell-service-cleaning')).toBeOnTheScreen()
+    expect(screen.queryByText(/Máy lạnh|Điều hòa|Air conditioner/i)).toBeNull()
+    expect(screen.queryByText('4.9')).toBeNull()
+  })
+
   it('keeps the home screen free of dashboard stat strips', () => {
     buildWorkflow({
       workerEarnings: buildNoEarnings(),

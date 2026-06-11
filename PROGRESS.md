@@ -87,6 +87,8 @@
 - Continued Group D:
   - Added the Worker Home readiness signal row from real worker profile verification, availability, and current request state.
   - Kept Worker Home free of fake queue, rating, earnings, and worker performance stats.
+  - Aligned Worker Home greeting to the real normalized `workerProfile.legal_name` and the reference online-state copy.
+  - Kept Worker Home service shortcuts limited to electrical, plumbing, and cleaning despite the reference's extra icon slot.
   - Added the active Jobs real job row from the accepted deal id, service, area, status, and worker earning estimate.
   - Kept the Jobs row free of fake schedule, queue counts, worker ratings, and extra job records because the current provider exposes one real `state.deal`.
   - Added worker safety/checklist gates to active jobs.
@@ -164,6 +166,9 @@
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests after the Kael Orb token/label checkpoint.
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job Acceptance service row.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 51 tests after the Worker Reputation & Performance checkpoint.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "greets the worker"` failed before the Worker Home real-profile greeting/online-copy checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "greets the worker"` passed after the Worker Home real-profile greeting/online-copy checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 52 tests after the Worker Home real-profile greeting/online-copy checkpoint.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center token move.
   - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `customer-agentic-center-phase-rail` before the Agentic Center workflow rail change.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center workflow rail checkpoint.
@@ -204,6 +209,8 @@
   - Mobile Jest from `apps/mobile` passed after the Register with Email checkpoint: 17 suites, 181 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - Mobile Jest from `apps/mobile` passed after the Onboarding CTA checkpoint: 17 suites, 181 tests.
   - Mobile Jest from `apps/mobile` passed after the Home greeting/prompt checkpoint: 17 suites, 182 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Home real-profile greeting/online-copy checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker Home real-profile greeting/online-copy checkpoint: 17 suites, 184 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `vitest run src/__tests__/mobile-backend-wiring.test.ts src/__tests__/monorepo-wiring.test.ts` from `packages/shared` passed after the Register with Email checkpoint: 72 tests.
   - Added-line token grep for the Memory & Preferences diff returned no raw style matches.
   - Added-line token grep for the Commanding Home diff returned no raw style matches.

@@ -1094,12 +1094,14 @@ function isAcceptedLocalWorkerDeal(deal: LocalDeal | null) {
 
 export function WorkerHomeSurface() {
   const copy = useWorkerFrameCopy()
-  const { state } = useFrontendWorkflow()
+  const language = useAppLanguage()
+  const { state, workerProfile } = useFrontendWorkflow()
   const deal = getWorkerVisibleDeal(state.deal)
   const hasIncomingRequest = Boolean(deal?.broadcast && !isAcceptedLocalWorkerDeal(deal))
+  const greetingTitle = workerHomeGreetingLabel(workerProfile, language)
 
   return (
-    <WorkerFrame active="home" eyebrow={copy.home.eyebrow} subtitle={copy.home.readinessSubtitle} title={copy.home.readinessTitle} testID="worker-home-surface">
+    <WorkerFrame active="home" eyebrow={copy.home.eyebrow} subtitle={copy.home.readinessSubtitle} title={greetingTitle} testID="worker-home-surface">
       <WorkerMapStage />
       <WorkerReadinessActionPanel />
       <WorkerHomeServiceGrid />
@@ -4281,6 +4283,15 @@ function workerChatGreetingLabel(workerProfile: WorkerProfileResponse | null, _l
   return `${dayPart}, ${displayName}`
 }
 
+function workerHomeGreetingLabel(workerProfile: WorkerProfileResponse | null, language: WorkerLanguageMode) {
+  const displayName = workerChatDisplayName(workerProfile)
+  if (displayName === 'there') {
+    return language === 'en' ? 'Hi' : 'Xin chào'
+  }
+
+  return language === 'en' ? `Hi, ${displayName}` : `Xin chào, ${displayName}`
+}
+
 function workerChatDisplayName(workerProfile: WorkerProfileResponse | null) {
   const legalName = workerProfile?.legal_name?.trim()
   if (!legalName) return 'there'
@@ -5279,7 +5290,7 @@ function WorkerReadinessActionPanel() {
     : isSuspended
     ? language === 'en' ? 'Suspended' : 'Tạm khóa'
     : isAvailable
-    ? language === 'en' ? 'Online' : 'Đang nhận việc'
+    ? language === 'en' ? 'Online' : 'Bạn đang trực tuyến'
     : language === 'en' ? 'Offline' : 'Tạm tắt nhận'
   const isOperationallyBusy = Boolean(
     acceptedDeal &&
