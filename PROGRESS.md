@@ -73,6 +73,8 @@
   - Added the Live Job Alert checkpoint to Activity from real notification rows, unread count, and workflow next-event state.
   - Kept push handling on the existing notification/deep-link path; no fake notification, fake queue, or push simulation was added.
   - Added the Live Job Alert artifact cell from the real workflow primary artifact.
+  - Aligned Live Job Alert with a real live-card summary: problem, released area, priority, estimate, pending distance signal, and `Nhắn thợ` / `Message worker` into the existing job chat tab.
+  - Kept reference ETA and distance values out of Live Job Alert until travel telemetry exists.
   - Added the Job Acceptance checkpoint to Activity from accepted job status, address release, job chat action gate, job id, and Kael worker prebrief.
   - Kept acceptance UI free of fake worker names, avatars, ratings, and inferred worker profile data.
   - Added the accepted job service cell from the real deal service type.

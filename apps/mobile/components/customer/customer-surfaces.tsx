@@ -733,6 +733,12 @@ const customerCopy = {
       liveAlertUnread: 'Chưa đọc',
       liveAlertUnreadEmpty: 'Không có thông báo mới',
       liveAlertNext: 'Tiếp theo',
+      liveAlertProblem: 'Vấn đề',
+      liveAlertArea: 'Khu vực',
+      liveAlertPriority: 'Ưu tiên',
+      liveAlertPrice: 'Yêu cầu',
+      liveAlertDistance: 'Khoảng cách',
+      liveAlertMessageWorker: 'Nhắn thợ',
       liveAlertFallbackTitle: 'Theo dõi trạng thái',
       liveAlertFallbackBody: 'Kael sẽ cập nhật khi workflow có tín hiệu mới.',
       jobAcceptanceTitle: 'Thợ đã nhận việc',
@@ -969,6 +975,12 @@ const customerCopy = {
       liveAlertUnread: 'Unread',
       liveAlertUnreadEmpty: 'No new notice',
       liveAlertNext: 'Next',
+      liveAlertProblem: 'Problem',
+      liveAlertArea: 'Area',
+      liveAlertPriority: 'Priority',
+      liveAlertPrice: 'Request',
+      liveAlertDistance: 'Distance',
+      liveAlertMessageWorker: 'Message worker',
       liveAlertFallbackTitle: 'Track status',
       liveAlertFallbackBody: 'Kael will update this when the workflow has a new signal.',
       jobAcceptanceTitle: 'Worker accepted',
@@ -1785,7 +1797,7 @@ export function CustomerHistorySurface() {
           {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {deal && showRepairTab && customerCancelRequiresKaelPolicy(deal.status) ? <CustomerHistoryJobAcceptancePanel copy={copy} deal={deal} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab && customerJobInProgressStatus(deal.status) ? <CustomerHistoryJobProgressPanel copy={copy} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
-          {deal && showRepairTab ? <CustomerHistoryLiveAlertPanel copy={copy} deal={deal} languageMode={languageMode} notificationUnreadCount={notificationUnreadCount} notifications={notifications} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
+          {deal && showRepairTab ? <CustomerHistoryLiveAlertPanel copy={copy} deal={deal} languageMode={languageMode} notificationUnreadCount={notificationUnreadCount} notifications={notifications} onOpenJobChat={() => selectHistoryTab('chat')} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
           {!deal && showPriceTab ? <CustomerHistoryPriceEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
           {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} deal={deal} estimateLabel={estimateLabel} languageMode={languageMode} onOpenKael={continueOrCreate} originalEstimateLabel={originalEstimateLabel} scopeChange={showScopeChangeArtifact ? scopeChange : null} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {!deal && showChatTab ? <CustomerHistoryChatEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
@@ -3847,6 +3859,7 @@ function CustomerHistoryLiveAlertPanel({
   languageMode,
   notificationUnreadCount,
   notifications,
+  onOpenJobChat,
   phaseContext,
   tokens,
 }: {
@@ -3855,6 +3868,7 @@ function CustomerHistoryLiveAlertPanel({
   languageMode: AppLanguage
   notificationUnreadCount: number
   notifications: NotificationListResponse['notifications']
+  onOpenJobChat: () => void
   phaseContext: WorkflowPhaseContext
   tokens: CustomerThemeTokens
 }) {
@@ -3867,6 +3881,16 @@ function CustomerHistoryLiveAlertPanel({
   const nextLabel = phaseContext.nextExpectedEvent
     ? workflowEventLabel(phaseContext.nextExpectedEvent, languageMode)
     : copy.history.confirmed
+  const problemFallback = localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel, deal.draft.serviceType, languageMode)
+  const problemLabel = localizedCustomerGeneratedText(deal.broadcast?.problemSummary || deal.estimate?.problemLabel, languageMode, problemFallback)
+  const safeArea = deal.broadcast?.fullAddressVisible && deal.broadcast.fullAddressLabel
+    ? deal.broadcast.fullAddressLabel
+    : deal.broadcast?.generalArea ?? deal.draft.districtLabel
+  const areaLabel = localizedCustomerAreaLabel(safeArea, languageMode, copy.ticket.unknown)
+  const priorityLabel = localizedCustomerComplexityLabel(deal.estimate?.complexity, languageMode, copy.history.kaelReviewing)
+  const priceLabel = deal.broadcast?.estimatedPriceLabel?.trim() || deal.estimate?.priceRangeLabel || copy.history.waitingWorkerPrice
+  const distanceLabel = copy.history.locationNoSignal
+  const canOpenJobChat = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker'].includes(deal.status)
 
   return (
     <View style={[styles.historyCheckPanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-live-alert-panel">
@@ -3894,7 +3918,21 @@ function CustomerHistoryLiveAlertPanel({
         <V4TicketCell label={copy.history.liveAlertUnread} testID="customer-history-live-alert-unread" value={notificationUnreadCount > 0 ? String(notificationUnreadCount) : copy.history.liveAlertUnreadEmpty} variant="activity" />
         <V4TicketCell label={languageMode === 'en' ? 'Artifact' : 'Dấu mốc'} testID="customer-history-live-alert-artifact" value={artifactLabel} variant="activity" />
       </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.history.liveAlertProblem} testID="customer-history-live-alert-problem" value={problemLabel} variant="activity" />
+        <V4TicketCell label={copy.history.liveAlertArea} testID="customer-history-live-alert-area" value={areaLabel} variant="activity" />
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.history.liveAlertPriority} testID="customer-history-live-alert-priority" value={priorityLabel} variant="activity" />
+        <V4TicketCell label={copy.history.liveAlertPrice} testID="customer-history-live-alert-price" value={priceLabel} variant="activity" />
+        <V4TicketCell label={copy.history.liveAlertDistance} testID="customer-history-live-alert-distance" value={distanceLabel} variant="activity" />
+      </View>
       <V4TicketCell label={copy.history.liveAlertNext} testID="customer-history-live-alert-next" value={nextLabel} variant="activity" />
+      {canOpenJobChat ? (
+        <View style={styles.historyHeroActions}>
+          <PrimaryButton label={copy.history.liveAlertMessageWorker} onPress={onOpenJobChat} compact testID="customer-history-live-alert-message-worker" />
+        </View>
+      ) : null}
     </View>
   )
 }
