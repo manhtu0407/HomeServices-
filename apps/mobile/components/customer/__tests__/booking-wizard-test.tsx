@@ -201,6 +201,7 @@ describe('BookingWizard Kael autonomy', () => {
     expect(screen.getByTestId('booking-wizard-filter-issue')).toHaveTextContent(/Chưa có/)
     expect(screen.getByTestId('booking-wizard-filter-time')).toHaveTextContent(/Ngay/)
     expect(screen.getByTestId('booking-wizard-filter-payment')).toHaveTextContent(/Kael/)
+    expect(screen.getByTestId('booking-wizard-submit-describe')).toHaveTextContent(/^Tiếp tục$/)
 
     fireEvent.changeText(
       screen.getByPlaceholderText(/Ví dụ:/),

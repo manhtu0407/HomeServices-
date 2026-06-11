@@ -43,6 +43,7 @@
   - Added focused RNTL coverage for welcome, role-gate transition, customer email fallback, customer email/password submit, customer onboarding save, and worker registration honesty.
 - Started Group B:
   - Added the required media/voice note slot to the booking describe step.
+  - Aligned the Search & Filter booking CTA to the reference `Tiếp tục` / `Continue` copy while preserving the real Kael handoff behavior.
   - Kept photo picking wired to the existing image picker.
   - Kept voice honest: the booking form shows a voice capsule, but pressing it explains that voice is handled in Kael chat when supported instead of recording fake audio.
   - Added focused RNTL coverage that the booking handoff includes the voice capsule.
