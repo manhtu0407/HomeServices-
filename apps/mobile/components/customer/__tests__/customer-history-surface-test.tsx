@@ -288,6 +288,7 @@ describe('CustomerHistorySurface phase context', () => {
     expect(locationPanel).toBeOnTheScreen()
     expect(screen.getByTestId('customer-history-location-address-value')).toHaveTextContent('Quận 1')
     expect(screen.getByTestId('customer-history-location-address-gate-value')).toHaveTextContent(/Ẩn địa chỉ chi tiết/)
+    expect(screen.getByTestId('customer-history-location-route-value')).toHaveTextContent(/Ẩn địa chỉ chi tiết/)
     expect(screen.getByTestId('customer-history-location-eta-value')).toHaveTextContent(/Chờ tín hiệu di chuyển thật/)
     expect(screen.getByTestId('customer-history-location-live-signal-value')).toHaveTextContent(/Tìm thợ còn 45 giây/)
     expect(locationPanel).not.toHaveTextContent(/Tòa A/)
@@ -297,6 +298,7 @@ describe('CustomerHistorySurface phase context', () => {
 
     expect(screen.getByTestId('customer-history-location-address-value')).toHaveTextContent('Tòa A, Quận 1')
     expect(screen.getByTestId('customer-history-location-address-gate-value')).toHaveTextContent(/Đã mở theo chính sách/)
+    expect(screen.getByTestId('customer-history-location-route-value')).toHaveTextContent(/Thợ đã nhận việc/)
     expect(screen.getByTestId('customer-history-location-eta-value')).toHaveTextContent(/Chờ tín hiệu di chuyển thật/)
     expect(screen.getByTestId('customer-history-location-live-signal-value')).not.toHaveTextContent(/45/)
   })

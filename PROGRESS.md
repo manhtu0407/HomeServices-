@@ -57,6 +57,7 @@
   - Added scope-change reason and new price inside the worker quote sheet from the real scope-change artifact.
   - Added the Location & ETA checkpoint to Activity from real address-release state, broadcast/search signal, and honest pending travel ETA copy.
   - Kept pre-accept address area-only and did not treat search countdown as arrival ETA.
+  - Added a Location route gate from address release and live worker signal state.
   - Added the Live Job Alert checkpoint to Activity from real notification rows, unread count, and workflow next-event state.
   - Kept push handling on the existing notification/deep-link path; no fake notification, fake queue, or push simulation was added.
   - Added the Job Acceptance checkpoint to Activity from accepted job status, address release, job chat action gate, job id, and Kael worker prebrief.
@@ -109,10 +110,10 @@
   - `jest --runInBand components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 27 tests after the Live Performance problem-signal cell; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 33 tests.
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests.
-  - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Worker Quote scope reason row.
+  - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Location route gate row.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 50 tests after the Earnings period row.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
-  - Mobile Jest from `apps/mobile` passed after the Worker Quote scope reason checkpoint: 17 suites, 170 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the Location route gate checkpoint: 17 suites, 170 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 

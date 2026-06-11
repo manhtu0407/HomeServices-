@@ -3575,6 +3575,7 @@ function CustomerHistoryLocationEtaPanel({
       : hasWorkerAnchor
         ? copy.history.locationWorkerAcceptedSignal
         : copy.history.locationNoSignal
+  const routeGateLabel = releasedAddress ? liveSignalLabel : addressGateLabel
 
   return (
     <View style={[styles.presenceMapCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-location-eta-panel">
@@ -3616,6 +3617,7 @@ function CustomerHistoryLocationEtaPanel({
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.caseLocation} testID="customer-history-location-address" value={addressLabel} variant="activity" />
         <V4TicketCell label={copy.history.locationAddressGate} testID="customer-history-location-address-gate" value={addressGateLabel} variant="activity" />
+        <V4TicketCell label={languageMode === 'en' ? 'Route' : 'Hành trình'} testID="customer-history-location-route" value={routeGateLabel} variant="activity" />
       </View>
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.caseEta} testID="customer-history-location-eta" value={copy.history.caseEtaPending} variant="activity" />
