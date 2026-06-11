@@ -4407,6 +4407,12 @@ function CustomerHistoryPricePanel({
           <V4TicketCell label={copy.history.workerQuoteScope} testID="customer-history-worker-quote-scope" value={scopeQuoteLabel} variant="activity" />
           <V4TicketCell label={copy.ticket.finalPrice} testID="customer-history-worker-quote-final" value={finalPriceLabel} variant="activity" />
         </View>
+        {scopeChange ? (
+          <View style={styles.twoCol}>
+            <V4TicketCell label={copy.history.reason} testID="customer-history-worker-quote-reason" value={scopeChange.reason ?? copy.history.workerNoReason} variant="activity" />
+            <V4TicketCell label={copy.history.newPrice} testID="customer-history-worker-quote-new-price" value={scopePrice} variant="activity" />
+          </View>
+        ) : null}
       </View>
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.filters[1]} value={originalEstimateLabel} variant="activity" />

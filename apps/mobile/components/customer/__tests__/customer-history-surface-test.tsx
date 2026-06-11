@@ -274,6 +274,7 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-worker-quote-kael-value')).toHaveTextContent('180.000đ - 260.000đ')
     expect(screen.getByTestId('customer-history-worker-quote-scope-value')).toHaveTextContent('260.000đ - 320.000đ')
     expect(screen.getByTestId('customer-history-worker-quote-final-value')).toHaveTextContent(/Chờ Kael chốt/)
+    expect(screen.getByTestId('customer-history-worker-quote-reason-value')).toHaveTextContent(/Cần thay thêm ổ cắm/)
     expect(quotePanel).not.toHaveTextContent(/★★★★★|4\.9|rating|0 offer|3 thợ|Thợ A/i)
   })
 
