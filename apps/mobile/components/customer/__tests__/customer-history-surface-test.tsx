@@ -280,7 +280,9 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-worker-quote-scope-value')).toHaveTextContent('260.000đ - 320.000đ')
     expect(screen.getByTestId('customer-history-worker-quote-final-value')).toHaveTextContent(/Chờ Kael chốt/)
     expect(screen.getByTestId('customer-history-worker-quote-reason-value')).toHaveTextContent(/Cần thay thêm ổ cắm/)
-    expect(quotePanel).not.toHaveTextContent(/★★★★★|4\.9|rating|0 offer|3 thợ|Thợ A/i)
+    expect(screen.getByTestId('customer-history-worker-quote-time-value')).toHaveTextContent(/Ngay bây giờ/)
+    expect(screen.getByTestId('customer-history-price-open-kael')).toHaveTextContent(/Xem đề xuất/)
+    expect(quotePanel).not.toHaveTextContent(/★★★★★|4\.9|rating|0 offer|3 thợ|Thợ A|300\.000đ|30 phút|Kiểm tra|Thay dây điện/i)
   })
 
   it('shows location and ETA gates without treating search countdown as travel ETA', () => {

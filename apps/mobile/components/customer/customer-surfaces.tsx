@@ -762,6 +762,9 @@ const customerCopy = {
       workerQuoteKael: 'Ước tính Kael',
       workerQuoteScope: 'Phạm vi mới',
       workerQuoteScopePending: 'Chưa có đổi phạm vi',
+      workerQuoteTime: 'Thời gian',
+      workerQuoteTimeNow: 'Ngay bây giờ',
+      workerQuoteDetails: 'Xem đề xuất',
       cancelTitle: 'Hủy yêu cầu?',
       cancelSearching: 'Yêu cầu tìm thợ sẽ dừng và địa chỉ chi tiết vẫn bị ẩn khỏi thợ.',
       cancelActive: 'Kael sẽ xử lý yêu cầu hủy theo chính sách, ghi dấu vết kiểm tra và báo cho thợ nếu việc đã được nhận.',
@@ -991,6 +994,9 @@ const customerCopy = {
       workerQuoteKael: 'Kael estimate',
       workerQuoteScope: 'New scope',
       workerQuoteScopePending: 'No scope change',
+      workerQuoteTime: 'Time',
+      workerQuoteTimeNow: 'Now',
+      workerQuoteDetails: 'View quote',
       cancelTitle: 'Cancel request?',
       cancelSearching: 'The worker search will stop and the detailed address stays hidden.',
       cancelActive: 'Kael will process this cancellation by policy, record the audit trail, and notify the worker if the job was accepted.',
@@ -4441,6 +4447,7 @@ function CustomerHistoryPricePanel({
   const broadcastQuoteLabel = deal.broadcast?.estimatedPriceLabel?.trim() || deal.estimate?.priceRangeLabel || copy.history.waitingWorkerPrice
   const kaelQuoteLabel = deal.estimate?.priceRangeLabel || deal.broadcast?.estimatedPriceLabel || copy.history.waitingWorkerPrice
   const scopeQuoteLabel = scopeChange ? scopePrice : copy.history.workerQuoteScopePending
+  const workerQuoteTimeLabel = deal.draft.timeChoice === 'now' ? copy.history.workerQuoteTimeNow : copy.history.kaelReviewing
   const problemFallback = localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel, deal.draft.serviceType, languageMode)
   const problemLabel = localizedCustomerGeneratedText(deal.estimate?.problemLabel, languageMode, problemFallback)
   const urgencyLabel = localizedCustomerComplexityLabel(deal.estimate?.complexity, languageMode, copy.history.kaelReviewing)
@@ -4508,6 +4515,10 @@ function CustomerHistoryPricePanel({
           <V4TicketCell label={copy.history.workerQuoteScope} testID="customer-history-worker-quote-scope" value={scopeQuoteLabel} variant="activity" />
           <V4TicketCell label={copy.ticket.finalPrice} testID="customer-history-worker-quote-final" value={finalPriceLabel} variant="activity" />
         </View>
+        <View style={styles.twoCol}>
+          <V4TicketCell label={copy.history.workerQuoteTime} testID="customer-history-worker-quote-time" value={workerQuoteTimeLabel} variant="activity" />
+          <V4TicketCell label={copy.ticket.status} testID="customer-history-worker-quote-status" value={visibleStatusLabel} variant="activity" />
+        </View>
         {scopeChange ? (
           <View style={styles.twoCol}>
             <V4TicketCell label={copy.history.reason} testID="customer-history-worker-quote-reason" value={scopeChange.reason ?? copy.history.workerNoReason} variant="activity" />
@@ -4529,8 +4540,8 @@ function CustomerHistoryPricePanel({
         {copy.history.priceDisclaimer}
       </Text>
       <View style={styles.twoCol}>
-        <PrimaryButton label={copy.history.openOrchestration} onPress={onOpenKael} compact testID="customer-history-price-open-kael" />
-        <V4TicketCell label={copy.history.openOrchestration} testID="customer-history-price-kael-status" value={visibleStatusLabel} variant="activity" />
+        <PrimaryButton label={copy.history.workerQuoteDetails} onPress={onOpenKael} compact testID="customer-history-price-open-kael" />
+        <V4TicketCell label={copy.ticket.status} testID="customer-history-price-kael-status" value={visibleStatusLabel} variant="activity" />
       </View>
     </View>
   )
