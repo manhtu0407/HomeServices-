@@ -45,6 +45,7 @@
   - Converted Worker Register/Create Profile into an honest review-boundary checklist because the mobile auth provider exposes no worker create-account API.
   - Removed fake upload/action copy from worker registration requirements and kept submit on the existing unavailable error path.
   - Added focused RNTL coverage for welcome, role-gate transition, customer email fallback, customer email/password submit, customer onboarding save, and worker registration honesty.
+  - Re-audited Group A against the reference crop; Welcome/Login/Register/Onboarding match available backend fields, while Splash remains blocked on a standalone production logo export because the zip only includes a logo exploration page.
 - Started Group B:
   - Added the required media/voice note slot to the booking describe step.
   - Aligned the Search & Filter booking CTA to the reference `Tiếp tục` / `Continue` copy while preserving the real Kael handoff behavior.
@@ -400,6 +401,9 @@
   - Product-scope grep for the Login with Email CTA diff found no new unsupported service or fake-stats UI in the changed auth code.
   - Security/product grep for the Register with Email diff found no secrets and no client-controlled role in the signup payload; role still comes from the hardened DB trigger.
   - Product-scope grep for the Onboarding CTA diff found no fake stats, unsupported services, or mixed-language Vietnamese CTA regressions in the changed auth code.
+  - Auth suite passed after the Group A audit checkpoint: 2 suites, 10 tests.
+  - Mobile type-check passed after the Group A audit checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Group A audit checkpoint: 17 suites, 195 tests.
   - Product/language grep for the Home greeting/prompt diff found no lingering `Nhà của` home title, fake stats, or unsupported service copy in the changed Customer Home code.
   - Red first: `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx --testNamePattern "anchors the reference home header"` failed on missing `customer-home-title-avatar` before the Customer Home reference header checkpoint.
   - Red first: `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx --testNamePattern "renders all four|applies a stronger"` failed on missing `Dịch vụ phổ biến` and `customer-home-active-order-heading` before the Customer Home service/order checkpoint.
