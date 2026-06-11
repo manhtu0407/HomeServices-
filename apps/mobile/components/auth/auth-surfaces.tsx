@@ -1313,6 +1313,15 @@ function CustomerEmailRegisterPanel({
 
   return (
     <View style={styles.authChoiceList} testID="auth-register-email-form">
+      <View style={styles.authTopRow} testID="auth-register-reference-header">
+        <View style={styles.topKaelFace}>
+          <KaelMascot size={54} state="welcome" testID="auth-register-kael" variant="head" />
+        </View>
+        <View style={styles.authTitleBlock}>
+          <Text style={styles.authScreenTitle}>{copy.customerRegisterTitle}</Text>
+          <Text style={styles.authScreenSubtitle}>{copy.customerRegisterSubtitle}</Text>
+        </View>
+      </View>
       <AuthInputField icon="home" label={copy.customerRegisterName}>
         <TextInput
           accessibilityLabel={copy.customerRegisterName}

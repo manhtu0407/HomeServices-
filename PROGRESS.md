@@ -39,6 +39,7 @@
   - Kept phone/register unavailable states honest because the auth provider does not expose phone OTP or Supabase sign-up.
   - Locked Customer Email Login to the existing `signInWithPassword` provider boundary and added a truthful reset-unavailable affordance.
   - Aligned Customer Email Login copy to the reference welcome-back state while keeping Apple/Facebook absent because no real provider is exposed.
+  - Added the Customer Register reference header with a Kael head cue while preserving the real `signUpWithEmail` boundary and no client-controlled role metadata.
   - Added the customer onboarding Kael hero and setup steps on the real `updateCustomerProfile` path.
   - Kept onboarding fields seeded from real session metadata and saved through the existing auth provider.
   - Converted Worker Register/Create Profile into an honest review-boundary checklist because the mobile auth provider exposes no worker create-account API.
@@ -192,6 +193,11 @@
   - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on missing `auth-client-register-email` before the Register with Email checkpoint.
   - `jest --runInBand lib/__tests__/auth-provider-test.tsx` passed: 3 tests after the Register with Email checkpoint.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Register with Email checkpoint.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "opens customer email registration"` failed on missing `auth-register-reference-header` before the Register reference-header checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "opens customer email registration"` passed after the Register reference-header checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Register reference-header checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Register reference-header checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Register reference-header checkpoint: 17 suites, 192 tests; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on `auth-client-onboarding-save` showing `Lưu và tiếp tục` before the Onboarding CTA checkpoint.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Onboarding CTA checkpoint.
   - Red first: `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx` failed on Customer Home greeting showing `Nhà của Anh Hoàng` before the Home greeting/prompt checkpoint.

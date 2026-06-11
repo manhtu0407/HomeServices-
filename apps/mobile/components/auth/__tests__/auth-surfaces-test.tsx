@@ -139,6 +139,8 @@ describe('LoginRoleSurface', () => {
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
 
     expect(screen.getAllByText('Đăng ký tài khoản').length).toBeGreaterThan(0)
+    expect(screen.getByTestId('auth-register-reference-header')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-kael-welcome')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-register-name-input')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-register-email-input')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-register-password-input')).toBeOnTheScreen()
