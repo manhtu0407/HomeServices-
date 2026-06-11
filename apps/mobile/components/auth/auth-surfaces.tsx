@@ -195,9 +195,9 @@ const authCopy = {
     workerVerificationHeroTitle: 'Gửi hồ sơ để xét duyệt',
     workerVerificationRequired: 'Bắt buộc',
     workerSetupAccount: 'Tài khoản',
-    workerSetupAccountMeta: 'Đang tạo',
+    workerSetupAccountMeta: 'Chưa mở',
     workerSetupVerify: 'Xác thực',
-    workerSetupVerifyMeta: 'Đang nhập',
+    workerSetupVerifyMeta: 'Sẽ duyệt',
     workerSetupProfile: 'Hồ sơ',
     workerSetupProfileMeta: 'Chờ duyệt',
     workerSkillAreaMode: 'Kỹ năng và khu vực',
@@ -215,6 +215,10 @@ const authCopy = {
     chooseArea: 'Chọn khu vực',
     addContact: 'Thêm liên hệ',
     chooseFile: 'Chọn tệp',
+    workerCreateBoundaryTitle: 'Kênh tạo hồ sơ chưa mở trong app',
+    workerCreateBoundaryBody: 'NestScout chỉ mở nhận việc sau khi tài khoản thợ được tạo và duyệt ở hệ thống thật. Màn này giữ các yêu cầu hồ sơ để bạn biết cần chuẩn bị gì.',
+    workerCreateLockedMeta: 'Chờ kênh duyệt',
+    workerCreateUnavailableCta: 'Chưa mở gửi xét duyệt',
     submitVerification: 'Gửi xét duyệt',
     forgotPassword: 'Quên mật khẩu?',
     divider: 'hoặc',
@@ -325,9 +329,9 @@ const authCopy = {
     workerVerificationHeroTitle: 'Submit profile for review',
     workerVerificationRequired: 'Required',
     workerSetupAccount: 'Account',
-    workerSetupAccountMeta: 'Creating',
+    workerSetupAccountMeta: 'Not open',
     workerSetupVerify: 'Verify',
-    workerSetupVerifyMeta: 'In progress',
+    workerSetupVerifyMeta: 'Review',
     workerSetupProfile: 'Profile',
     workerSetupProfileMeta: 'Pending',
     workerSkillAreaMode: 'Skills and area',
@@ -345,6 +349,10 @@ const authCopy = {
     chooseArea: 'Choose area',
     addContact: 'Add contact',
     chooseFile: 'Choose file',
+    workerCreateBoundaryTitle: 'Worker profile creation is not open in app',
+    workerCreateBoundaryBody: 'NestScout only opens job access after a real worker account is created and reviewed in the system. This screen keeps the required profile checklist visible.',
+    workerCreateLockedMeta: 'Awaiting review',
+    workerCreateUnavailableCta: 'Review submit not open',
     submitVerification: 'Send for review',
     forgotPassword: 'Forgot password?',
     divider: 'or',
@@ -753,6 +761,7 @@ function UnauthenticatedRoleForm({
   const isCustomerPasswordFallback = selectedEntryRole === 'customer' && !isCustomerPhoneMode
   const [showCustomerEmailFallback, setShowCustomerEmailFallback] = useState(false)
   const canUsePasswordLogin = isWorker || (isCustomerPasswordFallback && showCustomerEmailFallback)
+  const primarySubmitLabel = isWorkerCreateMode ? copy.workerCreateUnavailableCta : submitLabel
 
   return (
     <View style={styles.formStack}>
@@ -861,7 +870,7 @@ function UnauthenticatedRoleForm({
         ) : null}
         {canUsePasswordLogin ? (
           <Pressable
-            accessibilityLabel={isWorkerCreateMode ? copy.submitVerification : submitLabel}
+            accessibilityLabel={primarySubmitLabel}
             accessibilityRole="button"
             accessibilityState={{ disabled: signingIn || loading || configMissing }}
             disabled={signingIn || loading || configMissing}
@@ -869,7 +878,7 @@ function UnauthenticatedRoleForm({
             style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, signingIn || loading || configMissing ? styles.disabled : null]}
             testID="auth-login-submit"
           >
-            {signingIn || loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>{isWorkerCreateMode ? copy.submitVerification : submitLabel}</Text>}
+            {signingIn || loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>{primarySubmitLabel}</Text>}
           </Pressable>
         ) : null}
         {isWorker && !isWorkerCreateMode ? (
@@ -945,11 +954,12 @@ function WorkerVerificationHero({ copy }: { copy: AuthCopy }) {
 function WorkerVerificationPreview({ copy }: { copy: AuthCopy }) {
   return (
     <View style={styles.workerVerificationStack} testID="auth-worker-verification-preview">
+      <WorkerCreateBoundaryNote copy={copy} />
       <View style={styles.workerUploadGrid} testID="auth-worker-verification-upload-grid">
-        <WorkerCredentialPill icon="shield" label={copy.workerCccdFront} meta={copy.chooseFile} variant="upload" />
-        <WorkerCredentialPill icon="shield" label={copy.workerCccdBack} meta={copy.chooseFile} variant="upload" />
-        <WorkerCredentialPill icon="home" label={copy.workerPortrait} meta={copy.chooseFile} variant="upload" />
-        <WorkerCredentialPill icon="tools" label={copy.workerCertificate} meta={copy.chooseFile} variant="upload" />
+        <WorkerCredentialPill icon="shield" label={copy.workerCccdFront} meta={copy.workerCreateLockedMeta} variant="upload" />
+        <WorkerCredentialPill icon="shield" label={copy.workerCccdBack} meta={copy.workerCreateLockedMeta} variant="upload" />
+        <WorkerCredentialPill icon="home" label={copy.workerPortrait} meta={copy.workerCreateLockedMeta} variant="upload" />
+        <WorkerCredentialPill icon="tools" label={copy.workerCertificate} meta={copy.workerCreateLockedMeta} variant="upload" />
       </View>
       <View style={styles.loginMode}>
         <Text style={styles.loginModeText}>{copy.workerSkillAreaMode}</Text>
@@ -959,8 +969,17 @@ function WorkerVerificationPreview({ copy }: { copy: AuthCopy }) {
           <Text key={service} style={styles.workerVerifyServiceChip} numberOfLines={1}>{service}</Text>
         ))}
       </View>
-      <WorkerCredentialPill icon="home" label={copy.workerServiceArea} meta={copy.chooseArea} />
-      <WorkerCredentialPill icon="phone" label={copy.workerPhoneContact} meta={copy.addContact} />
+      <WorkerCredentialPill icon="home" label={copy.workerServiceArea} meta={copy.workerCreateLockedMeta} />
+      <WorkerCredentialPill icon="phone" label={copy.workerPhoneContact} meta={copy.workerCreateLockedMeta} />
+    </View>
+  )
+}
+
+function WorkerCreateBoundaryNote({ copy }: { copy: AuthCopy }) {
+  return (
+    <View style={styles.workerCreateBoundaryNote} testID="auth-worker-create-boundary-note">
+      <Text style={styles.workerCreateBoundaryTitle}>{copy.workerCreateBoundaryTitle}</Text>
+      <Text style={styles.workerCreateBoundaryBody}>{copy.workerCreateBoundaryBody}</Text>
     </View>
   )
 }
@@ -1955,6 +1974,9 @@ const styles = StyleSheet.create({
   customerSetupSecondaryButton: { backgroundColor: 'rgba(255,255,255,0.86)', borderColor: 'rgba(20,117,105,0.18)', borderRadius: 22, minHeight: 50, zIndex: 1 },
   loginMode: { alignItems: 'center', backgroundColor: 'rgba(215,255,246,0.96)', borderColor: 'rgba(13,134,119,0.18)', borderRadius: 21, borderWidth: 1, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.88)', justifyContent: 'center', minHeight: 42, paddingHorizontal: 14, zIndex: 1 },
   loginModeText: { color: authTokens.primary, fontSize: 13, fontWeight: '900' },
+  workerCreateBoundaryNote: { backgroundColor: 'rgba(255,250,241,0.88)', borderColor: 'rgba(202,132,65,0.22)', borderRadius: 20, borderWidth: 1, gap: 5, paddingHorizontal: 12, paddingVertical: 11 },
+  workerCreateBoundaryTitle: { color: authTokens.copper, fontSize: 12.5, fontWeight: '900', lineHeight: 16 },
+  workerCreateBoundaryBody: { color: authTokens.cookieSoft, fontSize: 11.5, fontWeight: '700', lineHeight: 16 },
   authChoiceList: { gap: 10, zIndex: 1 },
   googleButton: { alignItems: 'center', backgroundColor: 'rgba(245,255,252,0.98)', borderColor: 'rgba(13,134,119,0.20)', borderRadius: 22, borderWidth: 1, boxShadow: '0 14px 28px rgba(17,70,61,0.09), inset 0 1px 0 rgba(255,255,255,0.94)', flexDirection: 'row', gap: 10, justifyContent: 'center', minHeight: 58, paddingHorizontal: 13 },
   googleButtonText: { color: '#073F38', fontSize: 14, fontWeight: '900' },

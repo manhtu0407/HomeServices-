@@ -35,7 +35,9 @@
   - Kept phone/register unavailable states honest because the auth provider does not expose phone OTP or Supabase sign-up.
   - Added the customer onboarding Kael hero and setup steps on the real `updateCustomerProfile` path.
   - Kept onboarding fields seeded from real session metadata and saved through the existing auth provider.
-  - Added focused RNTL coverage for welcome, role-gate transition, customer email fallback, and customer onboarding save.
+  - Converted Worker Register/Create Profile into an honest review-boundary checklist because the mobile auth provider exposes no worker create-account API.
+  - Removed fake upload/action copy from worker registration requirements and kept submit on the existing unavailable error path.
+  - Added focused RNTL coverage for welcome, role-gate transition, customer email fallback, customer onboarding save, and worker registration honesty.
 - Started Group B:
   - Added the required media/voice note slot to the booking describe step.
   - Kept photo picking wired to the existing image picker.
@@ -91,7 +93,7 @@
 - Verification for this checkpoint:
   - `pnpm --filter @home-services/mobile type-check` passed.
   - `tsc --noEmit` from `apps/mobile` passed when portable `pnpm.CMD` was unavailable.
-  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 4 tests after the customer onboarding hero.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 5 tests after the worker registration boundary.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/ui/__tests__/kael-primitives-test.tsx` passed: 9 tests.
   - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
   - `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx` passed: 5 tests.
@@ -102,7 +104,7 @@
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job in Progress panel.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 50 tests after the Earnings period row.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
-  - Mobile Jest from `apps/mobile` passed after the customer onboarding hero: 17 suites, 166 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the worker registration boundary: 17 suites, 167 tests.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 

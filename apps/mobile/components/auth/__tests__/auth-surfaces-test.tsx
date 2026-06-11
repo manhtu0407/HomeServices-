@@ -135,4 +135,20 @@ describe('LoginRoleSurface', () => {
     })
     expect(mockRefreshProfile).toHaveBeenCalled()
   })
+
+  it('keeps worker registration honest when no create-account API is exposed', () => {
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByText('Tiếp tục'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
+    fireEvent.press(screen.getByTestId('auth-worker-create-profile'))
+
+    expect(screen.getByTestId('auth-worker-create-boundary-note')).toBeOnTheScreen()
+    expect(screen.queryByText('Chọn tệp')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    expect(mockSignInWithPassword).not.toHaveBeenCalled()
+    expect(screen.getByText('Tạo tài khoản thợ chưa sẵn sàng. Vui lòng liên hệ hỗ trợ.')).toBeOnTheScreen()
+  })
 })
