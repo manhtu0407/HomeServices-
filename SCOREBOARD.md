@@ -32,7 +32,7 @@ Legend:
 | C | 2.9 Location & ETA | Partial | Partial | TBD | Activity Location & ETA panel reads address-release state and search signal, releases full address only after policy, and keeps ETA pending until a real travel signal exists; focused history test passed | In progress |
 | C | 2.10 Live Job Alert | Partial | Partial | TBD | Activity Live Job Alert panel reads real notification rows, unread count, and workflow next event; focused history test passed; push simulation not added | In progress |
 | C | 2.11 Job Acceptance | Partial | Partial | TBD | Activity Job Acceptance panel reads accepted status, released address, job chat gate, job id, and Kael prebrief; focused history test passed; no fake worker profile/rating added | In progress |
-| C | 2.12 Job in Progress | Partial | Partial | TBD | Activity command overview and worker checklist reflect active workflow gates | In progress |
+| C | 2.12 Job in Progress | Partial | Partial | TBD | Activity Job in Progress panel reads workflow phase, next event, completion evidence artifact, and job chat gate; focused history test passed; no fake percent/ETA added | In progress |
 | D | 3.1 Worker Home | Partial | Partial | TBD | Existing worker home remains wired to real readiness/jobs; focused worker suite passed | In progress |
 | D | 3.2 Jobs | Partial | Partial | TBD | Worker active jobs now include safety checklist gates; focused worker suite passed | In progress |
 | D | 3.4 Kael On-site Advisory Chat | Partial | Partial | TBD | Worker JobRoom on-site advisory rail reads real status, address release, scope, and evidence gates; focused worker suite passed | In progress |

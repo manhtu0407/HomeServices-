@@ -343,6 +343,21 @@ describe('CustomerHistorySurface phase context', () => {
     expect(acceptedPanel).not.toHaveTextContent(/★★★★★|4\.9|rating|Thợ A|avatar/i)
   })
 
+  it('shows in-progress workflow gates without fake progress percentage or ETA', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('repairing'))
+
+    render(<CustomerHistorySurface />)
+
+    const progressPanel = screen.getByTestId('customer-history-job-progress-panel')
+    expect(progressPanel).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-job-progress-phase-value')).toHaveTextContent(/Đang xử lý/)
+    expect(screen.getByTestId('customer-history-job-progress-next-value')).toHaveTextContent(/Thợ gửi hoàn tất/)
+    expect(screen.getByTestId('customer-history-job-progress-evidence-value')).toHaveTextContent(/Bằng chứng hoàn tất/)
+    expect(screen.getByTestId('customer-history-job-progress-chat-value')).toHaveTextContent(/Nhắn trong chat công việc/)
+    expect(progressPanel).not.toHaveTextContent(/75%|100%|15 phút|ETA 15|rating|4\.9/i)
+  })
+
   it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {
     render(<CustomerHistorySurface />)
 
