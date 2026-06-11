@@ -224,6 +224,7 @@ const threadText = {
   livePerformancePhotoCount: (count: number) => `${count} photo${count === 1 ? '' : 's'}`,
   livePerformanceService: 'Service',
   livePerformanceStage: 'Kael stage',
+  livePerformanceSignals: 'Signals',
   livePerformanceTitle: 'Kael is processing',
   livePerformanceWaitingStage: 'Waiting for real details',
   loading: 'Loading',
@@ -1001,7 +1002,7 @@ describe('Kael agentic phase cards', () => {
             { uri: 'file://photo-1.jpg', type: 'image' },
             { uri: 'file://photo-2.jpg', type: 'image' },
           ],
-          problemChips: [],
+          problemChips: ['Burned outlet'],
           serviceType: 'electrical',
           source: 'booking',
         }}
@@ -1050,6 +1051,7 @@ describe('Kael agentic phase cards', () => {
     expect(screen.getByTestId('customer-kael-live-performance-panel')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-kael-live-performance-service')).toHaveTextContent(/Electrical repair/)
     expect(screen.getByTestId('customer-kael-live-performance-evidence')).toHaveTextContent(/2 photos/)
+    expect(screen.getByTestId('customer-kael-live-performance-signals')).toHaveTextContent(/Burned outlet/)
     expect(screen.getByTestId('customer-kael-live-performance-stage')).toHaveTextContent(/Analyzing photos/)
     expect(screen.queryByTestId('customer-kael-live-performance-media-empty')).toBeNull()
   })

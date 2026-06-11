@@ -47,6 +47,7 @@ type KaelChatThreadText = Parameters<typeof KaelProcessCard>[0]['text'] & {
   livePerformancePendingStage: string
   livePerformancePhotoCount: (count: number) => string
   livePerformanceService: string
+  livePerformanceSignals: string
   livePerformanceStage: string
   livePerformanceTitle: string
   livePerformanceWaitingStage: string
@@ -309,6 +310,8 @@ function KaelLivePerformancePanel({
   const service = session?.session.service_type ?? pendingIntake?.serviceType ?? selectedService
   const pendingPhotos = pendingIntake?.photoDrafts ?? []
   const pendingEvidenceCount = Math.max(pendingIntake?.mediaCount ?? 0, pendingPhotos.length)
+  const problemSignals = (pendingIntake?.problemChips ?? []).filter((chip) => chip.trim().length > 0)
+  const signalValue = problemSignals.join(' / ')
   const turnEvidenceCount = turns.reduce((sum, turn) => sum + turn.media_refs.length, 0)
   const evidenceCount = pendingEvidenceCount + turnEvidenceCount
   const latestProgress = progressTrace.at(-1) ?? progress
@@ -349,6 +352,9 @@ function KaelLivePerformancePanel({
       <View style={styles.briefGrid}>
         <LivePerformanceCell label={text.livePerformanceService} testID="customer-kael-live-performance-service" tokens={tokens} value={service ? localizedServiceLabel(service, language) : text.briefServicePending} />
         <LivePerformanceCell label={text.livePerformanceEvidence} testID="customer-kael-live-performance-evidence" tokens={tokens} value={evidenceCount > 0 ? text.livePerformancePhotoCount(evidenceCount) : text.livePerformanceNoEvidence} />
+        {problemSignals.length > 0 ? (
+          <LivePerformanceCell label={text.livePerformanceSignals} testID="customer-kael-live-performance-signals" tokens={tokens} value={signalValue} />
+        ) : null}
         <LivePerformanceCell label={text.livePerformanceStage} testID="customer-kael-live-performance-stage" tokens={tokens} value={stageLabel} wide />
       </View>
     </View>
