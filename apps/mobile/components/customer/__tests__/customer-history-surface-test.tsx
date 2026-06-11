@@ -119,7 +119,7 @@ function customerSearchStateForStatus(status: LocalDealStatus): LocalCustomerSea
   return 'idle'
 }
 
-function buildWorkflow(deal: LocalDeal | null) {
+function buildWorkflow(deal: LocalDeal | null, options: { notificationUnreadCount?: number; notifications?: any[] } = {}) {
   const currentStatus = deal?.status ?? null
   const canCustomerSubmitReview = deal?.backendStatus === 'paid' || deal?.backendStatus === 'confirmed_by_customer'
   const selectors: LocalWorkflowSelectors = {
@@ -146,6 +146,8 @@ function buildWorkflow(deal: LocalDeal | null) {
       decideScopeChange: jest.fn(async () => true),
       submitReview: jest.fn(async () => true),
     },
+    notificationUnreadCount: options.notificationUnreadCount ?? 0,
+    notifications: options.notifications ?? [],
     selectors,
     state: {
       deal,
@@ -294,6 +296,36 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-location-address-gate-value')).toHaveTextContent(/Đã mở theo chính sách/)
     expect(screen.getByTestId('customer-history-location-eta-value')).toHaveTextContent(/Chờ tín hiệu di chuyển thật/)
     expect(screen.getByTestId('customer-history-location-live-signal-value')).not.toHaveTextContent(/45/)
+  })
+
+  it('shows live job alerts from real notifications and workflow next event', () => {
+    mockRouteParams = { scope_change: 'scope_test_1', tab: 'repair' }
+    const deal = buildDeal('scope_change_pending')
+    deal.scopeChange = buildScopeChange()
+    buildWorkflow(deal, {
+      notificationUnreadCount: 1,
+      notifications: [{
+        body: 'Có thay đổi phạm vi cần xem trong yêu cầu thật.',
+        created_at: '2026-06-01T01:00:00.000Z',
+        event_type: 'scope_change_requested',
+        id: 'notification_scope_1',
+        job_id: 'job_test_1',
+        read_at: null,
+        status: 'sent',
+        title: 'Kael cần bạn xem đổi phạm vi',
+      }],
+    })
+
+    render(<CustomerHistorySurface />)
+
+    const alertPanel = screen.getByTestId('customer-history-live-alert-panel')
+    expect(alertPanel).toBeOnTheScreen()
+    expect(alertPanel).toHaveTextContent(/Kael cần bạn xem đổi phạm vi/)
+    expect(alertPanel).toHaveTextContent(/Có thay đổi phạm vi cần xem trong yêu cầu thật/)
+    expect(screen.getByTestId('customer-history-live-alert-source-value')).toHaveTextContent(/Thông báo thật/)
+    expect(screen.getByTestId('customer-history-live-alert-unread-value')).toHaveTextContent('1')
+    expect(screen.getByTestId('customer-history-live-alert-next-value')).toHaveTextContent(/Kael quyết định phạm vi/)
+    expect(alertPanel).not.toHaveTextContent(/push giả|fake|0 thông báo/i)
   })
 
   it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {

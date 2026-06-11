@@ -30,7 +30,7 @@ Legend:
 | C | 2.7 Kael Helper for Options | Partial | Partial | TBD | Agentic Center links to full Kael chat; server-backed chat path preserved | In progress |
 | C | 2.8 Worker Offers & Quote | Partial | Partial | TBD | Price tab quote sheet reads broadcast price, Kael estimate, scope-change price, and final-price state; focused history test passed; no fake offer/worker stats added | In progress |
 | C | 2.9 Location & ETA | Partial | Partial | TBD | Activity Location & ETA panel reads address-release state and search signal, releases full address only after policy, and keeps ETA pending until a real travel signal exists; focused history test passed | In progress |
-| C | 2.10 Live Job Alert | Partial | Partial | TBD | Existing notification/approval state surfaced in Agentic Center; push simulation not added | In progress |
+| C | 2.10 Live Job Alert | Partial | Partial | TBD | Activity Live Job Alert panel reads real notification rows, unread count, and workflow next event; focused history test passed; push simulation not added | In progress |
 | C | 2.11 Job Acceptance | Partial | Partial | TBD | Activity command overview reflects worker accepted/on-way state through existing deal data | In progress |
 | C | 2.12 Job in Progress | Partial | Partial | TBD | Activity command overview and worker checklist reflect active workflow gates | In progress |
 | D | 3.1 Worker Home | Partial | Partial | TBD | Existing worker home remains wired to real readiness/jobs; focused worker suite passed | In progress |

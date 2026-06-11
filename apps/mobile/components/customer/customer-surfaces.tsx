@@ -46,7 +46,7 @@ import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { customerFeedbackService } from '@/lib/services'
-import type { JobMessageResponse } from '@/lib/api-types'
+import type { JobMessageResponse, NotificationListResponse } from '@/lib/api-types'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
 import { setPendingKaelChatDraft } from './kael-chat/pending-intake'
@@ -683,6 +683,17 @@ const customerCopy = {
       locationSearchCountdown: (seconds: number) => `Tìm thợ còn ${seconds} giây`,
       locationWorkerAcceptedSignal: 'Thợ đã nhận việc',
       locationNoSignal: 'Chờ tín hiệu thật',
+      liveAlertTitle: 'Cảnh báo việc đang chạy',
+      liveAlertMetaUnread: (count: number) => `${count} thông báo chưa đọc`,
+      liveAlertMetaWorkflow: 'Theo workflow hiện tại',
+      liveAlertSource: 'Nguồn',
+      liveAlertSourceNotification: 'Thông báo thật',
+      liveAlertSourceWorkflow: 'Workflow thật',
+      liveAlertUnread: 'Chưa đọc',
+      liveAlertUnreadEmpty: 'Không có thông báo mới',
+      liveAlertNext: 'Tiếp theo',
+      liveAlertFallbackTitle: 'Theo dõi trạng thái',
+      liveAlertFallbackBody: 'Kael sẽ cập nhật khi workflow có tín hiệu mới.',
       caseMatching: 'Ghép thợ',
       caseQuote: 'Biên giá',
       matchingScoreTitle: 'Điểm ghép thợ',
@@ -880,6 +891,17 @@ const customerCopy = {
       locationSearchCountdown: (seconds: number) => `Worker search: ${seconds}s left`,
       locationWorkerAcceptedSignal: 'Worker accepted',
       locationNoSignal: 'Awaiting real signal',
+      liveAlertTitle: 'Live job alert',
+      liveAlertMetaUnread: (count: number) => `${count} unread notice${count === 1 ? '' : 's'}`,
+      liveAlertMetaWorkflow: 'From current workflow',
+      liveAlertSource: 'Source',
+      liveAlertSourceNotification: 'Real notification',
+      liveAlertSourceWorkflow: 'Real workflow',
+      liveAlertUnread: 'Unread',
+      liveAlertUnreadEmpty: 'No new notice',
+      liveAlertNext: 'Next',
+      liveAlertFallbackTitle: 'Track status',
+      liveAlertFallbackBody: 'Kael will update this when the workflow has a new signal.',
       caseMatching: 'Matching',
       caseQuote: 'Price band',
       matchingScoreTitle: 'Matching score',
@@ -1472,7 +1494,7 @@ export function CustomerHistorySurface() {
   const params = useLocalSearchParams<{ job_id?: string; scope_change?: string; tab?: string }>()
   const languageMode = useAppLanguage()
   const copy = customerCopy[languageMode]
-  const { actions, dispatch, selectors, state } = useFrontendWorkflow()
+  const { actions, dispatch, notificationUnreadCount, notifications, selectors, state } = useFrontendWorkflow()
   const requestedHistoryTab = isCustomerHistoryTab(params.tab) ? params.tab : null
   const [selectedHistoryTab, setSelectedHistoryTab] = useState<CustomerHistoryTab>('repair')
   const activeHistoryTab = requestedHistoryTab ?? selectedHistoryTab
@@ -1675,6 +1697,7 @@ export function CustomerHistorySurface() {
           {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
+          {deal && showRepairTab ? <CustomerHistoryLiveAlertPanel copy={copy} deal={deal} languageMode={languageMode} notificationUnreadCount={notificationUnreadCount} notifications={notifications} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
           {!deal && showPriceTab ? <CustomerHistoryPriceEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
           {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} deal={deal} estimateLabel={estimateLabel} languageMode={languageMode} onOpenKael={continueOrCreate} originalEstimateLabel={originalEstimateLabel} scopeChange={showScopeChangeArtifact ? scopeChange : null} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {!deal && showChatTab ? <CustomerHistoryChatEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
@@ -3557,6 +3580,70 @@ function CustomerHistoryLocationEtaPanel({
       </View>
     </View>
   )
+}
+
+function CustomerHistoryLiveAlertPanel({
+  copy,
+  deal,
+  languageMode,
+  notificationUnreadCount,
+  notifications,
+  phaseContext,
+  tokens,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]
+  deal: LocalDeal
+  languageMode: AppLanguage
+  notificationUnreadCount: number
+  notifications: NotificationListResponse['notifications']
+  phaseContext: WorkflowPhaseContext
+  tokens: CustomerThemeTokens
+}) {
+  const liveNotification = findCurrentJobNotification(notifications, deal)
+  const sourceLabel = liveNotification ? copy.history.liveAlertSourceNotification : copy.history.liveAlertSourceWorkflow
+  const unreadLabel = notificationUnreadCount > 0 ? copy.history.liveAlertMetaUnread(notificationUnreadCount) : copy.history.liveAlertUnreadEmpty
+  const title = liveNotification?.title?.trim() || phaseContext.primaryArtifact?.title[languageMode] || copy.history.liveAlertFallbackTitle
+  const body = liveNotification?.body?.trim() || phaseContext.intent[languageMode] || copy.history.liveAlertFallbackBody
+  const nextLabel = phaseContext.nextExpectedEvent
+    ? workflowEventLabel(phaseContext.nextExpectedEvent, languageMode)
+    : copy.history.confirmed
+
+  return (
+    <View style={[styles.historyCheckPanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-live-alert-panel">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {copy.history.liveAlertTitle}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {liveNotification ? unreadLabel : copy.history.liveAlertMetaWorkflow}
+        </Text>
+      </View>
+      <View style={[styles.bookingDiagnosisPanel, customerBookingDiagnosisSurface(tokens)]}>
+        <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]}>
+          <MappedIcon name="kael" color={tokens.primary} accent={tokens.copper} size={24} />
+          <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
+            {title}
+          </Text>
+        </View>
+        <Text style={[styles.bookingDiagnosisBody, { color: tokens.text }]} numberOfLines={3}>
+          {body}
+        </Text>
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.history.liveAlertSource} testID="customer-history-live-alert-source" value={sourceLabel} variant="activity" />
+        <V4TicketCell label={copy.history.liveAlertUnread} testID="customer-history-live-alert-unread" value={notificationUnreadCount > 0 ? String(notificationUnreadCount) : copy.history.liveAlertUnreadEmpty} variant="activity" />
+      </View>
+      <V4TicketCell label={copy.history.liveAlertNext} testID="customer-history-live-alert-next" value={nextLabel} variant="activity" />
+    </View>
+  )
+}
+
+function findCurrentJobNotification(notifications: NotificationListResponse['notifications'], deal: LocalDeal) {
+  const currentIds = new Set([deal.id, deal.broadcast?.jobId].filter((id): id is string => Boolean(id)))
+  const belongsToCurrentJob = (item: NotificationListResponse['notifications'][number]) => !item.job_id || currentIds.has(item.job_id)
+  return notifications.find((item) => item.status !== 'read' && belongsToCurrentJob(item))
+    ?? notifications.find(belongsToCurrentJob)
+    ?? null
 }
 
 function workflowPhaseSectionSummary(sections: WorkflowPhaseContext['sections'], languageMode: AppLanguage) {
