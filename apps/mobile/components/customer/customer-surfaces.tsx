@@ -648,6 +648,31 @@ const customerProfileMoneyCopy = {
   },
 } as const
 
+const customerProfileMoneyLedgerCopy = {
+  vi: {
+    disputeFreeLabel: 'Không tranh chấp',
+    disputeFreePending: 'Chờ đối soát',
+    empty: 'Chi tiết bảo vệ mở khi có giao dịch, đối soát và kiểm giá thật.',
+    fairnessLabel: 'Kiểm giá',
+    fairnessPending: 'Chờ kiểm giá',
+    protectedTransactionLabel: 'Giao dịch bảo vệ',
+    protectedTransactionPending: 'Chờ dữ liệu',
+    subtitle: 'Chỉ hiện các chỉ số đối soát thật từ hồ sơ.',
+    title: 'Chi tiết bảo vệ',
+  },
+  en: {
+    disputeFreeLabel: 'Dispute-free',
+    disputeFreePending: 'Awaiting ledger',
+    empty: 'Protection details open when real transactions, reconciliation, and price checks exist.',
+    fairnessLabel: 'Price check',
+    fairnessPending: 'Awaiting check',
+    protectedTransactionLabel: 'Protected transactions',
+    protectedTransactionPending: 'Awaiting data',
+    subtitle: 'Only shows real reconciliation metrics from the profile.',
+    title: 'Protection details',
+  },
+} as const
+
 const customerProfileSectionCopy = {
   vi: {
     identity: 'Tài khoản căn hộ',
@@ -2020,6 +2045,10 @@ export function CustomerProfileSurface() {
   const fairPriceServiceCount = readCustomerProfileMetric(customerMetadata.fair_price_service_count ?? customerMetadata.fairPriceServiceCount ?? customerMetadata.fair_priced_service_count ?? customerMetadata.fairPricedServiceCount)
   const moneyProtectionScore = readCustomerProfileMetric(customerMetadata.money_protection_score ?? customerMetadata.moneyProtectionScore ?? customerMetadata.fair_price_score ?? customerMetadata.fairPriceScore)
   const protectedValueVnd = readCustomerProfileMetric(customerMetadata.protected_value_vnd ?? customerMetadata.protectedValueVnd ?? customerMetadata.money_protected_vnd ?? customerMetadata.moneyProtectedVnd ?? customerMetadata.price_protected_vnd ?? customerMetadata.priceProtectedVnd)
+  const protectedTransactionCount = readCustomerProfileMetric(customerMetadata.protected_transaction_count ?? customerMetadata.protectedTransactionCount ?? customerMetadata.money_protected_transaction_count ?? customerMetadata.moneyProtectedTransactionCount)
+  const totalTransactionCount = readCustomerProfileMetric(customerMetadata.total_transaction_count ?? customerMetadata.totalTransactionCount ?? customerMetadata.money_total_transaction_count ?? customerMetadata.moneyTotalTransactionCount)
+  const disputeFreeRatePercent = readCustomerProfileMetric(customerMetadata.dispute_free_rate_percent ?? customerMetadata.disputeFreeRatePercent ?? customerMetadata.no_dispute_rate_percent ?? customerMetadata.noDisputeRatePercent)
+  const fairPriceBadge = readCustomerMetadataString(customerMetadata, 'fair_price_badge', 'fairPriceBadge', 'money_protection_badge', 'moneyProtectionBadge', 'fair_price_status', 'fairPriceStatus')
   const closeProfileEditor = useCallback(() => {
     if (profileEditorSaving) return
     setProfileEditorField(null)
@@ -2258,6 +2287,7 @@ export function CustomerProfileSurface() {
   const profileRankingCopy = customerProfileRankingCopy[languageMode]
   const profileRankingJourneyCopy = customerProfileRankingJourneyCopy[languageMode]
   const profileMoneyCopy = customerProfileMoneyCopy[languageMode]
+  const profileMoneyLedgerCopy = customerProfileMoneyLedgerCopy[languageMode]
   const profileSectionCopy = customerProfileSectionCopy[languageMode]
   const profileCareStats = [
     {
@@ -2384,6 +2414,30 @@ export function CustomerProfileSurface() {
         valueLabel: profileMoneyCopy.scoreValue(moneyProtectionScore),
       }
     : null
+  const protectedTransactionRatioValue =
+    protectedTransactionCount !== null && totalTransactionCount !== null && protectedTransactionCount <= totalTransactionCount
+      ? `${formatCustomerInteger(protectedTransactionCount, languageMode)} / ${formatCustomerInteger(totalTransactionCount, languageMode)}`
+      : ''
+  const profileMoneyLedgerStats = [
+    {
+      available: Boolean(protectedTransactionRatioValue),
+      icon: 'privacy' as const,
+      label: profileMoneyLedgerCopy.protectedTransactionLabel,
+      value: protectedTransactionRatioValue || profileMoneyLedgerCopy.protectedTransactionPending,
+    },
+    {
+      available: Boolean(disputeFreeRatePercent),
+      icon: 'history' as const,
+      label: profileMoneyLedgerCopy.disputeFreeLabel,
+      value: disputeFreeRatePercent ? `${formatCustomerInteger(disputeFreeRatePercent, languageMode)}%` : profileMoneyLedgerCopy.disputeFreePending,
+    },
+    {
+      available: Boolean(fairPriceBadge),
+      icon: 'check' as const,
+      label: profileMoneyLedgerCopy.fairnessLabel,
+      value: fairPriceBadge || profileMoneyLedgerCopy.fairnessPending,
+    },
+  ]
   const profileFallbackTitle = languageMode === 'en' ? 'Customer profile' : 'Hồ sơ khách'
   const profileTitle = localizedProfileName(rawNickname, languageMode) || localizedProfileName(rawFullName, languageMode) || profileFallbackTitle
   const profileSubtitle = languageMode === 'en' ? 'Basic information' : 'Thông tin cơ bản'
@@ -2438,6 +2492,9 @@ export function CustomerProfileSurface() {
           </ReduceMotionAwareEntranceView>
           <ReduceMotionAwareEntranceView delayMs={175} distanceY={8} style={styles.profileActions} testID="customer-profile-money-protection-card-motion">
             <CustomerProfileInsightPanel copy={profileMoneyCopy} progress={profileMoneyProgress} stats={profileMoneyStats} testID="customer-profile-money-protection-card" />
+          </ReduceMotionAwareEntranceView>
+          <ReduceMotionAwareEntranceView delayMs={188} distanceY={8} style={styles.profileActions} testID="customer-profile-money-ledger-card-motion">
+            <CustomerProfileInsightPanel copy={profileMoneyLedgerCopy} stats={profileMoneyLedgerStats} testID="customer-profile-money-ledger-card" />
           </ReduceMotionAwareEntranceView>
           <ReduceMotionAwareEntranceView delayMs={205} distanceY={8} style={styles.profileActions} testID="customer-profile-list-motion">
             <View style={[styles.listCard, styles.profileGlassListCard, customerProfilePanelSurface(tokens)]} testID="customer-profile-checklist">

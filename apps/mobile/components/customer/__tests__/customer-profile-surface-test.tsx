@@ -161,6 +161,9 @@ describe('CustomerProfileSurface editable rows', () => {
     expect(screen.getByTestId('customer-profile-money-protection-card-empty')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-profile-money-protection-card-value-0')).toHaveTextContent('Chờ dữ liệu')
     expect(screen.queryByTestId('customer-profile-money-protection-card-progress')).toBeNull()
+    expect(screen.getByTestId('customer-profile-money-ledger-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-profile-money-ledger-card-empty')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-profile-money-ledger-card-value-0')).toHaveTextContent('Chờ dữ liệu')
     expect(screen.queryByText('--')).toBeNull()
 
     expect(screen.queryByTestId('customer-profile-home-care-cta')).toBeNull()
@@ -177,6 +180,10 @@ describe('CustomerProfileSurface editable rows', () => {
       fair_price_service_count: 2,
       money_protection_score: 92,
       protected_value_vnd: 2150000,
+      protected_transaction_count: 22,
+      total_transaction_count: 24,
+      dispute_free_rate_percent: 100,
+      fair_price_badge: '\u0110\u00e1ng tin c\u1eady',
       usage_rank_level: 3,
       usage_rank_points: 620,
     }
@@ -206,6 +213,10 @@ describe('CustomerProfileSurface editable rows', () => {
     expect(screen.getByTestId('customer-profile-money-protection-card-progress-value')).toHaveTextContent('92/100')
     const moneyProgressStyle = StyleSheet.flatten(screen.getByTestId('customer-profile-money-protection-card-progress-fill').props.style) as Record<string, unknown>
     expect(moneyProgressStyle.width).toBe('92%')
+    expect(screen.getByTestId('customer-profile-money-ledger-card')).toHaveTextContent(/Chi ti\u1ebft b\u1ea3o v\u1ec7/)
+    expect(screen.getByTestId('customer-profile-money-ledger-card-value-0')).toHaveTextContent('22 / 24')
+    expect(screen.getByTestId('customer-profile-money-ledger-card-value-1')).toHaveTextContent('100%')
+    expect(screen.getByTestId('customer-profile-money-ledger-card-value-2')).toHaveTextContent('\u0110\u00e1ng tin c\u1eady')
   })
 
   it.each([

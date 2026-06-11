@@ -154,9 +154,11 @@
   - Aligned Customer Overview with a real metadata hero status/member line and a quick-information panel for service history, saved address, and preferred service count.
   - Added customer usage ranking and money protection progress tracks from real `usage_rank_points` and `money_protection_score` only.
   - Aligned Customer Usage Ranking with a real rank journey panel from `usage_rank_level` and `usage_rank_points`, including current rank, next rank, and remaining points against the existing 1,000-point progress scale.
+  - Aligned Customer Money Protection with a real protection-detail ledger from explicit metadata: protected transaction count, total transaction count, dispute-free rate, and fair-price badge.
+  - Kept Customer Money Protection ledger empty when matching real metadata is missing, without using completed-service count as a proxy or inventing dispute/fairness indicators.
   - Kept missing profile metrics as honest waiting states.
   - Kept progress tracks hidden when the matching real metric is missing.
-  - Added focused RNTL coverage for worker locked milestones and customer profile metrics.
+  - Added focused RNTL coverage for worker locked milestones, customer profile metrics, and customer money ledger real/empty states.
 - Continued Group B:
   - Completed the Customer Home shortcut grid with all four real actions.
   - Added active request status and Kael estimate cells to the Customer Home active-card path.
@@ -200,6 +202,11 @@
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 18 tests after the Usage Ranking journey checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Usage Ranking journey checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Usage Ranking journey checkpoint: 17 suites, 192 tests.
+  - Red first: `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx -t "real profile metrics"` failed on missing `customer-profile-money-ledger-card` before the Customer Money Protection ledger checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx -t "real profile metrics"` passed after the Customer Money Protection ledger checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 18 tests after the Customer Money Protection ledger checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Customer Money Protection ledger checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Customer Money Protection ledger checkpoint: 17 suites, 192 tests.
   - Red first: `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` failed on missing `customer-dock-kael-action-label` before the Kael Orb token/label change.
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests after the Kael Orb token/label checkpoint.
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job Acceptance service row.
