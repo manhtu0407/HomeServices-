@@ -53,11 +53,11 @@ const copy = {
     activity: 'Xem hoạt động',
     profile: 'Hồ sơ',
     editProfile: 'Chỉnh sửa hồ sơ',
-    summaryActive: 'Việc đang chạy',
-    summaryApprovals: 'Cần duyệt',
-    summaryNotifications: 'Thông báo',
+    summaryActive: 'Đơn đang xử lý',
+    summaryApprovals: 'Cần phê duyệt',
+    summaryNotifications: 'Thông báo mới',
     summaryEmpty: 'Chưa có',
-    activeCase: 'Việc đang chạy',
+    activeCase: 'Việc cần làm',
     activeEmptyTitle: 'Chưa có yêu cầu đang chạy',
     activeEmptyBody: 'Bắt đầu bằng chat Kael để tạo phiếu thật cho điện, nước hoặc vệ sinh.',
     caseId: 'Mã phiếu',
@@ -103,11 +103,11 @@ const copy = {
     activity: 'View activity',
     profile: 'Profile',
     editProfile: 'Edit profile',
-    summaryActive: 'Active case',
-    summaryApprovals: 'Approvals',
-    summaryNotifications: 'Notifications',
+    summaryActive: 'Active orders',
+    summaryApprovals: 'Need approval',
+    summaryNotifications: 'New alerts',
     summaryEmpty: 'None',
-    activeCase: 'Active case',
+    activeCase: 'To do',
     activeEmptyTitle: 'No active request',
     activeEmptyBody: 'Start with Kael chat to create a real ticket for electrical, plumbing, or cleaning.',
     caseId: 'Case ID',
@@ -195,13 +195,13 @@ export function CustomerAgenticCenterSurface() {
     <SafeAreaView style={[styles.safe, { backgroundColor: tokens.canvas }]} testID="customer-agentic-center-screen">
       <ScrollView contentContainerStyle={[styles.scrollContent, { width: frameWidth }]} showsVerticalScrollIndicator={false}>
         <GlassSurface material="liquid" mode={tokens.mode} style={[styles.hero, centerGlassSurface(tokens)]} testID="customer-agentic-center-hero" variant="hero">
-          <View style={styles.heroCopy}>
+          <View style={[styles.kaelOrb, centerOrbSurface(tokens)]} testID="customer-agentic-center-hero-avatar">
+            <Image contentFit="contain" source={kaelHead} style={styles.kaelImage} />
+          </View>
+          <View style={styles.heroCopy} testID="customer-agentic-center-hero-copy">
             <Text style={[styles.kicker, { color: tokens.primary }]}>{NESTSCOUT_BRAND.appName}</Text>
             <Text style={[styles.title, { color: tokens.text }]}>{heroTitle}</Text>
             <Text style={[styles.subtitle, { color: tokens.muted }]}>{heroSubtitle}</Text>
-          </View>
-          <View style={[styles.kaelOrb, centerOrbSurface(tokens)]}>
-            <Image contentFit="contain" source={kaelHead} style={styles.kaelImage} />
           </View>
         </GlassSurface>
 

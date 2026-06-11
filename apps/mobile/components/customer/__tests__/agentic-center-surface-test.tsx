@@ -223,10 +223,16 @@ describe('CustomerAgenticCenterSurface', () => {
 
     render(<CustomerAgenticCenterSurface />)
 
+    expect(screen.getByTestId('customer-agentic-center-hero-avatar')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-hero-copy')).toHaveTextContent(/Hi, Tu Phan/)
     expect(screen.getByText('Hi, Tu Phan')).toBeTruthy()
     expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('1')
+    expect(screen.getByTestId('customer-agentic-center-summary-active')).toHaveTextContent(/Active orders/)
     expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('None')
+    expect(screen.getByTestId('customer-agentic-center-summary-approvals')).toHaveTextContent(/Need approval/)
     expect(screen.getByTestId('customer-agentic-center-summary-notifications-value')).toHaveTextContent('2')
+    expect(screen.getByTestId('customer-agentic-center-summary-notifications')).toHaveTextContent(/New alerts/)
+    expect(screen.getByText('To do')).toBeTruthy()
     expect(screen.queryByTestId('customer-agentic-center-approval-unread')).toBeNull()
   })
 
