@@ -144,6 +144,7 @@ const customerIntegerFormatters = {
   vi: new Intl.NumberFormat('vi-VN'),
 } as const
 const customerUsageRankProgressMax = 1000
+const customerUsageRankMax = 5
 const customerMoneyProtectionProgressMax = 100
 
 type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
@@ -592,6 +593,31 @@ const customerProfileRankingCopy = {
     servicePending: 'No service yet',
     subtitle: 'No sample score or inferred ranking is shown.',
     title: 'Usage Ranking',
+  },
+} as const
+
+const customerProfileRankingJourneyCopy = {
+  vi: {
+    currentLabel: 'H\u1ea1ng hi\u1ec7n t\u1ea1i',
+    currentPending: 'Ch\u1edd d\u1eef li\u1ec7u',
+    empty: 'H\u00e0nh tr\u00ecnh h\u1ea1ng m\u1edf khi c\u00f3 \u0111i\u1ec3m s\u1eed d\u1ee5ng th\u1eadt.',
+    maxRank: 'T\u1ed1i \u0111a',
+    nextLabel: 'H\u1ea1ng ti\u1ebfp theo',
+    pointsRemainingLabel: 'C\u00f2n l\u1ea1i',
+    pointsRemainingPending: 'Ch\u1edd \u0111i\u1ec3m',
+    subtitle: 'D\u1ef1a tr\u00ean h\u1ea1ng v\u00e0 \u0111i\u1ec3m s\u1eed d\u1ee5ng trong metadata.',
+    title: 'H\u00e0nh tr\u00ecnh h\u1ea1ng',
+  },
+  en: {
+    currentLabel: 'Current rank',
+    currentPending: 'Awaiting data',
+    empty: 'Rank journey opens when real usage points exist.',
+    maxRank: 'Max',
+    nextLabel: 'Next rank',
+    pointsRemainingLabel: 'Remaining',
+    pointsRemainingPending: 'Awaiting points',
+    subtitle: 'Based on rank and usage points from metadata.',
+    title: 'Rank journey',
   },
 } as const
 
@@ -2230,6 +2256,7 @@ export function CustomerProfileSurface() {
   const profileCareCopy = customerProfileCareCopy[languageMode]
   const profileOverviewCopy = customerProfileOverviewCopy[languageMode]
   const profileRankingCopy = customerProfileRankingCopy[languageMode]
+  const profileRankingJourneyCopy = customerProfileRankingJourneyCopy[languageMode]
   const profileMoneyCopy = customerProfileMoneyCopy[languageMode]
   const profileSectionCopy = customerProfileSectionCopy[languageMode]
   const profileCareStats = [
@@ -2291,6 +2318,34 @@ export function CustomerProfileSurface() {
       icon: 'payment' as const,
       label: profileRankingCopy.serviceLabel,
       value: fairPriceServiceCount ? `${fairPriceServiceCount}` : profileRankingCopy.servicePending,
+    },
+  ]
+  const nextUsageRankLevel = usageRankLevel && usageRankLevel < customerUsageRankMax ? usageRankLevel + 1 : null
+  const usageRankPointsRemaining = usageRankPoints ? Math.max(0, customerUsageRankProgressMax - usageRankPoints) : null
+  const profileRankingJourneyStats = [
+    {
+      available: Boolean(usageRankLevel),
+      icon: 'request' as const,
+      label: profileRankingJourneyCopy.currentLabel,
+      value: usageRankLevel ? profileRankingCopy.rankValue(usageRankLevel) : profileRankingJourneyCopy.currentPending,
+    },
+    {
+      available: Boolean(usageRankLevel),
+      icon: 'history' as const,
+      label: profileRankingJourneyCopy.nextLabel,
+      value: usageRankLevel
+        ? nextUsageRankLevel
+          ? profileRankingCopy.rankValue(nextUsageRankLevel)
+          : profileRankingJourneyCopy.maxRank
+        : profileRankingJourneyCopy.currentPending,
+    },
+    {
+      available: Boolean(usageRankPointsRemaining !== null),
+      icon: 'kael' as const,
+      label: profileRankingJourneyCopy.pointsRemainingLabel,
+      value: usageRankPointsRemaining !== null
+        ? `${formatCustomerInteger(usageRankPointsRemaining, languageMode)}`
+        : profileRankingJourneyCopy.pointsRemainingPending,
     },
   ]
   const profileRankingProgress = usageRankPoints
@@ -2377,6 +2432,9 @@ export function CustomerProfileSurface() {
           </ReduceMotionAwareEntranceView>
           <ReduceMotionAwareEntranceView delayMs={150} distanceY={8} style={styles.profileActions} testID="customer-profile-ranking-card-motion">
             <CustomerProfileInsightPanel copy={profileRankingCopy} progress={profileRankingProgress} stats={profileRankingStats} testID="customer-profile-ranking-card" />
+          </ReduceMotionAwareEntranceView>
+          <ReduceMotionAwareEntranceView delayMs={162} distanceY={8} style={styles.profileActions} testID="customer-profile-ranking-journey-card-motion">
+            <CustomerProfileInsightPanel copy={profileRankingJourneyCopy} stats={profileRankingJourneyStats} testID="customer-profile-ranking-journey-card" />
           </ReduceMotionAwareEntranceView>
           <ReduceMotionAwareEntranceView delayMs={175} distanceY={8} style={styles.profileActions} testID="customer-profile-money-protection-card-motion">
             <CustomerProfileInsightPanel copy={profileMoneyCopy} progress={profileMoneyProgress} stats={profileMoneyStats} testID="customer-profile-money-protection-card" />

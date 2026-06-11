@@ -153,6 +153,7 @@
   - Added customer usage ranking and money protection insight panels from real metadata only.
   - Aligned Customer Overview with a real metadata hero status/member line and a quick-information panel for service history, saved address, and preferred service count.
   - Added customer usage ranking and money protection progress tracks from real `usage_rank_points` and `money_protection_score` only.
+  - Aligned Customer Usage Ranking with a real rank journey panel from `usage_rank_level` and `usage_rank_points`, including current rank, next rank, and remaining points against the existing 1,000-point progress scale.
   - Kept missing profile metrics as honest waiting states.
   - Kept progress tracks hidden when the matching real metric is missing.
   - Added focused RNTL coverage for worker locked milestones and customer profile metrics.
@@ -194,6 +195,11 @@
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 18 tests after the Customer Overview metadata checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Customer Overview metadata checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Customer Overview metadata checkpoint: 17 suites, 192 tests.
+  - Red first: `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx -t "real profile metrics"` failed on missing `customer-profile-ranking-journey-card` before the Usage Ranking journey checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx -t "real profile metrics"` passed after the Usage Ranking journey checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 18 tests after the Usage Ranking journey checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Usage Ranking journey checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Usage Ranking journey checkpoint: 17 suites, 192 tests.
   - Red first: `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` failed on missing `customer-dock-kael-action-label` before the Kael Orb token/label change.
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests after the Kael Orb token/label checkpoint.
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job Acceptance service row.

@@ -194,6 +194,10 @@ describe('CustomerProfileSurface editable rows', () => {
     expect(screen.getByTestId('customer-profile-ranking-card-progress-value')).toHaveTextContent('620/1.000')
     const rankingProgressStyle = StyleSheet.flatten(screen.getByTestId('customer-profile-ranking-card-progress-fill').props.style) as Record<string, unknown>
     expect(rankingProgressStyle.width).toBe('62%')
+    expect(screen.getByTestId('customer-profile-ranking-journey-card')).toHaveTextContent(/H\u00e0nh tr\u00ecnh h\u1ea1ng/)
+    expect(screen.getByTestId('customer-profile-ranking-journey-card-value-0')).toHaveTextContent('Hạng 3')
+    expect(screen.getByTestId('customer-profile-ranking-journey-card-value-1')).toHaveTextContent('Hạng 4')
+    expect(screen.getByTestId('customer-profile-ranking-journey-card-value-2')).toHaveTextContent('380')
     expect(screen.getByTestId('customer-profile-money-protection-card-value-0')).toHaveTextContent('92/100')
     expect(screen.getByTestId('customer-profile-money-protection-card-value-1')).toHaveTextContent('2.150.000đ')
     expect(screen.getByTestId('customer-profile-money-protection-card-value-2')).toHaveTextContent('2')
