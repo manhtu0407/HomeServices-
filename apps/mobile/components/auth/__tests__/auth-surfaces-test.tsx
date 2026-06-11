@@ -70,6 +70,11 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-welcome-screen')).toBeOnTheScreen()
     expect(screen.getByText('Xin chào! Tôi là Kael')).toBeOnTheScreen()
     expect(screen.getByText('NestScout')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-welcome-service-electrical')).toHaveTextContent('Điện')
+    expect(screen.getByTestId('auth-welcome-service-plumbing')).toHaveTextContent('Nước')
+    expect(screen.getByTestId('auth-welcome-service-cleaning')).toHaveTextContent('Vệ sinh')
+    expect(screen.getByTestId('auth-welcome-step-dot-1')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-welcome-step-dot-4')).toBeOnTheScreen()
     expect(screen.queryByTestId('auth-entry-role-customer')).toBeNull()
   })
 

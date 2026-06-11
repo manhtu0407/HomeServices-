@@ -125,6 +125,9 @@ const authCopy = {
     welcomeSubtitle: 'Trợ lý của NestScout giúp bạn tìm đúng người, đúng việc, đúng lúc.',
     welcomeCta: 'Tiếp tục',
     welcomeTrust: 'Dịch vụ điện, nước và vệ sinh nhà',
+    welcomeServiceElectrical: 'Điện',
+    welcomeServicePlumbing: 'Nước',
+    welcomeServiceCleaning: 'Vệ sinh',
     customerLoginHeading: 'Đăng nhập khách',
     customerLoginSubtitle: 'Vào app nhanh để gửi yêu cầu và theo dõi điều phối',
     workerLoginHeading: 'Tài khoản thợ',
@@ -259,6 +262,9 @@ const authCopy = {
     welcomeSubtitle: 'NestScout assistant helps match the right home service at the right moment.',
     welcomeCta: 'Continue',
     welcomeTrust: 'Electrical, plumbing, and home cleaning',
+    welcomeServiceElectrical: 'Electrical',
+    welcomeServicePlumbing: 'Plumbing',
+    welcomeServiceCleaning: 'Cleaning',
     customerLoginHeading: 'Customer sign in',
     customerLoginSubtitle: 'Open the app quickly to send and track requests',
     workerLoginHeading: 'Worker account',
@@ -929,10 +935,24 @@ function AuthWelcomePanel({ copy, onContinue }: { copy: AuthCopy; onContinue: ()
         <Text style={styles.welcomeTitle}>{copy.welcomeTitle}</Text>
         <Text style={styles.welcomeSubtitle}>{copy.welcomeSubtitle}</Text>
         <Text style={styles.welcomeTrust}>{copy.welcomeTrust}</Text>
+        <View style={styles.welcomeServiceRow} testID="auth-welcome-service-row">
+          <Text style={styles.welcomeServiceChip} testID="auth-welcome-service-electrical">{copy.welcomeServiceElectrical}</Text>
+          <Text style={styles.welcomeServiceChip} testID="auth-welcome-service-plumbing">{copy.welcomeServicePlumbing}</Text>
+          <Text style={styles.welcomeServiceChip} testID="auth-welcome-service-cleaning">{copy.welcomeServiceCleaning}</Text>
+        </View>
       </View>
       <Pressable accessibilityLabel={copy.welcomeCta} accessibilityRole="button" onPress={onContinue} style={({ pressed }) => [styles.primaryButton, styles.welcomeButton, pressed ? styles.pressed : null]} testID="auth-welcome-continue">
         <Text style={styles.primaryButtonText}>{copy.welcomeCta}</Text>
       </Pressable>
+      <View accessibilityRole="progressbar" style={styles.welcomeStepDots} testID="auth-welcome-step-dots">
+        {[1, 2, 3, 4].map((step) => (
+          <View
+            key={step}
+            style={[styles.welcomeStepDot, step === 1 ? styles.welcomeStepDotActive : null]}
+            testID={`auth-welcome-step-dot-${step}`}
+          />
+        ))}
+      </View>
     </ReduceMotionAwareEntranceView>
   )
 }
@@ -1867,7 +1887,12 @@ const styles = StyleSheet.create({
   welcomeTitle: { color: authTokens.cookie, fontSize: 25, fontWeight: '900', letterSpacing: 0, lineHeight: 31, textAlign: 'center' },
   welcomeSubtitle: { color: authTokens.cookieSoft, fontSize: 14, fontWeight: '700', lineHeight: 20, maxWidth: 286, opacity: 0.84, textAlign: 'center' },
   welcomeTrust: { backgroundColor: authTokens.mint, borderColor: authTokens.border, borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 11, fontWeight: '900', lineHeight: 15, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 7, textAlign: 'center' },
+  welcomeServiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, justifyContent: 'center', paddingTop: 2 },
+  welcomeServiceChip: { backgroundColor: authTokens.raised, borderColor: authTokens.border, borderRadius: 999, borderWidth: 1, color: authTokens.cookieSoft, fontSize: 11, fontWeight: '800', lineHeight: 15, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
   welcomeButton: { alignSelf: 'stretch', marginTop: 6, zIndex: 1 },
+  welcomeStepDots: { alignItems: 'center', flexDirection: 'row', gap: 7, justifyContent: 'center', minHeight: 16, zIndex: 1 },
+  welcomeStepDot: { backgroundColor: authTokens.line, borderRadius: 999, height: 7, width: 7 },
+  welcomeStepDotActive: { backgroundColor: authTokens.primary, width: 18 },
   authFlowShell: { alignSelf: 'center', gap: 14, maxWidth: 350, width: '100%' },
   authTopRow: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
   authTitleBlock: { flex: 1, minWidth: 0 },
