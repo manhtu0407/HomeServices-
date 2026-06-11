@@ -755,10 +755,13 @@ const customerCopy = {
       jobAcceptanceCheckContact: 'Liên hệ thợ qua chat',
       jobAcceptanceDetails: 'Xem chi tiết',
       jobProgressTitle: 'Công việc đang chạy',
+      jobProgressStartedTitle: 'Thợ đã bắt đầu làm việc',
       jobProgressMeta: 'Theo phase thật',
       jobProgressBody: 'Tiến trình đi theo trạng thái đồng bộ và các cổng bằng chứng.',
       jobProgressPhase: 'Phase',
       jobProgressEvidence: 'Cổng bằng chứng',
+      jobProgressElapsed: 'Thời gian làm việc',
+      jobProgressTrackDone: 'Theo dõi hoàn tất',
       caseMatching: 'Ghép thợ',
       caseQuote: 'Biên giá',
       matchingScoreTitle: 'Điểm ghép thợ',
@@ -1002,10 +1005,13 @@ const customerCopy = {
       jobAcceptanceCheckContact: 'Contact worker in chat',
       jobAcceptanceDetails: 'View details',
       jobProgressTitle: 'Job in progress',
+      jobProgressStartedTitle: 'Worker started work',
       jobProgressMeta: 'From real phase',
       jobProgressBody: 'Progress follows synced status and evidence gates.',
       jobProgressPhase: 'Phase',
       jobProgressEvidence: 'Evidence gate',
+      jobProgressElapsed: 'Work time',
+      jobProgressTrackDone: 'Track completion',
       caseMatching: 'Matching',
       caseQuote: 'Price band',
       matchingScoreTitle: 'Matching score',
@@ -1806,7 +1812,7 @@ export function CustomerHistorySurface() {
           {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {deal && showRepairTab && customerCancelRequiresKaelPolicy(deal.status) ? <CustomerHistoryJobAcceptancePanel copy={copy} deal={deal} languageMode={languageMode} onOpenJobChat={() => selectHistoryTab('chat')} phaseContext={workflow.phaseContext} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
-          {deal && showRepairTab && customerJobInProgressStatus(deal.status) ? <CustomerHistoryJobProgressPanel copy={copy} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
+          {deal && showRepairTab && customerJobInProgressStatus(deal.status) ? <CustomerHistoryJobProgressPanel copy={copy} languageMode={languageMode} onOpenDone={() => selectHistoryTab('done')} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLiveAlertPanel copy={copy} deal={deal} languageMode={languageMode} notificationUnreadCount={notificationUnreadCount} notifications={notifications} onOpenJobChat={() => selectHistoryTab('chat')} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
           {!deal && showPriceTab ? <CustomerHistoryPriceEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
           {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} deal={deal} estimateLabel={estimateLabel} languageMode={languageMode} onOpenKael={continueOrCreate} originalEstimateLabel={originalEstimateLabel} scopeChange={showScopeChangeArtifact ? scopeChange : null} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
@@ -3844,11 +3850,13 @@ function CustomerHistoryJobAcceptancePanel({
 function CustomerHistoryJobProgressPanel({
   copy,
   languageMode,
+  onOpenDone,
   phaseContext,
   tokens,
 }: {
   copy: (typeof customerCopy)[AppLanguage]
   languageMode: AppLanguage
+  onOpenDone: () => void
   phaseContext: WorkflowPhaseContext
   tokens: CustomerThemeTokens
 }) {
@@ -3863,7 +3871,7 @@ function CustomerHistoryJobProgressPanel({
     <View style={[styles.historyCheckPanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-job-progress-panel">
       <View style={styles.sectionTitle}>
         <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-          {copy.history.jobProgressTitle}
+          {copy.history.jobProgressStartedTitle}
         </Text>
         <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
           {copy.history.jobProgressMeta}
@@ -3879,6 +3887,12 @@ function CustomerHistoryJobProgressPanel({
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.jobProgressEvidence} testID="customer-history-job-progress-evidence" value={evidenceLabel} variant="activity" />
         <V4TicketCell label={copy.history.jobAcceptanceChat} testID="customer-history-job-progress-chat" value={chatGateLabel} variant="activity" />
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.history.jobProgressElapsed} testID="customer-history-job-progress-elapsed" value={copy.history.locationNoSignal} variant="activity" />
+      </View>
+      <View style={styles.historyHeroActions}>
+        <PrimaryButton label={copy.history.jobProgressTrackDone} onPress={onOpenDone} compact testID="customer-history-job-progress-track-done" />
       </View>
     </View>
   )

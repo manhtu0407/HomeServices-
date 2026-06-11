@@ -81,6 +81,7 @@
   - Aligned Job Acceptance to the reference confirmed-order checklist with review details, prepare tools, contact via chat, and `Xem chi tiết` / `View details` into the existing job chat tab.
   - Added the Job in Progress checkpoint to Activity from workflow phase, next event, completion evidence artifact, and job chat gate.
   - Kept in-progress UI free of fake progress percentages, fake travel ETA, and worker performance stats.
+  - Aligned Job in Progress to customer-safe `Thợ đã bắt đầu làm việc` / `Worker started work`, pending real work-time signal, and `Theo dõi hoàn tất` / `Track completion` into the existing Done tab instead of exposing a fake timer or customer-side complete action.
   - Added a Case Command next-event row from `WorkflowPhaseContext.nextExpectedEvent`, so the overview card exposes the real workflow step without inventing ETA.
   - Added focused RNTL coverage for private address, released address, and no placeholder markers.
 - Continued Group D:

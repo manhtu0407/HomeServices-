@@ -386,11 +386,16 @@ describe('CustomerHistorySurface phase context', () => {
 
     const progressPanel = screen.getByTestId('customer-history-job-progress-panel')
     expect(progressPanel).toBeOnTheScreen()
+    expect(progressPanel).toHaveTextContent(/Thợ đã bắt đầu làm việc/)
     expect(screen.getByTestId('customer-history-job-progress-phase-value')).toHaveTextContent(/Đang xử lý/)
     expect(screen.getByTestId('customer-history-job-progress-next-value')).toHaveTextContent(/Thợ gửi hoàn tất/)
     expect(screen.getByTestId('customer-history-job-progress-evidence-value')).toHaveTextContent(/Bằng chứng hoàn tất/)
     expect(screen.getByTestId('customer-history-job-progress-chat-value')).toHaveTextContent(/Nhắn trong chat công việc/)
-    expect(progressPanel).not.toHaveTextContent(/75%|100%|15 phút|ETA 15|rating|4\.9/i)
+    expect(screen.getByTestId('customer-history-job-progress-elapsed-value')).toHaveTextContent(/Chờ tín hiệu thật/)
+    expect(screen.getByTestId('customer-history-job-progress-track-done')).toHaveTextContent(/Theo dõi hoàn tất/)
+    fireEvent.press(screen.getByTestId('customer-history-job-progress-track-done'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/(customer)/history?tab=done')
+    expect(progressPanel).not.toHaveTextContent(/75%|100%|15 phút|ETA 15|rating|4\.9|00:12:45|Hoàn thành/i)
   })
 
   it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {
