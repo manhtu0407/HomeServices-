@@ -115,7 +115,7 @@ export function CustomerAgenticCenterSurface() {
   const baseTokens = getCustomerThemeTokens(themeMode)
   const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(baseTokens) : baseTokens
   const { width } = useWindowDimensions()
-  const frameWidth = Math.min(width, 720)
+  const frameWidth = Math.min(width, component.agenticCenter.maxWidth)
   const deal = state.deal
   const workflow = useServiceWorkflow({
     status: selectors.currentBackendStatus,
@@ -409,7 +409,7 @@ function centerCardSurface(tokens: CustomerThemeTokens) {
   return {
     backgroundColor: tokens.raised,
     borderColor: tokens.border,
-    boxShadow: tokens.mode === 'dark' ? 'none' : '0 12px 26px rgba(8,95,87,0.07)',
+    boxShadow: tokens.mode === 'dark' ? 'none' : component.agenticCenter.cardShadow,
   } as any
 }
 
@@ -430,8 +430,8 @@ function centerInfoRowSurface(tokens: CustomerThemeTokens) {
 function centerPrimaryButtonSurface(tokens: CustomerThemeTokens) {
   return {
     backgroundColor: tokens.primary,
-    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.18)' : 'rgba(255,255,255,0.62)',
-    boxShadow: tokens.mode === 'dark' ? 'none' : '0 12px 22px rgba(13,174,154,0.22)',
+    borderColor: tokens.mode === 'dark' ? component.agenticCenter.primaryButtonBorderDark : component.agenticCenter.primaryButtonBorderLight,
+    boxShadow: tokens.mode === 'dark' ? 'none' : component.agenticCenter.primaryButtonShadow,
   } as any
 }
 
@@ -445,8 +445,8 @@ function centerOutlineSurface(tokens: CustomerThemeTokens) {
 function centerOrbSurface(tokens: CustomerThemeTokens) {
   return {
     backgroundColor: tokens.primary,
-    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.20)' : 'rgba(255,255,255,0.76)',
-    boxShadow: tokens.mode === 'dark' ? '0 16px 32px rgba(0,0,0,0.30)' : '0 16px 34px rgba(13,174,154,0.28)',
+    borderColor: tokens.mode === 'dark' ? component.agenticCenter.orbBorderDark : component.agenticCenter.orbBorderLight,
+    boxShadow: tokens.mode === 'dark' ? component.agenticCenter.orbShadowDark : component.agenticCenter.orbShadowLight,
   } as any
 }
 
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     alignSelf: 'center',
     gap: spacing.sectionGap,
-    paddingBottom: 34,
+    paddingBottom: component.agenticCenter.scrollPaddingBottom,
     paddingHorizontal: spacing.screenHorizontalPadding,
     paddingTop: spacing.screenVerticalPadding,
   },
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: spacing.lg,
-    minHeight: 184,
+    minHeight: component.agenticCenter.heroMinHeight,
     overflow: 'hidden',
     padding: spacing.cardPaddingLarge,
   },
@@ -505,8 +505,8 @@ const styles = StyleSheet.create({
     width: component.bottomNav.orb.outerSize,
   },
   kaelImage: {
-    height: 54,
-    width: 54,
+    height: component.agenticCenter.mascotImageSize,
+    width: component.agenticCenter.mascotImageSize,
   },
   actionRow: {
     flexDirection: 'row',
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     minHeight: component.button.primary.height,
-    minWidth: 126,
+    minWidth: component.agenticCenter.actionMinWidth,
     paddingHorizontal: component.button.primary.paddingX,
   },
   actionButtonText: {
@@ -628,8 +628,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     justifyContent: 'center',
-    minHeight: 36,
-    minWidth: 84,
+    minHeight: component.button.small.height,
+    minWidth: component.agenticCenter.approvalActionMinWidth,
     paddingHorizontal: spacing.md,
   },
   approvalButtonText: {
@@ -676,8 +676,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     justifyContent: 'center',
-    minHeight: 42,
-    minWidth: 116,
+    minHeight: component.agenticCenter.homeLinkMinHeight,
+    minWidth: component.agenticCenter.homeLinkMinWidth,
     paddingHorizontal: spacing.lg,
   },
   homeLinkText: {

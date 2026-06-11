@@ -238,6 +238,24 @@ export const component = {
     tabs: ['Trang chu', 'Lich su', 'Tin nhan', 'Ho so'] as const,
     orb: { bg: '#0DAE9A', label: 'Kael', size: 64, outerSize: 76, radius: 999, separated: true },
   },
+  agenticCenter: {
+    maxWidth: 720,
+    scrollPaddingBottom: 34,
+    heroMinHeight: 184,
+    mascotImageSize: 54,
+    actionMinWidth: 126,
+    homeLinkMinHeight: 42,
+    homeLinkMinWidth: 116,
+    approvalActionMinWidth: 84,
+    cardShadow: '0 12px 26px rgba(8,95,87,0.07)',
+    primaryButtonShadow: '0 12px 22px rgba(13,174,154,0.22)',
+    primaryButtonBorderDark: 'rgba(190,210,205,0.18)',
+    primaryButtonBorderLight: 'rgba(255,255,255,0.62)',
+    orbBorderDark: 'rgba(190,210,205,0.20)',
+    orbBorderLight: 'rgba(255,255,255,0.76)',
+    orbShadowDark: '0 16px 32px rgba(0,0,0,0.30)',
+    orbShadowLight: '0 16px 34px rgba(13,174,154,0.28)',
+  },
 } as const
 
 export const theme = { aura, color, component, glass, radius, shadow, spacing, typography } as const

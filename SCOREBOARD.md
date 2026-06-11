@@ -43,10 +43,10 @@ Legend:
 | D | 3.8 Evidence & Scope Change | Partial | Partial | TBD | Existing scope/evidence boxes preserved; checklist does not add direct price input | In progress |
 | D | 3.8 Job Summary | Partial | Partial | TBD | Submitted job summary reads completion note/media/status and waits for Kael price reconciliation; focused worker suite passed | In progress |
 | D | 3.9 Summary & Report | Partial | Partial | TBD | Worker report card is read-only from real completion evidence; no fake report generation or final price input | In progress |
-| E | 5.1 Customer Home / Commanding Home | Partial | Partial | TBD | Agentic Center summary row and Kael Orb route focused test passed | In progress |
-| E | 5.2 Active Case Command Center | Partial | Partial | TBD | Active-case summary values use real deal/approval/preference state plus `WorkflowPhaseContext` source/phase/artifact/next-event/action gate; focused test passed | In progress |
-| E | 5.3 Approval Queue | Partial | Partial | TBD | Approval count is real state length or honest empty state; review actions route to existing History flows, including scope-change deep links with the real scope id; focused test passed | In progress |
-| E | 5.4 Memory & Preferences | Partial | Partial | TBD | Memory count is real preference length or honest text empty state; rows read saved name, address, and contact phone from profile metadata aliases only; focused test passed | In progress |
+| E | 5.1 Customer Home / Commanding Home | Partial | 100% | TBD | Agentic Center summary row and Kael Orb route focused test passed; targeted Agentic Center surface token grep returned no raw style matches | In progress |
+| E | 5.2 Active Case Command Center | Partial | 100% | TBD | Active-case summary values use real deal/approval/preference state plus `WorkflowPhaseContext` source/phase/artifact/next-event/action gate; focused test passed; targeted surface token grep clean | In progress |
+| E | 5.3 Approval Queue | Partial | 100% | TBD | Approval count is real state length or honest empty state; review actions route to existing History flows, including scope-change deep links with the real scope id; focused test passed; targeted surface token grep clean | In progress |
+| E | 5.4 Memory & Preferences | Partial | 100% | TBD | Memory count is real preference length or honest text empty state; rows read saved name, address, and contact phone from profile metadata aliases only; focused test passed; targeted surface token grep clean | In progress |
 | F | Worker Overview | Partial | Partial | TBD | Worker profile route remains real-data only; locked milestone placeholder fixed | In progress |
 | F | Worker Level Journey | Partial | Partial | TBD | Locked milestone copy is localized and honest; no placeholder markers | In progress |
 | F | Worker Reputation & Performance | Partial | Partial | TBD | Existing reputation fields remain data-gated; no fake chart/radar added | In progress |
