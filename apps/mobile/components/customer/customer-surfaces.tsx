@@ -1933,7 +1933,7 @@ export function CustomerHistorySurface() {
             </View>
           </View> : null}
           {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} phaseContext={workflow.phaseContext} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
-          {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
+          {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {deal && showRepairTab && customerCancelRequiresKaelPolicy(deal.status) ? <CustomerHistoryJobAcceptancePanel copy={copy} deal={deal} languageMode={languageMode} onOpenJobChat={() => selectHistoryTab('chat')} phaseContext={workflow.phaseContext} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab && customerJobInProgressStatus(deal.status) ? <CustomerHistoryJobProgressPanel copy={copy} languageMode={languageMode} onOpenDone={() => selectHistoryTab('done')} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
@@ -3889,12 +3889,14 @@ function CustomerHistoryMatchingScorePanel({
   copy,
   deal,
   languageMode,
+  onOpenKael,
   tokens,
   workerStateLabel,
 }: {
   copy: (typeof customerCopy)[AppLanguage]
   deal: LocalDeal
   languageMode: AppLanguage
+  onOpenKael: () => void
   tokens: CustomerThemeTokens
   workerStateLabel: string
 }) {
@@ -3926,6 +3928,12 @@ function CustomerHistoryMatchingScorePanel({
           </Text>
         </View>
         <View style={styles.matchingScoreHeroCopy}>
+          <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]} testID="customer-history-matching-kael-cue">
+            <KaelMascot material="opaque" size={34} variant="head" />
+            <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
+              {copy.history.matchingFit}
+            </Text>
+          </View>
           <V4TicketCell label={copy.history.matchingWorkerSignal} testID="customer-history-matching-worker" value={workerStateLabel} variant="activity" />
         </View>
       </View>
@@ -3935,6 +3943,9 @@ function CustomerHistoryMatchingScorePanel({
         <V4TicketCell label={copy.ticket.issue} testID="customer-history-matching-problem" value={problemLabel} variant="activity" />
       </View>
       <V4TicketCell label={copy.history.matchingPrebrief} testID="customer-history-matching-prebrief" value={prebrief} variant="activity" />
+      <View style={styles.historyHeroActions}>
+        <PrimaryButton label={copy.history.chatHelperDetails} onPress={onOpenKael} compact testID="customer-history-matching-details" />
+      </View>
     </View>
   )
 }

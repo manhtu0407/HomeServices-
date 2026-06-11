@@ -260,13 +260,17 @@ describe('CustomerHistorySurface phase context', () => {
 
     const matchingPanel = screen.getByTestId('customer-history-matching-score-panel')
     expect(matchingPanel).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-matching-kael-cue')).toHaveTextContent(/Độ phù hợp/)
     expect(screen.getByTestId('customer-history-matching-confidence-value')).toHaveTextContent('84%')
     expect(matchingPanel).toHaveTextContent(/Độ phù hợp/)
     expect(screen.getByTestId('customer-history-matching-worker-value')).toHaveTextContent(/Đang chờ phản hồi/)
     expect(screen.getByTestId('customer-history-matching-evidence-value')).toHaveTextContent(/1 bằng chứng thật/)
     expect(screen.getByTestId('customer-history-matching-area-value')).toHaveTextContent(/Quận 1/)
     expect(screen.getByTestId('customer-history-matching-problem-value')).toHaveTextContent(/Ổ cắm chập chờn/)
-    expect(matchingPanel).not.toHaveTextContent(/★★★★★|4\.9|rating/i)
+    expect(screen.getByTestId('customer-history-matching-details')).toHaveTextContent(/Xem chi tiết/)
+    fireEvent.press(screen.getByTestId('customer-history-matching-details'))
+    expect(mockPush).toHaveBeenCalledWith('/(customer)/kael-chat?serviceType=electrical')
+    expect(matchingPanel).not.toHaveTextContent(/Trần Quốc An|300 đánh giá|★★★★★|4\.9|rating/i)
   })
 
   it('shows worker quote state from Kael price sources without fake offer stats', () => {
