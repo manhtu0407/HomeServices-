@@ -132,6 +132,7 @@
   - Added submitted job summary/report card from real completion notes, completion media, status, and Kael price gate.
   - Aligned Job Summary / Summary & Report to the Kael report checklist structure from real completion status, note, media, and price gate.
   - Added the report detail CTA to the existing worker Kael chat path while keeping report generation, final price input, and fake receipt data absent.
+  - Re-audited Job Summary / Summary & Report against the reference crop; current surface matched the available backend fields with no extra UI code required.
   - Added Worker Kael on-site advisory rail inside accepted JobRoom details for status, address release, scope/price gate, and evidence gate.
 - Continued Group E:
   - Added Agentic Center real summary cells for active case, approvals, and notifications.
@@ -382,6 +383,10 @@
   - Mobile Jest from `apps/mobile` passed after the Evidence & Scope Change reference checkpoint: 17 suites, 191 tests.
   - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "submitted job summary report"` failed on missing `worker-job-summary-report-checklist` before the Summary & Report checklist checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "submitted job summary report"` passed after the Summary & Report checklist checkpoint.
+  - Focused Worker summary report test passed after the Summary & Report audit checkpoint.
+  - Worker suite passed: 59 tests after the Summary & Report audit checkpoint.
+  - Mobile type-check passed after the Summary & Report audit checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Summary & Report audit checkpoint: 17 suites, 195 tests.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Summary & Report checklist checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Summary & Report checklist checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Summary & Report checklist checkpoint: 17 suites, 191 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
