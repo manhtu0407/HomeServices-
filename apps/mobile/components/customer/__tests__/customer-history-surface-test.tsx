@@ -305,9 +305,14 @@ describe('CustomerHistorySurface phase context', () => {
 
     expect(screen.getByTestId('customer-history-location-address-value')).toHaveTextContent('Tòa A, Quận 1')
     expect(screen.getByTestId('customer-history-location-address-gate-value')).toHaveTextContent(/Đã mở theo chính sách/)
-    expect(screen.getByTestId('customer-history-location-route-value')).toHaveTextContent(/Thợ đã nhận việc/)
+    expect(screen.getByTestId('customer-history-location-route-value')).toHaveTextContent(/Thợ đang di chuyển/)
     expect(screen.getByTestId('customer-history-location-eta-value')).toHaveTextContent(/Chờ tín hiệu di chuyển thật/)
-    expect(screen.getByTestId('customer-history-location-live-signal-value')).not.toHaveTextContent(/45/)
+    expect(screen.getByTestId('customer-history-location-eta-label')).toHaveTextContent(/Thời gian dự kiến/)
+    expect(screen.getByTestId('customer-history-location-live-signal-value')).toHaveTextContent(/Thợ đang di chuyển/)
+    expect(screen.getByTestId('customer-history-location-route-action')).toHaveTextContent(/Theo dõi hành trình/)
+    fireEvent.press(screen.getByTestId('customer-history-location-route-action'))
+    expect(mockPush).toHaveBeenCalledWith('/(customer)/kael-chat?serviceType=electrical')
+    expect(screen.getByTestId('customer-history-location-eta-panel')).not.toHaveTextContent(/16:52|30 phút|2\.3km|2,3km/)
   })
 
   it('shows live job alerts from real notifications and workflow next event', () => {

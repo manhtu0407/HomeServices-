@@ -719,7 +719,11 @@ const customerCopy = {
       locationLiveSignal: 'Tín hiệu hiện tại',
       locationSearchCountdown: (seconds: number) => `Tìm thợ còn ${seconds} giây`,
       locationWorkerAcceptedSignal: 'Thợ đã nhận việc',
+      locationWorkerOnWaySignal: 'Thợ đang di chuyển',
       locationNoSignal: 'Chờ tín hiệu thật',
+      locationEtaExpected: 'Thời gian dự kiến',
+      locationRoute: 'Hành trình',
+      locationTrackAction: 'Theo dõi hành trình',
       liveAlertTitle: 'Cảnh báo việc đang chạy',
       liveAlertMetaUnread: (count: number) => `${count} thông báo chưa đọc`,
       liveAlertMetaWorkflow: 'Theo workflow hiện tại',
@@ -951,7 +955,11 @@ const customerCopy = {
       locationLiveSignal: 'Current signal',
       locationSearchCountdown: (seconds: number) => `Worker search: ${seconds}s left`,
       locationWorkerAcceptedSignal: 'Worker accepted',
+      locationWorkerOnWaySignal: 'Worker on the way',
       locationNoSignal: 'Awaiting real signal',
+      locationEtaExpected: 'Expected time',
+      locationRoute: 'Route',
+      locationTrackAction: 'Track route',
       liveAlertTitle: 'Live job alert',
       liveAlertMetaUnread: (count: number) => `${count} unread notice${count === 1 ? '' : 's'}`,
       liveAlertMetaWorkflow: 'From current workflow',
@@ -1774,7 +1782,7 @@ export function CustomerHistorySurface() {
           </View> : null}
           {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
-          {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
+          {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {deal && showRepairTab && customerCancelRequiresKaelPolicy(deal.status) ? <CustomerHistoryJobAcceptancePanel copy={copy} deal={deal} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab && customerJobInProgressStatus(deal.status) ? <CustomerHistoryJobProgressPanel copy={copy} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLiveAlertPanel copy={copy} deal={deal} languageMode={languageMode} notificationUnreadCount={notificationUnreadCount} notifications={notifications} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
@@ -3653,12 +3661,14 @@ function CustomerHistoryLocationEtaPanel({
   copy,
   deal,
   languageMode,
+  onOpenKael,
   tokens,
   visibleStatusLabel,
 }: {
   copy: (typeof customerCopy)[AppLanguage]
   deal: LocalDeal
   languageMode: AppLanguage
+  onOpenKael: () => void
   tokens: CustomerThemeTokens
   visibleStatusLabel: string
 }) {
@@ -3670,12 +3680,15 @@ function CustomerHistoryLocationEtaPanel({
   const addressLabel = localizedCustomerAreaLabel(safeAddress, languageMode, copy.ticket.unknown)
   const addressGateLabel = releasedAddress ? copy.history.locationAddressReleased : copy.history.locationAddressHidden
   const hasWorkerAnchor = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker'].includes(deal.status)
+  const workerIsOnWay = deal.status === 'worker_on_way'
   const liveSignalLabel =
     deal.status === 'broadcasting' && typeof broadcast?.secondsRemaining === 'number' && broadcast.secondsRemaining > 0
       ? copy.history.locationSearchCountdown(broadcast.secondsRemaining)
-      : hasWorkerAnchor
-        ? copy.history.locationWorkerAcceptedSignal
-        : copy.history.locationNoSignal
+      : workerIsOnWay
+        ? copy.history.locationWorkerOnWaySignal
+        : hasWorkerAnchor
+          ? copy.history.locationWorkerAcceptedSignal
+          : copy.history.locationNoSignal
   const routeGateLabel = releasedAddress ? liveSignalLabel : addressGateLabel
 
   return (
@@ -3718,12 +3731,17 @@ function CustomerHistoryLocationEtaPanel({
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.caseLocation} testID="customer-history-location-address" value={addressLabel} variant="activity" />
         <V4TicketCell label={copy.history.locationAddressGate} testID="customer-history-location-address-gate" value={addressGateLabel} variant="activity" />
-        <V4TicketCell label={languageMode === 'en' ? 'Route' : 'Hành trình'} testID="customer-history-location-route" value={routeGateLabel} variant="activity" />
+        <V4TicketCell label={copy.history.locationRoute} testID="customer-history-location-route" value={routeGateLabel} variant="activity" />
       </View>
       <View style={styles.twoCol}>
-        <V4TicketCell label={copy.history.caseEta} testID="customer-history-location-eta" value={copy.history.caseEtaPending} variant="activity" />
+        <V4TicketCell label={copy.history.locationEtaExpected} testID="customer-history-location-eta" value={copy.history.caseEtaPending} variant="activity" />
         <V4TicketCell label={copy.history.locationLiveSignal} testID="customer-history-location-live-signal" value={liveSignalLabel} variant="activity" />
       </View>
+      {releasedAddress && hasWorkerAnchor ? (
+        <View style={styles.historyHeroActions}>
+          <PrimaryButton label={copy.history.locationTrackAction} onPress={onOpenKael} compact testID="customer-history-location-route-action" />
+        </View>
+      ) : null}
     </View>
   )
 }
