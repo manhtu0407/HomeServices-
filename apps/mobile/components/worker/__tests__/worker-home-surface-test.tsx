@@ -1398,6 +1398,18 @@ describe('WorkerJobsSurface', () => {
     expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
   })
 
+  it('uses the reference report CTA for completion evidence upload', () => {
+    mockAppLanguage = 'en'
+    mockPathname = '/(worker)/jobs'
+    mockRouteParams = { tab: 'needs' }
+    buildWorkflow({ canWorkerAdvance: true, deal: buildRepairingDeal() })
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-local-status-action')).toHaveTextContent('Send completion report')
+    expect(screen.queryByText('Mark complete')).toBeNull()
+  })
+
   it('previews selected completion evidence photos before upload', async () => {
     const imagePicker = jest.requireMock('expo-image-picker')
     imagePicker.launchImageLibraryAsync.mockResolvedValueOnce({

@@ -911,7 +911,7 @@ const workerActionCopy = {
       worker_mark_arrived: 'Đã đến nơi',
       worker_start_inspection: 'Bắt đầu kiểm tra',
       worker_start_repair: 'Bắt đầu sửa',
-      worker_complete_job: 'Báo hoàn tất',
+      worker_complete_job: 'Gửi báo cáo hoàn thành',
     },
     alerts: {
       completionNoteRequiredTitle: 'Cần ghi chú hoàn tất',
@@ -961,7 +961,7 @@ const workerActionCopy = {
       worker_mark_arrived: 'Mark arrived',
       worker_start_inspection: 'Start inspection',
       worker_start_repair: 'Start repair',
-      worker_complete_job: 'Mark complete',
+      worker_complete_job: 'Send completion report',
     },
     alerts: {
       completionNoteRequiredTitle: 'Completion note required',
