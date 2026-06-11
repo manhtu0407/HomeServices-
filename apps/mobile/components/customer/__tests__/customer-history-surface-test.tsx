@@ -374,6 +374,8 @@ describe('CustomerHistorySurface phase context', () => {
     expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-artifact-cell-label').props.style).fontWeight).toBe('700')
     expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-artifact-cell-value').props.style).fontWeight).toBe('600')
     expect(screen.getByTestId('customer-history-chat-tab-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-chat-helper-service-value')).toHaveTextContent(/Sửa điện/)
+    expect(screen.getByTestId('customer-history-chat-helper-action-value')).toHaveTextContent(/Chờ thợ nhận việc/)
     expect(screen.getByTestId('customer-history-chat-input').props.editable).toBe(false)
     expect(screen.getByTestId('customer-history-chat-locked-reason')).toHaveTextContent('Chat cần công việc thật')
     expect(mockUseJobChatThread).toHaveBeenCalledWith('job_test_1', false)

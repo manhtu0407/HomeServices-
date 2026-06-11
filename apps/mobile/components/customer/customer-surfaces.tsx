@@ -4458,6 +4458,10 @@ function CustomerHistoryChatPanel({
     ? workflowBlockedReasonLabel(chatSection.lockedReason, languageMode)
     : null
   const statusValue = visibleStatusLabel
+  const serviceValue = localizedServiceLabel(deal.draft.serviceType, languageMode)
+  const actionGateValue = phaseContext.blockedReason
+    ? workflowBlockedReasonLabel(phaseContext.blockedReason, languageMode)
+    : workflowAllowedActionsLabel(phaseContext.allowedActions, languageMode)
   const issueValue = localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel, deal.draft.serviceType, languageMode)
   const descriptionValue = deal.draft.description.trim() || copy.history.chatEmpty
   const kaelSummaryValue = localizedCustomerGeneratedText(deal.estimate?.advisory, languageMode, copy.history.chatEmpty)
@@ -4492,6 +4496,10 @@ function CustomerHistoryChatPanel({
         </Text>
       </View>
       <View style={styles.hiddenMarker} testID="customer-history-chat-empty-evidence" />
+      <View style={styles.twoCol} testID="customer-history-chat-helper-grid">
+        <V4TicketCell label={languageMode === 'en' ? 'Service' : 'Dịch vụ'} testID="customer-history-chat-helper-service" value={serviceValue} variant="activity" />
+        <V4TicketCell label={languageMode === 'en' ? 'Gate' : 'Cổng'} testID="customer-history-chat-helper-action" value={actionGateValue} variant="activity" />
+      </View>
       <View style={styles.historyChatFeed}>
         {renderedMessages.length > 0 ? renderedMessages.map((message) => (
           <View key={message.id} style={[styles.chatPreviewCard, message.mine ? styles.chatPreviewUserBubble : styles.chatPreviewKaelBubble, customerHistoryChatBubbleSurface(tokens, message.system ? 'kael' : message.mine ? 'user' : 'other')]} testID={message.system ? 'customer-history-chat-kael-message' : message.mine ? 'customer-history-chat-user-message' : 'customer-history-chat-worker-message'}>
