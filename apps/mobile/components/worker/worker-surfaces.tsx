@@ -465,6 +465,8 @@ const workerCopy = {
       needsEmptyBody: 'Phát sinh hoặc quyết định Kael sẽ hiện ở đây.',
       safetyTitle: 'An toàn & checklist',
       safetyMeta: 'Theo cổng thật',
+      safetyChecklistAction: 'Hoàn tất checklist',
+      safetyChecklistLocked: 'Checklist giữ nội bộ; trạng thái việc chỉ đổi qua bước hiện trường và bằng chứng.',
       safetyAddressTitle: 'Địa chỉ chi tiết',
       safetyAddressAreaOnly: 'Chỉ dùng khu vực chung',
       safetyAddressReleased: 'Đã mở sau khi nhận việc',
@@ -640,6 +642,8 @@ const workerCopy = {
       needsEmptyBody: 'Scope or Kael decision blockers appear here.',
       safetyTitle: 'Safety & Checklist',
       safetyMeta: 'From real gates',
+      safetyChecklistAction: 'Complete checklist',
+      safetyChecklistLocked: 'Checklist stays internal; job status changes only through field steps and evidence.',
       safetyAddressTitle: 'Detailed address',
       safetyAddressAreaOnly: 'Use general area only',
       safetyAddressReleased: 'Released after acceptance',
@@ -1210,6 +1214,7 @@ export function WorkerJobsSurface() {
               <WorkerSafetyChecklistCard
                 canSeeFullAddress={Boolean(fullJobAddressLabel)}
                 hasCompletionEvidence={hasLocalDealCompletionEvidence(deal)}
+                serviceType={deal?.draft.serviceType ?? deal?.broadcast?.serviceType ?? null}
                 status={selectors.currentStatus}
               />
               {hasNeedsAttention ? <WorkerNeedsReviewCard /> : <WorkerNeedsInlineEmptyCard />}
@@ -1352,13 +1357,15 @@ function WorkerPhaseContextCard({
 function WorkerSafetyChecklistCard({
   canSeeFullAddress,
   hasCompletionEvidence,
+  serviceType,
   status,
 }: {
   canSeeFullAddress: boolean
   hasCompletionEvidence: boolean
+  serviceType: ServiceType | null
   status: LocalDealStatus | null
 }) {
-  const { copy, tokens } = useWorkerUi()
+  const { copy, language, tokens } = useWorkerUi()
   const scopeValue = status === 'scope_change_pending'
     ? copy.jobs.safetyScopeReviewing
     : status === 'inspecting' || status === 'repairing'
@@ -1386,6 +1393,7 @@ function WorkerSafetyChecklistCard({
       value: completionValue,
     },
   ] as const
+  const checklistItems = workerSafetyChecklistItems(serviceType, language)
 
   return (
     <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-safety-checklist-card">
@@ -1406,8 +1414,46 @@ function WorkerSafetyChecklistCard({
           <JobRoomMetaCell key={row.id} label={row.label} testID={`worker-safety-checklist-${row.id}`} value={row.value} valueLines={3} />
         ))}
       </View>
+      <View style={[styles.jobDiagnosisBox, workerDiagnosisSurface(tokens)]} testID="worker-safety-reference-list">
+        {checklistItems.map((item, index) => (
+          <View key={item} style={styles.briefItem} testID={`worker-safety-reference-item-${index}`}>
+            <View style={[styles.briefDot, { backgroundColor: tokens.primary }]} />
+            <Text style={[styles.briefText, { color: tokens.muted }]} numberOfLines={2}>
+              {item}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2} testID="worker-safety-checklist-note">
+        {copy.jobs.safetyChecklistLocked}
+      </Text>
+      <View style={styles.actionRow}>
+        <PressButton disabled label={copy.jobs.safetyChecklistAction} onPress={() => undefined} secondary testID="worker-safety-checklist-complete-action" />
+      </View>
     </View>
   )
+}
+
+function workerSafetyChecklistItems(serviceType: ServiceType | null, language: WorkerLanguageMode) {
+  if (serviceType === 'plumbing') {
+    return language === 'en'
+      ? ['Shut off the water valve', 'Check for leaks', 'Use protective gear', 'Keep the floor dry', 'Confirm safety']
+      : ['Khóa van nước', 'Kiểm tra rò rỉ', 'Sử dụng đồ bảo hộ', 'Giữ sàn khô', 'Xác nhận an toàn']
+  }
+  if (serviceType === 'cleaning') {
+    return language === 'en'
+      ? ['Check surfaces first', 'Separate cleaning chemicals safely', 'Use protective gear', 'Ventilate the area', 'Confirm safety']
+      : ['Kiểm tra bề mặt trước', 'Tách hóa chất an toàn', 'Sử dụng đồ bảo hộ', 'Thông gió khu vực', 'Xác nhận an toàn']
+  }
+  if (serviceType === 'electrical') {
+    return language === 'en'
+      ? ['Cut power before work', 'Check hot spots and exposed wires', 'Use protective gear', 'Keep the work area dry', 'Confirm safety']
+      : ['Ngắt nguồn điện', 'Kiểm tra điểm nóng và dây hở', 'Sử dụng đồ bảo hộ', 'Giữ khu vực làm việc khô', 'Xác nhận an toàn']
+  }
+
+  return language === 'en'
+    ? ['Confirm the work area', 'Check visible risks', 'Use protective gear', 'Keep the path clear', 'Confirm safety']
+    : ['Xác nhận khu vực làm việc', 'Kiểm tra rủi ro thấy được', 'Sử dụng đồ bảo hộ', 'Giữ lối đi an toàn', 'Xác nhận an toàn']
 }
 
 function workerPhaseActionLabel(phaseContext: WorkflowPhaseContext, language: WorkerLanguageMode) {

@@ -1339,6 +1339,22 @@ describe('WorkerJobsSurface', () => {
     expect(screen.queryByText('--')).toBeNull()
   })
 
+  it('adds a service-derived safety checklist without advancing job status directly', () => {
+    mockPathname = '/(worker)/jobs'
+    mockRouteParams = { tab: 'active' }
+    buildWorkflow({ canWorkerAdvance: true, deal: buildRepairingDeal() })
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-safety-reference-list')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-safety-reference-item-0')).toHaveTextContent(/Ngắt nguồn điện/)
+    expect(screen.getByTestId('worker-safety-reference-item-2')).toHaveTextContent(/Sử dụng đồ bảo hộ/)
+    expect(screen.getByTestId('worker-safety-reference-item-4')).toHaveTextContent(/Xác nhận an toàn/)
+    fireEvent.press(screen.getByTestId('worker-safety-checklist-complete-action'))
+    expect(mockWorkflowValue.actions.workerUpdateStatus).not.toHaveBeenCalled()
+    expect(screen.getByTestId('worker-safety-checklist-complete-action').props.accessibilityState).toMatchObject({ disabled: true })
+  })
+
   it('routes completion from Active to Needs evidence without direct status update', () => {
     mockPathname = '/(worker)/jobs'
     mockRouteParams = { tab: 'active' }
