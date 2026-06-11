@@ -4509,9 +4509,20 @@ function WorkerProfileContent() {
     { icon: 'profileServiceArea', meta: workingAreaLabel, title: language === 'en' ? 'Working area' : 'Khu vực làm việc' },
   ]
   const profileStatusValue = localizedWorkerVerificationStatus(verificationStatus, language)
+  const approvedProfileValue = workerProfile
+    ? workerProfile.is_approved
+      ? language === 'en' ? 'Approved' : 'Đã duyệt'
+      : profileStatusValue
+    : appCopy[language].common.noData
   const submittedProfileValue = workerProfile && verificationStatus !== 'draft'
     ? (language === 'en' ? 'Submitted' : 'Đã gửi')
     : profileStatusValue
+  const profileMiniCards: { icon: WorkerImageIconName; id: 'approved' | 'skills' | 'submitted'; label: string; value: string }[] = [
+    { icon: 'profileVerified', id: 'approved', label: language === 'en' ? 'Approved' : 'Xác minh', value: approvedProfileValue },
+    { icon: 'profileIdentity', id: 'submitted', label: language === 'en' ? 'Worker profile' : 'Hồ sơ thợ', value: submittedProfileValue },
+    { icon: 'profileSkills', id: 'skills', label: language === 'en' ? 'Skills' : 'Kỹ năng', value: serviceSkillsLabel },
+  ]
+  const profileOverviewModel = buildWorkerProfileLevelModel(workerProfile, language)
   const profileSyncLabel = language === 'en' ? 'Synced from verification' : 'Đồng bộ từ xác thực'
   const profileSyncMeta = workerProfile
     ? localizedWorkerVerificationStatus(workerProfile.verification_status, language)
@@ -4552,25 +4563,43 @@ function WorkerProfileContent() {
       {canSubmitVerification && showVerificationForm ? <WorkerVerificationForm /> : null}
 
       <View style={styles.profileMiniGrid} testID="worker-profile-mini-status-grid">
-        <View style={[styles.profileMiniCard, workerProfileMiniSurface(tokens)]}>
-          <WorkerProfileMaterialChrome testID="worker-profile-mini-crisp-shell" variant="mini" />
-          <WorkerImageIcon frameSize={48} name="profileVerified" size={48} style={styles.profileMiniImage} />
-          <Text style={[styles.profileMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
-            {profileStatusValue}
+        {profileMiniCards.map((card) => (
+          <View key={card.id} style={[styles.profileMiniCard, workerProfileMiniSurface(tokens)]} testID={`worker-profile-mini-card-${card.id}`}>
+            <WorkerProfileMaterialChrome testID="worker-profile-mini-crisp-shell" variant="mini" />
+            <WorkerImageIcon frameSize={48} name={card.icon} size={48} style={styles.profileMiniImage} />
+            <Text adjustsFontSizeToFit minimumFontScale={0.74} style={[styles.profileMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
+              {card.value}
+            </Text>
+            <Text adjustsFontSizeToFit minimumFontScale={0.82} style={[styles.profileMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
+              {card.label}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={[styles.profileSyncPreview, workerProfilePanelSurface(tokens)]} testID="worker-profile-overview-card">
+        <WorkerProfileMaterialChrome testID="worker-profile-overview-crisp-shell" variant="panel" />
+        <View style={styles.profileSyncPreviewTop}>
+          <Text style={[styles.cardTitle, { color: tokens.ink, flex: 1 }]} numberOfLines={1}>
+            {language === 'en' ? 'Quick overview' : 'Tổng quan nhanh'}
           </Text>
-          <Text style={[styles.profileMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
-            {language === 'en' ? 'Verification' : 'Xác minh'}
+          <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
+            {language === 'en' ? 'Live profile' : 'Hồ sơ thật'}
           </Text>
         </View>
-        <View style={[styles.profileMiniCard, workerProfileMiniSurface(tokens)]}>
-          <WorkerProfileMaterialChrome testID="worker-profile-mini-crisp-shell" variant="mini" />
-          <WorkerImageIcon frameSize={48} name="profileIdentity" size={48} style={styles.profileMiniImage} />
-          <Text style={[styles.profileMiniTitle, { color: tokens.ink }]} numberOfLines={1}>
-            {submittedProfileValue}
-          </Text>
-          <Text style={[styles.profileMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
-            {language === 'en' ? 'Worker profile' : 'Hồ sơ thợ'}
-          </Text>
+        <View style={styles.profileLevelSignalGrid}>
+          {profileOverviewModel.signals.map((signal) => (
+            <View key={signal.id} style={[styles.profileLevelSignal, workerProfileLevelSignalSurface(tokens)]} testID={`worker-profile-overview-stat-${signal.id}`}>
+              <View pointerEvents="none" style={[styles.profileLevelSignalGlass, workerProfileLevelSignalGlass(tokens)]} testID="worker-profile-overview-signal-glass-layer" />
+              <View pointerEvents="none" style={[styles.profileLevelSignalTopEdge, workerProfileLevelSignalTopEdge(tokens)]} />
+              <Text style={[styles.profileLevelSignalLabel, { color: tokens.muted }]} numberOfLines={1}>
+                {signal.label}
+              </Text>
+              <Text style={[styles.profileLevelSignalValue, { color: tokens.ink }]} numberOfLines={1}>
+                {signal.value}
+              </Text>
+            </View>
+          ))}
         </View>
       </View>
 
