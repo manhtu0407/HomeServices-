@@ -171,6 +171,7 @@ describe('BookingWizard Kael autonomy', () => {
     })
     expect(screen.getByTestId('booking-wizard-photo-preview-0')).toBeOnTheScreen()
     expect(screen.getByText('burnt-outlet.jpg')).toBeOnTheScreen()
+    expect(screen.getByTestId('booking-wizard-submit-describe')).toHaveTextContent(/Gửi đến đội Kael giúp bạn/)
 
     fireEvent.changeText(
       screen.getByPlaceholderText(/Ví dụ:/),

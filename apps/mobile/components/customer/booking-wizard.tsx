@@ -203,6 +203,7 @@ const copyMap = {
     next: 'Tiếp tục',
     back: 'Quay lại',
     submitDescribe: 'Tiếp tục',
+    submitMediaDescribe: 'Gửi đến đội Kael giúp bạn',
     analyzingStep: 'Chuyển sang Kael',
     analyzingTitle: 'Đang mở Kael chat…',
     analyzingBody: 'Thông tin này được chuyển sang chat để Kael phân tích hoặc hỏi thêm, không bắt bạn nhập lại.',
@@ -278,6 +279,7 @@ const copyMap = {
     next: 'Continue',
     back: 'Back',
     submitDescribe: 'Continue',
+    submitMediaDescribe: 'Send to Kael team',
     analyzingStep: 'Opening Kael',
     analyzingTitle: 'Opening Kael chat…',
     analyzingBody: 'Kael receives this intake directly, then analyzes it or asks for missing details.',
@@ -1187,6 +1189,7 @@ function DescribeStep({
   state: WizardState
 }) {
   const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
+  const submitLabel = state.photoDrafts.length > 0 ? copy.submitMediaDescribe : copy.submitDescribe
   return (
     <WizardCard testID="booking-wizard-step-describe">
       <View pointerEvents="none" style={styles.hiddenMarker} testID="booking-wizard-apple-ios26-component-system" />
@@ -1289,7 +1292,7 @@ function DescribeStep({
           <WizardText kind="error">{state.error}</WizardText>
         </View>
       ) : null}
-      <WizardPrimaryButton disabled={state.isSubmitting} label={copy.submitDescribe} onPress={onSubmit} testID="booking-wizard-submit-describe" />
+      <WizardPrimaryButton disabled={state.isSubmitting} label={submitLabel} onPress={onSubmit} testID="booking-wizard-submit-describe" />
     </WizardCard>
   )
 }
