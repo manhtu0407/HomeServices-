@@ -684,6 +684,13 @@ const customerCopy = {
       matchingWorkerSignal: 'Tín hiệu thợ',
       matchingPrebrief: 'Tóm tắt Kael',
       matchingNoWorkerProfile: 'Chưa có hồ sơ thợ thật',
+      workerQuoteTitle: 'Phiếu giá công việc',
+      workerQuoteMeta: 'Kael giữ quyền giá cuối',
+      workerQuoteBody: 'Kael đối soát biên giá hiện tại trước khi xác nhận giá cuối.',
+      workerQuoteBroadcast: 'Giá gửi thợ',
+      workerQuoteKael: 'Ước tính Kael',
+      workerQuoteScope: 'Phạm vi mới',
+      workerQuoteScopePending: 'Chưa có đổi phạm vi',
       cancelTitle: 'Hủy yêu cầu?',
       cancelSearching: 'Yêu cầu tìm thợ sẽ dừng và địa chỉ chi tiết vẫn bị ẩn khỏi thợ.',
       cancelActive: 'Kael sẽ xử lý yêu cầu hủy theo chính sách, ghi dấu vết kiểm tra và báo cho thợ nếu việc đã được nhận.',
@@ -865,6 +872,13 @@ const customerCopy = {
       matchingWorkerSignal: 'Worker signal',
       matchingPrebrief: 'Kael brief',
       matchingNoWorkerProfile: 'No real worker profile yet',
+      workerQuoteTitle: 'Job quote sheet',
+      workerQuoteMeta: 'Kael owns final price',
+      workerQuoteBody: 'Kael reconciles the current price band before confirming the final price.',
+      workerQuoteBroadcast: 'Worker-facing price',
+      workerQuoteKael: 'Kael estimate',
+      workerQuoteScope: 'New scope',
+      workerQuoteScopePending: 'No scope change',
       cancelTitle: 'Cancel request?',
       cancelSearching: 'The worker search will stop and the detailed address stays hidden.',
       cancelActive: 'Kael will process this cancellation by policy, record the audit trail, and notify the worker if the job was accepted.',
@@ -4004,6 +4018,9 @@ function CustomerHistoryPricePanel({
   const finalPriceLabel = deal.finalPrice && deal.finalPrice > 0
     ? formatVnd(deal.finalPrice)
     : copy.history.waitingWorkerPrice
+  const broadcastQuoteLabel = deal.broadcast?.estimatedPriceLabel?.trim() || deal.estimate?.priceRangeLabel || copy.history.waitingWorkerPrice
+  const kaelQuoteLabel = deal.estimate?.priceRangeLabel || deal.broadcast?.estimatedPriceLabel || copy.history.waitingWorkerPrice
+  const scopeQuoteLabel = scopeChange ? scopePrice : copy.history.workerQuoteScopePending
   const problemFallback = localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel, deal.draft.serviceType, languageMode)
   const problemLabel = localizedCustomerGeneratedText(deal.estimate?.problemLabel, languageMode, problemFallback)
   const urgencyLabel = localizedCustomerComplexityLabel(deal.estimate?.complexity, languageMode, copy.history.kaelReviewing)
@@ -4047,6 +4064,30 @@ function CustomerHistoryPricePanel({
             </Text>
           </View>
         ))}
+      </View>
+      <View style={[styles.workerQuotePanel, customerHistoryPriceBoxSurface(tokens)]} testID="customer-history-price-worker-quote-panel">
+        <View style={styles.workerQuoteHeader}>
+          <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]}>
+            <MappedIcon name="estimate" color={tokens.primary} accent={tokens.copper} size={23} />
+            <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
+              {copy.history.workerQuoteTitle}
+            </Text>
+          </View>
+          <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={1}>
+            {copy.history.workerQuoteMeta}
+          </Text>
+        </View>
+        <Text style={[styles.historyDisclaimerText, { color: tokens.text }]} numberOfLines={2}>
+          {copy.history.workerQuoteBody}
+        </Text>
+        <View style={styles.twoCol}>
+          <V4TicketCell label={copy.history.workerQuoteBroadcast} testID="customer-history-worker-quote-broadcast" value={broadcastQuoteLabel} variant="activity" />
+          <V4TicketCell label={copy.history.workerQuoteKael} testID="customer-history-worker-quote-kael" value={kaelQuoteLabel} variant="activity" />
+        </View>
+        <View style={styles.twoCol}>
+          <V4TicketCell label={copy.history.workerQuoteScope} testID="customer-history-worker-quote-scope" value={scopeQuoteLabel} variant="activity" />
+          <V4TicketCell label={copy.ticket.finalPrice} testID="customer-history-worker-quote-final" value={finalPriceLabel} variant="activity" />
+        </View>
       </View>
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.filters[1]} value={originalEstimateLabel} variant="activity" />
@@ -6885,6 +6926,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0,
     lineHeight: 32,
+  },
+  workerQuoteHeader: {
+    alignItems: 'flex-start',
+    gap: 5,
+  },
+  workerQuotePanel: {
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: 10,
+    minHeight: 188,
+    overflow: 'hidden',
+    paddingHorizontal: 13,
+    paddingVertical: 12,
   },
   historyThreadCard: {
     borderRadius: 26,

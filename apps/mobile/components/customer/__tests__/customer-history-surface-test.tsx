@@ -256,6 +256,23 @@ describe('CustomerHistorySurface phase context', () => {
     expect(matchingPanel).not.toHaveTextContent(/★★★★★|4\.9|rating/i)
   })
 
+  it('shows worker quote state from Kael price sources without fake offer stats', () => {
+    mockRouteParams = { tab: 'price' }
+    const deal = buildDeal('scope_change_pending')
+    deal.scopeChange = buildScopeChange()
+    buildWorkflow(deal)
+
+    render(<CustomerHistorySurface />)
+
+    const quotePanel = screen.getByTestId('customer-history-price-worker-quote-panel')
+    expect(quotePanel).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-worker-quote-broadcast-value')).toHaveTextContent('180.000đ - 260.000đ')
+    expect(screen.getByTestId('customer-history-worker-quote-kael-value')).toHaveTextContent('180.000đ - 260.000đ')
+    expect(screen.getByTestId('customer-history-worker-quote-scope-value')).toHaveTextContent('260.000đ - 320.000đ')
+    expect(screen.getByTestId('customer-history-worker-quote-final-value')).toHaveTextContent(/Chờ Kael chốt/)
+    expect(quotePanel).not.toHaveTextContent(/★★★★★|4\.9|rating|0 offer|3 thợ|Thợ A/i)
+  })
+
   it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {
     render(<CustomerHistorySurface />)
 
