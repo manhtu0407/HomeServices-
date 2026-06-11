@@ -377,8 +377,10 @@ function getPreferenceRows(metadata: Record<string, unknown>, language: AppLangu
   const rows: Array<{ label: string; value: string }> = []
   const name = readMetadataString(metadata, 'nickname', 'preferred_name', 'full_name', 'name')
   const address = readMetadataString(metadata, 'default_address', 'address_label', 'address')
+  const phone = readMetadataString(metadata, 'phone_number', 'phone', 'contact_phone')
   if (name) rows.push({ label: text.displayName, value: localizedProfileValue(name, language) })
   if (address) rows.push({ label: text.address, value: localizedProfileValue(address, language) })
+  if (phone) rows.push({ label: language === 'en' ? 'Contact phone' : 'Số liên hệ', value: phone })
   return rows
 }
 

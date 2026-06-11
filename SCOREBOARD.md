@@ -46,7 +46,7 @@ Legend:
 | E | 5.1 Customer Home / Commanding Home | Partial | Partial | TBD | Agentic Center summary row and Kael Orb route focused test passed | In progress |
 | E | 5.2 Active Case Command Center | Partial | Partial | TBD | Active-case summary values use real deal/approval/preference state plus `WorkflowPhaseContext` source/phase/artifact/next-event/action gate; focused test passed | In progress |
 | E | 5.3 Approval Queue | Partial | Partial | TBD | Approval count is real state length or honest empty state; review actions route to existing History flows, including scope-change deep links with the real scope id; focused test passed | In progress |
-| E | 5.4 Memory & Preferences | Partial | Partial | TBD | Memory count is real preference length or honest text empty state; focused test passed | In progress |
+| E | 5.4 Memory & Preferences | Partial | Partial | TBD | Memory count is real preference length or honest text empty state; rows read saved name, address, and contact phone from profile metadata aliases only; focused test passed | In progress |
 | F | Worker Overview | Partial | Partial | TBD | Worker profile route remains real-data only; locked milestone placeholder fixed | In progress |
 | F | Worker Level Journey | Partial | Partial | TBD | Locked milestone copy is localized and honest; no placeholder markers | In progress |
 | F | Worker Reputation & Performance | Partial | Partial | TBD | Existing reputation fields remain data-gated; no fake chart/radar added | In progress |

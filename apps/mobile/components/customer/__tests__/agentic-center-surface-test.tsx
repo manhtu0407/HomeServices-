@@ -220,4 +220,19 @@ describe('CustomerAgenticCenterSurface', () => {
 
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/history?tab=price&scope_change=scope_test_1')
   })
+
+  it('renders saved contact phone in memory from real profile metadata', () => {
+    mockSessionMetadata = {
+      default_address: 'District 7, Sunrise City',
+      full_name: 'Tu Phan',
+      phone_number: '0901234567',
+    }
+    buildWorkflow(null)
+
+    render(<CustomerAgenticCenterSurface />)
+
+    expect(screen.getByText('Contact phone')).toBeTruthy()
+    expect(screen.getByText('0901234567')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-summary-memory-value')).toHaveTextContent('3')
+  })
 })
