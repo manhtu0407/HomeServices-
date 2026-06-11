@@ -350,6 +350,8 @@ describe('CustomerHistorySurface phase context', () => {
 
     const alertPanel = screen.getByTestId('customer-history-live-alert-panel')
     expect(alertPanel).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-live-alert-summary-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-live-alert-worker-signal')).toHaveTextContent(/Thợ đang xử lý/)
     expect(alertPanel).toHaveTextContent(/Kael cần bạn xem đổi phạm vi/)
     expect(alertPanel).toHaveTextContent(/Có thay đổi phạm vi cần xem trong yêu cầu thật/)
     expect(screen.getByTestId('customer-history-live-alert-source-value')).toHaveTextContent(/Thông báo thật/)

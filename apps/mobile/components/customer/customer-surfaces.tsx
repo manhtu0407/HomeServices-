@@ -4219,6 +4219,11 @@ function CustomerHistoryLiveAlertPanel({
   const priceLabel = deal.broadcast?.estimatedPriceLabel?.trim() || deal.estimate?.priceRangeLabel || copy.history.waitingWorkerPrice
   const distanceLabel = copy.history.locationNoSignal
   const canOpenJobChat = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker'].includes(deal.status)
+  const workerSignalLabel = deal.status === 'worker_on_way'
+    ? copy.history.locationWorkerOnWaySignal
+    : canOpenJobChat
+      ? copy.history.workerActive
+      : copy.history.workerWaiting
 
   return (
     <View style={[styles.historyCheckPanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-live-alert-panel">
@@ -4230,7 +4235,13 @@ function CustomerHistoryLiveAlertPanel({
           {liveNotification ? unreadLabel : copy.history.liveAlertMetaWorkflow}
         </Text>
       </View>
-      <View style={[styles.bookingDiagnosisPanel, customerBookingDiagnosisSurface(tokens)]}>
+      <View style={[styles.bookingDiagnosisPanel, customerBookingDiagnosisSurface(tokens)]} testID="customer-history-live-alert-summary-card">
+        <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]} testID="customer-history-live-alert-worker-signal">
+          <MappedIcon name={canOpenJobChat ? 'check' : 'estimate'} color={tokens.primary} accent={tokens.copper} size={24} />
+          <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
+            {workerSignalLabel}
+          </Text>
+        </View>
         <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]}>
           <MappedIcon name="kael" color={tokens.primary} accent={tokens.copper} size={24} />
           <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
