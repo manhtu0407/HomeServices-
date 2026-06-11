@@ -1770,14 +1770,27 @@ describe('WorkerProfileSurface', () => {
 
   it('aligns the customer rating panel without fabricating tips or review details', () => {
     mockPathname = '/(worker)/profile'
-    buildWorkflow({ workerProfile: buildWorkerProfile({ is_available: true, rating: 4.9, total_jobs: 24 }) })
+    buildWorkflow({
+      workerEarnings: {
+        ...buildNoEarnings(),
+        from_date: '2026-06-01',
+        net_earnings: 1285000,
+        to_date: '2026-06-07',
+        total_jobs_paid: 6,
+      },
+      workerProfile: buildWorkerProfile({ is_available: true, rating: 4.9, total_jobs: 24 }),
+    })
 
     render(<WorkerProfileSurface />)
 
     const ratingCard = screen.getByTestId('worker-profile-reputation-card')
+    expect(ratingCard).toHaveTextContent(/Hi\u1ec7u su\u1ea5t d\u1ecbch v\u1ee5/)
     expect(ratingCard).toHaveTextContent(/Đánh giá của khách hàng/)
     expect(screen.getByTestId('worker-profile-rating-stars')).toHaveTextContent(/★★★★★/)
     expect(screen.getByTestId('worker-profile-rating-summary')).toHaveTextContent(/4\.9\/5/)
+    expect(screen.getByTestId('worker-profile-reputation-earnings')).toHaveTextContent(/1\.285\.000|1,285,000/)
+    expect(screen.getByTestId('worker-profile-reputation-earnings')).toHaveTextContent(/2026-06-01 - 2026-06-07/)
+    expect(screen.getByTestId('worker-profile-reputation-kael-suggestion')).toHaveTextContent(/Kael/)
     expect(screen.getByTestId('worker-profile-reputation-tips')).toHaveTextContent(/Chưa có/)
     expect(screen.getByTestId('worker-profile-reputation-review-action').props.accessibilityState).toMatchObject({ disabled: true })
     expect(ratingCard).not.toHaveTextContent(/350\.000|350,000/)

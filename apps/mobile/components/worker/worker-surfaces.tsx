@@ -3893,7 +3893,13 @@ const WorkerProfileLevelChip = memo(function WorkerProfileLevelChip({
   )
 })
 
-function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: WorkerProfileResponse | null }) {
+function WorkerProfileReputationPanel({
+  workerEarnings,
+  workerProfile,
+}: {
+  workerEarnings: EarningsResponse | null
+  workerProfile: WorkerProfileResponse | null
+}) {
   const { language, tokens } = useWorkerUi()
   const completedJobs = Math.max(0, workerProfile?.total_jobs ?? 0)
   const rawRating = Number(workerProfile?.rating ?? 0)
@@ -3901,9 +3907,32 @@ function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: Worker
   const hasRating = hasJobs && Number.isFinite(rawRating) && rawRating > 0
   const rating = hasRating ? Math.min(5, Math.max(1, rawRating)) : 0
   const emptyValue = language === 'en' ? 'Not yet' : 'Ch\u01b0a c\u00f3'
-  const title = language === 'en' ? 'Customer rating' : '\u0110\u00e1nh gi\u00e1 c\u1ee7a kh\u00e1ch h\u00e0ng'
+  const title = language === 'en' ? 'Service performance' : 'Hi\u1ec7u su\u1ea5t d\u1ecbch v\u1ee5'
+  const ratingTitle = language === 'en' ? 'Customer rating' : '\u0110\u00e1nh gi\u00e1 c\u1ee7a kh\u00e1ch h\u00e0ng'
   const ratingSummary = hasRating ? `${rating.toFixed(1)}/5` : emptyValue
   const starSummary = hasRating ? workerProfileRatingStars(rating) : emptyValue
+  const hasSettledEarnings = hasWorkerSettledEarnings(workerEarnings)
+  const earningsValue = hasSettledEarnings && workerEarnings ? formatWorkerMoney(workerEarnings.net_earnings, language) : emptyValue
+  const earningsPeriod = formatWorkerEarningsPeriod(workerEarnings) ?? (language === 'en' ? 'Waiting for real reconciliation data' : 'Ch\u1edd d\u1eef li\u1ec7u \u0111\u1ed1i so\u00e1t th\u1eadt')
+  const kaelSuggestion = !workerProfile
+    ? language === 'en'
+      ? 'Submit the worker profile so Kael can open performance guidance.'
+      : 'Ho\u00e0n t\u1ea5t h\u1ed3 s\u01a1 th\u1ee3 \u0111\u1ec3 Kael m\u1edf g\u1ee3i \u00fd hi\u1ec7u su\u1ea5t.'
+    : workerProfile.is_suspended
+      ? language === 'en'
+        ? 'Resolve verification before receiving more jobs.'
+        : 'X\u1eed l\u00fd x\u00e1c minh tr\u01b0\u1edbc khi nh\u1eadn th\u00eam vi\u1ec7c.'
+      : hasRating && workerProfile.is_available
+        ? language === 'en'
+          ? 'Keep availability on while your area and skills are showing real positive signals.'
+          : 'Ti\u1ebfp t\u1ee5c b\u1eadt nh\u1eadn vi\u1ec7c khi khu v\u1ef1c v\u00e0 k\u1ef9 n\u0103ng \u0111ang c\u00f3 t\u00edn hi\u1ec7u t\u1ed1t.'
+        : hasJobs
+          ? language === 'en'
+            ? 'More completed jobs and verified feedback will strengthen the recommendation signal.'
+            : 'Th\u00eam vi\u1ec7c ho\u00e0n t\u1ea5t v\u00e0 ph\u1ea3n h\u1ed3i x\u00e1c th\u1ef1c s\u1ebd t\u0103ng t\u00edn hi\u1ec7u \u0111\u1ec1 xu\u1ea5t.'
+          : language === 'en'
+            ? 'Finish the first real job to open performance analysis.'
+            : 'Ho\u00e0n t\u1ea5t vi\u1ec7c th\u1eadt \u0111\u1ea7u ti\u00ean \u0111\u1ec3 m\u1edf ph\u00e2n t\u00edch hi\u1ec7u su\u1ea5t.'
   const detailNote = hasRating
     ? language === 'en'
       ? 'Review details and tips open only when the system has real data.'
@@ -3953,6 +3982,9 @@ function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: Worker
           {language === 'en' ? 'Real data' : 'D\u1eef li\u1ec7u th\u1eadt'}
         </Text>
       </View>
+      <Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>
+        {ratingTitle}
+      </Text>
       <View style={styles.profileSyncPreviewTop} testID="worker-profile-rating-summary-row">
         <Text style={[styles.cardTitle, { color: hasRating ? tokens.copper : tokens.muted, flex: 1 }]} numberOfLines={1} testID="worker-profile-rating-stars">
           {starSummary}
@@ -3974,6 +4006,35 @@ function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: Worker
             </Text>
           </View>
         ))}
+      </View>
+      <View style={[styles.profileLevelDetail, workerProfileLevelMilestoneSurface(tokens, hasSettledEarnings ? 'reached' : 'open')]} testID="worker-profile-reputation-earnings">
+        <View style={[styles.profileLevelMilestoneBadge, workerProfileLevelMilestoneBadgeSurface(tokens, hasSettledEarnings ? 'reached' : 'open')]}>
+          <WorkerImageIcon frameSize={42} name="utilityEarningsWallet" size={42} />
+        </View>
+        <View style={styles.profileLevelMilestoneCopy}>
+          <Text style={[styles.profileLevelMilestoneTitle, { color: tokens.ink }]} numberOfLines={1}>
+            {language === 'en' ? 'Reconciled earnings' : 'Thu nh\u1eadp \u0111\u1ed1i so\u00e1t'}
+          </Text>
+          <Text style={[styles.profileLevelMilestoneText, { color: tokens.primary }]} numberOfLines={1}>
+            {earningsValue}
+          </Text>
+          <Text style={[styles.profileLevelMilestoneText, { color: tokens.muted }]} numberOfLines={1}>
+            {earningsPeriod}
+          </Text>
+        </View>
+      </View>
+      <View style={[styles.profileLevelDetail, workerProfileLevelMilestoneSurface(tokens, hasReputationData ? 'next' : 'open')]} testID="worker-profile-reputation-kael-suggestion">
+        <View style={[styles.profileLevelMilestoneBadge, workerProfileLevelMilestoneBadgeSurface(tokens, hasReputationData ? 'next' : 'open')]}>
+          <WorkerImageIcon frameSize={42} name="utilityShield" size={42} />
+        </View>
+        <View style={styles.profileLevelMilestoneCopy}>
+          <Text style={[styles.profileLevelMilestoneTitle, { color: tokens.ink }]} numberOfLines={1}>
+            {language === 'en' ? 'Kael suggestion' : 'Kael g\u1ee3i \u00fd cho b\u1ea1n'}
+          </Text>
+          <Text style={[styles.profileLevelMilestoneText, { color: tokens.muted }]} numberOfLines={3}>
+            {kaelSuggestion}
+          </Text>
+        </View>
       </View>
       <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2} testID="worker-profile-rating-detail-note">
         {detailNote}
@@ -4507,7 +4568,7 @@ function WorkerProfileContent() {
   const { copy, language, tokens } = useWorkerUi()
   const { replace } = useRouter()
   const { role, signOut } = useAuth()
-  const { workerProfile } = useFrontendWorkflow()
+  const { workerEarnings, workerProfile } = useFrontendWorkflow()
   const [showVerificationForm, setShowVerificationForm] = useState(false)
   const workerSignOutLabel = language === 'en' ? 'Sign out' : 'Đăng xuất'
   const adminAuditSwitchLabel = language === 'en' ? 'Back to login' : 'Về đăng nhập'
@@ -4621,7 +4682,7 @@ function WorkerProfileContent() {
       </View>
 
       <WorkerProfileLevelCard workerProfile={workerProfile} />
-      <WorkerProfileReputationPanel workerProfile={workerProfile} />
+      <WorkerProfileReputationPanel workerEarnings={workerEarnings} workerProfile={workerProfile} />
 
       {showProfileSyncPreview ? (
         <View style={[styles.profileSyncPreview, workerProfilePanelSurface(tokens)]} testID="worker-profile-sync-preview">

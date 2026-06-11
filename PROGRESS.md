@@ -147,7 +147,9 @@
   - Aligned Worker Level Journey with a current-level label and real progress copy from the profile-derived level model.
   - Kept zero-progress worker levels as waiting copy instead of showing `0 / 15` as a fake-looking metric.
   - Added Worker Reputation & Performance panel from real `rating`, `total_jobs`, availability, and suspension state only.
+  - Aligned Worker Reputation & Performance to the reference service-performance structure with customer rating as a subsection, reconciled earnings from real `workerEarnings`, and a Kael suggestion derived from real profile signals.
   - Kept worker reputation rating/jobs as honest waiting states when no completed-job feedback exists.
+  - Kept profile performance free of fake chart/radar/badge/tip values when the mobile API has no real fields for those details.
   - Added customer usage ranking and money protection insight panels from real metadata only.
   - Added customer usage ranking and money protection progress tracks from real `usage_rank_points` and `money_protection_score` only.
   - Kept missing profile metrics as honest waiting states.
@@ -200,6 +202,11 @@
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Worker Level Journey progress-copy checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Worker Level Journey progress-copy checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Worker Level Journey progress-copy checkpoint: 17 suites, 191 tests.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx -t "customer rating panel"` failed on missing `Hiệu suất dịch vụ` before the Worker Reputation & Performance service-performance checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx -t "customer rating panel"` passed after the Worker Reputation & Performance service-performance checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Worker Reputation & Performance service-performance checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Reputation & Performance service-performance checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker Reputation & Performance service-performance checkpoint: 17 suites, 191 tests.
   - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "greets the worker"` failed before the Worker Home real-profile greeting/online-copy checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "greets the worker"` passed after the Worker Home real-profile greeting/online-copy checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 52 tests after the Worker Home real-profile greeting/online-copy checkpoint.
