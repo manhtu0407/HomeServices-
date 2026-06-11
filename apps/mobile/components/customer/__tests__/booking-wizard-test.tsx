@@ -129,6 +129,27 @@ describe('BookingWizard Kael autonomy', () => {
     expect(screen.queryByTestId('booking-wizard-step-service')).toBeNull()
   })
 
+  it('shows an honest search/filter brief from the real intake fields', () => {
+    mockRouteParams = { serviceType: 'plumbing' }
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={jest.fn()} />)
+
+    expect(screen.getByTestId('booking-wizard-filter-brief')).toBeOnTheScreen()
+    expect(screen.getByTestId('booking-wizard-filter-service')).not.toHaveTextContent(/Chưa có/)
+    expect(screen.getByTestId('booking-wizard-filter-area')).toHaveTextContent(/Chưa có/)
+    expect(screen.getByTestId('booking-wizard-filter-issue')).toHaveTextContent(/Chưa có/)
+    expect(screen.getByTestId('booking-wizard-filter-time')).toHaveTextContent(/Ngay/)
+    expect(screen.getByTestId('booking-wizard-filter-payment')).toHaveTextContent(/Kael/)
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Vòi nước rỉ liên tục trong bếp',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+
+    expect(screen.getByTestId('booking-wizard-filter-area')).not.toHaveTextContent(/Chưa có/)
+    expect(screen.getByTestId('booking-wizard-filter-issue')).toHaveTextContent(/mô tả/)
+  })
+
   it('keeps activity action out of the pre-analysis handoff path', () => {
     const onOpenHistory = jest.fn()
     const onOpenKael = jest.fn()

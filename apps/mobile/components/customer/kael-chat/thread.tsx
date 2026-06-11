@@ -40,6 +40,16 @@ type KaelChatThreadText = Parameters<typeof KaelProcessCard>[0]['text'] & {
     vision: string
   }
   history: string
+  livePerformanceEvidence: string
+  livePerformanceEstimateReady: string
+  livePerformanceMeta: string
+  livePerformanceNoEvidence: string
+  livePerformancePendingStage: string
+  livePerformancePhotoCount: (count: number) => string
+  livePerformanceService: string
+  livePerformanceStage: string
+  livePerformanceTitle: string
+  livePerformanceWaitingStage: string
   loading: string
   retryIntake: string
   retryOrchestration: string
@@ -165,6 +175,19 @@ export function KaelChatThread({
       <View style={styles.hiddenMarker} testID="customer-kael-chat-service-picker" />
       <View style={styles.turnList} testID="customer-kael-chat-history">
         {lifecyclePanel === 'starter' ? <KaelChatStarter dispatch={dispatch} language={language} selectedService={selectedService} text={text} tokens={tokens} /> : null}
+        <KaelLivePerformancePanel
+          estimate={estimate}
+          language={language}
+          pendingIntake={pendingIntake}
+          progress={progress}
+          progressTrace={liveProgressTrace}
+          selectedService={selectedService}
+          session={session}
+          text={text}
+          tokens={tokens}
+          turns={turns}
+          addressDistrict={addressDistrict}
+        />
         {turns.map((turn) => <ChatTurn key={turn.id} language={language} reduceMotion={reduceMotion} reveal={turn.id === latestKaelTurnId && turn.role !== 'customer'} text={text} turn={turn} />)}
         {lifecyclePanel === 'loading' ? (
           <View style={[styles.stateCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-kael-chat-loading">
@@ -255,6 +278,105 @@ export function KaelChatThread({
         ) : null}
       </View>
     </ScrollView>
+  )
+}
+
+function KaelLivePerformancePanel({
+  addressDistrict,
+  estimate,
+  language,
+  pendingIntake,
+  progress,
+  progressTrace,
+  selectedService,
+  session,
+  text,
+  tokens,
+  turns,
+}: {
+  addressDistrict: string | null
+  estimate: NonNullable<KaelChatResponse['session']['estimate']> | null
+  language: AppLanguage
+  pendingIntake: KaelChatState['pendingIntake']
+  progress: KaelChatProgress | null
+  progressTrace: KaelChatProgress[]
+  selectedService: ServiceType | null
+  session: KaelChatResponse | null
+  text: KaelChatThreadText
+  tokens: ReturnType<typeof useKaelChatTokens>
+  turns: KaelChatTurn[]
+}) {
+  const service = session?.session.service_type ?? pendingIntake?.serviceType ?? selectedService
+  const pendingPhotos = pendingIntake?.photoDrafts ?? []
+  const pendingEvidenceCount = Math.max(pendingIntake?.mediaCount ?? 0, pendingPhotos.length)
+  const turnEvidenceCount = turns.reduce((sum, turn) => sum + turn.media_refs.length, 0)
+  const evidenceCount = pendingEvidenceCount + turnEvidenceCount
+  const latestProgress = progressTrace.at(-1) ?? progress
+  const stageLabel = resolveKaelProgressLabel(latestProgress ?? null, addressDistrict, language, text)
+    ?? (estimate ? text.livePerformanceEstimateReady : pendingIntake ? text.livePerformancePendingStage : text.livePerformanceWaitingStage)
+  const shouldShow = Boolean(pendingIntake || session || progress || progressTrace.length > 0 || estimate || turns.length > 0 || evidenceCount > 0)
+
+  if (!shouldShow) return null
+
+  return (
+    <View style={[styles.livePerformancePanel, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'agent')]} testID="customer-kael-live-performance-panel">
+      <View style={styles.livePerformanceHeader}>
+        <View style={[styles.agentAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'avatar')]}>
+          <Image source={kaelModel8AHead} style={styles.agentAvatarImage} />
+        </View>
+        <View style={styles.livePerformanceTitleBlock}>
+          <Text style={[styles.sectionTitle, { color: tokens.text }]} numberOfLines={1}>
+            {text.livePerformanceTitle}
+          </Text>
+          <Text style={[styles.livePerformanceMeta, { color: tokens.muted }]} numberOfLines={2}>
+            {text.livePerformanceMeta}
+          </Text>
+        </View>
+      </View>
+      {pendingPhotos.length > 0 ? (
+        <View style={styles.livePerformanceMediaRail} testID="customer-kael-live-performance-media-rail">
+          {pendingPhotos.slice(0, 3).map((photo, index) => (
+            <View key={`${photo.uri}-${index}`} style={[styles.livePerformancePhotoTile, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+              <Image accessibilityLabel={`kael-evidence-${index + 1}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.livePerformancePhoto} />
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={[styles.livePerformanceEmptyMedia, { color: tokens.muted }]} testID="customer-kael-live-performance-media-empty">
+          {text.livePerformanceNoEvidence}
+        </Text>
+      )}
+      <View style={styles.briefGrid}>
+        <LivePerformanceCell label={text.livePerformanceService} testID="customer-kael-live-performance-service" tokens={tokens} value={service ? localizedServiceLabel(service, language) : text.briefServicePending} />
+        <LivePerformanceCell label={text.livePerformanceEvidence} testID="customer-kael-live-performance-evidence" tokens={tokens} value={evidenceCount > 0 ? text.livePerformancePhotoCount(evidenceCount) : text.livePerformanceNoEvidence} />
+        <LivePerformanceCell label={text.livePerformanceStage} testID="customer-kael-live-performance-stage" tokens={tokens} value={stageLabel} wide />
+      </View>
+    </View>
+  )
+}
+
+function LivePerformanceCell({
+  label,
+  testID,
+  tokens,
+  value,
+  wide,
+}: {
+  label: string
+  testID: string
+  tokens: ReturnType<typeof useKaelChatTokens>
+  value: string
+  wide?: boolean
+}) {
+  return (
+    <View style={[styles.briefField, wide ? styles.briefFieldWide : null, { backgroundColor: tokens.raised, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'trace')]} testID={testID}>
+      <Text style={[styles.briefFieldLabel, { color: tokens.muted }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[styles.briefFieldValue, { color: tokens.text }]} numberOfLines={2}>
+        {value}
+      </Text>
+    </View>
   )
 }
 

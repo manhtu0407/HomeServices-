@@ -130,6 +130,16 @@ const copyMap = {
     servicePreviewDescription: 'Mô tả',
     servicePreviewArea: 'Khu vực',
     servicePreviewChat: 'Kael chat',
+    filterTitle: 'Tìm dịch vụ',
+    filterMeta: 'Phiếu lọc trước khi Kael phân tích',
+    filterArea: 'Khu vực',
+    filterService: 'Dịch vụ',
+    filterIssue: 'Vấn đề',
+    filterTime: 'Thời gian',
+    filterPayment: 'Thanh toán',
+    filterIssueFromDescription: 'Lấy từ mô tả thật',
+    filterTimeNow: 'Ngay bây giờ',
+    filterPaymentLocked: 'Khóa đến khi Kael tạo yêu cầu',
     flowSteps: [
       ['Chọn dịch vụ', 'Điện · Nước · Vệ sinh'],
       ['Mô tả', 'Vấn đề · Ảnh · Khu vực'],
@@ -181,6 +191,16 @@ const copyMap = {
     servicePreviewDescription: 'Description',
     servicePreviewArea: 'Area',
     servicePreviewChat: 'Kael chat',
+    filterTitle: 'Find a service',
+    filterMeta: 'Filter ticket before Kael analysis',
+    filterArea: 'Area',
+    filterService: 'Service',
+    filterIssue: 'Issue',
+    filterTime: 'Time',
+    filterPayment: 'Payment',
+    filterIssueFromDescription: 'From the real description',
+    filterTimeNow: 'Now',
+    filterPaymentLocked: 'Locked until Kael creates the request',
     flowSteps: [
       ['Choose service', 'Electrical · Plumbing · Cleaning'],
       ['Describe', 'Issue · Photos · Area'],
@@ -1098,6 +1118,7 @@ function DescribeStep({
         </View>
         <WizardBackButton label={copy.back} onPress={onBack} testID="booking-wizard-describe-back" />
       </View>
+      <BookingFilterBrief copy={copy} state={state} />
       <View style={styles.formGroup}>
         <WizardText kind="label">{copy.describeStep}</WizardText>
         <View style={[styles.fieldShell, bookingInputShellSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-description-field-shell">
@@ -1175,6 +1196,33 @@ function DescribeStep({
       ) : null}
       <WizardPrimaryButton disabled={state.isSubmitting} label={copy.submitDescribe} onPress={onSubmit} testID="booking-wizard-submit-describe" />
     </WizardCard>
+  )
+}
+
+function BookingFilterBrief({ copy, state }: { copy: WizardCopy; state: WizardState }) {
+  const { mode, reduceTransparency, visual } = useBookingWizardVisual()
+  const serviceValue = state.serviceType ? copy.services[state.serviceType] : copy.pendingValue
+  const issueValue = state.description.trim().length > 0 ? copy.filterIssueFromDescription : copy.pendingValue
+  const areaValue = state.districtLabel || state.addressLabel.trim() || copy.pendingValue
+
+  return (
+    <View style={[styles.filterBrief, bookingEstimateShellSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-filter-brief">
+      <View style={styles.previewHeader}>
+        <Text style={[styles.previewTitle, { color: visual.text }]} numberOfLines={1}>
+          {copy.filterTitle}
+        </Text>
+        <Text style={[styles.previewMeta, { color: visual.primary }]} numberOfLines={1}>
+          {copy.filterMeta}
+        </Text>
+      </View>
+      <View style={[styles.filterGrid, bookingEstimateGridSurface(visual, mode, reduceTransparency)]}>
+        <EstimateField label={copy.filterArea} testID="booking-wizard-filter-area" tone="water" value={areaValue} />
+        <EstimateField label={copy.filterService} testID="booking-wizard-filter-service" value={serviceValue} />
+        <EstimateField label={copy.filterIssue} testID="booking-wizard-filter-issue" value={issueValue} />
+        <EstimateField label={copy.filterTime} testID="booking-wizard-filter-time" tone="warm" value={copy.filterTimeNow} />
+        <EstimateField label={copy.filterPayment} testID="booking-wizard-filter-payment" tone="warm" value={copy.filterPaymentLocked} wide />
+      </View>
+    </View>
   )
 }
 
@@ -1402,6 +1450,22 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   estimateValue: { color: '#1F2937', fontSize: 15, fontWeight: '700', lineHeight: 19 },
+  filterBrief: {
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 12,
+    overflow: 'hidden',
+    padding: 14,
+  },
+  filterGrid: {
+    borderCurve: 'continuous',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'column',
+    gap: 10,
+    overflow: 'hidden',
+    padding: 12,
+  },
   flowOverview: {
     borderCurve: 'continuous',
     borderRadius: 24,

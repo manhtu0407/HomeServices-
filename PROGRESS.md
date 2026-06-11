@@ -65,6 +65,9 @@
   - Completed the Customer Home shortcut grid with all four real actions.
   - Added active request status and Kael estimate cells to the Customer Home active-card path.
   - Kept Home free of fake counters, unsupported service categories, and mock queue/rating data.
+  - Added a read-only Search & Filter brief to the Booking describe step from real intake fields: area, selected service, issue source, now-only time, and payment locked until Kael creates the request.
+  - Added a Customer Kael Live Performance panel that reads real session service, pending/media evidence count, and polled progress trace.
+  - Kept Booking and Kael chat on the existing pending-intake, media picker, server service wrapper, and progress polling paths; no remote job creation, confirm-search action, direct provider call, fake schedule slot, or fake payment option was added.
 - Verification for this checkpoint:
   - `pnpm --filter @home-services/mobile type-check` passed.
   - `tsc --noEmit` from `apps/mobile` passed when portable `pnpm.CMD` was unavailable.
@@ -72,28 +75,32 @@
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/ui/__tests__/kael-primitives-test.tsx` passed: 9 tests.
   - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
   - `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx` passed: 5 tests.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx` passed: 6 tests after the Search & Filter brief.
+  - `jest --runInBand components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 27 tests after the Live Performance panel; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 33 tests.
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests.
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 16 tests.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 47 tests.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
-  - Mobile Jest from `apps/mobile` passed: 17 suites, 148 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the latest Group B search/chat checkpoint: 17 suites, 156 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome, Group B Customer Home plus booking media/voice, Group C activity case overview, Group D worker safety/earnings/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, React Doctor, and the latest full mobile Jest gate pass.
+Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, Group D worker safety/earnings/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
 
 ## Next
 
-1. Re-run broad mobile Jest/type-check after the latest Customer Home and Worker batches.
-2. Continue Customer Kael live chat and Booking search/filter audit if broad gates stay green.
+1. Re-run broad mobile Jest/type-check after the latest Group B search/chat checkpoint.
+2. Continue Group C/F visual rebuild passes if broad gates stay green.
 3. Keep committing only verified checkpoint files, leaving prototype trash unstaged.
 
 ## Open Risks
 
 - Pre-existing dirty worktree includes auth/prototype/asset changes. Do not overwrite them.
 - Portable `pnpm.CMD` disappeared from the temp Node folder during this session; use direct `apps/mobile/node_modules/.bin` commands until it is restored.
+- React Doctor cannot currently run because the available script depends on missing `pnpm`/`npx` and no direct `react-doctor` binary exists in `apps/mobile/node_modules/.bin`.
 - Official mascot state assets are missing; use existing Kael model assets unless the zip or repo provides better final exports.
 - No local native recording was found in the repo during Phase 0.
 - Maestro/Detox visual regression is not set up, so native UI validation must be manual/device-based plus RNTL/static gates.

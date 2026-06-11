@@ -216,6 +216,16 @@ const threadText = {
     vision: 'Analyzing photos',
   },
   history: 'Open activity',
+  livePerformanceEvidence: 'Evidence',
+  livePerformanceEstimateReady: 'Estimate is ready',
+  livePerformanceMeta: 'Real session details',
+  livePerformanceNoEvidence: 'No real photo yet',
+  livePerformancePendingStage: 'Sending ticket to Kael',
+  livePerformancePhotoCount: (count: number) => `${count} photo${count === 1 ? '' : 's'}`,
+  livePerformanceService: 'Service',
+  livePerformanceStage: 'Kael stage',
+  livePerformanceTitle: 'Kael is processing',
+  livePerformanceWaitingStage: 'Waiting for real details',
   loading: 'Loading',
   retryIntake: 'Retry intake',
   retryOrchestration: 'Retry orchestration',
@@ -962,6 +972,86 @@ describe('Kael agentic phase cards', () => {
     expect(screen.getByTestId('customer-kael-chat-progress-step-market_lookup')).toHaveTextContent('Checking market rates in District 7')
     expect(screen.getByTestId('customer-kael-chat-progress-step-dot-market_lookup-running')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-kael-chat-progress-step-price_synthesis')).toBeNull()
+  })
+
+  it('summarizes the live performance panel from real service, evidence, and progress data', () => {
+    render(
+      <KaelChatThread
+        addressDistrict="District 7"
+        dispatch={jest.fn()}
+        error={null}
+        estimate={null}
+        historyTarget="/(customer)/history"
+        language="en"
+        loading={false}
+        onOpenHistory={jest.fn()}
+        onRetryPendingIntake={jest.fn()}
+        onStartOrchestration={jest.fn()}
+        orchestrating={false}
+        orchestrationMessage={null}
+        pendingIntake={{
+          addressLabel: 'District 7',
+          clientRequestId: 'client_request_1',
+          createdAt: '2026-06-04T00:00:00.000Z',
+          districtLabel: 'District 7',
+          locale: 'en',
+          mediaCount: 2,
+          message: 'Outlet sparks near the kitchen',
+          photoDrafts: [
+            { uri: 'file://photo-1.jpg', type: 'image' },
+            { uri: 'file://photo-2.jpg', type: 'image' },
+          ],
+          problemChips: [],
+          serviceType: 'electrical',
+          source: 'booking',
+        }}
+        progress={{
+          current_stage: 'vision_analysis',
+          failure_reason: null,
+          progress: 0.42,
+          status: 'running',
+          updated_at: '2026-06-04T00:00:01.000Z',
+        }}
+        progressTrace={[
+          {
+            current_stage: 'intent_classification',
+            failure_reason: null,
+            progress: 0.2,
+            status: 'completed',
+            updated_at: '2026-06-04T00:00:00.000Z',
+          },
+          {
+            current_stage: 'vision_analysis',
+            failure_reason: null,
+            progress: 0.42,
+            status: 'running',
+            updated_at: '2026-06-04T00:00:01.000Z',
+          },
+        ]}
+        reduceMotion
+        selectedService="electrical"
+        sending
+        session={null}
+        text={threadText}
+        tokens={threadTokens}
+        turns={[]}
+        visibility={{
+          canStartOrchestration: false,
+          showBrief: false,
+          showEstimate: false,
+          showProcess: false,
+          showStarter: false,
+          showTrace: false,
+        }}
+        workflow={buildWorkflowViewModel({ status: null })}
+      />,
+    )
+
+    expect(screen.getByTestId('customer-kael-live-performance-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-kael-live-performance-service')).toHaveTextContent(/Electrical repair/)
+    expect(screen.getByTestId('customer-kael-live-performance-evidence')).toHaveTextContent(/2 photos/)
+    expect(screen.getByTestId('customer-kael-live-performance-stage')).toHaveTextContent(/Analyzing photos/)
+    expect(screen.queryByTestId('customer-kael-live-performance-media-empty')).toBeNull()
   })
 
   it('collapses completed thinking into a measured disclosure and re-expands the trace', () => {

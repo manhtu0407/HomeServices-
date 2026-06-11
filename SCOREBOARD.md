@@ -22,9 +22,9 @@ Legend:
 | A | 1.4 Register with Email | Partial | Partial | TBD | Worker create UI remains honest unavailable state; no auth sign-up API exposed in provider | In progress |
 | A | 1.5 Onboarding | Partial | Partial | TBD | Existing customer profile setup remains wired to `updateCustomerProfile`; native screenshot pending | In progress |
 | B | 2.1 Home | Partial | Partial | TBD | Customer Home focused test passed: 4 real shortcuts, 3 supported services, active status/estimate from real deal data | In progress |
-| B | 2.2 Search & Filter / Book | Partial | Partial | TBD | Booking wizard remains wired to real service/problem/address handoff | In progress |
+| B | 2.2 Search & Filter / Book | Partial | Partial | TBD | Booking wizard Search & Filter brief reads real area/service/issue fields, shows now-only schedule and locked payment honestly; focused booking test passed | In progress |
 | B | 2.3 Media / Voice Note | Partial | Partial | TBD | Focused booking test verifies photo rail + honest voice capsule | In progress |
-| B | 2.4 Kael Live Performance Chat | Partial | Partial | TBD | Existing Kael chat uses server service wrappers and honest mic unavailable path; native screenshot pending | In progress |
+| B | 2.4 Kael Live Performance Chat | Partial | Partial | TBD | Live Performance panel reads real service, pending/media evidence count, and polled Kael progress trace while preserving server service wrappers; focused Kael chat test passed | In progress |
 | C | 2.5 Case Overview | Partial | Partial | TBD | Customer Activity command overview reads real deal, status, quote, and address-release state; focused history test passed | In progress |
 | C | 2.6 Matching & AI Score | Partial | Partial | TBD | Matching/status surfaces use existing workflow labels; no fake worker rating/count added | In progress |
 | C | 2.7 Kael Helper for Options | Partial | Partial | TBD | Agentic Center links to full Kael chat; server-backed chat path preserved | In progress |
