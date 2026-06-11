@@ -694,6 +694,14 @@ const customerCopy = {
       liveAlertNext: 'Tiếp theo',
       liveAlertFallbackTitle: 'Theo dõi trạng thái',
       liveAlertFallbackBody: 'Kael sẽ cập nhật khi workflow có tín hiệu mới.',
+      jobAcceptanceTitle: 'Thợ đã nhận việc',
+      jobAcceptanceMeta: 'Từ trạng thái job thật',
+      jobAcceptanceBody: 'Kael giữ tóm tắt công việc và quyền địa chỉ theo chính sách hiện tại.',
+      jobAcceptanceStatus: 'Trạng thái nhận',
+      jobAcceptanceAddress: 'Địa chỉ mở',
+      jobAcceptanceChat: 'Chat công việc',
+      jobAcceptanceBrief: 'Tóm tắt gửi thợ',
+      jobAcceptanceNoBrief: 'Chờ tóm tắt thợ thật',
       caseMatching: 'Ghép thợ',
       caseQuote: 'Biên giá',
       matchingScoreTitle: 'Điểm ghép thợ',
@@ -902,6 +910,14 @@ const customerCopy = {
       liveAlertNext: 'Next',
       liveAlertFallbackTitle: 'Track status',
       liveAlertFallbackBody: 'Kael will update this when the workflow has a new signal.',
+      jobAcceptanceTitle: 'Worker accepted',
+      jobAcceptanceMeta: 'From real job state',
+      jobAcceptanceBody: 'Kael keeps the job brief and address permission under the current policy.',
+      jobAcceptanceStatus: 'Acceptance state',
+      jobAcceptanceAddress: 'Released address',
+      jobAcceptanceChat: 'Job chat',
+      jobAcceptanceBrief: 'Worker brief',
+      jobAcceptanceNoBrief: 'Waiting for real worker brief',
       caseMatching: 'Matching',
       caseQuote: 'Price band',
       matchingScoreTitle: 'Matching score',
@@ -1697,6 +1713,7 @@ export function CustomerHistorySurface() {
           {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
+          {deal && showRepairTab && customerCancelRequiresKaelPolicy(deal.status) ? <CustomerHistoryJobAcceptancePanel copy={copy} deal={deal} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLiveAlertPanel copy={copy} deal={deal} languageMode={languageMode} notificationUnreadCount={notificationUnreadCount} notifications={notifications} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
           {!deal && showPriceTab ? <CustomerHistoryPriceEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
           {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} deal={deal} estimateLabel={estimateLabel} languageMode={languageMode} onOpenKael={continueOrCreate} originalEstimateLabel={originalEstimateLabel} scopeChange={showScopeChangeArtifact ? scopeChange : null} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
@@ -3578,6 +3595,56 @@ function CustomerHistoryLocationEtaPanel({
         <V4TicketCell label={copy.history.caseEta} testID="customer-history-location-eta" value={copy.history.caseEtaPending} variant="activity" />
         <V4TicketCell label={copy.history.locationLiveSignal} testID="customer-history-location-live-signal" value={liveSignalLabel} variant="activity" />
       </View>
+    </View>
+  )
+}
+
+function CustomerHistoryJobAcceptancePanel({
+  copy,
+  deal,
+  languageMode,
+  phaseContext,
+  tokens,
+  workerStateLabel,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]
+  deal: LocalDeal
+  languageMode: AppLanguage
+  phaseContext: WorkflowPhaseContext
+  tokens: CustomerThemeTokens
+  workerStateLabel: string
+}) {
+  const releasedAddress = deal.broadcast?.fullAddressVisible && deal.broadcast.fullAddressLabel
+    ? deal.broadcast.fullAddressLabel
+    : null
+  const addressLabel = releasedAddress
+    ? localizedCustomerAreaLabel(releasedAddress, languageMode, copy.ticket.unknown)
+    : copy.history.locationAddressHidden
+  const chatGateLabel = workflowAllowedActionsLabel(phaseContext.allowedActions, languageMode)
+  const briefLabel = deal.broadcast?.prebrief.find((item) => item.trim().length > 0)?.trim() ?? copy.history.jobAcceptanceNoBrief
+
+  return (
+    <View style={[styles.historyCheckPanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-job-acceptance-panel">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {copy.history.jobAcceptanceTitle}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {copy.history.jobAcceptanceMeta}
+        </Text>
+      </View>
+      <Text style={[styles.historyDisclaimerText, { color: tokens.text }]} numberOfLines={2}>
+        {copy.history.jobAcceptanceBody}
+      </Text>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.history.jobAcceptanceStatus} testID="customer-history-job-acceptance-status" value={workerStateLabel} variant="activity" />
+        <V4TicketCell label={copy.history.jobAcceptanceAddress} testID="customer-history-job-acceptance-address" value={addressLabel} variant="activity" />
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.history.jobAcceptanceChat} testID="customer-history-job-acceptance-chat" value={chatGateLabel} variant="activity" />
+        <V4TicketCell label={copy.history.caseId} testID="customer-history-job-acceptance-id" value={deal.broadcast?.jobId ?? deal.id} variant="activity" />
+      </View>
+      <V4TicketCell label={copy.history.jobAcceptanceBrief} testID="customer-history-job-acceptance-brief" value={briefLabel} variant="activity" />
     </View>
   )
 }

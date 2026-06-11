@@ -328,6 +328,21 @@ describe('CustomerHistorySurface phase context', () => {
     expect(alertPanel).not.toHaveTextContent(/push giả|fake|0 thông báo/i)
   })
 
+  it('shows accepted job state without fake worker identity or ratings', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('worker_matched'))
+
+    render(<CustomerHistorySurface />)
+
+    const acceptedPanel = screen.getByTestId('customer-history-job-acceptance-panel')
+    expect(acceptedPanel).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-job-acceptance-status-value')).toHaveTextContent(/Thợ đang xử lý/)
+    expect(screen.getByTestId('customer-history-job-acceptance-address-value')).toHaveTextContent('Tòa A, Quận 1')
+    expect(screen.getByTestId('customer-history-job-acceptance-chat-value')).toHaveTextContent(/Nhắn trong chat công việc/)
+    expect(screen.getByTestId('customer-history-job-acceptance-brief-value')).toHaveTextContent(/Kael đã tóm tắt phạm vi/)
+    expect(acceptedPanel).not.toHaveTextContent(/★★★★★|4\.9|rating|Thợ A|avatar/i)
+  })
+
   it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {
     render(<CustomerHistorySurface />)
 

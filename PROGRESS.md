@@ -51,6 +51,8 @@
   - Kept pre-accept address area-only and did not treat search countdown as arrival ETA.
   - Added the Live Job Alert checkpoint to Activity from real notification rows, unread count, and workflow next-event state.
   - Kept push handling on the existing notification/deep-link path; no fake notification, fake queue, or push simulation was added.
+  - Added the Job Acceptance checkpoint to Activity from accepted job status, address release, job chat action gate, job id, and Kael worker prebrief.
+  - Kept acceptance UI free of fake worker names, avatars, ratings, and inferred worker profile data.
   - Added focused RNTL coverage for private address, released address, and no placeholder markers.
 - Continued Group D:
   - Added worker safety/checklist gates to active jobs.
@@ -87,20 +89,20 @@
   - `jest --runInBand components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 27 tests after the Live Performance panel; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 33 tests.
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests.
-  - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 20 tests after the Live Job Alert panel.
+  - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 21 tests after the Job Acceptance panel.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 47 tests.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
-  - Mobile Jest from `apps/mobile` passed after the latest Group C live alert checkpoint: 17 suites, 160 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the latest Group C job acceptance checkpoint: 17 suites, 161 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, and live job alert, Group D worker safety/earnings/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
+Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, and job acceptance, Group D worker safety/earnings/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
 
 ## Next
 
-1. Re-run broad mobile Jest/type-check after the latest Group C live alert checkpoint.
+1. Re-run broad mobile Jest/type-check after the latest Group C job acceptance checkpoint.
 2. Continue the next rebuild group from `SCOREBOARD.md` after checking current dirty files and relevant docs.
 3. Keep committing only verified checkpoint files, leaving prototype trash unstaged.
 
