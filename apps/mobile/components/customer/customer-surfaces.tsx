@@ -854,6 +854,7 @@ const customerCopy = {
       jobProgressPhase: 'Phase',
       jobProgressEvidence: 'Cổng bằng chứng',
       jobProgressElapsed: 'Thời gian làm việc',
+      jobProgressUpdate: 'Cập nhật hạng mục',
       jobProgressTrackDone: 'Theo dõi hoàn tất',
       caseMatching: 'Ghép thợ',
       caseQuote: 'Biên giá',
@@ -1111,6 +1112,7 @@ const customerCopy = {
       jobProgressPhase: 'Phase',
       jobProgressEvidence: 'Evidence gate',
       jobProgressElapsed: 'Work time',
+      jobProgressUpdate: 'Work update',
       jobProgressTrackDone: 'Track completion',
       caseMatching: 'Matching',
       caseQuote: 'Price band',
@@ -4179,6 +4181,17 @@ function CustomerHistoryJobProgressPanel({
       </View>
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.jobProgressElapsed} testID="customer-history-job-progress-elapsed" value={copy.history.locationNoSignal} variant="activity" />
+      </View>
+      <View style={[styles.bookingCheckPanel, customerOpaqueSurface(tokens)]} testID="customer-history-job-progress-status-row">
+        <View style={styles.bookingCheckRow}>
+          <MappedIcon name="clock" color={tokens.primary} accent={tokens.aqua} size={24} />
+          <Text style={[styles.bookingCheckText, { color: tokens.text }]} numberOfLines={1}>
+            {copy.history.jobProgressUpdate}
+          </Text>
+          <Text style={[styles.bookingCheckMeta, { color: tokens.primary }]} numberOfLines={1}>
+            {phaseContext.title[languageMode]}
+          </Text>
+        </View>
       </View>
       <View style={styles.historyHeroActions}>
         <PrimaryButton label={copy.history.jobProgressTrackDone} onPress={onOpenDone} compact testID="customer-history-job-progress-track-done" />

@@ -408,6 +408,8 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-job-progress-evidence-value')).toHaveTextContent(/Bằng chứng hoàn tất/)
     expect(screen.getByTestId('customer-history-job-progress-chat-value')).toHaveTextContent(/Nhắn trong chat công việc/)
     expect(screen.getByTestId('customer-history-job-progress-elapsed-value')).toHaveTextContent(/Chờ tín hiệu thật/)
+    expect(screen.getByTestId('customer-history-job-progress-status-row')).toHaveTextContent(/Cập nhật hạng mục/)
+    expect(screen.getByTestId('customer-history-job-progress-status-row')).toHaveTextContent(/Đang xử lý/)
     expect(screen.getByTestId('customer-history-job-progress-track-done')).toHaveTextContent(/Theo dõi hoàn tất/)
     fireEvent.press(screen.getByTestId('customer-history-job-progress-track-done'))
     expect(mockReplace).toHaveBeenLastCalledWith('/(customer)/history?tab=done')
