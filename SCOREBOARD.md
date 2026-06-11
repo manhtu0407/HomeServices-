@@ -51,8 +51,8 @@ Legend:
 | F | Worker Level Journey | Partial | Partial | TBD | Locked milestone copy is localized and honest; no placeholder markers | In progress |
 | F | Worker Reputation & Performance | Partial | Partial | TBD | Existing reputation fields remain data-gated; no fake chart/radar added | In progress |
 | F | Customer Overview | Partial | Partial | TBD | Customer profile insight panels use existing profile metadata; focused customer profile test passed | In progress |
-| F | Customer Usage Ranking | Partial | Partial | TBD | Usage ranking reads real metadata aliases only, otherwise waiting state | In progress |
-| F | Customer Money Protection | Partial | Partial | TBD | Money protection reads real metadata aliases only, otherwise waiting state | In progress |
+| F | Customer Usage Ranking | Partial | Partial | TBD | Usage ranking reads real metadata aliases only, renders the `usage_rank_points` progress track when present, and otherwise hides the track with a waiting state; focused customer profile test passed | In progress |
+| F | Customer Money Protection | Partial | Partial | TBD | Money protection reads real metadata aliases only, renders the `money_protection_score` progress track when present, and otherwise hides the track with a waiting state; focused customer profile test passed | In progress |
 
 ## Current Known Scoring Risks
 
@@ -60,4 +60,4 @@ Legend:
 - The hidden `/(design-gallery)` foundation route renders the base component set, but no native screenshot has been captured against the official Component System page yet.
 - Missing official Kael state assets block full visual match for mascot-heavy screens.
 - Missing final NestScout logo decision blocks final splash/welcome fidelity.
-- Profile screens now have honest data-gated insight panels, but native screenshot comparison is still pending.
+- Profile screens now have honest data-gated insight panels and progress tracks, but native screenshot comparison is still pending.

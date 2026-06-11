@@ -93,7 +93,9 @@
 - Continued Group F:
   - Fixed worker locked milestone copy so it no longer renders placeholder question marks.
   - Added customer usage ranking and money protection insight panels from real metadata only.
+  - Added customer usage ranking and money protection progress tracks from real `usage_rank_points` and `money_protection_score` only.
   - Kept missing profile metrics as honest waiting states.
+  - Kept progress tracks hidden when the matching real metric is missing.
   - Added focused RNTL coverage for worker locked milestones and customer profile metrics.
 - Continued Group B:
   - Completed the Customer Home shortcut grid with all four real actions.
@@ -107,7 +109,7 @@
   - Kept Booking and Kael chat on the existing pending-intake, media picker, server service wrapper, and progress polling paths; no remote job creation, confirm-search action, direct provider call, fake schedule slot, fake media count, or fake payment option was added.
 - Verification for this checkpoint:
   - `pnpm --filter @home-services/mobile type-check` passed.
-  - `tsc --noEmit` from `apps/mobile` passed after the Agentic Center token checkpoint when portable `pnpm.CMD` was unavailable.
+  - `tsc --noEmit` from `apps/mobile` passed after the customer ranking/protection progress checkpoint when portable `pnpm.CMD` was unavailable.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 6 tests after the customer email login boundary.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/ui/__tests__/kael-primitives-test.tsx` passed: 9 tests.
   - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
@@ -115,12 +117,12 @@
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx` passed: 8 tests after user-selected problem chips.
   - `jest --runInBand components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 27 tests after the Live Performance problem-signal cell; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 33 tests.
-  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests after the customer ranking/protection progress checkpoint.
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job Acceptance service row.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 50 tests after the Earnings period row.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center token move.
   - `rg -n "#[0-9A-Fa-f]{3,8}|rgba\\(|boxShadow:\\s*'|backgroundColor:\\s*'|borderRadius:\\s*\\d|padding:\\s*\\d|margin:\\s*\\d|fontSize:\\s*\\d" apps/mobile/components/customer/agentic-center-surface.tsx` returned no matches.
-  - Mobile Jest from `apps/mobile` passed after the Agentic Center token checkpoint: 17 suites, 172 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the customer ranking/protection progress checkpoint: 17 suites, 172 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 

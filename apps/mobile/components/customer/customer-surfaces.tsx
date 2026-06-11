@@ -14,6 +14,7 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type DimensionValue,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native'
@@ -125,6 +126,12 @@ const clientImageIcons = {
   theme: require('../../assets/client-image-icons/client-theme.png'),
 } as const
 const vndFormatter = new Intl.NumberFormat('vi-VN')
+const customerIntegerFormatters = {
+  en: new Intl.NumberFormat('en-US'),
+  vi: new Intl.NumberFormat('vi-VN'),
+} as const
+const customerUsageRankProgressMax = 1000
+const customerMoneyProtectionProgressMax = 100
 
 type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
 type CustomerHistoryTab = 'chat' | 'done' | 'price' | 'repair'
@@ -150,6 +157,12 @@ type CustomerProfileInsightStat = {
   icon: IconName
   label: string
   value: string
+}
+type CustomerProfileInsightProgress = {
+  label: string
+  max: number
+  value: number
+  valueLabel: string
 }
 type IconName =
   | 'apartment'
@@ -2154,6 +2167,14 @@ export function CustomerProfileSurface() {
       value: fairPriceServiceCount ? `${fairPriceServiceCount}` : profileRankingCopy.servicePending,
     },
   ]
+  const profileRankingProgress = usageRankPoints
+    ? {
+        label: profileRankingCopy.pointsLabel,
+        max: customerUsageRankProgressMax,
+        value: usageRankPoints,
+        valueLabel: `${formatCustomerInteger(usageRankPoints, languageMode)}/${formatCustomerInteger(customerUsageRankProgressMax, languageMode)}`,
+      }
+    : null
   const profileMoneyStats = [
     {
       available: Boolean(moneyProtectionScore),
@@ -2174,6 +2195,14 @@ export function CustomerProfileSurface() {
       value: fairPriceServiceCount ? `${fairPriceServiceCount}` : profileMoneyCopy.fairPricePending,
     },
   ]
+  const profileMoneyProgress = moneyProtectionScore
+    ? {
+        label: profileMoneyCopy.scoreLabel,
+        max: customerMoneyProtectionProgressMax,
+        value: moneyProtectionScore,
+        valueLabel: profileMoneyCopy.scoreValue(moneyProtectionScore),
+      }
+    : null
   const profileFallbackTitle = languageMode === 'en' ? 'Customer profile' : 'Hồ sơ khách'
   const profileTitle = localizedProfileName(rawNickname, languageMode) || localizedProfileName(rawFullName, languageMode) || profileFallbackTitle
   const profileSubtitle = languageMode === 'en' ? 'Basic information' : 'Thông tin cơ bản'
@@ -2213,10 +2242,10 @@ export function CustomerProfileSurface() {
             />
           </ReduceMotionAwareEntranceView>
           <ReduceMotionAwareEntranceView delayMs={150} distanceY={8} style={styles.profileActions} testID="customer-profile-ranking-card-motion">
-            <CustomerProfileInsightPanel copy={profileRankingCopy} stats={profileRankingStats} testID="customer-profile-ranking-card" />
+            <CustomerProfileInsightPanel copy={profileRankingCopy} progress={profileRankingProgress} stats={profileRankingStats} testID="customer-profile-ranking-card" />
           </ReduceMotionAwareEntranceView>
           <ReduceMotionAwareEntranceView delayMs={175} distanceY={8} style={styles.profileActions} testID="customer-profile-money-protection-card-motion">
-            <CustomerProfileInsightPanel copy={profileMoneyCopy} stats={profileMoneyStats} testID="customer-profile-money-protection-card" />
+            <CustomerProfileInsightPanel copy={profileMoneyCopy} progress={profileMoneyProgress} stats={profileMoneyStats} testID="customer-profile-money-protection-card" />
           </ReduceMotionAwareEntranceView>
           <ReduceMotionAwareEntranceView delayMs={205} distanceY={8} style={styles.profileActions} testID="customer-profile-list-motion">
             <View style={[styles.listCard, styles.profileGlassListCard, customerProfilePanelSurface(tokens)]} testID="customer-profile-checklist">
@@ -2847,15 +2876,18 @@ function CustomerProfileCareCard({
 
 function CustomerProfileInsightPanel({
   copy,
+  progress,
   stats,
   testID,
 }: {
   copy: CustomerProfileInsightCopy
+  progress?: CustomerProfileInsightProgress | null
   stats: CustomerProfileInsightStat[]
   testID: string
 }) {
   const tokens = useCustomerTokens()
   const hasRealData = stats.some((item) => item.available)
+  const progressWidth = progress ? customerProgressWidth(progress.value, progress.max) : null
 
   return (
     <View style={[styles.profileInsightPanel, customerOpaqueSurface(tokens)]} testID={testID}>
@@ -2885,6 +2917,21 @@ function CustomerProfileInsightPanel({
           </View>
         ))}
       </View>
+      {progress && progressWidth ? (
+        <View accessibilityLabel={`${progress.label} ${progress.valueLabel}`} style={styles.profileInsightProgress} testID={`${testID}-progress`}>
+          <View style={styles.profileInsightProgressMeta}>
+            <Text style={[styles.profileInsightProgressLabel, { color: tokens.muted }]} numberOfLines={1}>
+              {progress.label}
+            </Text>
+            <Text style={[styles.profileInsightProgressValue, { color: tokens.primary }]} numberOfLines={1} testID={`${testID}-progress-value`}>
+              {progress.valueLabel}
+            </Text>
+          </View>
+          <View style={[styles.profileInsightProgressTrack, { backgroundColor: tokens.border }]} testID={`${testID}-progress-track`}>
+            <View style={[styles.profileInsightProgressFill, { backgroundColor: tokens.primary, width: progressWidth }]} testID={`${testID}-progress-fill`} />
+          </View>
+        </View>
+      ) : null}
       {!hasRealData ? (
         <Text style={[styles.profileInsightEmpty, { color: tokens.muted }]} testID={`${testID}-empty`}>
           {copy.empty}
@@ -2975,6 +3022,16 @@ function localizedCustomerComplexityLabel(complexity: string | null | undefined,
 
 function formatVnd(value: number) {
   return `${vndFormatter.format(value)}đ`
+}
+
+function formatCustomerInteger(value: number, languageMode: AppLanguage) {
+  return customerIntegerFormatters[languageMode].format(value)
+}
+
+function customerProgressWidth(value: number, max: number): DimensionValue {
+  if (max <= 0) return '0%'
+  const percent = Math.max(0, Math.min(100, Math.round((value / max) * 100)))
+  return `${percent}%` as DimensionValue
 }
 
 function isTerminalCustomerDeal(status: LocalDealStatus): boolean {
@@ -8116,6 +8173,36 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     maxWidth: 84,
     textAlign: 'center',
+  },
+  profileInsightProgress: {
+    gap: 7,
+  },
+  profileInsightProgressMeta: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'space-between',
+  },
+  profileInsightProgressLabel: {
+    flex: 1,
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 13,
+  },
+  profileInsightProgressValue: {
+    fontSize: 11.5,
+    ...customerWorkerTypography.label,
+    lineHeight: 14,
+  },
+  profileInsightProgressTrack: {
+    borderRadius: 999,
+    height: 7,
+    overflow: 'hidden',
+  },
+  profileInsightProgressFill: {
+    borderRadius: 999,
+    height: '100%',
   },
   profileInsightEmpty: {
     fontSize: 11.5,

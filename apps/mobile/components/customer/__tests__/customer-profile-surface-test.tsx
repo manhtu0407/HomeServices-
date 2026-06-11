@@ -132,9 +132,11 @@ describe('CustomerProfileSurface editable rows', () => {
     expect(screen.getByTestId('customer-profile-ranking-card')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-profile-ranking-card-empty')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-profile-ranking-card-value-0')).toHaveTextContent('Chờ dữ liệu')
+    expect(screen.queryByTestId('customer-profile-ranking-card-progress')).toBeNull()
     expect(screen.getByTestId('customer-profile-money-protection-card')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-profile-money-protection-card-empty')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-profile-money-protection-card-value-0')).toHaveTextContent('Chờ dữ liệu')
+    expect(screen.queryByTestId('customer-profile-money-protection-card-progress')).toBeNull()
     expect(screen.queryByText('--')).toBeNull()
 
     expect(screen.queryByTestId('customer-profile-home-care-cta')).toBeNull()
@@ -164,10 +166,18 @@ describe('CustomerProfileSurface editable rows', () => {
     expect(screen.getByTestId('customer-profile-ranking-card-value-1')).toHaveTextContent('620')
     expect(screen.getByTestId('customer-profile-ranking-card-value-2')).toHaveTextContent('2')
     expect(screen.queryByTestId('customer-profile-ranking-card-empty')).toBeNull()
+    expect(screen.getByTestId('customer-profile-ranking-card-progress')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-profile-ranking-card-progress-value')).toHaveTextContent('620/1.000')
+    const rankingProgressStyle = StyleSheet.flatten(screen.getByTestId('customer-profile-ranking-card-progress-fill').props.style) as Record<string, unknown>
+    expect(rankingProgressStyle.width).toBe('62%')
     expect(screen.getByTestId('customer-profile-money-protection-card-value-0')).toHaveTextContent('92/100')
     expect(screen.getByTestId('customer-profile-money-protection-card-value-1')).toHaveTextContent('2.150.000đ')
     expect(screen.getByTestId('customer-profile-money-protection-card-value-2')).toHaveTextContent('2')
     expect(screen.queryByTestId('customer-profile-money-protection-card-empty')).toBeNull()
+    expect(screen.getByTestId('customer-profile-money-protection-card-progress')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-profile-money-protection-card-progress-value')).toHaveTextContent('92/100')
+    const moneyProgressStyle = StyleSheet.flatten(screen.getByTestId('customer-profile-money-protection-card-progress-fill').props.style) as Record<string, unknown>
+    expect(moneyProgressStyle.width).toBe('92%')
   })
 
   it.each([
