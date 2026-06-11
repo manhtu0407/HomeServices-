@@ -3,7 +3,7 @@ import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { hasLocalDealCompletionEvidence, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type LocalDeal, type LocalDealStatus, type WorkflowPhaseContext } from '@home-services/shared'
+import { hasLocalDealCompletionEvidence, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type LocalDeal, type LocalDealStatus, type WorkflowPhaseContext } from '@home-services/shared'
 import { getCustomerThemeTokens, getReducedTransparencyCustomerTokens, useCustomerThemeMode, type CustomerThemeTokens } from '@/components/customer/customer-theme'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassSurface } from '@/components/ui/glass-surface'
@@ -240,6 +240,7 @@ function WorkflowPhaseCommandCard({ language, phaseContext, tokens }: { language
       <Text style={[styles.phaseIntent, { color: tokens.muted }]}>
         {phaseContext.intent[language]}
       </Text>
+      <WorkflowPhaseRail language={language} phaseContext={phaseContext} tokens={tokens} />
       <View style={styles.phaseGrid}>
         <InfoRow label={language === 'en' ? 'Source' : 'Nguồn'} testID="customer-agentic-center-phase-source" tokens={tokens} value={workflowSourceOfTruthLabel(phaseContext.sourceOfTruth, language)} />
         <InfoRow label={language === 'en' ? 'Phase' : 'Giai đoạn'} testID="customer-agentic-center-phase-title" tokens={tokens} value={phaseContext.title[language]} />
@@ -249,6 +250,47 @@ function WorkflowPhaseCommandCard({ language, phaseContext, tokens }: { language
       </View>
     </View>
   )
+}
+
+function WorkflowPhaseRail({ language, phaseContext, tokens }: { language: AppLanguage; phaseContext: WorkflowPhaseContext; tokens: CustomerThemeTokens }) {
+  const visibleSections = orderWorkflowPhaseSectionsForSummary(phaseContext, phaseContext.sections.filter((section) => section.visible && section.role !== 'worker'))
+  if (visibleSections.length === 0) return null
+  const primaryId = phaseContext.primaryArtifact?.id
+
+  return (
+    <View style={styles.phaseRail} testID="customer-agentic-center-phase-rail">
+      {visibleSections.map((section) => {
+        const primary = section.id === primaryId
+        const statusLabel = workflowPhaseSectionStatusLabel(section, language)
+        return (
+          <View key={section.id} style={[styles.phaseStep, centerInfoRowSurface(tokens), primary ? centerPhaseStepPrimarySurface(tokens) : null]} testID={`customer-agentic-center-phase-step-${section.id}`}>
+            <View style={styles.phaseStepHeader}>
+              <View style={[styles.phaseStepDot, primary ? centerPhaseStepPrimaryDotSurface(tokens) : centerPhaseStepDotSurface(tokens)]} />
+              <Text style={[styles.phaseStepTitle, { color: tokens.text }]} numberOfLines={2}>
+                {section.title[language]}
+              </Text>
+            </View>
+            <Text style={[styles.phaseStepMode, { color: primary ? tokens.primary : tokens.muted }]} numberOfLines={2} testID={`customer-agentic-center-phase-step-${section.id}-mode`}>
+              {statusLabel}
+            </Text>
+            {primary ? (
+              <View style={[styles.phaseStepActivePill, centerPhaseStepActivePillSurface(tokens)]}>
+                <Text style={[styles.phaseStepActiveText, { color: tokens.primary }]} numberOfLines={1} testID={`customer-agentic-center-phase-step-${section.id}-primary`}>
+                  {language === 'en' ? 'Active' : 'Đang chạy'}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+function workflowPhaseSectionStatusLabel(section: WorkflowPhaseContext['sections'][number], language: AppLanguage) {
+  if (section.lockedReason) return workflowBlockedReasonLabel(section.lockedReason, language)
+  if (section.mode) return workflowArtifactModeLabel(section.mode, language)
+  return workflowSourceOfTruthLabel(section.sourceOfTruth, language)
 }
 
 function InfoRow({ label, testID, tokens, value }: { label: string; testID?: string; tokens: CustomerThemeTokens; value: string }) {
@@ -442,6 +484,34 @@ function centerOutlineSurface(tokens: CustomerThemeTokens) {
   } as any
 }
 
+function centerPhaseStepPrimarySurface(tokens: CustomerThemeTokens) {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? tokens.depthSurface : color.mint.white,
+    borderColor: tokens.primary,
+  } as any
+}
+
+function centerPhaseStepDotSurface(tokens: CustomerThemeTokens) {
+  return {
+    backgroundColor: tokens.borderStrong,
+    borderColor: tokens.borderStrong,
+  } as any
+}
+
+function centerPhaseStepPrimaryDotSurface(tokens: CustomerThemeTokens) {
+  return {
+    backgroundColor: tokens.primary,
+    borderColor: tokens.primary,
+  } as any
+}
+
+function centerPhaseStepActivePillSurface(tokens: CustomerThemeTokens) {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? tokens.depthSurface : color.mint.mint50,
+    borderColor: tokens.borderStrong,
+  } as any
+}
+
 function centerOrbSurface(tokens: CustomerThemeTokens) {
   return {
     backgroundColor: tokens.primary,
@@ -596,6 +666,60 @@ const styles = StyleSheet.create({
     fontWeight: typography.caption.fontWeight,
     letterSpacing: 0,
     lineHeight: typography.caption.lineHeight,
+  },
+  phaseRail: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  phaseStep: {
+    borderCurve: 'continuous',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    flexGrow: 1,
+    gap: spacing.xs,
+    minWidth: component.agenticCenter.phaseRailStepMinWidth,
+    padding: spacing.sm,
+  },
+  phaseStepHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  phaseStepDot: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    height: component.agenticCenter.phaseRailDotSize,
+    width: component.agenticCenter.phaseRailDotSize,
+  },
+  phaseStepTitle: {
+    flex: 1,
+    fontSize: typography.caption.fontSize,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: typography.caption.lineHeight,
+    minWidth: 0,
+  },
+  phaseStepMode: {
+    fontSize: typography.caption.fontSize,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: typography.caption.lineHeight,
+  },
+  phaseStepActivePill: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    minWidth: component.agenticCenter.phaseRailActivePillMinWidth,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  phaseStepActiveText: {
+    fontSize: typography.caption.fontSize,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: typography.caption.lineHeight,
+    textAlign: 'center',
   },
   phaseGrid: {
     gap: spacing.sm,

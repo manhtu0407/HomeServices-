@@ -87,6 +87,7 @@
   - Added Agentic Center real summary cells for active case, approvals, and memory.
   - Summary values come from live workflow/preference state, with text empty states instead of fake zeroes.
   - Added the Agentic Center live workflow card from `WorkflowPhaseContext` for source, phase, artifact, next event, and action gate.
+  - Added the Agentic Center workflow rail from real `WorkflowPhaseContext.sections`, with primary artifact and artifact mode labels from the shared workflow contract.
   - Added Approval Queue review actions that route to the existing History review flows, including scope-change deep links with the real scope id.
   - Added saved contact phone to Agentic Center Memory & Preferences from real profile metadata aliases.
   - Moved Agentic Center screen-specific dimensions, borders, and shadows into `component.agenticCenter` tokens; targeted raw color/rgba/boxShadow/style grep for the surface is clean.
@@ -128,20 +129,24 @@
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job Acceptance service row.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 51 tests after the Worker Reputation & Performance checkpoint.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center token move.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `customer-agentic-center-phase-rail` before the Agentic Center workflow rail change.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center workflow rail checkpoint.
   - `vitest run src/__tests__/kael-charter-p8.test.ts` from `packages/shared` passed: 5 tests after the NestScout AI identity rename.
   - `vitest run src/__tests__/unit/mobile-api-kael-p8.test.ts --root .` from `apps/api` passed: 9 tests after the NestScout AI prompt/public-charter rename.
   - `vitest run src/__tests__/unit/mobile-api-edge-router.test.ts --root .` from `apps/api` passed: 46 tests after the NestScout public-charter route mock update.
   - `tsc --noEmit -p tsconfig.json` from `apps/api` passed after the NestScout AI identity rename.
   - `tsc --noEmit -p tsconfig.json` from `packages/shared` passed after the NestScout AI identity rename.
-  - `rg -n "#[0-9A-Fa-f]{3,8}|rgba\\(|boxShadow:\\s*'|backgroundColor:\\s*'|borderRadius:\\s*\\d|padding:\\s*\\d|margin:\\s*\\d|fontSize:\\s*\\d" apps/mobile/components/customer/agentic-center-surface.tsx` returned no matches.
+  - `rg -n "#[0-9A-Fa-f]{3,8}|rgba\\(|boxShadow:\\s*'|backgroundColor:\\s*'|borderRadius:\\s*\\d|padding:\\s*\\d|margin:\\s*\\d|fontSize:\\s*\\d" apps/mobile/components/customer/agentic-center-surface.tsx` returned no matches after the Agentic Center workflow rail checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Kael Orb token/label checkpoint.
-  - Mobile Jest from `apps/mobile` passed after the Kael Orb token/label checkpoint: 17 suites, 173 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `tsc --noEmit` from `apps/mobile` passed after the Agentic Center workflow rail checkpoint.
+  - `node -e "JSON.parse(require('fs').readFileSync('apps/mobile/design/tokens.json','utf8'))"` passed after the Agentic Center workflow rail checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Agentic Center workflow rail checkpoint: 17 suites, 173 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity rename, Agentic Center wiring/summary/live workflow card/approval actions/memory phone/token move, separated Kael Orb token/label refinement, Group A welcome and customer onboarding, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings period/reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, API/shared AI identity tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
+Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity rename, Agentic Center wiring/summary/live workflow card/phase rail/approval actions/memory phone/token move, separated Kael Orb token/label refinement, Group A welcome and customer onboarding, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings period/reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, API/shared AI identity tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
 
 ## Next
 

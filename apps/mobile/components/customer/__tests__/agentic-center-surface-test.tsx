@@ -196,6 +196,12 @@ describe('CustomerAgenticCenterSurface', () => {
     expect(screen.getByTestId('customer-agentic-center-phase-artifact-value')).toHaveTextContent('Provider match')
     expect(screen.getByTestId('customer-agentic-center-phase-next-value')).toHaveTextContent('Worker accepts')
     expect(screen.getByTestId('customer-agentic-center-phase-gate-value')).toHaveTextContent('Waiting for worker acceptance')
+    expect(screen.getByTestId('customer-agentic-center-phase-rail')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-phase-step-provider_match')).toHaveTextContent(/Provider match/)
+    expect(screen.getByTestId('customer-agentic-center-phase-step-provider_match-mode')).toHaveTextContent('Loading')
+    expect(screen.getByTestId('customer-agentic-center-phase-step-provider_match-primary')).toHaveTextContent('Active')
+    expect(screen.getByTestId('customer-agentic-center-phase-step-booking')).toHaveTextContent(/Real booking/)
+    expect(screen.getByTestId('customer-agentic-center-phase-step-booking-mode')).toHaveTextContent('Loading')
     expect(screen.getAllByText('2').length).toBeGreaterThan(1)
   })
 
