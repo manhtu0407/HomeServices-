@@ -534,6 +534,7 @@ describe('WorkerHomeSurface', () => {
     render(<WorkerHomeSurface />)
 
     expect(screen.getByText('Xin chào, Tu Rooftop')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-home-header-avatar')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-readiness-availability-value')).toHaveTextContent(/Bạn đang trực tuyến/)
     expect(screen.getByTestId('worker-shell-service-electrical')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-shell-service-plumbing')).toBeOnTheScreen()

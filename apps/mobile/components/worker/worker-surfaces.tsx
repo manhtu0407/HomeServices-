@@ -2181,6 +2181,10 @@ function WorkerScreenHeader({ active, eyebrow, headerIcon, headerPill, headerPil
         <View style={[styles.screenHeaderAction, workerOpaqueCardSurface(tokens, 'mint', reduceTransparency)]}>
           <Icon name={headerIcon} active small />
         </View>
+      ) : active === 'home' ? (
+        <View style={[styles.screenHeaderAction, workerOpaqueCardSurface(tokens, 'mint', reduceTransparency)]} testID="worker-home-header-avatar">
+          <WorkerImageIcon frameSize={38} name="profileAvatar" size={38} />
+        </View>
       ) : null}
     </View>
   )

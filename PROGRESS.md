@@ -102,6 +102,7 @@
   - Kept Worker Home free of fake queue, rating, earnings, and worker performance stats.
   - Aligned Worker Home greeting to the real normalized `workerProfile.legal_name` and the reference online-state copy.
   - Kept Worker Home service shortcuts limited to electrical, plumbing, and cleaning despite the reference's extra icon slot.
+  - Added the Worker Home header avatar cue from the tracked worker profile asset while keeping unsupported service and unbacked stat tiles absent.
   - Added the active Jobs real job row from the accepted deal id, service, area, status, and worker earning estimate.
   - Kept the Jobs row free of fake schedule, queue counts, worker ratings, and extra job records because the current provider exposes one real `state.deal`.
   - Aligned the active Jobs card to the reference list skeleton with real job id, problem, area, `timeChoice`, status, and worker earning.
