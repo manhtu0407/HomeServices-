@@ -16,11 +16,11 @@ Legend:
 
 | Group | Screen | Structure | Token compliance | Visual match | Evidence | Status |
 |---|---|---:|---:|---:|---|---|
-| A | 1.1 Splash Screen | TBD | TBD | TBD | None yet | Not started |
-| A | 1.2 Welcome | TBD | TBD | TBD | None yet | Not started |
-| A | 1.3 Login with Email | TBD | TBD | TBD | None yet | Not started |
-| A | 1.4 Register with Email | TBD | TBD | TBD | None yet | Not started |
-| A | 1.5 Onboarding | TBD | TBD | TBD | None yet | Not started |
+| A | 1.1 Splash Screen | Partial | Partial | TBD | Expo app name/permissions now NestScout; final splash logo asset still missing | In progress |
+| A | 1.2 Welcome | Partial | Partial | TBD | `pnpm --filter @home-services/mobile type-check`; focused auth test passed | In progress |
+| A | 1.3 Login with Email | Partial | Partial | TBD | Focused auth test verifies role-first entry and customer email fallback remains explicit | In progress |
+| A | 1.4 Register with Email | Partial | Partial | TBD | Worker create UI remains honest unavailable state; no auth sign-up API exposed in provider | In progress |
+| A | 1.5 Onboarding | Partial | Partial | TBD | Existing customer profile setup remains wired to `updateCustomerProfile`; native screenshot pending | In progress |
 | B | 2.1 Home | TBD | TBD | TBD | None yet | Not started |
 | B | 2.2 Search & Filter / Book | TBD | TBD | TBD | None yet | Not started |
 | B | 2.3 Media / Voice Note | TBD | TBD | TBD | None yet | Not started |

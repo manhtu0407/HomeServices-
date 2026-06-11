@@ -1,48 +1,7 @@
 import { Image } from 'expo-image'
 import { StyleSheet, Text, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native'
 import { color, radius, spacing } from '@/design/theme'
-
-export const KAEL_CORE_STATES = [
-  'welcome',
-  'listening',
-  'thinking',
-  'analyzing',
-  'processing',
-  'understood',
-  'proposing',
-  'success',
-  'warning',
-  'error',
-] as const
-
-export const KAEL_CONTEXTUAL_STATES = [
-  'typing',
-  'recording',
-  'fileReview',
-  'locationMap',
-  'findingWorker',
-  'priceCheck',
-  'compareOptions',
-  'report',
-  'reminder',
-  'miniCelebration',
-] as const
-
-export const KAEL_EMOTIONS = [
-  'happy',
-  'focused',
-  'surprised',
-  'curious',
-  'confident',
-  'concerned',
-  'confused',
-  'disappointed',
-  'angry',
-  'tired',
-] as const
-
-export type KaelMascotState = (typeof KAEL_CORE_STATES)[number] | (typeof KAEL_CONTEXTUAL_STATES)[number]
-export type KaelMascotEmotion = (typeof KAEL_EMOTIONS)[number]
+import { resolveKaelMascotAsset, type KaelMascotEmotion, type KaelMascotState } from './kael-mascot-assets'
 
 type KaelMascotProps = {
   emotion?: KaelMascotEmotion
@@ -54,12 +13,6 @@ type KaelMascotProps = {
   variant?: 'full' | 'head'
 }
 
-const kaelFull = require('../../assets/kael-model-8a.png')
-const kaelHead = require('../../assets/kael-model-8a-head.png')
-
-const stateAssets: Partial<Record<KaelMascotState, unknown>> = {}
-const emotionAssets: Partial<Record<KaelMascotEmotion, unknown>> = {}
-
 export function KaelMascot({
   emotion,
   showFallbackBadge = false,
@@ -69,10 +22,7 @@ export function KaelMascot({
   testID = 'kael-mascot',
   variant = 'full',
 }: KaelMascotProps) {
-  const emotionSource = emotion ? emotionAssets[emotion] : null
-  const stateSource = stateAssets[state]
-  const usesFallback = !emotionSource && !stateSource
-  const source = emotionSource ?? stateSource ?? (variant === 'head' ? kaelHead : kaelFull)
+  const { source, usesFallback } = resolveKaelMascotAsset(state, variant, emotion)
   const imageSize = Math.max(32, size)
 
   return (
@@ -89,12 +39,6 @@ export function KaelMascot({
       ) : null}
     </View>
   )
-}
-
-export function getKaelMascotAssetStatus(state: KaelMascotState, emotion?: KaelMascotEmotion) {
-  if (emotion && emotionAssets[emotion]) return 'emotion'
-  if (stateAssets[state]) return 'state'
-  return 'fallback'
 }
 
 const styles = StyleSheet.create({

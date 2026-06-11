@@ -23,8 +23,8 @@ export type KaelChipVariant = 'selected' | 'unselected' | 'successStatus' | 'war
 type KaelButtonProps = {
   accessibilityLabel?: string
   accessibilityRole?: AccessibilityRole
-  children: ReactNode
   disabled?: boolean
+  label: string
   loading?: boolean
   onPress: () => void
   size?: 'default' | 'small'
@@ -36,8 +36,8 @@ type KaelButtonProps = {
 export function KaelButton({
   accessibilityLabel,
   accessibilityRole = 'button',
-  children,
   disabled = false,
+  label,
   loading = false,
   onPress,
   size = 'default',
@@ -52,7 +52,7 @@ export function KaelButton({
 
   return (
     <Pressable
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole={accessibilityRole}
       accessibilityState={{ busy: loading, disabled: isDisabled }}
       disabled={isDisabled}
@@ -71,25 +71,25 @@ export function KaelButton({
       {loading ? (
         <ActivityIndicator color={isPrimary ? component.button.primary.text : buttonTextColor(variant, isDisabled)} />
       ) : (
-        <Text style={[styles.buttonText, { color: buttonTextColor(variant, isDisabled) }]}>{children}</Text>
+        <Text style={[styles.buttonText, { color: buttonTextColor(variant, isDisabled) }]}>{label}</Text>
       )}
     </Pressable>
   )
 }
 
 type KaelChipProps = {
-  children: ReactNode
+  label: string
   onPress?: () => void
   style?: StyleProp<ViewStyle>
   testID?: string
   variant?: KaelChipVariant
 }
 
-export function KaelChip({ children, onPress, style, testID, variant = 'unselected' }: KaelChipProps) {
+export function KaelChip({ label, onPress, style, testID, variant = 'unselected' }: KaelChipProps) {
   const chipToken = component.chip[variant]
   const content = (
     <Text style={[styles.chipText, { color: chipToken.text }]} numberOfLines={1}>
-      {children}
+      {label}
     </Text>
   )
 

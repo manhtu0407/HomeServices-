@@ -9,14 +9,15 @@ jest.mock('expo-image', () => {
   }
 })
 
-import { KaelMascot, getKaelMascotAssetStatus } from '@/components/kael/kael-mascot'
+import { getKaelMascotAssetStatus } from '@/components/kael/kael-mascot-assets'
+import { KaelMascot } from '@/components/kael/kael-mascot'
 import { KaelButton, KaelCard, KaelChip, KaelTextField } from '../kael-primitives'
 
 describe('Kael UI primitives', () => {
   it('renders the primary button and handles presses', () => {
     const onPress = jest.fn()
 
-    render(<KaelButton onPress={onPress}>Tiếp tục</KaelButton>)
+    render(<KaelButton label="Tiếp tục" onPress={onPress} />)
 
     fireEvent.press(screen.getByRole('button', { name: 'Tiếp tục' }))
 
@@ -26,7 +27,7 @@ describe('Kael UI primitives', () => {
   it('prevents disabled primary actions from firing', () => {
     const onPress = jest.fn()
 
-    render(<KaelButton disabled onPress={onPress}>Tiếp tục</KaelButton>)
+    render(<KaelButton disabled label="Tiếp tục" onPress={onPress} />)
 
     fireEvent.press(screen.getByRole('button', { name: 'Tiếp tục' }))
 
@@ -37,7 +38,7 @@ describe('Kael UI primitives', () => {
   it('keeps chip, input, and card content visible', () => {
     render(
       <KaelCard>
-        <KaelChip variant="selected">Đã chọn</KaelChip>
+        <KaelChip label="Đã chọn" variant="selected" />
         <KaelTextField placeholder="Nhập nội dung..." value="" />
         <Text>Card content</Text>
       </KaelCard>,

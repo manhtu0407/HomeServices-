@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { KaelMascot } from '@/components/kael/kael-mascot'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import {
@@ -46,12 +47,12 @@ export default function DesignGalleryRoute() {
 
         <GallerySection title="Action Buttons">
           <View style={styles.grid}>
-            <KaelButton onPress={() => {}}>Primary</KaelButton>
-            <KaelButton variant="secondary" onPress={() => {}}>Secondary</KaelButton>
-            <KaelButton variant="ghost" onPress={() => {}}>Ghost</KaelButton>
-            <KaelButton variant="destructive" onPress={() => {}}>Destructive</KaelButton>
-            <KaelButton disabled onPress={() => {}}>Disabled</KaelButton>
-            <KaelButton loading onPress={() => {}}>Đang xử lý</KaelButton>
+            <KaelButton label="Primary" onPress={() => {}} />
+            <KaelButton label="Secondary" variant="secondary" onPress={() => {}} />
+            <KaelButton label="Ghost" variant="ghost" onPress={() => {}} />
+            <KaelButton label="Destructive" variant="destructive" onPress={() => {}} />
+            <KaelButton disabled label="Disabled" onPress={() => {}} />
+            <KaelButton label="Đang xử lý" loading onPress={() => {}} />
           </View>
         </GallerySection>
 
@@ -66,11 +67,11 @@ export default function DesignGalleryRoute() {
             value={segment}
           />
           <View style={styles.chipRow}>
-            <KaelChip variant="selected">Đã chọn</KaelChip>
-            <KaelChip>Chưa chọn</KaelChip>
-            <KaelChip variant="successStatus">Đang hoạt động</KaelChip>
-            <KaelChip variant="warning">Cần kiểm tra</KaelChip>
-            <KaelChip variant="error">Cần xử lý</KaelChip>
+            <KaelChip label="Đã chọn" variant="selected" />
+            <KaelChip label="Chưa chọn" />
+            <KaelChip label="Đang hoạt động" variant="successStatus" />
+            <KaelChip label="Cần kiểm tra" variant="warning" />
+            <KaelChip label="Cần xử lý" variant="error" />
           </View>
         </GallerySection>
 

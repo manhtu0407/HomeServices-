@@ -29,21 +29,28 @@
 - Added reusable NestScout/Kael UI primitives in `apps/mobile/components/ui/kael-primitives.tsx`.
 - Added `KaelMascot` typed state shell with all 20 official state names plus 10 emotion variant names; current rendering uses logged fallback assets until official exports exist.
 - Switched auth role card images away from untracked `common-image-icons` to tracked client/worker icon assets.
+- Started Group A:
+  - Added the NestScout/Kael welcome screen before role selection.
+  - Kept role-first auth behavior and real password/Google actions intact.
+  - Kept phone/register unavailable states honest because the auth provider does not expose phone OTP or Supabase sign-up.
+  - Added focused RNTL coverage for welcome, role-gate transition, and customer email fallback.
 - Verification for this checkpoint:
   - `pnpm --filter @home-services/mobile type-check` passed.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 3 tests.
   - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
-  - Mobile Jest from `apps/mobile` passed: 15 suites, 141 tests.
-  - `pnpm doctor:react:changed` reported 0 mobile issues; score API was unreachable.
+  - Mobile Jest from `apps/mobile` passed: 17 suites, 148 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, and Agentic Center wiring are implemented. Focused type-check and primitive tests pass.
+Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring, and the Group A welcome checkpoint are implemented. Focused type-check, auth tests, primitive tests, and the latest full mobile Jest gate pass.
 
 ## Next
 
-1. Commit the foundation/gallery checkpoint without staging pre-existing prototype work.
-2. Continue into Group A auth/welcome rebuild using the same token foundation.
+1. Run the full mobile Jest/Doctor gates for the Group A auth checkpoint.
+2. Commit the Group A auth checkpoint without staging pre-existing prototype work.
+3. Continue into Customer Core screens.
 
 ## Open Risks
 
