@@ -149,6 +149,9 @@ describe('CustomerAgenticCenterSurface', () => {
     render(<CustomerAgenticCenterSurface />)
 
     expect(screen.getByText('Agentic Center')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('None')
+    expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('None')
+    expect(screen.getByTestId('customer-agentic-center-summary-memory-value')).toHaveTextContent('None')
     expect(screen.getByText('No active request')).toBeTruthy()
     expect(screen.getByText('Nothing needs approval')).toBeTruthy()
     expect(screen.getByText('No saved preference data')).toBeTruthy()
@@ -171,7 +174,10 @@ describe('CustomerAgenticCenterSurface', () => {
     expect(screen.getByText('The living room outlet is hot and smells faintly burnt.')).toBeTruthy()
     expect(screen.getByText('Tu Phan')).toBeTruthy()
     expect(screen.getAllByText('District 7, Sunrise City').length).toBeGreaterThan(0)
-    expect(screen.getByText('2')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('1')
+    expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('1')
+    expect(screen.getByTestId('customer-agentic-center-summary-memory-value')).toHaveTextContent('2')
+    expect(screen.getAllByText('2').length).toBeGreaterThan(1)
   })
 
   it('routes the center primary action to the real Kael chat route', () => {

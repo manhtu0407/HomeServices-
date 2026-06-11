@@ -29,6 +29,10 @@ const copy = {
     startRequest: 'Tạo yêu cầu mới',
     activity: 'Xem hoạt động',
     profile: 'Hồ sơ',
+    summaryActive: 'Việc đang chạy',
+    summaryApprovals: 'Cần duyệt',
+    summaryMemory: 'Tùy chọn',
+    summaryEmpty: 'Chưa có',
     activeCase: 'Việc đang chạy',
     activeEmptyTitle: 'Chưa có yêu cầu đang chạy',
     activeEmptyBody: 'Bắt đầu bằng chat Kael để tạo phiếu thật cho điện, nước hoặc vệ sinh.',
@@ -61,6 +65,10 @@ const copy = {
     startRequest: 'Start request',
     activity: 'View activity',
     profile: 'Profile',
+    summaryActive: 'Active case',
+    summaryApprovals: 'Approvals',
+    summaryMemory: 'Preferences',
+    summaryEmpty: 'None',
     activeCase: 'Active case',
     activeEmptyTitle: 'No active request',
     activeEmptyBody: 'Start with Kael chat to create a real ticket for electrical, plumbing, or cleaning.',
@@ -109,6 +117,7 @@ export function CustomerAgenticCenterSurface() {
     status: selectors.currentStatus,
     text,
   })
+  const summaryRows = getSummaryRows({ approvals, deal, preferences, text })
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: tokens.canvas }]} testID="customer-agentic-center-screen">
@@ -129,6 +138,8 @@ export function CustomerAgenticCenterSurface() {
           <CenterButton label={text.activity} onPress={() => replace(CUSTOMER_HISTORY_PATH)} reduceMotion={reduceMotion} tokens={tokens} />
           <CenterButton label={text.profile} onPress={() => replace(CUSTOMER_PROFILE_PATH)} reduceMotion={reduceMotion} tokens={tokens} />
         </View>
+
+        <CommandSummary rows={summaryRows} tokens={tokens} />
 
         <CenterSection title={text.activeCase} tokens={tokens}>
           {deal ? <ActiveCaseCard deal={deal} language={language} status={selectors.currentStatus} text={text} tokens={tokens} /> : <EmptyState body={text.activeEmptyBody} title={text.activeEmptyTitle} tokens={tokens} />}
@@ -203,6 +214,41 @@ function CenterButton({ label, onPress, primary = false, reduceMotion, tokens }:
       </Text>
     </Pressable>
   )
+}
+
+function CommandSummary({ rows, tokens }: { rows: Array<{ id: string; label: string; value: string }>; tokens: CustomerThemeTokens }) {
+  return (
+    <View style={styles.summaryRow} testID="customer-agentic-center-summary">
+      {rows.map((row) => (
+        <View key={row.id} style={[styles.summaryCell, centerInfoRowSurface(tokens)]} testID={`customer-agentic-center-summary-${row.id}`}>
+          <Text style={[styles.summaryValue, { color: tokens.primary }]} numberOfLines={1} testID={`customer-agentic-center-summary-${row.id}-value`}>
+            {row.value}
+          </Text>
+          <Text style={[styles.summaryLabel, { color: tokens.muted }]} numberOfLines={1}>
+            {row.label}
+          </Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
+function getSummaryRows({
+  approvals,
+  deal,
+  preferences,
+  text,
+}: {
+  approvals: Array<{ label: string; value: string }>
+  deal: LocalDeal | null
+  preferences: Array<{ label: string; value: string }>
+  text: (typeof copy)[AppLanguage]
+}) {
+  return [
+    { id: 'active', label: text.summaryActive, value: deal ? '1' : text.summaryEmpty },
+    { id: 'approvals', label: text.summaryApprovals, value: approvals.length > 0 ? String(approvals.length) : text.summaryEmpty },
+    { id: 'memory', label: text.summaryMemory, value: preferences.length > 0 ? String(preferences.length) : text.summaryEmpty },
+  ]
 }
 
 function getApprovalRows({
@@ -388,6 +434,38 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0,
     lineHeight: typography.label.lineHeight,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  summaryCell: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexBasis: 104,
+    flexGrow: 1,
+    gap: spacing.xs,
+    justifyContent: 'center',
+    minHeight: 76,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.md,
+  },
+  summaryValue: {
+    fontSize: typography.h3.fontSize,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: typography.h3.lineHeight,
+    textAlign: 'center',
+  },
+  summaryLabel: {
+    fontSize: typography.caption.fontSize,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: typography.caption.lineHeight,
+    textAlign: 'center',
   },
   section: {
     borderCurve: 'continuous',
