@@ -28,7 +28,7 @@ import {
 } from '@home-services/shared'
 import { useAuth } from './auth-provider'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from './media-upload'
-import { jobService, notificationService, workerService } from './services'
+import { jobService, kaelMemoryService, notificationService, workerService } from './services'
 import {
   clearStableClientRequestId,
   stableClientRequestId,
@@ -41,6 +41,7 @@ import type {
   EarningsResponse,
   AddressAccessView,
   JobDetailResponse,
+  KaelMemorySelfViewResponse,
   NotificationListResponse,
   WorkerCancellationRequestInput,
   WorkerBroadcastsResponse,
@@ -85,11 +86,16 @@ type FrontendWorkflowActions = {
   workerUpdateAvailability: (isAvailable: boolean) => Promise<boolean>
   refreshNotifications: () => Promise<boolean>
   markNotificationRead: (notificationId: string) => Promise<boolean>
+  refreshCustomerKaelMemory: () => Promise<boolean>
 }
+
+type CustomerKaelMemoryStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
 
 type FrontendWorkflowContextValue = {
   state: LocalWorkflowState
   selectors: LocalWorkflowSelectors
+  customerKaelMemory: KaelMemorySelfViewResponse['memory'] | null
+  customerKaelMemoryStatus: CustomerKaelMemoryStatus
   workerEarnings: EarningsResponse | null
   workerProfile: WorkerProfileResponse | null
   notifications: NotificationListResponse['notifications']
@@ -104,10 +110,22 @@ type WorkerRemoteState = {
   sessionUserId: string | null
 }
 
+type CustomerKaelMemoryState = {
+  memory: KaelMemorySelfViewResponse['memory'] | null
+  sessionUserId: string | null
+  status: CustomerKaelMemoryStatus
+}
+
 const initialWorkerRemoteState: WorkerRemoteState = {
   earnings: null,
   profile: null,
   sessionUserId: null,
+}
+
+const initialCustomerKaelMemoryState: CustomerKaelMemoryState = {
+  memory: null,
+  sessionUserId: null,
+  status: 'idle',
 }
 
 const FrontendWorkflowContext = createContext<FrontendWorkflowContextValue | null>(null)
@@ -205,6 +223,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const [workerRemoteState, setWorkerRemoteState] = useState<WorkerRemoteState>(initialWorkerRemoteState)
   const workerProfile = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.profile : null
   const workerEarnings = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.earnings : null
+  const [customerKaelMemoryState, setCustomerKaelMemoryState] = useState<CustomerKaelMemoryState>(initialCustomerKaelMemoryState)
+  const customerKaelMemory = customerKaelMemoryState.sessionUserId === sessionUserId ? customerKaelMemoryState.memory : null
+  const customerKaelMemoryStatus = customerKaelMemoryState.sessionUserId === sessionUserId ? customerKaelMemoryState.status : 'idle'
   const [notificationState, setNotificationState] = useReducer(notificationStateReducer, initialNotificationState)
   const { notifications, unreadCount: notificationUnreadCount } = notificationState
   const notificationsRef = useRef<NotificationListResponse['notifications']>([])
@@ -597,6 +618,33 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [role, sessionUserId, setRemoteError])
 
+  const refreshCustomerKaelMemory = useCallback(async () => {
+    if (!sessionUserId) {
+      setCustomerKaelMemoryState(initialCustomerKaelMemoryState)
+      return false
+    }
+    setCustomerKaelMemoryState((current) => ({
+      memory: current.sessionUserId === sessionUserId ? current.memory : null,
+      sessionUserId,
+      status: 'loading',
+    }))
+    const result = await kaelMemoryService.getMyMemory()
+    if (!result.success) {
+      setCustomerKaelMemoryState({
+        memory: null,
+        sessionUserId,
+        status: 'unavailable',
+      })
+      return false
+    }
+    setCustomerKaelMemoryState({
+      memory: result.data.subject_type === 'customer' ? result.data.memory : null,
+      sessionUserId,
+      status: 'ready',
+    })
+    return true
+  }, [sessionUserId])
+
   const markNotificationRead = useCallback(async (notificationId: string) => {
     const result = await notificationService.markRead(notificationId)
     if (!result.success) return setRemoteError(result.error)
@@ -636,6 +684,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerUpdateAvailability,
     refreshNotifications,
     markNotificationRead,
+    refreshCustomerKaelMemory,
   }), [
     cancelRemoteJob,
     confirmRemoteSearch,
@@ -645,6 +694,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     hydrateRemoteJobById,
     refreshCurrentJob,
     refreshNotifications,
+    refreshCustomerKaelMemory,
     markNotificationRead,
     requestScopeChange,
     requestWorkerCancellation,
@@ -663,6 +713,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   useEffect(() => {
     setNotificationState({ type: 'reset' })
+  }, [sessionUserId])
+
+  useEffect(() => {
+    setCustomerKaelMemoryState(initialCustomerKaelMemoryState)
   }, [sessionUserId])
 
   useEffect(() => {
@@ -695,6 +749,11 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
     if (isAppForeground()) void hydrateCustomerActiveJob()
   }, [role, sessionUserId, hydrateCustomerActiveJob])
+
+  useEffect(() => {
+    if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
+    if (isAppForeground()) void refreshCustomerKaelMemory()
+  }, [role, sessionUserId, refreshCustomerKaelMemory])
 
   const broadcast = state.deal?.broadcast
   const customerBroadcast = state.deal?.broadcast
@@ -741,6 +800,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   return {
     state,
     selectors,
+    customerKaelMemory,
+    customerKaelMemoryStatus,
     workerEarnings,
     workerProfile,
     notifications,

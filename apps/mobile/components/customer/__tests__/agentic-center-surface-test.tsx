@@ -126,6 +126,8 @@ function buildWorkflow(deal: LocalDeal | null, notificationUnreadCount = 0) {
       customerConfirmCompletion: mockCustomerConfirmCompletion,
       decideScopeChange: mockDecideScopeChange,
     },
+    customerKaelMemory: null,
+    customerKaelMemoryStatus: 'idle',
     dispatch: jest.fn(),
     notificationUnreadCount,
     notifications: [],
@@ -280,5 +282,38 @@ describe('CustomerAgenticCenterSurface', () => {
     expect(screen.getByText('Contact phone')).toBeTruthy()
     expect(screen.getByText('0901234567')).toBeTruthy()
     expect(screen.getByTestId('customer-agentic-center-summary-memory-value')).toHaveTextContent('3')
+  })
+
+  it('renders Kael memory self-view preferences without exposing unsafe metadata', () => {
+    buildWorkflow(null)
+    mockWorkflowValue.customerKaelMemory = {
+      language: 'en',
+      last_observed_at: '2026-06-01T00:00:00.000Z',
+      preference_summary: 'Prefers quiet morning cleaning visits.',
+      safe_metadata: {
+        raw_phone: '0901234567',
+      },
+      service_preferences: {
+        preferred_district: 'District 7',
+        preferred_service: 'cleaning',
+        preferred_time_window: 'Morning',
+      },
+    }
+
+    render(<CustomerAgenticCenterSurface />)
+
+    expect(screen.getByText('Kael memory')).toBeTruthy()
+    expect(screen.getByText('Prefers quiet morning cleaning visits.')).toBeTruthy()
+    expect(screen.getByText('Language')).toBeTruthy()
+    expect(screen.getByText('English')).toBeTruthy()
+    expect(screen.getByText('Service preference')).toBeTruthy()
+    expect(screen.getByText('Cleaning')).toBeTruthy()
+    expect(screen.getByText('Preferred area')).toBeTruthy()
+    expect(screen.getByText('District 7')).toBeTruthy()
+    expect(screen.getByText('Time preference')).toBeTruthy()
+    expect(screen.getByText('Morning')).toBeTruthy()
+    expect(screen.getByText('Last updated')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-summary-memory-value')).toHaveTextContent('6')
+    expect(screen.queryByText('0901234567')).toBeNull()
   })
 })

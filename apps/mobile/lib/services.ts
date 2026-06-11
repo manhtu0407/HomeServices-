@@ -24,6 +24,7 @@ import type {
   DisputeCounterStatementResponse,
   DisputeOpenResponse,
   KaelChatResponse,
+  KaelMemorySelfViewResponse,
   KaelChatProgressResponse,
   KaelLearningCandidateApproveResponse,
   KaelLearningCandidateListResponse,
@@ -250,6 +251,12 @@ export const workerKaelChatService = {
 export const customerFeedbackService = {
   submit(input: CustomerKaelFeedbackInput) {
     return api.post<CustomerKaelFeedbackResponse>('/me/kael-feedback', input)
+  },
+}
+
+export const kaelMemoryService = {
+  getMyMemory() {
+    return api.get<KaelMemorySelfViewResponse>('/me/kael-memory')
   },
 }
 

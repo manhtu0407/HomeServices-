@@ -111,6 +111,22 @@ export type KaelChatResponse = {
   turns: KaelChatTurn[]
 }
 
+export type KaelMemoryPayload = Record<string, unknown> & {
+  customer_id?: string
+  worker_id?: string
+  language?: string | null
+  preference_summary?: string | null
+  service_preferences?: Record<string, unknown> | null
+  trust_signals?: Record<string, unknown> | null
+  memory_version?: number | null
+  last_observed_at?: string | null
+}
+
+export type KaelMemorySelfViewResponse = {
+  subject_type: 'customer' | 'worker'
+  memory: KaelMemoryPayload | null
+}
+
 export type PlacesAutocompleteResponse = {
   suggestions: {
     place_id: string

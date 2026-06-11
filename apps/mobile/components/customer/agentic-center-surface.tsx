@@ -3,17 +3,18 @@ import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { hasLocalDealCompletionEvidence, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type LocalDeal, type LocalDealStatus, type WorkflowPhaseContext } from '@home-services/shared'
+import { hasLocalDealCompletionEvidence, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkflowPhaseContext } from '@home-services/shared'
 import { getCustomerThemeTokens, getReducedTransparencyCustomerTokens, useCustomerThemeMode, type CustomerThemeTokens } from '@/components/customer/customer-theme'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { NESTSCOUT_BRAND } from '@/design/brand'
 import { color, component, radius, spacing, typography } from '@/design/theme'
-import { localizedServiceLabel, localizedStatusLabel, useAppLanguage, type AppLanguage } from '@/lib/app-language'
+import { languageDisplayName, localizedServiceLabel, localizedStatusLabel, useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
+import type { KaelMemoryPayload } from '@/lib/api-types'
 
 const kaelHead = require('../../assets/kael-model-8a-head.png')
 const KAEL_CHAT_PATH = '/(customer)/kael-chat'
@@ -31,6 +32,16 @@ type AgenticApprovalRow = {
   scopeChangeId?: string
   value: string
 }
+
+type AgenticPreferenceRow = {
+  label: string
+  value: string
+}
+
+const memoryServiceKeys = ['preferred_service', 'service_type', 'last_service_type', 'service'] as const
+const memoryAreaKeys = ['preferred_district', 'district_label', 'district', 'area', 'service_area'] as const
+const memoryTimeKeys = ['preferred_time_window', 'time_window', 'schedule_preference', 'preferred_time'] as const
+const supportedMemoryServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']
 
 const copy = {
   vi: {
@@ -54,6 +65,14 @@ const copy = {
     memory: 'Bộ nhớ và tùy chọn',
     memoryEmptyTitle: 'Chưa có dữ liệu tùy chọn',
     memoryEmptyBody: 'Địa chỉ và tên hiển thị sẽ hiện ở đây sau khi được lưu trong hồ sơ thật.',
+    memoryUnavailableTitle: 'Chưa tải được bộ nhớ Kael',
+    memoryUnavailableBody: 'Kael sẽ hiển thị lại khi kết nối hệ thống ổn định.',
+    memorySummary: 'Bộ nhớ Kael',
+    languagePreference: 'Ngôn ngữ',
+    servicePreference: 'Dịch vụ ưu tiên',
+    preferredArea: 'Khu vực ưu tiên',
+    timePreference: 'Khung giờ ưu tiên',
+    lastUpdated: 'Cập nhật lần cuối',
     service: 'Dịch vụ',
     status: 'Trạng thái',
     estimate: 'Ước tính',
@@ -92,6 +111,14 @@ const copy = {
     memory: 'Memory and preferences',
     memoryEmptyTitle: 'No saved preference data',
     memoryEmptyBody: 'Address and display name appear here after they are saved on the real profile.',
+    memoryUnavailableTitle: 'Kael memory unavailable',
+    memoryUnavailableBody: 'Kael memory appears again after the system connection recovers.',
+    memorySummary: 'Kael memory',
+    languagePreference: 'Language',
+    servicePreference: 'Service preference',
+    preferredArea: 'Preferred area',
+    timePreference: 'Time preference',
+    lastUpdated: 'Last updated',
     service: 'Service',
     status: 'Status',
     estimate: 'Estimate',
@@ -116,7 +143,7 @@ export function CustomerAgenticCenterSurface() {
   const language = useAppLanguage()
   const text = copy[language]
   const { session } = useAuth()
-  const { actions, state, selectors, notificationUnreadCount } = useFrontendWorkflow()
+  const { actions, customerKaelMemory, customerKaelMemoryStatus, state, selectors, notificationUnreadCount } = useFrontendWorkflow()
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const themeMode = useCustomerThemeMode()
   const baseTokens = getCustomerThemeTokens(themeMode)
@@ -133,7 +160,9 @@ export function CustomerAgenticCenterSurface() {
     hasScopeChange: Boolean(deal?.scopeChange),
   })
   const metadata = session?.user.user_metadata ?? {}
-  const preferences = getPreferenceRows(metadata, language, text)
+  const preferences = getPreferenceRows(metadata, language, text, customerKaelMemory)
+  const memoryEmptyTitle = customerKaelMemoryStatus === 'unavailable' ? text.memoryUnavailableTitle : text.memoryEmptyTitle
+  const memoryEmptyBody = customerKaelMemoryStatus === 'unavailable' ? text.memoryUnavailableBody : text.memoryEmptyBody
   const approvals = getApprovalRows({
     canConfirmCompletion: workflow.allowedActions.confirmCompletion && selectors.canCustomerConfirmCompletion,
     deal,
@@ -200,7 +229,7 @@ export function CustomerAgenticCenterSurface() {
         </CenterSection>
 
         <CenterSection title={text.memory} tokens={tokens}>
-          {preferences.length > 0 ? preferences.map((item) => <InfoRow key={item.label} label={item.label} tokens={tokens} value={item.value} />) : <EmptyState body={text.memoryEmptyBody} title={text.memoryEmptyTitle} tokens={tokens} />}
+          {preferences.length > 0 ? preferences.map((item) => <InfoRow key={item.label} label={item.label} tokens={tokens} value={item.value} />) : <EmptyState body={memoryEmptyBody} title={memoryEmptyTitle} tokens={tokens} />}
         </CenterSection>
 
         <Pressable accessibilityLabel={language === 'en' ? 'Back to home' : 'Về trang chủ'} accessibilityRole="button" onPress={() => replace(CUSTOMER_HOME_PATH)} style={({ pressed }) => [styles.homeLink, centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-agentic-center-home">
@@ -455,8 +484,26 @@ function getApprovalRows({
   return rows
 }
 
-function getPreferenceRows(metadata: Record<string, unknown>, language: AppLanguage, text: (typeof copy)[AppLanguage]) {
-  const rows: Array<{ label: string; value: string }> = []
+function getPreferenceRows(metadata: Record<string, unknown>, language: AppLanguage, text: (typeof copy)[AppLanguage], customerKaelMemory: KaelMemoryPayload | null) {
+  const rows: AgenticPreferenceRow[] = []
+  if (customerKaelMemory) {
+    const summary = readMemoryString(customerKaelMemory, 'preference_summary')
+    const memoryLanguage = readMemoryString(customerKaelMemory, 'language')
+    const servicePreferences = readMemoryRecord(customerKaelMemory, 'service_preferences')
+    const serviceType = readMemoryServiceType(servicePreferences)
+    const preferredArea = servicePreferences ? readFirstMemoryString(servicePreferences, memoryAreaKeys) : ''
+    const timePreference = servicePreferences ? readFirstMemoryString(servicePreferences, memoryTimeKeys) : ''
+    const lastObservedAt = formatMemoryDate(readMemoryString(customerKaelMemory, 'last_observed_at'), language)
+
+    if (summary) rows.push({ label: text.memorySummary, value: summary })
+    if (memoryLanguage === 'vi' || memoryLanguage === 'en') {
+      rows.push({ label: text.languagePreference, value: languageDisplayName(memoryLanguage) })
+    }
+    if (serviceType) rows.push({ label: text.servicePreference, value: localizedServiceLabel(serviceType, language) })
+    if (preferredArea) rows.push({ label: text.preferredArea, value: localizedProfileValue(preferredArea, language) })
+    if (timePreference) rows.push({ label: text.timePreference, value: localizedProfileValue(timePreference, language) })
+    if (lastObservedAt) rows.push({ label: text.lastUpdated, value: lastObservedAt })
+  }
   const name = readMetadataString(metadata, 'nickname', 'preferred_name', 'full_name', 'name')
   const address = readMetadataString(metadata, 'default_address', 'address_label', 'address')
   const phone = readMetadataString(metadata, 'phone_number', 'phone', 'contact_phone')
@@ -466,12 +513,60 @@ function getPreferenceRows(metadata: Record<string, unknown>, language: AppLangu
   return rows
 }
 
+function readMemoryString(memory: Record<string, unknown>, key: string) {
+  const value = memory[key]
+  if (typeof value !== 'string') return ''
+  return sanitizeMemoryDisplayValue(value)
+}
+
+function readMemoryRecord(memory: Record<string, unknown>, key: string) {
+  const value = memory[key]
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+function readFirstMemoryString(memory: Record<string, unknown>, keys: readonly string[]) {
+  for (const key of keys) {
+    const value = readMemoryString(memory, key)
+    if (value) return value
+  }
+  return ''
+}
+
+function readMemoryServiceType(memory: Record<string, unknown> | null) {
+  if (!memory) return null
+  const serviceType = readFirstMemoryString(memory, memoryServiceKeys)
+  if (supportedMemoryServices.includes(serviceType as ServiceType)) return serviceType as ServiceType
+  return null
+}
+
 function readMetadataString(metadata: Record<string, unknown>, ...keys: string[]) {
   for (const key of keys) {
     const value = metadata[key]
     if (typeof value === 'string' && value.trim()) return value.trim()
   }
   return ''
+}
+
+function sanitizeMemoryDisplayValue(value: string) {
+  return value
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
+    .replace(/\b(?:\+?84|0)(?:[\s.-]?\d){8,10}\b/g, '[phone]')
+    .replace(/\b\d{11,12}\b/g, '[id-number]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160)
+}
+
+function formatMemoryDate(value: string, language: AppLanguage) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
 }
 
 function localizedProfileValue(value: string, language: AppLanguage) {
