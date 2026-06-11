@@ -503,6 +503,18 @@ const workerCopy = {
       privacyGate: 'Địa chỉ chi tiết chỉ mở sau khi thợ chấp nhận.',
       acceptedGate: 'Đã nhận việc. Ghi chú hiện lưu trong phiên này.',
       lockedGate: 'Chấp nhận việc để mở ghi chú việc.',
+      advisoryTitle: 'Tư vấn hiện trường',
+      advisoryMeta: 'Kael đồng hành',
+      advisoryBody: 'Kael giữ nhắc việc theo trạng thái thật: địa chỉ, phạm vi, bằng chứng và giá đều đi qua cổng hệ thống.',
+      advisoryStatusTitle: 'Bước việc',
+      advisoryAddressTitle: 'Địa chỉ',
+      advisoryAddressAreaOnly: 'Đang dùng khu vực chung',
+      advisoryAddressReleased: 'Đã mở địa chỉ chi tiết',
+      advisoryScopeTitle: 'Phạm vi & giá',
+      advisoryScopeNoPrice: 'Gửi bằng chứng qua Kael, không nhập giá',
+      advisoryScopeLocked: 'Chờ bước kiểm tra',
+      advisoryScopeReviewing: 'Kael đang xét phát sinh',
+      advisoryEvidenceTitle: 'Bằng chứng',
       attach: 'Đính kèm',
       attachHint: 'Đính kèm chưa mở trong Phòng việc này. Thợ ghi chú bằng chữ trước.',
       mic: 'Mic',
@@ -665,6 +677,18 @@ const workerCopy = {
       privacyGate: 'Detailed address opens only after acceptance.',
       acceptedGate: 'Job accepted. Notes are saved for this session.',
       lockedGate: 'Accept the job to unlock job notes.',
+      advisoryTitle: 'On-site advisory',
+      advisoryMeta: 'Kael alongside',
+      advisoryBody: 'Kael keeps reminders from real state: address, scope, evidence, and price all stay behind system gates.',
+      advisoryStatusTitle: 'Job step',
+      advisoryAddressTitle: 'Address',
+      advisoryAddressAreaOnly: 'Using general area',
+      advisoryAddressReleased: 'Detailed address released',
+      advisoryScopeTitle: 'Scope & price',
+      advisoryScopeNoPrice: 'Send evidence through Kael; no price input',
+      advisoryScopeLocked: 'Wait for inspection',
+      advisoryScopeReviewing: 'Kael is reviewing scope evidence',
+      advisoryEvidenceTitle: 'Evidence',
       attach: 'Attach',
       attachHint: 'Attachments are not open in this JobRoom yet. Add a written note first.',
       mic: 'Mic',
@@ -2723,6 +2747,11 @@ function WorkerChatContent() {
                       <JobRoomMetaCell key={item.label} label={item.label} value={item.value} />
                     ))}
                   </View>
+                  <WorkerOnSiteAdvisoryRail
+                    canSeeFullAddress={Boolean(selectors.canWorkerSeeFullAddress && fullAddressLabel)}
+                    deal={deal}
+                    status={selectors.currentStatus}
+                  />
                   <CompactWorkerPresenceMap density="dense" mode="jobroom" />
                   <View style={[styles.jobRoomGate, workerOpaqueCardSurface(tokens, chatCanSend ? 'cyan' : 'warm', reduceTransparency)]} testID="worker-jobroom-privacy-gate">
                     <Icon name={chatCanSend ? 'check' : 'shield'} active={chatCanSend} small />
@@ -3094,6 +3123,60 @@ function JobRoomStepCard({ index, title }: { index: string; title: string }) {
       <Text style={[styles.jobRoomProcessStepTitle, { color: tokens.ink }]} numberOfLines={2}>
         {title}
       </Text>
+    </View>
+  )
+}
+
+function WorkerOnSiteAdvisoryRail({
+  canSeeFullAddress,
+  deal,
+  status,
+}: {
+  canSeeFullAddress: boolean
+  deal: LocalDeal | null
+  status: LocalDealStatus | null
+}) {
+  const { copy, language, tokens } = useWorkerUi()
+  const hasCompletionEvidence = hasLocalDealCompletionEvidence(deal)
+  const statusValue = status ? localizedStatusLabel(status, language) : copy.chat.waitingTitle
+  const scopeValue = status === 'scope_change_pending'
+    ? copy.chat.advisoryScopeReviewing
+    : status === 'inspecting' || status === 'repairing'
+      ? copy.chat.advisoryScopeNoPrice
+      : copy.chat.advisoryScopeLocked
+  const evidenceValue = hasCompletionEvidence
+    ? copy.jobs.safetyCompletionSubmitted
+    : status === 'repairing'
+      ? copy.jobs.safetyCompletionReady
+      : copy.jobs.safetyCompletionPending
+  const rows = [
+    { id: 'status', label: copy.chat.advisoryStatusTitle, value: statusValue },
+    { id: 'address', label: copy.chat.advisoryAddressTitle, value: canSeeFullAddress ? copy.chat.advisoryAddressReleased : copy.chat.advisoryAddressAreaOnly },
+    { id: 'scope', label: copy.chat.advisoryScopeTitle, value: scopeValue },
+    { id: 'evidence', label: copy.chat.advisoryEvidenceTitle, value: evidenceValue },
+  ] as const
+
+  return (
+    <View style={[styles.jobRoomBrief, styles.jobRoomAdvisoryRail, workerKaelChatSurface(tokens, 'brief')]} testID="worker-onsite-advisory-rail">
+      <View style={styles.identityRow}>
+        <WorkerUtilityIcon active frameSize={42} icon="shield" size={42} style={styles.needsInlineImageIcon} />
+        <View style={styles.titleStack}>
+          <Text style={[styles.jobRoomBriefTitle, { color: tokens.primary }]} numberOfLines={1}>
+            {copy.chat.advisoryMeta}
+          </Text>
+          <Text style={[styles.jobRoomBubbleTitle, { color: tokens.ink }]} numberOfLines={1}>
+            {copy.chat.advisoryTitle}
+          </Text>
+        </View>
+      </View>
+      <Text style={[styles.jobRoomBubbleBody, { color: tokens.muted }]} numberOfLines={3}>
+        {copy.chat.advisoryBody}
+      </Text>
+      <View style={styles.jobRoomMetaGrid}>
+        {rows.map((row) => (
+          <JobRoomMetaCell key={row.id} label={row.label} testID={`worker-onsite-advisory-${row.id}`} value={row.value} valueLines={3} />
+        ))}
+      </View>
     </View>
   )
 }
@@ -9641,6 +9724,7 @@ const styles = StyleSheet.create({
   jobRoomMetaValue: { fontSize: 13, fontWeight: '600', letterSpacing: 0, lineHeight: 17 },
   jobRoomBrief: { borderRadius: 20, borderWidth: 1, gap: 8, overflow: 'hidden', paddingHorizontal: 13, paddingVertical: 11 },
   jobRoomBriefAligned: { marginLeft: 50 },
+  jobRoomAdvisoryRail: { marginLeft: 0, paddingHorizontal: 14, paddingVertical: 13 },
   jobRoomBriefTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
   jobRoomBriefAccent: { borderRadius: 999, height: 18, width: 4 },
   jobRoomBriefTitle: { flex: 1, fontSize: 12.5, fontWeight: '700', letterSpacing: 0, lineHeight: 16 },

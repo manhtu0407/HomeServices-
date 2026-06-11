@@ -724,6 +724,29 @@ describe('WorkerChatSurface', () => {
     expect(mockUseJobChatThread).toHaveBeenCalledWith('job_test_1', true)
   })
 
+  it('shows on-site Kael advisory gates in an accepted JobRoom without a price input', async () => {
+    mockPathname = '/(worker)/chat'
+    buildWorkflow({ deal: buildRepairingDeal() })
+
+    render(<WorkerChatSurface />)
+
+    fireEvent(screen.getByTestId('worker-kael-chat-input'), 'focus')
+    await waitFor(() => expect(screen.getByTestId('worker-jobroom-agentic-process-trigger')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('worker-jobroom-agentic-process-trigger'))
+    await waitFor(() => expect(screen.getByTestId('worker-jobroom-handoff-reveal')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('worker-jobroom-agentic-process-trigger'))
+    await waitFor(() => expect(screen.getByTestId('worker-jobroom-live-brief-reveal')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('worker-jobroom-agentic-process-trigger'))
+
+    await waitFor(() => expect(screen.getByTestId('worker-onsite-advisory-rail')).toBeOnTheScreen())
+    expect(screen.getByTestId('worker-onsite-advisory-status')).toHaveTextContent(/sửa/i)
+    expect(screen.getByTestId('worker-onsite-advisory-address')).toHaveTextContent(/khu vực|area/i)
+    expect(screen.getByTestId('worker-onsite-advisory-scope')).toHaveTextContent(/không nhập giá/i)
+    expect(screen.getByTestId('worker-onsite-advisory-evidence')).toHaveTextContent(/ghi chú và ảnh/i)
+    expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
+    expect(screen.queryByText('--')).toBeNull()
+  })
+
   it('shows worker Kael advisory progress from SSE stage events while a reply is running', async () => {
     let resolveStream!: (value: unknown) => void
     mockWorkerKaelChatService.streamTurn.mockImplementationOnce((_sessionId: string, input: { message: string }, handlers?: any) => {
