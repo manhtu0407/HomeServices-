@@ -4102,6 +4102,12 @@ function CustomerHistoryJobAcceptancePanel({
       <Text style={[styles.historyDisclaimerText, { color: tokens.text }]} numberOfLines={2}>
         {copy.history.jobAcceptanceBody}
       </Text>
+      <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]} testID="customer-history-job-acceptance-shield-cue">
+        <MappedIcon name="privacy" color={tokens.primary} accent={tokens.copper} size={24} />
+        <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
+          {copy.history.jobAcceptanceConfirmedTitle}
+        </Text>
+      </View>
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.jobAcceptanceStatus} testID="customer-history-job-acceptance-status" value={workerStateLabel} variant="activity" />
         <V4TicketCell label={languageMode === 'en' ? 'Service' : 'Dịch vụ'} testID="customer-history-job-acceptance-service" value={serviceLabel} variant="activity" />

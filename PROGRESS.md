@@ -89,6 +89,7 @@
   - Added the Job Acceptance checkpoint to Activity from accepted job status, address release, job chat action gate, job id, and Kael worker prebrief.
   - Kept acceptance UI free of fake worker names, avatars, ratings, and inferred worker profile data.
   - Added the accepted job service cell from the real deal service type.
+  - Added the Job Acceptance shield/confirmed cue from the real accepted job state while keeping worker identity/review score hidden until backend fields exist.
   - Aligned Job Acceptance to the reference confirmed-order checklist with review details, prepare tools, contact via chat, and `Xem chi tiết` / `View details` into the existing job chat tab.
   - Added the Job in Progress checkpoint to Activity from workflow phase, next event, completion evidence artifact, and job chat gate.
   - Kept in-progress UI free of fake progress percentages, fake travel ETA, and worker performance stats.
