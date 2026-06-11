@@ -52,6 +52,8 @@
   - Kept photo picking wired to the existing image picker.
   - Kept voice honest: the booking form shows a voice capsule, but pressing it explains that voice is handled in Kael chat when supported instead of recording fake audio.
   - Updated Kael Live Performance Chat to summarize real image/video evidence as evidence items and render video tiles from the Booking handoff.
+  - Aligned Kael Live Performance Chat to the reference title `Kael đang phân tích yêu cầu bạn` / `Kael is analyzing your request` while keeping progress, media, and service data tied to the real Kael session.
+  - Kept the reference ETA out of Kael Live Performance Chat until the backend exposes a real analysis ETA field.
   - Added focused RNTL coverage that the booking handoff includes the voice capsule.
 - Continued Group C:
   - Added a real-data customer case command overview to Activity.

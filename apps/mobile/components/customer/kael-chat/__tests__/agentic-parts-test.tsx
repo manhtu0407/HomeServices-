@@ -225,7 +225,7 @@ const threadText = {
   livePerformanceService: 'Service',
   livePerformanceStage: 'Kael stage',
   livePerformanceSignals: 'Signals',
-  livePerformanceTitle: 'Kael is processing',
+  livePerformanceTitle: 'Kael is analyzing your request',
   livePerformanceWaitingStage: 'Waiting for real details',
   loading: 'Loading',
   retryIntake: 'Retry intake',
@@ -519,6 +519,27 @@ describe('Kael agentic phase cards', () => {
     })
     expect(screen.getByTestId('customer-kael-chat-input').props.value).toBe('Cau du thong tin chu?')
     expect(mockKaelChatCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the reference live-analysis title for a real Booking handoff', async () => {
+    mockKaelChatCreate.mockImplementation(() => new Promise(() => undefined))
+    setPendingKaelChatDraft({
+      addressLabel: 'Quận 7, TP.HCM',
+      districtLabel: 'Quận 7',
+      locale: 'vi',
+      mediaCount: 1,
+      message: 'Ổ cắm bếp có tia lửa',
+      photoDrafts: [{ uri: 'file:///private/o-cam.jpg', type: 'image' }],
+      problemChips: ['Ổ cắm/công tắc hỏng'],
+      serviceType: 'electrical',
+      source: 'booking',
+    })
+
+    render(<KaelChatSurface />)
+
+    await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('Kael đang phân tích yêu cầu bạn')).toBeOnTheScreen()
+    expect(screen.queryByText('Kael đang xử lý')).toBeNull()
   })
 
   it('routes a real Kael service session from the archive toolbar into Activity', async () => {
