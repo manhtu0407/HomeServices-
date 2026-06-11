@@ -25,19 +25,24 @@
 - Changed visible app config name and permission copy to NestScout while keeping identifiers unchanged.
 - Wired the customer Kael Orb route to a real-data Agentic Center surface and kept full chat on `/(customer)/kael-chat`.
 - Added focused RNTL coverage for Agentic Center empty, active-case, preference, notification, and chat-route behavior.
+- Added the Phase 1 hidden `/(design-gallery)` route with action buttons, chips, inputs, media/voice controls, cards, aura, bottom navigation sample, and Kael Orb sample.
+- Added reusable NestScout/Kael UI primitives in `apps/mobile/components/ui/kael-primitives.tsx`.
+- Added `KaelMascot` typed state shell with all 20 official state names plus 10 emotion variant names; current rendering uses logged fallback assets until official exports exist.
+- Switched auth role card images away from untracked `common-image-icons` to tracked client/worker icon assets.
 - Verification for this checkpoint:
   - `pnpm --filter @home-services/mobile type-check` passed.
+  - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
   - Mobile Jest from `apps/mobile` passed: 15 suites, 141 tests.
   - `pnpm doctor:react:changed` reported 0 mobile issues; score API was unreachable.
   - `git diff --check` passed.
 
 ## Current Status
 
-Phase 1 foundation and Agentic Center wiring are implemented. Focused type-check and Agentic Center test passed. Full mobile test gate is next.
+Phase 1 foundation, design gallery, Kael mascot shell, and Agentic Center wiring are implemented. Focused type-check and primitive tests pass.
 
 ## Next
 
-1. Create the first verified checkpoint commit without staging pre-existing prototype work.
+1. Commit the foundation/gallery checkpoint without staging pre-existing prototype work.
 2. Continue into Group A auth/welcome rebuild using the same token foundation.
 
 ## Open Risks

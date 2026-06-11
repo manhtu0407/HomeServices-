@@ -27,8 +27,9 @@ All listed PNG image assets are 256x256 except app shell icons/splash and Kael m
 | App icon | `apps/mobile/assets/icon.png`, `adaptive-icon.png` | Exists, but may not match NestScout logo. Needs brand decision. |
 | Welcome/auth Kael head | `apps/mobile/assets/kael-model-8a-head.png` | Exists as generic/static mascot. |
 | Full Kael mascot | `apps/mobile/assets/kael-model-8a.png` | Exists as generic/static mascot. |
-| Customer role card | `apps/mobile/assets/common-image-icons/common-role-home.png` | Exists; currently untracked/user work. |
-| Worker role card | `apps/mobile/assets/common-image-icons/common-role-repair.png` | Exists; currently untracked/user work. |
+| `KaelMascot` typed state shell | Fallback: `apps/mobile/assets/kael-model-8a.png`, `apps/mobile/assets/kael-model-8a-head.png` | Component exists; official state/emotion exports still needed. |
+| Customer role card | `apps/mobile/assets/client-image-icons/client-home.png` | Tracked fallback equivalent to the untracked common role icon. |
+| Worker role card | `apps/mobile/assets/worker-image-icons/utility-tools.png` | Tracked fallback equivalent to the untracked common role icon. |
 | Electrical service | `apps/mobile/assets/client-image-icons/client-service-electrical.png` or worker equivalent | Exists. |
 | Plumbing service | `apps/mobile/assets/client-image-icons/client-service-plumbing.png` or worker equivalent | Exists. |
 | Cleaning service | `apps/mobile/assets/client-image-icons/client-service-cleaning.png` or worker equivalent | Exists. |

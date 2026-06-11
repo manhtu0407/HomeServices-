@@ -1,6 +1,6 @@
 # NestScout / Kael Rebuild Scoreboard
 
-Status: Phase 1 foundation started. Agentic Center route is wired, but visual-match scoring still requires native screenshots.
+Status: Phase 1 foundation implemented with the hidden design gallery and Agentic Center route. Visual-match scoring still requires native screenshots.
 
 Scoring gates from the handoff:
 
@@ -56,7 +56,8 @@ Legend:
 
 ## Current Known Scoring Risks
 
-- Existing app has many raw color/rgba/background/shadow hits in mobile UI/lib files. Phase 1 has added the official runtime token source, but full token compliance is not claimed yet.
+- Existing app has many raw color/rgba/background/shadow hits in mobile UI/lib files. Phase 1 has added the official runtime token source and the new primitive/gallery files are raw-color clean, but full app token compliance is not claimed yet.
+- The hidden `/(design-gallery)` foundation route renders the base component set, but no native screenshot has been captured against the official Component System page yet.
 - Missing official Kael state assets block full visual match for mascot-heavy screens.
 - Missing final NestScout logo decision blocks final splash/welcome fidelity.
 - Profile screens must use real data only; missing metrics require honest empty/loading/error states.

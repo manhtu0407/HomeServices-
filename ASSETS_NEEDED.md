@@ -1,6 +1,6 @@
 # Assets Needed For NestScout / Kael Rebuild
 
-Status: Phase 0 inventory.
+Status: Phase 1 inventory. `KaelMascot` now has a typed shell and renders existing fallback images until these official exports are provided.
 
 Do not crop these from PDF or flow boards. Please export them as standalone transparent PNG/WebP or Lottie/Rive files.
 
