@@ -3752,6 +3752,74 @@ const WorkerProfileLevelChip = memo(function WorkerProfileLevelChip({
   )
 })
 
+function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: WorkerProfileResponse | null }) {
+  const { language, tokens } = useWorkerUi()
+  const completedJobs = Math.max(0, workerProfile?.total_jobs ?? 0)
+  const rawRating = Number(workerProfile?.rating ?? 0)
+  const hasJobs = completedJobs > 0
+  const hasRating = hasJobs && Number.isFinite(rawRating) && rawRating > 0
+  const rating = hasRating ? Math.min(5, Math.max(1, rawRating)) : 0
+  const emptyValue = language === 'en' ? 'Not yet' : 'Ch\u01b0a c\u00f3'
+  const availabilityValue = !workerProfile
+    ? emptyValue
+    : workerProfile.is_suspended
+      ? language === 'en' ? 'Suspended' : 'T\u1ea1m kh\u00f3a'
+      : workerProfile.is_available
+        ? language === 'en' ? 'Available' : '\u0110ang nh\u1eadn vi\u1ec7c'
+        : language === 'en' ? 'Paused' : 'T\u1ea1m ngh\u1ec9'
+  const hasReputationData = hasRating || hasJobs
+  const stats = [
+    {
+      id: 'rating',
+      label: language === 'en' ? 'Rating' : '\u0110\u00e1nh gi\u00e1',
+      value: hasRating ? `${rating.toFixed(1)}/5` : emptyValue,
+    },
+    {
+      id: 'jobs',
+      label: language === 'en' ? 'Completed jobs' : 'Vi\u1ec7c ho\u00e0n t\u1ea5t',
+      value: hasJobs ? `${completedJobs}` : emptyValue,
+    },
+    {
+      id: 'availability',
+      label: language === 'en' ? 'Availability' : 'Nh\u1eadn vi\u1ec7c',
+      value: availabilityValue,
+    },
+  ] as const
+
+  return (
+    <View style={[styles.profileSyncPreview, workerProfilePanelSurface(tokens)]} testID="worker-profile-reputation-card">
+      <WorkerProfileMaterialChrome testID="worker-profile-reputation-crisp-shell" variant="panel" />
+      <View style={styles.profileSyncPreviewTop}>
+        <Text style={[styles.cardTitle, { color: tokens.ink, flex: 1 }]} numberOfLines={1}>
+          {language === 'en' ? 'Reputation & performance' : 'Uy t\u00edn & hi\u1ec7u su\u1ea5t'}
+        </Text>
+        <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
+          {language === 'en' ? 'Real data' : 'D\u1eef li\u1ec7u th\u1eadt'}
+        </Text>
+      </View>
+      <View style={styles.profileLevelSignalGrid}>
+        {stats.map((stat) => (
+          <View key={stat.id} style={[styles.profileLevelSignal, workerProfileLevelSignalSurface(tokens)]} testID={`worker-profile-reputation-${stat.id}`}>
+            <View pointerEvents="none" style={[styles.profileLevelSignalGlass, workerProfileLevelSignalGlass(tokens)]} />
+            <View pointerEvents="none" style={[styles.profileLevelSignalTopEdge, workerProfileLevelSignalTopEdge(tokens)]} />
+            <Text style={[styles.profileLevelSignalLabel, { color: tokens.muted }]} numberOfLines={1}>
+              {stat.label}
+            </Text>
+            <Text style={[styles.profileLevelSignalValue, { color: tokens.ink }]} numberOfLines={1}>
+              {stat.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+      {!hasReputationData ? (
+        <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2} testID="worker-profile-reputation-empty">
+          {language === 'en' ? 'Rating and performance open after real completed jobs.' : '\u0110\u00e1nh gi\u00e1 v\u00e0 hi\u1ec7u su\u1ea5t ch\u1ec9 m\u1edf sau vi\u1ec7c ho\u00e0n t\u1ea5t th\u1eadt.'}
+        </Text>
+      ) : null}
+    </View>
+  )
+}
+
 function WorkerProfileLevelCard({ workerProfile }: { workerProfile: WorkerProfileResponse | null }) {
   const { language, tokens } = useWorkerUi()
   const { reduceMotion } = useGlassAccessibility()
@@ -4308,6 +4376,7 @@ function WorkerProfileContent() {
       </View>
 
       <WorkerProfileLevelCard workerProfile={workerProfile} />
+      <WorkerProfileReputationPanel workerProfile={workerProfile} />
 
       {showProfileSyncPreview ? (
         <View style={[styles.profileSyncPreview, workerProfilePanelSurface(tokens)]} testID="worker-profile-sync-preview">

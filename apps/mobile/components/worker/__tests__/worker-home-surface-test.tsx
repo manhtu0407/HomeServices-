@@ -1524,6 +1524,11 @@ describe('WorkerProfileSurface', () => {
     expect(screen.getByTestId('worker-profile-level-signal-recommendation')).toHaveTextContent(/Ch\u01b0a c\u00f3/)
     expect(screen.getByTestId('worker-profile-level-signal-rating')).not.toHaveTextContent(/0\/5/)
     expect(screen.getByTestId('worker-profile-level-signal-recommendation')).not.toHaveTextContent(/0%/)
+    expect(screen.getByTestId('worker-profile-reputation-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-profile-reputation-empty')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-profile-reputation-rating')).toHaveTextContent(/Ch\u01b0a c\u00f3/)
+    expect(screen.getByTestId('worker-profile-reputation-jobs')).toHaveTextContent(/Ch\u01b0a c\u00f3/)
+    expect(screen.getByTestId('worker-profile-reputation-rating')).not.toHaveTextContent(/0\/5/)
     expect(screen.getAllByTestId('worker-profile-level-signal-glass-layer')).toHaveLength(3)
     expect(screen.getByTestId('worker-profile-level-ladder')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-profile-level-rail')).toBeOnTheScreen()
@@ -1549,7 +1554,7 @@ describe('WorkerProfileSurface', () => {
 
   it('derives worker level progress from real completed jobs and feedback', () => {
     mockPathname = '/(worker)/profile'
-    buildWorkflow({ workerProfile: buildWorkerProfile({ rating: 4.9, total_jobs: 24 }) })
+    buildWorkflow({ workerProfile: buildWorkerProfile({ is_available: true, rating: 4.9, total_jobs: 24 }) })
 
     render(<WorkerProfileSurface />)
 
@@ -1558,6 +1563,10 @@ describe('WorkerProfileSurface', () => {
     expect(screen.getByTestId('worker-profile-level-signal-jobs')).toHaveTextContent(/24/)
     expect(screen.getByTestId('worker-profile-level-signal-rating')).toHaveTextContent(/4\.9\/5/)
     expect(screen.getByTestId('worker-profile-level-signal-recommendation')).toHaveTextContent(/60%/)
+    expect(screen.getByTestId('worker-profile-reputation-rating')).toHaveTextContent(/4\.9\/5/)
+    expect(screen.getByTestId('worker-profile-reputation-jobs')).toHaveTextContent(/24/)
+    expect(screen.getByTestId('worker-profile-reputation-availability')).toHaveTextContent(/Đang nhận việc/)
+    expect(screen.queryByTestId('worker-profile-reputation-empty')).toBeNull()
     expect(screen.queryByText('--')).toBeNull()
   })
 
