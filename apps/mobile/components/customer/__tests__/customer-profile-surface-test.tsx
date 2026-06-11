@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
+import { component } from '@/design/theme'
 
 let mockSessionMetadata: Record<string, unknown>
 const mockSignOut = jest.fn()
@@ -354,7 +355,20 @@ describe('CustomerV4DockOverlay', () => {
     expect(screen.getByTestId('customer-dock-kael-action-glass')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-dock-kael-action-edge')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-dock-kael-action-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-dock-kael-action-label')).toHaveTextContent(component.bottomNav.orb.label)
     expect(screen.queryByTestId('liquid-toolbar-selection-kael')).toBeNull()
+
+    const kaelPressableStyleProp = screen.getByTestId('customer-v4-dock-kael').props.style
+    const kaelPressableStyle = StyleSheet.flatten(
+      typeof kaelPressableStyleProp === 'function'
+        ? kaelPressableStyleProp({ pressed: false })
+        : kaelPressableStyleProp,
+    )
+    expect(kaelPressableStyle.height).toBe(component.bottomNav.orb.outerSize)
+    expect(kaelPressableStyle.width).toBe(component.bottomNav.orb.outerSize)
+    const kaelGlassStyle = StyleSheet.flatten(screen.getByTestId('customer-dock-kael-action-glass').props.style)
+    expect(kaelGlassStyle.height).toBe(component.bottomNav.orb.size)
+    expect(kaelGlassStyle.width).toBe(component.bottomNav.orb.size)
 
     fireEvent.press(screen.getByTestId('customer-v4-dock-booking'))
     await waitFor(() => {

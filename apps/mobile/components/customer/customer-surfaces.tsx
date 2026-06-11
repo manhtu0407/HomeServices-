@@ -40,7 +40,7 @@ import { GlassPressable } from '@/components/ui/glass-pressable'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { NESTSCOUT_BRAND } from '@/design/brand'
-import { color } from '@/design/theme'
+import { color, component } from '@/design/theme'
 import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { appCopy, languageDisplayName, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel, setAppLanguage, type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
@@ -77,9 +77,22 @@ const customerWorkerTypography = {
   screenTitle: { fontWeight: '700' as const, letterSpacing: 0 },
   sectionTitle: { fontWeight: '600' as const, letterSpacing: 0 },
 }
-const customerDockHeight = 56
+const customerDockHeight = component.bottomNav.height
+const customerDockKaelActionSize = component.bottomNav.orb.size
+const customerDockKaelActionOuterSize = component.bottomNav.orb.outerSize
+const customerDockKaelActionRadius = component.bottomNav.orb.radius
+const customerDockKaelActionIconSize = component.bottomNav.orb.iconSize
+const customerDockKaelActionGlyphHeight = component.bottomNav.orb.glyphHeight
+const customerDockKaelActionGlyphWidth = component.bottomNav.orb.glyphWidth
+const customerDockKaelActionLabelFontSize = component.bottomNav.orb.labelFontSize
+const customerDockKaelActionLabelLineHeight = component.bottomNav.orb.labelLineHeight
+const customerDockKaelActionPaddingBottom = component.bottomNav.orb.paddingBottom
+const customerDockKaelActionPaddingTop = component.bottomNav.orb.paddingTop
+const customerDockKaelActionAuraSize = component.bottomNav.orb.auraSize
+const customerDockKaelActionAuraOffsetRight = component.bottomNav.orb.auraOffsetRight
+const customerDockKaelActionAuraOffsetTop = component.bottomNav.orb.auraOffsetTop
 const customerDockBottomMargin = 18
-const customerDockBottomClearance = customerDockHeight + customerDockBottomMargin + 76
+const customerDockBottomClearance = Math.max(customerDockHeight, customerDockKaelActionOuterSize) + customerDockBottomMargin + 76
 const customerFrameHorizontalPadding = 16
 const customerDockHiddenListeners = new Set<() => void>()
 let customerDockHiddenSnapshot = false
@@ -3194,7 +3207,7 @@ function V4Dock({
   const copy = customerCopy[languageMode]
   const tokens = useCustomerTokens()
   const dockWidth = Math.max(0, Math.min(frameWidth - 40, 360))
-  const dockActionSize = 56
+  const dockActionSize = customerDockKaelActionOuterSize
   const dockGap = 10
   const dockMainWidth = Math.max(dockWidth - dockActionSize - dockGap, 0)
   const dockLeft = Math.max((screenWidth - dockWidth) / 2, 16)
@@ -3292,7 +3305,18 @@ function V4Dock({
           >
             <View pointerEvents="none" style={[styles.customerDockKaelActionEdge, customerDockKaelActionEdgeSurface(tokens)]} testID="customer-dock-kael-action-edge" />
             <View pointerEvents="none" style={[styles.customerDockKaelActionAura, customerDockKaelActionAuraSurface(tokens, active === 'kael')]} testID="customer-dock-kael-action-aura" />
-            <MappedIcon name="kael" color={active === 'kael' ? tokens.primary : customerDockInactiveTint(tokens)} accent={tokens.primary} size={29} />
+            <View style={styles.customerDockKaelActionGlyph} testID="customer-dock-kael-action-image">
+              <MappedIcon name="kael" color={active === 'kael' ? tokens.primary : customerDockInactiveTint(tokens)} accent={tokens.primary} size={customerDockKaelActionIconSize} />
+            </View>
+            <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.82}
+              numberOfLines={1}
+              style={[styles.customerDockKaelActionLabel, { color: active === 'kael' ? tokens.primary : customerDockInactiveTint(tokens) }]}
+              testID="customer-dock-kael-action-label"
+            >
+              {component.bottomNav.orb.label}
+            </Text>
           </GlassSurface>
         </Pressable>
       </View>
@@ -6467,7 +6491,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'center',
-    minHeight: customerDockHeight,
+    minHeight: Math.max(customerDockHeight, customerDockKaelActionOuterSize),
     position: 'relative',
     width: '100%',
     zIndex: 2,
@@ -6494,25 +6518,28 @@ const styles = StyleSheet.create({
   customerDockKaelActionPressable: {
     alignItems: 'center',
     flexShrink: 0,
-    height: 56,
+    height: customerDockKaelActionOuterSize,
     justifyContent: 'center',
-    width: 56,
+    width: customerDockKaelActionOuterSize,
     zIndex: 2,
   },
   customerDockKaelActionGlass: {
     alignItems: 'center',
     borderCurve: 'continuous',
-    borderRadius: 28,
+    borderRadius: customerDockKaelActionRadius,
     borderWidth: 1,
-    height: 56,
+    gap: 0,
+    height: customerDockKaelActionSize,
     justifyContent: 'center',
     overflow: 'hidden',
+    paddingBottom: customerDockKaelActionPaddingBottom,
+    paddingTop: customerDockKaelActionPaddingTop,
     position: 'relative',
-    width: 56,
+    width: customerDockKaelActionSize,
   },
   customerDockKaelActionEdge: {
     borderCurve: 'continuous',
-    borderRadius: 27,
+    borderRadius: customerDockKaelActionRadius,
     borderWidth: 1,
     bottom: 1,
     left: 1,
@@ -6523,13 +6550,28 @@ const styles = StyleSheet.create({
   },
   customerDockKaelActionAura: {
     borderRadius: 999,
-    height: 50,
+    height: customerDockKaelActionAuraSize,
     opacity: 0.50,
     position: 'absolute',
-    right: -9,
-    top: -7,
-    width: 50,
+    right: customerDockKaelActionAuraOffsetRight,
+    top: customerDockKaelActionAuraOffsetTop,
+    width: customerDockKaelActionAuraSize,
     zIndex: 0,
+  },
+  customerDockKaelActionGlyph: {
+    alignItems: 'center',
+    flexShrink: 0,
+    height: customerDockKaelActionGlyphHeight,
+    justifyContent: 'center',
+    width: customerDockKaelActionGlyphWidth,
+    zIndex: 2,
+  },
+  customerDockKaelActionLabel: {
+    fontSize: customerDockKaelActionLabelFontSize,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: customerDockKaelActionLabelLineHeight,
+    zIndex: 2,
   },
   dockBottomReflection: {
     borderRadius: 999,
