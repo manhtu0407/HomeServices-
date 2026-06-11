@@ -5196,6 +5196,14 @@ function WorkerReadinessActionPanel() {
       : workerProfile?.is_approved
         ? copy.home.readinessOffline
         : copy.home.readinessNoProfile
+  const verificationLabel = workerProfile
+    ? localizedWorkerVerificationStatus(workerProfile.verification_status, language)
+    : appCopy[language].common.noData
+  const requestSignalLabel = !deal
+    ? copy.jobs.waitingEmptyTitle
+    : acceptedDeal
+      ? localizedStatusLabel(selectors.currentStatus, language)
+      : localizedServiceLabel(deal.draft.serviceType, language)
   const availabilityActionLabel = nextAvailability ? copy.frame.availabilityOn : copy.frame.availabilityOff
 
   return (
@@ -5229,6 +5237,11 @@ function WorkerReadinessActionPanel() {
           label={availabilityActionLabel}
           onChange={(next) => actions.workerUpdateAvailability(next)}
         />
+      </View>
+      <View style={styles.metricRow} testID="worker-readiness-signal-panel">
+        <Metric label={copy.home.readinessVerification} testID="worker-readiness-verification" value={verificationLabel} />
+        <Metric label={copy.home.readinessAvailability} testID="worker-readiness-availability" value={availabilityLabel} />
+        <Metric label={copy.home.readinessRequest} testID="worker-readiness-request" value={requestSignalLabel} />
       </View>
       <View style={[styles.shiftActionRow, workerHomeReadinessActionWellSurface(tokens)]} testID="worker-readiness-primary-actions">
         <PressButton disabled={!canToggleAvailability} label={availabilityActionLabel} material="liquid" onPress={() => void actions.workerUpdateAvailability(nextAvailability)} testID="worker-availability-primary-action" />
@@ -7144,15 +7157,15 @@ function WorkerEmptyJobPanel({
   )
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, testID, value }: { label: string; testID?: string; value: string }) {
   const { tokens } = useWorkerUi()
 
   return (
-    <View style={[styles.metric, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]}>
-      <Text adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.metricValue, { color: tokens.ink }]} numberOfLines={1}>
+    <View style={[styles.metric, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]} testID={testID}>
+      <Text adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.metricValue, { color: tokens.ink }]} numberOfLines={1} testID={testID ? `${testID}-value` : undefined}>
         {value}
       </Text>
-      <Text adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
+      <Text adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1} testID={testID ? `${testID}-label` : undefined}>
         {label}
       </Text>
     </View>

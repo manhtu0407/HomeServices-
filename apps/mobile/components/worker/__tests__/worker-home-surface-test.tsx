@@ -467,6 +467,25 @@ describe('WorkerHomeSurface', () => {
     expect(mockWorkerUpdateAvailability).toHaveBeenCalledWith(false)
   })
 
+  it('surfaces worker readiness signals from real profile and request data', () => {
+    mockAppLanguage = 'en'
+    buildWorkflow({
+      deal: buildIncomingDeal(),
+      workerProfile: buildWorkerProfile({
+        is_approved: true,
+        is_available: true,
+        verification_status: 'approved',
+      }),
+    })
+    render(<WorkerHomeSurface />)
+
+    expect(screen.getByTestId('worker-readiness-signal-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-readiness-verification-value')).toHaveTextContent('Approved')
+    expect(screen.getByTestId('worker-readiness-availability-value')).toHaveTextContent('Online')
+    expect(screen.getByTestId('worker-readiness-request-value')).toHaveTextContent('Electrical repair')
+    expect(screen.queryByText('4.9')).toBeNull()
+  })
+
   it('keeps the home screen free of dashboard stat strips', () => {
     buildWorkflow({
       workerEarnings: buildNoEarnings(),
