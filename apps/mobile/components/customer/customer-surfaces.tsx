@@ -743,9 +743,10 @@ const customerCopy = {
       caseQuote: 'Biên giá',
       matchingScoreTitle: 'Điểm ghép thợ',
       matchingScoreMeta: 'Dựa trên phiếu và broadcast thật',
+      matchingFit: 'Độ phù hợp',
       matchingEvidence: 'Bằng chứng',
-      matchingEvidenceCount: (count: number) => `${count} ảnh thật`,
-      matchingEvidenceEmpty: 'Chưa gửi ảnh',
+      matchingEvidenceCount: (count: number) => `${count} bằng chứng thật`,
+      matchingEvidenceEmpty: 'Chưa gửi bằng chứng',
       matchingWorkerSignal: 'Tín hiệu thợ',
       matchingPrebrief: 'Tóm tắt Kael',
       matchingNoWorkerProfile: 'Chưa có hồ sơ thợ thật',
@@ -966,9 +967,10 @@ const customerCopy = {
       caseQuote: 'Price band',
       matchingScoreTitle: 'Matching score',
       matchingScoreMeta: 'From the real ticket and broadcast',
+      matchingFit: 'Match fit',
       matchingEvidence: 'Evidence',
-      matchingEvidenceCount: (count: number) => `${count} real photo${count === 1 ? '' : 's'}`,
-      matchingEvidenceEmpty: 'No photo sent',
+      matchingEvidenceCount: (count: number) => `${count} real evidence item${count === 1 ? '' : 's'}`,
+      matchingEvidenceEmpty: 'No evidence sent',
       matchingWorkerSignal: 'Worker signal',
       matchingPrebrief: 'Kael brief',
       matchingNoWorkerProfile: 'No real worker profile yet',
@@ -3614,7 +3616,7 @@ function CustomerHistoryMatchingScorePanel({
             {confidenceLabel}
           </Text>
           <Text style={[styles.matchingScoreLabel, { color: tokens.muted }]} numberOfLines={1}>
-            {copy.history.caseConfidence}
+            {copy.history.matchingFit}
           </Text>
         </View>
         <View style={styles.matchingScoreHeroCopy}>

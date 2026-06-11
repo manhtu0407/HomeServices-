@@ -55,6 +55,7 @@
   - Kept worker address privacy gated by workflow state.
   - Kept ETA honest by waiting for live travel signal instead of deriving fake arrival copy from timers.
   - Added a Matching Score panel to Activity from real estimate confidence, broadcast state, intake media count, area, and Kael prebrief.
+  - Aligned Matching Score wording to the reference `Độ phù hợp` / `Match fit` label and media-safe real evidence count.
   - Kept the matching screen free of fake worker avatars, fake ratings, fake queue counts, and inferred worker performance stats.
   - Added the Matching Score problem cell from real broadcast/estimate/draft issue text.
   - Added the Kael Helper chat context grid from real service and workflow gate state.
