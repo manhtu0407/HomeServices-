@@ -39,6 +39,7 @@ type WizardState = {
   step: WizardStep
   serviceType: ServiceType | null
   description: string
+  problemChips: string[]
   photoDrafts: LocalMediaUploadDraft[]
   addressLabel: string
   districtLabel: string | null
@@ -49,6 +50,7 @@ type WizardState = {
 type WizardAction =
   | { type: 'select_service'; serviceType: ServiceType }
   | { type: 'update_description'; description: string }
+  | { type: 'toggle_problem_chip'; chip: string }
   | { type: 'add_photos'; drafts: LocalMediaUploadDraft[] }
   | { type: 'remove_photo'; index: number }
   | { type: 'update_address'; label: string; district: string | null }
@@ -61,6 +63,7 @@ const INITIAL: WizardState = {
   step: 'service',
   serviceType: null,
   description: '',
+  problemChips: [],
   photoDrafts: [],
   addressLabel: '',
   districtLabel: null,
@@ -89,9 +92,16 @@ function mergePhotoDrafts(current: LocalMediaUploadDraft[], drafts: LocalMediaUp
 function reducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case 'select_service':
-      return { ...state, serviceType: action.serviceType, step: 'describe', error: null }
+      return { ...state, serviceType: action.serviceType, problemChips: [], step: 'describe', error: null }
     case 'update_description':
       return { ...state, description: action.description }
+    case 'toggle_problem_chip':
+      return {
+        ...state,
+        problemChips: state.problemChips.includes(action.chip)
+          ? state.problemChips.filter((chip) => chip !== action.chip)
+          : [...state.problemChips, action.chip],
+      }
     case 'add_photos':
       return { ...state, photoDrafts: mergePhotoDrafts(state.photoDrafts, action.drafts) }
     case 'remove_photo':
@@ -138,8 +148,15 @@ const copyMap = {
     filterTime: 'Thời gian',
     filterPayment: 'Thanh toán',
     filterIssueFromDescription: 'Lấy từ mô tả thật',
+    filterIssueTagUnit: 'dấu hiệu',
     filterTimeNow: 'Ngay bây giờ',
     filterPaymentLocked: 'Khóa đến khi Kael tạo yêu cầu',
+    problemChipTitle: 'Dấu hiệu chính',
+    problemOptions: {
+      electrical: ['Mất điện', 'Chập ổ cắm', 'Đèn hỏng'],
+      plumbing: ['Rò rỉ', 'Nghẹt thoát nước', 'Yếu nước'],
+      cleaning: ['Dọn nhanh', 'Tổng vệ sinh', 'Sau sửa chữa'],
+    },
     flowSteps: [
       ['Chọn dịch vụ', 'Điện · Nước · Vệ sinh'],
       ['Mô tả', 'Vấn đề · Ảnh · Khu vực'],
@@ -199,8 +216,15 @@ const copyMap = {
     filterTime: 'Time',
     filterPayment: 'Payment',
     filterIssueFromDescription: 'From the real description',
+    filterIssueTagUnit: 'signal',
     filterTimeNow: 'Now',
     filterPaymentLocked: 'Locked until Kael creates the request',
+    problemChipTitle: 'Main signal',
+    problemOptions: {
+      electrical: ['Power outage', 'Burned outlet', 'Broken light'],
+      plumbing: ['Leak', 'Clogged drain', 'Low water'],
+      cleaning: ['Quick clean', 'Deep clean', 'After repair'],
+    },
     flowSteps: [
       ['Choose service', 'Electrical · Plumbing · Cleaning'],
       ['Describe', 'Issue · Photos · Area'],
@@ -298,7 +322,7 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: Boo
         mediaCount: state.photoDrafts.length,
         message: state.description.trim(),
         photoDrafts: state.photoDrafts,
-        problemChips: [],
+        problemChips: state.problemChips,
         serviceType: state.serviceType,
         source: 'booking',
       })
@@ -1086,6 +1110,27 @@ function bookingPhotoRemoveSurface(mode: GlassMode) {
   }
 }
 
+function bookingProblemChipPanelSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean) {
+  return {
+    backgroundColor: reduceTransparency
+      ? visual.row
+      : mode === 'dark' ? 'rgba(20,52,47,0.40)' : 'rgba(232,248,244,0.82)',
+    borderColor: visual.border,
+  }
+}
+
+function bookingProblemChipSurface(visual: BookingWizardVisual, mode: GlassMode, reduceTransparency: boolean, selected: boolean) {
+  return {
+    backgroundColor: selected
+      ? visual.primary
+      : reduceTransparency
+        ? visual.row
+        : mode === 'dark' ? 'rgba(22,29,27,0.78)' : 'rgba(255,255,255,0.92)',
+    borderColor: selected ? visual.borderStrong : visual.border,
+    boxShadow: selected || reduceTransparency ? 'none' : mode === 'dark' ? 'none' : '0 7px 14px rgba(31,92,82,0.035)',
+  } as any
+}
+
 function BookingServiceImageIcon({ service }: { service: ServiceType }) {
   return <Image contentFit="contain" source={bookingServiceImageIcons[service]} style={styles.serviceImageIcon} />
 }
@@ -1135,6 +1180,7 @@ function DescribeStep({
           />
         </View>
       </View>
+      <ProblemChipRail copy={copy} dispatch={dispatch} state={state} />
       <View style={[styles.photoGroup, bookingPhotoGroupSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-photo-rail">
         <View pointerEvents="none" style={[styles.fieldEdgeHighlight, bookingComponentEdgeSurface(mode)]} />
         <WizardText kind="label">{copy.photosLabel}</WizardText>
@@ -1207,10 +1253,46 @@ function DescribeStep({
   )
 }
 
+function ProblemChipRail({ copy, dispatch, state }: { copy: WizardCopy; dispatch: (action: WizardAction) => void; state: WizardState }) {
+  const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
+  const options = state.serviceType ? copy.problemOptions[state.serviceType] : []
+  if (options.length === 0) return null
+
+  return (
+    <View style={[styles.problemChipPanel, bookingProblemChipPanelSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-problem-chip-rail">
+      <WizardText kind="label">{copy.problemChipTitle}</WizardText>
+      <View style={styles.problemChipRow}>
+        {options.map((chip, index) => {
+          const selected = state.problemChips.includes(chip)
+          return (
+            <Pressable
+              accessibilityLabel={chip}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              key={chip}
+              onPress={() => dispatch({ type: 'toggle_problem_chip', chip })}
+              style={({ pressed }) => [
+                styles.problemChip,
+                bookingProblemChipSurface(visual, mode, reduceTransparency, selected),
+                reduceMotionAwarePressStyle(pressed, reduceMotion),
+              ]}
+              testID={`booking-wizard-problem-chip-${index}`}
+            >
+              <Text style={[styles.problemChipText, { color: selected ? visual.primaryText : visual.primary }]} numberOfLines={1}>
+                {chip}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </View>
+    </View>
+  )
+}
+
 function BookingFilterBrief({ copy, state }: { copy: WizardCopy; state: WizardState }) {
   const { mode, reduceTransparency, visual } = useBookingWizardVisual()
   const serviceValue = state.serviceType ? copy.services[state.serviceType] : copy.pendingValue
-  const issueValue = state.description.trim().length > 0 ? copy.filterIssueFromDescription : copy.pendingValue
+  const issueValue = formatBookingIssueFilterValue(copy, state)
   const areaValue = state.districtLabel || state.addressLabel.trim() || copy.pendingValue
 
   return (
@@ -1232,6 +1314,15 @@ function BookingFilterBrief({ copy, state }: { copy: WizardCopy; state: WizardSt
       </View>
     </View>
   )
+}
+
+function formatBookingIssueFilterValue(copy: WizardCopy, state: WizardState) {
+  const hasDescription = state.description.trim().length > 0
+  if (state.problemChips.length > 0 && hasDescription) {
+    return `${copy.filterIssueFromDescription} · ${state.problemChips.length} ${copy.filterIssueTagUnit}`
+  }
+  if (state.problemChips.length > 0) return `${state.problemChips.length} ${copy.filterIssueTagUnit}`
+  return hasDescription ? copy.filterIssueFromDescription : copy.pendingValue
 }
 
 function AnalyzingStep({ copy }: { copy: WizardCopy }) {
@@ -1638,6 +1729,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+  problemChip: { borderRadius: 999, borderWidth: 1, minHeight: 36, paddingHorizontal: 12, paddingVertical: 9 },
+  problemChipPanel: { borderRadius: 22, borderWidth: 1, gap: 10, padding: 12 },
+  problemChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  problemChipText: { fontSize: 12, fontWeight: '800', lineHeight: 15 },
   progressFill: {
     borderRadius: 999,
     height: '100%',

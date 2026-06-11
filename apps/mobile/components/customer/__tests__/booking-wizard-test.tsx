@@ -212,6 +212,29 @@ describe('BookingWizard Kael autonomy', () => {
     expect(screen.getByTestId('booking-wizard-filter-issue')).toHaveTextContent(/mô tả/)
   })
 
+  it('sends only user-selected problem chips as search filters to Kael', () => {
+    const onOpenKael = jest.fn()
+    mockRouteParams = { serviceType: 'electrical' }
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+
+    fireEvent.press(screen.getByTestId('booking-wizard-problem-chip-1'))
+
+    expect(screen.getByTestId('booking-wizard-problem-chip-1').props.accessibilityState).toEqual(expect.objectContaining({ selected: true }))
+    expect(screen.getByTestId('booking-wizard-filter-issue')).toHaveTextContent(/1 dấu hiệu/)
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Ổ cắm bếp chập và có mùi khét',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      problemChips: ['Chập ổ cắm'],
+    }))
+    expect(onOpenKael).toHaveBeenCalledWith('electrical')
+  })
+
   it('keeps activity action out of the pre-analysis handoff path', () => {
     const onOpenHistory = jest.fn()
     const onOpenKael = jest.fn()
