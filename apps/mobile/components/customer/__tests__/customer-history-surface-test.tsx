@@ -363,11 +363,18 @@ describe('CustomerHistorySurface phase context', () => {
 
     const acceptedPanel = screen.getByTestId('customer-history-job-acceptance-panel')
     expect(acceptedPanel).toBeOnTheScreen()
+    expect(acceptedPanel).toHaveTextContent(/Thông tin đơn đã được xác nhận/)
     expect(screen.getByTestId('customer-history-job-acceptance-status-value')).toHaveTextContent(/Thợ đang xử lý/)
     expect(screen.getByTestId('customer-history-job-acceptance-service-value')).toHaveTextContent(/Sửa điện/)
     expect(screen.getByTestId('customer-history-job-acceptance-address-value')).toHaveTextContent('Tòa A, Quận 1')
     expect(screen.getByTestId('customer-history-job-acceptance-chat-value')).toHaveTextContent(/Nhắn trong chat công việc/)
     expect(screen.getByTestId('customer-history-job-acceptance-brief-value')).toHaveTextContent(/Kael đã tóm tắt phạm vi/)
+    expect(screen.getByTestId('customer-history-job-acceptance-check-0-value')).toHaveTextContent(/Xem lại thông tin đơn/)
+    expect(screen.getByTestId('customer-history-job-acceptance-check-1-value')).toHaveTextContent(/Chuẩn bị công cụ/)
+    expect(screen.getByTestId('customer-history-job-acceptance-check-2-value')).toHaveTextContent(/Liên hệ thợ qua chat/)
+    expect(screen.getByTestId('customer-history-job-acceptance-details')).toHaveTextContent(/Xem chi tiết/)
+    fireEvent.press(screen.getByTestId('customer-history-job-acceptance-details'))
+    expect(mockReplace).toHaveBeenLastCalledWith('/(customer)/history?tab=chat')
     expect(acceptedPanel).not.toHaveTextContent(/★★★★★|4\.9|rating|Thợ A|avatar/i)
   })
 

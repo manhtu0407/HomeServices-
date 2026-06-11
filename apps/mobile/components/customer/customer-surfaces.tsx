@@ -744,11 +744,16 @@ const customerCopy = {
       jobAcceptanceTitle: 'Thợ đã nhận việc',
       jobAcceptanceMeta: 'Từ trạng thái job thật',
       jobAcceptanceBody: 'Kael giữ tóm tắt công việc và quyền địa chỉ theo chính sách hiện tại.',
+      jobAcceptanceConfirmedTitle: 'Thông tin đơn đã được xác nhận',
       jobAcceptanceStatus: 'Trạng thái nhận',
       jobAcceptanceAddress: 'Địa chỉ mở',
       jobAcceptanceChat: 'Chat công việc',
       jobAcceptanceBrief: 'Tóm tắt gửi thợ',
       jobAcceptanceNoBrief: 'Chờ tóm tắt thợ thật',
+      jobAcceptanceCheckReview: 'Xem lại thông tin đơn',
+      jobAcceptanceCheckPrepare: 'Chuẩn bị công cụ',
+      jobAcceptanceCheckContact: 'Liên hệ thợ qua chat',
+      jobAcceptanceDetails: 'Xem chi tiết',
       jobProgressTitle: 'Công việc đang chạy',
       jobProgressMeta: 'Theo phase thật',
       jobProgressBody: 'Tiến trình đi theo trạng thái đồng bộ và các cổng bằng chứng.',
@@ -986,11 +991,16 @@ const customerCopy = {
       jobAcceptanceTitle: 'Worker accepted',
       jobAcceptanceMeta: 'From real job state',
       jobAcceptanceBody: 'Kael keeps the job brief and address permission under the current policy.',
+      jobAcceptanceConfirmedTitle: 'Job details confirmed',
       jobAcceptanceStatus: 'Acceptance state',
       jobAcceptanceAddress: 'Released address',
       jobAcceptanceChat: 'Job chat',
       jobAcceptanceBrief: 'Worker brief',
       jobAcceptanceNoBrief: 'Waiting for real worker brief',
+      jobAcceptanceCheckReview: 'Review job details',
+      jobAcceptanceCheckPrepare: 'Prepare tools',
+      jobAcceptanceCheckContact: 'Contact worker in chat',
+      jobAcceptanceDetails: 'View details',
       jobProgressTitle: 'Job in progress',
       jobProgressMeta: 'From real phase',
       jobProgressBody: 'Progress follows synced status and evidence gates.',
@@ -1795,7 +1805,7 @@ export function CustomerHistorySurface() {
           {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
-          {deal && showRepairTab && customerCancelRequiresKaelPolicy(deal.status) ? <CustomerHistoryJobAcceptancePanel copy={copy} deal={deal} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
+          {deal && showRepairTab && customerCancelRequiresKaelPolicy(deal.status) ? <CustomerHistoryJobAcceptancePanel copy={copy} deal={deal} languageMode={languageMode} onOpenJobChat={() => selectHistoryTab('chat')} phaseContext={workflow.phaseContext} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab && customerJobInProgressStatus(deal.status) ? <CustomerHistoryJobProgressPanel copy={copy} languageMode={languageMode} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLiveAlertPanel copy={copy} deal={deal} languageMode={languageMode} notificationUnreadCount={notificationUnreadCount} notifications={notifications} onOpenJobChat={() => selectHistoryTab('chat')} phaseContext={workflow.phaseContext} tokens={tokens} /> : null}
           {!deal && showPriceTab ? <CustomerHistoryPriceEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
@@ -3762,6 +3772,7 @@ function CustomerHistoryJobAcceptancePanel({
   copy,
   deal,
   languageMode,
+  onOpenJobChat,
   phaseContext,
   tokens,
   workerStateLabel,
@@ -3769,6 +3780,7 @@ function CustomerHistoryJobAcceptancePanel({
   copy: (typeof customerCopy)[AppLanguage]
   deal: LocalDeal
   languageMode: AppLanguage
+  onOpenJobChat: () => void
   phaseContext: WorkflowPhaseContext
   tokens: CustomerThemeTokens
   workerStateLabel: string
@@ -3782,12 +3794,17 @@ function CustomerHistoryJobAcceptancePanel({
   const chatGateLabel = workflowAllowedActionsLabel(phaseContext.allowedActions, languageMode)
   const briefLabel = deal.broadcast?.prebrief.find((item) => item.trim().length > 0)?.trim() ?? copy.history.jobAcceptanceNoBrief
   const serviceLabel = localizedServiceLabel(deal.draft.serviceType, languageMode)
+  const confirmationChecks = [
+    copy.history.jobAcceptanceCheckReview,
+    copy.history.jobAcceptanceCheckPrepare,
+    copy.history.jobAcceptanceCheckContact,
+  ] as const
 
   return (
     <View style={[styles.historyCheckPanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-job-acceptance-panel">
       <View style={styles.sectionTitle}>
         <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-          {copy.history.jobAcceptanceTitle}
+          {copy.history.jobAcceptanceConfirmedTitle}
         </Text>
         <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
           {copy.history.jobAcceptanceMeta}
@@ -3806,6 +3823,20 @@ function CustomerHistoryJobAcceptancePanel({
         <V4TicketCell label={copy.history.caseId} testID="customer-history-job-acceptance-id" value={deal.broadcast?.jobId ?? deal.id} variant="activity" />
       </View>
       <V4TicketCell label={copy.history.jobAcceptanceBrief} testID="customer-history-job-acceptance-brief" value={briefLabel} variant="activity" />
+      <View style={styles.twoCol}>
+        {confirmationChecks.map((value, index) => (
+          <V4TicketCell
+            key={value}
+            label={copy.history.confirmed}
+            testID={`customer-history-job-acceptance-check-${index}`}
+            value={value}
+            variant="activity"
+          />
+        ))}
+      </View>
+      <View style={styles.historyHeroActions}>
+        <PrimaryButton label={copy.history.jobAcceptanceDetails} onPress={onOpenJobChat} compact testID="customer-history-job-acceptance-details" />
+      </View>
     </View>
   )
 }
