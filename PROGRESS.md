@@ -50,6 +50,7 @@
   - Kept ETA honest by waiting for live travel signal instead of deriving fake arrival copy from timers.
   - Added a Matching Score panel to Activity from real estimate confidence, broadcast state, intake media count, area, and Kael prebrief.
   - Kept the matching screen free of fake worker avatars, fake ratings, fake queue counts, and inferred worker performance stats.
+  - Added the Matching Score problem cell from real broadcast/estimate/draft issue text.
   - Added the Worker Offers & Quote checkpoint as a price-tab quote sheet from real broadcast price, Kael estimate, scope-change price, and final-price state.
   - Kept quote UI free of fake offer counts, fake worker ratings, fake worker profiles, and worker-entered price authority.
   - Added the Location & ETA checkpoint to Activity from real address-release state, broadcast/search signal, and honest pending travel ETA copy.
@@ -106,10 +107,10 @@
   - `jest --runInBand components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 27 tests after the Live Performance problem-signal cell; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 33 tests.
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests.
-  - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Case Command next-event row.
+  - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Matching Score real problem cell.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 50 tests after the Earnings period row.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
-  - Mobile Jest from `apps/mobile` passed after the Case Command next-event checkpoint: 17 suites, 170 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the Matching Score real problem checkpoint: 17 suites, 170 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 

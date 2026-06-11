@@ -256,6 +256,7 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-matching-worker-value')).toHaveTextContent(/Đang chờ phản hồi/)
     expect(screen.getByTestId('customer-history-matching-evidence-value')).toHaveTextContent(/1 ảnh/)
     expect(screen.getByTestId('customer-history-matching-area-value')).toHaveTextContent(/Quận 1/)
+    expect(screen.getByTestId('customer-history-matching-problem-value')).toHaveTextContent(/Ổ cắm chập chờn/)
     expect(matchingPanel).not.toHaveTextContent(/★★★★★|4\.9|rating/i)
   })
 

@@ -3511,6 +3511,8 @@ function CustomerHistoryMatchingScorePanel({
   const areaLabel = localizedCustomerAreaLabel(deal.broadcast?.generalArea ?? deal.draft.districtLabel, languageMode, copy.ticket.unknown)
   const intakeMediaCount = Math.max(0, deal.draft.mediaCount)
   const evidenceLabel = intakeMediaCount > 0 ? copy.history.matchingEvidenceCount(intakeMediaCount) : copy.history.matchingEvidenceEmpty
+  const problemSource = deal.broadcast?.problemSummary ?? deal.estimate?.problemLabel ?? deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel
+  const problemLabel = localizedProblemLabel(problemSource, deal.draft.serviceType, languageMode)
   const prebrief = deal.broadcast?.prebrief.find((item) => item.trim().length > 0)?.trim() ?? copy.history.matchingNoWorkerProfile
 
   return (
@@ -3539,6 +3541,7 @@ function CustomerHistoryMatchingScorePanel({
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.matchingEvidence} testID="customer-history-matching-evidence" value={evidenceLabel} variant="activity" />
         <V4TicketCell label={copy.history.caseLocation} testID="customer-history-matching-area" value={areaLabel} variant="activity" />
+        <V4TicketCell label={copy.ticket.issue} testID="customer-history-matching-problem" value={problemLabel} variant="activity" />
       </View>
       <V4TicketCell label={copy.history.matchingPrebrief} testID="customer-history-matching-prebrief" value={prebrief} variant="activity" />
     </View>
