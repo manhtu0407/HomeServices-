@@ -613,7 +613,7 @@ const customerCopy = {
       subtitle: 'Kael sẵn sàng phục vụ tận tình!',
       searchA11y: 'Mở Kael tạo yêu cầu',
       searchText: 'Bạn cần sửa gì?',
-      commandKicker: 'Kael',
+      commandKicker: 'Bạn cần Kael giúp việc gì hôm nay?',
       commandSubtitle: 'Mở chat nhanh để Kael gom thông tin',
       commandTitle: 'Ổ cắm bị nóng, nước rò, hay cần dọn nhà?',
       commandBody: 'Kael nhận thông tin, phân tích và tự điều phối khi đủ dữ liệu.',
@@ -835,7 +835,7 @@ const customerCopy = {
       subtitle: 'Kael is ready to orchestrate',
       searchA11y: 'Open Kael service chat',
       searchText: 'What needs fixing?',
-      commandKicker: 'Kael',
+      commandKicker: 'What can Kael help with today?',
       commandSubtitle: 'Open quick chat so Kael can collect details',
       commandTitle: 'Outlet, leak, or cleaning?',
       commandBody: 'Kael receives the details, analyzes them, and orchestrates when data is sufficient.',
@@ -1080,8 +1080,8 @@ export function CustomerHomeSurface() {
   const rawDisplayName = readCustomerMetadataString(customerMetadata, 'nickname', 'preferred_name', 'full_name', 'name')
   const displayName = localizedProfileName(rawDisplayName, languageMode)
   const homeTitle = languageMode === 'en'
-    ? displayName ? `${displayName}'s home` : 'Your home'
-    : displayName ? `Nhà của ${displayName}` : 'Nhà của bạn'
+    ? displayName ? `Hi, ${displayName}` : 'Hi there'
+    : displayName ? `Xin chào, ${displayName}` : 'Xin chào'
   const customerTitle = homeTitle
   const openKaelChatFlow = (serviceType?: ServiceType) => {
     if (!canStartNewDeal) {

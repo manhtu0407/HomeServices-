@@ -154,6 +154,15 @@ beforeEach(() => {
 })
 
 describe('CustomerHomeSurface address context', () => {
+  it('greets the customer by real profile name and keeps the Kael home prompt in the hero', () => {
+    mockSessionMetadata = { full_name: 'Anh Hoàng' }
+
+    render(<CustomerHomeSurface />)
+
+    expect(screen.getByText('Xin chào, Anh Hoàng')).toBeOnTheScreen()
+    expect(screen.getByText('Bạn cần Kael giúp việc gì hôm nay?')).toBeOnTheScreen()
+  })
+
   it('hands a real home command draft directly to Kael chat', () => {
     render(<CustomerHomeSurface />)
 
