@@ -698,6 +698,11 @@ const customerCopy = {
       newRequest: 'Tạo yêu cầu mới',
       openPriceCheck: 'Mở chat Kael',
       continueWithKael: 'Tiếp tục với Kael',
+      chatHelperTitle: 'Kael đề xuất hỗ trợ',
+      chatHelperMeta: 'Từ workflow thật',
+      chatHelperTime: 'Thời gian',
+      chatHelperTimeNow: 'Ngay bây giờ',
+      chatHelperDetails: 'Xem chi tiết',
       caseCommandMeta: 'Từ dữ liệu thật',
       caseCommandTitle: 'Trung tâm ca việc',
       caseConfidence: 'Độ tin cậy',
@@ -922,6 +927,11 @@ const customerCopy = {
       newRequest: 'New request',
       openPriceCheck: 'Open Kael chat',
       continueWithKael: 'Continue with Kael',
+      chatHelperTitle: 'Kael suggests support',
+      chatHelperMeta: 'From the real workflow',
+      chatHelperTime: 'Time',
+      chatHelperTimeNow: 'Now',
+      chatHelperDetails: 'View details',
       caseCommandMeta: 'From real data',
       caseCommandTitle: 'Case Command Center',
       caseConfidence: 'Confidence',
@@ -4562,6 +4572,7 @@ function CustomerHistoryChatPanel({
   const issueValue = localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel, deal.draft.serviceType, languageMode)
   const descriptionValue = deal.draft.description.trim() || copy.history.chatEmpty
   const kaelSummaryValue = localizedCustomerGeneratedText(deal.estimate?.advisory, languageMode, copy.history.chatEmpty)
+  const timeValue = deal.draft.timeChoice === 'now' ? copy.history.chatHelperTimeNow : copy.history.kaelReviewing
   const canSend = Boolean(chatCanSend && draft.trim() && !jobChat.sending)
   const sendLabel = languageMode === 'en' ? 'Send message' : 'Gửi tin nhắn'
   const inputLabel = chatCanSend
@@ -4586,16 +4597,17 @@ function CustomerHistoryChatPanel({
     <View style={[styles.historyThreadCard, customerHistoryPanelSurface(tokens)]} testID="customer-history-chat-tab-panel">
       <View style={styles.sectionTitle}>
         <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
-          {copy.history.filters[2]}
+          {copy.history.chatHelperTitle}
         </Text>
         <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
-          Kael
+          {copy.history.chatHelperMeta}
         </Text>
       </View>
       <View style={styles.hiddenMarker} testID="customer-history-chat-empty-evidence" />
       <View style={styles.twoCol} testID="customer-history-chat-helper-grid">
         <V4TicketCell label={languageMode === 'en' ? 'Service' : 'Dịch vụ'} testID="customer-history-chat-helper-service" value={serviceValue} variant="activity" />
         <V4TicketCell label={languageMode === 'en' ? 'Gate' : 'Cổng'} testID="customer-history-chat-helper-action" value={actionGateValue} variant="activity" />
+        <V4TicketCell label={copy.history.chatHelperTime} testID="customer-history-chat-helper-time" value={timeValue} variant="activity" />
       </View>
       <View style={styles.historyChatFeed}>
         {renderedMessages.length > 0 ? renderedMessages.map((message) => (
@@ -4673,7 +4685,7 @@ function CustomerHistoryChatPanel({
           {lockedReason}
         </Text>
       ) : null}
-      <PrimaryButton label={copy.history.openPriceCheck} onPress={onOpenKael} compact />
+      <PrimaryButton label={copy.history.chatHelperDetails} onPress={onOpenKael} compact />
     </View>
   )
 }
