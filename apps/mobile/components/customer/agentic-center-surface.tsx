@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { hasLocalDealCompletionEvidence, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkflowPhaseContext } from '@home-services/shared'
 import { getCustomerThemeTokens, getReducedTransparencyCustomerTokens, useCustomerThemeMode, type CustomerThemeTokens } from '@/components/customer/customer-theme'
+import { KaelMascot } from '@/components/kael/kael-mascot'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
@@ -16,7 +16,6 @@ import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
 import type { KaelMemoryPayload } from '@/lib/api-types'
 
-const kaelHead = require('../../assets/kael-model-8a-head.png')
 const KAEL_CHAT_PATH = '/(customer)/kael-chat'
 const CUSTOMER_HISTORY_PATH = '/(customer)/history'
 const CUSTOMER_PROFILE_PATH = '/(customer)/profile'
@@ -196,7 +195,7 @@ export function CustomerAgenticCenterSurface() {
       <ScrollView contentContainerStyle={[styles.scrollContent, { width: frameWidth }]} showsVerticalScrollIndicator={false}>
         <GlassSurface material="liquid" mode={tokens.mode} style={[styles.hero, centerGlassSurface(tokens)]} testID="customer-agentic-center-hero" variant="hero">
           <View style={[styles.kaelOrb, centerOrbSurface(tokens)]} testID="customer-agentic-center-hero-avatar">
-            <Image contentFit="contain" source={kaelHead} style={styles.kaelImage} />
+            <KaelMascot size={component.agenticCenter.mascotImageSize} state="welcome" testID="customer-agentic-center-hero-mascot" variant="head" />
           </View>
           <View style={styles.heroCopy} testID="customer-agentic-center-hero-copy">
             <Text style={[styles.kicker, { color: tokens.primary }]}>{NESTSCOUT_BRAND.appName}</Text>
@@ -265,18 +264,38 @@ function CenterSection({ children, title, tokens }: { children: ReactNode; title
 function ActiveCaseCard({ deal, language, status, text, tokens }: { deal: LocalDeal; language: AppLanguage; status: LocalDealStatus | null; text: (typeof copy)[AppLanguage]; tokens: CustomerThemeTokens }) {
   const description = deal.draft.description.trim()
   const area = deal.draft.districtLabel || deal.draft.addressLabel.trim()
+  const address = deal.broadcast?.fullAddressVisible && deal.broadcast.fullAddressLabel ? deal.broadcast.fullAddressLabel : area
   const service = localizedServiceLabel(deal.draft.serviceType, language)
   const statusLabel = localizedStatusLabel(status, language)
   const estimateLabel = deal.estimate?.priceRangeLabel ?? text.noEstimate
+  const dataRows = [
+    { label: text.service, value: service },
+    { label: text.estimate, value: estimateLabel },
+    { label: text.area, value: area || text.noArea },
+  ] as const
+  const profileRows = [
+    { label: text.description, value: description || text.noDescription },
+    { label: text.address, value: address || text.noArea },
+  ] as const
 
   return (
-    <View style={styles.stack}>
-      <InfoRow label={text.caseId} tokens={tokens} value={deal.id} />
-      <InfoRow label={text.service} tokens={tokens} value={service} />
-      <InfoRow label={text.status} tokens={tokens} value={statusLabel} />
-      <InfoRow label={text.estimate} tokens={tokens} value={estimateLabel} />
-      <InfoRow label={text.area} tokens={tokens} value={area || text.noArea} />
-      <InfoRow label={text.description} tokens={tokens} value={description || text.noDescription} />
+    <View style={styles.stack} testID="customer-agentic-center-active-case-reference-card">
+      <View style={[styles.approvalRow, centerInfoRowSurface(tokens)]} testID="customer-agentic-center-active-case-header">
+        <View style={[styles.kaelOrb, centerOrbSurface(tokens)]}>
+          <KaelMascot size={component.agenticCenter.mascotImageSize} state="findingWorker" testID="customer-agentic-center-active-case-mascot" variant="head" />
+        </View>
+        <View style={styles.approvalCopy}>
+          <Text style={[styles.infoLabel, { color: tokens.muted }]}>{text.caseId}</Text>
+          <Text style={[styles.infoValue, { color: tokens.text }]}>{deal.id}</Text>
+          <Text style={[styles.infoLabel, { color: tokens.primary }]}>{statusLabel}</Text>
+        </View>
+      </View>
+      <View style={styles.phaseGrid} testID="customer-agentic-center-active-case-data-grid">
+        {dataRows.map((row) => <InfoRow key={row.label} label={row.label} tokens={tokens} value={row.value} />)}
+      </View>
+      <View style={styles.phaseGrid} testID="customer-agentic-center-active-case-profile">
+        {profileRows.map((row) => <InfoRow key={row.label} label={row.label} tokens={tokens} value={row.value} />)}
+      </View>
     </View>
   )
 }
@@ -711,10 +730,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     width: component.bottomNav.orb.outerSize,
-  },
-  kaelImage: {
-    height: component.agenticCenter.mascotImageSize,
-    width: component.agenticCenter.mascotImageSize,
   },
   actionRow: {
     flexDirection: 'row',

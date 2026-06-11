@@ -224,6 +224,7 @@ describe('CustomerAgenticCenterSurface', () => {
     render(<CustomerAgenticCenterSurface />)
 
     expect(screen.getByTestId('customer-agentic-center-hero-avatar')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-hero-mascot-welcome')).toBeTruthy()
     expect(screen.getByTestId('customer-agentic-center-hero-copy')).toHaveTextContent(/Hi, Tu Phan/)
     expect(screen.getByText('Hi, Tu Phan')).toBeTruthy()
     expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('1')
@@ -241,6 +242,12 @@ describe('CustomerAgenticCenterSurface', () => {
 
     render(<CustomerAgenticCenterSurface />)
 
+    expect(screen.getByTestId('customer-agentic-center-active-case-reference-card')).toHaveTextContent(/job_test_1/)
+    expect(screen.getByTestId('customer-agentic-center-active-case-mascot-findingWorker')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-active-case-header')).toHaveTextContent(/Sending to workers/)
+    expect(screen.getByTestId('customer-agentic-center-active-case-data-grid')).toHaveTextContent(/Electrical repair/)
+    expect(screen.getByTestId('customer-agentic-center-active-case-data-grid')).toHaveTextContent(/180,000 VND - 260,000 VND/)
+    expect(screen.getByTestId('customer-agentic-center-active-case-profile')).toHaveTextContent(/The living room outlet is hot/)
     expect(screen.getByText('Case ID')).toBeTruthy()
     expect(screen.getByText('job_test_1')).toBeTruthy()
 
