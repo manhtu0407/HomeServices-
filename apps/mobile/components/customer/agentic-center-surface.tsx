@@ -50,11 +50,12 @@ const copy = {
     subtitle: 'Kael gom việc đang chạy, hàng đợi cần duyệt và thông tin cá nhân thật của bạn.',
     startChat: 'Mở chat Kael',
     startRequest: 'Tạo yêu cầu mới',
+    heroReady: 'Kael đang sẵn sàng hỗ trợ bạn.',
     activity: 'Xem hoạt động',
     profile: 'Hồ sơ',
     summaryActive: 'Việc đang chạy',
     summaryApprovals: 'Cần duyệt',
-    summaryMemory: 'Tùy chọn',
+    summaryNotifications: 'Thông báo',
     summaryEmpty: 'Chưa có',
     activeCase: 'Việc đang chạy',
     activeEmptyTitle: 'Chưa có yêu cầu đang chạy',
@@ -80,7 +81,6 @@ const copy = {
     description: 'Mô tả',
     address: 'Địa chỉ',
     displayName: 'Tên hiển thị',
-    unread: 'Thông báo chưa đọc',
     scopeChange: 'Đổi phạm vi đang chờ Kael',
     completion: 'Hoàn tất cần xác nhận',
     payment: 'Thanh toán đang chờ',
@@ -96,11 +96,12 @@ const copy = {
     subtitle: 'Kael gathers the active job, approval queue, and real saved preferences in one place.',
     startChat: 'Open Kael chat',
     startRequest: 'Start request',
+    heroReady: 'Kael is ready to support you.',
     activity: 'View activity',
     profile: 'Profile',
     summaryActive: 'Active case',
     summaryApprovals: 'Approvals',
-    summaryMemory: 'Preferences',
+    summaryNotifications: 'Notifications',
     summaryEmpty: 'None',
     activeCase: 'Active case',
     activeEmptyTitle: 'No active request',
@@ -126,7 +127,6 @@ const copy = {
     description: 'Description',
     address: 'Address',
     displayName: 'Display name',
-    unread: 'Unread notices',
     scopeChange: 'Scope change waiting for Kael',
     completion: 'Completion needs confirmation',
     payment: 'Payment pending',
@@ -160,6 +160,9 @@ export function CustomerAgenticCenterSurface() {
     hasScopeChange: Boolean(deal?.scopeChange),
   })
   const metadata = session?.user.user_metadata ?? {}
+  const displayName = readMetadataString(metadata, 'nickname', 'preferred_name', 'full_name', 'name')
+  const heroTitle = displayName ? `${language === 'en' ? 'Hi, ' : 'Xin chào, '}${localizedProfileValue(displayName, language)}` : text.title
+  const heroSubtitle = displayName ? text.heroReady : text.subtitle
   const preferences = getPreferenceRows(metadata, language, text, customerKaelMemory)
   const memoryEmptyTitle = customerKaelMemoryStatus === 'unavailable' ? text.memoryUnavailableTitle : text.memoryEmptyTitle
   const memoryEmptyBody = customerKaelMemoryStatus === 'unavailable' ? text.memoryUnavailableBody : text.memoryEmptyBody
@@ -167,11 +170,10 @@ export function CustomerAgenticCenterSurface() {
     canConfirmCompletion: workflow.allowedActions.confirmCompletion && selectors.canCustomerConfirmCompletion,
     deal,
     language,
-    notificationUnreadCount,
     status: selectors.currentStatus,
     text,
   })
-  const summaryRows = getSummaryRows({ approvals, deal, preferences, text })
+  const summaryRows = getSummaryRows({ approvals, deal, notificationUnreadCount, text })
   const runApprovalPrimaryAction = (item: AgenticApprovalRow) => {
     if (item.primaryAction === 'approve_scope' && item.scopeChangeId) {
       void actions.decideScopeChange(item.scopeChangeId, { decision: 'approve' })
@@ -188,8 +190,8 @@ export function CustomerAgenticCenterSurface() {
         <GlassSurface material="liquid" mode={tokens.mode} style={[styles.hero, centerGlassSurface(tokens)]} testID="customer-agentic-center-hero" variant="hero">
           <View style={styles.heroCopy}>
             <Text style={[styles.kicker, { color: tokens.primary }]}>{NESTSCOUT_BRAND.appName}</Text>
-            <Text style={[styles.title, { color: tokens.text }]}>{text.title}</Text>
-            <Text style={[styles.subtitle, { color: tokens.muted }]}>{text.subtitle}</Text>
+            <Text style={[styles.title, { color: tokens.text }]}>{heroTitle}</Text>
+            <Text style={[styles.subtitle, { color: tokens.muted }]}>{heroSubtitle}</Text>
           </View>
           <View style={[styles.kaelOrb, centerOrbSurface(tokens)]}>
             <Image contentFit="contain" source={kaelHead} style={styles.kaelImage} />
@@ -408,18 +410,18 @@ function CommandSummary({ rows, tokens }: { rows: Array<{ id: string; label: str
 function getSummaryRows({
   approvals,
   deal,
-  preferences,
+  notificationUnreadCount,
   text,
 }: {
   approvals: AgenticApprovalRow[]
   deal: LocalDeal | null
-  preferences: Array<{ label: string; value: string }>
+  notificationUnreadCount: number
   text: (typeof copy)[AppLanguage]
 }) {
   return [
     { id: 'active', label: text.summaryActive, value: deal ? '1' : text.summaryEmpty },
     { id: 'approvals', label: text.summaryApprovals, value: approvals.length > 0 ? String(approvals.length) : text.summaryEmpty },
-    { id: 'memory', label: text.summaryMemory, value: preferences.length > 0 ? String(preferences.length) : text.summaryEmpty },
+    { id: 'notifications', label: text.summaryNotifications, value: notificationUnreadCount > 0 ? String(notificationUnreadCount) : text.summaryEmpty },
   ]
 }
 
@@ -427,14 +429,12 @@ function getApprovalRows({
   canConfirmCompletion,
   deal,
   language,
-  notificationUnreadCount,
   status,
   text,
 }: {
   canConfirmCompletion: boolean
   deal: LocalDeal | null
   language: AppLanguage
-  notificationUnreadCount: number
   status: LocalDealStatus | null
   text: (typeof copy)[AppLanguage]
 }) {
@@ -470,15 +470,6 @@ function getApprovalRows({
       id: 'payment',
       label: text.payment,
       value: text.payment,
-    })
-  }
-  if (notificationUnreadCount > 0) {
-    rows.push({
-      actionLabel: reviewLabel,
-      actionPath: `${CUSTOMER_HISTORY_PATH}?tab=repair`,
-      id: 'unread',
-      label: text.unread,
-      value: String(notificationUnreadCount),
     })
   }
   return rows

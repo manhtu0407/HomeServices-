@@ -177,7 +177,7 @@ describe('CustomerAgenticCenterSurface', () => {
     expect(screen.getByText('Agentic Center')).toBeTruthy()
     expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('None')
     expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('None')
-    expect(screen.getByTestId('customer-agentic-center-summary-memory-value')).toHaveTextContent('None')
+    expect(screen.getByTestId('customer-agentic-center-summary-notifications-value')).toHaveTextContent('None')
     expect(screen.getByText('No active request')).toBeTruthy()
     expect(screen.getByText('Nothing needs approval')).toBeTruthy()
     expect(screen.getByText('No saved preference data')).toBeTruthy()
@@ -201,8 +201,8 @@ describe('CustomerAgenticCenterSurface', () => {
     expect(screen.getByText('Tu Phan')).toBeTruthy()
     expect(screen.getAllByText('District 7, Sunrise City').length).toBeGreaterThan(0)
     expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('1')
-    expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('1')
-    expect(screen.getByTestId('customer-agentic-center-summary-memory-value')).toHaveTextContent('2')
+    expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('None')
+    expect(screen.getByTestId('customer-agentic-center-summary-notifications-value')).toHaveTextContent('2')
     expect(screen.getByTestId('customer-agentic-center-phase-title-value')).toHaveTextContent('Matching worker')
     expect(screen.getByTestId('customer-agentic-center-phase-artifact-value')).toHaveTextContent('Provider match')
     expect(screen.getByTestId('customer-agentic-center-phase-next-value')).toHaveTextContent('Worker accepts')
@@ -213,7 +213,21 @@ describe('CustomerAgenticCenterSurface', () => {
     expect(screen.getByTestId('customer-agentic-center-phase-step-provider_match-primary')).toHaveTextContent('Active')
     expect(screen.getByTestId('customer-agentic-center-phase-step-booking')).toHaveTextContent(/Real booking/)
     expect(screen.getByTestId('customer-agentic-center-phase-step-booking-mode')).toHaveTextContent('Loading')
-    expect(screen.getAllByText('2').length).toBeGreaterThan(1)
+  })
+
+  it('renders Commanding Home greeting and separates notification count from approvals', () => {
+    mockSessionMetadata = {
+      full_name: 'Tu Phan',
+    }
+    buildWorkflow(buildDeal(), 2)
+
+    render(<CustomerAgenticCenterSurface />)
+
+    expect(screen.getByText('Hi, Tu Phan')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('1')
+    expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('None')
+    expect(screen.getByTestId('customer-agentic-center-summary-notifications-value')).toHaveTextContent('2')
+    expect(screen.queryByTestId('customer-agentic-center-approval-unread')).toBeNull()
   })
 
   it('routes the center primary action to the real Kael chat route', () => {
@@ -281,7 +295,6 @@ describe('CustomerAgenticCenterSurface', () => {
 
     expect(screen.getByText('Contact phone')).toBeTruthy()
     expect(screen.getByText('0901234567')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-summary-memory-value')).toHaveTextContent('3')
   })
 
   it('renders Kael memory self-view preferences without exposing unsafe metadata', () => {
@@ -313,7 +326,6 @@ describe('CustomerAgenticCenterSurface', () => {
     expect(screen.getByText('Time preference')).toBeTruthy()
     expect(screen.getByText('Morning')).toBeTruthy()
     expect(screen.getByText('Last updated')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-summary-memory-value')).toHaveTextContent('6')
     expect(screen.queryByText('0901234567')).toBeNull()
   })
 })
