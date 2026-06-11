@@ -1171,6 +1171,10 @@ describe('WorkerJobsSurface', () => {
     expect(screen.getByTestId('worker-jobs-section-crisp-shell')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-jobs-active-card')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-jobs-active-phase-context')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-safety-checklist-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-safety-checklist-address')).toHaveTextContent(/khu vực chung/)
+    expect(screen.getByTestId('worker-safety-checklist-scope')).toHaveTextContent(/Chờ bước kiểm tra/)
+    expect(screen.getByTestId('worker-safety-checklist-completion')).toHaveTextContent(/Mở ở bước sửa/)
     expect(screen.getByTestId('worker-jobs-active-presence-map')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-jobs-map-liquid-inset')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-jobs-map-crisp-shell')).toBeOnTheScreen()
@@ -1191,6 +1195,20 @@ describe('WorkerJobsSurface', () => {
     expect(screen.getByTestId('worker-map-expanded-zone-pulse-dot')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-map-route-summary')).toBeNull()
     expect(screen.queryByText('8 km')).toBeNull()
+  })
+
+  it('renders safety checklist gates from the active workflow without a worker price input', () => {
+    mockPathname = '/(worker)/jobs'
+    mockRouteParams = { tab: 'active' }
+    buildWorkflow({ canWorkerAdvance: true, deal: buildRepairingDeal() })
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-safety-checklist-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-safety-checklist-scope')).toHaveTextContent(/không nhập giá/)
+    expect(screen.getByTestId('worker-safety-checklist-completion')).toHaveTextContent(/ghi chú và ảnh/)
+    expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
+    expect(screen.queryByText('--')).toBeNull()
   })
 
   it('routes completion from Active to Needs evidence without direct status update', () => {

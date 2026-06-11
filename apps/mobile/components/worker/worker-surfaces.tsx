@@ -463,6 +463,19 @@ const workerCopy = {
       activeEmptyBody: 'Việc đã nhận và Phòng việc sẽ hiện tại đây.',
       needsEmptyTitle: 'Không có mục chặn',
       needsEmptyBody: 'Phát sinh hoặc quyết định Kael sẽ hiện ở đây.',
+      safetyTitle: 'An toàn & checklist',
+      safetyMeta: 'Theo cổng thật',
+      safetyAddressTitle: 'Địa chỉ chi tiết',
+      safetyAddressAreaOnly: 'Chỉ dùng khu vực chung',
+      safetyAddressReleased: 'Đã mở sau khi nhận việc',
+      safetyScopeTitle: 'Đổi phạm vi',
+      safetyScopeLocked: 'Chờ bước kiểm tra',
+      safetyScopeReady: 'Gửi bằng chứng qua Kael, không nhập giá',
+      safetyScopeReviewing: 'Kael đang xét phát sinh',
+      safetyCompletionTitle: 'Bằng chứng hoàn tất',
+      safetyCompletionPending: 'Mở ở bước sửa',
+      safetyCompletionReady: 'Cần ghi chú và ảnh trước khi hoàn tất',
+      safetyCompletionSubmitted: 'Đã gửi bằng chứng thật',
       scopeStatus: 'Kael đang xét',
       scopeTitle: 'Thay đổi phạm vi',
       scopeBody: 'Kael đang xét phạm vi mới; khách có thể cung cấp thêm dữ liệu, khiếu nại hoặc hủy nếu thực tế chưa đúng.',
@@ -598,6 +611,19 @@ const workerCopy = {
       activeEmptyBody: 'Accepted work and JobRoom appear here.',
       needsEmptyTitle: 'Nothing blocked',
       needsEmptyBody: 'Scope or Kael decision blockers appear here.',
+      safetyTitle: 'Safety & Checklist',
+      safetyMeta: 'From real gates',
+      safetyAddressTitle: 'Detailed address',
+      safetyAddressAreaOnly: 'Use general area only',
+      safetyAddressReleased: 'Released after acceptance',
+      safetyScopeTitle: 'Scope change',
+      safetyScopeLocked: 'Wait for inspection',
+      safetyScopeReady: 'Send evidence through Kael; no price input',
+      safetyScopeReviewing: 'Kael is reviewing scope evidence',
+      safetyCompletionTitle: 'Completion evidence',
+      safetyCompletionPending: 'Opens during repair',
+      safetyCompletionReady: 'Needs notes and photos before completion',
+      safetyCompletionSubmitted: 'Real evidence submitted',
       scopeStatus: 'Kael reviewing',
       scopeTitle: 'Scope change',
       scopeBody: 'Kael is reviewing the new scope; the customer can add evidence, appeal, or cancel if the facts are wrong.',
@@ -1119,6 +1145,11 @@ export function WorkerJobsSurface() {
             <>
               <ActiveWorkerJobCard body={jobBody} briefLines={activeJobBriefLines} status={activeJobStatus} title={jobTitle} />
               <WorkerPhaseContextCard phaseContext={workflow.phaseContext} testID="worker-jobs-active-phase-context" />
+              <WorkerSafetyChecklistCard
+                canSeeFullAddress={Boolean(fullJobAddressLabel)}
+                hasCompletionEvidence={hasLocalDealCompletionEvidence(deal)}
+                status={selectors.currentStatus}
+              />
               {hasNeedsAttention ? <WorkerNeedsReviewCard /> : <WorkerNeedsInlineEmptyCard />}
             </>
           ) : (
@@ -1250,6 +1281,67 @@ function WorkerPhaseContextCard({
         <JobRoomMetaCell label={language === 'en' ? 'Next' : 'Tiếp theo'} value={nextEvent} />
         <JobRoomMetaCell label={language === 'en' ? 'Gate' : 'Cổng'} value={gateLabel} />
         <JobRoomMetaCell label={language === 'en' ? 'Live sections' : 'Mục đang sống'} value={sectionSummary} valueLines={4} />
+      </View>
+    </View>
+  )
+}
+
+function WorkerSafetyChecklistCard({
+  canSeeFullAddress,
+  hasCompletionEvidence,
+  status,
+}: {
+  canSeeFullAddress: boolean
+  hasCompletionEvidence: boolean
+  status: LocalDealStatus | null
+}) {
+  const { copy, tokens } = useWorkerUi()
+  const scopeValue = status === 'scope_change_pending'
+    ? copy.jobs.safetyScopeReviewing
+    : status === 'inspecting' || status === 'repairing'
+      ? copy.jobs.safetyScopeReady
+      : copy.jobs.safetyScopeLocked
+  const completionValue = hasCompletionEvidence
+    ? copy.jobs.safetyCompletionSubmitted
+    : status === 'repairing'
+      ? copy.jobs.safetyCompletionReady
+      : copy.jobs.safetyCompletionPending
+  const rows = [
+    {
+      id: 'address',
+      label: copy.jobs.safetyAddressTitle,
+      value: canSeeFullAddress ? copy.jobs.safetyAddressReleased : copy.jobs.safetyAddressAreaOnly,
+    },
+    {
+      id: 'scope',
+      label: copy.jobs.safetyScopeTitle,
+      value: scopeValue,
+    },
+    {
+      id: 'completion',
+      label: copy.jobs.safetyCompletionTitle,
+      value: completionValue,
+    },
+  ] as const
+
+  return (
+    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-safety-checklist-card">
+      <WorkerJobsCardChrome />
+      <View style={styles.identityRow}>
+        <WorkerUtilityIcon active frameSize={48} icon="shield" size={48} style={styles.needsInlineImageIcon} />
+        <View style={styles.titleStack}>
+          <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
+            {copy.jobs.safetyMeta}
+          </Text>
+          <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
+            {copy.jobs.safetyTitle}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.needsReviewGrid}>
+        {rows.map((row) => (
+          <JobRoomMetaCell key={row.id} label={row.label} testID={`worker-safety-checklist-${row.id}`} value={row.value} valueLines={3} />
+        ))}
       </View>
     </View>
   )
@@ -2972,11 +3064,11 @@ function JobRoomBriefBlock({ body, lines, testID, title }: { body?: string; line
   )
 }
 
-function JobRoomMetaCell({ label, value, valueLines = 2 }: { label: string; value: string; valueLines?: number }) {
+function JobRoomMetaCell({ label, testID, value, valueLines = 2 }: { label: string; testID?: string; value: string; valueLines?: number }) {
   const { reduceTransparency, tokens } = useWorkerUi()
 
   return (
-    <View style={[styles.jobRoomMetaCell, workerOpaqueCardSurface(tokens, 'raised', reduceTransparency)]}>
+    <View style={[styles.jobRoomMetaCell, workerOpaqueCardSurface(tokens, 'raised', reduceTransparency)]} testID={testID}>
       <Text style={[styles.metricLabel, { color: tokens.subtle }]} numberOfLines={1}>
         {label}
       </Text>
