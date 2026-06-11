@@ -265,6 +265,31 @@ describe('BookingWizard Kael autonomy', () => {
     expect(screen.getByTestId('booking-wizard-filter-issue')).toHaveTextContent(/mô tả/)
   })
 
+  it('shows reference priority chips and hands a changed priority to Kael context', () => {
+    const onOpenKael = jest.fn()
+    mockRouteParams = { serviceType: 'electrical' }
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+
+    expect(screen.getByTestId('booking-wizard-priority-chip-normal').props.accessibilityState).toEqual(expect.objectContaining({ selected: true }))
+
+    fireEvent.press(screen.getByTestId('booking-wizard-priority-chip-fast'))
+
+    expect(screen.getByTestId('booking-wizard-priority-chip-fast').props.accessibilityState).toEqual(expect.objectContaining({ selected: true }))
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Ổ cắm bếp chập và có mùi khét',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      message: expect.stringContaining('Ưu tiên: Nhanh'),
+      problemChips: [],
+    }))
+    expect(onOpenKael).toHaveBeenCalledWith('electrical')
+  })
+
   it('sends only user-selected problem chips as search filters to Kael', () => {
     const onOpenKael = jest.fn()
     mockRouteParams = { serviceType: 'electrical' }

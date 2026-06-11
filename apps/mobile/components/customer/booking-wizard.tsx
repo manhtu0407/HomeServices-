@@ -35,11 +35,14 @@ void BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL
 void BOOKING_WIZARD_APPLE_IOS26_COMPONENT_SYSTEM
 
 type WizardStep = 'service' | 'describe' | 'analyzing' | 'done'
+type BookingPriority = 'fast' | 'low' | 'normal'
+const bookingPriorityOrder: readonly BookingPriority[] = ['low', 'normal', 'fast']
 
 type WizardState = {
   step: WizardStep
   serviceType: ServiceType | null
   description: string
+  priority: BookingPriority
   problemChips: string[]
   photoDrafts: LocalMediaUploadDraft[]
   addressLabel: string
@@ -51,6 +54,7 @@ type WizardState = {
 type WizardAction =
   | { type: 'select_service'; serviceType: ServiceType }
   | { type: 'update_description'; description: string }
+  | { type: 'select_priority'; priority: BookingPriority }
   | { type: 'toggle_problem_chip'; chip: string }
   | { type: 'add_photos'; drafts: LocalMediaUploadDraft[] }
   | { type: 'remove_photo'; index: number }
@@ -64,6 +68,7 @@ const INITIAL: WizardState = {
   step: 'service',
   serviceType: null,
   description: '',
+  priority: 'normal',
   problemChips: [],
   photoDrafts: [],
   addressLabel: '',
@@ -95,12 +100,20 @@ function mediaDraftTypeFromAsset(asset: ImagePicker.ImagePickerAsset): LocalMedi
   return 'image'
 }
 
+function formatBookingMessageForKael(copy: WizardCopy, state: WizardState) {
+  const description = state.description.trim()
+  if (state.priority === 'normal') return description
+  return `${copy.priorityMessagePrefix}: ${copy.priorityOptions[state.priority]}\n${description}`
+}
+
 function reducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case 'select_service':
       return { ...state, serviceType: action.serviceType, problemChips: [], step: 'describe', error: null }
     case 'update_description':
       return { ...state, description: action.description }
+    case 'select_priority':
+      return { ...state, priority: action.priority }
     case 'toggle_problem_chip':
       return {
         ...state,
@@ -157,6 +170,13 @@ const copyMap = {
     filterIssueTagUnit: 'dấu hiệu',
     filterTimeNow: 'Ngay bây giờ',
     filterPaymentLocked: 'Khóa đến khi Kael tạo yêu cầu',
+    priorityTitle: 'Mức ưu tiên',
+    priorityMessagePrefix: 'Ưu tiên',
+    priorityOptions: {
+      low: 'Thấp',
+      normal: 'Thường',
+      fast: 'Nhanh',
+    },
     problemChipTitle: 'Dấu hiệu chính',
     problemOptions: {
       electrical: ['Mất điện', 'Chập ổ cắm', 'Đèn hỏng'],
@@ -225,6 +245,13 @@ const copyMap = {
     filterIssueTagUnit: 'signal',
     filterTimeNow: 'Now',
     filterPaymentLocked: 'Locked until Kael creates the request',
+    priorityTitle: 'Priority',
+    priorityMessagePrefix: 'Priority',
+    priorityOptions: {
+      low: 'Low',
+      normal: 'Standard',
+      fast: 'Fast',
+    },
     problemChipTitle: 'Main signal',
     problemOptions: {
       electrical: ['Power outage', 'Burned outlet', 'Broken light'],
@@ -319,6 +346,7 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: Boo
     dispatch({ type: 'set_error', error: null })
     dispatch({ type: 'goto', step: 'analyzing' })
     try {
+      const message = formatBookingMessageForKael(copy, state)
       setPendingKaelChatDraft({
         addressLabel: state.addressLabel.trim(),
         clientRequestId: generateClientRequestId(),
@@ -326,7 +354,7 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: Boo
         districtLabel: state.districtLabel,
         locale: language,
         mediaCount: state.photoDrafts.length,
-        message: state.description.trim(),
+        message,
         photoDrafts: state.photoDrafts,
         problemChips: state.problemChips,
         serviceType: state.serviceType,
@@ -1187,6 +1215,7 @@ function DescribeStep({
         </View>
       </View>
       <ProblemChipRail copy={copy} dispatch={dispatch} state={state} />
+      <PriorityChipRail copy={copy} dispatch={dispatch} state={state} />
       <View style={[styles.photoGroup, bookingPhotoGroupSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-photo-rail">
         <View pointerEvents="none" style={[styles.fieldEdgeHighlight, bookingComponentEdgeSurface(mode)]} />
         <WizardText kind="label">{copy.photosLabel}</WizardText>
@@ -1262,6 +1291,40 @@ function DescribeStep({
       ) : null}
       <WizardPrimaryButton disabled={state.isSubmitting} label={copy.submitDescribe} onPress={onSubmit} testID="booking-wizard-submit-describe" />
     </WizardCard>
+  )
+}
+
+function PriorityChipRail({ copy, dispatch, state }: { copy: WizardCopy; dispatch: (action: WizardAction) => void; state: WizardState }) {
+  const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
+
+  return (
+    <View style={[styles.problemChipPanel, bookingProblemChipPanelSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-priority-rail">
+      <WizardText kind="label">{copy.priorityTitle}</WizardText>
+      <View style={styles.problemChipRow}>
+        {bookingPriorityOrder.map((priority) => {
+          const selected = state.priority === priority
+          return (
+            <Pressable
+              accessibilityLabel={copy.priorityOptions[priority]}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              key={priority}
+              onPress={() => dispatch({ type: 'select_priority', priority })}
+              style={({ pressed }) => [
+                styles.problemChip,
+                bookingProblemChipSurface(visual, mode, reduceTransparency, selected),
+                reduceMotionAwarePressStyle(pressed, reduceMotion),
+              ]}
+              testID={`booking-wizard-priority-chip-${priority}`}
+            >
+              <Text style={[styles.problemChipText, { color: selected ? visual.primaryText : visual.primary }]} numberOfLines={1}>
+                {copy.priorityOptions[priority]}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </View>
+    </View>
   )
 }
 
