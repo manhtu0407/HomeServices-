@@ -17,6 +17,7 @@ type AuthState = {
   authError: string | null
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>
   signInWithPassword: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  signUpWithEmail: (profile: CustomerEmailSignupDraft) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>
   updateCustomerProfile: (profile: CustomerProfileDraft) => Promise<{ success: boolean; error?: string }>
   updatePassword: (passwords: CustomerPasswordUpdateDraft) => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<void>
@@ -35,6 +36,12 @@ type CustomerProfileDraft = {
   nickname?: string
   phone?: string
   salutation?: string
+}
+
+type CustomerEmailSignupDraft = {
+  displayName: string
+  email: string
+  password: string
 }
 
 type CustomerPasswordUpdateDraft = {
@@ -58,6 +65,7 @@ const AuthContext = createContext<AuthState>({
   authError: null,
   signInWithGoogle: async () => ({ success: false, error: 'Đăng nhập Google chưa sẵn sàng' }),
   signInWithPassword: async () => ({ success: false, error: 'Đăng nhập chưa sẵn sàng' }),
+  signUpWithEmail: async () => ({ success: false, error: 'Đăng ký email chưa sẵn sàng' }),
   updateCustomerProfile: async () => ({ success: false, error: 'Lưu hồ sơ khách chưa sẵn sàng' }),
   updatePassword: async () => ({ success: false, error: 'Đổi mật khẩu chưa sẵn sàng' }),
   signOut: async () => undefined,
@@ -327,6 +335,80 @@ function useAuthController(): AuthState {
     return { success: true }
   }, [profileStatus])
 
+  const signUpWithEmail = useCallback(async ({ displayName, email, password }: CustomerEmailSignupDraft) => {
+    if (!supabase) {
+      const error = 'Dịch vụ đăng ký chưa sẵn sàng. Vui lòng thử lại sau.'
+      patchAuth({ authError: error, profileStatus: 'config_missing', loading: false })
+      return { success: false, error }
+    }
+
+    const normalizedEmail = email.trim().toLowerCase()
+    const normalizedName = displayName.trim().replace(/\s+/g, ' ')
+    if (normalizedName.length < 2) {
+      const error = 'Nhập họ tên để tạo tài khoản'
+      patchAuth({ authError: error })
+      return { success: false, error }
+    }
+    if (!normalizedEmail || !password) {
+      const error = 'Nhập email và mật khẩu để đăng ký'
+      patchAuth({ authError: error })
+      return { success: false, error }
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      const error = 'Email không hợp lệ'
+      patchAuth({ authError: error })
+      return { success: false, error }
+    }
+    if (password.length < 6) {
+      const error = 'Mật khẩu cần ít nhất 6 ký tự'
+      patchAuth({ authError: error })
+      return { success: false, error }
+    }
+
+    patchAuth({ loading: true, authError: null })
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            full_name: normalizedName,
+            name: normalizedName,
+          },
+        },
+      })
+
+      if (error || !data.user) {
+        const message = 'Không thể tạo tài khoản. Vui lòng thử lại sau.'
+        patchAuth({ authError: message, loading: false, profileStatus: 'idle' })
+        return { success: false, error: message }
+      }
+
+      if (!data.session?.user) {
+        patchAuth({ loading: false, profileStatus: 'idle' })
+        return { success: true, needsConfirmation: true }
+      }
+
+      patchAuth({ session: data.session })
+      const nextRole = await fetchRole(data.session.user.id)
+      if (!nextRole) {
+        return { success: false, error: 'Không thể tải vai trò tài khoản' }
+      }
+
+      return { success: true }
+    } catch {
+      const message = 'Không thể kết nối dịch vụ đăng ký. Vui lòng thử lại sau.'
+      patchAuth({
+        session: null,
+        role: null,
+        profileStatus: 'profile_error',
+        authError: message,
+        loading: false,
+      })
+      return { success: false, error: message }
+    }
+  }, [fetchRole])
+
   const updateCustomerProfile = useCallback(async (profile: CustomerProfileDraft) => {
     if (!supabase || !session?.user) {
       const error = 'Dịch vụ hồ sơ khách chưa sẵn sàng. Vui lòng thử lại sau.'
@@ -450,8 +532,8 @@ function useAuthController(): AuthState {
   }, [fetchRole, session?.user])
 
   const authValue = useMemo(
-    () => ({ session, role, loading, profileStatus, authError, signInWithGoogle, signInWithPassword, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
-    [authError, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, updateCustomerProfile, updatePassword],
+    () => ({ session, role, loading, profileStatus, authError, signInWithGoogle, signInWithPassword, signUpWithEmail, updateCustomerProfile, updatePassword, signOut, refreshProfile }),
+    [authError, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, signUpWithEmail, updateCustomerProfile, updatePassword],
   )
 
   return authValue

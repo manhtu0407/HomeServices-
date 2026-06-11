@@ -6,6 +6,7 @@ const mockPushRoute = jest.fn()
 const mockUnsubscribe = jest.fn()
 const mockGetSession = jest.fn()
 const mockSignInWithPassword = jest.fn()
+const mockSignUp = jest.fn()
 const mockUpdateUser = jest.fn()
 const mockSignOut = jest.fn()
 const mockMaybeSingle = jest.fn()
@@ -26,6 +27,7 @@ const mockSupabase = {
     getSession: mockGetSession,
     onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: mockUnsubscribe } } })),
     signInWithPassword: mockSignInWithPassword,
+    signUp: mockSignUp,
     signOut: mockSignOut,
     updateUser: mockUpdateUser,
   },
@@ -70,11 +72,35 @@ function PasswordHarness() {
   )
 }
 
+function SignupHarness() {
+  const { signUpWithEmail } = useAuth()
+  const [result, setResult] = useState('idle')
+
+  return (
+    <>
+      <Pressable
+        onPress={() => {
+          void signUpWithEmail({
+            displayName: 'Tu Phan',
+            email: 'TU@example.com',
+            password: 'secret123',
+          }).then((nextResult) => setResult(nextResult.success ? 'success' : nextResult.error ?? 'error'))
+        }}
+        testID="signup-email"
+      >
+        <Text>signup</Text>
+      </Pressable>
+      <Text testID="signup-result">{result}</Text>
+    </>
+  )
+}
+
 beforeEach(() => {
   mockPushRoute.mockClear()
   mockUnsubscribe.mockClear()
   mockGetSession.mockReset()
   mockSignInWithPassword.mockReset()
+  mockSignUp.mockReset()
   mockUpdateUser.mockReset()
   mockSignOut.mockReset()
   mockMaybeSingle.mockReset()
@@ -85,6 +111,7 @@ beforeEach(() => {
   mockGetSession.mockResolvedValue({ data: { session: mockSession } })
   mockMaybeSingle.mockResolvedValue({ data: { role: 'customer' }, error: null })
   mockSignInWithPassword.mockResolvedValue({ data: { session: mockSession }, error: null })
+  mockSignUp.mockResolvedValue({ data: { session: mockSession, user: mockSession.user }, error: null })
   mockUpdateUser.mockResolvedValue({ error: null })
 })
 
@@ -133,5 +160,35 @@ describe('AuthProvider password update', () => {
     })
     expect(mockUpdateUser).not.toHaveBeenCalled()
     expect(screen.getByTestId('session-id')).toHaveTextContent('customer_test_1')
+  })
+})
+
+describe('AuthProvider email signup', () => {
+  it('creates a customer-safe email signup without client-controlled role metadata', async () => {
+    mockGetSession.mockResolvedValueOnce({ data: { session: null } })
+
+    render(
+      <AuthProvider>
+        <SignupHarness />
+      </AuthProvider>,
+    )
+
+    fireEvent.press(screen.getByTestId('signup-email'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('signup-result')).toHaveTextContent('success')
+    })
+    expect(mockSignUp).toHaveBeenCalledWith({
+      email: 'tu@example.com',
+      password: 'secret123',
+      options: {
+        data: {
+          full_name: 'Tu Phan',
+          name: 'Tu Phan',
+        },
+      },
+    })
+    expect(JSON.stringify(mockSignUp.mock.calls[0][0])).not.toContain('role')
+    expect(mockMaybeSingle).toHaveBeenCalled()
   })
 })

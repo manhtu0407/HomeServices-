@@ -4,6 +4,7 @@ const mockReplace = jest.fn()
 const mockRefreshProfile = jest.fn(async () => null)
 const mockSignInWithGoogle = jest.fn(async () => ({ success: true }))
 const mockSignInWithPassword = jest.fn(async () => ({ success: false, error: 'Không thể đăng nhập' }))
+const mockSignUpWithEmail = jest.fn(async () => ({ success: true }))
 const mockSignOut = jest.fn(async () => undefined)
 const mockUpdateCustomerProfile = jest.fn(async () => ({ success: true }))
 let mockAuthOverride: Record<string, unknown> = {}
@@ -42,6 +43,7 @@ jest.mock('@/lib/auth-provider', () => ({
     session: null,
     signInWithGoogle: mockSignInWithGoogle,
     signInWithPassword: mockSignInWithPassword,
+    signUpWithEmail: mockSignUpWithEmail,
     signOut: mockSignOut,
     updateCustomerProfile: mockUpdateCustomerProfile,
     ...mockAuthOverride,
@@ -121,6 +123,34 @@ describe('LoginRoleSurface', () => {
     fireEvent.press(screen.getByTestId('auth-customer-forgot-password'))
 
     expect(screen.getByText('Đặt lại mật khẩu chưa sẵn sàng.')).toBeOnTheScreen()
+  })
+
+  it('opens customer email registration and submits through the signup boundary', async () => {
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByText('Tiếp tục'))
+    fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
+    fireEvent.press(screen.getByTestId('auth-client-register-email'))
+
+    expect(screen.getAllByText('Đăng ký tài khoản').length).toBeGreaterThan(0)
+    expect(screen.getByTestId('auth-register-name-input')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-email-input')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-password-input')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-register-submit')).toHaveTextContent('Đăng ký')
+
+    fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    await waitFor(() => {
+      expect(mockSignUpWithEmail).toHaveBeenCalledWith({
+        displayName: 'Tu Phan',
+        email: 'tu@example.com',
+        password: 'secret123',
+      })
+    })
+    expect(mockSignInWithPassword).not.toHaveBeenCalled()
   })
 
   it('surfaces Kael onboarding and saves real customer profile fields', async () => {

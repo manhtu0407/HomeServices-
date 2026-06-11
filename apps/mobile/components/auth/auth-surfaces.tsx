@@ -27,7 +27,7 @@ type AuthEntryRole = 'customer' | 'worker'
 const EMPTY_AUTH_META: string[] = []
 
 type LoginRoleState = {
-  customerAuthMode: 'choices' | 'phone'
+  customerAuthMode: 'choices' | 'phone' | 'register'
   customerAddress: string
   customerSetupDismissed: boolean
   email: string
@@ -46,7 +46,7 @@ type LoginRoleAction =
   | { type: 'field'; field: 'customerAddress' | 'customerDisplayName' | 'email' | 'password' | 'phone'; value: string }
   | { type: 'dismiss_customer_setup' }
   | { type: 'dismiss_welcome' }
-  | { type: 'set_customer_auth_mode'; mode: 'choices' | 'phone' }
+  | { type: 'set_customer_auth_mode'; mode: 'choices' | 'phone' | 'register' }
   | { type: 'form_error'; error: string | null }
   | { type: 'select_role'; role: AuthEntryRole | null }
   | { type: 'set_signing_in'; signingIn: boolean }
@@ -158,6 +158,15 @@ const authCopy = {
     phone: 'Dùng số điện thoại',
     customerEmailFallback: 'Dùng email và mật khẩu',
     customerEmailFallbackClose: 'Ẩn đăng nhập email',
+    customerRegisterEntry: 'Tạo tài khoản bằng email',
+    customerRegisterTitle: 'Đăng ký tài khoản',
+    customerRegisterSubtitle: 'Bắt đầu với NestScout và Kael',
+    customerRegisterName: 'Họ và tên',
+    customerRegisterNamePlaceholder: 'Nhập họ tên',
+    customerRegisterSubmit: 'Đăng ký',
+    customerRegisterCheckEmail: 'Kiểm tra email để hoàn tất đăng ký.',
+    customerHasAccount: 'Đã có tài khoản?',
+    customerBackToLogin: 'Đăng nhập',
     signature: 'Đúng người, đúng việc, đúng lúc nhà cần.',
     workerLoginTitle: 'Đăng nhập cho Thợ',
     customerLoginTitle: 'Đăng nhập cho Khách',
@@ -296,6 +305,15 @@ const authCopy = {
     phone: 'Use phone number',
     customerEmailFallback: 'Use email and password',
     customerEmailFallbackClose: 'Hide email sign-in',
+    customerRegisterEntry: 'Create account with email',
+    customerRegisterTitle: 'Create account',
+    customerRegisterSubtitle: 'Start with NestScout and Kael',
+    customerRegisterName: 'Full name',
+    customerRegisterNamePlaceholder: 'Enter your full name',
+    customerRegisterSubmit: 'Sign up',
+    customerRegisterCheckEmail: 'Check your email to finish registration.',
+    customerHasAccount: 'Already have an account?',
+    customerBackToLogin: 'Sign in',
     signature: 'Right person, right job, right when home needs it.',
     workerLoginTitle: 'Worker sign in',
     customerLoginTitle: 'Customer sign in',
@@ -399,7 +417,7 @@ type AuthCopy = (typeof authCopy)[AppLanguage]
 export function LoginRoleSurface() {
   const { replace } = useRouter()
   const { preview } = useLocalSearchParams<{ preview?: string | string[] }>()
-  const { authError, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, updateCustomerProfile } = useAuth()
+  const { authError, loading, profileStatus, refreshProfile, role, session, signInWithGoogle, signInWithPassword, signOut, signUpWithEmail, updateCustomerProfile } = useAuth()
   const { reduceTransparency } = useGlassAccessibility()
   const language = useAppLanguage()
   const copy = authCopy[language]
@@ -413,7 +431,7 @@ export function LoginRoleSurface() {
   const setPhone = (value: string) => loginDispatch({ type: 'field', field: 'phone', value })
   const setFormError = (error: string | null) => loginDispatch({ type: 'form_error', error })
   const setSigningIn = (signingInValue: boolean) => loginDispatch({ type: 'set_signing_in', signingIn: signingInValue })
-  const setCustomerAuthMode = (mode: 'choices' | 'phone') => loginDispatch({ type: 'set_customer_auth_mode', mode })
+  const setCustomerAuthMode = (mode: 'choices' | 'phone' | 'register') => loginDispatch({ type: 'set_customer_auth_mode', mode })
   const setSelectedEntryRole = (entryRole: AuthEntryRole | null) => loginDispatch({ type: 'select_role', role: entryRole })
   const setWorkerAuthMode = (mode: 'create' | 'login') => loginDispatch({ type: 'set_worker_auth_mode', mode })
   const isAdmin = role === 'admin'
@@ -449,12 +467,15 @@ export function LoginRoleSurface() {
   const needsCustomerOnboarding = shouldShowSignedInCustomerSetup || (needsProfileRecovery && !customerSetupDismissed && (selectedEntryRole === 'customer' || authProviderName === 'google'))
   const isWorkerCreateMode = selectedEntryRole === 'worker' && workerAuthMode === 'create'
   const isCustomerPhoneMode = selectedEntryRole === 'customer' && customerAuthMode === 'phone'
+  const isCustomerRegisterMode = selectedEntryRole === 'customer' && customerAuthMode === 'register'
   const loginTitle = isWorkerCreateMode
     ? copy.createWorker
     : selectedEntryRole === 'worker'
     ? copy.workerLoginTitle
     : isCustomerPhoneMode
     ? copy.customerPhoneTitle
+    : isCustomerRegisterMode
+    ? copy.customerRegisterTitle
     : copy.customerLoginTitle
   const submitLabel = selectedEntryRole === 'worker' ? copy.workerSubmit : copy.submit
   const showClientAuthOptions = selectedEntryRole === 'customer' && customerAuthMode === 'choices'
@@ -524,6 +545,30 @@ export function LoginRoleSurface() {
         setFormError(result.error ?? copy.errors.login)
       } else {
         setPassword('')
+      }
+    } catch {
+      setFormError(copy.errors.unavailable)
+    } finally {
+      setSigningIn(false)
+    }
+  }
+
+  const submitCustomerRegister = async () => {
+    setFormError(null)
+    setSigningIn(true)
+    try {
+      const result = await signUpWithEmail({
+        displayName: customerDisplayName,
+        email,
+        password,
+      })
+      if (!result.success) {
+        setFormError(result.error ?? copy.errors.unavailable)
+        return
+      }
+      setPassword('')
+      if (result.needsConfirmation) {
+        setFormError(copy.customerRegisterCheckEmail)
       }
     } catch {
       setFormError(copy.errors.unavailable)
@@ -654,14 +699,16 @@ export function LoginRoleSurface() {
               accountPlaceholder={accountPlaceholder}
               configMissing={configMissing}
               copy={copy}
+              displayName={customerDisplayName}
               email={email}
               isCustomerPhoneMode={isCustomerPhoneMode}
+              isCustomerRegisterMode={isCustomerRegisterMode}
               isWorkerCreateMode={isWorkerCreateMode}
               loading={loading}
               loginTitle={loginTitle}
               onBack={() => {
                 setFormError(null)
-                if (isCustomerPhoneMode) {
+                if (isCustomerPhoneMode || isCustomerRegisterMode) {
                   setCustomerAuthMode('choices')
                   return
                 }
@@ -670,11 +717,14 @@ export function LoginRoleSurface() {
               onForgotPassword={() => setFormError(copy.errors.resetPasswordUnavailable)}
               onGoogle={submitGoogleLogin}
               onOpenPhone={() => setCustomerAuthMode('phone')}
+              onOpenRegister={() => setCustomerAuthMode('register')}
               onPhoneBack={() => setCustomerAuthMode('choices')}
               onPhoneSubmitUnavailable={() => setFormError(copy.errors.phoneUnavailable)}
               onSubmitLogin={submitLogin}
+              onSubmitRegister={submitCustomerRegister}
               onSubmitWorkerCreate={() => setFormError(copy.errors.workerCreateUnavailable)}
               onTogglePasswordVisible={() => loginDispatch({ type: 'toggle_password_visible' })}
+              onUpdateDisplayName={setCustomerDisplayName}
               onUpdateEmail={setEmail}
               onUpdatePassword={setPassword}
               onUpdatePhone={setPhone}
@@ -704,8 +754,10 @@ function UnauthenticatedRoleForm({
   accountPlaceholder,
   configMissing,
   copy,
+  displayName,
   email,
   isCustomerPhoneMode,
+  isCustomerRegisterMode,
   isWorkerCreateMode,
   loading,
   loginTitle,
@@ -713,11 +765,14 @@ function UnauthenticatedRoleForm({
   onForgotPassword,
   onGoogle,
   onOpenPhone,
+  onOpenRegister,
   onPhoneBack,
   onPhoneSubmitUnavailable,
   onSubmitLogin,
+  onSubmitRegister,
   onSubmitWorkerCreate,
   onTogglePasswordVisible,
+  onUpdateDisplayName,
   onUpdateEmail,
   onUpdatePassword,
   onUpdatePhone,
@@ -736,8 +791,10 @@ function UnauthenticatedRoleForm({
   accountPlaceholder: string
   configMissing: boolean
   copy: AuthCopy
+  displayName: string
   email: string
   isCustomerPhoneMode: boolean
+  isCustomerRegisterMode: boolean
   isWorkerCreateMode: boolean
   loading: boolean
   loginTitle: string
@@ -745,11 +802,14 @@ function UnauthenticatedRoleForm({
   onForgotPassword: () => void
   onGoogle: () => void
   onOpenPhone: () => void
+  onOpenRegister: () => void
   onPhoneBack: () => void
   onPhoneSubmitUnavailable: () => void
   onSubmitLogin: () => void
+  onSubmitRegister: () => void
   onSubmitWorkerCreate: () => void
   onTogglePasswordVisible: () => void
+  onUpdateDisplayName: (value: string) => void
   onUpdateEmail: (value: string) => void
   onUpdatePassword: (value: string) => void
   onUpdatePhone: (value: string) => void
@@ -766,7 +826,7 @@ function UnauthenticatedRoleForm({
   visibleError: string | null
 }) {
   const isWorker = selectedEntryRole === 'worker'
-  const isCustomerPasswordFallback = selectedEntryRole === 'customer' && !isCustomerPhoneMode
+  const isCustomerPasswordFallback = selectedEntryRole === 'customer' && !isCustomerPhoneMode && !isCustomerRegisterMode
   const [showCustomerEmailFallback, setShowCustomerEmailFallback] = useState(false)
   const canUsePasswordLogin = isWorker || (isCustomerPasswordFallback && showCustomerEmailFallback)
   const isCustomerEmailPasswordOpen = isCustomerPasswordFallback && showCustomerEmailFallback
@@ -777,10 +837,10 @@ function UnauthenticatedRoleForm({
       <View style={styles.hiddenMarker} testID={`auth-entry-role-selected-${selectedEntryRole}`} />
       <AuthTopRow
         onBack={onBack}
-        subtitle={isWorkerCreateMode ? copy.workerVerificationSubtitle : isWorker ? copy.workerLoginSubtitle : isCustomerPhoneMode ? copy.customerPhoneSubtitle : copy.customerLoginSubtitle}
-        title={isWorkerCreateMode ? copy.workerVerificationHeading : isWorker ? copy.workerLoginHeading : isCustomerPhoneMode ? copy.customerPhoneHeading : copy.customerLoginHeading}
+        subtitle={isWorkerCreateMode ? copy.workerVerificationSubtitle : isWorker ? copy.workerLoginSubtitle : isCustomerPhoneMode ? copy.customerPhoneSubtitle : isCustomerRegisterMode ? copy.customerRegisterSubtitle : copy.customerLoginSubtitle}
+        title={isWorkerCreateMode ? copy.workerVerificationHeading : isWorker ? copy.workerLoginHeading : isCustomerPhoneMode ? copy.customerPhoneHeading : isCustomerRegisterMode ? copy.customerRegisterTitle : copy.customerLoginHeading}
       />
-      {isCustomerPhoneMode || isWorkerCreateMode ? null : (
+      {isCustomerPhoneMode || isCustomerRegisterMode || isWorkerCreateMode ? null : (
         <LoginHeroRole
           icon={isWorker ? 'tools' : 'home'}
           lockLabel={isWorker ? copy.roleHero.workerLock : copy.roleHero.customerLock}
@@ -800,6 +860,7 @@ function UnauthenticatedRoleForm({
             loading={loading}
             onGoogle={onGoogle}
             onPhone={onOpenPhone}
+            onRegister={onOpenRegister}
             signingIn={signingIn}
           />
         ) : null}
@@ -812,6 +873,24 @@ function UnauthenticatedRoleForm({
             onSubmitUnavailable={onPhoneSubmitUnavailable}
             onUpdatePhone={onUpdatePhone}
             phone={phone}
+            signingIn={signingIn}
+          />
+        ) : null}
+        {isCustomerRegisterMode ? (
+          <CustomerEmailRegisterPanel
+            configMissing={configMissing}
+            copy={copy}
+            displayName={displayName}
+            email={email}
+            loading={loading}
+            onBackToLogin={onPhoneBack}
+            onSubmit={onSubmitRegister}
+            onTogglePasswordVisible={onTogglePasswordVisible}
+            onUpdateDisplayName={onUpdateDisplayName}
+            onUpdateEmail={onUpdateEmail}
+            onUpdatePassword={onUpdatePassword}
+            password={password}
+            passwordVisible={passwordVisible}
             signingIn={signingIn}
           />
         ) : null}
@@ -1062,6 +1141,7 @@ function ClientAuthChoices({
   loading,
   onGoogle,
   onPhone,
+  onRegister,
   signingIn,
 }: {
   configMissing: boolean
@@ -1069,6 +1149,7 @@ function ClientAuthChoices({
   loading: boolean
   onGoogle: () => void
   onPhone: () => void
+  onRegister: () => void
   signingIn: boolean
 }) {
   const disabled = signingIn || loading || configMissing
@@ -1103,6 +1184,17 @@ function ClientAuthChoices({
         </View>
         <Text style={styles.phoneButtonText}>{copy.phone}</Text>
       </AuthMotionPressable>
+      <Pressable
+        accessibilityLabel={copy.customerRegisterEntry}
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={onRegister}
+        style={({ pressed }) => [styles.secondaryBoxButton, pressed ? styles.pressed : null, disabled ? styles.disabled : null]}
+        testID="auth-client-register-email"
+      >
+        <Text style={styles.secondaryBoxButtonText}>{copy.customerRegisterEntry}</Text>
+      </Pressable>
     </View>
   )
 }
@@ -1177,6 +1269,102 @@ function CustomerPhoneLoginPanel({
       >
         <Text style={styles.secondaryBoxButtonText}>{copy.customerGoogleFallback}</Text>
       </Pressable>
+    </View>
+  )
+}
+
+function CustomerEmailRegisterPanel({
+  configMissing,
+  copy,
+  displayName,
+  email,
+  loading,
+  onBackToLogin,
+  onSubmit,
+  onTogglePasswordVisible,
+  onUpdateDisplayName,
+  onUpdateEmail,
+  onUpdatePassword,
+  password,
+  passwordVisible,
+  signingIn,
+}: {
+  configMissing: boolean
+  copy: (typeof authCopy)[AppLanguage]
+  displayName: string
+  email: string
+  loading: boolean
+  onBackToLogin: () => void
+  onSubmit: () => void
+  onTogglePasswordVisible: () => void
+  onUpdateDisplayName: (value: string) => void
+  onUpdateEmail: (value: string) => void
+  onUpdatePassword: (value: string) => void
+  password: string
+  passwordVisible: boolean
+  signingIn: boolean
+}) {
+  const disabled = signingIn || loading || configMissing
+
+  return (
+    <View style={styles.authChoiceList} testID="auth-register-email-form">
+      <AuthInputField icon="home" label={copy.customerRegisterName}>
+        <TextInput
+          accessibilityLabel={copy.customerRegisterName}
+          autoCapitalize="words"
+          onChangeText={onUpdateDisplayName}
+          placeholder={copy.customerRegisterNamePlaceholder}
+          placeholderTextColor={authTokens.subtle}
+          style={styles.fieldInput}
+          testID="auth-register-name-input"
+          value={displayName}
+        />
+      </AuthInputField>
+      <AuthInputField icon="email" label={copy.email}>
+        <TextInput
+          accessibilityLabel={copy.email}
+          autoCapitalize="none"
+          autoCorrect={false}
+          inputMode="email"
+          keyboardType="email-address"
+          onChangeText={onUpdateEmail}
+          placeholder={copy.email}
+          placeholderTextColor={authTokens.subtle}
+          style={styles.fieldInput}
+          testID="auth-register-email-input"
+          value={email}
+        />
+      </AuthInputField>
+      <AuthInputField actionLabel={copy.passwordVisibility} icon="lock" label={copy.password} onAction={onTogglePasswordVisible}>
+        <TextInput
+          accessibilityLabel={copy.password}
+          autoCapitalize="none"
+          onChangeText={onUpdatePassword}
+          placeholder={copy.password}
+          placeholderTextColor={authTokens.subtle}
+          secureTextEntry={!passwordVisible}
+          style={styles.fieldInput}
+          testID="auth-register-password-input"
+          value={password}
+        />
+      </AuthInputField>
+      <Pressable
+        accessibilityLabel={copy.customerRegisterSubmit}
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={onSubmit}
+        style={({ pressed }) => [styles.primaryButton, pressed ? styles.pressed : null, disabled ? styles.disabled : null]}
+        testID="auth-register-submit"
+      >
+        {signingIn || loading ? <ActivityIndicator color={authTokens.raised} /> : <Text style={styles.primaryButtonText}>{copy.customerRegisterSubmit}</Text>}
+      </Pressable>
+      <View style={styles.authFootCta}>
+        <Text style={styles.authFootCtaText}>{copy.customerHasAccount}</Text>
+        <Pressable accessibilityRole="button" onPress={onBackToLogin} style={({ pressed }) => [styles.authFootLinkButton, pressed ? styles.pressed : null]} testID="auth-register-back-login">
+          <Text style={styles.authFootLinkText}>{copy.customerBackToLogin}</Text>
+        </Pressable>
+      </View>
     </View>
   )
 }
