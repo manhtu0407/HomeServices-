@@ -6129,21 +6129,22 @@ function IncomingRequestSheet({ compact = false, material = 'standard' }: { comp
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: false,
+      allowsMultipleSelection: true,
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.86,
-      selectionLimit: 1,
+      selectionLimit: 5,
     })
     if (result.canceled || !result.assets[0]) return
-    const asset = result.assets[0]
-    const draft: LocalMediaUploadDraft = {
+    result.assets.slice(0, 5).forEach((asset) => {
+      const draft = {
         uri: asset.uri,
-        type: 'image',
+        type: 'image' as const,
         fileName: asset.fileName ?? asset.uri.split('/').pop(),
         mimeType: asset.mimeType ?? undefined,
         fileSizeBytes: asset.fileSize ?? undefined,
-    }
-    requestDraftDispatch({ type: 'completion_photo', photo: draft })
+      }
+      requestDraftDispatch({ type: 'completion_photo', photo: draft })
+    })
   }
   const pickScopePhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -6496,7 +6497,7 @@ function WorkerCompletionEvidenceBox({
         <View style={styles.completionPhotoPreviewRail} testID="worker-completion-photo-preview-rail">
           {photos.map((photo, index) => (
             <View key={`${photo.uri}-${index}`} style={[styles.completionPhotoPreviewTile, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]} testID={`worker-completion-photo-preview-${index}`}>
-              <Image contentFit="cover" source={{ uri: photo.uri }} style={styles.completionPhotoPreviewImage} />
+              <Image contentFit="cover" source={{ uri: photo.uri }} style={styles.completionPhotoPreviewImage} testID={`worker-completion-photo-preview-image-${index}`} />
               <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
                 {photo.fileName ?? actionCopy.completionPhoto}
               </Text>

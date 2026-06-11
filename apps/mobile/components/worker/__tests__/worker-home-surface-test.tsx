@@ -1490,7 +1490,11 @@ describe('WorkerJobsSurface', () => {
     const imagePicker = jest.requireMock('expo-image-picker')
     imagePicker.launchImageLibraryAsync.mockResolvedValueOnce({
       canceled: false,
-      assets: [{ fileName: 'after-panel.jpg', fileSize: 2048, mimeType: 'image/jpeg', uri: 'file:///after-panel.jpg' }],
+      assets: [
+        { fileName: 'after-panel.jpg', fileSize: 2048, mimeType: 'image/jpeg', uri: 'file:///after-panel.jpg' },
+        { fileName: 'after-switch.jpg', fileSize: 3072, mimeType: 'image/jpeg', uri: 'file:///after-switch.jpg' },
+        { fileName: 'after-meter.jpg', fileSize: 4096, mimeType: 'image/jpeg', uri: 'file:///after-meter.jpg' },
+      ],
     })
     mockAppLanguage = 'en'
     mockPathname = '/(worker)/jobs'
@@ -1503,9 +1507,14 @@ describe('WorkerJobsSurface', () => {
     fireEvent.press(screen.getByTestId('worker-completion-add-photo'))
 
     await waitFor(() => expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalled())
-    await waitFor(() => expect(screen.getByTestId('worker-completion-photo-count')).toHaveTextContent('1 photo selected'))
+    await waitFor(() => expect(screen.getByTestId('worker-completion-photo-count')).toHaveTextContent('3 photos selected'))
     expect(screen.getByTestId('worker-completion-photo-preview-rail')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-completion-photo-preview-0')).toHaveTextContent('after-panel.jpg')
+    expect(screen.getByTestId('worker-completion-photo-preview-image-0').props.source).toEqual({ uri: 'file:///after-panel.jpg' })
+    expect(screen.getByTestId('worker-completion-photo-preview-1')).toHaveTextContent('after-switch.jpg')
+    expect(screen.getByTestId('worker-completion-photo-preview-image-1').props.source).toEqual({ uri: 'file:///after-switch.jpg' })
+    expect(screen.getByTestId('worker-completion-photo-preview-2')).toHaveTextContent('after-meter.jpg')
+    expect(screen.getByTestId('worker-completion-photo-preview-image-2').props.source).toEqual({ uri: 'file:///after-meter.jpg' })
     expect(screen.queryByText('0 photos')).toBeNull()
   })
 

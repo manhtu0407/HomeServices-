@@ -113,6 +113,7 @@
   - Kept worker pricing input out of the checklist path.
   - Added completion evidence preview rail from local image-picker drafts before upload.
   - Kept Evidence Upload tied to real local media draft URI/file names and the existing upload/status action path.
+  - Expanded completion evidence picking to keep up to 5 real selected image drafts and preview each source before the existing `after`-stage upload.
   - Aligned Evidence Upload CTA to the reference report action copy (`Gửi báo cáo hoàn thành` / `Send completion report`) while preserving the existing completion status/update flow.
   - Added focused RNTL coverage for address gate, scope gate, completion evidence, and no fake placeholder values.
   - Added the JobRoom on-site media preview rail from real ImagePicker local draft URI/file names before the worker sends the advisory.
