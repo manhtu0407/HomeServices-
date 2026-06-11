@@ -4234,6 +4234,7 @@ function WorkerProfileContent() {
   const workingAreaLabel = workerProfile?.districts.length
     ? workerProfile.districts.map((district) => localizedWorkerAreaLabel(district, language)).join(' · ')
     : appCopy[language].common.noData
+  const workerProfileName = workerProfile?.legal_name?.trim().replace(/\s+/g, ' ') || copy.profile.name
   const verificationStatus = workerProfile?.verification_status ?? 'draft'
   const profileRows: { icon: WorkerImageIconName; meta: string; title: string }[] = [
     { icon: 'profileIdentity', meta: localizedWorkerVerificationStatus(verificationStatus, language), title: language === 'en' ? 'Identity verification' : 'Xác minh danh tính' },
@@ -4263,8 +4264,8 @@ function WorkerProfileContent() {
             <WorkerImageIcon frameSize={50} name="profileAvatar" size={50} />
           </View>
           <View style={styles.profileTitleStack}>
-            <Text style={[styles.profileName, { color: tokens.ink }]} numberOfLines={1}>
-              {copy.profile.name}
+            <Text style={[styles.profileName, { color: tokens.ink }]} numberOfLines={1} testID="worker-profile-hero-name">
+              {workerProfileName}
             </Text>
             <Text style={[styles.profileSubtitle, { color: tokens.muted }]} numberOfLines={2}>
               {language === 'en' ? 'Status and service skills' : 'Trạng thái và kỹ năng dịch vụ'}

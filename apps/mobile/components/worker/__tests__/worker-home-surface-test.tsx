@@ -1491,6 +1491,15 @@ describe('WorkerEarningsSurface', () => {
 })
 
 describe('WorkerProfileSurface', () => {
+  it('uses the real worker legal name in the profile hero when available', () => {
+    mockPathname = '/(worker)/profile'
+    buildWorkflow({ workerProfile: buildWorkerProfile({ legal_name: '  Hoang   Minh  ' }) })
+
+    render(<WorkerProfileSurface />)
+
+    expect(screen.getByTestId('worker-profile-hero-name')).toHaveTextContent('Hoang Minh')
+  })
+
   it('applies the profile liquid hierarchy without fabricating worker trust data', () => {
     mockPathname = '/(worker)/profile'
     buildWorkflow({ workerProfile: buildWorkerProfile({ rating: 0, total_jobs: 0 }) })
