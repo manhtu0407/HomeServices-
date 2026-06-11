@@ -3650,6 +3650,7 @@ function CustomerHistoryJobAcceptancePanel({
     : copy.history.locationAddressHidden
   const chatGateLabel = workflowAllowedActionsLabel(phaseContext.allowedActions, languageMode)
   const briefLabel = deal.broadcast?.prebrief.find((item) => item.trim().length > 0)?.trim() ?? copy.history.jobAcceptanceNoBrief
+  const serviceLabel = localizedServiceLabel(deal.draft.serviceType, languageMode)
 
   return (
     <View style={[styles.historyCheckPanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-job-acceptance-panel">
@@ -3666,6 +3667,7 @@ function CustomerHistoryJobAcceptancePanel({
       </Text>
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.jobAcceptanceStatus} testID="customer-history-job-acceptance-status" value={workerStateLabel} variant="activity" />
+        <V4TicketCell label={languageMode === 'en' ? 'Service' : 'Dịch vụ'} testID="customer-history-job-acceptance-service" value={serviceLabel} variant="activity" />
         <V4TicketCell label={copy.history.jobAcceptanceAddress} testID="customer-history-job-acceptance-address" value={addressLabel} variant="activity" />
       </View>
       <View style={styles.twoCol}>
