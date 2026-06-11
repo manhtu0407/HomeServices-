@@ -66,7 +66,7 @@
   - Kept the matching screen free of fake worker avatars, fake ratings, fake queue counts, and inferred worker performance stats.
   - Added the Matching Score problem cell from real broadcast/estimate/draft issue text.
   - Added the Matching Score Kael cue and real-detail CTA routed to Kael chat while keeping worker name/rating hidden until backend exposes real worker profile and review fields.
-  - Added the Kael Helper chat context grid from real service and workflow gate state.
+  - Rebuilt the Kael Helper chat context as a reference-style four-row option list from real service, broadcast/estimate issue, workflow gate, and Kael advisory state.
   - Aligned Kael Helper for Options with the reference helper title, real `timeChoice: now` time row, and `Xem chi tiết` / `View details` CTA to Kael chat.
   - Added the Worker Offers & Quote checkpoint as a price-tab quote sheet from real broadcast price, Kael estimate, scope-change price, and final-price state.
   - Kept quote UI free of fake offer counts, fake worker ratings, fake worker profiles, and worker-entered price authority.

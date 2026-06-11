@@ -789,6 +789,10 @@ const customerCopy = {
       continueWithKael: 'Tiếp tục với Kael',
       chatHelperTitle: 'Kael đề xuất hỗ trợ',
       chatHelperMeta: 'Từ workflow thật',
+      chatHelperService: 'Dịch vụ',
+      chatHelperIssue: 'Vấn đề Kael ghi nhận',
+      chatHelperAction: 'Bước tiếp theo',
+      chatHelperSummary: 'Ghi chú Kael',
       chatHelperTime: 'Thời gian',
       chatHelperTimeNow: 'Ngay bây giờ',
       chatHelperDetails: 'Xem chi tiết',
@@ -1041,6 +1045,10 @@ const customerCopy = {
       continueWithKael: 'Continue with Kael',
       chatHelperTitle: 'Kael suggests support',
       chatHelperMeta: 'From the real workflow',
+      chatHelperService: 'Service',
+      chatHelperIssue: 'Problem Kael recorded',
+      chatHelperAction: 'Next step',
+      chatHelperSummary: 'Kael note',
       chatHelperTime: 'Time',
       chatHelperTimeNow: 'Now',
       chatHelperDetails: 'View details',
@@ -4946,10 +4954,17 @@ function CustomerHistoryChatPanel({
   const actionGateValue = phaseContext.blockedReason
     ? workflowBlockedReasonLabel(phaseContext.blockedReason, languageMode)
     : workflowAllowedActionsLabel(phaseContext.allowedActions, languageMode)
-  const issueValue = localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel, deal.draft.serviceType, languageMode)
+  const issueSource = deal.broadcast?.problemSummary ?? deal.estimate?.problemLabel ?? deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel
+  const issueValue = localizedProblemLabel(issueSource, deal.draft.serviceType, languageMode)
   const descriptionValue = deal.draft.description.trim() || copy.history.chatEmpty
   const kaelSummaryValue = localizedCustomerGeneratedText(deal.estimate?.advisory, languageMode, copy.history.chatEmpty)
   const timeValue = deal.draft.timeChoice === 'now' ? copy.history.chatHelperTimeNow : copy.history.kaelReviewing
+  const helperOptions = [
+    { icon: 'check', label: copy.history.chatHelperService, testID: 'customer-history-chat-helper-option-service', value: serviceValue, valueTestID: 'customer-history-chat-helper-service-value' },
+    { icon: 'check', label: copy.history.chatHelperIssue, testID: 'customer-history-chat-helper-option-issue', value: issueValue, valueTestID: 'customer-history-chat-helper-issue-value' },
+    { icon: 'estimate', label: copy.history.chatHelperAction, testID: 'customer-history-chat-helper-option-action', value: actionGateValue, valueTestID: 'customer-history-chat-helper-action-value' },
+    { icon: 'kael', label: copy.history.chatHelperSummary, testID: 'customer-history-chat-helper-option-summary', value: kaelSummaryValue, valueTestID: 'customer-history-chat-helper-summary-value' },
+  ] as const
   const canSend = Boolean(chatCanSend && draft.trim() && !jobChat.sending)
   const sendLabel = languageMode === 'en' ? 'Send message' : 'Gửi tin nhắn'
   const inputLabel = chatCanSend
@@ -4981,9 +4996,22 @@ function CustomerHistoryChatPanel({
         </Text>
       </View>
       <View style={styles.hiddenMarker} testID="customer-history-chat-empty-evidence" />
-      <View style={styles.twoCol} testID="customer-history-chat-helper-grid">
-        <V4TicketCell label={languageMode === 'en' ? 'Service' : 'Dịch vụ'} testID="customer-history-chat-helper-service" value={serviceValue} variant="activity" />
-        <V4TicketCell label={languageMode === 'en' ? 'Gate' : 'Cổng'} testID="customer-history-chat-helper-action" value={actionGateValue} variant="activity" />
+      <View style={[styles.bookingCheckPanel, customerOpaqueSurface(tokens)]} testID="customer-history-chat-helper-list">
+        {helperOptions.map((option) => (
+          <View key={option.testID} style={styles.bookingCheckRow} testID={option.testID}>
+            <MappedIcon name={option.icon} color={tokens.primary} accent={tokens.copper} size={20} />
+            <View style={styles.listCopy}>
+              <Text style={[styles.bubbleKicker, { color: tokens.primary }]} numberOfLines={1}>
+                {option.label}
+              </Text>
+              <Text style={[styles.homeTrustBody, { color: tokens.text }]} numberOfLines={2} testID={option.valueTestID}>
+                {option.value}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+      <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.chatHelperTime} testID="customer-history-chat-helper-time" value={timeValue} variant="activity" />
       </View>
       <View style={styles.historyChatFeed}>
@@ -5062,7 +5090,7 @@ function CustomerHistoryChatPanel({
           {lockedReason}
         </Text>
       ) : null}
-      <PrimaryButton label={copy.history.chatHelperDetails} onPress={onOpenKael} compact />
+      <PrimaryButton label={copy.history.chatHelperDetails} onPress={onOpenKael} compact testID="customer-history-chat-helper-details" />
     </View>
   )
 }
