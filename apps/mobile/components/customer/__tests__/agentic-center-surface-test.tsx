@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
-import type { LocalDeal, LocalWorkflowSelectors } from '@home-services/shared'
+import type { LocalDeal, LocalScopeChange, LocalWorkflowSelectors } from '@home-services/shared'
 
 let mockWorkflowValue: any
 let mockSessionMetadata: Record<string, unknown>
@@ -136,6 +136,21 @@ function buildWorkflow(deal: LocalDeal | null, notificationUnreadCount = 0) {
   }
 }
 
+function buildScopeChange(): LocalScopeChange {
+  return {
+    createdAt: '2026-06-01T00:00:00.000Z',
+    evidencePhotoUrls: ['storage://job_test_1/scope.jpg'],
+    id: 'scope_test_1',
+    kaelProgress: null,
+    kaelReview: null,
+    priceMax: 320000,
+    priceMin: 260000,
+    reason: 'Needs one extra outlet after inspection.',
+    requestedDescription: 'Replace the burnt outlet contact.',
+    status: 'waiting_customer_decision',
+  }
+}
+
 beforeEach(() => {
   setCustomerThemeMode('light')
   mockLanguage = 'en'
@@ -190,5 +205,19 @@ describe('CustomerAgenticCenterSurface', () => {
     fireEvent.press(screen.getByText('Start request'))
 
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat')
+  })
+
+  it('routes scope approvals to the existing history review flow', () => {
+    const deal = buildDeal()
+    deal.backendStatus = 'scope_change_pending'
+    deal.scopeChange = buildScopeChange()
+    deal.status = 'scope_change_pending'
+    buildWorkflow(deal)
+
+    render(<CustomerAgenticCenterSurface />)
+
+    fireEvent.press(screen.getByTestId('customer-agentic-center-approval-scope_change-action'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/history?tab=price&scope_change=scope_test_1')
   })
 })

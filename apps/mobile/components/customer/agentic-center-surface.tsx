@@ -21,6 +21,14 @@ const CUSTOMER_HOME_PATH = '/(customer)/home'
 const CUSTOMER_HISTORY_PATH = '/(customer)/history'
 const CUSTOMER_PROFILE_PATH = '/(customer)/profile'
 
+type AgenticApprovalRow = {
+  actionLabel: string
+  actionPath: string
+  id: string
+  label: string
+  value: string
+}
+
 const copy = {
   vi: {
     title: 'Trung tâm Kael',
@@ -160,7 +168,9 @@ export function CustomerAgenticCenterSurface() {
         </CenterSection>
 
         <CenterSection title={text.approvalQueue} tokens={tokens}>
-          {approvals.length > 0 ? approvals.map((item) => <InfoRow key={item.label} label={item.label} tokens={tokens} value={item.value} />) : <EmptyState body={text.approvalEmptyBody} title={text.approvalEmptyTitle} tokens={tokens} />}
+          {approvals.length > 0
+            ? approvals.map((item) => <ApprovalActionRow key={item.id} item={item} onPress={() => replace(item.actionPath)} reduceMotion={reduceMotion} tokens={tokens} />)
+            : <EmptyState body={text.approvalEmptyBody} title={text.approvalEmptyTitle} tokens={tokens} />}
         </CenterSection>
 
         <CenterSection title={text.memory} tokens={tokens}>
@@ -250,6 +260,20 @@ function InfoRow({ label, testID, tokens, value }: { label: string; testID?: str
   )
 }
 
+function ApprovalActionRow({ item, onPress, reduceMotion, tokens }: { item: AgenticApprovalRow; onPress: () => void; reduceMotion: boolean; tokens: CustomerThemeTokens }) {
+  return (
+    <View style={[styles.approvalRow, centerInfoRowSurface(tokens)]} testID={`customer-agentic-center-approval-${item.id}`}>
+      <View style={styles.approvalCopy}>
+        <Text style={[styles.infoLabel, { color: tokens.muted }]}>{item.label}</Text>
+        <Text style={[styles.infoValue, { color: tokens.text }]} testID={`customer-agentic-center-approval-${item.id}-value`}>{item.value}</Text>
+      </View>
+      <Pressable accessibilityLabel={item.actionLabel} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.approvalButton, centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={`customer-agentic-center-approval-${item.id}-action`}>
+        <Text style={[styles.approvalButtonText, { color: tokens.primary }]}>{item.actionLabel}</Text>
+      </Pressable>
+    </View>
+  )
+}
+
 function CenterButton({ label, onPress, primary = false, reduceMotion, tokens }: { label: string; onPress: () => void; primary?: boolean; reduceMotion: boolean; tokens: CustomerThemeTokens }) {
   return (
     <Pressable accessibilityLabel={label} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.actionButton, primary ? centerPrimaryButtonSurface(tokens) : centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]}>
@@ -283,7 +307,7 @@ function getSummaryRows({
   preferences,
   text,
 }: {
-  approvals: Array<{ label: string; value: string }>
+  approvals: AgenticApprovalRow[]
   deal: LocalDeal | null
   preferences: Array<{ label: string; value: string }>
   text: (typeof copy)[AppLanguage]
@@ -308,18 +332,43 @@ function getApprovalRows({
   status: LocalDealStatus | null
   text: (typeof copy)[AppLanguage]
 }) {
-  const rows: Array<{ label: string; value: string }> = []
+  const rows: AgenticApprovalRow[] = []
+  const reviewLabel = language === 'en' ? 'Review' : 'Xem xét'
   if (deal?.scopeChange && ['requested_by_worker', 'reviewing_by_kael', 'waiting_customer_decision'].includes(deal.scopeChange.status)) {
-    rows.push({ label: text.scopeChange, value: deal.scopeChange.requestedDescription?.trim() || localizedStatusLabel(status, language) })
+    rows.push({
+      actionLabel: reviewLabel,
+      actionPath: `${CUSTOMER_HISTORY_PATH}?tab=price&scope_change=${encodeURIComponent(deal.scopeChange.id)}`,
+      id: 'scope_change',
+      label: text.scopeChange,
+      value: deal.scopeChange.requestedDescription?.trim() || localizedStatusLabel(status, language),
+    })
   }
   if (status === 'completed_by_worker') {
-    rows.push({ label: text.completion, value: localizedStatusLabel(status, language) })
+    rows.push({
+      actionLabel: reviewLabel,
+      actionPath: `${CUSTOMER_HISTORY_PATH}?tab=done`,
+      id: 'completion',
+      label: text.completion,
+      value: localizedStatusLabel(status, language),
+    })
   }
   if (deal?.backendStatus === 'payment_pending') {
-    rows.push({ label: text.payment, value: text.payment })
+    rows.push({
+      actionLabel: reviewLabel,
+      actionPath: `${CUSTOMER_HISTORY_PATH}?tab=price`,
+      id: 'payment',
+      label: text.payment,
+      value: text.payment,
+    })
   }
   if (notificationUnreadCount > 0) {
-    rows.push({ label: text.unread, value: String(notificationUnreadCount) })
+    rows.push({
+      actionLabel: reviewLabel,
+      actionPath: `${CUSTOMER_HISTORY_PATH}?tab=repair`,
+      id: 'unread',
+      label: text.unread,
+      value: String(notificationUnreadCount),
+    })
   }
   return rows
 }
@@ -555,6 +604,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.md,
+  },
+  approvalRow: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'space-between',
+    padding: spacing.md,
+  },
+  approvalCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0,
+  },
+  approvalButton: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 36,
+    minWidth: 84,
+    paddingHorizontal: spacing.md,
+  },
+  approvalButtonText: {
+    fontSize: typography.caption.fontSize,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: typography.caption.lineHeight,
   },
   infoLabel: {
     fontSize: typography.caption.fontSize,
