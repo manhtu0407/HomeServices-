@@ -241,6 +241,21 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-case-command-cell-4-value')).toHaveTextContent('Tòa A, Quận 1')
   })
 
+  it('shows matching score from real estimate and broadcast state without fake worker ratings', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('broadcasting'))
+
+    render(<CustomerHistorySurface />)
+
+    const matchingPanel = screen.getByTestId('customer-history-matching-score-panel')
+    expect(matchingPanel).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-matching-confidence-value')).toHaveTextContent('84%')
+    expect(screen.getByTestId('customer-history-matching-worker-value')).toHaveTextContent(/Đang chờ phản hồi/)
+    expect(screen.getByTestId('customer-history-matching-evidence-value')).toHaveTextContent(/1 ảnh/)
+    expect(screen.getByTestId('customer-history-matching-area-value')).toHaveTextContent(/Quận 1/)
+    expect(matchingPanel).not.toHaveTextContent(/★★★★★|4\.9|rating/i)
+  })
+
   it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {
     render(<CustomerHistorySurface />)
 

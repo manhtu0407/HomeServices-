@@ -43,6 +43,8 @@
   - Added a real-data customer case command overview to Activity.
   - Kept worker address privacy gated by workflow state.
   - Kept ETA honest by waiting for live travel signal instead of deriving fake arrival copy from timers.
+  - Added a Matching Score panel to Activity from real estimate confidence, broadcast state, intake media count, area, and Kael prebrief.
+  - Kept the matching screen free of fake worker avatars, fake ratings, fake queue counts, and inferred worker performance stats.
   - Added focused RNTL coverage for private address, released address, and no placeholder markers.
 - Continued Group D:
   - Added worker safety/checklist gates to active jobs.
@@ -79,7 +81,7 @@
   - `jest --runInBand components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 27 tests after the Live Performance panel; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 33 tests.
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests.
-  - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 16 tests.
+  - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 17 tests.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 47 tests.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
   - Mobile Jest from `apps/mobile` passed after the latest Group B search/chat checkpoint: 17 suites, 156 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
@@ -88,12 +90,12 @@
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, Group D worker safety/earnings/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
+Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview plus matching score, Group D worker safety/earnings/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
 
 ## Next
 
 1. Re-run broad mobile Jest/type-check after the latest Group B search/chat checkpoint.
-2. Continue Group C/F visual rebuild passes if broad gates stay green.
+2. Continue Group C worker offers/quote, location/ETA, and live job alert visual rebuild passes if broad gates stay green.
 3. Keep committing only verified checkpoint files, leaving prototype trash unstaged.
 
 ## Open Risks

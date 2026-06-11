@@ -26,7 +26,7 @@ Legend:
 | B | 2.3 Media / Voice Note | Partial | Partial | TBD | Focused booking test verifies photo rail + honest voice capsule | In progress |
 | B | 2.4 Kael Live Performance Chat | Partial | Partial | TBD | Live Performance panel reads real service, pending/media evidence count, and polled Kael progress trace while preserving server service wrappers; focused Kael chat test passed | In progress |
 | C | 2.5 Case Overview | Partial | Partial | TBD | Customer Activity command overview reads real deal, status, quote, and address-release state; focused history test passed | In progress |
-| C | 2.6 Matching & AI Score | Partial | Partial | TBD | Matching/status surfaces use existing workflow labels; no fake worker rating/count added | In progress |
+| C | 2.6 Matching & AI Score | Partial | Partial | TBD | Activity Matching Score panel reads estimate confidence, broadcast worker signal, intake evidence count, area, and Kael prebrief from real state; focused history test passed | In progress |
 | C | 2.7 Kael Helper for Options | Partial | Partial | TBD | Agentic Center links to full Kael chat; server-backed chat path preserved | In progress |
 | C | 2.8 Worker Offers & Quote | Partial | Partial | TBD | Price range reads system estimate only; no worker-entered price field added | In progress |
 | C | 2.9 Location & ETA | Partial | Partial | TBD | Address stays area-only until released; ETA uses honest live-signal waiting copy | In progress |

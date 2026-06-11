@@ -676,6 +676,14 @@ const customerCopy = {
       caseLocation: 'Vị trí',
       caseMatching: 'Ghép thợ',
       caseQuote: 'Biên giá',
+      matchingScoreTitle: 'Điểm ghép thợ',
+      matchingScoreMeta: 'Dựa trên phiếu và broadcast thật',
+      matchingEvidence: 'Bằng chứng',
+      matchingEvidenceCount: (count: number) => `${count} ảnh thật`,
+      matchingEvidenceEmpty: 'Chưa gửi ảnh',
+      matchingWorkerSignal: 'Tín hiệu thợ',
+      matchingPrebrief: 'Tóm tắt Kael',
+      matchingNoWorkerProfile: 'Chưa có hồ sơ thợ thật',
       cancelTitle: 'Hủy yêu cầu?',
       cancelSearching: 'Yêu cầu tìm thợ sẽ dừng và địa chỉ chi tiết vẫn bị ẩn khỏi thợ.',
       cancelActive: 'Kael sẽ xử lý yêu cầu hủy theo chính sách, ghi dấu vết kiểm tra và báo cho thợ nếu việc đã được nhận.',
@@ -849,6 +857,14 @@ const customerCopy = {
       caseLocation: 'Location',
       caseMatching: 'Matching',
       caseQuote: 'Price band',
+      matchingScoreTitle: 'Matching score',
+      matchingScoreMeta: 'From the real ticket and broadcast',
+      matchingEvidence: 'Evidence',
+      matchingEvidenceCount: (count: number) => `${count} real photo${count === 1 ? '' : 's'}`,
+      matchingEvidenceEmpty: 'No photo sent',
+      matchingWorkerSignal: 'Worker signal',
+      matchingPrebrief: 'Kael brief',
+      matchingNoWorkerProfile: 'No real worker profile yet',
       cancelTitle: 'Cancel request?',
       cancelSearching: 'The worker search will stop and the detailed address stays hidden.',
       cancelActive: 'Kael will process this cancellation by policy, record the audit trail, and notify the worker if the job was accepted.',
@@ -1625,6 +1641,7 @@ export function CustomerHistorySurface() {
             </View>
           </View> : null}
           {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
+          {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {!deal && showPriceTab ? <CustomerHistoryPriceEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
           {deal && showPriceTab ? <CustomerHistoryPricePanel copy={copy} deal={deal} estimateLabel={estimateLabel} languageMode={languageMode} onOpenKael={continueOrCreate} originalEstimateLabel={originalEstimateLabel} scopeChange={showScopeChangeArtifact ? scopeChange : null} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {!deal && showChatTab ? <CustomerHistoryChatEmptyPanel copy={copy} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} /> : null}
@@ -3377,6 +3394,57 @@ function CustomerHistoryCaseCommandPanel({
       <Text style={[styles.historyDisclaimerText, { color: tokens.muted }]} numberOfLines={2} testID="customer-history-case-command-status">
         {visibleStatusLabel}
       </Text>
+    </View>
+  )
+}
+
+function CustomerHistoryMatchingScorePanel({
+  copy,
+  deal,
+  languageMode,
+  tokens,
+  workerStateLabel,
+}: {
+  copy: (typeof customerCopy)[AppLanguage]
+  deal: LocalDeal
+  languageMode: AppLanguage
+  tokens: CustomerThemeTokens
+  workerStateLabel: string
+}) {
+  const confidenceLabel = deal.estimate?.confidenceLabel?.trim() || copy.history.kaelReviewing
+  const areaLabel = localizedCustomerAreaLabel(deal.broadcast?.generalArea ?? deal.draft.districtLabel, languageMode, copy.ticket.unknown)
+  const intakeMediaCount = Math.max(0, deal.draft.mediaCount)
+  const evidenceLabel = intakeMediaCount > 0 ? copy.history.matchingEvidenceCount(intakeMediaCount) : copy.history.matchingEvidenceEmpty
+  const prebrief = deal.broadcast?.prebrief.find((item) => item.trim().length > 0)?.trim() ?? copy.history.matchingNoWorkerProfile
+
+  return (
+    <View style={[styles.historyCheckPanel, styles.matchingScorePanel, customerHistoryPanelSurface(tokens)]} testID="customer-history-matching-score-panel">
+      <View style={styles.sectionTitle}>
+        <Text style={[styles.cardHeadline, { color: tokens.text }]} numberOfLines={1}>
+          {copy.history.matchingScoreTitle}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.primary }]} numberOfLines={1}>
+          {copy.history.matchingScoreMeta}
+        </Text>
+      </View>
+      <View style={styles.matchingScoreHero}>
+        <View style={[styles.matchingScoreDial, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]}>
+          <Text style={[styles.matchingScoreValue, { color: tokens.primary }]} numberOfLines={1} testID="customer-history-matching-confidence-value">
+            {confidenceLabel}
+          </Text>
+          <Text style={[styles.matchingScoreLabel, { color: tokens.muted }]} numberOfLines={1}>
+            {copy.history.caseConfidence}
+          </Text>
+        </View>
+        <View style={styles.matchingScoreHeroCopy}>
+          <V4TicketCell label={copy.history.matchingWorkerSignal} testID="customer-history-matching-worker" value={workerStateLabel} variant="activity" />
+        </View>
+      </View>
+      <View style={styles.twoCol}>
+        <V4TicketCell label={copy.history.matchingEvidence} testID="customer-history-matching-evidence" value={evidenceLabel} variant="activity" />
+        <V4TicketCell label={copy.history.caseLocation} testID="customer-history-matching-area" value={areaLabel} variant="activity" />
+      </View>
+      <V4TicketCell label={copy.history.matchingPrebrief} testID="customer-history-matching-prebrief" value={prebrief} variant="activity" />
     </View>
   )
 }
@@ -6781,6 +6849,42 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 16,
     position: 'relative',
+  },
+  matchingScoreDial: {
+    alignItems: 'center',
+    borderRadius: 26,
+    borderWidth: 1,
+    flexShrink: 0,
+    gap: 3,
+    justifyContent: 'center',
+    minHeight: 86,
+    overflow: 'hidden',
+    paddingHorizontal: 14,
+    width: 104,
+  },
+  matchingScoreHero: {
+    alignItems: 'stretch',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  matchingScoreHeroCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  matchingScoreLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 14,
+  },
+  matchingScorePanel: {
+    gap: 13,
+  },
+  matchingScoreValue: {
+    fontSize: 27,
+    fontWeight: '800',
+    letterSpacing: 0,
+    lineHeight: 32,
   },
   historyThreadCard: {
     borderRadius: 26,
