@@ -1453,6 +1453,7 @@ describe('WorkerJobsSurface', () => {
     expect(screen.getByTestId('worker-scope-change-reference-old')).toHaveTextContent(/Ổ cắm chập chờn/)
     expect(screen.getByTestId('worker-scope-change-reference-new')).toHaveTextContent(/Thay dây điện hỏng/)
     expect(screen.getByTestId('worker-scope-change-reference-reason')).toHaveTextContent(/Dây ổ cắm hở hoàn toàn/)
+    expect(screen.getByTestId('worker-scope-change-reference-delta')).toHaveTextContent(/Chi phí phát sinh/)
     expect(screen.getByTestId('worker-scope-change-reference-delta')).toHaveTextContent(/\+150\.000\s?đ/)
     expect(screen.getByTestId('worker-scope-change-detail-action')).toHaveTextContent(/Xem chi tiết/)
     fireEvent.press(screen.getByTestId('worker-scope-change-detail-action'))

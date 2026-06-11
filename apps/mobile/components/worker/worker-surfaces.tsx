@@ -1825,7 +1825,7 @@ function WorkerNeedsReviewCard() {
         <JobRoomMetaCell label={language === 'en' ? 'Old scope' : 'Phạm vi cũ'} testID="worker-scope-change-reference-old" value={originalScope} valueLines={2} />
         <JobRoomMetaCell label={language === 'en' ? 'New scope' : 'Phạm vi mới'} testID="worker-scope-change-reference-new" value={requestedScope} valueLines={2} />
         <JobRoomMetaCell label={language === 'en' ? 'Evidence' : 'Bằng chứng'} testID="worker-scope-change-reference-reason" value={`${reason} · ${evidenceLabel}`} valueLines={2} />
-        <JobRoomMetaCell label={language === 'en' ? 'Price delta' : 'Chênh lệch giá'} testID="worker-scope-change-reference-delta" value={scopeDelta} />
+        <JobRoomMetaCell label={language === 'en' ? 'Additional cost' : 'Chi phí phát sinh'} testID="worker-scope-change-reference-delta" value={scopeDelta} />
       </View>
       <View style={styles.needsReviewGrid}>
         <JobRoomMetaCell label={language === 'en' ? 'Current scope' : 'Phạm vi hiện tại'} value={originalScope} />

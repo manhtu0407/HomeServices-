@@ -128,7 +128,7 @@
   - Aligned Worker Safety & Checklist to the reference with service-derived safety steps for electrical/plumbing/cleaning.
   - Changed checklist completion from disabled-only to a one-tap internal acknowledgement that locks again after press and still does not advance job status, price, completion, or payment without the existing field-step/evidence gates.
   - Aligned Evidence & Scope Change to the reference old/new scope summary from real scope-change state.
-  - Computed the displayed price delta from the real Kael estimate label and `LocalScopeChange.priceMin`; kept worker price input absent.
+  - Labeled the real scope-change delta as `Chi phí phát sinh` / `Additional cost` while keeping worker price input absent.
   - Added submitted job summary/report card from real completion notes, completion media, status, and Kael price gate.
   - Aligned Job Summary / Summary & Report to the Kael report checklist structure from real completion status, note, media, and price gate.
   - Added the report detail CTA to the existing worker Kael chat path while keeping report generation, final price input, and fake receipt data absent.
@@ -372,6 +372,11 @@
   - Mobile Jest from `apps/mobile` passed after the Safety & Checklist reference checkpoint: 17 suites, 190 tests.
   - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "scope-change evidence with a real Kael price delta"` failed on missing `worker-scope-change-reference-card` before the Evidence & Scope Change reference checkpoint.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "scope-change evidence with a real Kael price delta"` passed after the Evidence & Scope Change reference checkpoint.
+  - Red first: focused Worker scope-change test failed before the additional-cost label checkpoint because the delta cell still showed the old label.
+  - Focused Worker scope-change test passed after the additional-cost label checkpoint.
+  - Worker suite passed: 59 tests after the Worker scope additional-cost checkpoint.
+  - Mobile type-check passed after the Worker scope additional-cost checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker scope additional-cost checkpoint: 17 suites, 195 tests.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Evidence & Scope Change reference checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Evidence & Scope Change reference checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Evidence & Scope Change reference checkpoint: 17 suites, 191 tests.
