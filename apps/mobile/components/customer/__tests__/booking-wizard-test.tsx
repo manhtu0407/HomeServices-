@@ -165,6 +165,7 @@ describe('BookingWizard Kael autonomy', () => {
     await waitFor(() => {
       expect(mockLaunchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({
         allowsMultipleSelection: true,
+        mediaTypes: ['images', 'videos'],
         selectionLimit: 5,
       }))
     })
@@ -189,6 +190,57 @@ describe('BookingWizard Kael autonomy', () => {
       ],
     }))
     expect(onOpenKael).toHaveBeenCalledWith('electrical')
+  })
+
+  it('keeps selected video evidence as a real video draft for Kael', async () => {
+    const onOpenKael = jest.fn()
+    mockRouteParams = { serviceType: 'plumbing' }
+    mockLaunchImageLibraryAsync.mockResolvedValue({
+      assets: [
+        {
+          fileName: 'ro-ri-ong-nuoc.mp4',
+          fileSize: 2450000,
+          mimeType: 'video/mp4',
+          type: 'video',
+          uri: 'file:///tmp/ro-ri-ong-nuoc.mp4',
+        },
+      ],
+      canceled: false,
+    })
+
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+
+    expect(screen.getByText('Thêm hình ảnh / video')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('booking-wizard-photo-add'))
+
+    await waitFor(() => {
+      expect(mockLaunchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({
+        mediaTypes: ['images', 'videos'],
+      }))
+    })
+    expect(screen.getByTestId('booking-wizard-video-preview-0')).toBeOnTheScreen()
+    expect(screen.getByText('ro-ri-ong-nuoc.mp4')).toBeOnTheScreen()
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Ống nước dưới bồn rửa rò liên tục',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      mediaCount: 1,
+      photoDrafts: [
+        expect.objectContaining({
+          fileName: 'ro-ri-ong-nuoc.mp4',
+          mimeType: 'video/mp4',
+          type: 'video',
+          uri: 'file:///tmp/ro-ri-ong-nuoc.mp4',
+        }),
+      ],
+    }))
+    expect(onOpenKael).toHaveBeenCalledWith('plumbing')
   })
 
   it('shows an honest search/filter brief from the real intake fields', () => {

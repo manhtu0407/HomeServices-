@@ -26,6 +26,7 @@ const bookingServiceImageIcons: Record<ServiceType, number> = {
   electrical: require('../../assets/client-image-icons/client-service-electrical.png'),
   plumbing: require('../../assets/client-image-icons/client-service-plumbing.png'),
 }
+const bookingEvidenceMediaTypes: ImagePicker.MediaType[] = ['images', 'videos']
 const bookingServiceOrder: readonly ServiceType[] = ['electrical', 'plumbing', 'cleaning']
 const bookingServiceSegmentWidthPercent = 100 / bookingServiceOrder.length
 const BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL = 'BOOKING_WIZARD_APPLE_IOS26_INTAKE_MATERIAL: standard content material, segmented selected service, Liquid Glass reserved for primary controls'
@@ -87,6 +88,11 @@ function mergePhotoDrafts(current: LocalMediaUploadDraft[], drafts: LocalMediaUp
     if (merged.length >= 5) break
   }
   return merged
+}
+
+function mediaDraftTypeFromAsset(asset: ImagePicker.ImagePickerAsset): LocalMediaUploadDraft['type'] {
+  if (asset.type === 'video' || asset.mimeType?.startsWith('video/')) return 'video'
+  return 'image'
 }
 
 function reducer(state: WizardState, action: WizardAction): WizardState {
@@ -166,9 +172,9 @@ const copyMap = {
     describeStep: 'Mô tả vấn đề',
     describeTitle: 'Mô tả ngắn để Kael ước tính',
     describePlaceholder: 'Ví dụ: bóng đèn phòng khách bị chập, có mùi khét nhẹ.',
-    photosLabel: 'Ảnh hỗ trợ (tối đa 5)',
-    pickPhotos: 'Thêm ảnh',
-    voiceLabel: 'Ghi chú giọng nói',
+    photosLabel: 'Thêm hình ảnh / video',
+    pickPhotos: 'Thêm hình ảnh hoặc video',
+    voiceLabel: 'Thêm ghi chú bằng giọng nói',
     voiceUnavailableTitle: 'Ghi chú giọng nói chưa sẵn sàng',
     voiceUnavailableBody: 'Bạn nhập mô tả hoặc mở chat Kael để dùng mic khi thiết bị hỗ trợ.',
     addressLabel: 'Khu vực căn hộ',
@@ -234,9 +240,9 @@ const copyMap = {
     describeStep: 'Describe the issue',
     describeTitle: 'A short description for Kael to estimate',
     describePlaceholder: 'Example: living room ceiling light is short-circuiting and smells slightly burned.',
-    photosLabel: 'Photos (up to 5)',
-    pickPhotos: 'Add photos',
-    voiceLabel: 'Voice note',
+    photosLabel: 'Add photos / videos',
+    pickPhotos: 'Add photos or videos',
+    voiceLabel: 'Add a voice note',
     voiceUnavailableTitle: 'Voice note is not ready',
     voiceUnavailableBody: 'Type the details here or open Kael chat to use the microphone when the device supports it.',
     addressLabel: 'Apartment area',
@@ -284,14 +290,14 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: Boo
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsMultipleSelection: true,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: bookingEvidenceMediaTypes,
       quality: 0.85,
       selectionLimit: 5,
     })
     if (result.canceled) return
     const drafts: LocalMediaUploadDraft[] = result.assets.map((asset) => ({
       uri: asset.uri,
-      type: 'image',
+      type: mediaDraftTypeFromAsset(asset),
       fileName: asset.fileName ?? asset.uri.split('/').pop(),
       mimeType: asset.mimeType ?? undefined,
       fileSizeBytes: asset.fileSize ?? undefined,
@@ -1189,7 +1195,13 @@ function DescribeStep({
             const photoName = photo.fileName ?? photo.uri.split('/').pop()
             return (
               <View key={photo.uri} style={[styles.photoTile, bookingPhotoTileSurface(visual, mode, reduceTransparency)]} testID={`booking-wizard-photo-preview-${index}`}>
-                <Image accessibilityLabel={`photo-${index}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.photoImage} />
+                {photo.type === 'video' ? (
+                  <View style={styles.videoPreviewBody} testID={`booking-wizard-video-preview-${index}`}>
+                    <Text style={[styles.videoPreviewLabel, { color: visual.primary }]}>Video</Text>
+                  </View>
+                ) : (
+                  <Image accessibilityLabel={`photo-${index}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.photoImage} />
+                )}
                 {photoName ? (
                   <View style={styles.photoNamePill}>
                     <Text style={styles.photoNameText} numberOfLines={1}>{photoName}</Text>
@@ -1224,7 +1236,7 @@ function DescribeStep({
               ]}
               testID="booking-wizard-photo-add"
             >
-              <Text style={[styles.photoAddText, { color: visual.primary }]}>+ {copy.pickPhotos}</Text>
+              <Text style={[styles.photoAddText, { color: visual.primary }]}>+</Text>
             </Pressable>
           ) : null}
         </View>
@@ -1733,6 +1745,14 @@ const styles = StyleSheet.create({
   problemChipPanel: { borderRadius: 22, borderWidth: 1, gap: 10, padding: 12 },
   problemChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   problemChipText: { fontSize: 12, fontWeight: '800', lineHeight: 15 },
+  videoPreviewBody: {
+    alignItems: 'center',
+    backgroundColor: color.mint.mint50,
+    height: '100%',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  videoPreviewLabel: { fontSize: 12, fontWeight: '900', lineHeight: 15 },
   progressFill: {
     borderRadius: 999,
     height: '100%',

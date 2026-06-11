@@ -44,6 +44,7 @@
 - Started Group B:
   - Added the required media/voice note slot to the booking describe step.
   - Aligned the Search & Filter booking CTA to the reference `Tiếp tục` / `Continue` copy while preserving the real Kael handoff behavior.
+  - Enabled real image/video evidence selection in Booking, including typed video drafts and a truthful video preview tile.
   - Kept photo picking wired to the existing image picker.
   - Kept voice honest: the booking form shows a voice capsule, but pressing it explains that voice is handled in Kael chat when supported instead of recording fake audio.
   - Added focused RNTL coverage that the booking handoff includes the voice capsule.
