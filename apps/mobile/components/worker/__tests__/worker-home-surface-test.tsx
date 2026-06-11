@@ -218,6 +218,40 @@ function buildRepairingDeal(): LocalDeal {
   }
 }
 
+function buildScopeChangePendingDeal(): LocalDeal {
+  const deal = buildRepairingDeal()
+  return {
+    ...deal,
+    estimate: {
+      advisory: '',
+      complexity: 'small',
+      confidenceLabel: '82%',
+      disclaimer: '',
+      hasVndPrice: true,
+      problemLabel: 'Ổ cắm/công tắc hỏng',
+      priceRangeLabel: '150.000đ - 240.000đ',
+    },
+    scopeChange: {
+      createdAt: '2026-06-11T08:00:00.000Z',
+      evidencePhotoUrls: ['job-media/scope-1.jpg'],
+      id: 'scope_1',
+      kaelProgress: {
+        current_stage: 'scope_estimating',
+        progress: 1,
+        status: 'completed',
+        updated_at: '2026-06-11T08:01:00.000Z',
+      },
+      kaelReview: null,
+      priceMax: 390000,
+      priceMin: 300000,
+      reason: 'Dây ổ cắm hở hoàn toàn',
+      requestedDescription: 'Thay dây điện hỏng',
+      status: 'waiting_customer_decision',
+    },
+    status: 'scope_change_pending',
+  }
+}
+
 function buildConfirmedCompletionDeal(): LocalDeal {
   const deal = buildAcceptedDeal()
   return {
@@ -1395,6 +1429,25 @@ describe('WorkerJobsSurface', () => {
     expect(screen.getByTestId('worker-scope-change-submit')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-local-status-action')).toBeNull()
     expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
+  })
+
+  it('summarizes scope-change evidence with a real Kael price delta', () => {
+    mockPathname = '/(worker)/jobs'
+    mockRouteParams = { tab: 'needs' }
+    buildWorkflow({ deal: buildScopeChangePendingDeal() })
+
+    render(<WorkerJobsSurface />)
+
+    const scopeCard = screen.getByTestId('worker-scope-change-active')
+    expect(screen.getByTestId('worker-scope-change-reference-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-scope-change-reference-old')).toHaveTextContent(/Ổ cắm chập chờn/)
+    expect(screen.getByTestId('worker-scope-change-reference-new')).toHaveTextContent(/Thay dây điện hỏng/)
+    expect(screen.getByTestId('worker-scope-change-reference-reason')).toHaveTextContent(/Dây ổ cắm hở hoàn toàn/)
+    expect(screen.getByTestId('worker-scope-change-reference-delta')).toHaveTextContent(/\+150\.000\s?đ/)
+    expect(screen.getByTestId('worker-scope-change-detail-action')).toHaveTextContent(/Xem chi tiết/)
+    fireEvent.press(screen.getByTestId('worker-scope-change-detail-action'))
+    expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat')
+    expect(scopeCard).not.toHaveTextContent(/worker price|nhập giá/i)
   })
 
   it('renders completion evidence as the repairing-phase Needs artifact', () => {

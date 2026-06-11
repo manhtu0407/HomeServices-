@@ -1780,6 +1780,14 @@ function WorkerNeedsReviewCard() {
     scopeChange?.priceMin && scopeChange.priceMax
       ? `${formatWorkerMoney(scopeChange.priceMin, language)} - ${formatWorkerMoney(scopeChange.priceMax, language)}`
       : pendingPriceDecisionLabel
+  const scopeDelta =
+    formatWorkerScopePriceDelta(deal?.estimate?.priceRangeLabel, scopeChange?.priceMin ?? null, language) ??
+    pendingPriceDecisionLabel
+  const evidenceCount = scopeChange?.evidencePhotoUrls.length ?? 0
+  const evidenceLabel =
+    language === 'en'
+      ? `${evidenceCount} evidence photo${evidenceCount === 1 ? '' : 's'}`
+      : `${evidenceCount} ảnh bằng chứng`
   const scopeSummary = reason === missingReasonLabel ? requestedScope : `${requestedScope}. ${reason}`
 
   return (
@@ -1808,6 +1816,12 @@ function WorkerNeedsReviewCard() {
           {scopeSummary}
         </Text>
       </View>
+      <View style={[styles.jobDiagnosisBox, workerDiagnosisSurface(tokens)]} testID="worker-scope-change-reference-card">
+        <JobRoomMetaCell label={language === 'en' ? 'Old scope' : 'Phạm vi cũ'} testID="worker-scope-change-reference-old" value={originalScope} valueLines={2} />
+        <JobRoomMetaCell label={language === 'en' ? 'New scope' : 'Phạm vi mới'} testID="worker-scope-change-reference-new" value={requestedScope} valueLines={2} />
+        <JobRoomMetaCell label={language === 'en' ? 'Evidence' : 'Bằng chứng'} testID="worker-scope-change-reference-reason" value={`${reason} · ${evidenceLabel}`} valueLines={2} />
+        <JobRoomMetaCell label={language === 'en' ? 'Price delta' : 'Chênh lệch giá'} testID="worker-scope-change-reference-delta" value={scopeDelta} />
+      </View>
       <View style={styles.needsReviewGrid}>
         <JobRoomMetaCell label={language === 'en' ? 'Current scope' : 'Phạm vi hiện tại'} value={originalScope} />
         <JobRoomMetaCell label={language === 'en' ? 'Current estimate' : 'Ước tính hiện tại'} value={originalPrice} />
@@ -1817,7 +1831,7 @@ function WorkerNeedsReviewCard() {
         <JobRoomMetaCell label={language === 'en' ? 'Kael price decision' : 'Giá Kael xét'} value={price} />
       </View>
       <View style={styles.actionRow}>
-        <PressButton secondary label={copy.jobs.jobRoomCta} onPress={() => replace('/(worker)/chat')} testID="worker-needs-open-jobroom" />
+        <PressButton secondary label={language === 'en' ? 'View details' : 'Xem chi tiết'} onPress={() => replace('/(worker)/chat')} testID="worker-scope-change-detail-action" />
       </View>
     </View>
     </>
@@ -3511,6 +3525,26 @@ function formatWorkerMoney(value: number, language: WorkerLanguageMode) {
   if (!Number.isFinite(value) || value <= 0) return appCopy[language].common.noData
   const formatted = workerMoneyFormatters[language].format(value)
   return language === 'vi' ? `${formatted} đ` : `${formatted} VND`
+}
+
+function parseWorkerMoneyLabelStart(label: string | null | undefined) {
+  const match = label?.match(/\d[\d.,]*/)
+  if (!match) return null
+  const value = Number(match[0].replace(/[^\d]/g, ''))
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
+function formatWorkerScopePriceDelta(
+  originalPriceLabel: string | null | undefined,
+  nextPriceMin: number | null,
+  language: WorkerLanguageMode,
+) {
+  const originalPriceMin = parseWorkerMoneyLabelStart(originalPriceLabel)
+  if (!originalPriceMin || !nextPriceMin || !Number.isFinite(nextPriceMin)) return null
+  const delta = nextPriceMin - originalPriceMin
+  if (delta === 0) return language === 'en' ? 'No change' : 'Không đổi'
+  const sign = delta > 0 ? '+' : '-'
+  return `${sign}${formatWorkerMoney(Math.abs(delta), language)}`
 }
 
 function workerChatDealKey(deal: LocalDeal | null) {

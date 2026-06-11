@@ -109,6 +109,8 @@
   - Added the rating star strip, exact aggregate score, and honest disabled review-details CTA while keeping tips as `Chưa có` until the mobile API exposes real tip/review-detail fields.
   - Aligned Worker Safety & Checklist to the reference with service-derived safety steps for electrical/plumbing/cleaning.
   - Kept checklist completion as an honest disabled internal check so it does not advance job status, price, completion, or payment without the existing field-step/evidence gates.
+  - Aligned Evidence & Scope Change to the reference old/new scope summary from real scope-change state.
+  - Computed the displayed price delta from the real Kael estimate label and `LocalScopeChange.priceMin`; kept worker price input absent.
   - Added submitted job summary/report card from real completion notes, completion media, status, and Kael price gate.
   - Added Worker Kael on-site advisory rail inside accepted JobRoom details for status, address release, scope/price gate, and evidence gate.
 - Continued Group E:
@@ -252,6 +254,11 @@
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 58 tests after the Safety & Checklist reference checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Safety & Checklist reference checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Safety & Checklist reference checkpoint: 17 suites, 190 tests.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "scope-change evidence with a real Kael price delta"` failed on missing `worker-scope-change-reference-card` before the Evidence & Scope Change reference checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "scope-change evidence with a real Kael price delta"` passed after the Evidence & Scope Change reference checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Evidence & Scope Change reference checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Evidence & Scope Change reference checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Evidence & Scope Change reference checkpoint: 17 suites, 191 tests.
   - `vitest run src/__tests__/mobile-backend-wiring.test.ts src/__tests__/monorepo-wiring.test.ts` from `packages/shared` passed after the Register with Email checkpoint: 72 tests.
   - Added-line token grep for the Memory & Preferences diff returned no raw style matches.
   - Added-line token grep for the Commanding Home diff returned no raw style matches.
