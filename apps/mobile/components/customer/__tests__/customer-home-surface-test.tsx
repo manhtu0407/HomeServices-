@@ -203,6 +203,18 @@ describe('CustomerHomeSurface address context', () => {
     expect(shortcutIconShellStyle.width).toBe(33)
   })
 
+  it('renders all four real customer home shortcuts without fake counters', () => {
+    render(<CustomerHomeSurface />)
+
+    expect(screen.getByTestId('customer-home-shortcut-active')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-home-shortcut-history')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-home-shortcut-address')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-home-shortcut-trust')).toBeOnTheScreen()
+    expect(screen.queryByText('0')).toBeNull()
+    expect(screen.queryByText('--')).toBeNull()
+    expect(screen.queryByText('Local')).toBeNull()
+  })
+
   it('shows the full active request address and applies a subtle worker mint wash', () => {
     buildWorkflow(buildActiveDeal())
 
@@ -232,6 +244,8 @@ describe('CustomerHomeSurface address context', () => {
     const activeCardStyle = StyleSheet.flatten(screen.getByTestId('customer-home-active-local-deal').props.style) as Record<string, unknown>
     expect(screen.getByTestId('customer-home-active-local-deal')).toHaveTextContent(/Vệ sinh/)
     expect(screen.getByTestId('customer-home-active-local-deal')).not.toHaveTextContent(/Nháp/)
+    expect(screen.getByTestId('customer-home-active-status')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-home-active-estimate')).toHaveTextContent(/180\.000/)
     expect(String(activeCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.20)')
     expect(String(activeCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.10)')
   })

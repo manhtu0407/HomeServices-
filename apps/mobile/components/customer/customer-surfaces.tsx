@@ -1137,7 +1137,7 @@ export function CustomerHomeSurface() {
               </ReduceMotionAwareEntranceView>
               <ReduceMotionAwareEntranceView delayMs={185} distanceY={10} style={styles.homeShortcutGrid} testID="customer-home-shortcuts">
                 <View style={styles.hiddenMarker} testID="customer-home-real-shortcuts" />
-                {homeShortcuts.slice(0, 2).map((item) => (
+                {homeShortcuts.map((item) => (
                   <Pressable accessibilityLabel={item.meta ? `${item.title}. ${item.meta}` : item.title} accessibilityRole="button" key={item.testID} onPress={item.onPress} style={({ pressed }) => [styles.homeShortcutTile, customerHomeShortcutSurface(tokens, item.tone), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={item.testID}>
                     <View style={styles.homeTileIconStage} testID={`${item.testID}-icon-stage`}>
                       <IconShell icon={item.icon} tone={item.tone} size={33} />
@@ -1174,6 +1174,10 @@ export function CustomerHomeSurface() {
                       value={localizedProblemLabel(activeDeal.draft.problemChips[0] ?? activeDeal.draft.inferredProblemLabel, activeDeal.draft.serviceType, languageMode)}
                     />
                     <V4TicketCell label={copy.ticket.area} value={localizedCustomerAreaLabel(activeDeal.draft.districtLabel, languageMode, copy.ticket.unknown)} />
+                  </View>
+                  <View style={styles.twoCol}>
+                    <V4TicketCell label={copy.ticket.status} testID="customer-home-active-status" value={activeDealStatusLabel} />
+                    <V4TicketCell label={copy.ticket.estimate} testID="customer-home-active-estimate" value={activeDeal.estimate?.priceRangeLabel ?? copy.history.waitingWorkerPrice} />
                   </View>
                 </Pressable>
               ) : null}
