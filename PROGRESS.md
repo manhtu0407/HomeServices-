@@ -128,6 +128,7 @@
   - Added the Agentic Center workflow rail from real `WorkflowPhaseContext.sections`, with primary artifact and artifact mode labels from the shared workflow contract.
   - Added Approval Queue review actions that route to the existing History review flows, including scope-change deep links with the real scope id.
   - Added Approval Queue primary scope approval on the real `actions.decideScopeChange` path when the scope status is waiting for customer decision.
+  - Aligned Approval Queue to the reference with a real approval-count title, 3D image icons from the client icon system, primary/secondary actions, and `Xem tất cả` / `View all` routed to History.
   - Kept completion confirmation behind the real workflow gate; the queue routes completion review to History when Kael has not unlocked confirmation.
   - Added saved contact phone to Agentic Center Memory & Preferences from real profile metadata aliases.
   - Wired Agentic Center Memory & Preferences to the real `GET /me/kael-memory` self-view endpoint through `kaelMemoryService` and `useFrontendWorkflow`.
@@ -201,6 +202,9 @@
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center workflow rail checkpoint.
   - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `customer-agentic-center-approval-scope_change-primary-action` before the Approval Queue primary action change.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 7 tests after the Approval Queue action checkpoint.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "scope approvals"` failed on missing `1 item needs approval` before the Approval Queue reference alignment.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "scope approvals"` passed after the Approval Queue reference alignment.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 11 tests after the Approval Queue reference alignment.
   - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `Kael memory` before the Memory & Preferences self-view wiring.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 8 tests after the Memory & Preferences self-view wiring.
   - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `Hi, Tu Phan` before the Commanding Home greeting/notification split.
@@ -224,6 +228,7 @@
   - `rg -n "#[0-9A-Fa-f]{3,8}|rgba\\(|boxShadow:\\s*'|backgroundColor:\\s*'|borderRadius:\\s*\\d|padding:\\s*\\d|margin:\\s*\\d|fontSize:\\s*\\d" apps/mobile/components/customer/agentic-center-surface.tsx` returned no matches after the Approval Queue action checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Kael Orb token/label checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Approval Queue action checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Approval Queue reference alignment.
   - `tsc --noEmit` from `apps/mobile` passed after the Memory & Preferences self-view wiring.
   - `tsc --noEmit` from `apps/mobile` passed after the Commanding Home greeting/notification split.
   - `tsc --noEmit` from `apps/mobile` passed after the Active Case command id/actions checkpoint.
@@ -240,6 +245,7 @@
   - Mobile Jest from `apps/mobile` passed after the Commanding Home greeting/notification split: 17 suites, 177 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - Mobile Jest from `apps/mobile` passed after the Commanding Home reference alignment: 17 suites, 191 tests.
   - Mobile Jest from `apps/mobile` passed after the Active Case reference-card / Mascot-state checkpoint: 17 suites, 191 tests.
+  - Mobile Jest from `apps/mobile` passed after the Approval Queue reference alignment: 17 suites, 191 tests.
   - Mobile Jest from `apps/mobile` passed after the Active Case command id/actions checkpoint: 17 suites, 178 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - Mobile Jest from `apps/mobile` passed after the Memory & Preferences edit CTA checkpoint: 17 suites, 179 tests.
   - Mobile Jest from `apps/mobile` passed after the Welcome service chips/dots checkpoint: 17 suites, 179 tests.

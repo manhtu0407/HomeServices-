@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Image, type ImageSource } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -20,10 +21,18 @@ const KAEL_CHAT_PATH = '/(customer)/kael-chat'
 const CUSTOMER_HISTORY_PATH = '/(customer)/history'
 const CUSTOMER_PROFILE_PATH = '/(customer)/profile'
 
+type AgenticApprovalIconKey = 'completion' | 'payment' | 'scope_change'
+
+const approvalIconSources: Record<AgenticApprovalIconKey, ImageSource> = {
+  completion: require('../../assets/client-image-icons/client-evidence.png'),
+  payment: require('../../assets/client-image-icons/client-payment.png'),
+  scope_change: require('../../assets/client-image-icons/client-request.png'),
+}
+
 type AgenticApprovalRow = {
   actionLabel: string
   actionPath: string
-  id: string
+  id: AgenticApprovalIconKey
   label: string
   primaryAction?: 'approve_scope' | 'confirm_completion'
   primaryLabel?: string
@@ -63,6 +72,7 @@ const copy = {
     caseMessage: 'Nhắn Kael',
     caseJourney: 'Xem hành trình',
     approvalQueue: 'Hàng đợi cần duyệt',
+    approvalQueueCount: 'việc cần bạn duyệt',
     approvalEmptyTitle: 'Không có mục cần duyệt',
     approvalEmptyBody: 'Khi có đổi phạm vi, hoàn tất, thanh toán hoặc thông báo thật, Kael sẽ đưa vào đây.',
     memory: 'Bộ nhớ và tùy chọn',
@@ -88,6 +98,7 @@ const copy = {
     payment: 'Thanh toán đang chờ',
     approveScope: 'Đồng ý',
     confirmCompletion: 'Xác nhận',
+    viewAll: 'Xem tất cả',
     noEstimate: 'Chưa có ước tính',
     noArea: 'Chưa có khu vực',
     noDescription: 'Chưa có mô tả',
@@ -113,6 +124,7 @@ const copy = {
     caseMessage: 'Message Kael',
     caseJourney: 'View journey',
     approvalQueue: 'Approval queue',
+    approvalQueueCount: 'items need approval',
     approvalEmptyTitle: 'Nothing needs approval',
     approvalEmptyBody: 'Scope, completion, payment, or real unread notices appear here when they exist.',
     memory: 'Memory and preferences',
@@ -138,6 +150,7 @@ const copy = {
     payment: 'Payment pending',
     approveScope: 'Accept',
     confirmCompletion: 'Confirm',
+    viewAll: 'View all',
     noEstimate: 'No estimate yet',
     noArea: 'No area yet',
     noDescription: 'No description yet',
@@ -179,6 +192,7 @@ export function CustomerAgenticCenterSurface() {
     status: selectors.currentStatus,
     text,
   })
+  const approvalTitle = getApprovalQueueTitle(approvals.length, language, text)
   const summaryRows = getSummaryRows({ approvals, deal, notificationUnreadCount, text })
   const runApprovalPrimaryAction = (item: AgenticApprovalRow) => {
     if (item.primaryAction === 'approve_scope' && item.scopeChangeId) {
@@ -225,18 +239,23 @@ export function CustomerAgenticCenterSurface() {
           ) : <EmptyState body={text.activeEmptyBody} title={text.activeEmptyTitle} tokens={tokens} />}
         </CenterSection>
 
-        <CenterSection title={text.approvalQueue} tokens={tokens}>
+        <CenterSection title={approvalTitle} tokens={tokens}>
           {approvals.length > 0
-            ? approvals.map((item) => (
-              <ApprovalActionRow
-                key={item.id}
-                item={item}
-                onPress={() => replace(item.actionPath)}
-                onPrimaryPress={item.primaryAction ? () => runApprovalPrimaryAction(item) : undefined}
-                reduceMotion={reduceMotion}
-                tokens={tokens}
-              />
-            ))
+            ? (
+              <View style={styles.stack}>
+                {approvals.map((item) => (
+                  <ApprovalActionRow
+                    key={item.id}
+                    item={item}
+                    onPress={() => replace(item.actionPath)}
+                    onPrimaryPress={item.primaryAction ? () => runApprovalPrimaryAction(item) : undefined}
+                    reduceMotion={reduceMotion}
+                    tokens={tokens}
+                  />
+                ))}
+                <CenterButton label={text.viewAll} onPress={() => replace(CUSTOMER_HISTORY_PATH)} primary reduceMotion={reduceMotion} testID="customer-agentic-center-approval-view-all-action" tokens={tokens} />
+              </View>
+            )
             : <EmptyState body={text.approvalEmptyBody} title={text.approvalEmptyTitle} tokens={tokens} />}
         </CenterSection>
 
@@ -393,6 +412,9 @@ function InfoRow({ label, testID, tokens, value }: { label: string; testID?: str
 function ApprovalActionRow({ item, onPress, onPrimaryPress, reduceMotion, tokens }: { item: AgenticApprovalRow; onPress: () => void; onPrimaryPress?: () => void; reduceMotion: boolean; tokens: CustomerThemeTokens }) {
   return (
     <View style={[styles.approvalRow, centerInfoRowSurface(tokens)]} testID={`customer-agentic-center-approval-${item.id}`}>
+      <View style={[styles.approvalIconFrame, centerOrbSurface(tokens)]} testID={`customer-agentic-center-approval-${item.id}-icon`}>
+        <Image contentFit="contain" source={approvalIconSources[item.id]} style={styles.approvalIconImage} />
+      </View>
       <View style={styles.approvalCopy}>
         <Text style={[styles.infoLabel, { color: tokens.muted }]}>{item.label}</Text>
         <Text style={[styles.infoValue, { color: tokens.text }]} testID={`customer-agentic-center-approval-${item.id}-value`}>{item.value}</Text>
@@ -454,6 +476,12 @@ function getSummaryRows({
     { id: 'approvals', label: text.summaryApprovals, value: approvals.length > 0 ? String(approvals.length) : text.summaryEmpty },
     { id: 'notifications', label: text.summaryNotifications, value: notificationUnreadCount > 0 ? String(notificationUnreadCount) : text.summaryEmpty },
   ]
+}
+
+function getApprovalQueueTitle(count: number, language: AppLanguage, text: (typeof copy)[AppLanguage]) {
+  if (count <= 0) return text.approvalQueue
+  if (language === 'en') return count === 1 ? '1 item needs approval' : `${count} ${text.approvalQueueCount}`
+  return `${count} ${text.approvalQueueCount}`
 }
 
 function getApprovalRows({
@@ -907,6 +935,19 @@ const styles = StyleSheet.create({
   approvalActions: {
     alignItems: 'stretch',
     gap: spacing.xs,
+  },
+  approvalIconFrame: {
+    alignItems: 'center',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    height: component.agenticCenter.mascotImageSize,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: component.agenticCenter.mascotImageSize,
+  },
+  approvalIconImage: {
+    height: component.button.primary.height,
+    width: component.button.primary.height,
   },
   approvalButton: {
     alignItems: 'center',

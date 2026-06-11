@@ -275,9 +275,13 @@ describe('CustomerAgenticCenterSurface', () => {
 
     render(<CustomerAgenticCenterSurface />)
 
+    expect(screen.getByText('1 item needs approval')).toBeTruthy()
+    expect(screen.getByTestId('customer-agentic-center-approval-scope_change-icon')).toBeTruthy()
     fireEvent.press(screen.getByTestId('customer-agentic-center-approval-scope_change-action'))
 
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/history?tab=price&scope_change=scope_test_1')
+    fireEvent.press(screen.getByTestId('customer-agentic-center-approval-view-all-action'))
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/history')
   })
 
   it('uses the real scope decision action from the approval queue primary action', () => {
