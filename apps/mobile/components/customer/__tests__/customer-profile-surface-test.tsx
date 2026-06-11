@@ -111,6 +111,29 @@ describe('CustomerProfileSurface editable rows', () => {
     expect(screen.getByTestId('customer-profile-hero-title')).toHaveTextContent('Hồ sơ khách')
   })
 
+  it('renders the customer overview from real profile metadata only', () => {
+    mockSessionMetadata = {
+      completed_service_count: 24,
+      customer_status: 'Tích cực',
+      default_address: 'Căn hộ 1201, tòa A, Quận 1',
+      full_name: 'Nguyen Thu An',
+      member_since: '03/2023',
+      preferred_service_count: 5,
+    }
+
+    render(<CustomerProfileSurface />)
+
+    expect(screen.getByTestId('customer-profile-hero-title')).toHaveTextContent('Nguyen Thu An')
+    expect(screen.getByTestId('customer-profile-hero-status-pill')).toHaveTextContent(/T\u00edch c\u1ef1c/)
+    expect(screen.getByTestId('customer-profile-hero-status-pill')).toHaveTextContent(/03\/2023/)
+    expect(screen.getByTestId('customer-profile-overview-card')).toHaveTextContent(/Th\u00f4ng tin nhanh/)
+    expect(screen.getByTestId('customer-profile-overview-card-value-0')).toHaveTextContent('24')
+    expect(screen.getByTestId('customer-profile-overview-card-value-1')).toHaveTextContent(/Đã lưu/)
+    expect(screen.getByTestId('customer-profile-overview-card-value-2')).toHaveTextContent('5')
+    expect(screen.queryByText('--')).toBeNull()
+    expect(screen.queryByText('0')).toBeNull()
+  })
+
   it('renders the Trust Signals card with three honest insight states without the intro block or CTA', () => {
     mockSessionMetadata = { full_name: 'Phan Mạnh Tú' }
 

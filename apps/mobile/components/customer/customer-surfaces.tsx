@@ -539,6 +539,35 @@ const customerProfileCareCopy = {
   },
 } as const
 
+const customerProfileOverviewCopy = {
+  vi: {
+    addressSaved: '\u0110\u00e3 l\u01b0u',
+    addressPending: 'Ch\u01b0a c\u00f3',
+    empty: 'Th\u00f4ng tin nhanh m\u1edf khi h\u1ed3 s\u01a1 c\u00f3 d\u1eef li\u1ec7u th\u1eadt.',
+    memberSinceLabel: 'Th\u00e0nh vi\u00ean t\u1eeb',
+    preferredLabel: 'D\u1ecbch v\u1ee5 \u01b0a th\u00edch',
+    preferredPending: 'Ch\u01b0a c\u00f3',
+    serviceHistoryLabel: 'L\u1ecbch s\u1eed d\u1ecbch v\u1ee5',
+    serviceHistoryPending: 'Ch\u01b0a c\u00f3',
+    savedAddressLabel: '\u0110\u1ecba ch\u1ec9 \u0111\u00e3 l\u01b0u',
+    subtitle: 'T\u1eeb metadata h\u1ed3 s\u01a1 th\u1eadt.',
+    title: 'Th\u00f4ng tin nhanh',
+  },
+  en: {
+    addressSaved: 'Saved',
+    addressPending: 'Not yet',
+    empty: 'Quick information opens when the profile has real data.',
+    memberSinceLabel: 'Member since',
+    preferredLabel: 'Preferred services',
+    preferredPending: 'Not yet',
+    serviceHistoryLabel: 'Service history',
+    serviceHistoryPending: 'Not yet',
+    savedAddressLabel: 'Saved address',
+    subtitle: 'From real profile metadata.',
+    title: 'Quick information',
+  },
+} as const
+
 const customerProfileRankingCopy = {
   vi: {
     empty: 'Kael sẽ cập nhật khi NestScout có lịch sử sử dụng thật.',
@@ -1954,8 +1983,11 @@ export function CustomerProfileSurface() {
   const rawGender = readCustomerMetadataString(customerMetadata, 'gender')
   const rawBirthDate = readCustomerMetadataString(customerMetadata, 'birth_date', 'birthDate')
   const rawEmail = readCustomerMetadataString(customerMetadata, 'contact_email', 'email') || session?.user.email?.trim() || ''
+  const rawCustomerStatus = readCustomerMetadataString(customerMetadata, 'customer_status', 'customerStatus', 'account_status', 'accountStatus')
+  const rawMemberSince = readCustomerMetadataString(customerMetadata, 'member_since', 'memberSince', 'customer_since', 'customerSince')
   const kaelInteractionCount = readCustomerProfileMetric(customerMetadata.kael_interaction_count ?? customerMetadata.kaelInteractions)
   const completedServiceCount = readCustomerProfileMetric(customerMetadata.completed_service_count ?? customerMetadata.completedServices)
+  const preferredServiceCount = readCustomerProfileMetric(customerMetadata.preferred_service_count ?? customerMetadata.preferredServiceCount ?? customerMetadata.saved_service_count ?? customerMetadata.savedServiceCount)
   const priceSavingsVnd = readCustomerProfileMetric(customerMetadata.price_savings_vnd ?? customerMetadata.priceSavingsVnd)
   const usageRankLevel = readCustomerProfileMetric(customerMetadata.usage_rank_level ?? customerMetadata.usageRankLevel ?? customerMetadata.customer_usage_rank_level ?? customerMetadata.customerUsageRankLevel)
   const usageRankPoints = readCustomerProfileMetric(customerMetadata.usage_rank_points ?? customerMetadata.usageRankPoints ?? customerMetadata.customer_usage_points ?? customerMetadata.customerUsagePoints)
@@ -2196,6 +2228,7 @@ export function CustomerProfileSurface() {
       ? accountInfoCopy.metaPartial(accountInfoSavedCount)
       : accountInfoCopy.metaEmpty
   const profileCareCopy = customerProfileCareCopy[languageMode]
+  const profileOverviewCopy = customerProfileOverviewCopy[languageMode]
   const profileRankingCopy = customerProfileRankingCopy[languageMode]
   const profileMoneyCopy = customerProfileMoneyCopy[languageMode]
   const profileSectionCopy = customerProfileSectionCopy[languageMode]
@@ -2214,6 +2247,30 @@ export function CustomerProfileSurface() {
       icon: 'payment' as const,
       label: profileCareCopy.savingsLabel,
       value: priceSavingsVnd ? formatVnd(priceSavingsVnd) : profileCareCopy.savingsPending,
+    },
+  ]
+  const profileHeroStatus = [
+    rawCustomerStatus,
+    rawMemberSince ? `${profileOverviewCopy.memberSinceLabel} ${rawMemberSince}` : '',
+  ].filter(Boolean).join(' · ')
+  const profileOverviewStats = [
+    {
+      available: Boolean(completedServiceCount),
+      icon: 'history' as const,
+      label: profileOverviewCopy.serviceHistoryLabel,
+      value: completedServiceCount ? `${completedServiceCount}` : profileOverviewCopy.serviceHistoryPending,
+    },
+    {
+      available: Boolean(rawAddress),
+      icon: 'apartment' as const,
+      label: profileOverviewCopy.savedAddressLabel,
+      value: rawAddress ? profileOverviewCopy.addressSaved : profileOverviewCopy.addressPending,
+    },
+    {
+      available: Boolean(preferredServiceCount),
+      icon: 'request' as const,
+      label: profileOverviewCopy.preferredLabel,
+      value: preferredServiceCount ? `${preferredServiceCount}` : profileOverviewCopy.preferredPending,
     },
   ]
   const profileRankingStats = [
@@ -2296,6 +2353,11 @@ export function CustomerProfileSurface() {
                     <Text style={[styles.homeShortcutMeta, { color: tokens.muted }]} numberOfLines={1}>
                       {profileSubtitle}
                     </Text>
+                    {profileHeroStatus ? (
+                      <Text style={[styles.homeShortcutMeta, { color: tokens.primary }]} numberOfLines={1} testID="customer-profile-hero-status-pill">
+                        {profileHeroStatus}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
               </View>
@@ -2304,6 +2366,9 @@ export function CustomerProfileSurface() {
           </ReduceMotionAwareEntranceView>
           <View style={styles.hiddenMarker} testID="customer-profile-setup-card" />
           <View style={styles.hiddenMarker} testID="customer-shell-honest-profile-save" />
+          <ReduceMotionAwareEntranceView delayMs={105} distanceY={8} style={styles.profileActions} testID="customer-profile-overview-card-motion">
+            <CustomerProfileInsightPanel copy={profileOverviewCopy} stats={profileOverviewStats} testID="customer-profile-overview-card" />
+          </ReduceMotionAwareEntranceView>
           <ReduceMotionAwareEntranceView delayMs={125} distanceY={8} style={[styles.profileActions, styles.profileCareWideWrap]} testID="customer-profile-care-card-motion">
             <CustomerProfileCareCard
               copy={profileCareCopy}
