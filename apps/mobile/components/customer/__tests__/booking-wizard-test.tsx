@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react-native'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 
 // Kael Autonomy v2 routes structured intake to the full-screen Kael chat. The
@@ -8,6 +8,8 @@ let mockConfirmRemoteSearch: jest.Mock
 let mockCreateRemoteJobFromDraft: jest.Mock
 let mockRouteParams: Record<string, string | string[] | undefined>
 let mockWorkflowValue: any
+const mockLaunchImageLibraryAsync = jest.fn()
+const mockRequestMediaLibraryPermissionsAsync = jest.fn()
 const mockSetPendingKaelChatDraft = jest.fn()
 
 jest.mock('@/lib/frontend-workflow-provider', () => ({
@@ -18,6 +20,11 @@ jest.mock('@/lib/app-language', () => ({
 }))
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
+}))
+jest.mock('expo-image-picker', () => ({
+  MediaTypeOptions: { Images: 'Images' },
+  launchImageLibraryAsync: (options: unknown) => mockLaunchImageLibraryAsync(options),
+  requestMediaLibraryPermissionsAsync: () => mockRequestMediaLibraryPermissionsAsync(),
 }))
 jest.mock('../kael-chat/pending-intake', () => ({
   setPendingKaelChatDraft: (draft: unknown) => mockSetPendingKaelChatDraft(draft),
@@ -62,6 +69,13 @@ function buildWorkflow() {
 
 beforeEach(() => {
   mockRouteParams = {}
+  mockLaunchImageLibraryAsync.mockReset()
+  mockLaunchImageLibraryAsync.mockResolvedValue({
+    assets: [],
+    canceled: true,
+  })
+  mockRequestMediaLibraryPermissionsAsync.mockReset()
+  mockRequestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
   mockSetPendingKaelChatDraft.mockClear()
   buildWorkflow()
 })
@@ -127,6 +141,54 @@ describe('BookingWizard Kael autonomy', () => {
     expect(screen.getByTestId('booking-wizard-photo-rail')).toBeTruthy()
     expect(screen.getByTestId('booking-wizard-voice-capsule')).toBeTruthy()
     expect(screen.queryByTestId('booking-wizard-step-service')).toBeNull()
+  })
+
+  it('previews selected media and hands the real photo drafts to Kael chat', async () => {
+    const onOpenKael = jest.fn()
+    mockRouteParams = { serviceType: 'electrical' }
+    mockLaunchImageLibraryAsync.mockResolvedValue({
+      assets: [
+        {
+          fileName: 'burnt-outlet.jpg',
+          fileSize: 124000,
+          mimeType: 'image/jpeg',
+          uri: 'file:///tmp/burnt-outlet.jpg',
+        },
+      ],
+      canceled: false,
+    })
+
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+
+    fireEvent.press(screen.getByTestId('booking-wizard-photo-add'))
+
+    await waitFor(() => {
+      expect(mockLaunchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({
+        allowsMultipleSelection: true,
+        selectionLimit: 5,
+      }))
+    })
+    expect(screen.getByTestId('booking-wizard-photo-preview-0')).toBeOnTheScreen()
+    expect(screen.getByText('burnt-outlet.jpg')).toBeOnTheScreen()
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Ổ cắm bếp cháy đen và có mùi khét',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      mediaCount: 1,
+      photoDrafts: [
+        expect.objectContaining({
+          fileName: 'burnt-outlet.jpg',
+          mimeType: 'image/jpeg',
+          uri: 'file:///tmp/burnt-outlet.jpg',
+        }),
+      ],
+    }))
+    expect(onOpenKael).toHaveBeenCalledWith('electrical')
   })
 
   it('shows an honest search/filter brief from the real intake fields', () => {

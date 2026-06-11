@@ -89,8 +89,9 @@
   - Added active request status and Kael estimate cells to the Customer Home active-card path.
   - Kept Home free of fake counters, unsupported service categories, and mock queue/rating data.
   - Added a read-only Search & Filter brief to the Booking describe step from real intake fields: area, selected service, issue source, now-only time, and payment locked until Kael creates the request.
+  - Added Booking media preview tiles from real image-picker drafts and handed the same `photoDrafts` to Kael chat.
   - Added a Customer Kael Live Performance panel that reads real session service, pending/media evidence count, and polled progress trace.
-  - Kept Booking and Kael chat on the existing pending-intake, media picker, server service wrapper, and progress polling paths; no remote job creation, confirm-search action, direct provider call, fake schedule slot, or fake payment option was added.
+  - Kept Booking and Kael chat on the existing pending-intake, media picker, server service wrapper, and progress polling paths; no remote job creation, confirm-search action, direct provider call, fake schedule slot, fake media count, or fake payment option was added.
 - Verification for this checkpoint:
   - `pnpm --filter @home-services/mobile type-check` passed.
   - `tsc --noEmit` from `apps/mobile` passed when portable `pnpm.CMD` was unavailable.
@@ -98,14 +99,14 @@
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/ui/__tests__/kael-primitives-test.tsx` passed: 9 tests.
   - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
   - `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx` passed: 5 tests.
-  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx` passed: 6 tests after the Search & Filter brief.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx` passed: 7 tests after the media preview draft handoff.
   - `jest --runInBand components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 27 tests after the Live Performance panel; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 33 tests.
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests.
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job in Progress panel.
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 50 tests after the Earnings period row.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
-  - Mobile Jest from `apps/mobile` passed after the customer email login boundary: 17 suites, 168 tests.
+  - Mobile Jest from `apps/mobile` passed after the Booking media preview draft handoff: 17 suites, 169 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 

@@ -1139,25 +1139,33 @@ function DescribeStep({
         <View pointerEvents="none" style={[styles.fieldEdgeHighlight, bookingComponentEdgeSurface(mode)]} />
         <WizardText kind="label">{copy.photosLabel}</WizardText>
         <View style={styles.photoRow}>
-          {state.photoDrafts.map((photo, index) => (
-            <View key={photo.uri} style={[styles.photoTile, bookingPhotoTileSurface(visual, mode, reduceTransparency)]}>
-              <Image accessibilityLabel={`photo-${index}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.photoImage} />
-              <Pressable
-                accessibilityLabel={`remove-photo-${index}`}
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => dispatch({ type: 'remove_photo', index })}
-                style={({ pressed }) => [
-                  styles.photoRemove,
-                  bookingPhotoRemoveSurface(mode),
-                  reduceMotionAwarePressStyle(pressed, reduceMotion),
-                ]}
-                testID={`booking-wizard-photo-remove-${index}`}
-              >
-                <Text style={styles.photoRemoveText}>×</Text>
-              </Pressable>
-            </View>
-          ))}
+          {state.photoDrafts.map((photo, index) => {
+            const photoName = photo.fileName ?? photo.uri.split('/').pop()
+            return (
+              <View key={photo.uri} style={[styles.photoTile, bookingPhotoTileSurface(visual, mode, reduceTransparency)]} testID={`booking-wizard-photo-preview-${index}`}>
+                <Image accessibilityLabel={`photo-${index}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.photoImage} />
+                {photoName ? (
+                  <View style={styles.photoNamePill}>
+                    <Text style={styles.photoNameText} numberOfLines={1}>{photoName}</Text>
+                  </View>
+                ) : null}
+                <Pressable
+                  accessibilityLabel={`remove-photo-${index}`}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => dispatch({ type: 'remove_photo', index })}
+                  style={({ pressed }) => [
+                    styles.photoRemove,
+                    bookingPhotoRemoveSurface(mode),
+                    reduceMotionAwarePressStyle(pressed, reduceMotion),
+                  ]}
+                  testID={`booking-wizard-photo-remove-${index}`}
+                >
+                  <Text style={styles.photoRemoveText}>×</Text>
+                </Pressable>
+              </View>
+            )
+          })}
           {state.photoDrafts.length < 5 ? (
             <Pressable
               accessibilityLabel={copy.pickPhotos}
@@ -1575,6 +1583,17 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   photoImage: { height: '100%', width: '100%' },
+  photoNamePill: {
+    backgroundColor: 'rgba(12,24,22,0.68)',
+    borderRadius: 999,
+    bottom: 5,
+    left: 5,
+    maxWidth: 72,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    position: 'absolute',
+  },
+  photoNameText: { color: '#FFFFFF', fontSize: 9, fontWeight: '800', lineHeight: 11 },
   photoRemove: {
     alignItems: 'center',
     backgroundColor: 'rgba(15,23,42,0.7)',

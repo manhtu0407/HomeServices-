@@ -23,7 +23,7 @@ Legend:
 | A | 1.5 Onboarding | Partial | Partial | TBD | Customer setup shows Kael onboarding hero/steps and saves real session/profile fields through `updateCustomerProfile`; focused auth test passed | In progress |
 | B | 2.1 Home | Partial | Partial | TBD | Customer Home focused test passed: 4 real shortcuts, 3 supported services, active status/estimate from real deal data | In progress |
 | B | 2.2 Search & Filter / Book | Partial | Partial | TBD | Booking wizard Search & Filter brief reads real area/service/issue fields, shows now-only schedule and locked payment honestly; focused booking test passed | In progress |
-| B | 2.3 Media / Voice Note | Partial | Partial | TBD | Focused booking test verifies photo rail + honest voice capsule | In progress |
+| B | 2.3 Media / Voice Note | Partial | Partial | TBD | Booking media rail previews real image-picker drafts by file name and hands the same `photoDrafts` to Kael chat; voice remains honest unavailable; focused booking test passed | In progress |
 | B | 2.4 Kael Live Performance Chat | Partial | Partial | TBD | Live Performance panel reads real service, pending/media evidence count, and polled Kael progress trace while preserving server service wrappers; focused Kael chat test passed | In progress |
 | C | 2.5 Case Overview | Partial | Partial | TBD | Customer Activity command overview reads real deal, status, quote, and address-release state; focused history test passed | In progress |
 | C | 2.6 Matching & AI Score | Partial | Partial | TBD | Activity Matching Score panel reads estimate confidence, broadcast worker signal, intake evidence count, area, and Kael prebrief from real state; focused history test passed | In progress |
