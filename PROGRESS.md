@@ -106,6 +106,7 @@
   - Added the active Jobs real job row from the accepted deal id, service, area, status, and worker earning estimate.
   - Kept the Jobs row free of fake schedule, queue counts, worker ratings, and extra job records because the current provider exposes one real `state.deal`.
   - Aligned the active Jobs card to the reference list skeleton with real job id, problem, area, `timeChoice`, status, and worker earning.
+  - Aligned the active Jobs primary CTA to the real JobRoom copy instead of reusing the Active tab label.
   - Kept the Jobs screen from fabricating the reference's second job, tomorrow schedule, or extra price when the provider exposes only one real deal.
   - Added worker safety/checklist gates to active jobs.
   - Kept scope and completion actions tied to existing workflow/evidence state.

@@ -2268,7 +2268,7 @@ function ActiveWorkerJobCard({ body, briefLines, deal, status, title }: { body: 
       ) : null}
       <CompactWorkerPresenceMap mode="active" />
       <View style={styles.actionRow}>
-        <PressButton label={copy.jobs.filters[1]} onPress={() => replace('/(worker)/chat')} testID="worker-jobs-open-jobroom" />
+        <PressButton label={copy.jobs.jobRoomCta} onPress={() => replace('/(worker)/chat')} testID="worker-jobs-open-jobroom" />
         {nextAction && nextStatus ? (
           <PressButton secondary label={nextAction.label} onPress={() => void actions.workerUpdateStatus(nextStatus)} testID="worker-jobs-next-status-action" />
         ) : null}

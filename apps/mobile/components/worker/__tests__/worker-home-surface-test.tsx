@@ -1356,7 +1356,7 @@ describe('WorkerJobsSurface', () => {
     expect(screen.getByTestId('worker-jobs-active-reference-problem')).toHaveTextContent('Outlet or switch issue')
     expect(screen.getByTestId('worker-jobs-active-list-time-value')).toHaveTextContent('Now')
     expect(screen.getByTestId('worker-jobs-active-list-earning-value')).toHaveTextContent('120.000đ - 180.000đ')
-    expect(screen.getByTestId('worker-jobs-open-jobroom')).toHaveTextContent('Active')
+    expect(screen.getByTestId('worker-jobs-open-jobroom')).toHaveTextContent('Open JobRoom')
     expect(screen.queryByText(/Tomorrow|7h|9h|430/i)).toBeNull()
   })
 
