@@ -33,6 +33,8 @@
 - Started Group A:
   - Added the NestScout/Kael welcome screen before role selection.
   - Added Welcome service chips for only the three supported services and step dots matching the reference skeleton.
+  - Realigned Welcome to the reference hero order with copy before the Kael mascot and a narrower primary pill CTA.
+  - Moved Welcome-specific shell dimensions, surfaces, mascot sizing, CTA sizing, and step-dot values into `component.authWelcome` tokens.
   - Kept role-first auth behavior and real password/Google actions intact.
   - Kept phone/register unavailable states honest because the auth provider does not expose phone OTP or Supabase sign-up.
   - Locked Customer Email Login to the existing `signInWithPassword` provider boundary and added a truthful reset-unavailable affordance.
@@ -173,6 +175,11 @@
   - `pnpm --filter @home-services/mobile type-check` passed.
   - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on missing `auth-welcome-service-electrical` before the Welcome service chips/dots checkpoint.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 6 tests after the Welcome service chips/dots checkpoint.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "starts with the NestScout welcome"` failed on missing `auth-welcome-copy-hero` before the Welcome reference-order/token checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "starts with the NestScout welcome"` passed after the Welcome reference-order/token checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Welcome reference-order/token checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Welcome reference-order/token checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Welcome reference-order/token checkpoint: 17 suites, 192 tests; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on `auth-login-submit` showing `Tiếp tục` before the Login with Email CTA checkpoint.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 6 tests after the Login with Email CTA checkpoint.
   - Red first: `jest --runInBand lib/__tests__/auth-provider-test.tsx` failed on missing `signUpWithEmail` before the Register with Email checkpoint.

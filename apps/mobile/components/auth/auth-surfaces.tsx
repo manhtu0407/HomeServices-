@@ -11,7 +11,7 @@ import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { KaelMascot } from '@/components/kael/kael-mascot'
 import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
 import { NESTSCOUT_BRAND } from '@/design/brand'
-import { color } from '@/design/theme'
+import { color, component } from '@/design/theme'
 
 const LOGIN_ROLE_GATE_MARKER = 'LOGIN_ROLE_GATE_MARKER: auth-login-role-customer auth-login-role-worker'
 const LOGIN_ROLE_GATE_GLASS_MARKER = 'LOGIN_ROLE_GATE_GLASS_MARKER: auth-role-gate-glass'
@@ -114,6 +114,7 @@ const authTokens = {
   shadow: '0 18px 42px rgba(13,24,22,0.10)',
   softShadow: '0 10px 24px rgba(13,24,22,0.07)',
 }
+const authWelcomeTokens = component.authWelcome
 
 const authCopy = {
   vi: {
@@ -1012,10 +1013,14 @@ function AuthWelcomePanel({ copy, onContinue }: { copy: AuthCopy; onContinue: ()
         </View>
         <Text style={styles.welcomeBrandText}>{NESTSCOUT_BRAND.appName}</Text>
       </View>
-      <KaelMascot size={176} state="welcome" style={styles.welcomeMascot} testID="auth-welcome-kael" />
-      <View style={styles.welcomeCopy}>
+      <View style={styles.welcomeCopyHero} testID="auth-welcome-copy-hero">
         <Text style={styles.welcomeTitle}>{copy.welcomeTitle}</Text>
         <Text style={styles.welcomeSubtitle}>{copy.welcomeSubtitle}</Text>
+      </View>
+      <View style={styles.welcomeMascotStage} testID="auth-welcome-mascot-stage">
+        <KaelMascot size={authWelcomeTokens.mascotSize} state="welcome" style={styles.welcomeMascot} testID="auth-welcome-kael" />
+      </View>
+      <View style={styles.welcomeSupportCopy}>
         <Text style={styles.welcomeTrust}>{copy.welcomeTrust}</Text>
         <View style={styles.welcomeServiceRow} testID="auth-welcome-service-row">
           <Text style={styles.welcomeServiceChip} testID="auth-welcome-service-electrical">{copy.welcomeServiceElectrical}</Text>
@@ -2065,25 +2070,27 @@ const styles = StyleSheet.create({
   authContentScrollable: { flexGrow: 1, paddingBottom: 26 },
   formStack: { gap: 10 },
   loginHeader: { gap: 7 },
-  welcomeShell: { alignItems: 'center', alignSelf: 'center', backgroundColor: 'rgba(255,255,252,0.94)', borderColor: 'rgba(132,230,210,0.34)', borderRadius: 34, borderWidth: 1, boxShadow: '0 24px 52px rgba(13,24,22,0.12), inset 0 1px 0 rgba(255,255,255,0.98)', gap: 16, maxWidth: 350, minHeight: 520, overflow: 'hidden', padding: 18, position: 'relative', width: '100%' },
+  welcomeShell: { alignItems: 'center', alignSelf: 'center', backgroundColor: authWelcomeTokens.shellBg, borderColor: authWelcomeTokens.shellBorder, borderRadius: authWelcomeTokens.shellRadius, borderWidth: 1, boxShadow: authWelcomeTokens.shellShadow, gap: authWelcomeTokens.shellGap, maxWidth: authWelcomeTokens.shellMaxWidth, minHeight: authWelcomeTokens.shellMinHeight, overflow: 'hidden', padding: authWelcomeTokens.shellPadding, position: 'relative', width: '100%' },
   welcomeShellReduced: { backgroundColor: authTokens.milk, borderColor: authTokens.border, boxShadow: 'none' },
-  welcomeMintAura: { backgroundColor: 'rgba(183,255,240,0.28)', borderRadius: 999, height: 210, position: 'absolute', right: -74, top: -56, width: 210 },
-  welcomeSoftLine: { backgroundColor: 'rgba(17,24,23,0.08)', height: 1, left: 22, position: 'absolute', right: 22, top: 76 },
-  welcomeBrandRow: { alignItems: 'center', alignSelf: 'stretch', flexDirection: 'row', gap: 10, justifyContent: 'center', minHeight: 46, zIndex: 1 },
-  welcomeBrandMark: { alignItems: 'center', backgroundColor: authTokens.primary, borderColor: 'rgba(255,255,255,0.74)', borderRadius: 16, borderWidth: 1, height: 40, justifyContent: 'center', width: 40 },
-  welcomeBrandMarkText: { color: authTokens.raised, fontSize: 23, fontWeight: '900', lineHeight: 27 },
-  welcomeBrandText: { color: authTokens.cookie, fontSize: 19, fontWeight: '900', letterSpacing: 0, lineHeight: 24 },
-  welcomeMascot: { marginTop: 8 },
-  welcomeCopy: { alignItems: 'center', gap: 8, zIndex: 1 },
-  welcomeTitle: { color: authTokens.cookie, fontSize: 25, fontWeight: '900', letterSpacing: 0, lineHeight: 31, textAlign: 'center' },
-  welcomeSubtitle: { color: authTokens.cookieSoft, fontSize: 14, fontWeight: '700', lineHeight: 20, maxWidth: 286, opacity: 0.84, textAlign: 'center' },
-  welcomeTrust: { backgroundColor: authTokens.mint, borderColor: authTokens.border, borderRadius: 999, borderWidth: 1, color: authTokens.primary, fontSize: 11, fontWeight: '900', lineHeight: 15, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 7, textAlign: 'center' },
-  welcomeServiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, justifyContent: 'center', paddingTop: 2 },
-  welcomeServiceChip: { backgroundColor: authTokens.raised, borderColor: authTokens.border, borderRadius: 999, borderWidth: 1, color: authTokens.cookieSoft, fontSize: 11, fontWeight: '800', lineHeight: 15, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
-  welcomeButton: { alignSelf: 'stretch', marginTop: 6, zIndex: 1 },
-  welcomeStepDots: { alignItems: 'center', flexDirection: 'row', gap: 7, justifyContent: 'center', minHeight: 16, zIndex: 1 },
-  welcomeStepDot: { backgroundColor: authTokens.line, borderRadius: 999, height: 7, width: 7 },
-  welcomeStepDotActive: { backgroundColor: authTokens.primary, width: 18 },
+  welcomeMintAura: { backgroundColor: authWelcomeTokens.auraBg, borderRadius: authWelcomeTokens.auraSize, height: authWelcomeTokens.auraSize, position: 'absolute', right: authWelcomeTokens.auraOffsetRight, top: authWelcomeTokens.auraOffsetTop, width: authWelcomeTokens.auraSize },
+  welcomeSoftLine: { backgroundColor: authWelcomeTokens.dividerBg, height: 1, left: authWelcomeTokens.dividerInset, position: 'absolute', right: authWelcomeTokens.dividerInset, top: authWelcomeTokens.dividerTop },
+  welcomeBrandRow: { alignItems: 'center', alignSelf: 'stretch', flexDirection: 'row', gap: authWelcomeTokens.brandGap, justifyContent: 'center', minHeight: authWelcomeTokens.brandMinHeight, zIndex: 1 },
+  welcomeBrandMark: { alignItems: 'center', backgroundColor: authTokens.primary, borderColor: authWelcomeTokens.brandMarkBorder, borderRadius: authWelcomeTokens.brandMarkRadius, borderWidth: 1, height: authWelcomeTokens.brandMarkSize, justifyContent: 'center', width: authWelcomeTokens.brandMarkSize },
+  welcomeBrandMarkText: { color: authTokens.raised, fontSize: authWelcomeTokens.brandMarkTextSize, fontWeight: '900', lineHeight: authWelcomeTokens.brandMarkTextLineHeight },
+  welcomeBrandText: { color: authTokens.cookie, fontSize: authWelcomeTokens.brandTextSize, fontWeight: '900', letterSpacing: 0, lineHeight: authWelcomeTokens.brandTextLineHeight },
+  welcomeMascot: { marginTop: authWelcomeTokens.mascotMarginTop },
+  welcomeMascotStage: { alignItems: 'center', justifyContent: 'center', minHeight: authWelcomeTokens.mascotStageMinHeight, zIndex: 1 },
+  welcomeCopyHero: { alignItems: 'center', gap: authWelcomeTokens.copyGap, zIndex: 1 },
+  welcomeSupportCopy: { alignItems: 'center', gap: authWelcomeTokens.copyGap, zIndex: 1 },
+  welcomeTitle: { color: authTokens.cookie, fontSize: authWelcomeTokens.titleTextSize, fontWeight: '900', letterSpacing: 0, lineHeight: authWelcomeTokens.titleTextLineHeight, textAlign: 'center' },
+  welcomeSubtitle: { color: authTokens.cookieSoft, fontSize: authWelcomeTokens.subtitleTextSize, fontWeight: '700', lineHeight: authWelcomeTokens.subtitleTextLineHeight, maxWidth: authWelcomeTokens.subtitleMaxWidth, opacity: authWelcomeTokens.subtitleOpacity, textAlign: 'center' },
+  welcomeTrust: { backgroundColor: authTokens.mint, borderColor: authTokens.border, borderRadius: authWelcomeTokens.shellRadius, borderWidth: 1, color: authTokens.primary, fontSize: authWelcomeTokens.trustTextSize, fontWeight: '900', lineHeight: authWelcomeTokens.trustTextLineHeight, overflow: 'hidden', paddingHorizontal: authWelcomeTokens.trustPaddingX, paddingVertical: authWelcomeTokens.trustPaddingY, textAlign: 'center' },
+  welcomeServiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: authWelcomeTokens.serviceRowGap, justifyContent: 'center', paddingTop: authWelcomeTokens.serviceRowPaddingTop },
+  welcomeServiceChip: { backgroundColor: authTokens.raised, borderColor: authTokens.border, borderRadius: authWelcomeTokens.shellRadius, borderWidth: 1, color: authTokens.cookieSoft, fontSize: authWelcomeTokens.serviceChipTextSize, fontWeight: '800', lineHeight: authWelcomeTokens.serviceChipTextLineHeight, overflow: 'hidden', paddingHorizontal: authWelcomeTokens.serviceChipPaddingX, paddingVertical: authWelcomeTokens.serviceChipPaddingY },
+  welcomeButton: { alignSelf: 'center', marginTop: authWelcomeTokens.buttonMarginTop, minHeight: authWelcomeTokens.buttonHeight, minWidth: authWelcomeTokens.buttonMinWidth, paddingHorizontal: authWelcomeTokens.buttonPaddingX, zIndex: 1 },
+  welcomeStepDots: { alignItems: 'center', flexDirection: 'row', gap: authWelcomeTokens.dotsGap, justifyContent: 'center', minHeight: authWelcomeTokens.dotsMinHeight, zIndex: 1 },
+  welcomeStepDot: { backgroundColor: authTokens.line, borderRadius: authWelcomeTokens.shellRadius, height: authWelcomeTokens.dotsHeight, width: authWelcomeTokens.dotsWidth },
+  welcomeStepDotActive: { backgroundColor: authTokens.primary, width: authWelcomeTokens.dotsActiveWidth },
   authFlowShell: { alignSelf: 'center', gap: 14, maxWidth: 350, width: '100%' },
   authTopRow: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
   authTitleBlock: { flex: 1, minWidth: 0 },

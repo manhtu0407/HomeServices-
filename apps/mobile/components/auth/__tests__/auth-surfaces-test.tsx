@@ -70,6 +70,8 @@ describe('LoginRoleSurface', () => {
     render(<LoginRoleSurface />)
 
     expect(screen.getByTestId('auth-welcome-screen')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-welcome-copy-hero')).toHaveTextContent(/Xin chào! Tôi là Kael/)
+    expect(screen.getByTestId('auth-welcome-mascot-stage')).toBeOnTheScreen()
     expect(screen.getByText('Xin chào! Tôi là Kael')).toBeOnTheScreen()
     expect(screen.getByText('NestScout')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-welcome-service-electrical')).toHaveTextContent('Điện')
