@@ -71,7 +71,8 @@
   - Added the Worker Offers & Quote checkpoint as a price-tab quote sheet from real broadcast price, Kael estimate, scope-change price, and final-price state.
   - Kept quote UI free of fake offer counts, fake worker ratings, fake worker profiles, and worker-entered price authority.
   - Added scope-change reason and new price inside the worker quote sheet from the real scope-change artifact.
-  - Aligned the Worker Offers & Quote CTA to `Xem đề xuất` / `View quote` and added the real `timeChoice: now` row.
+  - Rebuilt the Worker Offers & Quote sheet as a reference-style `Nhận giá` / `Quote received` list with real broadcast price, Kael estimate, scope change, total/final-price state, time, status, reason, and new price rows.
+  - Aligned the Worker Offers & Quote CTA to `Xem đề xuất` / `View quote` and kept non-backed itemized quote rows or duration hidden until backend exposes real line items and duration.
   - Kept the reference itemized total/duration out of the UI until backend data exposes those values truthfully.
   - Added the Location & ETA checkpoint to Activity from real address-release state, broadcast/search signal, and honest pending travel ETA copy.
   - Kept pre-accept address area-only and did not treat search countdown as arrival ETA.

@@ -283,9 +283,12 @@ describe('CustomerHistorySurface phase context', () => {
 
     const quotePanel = screen.getByTestId('customer-history-price-worker-quote-panel')
     expect(quotePanel).toBeOnTheScreen()
+    expect(quotePanel).toHaveTextContent(/Nhận giá/)
+    expect(screen.getByTestId('customer-history-worker-quote-list')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-history-worker-quote-broadcast-value')).toHaveTextContent('180.000đ - 260.000đ')
     expect(screen.getByTestId('customer-history-worker-quote-kael-value')).toHaveTextContent('180.000đ - 260.000đ')
     expect(screen.getByTestId('customer-history-worker-quote-scope-value')).toHaveTextContent('260.000đ - 320.000đ')
+    expect(screen.getByTestId('customer-history-worker-quote-final-label')).toHaveTextContent(/Tổng cộng/)
     expect(screen.getByTestId('customer-history-worker-quote-final-value')).toHaveTextContent(/Chờ Kael chốt/)
     expect(screen.getByTestId('customer-history-worker-quote-reason-value')).toHaveTextContent(/Cần thay thêm ổ cắm/)
     expect(screen.getByTestId('customer-history-worker-quote-time-value')).toHaveTextContent(/Ngay bây giờ/)
