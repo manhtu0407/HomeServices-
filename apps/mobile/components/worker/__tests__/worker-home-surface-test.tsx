@@ -1279,10 +1279,27 @@ describe('WorkerJobsSurface', () => {
 
     expect(screen.getByTestId('worker-jobs-needs-phase-context')).toHaveTextContent(/Bằng chứng hoàn tất/)
     expect(screen.getByTestId('worker-completion-evidence-submitted-card')).toBeOnTheScreen()
-    expect(screen.getByText('Đã thay ổ cắm và kiểm tra tải.')).toBeOnTheScreen()
-    expect(screen.getByText('1 ảnh nghiệm thu')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-completion-evidence-submitted-card')).toHaveTextContent(/Đã thay ổ cắm và kiểm tra tải/)
+    expect(screen.getByTestId('worker-completion-evidence-submitted-card')).toHaveTextContent(/1 ảnh nghiệm thu/)
     expect(screen.queryByTestId('worker-completion-note-input')).toBeNull()
     expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
+  })
+
+  it('renders the submitted job summary report from real completion evidence only', () => {
+    mockPathname = '/(worker)/jobs'
+    mockRouteParams = { tab: 'needs' }
+    buildWorkflow({ deal: buildCompletedByWorkerDeal() })
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-job-summary-report-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-job-summary-report-status')).toHaveTextContent(/Đã hoàn tất/)
+    expect(screen.getByTestId('worker-job-summary-report-note')).toHaveTextContent(/Đã thay ổ cắm/)
+    expect(screen.getByTestId('worker-job-summary-report-media')).toHaveTextContent(/1 ảnh/)
+    expect(screen.getByTestId('worker-job-summary-report-price')).toHaveTextContent(/Chờ Kael/)
+    expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
+    expect(screen.queryByText('0 ảnh')).toBeNull()
+    expect(screen.queryByText('--')).toBeNull()
   })
 
   it('does not treat partial completion evidence as a submitted artifact', () => {
@@ -1350,6 +1367,41 @@ describe('WorkerEarningsSurface', () => {
     expect(screen.queryByText('Recent days')).toBeNull()
     expect(screen.queryByText('320k')).toBeNull()
     expect(screen.queryByText('4.8tr')).toBeNull()
+  })
+
+  it('surfaces real payout reconciliation without fabricating empty earnings stats', () => {
+    mockPathname = '/(worker)/earnings'
+    buildWorkflow({
+      workerEarnings: {
+        ...buildNoEarnings(),
+        daily_earnings: [
+          {
+            date: new Date().toISOString().slice(0, 10),
+            gross_earnings: 470000,
+            net_earnings: 450000,
+            paid_job_count: 2,
+            platform_fee_total: 20000,
+          },
+        ],
+        gross_earnings: 1350000,
+        net_earnings: 1285000,
+        pending_payment_amount: 350000,
+        pending_payment_count: 1,
+        platform_fee_total: 65000,
+        total_jobs_paid: 6,
+      },
+    })
+
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId('worker-earnings-reconciliation-strip')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-earnings-paid-jobs-cell')).toHaveTextContent(/6/)
+    expect(screen.getByTestId('worker-earnings-pending-cell')).toHaveTextContent(/350\.000/)
+    expect(screen.getByTestId('worker-earnings-platform-fee-cell')).toHaveTextContent(/65\.000/)
+    expect(screen.getByTestId('worker-earnings-real-bar-shell')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-earnings-chart-empty-label')).toBeNull()
+    expect(screen.queryByText('0')).toBeNull()
+    expect(screen.queryByText('--')).toBeNull()
   })
 })
 

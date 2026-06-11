@@ -476,6 +476,15 @@ const workerCopy = {
       safetyCompletionPending: 'Mở ở bước sửa',
       safetyCompletionReady: 'Cần ghi chú và ảnh trước khi hoàn tất',
       safetyCompletionSubmitted: 'Đã gửi bằng chứng thật',
+      summaryReportTitle: 'Báo cáo công việc',
+      summaryReportMeta: 'Từ bằng chứng thật',
+      summaryReportBody: 'Kael giữ báo cáo đọc từ ghi chú, ảnh nghiệm thu và trạng thái hệ thống. Không có giá cuối nếu hệ thống chưa đối soát.',
+      summaryStatusTitle: 'Trạng thái',
+      summaryStatusSubmitted: 'Đã hoàn tất bởi thợ',
+      summaryNoteTitle: 'Ghi chú',
+      summaryMediaTitle: 'Ảnh nghiệm thu',
+      summaryPriceTitle: 'Giá cuối',
+      summaryPriceWaiting: 'Chờ Kael đối soát',
       scopeStatus: 'Kael đang xét',
       scopeTitle: 'Thay đổi phạm vi',
       scopeBody: 'Kael đang xét phạm vi mới; khách có thể cung cấp thêm dữ liệu, khiếu nại hoặc hủy nếu thực tế chưa đúng.',
@@ -523,6 +532,11 @@ const workerCopy = {
       // X6 (Plan.md §27.9 — 2026-05-29): F-30 honest empty chart copy.
       chartEmpty: 'Chưa có dữ liệu đối soát',
       summaryHint: 'Khi có đối soát',
+      paidJobs: 'Việc đã trả',
+      pendingPayout: 'Chờ chi trả',
+      platformFee: 'Phí nền tảng',
+      noPendingPayout: 'Không có khoản chờ',
+      feeWaiting: 'Chờ đối soát phí',
       body: '',
       complete: 'Hoàn tất',
       waiting: 'Chờ Kael',
@@ -624,6 +638,15 @@ const workerCopy = {
       safetyCompletionPending: 'Opens during repair',
       safetyCompletionReady: 'Needs notes and photos before completion',
       safetyCompletionSubmitted: 'Real evidence submitted',
+      summaryReportTitle: 'Job report',
+      summaryReportMeta: 'From real evidence',
+      summaryReportBody: 'Kael keeps this report from notes, completion photos, and system status. No final price appears before reconciliation.',
+      summaryStatusTitle: 'Status',
+      summaryStatusSubmitted: 'Submitted by worker',
+      summaryNoteTitle: 'Notes',
+      summaryMediaTitle: 'Completion photos',
+      summaryPriceTitle: 'Final price',
+      summaryPriceWaiting: 'Waiting for Kael reconciliation',
       scopeStatus: 'Kael reviewing',
       scopeTitle: 'Scope change',
       scopeBody: 'Kael is reviewing the new scope; the customer can add evidence, appeal, or cancel if the facts are wrong.',
@@ -671,6 +694,11 @@ const workerCopy = {
       // X6 (Plan.md §27.9 — 2026-05-29): F-30 honest empty chart copy.
       chartEmpty: 'No reconciliation data yet',
       summaryHint: 'After reconciliation',
+      paidJobs: 'Paid jobs',
+      pendingPayout: 'Pending payout',
+      platformFee: 'Platform fee',
+      noPendingPayout: 'No pending payout',
+      feeWaiting: 'Fee reconciliation pending',
       body: '',
       complete: 'Completed',
       waiting: 'Waiting for Kael',
@@ -1088,6 +1116,12 @@ export function WorkerJobsSurface() {
   const showScopeChangeCard = Boolean(deal && workflow.artifacts.scope_change.mode === 'review')
   const showCompletionEvidenceCard = Boolean(deal && selectors.currentStatus === 'repairing')
   const hasNeedsAttention = showScopeChangeCard || showCompletionEvidenceCard
+  const showJobSummaryReport = Boolean(
+    deal &&
+    hasLocalDealCompletionEvidence(deal) &&
+    selectors.currentStatus &&
+    ['completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(selectors.currentStatus),
+  )
   const acceptedJob = isAcceptedLocalWorkerDeal(deal)
   const showAcceptedActionPanel = Boolean(acceptedJob && deal?.broadcast && [
     'inspecting',
@@ -1175,6 +1209,7 @@ export function WorkerJobsSurface() {
         <WorkerJobsLiquidSection testID="worker-jobs-needs-liquid-section">
           {deal ? <WorkerPhaseContextCard phaseContext={workflow.phaseContext} testID="worker-jobs-needs-phase-context" /> : null}
           <WorkerNeedsReviewCard />
+          {showJobSummaryReport && deal ? <WorkerJobSummaryReportCard deal={deal} status={selectors.currentStatus} /> : null}
           {showAcceptedActionPanel ? (
             <View testID="worker-needs-accepted-action-sheet">
               <IncomingRequestSheet compact material="liquid" />
@@ -1715,6 +1750,56 @@ function WorkerNeedsReviewCard() {
   )
 }
 
+function WorkerJobSummaryReportCard({ deal, status }: { deal: LocalDeal; status: LocalDealStatus | null }) {
+  const { copy, language, tokens } = useWorkerUi()
+  const note = deal.completionNotes?.trim() || copy.jobs.summaryPriceWaiting
+  const photoCount = deal.completionPhotoUrls?.length ?? 0
+  const mediaValue = photoCount > 0
+    ? language === 'en'
+      ? `${photoCount} completion photo${photoCount === 1 ? '' : 's'}`
+      : `${photoCount} ảnh nghiệm thu`
+    : copy.jobs.safetyCompletionPending
+  const statusValue = status === 'completed_by_worker'
+    ? copy.jobs.summaryStatusSubmitted
+    : status
+      ? localizedStatusLabel(status, language)
+      : copy.jobs.summaryPriceWaiting
+  const problemValue = localizedProblemLabel(deal.draft.problemChips[0] ?? deal.draft.inferredProblemLabel ?? deal.draft.description, deal.draft.serviceType, language)
+  const finalPriceValue = deal.finalPrice && deal.finalPrice > 0
+    ? formatWorkerMoney(deal.finalPrice, language)
+    : deal.scopeChange?.priceMin && deal.scopeChange.priceMax
+      ? `${formatWorkerMoney(deal.scopeChange.priceMin, language)} - ${formatWorkerMoney(deal.scopeChange.priceMax, language)}`
+      : copy.jobs.summaryPriceWaiting
+
+  return (
+    <View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-job-summary-report-card">
+      <WorkerJobsCardChrome />
+      <View style={styles.identityRow}>
+        <WorkerUtilityIcon active frameSize={48} icon="document" size={48} style={styles.needsInlineImageIcon} />
+        <View style={styles.titleStack}>
+          <Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>
+            {copy.jobs.summaryReportMeta}
+          </Text>
+          <Text style={[styles.cardTitle, { color: tokens.ink }]} numberOfLines={2}>
+            {copy.jobs.summaryReportTitle}
+          </Text>
+        </View>
+      </View>
+      <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={3}>
+        {copy.jobs.summaryReportBody}
+      </Text>
+      <View style={styles.needsReviewGrid}>
+        <JobRoomMetaCell label={copy.jobs.summaryStatusTitle} testID="worker-job-summary-report-status" value={statusValue} />
+        <JobRoomMetaCell label={copy.chat.serviceLabel} value={localizedServiceLabel(deal.draft.serviceType, language)} />
+        <JobRoomMetaCell label={copy.chat.problemLabel} value={problemValue} valueLines={3} />
+        <JobRoomMetaCell label={copy.jobs.summaryNoteTitle} testID="worker-job-summary-report-note" value={note} valueLines={3} />
+        <JobRoomMetaCell label={copy.jobs.summaryMediaTitle} testID="worker-job-summary-report-media" value={mediaValue} />
+        <JobRoomMetaCell label={copy.jobs.summaryPriceTitle} testID="worker-job-summary-report-price" value={finalPriceValue} />
+      </View>
+    </View>
+  )
+}
+
 function WorkerNeedsInlineEmptyCard() {
   const { copy, language, tokens } = useWorkerUi()
   const { replace } = useRouter()
@@ -1797,6 +1882,7 @@ export function WorkerEarningsSurface() {
     >
       <WorkerEarningsHero />
       <WorkerEarningsSummary />
+      <WorkerEarningsReconciliationStrip />
       <WorkerEarningsLedger />
     </WorkerFrame>
   )
@@ -3899,6 +3985,45 @@ function WorkerEarningsSummary() {
           {copy.earnings.summaryHint}
         </Text>
       </View>
+    </View>
+  )
+}
+
+function WorkerEarningsReconciliationStrip() {
+  const { copy, language, tokens } = useWorkerUi()
+  const { workerEarnings } = useFrontendWorkflow()
+  const hasSettledEarnings = hasWorkerSettledEarnings(workerEarnings)
+  const hasPendingPayout = Boolean(workerEarnings && (workerEarnings.pending_payment_amount > 0 || workerEarnings.pending_payment_count > 0))
+  const paidJobsValue = hasSettledEarnings && workerEarnings && workerEarnings.total_jobs_paid > 0
+    ? `${workerEarnings.total_jobs_paid} ${language === 'en' ? 'paid' : 'việc'}`
+    : copy.earnings.noReconciliation
+  const pendingValue = hasPendingPayout && workerEarnings
+    ? workerEarnings.pending_payment_amount > 0
+      ? formatWorkerMoney(workerEarnings.pending_payment_amount, language)
+      : `${workerEarnings.pending_payment_count} ${language === 'en' ? 'pending' : 'mục chờ'}`
+    : copy.earnings.noPendingPayout
+  const platformFeeValue = hasSettledEarnings && workerEarnings && workerEarnings.platform_fee_total > 0
+    ? formatWorkerMoney(workerEarnings.platform_fee_total, language)
+    : copy.earnings.feeWaiting
+  const rows = [
+    { id: 'paid-jobs', label: copy.earnings.paidJobs, value: paidJobsValue },
+    { id: 'pending', label: copy.earnings.pendingPayout, value: pendingValue },
+    { id: 'platform-fee', label: copy.earnings.platformFee, value: platformFeeValue },
+  ] as const
+
+  return (
+    <View style={styles.earningsReconciliationStrip} testID="worker-earnings-reconciliation-strip">
+      {rows.map((row) => (
+        <View key={row.id} style={[styles.earningsReconciliationCell, workerEarningsMiniSurface(tokens)]} testID={`worker-earnings-${row.id}-cell`}>
+          <WorkerEarningsMaterialChrome testID="worker-earnings-reconciliation-crisp-shell" variant="cell" />
+          <Text style={[styles.earningsSummaryLabel, { color: tokens.subtle }]} numberOfLines={1}>
+            {row.label}
+          </Text>
+          <Text adjustsFontSizeToFit minimumFontScale={0.76} style={[styles.earningsReconciliationValue, { color: tokens.ink }]} numberOfLines={1}>
+            {row.value}
+          </Text>
+        </View>
+      ))}
     </View>
   )
 }
@@ -9595,6 +9720,9 @@ const styles = StyleSheet.create({
   earningsSummaryLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0, lineHeight: 14, position: 'relative', textAlign: 'left', zIndex: 2 },
   earningsSummaryValue: { fontSize: 17, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: 0, lineHeight: 22, position: 'relative', zIndex: 2 },
   earningsSummaryHint: { fontSize: 11, fontWeight: '600', letterSpacing: 0, lineHeight: 14, position: 'relative', zIndex: 2 },
+  earningsReconciliationStrip: { flexDirection: 'row', gap: 8 },
+  earningsReconciliationCell: { borderRadius: 20, borderWidth: 1, flex: 1, gap: 4, justifyContent: 'center', minHeight: 78, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 11, position: 'relative' },
+  earningsReconciliationValue: { fontSize: 13.5, fontVariant: ['tabular-nums'], fontWeight: '800', letterSpacing: 0, lineHeight: 18, position: 'relative', zIndex: 2 },
   moneyText: { fontSize: 34, fontVariant: ['tabular-nums'], fontWeight: '600', letterSpacing: 0 },
   moneyTextState: { fontSize: 24, lineHeight: 30 },
   listCard: { borderRadius: 29, gap: 4, overflow: 'hidden', padding: 10, position: 'relative' },
