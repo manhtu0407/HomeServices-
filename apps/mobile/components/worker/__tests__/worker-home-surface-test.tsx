@@ -1329,6 +1329,29 @@ describe('WorkerJobsSurface', () => {
     expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
   })
 
+  it('previews selected completion evidence photos before upload', async () => {
+    const imagePicker = jest.requireMock('expo-image-picker')
+    imagePicker.launchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ fileName: 'after-panel.jpg', fileSize: 2048, mimeType: 'image/jpeg', uri: 'file:///after-panel.jpg' }],
+    })
+    mockAppLanguage = 'en'
+    mockPathname = '/(worker)/jobs'
+    mockRouteParams = { tab: 'needs' }
+    buildWorkflow({ canWorkerAdvance: true, deal: buildRepairingDeal() })
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.queryByTestId('worker-completion-photo-preview-rail')).toBeNull()
+    fireEvent.press(screen.getByTestId('worker-completion-add-photo'))
+
+    await waitFor(() => expect(imagePicker.launchImageLibraryAsync).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByTestId('worker-completion-photo-count')).toHaveTextContent('1 photo selected'))
+    expect(screen.getByTestId('worker-completion-photo-preview-rail')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-completion-photo-preview-0')).toHaveTextContent('after-panel.jpg')
+    expect(screen.queryByText('0 photos')).toBeNull()
+  })
+
   it('keeps submitted completion evidence visible in Needs while Kael reviews it', () => {
     mockPathname = '/(worker)/jobs'
     mockRouteParams = { tab: 'needs' }

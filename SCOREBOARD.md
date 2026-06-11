@@ -36,7 +36,7 @@ Legend:
 | D | 3.1 Worker Home | Partial | Partial | TBD | Worker Home readiness row reads real profile verification, availability, and current request state; focused worker suite passed | In progress |
 | D | 3.2 Jobs | Partial | Partial | TBD | Active Jobs row reads accepted deal id, service, area, status, and real worker earning estimate; focused worker suite passed | In progress |
 | D | 3.4 Kael On-site Advisory Chat | Partial | Partial | TBD | Worker JobRoom on-site advisory rail reads real status, address release, scope, and evidence gates; focused worker suite passed | In progress |
-| D | 3.4 Evidence Upload | Partial | Partial | TBD | Existing completion evidence box remains wired; checklist routes completion guidance to evidence state | In progress |
+| D | 3.4 Evidence Upload | Partial | Partial | TBD | Completion evidence preview rail reads local image-picker draft URI/file names before the existing upload/status action; focused worker suite passed | In progress |
 | D | 3.5 Earnings | Partial | Partial | TBD | Earnings reconciliation strip reads paid jobs, pending payout, platform fee, and daily chart data from `EarningsResponse`; focused worker suite passed | In progress |
 | D | 3.6 Worker Rating | Partial | Partial | TBD | Worker profile no longer shows placeholder locked milestone copy; focused worker suite passed | In progress |
 | D | 3.7 Safety & Checklist | Partial | Partial | TBD | Safety checklist renders address/scope/completion gates from real workflow state; focused worker suite passed | In progress |

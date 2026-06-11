@@ -5976,7 +5976,7 @@ function IncomingRequestSheet({ compact = false, material = 'standard' }: { comp
           note={completionNoteDraft}
           onPickPhoto={pickCompletionPhoto}
           onUpdateNote={updateRequestDraft('completionNoteDraft')}
-          photoCount={completionPhotos.length}
+          photos={completionPhotos}
           tokens={tokens}
         />
       ) : null}
@@ -6068,16 +6068,18 @@ function WorkerCompletionEvidenceBox({
   note,
   onPickPhoto,
   onUpdateNote,
-  photoCount,
+  photos,
   tokens,
 }: {
   actionCopy: (typeof workerActionCopy)[WorkerLanguageMode]
   note: string
   onPickPhoto: () => void
   onUpdateNote: (value: string) => void
-  photoCount: number
+  photos: LocalMediaUploadDraft[]
   tokens: WorkerThemeTokens
 }) {
+  const photoCount = photos.length
+
   return (
     <View style={styles.scopeRequestBox} testID="worker-completion-evidence-blocker">
       <TextInput
@@ -6095,6 +6097,18 @@ function WorkerCompletionEvidenceBox({
           {photoCount > 0 ? actionCopy.completionPhotoCount(photoCount) : actionCopy.completionPhotoRequired}
         </Text>
       </View>
+      {photoCount > 0 ? (
+        <View style={styles.completionPhotoPreviewRail} testID="worker-completion-photo-preview-rail">
+          {photos.map((photo, index) => (
+            <View key={`${photo.uri}-${index}`} style={[styles.completionPhotoPreviewTile, { backgroundColor: tokens.glassStrong, borderColor: tokens.border }]} testID={`worker-completion-photo-preview-${index}`}>
+              <Image contentFit="cover" source={{ uri: photo.uri }} style={styles.completionPhotoPreviewImage} />
+              <Text style={[styles.workerMiniMeta, { color: tokens.muted }]} numberOfLines={1}>
+                {photo.fileName ?? actionCopy.completionPhoto}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -9662,6 +9676,9 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: 'row', gap: 8 },
   priceDisclaimer: { fontSize: 11, fontWeight: '600', lineHeight: 15 },
   scopeRequestBox: { gap: 8 },
+  completionPhotoPreviewRail: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  completionPhotoPreviewTile: { borderCurve: 'continuous', borderRadius: 16, borderWidth: 1, gap: 6, minHeight: 92, overflow: 'hidden', padding: 7, width: 92 },
+  completionPhotoPreviewImage: { borderRadius: 11, height: 52, width: '100%' },
   actionRow: { flexDirection: 'row', gap: 9, position: 'relative', zIndex: 2 },
   pressButton: { alignItems: 'center', borderCurve: 'continuous', borderRadius: 17, flex: 1, justifyContent: 'center', minHeight: 48, overflow: 'hidden', position: 'relative' },
   emptyActionPill: { alignItems: 'center', borderRadius: 17, borderWidth: 1, flex: 1, justifyContent: 'center', minHeight: 48 },

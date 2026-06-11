@@ -64,6 +64,8 @@
   - Added worker safety/checklist gates to active jobs.
   - Kept scope and completion actions tied to existing workflow/evidence state.
   - Kept worker pricing input out of the checklist path.
+  - Added completion evidence preview rail from local image-picker drafts before upload.
+  - Kept Evidence Upload tied to real local media draft URI/file names and the existing upload/status action path.
   - Added focused RNTL coverage for address gate, scope gate, completion evidence, and no fake placeholder values.
   - Added Worker Earnings reconciliation strip from `EarningsResponse` paid jobs, pending payout, and platform fee fields.
   - Added submitted job summary/report card from real completion notes, completion media, status, and Kael price gate.
@@ -96,15 +98,15 @@
   - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 33 tests.
   - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests.
   - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job in Progress panel.
-  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 49 tests after the active Jobs real job row.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 50 tests after the Evidence Upload preview rail.
   - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 3 tests.
-  - Mobile Jest from `apps/mobile` passed after the active Jobs real job row: 17 suites, 164 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the Evidence Upload preview rail: 17 suites, 165 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, safety/earnings/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
+Phase 1 foundation, design gallery, Kael mascot shell, Agentic Center wiring/summary, Group A welcome, Group B Customer Home plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, safety/earnings/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
 
 ## Next
 
