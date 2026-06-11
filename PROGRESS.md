@@ -78,6 +78,7 @@
   - Kept pre-accept address area-only and did not treat search countdown as arrival ETA.
   - Added a Location route gate from address release and live worker signal state.
   - Aligned `worker_on_way` to `Thợ đang di chuyển` / `Worker on the way` and added a route-tracking CTA into the real Kael chat path.
+  - Added a route-map test anchor and a reference-style route status cue from the real live worker signal when address release and worker anchor are both available.
   - Kept reference ETA time/distance values out of the UI until backend exposes real travel telemetry.
   - Added the Live Job Alert checkpoint to Activity from real notification rows, unread count, and workflow next-event state.
   - Kept push handling on the existing notification/deep-link path; no fake notification, fake queue, or push simulation was added.

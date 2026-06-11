@@ -314,6 +314,8 @@ describe('CustomerHistorySurface phase context', () => {
     buildWorkflow(buildDeal('worker_on_way'))
     rerender(<CustomerHistorySurface />)
 
+    expect(screen.getByTestId('customer-history-location-route-map')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-location-route-cue')).toHaveTextContent(/Thợ đang di chuyển/)
     expect(screen.getByTestId('customer-history-location-address-value')).toHaveTextContent('Tòa A, Quận 1')
     expect(screen.getByTestId('customer-history-location-address-gate-value')).toHaveTextContent(/Đã mở theo chính sách/)
     expect(screen.getByTestId('customer-history-location-route-value')).toHaveTextContent(/Thợ đang di chuyển/)

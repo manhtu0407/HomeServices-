@@ -4004,7 +4004,7 @@ function CustomerHistoryLocationEtaPanel({
           {copy.history.locationEtaMeta}
         </Text>
       </View>
-      <View style={[styles.presenceMapViewport, customerHistoryMapViewportSurface(tokens)]}>
+      <View style={[styles.presenceMapViewport, customerHistoryMapViewportSurface(tokens)]} testID="customer-history-location-route-map">
         <V4MapBackdrop presence={hasWorkerAnchor} />
         <View style={styles.presenceMapHud} testID="customer-history-location-map-hud">
           <View style={[styles.presenceMapControl, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
@@ -4031,6 +4031,14 @@ function CustomerHistoryLocationEtaPanel({
           </Text>
         </View>
       </View>
+      {releasedAddress && hasWorkerAnchor ? (
+        <View style={[styles.bookingDiagnosisPill, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]} testID="customer-history-location-route-cue">
+          <MappedIcon name={workerIsOnWay ? 'check' : 'estimate'} color={tokens.primary} accent={tokens.copper} size={22} />
+          <Text style={[styles.bookingDiagnosisPillText, { color: tokens.primary }]} numberOfLines={1}>
+            {liveSignalLabel}
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.twoCol}>
         <V4TicketCell label={copy.history.caseLocation} testID="customer-history-location-address" value={addressLabel} variant="activity" />
         <V4TicketCell label={copy.history.locationAddressGate} testID="customer-history-location-address-gate" value={addressGateLabel} variant="activity" />
