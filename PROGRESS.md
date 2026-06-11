@@ -105,6 +105,8 @@
   - Added Worker Earnings reconciliation strip and period row from `EarningsResponse` paid jobs, pending payout, platform fee, `from_date`, and `to_date` fields.
   - Aligned Worker Earnings to the reference three-part summary using real today and period net earnings while leaving month as waiting until monthly backend data exists.
   - Kept the reference monthly total out of the UI instead of fabricating `6.250.000đ`.
+  - Aligned Worker Rating to the customer-rating reference using real `workerProfile.rating` and `workerProfile.total_jobs`.
+  - Added the rating star strip, exact aggregate score, and honest disabled review-details CTA while keeping tips as `Chưa có` until the mobile API exposes real tip/review-detail fields.
   - Added submitted job summary/report card from real completion notes, completion media, status, and Kael price gate.
   - Added Worker Kael on-site advisory rail inside accepted JobRoom details for status, address release, scope/price gate, and evidence gate.
 - Continued Group E:
@@ -238,6 +240,11 @@
   - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 56 tests after the Worker Earnings three-part summary checkpoint.
   - `tsc --noEmit` from `apps/mobile` passed after the Worker Earnings three-part summary checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Worker Earnings three-part summary checkpoint: 17 suites, 188 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "customer rating panel"` failed on the old reputation/performance panel before the Worker Rating reference checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "customer rating panel"` passed after the Worker Rating reference checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 57 tests after the Worker Rating reference checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Rating reference checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker Rating reference checkpoint: 17 suites, 189 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
   - `vitest run src/__tests__/mobile-backend-wiring.test.ts src/__tests__/monorepo-wiring.test.ts` from `packages/shared` passed after the Register with Email checkpoint: 72 tests.
   - Added-line token grep for the Memory & Preferences diff returned no raw style matches.
   - Added-line token grep for the Commanding Home diff returned no raw style matches.
@@ -254,7 +261,7 @@
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity rename, Agentic Center wiring/summary/Commanding Home greeting/Active Case command actions/live workflow card/phase rail/approval actions/memory self-view/edit CTA/token move, separated Kael Orb token/label refinement, Group A welcome service chips/dots, login email CTA, customer-safe email registration, onboarding start CTA, and customer onboarding, Group B Customer Home greeting/prompt plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings three-part summary/period reconciliation, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests including real approval action/gate/memory self-view/edit CTA/notification split/active-case action behavior, API/shared AI identity tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
+Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity rename, Agentic Center wiring/summary/Commanding Home greeting/Active Case command actions/live workflow card/phase rail/approval actions/memory self-view/edit CTA/token move, separated Kael Orb token/label refinement, Group A welcome service chips/dots, login email CTA, customer-safe email registration, onboarding start CTA, and customer onboarding, Group B Customer Home greeting/prompt plus booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings three-part summary/period reconciliation, worker rating, safety/summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests including real approval action/gate/memory self-view/edit CTA/notification split/active-case action behavior, API/shared AI identity tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
 
 ## Next
 

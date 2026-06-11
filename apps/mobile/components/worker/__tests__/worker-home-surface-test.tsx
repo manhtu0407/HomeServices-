@@ -1682,6 +1682,21 @@ describe('WorkerProfileSurface', () => {
     expect(screen.queryByText('--')).toBeNull()
   })
 
+  it('aligns the customer rating panel without fabricating tips or review details', () => {
+    mockPathname = '/(worker)/profile'
+    buildWorkflow({ workerProfile: buildWorkerProfile({ is_available: true, rating: 4.9, total_jobs: 24 }) })
+
+    render(<WorkerProfileSurface />)
+
+    const ratingCard = screen.getByTestId('worker-profile-reputation-card')
+    expect(ratingCard).toHaveTextContent(/Đánh giá của khách hàng/)
+    expect(screen.getByTestId('worker-profile-rating-stars')).toHaveTextContent(/★★★★★/)
+    expect(screen.getByTestId('worker-profile-rating-summary')).toHaveTextContent(/4\.9\/5/)
+    expect(screen.getByTestId('worker-profile-reputation-tips')).toHaveTextContent(/Chưa có/)
+    expect(screen.getByTestId('worker-profile-reputation-review-action').props.accessibilityState).toMatchObject({ disabled: true })
+    expect(ratingCard).not.toHaveTextContent(/350\.000|350,000/)
+  })
+
   it('keeps empty worker trust signals in the selected English mode', () => {
     mockPathname = '/(worker)/profile'
     mockAppLanguage = 'en'

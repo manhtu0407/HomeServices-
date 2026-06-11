@@ -3813,6 +3813,16 @@ function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: Worker
   const hasRating = hasJobs && Number.isFinite(rawRating) && rawRating > 0
   const rating = hasRating ? Math.min(5, Math.max(1, rawRating)) : 0
   const emptyValue = language === 'en' ? 'Not yet' : 'Ch\u01b0a c\u00f3'
+  const title = language === 'en' ? 'Customer rating' : '\u0110\u00e1nh gi\u00e1 c\u1ee7a kh\u00e1ch h\u00e0ng'
+  const ratingSummary = hasRating ? `${rating.toFixed(1)}/5` : emptyValue
+  const starSummary = hasRating ? workerProfileRatingStars(rating) : emptyValue
+  const detailNote = hasRating
+    ? language === 'en'
+      ? 'Review details and tips open only when the system has real data.'
+      : 'Chi ti\u1ebft \u0111\u00e1nh gi\u00e1 v\u00e0 ti\u1ec1n boa ch\u1ec9 m\u1edf khi h\u1ec7 th\u1ed1ng c\u00f3 d\u1eef li\u1ec7u th\u1eadt.'
+    : language === 'en'
+      ? 'Customer rating opens after real completed jobs.'
+      : '\u0110\u00e1nh gi\u00e1 m\u1edf sau vi\u1ec7c ho\u00e0n t\u1ea5t th\u1eadt.'
   const availabilityValue = !workerProfile
     ? emptyValue
     : workerProfile.is_suspended
@@ -3825,7 +3835,7 @@ function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: Worker
     {
       id: 'rating',
       label: language === 'en' ? 'Rating' : '\u0110\u00e1nh gi\u00e1',
-      value: hasRating ? `${rating.toFixed(1)}/5` : emptyValue,
+      value: ratingSummary,
     },
     {
       id: 'jobs',
@@ -3837,6 +3847,11 @@ function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: Worker
       label: language === 'en' ? 'Availability' : 'Nh\u1eadn vi\u1ec7c',
       value: availabilityValue,
     },
+    {
+      id: 'tips',
+      label: language === 'en' ? 'Tips' : 'Ti\u1ec1n boa',
+      value: emptyValue,
+    },
   ] as const
 
   return (
@@ -3844,10 +3859,18 @@ function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: Worker
       <WorkerProfileMaterialChrome testID="worker-profile-reputation-crisp-shell" variant="panel" />
       <View style={styles.profileSyncPreviewTop}>
         <Text style={[styles.cardTitle, { color: tokens.ink, flex: 1 }]} numberOfLines={1}>
-          {language === 'en' ? 'Reputation & performance' : 'Uy t\u00edn & hi\u1ec7u su\u1ea5t'}
+          {title}
         </Text>
         <Text style={[styles.statusPill, { backgroundColor: tokens.mint, color: tokens.primary }]} numberOfLines={1}>
           {language === 'en' ? 'Real data' : 'D\u1eef li\u1ec7u th\u1eadt'}
+        </Text>
+      </View>
+      <View style={styles.profileSyncPreviewTop} testID="worker-profile-rating-summary-row">
+        <Text style={[styles.cardTitle, { color: hasRating ? tokens.copper : tokens.muted, flex: 1 }]} numberOfLines={1} testID="worker-profile-rating-stars">
+          {starSummary}
+        </Text>
+        <Text style={[styles.statusPill, { backgroundColor: tokens.cream, color: tokens.copper }]} numberOfLines={1} testID="worker-profile-rating-summary">
+          {ratingSummary}
         </Text>
       </View>
       <View style={styles.profileLevelSignalGrid}>
@@ -3864,6 +3887,12 @@ function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: Worker
           </View>
         ))}
       </View>
+      <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2} testID="worker-profile-rating-detail-note">
+        {detailNote}
+      </Text>
+      <View style={styles.actionRow}>
+        <PressButton disabled label={language === 'en' ? 'View reviews' : 'Xem \u0111\u00e1nh gi\u00e1'} onPress={() => undefined} secondary testID="worker-profile-reputation-review-action" />
+      </View>
       {!hasReputationData ? (
         <Text style={[styles.bodyText, { color: tokens.muted }]} numberOfLines={2} testID="worker-profile-reputation-empty">
           {language === 'en' ? 'Rating and performance open after real completed jobs.' : '\u0110\u00e1nh gi\u00e1 v\u00e0 hi\u1ec7u su\u1ea5t ch\u1ec9 m\u1edf sau vi\u1ec7c ho\u00e0n t\u1ea5t th\u1eadt.'}
@@ -3871,6 +3900,12 @@ function WorkerProfileReputationPanel({ workerProfile }: { workerProfile: Worker
       ) : null}
     </View>
   )
+}
+
+function workerProfileRatingStars(rating: number) {
+  const filled = Math.max(0, Math.min(5, Math.round(rating)))
+
+  return `${'\u2605'.repeat(filled)}${'\u2606'.repeat(5 - filled)}`
 }
 
 function WorkerProfileLevelCard({ workerProfile }: { workerProfile: WorkerProfileResponse | null }) {
