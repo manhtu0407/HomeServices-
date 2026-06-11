@@ -1967,6 +1967,9 @@ export function WorkerChatSurface() {
 
 export function WorkerEarningsSurface() {
   const copy = useWorkerFrameCopy()
+  const language = useAppLanguage()
+  const [showPayDetails, setShowPayDetails] = useState(false)
+  const payDetailActionLabel = language === 'en' ? 'View income details' : 'Xem chi tiết thu nhập'
 
   return (
     <WorkerFrame
@@ -1978,8 +1981,15 @@ export function WorkerEarningsSurface() {
     >
       <WorkerEarningsHero />
       <WorkerEarningsSummary />
-      <WorkerEarningsReconciliationStrip />
-      <WorkerEarningsLedger />
+      <View style={styles.actionRow}>
+        <PressButton label={payDetailActionLabel} material="liquid" onPress={() => setShowPayDetails(true)} testID="worker-pay-detail-action" />
+      </View>
+      {showPayDetails ? (
+        <>
+          <WorkerEarningsReconciliationStrip />
+          <WorkerEarningsLedger />
+        </>
+      ) : null}
     </WorkerFrame>
   )
 }

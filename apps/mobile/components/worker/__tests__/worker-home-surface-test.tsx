@@ -1614,6 +1614,9 @@ describe('WorkerEarningsSurface', () => {
     expect(screen.getByTestId('worker-earnings-chart-empty-label')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-earnings-day-month-summary')).toBeOnTheScreen()
     expect(screen.getAllByTestId('worker-earnings-summary-crisp-shell')).toHaveLength(3)
+    const detailAction = screen.getByTestId('worker-pay-detail-action')
+    expect(detailAction).toHaveTextContent(/Xem chi tiết thu nhập/)
+    fireEvent.press(detailAction)
     expect(screen.getByTestId('worker-earnings-ledger')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-earnings-ledger-crisp-shell')).toBeOnTheScreen()
     expect(screen.queryByText('7 ngày gần nhất')).toBeNull()
@@ -1649,6 +1652,7 @@ describe('WorkerEarningsSurface', () => {
 
     render(<WorkerEarningsSurface />)
 
+    fireEvent.press(screen.getByTestId('worker-pay-detail-action'))
     expect(screen.getByTestId('worker-earnings-reconciliation-strip')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-earnings-paid-jobs-cell')).toHaveTextContent(/6/)
     expect(screen.getByTestId('worker-earnings-pending-cell')).toHaveTextContent(/350\.000/)
@@ -1688,6 +1692,7 @@ describe('WorkerEarningsSurface', () => {
     expect(screen.getByTestId('worker-earnings-today-cell')).toHaveTextContent(/450,000 VND/)
     expect(screen.getByTestId('worker-earnings-period-total-cell')).toHaveTextContent(/1,285,000 VND/)
     expect(screen.getByTestId('worker-earnings-month-cell')).toHaveTextContent(/Waiting for data/)
+    expect(screen.getByTestId('worker-pay-detail-action')).toHaveTextContent(/View income details/)
     expect(screen.queryByText(/6,250,000|6\.250\.000/)).toBeNull()
   })
 })
