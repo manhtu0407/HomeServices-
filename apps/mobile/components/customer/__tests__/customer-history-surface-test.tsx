@@ -234,6 +234,7 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-case-command-cell-3-value')).toHaveTextContent('180.000đ - 260.000đ')
     expect(screen.getByTestId('customer-history-case-command-cell-4-value')).toHaveTextContent('Quận 1')
     expect(screen.getByTestId('customer-history-case-command-cell-5-value')).toHaveTextContent('Chờ tín hiệu di chuyển thật')
+    expect(screen.getByTestId('customer-history-case-command-cell-6-value')).toHaveTextContent(/Thợ nhận việc/)
     expect(commandPanel).not.toHaveTextContent(/Tòa A/)
     expect(commandPanel).not.toHaveTextContent('--')
 
