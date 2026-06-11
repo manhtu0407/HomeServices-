@@ -5,6 +5,8 @@ let mockWorkflowValue: any
 let mockSessionMetadata: Record<string, unknown>
 let mockLanguage: 'vi' | 'en'
 const mockReplace = jest.fn()
+const mockCustomerConfirmCompletion = jest.fn()
+const mockDecideScopeChange = jest.fn()
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
@@ -104,7 +106,7 @@ function buildWorkflow(deal: LocalDeal | null, notificationUnreadCount = 0) {
   const selectors: LocalWorkflowSelectors = {
     canConfirmCustomerSearch: false,
     canCustomerCancelDeal: Boolean(deal),
-    canCustomerConfirmCompletion: false,
+    canCustomerConfirmCompletion: deal?.status === 'completed_by_worker',
     canCustomerSubmitReview: false,
     canWorkerAccept: false,
     canWorkerAdvance: false,
@@ -120,7 +122,10 @@ function buildWorkflow(deal: LocalDeal | null, notificationUnreadCount = 0) {
   }
 
   mockWorkflowValue = {
-    actions: {},
+    actions: {
+      customerConfirmCompletion: mockCustomerConfirmCompletion,
+      decideScopeChange: mockDecideScopeChange,
+    },
     dispatch: jest.fn(),
     notificationUnreadCount,
     notifications: [],
@@ -155,6 +160,10 @@ beforeEach(() => {
   setCustomerThemeMode('light')
   mockLanguage = 'en'
   mockReplace.mockClear()
+  mockCustomerConfirmCompletion.mockClear()
+  mockCustomerConfirmCompletion.mockResolvedValue(true)
+  mockDecideScopeChange.mockClear()
+  mockDecideScopeChange.mockResolvedValue(true)
   mockSessionMetadata = {}
   buildWorkflow(null)
 })
@@ -225,6 +234,37 @@ describe('CustomerAgenticCenterSurface', () => {
     fireEvent.press(screen.getByTestId('customer-agentic-center-approval-scope_change-action'))
 
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/history?tab=price&scope_change=scope_test_1')
+  })
+
+  it('uses the real scope decision action from the approval queue primary action', () => {
+    const deal = buildDeal()
+    deal.backendStatus = 'scope_change_pending'
+    deal.scopeChange = buildScopeChange()
+    deal.status = 'scope_change_pending'
+    buildWorkflow(deal)
+
+    render(<CustomerAgenticCenterSurface />)
+
+    fireEvent.press(screen.getByTestId('customer-agentic-center-approval-scope_change-primary-action'))
+
+    expect(mockDecideScopeChange).toHaveBeenCalledWith('scope_test_1', { decision: 'approve' })
+  })
+
+  it('keeps completion confirmation behind the real workflow gate and routes to review', () => {
+    const deal = buildDeal()
+    deal.backendStatus = 'completed_by_worker'
+    deal.completionNotes = 'Worker uploaded completion evidence.'
+    deal.completionPhotoUrls = ['storage://job_test_1/after.jpg']
+    deal.status = 'completed_by_worker'
+    buildWorkflow(deal)
+
+    render(<CustomerAgenticCenterSurface />)
+
+    expect(screen.queryByTestId('customer-agentic-center-approval-completion-primary-action')).toBeNull()
+    fireEvent.press(screen.getByTestId('customer-agentic-center-approval-completion-action'))
+
+    expect(mockCustomerConfirmCompletion).not.toHaveBeenCalled()
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/history?tab=done')
   })
 
   it('renders saved contact phone in memory from real profile metadata', () => {

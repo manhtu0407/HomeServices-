@@ -26,6 +26,9 @@ type AgenticApprovalRow = {
   actionPath: string
   id: string
   label: string
+  primaryAction?: 'approve_scope' | 'confirm_completion'
+  primaryLabel?: string
+  scopeChangeId?: string
   value: string
 }
 
@@ -62,6 +65,8 @@ const copy = {
     scopeChange: 'Đổi phạm vi đang chờ Kael',
     completion: 'Hoàn tất cần xác nhận',
     payment: 'Thanh toán đang chờ',
+    approveScope: 'Đồng ý',
+    confirmCompletion: 'Xác nhận',
     noEstimate: 'Chưa có ước tính',
     noArea: 'Chưa có khu vực',
     noDescription: 'Chưa có mô tả',
@@ -98,6 +103,8 @@ const copy = {
     scopeChange: 'Scope change waiting for Kael',
     completion: 'Completion needs confirmation',
     payment: 'Payment pending',
+    approveScope: 'Accept',
+    confirmCompletion: 'Confirm',
     noEstimate: 'No estimate yet',
     noArea: 'No area yet',
     noDescription: 'No description yet',
@@ -109,7 +116,7 @@ export function CustomerAgenticCenterSurface() {
   const language = useAppLanguage()
   const text = copy[language]
   const { session } = useAuth()
-  const { state, selectors, notificationUnreadCount } = useFrontendWorkflow()
+  const { actions, state, selectors, notificationUnreadCount } = useFrontendWorkflow()
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const themeMode = useCustomerThemeMode()
   const baseTokens = getCustomerThemeTokens(themeMode)
@@ -128,6 +135,7 @@ export function CustomerAgenticCenterSurface() {
   const metadata = session?.user.user_metadata ?? {}
   const preferences = getPreferenceRows(metadata, language, text)
   const approvals = getApprovalRows({
+    canConfirmCompletion: workflow.allowedActions.confirmCompletion && selectors.canCustomerConfirmCompletion,
     deal,
     language,
     notificationUnreadCount,
@@ -135,6 +143,15 @@ export function CustomerAgenticCenterSurface() {
     text,
   })
   const summaryRows = getSummaryRows({ approvals, deal, preferences, text })
+  const runApprovalPrimaryAction = (item: AgenticApprovalRow) => {
+    if (item.primaryAction === 'approve_scope' && item.scopeChangeId) {
+      void actions.decideScopeChange(item.scopeChangeId, { decision: 'approve' })
+      return
+    }
+    if (item.primaryAction === 'confirm_completion') {
+      void actions.customerConfirmCompletion()
+    }
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: tokens.canvas }]} testID="customer-agentic-center-screen">
@@ -169,7 +186,16 @@ export function CustomerAgenticCenterSurface() {
 
         <CenterSection title={text.approvalQueue} tokens={tokens}>
           {approvals.length > 0
-            ? approvals.map((item) => <ApprovalActionRow key={item.id} item={item} onPress={() => replace(item.actionPath)} reduceMotion={reduceMotion} tokens={tokens} />)
+            ? approvals.map((item) => (
+              <ApprovalActionRow
+                key={item.id}
+                item={item}
+                onPress={() => replace(item.actionPath)}
+                onPrimaryPress={item.primaryAction ? () => runApprovalPrimaryAction(item) : undefined}
+                reduceMotion={reduceMotion}
+                tokens={tokens}
+              />
+            ))
             : <EmptyState body={text.approvalEmptyBody} title={text.approvalEmptyTitle} tokens={tokens} />}
         </CenterSection>
 
@@ -302,16 +328,23 @@ function InfoRow({ label, testID, tokens, value }: { label: string; testID?: str
   )
 }
 
-function ApprovalActionRow({ item, onPress, reduceMotion, tokens }: { item: AgenticApprovalRow; onPress: () => void; reduceMotion: boolean; tokens: CustomerThemeTokens }) {
+function ApprovalActionRow({ item, onPress, onPrimaryPress, reduceMotion, tokens }: { item: AgenticApprovalRow; onPress: () => void; onPrimaryPress?: () => void; reduceMotion: boolean; tokens: CustomerThemeTokens }) {
   return (
     <View style={[styles.approvalRow, centerInfoRowSurface(tokens)]} testID={`customer-agentic-center-approval-${item.id}`}>
       <View style={styles.approvalCopy}>
         <Text style={[styles.infoLabel, { color: tokens.muted }]}>{item.label}</Text>
         <Text style={[styles.infoValue, { color: tokens.text }]} testID={`customer-agentic-center-approval-${item.id}-value`}>{item.value}</Text>
       </View>
-      <Pressable accessibilityLabel={item.actionLabel} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.approvalButton, centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={`customer-agentic-center-approval-${item.id}-action`}>
-        <Text style={[styles.approvalButtonText, { color: tokens.primary }]}>{item.actionLabel}</Text>
-      </Pressable>
+      <View style={styles.approvalActions}>
+        {item.primaryLabel && onPrimaryPress ? (
+          <Pressable accessibilityLabel={item.primaryLabel} accessibilityRole="button" onPress={onPrimaryPress} style={({ pressed }) => [styles.approvalButton, centerPrimaryButtonSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={`customer-agentic-center-approval-${item.id}-primary-action`}>
+            <Text style={[styles.approvalButtonText, { color: tokens.primaryText }]}>{item.primaryLabel}</Text>
+          </Pressable>
+        ) : null}
+        <Pressable accessibilityLabel={item.actionLabel} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.approvalButton, centerOutlineSurface(tokens), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID={`customer-agentic-center-approval-${item.id}-action`}>
+          <Text style={[styles.approvalButtonText, { color: tokens.primary }]}>{item.actionLabel}</Text>
+        </Pressable>
+      </View>
     </View>
   )
 }
@@ -362,12 +395,14 @@ function getSummaryRows({
 }
 
 function getApprovalRows({
+  canConfirmCompletion,
   deal,
   language,
   notificationUnreadCount,
   status,
   text,
 }: {
+  canConfirmCompletion: boolean
   deal: LocalDeal | null
   language: AppLanguage
   notificationUnreadCount: number
@@ -382,6 +417,9 @@ function getApprovalRows({
       actionPath: `${CUSTOMER_HISTORY_PATH}?tab=price&scope_change=${encodeURIComponent(deal.scopeChange.id)}`,
       id: 'scope_change',
       label: text.scopeChange,
+      primaryAction: deal.scopeChange.status === 'waiting_customer_decision' ? 'approve_scope' : undefined,
+      primaryLabel: deal.scopeChange.status === 'waiting_customer_decision' ? text.approveScope : undefined,
+      scopeChangeId: deal.scopeChange.id,
       value: deal.scopeChange.requestedDescription?.trim() || localizedStatusLabel(status, language),
     })
   }
@@ -391,6 +429,8 @@ function getApprovalRows({
       actionPath: `${CUSTOMER_HISTORY_PATH}?tab=done`,
       id: 'completion',
       label: text.completion,
+      primaryAction: canConfirmCompletion ? 'confirm_completion' : undefined,
+      primaryLabel: canConfirmCompletion ? text.confirmCompletion : undefined,
       value: localizedStatusLabel(status, language),
     })
   }
@@ -745,6 +785,10 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs,
     minWidth: 0,
+  },
+  approvalActions: {
+    alignItems: 'stretch',
+    gap: spacing.xs,
   },
   approvalButton: {
     alignItems: 'center',
