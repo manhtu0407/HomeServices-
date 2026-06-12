@@ -798,8 +798,8 @@ const customerCopy = {
       chatHelperDetails: 'Xem chi tiết',
       caseCommandMeta: 'Từ dữ liệu thật',
       caseCommandTitle: 'Trung tâm ca việc',
-      caseConfidence: 'Độ tin cậy',
-      caseEta: 'ETA',
+      caseConfidence: 'Độ phù hợp',
+      caseEta: 'Thời gian phản hồi',
       caseEtaPending: 'Chờ tín hiệu di chuyển thật',
       caseId: 'Mã việc',
       caseLocation: 'Vị trí',
@@ -856,8 +856,8 @@ const customerCopy = {
       jobProgressElapsed: 'Thời gian làm việc',
       jobProgressUpdate: 'Cập nhật hạng mục',
       jobProgressTrackDone: 'Theo dõi hoàn tất',
-      caseMatching: 'Ghép thợ',
-      caseQuote: 'Biên giá',
+      caseMatching: 'Độ ưu tiên',
+      caseQuote: 'Dự toán công việc',
       matchingScoreTitle: 'Điểm ghép thợ',
       matchingScoreMeta: 'Dựa trên phiếu và broadcast thật',
       matchingFit: 'Độ phù hợp',
@@ -1056,8 +1056,8 @@ const customerCopy = {
       chatHelperDetails: 'View details',
       caseCommandMeta: 'From real data',
       caseCommandTitle: 'Case Command Center',
-      caseConfidence: 'Confidence',
-      caseEta: 'ETA',
+      caseConfidence: 'Match fit',
+      caseEta: 'Response time',
       caseEtaPending: 'Awaiting live travel signal',
       caseId: 'Job ID',
       caseLocation: 'Location',
@@ -1114,8 +1114,8 @@ const customerCopy = {
       jobProgressElapsed: 'Work time',
       jobProgressUpdate: 'Work update',
       jobProgressTrackDone: 'Track completion',
-      caseMatching: 'Matching',
-      caseQuote: 'Price band',
+      caseMatching: 'Priority',
+      caseQuote: 'Work estimate',
       matchingScoreTitle: 'Matching score',
       matchingScoreMeta: 'From the real ticket and broadcast',
       matchingFit: 'Match fit',
@@ -1944,7 +1944,7 @@ export function CustomerHistorySurface() {
               <SecondaryButton label={languageMode === 'en' ? 'View chat' : 'Xem chat'} onPress={() => push(kaelChatPath(deal?.draft.serviceType))} compact tone="primary" />
             </View>
           </View> : null}
-          {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} phaseContext={workflow.phaseContext} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
+          {deal && showRepairTab ? <CustomerHistoryCaseCommandPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryMatchingScorePanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
           {deal && showRepairTab ? <CustomerHistoryLocationEtaPanel copy={copy} deal={deal} languageMode={languageMode} onOpenKael={continueOrCreate} tokens={tokens} visibleStatusLabel={visibleStatusLabel} /> : null}
           {deal && showRepairTab && customerCancelRequiresKaelPolicy(deal.status) ? <CustomerHistoryJobAcceptancePanel copy={copy} deal={deal} languageMode={languageMode} onOpenJobChat={() => selectHistoryTab('chat')} phaseContext={workflow.phaseContext} tokens={tokens} workerStateLabel={workerStateLabel} /> : null}
@@ -3817,7 +3817,6 @@ function CustomerHistoryCaseCommandPanel({
   deal,
   languageMode,
   onOpenKael,
-  phaseContext,
   tokens,
   visibleStatusLabel,
   workerStateLabel,
@@ -3826,16 +3825,11 @@ function CustomerHistoryCaseCommandPanel({
   deal: LocalDeal
   languageMode: AppLanguage
   onOpenKael: () => void
-  phaseContext: WorkflowPhaseContext
   tokens: CustomerThemeTokens
   visibleStatusLabel: string
   workerStateLabel: string
 }) {
   const broadcast = deal.broadcast
-  const releasedAddress = broadcast?.fullAddressVisible && broadcast.fullAddressLabel
-    ? broadcast.fullAddressLabel
-    : null
-  const safeLocation = releasedAddress ?? broadcast?.generalArea ?? deal.draft.districtLabel
   const rawJobId = (broadcast?.jobId || (deal.id === LOCAL_DEAL_ID ? '' : deal.id)).trim()
   const jobId = rawJobId.length > 0 ? rawJobId : copy.history.kaelReviewing
   const displayJobId = rawJobId.length > 0
@@ -3844,18 +3838,14 @@ function CustomerHistoryCaseCommandPanel({
       : `#${rawJobId}`
     : jobId
   const confidenceLabel = deal.estimate?.confidenceLabel?.trim() || copy.history.kaelReviewing
+  const priorityLabel = localizedCustomerComplexityLabel(deal.estimate?.complexity, languageMode, copy.history.kaelReviewing)
   const quoteLabel = deal.estimate?.priceRangeLabel || broadcast?.estimatedPriceLabel || copy.history.kaelReviewing
-  const nextLabel = phaseContext.nextExpectedEvent
-    ? workflowEventLabel(phaseContext.nextExpectedEvent, languageMode)
-    : visibleStatusLabel
+  const responseTimeLabel = deal.draft.timeChoice === 'now' ? copy.history.workerQuoteTimeNow : copy.history.kaelReviewing
   const rows = [
-    [copy.history.caseId, jobId],
     [copy.history.caseConfidence, confidenceLabel],
-    [copy.history.caseMatching, workerStateLabel],
+    [copy.history.caseMatching, priorityLabel],
     [copy.history.caseQuote, quoteLabel],
-    [copy.history.caseLocation, localizedCustomerAreaLabel(safeLocation, languageMode, copy.ticket.unknown)],
-    [copy.history.caseEta, copy.history.caseEtaPending],
-    [copy.history.caseNext, nextLabel],
+    [copy.history.caseEta, responseTimeLabel],
   ] as const
 
   return (

@@ -430,6 +430,12 @@
   - Focused Group B suites passed after the Group B audit checkpoint: 3 suites, 45 tests.
   - Mobile type-check passed after the Group B audit checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Group B audit checkpoint: 17 suites, 195 tests.
+  - Re-audited Group C 2.5 against the reference crop; Case Overview now uses the compact four-row summary for match fit, priority, work estimate, and response time while the hero keeps real job id, service, status, Kael cue, and the Kael chat CTA.
+  - Case Overview keeps exact location and travel telemetry out of the overview; Location & ETA remains the source for address-release state.
+  - Focused Case Overview test passed after the Group C 2.5 checkpoint.
+  - Customer History suite passed after the Group C 2.5 checkpoint: 22 tests.
+  - Mobile type-check passed after the Group C 2.5 checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Group C 2.5 checkpoint: 17 suites, 195 tests.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 

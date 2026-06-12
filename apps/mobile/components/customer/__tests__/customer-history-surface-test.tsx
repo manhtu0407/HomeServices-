@@ -235,11 +235,14 @@ describe('CustomerHistorySurface phase context', () => {
     expect(screen.getByTestId('customer-history-case-command-hero')).toHaveTextContent(/#job_test_1/)
     expect(screen.getByTestId('customer-history-case-command-hero')).toHaveTextContent(/Sửa điện/)
     expect(screen.getByTestId('customer-history-case-command-hero')).toHaveTextContent(/Kael đang tìm thợ/)
-    expect(screen.getByTestId('customer-history-case-command-cell-1-value')).toHaveTextContent('84%')
-    expect(screen.getByTestId('customer-history-case-command-cell-3-value')).toHaveTextContent('180.000đ - 260.000đ')
-    expect(screen.getByTestId('customer-history-case-command-cell-4-value')).toHaveTextContent('Quận 1')
-    expect(screen.getByTestId('customer-history-case-command-cell-5-value')).toHaveTextContent('Chờ tín hiệu di chuyển thật')
-    expect(screen.getByTestId('customer-history-case-command-cell-6-value')).toHaveTextContent(/Thợ nhận việc/)
+    expect(screen.getByTestId('customer-history-case-command-cell-0')).toHaveTextContent(/Độ phù hợp/)
+    expect(screen.getByTestId('customer-history-case-command-cell-0-value')).toHaveTextContent('84%')
+    expect(screen.getByTestId('customer-history-case-command-cell-1')).toHaveTextContent(/Độ ưu tiên/)
+    expect(screen.getByTestId('customer-history-case-command-cell-1-value')).toHaveTextContent('Vừa')
+    expect(screen.getByTestId('customer-history-case-command-cell-2')).toHaveTextContent(/Dự toán công việc/)
+    expect(screen.getByTestId('customer-history-case-command-cell-2-value')).toHaveTextContent('180.000đ - 260.000đ')
+    expect(screen.getByTestId('customer-history-case-command-cell-3')).toHaveTextContent(/Thời gian phản hồi/)
+    expect(screen.getByTestId('customer-history-case-command-cell-3-value')).toHaveTextContent('Ngay bây giờ')
     expect(screen.getByTestId('customer-history-case-command-open-kael')).toHaveTextContent(/Tiếp tục với Kael/)
     fireEvent.press(screen.getByTestId('customer-history-case-command-open-kael'))
     expect(mockPush).toHaveBeenCalledWith('/(customer)/kael-chat?serviceType=electrical')
@@ -249,7 +252,7 @@ describe('CustomerHistorySurface phase context', () => {
     buildWorkflow(buildDeal('worker_on_way'))
     rerender(<CustomerHistorySurface />)
 
-    expect(screen.getByTestId('customer-history-case-command-cell-4-value')).toHaveTextContent('Tòa A, Quận 1')
+    expect(screen.getByTestId('customer-history-case-command-panel')).not.toHaveTextContent(/Tòa A/)
   })
 
   it('shows matching score from real estimate and broadcast state without fake worker ratings', () => {
