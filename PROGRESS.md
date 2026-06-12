@@ -436,6 +436,12 @@
   - Customer History suite passed after the Group C 2.5 checkpoint: 22 tests.
   - Mobile type-check passed after the Group C 2.5 checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Group C 2.5 checkpoint: 17 suites, 195 tests.
+  - Re-audited Group E against `02_agentic_center.png` and the zip design system; the separated Kael Orb route renders Commanding Home, Active Case, Approval Queue, and Memory & Preferences with real workflow, notification, approval, profile, and Kael memory state.
+  - Asset audit for Group E confirmed the zip provides the mascot motion page but no standalone state exports; `ASSETS_NEEDED.md` and `design/ASSET_MAP.md` already track official Kael state and Orb exports, while the app uses the typed `KaelMascot` shell and existing fallback images without cropping from the boards.
+  - Agentic Center suite passed after the Group E audit checkpoint: 11 tests.
+  - Kael Orb dock focused test passed after the Group E audit checkpoint.
+  - Mobile type-check passed after the Group E audit checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Group E audit checkpoint: 17 suites, 195 tests.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
