@@ -426,6 +426,10 @@
   - `tsc --noEmit` from `apps/mobile` passed after the Media / Voice Note CTA checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Media / Voice Note CTA checkpoint: 17 suites, 194 tests.
   - Added-line token grep and product-scope grep for the Media / Voice Note CTA diff returned no matches; no fake waveform duration such as `00:12` was added.
+  - Re-audited Group B against the reference crops; Home, Booking, Media, and Live Performance match available backend fields, including multi-select media preview and honest voice and ETA waiting states.
+  - Focused Group B suites passed after the Group B audit checkpoint: 3 suites, 45 tests.
+  - Mobile type-check passed after the Group B audit checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Group B audit checkpoint: 17 suites, 195 tests.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
