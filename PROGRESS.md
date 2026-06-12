@@ -442,6 +442,13 @@
   - Kael Orb dock focused test passed after the Group E audit checkpoint.
   - Mobile type-check passed after the Group E audit checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Group E audit checkpoint: 17 suites, 195 tests.
+  - Re-audited Group F against `03_profiles.png` and the zip profile page; worker and customer profile sections align to available backend/profile metadata fields while visual-only chart, radar, medal, and gauge details remain absent unless structured API fields exist.
+  - API audit for Group F confirmed worker profile exposes legal name, approval/availability, service coverage, review score, total jobs, and `WorkerEarnings`; customer profile metrics are explicit metadata aliases, so missing values stay in waiting states.
+  - Worker profile focused tests passed after the Group F audit checkpoint: 13 tests.
+  - Worker suite passed after the Group F audit checkpoint: 59 tests.
+  - Customer profile suite passed after the Group F audit checkpoint: 18 tests.
+  - Mobile type-check passed after the Group F audit checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Group F audit checkpoint: 17 suites, 195 tests.
   - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
   - `git diff --check` passed.
 
