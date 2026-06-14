@@ -183,3 +183,25 @@ Matches §38 G6 PRE-fix baseline exactly: 1 WARN (F3) + 2 INFO (F5), both envs.
 **POST-S1 verification (proves F3 closed):** re-run `get_advisors(security)` on both project_ids → the `auth_leaked_password_protection` WARN must be **gone**; the 2 `rls_enabled_no_policy` INFO remain (those are F5, closed in S2). Append the post-toggle advisor result here.
 
 **POST-S1 result:** _pending Tu dashboard toggle — to be filled after step 1 applied on both envs._
+
+---
+
+## 10. S2–S5 execution log + honest residuals (2026-06-14)
+
+Executed continuously in `claude/gallant-sinoussi-b0c0c3` per §38. Evidence in `docs/test-logs/2026-06-14_security-hardening-s1-s5.md`.
+
+- **S2 (commit `362fee72`) — F2 ✓, F6 ✓, F5 code (apply pending):** learning-candidate routes → admin-only at the router (service guard kept as defense-in-depth); `SECURITY_DIRECTIVES` added to the system prompt; semantic injection classifier confirmed already always-on (`services.ts:1541,2240`, documented — not converted to a flag, which would only add an off-switch). Migration `20260614120000` adds explicit deny-all policy on the two rate-limit-log tables. Tests 16/16 + bite proof (revert → 4 fail).
+- **S3 (commit `d70e0c68`) — guardrail tests, 0 prod diff:** authz-coverage tripwire derives the 32 resource-scoped routes from `router.ts` and fails loud on any new unguarded route (bite-proven by injecting a fake route); `requireJobAccess` IDOR negatives (cross-tenant → 404, same code as missing → no existence leak). 12/12.
+- **S4 (commit `2913de16`) — F1 ✓ (core); F4 PARTIAL:** durable DB-backed ledger `kael_ai_spend_log` + `check_kael_ai_spend`/`record_kael_ai_spend` RPCs; global + per-user daily/monthly caps read **before each provider call**; `KAEL_AI_KILL_SWITCH` unconditional hard-stop with honest VI unavailable state. Durability acceptance 11/11 (cumulative-to-cap, cold-isolate blocks from ledger read alone, reads-DB-before-each-call, no network on block).
+
+  **Honest residuals (corrects the S4 commit's "F4 closed" overstatement):**
+  1. **Spend-cap coverage = the expensive customer-estimate calls (vision + market).** `intent_classification` (deepseek ~$0.001), worker `scope_change`, and admin price-synthesis A/B call sites are covered by the **kill-switch only**, not the per-call spend-cap. The global daily cap therefore meters the dominant (vision/market) spend; cheap/trusted calls are not metered.
+  2. **F4 circuit-breaker durability NOT done.** The *cost* dimension of F4 is durable (the ledger); `circuit-breaker.ts` remains in-memory/per-isolate. Durable breaker needs a sync→async refactor across the routing path — deferred as **LOW** (regression risk > value; failed calls cost ~$0). **F4 = PARTIAL, not closed.**
+  3. **S4(d) signup throttle / verified-account-before-AI NOT implemented → HARD GATE #5.** Per §38.1 #5 the false-positive policy (blocking real unverified users) is a design tradeoff for Tu. The **global daily cap already bounds N-account amplification on the expensive path**; signup throttle is additional defense-in-depth, deliberately not chosen silently.
+- **S5 (commit `bc656cad`) — F6 ongoing:** first CI in repo (`.github/workflows/security.yml`: gitleaks + security-tests) + PII-log lint (bite-proven) + refreshed injection negatives (proves the always-on classifier catches phrasings the deny-list misses). gitleaks runs in CI (not installed locally; local prefix grep = 0 hits).
+
+**Advisor expected-state (G6):** PRE-apply baseline still holds and was re-verified (1 WARN F3 + 2 INFO F5, both envs). Migrations were intentionally **not applied** from this session (deploy = handoff). POST Tu actions: S1 dashboard → WARN clears; S2 migration → 2 INFO clear; S4 migration → `kael_ai_spend_log` ships with RLS + deny-all policy (no new lint expected).
+
+**Open items requiring Tu (HARD GATEs):**
+1. **HG#2 deploy:** (a) enable leaked-password (S1 dashboard, both envs); (b) set `KAEL_AI_KILL_SWITCH` secret (default off); (c) apply migrations `20260614120000` + `20260614120500` to staging then prod; (d) re-run `get_advisors(security)` and append results.
+2. **HG#5 signup throttle (S4d):** choose — (a) Supabase Auth signup/OTP rate-limit (dashboard), (b) require email-verified before AI (code; risks blocking legit unverified users), or (c) accept global-cap-only for v1. Recommendation: (a) + (c) now (lowest false-positive risk), revisit (b) post-launch.
