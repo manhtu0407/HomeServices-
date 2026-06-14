@@ -1537,6 +1537,8 @@ async function maybeApplyKaelBoundaryGuard(
     readonly jobId: string | null;
   } = { actorId: null, jobId: null },
 ): Promise<boolean> {
+  // S2/F6 (§38): semantic injection classifier is intentionally always-on here
+  // (do not gate off) — defense-in-depth on the customer Kael chat path.
   const boundary = evaluateMessageBoundary(message, serviceType, {
     semanticInjectionClassifierEnabled: true,
   });
@@ -2236,6 +2238,8 @@ async function advanceKaelChatEstimate(
   // call so cost stays zero for declined turns and Kael never emits an
   // estimate that would violate RULES.md #6 (service scope) or #8 (no
   // fake/off-topic data).
+  // S2/F6 (§38): semantic injection classifier is intentionally always-on here
+  // (do not gate off) — defense-in-depth on the customer Kael chat turn path.
   const boundary = evaluateMessageBoundary(message, input.service_type, {
     semanticInjectionClassifierEnabled: true,
   });
