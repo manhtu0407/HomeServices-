@@ -1010,6 +1010,14 @@ export function EstimateCard({
   const tokens = useKaelChatTokens()
   const problem = localizedGeneratedText(estimate.problem_summary || estimate.problem_category, language, text.estimateProblemFallback)
   const advisory = localizedOptionalGeneratedText(estimate.advisory, language)
+  // A-2 (Notes.md): when Kael flagged the estimate as low-confidence it sets
+  // needs_inspection; show it explicitly so the customer reads the range as
+  // preliminary (prevents "giá chắc -> tranh chấp khi thợ tới").
+  const needsInspection = estimate.needs_inspection === true
+  const inspectionBody = localizedOptionalGeneratedText(estimate.needs_inspection_reason, language)
+    ?? (language === 'vi'
+      ? 'Kael cần thợ xác nhận tại hiện trường trước khi chốt giá; khoảng giá trên là ước tính sơ bộ.'
+      : 'Kael needs an on-site check before confirming the price; the range above is preliminary.')
   const disclaimer = language === 'vi'
     ? LOCAL_WORKFLOW_PRICE_DISCLAIMER
     : localizedGeneratedText(estimate.disclaimer, language, text.estimateDisclaimerFallback)
@@ -1034,6 +1042,14 @@ export function EstimateCard({
       <InfoRow label={text.labels.price} value={formatPriceRange(estimate.price_min, estimate.price_max)} />
       <InfoRow label={text.labels.complexity} value={text.complexity[estimate.complexity]} />
       <InfoRow label={text.labels.confidence} value={`${Math.round(estimate.confidence * 100)}%`} />
+      {needsInspection ? (
+        <View style={[styles.inspectionNotice, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-needs-inspection">
+          <Text style={[styles.inspectionNoticeTitle, { color: tokens.text }]}>
+            {language === 'vi' ? 'Cần kiểm tra tại hiện trường' : 'On-site inspection needed'}
+          </Text>
+          <Text style={[styles.inspectionNoticeBody, { color: tokens.muted }]}>{inspectionBody}</Text>
+        </View>
+      ) : null}
       {advisory ? <InfoRow label={text.labels.advisory} value={advisory} /> : null}
       <InfoRow label={text.labels.platformFee} value={formatPlatformFee(language)} />
       <InfoRow

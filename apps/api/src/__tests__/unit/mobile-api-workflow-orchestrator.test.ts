@@ -238,7 +238,14 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     expect(servicesSource).toContain('event: "scope_change_requested"')
     expect(servicesSource).toContain('resultingEvent: "kael_decided_scope_change"')
     expect(servicesSource).toContain('function tryAutoApproveScopeChange')
-    expect(servicesSource).toContain('policyId: "kael.autonomy.v2.scope_change_auto_approve"')
+    // K-1 (Notes.md, Tu chốt 2026-06-13): scope-change auto-approve is disabled —
+    // a scope-change changes the deal price, so it is ALWAYS confirmed by the
+    // customer (even low-risk). tryAutoApproveScopeChange is now a no-op, the
+    // auto-approve autonomy policy id is removed, and the worker request always
+    // routes to the customer-decide path. This assertion guards against the
+    // auto-approve wiring being silently re-introduced.
+    expect(servicesSource).not.toContain('policyId: "kael.autonomy.v2.scope_change_auto_approve"')
+    expect(servicesSource).toContain('notifyCustomerScopeChangeRequested')
     expect(servicesSource).toContain('notifyCustomerScopeChangeDecided')
     expect(servicesSource).toContain('scope_change_auto_approved')
   })

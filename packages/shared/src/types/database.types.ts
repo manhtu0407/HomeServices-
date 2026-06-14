@@ -1832,6 +1832,27 @@ export type Database = {
           },
         ]
       }
+      kael_provider_spend_daily: {
+        Row: {
+          call_count: number
+          spend_date: string
+          total_cost_usd: number
+          updated_at: string
+        }
+        Insert: {
+          call_count?: number
+          spend_date?: string
+          total_cost_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          call_count?: number
+          spend_date?: string
+          total_cost_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kael_guardrail_trip_audit: {
         Row: {
           actor_id: string | null
@@ -3881,6 +3902,14 @@ export type Database = {
           minute_count: number
           reason: string | null
         }[]
+      }
+      get_kael_provider_spend_today: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      record_kael_provider_spend: {
+        Args: { p_cost_usd: number }
+        Returns: number
       }
       accept_broadcast_atomic: {
         Args: { p_job_id: string; p_worker_id: string }

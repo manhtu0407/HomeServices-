@@ -815,6 +815,40 @@ describe('Kael agentic phase cards', () => {
     })
   })
 
+  it('shows the on-site inspection notice only when Kael flags a low-confidence estimate (A-2)', () => {
+    const { rerender } = render(
+      <EstimateCard
+        canStartOrchestration
+        estimate={estimate}
+        language="vi"
+        onStartOrchestration={jest.fn()}
+        orchestrating={false}
+        orchestrationStarted={false}
+        text={estimateText}
+      />,
+    )
+    expect(screen.queryByTestId('customer-kael-chat-needs-inspection')).toBeNull()
+
+    rerender(
+      <EstimateCard
+        canStartOrchestration
+        estimate={{
+          ...estimate,
+          needs_inspection: true,
+          price_source: 'inspection_required',
+          needs_inspection_reason: 'Ảnh chưa đủ rõ để phân biệt rò nhẹ hay hỏng ống âm.',
+        }}
+        language="vi"
+        onStartOrchestration={jest.fn()}
+        orchestrating={false}
+        orchestrationStarted={false}
+        text={estimateText}
+      />,
+    )
+    expect(screen.getByTestId('customer-kael-chat-needs-inspection')).toBeOnTheScreen()
+    expect(screen.getByText('Cần kiểm tra tại hiện trường')).toBeOnTheScreen()
+  })
+
   it('renders the orchestration confirmation with the worker mint material formula', () => {
     const openHistory = jest.fn()
 

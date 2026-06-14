@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { jobService } from './services'
+import { subscribeToJobMessages } from './realtime'
 import type { JobMessageResponse } from './api-types'
 
 type JobChatThreadState = {
@@ -19,6 +20,7 @@ const initialJobChatThreadState: JobChatThreadState = {
 export function useJobChatThread(jobId: string | null, enabled: boolean) {
   const [state, setState] = useState<JobChatThreadState>(initialJobChatThreadState)
   const requestIdRef = useRef(0)
+  const reloadRef = useRef<() => Promise<boolean>>(async () => false)
 
   const reload = useCallback(async () => {
     if (!jobId || !enabled) {
@@ -78,8 +80,29 @@ export function useJobChatThread(jobId: string | null, enabled: boolean) {
   }, [enabled, jobId])
 
   useEffect(() => {
+    reloadRef.current = reload
+  }, [reload])
+
+  useEffect(() => {
     void reload()
   }, [reload])
+
+  // H9-1 (Notes.md): live delivery of the counterparty's messages. Without this
+  // the thread only refreshed on mount and after the user's own send, so a
+  // worker asking "đồng hồ điện ở đâu?" stayed invisible until the customer
+  // happened to send something. Subscribe to INSERTs and re-fetch the
+  // authoritative list (server-ordered, deduped) instead of trusting the
+  // payload shape. Poll is not added back; realtime is the delivery path and the
+  // mount reload covers the cold open. unsubscribe runs on jobId/enabled change.
+  useEffect(() => {
+    if (!jobId || !enabled) return
+    const handle = subscribeToJobMessages(jobId, () => {
+      void reloadRef.current()
+    })
+    return () => {
+      void handle?.unsubscribe()?.catch(() => {})
+    }
+  }, [enabled, jobId])
 
   return {
     ...state,

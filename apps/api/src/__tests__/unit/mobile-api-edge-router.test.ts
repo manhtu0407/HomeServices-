@@ -107,6 +107,9 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     getMyKaelMemory: vi.fn(),
     getWorkerKaelMemory: vi.fn(),
     deleteMyKaelMemory: vi.fn(),
+    updateMyKaelMemory: vi.fn(),
+    listMyPendingDecisions: vi.fn(async () => ({ pending_decisions: [] })),
+    listMyThreads: vi.fn(async () => ({ threads: [] })),
     getWorkerProfile: vi.fn(),
     updateWorkerAvailability: vi.fn(),
     listWorkerBroadcasts: vi.fn(),
@@ -515,6 +518,48 @@ describe('mobile-api Edge router contract', () => {
     expect(deleteResponse.status).toBe(200)
     expect(getMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
     expect(deleteMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+  })
+
+  it('U-5: routes the 3 Agentic-Center endpoints to their authenticated services', async () => {
+    const updateMyKaelMemory = vi.fn(async () => ({ subject_type: 'customer' as const, memory: null }))
+    const listMyPendingDecisions = vi.fn(async () => ({ pending_decisions: [] }))
+    const listMyThreads = vi.fn(async () => ({ threads: [] }))
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ updateMyKaelMemory, listMyPendingDecisions, listMyThreads }),
+    })
+
+    const patchResponse = await handler(new Request('https://example.test/mobile-api/me/kael-memory', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ language: 'en' }),
+    }))
+    const pendingResponse = await handler(new Request('https://example.test/mobile-api/me/pending-decisions'))
+    const threadsResponse = await handler(new Request('https://example.test/mobile-api/me/threads'))
+
+    expect(patchResponse.status).toBe(200)
+    expect(pendingResponse.status).toBe(200)
+    expect(threadsResponse.status).toBe(200)
+    expect(updateMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth), { language: 'en' })
+    expect(listMyPendingDecisions).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+    expect(listMyThreads).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+  })
+
+  it('U-5: PATCH /me/kael-memory rejects an empty update with 400', async () => {
+    const updateMyKaelMemory = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ updateMyKaelMemory }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/me/kael-memory', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(updateMyKaelMemory).not.toHaveBeenCalled()
   })
 
   it('X4 F-17: routes customer GET /me/jobs/active to listCustomerActiveJobs', async () => {
