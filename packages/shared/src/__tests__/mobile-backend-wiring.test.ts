@@ -105,7 +105,12 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(edgeKaelLearning).toContain('.eq("rule_type", "price_prior_update")')
     expect(edgeKaelPipeline).toContain('const learnedComplexity = await applyLearnedComplexityRule')
     expect(edgeKaelPipeline).toContain('const effectiveComplexity = learnedComplexity?.newComplexity ??')
-    expect(edgeKaelPipeline).toContain('const learnedPrice = await applyLearnedPriceRule')
+    // A-1 (Notes.md): the learned price is clamped against the baseline band at
+    // apply time, so applyLearnedPriceRule is now wrapped by
+    // clampLearnedPriceToBaseline before it feeds price synthesis.
+    expect(edgeKaelLearning).toContain('export function clampLearnedPriceToBaseline')
+    expect(edgeKaelPipeline).toContain('clampLearnedPriceToBaseline(')
+    expect(edgeKaelPipeline).toContain('await applyLearnedPriceRule(')
     expect(edgeKaelPipeline).toContain('baselineMin: learnedPrice?.priceMin ?? baselineResult.priceMin')
   })
 

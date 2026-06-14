@@ -512,6 +512,21 @@ export const customerScopeDecisionSchema = z.object({
   decision: z.enum(["approve", "reject"]),
 });
 
+// U-5 (Notes.md 5.4): user-editable subset of their own Kael memory. Only fields
+// the user owns — language (both roles) and the customer's free-text preference
+// note (PII-scrubbed server-side before storage). Kael-computed fields
+// (trust_signals / service_preferences) stay read-only.
+export const updateKaelMemorySchema = z
+  .object({
+    language: z.enum(["vi", "en"]).optional(),
+    preference_summary: z.string().trim().max(600).optional(),
+  })
+  .refine(
+    (value) =>
+      value.language !== undefined || value.preference_summary !== undefined,
+    { message: "Cần ít nhất một trường để cập nhật" },
+  );
+
 export function sanitizeForLLM(input: string): string {
   let cleaned = "";
   for (const char of input) {
@@ -570,3 +585,4 @@ export type DevicePushTokenInput = z.infer<typeof devicePushTokenSchema>;
 export type CustomerScopeDecisionInput = z.infer<
   typeof customerScopeDecisionSchema
 >;
+export type UpdateKaelMemoryInput = z.infer<typeof updateKaelMemorySchema>;

@@ -7,6 +7,8 @@ import {
   customerKaelFeedbackSchema,
   type CustomerScopeDecisionInput,
   customerScopeDecisionSchema,
+  updateKaelMemorySchema,
+  type UpdateKaelMemoryInput,
   type DisputeAdminDecisionInput,
   disputeAdminDecisionSchema,
   type DisputeCounterStatementInput,
@@ -740,6 +742,39 @@ export type KaelMemoryDeleteResponse = {
   deleted: true;
 };
 
+// U-5 (Notes.md 5.3): pending Kael decisions the customer must make.
+export type PendingDecisionItem = {
+  kind: "scope_change";
+  scope_change_id: string;
+  job_id: string;
+  service_type: string | null;
+  problem: string | null;
+  requested_description: string;
+  reason: string;
+  price_min: number;
+  price_max: number;
+  created_at: string;
+};
+export type PendingDecisionsResponse = {
+  pending_decisions: PendingDecisionItem[];
+};
+
+// U-5 (Notes.md): cross-job message inbox summary.
+export type ThreadSummary = {
+  job_id: string;
+  status: string;
+  service_type: string | null;
+  last_message: {
+    content: string;
+    sender_role: string | null;
+    created_at: string;
+  };
+  unread_count: number;
+};
+export type ThreadsResponse = {
+  threads: ThreadSummary[];
+};
+
 export type MobileApiServices = {
   getKaelCharter(): Promise<KaelPublicCharterResponse> | KaelPublicCharterResponse;
   listServices(ctx: MobileApiContext): Promise<ServiceCatalogResponse>;
@@ -919,6 +954,12 @@ export type MobileApiServices = {
   getMyKaelMemory(ctx: MobileApiContext): Promise<KaelMemorySelfViewResponse>;
   getWorkerKaelMemory(ctx: MobileApiContext): Promise<KaelMemorySelfViewResponse>;
   deleteMyKaelMemory(ctx: MobileApiContext): Promise<KaelMemoryDeleteResponse>;
+  updateMyKaelMemory(
+    ctx: MobileApiContext,
+    input: UpdateKaelMemoryInput,
+  ): Promise<KaelMemorySelfViewResponse>;
+  listMyPendingDecisions(ctx: MobileApiContext): Promise<PendingDecisionsResponse>;
+  listMyThreads(ctx: MobileApiContext): Promise<ThreadsResponse>;
   getWorkerProfile(ctx: MobileApiContext): Promise<WorkerProfileResponse>;
   updateWorkerAvailability(
     ctx: MobileApiContext,
@@ -1217,6 +1258,9 @@ type Route =
   }
   | { kind: "me.kaelMemory"; method: "GET"; roles: UserRole[] }
   | { kind: "me.kaelMemory.delete"; method: "DELETE"; roles: UserRole[] }
+  | { kind: "me.kaelMemory.update"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "me.pendingDecisions"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.threads"; method: "GET"; roles: UserRole[] }
   | {
     kind: "me.kaelFeedback";
     method: "POST";
@@ -1355,6 +1399,12 @@ function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/me/jobs/active") {
     return { kind: "me.jobs.active", method: "GET", roles: ["customer", "admin"] };
   }
+  if (method === "GET" && path === "/me/pending-decisions") {
+    return { kind: "me.pendingDecisions", method: "GET", roles: ["customer", "admin"] };
+  }
+  if (method === "GET" && path === "/me/threads") {
+    return { kind: "me.threads", method: "GET", roles: ["customer", "admin"] };
+  }
   if (method === "POST" && path === "/me/kael-feedback") {
     return {
       kind: "me.kaelFeedback",
@@ -1370,6 +1420,13 @@ function matchRoute(request: Request): Route | null {
     return {
       kind: "me.kaelMemory.delete",
       method: "DELETE",
+      roles: ["customer", "worker", "admin"],
+    };
+  }
+  if (method === "PATCH" && path === "/me/kael-memory") {
+    return {
+      kind: "me.kaelMemory.update",
+      method: "PATCH",
       roles: ["customer", "worker", "admin"],
     };
   }
@@ -1975,6 +2032,15 @@ async function dispatchRoute(
       return services.getMyKaelMemory(ctx);
     case "me.kaelMemory.delete":
       return services.deleteMyKaelMemory(ctx);
+    case "me.kaelMemory.update": {
+      const input = updateKaelMemorySchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.updateMyKaelMemory(ctx, input.data);
+    }
+    case "me.pendingDecisions":
+      return services.listMyPendingDecisions(ctx);
+    case "me.threads":
+      return services.listMyThreads(ctx);
     case "workers.register": {
       const input = workerRegisterSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

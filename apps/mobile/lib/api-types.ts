@@ -41,6 +41,11 @@ type KaelEstimate = {
   confidence: number
   advisory: string | null
   disclaimer: string
+  // A-2 (Notes.md): honesty fields surfaced from estimate_card_v3 so the card
+  // can show an on-site-inspection signal when Kael's price is low-confidence.
+  needs_inspection?: boolean
+  price_source?: string | null
+  needs_inspection_reason?: string | null
 }
 
 export type CreateJobResponse = {
@@ -183,6 +188,45 @@ export type JobDetailResponse = {
 // X4 (Plan.md §27.7 — 2026-05-29): F-17 customer active-job hydration.
 export type CustomerActiveJobResponse = {
   active_job: JobDetailResponse | null
+}
+
+// U-5 (Notes.md 5.4): edit/read the user-owned subset of Kael memory.
+export type KaelMemoryResponse = {
+  subject_type: 'customer' | 'worker'
+  memory: Record<string, unknown> | null
+}
+
+// U-5 (Notes.md 5.3): pending Kael decisions the customer must make.
+export type PendingDecisionItem = {
+  kind: 'scope_change'
+  scope_change_id: string
+  job_id: string
+  service_type: string | null
+  problem: string | null
+  requested_description: string
+  reason: string
+  price_min: number
+  price_max: number
+  created_at: string
+}
+export type PendingDecisionsResponse = {
+  pending_decisions: PendingDecisionItem[]
+}
+
+// U-5 (Notes.md): cross-job message inbox summary.
+export type ThreadSummary = {
+  job_id: string
+  status: string
+  service_type: string | null
+  last_message: {
+    content: string
+    sender_role: string | null
+    created_at: string
+  }
+  unread_count: number
+}
+export type ThreadsResponse = {
+  threads: ThreadSummary[]
 }
 
 export type JobMessageResponse = {
