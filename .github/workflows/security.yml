@@ -1,0 +1,51 @@
+# S5 (Plan.md §38 security hardening): CI guardrails against regressions.
+#  - gitleaks: blocks committed secrets (RULES #1).
+#  - security-tests: PII-log lint (RULES #9) + authz-coverage + negative security tests.
+# Advisor re-baseline after DDL stays a manual step (needs project credentials) — see
+# docs/audit/security-audit-20260614.md.
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: gitleaks secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  security-tests:
+    name: PII-log lint + authz/negative security tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Security guardrail tests
+        run: >
+          pnpm --filter @home-services/api exec vitest run
+          foundation
+          route-security
+          mobile-api-s2-learning-candidate-authz
+          mobile-api-s2-system-prompt-security
+          mobile-api-s3-authz-coverage
+          mobile-api-s3-require-job-access
+          mobile-api-s4-spend-gate
+          kael-redteam
