@@ -1,11 +1,56 @@
 import type { AICacheStatus, AIMessageContent, AIProvider, AIRequest, AIResponse, AIError, EdgeAiSecrets, ProviderRequestSpec, AITextContent } from "./types.ts";
 import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
 import { readKaelOptimizationFlags } from "./cost-tracking.ts";
+import {
+  checkAiSpendAllowed,
+  isKaelAiKillSwitchEnabled,
+  type KaelSpendGate,
+  recordAiSpend,
+} from "./spend-gate.ts";
 
 export async function callAI(
   request: AIRequest,
   secrets: EdgeAiSecrets,
+  gate?: KaelSpendGate,
 ): Promise<AIResponse | AIError> {
+  // S4/F1 (§38): global kill-switch — hard-stop ALL provider calls during an
+  // incident, before any network/cost. Honest failure (no fake success, RULES #8);
+  // callers map AIError -> safe fallback / VI unavailable state.
+  if (isKaelAiKillSwitchEnabled()) {
+    console.warn("AI call blocked by KAEL_AI_KILL_SWITCH", {
+      provider: request.provider,
+      purpose: request.purpose,
+    });
+    return {
+      success: false,
+      provider: request.provider,
+      code: "AI_DISABLED",
+      error: "kill_switch",
+    };
+  }
+
+  // S4/F1 (§38): durable, DB-backed spend gate read BEFORE the provider call.
+  // Stateless (reads the ledger every call) so caps survive cold isolates.
+  if (gate) {
+    const verdict = await checkAiSpendAllowed(gate.client, {
+      actorId: gate.actorId,
+      estimatedCostUsd: gate.estimatedCostUsd,
+    });
+    if (!verdict.allowed) {
+      console.warn("AI call blocked by spend cap", {
+        provider: request.provider,
+        purpose: request.purpose,
+        scope: verdict.scope,
+      });
+      return {
+        success: false,
+        provider: request.provider,
+        code: "SPEND_CAP",
+        error: verdict.scope ?? "spend_cap",
+      };
+    }
+  }
+
   const apiKey = providerKey(request.provider, secrets);
   if (!apiKey) {
     return {
@@ -52,6 +97,15 @@ export async function callAI(
       });
       if (request.purpose) {
         KAEL_CIRCUIT_BREAKER.recordSuccess(request.purpose, request.provider);
+      }
+      // S4/F1 (§38): record actual cost to the durable ledger so the spend gate
+      // sees it on the next call (best-effort; never fails the response).
+      if (gate) {
+        await recordAiSpend(gate.client, {
+          actorId: gate.actorId,
+          purpose: request.purpose ?? "unknown",
+          costUsd: response.usage.costUsd,
+        });
       }
       return response;
     } catch (err) {

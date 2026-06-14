@@ -1809,6 +1809,38 @@ export type Database = {
           },
         ]
       }
+      kael_ai_spend_log: {
+        Row: {
+          actor_id: string | null
+          cost_usd: number
+          created_at: string
+          id: number
+          purpose: string
+        }
+        Insert: {
+          actor_id?: string | null
+          cost_usd: number
+          created_at?: string
+          id?: never
+          purpose: string
+        }
+        Update: {
+          actor_id?: string | null
+          cost_usd?: number
+          created_at?: string
+          id?: never
+          purpose?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_ai_spend_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kael_chat_rate_limit_log: {
         Row: {
           ts: string
@@ -3868,6 +3900,30 @@ export type Database = {
           ok: boolean
           to_status: Database["public"]["Enums"]["job_status"]
         }[]
+      }
+      check_kael_ai_spend: {
+        Args: {
+          p_actor_id: string
+          p_estimated_usd: number
+          p_global_daily_cap: number
+          p_user_daily_cap: number
+          p_user_monthly_cap: number
+        }
+        Returns: {
+          allowed: boolean
+          blocked_scope: string | null
+          global_today_usd: number
+          user_today_usd: number
+          user_month_usd: number
+        }[]
+      }
+      record_kael_ai_spend: {
+        Args: {
+          p_actor_id: string
+          p_cost_usd: number
+          p_purpose: string
+        }
+        Returns: undefined
       }
       check_kael_chat_rate: {
         Args: {

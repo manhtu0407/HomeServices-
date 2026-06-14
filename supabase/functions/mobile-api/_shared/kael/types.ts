@@ -232,6 +232,8 @@ export type PipelineInput = {
   description: string;
   district: string;
   photoUrls?: string[];
+  // S4/F1 (§38): actor (customer) id for per-user AI-spend attribution + caps.
+  actorId?: string | null;
   progressJobId?: string;
   progressTarget?: {
     table: "jobs" | "kael_chat_sessions";

@@ -869,6 +869,7 @@ async function createJob(
         district: canonicalDistrict,
         photoUrls: input.photo_urls,
         progressJobId: jobId,
+        actorId: ctx.user.id, // S4/F1 (§38): per-user AI-spend attribution
       },
       client,
       sourceTrustSecretsForRequest(secrets, ctx),
@@ -2310,6 +2311,7 @@ async function advanceKaelChatEstimate(
         conversationContext,
         clarificationCount: priorClarificationCount,
         progressTarget,
+        actorId: ctx.user.id, // S4/F1 (§38): per-user AI-spend attribution
       },
       client,
       sourceTrustSecretsForRequest(secrets, ctx),

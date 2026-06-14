@@ -14,6 +14,7 @@ import { runKaelParallel, runKaelPurposeStage } from "./orchestrator.ts";
 import { updateKaelProgress } from "./streaming.ts";
 import { sanitizeVisionPhotoUrls, scrubSensitiveForLLM } from "./utils.ts";
 import { retrieveKaelKnowledgeContextIfEnabled } from "./knowledge.ts";
+import type { KaelSpendGate, SpendGateClient } from "./spend-gate.ts";
 
 type EstimateParallelValue =
   | { kind: "vision"; result: Awaited<ReturnType<typeof analyzeDescription>> }
@@ -36,6 +37,16 @@ export async function runKaelPipeline(
   const learningApplications: Extract<PipelineResult, { success: true }>["learningApplications"] = [];
   let fallbackUsed = false;
   const progressTarget = input.progressTarget ?? input.progressJobId;
+
+  // S4/F1 (§38): durable, DB-backed AI-spend gate for this customer estimate.
+  // Enforced before the expensive vision + market provider calls (global + per-user
+  // caps). The kill-switch (callAI) covers every call including the cheap intent stage.
+  // The runtime service-role client exposes .rpc; SupabaseLike narrows to from() only,
+  // so cast to the gate's client shape. If .rpc is absent the gate fails open (safe).
+  const spendGate: KaelSpendGate = {
+    client: supabase as unknown as SpendGateClient,
+    actorId: input.actorId ?? null,
+  };
 
   await updateKaelProgress(supabase, progressTarget, {
     stage: "intent_classification",
@@ -189,6 +200,7 @@ export async function runKaelPipeline(
           `${validServiceType}: ${problemSlug}`,
           photoUrls,
           secrets,
+          spendGate,
         ),
       }),
       fallback: () => ({
@@ -218,7 +230,7 @@ export async function runKaelPipeline(
           district,
           secrets,
           supabase,
-          { knowledgeContext },
+          { knowledgeContext, gate: spendGate },
         ),
       }),
       fallback: () => ({

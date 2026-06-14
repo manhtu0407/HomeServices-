@@ -1,4 +1,5 @@
 import type { AICacheStatus, ComplexityLevel, EdgeAiSecrets, MarketPriceResult, ServiceType } from "./types.ts";
+import type { KaelSpendGate } from "./spend-gate.ts";
 import { marketPriceResultSchema } from "./types.ts";
 import { appendKnowledgeContextToMessages, buildPricingMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
@@ -80,7 +81,7 @@ export async function searchMarketPrice(
   district: string,
   secrets: EdgeAiSecrets,
   supabase?: unknown,
-  options: { knowledgeContext?: KaelKnowledgeContext } = {},
+  options: { knowledgeContext?: KaelKnowledgeContext; gate?: KaelSpendGate } = {},
 ): Promise<
   {
     success: true;
@@ -189,7 +190,7 @@ export async function searchMarketPrice(
       searchRecencyFilter: trustedConfig?.searchRecencyFilter,
       searchMode: trustedConfig?.searchMode,
       searchContextSize: trustedConfig?.searchContextSize,
-    }, secrets);
+    }, secrets, options.gate);
 
     if (!result.success) {
       const failureReason = `${route.provider}:AI call failed: ${result.code}`;

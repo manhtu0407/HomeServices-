@@ -3,6 +3,7 @@ import type { AIImageContent, EdgeAiSecrets, VisionResult } from "./types.ts";
 import { visionResultSchema } from "./types.ts";
 import { buildVisionMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
+import type { KaelSpendGate } from "./spend-gate.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { chooseProvider } from "./routing.ts";
 import { safeParseJSON, sanitizeVisionPhotoUrls } from "./utils.ts";
@@ -38,6 +39,7 @@ export async function analyzeDescription(
   intentContext: string,
   photoUrls: string[],
   secrets: EdgeAiSecrets,
+  gate?: KaelSpendGate,
 ): Promise<VisionAnalysisResult> {
   const safePhotoUrls = sanitizeVisionPhotoUrls(photoUrls);
   if (safePhotoUrls.length === 0) {
@@ -72,7 +74,7 @@ export async function analyzeDescription(
     temperature: 0.2,
     timeoutMs: route.latencyBudgetMs,
     maxRetries: 0,
-  }, secrets);
+  }, secrets, gate);
 
   if (!result.success) {
     return {
