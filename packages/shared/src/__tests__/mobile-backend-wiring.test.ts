@@ -263,6 +263,21 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(customerActiveStatusSet).not.toContain('"cancelled"')
   })
 
+  it('nudges the customer to authorize unit access when the worker checks in (X-2)', () => {
+    const services = readEdgeShared('services.ts')
+
+    // Helper exists and carries the actionable "Cho thợ lên" copy + its own event type.
+    expect(services).toContain('async function notifyCustomerWorkerCheckedIn(')
+    expect(services).toContain('worker_checked_in_awaiting_authorization')
+    expect(services).toContain('Cho thợ lên')
+
+    // Invoked from the worker status-update path, gated on the lobby check-in release
+    // stage (not on every status change), so the customer is prompted only when an
+    // authorize action is actually pending.
+    expect(services).toContain('notifyCustomerWorkerCheckedIn(\n      client')
+    expect(services).toContain('checked_in_awaiting_customer_authorization')
+  })
+
   it('keeps visible mobile copy away from backend and server implementation language', () => {
     const visibleSources = [
       read('app/(customer)/booking.tsx'),

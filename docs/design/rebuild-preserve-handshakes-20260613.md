@@ -31,9 +31,14 @@ naive screen-by-screen rebuild deletes it.
 - **Why it matters:** dropping this leaks the unit address without consent, or
   leaves the worker waiting in the lobby with no signal. Highest-stakes small
   detail in the flow.
-- **X-2 gap (MEDIUM):** there is no timeout / Kael-nudge if the customer never
-  taps "Cho thợ lên". Under the "Kael runs everything" model, Kael should nudge
-  the customer + escalate. (Backend orchestration not yet built — flagged.)
+- **X-2 (partial — built 2026-06-15):** the customer is now nudged the *moment*
+  the worker checks in — `notifyCustomerWorkerCheckedIn` (services.ts ~7456) fires
+  an in-app notification + push ('Bấm "Cho thợ lên"…') gated on the check-in
+  release stage `checked_in_awaiting_customer_authorization` (services.ts ~3811),
+  distinct from the generic "worker arrived" push. **Still UNBUILT:** a *timeout /
+  escalation* if the customer never taps even after the nudge — under "Kael runs
+  everything", Kael should re-nudge + escalate (no scheduler/cron path yet). The
+  rebuild must keep firing this nudge from server truth, never infer it client-side.
 
 ## L-1 (HIGH) — Customer second-half lifecycle
 
@@ -65,6 +70,21 @@ the disputes table, not a job status, to show dispute state.
 - `disputes` + `evidence_snapshots` are in the realtime publication, so dispute
   state can be live.
 
+## U-3 (MEDIUM) — Bottom-nav must be decided per-role BEFORE the rebuild touches it
+
+Three sources disagree on the tab bar: the design token `theme.ts`
+(Trang chủ / Lịch sử / Tin nhắn / Hồ sơ + orb) ≠ the live app routes
+(customer: home/booking/kael/history/profile; worker:
+home/jobs/chat/earnings/profile) ≠ STRUCTURES A1/B2.
+
+- **Why it matters:** the rebuild brief is UI-only and explicitly **must preserve
+  navigation**. A single 4-tab bar cannot serve both the customer and worker
+  roles, so a naive "build the design's nav" silently changes navigation — out of
+  scope and a regression.
+- **Rule:** lock the per-role tab set with Tu first; then reconcile the `theme.ts`
+  token to the agreed routes. Do NOT collapse the two role navs into one, and do
+  NOT add/remove tabs to match the board without sign-off.
+
 ---
 
 ## Data-honesty reminders for the rebuild (already enforced in code)
@@ -78,3 +98,13 @@ the disputes table, not a job status, to show dispute state.
   `customer-kael-chat-needs-inspection`).
 - **U-2 phase-context:** the case-surface renders `phaseContext.sections` +
   `mode`; do not invent per-screen component order.
+- **U-5 Agentic Center surfaces — backend EXISTS, rendering is a scope choice:**
+  the three endpoints are built and tested (`GET /me/pending-decisions`,
+  `GET /me/threads`, `PATCH /me/kael-memory` — router.ts:1406/1409/1430,
+  services.ts:6399/6461/6514; mobile client services.ts:110-122). So these tiles
+  would render REAL data, not fakes. The open question is whether to *surface* them
+  in round 1, not whether to build backend: under "Kael runs everything", the
+  approval queue is scope-change-only and already shown in-job (don't duplicate a
+  separate feed), and the cross-job inbox is secondary to per-job chat. If shown,
+  render from these endpoints; otherwise descope the tiles — never hand-fabricate
+  their contents.

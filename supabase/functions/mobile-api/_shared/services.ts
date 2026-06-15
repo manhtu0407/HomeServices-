@@ -3809,6 +3809,19 @@ async function updateJobStatus(
       input.status,
     );
   }
+  // X-2 (Notes.md): worker just checked in at the lobby → prompt the customer to
+  // authorize exact-unit access ("Cho thợ lên"). Distinct from the generic arrived
+  // push; this one tells the customer an ACTION is needed.
+  if (
+    accessReleaseMetadata?.release_stage ===
+      "checked_in_awaiting_customer_authorization"
+  ) {
+    await notifyCustomerWorkerCheckedIn(
+      client,
+      jobId,
+      nullableString(job.customer_id),
+    );
+  }
   if (input.status === "completed_by_worker") {
     await queueKaelLearningEvent(client, 'post-B7', {
       actor_id: ctx.user.id,
@@ -7434,6 +7447,37 @@ async function notifyKaelConfirmedCompletion(
       metadata,
     });
   }
+}
+
+// X-2 (Notes.md): a worker lobby check-in records arrival but does NOT release the
+// exact unit — it waits for the customer to tap "Cho thợ lên" (authorizeApartmentAccess).
+// Nudge the customer the moment the worker checks in so they authorize promptly instead
+// of leaving the worker waiting in the lobby. Best-effort: never blocks the status update.
+async function notifyCustomerWorkerCheckedIn(
+  client: DbClient,
+  jobId: string,
+  customerId: string | null,
+) {
+  if (!customerId) return;
+  const title = "Thợ đã tới sảnh";
+  const body =
+    'Thợ đã check-in tại sảnh. Bấm "Cho thợ lên" để mở số căn hộ chính xác cho thợ.';
+  await insertUserNotification(client, {
+    userId: customerId,
+    jobId,
+    eventType: "worker_checked_in_awaiting_authorization",
+    title,
+    body,
+    metadata: { release_stage: "checked_in_awaiting_customer_authorization" },
+  });
+  await sendPushToUser(client, customerId, {
+    title,
+    body,
+    data: {
+      event_type: "worker_checked_in_awaiting_authorization",
+      job_id: jobId,
+    },
+  });
 }
 
 async function notifyCustomerJobStatus(
