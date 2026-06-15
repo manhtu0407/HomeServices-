@@ -51,3 +51,18 @@ These are the "2 stale tests" from PR #66; out of §38 scope.
 
 ## ≥10× review loop (§38.4)
 10 distinct lenses run with re-run evidence; L2 caught the F4 overclaim, L10 caught S4(d) gap + coverage scope → corrected in audit §10 (honesty, no gate lowered). Exit on 2 consecutive clean rounds after corrections.
+
+## Dashboard deploy session — 2026-06-15 (Tu operated dashboard; Claude navigated + verified read-only)
+
+- **Migrations applied via SQL Editor (Tu ran the SQL) on BOTH envs** — `20260614120000` + `20260614120500` combined block; final `cron.schedule(...)` returned a job id, no errors.
+  - staging `xyylanuyflrjzbjzhqfl`: OK
+  - production `iwevizmsedyqozxlawwl`: OK
+- **Verified read-only (`get_advisors` + `pg_catalog`), identical on both envs:**
+  - **F5 CLOSED:** `rls_enabled_no_policy` INFO ×2 → **gone**; only `auth_leaked_password_protection` WARN remains.
+  - Schema: `kael_ai_spend_log` table=1, deny-all policy=1; `kael_chat_rate_limit_log` policy=1; `kael_worker_chat_rate_limit_log` policy=1; `check_kael_ai_spend` + `record_kael_ai_spend` = 2 functions.
+- **NOT yet done — human-only / by safety design (Claude must not perform):**
+  - **Edge `mobile-api` redeploy** from this branch → F1 only *fully active* after this (DB ready; running Edge code still old). `supabase functions deploy mobile-api` / CI, needs Tu's access token.
+  - **Leaked-password (F3):** requires **Pro plan** (paid) — deferred by Tu.
+  - **Custom SMTP:** built-in capped at **2 emails/h** → blocks real signup; needs Tu's email-provider API key + verified domain (entering credentials is prohibited for the agent).
+  - **Rate Limits (HG#5):** kept defaults (adequate for real users; F1 cap is the primary cost brake).
+  - Migrations were applied via SQL Editor, so **not recorded in `schema_migrations`**; next `supabase db push` re-applies idempotently.
