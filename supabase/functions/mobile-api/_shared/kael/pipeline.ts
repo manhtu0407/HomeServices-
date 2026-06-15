@@ -8,13 +8,20 @@ import { buildAdvisory } from "./advisory.ts";
 import {
   applyLearnedComplexityRule,
   applyLearnedPriceRule,
+  clampLearnedPriceToBaseline,
 } from "./learning.ts";
 import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
 import { runKaelParallel, runKaelPurposeStage } from "./orchestrator.ts";
 import { updateKaelProgress } from "./streaming.ts";
 import { sanitizeVisionPhotoUrls, scrubSensitiveForLLM } from "./utils.ts";
 import { retrieveKaelKnowledgeContextIfEnabled } from "./knowledge.ts";
-import type { KaelSpendGate, SpendGateClient } from "./spend-gate.ts";
+import {
+  isKaelAiKillSwitchEnabled,
+  KAEL_AI_UNAVAILABLE_VI,
+  type KaelSpendGate,
+  type SpendGateClient,
+} from "./spend-gate.ts";
+import { checkKaelProviderBudget, recordKaelProviderSpend } from "./provider-budget.ts";
 
 type EstimateParallelValue =
   | { kind: "vision"; result: Awaited<ReturnType<typeof analyzeDescription>> }
@@ -38,17 +45,67 @@ export async function runKaelPipeline(
   let fallbackUsed = false;
   const progressTarget = input.progressTarget ?? input.progressJobId;
 
-  // S4/F1 (§38): durable, DB-backed AI-spend gate for this customer estimate.
-  // Enforced before the expensive vision + market provider calls (global + per-user
-  // caps). The kill-switch (callAI) covers every call including the cheap intent stage.
-  // The runtime service-role client exposes .rpc; SupabaseLike narrows to from() only,
-  // so cast to the gate's client shape. If .rpc is absent the gate fails open (safe).
+  // S4/F1 (§38) — Codex PR#68 P1: the kill-switch must HARD-STOP customer-facing AI
+  // output, not just block network spend. Check it up-front and surface the honest
+  // Vietnamese unavailable state BEFORE any stage runs, so an incident never degrades
+  // silently into a baseline estimate/job. callAI keeps a per-call kill-switch as a
+  // backstop for non-pipeline AI paths (worker assist, scope change).
+  if (isKaelAiKillSwitchEnabled()) {
+    console.warn("kael pipeline: KAEL_AI_KILL_SWITCH on — returning unavailable state");
+    return {
+      success: false,
+      error: KAEL_AI_UNAVAILABLE_VI,
+      code: "AI_DISABLED",
+      stageLogs,
+    };
+  }
+
+  // S4/F1 (§38): durable, DB-backed AI-spend gate (global + per-user caps) for this
+  // estimate. callAI RESERVES the estimated cost atomically before each provider call
+  // (Codex P1 race fix) and reconciles to actual after. The runtime service-role client
+  // exposes .rpc; SupabaseLike narrows to from() only, so cast to the gate's client
+  // shape. If .rpc is absent the gate fails open (safe).
   const spendGate: KaelSpendGate = {
     client: supabase as unknown as SpendGateClient,
     actorId: input.actorId ?? null,
   };
 
-  await updateKaelProgress(supabase, progressTarget, {
+  // C-1 (Notes.md, main #67): independent hard daily provider-spend ceiling. No-op +
+  // zero DB round-trip unless KAEL_PROVIDER_COST_CAP_ENABLED is on; fails open. Kept as
+  // a complementary operator knob alongside the §38 gate; degrade honestly here, before
+  // spending on the intent + parallel provider calls. (Consolidation tracked as follow-up.)
+  const providerBudget = await checkKaelProviderBudget(supabase);
+  if (providerBudget.exhausted) {
+    console.warn("kael pipeline: provider daily budget exhausted, degrading", {
+      spendUsd: providerBudget.spendUsd,
+      capUsd: providerBudget.capUsd,
+    });
+    return {
+      success: false,
+      error: "Kael đang tạm quá tải. Vui lòng thử lại sau ít phút.",
+      code: "BUDGET_EXCEEDED",
+      stageLogs,
+    };
+  }
+  // Record the AI spend incurred by this estimate (intent + parallel + synthesis)
+  // once it is known. Only when enforcement is on; reads the final stageLogs at
+  // call time. Awaited so the daily counter stays accurate before we return.
+  const recordProviderSpendIfEnforced = async () => {
+    if (!providerBudget.enforced) return;
+    const spentUsd = stageLogs.reduce(
+      (sum, log) => sum + (typeof log.costUsd === "number" ? log.costUsd : 0),
+      0,
+    );
+    await recordKaelProviderSpend(supabase, spentUsd);
+  };
+
+  // P-2 (Notes.md): the intermediate stage-progress writes are fire-and-forget.
+  // updateKaelProgress swallows its own errors (returns void, never throws), the
+  // UI consumes stage granularity over a separate 800ms SSE poll, and each write
+  // is followed by awaited stage work that keeps the isolate alive long enough
+  // to flush it. Only the terminal progress:1 write stays awaited so the
+  // completed state is durably persisted before the response returns.
+  void updateKaelProgress(supabase, progressTarget, {
     stage: "intent_classification",
     status: "running",
     progress: 0.1,
@@ -90,7 +147,7 @@ export async function runKaelPipeline(
         index === intentStage.attempts.length - 1,
     });
   });
-  await updateKaelProgress(supabase, progressTarget, {
+  void updateKaelProgress(supabase, progressTarget, {
     stage: "intent_classification",
     status: intentStage.success ? "completed" : "failed",
     progress: 0.2,
@@ -98,6 +155,7 @@ export async function runKaelPipeline(
   });
 
   if (intent.service_type === "unsupported" || intent.scope_signal === "out_of_scope") {
+    await recordProviderSpendIfEnforced();
     return {
       success: false,
       error: UNSUPPORTED_SERVICE_MESSAGE,
@@ -111,6 +169,7 @@ export async function runKaelPipeline(
   // costs no downstream AI.
   if (input.intakeDiagnosisEnabled) {
     if (intent.scope_signal === "service_mismatch") {
+      await recordProviderSpendIfEnforced();
       return {
         success: false,
         error: "Mô tả của bạn không khớp với dịch vụ đang chọn.",
@@ -120,6 +179,7 @@ export async function runKaelPipeline(
       };
     }
     if (intent.needs_clarification && (input.clarificationCount ?? 0) < CLARIFICATION_CAP) {
+      await recordProviderSpendIfEnforced();
       return {
         success: false,
         error: intent.clarification_question_vi ??
@@ -289,7 +349,7 @@ export async function runKaelPipeline(
       cacheStatus: visionResult.success ? visionResult.cacheStatus : undefined,
     });
   }
-  await updateKaelProgress(supabase, progressTarget, {
+  void updateKaelProgress(supabase, progressTarget, {
     stage: "vision_analysis",
     status: visionResult.success || visionSkipped ? "completed" : "failed",
     progress: 0.4,
@@ -334,7 +394,7 @@ export async function runKaelPipeline(
       : baselineResult?.error ?? baselineStage.failureReason,
     fallbackUsed: false,
   });
-  await updateKaelProgress(supabase, progressTarget, {
+  void updateKaelProgress(supabase, progressTarget, {
     stage: "problem_synthesis",
     status: baselineResult?.success ? "completed" : "failed",
     progress: 0.6,
@@ -342,6 +402,7 @@ export async function runKaelPipeline(
   });
 
   if (!baselineResult?.success) {
+    await recordProviderSpendIfEnforced();
     return {
       success: false,
       error:
@@ -377,24 +438,30 @@ export async function runKaelPipeline(
     cacheStatus: marketResult.success ? marketResult.cacheStatus : undefined,
     safeMetadata: marketResult.safeMetadata,
   });
-  await updateKaelProgress(supabase, progressTarget, {
+  void updateKaelProgress(supabase, progressTarget, {
     stage: "market_lookup",
     status: marketResult.success ? "completed" : "failed",
     progress: 0.78,
     failureReason: marketResult.success ? undefined : marketResult.failureReason,
   });
 
-  await updateKaelProgress(supabase, progressTarget, {
+  void updateKaelProgress(supabase, progressTarget, {
     stage: "price_synthesis",
     status: "running",
     progress: 0.86,
   });
-  const learnedPrice = await applyLearnedPriceRule(
-    supabase,
-    secrets,
-    validServiceType,
-    problemSlug,
-    district,
+  // A-1 (Notes.md): clamp the learned price against the reference baseline at
+  // apply time. A rule deviating beyond the allowed band is ignored here and the
+  // synthesis below falls back to the baseline range.
+  const learnedPrice = clampLearnedPriceToBaseline(
+    await applyLearnedPriceRule(
+      supabase,
+      secrets,
+      validServiceType,
+      problemSlug,
+      district,
+    ),
+    { priceMin: baselineResult.priceMin, priceMax: baselineResult.priceMax },
   );
   if (learnedPrice) {
     learningApplications.push({
@@ -438,6 +505,7 @@ export async function runKaelPipeline(
     status: "completed",
     progress: 1,
   });
+  await recordProviderSpendIfEnforced();
 
   return {
     success: true,

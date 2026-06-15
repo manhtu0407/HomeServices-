@@ -1864,6 +1864,27 @@ export type Database = {
           },
         ]
       }
+      kael_provider_spend_daily: {
+        Row: {
+          call_count: number
+          spend_date: string
+          total_cost_usd: number
+          updated_at: string
+        }
+        Insert: {
+          call_count?: number
+          spend_date?: string
+          total_cost_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          call_count?: number
+          spend_date?: string
+          total_cost_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kael_guardrail_trip_audit: {
         Row: {
           actor_id: string | null
@@ -3925,6 +3946,29 @@ export type Database = {
         }
         Returns: undefined
       }
+      reserve_kael_ai_spend: {
+        Args: {
+          p_actor_id: string
+          p_estimated_usd: number
+          p_purpose: string
+          p_global_daily_cap: number
+          p_user_daily_cap: number
+          p_user_monthly_cap: number
+        }
+        Returns: {
+          allowed: boolean
+          blocked_scope: string | null
+          reservation_id: number | null
+        }[]
+      }
+      finalize_kael_ai_spend: {
+        Args: {
+          p_reservation_id: number
+          p_actual_usd: number
+          p_purpose: string
+        }
+        Returns: undefined
+      }
       check_kael_chat_rate: {
         Args: {
           p_per_hour?: number
@@ -3937,6 +3981,14 @@ export type Database = {
           minute_count: number
           reason: string | null
         }[]
+      }
+      get_kael_provider_spend_today: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      record_kael_provider_spend: {
+        Args: { p_cost_usd: number }
+        Returns: number
       }
       accept_broadcast_atomic: {
         Args: { p_job_id: string; p_worker_id: string }

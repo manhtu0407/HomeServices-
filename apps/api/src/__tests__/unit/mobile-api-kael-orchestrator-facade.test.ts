@@ -69,7 +69,8 @@ describe('Kael orchestrator facade', () => {
     for (const label of [
       'customer_process_cancellation',
       'worker_evidence_confirm_completion',
-      'scope_change_auto_approve',
+      // 'scope_change_auto_approve' removed — K-1 disables scope auto-approve;
+      // scope-change is always customer-confirmed (see workflow-orchestrator test).
       'worker_process_cancellation',
       'scope_change_customer_',
       'customer_confirm_completion',

@@ -599,6 +599,25 @@ export const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 4,
   },
+  inspectionNotice: {
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  inspectionNoticeTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 17,
+  },
+  inspectionNoticeBody: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 17,
+  },
   errorCard: {
     borderRadius: 18,
     borderWidth: 1,

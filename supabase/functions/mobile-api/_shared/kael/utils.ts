@@ -60,15 +60,53 @@ export function safeParseJSON(content: string): unknown | null {
   try {
     return JSON.parse(content);
   } catch {
-    const start = content.indexOf("{");
-    const end = content.lastIndexOf("}");
-    if (start === -1 || end === -1 || end <= start) return null;
-    try {
-      return JSON.parse(content.slice(start, end + 1));
-    } catch {
-      return null;
+    // J-1 (Notes.md): AI outputs sometimes wrap JSON in a short note. Walk the
+    // FIRST balanced object instead of indexOf("{")..lastIndexOf("}"), so nested
+    // braces inside string values don't widen the parse window and corrupt the
+    // slice. Same algorithm as cron/process-batch-results.ts parseJsonObjectFromText.
+    return parseFirstBalancedJsonObject(content);
+  }
+}
+
+// String-aware balanced-brace scan: returns the first complete top-level JSON
+// object found in `text`, or null. Skips braces that appear inside string
+// literals (honoring backslash escapes) so `{"a":"}{"}` parses correctly.
+function parseFirstBalancedJsonObject(text: string): unknown | null {
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = inString;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (char === "{") {
+      if (depth === 0) start = index;
+      depth += 1;
+      continue;
+    }
+    if (char !== "}") continue;
+    depth -= 1;
+    if (depth === 0 && start >= 0) {
+      try {
+        return JSON.parse(text.slice(start, index + 1));
+      } catch {
+        return null;
+      }
     }
   }
+  return null;
 }
 
 export async function timed<T>(

@@ -74,21 +74,70 @@ function consoleCallArgs(src: string): string[] {
   return calls
 }
 
+// Codex PR#68 P2: blank out '...' and "..." string-literal CONTENTS so a static log
+// MESSAGE that merely mentions a field word (e.g. console.log('user phone updated'))
+// is not a false positive — only real code tokens (object keys, shorthand, variables)
+// are matched. Backtick templates are kept intact so an interpolated ${phone} is still
+// scanned.
+function stripStringLiterals(src: string): string {
+  let out = ''
+  let i = 0
+  while (i < src.length) {
+    const c = src[i]
+    if (c === '"' || c === "'") {
+      const q = c
+      out += q
+      i++
+      while (i < src.length && src[i] !== q) {
+        if (src[i] === '\\') i++
+        i++
+      }
+      out += q
+      i++
+      continue
+    }
+    out += c
+    i++
+  }
+  return out
+}
+
 // High-confidence PII / secret signals that must never be logged (RULES #9 + Security
 // Invariants). Coarse fields (district, ids, counts, codes) are intentionally NOT here.
+// Codex PR#68 P2: each field is matched as an IDENTIFIER — property key (`phone:`),
+// object shorthand (`{ phone }` / `{ phone, x }`), or a bare argument
+// (`console.error(phoneNumber)`) — via a lookahead for `:`, `,`, `}`, `)`, or end.
+// The `\b...\b` guards prevent matching longer identifiers like `phoneVerified`.
+const TAIL = String.raw`(?=\s*[:,})]|\s*$)`
 const FORBIDDEN: { id: string; pattern: RegExp }[] = [
-  { id: 'phone', pattern: /\bphone(_number)?\b\s*:/i },
-  { id: 'cccd', pattern: /\b(cccd|id_card|national_id)\b\s*:/i },
-  { id: 'bank_account', pattern: /\bbank_account\b/i },
-  { id: 'password', pattern: /\bpassword\b\s*:/i },
-  { id: 'api_key', pattern: /\bapi[_]?key\b\s*:/i },
-  { id: 'secret_key', pattern: /\bsecret[_]?key\b\s*:/i },
-  { id: 'service_role', pattern: /\bservice_role(_key)?\b\s*:/i },
-  { id: 'tokens', pattern: /\b(access_token|refresh_token)\b\s*:/i },
-  { id: 'address_unit', pattern: /\baddress_(unit|floor|building|full|line)\b\s*:/i },
-  { id: 'env_secret', pattern: /process\.env\.\w*(KEY|TOKEN|SECRET)\w*/i },
-  { id: 'provider_key', pattern: /\b(ANTHROPIC|PERPLEXITY|DEEPSEEK)_API_KEY\b/ },
+  { id: 'phone', pattern: new RegExp(String.raw`\bphone(?:_?number)?\b${TAIL}`, 'i') },
+  { id: 'cccd', pattern: new RegExp(String.raw`\b(?:cccd|cmnd|id_card|national_id)\b${TAIL}`, 'i') },
+  { id: 'bank_account', pattern: new RegExp(String.raw`\bbank_account\b${TAIL}`, 'i') },
+  { id: 'password', pattern: new RegExp(String.raw`\bpassword\b${TAIL}`, 'i') },
+  { id: 'api_key', pattern: new RegExp(String.raw`\bapi_?key\b${TAIL}`, 'i') },
+  { id: 'secret_key', pattern: new RegExp(String.raw`\bsecret_?key\b${TAIL}`, 'i') },
+  { id: 'service_role', pattern: new RegExp(String.raw`\bservice_role(?:_key)?\b${TAIL}`, 'i') },
+  { id: 'tokens', pattern: new RegExp(String.raw`\b(?:access_token|refresh_token)\b${TAIL}`, 'i') },
+  { id: 'address_unit', pattern: new RegExp(String.raw`\baddress_(?:unit|floor|building|full|line)\b${TAIL}`, 'i') },
+  { id: 'env_secret', pattern: /process\.env\.\w*(?:KEY|TOKEN|SECRET)\w*/i },
+  { id: 'provider_key', pattern: /\b(?:ANTHROPIC|PERPLEXITY|DEEPSEEK)_API_KEY\b/ },
 ]
+
+// Returns violation labels for every console.* call in `src` that references a
+// forbidden PII/secret identifier (after string-literal stripping).
+function findPiiLogViolations(src: string, label = ''): string[] {
+  const out: string[] = []
+  if (!src.includes('console.')) return out
+  for (const rawArgs of consoleCallArgs(src)) {
+    const args = stripStringLiterals(rawArgs)
+    for (const rule of FORBIDDEN) {
+      if (rule.pattern.test(args)) {
+        out.push(`${label} → ${rule.id}: console.*(… ${rawArgs.trim().slice(0, 80)} …)`)
+      }
+    }
+  }
+  return out
+}
 
 describe('S5 PII-log lint: no PII/secret fields in console.* calls (RULES #9)', () => {
   const files: string[] = []
@@ -98,18 +147,23 @@ describe('S5 PII-log lint: no PII/secret fields in console.* calls (RULES #9)', 
     expect(files.length).toBeGreaterThan(20)
   })
 
+  // Bite test (Codex PR#68 P2): prove the guardrail catches the shapes that the
+  // colon-only matcher missed, and does NOT false-positive on safe lines.
+  it('bites on shorthand + bare-identifier PII shapes, not on safe lines', () => {
+    expect(findPiiLogViolations(`console.warn('x', { phone })`, 'f')).not.toEqual([])
+    expect(findPiiLogViolations(`console.error(phoneNumber)`, 'f')).not.toEqual([])
+    expect(findPiiLogViolations(`console.log('user', { cccd, name })`, 'f')).not.toEqual([])
+    expect(findPiiLogViolations('console.log(`addr ${address_unit}`)', 'f')).not.toEqual([])
+    // Safe: message text mentioning a field word, coarse metadata, and lookalike ids.
+    expect(findPiiLogViolations(`console.log('user phone updated')`, 'f')).toEqual([])
+    expect(findPiiLogViolations(`console.warn('x', { phoneVerified: true, district })`, 'f')).toEqual([])
+    expect(findPiiLogViolations(`console.info('x', { bookingId, serviceType })`, 'f')).toEqual([])
+  })
+
   it('finds no PII/secret field references inside console.* calls', () => {
     const violations: string[] = []
     for (const file of files) {
-      const src = readFileSync(file, 'utf-8')
-      if (!src.includes('console.')) continue
-      for (const args of consoleCallArgs(src)) {
-        for (const rule of FORBIDDEN) {
-          if (rule.pattern.test(args)) {
-            violations.push(`${file.replace(ROOT, '')} → ${rule.id}: console.*(… ${args.trim().slice(0, 80)} …)`)
-          }
-        }
-      }
+      violations.push(...findPiiLogViolations(readFileSync(file, 'utf-8'), file.replace(ROOT, '')))
     }
     expect(
       violations,

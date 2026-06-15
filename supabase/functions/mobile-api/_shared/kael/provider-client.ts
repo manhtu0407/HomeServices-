@@ -1,11 +1,12 @@
 import type { AICacheStatus, AIMessageContent, AIProvider, AIRequest, AIResponse, AIError, EdgeAiSecrets, ProviderRequestSpec, AITextContent } from "./types.ts";
 import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
 import { readKaelOptimizationFlags } from "./cost-tracking.ts";
+import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
 import {
-  checkAiSpendAllowed,
+  finalizeAiSpend,
   isKaelAiKillSwitchEnabled,
   type KaelSpendGate,
-  recordAiSpend,
+  reserveAiSpend,
 } from "./spend-gate.ts";
 
 export async function callAI(
@@ -29,28 +30,6 @@ export async function callAI(
     };
   }
 
-  // S4/F1 (§38): durable, DB-backed spend gate read BEFORE the provider call.
-  // Stateless (reads the ledger every call) so caps survive cold isolates.
-  if (gate) {
-    const verdict = await checkAiSpendAllowed(gate.client, {
-      actorId: gate.actorId,
-      estimatedCostUsd: gate.estimatedCostUsd,
-    });
-    if (!verdict.allowed) {
-      console.warn("AI call blocked by spend cap", {
-        provider: request.provider,
-        purpose: request.purpose,
-        scope: verdict.scope,
-      });
-      return {
-        success: false,
-        provider: request.provider,
-        code: "SPEND_CAP",
-        error: verdict.scope ?? "spend_cap",
-      };
-    }
-  }
-
   const apiKey = providerKey(request.provider, secrets);
   if (!apiKey) {
     return {
@@ -59,6 +38,36 @@ export async function callAI(
       code: "KEY_MISSING",
       error: "provider key missing",
     };
+  }
+
+  // S4/F1 (§38) — Codex PR#68 P1/P2: reserve spend ATOMICALLY before the provider call.
+  // The estimate comes from the purpose's route cost ceiling when the caller didn't
+  // override it, so a call that WOULD push past a cap is blocked up-front (not only
+  // after it has already overshot). Reconciled to actual on success / released on
+  // failure below. reservationId stays null on any fail-open path (nothing to reconcile).
+  let reservationId: number | null = null;
+  if (gate) {
+    const estimatedCostUsd = gate.estimatedCostUsd ??
+      (request.purpose ? KAEL_ROUTING_CONFIG[request.purpose]?.costCeilingUsd ?? 0 : 0);
+    const reservation = await reserveAiSpend(gate.client, {
+      actorId: gate.actorId,
+      estimatedCostUsd,
+      purpose: request.purpose,
+    });
+    if (!reservation.allowed) {
+      console.warn("AI call blocked by spend cap", {
+        provider: request.provider,
+        purpose: request.purpose,
+        scope: reservation.scope,
+      });
+      return {
+        success: false,
+        provider: request.provider,
+        code: "SPEND_CAP",
+        error: reservation.scope ?? "spend_cap",
+      };
+    }
+    reservationId = reservation.reservationId;
   }
 
   const timeout = request.timeoutMs ?? (request.provider === "anthropic"
@@ -98,13 +107,13 @@ export async function callAI(
       if (request.purpose) {
         KAEL_CIRCUIT_BREAKER.recordSuccess(request.purpose, request.provider);
       }
-      // S4/F1 (§38): record actual cost to the durable ledger so the spend gate
-      // sees it on the next call (best-effort; never fails the response).
+      // S4/F1 (§38): reconcile the reservation to ACTUAL cost (best-effort).
       if (gate) {
-        await recordAiSpend(gate.client, {
+        await finalizeAiSpend(gate.client, {
+          reservationId,
           actorId: gate.actorId,
           purpose: request.purpose ?? "unknown",
-          costUsd: response.usage.costUsd,
+          actualUsd: response.usage.costUsd,
         });
       }
       return response;
@@ -130,6 +139,16 @@ export async function callAI(
       purpose: request.purpose,
       provider: request.provider,
       errorCode: code,
+    });
+  }
+  // S4/F1 (§38) — Codex PR#68 P1: release the reservation. A failed/aborted call must
+  // not permanently count against the user's or global cap (reconcile-or-release).
+  if (gate) {
+    await finalizeAiSpend(gate.client, {
+      reservationId,
+      actorId: gate.actorId,
+      purpose: request.purpose ?? "unknown",
+      actualUsd: 0,
     });
   }
   return {

@@ -7,15 +7,20 @@ title = "Home Services gitleaks config"
 useDefault = true
 
 [allowlist]
-description = "Allow key-name-only env templates and obviously-fake test fixtures"
+# Codex PR#68 P2: do NOT path-allowlist every test file — a real provider/Supabase key
+# accidentally pasted into a test or fixture must still be caught. We allowlist only
+# key-name-only templates, generated types, and the lockfile, then rely on fake-value
+# regexes for the known placeholder credentials used in unit-test fixtures. (gitleaks'
+# default rules only fire on real-key FORMATS, so plain placeholders like `test-key`
+# are not flagged in the first place.)
+description = "Allow key-name-only env templates, generated types, lockfile, and obviously-fake fixtures"
 paths = [
   '''\.env\.example$''',
-  '''.*/__tests__/.*''',
-  '''.*\.test\.(ts|tsx)$''',
   '''packages/shared/src/types/database\.types\.ts$''',
   '''pnpm-lock\.yaml$''',
 ]
-# Fake credentials used in unit-test fixtures (never real secrets).
+# Obviously-fake credentials used in unit-test fixtures (never real secrets).
 regexes = [
   '''(test-key|test-service-key|test-anon-key|deepseek-ok|anthropic-ok|perplexity-ok)''',
+  '''(?i)\b(fake|dummy|placeholder|example|sample|test|mock)[-_]?(key|token|secret)\b''',
 ]

@@ -38,6 +38,7 @@ import {
   type WorkerCancellationDecisionInput,
   type WorkerCancellationRequestInput,
   type WorkerRegisterInput,
+  type UpdateKaelMemoryInput,
 } from "../../_shared/domain.ts";
 import {
   apiFailure,
@@ -136,6 +137,7 @@ import {
   type WorkerAssistProviderAttempt,
 } from "./kael/index.ts";
 import { evaluateMessageBoundary } from "./kael/boundary-guard.ts";
+import { analyzeDescription } from "./kael/vision.ts";
 import {
   auditKaelGuardrailTrip,
   runKaelSelfCheckPipeline,
@@ -354,6 +356,9 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     getMyKaelMemory,
     getWorkerKaelMemory,
     deleteMyKaelMemory,
+    updateMyKaelMemory,
+    listMyPendingDecisions,
+    listMyThreads,
     getWorkerProfile,
     updateWorkerAvailability,
     listWorkerBroadcasts,
@@ -4107,6 +4112,22 @@ async function requestScopeChange(ctx: MobileApiContext, jobId: string, input: {
   };
 }
 
+// W-1 (Notes.md): compact the schema-validated vision result into a short
+// findings line for the worker-assist context. Bounded length; no PII (these
+// are Kael's own image observations about the physical problem).
+function summarizeWorkerVision(analysis: {
+  problem_identified: string;
+  severity_indicators: readonly string[];
+  complexity_hint: string;
+}): string {
+  const parts = [analysis.problem_identified.trim()];
+  if (analysis.severity_indicators.length > 0) {
+    parts.push(`Dấu hiệu: ${analysis.severity_indicators.join("; ")}`);
+  }
+  parts.push(`Mức độ ước tính từ ảnh: ${analysis.complexity_hint}`);
+  return parts.filter((part) => part.length > 0).join(". ").slice(0, 480);
+}
+
 async function askKaelForWorker(
   ctx: MobileApiContext,
   jobId: string,
@@ -4340,6 +4361,38 @@ async function sendWorkerKaelChatTurn(
   });
 
   const recentTurns = await readWorkerKaelRecentTurns(client, sessionId);
+  // W-1 (Notes.md): worker-assist was BLIND — it only knew the photo COUNT. When
+  // the worker attaches photos, run server-side vision (schema-validated, same
+  // analyzeDescription as the customer pipeline) so Kael's on-site advice can
+  // reference what is actually in the image. Only surface a summary on real
+  // success; on skip/fallback we pass null (no fabricated findings).
+  let workerVisionSummary: string | null = null;
+  if (input.media_refs.length > 0) {
+    // analyzeDescription is designed to return a structured success/fail, but an
+    // unexpected throw (e.g. image fetch) must NOT crash the worker chat turn —
+    // the W-1 contract is "null on failure, no fabricated findings", so degrade.
+    try {
+      const visionContext = [
+        nullableString(job.service_type),
+        nullableString(job.kael_problem_identified) ?? nullableString(job.description),
+      ].filter((part): part is string => Boolean(part)).join(" · ");
+      const vision = await analyzeDescription(
+        safeMessage,
+        visionContext,
+        input.media_refs,
+        secrets,
+      );
+      if (vision.success) {
+        workerVisionSummary = summarizeWorkerVision(vision.analysis);
+      }
+    } catch (err) {
+      console.warn("worker-assist vision analysis threw; continuing without findings", {
+        sessionId,
+        error: err instanceof Error ? err.message : "unknown",
+      });
+      workerVisionSummary = null;
+    }
+  }
   let answer: WorkerAssistAnswer;
   try {
     answer = await runWorkerAssist({
@@ -4357,6 +4410,7 @@ async function sendWorkerKaelChatTurn(
       question: safeMessage,
       language: input.language,
       mediaRefs: input.media_refs,
+      visionSummary: workerVisionSummary,
       previousTurns: recentTurns,
       secrets,
     });
@@ -4747,10 +4801,22 @@ async function setWorkerKaelTrainingConsent(
   };
 }
 
+// K-1 (Notes.md, Tu chốt 2026-06-13): a scope-change changes the price of the
+// deal, so it is ALWAYS confirmed by the customer — even low-risk. Kael only
+// computes and proposes the new price; it never self-approves a scope change.
+//
+// This disable is intentionally UNCONDITIONAL and independent of
+// KAEL_AUTONOMY_FULL_ENABLED (which still gates completion/payment/dispute/
+// cancellation). Re-enabling auto-approve is a product decision, not a flag
+// flip. The customer-decide path is unchanged: request_scope_change keeps the
+// job in scope_change_pending, the caller routes null here to
+// notifyCustomerScopeChangeRequested, and the customer's explicit decision goes
+// through decide_scope_change_atomic. Signature kept stable so the single caller
+// needs no change and re-enabling is a localized edit.
 async function tryAutoApproveScopeChange(
-  client: DbClient,
-  ctx: MobileApiContext,
-  input: {
+  _client: DbClient,
+  _ctx: MobileApiContext,
+  _input: {
     customerId: string | null;
     estimate: ScopeChangeKaelEstimate;
     jobId: string;
@@ -4758,113 +4824,7 @@ async function tryAutoApproveScopeChange(
     scopeChangeOutputs: ReturnType<typeof buildScopeChangeOutputs>;
   },
 ): Promise<{ status: ScopeChangeStatus; decidedAt: string | null } | null> {
-  const risk = input.scopeChangeOutputs.anti_fraud;
-  if (!input.customerId) return null;
-  if (risk.challenge_required || risk.admin_flag_required) return null;
-  if (input.estimate.confidence < 0.55) return null;
-
-  const autonomyDecision = buildKaelAutonomyDecision({
-    action: "decide_scope_change",
-    policyId: "kael.autonomy.v2.scope_change_auto_approve",
-    evidence: [
-      {
-        kind: "artifact",
-        reference_id: input.scopeChangeId,
-        summary: "Worker submitted scope-change artifact with Kael-computed price.",
-      },
-      {
-        kind: "system_check",
-        reference_id: input.jobId,
-        summary: "Anti-fraud and margin policy did not require challenge or admin review.",
-      },
-      {
-        kind: "policy",
-        reference_id: "STRUCTURES.md#A11",
-        summary: "Kael may decide scope change when backend policy has enough evidence.",
-      },
-    ],
-    confidence: input.estimate.confidence,
-    reversible: true,
-    appealable: true,
-    resultingEvent: "kael_decided_scope_change",
-  });
-  const autonomyRun = await runPolicyAutonomyGate({
-    label: "scope_change_auto_approve",
-    client,
-    ctx,
-    jobId: input.jobId,
-    decision: autonomyDecision,
-    from: "scope_change_pending",
-    to: "repairing",
-    amountVnd: input.estimate.price_max,
-    authority: {
-      purpose: "scope_change",
-      actor: ctx.role,
-      jobRelation: "own_worker_job",
-      action: "review_scope_change",
-      topic: "scope_change",
-      actorId: ctx.user.id,
-      jobId: input.jobId,
-    },
-    knownEvidenceReferences: [input.scopeChangeId, input.jobId, "STRUCTURES.md#A11"],
-  });
-  if (autonomyRun.gate.result !== "allow") {
-    await logJobEvent(
-      client,
-      input.jobId,
-      "kael_scope_auto_decision_rejected",
-      ctx,
-      "scope_change_pending",
-      "scope_change_pending",
-      {
-        scope_change_id: input.scopeChangeId,
-        autonomy_decision: autonomyDecision,
-        autonomy_gate_result: autonomyRun.gate.result,
-        error: autonomyRun.gate.audit.reason_code,
-      },
-    );
-    return null;
-  }
-
-  const result = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("decide_scope_change_atomic", {
-      p_scope_change_id: input.scopeChangeId,
-      p_customer_id: input.customerId,
-      p_decision: "approve",
-    }),
-  );
-  const row = result.data?.[0];
-  if (result.error || !row || !row.ok) {
-    console.warn("mobile-api scope-change auto decision fell back to customer review", {
-      jobId: input.jobId,
-      errorCode: nullableString(row?.error_code),
-    });
-    return null;
-  }
-
-  await logJobEvent(
-    client,
-    input.jobId,
-    "scope_change_final_price_locked",
-    ctx,
-    "scope_change_pending",
-    "repairing",
-    { scope_change_id: input.scopeChangeId, autonomy_decision: autonomyDecision },
-  );
-  await logJobEvent(
-    client,
-    input.jobId,
-    "kael_decided_scope_change",
-    ctx,
-    "scope_change_pending",
-    "repairing",
-    { scope_change_id: input.scopeChangeId, autonomy_decision: autonomyDecision, automatic: true },
-  );
-
-  return {
-    status: row.scope_status as ScopeChangeStatus,
-    decidedAt: nullableString(row.decided_at_ts),
-  };
+  return null;
 }
 
 // Phase 2.0 (2026-05-23): persist Kael's computed scope-change estimate +
@@ -6417,6 +6377,190 @@ async function deleteMyKaelMemory(ctx: MobileApiContext) {
     subject_type: subjectType,
     deleted: true as const,
   };
+}
+
+// U-5 (Notes.md 5.4): edit the user-owned subset of their own Kael memory.
+// Customer can set language + a PII-scrubbed preference note; worker can set
+// language only (worker_kael_memory has no preference_summary). Kael-computed
+// fields stay untouched. Upsert so a not-yet-created memory row is fine.
+async function updateMyKaelMemory(
+  ctx: MobileApiContext,
+  input: UpdateKaelMemoryInput,
+) {
+  const client = db(ctx);
+  const now = new Date().toISOString();
+
+  if (ctx.role === "worker") {
+    if (input.language !== undefined) {
+      const result = await dbQuery<null>(
+        client.from("worker_kael_memory").upsert({
+          worker_id: ctx.user.id,
+          language: input.language,
+          updated_at: now,
+        }),
+      );
+      if (result.error) {
+        apiFailure("DB_ERROR", "Không thể cập nhật bộ nhớ Kael", 500);
+      }
+      await logMemoryAudit(client, {
+        subjectType: "worker",
+        subjectId: ctx.user.id,
+        actorId: ctx.user.id,
+        operation: "write",
+        layer: "L4",
+        purpose: "self_edit",
+      });
+    }
+    return getWorkerKaelMemory(ctx);
+  }
+
+  const payload: Record<string, unknown> = {
+    customer_id: ctx.user.id,
+    updated_at: now,
+  };
+  if (input.language !== undefined) payload.language = input.language;
+  if (input.preference_summary !== undefined) {
+    // PII-scrub the user's free text before it can ever reach a Kael prompt.
+    payload.preference_summary = scrubSensitiveForLLM(input.preference_summary)
+      .slice(0, 600);
+  }
+  const result = await dbQuery<null>(
+    client.from("customer_kael_memory").upsert(payload),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể cập nhật bộ nhớ Kael", 500);
+  }
+  await logMemoryAudit(client, {
+    subjectType: "customer",
+    subjectId: ctx.user.id,
+    actorId: ctx.user.id,
+    operation: "write",
+    layer: "L3",
+    purpose: "self_edit",
+  });
+  return getMyKaelMemory(ctx);
+}
+
+// U-5 (Notes.md 5.3): the customer's pending Kael decisions. Under Kael Autonomy
+// v2 the only thing that genuinely waits on the customer is a scope-change (it
+// changes the deal price; K-1 keeps it always customer-confirmed). Scoped to
+// this customer's own jobs.
+async function listMyPendingDecisions(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const jobsResult = await dbQuery<
+    Array<{ id: string; service_type: string | null; kael_problem_identified: string | null }>
+  >(
+    client
+      .from("jobs")
+      .select("id, service_type, kael_problem_identified")
+      .eq("customer_id", ctx.user.id)
+      .eq("status", "scope_change_pending"),
+  );
+  if (jobsResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải các quyết định đang chờ", 500);
+  }
+  const jobs = jobsResult.data ?? [];
+  if (jobs.length === 0) return { pending_decisions: [] };
+  const jobById = new Map(jobs.map((job) => [job.id, job]));
+
+  const scopeResult = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("scope_change_requests")
+      .select(
+        "id, job_id, requested_description, reason, price_min, price_max, created_at",
+      )
+      .in("job_id", jobs.map((job) => job.id))
+      .eq("status", "waiting_customer_decision")
+      .order("created_at", { ascending: false }),
+  );
+  if (scopeResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải các quyết định đang chờ", 500);
+  }
+  const pendingDecisions = (scopeResult.data ?? []).map((row) => {
+    const jobId = asString(row.job_id);
+    const job = jobById.get(jobId);
+    return {
+      kind: "scope_change" as const,
+      scope_change_id: asString(row.id),
+      job_id: jobId,
+      service_type: job ? nullableString(job.service_type) : null,
+      problem: job ? nullableString(job.kael_problem_identified) : null,
+      requested_description: asString(row.requested_description),
+      reason: asString(row.reason),
+      price_min: asNumber(row.price_min),
+      price_max: asNumber(row.price_max),
+      created_at: asString(row.created_at),
+    };
+  });
+  return { pending_decisions: pendingDecisions };
+}
+
+// U-5 (Notes.md): cross-job message inbox for the customer. No realtime/RPC —
+// list recent jobs, fold in the latest message + unread count per thread. A job
+// with no messages yet is not surfaced as a thread.
+async function listMyThreads(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const jobsResult = await dbQuery<
+    Array<{ id: string; status: string; service_type: string | null }>
+  >(
+    client
+      .from("jobs")
+      .select("id, status, service_type")
+      .eq("customer_id", ctx.user.id)
+      .order("updated_at", { ascending: false })
+      .limit(50),
+  );
+  if (jobsResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải hộp thư", 500);
+  }
+  const jobs = jobsResult.data ?? [];
+  if (jobs.length === 0) return { threads: [] };
+
+  const messagesResult = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("chat_messages")
+      .select("job_id, content, sender_role, is_read, created_at")
+      .in("job_id", jobs.map((job) => job.id))
+      .order("created_at", { ascending: false }),
+  );
+  if (messagesResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải hộp thư", 500);
+  }
+  const latestByJob = new Map<string, Record<string, unknown>>();
+  const unreadByJob = new Map<string, number>();
+  for (const message of messagesResult.data ?? []) {
+    const jobId = asString(message.job_id);
+    // messages are created_at desc, so the first seen per job is the latest.
+    if (!latestByJob.has(jobId)) latestByJob.set(jobId, message);
+    if (
+      asBoolean(message.is_read) === false &&
+      nullableString(message.sender_role) !== "customer"
+    ) {
+      unreadByJob.set(jobId, (unreadByJob.get(jobId) ?? 0) + 1);
+    }
+  }
+
+  const threads = jobs
+    .map((job) => {
+      const latest = latestByJob.get(job.id);
+      if (!latest) return null;
+      return {
+        job_id: job.id,
+        status: job.status,
+        service_type: nullableString(job.service_type),
+        last_message: {
+          content: asString(latest.content),
+          sender_role: nullableString(latest.sender_role),
+          created_at: asString(latest.created_at),
+        },
+        unread_count: unreadByJob.get(job.id) ?? 0,
+      };
+    })
+    .filter((thread): thread is NonNullable<typeof thread> => thread !== null)
+    .sort((a, b) =>
+      b.last_message.created_at.localeCompare(a.last_message.created_at)
+    );
+  return { threads };
 }
 
 async function getWorkerProfile(ctx: MobileApiContext) {
@@ -8199,7 +8343,7 @@ function serializeKaelTurn(row: Record<string, unknown>) {
     content_type: contentType,
     text_content: nullableString(row.text_content),
     media_refs: asStringArray(row.media_refs),
-    estimate: serializeKaelEstimate(metadata.estimate),
+    estimate: serializeKaelEstimate(metadata.estimate, metadata.estimate_card_v3),
     // Smart clarification (2026-06-04): surface what Kael still needs so the mobile
     // thread can render slot-hint chips. Drawn from the missing-info artifact proposal.
     clarification: serializeKaelClarification(contentType, metadata.artifact_proposal),
@@ -8242,9 +8386,16 @@ function serializeKaelSession(
   };
 }
 
-function serializeKaelEstimate(value: unknown) {
+function serializeKaelEstimate(value: unknown, cardV3?: unknown) {
   const estimate = asRecord(value);
   if (Object.keys(estimate).length === 0) return null;
+  // A-2 (Notes.md): surface the honesty fields the engine already computed in
+  // estimate_card_v3 (output-pipeline forces needs_inspection/price_source when
+  // confidence is low) so the customer estimate card can show "cần kiểm tra
+  // hiện trường" instead of an over-confident price. When no card is present
+  // (older turns / non-estimate), needs_inspection is honestly false.
+  const card = asRecord(cardV3);
+  const reasoning = asRecord(card.kael_reasoning);
   return {
     service_type: asServiceType(estimate.service_type),
     problem_category: asString(estimate.problem_category),
@@ -8255,6 +8406,9 @@ function serializeKaelEstimate(value: unknown) {
     confidence: asNumber(estimate.confidence),
     advisory: nullableString(estimate.advisory),
     disclaimer: nullableString(estimate.disclaimer) ?? PRICE_DISCLAIMER,
+    needs_inspection: card.needs_inspection === true,
+    price_source: nullableString(card.price_source),
+    needs_inspection_reason: nullableString(reasoning.needs_inspection_reason),
   };
 }
 

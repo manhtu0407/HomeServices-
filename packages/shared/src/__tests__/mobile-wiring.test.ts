@@ -1095,14 +1095,55 @@ describe('frontend workflow provider wiring', () => {
     expect(src).not.toContain('fetch(')
   })
 
-  it('keeps deferred realtime status subscriptions out of the workflow provider to avoid duplicate phase updates', () => {
+  it('wires the realtime seam into the workflow provider with cleanup and a reduced-poll fallback', () => {
+    // Notes.md MAP PLAN Phase 2 (2026-06-13) reverses the §22.10.L deferral:
+    // the perceived-perf audit showed active-phase polling (15s timeline / 20s
+    // broadcast vs a 60s accept window / no live chat) is the biggest perceived
+    // latency. Realtime is now the fast path; polling stays as a fallback.
     const provider = read('lib/frontend-workflow-provider.tsx')
     const realtime = read('lib/realtime.ts')
+    const chatThread = read('lib/use-job-chat-thread.ts')
 
+    // The seam still owns the raw channel; the provider must go through the
+    // helpers, never touch postgres_changes directly.
     expect(realtime).toContain('subscribeToJobStatus')
-    expect(realtime).toContain('Until then, do NOT wire it')
-    expect(provider).not.toContain('subscribeToJobStatus')
+    expect(realtime).toContain('subscribeToJobMessages')
+    expect(realtime).toContain('subscribeToWorkerBroadcasts')
     expect(provider).not.toContain('postgres_changes')
+
+    // B-1 / B-2: provider wires the seam for the active customer timeline and
+    // worker broadcast surfacing, and tears the channel down on cleanup.
+    expect(provider).toContain('subscribeToJobStatus(remoteJobId')
+    expect(provider).toContain('subscribeToWorkerBroadcasts(sessionUserId')
+    expect(provider).toContain('handle?.unsubscribe()')
+
+    // Poll retained as a dropped-socket fallback (reduced 15s -> 30s), not removed.
+    expect(provider).toContain('30_000')
+
+    // H9-1: the job chat thread gets live delivery of the counterparty's
+    // messages, also with cleanup.
+    expect(chatThread).toContain('subscribeToJobMessages')
+    expect(chatThread).toContain('handle?.unsubscribe()')
+
+    // ACTIVE_TIMELINE_STATUSES gates BOTH the realtime subscription and the
+    // fallback poll. Pin the named constant + its members (sliced to the const
+    // block so a member dropped from the array fails even though the status
+    // string appears elsewhere in the file).
+    expect(provider).toContain('const ACTIVE_TIMELINE_STATUSES')
+    const activeStart = provider.indexOf('const ACTIVE_TIMELINE_STATUSES')
+    const activeBlock = provider.slice(activeStart, activeStart + 400)
+    for (const status of [
+      'broadcasting',
+      'worker_matched',
+      'worker_on_way',
+      'arrived',
+      'inspecting',
+      'repairing',
+      'scope_change_pending',
+      'completed_by_worker',
+    ]) {
+      expect(activeBlock).toContain(`'${status}'`)
+    }
   })
 
   it('resets local workflow when the authenticated user changes', () => {
