@@ -12,6 +12,10 @@ on:
 
 permissions:
   contents: read
+  # gitleaks-action@v2 (PR mode) reads the PR commit list via the GitHub API;
+  # without this it 403s with "Resource not accessible by integration" before
+  # scanning. Required scope per the API's x-accepted-github-permissions header.
+  pull-requests: read
 
 jobs:
   gitleaks:
