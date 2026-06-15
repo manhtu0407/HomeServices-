@@ -3,6 +3,9 @@ import type { EdgeAiSecrets } from "./kael/index.ts";
 export type EdgeEnv = EdgeAiSecrets & {
   supabaseUrl: string;
   supabaseSecretKey: string;
+  // S4/F1 (§38): global hard-stop for customer-facing AI during an incident.
+  // Default false. Enforced at the callAI chokepoint (kael/spend-gate.ts).
+  aiKillSwitch: boolean;
 };
 
 export function readEdgeEnv(
@@ -34,6 +37,7 @@ export function readEdgeEnv(
       ? isStagingProjectUrl(supabaseUrl)
       : envFlag(sourceTrustFlag),
     sourceTrustPerplexityFilterExplicit: sourceTrustExplicit,
+    aiKillSwitch: readBooleanFlag(getEnv("KAEL_AI_KILL_SWITCH")),
   };
 }
 

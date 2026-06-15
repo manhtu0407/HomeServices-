@@ -874,6 +874,7 @@ async function createJob(
         district: canonicalDistrict,
         photoUrls: input.photo_urls,
         progressJobId: jobId,
+        actorId: ctx.user.id, // S4/F1 (§38): per-user AI-spend attribution
       },
       client,
       sourceTrustSecretsForRequest(secrets, ctx),
@@ -1542,6 +1543,8 @@ async function maybeApplyKaelBoundaryGuard(
     readonly jobId: string | null;
   } = { actorId: null, jobId: null },
 ): Promise<boolean> {
+  // S2/F6 (§38): semantic injection classifier is intentionally always-on here
+  // (do not gate off) — defense-in-depth on the customer Kael chat path.
   const boundary = evaluateMessageBoundary(message, serviceType, {
     semanticInjectionClassifierEnabled: true,
   });
@@ -2241,6 +2244,8 @@ async function advanceKaelChatEstimate(
   // call so cost stays zero for declined turns and Kael never emits an
   // estimate that would violate RULES.md #6 (service scope) or #8 (no
   // fake/off-topic data).
+  // S2/F6 (§38): semantic injection classifier is intentionally always-on here
+  // (do not gate off) — defense-in-depth on the customer Kael chat turn path.
   const boundary = evaluateMessageBoundary(message, input.service_type, {
     semanticInjectionClassifierEnabled: true,
   });
@@ -2311,6 +2316,7 @@ async function advanceKaelChatEstimate(
         conversationContext,
         clarificationCount: priorClarificationCount,
         progressTarget,
+        actorId: ctx.user.id, // S4/F1 (§38): per-user AI-spend attribution
       },
       client,
       sourceTrustSecretsForRequest(secrets, ctx),

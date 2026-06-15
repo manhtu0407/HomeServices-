@@ -15,6 +15,12 @@ import { runKaelParallel, runKaelPurposeStage } from "./orchestrator.ts";
 import { updateKaelProgress } from "./streaming.ts";
 import { sanitizeVisionPhotoUrls, scrubSensitiveForLLM } from "./utils.ts";
 import { retrieveKaelKnowledgeContextIfEnabled } from "./knowledge.ts";
+import {
+  isKaelAiKillSwitchEnabled,
+  KAEL_AI_UNAVAILABLE_VI,
+  type KaelSpendGate,
+  type SpendGateClient,
+} from "./spend-gate.ts";
 import { checkKaelProviderBudget, recordKaelProviderSpend } from "./provider-budget.ts";
 
 type EstimateParallelValue =
@@ -39,10 +45,35 @@ export async function runKaelPipeline(
   let fallbackUsed = false;
   const progressTarget = input.progressTarget ?? input.progressJobId;
 
-  // C-1 (Notes.md): hard daily provider-spend ceiling. No-op + zero DB round-trip
-  // unless KAEL_PROVIDER_COST_CAP_ENABLED is on; fails open on any error so a
-  // monitoring guard never blocks a real estimate. When over budget, degrade
-  // honestly here, before spending on the intent + parallel provider calls.
+  // S4/F1 (§38) — Codex PR#68 P1: the kill-switch must HARD-STOP customer-facing AI
+  // output, not just block network spend. Check it up-front and surface the honest
+  // Vietnamese unavailable state BEFORE any stage runs, so an incident never degrades
+  // silently into a baseline estimate/job. callAI keeps a per-call kill-switch as a
+  // backstop for non-pipeline AI paths (worker assist, scope change).
+  if (isKaelAiKillSwitchEnabled()) {
+    console.warn("kael pipeline: KAEL_AI_KILL_SWITCH on — returning unavailable state");
+    return {
+      success: false,
+      error: KAEL_AI_UNAVAILABLE_VI,
+      code: "AI_DISABLED",
+      stageLogs,
+    };
+  }
+
+  // S4/F1 (§38): durable, DB-backed AI-spend gate (global + per-user caps) for this
+  // estimate. callAI RESERVES the estimated cost atomically before each provider call
+  // (Codex P1 race fix) and reconciles to actual after. The runtime service-role client
+  // exposes .rpc; SupabaseLike narrows to from() only, so cast to the gate's client
+  // shape. If .rpc is absent the gate fails open (safe).
+  const spendGate: KaelSpendGate = {
+    client: supabase as unknown as SpendGateClient,
+    actorId: input.actorId ?? null,
+  };
+
+  // C-1 (Notes.md, main #67): independent hard daily provider-spend ceiling. No-op +
+  // zero DB round-trip unless KAEL_PROVIDER_COST_CAP_ENABLED is on; fails open. Kept as
+  // a complementary operator knob alongside the §38 gate; degrade honestly here, before
+  // spending on the intent + parallel provider calls. (Consolidation tracked as follow-up.)
   const providerBudget = await checkKaelProviderBudget(supabase);
   if (providerBudget.exhausted) {
     console.warn("kael pipeline: provider daily budget exhausted, degrading", {
@@ -229,6 +260,7 @@ export async function runKaelPipeline(
           `${validServiceType}: ${problemSlug}`,
           photoUrls,
           secrets,
+          spendGate,
         ),
       }),
       fallback: () => ({
@@ -258,7 +290,7 @@ export async function runKaelPipeline(
           district,
           secrets,
           supabase,
-          { knowledgeContext },
+          { knowledgeContext, gate: spendGate },
         ),
       }),
       fallback: () => ({

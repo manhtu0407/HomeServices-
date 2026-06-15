@@ -1369,7 +1369,9 @@ function matchRoute(request: Request): Route | null {
     return {
       kind: "admin.kaelLearning.candidates.list",
       method: "GET",
-      roles: ["customer", "worker", "admin"],
+      // S2/F2 (§38): admin-only at the router, matching every other /admin/* route.
+      // Service layer keeps its own ctx.role !== "admin" guard as defense-in-depth.
+      roles: ["admin"],
     };
   }
   const learningCandidate = path.match(
@@ -1385,7 +1387,9 @@ function matchRoute(request: Request): Route | null {
         : "admin.kaelLearning.candidates.reject",
       method: "POST",
       candidateId,
-      roles: ["customer", "worker", "admin"],
+      // S2/F2 (§38): admin-only at the router (was customer/worker/admin).
+      // Service layer keeps its own ctx.role !== "admin" guard as defense-in-depth.
+      roles: ["admin"],
     };
   }
   if (method === "POST" && path === "/jobs") {

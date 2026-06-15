@@ -6230,6 +6230,16 @@ function makeSequenceClient(results: QueryResult[]) {
       return makeQuery(call, results)
     },
     rpc(name: string, args?: Record<string, unknown>) {
+      // S4 (§38): the AI-spend gate reads/writes its own ledger via these RPCs,
+      // orthogonal to the .from() result sequence. Return a benign default so the
+      // gate fails open (allow) in unit tests without consuming sequenced query
+      // results. Other RPC names still draw from the sequence (learning/autonomy).
+      if (
+        name === 'reserve_kael_ai_spend' || name === 'finalize_kael_ai_spend' ||
+        name === 'check_kael_ai_spend' || name === 'record_kael_ai_spend'
+      ) {
+        return Promise.resolve({ data: null, error: null })
+      }
       const call: QueryCall = { table: `rpc:${name}`, operations: [['rpc', name, args]] }
       calls.push(call)
       return makeQuery(call, results)

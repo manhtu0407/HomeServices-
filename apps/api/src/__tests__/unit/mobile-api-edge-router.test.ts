@@ -821,7 +821,10 @@ describe('mobile-api Edge router contract', () => {
     expect(listResponse.status).toBe(200)
     expect(approveResponse.status).toBe(200)
     expect(rejectResponse.status).toBe(200)
-    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer', 'worker', 'admin'])
+    // S2/F2 (§38): learning-candidate routes are now admin-only at the router
+    // (before: ['customer','worker','admin']). The service-layer ctx.role guard
+    // remains as defense-in-depth.
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['admin'])
     expect(listKaelLearningCandidates).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'admin' }),
       { state: 'manual_review', limit: 10 },
