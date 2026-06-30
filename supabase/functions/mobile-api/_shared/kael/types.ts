@@ -1,7 +1,9 @@
 import { z } from "zod";
 import type { ComplexityLevel, ServiceType } from "../../../_shared/domain.ts";
+import type { KaelEstimate } from "../../../_shared/contracts.ts";
 
 export type { ComplexityLevel, ServiceType };
+export type { KaelEstimate };
 
 export const PRICE_DISCLAIMER =
   "Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.";
@@ -151,6 +153,12 @@ export const FALLBACK_PROBLEM_SLUG_BY_SERVICE: Record<ServiceType, string> = {
   cleaning: "other_cleaning",
 };
 
+// Edge AI provider contract. Intentionally divergent from the shared AI types (the apps/api +
+// mobile canonical): the Edge runtime adds Anthropic prompt-caching (cache_control / cacheStatus),
+// Perplexity multi-provider search params, base64 image sources, and response citations. Deno
+// cannot import the shared workspace package, so this stays a separate home by design rather than
+// a byte-equivalent mirror — the AI* names remain grandfathered in the structure baseline against
+// the shared canonical.
 export type AIProvider = "anthropic" | "perplexity" | "deepseek";
 export type AICacheControl = { type: "ephemeral"; ttl?: "1h" };
 export type AICacheStatus = "hit" | "write" | "miss";
@@ -278,18 +286,6 @@ export type PipelineStageLog = {
 };
 
 export type IntentAttemptLog = Omit<PipelineStageLog, "stage" | "fallbackUsed">;
-
-export type KaelEstimate = {
-  service_type: ServiceType;
-  problem_category: string;
-  problem_summary: string;
-  complexity: ComplexityLevel;
-  price_min: number;
-  price_max: number;
-  confidence: number;
-  advisory: string | null;
-  disclaimer: string;
-};
 
 export type PipelineKnowledgeContext = {
   promptContext: string | null;

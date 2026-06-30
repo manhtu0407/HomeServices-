@@ -27,7 +27,7 @@ describe('Plan §31 B4 knowledge governance', () => {
   })
 
   it('keeps Edge admin approval as the only writer path for knowledge candidate apply', () => {
-    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+    const services = read('supabase/functions/mobile-api/_shared/services.ts') + read('supabase/functions/mobile-api/_shared/services/admin-learning.service.ts')
     const router = read('supabase/functions/mobile-api/_shared/router.ts')
     const mobileTypes = read('apps/mobile/lib/api-types.ts')
 

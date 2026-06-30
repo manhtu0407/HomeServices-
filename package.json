@@ -9,6 +9,10 @@
     "doctor:react": "npx -y react-doctor@latest . --yes --verbose --offline --fail-on none",
     "doctor:react:changed": "npx -y react-doctor@latest . --yes --verbose --diff --offline --fail-on none",
     "kael:eval": "node apps/api/scripts/kael-eval.mjs",
+    "skills:sync": "node scripts/sync-skills.mjs",
+    "skills:check": "node scripts/check-skills-sync.mjs",
+    "lint:structure": "node scripts/lint-structure.mjs",
+    "lint:comments": "node scripts/check-comment-discipline.mjs",
     "test": "turbo test",
     "lint": "turbo lint",
     "type-check": "turbo type-check"

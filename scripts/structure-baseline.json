@@ -1,0 +1,447 @@
+{
+  "maxLines": 800,
+  "grandfatheredOversize": {
+    "apps/mobile/components/auth/auth-surfaces.tsx": 1882,
+    "apps/mobile/components/customer/booking-wizard.tsx": 1686,
+    "apps/mobile/components/customer/kael-chat/agentic-parts.tsx": 1207,
+    "apps/mobile/components/customer/kael-chat/styles.ts": 1146,
+    "apps/mobile/components/customer/surfaces/profile.tsx": 970,
+    "apps/mobile/components/prototypes/client-icon-image-prototype.tsx": 804,
+    "apps/mobile/components/ui/floating-glass-tab-bar.tsx": 1049,
+    "apps/mobile/lib/frontend-workflow-provider.tsx": 1383,
+    "packages/shared/src/mobile-workflow.ts": 1138,
+    "supabase/functions/mobile-api/_shared/kael/cron/process-batch-results.ts": 1059,
+    "supabase/functions/mobile-api/_shared/router.ts": 2536
+  },
+  "grandfatheredDupTypes": {
+    "AIProvider": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AITextContent": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIImageContent": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIMessageContent": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIMessage": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIRequest": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIResponse": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIError": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "TransitionResult": [
+      "apps/api/src/lib/jobs/lifecycle.ts",
+      "supabase/functions/mobile-api/_shared/lifecycle.ts"
+    ],
+    "BaselineResult": [
+      "apps/api/src/lib/kael/baseline.ts",
+      "supabase/functions/mobile-api/_shared/kael/synthesis.ts"
+    ],
+    "PipelineInput": [
+      "apps/api/src/lib/kael/pipeline.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "PipelineStageLog": [
+      "apps/api/src/lib/kael/pipeline.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "PipelineClarification": [
+      "apps/api/src/lib/kael/pipeline.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "PipelineResult": [
+      "apps/api/src/lib/kael/pipeline.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "IntentResult": [
+      "apps/api/src/lib/kael/schemas.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "VisionResult": [
+      "apps/api/src/lib/kael/schemas.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "MarketPriceResult": [
+      "apps/api/src/lib/kael/schemas.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "ObserveResult": [
+      "apps/api/src/lib/learning/case-review.ts",
+      "apps/api/src/lib/learning/market-memory.ts"
+    ],
+    "RateLimitConfig": [
+      "apps/api/src/lib/rate-limit.ts",
+      "supabase/functions/mobile-api/_shared/rate-limit.ts"
+    ],
+    "AddressAccessView": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "ServiceCatalogResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "CreateJobResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "KaelChatStatus": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "KaelChatNextAction": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "KaelChatTurn": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "KaelChatSession": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "KaelChatResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "PlacesAutocompleteResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts",
+      "supabase/functions/mobile-api/_shared/router.ts"
+    ],
+    "ConfirmKaelChatResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "JobDetailResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "PendingDecisionItem": [
+      "apps/mobile/lib/api-types.ts",
+      "supabase/functions/mobile-api/_shared/router.ts"
+    ],
+    "PendingDecisionsResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "supabase/functions/mobile-api/_shared/router.ts"
+    ],
+    "ThreadSummary": [
+      "apps/mobile/lib/api-types.ts",
+      "supabase/functions/mobile-api/_shared/router.ts"
+    ],
+    "ThreadsResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "supabase/functions/mobile-api/_shared/router.ts"
+    ],
+    "JobMessageResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "JobMessageListResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "JobMessageSendResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "ConfirmSearchResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "StatusUpdateResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "ConfirmCompletionResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "CustomerCancellationResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "DisputeOpenResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "DisputeCounterStatementResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "DisputeAdminDecisionResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "ReviewResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "KaelChatProgress": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/validation.ts"
+    ],
+    "WorkerProfileResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "WorkerRegisterResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "BroadcastListResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "AvailabilityToggleResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "AcceptBroadcastResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "DeclineBroadcastResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "WorkerScopeChangeResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "WorkerKaelClarifyResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "WorkerCancellationRequestInput": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerCancellationResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "WorkerCancellationDecisionInput": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerCancellationDecisionResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "JobMediaAttachInput": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "NotificationListResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "NotificationReadResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "DevicePushTokenInput": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "DevicePushTokenResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "KaelLearningCandidateSummary": [
+      "apps/mobile/lib/api-types.ts",
+      "supabase/functions/mobile-api/_shared/router.ts"
+    ],
+    "KaelLearningCandidateListResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "supabase/functions/mobile-api/_shared/router.ts"
+    ],
+    "KaelLearningCandidateApproveResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "supabase/functions/mobile-api/_shared/router.ts"
+    ],
+    "KaelLearningCandidateRejectResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "supabase/functions/mobile-api/_shared/router.ts"
+    ],
+    "CustomerScopeDecisionResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "WorkerJobListResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "EarningsResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "ServiceType": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "JobStatus": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "ComplexityLevel": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "UserRole": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "MessageSender": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "BroadcastStatus": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "ScopeChangeStatus": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerVerificationStatus": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "NotificationStatus": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "LearningCandidateStatus": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "LearningRuleStatus": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "DistrictSlug": [
+      "packages/shared/src/constants.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "KaelEstimate": [
+      "packages/shared/src/types/api-responses.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "JobCreateInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "ApartmentAccessProfileInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "KaelChatCreateInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "KaelChatTurnInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "PlacesAutocompleteInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "CustomerKaelFeedbackInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "ReviewInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "JobMessageSendInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerRegisterInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "AvailabilityToggleInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerScopeChangeInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "KaelWorkerClarifyInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerKaelChatCreateInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerKaelChatTurnInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerKaelFeedbackInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerKaelTrainingConsentInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "CustomerCancellationRequestInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "DisputeOpenRequestInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "DisputeCounterStatementInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "DisputeAdminDecisionInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "CustomerScopeDecisionInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "KaelAutonomyDecision": [
+      "packages/shared/src/workflow/workflow-events.ts",
+      "supabase/functions/mobile-api/_shared/kael/artifact-contract.ts"
+    ],
+    "WorkflowCommandEvent": [
+      "packages/shared/src/workflow/workflow-events.ts",
+      "supabase/functions/mobile-api/_shared/workflow-orchestrator.ts"
+    ]
+  }
+}

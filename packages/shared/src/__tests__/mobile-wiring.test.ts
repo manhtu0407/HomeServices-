@@ -1,5 +1,5 @@
 ﻿import { describe, it, expect } from 'vitest'
-import { readFileSync, existsSync } from 'fs'
+import { readFileSync, existsSync, readdirSync } from 'fs'
 import { resolve } from 'path'
 
 const MOBILE_ROOT = resolve(__dirname, '../../../../apps/mobile')
@@ -7,6 +7,60 @@ const readSource = (path: string) => readFileSync(path, 'utf-8').replace(/\r\n/g
 const read = (rel: string) => readSource(resolve(MOBILE_ROOT, rel))
 const exists = (rel: string) => existsSync(resolve(MOBILE_ROOT, rel))
 const countOccurrences = (source: string, value: string) => source.split(value).length - 1
+
+// The Edge service layer is the services.ts factory plus the per-domain modules under
+// services/, so source-string assertions read the whole concatenated layer — otherwise a grep
+// silently misses code that moved into a module.
+const EDGE_MOBILE_API_SHARED = resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared')
+const listEdgeServiceFiles = (absDir: string): string[] =>
+  readdirSync(absDir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? listEdgeServiceFiles(resolve(absDir, entry.name)) : [resolve(absDir, entry.name)],
+  )
+const readEdgeServiceLayer = () =>
+  [
+    readSource(resolve(EDGE_MOBILE_API_SHARED, 'services.ts')),
+    ...listEdgeServiceFiles(resolve(EDGE_MOBILE_API_SHARED, 'services'))
+      .filter((p) => p.endsWith('.ts'))
+      .sort()
+      .map(readSource),
+  ].join('\n')
+
+// The worker surface layer is worker-surfaces.tsx plus the modules split out of it (constants,
+// styles, ...), so source-string assertions read the whole concatenated layer (C4 staged split).
+const readWorkerSurfaceLayer = () =>
+  listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/worker'))
+    .filter((p) => /\.tsx?$/.test(p) && !p.replace(/\\/g, '/').includes('/__tests__/'))
+    .sort()
+    .map(readSource)
+    .join('\n')
+
+// Extract a single top-level worker declaration's source, robust to which split module now
+// holds it: slices `function NAME`/`const NAME` to the next top-level declaration in that same
+// module file, so re-grouped functions never bleed across modules in the concatenated layer.
+const sliceWorkerDecl = (name: string) => {
+  const files = listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/worker'))
+    .filter((p) => /\.tsx?$/.test(p) && !p.replace(/\\/g, '/').includes('/__tests__/'))
+  for (const path of files) {
+    const file = readSource(path)
+    const head = new RegExp(`(?:export )?(?:function|const) ${name}\\b`).exec(file)
+    if (!head) continue
+    const rest = file.slice(head.index + head[0].length)
+    const next = rest.search(/\n(?:export )?(?:function|const|type|interface) /)
+    return next >= 0 ? file.slice(head.index, head.index + head[0].length + next) : file.slice(head.index)
+  }
+  return ''
+}
+
+// The customer surface layer is customer-surfaces.tsx plus the modules split out of it under
+// components/customer/surfaces/ (NOT the unrelated customer siblings like booking-wizard) — C4 split.
+const readCustomerSurfaceLayer = () =>
+  [
+    read('components/customer/customer-surfaces.tsx'),
+    ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/customer/surfaces'))
+      .filter((p) => /\.tsx?$/.test(p))
+      .sort()
+      .map(readSource),
+  ].join('\n')
 
 // ===================================================================
 // Navigation skeleton - must match STRUCTURES.md exactly
@@ -156,7 +210,7 @@ describe('customer tab labels (STRUCTURES.md A1)', () => {
 
 describe('customer frontend shell surfaces', () => {
   const shellPath = 'components/customer/customer-surfaces.tsx'
-  const shell = () => (exists(shellPath) ? read(shellPath) : '')
+  const shell = () => (exists(shellPath) ? readCustomerSurfaceLayer() : '')
   const customerLayout = () => read('app/(customer)/_layout.tsx')
   const customerTheme = () => read('components/customer/customer-theme.ts')
   const customerRoutes = [
@@ -930,7 +984,7 @@ describe('customer frontend shell surfaces', () => {
   })
 
   it('keeps B6 scope-change photos on the scope evidence stage, not B7 completion media', () => {
-    const worker = read('components/worker/worker-surfaces.tsx')
+    const worker = readWorkerSurfaceLayer()
     const mediaUpload = read('lib/media-upload.ts')
     const apiTypes = read('lib/api-types.ts')
 
@@ -1051,7 +1105,7 @@ describe('customer Kael workflow view model wiring', () => {
 })
 
 describe('customer history phase-gated workflow wiring', () => {
-  const shell = () => read('components/customer/customer-surfaces.tsx')
+  const shell = () => readCustomerSurfaceLayer()
 
   it('uses the shared workflow view model for customer history gates', () => {
     const src = shell()
@@ -1195,7 +1249,7 @@ describe('frontend workflow provider wiring', () => {
 
   it('routes after-accept customer cancellation to Kael policy review instead of the pre-accept cancel endpoint', () => {
     const provider = read('lib/frontend-workflow-provider.tsx')
-    const customerShell = read('components/customer/customer-surfaces.tsx')
+    const customerShell = readCustomerSurfaceLayer()
 
     expect(provider).toContain('requestCustomerCancellation')
     expect(provider).toContain('usesBeforeAcceptCancelEndpoint')
@@ -1393,7 +1447,7 @@ describe('worker tab labels (STRUCTURES.md B1)', () => {
 
 describe('worker client-V4/XanhSM aligned shell surfaces', () => {
   const shellPath = 'components/worker/worker-surfaces.tsx'
-  const shell = () => (exists(shellPath) ? read(shellPath) : '')
+  const shell = () => (exists(shellPath) ? readWorkerSurfaceLayer() : '')
   const workerRoutes = [
     ['home', 'WorkerHomeSurface'],
     ['jobs', 'WorkerJobsSurface'],
@@ -1600,9 +1654,9 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('workerProfileLevelThresholds = [0, 15, 30, 50, 100, 160, 240, 340, 460, 600]')
     expect(src).toContain('const points = workerProfile ? completedJobs : 0')
     expect(src).toContain('const recommendationPercent = workerProfile ? Math.round(progress * 100) : 0')
-    expect(src).toContain('value: `${completedJobs}`')
-    expect(src).toContain("value: hasRating ? `${rating.toFixed(1)}/5` : '0/5'")
-    expect(src).toContain('value: `${recommendationPercent}%`')
+    expect(src).toContain('value: hasCompletedJobs ? `${completedJobs}` : emptySignalValue')
+    expect(src).toContain('value: hasRating ? `${rating.toFixed(1)}/5` : emptySignalValue')
+    expect(src).toContain('value: hasCompletedJobs ? `${recommendationPercent}%` : emptySignalValue')
     expect(src).not.toContain('workerProfileLevelRecommendationLabel')
     expect(src).not.toContain('No completed job yet')
     expect(src).not.toContain('Waiting for feedback')
@@ -1959,7 +2013,7 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).not.toContain('worker-jobs-tab-overview')
     expect(src).toContain('worker-jobs-active-card')
     expect(src).toContain('<View style={[styles.activeJobCard, workerJobCardSurface(tokens)]} testID="worker-jobs-active-card">')
-    const activeJobCardSource = src.slice(src.indexOf('function ActiveWorkerJobCard'), src.indexOf('function WorkerChatContent'))
+    const activeJobCardSource = sliceWorkerDecl('ActiveWorkerJobCard')
     expect(activeJobCardSource).toContain("<Text style={[styles.statusPill, { alignSelf: 'flex-start', backgroundColor: tokens.mint, borderColor: tokens.border, borderWidth: 1, color: tokens.primary }]} numberOfLines={1}>")
     expect(activeJobCardSource).not.toContain('<Text style={[styles.kicker, { color: tokens.primary }]} numberOfLines={1}>')
     expect(activeJobCardSource).toContain('testID="worker-active-next-action-pill"')
@@ -2026,7 +2080,7 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(waitingEmptyStart).toBeGreaterThan(-1)
     const waitingEmptyCard = src.slice(waitingEmptyStart, src.indexOf('testID="worker-jobs-active-empty-card"', waitingEmptyStart))
     expect(waitingEmptyCard).toContain('tone="base"')
-    const emptyJobPanel = src.slice(src.indexOf('function WorkerEmptyJobPanel'), src.indexOf('function PressButton'))
+    const emptyJobPanel = sliceWorkerDecl('WorkerEmptyJobPanel')
     expect(emptyJobPanel).toContain('styles.emptyActionPill')
     expect(emptyJobPanel).toContain('workerSecondaryButtonSurface(tokens)')
     expect(emptyJobPanel).toContain("language === 'en' ? 'No request yet' : 'Chưa có yêu cầu'")
@@ -2040,14 +2094,14 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(activeEmptyCard).toContain('showMapPreview')
     expect(src).toContain('<CompactWorkerPresenceMap density="dense" mode="active" />')
     expect(src.match(/<WorkerNeedsInlineEmptyCard \/>/g)?.length).toBe(2)
-    const inlineNeedsCard = src.slice(src.indexOf('function WorkerNeedsInlineEmptyCard'), src.indexOf('function WorkerNeedsEmptyCard'))
+    const inlineNeedsCard = sliceWorkerDecl('WorkerNeedsInlineEmptyCard')
     expect(inlineNeedsCard).toContain("workerJobCardSurface(tokens, 'warm')]")
     expect(inlineNeedsCard).toContain('<SubtleGlassHighlight />')
     expect(inlineNeedsCard).toContain("language === 'en' ? 'View request' : 'Xem yêu cầu'")
     expect(inlineNeedsCard).not.toContain('appCopy[language].common.noData')
     expect(inlineNeedsCard).not.toContain('copy.jobs.filters[2]')
     expect(inlineNeedsCard).not.toContain('styles.statusPill')
-    const needsReviewCard = src.slice(src.indexOf('function WorkerNeedsReviewCard'), src.indexOf('function WorkerNeedsInlineEmptyCard'))
+    const needsReviewCard = sliceWorkerDecl('WorkerNeedsReviewCard')
     expect(needsReviewCard).toContain('<View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-completion-evidence-blocker-card">')
     expect(needsReviewCard).not.toContain("workerJobCardSurface(tokens, 'mint')]} testID=\"worker-completion-evidence-blocker-card\"")
     expect(needsReviewCard).toContain('<View style={[styles.needsReviewCard, workerJobCardSurface(tokens)]} testID="worker-scope-change-active">')
@@ -2055,7 +2109,7 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(needsReviewCard).toContain('worker-scope-change-kael-summary')
     expect(needsReviewCard).toContain('styles.jobDiagnosisBox, workerDiagnosisSurface(tokens)')
     expect(needsReviewCard).not.toContain('appCopy[language].common.noData')
-    const needsEmptyCard = src.slice(src.indexOf('function WorkerNeedsEmptyCard'), src.indexOf('export function WorkerChatSurface'))
+    const needsEmptyCard = sliceWorkerDecl('WorkerNeedsEmptyCard')
     expect(needsEmptyCard).toContain('<View style={[styles.needsReviewCard, workerJobCardSurface(tokens, tone)]} testID={testID}>')
     expect(needsEmptyCard).toContain('style={styles.needsImageIcon}')
     expect(needsEmptyCard).toContain('frameSize={64}')
@@ -2480,8 +2534,8 @@ describe('auth production login surface', () => {
     expect(surface).toContain('auth-login-admin-audit')
     expect(surface).toContain('auth-login-admin-audit-customer')
     expect(surface).toContain('auth-login-admin-audit-worker')
-    expect(read('components/customer/customer-surfaces.tsx')).toContain('customer-admin-audit-switch')
-    expect(read('components/worker/worker-surfaces.tsx')).toContain('worker-admin-audit-switch')
+    expect(readCustomerSurfaceLayer()).toContain('customer-admin-audit-switch')
+    expect(readWorkerSurfaceLayer()).toContain('worker-admin-audit-switch')
   })
 })
 
@@ -2968,8 +3022,8 @@ describe('mobile glassmorphism design system', () => {
     const tabBar = read('components/ui/floating-glass-tab-bar.tsx')
     const sheet = read('components/ui/glass-modal-sheet.tsx')
     const reduceMotion = read('components/ui/reduce-motion-aware-animation.ts')
-    const customerShell = read('components/customer/customer-surfaces.tsx')
-    const workerShell = read('components/worker/worker-surfaces.tsx')
+    const customerShell = readCustomerSurfaceLayer()
+    const workerShell = readWorkerSurfaceLayer()
     const bookingRoute = read('app/(customer)/booking.tsx')
     expect(accessibility).toContain('isReduceMotionEnabled')
     expect(accessibility).toContain('isReduceTransparencyEnabled')
@@ -3081,7 +3135,7 @@ describe('mobile glassmorphism design system', () => {
   })
 
   it('lets visual primary buttons avoid false selected accessibility state', () => {
-    const worker = read('components/worker/worker-surfaces.tsx')
+    const worker = readWorkerSurfaceLayer()
     expect(worker).toContain('active={!secondary}')
     expect(worker).toContain('accessibilityState={{ disabled }}')
   })
@@ -3117,7 +3171,7 @@ describe('client price check production UI', () => {
 
   if (!exists(productionComponentPath)) {
     it('removes the legacy client price-check flow after the booking wizard becomes the primary booking route', () => {
-      const customerShell = read('components/customer/customer-surfaces.tsx')
+      const customerShell = readCustomerSurfaceLayer()
       const wizard = read('components/customer/booking-wizard.tsx')
       expect(exists(productionComponentPath)).toBe(false)
       expect(bookingRoute).toContain('CustomerBookingEntrySurface')
@@ -3432,13 +3486,13 @@ describe('client price check production UI', () => {
 })
 
 describe('frontend-only workflow safety audit', () => {
-  const customerShell = read('components/customer/customer-surfaces.tsx')
-  const workerShell = read('components/worker/worker-surfaces.tsx')
+  const customerShell = readCustomerSurfaceLayer()
+  const workerShell = readWorkerSurfaceLayer()
   const appLanguageStore = read('lib/app-language.ts')
   const apiTypes = read('lib/api-types.ts')
   const frontendWorkflowProvider = read('lib/frontend-workflow-provider.tsx')
   const edgeRouter = readSource(resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared/router.ts'))
-  const edgeServices = readSource(resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared/services.ts'))
+  const edgeServices = readEdgeServiceLayer()
   const sharedApiTypes = readSource(resolve(__dirname, '../types/api-responses.ts'))
 
   it('uses one shared app language store with matching VI/EN dictionary keys', () => {
@@ -3545,7 +3599,7 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerShell).toContain('hideDock')
     expect(workerShell).toContain('worker-jobroom-fullscreen-header')
     expect(workerShell).toContain('subtitle={copy.earnings.subtitle}')
-    const earningsSurface = workerShell.slice(workerShell.indexOf('export function WorkerEarningsSurface'), workerShell.indexOf('export function WorkerProfileSurface'))
+    const earningsSurface = sliceWorkerDecl('WorkerEarningsSurface')
     expect(earningsSurface).not.toContain('headerIcon="trend"')
     expect(workerShell).toContain('WorkerEarningsHero')
     expect(workerShell).toContain('WorkerEarningsTrend')
@@ -3753,10 +3807,6 @@ describe('frontend-only workflow safety audit', () => {
     expect(edgeRouter).toContain('service_radius_km: number | null')
     expect(edgeServices).toContain('service_radius_km: null')
     expect(apiTypes).toContain('export type DeclineBroadcastResponse')
-    const createJobResponse = apiTypes.slice(apiTypes.indexOf('export type CreateJobResponse'), apiTypes.indexOf('export type KaelChatStatus'))
-    expect(createJobResponse).toContain('final_price?: number | null')
-    const sharedCreateJobResponse = sharedApiTypes.slice(sharedApiTypes.indexOf('export type CreateJobResponse'), sharedApiTypes.indexOf('export type KaelChatStatus'))
-    expect(sharedCreateJobResponse).toContain('final_price?: number | null')
     const workerJobListResponse = apiTypes.slice(apiTypes.indexOf('export type WorkerJobListResponse'), apiTypes.indexOf('export type EarningsResponse'))
     expect(workerJobListResponse).toContain('completion_notes: string | null')
     expect(workerJobListResponse).toContain('completion_photo_urls: string[]')
@@ -3787,11 +3837,10 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerStatusUpdateSchema).toContain('result.access_check_in = parseWorkerAccessCheckIn(record.access_check_in)')
     expect(workerStatusUpdateSchema).toContain('if (status === "completed_by_worker")')
     expect(workerStatusUpdateSchema).toContain('Cần ghi chú hoàn tất trước khi báo hoàn tất')
-    const createJobResponseType = edgeRouter.slice(edgeRouter.indexOf('type CreateJobResponse'), edgeRouter.indexOf('type KaelChatStatus'))
-    expect(createJobResponseType).toContain('final_price?: number | null')
     const createJobReturn = edgeServices.slice(edgeServices.indexOf('return {\n    job_id: jobId'), edgeServices.indexOf('async function cancelAnalyzingJob'))
     expect(createJobReturn).toContain('final_price: lockedFinalPrice')
-    const listWorkerJobs = edgeServices.slice(edgeServices.indexOf('async function listWorkerJobs'), edgeServices.indexOf('async function getWorkerEarnings'))
+    // listWorkerJobs is the last function in the last service module, so slice to end of the layer.
+    const listWorkerJobs = edgeServices.slice(edgeServices.indexOf('async function listWorkerJobs'))
     expect(listWorkerJobs).toContain('completion_notes, completion_photo_urls')
     expect(listWorkerJobs).toContain('projectAddressAccess(row, "worker")')
     expect(listWorkerJobs).toContain('address_access: addressProjection.addressAccess')

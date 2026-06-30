@@ -1,0 +1,49 @@
+# Integration suite against STAGING Supabase (R4 — closes the ~75 env-gated skips in CI).
+# Runs ONLY apps/api/src/__tests__/integration/** (real-supabase, learning-real-supabase,
+# worker-flow, rls-per-actor) — the real-DB tests that hit live Supabase.
+#
+# Secrets required (Settings > Secrets and variables > Actions). Until they are set, every
+# integration `describe` self-skips and this job is GREEN-but-skipped — it does NOT block:
+#   NEXT_PUBLIC_SUPABASE_URL            -> STAGING url https://xyylanuyflrjzbjzhqfl.supabase.co
+#                                          (the tests refuse to run if this points at prod
+#                                           iwevizmsedyqozxlawwl — built-in guard)
+#   SUPABASE_SERVICE_ROLE_KEY           -> STAGING service-role key
+#   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY -> STAGING anon/publishable key (only the per-actor
+#                                          RLS tests need it; others run without it)
+name: integration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    # Nightly staging health check (01:00 ICT / 18:00 UTC).
+    - cron: '0 18 * * *'
+
+permissions:
+  contents: read
+
+# Serialize: the real-DB tests create and clean up shared staging rows, so never let two
+# integration runs hit staging at once.
+concurrency:
+  group: integration-staging
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    name: integration suite (staging)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Integration tests vs staging Supabase
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: pnpm --filter @home-services/api exec vitest run src/__tests__/integration

@@ -20,7 +20,8 @@
     "./kael/sanitizers": "./kael/sanitizers/index.ts",
     "./kael/fallbacks": "./kael/fallbacks/index.ts",
     "./kael/renderers": "./kael/renderers/index.ts",
-    "./kael/anti-fraud": "./kael/anti-fraud.ts"
+    "./kael/anti-fraud": "./kael/anti-fraud.ts",
+    "./kael/parsing": "./kael/parsing.ts"
   },
   "dependencies": {
     "zod": "^4.4.3"

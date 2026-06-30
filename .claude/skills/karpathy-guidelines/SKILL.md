@@ -173,6 +173,8 @@ Project constraints override generic advice:
 - Price estimates require the project disclaimer.
 - Network calls need timeout and bounded retry.
 - Locked docs are not edited without explicit permission.
+- Keep comments short and WHY-focused — no changelog/status/date/plan-tag narrative in code. See `skills.md` "Core Skill 5: Comment Discipline" (enforced by `pnpm lint:comments`).
+- Code organization: one concept = one canonical home; group by domain, never grow a god-file. See `skills.md` Core Skill 6 + `pnpm lint:structure`.
 
 ## Decision Protocol
 

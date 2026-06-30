@@ -1493,7 +1493,7 @@ describe('mobile-api Edge router contract', () => {
         status: 'arrived',
         access_check_in: {
           mode: 'manual_photo',
-          photo_urls: ['supabase://job-media/job-1/after/lobby.jpg'],
+          photo_urls: ['supabase://job-media/job-1/access_check_in/lobby.jpg'],
           note: 'Đã đến sảnh.',
         },
       }),
@@ -1507,7 +1507,7 @@ describe('mobile-api Edge router contract', () => {
         status: 'arrived',
         access_check_in: {
           mode: 'manual_photo',
-          photo_urls: ['supabase://job-media/job-1/after/lobby.jpg'],
+          photo_urls: ['supabase://job-media/job-1/access_check_in/lobby.jpg'],
           note: 'Đã đến sảnh.',
         },
       },

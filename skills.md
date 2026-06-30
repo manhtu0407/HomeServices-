@@ -132,6 +132,92 @@ Examples of stronger task framing:
 - Instead of "clean up mobile": "Remove unused exports first, then run type-check and React Doctor."
 - Instead of "make it faster": "Measure current path, pick response time, throughput, or perceived speed, then change one bottleneck."
 
+## Core Skill 5: Comment Discipline
+
+Comments explain non-obvious WHY or warn about a trap — short, at the point they apply. Source code is not a changelog. Keep adjacent code clean and upgradeable over time.
+
+Never bake into code (these belong in the git commit message, `docs/`, `Notes.md`, or the plan):
+
+- Phase/plan numbers: `Phase 5.11`, `plan §22.10.L`.
+- Dates: `2026-05-23`.
+- Status banners: `Status: WIRED / DONE / DEFERRED`.
+- Audit/ticket codes: `kael-...-audit §9`, `(B-1)`, `(H9-1)`.
+- Internal-doc references: `Notes.md MAP PLAN`, `Plan.md §…`.
+- Multi-line changelog/narrative headers describing how the file evolved.
+
+Keep (compressed):
+
+- Architectural WHY a reader cannot infer: "RLS-scoped to the participant", "polling is the fallback when the socket drops".
+- Invariants and gotchas that are easy to miss.
+- JSDoc/TSDoc on public APIs — that is documentation, not narrative.
+
+Allowed (these are WHY, not changelog — keep them):
+
+- Citing a durable contract for a rule: `// Per STRUCTURES.md §10C`, `// RULES.md #8`.
+- Bare scope language: "only honored in Phase 1", "Phase 1 fire-and-forget".
+
+The ban targets the dated / status / plan-tag *narrative*, not authority citations.
+
+Before (banned — a changelog in the file header):
+
+```ts
+// Phase 5.11 (plan §22.10.L, 2026-05-23): realtime subscription helper.
+// Status: WIRED (Notes.md MAP PLAN Phase 2, 2026-06-13). Perceived-perf audit
+// (kael-perf-agentic-hardening-audit §9) confirmed the polling story is
+// insufficient on the active-job phase ... (B-1)(B-2)(H9-1).
+```
+
+After (WHY only — the rest goes to the commit message + Notes):
+
+```ts
+// Realtime subscription helper for jobs, chat, and broadcasts.
+// Target tables are RLS-scoped to the participant, so realtime honors the same
+// access boundary as the REST reads. Returns null when Supabase is unconfigured;
+// callers treat null as "stay on poll" (polling remains the fallback path).
+```
+
+Red flags — STOP and trim:
+
+- A date, a decimal phase tag (`5.11`), or a `plan §` / `audit §` reference in a comment.
+- A `Status:` / `WIRED` / `DONE` banner.
+- A comment that points at a plan/Notes/audit document.
+- A header comment longer than ~3 lines that is not JSDoc/license.
+
+| Rationalization | Reality |
+|---|---|
+| "Future me needs this history" | History lives in git + Notes/docs, not the source header. |
+| "It documents the decision" | The decision goes in the commit message and docs; the comment states the one-line WHY. |
+| "It's traceability to the plan" | Trace via the commit/PR, not phase tags compiled into the code. |
+
+Enforcement: `pnpm lint:comments` for a full report; the `comment-discipline` CI job blocks NEW banner comments on changed lines. It is a going-forward ratchet — legacy files are cleaned when next touched, not in one mass rewrite.
+
+## Core Skill 6: Code Organization
+
+One concept lives in one place; related code groups into cohesive, right-sized "chains." This is the permanent guardrail against the two failure modes the reorg pays down: god-files (one file owning a whole layer) and scattered duplicates (one concept declared across many files/runtimes).
+
+Rules:
+
+- One concept = one canonical home. Import it; never re-declare a type, contract, or constant across files or runtimes. Shared logic lives in `packages/shared`; Edge and mobile import it.
+- Group by domain into cohesive modules. Never append a new concern to a catch-all god-file.
+- Size is a guardrail, not a target. A file past ~600-800 lines, or one mixing unrelated domains, is a signal to split by domain first — but right-size to the domain (some modules are larger, some smaller). Do NOT fragment into many tiny uniform files; that recreates the mess. Success = understandable at a glance, not lines-per-file. (See `docs/architecture/code-ownership-map.md` §0.5 and the C1 target map.)
+- No duplicated logic across runtimes (Edge vs Next.js vs mobile). Share one source via `packages/shared`.
+
+Red flags — stop and find the home first:
+
+- About to add a function/handler to `services.ts`, `router.ts`, or a `*-surfaces.tsx` god-file.
+- Copy-pasting a type/interface/constant into a second file "so this layer has it too."
+- Declaring an exported type name that already exists elsewhere.
+- A new file already past ~800 lines, or one file owning two unrelated domains.
+
+| Rationalization | Reality | Do instead |
+|---|---|---|
+| "It is faster to add it to the existing file." | The god-file is the cost the reorg is paying down; one more function deepens it. | Put it in (or create) the domain module; assemble via an index. |
+| "I will re-declare the type here to avoid an import." | Re-declaration is how `KaelEstimate` reached 4 homes and 108 duplicate-type groups accumulated. | Import from the one canonical home (`packages/shared`). |
+| "Splitting now is over-engineering." | Splitting by domain is right-sizing, not abstraction. | Split by cohesion; do not invent layers. |
+| "Edge cannot import shared, so copy it." | Copying spawned a 628-line `domain.ts` clone. | Resolve the import (C2/OQ5); share, do not clone. |
+
+Enforcement: `pnpm lint:structure` (`scripts/lint-structure.mjs`) is a CI ratchet that fails on a NEW oversized file, a grandfathered god-file that grows, or a NEW cross-file duplicate exported type. Today's god-files and duplicate-type groups are grandfathered in `scripts/structure-baseline.json`; the reorg removes entries as it splits files and collapses contracts (regenerate intentionally with `node scripts/lint-structure.mjs --init`).
+
 ## Anti-Patterns To Avoid
 
 Hidden assumption:

@@ -134,6 +134,30 @@ function buildNoEarnings(): EarningsResponse {
   }
 }
 
+function settledEarningsDateKey(daysAgo: number): string {
+  const date = new Date()
+  date.setDate(date.getDate() - daysAgo)
+  return date.toISOString().slice(0, 10)
+}
+
+function buildSettledEarnings(): EarningsResponse {
+  return {
+    daily_earnings: [
+      { date: settledEarningsDateKey(0), gross_earnings: 400000, net_earnings: 320000, paid_job_count: 2, platform_fee_total: 80000 },
+      { date: settledEarningsDateKey(1), gross_earnings: 220000, net_earnings: 180000, paid_job_count: 1, platform_fee_total: 40000 },
+    ],
+    from_date: settledEarningsDateKey(6),
+    gross_earnings: 1500000,
+    net_earnings: 1200000,
+    pending_payment_amount: 0,
+    pending_payment_count: 0,
+    platform_fee_total: 300000,
+    to_date: settledEarningsDateKey(0),
+    total_jobs_paid: 5,
+    worker_id: 'worker_test_1',
+  }
+}
+
 function buildIncomingDeal(): LocalDeal {
   return {
     broadcast: {
@@ -1332,6 +1356,22 @@ describe('WorkerEarningsSurface', () => {
     expect(screen.queryByText('Recent days')).toBeNull()
     expect(screen.queryByText('320k')).toBeNull()
     expect(screen.queryByText('4.8tr')).toBeNull()
+  })
+
+  it('renders settled earnings as real bars, ledger totals, and day/month money', () => {
+    mockPathname = '/(worker)/earnings'
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
+
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getByTestId('worker-earnings-real-bar-shell')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-earnings-empty-bar-shell')).toBeNull()
+    expect(screen.queryByTestId('worker-earnings-chart-empty-label')).toBeNull()
+    expect(screen.getByText('5 mục')).toBeOnTheScreen()
+    expect(screen.getByText('1.500.000 đ')).toBeOnTheScreen()
+    expect(screen.getAllByText('1.200.000 đ').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('320.000 đ')).toBeOnTheScreen()
+    expect(screen.queryByText('Chờ dữ liệu')).toBeNull()
   })
 })
 
