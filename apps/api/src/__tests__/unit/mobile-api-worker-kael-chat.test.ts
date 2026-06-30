@@ -253,6 +253,9 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     const services = readFileSync(
       new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
       'utf8',
+    ) + readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts', import.meta.url),
+      'utf8',
     )
     const migration = readFileSync(
       new URL('../../../../../supabase/migrations/20260604224500_kael_worker_chat_sessions.sql', import.meta.url),

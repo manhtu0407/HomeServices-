@@ -53,3 +53,19 @@ jobs:
           mobile-api-s3-require-job-access
           mobile-api-s4-spend-gate
           kael-redteam
+
+  ratchets:
+    name: skills-sync + structure ratchet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Skills single-source check
+        run: pnpm skills:check
+      - name: Structure ratchet (Core Skill 6)
+        run: pnpm lint:structure

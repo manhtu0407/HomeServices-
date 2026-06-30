@@ -1,0 +1,33 @@
+# Comment-discipline gate (skills.md Core Skill 5).
+# Blocks NEW note-banner comments (phase/plan/date/status/audit refs) on the
+# lines a PR adds. Legacy files are grandfathered until touched — a going-forward
+# ratchet, not a one-shot mass cleanup. Run `pnpm lint:comments` for a full report.
+name: comment-discipline
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ratchet:
+    name: no new note-banner comments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Ensure base ref is available
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+      - name: Check added lines (PR ratchet)
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-comment-discipline.mjs --diff "origin/${{ github.base_ref }}"
+      - name: Full-repo report (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        run: node scripts/check-comment-discipline.mjs

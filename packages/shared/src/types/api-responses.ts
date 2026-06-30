@@ -29,6 +29,10 @@ export type KaelEstimate = {
   confidence: number
   advisory: string | null
   disclaimer: string
+  // A-2 honesty fields surfaced from estimate_card_v3 (optional; canonical superset for mobile).
+  needs_inspection?: boolean
+  price_source?: string | null
+  needs_inspection_reason?: string | null
 }
 
 export type ServiceCatalogResponse = {
@@ -96,6 +100,8 @@ export type KaelChatTurn = {
   text_content: string | null
   media_refs: string[]
   estimate: KaelEstimate | null
+  // Smart clarification: present on content_type='clarification' turns (optional; canonical superset).
+  clarification?: { question: string | null; missing_slots: string[] } | null
   created_at: string
 }
 

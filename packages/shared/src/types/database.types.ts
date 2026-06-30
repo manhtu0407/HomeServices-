@@ -783,6 +783,8 @@ export type Database = {
       }
       jobs: {
         Row: {
+          platform_fee: number | null
+          worker_net: number | null
           address_building: string | null
           address_district: string | null
           address_floor: string | null
@@ -835,6 +837,8 @@ export type Database = {
           worker_id: string | null
         }
         Insert: {
+          platform_fee?: number | null
+          worker_net?: number | null
           address_building?: string | null
           address_district?: string | null
           address_floor?: string | null
@@ -887,6 +891,8 @@ export type Database = {
           worker_id?: string | null
         }
         Update: {
+          platform_fee?: number | null
+          worker_net?: number | null
           address_building?: string | null
           address_district?: string | null
           address_floor?: string | null
@@ -3815,6 +3821,99 @@ export type Database = {
           },
         ]
       }
+      worker_stats: {
+        Row: {
+          avg_response_time_min: number | null
+          cancel_rate: number | null
+          completion_rate: number | null
+          income_30d: number
+          jobs_30d: number
+          last_recomputed_at: string
+          on_time_rate: number | null
+          total_income: number
+          worker_id: string
+        }
+        Insert: {
+          avg_response_time_min?: number | null
+          cancel_rate?: number | null
+          completion_rate?: number | null
+          income_30d?: number
+          jobs_30d?: number
+          last_recomputed_at?: string
+          on_time_rate?: number | null
+          total_income?: number
+          worker_id: string
+        }
+        Update: {
+          avg_response_time_min?: number | null
+          cancel_rate?: number | null
+          completion_rate?: number | null
+          income_30d?: number
+          jobs_30d?: number
+          last_recomputed_at?: string
+          on_time_rate?: number | null
+          total_income?: number
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_stats_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_stats_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_stats: {
+        Row: {
+          bookings_30d: number
+          bookings_total: number
+          customer_id: string
+          dispute_free_rate: number | null
+          last_recomputed_at: string
+          total_spent: number
+        }
+        Insert: {
+          bookings_30d?: number
+          bookings_total?: number
+          customer_id: string
+          dispute_free_rate?: number | null
+          last_recomputed_at?: string
+          total_spent?: number
+        }
+        Update: {
+          bookings_30d?: number
+          bookings_total?: number
+          customer_id?: string
+          dispute_free_rate?: number | null
+          last_recomputed_at?: string
+          total_spent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_stats_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customer_overview"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "customer_stats_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       kael_cost_daily_summary: {
@@ -3893,6 +3992,61 @@ export type Database = {
           total_cost_usd: number | null
         }
         Relationships: []
+      }
+      worker_overview: {
+        Row: {
+          avg_response_time_min: number | null
+          cancel_rate: number | null
+          completion_rate: number | null
+          districts: string[] | null
+          income_30d: number | null
+          is_approved: boolean | null
+          is_available: boolean | null
+          jobs_30d: number | null
+          last_recomputed_at: string | null
+          legal_name: string | null
+          on_time_rate: number | null
+          rating: number | null
+          service_types: Database["public"]["Enums"]["service_type"][] | null
+          total_income: number | null
+          total_jobs: number | null
+          verification_status:
+            | Database["public"]["Enums"]["worker_verification_status"]
+            | null
+          worker_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_profiles_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_overview: {
+        Row: {
+          bookings_30d: number | null
+          bookings_total: number | null
+          building_name: string | null
+          created_at: string | null
+          customer_id: string | null
+          dispute_free_rate: number | null
+          district: string | null
+          last_recomputed_at: string | null
+          total_spent: number | null
+          unit_number: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_profiles_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {

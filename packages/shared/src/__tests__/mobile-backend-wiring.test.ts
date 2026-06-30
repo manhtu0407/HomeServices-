@@ -1,13 +1,54 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import { resolve } from 'path'
 
 const ROOT = resolve(__dirname, '../../../../')
 const MOBILE_ROOT = resolve(ROOT, 'apps/mobile')
 const EDGE_SHARED_ROOT = resolve(ROOT, 'supabase/functions/mobile-api/_shared')
-const read = (rel: string) => readFileSync(resolve(MOBILE_ROOT, rel), 'utf-8')
-const readRoot = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8')
-const readEdgeShared = (rel: string) => readFileSync(resolve(EDGE_SHARED_ROOT, rel), 'utf-8')
+const read = (rel: string) => readFileSync(resolve(MOBILE_ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
+const readRoot = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
+const readEdgeShared = (rel: string) => readFileSync(resolve(EDGE_SHARED_ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
+
+// The Edge service layer is the services.ts factory plus the per-domain modules under
+// services/, so source-string assertions read the whole concatenated layer — otherwise a grep
+// silently misses code that moved into a module.
+const listEdgeServiceFiles = (relDir: string): string[] =>
+  readdirSync(resolve(EDGE_SHARED_ROOT, relDir), { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? listEdgeServiceFiles(`${relDir}/${entry.name}`) : [`${relDir}/${entry.name}`],
+  )
+const readEdgeServiceLayer = () =>
+  [
+    readEdgeShared('services.ts'),
+    ...listEdgeServiceFiles('services')
+      .filter((p) => p.endsWith('.ts'))
+      .sort()
+      .map(readEdgeShared),
+  ].join('\n')
+
+// The worker surface layer is worker-surfaces.tsx plus the modules split out of it (constants,
+// styles, ...), so source-string assertions read the whole concatenated layer (C4 staged split).
+const listMobileFiles = (relDir: string): string[] =>
+  readdirSync(resolve(MOBILE_ROOT, relDir), { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? listMobileFiles(`${relDir}/${entry.name}`) : [`${relDir}/${entry.name}`],
+  )
+const readWorkerSurfaceLayer = () =>
+  listMobileFiles('components/worker')
+    .filter((p) => /\.tsx?$/.test(p) && !p.replace(/\\/g, '/').includes('/__tests__/'))
+    .sort()
+    .map(read)
+    .join('\n')
+
+// The customer surface layer is customer-surfaces.tsx plus its split modules under
+// components/customer/surfaces/ (NOT the unrelated customer siblings) — C4 split.
+const readCustomerSurfaceLayer = () =>
+  [
+    read('components/customer/customer-surfaces.tsx'),
+    ...readdirSync(resolve(MOBILE_ROOT, 'components/customer/surfaces'), { withFileTypes: true })
+      .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
+      .map((entry) => `components/customer/surfaces/${entry.name}`)
+      .sort()
+      .map(read),
+  ].join('\n')
 
 describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('keeps mobile service paths on the Edge function contract, not Next /api routes', () => {
@@ -146,8 +187,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('keeps UI components behind the workflow provider instead of direct backend calls', () => {
     const provider = read('lib/frontend-workflow-provider.tsx')
     const bookingRoute = read('app/(customer)/booking.tsx')
-    const customer = read('components/customer/customer-surfaces.tsx')
-    const worker = read('components/worker/worker-surfaces.tsx')
+    const customer = readCustomerSurfaceLayer()
+    const worker = readWorkerSurfaceLayer()
 
     expect(provider).toContain('createRemoteJobFromDraft')
     expect(provider).toContain('confirmRemoteSearch')
@@ -208,8 +249,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('carries active scope-change details from job detail into Kael decision UI', () => {
     const apiTypes = read('lib/api-types.ts')
     const provider = read('lib/frontend-workflow-provider.tsx')
-    const customer = read('components/customer/customer-surfaces.tsx')
-    const worker = read('components/worker/worker-surfaces.tsx')
+    const customer = readCustomerSurfaceLayer()
+    const worker = readWorkerSurfaceLayer()
 
     expect(apiTypes).toContain('current_scope_change')
     expect(apiTypes).toContain('kael_computed_min')
@@ -252,7 +293,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   })
 
   it('keeps customer active hydration alive through completion and payment gates without treating paid jobs as active', () => {
-    const services = readEdgeShared('services.ts')
+    const services = readEdgeServiceLayer()
     const customerActiveStatusSet = services.match(/CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus\[] = \[([\s\S]*?)\]/)?.[1] ?? ''
 
     expect(customerActiveStatusSet).toContain('"completed_by_worker"')
@@ -264,7 +305,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   })
 
   it('nudges the customer to authorize unit access when the worker checks in (X-2)', () => {
-    const services = readEdgeShared('services.ts')
+    const services = readEdgeServiceLayer()
 
     // Helper exists and carries the actionable "Cho thợ lên" copy + its own event type.
     expect(services).toContain('async function notifyCustomerWorkerCheckedIn(')
@@ -282,7 +323,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     const visibleSources = [
       read('app/(customer)/booking.tsx'),
       read('components/customer/customer-surfaces.tsx'),
-      read('components/worker/worker-surfaces.tsx'),
+      readWorkerSurfaceLayer(),
       read('lib/api.ts'),
       read('lib/frontend-workflow-provider.tsx'),
     ].join('\n')
