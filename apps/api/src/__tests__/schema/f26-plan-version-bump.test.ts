@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const ROOT = resolve(__dirname, '../../../../../')
-const plan = readFileSync(resolve(ROOT, 'Plan.md'), 'utf-8').replace(/\r\n/g, '\n')
+const plan = readFileSync(resolve(ROOT, 'governance/Plan.md'), 'utf-8').replace(/\r\n/g, '\n')
 
 const between = (start: string, end: string) => {
   const startIndex = plan.indexOf(start)

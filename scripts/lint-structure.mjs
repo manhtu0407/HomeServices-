@@ -1,4 +1,4 @@
-// Structure ratchet (Core Skill 6 / skills.md). Two checks on source .ts/.tsx:
+// Structure ratchet (Core Skill 6 / governance/skills.md). Two checks on source .ts/.tsx:
 //   1. file-size cap — no NEW file over MAX_LINES, and no grandfathered god-file may grow.
 //   2. duplicate exported type/interface — one concept = one home; no NEW cross-file re-declaration.
 // Today's god-files and contract dups are grandfathered in scripts/structure-baseline.json
@@ -111,7 +111,7 @@ for (const f of files) {
 }
 
 if (problems.length) {
-  console.error('structure ratchet failed (Core Skill 6 / skills.md):')
+  console.error('structure ratchet failed (Core Skill 6 / governance/skills.md):')
   for (const p of problems) console.error(`  - ${p}`)
   console.error('Fix by splitting/importing; only grandfather intentionally via `node scripts/lint-structure.mjs --init`.')
   process.exit(1)

@@ -2,7 +2,7 @@
 
 Status: active agent navigation contract.
 
-This document tells Codex, Claude Code, and future AI coding agents where workflow behavior lives in code. It is not a product spec. `STRUCTURES.md` remains the workflow source of truth; this file maps that workflow to implementation owners.
+This document tells Codex, Claude Code, and future AI coding agents where workflow behavior lives in code. It is not a product spec. `governance/STRUCTURES.md` remains the workflow source of truth; this file maps that workflow to implementation owners.
 
 ## Required Use
 

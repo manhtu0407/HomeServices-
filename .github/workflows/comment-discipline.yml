@@ -1,4 +1,4 @@
-# Comment-discipline gate (skills.md Core Skill 5).
+# Comment-discipline gate (governance/skills.md Core Skill 5).
 # Blocks NEW note-banner comments (phase/plan/date/status/audit refs) on the
 # lines a PR adds. Legacy files are grandfathered until touched — a going-forward
 # ratchet, not a one-shot mass cleanup. Run `pnpm lint:comments` for a full report.

@@ -14,7 +14,7 @@ What from this session would help a future agent and is NOT already durable else
 - Honest gaps, deferred items, and remaining risks.
 - Environment quirks discovered (tooling, Windows/pnpm, staging/prod caveats).
 
-Skip: one-off fixes unlikely to recur, and anything already durable in `critical.md` / `RULES.md` / `STRUCTURES.md` / `design.md` / `Plan.md`.
+Skip: one-off fixes unlikely to recur, and anything already durable in `governance/critical.md` / `governance/RULES.md` / `governance/STRUCTURES.md` / `governance/design.md` / `governance/Plan.md`.
 
 ## Step 2: Pick the period file
 
@@ -29,7 +29,7 @@ Use `docs/memory/<YYYY-MM>.md` for the current month (e.g. `docs/memory/2026-05.
 - <honest gap / risk / next step>
 ```
 
-No flowery language, no lies. The verification bullet lists only commands actually run and their real results (per `critical.md` §3 gates + RULES.md honesty rules).
+No flowery language, no lies. The verification bullet lists only commands actually run and their real results (per `governance/critical.md` §3 gates + governance/RULES.md honesty rules).
 
 ## Step 4: Show before writing
 

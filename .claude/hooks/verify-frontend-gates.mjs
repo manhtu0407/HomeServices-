@@ -5,7 +5,7 @@
 // apps/mobile) has uncommitted changes, this re-runs the REAL gates
 // (type-check + test). On a red gate it blocks the stop (exit 2) and tells the
 // agent exactly what to fix — so "done" cannot be claimed while the frontend is
-// broken. This turns the soft "No False Completion" rule (critical.md §3) into a
+// broken. This turns the soft "No False Completion" rule (governance/critical.md §3) into a
 // rule the harness enforces, not one the model can choose to skip.
 //
 // Safety rails (must never brick a session):
