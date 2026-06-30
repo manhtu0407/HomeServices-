@@ -1,6 +1,6 @@
 # Security Audit
 
-Use `protocols/ai-data-security.md` as the canonical checklist. This file is only the command entry point.
+Use `governance/protocols/ai-data-security.md` as the canonical checklist. This file is only the command entry point.
 
 ## Required Areas
 

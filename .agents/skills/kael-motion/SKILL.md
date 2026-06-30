@@ -5,14 +5,14 @@ description: Design and audit UI motion/animation for the Home Services Expo Rea
 
 # kael-motion
 
-Motion skill for Home Services (Expo RN / Reanimated), adapted from `design-motion-principles`. Canonical specs live in `design/motion.md` (timing ranges, required/forbidden areas) and `RULES.md` (Motion Rules + Performance Budget) — do not duplicate them here. Read `design.md` core first for identity/preflight.
+Motion skill for Home Services (Expo RN / Reanimated), adapted from `design-motion-principles`. Canonical specs live in `governance/design/motion.md` (timing ranges, required/forbidden areas) and `governance/RULES.md` (Motion Rules + Performance Budget) — do not duplicate them here. Read `governance/design.md` core first for identity/preflight.
 
 ## Mode: create
 Use when building animation for a screen or component.
-1. First ask: **should this animate at all?** Motion is required only at key product moments (`design/motion.md` "Required motion areas"). If it is not a key moment, ship it static.
-2. Pick the smallest motion that gives feedback or communicates state. Use the timing ranges in `design/motion.md` (screen enter 180-260ms, tab 160-240ms, press scale 0.97-0.99, sheet 220-320ms, modal 180-260ms, skeleton shimmer 1200-1600ms).
+1. First ask: **should this animate at all?** Motion is required only at key product moments (`governance/design/motion.md` "Required motion areas"). If it is not a key moment, ship it static.
+2. Pick the smallest motion that gives feedback or communicates state. Use the timing ranges in `governance/design/motion.md` (screen enter 180-260ms, tab 160-240ms, press scale 0.97-0.99, sheet 220-320ms, modal 180-260ms, skeleton shimmer 1200-1600ms).
 3. Implement with Reanimated (not legacy RN `Animated` for new work); respect safe-area and keyboard.
-4. Wire Reduce Motion (remove parallax / sweep / depth / scale-heavy effects) and Reduce Transparency (glass → opaque/tinted) per RULES.md.
+4. Wire Reduce Motion (remove parallax / sweep / depth / scale-heavy effects) and Reduce Transparency (glass → opaque/tinted) per governance/RULES.md.
 
 ## Mode: audit
 Use when reviewing existing UI motion.
@@ -33,4 +33,4 @@ Anti-slop findings:
 Verdict / fixes:
 ```
 
-Single source: `design/motion.md` + RULES.md Motion Rules & Performance Budget. `critical.md` remains highest execution authority; pair with `kael-ui-rn-execution` (protocols/ui.md).
+Single source: `governance/design/motion.md` + governance/RULES.md Motion Rules & Performance Budget. `governance/critical.md` remains highest execution authority; pair with `kael-ui-rn-execution` (governance/protocols/ui.md).

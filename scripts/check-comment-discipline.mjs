@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Comment-discipline linter for Home Services.
 //
-// Enforces skills.md "Core Skill 5": code comments explain non-obvious WHY or
+// Enforces governance/skills.md "Core Skill 5": code comments explain non-obvious WHY or
 // warn about a trap, briefly. They are NOT a changelog. Phase/plan numbers,
 // dates, status banners, audit/ticket codes, and internal-doc references belong
 // in the git commit message and docs/ — never baked into the source.
@@ -28,7 +28,7 @@ const SKIP_DIRS = new Set([
 // COMMENT text only, so string literals and live code never trip them.
 //
 // Deliberately NOT flagged — citing a durable contract is legitimate WHY:
-//   STRUCTURES.md §X, RULES.md #X, design.md, critical.md, bare "Phase 1" scope.
+//   governance/STRUCTURES.md §X, governance/RULES.md #X, governance/design.md, governance/critical.md, bare "Phase 1" scope.
 // Banned is the dated/status/plan-tag narrative, not authority citations.
 const RULES = [
   { re: /\b20\d\d-\d\d-\d\d\b/, why: 'date in comment' },
@@ -190,7 +190,7 @@ function main() {
     console.error('')
   }
   console.error('Move phase/plan/date/status/audit notes to the git commit message or docs/.')
-  console.error('See skills.md "Core Skill 5: Comment Discipline".')
+  console.error('See governance/skills.md "Core Skill 5: Comment Discipline".')
   if (!warn) process.exit(1)
 }
 
