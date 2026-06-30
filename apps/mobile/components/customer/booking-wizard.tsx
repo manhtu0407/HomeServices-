@@ -5,16 +5,16 @@ import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { createContext, type ReactNode, use, useEffect, useMemo, useReducer, useState } from 'react'
 import { useLocalSearchParams } from 'expo-router'
-import { Alert, Pressable, StyleSheet, Text, TextInput, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native'
+import { Alert, Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated'
-import { type ServiceType } from '@home-services/shared'
+import { type ServiceType } from '@nestscout/shared'
 import { GlassSurface } from '@/components/ui/glass-surface'
-import { KaelVoiceInputCapsule } from '@/components/ui/kael-primitives'
+import { KaelButton, KaelChip, KaelMediaUploadTray, KaelTextField, KaelVoiceInputCapsule } from '@/components/ui/kael-primitives'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { type GlassMode } from '@/components/ui/tokens'
-import { color } from '@/design/theme'
+import { color, typography } from '@/design/theme'
 import { type AppLanguage, useAppLanguage } from '@/lib/app-language'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { type LocalMediaUploadDraft } from '@/lib/media-upload'
@@ -349,7 +349,7 @@ export function BookingWizard({ mode = 'light', onOpenHistory, onOpenKael }: Boo
     dispatch({ type: 'goto', step: 'analyzing' })
     try {
       const message = formatBookingMessageForKael(copy, state)
-      setPendingKaelChatDraft({
+      await setPendingKaelChatDraft({
         addressLabel: state.addressLabel.trim(),
         clientRequestId: generateClientRequestId(),
         createdAt: new Date().toISOString(),
@@ -596,27 +596,21 @@ function WizardPrimaryButton({
   onPress: () => void
   testID: string
 }) {
-  const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
+  const { mode, reduceTransparency, visual } = useBookingWizardVisual()
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: Boolean(disabled) }}
+    <KaelButton
       disabled={disabled}
+      label={label}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.primaryButton,
         bookingPrimaryButtonSurface(visual, mode, reduceTransparency),
         buttonStyle,
         disabled ? styles.primaryButtonDisabled : null,
-        reduceMotionAwarePressStyle(pressed, reduceMotion),
       ]}
       testID={testID}
-    >
-      <View pointerEvents="none" style={[styles.buttonSheen, bookingButtonSheenSurface(mode)]} />
-      <Text style={[styles.primaryButtonText, { color: visual.primaryText }]} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
+      textStyle={[styles.primaryButtonText, { color: visual.primaryText }]}
+    />
   )
 }
 
@@ -631,24 +625,21 @@ function WizardSecondaryButton({
   onPress: () => void
   testID: string
 }) {
-  const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
+  const { mode, reduceTransparency, visual } = useBookingWizardVisual()
   return (
-    <Pressable
-      accessibilityRole="button"
+    <KaelButton
       disabled={disabled}
+      label={label}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.secondaryButton,
         bookingSecondaryButtonSurface(visual, mode, reduceTransparency),
         disabled ? styles.primaryButtonDisabled : null,
-        reduceMotionAwarePressStyle(pressed, reduceMotion),
       ]}
       testID={testID}
-    >
-      <Text style={[styles.secondaryButtonText, { color: visual.primary }]} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
+      textStyle={[styles.secondaryButtonText, { color: visual.primary }]}
+      variant="secondary"
+    />
   )
 }
 
@@ -1202,20 +1193,21 @@ function DescribeStep({
       </View>
       <BookingFilterBrief copy={copy} state={state} />
       <View style={styles.formGroup}>
-        <WizardText kind="label">{copy.describeStep}</WizardText>
-        <View style={[styles.fieldShell, bookingInputShellSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-description-field-shell">
-          <View pointerEvents="none" style={[styles.fieldEdgeHighlight, bookingComponentEdgeSurface(mode)]} />
-          <TextInput
-            accessibilityLabel={copy.describeTitle}
-            multiline
-            numberOfLines={4}
-            onChangeText={(description) => dispatch({ type: 'update_description', description })}
-            placeholder={copy.describePlaceholder}
-            placeholderTextColor={visual.muted}
-            style={[styles.input, styles.describeInput, bookingTextInputFocusSurface(mode), { color: visual.text }]}
-            value={state.description}
-          />
-        </View>
+        <KaelTextField
+          accessibilityLabel={copy.describeTitle}
+          inputShellAdornment={<View pointerEvents="none" style={[styles.fieldEdgeHighlight, bookingComponentEdgeSurface(mode)]} />}
+          inputShellStyle={[styles.fieldShell, bookingInputShellSurface(visual, mode, reduceTransparency)]}
+          inputShellTestID="booking-wizard-description-field-shell"
+          label={copy.describeStep}
+          labelStyle={[styles.label, { color: visual.muted }]}
+          multiline
+          numberOfLines={4}
+          onChangeText={(description) => dispatch({ type: 'update_description', description })}
+          placeholder={copy.describePlaceholder}
+          placeholderTextColor={visual.muted}
+          style={[styles.input, styles.describeInput, bookingTextInputFocusSurface(mode), { color: visual.text }]}
+          value={state.description}
+        />
       </View>
       <ProblemChipRail copy={copy} dispatch={dispatch} state={state} />
       <PriorityChipRail copy={copy} dispatch={dispatch} state={state} />
@@ -1262,13 +1254,17 @@ function DescribeStep({
               accessibilityRole="button"
               onPress={onPickPhotos}
               style={({ pressed }) => [
-                styles.photoAdd,
+                state.photoDrafts.length === 0 ? styles.mediaUploadTrayPressable : styles.photoAdd,
                 bookingPhotoAddSurface(visual, mode, reduceTransparency),
                 reduceMotionAwarePressStyle(pressed, reduceMotion),
               ]}
               testID="booking-wizard-photo-add"
             >
-              <Text style={[styles.photoAddText, { color: visual.primary }]}>+</Text>
+              {state.photoDrafts.length === 0 ? (
+                <KaelMediaUploadTray label={copy.pickPhotos} testID="booking-wizard-media-upload-tray" />
+              ) : (
+                <Text style={[styles.photoAddText, { color: visual.primary }]}>+</Text>
+              )}
             </Pressable>
           ) : null}
         </View>
@@ -1298,7 +1294,7 @@ function DescribeStep({
 }
 
 function PriorityChipRail({ copy, dispatch, state }: { copy: WizardCopy; dispatch: (action: WizardAction) => void; state: WizardState }) {
-  const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
+  const { mode, reduceTransparency, visual } = useBookingWizardVisual()
 
   return (
     <View style={[styles.problemChipPanel, bookingProblemChipPanelSurface(visual, mode, reduceTransparency)]} testID="booking-wizard-priority-rail">
@@ -1307,23 +1303,20 @@ function PriorityChipRail({ copy, dispatch, state }: { copy: WizardCopy; dispatc
         {bookingPriorityOrder.map((priority) => {
           const selected = state.priority === priority
           return (
-            <Pressable
+            <KaelChip
               accessibilityLabel={copy.priorityOptions[priority]}
-              accessibilityRole="button"
               accessibilityState={{ selected }}
               key={priority}
+              label={copy.priorityOptions[priority]}
               onPress={() => dispatch({ type: 'select_priority', priority })}
-              style={({ pressed }) => [
+              style={[
                 styles.problemChip,
                 bookingProblemChipSurface(visual, mode, reduceTransparency, selected),
-                reduceMotionAwarePressStyle(pressed, reduceMotion),
               ]}
               testID={`booking-wizard-priority-chip-${priority}`}
-            >
-              <Text style={[styles.problemChipText, { color: selected ? visual.primaryText : visual.primary }]} numberOfLines={1}>
-                {copy.priorityOptions[priority]}
-              </Text>
-            </Pressable>
+              textStyle={[styles.problemChipText, { color: selected ? visual.primaryText : visual.primary }]}
+              variant={selected ? 'selected' : 'unselected'}
+            />
           )
         })}
       </View>
@@ -1332,7 +1325,7 @@ function PriorityChipRail({ copy, dispatch, state }: { copy: WizardCopy; dispatc
 }
 
 function ProblemChipRail({ copy, dispatch, state }: { copy: WizardCopy; dispatch: (action: WizardAction) => void; state: WizardState }) {
-  const { mode, reduceMotion, reduceTransparency, visual } = useBookingWizardVisual()
+  const { mode, reduceTransparency, visual } = useBookingWizardVisual()
   const options = state.serviceType ? copy.problemOptions[state.serviceType] : []
   if (options.length === 0) return null
 
@@ -1343,23 +1336,20 @@ function ProblemChipRail({ copy, dispatch, state }: { copy: WizardCopy; dispatch
         {options.map((chip, index) => {
           const selected = state.problemChips.includes(chip)
           return (
-            <Pressable
+            <KaelChip
               accessibilityLabel={chip}
-              accessibilityRole="button"
               accessibilityState={{ selected }}
               key={chip}
+              label={chip}
               onPress={() => dispatch({ type: 'toggle_problem_chip', chip })}
-              style={({ pressed }) => [
+              style={[
                 styles.problemChip,
                 bookingProblemChipSurface(visual, mode, reduceTransparency, selected),
-                reduceMotionAwarePressStyle(pressed, reduceMotion),
               ]}
               testID={`booking-wizard-problem-chip-${index}`}
-            >
-              <Text style={[styles.problemChipText, { color: selected ? visual.primaryText : visual.primary }]} numberOfLines={1}>
-                {chip}
-              </Text>
-            </Pressable>
+              textStyle={[styles.problemChipText, { color: selected ? visual.primaryText : visual.primary }]}
+              variant={selected ? 'selected' : 'unselected'}
+            />
           )
         })}
       </View>
@@ -1525,15 +1515,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
   },
   body: { color: '#52615C', fontSize: 14, fontWeight: '600', letterSpacing: 0, lineHeight: 20 },
-  buttonSheen: {
-    borderRadius: 999,
-    height: 1,
-    left: 18,
-    opacity: 0.74,
-    position: 'absolute',
-    right: 18,
-    top: 2,
-  },
   card: {
     gap: 16,
     minHeight: 320,
@@ -1741,6 +1722,12 @@ const styles = StyleSheet.create({
     width: 84,
   },
   photoAddText: { color: '#3F6F5A', fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  mediaUploadTrayPressable: {
+    alignSelf: 'stretch',
+    borderRadius: 22,
+    overflow: 'hidden',
+    width: '100%',
+  },
   photoGroup: {
     borderCurve: 'continuous',
     borderRadius: 22,
@@ -1762,7 +1749,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     position: 'absolute',
   },
-  photoNameText: { color: '#FFFFFF', fontSize: 9, fontWeight: '800', lineHeight: 11 },
+  photoNameText: { color: '#FFFFFF', fontFamily: typography.fontFamily, fontSize: 9, fontWeight: typography.caption.fontWeight, lineHeight: 11 },
   photoRemove: {
     alignItems: 'center',
     backgroundColor: 'rgba(15,23,42,0.7)',
@@ -1810,7 +1797,7 @@ const styles = StyleSheet.create({
   problemChip: { borderRadius: 999, borderWidth: 1, minHeight: 36, paddingHorizontal: 12, paddingVertical: 9 },
   problemChipPanel: { borderRadius: 22, borderWidth: 1, gap: 10, padding: 12 },
   problemChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  problemChipText: { fontSize: 12, fontWeight: '800', lineHeight: 15 },
+  problemChipText: { fontFamily: typography.fontFamily, fontSize: 12, fontWeight: typography.caption.fontWeight, lineHeight: 15 },
   videoPreviewBody: {
     alignItems: 'center',
     backgroundColor: color.mint.mint50,
@@ -1818,7 +1805,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
   },
-  videoPreviewLabel: { fontSize: 12, fontWeight: '900', lineHeight: 15 },
+  videoPreviewLabel: { fontFamily: typography.fontFamily, fontSize: 12, fontWeight: typography.label.fontWeight, lineHeight: 15 },
   progressFill: {
     borderRadius: 999,
     height: '100%',

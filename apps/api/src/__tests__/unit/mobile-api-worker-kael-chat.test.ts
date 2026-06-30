@@ -22,6 +22,10 @@ const DEFAULT_EXPECTED_EN_NOTES = [
   'Do not change lifecycle status without real evidence.',
 ]
 
+function countOccurrences(source: string, needle: string) {
+  return source.split(needle).length - 1
+}
+
 describe('mobile-api worker Kael chat sibling backend', () => {
   it('returns bounded worker-assist JSON without price or lifecycle mutation', async () => {
     const answer = await runWorkerAssist({
@@ -292,6 +296,117 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(migration).toContain('alter column job_id set not null')
     expect(migration).toContain('(worker_id, job_id, client_request_id)')
     expect(migration).toContain('where client_request_id is not null')
+  })
+
+  it('keeps worker chat creation session-only and turn idempotency on the turn route', () => {
+    const domain = readFileSync(
+      new URL('../../../../../supabase/functions/_shared/domain.ts', import.meta.url),
+      'utf8',
+    )
+    const services = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
+      'utf8',
+    )
+    const turnMigration = readFileSync(
+      new URL('../../../../../supabase/migrations/20260627090000_worker_kael_turn_idempotency.sql', import.meta.url),
+      'utf8',
+    )
+    const createSchemaBlock = domain.match(/export const workerKaelChatCreateSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
+    const turnSchemaBlock = domain.match(/export const workerKaelChatTurnSchema = z\.object\(\{[\s\S]*?\}\)/)?.[0] ?? ''
+    const createHandlerBlock = services.match(/async function createWorkerKaelChat\([\s\S]*?async function listWorkerKaelChats/)?.[0] ?? ''
+
+    expect(createSchemaBlock).not.toContain('message:')
+    expect(createSchemaBlock).not.toContain('media_refs:')
+    expect(turnSchemaBlock).toContain('client_request_id:')
+    expect(createHandlerBlock).not.toContain('sendWorkerKaelChatTurn')
+    expect(createHandlerBlock).not.toContain('enforceWorkerKaelChatRateLimit')
+    expect(createHandlerBlock).not.toContain('check_kael_worker_chat_rate')
+    expect(turnMigration).toContain('add column if not exists client_request_id text')
+    expect(turnMigration).toContain('(session_id, client_request_id)')
+  })
+
+  it('rate-limits only real non-idempotent worker chat turns before provider calls', () => {
+    const services = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
+      'utf8',
+    )
+    const sendHandlerBlock = services.match(/async function sendWorkerKaelChatTurn\([\s\S]*?const WORKER_KAEL_SESSION_SELECT/)?.[0] ?? ''
+
+    const idempotencyIndex = sendHandlerBlock.indexOf('findExistingWorkerKaelTurnByClientRequest')
+    const existingReturnIndex = sendHandlerBlock.indexOf('if (existingTurn) return getWorkerKaelChat(ctx, sessionId)')
+    const rateLimitIndex = sendHandlerBlock.indexOf('await enforceWorkerKaelChatRateLimit(client, ctx)')
+    const providerIndex = sendHandlerBlock.indexOf('answer = await runWorkerAssist')
+
+    expect(countOccurrences(sendHandlerBlock, 'await enforceWorkerKaelChatRateLimit(client, ctx)')).toBe(1)
+    expect(idempotencyIndex).toBeGreaterThan(-1)
+    expect(existingReturnIndex).toBeGreaterThan(idempotencyIndex)
+    expect(rateLimitIndex).toBeGreaterThan(existingReturnIndex)
+    expect(providerIndex).toBeGreaterThan(rateLimitIndex)
+  })
+
+  it('keeps public worker chat DTO free of provider/cost/safe metadata', () => {
+    const router = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/router.ts', import.meta.url),
+      'utf8',
+    )
+    const mobileTypes = readFileSync(
+      new URL('../../../../../apps/mobile/lib/api-types.ts', import.meta.url),
+      'utf8',
+    )
+    const services = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
+      'utf8',
+    )
+    const routerPublicTypes = router.match(/type WorkerKaelChatTurnResponse[\s\S]*?type WorkerKaelFeedbackResponse/)?.[0] ?? ''
+    const mobilePublicTypes = mobileTypes.match(/export type WorkerKaelChatTurn[\s\S]*?export type WorkerKaelFeedbackResponse/)?.[0] ?? ''
+    const serializerBlock = services.match(/function serializeWorkerKaelSession[\s\S]*?function asWorkerKaelChatStatus/)?.[0] ?? ''
+
+    for (const source of [routerPublicTypes, mobilePublicTypes, serializerBlock]) {
+      expect(source).not.toContain('safe_metadata')
+      expect(source).not.toContain('total_cost_usd')
+      expect(source).not.toContain('provider_attempts')
+      expect(source).not.toContain('provider:')
+      expect(source).not.toContain('model:')
+      expect(source).not.toContain('cost_usd')
+    }
+  })
+
+  it('lets worker private Kael media attach without publishing it to job photo URLs', () => {
+    const services = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
+      'utf8',
+    )
+    const workflow = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/workflow-orchestrator.ts', import.meta.url),
+      'utf8',
+    )
+    const canAttachBlock = services.match(/function canAttachJobMediaStage[\s\S]*?function storageRef/)?.[0] ?? ''
+    const beforeRefsBlock = services.match(/const beforeRefs = rows[\s\S]*?const afterRefs/)?.[0] ?? ''
+    const kaelReferenceStatuses = workflow.match(/kael_reference: \[[\s\S]*?\],\n  after/)?.[0] ?? ''
+
+    expect(canAttachBlock).toContain('if (stage === "kael_reference") return isCustomer || isWorker')
+    expect(beforeRefsBlock).toContain('row.stage === "kael_reference" && isCustomer')
+    expect(kaelReferenceStatuses).toContain('"worker_matched"')
+    expect(kaelReferenceStatuses).toContain('"inspecting"')
+    expect(kaelReferenceStatuses).toContain('"completed_by_worker"')
+  })
+
+  it('fails worker chat closed when the rate-limit RPC is unavailable', () => {
+    const services = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
+      'utf8',
+    )
+    const rateLimitBlock = services.match(/async function enforceWorkerKaelChatRateLimit[\s\S]*?async function readWorkerKaelSession/)?.[0] ?? ''
+    const migration = readFileSync(
+      new URL('../../../../../supabase/migrations/20260627090000_worker_kael_turn_idempotency.sql', import.meta.url),
+      'utf8',
+    )
+
+    expect(rateLimitBlock).toContain('apiFailure(')
+    expect(rateLimitBlock).toContain('"RATE_LIMIT_UNAVAILABLE"')
+    expect(rateLimitBlock).toContain('429')
+    expect(rateLimitBlock).not.toContain('return;\n  }')
+    expect(migration).toContain('pg_advisory_xact_lock')
   })
 
   it('ships worker feedback and training-consent storage behind service-role writes', () => {

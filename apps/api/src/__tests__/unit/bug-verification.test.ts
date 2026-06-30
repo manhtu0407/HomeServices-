@@ -177,7 +177,7 @@ describe('Bug #8: Event log uses typed actor', () => {
 
 describe('Bug #9: KaelEstimate canonical location', () => {
   it('KaelEstimate is exported from shared package', async () => {
-    const shared = await import('@home-services/shared')
+    const shared = await import('@nestscout/shared')
     const types = Object.keys(shared)
     expect(types).toContain('serviceTypeSchema')
   })
@@ -187,7 +187,7 @@ describe('Bug #9: KaelEstimate canonical location', () => {
       join(__dirname, '../../lib/kael/schemas.ts'),
       'utf-8',
     )
-    expect(code).toContain("from '@home-services/shared'")
+    expect(code).toContain("from '@nestscout/shared'")
     expect(code).not.toContain('z.infer<typeof kaelEstimateSchema>')
   })
 })

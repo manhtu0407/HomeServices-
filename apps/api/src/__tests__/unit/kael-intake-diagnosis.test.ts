@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { AIResponse, AIError } from '@home-services/shared'
+import type { AIResponse, AIError } from '@nestscout/shared'
 
 vi.mock('@/lib/env', () => ({
   env: {

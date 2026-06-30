@@ -1,6 +1,6 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { withDbTimeout } from '@/lib/db/query'
-import { PLATFORM_FEE_WORKER } from '@home-services/shared'
+import { PLATFORM_FEE_WORKER } from '@nestscout/shared'
 
 /**
  * GET /api/workers/me/jobs — worker's active + historical jobs

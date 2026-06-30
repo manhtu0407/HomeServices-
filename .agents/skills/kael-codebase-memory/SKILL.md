@@ -1,0 +1,40 @@
+---
+name: kael-codebase-memory
+description: Use codebase-memory-mcp for lightweight structural code discovery in NestScout. Trigger when exploring architecture, finding symbols, tracing callers/callees, checking impact, looking for dead code, or deciding which files to read before editing.
+---
+
+# kael-codebase-memory
+
+Use this only when the `codebase-memory-mcp` MCP server or CLI is available. It is a discovery accelerator, not an authority source.
+
+## Workflow
+
+1. Check index state with `list_projects` or `index_status`.
+2. If the current repo is not indexed and Tu approved MCP setup, run `index_repository` for the repo root.
+3. Start broad with `get_architecture` or `get_graph_schema`.
+4. Find exact symbols with `search_graph` before reading files.
+5. Use `trace_path` for callers, callees, dependency paths, and impact questions.
+6. Use `get_code_snippet` only after `search_graph` returns the exact `qualified_name`.
+7. Use `search_code` for text patterns inside indexed files when structural search is not enough.
+
+## Guardrails
+
+- Do not treat graph output as final truth; verify risky conclusions by reading source.
+- Do not run the upstream full installer unless Tu explicitly asks; it can write MCP config, skills, and hooks.
+- Keep `auto_index` off unless Tu asks for background indexing.
+- Do not commit `.codebase-memory/graph.db.zst` unless Tu explicitly approves a shared graph artifact.
+- If graph output conflicts with `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md`, or code, stop and surface the conflict.
+
+## Preferred Tool Order
+
+```text
+list_projects
+get_graph_schema
+get_architecture
+search_graph
+trace_path
+get_code_snippet
+search_code
+query_graph
+detect_changes
+```

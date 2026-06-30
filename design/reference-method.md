@@ -30,13 +30,13 @@ Do not copy from XanhSM:
 
 - exact brand green,
 - vehicle assets,
-- transport-first map hierarchy when it does not serve Home Services,
+- transport-first map hierarchy when it does not serve NestScout,
 - exact promotion layouts,
 - exact icons,
 - exact copy,
 - exact card art,
 - exact tab labels,
-- exact animation timings unless validated for Home Services.
+- exact animation timings unless validated for NestScout.
 
 ### Secondary Reference: bTaskee
 
@@ -69,5 +69,5 @@ Do not copy:
 
 - generic super-app sprawl,
 - map-first assumptions,
-- aggressive green dominance if it harms Home Services taste.
+- aggressive green dominance if it harms NestScout taste.
 

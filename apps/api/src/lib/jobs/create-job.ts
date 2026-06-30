@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, JobCreateInput } from '@home-services/shared'
-import { sanitizeForLLM, normalizeServiceAreaDistrict } from '@home-services/shared'
+import type { Database, JobCreateInput } from '@nestscout/shared'
+import { sanitizeForLLM, normalizeServiceAreaDistrict } from '@nestscout/shared'
 import { runKaelPipeline, type PipelineResult } from '@/lib/kael/pipeline'
 import { logJobEvent, type EventActor } from '@/lib/jobs/event-log'
 import { withDbTimeout } from '@/lib/db/query'

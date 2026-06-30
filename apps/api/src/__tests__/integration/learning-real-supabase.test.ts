@@ -22,7 +22,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@home-services/shared'
+import type { Database } from '@nestscout/shared'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 

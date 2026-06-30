@@ -2,7 +2,7 @@ import { callAI } from '@/lib/ai/client'
 import { buildVisionMessages } from './prompts'
 import { visionResultSchema, type VisionResult } from './schemas'
 import { safeParseJSON } from './parsing'
-import { sanitizeForLLM, scrubSensitiveForLLM } from '@home-services/shared'
+import { sanitizeForLLM, scrubSensitiveForLLM } from '@nestscout/shared'
 
 export type VisionAnalysisResult =
   | { success: true; analysis: VisionResult; failureReason?: undefined }

@@ -3,17 +3,23 @@ import {
   serviceTypeSchema,
   jobCreateSchema,
   kaelChatCreateSchema,
+  kaelChatEvidenceSchema,
   kaelChatProgressSchema,
   kaelChatTurnSchema,
   placesAutocompleteSchema,
   workerScopeChangeSchema,
+  workerApplicationSubmitSchema,
   workerRegisterSchema,
   workerCancellationRequestSchema,
   workerCancellationDecisionSchema,
   jobMediaAttachSchema,
   devicePushTokenSchema,
+  workerKaelChatCreateSchema,
+  workerKaelChatTurnSchema,
   reviewSchema,
   chatMessageSchema,
+  customerKaelMemoryPreferenceUpdateSchema,
+  workerKaelMemoryPreferenceUpdateSchema,
   sanitizeForLLM,
   scrubSensitiveForLLM,
   SERVICE_TYPES,
@@ -73,6 +79,48 @@ describe('serviceTypeSchema (Rule #6: electrical + plumbing + cleaning)', () => 
 // ===================================================================
 // jobCreateSchema — STRUCTURES.md A2/A3
 // ===================================================================
+
+describe('customerKaelMemoryPreferenceUpdateSchema', () => {
+  it('accepts the message interaction memory permission key', () => {
+    expect(customerKaelMemoryPreferenceUpdateSchema.parse({
+      enabled: true,
+      key: 'message_interaction_memory',
+    })).toEqual({
+      enabled: true,
+      key: 'message_interaction_memory',
+    })
+  })
+
+  it('rejects unknown memory permission keys', () => {
+    expect(() =>
+      customerKaelMemoryPreferenceUpdateSchema.parse({
+        enabled: true,
+        key: 'message_history',
+      }),
+    ).toThrow()
+  })
+})
+
+describe('workerKaelMemoryPreferenceUpdateSchema', () => {
+  it('accepts worker memory preference keys', () => {
+    expect(workerKaelMemoryPreferenceUpdateSchema.parse({
+      enabled: false,
+      key: 'area_preference',
+    })).toEqual({
+      enabled: false,
+      key: 'area_preference',
+    })
+  })
+
+  it('rejects customer-only memory keys for worker preferences', () => {
+    expect(() =>
+      workerKaelMemoryPreferenceUpdateSchema.parse({
+        enabled: true,
+        key: 'preferred_address',
+      }),
+    ).toThrow()
+  })
+})
 
 describe('workerRegisterSchema districts', () => {
   const validWorker = {
@@ -224,6 +272,64 @@ describe('kaelChat schemas', () => {
     expect(result.address_label).toContain('Landmark')
   })
 
+  it('allows Kael chat to defer analysis until customer evidence is handled', () => {
+    const result = kaelChatCreateSchema.parse({
+      service_type: 'electrical',
+      message: 'Ổ cắm phòng khách nóng lên và có mùi khét nhẹ',
+      defer_analysis: true,
+      problem_chips: ['Ổ cắm/công tắc hỏng'],
+      photo_urls: [],
+    })
+
+    expect(result.defer_analysis).toBe(true)
+  })
+
+  it('requires explicit evidence confirmation or skip before analysis resumes', () => {
+    expect(() =>
+      kaelChatEvidenceSchema.parse({
+        decision: 'confirmed',
+        message: 'Tôi gửi ảnh ổ cắm nóng.',
+        photo_urls: ['https://example.com/socket.jpg'],
+      }),
+    ).not.toThrow()
+
+    expect(() =>
+      kaelChatEvidenceSchema.parse({
+        decision: 'confirmed',
+        message: 'Tôi chưa gửi gì.',
+        photo_urls: [],
+      }),
+    ).toThrow()
+
+    expect(() =>
+      kaelChatEvidenceSchema.parse({
+        decision: 'skipped',
+        skip_reason: 'Không tiện chụp lúc này.',
+        photo_urls: [],
+      }),
+    ).not.toThrow()
+  })
+
+  it('accepts Kael chat storage refs from the Edge media bucket without requiring UUID-shaped local audit ids', () => {
+    expect(() =>
+      kaelChatEvidenceSchema.parse({
+        decision: 'confirmed',
+        message: 'Tôi gửi ảnh hiện trạng.',
+        media_refs: ['supabase://kael-chat-media/local-visual-audit-customer/kael-chat/evidence.jpg'],
+        photo_urls: [],
+      }),
+    ).not.toThrow()
+
+    expect(() =>
+      kaelChatEvidenceSchema.parse({
+        decision: 'confirmed',
+        message: 'Sai bucket.',
+        media_refs: ['supabase://job-media/local-visual-audit-customer/kael-chat/evidence.jpg'],
+        photo_urls: [],
+      }),
+    ).toThrow()
+  })
+
   it('validates Places autocomplete input for the Edge proxy', () => {
     expect(placesAutocompleteSchema.parse({ input: 'Bình Thạnh' }).input).toBe('Bình Thạnh')
     expect(() => placesAutocompleteSchema.parse({ input: 'x' })).toThrow()
@@ -243,6 +349,98 @@ describe('kaelChat schemas', () => {
         message: 'Quá nhiều ảnh',
         photo_urls: Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.jpg`),
       })
+    ).toThrow()
+  })
+})
+
+describe('workerKaelChat schemas', () => {
+  it('creates only an empty worker Kael session', () => {
+    expect(workerKaelChatCreateSchema.parse({
+      job_id: UUID,
+      language: 'vi',
+      client_request_id: UUID,
+    })).toEqual({
+      job_id: UUID,
+      language: 'vi',
+      client_request_id: UUID,
+    })
+
+    expect(() =>
+      workerKaelChatCreateSchema.parse({
+        job_id: UUID,
+        language: 'vi',
+        message: 'Không được gửi first turn qua create',
+      })
+    ).toThrow()
+
+    expect(() =>
+      workerKaelChatCreateSchema.parse({
+        job_id: UUID,
+        language: 'vi',
+        media_refs: ['supabase://job-media/job-1/kael_reference/photo.jpg'],
+      })
+    ).toThrow()
+  })
+
+  it('accepts only storage-backed media refs on worker turns', () => {
+    expect(workerKaelChatTurnSchema.parse({
+      message: 'Tôi gửi thêm ảnh vị trí bị rò.',
+      media_refs: [`supabase://job-media/${UUID}/kael_reference/photo.jpg`],
+      language: 'vi',
+      client_request_id: UUID,
+    })).toMatchObject({
+      media_refs: [`supabase://job-media/${UUID}/kael_reference/photo.jpg`],
+      client_request_id: UUID,
+    })
+
+    expect(() =>
+      workerKaelChatTurnSchema.parse({
+        message: 'Ảnh local không được lưu vào media_refs.',
+        media_refs: ['file:///private/onsite.jpg'],
+      })
+    ).toThrow()
+
+    expect(() =>
+      workerKaelChatTurnSchema.parse({
+        message: 'Tên file local không phải storage ref.',
+        media_refs: ['onsite.jpg'],
+      })
+    ).toThrow()
+  })
+})
+
+describe('workerApplicationSubmitSchema', () => {
+  it('accepts an email contact for worker application review', () => {
+    expect(workerApplicationSubmitSchema.parse({
+      contact: 'Tu.Worker@Example.com ',
+      language: 'vi',
+      source: 'auth_worker_create',
+      client_request_id: UUID,
+    })).toMatchObject({
+      contact: 'Tu.Worker@Example.com',
+      language: 'vi',
+      source: 'auth_worker_create',
+      client_request_id: UUID,
+    })
+  })
+
+  it('accepts a Vietnam phone contact for worker application review', () => {
+    expect(workerApplicationSubmitSchema.parse({
+      contact: '0901234567',
+      language: 'en',
+    })).toMatchObject({
+      contact: '0901234567',
+      language: 'en',
+      source: 'auth_worker_create',
+    })
+  })
+
+  it('rejects contact text that is neither email nor Vietnam phone', () => {
+    expect(() =>
+      workerApplicationSubmitSchema.parse({
+        contact: 'khong-phai-lien-he',
+        language: 'vi',
+      }),
     ).toThrow()
   })
 })
@@ -416,6 +614,19 @@ describe('workflow support schemas', () => {
           stage: 'scope_change_evidence',
           mime_type: 'image/jpeg',
           file_size_bytes: 1200,
+        }],
+      })
+    ).not.toThrow()
+  })
+
+  it('accepts voice-note audio evidence metadata for job media attachments', () => {
+    expect(() =>
+      jobMediaAttachSchema.parse({
+        assets: [{
+          object_path: '11111111-1111-1111-1111-111111111111/before/voice-note.m4a',
+          stage: 'before',
+          mime_type: 'audio/m4a',
+          file_size_bytes: 320000,
         }],
       })
     ).not.toThrow()

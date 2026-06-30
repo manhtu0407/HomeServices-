@@ -1,10 +1,10 @@
 import { memo, type Dispatch, useCallback, useEffect, useRef, useState } from 'react'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
-import { ActivityIndicator, Alert, FlatList, Platform, Pressable, Text, TextInput, View, type ListRenderItemInfo, type ViewStyle } from 'react-native'
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, Text, View, type ListRenderItemInfo, type ViewStyle } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
-import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, PLATFORM_FEE_CUSTOMER, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type ServiceType, type WorkflowArtifactMode, type WorkflowPhaseContext } from '@home-services/shared'
+import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, PLATFORM_FEE_CUSTOMER, orderWorkflowPhaseSectionsForSummary, workflowAllowedActionsLabel, workflowArtifactModeLabel, workflowBlockedReasonLabel, workflowEventLabel, workflowSourceOfTruthLabel, type ServiceType, type WorkflowArtifactMode, type WorkflowPhaseContext } from '@nestscout/shared'
 import {
   getCustomerThemeTokens,
   getReducedTransparencyCustomerTokens,
@@ -12,7 +12,9 @@ import {
 } from '@/components/customer/customer-theme'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassSurface } from '@/components/ui/glass-surface'
+import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
+import { KaelMascot as OfficialKaelMascot } from '@/components/kael/kael-mascot'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import { type KaelChatResponse } from '@/lib/api-types'
 import { inferKaelChatDistrict } from './address-district'
@@ -22,7 +24,6 @@ import { type PendingKaelChatDraft } from './pending-intake'
 import { type KaelChatAction } from './state'
 import { styles } from './styles'
 
-const kaelModel8AHead = require('../../../assets/kael-model-8a-head.png')
 const clientChatArchiveIcon = require('../../../assets/client-image-icons/client-booking.png')
 const ADDRESS_AUTO_HIDE_DELAY_MS = 180
 
@@ -197,7 +198,7 @@ function kaelStatePaint(tokens: KaelChatTokens, tone: 'done' | 'locked' | 'quest
     return {
       backgroundColor: dark ? 'rgba(26,66,59,0.94)' : 'rgba(217,251,242,0.92)',
       borderColor: dark ? 'rgba(105,222,198,0.28)' : 'rgba(8,139,124,0.30)',
-      color: dark ? '#69DEC6' : '#078B7C',
+      color: dark ? '#49CFC0' : '#088779',
     } as ViewStyle
   }
   if (tone === 'question') {
@@ -326,7 +327,7 @@ export function KaelChatHeader({
           ) : null}
         </View>
         <View accessibilityLabel="Kael" accessible style={[styles.chatKaelBubble, { borderColor: tokens.border }, kaelSurfacePaint(tokens, 'icon')]} testID="customer-kael-chat-kael-bubble">
-          <Image contentFit="contain" source={kaelModel8AHead} style={styles.chatKaelBubbleImage} />
+          <OfficialKaelMascot size={34} state="listening" style={styles.chatKaelBubbleImage} testID="customer-kael-chat-header-kael" variant="head" />
         </View>
       </View>
     </View>
@@ -385,6 +386,7 @@ export function KaelChatComposer({
   dispatch,
   draft,
   error,
+  hideAddressContext = false,
   language,
   onAddressDistrict,
   onSend,
@@ -398,6 +400,7 @@ export function KaelChatComposer({
   dispatch: Dispatch<KaelChatAction>
   draft: string
   error: string | null
+  hideAddressContext?: boolean
   language: AppLanguage
   onAddressDistrict: (district: string) => void
   onSend: () => Promise<void>
@@ -417,7 +420,7 @@ export function KaelChatComposer({
   const addressProgress = useSharedValue(0)
   const addressHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const speechRecognitionRef = useRef<KaelWebSpeechRecognition | null>(null)
-  const addressVisible = addressLifted || addressFocused || composerFocused
+  const addressVisible = !hideAddressContext && (addressLifted || addressFocused || composerFocused)
   const addressSlotStyle = useAnimatedStyle(() => ({
     opacity: 0.5 + addressProgress.value * 0.5,
     transform: [{ translateY: 34 - addressProgress.value * 34 }],
@@ -529,28 +532,31 @@ export function KaelChatComposer({
     <View style={styles.chatComposerTouchWrap} testID="customer-kael-composer-sequential-trigger">
       <GlassSurface borderColor={tokens.borderStrong} material="liquid" mode={themeMode} style={[styles.composerGlass, kaelSurfacePaint(tokens, 'composer')]} testID="customer-kael-chat-glass-composer" variant="sheet">
         <View pointerEvents="none" style={[styles.chatComposerKeyline, { borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.88)' }]} testID="customer-chat-reference-composer-keyline" />
-        <View style={styles.addressLiftFrame}>
-          <Animated.View pointerEvents={addressVisible ? 'auto' : 'none'} style={[styles.addressLiftSlot, { height: addressVisible ? 56 : 0 }, addressSlotStyle]} testID="customer-kael-chat-address-slot">
-            <KaelAddressContextBar
-              addressLabel={addressLabel}
-              language={language}
-              onBlur={() => setAddressFocused(false)}
-              onChangeText={(value) => {
-                const nextDistrict = inferKaelChatDistrict(value)
-                if (nextDistrict) onAddressDistrict(nextDistrict)
-                dispatch({ type: 'setAddress', value })
-              }}
-              onFocus={() => {
-                setAddressFocused(true)
-                revealAddress()
-              }}
-              placeholder={text.addressPlaceholder}
-              tokens={tokens}
-            />
-          </Animated.View>
-        </View>
-        <TextInput
+        {hideAddressContext ? null : (
+          <View style={styles.addressLiftFrame}>
+            <Animated.View pointerEvents={addressVisible ? 'auto' : 'none'} style={[styles.addressLiftSlot, { height: addressVisible ? 56 : 0 }, addressSlotStyle]} testID="customer-kael-chat-address-slot">
+              <KaelAddressContextBar
+                addressLabel={addressLabel}
+                language={language}
+                onBlur={() => setAddressFocused(false)}
+                onChangeText={(value) => {
+                  const nextDistrict = inferKaelChatDistrict(value)
+                  if (nextDistrict) onAddressDistrict(nextDistrict)
+                  dispatch({ type: 'setAddress', value })
+                }}
+                onFocus={() => {
+                  setAddressFocused(true)
+                  revealAddress()
+                }}
+                placeholder={text.addressPlaceholder}
+                tokens={tokens}
+              />
+            </Animated.View>
+          </View>
+        )}
+        <KaelTextField
           accessibilityLabel={inputAccessibilityLabel}
+          inputShellStyle={styles.composerTextFieldShell}
           multiline
           onChangeText={(value) => {
             dispatch({
@@ -565,12 +571,13 @@ export function KaelChatComposer({
           onBlur={() => setComposerFocused(false)}
           onFocus={() => {
             setComposerFocused(true)
-            revealAddress()
+            if (!hideAddressContext) revealAddress()
           }}
           onSubmitEditing={() => void onSend()}
           returnKeyType="send"
           scrollEnabled={false}
           selectionColor={tokens.primary}
+          shellStyle={styles.composerTextFieldStack}
           style={[styles.input, styles.inputInvisibleFocus, { caretColor: tokens.primary, color: tokens.text, height: composerInputHeight } as any]}
           testID="customer-kael-chat-input"
           value={draft}
@@ -579,7 +586,7 @@ export function KaelChatComposer({
           <Pressable accessibilityLabel={text.attach} accessibilityRole="button" hitSlop={4} onPress={() => void handleAttachPress()} style={({ pressed }) => [styles.attachButton, { borderColor: tokens.border }, kaelSurfacePaint(tokens, 'icon'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-attach">
             <ChatPlusIcon color={tokens.primary} />
           </Pressable>
-          <Pressable accessibilityLabel={addressPillLabel} accessibilityRole="button" hitSlop={4} onPress={revealAddress} style={({ pressed }) => [styles.chatModePill, { borderColor: tokens.border }, kaelSurfacePaint(tokens, 'status'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-chat-reference-mode-pill">
+          <Pressable accessibilityLabel={addressPillLabel} accessibilityRole="button" hitSlop={4} onPress={hideAddressContext ? undefined : revealAddress} style={({ pressed }) => [styles.chatModePill, { borderColor: tokens.border }, kaelSurfacePaint(tokens, 'status'), reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-chat-reference-mode-pill">
             <View pointerEvents="none" style={[styles.chatModePillGlassLayer, chatModePillGlassLayer(tokens)]} testID="customer-chat-mode-pill-glass-layer" />
             <Text style={[styles.chatModeText, { color: tokens.primary }, chatModePillTextHighlight(tokens)]} numberOfLines={1}>
               Kael
@@ -651,7 +658,7 @@ export function KaelProcessCard({
     <View style={[styles.agentFocusCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'agent')]} testID="customer-kael-agentic-process">
       <View style={styles.agentHead}>
         <View style={[styles.agentAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'avatar')]}>
-          <Image source={kaelModel8AHead} style={styles.agentAvatarImage} />
+          <OfficialKaelMascot size={42} state={loading ? 'processing' : estimate ? 'proposing' : 'thinking'} style={styles.agentAvatarImage} testID="customer-kael-agentic-process-kael" variant="head" />
         </View>
         <View style={[styles.agentStatusRail, { backgroundColor: tokens.raised, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'status')]}>
           <View style={[styles.agentStatusAccent, { backgroundColor: tokens.primary }]} />
@@ -767,13 +774,11 @@ export function EmptyKaelBriefCard({ language, selectedService, text }: { langua
   const tokens = useKaelChatTokens()
   const preview = kaelEstimatePreviewCopy[language]
   const serviceValue = selectedService ? localizedServiceLabel(selectedService, language) : preview.servicePending
-  const sampleRows = selectedService ? { ...preview.sampleRows, service: undefined } : preview.sampleRows
   const rows = buildEstimatePreviewRows({
     cancellationBody: text.cancellationBody,
     labels: text.labels,
     language,
     problemValue: preview.problemPending,
-    sampleRows,
     serviceValue,
   })
 
@@ -833,16 +838,6 @@ const kaelEstimatePreviewCopy = {
     pricePending: 'Chờ Kael ước tính',
     problemFromDescription: 'Kael đang phân loại từ mô tả.',
     problemPending: 'Chưa có',
-    sampleRows: {
-      cancellationNote: 'Bạn có thể hủy miễn phí trước khi thợ nhận việc.',
-      complexity: 'Kael sẽ phân loại nhẹ, vừa hoặc nặng.',
-      confidence: 'Kael sẽ cập nhật theo độ rõ của mô tả, ảnh hoặc video.',
-      platformFee: 'Chỉ hiện khi có ước tính thật.',
-      price: 'Kael sẽ ước tính sau khi có mô tả và bằng chứng.',
-      problem: 'Kael sẽ tóm tắt: ví dụ ổ cắm chập, nước rò, hoặc cần dọn nhà.',
-      service: 'Kael sẽ ghi: Sửa điện, Sửa nước hoặc Vệ sinh.',
-      summaryTotal: 'Kael sẽ tính sau khi đủ dữ liệu.',
-    },
     servicePending: 'Chưa có',
     status: 'Thông tin đầu vào',
     summaryPending: 'Chờ Kael tính',
@@ -866,16 +861,6 @@ const kaelEstimatePreviewCopy = {
     pricePending: 'Waiting for Kael estimate',
     problemFromDescription: 'Kael is classifying from the description.',
     problemPending: 'Not available yet',
-    sampleRows: {
-      cancellationNote: 'You can cancel for free before a worker accepts.',
-      complexity: 'Kael will classify it as light, medium, or heavy.',
-      confidence: 'Kael will update this from the clarity of the text, photos, or video.',
-      platformFee: 'Shown only after a real estimate.',
-      price: 'Kael will estimate after it has a description and evidence.',
-      problem: 'Kael will summarize examples like a faulty outlet, water leak, or cleaning need.',
-      service: 'Kael will record electrical, plumbing, or cleaning.',
-      summaryTotal: 'Kael will calculate this after enough data.',
-    },
     servicePending: 'Not available yet',
     status: 'Input details',
     summaryPending: 'Waiting for Kael calculation',
@@ -889,28 +874,26 @@ function buildEstimatePreviewRows({
   labels,
   language,
   problemValue,
-  sampleRows,
   serviceValue,
 }: {
   cancellationBody?: string
   labels?: KaelChatText['labels']
   language: AppLanguage
   problemValue: string
-  sampleRows?: Partial<Record<keyof typeof kaelEstimatePreviewCopy.vi.sampleRows, string>>
   serviceValue: string
 }) {
   const preview = kaelEstimatePreviewCopy[language]
   const rowLabels = labels ?? preview.labels
 
   return [
-    { label: rowLabels.service, value: sampleRows?.service ?? serviceValue },
-    { label: rowLabels.problem, value: sampleRows?.problem ?? problemValue },
-    { label: rowLabels.price, value: sampleRows?.price ?? preview.pricePending },
-    { label: rowLabels.complexity, value: sampleRows?.complexity ?? preview.typePending },
-    { label: rowLabels.confidence, value: sampleRows?.confidence ?? preview.confidencePending },
-    { label: rowLabels.platformFee, value: sampleRows?.platformFee ?? preview.platformFeePending },
-    { label: rowLabels.summaryTotal, value: sampleRows?.summaryTotal ?? preview.summaryPending },
-    { label: rowLabels.cancellationNote, value: sampleRows?.cancellationNote ?? cancellationBody ?? preview.cancellationBody },
+    { label: rowLabels.service, value: serviceValue },
+    { label: rowLabels.problem, value: problemValue },
+    { label: rowLabels.price, value: preview.pricePending },
+    { label: rowLabels.complexity, value: preview.typePending },
+    { label: rowLabels.confidence, value: preview.confidencePending },
+    { label: rowLabels.platformFee, value: preview.platformFeePending },
+    { label: rowLabels.summaryTotal, value: preview.summaryPending },
+    { label: rowLabels.cancellationNote, value: cancellationBody ?? preview.cancellationBody },
   ]
 }
 
@@ -1047,9 +1030,16 @@ export function EstimateCard({
       <Text style={[styles.disclaimer, { color: tokens.muted }]} testID="customer-kael-chat-price-disclaimer">
         {disclaimer}
       </Text>
-      <Pressable accessibilityRole="button" accessibilityState={{ busy: orchestrationBusy, disabled: true }} disabled onPress={onStartOrchestration} style={[styles.primaryButton, { backgroundColor: tokens.disabled }]} testID="customer-kael-chat-orchestration">
-        <Text style={[styles.primaryButtonText, { color: tokens.subtleText }]}>{actionLabel}</Text>
-      </Pressable>
+      <KaelButton
+        accessibilityState={{ busy: orchestrationBusy, disabled: true }}
+        disabled
+        label={actionLabel}
+        onPress={onStartOrchestration}
+        showPrimaryGradient={false}
+        style={[styles.primaryButton, { backgroundColor: tokens.disabled }]}
+        testID="customer-kael-chat-orchestration"
+        textStyle={[styles.primaryButtonText, { color: tokens.subtleText }]}
+      />
     </View>
   )
 }

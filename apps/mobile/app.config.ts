@@ -77,45 +77,54 @@ const withoutIosPushEntitlement: ConfigPlugin = (expoConfig) => {
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'NestScout',
-  slug: 'home-services',
+  slug: 'nestscout',
   version: '0.1.0',
   orientation: 'portrait',
-  icon: './assets/icon.png',
+  icon: './assets/nestscout-aurora-nest-appstore-1024.png',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
-  scheme: 'homeservices',
+  scheme: 'nestscout',
   splash: {
-    image: './assets/splash-icon.png',
+    image: './assets/nestscout-aurora-nest-appstore-1024.png',
     resizeMode: 'contain',
     backgroundColor: '#ffffff',
   },
   ios: {
     supportsTablet: false,
     buildNumber: '1',
-    bundleIdentifier: 'com.phanmanhtu.homeservices',
+    bundleIdentifier: 'com.phanmanhtu.nestscout',
     config: {
       usesNonExemptEncryption: false,
     },
     infoPlist: {
       NSCameraUsageDescription:
         'NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.',
+      NSMicrophoneUsageDescription:
+        'NestScout cần quyền micro nếu bạn muốn ghi chú giọng nói cho Kael phân tích ca dịch vụ.',
       NSPhotoLibraryUsageDescription:
         'NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
     },
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
+      foregroundImage: './assets/nestscout-aurora-nest-appstore-1024.png',
       backgroundColor: '#ffffff',
     },
     versionCode: 1,
     permissions: [],
-    blockedPermissions: ['android.permission.RECORD_AUDIO'],
     edgeToEdgeEnabled: true,
-    package: 'com.phanmanhtu.homeservices',
+    package: 'com.phanmanhtu.nestscout',
   },
   plugins: [
     'expo-router',
+    [
+      'expo-audio',
+      {
+        microphonePermission:
+          'NestScout cần quyền micro nếu bạn muốn ghi chú giọng nói cho Kael phân tích ca dịch vụ.',
+        recordAudioAndroid: true,
+      },
+    ],
     'expo-secure-store',
     [
       'expo-image-picker',

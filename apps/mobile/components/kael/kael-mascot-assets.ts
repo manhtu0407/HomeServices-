@@ -40,21 +40,45 @@ export const KAEL_EMOTIONS = [
 export type KaelMascotState = (typeof KAEL_CORE_STATES)[number] | (typeof KAEL_CONTEXTUAL_STATES)[number]
 export type KaelMascotEmotion = (typeof KAEL_EMOTIONS)[number]
 
-const kaelFull = require('../../assets/kael-model-8a.png')
-const kaelHead = require('../../assets/kael-model-8a-head.png')
-
-const stateAssets: Partial<Record<KaelMascotState, unknown>> = {}
-const emotionAssets: Partial<Record<KaelMascotEmotion, unknown>> = {}
-
-export function resolveKaelMascotAsset(state: KaelMascotState, variant: 'full' | 'head', emotion?: KaelMascotEmotion) {
-  const emotionSource = emotion ? emotionAssets[emotion] : null
-  const stateSource = stateAssets[state]
-  const source = emotionSource ?? stateSource ?? (variant === 'head' ? kaelHead : kaelFull)
-  return { source, usesFallback: !emotionSource && !stateSource }
+const stateAssets: Record<KaelMascotState, number> = {
+  analyzing: require('../../assets/kael-states/kael-state-analyzing.png'),
+  compareOptions: require('../../assets/kael-states/kael-state-compareOptions.png'),
+  error: require('../../assets/kael-states/kael-state-error.png'),
+  fileReview: require('../../assets/kael-states/kael-state-fileReview.png'),
+  findingWorker: require('../../assets/kael-states/kael-state-findingWorker.png'),
+  listening: require('../../assets/kael-states/kael-state-listening.png'),
+  locationMap: require('../../assets/kael-states/kael-state-locationMap.png'),
+  miniCelebration: require('../../assets/kael-states/kael-state-miniCelebration.png'),
+  priceCheck: require('../../assets/kael-states/kael-state-priceCheck.png'),
+  processing: require('../../assets/kael-states/kael-state-processing.png'),
+  proposing: require('../../assets/kael-states/kael-state-proposing.png'),
+  recording: require('../../assets/kael-states/kael-state-recording.png'),
+  reminder: require('../../assets/kael-states/kael-state-reminder.png'),
+  report: require('../../assets/kael-states/kael-state-report.png'),
+  success: require('../../assets/kael-states/kael-state-success.png'),
+  thinking: require('../../assets/kael-states/kael-state-thinking.png'),
+  typing: require('../../assets/kael-states/kael-state-typing.png'),
+  understood: require('../../assets/kael-states/kael-state-understood.png'),
+  warning: require('../../assets/kael-states/kael-state-warning.png'),
+  welcome: require('../../assets/kael-states/kael-state-welcome.png'),
+}
+const emotionAssets: Record<KaelMascotEmotion, number> = {
+  angry: require('../../assets/kael-emotions/kael-emotion-angry.png'),
+  concerned: require('../../assets/kael-emotions/kael-emotion-concerned.png'),
+  confident: require('../../assets/kael-emotions/kael-emotion-confident.png'),
+  confused: require('../../assets/kael-emotions/kael-emotion-confused.png'),
+  curious: require('../../assets/kael-emotions/kael-emotion-curious.png'),
+  disappointed: require('../../assets/kael-emotions/kael-emotion-disappointed.png'),
+  focused: require('../../assets/kael-emotions/kael-emotion-focused.png'),
+  happy: require('../../assets/kael-emotions/kael-emotion-happy.png'),
+  surprised: require('../../assets/kael-emotions/kael-emotion-surprised.png'),
+  tired: require('../../assets/kael-emotions/kael-emotion-tired.png'),
 }
 
-export function getKaelMascotAssetStatus(state: KaelMascotState, emotion?: KaelMascotEmotion) {
-  if (emotion && emotionAssets[emotion]) return 'emotion'
-  if (stateAssets[state]) return 'state'
-  return 'fallback'
+export function resolveKaelMascotAsset(state: KaelMascotState, _variant: 'full' | 'head', emotion?: KaelMascotEmotion) {
+  return { source: emotion ? emotionAssets[emotion] : stateAssets[state] }
+}
+
+export function getKaelMascotAssetStatus(_state: KaelMascotState, emotion?: KaelMascotEmotion) {
+  return emotion ? 'emotion' : 'state'
 }

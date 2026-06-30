@@ -1,4 +1,4 @@
-import { type LocalDeal, type ServiceType } from '@home-services/shared'
+import { type LocalDeal, type ServiceType } from '@nestscout/shared'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import { type KaelChatResponse } from '@/lib/api-types'
 import { type LocalMediaUploadDraft } from '@/lib/media-upload'

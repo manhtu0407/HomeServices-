@@ -42,8 +42,11 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
       '`/scope-changes/${scopeChangeId}/decide`',
       '`/jobs/${jobId}/confirm-completion`',
       '`/jobs/${jobId}/review`',
+      "'/me/profile-insights'",
+      "'/worker-applications'",
       "'/workers/register'",
       "'/workers/me'",
+      "'/workers/me/performance-insights'",
       "'/workers/me/availability'",
       "'/workers/me/broadcasts'",
       "'/workers/me/jobs'",
@@ -77,10 +80,45 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(api).toContain('shouldRetryError(err)')
     expect(api).toContain('await waitForRetry(method, path, attempt,')
     expect(api).toContain('function isRetrySafeRequest(method: string, path: string)')
+    expect(api).toContain("path === '/worker-applications'")
     expect(api).toContain('function shouldRetryResponse(status: number)')
     expect(api).toContain('return status === 408 || status === 425 || status === 429 || status >= 500')
     expect(api).toContain('function shouldRetryError(err: unknown)')
     expect(api).not.toContain('status >= 400')
+  })
+
+  it('keeps public worker applications behind the Edge admin review queue', () => {
+    const authProvider = read('lib/auth-provider.tsx')
+    const services = read('lib/services.ts')
+    const apiTypes = read('lib/api-types.ts')
+    const router = readRoot('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeServices = readRoot('supabase/functions/mobile-api/_shared/services.ts')
+    const migration = readRoot('supabase/migrations/20260612120000_worker_application_admin_queue.sql')
+
+    expect(authProvider).toContain('workerService.submitApplication')
+    expect(authProvider).toContain('generateClientRequestId()')
+    expect(authProvider).toContain("source: 'auth_worker_create'")
+    expect(services).toContain('submitApplication(input: WorkerApplicationSubmitInput)')
+    expect(services).toContain("api.post<WorkerApplicationResponse>('/worker-applications', input)")
+    expect(apiTypes).toContain('export type WorkerApplicationResponse')
+
+    expect(router).toContain('kind: "workerApplications.submit"')
+    expect(router).toContain('path === "/worker-applications"')
+    expect(router).toContain('public: true')
+    expect(router).toContain('successStatus: 201')
+    expect(router).toContain('workerApplicationSubmitSchema.safeParse')
+    expect(router).toContain('services.submitWorkerApplication')
+
+    expect(edgeServices).toContain('submitWorkerApplicationForReview')
+    expect(edgeServices).toContain('publicRouteDb(secrets)')
+    expect(edgeServices).toContain('.from("kael_admin_queue")')
+    expect(edgeServices).toContain('queue_type: "worker_application_review"')
+    expect(edgeServices).toContain('actor_role: "system"')
+    expect(edgeServices).toContain('contact_kind')
+    expect(edgeServices).not.toContain('signUp')
+
+    expect(migration).toContain('worker_application_review')
+    expect(migration).toContain('kael_admin_queue_queue_type_check')
   })
 
   it('applies learned Kael price and complexity rules inside the deployed Edge runtime', () => {
@@ -141,8 +179,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('keeps UI components behind the workflow provider instead of direct backend calls', () => {
     const provider = read('lib/frontend-workflow-provider.tsx')
     const bookingRoute = read('app/(customer)/booking.tsx')
-    const customer = read('components/customer/customer-surfaces.tsx')
-    const worker = read('components/worker/worker-surfaces.tsx')
+    const customer = read('components/customer/v21/surfaces.tsx')
+    const worker = read('components/worker/worker-v5-flow.tsx')
 
     expect(provider).toContain('createRemoteJobFromDraft')
     expect(provider).toContain('confirmRemoteSearch')
@@ -158,6 +196,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain('extractKnownDistrictLabel')
     expect(provider).toContain('address_district: districtLabel')
     expect(provider).toContain('workerService.getBroadcasts')
+    expect(provider).toContain('workerService.getPerformanceInsights')
+    expect(provider).toContain('customerProfileService.getInsights')
     expect(provider).toContain('workerService.register')
     expect(provider).toContain('workerService.updateAvailability')
     expect(provider).toContain("role !== 'worker' && role !== 'admin'")
@@ -186,9 +226,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(worker).toContain('actions.workerDeclineBroadcast')
     expect(worker).toContain('actions.workerUpdateStatus')
     expect(worker).toContain('actions.workerUpdateAvailability')
-    expect(worker).toContain('actions.workerSubmitRegistration')
-    expect(worker).toContain('uploadWorkerVerificationDrafts')
     expect(worker).toContain('actions.requestScopeChange')
+    expect(worker).toContain('actions.workerSavePayoutMethod')
     expect(worker).toContain('worker-scope-change-request')
   })
 
@@ -203,8 +242,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('carries active scope-change details from job detail into Kael decision UI', () => {
     const apiTypes = read('lib/api-types.ts')
     const provider = read('lib/frontend-workflow-provider.tsx')
-    const customer = read('components/customer/customer-surfaces.tsx')
-    const worker = read('components/worker/worker-surfaces.tsx')
+    const customer = read('components/customer/v21/surfaces.tsx')
+    const worker = read('components/worker/worker-v5-flow.tsx')
 
     expect(apiTypes).toContain('current_scope_change')
     expect(apiTypes).toContain('kael_computed_min')
@@ -213,14 +252,15 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain('scopeChangeFromJobDetail')
     expect(provider).toContain('data.current_scope_change')
     expect(provider).toContain('evidencePhotoUrls: scope.evidence_photo_urls')
-    expect(customer).toContain('scopeChange.requestedDescription ?? copy.history.kaelReviewing')
+    expect(customer).toContain('scopeChange.requestedDescription ?? copy.dataPending')
+    expect(customer).toContain('pendingScopeChange.requestedDescription ?? pendingScopeChange.reason ?? copy.dataPending')
     // Phase 1.3 (plan §22.6.D, 2026-05-23): A11 decision callsite consolidated
     // into the hard-stop modal. Phase 2.0 (plan §22.7.B): worker no longer
-    // submits price for scope change — Kael computes it server-side.
-    expect(customer).toContain("actions.decideScopeChange(scopeChange.id, { decision: 'approve' })")
+    // submits price for scope change — Kael computes it in the Edge workflow.
+    expect(customer).toContain('workflow.actions.decideScopeChange(scopeChange.id, { decision })')
     expect(worker).not.toContain('new_price_min')
     expect(worker).not.toContain('new_price_max')
-    expect(worker).toContain('scopeReasonDraft')
+    expect(worker).toContain('scopeReason')
   })
 
   it('polls remote workflow state without overwriting explicit no-worker fallback', () => {
@@ -261,8 +301,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('keeps visible mobile copy away from backend and server implementation language', () => {
     const visibleSources = [
       read('app/(customer)/booking.tsx'),
-      read('components/customer/customer-surfaces.tsx'),
-      read('components/worker/worker-surfaces.tsx'),
+      read('components/customer/v21/surfaces.tsx'),
+      read('components/worker/worker-v5-flow.tsx'),
       read('lib/api.ts'),
       read('lib/frontend-workflow-provider.tsx'),
     ].join('\n')

@@ -14,7 +14,7 @@
  * CCCD, full address, bank account, or raw chat content.
  */
 
-import type { ServiceType, ComplexityLevel } from '@home-services/shared'
+import type { ServiceType, ComplexityLevel } from '@nestscout/shared'
 
 // =============================================================================
 // Candidate type discriminator (also matches DB candidate_type / rule_type column)

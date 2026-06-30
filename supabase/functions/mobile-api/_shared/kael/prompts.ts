@@ -17,7 +17,7 @@ export function buildScopeChangeEstimateMessages(
       content: `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-You compute an updated price estimate for a Vietnamese HCMC home-services job
+You compute an updated price estimate for a Vietnamese HCMC NestScout job
 after the worker reports a different on-site scope.
 The worker does NOT propose a price; you compute it independently using the
 original Kael analysis and the worker's reported scope description + reason.
@@ -61,7 +61,7 @@ export function buildIntentMessages(
         `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-You are an intent classifier for a home service platform in Ho Chi Minh City.
+You are an intent classifier for NestScout in Ho Chi Minh City.
 Supported services: electrical, plumbing, cleaning. Nothing else.
 If the request is not about electrical repair, plumbing repair, or home cleaning, classify as "unsupported".
 Allowed electrical problem_slug values: ${
@@ -103,7 +103,7 @@ export function buildIntakeDiagnosisMessages(
       content: `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-You are Kael's intake-diagnosis step for a Ho Chi Minh City home-service app.
+You are Kael's intake-diagnosis step for NestScout in Ho Chi Minh City.
 Supported services: electrical repair, plumbing repair, home cleaning. Nothing else.
 Understand the customer's problem from the selected service, problem chips, their
 description, and the recent conversation, then decide if you can estimate reliably
@@ -259,7 +259,7 @@ export function buildScopeChangeReviewMessages(
       content: `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-You review worker scope-change requests for a Vietnamese home-services workflow.
+You review worker scope-change requests for a Vietnamese NestScout workflow.
 Compare the original Kael estimate with the worker's new on-site scope and explain the decision support for the customer.
 Do not approve work yourself; the customer must decide.
 Do not include PII, full addresses, phone numbers, or raw worker/customer text.

@@ -1,4 +1,4 @@
-# Home Services - Non-Negotiable Coding Rules
+# NestScout - Non-Negotiable Coding Rules
 
 These rules are hard constraints. If a user request, implementation shortcut, skill, plan, or historical doc conflicts with this file, stop, report the conflict, and ask Tu before proceeding.
 
@@ -11,7 +11,7 @@ These rules are hard constraints. If a user request, implementation shortcut, sk
 The repository includes AI coding agent skills in `skills.md` and `.agents/skills/karpathy-guidelines/SKILL.md`.
 
 - `skills.md` summarizes the repo's Karpathy-inspired workflow: think before coding, simplicity first, surgical changes, and goal-driven execution.
-- `.agents/skills/karpathy-guidelines/SKILL.md` is the project-local Codex/agent skill for Home Services.
+- `.agents/skills/karpathy-guidelines/SKILL.md` is the project-local Codex/agent skill for NestScout.
 - Skills guide how agents work. They do not replace the non-negotiable rules in this file.
 - If a skill conflicts with `RULES.md`, `RULES.md` wins.
 
@@ -121,7 +121,7 @@ The app must not mix visible Vietnamese and English in one selected language mod
 
 ---
 
-## Rule #6: Kael Only Supports The Active Home Services Scope
+## Rule #6: Kael Only Supports The Active NestScout Scope
 
 Active service scope:
 - electrical repair,
@@ -138,7 +138,7 @@ if (
 }
 ```
 
-Hard rule: Kael answers Home Services questions for electrical repair, plumbing repair, and home cleaning/housekeeping, including directly tied educational responses, safety advisories, and legal-awareness warnings for those three categories. For unsupported services, dangerous content, adult content, PII exposure, or unrelated requests, Kael must politely decline instead of analyzing.
+Hard rule: Kael answers NestScout questions for electrical repair, plumbing repair, and home cleaning/housekeeping, including directly tied educational responses, safety advisories, and legal-awareness warnings for those three categories. For unsupported services, dangerous content, adult content, PII exposure, or unrelated requests, Kael must politely decline instead of analyzing.
 
 ---
 

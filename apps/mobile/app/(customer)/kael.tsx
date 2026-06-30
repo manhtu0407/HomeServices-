@@ -1,5 +1,5 @@
-import { CustomerAgenticCenterSurface } from '@/components/customer/agentic-center-surface'
+import { KaelChatSurface } from '@/components/customer/kael-chat/kael-chat-surface'
 
 export default function KaelScreen() {
-  return <CustomerAgenticCenterSurface />
+  return <KaelChatSurface />
 }

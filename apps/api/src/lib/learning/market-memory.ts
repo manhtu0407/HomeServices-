@@ -15,7 +15,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@home-services/shared'
+import type { Database } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 import type { LearningHookInput, PricePriorPayload } from './types'
 import { ROLLING_WINDOW_DAYS } from './evidence-gate'

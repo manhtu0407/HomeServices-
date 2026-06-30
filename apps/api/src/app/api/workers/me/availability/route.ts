@@ -1,6 +1,6 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { withDbTimeout } from '@/lib/db/query'
-import { availabilityToggleSchema } from '@home-services/shared'
+import { availabilityToggleSchema } from '@nestscout/shared'
 
 type AvailabilityRpcRow = {
   ok: boolean

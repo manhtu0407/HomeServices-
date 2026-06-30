@@ -1,8 +1,12 @@
+import { Platform, type TextStyle } from 'react-native'
+
 /**
  * NestScout / Kael design theme for the Expo React Native app.
  *
- * Source: `nestscout-codex-handoff.zip/design/theme.ts`.
- * Rule: implementation values come from this file. Primary is #0DAE9A.
+ * Source: `NestScout_Apple_iOS27_System_Typography_CODE_ONLY_v1_0.zip`
+ * and `nestscout-codex-handoff.zip/design/theme.ts`.
+ * Rule: implementation values come from this file. Brand primary is #24B3A1;
+ * the app-wide primary CTA gradient follows the Entry Gate button formula.
  */
 
 export const color = {
@@ -22,14 +26,14 @@ export const color = {
     mint50: '#E6FBF3',
     mint100: '#D7F6EF',
     mint300: '#8FE2D4',
-    mint500: '#28C4B3',
-    mint600: '#0DAE9A',
-    mint700: '#087F73',
+    mint500: '#40CDBE',
+    mint600: '#24B3A1',
+    mint700: '#088779',
     mint800: '#055F57',
   },
   brand: {
-    primary: '#0DAE9A',
-    primaryDark: '#087F73',
+    primary: '#24B3A1',
+    primaryDark: '#088779',
     primaryDeep: '#055F57',
   },
   surface: {
@@ -52,20 +56,83 @@ export const color = {
     lavender: '#8A78FA',
     gold: '#FFC857',
   },
-  primary: '#0DAE9A',
-  primaryDark: '#087F73',
+  primary: '#24B3A1',
+  primaryDark: '#088779',
   background: '#F4FAF9',
   textPrimary: '#071A24',
 } as const
 
+export const signature = {
+  mint: '#17A995',
+  mintDeep: '#00756A',
+  cover: color.brand.primary,
+  coverDeep: color.brand.primaryDeep,
+  bg: '#F6F7F7',
+  surface: '#FFFFFF',
+  text: '#14201E',
+  textSecondary: '#5C6B68',
+  line: '#E4E8E7',
+  glassTint: 'rgba(255,255,255,0.62)',
+  edgeHighlight: 'rgba(255,255,255,0.30)',
+  coverWash: 'rgba(13,174,154,0.10)',
+  coverEdge: 'rgba(255,255,255,0.62)',
+  badgeBg: 'rgba(255,255,255,0.72)',
+  badgeBorder: 'rgba(23,169,149,0.20)',
+  providerBorder: 'rgba(23,169,149,0.28)',
+} as const
+
+type AppleTypographyRole =
+  | 'largeTitle'
+  | 'title1'
+  | 'title2'
+  | 'title3'
+  | 'headline'
+  | 'body'
+  | 'callout'
+  | 'subheadline'
+  | 'footnote'
+  | 'caption1'
+  | 'caption2'
+  | 'tabularBody'
+
+const systemFontFamily: TextStyle['fontFamily'] = Platform.OS === 'ios' ? undefined : 'System'
+
+const appleSystemTypography = {
+  largeTitle: { fontFamily: systemFontFamily, fontSize: 34, lineHeight: 41, fontWeight: '400' },
+  title1: { fontFamily: systemFontFamily, fontSize: 28, lineHeight: 34, fontWeight: '400' },
+  title2: { fontFamily: systemFontFamily, fontSize: 22, lineHeight: 28, fontWeight: '400' },
+  title3: { fontFamily: systemFontFamily, fontSize: 20, lineHeight: 25, fontWeight: '400' },
+  headline: { fontFamily: systemFontFamily, fontSize: 17, lineHeight: 22, fontWeight: '600' },
+  body: { fontFamily: systemFontFamily, fontSize: 17, lineHeight: 22, fontWeight: '400' },
+  callout: { fontFamily: systemFontFamily, fontSize: 16, lineHeight: 21, fontWeight: '400' },
+  subheadline: { fontFamily: systemFontFamily, fontSize: 15, lineHeight: 20, fontWeight: '400' },
+  footnote: { fontFamily: systemFontFamily, fontSize: 13, lineHeight: 18, fontWeight: '400' },
+  caption1: { fontFamily: systemFontFamily, fontSize: 12, lineHeight: 16, fontWeight: '400' },
+  caption2: { fontFamily: systemFontFamily, fontSize: 11, lineHeight: 13, fontWeight: '400' },
+  tabularBody: {
+    fontFamily: systemFontFamily,
+    fontSize: 17,
+    fontVariant: ['tabular-nums'] as TextStyle['fontVariant'],
+    fontWeight: '400',
+    lineHeight: 22,
+  },
+} satisfies Record<AppleTypographyRole, TextStyle>
+
 export const typography = {
-  fontFamily: 'Kael Sans',
-  h1: { fontSize: 32, lineHeight: 40, fontWeight: '700' as const },
-  h2: { fontSize: 24, lineHeight: 32, fontWeight: '600' as const },
-  h3: { fontSize: 20, lineHeight: 28, fontWeight: '500' as const },
-  body: { fontSize: 16, lineHeight: 24, fontWeight: '400' as const },
-  label: { fontSize: 14, lineHeight: 20, fontWeight: '500' as const },
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: '400' as const },
+  fontFamily: systemFontFamily,
+  fontPolicy: {
+    dynamicType: true,
+    embedFontFiles: false,
+    family: 'system',
+    opticalSizing: 'automatic',
+    resolvedOnIOS: 'SF Pro',
+  },
+  ...appleSystemTypography,
+  h1: appleSystemTypography.largeTitle,
+  h2: appleSystemTypography.title2,
+  h3: appleSystemTypography.title3,
+  label: appleSystemTypography.subheadline,
+  caption: appleSystemTypography.caption1,
 } as const
 
 export const spacing = {
@@ -113,14 +180,14 @@ export const shadow = {
     elevation: 5,
   },
   primary: {
-    shadowColor: '#0DAE9A',
-    shadowOpacity: 0.28,
-    shadowRadius: 11,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 6,
+    shadowColor: '#088779',
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 7,
   },
   orb: {
-    shadowColor: '#0DAE9A',
+    shadowColor: '#088779',
     shadowOpacity: 0.34,
     shadowRadius: 17,
     shadowOffset: { width: 0, height: 16 },
@@ -166,8 +233,8 @@ export const aura = {
 export const component = {
   button: {
     primary: {
-      gradient: ['#16C7B4', '#0DAE9A', '#087F73'] as const,
-      gradientStops: [0, 0.46, 1] as const,
+      gradient: ['#49CFC0', '#24B3A1', '#088779'] as const,
+      gradientStops: [0, 0.5, 1] as const,
       text: '#FFFFFF',
       border: 'rgba(255,255,255,0.72)',
       height: 48,
@@ -175,19 +242,19 @@ export const component = {
       paddingX: 20,
     },
     primaryPressed: {
-      gradient: ['#0DAE9A', '#087F73'] as const,
+      gradient: ['#24B3A1', '#088779'] as const,
       gradientStops: [0, 1] as const,
     },
     secondary: {
       bg: '#F7FFFB',
-      text: '#087F73',
+      text: '#088779',
       border: '#C8EDE7',
       height: 44,
       radius: 22,
     },
     ghost: {
       bg: 'rgba(255,255,255,0.52)',
-      text: '#087F73',
+      text: '#088779',
       border: 'rgba(184,231,223,0.72)',
       radius: 22,
     },
@@ -207,7 +274,7 @@ export const component = {
     small: { height: 36 },
   },
   chip: {
-    selected: { bg: '#E6FBF3', text: '#087F73', border: '#B8E7DF' },
+    selected: { bg: '#E6FBF3', text: '#088779', border: '#B8E7DF' },
     unselected: { bg: '#FFFFFF', text: '#526B73', border: '#DCECEA' },
     successStatus: { bg: '#EAF8EF', text: '#1F9B5B', border: '#BFE8CE' },
     warning: { bg: '#FFF7E6', text: '#B87500', border: '#FFE0A6' },
@@ -219,7 +286,7 @@ export const component = {
   input: {
     bg: '#FFFFFF',
     border: '#D8EBE8',
-    focusBorder: '#0DAE9A',
+    focusBorder: '#24B3A1',
     placeholder: '#7C8F94',
     height: 48,
     radius: 18,
@@ -227,17 +294,46 @@ export const component = {
   },
   iconTile: { size: 72, visualSize: 46, radius: 22 },
   card: { radius: 24, largeRadius: 28 },
+  logoMark: {
+    background: 'rgba(245,255,251,0.64)',
+    border: 'rgba(214,255,246,0.78)',
+    shadow: '0 0 22px rgba(214,255,246,0.58)',
+    auraBackground: 'rgba(214,255,246,0.34)',
+    auraInset: -8,
+    auraRadiusAdd: 10,
+    logoOverflow: 14,
+  },
+  authSurface: {
+    canvas: color.background,
+    raised: color.surface.base,
+    glass: 'rgba(255,255,252,0.88)',
+    milk: '#FFFDF8',
+    mint: color.mint.mint100,
+    cyan: '#E7FBFA',
+    cream: '#FFF5E8',
+    border: color.surface.strokeStrong,
+    line: color.surface.stroke,
+    ink: color.text.primary,
+    muted: color.text.secondary,
+    subtle: color.text.muted,
+    primary: color.brand.primary,
+    cookie: '#111817',
+    cookieSoft: '#24302E',
+    copper: '#BB743D',
+    shadow: '0 18px 42px rgba(13,24,22,0.10)',
+    softShadow: '0 10px 24px rgba(13,24,22,0.07)',
+  },
   bottomNav: {
     bg: '#FFFFFF',
     height: 64,
     radius: 34,
     paddingX: 10,
     iconSize: 22,
-    activeIcon: '#0DAE9A',
+    activeIcon: color.brand.primary,
     inactiveIcon: '#7C8F94',
     tabs: ['Trang chu', 'Lich su', 'Tin nhan', 'Ho so'] as const,
     orb: {
-      bg: '#0DAE9A',
+      bg: color.brand.primary,
       label: 'Kael',
       size: 64,
       outerSize: 76,
@@ -276,8 +372,6 @@ export const component = {
     brandMarkBorder: 'rgba(255,255,255,0.74)',
     brandMarkRadius: radius.md,
     brandMarkSize: 40,
-    brandMarkTextSize: 23,
-    brandMarkTextLineHeight: 27,
     brandTextSize: 19,
     brandTextLineHeight: 24,
     copyGap: spacing.sm,
@@ -300,7 +394,7 @@ export const component = {
     trustTextLineHeight: 15,
     serviceChipTextSize: 11,
     serviceChipTextLineHeight: 15,
-    buttonHeight: 44,
+    buttonHeight: 48,
     buttonMarginTop: spacing.xs,
     buttonMinWidth: 154,
     buttonPaddingX: spacing.xxl,
@@ -333,6 +427,161 @@ export const component = {
   },
 } as const
 
-export const theme = { aura, color, component, glass, radius, shadow, spacing, typography } as const
+export const customerTheme = {
+  lightLayer: {
+    mode: 'light',
+    canvas: color.background,
+    base: color.mint.white,
+    raised: color.surface.raised,
+    service: color.surface.mint,
+    water: color.mint.mint50,
+    warm: '#FFF8EB',
+    depthSurface: color.mint.auraSoft,
+    ghost: 'rgba(255,253,248,0.78)',
+    glass: 'rgba(255,255,255,0.58)',
+    glassStrong: 'rgba(255,255,255,0.74)',
+    glassWarm: 'rgba(255,253,246,0.68)',
+    glassBorder: 'rgba(255,255,255,0.82)',
+    glassHighlight: 'rgba(255,255,255,0.70)',
+    glassShadow: '0 12px 30px rgba(13,70,65,0.09)',
+    glassFloatShadow: '0 8px 20px rgba(13,70,65,0.07)',
+    disabled: color.surface.disabled,
+    border: 'rgba(35,96,84,0.13)',
+    borderStrong: 'rgba(8,120,110,0.22)',
+    text: color.text.primary,
+    muted: color.text.secondary,
+    subtleText: color.text.muted,
+    primary: color.brand.primary,
+    primaryText: color.text.inverse,
+    aqua: color.accent.aqua,
+    copper: '#BB743D',
+    danger: color.accent.destructive,
+  },
+  darkLayer: {
+    mode: 'dark',
+    canvas: '#0B0F0E',
+    base: '#111614',
+    raised: '#171D1B',
+    service: '#183832',
+    water: '#172F31',
+    warm: '#2A241D',
+    depthSurface: '#131918',
+    ghost: 'rgba(190,210,205,0.10)',
+    glass: 'rgba(22,29,27,0.58)',
+    glassStrong: 'rgba(30,38,35,0.68)',
+    glassWarm: 'rgba(30,37,34,0.66)',
+    glassBorder: 'rgba(190,210,205,0.16)',
+    glassHighlight: 'rgba(230,244,240,0.13)',
+    glassShadow: '0 22px 56px rgba(0,0,0,0.42)',
+    glassFloatShadow: '0 12px 34px rgba(0,0,0,0.30)',
+    disabled: '#1D2522',
+    border: 'rgba(190,210,205,0.12)',
+    borderStrong: 'rgba(105,222,198,0.26)',
+    text: '#F1F6F4',
+    muted: '#A9B7B3',
+    subtleText: '#83938F',
+    primary: color.mint.mint300,
+    primaryText: '#08201D',
+    aqua: '#82DDE2',
+    copper: '#E2A56E',
+    danger: '#F29A8D',
+  },
+  reducedTransparency: {
+    light: {
+      ghost: '#FFFFFF',
+      glass: '#FFFFFF',
+      glassStrong: '#FFFFFF',
+      glassWarm: '#FFF8EB',
+    },
+    dark: {
+      ghost: '#161D1B',
+      glass: '#161D1B',
+      glassStrong: '#1D2522',
+      glassWarm: '#2A241D',
+    },
+  },
+} as const
+
+export const glassSurfaceTheme = {
+  shadowByVariant: {
+    nav: {
+      dark: '0 18px 36px rgba(0,0,0,0.28)',
+      light: '0 18px 36px rgba(21,89,78,0.18), inset 0 1px 0 rgba(255,255,255,0.94)',
+    },
+    control: {
+      dark: '0 6px 14px rgba(0,0,0,0.16)',
+      light: '0 6px 14px rgba(13,70,65,0.07)',
+    },
+    hero: {
+      dark: '0 12px 30px rgba(0,0,0,0.20)',
+      light: '0 12px 30px rgba(13,70,65,0.09)',
+    },
+    sheet: {
+      dark: '0 14px 34px rgba(0,0,0,0.22)',
+      light: '0 14px 34px rgba(13,70,65,0.09)',
+    },
+    subtle: {
+      dark: '0 4px 10px rgba(0,0,0,0.12)',
+      light: '0 4px 10px rgba(13,70,65,0.05)',
+    },
+  },
+  liquidShadowByVariant: {
+    nav: {
+      dark: '0 18px 34px rgba(0,0,0,0.24), inset 0 1px 0 rgba(190,210,205,0.10)',
+      light: '0 18px 34px rgba(20,73,66,0.12), inset 0 1px 0 rgba(255,255,255,0.30)',
+    },
+    control: {
+      dark: '0 8px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(190,210,205,0.09)',
+      light: '0 8px 18px rgba(20,73,66,0.07), inset 0 1px 0 rgba(255,255,255,0.28)',
+    },
+    hero: {
+      dark: '0 16px 34px rgba(0,0,0,0.22), inset 0 1px 0 rgba(190,210,205,0.10)',
+      light: '0 16px 34px rgba(20,73,66,0.09), inset 0 1px 0 rgba(255,255,255,0.30)',
+    },
+    sheet: {
+      dark: '0 18px 38px rgba(0,0,0,0.26), inset 0 1px 0 rgba(190,210,205,0.10)',
+      light: '0 18px 38px rgba(20,73,66,0.10), inset 0 1px 0 rgba(255,255,255,0.30)',
+    },
+    subtle: {
+      dark: '0 6px 14px rgba(0,0,0,0.14), inset 0 1px 0 rgba(190,210,205,0.08)',
+      light: '0 6px 14px rgba(20,73,66,0.05), inset 0 1px 0 rgba(255,255,255,0.24)',
+    },
+  },
+  liquidFallbackBackground: {
+    dark: '#161D1B',
+    light: color.surface.base,
+  },
+  standardFallbackBackground: {
+    dark: '#112522',
+    light: color.mint.white,
+  },
+  liquidBackground: {
+    dark: 'rgba(22,29,27,0.38)',
+    navLight: 'rgba(255,255,255,0.10)',
+    light: 'rgba(255,255,255,0.46)',
+  },
+  standardBackground: {
+    dark: 'rgba(16,36,32,0.72)',
+    navLight: 'rgba(255,255,255,0.78)',
+    light: 'rgba(255,255,255,0.70)',
+  },
+  liquidBorder: {
+    dark: 'rgba(190,210,205,0.16)',
+    navLight: 'rgba(255,255,255,0.70)',
+    light: 'rgba(255,255,255,0.34)',
+  },
+  standardBorder: {
+    dark: 'rgba(255,255,255,0.14)',
+    navLight: 'rgba(255,255,255,0.88)',
+    light: 'rgba(255,255,255,0.78)',
+  },
+  opaqueRow: {
+    darkBackground: '#122724',
+    darkBorder: 'rgba(255,255,255,0.09)',
+    lightBorder: 'rgba(210,232,225,0.82)',
+  },
+} as const
+
+export const theme = { aura, color, component, customerTheme, glass, glassSurfaceTheme, radius, shadow, signature, spacing, typography } as const
 
 export default theme

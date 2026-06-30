@@ -24,6 +24,12 @@ jest.mock('expo-blur', () => {
   }
 })
 
+jest.mock('lottie-react-native', () => {
+  const React = require('react')
+  const { View } = require('react-native')
+  return ({ ...props }: any) => React.createElement(View, props)
+})
+
 // Accessibility prefs are environmental. Default them to "off" in tests so the
 // async AccessibilityInfo probes inside useGlassAccessibility don't fire state
 // updates after assertions (which otherwise log act(...) warnings).

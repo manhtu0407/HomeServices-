@@ -30,6 +30,7 @@ export type {
   KaelChatSession,
   KaelChatResponse,
   PlacesAutocompleteResponse,
+  PlacesResolveResponse,
   JobDetailResponse,
   ConfirmSearchResponse,
   ConfirmKaelChatResponse,

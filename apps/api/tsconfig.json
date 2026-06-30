@@ -21,6 +21,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "@supabase/supabase-js": ["./node_modules/@supabase/supabase-js"],
+      "@supabase/supabase-js/*": ["./node_modules/@supabase/supabase-js/*"],
       "zod": ["./node_modules/zod"]
     }
   },

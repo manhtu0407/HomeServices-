@@ -1,20 +1,38 @@
 {
-  "name": "home-services",
+  "name": "nestscout",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.16.1",
   "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "doctor:react": "npx -y react-doctor@latest . --yes --verbose --offline --fail-on none",
-    "doctor:react:changed": "npx -y react-doctor@latest . --yes --verbose --diff --offline --fail-on none",
-    "kael:eval": "node apps/api/scripts/kael-eval.mjs",
-    "test": "turbo test",
-    "lint": "turbo lint",
-    "type-check": "turbo type-check"
+    "build": "scripts\\run-turbo.cmd build",
+    "build:api": "scripts\\run-package-script.cmd @nestscout/api build",
+    "dev": "scripts\\run-turbo.cmd dev",
+    "doctor": "scripts\\run-react-doctor.cmd changed",
+    "doctor:react": "scripts\\run-react-doctor.cmd",
+    "doctor:react:changed": "scripts\\run-react-doctor.cmd changed",
+    "kael:eval": "scripts\\run-node.cmd apps/api/scripts/kael-eval.mjs",
+    "lint": "scripts\\run-turbo.cmd lint",
+    "lint:api": "scripts\\run-package-script.cmd @nestscout/api lint",
+    "lint:mobile": "scripts\\run-package-script.cmd @nestscout/mobile lint:mobile",
+    "sandbox:test": "scripts\\run-package-script.cmd @nestscout/sandbox test",
+    "sandbox:type-check": "scripts\\run-package-script.cmd @nestscout/sandbox type-check",
+    "supabase": "scripts\\run-supabase.cmd",
+    "supabase:agent": "scripts\\run-supabase.cmd --agent yes",
+    "supabase:version": "scripts\\run-supabase.cmd --version",
+    "test": "scripts\\run-turbo.cmd test",
+    "test:api": "scripts\\run-package-script.cmd @nestscout/api test",
+    "test:mobile": "scripts\\run-package-script.cmd @nestscout/mobile test",
+    "test:sandbox": "scripts\\run-package-script.cmd @nestscout/sandbox test",
+    "test:shared": "scripts\\run-package-script.cmd @nestscout/shared test",
+    "type-check": "scripts\\run-turbo.cmd type-check",
+    "type-check:api": "scripts\\run-package-script.cmd @nestscout/api type-check",
+    "type-check:mobile": "scripts\\run-package-script.cmd @nestscout/mobile type-check",
+    "type-check:sandbox": "scripts\\run-package-script.cmd @nestscout/sandbox type-check",
+    "type-check:shared": "scripts\\run-package-script.cmd @nestscout/shared type-check"
   },
   "devDependencies": {
     "metro-runtime": "0.83.3",
+    "react-doctor": "0.5.8",
     "turbo": "^2"
   }
 }

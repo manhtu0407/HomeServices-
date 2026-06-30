@@ -1,8 +1,9 @@
 import { useEffect, useReducer, useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
-import { extractKnownDistrictLabel } from '@home-services/shared'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { extractKnownDistrictLabel } from '@nestscout/shared'
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { KaelTextField } from '@/components/ui/kael-primitives'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { type AppLanguage } from '@/lib/app-language'
 import { placesService } from '@/lib/services'
@@ -105,19 +106,20 @@ export function AddressAutocomplete({ language, onChange, value }: AddressAutoco
     <View style={addressStyles.shell} testID="customer-address-autocomplete">
       <View pointerEvents="none" style={addressStyles.hiddenMarker} testID="customer-address-apple-ios26-component-system" />
       <Text style={[addressStyles.label, { color: tokens.muted }]}>{text.label}</Text>
-      <View style={[addressStyles.fieldShell, addressFieldSurface(tokens, reduceTransparency)]} testID="customer-address-apple-ios26-field">
-        <View pointerEvents="none" style={[addressStyles.edgeHighlight, addressEdgeHighlightSurface(tokens)]} />
-        <TextInput
-          autoCapitalize="words"
-          onChangeText={updateValue}
-          onFocus={() => setOpen(true)}
-          placeholder={text.placeholder}
-          placeholderTextColor={tokens.subtleText}
-          style={[addressStyles.input, addressInputFocusSurface(tokens), { color: tokens.text }]}
-          testID="customer-address-autocomplete-input"
-          value={value}
-        />
-      </View>
+      <KaelTextField
+        autoCapitalize="words"
+        inputShellAdornment={<View pointerEvents="none" style={[addressStyles.edgeHighlight, addressEdgeHighlightSurface(tokens)]} />}
+        inputShellStyle={[addressStyles.fieldShell, addressFieldSurface(tokens, reduceTransparency)]}
+        inputShellTestID="customer-address-apple-ios26-field"
+        onChangeText={updateValue}
+        onFocus={() => setOpen(true)}
+        placeholder={text.placeholder}
+        placeholderTextColor={tokens.subtleText}
+        shellStyle={addressStyles.fieldStack}
+        style={[addressStyles.input, addressInputFocusSurface(tokens), { color: tokens.text }]}
+        testID="customer-address-autocomplete-input"
+        value={value}
+      />
       {open && suggestions.length > 0 ? (
         <View style={[addressStyles.suggestions, addressSuggestionsSurface(tokens, reduceTransparency)]} testID="customer-address-autocomplete-suggestions">
           <View pointerEvents="none" style={addressStyles.hiddenMarker} testID="customer-address-apple-ios26-suggestion-surface" />
@@ -241,11 +243,17 @@ const addressStyles = StyleSheet.create({
     paddingVertical: 9,
   },
   fieldShell: {
+    alignItems: 'stretch',
     borderCurve: 'continuous',
     borderRadius: 20,
     borderWidth: 1,
+    minHeight: 52,
     overflow: 'hidden',
+    paddingHorizontal: 0,
     position: 'relative',
+  },
+  fieldStack: {
+    gap: 0,
   },
   hiddenMarker: {
     height: 0,

@@ -1,72 +1,82 @@
-import { fireEvent, render, screen } from '@testing-library/react-native'
-import type { LocalDeal, LocalScopeChange, LocalWorkflowSelectors } from '@home-services/shared'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import type { LocalDeal, LocalScopeChange, LocalWorkflowSelectors } from '@nestscout/shared'
 
 let mockWorkflowValue: any
-let mockSessionMetadata: Record<string, unknown>
-let mockLanguage: 'vi' | 'en'
 const mockReplace = jest.fn()
-const mockCustomerConfirmCompletion = jest.fn()
 const mockDecideScopeChange = jest.fn()
+const mockUpdateCustomerKaelMemoryPreference = jest.fn()
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
-jest.mock('expo-image', () => {
-  const React = require('react')
-  const { View } = require('react-native')
-  return {
-    Image: (props: any) => React.createElement(View, props),
-  }
-})
-
 jest.mock('expo-router', () => ({
+  useLocalSearchParams: () => ({}),
   useRouter: () => ({ replace: mockReplace }),
 }))
 
-jest.mock('react-native-safe-area-context', () => {
-  const React = require('react')
-  const { View } = require('react-native')
-  return {
-    SafeAreaView: ({ children, ...props }: any) => React.createElement(View, props, children),
-  }
-})
-
 jest.mock('@/lib/auth-provider', () => ({
-  useAuth: () => ({
-    session: {
-      user: {
-        id: 'customer_test_1',
-        user_metadata: mockSessionMetadata,
-      },
-    },
-  }),
+  useAuth: () => ({ session: { user: { id: 'customer_test_1', user_metadata: {} } } }),
 }))
 
 jest.mock('@/lib/frontend-workflow-provider', () => ({
   useFrontendWorkflow: () => mockWorkflowValue,
 }))
 
+jest.mock('expo-audio', () => ({
+  AudioModule: {
+    requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  },
+  RecordingPresets: {
+    HIGH_QUALITY: {},
+  },
+  setAudioModeAsync: jest.fn(async () => undefined),
+  useAudioRecorder: () => ({
+    getURI: jest.fn(() => null),
+    prepareToRecordAsync: jest.fn(async () => undefined),
+    record: jest.fn(async () => undefined),
+    stop: jest.fn(async () => undefined),
+  }),
+  useAudioRecorderState: () => ({
+    durationMillis: 0,
+    isRecording: false,
+  }),
+}))
+
 jest.mock('@/lib/app-language', () => {
   const actual = jest.requireActual('@/lib/app-language')
   return {
     ...actual,
-    useAppLanguage: () => mockLanguage,
+    useAppLanguage: () => 'vi',
   }
 })
 
 import { CustomerAgenticCenterSurface } from '../agentic-center-surface'
-import { setCustomerThemeMode } from '../customer-theme'
 
-function buildDeal(): LocalDeal {
+function buildScopeChange(): LocalScopeChange {
   return {
-    backendStatus: 'broadcasting',
+    createdAt: '2026-06-01T00:00:00.000Z',
+    evidencePhotoUrls: ['storage://job_test_1/scope.jpg'],
+    id: 'scope_test_1',
+    kaelProgress: null,
+    kaelReview: null,
+    priceMax: 320000,
+    priceMin: 260000,
+    reason: 'Cần thay thêm ổ cắm sau kiểm tra.',
+    requestedDescription: 'Thay ổ cắm bị cháy tiếp điểm.',
+    status: 'waiting_customer_decision',
+  }
+}
+
+function buildDeal(withScopeChange = false): LocalDeal {
+  return {
+    backendStatus: withScopeChange ? 'scope_change_pending' : 'broadcasting',
     broadcast: {
       broadcastId: 'broadcast_test_1',
       fullAddressLabel: null,
       fullAddressVisible: false,
-      generalArea: 'District 7',
+      generalArea: 'Quận 7',
       jobId: 'job_test_1',
-      prebrief: ['Kael prepared the worker brief.'],
-      problemSummary: 'Outlet is hot',
+      prebrief: ['Kael đã chuẩn bị brief.'],
+      problemSummary: 'Ổ cắm nóng',
       secondsRemaining: 45,
       serviceType: 'electrical',
       status: 'sent',
@@ -74,39 +84,39 @@ function buildDeal(): LocalDeal {
     completionNotes: null,
     completionPhotoUrls: [],
     draft: {
-      addressLabel: 'District 7, Sunrise City',
-      description: 'The living room outlet is hot and smells faintly burnt.',
-      districtLabel: 'District 7',
+      addressLabel: 'Tòa A, Quận 7',
+      description: 'Ổ cắm phòng khách bị nóng và có mùi khét.',
+      districtLabel: 'Quận 7',
       inferredProblemLabel: null,
       mediaCount: 1,
       needsServiceChoice: false,
-      problemChips: ['Outlet or switch issue'],
+      problemChips: ['Ổ cắm/công tắc hỏng'],
       serviceType: 'electrical',
       source: 'kael',
       timeChoice: 'now',
       unsupportedServiceLabel: null,
     },
     estimate: {
-      advisory: 'Kael can update the estimate if scope evidence changes.',
+      advisory: 'Kael có thể cập nhật nếu scope đổi.',
       complexity: 'medium',
       confidenceLabel: '84%',
-      disclaimer: 'Kael estimate from current evidence.',
+      disclaimer: 'Kael estimate.',
       hasVndPrice: true,
-      priceRangeLabel: '180,000 VND - 260,000 VND',
-      problemLabel: 'Outlet or switch issue',
+      priceRangeLabel: '180.000đ - 260.000đ',
+      problemLabel: 'Ổ cắm nóng',
     },
     finalPrice: null,
     id: 'job_test_1',
-    scopeChange: null,
-    status: 'broadcasting',
+    scopeChange: withScopeChange ? buildScopeChange() : null,
+    status: withScopeChange ? 'scope_change_pending' : 'broadcasting',
   }
 }
 
-function buildWorkflow(deal: LocalDeal | null, notificationUnreadCount = 0) {
+function buildWorkflow(deal: LocalDeal | null, notificationUnreadCount = 0, customerKaelMemory: Record<string, unknown> | null = null) {
   const selectors: LocalWorkflowSelectors = {
     canConfirmCustomerSearch: false,
     canCustomerCancelDeal: Boolean(deal),
-    canCustomerConfirmCompletion: deal?.status === 'completed_by_worker',
+    canCustomerConfirmCompletion: false,
     canCustomerSubmitReview: false,
     canWorkerAccept: false,
     canWorkerAdvance: false,
@@ -123,11 +133,11 @@ function buildWorkflow(deal: LocalDeal | null, notificationUnreadCount = 0) {
 
   mockWorkflowValue = {
     actions: {
-      customerConfirmCompletion: mockCustomerConfirmCompletion,
       decideScopeChange: mockDecideScopeChange,
+      refreshCustomerKaelMemory: jest.fn(async () => true),
+      updateCustomerKaelMemoryPreference: mockUpdateCustomerKaelMemoryPreference,
     },
-    customerKaelMemory: null,
-    customerKaelMemoryStatus: 'idle',
+    customerKaelMemory,
     dispatch: jest.fn(),
     notificationUnreadCount,
     notifications: [],
@@ -138,238 +148,131 @@ function buildWorkflow(deal: LocalDeal | null, notificationUnreadCount = 0) {
       lastRemoteSyncAt: null,
       workerGate: 'remote_backend',
     },
-    workerEarnings: null,
-    workerProfile: null,
-  }
-}
-
-function buildScopeChange(): LocalScopeChange {
-  return {
-    createdAt: '2026-06-01T00:00:00.000Z',
-    evidencePhotoUrls: ['storage://job_test_1/scope.jpg'],
-    id: 'scope_test_1',
-    kaelProgress: null,
-    kaelReview: null,
-    priceMax: 320000,
-    priceMin: 260000,
-    reason: 'Needs one extra outlet after inspection.',
-    requestedDescription: 'Replace the burnt outlet contact.',
-    status: 'waiting_customer_decision',
   }
 }
 
 beforeEach(() => {
-  setCustomerThemeMode('light')
-  mockLanguage = 'en'
-  mockReplace.mockClear()
-  mockCustomerConfirmCompletion.mockClear()
-  mockCustomerConfirmCompletion.mockResolvedValue(true)
   mockDecideScopeChange.mockClear()
   mockDecideScopeChange.mockResolvedValue(true)
-  mockSessionMetadata = {}
+  mockUpdateCustomerKaelMemoryPreference.mockClear()
+  mockUpdateCustomerKaelMemoryPreference.mockResolvedValue(true)
+  mockReplace.mockClear()
   buildWorkflow(null)
 })
 
-describe('CustomerAgenticCenterSurface', () => {
-  it('renders an honest empty center without fake metrics', () => {
+describe('CustomerAgenticCenterSurface v2.1', () => {
+  it('renders an honest ready utility without fake case data', () => {
     render(<CustomerAgenticCenterSurface />)
 
-    expect(screen.getByText('Agentic Center')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('None')
-    expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('None')
-    expect(screen.getByTestId('customer-agentic-center-summary-notifications-value')).toHaveTextContent('None')
-    expect(screen.getByText('No active request')).toBeTruthy()
-    expect(screen.getByText('Nothing needs approval')).toBeTruthy()
-    expect(screen.getByText('No saved preference data')).toBeTruthy()
-    expect(screen.queryByText('0')).toBeNull()
+    expect(screen.getByTestId('customer-v21-agentic-center')).toBeOnTheScreen()
+    expect(screen.getAllByText('Trung tâm điều phối Kael').length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('customer-v21-agentic-home-inactive')).toBeNull()
+    expect(screen.getByTestId('customer-v21-agentic-card-5.2-command-center')).toBeOnTheScreen()
+    expect(screen.queryByText('Chưa có hoạt động dịch vụ')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-agentic-empty')).toBeNull()
+    expect(screen.getByTestId('customer-v21-agentic-utility-stack')).toBeOnTheScreen()
     expect(screen.queryByText('--')).toBeNull()
+    expect(screen.queryByText(/rating|4\.9|Nguyễn Văn Minh/i)).toBeNull()
   })
 
-  it('renders active case and saved preference data from real state only', () => {
-    mockSessionMetadata = {
-      default_address: 'District 7, Sunrise City',
-      full_name: 'Tu Phan',
-    }
+  it('renders active work summary and routes work handling to Kael chat', () => {
     buildWorkflow(buildDeal(), 2)
 
     render(<CustomerAgenticCenterSurface />)
 
-    expect(screen.getByText('Electrical repair')).toBeTruthy()
-    expect(screen.getByText('Sending to workers')).toBeTruthy()
-    expect(screen.getByText('180,000 VND - 260,000 VND')).toBeTruthy()
-    expect(screen.getByText('The living room outlet is hot and smells faintly burnt.')).toBeTruthy()
-    expect(screen.getByText('Tu Phan')).toBeTruthy()
-    expect(screen.getAllByText('District 7, Sunrise City').length).toBeGreaterThan(0)
-    expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('1')
-    expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('None')
-    expect(screen.getByTestId('customer-agentic-center-summary-notifications-value')).toHaveTextContent('2')
-    expect(screen.getByTestId('customer-agentic-center-phase-title-value')).toHaveTextContent('Matching worker')
-    expect(screen.getByTestId('customer-agentic-center-phase-artifact-value')).toHaveTextContent('Provider match')
-    expect(screen.getByTestId('customer-agentic-center-phase-next-value')).toHaveTextContent('Worker accepts')
-    expect(screen.getByTestId('customer-agentic-center-phase-gate-value')).toHaveTextContent('Waiting for worker acceptance')
-    expect(screen.getByTestId('customer-agentic-center-phase-rail')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-phase-step-provider_match')).toHaveTextContent(/Provider match/)
-    expect(screen.getByTestId('customer-agentic-center-phase-step-provider_match-mode')).toHaveTextContent('Loading')
-    expect(screen.getByTestId('customer-agentic-center-phase-step-provider_match-primary')).toHaveTextContent('Active')
-    expect(screen.getByTestId('customer-agentic-center-phase-step-booking')).toHaveTextContent(/Real booking/)
-    expect(screen.getByTestId('customer-agentic-center-phase-step-booking-mode')).toHaveTextContent('Loading')
+    expect(screen.getByTestId('customer-v21-agentic-active')).toHaveTextContent(/^1/)
+    expect(screen.getByTestId('customer-v21-agentic-alerts')).toHaveTextContent(/^0/)
+    expect(screen.getByTestId('customer-v21-agentic-utility-stack')).toHaveTextContent(/Trung tâm điều phối/)
+    expect(screen.getByTestId('customer-v21-agentic-utility-stack')).not.toHaveTextContent(/Trung tâm điều phối công việc cũ/)
+    expect(screen.getByTestId('customer-v21-agentic-utility-stack')).toHaveTextContent(/Hàng chờ duyệt/)
+    expect(screen.getByTestId('customer-v21-agentic-utility-stack')).toHaveTextContent(/Ghi nhớ và tùy chọn/)
+    expect(screen.getByTestId('customer-v21-agentic-active-case')).toHaveTextContent(/MOH-26GBS1/)
+
+    fireEvent.press(screen.getByText('Xử lý công việc'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
   })
 
-  it('renders Commanding Home greeting and separates notification count from approvals', () => {
-    mockSessionMetadata = {
-      full_name: 'Tu Phan',
-    }
-    buildWorkflow(buildDeal(), 2)
-
-    render(<CustomerAgenticCenterSurface />)
-
-    expect(screen.getByTestId('customer-agentic-center-hero-avatar')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-hero-mascot-welcome')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-hero-copy')).toHaveTextContent(/Hi, Tu Phan/)
-    expect(screen.getByText('Hi, Tu Phan')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-summary-active-value')).toHaveTextContent('1')
-    expect(screen.getByTestId('customer-agentic-center-summary-active')).toHaveTextContent(/Active orders/)
-    expect(screen.getByTestId('customer-agentic-center-summary-approvals-value')).toHaveTextContent('None')
-    expect(screen.getByTestId('customer-agentic-center-summary-approvals')).toHaveTextContent(/Need approval/)
-    expect(screen.getByTestId('customer-agentic-center-summary-notifications-value')).toHaveTextContent('2')
-    expect(screen.getByTestId('customer-agentic-center-summary-notifications')).toHaveTextContent(/New alerts/)
-    expect(screen.getByText('To do')).toBeTruthy()
-    expect(screen.queryByTestId('customer-agentic-center-approval-unread')).toBeNull()
-  })
-
-  it('renders Active Case command id and case-level actions', () => {
-    buildWorkflow(buildDeal())
-
-    render(<CustomerAgenticCenterSurface />)
-
-    expect(screen.getByTestId('customer-agentic-center-active-case-reference-card')).toHaveTextContent(/job_test_1/)
-    expect(screen.getByTestId('customer-agentic-center-active-case-mascot-findingWorker')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-active-case-header')).toHaveTextContent(/Sending to workers/)
-    expect(screen.getByTestId('customer-agentic-center-active-case-data-grid')).toHaveTextContent(/Electrical repair/)
-    expect(screen.getByTestId('customer-agentic-center-active-case-data-grid')).toHaveTextContent(/180,000 VND - 260,000 VND/)
-    expect(screen.getByTestId('customer-agentic-center-active-case-profile')).toHaveTextContent(/The living room outlet is hot/)
-    expect(screen.getByText('Case ID')).toBeTruthy()
-    expect(screen.getByText('job_test_1')).toBeTruthy()
-
-    fireEvent.press(screen.getByTestId('customer-agentic-center-active-chat-action'))
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat')
-
-    fireEvent.press(screen.getByTestId('customer-agentic-center-active-history-action'))
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/history')
-  })
-
-  it('routes the center primary action to the real Kael chat route', () => {
-    render(<CustomerAgenticCenterSurface />)
-
-    fireEvent.press(screen.getByText('Start request'))
-
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat')
-  })
-
-  it('routes scope approvals to the existing history review flow', () => {
-    const deal = buildDeal()
-    deal.backendStatus = 'scope_change_pending'
-    deal.scopeChange = buildScopeChange()
-    deal.status = 'scope_change_pending'
-    buildWorkflow(deal)
-
-    render(<CustomerAgenticCenterSurface />)
-
-    expect(screen.getByText('1 item needs approval')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-approval-scope_change-icon')).toBeTruthy()
-    fireEvent.press(screen.getByTestId('customer-agentic-center-approval-scope_change-action'))
-
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/history?tab=price&scope_change=scope_test_1')
-    fireEvent.press(screen.getByTestId('customer-agentic-center-approval-view-all-action'))
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/history')
-  })
-
-  it('uses the real scope decision action from the approval queue primary action', () => {
-    const deal = buildDeal()
-    deal.backendStatus = 'scope_change_pending'
-    deal.scopeChange = buildScopeChange()
-    deal.status = 'scope_change_pending'
-    buildWorkflow(deal)
-
-    render(<CustomerAgenticCenterSurface />)
-
-    fireEvent.press(screen.getByTestId('customer-agentic-center-approval-scope_change-primary-action'))
-
-    expect(mockDecideScopeChange).toHaveBeenCalledWith('scope_test_1', { decision: 'approve' })
-  })
-
-  it('keeps completion confirmation behind the real workflow gate and routes to review', () => {
-    const deal = buildDeal()
-    deal.backendStatus = 'completed_by_worker'
-    deal.completionNotes = 'Worker uploaded completion evidence.'
-    deal.completionPhotoUrls = ['storage://job_test_1/after.jpg']
-    deal.status = 'completed_by_worker'
-    buildWorkflow(deal)
-
-    render(<CustomerAgenticCenterSurface />)
-
-    expect(screen.queryByTestId('customer-agentic-center-approval-completion-primary-action')).toBeNull()
-    fireEvent.press(screen.getByTestId('customer-agentic-center-approval-completion-action'))
-
-    expect(mockCustomerConfirmCompletion).not.toHaveBeenCalled()
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/history?tab=done')
-  })
-
-  it('renders saved contact phone in memory from real profile metadata', () => {
-    mockSessionMetadata = {
-      default_address: 'District 7, Sunrise City',
-      full_name: 'Tu Phan',
-      phone_number: '0901234567',
-    }
+  it('renders command center shell before a real process starts without unlocking authority actions', () => {
     buildWorkflow(null)
 
-    render(<CustomerAgenticCenterSurface />)
+    render(<CustomerAgenticCenterSurface screenId="5.2-command-center" />)
 
-    expect(screen.getByText('Kael remembers you')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-memory-row-displayName-icon')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-memory-row-address-icon')).toBeTruthy()
-    expect(screen.getByTestId('customer-agentic-center-memory-row-phone-icon')).toBeTruthy()
-    expect(screen.getByText('Contact phone')).toBeTruthy()
-    expect(screen.getByText('0901234567')).toBeTruthy()
+    expect(screen.getByTestId('customer-v21-agentic-command-center')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-agentic-command-inactive')).toBeNull()
+    expect(screen.getByTestId('customer-v21-agentic-command-case')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-agentic-command-timeline')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-agentic-artifacts')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-agentic-open-case-chat')).toBeDisabled()
+    expect(screen.getByTestId('customer-v21-agentic-command-approval')).toBeDisabled()
+    expect(screen.getByTestId('customer-v21-agentic-command-center')).not.toHaveTextContent(/4\.9|520\.000/)
   })
 
-  it('routes the Memory and Preferences edit action to the real profile surface', () => {
-    render(<CustomerAgenticCenterSurface />)
+  it('keeps approval queue inactive before a real scope decision exists', () => {
+    buildWorkflow(buildDeal(false))
 
-    fireEvent.press(screen.getByTestId('customer-agentic-center-memory-edit-action'))
+    render(<CustomerAgenticCenterSurface screenId="5.3-approval-queue" />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/profile')
+    expect(screen.getByTestId('customer-v21-agentic-approval-screen')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-agentic-approval-inactive')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-agentic-approval-queue')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-agentic-approve-scope')).toBeNull()
   })
 
-  it('renders Kael memory self-view preferences without exposing unsafe metadata', () => {
+  it('redirects approval queue with a real pending decision into Case Work', () => {
+    buildWorkflow(buildDeal(true))
+
+    render(<CustomerAgenticCenterSurface screenId="5.3-approval-queue" />)
+
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1&focus=approval')
+    expect(screen.getByTestId('customer-v21-agentic-approval-redirect')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-agentic-approval-queue')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-agentic-approve-scope')).toBeNull()
+    expect(mockDecideScopeChange).not.toHaveBeenCalled()
+  })
+
+  it('keeps Agentic stages 5.2 to 5.4 Vietnamese-only in Vietnamese mode', () => {
+    const mixedEnglish = /Work handling chat|Live\b|Evidence|Risk check|completion artifact|workflow|Protected money|Work artifacts|What Kael|Approval Queue|Needs approval|No approval needed|Processed|Memory and Preferences|Allowed information|Data boundaries|Privacy|Chat thường/i
+
+    buildWorkflow(buildDeal(true))
+    render(<CustomerAgenticCenterSurface screenId="5.2-command-center" />)
+    expect(screen.getByTestId('customer-v21-agentic-command-center')).not.toHaveTextContent(mixedEnglish)
+
+    buildWorkflow(buildDeal(true))
+    render(<CustomerAgenticCenterSurface screenId="5.3-approval-queue" />)
+    expect(screen.getByTestId('customer-v21-agentic-approval-screen')).not.toHaveTextContent(mixedEnglish)
+
     buildWorkflow(null)
-    mockWorkflowValue.customerKaelMemory = {
-      language: 'en',
-      last_observed_at: '2026-06-01T00:00:00.000Z',
-      preference_summary: 'Prefers quiet morning cleaning visits.',
-      safe_metadata: {
-        raw_phone: '0901234567',
-      },
+    render(<CustomerAgenticCenterSurface screenId="5.4-memory" />)
+    expect(screen.getByTestId('customer-v21-agentic-memory-screen')).not.toHaveTextContent(mixedEnglish)
+  })
+
+  it('saves Stage 5.4 memory toggles through the workflow provider', async () => {
+    buildWorkflow(null, 0, {
+      customer_id: 'customer_test_1',
+      language: 'vi',
+      preference_summary: '',
       service_preferences: {
-        preferred_district: 'District 7',
-        preferred_service: 'cleaning',
-        preferred_time_window: 'Morning',
+        preferred_address: 'Vinhomes Grand Park · S5.02',
+        memory_permissions: {
+          preferred_address: true,
+        },
       },
-    }
+      trust_signals: {},
+      memory_version: 1,
+      last_observed_at: '2026-06-01T00:00:00.000Z',
+    })
 
-    render(<CustomerAgenticCenterSurface />)
+    render(<CustomerAgenticCenterSurface screenId="5.4-memory" />)
+    expect(screen.getByTestId('customer-v21-memory-toggle-preferred_address').props.accessibilityState.checked).toBe(true)
+    fireEvent.press(screen.getByTestId('customer-v21-memory-toggle-preferred_address'))
+    expect(screen.getByTestId('customer-v21-memory-toggle-preferred_address').props.accessibilityState.checked).toBe(false)
 
-    expect(screen.getByText('Kael memory')).toBeTruthy()
-    expect(screen.getByText('Prefers quiet morning cleaning visits.')).toBeTruthy()
-    expect(screen.getByText('Language')).toBeTruthy()
-    expect(screen.getByText('English')).toBeTruthy()
-    expect(screen.getByText('Service preference')).toBeTruthy()
-    expect(screen.getByText('Cleaning')).toBeTruthy()
-    expect(screen.getByText('Preferred area')).toBeTruthy()
-    expect(screen.getByText('District 7')).toBeTruthy()
-    expect(screen.getByText('Time preference')).toBeTruthy()
-    expect(screen.getByText('Morning')).toBeTruthy()
-    expect(screen.getByText('Last updated')).toBeTruthy()
-    expect(screen.queryByText('0901234567')).toBeNull()
+    await waitFor(() => {
+      expect(mockUpdateCustomerKaelMemoryPreference).toHaveBeenCalledWith({
+        key: 'preferred_address',
+        enabled: false,
+      })
+    })
   })
 })

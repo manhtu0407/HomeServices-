@@ -1,8 +1,8 @@
-# Home Services Agent Rules
+# NestScout Agent Rules
 
 ## Operating Context
 
-Home Services is a real Expo / React Native service app, not a motion graphics demo. Every UI pass must move the product closer to a trustworthy first real transaction in Ho Chi Minh City apartments.
+NestScout is a real Expo / React Native service app, not a motion graphics demo. Every UI pass must move the product closer to a trustworthy first real transaction in Ho Chi Minh City apartments.
 
 ## Authority And Context Flow
 
@@ -15,7 +15,7 @@ The core docs support each other and must be read as a stack:
 5. `AGENTS.md` is the local Codex/Claude Code summary for this workspace.
 6. `Plan.md` is active only when the current task continues that plan or references deferred work.
 7. `README.md` and `docs/**/*.md` provide progress logs, durable decisions, historical notes, and feature-specific contracts.
-8. `MEMORY.md` is read last. It contains the freshest AI-agent session memory and may be updated continuously, but it does not override hard rules by itself.
+8. `.claude/MEMORY.md` is read last. It contains the freshest AI-agent session memory and may be updated continuously, but it does not override hard rules by itself.
 
 If these sources conflict, stop and surface the conflict. Do not silently choose the source that makes implementation easier.
 
@@ -33,7 +33,7 @@ Before editing code:
 
 - Run `kael-preflight` and state the pre-edit status (`critical.md` §5).
 - Classify the task (`critical.md` §2), then load only the matching protocol file from `protocols/` via the §1 index. `kael-preflight` (§5) and `kael-review` (§8) stay inline in `critical.md`.
-- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, plus `karpathy-guidelines`.
+- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, `kael-handoff`, `kael-prototype`, plus `karpathy-guidelines`.
 
 Core quality gates (`critical.md` §3) — do not bypass:
 
@@ -66,7 +66,7 @@ Before enhancing, refactoring, reorganizing, or "cleaning up" code:
 
 Before any major implementation batch:
 - rebuild the important `.md` manifest outside generated/vendor folders
-- read every important `.md` file in authority order, including `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md` when relevant, `CLAUDE.md`, `skills.md`, `docs/architecture/code-ownership-map.md` for code changes, `README.md`, `docs/**/*.md`, relevant `Plan.md` sections, and `MEMORY.md` last
+- read every important `.md` file in authority order, including `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md` when relevant, `CLAUDE.md`, `skills.md`, `docs/architecture/code-ownership-map.md` for code changes, `README.md`, `docs/**/*.md`, relevant `Plan.md` sections, and `.claude/MEMORY.md` last
 - re-check relevant PR findings and the current touched files
 - compare the intended UI work against the local recording and glass reference notes
 - run React Doctor regularly after UI or React performance changes and treat reported issues as objective audit input
@@ -79,10 +79,10 @@ Before claiming any frontend/UI task on the Expo app done, pass the gated workfl
 
 This is a React Native app, not a web app. Translate "browser / visual-regression" thinking to RN reality:
 
-- Static gate (real, enforced): `pnpm --filter @home-services/mobile type-check` and `pnpm --filter @home-services/mobile test` (jest-expo + React Native Testing Library). The `Stop` hook in `.claude/settings.json` (`.claude/hooks/verify-frontend-gates.mjs`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate.
+- Static gate (real, enforced): `pnpm type-check:mobile` and `pnpm test:mobile` (wrappers for `@nestscout/mobile` type-check + jest-expo / React Native Testing Library that inject the bundled Node runtime when agent shells lack `node`). The `Stop` hook in `.claude/settings.json` (`.claude/hooks/verify-frontend-gates.mjs`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate.
 - Validate on iOS and Android (simulator/device via Expo), light/dark, Reduce Motion, Reduce Transparency — not in a browser. Glass (`expo-glass-effect`/`expo-blur`) only renders on native; never validate glass on Expo web.
 - "Hover/focus" are web concepts; on mobile verify press/disabled and loading/empty/error states and touch targets instead.
-- ESLint is available for manual debt work (`pnpm --filter @home-services/mobile lint:mobile`, eslint-config-expo) but not yet exposed as the package `lint` script or root Turbo gate — pre-existing lint debt must be cleared before it joins the hook. Maestro/Detox E2E and visual regression are not set up — say so honestly; do not present web/Expo-web screenshots as device evidence.
+- ESLint is available for manual debt work (`pnpm lint:mobile`, eslint-config-expo) but not yet part of the Stop hook — pre-existing lint debt must be cleared before it joins the hook. Maestro/Detox E2E and visual regression are not set up — say so honestly; do not present web/Expo-web screenshots as device evidence.
 
 For every frontend change, check: layout, responsive behavior, accessibility (roles/labels/state, Reduce Motion/Transparency), color contrast in both modes, motion quality (`kael-motion` / `design/motion.md`), loading/empty/error/success states, performance budget (60fps; glass layer budget), and visual consistency with the glass-liquid signature (`design/signature.md`).
 

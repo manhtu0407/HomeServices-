@@ -2,7 +2,10 @@ import { type Dispatch, useEffect, useMemo, useState } from 'react'
 import { Image } from 'expo-image'
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
-import { type ServiceType } from '@home-services/shared'
+import { type ServiceType } from '@nestscout/shared'
+import { KaelMascot as OfficialKaelMascot } from '@/components/kael/kael-mascot'
+import { type KaelMascotState } from '@/components/kael/kael-mascot-assets'
+import { KaelButton } from '@/components/ui/kael-primitives'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
 import { type KaelChatProgress, type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
@@ -20,8 +23,12 @@ import { kaelSurfacePaint } from './paint'
 import { type KaelChatAction, type KaelChatState } from './state'
 import { styles } from './styles'
 
-const kaelModel8AHead = require('../../../assets/kael-model-8a-head.png')
 const supportedServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']
+const livePerformanceAddressIcon = require('../../../assets/client-image-icons/client-address.png')
+const livePerformanceEvidenceIcon = require('../../../assets/client-image-icons/client-evidence.png')
+const livePerformanceEvidenceCoreIcon = require('../../../assets/worker-image-icons/utility-evidence-core.png')
+const livePerformanceVideoIcon = require('../../../assets/worker-image-icons/utility-camera.png')
+const livePerformanceVoiceIcon = require('../../../assets/worker-image-icons/utility-chat.png')
 const vietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i
 const LIVE_ACTIVITY_SWEEP_MS = 1400
 const KAEL_REVEAL_FRAME_MS = 22
@@ -80,6 +87,11 @@ type KaelLifecyclePanel =
   | 'starter'
   | 'trace'
   | null
+
+type LivePerformanceMediaDraft = {
+  uri: string
+  type: 'image' | 'video' | 'audio'
+}
 
 export function KaelChatThread({
   addressDistrict,
@@ -221,9 +233,14 @@ export function KaelChatThread({
             <View style={[styles.orchestrationStartedAura, { backgroundColor: tokens.aqua }]} testID="customer-kael-chat-orchestration-mint-aura" />
             <View style={[styles.orchestrationStartedEdge, { backgroundColor: tokens.glassHighlight }]} />
             <Text style={[styles.sectionTitle, { color: tokens.text }]}>{orchestrationMessage}</Text>
-            <Pressable accessibilityRole="button" onPress={() => onOpenHistory(historyTarget)} style={({ pressed }) => [styles.primaryButton, styles.orchestrationStartedButton, { backgroundColor: tokens.primary }, kaelSurfacePaint(tokens, 'send'), pressed ? styles.pressed : null]} testID="customer-kael-chat-history-action">
-              <Text style={[styles.primaryButtonText, { color: tokens.primaryText }]}>{text.history}</Text>
-            </Pressable>
+            <KaelButton
+              label={text.history}
+              onPress={() => onOpenHistory(historyTarget)}
+              showPrimaryGradient={false}
+              style={[styles.primaryButton, styles.orchestrationStartedButton, { backgroundColor: tokens.primary }, kaelSurfacePaint(tokens, 'send')]}
+              testID="customer-kael-chat-history-action"
+              textStyle={[styles.primaryButtonText, { color: tokens.primaryText }]}
+            />
           </View>
         ) : null}
         {lifecyclePanel === 'pendingIntake' && pendingIntake ? <KaelIntakeReceiptCard intake={pendingIntake} language={language} /> : null}
@@ -252,28 +269,30 @@ export function KaelChatThread({
           <View style={[styles.errorCard, { backgroundColor: tokens.warm, borderColor: tokens.copper }]} testID="customer-kael-chat-error">
             <Text style={[styles.errorText, { color: tokens.text }]}>{error}</Text>
             {visibility.canStartOrchestration && !orchestrationMessage ? (
-              <Pressable
-                accessibilityRole="button"
+              <KaelButton
                 accessibilityState={{ busy: orchestrating, disabled: orchestrating }}
                 disabled={orchestrating}
+                label={text.retryOrchestration}
                 onPress={() => void onStartOrchestration()}
-                style={({ pressed }) => [styles.secondaryButton, { borderColor: tokens.copper }, pressed ? styles.pressed : null]}
+                showPrimaryGradient={false}
+                style={[styles.secondaryButton, { borderColor: tokens.copper }]}
                 testID="customer-kael-chat-orchestration-retry"
-              >
-                <Text style={[styles.secondaryButtonText, { color: tokens.text }]}>{text.retryOrchestration}</Text>
-              </Pressable>
+                textStyle={[styles.secondaryButtonText, { color: tokens.text }]}
+                variant="secondary"
+              />
             ) : null}
             {!visibility.canStartOrchestration && canRetryPendingIntake ? (
-              <Pressable
-                accessibilityRole="button"
+              <KaelButton
                 accessibilityState={{ busy: sending, disabled: sending }}
                 disabled={sending}
+                label={text.retryIntake}
                 onPress={onRetryPendingIntake}
-                style={({ pressed }) => [styles.secondaryButton, { borderColor: tokens.copper }, pressed ? styles.pressed : null]}
+                showPrimaryGradient={false}
+                style={[styles.secondaryButton, { borderColor: tokens.copper }]}
                 testID="customer-kael-chat-intake-retry"
-              >
-                <Text style={[styles.secondaryButtonText, { color: tokens.text }]}>{text.retryIntake}</Text>
-              </Pressable>
+                textStyle={[styles.secondaryButtonText, { color: tokens.text }]}
+                variant="secondary"
+              />
             ) : null}
           </View>
         ) : null}
@@ -308,15 +327,18 @@ function KaelLivePerformancePanel({
   turns: KaelChatTurn[]
 }) {
   const service = session?.session.service_type ?? pendingIntake?.serviceType ?? selectedService
-  const pendingPhotos = pendingIntake?.photoDrafts ?? []
-  const pendingEvidenceCount = Math.max(pendingIntake?.mediaCount ?? 0, pendingPhotos.length)
+  const pendingMedia = pendingIntake?.photoDrafts ?? []
+  const pendingEvidenceCount = Math.max(pendingIntake?.mediaCount ?? 0, pendingMedia.length)
   const problemSignals = (pendingIntake?.problemChips ?? []).filter((chip) => chip.trim().length > 0)
   const signalValue = problemSignals.join(' / ')
   const turnEvidenceCount = turns.reduce((sum, turn) => sum + turn.media_refs.length, 0)
   const evidenceCount = pendingEvidenceCount + turnEvidenceCount
   const latestProgress = progressTrace.at(-1) ?? progress
+  const mascotState = resolveLivePerformanceMascotState(latestProgress ?? null, pendingMedia)
   const stageLabel = resolveKaelProgressLabel(latestProgress ?? null, addressDistrict, language, text)
     ?? (estimate ? text.livePerformanceEstimateReady : pendingIntake ? text.livePerformancePendingStage : text.livePerformanceWaitingStage)
+  const locationValue = pendingIntake?.addressLabel?.trim() || pendingIntake?.districtLabel?.trim() || addressDistrict?.trim() || ''
+  const locationPill = pendingIntake?.districtLabel?.trim() || addressDistrict?.trim() || null
   const shouldShow = Boolean(pendingIntake || session || progress || progressTrace.length > 0 || estimate || turns.length > 0 || evidenceCount > 0)
 
   if (!shouldShow) return null
@@ -324,30 +346,19 @@ function KaelLivePerformancePanel({
   return (
     <View style={[styles.livePerformancePanel, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'agent')]} testID="customer-kael-live-performance-panel">
       <View style={styles.livePerformanceHeader}>
-        <View style={[styles.agentAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'avatar')]}>
-          <Image source={kaelModel8AHead} style={styles.agentAvatarImage} />
+        <View style={styles.livePerformanceMascotStage}>
+          <OfficialKaelMascot size={82} state={mascotState} style={styles.livePerformanceMascotImage} testID="customer-kael-live-performance-kael" variant="head" />
         </View>
         <View style={styles.livePerformanceTitleBlock}>
           <Text style={[styles.sectionTitle, { color: tokens.text }]} numberOfLines={1}>
             {text.livePerformanceTitle}
           </Text>
-          <Text style={[styles.livePerformanceMeta, { color: tokens.muted }]} numberOfLines={2}>
-            {text.livePerformanceMeta}
-          </Text>
         </View>
       </View>
-      {pendingPhotos.length > 0 ? (
+      {pendingMedia.length > 0 ? (
         <View style={styles.livePerformanceMediaRail} testID="customer-kael-live-performance-media-rail">
-          {pendingPhotos.slice(0, 3).map((photo, index) => (
-            <View key={`${photo.uri}-${index}`} style={[styles.livePerformancePhotoTile, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
-              {photo.type === 'video' ? (
-                <View style={[styles.livePerformanceVideoTileBody, { backgroundColor: tokens.service }]} testID={`customer-kael-live-performance-video-${index}`}>
-                  <Text style={[styles.livePerformanceVideoLabel, { color: tokens.primary }]}>Video</Text>
-                </View>
-              ) : (
-                <Image accessibilityLabel={`kael-evidence-${index + 1}`} contentFit="cover" source={{ uri: photo.uri }} style={styles.livePerformancePhoto} />
-              )}
-            </View>
+          {pendingMedia.slice(0, 4).map((asset, index) => (
+            <LivePerformanceEvidenceTile asset={asset} index={index} key={`${asset.uri}-${index}`} tokens={tokens} />
           ))}
         </View>
       ) : (
@@ -363,6 +374,63 @@ function KaelLivePerformancePanel({
         ) : null}
         <LivePerformanceCell label={text.livePerformanceStage} testID="customer-kael-live-performance-stage" tokens={tokens} value={stageLabel} wide />
       </View>
+      {locationValue ? (
+        <View style={[styles.livePerformanceLocationRow, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-kael-live-performance-location">
+          <View style={[styles.livePerformanceLocationIconStage, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
+            <Image accessibilityRole="image" contentFit="contain" source={livePerformanceAddressIcon} style={styles.livePerformanceLocationIcon} />
+          </View>
+          <Text style={[styles.livePerformanceLocationText, { color: tokens.text }]} numberOfLines={1}>{locationValue}</Text>
+          {locationPill ? (
+            <Text style={[styles.livePerformanceLocationPill, { backgroundColor: tokens.service, borderColor: tokens.border, color: tokens.primary }]} numberOfLines={1}>{locationPill}</Text>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+function LivePerformanceEvidenceTile({
+  asset,
+  index,
+  tokens,
+}: {
+  asset: LivePerformanceMediaDraft
+  index: number
+  tokens: ReturnType<typeof useKaelChatTokens>
+}) {
+  const isAuditImageTile = asset.type === 'image' && asset.uri.startsWith('audit://kael-live-performance-photo')
+  const auditImageSource = index === 1 ? livePerformanceEvidenceCoreIcon : livePerformanceEvidenceIcon
+  const auditImageStyle = index === 1 ? styles.livePerformanceEvidenceCoreImage : styles.livePerformanceIconImage
+  const iconSource = asset.type === 'audio' ? livePerformanceVoiceIcon : asset.type === 'video' ? livePerformanceVideoIcon : auditImageSource
+  const iconStyle = asset.type === 'audio' || asset.type === 'video' ? styles.livePerformanceIconImage : auditImageStyle
+
+  return (
+    <View style={[styles.livePerformancePhotoTile, { backgroundColor: tokens.raised, borderColor: 'transparent' }]} testID={`customer-kael-live-performance-${asset.type}-${index}`}>
+      <View pointerEvents="none" style={[styles.livePerformanceTileSheen, { backgroundColor: tokens.glassHighlight }]} />
+      {asset.type === 'image' ? (
+        <>
+          {isAuditImageTile ? (
+            <View style={styles.livePerformanceIconStage}>
+              <Image accessibilityLabel={`kael-evidence-${index + 1}`} contentFit="contain" source={auditImageSource} style={auditImageStyle} />
+            </View>
+          ) : (
+            <Image accessibilityLabel={`kael-evidence-${index + 1}`} contentFit="cover" source={{ uri: asset.uri }} style={styles.livePerformancePhoto} />
+          )}
+          <View pointerEvents="none" style={[styles.livePerformancePhotoScrim, { backgroundColor: tokens.mode === 'dark' ? 'rgba(14,20,19,0.18)' : 'rgba(255,255,255,0.12)' }]} />
+        </>
+      ) : (
+        <View style={[styles.livePerformanceMediaTileBody, { backgroundColor: tokens.raised }]}>
+          <View style={styles.livePerformanceIconStage}>
+            <Image
+              accessibilityLabel={`kael-${asset.type}-evidence`}
+              accessibilityRole="image"
+              contentFit="contain"
+              source={iconSource}
+              style={iconStyle}
+            />
+          </View>
+        </View>
+      )}
     </View>
   )
 }
@@ -392,6 +460,20 @@ function LivePerformanceCell({
   )
 }
 
+function resolveLivePerformanceMascotState(
+  progress: KaelChatProgress | null,
+  media: LivePerformanceMediaDraft[],
+): KaelMascotState {
+  if (progress?.status === 'failed') return 'warning'
+  if (progress?.current_stage === 'vision_analysis') return 'fileReview'
+  if (progress?.current_stage === 'market_lookup' || progress?.current_stage === 'price_synthesis') return 'priceCheck'
+  if (progress?.current_stage === 'problem_synthesis' || progress?.current_stage === 'intent_classification') return 'analyzing'
+  if (media.some((asset) => asset.type === 'audio')) return 'recording'
+  if (media.length > 0) return 'fileReview'
+  if (progress?.status === 'completed') return 'understood'
+  return 'processing'
+}
+
 function KaelChatStarter({
   dispatch,
   language,
@@ -409,7 +491,7 @@ function KaelChatStarter({
     <>
       <View style={styles.turnRow} testID="customer-kael-chat-welcome-turn">
         <View style={[styles.turnAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
-          <Image source={kaelModel8AHead} style={styles.turnAvatarImage} />
+          <OfficialKaelMascot size={34} state="welcome" style={styles.turnAvatarImage} testID="customer-kael-chat-starter-kael" variant="head" />
         </View>
         <View style={[styles.turnBubble, styles.kaelTurn, styles.turnBubbleWithAvatar, styles.emptyChatStart, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'kaelIntroBubble')]}>
           <Text style={[styles.turnRole, { color: tokens.primary }]} numberOfLines={1}>Kael</Text>
@@ -485,11 +567,11 @@ function KaelLiveActivityIndicator({
   return (
     <View accessibilityLabel={label} accessibilityLiveRegion="polite" accessible style={styles.turnRow} testID="customer-kael-chat-live-activity">
       <View style={[styles.turnAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
-        <Image source={kaelModel8AHead} style={styles.turnAvatarImage} />
+        <OfficialKaelMascot size={34} state="processing" style={styles.turnAvatarImage} testID="customer-kael-chat-live-kael" variant="head" />
       </View>
       <View style={[styles.liveActivityBubble, progressTrace.length > 0 ? styles.liveActivityStepperBubble : null, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'status')]}>
         {reduceMotion ? null : <Animated.View pointerEvents="none" style={[styles.liveActivitySheen, { backgroundColor: tokens.glassHighlight }, sheenStyle]} />}
-        <Animated.Text style={[styles.liveActivityText, { color: tokens.text }, pulseStyle]} testID="customer-kael-chat-live-activity-label">
+        <Animated.Text numberOfLines={1} style={[styles.liveActivityText, progressTrace.length > 0 ? styles.liveActivityTextStepper : null, { color: tokens.text }, pulseStyle]} testID="customer-kael-chat-live-activity-label">
           {label}
         </Animated.Text>
         {progressTrace.length > 0 ? (
@@ -534,7 +616,7 @@ function KaelThoughtDisclosure({
   return (
     <View style={styles.turnRow} testID="customer-kael-chat-thought-summary-row">
       <View style={[styles.turnAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
-        <Image source={kaelModel8AHead} style={styles.turnAvatarImage} />
+        <OfficialKaelMascot size={34} state="understood" style={styles.turnAvatarImage} testID="customer-kael-chat-thought-kael" variant="head" />
       </View>
       <View style={[styles.thoughtDisclosureCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }, kaelSurfacePaint(tokens, 'status')]}>
         <Pressable
@@ -603,7 +685,9 @@ function KaelProgressTrace({
                 },
               ]}
               testID={`customer-kael-chat-progress-step-dot-${entry.current_stage}-${entry.status}`}
-            />
+            >
+              {isDone ? <Text style={[styles.liveActivityStepMark, { color: tokens.primaryText }]}>✓</Text> : null}
+            </View>
             <Text style={[styles.liveActivityStepText, { color: settled || isDone || isFailed ? tokens.muted : tokens.text }]}>{label}</Text>
           </View>
         )
@@ -646,7 +730,7 @@ function KaelStreamingTokenTurn({
   return (
     <View accessibilityLiveRegion="polite" style={styles.turnRow} testID="customer-kael-chat-streaming-token-turn">
       <View style={[styles.turnAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
-        <Image source={kaelModel8AHead} style={styles.turnAvatarImage} />
+        <OfficialKaelMascot size={34} state="typing" style={styles.turnAvatarImage} testID="customer-kael-chat-streaming-kael" variant="head" />
       </View>
       <View style={[styles.turnBubble, styles.kaelTurn, styles.turnBubbleWithAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }, kaelSurfacePaint(tokens, 'kaelBubble')]}>
         <Text style={[styles.turnRole, { color: tokens.primary }]} numberOfLines={1}>{localizedStreamingTokenRole(field, language)}</Text>
@@ -695,7 +779,7 @@ export function ChatTurn({
     <View style={[styles.turnRow, isCustomer ? styles.turnRowCustomer : null]} testID={`customer-kael-chat-turn-${turn.role}`}>
       {isCustomer ? null : (
         <View style={[styles.turnAvatar, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
-          <Image source={kaelModel8AHead} style={styles.turnAvatarImage} />
+          <OfficialKaelMascot size={34} state={isClarification ? 'listening' : 'proposing'} style={styles.turnAvatarImage} testID="customer-kael-chat-turn-kael" variant="head" />
         </View>
       )}
       <View
@@ -811,7 +895,11 @@ function resolveKaelProgressLabel(
   const stageText = stageLabels[progress.current_stage]
   if (!stageText) return null
   const district = addressDistrict?.trim()
-  const districtFallback = language === 'en' ? 'your area' : 'khu vực của bạn'
+  const districtFallback = language === 'en'
+    ? 'your area'
+    : progress.current_stage === 'market_lookup'
+      ? 'của bạn'
+      : 'khu vực của bạn'
   return stageText.replace('{district}', district || (stageText.includes('{district}') ? districtFallback : ''))
 }
 

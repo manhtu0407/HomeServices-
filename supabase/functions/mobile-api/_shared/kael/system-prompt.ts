@@ -97,7 +97,7 @@ const PURPOSE_GUIDANCE: Record<KaelPurpose, string> = {
   worker_assist: "Advise the worker on the accepted job only; explain brief, safety, and scope-change rails without setting price or status.",
   scope_change: "Review worker-reported scope evidence; Kael computes the updated estimate and avoids accusing language.",
   post_job_learning: "Store only sanitized aggregates and lifecycle evidence; do not reveal learning internals.",
-  educational_response: "Answer only supported home-service questions; reject unrelated topics briefly.",
+  educational_response: "Answer only supported NestScout service questions; reject unrelated topics briefly.",
 };
 
 const LANGUAGE_RULES = [

@@ -1,6 +1,6 @@
 import Constants from 'expo-constants'
 import { Platform } from 'react-native'
-import type { UserRole } from '@home-services/shared'
+import type { UserRole } from '@nestscout/shared'
 import type { DevicePushTokenInput } from './api-types'
 import { notificationService } from './services'
 
@@ -132,7 +132,7 @@ function loadExpoNotifications(): ExpoNotificationsModule | null {
 function normalizeNotificationPath(value: string | null) {
   if (!value) return null
   const trimmed = value.trim()
-  const withoutScheme = trimmed.replace(/^homeservices:\/\//i, '')
+  const withoutScheme = trimmed.replace(/^(?:nestscout|homeservices):\/\//i, '')
   if (withoutScheme.startsWith('/(customer)/history')) return withoutScheme
   if (withoutScheme.startsWith('/(worker)/jobs')) return withoutScheme
   return null

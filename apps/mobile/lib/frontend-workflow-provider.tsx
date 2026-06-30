@@ -3,6 +3,7 @@ import { AppState } from 'react-native'
 import {
   HCMC_DISTRICTS,
   LOCAL_DEAL_ID,
+  buildLocalWorkerDisplayCode,
   createInitialLocalWorkflowState,
   extractKnownDistrictLabel,
   hasSpecificWorkerRouteAddress,
@@ -10,11 +11,13 @@ import {
   selectLocalWorkflow,
   toLocalDealStatus,
   type CustomerCancellationRequestInput,
+  type CustomerKaelMemoryPreferenceUpdateInput,
   type CustomerScopeDecisionInput,
   type JobCreateInput,
   type JobStatus,
   type LocalDealDraft,
   type LocalDealEstimate,
+  type LocalDealPayment,
   type LocalRemoteBroadcastSnapshot,
   type LocalRemoteJobSnapshot,
   type LocalScopeChange,
@@ -24,11 +27,12 @@ import {
   type ReviewInput,
   type ServiceType,
   type WorkerRegisterInput,
+  type WorkerServiceAreaUpdateInput,
   type WorkerScopeChangeInput,
-} from '@home-services/shared'
+} from '@nestscout/shared'
 import { useAuth } from './auth-provider'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from './media-upload'
-import { jobService, kaelMemoryService, notificationService, workerService } from './services'
+import { customerProfileService, jobService, kaelMemoryService, notificationService, workerService } from './services'
 import {
   clearStableClientRequestId,
   stableClientRequestId,
@@ -38,6 +42,7 @@ import type { ApiResult } from './api'
 import type {
   ConfirmSearchResponse,
   CreateJobResponse,
+  CustomerProfileInsightsResponse,
   EarningsResponse,
   AddressAccessView,
   JobDetailResponse,
@@ -46,6 +51,8 @@ import type {
   WorkerCancellationRequestInput,
   WorkerBroadcastsResponse,
   WorkerJobListResponse,
+  WorkerPayoutMethodSaveInput,
+  WorkerPerformanceInsightsResponse,
   WorkerProfileResponse,
 } from './api-types'
 import { useAppLanguage, type AppLanguage } from './app-language'
@@ -59,6 +66,20 @@ type WorkerAccessCheckInInput = {
   photo_urls?: string[]
   note?: string
   checked_in_at?: string
+}
+
+export type CustomerKaelMemoryPreferenceUpdateResult = {
+  success: boolean
+  code?: string
+  error?: string
+  status?: number
+}
+
+type WorkerPayoutMethodSaveResult = {
+  success: false
+  code?: string
+  error: string
+  status?: number
 }
 
 type FrontendWorkflowActions = {
@@ -84,9 +105,13 @@ type FrontendWorkflowActions = {
   customerConfirmCompletion: () => Promise<boolean>
   submitReview: (input: Omit<ReviewInput, 'job_id'>) => Promise<boolean>
   workerUpdateAvailability: (isAvailable: boolean) => Promise<boolean>
+  workerUpdateServiceArea: (input: WorkerServiceAreaUpdateInput) => Promise<boolean>
+  workerSavePayoutMethod: (input: WorkerPayoutMethodSaveInput) => Promise<boolean | WorkerPayoutMethodSaveResult>
   refreshNotifications: () => Promise<boolean>
   markNotificationRead: (notificationId: string) => Promise<boolean>
   refreshCustomerKaelMemory: () => Promise<boolean>
+  updateCustomerKaelMemoryPreference: (input: CustomerKaelMemoryPreferenceUpdateInput) => Promise<boolean | CustomerKaelMemoryPreferenceUpdateResult>
+  refreshCustomerProfileInsights: () => Promise<boolean>
 }
 
 type CustomerKaelMemoryStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
@@ -96,7 +121,10 @@ type FrontendWorkflowContextValue = {
   selectors: LocalWorkflowSelectors
   customerKaelMemory: KaelMemorySelfViewResponse['memory'] | null
   customerKaelMemoryStatus: CustomerKaelMemoryStatus
+  customerProfileInsights: CustomerProfileInsightsResponse | null
   workerEarnings: EarningsResponse | null
+  workerJobs: WorkerJobListResponse['jobs']
+  workerPerformanceInsights: WorkerPerformanceInsightsResponse | null
   workerProfile: WorkerProfileResponse | null
   notifications: NotificationListResponse['notifications']
   notificationUnreadCount: number
@@ -106,6 +134,8 @@ type FrontendWorkflowContextValue = {
 
 type WorkerRemoteState = {
   earnings: EarningsResponse | null
+  jobs: WorkerJobListResponse['jobs']
+  performanceInsights: WorkerPerformanceInsightsResponse | null
   profile: WorkerProfileResponse | null
   sessionUserId: string | null
 }
@@ -116,8 +146,15 @@ type CustomerKaelMemoryState = {
   status: CustomerKaelMemoryStatus
 }
 
+type CustomerProfileInsightsState = {
+  insights: CustomerProfileInsightsResponse | null
+  sessionUserId: string | null
+}
+
 const initialWorkerRemoteState: WorkerRemoteState = {
   earnings: null,
+  jobs: [],
+  performanceInsights: null,
   profile: null,
   sessionUserId: null,
 }
@@ -128,9 +165,51 @@ const initialCustomerKaelMemoryState: CustomerKaelMemoryState = {
   status: 'idle',
 }
 
+const initialCustomerProfileInsightsState: CustomerProfileInsightsState = {
+  insights: null,
+  sessionUserId: null,
+}
+
 const FrontendWorkflowContext = createContext<FrontendWorkflowContextValue | null>(null)
 const isAppForeground = () => AppState.currentState === 'active'
 const asciiOnlyPattern = /^[\x00-\x7F]*$/
+const readCustomerKaelMemoryPermission = (
+  memory: KaelMemorySelfViewResponse['memory'] | null,
+  key: CustomerKaelMemoryPreferenceUpdateInput['key'],
+) => {
+  const servicePreferences = memory?.service_preferences
+  if (!servicePreferences || typeof servicePreferences !== 'object' || Array.isArray(servicePreferences)) return null
+  const permissions = servicePreferences.memory_permissions
+  if (!permissions || typeof permissions !== 'object' || Array.isArray(permissions)) return null
+  const value = (permissions as Record<string, unknown>)[key]
+  return typeof value === 'boolean' ? value : null
+}
+const mergeCustomerKaelMemoryPermission = (
+  memory: KaelMemorySelfViewResponse['memory'] | null,
+  key: CustomerKaelMemoryPreferenceUpdateInput['key'],
+  enabled: boolean,
+): KaelMemorySelfViewResponse['memory'] => {
+  const servicePreferences = memory?.service_preferences
+  const currentPreferences =
+    servicePreferences && typeof servicePreferences === 'object' && !Array.isArray(servicePreferences)
+      ? servicePreferences
+      : {}
+  const currentPermissions = currentPreferences.memory_permissions
+  const permissions =
+    currentPermissions && typeof currentPermissions === 'object' && !Array.isArray(currentPermissions)
+      ? currentPermissions as Record<string, unknown>
+      : {}
+  return {
+    ...(memory ?? {}),
+    service_preferences: {
+      ...currentPreferences,
+      memory_permissions: {
+        ...permissions,
+        [key]: enabled,
+      },
+    },
+  }
+}
 
 const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
   vi: {
@@ -138,7 +217,7 @@ const workflowErrorCopy: Record<AppLanguage, Record<string, string>> = {
     missingService: 'Chọn dịch vụ điện, nước hoặc vệ sinh trước khi tạo yêu cầu',
     missingProblem: 'Chọn ít nhất một vấn đề cần xử lý',
     shortDescription: 'Mô tả cần rõ hơn trước khi gửi yêu cầu',
-    missingDistrict: 'Địa chỉ cần có quận TP.HCM rõ ràng',
+    missingDistrict: 'aịa chỉ cần có quận TP.HCM rõ ràng',
     noRequestSearch: 'Chưa có yêu cầu để tìm thợ',
     noInviteAccept: 'Không có lời mời việc để nhận',
     noInviteDecline: 'Không có lời mời việc để từ chối',
@@ -223,9 +302,13 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const [workerRemoteState, setWorkerRemoteState] = useState<WorkerRemoteState>(initialWorkerRemoteState)
   const workerProfile = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.profile : null
   const workerEarnings = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.earnings : null
+  const workerJobs = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.jobs : []
+  const workerPerformanceInsights = workerRemoteState.sessionUserId === sessionUserId ? workerRemoteState.performanceInsights : null
   const [customerKaelMemoryState, setCustomerKaelMemoryState] = useState<CustomerKaelMemoryState>(initialCustomerKaelMemoryState)
   const customerKaelMemory = customerKaelMemoryState.sessionUserId === sessionUserId ? customerKaelMemoryState.memory : null
   const customerKaelMemoryStatus = customerKaelMemoryState.sessionUserId === sessionUserId ? customerKaelMemoryState.status : 'idle'
+  const [customerProfileInsightsState, setCustomerProfileInsightsState] = useState<CustomerProfileInsightsState>(initialCustomerProfileInsightsState)
+  const customerProfileInsights = customerProfileInsightsState.sessionUserId === sessionUserId ? customerProfileInsightsState.insights : null
   const [notificationState, setNotificationState] = useReducer(notificationStateReducer, initialNotificationState)
   const { notifications, unreadCount: notificationUnreadCount } = notificationState
   const notificationsRef = useRef<NotificationListResponse['notifications']>([])
@@ -287,7 +370,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (draft.problemChips.length === 0) return setRemoteError('Chọn ít nhất một vấn đề cần xử lý')
     if (draft.description.trim().length < 10) return setRemoteError('Mô tả cần rõ hơn trước khi gửi yêu cầu')
     const districtLabel = extractKnownDistrictLabel(draft.districtLabel) || extractKnownDistrictLabel(draft.addressLabel)
-    if (!districtLabel) return setRemoteError('Địa chỉ cần có quận TP.HCM rõ ràng')
+    if (!districtLabel) return setRemoteError('aịa chỉ cần có quận TP.HCM rõ ràng')
 
     const requestFingerprint = jobCreateClientRequestFingerprint(draft, districtLabel)
     const input: JobCreateInput = {
@@ -407,26 +490,50 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
     const earnings = await workerService.getEarnings(currentWorkerMonthRange())
     const nextEarnings = earnings.success ? earnings.data : null
+    const performanceInsights = await workerService.getPerformanceInsights()
+    const nextPerformanceInsights = performanceInsights.success ? performanceInsights.data : null
     setWorkerRemoteState((current) => {
       const currentProfile = current.sessionUserId === sessionUserId ? current.profile : null
       const currentEarnings = current.sessionUserId === sessionUserId ? current.earnings : null
+      const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
+      const currentPerformanceInsights = current.sessionUserId === sessionUserId ? current.performanceInsights : null
       const sameProfile = sameWorkerProfile(currentProfile, profile.data)
       const sameEarnings = nextEarnings ? sameWorkerEarnings(currentEarnings, nextEarnings) : currentEarnings === null
-      return current.sessionUserId === sessionUserId && sameProfile && sameEarnings
+      const samePerformanceInsights = nextPerformanceInsights
+        ? sameWorkerPerformanceInsights(currentPerformanceInsights, nextPerformanceInsights)
+        : currentPerformanceInsights === null
+      return current.sessionUserId === sessionUserId && sameProfile && sameEarnings && samePerformanceInsights
         ? current
-        : { earnings: nextEarnings, profile: profile.data, sessionUserId }
+        : { earnings: nextEarnings, jobs: currentJobs, performanceInsights: nextPerformanceInsights, profile: profile.data, sessionUserId }
     })
 
     const broadcasts = await workerService.getBroadcasts()
     if (!broadcasts.success) return setRemoteError(broadcasts.error)
     const nextBroadcast = broadcasts.data.broadcasts[0]
+
+    const jobs = await workerService.getJobs()
+    if (!jobs.success) {
+      if (nextBroadcast) {
+        dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
+        return true
+      }
+      return setRemoteError(jobs.error)
+    }
+    setWorkerRemoteState((current) => {
+      const currentJobs = current.sessionUserId === sessionUserId ? current.jobs : []
+      if (current.sessionUserId === sessionUserId && sameWorkerJobs(currentJobs, jobs.data.jobs)) return current
+      return {
+        earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
+        jobs: jobs.data.jobs,
+        performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
+        profile: current.sessionUserId === sessionUserId ? current.profile : null,
+        sessionUserId,
+      }
+    })
     if (nextBroadcast) {
       dispatch({ type: 'hydrate_remote_broadcast', broadcast: workerBroadcastToSnapshot(nextBroadcast) })
       return true
     }
-
-    const jobs = await workerService.getJobs()
-    if (!jobs.success) return setRemoteError(jobs.error)
     const currentJobId = getRemoteJobId(stateRef.current)
     const activeJob = jobs.data.jobs.find((job) => isWorkerOperationalJobStatus(job.status))
     if (activeJob) {
@@ -454,6 +561,35 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     await workerRefresh()
     return true
   }, [sessionUserId, setRemoteError, workerRefresh])
+
+  const workerUpdateServiceArea = useCallback(async (input: WorkerServiceAreaUpdateInput) => {
+    const updated = await workerService.updateServiceArea(input)
+    if (!updated.success) return setRemoteError(updated.error)
+    setWorkerRemoteState((current) => ({
+      earnings: current.sessionUserId === sessionUserId ? current.earnings : null,
+      jobs: current.sessionUserId === sessionUserId ? current.jobs : [],
+      performanceInsights: current.sessionUserId === sessionUserId ? current.performanceInsights : null,
+      profile: updated.data,
+      sessionUserId,
+    }))
+    await workerRefresh()
+    return true
+  }, [sessionUserId, setRemoteError, workerRefresh])
+
+  const workerSavePayoutMethod = useCallback(async (input: WorkerPayoutMethodSaveInput) => {
+    const result = await workerService.savePayoutMethod(input)
+    if (!result.success) {
+      setRemoteError(result.error)
+      return {
+        success: false as const,
+        code: result.code,
+        error: result.error,
+        status: result.status,
+      }
+    }
+    await workerRefresh()
+    return true
+  }, [setRemoteError, workerRefresh])
 
   const workerAcceptBroadcast = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
@@ -645,6 +781,54 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [sessionUserId])
 
+  const updateCustomerKaelMemoryPreference = useCallback(async (input: CustomerKaelMemoryPreferenceUpdateInput) => {
+    if (!sessionUserId) return setRemoteError('Bạn cần đăng nhập để cập nhật bộ nhớ Kael')
+    const result = await kaelMemoryService.updateMyPreference(input)
+    if (!result.success) {
+      setRemoteError(result.error)
+      return {
+        success: false,
+        code: result.code,
+        error: result.error,
+        status: result.status,
+      }
+    }
+    const responseMemory = result.data.subject_type === 'customer' ? result.data.memory : null
+    const currentMemory = customerKaelMemoryState.sessionUserId === sessionUserId ? customerKaelMemoryState.memory : null
+    const memory = mergeCustomerKaelMemoryPermission(responseMemory ?? currentMemory, input.key, input.enabled)
+    setCustomerKaelMemoryState({
+      memory,
+      sessionUserId,
+      status: 'ready',
+    })
+    if (readCustomerKaelMemoryPermission(memory, input.key) !== input.enabled) {
+      return setRemoteError('Không thể xác nhận cập nhật bộ nhớ Kael')
+    }
+    return true
+  }, [customerKaelMemoryState, sessionUserId, setRemoteError])
+
+  const refreshCustomerProfileInsights = useCallback(async () => {
+    if (!sessionUserId) {
+      setCustomerProfileInsightsState(initialCustomerProfileInsightsState)
+      return false
+    }
+    const result = await customerProfileService.getInsights()
+    if (!result.success) {
+      setCustomerProfileInsightsState({
+        insights: null,
+        sessionUserId,
+      })
+      return false
+    }
+    setCustomerProfileInsightsState((current) => {
+      const currentInsights = current.sessionUserId === sessionUserId ? current.insights : null
+      return current.sessionUserId === sessionUserId && sameCustomerProfileInsights(currentInsights, result.data)
+        ? current
+        : { insights: result.data, sessionUserId }
+    })
+    return true
+  }, [sessionUserId])
+
   const markNotificationRead = useCallback(async (notificationId: string) => {
     const result = await notificationService.markRead(notificationId)
     if (!result.success) return setRemoteError(result.error)
@@ -682,9 +866,13 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     customerConfirmCompletion,
     submitReview,
     workerUpdateAvailability,
+    workerUpdateServiceArea,
+    workerSavePayoutMethod,
     refreshNotifications,
     markNotificationRead,
     refreshCustomerKaelMemory,
+    updateCustomerKaelMemoryPreference,
+    refreshCustomerProfileInsights,
   }), [
     cancelRemoteJob,
     confirmRemoteSearch,
@@ -695,6 +883,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     refreshCurrentJob,
     refreshNotifications,
     refreshCustomerKaelMemory,
+    refreshCustomerProfileInsights,
+    updateCustomerKaelMemoryPreference,
     markNotificationRead,
     requestScopeChange,
     requestWorkerCancellation,
@@ -702,8 +892,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     workerAcceptBroadcast,
     workerDeclineBroadcast,
     workerRefresh,
+    workerSavePayoutMethod,
     workerSubmitRegistration,
     workerUpdateAvailability,
+    workerUpdateServiceArea,
     workerUpdateStatus,
   ])
 
@@ -717,6 +909,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   useEffect(() => {
     setCustomerKaelMemoryState(initialCustomerKaelMemoryState)
+  }, [sessionUserId])
+
+  useEffect(() => {
+    setCustomerProfileInsightsState(initialCustomerProfileInsightsState)
   }, [sessionUserId])
 
   useEffect(() => {
@@ -754,6 +950,11 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
     if (isAppForeground()) void refreshCustomerKaelMemory()
   }, [role, sessionUserId, refreshCustomerKaelMemory])
+
+  useEffect(() => {
+    if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
+    if (isAppForeground()) void refreshCustomerProfileInsights()
+  }, [role, sessionUserId, refreshCustomerProfileInsights])
 
   const broadcast = state.deal?.broadcast
   const customerBroadcast = state.deal?.broadcast
@@ -802,7 +1003,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     selectors,
     customerKaelMemory,
     customerKaelMemoryStatus,
+    customerProfileInsights,
     workerEarnings,
+    workerJobs,
+    workerPerformanceInsights,
     workerProfile,
     notifications,
     notificationUnreadCount,
@@ -895,6 +1099,7 @@ function createJobResponseToSnapshot(data: CreateJobResponse, draft: LocalDealDr
   const estimate = estimateFromCreateResponse(data)
   return {
     id: data.job_id,
+    displayCode: data.display_code ?? null,
     backendStatus: data.status,
     status: toLocalDealStatus(data.status),
     serviceType: data.estimate.service_type,
@@ -932,6 +1137,7 @@ function confirmSearchToSnapshot(data: ConfirmSearchResponse, deal: NonNullable<
     ...snapshot,
     backendStatus: data.status,
     status: toLocalDealStatus(data.status),
+    workerProfile: workerProfileSummaryFromApi(data.worker),
     broadcast: {
       status: broadcastSent ? 'sent' : 'expired',
       jobId: data.job_id,
@@ -986,6 +1192,7 @@ function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief = false
 
   return {
     id: job.id,
+    displayCode: job.display_code ?? null,
     backendStatus: job.status,
     status: toLocalDealStatus(job.status),
     serviceType,
@@ -998,8 +1205,16 @@ function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief = false
     broadcast,
     scopeChange: scopeChangeFromJobDetail(data),
     finalPrice: job.final_price,
+    payment: paymentFromJob(job),
     completionPhotoUrls: job.completion_photo_urls,
     completionNotes: job.completion_notes,
+    workerProfile: workerProfileSummaryFromApi(data.worker),
+    createdAt: job.created_at,
+    matchedAt: job.matched_at,
+    completedAt: job.completed_at,
+    confirmedAt: job.confirmed_at,
+    paidAt: job.paid_at,
+    reviewedAt: job.reviewed_at,
   }
 }
 
@@ -1039,6 +1254,7 @@ function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalR
   )
   return {
     id: job.id,
+    displayCode: job.display_code ?? null,
     backendStatus: job.status,
     status: toLocalDealStatus(job.status),
     serviceType: job.service_type,
@@ -1056,14 +1272,61 @@ function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalR
       : null,
     scopeChange: null,
     finalPrice: job.final_price,
+    payment: paymentFromJob(job),
     completionPhotoUrls: job.completion_photo_urls,
     completionNotes: job.completion_notes,
+    createdAt: job.created_at,
+    matchedAt: job.matched_at,
+    completedAt: job.completed_at,
   }
+}
+
+function paymentFromJob(job: JobDetailResponse['job'] | WorkerJobListResponse['jobs'][number]): LocalDealPayment | null {
+  const paymentStatus = job.payment_status ?? paymentStatusFromJobStatus(job.status)
+  const grossAmount = numericOrNull(job.gross_amount) ?? numericOrNull(job.final_price)
+  const platformFee = numericOrNull(job.platform_fee)
+  const workerNet = numericOrNull(job.worker_net) ?? numericOrNull('estimated_earning' in job ? job.estimated_earning : null)
+  const hasPaymentData = Boolean(
+    paymentStatus
+    || grossAmount
+    || platformFee
+    || workerNet
+    || job.payment_code
+    || job.payment_transfer_content
+    || job.payment_qr_image_url
+    || job.payment_expires_at
+    || job.payment_received_at
+  )
+  if (!hasPaymentData) return null
+  return {
+    amountReceived: numericOrNull(job.payment_amount_received),
+    expiresAt: job.payment_expires_at ?? null,
+    grossAmount,
+    paymentCode: job.payment_code ?? null,
+    platformFee,
+    provider: job.payment_provider ?? 'sepay_vietqr',
+    qrImageUrl: job.payment_qr_image_url ?? null,
+    receivedAt: job.payment_received_at ?? null,
+    status: paymentStatus ?? 'not_started',
+    transferContent: job.payment_transfer_content ?? null,
+    workerNet,
+  }
+}
+
+function numericOrNull(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
+}
+
+function paymentStatusFromJobStatus(status: JobStatus): LocalDealPayment['status'] | null {
+  if (status === 'payment_pending') return 'pending'
+  if (status === 'paid' || status === 'reviewed') return 'received'
+  return null
 }
 
 function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): LocalRemoteJobSnapshot {
   return {
     id: deal.id,
+    displayCode: deal.displayCode ?? null,
     backendStatus: deal.backendStatus,
     status: deal.status,
     serviceType: deal.draft.serviceType as ServiceType,
@@ -1076,8 +1339,31 @@ function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): LocalRem
     broadcast: deal.broadcast,
     scopeChange: deal.scopeChange,
     finalPrice: deal.finalPrice ?? null,
+    payment: deal.payment ?? null,
     completionPhotoUrls: deal.completionPhotoUrls ?? [],
     completionNotes: deal.completionNotes ?? null,
+    workerProfile: deal.workerProfile ?? null,
+    createdAt: deal.createdAt ?? null,
+    matchedAt: deal.matchedAt ?? null,
+    completedAt: deal.completedAt ?? null,
+    confirmedAt: deal.confirmedAt ?? null,
+    paidAt: deal.paidAt ?? null,
+    reviewedAt: deal.reviewedAt ?? null,
+  }
+}
+
+function workerProfileSummaryFromApi(
+  worker: ConfirmSearchResponse['worker'] | JobDetailResponse['worker'] | null | undefined,
+): LocalRemoteJobSnapshot['workerProfile'] {
+  if (!worker) return null
+  return {
+    avatarUrl: worker.avatar_url,
+    displayCode: worker.display_code ?? buildLocalWorkerDisplayCode(worker.id),
+    fullName: worker.full_name,
+    id: worker.id,
+    rating: worker.rating,
+    reviewCount: worker.review_count ?? null,
+    totalJobs: worker.total_jobs,
   }
 }
 
@@ -1227,6 +1513,29 @@ function addressLabelContainsDistrict(addressLabel: string, districtLabel: strin
   return Boolean(addressDistrict && addressDistrict === expectedDistrict)
 }
 
+function sameCustomerProfileInsights(left: CustomerProfileInsightsResponse | null, right: CustomerProfileInsightsResponse) {
+  if (!left) return false
+  return left.customer_id === right.customer_id
+    && left.member_since === right.member_since
+    && left.kael_interaction_count === right.kael_interaction_count
+    && left.completed_service_count === right.completed_service_count
+    && left.saved_address_count === right.saved_address_count
+    && left.preferred_service_count === right.preferred_service_count
+    && left.active_streak_days === right.active_streak_days
+    && left.positive_review_rate_percent === right.positive_review_rate_percent
+    && left.price_savings_vnd === right.price_savings_vnd
+    && left.total_spend_vnd === right.total_spend_vnd
+    && left.usage_rank_level === right.usage_rank_level
+    && left.usage_rank_points === right.usage_rank_points
+    && left.fair_price_service_count === right.fair_price_service_count
+    && left.money_protection_score === right.money_protection_score
+    && left.protected_value_vnd === right.protected_value_vnd
+    && left.protected_transaction_count === right.protected_transaction_count
+    && left.total_transaction_count === right.total_transaction_count
+    && left.dispute_free_rate_percent === right.dispute_free_rate_percent
+    && left.fair_price_status === right.fair_price_status
+}
+
 function sameWorkerProfile(left: WorkerProfileResponse | null, right: WorkerProfileResponse) {
   if (!left) return false
   return left.id === right.id
@@ -1264,6 +1573,86 @@ function sameWorkerEarnings(left: EarningsResponse | null, right: EarningsRespon
     && sameWorkerDailyEarnings(left.daily_earnings, right.daily_earnings)
     && left.from_date === right.from_date
     && left.to_date === right.to_date
+}
+
+function sameWorkerPerformanceInsights(left: WorkerPerformanceInsightsResponse | null, right: WorkerPerformanceInsightsResponse) {
+  if (!left) return false
+  return left.worker_id === right.worker_id
+    && left.completed_job_count === right.completed_job_count
+    && left.review_count === right.review_count
+    && left.average_rating === right.average_rating
+    && left.response_rate_percent === right.response_rate_percent
+    && left.average_response_minutes === right.average_response_minutes
+    && left.on_time_rate_percent === right.on_time_rate_percent
+    && left.total_broadcast_count === right.total_broadcast_count
+    && left.responded_broadcast_count === right.responded_broadcast_count
+    && left.accepted_broadcast_count === right.accepted_broadcast_count
+    && left.scheduled_arrival_job_count === right.scheduled_arrival_job_count
+    && left.on_time_job_count === right.on_time_job_count
+    && left.paid_job_count === right.paid_job_count
+    && left.reconciled_earnings_vnd === right.reconciled_earnings_vnd
+    && left.performance_score === right.performance_score
+    && sameWorkerPerformanceBadges(left.badges, right.badges)
+    && sameWorkerPerformanceAxes(left.performance_axes, right.performance_axes)
+}
+
+function sameWorkerJobs(left: WorkerJobListResponse['jobs'], right: WorkerJobListResponse['jobs']) {
+  return left.length === right.length && left.every((job, index) => sameWorkerJob(job, right[index]))
+}
+
+function sameWorkerJob(
+  left: WorkerJobListResponse['jobs'][number],
+  right: WorkerJobListResponse['jobs'][number],
+) {
+  return left.id === right.id
+    && left.display_code === right.display_code
+    && left.status === right.status
+    && left.service_type === right.service_type
+    && left.problem_summary === right.problem_summary
+    && left.address_building === right.address_building
+    && left.address_unit === right.address_unit
+    && left.address_floor === right.address_floor
+    && left.district === right.district
+    && left.final_price === right.final_price
+    && left.estimated_earning === right.estimated_earning
+    && left.completion_notes === right.completion_notes
+    && left.created_at === right.created_at
+    && left.matched_at === right.matched_at
+    && left.completed_at === right.completed_at
+    && sameStringArray(left.completion_photo_urls, right.completion_photo_urls)
+    && sameAddressAccessView(left.address_access, right.address_access)
+}
+
+function sameAddressAccessView(
+  left: WorkerJobListResponse['jobs'][number]['address_access'],
+  right: WorkerJobListResponse['jobs'][number]['address_access'],
+) {
+  return left.release_stage === right.release_stage
+    && left.exact_unit_released === right.exact_unit_released
+    && left.check_in_required === right.check_in_required
+    && left.identity_check_required === right.identity_check_required
+    && left.customer_handoff_required === right.customer_handoff_required
+    && left.evidence_mode === right.evidence_mode
+}
+
+function sameWorkerPerformanceBadges(
+  left: WorkerPerformanceInsightsResponse['badges'],
+  right: WorkerPerformanceInsightsResponse['badges'],
+) {
+  return left.length === right.length && left.every((item, index) => {
+    const next = right[index]
+    return item.id === next.id && item.status === next.status
+  })
+}
+
+function sameWorkerPerformanceAxes(
+  left: WorkerPerformanceInsightsResponse['performance_axes'],
+  right: WorkerPerformanceInsightsResponse['performance_axes'],
+) {
+  return left.length === right.length && left.every((item, index) => {
+    const next = right[index]
+    return item.id === next.id && item.score === next.score
+  })
 }
 
 function sameWorkerDailyEarnings(left: EarningsResponse['daily_earnings'] | null | undefined, right: EarningsResponse['daily_earnings'] | null | undefined) {

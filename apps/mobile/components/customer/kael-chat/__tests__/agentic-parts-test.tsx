@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { Alert, StyleSheet } from 'react-native'
-import { buildWorkflowViewModel, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@home-services/shared'
+import { Alert, Linking, StyleSheet } from 'react-native'
+import { buildWorkflowViewModel, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@nestscout/shared'
 import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { KaelChatSurface } from '../kael-chat-surface'
 import { setPendingKaelChatDraft, takePendingKaelChatDraft } from '../pending-intake'
@@ -33,6 +33,8 @@ let mockWorkflowState: any = {
   workerGate: 'backend_pending',
 }
 
+jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
+
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
   useRouter: () => ({ replace: mockReplace }),
@@ -61,12 +63,41 @@ jest.mock('expo-image-picker', () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
 }))
 
+jest.mock('expo-audio', () => ({
+  AudioModule: {
+    requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  },
+  RecordingPresets: {
+    HIGH_QUALITY: {},
+  },
+  setAudioModeAsync: jest.fn(async () => undefined),
+  useAudioRecorder: () => ({
+    getURI: jest.fn(() => null),
+    prepareToRecordAsync: jest.fn(async () => undefined),
+    record: jest.fn(async () => undefined),
+    stop: jest.fn(async () => undefined),
+  }),
+  useAudioRecorderState: () => ({
+    durationMillis: 0,
+    isRecording: false,
+  }),
+}))
+
 jest.mock('@/lib/frontend-workflow-provider', () => ({
   useFrontendWorkflow: () => ({
     actions: {
       hydrateRemoteJobById: mockHydrateRemoteJobById,
     },
     state: mockWorkflowState,
+  }),
+}))
+
+jest.mock('@/lib/auth-provider', () => ({
+  useAuth: () => ({
+    session: {
+      access_token: 'test-token',
+      user: { id: 'customer_test_1' },
+    },
   }),
 }))
 
@@ -425,6 +456,7 @@ describe('Kael agentic phase cards', () => {
 
     expect(screen.getByTestId('customer-chat-reference-top-controls')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-kael-chat-kael-bubble')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-kael-chat-header-kael-listening')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-kael-chat-session-archive-toolbar')).toBeOnTheScreen()
     const archiveIconStageStyle = StyleSheet.flatten(screen.getByTestId('customer-kael-chat-session-archive-image-stage').props.style) as Record<string, unknown>
     expect(screen.getByTestId('customer-kael-chat-session-archive-image-icon')).toBeOnTheScreen()
@@ -480,7 +512,7 @@ describe('Kael agentic phase cards', () => {
     expect(onOpenArchiveItem).toHaveBeenCalledWith(expect.objectContaining({ targetPath: '/(customer)/history?job_id=job_1' }))
   })
 
-  it('clears the pending intake send spinner after the automatic create request resolves', async () => {
+  it('clears the pending intake evidence gate spinner after the automatic create request resolves', async () => {
     let resolveCreate: ((value: unknown) => void) | undefined
     mockKaelChatCreate.mockImplementation(() => new Promise((resolve) => {
       resolveCreate = resolve
@@ -500,11 +532,12 @@ describe('Kael agentic phase cards', () => {
     render(<KaelChatSurface />)
 
     await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledTimes(1))
-    expect(screen.getByTestId('customer-kael-chat-send').props.accessibilityState).toMatchObject({
+    expect(screen.getByTestId('customer-v21-agentic-evidence-confirm').props.accessibilityState).toMatchObject({
       busy: true,
       disabled: true,
     })
-    fireEvent.changeText(screen.getByTestId('customer-kael-chat-input'), 'Cau du thong tin chu?')
+    expect(screen.queryByTestId('customer-v21-kael-send')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-kael-input')).toBeNull()
 
     await act(async () => {
       resolveCreate?.({ success: true, data: buildKaelChatResponse() })
@@ -512,16 +545,36 @@ describe('Kael agentic phase cards', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByTestId('customer-kael-chat-send').props.accessibilityState).toMatchObject({
+      expect(screen.getByTestId('customer-v21-agentic-evidence-confirm').props.accessibilityState).toMatchObject({
         busy: false,
-        disabled: false,
+        disabled: true,
       })
     })
-    expect(screen.getByTestId('customer-kael-chat-input').props.value).toBe('Cau du thong tin chu?')
+    expect(screen.queryByTestId('customer-v21-kael-send')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-kael-input')).toBeNull()
     expect(mockKaelChatCreate).toHaveBeenCalledTimes(1)
+
+    const audio = jest.requireMock('expo-audio')
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+    const openSettingsSpy = jest.spyOn(Linking, 'openSettings').mockResolvedValue()
+    audio.AudioModule.requestRecordingPermissionsAsync.mockResolvedValueOnce({ granted: false })
+
+    fireEvent.press(screen.getByTestId('customer-v21-agentic-evidence-voice-note'))
+
+    await waitFor(() => expect(screen.getByText('Chưa bật mic')).toBeOnTheScreen())
+    const voiceWarningStyle = StyleSheet.flatten(screen.getByText('Chưa bật mic').props.style) as Record<string, unknown>
+    expect(voiceWarningStyle.color).toBe('#087F70')
+    await waitFor(() => expect(alertSpy).toHaveBeenCalled())
+    const alertActions = alertSpy.mock.calls[0]?.[2] as Array<{ text: string; onPress?: () => void }> | undefined
+    const openSettingsAction = alertActions?.find((action) => action.text.includes('cài đặt'))
+    expect(openSettingsAction).toEqual(expect.objectContaining({ onPress: expect.any(Function) }))
+    openSettingsAction?.onPress?.()
+    expect(openSettingsSpy).toHaveBeenCalledTimes(1)
+    openSettingsSpy.mockRestore()
+    alertSpy.mockRestore()
   })
 
-  it('uses the reference live-analysis title for a real Booking handoff', async () => {
+  it('uses the timeline headline and keeps the chat mode picker closed for a real Booking handoff', async () => {
     mockKaelChatCreate.mockImplementation(() => new Promise(() => undefined))
     setPendingKaelChatDraft({
       addressLabel: 'Quận 7, TP.HCM',
@@ -538,11 +591,15 @@ describe('Kael agentic phase cards', () => {
     render(<KaelChatSurface />)
 
     await waitFor(() => expect(mockKaelChatCreate).toHaveBeenCalledTimes(1))
-    expect(screen.getByText('Kael đang phân tích yêu cầu bạn')).toBeOnTheScreen()
-    expect(screen.queryByText('Kael đang xử lý')).toBeNull()
+    expect(screen.getByTestId('customer-v21-top-title')).not.toHaveTextContent('Kael')
+    expect(screen.getByTestId('customer-v21-top-title').props.children).toEqual(expect.any(String))
+    expect(screen.getByTestId('customer-v21-chat-mode-menu-button')).toBeOnTheScreen()
+    expect(screen.queryByText('Trò chuyện thường')).toBeNull()
+    expect(screen.queryByText('Xử lý công việc')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-chat-mode-menu')).toBeNull()
   })
 
-  it('routes a real Kael service session from the archive toolbar into Activity', async () => {
+  it('keeps a loaded service session in normal chat without the old Activity link', async () => {
     mockRouteParams = { sessionId: 'kael_session_test_1' }
     mockKaelChatGet.mockResolvedValueOnce({
       success: true,
@@ -553,15 +610,11 @@ describe('Kael agentic phase cards', () => {
 
     await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith('kael_session_test_1'))
 
-    fireEvent.press(screen.getByTestId('customer-kael-chat-session-archive-toolbar'))
-    expect(screen.getByTestId('customer-kael-chat-session-archive-item-0')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-kael-chat-session-archive-item-1')).toBeOnTheScreen()
-
-    fireEvent.press(screen.getByTestId('customer-kael-chat-session-archive-item-1'))
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/history?job_id=job_archive_1')
+    expect(screen.getByTestId('customer-v21-screen-2.4-chat-normal')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-chat-activity-link')).toBeNull()
   })
 
-  it('fast-polls real Kael progress while a follow-up turn is sending and cleans up after resolve', async () => {
+  it('sends a normal follow-up turn through the mobile API boundary and clears loading after process lines settle', async () => {
     let resolveSend: ((value: unknown) => void) | undefined
     mockAppLanguage = 'en'
     mockRouteParams = { sessionId: 'kael_session_test_1' }
@@ -569,65 +622,48 @@ describe('Kael agentic phase cards', () => {
       success: true,
       data: buildKaelChatResponse(),
     })
-    mockKaelChatStreamSendTurn.mockImplementation(() => new Promise((resolve) => {
+    mockKaelChatSendTurn.mockImplementation(() => new Promise((resolve) => {
       resolveSend = resolve
     }))
-    mockKaelChatProgressGet.mockResolvedValue({
-      success: true,
-      data: {
-        session_id: 'kael_session_test_1',
-        progress: {
-          current_stage: 'market_lookup',
-          failure_reason: null,
-          progress: 0.32,
-          status: 'running',
-          updated_at: '2026-06-04T00:00:00.000Z',
-        },
-      },
-    })
 
     render(<KaelChatSurface />)
     await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith('kael_session_test_1'))
 
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Outlet still sparks near the kitchen')
+      await Promise.resolve()
+    })
     jest.useFakeTimers()
     try {
       await act(async () => {
-        fireEvent.changeText(screen.getByTestId('customer-kael-chat-input'), 'Outlet still sparks near the kitchen')
-        await Promise.resolve()
-      })
-      await act(async () => {
-        fireEvent.press(screen.getByTestId('customer-kael-chat-send'))
-        await Promise.resolve()
+        fireEvent.press(screen.getByTestId('customer-v21-kael-send'))
         await Promise.resolve()
       })
 
-      expect(mockKaelChatStreamSendTurn).toHaveBeenCalled()
-      expect(mockKaelChatProgressGet).toHaveBeenCalledWith('kael_session_test_1')
-      expect(screen.getByTestId('customer-kael-chat-live-activity-label')).toHaveTextContent('Kael is checking market rates in your area.')
-
-      await act(async () => {
-        jest.advanceTimersByTime(800)
-        await Promise.resolve()
+      expect(mockKaelChatSendTurn).toHaveBeenCalledWith('kael_session_test_1', {
+        message: 'Outlet still sparks near the kitchen',
+        photo_urls: [],
       })
-      expect(mockKaelChatProgressGet).toHaveBeenCalledTimes(2)
+      expect(screen.getByTestId('customer-v21-kael-send').props.accessibilityState).toMatchObject({
+        busy: true,
+        disabled: true,
+      })
 
       await act(async () => {
         resolveSend?.({ success: true, data: buildKaelChatResponse({ total_turns: 3 }) })
+        jest.advanceTimersByTime(30000)
+        await Promise.resolve()
         await Promise.resolve()
       })
-      const callCountAfterResolve = mockKaelChatProgressGet.mock.calls.length
-
-      await act(async () => {
-        jest.advanceTimersByTime(1600)
-        await Promise.resolve()
-      })
-      expect(mockKaelChatProgressGet).toHaveBeenCalledTimes(callCountAfterResolve)
     } finally {
-      act(() => {
-        jest.runOnlyPendingTimers()
-      })
       jest.useRealTimers()
     }
+
+    await waitFor(() => expect(screen.getByTestId('customer-v21-kael-send').props.accessibilityState).toMatchObject({
+      busy: false,
+      disabled: false,
+    }))
+    expect(screen.getByTestId('customer-v21-kael-input').props.value).toBe('')
   })
 
   it('opens the customer media picker from attach and turns the selected image into a sendable evidence note', async () => {
@@ -708,7 +744,7 @@ describe('Kael agentic phase cards', () => {
     }
   })
 
-  it('renders the empty Kael ticket with honest sample rows for what Kael will record', () => {
+  it('renders the empty Kael ticket with honest pending rows until real intake exists', () => {
     render(<EmptyKaelBriefCard language="vi" selectedService={null} text={estimateText} />)
 
     const card = screen.getByTestId('customer-kael-chat-empty-ticket-summary')
@@ -717,21 +753,26 @@ describe('Kael agentic phase cards', () => {
     expect(screen.getByText('Thông tin đầu vào')).toBeOnTheScreen()
     expect(screen.getAllByText('Dịch vụ').length).toBeGreaterThan(0)
     expect(screen.getByText('Khoảng giá')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ ghi: Sửa điện, Sửa nước hoặc Vệ sinh.')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ tóm tắt: ví dụ ổ cắm chập, nước rò, hoặc cần dọn nhà.')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ ước tính sau khi có mô tả và bằng chứng.')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ phân loại nhẹ, vừa hoặc nặng.')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ cập nhật theo độ rõ của mô tả, ảnh hoặc video.')).toBeOnTheScreen()
+    expect(screen.getAllByText('Chưa có').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Chờ Kael ước tính')).toBeOnTheScreen()
+    expect(screen.getByText('Chờ Kael phân loại')).toBeOnTheScreen()
+    expect(screen.getByText('Chờ đủ dữ liệu')).toBeOnTheScreen()
+    expect(screen.getByText('Hiển thị khi có ước tính')).toBeOnTheScreen()
+    expect(screen.getByText('Chờ Kael tính')).toBeOnTheScreen()
+    expect(card).not.toHaveTextContent('Kael sẽ')
     expect(card).not.toHaveTextContent(/\d{2,3}\.000đ/)
     expect(card).not.toHaveTextContent(/\d+%/)
   })
 
-  it('keeps a selected service as real input while sampling the missing Kael fields', () => {
+  it('keeps a selected service as real input while pending the missing Kael fields', () => {
     render(<EmptyKaelBriefCard language="vi" selectedService="plumbing" text={estimateText} />)
 
+    const card = screen.getByTestId('customer-kael-chat-empty-ticket-summary')
+
     expect(screen.getByText('Sửa nước')).toBeOnTheScreen()
-    expect(screen.queryByText('Kael sẽ ghi: Sửa điện, Sửa nước hoặc Vệ sinh.')).toBeNull()
-    expect(screen.getByText('Kael sẽ tóm tắt: ví dụ ổ cắm chập, nước rò, hoặc cần dọn nhà.')).toBeOnTheScreen()
+    expect(screen.getByText('Chưa có')).toBeOnTheScreen()
+    expect(screen.getByText('Chờ Kael ước tính')).toBeOnTheScreen()
+    expect(card).not.toHaveTextContent('Kael sẽ')
   })
 
   it('renders Booking handoff as a structured pending intake receipt without fake estimate stats', () => {
@@ -882,6 +923,7 @@ describe('Kael agentic phase cards', () => {
     )
 
     expect(screen.getByTestId('customer-kael-chat-live-activity')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-kael-chat-live-kael-processing')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-kael-chat-live-activity-label')).toHaveTextContent('Researching')
   })
 
@@ -989,9 +1031,9 @@ describe('Kael agentic phase cards', () => {
     )
 
     expect(screen.getByTestId('customer-kael-chat-progress-trace')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-kael-chat-progress-step-intent_classification')).toHaveTextContent('Reading request')
+    expect(screen.getByTestId('customer-kael-chat-progress-step-intent_classification')).toHaveTextContent(/Reading request/)
     expect(screen.getByTestId('customer-kael-chat-progress-step-dot-intent_classification-completed')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-kael-chat-progress-step-market_lookup')).toHaveTextContent('Checking market rates in District 7')
+    expect(screen.getByTestId('customer-kael-chat-progress-step-market_lookup')).toHaveTextContent(/Checking market rates in District 7/)
     expect(screen.getByTestId('customer-kael-chat-progress-step-dot-market_lookup-running')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-kael-chat-progress-step-price_synthesis')).toBeNull()
   })
@@ -1017,11 +1059,12 @@ describe('Kael agentic phase cards', () => {
           createdAt: '2026-06-04T00:00:00.000Z',
           districtLabel: 'District 7',
           locale: 'en',
-          mediaCount: 2,
+          mediaCount: 3,
           message: 'Outlet sparks near the kitchen',
           photoDrafts: [
             { uri: 'file://photo-1.jpg', type: 'image' },
             { uri: 'file://clip-1.mp4', type: 'video' },
+            { uri: 'file://voice-1.m4a', type: 'audio' },
           ],
           problemChips: ['Burned outlet'],
           serviceType: 'electrical',
@@ -1070,11 +1113,13 @@ describe('Kael agentic phase cards', () => {
     )
 
     expect(screen.getByTestId('customer-kael-live-performance-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-kael-live-performance-kael-fileReview')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-kael-live-performance-service')).toHaveTextContent(/Electrical repair/)
-    expect(screen.getByTestId('customer-kael-live-performance-evidence')).toHaveTextContent(/2 evidence items/)
+    expect(screen.getByTestId('customer-kael-live-performance-evidence')).toHaveTextContent(/3 evidence items/)
     expect(screen.getByTestId('customer-kael-live-performance-signals')).toHaveTextContent(/Burned outlet/)
     expect(screen.getByTestId('customer-kael-live-performance-stage')).toHaveTextContent(/Analyzing photos\/videos/)
     expect(screen.getByTestId('customer-kael-live-performance-video-1')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-kael-live-performance-audio-2')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-kael-live-performance-media-empty')).toBeNull()
   })
 
@@ -1137,13 +1182,14 @@ describe('Kael agentic phase cards', () => {
     )
 
     expect(screen.getByTestId('customer-kael-chat-thought-label')).toHaveTextContent('Kael analyzed in 4s')
+    expect(screen.getByTestId('customer-kael-chat-thought-kael-understood')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-kael-chat-thought-trace')).toBeNull()
 
     fireEvent.press(screen.getByTestId('customer-kael-chat-thought-disclosure'))
 
     expect(screen.getByTestId('customer-kael-chat-thought-trace')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-kael-chat-progress-trace-settled')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-kael-chat-progress-step-price_synthesis')).toHaveTextContent('Synthesizing estimate')
+    expect(screen.getByTestId('customer-kael-chat-progress-step-price_synthesis')).toHaveTextContent(/Synthesizing estimate/)
   })
 
   it('renders streamed token text with a caret and removes the caret for Reduce Motion', () => {
@@ -1184,6 +1230,7 @@ describe('Kael agentic phase cards', () => {
     const { rerender } = render(<KaelChatThread {...baseProps} reduceMotion={false} />)
 
     expect(screen.getByTestId('customer-kael-chat-streaming-token-body')).toHaveProp('accessibilityLabel', 'Can you share one clear photo?')
+    expect(screen.getByTestId('customer-kael-chat-streaming-kael-typing')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-kael-chat-streaming-caret')).toBeOnTheScreen()
 
     rerender(<KaelChatThread {...baseProps} reduceMotion />)
@@ -1404,6 +1451,7 @@ describe('ChatTurn — clarification rendering (A4)', () => {
 
   it('renders a distinct clarification affordance with the question and slot hints', () => {
     render(<ChatTurn language="vi" reduceMotion reveal={false} text={clarifyText} turn={clarificationTurn()} />)
+    expect(screen.getByTestId('customer-kael-chat-turn-kael-listening')).toBeTruthy()
     expect(screen.getByTestId('customer-kael-chat-clarification-turn-1')).toBeTruthy()
     expect(screen.getByText('Kael đang hỏi')).toBeTruthy()
     expect(screen.getByText('Cầu dao có tự nhảy lại sau khi bạn bật lên không?')).toBeTruthy()

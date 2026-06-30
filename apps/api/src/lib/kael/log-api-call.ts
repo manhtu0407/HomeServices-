@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@home-services/shared'
+import type { Database } from '@nestscout/shared'
 import type { AIProvider } from '@/lib/ai/types'
 
 export type ApiCallLog = {

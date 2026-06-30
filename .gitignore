@@ -38,6 +38,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+tmp-*.log
+
+# local agent/workbench artifacts
+/.codex/
+/.pnpm-store/
+/sandbox/
+.claude/.mcp.json
 
 # env files
 .env*

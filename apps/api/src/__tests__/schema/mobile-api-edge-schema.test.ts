@@ -847,6 +847,25 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeRouter).toContain('workerCancellation.decide')
   })
 
+  it('extends Kael chat media storage for mobile evidence uploads', () => {
+    const migration = read('supabase/migrations/20260629114000_extend_kael_chat_media_bucket.sql')
+
+    expect(migration).toContain("'kael-chat-media'")
+    expect(migration).toContain('52428800')
+    for (const mimeType of [
+      'image/heic',
+      'image/heif',
+      'video/quicktime',
+      'video/webm',
+      'audio/m4a',
+      'audio/webm',
+    ]) {
+      expect(migration).toContain(`'${mimeType}'`)
+    }
+    expect(migration).toContain('create policy "Users upload own kael chat media"')
+    expect(migration).toContain("auth.uid()::text = (storage.foldername(name))[1]")
+  })
+
   it('adds service-role Kael chat persistence and confirm RPC for the Kael-first workflow', () => {
     const migration = read('supabase/migrations/20260520130514_kael_chat_sessions.sql')
     const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
@@ -1074,7 +1093,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
     const mobileProvider = read('apps/mobile/lib/frontend-workflow-provider.tsx')
-    const workerSurface = read('apps/mobile/components/worker/worker-surfaces.tsx')
+    const workerSurface = read('apps/mobile/components/worker/worker-v5-flow.tsx')
 
     expect(migration).toContain('create table if not exists public.kael_chat_pre_intake_memory')
     expect(migration).toContain('access_profile jsonb not null')
@@ -1090,7 +1109,9 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeRouter).toContain('parseWorkerAccessCheckIn')
     expect(edgeRouter).toContain('mode === "manual_photo" && (!photoUrls || photoUrls.length === 0)')
     expect(mobileProvider).toContain('job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress')
-    expect(workerSurface).toContain('Exact unit unlocks after lobby check-in and identity check.')
+    expect(workerSurface).toContain('canShowWorkerAddress(deal)')
+    expect(workerSurface).toContain('access?.exact_unit_released')
+    expect(workerSurface).toContain('Exact address opens after accepting.')
   })
 
   it('keeps Plan31 production advisor fixes for helper search paths and RLS initplan', () => {

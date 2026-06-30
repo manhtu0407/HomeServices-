@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, JobStatus } from '@home-services/shared'
+import type { Database, JobStatus } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 import { logJobEvent } from './event-log'
 

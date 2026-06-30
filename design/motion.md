@@ -2,7 +2,7 @@
 
 > Extracted from `design.md` for progressive disclosure (2026-05-29). `design.md` core keeps the authority order, identity, goal, preflight, skill-adaptation, scoring rubric, RN rules, forbidden defaults, and review checklist. Load this file only when the task needs it (see design.md → Design Reference Files). `critical.md` remains highest execution authority.
 
-Canonical motion source for Home Services UI. The kael-motion skill points here. Pair with RULES.md Motion Rules + Performance Budget and Reduce Motion / Reduce Transparency.
+Canonical motion source for NestScout UI. The kael-motion skill points here. Pair with RULES.md Motion Rules + Performance Budget and Reduce Motion / Reduce Transparency.
 
 ## 13. Motion Grammar
 

@@ -7,7 +7,7 @@ import {
   chatMessageSchema,
   sanitizeForLLM,
   scrubSensitiveForLLM,
-} from '@home-services/shared'
+} from '@nestscout/shared'
 
 describe('serviceTypeSchema (Rule #6: electrical + plumbing + cleaning)', () => {
   it('accepts "electrical"', () => {

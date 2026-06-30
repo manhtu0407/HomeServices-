@@ -40,7 +40,7 @@ export function mobileApiConfigError(): ApiResult<never> | null {
   if (!API_BASE_URL) {
     return {
       success: false,
-      error: 'Dá»‹ch vá»¥ chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh',
+      error: 'Dịch vụ chưa được cấu hình',
       code: 'CONFIG_MISSING',
       status: 0,
     }
@@ -48,7 +48,7 @@ export function mobileApiConfigError(): ApiResult<never> | null {
   if (!MOBILE_API_BASE_PATH.test(API_BASE_URL)) {
     return {
       success: false,
-      error: 'ÄÆ°á»ng káº¿t ná»‘i chÆ°a Ä‘Ãºng',
+      error: 'Đường kết nối chưa đúng',
       code: 'CONFIG_INVALID',
       status: 0,
     }
@@ -148,6 +148,7 @@ export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
+  put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
 }
 
 type ApiJsonObject = { error?: string; code?: string } & Record<string, unknown>
@@ -174,6 +175,7 @@ function isAbortError(err: unknown) {
 function isRetrySafeRequest(method: string, path: string) {
   if (method === 'GET' || method === 'HEAD') return true
   if (method === 'POST' && path === '/places/autocomplete') return true
+  if (method === 'POST' && path === '/worker-applications') return true
   if (method === 'POST' && path === '/notifications/device-token') return true
   if (method === 'POST' && /^\/notifications\/[^/]+\/read$/.test(path)) return true
   return false

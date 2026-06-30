@@ -49,7 +49,7 @@ Customer Home should combine address/search structure with Kael as the primary p
 Preferred direction:
 
 ```text
-XanhSM-like address/search skeleton + Home Services Kael Price Check CTA.
+XanhSM-like address/search skeleton + NestScout Kael Price Check CTA.
 ```
 
 Anatomy:
@@ -176,7 +176,7 @@ Rules:
 
 - no raw AI output to users,
 - Vietnamese user-facing text,
-- Kael scope limited to electrical/plumbing/cleaning Home Services intake, price check, worker brief, and approved support roles,
+- Kael scope limited to electrical/plumbing/cleaning NestScout intake, price check, worker brief, and approved support roles,
 - no autonomous booking/payment/cancel action,
 - critical actions must route to explicit confirmation screens.
 
@@ -201,7 +201,7 @@ Learn from XanhSM:
 - restrained banners,
 - low-noise scroll.
 
-Home Services adaptation:
+NestScout adaptation:
 
 - apartment profile,
 - saved addresses,

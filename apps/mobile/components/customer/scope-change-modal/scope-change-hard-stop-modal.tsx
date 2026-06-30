@@ -1,6 +1,7 @@
 import { Image } from 'expo-image'
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import type { LocalScopeChange } from '@home-services/shared'
+import { Modal, StyleSheet, Text, View } from 'react-native'
+import type { LocalScopeChange } from '@nestscout/shared'
+import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 
 type ScopeChangeModalTokens = {
@@ -168,30 +169,25 @@ export function ScopeChangeHardStopModal({
           </View>
 
           <View style={styles.actionRow}>
-            <Pressable
-              accessibilityRole="button"
+            <KaelButton
+              label={text.reject}
               onPress={onReject}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                { backgroundColor: tokens.glassStrong, borderColor: tokens.danger },
-                pressed ? styles.pressed : null,
-              ]}
+              showPrimaryGradient={false}
+              size="small"
+              style={[styles.secondaryButton, { backgroundColor: tokens.glassStrong, borderColor: tokens.danger }]}
               testID="customer-scope-change-modal-reject"
-            >
-              <Text style={[styles.secondaryText, { color: tokens.danger }]}>{text.reject}</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              textStyle={[styles.secondaryText, { color: tokens.danger }]}
+              variant="destructive"
+            />
+            <KaelButton
+              label={text.approve}
               onPress={onApprove}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                { backgroundColor: tokens.primary, borderColor: tokens.primary },
-                pressed ? styles.pressed : null,
-              ]}
+              showPrimaryGradient={false}
+              size="small"
+              style={[styles.primaryButton, { backgroundColor: tokens.primary, borderColor: tokens.primary }]}
               testID="customer-scope-change-modal-approve"
-            >
-              <Text style={[styles.primaryText, { color: tokens.primaryText }]}>{text.approve}</Text>
-            </Pressable>
+              textStyle={[styles.primaryText, { color: tokens.primaryText }]}
+            />
           </View>
         </View>
       </View>
@@ -319,10 +315,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 20,
-  },
-  pressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.99 }],
   },
   priceDisclaimer: {
     fontSize: 12,

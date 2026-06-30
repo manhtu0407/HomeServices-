@@ -1,6 +1,6 @@
 ---
 name: kael-doc-audit
-description: Audit and report on the Home Services governance stack (CLAUDE.md, critical.md, RULES.md, STRUCTURES.md, design.md, AGENTS.md, skills.md, protocols/, and the .claude/.agents skills) for drift, duplication, dead cross-references, scope creep, and context bloat. Use when the user asks to audit, check, or review the docs/rules/protocols/skills, or mentions "governance audit", "doc drift", or "project memory health". Reports a scored health report first; edits only after Tu approves (locked docs need explicit approval).
+description: Audit and report on the Home Services governance stack (CLAUDE.md, critical.md, RULES.md, STRUCTURES.md, design.md, AGENTS.md, skills.md, protocols/, .claude/MEMORY.md, and the .claude/.agents skills) for drift, duplication, dead cross-references, scope creep, and context bloat. Use when the user asks to audit, check, or review the docs/rules/protocols/skills, or mentions "governance audit", "doc drift", or "project memory health". Reports a scored health report first; edits only after Tu approves (locked docs need explicit approval).
 ---
 
 # kael-doc-audit
@@ -10,7 +10,7 @@ Adapted from Anthropic's `claude-md-improver` for the full Home Services governa
 ## Workflow
 
 ### Phase 1 — Discover
-List the stack: `CLAUDE.md`, `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md`, `AGENTS.md`, `skills.md`, `protocols/*.md`, `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `docs/architecture/*.md`, `MEMORY.md`.
+List the stack: `CLAUDE.md`, `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md`, `AGENTS.md`, `skills.md`, `protocols/*.md`, `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `docs/architecture/*.md`, `.claude/MEMORY.md`.
 
 ### Phase 2 — Assess
 Score each axis 0-100 and grade A-F per `references/audit-rubric.md`. Cross-reference docs against the actual codebase and against each other.

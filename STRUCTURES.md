@@ -1,6 +1,6 @@
-# Home Services App Structures
+# NestScout App Structures
 
-This file is the single source of truth for Home Services product workflow, app operation, and build direction.
+This file is the single source of truth for NestScout product workflow, app operation, and build direction.
 
 AI coding agents MUST read this file before implementing frontend, backend, database, AI, admin, worker, customer, or workflow logic. This file describes the full app operation, but implementation still follows the current approved phase. It is a blueprint, not permission to build every future capability immediately.
 
@@ -45,7 +45,7 @@ Do not build future autonomy, service expansion, or multi-city workflows without
 
 ## 1. Product Identity And Hard Scope
 
-Home Services is a mobile-first home repair platform for HCMC apartment residents.
+NestScout is a mobile-first home repair platform for HCMC apartment residents.
 
 Current service scope:
 

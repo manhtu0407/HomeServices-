@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { workerRegisterSchema } from '@home-services/shared'
+import { workerRegisterSchema } from '@nestscout/shared'
 
 vi.mock('@/lib/env', () => ({
   env: {

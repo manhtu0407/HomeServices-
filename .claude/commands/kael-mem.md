@@ -1,9 +1,9 @@
 ---
-description: Capture this session's durable learnings into docs/memory/<period>.md and update the MEMORY.md recall index (progressive disclosure)
+description: Capture this session's durable learnings into docs/memory/<period>.md and update the .claude/MEMORY.md recall index (progressive disclosure)
 allowed-tools: Read, Edit, Write, Glob, Bash
 ---
 
-Capture durable session memory for Home Services. Detail goes into `docs/memory/<period>.md`; a single one-line entry goes into the `MEMORY.md` recall index. This keeps the always-loaded `MEMORY.md` lean (progressive disclosure, adapted from claude-mem without its worker service / vector DB).
+Capture durable session memory for Home Services. Detail goes into `docs/memory/<period>.md`; a single one-line entry goes into the top Recall Index in `.claude/MEMORY.md`. This keeps the active memory index lean (progressive disclosure, adapted from claude-mem without its worker service / vector DB).
 
 ## Step 1: Reflect
 
@@ -38,5 +38,5 @@ Show the drafted full entry AND the one-line index addition. Ask Tu to confirm b
 ## Step 5: Apply (after approval)
 
 - Prepend the full entry near the top of `docs/memory/<period>.md` (after its header, newest first).
-- Add ONE line to the top of the `MEMORY.md` "Recall Index" (date + short title + a one-line hook). Never more than one line per entry in `MEMORY.md`.
+- Add ONE line to the top of the `.claude/MEMORY.md` "Recall Index" (date + short title + a one-line hook). Never more than one line per entry in the active recall index.
 - If the index passes ~40 entries or the month rolls over, start the next `docs/memory/<period>.md` and tell Tu.

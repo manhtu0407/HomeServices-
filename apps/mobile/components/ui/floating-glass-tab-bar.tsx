@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useReducer, useState } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, { cancelAnimation, useAnimatedStyle, useDerivedValue, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
-import { color } from '@/design/theme'
+import { color, typography } from '@/design/theme'
 import { useGlassAccessibility } from './accessibility-motion'
 import { GlassSurface } from './glass-surface'
 import { motionTokens } from './motion-tokens'
@@ -829,28 +829,28 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -1 }, { scale: 1.035 }],
   } as any,
   label: {
-    fontWeight: '800',
-    lineHeight: 13,
+    fontFamily: typography.fontFamily,
+    fontSize: typography.caption.fontSize,
+    fontWeight: typography.caption.fontWeight,
+    lineHeight: typography.caption.lineHeight,
   },
   labelFocused: {
-    fontSize: 8.8,
     opacity: 1,
   },
   labelInactive: {
-    fontSize: 8.8,
     opacity: 0.5,
   },
   labelFocusedApple: {
-    fontSize: 8.4,
     opacity: 1,
   },
   labelInactiveLiquid: {
-    fontSize: 8.8,
     opacity: 0.68,
   },
   labelInactiveLiquidApple: {
-    fontSize: 8.4,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily,
+    fontSize: typography.caption.fontSize,
+    fontWeight: typography.caption.fontWeight,
+    lineHeight: typography.caption.lineHeight,
     opacity: 0.72,
   },
   liquidCore: {

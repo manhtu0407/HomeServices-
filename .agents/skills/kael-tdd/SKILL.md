@@ -14,6 +14,16 @@ When this fires:
 3. Cover at least two relevant layers (static/unit/integration/SQL/wiring/e2e/UI/security-negative). Negative tests are mandatory for security changes.
 4. Test count is not a quality metric — layer coverage and failure relevance are. Build failure means not done.
 
+Direct agent commands:
+
+- Mobile static/unit: `pnpm type-check:mobile`, `pnpm test:mobile`.
+- API static/unit: `pnpm type-check:api`, `pnpm test:api`.
+- Shared static/unit: `pnpm type-check:shared`, `pnpm test:shared`.
+- Whole repo gates: `pnpm type-check`, `pnpm test`, `pnpm build` only when the broader Turbo graph is required.
+- React/React Native risk: add `pnpm doctor:react:changed`.
+
+Prefer these root aliases over raw package binaries. They route through wrapper scripts that prepend the bundled Codex Node runtime, so agent shells can run tests directly even when `node`, `turbo`, `jest`, or `vitest` are not globally available.
+
 Output:
 
 ```text

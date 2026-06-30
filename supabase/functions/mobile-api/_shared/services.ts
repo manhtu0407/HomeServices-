@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import type {
   BroadcastStatus,
   ComplexityLevel,
@@ -10,6 +11,8 @@ import type {
 } from "../../_shared/domain.ts";
 import {
   HCMC_DISTRICTS,
+  buildJobDisplayCode,
+  buildWorkerDisplayCode,
   kaelChatProgressSchema,
   normalizeDistrict,
   normalizeServiceAreaDistrict,
@@ -19,6 +22,8 @@ import {
   type DevicePushTokenInput,
   type CustomerCancellationRequestInput,
   type CustomerKaelFeedbackInput,
+  type CustomerKaelMemoryPreferenceUpdateInput,
+  type CustomerPaymentMethodSaveInput,
   type DisputeAdminDecisionInput,
   type DisputeCounterStatementInput,
   type DisputeOpenRequestInput,
@@ -27,17 +32,24 @@ import {
   type JobMediaAttachInput,
   type JobMessageSendInput,
   type KaelWorkerClarifyInput,
+  type KaelAssistantInput,
   type KaelChatCreateInput,
+  type KaelChatMediaUploadInput,
+  type KaelChatEvidenceInput,
   type KaelChatTurnInput,
   type WorkerKaelChatCreateInput,
   type WorkerKaelChatTurnInput,
   type WorkerKaelFeedbackInput,
+  type WorkerKaelMemoryPreferenceUpdateInput,
   type WorkerKaelTrainingConsentInput,
   type PlacesAutocompleteInput,
+  type PlacesResolveInput,
   sanitizeForLLM,
+  type WorkerApplicationSubmitInput,
   type WorkerCancellationDecisionInput,
   type WorkerCancellationRequestInput,
   type WorkerRegisterInput,
+  type WorkerServiceAreaUpdateInput,
 } from "../../_shared/domain.ts";
 import {
   apiFailure,
@@ -56,8 +68,16 @@ import {
   type MarketCacheInvalidateInput,
   type MarketCacheInvalidateResponse,
   type MobileApiContext,
+  type CustomerPaymentMethodResponse,
+  type KaelChatMediaUploadResponse,
+  type CustomerProfileInsightsResponse,
   type PlacesAutocompleteResponse,
+  type PlacesResolveResponse,
   type MobileApiServices,
+  type VietmapStaticMapInput,
+  type WorkerPerformanceInsightsResponse,
+  type WorkerPayoutMethodResponse,
+  type WorkerPayoutMethodSaveInput,
   type WorkerStatusUpdateInput,
 } from "./router.ts";
 import {
@@ -131,9 +151,10 @@ import {
   type PriceSynthesisAbCaseInput,
   type PriceSynthesisAbEvaluation,
   scrubSensitiveForLLM,
+  runCustomerAssistant,
   runWorkerAssist,
   type WorkerAssistAnswer,
-  type WorkerAssistProviderAttempt,
+  KAEL_ROUTING_CONFIG,
 } from "./kael/index.ts";
 import { evaluateMessageBoundary } from "./kael/boundary-guard.ts";
 import {
@@ -198,9 +219,101 @@ type WorkerAccessCheckInInput = NonNullable<
   WorkerStatusUpdateInput["access_check_in"]
 >;
 
-type DbClient = {
+export type CustomerProfileInsightJobRow = {
+  id: string;
+  status: string;
+  service_type: string;
+  created_at: string | null;
+  completed_at: string | null;
+  confirmed_at?: string | null;
+  paid_at: string | null;
+  reviewed_at: string | null;
+  final_price: number | null;
+  kael_price_min: number | null;
+  kael_price_max: number | null;
+};
+export type CustomerProfileInsightReviewRow = {
+  job_id: string | null;
+  rating: number | null;
+};
+export type CustomerProfileInsightDisputeRow = {
+  job_id: string | null;
+  status: string | null;
+};
+export type CustomerProfileInsightInput = {
+  accountProfile?: {
+    created_at: string | null;
+  } | null;
+  customerId: string;
+  customerProfile: {
+    building_name: string | null;
+    created_at: string | null;
+    district: string | null;
+    floor: string | null;
+    unit_number: string | null;
+  } | null;
+  disputes: CustomerProfileInsightDisputeRow[];
+  jobs: CustomerProfileInsightJobRow[];
+  kaelInteractionCount: number;
+  reviews: CustomerProfileInsightReviewRow[];
+  savedAddressCount: number;
+};
+export type WorkerPerformanceInsightBroadcastRow = {
+  broadcast_at: string | null;
+  responded_at: string | null;
+  sent_at: string | null;
+  status: string;
+};
+export type WorkerPerformanceInsightJobRow = {
+  arrived_at: string | null;
+  completed_at: string | null;
+  final_price: number | null;
+  paid_at: string | null;
+  reviewed_at: string | null;
+  scheduled_at: string | null;
+  status: string;
+};
+export type WorkerPerformanceInsightReviewRow = {
+  rating: number | null;
+};
+export type WorkerPerformanceInsightInput = {
+  broadcasts: WorkerPerformanceInsightBroadcastRow[];
+  jobs: WorkerPerformanceInsightJobRow[];
+  reviews: WorkerPerformanceInsightReviewRow[];
+  workerId: string;
+  workerProfile: {
+    is_approved: boolean;
+    is_available: boolean;
+    is_suspended: boolean;
+    rating: number;
+    total_jobs: number;
+    verification_status: string;
+  } | null;
+};
+
+type JobWorkerSummary = {
+  avatar_url: string | null;
+  display_code: string;
+  full_name: string;
+  id: string;
+  rating: number;
+  review_count: number;
+  total_jobs: number;
+};
+
+export type DbClient = {
   from(table: string): Chain;
   rpc(name: string, args?: Record<string, unknown>): QueryLike;
+  storage?: {
+    from(bucket: string): unknown;
+  };
+};
+
+type EdgeServiceSecrets = EdgeAiSecrets & {
+  supabaseUrl?: string;
+  supabaseSecretKey?: string;
+  sepayWebhookApiKey?: string;
+  sepayQrBaseUrl?: string;
 };
 
 const ACTIVE_WORKER_JOB_STATUSES: JobStatus[] = [
@@ -212,6 +325,40 @@ const ACTIVE_WORKER_JOB_STATUSES: JobStatus[] = [
   "scope_change_pending",
   "completed_by_worker",
 ];
+
+const CUSTOMER_PROFILE_COMPLETED_STATUSES = new Set([
+  "completed_by_worker",
+  "confirmed_by_customer",
+  "payment_pending",
+  "paid",
+  "reviewed",
+]);
+const CUSTOMER_PROFILE_TRANSACTION_STATUSES = new Set([
+  "confirmed_by_customer",
+  "payment_pending",
+  "paid",
+  "reviewed",
+]);
+const CUSTOMER_PROFILE_USAGE_RANK_STEP = 200;
+const CUSTOMER_PROFILE_USAGE_RANK_MAX = 5;
+const WORKER_PERFORMANCE_TOTAL_BROADCAST_STATUSES = new Set([
+  "sent",
+  "accepted",
+  "declined",
+  "expired",
+  "cancelled",
+  "reassigned",
+]);
+const WORKER_PERFORMANCE_RESPONSE_STATUSES = new Set(["accepted", "declined"]);
+const WORKER_PERFORMANCE_COMPLETED_STATUSES = new Set([
+  "completed_by_worker",
+  "confirmed_by_customer",
+  "payment_pending",
+  "paid",
+  "reviewed",
+]);
+const WORKER_PERFORMANCE_PAID_STATUSES = new Set(["paid", "reviewed"]);
+const WORKER_PERFORMANCE_ON_TIME_GRACE_MS = 5 * 60 * 1000;
 
 const JOB_CHAT_SEND_STATUSES: JobStatus[] = [
   "worker_matched",
@@ -225,7 +372,10 @@ const JOB_CHAT_SEND_STATUSES: JobStatus[] = [
 ];
 
 const JOB_DETAIL_SELECT =
-  "id, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, kael_worker_brief_core, kael_worker_brief_guidance, kael_progress, customer_id, worker_id, final_price, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at";
+  "id, display_code, status, service_type, description, problem_chips, photo_urls, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, scheduled_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, kael_worker_brief_core, kael_worker_brief_guidance, kael_progress, customer_id, worker_id, final_price, payment_provider, payment_status, payment_code, payment_transfer_content, payment_qr_image_url, payment_expires_at, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, completion_notes, completion_photo_urls, created_at, matched_at, arrived_at, completed_at, confirmed_at, paid_at, reviewed_at";
+const SEPAY_VIETQR_PROVIDER = "sepay_vietqr" as const;
+const SEPAY_QR_BASE_URL = "https://qr.sepay.vn/img";
+const SEPAY_PAYMENT_TTL_MS = 30 * 60 * 1000;
 const DEFAULT_WORKER_CANDIDATE_POOL_SIZE = 50;
 const STAGING_PROJECT_REF = "xyylanuyflrjzbjzhqfl";
 const KAEL_CHAT_SOFT_COST_CAP_USD = 0.5;
@@ -236,6 +386,7 @@ const KAEL_CHAT_STREAM_HEARTBEAT_MS = 10_000;
 const VIETMAP_AUTOCOMPLETE_URL = "https://maps.vietmap.vn/api/autocomplete/v4";
 const VIETMAP_SEARCH_URL = "https://maps.vietmap.vn/api/search/v4";
 const VIETMAP_PLACE_URL = "https://maps.vietmap.vn/api/place/v4";
+const VIETMAP_STATIC_MAP_URL = "https://maps.vietmap.vn/api/maps/statics/tm";
 const GOOGLE_GEOCODING_URL = "https://maps.googleapis.com/maps/api/geocode/json";
 const GOOGLE_PLACES_AUTOCOMPLETE_URL =
   "https://places.googleapis.com/v1/places:autocomplete";
@@ -248,12 +399,14 @@ type GeocodeResult = { lat: number; lng: number; geoSource: MapsGeoSource };
 
 type KaelChatStatus =
   | "active"
+  | "collecting_evidence"
   | "estimate_ready"
   | "confirmed"
   | "abandoned"
   | "unsupported";
 type KaelChatNextAction =
   | "await_input"
+  | "collect_evidence"
   | "ask_photo"
   | "ask_video"
   | "estimate_ready"
@@ -277,7 +430,7 @@ type Chain = {
   insert(value: unknown): Chain;
   delete(): Chain;
   update(value: unknown): Chain;
-  upsert(value: unknown): Chain;
+  upsert(value: unknown, options?: unknown): Chain;
   eq(column: string, value: unknown): Chain;
   neq(column: string, value: unknown): Chain;
   gt(column: string, value: unknown): Chain;
@@ -300,20 +453,27 @@ type Chain = {
   ): PromiseLike<TResult1 | TResult2>;
 };
 
-export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
+export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServices {
   return {
     listServices,
     placesAutocomplete: (ctx, input) => placesAutocomplete(ctx, input, secrets),
+    resolvePlace: (ctx, input) => resolvePlace(ctx, input, secrets),
+    getVietmapStaticMap: (ctx, input) => getVietmapStaticMap(ctx, input, secrets),
     createJob: (ctx, input) => createJob(ctx, input, secrets),
     getJob,
     listCustomerActiveJobs,
     createKaelChat: (ctx, input) => createKaelChat(ctx, input, secrets),
+    answerKaelAssistant: (ctx, input) =>
+      answerKaelAssistant(ctx, input, secrets),
     getKaelChat,
     getKaelChatProgress,
     streamKaelChatTurn: (ctx, sessionId, input) =>
       streamKaelChatTurn(ctx, sessionId, input, secrets),
     sendKaelChatTurn: (ctx, sessionId, input) =>
       sendKaelChatTurn(ctx, sessionId, input, secrets),
+    createKaelChatMediaUpload,
+    submitKaelChatEvidence: (ctx, sessionId, input) =>
+      submitKaelChatEvidence(ctx, sessionId, input, secrets),
     confirmKaelChat: (ctx, sessionId) => confirmKaelChat(ctx, sessionId, secrets),
     confirmSearch,
     cancelJob,
@@ -345,15 +505,27 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     decideWorkerCancellation,
     decideScopeChange,
     confirmCompletion,
+    createPaymentIntent: (ctx, jobId) => createPaymentIntent(ctx, jobId, secrets),
+    handleSepayWebhook: (input, headers) =>
+      handleSepayWebhook(input, headers, secrets),
     submitReview,
     submitCustomerKaelFeedback,
+    submitWorkerApplication: (input) => submitWorkerApplication(input, secrets),
     getKaelCharter,
     registerWorker,
     getMyKaelMemory,
+    updateMyCustomerKaelMemoryPreference,
+    updateMyWorkerKaelMemoryPreference,
+    getCustomerProfileInsights,
+    getCustomerPaymentMethod,
+    saveCustomerPaymentMethod,
+    saveWorkerPayoutMethod,
     getWorkerKaelMemory,
     deleteMyKaelMemory,
     getWorkerProfile,
+    getWorkerPerformanceInsights,
     updateWorkerAvailability,
+    updateWorkerServiceArea,
     listWorkerBroadcasts,
     listWorkerJobs,
     getWorkerEarnings,
@@ -764,6 +936,79 @@ async function googlePlacesAutocomplete(
   }
 }
 
+async function resolvePlace(
+  ctx: MobileApiContext,
+  input: PlacesResolveInput,
+  secrets: EdgeAiSecrets,
+): Promise<PlacesResolveResponse> {
+  void ctx;
+  const vietmapApiKey = readVietmapApiKey(secrets);
+  if (vietmapApiKey) {
+    const location = await vietmapPlaceLocation(input.place_id, vietmapApiKey);
+    if (location) {
+      return {
+        fallback_used: false,
+        label: input.label ?? null,
+        location: { lat: location.lat, lng: location.lng },
+        place_id: input.place_id,
+        provider: "vietmap",
+      };
+    }
+  }
+
+  return {
+    fallback_used: true,
+    label: input.label ?? null,
+    location: null,
+    place_id: input.place_id,
+    provider: "fallback",
+  };
+}
+
+async function getVietmapStaticMap(
+  ctx: MobileApiContext,
+  input: VietmapStaticMapInput,
+  secrets: EdgeAiSecrets,
+): Promise<Response> {
+  void ctx;
+  const vietmapApiKey = readVietmapApiKey(secrets);
+  if (!vietmapApiKey) {
+    apiFailure("MAPS_PROVIDER_MISSING", "Chưa cấu hình VietMap", 503);
+  }
+
+  const form = new FormData();
+  form.set("lat", input.lat.toFixed(6));
+  form.set("lng", input.lng.toFixed(6));
+  form.set("zoom", String(input.zoom));
+  form.set("width", "720");
+  form.set("height", "360");
+
+  const response = await fetchJsonWithTimeout(
+    buildVietmapUrl(VIETMAP_STATIC_MAP_URL, vietmapApiKey, {}),
+    { body: form, method: "POST" },
+  );
+  if (!response.ok) {
+    console.warn("mobile-api vietmap static map failed", {
+      status: response.status,
+    });
+    apiFailure("MAPS_PROVIDER_ERROR", "Không thể tải bản đồ VietMap", 502);
+  }
+
+  const contentType = response.headers.get("content-type") ?? "image/png";
+  const bytes = await response.arrayBuffer();
+  return new Response(bytes, {
+    headers: {
+      "Access-Control-Allow-Headers":
+        "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+      "Access-Control-Allow-Origin": "*",
+      "Cache-Control": "private, max-age=300",
+      "Content-Type": contentType,
+    },
+    status: 200,
+  });
+}
+
 async function createJob(
   ctx: MobileApiContext,
   input: JobCreateInput,
@@ -800,7 +1045,7 @@ async function createJob(
     }
   }
 
-  const inserted = await dbQuery<{ id: string }>(
+  const inserted = await dbQuery<{ id: string; created_at: string | null; display_code?: string | null }>(
     client
       .from("jobs")
       .insert({
@@ -821,7 +1066,7 @@ async function createJob(
         status: "analyzing",
         client_request_id: input.client_request_id ?? null,
       })
-      .select("id")
+      .select("id, created_at, display_code")
       .single(),
   );
 
@@ -1136,6 +1381,11 @@ async function createJob(
 
   return {
     job_id: jobId,
+    display_code: nullableString(inserted.data.display_code) ?? buildJobDisplayCode({
+      jobId,
+      customerId: ctx.user.id,
+      createdAt: inserted.data.created_at,
+    }),
     status: "broadcasting" as JobStatus,
     estimate,
     estimate_card_v3: estimateCardV3,
@@ -1307,6 +1557,7 @@ async function createKaelChat(
     }
   }
 
+  const shouldDeferAnalysis = input.defer_analysis === true;
   const metadata = compactMetadata({
     problem_chips: input.problem_chips,
     address_label: input.address_label ?? null,
@@ -1316,6 +1567,13 @@ async function createKaelChat(
     ),
     photo_urls: input.photo_urls,
     demanding_customer_qa_count: input.message ? 1 : undefined,
+    agentic_flow: shouldDeferAnalysis
+      ? {
+        evidence_decision: "pending",
+        gate: "evidence",
+        status: "collecting_evidence",
+      }
+      : undefined,
   });
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
@@ -1323,7 +1581,7 @@ async function createKaelChat(
       .insert({
         customer_id: ctx.user.id,
         service_type: input.service_type,
-        status: "active",
+        status: shouldDeferAnalysis ? "collecting_evidence" : "active",
         safe_metadata: metadata,
         client_request_id: input.client_request_id ?? null,
       })
@@ -1388,29 +1646,31 @@ async function createKaelChat(
       { actorId: ctx.user.id, jobId: null },
     );
     if (!boundaryHandled) {
-      const handledDemandingCustomer =
-        await maybeHandleDemandingCustomerKaelChatTurn(
-          client,
-          {
+      if (!shouldDeferAnalysis) {
+        const handledDemandingCustomer =
+          await maybeHandleDemandingCustomerKaelChatTurn(
+            client,
+            {
+              sessionId,
+              actorId: ctx.user.id,
+              jobId: null,
+              status: "active",
+              metadata,
+              message,
+              qaCount: 1,
+            },
+          );
+        if (!handledDemandingCustomer) {
+          await advanceKaelChatEstimate(
+            ctx,
             sessionId,
-            actorId: ctx.user.id,
-            jobId: null,
-            status: "active",
-            metadata,
-            message,
-            qaCount: 1,
-          },
-        );
-      if (!handledDemandingCustomer) {
-        await advanceKaelChatEstimate(
-          ctx,
-          sessionId,
-          {
-            ...input,
-            message,
-          },
-          secrets,
-        );
+            {
+              ...input,
+              message,
+            },
+            secrets,
+          );
+        }
       }
     }
   }
@@ -1476,7 +1736,7 @@ async function buildExistingJobCreateResponse(
     client
       .from("jobs")
       .select(
-        "id, status, service_type, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, final_price",
+        "id, display_code, status, service_type, customer_id, created_at, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_advisory, kael_estimate_card_v3, final_price",
       )
       .eq("id", jobId)
       .single(),
@@ -1512,6 +1772,11 @@ async function buildExistingJobCreateResponse(
   };
   return {
     job_id: asString(job.data.id),
+    display_code: nullableString(job.data.display_code) ?? buildJobDisplayCode({
+      jobId: asString(job.data.id),
+      customerId: nullableString(job.data.customer_id),
+      createdAt: nullableString(job.data.created_at),
+    }),
     status: asJobStatus(job.data.status),
     estimate,
     estimate_card_v3: Object.keys(cardV3).length > 0
@@ -1525,6 +1790,43 @@ async function buildExistingJobCreateResponse(
 // X1 (Plan.md §27.4 — 2026-05-29): shared boundary entry point used by both
 // createKaelChat and sendKaelChatTurn. Returns true when the message was
 // declined (caller skips downstream processing); false otherwise.
+async function answerKaelAssistant(
+  ctx: MobileApiContext,
+  input: KaelAssistantInput,
+  secrets: EdgeAiSecrets,
+) {
+  const client = db(ctx);
+  let job: Record<string, unknown> | null = null;
+
+  if (input.job_id) {
+    job = await requireJobAccess(client, input.job_id, ctx, {
+      select:
+        "id, status, customer_id, worker_id, service_type, description, address_district, kael_problem_identified, kael_complexity, kael_advisory, payment_status",
+    });
+  }
+
+  return runCustomerAssistant({
+    client,
+    job: job
+      ? {
+        id: asString(job.id),
+        status: nullableString(job.status),
+        service_type: nullableString(job.service_type),
+        description: nullableString(job.description),
+        address_district: nullableString(job.address_district),
+        kael_problem_identified: nullableString(job.kael_problem_identified),
+        kael_complexity: nullableString(job.kael_complexity),
+        kael_advisory: nullableString(job.kael_advisory),
+        payment_status: nullableString(job.payment_status),
+      }
+      : null,
+    language: input.language,
+    message: input.message,
+    secrets,
+    surface: input.surface,
+  });
+}
+
 async function maybeApplyKaelBoundaryGuard(
   client: DbClient,
   sessionId: string,
@@ -1739,6 +2041,171 @@ async function streamKaelChatTurn(
   });
 
   return createSseResponse(stream);
+}
+
+async function createKaelChatMediaUpload(
+  ctx: MobileApiContext,
+  input: KaelChatMediaUploadInput,
+): Promise<KaelChatMediaUploadResponse> {
+  const mimeType = normalizeKaelChatMediaMime(input.mime_type);
+  if (!mimeType) {
+    apiFailure("UNSUPPORTED_MEDIA", "Loại media chưa hỗ trợ", 400);
+  }
+  const objectPath = `${ctx.user.id}/kael-chat/${
+    safeKaelChatObjectName(input.file_name, mimeType)
+  }`;
+  const storageRoot = db(ctx).storage;
+  if (!storageRoot) {
+    apiFailure("MEDIA_UPLOAD_UNAVAILABLE", "Không thể chuẩn bị kho media", 500);
+  }
+  const storage = storageRoot.from(KAEL_CHAT_MEDIA_BUCKET) as unknown as {
+    createSignedUploadUrl(
+      path: string,
+      options?: { upsert?: boolean },
+    ): Promise<{
+      data: { signedUrl?: string; token?: string; path?: string } | null;
+      error: unknown;
+    }>;
+  };
+  const { data, error } = await storage.createSignedUploadUrl(objectPath, {
+    upsert: false,
+  });
+  if (error || !data?.signedUrl || !data?.token) {
+    apiFailure("MEDIA_UPLOAD_UNAVAILABLE", "Không thể chuẩn bị kho media", 500);
+  }
+  return {
+    bucket_id: KAEL_CHAT_MEDIA_BUCKET,
+    object_path: objectPath,
+    media_ref: kaelChatStorageRef(objectPath),
+    token: data.token,
+    signed_upload_url: data.signedUrl,
+    expires_in_seconds: 60 * 60 * 2,
+  };
+}
+
+async function submitKaelChatEvidence(
+  ctx: MobileApiContext,
+  sessionId: string,
+  input: KaelChatEvidenceInput,
+  secrets: EdgeAiSecrets,
+) {
+  const client = db(ctx);
+  const sessionResult = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_chat_sessions")
+      .select(
+        "id, job_id, customer_id, service_type, status, total_turns, safe_metadata",
+      )
+      .eq("id", sessionId)
+      .single(),
+  );
+  if (sessionResult.error || !sessionResult.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
+  }
+
+  const session = sessionResult.data;
+  assertKaelSessionOwnership(session, ctx);
+  const status = asKaelChatStatus(session.status);
+  if (status !== "collecting_evidence") {
+    apiFailure("INVALID_STATUS", "Phiên Kael chưa chờ bằng chứng", 409);
+  }
+
+  const previousTurns = asNumber(session.total_turns);
+  const previousMetadata = asRecord(session.safe_metadata);
+  const previousFlow = asRecord(previousMetadata.agentic_flow);
+  const photoUrls = input.photo_urls;
+  const mediaRefs = input.media_refs ?? [];
+  const mergedPhotoUrls = mergeLimitedRefs(
+    asStringArray(previousMetadata.photo_urls),
+    photoUrls,
+    5,
+  );
+  const mergedMediaRefs = mergeLimitedRefs(
+    asStringArray(previousMetadata.media_refs),
+    mediaRefs,
+    5,
+  );
+  const signedMediaUrls = await signedKaelChatMediaUrls(
+    client,
+    ctx.user.id,
+    mediaRefs,
+  );
+  const analysisPhotoUrls = mergeLimitedRefs(mergedPhotoUrls, signedMediaUrls, 5);
+  const skipReason = input.skip_reason
+    ? scrubSensitiveForLLM(sanitizeForLLM(input.skip_reason))
+    : null;
+  const evidenceText = input.decision === "confirmed"
+    ? "Đã gửi bằng chứng hiện trạng."
+    : skipReason
+      ? `Bỏ qua bằng chứng: ${skipReason}`
+      : "Bỏ qua bằng chứng.";
+  const metadata = compactMetadata({
+    ...previousMetadata,
+    problem_chips: input.problem_chips ??
+      asStringArray(previousMetadata.problem_chips),
+    photo_urls: mergedPhotoUrls,
+    media_refs: mergedMediaRefs,
+    agentic_flow: {
+      ...previousFlow,
+      evidence_count: photoUrls.length + mediaRefs.length,
+      evidence_decision: input.decision,
+      evidence_submitted_at: new Date().toISOString(),
+      gate: "evidence",
+      skip_reason: skipReason ?? undefined,
+      status: "ready_for_analysis",
+    },
+  });
+
+  await insertKaelTurn(client, {
+    session_id: sessionId,
+    turn_index: previousTurns + 1,
+    role: "customer",
+    content_type: photoUrls.length + mediaRefs.length > 0 ? "photo_attached" : "text",
+    text_content: evidenceText,
+    media_refs: mergeLimitedRefs(photoUrls, mediaRefs, 5),
+    safe_metadata: {
+      decision: input.decision,
+      evidence_count: photoUrls.length + mediaRefs.length,
+    },
+  });
+  await updateKaelSession(client, sessionId, {
+    total_turns: previousTurns + 1,
+    status: "active",
+    safe_metadata: metadata,
+  });
+
+  const firstTurnResult = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("kael_chat_turns")
+      .select("text_content")
+      .eq("session_id", sessionId)
+      .eq("role", "customer")
+      .order("turn_index", { ascending: true })
+      .limit(1),
+  );
+  const firstMessage = nullableString(firstTurnResult.data?.[0]?.text_content);
+  const analysisMessage = sanitizeForLLM(
+    input.message ?? firstMessage ?? evidenceText,
+  );
+
+  const boundaryHandled = await maybeApplyKaelBoundaryGuard(
+    client,
+    sessionId,
+    analysisMessage,
+    asServiceType(session.service_type),
+    { actorId: ctx.user.id, jobId: nullableString(session.job_id) },
+  );
+  if (boundaryHandled) return getKaelChat(ctx, sessionId);
+
+  await advanceKaelChatEstimate(ctx, sessionId, {
+    service_type: asServiceType(session.service_type),
+    message: analysisMessage,
+    problem_chips: asStringArray(metadata.problem_chips),
+    photo_urls: analysisPhotoUrls,
+    address_district: nullableString(metadata.address_district) ?? undefined,
+  }, secrets);
+
+  return getKaelChat(ctx, sessionId);
 }
 
 async function streamWorkerKaelChatTurn(
@@ -2654,10 +3121,16 @@ async function getJob(ctx: MobileApiContext, jobId: string) {
     ? await getCurrentScopeChange(client, jobId)
     : null;
   const addressProjection = projectAddressAccess(job, ctx.role);
+  const worker = await getJobWorkerSummary(client, nullableString(job.worker_id));
 
   return {
     job: {
       id: asString(job.id),
+      display_code: nullableString(job.display_code) ?? buildJobDisplayCode({
+        jobId: asString(job.id),
+        customerId: nullableString(job.customer_id),
+        createdAt: nullableString(job.created_at),
+      }),
       status: asJobStatus(job.status),
       service_type: asServiceType(job.service_type),
       description: asString(job.description),
@@ -2679,6 +3152,17 @@ async function getJob(ctx: MobileApiContext, jobId: string) {
       kael_worker_brief_guidance: nullableRecord(job.kael_worker_brief_guidance),
       kael_progress: parseKaelProgressSnapshot(job.kael_progress, jobId),
       final_price: nullableNumber(job.final_price),
+      payment_provider: nullableString(job.payment_provider),
+      payment_status: asPaymentStatus(job.payment_status),
+      payment_code: nullableString(job.payment_code),
+      payment_transfer_content: nullableString(job.payment_transfer_content),
+      payment_qr_image_url: nullableString(job.payment_qr_image_url),
+      payment_expires_at: nullableString(job.payment_expires_at),
+      payment_received_at: nullableString(job.payment_received_at),
+      payment_amount_received: nullableNumber(job.payment_amount_received),
+      gross_amount: nullableNumber(job.gross_amount),
+      platform_fee: nullableNumber(job.platform_fee),
+      worker_net: nullableNumber(job.worker_net),
       completion_notes: nullableString(job.completion_notes),
       completion_photo_urls: asStringArray(job.completion_photo_urls),
       created_at: asString(job.created_at),
@@ -2689,8 +3173,60 @@ async function getJob(ctx: MobileApiContext, jobId: string) {
       paid_at: nullableString(job.paid_at),
       reviewed_at: nullableString(job.reviewed_at),
     },
+    worker,
     broadcast_state: broadcastState,
     current_scope_change: currentScopeChange,
+  };
+}
+
+async function getJobWorkerSummary(
+  client: DbClient,
+  workerId: string | null,
+): Promise<JobWorkerSummary | null> {
+  if (!workerId) return null;
+
+  const accountProfile = await dbQuery<Record<string, unknown>>(
+    client
+      .from("profiles")
+      .select("id, full_name, avatar_url")
+      .eq("id", workerId)
+      .maybeSingle(),
+  );
+  if (accountProfile.error) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea3i h\u1ed3 s\u01a1 th\u1ee3", 500);
+  }
+
+  const workerProfile = await dbQuery<Record<string, unknown>>(
+    client
+      .from("worker_profiles")
+      .select("rating, total_jobs")
+      .eq("id", workerId)
+      .maybeSingle(),
+  );
+  if (workerProfile.error) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea3i h\u1ed3 s\u01a1 th\u1ee3", 500);
+  }
+
+  const reviewCount = await dbQuery(
+    client
+      .from("reviews")
+      .select("id", { count: "exact", head: true })
+      .eq("worker_id", workerId),
+  );
+  if (reviewCount.error) {
+    apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 t\u1ea3i \u0111\u00e1nh gi\u00e1 th\u1ee3", 500);
+  }
+
+  if (!accountProfile.data && !workerProfile.data) return null;
+
+  return {
+    id: workerId,
+    display_code: buildWorkerDisplayCode(workerId),
+    full_name: nullableString(accountProfile.data?.full_name) ?? "Th\u1ee3 NestScout",
+    avatar_url: nullableString(accountProfile.data?.avatar_url),
+    rating: workerProfile.data ? asNumber(workerProfile.data.rating) : 0,
+    review_count: reviewCount.count ?? 0,
+    total_jobs: workerProfile.data ? asNumber(workerProfile.data.total_jobs) : 0,
   };
 }
 
@@ -4143,10 +4679,10 @@ function buildWorkerKaelAnswer(
 async function createWorkerKaelChat(
   ctx: MobileApiContext,
   input: WorkerKaelChatCreateInput,
-  secrets: EdgeAiSecrets,
+  _secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
-  const job = await requireWorkerKaelChatJob(client, ctx, input.job_id);
+  await requireWorkerKaelChatJob(client, ctx, input.job_id);
 
   if (input.client_request_id) {
     const existing = await findExistingWorkerKaelSessionByClientRequest(
@@ -4157,8 +4693,6 @@ async function createWorkerKaelChat(
     );
     if (existing) return getWorkerKaelChat(ctx, existing);
   }
-
-  await enforceWorkerKaelChatRateLimit(client, ctx);
 
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
@@ -4171,7 +4705,6 @@ async function createWorkerKaelChat(
         safe_metadata: compactMetadata({
           source: "worker_kael_chat",
           language: input.language,
-          initial_media_count: input.media_refs.length,
         }),
       })
       .select(WORKER_KAEL_SESSION_SELECT)
@@ -4193,13 +4726,6 @@ async function createWorkerKaelChat(
   }
 
   const sessionId = asString(sessionResult.data.id);
-  if (input.message) {
-    await sendWorkerKaelChatTurn(ctx, sessionId, {
-      message: input.message,
-      media_refs: input.media_refs,
-      language: input.language,
-    }, secrets, { prefetchedJob: job, skipRateLimit: true });
-  }
   return getWorkerKaelChat(ctx, sessionId);
 }
 
@@ -4251,13 +4777,22 @@ async function sendWorkerKaelChatTurn(
   options: { prefetchedJob?: Record<string, unknown>; skipRateLimit?: boolean } = {},
 ) {
   const client = db(ctx);
-  if (!options.skipRateLimit) {
-    await enforceWorkerKaelChatRateLimit(client, ctx);
-  }
   const session = await readWorkerKaelSession(client, ctx, sessionId);
   if (asWorkerKaelChatStatus(session.status) !== "active") {
     apiFailure("INVALID_STATUS", "Phi\u00ean Kael n\u00e0y kh\u00f4ng c\u00f2n nh\u1eadn tin nh\u1eafn", 409);
   }
+  if (input.client_request_id) {
+    const existingTurn = await findExistingWorkerKaelTurnByClientRequest(
+      client,
+      sessionId,
+      input.client_request_id,
+    );
+    if (existingTurn) return getWorkerKaelChat(ctx, sessionId);
+  }
+  if (!options.skipRateLimit) {
+    await enforceWorkerKaelChatRateLimit(client, ctx);
+  }
+  enforceWorkerKaelChatCostBudget(session);
 
   const job = options.prefetchedJob ??
     await requireWorkerKaelChatJob(client, ctx, asString(session.job_id));
@@ -4280,6 +4815,7 @@ async function sendWorkerKaelChatTurn(
     content_type: input.media_refs.length > 0 ? "photo_attached" : "text",
     text_content: safeMessage,
     media_refs: input.media_refs,
+    client_request_id: input.client_request_id ?? null,
     safe_metadata: {},
   });
 
@@ -4358,7 +4894,7 @@ async function sendWorkerKaelChatTurn(
 const WORKER_KAEL_SESSION_SELECT =
   "id, job_id, worker_id, status, started_at, closed_at, total_turns, total_cost_usd, kael_progress, safe_metadata, created_at, updated_at";
 const WORKER_KAEL_TURN_SELECT =
-  "id, session_id, job_id, turn_index, role, content_type, text_content, media_refs, safe_metadata, created_at";
+  "id, session_id, job_id, turn_index, role, content_type, text_content, media_refs, created_at";
 
 async function requireWorkerKaelChatJob(
   client: DbClient,
@@ -4393,6 +4929,35 @@ async function findExistingWorkerKaelSessionByClientRequest(
   return asString(result.data.id);
 }
 
+async function findExistingWorkerKaelTurnByClientRequest(
+  client: DbClient,
+  sessionId: string,
+  clientRequestId: string,
+): Promise<string | null> {
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_chat_turns")
+      .select("id")
+      .eq("session_id", sessionId)
+      .eq("client_request_id", clientRequestId)
+      .maybeSingle(),
+  );
+  if (result.error || !result.data) return null;
+  return asString(result.data.id);
+}
+
+function enforceWorkerKaelChatCostBudget(session: Record<string, unknown>) {
+  const currentCost = asNumber(session.total_cost_usd);
+  const cap = KAEL_ROUTING_CONFIG.worker_assist.costCeilingUsd;
+  if (currentCost >= cap) {
+    apiFailure(
+      "COST_CAP_HIT",
+      "Kael \u0111ang t\u1ea1m d\u1eebng \u0111\u1ec3 b\u1ea3o v\u1ec7 gi\u1edbi h\u1ea1n s\u1eed d\u1ee5ng. Vui l\u00f2ng th\u1eed l\u1ea1i sau.",
+      429,
+    );
+  }
+}
+
 async function enforceWorkerKaelChatRateLimit(
   client: DbClient,
   ctx: MobileApiContext,
@@ -4404,7 +4969,11 @@ async function enforceWorkerKaelChatRateLimit(
     console.warn("worker Kael chat rate limit unavailable", {
       errorCode: result.error.code,
     });
-    return;
+    apiFailure(
+      "RATE_LIMIT_UNAVAILABLE",
+      "Kael \u0111ang b\u1ea3o v\u1ec7 gi\u1edbi h\u1ea1n s\u1eed d\u1ee5ng. Vui l\u00f2ng th\u1eed l\u1ea1i sau \u00edt ph\u00fat.",
+      429,
+    );
   }
   const row = result.data?.[0];
   if (row && asBoolean(row.allowed) === false) {
@@ -4478,10 +5047,6 @@ async function appendWorkerKaelAnswerTurn(
       redirect_scope_change: answer.redirect_scope_change,
       fallback_used: answer.fallback_used,
       guardrail_reason: answer.guardrail_reason ?? null,
-      provider_attempts: formatWorkerAssistProviderAttempts(answer.provider_attempts ?? []),
-      provider: answer.provider ?? null,
-      model: answer.model ?? null,
-      latency_ms: answer.latency_ms ?? null,
     }),
     ai_provider: answer.provider ?? null,
     ai_model: answer.model ?? null,
@@ -4509,21 +5074,6 @@ async function appendWorkerKaelAnswerTurn(
   if (update.error || !update.data) {
     apiFailure("DB_ERROR", "Kh\u00f4ng th\u1ec3 c\u1eadp nh\u1eadt phi\u00ean Kael", 500);
   }
-}
-
-function formatWorkerAssistProviderAttempts(
-  attempts: readonly WorkerAssistProviderAttempt[],
-) {
-  return attempts.map((attempt) =>
-    [
-      attempt.role,
-      attempt.provider,
-      attempt.result,
-      attempt.code ?? "ok",
-      `timeout=${attempt.timeout_ms}`,
-      attempt.latency_ms !== undefined ? `latency=${attempt.latency_ms}` : "latency=n/a",
-    ].join(":")
-  );
 }
 
 async function readWorkerKaelRecentTurns(
@@ -4555,19 +5105,16 @@ function serializeWorkerKaelSession(row: Record<string, unknown>) {
   return {
     id: asString(row.id),
     job_id: asString(row.job_id),
-    worker_id: asString(row.worker_id),
     status: asWorkerKaelChatStatus(row.status),
     started_at: asString(row.started_at),
     closed_at: nullableString(row.closed_at),
     total_turns: asNumber(row.total_turns),
-    total_cost_usd: asNumber(row.total_cost_usd),
     progress: parsedProgress?.success
       ? {
         ...parsedProgress.data,
         failure_reason: parsedProgress.data.failure_reason ?? null,
       }
       : null,
-    safe_metadata: asRecord(row.safe_metadata),
   };
 }
 
@@ -4580,7 +5127,6 @@ function serializeWorkerKaelTurn(row: Record<string, unknown>) {
     content_type: asWorkerKaelContentType(row.content_type),
     text_content: nullableString(row.text_content),
     media_refs: asStringArray(row.media_refs),
-    safe_metadata: asRecord(row.safe_metadata),
     created_at: asString(row.created_at),
   };
 }
@@ -5179,7 +5725,7 @@ async function attachJobMedia(
     }
   }
   const beforeRefs = rows
-    .filter((row) => row.stage === "before" || row.stage === "kael_reference")
+    .filter((row) => row.stage === "before" || (row.stage === "kael_reference" && isCustomer))
     .map((row) => storageRef(row.object_path));
   const afterRefs = rows
     .filter((row) => row.stage === "after")
@@ -5760,6 +6306,486 @@ async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
   };
 }
 
+async function createPaymentIntent(
+  ctx: MobileApiContext,
+  jobId: string,
+  secrets: EdgeServiceSecrets,
+) {
+  const client = db(ctx);
+  const job = await requireJobAccess(client, jobId, ctx, {
+    select:
+      "id, display_code, status, customer_id, worker_id, final_price, created_at, payment_provider, payment_status, payment_code, payment_transfer_content, payment_qr_image_url, payment_expires_at, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, payment_updated_at",
+  });
+  const currentStatus = job.status as JobStatus;
+  if (currentStatus === "paid" || currentStatus === "reviewed") {
+    return serializePaymentIntent(job);
+  }
+  if (
+    currentStatus !== "confirmed_by_customer" &&
+    currentStatus !== "payment_pending"
+  ) {
+    apiFailure(
+      "INVALID_STATUS",
+      "Kael chưa xác nhận hoàn tất nên chưa thể tạo mã thanh toán",
+      409,
+    );
+  }
+
+  const finalPrice = nullableNumber(job.final_price);
+  if (finalPrice === null || finalPrice <= 0) {
+    apiFailure(
+      "INVALID_STATUS",
+      "Kael chưa chốt giá cuối cùng nên chưa thể tạo mã thanh toán",
+      409,
+    );
+  }
+  const workerId = nullableString(job.worker_id);
+  if (!workerId) {
+    apiFailure("INVALID_STATUS", "Yêu cầu chưa có thợ để nhận thanh toán", 409);
+  }
+
+  const worker = await dbQuery<Record<string, unknown>>(
+    client
+      .from("worker_profiles")
+      .select("bank_account, bank_name")
+      .eq("id", workerId)
+      .maybeSingle(),
+  );
+  if (worker.error) {
+    apiFailure("DB_ERROR", "Không thể kiểm tra tài khoản thợ", 500);
+  }
+  const bankAccount = normalizeBankAccount(nullableString(worker.data?.bank_account));
+  const bankName = normalizeBankName(nullableString(worker.data?.bank_name));
+  if (!bankAccount || !bankName) {
+    apiFailure(
+      "WORKER_BANK_MISSING",
+      "Thợ chưa cấu hình tài khoản nhận thanh toán",
+      409,
+    );
+  }
+
+  if (currentStatus === "confirmed_by_customer") {
+    const transition = validateWorkflowTransition({
+      event: "kael_decided_payment",
+      from: currentStatus,
+      to: "payment_pending",
+    });
+    if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
+  }
+
+  const displayCode = nullableString(job.display_code) ?? buildJobDisplayCode({
+    jobId: asString(job.id),
+    customerId: nullableString(job.customer_id),
+    createdAt: nullableString(job.created_at),
+  });
+  const paymentCode = nullableString(job.payment_code) ??
+    buildSepayPaymentCode(displayCode);
+  const transferContent = nullableString(job.payment_transfer_content) ??
+    `NestScout ${paymentCode}`;
+  const platformFee = Math.round(finalPrice * PLATFORM_FEE_WORKER);
+  const workerNet = Math.max(0, finalPrice - platformFee);
+  const expiresAt = new Date(Date.now() + SEPAY_PAYMENT_TTL_MS).toISOString();
+  const qrImageUrl = buildSepayQrImageUrl({
+    amount: finalPrice,
+    bankAccount,
+    bankName,
+    baseUrl: secrets.sepayQrBaseUrl,
+    description: transferContent,
+  });
+  const now = new Date().toISOString();
+  const updatePayload = {
+    status: "payment_pending",
+    payment_provider: SEPAY_VIETQR_PROVIDER,
+    payment_status: "vietqr_ready",
+    payment_code: paymentCode,
+    payment_transfer_content: transferContent,
+    payment_qr_image_url: qrImageUrl,
+    payment_expires_at: expiresAt,
+    payment_received_at: null,
+    payment_amount_received: null,
+    gross_amount: finalPrice,
+    platform_fee: platformFee,
+    worker_net: workerNet,
+    payment_failure_reason: null,
+    payment_updated_at: now,
+  };
+  const updated = await dbQuery<Record<string, unknown>>(
+    client
+      .from("jobs")
+      .update(updatePayload)
+      .eq("id", jobId)
+      .eq("status", currentStatus)
+      .select(
+        "id, status, payment_provider, payment_status, payment_code, payment_transfer_content, payment_qr_image_url, payment_expires_at, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, payment_updated_at",
+      )
+      .maybeSingle(),
+  );
+  if (updated.error) {
+    apiFailure("DB_ERROR", "Không thể tạo mã thanh toán", 500);
+  }
+  if (!updated.data) {
+    apiFailure(
+      "STATUS_CHANGED",
+      "Trạng thái đã thay đổi. Vui lòng tải lại và thử lại.",
+      409,
+    );
+  }
+
+  await logJobEvent(
+    client,
+    jobId,
+    "kael_created_sepay_vietqr_payment",
+    ctx,
+    currentStatus,
+    "payment_pending",
+    {
+      provider: SEPAY_VIETQR_PROVIDER,
+      payment_code: paymentCode,
+      gross_amount: finalPrice,
+      expires_at: expiresAt,
+    },
+  );
+  await insertUserNotification(client, {
+    userId: workerId,
+    jobId,
+    eventType: "payment_vietqr_ready",
+    title: "Kael đã tạo mã thanh toán",
+    body: "Khách hàng đã có mã VietQR. Thu nhập sẽ cập nhật khi SePay xác nhận giao dịch.",
+    metadata: { provider: SEPAY_VIETQR_PROVIDER, payment_code: paymentCode },
+  });
+  return serializePaymentIntent(updated.data);
+}
+
+async function handleSepayWebhook(
+  input: unknown,
+  headers: Headers,
+  secrets: EdgeServiceSecrets,
+) {
+  assertSepayWebhookAuth(headers, secrets);
+  const payload = parseSepayWebhook(input);
+  const client = publicRouteDb(secrets);
+  const duplicate = await dbQuery<Record<string, unknown>>(
+    client
+      .from("jobs")
+      .select("id")
+      .eq("sepay_transaction_id", payload.transactionId)
+      .maybeSingle(),
+  );
+  if (duplicate.error) {
+    apiFailure("DB_ERROR", "Không thể đối soát giao dịch", 500);
+  }
+  if (duplicate.data) return { success: true as const };
+
+  const paymentCode = payload.paymentCode ??
+    extractSepayPaymentCode(payload.content, payload.description);
+  if (!paymentCode) return { success: true as const };
+
+  const jobResult = await dbQuery<Record<string, unknown>>(
+    client
+      .from("jobs")
+      .select(
+        "id, status, customer_id, worker_id, final_price, payment_status, payment_code, gross_amount",
+      )
+      .eq("payment_code", paymentCode)
+      .maybeSingle(),
+  );
+  if (jobResult.error) {
+    apiFailure("DB_ERROR", "Không thể tìm mã thanh toán", 500);
+  }
+  const job = jobResult.data;
+  if (!job) return { success: true as const };
+
+  const jobId = asString(job.id);
+  const currentStatus = asJobStatus(job.status);
+  if (currentStatus === "paid" || currentStatus === "reviewed") {
+    return { success: true as const };
+  }
+  if (currentStatus !== "payment_pending") return { success: true as const };
+  const expectedAmount = nullableNumber(job.gross_amount) ??
+    nullableNumber(job.final_price);
+  if (
+    payload.transferType !== "in" ||
+    expectedAmount === null ||
+    payload.transferAmount !== expectedAmount
+  ) {
+    await markPaymentMismatch(client, jobId, payload, expectedAmount, currentStatus);
+    return { success: true as const };
+  }
+
+  const transition = validateWorkflowTransition({
+    event: "payment_confirmed",
+    from: currentStatus,
+    to: "paid",
+  });
+  if (!transition.valid) {
+    await markPaymentMismatch(client, jobId, payload, expectedAmount, currentStatus);
+    return { success: true as const };
+  }
+
+  const receivedAt = payload.transactionDate ?? new Date().toISOString();
+  const now = new Date().toISOString();
+  const updated = await dbQuery<Record<string, unknown>>(
+    client
+      .from("jobs")
+      .update({
+        status: "paid",
+        paid_at: receivedAt,
+        payment_status: "received",
+        payment_received_at: receivedAt,
+        payment_amount_received: payload.transferAmount,
+        sepay_transaction_id: payload.transactionId,
+        sepay_reference_code: payload.referenceCode,
+        payment_failure_reason: null,
+        payment_updated_at: now,
+      })
+      .eq("id", jobId)
+      .eq("status", "payment_pending")
+      .select("id")
+      .maybeSingle(),
+  );
+  if (updated.error) {
+    apiFailure("DB_ERROR", "Không thể ghi nhận thanh toán", 500);
+  }
+  if (!updated.data) return { success: true as const };
+
+  await logProviderJobEvent(client, {
+    jobId,
+    eventType: "sepay_payment_confirmed",
+    fromStatus: currentStatus,
+    toStatus: "paid",
+    metadata: {
+      provider: SEPAY_VIETQR_PROVIDER,
+      payment_code: paymentCode,
+      transfer_amount: payload.transferAmount,
+      sepay_transaction_id: payload.transactionId,
+      reference_code: payload.referenceCode,
+    },
+  });
+  const customerId = nullableString(job.customer_id);
+  const workerId = nullableString(job.worker_id);
+  if (customerId) {
+    await insertUserNotification(client, {
+      userId: customerId,
+      jobId,
+      eventType: "payment_confirmed",
+      title: "Thanh toán đã được xác nhận",
+      body: "SePay đã ghi nhận giao dịch VietQR cho yêu cầu này.",
+      metadata: { provider: SEPAY_VIETQR_PROVIDER, payment_code: paymentCode },
+    });
+  }
+  if (workerId) {
+    await insertUserNotification(client, {
+      userId: workerId,
+      jobId,
+      eventType: "payment_confirmed",
+      title: "Thu nhập đã được cập nhật",
+      body: "SePay đã xác nhận thanh toán VietQR cho công việc này.",
+      metadata: { provider: SEPAY_VIETQR_PROVIDER, payment_code: paymentCode },
+    });
+  }
+  return { success: true as const };
+}
+
+type SepayWebhookPayload = {
+  content: string | null;
+  description: string | null;
+  paymentCode: string | null;
+  referenceCode: string | null;
+  transactionDate: string | null;
+  transactionId: string;
+  transferAmount: number;
+  transferType: "in" | "out" | string;
+};
+
+function serializePaymentIntent(row: Record<string, unknown>) {
+  return {
+    job_id: asString(row.id),
+    status: asJobStatus(row.status),
+    payment: {
+      provider: SEPAY_VIETQR_PROVIDER,
+      status: asPaymentStatus(row.payment_status) ?? "not_started",
+      gross_amount: nullableNumber(row.gross_amount),
+      platform_fee: nullableNumber(row.platform_fee),
+      worker_net: nullableNumber(row.worker_net),
+      payment_code: nullableString(row.payment_code),
+      transfer_content: nullableString(row.payment_transfer_content),
+      qr_image_url: nullableString(row.payment_qr_image_url),
+      expires_at: nullableString(row.payment_expires_at),
+      received_at: nullableString(row.payment_received_at),
+      amount_received: nullableNumber(row.payment_amount_received),
+      updated_at: nullableString(row.payment_updated_at),
+    },
+  };
+}
+
+function buildSepayPaymentCode(displayCode: string): string {
+  const normalized = displayCode.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return `NS${normalized}`.slice(0, 32);
+}
+
+function buildSepayQrImageUrl(input: {
+  amount: number;
+  bankAccount: string;
+  bankName: string;
+  baseUrl?: string;
+  description: string;
+}): string {
+  const url = new URL(input.baseUrl?.trim() || SEPAY_QR_BASE_URL);
+  url.searchParams.set("acc", input.bankAccount);
+  url.searchParams.set("bank", input.bankName);
+  url.searchParams.set("amount", String(input.amount));
+  url.searchParams.set("des", input.description);
+  url.searchParams.set("template", "compact");
+  url.searchParams.set("showinfo", "false");
+  url.searchParams.set("download", "false");
+  url.searchParams.set("store", "NestScout");
+  return url.toString();
+}
+
+function normalizeBankAccount(value: string | null): string | null {
+  const normalized = value?.replace(/[\s.-]/g, "") ?? "";
+  return normalized.length >= 6 && normalized.length <= 50 ? normalized : null;
+}
+
+function normalizeBankName(value: string | null): string | null {
+  const normalized = value?.trim() ?? "";
+  return normalized.length >= 2 && normalized.length <= 100 ? normalized : null;
+}
+
+function assertSepayWebhookAuth(headers: Headers, secrets: EdgeServiceSecrets) {
+  const configured = secrets.sepayWebhookApiKey?.trim();
+  if (!configured) {
+    apiFailure("CONFIG_MISSING", "SePay webhook chưa được cấu hình", 503);
+  }
+  const value = headers.get("authorization")?.trim() ?? "";
+  const accepted = [`Apikey ${configured}`, `apikey ${configured}`];
+  if (!accepted.some((candidate) => safeEqual(candidate, value))) {
+    apiFailure("AUTH_FORBIDDEN", "Webhook không hợp lệ", 403);
+  }
+}
+
+function parseSepayWebhook(input: unknown): SepayWebhookPayload {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    apiFailure("VALIDATION", "Webhook không hợp lệ", 400);
+  }
+  const record = input as Record<string, unknown>;
+  const transactionId = String(record.id ?? "").trim();
+  const transferAmount = integerAmount(record.transferAmount);
+  const transferType = nullableString(record.transferType)?.toLowerCase() ?? "";
+  if (!transactionId || transferAmount === null || !transferType) {
+    apiFailure("VALIDATION", "Webhook không hợp lệ", 400);
+  }
+  return {
+    content: nullableString(record.content),
+    description: nullableString(record.description),
+    paymentCode: normalizePaymentCode(nullableString(record.code)),
+    referenceCode: nullableString(record.referenceCode),
+    transactionDate: nullableString(record.transactionDate),
+    transactionId,
+    transferAmount,
+    transferType,
+  };
+}
+
+function integerAmount(value: unknown): number | null {
+  const number = nullableNumber(value);
+  if (number === null || !Number.isInteger(number) || number <= 0) return null;
+  return number;
+}
+
+function extractSepayPaymentCode(
+  content: string | null,
+  description: string | null,
+): string | null {
+  const source = `${content ?? ""} ${description ?? ""}`;
+  const match = source.toUpperCase().match(/\bNSMOH[A-Z0-9]{4,24}\b/);
+  return normalizePaymentCode(match?.[0] ?? null);
+}
+
+function normalizePaymentCode(value: string | null): string | null {
+  const normalized = value?.replace(/[^a-zA-Z0-9]/g, "").toUpperCase() ?? "";
+  return normalized.startsWith("NSMOH") && normalized.length >= 8
+    ? normalized.slice(0, 32)
+    : null;
+}
+
+async function markPaymentMismatch(
+  client: DbClient,
+  jobId: string,
+  payload: SepayWebhookPayload,
+  expectedAmount: number | null,
+  currentStatus: JobStatus,
+) {
+  const now = new Date().toISOString();
+  const mismatchReason = payload.transferType !== "in"
+    ? "transfer_type"
+    : currentStatus !== "payment_pending"
+      ? "status"
+      : "amount";
+  await dbQuery(
+    client
+      .from("jobs")
+      .update({
+        payment_status: "amount_mismatch",
+        payment_amount_received: payload.transferAmount,
+        payment_failure_reason: mismatchReason,
+        payment_updated_at: now,
+      })
+      .eq("id", jobId),
+  );
+  await logProviderJobEvent(client, {
+    jobId,
+    eventType: "sepay_payment_mismatch",
+    fromStatus: currentStatus,
+    toStatus: currentStatus,
+    metadata: {
+      provider: SEPAY_VIETQR_PROVIDER,
+      expected_amount: expectedAmount,
+      transfer_amount: payload.transferAmount,
+      transfer_type: payload.transferType,
+      sepay_transaction_id: payload.transactionId,
+      reference_code: payload.referenceCode,
+      reason: mismatchReason,
+    },
+  });
+}
+
+async function logProviderJobEvent(
+  client: DbClient,
+  input: {
+    eventType: string;
+    fromStatus: JobStatus | null;
+    jobId: string;
+    metadata: Record<string, unknown>;
+    toStatus: JobStatus | null;
+  },
+) {
+  await dbQuery(
+    client.from("job_events").insert({
+      job_id: input.jobId,
+      actor_id: null,
+      actor_role: null,
+      event_type: input.eventType,
+      from_status: input.fromStatus,
+      to_status: input.toStatus,
+      safe_metadata: input.metadata,
+    }),
+  ).catch(() => {
+    console.warn("mobile-api provider event log failed", {
+      eventType: input.eventType,
+    });
+  });
+}
+
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    result |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  }
+  return result === 0;
+}
+
 function buildKaelCustomerAcceptedCompletionDecision(
   jobId: string,
   finalPrice: number | null,
@@ -5959,6 +6985,79 @@ async function submitCustomerKaelFeedback(
     status: "new" as const,
     created_at: nullableString(result.data.created_at) ?? now,
   };
+}
+
+async function submitWorkerApplication(
+  input: WorkerApplicationSubmitInput,
+  secrets: EdgeServiceSecrets,
+) {
+  return submitWorkerApplicationForReview(publicRouteDb(secrets), input);
+}
+
+export async function submitWorkerApplicationForReview(
+  client: DbClient,
+  input: WorkerApplicationSubmitInput,
+) {
+  const now = new Date().toISOString();
+  if (input.client_request_id) {
+    const existing = await dbQuery<Record<string, unknown>>(
+      client
+        .from("kael_admin_queue")
+        .select("id, status, created_at")
+        .eq("queue_type", "worker_application_review")
+        .eq("status", "open")
+        .eq("safe_metadata->>client_request_id", input.client_request_id)
+        .maybeSingle(),
+    );
+    if (existing.error) {
+      apiFailure("DB_ERROR", "Không thể kiểm tra hồ sơ xét duyệt thợ", 500);
+    }
+    if (existing.data) {
+      return {
+        application_id: asString(existing.data.id),
+        status: "open" as const,
+        submitted_at: nullableString(existing.data.created_at) ?? now,
+      };
+    }
+  }
+
+  const inserted = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_admin_queue")
+      .insert({
+        job_id: null,
+        actor_id: null,
+        actor_role: "system",
+        queue_type: "worker_application_review",
+        priority: "medium",
+        status: "open",
+        escalation_level: "soft",
+        reason_code: "worker_application_submitted",
+        response_summary: "Worker application submitted for manual review",
+        safe_metadata: compactMetadata({
+          schema_version: "worker_application_review.v1",
+          source: input.source,
+          language: input.language,
+          contact: input.contact,
+          contact_kind: classifyWorkerApplicationContact(input.contact),
+          client_request_id: input.client_request_id,
+        }),
+      })
+      .select("id, status, created_at")
+      .maybeSingle(),
+  );
+  if (inserted.error || !inserted.data) {
+    apiFailure("DB_ERROR", "Không thể gửi hồ sơ xét duyệt thợ", 500);
+  }
+  return {
+    application_id: asString(inserted.data.id),
+    status: "open" as const,
+    submitted_at: nullableString(inserted.data.created_at) ?? now,
+  };
+}
+
+function classifyWorkerApplicationContact(contact: string) {
+  return contact.includes("@") ? "email" : "phone";
 }
 
 type NormalTransactionMemoryInput = {
@@ -6275,7 +7374,7 @@ async function getWorkerKaelMemory(ctx: MobileApiContext) {
   const result = await dbQuery<Record<string, unknown>>(
     client
       .from("worker_kael_memory")
-      .select("worker_id, language, service_skill_summary, service_skill_proficiency, reliability_signals, red_flags, memory_version, last_observed_at")
+      .select("worker_id, language, service_skill_summary, service_skill_proficiency, reliability_signals, red_flags, safe_metadata, memory_version, last_observed_at")
       .eq("worker_id", ctx.user.id)
       .maybeSingle(),
   );
@@ -6291,6 +7390,124 @@ async function getWorkerKaelMemory(ctx: MobileApiContext) {
   return {
     subject_type: "worker" as const,
     memory: result.data ? sanitizeMemoryObject(result.data) : null,
+  };
+}
+
+async function updateMyCustomerKaelMemoryPreference(
+  ctx: MobileApiContext,
+  input: CustomerKaelMemoryPreferenceUpdateInput,
+) {
+  const client = db(ctx);
+  const existing = await dbQuery<Record<string, unknown>>(
+    client
+      .from("customer_kael_memory")
+      .select("service_preferences, memory_version")
+      .eq("customer_id", ctx.user.id)
+      .maybeSingle(),
+  );
+  if (existing.error) {
+    apiFailure("DB_ERROR", "Không thể tải bộ nhớ Kael", 500);
+  }
+
+  const currentPreferences = asRecord(existing.data?.service_preferences);
+  const currentPermissions = asRecord(currentPreferences.memory_permissions);
+  const nextPreferences = {
+    ...currentPreferences,
+    memory_permissions: {
+      ...currentPermissions,
+      [input.key]: input.enabled,
+    },
+  };
+  const currentVersion = nullableNumber(existing.data?.memory_version) ?? 1;
+  const nextVersion = existing.data ? currentVersion + 1 : 1;
+  const now = new Date().toISOString();
+  const upserted = await dbQuery<Record<string, unknown>>(
+    client
+      .from("customer_kael_memory")
+      .upsert({
+        customer_id: ctx.user.id,
+        service_preferences: nextPreferences,
+        memory_version: nextVersion,
+        last_observed_at: now,
+      }, { onConflict: "customer_id" })
+      .select("customer_id, language, preference_summary, service_preferences, trust_signals, memory_version, last_observed_at")
+      .single(),
+  );
+  if (upserted.error || !upserted.data) {
+    apiFailure("DB_ERROR", "Không thể lưu bộ nhớ Kael", 500);
+  }
+
+  await logMemoryAudit(client, {
+    subjectType: "customer",
+    subjectId: ctx.user.id,
+    actorId: ctx.user.id,
+    operation: "write",
+    layer: "L3",
+    purpose: "self_update_preferences",
+  });
+
+  return {
+    subject_type: "customer" as const,
+    memory: sanitizeMemoryObject(upserted.data),
+  };
+}
+
+async function updateMyWorkerKaelMemoryPreference(
+  ctx: MobileApiContext,
+  input: WorkerKaelMemoryPreferenceUpdateInput,
+) {
+  const client = db(ctx);
+  const existing = await dbQuery<Record<string, unknown>>(
+    client
+      .from("worker_kael_memory")
+      .select("safe_metadata, memory_version")
+      .eq("worker_id", ctx.user.id)
+      .maybeSingle(),
+  );
+  if (existing.error) {
+    apiFailure("DB_ERROR", "Không thể tải bộ nhớ Kael", 500);
+  }
+
+  const currentMetadata = asRecord(existing.data?.safe_metadata);
+  const currentPreferences = asRecord(currentMetadata.memory_preferences);
+  const nextMetadata = {
+    ...currentMetadata,
+    memory_preferences: {
+      ...currentPreferences,
+      [input.key]: input.enabled,
+    },
+  };
+  const currentVersion = nullableNumber(existing.data?.memory_version) ?? 1;
+  const nextVersion = existing.data ? currentVersion + 1 : 1;
+  const now = new Date().toISOString();
+  const upserted = await dbQuery<Record<string, unknown>>(
+    client
+      .from("worker_kael_memory")
+      .upsert({
+        worker_id: ctx.user.id,
+        safe_metadata: nextMetadata,
+        memory_version: nextVersion,
+        last_observed_at: now,
+      }, { onConflict: "worker_id" })
+      .select("worker_id, language, service_skill_summary, service_skill_proficiency, reliability_signals, red_flags, safe_metadata, memory_version, last_observed_at")
+      .single(),
+  );
+  if (upserted.error || !upserted.data) {
+    apiFailure("DB_ERROR", "Không thể lưu bộ nhớ Kael", 500);
+  }
+
+  await logMemoryAudit(client, {
+    subjectType: "worker",
+    subjectId: ctx.user.id,
+    actorId: ctx.user.id,
+    operation: "write",
+    layer: "L4",
+    purpose: "self_update_preferences",
+  });
+
+  return {
+    subject_type: "worker" as const,
+    memory: sanitizeMemoryObject(upserted.data),
   };
 }
 
@@ -6317,21 +7534,856 @@ async function deleteMyKaelMemory(ctx: MobileApiContext) {
   };
 }
 
-async function getWorkerProfile(ctx: MobileApiContext) {
-  const result = await dbQuery<Record<string, unknown>>(
-    db(ctx)
-      .from("worker_profiles")
-      .select(
-        "id, verification_status, is_available, is_approved, is_suspended, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations, years_experience, rating, total_jobs, legal_name, date_of_birth, gender, bank_account, bank_name, cccd_front_url, cccd_back_url, selfie_url",
-      )
+async function getCustomerProfileInsights(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const accountProfileResult = await dbQuery<Record<string, unknown>>(
+    client
+      .from("profiles")
+      .select("created_at")
       .eq("id", ctx.user.id)
       .maybeSingle(),
   );
-  if (result.error) apiFailure("DB_ERROR", "Không thể tải hồ sơ", 500);
-  if (!result.data) return blankWorkerProfile(ctx.user.id);
-  const worker = result.data;
+  if (accountProfileResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải chỉ số hồ sơ", 500);
+  }
+
+  const profileResult = await dbQuery<Record<string, unknown>>(
+    client
+      .from("customer_profiles")
+      .select("building_name, unit_number, floor, district, created_at")
+      .eq("id", ctx.user.id)
+      .maybeSingle(),
+  );
+  if (profileResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải chỉ số hồ sơ", 500);
+  }
+
+  const jobsResult = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("jobs")
+      .select(
+        "id, status, service_type, created_at, completed_at, confirmed_at, paid_at, reviewed_at, final_price, kael_price_min, kael_price_max",
+      )
+      .eq("customer_id", ctx.user.id)
+      .order("created_at", { ascending: true })
+      .limit(500),
+  );
+  if (jobsResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải chỉ số hồ sơ", 500);
+  }
+
+  const jobs = (jobsResult.data ?? []).map(customerProfileInsightJobFromRow);
+  const jobIds = jobs.map((job) => job.id).filter(Boolean);
+  let disputes: CustomerProfileInsightDisputeRow[] = [];
+  if (jobIds.length > 0) {
+    const disputesResult = await dbQuery<Array<Record<string, unknown>>>(
+      client
+        .from("disputes")
+        .select("job_id, status")
+        .in("job_id", jobIds),
+    );
+    if (disputesResult.error) {
+      apiFailure("DB_ERROR", "Không thể tải chỉ số hồ sơ", 500);
+    }
+    disputes = (disputesResult.data ?? []).map((row) => ({
+      job_id: nullableString(row.job_id),
+      status: nullableString(row.status),
+    }));
+  }
+
+  const reviewsResult = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("reviews")
+      .select("job_id, rating")
+      .eq("customer_id", ctx.user.id),
+  );
+  if (reviewsResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải chỉ số hồ sơ", 500);
+  }
+
+  const kaelInteractionResult = await dbQuery<null>(
+    client
+      .from("kael_chat_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_id", ctx.user.id),
+  );
+  if (kaelInteractionResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải chỉ số hồ sơ", 500);
+  }
+
+  const savedAddressResult = await dbQuery<null>(
+    client
+      .from("kael_chat_pre_intake_memory")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_id", ctx.user.id),
+  );
+  if (savedAddressResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải chỉ số hồ sơ", 500);
+  }
+
+  return buildCustomerProfileInsights({
+    accountProfile: accountProfileResult.data
+      ? {
+        created_at: nullableString(accountProfileResult.data.created_at),
+      }
+      : null,
+    customerId: ctx.user.id,
+    customerProfile: profileResult.data
+      ? {
+        building_name: nullableString(profileResult.data.building_name),
+        created_at: nullableString(profileResult.data.created_at),
+        district: nullableString(profileResult.data.district),
+        floor: nullableString(profileResult.data.floor),
+        unit_number: nullableString(profileResult.data.unit_number),
+      }
+      : null,
+    disputes,
+    jobs,
+    kaelInteractionCount: Math.max(0, kaelInteractionResult.count ?? 0),
+    reviews: (reviewsResult.data ?? []).map(customerProfileInsightReviewFromRow),
+    savedAddressCount: Math.max(0, savedAddressResult.count ?? 0),
+  });
+}
+
+async function getCustomerPaymentMethod(
+  ctx: MobileApiContext,
+): Promise<CustomerPaymentMethodResponse> {
+  const result = await dbQuery<Record<string, unknown>>(
+    db(ctx)
+      .from("customer_payment_methods")
+      .select(
+        "id, bank_key, bank_name, account_holder_name, bank_account_masked, status, is_default, verified_at, updated_at",
+      )
+      .eq("customer_id", ctx.user.id)
+      .eq("is_default", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể tải tài khoản nhận tiền", 500);
+  }
   return {
-    id: asString(worker.id),
+    payment_method: result.data ? customerPaymentMethodFromRow(result.data) : null,
+  };
+}
+
+async function saveCustomerPaymentMethod(
+  ctx: MobileApiContext,
+  input: CustomerPaymentMethodSaveInput,
+): Promise<CustomerPaymentMethodResponse> {
+  const account = input.bank_account.trim();
+  const holderName = input.account_holder_name.trim();
+  const masked = maskCustomerBankAccount(account);
+  if (!masked) {
+    apiFailure("VALIDATION", "Số tài khoản không hợp lệ", 400);
+  }
+
+  const existingResult = await dbQuery<Record<string, unknown>>(
+    db(ctx)
+      .from("customer_payment_methods")
+      .select("id")
+      .eq("customer_id", ctx.user.id)
+      .eq("is_default", true)
+      .maybeSingle(),
+  );
+  if (existingResult.error) {
+    apiFailure("DB_ERROR", "Không thể kiểm tra tài khoản nhận tiền", 500);
+  }
+
+  const payload = {
+    account_holder_name: holderName,
+    bank_account: account,
+    bank_account_masked: masked,
+    bank_key: input.bank_key,
+    bank_name: input.bank_name.trim(),
+    customer_id: ctx.user.id,
+    is_default: true,
+    status: "pending_verification",
+    verified_at: null,
+  };
+
+  const query = existingResult.data
+    ? db(ctx)
+      .from("customer_payment_methods")
+      .update(payload)
+      .eq("id", existingResult.data.id)
+      .eq("customer_id", ctx.user.id)
+      .select(
+        "id, bank_key, bank_name, account_holder_name, bank_account_masked, status, is_default, verified_at, updated_at",
+      )
+      .single()
+    : db(ctx)
+      .from("customer_payment_methods")
+      .insert(payload)
+      .select(
+        "id, bank_key, bank_name, account_holder_name, bank_account_masked, status, is_default, verified_at, updated_at",
+      )
+      .single();
+
+  const result = await dbQuery<Record<string, unknown>>(query);
+  if (result.error || !result.data) {
+    apiFailure("DB_ERROR", "Không thể lưu tài khoản nhận tiền", 500);
+  }
+  return {
+    payment_method: customerPaymentMethodFromRow(result.data),
+  };
+}
+
+async function saveWorkerPayoutMethod(
+  ctx: MobileApiContext,
+  input: WorkerPayoutMethodSaveInput,
+): Promise<WorkerPayoutMethodResponse> {
+  const account = normalizeBankAccount(input.bank_account);
+  const bankName = normalizeBankName(input.bank_name);
+  const holderName = input.account_holder_name.trim();
+  if (!account || !bankName || holderName.length < 2) {
+    apiFailure("VALIDATION", "Dữ liệu tài khoản nhận tiền không hợp lệ", 400);
+  }
+
+  const result = await dbQuery<Record<string, unknown>>(
+    db(ctx)
+      .from("worker_profiles")
+      .update({
+        bank_account: account,
+        bank_name: bankName,
+      })
+      .eq("id", ctx.user.id)
+      .select("id, bank_account, bank_name")
+      .maybeSingle(),
+  );
+  if (result.error) {
+    apiFailure("DB_ERROR", "Không thể lưu tài khoản nhận tiền của thợ", 500);
+  }
+  if (!result.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
+  }
+
+  return {
+    payout_method: {
+      account_holder_name: holderName,
+      bank_account_masked: maskBankAccount(nullableString(result.data.bank_account)) ?? maskCustomerBankAccount(account) ?? "****",
+      bank_key: input.bank_key,
+      bank_name: normalizeBankName(nullableString(result.data.bank_name)) ?? bankName,
+      status: "pending_verification",
+      updated_at: new Date().toISOString(),
+    },
+    worker_profile: await getWorkerProfile(ctx),
+  };
+}
+
+function customerPaymentMethodFromRow(row: Record<string, unknown>): CustomerPaymentMethodResponse["payment_method"] {
+  const status = asString(row.status);
+  const normalizedStatus = status === "verified" || status === "rejected" ? status : "pending_verification";
+  return {
+    account_holder_name: asString(row.account_holder_name),
+    bank_account_masked: asString(row.bank_account_masked),
+    bank_key: asString(row.bank_key),
+    bank_name: asString(row.bank_name),
+    id: asString(row.id),
+    is_default: Boolean(row.is_default),
+    status: normalizedStatus,
+    updated_at: asString(row.updated_at),
+    verified_at: nullableString(row.verified_at),
+  };
+}
+
+function maskCustomerBankAccount(account: string) {
+  return account.length >= 4 ? `**** ${account.slice(-4)}` : null;
+}
+
+function customerProfileInsightJobFromRow(row: Record<string, unknown>): CustomerProfileInsightJobRow {
+  return {
+    id: asString(row.id),
+    status: asString(row.status),
+    service_type: asString(row.service_type),
+    created_at: nullableString(row.created_at),
+    completed_at: nullableString(row.completed_at),
+    confirmed_at: nullableString(row.confirmed_at),
+    paid_at: nullableString(row.paid_at),
+    reviewed_at: nullableString(row.reviewed_at),
+    final_price: nullableNumber(row.final_price),
+    kael_price_min: nullableNumber(row.kael_price_min),
+    kael_price_max: nullableNumber(row.kael_price_max),
+  };
+}
+
+function customerProfileInsightReviewFromRow(row: Record<string, unknown>): CustomerProfileInsightReviewRow {
+  return {
+    job_id: nullableString(row.job_id),
+    rating: nullableNumber(row.rating),
+  };
+}
+
+export function buildCustomerProfileInsights(
+  input: CustomerProfileInsightInput,
+): CustomerProfileInsightsResponse {
+  const jobs = input.jobs.filter((job) => Boolean(job.id));
+  const completedJobs = jobs.filter(isCustomerProfileCompletedJob);
+  const transactionJobs = jobs.filter(isCustomerProfileTransactionJob);
+  const protectedJobs = transactionJobs.filter(isCustomerProfileProtectedTransaction);
+  const fairPriceJobs = transactionJobs.filter(isCustomerProfileFairPriceTransaction);
+  const disputedJobIds = new Set(
+    input.disputes
+      .filter(isCountedCustomerProfileDispute)
+      .map((dispute) => dispute.job_id)
+      .filter((jobId): jobId is string => Boolean(jobId)),
+  );
+  const disputedTransactionCount = transactionJobs.filter((job) =>
+    disputedJobIds.has(job.id)
+  ).length;
+  const totalTransactionCount = transactionJobs.length;
+  const disputeFreeRatePercent = totalTransactionCount > 0
+    ? Math.round(
+      ((totalTransactionCount - disputedTransactionCount) /
+        totalTransactionCount) * 100,
+    )
+    : 0;
+  const protectedTransactionCount = protectedJobs.length;
+  const protectedValueVnd = sumCustomerProfileMoney(
+    protectedJobs.map((job) => job.final_price),
+  );
+  const totalSpendVnd = sumCustomerProfileMoney(
+    transactionJobs.map((job) => job.final_price),
+  );
+  const priceSavingsVnd = sumCustomerProfileMoney(
+    fairPriceJobs.map((job) => {
+      const price = job.final_price ?? 0;
+      const max = job.kael_price_max ?? 0;
+      return Math.max(0, max - price);
+    }),
+  );
+  const kaelInteractionCount = Number.isFinite(input.kaelInteractionCount)
+    ? Math.max(0, Math.floor(input.kaelInteractionCount))
+    : 0;
+  const usageRankPoints = customerProfileUsageRankPoints({
+    completedCount: completedJobs.length,
+    fairPriceCount: fairPriceJobs.length,
+    kaelInteractionCount,
+    protectedCount: protectedTransactionCount,
+    reviewedCount: completedJobs.filter(isCustomerProfileReviewedJob).length,
+  });
+  const usageRankLevel = usageRankPoints <= 0
+    ? 0
+    : Math.min(
+      CUSTOMER_PROFILE_USAGE_RANK_MAX,
+      Math.max(1, Math.floor(usageRankPoints / CUSTOMER_PROFILE_USAGE_RANK_STEP) + 1),
+    );
+  const protectionScore = customerProfileMoneyProtectionScore({
+    disputedTransactionCount,
+    protectedTransactionCount,
+    totalTransactionCount,
+  });
+  const activeStreakDays = customerProfileActiveStreakDays(completedJobs);
+  const positiveReviewRatePercent = customerProfilePositiveReviewRatePercent(input.reviews);
+  const savedAddressCount = customerProfileSavedAddressCount(
+    input.customerProfile,
+    input.savedAddressCount,
+  );
+
+  return {
+    customer_id: input.customerId,
+    member_since: customerProfileMemberSince(input.accountProfile, input.customerProfile, jobs),
+    kael_interaction_count: kaelInteractionCount,
+    completed_service_count: completedJobs.length,
+    saved_address_count: savedAddressCount,
+    preferred_service_count: new Set(
+      completedJobs
+        .map((job) => job.service_type)
+        .filter((serviceType) => isSupportedServiceType(serviceType)),
+    ).size,
+    active_streak_days: activeStreakDays,
+    positive_review_rate_percent: positiveReviewRatePercent,
+    price_savings_vnd: priceSavingsVnd,
+    total_spend_vnd: totalSpendVnd,
+    usage_rank_level: usageRankLevel,
+    usage_rank_points: usageRankPoints,
+    fair_price_service_count: fairPriceJobs.length,
+    money_protection_score: protectionScore,
+    protected_value_vnd: protectedValueVnd,
+    protected_transaction_count: protectedTransactionCount,
+    total_transaction_count: totalTransactionCount,
+    dispute_free_rate_percent: disputeFreeRatePercent,
+    fair_price_status: customerProfileFairPriceStatus({
+      fairPriceCount: fairPriceJobs.length,
+      totalTransactionCount,
+      disputeFreeRatePercent,
+    }),
+  };
+}
+
+function isCustomerProfileCompletedJob(job: CustomerProfileInsightJobRow) {
+  return CUSTOMER_PROFILE_COMPLETED_STATUSES.has(job.status) ||
+    Boolean(job.completed_at || job.confirmed_at || job.paid_at || job.reviewed_at);
+}
+
+function isCustomerProfileTransactionJob(job: CustomerProfileInsightJobRow) {
+  return CUSTOMER_PROFILE_TRANSACTION_STATUSES.has(job.status) &&
+    (job.final_price ?? 0) > 0;
+}
+
+function isCustomerProfileProtectedTransaction(job: CustomerProfileInsightJobRow) {
+  return isCustomerProfileFairPriceTransaction(job);
+}
+
+function isCustomerProfileFairPriceTransaction(job: CustomerProfileInsightJobRow) {
+  const price = job.final_price ?? 0;
+  const max = job.kael_price_max ?? 0;
+  return price > 0 && max > 0 && price <= max;
+}
+
+function isCustomerProfileReviewedJob(job: CustomerProfileInsightJobRow) {
+  return job.status === "reviewed" || Boolean(job.reviewed_at);
+}
+
+function isCountedCustomerProfileDispute(dispute: CustomerProfileInsightDisputeRow) {
+  const status = dispute.status?.trim().toLowerCase() ?? "";
+  return Boolean(dispute.job_id) && status !== "cancelled" && status !== "withdrawn";
+}
+
+function customerProfileMemberSince(
+  accountProfile: CustomerProfileInsightInput["accountProfile"],
+  profile: CustomerProfileInsightInput["customerProfile"],
+  jobs: CustomerProfileInsightJobRow[],
+) {
+  if (accountProfile?.created_at) return accountProfile.created_at;
+  if (profile?.created_at) return profile.created_at;
+  return jobs
+    .map((job) => job.created_at)
+    .filter((createdAt): createdAt is string => Boolean(createdAt))
+    .sort()[0] ?? null;
+}
+
+function customerProfileSavedAddressCount(
+  profile: CustomerProfileInsightInput["customerProfile"],
+  savedAddressMemoryCount: number,
+) {
+  const memoryCount = Number.isFinite(savedAddressMemoryCount)
+    ? Math.max(0, Math.floor(savedAddressMemoryCount))
+    : 0;
+  const hasPrimaryAddress = Boolean(
+    profile &&
+      [
+        profile.building_name,
+        profile.unit_number,
+        profile.floor,
+        profile.district,
+      ].some((value) => Boolean(value?.trim())),
+  );
+  return Math.max(hasPrimaryAddress ? 1 : 0, memoryCount);
+}
+
+function customerProfileActiveStreakDays(jobs: CustomerProfileInsightJobRow[]) {
+  const days = Array.from(
+    new Set(
+      jobs
+        .map(customerProfileActivityDateKey)
+        .filter((day): day is string => Boolean(day)),
+    ),
+  ).sort((a, b) => b.localeCompare(a));
+  if (days.length === 0) return 0;
+
+  let streak = 1;
+  let expectedPreviousDay = previousIsoDateKey(days[0]);
+  for (const day of days.slice(1)) {
+    if (day === expectedPreviousDay) {
+      streak += 1;
+      expectedPreviousDay = previousIsoDateKey(day);
+      continue;
+    }
+    if (day < expectedPreviousDay) break;
+  }
+  return streak;
+}
+
+function customerProfileActivityDateKey(job: CustomerProfileInsightJobRow) {
+  const value = job.reviewed_at ?? job.paid_at ?? job.completed_at ??
+    job.confirmed_at ?? job.created_at;
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function previousIsoDateKey(day: string) {
+  const date = new Date(`${day}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function customerProfilePositiveReviewRatePercent(
+  reviews: CustomerProfileInsightReviewRow[],
+) {
+  const ratings = reviews
+    .map((review) => review.rating)
+    .filter((rating): rating is number =>
+      typeof rating === "number" && Number.isFinite(rating) && rating >= 1 &&
+      rating <= 5
+    );
+  if (ratings.length === 0) return 0;
+  const positiveCount = ratings.filter((rating) => rating >= 4).length;
+  return Math.round((positiveCount / ratings.length) * 100);
+}
+
+function customerProfileUsageRankPoints(input: {
+  completedCount: number;
+  fairPriceCount: number;
+  kaelInteractionCount: number;
+  protectedCount: number;
+  reviewedCount: number;
+}) {
+  const points =
+    input.completedCount * 25 +
+    input.fairPriceCount * 15 +
+    input.protectedCount * 5 +
+    input.reviewedCount * 10 +
+    Math.min(input.kaelInteractionCount, 50) * 2;
+  return Math.min(1000, Math.max(0, points));
+}
+
+function customerProfileMoneyProtectionScore(input: {
+  disputedTransactionCount: number;
+  protectedTransactionCount: number;
+  totalTransactionCount: number;
+}) {
+  if (!input.totalTransactionCount) return 0;
+  const protectedRatio = input.protectedTransactionCount / input.totalTransactionCount;
+  const disputeFreeRatio =
+    (input.totalTransactionCount - input.disputedTransactionCount) /
+    input.totalTransactionCount;
+  const score = Math.round(protectedRatio * disputeFreeRatio * 100);
+  return Math.max(0, score);
+}
+
+function customerProfileFairPriceStatus(input: {
+  disputeFreeRatePercent: number;
+  fairPriceCount: number;
+  totalTransactionCount: number;
+}): CustomerProfileInsightsResponse["fair_price_status"] {
+  if (!input.totalTransactionCount) return null;
+  if (
+    input.fairPriceCount === input.totalTransactionCount &&
+    input.disputeFreeRatePercent === 100
+  ) {
+    return "verified";
+  }
+  if (input.fairPriceCount > 0) return "mixed";
+  return "pending";
+}
+
+function sumCustomerProfileMoney(values: Array<number | null>): number {
+  return values.reduce<number>((total, value) =>
+    total + (value && Number.isFinite(value) && value > 0 ? Math.round(value) : 0), 0);
+}
+
+function isSupportedServiceType(serviceType: string): serviceType is ServiceType {
+  return serviceType === "electrical" ||
+    serviceType === "plumbing" ||
+    serviceType === "cleaning";
+}
+
+async function getWorkerPerformanceInsights(ctx: MobileApiContext) {
+  const client = db(ctx);
+  const profileResult = await dbQuery<Record<string, unknown>>(
+    client
+      .from("worker_profiles")
+      .select("id, verification_status, is_available, is_approved, is_suspended, rating, total_jobs")
+      .eq("id", ctx.user.id)
+      .maybeSingle(),
+  );
+  if (profileResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải chỉ số thợ", 500);
+  }
+
+  const broadcastsResult = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("job_broadcasts")
+      .select("status, broadcast_at, sent_at, responded_at")
+      .eq("worker_id", ctx.user.id)
+      .order("broadcast_at", { ascending: false })
+      .limit(500),
+  );
+  if (broadcastsResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải chỉ số thợ", 500);
+  }
+
+  const jobsResult = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("jobs")
+      .select("status, scheduled_at, arrived_at, completed_at, paid_at, reviewed_at, final_price")
+      .eq("worker_id", ctx.user.id)
+      .order("created_at", { ascending: false })
+      .limit(500),
+  );
+  if (jobsResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải chỉ số thợ", 500);
+  }
+
+  const reviewsResult = await dbQuery<Array<Record<string, unknown>>>(
+    client
+      .from("reviews")
+      .select("rating")
+      .eq("worker_id", ctx.user.id)
+      .order("created_at", { ascending: false })
+      .limit(500),
+  );
+  if (reviewsResult.error) {
+    apiFailure("DB_ERROR", "Không thể tải chỉ số thợ", 500);
+  }
+
+  return buildWorkerPerformanceInsights({
+    broadcasts: (broadcastsResult.data ?? []).map(workerPerformanceBroadcastFromRow),
+    jobs: (jobsResult.data ?? []).map(workerPerformanceJobFromRow),
+    reviews: (reviewsResult.data ?? []).map(workerPerformanceReviewFromRow),
+    workerId: ctx.user.id,
+    workerProfile: profileResult.data
+      ? {
+        is_approved: Boolean(profileResult.data.is_approved),
+        is_available: Boolean(profileResult.data.is_available),
+        is_suspended: Boolean(profileResult.data.is_suspended),
+        rating: asNumber(profileResult.data.rating),
+        total_jobs: asNumber(profileResult.data.total_jobs),
+        verification_status: asString(profileResult.data.verification_status),
+      }
+      : null,
+  });
+}
+
+function workerPerformanceBroadcastFromRow(
+  row: Record<string, unknown>,
+): WorkerPerformanceInsightBroadcastRow {
+  return {
+    broadcast_at: nullableString(row.broadcast_at),
+    responded_at: nullableString(row.responded_at),
+    sent_at: nullableString(row.sent_at),
+    status: asString(row.status),
+  };
+}
+
+function workerPerformanceJobFromRow(
+  row: Record<string, unknown>,
+): WorkerPerformanceInsightJobRow {
+  return {
+    arrived_at: nullableString(row.arrived_at),
+    completed_at: nullableString(row.completed_at),
+    final_price: nullableNumber(row.final_price),
+    paid_at: nullableString(row.paid_at),
+    reviewed_at: nullableString(row.reviewed_at),
+    scheduled_at: nullableString(row.scheduled_at),
+    status: asString(row.status),
+  };
+}
+
+function workerPerformanceReviewFromRow(
+  row: Record<string, unknown>,
+): WorkerPerformanceInsightReviewRow {
+  return {
+    rating: nullableNumber(row.rating),
+  };
+}
+
+export function buildWorkerPerformanceInsights(
+  input: WorkerPerformanceInsightInput,
+): WorkerPerformanceInsightsResponse {
+  const broadcasts = input.broadcasts.filter(isWorkerPerformanceDeliveredBroadcast);
+  const respondedBroadcasts = broadcasts.filter(isWorkerPerformanceRespondedBroadcast);
+  const responseDurations = respondedBroadcasts
+    .map(workerPerformanceResponseDurationMs)
+    .filter((duration): duration is number => duration !== null);
+  const responseRatePercent = broadcasts.length > 0
+    ? Math.round((respondedBroadcasts.length / broadcasts.length) * 100)
+    : null;
+  const averageResponseMinutes = responseDurations.length > 0
+    ? Math.round(
+      responseDurations.reduce((total, duration) => total + duration, 0) /
+        responseDurations.length /
+        60_000,
+    )
+    : null;
+
+  const completedJobs = input.jobs.filter(isWorkerPerformanceCompletedJob);
+  const scheduledArrivalJobs = input.jobs.filter((job) =>
+    Boolean(job.scheduled_at && job.arrived_at)
+  );
+  const onTimeJobs = scheduledArrivalJobs.filter(isWorkerPerformanceOnTimeJob);
+  const onTimeRatePercent = scheduledArrivalJobs.length > 0
+    ? Math.round((onTimeJobs.length / scheduledArrivalJobs.length) * 100)
+    : null;
+  const paidJobs = input.jobs.filter(isWorkerPerformancePaidJob);
+  const reconciledEarningsVnd = sumCustomerProfileMoney(
+    paidJobs.map((job) => job.final_price),
+  );
+
+  const reviewRatings = input.reviews
+    .map((review) => review.rating)
+    .filter((rating): rating is number =>
+      typeof rating === "number" && Number.isFinite(rating) && rating > 0 && rating <= 5
+    );
+  const averageRating = reviewRatings.length > 0
+    ? roundToOneDecimal(
+      reviewRatings.reduce((total, rating) => total + rating, 0) /
+        reviewRatings.length,
+    )
+    : input.workerProfile && input.workerProfile.total_jobs > 0 &&
+        input.workerProfile.rating > 0
+    ? roundToOneDecimal(Math.min(5, Math.max(1, input.workerProfile.rating)))
+    : null;
+
+  const ratingScore = averageRating === null
+    ? null
+    : Math.round((averageRating / 5) * 100);
+  const completionScore = respondedBroadcasts.length > 0
+    ? Math.min(100, Math.round((completedJobs.length / respondedBroadcasts.length) * 100))
+    : completedJobs.length > 0
+    ? 100
+    : null;
+  const earningsScore = paidJobs.length > 0
+    ? Math.min(100, paidJobs.length * 20)
+    : null;
+  const performanceAxes: WorkerPerformanceInsightsResponse["performance_axes"] = [
+    { id: "rating", score: ratingScore },
+    { id: "response", score: responseRatePercent },
+    { id: "arrival", score: onTimeRatePercent },
+    { id: "completion", score: completionScore },
+    { id: "earnings", score: earningsScore },
+  ];
+  const axisScores = performanceAxes
+    .map((axis) => axis.score)
+    .filter((score): score is number => score !== null);
+  const performanceScore = axisScores.length > 0
+    ? Math.round(axisScores.reduce((total, score) => total + score, 0) / axisScores.length)
+    : null;
+
+  return {
+    worker_id: input.workerId,
+    completed_job_count: completedJobs.length,
+    review_count: input.reviews.length,
+    average_rating: averageRating,
+    response_rate_percent: responseRatePercent,
+    average_response_minutes: averageResponseMinutes,
+    on_time_rate_percent: onTimeRatePercent,
+    total_broadcast_count: broadcasts.length,
+    responded_broadcast_count: respondedBroadcasts.length,
+    accepted_broadcast_count: broadcasts.filter((row) => row.status === "accepted").length,
+    scheduled_arrival_job_count: scheduledArrivalJobs.length,
+    on_time_job_count: onTimeJobs.length,
+    paid_job_count: paidJobs.length,
+    reconciled_earnings_vnd: reconciledEarningsVnd > 0 ? reconciledEarningsVnd : null,
+    performance_score: performanceScore,
+    badges: workerPerformanceBadges({
+      averageRating,
+      averageResponseMinutes,
+      onTimeRatePercent,
+      paidJobCount: paidJobs.length,
+      reconciledEarningsVnd,
+      respondedBroadcastCount: respondedBroadcasts.length,
+      responseRatePercent,
+      reviewCount: input.reviews.length,
+      scheduledArrivalJobCount: scheduledArrivalJobs.length,
+      workerProfile: input.workerProfile,
+    }),
+    performance_axes: performanceAxes,
+  };
+}
+
+function isWorkerPerformanceDeliveredBroadcast(row: WorkerPerformanceInsightBroadcastRow) {
+  return WORKER_PERFORMANCE_TOTAL_BROADCAST_STATUSES.has(row.status) ||
+    Boolean(row.sent_at || row.broadcast_at);
+}
+
+function isWorkerPerformanceRespondedBroadcast(row: WorkerPerformanceInsightBroadcastRow) {
+  return WORKER_PERFORMANCE_RESPONSE_STATUSES.has(row.status) &&
+    Boolean(row.responded_at);
+}
+
+function workerPerformanceResponseDurationMs(row: WorkerPerformanceInsightBroadcastRow) {
+  const started = timestampMs(row.sent_at ?? row.broadcast_at);
+  const responded = timestampMs(row.responded_at);
+  if (started === null || responded === null || responded < started) return null;
+  return responded - started;
+}
+
+function isWorkerPerformanceCompletedJob(row: WorkerPerformanceInsightJobRow) {
+  return WORKER_PERFORMANCE_COMPLETED_STATUSES.has(row.status) ||
+    Boolean(row.completed_at || row.paid_at || row.reviewed_at);
+}
+
+function isWorkerPerformancePaidJob(row: WorkerPerformanceInsightJobRow) {
+  return (WORKER_PERFORMANCE_PAID_STATUSES.has(row.status) || Boolean(row.paid_at)) &&
+    (row.final_price ?? 0) > 0;
+}
+
+function isWorkerPerformanceOnTimeJob(row: WorkerPerformanceInsightJobRow) {
+  const scheduled = timestampMs(row.scheduled_at);
+  const arrived = timestampMs(row.arrived_at);
+  if (scheduled === null || arrived === null) return false;
+  return arrived <= scheduled + WORKER_PERFORMANCE_ON_TIME_GRACE_MS;
+}
+
+function workerPerformanceBadges(input: {
+  averageRating: number | null;
+  averageResponseMinutes: number | null;
+  onTimeRatePercent: number | null;
+  paidJobCount: number;
+  reconciledEarningsVnd: number;
+  respondedBroadcastCount: number;
+  responseRatePercent: number | null;
+  reviewCount: number;
+  scheduledArrivalJobCount: number;
+  workerProfile: WorkerPerformanceInsightInput["workerProfile"];
+}): WorkerPerformanceInsightsResponse["badges"] {
+  const approved = Boolean(
+    input.workerProfile?.is_approved ||
+      input.workerProfile?.verification_status === "approved",
+  );
+  return [
+    { id: "verified_profile", status: approved ? "earned" : "locked" },
+    {
+      id: "fast_responder",
+      status: input.respondedBroadcastCount >= 2 &&
+          (input.responseRatePercent ?? 0) >= 80 &&
+          (input.averageResponseMinutes ?? Number.POSITIVE_INFINITY) <= 15
+        ? "earned"
+        : "locked",
+    },
+    {
+      id: "reliable_arrival",
+      status: input.scheduledArrivalJobCount >= 2 &&
+          (input.onTimeRatePercent ?? 0) >= 90
+        ? "earned"
+        : "locked",
+    },
+    {
+      id: "trusted_by_customers",
+      status: input.reviewCount >= 3 && (input.averageRating ?? 0) >= 4.8
+        ? "earned"
+        : "locked",
+    },
+    {
+      id: "steady_earner",
+      status: input.paidJobCount > 0 && input.reconciledEarningsVnd > 0
+        ? "earned"
+        : "locked",
+    },
+  ];
+}
+
+function timestampMs(value: string | null | undefined) {
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+function roundToOneDecimal(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+const WORKER_PROFILE_SELECT =
+  "id, verification_status, is_available, is_approved, is_suspended, service_types, districts, home_lat, home_lng, service_radius_km, problem_specializations, years_experience, rating, total_jobs, legal_name, date_of_birth, gender, bank_account, bank_name, cccd_front_url, cccd_back_url, selfie_url";
+
+function workerProfileResponseFromRow(worker: Record<string, unknown>, workerId: string) {
+  return {
+    id: asString(worker.id) || workerId,
     verification_status: asWorkerVerificationStatus(worker.verification_status),
     is_available: Boolean(worker.is_available),
     is_approved: Boolean(worker.is_approved),
@@ -6353,6 +8405,50 @@ async function getWorkerProfile(ctx: MobileApiContext) {
     has_cccd: Boolean(worker.cccd_front_url && worker.cccd_back_url),
     has_selfie: Boolean(worker.selfie_url),
   };
+}
+
+async function getWorkerProfile(ctx: MobileApiContext) {
+  const result = await dbQuery<Record<string, unknown>>(
+    db(ctx)
+      .from("worker_profiles")
+      .select(WORKER_PROFILE_SELECT)
+      .eq("id", ctx.user.id)
+      .maybeSingle(),
+  );
+  if (result.error) apiFailure("DB_ERROR", "Không thể tải hồ sơ", 500);
+  if (!result.data) return blankWorkerProfile(ctx.user.id);
+  return workerProfileResponseFromRow(result.data, ctx.user.id);
+}
+
+async function updateWorkerServiceArea(
+  ctx: MobileApiContext,
+  input: WorkerServiceAreaUpdateInput,
+) {
+  const districts = normalizeWorkerDistricts(input.districts);
+  if (!districts?.length) {
+    apiFailure("VALIDATION", "Khu vực phục vụ không hợp lệ", 400);
+  }
+
+  const patch: Record<string, unknown> = { districts };
+  if ("service_radius_km" in input) {
+    patch.service_radius_km = input.service_radius_km === null
+      ? null
+      : clampServiceRadius(input.service_radius_km);
+  }
+  if ("home_lat" in input) patch.home_lat = input.home_lat ?? null;
+  if ("home_lng" in input) patch.home_lng = input.home_lng ?? null;
+
+  const result = await dbQuery<Record<string, unknown>>(
+    db(ctx)
+      .from("worker_profiles")
+      .update(patch)
+      .eq("id", ctx.user.id)
+      .select(WORKER_PROFILE_SELECT)
+      .maybeSingle(),
+  );
+  if (result.error) apiFailure("DB_ERROR", "Không thể cập nhật khu vực phục vụ", 500);
+  if (!result.data) apiFailure("NOT_FOUND", "Chưa có hồ sơ thợ để cập nhật", 404);
+  return workerProfileResponseFromRow(result.data, ctx.user.id);
 }
 
 async function updateWorkerAvailability(
@@ -6446,7 +8542,7 @@ async function listWorkerJobs(ctx: MobileApiContext) {
     db(ctx)
       .from("jobs")
       .select(
-        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, completion_notes, completion_photo_urls, created_at, matched_at, completed_at",
+        "id, display_code, status, customer_id, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, payment_provider, payment_status, payment_code, payment_transfer_content, payment_qr_image_url, payment_expires_at, payment_received_at, payment_amount_received, gross_amount, platform_fee, worker_net, completion_notes, completion_photo_urls, created_at, matched_at, completed_at",
       )
       .eq("worker_id", ctx.user.id)
       .order("created_at", { ascending: false })
@@ -6477,6 +8573,11 @@ async function listWorkerJobs(ctx: MobileApiContext) {
       }).brief;
       return {
         id: asString(row.id),
+        display_code: nullableString(row.display_code) ?? buildJobDisplayCode({
+          jobId: asString(row.id),
+          customerId: nullableString(row.customer_id),
+          createdAt: nullableString(row.created_at),
+        }),
         status: row.status as JobStatus,
         service_type: row.service_type as ServiceType,
         problem_summary: nullableString(row.kael_problem_identified),
@@ -6489,6 +8590,17 @@ async function listWorkerJobs(ctx: MobileApiContext) {
         estimated_earning: finalPrice
           ? Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER))
           : null,
+        payment_provider: nullableString(row.payment_provider),
+        payment_status: asPaymentStatus(row.payment_status),
+        payment_code: nullableString(row.payment_code),
+        payment_transfer_content: nullableString(row.payment_transfer_content),
+        payment_qr_image_url: nullableString(row.payment_qr_image_url),
+        payment_expires_at: nullableString(row.payment_expires_at),
+        payment_received_at: nullableString(row.payment_received_at),
+        payment_amount_received: nullableNumber(row.payment_amount_received),
+        gross_amount: nullableNumber(row.gross_amount),
+        platform_fee: nullableNumber(row.platform_fee),
+        worker_net: nullableNumber(row.worker_net),
         completion_notes: nullableString(row.completion_notes),
         completion_photo_urls: asStringArray(row.completion_photo_urls),
         worker_brief_guidance:
@@ -8120,6 +10232,7 @@ function kaelNextAction(
 ): KaelChatNextAction {
   if (status === "confirmed") return "confirmed";
   if (status === "unsupported") return "unsupported";
+  if (status === "collecting_evidence") return "collect_evidence";
   if (totalCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) return "budget_exceeded";
   if (status === "estimate_ready") return "estimate_ready";
   if (lastContentType === "photo_request") return "ask_photo";
@@ -8493,12 +10606,114 @@ function canAttachJobMediaStage(
   isAdmin: boolean,
 ) {
   if (isAdmin) return true;
-  if (stage === "before" || stage === "kael_reference") return isCustomer;
+  if (stage === "before") return isCustomer;
+  if (stage === "kael_reference") return isCustomer || isWorker;
   return isWorker;
 }
 
 function storageRef(objectPath: string) {
   return `supabase://job-media/${objectPath}`;
+}
+
+const KAEL_CHAT_MEDIA_BUCKET = "kael-chat-media";
+const KAEL_CHAT_MEDIA_REF_PREFIX = `supabase://${KAEL_CHAT_MEDIA_BUCKET}/`;
+const KAEL_CHAT_MEDIA_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/aac",
+  "audio/wav",
+  "audio/webm",
+]);
+
+function kaelChatStorageRef(objectPath: string) {
+  return `${KAEL_CHAT_MEDIA_REF_PREFIX}${objectPath}`;
+}
+
+function normalizeKaelChatMediaMime(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "image/jpg") return "image/jpeg";
+  if (KAEL_CHAT_MEDIA_MIME_TYPES.has(normalized)) return normalized;
+  return null;
+}
+
+function safeKaelChatObjectName(fileName: string | null | undefined, mimeType: string) {
+  const source = (fileName ?? `media.${kaelChatExtensionForMime(mimeType)}`)
+    .split(/[\\/]/)
+    .pop() ?? "media";
+  const cleaned = source
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  const hasExtension = /\.[a-z0-9]{2,6}$/i.test(cleaned);
+  const base = cleaned || "media";
+  return `${Date.now()}-${crypto.randomUUID()}-${base}${
+    hasExtension ? "" : `.${kaelChatExtensionForMime(mimeType)}`
+  }`;
+}
+
+function kaelChatExtensionForMime(mimeType: string) {
+  if (mimeType === "image/jpeg") return "jpg";
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/webp") return "webp";
+  if (mimeType === "image/gif") return "gif";
+  if (mimeType === "image/heic") return "heic";
+  if (mimeType === "image/heif") return "heif";
+  if (mimeType === "video/quicktime") return "mov";
+  if (mimeType === "video/webm") return "webm";
+  if (mimeType === "video/mp4") return "mp4";
+  if (mimeType === "audio/mpeg") return "mp3";
+  if (mimeType === "audio/mp4") return "m4a";
+  if (mimeType === "audio/aac") return "aac";
+  if (mimeType === "audio/wav") return "wav";
+  return "bin";
+}
+
+function kaelChatObjectPathFromRef(ref: string, userId: string) {
+  if (!ref.startsWith(KAEL_CHAT_MEDIA_REF_PREFIX)) return null;
+  const objectPath = ref.slice(KAEL_CHAT_MEDIA_REF_PREFIX.length);
+  if (!objectPath.startsWith(`${userId}/kael-chat/`)) return null;
+  if (objectPath.includes("..") || objectPath.includes("//")) return null;
+  return objectPath;
+}
+
+async function signedKaelChatMediaUrls(
+  client: DbClient,
+  userId: string,
+  refs: string[],
+) {
+  if (!client.storage) {
+    apiFailure("MEDIA_SIGN_FAILED", "Không thể chuẩn bị media cho Kael", 500);
+  }
+  const bucket = client.storage.from(KAEL_CHAT_MEDIA_BUCKET) as {
+    createSignedUrl(
+      path: string,
+      expiresIn: number,
+    ): Promise<{ data: { signedUrl?: string } | null; error: unknown }>;
+  };
+  const urls: string[] = [];
+  for (const ref of refs) {
+    const objectPath = kaelChatObjectPathFromRef(ref, userId);
+    if (!objectPath) {
+      apiFailure("INVALID_MEDIA_REF", "Đường dẫn media không hợp lệ", 400);
+    }
+    const { data, error } = await bucket.createSignedUrl(objectPath, 60 * 60);
+    if (error || !data?.signedUrl) {
+      apiFailure("MEDIA_SIGN_FAILED", "Không thể chuẩn bị media cho Kael", 500);
+    }
+    urls.push(data.signedUrl);
+  }
+  return urls;
 }
 
 function mergeLimitedRefs(existing: string[], incoming: string[], limit: number) {
@@ -8939,6 +11154,37 @@ async function geocodeWithVietmap(
   }
 }
 
+async function vietmapPlaceLocation(
+  placeId: string,
+  apiKey: string,
+): Promise<GeocodeResult | null> {
+  try {
+    const placeUrl = buildVietmapUrl(VIETMAP_PLACE_URL, apiKey, {
+      refid: placeId,
+    });
+    const placeResponse = await fetchJsonWithTimeout(placeUrl, { method: "GET" });
+    if (!placeResponse.ok) {
+      console.warn("mobile-api place resolve failed", {
+        provider: "vietmap",
+        status: placeResponse.status,
+      });
+      return null;
+    }
+
+    const placeBody = asRecord(await placeResponse.json().catch(() => ({})));
+    const lat = nullableNumber(placeBody.lat);
+    const lng = nullableNumber(placeBody.lng);
+    if (lat === null || lng === null) return null;
+    return { lat, lng, geoSource: "vietmap" };
+  } catch (error) {
+    console.warn("mobile-api place resolve threw", {
+      provider: "vietmap",
+      errorName: error instanceof Error ? error.name : typeof error,
+    });
+    return null;
+  }
+}
+
 async function geocodeWithGoogleMaps(
   address: string,
   apiKey: string,
@@ -9141,6 +11387,30 @@ async function fetchJsonWithTimeout(
 
 function db(ctx: MobileApiContext): DbClient {
   return ctx.supabase as DbClient;
+}
+
+function publicRouteDb(secrets: EdgeServiceSecrets): DbClient {
+  if (!secrets.supabaseUrl || !secrets.supabaseSecretKey) {
+    apiFailure("CONFIG_MISSING", "Dịch vụ chưa được cấu hình", 500);
+  }
+  return createClient(secrets.supabaseUrl, secrets.supabaseSecretKey, {
+    global: { fetch: edgeServiceTimeoutFetch },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }) as unknown as DbClient;
+}
+
+function edgeServiceTimeoutFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(timer)
+  );
 }
 
 async function dbQuery<T = unknown>(
@@ -9492,6 +11762,7 @@ function asComplexityOrNull(value: unknown): ComplexityLevel | null {
 function asKaelChatStatus(value: unknown): KaelChatStatus {
   if (
     value === "active" ||
+    value === "collecting_evidence" ||
     value === "estimate_ready" ||
     value === "confirmed" ||
     value === "abandoned" ||
@@ -9530,6 +11801,33 @@ function asJobStatus(value: unknown): JobStatus {
     return value;
   }
   return "draft";
+}
+
+function asPaymentStatus(value: unknown):
+  | "not_started"
+  | "code_requested"
+  | "vietqr_ready"
+  | "pending"
+  | "received"
+  | "amount_mismatch"
+  | "expired"
+  | "failed"
+  | "reconciled"
+  | null {
+  if (
+    value === "not_started" ||
+    value === "code_requested" ||
+    value === "vietqr_ready" ||
+    value === "pending" ||
+    value === "received" ||
+    value === "amount_mismatch" ||
+    value === "expired" ||
+    value === "failed" ||
+    value === "reconciled"
+  ) {
+    return value;
+  }
+  return null;
 }
 
 function asWorkerVerificationStatus(value: unknown): WorkerVerificationStatus {

@@ -1,4 +1,102 @@
-# Home Services — Progress Log
+<p align="center">
+  <img src="apps/mobile/assets/nestscout-aurora-nest-appstore-1024.png" alt="NestScout Aurora Nest logo" width="160" />
+</p>
+
+# NestScout
+
+NestScout is a mobile-first home services app for Ho Chi Minh City apartment residents. The current product is an Expo / React Native customer and worker app for electrical repair, plumbing repair, and home cleaning / housekeeping, with Kael as the product assistant for intake, diagnosis, price checking, worker briefing, and workflow support.
+
+The codebase is optimized for getting to the first trustworthy real transaction, not for a generic marketplace or web SaaS product. If a proposed change expands services, bypasses Supabase Edge, fabricates provider data, or moves workflow writes into the mobile client, stop and read the governing docs first.
+
+## What New Developers Should Know
+
+- Primary app: `apps/mobile`, an Expo React Native app with customer and worker flows.
+- Production API boundary: `supabase/functions/mobile-api`, the store-bound Edge Function for workflow-sensitive reads/writes.
+- Reference/support app: `apps/api`, a Next.js surface for parity, admin, and support work unless a task explicitly says otherwise.
+- Shared contracts: `packages/shared`, which owns service scope, schemas, workflow state, selectors, and shared response types.
+- Data plane: Supabase Auth, DB/RPC/Storage/Realtime, RLS, migrations, and server-side provider integrations.
+- Kael boundary: mobile can display Kael outputs and call the Edge API; mobile must not call AI providers directly or store server secrets.
+
+## Product Scope
+
+Supported today:
+
+- Electrical repair
+- Plumbing repair
+- Home cleaning / housekeeping
+- Ho Chi Minh City apartments
+- Customer/worker flows with verified backend contracts where implemented
+
+Out of scope unless Tu explicitly approves:
+
+- New service categories
+- Multi-city expansion
+- Consumer web app as the main product
+- Fake workers, fake prices, fake ratings, fake queue counts, or fake earnings
+- Raw AI/client-side booking, payment, cancellation, scope, or completion decisions
+
+## Architecture
+
+```text
+Expo React Native mobile app
+-> Supabase Auth
+-> Supabase Edge Function mobile-api
+-> Supabase DB/RPC/Storage/Realtime
+-> server-side AI and external providers
+```
+
+Workflow-sensitive writes belong behind `mobile-api`. Direct mobile Supabase access is limited to documented read/bootstrap paths or narrow explicit contracts.
+
+## Repo Map
+
+```text
+apps/mobile/        Expo React Native app, Expo Router, customer and worker surfaces
+apps/api/           Next.js reference/parity/admin/support surface
+packages/shared/    Shared constants, schemas, workflow contracts, generated DB types
+supabase/functions/ Supabase Edge runtime, especially mobile-api
+supabase/migrations Database schema, RLS, RPC, storage, and hardening migrations
+docs/               Durable architecture, ops, design, memory, and test evidence
+protocols/          Task protocols used by AI agents and reviewers
+design/             Detailed design system references
+```
+
+## Required Reading Order
+
+Before changing behavior, read the docs as a stack:
+
+1. `critical.md`
+2. `RULES.md`
+3. `STRUCTURES.md`
+4. `design.md` for UI, motion, visual, mascot, or frontend work
+5. `AGENTS.md`
+6. `CLAUDE.md` when work is ambiguous, strategic, or cross-cutting
+7. `docs/architecture/code-ownership-map.md` for code enhancement/refactor work
+8. Relevant `README.md`, `docs/**/*.md`, and `Plan.md` sections
+9. `.claude/MEMORY.md` last
+
+If these sources conflict, surface the conflict instead of silently choosing the convenient path.
+
+## Local Commands
+
+Use the Windows-safe wrapper scripts exposed through `package.json`:
+
+```powershell
+pnpm type-check
+pnpm test
+pnpm type-check:mobile
+pnpm test:mobile
+pnpm lint:mobile
+pnpm doctor
+pnpm supabase:version
+```
+
+Run the narrowest relevant check first, then broaden when a change touches shared contracts, runtime boundaries, UI gates, or security-sensitive behavior.
+
+## README Logo Source
+
+The logo above uses `apps/mobile/assets/nestscout-aurora-nest-appstore-1024.png`, verified as a 1024x1024 square App Store PNG from `NestScout_AuroraNest_Logo_Images_v1_0_APPSTORE_READY.zip`. That keeps GitHub rendering stable while matching the app icon source.
+
+## Progress Log
 
 > Current runtime decision (2026-05-18): React Native AppStore/CHPlay ->
 > Supabase Auth -> Supabase Edge Function `mobile-api` ->
@@ -32,7 +130,7 @@
 - **Bug caught by integration test**: hook was rewriting `status='pending_evidence'` when `evidence_count < MIN_EVIDENCE` — fixed so observe() owns created↔pending_evidence transition by count.
 - **Test count**: 800 local / 859 staging pass (+80 unit + 5 integration). 0 fail.
 - **Verification**:
-  - `corepack pnpm --filter @home-services/api test` → 800 pass / 59 skip / 0 fail.
+  - `corepack pnpm --filter @nestscout/api test` → 800 pass / 59 skip / 0 fail.
   - Staging integration (5 tests, real Supabase): 4-job evidence floor, 5-job + autopromote on → rule active + version v1, fetchBaseline returns learned range, autopromote-off path, null final_price graceful skip.
 - **Decision update (2026-05-18)**: runtime path is locked to Supabase Edge Function `mobile-api`. Vercel/hosted Next.js is not part of the mobile release path.
 - **Next**: Continue Edge/mobile parity, staging/prod gates, and App E2E last.
@@ -76,9 +174,9 @@
   - Security advisors: **0** warnings.
   - Performance advisors: 17 multiple_permissive_policies (pre-existing design), 0 unindexed_foreign_keys, 22 unused_index (auto-resolves with traffic).
 - **Final verification**:
-  - `corepack pnpm --filter @home-services/shared exec tsc --noEmit` clean.
-  - `corepack pnpm --filter @home-services/api exec tsc --noEmit` clean.
-  - `corepack pnpm --filter @home-services/api build` ✅ Next.js 16, 18 routes.
+  - `corepack pnpm --filter @nestscout/shared exec tsc --noEmit` clean.
+  - `corepack pnpm --filter @nestscout/api exec tsc --noEmit` clean.
+  - `corepack pnpm --filter @nestscout/api build` ✅ Next.js 16, 18 routes.
   - Local test: **719 pass / 54 skipped / 0 fail** (32 test files).
   - Staging test (with env): **773 pass / 0 fail / 0 skip** (34 files including 12 integration B0-B8 + 42 real-supabase RLS).
 - **Known limitations**:
@@ -99,7 +197,7 @@
   - `apps/mobile/components/fleets/fleets-prototype.tsx`
   - `apps/mobile/public/` static mockup artifacts
   - Remotion/prototype scratch artifacts: `apps/remotion/`, `.superpowers/`, `docs/superpowers/`, the old scratch `design.md`, and `packages/shared/src/__tests__/remotion-wiring.test.ts`
-  - Follow-up note: root `design.md` was later recreated intentionally as the locked Home Services design operating system; do not treat the new file as a scratch artifact.
+  - Follow-up note: root `design.md` was later recreated intentionally as the locked NestScout design operating system; do not treat the new file as a scratch artifact.
 - **Tests/contracts**: `packages/shared/src/__tests__/mobile-wiring.test.ts` now guards that prototype runtime routes/components/public mockups are absent and production customer tabs do not import prototype components.
 - **Lessons**: Durable cleanup lessons are captured in `docs/agent-lessons.md`.
 - **Next**: Keep production UI work in `apps/mobile/app/(customer)` and production components only; do not reintroduce `/prototype` routes before store builds.
@@ -124,7 +222,7 @@
 - **Production UI result**:
   - `apps/mobile/app/(customer)/booking.tsx` now renders `ClientPriceCheckFlow`.
   - New production component: `apps/mobile/components/client-price-check/client-price-check-flow.tsx`.
-  - First screen is a clean HomeServices services hub with app bar, compact banner scene, address card, service cards for `Sửa điện`/`Sửa nước`, and small honesty info tiles.
+  - First screen is a clean NestScout services hub with app bar, compact banner scene, address card, service cards for `Sửa điện`/`Sửa nước`, and small honesty info tiles.
   - Flow states: `hub` → `problem` → `details` → `clarification` → `estimate`.
   - Status states cover default/editing/loading/clarification/estimate/fallback/error.
   - Every estimate/fallback keeps the required Vietnamese price disclaimer.
@@ -143,8 +241,8 @@
 - **Tests/contracts**:
   - Expanded `packages/shared/src/__tests__/mobile-wiring.test.ts` to lock prototype isolation, production route wiring, supported service scope, disclaimer copy, no backend/AI/Supabase mutation leakage, no future workflow leakage, motion contract, and compact iOS/Android guards.
 - **Verification**:
-  - `corepack pnpm --filter @home-services/mobile type-check` passed.
-  - `corepack pnpm --filter @home-services/shared test -- src/__tests__/mobile-wiring.test.ts` passed.
+  - `corepack pnpm --filter @nestscout/mobile type-check` passed.
+  - `corepack pnpm --filter @nestscout/shared test -- src/__tests__/mobile-wiring.test.ts` passed.
   - `corepack pnpm type-check` passed.
   - `corepack pnpm test` passed.
   - `corepack pnpm lint` passed.
@@ -245,23 +343,23 @@
 ### 2026-05-13 - Supabase Remote Dry-Run Check
 
 - **Task**: Try the non-Docker Supabase remote/staging direction without applying migrations.
-- **Result**: Supabase CLI token-based project listing worked after network permission. Organization currently shows no dedicated staging project; linked project is `HomeServices` with ref `iwevizmsedyqozxlawwl`.
+- **Result**: Supabase CLI token-based project listing worked after network permission. Organization currently shows no dedicated staging project; linked project is `NestScout` with ref `iwevizmsedyqozxlawwl`.
 - **Dry-run result**: `supabase db push --dry-run --linked` did not mutate remote and reported two pending local migrations: `20260512000000_security_hardening.sql` and `20260513114845_align_structures_workflow.sql`.
 - **Risk note**: Any real remote push would apply both pending migrations in order, not only the new schema-alignment migration.
-- **Next**: Create a separate HomeServices staging project or explicitly approve using the linked project for a real staging apply. Revoke the temporary Supabase access token used in this session.
+- **Next**: Create a separate NestScout staging project or explicitly approve using the linked project for a real staging apply. Revoke the temporary Supabase access token used in this session.
 
 ### 2026-05-13 - Supabase Staging Runtime Verification
 
-- **Task**: Apply the local migration chain to the new `HomeServices Staging` Supabase project and verify runtime schema behavior before any production decision.
-- **Target**: `HomeServices Staging` ref `xyylanuyflrjzbjzhqfl`, region `ap-southeast-1`. The local Supabase link is currently set to this staging project.
+- **Task**: Apply the local migration chain to the new `NestScout Staging` Supabase project and verify runtime schema behavior before any production decision.
+- **Target**: `NestScout Staging` ref `xyylanuyflrjzbjzhqfl`, region `ap-southeast-1`. The local Supabase link is currently set to this staging project.
 - **Result**: `supabase db push --linked` applied `20260511000000_init_schema.sql`, `20260512000000_security_hardening.sql`, and `20260513114845_align_structures_workflow.sql` successfully on staging.
 - **Runtime checks**: Remote migration history matches all three local migrations. SQL smoke checks found 17 public tables, RLS enabled on all 17, policies on all 17, 3 storage buckets, 6 storage policies, 2 service categories, 2 service problems, 6 price baselines, and 3 learning tables.
 - **Types/tests**: Regenerated `src/lib/database.types.ts` from staging, converted it to UTF-8 for local tooling, and reran `npm run test`, `npm run lint`, and `npm run build` successfully.
-- **Next**: Review staging schema in Dashboard if desired, then decide whether to keep iterating on staging or prepare a production migration checklist for `HomeServices`.
+- **Next**: Review staging schema in Dashboard if desired, then decide whether to keep iterating on staging or prepare a production migration checklist for `NestScout`.
 
 ### 2026-05-13 - Supabase Staging Security Verification
 
-- **Task**: Verify real RLS and storage behavior on `HomeServices Staging` before any production migration checklist.
+- **Task**: Verify real RLS and storage behavior on `NestScout Staging` before any production migration checklist.
 - **Result**: Added `supabase/tests/staging_security_verification.sql`, a rollback-only staging harness with deterministic auth/profile/job fixtures.
 - **Remote checks**: Harness passed 29/29 checks on staging, covering customer/job isolation, matched worker access, pre-match worker privacy, outsider denial, admin visibility, learning table protection, direct client mutation denial, and job/completion/worker-document storage boundaries.
 - **Local tests**: Added a static harness guard test to keep the staging verification rollback-only, secret-free, and coverage-aware.
@@ -272,7 +370,7 @@
 
 - **Task**: Prepare the production migration safety gate without applying production changes.
 - **Result**: Added `docs/ops/production-migration-checklist.md` and a new staging-verified migration `20260513125704_harden_function_execution.sql`.
-- **Preflight**: Production `HomeServices` ref `iwevizmsedyqozxlawwl` currently has only `20260511000000_init_schema.sql`; checked production app/storage table counts are all 0.
+- **Preflight**: Production `NestScout` ref `iwevizmsedyqozxlawwl` currently has only `20260511000000_init_schema.sql`; checked production app/storage table counts are all 0.
 - **Dry-run status**: Production dry-run before hardening reported two pending migrations. After adding hardening, final production dry-run requires `SUPABASE_DB_PASSWORD`; expected pending chain is now `20260512000000_security_hardening.sql`, `20260513114845_align_structures_workflow.sql`, and `20260513125704_harden_function_execution.sql`.
 - **Security advisor fix**: Staging advisors initially flagged mutable function `search_path` and executable `handle_new_user()`. The hardening migration pins function search paths and revokes direct API execution of `handle_new_user()`.
 - **Staging verification**: Applied hardening to staging, reran security advisors (`No issues found`), and reran RLS/storage harness (29/29 pass).

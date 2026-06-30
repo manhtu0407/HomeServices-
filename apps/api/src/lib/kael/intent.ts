@@ -2,7 +2,7 @@ import { callAI } from '@/lib/ai/client'
 import { buildIntakeDiagnosisMessages, buildIntentMessages } from './prompts'
 import { intentResultSchema, type IntentResult } from './schemas'
 import { safeParseJSON } from './parsing'
-import { sanitizeForLLM, scrubSensitiveForLLM } from '@home-services/shared'
+import { sanitizeForLLM, scrubSensitiveForLLM } from '@nestscout/shared'
 
 export type IntentClassifyResult =
   | { success: true; intent: IntentResult; failureReason?: undefined }

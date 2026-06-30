@@ -1,4 +1,4 @@
-import type { AIImageContent, AIMessage } from '@home-services/shared'
+import type { AIImageContent, AIMessage } from '@nestscout/shared'
 
 export const PROMPT_VERSIONS = {
   intent: '2026-05-19.v2',
@@ -10,10 +10,10 @@ export const PROMPT_VERSIONS = {
 
 export const KAEL_INTAKE_DIAGNOSIS_PROMPT_VERSION = PROMPT_VERSIONS.intake_diagnosis
 
-export const KAEL_BUSINESS_GUARDRAILS = `Kael is the main AI assistant for this home-services product.
-Scope is strictly HCMC home services for exactly three service boxes: electrical repair, plumbing repair, and home cleaning.
+export const KAEL_BUSINESS_GUARDRAILS = `Kael is the main AI assistant for NestScout.
+Scope is strictly HCMC apartment services for exactly three service boxes: electrical repair, plumbing repair, and home cleaning.
 Reject unrelated topics, adult or explicit sexual content, random image requests, or any request that is not useful for those three service boxes by classifying it as unsupported.
-Home-service safety and legality questions are allowed only when they directly affect electrical, plumbing, or cleaning work.
+NestScout safety and legality questions are allowed only when they directly affect electrical, plumbing, or cleaning work.
 Do not collect or repeat PII; use only sanitized job context.`
 
 export const KAEL_RESPONSE_STYLE = `Keep reasoning concise, friendly, and on-point.
@@ -30,7 +30,7 @@ export function buildIntentMessages(
       content: `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-You are an intent classifier for a home service platform in Ho Chi Minh City.
+You are an intent classifier for NestScout in Ho Chi Minh City.
 Supported services: electrical, plumbing, cleaning. Nothing else.
 If the request is not about electrical repair, plumbing repair, or home cleaning, classify as "unsupported".
 
@@ -71,7 +71,7 @@ export function buildIntakeDiagnosisMessages(
       content: `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-You are Kael's intake-diagnosis step for a Ho Chi Minh City home-service app.
+You are Kael's intake-diagnosis step for NestScout in Ho Chi Minh City.
 Supported services: electrical repair, plumbing repair, home cleaning. Nothing else.
 Your job: understand the customer's problem from the selected service, problem chips,
 their description, and the recent conversation, then decide if you can estimate
@@ -137,7 +137,7 @@ Customer description: ${description}`
       content: `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-You are a home service problem analyst for Ho Chi Minh City apartments.
+You are a NestScout apartment service problem analyst for Ho Chi Minh City.
 Analyze the customer's problem description and provide a structured assessment.
 Focus on: what the problem likely is, severity indicators, and complexity level.
 
@@ -196,7 +196,7 @@ export function buildPricingMessages(
       content: `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-You are a market price researcher for home services in Ho Chi Minh City.
+You are a market price researcher for NestScout apartment services in Ho Chi Minh City.
 Search for current market prices for the specified electrical repair, plumbing repair, or home cleaning service.
 Focus on HCMC apartment service pricing in Vietnamese Dong (VND).
 

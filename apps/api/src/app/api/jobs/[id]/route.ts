@@ -26,12 +26,12 @@ export async function GET(request: Request, { params }: RouteParams) {
   )
 
   if (error || !job) {
-    return apiError('NOT_FOUND', 'KhÃ´ng tÃ¬m tháº¥y yÃªu cáº§u', 404)
+    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
   }
 
   const ownership = assertOwnership(job, auth.user.id, auth.role)
   if (!ownership.allowed) {
-    return apiError('NOT_FOUND', 'KhÃ´ng tÃ¬m tháº¥y yÃªu cáº§u', 404)
+    return apiError('NOT_FOUND', 'Không tìm thấy yêu cầu', 404)
   }
 
   let broadcastState: { active_count: number; seconds_remaining: number | null } | null = null
@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     )
     if (broadcastErr) {
       console.warn('Job detail: broadcast state query failed', { jobId: id, errorCode: broadcastErr.code })
-      return apiError('DB_ERROR', 'KhÃ´ng thá»ƒ kiá»ƒm tra tráº¡ng thÃ¡i broadcast', 500)
+      return apiError('DB_ERROR', 'Không thể kiểm tra trạng thái broadcast', 500)
     }
 
     let activeCount = 0
@@ -89,7 +89,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     )
     if (scopeErr) {
       console.warn('Job detail: current scope-change query failed', { jobId: id, errorCode: scopeErr.code })
-      return apiError('DB_ERROR', 'KhÃ´ng thá»ƒ táº£i yÃªu cáº§u Ä‘á»•i pháº¡m vi hiá»‡n táº¡i', 500)
+      return apiError('DB_ERROR', 'Không thể tải yêu cầu đổi phạm vi hiện tại', 500)
     }
     const scope = scopeRows?.[0]
     currentScopeChange = scope

@@ -8,7 +8,11 @@ import { readEdgeEnv } from '../../../../../supabase/functions/mobile-api/_share
 import { requireJobAccess } from '../../../../../supabase/functions/mobile-api/_shared/access'
 import { runKaelPipeline, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael'
 import { sendPushToUsers } from '../../../../../supabase/functions/mobile-api/_shared/push'
-import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
+import {
+  createEdgeServices,
+  type DbClient,
+  submitWorkerApplicationForReview,
+} from '../../../../../supabase/functions/mobile-api/_shared/services'
 
 describe('mobile-api Edge runtime helpers', () => {
   beforeEach(() => {
@@ -194,6 +198,7 @@ describe('mobile-api Edge runtime helpers', () => {
 
     expect(Object.keys(services).sort()).toEqual([
       'acceptBroadcast',
+      'answerKaelAssistant',
       'approveKaelLearningCandidate',
       'askKaelForWorker',
       'attachJobMedia',
@@ -202,23 +207,30 @@ describe('mobile-api Edge runtime helpers', () => {
       'confirmCompletion',
       'confirmSearch',
       'createKaelChat',
+      'createKaelChatMediaUpload',
       'createJob',
+      'createPaymentIntent',
       'createWorkerKaelChat',
       'decideScopeChange',
       'decideWorkerCancellation',
       'declineBroadcast',
       'deleteMyKaelMemory',
       'evaluatePriceSynthesisAbCase',
+      'getCustomerPaymentMethod',
+      'getCustomerProfileInsights',
       'getJob',
       'getKaelCharter',
       'getKaelChat',
       'getKaelChatProgress',
       'getMyKaelMemory',
+      'getVietmapStaticMap',
       'getWorkerEarnings',
       'getWorkerKaelChat',
       'getWorkerKaelMemory',
       'getWorkerKaelTrainingConsent',
+      'getWorkerPerformanceInsights',
       'getWorkerProfile',
+      'handleSepayWebhook',
       'invalidateMarketCache',
       'listCustomerActiveJobs',
       'listJobMessages',
@@ -242,17 +254,25 @@ describe('mobile-api Edge runtime helpers', () => {
       'placesAutocomplete',
       'registerDevicePushToken',
       'registerWorker',
+      'resolvePlace',
       'requestScopeChange',
       'requestCustomerCancellation',
       'requestWorkerCancellation',
       'rejectKaelLearningCandidate',
+      'saveCustomerPaymentMethod',
+      'saveWorkerPayoutMethod',
       'submitDisputeCounterStatement',
       'submitCustomerKaelFeedback',
+      'submitKaelChatEvidence',
       'submitReview',
+      'submitWorkerApplication',
       'submitWorkerKaelFeedback',
       'decideDispute',
       'updateJobStatus',
+      'updateMyCustomerKaelMemoryPreference',
+      'updateMyWorkerKaelMemoryPreference',
       'updateWorkerAvailability',
+      'updateWorkerServiceArea',
     ].sort())
   })
 
@@ -300,6 +320,176 @@ describe('mobile-api Edge runtime helpers', () => {
     ])
     expect(client.calls[0].operations).toContainEqual(['select', 'id, status, created_at'])
     expect(client.calls[0].operations).toContainEqual(['maybeSingle'])
+  })
+
+  it('stores customer message memory permission in service preferences', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          memory_version: 4,
+          service_preferences: {
+            memory_permissions: {
+              preferred_address: true,
+            },
+          },
+        },
+        error: null,
+      },
+      {
+        data: {
+          customer_id: 'customer-1',
+          language: null,
+          last_observed_at: '2026-06-27T00:00:00.000Z',
+          memory_version: 5,
+          preference_summary: null,
+          service_preferences: {
+            memory_permissions: {
+              message_interaction_memory: true,
+              preferred_address: true,
+            },
+          },
+          trust_signals: {},
+        },
+        error: null,
+      },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      role: 'customer',
+      success: true,
+      supabase: client,
+      user: { id: 'customer-1' },
+    }
+
+    const result = await createEdgeServices({}).updateMyCustomerKaelMemoryPreference(ctx, {
+      enabled: true,
+      key: 'message_interaction_memory',
+    })
+
+    expect(result).toMatchObject({
+      memory: {
+        service_preferences: {
+          memory_permissions: {
+            message_interaction_memory: true,
+            preferred_address: true,
+          },
+        },
+      },
+      subject_type: 'customer',
+    })
+    expect(client.calls.find((call) =>
+      call.table === 'customer_kael_memory' &&
+      call.operations.some((op) => op[0] === 'upsert')
+    )?.operations)
+      .toContainEqual([
+        'upsert',
+        expect.objectContaining({
+          customer_id: 'customer-1',
+          service_preferences: expect.objectContaining({
+            memory_permissions: expect.objectContaining({
+              message_interaction_memory: true,
+              preferred_address: true,
+            }),
+          }),
+        }),
+      ])
+    expect(client.calls.find((call) => call.table === 'kael_memory_audit')?.operations)
+      .toContainEqual([
+        'insert',
+        expect.objectContaining({
+          layer: 'L3',
+          operation: 'write',
+          purpose: 'self_update_preferences',
+          subject_id: 'customer-1',
+          subject_type: 'customer',
+        }),
+      ])
+  })
+
+  it('stores worker memory preferences in safe metadata', async () => {
+    const client = makeSequenceClient([
+      {
+        data: {
+          memory_version: 3,
+          safe_metadata: {
+            memory_preferences: {
+              skill_preference: true,
+            },
+          },
+        },
+        error: null,
+      },
+      {
+        data: {
+          language: null,
+          last_observed_at: '2026-06-27T00:00:00.000Z',
+          memory_version: 4,
+          red_flags: {},
+          reliability_signals: {},
+          safe_metadata: {
+            memory_preferences: {
+              area_preference: false,
+              skill_preference: true,
+            },
+          },
+          service_skill_proficiency: {},
+          service_skill_summary: null,
+          worker_id: 'worker-1',
+        },
+        error: null,
+      },
+      { data: null, error: null },
+    ])
+    const ctx: MobileApiContext = {
+      role: 'worker',
+      success: true,
+      supabase: client,
+      user: { id: 'worker-1' },
+    }
+
+    const result = await createEdgeServices({}).updateMyWorkerKaelMemoryPreference(ctx, {
+      enabled: false,
+      key: 'area_preference',
+    })
+
+    expect(result).toMatchObject({
+      memory: {
+        safe_metadata: {
+          memory_preferences: {
+            area_preference: false,
+            skill_preference: true,
+          },
+        },
+      },
+      subject_type: 'worker',
+    })
+    expect(client.calls.find((call) =>
+      call.table === 'worker_kael_memory' &&
+      call.operations.some((op) => op[0] === 'upsert')
+    )?.operations)
+      .toContainEqual([
+        'upsert',
+        expect.objectContaining({
+          safe_metadata: expect.objectContaining({
+            memory_preferences: expect.objectContaining({
+              area_preference: false,
+              skill_preference: true,
+            }),
+          }),
+          worker_id: 'worker-1',
+        }),
+      ])
+    expect(client.calls.find((call) => call.table === 'kael_memory_audit')?.operations)
+      .toContainEqual([
+        'insert',
+        expect.objectContaining({
+          layer: 'L4',
+          operation: 'write',
+          purpose: 'self_update_preferences',
+          subject_id: 'worker-1',
+          subject_type: 'worker',
+        }),
+      ])
   })
 
   it('returns a safe Places autocomplete fallback when no Maps provider key is configured', async () => {
@@ -1404,6 +1594,60 @@ describe('mobile-api Edge runtime helpers', () => {
         body: expect.not.stringContaining('Tôi đang lên thang máy.'),
       }),
     )
+  })
+
+  it('stores public worker applications as admin review queue items without granting worker access', async () => {
+    const client = makeSequenceClient([
+      { data: null, error: null },
+      {
+        data: {
+          id: 'application-1',
+          status: 'open',
+          created_at: '2026-06-12T00:00:00.000Z',
+        },
+        error: null,
+      },
+    ])
+
+    const result = await submitWorkerApplicationForReview(client as unknown as DbClient, {
+      contact: 'worker@example.com',
+      language: 'vi',
+      source: 'auth_worker_create',
+      client_request_id: '550e8400-e29b-41d4-a716-446655440000',
+    })
+
+    expect(result).toEqual({
+      application_id: 'application-1',
+      status: 'open',
+      submitted_at: '2026-06-12T00:00:00.000Z',
+    })
+    expect(client.calls[0]).toMatchObject({
+      table: 'kael_admin_queue',
+      operations: expect.arrayContaining([
+        ['eq', 'queue_type', 'worker_application_review'],
+        ['eq', 'status', 'open'],
+        ['eq', 'safe_metadata->>client_request_id', '550e8400-e29b-41d4-a716-446655440000'],
+      ]),
+    })
+    const insertCall = client.calls.find((call) =>
+      call.table === 'kael_admin_queue' &&
+      call.operations.some((op) => op[0] === 'insert')
+    )
+    expect(insertCall?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({
+        actor_role: 'system',
+        queue_type: 'worker_application_review',
+        reason_code: 'worker_application_submitted',
+        safe_metadata: expect.objectContaining({
+          contact: 'worker@example.com',
+          contact_kind: 'email',
+          client_request_id: '550e8400-e29b-41d4-a716-446655440000',
+          source: 'auth_worker_create',
+        }),
+      }),
+    ])
+    expect(JSON.stringify(insertCall?.operations ?? [])).not.toContain('password')
   })
 
   it('redacts worker contact solicitation, records risk memory, and queues soft admin evidence', async () => {
@@ -5692,12 +5936,20 @@ function makeQuery(call: QueryCall, results: QueryResult[]) {
       call.operations.push(['upsert', value])
       return query
     },
+    delete() {
+      call.operations.push(['delete'])
+      return query
+    },
     eq(column: string, value: unknown) {
       call.operations.push(['eq', column, value])
       return query
     },
     neq(column: string, value: unknown) {
       call.operations.push(['neq', column, value])
+      return query
+    },
+    is(column: string, value: unknown) {
+      call.operations.push(['is', column, value])
       return query
     },
     gt(column: string, value: unknown) {

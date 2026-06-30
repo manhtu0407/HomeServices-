@@ -1,15 +1,22 @@
 import { useState, type ReactNode } from 'react'
+import { Image } from 'expo-image'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { KaelMascot } from '@/components/kael/kael-mascot'
+import { KAEL_CONTEXTUAL_STATES, KAEL_CORE_STATES, KAEL_EMOTIONS } from '@/components/kael/kael-mascot-assets'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import {
   KaelButton,
+  KaelAlertBadge,
+  KaelBadge,
   KaelCard,
   KaelChip,
   KaelInlineStepper,
   KaelMediaUploadTray,
+  KaelProgressPill,
+  KaelRatingCapsule,
   KaelSegmentedControl,
+  KaelSwitch,
   KaelTextField,
   KaelVoiceInputCapsule,
   MintAura,
@@ -17,6 +24,10 @@ import {
 import { color, component, radius, shadow, spacing, typography } from '@/design/theme'
 
 type GalleryTab = 'home' | 'services' | 'activity' | 'profile'
+
+const kaelOrbIcon = require('../assets/kael-orb-icon.png')
+const nestScoutLogoMark = require('../assets/nestscout-logo-mark.png')
+const galleryMascotStates = [...KAEL_CORE_STATES, ...KAEL_CONTEXTUAL_STATES] as const
 
 const galleryTabs: Array<FloatingGlassTabItem<GalleryTab>> = [
   { key: 'home', label: 'Trang chủ' },
@@ -28,6 +39,7 @@ const galleryTabs: Array<FloatingGlassTabItem<GalleryTab>> = [
 export default function DesignGalleryRoute() {
   const [segment, setSegment] = useState<'all' | 'doing' | 'done'>('all')
   const [activeTab, setActiveTab] = useState<GalleryTab>('home')
+  const [switchOn, setSwitchOn] = useState(true)
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -36,7 +48,7 @@ export default function DesignGalleryRoute() {
           <MintAura intensity="page" />
           <View style={styles.brandLockup}>
             <View style={styles.kTile}>
-              <Text style={styles.kText}>K</Text>
+              <Image contentFit="contain" source={nestScoutLogoMark} style={styles.kTileImage} testID="design-gallery-nestscout-logo-mark" />
             </View>
             <View>
               <Text style={styles.title}>Kael Component Gallery</Text>
@@ -57,6 +69,10 @@ export default function DesignGalleryRoute() {
         </GallerySection>
 
         <GallerySection title="Toggles & Selection">
+          <View style={styles.switchRow}>
+            <KaelSwitch accessibilityLabel="Switch lớn" onValueChange={setSwitchOn} testID="design-gallery-switch-large" value={switchOn} />
+            <KaelSwitch accessibilityLabel="Switch nhỏ" onValueChange={setSwitchOn} size="small" testID="design-gallery-switch-small" value={switchOn} />
+          </View>
           <KaelSegmentedControl
             onChange={setSegment}
             options={[
@@ -72,6 +88,7 @@ export default function DesignGalleryRoute() {
             <KaelChip label="Đang hoạt động" variant="successStatus" />
             <KaelChip label="Cần kiểm tra" variant="warning" />
             <KaelChip label="Cần xử lý" variant="error" />
+            <KaelChip label="Thiết bị x" variant="unselected" />
           </View>
         </GallerySection>
 
@@ -81,6 +98,18 @@ export default function DesignGalleryRoute() {
           <KaelInlineStepper onDecrement={() => {}} onIncrement={() => {}} value={2} />
           <KaelVoiceInputCapsule />
           <KaelMediaUploadTray />
+        </GallerySection>
+
+        <GallerySection title="Status & Utility Components">
+          <View style={styles.chipRow}>
+            <KaelBadge label="Mới" testID="design-gallery-badge" />
+            <KaelProgressPill testID="design-gallery-progress-pill" value={0.66} />
+            <KaelBadge label="Đang hoạt động" testID="design-gallery-status-chip" variant="mint" />
+            <KaelRatingCapsule rating={4.8} testID="design-gallery-rating-capsule" />
+            <View style={styles.alertBadgeDemo}>
+              <KaelAlertBadge count={3} testID="design-gallery-alert-badge" />
+            </View>
+          </View>
         </GallerySection>
 
         <GallerySection title="Cards, Glass & Aura">
@@ -101,12 +130,23 @@ export default function DesignGalleryRoute() {
           </View>
         </GallerySection>
 
-        <GallerySection title="Kael Mascot Shell">
+        <GallerySection title="Kael Mascot States">
           <View style={styles.mascotRow}>
-            {(['welcome', 'thinking', 'analyzing', 'success', 'warning'] as const).map((state) => (
+            {galleryMascotStates.map((state) => (
               <View key={state} style={styles.mascotCell}>
-                <KaelMascot showFallbackBadge size={92} state={state} />
+                <KaelMascot size={92} state={state} />
                 <Text style={styles.mascotLabel}>{state}</Text>
+              </View>
+            ))}
+          </View>
+        </GallerySection>
+
+        <GallerySection title="Kael Emotion Details">
+          <View style={styles.mascotRow}>
+            {KAEL_EMOTIONS.map((emotion) => (
+              <View key={emotion} style={styles.mascotCell}>
+                <KaelMascot emotion={emotion} size={92} state="welcome" />
+                <Text style={styles.mascotLabel}>{emotion}</Text>
               </View>
             ))}
           </View>
@@ -125,7 +165,7 @@ export default function DesignGalleryRoute() {
               testID="design-gallery-bottom-nav"
             />
             <Pressable accessibilityLabel="Kael Orb" accessibilityRole="button" style={styles.kaelOrb}>
-              <Text style={styles.kaelOrbText}>K</Text>
+              <Image contentFit="contain" source={kaelOrbIcon} style={styles.kaelOrbImage} testID="design-gallery-kael-orb-icon" />
             </Pressable>
           </View>
         </GallerySection>
@@ -155,6 +195,11 @@ function GalleryNavIcon({ focused, label }: { focused: boolean; label: string })
 }
 
 const styles = StyleSheet.create({
+  alertBadgeDemo: {
+    height: 28,
+    position: 'relative',
+    width: 28,
+  },
   brandLockup: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -164,7 +209,7 @@ const styles = StyleSheet.create({
   cardBody: {
     color: color.text.secondary,
     fontSize: typography.caption.fontSize,
-    fontWeight: '600',
+    fontWeight: typography.caption.fontWeight,
     letterSpacing: 0,
     lineHeight: typography.caption.lineHeight,
   },
@@ -175,7 +220,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: color.text.strong,
     fontSize: typography.label.fontSize,
-    fontWeight: '900',
+    fontWeight: typography.label.fontWeight,
     letterSpacing: 0,
     lineHeight: typography.label.lineHeight,
   },
@@ -206,20 +251,19 @@ const styles = StyleSheet.create({
     position: 'relative',
     ...shadow.soft,
   },
-  kText: {
-    color: color.text.inverse,
-    fontSize: 30,
-    fontWeight: '900',
-    letterSpacing: 0,
-    lineHeight: 34,
-  },
   kTile: {
     alignItems: 'center',
-    backgroundColor: component.button.primary.gradient[1],
+    backgroundColor: component.logoMark.background,
     borderRadius: radius.md,
+    boxShadow: component.logoMark.shadow,
     height: 54,
     justifyContent: 'center',
+    overflow: 'visible',
     width: 54,
+  },
+  kTileImage: {
+    height: 64,
+    width: 64,
   },
   kaelOrb: {
     alignItems: 'center',
@@ -232,12 +276,9 @@ const styles = StyleSheet.create({
     width: component.bottomNav.orb.size,
     ...shadow.orb,
   },
-  kaelOrbText: {
-    color: color.text.inverse,
-    fontSize: 30,
-    fontWeight: '900',
-    letterSpacing: 0,
-    lineHeight: 34,
+  kaelOrbImage: {
+    height: component.bottomNav.orb.glyphHeight,
+    width: component.bottomNav.orb.glyphWidth,
   },
   mascotCell: {
     alignItems: 'center',
@@ -247,7 +288,7 @@ const styles = StyleSheet.create({
   mascotLabel: {
     color: color.text.secondary,
     fontSize: typography.caption.fontSize,
-    fontWeight: '700',
+    fontWeight: typography.caption.fontWeight,
     letterSpacing: 0,
     lineHeight: typography.caption.lineHeight,
     textAlign: 'center',
@@ -273,10 +314,10 @@ const styles = StyleSheet.create({
   },
   navIconLabel: {
     color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: typography.caption.fontSize,
+    fontWeight: typography.caption.fontWeight,
     letterSpacing: 0,
-    lineHeight: 12,
+    lineHeight: typography.caption.lineHeight,
   },
   navIconLabelActive: {
     color: color.brand.primaryDark,
@@ -304,9 +345,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: color.brand.primaryDark,
     fontSize: typography.h3.fontSize,
-    fontWeight: '900',
+    fontWeight: typography.h3.fontWeight,
     letterSpacing: 0,
     lineHeight: typography.h3.lineHeight,
+  },
+  switchRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.md,
   },
   smallFormulaCard: {
     flex: 1,
@@ -315,14 +361,14 @@ const styles = StyleSheet.create({
   subtitle: {
     color: color.text.secondary,
     fontSize: typography.label.fontSize,
-    fontWeight: '700',
+    fontWeight: typography.label.fontWeight,
     letterSpacing: 0,
     lineHeight: typography.label.lineHeight,
   },
   title: {
     color: color.text.primary,
     fontSize: typography.h2.fontSize,
-    fontWeight: '900',
+    fontWeight: typography.h2.fontWeight,
     letterSpacing: 0,
     lineHeight: typography.h2.lineHeight,
   },

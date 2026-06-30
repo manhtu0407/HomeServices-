@@ -2,6 +2,41 @@
 
 ## Done
 
+- Built the real worker create/profile review path from Auth: the worker create CTA now submits email/phone contact through `submitWorkerApplication`, mobile posts to Edge `POST /worker-applications` with an idempotent `client_request_id`, Edge validates the shared schema, stores a `worker_application_review` ticket in `kael_admin_queue`, and does not grant worker role or accept passwords/uploads from the public mobile path.
+- Added parity/static/runtime coverage for the worker application path: shared/Edge schema parity, mobile service/retry/admin-queue wiring guards, Edge router/service tests, Auth RNTL behavior, and package type-checks for mobile/api/shared all pass for this batch.
+- Cleaned production mojibake Vietnamese strings in mobile config errors, Edge profile-insight errors, Kael safety advisory text, and Next reference route errors; the Edge schema mojibake guard now passes, and shared monorepo wiring now guards production source files against mojibake regressions.
+- Added shared production-source guards so mobile code cannot reintroduce raw `TextInput` outside `KaelTextField` or legacy/prototype Kael image assets such as `common-image-icons`, `client-kael.png`, or `kael-model-8a*`.
+- Verification after the worker-application and mojibake cleanup batch: full mobile Jest passed 18 suites / 205 tests, API full Vitest passed 93 files / 1503 tests with 3 skipped files, shared full Vitest passed 15 files / 608 tests, package-level mobile/API/shared type-checks passed, and `expo config --type public` read the NestScout public config successfully.
+- Re-audited the zip source of truth for Mascot Kael States & Motions, Kael Typography, Icon Images, and Component System before continuing production edits.
+- Installed Tu-approved NestScout logo 01 Aurora Nest from the official `06_logo_color@2x.png` handoff board as a transparent contour mark with no white board background and no lockup text; app icon, adaptive icon, splash icon, favicon, auth welcome brand mark, and design-gallery brand mark now use this asset with a light mint-white aura style.
+- Cropped all 20 Kael mascot states and 10 emotion detail assets from the official `02_mascot_motion@2x.png` handoff board into transparent production PNGs, then mapped `KaelMascot` state/emotion resolution to those files instead of the generic fallback model.
+- Removed the old mascot fallback badge/model path from production `KaelMascot`; the component now resolves only official state/emotion PNG crops and keeps the soft Reduce-Motion-aware settle animation.
+- Moved the Welcome brand, title, subtitle, and trust copy onto `KaelText` so the first production entry surface goes through the Kael Typography System instead of raw `Text`.
+- Replaced the Auth login hero role vector icon with the same tracked role image PNGs used by the role cards, keeping the Auth role surface aligned with the Kael Icon Images System.
+- Replaced remaining Auth visual identity icons for customer name/onboarding and worker verification/credential slots with tracked client/worker image PNGs; Auth vector icons now stay limited to small control glyphs such as email, lock, eye, phone, map, and shield.
+- Cleaned non-legacy Supabase brand traces to NestScout: local `project_id`, initial migration comment, and staging security fixture email domains now use NestScout naming; mobile storage/deeplink legacy fallbacks remain intentionally for migration.
+- Verification after the mascot/logo/icon cleanup: mobile `tsc --noEmit` passed, shared mobile wiring Vitest passed 240 tests, Kael primitive Jest passed 8 tests, worker focused Jest passed 59 tests, customer booking focused Jest passed 2 tests, and full mobile Jest passed 18 suites / 202 tests.
+- Switched production Expo runtime metadata from the legacy Home Services identifiers to NestScout: app name, slug, URL scheme, iOS bundle identifier, and Android package now share the NestScout brand, with shared wiring guard coverage.
+- Brought `apps/mobile/app.json` into parity with `app.config.ts` so both Expo config entrypoints use NestScout slug, scheme, iOS bundle identifier, and Android package.
+- Updated push-notification deep-link normalization to accept `nestscout://` as the production scheme while keeping `homeservices://` as a legacy migration fallback.
+- Routed the remaining production surface inputs through the Kael Component System: customer home command, customer history chat composer, full-screen customer Kael chat composer, worker Kael chat composer, and admin learning reject note now use `KaelTextField` shells instead of direct native `TextInput`.
+- Cropped the Kael Orb K icon from the official handoff Icon Images System board into `apps/mobile/assets/kael-orb-icon.png` and wired it into the separated customer and worker dock Orb actions; mascot state rendering remains on Agentic Center/chat/hero surfaces.
+- Updated the hidden design gallery to use the approved NestScout logo 01 PNG for the header brand mark and the Kael Orb PNG only for the Orb demo.
+- Migrated production customer/worker/auth/chat Kael visuals away from direct static Kael image usage into the typed `KaelMascot` state shell, including Agentic Center memory, History price/chat/live-alert slots, profile insight metrics, worker chat/process cues, and auth role surfaces; the separated dock Orb now uses the cropped official K orb icon instead of a mascot fallback.
+- Locked the official Kael mascot taxonomy in tests: 10 core states, 10 contextual states, and 10 emotions remain addressable for future PNG/Lottie/Rive exports.
+- Added a motion-aware `KaelMascot` shell so state/emotion changes settle with light opacity/scale/y motion and Reduce Motion removes transform while waiting for official animated assets.
+- Updated shared mobile wiring tests to require production surfaces to use the `OfficialKaelMascot` state shell and the mapped state/emotion PNG resolver; the resolver no longer requires legacy `kael-model-8a*` assets.
+- Added shared guard coverage so production customer surfaces do not reintroduce `client-kael.png` or untracked `common-image-icons`.
+- Verification after the Kael mascot/component/icon batch: mobile type-check passed; full mobile Jest passed (17 suites / 199 tests); API focused Vitest passed (5 files / 166 tests); shared focused Vitest passed (2 files / 243 tests); package-level API/shared type-checks passed.
+- Removed production customer imports of static `client-kael.png`; contextual Kael UI now renders mascot states such as `listening`, `thinking`, `analyzing`, `processing`, `priceCheck`, `reminder`, and `report`.
+- Expanded customer/worker icon wrappers to prefer tracked 3D PNG image families for service, nav, language, theme, and utility slots with clear assets; vector glyphs remain only for small controls without official exports.
+- Removed the defensive `0/100` fallback from worker performance score formatting so missing performance data cannot accidentally render as a fake score in future call sites.
+- Extended `KaelText`/`KaelButton` usage into Agentic Center and customer primary/secondary CTAs, with focused RNTL coverage for typography scale, component routing, and mascot state anchors.
+- Moved customer Account Info fields and gender selection onto `KaelTextField` and `KaelSegmentedControl`, preserving the real `updateCustomerProfile` metadata flow.
+- Moved worker service-radius adjustment onto `KaelInlineStepper`, preserving real worker verification payload bounds and existing radius testIDs.
+- Moved Agentic Center empty-state cards onto `KaelCard`, keeping data honesty and theme surface overrides intact.
+- Wired `KaelMediaUploadTray` into the real Booking evidence picker empty state and `KaelChip` into the Auth Welcome supported-service chips, preserving the existing real media picker and auth flows.
+- Logged the missing official Kael Sans font binaries in `ASSETS_NEEDED.md` while keeping the runtime typography token wired through `KaelText`.
 - Read `CODEX_REBUILD_PROMPT.md` first from the zip.
 - Read required repo governance docs and selected protocols.
 - Ran preflight and classified the task as Phase 0 UI/docs audit.
@@ -28,7 +63,7 @@
 - Added focused RNTL coverage for Agentic Center empty, active-case, preference, notification, and chat-route behavior.
 - Added the Phase 1 hidden `/(design-gallery)` route with action buttons, chips, inputs, media/voice controls, cards, aura, bottom navigation sample, and Kael Orb sample.
 - Added reusable NestScout/Kael UI primitives in `apps/mobile/components/ui/kael-primitives.tsx`.
-- Added `KaelMascot` typed state shell with all 20 official state names plus 10 emotion variant names; current rendering uses logged fallback assets until official exports exist.
+- Added `KaelMascot` typed state shell with all 20 official state names plus 10 emotion variant names; current rendering maps to approved transparent production crops from the mascot motion handoff board.
 - Switched auth role card images away from untracked `common-image-icons` to tracked client/worker icon assets.
 - Started Group A:
   - Added the NestScout/Kael welcome screen before role selection.
@@ -45,7 +80,7 @@
   - Converted Worker Register/Create Profile into an honest review-boundary checklist because the mobile auth provider exposes no worker create-account API.
   - Removed fake upload/action copy from worker registration requirements and kept submit on the existing unavailable error path.
   - Added focused RNTL coverage for welcome, role-gate transition, customer email fallback, customer email/password submit, customer onboarding save, and worker registration honesty.
-  - Re-audited Group A against the reference crop; Welcome/Login/Register/Onboarding match available backend fields, while Splash remains blocked on a standalone production logo export because the zip only includes a logo exploration page.
+  - Re-audited Group A against the reference crop; Welcome/Login/Register/Onboarding match available backend fields, and Splash/app icons now use Tu-approved logo 01 from the official handoff board as a transparent contour mark.
 - Started Group B:
   - Added the required media/voice note slot to the booking describe step.
   - Aligned the Search & Filter booking CTA to the reference `Tiếp tục` / `Continue` copy while preserving the real Kael handoff behavior.
@@ -437,7 +472,7 @@
   - Mobile type-check passed after the Group C 2.5 checkpoint.
   - Mobile Jest from `apps/mobile` passed after the Group C 2.5 checkpoint: 17 suites, 195 tests.
   - Re-audited Group E against `02_agentic_center.png` and the zip design system; the separated Kael Orb route renders Commanding Home, Active Case, Approval Queue, and Memory & Preferences with real workflow, notification, approval, profile, and Kael memory state.
-  - Asset audit for Group E confirmed the zip provides the mascot motion page but no standalone state exports; `ASSETS_NEEDED.md` and `design/ASSET_MAP.md` already track official Kael state and Orb exports, while the app uses the typed `KaelMascot` shell and existing fallback images without cropping from the boards.
+  - Asset audit for Group E confirmed the zip provides the mascot motion page but no standalone state exports; production now uses approved transparent crops from that board, while `ASSETS_NEEDED.md` and `design/ASSET_MAP.md` track optional higher-fidelity/animated replacements.
   - Agentic Center suite passed after the Group E audit checkpoint: 11 tests.
   - Kael Orb dock focused test passed after the Group E audit checkpoint.
   - Mobile type-check passed after the Group E audit checkpoint.
@@ -454,7 +489,7 @@
 
 ## Current Status
 
-Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity rename, Agentic Center wiring/summary/Commanding Home greeting/Active Case command actions/live workflow card/phase rail/approval actions/memory self-view/edit CTA/token move, separated Kael Orb token/label refinement, Group A welcome service chips/dots, login email CTA, customer-safe email registration, onboarding start CTA, and customer onboarding, Group B Customer Home reference header/real notification badge/service heading/active order tracking plus Search & Filter priority chips and real-media CTA, booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings three-part summary/period reconciliation, worker rating, safety checklist, summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests including real approval action/gate/memory self-view/edit CTA/notification split/active-case action behavior, API/shared AI identity tests, and the latest full mobile Jest gate pass. React Doctor is currently limited by missing portable `pnpm`/`npx`.
+Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity rename, Agentic Center wiring/summary/Commanding Home greeting/Active Case command actions/live workflow card/phase rail/approval actions/memory self-view/edit CTA/token move, separated Kael Orb token/label refinement, Group A welcome service chips/dots, login email CTA, customer-safe email registration, onboarding start CTA, and customer onboarding, Group B Customer Home reference header/real notification badge/service heading/active order tracking plus Search & Filter priority chips and real-media CTA, booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings three-part summary/period reconciliation, worker rating, safety checklist, summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests including real approval action/gate/memory self-view/edit CTA/notification split/active-case action behavior, API/shared AI identity tests, and the latest full mobile Jest gate pass. React Doctor is currently limited because this host has no `npm.cmd`/`pnpm` on PATH and the available Node portable directory only contains `node.exe`.
 
 ## Next
 
@@ -465,9 +500,151 @@ Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity ren
 ## Open Risks
 
 - Pre-existing dirty worktree includes auth/prototype/asset changes. Do not overwrite them.
-- Portable `pnpm.CMD` disappeared from the temp Node folder during this session; use direct `apps/mobile/node_modules/.bin` commands until it is restored.
+- Portable `pnpm.CMD`/`npm.cmd` are not available in the temp Node folder during this session; use direct package `.bin` commands until package-manager binaries are restored.
 - `apps/api/node_modules/.bin/vitest.CMD` resolves to a missing local module in this workspace; use the root Vitest binary with `--root .` from `apps/api`.
-- React Doctor cannot currently run because the available script depends on missing `pnpm`/`npx` and no direct `react-doctor` binary exists in `apps/mobile/node_modules/.bin`.
-- Official mascot state assets are missing; use existing Kael model assets unless the zip or repo provides better final exports.
-- No local native recording was found in the repo during Phase 0.
+- React Doctor cannot currently complete: earlier cached pnpm attempts timed out with no output, and the current portable Node folder only has `node.exe`, so `npm run doctor:react:changed` cannot resolve `npm.cmd`.
+- Standalone or animated mascot state assets are optional future fidelity upgrades; production currently uses approved transparent crops from the zip mascot motion board.
+- No local native recording was found in the repo during Phase 0; `job-media` is now audio-ready, but voice capture remains honest-unavailable until a real native recorder dependency and microphone permission are added.
 - Maestro/Detox visual regression is not set up, so native UI validation must be manual/device-based plus RNTL/static gates.
+
+## 2026-06-12 Continuation Notes
+
+- Re-read `CODEX_REBUILD_PROMPT.md` from the zip and re-audited the official pages for Kael Mascot States & Motion, Typography, Icon Images, and Components.
+- Confirmed `design/theme.ts` / `tokens.json` remain the source of truth; flow boards provide skeleton only.
+- Re-checked tracked production assets: client/worker icon image families are tracked 256x256 PNGs; `common-image-icons/` is still untracked prototype trash and is not part of the production map.
+- Added API guardrail tests and updated runtime-facing Kael prompts/guardrails from legacy Home Services wording to NestScout.
+- Migrated Customer Home/History Kael avatar callsites from the local `customer-surfaces.tsx` mascot wrapper with raw `kael-model-8a*.png` ids to the official `components/kael/kael-mascot` state shell (`welcome`, `listening`, `analyzing`, `compareOptions`).
+- Red-first focused Customer Home test failed on missing official mascot state id, then passed after the migration: 7 tests.
+- Reworked `KaelMascot` so the root remains the accessible/testable shell while the inner image layer owns the official soft settle motion; this keeps screen-level style overrides from disabling mascot motion.
+- Re-ran the Kael primitive gate after the mascot motion change: `tsc --noEmit` from `apps/mobile` passed, and `jest components/ui/__tests__/kael-primitives-test.tsx --runInBand` passed: 8 tests.
+- Re-ran full mobile Jest after the shared mascot shell change: 17 suites, 199 tests passed.
+- Production grep after the latest mascot/icon audit found no production screen calls to `client-kael.png`, `common-image-icons`, `kael-model-8a*`, or mascot fallback badges.
+- React Doctor retry remains not-run rather than pass/fail: cached pnpm attempts timed out earlier, and current PATH/package-manager inspection shows no `npm.cmd` or `pnpm`; only direct package `.bin` commands are reliable in this host. Expo CLI itself is available as `apps/mobile/node_modules/.bin/expo.CMD` and reports version 54.0.25 outside sandbox.
+- Migrated high-traffic auth/customer/worker typography anchors to the Kael typography tokens from the handoff (`h1/h2/h3/body/label/caption`, `Kael Sans` family) instead of local raw font-size/weight anchors.
+- Re-ran mobile type-check after the typography anchor migration: `tsc --noEmit` from `apps/mobile` passed.
+- Focused auth/customer/worker suites passed after the typography anchor migration: 5 suites, 113 tests.
+- Full mobile Jest passed again after the typography anchor migration: 17 suites, 199 tests.
+- Migrated BookingWizard primary/secondary CTA wrappers to render through `KaelButton` while keeping the booking surface tokens and real Kael handoff behavior.
+- Re-ran BookingWizard verification after the CTA component migration: `tsc --noEmit` from `apps/mobile` passed, and `jest components/customer/__tests__/booking-wizard-test.tsx --runInBand` passed: 10 tests.
+- Added a shared wiring guard that requires BookingWizard to use `KaelButton`, `KaelMediaUploadTray`, and `KaelVoiceInputCapsule` from the Kael component system.
+- Re-ran shared verification after the BookingWizard component guard: `vitest run src/__tests__/mobile-wiring.test.ts` passed 232 tests, and `tsc --noEmit` from `packages/shared` passed.
+- Migrated Auth login/register/customer-onboarding primary CTAs and onboarding skip CTA to `KaelButton` while preserving the real Supabase auth/profile actions and existing loading/disabled states.
+- Re-ran Auth verification after the CTA component migration: `tsc --noEmit` from `apps/mobile` passed, and `jest components/auth/__tests__/auth-surfaces-test.tsx --runInBand` passed: 7 tests.
+- Added shared auth wiring guards requiring `KaelButton`, `KaelChip`, and `KaelText` usage in the production auth surface; shared wiring Vitest still passed 232 tests and shared type-check passed.
+- Re-ran full mobile Jest after the Booking/Auth component migrations: 17 suites, 199 tests passed.
+- Added shared icon-image wiring guards for customer `clientImageIconByGlyph` and worker service/nav/utility/earnings PNG-first maps so supported services, notifications, privacy, payment, chat, shield, and earnings slots do not regress to vector-only controls.
+- Re-ran shared wiring after the icon-image guard: `vitest run src/__tests__/mobile-wiring.test.ts` passed 232 tests.
+- Added a shared typography guard requiring auth, customer, and worker high-traffic text anchors to import and use the handoff `typography` scale.
+- Re-ran shared verification after the typography guard: `vitest run src/__tests__/mobile-wiring.test.ts` passed 233 tests, and `tsc --noEmit` from `packages/shared` passed.
+- Extended `KaelChip` to carry accessibility label/state and text style overrides, then migrated BookingWizard priority/problem chips to `KaelChip` while preserving real selected-state handoff data.
+- Re-ran verification after the Booking chip migration: mobile type-check passed, focused primitives+booking Jest passed 18 tests, shared wiring Vitest passed 233 tests, and shared type-check passed.
+- Re-ran full mobile Jest after the `KaelChip` primitive and Booking chip migration: 17 suites, 199 tests passed.
+- Renamed app runtime language/theme storage keys from `home-services.*` to `nestscout.*` while keeping legacy `home-services.*` fallback reads so existing user preferences can migrate without visible brand leakage.
+- Re-ran verification after the NestScout storage-key migration: mobile type-check passed, focused worker/format Jest passed 65 tests, shared wiring Vitest passed 233 tests, and shared type-check passed.
+- Added focused mobile regression coverage for the app-language storage boundary: language changes persist to `nestscout.app.language.production`, the NestScout key is hydrated first, and legacy Home Services keys only act as migration fallbacks.
+- Re-ran verification after the app-language boundary test: `jest lib/__tests__/app-language-test.ts --runInBand` passed 3 tests, and mobile `tsc --noEmit` passed.
+- Migrated the BookingWizard description input from raw `TextInput` to the official `KaelTextField` primitive while preserving the existing glass shell/test marker through the primitive shell slot.
+- Re-ran verification after the Booking input primitive migration: focused primitives+booking Jest passed 18 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 233 tests.
+- Migrated Auth login/register/customer onboarding text controls from raw `TextInput` to an `AuthTextInput` wrapper backed by the official `KaelTextField`, keeping existing icon shells, password visibility action, Supabase auth/profile boundaries, and loading/disabled states.
+- Re-ran verification after the Auth input primitive migration: auth surface Jest passed 7 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 233 tests.
+- Migrated Worker Profile verification/KYC/bank text fields from raw `TextInput` to `WorkerVerificationTextField`, backed by the official `KaelTextField` and current worker theme tokens.
+- Re-ran verification after the worker verification input migration: focused worker verification Jest passed 1 targeted test, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 234 tests.
+- Migrated Customer Profile editor, feedback, and password sheet fields from raw `TextInput` to `CustomerProfileTextField`, backed by the official `KaelTextField` while leaving chat/home command composers unchanged.
+- Re-ran verification after the customer profile field migration: customer profile Jest passed 18 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 235 tests.
+- Migrated AddressAutocomplete from raw `TextInput` to the official `KaelTextField` shell/adornment slot while keeping real Places autocomplete, HCMC district extraction, focus outline, suggestions, and fallback behavior intact.
+- Re-ran verification after the address autocomplete migration: address autocomplete Jest passed 1 test, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 235 tests.
+- Migrated the Kael chat address context bar input from raw `TextInput` to the official `KaelTextField` with a transparent shell reset, preserving the client address image icon, detected-district pill, and focused composer visibility behavior.
+- Re-ran verification after the Kael chat address context migration: Kael chat agentic parts Jest passed 28 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 235 tests.
+- Migrated Worker scope-change, cancellation, and completion-note action fields from raw `TextInput` to `WorkerActionTextField`, backed by the official `KaelTextField`; worker chat composer remains custom because it manages dynamic height/focus controls.
+- Re-ran verification after the worker action field migration: full worker surface Jest passed 59 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 236 tests.
+- Migrated the Worker Kael feedback note field from raw `TextInput` to the official `KaelTextField` while preserving the training-consent/feedback submit flow.
+- Re-ran verification after the Worker Kael feedback field migration: full worker surface Jest passed 59 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 236 tests.
+- Re-ran full mobile Jest after the expanded Kael component-system input migrations: 18 suites, 202 tests passed.
+- Audited the visible voice capsule against the official Icon Images board and current runtime: no standalone mic image asset or native recording dependency/permission exists, so the UI remains honest-unavailable instead of fake recording.
+- Made the existing `job-media` path audio-ready for future real voice notes by allowing `LocalMediaUploadDraft` type `audio`, mapping m4a/mp3/wav/aac MIME/extension fallbacks, and whitelisting `audio/m4a`, `audio/mp4`, `audio/mpeg`, `audio/wav`, and `audio/aac` in the Supabase `job-media` bucket migration.
+- Added shared validation coverage for audio evidence metadata and a mobile wiring guard that requires audio-ready media upload/storage while confirming `expo-av`, `expo-audio`, and Android microphone permission remain absent/blocked until native recording is explicitly built.
+- Re-ran verification after the audio-ready media checkpoint: mobile `tsc --noEmit` passed, and shared Vitest for `validation.test.ts` + `mobile-wiring.test.ts` passed 305 tests after rerunning outside sandbox to avoid a `zod/package.json` EPERM read.
+- Routed the Worker screen header icon through the PNG-first `WorkerUtilityIcon` wrapper instead of a direct vector `<Icon>` fallback, keeping official worker utility image assets preferred in header slots.
+- Re-ran verification after the Worker header icon wrapper checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 241 tests, and focused worker Jest passed 59 tests after rerunning outside sandbox to avoid the Jest node_modules EPERM read.
+- Tightened the official `Kael` component typography defaults to the handoff board scale: primitive button/chip/field/input/media/segment/stepper/voice text now use `typography.fontFamily` and `typography.*.fontWeight` instead of hardcoded 800/900 weights.
+- Added a shared wiring guard that prevents `Kael` primitives from reintroducing hardcoded 800/900 default weights and requires label/body/caption/H3 token weights from the typography system.
+- Re-ran verification after the primitive typography checkpoint: mobile `tsc --noEmit` passed, Kael primitive Jest passed 8 tests, shared `mobile-wiring.test.ts` passed 241 tests, and full mobile Jest passed 18 suites / 202 tests.
+- Extended the official Kael Component System primitive set with `KaelSwitch`, `KaelBadge`, `KaelProgressPill`, `KaelRatingCapsule`, and `KaelAlertBadge`, matching the status/utility portions of the handoff Component System board.
+- Added the new status/utility primitives to the design gallery and wired `KaelAlertBadge` into the real Customer Home unread notification button so the badge uses the actual `notificationUnreadCount` instead of a custom local badge shell.
+- Added focused primitive coverage for switch, badge, progress, rating, and alert badge behavior plus a shared wiring guard requiring the new Component System primitives in gallery/production badge slots.
+- Re-ran verification after the status/utility primitive checkpoint: mobile `tsc --noEmit` passed, Kael primitive Jest passed 9 tests, shared `mobile-wiring.test.ts` passed 242 tests, and focused Customer Home Jest passed 7 tests.
+- Re-ran full mobile Jest after the status/utility Component System checkpoint: 18 suites / 203 tests passed; `git diff --check` passed with CRLF warnings only.
+- Aligned the hidden design gallery typography to the Kael Typography board token weights and added a shared guard preventing 800/900 weights in that Component System gallery route.
+- Re-ran verification after the gallery typography cleanup: mobile `tsc --noEmit` passed and shared `mobile-wiring.test.ts` passed 242 tests.
+- Cropped the official pending/approved/completed/warning status icons from the Icon Images board into `apps/mobile/assets/status/`, then wired customer approved/check/warning cues and worker check cues through those PNG assets instead of vector/status fallbacks.
+- Updated `ASSET_MAP.md` and `ASSETS_NEEDED.md` so status icons are treated as fulfilled by approved board crops; standalone exports are now optional future fidelity upgrades, not required missing assets.
+- Re-ran verification after the status icon crop checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 242 tests, and focused Customer Home/History + Worker Home Jest passed 88 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Routed the Worker Home availability control through the official `KaelSwitch` primitive inside the existing liquid shell, preserving real async `workerUpdateAvailability` behavior, optimistic state, disabled/suspended state, and the readiness metrics.
+- Added shared wiring guards so Worker availability cannot regress back to a standalone custom switch while keeping the liquid motion marker and worker-specific shell.
+- Re-ran verification after the production `KaelSwitch` checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 242 tests, focused Kael primitive + Worker Home Jest passed 68 tests, and full mobile Jest passed 18 suites / 203 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Migrated the central Worker `PressButton` CTA wrapper to render through the official `KaelButton` primitive while preserving Worker-specific liquid/secondary/disabled surfaces, button labels, `testID`s, and real action callbacks.
+- Added `KaelButton` background-layer support so production shells with their own material can keep custom sheen/depth without bypassing the Component System.
+- Updated shared wiring guards so Worker primary/secondary CTA wrappers must use `KaelButton` and no longer rely on the old `GlassPressable active={!secondary}` accessibility pattern.
+- Re-ran verification after the Worker CTA primitive checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 242 tests, focused Kael primitive + Worker Home Jest passed 68 tests, and full mobile Jest passed 18 suites / 203 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Migrated the Auth profile recovery refresh/sign-out actions from raw `Pressable` controls to `KaelButton`, preserving the real `refreshProfile`/`signOut` callbacks, loading state, and existing test IDs.
+- Added a shared wiring guard that keeps the recovery panel on `KaelButton` instead of falling back to raw `Pressable` actions.
+- Re-ran verification after the Auth recovery action checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 242 tests, and focused Auth surface Jest passed 7 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Migrated the reusable `GlassSearchBar` input core from raw `TextInput` to `KaelTextField mode="search"` while preserving the outer `GlassSurface` control shell.
+- Added a shared wiring guard that prevents `GlassSearchBar` from reintroducing raw `TextInput` outside the Kael Component System.
+- Re-ran verification after the GlassSearchBar primitive cleanup: mobile `tsc --noEmit` passed and shared `mobile-wiring.test.ts` passed 243 tests.
+- Extended `KaelButton` with a `leftAdornment` slot and migrated customer auth choice actions (Google, phone, and email register) from custom/raw pressables to `KaelButton`, preserving the real Google/phone/register callbacks, disabled/loading states, and test IDs.
+- Removed the now-unused `AuthMotionPressable` path so auth choice buttons no longer have a parallel component-system bypass.
+- Added focused primitive coverage for button adornments and shared wiring guards for the auth choice adornment buttons.
+- Re-ran verification after the Auth choice button checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Kael primitive + Auth surface Jest passed 17 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Tightened Auth typography to the official Kael Typography token weights by removing remaining hardcoded 800/900 weights from the production auth surface and anchoring brand, trust, role, choice, and worker-verification labels to `typography.*.fontWeight`.
+- Added shared wiring guards so Auth cannot reintroduce hardcoded 800/900 weights on the entry surface.
+- Re-ran verification after the Auth typography cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Auth surface Jest passed 7 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Tightened the Admin learning dashboard typography by replacing remaining hardcoded 800/900 weights with `typography.*.fontWeight` tokens while preserving the real admin learning approve/reject service flows.
+- Added shared wiring guards so the Admin dashboard keeps `KaelTextField` and no longer reintroduces hardcoded 800/900 weights.
+- Re-ran verification after the Admin typography cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Admin dashboard Jest passed 2 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Tightened the shared floating glass tab bar label typography by replacing remaining hardcoded 800 weights with `typography.caption.fontWeight`, keeping the liquid dock motion and tab accessibility state intact.
+- Added shared wiring guards so the tab bar imports the typography tokens and cannot reintroduce 800/900 label weights.
+- Re-ran verification after the shared tab bar typography cleanup: mobile `tsc --noEmit` passed and shared `mobile-wiring.test.ts` passed 243 tests.
+- Tightened BookingWizard media/file and problem-chip label typography by replacing remaining hardcoded 800/900 weights with `typography.caption` / `typography.label` token weights.
+- Extended the booking shared wiring guard so the intake flow imports typography tokens and cannot reintroduce 800/900 label weights.
+- Re-ran verification after the BookingWizard typography cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused BookingWizard Jest passed 10 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Removed the last production 800/900 typography weights from Customer matching score and Kael chat archive/live-performance labels, anchoring them to the official Kael Typography tokens while preserving existing size and layout.
+- Extended the high-traffic typography wiring guard to cover Customer surfaces and Kael chat styles so those production paths cannot reintroduce extra-heavy 800/900 weights.
+- Re-ran verification after the final 800/900 typography sweep: production grep returned no 800/900 matches outside tests/prototypes, mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, focused Customer Home/History + Kael agentic-parts Jest passed 57 tests, and `git diff --check` passed with CRLF warnings only.
+- Migrated the remaining Agentic Center memory/edit and approval queue action buttons from raw `Pressable` controls to `KaelButton`, preserving the real profile/history/scope-decision routes and the separated Kael Orb ownership.
+- Added a shared wiring guard so the `(customer)/kael` Agentic Center keeps `KaelButton`/`KaelCard`/`KaelText`/`KaelMascot` and does not reintroduce raw `Pressable` action buttons.
+- Re-ran verification after the Agentic Center action cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Agentic Center Jest passed 11 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Removed the Kael chat empty-ticket `sampleRows` preview copy so pre-intake fields now show honest pending states (`Chưa có`, `Chờ Kael ...`) instead of example/future “Kael sẽ ...” rows.
+- Added shared wiring guards preventing `sampleRows` / sample classification copy from returning to the Kael chat agentic parts.
+- Re-ran verification after the Kael chat data-honesty cleanup: production grep found no `sampleRows` or sample/example estimate copy, shared `mobile-wiring.test.ts` passed 243 tests, and focused Kael chat agentic-parts Jest passed 28 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Migrated the A11 scope-change hard-stop modal approve/reject actions from raw `Pressable` controls to `KaelButton`, preserving explicit approve/reject callbacks, `testID`s, and token-specific danger/primary surfaces.
+- Added a shared wiring guard so the scope-change hard-stop modal keeps `KaelButton` actions and does not reintroduce raw `Pressable` buttons.
+- Re-ran verification after the scope-change modal action cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused hard-stop modal Jest passed 7 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Migrated Customer Profile sheet actions for profile editor, feedback, and password from raw `Pressable` controls to `KaelButton`, preserving disabled/saving labels, real profile/feedback/password callbacks, and the existing `testID`s.
+- Extended the customer profile shared wiring guard so the editor/feedback/password sheets keep `KaelButton` actions alongside the existing `KaelTextField` inputs.
+- Re-ran verification after the Customer Profile action cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Customer Profile Jest passed 18 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Migrated the Auth role-gate sign-out action from raw `Pressable` to `KaelButton`, matching the existing recovery sign-out primitive path while preserving the real `onSignOut` callback and `auth-login-sign-out` test ID.
+- Added a shared wiring guard so the production auth surface cannot reintroduce the raw `Pressable` sign-out signature.
+- Re-ran verification after the Auth sign-out action cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Auth surface Jest passed 7 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Extended `KaelButton` with explicit `accessibilityState` override support so production busy/disabled states can stay truthful while still using the official Component System button primitive.
+- Migrated the Kael chat estimate orchestration status button and retry actions from raw `Pressable` controls to `KaelButton`, preserving real retry/orchestration callbacks, test IDs, and honest disabled/busy semantics.
+- Added focused primitive coverage for explicit button accessibility-state overrides plus shared wiring guards so Kael chat orchestration/retry actions keep `KaelButton` and do not restore fake/sample estimate rows.
+- Re-ran verification after the Kael chat action primitive cleanup: mobile `tsc --noEmit` passed, focused Kael primitive + Kael chat agentic-parts Jest passed 39 tests, and shared `mobile-wiring.test.ts` passed 243 tests.
+- Re-audited the approved NestScout logo 01 production assets after Tu's contour-only reminder: `nestscout-logo-mark.png`, app icon, adaptive icon, splash icon, and favicon all keep transparent corner/edge alpha and contain no lockup text or white board background.
+- Renamed the active authority docs and operational command examples from Home Services to NestScout, including `AGENTS.md`, `critical.md`, `RULES.md`, `STRUCTURES.md`, design signature/motion/reference notes, and current package filters.
+- Added a shared wiring guard so active authority docs keep the NestScout brand and do not regress to `Home Services`, `HomeServices`, or `@home-services/*`; legacy storage keys and historical README project names remain intentionally documented as migration/history only.
+- Re-ran verification after the authority brand cleanup: shared `mobile-wiring.test.ts` passed 244 tests.
+- Migrated the Worker Kael feedback cancel/submit actions from raw `Pressable` controls to `KaelButton`, preserving feedback submit/cancel callbacks, `feedbackSaving` disabled state, and explicit busy accessibility state for submit.
+- Migrated the Worker Kael training-consent toggle and feedback-open controls from raw `Pressable` controls to `KaelButton`, preserving consent checked/busy/disabled accessibility state and the real training-consent / feedback-open callbacks.
+- Added a shared wiring guard so Worker Kael parity actions stay on `KaelButton` instead of reverting to raw `Pressable`.
+- Re-ran verification after the Worker Kael parity action cleanup: mobile `tsc --noEmit` passed, focused Worker surface Jest passed 59 tests, and shared `mobile-wiring.test.ts` passed 245 tests.
+- Re-audited the cropped Kael mascot assets from the handoff motion board: 20 state PNGs and 10 emotion PNGs are present, all 512x512, and all checked edge/corner alpha values are transparent.
+- Re-audited the cropped status icon assets from the handoff Icon Images board: pending/approved/completed/warning PNGs are present, all 256x256, and all checked edge/corner alpha values are transparent.
+- Aligned the Worker Kael mini action button text style to the official Kael Typography caption token so the newly migrated `KaelButton` actions do not override the primitive with local 700-weight text.
+- Re-ran verification after the Worker mini action typography alignment: mobile `tsc --noEmit` passed, focused Worker surface Jest passed 59 tests, and shared `mobile-wiring.test.ts` passed 245 tests.
+- Wired the remaining Component System status/utility primitives into production slots instead of leaving them gallery-only: Customer Profile real progress rows now include `KaelProgressPill`, Worker reputation uses `KaelBadge` for the real-data marker, and Worker rating summary uses `KaelRatingCapsule` backed by real profile rating data.
+- Extended shared wiring guards so `KaelProgressPill`, `KaelBadge`, and `KaelRatingCapsule` must appear in production customer/worker slots, not only the design gallery.
+- Re-ran verification after the Component System production-usage pass: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 245 tests, and focused Customer Profile + Worker surface Jest passed 77 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Re-ran full mobile Jest after the Component System production-usage pass: 18 suites / 205 tests passed.
+- Re-ran full shared Vitest after the Component System production-usage pass: 15 files / 601 tests passed after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Re-ran package-level type-checks after the latest mobile/backend contract sweep: `packages/shared` `tsc --noEmit` passed and `apps/api` `tsc --noEmit` passed.

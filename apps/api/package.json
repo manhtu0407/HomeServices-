@@ -1,5 +1,5 @@
 {
-  "name": "@home-services/api",
+  "name": "@nestscout/api",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -13,7 +13,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@home-services/shared": "workspace:*",
+    "@nestscout/shared": "workspace:*",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "next": "16.2.6",

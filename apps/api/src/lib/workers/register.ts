@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, WorkerRegisterInput, WorkerVerificationStatus } from '@home-services/shared'
-import { HCMC_DISTRICTS, normalizeDistrict } from '@home-services/shared'
+import type { Database, WorkerRegisterInput, WorkerVerificationStatus } from '@nestscout/shared'
+import { HCMC_DISTRICTS, normalizeDistrict } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 
 export type WorkerRegisterResult =

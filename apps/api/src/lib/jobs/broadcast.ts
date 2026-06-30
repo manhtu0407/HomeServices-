@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { normalizeDistrict, type Database, type ServiceType } from '@home-services/shared'
+import { normalizeDistrict, type Database, type ServiceType } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 
 export type EligibleWorker = {

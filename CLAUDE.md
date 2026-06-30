@@ -28,7 +28,7 @@ Use the project docs as a supporting stack, not competing rule sets:
 5. `AGENTS.md` is the local Codex/Claude Code quick-start summary and workspace operating loop.
 6. `Plan.md` is consulted only when the current task continues that plan or references its deferred items.
 7. `README.md` and `docs/**/*.md` provide progress logs, durable decisions, historical notes, and feature-specific contracts.
-8. `MEMORY.md` is read last. It stores the freshest AI-agent session memory and may update frequently, but it does not override hard rules by itself. If it conflicts with locked docs or code, stop and ask Tu.
+8. `.claude/MEMORY.md` is read last. It stores the freshest AI-agent session memory and may update frequently, but it does not override hard rules by itself. If it conflicts with locked docs or code, stop and ask Tu.
 
 ## Runtime Boundary
 
@@ -92,6 +92,7 @@ When a non-trivial decision could fail under hidden assumptions, use a doubt loo
 
 - `skills.md` captures Karpathy-inspired working behavior for this repo: think before coding, simplicity first, surgical changes, goal-driven execution.
 - `.agents/skills/karpathy-guidelines/SKILL.md` is the project-local Codex skill customized for Home Services.
+- All AI coding agents MUST inspect `.agents/skills/` and invoke the matching project-local skill for the task before choosing an approach; Claude Code keeps mirrored copies in `.claude/skills/` for parity.
 - For code, review, refactor, debugging, planning, or UI work, read `skills.md` or invoke `karpathy-guidelines` before choosing an approach.
 - Skills guide execution. They do not override `RULES.md`, `STRUCTURES.md`, `critical.md`, or Tu's explicit approved scope.
 
@@ -109,7 +110,7 @@ When a non-trivial decision could fail under hidden assumptions, use a doubt loo
 ## Task Workflow
 
 1. Decompose the asked task and the real goal.
-2. Load the minimum relevant context in authority order; read `MEMORY.md` last.
+2. Load the minimum relevant context in authority order; read `.claude/MEMORY.md` last.
 3. For code enhancement/refactor work, open `docs/architecture/code-ownership-map.md` and map the task to owner files before editing.
 4. Classify the task and select the smallest sufficient protocol set.
 5. State the pre-edit status required by `critical.md`.
@@ -128,10 +129,10 @@ When a non-trivial decision could fail under hidden assumptions, use a doubt loo
 @docs/architecture/code-ownership-map.md
 @skills.md
 @.agents/skills/karpathy-guidelines/SKILL.md
-@MEMORY.md
+@.claude/MEMORY.md
 ```
 
-Read `MEMORY.md` last so fresh session facts can be reconciled after stable rules and contracts are already loaded.
+Read `.claude/MEMORY.md` last so fresh session facts can be reconciled after stable rules and contracts are already loaded.
 
 ## Next.js Note
 

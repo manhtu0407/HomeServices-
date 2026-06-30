@@ -1,4 +1,4 @@
-import { type ServiceType } from '@home-services/shared'
+import { type ServiceType } from '@nestscout/shared'
 import { type KaelChatProgress, type KaelChatResponse } from '@/lib/api-types'
 import { type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { type PendingKaelChatDraft } from './pending-intake'

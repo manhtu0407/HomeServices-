@@ -77,10 +77,11 @@ beforeEach(() => {
   mockRequestMediaLibraryPermissionsAsync.mockReset()
   mockRequestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
   mockSetPendingKaelChatDraft.mockClear()
+  mockSetPendingKaelChatDraft.mockResolvedValue(undefined)
   buildWorkflow()
 })
 
-function submitDescribe(onOpenKael: jest.Mock) {
+async function submitDescribe(onOpenKael: jest.Mock) {
   fireEvent.press(screen.getByTestId('booking-wizard-service-electrical'))
   fireEvent.press(screen.getByTestId('booking-wizard-service-next'))
   fireEvent.changeText(
@@ -89,7 +90,9 @@ function submitDescribe(onOpenKael: jest.Mock) {
   )
   fireEvent.press(screen.getByTestId('mock-address-set'))
   fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
-  expect(onOpenKael).toHaveBeenCalledWith('electrical')
+  await waitFor(() => {
+    expect(onOpenKael).toHaveBeenCalledWith('electrical')
+  })
 }
 
 describe('BookingWizard Kael autonomy', () => {
@@ -115,10 +118,10 @@ describe('BookingWizard Kael autonomy', () => {
     expect(mockConfirmRemoteSearch).not.toHaveBeenCalled()
   })
 
-  it('hands structured intake to Kael chat without creating a remote job', () => {
+  it('hands structured intake to Kael chat without creating a remote job', async () => {
     const onOpenKael = jest.fn()
     render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
-    submitDescribe(onOpenKael)
+    await submitDescribe(onOpenKael)
     expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
       addressLabel: 'Quận 1, TP.HCM',
       districtLabel: 'Quận 1',
@@ -139,6 +142,7 @@ describe('BookingWizard Kael autonomy', () => {
     expect(screen.getByTestId('booking-wizard-apple-ios26-component-system')).toBeTruthy()
     expect(screen.getByTestId('booking-wizard-description-field-shell')).toBeTruthy()
     expect(screen.getByTestId('booking-wizard-photo-rail')).toBeTruthy()
+    expect(screen.getByTestId('booking-wizard-media-upload-tray')).toBeTruthy()
     expect(screen.getByTestId('booking-wizard-voice-capsule')).toBeTruthy()
     expect(screen.queryByTestId('booking-wizard-step-service')).toBeNull()
   })
@@ -190,7 +194,9 @@ describe('BookingWizard Kael autonomy', () => {
         }),
       ],
     }))
-    expect(onOpenKael).toHaveBeenCalledWith('electrical')
+    await waitFor(() => {
+      expect(onOpenKael).toHaveBeenCalledWith('electrical')
+    })
   })
 
   it('keeps selected video evidence as a real video draft for Kael', async () => {
@@ -241,7 +247,9 @@ describe('BookingWizard Kael autonomy', () => {
         }),
       ],
     }))
-    expect(onOpenKael).toHaveBeenCalledWith('plumbing')
+    await waitFor(() => {
+      expect(onOpenKael).toHaveBeenCalledWith('plumbing')
+    })
   })
 
   it('shows an honest search/filter brief from the real intake fields', () => {
@@ -266,7 +274,7 @@ describe('BookingWizard Kael autonomy', () => {
     expect(screen.getByTestId('booking-wizard-filter-issue')).toHaveTextContent(/mô tả/)
   })
 
-  it('shows reference priority chips and hands a changed priority to Kael context', () => {
+  it('shows reference priority chips and hands a changed priority to Kael context', async () => {
     const onOpenKael = jest.fn()
     mockRouteParams = { serviceType: 'electrical' }
     render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
@@ -288,10 +296,12 @@ describe('BookingWizard Kael autonomy', () => {
       message: expect.stringContaining('Ưu tiên: Nhanh'),
       problemChips: [],
     }))
-    expect(onOpenKael).toHaveBeenCalledWith('electrical')
+    await waitFor(() => {
+      expect(onOpenKael).toHaveBeenCalledWith('electrical')
+    })
   })
 
-  it('sends only user-selected problem chips as search filters to Kael', () => {
+  it('sends only user-selected problem chips as search filters to Kael', async () => {
     const onOpenKael = jest.fn()
     mockRouteParams = { serviceType: 'electrical' }
     render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
@@ -311,21 +321,23 @@ describe('BookingWizard Kael autonomy', () => {
     expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
       problemChips: ['Chập ổ cắm'],
     }))
-    expect(onOpenKael).toHaveBeenCalledWith('electrical')
+    await waitFor(() => {
+      expect(onOpenKael).toHaveBeenCalledWith('electrical')
+    })
   })
 
-  it('keeps activity action out of the pre-analysis handoff path', () => {
+  it('keeps activity action out of the pre-analysis handoff path', async () => {
     const onOpenHistory = jest.fn()
     const onOpenKael = jest.fn()
     render(<BookingWizard onOpenHistory={onOpenHistory} onOpenKael={onOpenKael} />)
-    submitDescribe(onOpenKael)
+    await submitDescribe(onOpenKael)
     expect(onOpenHistory).not.toHaveBeenCalled()
   })
 
-  it('does not expose the old confirm-search CTA in the autonomous path', () => {
+  it('does not expose the old confirm-search CTA in the autonomous path', async () => {
     const onOpenKael = jest.fn()
     render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
-    submitDescribe(onOpenKael)
+    await submitDescribe(onOpenKael)
     expect(screen.queryByTestId('booking-wizard-confirm-search')).toBeNull()
     expect(mockConfirmRemoteSearch).not.toHaveBeenCalled()
   })

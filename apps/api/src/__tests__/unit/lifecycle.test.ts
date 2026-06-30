@@ -8,7 +8,7 @@ import {
   WORKER_UPDATABLE_STATUSES,
   CUSTOMER_GATE_STATUSES,
 } from '@/lib/jobs/lifecycle'
-import { JOB_STATUSES } from '@home-services/shared'
+import { JOB_STATUSES } from '@nestscout/shared'
 
 describe('lifecycle — canTransition', () => {
   it('allows draft → analyzing', () => {

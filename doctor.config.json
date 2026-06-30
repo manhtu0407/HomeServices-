@@ -1,5 +1,6 @@
 {
+  "blocking": "none",
+  "noScore": true,
   "share": false,
-  "failOn": "none",
   "respectInlineDisables": true
 }

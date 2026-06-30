@@ -1,12 +1,13 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { PROBLEM_CHIPS, type LocalDealStatus, type ServiceType } from '@home-services/shared'
+import { PROBLEM_CHIPS, type LocalDealStatus, type ServiceType } from '@nestscout/shared'
 
 export type AppLanguage = 'vi' | 'en'
 
-export const APP_LANGUAGE_STORAGE_KEY = 'home-services.app.language.production'
+export const APP_LANGUAGE_STORAGE_KEY = 'nestscout.app.language.production'
 
 const LEGACY_LANGUAGE_STORAGE_KEYS = [
+  'home-services.app.language.production',
   'customer.language.mode.v4',
   'home-services.worker.language.production',
 ] as const
@@ -171,7 +172,7 @@ export function useAppLanguage() {
   useEffect(() => {
     if (hydrated) return
     hydrated = true
-    void hydrateLanguage()
+    void hydrateAppLanguage()
   }, [])
 
   return useSyncExternalStore(subscribeAppLanguage, getAppLanguageSnapshot, getAppLanguageSnapshot)
@@ -213,7 +214,7 @@ export function nextLanguageLabel(language: AppLanguage) {
   return language === 'vi' ? 'English' : 'Tiếng Việt'
 }
 
-async function hydrateLanguage() {
+export async function hydrateAppLanguage() {
   const stored = await AsyncStorage.getItem(APP_LANGUAGE_STORAGE_KEY).catch(() => null)
   if (stored === 'vi' || stored === 'en') {
     applyAppLanguage(stored)

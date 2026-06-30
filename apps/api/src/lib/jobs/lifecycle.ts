@@ -1,4 +1,4 @@
-import type { JobStatus } from '@home-services/shared'
+import type { JobStatus } from '@nestscout/shared'
 
 const VALID_TRANSITIONS: Record<JobStatus, readonly JobStatus[]> = {
   draft: ['analyzing', 'cancelled'],
