@@ -33,11 +33,40 @@ export const kaelChatCreateSchema = z.object({
   message: z.string().min(1).max(5000).optional(),
   problem_chips: z.array(z.string().max(100)).max(10).default([]),
   photo_urls: z.array(z.string().url()).max(5).default([]),
+  defer_analysis: z.boolean().optional(),
   address_label: z.string().max(200).optional(),
   address_district: z.string().max(100).optional(),
   apartment_access_profile: apartmentAccessProfileSchema.optional(),
   // X2 (Plan.md §27.5 — 2026-05-29): mobile-generated UUID v4 per submit.
   client_request_id: z.string().uuid().optional(),
+})
+
+const kaelChatMediaRefSchema = z.string().regex(
+  /^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i,
+  'Kael chat media_refs must be Supabase kael-chat-media storage refs',
+)
+
+export const kaelChatMediaUploadSchema = z.object({
+  file_name: z.string().trim().min(1).max(180).optional(),
+  mime_type: z.string().trim().min(3).max(120),
+  file_size_bytes: z.number().int().positive().max(50 * 1024 * 1024).optional(),
+}).strict()
+
+export const kaelChatEvidenceSchema = z.object({
+  decision: z.enum(['confirmed', 'skipped']),
+  message: z.string().trim().min(1).max(5000).optional(),
+  problem_chips: z.array(z.string().max(100)).max(10).optional(),
+  photo_urls: z.array(z.string().url()).max(5).default([]),
+  media_refs: z.array(kaelChatMediaRefSchema).max(5).default([]),
+  skip_reason: z.string().trim().max(500).optional(),
+}).superRefine((value, ctx) => {
+  if (value.decision === 'confirmed' && value.photo_urls.length === 0 && value.media_refs.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Evidence confirmation requires at least one media ref.',
+      path: ['media_refs'],
+    })
+  }
 })
 
 export const kaelChatTurnSchema = z.object({
@@ -48,6 +77,13 @@ export const kaelChatTurnSchema = z.object({
   address_district: z.string().max(100).optional(),
   apartment_access_profile: apartmentAccessProfileSchema.optional(),
 })
+
+export const kaelAssistantSchema = z.object({
+  message: z.string().trim().min(1).max(2000),
+  language: z.enum(['vi', 'en']).default('vi'),
+  job_id: z.string().uuid().optional(),
+  surface: z.enum(['customer_normal', 'customer_case']).default('customer_normal'),
+}).strict()
 
 export const kaelChatProgressSchema = z.object({
   current_stage: z.enum([
@@ -77,10 +113,80 @@ export const placesAutocompleteSchema = z.object({
   session_token: z.string().max(120).optional(),
 })
 
+export const placesResolveSchema = z.object({
+  label: z.string().trim().min(2).max(240).optional(),
+  place_id: z.string().trim().min(3).max(240),
+})
+
 export const customerKaelFeedbackSchema = z.object({
   message: z.string().trim().min(8).max(1200),
   source: z.enum(['profile']).default('profile'),
   language: z.enum(['vi', 'en']).default('vi'),
+})
+
+export const CUSTOMER_KAEL_MEMORY_PREFERENCE_KEYS = Object.freeze([
+  'preferred_address',
+  'preferred_time_window',
+  'budget_limit_vnd',
+  'message_interaction_memory',
+  'share_preferences_with_worker',
+] as const)
+export type CustomerKaelMemoryPreferenceKey = (typeof CUSTOMER_KAEL_MEMORY_PREFERENCE_KEYS)[number]
+
+export const customerKaelMemoryPreferenceUpdateSchema = z.object({
+  key: z.enum(CUSTOMER_KAEL_MEMORY_PREFERENCE_KEYS),
+  enabled: z.boolean(),
+}).strict()
+
+export const WORKER_KAEL_MEMORY_PREFERENCE_KEYS = Object.freeze([
+  'area_preference',
+  'income_preference',
+  'travel_limit',
+  'skill_preference',
+  'opportunity_filter',
+  'auto_accept_work',
+] as const)
+export type WorkerKaelMemoryPreferenceKey = (typeof WORKER_KAEL_MEMORY_PREFERENCE_KEYS)[number]
+
+export const workerKaelMemoryPreferenceUpdateSchema = z.object({
+  key: z.enum(WORKER_KAEL_MEMORY_PREFERENCE_KEYS),
+  enabled: z.boolean(),
+}).strict()
+
+export const CUSTOMER_PAYMENT_BANK_KEYS = Object.freeze([
+  'vietcombank',
+  'techcombank',
+  'bidv',
+  'mbbank',
+  'acb',
+  'vietinbank',
+] as const)
+export type CustomerPaymentBankKey = (typeof CUSTOMER_PAYMENT_BANK_KEYS)[number]
+
+export const customerPaymentMethodSaveSchema = z.object({
+  bank_key: z.enum(CUSTOMER_PAYMENT_BANK_KEYS),
+  bank_name: z.string().trim().min(2).max(100),
+  account_holder_name: z.string().trim().min(2).max(200),
+  bank_account: z.string().trim().min(6).max(50).regex(/^[0-9A-Za-z]+$/, 'bank_account must contain only letters or digits'),
+}).strict()
+
+function isWorkerApplicationContact(value: string): boolean {
+  const trimmed = value.trim()
+  const emailLike = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
+  const phoneLike = /^(?:0|\+?84)\d{8,10}$/.test(trimmed.replace(/[\s.-]/g, ''))
+  return emailLike || phoneLike
+}
+
+export const workerApplicationSubmitSchema = z.object({
+  contact: z
+    .string()
+    .trim()
+    .min(6)
+    .max(200)
+    .refine(isWorkerApplicationContact, 'contact must be an email or Vietnam phone number'),
+  language: z.enum(['vi', 'en']).default('vi'),
+  source: z.enum(['auth_worker_create']).default('auth_worker_create'),
+  client_request_id: z.string().uuid().optional(),
 })
 
 export const reviewSchema = z.object({
@@ -114,6 +220,18 @@ function isRealCalendarDate(s: string): boolean {
   return d.toISOString().slice(0, 10) === s
 }
 
+const workerDistrictSchema = z
+  .string()
+  .min(1)
+  .max(50)
+  .refine((value) => {
+    const canonical = normalizeDistrict(value)
+    const trimmed = value.trim().toLowerCase()
+    return canonical !== 'hcmc_all' ||
+      trimmed === 'hcmc_all' ||
+      trimmed === HCMC_DISTRICTS.hcmc_all.toLowerCase()
+  }, 'districts[] must be a known HCMC district slug (e.g. binh_thanh, q1, thu_duc, hcmc_all)')
+
 export const workerRegisterSchema = z.object({
   legal_name: z.string().min(2).max(200),
   date_of_birth: z
@@ -125,22 +243,7 @@ export const workerRegisterSchema = z.object({
   // X3 (Plan.md §27.6 — 2026-05-29): reject inputs that don't normalize to
   // a known HCMC district slug. Explicit hcmc_all remains valid because broad
   // city-wide worker coverage is supported by the matching path.
-  districts: z
-    .array(
-      z
-        .string()
-        .min(1)
-        .max(50)
-        .refine((value) => {
-          const canonical = normalizeDistrict(value)
-          const trimmed = value.trim().toLowerCase()
-          return canonical !== 'hcmc_all' ||
-            trimmed === 'hcmc_all' ||
-            trimmed === HCMC_DISTRICTS.hcmc_all.toLowerCase()
-        }, 'districts[] must be a known HCMC district slug (e.g. binh_thanh, q1, thu_duc, hcmc_all)'),
-    )
-    .min(1)
-    .max(20),
+  districts: z.array(workerDistrictSchema).min(1).max(20),
   home_lat: z.number().min(-90).max(90).optional(),
   home_lng: z.number().min(-180).max(180).optional(),
   service_radius_km: z.number().int().min(1).max(30).optional(),
@@ -151,6 +254,13 @@ export const workerRegisterSchema = z.object({
   bank_account: z.string().min(6).max(50),
   bank_name: z.string().min(2).max(100),
 })
+
+export const workerServiceAreaUpdateSchema = z.object({
+  districts: z.array(workerDistrictSchema).min(1).max(20),
+  home_lat: z.number().min(-90).max(90).nullable().optional(),
+  home_lng: z.number().min(-180).max(180).nullable().optional(),
+  service_radius_km: z.number().int().min(1).max(30).nullable().optional(),
+}).strict()
 
 export const availabilityToggleSchema = z.object({
   is_available: z.boolean(),
@@ -169,21 +279,29 @@ export const kaelWorkerClarifySchema = z.object({
   question: z.string().min(3).max(1000),
 })
 
-const workerKaelMediaRefsSchema = z.array(z.string().min(1).max(500)).max(5).default([])
+const workerKaelMediaRefSchema = z
+  .string()
+  .min(1)
+  .max(500)
+  .regex(
+    /^supabase:\/\/job-media\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/(?:before|after|kael_reference|cancellation_evidence|scope_change_evidence)\/[^\s?#]+$/i,
+    'Worker Kael media_refs must be Supabase job-media storage refs',
+  )
+
+const workerKaelMediaRefsSchema = z.array(workerKaelMediaRefSchema).max(5).default([])
 
 export const workerKaelChatCreateSchema = z.object({
   job_id: z.string().uuid(),
-  message: z.string().trim().min(1).max(1200).optional(),
-  media_refs: workerKaelMediaRefsSchema,
   language: z.enum(['vi', 'en']).default('vi'),
   client_request_id: z.string().uuid().optional(),
-})
+}).strict()
 
 export const workerKaelChatTurnSchema = z.object({
   message: z.string().trim().min(1).max(1200),
   media_refs: workerKaelMediaRefsSchema,
   language: z.enum(['vi', 'en']).default('vi'),
-})
+  client_request_id: z.string().uuid().optional(),
+}).strict()
 
 export const workerKaelFeedbackSchema = z.object({
   message: z.string().trim().min(8).max(1200),
@@ -290,14 +408,23 @@ export function scrubSensitiveForLLM(input: string): string {
 export type JobCreateInput = z.infer<typeof jobCreateSchema>
 export type ApartmentAccessProfileInput = z.infer<typeof apartmentAccessProfileSchema>
 export type KaelChatCreateInput = z.infer<typeof kaelChatCreateSchema>
+export type KaelChatMediaUploadInput = z.infer<typeof kaelChatMediaUploadSchema>
+export type KaelChatEvidenceInput = z.infer<typeof kaelChatEvidenceSchema>
 export type KaelChatTurnInput = z.infer<typeof kaelChatTurnSchema>
+export type KaelAssistantInput = z.infer<typeof kaelAssistantSchema>
 export type KaelChatProgress = z.infer<typeof kaelChatProgressSchema>
 export type PlacesAutocompleteInput = z.infer<typeof placesAutocompleteSchema>
+export type PlacesResolveInput = z.infer<typeof placesResolveSchema>
 export type CustomerKaelFeedbackInput = z.infer<typeof customerKaelFeedbackSchema>
+export type CustomerKaelMemoryPreferenceUpdateInput = z.infer<typeof customerKaelMemoryPreferenceUpdateSchema>
+export type WorkerKaelMemoryPreferenceUpdateInput = z.infer<typeof workerKaelMemoryPreferenceUpdateSchema>
+export type CustomerPaymentMethodSaveInput = z.infer<typeof customerPaymentMethodSaveSchema>
+export type WorkerApplicationSubmitInput = z.infer<typeof workerApplicationSubmitSchema>
 export type ReviewInput = z.infer<typeof reviewSchema>
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>
 export type JobMessageSendInput = z.infer<typeof jobMessageSendSchema>
 export type WorkerRegisterInput = z.infer<typeof workerRegisterSchema>
+export type WorkerServiceAreaUpdateInput = z.infer<typeof workerServiceAreaUpdateSchema>
 export type AvailabilityToggleInput = z.infer<typeof availabilityToggleSchema>
 export type WorkerScopeChangeInput = z.infer<typeof workerScopeChangeSchema>
 export type KaelWorkerClarifyInput = z.infer<typeof kaelWorkerClarifySchema>

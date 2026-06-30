@@ -1,5 +1,5 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
-import { reviewSchema } from '@home-services/shared'
+import { reviewSchema } from '@nestscout/shared'
 import { logJobEvent } from '@/lib/jobs/event-log'
 import { withDbTimeout } from '@/lib/db/query'
 import { runLearningHook } from '@/lib/learning/hook'

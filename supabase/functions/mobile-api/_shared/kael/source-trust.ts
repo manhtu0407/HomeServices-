@@ -315,7 +315,7 @@ function buildTrustedPerplexityMarketMessages(input: {
       content: `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-You are a price researcher for apartment home services in Ho Chi Minh City.
+You are a price researcher for NestScout apartment services in Ho Chi Minh City.
 Use only the trusted Vietnamese domains configured in this request.
 
 When enough trusted evidence exists, return ONLY valid JSON:

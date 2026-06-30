@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, WorkerScopeChangeInput, ScopeChangeStatus } from '@home-services/shared'
+import type { Database, WorkerScopeChangeInput, ScopeChangeStatus } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 
 export type RequestScopeChangeResult =

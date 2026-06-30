@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, ServiceType } from '@home-services/shared'
+import type { Database, ServiceType } from '@nestscout/shared'
 import { classifyIntent as defaultClassifyIntent, diagnoseIntake as defaultDiagnoseIntake } from './intent'
 import { analyzeDescription as defaultAnalyzeDescription } from './vision'
 import { searchMarketPrice as defaultSearchMarketPrice, synthesizePrice } from './pricing'

@@ -1,4 +1,4 @@
-import { extractDistrictFromAddressLabel, type DistrictSlug } from '@home-services/shared'
+import { extractDistrictFromAddressLabel, type DistrictSlug } from '@nestscout/shared'
 
 // X3 (Plan.md §27.6 — 2026-05-29): F-14 fix. Address labels like
 // "Vinhomes Central Park, Bình Thạnh" need substring scanning to extract

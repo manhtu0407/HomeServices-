@@ -96,7 +96,7 @@ export async function attachJobMedia(
     }
   }
   const beforeRefs = rows
-    .filter((row) => row.stage === "before" || row.stage === "kael_reference")
+    .filter((row) => row.stage === "before" || (row.stage === "kael_reference" && isCustomer))
     .map((row) => storageRef(row.object_path));
   const afterRefs = rows
     .filter((row) => row.stage === "after")

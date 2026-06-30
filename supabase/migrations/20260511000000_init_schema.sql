@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration: 20260511000000_init_schema.sql
--- Phase 1 — Home Services platform initial schema
+-- Phase 1 — NestScout platform initial schema
 -- Tables: profiles, customer_profiles, worker_profiles, price_baselines,
 --         jobs, job_broadcasts, chat_messages, reviews, api_logs
 -- =============================================================================

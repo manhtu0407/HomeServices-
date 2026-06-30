@@ -13,7 +13,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, ComplexityLevel } from '@home-services/shared'
+import type { Database, ComplexityLevel } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 import type { LearningHookInput, AnalysisRulePayload, AnalysisRuleSuggestion } from './types'
 

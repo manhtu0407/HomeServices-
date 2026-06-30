@@ -1,4 +1,4 @@
-# Home Services
+﻿# Home Services
 
 Home Services is a mobile-first app that helps **Ho Chi Minh City apartment residents** book trustworthy **electrical repair, plumbing repair, and home cleaning** — with fair, transparent pricing. **Kael**, the in-app AI assistant, handles intake, photo-based diagnosis, market-price estimates, worker briefing, and workflow orchestration.
 
@@ -35,7 +35,7 @@ governance/  the rule stack agents follow (routers + critical / RULES / STRUCTUR
 docs/        durable feature, ops, design, and historical notes (incl. progress-log.md)
 ```
 
-Monorepo: **Turborepo + pnpm workspaces** — `@home-services/mobile`, `@home-services/api`, `@home-services/shared`.
+Monorepo: **Turborepo + pnpm workspaces** — `@nestscout/mobile`, `@nestscout/api`, `@nestscout/shared`.
 
 ## Quickstart
 
@@ -49,8 +49,8 @@ pnpm test           # turbo test
 pnpm lint           # turbo lint
 pnpm build          # turbo build
 
-pnpm --filter @home-services/mobile start   # run the Expo app (expo start)
-pnpm --filter @home-services/api dev         # run the Next.js reference/admin surface
+pnpm --filter @nestscout/mobile start   # run the Expo app (expo start)
+pnpm --filter @nestscout/api dev         # run the Next.js reference/admin surface
 ```
 
 Mobile is tested with **jest-expo + React Native Testing Library**; the api with **Vitest**. Store builds go through **EAS** (`testflight`, `play:internal` scripts in `apps/mobile`).

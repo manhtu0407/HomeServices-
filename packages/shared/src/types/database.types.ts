@@ -269,6 +269,59 @@ export type Database = {
           },
         ]
       }
+      customer_payment_methods: {
+        Row: {
+          account_holder_name: string
+          bank_account: string
+          bank_account_masked: string
+          bank_key: string
+          bank_name: string
+          created_at: string
+          customer_id: string
+          id: string
+          is_default: boolean
+          status: string
+          updated_at: string
+          verified_at: string | null
+        }
+        Insert: {
+          account_holder_name: string
+          bank_account: string
+          bank_account_masked: string
+          bank_key: string
+          bank_name: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_default?: boolean
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Update: {
+          account_holder_name?: string
+          bank_account?: string
+          bank_account_masked?: string
+          bank_key?: string
+          bank_name?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_default?: boolean
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_payment_methods_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_profiles: {
         Row: {
           building_name: string | null
@@ -802,6 +855,7 @@ export type Database = {
           created_at: string
           customer_id: string
           description: string
+          display_code: string
           estimate_ready_at: string | null
           final_price: number | null
           geo_source: string | null
@@ -856,6 +910,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           description: string
+          display_code?: string
           estimate_ready_at?: string | null
           final_price?: number | null
           geo_source?: string | null
@@ -910,6 +965,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           description?: string
+          display_code?: string
           estimate_ready_at?: string | null
           final_price?: number | null
           geo_source?: string | null
@@ -2555,6 +2611,7 @@ export type Database = {
         Row: {
           ai_model: string | null
           ai_provider: Database["public"]["Enums"]["api_provider"] | null
+          client_request_id: string | null
           content_type: string
           cost_usd: number | null
           created_at: string
@@ -2571,6 +2628,7 @@ export type Database = {
         Insert: {
           ai_model?: string | null
           ai_provider?: Database["public"]["Enums"]["api_provider"] | null
+          client_request_id?: string | null
           content_type: string
           cost_usd?: number | null
           created_at?: string
@@ -2587,6 +2645,7 @@ export type Database = {
         Update: {
           ai_model?: string | null
           ai_provider?: Database["public"]["Enums"]["api_provider"] | null
+          client_request_id?: string | null
           content_type?: string
           cost_usd?: number | null
           created_at?: string
@@ -4206,6 +4265,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: unknown
       }
+      next_job_display_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       cancel_job_before_accept_atomic: {
         Args: { p_customer_id: string; p_job_id: string }
         Returns: {
@@ -4288,6 +4351,10 @@ export type Database = {
         Returns: undefined
       }
       prevent_evidence_snapshot_mutation: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown
+      }
+      validate_customer_payment_method_customer: {
         Args: Record<PropertyKey, never>
         Returns: unknown
       }

@@ -4,7 +4,7 @@ import { validateTransition } from '@/lib/jobs/lifecycle'
 import { logJobEvent } from '@/lib/jobs/event-log'
 import { createBroadcasts } from '@/lib/jobs/broadcast'
 import { withDbTimeout } from '@/lib/db/query'
-import { normalizeServiceAreaDistrict, type JobStatus } from '@home-services/shared'
+import { normalizeServiceAreaDistrict, type JobStatus } from '@nestscout/shared'
 
 type RouteParams = { params: Promise<{ id: string }> }
 

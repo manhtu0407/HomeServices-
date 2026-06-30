@@ -1,5 +1,5 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
-import { workerRegisterSchema } from '@home-services/shared'
+import { workerRegisterSchema } from '@nestscout/shared'
 import { registerWorker } from '@/lib/workers/register'
 import { checkRateLimit, AI_SESSION_LIMIT } from '@/lib/rate-limit'
 

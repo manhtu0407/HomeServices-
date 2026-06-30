@@ -1,6 +1,6 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { logJobEvent } from '@/lib/jobs/event-log'
-import type { JobStatus } from '@home-services/shared'
+import type { JobStatus } from '@nestscout/shared'
 
 type RouteParams = { params: Promise<{ id: string }> }
 

@@ -199,7 +199,20 @@ const WORKER_CANCELLATION_REQUEST_STATUSES: readonly JobStatus[] = [
 
 const MEDIA_STAGE_STATUSES: Record<WorkflowMediaStage, readonly JobStatus[]> = {
   before: ["draft", "analyzing", "estimate_ready", "awaiting_customer_confirm", "broadcasting"],
-  kael_reference: ["draft", "analyzing", "estimate_ready", "awaiting_customer_confirm", "broadcasting"],
+  kael_reference: [
+    "draft",
+    "analyzing",
+    "estimate_ready",
+    "awaiting_customer_confirm",
+    "broadcasting",
+    "worker_matched",
+    "worker_on_way",
+    "arrived",
+    "inspecting",
+    "repairing",
+    "scope_change_pending",
+    "completed_by_worker",
+  ],
   after: ["repairing", "completed_by_worker"],
   cancellation_evidence: [
     "worker_matched",

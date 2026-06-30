@@ -3,7 +3,7 @@ import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { validateTransition } from '@/lib/jobs/lifecycle'
 import { logJobEvent } from '@/lib/jobs/event-log'
 import { withDbTimeout } from '@/lib/db/query'
-import type { JobStatus, TablesUpdate } from '@home-services/shared'
+import type { JobStatus, TablesUpdate } from '@nestscout/shared'
 
 const statusUpdateSchema = z.object({
   status: z.enum([

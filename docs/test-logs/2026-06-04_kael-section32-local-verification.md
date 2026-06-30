@@ -1,4 +1,4 @@
-# Kael Section 32 Local Verification
+﻿# Kael Section 32 Local Verification
 
 Date: 2026-06-04
 Scope: PR #60 / Plan.md section 32 local implementation pass.
@@ -437,8 +437,8 @@ The host PATH still does not expose `npm.cmd`, `npx.cmd`, `pnpm.cmd`, or `corepa
 Result: PASS, `10.16.1`.
 
 ```powershell
-& 'C:\Users\Phan Manh Tu\AppData\Local\Temp\node-portable\node-v22.18.0-win-x64\pnpm.CMD' --filter @home-services/mobile type-check
-& 'C:\Users\Phan Manh Tu\AppData\Local\Temp\node-portable\node-v22.18.0-win-x64\pnpm.CMD' --filter @home-services/mobile test
+& 'C:\Users\Phan Manh Tu\AppData\Local\Temp\node-portable\node-v22.18.0-win-x64\pnpm.CMD' --filter @nestscout/mobile type-check
+& 'C:\Users\Phan Manh Tu\AppData\Local\Temp\node-portable\node-v22.18.0-win-x64\pnpm.CMD' --filter @nestscout/mobile test
 ```
 
 Result: both commands reached the package scripts, then failed with `Access is denied` when the scripts tried to execute the Windows `tsc`/`jest` shims. The direct Node entrypoint gates above remain the reliable verification path for this host.

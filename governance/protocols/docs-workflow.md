@@ -169,7 +169,7 @@ Use for technical execution documents: ADRs, PRDs, issue bodies, test reports, h
 3. Capture decisions, constraints, tests, limitations, and next steps.
 4. Do not edit locked docs unless Tu approved it.
 5. For learned failures, store durable lessons in `docs/agent-lessons.md` rather than bloating README.
-6. After large sessions, update `MEMORY.md` when new durable session memory, caveats, or handoff facts would help the next AI agent. Update README only at session end and only when progress-log rules allow it.
+6. After large sessions, update `.claude/MEMORY.md` when new durable session memory, caveats, or handoff facts would help the next AI agent. Update README only at session end and only when progress-log rules allow it.
 
 ### Locked Files
 
@@ -229,7 +229,7 @@ Use after long sessions, before context compaction, when switching between Claud
 3. Include protocols used and protocols likely needed next.
 4. Include exact verification state.
 5. Put the handoff section in the final response unless Tu asks for a file.
-6. For large sessions, update `MEMORY.md` and README at session end according to lock rules and current dirty-worktree safety.
+6. For large sessions, update `.claude/MEMORY.md` and README at session end according to lock rules and current dirty-worktree safety.
 
 ### Output Format
 

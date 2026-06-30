@@ -1,0 +1,650 @@
+﻿# NestScout / Kael Rebuild Progress
+
+## Done
+
+- Built the real worker create/profile review path from Auth: the worker create CTA now submits email/phone contact through `submitWorkerApplication`, mobile posts to Edge `POST /worker-applications` with an idempotent `client_request_id`, Edge validates the shared schema, stores a `worker_application_review` ticket in `kael_admin_queue`, and does not grant worker role or accept passwords/uploads from the public mobile path.
+- Added parity/static/runtime coverage for the worker application path: shared/Edge schema parity, mobile service/retry/admin-queue wiring guards, Edge router/service tests, Auth RNTL behavior, and package type-checks for mobile/api/shared all pass for this batch.
+- Cleaned production mojibake Vietnamese strings in mobile config errors, Edge profile-insight errors, Kael safety advisory text, and Next reference route errors; the Edge schema mojibake guard now passes, and shared monorepo wiring now guards production source files against mojibake regressions.
+- Added shared production-source guards so mobile code cannot reintroduce raw `TextInput` outside `KaelTextField` or legacy/prototype Kael image assets such as `common-image-icons`, `client-kael.png`, or `kael-model-8a*`.
+- Verification after the worker-application and mojibake cleanup batch: full mobile Jest passed 18 suites / 205 tests, API full Vitest passed 93 files / 1503 tests with 3 skipped files, shared full Vitest passed 15 files / 608 tests, package-level mobile/API/shared type-checks passed, and `expo config --type public` read the NestScout public config successfully.
+- Re-audited the zip source of truth for Mascot Kael States & Motions, Kael Typography, Icon Images, and Component System before continuing production edits.
+- Installed Tu-approved NestScout logo 01 Aurora Nest from the official `06_logo_color@2x.png` handoff board as a transparent contour mark with no white board background and no lockup text; app icon, adaptive icon, splash icon, favicon, auth welcome brand mark, and design-gallery brand mark now use this asset with a light mint-white aura style.
+- Cropped all 20 Kael mascot states and 10 emotion detail assets from the official `02_mascot_motion@2x.png` handoff board into transparent production PNGs, then mapped `KaelMascot` state/emotion resolution to those files instead of the generic fallback model.
+- Removed the old mascot fallback badge/model path from production `KaelMascot`; the component now resolves only official state/emotion PNG crops and keeps the soft Reduce-Motion-aware settle animation.
+- Moved the Welcome brand, title, subtitle, and trust copy onto `KaelText` so the first production entry surface goes through the Kael Typography System instead of raw `Text`.
+- Replaced the Auth login hero role vector icon with the same tracked role image PNGs used by the role cards, keeping the Auth role surface aligned with the Kael Icon Images System.
+- Replaced remaining Auth visual identity icons for customer name/onboarding and worker verification/credential slots with tracked client/worker image PNGs; Auth vector icons now stay limited to small control glyphs such as email, lock, eye, phone, map, and shield.
+- Cleaned non-legacy Supabase brand traces to NestScout: local `project_id`, initial migration comment, and staging security fixture email domains now use NestScout naming; mobile storage/deeplink legacy fallbacks remain intentionally for migration.
+- Verification after the mascot/logo/icon cleanup: mobile `tsc --noEmit` passed, shared mobile wiring Vitest passed 240 tests, Kael primitive Jest passed 8 tests, worker focused Jest passed 59 tests, customer booking focused Jest passed 2 tests, and full mobile Jest passed 18 suites / 202 tests.
+- Switched production Expo runtime metadata from the legacy Home Services identifiers to NestScout: app name, slug, URL scheme, iOS bundle identifier, and Android package now share the NestScout brand, with shared wiring guard coverage.
+- Brought `apps/mobile/app.json` into parity with `app.config.ts` so both Expo config entrypoints use NestScout slug, scheme, iOS bundle identifier, and Android package.
+- Updated push-notification deep-link normalization to accept `nestscout://` as the production scheme while keeping `homeservices://` as a legacy migration fallback.
+- Routed the remaining production surface inputs through the Kael Component System: customer home command, customer history chat composer, full-screen customer Kael chat composer, worker Kael chat composer, and admin learning reject note now use `KaelTextField` shells instead of direct native `TextInput`.
+- Cropped the Kael Orb K icon from the official handoff Icon Images System board into `apps/mobile/assets/kael-orb-icon.png` and wired it into the separated customer and worker dock Orb actions; mascot state rendering remains on Agentic Center/chat/hero surfaces.
+- Updated the hidden design gallery to use the approved NestScout logo 01 PNG for the header brand mark and the Kael Orb PNG only for the Orb demo.
+- Migrated production customer/worker/auth/chat Kael visuals away from direct static Kael image usage into the typed `KaelMascot` state shell, including Agentic Center memory, History price/chat/live-alert slots, profile insight metrics, worker chat/process cues, and auth role surfaces; the separated dock Orb now uses the cropped official K orb icon instead of a mascot fallback.
+- Locked the official Kael mascot taxonomy in tests: 10 core states, 10 contextual states, and 10 emotions remain addressable for future PNG/Lottie/Rive exports.
+- Added a motion-aware `KaelMascot` shell so state/emotion changes settle with light opacity/scale/y motion and Reduce Motion removes transform while waiting for official animated assets.
+- Updated shared mobile wiring tests to require production surfaces to use the `OfficialKaelMascot` state shell and the mapped state/emotion PNG resolver; the resolver no longer requires legacy `kael-model-8a*` assets.
+- Added shared guard coverage so production customer surfaces do not reintroduce `client-kael.png` or untracked `common-image-icons`.
+- Verification after the Kael mascot/component/icon batch: mobile type-check passed; full mobile Jest passed (17 suites / 199 tests); API focused Vitest passed (5 files / 166 tests); shared focused Vitest passed (2 files / 243 tests); package-level API/shared type-checks passed.
+- Removed production customer imports of static `client-kael.png`; contextual Kael UI now renders mascot states such as `listening`, `thinking`, `analyzing`, `processing`, `priceCheck`, `reminder`, and `report`.
+- Expanded customer/worker icon wrappers to prefer tracked 3D PNG image families for service, nav, language, theme, and utility slots with clear assets; vector glyphs remain only for small controls without official exports.
+- Removed the defensive `0/100` fallback from worker performance score formatting so missing performance data cannot accidentally render as a fake score in future call sites.
+- Extended `KaelText`/`KaelButton` usage into Agentic Center and customer primary/secondary CTAs, with focused RNTL coverage for typography scale, component routing, and mascot state anchors.
+- Moved customer Account Info fields and gender selection onto `KaelTextField` and `KaelSegmentedControl`, preserving the real `updateCustomerProfile` metadata flow.
+- Moved worker service-radius adjustment onto `KaelInlineStepper`, preserving real worker verification payload bounds and existing radius testIDs.
+- Moved Agentic Center empty-state cards onto `KaelCard`, keeping data honesty and theme surface overrides intact.
+- Wired `KaelMediaUploadTray` into the real Booking evidence picker empty state and `KaelChip` into the Auth Welcome supported-service chips, preserving the existing real media picker and auth flows.
+- Logged the missing official Kael Sans font binaries in `ASSETS_NEEDED.md` while keeping the runtime typography token wired through `KaelText`.
+- Read `CODEX_REBUILD_PROMPT.md` first from the zip.
+- Read required repo governance docs and selected protocols.
+- Ran preflight and classified the task as Phase 0 UI/docs audit.
+- Extracted the zip into `%TEMP%\nestscout-codex-handoff` for read-only image inspection.
+- Inspected the 3 flow boards and the official system PNG pages.
+- Inventoried current routes, owner surfaces, navigation behavior, assets, and core state/API boundaries.
+- Created Phase 0 checkpoint artifacts:
+  - `REBUILD_PLAN.md`
+  - `design/ASSET_MAP.md`
+  - `ASSETS_NEEDED.md`
+  - `SCOREBOARD.md`
+  - `PROGRESS.md`
+- Recorded Tu's 2026-06-11 decisions:
+  - Visible brand becomes NestScout.
+  - Kael Orb opens Agentic Center.
+  - All UI connects to real existing backend/system data and components.
+  - No mock stats/prices/workers/queue/profile metrics.
+  - Commit-per-screen checkpoints are approved after verification.
+- Added runtime handoff tokens under `apps/mobile/design`.
+- Repointed shared mobile color/theme seams toward the NestScout primary token `#0DAE9A`.
+- Changed visible app config name and permission copy to NestScout while keeping identifiers unchanged.
+- Updated Kael charter, system prompt, public charter summary, and API metadata title to NestScout while preserving the three supported service boundaries.
+- Wired the customer Kael Orb route to a real-data Agentic Center surface and kept full chat on `/(customer)/kael-chat`.
+- Added focused RNTL coverage for Agentic Center empty, active-case, preference, notification, and chat-route behavior.
+- Added the Phase 1 hidden `/(design-gallery)` route with action buttons, chips, inputs, media/voice controls, cards, aura, bottom navigation sample, and Kael Orb sample.
+- Added reusable NestScout/Kael UI primitives in `apps/mobile/components/ui/kael-primitives.tsx`.
+- Added `KaelMascot` typed state shell with all 20 official state names plus 10 emotion variant names; current rendering maps to approved transparent production crops from the mascot motion handoff board.
+- Switched auth role card images away from untracked `common-image-icons` to tracked client/worker icon assets.
+- Started Group A:
+  - Added the NestScout/Kael welcome screen before role selection.
+  - Added Welcome service chips for only the three supported services and step dots matching the reference skeleton.
+  - Realigned Welcome to the reference hero order with copy before the Kael mascot and a narrower primary pill CTA.
+  - Moved Welcome-specific shell dimensions, surfaces, mascot sizing, CTA sizing, and step-dot values into `component.authWelcome` tokens.
+  - Kept role-first auth behavior and real password/Google actions intact.
+  - Kept phone/register unavailable states honest because the auth provider does not expose phone OTP or Supabase sign-up.
+  - Locked Customer Email Login to the existing `signInWithPassword` provider boundary and added a truthful reset-unavailable affordance.
+  - Aligned Customer Email Login copy to the reference welcome-back state while keeping Apple/Facebook absent because no real provider is exposed.
+  - Added the Customer Register reference header with a Kael head cue while preserving the real `signUpWithEmail` boundary and no client-controlled role metadata.
+  - Added the customer onboarding Kael hero and setup steps on the real `updateCustomerProfile` path.
+  - Kept onboarding fields seeded from real session metadata and saved through the existing auth provider.
+  - Converted Worker Register/Create Profile into an honest review-boundary checklist because the mobile auth provider exposes no worker create-account API.
+  - Removed fake upload/action copy from worker registration requirements and kept submit on the existing unavailable error path.
+  - Added focused RNTL coverage for welcome, role-gate transition, customer email fallback, customer email/password submit, customer onboarding save, and worker registration honesty.
+  - Re-audited Group A against the reference crop; Welcome/Login/Register/Onboarding match available backend fields, and Splash/app icons now use Tu-approved logo 01 from the official handoff board as a transparent contour mark.
+- Started Group B:
+  - Added the required media/voice note slot to the booking describe step.
+  - Aligned the Search & Filter booking CTA to the reference `Tiếp tục` / `Continue` copy while preserving the real Kael handoff behavior.
+  - Enabled real image/video evidence selection in Booking, including typed video drafts and a truthful video preview tile.
+  - Kept photo picking wired to the existing image picker.
+  - Kept voice honest: the booking form shows a voice capsule, but pressing it explains that voice is handled in Kael chat when supported instead of recording fake audio.
+  - Updated Kael Live Performance Chat to summarize real image/video evidence as evidence items and render video tiles from the Booking handoff.
+  - Aligned Kael Live Performance Chat to the reference title `Kael đang phân tích yêu cầu bạn` / `Kael is analyzing your request` while keeping progress, media, and service data tied to the real Kael session.
+  - Kept the reference ETA out of Kael Live Performance Chat until the backend exposes a real analysis ETA field.
+  - Added focused RNTL coverage that the booking handoff includes the voice capsule.
+- Continued Group C:
+  - Added a real-data customer case command overview to Activity.
+  - Aligned the active Case Overview CTA to the reference `Tiếp tục với Kael` / `Continue with Kael` copy while preserving the real Kael chat route.
+  - Added the Case Overview reference hero inside the command panel with the real job id, real service/status, Kael head cue, and a panel-level `Tiếp tục với Kael` CTA routed to the existing Kael chat path.
+  - Kept worker address privacy gated by workflow state.
+  - Kept ETA honest by waiting for live travel signal instead of deriving fake arrival copy from timers.
+  - Added a Matching Score panel to Activity from real estimate confidence, broadcast state, intake media count, area, and Kael prebrief.
+  - Aligned Matching Score wording to the reference `Độ phù hợp` / `Match fit` label and media-safe real evidence count.
+  - Kept the matching screen free of fake worker avatars, fake ratings, fake queue counts, and inferred worker performance stats.
+  - Added the Matching Score problem cell from real broadcast/estimate/draft issue text.
+  - Added the Matching Score Kael cue and real-detail CTA routed to Kael chat while keeping worker name/rating hidden until backend exposes real worker profile and review fields.
+  - Rebuilt the Kael Helper chat context as a reference-style four-row option list from real service, broadcast/estimate issue, workflow gate, and Kael advisory state.
+  - Aligned Kael Helper for Options with the reference helper title, real `timeChoice: now` time row, and `Xem chi tiết` / `View details` CTA to Kael chat.
+  - Added the Worker Offers & Quote checkpoint as a price-tab quote sheet from real broadcast price, Kael estimate, scope-change price, and final-price state.
+  - Kept quote UI free of fake offer counts, fake worker ratings, fake worker profiles, and worker-entered price authority.
+  - Added scope-change reason and new price inside the worker quote sheet from the real scope-change artifact.
+  - Rebuilt the Worker Offers & Quote sheet as a reference-style `Nhận giá` / `Quote received` list with real broadcast price, Kael estimate, scope change, total/final-price state, time, status, reason, and new price rows.
+  - Aligned the Worker Offers & Quote CTA to `Xem đề xuất` / `View quote` and kept non-backed itemized quote rows or duration hidden until backend exposes real line items and duration.
+  - Kept the reference itemized total/duration out of the UI until backend data exposes those values truthfully.
+  - Added the Location & ETA checkpoint to Activity from real address-release state, broadcast/search signal, and honest pending travel ETA copy.
+  - Kept pre-accept address area-only and did not treat search countdown as arrival ETA.
+  - Added a Location route gate from address release and live worker signal state.
+  - Aligned `worker_on_way` to `Thợ đang di chuyển` / `Worker on the way` and added a route-tracking CTA into the real Kael chat path.
+  - Added a route-map test anchor and a reference-style route status cue from the real live worker signal when address release and worker anchor are both available.
+  - Kept reference ETA time/distance values out of the UI until backend exposes real travel telemetry.
+  - Added the Live Job Alert checkpoint to Activity from real notification rows, unread count, and workflow next-event state.
+  - Kept push handling on the existing notification/deep-link path; no fake notification, fake queue, or push simulation was added.
+  - Added the Live Job Alert artifact cell from the real workflow primary artifact.
+  - Added a Live Job Alert summary card anchor and worker-signal cue from the real job status, without rendering a worker name or profile when backend fields are absent.
+  - Aligned Live Job Alert with a real live-card summary: problem, released area, priority, estimate, pending distance signal, and `Nhắn thợ` / `Message worker` into the existing job chat tab.
+  - Kept reference ETA and distance values out of Live Job Alert until travel telemetry exists.
+  - Added the Job Acceptance checkpoint to Activity from accepted job status, address release, job chat action gate, job id, and Kael worker prebrief.
+  - Kept acceptance UI free of fake worker names, avatars, ratings, and inferred worker profile data.
+  - Added the accepted job service cell from the real deal service type.
+  - Added the Job Acceptance shield/confirmed cue from the real accepted job state while keeping worker identity/review score hidden until backend fields exist.
+  - Aligned Job Acceptance to the reference confirmed-order checklist with review details, prepare tools, contact via chat, and `Xem chi tiết` / `View details` into the existing job chat tab.
+  - Added the Job in Progress checkpoint to Activity from workflow phase, next event, completion evidence artifact, and job chat gate.
+  - Kept in-progress UI free of fake progress percentages, fake travel ETA, and worker performance stats.
+  - Aligned Job in Progress to customer-safe `Thợ đã bắt đầu làm việc` / `Worker started work`, pending real work-time signal, and `Theo dõi hoàn tất` / `Track completion` into the existing Done tab instead of exposing a fake timer or customer-side complete action.
+  - Added the Job in Progress status-update row from the real phase context while leaving unbacked elapsed timer and completion action out of the customer UI.
+  - Added a Case Command next-event row from `WorkflowPhaseContext.nextExpectedEvent`, so the overview card exposes the real workflow step without inventing ETA.
+  - Added focused RNTL coverage for private address, released address, and no placeholder markers.
+- Continued Group D:
+  - Added the Worker Home readiness signal row from real worker profile verification, availability, and current request state.
+  - Kept Worker Home free of fake queue, rating, earnings, and worker performance stats.
+  - Aligned Worker Home greeting to the real normalized `workerProfile.legal_name` and the reference online-state copy.
+  - Kept Worker Home service shortcuts limited to electrical, plumbing, and cleaning despite the reference's extra icon slot.
+  - Added the Worker Home header avatar cue from the tracked worker profile asset while keeping unsupported service and unbacked stat tiles absent.
+  - Added the active Jobs real job row from the accepted deal id, service, area, status, and worker earning estimate.
+  - Kept the Jobs row free of fake schedule, queue counts, worker ratings, and extra job records because the current provider exposes one real `state.deal`.
+  - Aligned the active Jobs card to the reference list skeleton with real job id, problem, area, `timeChoice`, status, and worker earning.
+  - Aligned the active Jobs primary CTA to the real JobRoom copy instead of reusing the Active tab label.
+  - Kept the Jobs screen from fabricating the reference's second job, tomorrow schedule, or extra price when the provider exposes only one real deal.
+  - Added worker safety/checklist gates to active jobs.
+  - Kept scope and completion actions tied to existing workflow/evidence state.
+  - Kept worker pricing input out of the checklist path.
+  - Added completion evidence preview rail from local image-picker drafts before upload.
+  - Kept Evidence Upload tied to real local media draft URI/file names and the existing upload/status action path.
+  - Expanded completion evidence picking to keep up to 5 real selected image drafts and preview each source before the existing `after`-stage upload.
+  - Aligned Evidence Upload CTA to the reference report action copy (`Gửi báo cáo hoàn thành` / `Send completion report`) while preserving the existing completion status/update flow.
+  - Added focused RNTL coverage for address gate, scope gate, completion evidence, and no fake placeholder values.
+  - Added the JobRoom on-site media preview rail from real ImagePicker local draft URI/file names before the worker sends the advisory.
+  - Expanded the JobRoom on-site media picker to keep up to 5 real selected image drafts for the multi-photo reference rail before the existing `before`-stage upload.
+  - Kept on-site advisory media on the existing `uploadJobMediaDrafts(..., 'before')` path and did not fake upload/streaming before send.
+  - Added Worker Earnings reconciliation strip and period row from `EarningsResponse` paid jobs, pending payout, platform fee, `from_date`, and `to_date` fields.
+  - Aligned Worker Earnings to the reference three-part summary using real today and period net earnings while leaving month as waiting until monthly backend data exists.
+  - Added the `Xem chi tiết thu nhập` / `View income details` action to open the real reconciliation strip and ledger inline.
+  - Kept the unbacked reference monthly total out of the UI.
+  - Aligned Worker Rating to the reference using real aggregate worker score and completed-job count.
+  - Added the star strip, exact score, positive pulse copy, and enabled review CTA that opens a real aggregate detail panel while tips stay `Chưa có` until the mobile API exposes gratuity/review-detail fields.
+  - Aligned Worker Safety & Checklist to the reference with service-derived safety steps for electrical/plumbing/cleaning.
+  - Changed checklist completion from disabled-only to a one-tap internal acknowledgement that locks again after press and still does not advance job status, price, completion, or payment without the existing field-step/evidence gates.
+  - Aligned Evidence & Scope Change to the reference old/new scope summary from real scope-change state.
+  - Labeled the real scope-change delta as `Chi phí phát sinh` / `Additional cost` while keeping worker price input absent.
+  - Added submitted job summary/report card from real completion notes, completion media, status, and Kael price gate.
+  - Aligned Job Summary / Summary & Report to the Kael report checklist structure from real completion status, note, media, and price gate.
+  - Added the report detail CTA to the existing worker Kael chat path while keeping report generation, final price input, and fake receipt data absent.
+  - Re-audited Job Summary / Summary & Report against the reference crop; current surface matched the available backend fields with no extra UI code required.
+  - Added Worker Kael on-site advisory rail inside accepted JobRoom details for status, address release, scope/price gate, and evidence gate.
+- Continued Group E:
+  - Added Agentic Center real summary cells for active case, approvals, and notifications.
+  - Summary values come from live workflow/preference state, with text empty states instead of fake zeroes.
+  - Added Commanding Home greeting from real session profile metadata and kept the fallback as the generic Agentic Center title when no name exists.
+  - Separated unread notification count from Approval Queue so notices do not inflate approval totals.
+  - Aligned Commanding Home closer to the Agentic Center reference: Kael avatar sits before the greeting, summary labels read active orders / needed approvals / new alerts, and the task section is labeled as real to-do work.
+  - Added the Agentic Center live workflow card from `WorkflowPhaseContext` for source, phase, artifact, next event, and action gate.
+  - Added Active Case command ID from the real deal id and case-level actions that route to the existing Kael chat and History surfaces.
+  - Aligned Active Case Command Center to the reference command card with a Kael header, real case/status, service/estimate/area data grid, and job profile block from the active deal.
+  - Replaced raw Agentic Center Kael head images with `KaelMascot` state callsites (`welcome`, `findingWorker`) so official state/motion assets can swap in without changing the surface.
+  - Added the Agentic Center workflow rail from real `WorkflowPhaseContext.sections`, with primary artifact and artifact mode labels from the shared workflow contract.
+  - Added Approval Queue review actions that route to the existing History review flows, including scope-change deep links with the real scope id.
+  - Added Approval Queue primary scope approval on the real `actions.decideScopeChange` path when the scope status is waiting for customer decision.
+  - Aligned Approval Queue to the reference with a real approval-count title, 3D image icons from the client icon system, primary/secondary actions, and `Xem tất cả` / `View all` routed to History.
+  - Kept completion confirmation behind the real workflow gate; the queue routes completion review to History when Kael has not unlocked confirmation.
+  - Added saved contact phone to Agentic Center Memory & Preferences from real profile metadata aliases.
+  - Wired Agentic Center Memory & Preferences to the real `GET /me/kael-memory` self-view endpoint through `kaelMemoryService` and `useFrontendWorkflow`.
+  - Rendered Kael memory summary, language, service preference, preferred area, time preference, and last-observed date from the sanitized self-view payload only.
+  - Kept memory `safe_metadata` and raw unsafe metadata out of the UI while preserving real profile metadata fallback rows.
+  - Changed the Memory & Preferences CTA from Home to Edit profile and routed it to the real customer profile surface.
+  - Aligned Memory & Preferences to the reference `Kael nhớ về bạn` / `Kael remembers you` card, with 3D image icons from the client icon system for real memory/profile rows and the existing Edit profile route.
+  - Moved Agentic Center screen-specific dimensions, borders, and shadows into `component.agenticCenter` tokens; targeted raw color/rgba/boxShadow/style grep for the surface is clean.
+  - Refined the separated customer Kael Orb to use `component.bottomNav.orb` tokens, keep a 76px outer hit target with a 64px inner glass orb, show the official Kael label, and route to Agentic Center.
+  - Added focused RNTL coverage for empty and active summary values.
+- Continued Group F:
+  - Fixed worker locked milestone copy so it no longer renders placeholder question marks.
+  - Updated Worker Profile overview hero to display the real `workerProfile.legal_name` with normalized spacing when available.
+  - Aligned Worker Overview to the reference status-card structure with three official worker profile image cards for approval, submitted profile, and skills.
+  - Added a Worker Overview quick summary from real completed jobs, rating, and recommendation signal, keeping missing trust data as `Chưa có` / `Not yet`.
+  - Aligned Worker Level Journey with a current-level label and real progress copy from the profile-derived level model.
+  - Kept zero-progress worker levels as waiting copy instead of showing `0 / 15` as a fake-looking metric.
+  - Added Worker Reputation & Performance panel from real `rating`, `total_jobs`, availability, and suspension state only.
+  - Aligned Worker Reputation & Performance to the reference service-performance structure with customer rating as a subsection, reconciled earnings from real `workerEarnings`, and a Kael suggestion derived from real profile signals.
+  - Kept worker reputation rating/jobs as honest waiting states when no completed-job feedback exists.
+  - Kept profile performance free of fake chart/radar/badge/tip values when the mobile API has no real fields for those details.
+  - Added customer usage ranking and money protection insight panels from real metadata only.
+  - Aligned Customer Overview with a real metadata hero status/member line and a quick-information panel for service history, saved address, and preferred service count.
+  - Added customer usage ranking and money protection progress tracks from real `usage_rank_points` and `money_protection_score` only.
+  - Aligned Customer Usage Ranking with a real rank journey panel from `usage_rank_level` and `usage_rank_points`, including current rank, next rank, and remaining points against the existing 1,000-point progress scale.
+  - Aligned Customer Money Protection with a real protection-detail ledger from explicit metadata: protected transaction count, total transaction count, dispute-free rate, and fair-price badge.
+  - Kept Customer Money Protection ledger empty when matching real metadata is missing, without using completed-service count as a proxy or inventing dispute/fairness indicators.
+  - Kept missing profile metrics as honest waiting states.
+  - Kept progress tracks hidden when the matching real metric is missing.
+  - Added focused RNTL coverage for worker locked milestones, customer profile metrics, and customer money ledger real/empty states.
+- Continued Group B:
+  - Completed the Customer Home shortcut grid with all four real actions.
+  - Added active request status and Kael estimate cells to the Customer Home active-card path.
+  - Kept Home free of fake counters, unsupported service categories, and mock queue/rating data.
+  - Added a read-only Search & Filter brief to the Booking describe step from real intake fields: area, selected service, issue source, now-only time, and payment locked until Kael creates the request.
+  - Added user-selected problem chips for the three supported services and passed selected chips to Kael chat as real filters.
+  - Added Booking media preview tiles from real image-picker drafts and handed the same `photoDrafts` to Kael chat.
+  - Added a Customer Kael Live Performance panel that reads real session service, pending/media evidence count, and polled progress trace.
+  - Added a Customer Kael Live Performance signal cell from real pending-intake problem chips when the customer selected issue filters.
+  - Kept Booking and Kael chat on the existing pending-intake, media picker, server service wrapper, and progress polling paths; no remote job creation, confirm-search action, direct provider call, fake schedule slot, fake media count, or fake payment option was added.
+- Verification for this checkpoint:
+  - `pnpm --filter @nestscout/mobile type-check` passed.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on missing `auth-welcome-service-electrical` before the Welcome service chips/dots checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 6 tests after the Welcome service chips/dots checkpoint.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "starts with the NestScout welcome"` failed on missing `auth-welcome-copy-hero` before the Welcome reference-order/token checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "starts with the NestScout welcome"` passed after the Welcome reference-order/token checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Welcome reference-order/token checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Welcome reference-order/token checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Welcome reference-order/token checkpoint: 17 suites, 192 tests; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on `auth-login-submit` showing `Tiếp tục` before the Login with Email CTA checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 6 tests after the Login with Email CTA checkpoint.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "customer password form"` failed on missing `Chào mừng trở lại!` before the Login with Email reference-copy checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "customer password form"` passed after the Login with Email reference-copy checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Login with Email reference-copy checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Login with Email reference-copy checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Login with Email reference-copy checkpoint: 17 suites, 192 tests.
+  - Red first: `jest --runInBand lib/__tests__/auth-provider-test.tsx` failed on missing `signUpWithEmail` before the Register with Email checkpoint.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on missing `auth-client-register-email` before the Register with Email checkpoint.
+  - `jest --runInBand lib/__tests__/auth-provider-test.tsx` passed: 3 tests after the Register with Email checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Register with Email checkpoint.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "opens customer email registration"` failed on missing `auth-register-reference-header` before the Register reference-header checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "opens customer email registration"` passed after the Register reference-header checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Register reference-header checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Register reference-header checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Register reference-header checkpoint: 17 suites, 192 tests; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on `auth-client-onboarding-save` showing `Lưu và tiếp tục` before the Onboarding CTA checkpoint.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 7 tests after the Onboarding CTA checkpoint.
+  - Red first: `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx` failed on Customer Home greeting showing `Nhà của Anh Hoàng` before the Home greeting/prompt checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx` passed: 6 tests after the Home greeting/prompt checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Reputation & Performance checkpoint when portable `pnpm.CMD` was unavailable.
+  - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 6 tests after the customer email login boundary.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/ui/__tests__/kael-primitives-test.tsx` passed: 9 tests.
+  - `jest --runInBand components/ui/__tests__/kael-primitives-test.tsx` passed: 4 tests.
+  - `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx` passed: 5 tests.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx` passed: 8 tests after user-selected problem chips.
+  - `jest --runInBand components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 27 tests after the Live Performance problem-signal cell; existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx components/customer/kael-chat/__tests__/agentic-parts-test.tsx` passed: 33 tests.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests after the customer ranking/protection progress checkpoint.
+  - Red first: `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx -t "customer overview"` failed on missing `customer-profile-hero-status-pill` before the Customer Overview metadata checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx -t "customer overview"` passed after the Customer Overview metadata checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 18 tests after the Customer Overview metadata checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Customer Overview metadata checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Customer Overview metadata checkpoint: 17 suites, 192 tests.
+  - Red first: `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx -t "real profile metrics"` failed on missing `customer-profile-ranking-journey-card` before the Usage Ranking journey checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx -t "real profile metrics"` passed after the Usage Ranking journey checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 18 tests after the Usage Ranking journey checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Usage Ranking journey checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Usage Ranking journey checkpoint: 17 suites, 192 tests.
+  - Red first: `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx -t "real profile metrics"` failed on missing `customer-profile-money-ledger-card` before the Customer Money Protection ledger checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx -t "real profile metrics"` passed after the Customer Money Protection ledger checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 18 tests after the Customer Money Protection ledger checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Customer Money Protection ledger checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Customer Money Protection ledger checkpoint: 17 suites, 192 tests.
+  - Red first: `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` failed on missing `customer-dock-kael-action-label` before the Kael Orb token/label change.
+  - `jest --runInBand components/customer/__tests__/customer-profile-surface-test.tsx` passed: 17 tests after the Kael Orb token/label checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-history-surface-test.tsx` passed: 22 tests after the Job Acceptance service row.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 51 tests after the Worker Reputation & Performance checkpoint.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx -t "applies the profile liquid hierarchy"` failed on 2 mini profile cards before the Worker Overview status-card checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx -t "applies the profile liquid hierarchy"` passed after the Worker Overview status-card checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Worker Overview status-card checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Overview status-card checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker Overview status-card checkpoint: 17 suites, 191 tests.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx -t "derives worker level progress"` failed on missing `worker-profile-level-current-kicker` before the Worker Level Journey progress-copy checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx -t "derives worker level progress|empty worker trust signals"` passed after the Worker Level Journey progress-copy checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Worker Level Journey progress-copy checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Level Journey progress-copy checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker Level Journey progress-copy checkpoint: 17 suites, 191 tests.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx -t "customer rating panel"` failed on missing `Hiệu suất dịch vụ` before the Worker Reputation & Performance service-performance checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx -t "customer rating panel"` passed after the Worker Reputation & Performance service-performance checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Worker Reputation & Performance service-performance checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Reputation & Performance service-performance checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker Reputation & Performance service-performance checkpoint: 17 suites, 191 tests.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "greets the worker"` failed before the Worker Home real-profile greeting/online-copy checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "greets the worker"` passed after the Worker Home real-profile greeting/online-copy checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 52 tests after the Worker Home real-profile greeting/online-copy checkpoint.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "aligns the active Jobs card"` failed on missing `worker-jobs-active-reference-id` before the Jobs reference-list checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "aligns the active Jobs card"` passed after the Jobs reference-list checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 53 tests after the Jobs reference-list checkpoint.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "previews selected JobRoom media"` failed on missing `worker-chat-media-preview-rail` before the On-site Advisory Chat media preview checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "previews selected JobRoom media"` passed after the On-site Advisory Chat media preview checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 54 tests after the On-site Advisory Chat media preview checkpoint.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "reference report CTA"` failed with `Mark complete` before the Evidence Upload report CTA checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "reference report CTA"` passed after the Evidence Upload report CTA checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 55 tests after the Evidence Upload report CTA checkpoint.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center token move.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `customer-agentic-center-phase-rail` before the Agentic Center workflow rail change.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 5 tests after the Agentic Center workflow rail checkpoint.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `customer-agentic-center-approval-scope_change-primary-action` before the Approval Queue primary action change.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 7 tests after the Approval Queue action checkpoint.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "scope approvals"` failed on missing `1 item needs approval` before the Approval Queue reference alignment.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "scope approvals"` passed after the Approval Queue reference alignment.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 11 tests after the Approval Queue reference alignment.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `Kael memory` before the Memory & Preferences self-view wiring.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 8 tests after the Memory & Preferences self-view wiring.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `Hi, Tu Phan` before the Commanding Home greeting/notification split.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 9 tests after the Commanding Home greeting/notification split.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "Commanding Home greeting"` failed on missing `customer-agentic-center-hero-avatar` before the Commanding Home reference alignment.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "Commanding Home greeting"` passed after the Commanding Home reference alignment.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 11 tests after the Commanding Home reference alignment.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `Case ID` before the Active Case command id/actions checkpoint.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 10 tests after the Active Case command id/actions checkpoint.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "Active Case command id"` failed on missing `customer-agentic-center-active-case-reference-card` before the Active Case reference-card checkpoint.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "Active Case command id"` passed after the Active Case reference-card checkpoint.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 11 tests after the Active Case reference-card checkpoint.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "Commanding Home greeting|Active Case command id"` passed after replacing raw Agentic Center Kael images with `KaelMascot` state callsites.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` failed on missing `customer-agentic-center-memory-edit-action` before the Memory & Preferences edit CTA checkpoint.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 11 tests after the Memory & Preferences edit CTA checkpoint.
+  - Red first: `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "saved contact phone"` failed on missing `Kael remembers you` before the Memory & Preferences reference-card checkpoint.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx --testNamePattern "saved contact phone"` passed after the Memory & Preferences reference-card checkpoint.
+  - `jest --runInBand components/customer/__tests__/agentic-center-surface-test.tsx` passed: 11 tests after the Memory & Preferences reference-card checkpoint.
+  - `vitest run src/__tests__/kael-charter-p8.test.ts` from `packages/shared` passed: 5 tests after the NestScout AI identity rename.
+  - `vitest run src/__tests__/unit/mobile-api-kael-p8.test.ts --root .` from `apps/api` passed: 9 tests after the NestScout AI prompt/public-charter rename.
+  - `vitest run src/__tests__/unit/mobile-api-edge-router.test.ts --root .` from `apps/api` passed: 46 tests after the NestScout public-charter route mock update.
+  - `tsc --noEmit -p tsconfig.json` from `apps/api` passed after the NestScout AI identity rename.
+  - `tsc --noEmit -p tsconfig.json` from `packages/shared` passed after the NestScout AI identity rename.
+  - `rg -n "#[0-9A-Fa-f]{3,8}|rgba\\(|boxShadow:\\s*'|backgroundColor:\\s*'|borderRadius:\\s*\\d|padding:\\s*\\d|margin:\\s*\\d|fontSize:\\s*\\d" apps/mobile/components/customer/agentic-center-surface.tsx` returned no matches after the Approval Queue action checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Kael Orb token/label checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Approval Queue action checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Approval Queue reference alignment.
+  - `tsc --noEmit` from `apps/mobile` passed after the Memory & Preferences self-view wiring.
+  - `tsc --noEmit` from `apps/mobile` passed after the Commanding Home greeting/notification split.
+  - `tsc --noEmit` from `apps/mobile` passed after the Active Case command id/actions checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Memory & Preferences edit CTA checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Memory & Preferences reference-card checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Commanding Home reference alignment.
+  - `tsc --noEmit` from `apps/mobile` passed after the Active Case reference-card / Mascot-state checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Login with Email CTA checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Register with Email checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Onboarding CTA checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Home greeting/prompt checkpoint.
+  - `node -e "JSON.parse(require('fs').readFileSync('apps/mobile/design/tokens.json','utf8'))"` passed after the Agentic Center workflow rail checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Approval Queue action checkpoint: 17 suites, 175 tests.
+  - Mobile Jest from `apps/mobile` passed after the Memory & Preferences self-view wiring: 17 suites, 176 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the Commanding Home greeting/notification split: 17 suites, 177 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the Commanding Home reference alignment: 17 suites, 191 tests.
+  - Mobile Jest from `apps/mobile` passed after the Active Case reference-card / Mascot-state checkpoint: 17 suites, 191 tests.
+  - Mobile Jest from `apps/mobile` passed after the Approval Queue reference alignment: 17 suites, 191 tests.
+  - Mobile Jest from `apps/mobile` passed after the Memory & Preferences reference-card checkpoint: 17 suites, 191 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the Active Case command id/actions checkpoint: 17 suites, 178 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the Memory & Preferences edit CTA checkpoint: 17 suites, 179 tests.
+  - Mobile Jest from `apps/mobile` passed after the Welcome service chips/dots checkpoint: 17 suites, 179 tests.
+  - Mobile Jest from `apps/mobile` passed after the Login with Email CTA checkpoint: 17 suites, 179 tests.
+  - Mobile Jest from `apps/mobile` passed after the Register with Email checkpoint: 17 suites, 181 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Mobile Jest from `apps/mobile` passed after the Onboarding CTA checkpoint: 17 suites, 181 tests.
+  - Mobile Jest from `apps/mobile` passed after the Home greeting/prompt checkpoint: 17 suites, 182 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Home real-profile greeting/online-copy checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker Home real-profile greeting/online-copy checkpoint: 17 suites, 184 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `tsc --noEmit` from `apps/mobile` passed after the Jobs reference-list checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Jobs reference-list checkpoint: 17 suites, 185 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `tsc --noEmit` from `apps/mobile` passed after the On-site Advisory Chat media preview checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the On-site Advisory Chat media preview checkpoint: 17 suites, 186 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `tsc --noEmit` from `apps/mobile` passed after the Evidence Upload report CTA checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Evidence Upload report CTA checkpoint: 17 suites, 187 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "three-part earnings summary"` failed on two summary cells before the Worker Earnings three-part summary checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "three-part earnings summary"` passed after the Worker Earnings three-part summary checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 56 tests after the Worker Earnings three-part summary checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Earnings three-part summary checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker Earnings three-part summary checkpoint: 17 suites, 188 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Red first: focused Worker pay surface tests failed before the detail CTA checkpoint because `worker-pay-detail-action` was missing.
+  - Focused Worker pay surface tests passed after the detail CTA checkpoint.
+  - Worker suite passed: 59 tests after the Worker pay detail CTA checkpoint.
+  - Mobile type-check passed after the Worker pay detail CTA checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker pay detail CTA checkpoint: 17 suites, 195 tests.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "customer rating panel"` failed on the old reputation/performance panel before the Worker Rating reference checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "customer rating panel"` passed after the Worker Rating reference checkpoint.
+  - Red first: focused Worker review panel test failed before the aggregate review CTA checkpoint because `worker-profile-review-pulse` was missing and the review CTA was disabled.
+  - Focused Worker review panel test passed after the aggregate review CTA checkpoint.
+  - Worker suite passed: 59 tests after the Worker review CTA checkpoint.
+  - Mobile type-check passed after the Worker review CTA checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker review CTA checkpoint: 17 suites, 195 tests.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 57 tests after the Worker Rating reference checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Worker Rating reference checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker Rating reference checkpoint: 17 suites, 189 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "service-derived safety checklist"` failed on missing `worker-safety-reference-list` before the Safety & Checklist reference checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "service-derived safety checklist"` passed after the Safety & Checklist reference checkpoint.
+  - Red first: focused Worker safety test failed before the internal acknowledgement checkpoint because the complete action was disabled.
+  - Focused Worker safety test passed after the internal acknowledgement checkpoint.
+  - Worker suite passed: 59 tests after the Worker safety acknowledgement checkpoint.
+  - Mobile type-check passed after the Worker safety acknowledgement checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker safety acknowledgement checkpoint: 17 suites, 195 tests.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 58 tests after the Safety & Checklist reference checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Safety & Checklist reference checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Safety & Checklist reference checkpoint: 17 suites, 190 tests.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "scope-change evidence with a real Kael price delta"` failed on missing `worker-scope-change-reference-card` before the Evidence & Scope Change reference checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "scope-change evidence with a real Kael price delta"` passed after the Evidence & Scope Change reference checkpoint.
+  - Red first: focused Worker scope-change test failed before the additional-cost label checkpoint because the delta cell still showed the old label.
+  - Focused Worker scope-change test passed after the additional-cost label checkpoint.
+  - Worker suite passed: 59 tests after the Worker scope additional-cost checkpoint.
+  - Mobile type-check passed after the Worker scope additional-cost checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Worker scope additional-cost checkpoint: 17 suites, 195 tests.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Evidence & Scope Change reference checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Evidence & Scope Change reference checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Evidence & Scope Change reference checkpoint: 17 suites, 191 tests.
+  - Red first: `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "submitted job summary report"` failed on missing `worker-job-summary-report-checklist` before the Summary & Report checklist checkpoint.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx --testNamePattern "submitted job summary report"` passed after the Summary & Report checklist checkpoint.
+  - Focused Worker summary report test passed after the Summary & Report audit checkpoint.
+  - Worker suite passed: 59 tests after the Summary & Report audit checkpoint.
+  - Mobile type-check passed after the Summary & Report audit checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Summary & Report audit checkpoint: 17 suites, 195 tests.
+  - `jest --runInBand components/worker/__tests__/worker-home-surface-test.tsx` passed: 59 tests after the Summary & Report checklist checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Summary & Report checklist checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Summary & Report checklist checkpoint: 17 suites, 191 tests. Existing `act(...)` warning remains in `components/customer/kael-chat/thread.tsx`.
+  - `vitest run src/__tests__/mobile-backend-wiring.test.ts src/__tests__/monorepo-wiring.test.ts` from `packages/shared` passed after the Register with Email checkpoint: 72 tests.
+  - Added-line token grep for the Memory & Preferences diff returned no raw style matches.
+  - Added-line token grep for the Commanding Home diff returned no raw style matches.
+  - Added-line token grep for the Active Case command id/actions diff returned no raw style matches.
+  - Added-line token grep for the Memory & Preferences edit CTA diff returned no raw style matches.
+  - Security grep found no mobile AI/provider/secret calls in the Memory & Preferences changed files.
+  - Product-scope grep for the Welcome diff found no unsupported/fake service copy.
+  - Product-scope grep for the Login with Email CTA diff found no new unsupported service or fake-stats UI in the changed auth code.
+  - Security/product grep for the Register with Email diff found no secrets and no client-controlled role in the signup payload; role still comes from the hardened DB trigger.
+  - Product-scope grep for the Onboarding CTA diff found no fake stats, unsupported services, or mixed-language Vietnamese CTA regressions in the changed auth code.
+  - Auth suite passed after the Group A audit checkpoint: 2 suites, 10 tests.
+  - Mobile type-check passed after the Group A audit checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Group A audit checkpoint: 17 suites, 195 tests.
+  - Product/language grep for the Home greeting/prompt diff found no lingering `Nhà của` home title, fake stats, or unsupported service copy in the changed Customer Home code.
+  - Red first: `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx --testNamePattern "anchors the reference home header"` failed on missing `customer-home-title-avatar` before the Customer Home reference header checkpoint.
+  - Red first: `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx --testNamePattern "renders all four|applies a stronger"` failed on missing `Dịch vụ phổ biến` and `customer-home-active-order-heading` before the Customer Home service/order checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx --testNamePattern "anchors the reference home header|renders all four|applies a stronger"` passed after the Customer Home reference checkpoint.
+  - `jest --runInBand components/customer/__tests__/customer-home-surface-test.tsx` passed: 7 tests after the Customer Home reference checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Customer Home reference checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Customer Home reference checkpoint: 17 suites, 193 tests.
+  - Added-line token grep for the Customer Home diff returned no raw style matches.
+  - Product-scope grep for the Customer Home diff found only expected test/helper `deal` false positives, with no fake stats, unsupported services, or mock visible copy added.
+  - Red first: `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx --testNamePattern "priority chips"` failed on missing `booking-wizard-priority-chip-normal` before the Search & Filter priority checkpoint.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx --testNamePattern "priority chips"` passed after the priority chips were wired to Kael intake context.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx` passed: 10 tests after the Search & Filter priority checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Search & Filter priority checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Search & Filter priority checkpoint: 17 suites, 194 tests.
+  - Added-line token grep for the Search & Filter priority diff returned no raw style matches.
+  - Product-scope grep for the Search & Filter priority diff found only expected test `mock...` false positives, with no fake stats, unsupported services, or visible mock copy added.
+  - Red first: `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx --testNamePattern "previews selected media"` failed because the media-selected CTA still said `Tiếp tục` before the Media / Voice Note CTA checkpoint.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx --testNamePattern "previews selected media"` passed after media-selected CTA copy switched to `Gửi đến đội Kael giúp bạn`.
+  - `jest --runInBand components/customer/__tests__/booking-wizard-test.tsx` passed: 10 tests after the Media / Voice Note CTA checkpoint.
+  - `tsc --noEmit` from `apps/mobile` passed after the Media / Voice Note CTA checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Media / Voice Note CTA checkpoint: 17 suites, 194 tests.
+  - Added-line token grep and product-scope grep for the Media / Voice Note CTA diff returned no matches; no fake waveform duration such as `00:12` was added.
+  - Re-audited Group B against the reference crops; Home, Booking, Media, and Live Performance match available backend fields, including multi-select media preview and honest voice and ETA waiting states.
+  - Focused Group B suites passed after the Group B audit checkpoint: 3 suites, 45 tests.
+  - Mobile type-check passed after the Group B audit checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Group B audit checkpoint: 17 suites, 195 tests.
+  - Re-audited Group C 2.5 against the reference crop; Case Overview now uses the compact four-row summary for match fit, priority, work estimate, and response time while the hero keeps real job id, service, status, Kael cue, and the Kael chat CTA.
+  - Case Overview keeps exact location and travel telemetry out of the overview; Location & ETA remains the source for address-release state.
+  - Focused Case Overview test passed after the Group C 2.5 checkpoint.
+  - Customer History suite passed after the Group C 2.5 checkpoint: 22 tests.
+  - Mobile type-check passed after the Group C 2.5 checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Group C 2.5 checkpoint: 17 suites, 195 tests.
+  - Re-audited Group E against `02_agentic_center.png` and the zip design system; the separated Kael Orb route renders Commanding Home, Active Case, Approval Queue, and Memory & Preferences with real workflow, notification, approval, profile, and Kael memory state.
+  - Asset audit for Group E confirmed the zip provides the mascot motion page but no standalone state exports; production now uses approved transparent crops from that board, while `ASSETS_NEEDED.md` and `design/ASSET_MAP.md` track optional higher-fidelity/animated replacements.
+  - Agentic Center suite passed after the Group E audit checkpoint: 11 tests.
+  - Kael Orb dock focused test passed after the Group E audit checkpoint.
+  - Mobile type-check passed after the Group E audit checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Group E audit checkpoint: 17 suites, 195 tests.
+  - Re-audited Group F against `03_profiles.png` and the zip profile page; worker and customer profile sections align to available backend/profile metadata fields while visual-only chart, radar, medal, and gauge details remain absent unless structured API fields exist.
+  - API audit for Group F confirmed worker profile exposes legal name, approval/availability, service coverage, review score, total jobs, and `WorkerEarnings`; customer profile metrics are explicit metadata aliases, so missing values stay in waiting states.
+  - Worker profile focused tests passed after the Group F audit checkpoint: 13 tests.
+  - Worker suite passed after the Group F audit checkpoint: 59 tests.
+  - Customer profile suite passed after the Group F audit checkpoint: 18 tests.
+  - Mobile type-check passed after the Group F audit checkpoint.
+  - Mobile Jest from `apps/mobile` passed after the Group F audit checkpoint: 17 suites, 195 tests.
+  - `pnpm doctor:react:changed` reported 1 maintainability warning for the large auth surface and no blocking bug issues; score API was unreachable.
+  - `git diff --check` passed.
+
+## Current Status
+
+Phase 1 foundation, design gallery, Kael mascot shell, NestScout AI identity rename, Agentic Center wiring/summary/Commanding Home greeting/Active Case command actions/live workflow card/phase rail/approval actions/memory self-view/edit CTA/token move, separated Kael Orb token/label refinement, Group A welcome service chips/dots, login email CTA, customer-safe email registration, onboarding start CTA, and customer onboarding, Group B Customer Home reference header/real notification badge/service heading/active order tracking plus Search & Filter priority chips and real-media CTA, booking media/voice/search-filter/live-performance-chat, Group C activity case overview, matching score, worker quote sheet, location/ETA honesty, live job alert, job acceptance, and job in progress, Group D Worker Home readiness, Jobs row, Evidence Upload preview, earnings three-part summary/period reconciliation, worker rating, safety checklist, summary-report/on-site advisory, and Group F profile honesty checkpoints are implemented. Focused type-check, auth tests, booking tests, Kael chat tests, primitive tests, customer home/profile/history tests, worker tests, Agentic Center tests including real approval action/gate/memory self-view/edit CTA/notification split/active-case action behavior, API/shared AI identity tests, and the latest full mobile Jest gate pass. React Doctor is currently limited because this host has no `npm.cmd`/`pnpm` on PATH and the available Node portable directory only contains `node.exe`.
+
+## Next
+
+1. Continue the next rebuild group from `SCOREBOARD.md` after checking current dirty files and relevant docs.
+2. Keep committing only verified checkpoint files, leaving prototype trash unstaged.
+3. Keep committing only verified checkpoint files, leaving prototype trash unstaged.
+
+## Open Risks
+
+- Pre-existing dirty worktree includes auth/prototype/asset changes. Do not overwrite them.
+- Portable `pnpm.CMD`/`npm.cmd` are not available in the temp Node folder during this session; use direct package `.bin` commands until package-manager binaries are restored.
+- `apps/api/node_modules/.bin/vitest.CMD` resolves to a missing local module in this workspace; use the root Vitest binary with `--root .` from `apps/api`.
+- React Doctor cannot currently complete: earlier cached pnpm attempts timed out with no output, and the current portable Node folder only has `node.exe`, so `npm run doctor:react:changed` cannot resolve `npm.cmd`.
+- Standalone or animated mascot state assets are optional future fidelity upgrades; production currently uses approved transparent crops from the zip mascot motion board.
+- No local native recording was found in the repo during Phase 0; `job-media` is now audio-ready, but voice capture remains honest-unavailable until a real native recorder dependency and microphone permission are added.
+- Maestro/Detox visual regression is not set up, so native UI validation must be manual/device-based plus RNTL/static gates.
+
+## 2026-06-12 Continuation Notes
+
+- Re-read `CODEX_REBUILD_PROMPT.md` from the zip and re-audited the official pages for Kael Mascot States & Motion, Typography, Icon Images, and Components.
+- Confirmed `design/theme.ts` / `tokens.json` remain the source of truth; flow boards provide skeleton only.
+- Re-checked tracked production assets: client/worker icon image families are tracked 256x256 PNGs; `common-image-icons/` is still untracked prototype trash and is not part of the production map.
+- Added API guardrail tests and updated runtime-facing Kael prompts/guardrails from legacy Home Services wording to NestScout.
+- Migrated Customer Home/History Kael avatar callsites from the local `customer-surfaces.tsx` mascot wrapper with raw `kael-model-8a*.png` ids to the official `components/kael/kael-mascot` state shell (`welcome`, `listening`, `analyzing`, `compareOptions`).
+- Red-first focused Customer Home test failed on missing official mascot state id, then passed after the migration: 7 tests.
+- Reworked `KaelMascot` so the root remains the accessible/testable shell while the inner image layer owns the official soft settle motion; this keeps screen-level style overrides from disabling mascot motion.
+- Re-ran the Kael primitive gate after the mascot motion change: `tsc --noEmit` from `apps/mobile` passed, and `jest components/ui/__tests__/kael-primitives-test.tsx --runInBand` passed: 8 tests.
+- Re-ran full mobile Jest after the shared mascot shell change: 17 suites, 199 tests passed.
+- Production grep after the latest mascot/icon audit found no production screen calls to `client-kael.png`, `common-image-icons`, `kael-model-8a*`, or mascot fallback badges.
+- React Doctor retry remains not-run rather than pass/fail: cached pnpm attempts timed out earlier, and current PATH/package-manager inspection shows no `npm.cmd` or `pnpm`; only direct package `.bin` commands are reliable in this host. Expo CLI itself is available as `apps/mobile/node_modules/.bin/expo.CMD` and reports version 54.0.25 outside sandbox.
+- Migrated high-traffic auth/customer/worker typography anchors to the Kael typography tokens from the handoff (`h1/h2/h3/body/label/caption`, `Kael Sans` family) instead of local raw font-size/weight anchors.
+- Re-ran mobile type-check after the typography anchor migration: `tsc --noEmit` from `apps/mobile` passed.
+- Focused auth/customer/worker suites passed after the typography anchor migration: 5 suites, 113 tests.
+- Full mobile Jest passed again after the typography anchor migration: 17 suites, 199 tests.
+- Migrated BookingWizard primary/secondary CTA wrappers to render through `KaelButton` while keeping the booking surface tokens and real Kael handoff behavior.
+- Re-ran BookingWizard verification after the CTA component migration: `tsc --noEmit` from `apps/mobile` passed, and `jest components/customer/__tests__/booking-wizard-test.tsx --runInBand` passed: 10 tests.
+- Added a shared wiring guard that requires BookingWizard to use `KaelButton`, `KaelMediaUploadTray`, and `KaelVoiceInputCapsule` from the Kael component system.
+- Re-ran shared verification after the BookingWizard component guard: `vitest run src/__tests__/mobile-wiring.test.ts` passed 232 tests, and `tsc --noEmit` from `packages/shared` passed.
+- Migrated Auth login/register/customer-onboarding primary CTAs and onboarding skip CTA to `KaelButton` while preserving the real Supabase auth/profile actions and existing loading/disabled states.
+- Re-ran Auth verification after the CTA component migration: `tsc --noEmit` from `apps/mobile` passed, and `jest components/auth/__tests__/auth-surfaces-test.tsx --runInBand` passed: 7 tests.
+- Added shared auth wiring guards requiring `KaelButton`, `KaelChip`, and `KaelText` usage in the production auth surface; shared wiring Vitest still passed 232 tests and shared type-check passed.
+- Re-ran full mobile Jest after the Booking/Auth component migrations: 17 suites, 199 tests passed.
+- Added shared icon-image wiring guards for customer `clientImageIconByGlyph` and worker service/nav/utility/earnings PNG-first maps so supported services, notifications, privacy, payment, chat, shield, and earnings slots do not regress to vector-only controls.
+- Re-ran shared wiring after the icon-image guard: `vitest run src/__tests__/mobile-wiring.test.ts` passed 232 tests.
+- Added a shared typography guard requiring auth, customer, and worker high-traffic text anchors to import and use the handoff `typography` scale.
+- Re-ran shared verification after the typography guard: `vitest run src/__tests__/mobile-wiring.test.ts` passed 233 tests, and `tsc --noEmit` from `packages/shared` passed.
+- Extended `KaelChip` to carry accessibility label/state and text style overrides, then migrated BookingWizard priority/problem chips to `KaelChip` while preserving real selected-state handoff data.
+- Re-ran verification after the Booking chip migration: mobile type-check passed, focused primitives+booking Jest passed 18 tests, shared wiring Vitest passed 233 tests, and shared type-check passed.
+- Re-ran full mobile Jest after the `KaelChip` primitive and Booking chip migration: 17 suites, 199 tests passed.
+- Renamed app runtime language/theme storage keys from `home-services.*` to `nestscout.*` while keeping legacy `home-services.*` fallback reads so existing user preferences can migrate without visible brand leakage.
+- Re-ran verification after the NestScout storage-key migration: mobile type-check passed, focused worker/format Jest passed 65 tests, shared wiring Vitest passed 233 tests, and shared type-check passed.
+- Added focused mobile regression coverage for the app-language storage boundary: language changes persist to `nestscout.app.language.production`, the NestScout key is hydrated first, and legacy Home Services keys only act as migration fallbacks.
+- Re-ran verification after the app-language boundary test: `jest lib/__tests__/app-language-test.ts --runInBand` passed 3 tests, and mobile `tsc --noEmit` passed.
+- Migrated the BookingWizard description input from raw `TextInput` to the official `KaelTextField` primitive while preserving the existing glass shell/test marker through the primitive shell slot.
+- Re-ran verification after the Booking input primitive migration: focused primitives+booking Jest passed 18 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 233 tests.
+- Migrated Auth login/register/customer onboarding text controls from raw `TextInput` to an `AuthTextInput` wrapper backed by the official `KaelTextField`, keeping existing icon shells, password visibility action, Supabase auth/profile boundaries, and loading/disabled states.
+- Re-ran verification after the Auth input primitive migration: auth surface Jest passed 7 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 233 tests.
+- Migrated Worker Profile verification/KYC/bank text fields from raw `TextInput` to `WorkerVerificationTextField`, backed by the official `KaelTextField` and current worker theme tokens.
+- Re-ran verification after the worker verification input migration: focused worker verification Jest passed 1 targeted test, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 234 tests.
+- Migrated Customer Profile editor, feedback, and password sheet fields from raw `TextInput` to `CustomerProfileTextField`, backed by the official `KaelTextField` while leaving chat/home command composers unchanged.
+- Re-ran verification after the customer profile field migration: customer profile Jest passed 18 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 235 tests.
+- Migrated AddressAutocomplete from raw `TextInput` to the official `KaelTextField` shell/adornment slot while keeping real Places autocomplete, HCMC district extraction, focus outline, suggestions, and fallback behavior intact.
+- Re-ran verification after the address autocomplete migration: address autocomplete Jest passed 1 test, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 235 tests.
+- Migrated the Kael chat address context bar input from raw `TextInput` to the official `KaelTextField` with a transparent shell reset, preserving the client address image icon, detected-district pill, and focused composer visibility behavior.
+- Re-ran verification after the Kael chat address context migration: Kael chat agentic parts Jest passed 28 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 235 tests.
+- Migrated Worker scope-change, cancellation, and completion-note action fields from raw `TextInput` to `WorkerActionTextField`, backed by the official `KaelTextField`; worker chat composer remains custom because it manages dynamic height/focus controls.
+- Re-ran verification after the worker action field migration: full worker surface Jest passed 59 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 236 tests.
+- Migrated the Worker Kael feedback note field from raw `TextInput` to the official `KaelTextField` while preserving the training-consent/feedback submit flow.
+- Re-ran verification after the Worker Kael feedback field migration: full worker surface Jest passed 59 tests, mobile `tsc --noEmit` passed, and shared wiring Vitest passed 236 tests.
+- Re-ran full mobile Jest after the expanded Kael component-system input migrations: 18 suites, 202 tests passed.
+- Audited the visible voice capsule against the official Icon Images board and current runtime: no standalone mic image asset or native recording dependency/permission exists, so the UI remains honest-unavailable instead of fake recording.
+- Made the existing `job-media` path audio-ready for future real voice notes by allowing `LocalMediaUploadDraft` type `audio`, mapping m4a/mp3/wav/aac MIME/extension fallbacks, and whitelisting `audio/m4a`, `audio/mp4`, `audio/mpeg`, `audio/wav`, and `audio/aac` in the Supabase `job-media` bucket migration.
+- Added shared validation coverage for audio evidence metadata and a mobile wiring guard that requires audio-ready media upload/storage while confirming `expo-av`, `expo-audio`, and Android microphone permission remain absent/blocked until native recording is explicitly built.
+- Re-ran verification after the audio-ready media checkpoint: mobile `tsc --noEmit` passed, and shared Vitest for `validation.test.ts` + `mobile-wiring.test.ts` passed 305 tests after rerunning outside sandbox to avoid a `zod/package.json` EPERM read.
+- Routed the Worker screen header icon through the PNG-first `WorkerUtilityIcon` wrapper instead of a direct vector `<Icon>` fallback, keeping official worker utility image assets preferred in header slots.
+- Re-ran verification after the Worker header icon wrapper checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 241 tests, and focused worker Jest passed 59 tests after rerunning outside sandbox to avoid the Jest node_modules EPERM read.
+- Tightened the official `Kael` component typography defaults to the handoff board scale: primitive button/chip/field/input/media/segment/stepper/voice text now use `typography.fontFamily` and `typography.*.fontWeight` instead of hardcoded 800/900 weights.
+- Added a shared wiring guard that prevents `Kael` primitives from reintroducing hardcoded 800/900 default weights and requires label/body/caption/H3 token weights from the typography system.
+- Re-ran verification after the primitive typography checkpoint: mobile `tsc --noEmit` passed, Kael primitive Jest passed 8 tests, shared `mobile-wiring.test.ts` passed 241 tests, and full mobile Jest passed 18 suites / 202 tests.
+- Extended the official Kael Component System primitive set with `KaelSwitch`, `KaelBadge`, `KaelProgressPill`, `KaelRatingCapsule`, and `KaelAlertBadge`, matching the status/utility portions of the handoff Component System board.
+- Added the new status/utility primitives to the design gallery and wired `KaelAlertBadge` into the real Customer Home unread notification button so the badge uses the actual `notificationUnreadCount` instead of a custom local badge shell.
+- Added focused primitive coverage for switch, badge, progress, rating, and alert badge behavior plus a shared wiring guard requiring the new Component System primitives in gallery/production badge slots.
+- Re-ran verification after the status/utility primitive checkpoint: mobile `tsc --noEmit` passed, Kael primitive Jest passed 9 tests, shared `mobile-wiring.test.ts` passed 242 tests, and focused Customer Home Jest passed 7 tests.
+- Re-ran full mobile Jest after the status/utility Component System checkpoint: 18 suites / 203 tests passed; `git diff --check` passed with CRLF warnings only.
+- Aligned the hidden design gallery typography to the Kael Typography board token weights and added a shared guard preventing 800/900 weights in that Component System gallery route.
+- Re-ran verification after the gallery typography cleanup: mobile `tsc --noEmit` passed and shared `mobile-wiring.test.ts` passed 242 tests.
+- Cropped the official pending/approved/completed/warning status icons from the Icon Images board into `apps/mobile/assets/status/`, then wired customer approved/check/warning cues and worker check cues through those PNG assets instead of vector/status fallbacks.
+- Updated `ASSET_MAP.md` and `ASSETS_NEEDED.md` so status icons are treated as fulfilled by approved board crops; standalone exports are now optional future fidelity upgrades, not required missing assets.
+- Re-ran verification after the status icon crop checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 242 tests, and focused Customer Home/History + Worker Home Jest passed 88 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Routed the Worker Home availability control through the official `KaelSwitch` primitive inside the existing liquid shell, preserving real async `workerUpdateAvailability` behavior, optimistic state, disabled/suspended state, and the readiness metrics.
+- Added shared wiring guards so Worker availability cannot regress back to a standalone custom switch while keeping the liquid motion marker and worker-specific shell.
+- Re-ran verification after the production `KaelSwitch` checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 242 tests, focused Kael primitive + Worker Home Jest passed 68 tests, and full mobile Jest passed 18 suites / 203 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Migrated the central Worker `PressButton` CTA wrapper to render through the official `KaelButton` primitive while preserving Worker-specific liquid/secondary/disabled surfaces, button labels, `testID`s, and real action callbacks.
+- Added `KaelButton` background-layer support so production shells with their own material can keep custom sheen/depth without bypassing the Component System.
+- Updated shared wiring guards so Worker primary/secondary CTA wrappers must use `KaelButton` and no longer rely on the old `GlassPressable active={!secondary}` accessibility pattern.
+- Re-ran verification after the Worker CTA primitive checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 242 tests, focused Kael primitive + Worker Home Jest passed 68 tests, and full mobile Jest passed 18 suites / 203 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Migrated the Auth profile recovery refresh/sign-out actions from raw `Pressable` controls to `KaelButton`, preserving the real `refreshProfile`/`signOut` callbacks, loading state, and existing test IDs.
+- Added a shared wiring guard that keeps the recovery panel on `KaelButton` instead of falling back to raw `Pressable` actions.
+- Re-ran verification after the Auth recovery action checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 242 tests, and focused Auth surface Jest passed 7 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Migrated the reusable `GlassSearchBar` input core from raw `TextInput` to `KaelTextField mode="search"` while preserving the outer `GlassSurface` control shell.
+- Added a shared wiring guard that prevents `GlassSearchBar` from reintroducing raw `TextInput` outside the Kael Component System.
+- Re-ran verification after the GlassSearchBar primitive cleanup: mobile `tsc --noEmit` passed and shared `mobile-wiring.test.ts` passed 243 tests.
+- Extended `KaelButton` with a `leftAdornment` slot and migrated customer auth choice actions (Google, phone, and email register) from custom/raw pressables to `KaelButton`, preserving the real Google/phone/register callbacks, disabled/loading states, and test IDs.
+- Removed the now-unused `AuthMotionPressable` path so auth choice buttons no longer have a parallel component-system bypass.
+- Added focused primitive coverage for button adornments and shared wiring guards for the auth choice adornment buttons.
+- Re-ran verification after the Auth choice button checkpoint: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Kael primitive + Auth surface Jest passed 17 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Tightened Auth typography to the official Kael Typography token weights by removing remaining hardcoded 800/900 weights from the production auth surface and anchoring brand, trust, role, choice, and worker-verification labels to `typography.*.fontWeight`.
+- Added shared wiring guards so Auth cannot reintroduce hardcoded 800/900 weights on the entry surface.
+- Re-ran verification after the Auth typography cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Auth surface Jest passed 7 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Tightened the Admin learning dashboard typography by replacing remaining hardcoded 800/900 weights with `typography.*.fontWeight` tokens while preserving the real admin learning approve/reject service flows.
+- Added shared wiring guards so the Admin dashboard keeps `KaelTextField` and no longer reintroduces hardcoded 800/900 weights.
+- Re-ran verification after the Admin typography cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Admin dashboard Jest passed 2 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Tightened the shared floating glass tab bar label typography by replacing remaining hardcoded 800 weights with `typography.caption.fontWeight`, keeping the liquid dock motion and tab accessibility state intact.
+- Added shared wiring guards so the tab bar imports the typography tokens and cannot reintroduce 800/900 label weights.
+- Re-ran verification after the shared tab bar typography cleanup: mobile `tsc --noEmit` passed and shared `mobile-wiring.test.ts` passed 243 tests.
+- Tightened BookingWizard media/file and problem-chip label typography by replacing remaining hardcoded 800/900 weights with `typography.caption` / `typography.label` token weights.
+- Extended the booking shared wiring guard so the intake flow imports typography tokens and cannot reintroduce 800/900 label weights.
+- Re-ran verification after the BookingWizard typography cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused BookingWizard Jest passed 10 tests after rerunning outside sandbox to avoid the known Jest node_modules EPERM read.
+- Removed the last production 800/900 typography weights from Customer matching score and Kael chat archive/live-performance labels, anchoring them to the official Kael Typography tokens while preserving existing size and layout.
+- Extended the high-traffic typography wiring guard to cover Customer surfaces and Kael chat styles so those production paths cannot reintroduce extra-heavy 800/900 weights.
+- Re-ran verification after the final 800/900 typography sweep: production grep returned no 800/900 matches outside tests/prototypes, mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, focused Customer Home/History + Kael agentic-parts Jest passed 57 tests, and `git diff --check` passed with CRLF warnings only.
+- Migrated the remaining Agentic Center memory/edit and approval queue action buttons from raw `Pressable` controls to `KaelButton`, preserving the real profile/history/scope-decision routes and the separated Kael Orb ownership.
+- Added a shared wiring guard so the `(customer)/kael` Agentic Center keeps `KaelButton`/`KaelCard`/`KaelText`/`KaelMascot` and does not reintroduce raw `Pressable` action buttons.
+- Re-ran verification after the Agentic Center action cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Agentic Center Jest passed 11 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Removed the Kael chat empty-ticket `sampleRows` preview copy so pre-intake fields now show honest pending states (`Chưa có`, `Chờ Kael ...`) instead of example/future “Kael sẽ ...” rows.
+- Added shared wiring guards preventing `sampleRows` / sample classification copy from returning to the Kael chat agentic parts.
+- Re-ran verification after the Kael chat data-honesty cleanup: production grep found no `sampleRows` or sample/example estimate copy, shared `mobile-wiring.test.ts` passed 243 tests, and focused Kael chat agentic-parts Jest passed 28 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Migrated the A11 scope-change hard-stop modal approve/reject actions from raw `Pressable` controls to `KaelButton`, preserving explicit approve/reject callbacks, `testID`s, and token-specific danger/primary surfaces.
+- Added a shared wiring guard so the scope-change hard-stop modal keeps `KaelButton` actions and does not reintroduce raw `Pressable` buttons.
+- Re-ran verification after the scope-change modal action cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused hard-stop modal Jest passed 7 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Migrated Customer Profile sheet actions for profile editor, feedback, and password from raw `Pressable` controls to `KaelButton`, preserving disabled/saving labels, real profile/feedback/password callbacks, and the existing `testID`s.
+- Extended the customer profile shared wiring guard so the editor/feedback/password sheets keep `KaelButton` actions alongside the existing `KaelTextField` inputs.
+- Re-ran verification after the Customer Profile action cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Customer Profile Jest passed 18 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Migrated the Auth role-gate sign-out action from raw `Pressable` to `KaelButton`, matching the existing recovery sign-out primitive path while preserving the real `onSignOut` callback and `auth-login-sign-out` test ID.
+- Added a shared wiring guard so the production auth surface cannot reintroduce the raw `Pressable` sign-out signature.
+- Re-ran verification after the Auth sign-out action cleanup: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 243 tests, and focused Auth surface Jest passed 7 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Extended `KaelButton` with explicit `accessibilityState` override support so production busy/disabled states can stay truthful while still using the official Component System button primitive.
+- Migrated the Kael chat estimate orchestration status button and retry actions from raw `Pressable` controls to `KaelButton`, preserving real retry/orchestration callbacks, test IDs, and honest disabled/busy semantics.
+- Added focused primitive coverage for explicit button accessibility-state overrides plus shared wiring guards so Kael chat orchestration/retry actions keep `KaelButton` and do not restore fake/sample estimate rows.
+- Re-ran verification after the Kael chat action primitive cleanup: mobile `tsc --noEmit` passed, focused Kael primitive + Kael chat agentic-parts Jest passed 39 tests, and shared `mobile-wiring.test.ts` passed 243 tests.
+- Re-audited the approved NestScout logo 01 production assets after Tu's contour-only reminder: `nestscout-logo-mark.png`, app icon, adaptive icon, splash icon, and favicon all keep transparent corner/edge alpha and contain no lockup text or white board background.
+- Renamed the active authority docs and operational command examples from Home Services to NestScout, including `AGENTS.md`, `critical.md`, `RULES.md`, `STRUCTURES.md`, design signature/motion/reference notes, and current package filters.
+- Added a shared wiring guard so active authority docs keep the NestScout brand and do not regress to `Home Services`, `HomeServices`, or `@home-services/*`; legacy storage keys and historical README project names remain intentionally documented as migration/history only.
+- Re-ran verification after the authority brand cleanup: shared `mobile-wiring.test.ts` passed 244 tests.
+- Migrated the Worker Kael feedback cancel/submit actions from raw `Pressable` controls to `KaelButton`, preserving feedback submit/cancel callbacks, `feedbackSaving` disabled state, and explicit busy accessibility state for submit.
+- Migrated the Worker Kael training-consent toggle and feedback-open controls from raw `Pressable` controls to `KaelButton`, preserving consent checked/busy/disabled accessibility state and the real training-consent / feedback-open callbacks.
+- Added a shared wiring guard so Worker Kael parity actions stay on `KaelButton` instead of reverting to raw `Pressable`.
+- Re-ran verification after the Worker Kael parity action cleanup: mobile `tsc --noEmit` passed, focused Worker surface Jest passed 59 tests, and shared `mobile-wiring.test.ts` passed 245 tests.
+- Re-audited the cropped Kael mascot assets from the handoff motion board: 20 state PNGs and 10 emotion PNGs are present, all 512x512, and all checked edge/corner alpha values are transparent.
+- Re-audited the cropped status icon assets from the handoff Icon Images board: pending/approved/completed/warning PNGs are present, all 256x256, and all checked edge/corner alpha values are transparent.
+- Aligned the Worker Kael mini action button text style to the official Kael Typography caption token so the newly migrated `KaelButton` actions do not override the primitive with local 700-weight text.
+- Re-ran verification after the Worker mini action typography alignment: mobile `tsc --noEmit` passed, focused Worker surface Jest passed 59 tests, and shared `mobile-wiring.test.ts` passed 245 tests.
+- Wired the remaining Component System status/utility primitives into production slots instead of leaving them gallery-only: Customer Profile real progress rows now include `KaelProgressPill`, Worker reputation uses `KaelBadge` for the real-data marker, and Worker rating summary uses `KaelRatingCapsule` backed by real profile rating data.
+- Extended shared wiring guards so `KaelProgressPill`, `KaelBadge`, and `KaelRatingCapsule` must appear in production customer/worker slots, not only the design gallery.
+- Re-ran verification after the Component System production-usage pass: mobile `tsc --noEmit` passed, shared `mobile-wiring.test.ts` passed 245 tests, and focused Customer Profile + Worker surface Jest passed 77 tests after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Re-ran full mobile Jest after the Component System production-usage pass: 18 suites / 205 tests passed.
+- Re-ran full shared Vitest after the Component System production-usage pass: 15 files / 601 tests passed after rerunning outside sandbox to avoid the known node_modules EPERM read.
+- Re-ran package-level type-checks after the latest mobile/backend contract sweep: `packages/shared` `tsc --noEmit` passed and `apps/api` `tsc --noEmit` passed.

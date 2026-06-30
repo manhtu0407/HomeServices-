@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import * as SecureStore from 'expo-secure-store'
 import { Platform } from 'react-native'
-import type { Database } from '@home-services/shared'
+import type { Database } from '@nestscout/shared'
 import { mobileRuntimeConfig } from './runtime-config'
 
 const supabaseUrl = mobileRuntimeConfig.supabaseUrl

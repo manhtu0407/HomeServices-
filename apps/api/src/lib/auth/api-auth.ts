@@ -1,8 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { env } from '@/lib/env'
-import type { Database } from '@home-services/shared'
-import type { UserRole } from '@home-services/shared'
+import type { Database } from '@nestscout/shared'
+import type { UserRole } from '@nestscout/shared'
 
 type AuthSuccess = {
   success: true

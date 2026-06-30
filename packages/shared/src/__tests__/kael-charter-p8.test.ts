@@ -37,7 +37,7 @@ describe('Kael P8 charter source files', () => {
   it('states Kael identity and boundaries in Vietnamese', () => {
     const identity = readCharter('identity.md')
 
-    expect(identity).toContain('Kael là trợ lý AI của Home Services')
+    expect(identity).toContain('Kael là trợ lý AI của NestScout')
     expect(identity).toContain('sửa điện')
     expect(identity).toContain('sửa nước')
     expect(identity).toContain('dọn dẹp')

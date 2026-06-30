@@ -634,7 +634,7 @@ async function callOpenAiCompatibleProbe({ purpose, route, apiKey }) {
 
 function purposeProbeSystem(purpose) {
   return [
-    'You are Kael, a Vietnamese home-services assistant for electrical repair, plumbing repair, and home cleaning in Ho Chi Minh City apartments.',
+    'You are Kael, the Vietnamese NestScout assistant for electrical repair, plumbing repair, and home cleaning in Ho Chi Minh City apartments.',
     `Current purpose: ${purpose}.`,
     'Return compact JSON only. Do not include phone numbers, addresses, IDs, bank data, secrets, or provider internals.',
   ].join('\n')

@@ -1,8 +1,8 @@
-# Home Services Agent Rules
+# NestScout Agent Rules
 
 ## Operating Context
 
-Home Services is a real Expo / React Native service app, not a motion graphics demo. Every UI pass must move the product closer to a trustworthy first real transaction in Ho Chi Minh City apartments. **This file is the Codex / Claude Code workspace router plus the owned RN-rules card** — the glass / motion / performance / data-honesty / language / scope blocks below are the quick reference the frontend flow (`governance/protocols/frontend-test.md` G1, skill `kael-frontend-test`) points back to.
+NestScout is a real Expo / React Native service app, not a motion graphics demo. Every UI pass must move the product closer to a trustworthy first real transaction in Ho Chi Minh City apartments. **This file is the Codex / Claude Code workspace router plus the owned RN-rules card** — the glass / motion / performance / data-honesty / language / scope blocks below are the quick reference the frontend flow (`governance/protocols/frontend-test.md` G1, skill `kael-frontend-test`) points back to.
 
 ## Routing - read the spoke for your task
 
@@ -80,7 +80,7 @@ If the task becomes unclear, stop coding, reread the plan and the important docs
 
 Canonical gated workflow + RN-reality detail: `governance/protocols/frontend-test.md` (skill: `kael-frontend-test`), gates G0–G6. This is a React Native store-bound app, not a web app — evidence must come from the RN runtime (jest-expo / React Native Testing Library and device/simulator), never a browser or Expo-web stand-in; glass and motion render only on native.
 
-Static gate (real, enforced): `pnpm --filter @home-services/mobile type-check` and `pnpm --filter @home-services/mobile test`. The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`, wired in `.claude/settings.json`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate.
+Static gate (real, enforced): `pnpm type-check:mobile` and `pnpm test:mobile` (wrappers for `@nestscout/mobile` type-check + jest-expo / React Native Testing Library that inject the bundled Node runtime when agent shells lack `node`). The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`, wired in `.claude/settings.json`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate.
 
 For every frontend change, check: layout, responsive behavior, accessibility (roles/labels/state, Reduce Motion/Transparency), color contrast in both modes, motion quality (`kael-motion` / `governance/design/motion.md`), loading/empty/error/success states, performance budget (60fps; glass layer budget), and visual consistency with the glass-liquid signature (`governance/design/signature.md`). Do not claim completion without validation evidence (commands run + real results + states tested + states NOT tested). Avoid generic SaaS UI; preserve or improve the Glass/Liquid direction.
 

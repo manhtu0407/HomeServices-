@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, ServiceType, ComplexityLevel } from '@home-services/shared'
+import type { Database, ServiceType, ComplexityLevel } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 import { applyLearnedPriceRule } from '@/lib/learning/apply-price-rule'
 

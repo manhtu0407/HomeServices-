@@ -15,7 +15,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { normalizeServiceAreaDistrict, type Database, type ServiceType, type ComplexityLevel } from '@home-services/shared'
+import { normalizeServiceAreaDistrict, type Database, type ServiceType, type ComplexityLevel } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 import { env } from '@/lib/env'
 import { observeFinalPrice } from './market-memory'

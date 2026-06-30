@@ -49,6 +49,11 @@ const clientImageIcons = {
   theme: require('../../assets/client-image-icons/client-theme.png'),
 } as const
 
+const commonImageIcons = {
+  roleHome: require('../../assets/common-image-icons/common-role-home.png'),
+  roleRepair: require('../../assets/common-image-icons/common-role-repair.png'),
+} as const
+
 type ClientPrototypeIconName = keyof typeof clientImageIcons
 type ClientPrototypeTone = 'mint' | 'neutral' | 'water' | 'warm'
 type ClientPrototypeItem = {
@@ -93,6 +98,12 @@ const prototypeCopy: Record<AppLanguage, {
   privacyTitle: string
   profileMeta: string
   profileTitle: string
+  referencePairHomeMeta: string
+  referencePairHomeTitle: string
+  referencePairMeta: string
+  referencePairRepairMeta: string
+  referencePairRepairTitle: string
+  referencePairTitle: string
   referenceMeta: string
   referenceTitle: string
   requestMeta: string
@@ -138,6 +149,12 @@ const prototypeCopy: Record<AppLanguage, {
     privacyTitle: 'Bảo mật',
     profileMeta: 'Thông tin tài khoản',
     profileTitle: 'Hồ sơ',
+    referencePairHomeMeta: 'Nền kính xanh mint, biểu tượng nhà rõ',
+    referencePairHomeTitle: 'Nhà',
+    referencePairMeta: 'Dựng lại đúng tinh thần crop: nền trong, glyph nhỏ, một điểm cam rất tiết chế.',
+    referencePairRepairMeta: 'Nền kính kem, cảm giác thao tác sửa chữa',
+    referencePairRepairTitle: 'Sửa chữa',
+    referencePairTitle: 'Hai mẫu Tu gửi',
     referenceMeta: 'Lấy ngôn ngữ 3D mềm và bóng đổ từ bộ worker hiện có.',
     referenceTitle: 'Nguồn tham khảo worker',
     requestMeta: 'Chưa có yêu cầu',
@@ -183,6 +200,12 @@ const prototypeCopy: Record<AppLanguage, {
     privacyTitle: 'Security',
     profileMeta: 'Account details',
     profileTitle: 'Profile',
+    referencePairHomeMeta: 'Mint glass, crisp home glyph',
+    referencePairHomeTitle: 'Home',
+    referencePairMeta: 'Rebuilt from Tu’s crop: translucent base, small line glyph, and one restrained warm accent.',
+    referencePairRepairMeta: 'Cream glass, repair-action feel',
+    referencePairRepairTitle: 'Repair',
+    referencePairTitle: 'Two submitted directions',
     referenceMeta: 'Uses the existing worker family for 3D softness and shadow language.',
     referenceTitle: 'Worker reference source',
     requestMeta: 'No request yet',
@@ -270,6 +293,16 @@ export function ClientIconImagePrototypeSurface() {
           </GlassSurface>
         </ReduceMotionAwareEntranceView>
 
+        <PrototypeReferencePairSection
+          delayMs={70}
+          homeMeta={copy.referencePairHomeMeta}
+          homeTitle={copy.referencePairHomeTitle}
+          meta={copy.referencePairMeta}
+          repairMeta={copy.referencePairRepairMeta}
+          repairTitle={copy.referencePairRepairTitle}
+          title={copy.referencePairTitle}
+          tokens={tokens}
+        />
         <PrototypeSection
           compact
           delayMs={90}
@@ -314,6 +347,94 @@ export function ClientIconImagePrototypeSurface() {
         />
       </ScrollView>
     </SafeAreaView>
+  )
+}
+
+function PrototypeReferencePairSection({
+  delayMs,
+  homeMeta,
+  homeTitle,
+  meta,
+  repairMeta,
+  repairTitle,
+  title,
+  tokens,
+}: {
+  delayMs: number
+  homeMeta: string
+  homeTitle: string
+  meta: string
+  repairMeta: string
+  repairTitle: string
+  title: string
+  tokens: CustomerThemeTokens
+}) {
+  return (
+    <ReduceMotionAwareEntranceView delayMs={delayMs} distanceY={10} style={styles.section} testID="client-icon-image-reference-pair-motion">
+      <View style={styles.sectionHeader} testID="client-icon-image-reference-pair-heading">
+        <Text style={[styles.sectionTitle, { color: tokens.text }]} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: tokens.muted }]} numberOfLines={2}>
+          {meta}
+        </Text>
+      </View>
+      <View style={styles.referencePairGrid} testID="client-icon-image-reference-pair">
+        <PrototypeReferenceGlyphCard
+          meta={homeMeta}
+          title={homeTitle}
+          tone="mint"
+          tokens={tokens}
+          variant="home"
+        />
+        <PrototypeReferenceGlyphCard
+          meta={repairMeta}
+          title={repairTitle}
+          tone="warm"
+          tokens={tokens}
+          variant="repair"
+        />
+      </View>
+    </ReduceMotionAwareEntranceView>
+  )
+}
+
+function PrototypeReferenceGlyphCard({
+  meta,
+  title,
+  tone,
+  tokens,
+  variant,
+}: {
+  meta: string
+  title: string
+  tone: 'mint' | 'warm'
+  tokens: CustomerThemeTokens
+  variant: 'home' | 'repair'
+}) {
+  return (
+    <View style={[styles.referencePairCard, prototypeReferencePairSurface(tokens, tone)]} testID={`client-icon-image-reference-${variant}`}>
+      <View
+        accessibilityLabel={title}
+        accessibilityRole="image"
+        pointerEvents="none"
+        style={styles.referenceAssetSlot}
+      >
+        <Image
+          contentFit="contain"
+          source={variant === 'home' ? commonImageIcons.roleHome : commonImageIcons.roleRepair}
+          style={styles.referenceAssetImage}
+        />
+      </View>
+      <View style={styles.referencePairCopy}>
+        <Text style={[styles.referencePairTitle, { color: tokens.text }]} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={[styles.referencePairMeta, { color: tokens.muted }]} numberOfLines={2}>
+          {meta}
+        </Text>
+      </View>
+    </View>
   )
 }
 
@@ -565,6 +686,30 @@ function prototypeIconStageSurface(tokens: CustomerThemeTokens, tone: ClientProt
   } as any
 }
 
+function prototypeReferencePairSurface(tokens: CustomerThemeTokens, tone: 'mint' | 'warm') {
+  const accent = prototypeAccent(tokens, tone)
+  const warmBorder = tokens.mode === 'dark' ? 'rgba(224,160,107,0.18)' : 'rgba(226,197,150,0.46)'
+  const mintBorder = tokens.mode === 'dark' ? 'rgba(105,222,198,0.18)' : 'rgba(167,234,221,0.58)'
+
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(22,29,27,0.90)' : tone === 'warm' ? 'rgba(255,253,248,0.96)' : 'rgba(246,255,252,0.94)',
+    borderColor: tone === 'warm' ? warmBorder : mintBorder,
+    shadowColor: tokens.mode === 'dark' ? '#000000' : tone === 'warm' ? '#835B2B' : '#15584F',
+    shadowOffset: { height: 10, width: 0 },
+    shadowOpacity: tokens.mode === 'dark' ? 0.2 : 0.08,
+    shadowRadius: 22,
+    ...(customerReduceTransparency(tokens)
+      ? null
+      : {
+          backgroundImage: tokens.mode === 'dark'
+            ? `radial-gradient(circle at 74% 18%, ${accent}, transparent 38%), linear-gradient(160deg, rgba(24,32,30,0.96), rgba(14,20,19,0.90))`
+            : tone === 'warm'
+              ? `radial-gradient(circle at 78% 20%, ${accent}, transparent 36%), linear-gradient(160deg, rgba(255,255,255,0.98), rgba(255,249,238,0.92))`
+              : `radial-gradient(circle at 78% 20%, ${accent}, transparent 36%), linear-gradient(160deg, rgba(255,255,255,0.98), rgba(238,255,251,0.90))`,
+        }),
+  } as any
+}
+
 function prototypePillSurface(tokens: CustomerThemeTokens) {
   return {
     backgroundColor: tokens.mode === 'dark' ? 'rgba(105,222,198,0.12)' : 'rgba(220,251,243,0.88)',
@@ -634,7 +779,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 15,
     maxWidth: '100%',
@@ -644,7 +789,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 29,
   },
@@ -662,7 +807,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 22,
   },
@@ -680,6 +825,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+  },
+  referencePairGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  referencePairCard: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 26,
+    borderWidth: 1,
+    flex: 1,
+    gap: 11,
+    minHeight: 176,
+    overflow: 'hidden',
+    padding: 14,
+  },
+  referenceAssetSlot: {
+    alignItems: 'center',
+    height: 104,
+    justifyContent: 'center',
+    width: 104,
+  },
+  referenceAssetImage: {
+    height: 104,
+    width: 104,
+  },
+  referencePairCopy: {
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 0,
+  },
+  referencePairTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  referencePairMeta: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0,
+    lineHeight: 15,
+    textAlign: 'center',
   },
   iconCard: {
     borderCurve: 'continuous',
@@ -721,13 +910,13 @@ const styles = StyleSheet.create({
   },
   missingShortcutTitle: {
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 20,
   },
   missingShortcutMeta: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 15,
   },
@@ -749,7 +938,7 @@ const styles = StyleSheet.create({
   missingRowTitle: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 18,
     minWidth: 0,
@@ -757,7 +946,7 @@ const styles = StyleSheet.create({
   missingRowMeta: {
     flexShrink: 0,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 16,
     maxWidth: 128,
@@ -771,7 +960,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 17,
   },

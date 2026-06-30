@@ -1,0 +1,260 @@
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+
+const mockReplace = jest.fn()
+const mockRefreshProfile = jest.fn(async () => null)
+const mockEnterGuestMode = jest.fn()
+const mockSignInWithGoogle = jest.fn(async () => ({ success: true }))
+const mockSignInWithPassword = jest.fn(async () => ({ success: false, error: 'Không thể đăng nhập' }))
+const mockSignUpWithEmail = jest.fn(async () => ({ success: true, needsConfirmation: true }))
+const mockSignOut = jest.fn(async () => undefined)
+const mockSubmitWorkerApplication = jest.fn(async () => ({ success: true }))
+const mockUpdateCustomerProfile = jest.fn(async () => ({ success: true }))
+let mockAuthOverride: Record<string, unknown> = {}
+let mockRouteParams: Record<string, string> = {}
+
+jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
+
+jest.mock('expo-router', () => ({
+  useLocalSearchParams: () => mockRouteParams,
+  useRouter: () => ({ replace: mockReplace }),
+}))
+
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react')
+  const { View } = require('react-native')
+  return {
+    SafeAreaView: ({ children, ...props }: any) => React.createElement(View, props, children),
+    useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
+  }
+})
+
+jest.mock('@/lib/auth-provider', () => ({
+  useAuth: () => ({
+    authError: null,
+    enterGuestMode: mockEnterGuestMode,
+    guestMode: false,
+    loading: false,
+    profileStatus: 'idle',
+    refreshProfile: mockRefreshProfile,
+    role: null,
+    session: null,
+    signInWithGoogle: mockSignInWithGoogle,
+    signInWithPassword: mockSignInWithPassword,
+    signUpWithEmail: mockSignUpWithEmail,
+    signOut: mockSignOut,
+    submitWorkerApplication: mockSubmitWorkerApplication,
+    updateCustomerProfile: mockUpdateCustomerProfile,
+    ...mockAuthOverride,
+  }),
+}))
+
+jest.mock('@/lib/app-language', () => {
+  const actual = jest.requireActual('@/lib/app-language')
+  return {
+    ...actual,
+    useAppLanguage: () => 'vi',
+  }
+})
+
+import { LoginRoleSurface } from '../auth-surfaces'
+
+beforeEach(() => {
+  jest.useFakeTimers()
+  mockAuthOverride = {}
+  mockRouteParams = {}
+  jest.clearAllMocks()
+})
+
+afterEach(() => {
+  jest.clearAllTimers()
+  jest.useRealTimers()
+})
+
+describe('LoginRoleSurface', () => {
+  it('opens the 1.1 review link on the Lottie splash without redirecting authenticated users', () => {
+    mockRouteParams = { stage: '1.1' }
+    mockAuthOverride = {
+      role: 'customer',
+      session: { user: { app_metadata: {}, user_metadata: {} } },
+    }
+
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByTestId('auth-splash-screen')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-splash-1-1')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-welcome-nestscout-logo')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-welcome-nestscout-logo-lottie')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-welcome-nestscout-logo-static')).toBeNull()
+    act(() => {
+      jest.advanceTimersByTime(4000)
+    })
+    expect(screen.getByTestId('auth-splash-1-1')).toBeOnTheScreen()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('supports direct review links for all six entry sections', () => {
+    const stages = [
+      ['1.2', 'auth-welcome-screen'],
+      ['1.3', 'auth-role-gate-screen'],
+      ['1.4', 'auth-login-screen'],
+      ['1.5', 'auth-register-screen'],
+      ['1.6', 'auth-onboarding-screen'],
+    ] as const
+
+    for (const [stage, testID] of stages) {
+      mockRouteParams = { stage }
+      const view = render(<LoginRoleSurface />)
+      expect(screen.getByTestId(testID)).toBeOnTheScreen()
+      expect(mockReplace).not.toHaveBeenCalled()
+      view.unmount()
+    }
+  })
+
+  it('auto-advances from splash to welcome using the source flow timing', () => {
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByTestId('auth-splash-screen')).toBeOnTheScreen()
+
+    act(() => {
+      jest.advanceTimersByTime(1550)
+    })
+
+    expect(screen.getByTestId('auth-splash-screen')).toBeOnTheScreen()
+
+    act(() => {
+      jest.advanceTimersByTime(2650)
+    })
+
+    expect(screen.getByTestId('auth-welcome-screen')).toBeOnTheScreen()
+    expect(screen.getByText('Xin chào!\nMình là Kael.')).toBeOnTheScreen()
+  })
+
+  it('continues from welcome into the role-first login gate without guest entry', () => {
+    mockRouteParams = { stage: '1.2' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByTestId('auth-welcome-continue'))
+
+    expect(screen.getByTestId('auth-role-gate-screen')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-role-gate-content')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-entry-role-customer')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-entry-role-worker')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-entry-role-guest')).toBeNull()
+    expect(mockEnterGuestMode).not.toHaveBeenCalled()
+  })
+
+  it('keeps customer providers honest: Google calls real auth, Gmail and Facebook stay pending', async () => {
+    mockRouteParams = { stage: '1.4' }
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByTestId('auth-client-google-primary')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-client-gmail-secondary')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-client-facebook-secondary')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('auth-client-gmail-secondary'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Gmail chưa sẵn sàng trên bản dựng này.')).toBeOnTheScreen()
+    })
+    expect(mockSignInWithGoogle).not.toHaveBeenCalled()
+
+    fireEvent.press(screen.getByTestId('auth-client-facebook-secondary'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Facebook chưa sẵn sàng trên bản dựng này.')).toBeOnTheScreen()
+    })
+
+    fireEvent.press(screen.getByTestId('auth-client-google-primary'))
+
+    await waitFor(() => {
+      expect(mockSignInWithGoogle).toHaveBeenCalledTimes(1)
+    })
+    expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()
+  })
+
+  it('submits customer email login through the existing auth provider boundary', async () => {
+    mockRouteParams = { stage: '1.4' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-login-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
+
+    await waitFor(() => {
+      expect(mockSignInWithPassword).toHaveBeenCalledWith('tu@example.com', 'secret123')
+    })
+    expect(screen.getByText('Không thể đăng nhập')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('auth-customer-forgot-password'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Đặt lại mật khẩu chưa sẵn sàng.')).toBeOnTheScreen()
+    })
+  })
+
+  it('holds customer email registration at confirmation instead of faking an authenticated session', async () => {
+    mockRouteParams = { stage: '1.5' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Tu Phan')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'tu@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    await waitFor(() => {
+      expect(mockSignUpWithEmail).toHaveBeenCalledWith({
+        displayName: 'Tu Phan',
+        email: 'tu@example.com',
+        password: 'secret123',
+      })
+    })
+    expect(screen.getByText('Kiểm tra email để xác nhận tài khoản trước khi tiếp tục.')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+  })
+
+  it('routes worker registration through review and never exposes customer provider login', async () => {
+    mockRouteParams = { stage: '1.3', role: 'worker' }
+    render(<LoginRoleSurface />)
+
+    fireEvent.press(screen.getByTestId('auth-role-continue'))
+
+    expect(screen.getByTestId('auth-login-screen')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-client-google-primary')).toBeNull()
+    expect(screen.queryByTestId('auth-client-gmail-secondary')).toBeNull()
+    expect(screen.queryByTestId('auth-client-facebook-secondary')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('auth-client-register-email'))
+    fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
+    fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
+    fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-register-submit'))
+
+    await waitFor(() => {
+      expect(mockSubmitWorkerApplication).toHaveBeenCalledWith({
+        contact: 'worker@example.com',
+        language: 'vi',
+      })
+    })
+    expect(mockSignUpWithEmail).not.toHaveBeenCalled()
+    expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('auth-onboarding-start'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Hồ sơ thợ đã được gửi xét duyệt. NestScout sẽ liên hệ trước khi cấp quyền thợ.')).toBeOnTheScreen()
+    })
+    expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/home')
+  })
+
+  it('redirects ready authenticated profiles outside review mode', () => {
+    mockAuthOverride = {
+      profileStatus: 'ready',
+      role: 'customer',
+      session: { user: { app_metadata: {}, user_metadata: {} } },
+    }
+
+    render(<LoginRoleSurface />)
+
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/home')
+  })
+})

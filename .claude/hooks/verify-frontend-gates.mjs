@@ -17,9 +17,8 @@
 //   - Acts only when mobile code or gate-relevant mobile config changed;
 //     docs/chat/backend turns pass through untouched.
 //
-// Verified by direct node execution (stop_hook_active / no-change / green /
-// red / pnpm-missing scenarios). Live firing inside the Claude Code runtime
-// depends on `node` + `pnpm` being on the hook's PATH there.
+// Verified through scripts/run-node.cmd so the bundled Codex Node runtime is on
+// PATH before this hook invokes pnpm/package binaries.
 
 import { execSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
@@ -85,8 +84,8 @@ try {
 
 // 3) Run the real gates. A non-zero exit here is a genuine red gate.
 const gates = [
-  ['type-check', 'pnpm --filter @home-services/mobile type-check'],
-  ['test', 'pnpm --filter @home-services/mobile test'],
+  ['type-check', 'pnpm type-check:mobile'],
+  ['test', 'pnpm test:mobile'],
 ]
 const failed = []
 for (const [name, cmd] of gates) {
@@ -103,7 +102,7 @@ console.error(
   `Frontend gate RED for apps/mobile: ${failed.join(' + ')} failed. ` +
     `Do not claim done. Reproduce with: ` +
     failed
-      .map((f) => `pnpm --filter @home-services/mobile ${f}`)
+      .map((f) => `pnpm ${f === 'type-check' ? 'type-check:mobile' : 'test:mobile'}`)
       .join(' && '),
 )
 process.exit(2)

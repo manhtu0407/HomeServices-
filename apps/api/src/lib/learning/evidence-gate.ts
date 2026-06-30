@@ -13,7 +13,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, ServiceType } from '@home-services/shared'
+import type { Database, ServiceType } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 import {
   isPricePriorPayload,

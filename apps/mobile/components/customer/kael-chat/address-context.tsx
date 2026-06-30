@@ -1,6 +1,7 @@
 import { Image } from 'expo-image'
-import { Text, TextInput, View, type ViewStyle } from 'react-native'
-import { HCMC_DISTRICTS, type DistrictSlug } from '@home-services/shared'
+import { Text, View, type ViewStyle } from 'react-native'
+import { HCMC_DISTRICTS, type DistrictSlug } from '@nestscout/shared'
+import { KaelTextField } from '@/components/ui/kael-primitives'
 import { type AppLanguage } from '@/lib/app-language'
 import { inferKaelChatDistrict } from './address-district'
 import { styles } from './styles'
@@ -45,7 +46,8 @@ export function KaelAddressContextBar({
       <View style={[styles.addressIconDisk, addressIconDiskSurface(tokens)]}>
         <ChatPinIcon />
       </View>
-      <TextInput
+      <KaelTextField
+        inputShellStyle={styles.addressTextFieldShell}
         onBlur={onBlur}
         onChangeText={onChangeText}
         onFocus={onFocus}

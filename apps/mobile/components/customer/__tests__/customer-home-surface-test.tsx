@@ -1,41 +1,23 @@
-import { fireEvent, render, screen, within } from '@testing-library/react-native'
-import { StyleSheet } from 'react-native'
-import type { LocalDeal, LocalWorkflowSelectors } from '@home-services/shared'
+import { fireEvent, render, screen } from '@testing-library/react-native'
+import type { LocalDeal, LocalWorkflowSelectors } from '@nestscout/shared'
 
 let mockWorkflowValue: any
 let mockSessionMetadata: Record<string, unknown>
-const mockSetPendingKaelChatDraft = jest.fn()
-const mockPush = jest.fn()
 const mockReplace = jest.fn()
+const mockDispatch = jest.fn()
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
-jest.mock('expo-image', () => {
-  const React = require('react')
-  const { View } = require('react-native')
-  return {
-    Image: (props: any) => React.createElement(View, props),
-  }
-})
-
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({}),
-  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace }),
 }))
-
-jest.mock('react-native-safe-area-context', () => {
-  const React = require('react')
-  const { View } = require('react-native')
-  return {
-    SafeAreaView: ({ children, ...props }: any) => React.createElement(View, props, children),
-    useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
-  }
-})
 
 jest.mock('@/lib/auth-provider', () => ({
   useAuth: () => ({
     session: {
       user: {
+        email: 'tu@example.com',
         id: 'customer_test_1',
         user_metadata: mockSessionMetadata,
       },
@@ -47,12 +29,30 @@ jest.mock('@/lib/frontend-workflow-provider', () => ({
   useFrontendWorkflow: () => mockWorkflowValue,
 }))
 
-jest.mock('@/lib/client-request-id', () => ({
-  generateClientRequestId: () => 'home-command-request-id',
+jest.mock('expo-audio', () => ({
+  AudioModule: {
+    requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  },
+  RecordingPresets: {
+    HIGH_QUALITY: {},
+  },
+  setAudioModeAsync: jest.fn(async () => undefined),
+  useAudioRecorder: () => ({
+    getURI: jest.fn(() => null),
+    prepareToRecordAsync: jest.fn(async () => undefined),
+    record: jest.fn(async () => undefined),
+    stop: jest.fn(async () => undefined),
+  }),
+  useAudioRecorderState: () => ({
+    durationMillis: 0,
+    isRecording: false,
+  }),
 }))
 
-jest.mock('../kael-chat/pending-intake', () => ({
-  setPendingKaelChatDraft: (draft: unknown) => mockSetPendingKaelChatDraft(draft),
+jest.mock('expo-image-picker', () => ({
+  MediaTypeOptions: { Images: 'Images', Videos: 'Videos' },
+  launchImageLibraryAsync: jest.fn(async () => ({ assets: [], canceled: true })),
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
 }))
 
 jest.mock('@/lib/app-language', () => {
@@ -63,20 +63,19 @@ jest.mock('@/lib/app-language', () => {
   }
 })
 
-import { CustomerHomeSurface } from '../customer-surfaces'
-import { setCustomerThemeMode } from '../customer-theme'
+import { CustomerHomeSurface, CustomerV21DockOverlay } from '../customer-surfaces'
 
-function buildActiveDeal(): LocalDeal {
+function buildDeal(): LocalDeal {
   return {
     backendStatus: 'broadcasting',
     broadcast: {
       broadcastId: 'broadcast_test_1',
       fullAddressLabel: null,
       fullAddressVisible: false,
-      generalArea: 'Thủ Đức',
+      generalArea: 'Quận 7',
       jobId: 'job_test_1',
       prebrief: [],
-      problemSummary: 'Bóng đèn hư',
+      problemSummary: 'Ổ cắm nóng',
       secondsRemaining: 42,
       serviceType: 'electrical',
       status: 'sent',
@@ -84,26 +83,26 @@ function buildActiveDeal(): LocalDeal {
     completionNotes: null,
     completionPhotoUrls: [],
     draft: {
-      addressLabel: '1714/7 Nguyễn Duy Trinh, phường Bình Trưng Tây, Thủ Đức',
-      description: 'Bóng đèn nhà tôi bị hư rồi',
-      districtLabel: 'Thủ Đức',
+      addressLabel: 'Tòa A, Quận 7',
+      description: 'Ổ cắm phòng khách bị nóng và có mùi khét',
+      districtLabel: 'Quận 7',
       inferredProblemLabel: null,
-      mediaCount: 0,
+      mediaCount: 1,
       needsServiceChoice: false,
-      problemChips: ['bóng đèn hỏng'],
+      problemChips: ['Ổ cắm/công tắc hỏng'],
       serviceType: 'electrical',
       source: 'booking',
       timeChoice: 'now',
       unsupportedServiceLabel: null,
     },
     estimate: {
-      advisory: 'Kael đang giữ ước tính theo bằng chứng hiện có.',
+      advisory: 'Kael có thể cập nhật khi phạm vi thay đổi.',
       complexity: 'medium',
       confidenceLabel: '84%',
-      disclaimer: 'Ước tính dựa trên bằng chứng hiện tại.',
+      disclaimer: 'Ước tính theo dữ liệu hiện có.',
       hasVndPrice: true,
       priceRangeLabel: '180.000đ - 260.000đ',
-      problemLabel: 'Bóng đèn hỏng',
+      problemLabel: 'Ổ cắm nóng',
     },
     finalPrice: null,
     id: 'job_test_1',
@@ -133,7 +132,9 @@ function buildWorkflow(deal: LocalDeal | null) {
 
   mockWorkflowValue = {
     actions: {},
-    dispatch: jest.fn(),
+    dispatch: mockDispatch,
+    notificationUnreadCount: 0,
+    notifications: [],
     selectors,
     state: {
       deal,
@@ -145,94 +146,101 @@ function buildWorkflow(deal: LocalDeal | null) {
 }
 
 beforeEach(() => {
-  setCustomerThemeMode('light')
-  mockSetPendingKaelChatDraft.mockClear()
-  mockPush.mockClear()
+  mockDispatch.mockClear()
   mockReplace.mockClear()
-  mockSessionMetadata = {}
+  mockSessionMetadata = { default_address: 'Tòa A, Quận 7', full_name: 'Anh Tú' }
   buildWorkflow(null)
 })
 
-describe('CustomerHomeSurface address context', () => {
-  it('hands a real home command draft directly to Kael chat', () => {
-    render(<CustomerHomeSurface />)
+describe('CustomerHomeSurface v2.1', () => {
+  it('routes the Kael dock orb to customer chat, not the command center', () => {
+    render(<CustomerV21DockOverlay active="home" />)
 
-    fireEvent.changeText(screen.getByTestId('customer-home-kael-command-input'), 'Ổ cắm phòng khách bị nóng')
-    fireEvent.press(screen.getByTestId('customer-home-kael-command-send'))
+    fireEvent.press(screen.getByTestId('customer-v21-kael-accessory'))
 
-    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
-      clientRequestId: 'home-command-request-id',
-      locale: 'vi',
-      mediaCount: 0,
-      message: 'Ổ cắm phòng khách bị nóng',
-      problemChips: [],
-      serviceType: null,
-      source: 'kael',
-    }))
-    expect(mockPush).toHaveBeenCalledWith('/(customer)/kael-chat')
-    expect(mockReplace).not.toHaveBeenCalled()
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=normal')
+    expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/profile?screen=5.2-command-center')
+    expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/profile?utility=agentic')
   })
 
-  it('adds a restrained worker mint boost to home service and shortcut tiles', () => {
+  it('renders the Section 2.1 mint aura layers', () => {
     render(<CustomerHomeSurface />)
 
-    const serviceStyle = screen.getByTestId('customer-shell-service-electrical').props.style
-    const shortcutStyle = screen.getByTestId('customer-home-shortcut-active').props.style
-    const serviceCardStyle = StyleSheet.flatten(typeof serviceStyle === 'function' ? serviceStyle({ pressed: false }) : serviceStyle) as Record<string, unknown>
-    const shortcutCardStyle = StyleSheet.flatten(typeof shortcutStyle === 'function' ? shortcutStyle({ pressed: false }) : shortcutStyle) as Record<string, unknown>
-    const serviceIconStageStyle = StyleSheet.flatten(screen.getByTestId('customer-shell-service-electrical-icon-stage').props.style) as Record<string, unknown>
-    const shortcutIconStageStyle = StyleSheet.flatten(screen.getByTestId('customer-home-shortcut-active-icon-stage').props.style) as Record<string, unknown>
-    const serviceIconShellStyle = StyleSheet.flatten(within(screen.getByTestId('customer-shell-service-electrical-icon-stage')).getByTestId('customer-client-asset-elevated-shell').props.style) as Record<string, unknown>
-    const shortcutIconShellStyle = StyleSheet.flatten(within(screen.getByTestId('customer-home-shortcut-active-icon-stage')).getByTestId('customer-client-asset-elevated-shell').props.style) as Record<string, unknown>
-    const serviceTitleStyle = StyleSheet.flatten(within(screen.getByTestId('customer-shell-service-electrical')).getByText('Sửa điện').props.style) as Record<string, unknown>
-    const shortcutTitleStyle = StyleSheet.flatten(within(screen.getByTestId('customer-home-shortcut-active')).getByText('Yêu cầu').props.style) as Record<string, unknown>
-
-    expect(String(serviceCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.12)')
-    expect(String(serviceCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.061)')
-    expect(String(shortcutCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.12)')
-    expect(String(shortcutCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.061)')
-    expect(serviceCardStyle.alignItems).toBe('center')
-    expect(shortcutCardStyle.alignItems).toBe('center')
-    expect(serviceIconStageStyle.alignItems).toBe('center')
-    expect(shortcutIconStageStyle.alignItems).toBe('center')
-    expect(serviceTitleStyle.textAlign).toBe('center')
-    expect(shortcutTitleStyle.textAlign).toBe('center')
-    expect(serviceIconShellStyle.height).toBe(42)
-    expect(serviceIconShellStyle.width).toBe(42)
-    expect(shortcutIconShellStyle.height).toBe(33)
-    expect(shortcutIconShellStyle.width).toBe(33)
+    expect(screen.getByTestId('customer-v21-home-canvas-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-card-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-empty-card-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-empty-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-stage-logo')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-stage-logo-lottie')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-stage-logo-static')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-top-avatar')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-home-butler-pill')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-home-status-chip')).toBeNull()
+    expect(screen.queryByText('Chưa có công việc cần xử lý')).toBeNull()
+    expect(screen.queryByText('NestScout đang theo dõi công việc và đặt quyết định đúng chỗ.')).toBeNull()
+    expect(screen.queryByText('Kael giúp tạo yêu cầu dịch vụ an toàn.')).toBeNull()
   })
 
-  it('shows the full active request address and applies a subtle worker mint wash', () => {
-    buildWorkflow(buildActiveDeal())
+  it('shows only the three supported services and no fake AC/worker/rating data', () => {
+    render(<CustomerHomeSurface />)
+
+    expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
+    expect(screen.getByText('Sửa nước')).toBeOnTheScreen()
+    expect(screen.getByText('Vệ sinh nhà')).toBeOnTheScreen()
+    expect(screen.queryByText(/máy lạnh|rating|4\.9|Nguyễn Văn Minh/i)).toBeNull()
+    expect(screen.getByText('Chưa có hoạt động dịch vụ')).toBeOnTheScreen()
+  })
+
+  it('routes a service tile to Services without creating a job', () => {
+    render(<CustomerHomeSurface />)
+
+    fireEvent.press(screen.getByTestId('customer-v21-service-electrical'))
+
+    expect(mockDispatch).toHaveBeenCalledWith({ type: 'start_home_service', serviceType: 'electrical' })
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking?service=electrical')
+    expect(mockWorkflowValue.actions.createRemoteJobFromDraft).toBeUndefined()
+  })
+
+  it('renders active case fields only from real workflow state', () => {
+    buildWorkflow(buildDeal())
 
     render(<CustomerHomeSurface />)
 
-    expect(screen.getByTestId('customer-home-address-value')).toHaveTextContent(/1714\/7 Nguyễn Duy Trinh/)
-    expect(screen.getByTestId('customer-home-address-value')).toHaveTextContent(/phường Bình Trưng Tây/)
-    expect(screen.getByTestId('customer-home-address-value')).toHaveTextContent(/Thủ Đức/)
-    expect(screen.getByTestId('customer-home-address-value').props.numberOfLines).toBeUndefined()
+    expect(screen.getByText(/^#MOH-\d{2}[A-Z0-9]{4}$/)).toBeOnTheScreen()
+    expect(screen.queryByText('Đang tạo mã')).toBeNull()
+    expect(screen.getByText('Ổ cắm nóng')).toBeOnTheScreen()
+    expect(screen.getByText('180.000đ - 260.000đ')).toBeOnTheScreen()
+    expect(screen.getAllByText('Tòa A, Quận 7').length).toBeGreaterThan(0)
+    expect(screen.getByTestId('customer-v21-active-case-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-active-case-service-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-active-case-area-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-active-case-estimate-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-active-case')).not.toHaveTextContent(/4\.9|rating|--/)
 
-    const style = screen.getByTestId('customer-home-address-card').props.style
-    const resolvedStyle = typeof style === 'function' ? style({ pressed: false }) : style
-    const cardStyle = StyleSheet.flatten(resolvedStyle) as Record<string, unknown>
-    expect(String(cardStyle.backgroundImage)).toContain('rgba(76,222,199,0.16)')
+    fireEvent.press(screen.getByTestId('customer-v21-active-case-open'))
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
   })
 
-  it('applies a stronger worker mint formula to the active request card', () => {
-    const deal = buildActiveDeal()
-    deal.status = 'draft'
-    deal.backendStatus = 'draft'
-    deal.draft.serviceType = 'cleaning'
+  it('keeps active case problem copy short and localizes raw taxonomy', () => {
+    const deal = buildDeal()
+    deal.draft.serviceType = 'plumbing'
     deal.draft.problemChips = []
+    deal.draft.inferredProblemLabel = null
+    deal.draft.description = ''
+    if (deal.broadcast) {
+      deal.broadcast.serviceType = 'plumbing'
+      deal.broadcast.problemSummary = 'plumbing: pipe_leak'
+    }
+    if (deal.estimate) {
+      deal.estimate.problemLabel = 'plumbing: pipe_leak'
+    }
     buildWorkflow(deal)
 
     render(<CustomerHomeSurface />)
 
-    const activeCardStyle = StyleSheet.flatten(screen.getByTestId('customer-home-active-local-deal').props.style) as Record<string, unknown>
-    expect(screen.getByTestId('customer-home-active-local-deal')).toHaveTextContent(/Vệ sinh/)
-    expect(screen.getByTestId('customer-home-active-local-deal')).not.toHaveTextContent(/Nháp/)
-    expect(String(activeCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.20)')
-    expect(String(activeCardStyle.backgroundImage)).toContain('rgba(76,222,199,0.10)')
+    expect(screen.getByTestId('customer-v21-active-case-problem')).toHaveTextContent(/Rò nước/)
+    expect(screen.getByTestId('customer-v21-active-case-problem')).not.toHaveTextContent(/plumbing: pipe_leak/)
+    expect(screen.getByTestId('customer-v21-active-case-problem-mint-aura')).toBeOnTheScreen()
   })
 })

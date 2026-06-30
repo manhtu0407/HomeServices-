@@ -40,6 +40,36 @@ export type LocalWorkerBroadcastStatus = 'pending' | 'sent' | 'accepted' | 'decl
 export type LocalWorkerGate = 'backend_pending' | 'local_deal_audit' | 'remote_backend'
 export type LocalScheduleMode = 'now_only'
 export type LocalCustomerSearchState = 'idle' | 'searching' | 'no_worker' | 'matched' | 'active' | 'completed'
+
+export function buildLocalJobDisplayCode(input: {
+  readonly jobId: string
+  readonly customerId?: string | null
+  readonly createdAt?: string | null
+}): string {
+  const year = localDisplayCodeYear(input.createdAt)
+  const seed = `${input.jobId}:${input.customerId ?? ''}:${input.createdAt ?? ''}`
+  return `#MOH-${year}${localDisplayCodeHash(seed, 4)}`
+}
+
+export function buildLocalWorkerDisplayCode(workerId: string): string {
+  return `#CC${localDisplayCodeHash(workerId, 4)}`
+}
+
+function localDisplayCodeYear(createdAt?: string | null): string {
+  const parsed = createdAt ? new Date(createdAt) : null
+  const date = parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date()
+  return String(date.getUTCFullYear() % 100).padStart(2, '0')
+}
+
+function localDisplayCodeHash(seed: string, length: number): string {
+  let hash = 2166136261
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index)
+    hash = Math.imul(hash, 16777619) >>> 0
+  }
+  return hash.toString(36).toUpperCase().padStart(length, '0').slice(-length)
+}
+
 export type LocalAddressAccess = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
@@ -98,8 +128,45 @@ export type LocalWorkerBroadcast = {
   estimatedEarningLabel?: string
 }
 
+export type LocalWorkerProfileSummary = {
+  avatarUrl: string | null
+  displayCode?: string | null
+  fullName: string
+  id: string
+  rating: number
+  reviewCount?: number | null
+  totalJobs: number
+}
+
+export type LocalPaymentStatus =
+  | 'not_started'
+  | 'code_requested'
+  | 'vietqr_ready'
+  | 'pending'
+  | 'received'
+  | 'amount_mismatch'
+  | 'expired'
+  | 'failed'
+  | 'reconciled'
+
+export type LocalDealPayment = {
+  provider: 'sepay_vietqr' | 'cash' | 'bank_transfer' | string
+  status: LocalPaymentStatus
+  grossAmount: number | null
+  platformFee: number | null
+  workerNet: number | null
+  paymentCode?: string | null
+  transferContent?: string | null
+  qrImageUrl?: string | null
+  expiresAt?: string | null
+  receivedAt?: string | null
+  amountReceived?: number | null
+  updatedAt?: string | null
+}
+
 export type LocalDeal = {
   id: string
+  displayCode?: string | null
   status: LocalDealStatus
   backendStatus?: JobStatus
   draft: LocalDealDraft
@@ -107,8 +174,16 @@ export type LocalDeal = {
   broadcast: LocalWorkerBroadcast | null
   scopeChange: LocalScopeChange | null
   finalPrice?: number | null
+  payment?: LocalDealPayment | null
   completionPhotoUrls?: string[]
   completionNotes?: string | null
+  workerProfile?: LocalWorkerProfileSummary | null
+  createdAt?: string | null
+  matchedAt?: string | null
+  completedAt?: string | null
+  confirmedAt?: string | null
+  paidAt?: string | null
+  reviewedAt?: string | null
 }
 
 export type LocalScopeChange = {
@@ -141,6 +216,7 @@ export type LocalWorkflowState = {
 
 export type LocalRemoteJobSnapshot = {
   id: string
+  displayCode?: string | null
   status: LocalDealStatus
   backendStatus?: JobStatus
   serviceType: ServiceType
@@ -153,8 +229,16 @@ export type LocalRemoteJobSnapshot = {
   broadcast?: LocalWorkerBroadcast | null
   scopeChange?: LocalScopeChange | null
   finalPrice?: number | null
+  payment?: LocalDealPayment | null
   completionPhotoUrls?: string[]
   completionNotes?: string | null
+  workerProfile?: LocalWorkerProfileSummary | null
+  createdAt?: string | null
+  matchedAt?: string | null
+  completedAt?: string | null
+  confirmedAt?: string | null
+  paidAt?: string | null
+  reviewedAt?: string | null
 }
 
 export type LocalRemoteBroadcastSnapshot = {
@@ -866,20 +950,30 @@ function escapeRegExp(value: string): string {
 function createDeal(draft: LocalDealDraft): LocalDeal {
   return {
     id: LOCAL_DEAL_ID,
+    displayCode: null,
     status: 'draft',
     draft,
     estimate: null,
     broadcast: null,
     scopeChange: null,
     finalPrice: null,
+    payment: null,
     completionPhotoUrls: [],
     completionNotes: null,
+    workerProfile: null,
+    createdAt: null,
+    matchedAt: null,
+    completedAt: null,
+    confirmedAt: null,
+    paidAt: null,
+    reviewedAt: null,
   }
 }
 
 function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
   return {
     id: job.id,
+    displayCode: job.displayCode ?? null,
     status: job.status,
     backendStatus: job.backendStatus,
     draft: {
@@ -899,8 +993,16 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
     broadcast: job.broadcast ?? null,
     scopeChange: job.scopeChange ?? null,
     finalPrice: job.finalPrice ?? null,
+    payment: job.payment ?? null,
     completionPhotoUrls: job.completionPhotoUrls ?? [],
     completionNotes: job.completionNotes ?? null,
+    workerProfile: job.workerProfile ?? null,
+    createdAt: job.createdAt ?? null,
+    matchedAt: job.matchedAt ?? null,
+    completedAt: job.completedAt ?? null,
+    confirmedAt: job.confirmedAt ?? null,
+    paidAt: job.paidAt ?? null,
+    reviewedAt: job.reviewedAt ?? null,
   }
 }
 
@@ -920,6 +1022,7 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
 
   return {
     id: broadcast.jobId,
+    displayCode: null,
     status: broadcast.status === 'accepted' ? 'worker_matched' : 'broadcasting',
     draft,
     estimate: null,

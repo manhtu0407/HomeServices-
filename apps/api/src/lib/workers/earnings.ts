@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@home-services/shared'
-import { PLATFORM_FEE_WORKER } from '@home-services/shared'
+import type { Database } from '@nestscout/shared'
+import { PLATFORM_FEE_WORKER } from '@nestscout/shared'
 import { withDbTimeout } from '@/lib/db/query'
 
 export type EarningsSummary = {

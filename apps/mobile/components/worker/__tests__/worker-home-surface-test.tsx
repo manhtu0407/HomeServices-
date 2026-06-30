@@ -1,7 +1,7 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+﻿import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { Alert } from 'react-native'
-import type { LocalDeal } from '@home-services/shared'
-import { LOCAL_WORKFLOW_PRICE_DISCLAIMER } from '@home-services/shared'
+import type { LocalDeal } from '@nestscout/shared'
+import { LOCAL_WORKFLOW_PRICE_DISCLAIMER } from '@nestscout/shared'
 import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
 let mockWorkflowValue: any

@@ -53,4 +53,17 @@ describe('shared and Edge domain contracts stay in parity', () => {
     expect(shared).toContain('export const jobMessageSendSchema')
     expect(edge).toContain('export const jobMessageSendSchema')
   })
+
+  it('keeps public worker application validation shared with the Edge domain', () => {
+    const shared = read('packages/shared/src/validation.ts')
+    const edge = read('supabase/functions/_shared/domain.ts')
+    const sharedIndex = read('packages/shared/src/index.ts')
+
+    expect(shared).toContain('export const workerApplicationSubmitSchema')
+    expect(shared).toContain('export type WorkerApplicationSubmitInput')
+    expect(edge).toContain('export const workerApplicationSubmitSchema')
+    expect(edge).toContain('export type WorkerApplicationSubmitInput')
+    expect(sharedIndex).toContain('workerApplicationSubmitSchema')
+    expect(sharedIndex).toContain('WorkerApplicationSubmitInput')
+  })
 })

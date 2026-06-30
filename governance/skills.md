@@ -16,7 +16,7 @@ Use this lifecycle for non-trivial work: **Define → Plan → Build → Verify 
 Use these control loops when needed:
 
 - Interview loop for unclear intent: `HYPOTHESIS -> CONFIDENCE -> ONE QUESTION -> RESTATE -> EXPLICIT YES`.
-- Context loop for large sessions: load stable rules first, task-specific docs/code next, error output during iteration, and `MEMORY.md` last.
+- Context loop for large sessions: load stable rules first, task-specific docs/code next, error output during iteration, and `.claude/MEMORY.md` last.
 - Ownership loop for code enhancement: open `docs/architecture/code-ownership-map.md`, map workflow step to owner files, preserve layer boundaries, then choose the narrowest verification gate.
 - Doubt loop for non-trivial decisions: `CLAIM -> EXTRACT -> DOUBT -> RECONCILE -> STOP`.
 - Verification loop for every change: define evidence before editing, run the relevant check, read the output, and report only what actually happened.

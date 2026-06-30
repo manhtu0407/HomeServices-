@@ -1,4 +1,4 @@
-import { appendWorkerChatDraftSegment, buildWorkerBroadcastBrief, getWorkerChatJobId, getWorkerWebSpeechRecognition, isAcceptedLocalWorkerDeal, localizedWorkerAreaLabel, localizedWorkerProblemSummary, workerChatAttachmentDraftLine, workerChatAttachmentFallbackName, workerChatAttachmentPermissionBody, workerChatAttachmentReadyBody, workerChatDealKey, workerChatMessageFromJobMessage, workerChatMessageFromWorkerKaelTurn, workerChatMicListeningBody, workerChatMicUnavailableBody, workerChatStandaloneAccessibilityLabel, workerChatStandaloneInputLabel, workerChatStandaloneReply, workerKaelChatErrorCopy, workerKaelChatProgressCopy, workerKaelChatStatusCopy, workerKaelFeedbackRequiredCopy, workerKaelFeedbackSaveErrorCopy } from './chat-helpers'
+﻿import { appendWorkerChatDraftSegment, buildWorkerBroadcastBrief, getWorkerChatJobId, getWorkerWebSpeechRecognition, isAcceptedLocalWorkerDeal, localizedWorkerAreaLabel, localizedWorkerProblemSummary, workerChatAttachmentDraftLine, workerChatAttachmentFallbackName, workerChatAttachmentPermissionBody, workerChatAttachmentReadyBody, workerChatDealKey, workerChatMessageFromJobMessage, workerChatMessageFromWorkerKaelTurn, workerChatMicListeningBody, workerChatMicUnavailableBody, workerChatStandaloneAccessibilityLabel, workerChatStandaloneInputLabel, workerChatStandaloneReply, workerKaelChatErrorCopy, workerKaelChatProgressCopy, workerKaelChatStatusCopy, workerKaelFeedbackRequiredCopy, workerKaelFeedbackSaveErrorCopy } from './chat-helpers'
 import { workerJobRoomRevealDelayMs } from './constants'
 import { workerActionCopy, workerCopy } from './copy'
 import { styles } from './styles'
@@ -13,7 +13,7 @@ import { type LocalMediaUploadDraft, uploadJobMediaDrafts } from '@/lib/media-up
 import { workerKaelChatService } from '@/lib/services'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
-import { hasLocalDealCompletionEvidence, workflowBlockedReasonLabel } from '@home-services/shared'
+import { hasLocalDealCompletionEvidence, workflowBlockedReasonLabel } from '@nestscout/shared'
 import * as ImagePicker from 'expo-image-picker'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Platform, Text, View } from 'react-native'
@@ -273,7 +273,6 @@ function WorkerChatContent() {
   const createWorkerKaelChatSessionForStream = async (jobId: string, chatLanguage: WorkerLanguageMode) => {
     const result = await workerKaelChatService.create({
       job_id: jobId,
-      media_refs: [],
       language: chatLanguage,
     })
     if (!isActiveWorkerChatJob(jobId)) {

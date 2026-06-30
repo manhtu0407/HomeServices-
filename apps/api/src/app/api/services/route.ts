@@ -1,6 +1,6 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { withDbTimeout } from '@/lib/db/query'
-import { HCMC_DISTRICTS } from '@home-services/shared'
+import { HCMC_DISTRICTS } from '@nestscout/shared'
 
 export async function GET(request: Request) {
   const auth = await authenticateRequest(request)

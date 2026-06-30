@@ -22,6 +22,8 @@ describe('Kael P8 charter, prompt, and self-check', () => {
     expect(prompt).toContain('Permission summary')
     expect(prompt).toContain('Knowledge summary')
     expect(prompt).toContain('scope_change')
+    expect(prompt).toContain('NestScout')
+    expect(prompt).not.toContain('Home Services')
     expect(prompt.split(/\s+/).length).toBeLessThan(3000)
     expect(buildKaelSystemPrompt({
       purpose: 'scope_change',
@@ -136,7 +138,7 @@ describe('Kael P8 charter, prompt, and self-check', () => {
     const charter = getPublicKaelCharter()
 
     expect(charter.charter_version).toBe('2026-05-25.p8')
-    expect(charter.identity_summary).toContain('Home Services')
+    expect(charter.identity_summary).toContain('NestScout')
     expect(charter.forbidden_categories).toContain('ai_self_reference')
     expect(JSON.stringify(charter)).not.toContain('owner')
   })

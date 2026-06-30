@@ -1,4 +1,4 @@
-# Home Services — Progress Log
+﻿# Home Services — Progress Log
 
 > Relocated from README.md (2026-06-23) so README can be a lean intro. This is the durable,
 > reverse-chronological build history; new entries (e.g. via /log) append here.
@@ -43,7 +43,7 @@
 - **Bug caught by integration test**: hook was rewriting `status='pending_evidence'` when `evidence_count < MIN_EVIDENCE` — fixed so observe() owns created↔pending_evidence transition by count.
 - **Test count**: 800 local / 859 staging pass (+80 unit + 5 integration). 0 fail.
 - **Verification**:
-  - `corepack pnpm --filter @home-services/api test` → 800 pass / 59 skip / 0 fail.
+  - `corepack pnpm --filter @nestscout/api test` → 800 pass / 59 skip / 0 fail.
   - Staging integration (5 tests, real Supabase): 4-job evidence floor, 5-job + autopromote on → rule active + version v1, fetchBaseline returns learned range, autopromote-off path, null final_price graceful skip.
 - **Decision update (2026-05-18)**: runtime path is locked to Supabase Edge Function `mobile-api`. Vercel/hosted Next.js is not part of the mobile release path.
 - **Next**: Continue Edge/mobile parity, staging/prod gates, and App E2E last.
@@ -87,9 +87,9 @@
   - Security advisors: **0** warnings.
   - Performance advisors: 17 multiple_permissive_policies (pre-existing design), 0 unindexed_foreign_keys, 22 unused_index (auto-resolves with traffic).
 - **Final verification**:
-  - `corepack pnpm --filter @home-services/shared exec tsc --noEmit` clean.
-  - `corepack pnpm --filter @home-services/api exec tsc --noEmit` clean.
-  - `corepack pnpm --filter @home-services/api build` ✅ Next.js 16, 18 routes.
+  - `corepack pnpm --filter @nestscout/shared exec tsc --noEmit` clean.
+  - `corepack pnpm --filter @nestscout/api exec tsc --noEmit` clean.
+  - `corepack pnpm --filter @nestscout/api build` ✅ Next.js 16, 18 routes.
   - Local test: **719 pass / 54 skipped / 0 fail** (32 test files).
   - Staging test (with env): **773 pass / 0 fail / 0 skip** (34 files including 12 integration B0-B8 + 42 real-supabase RLS).
 - **Known limitations**:
@@ -154,8 +154,8 @@
 - **Tests/contracts**:
   - Expanded `packages/shared/src/__tests__/mobile-wiring.test.ts` to lock prototype isolation, production route wiring, supported service scope, disclaimer copy, no backend/AI/Supabase mutation leakage, no future workflow leakage, motion contract, and compact iOS/Android guards.
 - **Verification**:
-  - `corepack pnpm --filter @home-services/mobile type-check` passed.
-  - `corepack pnpm --filter @home-services/shared test -- src/__tests__/mobile-wiring.test.ts` passed.
+  - `corepack pnpm --filter @nestscout/mobile type-check` passed.
+  - `corepack pnpm --filter @nestscout/shared test -- src/__tests__/mobile-wiring.test.ts` passed.
   - `corepack pnpm type-check` passed.
   - `corepack pnpm test` passed.
   - `corepack pnpm lint` passed.

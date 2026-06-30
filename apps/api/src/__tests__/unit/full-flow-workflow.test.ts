@@ -9,7 +9,7 @@
  * API contracts khớp nhau, và state machine transitions hợp lệ.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { AIResponse } from '@home-services/shared'
+import type { AIResponse } from '@nestscout/shared'
 
 // ─── Mock setup ─────────────────────────────────────────────────
 

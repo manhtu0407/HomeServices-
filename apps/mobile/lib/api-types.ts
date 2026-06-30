@@ -1,4 +1,4 @@
-import type { ApartmentAccessProfileInput, BroadcastStatus, ComplexityLevel, JobStatus, LearningCandidateStatus, ScopeChangeStatus, ServiceType, WorkerVerificationStatus } from '@home-services/shared'
+﻿import type { ApartmentAccessProfileInput, BroadcastStatus, ComplexityLevel, JobStatus, LearningCandidateStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerVerificationStatus } from '@nestscout/shared'
 import type {
   KaelEstimate,
   CreateJobResponse,
@@ -7,7 +7,7 @@ import type {
   KaelChatTurn,
   KaelChatSession,
   KaelChatResponse,
-} from '@home-services/shared'
+} from '@nestscout/shared'
 
 export type AddressAccessView = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'
@@ -50,6 +50,126 @@ export type {
   KaelChatResponse,
 }
 
+export type KaelChatMediaUploadResponse = {
+  bucket_id: 'kael-chat-media'
+  object_path: string
+  media_ref: string
+  token: string
+  signed_upload_url: string
+  expires_in_seconds: number
+}
+
+export type KaelAssistantResponse = {
+  answer: string
+  safety_notes: string[]
+  citations: string[]
+  suggested_actions: Array<'open_booking' | 'check_job' | 'message_worker' | 'contact_support' | 'request_scope_change'>
+  boundary: 'answered' | 'educational_only' | 'redirect' | 'unsupported' | 'fallback'
+  fallback_used: boolean
+}
+
+export type KaelMemoryPayload = Record<string, unknown> & {
+  customer_id?: string
+  worker_id?: string
+  language?: string | null
+  preference_summary?: string | null
+  service_preferences?: Record<string, unknown> | null
+  service_skill_proficiency?: Record<string, unknown> | null
+  service_skill_summary?: string | null
+  safe_metadata?: Record<string, unknown> | null
+  trust_signals?: Record<string, unknown> | null
+  reliability_signals?: Record<string, unknown> | null
+  red_flags?: Record<string, unknown> | null
+  memory_version?: number | null
+  last_observed_at?: string | null
+}
+
+export type KaelMemorySelfViewResponse = {
+  subject_type: 'customer' | 'worker'
+  memory: KaelMemoryPayload | null
+}
+
+export type CustomerKaelMemoryPreferenceKey =
+  | 'preferred_address'
+  | 'preferred_time_window'
+  | 'budget_limit_vnd'
+  | 'message_interaction_memory'
+  | 'share_preferences_with_worker'
+
+export type CustomerKaelMemoryPreferenceUpdateInput = {
+  key: CustomerKaelMemoryPreferenceKey
+  enabled: boolean
+}
+
+export type WorkerKaelMemoryPreferenceKey =
+  | 'area_preference'
+  | 'income_preference'
+  | 'travel_limit'
+  | 'skill_preference'
+  | 'opportunity_filter'
+  | 'auto_accept_work'
+
+export type WorkerKaelMemoryPreferenceUpdateInput = {
+  key: WorkerKaelMemoryPreferenceKey
+  enabled: boolean
+}
+
+export type CustomerProfileInsightsResponse = {
+  customer_id: string
+  member_since: string | null
+  kael_interaction_count: number
+  completed_service_count: number
+  saved_address_count: number
+  preferred_service_count: number
+  active_streak_days: number
+  positive_review_rate_percent: number
+  price_savings_vnd: number
+  total_spend_vnd: number
+  usage_rank_level: number
+  usage_rank_points: number
+  fair_price_service_count: number
+  money_protection_score: number
+  protected_value_vnd: number
+  protected_transaction_count: number
+  total_transaction_count: number
+  dispute_free_rate_percent: number
+  fair_price_status: 'verified' | 'mixed' | 'pending' | null
+}
+
+export type CustomerPaymentMethodSaveInput = {
+  account_holder_name: string
+  bank_account: string
+  bank_key: string
+  bank_name: string
+}
+
+export type CustomerPaymentMethodResponse = {
+  payment_method: {
+    id: string
+    bank_key: string
+    bank_name: string
+    account_holder_name: string
+    bank_account_masked: string
+    status: 'pending_verification' | 'verified' | 'rejected'
+    is_default: boolean
+    verified_at: string | null
+    updated_at: string
+  } | null
+}
+
+export type WorkerPayoutMethodSaveInput = CustomerPaymentMethodSaveInput
+
+export type WorkerPayoutMethodResponse = {
+  payout_method: {
+    bank_key: string
+    bank_name: string
+    account_holder_name: string
+    bank_account_masked: string
+    status: 'pending_verification' | 'verified' | 'rejected'
+    updated_at: string
+  }
+  worker_profile: WorkerProfileResponse
+}
 export type PlacesAutocompleteResponse = {
   suggestions: {
     place_id: string
@@ -60,6 +180,13 @@ export type PlacesAutocompleteResponse = {
   fallback_used: boolean
 }
 
+export type PlacesResolveResponse = {
+  fallback_used: boolean
+  label: string | null
+  location: { lat: number; lng: number } | null
+  place_id: string
+  provider: 'vietmap' | 'google_maps' | 'fallback'
+}
 export type ConfirmKaelChatResponse = ConfirmSearchResponse & {
   session_id: string
 }
@@ -67,6 +194,7 @@ export type ConfirmKaelChatResponse = ConfirmSearchResponse & {
 export type JobDetailResponse = {
   job: {
     id: string
+    display_code?: string
     status: JobStatus
     service_type: ServiceType
     description: string
@@ -88,6 +216,17 @@ export type JobDetailResponse = {
     kael_worker_brief_guidance: Record<string, unknown> | null
     kael_progress: KaelChatProgress | null
     final_price: number | null
+    payment_status?: LocalPaymentStatus | null
+    payment_provider?: string | null
+    payment_code?: string | null
+    payment_transfer_content?: string | null
+    payment_qr_image_url?: string | null
+    payment_expires_at?: string | null
+    payment_received_at?: string | null
+    payment_amount_received?: number | null
+    gross_amount?: number | null
+    platform_fee?: number | null
+    worker_net?: number | null
     completion_notes: string | null
     completion_photo_urls: string[]
     created_at: string
@@ -98,6 +237,15 @@ export type JobDetailResponse = {
     paid_at: string | null
     reviewed_at: string | null
   }
+  worker: {
+    avatar_url: string | null
+    display_code?: string | null
+    full_name: string
+    id: string
+    rating: number
+    review_count?: number | null
+    total_jobs: number
+  } | null
   broadcast_state: {
     active_count: number
     seconds_remaining: number | null
@@ -186,8 +334,12 @@ export type ConfirmSearchResponse = {
   status: JobStatus
   broadcast_sent: boolean
   worker: {
+    avatar_url: string | null
+    display_code?: string | null
     full_name: string
+    id: string
     rating: number
+    review_count?: number | null
     total_jobs: number
   } | null
   message: string
@@ -206,6 +358,24 @@ export type ConfirmCompletionResponse = {
   final_price: number | null
 }
 
+export type PaymentIntentResponse = {
+  job_id: string
+  status: JobStatus
+  payment: {
+    provider: 'sepay_vietqr'
+    status: LocalPaymentStatus
+    gross_amount: number | null
+    platform_fee: number | null
+    worker_net: number | null
+    payment_code: string | null
+    transfer_content: string | null
+    qr_image_url: string | null
+    expires_at: string | null
+    received_at: string | null
+    amount_received: number | null
+    updated_at: string | null
+  }
+}
 export type CustomerCancellationResponse = {
   cancellation_id: string
   job_id: string
@@ -323,6 +493,51 @@ export type WorkerRegisterResponse = {
   submitted_at: string
 }
 
+export type WorkerPerformanceBadgeId =
+  | 'verified_profile'
+  | 'fast_responder'
+  | 'reliable_arrival'
+  | 'trusted_by_customers'
+  | 'steady_earner'
+
+export type WorkerPerformanceAxisId =
+  | 'rating'
+  | 'response'
+  | 'arrival'
+  | 'completion'
+  | 'earnings'
+
+export type WorkerPerformanceInsightsResponse = {
+  worker_id: string
+  completed_job_count: number
+  review_count: number
+  average_rating: number | null
+  response_rate_percent: number | null
+  average_response_minutes: number | null
+  on_time_rate_percent: number | null
+  total_broadcast_count: number
+  responded_broadcast_count: number
+  accepted_broadcast_count: number
+  scheduled_arrival_job_count: number
+  on_time_job_count: number
+  paid_job_count: number
+  reconciled_earnings_vnd: number | null
+  performance_score: number | null
+  badges: {
+    id: WorkerPerformanceBadgeId
+    status: 'earned' | 'locked'
+  }[]
+  performance_axes: {
+    id: WorkerPerformanceAxisId
+    score: number | null
+  }[]
+}
+
+export type WorkerApplicationResponse = {
+  application_id: string
+  status: 'open'
+  submitted_at: string
+}
 export type WorkerBroadcastsResponse = {
   broadcasts: {
     broadcast_id: string
@@ -410,7 +625,7 @@ export type WorkerKaelChatTurn = {
   content_type: 'text' | 'clarification' | 'guidance' | 'photo_request' | 'photo_attached' | 'error'
   text_content: string | null
   media_refs: string[]
-  safe_metadata: Record<string, unknown>
+  safety_notes: string[]
   created_at: string
 }
 
@@ -422,9 +637,7 @@ export type WorkerKaelChatSession = {
   started_at: string
   closed_at: string | null
   total_turns: number
-  total_cost_usd: number
   progress: KaelChatProgress | null
-  safe_metadata: Record<string, unknown>
 }
 
 export type WorkerKaelChatResponse = {
@@ -601,6 +814,7 @@ export type CustomerScopeDecisionResponse = {
 export type WorkerJobListResponse = {
   jobs: {
     id: string
+    display_code: string | null
     status: JobStatus
     service_type: ServiceType
     problem_summary: string | null
@@ -611,6 +825,17 @@ export type WorkerJobListResponse = {
     address_access: AddressAccessView
     final_price: number | null
     estimated_earning: number | null
+    payment_status?: LocalPaymentStatus | null
+    payment_provider?: string | null
+    payment_code?: string | null
+    payment_transfer_content?: string | null
+    payment_qr_image_url?: string | null
+    payment_expires_at?: string | null
+    payment_received_at?: string | null
+    payment_amount_received?: number | null
+    gross_amount?: number | null
+    platform_fee?: number | null
+    worker_net?: number | null
     completion_notes: string | null
     completion_photo_urls: string[]
     worker_brief_guidance?: Record<string, unknown> | null

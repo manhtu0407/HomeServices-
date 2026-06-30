@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import type { JobCreateInput } from '@home-services/shared'
+import type { JobCreateInput } from '@nestscout/shared'
 
 const mocks = vi.hoisted(() => ({
   runKaelPipeline: vi.fn(),

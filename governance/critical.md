@@ -1,8 +1,8 @@
-# Home Services Critical Execution Contract
+# NestScout Critical Execution Contract
 
-This file is a mandatory execution contract for AI coding agents working on Home Services.
+This file is a mandatory execution contract for AI coding agents working on NestScout.
 
-It exists to help Codex, Claude Code, and any future AI coding tool execute with discipline. `design.md` provides the design execution contract for UI work. `CLAUDE.md`, `RULES.md`, and `STRUCTURES.md` provide project context and hard product/security rules. `AGENTS.md` provides the local workspace operating loop. `skills.md` and `.agents/skills/karpathy-guidelines/SKILL.md` provide AI Coding Agent skills for explicit assumptions, simple implementations, surgical diffs, and verification-driven execution. `MEMORY.md` stores the freshest session memory and MUST be read last. This file provides the operating skills, execution protocols, quality gates, and anti-patterns that agents MUST use while changing the codebase.
+It exists to help Codex, Claude Code, and any future AI coding tool execute with discipline. `design.md` provides the design execution contract for UI work. `CLAUDE.md`, `RULES.md`, and `STRUCTURES.md` provide project context and hard product/security rules. `AGENTS.md` provides the local workspace operating loop. `skills.md` and `.agents/skills/karpathy-guidelines/SKILL.md` provide AI Coding Agent skills for explicit assumptions, simple implementations, surgical diffs, and verification-driven execution. `.claude/MEMORY.md` stores the freshest session memory and MUST be read last. This file provides the operating skills, execution protocols, quality gates, and anti-patterns that agents MUST use while changing the codebase.
 
 This file is locked. AI agents MUST NOT edit `critical.md` unless Tu explicitly requests that edit in the current conversation.
 
@@ -25,7 +25,7 @@ Before editing files, the agent MUST:
 7. Read `skills.md`, or invoke the project-local `karpathy-guidelines` skill from `.agents/skills/karpathy-guidelines/SKILL.md`, before writing, reviewing, refactoring, debugging, or planning code.
 8. Read relevant `docs/**/*.md`, `README.md`, and `Plan.md` sections only when they materially affect the task or contain current/deferred work.
 9. Read the relevant code and tests before proposing or making changes.
-10. Read `MEMORY.md` last for current session facts, dirty-worktree context, latest caveats, and handoff notes.
+10. Read `.claude/MEMORY.md` last for current session facts, dirty-worktree context, latest caveats, and handoff notes.
 11. Classify the task.
 12. Select the smallest sufficient protocol set.
 13. State the selected protocols before editing.
@@ -48,9 +48,9 @@ The project docs are a supporting stack, not competing prompts:
 5. `AGENTS.md` controls local workspace expectations for Codex/Claude Code.
 6. `Plan.md` applies only when the task continues that plan or references its deferred items.
 7. `README.md` and `docs/**/*.md` provide progress history, durable decisions, feature contracts, and historical evidence.
-8. `MEMORY.md` is read last. It provides the freshest AI-agent session memory and may be updated continuously. It does not silently override hard rules, locked docs, or code.
+8. `.claude/MEMORY.md` is read last. It provides the freshest AI-agent session memory and may be updated continuously. It does not silently override hard rules, locked docs, or code.
 
-If `MEMORY.md` or a historical doc conflicts with the hard docs or current code, treat it as a freshness signal and ask Tu instead of guessing.
+If `.claude/MEMORY.md` or a historical doc conflicts with the hard docs or current code, treat it as a freshness signal and ask Tu instead of guessing.
 
 ### Conflict Rule
 
@@ -218,7 +218,7 @@ The agent MUST NOT commit, push, open a PR, amend history, or run destructive gi
 
 ## 4. Survival and Scope Rules
 
-Home Services is pre-revenue and rebuilding from zero. The current technical goal is quality execution that moves toward the first real transaction without building unnecessary systems.
+NestScout is pre-revenue and rebuilding from zero. The current technical goal is quality execution that moves toward the first real transaction without building unnecessary systems.
 
 ### Survival Test
 
@@ -289,7 +289,7 @@ Use for every coding task before editing files.
 - `AGENTS.md`.
 - Relevant code/tests.
 - `CLAUDE.md` when ambiguity or conflict exists.
-- `MEMORY.md` last when the task is long-running, cross-cutting, continues prior work, or depends on current workspace state.
+- `.claude/MEMORY.md` last when the task is long-running, cross-cutting, continues prior work, or depends on current workspace state.
 
 ### Workflow
 
@@ -565,7 +565,7 @@ Before saying a coding task is complete, the agent MUST verify:
 [ ] Preflight was run.
 [ ] Protocols were selected before edits.
 [ ] Required docs were read in authority order.
-[ ] `MEMORY.md` was read last when the task depended on current session context, dirty worktree state, prior handoff, or long-running work.
+[ ] `.claude/MEMORY.md` was read last when the task depended on current session context, dirty worktree state, prior handoff, or long-running work.
 [ ] Relevant code and tests were read.
 [ ] `design.md` was read for UI, frontend, prototype, visual, motion, mascot, layout, token, or component-styling work.
 [ ] Scope and survival test passed or Tu approved exception.

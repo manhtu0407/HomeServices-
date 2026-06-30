@@ -76,54 +76,64 @@ const withoutIosPushEntitlement: ConfigPlugin = (expoConfig) => {
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Home Services',
-  slug: 'home-services',
+  name: 'NestScout',
+  slug: 'nestscout',
   version: '0.1.0',
   orientation: 'portrait',
-  icon: './assets/icon.png',
+  icon: './assets/nestscout-aurora-nest-appstore-1024.png',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
-  scheme: 'homeservices',
+  scheme: 'nestscout',
   splash: {
-    image: './assets/splash-icon.png',
+    image: './assets/nestscout-aurora-nest-appstore-1024.png',
     resizeMode: 'contain',
     backgroundColor: '#ffffff',
   },
   ios: {
     supportsTablet: false,
     buildNumber: '1',
-    bundleIdentifier: 'com.phanmanhtu.homeservices',
+    bundleIdentifier: 'com.phanmanhtu.nestscout',
     config: {
       usesNonExemptEncryption: false,
     },
     infoPlist: {
       NSCameraUsageDescription:
-        'Home Services cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.',
+        'NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa hoặc giấy tờ xác minh.',
+      NSMicrophoneUsageDescription:
+        'NestScout cần quyền micro nếu bạn muốn ghi chú giọng nói cho Kael phân tích ca dịch vụ.',
       NSPhotoLibraryUsageDescription:
-        'Home Services cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
+        'NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
     },
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
+      foregroundImage: './assets/nestscout-aurora-nest-appstore-1024.png',
       backgroundColor: '#ffffff',
     },
     versionCode: 1,
     permissions: [],
     blockedPermissions: ['android.permission.RECORD_AUDIO'],
     edgeToEdgeEnabled: true,
-    package: 'com.phanmanhtu.homeservices',
+    package: 'com.phanmanhtu.nestscout',
   },
   plugins: [
     'expo-router',
+    [
+      'expo-audio',
+      {
+        microphonePermission:
+          'NestScout cần quyền micro nếu bạn muốn ghi chú giọng nói cho Kael phân tích ca dịch vụ.',
+        recordAudioAndroid: false,
+      },
+    ],
     'expo-secure-store',
     [
       'expo-image-picker',
       {
         photosPermission:
-          'Home Services cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa.',
+          'NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa.',
         cameraPermission:
-          'Home Services cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa.',
+          'NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa.',
       },
     ],
     withoutIosPushEntitlement as unknown as string,

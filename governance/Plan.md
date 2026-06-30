@@ -1,4 +1,4 @@
-# Home Services — Workflow Enhancement Plan
+﻿# Home Services — Workflow Enhancement Plan
 
 Tài liệu này là execution plan cho enhancement đợt 2026-05-20. Audience: AI coding agent (Codex hoặc Claude Code) thực thi, Tu review, Claude (tôi) audit lại sau khi build xong.
 
@@ -991,19 +991,19 @@ Layout:
 
 ```powershell
 # Type-check
-corepack pnpm --filter @home-services/api exec tsc --noEmit
-corepack pnpm --filter @home-services/shared exec tsc --noEmit
-corepack pnpm --filter @home-services/mobile type-check
+corepack pnpm --filter @nestscout/api exec tsc --noEmit
+corepack pnpm --filter @nestscout/shared exec tsc --noEmit
+corepack pnpm --filter @nestscout/mobile type-check
 
 # Tests
 corepack pnpm test                     # all
-corepack pnpm --filter @home-services/api test -- kael-chat
+corepack pnpm --filter @nestscout/api test -- kael-chat
 
 # Build
 corepack pnpm build
 
 # Mobile preview
-corepack pnpm --filter @home-services/mobile dev
+corepack pnpm --filter @nestscout/mobile dev
 # Visual: open /(customer)/home → click service card → chat opens
 ```
 

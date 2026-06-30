@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
+import { KaelTextField } from '@/components/ui/kael-primitives'
+import { typography } from '@/design/theme'
 import { useAuth } from '@/lib/auth-provider'
 import { adminLearningService } from '@/lib/services'
 import type { KaelLearningCandidateSummary } from '@/lib/api-types'
@@ -155,12 +157,13 @@ export default function AdminDashboard() {
                 <Text style={styles.detailText}>Mã vấn đề: {candidate.affected_problem ?? 'Không giới hạn'}</Text>
                 <Text style={styles.detailText}>Nguồn: {evidenceSource(candidate)}</Text>
 
-                <TextInput
+                <KaelTextField
                   accessibilityLabel="Lý do từ chối"
+                  inputShellStyle={styles.reasonInputShell}
                   onChangeText={(text) => setRejectReasons((current) => ({ ...current, [candidate.id]: text }))}
                   placeholder="Lý do từ chối"
                   placeholderTextColor="#7A8B85"
-                  style={styles.reasonInput}
+                  style={styles.reasonInputText}
                   testID={`admin-learning-reason-${candidate.id}`}
                   value={reason}
                 />
@@ -284,7 +287,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
-  actionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  actionText: { color: '#FFFFFF', fontFamily: typography.fontFamily, fontSize: 14, fontWeight: typography.label.fontWeight },
   actions: { flexDirection: 'row', gap: 10 },
   candidateMeta: { color: '#52615C', fontSize: 13, marginTop: 4 },
   candidateRow: {
@@ -295,7 +298,7 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 14,
   },
-  candidateTitle: { color: '#0E2F2A', fontSize: 16, fontWeight: '800' },
+  candidateTitle: { color: '#0E2F2A', fontFamily: typography.fontFamily, fontSize: 16, fontWeight: typography.h3.fontWeight },
   container: { backgroundColor: '#F6FBF8', gap: 16, padding: 20 },
   detailText: { color: '#52615C', fontSize: 13, lineHeight: 19 },
   disabledButton: { opacity: 0.52 },
@@ -309,7 +312,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     padding: 12,
   },
-  eyebrow: { color: '#0E7C66', fontSize: 12, fontWeight: '800', letterSpacing: 0, textTransform: 'uppercase' },
+  eyebrow: { color: '#0E7C66', fontFamily: typography.fontFamily, fontSize: 12, fontWeight: typography.caption.fontWeight, letterSpacing: 0, textTransform: 'uppercase' },
   header: {
     backgroundColor: '#EAF8F3',
     borderColor: '#B9E6D8',
@@ -324,7 +327,7 @@ const styles = StyleSheet.create({
   metric: { backgroundColor: '#EEF7F3', borderRadius: 12, flex: 1, gap: 3, padding: 10 },
   metricLabel: { color: '#60736D', fontSize: 11, fontWeight: '700' },
   metrics: { flexDirection: 'row', gap: 8 },
-  metricValue: { color: '#0E2F2A', fontSize: 14, fontWeight: '800' },
+  metricValue: { color: '#0E2F2A', fontFamily: typography.fontFamily, fontSize: 14, fontWeight: typography.label.fontWeight },
   notice: {
     backgroundColor: '#E9F8EF',
     borderColor: '#A8DEB7',
@@ -335,15 +338,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     padding: 12,
   },
-  reasonInput: {
+  reasonInputShell: {
     backgroundColor: '#FFFFFF',
     borderColor: '#C7DCD4',
     borderRadius: 12,
     borderWidth: 1,
-    color: '#0E2F2A',
-    fontSize: 14,
     minHeight: 44,
     paddingHorizontal: 12,
+  },
+  reasonInputText: {
+    color: '#0E2F2A',
+    fontSize: 14,
+    fontWeight: '500',
+    minHeight: 42,
   },
   refreshButton: {
     alignItems: 'center',
@@ -355,12 +362,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 14,
   },
-  refreshText: { color: '#0E7C66', fontSize: 13, fontWeight: '800' },
+  refreshText: { color: '#0E7C66', fontFamily: typography.fontFamily, fontSize: 13, fontWeight: typography.label.fontWeight },
   rejectButton: { backgroundColor: '#FFFFFF', borderColor: '#C93A3A', borderWidth: 1 },
-  rejectText: { color: '#A42727', fontSize: 14, fontWeight: '800' },
+  rejectText: { color: '#A42727', fontFamily: typography.fontFamily, fontSize: 14, fontWeight: typography.label.fontWeight },
   rowHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   secondaryButton: { backgroundColor: '#52615C' },
-  slaWarning: { color: '#9A5A00', fontSize: 11, fontWeight: '800', textAlign: 'right' },
+  slaWarning: { color: '#9A5A00', fontFamily: typography.fontFamily, fontSize: 11, fontWeight: typography.caption.fontWeight, textAlign: 'right' },
   stateBox: {
     alignItems: 'center',
     backgroundColor: '#FFFDF8',
@@ -371,18 +378,19 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   stateText: { color: '#52615C', fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  stateTitle: { color: '#0E2F2A', fontSize: 15, fontWeight: '800' },
+  stateTitle: { color: '#0E2F2A', fontFamily: typography.fontFamily, fontSize: 15, fontWeight: typography.h3.fontWeight },
   statusPill: {
     backgroundColor: '#FFE9B0',
     borderRadius: 999,
     color: '#5C3C00',
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: typography.fontFamily,
+    fontWeight: typography.caption.fontWeight,
     overflow: 'hidden',
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   statusStack: { alignItems: 'flex-end', gap: 5 },
   subtitle: { color: '#52615C', fontSize: 14, lineHeight: 20 },
-  title: { color: '#0E2F2A', fontSize: 24, fontWeight: '900' },
+  title: { color: '#0E2F2A', fontFamily: typography.fontFamily, fontSize: 24, fontWeight: typography.h2.fontWeight },
 })

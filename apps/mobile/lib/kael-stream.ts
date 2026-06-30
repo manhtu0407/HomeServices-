@@ -5,7 +5,7 @@ import {
   mobileApiConfigError,
   mobileApiUrl,
 } from './api'
-import type { KaelChatTurnInput, WorkerKaelChatTurnInput } from '@home-services/shared'
+import type { KaelChatTurnInput, WorkerKaelChatTurnInput } from '@nestscout/shared'
 
 export type KaelStreamStageEvent = {
   type: 'stage'

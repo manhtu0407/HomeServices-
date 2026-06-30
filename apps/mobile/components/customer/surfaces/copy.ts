@@ -1,5 +1,5 @@
-// Customer UI copy dictionaries (VI/EN), extracted from customer-surfaces.tsx (C4 customer stage 2).
-import { LOCAL_WORKFLOW_PRICE_DISCLAIMER } from '@home-services/shared'
+﻿// Customer UI copy dictionaries (VI/EN), extracted from customer-surfaces.tsx (C4 customer stage 2).
+import { LOCAL_WORKFLOW_PRICE_DISCLAIMER } from '@nestscout/shared'
 
 export const customerProfileEditorCopy = {
   vi: {

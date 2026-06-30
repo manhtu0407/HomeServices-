@@ -29,10 +29,10 @@ Per surface, choose the layers that reduce real risk:
 
 ### G3 — Static validation (real, enforced)
 Run and report real output:
-- `pnpm --filter @home-services/mobile type-check`
-- `pnpm --filter @home-services/mobile test`  (jest-expo + RNTL; config `apps/mobile/jest.config.js`, setup `apps/mobile/jest.setup.ts`)
+- `pnpm type-check:mobile`
+- `pnpm test:mobile`  (jest-expo + RNTL; config `apps/mobile/jest.config.js`, setup `apps/mobile/jest.setup.ts`)
 
-The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`, wired in `.claude/settings.json`) re-runs these whenever `apps/mobile` code or gate-relevant mobile config changed and blocks a false "done" on a red gate. Lint (`pnpm --filter @home-services/mobile lint:mobile`, eslint-config-expo) is available for manual debt work but is **not** in the root Turbo gate yet — see Limitations.
+These root aliases wrap `@nestscout/mobile` package scripts and inject the bundled Codex Node runtime when an agent shell lacks `node` on PATH. The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`, wired in `.claude/settings.json`) re-runs these whenever `apps/mobile` code or gate-relevant mobile config changed and blocks a false "done" on a red gate. Lint (`pnpm lint:mobile`, eslint-config-expo) is available for manual debt work but is **not** in the Stop hook yet - see Limitations.
 
 ### G4 — UI/UX validation (RN reality)
 Verify on iOS and Android (simulator or device via `expo start`), not a browser:

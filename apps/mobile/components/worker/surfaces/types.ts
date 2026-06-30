@@ -1,5 +1,5 @@
-// Worker UI shared types, extracted from worker-surfaces.tsx (C4 stage 2).
-import type { LocalDeal } from '@home-services/shared'
+﻿// Worker UI shared types, extracted from worker-surfaces.tsx (C4 stage 2).
+import type { LocalDeal } from '@nestscout/shared'
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 

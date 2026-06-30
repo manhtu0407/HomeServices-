@@ -2,7 +2,7 @@ import { callAI } from '@/lib/ai/client'
 import { buildPricingMessages } from './prompts'
 import { marketPriceResultSchema, type MarketPriceResult } from './schemas'
 import { safeParseJSON } from './parsing'
-import { sanitizeForLLM } from '@home-services/shared'
+import { sanitizeForLLM } from '@nestscout/shared'
 
 export type PriceSearchResult =
   | { success: true; market: MarketPriceResult; failureReason?: undefined }

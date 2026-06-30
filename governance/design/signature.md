@@ -4,7 +4,7 @@
 
 ## 0. Role
 
-This is the **final house-style gate**: the recipe that makes a screen unmistakably Home Services in 0.5s, and the audit that decides "does this screen carry the signature (≥9/10)?". It is the **opposite of `frontend-design`/`taste-skill` variance** — one consistent, classic, minimal system, every time.
+This is the **final house-style gate**: the recipe that makes a screen unmistakably NestScout in 0.5s, and the audit that decides "does this screen carry the signature (≥9/10)?". It is the **opposite of `frontend-design`/`taste-skill` variance** — one consistent, classic, minimal system, every time.
 
 Direction (locked by Tu 2026-05-29): **classic, minimal, OS-grade** (Apple Liquid Glass + Material expressive motion), **neutral base + ONE mint accent**, sections that pop without clutter or FOMO.
 

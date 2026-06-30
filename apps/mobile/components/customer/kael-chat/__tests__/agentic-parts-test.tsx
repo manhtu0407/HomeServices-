@@ -1,7 +1,7 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { Alert, StyleSheet } from 'react-native'
-import { buildWorkflowViewModel, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@home-services/shared'
+import { buildWorkflowViewModel, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@nestscout/shared'
 import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { KaelChatSurface } from '../kael-chat-surface'
 import { setPendingKaelChatDraft, takePendingKaelChatDraft } from '../pending-intake'
@@ -216,6 +216,17 @@ const threadText = {
     vision: 'Analyzing photos',
   },
   history: 'Open activity',
+  livePerformanceEvidence: 'Evidence',
+  livePerformanceEstimateReady: 'Estimate ready',
+  livePerformanceMediaCount: (count: number) => `${count} evidence item${count === 1 ? '' : 's'}`,
+  livePerformanceMeta: 'Audit preview',
+  livePerformanceNoEvidence: 'No evidence yet',
+  livePerformancePendingStage: 'Sending ticket',
+  livePerformanceService: 'Service',
+  livePerformanceSignals: 'Signals',
+  livePerformanceStage: 'Kael stage',
+  livePerformanceTitle: 'Kael is analyzing this request',
+  livePerformanceWaitingStage: 'Waiting for details',
   loading: 'Loading',
   retryIntake: 'Retry intake',
   retryOrchestration: 'Retry orchestration',
@@ -723,7 +734,7 @@ describe('Kael agentic phase cards', () => {
     }
   })
 
-  it('renders the empty Kael ticket with honest sample rows for what Kael will record', () => {
+  it('renders the empty Kael ticket with production-safe pending rows', () => {
     render(<EmptyKaelBriefCard language="vi" selectedService={null} text={estimateText} />)
 
     const card = screen.getByTestId('customer-kael-chat-empty-ticket-summary')
@@ -732,11 +743,11 @@ describe('Kael agentic phase cards', () => {
     expect(screen.getByText('Thông tin đầu vào')).toBeOnTheScreen()
     expect(screen.getAllByText('Dịch vụ').length).toBeGreaterThan(0)
     expect(screen.getByText('Khoảng giá')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ ghi: Sửa điện, Sửa nước hoặc Vệ sinh.')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ tóm tắt: ví dụ ổ cắm chập, nước rò, hoặc cần dọn nhà.')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ ước tính sau khi có mô tả và bằng chứng.')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ phân loại nhẹ, vừa hoặc nặng.')).toBeOnTheScreen()
-    expect(screen.getByText('Kael sẽ cập nhật theo độ rõ của mô tả, ảnh hoặc video.')).toBeOnTheScreen()
+    expect(screen.getAllByText('Chưa có').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Chờ Kael ước tính')).toBeOnTheScreen()
+    expect(screen.getByText('Chờ Kael phân loại')).toBeOnTheScreen()
+    expect(screen.getByText('Chờ đủ dữ liệu')).toBeOnTheScreen()
+    expect(screen.getByText('Hiển thị khi có ước tính')).toBeOnTheScreen()
     expect(card).not.toHaveTextContent(/\d{2,3}\.000đ/)
     expect(card).not.toHaveTextContent(/\d+%/)
   })
@@ -745,8 +756,8 @@ describe('Kael agentic phase cards', () => {
     render(<EmptyKaelBriefCard language="vi" selectedService="plumbing" text={estimateText} />)
 
     expect(screen.getByText('Sửa nước')).toBeOnTheScreen()
-    expect(screen.queryByText('Kael sẽ ghi: Sửa điện, Sửa nước hoặc Vệ sinh.')).toBeNull()
-    expect(screen.getByText('Kael sẽ tóm tắt: ví dụ ổ cắm chập, nước rò, hoặc cần dọn nhà.')).toBeOnTheScreen()
+    expect(screen.getAllByText('Chưa có').length).toBeGreaterThan(0)
+    expect(screen.getByText('Chờ Kael ước tính')).toBeOnTheScreen()
   })
 
   it('renders Booking handoff as a structured pending intake receipt without fake estimate stats', () => {
@@ -1038,9 +1049,9 @@ describe('Kael agentic phase cards', () => {
     )
 
     expect(screen.getByTestId('customer-kael-chat-progress-trace')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-kael-chat-progress-step-intent_classification')).toHaveTextContent('Reading request')
+    expect(screen.getByTestId('customer-kael-chat-progress-step-intent_classification')).toHaveTextContent(/Reading request/)
     expect(screen.getByTestId('customer-kael-chat-progress-step-dot-intent_classification-completed')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-kael-chat-progress-step-market_lookup')).toHaveTextContent('Checking market rates in District 7')
+    expect(screen.getByTestId('customer-kael-chat-progress-step-market_lookup')).toHaveTextContent(/Checking market rates in District 7/)
     expect(screen.getByTestId('customer-kael-chat-progress-step-dot-market_lookup-running')).toBeOnTheScreen()
     expect(screen.queryByTestId('customer-kael-chat-progress-step-price_synthesis')).toBeNull()
   })
@@ -1110,7 +1121,7 @@ describe('Kael agentic phase cards', () => {
 
     expect(screen.getByTestId('customer-kael-chat-thought-trace')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-kael-chat-progress-trace-settled')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-kael-chat-progress-step-price_synthesis')).toHaveTextContent('Synthesizing estimate')
+    expect(screen.getByTestId('customer-kael-chat-progress-step-price_synthesis')).toHaveTextContent(/Synthesizing estimate/)
   })
 
   it('renders streamed token text with a caret and removes the caret for Reduce Motion', () => {

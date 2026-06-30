@@ -12,7 +12,7 @@
  *
  *   NEXT_PUBLIC_SUPABASE_URL=https://xyy....supabase.co \
  *   SUPABASE_SERVICE_ROLE_KEY=eyJ... \
- *   pnpm --filter @home-services/api test -- worker-flow
+ *   pnpm --filter @nestscout/api test -- worker-flow
  *
  * Cleans up all created auth users + rows in afterAll. If the test crashes
  * mid-flight, manual cleanup of test-customer-* / test-worker-* emails may
@@ -23,7 +23,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@home-services/shared'
+import type { Database } from '@nestscout/shared'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 

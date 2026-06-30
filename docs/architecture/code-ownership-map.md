@@ -1,4 +1,4 @@
-# Code Ownership Map
+﻿# Code Ownership Map
 
 Status: active agent navigation contract.
 
@@ -272,7 +272,7 @@ Reconciled with #3 customer Case Work (home → booking intake → Kael Case Wor
 
 **C3 mapping outcome (2026-06-23):** an exhaustive cross-region map (workflow `c3-kael-brain-map`) confirmed the "one brain" goal is mostly already met by ownership, not by code moves. Kael spans 3 regions: Edge `_shared/kael` (~44 modules, canonical, RN runtime), apps/api `lib/kael`+`lib/learning` (live reference), and `packages/shared/kael` (pure contract/util). Removable duplication is small and dominated by the boundary-forced Edge mirror + intentional divergence (no safe change can collapse the divergent prompts/vision/pricing pairs). Concrete reduce shipped: `safeParseJSON` → `packages/shared/kael/parsing.ts` (3 copies → 2; Edge keeps its boundary copy). Finding: the Edge `utils.ts` `safeParseJSON` is *less* hardened than the canonical (no input-length / max-depth guard) — low severity (LLM output is provider token-capped), tracked as a follow-up, not fixed here (Edge = high-risk RN runtime, out of safe-C3 scope).
 
-**C3 decision (2026-06-29, Tu):** accepted option (a) — keep the documented 3-region boundary; do NOT retire the apps/api Kael now. Verified at decision time: no `apps/mobile` or `supabase/functions` file imports `apps/api` / `@home-services/api` (enforced by the `lint:structure` C3 runtime-boundary check), and `runKaelPipeline` / `runLearningHook` are consumed only inside `apps/api/src` (`lib/jobs/create-job.ts` + the review route). apps/api Kael stays a RN-path-independent Next.js reference (reference-only, do not extend); a full retire remains an explicit governance call, not a mechanical step.
+**C3 decision (2026-06-29, Tu):** accepted option (a) — keep the documented 3-region boundary; do NOT retire the apps/api Kael now. Verified at decision time: no `apps/mobile` or `supabase/functions` file imports `apps/api` / `@nestscout/api` (enforced by the `lint:structure` C3 runtime-boundary check), and `runKaelPipeline` / `runLearningHook` are consumed only inside `apps/api/src` (`lib/jobs/create-job.ts` + the review route). apps/api Kael stays a RN-path-independent Next.js reference (reference-only, do not extend); a full retire remains an explicit governance call, not a mechanical step.
 
 ### #3 cross-dependency (do not split mobile twice)
 

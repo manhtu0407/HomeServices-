@@ -308,6 +308,7 @@ describe('Insert type requirements', () => {
     const turn = {
       session_id: sessionId,
       job_id: jobId,
+      client_request_id: 'turn-request-1',
       turn_index: 1,
       role: 'worker',
       content_type: 'text',
@@ -327,6 +328,7 @@ describe('Insert type requirements', () => {
 
     expect(session.job_id).toBe(jobId)
     expect(turn.job_id).toBe(jobId)
+    expect(turn.client_request_id).toBe('turn-request-1')
     expect(rateLog.worker_id).toBe(workerId)
     expect(rateArgs.p_worker_id).toBe(workerId)
     expect(rateRow.allowed).toBe(true)

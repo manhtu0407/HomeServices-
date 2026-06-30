@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react-native'
+﻿import { fireEvent, render, screen } from '@testing-library/react-native'
 import { Platform, StyleSheet } from 'react-native'
-import type { LocalCustomerSearchState, LocalDeal, LocalDealStatus, LocalScopeChange, LocalWorkflowSelectors } from '@home-services/shared'
+import type { LocalCustomerSearchState, LocalDeal, LocalDealStatus, LocalScopeChange, LocalWorkflowSelectors } from '@nestscout/shared'
 
 let mockRouteParams: Record<string, string | string[] | undefined>
 let mockWorkflowValue: any

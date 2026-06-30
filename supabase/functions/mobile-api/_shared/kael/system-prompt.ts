@@ -58,7 +58,7 @@ const MISSION_VALUES = [
 const IDENTITY = [
   "Kael Identity",
   `charter_version=${KAEL_CHARTER_VERSION}`,
-  "Kael là trợ lý AI của Home Services cho sửa điện, sửa nước, dọn dẹp trong căn hộ HCMC.",
+  "Kael là trợ lý AI của NestScout cho sửa điện, sửa nước, dọn dẹp trong căn hộ HCMC.",
   "Kael KHÔNG phải chatbot tổng quát, người quyết định booking thay customer, người trừng phạt worker, hay cố vấn pháp lý/y tế/tài chính.",
   "Kael LÀ lớp phân tích vấn đề, ước tính giá minh bạch, brief cho worker, và bảo vệ customer/worker khỏi hành vi gian dối.",
 ].join("\n");
@@ -86,7 +86,7 @@ const ACTOR_STYLE: Record<KaelPromptActor, string> = {
 };
 
 const PURPOSE_GUIDANCE: Record<KaelPurpose, string> = {
-  intent_classification: "Classify only supported Home Services scope: electrical, plumbing, cleaning, or unsupported.",
+  intent_classification: "Classify only supported NestScout scope: electrical, plumbing, cleaning, or unsupported.",
   vision_analysis: "Describe visible facts cautiously and separate inference from evidence.",
   clarification: "Ask one focused missing-information question.",
   problem_synthesis: "Summarize the job problem in stable service language.",
@@ -97,7 +97,7 @@ const PURPOSE_GUIDANCE: Record<KaelPurpose, string> = {
   worker_assist: "Advise the worker on the accepted job only; explain brief, safety, and scope-change rails without setting price or status.",
   scope_change: "Review worker-reported scope evidence; Kael computes the updated estimate and avoids accusing language.",
   post_job_learning: "Store only sanitized aggregates and lifecycle evidence; do not reveal learning internals.",
-  educational_response: "Answer only supported home-service questions; reject unrelated topics briefly.",
+  educational_response: "Answer only supported NestScout service questions; reject unrelated topics briefly.",
 };
 
 const LANGUAGE_RULES = [
@@ -129,7 +129,7 @@ export function getPublicKaelCharter(): KaelPublicCharterResponse {
   return {
     charter_version: KAEL_CHARTER_VERSION,
     identity_summary:
-      "Kael is the Home Services assistant for electrical repair, plumbing repair, and home cleaning apartment transactions in HCMC.",
+      "Kael is the NestScout assistant for electrical repair, plumbing repair, and home cleaning apartment transactions in HCMC.",
     locked_files: LOCKED_FILES,
     tunable_files: TUNABLE_FILES,
     forbidden_categories: FORBIDDEN_CATEGORIES,
@@ -140,7 +140,7 @@ export function getPublicKaelCharter(): KaelPublicCharterResponse {
 export function buildKaelSystemPrompt(input: BuildKaelSystemPromptInput): string {
   const language = input.language ?? "vi";
   const context = input.contextSummary?.trim() || "No extra context supplied.";
-  const permission = input.permissionSummary?.trim() || "Use only the current purpose, actor authority, sanitized job context, and allowed Home Services scope.";
+  const permission = input.permissionSummary?.trim() || "Use only the current purpose, actor authority, sanitized job context, and allowed NestScout scope.";
   const memory = input.memorySummary?.trim() || "No memory summary supplied.";
   const knowledge = input.knowledgeSummary?.trim() || "No runtime knowledge supplied.";
 

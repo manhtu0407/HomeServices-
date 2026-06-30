@@ -1,5 +1,5 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
-import { jobCreateSchema } from '@home-services/shared'
+import { jobCreateSchema } from '@nestscout/shared'
 import { createJobWithEstimate } from '@/lib/jobs/create-job'
 import { checkRateLimit, AI_SESSION_LIMIT } from '@/lib/rate-limit'
 

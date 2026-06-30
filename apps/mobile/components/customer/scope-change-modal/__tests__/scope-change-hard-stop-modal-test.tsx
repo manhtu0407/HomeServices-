@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react-native'
-import type { LocalScopeChange } from '@home-services/shared'
+import type { LocalScopeChange } from '@nestscout/shared'
 import { ScopeChangeHardStopModal } from '../scope-change-hard-stop-modal'
 
 // A11 scope-change hard stop is the highest-risk money surface: the worker is

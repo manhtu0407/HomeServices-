@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, UserRole, JobStatus, TablesInsert } from '@home-services/shared'
+import type { Database, UserRole, JobStatus, TablesInsert } from '@nestscout/shared'
 
 type JobEventInsert = TablesInsert<'job_events'>
 

@@ -1,5 +1,5 @@
-// Worker verification form state + reducer, extracted from worker-surfaces.tsx (C4 stage 5b).
-import type { ServiceType } from '@home-services/shared'
+﻿// Worker verification form state + reducer, extracted from worker-surfaces.tsx (C4 stage 5b).
+import type { ServiceType } from '@nestscout/shared'
 import type { WorkerProfileResponse } from '@/lib/api-types'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 import type { WorkerVerificationFileSlot } from './types'

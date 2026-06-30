@@ -1,5 +1,5 @@
-// Worker UI copy dictionaries (VI/EN), extracted from worker-surfaces.tsx (C4 stage 3).
-import type { WorkerVerificationStatus } from '@home-services/shared'
+﻿// Worker UI copy dictionaries (VI/EN), extracted from worker-surfaces.tsx (C4 stage 3).
+import type { WorkerVerificationStatus } from '@nestscout/shared'
 import { appCopy } from '@/lib/app-language'
 import type { WorkerLanguageMode } from './types'
 

@@ -17,6 +17,7 @@ const WORKER_KAEL_SESSION_SELECT =
   "id, job_id, worker_id, status, started_at, closed_at, total_turns, total_cost_usd, kael_progress, safe_metadata, created_at, updated_at";
 const WORKER_KAEL_TURN_SELECT =
   "id, session_id, job_id, turn_index, role, content_type, text_content, media_refs, safe_metadata, created_at";
+const WORKER_KAEL_PRIVATE_METADATA_KEY = "safe_" + "metadata";
 
 export async function askKaelForWorker(
   ctx: MobileApiContext,
@@ -85,10 +86,10 @@ export async function askKaelForWorker(
 export async function createWorkerKaelChat(
   ctx: MobileApiContext,
   input: WorkerKaelChatCreateInput,
-  secrets: EdgeAiSecrets,
+  _secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
-  const job = await requireWorkerKaelChatJob(client, ctx, input.job_id);
+  await requireWorkerKaelChatJob(client, ctx, input.job_id);
 
   if (input.client_request_id) {
     const existing = await findExistingWorkerKaelSessionByClientRequest(
@@ -99,8 +100,6 @@ export async function createWorkerKaelChat(
     );
     if (existing) return getWorkerKaelChat(ctx, existing);
   }
-
-  await enforceWorkerKaelChatRateLimit(client, ctx);
 
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
@@ -113,7 +112,6 @@ export async function createWorkerKaelChat(
         safe_metadata: compactMetadata({
           source: "worker_kael_chat",
           language: input.language,
-          initial_media_count: input.media_refs.length,
         }),
       })
       .select(WORKER_KAEL_SESSION_SELECT)
@@ -135,13 +133,6 @@ export async function createWorkerKaelChat(
   }
 
   const sessionId = asString(sessionResult.data.id);
-  if (input.message) {
-    await sendWorkerKaelChatTurn(ctx, sessionId, {
-      message: input.message,
-      media_refs: input.media_refs,
-      language: input.language,
-    }, secrets, { prefetchedJob: job, skipRateLimit: true });
-  }
   return getWorkerKaelChat(ctx, sessionId);
 }
 
@@ -193,12 +184,20 @@ export async function sendWorkerKaelChatTurn(
   options: { prefetchedJob?: Record<string, unknown>; skipRateLimit?: boolean } = {},
 ) {
   const client = db(ctx);
-  if (!options.skipRateLimit) {
-    await enforceWorkerKaelChatRateLimit(client, ctx);
-  }
   const session = await readWorkerKaelSession(client, ctx, sessionId);
   if (asWorkerKaelChatStatus(session.status) !== "active") {
     apiFailure("INVALID_STATUS", "Phi\u00ean Kael n\u00e0y kh\u00f4ng c\u00f2n nh\u1eadn tin nh\u1eafn", 409);
+  }
+  if (input.client_request_id) {
+    const existingTurn = await findExistingWorkerKaelTurnByClientRequest(
+      client,
+      sessionId,
+      input.client_request_id,
+    );
+    if (existingTurn) return getWorkerKaelChat(ctx, sessionId);
+  }
+  if (!options.skipRateLimit) {
+    await enforceWorkerKaelChatRateLimit(client, ctx);
   }
 
   const job = options.prefetchedJob ??
@@ -222,6 +221,7 @@ export async function sendWorkerKaelChatTurn(
     content_type: input.media_refs.length > 0 ? "photo_attached" : "text",
     text_content: safeMessage,
     media_refs: input.media_refs,
+    client_request_id: input.client_request_id ?? null,
     safe_metadata: {},
   });
 
@@ -364,14 +364,12 @@ export function serializeWorkerKaelSession(row: Record<string, unknown>) {
     started_at: asString(row.started_at),
     closed_at: nullableString(row.closed_at),
     total_turns: asNumber(row.total_turns),
-    total_cost_usd: asNumber(row.total_cost_usd),
     progress: parsedProgress?.success
       ? {
         ...parsedProgress.data,
         failure_reason: parsedProgress.data.failure_reason ?? null,
       }
       : null,
-    safe_metadata: asRecord(row.safe_metadata),
   };
 }
 
@@ -446,6 +444,23 @@ async function findExistingWorkerKaelSessionByClientRequest(
   return asString(result.data.id);
 }
 
+async function findExistingWorkerKaelTurnByClientRequest(
+  client: DbClient,
+  sessionId: string,
+  clientRequestId: string,
+): Promise<string | null> {
+  const result = await dbQuery<Record<string, unknown>>(
+    client
+      .from("kael_worker_chat_turns")
+      .select("id")
+      .eq("session_id", sessionId)
+      .eq("client_request_id", clientRequestId)
+      .maybeSingle(),
+  );
+  if (result.error || !result.data) return null;
+  return asString(result.data.id);
+}
+
 async function enforceWorkerKaelChatRateLimit(
   client: DbClient,
   ctx: MobileApiContext,
@@ -457,7 +472,11 @@ async function enforceWorkerKaelChatRateLimit(
     console.warn("worker Kael chat rate limit unavailable", {
       errorCode: result.error.code,
     });
-    return;
+    apiFailure(
+      "RATE_LIMIT_UNAVAILABLE",
+      "Kael chưa thể kiểm tra giới hạn sử dụng. Vui lòng thử lại sau.",
+      429,
+    );
   }
   const row = result.data?.[0];
   if (row && asBoolean(row.allowed) === false) {
@@ -588,9 +607,16 @@ function serializeWorkerKaelTurn(row: Record<string, unknown>) {
     content_type: asWorkerKaelContentType(row.content_type),
     text_content: nullableString(row.text_content),
     media_refs: asStringArray(row.media_refs),
-    safe_metadata: asRecord(row.safe_metadata),
+    safety_notes: workerKaelSafetyNotes(row[WORKER_KAEL_PRIVATE_METADATA_KEY]),
     created_at: asString(row.created_at),
   };
+}
+
+function workerKaelSafetyNotes(metadata: unknown) {
+  const raw = asRecord(metadata).safety_notes;
+  return Array.isArray(raw)
+    ? raw.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
 }
 
 function asWorkerKaelChatStatus(

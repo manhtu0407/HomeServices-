@@ -267,7 +267,7 @@ type WorkerKaelChatTurnResponse = {
   content_type: "text" | "clarification" | "guidance" | "photo_request" | "photo_attached" | "error";
   text_content: string | null;
   media_refs: string[];
-  safe_metadata: Record<string, unknown>;
+  safety_notes: string[];
   created_at: string;
 };
 type WorkerKaelChatSessionResponse = {
@@ -278,7 +278,6 @@ type WorkerKaelChatSessionResponse = {
   started_at: string;
   closed_at: string | null;
   total_turns: number;
-  total_cost_usd: number;
   progress: {
     current_stage: string;
     status: "queued" | "running" | "completed" | "failed";
@@ -286,7 +285,6 @@ type WorkerKaelChatSessionResponse = {
     failure_reason: string | null;
     updated_at: string;
   } | null;
-  safe_metadata: Record<string, unknown>;
 };
 type WorkerKaelChatResponse = {
   session: WorkerKaelChatSessionResponse;

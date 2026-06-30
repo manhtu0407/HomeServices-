@@ -118,7 +118,7 @@ create trigger worker_cancellation_requests_updated_at
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values
   ('worker-verification', 'worker-verification', false, 10485760, array['image/jpeg','image/png','image/webp','application/pdf']),
-  ('job-media', 'job-media', false, 26214400, array['image/jpeg','image/png','image/webp','video/mp4'])
+  ('job-media', 'job-media', false, 26214400, array['image/jpeg','image/png','image/webp','video/mp4','audio/m4a','audio/mp4','audio/mpeg','audio/wav','audio/aac'])
 on conflict (id) do update
 set
   public = excluded.public,

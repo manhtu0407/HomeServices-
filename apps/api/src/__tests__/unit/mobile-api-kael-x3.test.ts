@@ -3,7 +3,7 @@ import {
   extractDistrictFromAddressLabel,
   normalizeDistrict,
   workerRegisterSchema,
-} from '@home-services/shared'
+} from '@nestscout/shared'
 
 // X3 (Plan.md §27.6 — 2026-05-29): Matching layer unblock fixes.
 // - F-08 normalizeDistrict should match ASCII labels via diacritic strip

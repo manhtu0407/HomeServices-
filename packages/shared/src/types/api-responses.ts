@@ -6,6 +6,7 @@ import type {
   BroadcastStatus,
   ScopeChangeStatus,
 } from '../constants'
+import type { LocalPaymentStatus } from '../mobile-workflow'
 import type { ApartmentAccessProfileInput, KaelChatProgress } from '../validation'
 
 export type AddressAccessView = {
@@ -57,6 +58,7 @@ export type ServiceCatalogResponse = {
 
 export type CreateJobResponse = {
   job_id: string
+  display_code?: string
   status: JobStatus
   estimate: KaelEstimate
   estimate_card_v3?: Record<string, unknown>
@@ -68,6 +70,7 @@ export type CreateJobResponse = {
 
 export type KaelChatStatus =
   | 'active'
+  | 'collecting_evidence'
   | 'estimate_ready'
   | 'confirmed'
   | 'abandoned'
@@ -75,6 +78,7 @@ export type KaelChatStatus =
 
 export type KaelChatNextAction =
   | 'await_input'
+  | 'collect_evidence'
   | 'ask_photo'
   | 'ask_video'
   | 'estimate_ready'
@@ -134,9 +138,18 @@ export type PlacesAutocompleteResponse = {
   fallback_used: boolean
 }
 
+export type PlacesResolveResponse = {
+  fallback_used: boolean
+  label: string | null
+  location: { lat: number; lng: number } | null
+  place_id: string
+  provider: 'vietmap' | 'google_maps' | 'fallback'
+}
+
 export type JobDetailResponse = {
   job: {
     id: string
+    display_code?: string
     status: JobStatus
     service_type: ServiceType
     description: string
@@ -158,6 +171,17 @@ export type JobDetailResponse = {
     kael_worker_brief_guidance: Record<string, unknown> | null
     kael_progress: KaelChatProgress | null
     final_price: number | null
+    payment_status?: LocalPaymentStatus | null
+    payment_provider?: string | null
+    payment_code?: string | null
+    payment_transfer_content?: string | null
+    payment_qr_image_url?: string | null
+    payment_expires_at?: string | null
+    payment_received_at?: string | null
+    payment_amount_received?: number | null
+    gross_amount?: number | null
+    platform_fee?: number | null
+    worker_net?: number | null
     completion_notes: string | null
     completion_photo_urls: string[]
     created_at: string
@@ -168,6 +192,15 @@ export type JobDetailResponse = {
     paid_at: string | null
     reviewed_at: string | null
   }
+  worker: {
+    avatar_url: string | null
+    display_code?: string | null
+    full_name: string
+    id: string
+    rating: number
+    review_count?: number | null
+    total_jobs: number
+  } | null
   broadcast_state: {
     active_count: number
     seconds_remaining: number | null
@@ -212,8 +245,12 @@ export type ConfirmSearchResponse = {
   status: JobStatus
   broadcast_sent: boolean
   worker: {
+    avatar_url: string | null
+    display_code?: string | null
     full_name: string
+    id: string
     rating: number
+    review_count?: number | null
     total_jobs: number
   } | null
   message: string
@@ -234,6 +271,25 @@ export type ConfirmCompletionResponse = {
   job_id: string
   status: JobStatus
   final_price: number | null
+}
+
+export type PaymentIntentResponse = {
+  job_id: string
+  status: JobStatus
+  payment: {
+    provider: 'sepay_vietqr'
+    status: LocalPaymentStatus
+    gross_amount: number | null
+    platform_fee: number | null
+    worker_net: number | null
+    payment_code: string | null
+    transfer_content: string | null
+    qr_image_url: string | null
+    expires_at: string | null
+    received_at: string | null
+    amount_received: number | null
+    updated_at: string | null
+  }
 }
 
 export type CustomerCancellationResponse = {
@@ -437,6 +493,7 @@ export type WorkerCancellationDecisionResponse = {
 export type WorkerJobListResponse = {
   jobs: {
     id: string
+    display_code: string | null
     status: JobStatus
     service_type: ServiceType
     problem_summary: string | null
@@ -447,6 +504,17 @@ export type WorkerJobListResponse = {
     address_access: AddressAccessView
     final_price: number | null
     estimated_earning: number | null
+    payment_status?: LocalPaymentStatus | null
+    payment_provider?: string | null
+    payment_code?: string | null
+    payment_transfer_content?: string | null
+    payment_qr_image_url?: string | null
+    payment_expires_at?: string | null
+    payment_received_at?: string | null
+    payment_amount_received?: number | null
+    gross_amount?: number | null
+    platform_fee?: number | null
+    worker_net?: number | null
     completion_notes: string | null
     completion_photo_urls: string[]
     worker_brief_guidance?: Record<string, unknown> | null

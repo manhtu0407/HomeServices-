@@ -1,4 +1,4 @@
-/**
+﻿/**
  * RLS per-actor integration tests — real Supabase staging, AUTHENTICATED clients.
  * Proves ownership + PII isolation enforced by RLS itself (service-role bypasses RLS,
  * so the lifecycle tests do not cover this). Env-gated: skips without staging creds;
@@ -13,7 +13,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@home-services/shared'
+import type { Database } from '@nestscout/shared'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 

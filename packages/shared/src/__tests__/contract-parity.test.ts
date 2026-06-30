@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
@@ -74,7 +74,7 @@ describe('C2 contract parity — Edge mirror matches the shared canonical (value
   }
 
   it('mobile re-exports the contracts from shared (no local re-declaration)', () => {
-    expect(mobile).toContain("} from '@home-services/shared'")
+    expect(mobile).toContain("} from '@nestscout/shared'")
     expect(mobile).not.toContain('type KaelEstimate = {')
     expect(mobile).not.toContain('export type CreateJobResponse = {')
     expect(mobile).not.toContain('export type KaelChatResponse = {')

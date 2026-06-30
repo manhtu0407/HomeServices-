@@ -58,7 +58,7 @@ Each option must define:
 - motion treatment,
 - component anatomy,
 - what was learned from XanhSM,
-- what is original to Home Services,
+- what is original to NestScout,
 - risks.
 
 Do not build production UI until Tu accepts a direction.
@@ -73,7 +73,7 @@ Required evidence:
 Reference frames:
 What was extracted:
 What was rejected:
-Home Services adaptation:
+NestScout adaptation:
 Palette treatment:
 Typography treatment:
 Motion treatment:
@@ -86,7 +86,7 @@ Agents must separate observation from interpretation:
 
 ```text
 Observation: XanhSM uses a mint/cyan glow behind the service shell.
-Interpretation: Home Services can use a restrained mint material layer behind Kael Price Check.
+Interpretation: NestScout can use a restrained mint material layer behind Kael Price Check.
 Adaptation: Use a smaller, softer mint layer tied to address/search and Kael CTA, not a transport map glow.
 ```
 

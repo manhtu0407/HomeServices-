@@ -1,5 +1,7 @@
-import { Redirect, Tabs } from 'expo-router'
+import { Redirect, Tabs, usePathname } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
+import { WorkerDockLayoutProvider, WorkerRebuildDockOverlay, type WorkerDockActive } from '@/components/worker/worker-surfaces'
+import { color } from '@/design/theme'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage } from '@/lib/app-language'
 
@@ -26,13 +28,24 @@ const WORKER_TAB_COPY = {
 } as const
 
 const dockTokens = {
-  active: '#08786E',
+  active: color.brand.primary,
+}
+
+function activeWorkerDockFromPath(pathname: string): WorkerDockActive {
+  if (pathname.includes('jobs')) return 'jobs'
+  if (pathname.includes('earnings')) return 'earnings'
+  if (pathname.includes('profile')) return 'profile'
+  if (pathname.includes('chat')) return 'kael'
+  return 'home'
 }
 
 export default function WorkerLayout() {
   const { loading, role, session } = useAuth()
   const language = useAppLanguage()
+  const pathname = usePathname()
   const tabCopy = WORKER_TAB_COPY[language]
+  const activeDock = activeWorkerDockFromPath(pathname)
+  const shouldShowDock = !pathname.includes('chat')
 
   if (loading) {
     return (
@@ -62,12 +75,17 @@ export default function WorkerLayout() {
   }
 
   return (
-    <Tabs tabBar={() => null} screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="home" options={{ title: tabCopy.home }} />
-      <Tabs.Screen name="jobs" options={{ title: tabCopy.jobs }} />
-      <Tabs.Screen name="chat" options={{ title: tabCopy.chat }} />
-      <Tabs.Screen name="earnings" options={{ title: tabCopy.earnings }} />
-      <Tabs.Screen name="profile" options={{ title: tabCopy.profile }} />
-    </Tabs>
+    <WorkerDockLayoutProvider>
+      <View style={{ flex: 1 }}>
+        <Tabs tabBar={() => null} screenOptions={{ headerShown: false }}>
+          <Tabs.Screen name="home" options={{ title: tabCopy.home }} />
+          <Tabs.Screen name="jobs" options={{ title: tabCopy.jobs }} />
+          <Tabs.Screen name="chat" options={{ href: null, title: tabCopy.chat }} />
+          <Tabs.Screen name="earnings" options={{ title: tabCopy.earnings }} />
+          <Tabs.Screen name="profile" options={{ title: tabCopy.profile }} />
+        </Tabs>
+        {shouldShowDock ? <WorkerRebuildDockOverlay active={activeDock} /> : null}
+      </View>
+    </WorkerDockLayoutProvider>
   )
 }

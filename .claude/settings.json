@@ -1,11 +1,13 @@
 {
   "permissions": {
     "allow": [
+      "Bash(pnpm *)",
+      "Bash(corepack pnpm *)",
       "Bash(npm run *)",
       "Bash(npm install *)",
-      "Bash(npx supabase *)",
+      "Bash(scripts/run-*.cmd *)",
+      "Bash(scripts\\\\run-*.cmd *)",
       "Bash(npx next *)",
-      "Bash(npx vitest*)",
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
@@ -29,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-frontend-gates.mjs\"",
+            "command": "\"${CLAUDE_PROJECT_DIR}/scripts/run-node.cmd\" \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-frontend-gates.mjs\"",
             "timeout": 180
           }
         ]

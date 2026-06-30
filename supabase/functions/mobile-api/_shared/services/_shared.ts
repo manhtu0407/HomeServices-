@@ -582,7 +582,8 @@ export function canAttachJobMediaStage(
   isAdmin: boolean,
 ) {
   if (isAdmin) return true;
-  if (stage === "before" || stage === "kael_reference") return isCustomer;
+  if (stage === "kael_reference") return isCustomer || isWorker;
+  if (stage === "before") return isCustomer;
   return isWorker;
 }
 

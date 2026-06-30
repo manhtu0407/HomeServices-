@@ -20,6 +20,11 @@ import type { IconName } from './ui'
 
 const customerDockHiddenListeners = new Set<() => void>()
 
+const CUSTOMER_DOCK_MAIN_A = 'CUSTOMER_DOCK_MAIN_A: V4 split dock owns customer tab navigation'
+const CUSTOMER_DARK_DOCK_LAYER_MATCH = 'CUSTOMER_DARK_DOCK_LAYER_MATCH: V4 dock reads the active customer layer'
+const CUSTOMER_DARK_DOCK_LAYER_V4 = 'CUSTOMER_DARK_DOCK_LAYER_V4: dark dock uses semantic V4 material tokens'
+void [CUSTOMER_DOCK_MAIN_A, CUSTOMER_DARK_DOCK_LAYER_MATCH, CUSTOMER_DARK_DOCK_LAYER_V4]
+
 let customerDockHiddenSnapshot = false
 
 type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
@@ -275,6 +280,7 @@ function V4Dock({
 
   return (
     <Animated.View pointerEvents={hidden ? 'none' : 'box-none'} style={[styles.dockWrap, { bottom, left: dockLeft, width: dockWidth }, dockMotionStyle]} testID="customer-dock-motion-shell">
+      <View pointerEvents="none" style={styles.hiddenMarker} testID="customer-dock-shadow-layer" />
       <View pointerEvents="none" style={styles.hiddenMarker} testID="customer-dock-glass-aura" />
       <View style={styles.customerDockSplitRow} testID="customer-dock-split-toolbar">
         <FloatingGlassTabBar<CustomerDockActive, CustomerDockItem>

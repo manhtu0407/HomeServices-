@@ -24,22 +24,34 @@ import type {
   ConfirmKaelChatResponse,
   CustomerCancellationResponse,
   CustomerKaelFeedbackResponse,
+  CustomerPaymentMethodResponse,
+  CustomerPaymentMethodSaveInput,
+  CustomerProfileInsightsResponse,
   DisputeAdminDecisionResponse,
   DisputeCounterStatementResponse,
   DisputeOpenResponse,
+  KaelAssistantResponse,
   KaelChatResponse,
+  KaelChatMediaUploadResponse,
+  KaelMemorySelfViewResponse,
   KaelChatProgressResponse,
   KaelLearningCandidateApproveResponse,
   KaelLearningCandidateListResponse,
   KaelLearningCandidateRejectResponse,
   NotificationListResponse,
   NotificationReadResponse,
+  PaymentIntentResponse,
   PlacesAutocompleteResponse,
+  PlacesResolveResponse,
   ConfirmSearchResponse,
   StatusUpdateResponse,
   ConfirmCompletionResponse,
   ReviewResponse,
   WorkerJobListResponse,
+  WorkerApplicationResponse,
+  WorkerPerformanceInsightsResponse,
+  WorkerPayoutMethodResponse,
+  WorkerPayoutMethodSaveInput,
   WorkerProfileResponse,
   WorkerRegisterResponse,
   WorkerCancellationDecisionInput,
@@ -63,18 +75,24 @@ import type {
   JobCreateInput,
   JobStatus,
   CustomerKaelFeedbackInput,
+  CustomerKaelMemoryPreferenceUpdateInput,
+  KaelAssistantInput,
   KaelWorkerClarifyInput,
   KaelChatCreateInput,
+  KaelChatEvidenceInput,
   KaelChatTurnInput,
   PlacesAutocompleteInput,
   ReviewInput,
+  WorkerApplicationSubmitInput,
   WorkerRegisterInput,
+  WorkerServiceAreaUpdateInput,
   WorkerKaelChatCreateInput,
   WorkerKaelFeedbackInput,
   WorkerKaelTrainingConsentInput,
   WorkerKaelChatTurnInput,
+  WorkerKaelMemoryPreferenceUpdateInput,
   WorkerScopeChangeInput,
-} from '@home-services/shared'
+} from '@nestscout/shared'
 
 type WorkerStatusUpdate = Extract<JobStatus, 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'completed_by_worker'>
 type WorkerAccessCheckInInput = {
@@ -201,6 +219,10 @@ export const jobService = {
     return api.post<ConfirmCompletionResponse>(`/jobs/${jobId}/confirm-completion`)
   },
 
+  createPaymentIntent(jobId: string) {
+    return api.post<PaymentIntentResponse>(`/jobs/${jobId}/payment-intent`)
+  },
+
   submitReview(jobId: string, input: Omit<ReviewInput, 'job_id'>) {
     return api.post<ReviewResponse>(`/jobs/${jobId}/review`, {
       ...input,
@@ -222,8 +244,22 @@ export const kaelChatService = {
     return api.post<KaelChatResponse>(`/kael/chat/${sessionId}`, input)
   },
 
+  createMediaUpload(input: { file_name?: string; mime_type: string; file_size_bytes?: number }) {
+    return api.post<KaelChatMediaUploadResponse>('/kael/chat/media-upload', input)
+  },
+
+  submitEvidence(sessionId: string, input: KaelChatEvidenceInput) {
+    return api.post<KaelChatResponse>(`/kael/chat/${sessionId}/evidence`, input)
+  },
+
   confirm(sessionId: string) {
     return api.post<ConfirmKaelChatResponse>(`/kael/chat/${sessionId}/confirm`)
+  },
+}
+
+export const kaelAssistantService = {
+  ask(input: KaelAssistantInput) {
+    return api.post<KaelAssistantResponse>('/kael/assistant', input)
   },
 }
 
@@ -279,13 +315,53 @@ export const customerFeedbackService = {
   },
 }
 
+export const customerProfileService = {
+  getInsights() {
+    return api.get<CustomerProfileInsightsResponse>('/me/profile-insights')
+  },
+
+  getPaymentMethod() {
+    return api.get<CustomerPaymentMethodResponse>('/me/payment-method')
+  },
+
+  savePaymentMethod(input: CustomerPaymentMethodSaveInput) {
+    return api.put<CustomerPaymentMethodResponse>('/me/payment-method', input)
+  },
+}
+
+export const kaelMemoryService = {
+  getMyMemory() {
+    return api.get<KaelMemorySelfViewResponse>('/me/kael-memory')
+  },
+
+  updateMyPreference(input: CustomerKaelMemoryPreferenceUpdateInput) {
+    return api.patch<KaelMemorySelfViewResponse>('/me/kael-memory', input)
+  },
+
+  getMyWorkerMemory() {
+    return api.get<KaelMemorySelfViewResponse>('/workers/me/kael-memory')
+  },
+
+  updateMyWorkerPreference(input: WorkerKaelMemoryPreferenceUpdateInput) {
+    return api.patch<KaelMemorySelfViewResponse>('/workers/me/kael-memory', input)
+  },
+}
+
 export const placesService = {
   autocomplete(input: PlacesAutocompleteInput) {
     return api.post<PlacesAutocompleteResponse>('/places/autocomplete', input)
   },
+
+  resolve(input: { label?: string; place_id: string }) {
+    return api.post<PlacesResolveResponse>('/places/resolve', input)
+  },
 }
 
 export const workerService = {
+  submitApplication(input: WorkerApplicationSubmitInput) {
+    return api.post<WorkerApplicationResponse>('/worker-applications', input)
+  },
+
   register(input: WorkerRegisterInput) {
     return api.post<WorkerRegisterResponse>('/workers/register', input)
   },
@@ -294,8 +370,20 @@ export const workerService = {
     return api.get<WorkerProfileResponse>('/workers/me')
   },
 
+  savePayoutMethod(input: WorkerPayoutMethodSaveInput) {
+    return api.put<WorkerPayoutMethodResponse>('/workers/me/payout-method', input)
+  },
+
+  getPerformanceInsights() {
+    return api.get<WorkerPerformanceInsightsResponse>('/workers/me/performance-insights')
+  },
+
   updateAvailability(input: AvailabilityToggleInput) {
     return api.patch<AvailabilityToggleResponse>('/workers/me/availability', input)
+  },
+
+  updateServiceArea(input: WorkerServiceAreaUpdateInput) {
+    return api.patch<WorkerProfileResponse>('/workers/me/service-area', input)
   },
 
   getBroadcasts() {

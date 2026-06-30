@@ -1,7 +1,7 @@
-// Worker chat/brief localizers + copy helpers, extracted from worker-surfaces.tsx (C4 stage 5).
+﻿// Worker chat/brief localizers + copy helpers, extracted from worker-surfaces.tsx (C4 stage 5).
 import { Platform } from 'react-native'
-import { HCMC_DISTRICTS, LOCAL_DEAL_ID, normalizeDistrict } from '@home-services/shared'
-import type { DistrictSlug, LocalDeal, LocalDealStatus } from '@home-services/shared'
+import { HCMC_DISTRICTS, LOCAL_DEAL_ID, normalizeDistrict } from '@nestscout/shared'
+import type { DistrictSlug, LocalDeal, LocalDealStatus } from '@nestscout/shared'
 import { appCopy, localizedProblemLabel, localizedServiceLabel, localizedStatusLabel } from '@/lib/app-language'
 import type { JobMessageResponse, KaelChatProgress, WorkerKaelChatTurn } from '@/lib/api-types'
 import { workerCopy } from './copy'
@@ -200,16 +200,9 @@ export function workerChatMessageFromWorkerKaelTurn(turn: WorkerKaelChatTurn, la
 export function workerKaelTurnText(turn: WorkerKaelChatTurn, language: WorkerLanguageMode) {
   const base = turn.text_content?.trim() ||
     (language === 'en' ? 'Kael saved this advisory turn.' : 'Kael \u0111\u00e3 l\u01b0u l\u01b0\u1ee3t t\u01b0 v\u1ea5n n\u00e0y.')
-  const notes = workerKaelSafetyNotes(turn.safe_metadata).slice(0, 2)
+  const notes = turn.safety_notes.slice(0, 2)
   if (notes.length === 0 || turn.role === 'worker') return base
   return `${base}\n${notes.map((note) => `- ${note}`).join('\n')}`
-}
-
-export function workerKaelSafetyNotes(metadata: Record<string, unknown>) {
-  const raw = metadata.safety_notes
-  return Array.isArray(raw)
-    ? raw.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    : []
 }
 
 export function workerKaelChatErrorCopy(language: WorkerLanguageMode) {

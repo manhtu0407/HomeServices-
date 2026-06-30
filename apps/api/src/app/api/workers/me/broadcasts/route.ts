@@ -1,8 +1,8 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
 import { withDbTimeout } from '@/lib/db/query'
 import { secondsRemaining } from '@/lib/jobs/broadcast'
-import { PLATFORM_FEE_WORKER } from '@home-services/shared'
-import type { Tables } from '@home-services/shared'
+import { PLATFORM_FEE_WORKER } from '@nestscout/shared'
+import type { Tables } from '@nestscout/shared'
 
 // Worker net = gross * (1 - platform fee). E.g., 10% fee -> worker keeps 90%.
 const WORKER_NET_MULTIPLIER = 1 - PLATFORM_FEE_WORKER
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
   if (error) {
     console.warn('GET /workers/me/broadcasts: query failed', { userId: auth.user.id, errorCode: error.code })
-    return apiError('DB_ERROR', 'KhÃ´ng thá»ƒ táº£i yÃªu cáº§u', 500)
+    return apiError('DB_ERROR', 'Không thể tải yêu cầu', 500)
   }
 
   const broadcasts = (rows ?? [])

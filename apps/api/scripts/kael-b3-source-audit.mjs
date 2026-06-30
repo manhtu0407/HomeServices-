@@ -156,7 +156,7 @@ async function callPerplexity(apiKey, source) {
         {
           role: 'system',
           content:
-            'Audit source evidence for a Vietnamese home-services safety/legal corpus. Return concise Vietnamese notes. Do not invent citations.',
+            'Audit source evidence for the Vietnamese NestScout safety/legal corpus. Return concise Vietnamese notes. Do not invent citations.',
         },
         {
           role: 'user',

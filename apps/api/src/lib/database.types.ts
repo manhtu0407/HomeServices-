@@ -5,5 +5,5 @@ export type {
   Tables,
   TablesInsert,
   TablesUpdate,
-} from '@home-services/shared/types'
-export { Constants } from '@home-services/shared/types'
+} from '@nestscout/shared/types'
+export { Constants } from '@nestscout/shared/types'

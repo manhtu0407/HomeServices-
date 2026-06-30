@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react-native'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 
 // Kael Autonomy v2 routes structured intake to the full-screen Kael chat. The
@@ -8,6 +8,8 @@ let mockConfirmRemoteSearch: jest.Mock
 let mockCreateRemoteJobFromDraft: jest.Mock
 let mockRouteParams: Record<string, string | string[] | undefined>
 let mockWorkflowValue: any
+const mockLaunchImageLibraryAsync = jest.fn()
+const mockRequestMediaLibraryPermissionsAsync = jest.fn()
 const mockSetPendingKaelChatDraft = jest.fn()
 
 jest.mock('@/lib/frontend-workflow-provider', () => ({
@@ -18,6 +20,11 @@ jest.mock('@/lib/app-language', () => ({
 }))
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
+}))
+jest.mock('expo-image-picker', () => ({
+  MediaTypeOptions: { Images: 'Images' },
+  launchImageLibraryAsync: (options: unknown) => mockLaunchImageLibraryAsync(options),
+  requestMediaLibraryPermissionsAsync: () => mockRequestMediaLibraryPermissionsAsync(),
 }))
 jest.mock('../kael-chat/pending-intake', () => ({
   setPendingKaelChatDraft: (draft: unknown) => mockSetPendingKaelChatDraft(draft),
@@ -62,11 +69,19 @@ function buildWorkflow() {
 
 beforeEach(() => {
   mockRouteParams = {}
+  mockLaunchImageLibraryAsync.mockReset()
+  mockLaunchImageLibraryAsync.mockResolvedValue({
+    assets: [],
+    canceled: true,
+  })
+  mockRequestMediaLibraryPermissionsAsync.mockReset()
+  mockRequestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
   mockSetPendingKaelChatDraft.mockClear()
+  mockSetPendingKaelChatDraft.mockResolvedValue(undefined)
   buildWorkflow()
 })
 
-function submitDescribe(onOpenKael: jest.Mock) {
+async function submitDescribe(onOpenKael: jest.Mock) {
   fireEvent.press(screen.getByTestId('booking-wizard-service-electrical'))
   fireEvent.press(screen.getByTestId('booking-wizard-service-next'))
   fireEvent.changeText(
@@ -75,7 +90,9 @@ function submitDescribe(onOpenKael: jest.Mock) {
   )
   fireEvent.press(screen.getByTestId('mock-address-set'))
   fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
-  expect(onOpenKael).toHaveBeenCalledWith('electrical')
+  await waitFor(() => {
+    expect(onOpenKael).toHaveBeenCalledWith('electrical')
+  })
 }
 
 describe('BookingWizard Kael autonomy', () => {
@@ -101,10 +118,10 @@ describe('BookingWizard Kael autonomy', () => {
     expect(mockConfirmRemoteSearch).not.toHaveBeenCalled()
   })
 
-  it('hands structured intake to Kael chat without creating a remote job', () => {
+  it('hands structured intake to Kael chat without creating a remote job', async () => {
     const onOpenKael = jest.fn()
     render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
-    submitDescribe(onOpenKael)
+    await submitDescribe(onOpenKael)
     expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
       addressLabel: 'Quận 1, TP.HCM',
       districtLabel: 'Quận 1',
@@ -125,21 +142,202 @@ describe('BookingWizard Kael autonomy', () => {
     expect(screen.getByTestId('booking-wizard-apple-ios26-component-system')).toBeTruthy()
     expect(screen.getByTestId('booking-wizard-description-field-shell')).toBeTruthy()
     expect(screen.getByTestId('booking-wizard-photo-rail')).toBeTruthy()
+    expect(screen.getByTestId('booking-wizard-media-upload-tray')).toBeTruthy()
+    expect(screen.getByTestId('booking-wizard-voice-capsule')).toBeTruthy()
     expect(screen.queryByTestId('booking-wizard-step-service')).toBeNull()
   })
 
-  it('keeps activity action out of the pre-analysis handoff path', () => {
+  it('previews selected media and hands the real photo drafts to Kael chat', async () => {
+    const onOpenKael = jest.fn()
+    mockRouteParams = { serviceType: 'electrical' }
+    mockLaunchImageLibraryAsync.mockResolvedValue({
+      assets: [
+        {
+          fileName: 'burnt-outlet.jpg',
+          fileSize: 124000,
+          mimeType: 'image/jpeg',
+          uri: 'file:///tmp/burnt-outlet.jpg',
+        },
+      ],
+      canceled: false,
+    })
+
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+
+    fireEvent.press(screen.getByTestId('booking-wizard-photo-add'))
+
+    await waitFor(() => {
+      expect(mockLaunchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({
+        allowsMultipleSelection: true,
+        mediaTypes: ['images', 'videos'],
+        selectionLimit: 5,
+      }))
+    })
+    expect(screen.getByTestId('booking-wizard-photo-preview-0')).toBeOnTheScreen()
+    expect(screen.getByText('burnt-outlet.jpg')).toBeOnTheScreen()
+    expect(screen.getByTestId('booking-wizard-submit-describe')).toHaveTextContent(/Gửi đến đội Kael giúp bạn/)
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Ổ cắm bếp cháy đen và có mùi khét',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      mediaCount: 1,
+      photoDrafts: [
+        expect.objectContaining({
+          fileName: 'burnt-outlet.jpg',
+          mimeType: 'image/jpeg',
+          uri: 'file:///tmp/burnt-outlet.jpg',
+        }),
+      ],
+    }))
+    await waitFor(() => {
+      expect(onOpenKael).toHaveBeenCalledWith('electrical')
+    })
+  })
+
+  it('keeps selected video evidence as a real video draft for Kael', async () => {
+    const onOpenKael = jest.fn()
+    mockRouteParams = { serviceType: 'plumbing' }
+    mockLaunchImageLibraryAsync.mockResolvedValue({
+      assets: [
+        {
+          fileName: 'ro-ri-ong-nuoc.mp4',
+          fileSize: 2450000,
+          mimeType: 'video/mp4',
+          type: 'video',
+          uri: 'file:///tmp/ro-ri-ong-nuoc.mp4',
+        },
+      ],
+      canceled: false,
+    })
+
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+
+    expect(screen.getByText('Thêm hình ảnh / video')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('booking-wizard-photo-add'))
+
+    await waitFor(() => {
+      expect(mockLaunchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({
+        mediaTypes: ['images', 'videos'],
+      }))
+    })
+    expect(screen.getByTestId('booking-wizard-video-preview-0')).toBeOnTheScreen()
+    expect(screen.getByText('ro-ri-ong-nuoc.mp4')).toBeOnTheScreen()
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Ống nước dưới bồn rửa rò liên tục',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      mediaCount: 1,
+      photoDrafts: [
+        expect.objectContaining({
+          fileName: 'ro-ri-ong-nuoc.mp4',
+          mimeType: 'video/mp4',
+          type: 'video',
+          uri: 'file:///tmp/ro-ri-ong-nuoc.mp4',
+        }),
+      ],
+    }))
+    await waitFor(() => {
+      expect(onOpenKael).toHaveBeenCalledWith('plumbing')
+    })
+  })
+
+  it('shows an honest search/filter brief from the real intake fields', () => {
+    mockRouteParams = { serviceType: 'plumbing' }
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={jest.fn()} />)
+
+    expect(screen.getByTestId('booking-wizard-filter-brief')).toBeOnTheScreen()
+    expect(screen.getByTestId('booking-wizard-filter-service')).not.toHaveTextContent(/Chưa có/)
+    expect(screen.getByTestId('booking-wizard-filter-area')).toHaveTextContent(/Chưa có/)
+    expect(screen.getByTestId('booking-wizard-filter-issue')).toHaveTextContent(/Chưa có/)
+    expect(screen.getByTestId('booking-wizard-filter-time')).toHaveTextContent(/Ngay/)
+    expect(screen.getByTestId('booking-wizard-filter-payment')).toHaveTextContent(/Kael/)
+    expect(screen.getByTestId('booking-wizard-submit-describe')).toHaveTextContent(/^Tiếp tục$/)
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Vòi nước rỉ liên tục trong bếp',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+
+    expect(screen.getByTestId('booking-wizard-filter-area')).not.toHaveTextContent(/Chưa có/)
+    expect(screen.getByTestId('booking-wizard-filter-issue')).toHaveTextContent(/mô tả/)
+  })
+
+  it('shows reference priority chips and hands a changed priority to Kael context', async () => {
+    const onOpenKael = jest.fn()
+    mockRouteParams = { serviceType: 'electrical' }
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+
+    expect(screen.getByTestId('booking-wizard-priority-chip-normal').props.accessibilityState).toEqual(expect.objectContaining({ selected: true }))
+
+    fireEvent.press(screen.getByTestId('booking-wizard-priority-chip-fast'))
+
+    expect(screen.getByTestId('booking-wizard-priority-chip-fast').props.accessibilityState).toEqual(expect.objectContaining({ selected: true }))
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Ổ cắm bếp chập và có mùi khét',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      message: expect.stringContaining('Ưu tiên: Nhanh'),
+      problemChips: [],
+    }))
+    await waitFor(() => {
+      expect(onOpenKael).toHaveBeenCalledWith('electrical')
+    })
+  })
+
+  it('sends only user-selected problem chips as search filters to Kael', async () => {
+    const onOpenKael = jest.fn()
+    mockRouteParams = { serviceType: 'electrical' }
+    render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
+
+    fireEvent.press(screen.getByTestId('booking-wizard-problem-chip-1'))
+
+    expect(screen.getByTestId('booking-wizard-problem-chip-1').props.accessibilityState).toEqual(expect.objectContaining({ selected: true }))
+    expect(screen.getByTestId('booking-wizard-filter-issue')).toHaveTextContent(/1 dấu hiệu/)
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(/Ví dụ:/),
+      'Ổ cắm bếp chập và có mùi khét',
+    )
+    fireEvent.press(screen.getByTestId('mock-address-set'))
+    fireEvent.press(screen.getByTestId('booking-wizard-submit-describe'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      problemChips: ['Chập ổ cắm'],
+    }))
+    await waitFor(() => {
+      expect(onOpenKael).toHaveBeenCalledWith('electrical')
+    })
+  })
+
+  it('keeps activity action out of the pre-analysis handoff path', async () => {
     const onOpenHistory = jest.fn()
     const onOpenKael = jest.fn()
     render(<BookingWizard onOpenHistory={onOpenHistory} onOpenKael={onOpenKael} />)
-    submitDescribe(onOpenKael)
+    await submitDescribe(onOpenKael)
     expect(onOpenHistory).not.toHaveBeenCalled()
   })
 
-  it('does not expose the old confirm-search CTA in the autonomous path', () => {
+  it('does not expose the old confirm-search CTA in the autonomous path', async () => {
     const onOpenKael = jest.fn()
     render(<BookingWizard onOpenHistory={jest.fn()} onOpenKael={onOpenKael} />)
-    submitDescribe(onOpenKael)
+    await submitDescribe(onOpenKael)
     expect(screen.queryByTestId('booking-wizard-confirm-search')).toBeNull()
     expect(mockConfirmRemoteSearch).not.toHaveBeenCalled()
   })

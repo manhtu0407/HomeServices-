@@ -1,4 +1,4 @@
-import { type Dispatch, type MutableRefObject, useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
+﻿import { type Dispatch, type MutableRefObject, useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   KeyboardAvoidingView,
@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { inferLocalDealDraftFromKael, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@home-services/shared'
+import { inferLocalDealDraftFromKael, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@nestscout/shared'
 import { useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { type AppLanguage, useAppLanguage } from '@/lib/app-language'
@@ -54,6 +54,11 @@ void [KAEL_CHAT_STACK_SCREEN_CONTRACT, KAEL_CHAT_SERVICE_WRAPPER_ONLY, KAEL_CHAT
 const KAEL_CHAT_FRAME_MAX_WIDTH = 680
 const KAEL_CHAT_PROGRESS_POLL_MS = 800
 const KAEL_CHAT_PROGRESS_MAX_MS = 15_000
+
+const livePerformanceCopy = {
+  vi: { livePerformanceEvidence: 'Bằng chứng', livePerformanceEstimateReady: 'Ước tính đã sẵn sàng', livePerformanceMeta: 'Preview audit từ handoff đặt dịch vụ', livePerformanceMediaCount: (count: number) => `${count} bằng chứng`, livePerformanceNoEvidence: 'Chưa có ảnh/video thật', livePerformancePendingStage: 'Đang gửi phiếu đến Kael', livePerformanceService: 'Dịch vụ', livePerformanceSignals: 'Tín hiệu', livePerformanceStage: 'Trạng thái Kael', livePerformanceTitle: 'Kael đang phân tích yêu cầu của bạn', livePerformanceWaitingStage: 'Đang chờ dữ liệu thật' },
+  en: { livePerformanceEvidence: 'Evidence', livePerformanceEstimateReady: 'Estimate is ready', livePerformanceMeta: 'Audit preview from booking handoff', livePerformanceMediaCount: (count: number) => `${count} evidence item${count === 1 ? '' : 's'}`, livePerformanceNoEvidence: 'No real photo/video yet', livePerformancePendingStage: 'Sending ticket to Kael', livePerformanceService: 'Service', livePerformanceSignals: 'Signals', livePerformanceStage: 'Kael stage', livePerformanceTitle: 'Kael is analyzing your request', livePerformanceWaitingStage: 'Waiting for real details' },
+} as const
 
 const copy = {
   vi: {
@@ -129,6 +134,7 @@ const copy = {
     briefClarityLabel: 'Mức rõ',
     briefSafetyLabel: 'Giới hạn an toàn',
     briefServicePending: 'Chưa chọn dịch vụ',
+    ...livePerformanceCopy.vi,
     briefClarityPending: 'Cần mô tả thật',
     briefClaritySelected: 'Sẵn sàng nhận mô tả',
     briefSafetyBody: 'Kael chuẩn bị phiếu, ghi dấu vết kiểm tra và tự chuyển sang tìm thợ khi đủ dữ liệu.',
@@ -235,6 +241,7 @@ const copy = {
     briefClarityLabel: 'Clarity',
     briefSafetyLabel: 'Safety limit',
     briefServicePending: 'No service chosen',
+    ...livePerformanceCopy.en,
     briefClarityPending: 'Needs real detail',
     briefClaritySelected: 'Ready for detail',
     briefSafetyBody: 'Kael prepares the ticket, records the audit trail, and starts worker search once enough data exists.',

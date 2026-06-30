@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync, existsSync, statSync } from 'fs'
+import { readFileSync, existsSync, readdirSync, statSync } from 'fs'
 import { resolve } from 'path'
 
 const REPO_ROOT = resolve(__dirname, '../../../..')
@@ -11,6 +11,30 @@ const exists = (rel: string) => existsSync(resolve(REPO_ROOT, rel))
 const isDir = (rel: string) => {
   const p = resolve(REPO_ROOT, rel)
   return existsSync(p) && statSync(p).isDirectory()
+}
+const sourceFileExtensions = new Set(['.js', '.jsx', '.mjs', '.ts', '.tsx', '.sql'])
+const skippedSourceDirs = new Set(['__tests__', 'assets', 'node_modules', 'prototypes'])
+const mojibakePattern = /\u00c3|\u00c2|\u00e1\u00ba|\u00e1\u00bb|\u00c4\u0090|\u00c4\u2018|\u00c6/
+
+function listSourceFiles(rel: string): string[] {
+  const abs = resolve(REPO_ROOT, rel)
+  if (!existsSync(abs)) return []
+  const entries = readdirSync(abs, { withFileTypes: true })
+  const files: string[] = []
+
+  for (const entry of entries) {
+    if (skippedSourceDirs.has(entry.name)) continue
+    const childRel = `${rel}/${entry.name}`
+    if (entry.isDirectory()) {
+      files.push(...listSourceFiles(childRel))
+      continue
+    }
+    const dot = entry.name.lastIndexOf('.')
+    const extension = dot >= 0 ? entry.name.slice(dot) : ''
+    if (sourceFileExtensions.has(extension)) files.push(childRel)
+  }
+
+  return files
 }
 
 // ===================================================================
@@ -91,6 +115,38 @@ describe('root product contract alignment', () => {
     expect(claude).toMatch(/Mobile and Supabase Edge workflow slices exist/i)
     expect(claude).not.toContain('Chưa có feature code')
   })
+  it('keeps production source files free from mojibake Vietnamese strings', () => {
+    const productionFiles = [
+      ...listSourceFiles('apps/mobile/app'),
+      ...listSourceFiles('apps/mobile/components'),
+      ...listSourceFiles('apps/mobile/lib'),
+      ...listSourceFiles('apps/api/src/app'),
+      ...listSourceFiles('apps/api/src/lib'),
+      ...listSourceFiles('packages/shared/src'),
+      ...listSourceFiles('supabase/functions'),
+    ]
+    const offenders = productionFiles.filter((file) => mojibakePattern.test(readText(file)))
+
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps production mobile source on Kael component and image systems', () => {
+    const mobileProductionFiles = [
+      ...listSourceFiles('apps/mobile/app'),
+      ...listSourceFiles('apps/mobile/components'),
+      ...listSourceFiles('apps/mobile/lib'),
+    ]
+    const rawTextInputOffenders = mobileProductionFiles.filter((file) =>
+      file !== 'apps/mobile/components/ui/kael-primitives.tsx' &&
+      readText(file).includes('<TextInput')
+    )
+    const legacyAssetOffenders = mobileProductionFiles.filter((file) =>
+      /common-image-icons|client-kael\.png|kael-model-8a/.test(readText(file))
+    )
+
+    expect(rawTextInputOffenders).toEqual([])
+    expect(legacyAssetOffenders).toEqual([])
+  })
 })
 
 // ===================================================================
@@ -145,8 +201,8 @@ describe('turbo.json', () => {
 describe('root package.json', () => {
   const pkg = readJSON('package.json')
 
-  it('name is home-services', () => {
-    expect(pkg.name).toBe('home-services')
+  it('name is nestscout', () => {
+    expect(pkg.name).toBe('nestscout')
   })
 
   it('is private', () => {
@@ -179,16 +235,16 @@ describe('root package.json', () => {
 describe('apps/api/package.json', () => {
   const pkg = readJSON('apps/api/package.json')
 
-  it('name is @home-services/api', () => {
-    expect(pkg.name).toBe('@home-services/api')
+  it('name is @nestscout/api', () => {
+    expect(pkg.name).toBe('@nestscout/api')
   })
 
   it('is private', () => {
     expect(pkg.private).toBe(true)
   })
 
-  it('depends on @home-services/shared via workspace', () => {
-    expect(pkg.dependencies['@home-services/shared']).toBe('workspace:*')
+  it('depends on @nestscout/shared via workspace', () => {
+    expect(pkg.dependencies['@nestscout/shared']).toBe('workspace:*')
   })
 
   it('has next.js', () => {
@@ -219,16 +275,16 @@ describe('apps/api/package.json', () => {
 describe('apps/mobile/package.json', () => {
   const pkg = readJSON('apps/mobile/package.json')
 
-  it('name is @home-services/mobile', () => {
-    expect(pkg.name).toBe('@home-services/mobile')
+  it('name is @nestscout/mobile', () => {
+    expect(pkg.name).toBe('@nestscout/mobile')
   })
 
   it('is private', () => {
     expect(pkg.private).toBe(true)
   })
 
-  it('depends on @home-services/shared via workspace', () => {
-    expect(pkg.dependencies['@home-services/shared']).toBe('workspace:*')
+  it('depends on @nestscout/shared via workspace', () => {
+    expect(pkg.dependencies['@nestscout/shared']).toBe('workspace:*')
   })
 
   it('has expo', () => {
@@ -280,8 +336,8 @@ describe('apps/mobile/package.json', () => {
 describe('packages/shared/package.json', () => {
   const pkg = readJSON('packages/shared/package.json')
 
-  it('name is @home-services/shared', () => {
-    expect(pkg.name).toBe('@home-services/shared')
+  it('name is @nestscout/shared', () => {
+    expect(pkg.name).toBe('@nestscout/shared')
   })
 
   it('is private', () => {

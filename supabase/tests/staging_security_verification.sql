@@ -34,12 +34,12 @@ insert into auth.users (
   created_at,
   updated_at
 ) values
-  ('10000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'admin.security@home-services.test', '+84900000001', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
-  ('20000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'customer.one@home-services.test', '+84900000002', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
-  ('20000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'customer.two@home-services.test', '+84900000003', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
-  ('30000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'worker.one@home-services.test', '+84900000004', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
-  ('30000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'worker.two@home-services.test', '+84900000005', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
-  ('40000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'outsider@home-services.test', '+84900000006', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now());
+  ('10000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'admin.security@nestscout.test', '+84900000001', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
+  ('20000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'customer.one@nestscout.test', '+84900000002', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
+  ('20000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'customer.two@nestscout.test', '+84900000003', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
+  ('30000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'worker.one@nestscout.test', '+84900000004', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
+  ('30000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'worker.two@nestscout.test', '+84900000005', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
+  ('40000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'outsider@nestscout.test', '+84900000006', '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now());
 
 update public.profiles
 set role = 'admin', full_name = 'Security Admin'
@@ -210,6 +210,40 @@ insert into storage.objects (bucket_id, name, owner, metadata) values
   ('completion-photos', '50000000-0000-0000-0000-000000000001/done.jpg', '30000000-0000-0000-0000-000000000001', '{}'::jsonb),
   ('worker-documents', '30000000-0000-0000-0000-000000000001/cccd-front.jpg', '30000000-0000-0000-0000-000000000001', '{}'::jsonb);
 
+insert into public.customer_payment_methods (
+  id,
+  customer_id,
+  bank_key,
+  bank_name,
+  account_holder_name,
+  bank_account,
+  bank_account_masked,
+  status,
+  is_default
+) values
+  (
+    '92000000-0000-0000-0000-000000000001',
+    '20000000-0000-0000-0000-000000000001',
+    'techcombank',
+    'Techcombank',
+    'CUSTOMER ONE',
+    '123456789',
+    '**** 6789',
+    'pending_verification',
+    true
+  ),
+  (
+    '92000000-0000-0000-0000-000000000002',
+    '20000000-0000-0000-0000-000000000002',
+    'vietcombank',
+    'Vietcombank',
+    'CUSTOMER TWO',
+    '987654321',
+    '**** 4321',
+    'pending_verification',
+    true
+  );
+
 -- Customer participant read checks.
 set local role authenticated;
 set local request.jwt.claim.sub = '20000000-0000-0000-0000-000000000001';
@@ -249,6 +283,31 @@ insert into security_results
 select 'customer_reads_own_notification', '1', count(*)::text, count(*) = 1, null
 from public.notifications
 where user_id = '20000000-0000-0000-0000-000000000001';
+
+insert into security_results
+select 'customer_reads_own_payment_method', '1', count(*)::text, count(*) = 1, null
+from public.customer_payment_methods
+where id = '92000000-0000-0000-0000-000000000001';
+
+insert into security_results
+select 'customer_cannot_read_other_payment_method', '0', count(*)::text, count(*) = 0, null
+from public.customer_payment_methods
+where id = '92000000-0000-0000-0000-000000000002';
+
+do $$
+declare
+  raw_account text;
+begin
+  begin
+    select bank_account
+    into raw_account
+    from public.customer_payment_methods
+    where id = '92000000-0000-0000-0000-000000000001';
+    insert into security_results values ('customer_cannot_read_raw_payment_account', 'blocked', 'allowed', false, 'raw account unexpectedly readable');
+  exception when others then
+    insert into security_results values ('customer_cannot_read_raw_payment_account', 'blocked', 'blocked', true, sqlstate || ': ' || sqlerrm);
+  end;
+end $$;
 
 insert into security_results
 select 'customer_cannot_read_learning_candidates', '0', count(*)::text, count(*) = 0, null
@@ -291,6 +350,34 @@ begin
     insert into security_results values ('customer_cannot_insert_job_directly', 'blocked', 'allowed', false, 'insert unexpectedly succeeded');
   exception when others then
     insert into security_results values ('customer_cannot_insert_job_directly', 'blocked', 'blocked', true, sqlstate || ': ' || sqlerrm);
+  end;
+end $$;
+
+do $$
+begin
+  begin
+    insert into public.customer_payment_methods (
+      customer_id,
+      bank_key,
+      bank_name,
+      account_holder_name,
+      bank_account,
+      bank_account_masked,
+      status,
+      is_default
+    ) values (
+      '20000000-0000-0000-0000-000000000001',
+      'acb',
+      'ACB',
+      'CUSTOMER ONE',
+      '1122334455',
+      '**** 4455',
+      'pending_verification',
+      false
+    );
+    insert into security_results values ('customer_cannot_insert_payment_method_directly', 'blocked', 'allowed', false, 'insert unexpectedly succeeded');
+  exception when others then
+    insert into security_results values ('customer_cannot_insert_payment_method_directly', 'blocked', 'blocked', true, sqlstate || ': ' || sqlerrm);
   end;
 end $$;
 

@@ -61,7 +61,7 @@ export const kaelEstimateSchema = z.object({
   disclaimer: z.string().min(1),
 })
 
-export type { KaelEstimate } from '@home-services/shared'
+export type { KaelEstimate } from '@nestscout/shared'
 
 export const workerPrebriefSchema = z.object({
   job_id: z.string().uuid(),

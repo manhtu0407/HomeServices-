@@ -1,8 +1,8 @@
 import { authenticateRequest, apiError, apiSuccess } from '@/lib/auth/api-auth'
-import { customerScopeDecisionSchema } from '@home-services/shared'
+import { customerScopeDecisionSchema } from '@nestscout/shared'
 import { decideScopeChange } from '@/lib/jobs/scope-change'
 import { logJobEvent } from '@/lib/jobs/event-log'
-import type { JobStatus } from '@home-services/shared'
+import type { JobStatus } from '@nestscout/shared'
 
 type RouteParams = { params: Promise<{ id: string }> }
 
