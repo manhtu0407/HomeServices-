@@ -4,6 +4,11 @@ Newest test reports first.
 
 | Date | Report | Result | Bugs | Notes |
 |------|--------|--------|------|-------|
+| 2026-06-27 | [Kael Agentic Alignment Eval After Worker Scope](2026-06-27_kael-agentic-alignment-eval-after-worker-scope.md) | passed deterministic | 0 | 75/75 A5 pass; B6 knowledge ON preserves safety, legal boundary, and citation coverage |
+| 2026-06-27 | [Kael Agentic Alignment Eval After General Assistant RAG](2026-06-27_kael-agentic-alignment-eval-after-general-assistant-rag.md) | passed deterministic | 0 | 75/75 A5 pass; local fixture scoring only, no provider calls |
+| 2026-06-26 | [Kael Agentic Alignment Eval Rerun 2](2026-06-26_kael-agentic-alignment-eval-rerun-2.md) | passed deterministic | 0 | 75/75 A5 pass; confirms repeatability after alignment changes |
+| 2026-06-26 | [Kael Agentic Alignment Eval Rerun](2026-06-26_kael-agentic-alignment-eval-rerun.md) | passed deterministic | 0 | 75/75 A5 pass; confirms repeatability after alignment changes |
+| 2026-06-26 | [Kael Agentic Alignment Eval](2026-06-26_kael-agentic-alignment-eval.md) | passed deterministic | 0 | 75/75 A5 pass; B6 knowledge ON safety/legal/citation at 100% |
 | 2026-06-05 | [Kael Section 32 Production Expo Go](2026-06-05_kael-section32-production-expo-go.md) | production Expo Go proof passed with native-mode caveats documented | none in final proof; production fixture cleanup verified 0 | Customer + worker Expo Go videos/screenshots, production fixture consumed by downstream surfaces, post-cleanup residue 0 |
 | 2026-06-05 | [Kael Section 32 Production Smoke](2026-06-05_kael-section32-production-smoke.md) | production backend passed | job-scoped idempotency pre-check fixed before redeploy | Production migration `20260605005000`, Edge `mobile-api` redeployed from clean worktree, provider/cost proof captured, cleanup residue 0 |
 | 2026-06-05 | [Kael Section 32 G1/G3 Continuation](2026-06-05_kael-section32-g1-g3-continuation.md) | G1 staging passed; G3 native evidence partial; production not claimed | mobile Jest timer determinism fixed; progressive reveal act warning fixed | Staging smoke cleanup 0; Android/Expo Go screenshots + worker video exist; TestFlight/production journey still open |

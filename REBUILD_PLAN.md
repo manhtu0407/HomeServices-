@@ -82,13 +82,13 @@ Pre-existing dirty worktree before this plan:
 
 - Modified: `apps/mobile/components/auth/auth-surfaces.tsx`
 - Modified: `apps/mobile/components/prototypes/client-icon-image-prototype.tsx`
-- Untracked: `apps/mobile/app/login-decor-prototype.tsx`
-- Untracked: `apps/mobile/components/prototypes/login-decor-prototype.tsx`
+- Removed during review cleanup: `apps/mobile/app/login-decor-prototype.tsx`
+- Removed during review cleanup: `apps/mobile/components/prototypes/login-decor-prototype.tsx`
 - Untracked: `apps/mobile/assets/common-image-icons/`
 
 Treat these as user/pre-existing changes. Do not revert or overwrite them.
 
-Tu clarified these prototype leftovers are trash to clean later, but they are still not part of this rebuild unless explicitly touched by a verified screen checkpoint.
+Tu clarified these prototype leftovers were trash; they were removed during review cleanup and are not part of this rebuild unless explicitly reintroduced by a verified screen checkpoint.
 
 ## Tu Decisions After Phase 0
 
