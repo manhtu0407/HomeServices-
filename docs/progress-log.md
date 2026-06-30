@@ -9,6 +9,14 @@
 > DB/RPC/Storage/Realtime -> AI providers. Do not use Vercel or hosted
 > Next.js as the mobile runtime; `apps/api` is reference/parity code only.
 
+### 2026-07-01 -- NestScout / Kael Rebuild PR72 Checkpoint Consolidation
+
+- **Task**: Consolidate the PR72 rebuild root docs into existing repo topics instead of keeping loose root markdown files.
+- **What landed in the rebuild checkpoint**: Phase 1 foundation and screen checkpoint evidence were preserved under the design docs topic: official NestScout logo 01, Kael Orb, status icons, 20 Kael state crops, 10 Kael emotion crops, Component System primitives, Agentic Center route, auth/customer/worker/profile rebuild groups A-F, worker application review path, mojibake cleanup, audio-ready job media, and production-source guards for raw TextInput / legacy Kael assets / hardcoded typography weight regressions.
+- **Docs**: Former `REBUILD_PLAN.md` and `SCOREBOARD.md` are folded into `docs/design/rebuild-preserve-handshakes-20260613.md`; former `ASSETS_NEEDED.md` is folded into `governance/design/ASSET_MAP.md`; former `PROGRESS.md` is represented here as this durable checkpoint.
+- **Verification captured from the checkpoint**: package-level mobile/API/shared type-checks passed; full mobile Jest, API Vitest, and shared Vitest passed in the recorded rebuild batches; focused auth/customer/worker/profile/Agentic Center suites passed for their respective checkpoints; `expo config --type public` read the NestScout config successfully.
+- **Open gates**: native visual screenshot comparison is still pending; prompt-level zero raw-token gate was not complete at the recorded 2026-06-12 grep; React Doctor did not complete on that host because the portable Node install lacked `npm.cmd`/`pnpm`; native voice recording remains intentionally unavailable until a real recorder dependency, permissions, and device validation exist.
+
 ### 2026-06-10 -- §32.14 Steps 1-4 Execution + §37 MP0 việc 1-2 + Staging Migration Gate
 
 - **Task**: Execute the two merged PR plans (PR #64 §32.14 remaining-gap build plan, PR #65 §37 worker-map MP0 spike) after an optimization review of both (tweaks recorded in Plan.md §32.14/§37 change logs; Tu approved scope: Steps 1-4 only, §37 việc 1-2 + handoff, staging-only deploy, 1 PR).

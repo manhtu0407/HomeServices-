@@ -60,13 +60,114 @@ Production wrappers now prefer these tracked PNG families for customer/worker se
 | Worker avatar | `profile-avatar-core.png` | Exists as generic asset; real user avatar should use backend profile data when available. |
 | Pending/approved/completed/warning status | `apps/mobile/assets/status/status-pending.png`, `status-approved.png`, `status-completed.png`, `status-warning.png` | Cropped from the official Icon Images board. Customer notification/check/approved cues and worker check cues prefer these status assets where the slot is status, not security/privacy. |
 
-## Missing Official Asset Slots
+## Optional Export Requests
 
-See `ASSETS_NEEDED.md` for exact export requests. Main gaps:
+The rebuild no longer needs a root `ASSETS_NEEDED.md`. Remaining asset asks live here so the rebuild stays under the design governance topic.
 
-- Optional standalone logo 01 source export if Tu wants a higher-fidelity file than the approved board crop.
-- Optional standalone official Kael orb K export if Tu wants a higher-fidelity file than the approved board crop.
-- Optional standalone or animated Kael mascot state exports if Tu wants higher-fidelity files than the approved board crops.
-- Optional standalone or animated emotion detail exports if Tu wants higher-fidelity files than the approved board crops.
-- Profile badge/medal/radar/gauge/chart assets if these are not built as vector UI.
-- Optional native voice recorder icon only if Tu later provides a standalone microphone asset and native recording is enabled. The official Icon Images board has no separate mic asset; current voice UI uses `KaelVoiceInputCapsule`, stays honest-unavailable, and the `job-media` backend is audio-ready.
+Status: Phase 1 inventory. `KaelMascot` renders approved transparent crops from the official `02_mascot_motion@2x.png` handoff board for all 20 states and 10 emotions. Customer, worker, auth, booking, and Agentic Center production surfaces use the official mascot/component shells for audited high-traffic slots instead of direct ad hoc images or controls.
+
+Remaining assets should be exported as standalone transparent PNG/WebP or Lottie/Rive files only when a higher-fidelity source is needed. Production already uses Tu-approved crops for logo 01, the Kael Orb, status icons, and the Kael mascot state/emotion system.
+
+### Brand And App Shell
+
+| Needed asset | Suggested path | Use |
+|---|---|---|
+| Optional higher-fidelity NestScout logo 01 source | `apps/mobile/assets/brand/nestscout-logo-mark.png` | Optional replacement for the approved transparent contour crop now used by `nestscout-logo-mark.png`, app icon, adaptive icon, splash icon, and favicon. |
+| Optional higher-fidelity Kael K orb source | `apps/mobile/assets/kael/kael-orb-k.png` | Optional replacement for the approved board crop now used by separated dock Orb actions. |
+| Apple system typography | Code/API policy in `apps/mobile/design/theme.ts`, `apps/mobile/design/tokens.json`, and `apps/mobile/app/_layout.tsx` | Kael Sans exports are no longer needed. Typography resolves through platform system APIs: iOS uses the installed Apple system font, Android falls back to `System`, and web preview uses the system stack without bundled font files. |
+
+### Kael Mascot State Exports
+
+Production now uses approved transparent board crops under `apps/mobile/assets/kael-states/`. Optional higher-fidelity standalone or animated exports can replace these files later.
+
+| State ID | State name | Suggested path |
+|---|---|---|
+| 01 | Welcome | `apps/mobile/assets/kael-states/kael-state-welcome.png` |
+| 02 | Listening | `apps/mobile/assets/kael-states/kael-state-listening.png` |
+| 03 | Thinking | `apps/mobile/assets/kael-states/kael-state-thinking.png` |
+| 04 | Analyzing | `apps/mobile/assets/kael-states/kael-state-analyzing.png` |
+| 05 | Processing | `apps/mobile/assets/kael-states/kael-state-processing.png` |
+| 06 | Understood | `apps/mobile/assets/kael-states/kael-state-understood.png` |
+| 07 | Suggesting | `apps/mobile/assets/kael-states/kael-state-proposing.png` |
+| 08 | Success | `apps/mobile/assets/kael-states/kael-state-success.png` |
+| 09 | Warning | `apps/mobile/assets/kael-states/kael-state-warning.png` |
+| 10 | Error | `apps/mobile/assets/kael-states/kael-state-error.png` |
+| 11 | Typing | `apps/mobile/assets/kael-states/kael-state-typing.png` |
+| 12 | Recording | `apps/mobile/assets/kael-states/kael-state-recording.png` |
+| 13 | File review | `apps/mobile/assets/kael-states/kael-state-fileReview.png` |
+| 14 | Location map | `apps/mobile/assets/kael-states/kael-state-locationMap.png` |
+| 15 | Finding worker | `apps/mobile/assets/kael-states/kael-state-findingWorker.png` |
+| 16 | Price check | `apps/mobile/assets/kael-states/kael-state-priceCheck.png` |
+| 17 | Compare options | `apps/mobile/assets/kael-states/kael-state-compareOptions.png` |
+| 18 | Report | `apps/mobile/assets/kael-states/kael-state-report.png` |
+| 19 | Reminder | `apps/mobile/assets/kael-states/kael-state-reminder.png` |
+| 20 | Mini celebration | `apps/mobile/assets/kael-states/kael-state-miniCelebration.png` |
+
+If animation is available, use matching `.lottie` or `.riv` files under `apps/mobile/assets/kael/animations/`.
+
+### True Kael 3D / Rive / Lottie Motion Assets
+
+Status: not present in the final handoff zip or current repo. The current `apps/mobile/assets/lottie/kael-bow-welcome.json` is treated as a motion-guide JSON only; it does not replace an exact exported Kael model/rig. Onboarding 1.2 currently uses the approved Kael welcome PNG as a static image shell with safe contain/scale crop.
+
+To switch `KaelMotionRenderer` from the approved image rig fallback to true production Rive/Lottie playback, export one exact Kael rig using the same silhouette, outfit, and scale as the approved mascot states.
+
+| Needed layer / file | Suggested path | Use |
+|---|---|---|
+| Exact welcome bow Rive state machine | `apps/mobile/assets/kael/animations/kael-welcome.riv` | Preferred production animation for onboarding 1.2. |
+| Exact welcome bow Lottie export | `apps/mobile/assets/kael/animations/kael-welcome-bow.json` | Alternative if exported from After Effects/Bodymovin. |
+| Hair layer | source file layer: `hair` | Independent secondary motion and bow follow-through. |
+| Head layer | source file layer: `head` | Bow pivot, nod, and subtle settling. |
+| Eyes layer | source file layer: `eyes` | Blink/focus states without swapping the whole PNG. |
+| Eyebrows layer | source file layer: `eyebrows` | Concerned/focused emotion readability. |
+| Mouth layer | source file layer: `mouth` | Smile/speaking/concerned state changes. |
+| Hands layer | source file layer: `hands` | Wave/bow/listening gesture. |
+| Torso/jacket layer | source file layer: `torso_jacket` | Body bow and breathing. |
+| Accessory/icon layer | source file layer: `accessory_icon` | State-specific mic/map/check/warning/lightbulb overlays. |
+| Mint aura ring layer | source file layer: `mint_aura_ring` | Low-contrast state aura, never noisy looping decoration. |
+| Shadow under feet layer | source file layer: `floor_shadow` | Grounding/depth during bow/scale motion. |
+
+Renderer contract already in code: exact native Lottie can be enabled by passing `lottieAssetStatus="exact"` to `KaelMotionRenderer`; until then it intentionally renders the approved Kael image rig fallback.
+
+### Kael Emotion Variants
+
+Production now uses approved transparent board crops under `apps/mobile/assets/kael-emotions/`. Optional higher-fidelity standalone or animated exports can replace these files later.
+
+| Emotion | Suggested path |
+|---|---|
+| Happy | `apps/mobile/assets/kael-emotions/kael-emotion-happy.png` |
+| Focused | `apps/mobile/assets/kael-emotions/kael-emotion-focused.png` |
+| Surprised | `apps/mobile/assets/kael-emotions/kael-emotion-surprised.png` |
+| Curious | `apps/mobile/assets/kael-emotions/kael-emotion-curious.png` |
+| Confident | `apps/mobile/assets/kael-emotions/kael-emotion-confident.png` |
+| Concerned | `apps/mobile/assets/kael-emotions/kael-emotion-concerned.png` |
+| Confused | `apps/mobile/assets/kael-emotions/kael-emotion-confused.png` |
+| Disappointed | `apps/mobile/assets/kael-emotions/kael-emotion-disappointed.png` |
+| Angry | `apps/mobile/assets/kael-emotions/kael-emotion-angry.png` |
+| Tired | `apps/mobile/assets/kael-emotions/kael-emotion-tired.png` |
+
+### Icons And Profile Visuals
+
+| Needed asset | Suggested path | Notes |
+|---|---|---|
+| Optional native voice recorder icon | `apps/mobile/assets/client-image-icons/client-voice.png` | Only needed if Tu later provides a standalone microphone asset and native recording is enabled. The official Icon Images board does not include a separate mic icon; current voice UI uses `KaelVoiceInputCapsule`, stays honest-unavailable, and the `job-media` backend is audio-ready. |
+| Optional standalone high-fidelity status icon exports | `apps/mobile/assets/status/status-pending.png`, `status-approved.png`, `status-completed.png`, `status-warning.png` | Production now uses approved crops from the official Icon Images board. Standalone exports are optional if Tu wants sharper source files later. |
+| Worker level medal/badge set 1-10 | `apps/mobile/assets/profile/worker-level-01.png` ... `worker-level-10.png` | Needed only if profile level journey uses images. |
+| Customer rank badge set 1-5 | `apps/mobile/assets/profile/customer-rank-01.png` ... `customer-rank-05.png` | Needed only if customer ranking uses images. |
+| Money protection gauge art | `apps/mobile/assets/profile/money-protection-gauge.png` | Can also be built as vector UI if Tu approves. |
+| Radar chart style asset | `apps/mobile/assets/profile/performance-radar-frame.png` | Can also be built as vector UI if Tu approves. |
+
+### Placeholder Policy
+
+Implementation should create placeholders only when code needs to render a missing slot:
+
+```text
+apps/mobile/assets/placeholders/
+```
+
+Placeholder names should match the final slot, for example:
+
+```text
+apps/mobile/assets/placeholders/kael-15-finding-worker-placeholder.png
+```
+
+The placeholder must be visually obvious during QA and must not silently look like a final official asset.
