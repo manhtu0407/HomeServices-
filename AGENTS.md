@@ -2,47 +2,50 @@
 
 ## Operating Context
 
-NestScout is a real Expo / React Native service app, not a motion graphics demo. Every UI pass must move the product closer to a trustworthy first real transaction in Ho Chi Minh City apartments.
+NestScout is a real Expo / React Native service app, not a motion graphics demo. Every UI pass must move the product closer to a trustworthy first real transaction in Ho Chi Minh City apartments. **This file is the Codex / Claude Code workspace router plus the owned RN-rules card** — the glass / motion / performance / data-honesty / language / scope blocks below are the quick reference the frontend flow (`governance/protocols/frontend-test.md` G1, skill `kael-frontend-test`) points back to.
 
-## Authority And Context Flow
+## Routing - read the spoke for your task
 
-The core docs support each other and must be read as a stack:
+The docs are a supporting stack in authority order. Read only what the task needs, then read `MEMORY.md` last. `MEMORY.md` holds the freshest session memory but does not override hard rules, locked docs, or code. If two sources conflict, stop and surface it — do not silently choose the source that makes implementation easier.
 
-1. `critical.md` is the execution contract: preflight, protocols, review, and verification.
-2. `RULES.md` is the non-negotiable product/security/runtime boundary.
-3. `STRUCTURES.md` is the workflow, taxonomy, state-machine, and backend contract source.
-4. `design.md` is the UI, motion, glass, prototype, and production visual source.
-5. `AGENTS.md` is the local Codex/Claude Code summary for this workspace.
-6. `Plan.md` is active only when the current task continues that plan or references deferred work.
-7. `README.md` and `docs/**/*.md` provide progress logs, durable decisions, historical notes, and feature-specific contracts.
-8. `.claude/MEMORY.md` is read last. It contains the freshest AI-agent session memory and may be updated continuously, but it does not override hard rules by itself.
-
-If these sources conflict, stop and surface the conflict. Do not silently choose the source that makes implementation easier.
+| When your task involves... | Read (in order) |
+|---|---|
+| **Every task (always)** | this file -> `governance/critical.md` (preflight §5, gates §3, task index §1) -> `MEMORY.md` (last) |
+| Hard product / security / AI / data / runtime / language rules | `governance/RULES.md` |
+| Workflow, taxonomy, state machines, backend contracts, "do not build now" | `governance/STRUCTURES.md` |
+| Per-task execution protocol (diagnose, tdd, architecture, ai-boundary, supabase, security, ui, docs) | `governance/critical.md` §1 index -> `governance/protocols/*` (load only the selected protocol) |
+| UI, motion, glass, mascot, design tokens, screen recipes | `governance/design.md` (-> `governance/design/*`) |
+| Coding behavior (assumptions, simplicity, surgical diffs) | `governance/skills.md` or the `karpathy-guidelines` skill |
+| Code enhancement / refactor (owner files per layer) | `docs/architecture/code-ownership-map.md` |
+| Frontend / UI testing on the Expo app | `governance/protocols/frontend-test.md` (skill: `kael-frontend-test`) |
+| Continuing or deferred plan work | `governance/Plan.md` (referenced section only) |
+| Progress history, durable decisions, feature contracts | `README.md`, `docs/**/*.md` |
+| Project identity, strategy, response modes | `CLAUDE.md` |
 
 ## Agent Lifecycle
 
-Use the lightweight lifecycle **Define → Plan → Build → Verify → Review → Ship**. Canonical step definitions: `critical.md` §0 (Agent-Skills Lifecycle) — single-sourced there.
+Use the lightweight lifecycle **Define → Plan → Build → Verify → Review → Ship**. Canonical step definitions: `governance/critical.md` §0 (Agent-Skills Lifecycle) — single-sourced there.
 
 When alignment is unclear, ask one focused question at a time with a stated hypothesis and confidence level until Tu explicitly confirms. For non-trivial decisions, use a bounded doubt cycle: `CLAIM -> EXTRACT -> DOUBT -> RECONCILE -> STOP`.
 
-## Execution Gates (parity with `critical.md`)
+## Execution Gates (parity with `governance/critical.md`)
 
-Codex and Claude Code MUST run the same gates. This section is a pointer, not a second copy — `critical.md` is the single source.
+Codex and Claude Code MUST run the same gates. This section is a pointer, not a second copy — `governance/critical.md` is the single source.
 
 Before editing code:
 
-- Run `kael-preflight` and state the pre-edit status (`critical.md` §5).
-- Classify the task (`critical.md` §2), then load only the matching protocol file from `protocols/` via the §1 index. `kael-preflight` (§5) and `kael-review` (§8) stay inline in `critical.md`.
-- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, `kael-handoff`, `kael-prototype`, plus `karpathy-guidelines`.
+- Run `kael-preflight` and state the pre-edit status (`governance/critical.md` §5).
+- Classify the task (`governance/critical.md` §2), then load only the matching protocol file from `governance/protocols/` via the §1 index. `kael-preflight` (§5) and `kael-review` (§8) stay inline in `governance/critical.md`.
+- Auto-trigger skills exist for the common protocols and live in both `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex): `kael-diagnose`, `kael-tdd`, `kael-ai-boundary`, `kael-supabase`, `kael-security-sweep`, plus `karpathy-guidelines`.
 
-Core quality gates (`critical.md` §3) — do not bypass:
+Core quality gates (`governance/critical.md` §3) — do not bypass:
 
 - **No False Completion**: never claim done if tests fail, build fails, verification did not run, or a required protocol was skipped.
 - **Required Final Response**: end with `Changed: / Verification: / Risks/Limitations: / Next Step:`; verification lists only commands actually run and their real results.
 - **Production-Ready** only when tests pass, build passes, `kael-review` passes, and no known critical limitation remains.
 - **Git Rule**: never commit, push, open a PR, amend history, or run destructive git unless Tu asks in the current conversation.
 
-After editing: run `kael-review` (`critical.md` §8), then self-check against Forbidden Behaviors (`critical.md` §24) and the Final Agent Checklist (`critical.md` §25).
+After editing: run `kael-review` (`governance/critical.md` §8), then self-check against Forbidden Behaviors (`governance/critical.md` §24) and the Final Agent Checklist (`governance/critical.md` §25).
 
 ## Runtime Boundary
 
@@ -66,7 +69,7 @@ Before enhancing, refactoring, reorganizing, or "cleaning up" code:
 
 Before any major implementation batch:
 - rebuild the important `.md` manifest outside generated/vendor folders
-- read every important `.md` file in authority order, including `critical.md`, `RULES.md`, `STRUCTURES.md`, `design.md` when relevant, `CLAUDE.md`, `skills.md`, `docs/architecture/code-ownership-map.md` for code changes, `README.md`, `docs/**/*.md`, relevant `Plan.md` sections, and `.claude/MEMORY.md` last
+- read every important `.md` file in authority order, including `governance/critical.md`, `governance/RULES.md`, `governance/STRUCTURES.md`, `governance/design.md` when relevant, `CLAUDE.md`, `governance/skills.md`, `docs/architecture/code-ownership-map.md` for code changes, `README.md`, `docs/**/*.md`, relevant `governance/Plan.md` sections, and `MEMORY.md` last
 - re-check relevant PR findings and the current touched files
 - compare the intended UI work against the local recording and glass reference notes
 - run React Doctor regularly after UI or React performance changes and treat reported issues as objective audit input
@@ -75,18 +78,11 @@ If the task becomes unclear, stop coding, reread the plan and the important docs
 
 ## Frontend Testing Workflow
 
-Before claiming any frontend/UI task on the Expo app done, pass the gated workflow in `protocols/frontend-test.md` (skill: `kael-frontend-test`): G0 understand current frontend → G1 reuse existing standards (`design.md`, this file, `STRUCTURES.md`, `protocols/ui.md`) → G2 test plan → G3 static validation → G4 UI/UX validation → G5 user-flow validation → G6 evidence.
+Canonical gated workflow + RN-reality detail: `governance/protocols/frontend-test.md` (skill: `kael-frontend-test`), gates G0–G6. This is a React Native store-bound app, not a web app — evidence must come from the RN runtime (jest-expo / React Native Testing Library and device/simulator), never a browser or Expo-web stand-in; glass and motion render only on native.
 
-This is a React Native app, not a web app. Translate "browser / visual-regression" thinking to RN reality:
+Static gate (real, enforced): `pnpm type-check:mobile` and `pnpm test:mobile` (wrappers for `@nestscout/mobile` type-check + jest-expo / React Native Testing Library that inject the bundled Node runtime when agent shells lack `node`). The `Stop` hook (`.claude/hooks/verify-frontend-gates.mjs`, wired in `.claude/settings.json`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate.
 
-- Static gate (real, enforced): `pnpm type-check:mobile` and `pnpm test:mobile` (wrappers for `@nestscout/mobile` type-check + jest-expo / React Native Testing Library that inject the bundled Node runtime when agent shells lack `node`). The `Stop` hook in `.claude/settings.json` (`.claude/hooks/verify-frontend-gates.mjs`) re-runs these when `apps/mobile` code changed and blocks a false "done" on a red gate.
-- Validate on iOS and Android (simulator/device via Expo), light/dark, Reduce Motion, Reduce Transparency — not in a browser. Glass (`expo-glass-effect`/`expo-blur`) only renders on native; never validate glass on Expo web.
-- "Hover/focus" are web concepts; on mobile verify press/disabled and loading/empty/error states and touch targets instead.
-- ESLint is available for manual debt work (`pnpm lint:mobile`, eslint-config-expo) but not yet part of the Stop hook — pre-existing lint debt must be cleared before it joins the hook. Maestro/Detox E2E and visual regression are not set up — say so honestly; do not present web/Expo-web screenshots as device evidence.
-
-For every frontend change, check: layout, responsive behavior, accessibility (roles/labels/state, Reduce Motion/Transparency), color contrast in both modes, motion quality (`kael-motion` / `design/motion.md`), loading/empty/error/success states, performance budget (60fps; glass layer budget), and visual consistency with the glass-liquid signature (`design/signature.md`).
-
-Do not claim completion without validation evidence (commands run + real results + states tested + states NOT tested). Avoid generic SaaS UI; preserve or improve the Glass/Liquid direction.
+For every frontend change, check: layout, responsive behavior, accessibility (roles/labels/state, Reduce Motion/Transparency), color contrast in both modes, motion quality (`kael-motion` / `governance/design/motion.md`), loading/empty/error/success states, performance budget (60fps; glass layer budget), and visual consistency with the glass-liquid signature (`governance/design/signature.md`). Do not claim completion without validation evidence (commands run + real results + states tested + states NOT tested). Avoid generic SaaS UI; preserve or improve the Glass/Liquid direction.
 
 ## Visual References
 
@@ -185,10 +181,10 @@ Payment, review, worker verification, notifications, media, cancellation, and re
 Custom dock navigation must not call `push(item.path)` for tab switching. Use tab-safe replace/back behavior so repeated taps do not build a navigation stack.
 
 If a PR finding conflicts with current docs, priority is:
-1. `critical.md`
-2. `RULES.md`
-3. `STRUCTURES.md`
-4. `design.md`
+1. `governance/critical.md`
+2. `governance/RULES.md`
+3. `governance/STRUCTURES.md`
+4. `governance/design.md`
 5. production glass contract
 6. reference videos/curriculum
 7. local implementation preference

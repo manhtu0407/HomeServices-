@@ -1,6 +1,6 @@
 # Scope Check
 
-Use this as a wrapper around `critical.md`, `RULES.md`, and `STRUCTURES.md`; those files are the source of truth.
+Use this as a wrapper around `governance/critical.md`, `governance/RULES.md`, and `governance/STRUCTURES.md`; those files are the source of truth.
 
 ## Supported Now
 

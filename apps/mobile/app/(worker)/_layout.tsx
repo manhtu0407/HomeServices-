@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from 'react-native'
 import { WorkerDockLayoutProvider, WorkerRebuildDockOverlay, type WorkerDockActive } from '@/components/worker/worker-surfaces'
 import { color } from '@/design/theme'
 import { useAuth } from '@/lib/auth-provider'
+import { useAppLanguage } from '@/lib/app-language'
 
 const WORKER_DOCK_MAIN = 'WORKER_DOCK_MAIN: worker liquid glass dock'
 const WORKER_DOCK_XANHSM_LAYER_MATCH = 'WORKER_DOCK_XANHSM_LAYER_MATCH: mint/cyan service-app dock'
@@ -40,8 +41,9 @@ function activeWorkerDockFromPath(pathname: string): WorkerDockActive {
 
 export default function WorkerLayout() {
   const { loading, role, session } = useAuth()
+  const language = useAppLanguage()
   const pathname = usePathname()
-  const tabCopy = WORKER_TAB_COPY.vi
+  const tabCopy = WORKER_TAB_COPY[language]
   const activeDock = activeWorkerDockFromPath(pathname)
   const shouldShowDock = !pathname.includes('chat')
 

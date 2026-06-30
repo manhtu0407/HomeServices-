@@ -1,4 +1,4 @@
-# Kael Section 32 G1/G3 Continuation Evidence
+﻿# Kael Section 32 G1/G3 Continuation Evidence
 
 Date: 2026-06-05
 Scope: Plan.md section 32 from `origin/main:Plan.md` (PR #60 / Plan.md section 32). Current local `Plan.md` does not contain section 32, so `origin/main:Plan.md` is the canonical plan source for this continuation.
@@ -113,7 +113,7 @@ Passed:
 - Root: PowerShell parser check for `scripts/section32-android-native-recording.ps1`
   - Result: `psparser-ok`.
 - Mobile type-check:
-  - Command: `pnpm --filter @home-services/mobile type-check`
+  - Command: `pnpm --filter @nestscout/mobile type-check`
   - Result: `tsc --noEmit`, exit `0`.
 - Mobile full Jest:
   - Command: `pnpm exec jest --runInBand --forceExit --testTimeout=30000` from `apps/mobile`

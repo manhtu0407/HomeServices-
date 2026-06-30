@@ -729,7 +729,7 @@ const styles = StyleSheet.create({
   pager: { alignItems: 'center', flexDirection: 'row', gap: 6, height: 25, justifyContent: 'center', marginTop: 8 },
   pagerActive: { backgroundColor: entryTheme.color.mint.mint600, borderRadius: 999, height: 5, width: 18 },
   pagerDot: { backgroundColor: '#BDD8D3', borderRadius: 999, height: 5, width: 5 },
-  pressed: { opacity: 0.94, transform: [{ scale: 0.985 }] },
+  pressed: { opacity: 0.78 },
   providerButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.90)', borderColor: entryTheme.color.surface.stroke, borderRadius: 18, borderWidth: 1, flex: 1, flexDirection: 'row', gap: 6, height: 46, justifyContent: 'center', minWidth: 0, paddingHorizontal: 6 },
   providerLabel: { color: entryTheme.color.text.strong, flexShrink: 1, fontSize: 11, fontWeight: '700', letterSpacing: 0 },
   providerMark: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 8, height: 22, justifyContent: 'center', width: 22, ...entryTheme.shadow.soft },

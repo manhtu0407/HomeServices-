@@ -112,6 +112,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     versionCode: 1,
     permissions: [],
+    blockedPermissions: ['android.permission.RECORD_AUDIO'],
     edgeToEdgeEnabled: true,
     package: 'com.phanmanhtu.nestscout',
   },
@@ -122,7 +123,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         microphonePermission:
           'NestScout cần quyền micro nếu bạn muốn ghi chú giọng nói cho Kael phân tích ca dịch vụ.',
-        recordAudioAndroid: true,
+        recordAudioAndroid: false,
       },
     ],
     'expo-secure-store',

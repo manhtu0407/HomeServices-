@@ -1,18 +1,35 @@
-import { fireEvent, render, screen } from '@testing-library/react-native'
-import type { LocalDeal, LocalWorkflowSelectors } from '@nestscout/shared'
+﻿import { fireEvent, render, screen } from '@testing-library/react-native'
+import { Platform, StyleSheet } from 'react-native'
+import type { LocalCustomerSearchState, LocalDeal, LocalDealStatus, LocalScopeChange, LocalWorkflowSelectors } from '@nestscout/shared'
 
-let mockWorkflowValue: any
 let mockRouteParams: Record<string, string | string[] | undefined>
+let mockWorkflowValue: any
 const mockReplace = jest.fn()
-const mockDecideScopeChange = jest.fn()
-const mockHydrateRemoteJobById = jest.fn()
+const mockUseJobChatThread = jest.fn()
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
+
+jest.mock('expo-image', () => {
+  const React = require('react')
+  const { View } = require('react-native')
+  return {
+    Image: (props: any) => React.createElement(View, props),
+  }
+})
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
   useRouter: () => ({ replace: mockReplace }),
 }))
+
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react')
+  const { View } = require('react-native')
+  return {
+    SafeAreaView: ({ children, ...props }: any) => React.createElement(View, props, children),
+    useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
+  }
+})
 
 jest.mock('@/lib/auth-provider', () => ({
   useAuth: () => ({ session: { user: { id: 'customer_test_1' } } }),
@@ -23,40 +40,7 @@ jest.mock('@/lib/frontend-workflow-provider', () => ({
 }))
 
 jest.mock('@/lib/use-job-chat-thread', () => ({
-  useJobChatThread: () => ({
-    error: null,
-    loading: false,
-    messages: [],
-    reload: jest.fn(),
-    send: jest.fn(async () => true),
-    sending: false,
-  }),
-}))
-
-jest.mock('expo-audio', () => ({
-  AudioModule: {
-    requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
-  },
-  RecordingPresets: {
-    HIGH_QUALITY: {},
-  },
-  setAudioModeAsync: jest.fn(async () => undefined),
-  useAudioRecorder: () => ({
-    getURI: jest.fn(() => null),
-    prepareToRecordAsync: jest.fn(async () => undefined),
-    record: jest.fn(async () => undefined),
-    stop: jest.fn(async () => undefined),
-  }),
-  useAudioRecorderState: () => ({
-    durationMillis: 0,
-    isRecording: false,
-  }),
-}))
-
-jest.mock('expo-image-picker', () => ({
-  MediaTypeOptions: { Images: 'Images', Videos: 'Videos' },
-  launchImageLibraryAsync: jest.fn(async () => ({ assets: [], canceled: true })),
-  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  useJobChatThread: (jobId: string | null, enabled: boolean) => mockUseJobChatThread(jobId, enabled),
 }))
 
 jest.mock('@/lib/app-language', () => {
@@ -69,23 +53,35 @@ jest.mock('@/lib/app-language', () => {
 
 import { CustomerHistorySurface } from '../customer-surfaces'
 
-function buildDeal(): LocalDeal {
+function buildDeal(status: LocalDealStatus, backendStatus: LocalDeal['backendStatus'] = status): LocalDeal {
+  const accepted = status !== 'broadcasting'
+  const hasCompletionEvidence =
+    status === 'completed_by_worker' ||
+    status === 'confirmed_by_customer' ||
+    status === 'reviewed' ||
+    backendStatus === 'confirmed_by_customer' ||
+    backendStatus === 'payment_pending' ||
+    backendStatus === 'paid' ||
+    backendStatus === 'reviewed'
+
   return {
-    backendStatus: 'worker_matched',
+    backendStatus,
     broadcast: {
       broadcastId: 'broadcast_test_1',
-      fullAddressLabel: 'Tòa A, Quận 1',
-      fullAddressVisible: true,
+      estimatedEarningLabel: '120.000đ - 180.000đ',
+      estimatedPriceLabel: '180.000đ - 260.000đ',
+      fullAddressLabel: accepted ? 'Tòa A, Quận 1' : null,
+      fullAddressVisible: accepted,
       generalArea: 'Quận 1',
       jobId: 'job_test_1',
-      prebrief: ['Kael đã tóm tắt phạm vi.'],
+      prebrief: ['Kael đã tóm tắt phạm vi và giữ địa chỉ chi tiết theo chính sách.'],
       problemSummary: 'Ổ cắm chập chờn',
-      secondsRemaining: null,
+      secondsRemaining: status === 'broadcasting' ? 45 : null,
       serviceType: 'electrical',
-      status: 'accepted',
+      status: accepted ? 'accepted' : 'sent',
     },
-    completionNotes: null,
-    completionPhotoUrls: [],
+    completionNotes: hasCompletionEvidence ? 'Đã thay ổ cắm và kiểm tra tải.' : null,
+    completionPhotoUrls: hasCompletionEvidence ? ['storage://job_test_1/after.jpg'] : [],
     draft: {
       addressLabel: 'Tòa A, Quận 1',
       description: 'Ổ cắm phòng khách chập chờn và có mùi khét nhẹ',
@@ -93,7 +89,7 @@ function buildDeal(): LocalDeal {
       inferredProblemLabel: null,
       mediaCount: 1,
       needsServiceChoice: false,
-      problemChips: ['Ổ cắm/công tắc hỏng'],
+      problemChips: ['ổ cắm/công tắc hỏng'],
       serviceType: 'electrical',
       source: 'kael',
       timeChoice: 'now',
@@ -108,89 +104,49 @@ function buildDeal(): LocalDeal {
       priceRangeLabel: '180.000đ - 260.000đ',
       problemLabel: 'Ổ cắm chập chờn',
     },
-    finalPrice: null,
+    finalPrice: backendStatus === 'payment_pending' ? 260000 : null,
     id: 'job_test_1',
-    payment: null,
     scopeChange: null,
-    status: 'worker_matched',
+    status,
   }
 }
 
-function buildDealWithPayment(): LocalDeal {
-  const deal = buildDeal()
-  deal.payment = {
-    amountReceived: 260000,
-    expiresAt: null,
-    grossAmount: 260000,
-    paymentCode: 'PAY_JOB_TEST_1',
-    platformFee: 20000,
-    provider: 'sepay_vietqr',
-    qrImageUrl: null,
-    receivedAt: '2026-06-25T09:00:00.000Z',
-    status: 'received',
-    transferContent: 'NSC job_test_1',
-    updatedAt: '2026-06-25T09:00:00.000Z',
-    workerNet: 240000,
-  }
-  return deal
-}
-
-function buildDealWithScopeChange(): LocalDeal {
-  const deal = buildDeal()
-  deal.backendStatus = 'scope_change_pending'
-  deal.status = 'scope_change_pending'
-  deal.scopeChange = {
-    createdAt: '2026-06-25T08:30:00.000Z',
-    evidencePhotoUrls: ['storage://job_test_1/scope_change_evidence/burnt-wire.jpg'],
-    id: 'scope_test_1',
-    kaelProgress: {
-      current_stage: 'review_scope_change',
-      progress: 100,
-      status: 'completed',
-      updated_at: '2026-06-25T08:32:00.000Z',
-    },
-    kaelReview: {
-      advisory: 'Cần đổi dây trước khi tiếp tục.',
-      complexity_assessment: 'medium',
-      confidence: 0.82,
-      fallback_used: false,
-      problem_summary: 'Dây ổ cắm bị cháy sau mặt ổ.',
-    },
-    priceMax: 410000,
-    priceMin: 330000,
-    reason: 'Dây ổ cắm hở và bị cháy khi mở mặt ổ.',
-    requestedDescription: 'Thay thêm đoạn dây điện bị cháy.',
-    status: 'waiting_customer_decision',
-  }
-  return deal
+function customerSearchStateForStatus(status: LocalDealStatus): LocalCustomerSearchState {
+  if (status === 'broadcasting') return 'searching'
+  if (status === 'worker_matched') return 'matched'
+  if (status === 'completed_by_worker' || status === 'confirmed_by_customer' || status === 'reviewed') return 'completed'
+  if (['worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending'].includes(status)) return 'active'
+  return 'idle'
 }
 
 function buildWorkflow(deal: LocalDeal | null) {
+  const currentStatus = deal?.status ?? null
+  const canCustomerSubmitReview = deal?.backendStatus === 'paid' || deal?.backendStatus === 'confirmed_by_customer'
   const selectors: LocalWorkflowSelectors = {
     canConfirmCustomerSearch: false,
-    canCustomerCancelDeal: Boolean(deal),
+    canCustomerCancelDeal: Boolean(deal && currentStatus !== 'reviewed'),
     canCustomerConfirmCompletion: false,
-    canCustomerSubmitReview: false,
+    canCustomerSubmitReview,
     canWorkerAccept: false,
     canWorkerAdvance: false,
     canWorkerSeeFullAddress: Boolean(deal?.broadcast?.fullAddressVisible),
-    currentBackendStatus: deal?.backendStatus ?? deal?.status ?? null,
-    currentStatus: deal?.status ?? null,
-    customerSearchState: deal ? 'matched' : 'idle',
+    currentBackendStatus: deal?.backendStatus ?? currentStatus,
+    currentStatus,
+    customerSearchState: currentStatus ? customerSearchStateForStatus(currentStatus) : 'idle',
     draftValidationMessage: null,
     hasLocalBroadcast: Boolean(deal?.broadcast),
     paymentLocked: true,
-    reviewLocked: true,
+    reviewLocked: !canCustomerSubmitReview,
     scheduleMode: 'now_only',
   }
 
   mockWorkflowValue = {
     actions: {
-      decideScopeChange: mockDecideScopeChange,
-      hydrateRemoteJobById: mockHydrateRemoteJobById,
+      authorizeApartmentAccess: jest.fn(async () => true),
+      cancelRemoteJob: jest.fn(async () => true),
+      decideScopeChange: jest.fn(async () => true),
+      submitReview: jest.fn(async () => true),
     },
-    notificationUnreadCount: 0,
-    notifications: [],
     selectors,
     state: {
       deal,
@@ -201,468 +157,330 @@ function buildWorkflow(deal: LocalDeal | null) {
   }
 }
 
+function buildScopeChange(): LocalScopeChange {
+  return {
+    createdAt: '2026-06-01T00:00:00.000Z',
+    evidencePhotoUrls: ['storage://job_test_1/scope.jpg'],
+    id: 'scope_test_1',
+    kaelReview: null,
+    kaelProgress: null,
+    priceMax: 320000,
+    priceMin: 260000,
+    reason: 'Cần thay thêm ổ cắm sau khi tháo mặt che.',
+    requestedDescription: 'Thay thêm ổ cắm bị cháy chân tiếp xúc.',
+    status: 'reviewing_by_kael',
+  }
+}
+
 beforeEach(() => {
   mockReplace.mockClear()
-  mockDecideScopeChange.mockClear()
-  mockDecideScopeChange.mockResolvedValue(true)
-  mockHydrateRemoteJobById.mockClear()
-  mockHydrateRemoteJobById.mockResolvedValue(true)
-  mockRouteParams = {}
-  buildWorkflow(buildDeal())
+  mockUseJobChatThread.mockClear()
+  mockUseJobChatThread.mockReturnValue({
+    error: null,
+    loading: false,
+    messages: [],
+    refresh: jest.fn(),
+    sendMessage: jest.fn(async () => true),
+    sending: false,
+  })
+  mockRouteParams = { tab: 'chat' }
+  buildWorkflow(buildDeal('broadcasting'))
 })
 
-describe('CustomerHistorySurface v2.1', () => {
-  it('redirects the legacy Case Work activity path into Kael Chat', () => {
-    mockRouteParams = { screen: '2.5-chat-case' }
-
-    render(<CustomerHistorySurface />)
-
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.5-chat-case')).toBeNull()
-  })
-
-  it('redirects default activity when active stages are already compressed', () => {
-    render(<CustomerHistorySurface />)
-
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-job-accepted-stage')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.6-case-overview')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.10-location-eta')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-overview-next-step')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-tab-overview')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-screen-stack')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-screen-rail')).toBeNull()
-    expect(screen.queryByText(/4\.9|rating|Nguyễn Văn Minh|AC|máy lạnh/i)).toBeNull()
-  })
-
-  it('redirects default activity into Case Chat when only compressed stages are active', () => {
-    const deal = buildDeal()
-    buildWorkflow({
-      ...deal,
-      backendStatus: 'awaiting_customer_confirm',
-      status: 'awaiting_customer_confirm',
-    })
-
-    render(<CustomerHistorySurface />)
-
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.6-case-overview')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.8-options')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.9-quotes')).toBeNull()
-  })
-
-  it('redirects the converted 2.6 case overview path into Case Chat', () => {
-    mockRouteParams = { screen: '2.6-case-overview' }
-
-    render(<CustomerHistorySurface />)
-
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.6-case-overview')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-overview-mint-aura')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-primary-info-mint-aura')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-understanding-mint-aura')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-overview-next-step')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-tab-overview')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-screen-stack')).toBeNull()
-    expect(screen.queryByText(/AC|máy lạnh|Nguyễn Văn Minh|4\.9/i)).toBeNull()
-  })
-
-  it('keeps the direct 2.6 case overview inactive without fake case data', () => {
-    mockRouteParams = { screen: '2.6-case-overview' }
+describe('CustomerHistorySurface phase context', () => {
+  it('does not show the Kael source pill in the empty repair hero', () => {
+    mockRouteParams = { tab: 'repair' }
     buildWorkflow(null)
 
     render(<CustomerHistorySurface />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-case-overview-locked-hero')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-primary-info')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-overview-start')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-overview-liquid-score')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-overview-mint-aura')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-understanding')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-tab-overview')).toBeNull()
-    expect(screen.queryByText(/AC|máy lạnh|Nguyễn Văn Minh|4\.9|520\.000/i)).toBeNull()
+    expect(screen.getByTestId('customer-history-repair-hero-panel')).not.toHaveTextContent(/Từ Kael|From Kael/)
+    expect(screen.getByTestId('customer-history-apple-ios26-surface-system')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-hero-edge-highlight')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-section-liquid-wash-activity')).toBeNull()
+    expect(screen.queryByTestId('customer-history-hero-mint-aura')).toBeNull()
+    expect(screen.queryByTestId('customer-history-repair-hero-liquid')).toBeNull()
+    expect(screen.getByTestId('customer-history-activity-empty-timeline-rail')).toBeOnTheScreen()
   })
 
-  it('opens later process stages directly from route params', () => {
-    mockRouteParams = { screen: '3.2-payment-method' }
-    const deal = buildDeal()
-    buildWorkflow({
-      ...deal,
-      backendStatus: 'payment_pending',
-      status: 'confirmed_by_customer',
-    })
+  it('removes draft copy from the repair hero and enlarges the service title', () => {
+    mockRouteParams = { tab: 'repair' }
+    const draftDeal = buildDeal('draft')
+    draftDeal.draft.serviceType = 'cleaning'
+    buildWorkflow(draftDeal)
 
     render(<CustomerHistorySurface />)
 
-    expect(screen.getByTestId('customer-v21-payment-method-total')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-top-title').props.numberOfLines).toBe(1)
-    expect(screen.getByTestId('customer-v21-top-title').props.adjustsFontSizeToFit).toBe(true)
-    expect(screen.queryByTestId('customer-v21-activity-tab-overview')).toBeNull()
+    const hero = screen.getByTestId('customer-history-repair-hero-panel')
+    const titleStyle = StyleSheet.flatten(screen.getByTestId('customer-history-repair-hero-title').props.style)
+    expect(hero).toHaveTextContent(/Vệ sinh/)
+    expect(hero).not.toHaveTextContent(/Nháp/)
+    expect(screen.getByTestId('customer-history-title-row')).not.toHaveTextContent(/Nháp/)
+    expect(screen.queryByTestId('customer-history-activity-status-lens')).toBeNull()
+    expect(titleStyle.fontSize).toBe(20)
+    expect(titleStyle.lineHeight).toBe(24)
   })
 
-  it('redirects the converted 2.10 location and ETA path into Case Chat', () => {
-    mockRouteParams = { screen: '2.10-location-eta' }
+  it('renders matching phase context and keeps chat locked before a real job-chat phase', () => {
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-phase-context')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-phase-context')).not.toHaveTextContent(/Luồng điều phối/)
+    expect(screen.getByTestId('customer-history-phase-context')).toHaveTextContent(/Báo cáo/)
+    expect(screen.getByTestId('customer-history-phase-body')).toHaveTextContent(/Kael đã gửi phiếu/)
+    expect(screen.getByTestId('customer-history-phase-live-cell')).not.toHaveTextContent(/Đang xử lý|Luồng điều phối/)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-title').props.style).fontSize).toBe(18)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-live-cell-value').props.style).fontSize).toBe(13)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-live-cell-value').props.style).lineHeight).toBe(17)
+    expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-artifact-cell-label').props.style).fontWeight).toBe('700')
+    expect(StyleSheet.flatten(screen.getByTestId('customer-history-phase-artifact-cell-value').props.style).fontWeight).toBe('600')
+    expect(screen.getByTestId('customer-history-chat-tab-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-chat-input').props.editable).toBe(false)
+    expect(screen.getByTestId('customer-history-chat-locked-reason')).toHaveTextContent('Chat cần công việc thật')
+    expect(mockUseJobChatThread).toHaveBeenCalledWith('job_test_1', false)
+  })
+
+  it('loads job chat read-only after payment gate instead of reopening send authority', () => {
+    mockRouteParams = { tab: 'chat' }
+    buildWorkflow(buildDeal('confirmed_by_customer', 'payment_pending'))
 
     render(<CustomerHistorySurface />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.10-location-eta')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.10-location-eta')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-location-timeline')).toBeNull()
+    expect(screen.getByTestId('customer-history-chat-input').props.editable).toBe(false)
+    expect(screen.getByTestId('customer-history-chat-locked-reason')).toHaveTextContent('Chat chỉ còn đọc lại')
+    expect(mockUseJobChatThread).toHaveBeenCalledWith('job_test_1', true)
   })
 
-  it('forces pending scope changes through the hard-stop modal on history', () => {
-    mockRouteParams = { job_id: 'job_test_1', scope_change: 'scope_test_1', screen: '2.13-job-progress' }
-    buildWorkflow(buildDealWithScopeChange())
+  it('shows job-chat as an unlocked phase action during active work', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('worker_on_way'))
 
     render(<CustomerHistorySurface />)
 
-    expect(screen.getByTestId('customer-scope-change-hard-stop-modal')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-scope-change-modal-kael-badge')).toBeOnTheScreen()
-
-    fireEvent.press(screen.getByTestId('customer-scope-change-modal-approve'))
-    expect(mockDecideScopeChange).toHaveBeenCalledWith('scope_test_1', { decision: 'approve' })
-
-    fireEvent.press(screen.getByTestId('customer-scope-change-modal-reject'))
-    expect(mockDecideScopeChange).toHaveBeenCalledWith('scope_test_1', { decision: 'reject' })
+    expect(screen.getByTestId('customer-history-phase-context')).toHaveTextContent(/Nhắn trong chat công việc/)
   })
 
-  it('redirects the converted 2.13 progress path into Case Chat', () => {
-    const deal = buildDeal()
-    deal.status = 'completed_by_worker'
-    deal.backendStatus = 'completed_by_worker'
-    deal.completionNotes = 'Đã kiểm tra và gửi bằng chứng hoàn tất.'
-    deal.completionPhotoUrls = ['storage://job_test_1/after.jpg']
+  it('shows completion evidence on the done tab from worker-submitted fields', () => {
+    mockRouteParams = { tab: 'done' }
+    buildWorkflow(buildDeal('completed_by_worker'))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-phase-context')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/1.*hoàn tất/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Đã thay ổ cắm/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Kael đang xét hoàn tất/)
+  })
+
+  it('does not treat the repairing-phase completion evidence input as a completion outcome', () => {
+    mockRouteParams = { tab: 'done' }
+    buildWorkflow(buildDeal('repairing'))
+
+    render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-phase-context')).toHaveTextContent(/Bằng chứng hoàn tất/)
+    expect(screen.queryByTestId('customer-history-completion-evidence-panel')).toBeNull()
+    expect(screen.getByTestId('customer-history-done-hero')).toHaveTextContent(/Chờ thợ hoàn tất/)
+  })
+
+  it('keeps basic scope-change context separate from a submitted scope artifact', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('inspecting'))
+
+    const { rerender } = render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-phase-context')).toHaveTextContent(/Thay đổi phạm vi/)
+    expect(screen.queryByTestId('customer-history-scope-change-panel')).toBeNull()
+
+    const scopedDeal = buildDeal('scope_change_pending')
+    scopedDeal.scopeChange = buildScopeChange()
+    buildWorkflow(scopedDeal)
+    rerender(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-scope-change-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-scope-change-panel')).toHaveTextContent(/Cần thay thêm ổ cắm/)
+  })
+
+  it('shows an honest blocked reason when completion evidence is missing', () => {
+    mockRouteParams = { tab: 'done' }
+    const deal = buildDeal('completed_by_worker')
+    deal.completionNotes = null
+    deal.completionPhotoUrls = []
     buildWorkflow(deal)
 
-    mockRouteParams = { screen: '2.13-job-progress' }
+    const { rerender } = render(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Cần bằng chứng hoàn tất/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Chờ bằng chứng hoàn tất/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Chờ ghi chú thợ/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).not.toHaveTextContent(/Kael đang xét hoàn tất/)
+    expect(screen.getByTestId('customer-history-done-timeline')).toHaveTextContent(/Chờ quyết định/)
+    expect(screen.getByTestId('customer-history-done-timeline')).not.toHaveTextContent(/Đã ghi quyết định hoàn tất/)
+
+    deal.completionNotes = 'Đã thay ổ cắm và kiểm tra tải.'
+    deal.completionPhotoUrls = []
+    buildWorkflow(deal)
+    rerender(<CustomerHistorySurface />)
+
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Cần bằng chứng hoàn tất/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Chờ bằng chứng hoàn tất/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).not.toHaveTextContent(/Kael đang xét hoàn tất/)
+  })
+
+  it('marks completion evidence as confirmed after Kael/backend confirmation', () => {
+    mockRouteParams = { tab: 'done' }
+    buildWorkflow(buildDeal('confirmed_by_customer'))
 
     render(<CustomerHistorySurface />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.13-job-progress')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-job-progress-stage')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-job-progress-risk')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-screen-5.3-approval-queue')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-tab-done')).toBeNull()
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Kael đã xác nhận/)
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).not.toHaveTextContent(/Kael đang xét hoàn tất/)
   })
 
-  it('keeps payment honest when no real payment state exists', () => {
-    mockRouteParams = { screen: '3.3-payment-protected' }
-
-    render(<CustomerHistorySurface />)
-
-    expect(screen.getByTestId('customer-v21-direct-screen-3.3-payment-protected')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-payment-protected-hero')).toHaveTextContent(/Chờ thanh toán/)
-    expect(screen.getByTestId('customer-v21-payment-protected-ledger')).toHaveTextContent(/Chưa có/)
-    expect(screen.getByTestId('customer-v21-payment-protected-hero-mint-aura')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-payment-protected-kael-card-wide-mint-aura')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-payment-state')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-tab-payment')).toBeNull()
-    expect(screen.queryByText(/paid_held|520000|520\.000|Vietcombank/i)).toBeNull()
-  })
-
-  it('shows one inactive state when no real deal exists', () => {
-    buildWorkflow(null)
-
-    render(<CustomerHistorySurface />)
-
-    expect(screen.getByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-case-overview-locked-hero')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-overview-start')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-empty')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-empty-screen-stack')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-tab-overview')).toBeNull()
-    expect(screen.queryByText(/--|0 thợ|rating/i)).toBeNull()
-  })
-
-  it.each([
-    '3.1-payment-review',
-    '3.2-payment-method',
-    '3.3-payment-protected',
-  ] as const)('keeps no-deal payment stage %s inactive instead of showing fake payment state', (screenId) => {
-    mockRouteParams = { screen: screenId }
-    buildWorkflow(null)
-
-    render(<CustomerHistorySurface />)
-
-    expect(screen.getByTestId(`customer-v21-direct-empty-${screenId}`)).toBeOnTheScreen()
-    expect(screen.queryByTestId(`customer-v21-direct-screen-${screenId}`)).toBeNull()
-    expect(screen.queryByTestId('customer-v21-payment-review-case')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-payment-review-details')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-payment-method-total')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-payment-method-selected')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-payment-protected-hero')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-payment-protected-ledger')).toBeNull()
-    expect(screen.queryByTestId(`customer-v21-direct-empty-${screenId}-screen-stack`)).toBeNull()
-    expect(screen.queryByTestId('customer-v21-empty-case-screen-3.3-payment-protected')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-payment-state')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-tab-payment')).toBeNull()
-    expect(screen.queryByText(/paid_held|520000|520\.000|Vietcombank/i)).toBeNull()
-  })
-
-  it('redirects payment stages from real payment data into focused Case Work', () => {
-    buildWorkflow(buildDealWithPayment())
-    mockRouteParams = { screen: '3.1-payment-review' }
+  it('keeps review submit locked during payment_pending and opens it after paid', () => {
+    mockRouteParams = { tab: 'done' }
+    buildWorkflow(buildDeal('confirmed_by_customer', 'payment_pending'))
 
     const { rerender } = render(<CustomerHistorySurface />)
 
-    expect(mockReplace).toHaveBeenLastCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1&focus=payment')
-    expect(screen.getByTestId('customer-v21-direct-empty-3.1-payment-review')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-payment-review-case')).toBeNull()
+    expect(screen.queryByTestId('customer-history-review-submit')).toBeNull()
+    expect(screen.getAllByText('Khóa').length).toBeGreaterThan(0)
+    expect(screen.getByTestId('customer-history-done-hero')).toHaveTextContent(/Kael đã xác nhận/)
+    expect(screen.getByTestId('customer-history-done-hero')).not.toHaveTextContent(/Chờ thợ hoàn tất/)
 
-    mockRouteParams = { screen: '3.2-payment-method' }
+    buildWorkflow(buildDeal('confirmed_by_customer', 'paid'))
     rerender(<CustomerHistorySurface />)
 
-    expect(mockReplace).toHaveBeenLastCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1&focus=payment')
-    expect(screen.getByTestId('customer-v21-direct-empty-3.2-payment-method')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-payment-method-total')).toBeNull()
-
-    mockRouteParams = { screen: '3.3-payment-protected' }
-    rerender(<CustomerHistorySurface />)
-
-    expect(mockReplace).toHaveBeenLastCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1&focus=payment')
-    expect(screen.getByTestId('customer-v21-direct-empty-3.3-payment-protected')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-payment-protected-hero')).toBeNull()
+    expect(screen.getByTestId('customer-history-review-submit')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-review-panel')).toHaveTextContent(/Thanh toán/)
+    expect(screen.getByTestId('customer-history-review-panel')).toHaveTextContent(/Mở/)
   })
 
-  it('ignores deprecated activity tab params and keeps 2.6 as the activity entry', () => {
-    mockRouteParams = { tab: 'payment' }
-    buildWorkflow(null)
+  it('preserves review submit access when an already-confirmed job is missing backfilled completion evidence', () => {
+    mockRouteParams = { tab: 'done' }
+    const deal = buildDeal('confirmed_by_customer')
+    deal.completionNotes = null
+    deal.completionPhotoUrls = []
+    buildWorkflow(deal)
 
     render(<CustomerHistorySurface />)
 
-    expect(screen.getByTestId('customer-v21-direct-empty-2.6-case-overview')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-payment-empty')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-tab-payment')).toBeNull()
+    expect(screen.getByTestId('customer-history-review-submit')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-completion-evidence-panel')).toHaveTextContent(/Cần bằng chứng hoàn tất/)
+    expect(screen.getByTestId('customer-history-review-panel')).toHaveTextContent(/Mở/)
+    expect(screen.getByTestId('customer-history-done-timeline')).toHaveTextContent(/Sẵn sàng đánh giá/)
   })
 
-  it('redirects the converted 2.9 quote path into Case Chat', () => {
-    mockRouteParams = { screen: '2.9-quotes' }
+  it('localizes hydrated estimate complexity instead of showing backend enum copy', () => {
+    mockRouteParams = { tab: 'price' }
+    buildWorkflow(buildDeal('worker_on_way'))
 
     render(<CustomerHistorySurface />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.9-quotes')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.9-quotes')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-quote-ledger-card')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-quote-price-lines')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-quote-scope')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-quote-stat-grid')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-activity-tab-case')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-screen-2.9-quotes')).toBeNull()
-    expect(screen.queryByText(/4\.9|AC|paid_held|Vietcombank|520\.000|Nguy/i)).toBeNull()
+    const pricePanel = screen.getByTestId('customer-history-price-tab-panel')
+    expect(pricePanel).toHaveTextContent(/Vừa/)
+    expect(pricePanel).not.toHaveTextContent('medium')
   })
 
-  it('redirects the converted 2.8 options path into Case Chat', () => {
-    mockRouteParams = { screen: '2.8-options' }
+  it('shows cancelled transactions as a locked policy state without reopening cancellation', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('cancelled'))
 
     render(<CustomerHistorySurface />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.8-options')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.8-options')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-options-hero')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-options-scope')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-options-kael-card')).toBeNull()
-    expect(screen.queryByText(/máy lạnh|AC|520\.000|Bảo hành 7 ngày/i)).toBeNull()
+    expect(screen.getByTestId('customer-history-phase-context')).toHaveTextContent(/Giao dịch đã hủy/)
+    expect(screen.getByTestId('customer-history-cancellation-context')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-history-cancellation-context')).toHaveTextContent(/Yêu cầu đã hủy/)
+    expect(screen.getByTestId('customer-history-cancellation-context')).toHaveTextContent(/Công việc đã hủy/)
+    expect(screen.getByTestId('customer-history-worker-placeholder')).toHaveTextContent(/Yêu cầu đã hủy/)
+    expect(screen.queryByTestId('customer-history-cancel-local-deal')).toBeNull()
+    expect(screen.getByTestId('customer-history-cancellation-context')).not.toHaveTextContent(/Kael đã xác nhận/)
   })
 
-  it('redirects the 2.10 location ETA stage instead of rendering the legacy direct screen', () => {
-    mockRouteParams = { screen: '2.10-location-eta' }
-    const deal = buildDeal()
-    buildWorkflow({
-      ...deal,
-      broadcast: {
-        ...deal.broadcast!,
-        secondsRemaining: 780,
-      },
-      status: 'worker_on_way',
-      workerProfile: {
-        avatarUrl: null,
-        fullName: 'Thợ hệ thống',
-        id: 'worker_real_1',
-        rating: 4.8,
-        totalJobs: 12,
-      },
-    })
+  it('lets the in-app browser confirm and run customer cancellation', () => {
+    mockRouteParams = { tab: 'repair' }
+    buildWorkflow(buildDeal('broadcasting'))
+    const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(Platform, 'OS')
+    const runtime = globalThis as unknown as { confirm?: unknown }
+    const originalConfirm = runtime.confirm
+    const confirmSpy = jest.fn(() => true)
+    Object.defineProperty(Platform, 'OS', { configurable: true, get: () => 'web' })
+    runtime.confirm = confirmSpy
 
-    render(<CustomerHistorySurface />)
+    try {
+      render(<CustomerHistorySurface />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.10-location-eta')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-direct-screen-2.10-location-eta')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-location-map-card')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-location-timeline')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-location-kael-card')).toBeNull()
-    expect(screen.queryByText(/2,1 km|Nguy/i)).toBeNull()
-  })
+      fireEvent.press(screen.getByTestId('customer-history-cancel-local-deal'))
 
-  it('redirects the converted 2.7 matching path and keeps payment shells direct', () => {
-    mockRouteParams = { screen: '2.7-matching' }
-
-    const { rerender } = render(<CustomerHistorySurface />)
-
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.7-matching')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-matching-hero')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-decision-panel-2.7-matching')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-matching-bars')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-matching-kael-card')).toBeNull()
-    expect(screen.queryByText(/Nguy.n V.n Minh|4\.9|m.y l.nh|V.sinh m.y/i)).toBeNull()
-
-    mockRouteParams = { screen: '3.2-payment-method' }
-    rerender(<CustomerHistorySurface />)
-
-    expect(screen.getByTestId('customer-v21-payment-method-total')).toHaveTextContent(/0/)
-    expect(screen.getByTestId('customer-v21-payment-method-total')).not.toHaveTextContent(/Chưa có/)
-    expect(screen.getByTestId('customer-v21-payment-method-selected')).toHaveTextContent(/Chờ thanh toán/)
-    expect(screen.getByTestId('customer-v21-payment-bank-logo-vietcombank')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-payment-bank-logo-techcombank')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-payment-method-hero-wallet-icon')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-payment-card-method-image')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-payment-transfer-method-image')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-payment-bank-grid-wide-mint-aura')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-payment-bank-tile-vietcombank-mint-aura')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-payment-flow-3.2-payment-method')).toBeNull()
-    expect(screen.queryByText(/Vietcombank|paid_held|520\.000/i)).toBeNull()
-  })
-
-  it('shows the inactive 2.7 matching stage with no fake worker data', () => {
-    mockRouteParams = { screen: '2.7-matching' }
-    buildWorkflow(null)
-
-    render(<CustomerHistorySurface />)
-
-    expect(screen.getByText('Ghép thợ phù hợp')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-direct-empty-2.7-matching')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-matching-locked-hero')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-case-overview-score-aura-MatchingLocked')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-decision-panel-2.7-matching')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-matching-bars')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-matching-locked-kael-card')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-matching-start')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-direct-empty-2.7-matching-screen-stack')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-empty-case-screen-2.7-matching')).toBeNull()
-    expect(screen.queryByText(/Nguyễn Văn Minh|4\.9|236|2,1 km|máy lạnh/i)).toBeNull()
-  })
-
-  it('redirects the converted 2.11 live alert path into Case Chat', () => {
-    const deal = buildDeal()
-    deal.status = 'worker_on_way'
-    deal.backendStatus = 'worker_on_way'
-    if (deal.broadcast) {
-      deal.broadcast.secondsRemaining = 780
+      expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Hủy yêu cầu?'))
+      expect(mockWorkflowValue.actions.cancelRemoteJob).toHaveBeenCalledTimes(1)
+    } finally {
+      if (originalPlatformDescriptor) {
+        Object.defineProperty(Platform, 'OS', originalPlatformDescriptor)
+      }
+      runtime.confirm = originalConfirm
     }
-    mockRouteParams = { screen: '2.11-live-alert' }
-    buildWorkflow(deal)
-
-    render(<CustomerHistorySurface />)
-
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.11-live-alert')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-live-alert-stage')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-live-alert-access')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-arrival-code-pending')).toBeNull()
   })
+})
 
-  it('redirects the converted 2.12 accepted worker path into Case Chat', () => {
-    const deal = buildDeal()
-    deal.status = 'arrived'
-    deal.backendStatus = 'arrived'
-    deal.workerProfile = {
-      avatarUrl: null,
-      fullName: 'Thợ hệ thống',
-      id: 'worker_real_1',
-      rating: 4.8,
-      totalJobs: 12,
+describe('CustomerHistorySurface apartment access (§32.7)', () => {
+  function withAddressAccess(deal: LocalDeal, overrides: Record<string, unknown> = {}): LocalDeal {
+    return {
+      ...deal,
+      broadcast: deal.broadcast
+        ? {
+          ...deal.broadcast,
+          addressAccess: {
+            access_profile: {},
+            check_in_required: true,
+            customer_handoff_required: true,
+            evidence_mode: 'none' as const,
+            exact_unit_released: false,
+            identity_check_required: true,
+            release_stage: 'building_released' as const,
+            worker_checked_in: false,
+            ...overrides,
+          },
+        }
+        : null,
     }
-    mockRouteParams = { screen: '2.12-job-accepted' }
-    buildWorkflow(deal)
+  }
+
+  beforeEach(() => {
+    mockRouteParams = {}
+  })
+
+  it('hides the "Cho thợ lên" panel before the worker checks in', () => {
+    buildWorkflow(withAddressAccess(buildDeal('arrived')))
 
     render(<CustomerHistorySurface />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case&jobId=job_test_1')
-    expect(screen.getByTestId('customer-v21-direct-empty-2.12-job-accepted')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-job-accepted-stage')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-job-accepted-verification')).toBeNull()
+    expect(screen.queryByTestId('customer-history-apartment-access-panel')).toBeNull()
+    expect(screen.queryByTestId('customer-history-authorize-access')).toBeNull()
   })
 
-  it('keeps the 2.8 options stage inactive without fake case data', () => {
-    mockRouteParams = { screen: '2.8-options' }
-    buildWorkflow(null)
+  it('shows "Cho thợ lên" after the worker lobby check-in and calls the authorize action', () => {
+    buildWorkflow(withAddressAccess(buildDeal('arrived'), { worker_checked_in: true }))
 
     render(<CustomerHistorySurface />)
 
-    expect(screen.getByTestId('customer-v21-direct-empty-2.8-options')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-options-hero')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-options-scope')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-options-kael-card')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-options-start')).toBeNull()
-    expect(screen.queryByText(/4\.9|Vietcombank|paid_held|520\.000|AC/i)).toBeNull()
+    expect(screen.getByTestId('customer-history-apartment-access-panel')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('customer-history-authorize-access'))
+    expect(mockWorkflowValue.actions.authorizeApartmentAccess).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps the 2.9 quote stage inactive without fake case data', () => {
-    mockRouteParams = { screen: '2.9-quotes' }
-    buildWorkflow(null)
+  it('shows the released note without an authorize button once the unit is released', () => {
+    buildWorkflow(withAddressAccess(buildDeal('arrived'), {
+      exact_unit_released: true,
+      release_stage: 'unit_released' as const,
+      worker_checked_in: true,
+    }))
 
     render(<CustomerHistorySurface />)
 
-    expect(screen.getByTestId('customer-v21-direct-empty-2.9-quotes')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-quote-ledger-card')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-quote-scope')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-quote-stat-grid')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-quote-start')).toBeNull()
-    expect(screen.queryByText(/4\.9|Vietcombank|paid_held|520\.000|AC/i)).toBeNull()
-  })
-
-  it('keeps the 2.10 location stage inactive without fake route data', () => {
-    mockRouteParams = { screen: '2.10-location-eta' }
-    buildWorkflow(null)
-
-    render(<CustomerHistorySurface />)
-
-    expect(screen.getByTestId('customer-v21-direct-empty-2.10-location-eta')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-location-map-card')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-location-timeline')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-location-kael-card')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-location-start')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-direct-empty-2.10-location-eta-screen-stack')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-empty-case-screen-2.10-location-eta')).toBeNull()
-    expect(screen.queryByText(/4\.9|Vietcombank|paid_held|520\.000|AC/i)).toBeNull()
-  })
-
-  it('keeps 2.11-2.13 direct stages inactive without zip mock fulfillment data', () => {
-    buildWorkflow(null)
-    mockRouteParams = { screen: '2.11-live-alert' }
-
-    const { rerender } = render(<CustomerHistorySurface />)
-
-    expect(screen.getByTestId('customer-v21-direct-empty-2.11-live-alert')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-live-alert-stage')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-live-alert-start')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-arrival-code-pending')).toBeNull()
-
-    mockRouteParams = { screen: '2.12-job-accepted' }
-    rerender(<CustomerHistorySurface />)
-
-    expect(screen.getByTestId('customer-v21-direct-empty-2.12-job-accepted')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-job-accepted-stage')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-job-accepted-start')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-job-accepted-verification')).toBeNull()
-
-    mockRouteParams = { screen: '2.13-job-progress' }
-    rerender(<CustomerHistorySurface />)
-
-    expect(screen.getByTestId('customer-v21-direct-empty-2.13-job-progress')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-job-progress-stage')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-job-progress-start')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-job-progress-media-empty')).toBeNull()
-    expect(screen.queryByText(/2,1 km|4821|worker_checked_in|10:01|8 tệp|Approval Queue|Vệ sinh sâu|máy lạnh/i)).toBeNull()
+    expect(screen.getByTestId('customer-history-apartment-access-panel')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-history-authorize-access')).toBeNull()
+    expect(screen.getByTestId('customer-history-apartment-access-body')).toHaveTextContent(/Bạn đã cho thợ lên/)
   })
 })

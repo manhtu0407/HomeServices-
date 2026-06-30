@@ -61,23 +61,24 @@ describe('Kael orchestrator facade', () => {
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
-    )
+    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/job-create.service.ts'), 'utf8')
 
-    expect(servicesSource).toContain('runKaelAutonomyOrchestrator')
+    expect(readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/autonomy-gate.ts'), 'utf8')).toContain('runKaelAutonomyOrchestrator')
     expect(servicesSource).toContain('label: "estimate_to_matching"')
-    expect(servicesSource).toContain('async function runPolicyAutonomyGate')
+    expect(readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/autonomy-gate.ts'), 'utf8')).toContain('async function runPolicyAutonomyGate')
     for (const label of [
       'customer_process_cancellation',
       'worker_evidence_confirm_completion',
-      'scope_change_auto_approve',
+      // 'scope_change_auto_approve' removed — K-1 disables scope auto-approve;
+      // scope-change is always customer-confirmed (see workflow-orchestrator test).
       'worker_process_cancellation',
       'scope_change_customer_',
       'customer_confirm_completion',
     ]) {
-      expect(servicesSource).toContain(label)
+      expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/customer-cancellation.service.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/worker-cancellation.service.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/job-status.service.ts'), 'utf8')).toContain(label)
     }
     expect(servicesSource).toContain('knownEvidenceReferences: [jobId, "RULES.md#rule-7"]')
-    expect(servicesSource).toContain('audit: {')
+    expect(readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/autonomy-gate.ts'), 'utf8')).toContain('audit: {')
     expect(servicesSource).toContain('jobId,')
     expect(servicesSource).toContain('actorId: ctx.user.id')
   })

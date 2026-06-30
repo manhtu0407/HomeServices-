@@ -1,70 +1,17 @@
-export type AIProvider = 'anthropic' | 'perplexity' | 'deepseek'
-
-export type AITextContent = { type: 'text'; text: string }
-export type AIImageContent = { type: 'image'; source: { type: 'url'; url: string } }
-export type AIMessageContent = string | Array<AITextContent | AIImageContent>
-
-export type AIMessage = {
-  role: 'system' | 'user' | 'assistant'
-  content: AIMessageContent
-}
-
-export type AIRequest = {
-  provider: AIProvider
-  model: string
-  messages: AIMessage[]
-  maxTokens?: number
-  temperature?: number
-  /**
-   * Optional abort signal. When the signal aborts, the underlying fetch is
-   * cancelled — preventing wasted bandwidth + AI provider cost after timeout.
-   * Caller (callAI) creates the controller and integrates with TIMEOUT_MS.
-   */
-  signal?: AbortSignal
-}
-
-export type AIUsage = {
-  inputTokens: number
-  outputTokens: number
-  costUsd: number
-}
-
-export type AIResponse = {
-  content: string
-  usage: AIUsage
-  latencyMs: number
-  success: true
-}
-
-export type AIError = {
-  provider: AIProvider
-  error: string
-  code: string
-  retryable: boolean
-  success: false
-}
-
-export type AIResult = AIResponse | AIError
-
-export const TIMEOUT_MS: Record<AIProvider, number> = {
-  anthropic: 20_000,
-  perplexity: 15_000,
-  deepseek: 10_000,
-}
-
-export const MAX_RETRIES = 2
-
-export class AIProviderError extends Error {
-  constructor(
-    public readonly provider: AIProvider,
-    public readonly statusCode: number,
-    public readonly responseBody: string,
-  ) {
-    super(`${provider} API ${statusCode}`)
-    this.name = 'AIProviderError'
-  }
-
-  get retryable(): boolean {
-    return this.statusCode === 429 || this.statusCode >= 500
-  }
-}
+﻿// AI provider contract — single-sourced from packages/shared (one canonical home).
+// apps/api re-exports so existing '@/lib/ai/types' importers stay unchanged; the Edge
+// runtime keeps its own divergent copy in kael/types.ts (caching/search/citations) because
+// Deno cannot import this package and those fields are server-only extensions.
+export type {
+  AIProvider,
+  AITextContent,
+  AIImageContent,
+  AIMessageContent,
+  AIMessage,
+  AIRequest,
+  AIUsage,
+  AIResponse,
+  AIError,
+  AIResult,
+} from '@nestscout/shared'
+export { TIMEOUT_MS, MAX_RETRIES, AIProviderError } from '@nestscout/shared'

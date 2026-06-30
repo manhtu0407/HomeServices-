@@ -46,7 +46,7 @@ type WorkerVerificationUploadResult =
 export async function uploadJobMediaDrafts(
   jobId: string,
   mediaItems: LocalMediaUploadDraft[],
-  stage: Extract<JobMediaStage, 'before' | 'after' | 'kael_reference' | 'cancellation_evidence' | 'scope_change_evidence'> = 'before',
+  stage: Extract<JobMediaStage, 'before' | 'after' | 'kael_reference' | 'cancellation_evidence' | 'scope_change_evidence' | 'access_check_in'> = 'before',
 ) {
   if (mediaItems.length === 0) return { success: true as const, mediaRefs: [] as string[] }
   const client = supabase

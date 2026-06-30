@@ -38,7 +38,8 @@ export type WorkflowMediaStage =
   | "after"
   | "kael_reference"
   | "cancellation_evidence"
-  | "scope_change_evidence";
+  | "scope_change_evidence"
+  | "access_check_in";
 
 export type WorkflowTransitionInput = {
   event: WorkflowTransitionEvent;
@@ -222,6 +223,10 @@ const MEDIA_STAGE_STATUSES: Record<WorkflowMediaStage, readonly JobStatus[]> = {
     "scope_change_pending",
   ],
   scope_change_evidence: ["inspecting", "repairing", "scope_change_pending"],
+  // §32.7: lobby check-in photo is taken while the worker is still `worker_on_way`
+  // (the status flips to `arrived` only after the check-in upload succeeds);
+  // `arrived` stays allowed for a retry after a partial failure.
+  access_check_in: ["worker_on_way", "arrived"],
 };
 
 function invalidWorkflowCommand(input: WorkflowCommandInput): WorkflowCommandResult {

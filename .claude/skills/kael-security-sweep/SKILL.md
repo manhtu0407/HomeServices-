@@ -5,7 +5,7 @@ description: Security review for Home Services. Use when touching secrets, PII, 
 
 # kael-security-sweep
 
-Auto-trigger wrapper. Full procedure + PII classification table are canonical in `protocols/ai-data-security.md` (repo root) — do not duplicate them here. Hard rules: `RULES.md` #1, #9, #10 + Security Invariants.
+Auto-trigger wrapper. Full procedure + PII classification table are canonical in `governance/protocols/ai-data-security.md` — do not duplicate them here. Hard rules: `governance/RULES.md` #1, #9, #10 + Security Invariants.
 
 When this fires:
 

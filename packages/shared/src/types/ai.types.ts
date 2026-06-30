@@ -15,6 +15,12 @@ export type AIRequest = {
   messages: AIMessage[]
   maxTokens?: number
   temperature?: number
+  /**
+   * Optional abort signal. When the signal aborts, the underlying fetch is
+   * cancelled — preventing wasted bandwidth + AI provider cost after timeout.
+   * Caller (callAI) creates the controller and integrates with TIMEOUT_MS.
+   */
+  signal?: AbortSignal
 }
 
 export type AIUsage = {

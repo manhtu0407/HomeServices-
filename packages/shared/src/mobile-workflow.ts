@@ -73,6 +73,7 @@ function localDisplayCodeHash(seed: string, length: number): string {
 export type LocalAddressAccess = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
+  worker_checked_in?: boolean
   check_in_required: boolean
   identity_check_required: boolean
   customer_handoff_required: boolean

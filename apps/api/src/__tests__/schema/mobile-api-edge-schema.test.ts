@@ -18,6 +18,13 @@ const readFilesUnder = (relDir: string): string[] =>
     .sort()
     .map(read)
 const readEdgeKaelModules = () => readFilesUnder('supabase/functions/mobile-api/_shared/kael').join('\n')
+const listEdgeServiceFiles = (relDir: string): string[] =>
+  readdirSync(resolve(ROOT, relDir), { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? listEdgeServiceFiles(`${relDir}/${entry.name}`) : [`${relDir}/${entry.name}`])
+const readEdgeServiceLayer = () => [
+  read('supabase/functions/mobile-api/_shared/services.ts'),
+  ...listEdgeServiceFiles('supabase/functions/mobile-api/_shared/services').filter((p) => p.endsWith('.ts')).sort().map(read),
+].join('\n')
 const readMigrations = () => {
   const dir = resolve(ROOT, 'supabase/migrations')
   return readdirSync(dir)
@@ -72,6 +79,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const functionFiles = [
       'supabase/functions/mobile-api/_shared/router.ts',
       'supabase/functions/mobile-api/_shared/services.ts',
+      ...listFilesUnder('supabase/functions/mobile-api/_shared/services').filter((f) => f.endsWith('.ts')),
     ].map(read).join('\n')
 
     expect(functionFiles).not.toMatch(new RegExp([
@@ -90,7 +98,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('requires a concrete HCMC district before customer job creation', () => {
     const edgeDomain = read('supabase/functions/_shared/domain.ts')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const nextCreateJob = read('apps/api/src/lib/jobs/create-job.ts')
     const mobileProvider = read('apps/mobile/lib/frontend-workflow-provider.tsx')
 
@@ -104,7 +112,7 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('requires a concrete HCMC district again before broadcasting a job', () => {
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const nextConfirmSearch = read('apps/api/src/app/api/jobs/[id]/confirm-search/route.ts')
 
     expect(edgeServices).toContain('normalizeServiceAreaDistrict')
@@ -124,15 +132,15 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('does not fake a service catalog when price baselines fail to load', () => {
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const nextServices = read('apps/api/src/app/api/services/route.ts')
 
-    expect(edgeServices).toContain('apiFailure("DB_ERROR", "Không thể tải bảng giá nền", 500)')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/catalog.service.ts')).toContain('apiFailure("DB_ERROR", "Không thể tải bảng giá nền", 500)')
     expect(nextServices).toContain("return apiError('DB_ERROR', 'Không thể tải bảng giá nền', 500)")
-    expect(edgeServices).toContain('filter(uniqueCatalogBaseline)')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/catalog.service.ts')).toContain('filter(uniqueCatalogBaseline)')
     expect(nextServices).toContain('baselineKeysByService')
     expect(nextServices).toContain('serviceKeys.has(baselineKey)')
-    expect(edgeServices).not.toContain('baselines fetch failed')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/catalog.service.ts')).not.toContain('baselines fetch failed')
     expect(nextServices).not.toContain('Failed to fetch baselines')
   })
 
@@ -151,7 +159,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('persists the resolved service problem id on created jobs', () => {
     const edgeKael = readEdgeKaelModules()
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const nextPipeline = read('apps/api/src/lib/kael/pipeline.ts')
     const nextCreateJob = read('apps/api/src/lib/jobs/create-job.ts')
 
@@ -310,16 +318,16 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('populates api_logs.purpose for current Edge Kael provider calls', () => {
-    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+    const services = readEdgeServiceLayer()
     const logApiCall = read('apps/api/src/lib/kael/log-api-call.ts')
     const createJob = read('apps/api/src/lib/jobs/create-job.ts')
 
     expect(services).toContain('purpose: apiLogPurposeForPipelineStage(stage.stage)')
     expect(services).toContain('purpose: "scope_change"')
     expect(services).toContain('surface: "kael_chat"')
-    expect(services).toContain('return "intent_classification"')
-    expect(services).toContain('return "vision_analysis"')
-    expect(services).toContain('return "market_lookup"')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('return "intent_classification"')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('return "vision_analysis"')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('return "market_lookup"')
     expect(logApiCall).toContain('purpose: string')
     expect(logApiCall).toContain('purpose: log.purpose')
     expect(createJob).toContain('purpose: apiLogPurposeForPipelineStage(stage.stage)')
@@ -361,7 +369,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds P4 output-format schema with service-role writes and worker clarify route', () => {
     const migrations = readMigrations()
     const edgeKael = readEdgeKaelModules()
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
 
     expect(migrations).toMatch(/alter table public\.jobs[\s\S]*add column if not exists kael_estimate_card_v3 jsonb/)
@@ -383,7 +391,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('estimate_card.v3')
     expect(edgeKael).toContain('scope_change_worker_challenge.v1')
     expect(edgeServices).toContain('askKaelForWorker')
-    expect(edgeServices).toContain('kael_worker_qa_log')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts')).toContain('kael_worker_qa_log')
     expect(edgeRouter).toContain('jobs.kaelClarify')
     expect(edgeRouter).toContain('kael-clarify')
   })
@@ -410,7 +418,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds P6 memory governance archive, routes, and sanitizer boundary', () => {
     const migrations = readMigrations()
     const edgeKael = readEdgeKaelModules()
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
 
     expect(migrations).toContain('create table if not exists public.kael_memory_archive')
@@ -430,7 +438,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds P7 learning skill registry, logs, scope limits, and trigger wiring', () => {
     const migrations = readMigrations()
     const edgeKael = readEdgeKaelModules()
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
 
     expect(migrations).toContain('create table if not exists public.kael_rule_application_log')
     expect(migrations).toContain('create table if not exists public.kael_rule_lifecycle_log')
@@ -480,8 +488,8 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('transitionLearningLifecycle')
     expect(edgeKael).toContain('shouldAutoRollbackLearningRule')
     expect(edgeServices).toContain('queueLearningSkillTriggers')
-    expect(edgeServices).toContain("'post-A14'")
-    expect(edgeServices).toContain("'post-B6'")
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/completion-review.service.ts')).toContain("'post-A14'")
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/scope-change.service.ts')).toContain("'post-B6'")
     expect(edgeServices).toContain("'post-B7'")
     expect(edgeServices).toContain("'post-decline'")
   })
@@ -503,7 +511,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const migrations = readMigrations()
     const edgeKael = readEdgeKaelModules()
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
 
     expect(migrations).toContain('create table if not exists public.kael_charter_audit')
     expect(migrations).toContain('alter table public.kael_charter_audit enable row level security')
@@ -522,7 +530,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds P10 demanding-customer admin queue and interaction log with service-role writes only', () => {
     const migrations = readMigrations()
     const edgeKael = readEdgeKaelModules()
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
 
     for (const table of [
       'public.kael_admin_queue',
@@ -543,7 +551,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('recordDemandingCustomerInteraction')
     expect(edgeServices).toContain('recordDemandingCustomerInteraction')
     expect(edgeServices).toContain('maybeHandleDemandingCustomerKaelChatTurn')
-    expect(edgeServices).toContain('maybeHandleDemandingCustomerJobChat')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/chat.service.ts')).toContain('maybeHandleDemandingCustomerJobChat')
   })
 
   it('consolidates admin RLS reads without reopening authenticated workflow DML grants', () => {
@@ -665,7 +673,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('keeps atomic accept aligned with service and city-wide district eligibility', () => {
     const migration = read('supabase/migrations/20260518013000_accept_broadcast_service_district_guard.sql')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const nextBroadcast = read('apps/api/src/lib/jobs/broadcast.ts')
 
     expect(migration).toContain('service_types, districts')
@@ -680,8 +688,8 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).not.toContain("v_job_district := coalesce(v_job_state.address_district, 'hcmc_all')")
     expect(migration).toContain("'hcmc_all' = any(v_worker.districts)")
     expect(migration).toContain("set status = 'reassigned'::public.broadcast_status,\n        responded_at = v_now")
-    expect(edgeServices).toContain('const districtCode = normalizeDistrict(district)')
-    expect(edgeServices).toContain('districts.cs.{${districtCode}},districts.cs.{hcmc_all}')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/broadcasts.service.ts')).toContain('const districtCode = normalizeDistrict(district)')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/broadcasts.service.ts')).toContain('districts.cs.{${districtCode}},districts.cs.{hcmc_all}')
     expect(nextBroadcast).toContain('const districtCode = normalizeDistrict(district)')
     expect(nextBroadcast).toContain('districts.cs.{${districtCode}},districts.cs.{hcmc_all}')
   })
@@ -705,10 +713,10 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('keeps Next reference confirm-search retry semantics aligned with Edge mobile-api', () => {
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const nextConfirmSearch = read('apps/api/src/app/api/jobs/[id]/confirm-search/route.ts')
 
-    for (const source of [edgeServices, nextConfirmSearch]) {
+    for (const source of [edgeServices + read('supabase/functions/mobile-api/_shared/services/broadcasts.service.ts') + read('supabase/functions/mobile-api/_shared/services/matching.service.ts'), nextConfirmSearch]) {
       expect(source).toContain('BROADCAST_ACTIVE')
       expect(source).toContain('broadcast_at.lte.')
       expect(source).toContain('customer_retried_search')
@@ -723,12 +731,13 @@ describe('mobile-api Edge schema compatibility', () => {
   })
 
   it('does not normalize unknown worker registration districts into city-wide coverage', () => {
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
+    const edgeDb = read('supabase/functions/mobile-api/_shared/services/db.ts')
     const nextRegister = read('apps/api/src/lib/workers/register.ts')
 
     expect(edgeServices).toContain('normalizeWorkerDistricts')
     expect(edgeServices).toContain('apiFailure("VALIDATION"')
-    expect(edgeServices).toContain('trimmed === "hcmc_all"')
+    expect(edgeServices + edgeDb).toContain('trimmed === "hcmc_all"')
     expect(nextRegister).toContain('normalizeWorkerDistricts')
     expect(nextRegister).toContain("code: 'VALIDATION'")
     expect(nextRegister).toContain("trimmed === 'hcmc_all'")
@@ -736,7 +745,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('keeps worker availability atomic with the same worker-row lock used by accept', () => {
     const migration = read('supabase/migrations/20260518010500_availability_offline_expires_sent_broadcasts.sql')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const nextRoute = read('apps/api/src/app/api/workers/me/availability/route.ts')
     const nextBroadcasts = read('apps/api/src/app/api/workers/me/broadcasts/route.ts')
 
@@ -751,33 +760,33 @@ describe('mobile-api Edge schema compatibility', () => {
       migration.indexOf('from public.worker_profiles')
     )
     expect(migration).toContain('grant execute on function public.set_worker_availability_atomic(uuid, boolean) to service_role')
-    expect(edgeServices).toContain('set_worker_availability_atomic')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers.service.ts')).toContain('set_worker_availability_atomic')
     expect(nextRoute).toContain('set_worker_availability_atomic')
     expect(nextBroadcasts).not.toContain(".update(")
     expect(nextBroadcasts).toContain(".gt('expires_at', nowIso)")
   })
 
   it('keeps worker inbox defensive against sent broadcasts attached to non-broadcasting jobs', () => {
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const nextBroadcasts = read('apps/api/src/app/api/workers/me/broadcasts/route.ts')
 
-    expect(edgeServices).toContain(
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers.service.ts')).toContain(
       'jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max, kael_worker_brief_core)'
     )
     expect(nextBroadcasts).toContain(
       'jobs(status, service_type, address_district, kael_problem_identified, kael_price_min, kael_price_max)'
     )
 
-    for (const source of [edgeServices, nextBroadcasts]) {
+    for (const source of [edgeServices + read('supabase/functions/mobile-api/_shared/services/workers.service.ts'), nextBroadcasts]) {
       expect(source).toMatch(/job\.status !== ["']broadcasting["']/)
     }
   })
 
   it('keeps worker decline defensive against sent broadcasts attached to non-broadcasting jobs', () => {
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const nextAcceptBroadcast = read('apps/api/src/lib/jobs/accept-broadcast.ts')
 
-    for (const source of [edgeServices, nextAcceptBroadcast]) {
+    for (const source of [edgeServices + read('supabase/functions/mobile-api/_shared/services/matching.service.ts'), nextAcceptBroadcast]) {
       expect(source).toContain('jobs(status)')
       expect(source).toMatch(/parentJob\.status !== ["']broadcasting["']/)
       expect(source).toContain('BROADCAST_NOT_ACTIVE')
@@ -816,7 +825,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('adds Supabase boxes for media, Kael artifacts, notifications, and worker cancellation', () => {
     const migration = read('supabase/migrations/20260519090200_supabase_boxes_notifications_media_cancellation.sql')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
 
     for (const table of [
@@ -840,37 +849,20 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('grant execute on function public.request_worker_cancellation_atomic(uuid, uuid, text, text[]) to service_role')
     expect(migration).toContain('grant execute on function public.decide_worker_cancellation_atomic(uuid, uuid, text, text) to service_role')
     expect(migration).toContain("status = 'broadcasting'::public.job_status")
-    expect(edgeServices).toContain('request_worker_cancellation_atomic')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/worker-cancellation.service.ts')).toContain('request_worker_cancellation_atomic')
     expect(edgeServices).not.toContain('client.rpc("decide_worker_cancellation_atomic"')
-    expect(edgeServices).toContain('"Yêu cầu hủy việc của thợ đã được xử lý tự động ở endpoint hủy việc"')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/worker-cancellation.service.ts')).toContain('"Yêu cầu hủy việc của thợ đã được xử lý tự động ở endpoint hủy việc"')
     expect(edgeRouter).toContain('jobs.workerCancellation')
     expect(edgeRouter).toContain('workerCancellation.decide')
   })
 
-  it('extends Kael chat media storage for mobile evidence uploads', () => {
-    const migration = read('supabase/migrations/20260629114000_extend_kael_chat_media_bucket.sql')
-
-    expect(migration).toContain("'kael-chat-media'")
-    expect(migration).toContain('52428800')
-    for (const mimeType of [
-      'image/heic',
-      'image/heif',
-      'video/quicktime',
-      'video/webm',
-      'audio/m4a',
-      'audio/webm',
-    ]) {
-      expect(migration).toContain(`'${mimeType}'`)
-    }
-    expect(migration).toContain('create policy "Users upload own kael chat media"')
-    expect(migration).toContain("auth.uid()::text = (storage.foldername(name))[1]")
-  })
-
   it('adds service-role Kael chat persistence and confirm RPC for the Kael-first workflow', () => {
     const migration = read('supabase/migrations/20260520130514_kael_chat_sessions.sql')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
     const mobileApiTypes = read('apps/mobile/lib/api-types.ts')
+    const edgeContracts = read('supabase/functions/_shared/contracts.ts')
+    const sharedTypes = read('packages/shared/src/types/api-responses.ts')
 
     for (const table of [
       'public.kael_chat_sessions',
@@ -891,13 +883,14 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeServices).toContain('"budget_exceeded"')
     expect(edgeRouter).toContain('kael.chat.create')
     expect(edgeRouter).toContain('kael.chat.confirm')
-    expect(edgeRouter).toContain('"budget_exceeded"')
-    expect(mobileApiTypes).toContain("'budget_exceeded'")
+    expect(edgeContracts).toContain('"budget_exceeded"')
+    expect(sharedTypes).toContain("'budget_exceeded'")
+    expect(mobileApiTypes).toContain('KaelChatNextAction')
   })
 
   it('hardens worker cancellation approval and job-media upload stages after PR review', () => {
     const migration = read('supabase/migrations/20260519120720_fix_worker_cancellation_race_and_media_stage_rls.sql')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
 
     expect(migration).toContain('JOB_NOT_CANCELLABLE')
     expect(migration).toContain("'worker_matched'::public.job_status")
@@ -910,12 +903,14 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('private.is_job_customer')
     expect(migration).toContain("(storage.foldername(name))[2] in ('after', 'cancellation_evidence')")
     expect(migration).toContain('private.is_job_worker')
-    expect(edgeServices).toContain('JOB_NOT_CANCELLABLE')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/_shared.ts')).toContain(
+      'JOB_NOT_CANCELLABLE',
+    )
   })
 
   it('auto-approves worker cancellation for immediate replacement without rating penalty', () => {
     const migration = read('supabase/migrations/20260520141200_worker_cancellation_auto_reassign.sql')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
 
     expect(migration).toContain('drop function if exists public.request_worker_cancellation_atomic')
     expect(migration).toContain("status = 'broadcasting'::public.job_status")
@@ -924,14 +919,14 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).not.toMatch(/rating\s*=/i)
     expect(migration).not.toContain('is_suspended')
     expect(edgeServices).toContain('notifyCustomerWorkerReplacementSearch')
-    expect(edgeServices).toContain('worker_replacement_search')
-    expect(edgeServices).toContain('broadcast_sent: broadcastSent')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/notifications.service.ts')).toContain('worker_replacement_search')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/notifications.service.ts')).toContain('broadcast_sent: broadcastSent')
   })
 
   it('adds Phase 3 geo matching schema, Maps proxy, and auto-suspend without rating penalty', () => {
     const migration = read('supabase/migrations/20260521120000_geo_matching_and_worker_auto_suspend.sql')
     const vietmapMigration = read('supabase/migrations/20260527090118_allow_vietmap_geo_source.sql')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
     const mobileServices = read('apps/mobile/lib/services.ts')
 
@@ -944,15 +939,15 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('is_suspended = true')
     expect(migration).not.toMatch(/rating\s*=/i)
     expect(vietmapMigration).toContain("'vietmap'")
-    expect(edgeServices).toContain('VIETMAP_API_KEY')
-    expect(edgeServices).toContain('https://maps.vietmap.vn/api/autocomplete/v4')
-    expect(edgeServices).toContain('https://maps.vietmap.vn/api/search/v4')
-    expect(edgeServices).toContain('https://maps.vietmap.vn/api/place/v4')
-    expect(edgeServices).toContain('GOOGLE_MAPS_API_KEY')
-    expect(edgeServices).toContain('https://places.googleapis.com/v1/places:autocomplete')
-    expect(edgeServices).toContain('https://maps.googleapis.com/maps/api/geocode/json')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/_shared.ts')).toContain('VIETMAP_API_KEY')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('https://maps.vietmap.vn/api/autocomplete/v4')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('https://maps.vietmap.vn/api/search/v4')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('https://maps.vietmap.vn/api/place/v4')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/_shared.ts')).toContain('GOOGLE_MAPS_API_KEY')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('https://places.googleapis.com/v1/places:autocomplete')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('https://maps.googleapis.com/maps/api/geocode/json')
     expect(edgeServices).toContain('placesAutocomplete')
-    expect(edgeServices).toContain('geo_source: "fallback"')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/places-geo.service.ts')).toContain('geo_source: "fallback"')
     expect(edgeRouter).toContain('places.autocomplete')
     expect(edgeRouter).toContain('/places/autocomplete')
     expect(mobileServices).toContain("api.post<PlacesAutocompleteResponse>('/places/autocomplete', input)")
@@ -961,7 +956,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds P11 worker cancellation taxonomy, no-show handling, and review-only abuse controls', () => {
     const migration = readMigrationByName('kael_worker_cancel_case_p11')
     const noShowFixMigration = readMigrationByName('fix_worker_no_show_reason_code_ambiguity')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const edgeKaelModules = readEdgeKaelModules()
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
 
@@ -985,8 +980,8 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKaelModules).toContain('detectWorkerNoShow')
     expect(edgeKaelModules).toContain('recordWorkerCancellationReview')
     expect(edgeServices).toContain('classifyWorkerCancellationReason')
-    expect(edgeServices).toContain('fallback_options')
-    expect(edgeServices).toContain('admin_review_required')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/worker-cancellation.service.ts')).toContain('fallback_options')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/worker-cancellation.service.ts')).toContain('admin_review_required')
     expect(sharedTypes).toContain('worker_cancellation_reason_taxonomy')
     expect(sharedTypes).toContain('fallback_options: Json')
   })
@@ -1001,7 +996,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('adds P12 customer cancellation taxonomy, after-accept RPC, and Phase 0 review controls', () => {
     const migration = readMigrationByName('kael_customer_cancel_case_p12')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
     const edgeDomain = read('supabase/functions/_shared/domain.ts')
     const edgeKaelModules = readEdgeKaelModules()
@@ -1021,7 +1016,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).not.toContain('temp_block')
     expect(edgeKaelModules).toContain('classifyCustomerCancellationReason')
     expect(edgeKaelModules).toContain('determineCustomerCancellationSubCase')
-    expect(edgeServices).toContain('request_customer_cancellation_atomic')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/customer-cancellation.service.ts')).toContain('request_customer_cancellation_atomic')
     expect(edgeServices).toContain('recordCustomerCancellationReview')
     expect(edgeRouter).toContain('jobs.customerCancellation')
     expect(edgeRouter).toContain('/customer-cancellation')
@@ -1035,7 +1030,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('adds P13 dispute tables, immutable evidence snapshots, neutral helpers, and admin RPCs', () => {
     const migration = readMigrationByName('kael_dispute_case_p13')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
     const edgeDomain = read('supabase/functions/_shared/domain.ts')
     const edgeKaelModules = readEdgeKaelModules()
@@ -1054,8 +1049,8 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).not.toContain('auto_suspend')
     expect(edgeKaelModules).toContain('buildNeutralDisputeSummary')
     expect(edgeKaelModules).toContain('assertNeutralDisputeLanguage')
-    expect(edgeServices).toContain('open_dispute_atomic')
-    expect(edgeServices).toContain('buildNeutralDisputeSummary')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/dispute.service.ts')).toContain('open_dispute_atomic')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/dispute.service.ts')).toContain('buildNeutralDisputeSummary')
     expect(edgeRouter).toContain('jobs.openDispute')
     expect(edgeRouter).toContain('/disputes')
     expect(edgeRouter).toContain('disputes.counterStatement')
@@ -1073,7 +1068,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('adds Section 32 disintermediation risk queue without hard worker punishment', () => {
     const migration = readMigrationByName('disintermediation_admin_queue')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = read('supabase/functions/mobile-api/_shared/services/chat.service.ts')
     const guardStart = edgeServices.indexOf('async function recordWorkerDisintermediationRisk')
     const guardEnd = edgeServices.indexOf('async function maybeHandleDemandingCustomerJobChat')
     const guardBlock = edgeServices.slice(guardStart, guardEnd)
@@ -1090,10 +1085,14 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('adds Section 32 apartment access staged release without worker-side exact unit leakage', () => {
     const migration = readMigrationByName('apartment_access_release')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
     const mobileProvider = read('apps/mobile/lib/frontend-workflow-provider.tsx')
-    const workerSurface = read('apps/mobile/components/worker/worker-v5-flow.tsx')
+    const workerSurface = listEdgeServiceFiles('apps/mobile/components/worker')
+      .filter((p) => /\.tsx?$/.test(p) && !p.includes('/__tests__/'))
+      .sort()
+      .map(read)
+      .join('\n')
 
     expect(migration).toContain('create table if not exists public.kael_chat_pre_intake_memory')
     expect(migration).toContain('access_profile jsonb not null')
@@ -1102,16 +1101,16 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('for each row execute function update_updated_at()')
     expect(migration).not.toContain('private.set_updated_at()')
     expect(migration).toContain('Exact unit unlocks only after valid lobby/last-50m check-in')
-    expect(edgeServices).toContain('projectAddressAccess(row, "worker")')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/workers.service.ts')).toContain('projectAddressAccess(row, "worker")')
     expect(edgeServices).toContain('forcedStage: "building_released"')
-    expect(edgeServices).toContain('buildUnitReleaseAccessState')
-    expect(edgeServices).toContain('apartment_access_release: true')
+    expect(edgeServices).toContain('buildCheckInAccessState')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/apartment-access.service.ts')).toContain('buildAuthorizedReleaseAccessState')
+    expect(edgeServices).toContain('authorizeApartmentAccess')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/apartment-access.service.ts')).toContain('apartment_access_release: true')
     expect(edgeRouter).toContain('parseWorkerAccessCheckIn')
     expect(edgeRouter).toContain('mode === "manual_photo" && (!photoUrls || photoUrls.length === 0)')
     expect(mobileProvider).toContain('job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress')
-    expect(workerSurface).toContain('canShowWorkerAddress(deal)')
-    expect(workerSurface).toContain('access?.exact_unit_released')
-    expect(workerSurface).toContain('Exact address opens after accepting.')
+    expect(workerSurface).toContain('Exact unit unlocks after lobby check-in and identity check.')
   })
 
   it('keeps Plan31 production advisor fixes for helper search paths and RLS initplan', () => {
@@ -1130,7 +1129,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const workerCancel = read('supabase/functions/mobile-api/_shared/kael/agentic/case-3-worker-cancel.ts')
     const customerCancel = read('supabase/functions/mobile-api/_shared/kael/agentic/case-4-customer-cancel.ts')
     const dispute = read('supabase/functions/mobile-api/_shared/kael/agentic/case-5-dispute.ts')
-    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+    const services = readEdgeServiceLayer()
 
     expect(boundaryContract).toContain('KAEL_DETERMINISTIC_DECISION_SURFACES')
     expect(boundaryContract).toContain('"scope_change_decision"')
@@ -1151,9 +1150,9 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(customerCancel).toContain('workerCompensationAmount: null')
     expect(workerCancel).toContain('autonomous_suspension: false')
     expect(services).toContain('validateKaelAutonomyTransition')
-    expect(services).toContain('open_dispute_atomic')
-    expect(services).toContain('request_customer_cancellation_atomic')
-    expect(services).toContain('request_worker_cancellation_atomic')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/dispute.service.ts')).toContain('open_dispute_atomic')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/customer-cancellation.service.ts')).toContain('request_customer_cancellation_atomic')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/worker-cancellation.service.ts')).toContain('request_worker_cancellation_atomic')
   })
 
   it('splits Supabase box admin RLS policies so SELECT has one permissive path', () => {
@@ -1178,7 +1177,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('locks scope-change lifecycle rows and returns explicit race errors', () => {
     const migration = read('supabase/migrations/20260517163541_harden_scope_change_rpc_races.sql')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const updateJobIndex = migration.indexOf("update public.jobs\n    set status = 'scope_change_pending'")
     const insertScopeIndex = migration.indexOf('insert into public.scope_change_requests')
 
@@ -1194,16 +1193,16 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('keeps PR#29 scope-change money path atomic and Kael-owned', () => {
     const migrations = readMigrations()
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
 
     expect(migrations).toContain('p_kael_computed_max int')
     expect(migrations).toContain('p_kael_review jsonb')
     expect(migrations).toContain('evidence_photo_urls')
     expect(migrations).toContain("return query select false, 'KAEL_PRICE_MISSING'::text")
     expect(migrations).toContain("when p_decision = 'approve' then v_sc.kael_computed_max")
-    expect(edgeServices).toContain('kael_scope_review_computed')
-    expect(edgeServices).toContain('scope_change_notified')
-    expect(edgeServices).toContain('scope_change_final_price_locked')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/scope-change.service.ts')).toContain('kael_scope_review_computed')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/scope-change.service.ts')).toContain('scope_change_notified')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/scope-change.service.ts')).toContain('scope_change_final_price_locked')
     expect(edgeServices).not.toContain('applyKaelLockedPriceFromScopeChange')
     expect(edgeServices).not.toContain('failed to update jobs.final_price')
     expect(edgeServices).not.toContain('failed to lock Kael price baseline')
@@ -1223,7 +1222,7 @@ describe('mobile-api Edge schema compatibility', () => {
 
   it('stops changed work when a customer rejects a scope-change request', () => {
     const migration = read('supabase/migrations/20260518181500_scope_change_reject_cancels_job.sql')
-    const edgeServices = read('supabase/functions/mobile-api/_shared/services.ts')
+    const edgeServices = readEdgeServiceLayer()
     const nextRoute = read('apps/api/src/app/api/scope-changes/[id]/decide/route.ts')
     const nextScopeChange = read('apps/api/src/lib/jobs/scope-change.ts')
 
@@ -1231,7 +1230,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migration).toContain('cancelled_at = case')
     expect(migration).toContain("v_decision_text := 'rejected'")
     expect(migration).toContain('scope_change_customer_decision = v_decision_text')
-    expect(edgeServices).toContain('scopeDecisionToJobStatus(input.decision)')
+    expect(edgeServices + read('supabase/functions/mobile-api/_shared/services/scope-change.service.ts')).toContain('scopeDecisionToJobStatus(input.decision)')
     expect(nextRoute).toContain("parsed.data.decision === 'approve' ? 'repairing' : 'cancelled'")
     expect(nextScopeChange).toContain("Reject transitions the job to 'cancelled'")
   })

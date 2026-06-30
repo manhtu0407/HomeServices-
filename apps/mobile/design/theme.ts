@@ -480,7 +480,7 @@ export const customerTheme = {
     text: '#F1F6F4',
     muted: '#A9B7B3',
     subtleText: '#83938F',
-    primary: color.mint.mint300,
+    primary: '#63E6D0',
     primaryText: '#08201D',
     aqua: '#82DDE2',
     copper: '#E2A56E',
@@ -549,11 +549,11 @@ export const glassSurfaceTheme = {
   },
   liquidFallbackBackground: {
     dark: '#161D1B',
-    light: color.surface.base,
+    light: '#FFFFFF',
   },
   standardFallbackBackground: {
     dark: '#112522',
-    light: color.mint.white,
+    light: '#FFFDF8',
   },
   liquidBackground: {
     dark: 'rgba(22,29,27,0.38)',

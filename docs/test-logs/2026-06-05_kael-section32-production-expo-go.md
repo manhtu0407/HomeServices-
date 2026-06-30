@@ -1,4 +1,4 @@
-# Kael Section 32 Production Expo Go Evidence
+﻿# Kael Section 32 Production Expo Go Evidence
 
 Date: 2026-06-05
 Status: passed for Section 32 production proof with documented native-mode caveats
@@ -77,8 +77,8 @@ Post-cleanup read-only production check:
 Production deploy/DB gates, from clean worktree `codex/section32-prod-proof-clean`:
 
 - `pnpm install --frozen-lockfile`: passed.
-- `pnpm --filter @home-services/api exec vitest run src/__tests__/unit/mobile-api-worker-kael-chat.test.ts --exclude "**/.claude/**" --no-cache --reporter=dot`: passed, 12 tests.
-- `pnpm --filter @home-services/api type-check`: passed.
+- `pnpm --filter @nestscout/api exec vitest run src/__tests__/unit/mobile-api-worker-kael-chat.test.ts --exclude "**/.claude/**" --no-cache --reporter=dot`: passed, 12 tests.
+- `pnpm --filter @nestscout/api type-check`: passed.
 - `supabase db push --dry-run --yes --include-all`: showed only `20260605005000_scope_worker_kael_chat_idempotency_by_job.sql` pending for production.
 - `supabase db push --yes --include-all`: applied production migration `20260605005000`.
 - `supabase functions deploy mobile-api --project-ref iwevizmsedyqozxlawwl`: passed after the worker chat recovery fix.

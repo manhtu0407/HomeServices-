@@ -3,8 +3,9 @@ import type { EdgeAiSecrets } from "./kael/index.ts";
 export type EdgeEnv = EdgeAiSecrets & {
   supabaseUrl: string;
   supabaseSecretKey: string;
-  sepayWebhookApiKey?: string;
-  sepayQrBaseUrl?: string;
+  // S4/F1 (§38): global hard-stop for customer-facing AI during an incident.
+  // Default false. Enforced at the callAI chokepoint (kael/spend-gate.ts).
+  aiKillSwitch: boolean;
 };
 
 export function readEdgeEnv(
@@ -26,8 +27,6 @@ export function readEdgeEnv(
     deepseekApiKey: getEnv("DEEPSEEK_API_KEY"),
     vietmapApiKey: getEnv("VIETMAP_API_KEY") ?? getEnv("VIETMAP_MAPS_API_KEY"),
     googleMapsApiKey: getEnv("GOOGLE_MAPS_API_KEY") ?? getEnv("GOOGLE_MAP_KEY"),
-    sepayWebhookApiKey: getEnv("SEPAY_WEBHOOK_API_KEY"),
-    sepayQrBaseUrl: getEnv("SEPAY_QR_BASE_URL"),
     learningEnabled:
       readBooleanFlag(getEnv("LEARNING_ENABLED")) ||
       readBooleanFlag(getEnv("KAEL_OPT_BATCH_LEARNING_ENABLED")),
@@ -38,6 +37,7 @@ export function readEdgeEnv(
       ? isStagingProjectUrl(supabaseUrl)
       : envFlag(sourceTrustFlag),
     sourceTrustPerplexityFilterExplicit: sourceTrustExplicit,
+    aiKillSwitch: readBooleanFlag(getEnv("KAEL_AI_KILL_SWITCH")),
   };
 }
 

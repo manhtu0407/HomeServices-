@@ -233,14 +233,27 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
-    )
+    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching.service.ts'), 'utf8')
     expect(servicesSource).toContain('event: "worker_accepted"')
-    expect(servicesSource).toContain('event: "scope_change_requested"')
-    expect(servicesSource).toContain('resultingEvent: "kael_decided_scope_change"')
-    expect(servicesSource).toContain('function tryAutoApproveScopeChange')
-    expect(servicesSource).toContain('policyId: "kael.autonomy.v2.scope_change_auto_approve"')
-    expect(servicesSource).toContain('notifyCustomerScopeChangeDecided')
-    expect(servicesSource).toContain('scope_change_auto_approved')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('event: "scope_change_requested"')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('resultingEvent: "kael_decided_scope_change"')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('function tryAutoApproveScopeChange')
+    // K-1 (Notes.md, Tu chốt 2026-06-13): scope-change auto-approve is disabled —
+    // a scope-change changes the deal price, so it is ALWAYS confirmed by the
+    // customer (even low-risk). tryAutoApproveScopeChange is now a no-op, the
+    // auto-approve autonomy policy id is removed, and the worker request always
+    // routes to the customer-decide path. This assertion guards against the
+    // auto-approve wiring being silently re-introduced.
+    expect(servicesSource).not.toContain('policyId: "kael.autonomy.v2.scope_change_auto_approve"')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('notifyCustomerScopeChangeRequested')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/scope-change.service.ts'), 'utf8')).toContain('notifyCustomerScopeChangeDecided')
+    expect(
+      servicesSource +
+        readFileSync(
+          join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/notifications.service.ts'),
+          'utf8',
+        ),
+    ).toContain('scope_change_auto_approved')
   })
 
   it('rejects out-of-order completion transitions', () => {
@@ -285,7 +298,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
-    )
+    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/matching.service.ts'), 'utf8') + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/kael-chat-confirm.service.ts'), 'utf8')
 
     expect(transition.valid).toBe(true)
     expect(servicesSource).toContain('resultingEvent: "kael_started_matching"')
@@ -305,10 +318,10 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     )
 
     expect(transition.valid).toBe(true)
-    expect(servicesSource).toContain('function buildKaelCustomerAcceptedCompletionDecision')
-    expect(servicesSource).toContain('policyId: "kael.autonomy.v2.customer_completion_acceptance"')
-    expect(servicesSource).toContain('"kael_confirmed_completion"')
-    expect(servicesSource).toContain('customer_input: "accepted_completion"')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')).toContain('function buildKaelCustomerAcceptedCompletionDecision')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')).toContain('policyId: "kael.autonomy.v2.customer_completion_acceptance"')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')).toContain('"kael_confirmed_completion"')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/completion-review.service.ts'), 'utf8')).toContain('customer_input: "accepted_completion"')
   })
 
   it('wraps Kael failure cleanup before cancelling an analyzing job', () => {
@@ -320,7 +333,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
-    )
+    ) + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/job-create.service.ts'), 'utf8')
 
     expect(transition.valid).toBe(true)
     expect(servicesSource).toContain('event: "kael_failed"')
@@ -374,7 +387,7 @@ describe('mobile-api workflow orchestrator wrapper', () => {
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
     )
-    expect(servicesSource).toContain('event: "cancel_requested"')
+    expect(servicesSource + readFileSync(join(process.cwd(), '../../supabase/functions/mobile-api/_shared/services/customer-cancellation.service.ts'), 'utf8')).toContain('event: "cancel_requested"')
   })
 
   it('models cancellation and media attachment commands without letting terminal jobs mutate', () => {

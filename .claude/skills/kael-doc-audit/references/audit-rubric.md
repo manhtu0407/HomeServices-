@@ -5,13 +5,13 @@ Adapted from Anthropic `claude-md-improver`, retargeted from "one CLAUDE.md" to 
 ## Scoring axes (100 total)
 
 ### 1. Protocol & Gate Coverage (20)
-- `critical.md` §1 index maps every task class to a loadable protocol file.
+- `governance/critical.md` §1 index maps every task class to a loadable protocol file.
 - Core gates present: No False Completion, Required Final Response, Production-Ready, Git Rule, Forbidden Behaviors, Final Checklist.
 - `kael-preflight` + `kael-review` inline in core.
 
 ### 2. Authority & Cross-Reference Integrity (20)
-- Authority order consistent across CLAUDE.md / critical.md / RULES.md / AGENTS.md.
-- Every `§N`, `protocols/X.md`, and file-path reference resolves.
+- Authority order consistent across CLAUDE.md / governance/critical.md / governance/RULES.md / AGENTS.md.
+- Every `§N`, `governance/protocols/*.md`, and file-path reference resolves.
 - No conflicting instructions between docs. If found: STOP, surface to Tu, do not auto-resolve.
 
 ### 3. Drift vs Codebase (15)
@@ -19,16 +19,16 @@ Adapted from Anthropic `claude-md-improver`, retargeted from "one CLAUDE.md" to 
 - Owner files named in `docs/architecture/code-ownership-map.md` still exist.
 
 ### 4. Duplication / Single-Source (15)
-- Lifecycle canonical only in `critical.md` §0; runtime canonical `RULES.md` #0; scope canonical `RULES.md` #6.
+- Lifecycle canonical only in `governance/critical.md` §0; runtime canonical `governance/RULES.md` #0; scope canonical `governance/RULES.md` #6.
 - Safety invariants MAY repeat (defense-in-depth) but must never contradict.
 
 ### 5. Context Economy (15)
-- `critical.md` core lean (target <= ~650 lines); protocol bodies live in `protocols/`, not the core.
+- `governance/critical.md` core lean (target <= ~650 lines); protocol bodies live in `governance/protocols/`, not the core.
 - CLAUDE.md free of long restated process lists.
 
 ### 6. Skill Health (15)
 - Each skill has `name` + a trigger-shaped `description`.
-- Each protocol-wrapper kael-* skill points to a real `protocols/` section; standalone audit/context/design skills may point to `references/` or a self-contained workflow instead.
+- Each protocol-wrapper kael-* skill points to a real `governance/protocols/` section; standalone audit/context/design skills may point to `references/` or a self-contained workflow instead.
 - Skills mirrored in `.claude` (Claude Code) and `.agents` (Codex) where cross-agent parity is intended.
 
 ## Grades
@@ -64,15 +64,15 @@ A 90-100 / B 70-89 / C 50-69 / D 30-49 / F 0-29.
 
 When auditing, also score the design docs:
 
-- **design.md core lean:** target <= ~400 lines; recipe/lab/palette/motion bodies live in `design/`, not the core.
-- **Reference index resolves:** every `design/*.md` listed in design.md "Design Reference Files" exists; every moved section (§3, §7, §9-§25) has a redirect stub.
-- **Motion single source:** `design/motion.md` is the only home for timing ranges; the `kael-motion` skill points to it, not a copy.
-- **Recipes complete:** each screen recipe in `design/screen-recipes.md` covers loading / empty / error / success + money-impacting confirmation where relevant.
+- **governance/design.md core lean:** target <= ~400 lines; recipe/lab/palette/motion bodies live in `governance/design/`, not the core.
+- **Reference index resolves:** every `governance/design/*.md` listed in governance/design.md "Design Reference Files" exists; every moved section (§3, §7, §9-§25) has a redirect stub.
+- **Motion single source:** `governance/design/motion.md` is the only home for timing ranges; the `kael-motion` skill points to it, not a copy.
+- **Recipes complete:** each screen recipe in `governance/design/screen-recipes.md` covers loading / empty / error / success + money-impacting confirmation where relevant.
 
 ### Design red flags (instant deductions)
 - A service beyond electrical / plumbing / cleaning in any recipe or surface.
 - A money-impacting screen recipe without explicit-confirmation language.
 - A forbidden AI default (gradient orbs, bento-default, purple/blue AI gradient, card spam, fake stats) presented as allowed.
 - English user-facing copy in a recipe example.
-- Motion timing duplicated outside `design/motion.md`.
-- `design.md` or `design/` referencing a screen/file path that no longer exists.
+- Motion timing duplicated outside `governance/design/motion.md`.
+- `governance/design.md` or `governance/design/` referencing a screen/file path that no longer exists.

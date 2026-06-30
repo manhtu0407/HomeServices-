@@ -655,7 +655,7 @@ export const workerCancellationDecisionSchema = z.object({
 export const jobMediaAttachSchema = z.object({
   assets: z.array(z.object({
     object_path: z.string().min(10).max(500),
-    stage: z.enum(["before", "after", "kael_reference", "cancellation_evidence", "scope_change_evidence"]),
+    stage: z.enum(["before", "after", "kael_reference", "cancellation_evidence", "scope_change_evidence", "access_check_in"]),
     mime_type: z.string().min(3).max(120).optional(),
     file_size_bytes: z.number().int().min(0).max(26_214_400).optional(),
   })).min(1).max(5),
@@ -671,6 +671,21 @@ export const devicePushTokenSchema = z.object({
 export const customerScopeDecisionSchema = z.object({
   decision: z.enum(["approve", "reject"]),
 });
+
+// U-5 (Notes.md 5.4): user-editable subset of their own Kael memory. Only fields
+// the user owns — language (both roles) and the customer's free-text preference
+// note (PII-scrubbed server-side before storage). Kael-computed fields
+// (trust_signals / service_preferences) stay read-only.
+export const updateKaelMemorySchema = z
+  .object({
+    language: z.enum(["vi", "en"]).optional(),
+    preference_summary: z.string().trim().max(600).optional(),
+  })
+  .refine(
+    (value) =>
+      value.language !== undefined || value.preference_summary !== undefined,
+    { message: "Cần ít nhất một trường để cập nhật" },
+  );
 
 export function sanitizeForLLM(input: string): string {
   let cleaned = "";
@@ -749,3 +764,4 @@ export type DevicePushTokenInput = z.infer<typeof devicePushTokenSchema>;
 export type CustomerScopeDecisionInput = z.infer<
   typeof customerScopeDecisionSchema
 >;
+export type UpdateKaelMemoryInput = z.infer<typeof updateKaelMemorySchema>;

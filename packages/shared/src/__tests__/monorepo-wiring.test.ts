@@ -73,17 +73,22 @@ describe('monorepo directory structure', () => {
     expect(exists('CLAUDE.md')).toBe(true)
   })
 
-  it('STRUCTURES.md stays at root (LOCKED)', () => {
-    expect(exists('STRUCTURES.md')).toBe(true)
+  it('governance/STRUCTURES.md is the locked workflow source', () => {
+    expect(exists('governance/STRUCTURES.md')).toBe(true)
+    expect(isDir('governance/structures')).toBe(true)
   })
 
-  it('RULES.md stays at root (LOCKED)', () => {
-    expect(exists('RULES.md')).toBe(true)
+  it('governance/RULES.md is the locked rules source', () => {
+    expect(exists('governance/RULES.md')).toBe(true)
   })
 })
 
 describe('root product contract alignment', () => {
-  const structures = readText('STRUCTURES.md')
+  const structures = [
+    readText('governance/STRUCTURES.md'),
+    readText('governance/structures/customer-workflow.md'),
+    readText('governance/structures/worker-workflow.md'),
+  ].join('\n')
   const supabaseConfig = readText('supabase/config.toml')
 
   it('keeps Phase 0 auth aligned with the current role-first email/password app', () => {

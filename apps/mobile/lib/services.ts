@@ -12,8 +12,12 @@ import type {
   ServiceCatalogResponse,
   CreateJobResponse,
   CustomerActiveJobResponse,
+  PendingDecisionsResponse,
+  ThreadsResponse,
+  KaelMemoryResponse,
   JobDetailResponse,
   JobMediaAttachInput,
+  ApartmentAccessAuthorizeResponse,
   JobMediaAttachResponse,
   JobMessageListResponse,
   JobMessageSendResponse,
@@ -120,6 +124,22 @@ export const jobService = {
     return api.get<CustomerActiveJobResponse>('/me/jobs/active')
   },
 
+  // U-5 (Notes.md 5.3): the customer's pending Kael decisions (scope-changes awaiting them).
+  listPendingDecisions() {
+    return api.get<PendingDecisionsResponse>('/me/pending-decisions')
+  },
+
+  // U-5 (Notes.md): the customer's cross-job message inbox.
+  listThreads() {
+    return api.get<ThreadsResponse>('/me/threads')
+  },
+
+  // U-5 (Notes.md 5.4): edit the user-owned subset of Kael memory (language + a
+  // PII-scrubbed preference note; Kael-computed fields stay read-only).
+  updateKaelMemory(input: { language?: 'vi' | 'en'; preference_summary?: string }) {
+    return api.patch<KaelMemoryResponse>('/me/kael-memory', input)
+  },
+
   listMessages(jobId: string) {
     return api.get<JobMessageListResponse>(`/jobs/${jobId}/messages`)
   },
@@ -150,6 +170,12 @@ export const jobService = {
       status,
       ...extras,
     })
+  },
+
+  // §32.7: customer "Cho thợ lên" — releases the exact unit. Backend rejects with
+  // ACCESS_NOT_READY (409) when the worker has not checked in at the lobby yet.
+  authorizeApartmentAccess(jobId: string) {
+    return api.post<ApartmentAccessAuthorizeResponse>(`/jobs/${jobId}/access/authorize`)
   },
 
   requestScopeChange(jobId: string, input: WorkerScopeChangeInput) {

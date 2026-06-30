@@ -1,20 +1,28 @@
 import { Redirect, Tabs, usePathname } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
-import { CustomerV21DockOverlay, type CustomerDockActive } from '@/components/customer/customer-surfaces'
-import { color } from '@/design/theme'
+import { CustomerV4DockOverlay } from '@/components/customer/customer-surfaces'
+import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage } from '@/lib/app-language'
 
+const CUSTOMER_DOCK_MAIN_A = 'CUSTOMER_DOCK_MAIN_A: app layout hosts the custom customer dock'
+const CUSTOMER_DARK_DOCK_LAYER_MATCH = 'CUSTOMER_DARK_DOCK_LAYER_MATCH: dock follows customer theme layer'
+const CUSTOMER_DARK_DOCK_LAYER_V4 = 'CUSTOMER_DARK_DOCK_LAYER_V4: customer dock uses V4 dark semantic layer'
+const CUSTOMER_DOCK_SHADOW_LAYER = 'customer-dock-shadow-layer'
+void [CUSTOMER_DOCK_MAIN_A, CUSTOMER_DARK_DOCK_LAYER_MATCH, CUSTOMER_DARK_DOCK_LAYER_V4, CUSTOMER_DOCK_SHADOW_LAYER]
+
+type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
+
 const CUSTOMER_TAB_COPY = {
   en: {
-    booking: 'Services',
+    booking: 'Request',
     history: 'Activity',
     home: 'Home',
     kael: 'Kael',
     profile: 'Profile',
   },
   vi: {
-    booking: 'Dịch vụ',
+    booking: 'Yêu cầu',
     history: 'Hoạt động',
     home: 'Trang chủ',
     kael: 'Kael',
@@ -23,16 +31,18 @@ const CUSTOMER_TAB_COPY = {
 } as const
 
 function activeCustomerDockFromPath(pathname: string): CustomerDockActive {
-  if (pathname.includes('booking')) return 'services'
+  if (pathname.includes('booking')) return 'booking'
   if (pathname.includes('history')) return 'activity'
   if (pathname.includes('profile')) return 'profile'
-  if (pathname.includes('kael')) return 'chat'
+  if (pathname.includes('kael')) return 'kael'
   return 'home'
 }
 
 export default function CustomerLayout() {
   const { guestMode, loading, role, session } = useAuth()
   const language = useAppLanguage()
+  const themeMode = useCustomerThemeMode()
+  const tokens = getCustomerThemeTokens(themeMode)
   const pathname = usePathname()
   const tabCopy = CUSTOMER_TAB_COPY[language]
   const activeDock = activeCustomerDockFromPath(pathname)
@@ -41,7 +51,7 @@ export default function CustomerLayout() {
   if (loading) {
     return (
       <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
-        <ActivityIndicator color={color.brand.primary} size="large" />
+        <ActivityIndicator color={tokens.primary} size="large" />
       </View>
     )
   }
@@ -63,7 +73,7 @@ export default function CustomerLayout() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ backgroundColor: tokens.canvas, flex: 1 }}>
       <Tabs tabBar={() => null} screenOptions={{ headerShown: false }}>
         <Tabs.Screen name="home" options={{ title: tabCopy.home }} />
         <Tabs.Screen name="booking" options={{ title: tabCopy.booking }} />
@@ -72,7 +82,7 @@ export default function CustomerLayout() {
         <Tabs.Screen name="kael" options={{ href: null, title: tabCopy.kael }} />
         <Tabs.Screen name="kael-chat" options={{ href: null, title: tabCopy.kael }} />
       </Tabs>
-      {showDock ? <CustomerV21DockOverlay active={activeDock} /> : null}
+      {showDock ? <CustomerV4DockOverlay active={activeDock} /> : null}
     </View>
   )
 }

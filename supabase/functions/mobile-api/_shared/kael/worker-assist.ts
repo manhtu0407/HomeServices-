@@ -27,6 +27,12 @@ export type WorkerAssistInput = {
   readonly question: string;
   readonly language?: KaelPromptLanguage;
   readonly mediaRefs?: readonly string[];
+  // W-1 (Notes.md): a short, server-side, schema-validated summary of what Kael
+  // actually saw in the worker's photos (problem + severity + complexity). The
+  // handler runs vision and passes this; worker-assist itself never calls a
+  // provider for images. Null when there were no photos or vision did not
+  // succeed (no fabricated findings).
+  readonly visionSummary?: string | null;
   readonly previousTurns?: readonly WorkerAssistPreviousTurn[];
   readonly secrets: EdgeAiSecrets;
   readonly callAI?: (request: AIRequest, secrets: EdgeAiSecrets) => Promise<AIResponse | AIError>;
@@ -414,6 +420,7 @@ function buildWorkerAssistContext(input: WorkerAssistInput) {
     complexity: job.kael_complexity ?? null,
     worker_brief: brief,
     media_ref_count: input.mediaRefs?.length ?? 0,
+    vision_findings: input.visionSummary ?? null,
     recent_turns: turns,
   });
 }

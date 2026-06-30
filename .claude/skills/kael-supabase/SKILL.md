@@ -5,7 +5,7 @@ description: Supabase workflow for Home Services. Use when changing the database
 
 # kael-supabase
 
-Auto-trigger wrapper. Full procedure is canonical in `protocols/ai-data-security.md` (repo root) — do not duplicate it here.
+Auto-trigger wrapper. Full procedure is canonical in `governance/protocols/ai-data-security.md` — do not duplicate it here.
 
 ## CLI access for agents
 

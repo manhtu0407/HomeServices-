@@ -5,7 +5,7 @@ description: Test-driven workflow for the Home Services codebase. Use when imple
 
 # kael-tdd
 
-Auto-trigger wrapper. Full procedure is canonical in `protocols/tdd.md` (repo root) — do not duplicate it here.
+Auto-trigger wrapper. Full procedure is canonical in `governance/protocols/tdd.md` — do not duplicate it here.
 
 When this fires:
 

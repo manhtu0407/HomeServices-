@@ -5,12 +5,10 @@ import {
   customerCancellationRequestSchema,
   type CustomerKaelFeedbackInput,
   customerKaelFeedbackSchema,
-  type CustomerKaelMemoryPreferenceUpdateInput,
-  customerKaelMemoryPreferenceUpdateSchema,
-  type CustomerPaymentMethodSaveInput,
-  customerPaymentMethodSaveSchema,
   type CustomerScopeDecisionInput,
   customerScopeDecisionSchema,
+  updateKaelMemorySchema,
+  type UpdateKaelMemoryInput,
   type DisputeAdminDecisionInput,
   disputeAdminDecisionSchema,
   type DisputeCounterStatementInput,
@@ -30,12 +28,6 @@ import {
   kaelWorkerClarifySchema,
   type KaelChatCreateInput,
   kaelChatCreateSchema,
-  type KaelChatMediaUploadInput,
-  kaelChatMediaUploadSchema,
-  type KaelChatEvidenceInput,
-  kaelChatEvidenceSchema,
-  type KaelAssistantInput,
-  kaelAssistantSchema,
   type KaelChatTurnInput,
   kaelChatTurnSchema,
   type WorkerKaelChatCreateInput,
@@ -44,16 +36,10 @@ import {
   workerKaelChatTurnSchema,
   type WorkerKaelFeedbackInput,
   workerKaelFeedbackSchema,
-  type WorkerKaelMemoryPreferenceUpdateInput,
-  workerKaelMemoryPreferenceUpdateSchema,
   type WorkerKaelTrainingConsentInput,
   workerKaelTrainingConsentSchema,
-  type WorkerApplicationSubmitInput,
-  workerApplicationSubmitSchema,
   type PlacesAutocompleteInput,
   placesAutocompleteSchema,
-  type PlacesResolveInput,
-  placesResolveSchema,
   type ReviewInput,
   reviewSchema,
   type WorkerCancellationDecisionInput,
@@ -62,8 +48,6 @@ import {
   workerCancellationRequestSchema,
   type WorkerRegisterInput,
   workerRegisterSchema,
-  type WorkerServiceAreaUpdateInput,
-  workerServiceAreaUpdateSchema,
   type WorkerScopeChangeInput,
   workerScopeChangeSchema,
   LEARNING_CANDIDATE_STATUSES,
@@ -120,7 +104,6 @@ type ServiceCatalogResponse = {
 
 type CreateJobResponse = {
   job_id: string;
-  display_code?: string;
   status: JobStatus;
   estimate: KaelEstimate;
   estimate_card_v3?: Record<string, unknown>;
@@ -131,14 +114,12 @@ type CreateJobResponse = {
 };
 type KaelChatStatus =
   | "active"
-  | "collecting_evidence"
   | "estimate_ready"
   | "confirmed"
   | "abandoned"
   | "unsupported";
 type KaelChatNextAction =
   | "await_input"
-  | "collect_evidence"
   | "ask_photo"
   | "ask_video"
   | "estimate_ready"
@@ -182,33 +163,6 @@ type KaelChatResponse = {
   session: KaelChatSessionResponse;
   turns: KaelChatTurnResponse[];
 };
-export type KaelChatMediaUploadResponse = {
-  bucket_id: "kael-chat-media";
-  object_path: string;
-  media_ref: string;
-  token: string;
-  signed_upload_url: string;
-  expires_in_seconds: number;
-};
-type KaelAssistantResponse = {
-  answer: string;
-  safety_notes: readonly string[];
-  citations: readonly string[];
-  suggested_actions: readonly (
-    | "open_booking"
-    | "check_job"
-    | "message_worker"
-    | "contact_support"
-    | "request_scope_change"
-  )[];
-  boundary:
-    | "answered"
-    | "educational_only"
-    | "redirect"
-    | "unsupported"
-    | "fallback";
-  fallback_used: boolean;
-};
 type KaelChatProgressResponse = {
   session_id: string;
   progress: {
@@ -223,15 +177,7 @@ type ConfirmSearchResponse = {
   job_id: string;
   status: JobStatus;
   broadcast_sent: boolean;
-  worker: null | {
-    avatar_url: string | null;
-    display_code?: string | null;
-    full_name: string;
-    id: string;
-    rating: number;
-    review_count?: number | null;
-    total_jobs: number;
-  };
+  worker: null | { full_name: string; rating: number; total_jobs: number };
   message: string;
 };
 type StatusUpdateResponse = {
@@ -245,34 +191,6 @@ type ConfirmCompletionResponse = {
   status: JobStatus;
   final_price: number | null;
 };
-type PaymentIntentResponse = {
-  job_id: string;
-  status: JobStatus;
-  payment: {
-    provider: "sepay_vietqr";
-    status:
-      | "not_started"
-      | "code_requested"
-      | "vietqr_ready"
-      | "pending"
-      | "received"
-      | "amount_mismatch"
-      | "expired"
-      | "failed"
-      | "reconciled";
-    gross_amount: number | null;
-    platform_fee: number | null;
-    worker_net: number | null;
-    payment_code: string | null;
-    transfer_content: string | null;
-    qr_image_url: string | null;
-    expires_at: string | null;
-    received_at: string | null;
-    amount_received: number | null;
-    updated_at: string | null;
-  };
-};
-type SepayWebhookResponse = { success: true };
 type ReviewResponse = { review_id: string; job_id: string; status: JobStatus };
 type CustomerKaelFeedbackResponse = {
   feedback_id: string;
@@ -284,11 +202,6 @@ type WorkerRegisterResponse = {
   verification_status: WorkerVerificationStatus;
   submitted_at: string;
 };
-type WorkerApplicationResponse = {
-  application_id: string;
-  status: "open";
-  submitted_at: string;
-};
 type AvailabilityToggleResponse = {
   worker_id: string;
   is_available: boolean;
@@ -297,6 +210,7 @@ type AvailabilityToggleResponse = {
 type AddressAccessView = {
   release_stage: "area_only" | "building_released" | "unit_released";
   exact_unit_released: boolean;
+  worker_checked_in: boolean;
   check_in_required: boolean;
   identity_check_required: boolean;
   customer_handoff_required: boolean;
@@ -353,11 +267,13 @@ type WorkerKaelChatTurnResponse = {
   content_type: "text" | "clarification" | "guidance" | "photo_request" | "photo_attached" | "error";
   text_content: string | null;
   media_refs: string[];
+  safety_notes: string[];
   created_at: string;
 };
 type WorkerKaelChatSessionResponse = {
   id: string;
   job_id: string;
+  worker_id: string;
   status: WorkerKaelChatStatus;
   started_at: string;
   closed_at: string | null;
@@ -570,7 +486,7 @@ type JobMediaAttachResponse = {
     bucket_id: "job-media";
     object_path: string;
     storage_ref: string;
-    stage: "before" | "after" | "kael_reference" | "cancellation_evidence" | "scope_change_evidence";
+    stage: "before" | "after" | "kael_reference" | "cancellation_evidence" | "scope_change_evidence" | "access_check_in";
   }[];
 };
 type JobMessageResponse = {
@@ -639,7 +555,6 @@ type BroadcastListResponse = {
 type WorkerJobListResponse = {
   jobs: {
     id: string;
-    display_code: string | null;
     status: JobStatus;
     service_type: ServiceType;
     problem_summary: string | null;
@@ -650,17 +565,6 @@ type WorkerJobListResponse = {
     address_access: AddressAccessView;
     final_price: number | null;
     estimated_earning: number | null;
-    payment_status?: PaymentIntentResponse["payment"]["status"] | null;
-    payment_provider?: string | null;
-    payment_code?: string | null;
-    payment_transfer_content?: string | null;
-    payment_qr_image_url?: string | null;
-    payment_expires_at?: string | null;
-    payment_received_at?: string | null;
-    payment_amount_received?: number | null;
-    gross_amount?: number | null;
-    platform_fee?: number | null;
-    worker_net?: number | null;
     completion_notes: string | null;
     completion_photo_urls: string[];
     worker_brief_guidance?: Record<string, unknown> | null;
@@ -702,40 +606,9 @@ type WorkerProfileResponse = {
   has_cccd: boolean;
   has_selfie: boolean;
 };
-export type WorkerPerformanceInsightsResponse = {
-  worker_id: string;
-  completed_job_count: number;
-  review_count: number;
-  average_rating: number | null;
-  response_rate_percent: number | null;
-  average_response_minutes: number | null;
-  on_time_rate_percent: number | null;
-  total_broadcast_count: number;
-  responded_broadcast_count: number;
-  accepted_broadcast_count: number;
-  scheduled_arrival_job_count: number;
-  on_time_job_count: number;
-  paid_job_count: number;
-  reconciled_earnings_vnd: number | null;
-  performance_score: number | null;
-  badges: Array<{
-    id:
-      | "verified_profile"
-      | "fast_responder"
-      | "reliable_arrival"
-      | "trusted_by_customers"
-      | "steady_earner";
-    status: "earned" | "locked";
-  }>;
-  performance_axes: Array<{
-    id: "rating" | "response" | "arrival" | "completion" | "earnings";
-    score: number | null;
-  }>;
-};
 type JobDetailResponse = {
   job: {
     id: string;
-    display_code?: string;
     status: JobStatus;
     service_type: ServiceType;
     description: string;
@@ -757,17 +630,6 @@ type JobDetailResponse = {
     kael_worker_brief_guidance: Record<string, unknown> | null;
     kael_progress: KaelChatProgressResponse["progress"];
     final_price: number | null;
-    payment_status?: PaymentIntentResponse["payment"]["status"] | null;
-    payment_provider?: string | null;
-    payment_code?: string | null;
-    payment_transfer_content?: string | null;
-    payment_qr_image_url?: string | null;
-    payment_expires_at?: string | null;
-    payment_received_at?: string | null;
-    payment_amount_received?: number | null;
-    gross_amount?: number | null;
-    platform_fee?: number | null;
-    worker_net?: number | null;
     completion_notes: string | null;
     completion_photo_urls: string[];
     created_at: string;
@@ -778,15 +640,6 @@ type JobDetailResponse = {
     paid_at: string | null;
     reviewed_at: string | null;
   };
-  worker: {
-    avatar_url: string | null;
-    display_code?: string | null;
-    full_name: string;
-    id: string;
-    rating: number;
-    review_count?: number | null;
-    total_jobs: number;
-  } | null;
   broadcast_state: {
     active_count: number;
     seconds_remaining: number | null;
@@ -877,78 +730,47 @@ export type PlacesAutocompleteResponse = {
   fallback_used: boolean;
 };
 
-export type PlacesResolveResponse = {
-  place_id: string;
-  label: string | null;
-  provider: "vietmap" | "google_maps" | "fallback";
-  location: { lat: number; lng: number } | null;
-  fallback_used: boolean;
-};
-
-export type VietmapStaticMapInput = {
-  lat: number;
-  lng: number;
-  zoom: number;
-};
-
 export type KaelMemorySelfViewResponse = {
   subject_type: "customer" | "worker";
   memory: Record<string, unknown> | null;
 };
 
-export type CustomerProfileInsightsResponse = {
-  customer_id: string;
-  member_since: string | null;
-  kael_interaction_count: number;
-  completed_service_count: number;
-  saved_address_count: number;
-  preferred_service_count: number;
-  active_streak_days: number;
-  positive_review_rate_percent: number;
-  price_savings_vnd: number;
-  total_spend_vnd: number;
-  usage_rank_level: number;
-  usage_rank_points: number;
-  fair_price_service_count: number;
-  money_protection_score: number;
-  protected_value_vnd: number;
-  protected_transaction_count: number;
-  total_transaction_count: number;
-  dispute_free_rate_percent: number;
-  fair_price_status: "verified" | "mixed" | "pending" | null;
-};
-
-export type CustomerPaymentMethodResponse = {
-  payment_method: {
-    id: string;
-    bank_key: string;
-    bank_name: string;
-    account_holder_name: string;
-    bank_account_masked: string;
-    status: "pending_verification" | "verified" | "rejected";
-    is_default: boolean;
-    verified_at: string | null;
-    updated_at: string;
-  } | null;
-};
-
-export type WorkerPayoutMethodSaveInput = CustomerPaymentMethodSaveInput;
-
-export type WorkerPayoutMethodResponse = {
-  payout_method: {
-    bank_key: string;
-    bank_name: string;
-    account_holder_name: string;
-    bank_account_masked: string;
-    status: "pending_verification" | "verified" | "rejected";
-    updated_at: string;
-  };
-  worker_profile: WorkerProfileResponse;
-};
-
 export type KaelMemoryDeleteResponse = {
   subject_type: "customer" | "worker";
   deleted: true;
+};
+
+// U-5 (Notes.md 5.3): pending Kael decisions the customer must make.
+export type PendingDecisionItem = {
+  kind: "scope_change";
+  scope_change_id: string;
+  job_id: string;
+  service_type: string | null;
+  problem: string | null;
+  requested_description: string;
+  reason: string;
+  price_min: number;
+  price_max: number;
+  created_at: string;
+};
+export type PendingDecisionsResponse = {
+  pending_decisions: PendingDecisionItem[];
+};
+
+// U-5 (Notes.md): cross-job message inbox summary.
+export type ThreadSummary = {
+  job_id: string;
+  status: string;
+  service_type: string | null;
+  last_message: {
+    content: string;
+    sender_role: string | null;
+    created_at: string;
+  };
+  unread_count: number;
+};
+export type ThreadsResponse = {
+  threads: ThreadSummary[];
 };
 
 export type MobileApiServices = {
@@ -958,14 +780,6 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: PlacesAutocompleteInput,
   ): Promise<PlacesAutocompleteResponse>;
-  resolvePlace(
-    ctx: MobileApiContext,
-    input: PlacesResolveInput,
-  ): Promise<PlacesResolveResponse>;
-  getVietmapStaticMap(
-    ctx: MobileApiContext,
-    input: VietmapStaticMapInput,
-  ): Promise<Response>;
   createJob(
     ctx: MobileApiContext,
     input: JobCreateInput,
@@ -978,10 +792,6 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: KaelChatCreateInput,
   ): Promise<KaelChatResponse>;
-  answerKaelAssistant(
-    ctx: MobileApiContext,
-    input: KaelAssistantInput,
-  ): Promise<KaelAssistantResponse>;
   getKaelChat(
     ctx: MobileApiContext,
     sessionId: string,
@@ -1000,15 +810,6 @@ export type MobileApiServices = {
     sessionId: string,
     input: KaelChatTurnInput,
   ): Promise<KaelChatResponse>;
-  submitKaelChatEvidence(
-    ctx: MobileApiContext,
-    sessionId: string,
-    input: KaelChatEvidenceInput,
-  ): Promise<KaelChatResponse>;
-  createKaelChatMediaUpload(
-    ctx: MobileApiContext,
-    input: KaelChatMediaUploadInput,
-  ): Promise<KaelChatMediaUploadResponse>;
   confirmKaelChat(
     ctx: MobileApiContext,
     sessionId: string,
@@ -1034,6 +835,14 @@ export type MobileApiServices = {
     jobId: string,
     input: WorkerStatusUpdateInput,
   ): Promise<StatusUpdateResponse>;
+  authorizeApartmentAccess(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<{
+    job_id: string;
+    release_stage: string;
+    already_authorized: boolean;
+  }>;
   requestScopeChange(
     ctx: MobileApiContext,
     jobId: string,
@@ -1127,14 +936,6 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     jobId: string,
   ): Promise<ConfirmCompletionResponse>;
-  createPaymentIntent(
-    ctx: MobileApiContext,
-    jobId: string,
-  ): Promise<PaymentIntentResponse>;
-  handleSepayWebhook(
-    input: unknown,
-    headers: Headers,
-  ): Promise<SepayWebhookResponse>;
   submitReview(
     ctx: MobileApiContext,
     jobId: string,
@@ -1144,50 +945,24 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: CustomerKaelFeedbackInput,
   ): Promise<CustomerKaelFeedbackResponse>;
-  submitWorkerApplication(
-    input: WorkerApplicationSubmitInput,
-  ): Promise<WorkerApplicationResponse>;
   registerWorker(
     ctx: MobileApiContext,
     input: WorkerRegisterInput,
   ): Promise<WorkerRegisterResponse>;
   getMyKaelMemory(ctx: MobileApiContext): Promise<KaelMemorySelfViewResponse>;
-  updateMyCustomerKaelMemoryPreference(
-    ctx: MobileApiContext,
-    input: CustomerKaelMemoryPreferenceUpdateInput,
-  ): Promise<KaelMemorySelfViewResponse>;
-  updateMyWorkerKaelMemoryPreference(
-    ctx: MobileApiContext,
-    input: WorkerKaelMemoryPreferenceUpdateInput,
-  ): Promise<KaelMemorySelfViewResponse>;
-  getCustomerProfileInsights(
-    ctx: MobileApiContext,
-  ): Promise<CustomerProfileInsightsResponse>;
-  getCustomerPaymentMethod(
-    ctx: MobileApiContext,
-  ): Promise<CustomerPaymentMethodResponse>;
-  saveCustomerPaymentMethod(
-    ctx: MobileApiContext,
-    input: CustomerPaymentMethodSaveInput,
-  ): Promise<CustomerPaymentMethodResponse>;
-  saveWorkerPayoutMethod(
-    ctx: MobileApiContext,
-    input: WorkerPayoutMethodSaveInput,
-  ): Promise<WorkerPayoutMethodResponse>;
   getWorkerKaelMemory(ctx: MobileApiContext): Promise<KaelMemorySelfViewResponse>;
   deleteMyKaelMemory(ctx: MobileApiContext): Promise<KaelMemoryDeleteResponse>;
-  getWorkerProfile(ctx: MobileApiContext): Promise<WorkerProfileResponse>;
-  getWorkerPerformanceInsights(
+  updateMyKaelMemory(
     ctx: MobileApiContext,
-  ): Promise<WorkerPerformanceInsightsResponse>;
+    input: UpdateKaelMemoryInput,
+  ): Promise<KaelMemorySelfViewResponse>;
+  listMyPendingDecisions(ctx: MobileApiContext): Promise<PendingDecisionsResponse>;
+  listMyThreads(ctx: MobileApiContext): Promise<ThreadsResponse>;
+  getWorkerProfile(ctx: MobileApiContext): Promise<WorkerProfileResponse>;
   updateWorkerAvailability(
     ctx: MobileApiContext,
     input: AvailabilityToggleInput,
   ): Promise<AvailabilityToggleResponse>;
-  updateWorkerServiceArea(
-    ctx: MobileApiContext,
-    input: WorkerServiceAreaUpdateInput,
-  ): Promise<WorkerProfileResponse>;
   listWorkerBroadcasts(ctx: MobileApiContext): Promise<BroadcastListResponse>;
   listWorkerJobs(ctx: MobileApiContext): Promise<WorkerJobListResponse>;
   getWorkerEarnings(
@@ -1279,10 +1054,7 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
 
       if (isPublicRoute(route)) {
         const data = await dispatchPublicRoute(route, request, deps.services);
-        return json(
-          data,
-          ("successStatus" in route ? route.successStatus : undefined) ?? 200,
-        );
+        return json(data, 200);
       }
 
       const auth = await deps.authenticate(request, route.roles);
@@ -1320,19 +1092,7 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
   };
 }
 
-type PublicRoute =
-  | { kind: "kael.charter"; method: "GET"; public: true }
-  | {
-    kind: "payments.sepayWebhook";
-    method: "POST";
-    public: true;
-  }
-  | {
-    kind: "workerApplications.submit";
-    method: "POST";
-    public: true;
-    successStatus: 201;
-  };
+type PublicRoute = { kind: "kael.charter"; method: "GET"; public: true };
 
 type Route =
   | PublicRoute
@@ -1340,16 +1100,6 @@ type Route =
   | {
     kind: "places.autocomplete";
     method: "POST";
-    roles: UserRole[];
-  }
-  | {
-    kind: "places.resolve";
-    method: "POST";
-    roles: UserRole[];
-  }
-  | {
-    kind: "maps.vietmap.static";
-    method: "GET";
     roles: UserRole[];
   }
   | {
@@ -1363,11 +1113,6 @@ type Route =
     method: "POST";
     roles: UserRole[];
     successStatus: 201;
-  }
-  | {
-    kind: "kael.assistant";
-    method: "POST";
-    roles: UserRole[];
   }
   | {
     kind: "kael.chat.get";
@@ -1388,24 +1133,13 @@ type Route =
     roles: UserRole[];
   }
   | {
-      kind: "kael.chat.turn";
-      method: "POST";
-      sessionId: string;
-      roles: UserRole[];
-    }
+    kind: "kael.chat.turn";
+    method: "POST";
+    sessionId: string;
+    roles: UserRole[];
+  }
   | {
-      kind: "kael.chat.evidence";
-      method: "POST";
-      sessionId: string;
-      roles: UserRole[];
-    }
-  | {
-      kind: "kael.chat.mediaUpload";
-      method: "POST";
-      roles: UserRole[];
-    }
-  | {
-      kind: "kael.chat.confirm";
+    kind: "kael.chat.confirm";
     method: "POST";
     sessionId: string;
     roles: UserRole[];
@@ -1435,6 +1169,7 @@ type Route =
   | { kind: "jobs.accept"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.decline"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.status"; method: "PATCH"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.accessAuthorize"; method: "POST"; jobId: string; roles: UserRole[] }
   | {
     kind: "jobs.scopeChange";
     method: "POST";
@@ -1507,12 +1242,6 @@ type Route =
     roles: UserRole[];
   }
   | {
-    kind: "jobs.paymentIntent";
-    method: "POST";
-    jobId: string;
-    roles: UserRole[];
-  }
-  | {
     kind: "jobs.review";
     method: "POST";
     jobId: string;
@@ -1526,9 +1255,10 @@ type Route =
     successStatus: 201;
   }
   | { kind: "me.kaelMemory"; method: "GET"; roles: UserRole[] }
-  | { kind: "me.kaelMemory.updatePreference"; method: "PATCH"; roles: UserRole[] }
   | { kind: "me.kaelMemory.delete"; method: "DELETE"; roles: UserRole[] }
-  | { kind: "me.profileInsights"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.kaelMemory.update"; method: "PATCH"; roles: UserRole[] }
+  | { kind: "me.pendingDecisions"; method: "GET"; roles: UserRole[] }
+  | { kind: "me.threads"; method: "GET"; roles: UserRole[] }
   | {
     kind: "me.kaelFeedback";
     method: "POST";
@@ -1537,10 +1267,7 @@ type Route =
   }
   | { kind: "me.jobs.active"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
-  | { kind: "workers.serviceArea.update"; method: "PATCH"; roles: UserRole[] }
-  | { kind: "workers.payoutMethod.save"; method: "PUT"; roles: UserRole[] }
   | { kind: "workers.kaelMemory"; method: "GET"; roles: UserRole[] }
-  | { kind: "workers.kaelMemory.updatePreference"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.kaelChat.create"; method: "POST"; roles: UserRole[]; successStatus: 201 }
   | { kind: "workers.kaelChat.list"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.kaelChat.get"; method: "GET"; sessionId: string; roles: UserRole[] }
@@ -1550,12 +1277,9 @@ type Route =
   | { kind: "workers.kaelTrainingConsent.get"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.kaelTrainingConsent.set"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.availability"; method: "PATCH"; roles: UserRole[] }
-  | { kind: "workers.performanceInsights"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
-  | { kind: "me.paymentMethod.get"; method: "GET"; roles: UserRole[] }
-  | { kind: "me.paymentMethod.save"; method: "PUT"; roles: UserRole[] }
   | { kind: "admin.marketCache.invalidate"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelAb.priceSynthesis"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelLearning.processQueue"; method: "POST"; roles: UserRole[] }
@@ -1593,35 +1317,10 @@ function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/kael/charter") {
     return { kind: "kael.charter", method: "GET", public: true };
   }
-  if (method === "POST" && path === "/payments/sepay/webhook") {
-    return { kind: "payments.sepayWebhook", method: "POST", public: true };
-  }
-  if (method === "POST" && path === "/worker-applications") {
-    return {
-      kind: "workerApplications.submit",
-      method: "POST",
-      public: true,
-      successStatus: 201,
-    };
-  }
   if (method === "POST" && path === "/places/autocomplete") {
     return {
       kind: "places.autocomplete",
       method: "POST",
-      roles: ["customer", "worker", "admin"],
-    };
-  }
-  if (method === "POST" && path === "/places/resolve") {
-    return {
-      kind: "places.resolve",
-      method: "POST",
-      roles: ["customer", "worker", "admin"],
-    };
-  }
-  if (method === "GET" && path === "/maps/vietmap/static") {
-    return {
-      kind: "maps.vietmap.static",
-      method: "GET",
       roles: ["customer", "worker", "admin"],
     };
   }
@@ -1668,7 +1367,9 @@ function matchRoute(request: Request): Route | null {
     return {
       kind: "admin.kaelLearning.candidates.list",
       method: "GET",
-      roles: ["customer", "worker", "admin"],
+      // S2/F2 (§38): admin-only at the router, matching every other /admin/* route.
+      // Service layer keeps its own ctx.role !== "admin" guard as defense-in-depth.
+      roles: ["admin"],
     };
   }
   const learningCandidate = path.match(
@@ -1684,7 +1385,9 @@ function matchRoute(request: Request): Route | null {
         : "admin.kaelLearning.candidates.reject",
       method: "POST",
       candidateId,
-      roles: ["customer", "worker", "admin"],
+      // S2/F2 (§38): admin-only at the router (was customer/worker/admin).
+      // Service layer keeps its own ctx.role !== "admin" guard as defense-in-depth.
+      roles: ["admin"],
     };
   }
   if (method === "POST" && path === "/jobs") {
@@ -1698,14 +1401,11 @@ function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/me/jobs/active") {
     return { kind: "me.jobs.active", method: "GET", roles: ["customer", "admin"] };
   }
-  if (method === "GET" && path === "/me/profile-insights") {
-    return { kind: "me.profileInsights", method: "GET", roles: ["customer", "admin"] };
+  if (method === "GET" && path === "/me/pending-decisions") {
+    return { kind: "me.pendingDecisions", method: "GET", roles: ["customer", "admin"] };
   }
-  if (method === "GET" && path === "/me/payment-method") {
-    return { kind: "me.paymentMethod.get", method: "GET", roles: ["customer", "admin"] };
-  }
-  if (method === "PUT" && path === "/me/payment-method") {
-    return { kind: "me.paymentMethod.save", method: "PUT", roles: ["customer", "admin"] };
+  if (method === "GET" && path === "/me/threads") {
+    return { kind: "me.threads", method: "GET", roles: ["customer", "admin"] };
   }
   if (method === "POST" && path === "/me/kael-feedback") {
     return {
@@ -1718,17 +1418,17 @@ function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/me/kael-memory") {
     return { kind: "me.kaelMemory", method: "GET", roles: ["customer", "worker", "admin"] };
   }
-  if (method === "PATCH" && path === "/me/kael-memory") {
-    return {
-      kind: "me.kaelMemory.updatePreference",
-      method: "PATCH",
-      roles: ["customer", "admin"],
-    };
-  }
   if (method === "DELETE" && path === "/me/kael-memory") {
     return {
       kind: "me.kaelMemory.delete",
       method: "DELETE",
+      roles: ["customer", "worker", "admin"],
+    };
+  }
+  if (method === "PATCH" && path === "/me/kael-memory") {
+    return {
+      kind: "me.kaelMemory.update",
+      method: "PATCH",
       roles: ["customer", "worker", "admin"],
     };
   }
@@ -1738,20 +1438,6 @@ function matchRoute(request: Request): Route | null {
       method: "POST",
       roles: ["customer", "admin"],
       successStatus: 201,
-    };
-  }
-  if (method === "POST" && path === "/kael/assistant") {
-    return {
-      kind: "kael.assistant",
-      method: "POST",
-      roles: ["customer", "admin"],
-    };
-  }
-  if (method === "POST" && path === "/kael/chat/media-upload") {
-    return {
-      kind: "kael.chat.mediaUpload",
-      method: "POST",
-      roles: ["customer", "admin"],
     };
   }
   const kaelChat = path.match(/^\/kael\/chat\/([^/]+)(?:\/([^/]+))?$/);
@@ -1791,14 +1477,6 @@ function matchRoute(request: Request): Route | null {
         roles: ["customer", "admin"],
       };
     }
-    if (action === "evidence" && method === "POST") {
-      return {
-        kind: "kael.chat.evidence",
-        method: "POST",
-        sessionId,
-        roles: ["customer", "admin"],
-      };
-    }
     if (action === "confirm" && method === "POST") {
       return {
         kind: "kael.chat.confirm",
@@ -1833,21 +1511,8 @@ function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/workers/me") {
     return { kind: "workers.me", method: "GET", roles: ["worker", "admin"] };
   }
-  if (method === "PATCH" && path === "/workers/me/service-area") {
-    return { kind: "workers.serviceArea.update", method: "PATCH", roles: ["worker", "admin"] };
-  }
-  if (method === "PUT" && path === "/workers/me/payout-method") {
-    return { kind: "workers.payoutMethod.save", method: "PUT", roles: ["worker", "admin"] };
-  }
   if (method === "GET" && path === "/workers/me/kael-memory") {
     return { kind: "workers.kaelMemory", method: "GET", roles: ["worker", "admin"] };
-  }
-  if (method === "PATCH" && path === "/workers/me/kael-memory") {
-    return {
-      kind: "workers.kaelMemory.updatePreference",
-      method: "PATCH",
-      roles: ["worker", "admin"],
-    };
   }
   if (method === "GET" && path === "/workers/me/kael/chat") {
     return { kind: "workers.kaelChat.list", method: "GET", roles: ["worker", "admin"] };
@@ -1909,9 +1574,6 @@ function matchRoute(request: Request): Route | null {
   if (method === "PATCH" && path === "/workers/me/availability") {
     return { kind: "workers.availability", method: "PATCH", roles: ["worker", "admin"] };
   }
-  if (method === "GET" && path === "/workers/me/performance-insights") {
-    return { kind: "workers.performanceInsights", method: "GET", roles: ["worker", "admin"] };
-  }
   if (method === "GET" && path === "/workers/me/broadcasts") {
     return { kind: "workers.broadcasts", method: "GET", roles: ["worker", "admin"] };
   }
@@ -1920,6 +1582,18 @@ function matchRoute(request: Request): Route | null {
   }
   if (method === "GET" && path === "/workers/me/earnings") {
     return { kind: "workers.earnings", method: "GET", roles: ["worker", "admin"] };
+  }
+
+  const accessAuthorize = path.match(/^\/jobs\/([^/]+)\/access\/authorize$/);
+  if (method === "POST" && accessAuthorize) {
+    const accessAuthorizeJobId = safeDecodePathSegment(accessAuthorize[1] ?? "");
+    if (!accessAuthorizeJobId) return null;
+    return {
+      kind: "jobs.accessAuthorize",
+      method: "POST",
+      jobId: accessAuthorizeJobId,
+      roles: ["customer", "admin"],
+    };
   }
 
   const job = path.match(/^\/jobs\/([^/]+)(?:\/([^/]+))?$/);
@@ -2033,14 +1707,6 @@ function matchRoute(request: Request): Route | null {
     if (action === "confirm-completion" && method === "POST") {
       return {
         kind: "jobs.confirmCompletion",
-        method: "POST",
-        jobId,
-        roles: ["customer", "admin"],
-      };
-    }
-    if (action === "payment-intent" && method === "POST") {
-      return {
-        kind: "jobs.paymentIntent",
         method: "POST",
         jobId,
         roles: ["customer", "admin"],
@@ -2183,16 +1849,6 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.placesAutocomplete(ctx, input.data);
     }
-    case "places.resolve": {
-      const input = placesResolveSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.resolvePlace(ctx, input.data);
-    }
-    case "maps.vietmap.static":
-      return services.getVietmapStaticMap(
-        ctx,
-        vietmapStaticMapInput(new URL(request.url).searchParams),
-      );
     case "admin.marketCache.invalidate":
       return services.invalidateMarketCache(
         ctx,
@@ -2245,11 +1901,6 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.createKaelChat(ctx, input.data);
     }
-    case "kael.assistant": {
-      const input = kaelAssistantSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Du lieu khong hop le", 400);
-      return services.answerKaelAssistant(ctx, input.data);
-    }
     case "kael.chat.get":
       return services.getKaelChat(ctx, route.sessionId);
     case "kael.chat.progress":
@@ -2263,16 +1914,6 @@ async function dispatchRoute(
       const input = kaelChatTurnSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.sendKaelChatTurn(ctx, route.sessionId, input.data);
-    }
-    case "kael.chat.evidence": {
-      const input = kaelChatEvidenceSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.submitKaelChatEvidence(ctx, route.sessionId, input.data);
-    }
-    case "kael.chat.mediaUpload": {
-      const input = kaelChatMediaUploadSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.createKaelChatMediaUpload(ctx, input.data);
     }
     case "kael.chat.confirm":
       return services.confirmKaelChat(ctx, route.sessionId);
@@ -2302,6 +1943,8 @@ async function dispatchRoute(
       const input = workerStatusUpdateSchema(await readJson(request));
       return services.updateJobStatus(ctx, route.jobId, input);
     }
+    case "jobs.accessAuthorize":
+      return services.authorizeApartmentAccess(ctx, route.jobId);
     case "jobs.scopeChange": {
       const input = workerScopeChangeSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -2367,8 +2010,6 @@ async function dispatchRoute(
     }
     case "jobs.confirmCompletion":
       return services.confirmCompletion(ctx, route.jobId);
-    case "jobs.paymentIntent":
-      return services.createPaymentIntent(ctx, route.jobId);
     case "jobs.review": {
       const body = await readJson(request);
       if (typeof body !== "object" || body === null || Array.isArray(body)) {
@@ -2384,15 +2025,6 @@ async function dispatchRoute(
     }
     case "me.jobs.active":
       return services.listCustomerActiveJobs(ctx);
-    case "me.profileInsights":
-      return services.getCustomerProfileInsights(ctx);
-    case "me.paymentMethod.get":
-      return services.getCustomerPaymentMethod(ctx);
-    case "me.paymentMethod.save": {
-      const input = customerPaymentMethodSaveSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.saveCustomerPaymentMethod(ctx, input.data);
-    }
     case "me.kaelFeedback": {
       const input = customerKaelFeedbackSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -2400,13 +2032,17 @@ async function dispatchRoute(
     }
     case "me.kaelMemory":
       return services.getMyKaelMemory(ctx);
-    case "me.kaelMemory.updatePreference": {
-      const input = customerKaelMemoryPreferenceUpdateSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.updateMyCustomerKaelMemoryPreference(ctx, input.data);
-    }
     case "me.kaelMemory.delete":
       return services.deleteMyKaelMemory(ctx);
+    case "me.kaelMemory.update": {
+      const input = updateKaelMemorySchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      return services.updateMyKaelMemory(ctx, input.data);
+    }
+    case "me.pendingDecisions":
+      return services.listMyPendingDecisions(ctx);
+    case "me.threads":
+      return services.listMyThreads(ctx);
     case "workers.register": {
       const input = workerRegisterSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -2414,23 +2050,8 @@ async function dispatchRoute(
     }
     case "workers.me":
       return services.getWorkerProfile(ctx);
-    case "workers.serviceArea.update": {
-      const input = workerServiceAreaUpdateSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.updateWorkerServiceArea(ctx, input.data);
-    }
-    case "workers.payoutMethod.save": {
-      const input = customerPaymentMethodSaveSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.saveWorkerPayoutMethod(ctx, input.data);
-    }
     case "workers.kaelMemory":
       return services.getWorkerKaelMemory(ctx);
-    case "workers.kaelMemory.updatePreference": {
-      const input = workerKaelMemoryPreferenceUpdateSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.updateMyWorkerKaelMemoryPreference(ctx, input.data);
-    }
     case "workers.kaelChat.create": {
       const input = workerKaelChatCreateSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
@@ -2467,8 +2088,6 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.updateWorkerAvailability(ctx, input.data);
     }
-    case "workers.performanceInsights":
-      return services.getWorkerPerformanceInsights(ctx);
     case "workers.broadcasts":
       return services.listWorkerBroadcasts(ctx);
     case "workers.jobs":
@@ -2496,19 +2115,12 @@ async function dispatchRoute(
 
 async function dispatchPublicRoute(
   route: PublicRoute,
-  request: Request,
+  _request: Request,
   services: MobileApiServices,
 ): Promise<unknown> {
   switch (route.kind) {
     case "kael.charter":
       return services.getKaelCharter();
-    case "payments.sepayWebhook":
-      return services.handleSepayWebhook(await readJson(request), request.headers);
-    case "workerApplications.submit": {
-      const input = workerApplicationSubmitSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.submitWorkerApplication(input.data);
-    }
   }
 }
 
@@ -2549,43 +2161,6 @@ function optionalSafeText(value: unknown, maxLength: number): string | undefined
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
   return trimmed.toLowerCase();
-}
-
-function vietmapStaticMapInput(params: URLSearchParams): VietmapStaticMapInput {
-  const lat = requiredFiniteQueryNumber(params, "lat", -90, 90);
-  const lng = requiredFiniteQueryNumber(params, "lng", -180, 180);
-  const zoom = optionalIntegerQueryNumber(params, "zoom", 10, 18) ?? 13;
-  return { lat, lng, zoom };
-}
-
-function requiredFiniteQueryNumber(
-  params: URLSearchParams,
-  name: string,
-  min: number,
-  max: number,
-): number {
-  const raw = params.get(name);
-  if (!raw) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value < min || value > max) {
-    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-  }
-  return value;
-}
-
-function optionalIntegerQueryNumber(
-  params: URLSearchParams,
-  name: string,
-  min: number,
-  max: number,
-): number | undefined {
-  const raw = params.get(name);
-  if (!raw) return undefined;
-  const value = Number(raw);
-  if (!Number.isInteger(value) || value < min || value > max) {
-    apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-  }
-  return value;
 }
 
 function marketCacheInvalidateInput(input: unknown): MarketCacheInvalidateInput {
@@ -2810,7 +2385,7 @@ function parseWorkerAccessCheckIn(
     }
     if (
       rawPhotoUrls.length > 5 ||
-      rawPhotoUrls.some((item) => !isCompletionPhotoRef(item))
+      rawPhotoUrls.some((item) => !isAccessCheckInPhotoRef(item))
     ) {
       apiFailure("VALIDATION", "D\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7", 400);
     }
@@ -2892,7 +2467,18 @@ function isHttpUrl(value: unknown): value is string {
 }
 
 function isCompletionPhotoRef(value: unknown): value is string {
-  if (isHttpUrl(value)) return true;
+  return isHttpUrl(value) || isSupabaseJobMediaStageRef(value, "after");
+}
+
+// §32.7 (Codex review PR #66): the check-in gates the customer unit-release handshake,
+// so its refs MUST be uploads into the controlled access_check_in stage — no arbitrary
+// http(s) URLs and no completion-stage refs. (The completion validator keeps its legacy
+// http acceptance; this new flow has no legacy to honor.)
+function isAccessCheckInPhotoRef(value: unknown): value is string {
+  return isSupabaseJobMediaStageRef(value, "access_check_in");
+}
+
+function isSupabaseJobMediaStageRef(value: unknown, stage: string): value is string {
   if (typeof value !== "string") return false;
   try {
     const url = new URL(value);
@@ -2900,7 +2486,7 @@ function isCompletionPhotoRef(value: unknown): value is string {
     return url.protocol === "supabase:" &&
       url.hostname === "job-media" &&
       pathParts.length >= 3 &&
-      pathParts[1] === "after" &&
+      pathParts[1] === stage &&
       !pathParts.some((part) => part === "." || part === "..");
   } catch {
     return false;

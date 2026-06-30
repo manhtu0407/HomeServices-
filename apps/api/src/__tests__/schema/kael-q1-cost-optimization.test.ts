@@ -4,6 +4,13 @@ import { describe, expect, it } from 'vitest'
 
 const ROOT = resolve(__dirname, '../../../../../')
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
+const listEdgeServiceFiles = (relDir: string): string[] =>
+  readdirSync(resolve(ROOT, relDir), { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? listEdgeServiceFiles(`${relDir}/${entry.name}`) : [`${relDir}/${entry.name}`])
+const readEdgeServiceLayer = () => [
+  read('supabase/functions/mobile-api/_shared/services.ts'),
+  ...listEdgeServiceFiles('supabase/functions/mobile-api/_shared/services').filter((p) => p.endsWith('.ts')).sort().map(read),
+].join('\n')
 const readMigrationByName = (needle: string) => {
   const dir = resolve(ROOT, 'supabase/migrations')
   const name = readdirSync(dir)
@@ -42,11 +49,11 @@ describe('Q1 cost optimization baseline telemetry', () => {
   })
 
   it('hooks Edge api_logs into optimization metrics without enabling optimizations', () => {
-    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+    const services = readEdgeServiceLayer()
     const costTracking = read('supabase/functions/mobile-api/_shared/kael/cost-tracking.ts')
 
-    expect(services).toContain('buildKaelOptimizationMetricRows(rows)')
-    expect(services).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('buildKaelOptimizationMetricRows(rows)')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
     expect(services).toContain('...(stage.cacheStatus ? { cache_status: stage.cacheStatus } : {})')
     expect(services).toContain('...(stage.safeMetadata ?? {})')
     expect(services).not.toContain('safe_metadata: stage.cacheStatus\n          ? { cache_status: stage.cacheStatus }\n          : undefined')
@@ -75,7 +82,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
   it('creates Q3 market cache schema and admin invalidate hook behind Edge', () => {
     const migration = readMigrationByName('kael_market_cache_q3')
     const router = read('supabase/functions/mobile-api/_shared/router.ts')
-    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+    const services = readEdgeServiceLayer()
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
 
     expect(migration).toContain('create table if not exists public.kael_market_cache')
@@ -88,7 +95,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(router).toContain('admin.marketCache.invalidate')
     expect(router).toContain('/admin/market-cache/invalidate')
     expect(services).toContain('invalidateMarketCache')
-    expect(services).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('client.from("kael_optimization_metrics").insert(metricRows)')
     expect(sharedTypes).toContain('kael_market_cache')
     expect(sharedTypes).toContain('increment_kael_market_cache_hit')
   })
@@ -96,7 +103,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
   it('creates Q4 background learning queue and batch processor hooks behind Edge', () => {
     const migration = readMigrationByName('kael_q4_background_optimization')
     const router = read('supabase/functions/mobile-api/_shared/router.ts')
-    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+    const services = readEdgeServiceLayer()
     const index = read('supabase/functions/mobile-api/_shared/kael/index.ts')
 
     expect(migration).toContain('create table if not exists public.kael_learning_queue')
@@ -107,8 +114,8 @@ describe('Q1 cost optimization baseline telemetry', () => {
     expect(router).toContain('/admin/kael-learning/process-queue')
     expect(router).toContain('/admin/kael-learning/process-batch-results')
     expect(router).toContain('/admin/kael-learning/monitor-rules')
-    expect(services).toContain('KAEL_OPT_BATCH_LEARNING_ENABLED')
-    expect(services).toContain('queueLearningForBatch')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('KAEL_OPT_BATCH_LEARNING_ENABLED')
+    expect(services + read('supabase/functions/mobile-api/_shared/services/audit.ts')).toContain('queueLearningForBatch')
     expect(services).toContain('monitorLearningRules')
     expect(services).toContain('recordLearningRuleApplication')
     expect(services).toContain('recordLearningReviewOutcome')
@@ -172,7 +179,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
     const statusMigration = readMigrationByName('learning_candidate_manual_review_status')
     const rpcMigration = readMigrationByName('learning_candidate_admin_review_rpc')
     const router = read('supabase/functions/mobile-api/_shared/router.ts')
-    const services = read('supabase/functions/mobile-api/_shared/services.ts')
+    const services = readEdgeServiceLayer()
     const nextAdmin = read('apps/api/src/app/admin/kael-learning/page.tsx')
     const nextHome = read('apps/api/src/app/page.tsx')
     const mobileServices = read('apps/mobile/lib/services.ts')

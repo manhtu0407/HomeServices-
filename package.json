@@ -28,7 +28,11 @@
     "type-check:api": "scripts\\run-package-script.cmd @nestscout/api type-check",
     "type-check:mobile": "scripts\\run-package-script.cmd @nestscout/mobile type-check",
     "type-check:sandbox": "scripts\\run-package-script.cmd @nestscout/sandbox type-check",
-    "type-check:shared": "scripts\\run-package-script.cmd @nestscout/shared type-check"
+    "type-check:shared": "scripts\\run-package-script.cmd @nestscout/shared type-check",
+    "skills:sync": "node scripts/sync-skills.mjs",
+    "skills:check": "node scripts/check-skills-sync.mjs",
+    "lint:structure": "node scripts/lint-structure.mjs",
+    "lint:comments": "node scripts/check-comment-discipline.mjs"
   },
   "devDependencies": {
     "metro-runtime": "0.83.3",

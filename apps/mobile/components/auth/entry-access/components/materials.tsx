@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   mascotRingCompact: { borderRadius: 95, height: 190, top: 28, width: 190 },
   mascotShell: { alignItems: 'center', height: 310, justifyContent: 'center', width: '100%' },
   mascotShellCompact: { height: 278 },
-  pressed: { opacity: 0.94, transform: [{ scale: 0.985 }] },
+  pressed: { opacity: 0.78 },
   primaryButton: {
     alignItems: 'center',
     borderColor: 'rgba(255,255,255,0.68)',

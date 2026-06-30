@@ -1,8 +1,18 @@
-import type { ApartmentAccessProfileInput, BroadcastStatus, ComplexityLevel, JobStatus, LearningCandidateStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerVerificationStatus } from '@nestscout/shared'
+﻿import type { ApartmentAccessProfileInput, BroadcastStatus, ComplexityLevel, JobStatus, LearningCandidateStatus, LocalPaymentStatus, ScopeChangeStatus, ServiceType, WorkerVerificationStatus } from '@nestscout/shared'
+import type {
+  KaelEstimate,
+  CreateJobResponse,
+  KaelChatStatus,
+  KaelChatNextAction,
+  KaelChatTurn,
+  KaelChatSession,
+  KaelChatResponse,
+} from '@nestscout/shared'
 
 export type AddressAccessView = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
+  worker_checked_in: boolean
   check_in_required: boolean
   identity_check_required: boolean
   customer_handoff_required: boolean
@@ -30,88 +40,14 @@ export type ServiceCatalogResponse = {
   }[]
 }
 
-type KaelEstimate = {
-  service_type: ServiceType
-  problem_category: string
-  problem_summary: string
-  complexity: ComplexityLevel
-  price_min: number
-  price_max: number
-  confidence: number
-  advisory: string | null
-  disclaimer: string
-}
-
-export type CreateJobResponse = {
-  job_id: string
-  display_code?: string
-  status: JobStatus
-  estimate: KaelEstimate
-  estimate_card_v3?: Record<string, unknown>
-  final_price?: number | null
-  fallback_used: boolean
-  broadcast_sent?: boolean
-  message?: string
-}
-
-export type KaelChatStatus =
-  | 'active'
-  | 'collecting_evidence'
-  | 'estimate_ready'
-  | 'confirmed'
-  | 'abandoned'
-  | 'unsupported'
-export type KaelChatNextAction =
-  | 'await_input'
-  | 'collect_evidence'
-  | 'ask_photo'
-  | 'ask_video'
-  | 'estimate_ready'
-  | 'unsupported'
-  | 'budget_exceeded'
-  | 'confirmed'
-
-export type KaelChatTurn = {
-  id: string
-  session_id: string
-  turn_index: number
-  role: 'customer' | 'kael' | 'system'
-  content_type:
-    | 'text'
-    | 'photo_request'
-    | 'video_request'
-    | 'photo_attached'
-    | 'video_attached'
-    | 'clarification'
-    | 'analysis'
-    | 'estimate'
-    | 'error'
-  text_content: string | null
-  media_refs: string[]
-  estimate: KaelEstimate | null
-  // Smart clarification (2026-06-04): present on content_type='clarification' turns
-  // when the backend surfaces what Kael still needs. Drives the slot-hint chips.
-  clarification?: { question: string | null; missing_slots: string[] } | null
-  created_at: string
-}
-
-export type KaelChatSession = {
-  id: string
-  job_id: string | null
-  customer_id: string
-  service_type: ServiceType
-  status: KaelChatStatus
-  estimate: KaelEstimate | null
-  started_at: string
-  estimate_ready_at: string | null
-  total_turns: number
-  total_cost_usd: number
-  next_action: KaelChatNextAction
-}
-
-export type KaelChatResponse = {
-  session: KaelChatSession
-  turns: KaelChatTurn[]
+export type {
+  KaelEstimate,
+  CreateJobResponse,
+  KaelChatStatus,
+  KaelChatNextAction,
+  KaelChatTurn,
+  KaelChatSession,
+  KaelChatResponse,
 }
 
 export type KaelChatMediaUploadResponse = {
@@ -234,7 +170,6 @@ export type WorkerPayoutMethodResponse = {
   }
   worker_profile: WorkerProfileResponse
 }
-
 export type PlacesAutocompleteResponse = {
   suggestions: {
     place_id: string
@@ -252,7 +187,6 @@ export type PlacesResolveResponse = {
   place_id: string
   provider: 'vietmap' | 'google_maps' | 'fallback'
 }
-
 export type ConfirmKaelChatResponse = ConfirmSearchResponse & {
   session_id: string
 }
@@ -337,6 +271,45 @@ export type CustomerActiveJobResponse = {
   active_job: JobDetailResponse | null
 }
 
+// U-5 (Notes.md 5.4): edit/read the user-owned subset of Kael memory.
+export type KaelMemoryResponse = {
+  subject_type: 'customer' | 'worker'
+  memory: Record<string, unknown> | null
+}
+
+// U-5 (Notes.md 5.3): pending Kael decisions the customer must make.
+export type PendingDecisionItem = {
+  kind: 'scope_change'
+  scope_change_id: string
+  job_id: string
+  service_type: string | null
+  problem: string | null
+  requested_description: string
+  reason: string
+  price_min: number
+  price_max: number
+  created_at: string
+}
+export type PendingDecisionsResponse = {
+  pending_decisions: PendingDecisionItem[]
+}
+
+// U-5 (Notes.md): cross-job message inbox summary.
+export type ThreadSummary = {
+  job_id: string
+  status: string
+  service_type: string | null
+  last_message: {
+    content: string
+    sender_role: string | null
+    created_at: string
+  }
+  unread_count: number
+}
+export type ThreadsResponse = {
+  threads: ThreadSummary[]
+}
+
 export type JobMessageResponse = {
   id: string
   job_id: string
@@ -403,7 +376,6 @@ export type PaymentIntentResponse = {
     updated_at: string | null
   }
 }
-
 export type CustomerCancellationResponse = {
   cancellation_id: string
   job_id: string
@@ -515,6 +487,12 @@ export type WorkerProfileResponse = {
   has_selfie: boolean
 }
 
+export type WorkerRegisterResponse = {
+  worker_id: string
+  verification_status: WorkerVerificationStatus
+  submitted_at: string
+}
+
 export type WorkerPerformanceBadgeId =
   | 'verified_profile'
   | 'fast_responder'
@@ -555,18 +533,11 @@ export type WorkerPerformanceInsightsResponse = {
   }[]
 }
 
-export type WorkerRegisterResponse = {
-  worker_id: string
-  verification_status: WorkerVerificationStatus
-  submitted_at: string
-}
-
 export type WorkerApplicationResponse = {
   application_id: string
   status: 'open'
   submitted_at: string
 }
-
 export type WorkerBroadcastsResponse = {
   broadcasts: {
     broadcast_id: string
@@ -654,12 +625,14 @@ export type WorkerKaelChatTurn = {
   content_type: 'text' | 'clarification' | 'guidance' | 'photo_request' | 'photo_attached' | 'error'
   text_content: string | null
   media_refs: string[]
+  safety_notes: string[]
   created_at: string
 }
 
 export type WorkerKaelChatSession = {
   id: string
   job_id: string
+  worker_id: string
   status: WorkerKaelChatStatus
   started_at: string
   closed_at: string | null
@@ -727,7 +700,7 @@ export type WorkerCancellationDecisionResponse = {
   message: string
 }
 
-export type JobMediaStage = 'before' | 'after' | 'kael_reference' | 'cancellation_evidence' | 'scope_change_evidence'
+export type JobMediaStage = 'before' | 'after' | 'kael_reference' | 'cancellation_evidence' | 'scope_change_evidence' | 'access_check_in'
 
 export type JobMediaAttachInput = {
   assets: {
@@ -736,6 +709,12 @@ export type JobMediaAttachInput = {
     mime_type?: string
     file_size_bytes?: number
   }[]
+}
+
+export type ApartmentAccessAuthorizeResponse = {
+  job_id: string
+  release_stage: string
+  already_authorized: boolean
 }
 
 export type JobMediaAttachResponse = {

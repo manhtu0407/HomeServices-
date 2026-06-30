@@ -1,4 +1,4 @@
-# NestScout / Kael Frontend Rebuild Plan
+﻿# NestScout / Kael Frontend Rebuild Plan
 
 Status: Phase 1 approved by Tu on 2026-06-11. UI rebuild may proceed in screen checkpoints.
 
@@ -268,8 +268,8 @@ Files not to touch without separate approval:
 
 Every implementation phase:
 
-- `pnpm --filter @home-services/mobile type-check`
-- `pnpm --filter @home-services/mobile test`
+- `pnpm --filter @nestscout/mobile type-check`
+- `pnpm --filter @nestscout/mobile test`
 - Relevant focused RNTL tests for changed surfaces.
 - `pnpm doctor:react:changed` after UI/performance-sensitive batches.
 - `git diff --check`

@@ -1,4 +1,4 @@
-# NestScout / Kael Rebuild Progress
+﻿# NestScout / Kael Rebuild Progress
 
 ## Done
 
@@ -225,7 +225,7 @@
   - Added a Customer Kael Live Performance signal cell from real pending-intake problem chips when the customer selected issue filters.
   - Kept Booking and Kael chat on the existing pending-intake, media picker, server service wrapper, and progress polling paths; no remote job creation, confirm-search action, direct provider call, fake schedule slot, fake media count, or fake payment option was added.
 - Verification for this checkpoint:
-  - `pnpm --filter @home-services/mobile type-check` passed.
+  - `pnpm --filter @nestscout/mobile type-check` passed.
   - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` failed on missing `auth-welcome-service-electrical` before the Welcome service chips/dots checkpoint.
   - `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx` passed: 6 tests after the Welcome service chips/dots checkpoint.
   - Red first: `jest --runInBand components/auth/__tests__/auth-surfaces-test.tsx -t "starts with the NestScout welcome"` failed on missing `auth-welcome-copy-hero` before the Welcome reference-order/token checkpoint.

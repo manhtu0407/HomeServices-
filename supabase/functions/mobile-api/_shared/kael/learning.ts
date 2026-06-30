@@ -184,6 +184,49 @@ export async function applyLearnedPriceRule(
   };
 }
 
+// A-1 (Notes.md): defense-in-depth clamp applied at price-apply time. Promotion
+// is already evidence-gated and IQR-grounded (real reviewed jobs, outliers
+// rejected), so a learned range that is e.g. ~2x the admin baseline is a
+// LEGITIMATE market correction and must be allowed through. This clamp only
+// catches the pathological case the audit worried about — a rule promoted on
+// broken data that pushes the price "off by many times" (a decimal / unit
+// error, orders of magnitude). If either endpoint falls outside
+// [baseline / FACTOR, baseline * FACTOR] the rule is ignored for this estimate
+// and an alert is logged — no user-facing block; synthesis falls back to the
+// baseline range.
+export const LEARNED_PRICE_MAX_DEVIATION_FACTOR = 4;
+
+export function clampLearnedPriceToBaseline(
+  learned: AppliedPriceRule | null,
+  baseline: { priceMin: number; priceMax: number },
+): AppliedPriceRule | null {
+  if (!learned) return null;
+  // Cannot reason about deviation without a positive baseline; keep the rule
+  // (it already passed applyLearnedPriceRule's own positivity checks).
+  if (!(baseline.priceMin > 0) || !(baseline.priceMax > 0)) return learned;
+
+  const factor = LEARNED_PRICE_MAX_DEVIATION_FACTOR;
+  const minOutOfBand =
+    learned.priceMin < baseline.priceMin / factor ||
+    learned.priceMin > baseline.priceMin * factor;
+  const maxOutOfBand =
+    learned.priceMax < baseline.priceMax / factor ||
+    learned.priceMax > baseline.priceMax * factor;
+  if (minOutOfBand || maxOutOfBand) {
+    console.warn("clampLearnedPriceToBaseline: learned range outside baseline band, ignoring rule", {
+      ruleId: learned.ruleId,
+      ruleVersion: learned.ruleVersion,
+      learnedMin: learned.priceMin,
+      learnedMax: learned.priceMax,
+      baselineMin: baseline.priceMin,
+      baselineMax: baseline.priceMax,
+      maxDeviationFactor: factor,
+    });
+    return null;
+  }
+  return learned;
+}
+
 export async function recordLearningRuleApplication(
   supabase: SupabaseLike,
   input: LearningRuleApplicationInput,

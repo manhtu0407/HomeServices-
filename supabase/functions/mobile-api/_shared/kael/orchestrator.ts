@@ -66,10 +66,15 @@ export async function runKaelPurposeStage<T>(
         failureReason: permission.reasonCode,
       };
     }
+    // P-1 (Notes.md): clear the timeout when the race settles. The provider
+    // call already self-aborts at its budget (AbortController, maxRetries:0), so
+    // this race is a belt; leaving its setTimeout pending after stage.run() wins
+    // would keep a dangling timer and later reject a promise nobody awaits.
+    const timeout = createStageTimeout(stage.timeoutMs);
     const value = await Promise.race([
       stage.run(),
-      timeoutAfter(stage.timeoutMs),
-    ]);
+      timeout.promise,
+    ]).finally(() => timeout.cancel());
     if (stage.selfCheck && typeof value === "string") {
       const checked = checkKaelResponse({
         text: value,
@@ -151,8 +156,19 @@ class StageTimeoutError extends Error {
   }
 }
 
-function timeoutAfter(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => reject(new StageTimeoutError(ms)), ms);
+function createStageTimeout(ms: number): { promise: Promise<never>; cancel: () => void } {
+  let handle: ReturnType<typeof setTimeout> | undefined;
+  const promise = new Promise<never>((_, reject) => {
+    handle = setTimeout(() => reject(new StageTimeoutError(ms)), ms);
   });
+  // cancel() clears the timer once the race settles, so when stage.run() wins
+  // the timeout never fires (promise stays pending and is GC'd). When the
+  // timeout wins, its rejection is consumed by Promise.race and surfaces as the
+  // stage's TIMEOUT failure — never an unhandled rejection.
+  return {
+    promise,
+    cancel: () => {
+      if (handle !== undefined) clearTimeout(handle);
+    },
+  };
 }

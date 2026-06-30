@@ -30,7 +30,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
   return {
     getKaelCharter: vi.fn(async () => ({
       charter_version: '2026-05-25.p8',
-      identity_summary: 'Kael is the NestScout assistant.',
+      identity_summary: 'Kael is the Home Services assistant.',
       locked_files: ['identity.md', 'persona.md', 'mission-values.md'],
       tunable_files: ['tone-matrix.yaml', 'language-rules.md', 'forbidden-language.json', 'style-guidelines.md'],
       forbidden_categories: ['ai_self_reference'],
@@ -38,16 +38,6 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     })),
     listServices: vi.fn(async () => ({ services: [] })),
     placesAutocomplete: vi.fn(async () => ({ suggestions: [], fallback_used: false })),
-    resolvePlace: vi.fn(async () => ({
-      fallback_used: true,
-      label: null,
-      location: null,
-      place_id: 'fallback',
-      provider: 'fallback' as const,
-    })),
-    getVietmapStaticMap: vi.fn(async () => new Response(new ArrayBuffer(0), {
-      headers: { 'Content-Type': 'image/png' },
-    })),
     createJob: vi.fn(async () => ({
       job_id: '22222222-2222-4222-8222-222222222222',
       status: 'broadcasting' as const,
@@ -69,15 +59,6 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     getJob: vi.fn(),
     listCustomerActiveJobs: vi.fn(),
     createKaelChat: vi.fn(),
-    createKaelChatMediaUpload: vi.fn(async () => ({
-      bucket_id: 'kael-chat-media' as const,
-      object_path: '11111111-1111-4111-8111-111111111111/kael-chat/photo.jpg',
-      media_ref: 'supabase://kael-chat-media/11111111-1111-4111-8111-111111111111/kael-chat/photo.jpg',
-      token: 'upload-token',
-      signed_upload_url: 'https://storage.example.test/upload/sign/photo.jpg',
-      expires_in_seconds: 7200,
-    })),
-    answerKaelAssistant: vi.fn(),
     getKaelChat: vi.fn(),
     getKaelChatProgress: vi.fn(async () => ({
       session_id: 'session-1',
@@ -93,13 +74,13 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
     })),
     sendKaelChatTurn: vi.fn(),
-    submitKaelChatEvidence: vi.fn(),
     confirmKaelChat: vi.fn(),
     confirmSearch: vi.fn(),
     cancelJob: vi.fn(),
     acceptBroadcast: vi.fn(),
     declineBroadcast: vi.fn(),
     updateJobStatus: vi.fn(),
+    authorizeApartmentAccess: vi.fn(),
     requestScopeChange: vi.fn(),
     askKaelForWorker: vi.fn(),
     createWorkerKaelChat: vi.fn(),
@@ -120,92 +101,17 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     sendJobMessage: vi.fn(),
     decideWorkerCancellation: vi.fn(),
     confirmCompletion: vi.fn(),
-    createPaymentIntent: vi.fn(async () => ({
-      job_id: '22222222-2222-4222-8222-222222222222',
-      status: 'payment_pending' as const,
-      payment: {
-        provider: 'sepay_vietqr' as const,
-        status: 'vietqr_ready' as const,
-        gross_amount: 250000,
-        platform_fee: 25000,
-        worker_net: 225000,
-        payment_code: 'NSMOH260001',
-        transfer_content: 'NestScout NSMOH260001',
-        qr_image_url: 'https://qr.sepay.vn/img?acc=redacted',
-        expires_at: '2026-06-14T00:30:00.000Z',
-        received_at: null,
-        amount_received: null,
-        updated_at: '2026-06-14T00:00:00.000Z',
-      },
-    })),
-    handleSepayWebhook: vi.fn(async () => ({ success: true as const })),
     submitReview: vi.fn(),
     submitCustomerKaelFeedback: vi.fn(),
-    submitWorkerApplication: vi.fn(),
     registerWorker: vi.fn(),
     getMyKaelMemory: vi.fn(),
-    updateMyCustomerKaelMemoryPreference: vi.fn(async () => ({
-      memory: null,
-      subject_type: 'customer' as const,
-    })),
-    updateMyWorkerKaelMemoryPreference: vi.fn(async () => ({
-      memory: null,
-      subject_type: 'worker' as const,
-    })),
-    getCustomerProfileInsights: vi.fn(),
-    getCustomerPaymentMethod: vi.fn(async () => ({ payment_method: null })),
-    saveCustomerPaymentMethod: vi.fn(async () => ({
-      payment_method: {
-        account_holder_name: 'PHAN MANH TU',
-        bank_account_masked: '**** 6789',
-        bank_key: 'techcombank',
-        bank_name: 'Techcombank',
-        id: '92000000-0000-0000-0000-000000000001',
-        is_default: true,
-        status: 'pending_verification' as const,
-        updated_at: '2026-06-27T00:00:00.000Z',
-        verified_at: null,
-      },
-    })),
-    saveWorkerPayoutMethod: vi.fn(async () => ({
-      payout_method: {
-        account_holder_name: 'PHAN MANH TU',
-        bank_account_masked: '****6789',
-        bank_key: 'techcombank',
-        bank_name: 'Techcombank',
-        status: 'pending_verification' as const,
-        updated_at: '2026-06-29T00:00:00.000Z',
-      },
-      worker_profile: {
-        bank_account_masked: '****6789',
-        bank_name: 'Techcombank',
-        date_of_birth: null,
-        districts: [],
-        gender: null,
-        has_cccd: false,
-        has_selfie: false,
-        home_lat: null,
-        home_lng: null,
-        id: '33333333-3333-4333-8333-333333333333',
-        is_approved: true,
-        is_available: false,
-        is_suspended: false,
-        legal_name: null,
-        problem_specializations: [],
-        rating: 0,
-        service_radius_km: null,
-        service_types: [],
-        total_jobs: 0,
-        verification_status: 'approved' as const,
-        years_experience: 0,
-      },
-    })),
     getWorkerKaelMemory: vi.fn(),
     deleteMyKaelMemory: vi.fn(),
+    updateMyKaelMemory: vi.fn(),
+    listMyPendingDecisions: vi.fn(async () => ({ pending_decisions: [] })),
+    listMyThreads: vi.fn(async () => ({ threads: [] })),
     getWorkerProfile: vi.fn(),
-    getWorkerPerformanceInsights: vi.fn(),
     updateWorkerAvailability: vi.fn(),
-    updateWorkerServiceArea: vi.fn(),
     listWorkerBroadcasts: vi.fn(),
     listWorkerJobs: vi.fn(),
     streamWorkerKaelChatTurn: vi.fn(async () => new Response(new ReadableStream(), {
@@ -614,39 +520,46 @@ describe('mobile-api Edge router contract', () => {
     expect(deleteMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
   })
 
-  it('routes customer Kael message memory permission updates through authenticated services', async () => {
-    const updateMyCustomerKaelMemoryPreference = vi.fn(async () => ({
-      memory: {
-        customer_id: customerAuth.user.id,
-        service_preferences: {
-          memory_permissions: {
-            message_interaction_memory: true,
-          },
-        },
-      },
-      subject_type: 'customer' as const,
-    }))
+  it('U-5: routes the 3 Agentic-Center endpoints to their authenticated services', async () => {
+    const updateMyKaelMemory = vi.fn(async () => ({ subject_type: 'customer' as const, memory: null }))
+    const listMyPendingDecisions = vi.fn(async () => ({ pending_decisions: [] }))
+    const listMyThreads = vi.fn(async () => ({ threads: [] }))
     const handler = createMobileApiHandler({
       authenticate: vi.fn(async () => customerAuth),
-      services: makeServices({ updateMyCustomerKaelMemoryPreference }),
+      services: makeServices({ updateMyKaelMemory, listMyPendingDecisions, listMyThreads }),
+    })
+
+    const patchResponse = await handler(new Request('https://example.test/mobile-api/me/kael-memory', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ language: 'en' }),
+    }))
+    const pendingResponse = await handler(new Request('https://example.test/mobile-api/me/pending-decisions'))
+    const threadsResponse = await handler(new Request('https://example.test/mobile-api/me/threads'))
+
+    expect(patchResponse.status).toBe(200)
+    expect(pendingResponse.status).toBe(200)
+    expect(threadsResponse.status).toBe(200)
+    expect(updateMyKaelMemory).toHaveBeenCalledWith(expect.objectContaining(customerAuth), { language: 'en' })
+    expect(listMyPendingDecisions).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+    expect(listMyThreads).toHaveBeenCalledWith(expect.objectContaining(customerAuth))
+  })
+
+  it('U-5: PATCH /me/kael-memory rejects an empty update with 400', async () => {
+    const updateMyKaelMemory = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => customerAuth),
+      services: makeServices({ updateMyKaelMemory }),
     })
 
     const response = await handler(new Request('https://example.test/mobile-api/me/kael-memory', {
-      body: JSON.stringify({
-        enabled: true,
-        key: 'message_interaction_memory',
-      }),
       method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
     }))
 
-    expect(response.status).toBe(200)
-    expect(updateMyCustomerKaelMemoryPreference).toHaveBeenCalledWith(
-      expect.objectContaining(customerAuth),
-      {
-        enabled: true,
-        key: 'message_interaction_memory',
-      },
-    )
+    expect(response.status).toBe(400)
+    expect(updateMyKaelMemory).not.toHaveBeenCalled()
   })
 
   it('X4 F-17: routes customer GET /me/jobs/active to listCustomerActiveJobs', async () => {
@@ -694,101 +607,6 @@ describe('mobile-api Edge router contract', () => {
 
     expect(response.status).toBe(200)
     expect(getWorkerKaelMemory).toHaveBeenCalledWith(expect.objectContaining(workerAuth))
-  })
-
-  it('routes worker Kael memory preference updates through the worker endpoint', async () => {
-    const updateMyWorkerKaelMemoryPreference = vi.fn(async () => ({
-      memory: {
-        safe_metadata: {
-          memory_preferences: {
-            area_preference: false,
-          },
-        },
-        worker_id: workerAuth.user.id,
-      },
-      subject_type: 'worker' as const,
-    }))
-    const handler = createMobileApiHandler({
-      authenticate: vi.fn(async () => workerAuth),
-      services: makeServices({ updateMyWorkerKaelMemoryPreference }),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/workers/me/kael-memory', {
-      body: JSON.stringify({
-        enabled: false,
-        key: 'area_preference',
-      }),
-      method: 'PATCH',
-    }))
-
-    expect(response.status).toBe(200)
-    expect(updateMyWorkerKaelMemoryPreference).toHaveBeenCalledWith(
-      expect.objectContaining(workerAuth),
-      {
-        enabled: false,
-        key: 'area_preference',
-      },
-    )
-  })
-
-  it('routes worker payout method confirmation through worker/admin auth', async () => {
-    const saveWorkerPayoutMethod = vi.fn(async () => ({
-      payout_method: {
-        account_holder_name: 'PHAN MANH TU',
-        bank_account_masked: '****6789',
-        bank_key: 'techcombank',
-        bank_name: 'Techcombank',
-        status: 'pending_verification' as const,
-        updated_at: '2026-06-29T00:00:00.000Z',
-      },
-      worker_profile: {
-        bank_account_masked: '****6789',
-        bank_name: 'Techcombank',
-        date_of_birth: null,
-        districts: [],
-        gender: null,
-        has_cccd: false,
-        has_selfie: false,
-        home_lat: null,
-        home_lng: null,
-        id: '33333333-3333-4333-8333-333333333333',
-        is_approved: true,
-        is_available: false,
-        is_suspended: false,
-        legal_name: null,
-        rating: 0,
-        service_radius_km: null,
-        service_types: [],
-        total_jobs: 0,
-        verification_status: 'approved' as const,
-        years_experience: 0,
-      },
-    }))
-    const authenticate = vi.fn(async () => workerAuth)
-    const handler = createMobileApiHandler({
-      authenticate,
-      services: makeServices({ saveWorkerPayoutMethod } as Partial<MobileApiServices>),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/workers/me/payout-method', {
-      body: JSON.stringify({
-        account_holder_name: 'PHAN MANH TU',
-        bank_account: '123456789',
-        bank_key: 'techcombank',
-        bank_name: 'Techcombank',
-      }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PUT',
-    }))
-
-    expect(response.status).toBe(200)
-    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker', 'admin'])
-    expect(saveWorkerPayoutMethod).toHaveBeenCalledWith(expect.objectContaining(workerAuth), {
-      account_holder_name: 'PHAN MANH TU',
-      bank_account: '123456789',
-      bank_key: 'techcombank',
-      bank_name: 'Techcombank',
-    })
   })
 
   it('routes device push token registration through authenticated mobile API services', async () => {
@@ -847,52 +665,6 @@ describe('mobile-api Edge router contract', () => {
     expect(placesAutocomplete).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
       expect.objectContaining({ input: 'Landmark Bình Thạnh' }),
-    )
-  })
-
-  it('routes Places resolve through authenticated mobile API services', async () => {
-    const resolvePlace = vi.fn(async () => ({
-      fallback_used: false,
-      label: 'Landmark 81, Binh Thanh',
-      location: { lat: 10.795, lng: 106.722 },
-      place_id: 'vietmap-place-1',
-      provider: 'vietmap' as const,
-    }))
-    const handler = createMobileApiHandler({
-      authenticate: vi.fn(async () => workerAuth),
-      services: makeServices({ resolvePlace }),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/places/resolve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label: 'Landmark 81, Binh Thanh', place_id: 'vietmap-place-1' }),
-    }))
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({ provider: 'vietmap' })
-    expect(resolvePlace).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'worker' }),
-      expect.objectContaining({ place_id: 'vietmap-place-1' }),
-    )
-  })
-
-  it('routes VietMap static map through authenticated binary mobile API services', async () => {
-    const getVietmapStaticMap = vi.fn(async () => new Response(new Uint8Array([137, 80, 78, 71]), {
-      headers: { 'Content-Type': 'image/png' },
-    }))
-    const handler = createMobileApiHandler({
-      authenticate: vi.fn(async () => workerAuth),
-      services: makeServices({ getVietmapStaticMap }),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/maps/vietmap/static?lat=10.795&lng=106.722&zoom=13'))
-
-    expect(response.status).toBe(200)
-    expect(response.headers.get('content-type')).toBe('image/png')
-    expect(getVietmapStaticMap).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'worker' }),
-      { lat: 10.795, lng: 106.722, zoom: 13 },
     )
   })
 
@@ -985,65 +757,6 @@ describe('mobile-api Edge router contract', () => {
     )
   })
 
-  it('accepts worker application review requests without authenticating or granting worker role', async () => {
-    const submitWorkerApplication = vi.fn(async () => ({
-      application_id: 'application-1',
-      status: 'open' as const,
-      submitted_at: '2026-06-12T00:00:00.000Z',
-    }))
-    const authenticate = vi.fn(async () => workerAuth)
-    const handler = createMobileApiHandler({
-      authenticate,
-      services: makeServices({ submitWorkerApplication } as Partial<MobileApiServices>),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/worker-applications', {
-      method: 'POST',
-      body: JSON.stringify({
-        contact: 'worker@example.com',
-        language: 'vi',
-        source: 'auth_worker_create',
-        client_request_id: '550e8400-e29b-41d4-a716-446655440000',
-      }),
-    }))
-
-    expect(response.status).toBe(201)
-    expect(await response.json()).toEqual({
-      application_id: 'application-1',
-      status: 'open',
-      submitted_at: '2026-06-12T00:00:00.000Z',
-    })
-    expect(authenticate).not.toHaveBeenCalled()
-    expect(submitWorkerApplication).toHaveBeenCalledWith(expect.objectContaining({
-      contact: 'worker@example.com',
-      language: 'vi',
-      source: 'auth_worker_create',
-      client_request_id: '550e8400-e29b-41d4-a716-446655440000',
-    }))
-  })
-
-  it('rejects invalid worker application contact before service dispatch', async () => {
-    const submitWorkerApplication = vi.fn()
-    const authenticate = vi.fn(async () => workerAuth)
-    const handler = createMobileApiHandler({
-      authenticate,
-      services: makeServices({ submitWorkerApplication } as Partial<MobileApiServices>),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/worker-applications', {
-      method: 'POST',
-      body: JSON.stringify({
-        contact: 'khong-phai-lien-he',
-        language: 'vi',
-      }),
-    }))
-
-    expect(response.status).toBe(400)
-    expect(await response.json()).toMatchObject({ code: 'VALIDATION' })
-    expect(authenticate).not.toHaveBeenCalled()
-    expect(submitWorkerApplication).not.toHaveBeenCalled()
-  })
-
   it('routes A4 manual learning candidate list and review through admin-only mobile API services', async () => {
     const listKaelLearningCandidates = vi.fn(async () => ({
       candidates: [{
@@ -1108,7 +821,10 @@ describe('mobile-api Edge router contract', () => {
     expect(listResponse.status).toBe(200)
     expect(approveResponse.status).toBe(200)
     expect(rejectResponse.status).toBe(200)
-    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer', 'worker', 'admin'])
+    // S2/F2 (§38): learning-candidate routes are now admin-only at the router
+    // (before: ['customer','worker','admin']). The service-layer ctx.role guard
+    // remains as defense-in-depth.
+    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['admin'])
     expect(listKaelLearningCandidates).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'admin' }),
       { state: 'manual_review', limit: 10 },
@@ -1150,98 +866,6 @@ describe('mobile-api Edge router contract', () => {
     })
     expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker', 'admin'])
     expect(updateJobStatus).not.toHaveBeenCalled()
-  })
-
-  it('routes customer profile insights through customer/admin auth', async () => {
-    const getCustomerProfileInsights = vi.fn(async () => ({
-      customer_id: customerAuth.user.id,
-      member_since: '2026-01-02T00:00:00.000Z',
-      kael_interaction_count: 4,
-      active_streak_days: 2,
-      completed_service_count: 3,
-      preferred_service_count: 2,
-      positive_review_rate_percent: 98,
-      price_savings_vnd: 200000,
-      saved_address_count: 1,
-      total_spend_vnd: 1600000,
-      usage_rank_level: 2,
-      usage_rank_points: 260,
-      fair_price_service_count: 2,
-      money_protection_score: 67,
-      protected_value_vnd: 1600000,
-      protected_transaction_count: 2,
-      total_transaction_count: 3,
-      dispute_free_rate_percent: 100,
-      fair_price_status: 'verified' as const,
-    }))
-    const authenticate = vi.fn(async () => customerAuth)
-    const handler = createMobileApiHandler({
-      authenticate,
-      services: makeServices({ getCustomerProfileInsights } as Partial<MobileApiServices>),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/me/profile-insights'))
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({
-      customer_id: customerAuth.user.id,
-      completed_service_count: 3,
-      fair_price_status: 'verified',
-    })
-    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer', 'admin'])
-    expect(getCustomerProfileInsights).toHaveBeenCalledWith(expect.objectContaining({
-      role: 'customer',
-      user: customerAuth.user,
-    }))
-  })
-
-  it('routes worker performance insights through worker/admin auth', async () => {
-    const getWorkerPerformanceInsights = vi.fn(async () => ({
-      worker_id: workerAuth.user.id,
-      completed_job_count: 12,
-      review_count: 10,
-      average_rating: 4.9,
-      response_rate_percent: 98,
-      average_response_minutes: 18,
-      on_time_rate_percent: 96,
-      total_broadcast_count: 20,
-      responded_broadcast_count: 19,
-      accepted_broadcast_count: 12,
-      scheduled_arrival_job_count: 8,
-      on_time_job_count: 8,
-      paid_job_count: 9,
-      reconciled_earnings_vnd: 12850000,
-      performance_score: 94,
-      badges: [
-        { id: 'verified_profile' as const, status: 'earned' as const },
-      ],
-      performance_axes: [
-        { id: 'rating' as const, score: 98 },
-        { id: 'response' as const, score: 98 },
-        { id: 'arrival' as const, score: 96 },
-        { id: 'completion' as const, score: 100 },
-        { id: 'earnings' as const, score: 100 },
-      ],
-    }))
-    const authenticate = vi.fn(async () => workerAuth)
-    const handler = createMobileApiHandler({
-      authenticate,
-      services: makeServices({ getWorkerPerformanceInsights } as Partial<MobileApiServices>),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/workers/me/performance-insights'))
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({
-      worker_id: workerAuth.user.id,
-      response_rate_percent: 98,
-      performance_score: 94,
-    })
-    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['worker', 'admin'])
-    expect(getWorkerPerformanceInsights).toHaveBeenCalledWith(expect.objectContaining({
-      role: 'worker',
-      user: workerAuth.user,
-    }))
   })
 
   it('validates POST /jobs before creating a job', async () => {
@@ -1362,143 +986,6 @@ describe('mobile-api Edge router contract', () => {
     expect(createKaelChat).toHaveBeenCalledWith(
       expect.objectContaining({ role: 'customer' }),
       expect.objectContaining({ service_type: 'plumbing', address_district: 'q7' }),
-    )
-  })
-
-  it('routes Kael chat media uploads through the signed Edge upload endpoint', async () => {
-    const createKaelChatMediaUpload = vi.fn(async () => ({
-      bucket_id: 'kael-chat-media' as const,
-      object_path: `${customerAuth.user.id}/kael-chat/leak.jpg`,
-      media_ref: `supabase://kael-chat-media/${customerAuth.user.id}/kael-chat/leak.jpg`,
-      token: 'upload-token',
-      signed_upload_url: 'https://storage.example.test/upload/sign/leak.jpg',
-      expires_in_seconds: 7200,
-    }))
-    const handler = createMobileApiHandler({
-      authenticate: vi.fn(async () => customerAuth),
-      services: makeServices({ createKaelChatMediaUpload }),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/media-upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        file_name: 'leak.jpg',
-        mime_type: 'image/jpeg',
-        file_size_bytes: 1200,
-      }),
-    }))
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({
-      bucket_id: 'kael-chat-media',
-      media_ref: `supabase://kael-chat-media/${customerAuth.user.id}/kael-chat/leak.jpg`,
-    })
-    expect(createKaelChatMediaUpload).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'customer' }),
-      {
-        file_name: 'leak.jpg',
-        mime_type: 'image/jpeg',
-        file_size_bytes: 1200,
-      },
-    )
-  })
-
-  it('routes Kael chat evidence from local audit media refs into the Edge analysis service', async () => {
-    const localCustomerAuth: MobileApiAuthResult = {
-      ...customerAuth,
-      user: { id: 'local-visual-audit-customer' },
-    }
-    const submitKaelChatEvidence = vi.fn(async () => ({
-      session: {
-        id: 'session-local-audit',
-        job_id: null,
-        customer_id: 'local-visual-audit-customer',
-        service_type: 'plumbing' as const,
-        status: 'estimate_ready' as const,
-        estimate: {
-          service_type: 'plumbing' as const,
-          problem_category: 'leaking_pipe',
-          problem_summary: 'Ống nước cần kiểm tra',
-          complexity: 'medium' as const,
-          price_min: 100000,
-          price_max: 250000,
-          confidence: 0.72,
-          advisory: null,
-          disclaimer: 'Ước tính cần bạn xác nhận trước khi mở công việc.',
-        },
-        started_at: '2026-06-30T00:00:00.000Z',
-        estimate_ready_at: '2026-06-30T00:00:05.000Z',
-        total_turns: 3,
-        total_cost_usd: 0.01,
-        next_action: 'estimate_ready' as const,
-      },
-      turns: [],
-    }))
-    const handler = createMobileApiHandler({
-      authenticate: vi.fn(async () => localCustomerAuth),
-      services: makeServices({ submitKaelChatEvidence }),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/kael/chat/session-local-audit/evidence', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        decision: 'confirmed',
-        message: 'Ống rò rỉ dưới bồn rửa chén.',
-        media_refs: ['supabase://kael-chat-media/local-visual-audit-customer/kael-chat/evidence.jpg'],
-        photo_urls: [],
-        problem_chips: ['Ống rò rỉ'],
-      }),
-    }))
-
-    expect(response.status).toBe(200)
-    expect(submitKaelChatEvidence).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'customer', user: { id: 'local-visual-audit-customer' } }),
-      'session-local-audit',
-      expect.objectContaining({
-        decision: 'confirmed',
-        media_refs: ['supabase://kael-chat-media/local-visual-audit-customer/kael-chat/evidence.jpg'],
-      }),
-    )
-  })
-
-  it('routes normal Kael assistant without requiring service_type', async () => {
-    const answerKaelAssistant = vi.fn(async () => ({
-      answer: 'Kael can explain NestScout service rules first.',
-      boundary: 'answered' as const,
-      citations: ['NestScout platform scope'],
-      fallback_used: false,
-      safety_notes: [],
-      suggested_actions: ['open_booking' as const],
-    }))
-    const handler = createMobileApiHandler({
-      authenticate: vi.fn(async () => customerAuth),
-      services: makeServices({ answerKaelAssistant }),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/kael/assistant', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        language: 'vi',
-        message: 'Thợ NestScout được xác minh thế nào?',
-        surface: 'customer_normal',
-      }),
-    }))
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({
-      answer: 'Kael can explain NestScout service rules first.',
-      boundary: 'answered',
-    })
-    expect(answerKaelAssistant).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'customer' }),
-      expect.objectContaining({
-        language: 'vi',
-        message: 'Thợ NestScout được xác minh thế nào?',
-        surface: 'customer_normal',
-      }),
     )
   })
 
@@ -1764,87 +1251,6 @@ describe('mobile-api Edge router contract', () => {
     )
   })
 
-  it('routes customer payment intent creation through customer/admin auth', async () => {
-    const createPaymentIntent = vi.fn(async () => ({
-      job_id: '22222222-2222-4222-8222-222222222222',
-      status: 'payment_pending' as const,
-      payment: {
-        provider: 'sepay_vietqr' as const,
-        status: 'vietqr_ready' as const,
-        gross_amount: 250000,
-        platform_fee: 25000,
-        worker_net: 225000,
-        payment_code: 'NSMOH260001',
-        transfer_content: 'NestScout NSMOH260001',
-        qr_image_url: 'https://qr.sepay.vn/img?acc=redacted',
-        expires_at: '2026-06-14T00:30:00.000Z',
-        received_at: null,
-        amount_received: null,
-        updated_at: '2026-06-14T00:00:00.000Z',
-      },
-    }))
-    const authenticate = vi.fn(async () => customerAuth)
-    const handler = createMobileApiHandler({
-      authenticate,
-      services: makeServices({ createPaymentIntent }),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/jobs/22222222-2222-4222-8222-222222222222/payment-intent', {
-      method: 'POST',
-    }))
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({
-      job_id: '22222222-2222-4222-8222-222222222222',
-      status: 'payment_pending',
-      payment: {
-        provider: 'sepay_vietqr',
-        status: 'vietqr_ready',
-      },
-    })
-    expect(authenticate).toHaveBeenCalledWith(expect.any(Request), ['customer', 'admin'])
-    expect(createPaymentIntent).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'customer' }),
-      '22222222-2222-4222-8222-222222222222',
-    )
-  })
-
-  it('dispatches SePay webhook publicly without mobile auth', async () => {
-    const handleSepayWebhook = vi.fn(async () => ({ success: true as const }))
-    const authenticate = vi.fn(async () => customerAuth)
-    const handler = createMobileApiHandler({
-      authenticate,
-      services: makeServices({ handleSepayWebhook }),
-    })
-
-    const response = await handler(new Request('https://example.test/mobile-api/payments/sepay/webhook', {
-      method: 'POST',
-      headers: {
-        Authorization: 'Apikey test-webhook-key',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: 123,
-        code: 'NSMOH260001',
-        transferAmount: 250000,
-        transferType: 'in',
-      }),
-    }))
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ success: true })
-    expect(authenticate).not.toHaveBeenCalled()
-    expect(handleSepayWebhook).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 123,
-        code: 'NSMOH260001',
-        transferAmount: 250000,
-        transferType: 'in',
-      }),
-      expect.any(Headers),
-    )
-  })
-
   it('passes validated POST /jobs/:id/media payload to the backend service', async () => {
     const attachJobMedia = vi.fn(async () => ({
       job_id: '22222222-2222-4222-8222-222222222222',
@@ -2087,7 +1493,7 @@ describe('mobile-api Edge router contract', () => {
         status: 'arrived',
         access_check_in: {
           mode: 'manual_photo',
-          photo_urls: ['supabase://job-media/job-1/after/lobby.jpg'],
+          photo_urls: ['supabase://job-media/job-1/access_check_in/lobby.jpg'],
           note: 'Đã đến sảnh.',
         },
       }),
@@ -2101,7 +1507,7 @@ describe('mobile-api Edge router contract', () => {
         status: 'arrived',
         access_check_in: {
           mode: 'manual_photo',
-          photo_urls: ['supabase://job-media/job-1/after/lobby.jpg'],
+          photo_urls: ['supabase://job-media/job-1/access_check_in/lobby.jpg'],
           note: 'Đã đến sảnh.',
         },
       },

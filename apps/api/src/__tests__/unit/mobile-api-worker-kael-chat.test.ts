@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -24,6 +24,26 @@ const DEFAULT_EXPECTED_EN_NOTES = [
 
 function countOccurrences(source: string, needle: string) {
   return source.split(needle).length - 1
+}
+
+function readUtf8(url: URL) {
+  return readFileSync(url, 'utf8')
+}
+
+function listTsFiles(dir: URL): URL[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const child = new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, dir)
+    if (entry.isDirectory()) return listTsFiles(child)
+    return entry.name.endsWith('.ts') ? [child] : []
+  })
+}
+
+function readMobileApiServiceLayer() {
+  const root = new URL('../../../../../supabase/functions/mobile-api/_shared/', import.meta.url)
+  return [
+    readUtf8(new URL('services.ts', root)),
+    ...listTsFiles(new URL('services/', root)).map(readUtf8),
+  ].join('\n')
 }
 
 describe('mobile-api worker Kael chat sibling backend', () => {
@@ -257,6 +277,9 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     const services = readFileSync(
       new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
       'utf8',
+    ) + readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts', import.meta.url),
+      'utf8',
     )
     const migration = readFileSync(
       new URL('../../../../../supabase/migrations/20260604224500_kael_worker_chat_sessions.sql', import.meta.url),
@@ -303,10 +326,7 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       new URL('../../../../../supabase/functions/_shared/domain.ts', import.meta.url),
       'utf8',
     )
-    const services = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
-      'utf8',
-    )
+    const services = readMobileApiServiceLayer()
     const turnMigration = readFileSync(
       new URL('../../../../../supabase/migrations/20260627090000_worker_kael_turn_idempotency.sql', import.meta.url),
       'utf8',
@@ -326,11 +346,8 @@ describe('mobile-api worker Kael chat sibling backend', () => {
   })
 
   it('rate-limits only real non-idempotent worker chat turns before provider calls', () => {
-    const services = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
-      'utf8',
-    )
-    const sendHandlerBlock = services.match(/async function sendWorkerKaelChatTurn\([\s\S]*?const WORKER_KAEL_SESSION_SELECT/)?.[0] ?? ''
+    const services = readMobileApiServiceLayer()
+    const sendHandlerBlock = services.match(/export async function sendWorkerKaelChatTurn\([\s\S]*?export async function readWorkerKaelSession/)?.[0] ?? ''
 
     const idempotencyIndex = sendHandlerBlock.indexOf('findExistingWorkerKaelTurnByClientRequest')
     const existingReturnIndex = sendHandlerBlock.indexOf('if (existingTurn) return getWorkerKaelChat(ctx, sessionId)')
@@ -353,15 +370,13 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       new URL('../../../../../apps/mobile/lib/api-types.ts', import.meta.url),
       'utf8',
     )
-    const services = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
-      'utf8',
-    )
+    const services = readMobileApiServiceLayer()
     const routerPublicTypes = router.match(/type WorkerKaelChatTurnResponse[\s\S]*?type WorkerKaelFeedbackResponse/)?.[0] ?? ''
     const mobilePublicTypes = mobileTypes.match(/export type WorkerKaelChatTurn[\s\S]*?export type WorkerKaelFeedbackResponse/)?.[0] ?? ''
-    const serializerBlock = services.match(/function serializeWorkerKaelSession[\s\S]*?function asWorkerKaelChatStatus/)?.[0] ?? ''
+    const sessionSerializerBlock = services.match(/function serializeWorkerKaelSession[\s\S]*?function summarizeWorkerVision/)?.[0] ?? ''
+    const turnSerializerBlock = services.match(/function serializeWorkerKaelTurn[\s\S]*?function workerKaelSafetyNotes/)?.[0] ?? ''
 
-    for (const source of [routerPublicTypes, mobilePublicTypes, serializerBlock]) {
+    for (const source of [routerPublicTypes, mobilePublicTypes, sessionSerializerBlock, turnSerializerBlock]) {
       expect(source).not.toContain('safe_metadata')
       expect(source).not.toContain('total_cost_usd')
       expect(source).not.toContain('provider_attempts')
@@ -372,17 +387,14 @@ describe('mobile-api worker Kael chat sibling backend', () => {
   })
 
   it('lets worker private Kael media attach without publishing it to job photo URLs', () => {
-    const services = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
-      'utf8',
-    )
+    const services = readMobileApiServiceLayer()
     const workflow = readFileSync(
       new URL('../../../../../supabase/functions/mobile-api/_shared/workflow-orchestrator.ts', import.meta.url),
       'utf8',
     )
     const canAttachBlock = services.match(/function canAttachJobMediaStage[\s\S]*?function storageRef/)?.[0] ?? ''
     const beforeRefsBlock = services.match(/const beforeRefs = rows[\s\S]*?const afterRefs/)?.[0] ?? ''
-    const kaelReferenceStatuses = workflow.match(/kael_reference: \[[\s\S]*?\],\n  after/)?.[0] ?? ''
+    const kaelReferenceStatuses = workflow.match(/kael_reference: \[[\s\S]*?\],\r?\n  after/)?.[0] ?? ''
 
     expect(canAttachBlock).toContain('if (stage === "kael_reference") return isCustomer || isWorker')
     expect(beforeRefsBlock).toContain('row.stage === "kael_reference" && isCustomer')
@@ -392,11 +404,8 @@ describe('mobile-api worker Kael chat sibling backend', () => {
   })
 
   it('fails worker chat closed when the rate-limit RPC is unavailable', () => {
-    const services = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
-      'utf8',
-    )
-    const rateLimitBlock = services.match(/async function enforceWorkerKaelChatRateLimit[\s\S]*?async function readWorkerKaelSession/)?.[0] ?? ''
+    const services = readMobileApiServiceLayer()
+    const rateLimitBlock = services.match(/async function enforceWorkerKaelChatRateLimit[\s\S]*?async function insertWorkerKaelTurn/)?.[0] ?? ''
     const migration = readFileSync(
       new URL('../../../../../supabase/migrations/20260627090000_worker_kael_turn_idempotency.sql', import.meta.url),
       'utf8',

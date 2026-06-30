@@ -836,6 +836,8 @@ export type Database = {
       }
       jobs: {
         Row: {
+          platform_fee: number | null
+          worker_net: number | null
           address_building: string | null
           address_district: string | null
           address_floor: string | null
@@ -889,6 +891,8 @@ export type Database = {
           worker_id: string | null
         }
         Insert: {
+          platform_fee?: number | null
+          worker_net?: number | null
           address_building?: string | null
           address_district?: string | null
           address_floor?: string | null
@@ -942,6 +946,8 @@ export type Database = {
           worker_id?: string | null
         }
         Update: {
+          platform_fee?: number | null
+          worker_net?: number | null
           address_building?: string | null
           address_district?: string | null
           address_floor?: string | null
@@ -1865,6 +1871,38 @@ export type Database = {
           },
         ]
       }
+      kael_ai_spend_log: {
+        Row: {
+          actor_id: string | null
+          cost_usd: number
+          created_at: string
+          id: number
+          purpose: string
+        }
+        Insert: {
+          actor_id?: string | null
+          cost_usd: number
+          created_at?: string
+          id?: never
+          purpose: string
+        }
+        Update: {
+          actor_id?: string | null
+          cost_usd?: number
+          created_at?: string
+          id?: never
+          purpose?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_ai_spend_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kael_chat_rate_limit_log: {
         Row: {
           ts: string
@@ -1887,6 +1925,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      kael_provider_spend_daily: {
+        Row: {
+          call_count: number
+          spend_date: string
+          total_cost_usd: number
+          updated_at: string
+        }
+        Insert: {
+          call_count?: number
+          spend_date?: string
+          total_cost_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          call_count?: number
+          spend_date?: string
+          total_cost_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       kael_guardrail_trip_audit: {
         Row: {
@@ -3821,6 +3880,99 @@ export type Database = {
           },
         ]
       }
+      worker_stats: {
+        Row: {
+          avg_response_time_min: number | null
+          cancel_rate: number | null
+          completion_rate: number | null
+          income_30d: number
+          jobs_30d: number
+          last_recomputed_at: string
+          on_time_rate: number | null
+          total_income: number
+          worker_id: string
+        }
+        Insert: {
+          avg_response_time_min?: number | null
+          cancel_rate?: number | null
+          completion_rate?: number | null
+          income_30d?: number
+          jobs_30d?: number
+          last_recomputed_at?: string
+          on_time_rate?: number | null
+          total_income?: number
+          worker_id: string
+        }
+        Update: {
+          avg_response_time_min?: number | null
+          cancel_rate?: number | null
+          completion_rate?: number | null
+          income_30d?: number
+          jobs_30d?: number
+          last_recomputed_at?: string
+          on_time_rate?: number | null
+          total_income?: number
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_stats_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "worker_stats_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_stats: {
+        Row: {
+          bookings_30d: number
+          bookings_total: number
+          customer_id: string
+          dispute_free_rate: number | null
+          last_recomputed_at: string
+          total_spent: number
+        }
+        Insert: {
+          bookings_30d?: number
+          bookings_total?: number
+          customer_id: string
+          dispute_free_rate?: number | null
+          last_recomputed_at?: string
+          total_spent?: number
+        }
+        Update: {
+          bookings_30d?: number
+          bookings_total?: number
+          customer_id?: string
+          dispute_free_rate?: number | null
+          last_recomputed_at?: string
+          total_spent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_stats_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customer_overview"
+            referencedColumns: ["customer_id"]
+          },
+          {
+            foreignKeyName: "customer_stats_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       kael_cost_daily_summary: {
@@ -3900,6 +4052,61 @@ export type Database = {
         }
         Relationships: []
       }
+      worker_overview: {
+        Row: {
+          avg_response_time_min: number | null
+          cancel_rate: number | null
+          completion_rate: number | null
+          districts: string[] | null
+          income_30d: number | null
+          is_approved: boolean | null
+          is_available: boolean | null
+          jobs_30d: number | null
+          last_recomputed_at: string | null
+          legal_name: string | null
+          on_time_rate: number | null
+          rating: number | null
+          service_types: Database["public"]["Enums"]["service_type"][] | null
+          total_income: number | null
+          total_jobs: number | null
+          verification_status:
+            | Database["public"]["Enums"]["worker_verification_status"]
+            | null
+          worker_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_profiles_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_overview: {
+        Row: {
+          bookings_30d: number | null
+          bookings_total: number | null
+          building_name: string | null
+          created_at: string | null
+          customer_id: string | null
+          dispute_free_rate: number | null
+          district: string | null
+          last_recomputed_at: string | null
+          total_spent: number | null
+          unit_number: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_profiles_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       apply_approved_learning_candidate_to_knowledge: {
@@ -3928,6 +4135,53 @@ export type Database = {
           to_status: Database["public"]["Enums"]["job_status"]
         }[]
       }
+      check_kael_ai_spend: {
+        Args: {
+          p_actor_id: string
+          p_estimated_usd: number
+          p_global_daily_cap: number
+          p_user_daily_cap: number
+          p_user_monthly_cap: number
+        }
+        Returns: {
+          allowed: boolean
+          blocked_scope: string | null
+          global_today_usd: number
+          user_today_usd: number
+          user_month_usd: number
+        }[]
+      }
+      record_kael_ai_spend: {
+        Args: {
+          p_actor_id: string
+          p_cost_usd: number
+          p_purpose: string
+        }
+        Returns: undefined
+      }
+      reserve_kael_ai_spend: {
+        Args: {
+          p_actor_id: string
+          p_estimated_usd: number
+          p_purpose: string
+          p_global_daily_cap: number
+          p_user_daily_cap: number
+          p_user_monthly_cap: number
+        }
+        Returns: {
+          allowed: boolean
+          blocked_scope: string | null
+          reservation_id: number | null
+        }[]
+      }
+      finalize_kael_ai_spend: {
+        Args: {
+          p_reservation_id: number
+          p_actual_usd: number
+          p_purpose: string
+        }
+        Returns: undefined
+      }
       check_kael_chat_rate: {
         Args: {
           p_per_hour?: number
@@ -3940,6 +4194,14 @@ export type Database = {
           minute_count: number
           reason: string | null
         }[]
+      }
+      get_kael_provider_spend_today: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      record_kael_provider_spend: {
+        Args: { p_cost_usd: number }
+        Returns: number
       }
       accept_broadcast_atomic: {
         Args: { p_job_id: string; p_worker_id: string }

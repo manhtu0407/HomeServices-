@@ -180,6 +180,12 @@ describe('Kael Track D guardrails', () => {
     const services = readFileSync(
       join(repoRoot, 'supabase/functions/mobile-api/_shared/services.ts'),
       'utf8',
+    ) + readFileSync(
+      join(repoRoot, 'supabase/functions/mobile-api/_shared/services/kael-chat-core.ts'),
+      'utf8',
+    ) + readFileSync(
+      join(repoRoot, 'supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts'),
+      'utf8',
     )
 
     expect(services).toContain('semanticInjectionClassifierEnabled: true')

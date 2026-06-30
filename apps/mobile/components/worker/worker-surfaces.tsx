@@ -1,11 +1,7 @@
-export {
-  WorkerChatSurface,
-  WorkerEarningsSurface,
-  WorkerDockLayoutProvider,
-  WorkerHomeSurface,
-  WorkerJobsSurface,
-  WorkerProfileSurface,
-  WorkerRebuildDockOverlay,
-} from './worker-v5-flow'
-
+export { WorkerHomeSurface } from './surfaces/home'
+export { WorkerJobsSurface } from './surfaces/jobs'
+export { WorkerChatSurface } from './surfaces/chat'
+export { WorkerEarningsSurface } from './surfaces/earnings'
+export { WorkerProfileSurface } from './surfaces/profile'
+export { WorkerDockLayoutProvider, WorkerRebuildDockOverlay } from './worker-v5-flow'
 export type WorkerDockActive = 'earnings' | 'home' | 'jobs' | 'kael' | 'profile'
