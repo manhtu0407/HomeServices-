@@ -1,9 +1,7 @@
 {
   "maxLines": 800,
   "grandfatheredOversize": {
-    "apps/mobile/components/auth/auth-surfaces.tsx": 1917,
     "apps/mobile/components/customer/booking-wizard.tsx": 1954,
-    "apps/mobile/components/customer/customer-surfaces.tsx": 5018,
     "apps/mobile/components/customer/kael-chat/agentic-parts.tsx": 1196,
     "apps/mobile/components/customer/kael-chat/styles.ts": 1510,
     "apps/mobile/components/customer/kael-chat/thread.tsx": 999,
@@ -13,7 +11,6 @@
     "apps/mobile/components/rebuild/rebuild-surfaces.tsx": 14262,
     "apps/mobile/components/ui/floating-glass-tab-bar.tsx": 1050,
     "apps/mobile/components/ui/kael-primitives.tsx": 1103,
-    "apps/mobile/components/worker/worker-surfaces.tsx": 4230,
     "apps/mobile/components/worker/worker-v5-flow.tsx": 20748,
     "apps/mobile/lib/api-types.ts": 866,
     "apps/mobile/lib/frontend-workflow-provider.tsx": 1833,
@@ -69,6 +66,10 @@
     "KaelLottieSource": [
       "apps/mobile/components/kael/kael-lottie-view.native.tsx",
       "apps/mobile/components/kael/kael-lottie-view.tsx"
+    ],
+    "WorkerDockActive": [
+      "apps/mobile/components/worker/worker-surfaces.tsx",
+      "apps/mobile/components/worker/worker-v5-flow.tsx"
     ],
     "AddressAccessView": [
       "apps/mobile/lib/api-types.ts",

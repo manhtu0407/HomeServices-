@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import { Alert, StyleSheet } from 'react-native'
 import { buildWorkflowViewModel, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@nestscout/shared'
 import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
-import { KaelChatSurface } from '../kael-chat-surface'
+import { LegacyKaelChatSurface as KaelChatSurface } from '../kael-chat-surface'
 import { setPendingKaelChatDraft, takePendingKaelChatDraft } from '../pending-intake'
 import {
   EmptyKaelBriefCard,
