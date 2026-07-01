@@ -91,7 +91,7 @@ jest.mock('@/lib/app-language', () => {
   }
 })
 
-import { WorkerJobsSurface } from '../worker-surfaces'
+import { WorkerJobsSurface } from '../surfaces/jobs'
 
 function buildWorkerProfile(): WorkerProfileResponse {
   return {
