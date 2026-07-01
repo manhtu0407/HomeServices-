@@ -90,7 +90,18 @@ jest.mock('@/lib/app-language', () => {
   }
 })
 
-import { WorkerChatSurface, WorkerEarningsSurface, WorkerHomeSurface, WorkerJobsSurface, WorkerProfileSurface } from '../worker-surfaces'
+import { WorkerChatSurface } from '../surfaces/chat'
+import { WorkerEarningsSurface } from '../surfaces/earnings'
+import { WorkerHomeSurface } from '../surfaces/home'
+import { WorkerJobsSurface } from '../surfaces/jobs'
+import { WorkerProfileSurface } from '../surfaces/profile'
+import {
+  WorkerChatSurface as RuntimeWorkerChatSurface,
+  WorkerEarningsSurface as RuntimeWorkerEarningsSurface,
+  WorkerHomeSurface as RuntimeWorkerHomeSurface,
+  WorkerJobsSurface as RuntimeWorkerJobsSurface,
+  WorkerProfileSurface as RuntimeWorkerProfileSurface,
+} from '../worker-surfaces'
 
 function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): WorkerProfileResponse {
   return {
@@ -424,6 +435,72 @@ beforeEach(() => {
   mockRouteParams = {}
   mockAppLanguage = 'vi'
   buildWorkflow()
+})
+
+describe('Worker runtime surface wiring', () => {
+  it('routes the public worker wrapper to the restored Worker V5 sections', () => {
+    buildWorkflow()
+
+    const home = render(<RuntimeWorkerHomeSurface />)
+    expect(screen.getByTestId('worker-v5-screen-1.1-worker-home')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-availability-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-home-command-center')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-home-scroll')).toBeNull()
+    home.unmount()
+
+    mockRouteParams = {}
+    const jobs = render(<RuntimeWorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-screen-1.2-shift-brief')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-shift-page-customer-mint-aura')).toBeOnTheScreen()
+    jobs.unmount()
+
+    const chat = render(<RuntimeWorkerChatSurface />)
+    expect(screen.getByTestId('worker-v5-screen-3.1-kael-chat-normal')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-orb-normal')).toBeOnTheScreen()
+    chat.unmount()
+
+    const earnings = render(<RuntimeWorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-screen-4.1-earnings-overview')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-earnings-hero')).toBeOnTheScreen()
+    earnings.unmount()
+
+    const profile = render(<RuntimeWorkerProfileSurface />)
+    expect(screen.getByTestId('worker-v5-screen-5.1-profile-overview')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-profile-avatar-image')).toBeOnTheScreen()
+    profile.unmount()
+  })
+
+  it('keeps Worker V5 route params, language params, and money-impacting screens explicit', () => {
+    buildWorkflow({ canWorkerAdvance: true, deal: buildRepairingDeal() })
+    mockRouteParams = { ns_worker_lang: 'en' }
+
+    const home = render(<RuntimeWorkerHomeSurface />)
+    expect(screen.getByTestId('worker-v5-availability-switch').props.accessibilityLabel).toBe('Toggle work availability')
+    home.unmount()
+
+    mockRouteParams = { tab: 'active' }
+
+    const active = render(<RuntimeWorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-screen-2.7-in-progress')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-in-progress-scope-action')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
+    active.unmount()
+
+    mockRouteParams = { ns_audit_surface: 'worker_scope_change' }
+    const scope = render(<RuntimeWorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-screen-2.8-scope-change')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-scope-change-hero')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-scope-change-send-action')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
+    scope.unmount()
+
+    mockRouteParams = { ns_payment_step: 'wallet' }
+    const ledger = render(<RuntimeWorkerEarningsSurface />)
+    expect(screen.getByTestId('worker-v5-screen-4.2-ledger-detail')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-ledger-hero')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-ledger-breakdown')).toBeOnTheScreen()
+    ledger.unmount()
+  })
 })
 
 describe('WorkerHomeSurface', () => {
