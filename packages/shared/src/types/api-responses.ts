@@ -6,6 +6,19 @@ import type {
   BroadcastStatus,
   ScopeChangeStatus,
 } from '../constants'
+import type { LocalPaymentStatus } from '../mobile-workflow'
+import type { ApartmentAccessProfileInput, KaelChatProgress } from '../validation'
+
+export type AddressAccessView = {
+  release_stage: 'area_only' | 'building_released' | 'unit_released'
+  exact_unit_released: boolean
+  worker_checked_in: boolean
+  check_in_required: boolean
+  identity_check_required: boolean
+  customer_handoff_required: boolean
+  evidence_mode: 'none' | 'geofence' | 'manual_photo'
+  access_profile: ApartmentAccessProfileInput
+}
 
 export type KaelEstimate = {
   service_type: ServiceType
@@ -17,6 +30,10 @@ export type KaelEstimate = {
   confidence: number
   advisory: string | null
   disclaimer: string
+  // A-2 honesty fields surfaced from estimate_card_v3 (optional; canonical superset for mobile).
+  needs_inspection?: boolean
+  price_source?: string | null
+  needs_inspection_reason?: string | null
 }
 
 export type ServiceCatalogResponse = {
@@ -41,15 +58,27 @@ export type ServiceCatalogResponse = {
 
 export type CreateJobResponse = {
   job_id: string
+  display_code?: string
   status: JobStatus
   estimate: KaelEstimate
+  estimate_card_v3?: Record<string, unknown>
+  final_price?: number | null
   fallback_used: boolean
+  broadcast_sent?: boolean
+  message?: string
 }
 
-export type KaelChatStatus = 'active' | 'estimate_ready' | 'confirmed' | 'abandoned'
+export type KaelChatStatus =
+  | 'active'
+  | 'collecting_evidence'
+  | 'estimate_ready'
+  | 'confirmed'
+  | 'abandoned'
+  | 'unsupported'
 
 export type KaelChatNextAction =
   | 'await_input'
+  | 'collect_evidence'
   | 'ask_photo'
   | 'ask_video'
   | 'estimate_ready'
@@ -75,6 +104,8 @@ export type KaelChatTurn = {
   text_content: string | null
   media_refs: string[]
   estimate: KaelEstimate | null
+  // Smart clarification: present on content_type='clarification' turns (optional; canonical superset).
+  clarification?: { question: string | null; missing_slots: string[] } | null
   created_at: string
 }
 
@@ -107,9 +138,18 @@ export type PlacesAutocompleteResponse = {
   fallback_used: boolean
 }
 
+export type PlacesResolveResponse = {
+  fallback_used: boolean
+  label: string | null
+  location: { lat: number; lng: number } | null
+  place_id: string
+  provider: 'vietmap' | 'google_maps' | 'fallback'
+}
+
 export type JobDetailResponse = {
   job: {
     id: string
+    display_code?: string
     status: JobStatus
     service_type: ServiceType
     description: string
@@ -119,13 +159,29 @@ export type JobDetailResponse = {
     address_unit: string | null
     address_floor: string | null
     address_district: string | null
+    address_access: AddressAccessView
     scheduled_at: string | null
     kael_problem_identified: string | null
     kael_complexity: ComplexityLevel | null
     kael_price_min: number | null
     kael_price_max: number | null
     kael_advisory: string | null
+    kael_estimate_card_v3: Record<string, unknown> | null
+    kael_worker_brief_core: Record<string, unknown> | null
+    kael_worker_brief_guidance: Record<string, unknown> | null
+    kael_progress: KaelChatProgress | null
     final_price: number | null
+    payment_status?: LocalPaymentStatus | null
+    payment_provider?: string | null
+    payment_code?: string | null
+    payment_transfer_content?: string | null
+    payment_qr_image_url?: string | null
+    payment_expires_at?: string | null
+    payment_received_at?: string | null
+    payment_amount_received?: number | null
+    gross_amount?: number | null
+    platform_fee?: number | null
+    worker_net?: number | null
     completion_notes: string | null
     completion_photo_urls: string[]
     created_at: string
@@ -136,6 +192,15 @@ export type JobDetailResponse = {
     paid_at: string | null
     reviewed_at: string | null
   }
+  worker: {
+    avatar_url: string | null
+    display_code?: string | null
+    full_name: string
+    id: string
+    rating: number
+    review_count?: number | null
+    total_jobs: number
+  } | null
   broadcast_state: {
     active_count: number
     seconds_remaining: number | null
@@ -147,7 +212,11 @@ export type JobDetailResponse = {
     reason: string | null
     price_min: number | null
     price_max: number | null
+    kael_computed_min: number | null
+    kael_computed_max: number | null
     kael_review: Record<string, unknown> | null
+    kael_progress: KaelChatProgress | null
+    evidence_photo_urls: string[]
     created_at: string | null
   } | null
 }
@@ -176,8 +245,12 @@ export type ConfirmSearchResponse = {
   status: JobStatus
   broadcast_sent: boolean
   worker: {
+    avatar_url: string | null
+    display_code?: string | null
     full_name: string
+    id: string
     rating: number
+    review_count?: number | null
     total_jobs: number
   } | null
   message: string
@@ -200,6 +273,73 @@ export type ConfirmCompletionResponse = {
   final_price: number | null
 }
 
+export type PaymentIntentResponse = {
+  job_id: string
+  status: JobStatus
+  payment: {
+    provider: 'sepay_vietqr'
+    status: LocalPaymentStatus
+    gross_amount: number | null
+    platform_fee: number | null
+    worker_net: number | null
+    payment_code: string | null
+    transfer_content: string | null
+    qr_image_url: string | null
+    expires_at: string | null
+    received_at: string | null
+    amount_received: number | null
+    updated_at: string | null
+  }
+}
+
+export type CustomerCancellationResponse = {
+  cancellation_id: string
+  job_id: string
+  status: 'requested'
+  job_status: JobStatus
+  sub_case:
+    | 'before_a7'
+    | 'after_a7_before_worker_accept'
+    | 'after_worker_accept'
+    | 'after_worker_completed_trigger_dispute'
+    | 'scheduled_job'
+  reason_code: string
+  reason_category: string
+  admin_review_required: boolean
+  phase0_no_monetary_penalty: boolean
+  worker_goodwill: Record<string, unknown> | null
+  abuse_signals: string[]
+  message: string
+  created_at: string
+}
+
+export type DisputeOpenResponse = {
+  dispute_id: string
+  job_id: string
+  status: string
+  dispute_type: string
+  evidence_snapshot_id: string
+  admin_review_required: boolean
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  evidence_locked_at: string
+  message: string
+  created_at: string
+}
+
+export type DisputeCounterStatementResponse = {
+  dispute_id: string
+  status: string
+  counter_party_statement_submitted: boolean
+  updated_at: string
+}
+
+export type DisputeAdminDecisionResponse = {
+  dispute_id: string
+  status: string
+  outcome: string
+  decided_at: string
+}
+
 export type ReviewResponse = {
   review_id: string
   job_id: string
@@ -220,7 +360,7 @@ export type WorkerProfileResponse = {
   districts: string[]
   home_lat: number | null
   home_lng: number | null
-  service_radius_km: number
+  service_radius_km: number | null
   problem_specializations: string[]
   years_experience: number
   rating: number
@@ -259,6 +399,7 @@ export type BroadcastListResponse = {
     estimated_price_max: number | null
     estimated_earning_min: number | null
     estimated_earning_max: number | null
+    worker_brief_core?: Record<string, unknown> | null
     sent_at: string | null
     expires_at: string | null
     seconds_remaining: number | null
@@ -274,6 +415,21 @@ export type AcceptBroadcastResponse = {
     floor: string | null
     district: string | null
   }
+  address_access: AddressAccessView
+  anti_fraud?: Record<string, unknown>
+  worker_challenge?: Record<string, unknown>
+  customer_card?: Record<string, unknown>
+}
+
+export type WorkerKaelClarifyResponse = {
+  qa_id: string
+  job_id: string
+  remaining_questions: number
+  answer: {
+    schema_version: 'worker_qa_answer.v1'
+    text: string
+    safety_notes: string[]
+  }
 }
 
 export type DeclineBroadcastResponse = {
@@ -286,6 +442,16 @@ export type WorkerScopeChangeResponse = {
   job_id: string
   status: ScopeChangeStatus
   created_at: string
+  kael_estimate?: {
+    price_min: number
+    price_max: number
+    confidence: number
+    problem_summary: string
+    advisory: string | null
+    complexity_assessment: 'small' | 'medium' | 'large'
+    disclaimer: string
+    fallback_used: boolean
+  }
 }
 
 export type CustomerScopeDecisionResponse = {
@@ -303,6 +469,16 @@ export type WorkerCancellationResponse = {
   broadcast_sent: boolean
   message: string
   created_at: string | null
+  reason_code: string
+  reason_category: string
+  admin_review_required: boolean
+  abuse_signals: string[]
+  fallback_options: {
+    id: string
+    label_vi: string
+    effect: string
+    no_charge_phase0?: boolean
+  }[]
 }
 
 export type WorkerCancellationDecisionResponse = {
@@ -317,6 +493,7 @@ export type WorkerCancellationDecisionResponse = {
 export type WorkerJobListResponse = {
   jobs: {
     id: string
+    display_code: string | null
     status: JobStatus
     service_type: ServiceType
     problem_summary: string | null
@@ -324,8 +501,23 @@ export type WorkerJobListResponse = {
     address_unit: string | null
     address_floor: string | null
     district: string | null
+    address_access: AddressAccessView
     final_price: number | null
     estimated_earning: number | null
+    payment_status?: LocalPaymentStatus | null
+    payment_provider?: string | null
+    payment_code?: string | null
+    payment_transfer_content?: string | null
+    payment_qr_image_url?: string | null
+    payment_expires_at?: string | null
+    payment_received_at?: string | null
+    payment_amount_received?: number | null
+    gross_amount?: number | null
+    platform_fee?: number | null
+    worker_net?: number | null
+    completion_notes: string | null
+    completion_photo_urls: string[]
+    worker_brief_guidance?: Record<string, unknown> | null
     created_at: string
     matched_at: string | null
     completed_at: string | null
@@ -340,13 +532,6 @@ export type EarningsResponse = {
   net_earnings: number         // gross - platform_fee_total
   pending_payment_count: number
   pending_payment_amount: number
-  daily_earnings: {
-    date: string
-    gross_earnings: number
-    platform_fee_total: number
-    net_earnings: number
-    paid_job_count: number
-  }[]
   from_date: string | null
   to_date: string | null
 }

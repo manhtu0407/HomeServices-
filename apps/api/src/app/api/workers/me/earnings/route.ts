@@ -65,13 +65,6 @@ export async function GET(request: Request) {
     net_earnings: summary.netEarnings,
     pending_payment_count: summary.pendingPaymentCount,
     pending_payment_amount: summary.pendingPaymentAmount,
-    daily_earnings: summary.dailyEarnings.map((day) => ({
-      date: day.date,
-      gross_earnings: day.grossEarnings,
-      platform_fee_total: day.platformFeeTotal,
-      net_earnings: day.netEarnings,
-      paid_job_count: day.paidJobCount,
-    })),
     from_date: summary.fromDate,
     to_date: summary.toDate,
   })
