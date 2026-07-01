@@ -1,6 +1,10 @@
-﻿# Home Services
+﻿<p align="center">
+  <img src="docs/assets/nestscout-aurora-nest-logo.png" alt="NestScout AuroraNest logo" width="180" />
+</p>
 
-Home Services is a mobile-first app that helps **Ho Chi Minh City apartment residents** book trustworthy **electrical repair, plumbing repair, and home cleaning** — with fair, transparent pricing. **Kael**, the in-app AI assistant, handles intake, photo-based diagnosis, market-price estimates, worker briefing, and workflow orchestration.
+# NestScout
+
+NestScout is a mobile-first app that helps **Ho Chi Minh City apartment residents** book trustworthy **electrical repair, plumbing repair, and home cleaning** — with fair, transparent pricing. **Kael**, the in-app AI assistant, handles intake, photo-based diagnosis, market-price estimates, worker briefing, and workflow orchestration.
 
 The product is **pre-revenue**, rebuilding toward its first real transaction. This README is a fast on-ramp for developers and future co-founders; it intentionally stays an introduction only — the operating rules live in `governance/` (see [Working in this repo](#working-in-this-repo)).
 
