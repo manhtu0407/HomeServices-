@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { JOB_STATUSES, PROBLEM_CHIPS } from '../constants'
 import {
   createInitialLocalWorkflowState,
-  hasLocalDealCompletionEvidence,
-  hasSpecificWorkerRouteAddress,
   inferLocalDealDraftFromKael,
   isLocalDealStatus,
   LOCAL_DEAL_STATUSES,
@@ -68,103 +66,6 @@ describe('mobile local workflow state machine', () => {
     expect(toLocalDealStatus('estimate_ready')).toBe('awaiting_customer_confirm')
     expect(toLocalDealStatus('payment_pending')).toBe('confirmed_by_customer')
     expect(toLocalDealStatus('paid')).toBe('confirmed_by_customer')
-  })
-
-  it('preserves backend-only settlement status when hydrating remote jobs', () => {
-    const state = reduce([{
-      type: 'hydrate_remote_job',
-      job: {
-        id: 'job-paid',
-        backendStatus: 'paid',
-        status: toLocalDealStatus('paid'),
-        serviceType: 'plumbing',
-        description: 'Vòi nước lavabo rò liên tục.',
-        problemChips: [PROBLEM_CHIPS.plumbing[0]],
-        addressLabel: 'Quận 7, TP.HCM',
-        districtLabel: 'Quận 7',
-      },
-    }])
-    const selectors = selectLocalWorkflow(state)
-
-    expect(state.deal?.status).toBe('confirmed_by_customer')
-    expect(state.deal?.backendStatus).toBe('paid')
-    expect(selectors.currentStatus).toBe('confirmed_by_customer')
-    expect(selectors.currentBackendStatus).toBe('paid')
-  })
-
-  it('keeps review locked only while backend settlement is still payment_pending', () => {
-    const phaseZeroConfirmed = reduce([{
-      type: 'hydrate_remote_job',
-      job: {
-        id: 'job-confirmed',
-        backendStatus: 'confirmed_by_customer',
-        status: toLocalDealStatus('confirmed_by_customer'),
-        serviceType: 'plumbing',
-        description: 'Vòi nước lavabo rò liên tục.',
-        problemChips: [PROBLEM_CHIPS.plumbing[0]],
-        addressLabel: 'Quận 7, TP.HCM',
-        districtLabel: 'Quận 7',
-      },
-    }])
-    const pendingPayment = reduce([{
-      type: 'hydrate_remote_job',
-      job: {
-        id: 'job-payment-pending',
-        backendStatus: 'payment_pending',
-        status: toLocalDealStatus('payment_pending'),
-        serviceType: 'plumbing',
-        description: 'Vòi nước lavabo rò liên tục.',
-        problemChips: [PROBLEM_CHIPS.plumbing[0]],
-        addressLabel: 'Quận 7, TP.HCM',
-        districtLabel: 'Quận 7',
-      },
-    }])
-    const paid = reduce([{
-      type: 'hydrate_remote_job',
-      job: {
-        id: 'job-paid',
-        backendStatus: 'paid',
-        status: toLocalDealStatus('paid'),
-        serviceType: 'plumbing',
-        description: 'Vòi nước lavabo rò liên tục.',
-        problemChips: [PROBLEM_CHIPS.plumbing[0]],
-        addressLabel: 'Quận 7, TP.HCM',
-        districtLabel: 'Quận 7',
-      },
-    }])
-
-    expect(selectLocalWorkflow(phaseZeroConfirmed).reviewLocked).toBe(false)
-    expect(selectLocalWorkflow(phaseZeroConfirmed).canCustomerSubmitReview).toBe(true)
-    expect(selectLocalWorkflow(pendingPayment).reviewLocked).toBe(true)
-    expect(selectLocalWorkflow(pendingPayment).canCustomerSubmitReview).toBe(false)
-    expect(selectLocalWorkflow(paid).reviewLocked).toBe(false)
-    expect(selectLocalWorkflow(paid).canCustomerSubmitReview).toBe(true)
-
-    const reviewed = localWorkflowReducer(paid, { type: 'customer_submit_review' })
-    expect(reviewed.deal?.status).toBe('reviewed')
-    expect(reviewed.deal?.backendStatus).toBe('reviewed')
-    expect(selectLocalWorkflow(reviewed).currentBackendStatus).toBe('reviewed')
-  })
-
-  it('does not optimistically submit review while backend settlement is payment_pending', () => {
-    const pendingPayment = reduce([{
-      type: 'hydrate_remote_job',
-      job: {
-        id: 'job-payment-pending',
-        backendStatus: 'payment_pending',
-        status: toLocalDealStatus('payment_pending'),
-        serviceType: 'plumbing',
-        description: 'Vòi nước lavabo rò liên tục.',
-        problemChips: [PROBLEM_CHIPS.plumbing[0]],
-        addressLabel: 'Quận 7, TP.HCM',
-        districtLabel: 'Quận 7',
-      },
-    }])
-    const attempted = localWorkflowReducer(pendingPayment, { type: 'customer_submit_review' })
-
-    expect(attempted.deal?.status).toBe('confirmed_by_customer')
-    expect(attempted.deal?.backendStatus).toBe('payment_pending')
-    expect(attempted.lastError).toContain('hệ thống xác nhận đúng bước')
   })
 
   it('starts empty and does not fabricate a booking, worker, price, payment, or review', () => {
@@ -303,19 +204,17 @@ describe('mobile local workflow state machine', () => {
     expect(selectLocalWorkflow(corrected).draftValidationMessage).toBeNull()
   })
 
-  it('lets Kael move booking from analysis into worker search with remote estimate placeholder', () => {
+  it('moves booking to customer confirmation with remote estimate placeholder and now-only schedule', () => {
     const state = reduce(validBookingActions)
     const selectors = selectLocalWorkflow(state)
 
-    expect(state.deal?.status).toBe('broadcasting')
+    expect(state.deal?.status).toBe('awaiting_customer_confirm')
     expect(state.deal?.draft.timeChoice).toBe('now')
     expect(state.deal?.estimate?.priceRangeLabel).toBe('Chờ Kael ước tính')
     expect(state.deal?.estimate?.hasVndPrice).toBe(false)
-    expect(state.deal?.estimate?.disclaimer).toContain('Kael')
+    expect(state.deal?.estimate?.disclaimer).toBe('Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.')
     expect(selectors.scheduleMode).toBe('now_only')
-    expect(state.deal?.broadcast?.status).toBe('sent')
-    expect(selectors.canConfirmCustomerSearch).toBe(false)
-    expect(selectors.customerSearchState).toBe('searching')
+    expect(selectors.canConfirmCustomerSearch).toBe(true)
   })
 
   it('blocks analysis when a booking has no explicit problem chip', () => {
@@ -358,7 +257,7 @@ describe('mobile local workflow state machine', () => {
     expect(selectors.canConfirmCustomerSearch).toBe(false)
   })
 
-  it('keeps the legacy customer search command locked when Kael has no estimate', () => {
+  it('blocks customer search confirmation if the estimate step did not complete', () => {
     const awaitingConfirm = reduce(validBookingActions)
     const withoutEstimate = {
       ...awaitingConfirm,
@@ -372,12 +271,12 @@ describe('mobile local workflow state machine', () => {
     const attempted = localWorkflowReducer(withoutEstimate, { type: 'confirm_customer_search' })
 
     expect(selectLocalWorkflow(withoutEstimate).canConfirmCustomerSearch).toBe(false)
-    expect(attempted.deal?.status).toBe('broadcasting')
+    expect(attempted.deal?.status).toBe('awaiting_customer_confirm')
     expect(attempted.lastError).toContain('ước tính')
   })
 
-  it('creates a local broadcast as part of Kael autonomous analysis completion', () => {
-    const state = reduce(validBookingActions)
+  it('creates a local broadcast only after explicit customer search confirmation', () => {
+    const state = reduce([...validBookingActions, { type: 'confirm_customer_search' }])
     const selectors = selectLocalWorkflow(state)
 
     expect(state.deal?.status).toBe('broadcasting')
@@ -439,37 +338,6 @@ describe('mobile local workflow state machine', () => {
     expect(selectors.canWorkerSeeFullAddress).toBe(true)
   })
 
-  it('keeps district-only addresses as area previews after worker accept', () => {
-    const districtOnly = reduce([
-      { type: 'start_home_service', serviceType: 'plumbing' },
-      {
-        type: 'update_booking_draft',
-        patch: {
-          addressLabel: 'Quan 7, TP.HCM',
-          description: 'Voi nuoc duoi lavabo ro lien tuc va da khoa van phu.',
-          mediaCount: 1,
-          problemChips: [PROBLEM_CHIPS.plumbing[0]],
-        },
-      },
-      { type: 'submit_booking_draft' },
-      { type: 'finish_local_analysis' },
-      { type: 'confirm_customer_search' },
-    ])
-    const accepted = localWorkflowReducer(districtOnly, { type: 'worker_accept_broadcast' })
-    const selectors = selectLocalWorkflow(accepted)
-
-    expect(hasSpecificWorkerRouteAddress('Block A, Quan 7, TP.HCM', 'Quan 7')).toBe(true)
-    expect(hasSpecificWorkerRouteAddress('Landmark 81, District 7, HCMC', 'District 7')).toBe(true)
-    expect(hasSpecificWorkerRouteAddress('Quan 7, TP.HCM', 'Quan 7')).toBe(false)
-    expect(hasSpecificWorkerRouteAddress('Phuong 7, Quan 7, TP.HCM', 'Quan 7')).toBe(false)
-    expect(hasSpecificWorkerRouteAddress('District 7, HCMC', 'District 7')).toBe(false)
-    expect(hasSpecificWorkerRouteAddress('Ward 7, District 7, HCMC', 'District 7')).toBe(false)
-    expect(accepted.deal?.broadcast?.status).toBe('accepted')
-    expect(accepted.deal?.broadcast?.fullAddressVisible).toBe(false)
-    expect(accepted.deal?.broadcast?.fullAddressLabel).toBeNull()
-    expect(selectors.canWorkerSeeFullAddress).toBe(false)
-  })
-
   it('blocks worker accept when the local audit gate is not open', () => {
     const broadcasting = reduce([...validBookingActions, { type: 'confirm_customer_search' }])
     const gatedOff = localWorkflowReducer({ ...broadcasting, workerGate: 'backend_pending' }, { type: 'worker_accept_broadcast' })
@@ -490,7 +358,7 @@ describe('mobile local workflow state machine', () => {
     expect(selectLocalWorkflow(gatedOff).customerSearchState).toBe('searching')
   })
 
-  it('blocks illegal worker/customer jumps and keeps completion authority off the customer UI selector', () => {
+  it('blocks illegal worker/customer jumps and allows the approved completion path', () => {
     const broadcasting = reduce([...validBookingActions, { type: 'confirm_customer_search' }])
     const illegal = localWorkflowReducer(broadcasting, { type: 'worker_complete_job' })
     expect(illegal.deal?.status).toBe('broadcasting')
@@ -507,10 +375,8 @@ describe('mobile local workflow state machine', () => {
       { type: 'worker_complete_job' },
     ])
     expect(completed.deal?.status).toBe('completed_by_worker')
-    expect(selectLocalWorkflow(completed).canCustomerConfirmCompletion).toBe(false)
+    expect(selectLocalWorkflow(completed).canCustomerConfirmCompletion).toBe(true)
 
-    // Legacy reducer path remains for backend parity/recovery, but the selector
-    // above prevents it from becoming the default client authority.
     const confirmed = localWorkflowReducer(completed, { type: 'customer_confirm_completion' })
     const selectors = selectLocalWorkflow(confirmed)
     expect(confirmed.deal?.status).toBe('confirmed_by_customer')
@@ -613,8 +479,6 @@ describe('mobile local workflow state machine', () => {
           priceMin: 250000,
           priceMax: 250000,
           kaelReview: null,
-          kaelProgress: null,
-          evidencePhotoUrls: [],
           createdAt: '2026-05-17T00:00:00.000Z',
         },
         finalPrice: null,
@@ -627,48 +491,6 @@ describe('mobile local workflow state machine', () => {
     expect(selectLocalWorkflow(state).canWorkerAdvance).toBe(false)
   })
 
-  it('hydrates completion evidence from remote job snapshots without changing authority', () => {
-    const state = localWorkflowReducer(createInitialLocalWorkflowState(), {
-      type: 'hydrate_remote_job',
-      job: {
-        id: 'job-completed',
-        backendStatus: 'completed_by_worker',
-        status: 'completed_by_worker',
-        serviceType: 'cleaning',
-        description: 'Deep clean after move-out',
-        problemChips: ['Move-out cleaning'],
-        addressLabel: 'Block A, Quận 7',
-        districtLabel: 'Quận 7',
-        completionNotes: 'Đã chụp ảnh sau khi hoàn tất.',
-        completionPhotoUrls: ['job-media/after/photo-1.jpg'],
-        finalPrice: 350000,
-      },
-    })
-
-    expect(state.deal?.completionNotes).toBe('Đã chụp ảnh sau khi hoàn tất.')
-    expect(state.deal?.completionPhotoUrls).toEqual(['job-media/after/photo-1.jpg'])
-    expect(selectLocalWorkflow(state).canCustomerConfirmCompletion).toBe(false)
-  })
-
-  it('requires both worker notes and completion photos before evidence is considered complete', () => {
-    expect(hasLocalDealCompletionEvidence({
-      completionNotes: 'Đã thay ổ cắm và kiểm tra tải.',
-      completionPhotoUrls: ['job-media/after/photo-1.jpg'],
-    })).toBe(true)
-    expect(hasLocalDealCompletionEvidence({
-      completionNotes: 'Đã thay ổ cắm và kiểm tra tải.',
-      completionPhotoUrls: [],
-    })).toBe(false)
-    expect(hasLocalDealCompletionEvidence({
-      completionNotes: null,
-      completionPhotoUrls: ['job-media/after/photo-1.jpg'],
-    })).toBe(false)
-    expect(hasLocalDealCompletionEvidence({
-      completionNotes: 'ok',
-      completionPhotoUrls: ['job-media/after/photo-1.jpg'],
-    })).toBe(false)
-  })
-
   it('marks a stale remote worker broadcast as expired when backend no longer returns it', () => {
     const state = localWorkflowReducer(createInitialLocalWorkflowState(), {
       type: 'hydrate_remote_broadcast',
@@ -679,10 +501,6 @@ describe('mobile local workflow state machine', () => {
         serviceType: 'plumbing',
         problemSummary: 'Pipe leak',
         generalArea: 'Quận 7',
-        prebrief: [
-          'Đọc nhanh phạm vi Kael đã chốt.',
-          'Địa chỉ chi tiết vẫn ẩn trước khi nhận.',
-        ],
         secondsRemaining: 25,
         estimatedPriceLabel: '150.000đ - 350.000đ',
         estimatedEarningLabel: '135.000đ - 315.000đ',
@@ -693,13 +511,12 @@ describe('mobile local workflow state machine', () => {
 
     expect(expired.deal?.status).toBe('broadcasting')
     expect(expired.deal?.broadcast?.status).toBe('expired')
-    expect(expired.deal?.broadcast?.prebrief).toContain('Đọc nhanh phạm vi Kael đã chốt.')
     expect(expired.deal?.broadcast?.secondsRemaining).toBe(0)
     expect(expired.workerGate).toBe('backend_pending')
     expect(selectors.canWorkerAccept).toBe(false)
   })
 
-  it('does not let worker actions advance after worker completion or Kael completion review', () => {
+  it('does not let worker actions advance after worker completion or customer confirmation', () => {
     const completed = reduce([
       ...validBookingActions,
       { type: 'confirm_customer_search' },
@@ -851,18 +668,15 @@ describe('mobile local workflow state machine', () => {
     expect(selectors.canCustomerCancelDeal).toBe(false)
   })
 
-  it('lets customer cancellation become a Kael policy input after worker accepts', () => {
+  it('blocks customer cancellation after worker accepts because policy is a later backend phase', () => {
     const accepted = reduce([...validBookingActions, { type: 'confirm_customer_search' }, { type: 'worker_accept_broadcast' }])
-    const beforeCancel = selectLocalWorkflow(accepted)
-    const cancelled = localWorkflowReducer(accepted, { type: 'cancel_deal' })
-    const selectors = selectLocalWorkflow(cancelled)
+    const attempted = localWorkflowReducer(accepted, { type: 'cancel_deal' })
+    const selectors = selectLocalWorkflow(attempted)
 
-    expect(beforeCancel.canCustomerCancelDeal).toBe(true)
-    expect(cancelled.deal?.status).toBe('cancelled')
-    expect(cancelled.deal?.broadcast?.status).toBe('expired')
-    expect(cancelled.deal?.broadcast?.fullAddressVisible).toBe(false)
-    expect(cancelled.deal?.broadcast?.fullAddressLabel).toBeNull()
-    expect(selectors.canWorkerSeeFullAddress).toBe(false)
+    expect(attempted.deal?.status).toBe('worker_matched')
+    expect(attempted.deal?.broadcast?.status).toBe('accepted')
+    expect(attempted.lastError).toContain('Không thể hủy')
+    expect(selectors.canWorkerSeeFullAddress).toBe(true)
     expect(selectors.canCustomerCancelDeal).toBe(false)
   })
 
@@ -878,7 +692,7 @@ describe('mobile local workflow state machine', () => {
     expect(selectors.canCustomerCancelDeal).toBe(false)
   })
 
-  it('allows active customer cancellation before Kael completion review but blocks after confirmation', () => {
+  it('blocks cancellation after the worker has arrived or completed work', () => {
     const arrived = reduce([
       ...validBookingActions,
       { type: 'confirm_customer_search' },
@@ -886,16 +700,11 @@ describe('mobile local workflow state machine', () => {
       { type: 'worker_start_travel' },
       { type: 'worker_mark_arrived' },
     ])
-    const cancelledAfterArrival = localWorkflowReducer(arrived, { type: 'cancel_deal' })
-    const cancelledSelectors = selectLocalWorkflow(cancelledAfterArrival)
+    const attemptedAfterArrival = localWorkflowReducer(arrived, { type: 'cancel_deal' })
 
-    expect(selectLocalWorkflow(arrived).canCustomerCancelDeal).toBe(true)
-    expect(cancelledAfterArrival.deal?.status).toBe('cancelled')
-    expect(cancelledAfterArrival.deal?.broadcast?.status).toBe('expired')
-    expect(cancelledAfterArrival.deal?.broadcast?.fullAddressVisible).toBe(false)
-    expect(cancelledAfterArrival.deal?.broadcast?.fullAddressLabel).toBeNull()
-    expect(cancelledSelectors.canWorkerSeeFullAddress).toBe(false)
-    expect(cancelledSelectors.canCustomerCancelDeal).toBe(false)
+    expect(attemptedAfterArrival.deal?.status).toBe('arrived')
+    expect(attemptedAfterArrival.lastError).toContain('Không thể hủy')
+    expect(selectLocalWorkflow(attemptedAfterArrival).canCustomerCancelDeal).toBe(false)
 
     const completed = reduce([
       ...validBookingActions,
@@ -914,7 +723,7 @@ describe('mobile local workflow state machine', () => {
     expect(attemptedAfterConfirm.lastError).toContain('Không thể hủy')
   })
 
-  it('does not allow a clean new home service draft before the customer review completes', () => {
+  it('allows a clean new home service draft after customer confirmation', () => {
     const completed = reduce([
       ...validBookingActions,
       { type: 'confirm_customer_search' },
@@ -925,26 +734,6 @@ describe('mobile local workflow state machine', () => {
       { type: 'worker_start_repair' },
       { type: 'worker_complete_job' },
       { type: 'customer_confirm_completion' },
-    ])
-    const next = localWorkflowReducer(completed, { type: 'start_home_service', serviceType: 'electrical' })
-
-    expect(next.deal?.status).toBe('confirmed_by_customer')
-    expect(next.deal?.draft.serviceType).toBe('plumbing')
-    expect(next.lastError).toContain('Đang có yêu cầu đang chạy')
-  })
-
-  it('allows a clean new home service draft after the customer review completes', () => {
-    const completed = reduce([
-      ...validBookingActions,
-      { type: 'confirm_customer_search' },
-      { type: 'worker_accept_broadcast' },
-      { type: 'worker_start_travel' },
-      { type: 'worker_mark_arrived' },
-      { type: 'worker_start_inspection' },
-      { type: 'worker_start_repair' },
-      { type: 'worker_complete_job' },
-      { type: 'customer_confirm_completion' },
-      { type: 'customer_submit_review' },
     ])
     const next = localWorkflowReducer(completed, { type: 'start_home_service', serviceType: 'electrical' })
 

@@ -1,144 +1,76 @@
-﻿import { type Dispatch, type MutableRefObject, useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
+import { useEffect, useMemo, useReducer, useRef } from 'react'
+import { Image } from 'expo-image'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { inferLocalDealDraftFromKael, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@nestscout/shared'
-import { useCustomerThemeMode } from '@/components/customer/customer-theme'
+import Svg, { Path } from 'react-native-svg'
+import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, type ServiceType } from '@home-services/shared'
+import { getCustomerThemeTokens, getReducedTransparencyCustomerTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
+import { GlassSurface } from '@/components/ui/glass-surface'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
-import { type AppLanguage, useAppLanguage } from '@/lib/app-language'
-import { type KaelChatProgress, type KaelChatResponse } from '@/lib/api-types'
+import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
+import { localizedServiceLabel, type AppLanguage, useAppLanguage } from '@/lib/app-language'
+import { type KaelChatResponse, type KaelChatTurn } from '@/lib/api-types'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
-import { uploadJobMediaDrafts } from '@/lib/media-upload'
-import { kaelChatProgressService, kaelChatService, kaelChatStreamService } from '@/lib/services'
-import {
-  clearStableClientRequestId,
-  stableClientRequestId,
-  type PendingClientRequestId,
-} from '@/lib/client-request-id'
-import { useServiceWorkflow } from '@/lib/use-service-workflow'
-import { inferKaelChatDistrict } from './address-district'
-import {
-  KaelChatComposer,
-  KaelChatHeader,
-  useKaelChatTokens,
-} from './agentic-parts'
-import {
-  buildKaelChatArchiveItems,
-  errorMessage,
-  firstParam,
-  firstTurnClientRequestFingerprint,
-  localizedGeneratedText,
-  localizedKaelChatError,
-  mergeKaelChatMediaDrafts,
-  parseServiceType,
-  vietnameseSignalPattern,
-} from './helpers'
+import { kaelChatService } from '@/lib/services'
+import { inferKaelChatDistrict, KaelAddressContextBar } from './address-context'
 import { takePendingKaelChatDraft } from './pending-intake'
-import { createInitialKaelChatState, kaelChatReducer, type KaelChatAction, type KaelChatState } from './state'
+import { createInitialKaelChatState, kaelChatReducer } from './state'
 import { styles } from './styles'
-import { KaelChatThread, type KaelChatVisibility } from './thread'
 
 const KAEL_CHAT_STACK_SCREEN_CONTRACT = 'KAEL_CHAT_STACK_SCREEN_CONTRACT: stack route uses kaelChatService only'
 const KAEL_CHAT_SERVICE_WRAPPER_ONLY = 'KAEL_CHAT_SERVICE_WRAPPER_ONLY: UI does not call Supabase, fetch, or AI directly'
-const KAEL_CHAT_EMPTY_TICKET_SUMMARY_TEST_ID = 'customer-kael-chat-empty-ticket-summary'
-const KAEL_CHAT_ADDRESS_CONTEXT_BAR_CONTRACT = 'KaelAddressContextBar'
-const KAEL_CHAT_EXTRACTED_GLASS_CONTRACT = `getReducedTransparencyCustomerTokens import { GlassSurface } from '@/components/ui/glass-surface' testID="customer-kael-chat-glass-header" testID="customer-kael-chat-glass-composer" reduceMotionAwarePressStyle(pressed, reduceMotion) subtitle: 'Trợ lý phân tích và điều phối'`
-const CUSTOMER_KAEL_CHAT_WORKER_FRAME_PARITY = 'CUSTOMER_KAEL_CHAT_WORKER_FRAME_PARITY: customer-kael-worker-chatbox-parity customer-chat-reference-composer-tools customer-chat-reference-mode-pill'
-void [KAEL_CHAT_STACK_SCREEN_CONTRACT, KAEL_CHAT_SERVICE_WRAPPER_ONLY, KAEL_CHAT_EMPTY_TICKET_SUMMARY_TEST_ID, KAEL_CHAT_ADDRESS_CONTEXT_BAR_CONTRACT, KAEL_CHAT_EXTRACTED_GLASS_CONTRACT, CUSTOMER_KAEL_CHAT_WORKER_FRAME_PARITY, vietnameseSignalPattern]
+void KAEL_CHAT_STACK_SCREEN_CONTRACT
+void KAEL_CHAT_SERVICE_WRAPPER_ONLY
 
-const KAEL_CHAT_FRAME_MAX_WIDTH = 680
-const KAEL_CHAT_PROGRESS_POLL_MS = 800
-const KAEL_CHAT_PROGRESS_MAX_MS = 15_000
-
-const livePerformanceCopy = {
-  vi: { livePerformanceEvidence: 'Bằng chứng', livePerformanceEstimateReady: 'Ước tính đã sẵn sàng', livePerformanceMeta: 'Preview audit từ handoff đặt dịch vụ', livePerformanceMediaCount: (count: number) => `${count} bằng chứng`, livePerformanceNoEvidence: 'Chưa có ảnh/video thật', livePerformancePendingStage: 'Đang gửi phiếu đến Kael', livePerformanceService: 'Dịch vụ', livePerformanceSignals: 'Tín hiệu', livePerformanceStage: 'Trạng thái Kael', livePerformanceTitle: 'Kael đang phân tích yêu cầu của bạn', livePerformanceWaitingStage: 'Đang chờ dữ liệu thật' },
-  en: { livePerformanceEvidence: 'Evidence', livePerformanceEstimateReady: 'Estimate is ready', livePerformanceMeta: 'Audit preview from booking handoff', livePerformanceMediaCount: (count: number) => `${count} evidence item${count === 1 ? '' : 's'}`, livePerformanceNoEvidence: 'No real photo/video yet', livePerformancePendingStage: 'Sending ticket to Kael', livePerformanceService: 'Service', livePerformanceSignals: 'Signals', livePerformanceStage: 'Kael stage', livePerformanceTitle: 'Kael is analyzing your request', livePerformanceWaitingStage: 'Waiting for real details' },
-} as const
+const supportedServices: ServiceType[] = ['electrical', 'plumbing', 'cleaning']
+const vndFormatter = new Intl.NumberFormat('vi-VN')
+const vietnameseSignalPattern = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i
+const kaelModel8AHead = require('../../../assets/kael-model-8a-head.png')
 
 const copy = {
   vi: {
     attach: 'Ảnh',
     attachHint: 'Nếu cần ảnh, Kael sẽ yêu cầu bổ sung trong phiên này.',
-    archiveActiveMeta: 'Đang mở',
-    archiveCurrentChat: 'Chat hiện tại',
-    archiveDraftMeta: 'Chờ tạo phiên',
-    archiveEmptyBody: 'Gửi mô tả thật để Kael tạo phiên.',
-    archiveEmptySubtitle: 'Chưa có phiên',
-    archiveEmptyTitle: 'Chưa có phiên lưu',
-    archiveHistoryMeta: 'Xem hoạt động',
-    archiveLoadingChat: 'Đang tải phiên',
-    archiveNoService: 'Chưa chọn dịch vụ',
-    archiveOpen: 'Mở phiên lưu',
-    archivePendingIntake: 'Phiếu đang gửi',
-    archiveServiceRequest: 'Phiên đặt dịch vụ',
-    archiveTitle: 'Phiên Kael',
-    activityOrchestrating: 'Đang điều phối',
-    activityResearch: 'Đang nghiên cứu',
-    activityThinking: 'Đang nghĩ',
     back: 'Đóng',
-    composerPlaceholder: '',
-    orchestrate: 'Kael điều phối',
-    orchestrating: 'Đang điều phối',
-    confirmed: 'Đã tạo yêu cầu. Kael đang tự điều phối thợ phù hợp.',
-    emptyTicketBody: 'Phiếu sẽ hiện ở đây sau khi bạn gửi mô tả thật.',
-    emptyTicketTitle: 'Phiếu Kael',
+    chatTitle: 'Kael',
+    chooseService: 'Chọn dịch vụ để Kael bắt đầu đúng luồng xử lý.',
+    composerPlaceholder: 'Mô tả sự cố, vị trí trong căn hộ, dấu hiệu nguy hiểm...',
+    confirm: 'Xác nhận tìm thợ',
+    confirmArmed: 'Có, tìm thợ',
+    confirmPrompt: 'Xác nhận tìm thợ với ước tính này?',
+    confirmed: 'Đã tạo yêu cầu. Kael đang chuyển sang bước tìm thợ phù hợp.',
+    confirming: 'Đang xác nhận',
+    emptyTitle: 'Bắt đầu với điện, nước hoặc dọn dẹp',
     errorNoService: 'Chọn một dịch vụ trước khi gửi mô tả.',
     errorUnknown: 'Kael chưa thể cập nhật phiên này. Vui lòng thử lại.',
-    retryIntake: 'Thử gửi lại phiếu',
-    retryOrchestration: 'Thử lại với Kael',
     estimateTitle: 'Ước tính của Kael',
     estimateProblemFallback: 'Kael đã phân loại vấn đề.',
+    addressDetected: 'Đã nhận quận',
+    addressLabel: 'Khu vực',
     addressPlaceholder: 'Ví dụ: Quận 7, tên tòa nhà/căn hộ',
     estimateDisclaimerFallback: LOCAL_WORKFLOW_PRICE_DISCLAIMER,
     history: 'Xem hoạt động',
     loading: 'Đang tải phiên Kael',
-    mic: 'Mic',
-    micHint: 'Mic chưa sẵn sàng trong phiên này. Cậu nhập mô tả để Kael xử lý trước.',
     noWorkerConfirmed: 'Đã tạo yêu cầu. Hiện chưa có thợ phù hợp, Kael sẽ giữ trong hoạt động để tiếp tục theo dõi.',
+    noEstimate: 'Kael cần thêm mô tả trước khi ước tính.',
+    retry: 'Thử lại',
     send: 'Gửi',
     sending: 'Đang gửi',
+    subtitle: 'Trợ lý kiểm giá và đặt lịch',
     turnFallback: 'Kael đã cập nhật phiên.',
-    agentStatus: 'Đang xử lý yêu cầu',
-    activityStage: {
-      fallback: 'Kael \u0111ang d\u00f9ng d\u1eef li\u1ec7u n\u1ed9i b\u1ed9.',
-      intent: 'Kael \u0111ang \u0111\u1ecdc v\u00e0 ph\u00e2n lo\u1ea1i y\u00eau c\u1ea7u.',
-      market: 'Kael \u0111ang tra c\u1ee9u gi\u00e1 khu {district}.',
-      price: 'Kael \u0111ang t\u1ed5ng h\u1ee3p \u01b0\u1edbc t\u00ednh v\u00e0 r\u1ee7i ro.',
-      problem: 'Kael \u0111ang \u0111\u1ed1i chi\u1ebfu khung gi\u00e1 chu\u1ea9n.',
-      vision: 'Kael \u0111ang ph\u00e2n t\u00edch m\u00f4 t\u1ea3 v\u00e0 h\u00ecnh \u1ea3nh.',
-    },
-    agentSteps: {
-      read: 'Đọc yêu cầu',
-      missing: 'Hỏi phần thiếu',
-      orchestrate: 'Kael điều phối',
-    },
-    traceTitle: 'Kael đang kiểm tra',
-    traceService: 'Phạm vi dịch vụ',
-    traceMissing: 'Thông tin còn thiếu',
-    traceDecision: 'Quyền quyết định',
-    traceServiceEmpty: 'Chọn điện, nước hoặc vệ sinh để bắt đầu.',
-    traceMissingEmpty: 'Gửi mô tả thật để Kael hỏi đúng phần còn thiếu.',
-    traceMissingActive: 'Kael sẽ hỏi thêm ảnh, khu vực hoặc dấu hiệu an toàn khi cần.',
-    traceMissingReady: 'Đủ thông tin để xem ước tính.',
-    traceDecisionBody: 'Kael tự điều phối bằng quyết định đã kiểm theo chính sách; bạn có thể theo dõi, hủy hoặc khiếu nại.',
-    traceDone: 'Xong',
-    traceQuestion: 'Cần hỏi',
-    traceLocked: 'Khóa',
-    traceWaiting: 'Chờ',
-    briefServiceLabel: 'Dịch vụ',
-    briefClarityLabel: 'Mức rõ',
-    briefSafetyLabel: 'Giới hạn an toàn',
-    briefServicePending: 'Chưa chọn dịch vụ',
-    ...livePerformanceCopy.vi,
-    briefClarityPending: 'Cần mô tả thật',
-    briefClaritySelected: 'Sẵn sàng nhận mô tả',
-    briefSafetyBody: 'Kael chuẩn bị phiếu, ghi dấu vết kiểm tra và tự chuyển sang tìm thợ khi đủ dữ liệu.',
-    welcome: 'Mình là Kael. Cậu cứ mô tả sự cố trong căn hộ, mình sẽ giúp gom thông tin, hỏi thêm khi cần và chuẩn bị bước điều phối.',
+    unsupported: 'Dịch vụ chưa hỗ trợ',
+    welcome: 'Mình là Kael. Cậu cứ mô tả sự cố trong căn hộ, mình sẽ giúp gom thông tin, hỏi thêm khi cần và chuẩn bị bước kiểm giá.',
     labels: {
       advisory: 'Lưu ý',
       complexity: 'Mức độ',
@@ -147,12 +79,7 @@ const copy = {
       service: 'Dịch vụ',
       status: 'Trạng thái',
       price: 'Khoảng giá',
-      platformFee: 'Phí nền tảng',
-      cancellationNote: 'Chính sách hủy',
-      summaryTotal: 'Tổng dự kiến (đã gồm phí)',
     },
-    cancellationBody:
-      'Bạn có thể hủy miễn phí trước khi thợ nhận việc. Sau khi thợ nhận, có thể áp dụng phí dịch vụ tối thiểu.',
     complexity: {
       small: 'Nhỏ',
       medium: 'Vừa',
@@ -163,89 +90,43 @@ const copy = {
       ask_video: 'Kael có thể cần video ngắn.',
       await_input: 'Mô tả thêm để Kael phân loại chính xác hơn.',
       budget_exceeded: 'Ước tính có thể vượt ngân sách ban đầu.',
-      confirmed: 'Kael đang tìm thợ.',
-      estimate_ready: 'Ước tính đã sẵn sàng để Kael điều phối.',
+      confirmed: 'Đã xác nhận tìm thợ.',
+      estimate_ready: 'Ước tính đã sẵn sàng.',
       unsupported: 'Kael chưa hỗ trợ yêu cầu này.',
     },
   },
   en: {
     attach: 'Photo',
     attachHint: 'If a photo is needed, Kael will ask for it in this session.',
-    archiveActiveMeta: 'Open now',
-    archiveCurrentChat: 'Current chat',
-    archiveDraftMeta: 'Waiting for session',
-    archiveEmptyBody: 'Send real details so Kael can create a session.',
-    archiveEmptySubtitle: 'No session yet',
-    archiveEmptyTitle: 'No saved session',
-    archiveHistoryMeta: 'View activity',
-    archiveLoadingChat: 'Loading session',
-    archiveNoService: 'No service chosen',
-    archiveOpen: 'Open saved sessions',
-    archivePendingIntake: 'Sending ticket',
-    archiveServiceRequest: 'Service session',
-    archiveTitle: 'Kael sessions',
-    activityOrchestrating: 'Orchestrating',
-    activityResearch: 'Researching',
-    activityThinking: 'Thinking',
     back: 'Close',
-    composerPlaceholder: '',
-    orchestrate: 'Kael orchestrates',
-    orchestrating: 'Orchestrating',
-    confirmed: 'Request created. Kael is orchestrating a suitable worker.',
-    emptyTicketBody: 'The ticket appears here after you send real details.',
-    emptyTicketTitle: 'Kael ticket',
+    chatTitle: 'Kael Command Home',
+    chooseService: 'Choose a service so Kael can start the right intake.',
+    composerPlaceholder: 'Describe the issue, apartment location, safety signs...',
+    confirm: 'Confirm worker search',
+    confirmArmed: 'Yes, find worker',
+    confirmPrompt: 'Confirm worker search with this estimate?',
+    confirmed: 'Request created. Kael is moving to worker search.',
+    confirming: 'Confirming',
+    emptyTitle: 'Start with electrical, plumbing, or cleaning',
     errorNoService: 'Choose a service before sending details.',
     errorUnknown: 'Kael could not update this session. Please try again.',
-    retryIntake: 'Retry intake',
-    retryOrchestration: 'Retry with Kael',
     estimateTitle: 'Kael estimate',
     estimateProblemFallback: 'Kael classified the issue.',
+    addressDetected: 'District set',
+    addressLabel: 'Area',
     addressPlaceholder: 'Example: District 7, building/apartment',
-    estimateDisclaimerFallback: 'This is a Kael estimate from the current evidence. Kael may update it when new scope evidence is added.',
+    estimateDisclaimerFallback: 'This is a reference estimate. The worker confirms scope and actual price before starting.',
     history: 'View activity',
     loading: 'Loading Kael session',
-    mic: 'Mic',
-    micHint: 'Voice input is not ready in this session. Type the details for Kael first.',
     noWorkerConfirmed: 'Request created. No suitable worker is available yet, so Kael will keep tracking it in Activity.',
+    noEstimate: 'Kael needs more detail before estimating.',
+    retry: 'Try again',
     send: 'Send',
     sending: 'Sending',
+    subtitle: 'Price check and booking assistant',
     turnFallback: 'Kael updated the session.',
-    agentStatus: 'Processing request',
-    activityStage: {
-      fallback: "Kael is using internal data.",
-      intent: 'Kael is reading and classifying your request.',
-      market: 'Kael is checking market rates in {district}.',
-      price: 'Kael is synthesizing the estimate and risks.',
-      problem: 'Kael is matching against standard price bands.',
-      vision: 'Kael is analyzing your description and photos.',
-    },
-    agentSteps: {
-      read: 'Read request',
-      missing: 'Ask missing parts',
-      orchestrate: 'Kael orchestrates',
-    },
-    traceTitle: 'Kael is checking',
-    traceService: 'Service scope',
-    traceMissing: 'Missing details',
-    traceDecision: 'Decision right',
-    traceServiceEmpty: 'Choose electrical, plumbing, or cleaning to start.',
-    traceMissingEmpty: 'Send real details so Kael can ask for the right missing part.',
-    traceMissingActive: 'Kael will ask for photo, area, or safety signs when needed.',
-    traceMissingReady: 'Enough detail for an estimate.',
-    traceDecisionBody: 'Kael orchestrates through a policy-checked decision; you can track, cancel, or appeal.',
-    traceDone: 'Done',
-    traceQuestion: 'Ask',
-    traceLocked: 'Locked',
-    traceWaiting: 'Wait',
-    briefServiceLabel: 'Service',
-    briefClarityLabel: 'Clarity',
-    briefSafetyLabel: 'Safety limit',
-    briefServicePending: 'No service chosen',
-    ...livePerformanceCopy.en,
-    briefClarityPending: 'Needs real detail',
-    briefClaritySelected: 'Ready for detail',
-    briefSafetyBody: 'Kael prepares the ticket, records the audit trail, and starts worker search once enough data exists.',
-    welcome: 'I am Kael. Describe the issue at home and I will gather details, ask what is needed, and prepare orchestration.',
+    unsupported: 'Unsupported service',
+    welcome: 'I am Kael. Describe the issue at home and I will gather details, ask what is needed, and prepare the price-check step.',
     labels: {
       advisory: 'Advisory',
       complexity: 'Complexity',
@@ -254,12 +135,7 @@ const copy = {
       service: 'Service',
       status: 'Status',
       price: 'Price range',
-      platformFee: 'Platform fee',
-      cancellationNote: 'Cancellation policy',
-      summaryTotal: 'Estimated total (incl. fee)',
     },
-    cancellationBody:
-      'Free cancellation before a worker accepts. After acceptance, a minimum service fee may apply.',
     complexity: {
       small: 'Small',
       medium: 'Medium',
@@ -270,165 +146,18 @@ const copy = {
       ask_video: 'Kael may need a short video.',
       await_input: 'Add more detail so Kael can classify the issue.',
       budget_exceeded: 'The estimate may exceed the initial budget.',
-      confirmed: 'Kael is finding a worker.',
-      estimate_ready: 'Estimate is ready for Kael orchestration.',
+      confirmed: 'Worker search confirmed.',
+      estimate_ready: 'Estimate is ready.',
       unsupported: 'Kael does not support this request yet.',
     },
   },
 } as const
 
-type KaelChatSurfaceText = (typeof copy)[AppLanguage]
-function usePendingIntakeSession({
-  addressDistrict,
-  addressDistrictRef,
-  addressLabel,
-  dispatch,
-  language,
-  pendingChatCreateClientRequestRef,
-  pendingIntake,
-  pendingIntakeRetryNonce,
-  pendingIntakeSentRef,
-  routeSessionId,
-  selectedService,
-  session,
-  text,
-}: {
-  addressDistrict: string | null
-  addressDistrictRef: MutableRefObject<string | null>
-  addressLabel: string
-  dispatch: Dispatch<KaelChatAction>
-  language: AppLanguage
-  pendingChatCreateClientRequestRef: MutableRefObject<PendingClientRequestId | null>
-  pendingIntake: KaelChatState['pendingIntake']
-  pendingIntakeRetryNonce: number
-  pendingIntakeSentRef: MutableRefObject<string | null>
-  routeSessionId?: string
-  selectedService: ServiceType | null
-  session: KaelChatResponse | null
-  text: KaelChatSurfaceText
-}) {
-  useEffect(() => {
-    if (!pendingIntake || routeSessionId || session) return
-    const trimmed = pendingIntake.message.trim()
-    if (!trimmed) return
-    const createService = pendingIntake.serviceType ?? selectedService ?? inferLocalDealDraftFromKael(trimmed).serviceType
-    if (!createService) {
-      const missingServiceKey = `missing-service:${pendingIntake.clientRequestId ?? trimmed}`
-      if (pendingIntakeSentRef.current !== missingServiceKey) {
-        pendingIntakeSentRef.current = missingServiceKey
-        dispatch({ type: 'showTransientError', error: text.errorNoService })
-      }
-      return
-    }
-
-    const addressPayload = (pendingIntake.addressLabel ?? addressLabel).trim()
-    const payloadDistrict = pendingIntake.districtLabel ?? addressDistrict ?? inferKaelChatDistrict(trimmed) ?? addressDistrictRef.current
-    const problemChips = pendingIntake.problemChips ?? []
-    const requestFingerprint = JSON.stringify({
-      service_type: createService,
-      message: trimmed,
-      problem_chips: problemChips,
-      photo_urls: [],
-      address_label: addressPayload,
-      address_district: payloadDistrict ?? null,
-      source: pendingIntake.source ?? 'booking',
-    })
-    const requestKey = pendingIntake.clientRequestId ?? requestFingerprint
-    if (pendingIntakeSentRef.current === requestKey) return
-    pendingIntakeSentRef.current = requestKey
-    if (payloadDistrict) addressDistrictRef.current = payloadDistrict
-
-    let cancelled = false
-    dispatch({ type: 'sendStarted' })
-    void kaelChatService.create({
-      service_type: createService,
-      message: trimmed,
-      problem_chips: problemChips,
-      photo_urls: [],
-      client_request_id: pendingIntake.clientRequestId ?? stableClientRequestId(pendingChatCreateClientRequestRef, requestFingerprint),
-      address_label: addressPayload || undefined,
-      address_district: payloadDistrict ?? undefined,
-    }).then((result) => {
-      if (cancelled) return
-      if (result.success) {
-        if (!pendingIntake.clientRequestId) {
-          clearStableClientRequestId(pendingChatCreateClientRequestRef, requestFingerprint)
-        }
-        dispatch({ type: 'sendSucceeded', session: result.data, clearDraft: false })
-        fetchFirstTurnProgress(result.data.session.id, dispatch)
-      } else {
-        dispatch({ type: 'sendFailed', error: localizedKaelChatError(result.error, language) })
-      }
-    }).catch((unknownError: unknown) => {
-      if (cancelled) return
-      dispatch({
-        type: 'sendFailed',
-        error: localizedKaelChatError(errorMessage(unknownError, text.errorUnknown), language),
-      })
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [addressDistrict, addressDistrictRef, addressLabel, dispatch, language, pendingChatCreateClientRequestRef, pendingIntake, pendingIntakeRetryNonce, pendingIntakeSentRef, routeSessionId, selectedService, session, text.errorNoService, text.errorUnknown])
-}
-
-// §32.3 first-turn perceived-perf (§32.14 Step 4): the create turn has no session id
-// until the response lands, so the live poll/SSE never runs and turn 1 ends with an
-// empty stage trace. Fetch the terminal progress snapshot once the session id exists so
-// the real post-turn stepper + "Thought for {n}s" disclosure appear from the very first
-// turn. progressCleared keeps the live stepper from re-opening after the turn is done.
-function fetchFirstTurnProgress(sessionId: string, dispatch: Dispatch<KaelChatAction>) {
-  void kaelChatProgressService
-    .get(sessionId)
-    .then((result) => {
-      if (!result.success || !result.data.progress) return
-      dispatch({ type: 'progressUpdated', progress: result.data.progress })
-      dispatch({ type: 'progressCleared' })
-    })
-    .catch(() => undefined)
-}
-
-function useKaelChatProgressPolling(
-  sessionId: string | null,
-  sending: boolean,
-  dispatch: Dispatch<KaelChatAction>,
-) {
-  useEffect(() => {
-    if (!sending || !sessionId) return
-    let stopped = false
-    let interval: ReturnType<typeof setInterval> | undefined
-    let timeout: ReturnType<typeof setTimeout> | undefined
-
-    const stop = () => {
-      stopped = true
-      if (interval !== undefined) clearInterval(interval)
-      if (timeout !== undefined) clearTimeout(timeout)
-    }
-    const poll = async () => {
-      const result = await kaelChatProgressService.get(sessionId)
-      if (stopped) return
-      if (!result.success) return
-      dispatch({ type: 'progressUpdated', progress: result.data.progress })
-      if (isTerminalKaelProgress(result.data.progress)) stop()
-    }
-
-    void poll()
-    interval = setInterval(() => {
-      void poll()
-    }, KAEL_CHAT_PROGRESS_POLL_MS)
-    timeout = setTimeout(() => {
-      stop()
-    }, KAEL_CHAT_PROGRESS_MAX_MS)
-
-    return stop
-  }, [dispatch, sending, sessionId])
-}
-
-function isTerminalKaelProgress(progress: KaelChatProgress | null) {
-  if (!progress) return false
-  if (progress.status === 'completed' && progress.current_stage === 'price_synthesis') return true
-  return progress.status === 'failed' && progress.progress >= 1
+function useKaelChatTokens() {
+  const themeMode = useCustomerThemeMode()
+  const { reduceTransparency } = useGlassAccessibility()
+  const tokens = getCustomerThemeTokens(themeMode)
+  return reduceTransparency ? getReducedTransparencyCustomerTokens(tokens) : tokens
 }
 
 export function KaelChatSurface() {
@@ -436,35 +165,24 @@ export function KaelChatSurface() {
   const params = useLocalSearchParams()
   const language = useAppLanguage()
   const text = copy[language]
-  const { actions, state: frontendWorkflowState } = useFrontendWorkflow()
+  const { actions } = useFrontendWorkflow()
   const themeMode = useCustomerThemeMode()
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const tokens = useKaelChatTokens()
   const { width } = useWindowDimensions()
-  const frameWidth = Math.min(width, KAEL_CHAT_FRAME_MAX_WIDTH)
+  const frameWidth = Math.min(width, 430)
   const routeService = useMemo(() => parseServiceType(firstParam(params.serviceType)), [params.serviceType])
   const routeSessionId = useMemo(() => firstParam(params.sessionId), [params.sessionId])
   const [state, dispatch] = useReducer(kaelChatReducer, routeService, createInitialKaelChatState)
-  const [pendingIntakeRetryNonce, bumpPendingIntakeRetryNonce] = useReducer((value: number) => value + 1, 0)
   const addressDistrictRef = useRef<string | null>(null)
-  const pendingChatCreateClientRequestRef = useRef<PendingClientRequestId | null>(null)
-  const pendingIntakeSentRef = useRef<string | null>(null)
-  const autoConfirmSessionRef = useRef<string | null>(null)
-  const pendingMediaUploadJobRef = useRef<string | null>(null)
   const {
     addressLabel,
-    composerPhotoDrafts,
-    orchestrationMessage,
-    orchestrating,
+    confirmArmed,
+    confirmedMessage,
+    confirming,
     draft,
     error,
-    kaelProgress,
-    kaelProgressElapsedMs,
-    kaelProgressTrace,
-    kaelStreamingField,
-    kaelStreamingText,
     loading,
-    pendingIntake,
     selectedService,
     sending,
     session,
@@ -472,48 +190,11 @@ export function KaelChatSurface() {
   const estimate = session?.session.estimate ?? session?.turns.find((turn) => turn.estimate)?.estimate ?? null
   const turns = session?.turns ?? []
   const historyTarget = session?.session.job_id ? `/(customer)/history?job_id=${encodeURIComponent(session.session.job_id)}` : '/(customer)/history'
-  const archiveItems = useMemo(
-    () => buildKaelChatArchiveItems({
-      deal: frontendWorkflowState.deal,
-      historyTarget,
-      language,
-      pendingIntake,
-      routeSessionId,
-      selectedService,
-      session,
-      text,
-    }),
-    [frontendWorkflowState.deal, historyTarget, language, pendingIntake, routeSessionId, selectedService, session, text],
-  )
   const addressDistrict = useMemo(() => inferKaelChatDistrict(addressLabel), [addressLabel])
-  const hasDraft = draft.trim().length > 0
-  const hasInteraction = Boolean(routeSessionId || session || selectedService || hasDraft || pendingIntake || addressLabel.trim() || error || loading)
-  const hasPendingIntakeOnly = Boolean(pendingIntake && !routeSessionId && !session)
-  const hasKaelSessionContext = Boolean(routeSessionId || session || turns.length > 0)
-  const showStarter = hasInteraction && turns.length === 0 && !loading && !session
-  const chatWorkflowStatus = session?.session.status === 'confirmed' ? 'broadcasting' : null
-  const workflow = useServiceWorkflow({
-    status: chatWorkflowStatus,
-    hasAiNotes: hasPendingIntakeOnly ? false : turns.length > 0,
-    hasCustomerInput: hasPendingIntakeOnly ? false : hasKaelSessionContext,
-    hasPendingIntake: hasPendingIntakeOnly,
-    hasEstimate: Boolean(estimate),
-    isLoading: hasPendingIntakeOnly ? false : loading,
-    optimistic: orchestrating ? 'starting_matching' : null,
-  })
-  const showProcess = workflow.artifacts.process_ticket.visible
-  const showTrace = workflow.artifacts.ai_diagnosis.visible
-  const showBrief = Boolean(session && !estimate && workflow.artifacts.process_ticket.mode === 'partial')
-  const showEstimate = Boolean(estimate && workflow.artifacts.estimate.visible)
-  const canStartOrchestration = Boolean(estimate && session?.session.next_action === 'estimate_ready')
-  const threadVisibility: KaelChatVisibility = { canStartOrchestration, showBrief, showEstimate, showProcess, showStarter, showTrace }
-  const progressSessionId = sending ? session?.session.id ?? routeSessionId ?? null : null
 
   useEffect(() => {
     if (addressDistrict) addressDistrictRef.current = addressDistrict
   }, [addressDistrict])
-
-  useKaelChatProgressPolling(progressSessionId, sending, dispatch)
 
   useEffect(() => {
     dispatch({ type: 'syncRouteService', service: routeService, routeSessionId })
@@ -525,25 +206,10 @@ export function KaelChatSurface() {
     if (!pendingDraft) return
     dispatch({
       type: 'applyPendingDraft',
-      intake: pendingDraft,
+      service: pendingDraft.serviceType ?? null,
+      message: pendingDraft.message,
     })
   }, [routeSessionId])
-
-  usePendingIntakeSession({
-    addressDistrict,
-    addressDistrictRef,
-    addressLabel,
-    dispatch,
-    language,
-    pendingChatCreateClientRequestRef,
-    pendingIntake,
-    pendingIntakeRetryNonce,
-    pendingIntakeSentRef,
-    routeSessionId,
-    selectedService,
-    session,
-    text,
-  })
 
   useEffect(() => {
     if (!routeSessionId) return
@@ -576,14 +242,12 @@ export function KaelChatSurface() {
   const sendTurn = async () => {
     const trimmed = draft.trim()
     if (!trimmed || sending) return
-    const createService = selectedService ?? inferLocalDealDraftFromKael(trimmed).serviceType
-    if (!createService && !session) {
+    if (!selectedService && !session) {
       dispatch({ type: 'showTransientError', error: text.errorNoService })
       return
     }
 
     dispatch({ type: 'sendStarted' })
-    const wasFirstTurn = !session
 
     try {
       const addressPayload = addressLabel.trim()
@@ -594,50 +258,18 @@ export function KaelChatSurface() {
         address_label: addressPayload || undefined,
         address_district: payloadDistrict ?? undefined,
       }
-      let result: Awaited<ReturnType<typeof kaelChatService.create>>
-      if (session) {
-        const streamResult = await kaelChatStreamService.sendTurn(
-          session.session.id,
-          { message: trimmed, photo_urls: [], ...addressFields },
-          {
-            onStage: (event) => dispatch({ type: 'progressUpdated', progress: event.progress }),
-            onToken: (event) => dispatch({ type: 'streamTokenReceived', field: event.field, delta: event.delta }),
-          },
-        )
-        result = !streamResult.success && streamResult.code === 'STREAM_UNSUPPORTED'
-          ? await kaelChatService.sendTurn(session.session.id, { message: trimmed, photo_urls: [], ...addressFields })
-          : streamResult
-      } else {
-        const requestFingerprint = firstTurnClientRequestFingerprint(
-          createService as ServiceType,
-          trimmed,
-          addressPayload,
-          payloadDistrict,
-        )
-        result = await kaelChatService.create({
-          service_type: createService as ServiceType,
-          message: trimmed,
-          problem_chips: [],
-          photo_urls: [],
-          // X2 (Plan.md §27.5 — 2026-05-29): idempotent first-turn POST.
-          // Reuses existing session if a retry happens.
-          client_request_id: stableClientRequestId(
-            pendingChatCreateClientRequestRef,
-            requestFingerprint,
-          ),
-          ...addressFields,
-        })
-        if (result.success) {
-          clearStableClientRequestId(
-            pendingChatCreateClientRequestRef,
-            requestFingerprint,
-          )
-        }
-      }
+      const result = session
+        ? await kaelChatService.sendTurn(session.session.id, { message: trimmed, photo_urls: [], ...addressFields })
+        : await kaelChatService.create({
+            service_type: selectedService as ServiceType,
+            message: trimmed,
+            problem_chips: [],
+            photo_urls: [],
+            ...addressFields,
+          })
 
       if (result.success) {
         dispatch({ type: 'sendSucceeded', session: result.data })
-        if (wasFirstTurn) fetchFirstTurnProgress(result.data.session.id, dispatch)
       } else {
         dispatch({ type: 'sendFailed', error: localizedKaelChatError(result.error, language) })
       }
@@ -649,60 +281,40 @@ export function KaelChatSurface() {
     }
   }
 
-  const startKaelOrchestration = useCallback(async () => {
-    if (!session || !estimate || orchestrating) return
-    dispatch({ type: 'orchestrationStarted' })
+  const confirmSearch = async () => {
+    if (!session || !estimate || confirming) return
+    if (!confirmArmed) {
+      dispatch({ type: 'confirmArmed' })
+      return
+    }
+    dispatch({ type: 'confirmStarted' })
 
     try {
       const result = await kaelChatService.confirm(session.session.id)
       if (result.success) {
         const confirmationFallback = result.data.broadcast_sent ? text.confirmed : text.noWorkerConfirmed
         dispatch({
-          type: 'orchestrationSucceeded',
+          type: 'confirmSucceeded',
           message: localizedGeneratedText(result.data.message || confirmationFallback, language, confirmationFallback),
           jobId: result.data.job_id,
+          status: result.data.status,
         })
-        const pendingPhotos = mergeKaelChatMediaDrafts(pendingIntake?.photoDrafts ?? [], composerPhotoDrafts)
-        if (pendingPhotos.length > 0 && pendingMediaUploadJobRef.current !== result.data.job_id) {
-          pendingMediaUploadJobRef.current = result.data.job_id
-          const uploaded = await uploadJobMediaDrafts(result.data.job_id, pendingPhotos, 'before')
-          if (!uploaded.success) {
-            dispatch({ type: 'showTransientError', error: localizedKaelChatError(uploaded.error, language) })
-          } else {
-            dispatch({ type: 'composerPhotosUploaded' })
-          }
-        }
         await actions.hydrateRemoteJobById(result.data.job_id)
       } else {
-        dispatch({ type: 'orchestrationFailed', error: localizedKaelChatError(result.error, language) })
+        dispatch({ type: 'confirmFailed', error: localizedKaelChatError(result.error, language) })
       }
     } catch (unknownError: unknown) {
       dispatch({
-        type: 'orchestrationFailed',
+        type: 'confirmFailed',
         error: localizedKaelChatError(errorMessage(unknownError, text.errorUnknown), language),
       })
     }
-  }, [actions, composerPhotoDrafts, estimate, language, orchestrating, pendingIntake, session, text.confirmed, text.errorUnknown, text.noWorkerConfirmed])
-
-  const retryPendingIntake = useCallback(() => {
-    pendingIntakeSentRef.current = null
-    bumpPendingIntakeRetryNonce()
-  }, [])
-
-  useEffect(() => {
-    if (!session || !estimate || orchestrating || orchestrationMessage) return
-    if (session.session.job_id || session.session.next_action !== 'estimate_ready') return
-    const requestKey = `${session.session.id}:${session.session.estimate_ready_at ?? 'estimate_ready'}`
-    if (autoConfirmSessionRef.current === requestKey) return
-    autoConfirmSessionRef.current = requestKey
-    void startKaelOrchestration()
-  }, [estimate, orchestrating, orchestrationMessage, session, startKaelOrchestration])
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: tokens.canvas }]} testID="customer-kael-chat-stack-screen">
       <View style={[styles.chatFrame, { width: frameWidth }]}>
         <View style={styles.hiddenMarker} testID="customer-kael-chat-fullscreen-no-bottom-dock" />
-        <View style={styles.hiddenMarker} testID="customer-kael-worker-chatbox-parity" />
         {reduceTransparency ? null : (
           <View pointerEvents="none" style={styles.chatAmbientField} testID="customer-kael-chat-liquid-wash">
             <View style={[styles.chatAmbientMint, { backgroundColor: tokens.aqua }]} />
@@ -710,66 +322,315 @@ export function KaelChatSurface() {
             <View style={[styles.chatAmbientSweep, { backgroundColor: tokens.glassHighlight }]} />
           </View>
         )}
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.keyboard, styles.chatShell]}>
-          <KaelChatHeader
-            archiveItems={archiveItems}
-            onBack={() => replace('/(customer)/home')}
-            onOpenArchiveItem={(item) => {
-              if (item.targetPath) replace(item.targetPath)
-            }}
-            reduceMotion={reduceMotion}
-            text={text}
-            tokens={tokens}
-          />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboard}>
+        <GlassSurface mode={themeMode} style={styles.headerGlass} testID="customer-kael-chat-glass-header" variant="hero">
+          <View style={styles.header}>
+            <Pressable accessibilityLabel={text.back} accessibilityRole="button" onPress={() => replace('/(customer)/home')} style={({ pressed }) => [styles.closeButton, { borderColor: tokens.border, backgroundColor: tokens.raised }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-close">
+              <ChatBackIcon color={tokens.primary} />
+            </Pressable>
+            <View style={[styles.kaelAvatar, { backgroundColor: tokens.service, borderColor: tokens.border }]}>
+              <Image source={kaelModel8AHead} style={styles.kaelAvatarImage} />
+            </View>
+            <View style={styles.headerCopy}>
+              <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>
+                {text.chatTitle}
+              </Text>
+              <Text style={[styles.subtitle, { color: tokens.muted }]} numberOfLines={2}>
+                {text.subtitle}
+              </Text>
+            </View>
+            <Text style={[styles.onlinePill, { backgroundColor: tokens.service, borderColor: tokens.border, color: tokens.primary }]} numberOfLines={1}>
+              {language === 'en' ? 'Online' : 'Trực tuyến'}
+            </Text>
+          </View>
+        </GlassSurface>
 
-          <KaelChatThread
-            addressDistrict={addressDistrict}
-            dispatch={dispatch}
-            error={error}
-            estimate={estimate}
-            historyTarget={historyTarget}
-            language={language}
-            loading={loading}
-            onStartOrchestration={startKaelOrchestration}
-            onRetryPendingIntake={retryPendingIntake}
-            onOpenHistory={(target) => replace(target)}
-            orchestrating={orchestrating}
-            orchestrationMessage={orchestrationMessage}
-            pendingIntake={pendingIntake}
-            progress={kaelProgress}
-            progressElapsedMs={kaelProgressElapsedMs}
-            progressTrace={kaelProgressTrace}
-            reduceMotion={reduceMotion}
-            selectedService={selectedService}
-            sending={sending}
-            session={session}
-            streamingField={kaelStreamingField}
-            streamingText={kaelStreamingText}
-            text={text}
-            tokens={tokens}
-            turns={turns}
-            visibility={threadVisibility}
-            workflow={workflow}
-          />
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={styles.hiddenMarker} testID="customer-kael-chat-service-picker" />
 
-          <KaelChatComposer
+          {loading ? (
+            <View style={[styles.stateCard, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
+              <ActivityIndicator color={tokens.primary} />
+              <Text style={[styles.bodyText, { color: tokens.muted }]}>{text.loading}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.turnList} testID="customer-kael-chat-history">
+            {turns.length === 0 && !loading ? (
+              <>
+                <View style={[styles.turnBubble, styles.kaelTurn, styles.emptyChatStart, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-kael-chat-welcome-turn">
+                  <Text style={[styles.turnText, { color: tokens.text }]}>
+                    {text.welcome}
+                  </Text>
+                </View>
+                {!selectedService ? (
+                  <View style={styles.contextRail} testID="customer-kael-chat-service-picker-inline">
+                    <View style={styles.chatQuickServices}>
+                      {supportedServices.map((service) => (
+                        <Pressable
+                          accessibilityRole="button"
+                          key={service}
+                          onPress={() => {
+                            dispatch({ type: 'selectService', service })
+                          }}
+                          style={({ pressed }) => [
+                            styles.serviceChip,
+                            {
+                              backgroundColor: tokens.service,
+                              borderColor: tokens.border,
+                            },
+                            pressed ? styles.pressed : null,
+                          ]}
+                          testID={`customer-kael-chat-service-${service}`}
+                        >
+                          <Text style={[styles.chipText, { color: tokens.text }]} numberOfLines={1}>
+                            {localizedServiceLabel(service, language)}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+              </>
+            ) : null}
+            {turns.map((turn) => (
+              <ChatTurn key={turn.id} language={language} turn={turn} />
+            ))}
+          </View>
+
+          {estimate ? (
+            <EstimateCard estimate={estimate} language={language} onConfirm={confirmSearch} confirming={confirming} confirmed={session?.session.next_action === 'confirmed'} confirmArmed={confirmArmed} />
+          ) : null}
+
+          {confirmedMessage ? (
+            <View style={[styles.stateCard, { backgroundColor: tokens.service, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-confirmed">
+              <Text style={[styles.sectionTitle, { color: tokens.text }]}>{confirmedMessage}</Text>
+              <Pressable accessibilityRole="button" onPress={() => replace(historyTarget)} style={({ pressed }) => [styles.primaryButton, { backgroundColor: tokens.primary }, pressed ? styles.pressed : null]} testID="customer-kael-chat-history-action">
+                <Text style={[styles.primaryButtonText, { color: tokens.primaryText }]}>{text.history}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {error ? (
+            <View style={[styles.errorCard, { backgroundColor: tokens.warm, borderColor: tokens.copper }]} testID="customer-kael-chat-error">
+              <Text style={[styles.errorText, { color: tokens.text }]}>{error}</Text>
+            </View>
+          ) : null}
+        </ScrollView>
+
+        <GlassSurface mode={themeMode} style={styles.composerGlass} testID="customer-kael-chat-glass-composer" variant="sheet">
+          <KaelAddressContextBar
             addressLabel={addressLabel}
-            dispatch={dispatch}
-            draft={draft}
-            error={error}
             language={language}
-            onAddressDistrict={(district) => {
-              addressDistrictRef.current = district
+            onChangeText={(value) => {
+              const nextDistrict = inferKaelChatDistrict(value)
+              if (nextDistrict) addressDistrictRef.current = nextDistrict
+              dispatch({ type: 'setAddress', value })
             }}
-            onSend={sendTurn}
-            reduceMotion={reduceMotion}
-            sending={sending}
-            text={text}
-            themeMode={themeMode}
+            placeholder={text.addressPlaceholder}
             tokens={tokens}
           />
+          <View style={styles.composer}>
+            <Pressable accessibilityLabel={text.attach} accessibilityRole="button" onPress={() => dispatch({ type: 'showTransientError', error: text.attachHint })} style={({ pressed }) => [styles.attachButton, { borderColor: tokens.border, backgroundColor: tokens.service }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-attach">
+              <ChatPlusIcon color={tokens.primary} />
+            </Pressable>
+            <TextInput
+              multiline
+              onChangeText={(value) => {
+                dispatch({
+                  type: 'setDraft',
+                  value,
+                  clearTransientError: error === text.errorNoService || error === text.attachHint,
+                })
+              }}
+              placeholder={text.composerPlaceholder}
+              placeholderTextColor={tokens.subtleText}
+              style={[styles.input, { color: tokens.text }]}
+              testID="customer-kael-chat-input"
+              value={draft}
+            />
+            <Pressable accessibilityLabel={sending ? text.sending : text.send} accessibilityRole="button" disabled={sending || draft.trim().length === 0} onPress={sendTurn} style={({ pressed }) => [styles.sendButton, { backgroundColor: draft.trim().length > 0 ? tokens.primary : tokens.disabled }, reduceMotionAwarePressStyle(pressed, reduceMotion)]} testID="customer-kael-chat-send">
+              {sending ? <ActivityIndicator color={tokens.primaryText} size="small" /> : <ChatSendIcon color={draft.trim().length > 0 ? tokens.primaryText : tokens.subtleText} />}
+            </Pressable>
+          </View>
+        </GlassSurface>
         </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
   )
+}
+
+function ChatBackIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M15 18 9 12l6-6" stroke={color} strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
+function ChatPlusIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  )
+}
+
+function ChatSendIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M22 2 11 13" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="m22 2-7 20-4-9-9-4 20-7Z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  )
+}
+
+function ChatTurn({ language, turn }: { language: AppLanguage; turn: KaelChatTurn }) {
+  const themeMode = useCustomerThemeMode()
+  const tokens = getCustomerThemeTokens(themeMode)
+  const text = copy[language]
+  const isCustomer = turn.role === 'customer'
+  const rawBody = turn.text_content ?? turn.estimate?.problem_summary ?? text.turnFallback
+  const body = isCustomer ? rawBody : localizedGeneratedText(rawBody, language, text.turnFallback)
+
+  return (
+    <View style={[styles.turnBubble, isCustomer ? styles.customerTurn : styles.kaelTurn, { backgroundColor: isCustomer ? tokens.service : tokens.raised, borderColor: isCustomer ? tokens.borderStrong : tokens.border }]} testID={`customer-kael-chat-turn-${turn.role}`}>
+      <Text style={[styles.turnText, { color: tokens.text }]}>{body}</Text>
+      {turn.estimate ? <EstimateInline estimate={turn.estimate} language={language} /> : null}
+    </View>
+  )
+}
+
+function EstimateInline({
+  estimate,
+  language,
+}: {
+  estimate: NonNullable<KaelChatResponse['session']['estimate']>
+  language: AppLanguage
+}) {
+  const themeMode = useCustomerThemeMode()
+  const tokens = getCustomerThemeTokens(themeMode)
+  const text = copy[language]
+
+  return (
+    <View style={[styles.inlineEstimate, { borderColor: tokens.border }]}>
+      <Text style={[styles.inlineEstimateText, { color: tokens.muted }]}>
+        {text.labels.price}: {formatPriceRange(estimate.price_min, estimate.price_max)}
+      </Text>
+    </View>
+  )
+}
+
+function EstimateCard({
+  confirming,
+  confirmed,
+  confirmArmed,
+  estimate,
+  language,
+  onConfirm,
+}: {
+  confirming: boolean
+  confirmed: boolean
+  confirmArmed: boolean
+  estimate: NonNullable<KaelChatResponse['session']['estimate']>
+  language: AppLanguage
+  onConfirm: () => void
+}) {
+  const themeMode = useCustomerThemeMode()
+  const tokens = getCustomerThemeTokens(themeMode)
+  const text = copy[language]
+  const problem = localizedGeneratedText(estimate.problem_summary || estimate.problem_category, language, text.estimateProblemFallback)
+  const advisory = localizedOptionalGeneratedText(estimate.advisory, language)
+  const disclaimer = language === 'vi'
+    ? LOCAL_WORKFLOW_PRICE_DISCLAIMER
+    : localizedGeneratedText(estimate.disclaimer, language, text.estimateDisclaimerFallback)
+
+  return (
+    <View style={[styles.estimateCard, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]} testID="customer-kael-chat-estimate-card">
+      <View style={styles.estimateHeader}>
+        <Text style={[styles.sectionTitle, { color: tokens.text }]}>{text.estimateTitle}</Text>
+        <Text style={[styles.statusPill, { color: tokens.primary, borderColor: tokens.border, backgroundColor: tokens.service }]}>{text.nextAction.estimate_ready}</Text>
+      </View>
+      <InfoRow label={text.labels.service} value={localizedServiceLabel(estimate.service_type, language)} />
+      <InfoRow label={text.labels.problem} value={problem} />
+      <InfoRow label={text.labels.price} value={formatPriceRange(estimate.price_min, estimate.price_max)} />
+      <InfoRow label={text.labels.complexity} value={text.complexity[estimate.complexity]} />
+      <InfoRow label={text.labels.confidence} value={`${Math.round(estimate.confidence * 100)}%`} />
+      {advisory ? <InfoRow label={text.labels.advisory} value={advisory} /> : null}
+      <Text style={[styles.disclaimer, { color: tokens.muted }]} testID="customer-kael-chat-price-disclaimer">
+        {disclaimer}
+      </Text>
+      {confirmArmed && !confirmed ? (
+        <View style={[styles.confirmPrompt, { backgroundColor: tokens.warm, borderColor: tokens.copper }]} testID="customer-kael-chat-inline-confirmation">
+          <Text style={[styles.confirmPromptText, { color: tokens.text }]}>{text.confirmPrompt}</Text>
+        </View>
+      ) : null}
+      <Pressable accessibilityRole="button" disabled={confirmed || confirming} onPress={onConfirm} style={({ pressed }) => [styles.primaryButton, { backgroundColor: confirmed ? tokens.disabled : tokens.primary }, pressed ? styles.pressed : null]} testID="customer-kael-chat-confirm">
+        <Text style={[styles.primaryButtonText, { color: confirmed ? tokens.subtleText : tokens.primaryText }]}>{confirming ? text.confirming : confirmed ? text.nextAction.confirmed : confirmArmed ? text.confirmArmed : text.confirm}</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  const themeMode = useCustomerThemeMode()
+  const tokens = getCustomerThemeTokens(themeMode)
+  return (
+    <View style={styles.infoRow}>
+      <Text style={[styles.infoLabel, { color: tokens.muted }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[styles.infoValue, { color: tokens.text }]} numberOfLines={3}>
+        {value}
+      </Text>
+    </View>
+  )
+}
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function parseServiceType(value: string | undefined): ServiceType | null {
+  return value === 'electrical' || value === 'plumbing' || value === 'cleaning' ? value : null
+}
+
+function formatPriceRange(min: number, max: number) {
+  return `${vndFormatter.format(min)}đ - ${vndFormatter.format(max)}đ`
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message.trim().length > 0 ? error.message : fallback
+}
+
+function localizedRoleCustomer(language: AppLanguage) {
+  return language === 'en' ? 'You' : 'Bạn'
+}
+
+function localizedGeneratedText(value: string, language: AppLanguage, fallback: string) {
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return fallback
+  if (language === 'en' && vietnameseSignalPattern.test(trimmed)) return fallback
+  if (language === 'vi' && /^[\x00-\x7F]*$/.test(trimmed)) return fallback
+  return trimmed
+}
+
+function localizedOptionalGeneratedText(value: string | null | undefined, language: AppLanguage) {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return null
+  if (language === 'en' && vietnameseSignalPattern.test(trimmed)) return null
+  if (language === 'vi' && /^[\x00-\x7F]*$/.test(trimmed)) return null
+  return trimmed
+}
+
+function localizedKaelChatError(error: string, language: AppLanguage) {
+  const hasVietnameseSignal = vietnameseSignalPattern.test(error)
+  if (language === 'en' && hasVietnameseSignal) {
+    return 'Kael could not update this session. Please try again.'
+  }
+  if (language === 'vi' && /^[\x00-\x7F]*$/.test(error)) {
+    return 'Kael chưa thể cập nhật phiên này. Vui lòng thử lại.'
+  }
+  return error
 }

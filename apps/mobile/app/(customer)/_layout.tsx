@@ -1,36 +1,34 @@
 import { Redirect, Tabs, usePathname } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
-import { CustomerV4DockOverlay } from '@/components/customer/customer-surfaces'
-import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
+import { CustomerV4DockOverlay, getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-surfaces'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage } from '@/lib/app-language'
 
-const CUSTOMER_DOCK_MAIN_A = 'CUSTOMER_DOCK_MAIN_A: app layout hosts the custom customer dock'
-const CUSTOMER_DARK_DOCK_LAYER_MATCH = 'CUSTOMER_DARK_DOCK_LAYER_MATCH: dock follows customer theme layer'
-const CUSTOMER_DARK_DOCK_LAYER_V4 = 'CUSTOMER_DARK_DOCK_LAYER_V4: customer dock uses V4 dark semantic layer'
-const CUSTOMER_DOCK_SHADOW_LAYER = 'customer-dock-shadow-layer'
-void [CUSTOMER_DOCK_MAIN_A, CUSTOMER_DARK_DOCK_LAYER_MATCH, CUSTOMER_DARK_DOCK_LAYER_V4, CUSTOMER_DOCK_SHADOW_LAYER]
-
-type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
+const CUSTOMER_DOCK_MAIN_A = 'CUSTOMER_DOCK_MAIN_A: V4 rounded glass dock with active surface'
+const CUSTOMER_DARK_DOCK_LAYER_MATCH = 'CUSTOMER_DARK_DOCK_LAYER_MATCH: dock reads the same semantic V4 layers'
+const CUSTOMER_DARK_DOCK_LAYER_V4 = 'CUSTOMER_DARK_DOCK_LAYER_V4: customer-dock-shadow-layer'
+void CUSTOMER_DOCK_MAIN_A
+void CUSTOMER_DARK_DOCK_LAYER_MATCH
+void CUSTOMER_DARK_DOCK_LAYER_V4
 
 const CUSTOMER_TAB_COPY = {
-  en: {
-    booking: 'Request',
-    history: 'Activity',
-    home: 'Home',
-    kael: 'Kael',
-    profile: 'Profile',
-  },
   vi: {
-    booking: 'Yêu cầu',
+    booking: 'Đặt',
     history: 'Hoạt động',
     home: 'Trang chủ',
     kael: 'Kael',
     profile: 'Hồ sơ',
   },
+  en: {
+    booking: 'Book',
+    history: 'Activity',
+    home: 'Home',
+    kael: 'Kael',
+    profile: 'Profile',
+  },
 } as const
 
-function activeCustomerDockFromPath(pathname: string): CustomerDockActive {
+function activeCustomerDockFromPath(pathname: string) {
   if (pathname.includes('booking')) return 'booking'
   if (pathname.includes('history')) return 'activity'
   if (pathname.includes('profile')) return 'profile'
@@ -39,14 +37,14 @@ function activeCustomerDockFromPath(pathname: string): CustomerDockActive {
 }
 
 export default function CustomerLayout() {
-  const { guestMode, loading, role, session } = useAuth()
+  const { loading, role, session } = useAuth()
   const language = useAppLanguage()
-  const themeMode = useCustomerThemeMode()
-  const tokens = getCustomerThemeTokens(themeMode)
   const pathname = usePathname()
   const tabCopy = CUSTOMER_TAB_COPY[language]
+  const themeMode = useCustomerThemeMode()
+  const tokens = getCustomerThemeTokens(themeMode)
   const activeDock = activeCustomerDockFromPath(pathname)
-  const showDock = !pathname.includes('/kael')
+  const showDock = !pathname.includes('kael')
 
   if (loading) {
     return (
@@ -56,31 +54,29 @@ export default function CustomerLayout() {
     )
   }
 
-  if (!session && !guestMode) {
+  if (!session) {
     return <Redirect href="/(auth)/login" />
   }
 
-  if (session && role === 'worker') {
+  if (role === 'worker') {
     return <Redirect href="/(worker)/home" />
   }
 
-  if (session && role === 'admin') {
-    return <Redirect href="/(admin)/dashboard" />
-  }
-
-  if (session && role !== 'customer') {
+  if (role === 'admin') {
+    // Admin users can inspect the customer workflow without changing role.
+  } else if (role !== 'customer') {
     return <Redirect href="/(auth)/login" />
   }
 
   return (
-    <View style={{ backgroundColor: tokens.canvas, flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <Tabs tabBar={() => null} screenOptions={{ headerShown: false }}>
         <Tabs.Screen name="home" options={{ title: tabCopy.home }} />
         <Tabs.Screen name="booking" options={{ title: tabCopy.booking }} />
+        <Tabs.Screen name="kael" options={{ title: tabCopy.kael }} />
+        <Tabs.Screen name="kael-chat" options={{ href: null, title: tabCopy.kael }} />
         <Tabs.Screen name="history" options={{ title: tabCopy.history }} />
         <Tabs.Screen name="profile" options={{ title: tabCopy.profile }} />
-        <Tabs.Screen name="kael" options={{ href: null, title: tabCopy.kael }} />
-        <Tabs.Screen name="kael-chat" options={{ href: null, title: tabCopy.kael }} />
       </Tabs>
       {showDock ? <CustomerV4DockOverlay active={activeDock} /> : null}
     </View>

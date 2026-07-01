@@ -1,7 +1,5 @@
-import { Image } from 'expo-image'
-import { Modal, StyleSheet, Text, View } from 'react-native'
-import type { LocalScopeChange } from '@nestscout/shared'
-import { KaelButton } from '@/components/ui/kael-primitives'
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import type { LocalScopeChange } from '@home-services/shared'
 import type { AppLanguage } from '@/lib/app-language'
 
 type ScopeChangeModalTokens = {
@@ -32,45 +30,38 @@ type ScopeChangeHardStopModalProps = {
   visible: boolean
 }
 
-// Kael Autonomy v2: Kael owns final price authority and scope decisions. The
-// modal shows the computed decision surface while customer actions become
-// agreement/appeal inputs rather than the final authority.
 const copy = {
   vi: {
-    approve: 'Đồng ý quyết định',
-    currentEstimate: 'Ước tính ban đầu (Kael)',
+    approve: 'Duyệt thay đổi',
+    currentEstimate: 'Ước tính ban đầu',
     currentScope: 'Phạm vi ban đầu',
     explanation: 'Đánh giá của Kael',
     fallback: 'Cần kiểm tra trong ứng dụng trước khi quyết định.',
-    hardStop: 'Thợ đang chờ quyết định của Kael. Bạn có thể đồng ý hoặc khiếu nại nếu thông tin thực tế chưa đúng.',
-    kaelBadge: 'Kael tự tính',
-    kaelBadgeHint: 'Ước tính mới do Kael tính lại dựa trên phạm vi thợ báo cáo.',
-    newEstimate: 'Ước tính mới (Kael)',
+    hardStop: 'Thợ đang chờ quyết định của bạn. Phần việc thay đổi chỉ được tiếp tục sau khi bạn duyệt.',
+    newEstimate: 'Ước tính mới',
     newScope: 'Phạm vi mới',
-    pending: 'Kael đang xét',
-    priceDisclaimer: 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
+    pending: 'Cần xác nhận',
+    priceDisclaimer: 'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.',
     reason: 'Lý do từ thợ',
-    reject: 'Khiếu nại',
+    reject: 'Không duyệt',
     risk: 'Lưu ý',
-    title: 'Kael xét đổi phạm vi',
+    title: 'Duyệt thay đổi phạm vi',
   },
   en: {
-    approve: 'Accept decision',
-    currentEstimate: 'Original estimate (Kael)',
+    approve: 'Approve change',
+    currentEstimate: 'Original estimate',
     currentScope: 'Original scope',
     explanation: 'Kael review',
     fallback: 'Review this in the app before deciding.',
-    hardStop: 'The worker is waiting for Kael decision. You can accept it or appeal if the real-world information is wrong.',
-    kaelBadge: 'Computed by Kael',
-    kaelBadgeHint: 'The new estimate is recomputed by Kael based on the scope the worker reported.',
-    newEstimate: 'New estimate (Kael)',
+    hardStop: 'The worker is waiting for your decision. Changed work can continue only after you approve it.',
+    newEstimate: 'New estimate',
     newScope: 'New scope',
-    pending: 'Kael reviewing',
-    priceDisclaimer: 'This is a Kael estimate from the current evidence. Kael may update it when new scope evidence is added.',
+    pending: 'Needs confirmation',
+    priceDisclaimer: 'This is a market-based estimate. The actual price will be confirmed by the worker before starting.',
     reason: 'Worker reason',
-    reject: 'Appeal',
+    reject: 'Do not approve',
     risk: 'Notes',
-    title: 'Kael scope review',
+    title: 'Approve scope change',
   },
 } satisfies Record<AppLanguage, Record<string, string>>
 
@@ -88,22 +79,12 @@ export function ScopeChangeHardStopModal({
   visible,
 }: ScopeChangeHardStopModalProps) {
   const text = copy[language]
-  const problemSummary = readString(scopeChange?.kaelReview, 'problem_summary') ?? text.fallback
-  const advisory = readString(scopeChange?.kaelReview, 'advisory')
-  const complexity = readString(scopeChange?.kaelReview, 'complexity_assessment')
-  const confidence = readNumber(scopeChange?.kaelReview, 'confidence')
-  const fallbackUsed = readBoolean(scopeChange?.kaelReview, 'fallback_used')
-  const evidencePhotoUrls = scopeChange?.evidencePhotoUrls ?? []
+  const kaelExplanation = readString(scopeChange?.kaelReview, 'customer_explanation') ?? text.fallback
+  const riskNotes = readStringArray(scopeChange?.kaelReview, 'risk_notes')
   const newEstimate = scopeChange?.priceMin && scopeChange.priceMax
     ? formatPriceRange(scopeChange.priceMin, scopeChange.priceMax)
     : text.pending
   const reason = scopeChange?.reason?.trim() || text.pending
-  const metadataLabel = language === 'vi' ? 'Độ tin cậy' : 'Confidence'
-  const photosLabel = language === 'vi' ? 'Ảnh minh chứng' : 'Evidence photos'
-  const fallbackLabel = language === 'vi' ? 'Ước tính dự phòng' : 'Fallback estimate'
-  const confidenceLabel = confidence !== null
-    ? `${Math.round(confidence * 100)}%${fallbackUsed ? ` · ${fallbackLabel}` : ''}`
-    : fallbackUsed ? fallbackLabel : text.pending
 
   return (
     <Modal animationType="fade" onRequestClose={() => undefined} transparent visible={visible}>
@@ -114,15 +95,6 @@ export function ScopeChangeHardStopModal({
           </Text>
           <Text style={[styles.title, { color: tokens.text }]}>{text.title}</Text>
           <Text style={[styles.body, { color: tokens.muted }]}>{text.hardStop}</Text>
-
-          <View style={[styles.kaelBadge, { backgroundColor: tokens.aqua, borderColor: tokens.borderStrong }]} testID="customer-scope-change-modal-kael-badge">
-            <Text style={[styles.kaelBadgeLabel, { color: tokens.primary }]} numberOfLines={1}>
-              ✦ {text.kaelBadge}
-            </Text>
-            <Text style={[styles.kaelBadgeHint, { color: tokens.muted }]} numberOfLines={3}>
-              {text.kaelBadgeHint}
-            </Text>
-          </View>
 
           <View style={styles.compareGrid}>
             <InfoBlock label={text.currentScope} tokens={tokens} value={originalScopeLabel || text.pending} />
@@ -143,51 +115,46 @@ export function ScopeChangeHardStopModal({
             <Text style={[styles.noteLabel, { color: tokens.primary }]} numberOfLines={1}>
               {text.explanation}
             </Text>
-            <Text style={[styles.noteValue, { color: tokens.text }]}>{problemSummary}</Text>
-            {advisory ? (
-              <Text style={[styles.riskText, { color: tokens.muted }]}>{advisory}</Text>
-            ) : null}
-            <Text style={[styles.riskText, { color: tokens.copper }]}>
-              {metadataLabel}: {confidenceLabel}{complexity ? ` · ${complexity}` : ''}
-            </Text>
-            {evidencePhotoUrls.length > 0 ? (
-              <View style={styles.evidenceGrid}>
+            <Text style={[styles.noteValue, { color: tokens.text }]}>{kaelExplanation}</Text>
+            {riskNotes.length > 0 ? (
+              <View style={styles.riskList}>
                 <Text style={[styles.noteLabel, { color: tokens.copper }]} numberOfLines={1}>
-                  {photosLabel}
+                  {text.risk}
                 </Text>
-                <View style={styles.evidenceRow}>
-                  {evidencePhotoUrls.slice(0, 3).map((uri) => (
-                    <Image
-                      key={uri}
-                      source={{ uri }}
-                      style={[styles.evidenceImage, { borderColor: tokens.borderStrong }]}
-                    />
-                  ))}
-                </View>
+                {riskNotes.map((item) => (
+                  <Text key={item} style={[styles.riskText, { color: tokens.muted }]}>
+                    {item}
+                  </Text>
+                ))}
               </View>
             ) : null}
           </View>
 
           <View style={styles.actionRow}>
-            <KaelButton
-              label={text.reject}
+            <Pressable
+              accessibilityRole="button"
               onPress={onReject}
-              showPrimaryGradient={false}
-              size="small"
-              style={[styles.secondaryButton, { backgroundColor: tokens.glassStrong, borderColor: tokens.danger }]}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                { backgroundColor: tokens.glassStrong, borderColor: tokens.danger },
+                pressed ? styles.pressed : null,
+              ]}
               testID="customer-scope-change-modal-reject"
-              textStyle={[styles.secondaryText, { color: tokens.danger }]}
-              variant="destructive"
-            />
-            <KaelButton
-              label={text.approve}
+            >
+              <Text style={[styles.secondaryText, { color: tokens.danger }]}>{text.reject}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
               onPress={onApprove}
-              showPrimaryGradient={false}
-              size="small"
-              style={[styles.primaryButton, { backgroundColor: tokens.primary, borderColor: tokens.primary }]}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                { backgroundColor: tokens.primary, borderColor: tokens.primary },
+                pressed ? styles.pressed : null,
+              ]}
               testID="customer-scope-change-modal-approve"
-              textStyle={[styles.primaryText, { color: tokens.primaryText }]}
-            />
+            >
+              <Text style={[styles.primaryText, { color: tokens.primaryText }]}>{text.approve}</Text>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -211,17 +178,14 @@ function readString(record: Record<string, unknown> | null | undefined, key: str
   return typeof value === 'string' && value.trim().length > 0 ? value : null
 }
 
+function readStringArray(record: Record<string, unknown> | null | undefined, key: string) {
+  const value = record?.[key]
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, 3)
+}
+
 function formatPriceRange(min: number, max: number) {
   return `${vndFormatter.format(min)}đ - ${vndFormatter.format(max)}đ`
-}
-
-function readNumber(record: Record<string, unknown> | null | undefined, key: string) {
-  const value = record?.[key]
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
-}
-
-function readBoolean(record: Record<string, unknown> | null | undefined, key: string) {
-  return record?.[key] === true
 }
 
 const styles = StyleSheet.create({
@@ -240,23 +204,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
-  evidenceGrid: {
-    gap: 8,
-    paddingTop: 4,
-  },
-  evidenceImage: {
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 62,
-    width: 62,
-  },
-  evidenceRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
   eyebrow: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0,
   },
   infoBlock: {
@@ -270,27 +220,9 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0,
     textTransform: 'uppercase',
-  },
-  kaelBadge: {
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  kaelBadgeHint: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0,
-    lineHeight: 16,
-  },
-  kaelBadgeLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0,
   },
   infoValue: {
     fontSize: 14,
@@ -306,7 +238,7 @@ const styles = StyleSheet.create({
   },
   noteLabel: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0,
     textTransform: 'uppercase',
   },
@@ -315,6 +247,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0,
     lineHeight: 20,
+  },
+  pressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
   },
   priceDisclaimer: {
     fontSize: 12,
@@ -333,7 +269,7 @@ const styles = StyleSheet.create({
   },
   primaryText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0,
   },
   riskList: {
@@ -364,7 +300,7 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0,
   },
   sheet: {
@@ -377,7 +313,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 21,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0,
     lineHeight: 27,
   },

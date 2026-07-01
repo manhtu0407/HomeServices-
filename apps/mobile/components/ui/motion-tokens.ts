@@ -10,23 +10,6 @@ export const motionTokens = {
     durationMs: 110,
     scale: 0.985,
   },
-  liquid: {
-    entrance: {
-      damping: 16,
-      mass: 1,
-      stiffness: 170,
-    },
-    pill: {
-      damping: 14,
-      mass: 1,
-      stiffness: 200,
-    },
-    press: {
-      damping: 22,
-      mass: 1,
-      stiffness: 320,
-    },
-  },
   sheet: {
     damping: 18,
     durationMs: 360,
