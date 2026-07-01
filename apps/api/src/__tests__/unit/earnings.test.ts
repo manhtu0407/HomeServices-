@@ -47,6 +47,7 @@ describe('computeEarnings', () => {
     expect(result.netEarnings).toBe(0)
     expect(result.pendingPaymentCount).toBe(0)
     expect(result.pendingPaymentAmount).toBe(0)
+    expect(result.dailyEarnings).toEqual([])
   })
 
   it('sums only paid jobs as gross earnings while reviewed remains pending', async () => {
@@ -61,6 +62,15 @@ describe('computeEarnings', () => {
     expect(result.grossEarnings).toBe(1_500_000)
     expect(result.pendingPaymentCount).toBe(1)
     expect(result.pendingPaymentAmount).toBe(300_000)
+    expect(result.dailyEarnings).toEqual([
+      {
+        date: '2026-05-20',
+        grossEarnings: 1_500_000,
+        platformFeeTotal: 150_000,
+        netEarnings: 1_350_000,
+        paidJobCount: 2,
+      },
+    ])
   })
 
   it('counts reviewed jobs with paid_at as paid earnings', async () => {
@@ -74,6 +84,15 @@ describe('computeEarnings', () => {
     expect(result.grossEarnings).toBe(300_000)
     expect(result.pendingPaymentCount).toBe(1)
     expect(result.pendingPaymentAmount).toBe(200_000)
+    expect(result.dailyEarnings).toEqual([
+      {
+        date: '2026-05-20',
+        grossEarnings: 300_000,
+        platformFeeTotal: 30_000,
+        netEarnings: 270_000,
+        paidJobCount: 1,
+      },
+    ])
   })
 
   it('applies 10% platform fee correctly (RULES & STRUCTURES)', async () => {
@@ -111,6 +130,15 @@ describe('computeEarnings', () => {
     const result = await computeEarnings(supabase, 'worker-1')
     expect(result.totalJobsPaid).toBe(2)
     expect(result.grossEarnings).toBe(500_000)
+    expect(result.dailyEarnings).toEqual([
+      {
+        date: '2026-05-20',
+        grossEarnings: 500_000,
+        platformFeeTotal: 50_000,
+        netEarnings: 450_000,
+        paidJobCount: 2,
+      },
+    ])
   })
 
   it('rejects on DB error instead of faking zero earnings', async () => {
