@@ -1617,7 +1617,7 @@ describe('supabase.ts (Rule #1: no hardcoded secrets)', () => {
 
   it('uses Database generic for type safety', () => {
     expect(src).toContain('<Database>')
-    expect(src).toContain("from '@home-services/shared'")
+    expect(src).toContain("from '@nestscout/shared'")
   })
 
   it('does NOT use process.env (Rule #1 - RN uses app.json extra)', () => {
@@ -1673,7 +1673,7 @@ describe('auth-provider.tsx', () => {
   it('imports UserRole from shared package', () => {
     expect(src).toContain('UserRole')
     expect(src).toContain('USER_ROLES')
-    expect(src).toContain("from '@home-services/shared'")
+    expect(src).toContain("from '@nestscout/shared'")
   })
 
   it('auth state has session, role, and loading', () => {

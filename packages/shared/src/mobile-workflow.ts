@@ -8,13 +8,14 @@ import {
 } from './constants'
 
 export const LOCAL_WORKFLOW_PRICE_DISCLAIMER =
-  'Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.'
+  'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
 
 // Local workflow keeps only statuses that create visible customer/worker UI
 // states. Backend-only settlement markers are folded by toLocalDealStatus():
-// estimate_ready -> awaiting_customer_confirm, payment_pending/paid ->
-// confirmed_by_customer. This keeps mobile honest while payment rails remain
-// outside the visible mobile workflow.
+// estimate_ready folds into the legacy awaiting_customer_confirm status for
+// old rows, but UI copy treats that state as Kael orchestration rather than a
+// customer gate. payment_pending/paid -> confirmed_by_customer keeps mobile
+// honest while payment rails remain outside the visible mobile workflow.
 export const LOCAL_DEAL_STATUSES = Object.freeze([
   'draft',
   'analyzing',
@@ -39,6 +40,52 @@ export type LocalWorkerBroadcastStatus = 'pending' | 'sent' | 'accepted' | 'decl
 export type LocalWorkerGate = 'backend_pending' | 'local_deal_audit' | 'remote_backend'
 export type LocalScheduleMode = 'now_only'
 export type LocalCustomerSearchState = 'idle' | 'searching' | 'no_worker' | 'matched' | 'active' | 'completed'
+
+export function buildLocalJobDisplayCode(input: {
+  readonly jobId: string
+  readonly customerId?: string | null
+  readonly createdAt?: string | null
+}): string {
+  const year = localDisplayCodeYear(input.createdAt)
+  const seed = `${input.jobId}:${input.customerId ?? ''}:${input.createdAt ?? ''}`
+  return `#MOH-${year}${localDisplayCodeHash(seed, 4)}`
+}
+
+export function buildLocalWorkerDisplayCode(workerId: string): string {
+  return `#CC${localDisplayCodeHash(workerId, 4)}`
+}
+
+function localDisplayCodeYear(createdAt?: string | null): string {
+  const parsed = createdAt ? new Date(createdAt) : null
+  const date = parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date()
+  return String(date.getUTCFullYear() % 100).padStart(2, '0')
+}
+
+function localDisplayCodeHash(seed: string, length: number): string {
+  let hash = 2166136261
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index)
+    hash = Math.imul(hash, 16777619) >>> 0
+  }
+  return hash.toString(36).toUpperCase().padStart(length, '0').slice(-length)
+}
+
+export type LocalAddressAccess = {
+  release_stage: 'area_only' | 'building_released' | 'unit_released'
+  exact_unit_released: boolean
+  worker_checked_in?: boolean
+  check_in_required: boolean
+  identity_check_required: boolean
+  customer_handoff_required: boolean
+  evidence_mode: 'none' | 'geofence' | 'manual_photo'
+  access_profile: {
+    entry_method?: string
+    parking_note?: string
+    guard_note?: string
+    building_note?: string
+    customer_handoff_note?: string
+  }
+}
 
 export type LocalDealDraft = {
   serviceType: ServiceType | null
@@ -75,19 +122,68 @@ export type LocalWorkerBroadcast = {
   prebrief: string[]
   fullAddressVisible: boolean
   fullAddressLabel: string | null
+  addressAccess?: LocalAddressAccess | null
   secondsRemaining: number | null
   estimatedPriceLabel?: string
   estimatedEarningLabel?: string
 }
 
+export type LocalWorkerProfileSummary = {
+  avatarUrl: string | null
+  displayCode?: string | null
+  fullName: string
+  id: string
+  rating: number
+  reviewCount?: number | null
+  totalJobs: number
+}
+
+export type LocalPaymentStatus =
+  | 'not_started'
+  | 'code_requested'
+  | 'vietqr_ready'
+  | 'pending'
+  | 'received'
+  | 'amount_mismatch'
+  | 'expired'
+  | 'failed'
+  | 'reconciled'
+
+export type LocalDealPayment = {
+  provider: 'sepay_vietqr' | 'cash' | 'bank_transfer' | string
+  status: LocalPaymentStatus
+  grossAmount: number | null
+  platformFee: number | null
+  workerNet: number | null
+  paymentCode?: string | null
+  transferContent?: string | null
+  qrImageUrl?: string | null
+  expiresAt?: string | null
+  receivedAt?: string | null
+  amountReceived?: number | null
+  updatedAt?: string | null
+}
+
 export type LocalDeal = {
   id: string
+  displayCode?: string | null
   status: LocalDealStatus
+  backendStatus?: JobStatus
   draft: LocalDealDraft
   estimate: LocalDealEstimate | null
   broadcast: LocalWorkerBroadcast | null
   scopeChange: LocalScopeChange | null
   finalPrice?: number | null
+  payment?: LocalDealPayment | null
+  completionPhotoUrls?: string[]
+  completionNotes?: string | null
+  workerProfile?: LocalWorkerProfileSummary | null
+  createdAt?: string | null
+  matchedAt?: string | null
+  completedAt?: string | null
+  confirmedAt?: string | null
+  paidAt?: string | null
+  reviewedAt?: string | null
 }
 
 export type LocalScopeChange = {
@@ -98,7 +194,17 @@ export type LocalScopeChange = {
   priceMin: number | null
   priceMax: number | null
   kaelReview: Record<string, unknown> | null
+  kaelProgress: LocalKaelProgress | null
+  evidencePhotoUrls: string[]
   createdAt: string | null
+}
+
+export type LocalKaelProgress = {
+  current_stage: string
+  status: 'queued' | 'running' | 'completed' | 'failed'
+  progress: number
+  failure_reason?: string | null
+  updated_at: string
 }
 
 export type LocalWorkflowState = {
@@ -110,7 +216,9 @@ export type LocalWorkflowState = {
 
 export type LocalRemoteJobSnapshot = {
   id: string
+  displayCode?: string | null
   status: LocalDealStatus
+  backendStatus?: JobStatus
   serviceType: ServiceType
   description: string
   problemChips: string[]
@@ -121,6 +229,16 @@ export type LocalRemoteJobSnapshot = {
   broadcast?: LocalWorkerBroadcast | null
   scopeChange?: LocalScopeChange | null
   finalPrice?: number | null
+  payment?: LocalDealPayment | null
+  completionPhotoUrls?: string[]
+  completionNotes?: string | null
+  workerProfile?: LocalWorkerProfileSummary | null
+  createdAt?: string | null
+  matchedAt?: string | null
+  completedAt?: string | null
+  confirmedAt?: string | null
+  paidAt?: string | null
+  reviewedAt?: string | null
 }
 
 export type LocalRemoteBroadcastSnapshot = {
@@ -130,6 +248,7 @@ export type LocalRemoteBroadcastSnapshot = {
   serviceType: ServiceType
   problemSummary: string
   generalArea: string
+  prebrief?: string[]
   secondsRemaining: number | null
   estimatedPriceLabel?: string
   estimatedEarningLabel?: string
@@ -167,6 +286,7 @@ export type LocalWorkflowAction =
 
 export type LocalWorkflowSelectors = {
   currentStatus: LocalDealStatus | null
+  currentBackendStatus: JobStatus | null
   scheduleMode: LocalScheduleMode
   customerSearchState: LocalCustomerSearchState
   hasLocalBroadcast: boolean
@@ -183,6 +303,10 @@ export type LocalWorkflowSelectors = {
 }
 
 export const LOCAL_DEAL_ID = 'local-session-deal'
+export function hasLocalDealCompletionEvidence(deal: Pick<LocalDeal, 'completionNotes' | 'completionPhotoUrls'> | null | undefined): boolean {
+  return Boolean((deal?.completionNotes?.trim().length ?? 0) >= 5 && (deal?.completionPhotoUrls?.length ?? 0) > 0)
+}
+
 const GENERIC_AREA = 'Khu vực TP.HCM'
 const NEXT_WORKER_STATUS: Partial<Record<LocalDealStatus, LocalDealStatus>> = {
   worker_matched: 'worker_on_way',
@@ -439,20 +563,23 @@ export function localWorkflowReducer(
     }
     case 'finish_local_analysis': {
       if (!state.deal) return withError(state, 'Không có phiếu để ước tính')
-      if (state.deal.status !== 'analyzing') return invalidTransition(state, state.deal.status, 'awaiting_customer_confirm')
+      if (state.deal.status !== 'analyzing') return invalidTransition(state, state.deal.status, 'broadcasting')
       return {
         ...state,
         deal: {
           ...state.deal,
-          status: 'awaiting_customer_confirm',
+          status: 'broadcasting',
           estimate: createLocalEstimate(state.deal.draft),
+          broadcast: createBroadcast(state.deal.draft),
         },
+        workerGate: 'local_deal_audit',
         lastError: null,
       }
     }
     case 'confirm_customer_search': {
+      if (state.deal && state.deal.status === 'broadcasting' && state.deal.broadcast && state.deal.estimate) return { ...state, lastError: null }
+      if (state.deal && state.deal.status !== 'awaiting_customer_confirm' && state.deal.status !== 'broadcasting') return invalidTransition(state, state.deal.status, 'broadcasting')
       if (!state.deal) return withError(state, 'Không có phiếu để tìm thợ')
-      if (state.deal.status !== 'awaiting_customer_confirm') return invalidTransition(state, state.deal.status, 'broadcasting')
       const validationMessage = validateLocalDealDraft(state.deal.draft)
       if (validationMessage) return withError(state, validationMessage)
       if (!state.deal.draft.serviceType) return withError(state, 'Chọn dịch vụ trước khi tìm thợ')
@@ -475,6 +602,7 @@ export function localWorkflowReducer(
       }
       if (state.deal.status !== 'broadcasting') return invalidTransition(state, state.deal.status, 'worker_matched')
       if (state.deal.broadcast?.status !== 'sent') return withError(state, 'Yêu cầu không còn ở trạng thái có thể nhận')
+      const canRevealFullAddress = hasSpecificWorkerRouteAddress(state.deal.draft.addressLabel, state.deal.draft.districtLabel)
       return {
         ...state,
         deal: {
@@ -483,8 +611,8 @@ export function localWorkflowReducer(
           broadcast: {
             ...state.deal.broadcast,
             status: 'accepted',
-            fullAddressVisible: true,
-            fullAddressLabel: state.deal.draft.addressLabel,
+            fullAddressVisible: canRevealFullAddress,
+            fullAddressLabel: canRevealFullAddress ? state.deal.draft.addressLabel : null,
           },
         },
         lastError: null,
@@ -607,7 +735,8 @@ export function localWorkflowReducer(
     case 'customer_submit_review': {
       if (!state.deal) return withError(state, 'Không có phiếu để đánh giá')
       if (state.deal.status !== 'confirmed_by_customer') return invalidTransition(state, state.deal.status, 'reviewed')
-      return setStatus(state, 'confirmed_by_customer', 'reviewed')
+      if (!canSubmitCustomerReview(state.deal)) return withError(state, 'Đánh giá chỉ mở sau khi hệ thống xác nhận đúng bước')
+      return setCustomerReviewSubmitted(state)
     }
     case 'cancel_deal': {
       if (!state.deal) return state
@@ -656,14 +785,16 @@ export function selectLocalWorkflow(state: LocalWorkflowState): LocalWorkflowSel
                 ? 'active'
                 : 'idle'
   const hasWorkerActionGate = state.workerGate === 'local_deal_audit' || state.workerGate === 'remote_backend'
-  const canCustomerSubmitReview = Boolean(deal && status === 'confirmed_by_customer')
+  const backendStatus = deal?.backendStatus ?? status
+  const canCustomerSubmitReview = Boolean(deal && canSubmitCustomerReview(deal))
 
   return {
     currentStatus: status,
+    currentBackendStatus: backendStatus,
     scheduleMode: 'now_only',
     customerSearchState,
     hasLocalBroadcast: Boolean(broadcast),
-    canConfirmCustomerSearch: Boolean(deal && status === 'awaiting_customer_confirm' && deal.estimate && validateLocalDealDraft(deal.draft) === null),
+    canConfirmCustomerSearch: false,
     canWorkerAccept: hasWorkerActionGate && status === 'broadcasting' && broadcast?.status === 'sent',
     canWorkerAdvance:
       hasWorkerActionGate &&
@@ -671,7 +802,10 @@ export function selectLocalWorkflow(state: LocalWorkflowState): LocalWorkflowSel
       Boolean(status && NEXT_WORKER_STATUS[status]),
     canWorkerSeeFullAddress: Boolean(broadcast?.status === 'accepted' && broadcast.fullAddressVisible && broadcast.fullAddressLabel),
     canCustomerCancelDeal: Boolean(deal && canCancelLocalDeal(deal.status)),
-    canCustomerConfirmCompletion: Boolean(deal && canConfirmCustomerCompletion(deal)),
+    // Kael Autonomy v2: customer completion is input/evidence, not the
+    // default final authority in the UI. The reducer action stays for legacy
+    // recovery tests and backend parity, but selectors keep it off-screen.
+    canCustomerConfirmCompletion: false,
     canCustomerSubmitReview,
     paymentLocked: true,
     reviewLocked: !canCustomerSubmitReview,
@@ -689,19 +823,37 @@ export function validateLocalDealDraft(draft: LocalDealDraft): string | null {
 }
 
 function canReplaceLocalDeal(status: LocalDealStatus): boolean {
-  return ['draft', 'cancelled', 'confirmed_by_customer', 'reviewed'].includes(status)
+  return ['draft', 'cancelled', 'reviewed'].includes(status)
 }
 
 function canEditBookingDraft(status: LocalDealStatus): boolean {
-  return ['draft', 'cancelled', 'confirmed_by_customer', 'reviewed'].includes(status)
+  return ['draft', 'cancelled', 'reviewed'].includes(status)
 }
 
 function canCancelLocalDeal(status: LocalDealStatus): boolean {
-  return ['draft', 'analyzing', 'awaiting_customer_confirm', 'broadcasting'].includes(status)
+  return [
+    'draft',
+    'analyzing',
+    'awaiting_customer_confirm',
+    'broadcasting',
+    'worker_matched',
+    'worker_on_way',
+    'arrived',
+    'inspecting',
+    'repairing',
+    'scope_change_pending',
+  ].includes(status)
 }
 
 function canConfirmCustomerCompletion(deal: LocalDeal): boolean {
   return deal.status === 'completed_by_worker' && deal.broadcast?.status === 'accepted'
+}
+
+function canSubmitCustomerReview(deal: LocalDeal): boolean {
+  const backendStatus = deal.backendStatus ?? deal.status
+  return backendStatus === 'paid' ||
+    backendStatus === 'confirmed_by_customer' ||
+    (!deal.backendStatus && deal.status === 'confirmed_by_customer')
 }
 
 export function serviceLabel(serviceType: ServiceType | null): string {
@@ -716,16 +868,16 @@ export function statusLabel(status: LocalDealStatus | null): string {
   const labels: Record<LocalDealStatus, string> = {
     draft: 'Nháp',
     analyzing: 'Kael đang phân tích',
-    awaiting_customer_confirm: 'Chờ khách xác nhận',
+    awaiting_customer_confirm: 'Kael đang điều phối',
     broadcasting: 'Đang gửi thợ',
     worker_matched: 'Thợ đã nhận',
     worker_on_way: 'Thợ đang đến',
     arrived: 'Thợ đã đến',
     inspecting: 'Đang kiểm tra',
     repairing: 'Đang sửa',
-    scope_change_pending: 'Chờ khách duyệt thay đổi',
+    scope_change_pending: 'Kael đang xét đổi phạm vi',
     completed_by_worker: 'Thợ báo hoàn tất',
-    confirmed_by_customer: 'Khách xác nhận xong',
+    confirmed_by_customer: 'Kael đã xác nhận hoàn tất',
     reviewed: 'Đã đánh giá',
     cancelled: 'Đã hủy',
   }
@@ -741,7 +893,7 @@ export function extractKnownDistrictLabel(input: string): string {
     if (normalized.includes(normalizeSearchText(label))) return label
   }
 
-  const numberedDistrict = normalized.match(/\b(?:quan|q)\s*\.?\s*(1[0-2]|\d)\b/)
+  const numberedDistrict = normalized.match(/\b(?:quan|q|district|dist)\s*\.?\s*(1[0-2]|\d)\b/)
   if (numberedDistrict) return `Quận ${numberedDistrict[1]}`
 
   return ''
@@ -751,22 +903,79 @@ export function extractDistrictLabel(input: string): string {
   return extractKnownDistrictLabel(input) || GENERIC_AREA
 }
 
+export function hasSpecificWorkerRouteAddress(addressLabel: string | null | undefined, districtLabel = ''): boolean {
+  const normalizedAddress = stripGenericAddressTerms(addressLabel ?? '')
+  if (!normalizedAddress) return false
+
+  const detectedDistrict = extractKnownDistrictLabel(addressLabel ?? '') || extractKnownDistrictLabel(districtLabel) || districtLabel
+  let specificPart = normalizedAddress
+  const districtCandidates = [
+    detectedDistrict,
+    districtLabel,
+    ...Object.values(HCMC_DISTRICTS),
+  ]
+
+  for (const candidate of districtCandidates) {
+    const normalizedCandidate = stripGenericAddressTerms(candidate)
+    if (!normalizedCandidate) continue
+    specificPart = specificPart.replace(new RegExp(`\\b${escapeRegExp(normalizedCandidate)}\\b`, 'g'), ' ')
+  }
+
+  specificPart = specificPart
+    .replace(/\b(?:quan|q|district|dist)\s*\.?\s*(1[0-2]|\d)\b/g, ' ')
+    .replace(/\b(?:phuong|p|ward)\s*\.?\s*\d+\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return specificPart.replace(/\s+/g, '').length >= 3
+}
+
+function stripGenericAddressTerms(value: string): string {
+  return normalizeSearchText(value)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\btp\s*hcm\b/g, ' ')
+    .replace(/\btphcm\b/g, ' ')
+    .replace(/\bthanh\s*pho\s*ho\s*chi\s*minh\b/g, ' ')
+    .replace(/\bho\s*chi\s*minh\b/g, ' ')
+    .replace(/\bhcmc\b/g, ' ')
+    .replace(/\bviet\s*nam\b/g, ' ')
+    .replace(/\bvn\b/g, ' ')
+    .trim()
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function createDeal(draft: LocalDealDraft): LocalDeal {
   return {
     id: LOCAL_DEAL_ID,
+    displayCode: null,
     status: 'draft',
     draft,
     estimate: null,
     broadcast: null,
     scopeChange: null,
     finalPrice: null,
+    payment: null,
+    completionPhotoUrls: [],
+    completionNotes: null,
+    workerProfile: null,
+    createdAt: null,
+    matchedAt: null,
+    completedAt: null,
+    confirmedAt: null,
+    paidAt: null,
+    reviewedAt: null,
   }
 }
 
 function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
   return {
     id: job.id,
+    displayCode: job.displayCode ?? null,
     status: job.status,
+    backendStatus: job.backendStatus,
     draft: {
       serviceType: job.serviceType,
       problemChips: job.problemChips,
@@ -784,10 +993,25 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal {
     broadcast: job.broadcast ?? null,
     scopeChange: job.scopeChange ?? null,
     finalPrice: job.finalPrice ?? null,
+    payment: job.payment ?? null,
+    completionPhotoUrls: job.completionPhotoUrls ?? [],
+    completionNotes: job.completionNotes ?? null,
+    workerProfile: job.workerProfile ?? null,
+    createdAt: job.createdAt ?? null,
+    matchedAt: job.matchedAt ?? null,
+    completedAt: job.completedAt ?? null,
+    confirmedAt: job.confirmedAt ?? null,
+    paidAt: job.paidAt ?? null,
+    reviewedAt: job.reviewedAt ?? null,
   }
 }
 
 function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot): LocalDeal {
+  const remotePrebrief: string[] = []
+  for (const line of broadcast.prebrief ?? []) {
+    const trimmed = line.trim()
+    if (trimmed) remotePrebrief.push(trimmed)
+  }
   const draft: LocalDealDraft = {
     ...emptyDraft('booking', broadcast.serviceType),
     description: broadcast.problemSummary,
@@ -798,6 +1022,7 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
 
   return {
     id: broadcast.jobId,
+    displayCode: null,
     status: broadcast.status === 'accepted' ? 'worker_matched' : 'broadcasting',
     draft,
     estimate: null,
@@ -808,7 +1033,7 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
       serviceType: broadcast.serviceType,
       problemSummary: broadcast.problemSummary,
       generalArea: broadcast.generalArea,
-      prebrief: [
+      prebrief: remotePrebrief.length > 0 ? remotePrebrief : [
         `${serviceLabel(broadcast.serviceType)} · ${broadcast.problemSummary}`,
         `Khu vực: ${broadcast.generalArea}. Địa chỉ chi tiết vẫn ẩn trước khi nhận.`,
       ],
@@ -820,6 +1045,8 @@ function createDealFromRemoteBroadcast(broadcast: LocalRemoteBroadcastSnapshot):
     },
     scopeChange: null,
     finalPrice: null,
+    completionPhotoUrls: [],
+    completionNotes: null,
   }
 }
 
@@ -940,6 +1167,18 @@ function setStatus(
       status: to,
     },
     lastError: null,
+  }
+}
+
+function setCustomerReviewSubmitted(state: LocalWorkflowState): LocalWorkflowState {
+  const next = setStatus(state, 'confirmed_by_customer', 'reviewed')
+  if (!next.deal || !state.deal?.backendStatus) return next
+  return {
+    ...next,
+    deal: {
+      ...next.deal,
+      backendStatus: 'reviewed',
+    },
   }
 }
 

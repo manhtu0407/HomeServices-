@@ -1,5 +1,5 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
-import type { LocalScopeChange } from '@home-services/shared'
+import type { LocalScopeChange } from '@nestscout/shared'
 import type { AppLanguage } from '@/lib/app-language'
 
 type ScopeChangeModalTokens = {

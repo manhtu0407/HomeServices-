@@ -8,7 +8,7 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, us
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { HCMC_DISTRICTS, normalizeDistrict, type DistrictSlug, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus } from '@home-services/shared'
+import { HCMC_DISTRICTS, normalizeDistrict, type DistrictSlug, type LocalDeal, type LocalDealStatus, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus } from '@nestscout/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'
 import { GlassModalSheet } from '@/components/ui/glass-modal-sheet'
@@ -2850,7 +2850,6 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
               const updated = await actions.workerUpdateStatus(nextStatus, {
                 completion_notes: completionNote,
                 completion_photo_urls: uploaded.mediaRefs,
-                final_price: finalPrice,
               })
               if (!updated) return
               requestDraftDispatch({ type: 'clear_completion' })
@@ -2862,13 +2861,8 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
   }
   const submitScopeChangeRequest = () => {
     const description = scopeDescriptionDraft.trim()
-    const price = Number.parseInt(scopePriceDraft.replace(/[^\d]/g, ''), 10)
     if (description.length < 10) {
       Alert.alert(actionCopy.alerts.scopeDescriptionTitle, actionCopy.alerts.scopeDescriptionBody)
-      return
-    }
-    if (!Number.isFinite(price) || price <= 0) {
-      Alert.alert(actionCopy.alerts.scopePriceTitle, actionCopy.alerts.scopePriceBody)
       return
     }
     Alert.alert(
@@ -2880,9 +2874,8 @@ function IncomingRequestSheet({ compact = false }: { compact?: boolean }) {
           text: actionCopy.send,
           onPress: () => void actions.requestScopeChange({
             new_description: description,
-            new_price_min: price,
-            new_price_max: price,
             reason: description,
+            photo_urls: [],
           }),
         },
       ],

@@ -3,12 +3,13 @@ import { BlurView, type BlurTint } from 'expo-blur'
 import { GlassView, isLiquidGlassAvailable, type GlassColorScheme, type GlassStyle } from 'expo-glass-effect'
 import { Platform, StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native'
 import { useGlassAccessibility } from './accessibility-motion'
-import { createGlassSurfaceStyle, type GlassMode, type GlassVariant } from './tokens'
+import { createGlassSurfaceStyle, type GlassMaterial, type GlassMode, type GlassVariant } from './tokens'
 
 type GlassSurfaceProps = {
   backgroundColor?: string
   borderColor?: string
   children: ReactNode
+  material?: GlassMaterial
   mode?: GlassMode
   onLayout?: ViewProps['onLayout']
   style?: StyleProp<ViewStyle>
@@ -16,16 +17,22 @@ type GlassSurfaceProps = {
   variant?: GlassVariant
 }
 
-export function GlassSurface({ backgroundColor, borderColor, children, mode = 'light', onLayout, style, testID, variant = 'subtle' }: GlassSurfaceProps) {
+export function GlassSurface({ backgroundColor, borderColor, children, material = 'standard', mode = 'light', onLayout, style, testID, variant = 'subtle' }: GlassSurfaceProps) {
   const { reduceTransparency } = useGlassAccessibility()
-  const surfaceStyle = createGlassSurfaceStyle({ backgroundColor, borderColor, mode, reduceTransparency, variant })
+  const surfaceStyle = createGlassSurfaceStyle({ backgroundColor, borderColor, material, mode, reduceTransparency, variant })
   const webNavBackingStyle = Platform.OS === 'web' && variant === 'nav' && !reduceTransparency
-    ? mode === 'dark'
+    ? material === 'liquid'
+      ? mode === 'dark'
+        ? styles.webLiquidNavBackingDark
+        : styles.webLiquidNavBackingLight
+      : mode === 'dark'
       ? styles.webNavBackingDark
       : styles.webNavBackingLight
     : null
   const composedStyle = [styles.surface, surfaceStyle, webNavBackingStyle, style]
   const shouldUseBlurFallback = variant !== 'nav' || Platform.OS !== 'web'
+  const edgeHighlightStyle = [styles.edgeHighlight, material === 'liquid' ? liquidEdgeHighlightStyle(mode) : null]
+  const blurIntensity = material === 'liquid' ? liquidBlurIntensityByVariant[variant] : blurIntensityByVariant[variant]
 
   if (!reduceTransparency && isLiquidGlassAvailable()) {
     return (
@@ -38,7 +45,7 @@ export function GlassSurface({ backgroundColor, borderColor, children, mode = 'l
         testID={testID}
         tintColor={backgroundColor}
       >
-        <View pointerEvents="none" style={styles.edgeHighlight} />
+        <View pointerEvents="none" style={edgeHighlightStyle} />
         {children}
       </GlassView>
     )
@@ -48,13 +55,13 @@ export function GlassSurface({ backgroundColor, borderColor, children, mode = 'l
     return (
       <BlurView
         experimentalBlurMethod="none"
-        intensity={blurIntensityByVariant[variant]}
+        intensity={blurIntensity}
         onLayout={onLayout}
         style={composedStyle}
         testID={testID}
         tint={blurTintByMode[mode]}
       >
-        <View pointerEvents="none" style={styles.edgeHighlight} />
+        <View pointerEvents="none" style={edgeHighlightStyle} />
         {children}
       </BlurView>
     )
@@ -66,7 +73,7 @@ export function GlassSurface({ backgroundColor, borderColor, children, mode = 'l
       style={composedStyle}
       testID={testID}
     >
-      {!reduceTransparency ? <View pointerEvents="none" style={styles.edgeHighlight} /> : null}
+      {!reduceTransparency ? <View pointerEvents="none" style={edgeHighlightStyle} /> : null}
       {children}
     </View>
   )
@@ -77,6 +84,14 @@ const blurIntensityByVariant: Record<GlassVariant, number> = {
   control: 18,
   hero: 24,
   sheet: 30,
+  subtle: 14,
+}
+
+const liquidBlurIntensityByVariant: Record<GlassVariant, number> = {
+  nav: 24,
+  control: 18,
+  hero: 22,
+  sheet: 26,
   subtle: 14,
 }
 
@@ -96,6 +111,13 @@ const glassStyleByVariant: Record<GlassVariant, GlassStyle> = {
   hero: 'regular',
   sheet: 'regular',
   subtle: 'clear',
+}
+
+function liquidEdgeHighlightStyle(mode: GlassMode): ViewStyle {
+  return {
+    backgroundColor: mode === 'dark' ? 'rgba(190,210,205,0.14)' : 'rgba(255,255,255,0.46)',
+    opacity: mode === 'dark' ? 1 : 0.98,
+  }
 }
 
 const styles = StyleSheet.create({
@@ -120,5 +142,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.78)',
     backgroundImage: 'radial-gradient(circle at 52% 0%, rgba(207,255,243,0.52), transparent 38%)',
     borderColor: 'rgba(255,255,255,0.88)',
+  } as any,
+  webLiquidNavBackingDark: {
+    backdropFilter: 'blur(24px) saturate(1.45) contrast(1.04)',
+    backgroundColor: 'rgba(22,29,27,0.42)',
+    borderColor: 'rgba(190,210,205,0.16)',
+    WebkitBackdropFilter: 'blur(24px) saturate(1.45) contrast(1.04)',
+  } as any,
+  webLiquidNavBackingLight: {
+    backdropFilter: 'blur(24px) saturate(1.95) contrast(1.07)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundImage: 'radial-gradient(circle at 18% 8%, rgba(255,255,255,0.38), transparent 28%), radial-gradient(circle at 52% 106%, rgba(23,169,149,0.040), transparent 44%), linear-gradient(180deg, rgba(255,255,255,0.085), rgba(255,255,255,0.024))',
+    borderColor: 'rgba(255,255,255,0.70)',
+    WebkitBackdropFilter: 'blur(24px) saturate(1.95) contrast(1.07)',
   } as any,
 })
