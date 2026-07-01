@@ -24,7 +24,7 @@ Severity scale: CRITICAL / HIGH / MEDIUM / LOW / INFO.
 
 | Domain | Control | Evidence |
 |---|---|---|
-| Secrets / boundary | No server secret in RN bundle; `.env.example` segregates public vs server-side; no committed `.env` | grep `apps/mobile` for `SERVICE_ROLE\|ANTHROPIC\|PERPLEXITY\|sk-ant\|...` → 0 matches; `.env.example` |
+| Secrets / boundary | No server secret in RN bundle; `config/env/workspace.env.example` and `apps/mobile/.env.example` segregate public vs server-side names; no committed `.env` | grep `apps/mobile` for `SERVICE_ROLE\|ANTHROPIC\|PERPLEXITY\|sk-ant\|...` -> 0 matches; env examples |
 | Auth | JWT validated per request; role read from `profiles`; downstream client is service-role | `_shared/auth.ts` |
 | Privilege | Signup trigger **forces `role='customer'`** server-side; execute revoked from `anon`/`authenticated` | `migrations/20260517192455_harden_auth_signup_trigger.sql` |
 | Input validation | Zod `safeParse` at every dispatch; 64 KB body cap; path-traversal guard (`..`); bounded lat/lng/ISO; media refs must be `supabase://job-media/<stage>/...` | `_shared/router.ts` (`readJson`, `isSupabaseJobMediaStageRef`, `workerStatusUpdateSchema`) |
@@ -153,7 +153,7 @@ Sequencing per Tu (2026-06-14): do the easy fix/build items in early phases; con
 
 - Locked docs (`CLAUDE.md`, `RULES.md`, `STRUCTURES.md`, `critical.md`, `design.md`, `README.md`) are **not** edited by this work.
 - Each phase is gated: plan-first design → Tu approval → code → honest verification with evidence (Rule #8, no fake success; per `feedback_honest_reporting`).
-- Any new secret (e.g. for S4) follows Rule #1: add to `.env.example` (name only), env validation, deployment config — never a value in code/logs/docs.
+- Any new secret (e.g. for S4) follows Rule #1: add to `config/env/workspace.env.example` (name only), env validation, deployment config - never a value in code/logs/docs.
 
 ## 8. Change log
 - 2026-06-14 — Initial read-only audit (pass 1) across all 4 domains; live advisors + storage RLS verified on staging + prod; findings F1–F5; phased plan S1–S5. No code changed.

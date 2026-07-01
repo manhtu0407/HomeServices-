@@ -35,6 +35,11 @@ function Existing-Path {
 }
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+$rootTurboJson = Join-Path $repoRoot "config\turbo\turbo.json"
+if (Test-Path -LiteralPath $rootTurboJson) {
+  $TurboArgs = @("--root-turbo-json", $rootTurboJson) + @($TurboArgs)
+}
+
 $codexRuntimeRoot = Join-Path $HOME ".cache\codex-runtimes\codex-primary-runtime\dependencies"
 $nodeExe = Existing-Path @(
   (Join-Path $codexRuntimeRoot "node\bin\node.exe"),

@@ -46,7 +46,7 @@ Allowed
 -
 |- use a temporary token only in the current process when remote inspection is required
 |- keep .env.local ignored by git
-|- keep .env.example with key names and empty values only
+|- keep config/env/workspace.env.example with key names and empty values only
 |- revoke temporary management tokens after task completion
 ```
 

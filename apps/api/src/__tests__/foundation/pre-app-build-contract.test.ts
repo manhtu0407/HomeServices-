@@ -68,8 +68,8 @@ describe('Build foundation stays offline-capable and app-scoped', () => {
 })
 
 describe('Secret hygiene baseline', () => {
-  it('.env.example lists keys with empty values only', () => {
-    const envExample = read('.env.example')
+  it('workspace env example lists keys with empty values only', () => {
+    const envExample = read('config/env/workspace.env.example')
     const requiredKeys = [
       'NEXT_PUBLIC_SUPABASE_URL',
       'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
@@ -100,11 +100,12 @@ describe('Secret hygiene baseline', () => {
     }
   })
 
-  it('keeps local env files ignored while allowing .env.example', () => {
+  it('keeps local env files ignored while allowing committed env examples', () => {
     const gitignore = read('.gitignore')
 
     expect(gitignore).toMatch(/^\.env\*/m)
-    expect(gitignore).toMatch(/^!\.env\.example/m)
+    expect(gitignore).toMatch(/^!config\/env\/workspace\.env\.example/m)
+    expect(gitignore).toMatch(/^!apps\/mobile\/\.env\.example/m)
   })
 
   it('does not persist Supabase management tokens in repo text files', () => {
@@ -125,12 +126,11 @@ const scanRoots = [
   'docs',
   '.claude',
   'governance',
+  'config',
   'README.md',
   'CLAUDE.md',
   'package.json',
   'pnpm-workspace.yaml',
-  'turbo.json',
-  '.env.example',
   '.gitignore',
 ]
 

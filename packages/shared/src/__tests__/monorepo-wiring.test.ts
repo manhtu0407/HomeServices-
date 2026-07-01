@@ -103,11 +103,11 @@ describe('pnpm-workspace.yaml', () => {
 })
 
 // ===================================================================
-// turbo.json pipeline
+// Turbo pipeline
 // ===================================================================
 
-describe('turbo.json', () => {
-  const turbo = readJSON('turbo.json')
+describe('config/turbo/turbo.json', () => {
+  const turbo = readJSON('config/turbo/turbo.json')
 
   it('has $schema', () => {
     expect(turbo.$schema).toContain('turbo.build')

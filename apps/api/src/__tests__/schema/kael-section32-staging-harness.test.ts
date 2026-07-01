@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 const repoRoot = resolve(__dirname, '../../../../../')
 const harnessPath = resolve(repoRoot, 'apps/api/scripts/kael-section32-staging-smoke.mjs')
 const nativeRecordingPath = resolve(repoRoot, 'scripts/section32-android-native-recording.ps1')
-const rootEnvExamplePath = resolve(repoRoot, '.env.example')
+const rootEnvExamplePath = resolve(repoRoot, 'config/env/workspace.env.example')
 const mobileEnvExamplePath = resolve(repoRoot, 'apps/mobile/.env.example')
 
 describe('Section 32 staging smoke harness contract', () => {

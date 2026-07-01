@@ -9,7 +9,7 @@ Auto-trigger wrapper. Full procedure + PII classification table are canonical in
 
 When this fires:
 
-1. Secrets server-side only; none in code, RN bundle, logs, or git-tracked examples; `.env.example` has names only.
+1. Secrets server-side only; none in code, RN bundle, logs, or git-tracked examples; `config/env/workspace.env.example` has names only.
 2. Classify PII (phone, CCCD, address, bank, exact location, raw description) — logs use IDs/safe metadata only; scrub before LLM.
 3. Validate/sanitize all user input before DB or LLM; enforce timeout + bounded retry on every network call.
 4. Add security negative tests where behavior changed. Never return fake success on provider/DB failure.

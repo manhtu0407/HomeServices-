@@ -34,6 +34,12 @@
     "lint:structure": "node scripts/lint-structure.mjs",
     "lint:comments": "node scripts/check-comment-discipline.mjs"
   },
+  "reactDoctor": {
+    "blocking": "none",
+    "noScore": true,
+    "share": false,
+    "respectInlineDisables": true
+  },
   "devDependencies": {
     "metro-runtime": "0.83.3",
     "react-doctor": "0.5.8",
