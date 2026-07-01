@@ -63,7 +63,8 @@ jest.mock('@/lib/app-language', () => {
   }
 })
 
-import { CustomerHomeSurface, CustomerV21DockOverlay } from '../customer-surfaces'
+import { CustomerHomeSurface } from '../customer-surfaces'
+import { CustomerV21DockOverlay } from '../v21/surfaces'
 
 function buildDeal(): LocalDeal {
   return {

@@ -16,7 +16,7 @@ import {
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
-import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, inferLocalDealDraftFromKael, type LocalCustomerSearchState, type LocalDeal, type LocalDealStatus, type LocalScopeChange, type LocalWorkflowSelectors, type ServiceType } from '@home-services/shared'
+import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, inferLocalDealDraftFromKael, type LocalCustomerSearchState, type LocalDeal, type LocalDealStatus, type LocalScopeChange, type LocalWorkflowSelectors, type ServiceType } from '@nestscout/shared'
 import { setPendingKaelChatDraft } from '@/components/customer/kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '@/components/customer/scope-change-modal/scope-change-hard-stop-modal'
 import { FloatingGlassTabBar, type FloatingGlassTabItem } from '@/components/ui/floating-glass-tab-bar'

@@ -1,11 +1,14 @@
 import type { ViewStyle } from 'react-native'
+import { color, glassSurfaceTheme } from '@/design/theme'
 
 export type GlassVariant = 'nav' | 'control' | 'hero' | 'sheet' | 'subtle'
 export type GlassMode = 'dark' | 'light'
+export type GlassMaterial = 'liquid' | 'standard'
 
 type GlassSurfaceOptions = {
   backgroundColor?: string
   borderColor?: string
+  material?: GlassMaterial
   mode?: GlassMode
   reduceTransparency?: boolean
   variant?: GlassVariant
@@ -19,28 +22,8 @@ const radiusByVariant: Record<GlassVariant, number> = {
   subtle: 20,
 }
 
-const shadowByVariant: Record<GlassVariant, { dark: string; light: string }> = {
-  nav: {
-    dark: '0 18px 36px rgba(0,0,0,0.28)',
-    light: '0 18px 36px rgba(21,89,78,0.18), inset 0 1px 0 rgba(255,255,255,0.94)',
-  },
-  control: {
-    dark: '0 6px 14px rgba(0,0,0,0.16)',
-    light: '0 6px 14px rgba(13,70,65,0.07)',
-  },
-  hero: {
-    dark: '0 12px 30px rgba(0,0,0,0.20)',
-    light: '0 12px 30px rgba(13,70,65,0.09)',
-  },
-  sheet: {
-    dark: '0 14px 34px rgba(0,0,0,0.22)',
-    light: '0 14px 34px rgba(13,70,65,0.09)',
-  },
-  subtle: {
-    dark: '0 4px 10px rgba(0,0,0,0.12)',
-    light: '0 4px 10px rgba(13,70,65,0.05)',
-  },
-}
+const shadowByVariant: Record<GlassVariant, { dark: string; light: string }> = glassSurfaceTheme.shadowByVariant
+const liquidShadowByVariant: Record<GlassVariant, { dark: string; light: string }> = glassSurfaceTheme.liquidShadowByVariant
 
 export const glassDesignTokens = {
   borderWidth: 1,
@@ -61,29 +44,41 @@ export const glassDesignTokens = {
 export function createGlassSurfaceStyle({
   backgroundColor,
   borderColor,
+  material = 'standard',
   mode = 'light',
   reduceTransparency = false,
   variant = 'subtle',
 }: GlassSurfaceOptions = {}): ViewStyle {
   const isDark = mode === 'dark'
-  const fallbackBackground = isDark ? '#112522' : '#FFFDF8'
-  const glassBackground = isDark ? 'rgba(16,36,32,0.72)' : variant === 'nav' ? 'rgba(255,255,255,0.78)' : 'rgba(255,255,255,0.70)'
+  const isLiquid = material === 'liquid'
+  const fallbackBackground = isLiquid
+    ? isDark ? glassSurfaceTheme.liquidFallbackBackground.dark : glassSurfaceTheme.liquidFallbackBackground.light
+    : isDark ? glassSurfaceTheme.standardFallbackBackground.dark : glassSurfaceTheme.standardFallbackBackground.light
+  const liquidGlassBackground = isDark
+    ? glassSurfaceTheme.liquidBackground.dark
+    : variant === 'nav'
+      ? glassSurfaceTheme.liquidBackground.navLight
+      : glassSurfaceTheme.liquidBackground.light
+  const standardGlassBackground = isDark ? glassSurfaceTheme.standardBackground.dark : variant === 'nav' ? glassSurfaceTheme.standardBackground.navLight : glassSurfaceTheme.standardBackground.light
+  const glassBackground = isLiquid ? liquidGlassBackground : standardGlassBackground
+  const liquidBorderColor = isDark ? glassSurfaceTheme.liquidBorder.dark : variant === 'nav' ? glassSurfaceTheme.liquidBorder.navLight : glassSurfaceTheme.liquidBorder.light
+  const standardBorderColor = isDark ? glassSurfaceTheme.standardBorder.dark : variant === 'nav' ? glassSurfaceTheme.standardBorder.navLight : glassSurfaceTheme.standardBorder.light
 
   return {
     backgroundColor: reduceTransparency ? fallbackBackground : (backgroundColor ?? glassBackground),
-    borderColor: borderColor ?? (isDark ? 'rgba(255,255,255,0.14)' : variant === 'nav' ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.78)'),
+    borderColor: borderColor ?? (isLiquid ? liquidBorderColor : standardBorderColor),
     borderCurve: 'continuous',
     borderRadius: radiusByVariant[variant],
     borderWidth: glassDesignTokens.borderWidth,
-    boxShadow: reduceTransparency ? 'none' : shadowByVariant[variant][mode],
+    boxShadow: reduceTransparency ? 'none' : (isLiquid ? liquidShadowByVariant : shadowByVariant)[variant][mode],
     overflow: 'hidden',
   } as ViewStyle
 }
 
 export function createOpaqueRowStyle({ mode = 'light' }: { mode?: GlassMode } = {}): ViewStyle {
   return {
-    backgroundColor: mode === 'dark' ? '#122724' : '#FFFDF8',
-    borderColor: mode === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(210,232,225,0.82)',
+    backgroundColor: mode === 'dark' ? glassSurfaceTheme.opaqueRow.darkBackground : color.mint.white,
+    borderColor: mode === 'dark' ? glassSurfaceTheme.opaqueRow.darkBorder : glassSurfaceTheme.opaqueRow.lightBorder,
     borderCurve: 'continuous',
     borderWidth: 1,
     boxShadow: 'none',

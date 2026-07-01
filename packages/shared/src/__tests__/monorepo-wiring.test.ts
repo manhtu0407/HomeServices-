@@ -180,8 +180,8 @@ describe('apps/api/package.json', () => {
     expect(pkg.private).toBe(true)
   })
 
-  it('depends on @home-services/shared via workspace', () => {
-    expect(pkg.dependencies['@home-services/shared']).toBe('workspace:*')
+  it('depends on @nestscout/shared via workspace', () => {
+    expect(pkg.dependencies['@nestscout/shared']).toBe('workspace:*')
   })
 
   it('has next.js', () => {
@@ -220,8 +220,8 @@ describe('apps/mobile/package.json', () => {
     expect(pkg.private).toBe(true)
   })
 
-  it('depends on @home-services/shared via workspace', () => {
-    expect(pkg.dependencies['@home-services/shared']).toBe('workspace:*')
+  it('depends on @nestscout/shared via workspace', () => {
+    expect(pkg.dependencies['@nestscout/shared']).toBe('workspace:*')
   })
 
   it('has expo', () => {
@@ -273,8 +273,8 @@ describe('apps/mobile/package.json', () => {
 describe('packages/shared/package.json', () => {
   const pkg = readJSON('packages/shared/package.json')
 
-  it('name is @home-services/shared', () => {
-    expect(pkg.name).toBe('@home-services/shared')
+  it('name is @nestscout/shared', () => {
+    expect(pkg.name).toBe('@nestscout/shared')
   })
 
   it('is private', () => {

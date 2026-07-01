@@ -1,11 +1,19 @@
-import { Text, TextInput, View } from 'react-native'
-import Svg, { Path } from 'react-native-svg'
-import { HCMC_DISTRICTS, normalizeDistrict, type DistrictSlug } from '@home-services/shared'
+import { Image } from 'expo-image'
+import { Text, View, type ViewStyle } from 'react-native'
+import { HCMC_DISTRICTS, type DistrictSlug } from '@nestscout/shared'
+import { KaelTextField } from '@/components/ui/kael-primitives'
 import { type AppLanguage } from '@/lib/app-language'
+import { inferKaelChatDistrict } from './address-district'
 import { styles } from './styles'
+
+const clientAddressIcon = require('../../../assets/client-image-icons/client-address.png')
 
 type AddressContextTokens = {
   border: string
+  borderStrong: string
+  glassHighlight: string
+  glassShadow: string
+  mode: 'dark' | 'light'
   primary: string
   raised: string
   service: string
@@ -13,31 +21,36 @@ type AddressContextTokens = {
   text: string
 }
 
-export function inferKaelChatDistrict(value: string): DistrictSlug | null {
-  const normalized = normalizeDistrict(value)
-  return normalized === 'hcmc_all' ? null : normalized
-}
-
 export function KaelAddressContextBar({
   addressLabel,
   language,
+  onBlur,
   onChangeText,
+  onFocus,
   placeholder,
   tokens,
 }: {
   addressLabel: string
   language: AppLanguage
+  onBlur?: () => void
   onChangeText: (value: string) => void
+  onFocus?: () => void
   placeholder: string
   tokens: AddressContextTokens
 }) {
   const district = inferKaelChatDistrict(addressLabel)
 
   return (
-    <View style={[styles.addressBar, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID="customer-kael-chat-address-context">
-      <ChatPinIcon color={tokens.primary} />
-      <TextInput
+    <View style={[styles.addressBar, addressContextSurface(tokens)]} testID="customer-kael-chat-address-context">
+      <View pointerEvents="none" style={[styles.addressBarSheen, addressContextSheen(tokens)]} testID="customer-kael-chat-address-keyline" />
+      <View style={[styles.addressIconDisk, addressIconDiskSurface(tokens)]}>
+        <ChatPinIcon />
+      </View>
+      <KaelTextField
+        inputShellStyle={styles.addressTextFieldShell}
+        onBlur={onBlur}
         onChangeText={onChangeText}
+        onFocus={onFocus}
         placeholder={placeholder}
         placeholderTextColor={tokens.subtleText}
         style={[styles.addressInput, { color: tokens.text }]}
@@ -53,16 +66,44 @@ export function KaelAddressContextBar({
   )
 }
 
+function addressContextSurface(tokens: AddressContextTokens): ViewStyle {
+  const reduceTransparency = tokens.glassHighlight === 'transparent' && tokens.glassShadow === 'none'
+  const dark = tokens.mode === 'dark'
+  const gradient = dark
+    ? 'linear-gradient(145deg, rgba(24,50,46,0.94), rgba(17,45,41,0.82))'
+    : 'linear-gradient(145deg, rgba(255,255,255,0.82), rgba(239,255,250,0.62))'
+
+  return {
+    backgroundColor: dark ? 'rgba(22,43,40,0.90)' : 'rgba(255,255,255,0.72)',
+    backgroundImage: reduceTransparency ? undefined : gradient,
+    borderColor: dark ? 'rgba(190,210,205,0.18)' : 'rgba(255,255,255,0.82)',
+    boxShadow: reduceTransparency
+      ? 'none'
+      : dark
+        ? '0 8px 18px rgba(0,0,0,0.18), inset 0 1px 0 rgba(190,210,205,0.12)'
+        : '0 8px 18px rgba(16,74,66,0.045), inset 0 1px 0 rgba(255,255,255,0.92)',
+    experimental_backgroundImage: reduceTransparency ? undefined : gradient,
+  } as ViewStyle
+}
+
+function addressContextSheen(tokens: AddressContextTokens): ViewStyle {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.10)' : 'rgba(255,255,255,0.72)',
+  }
+}
+
+function addressIconDiskSurface(tokens: AddressContextTokens): ViewStyle {
+  return {
+    backgroundColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.060)' : 'rgba(255,255,255,0.56)',
+    borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.12)' : 'rgba(255,255,255,0.76)',
+  }
+}
+
 function localizedDistrictLabel(district: DistrictSlug, language: AppLanguage) {
   if (language === 'en' && district.startsWith('q')) return `District ${district.slice(1)}`
   return HCMC_DISTRICTS[district]
 }
 
-function ChatPinIcon({ color }: { color: string }) {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11Z" stroke={color} strokeWidth={2.1} strokeLinejoin="round" />
-      <Path d="M12 12.3a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6Z" stroke={color} strokeWidth={2.1} />
-    </Svg>
-  )
+function ChatPinIcon() {
+  return <Image accessibilityRole="image" contentFit="contain" source={clientAddressIcon} style={styles.addressImageIcon} />
 }
