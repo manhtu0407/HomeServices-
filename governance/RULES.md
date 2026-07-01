@@ -49,7 +49,7 @@ Forbidden:
 Correct:
 - API keys live in server-side environment variables.
 - Keys are read only inside server functions, Supabase Edge Functions, or approved server runtimes.
-- `.env.example` may be committed with key names only, never values.
+- `config/env/workspace.env.example` may be committed with key names only, never values.
 
 Forbidden:
 - Hardcoded keys.
@@ -58,7 +58,7 @@ Forbidden:
 
 For every new secret:
 
-1. Add the key name to `.env.example`.
+1. Add the key name to `config/env/workspace.env.example`.
 2. Add environment validation.
 3. Add deployment/runtime configuration instructions without exposing values.
 
@@ -241,9 +241,9 @@ No unbounded network call is allowed.
 ### Secrets Management
 
 - `.env` and `.env.local` must never be committed.
-- `.env.example` contains key names only, never values.
+- `config/env/workspace.env.example` contains key names only, never values.
 - Secrets are server-side only and must not be bundled into the RN app binary.
-- Every new secret requires `.env.example`, validation, and deployment/runtime config.
+- Every new secret requires `config/env/workspace.env.example`, validation, and deployment/runtime config.
 
 ### PII Handling
 
