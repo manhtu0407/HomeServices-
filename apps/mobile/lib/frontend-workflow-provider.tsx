@@ -174,6 +174,9 @@ const initialCustomerProfileInsightsState: CustomerProfileInsightsState = {
 
 const FrontendWorkflowContext = createContext<FrontendWorkflowContextValue | null>(null)
 const isAppForeground = () => AppState.currentState === 'active'
+// Statuses during which the customer wants a live timeline (worker en route,
+// on-site, working, scope/completion review). Shared by realtime and the
+// reduced-interval poll fallback.
 const ACTIVE_TIMELINE_STATUSES = [
   'broadcasting',
   'worker_matched',
@@ -370,6 +373,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return hydrateJobResult(await jobService.getJob(jobId))
   }, [hydrateJobResult, setRemoteError])
 
+  // Hydrate the active job from the backend so refresh/cold start keeps the
+  // backend as source of truth without noisy "no active job" banners.
   const hydrateCustomerActiveJob = useCallback(async () => {
     if (getRemoteJobId(stateRef.current)) return true
     const result = await jobService.listMyActiveJob()
@@ -398,6 +403,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       photo_urls: [],
       address_building: draft.addressLabel.trim() || undefined,
       address_district: districtLabel,
+      // Re-renders and retries reuse the same key so Edge returns the existing
+      // job instead of creating duplicates.
       client_request_id: stableClientRequestId(
         pendingJobCreateClientRequestRef,
         requestFingerprint,
@@ -741,7 +748,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return true
   }, [refreshCurrentJob, setRemoteError])
 
-  // §32.7: customer "Cho thợ lên" — releases the exact unit after the worker's lobby check-in.
+  // Releases the exact unit after the worker's lobby check-in.
   const authorizeApartmentAccess = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để mở quyền vào căn hộ')
@@ -951,6 +958,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }
   }, [refreshCurrentJob, workerRefresh, refreshNotifications, hydrateCustomerActiveJob])
 
+  // Refresh immediately on foreground; polling and realtime can otherwise leave
+  // a stale timeline/notification visible until their next interval/event.
   useEffect(() => {
     if (!sessionUserId || !role) return
     const subscription = AppState.addEventListener('change', (next) => {
@@ -990,6 +999,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }
   }, [role, sessionUserId, workerRefresh])
 
+  // Realtime surfaces incoming broadcasts quickly; polling remains the fallback
+  // and RLS scopes the channel to this worker's own rows.
   useEffect(() => {
     if (!sessionUserId || (role !== 'worker' && role !== 'admin')) return
     const handle = subscribeToWorkerBroadcasts(sessionUserId, () => {
@@ -1000,6 +1011,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }
   }, [role, sessionUserId])
 
+  // On customer login/cold start, hydrate the active job once; polling keeps it
+  // fresh while the deal remains active.
   useEffect(() => {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
     if (isAppForeground()) void hydrateCustomerActiveJob()
@@ -1026,6 +1039,8 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     !(customerStatus === 'broadcasting' && customerBroadcast?.status === 'expired') &&
     ACTIVE_TIMELINE_STATUSES.includes(customerStatus ?? '')
 
+  // Live customer timeline subscribes only while the job is active; polling is
+  // the dropped-socket fallback and the latest-callback ref avoids churn.
   useEffect(() => {
     if (!customerTimelineActive || !remoteJobId) return
     const handle = subscribeToJobStatus(remoteJobId, () => {
@@ -1039,6 +1054,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   useEffect(() => {
     if (!customerTimelineActive) return
 
+    // Realtime above is the fast path; this fallback only matters if the socket is down.
     const interval = setInterval(() => {
       if (isAppForeground()) void refreshCurrentJob()
     }, 30_000)

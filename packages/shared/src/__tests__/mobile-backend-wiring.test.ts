@@ -1,9 +1,54 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import { resolve } from 'path'
 
-const MOBILE_ROOT = resolve(__dirname, '../../../../apps/mobile')
-const read = (rel: string) => readFileSync(resolve(MOBILE_ROOT, rel), 'utf-8')
+const ROOT = resolve(__dirname, '../../../../')
+const MOBILE_ROOT = resolve(ROOT, 'apps/mobile')
+const EDGE_SHARED_ROOT = resolve(ROOT, 'supabase/functions/mobile-api/_shared')
+const read = (rel: string) => readFileSync(resolve(MOBILE_ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
+const readRoot = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
+const readEdgeShared = (rel: string) => readFileSync(resolve(EDGE_SHARED_ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
+
+// The Edge service layer is the services.ts factory plus the per-domain modules under
+// services/, so source-string assertions read the whole concatenated layer — otherwise a grep
+// silently misses code that moved into a module.
+const listEdgeServiceFiles = (relDir: string): string[] =>
+  readdirSync(resolve(EDGE_SHARED_ROOT, relDir), { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? listEdgeServiceFiles(`${relDir}/${entry.name}`) : [`${relDir}/${entry.name}`],
+  )
+const readEdgeServiceLayer = () =>
+  [
+    readEdgeShared('services.ts'),
+    ...listEdgeServiceFiles('services')
+      .filter((p) => p.endsWith('.ts'))
+      .sort()
+      .map(readEdgeShared),
+  ].join('\n')
+
+// The worker surface layer is worker-surfaces.tsx plus the modules split out of it (constants,
+// styles, ...), so source-string assertions read the whole concatenated layer (C4 staged split).
+const listMobileFiles = (relDir: string): string[] =>
+  readdirSync(resolve(MOBILE_ROOT, relDir), { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? listMobileFiles(`${relDir}/${entry.name}`) : [`${relDir}/${entry.name}`],
+  )
+const readWorkerSurfaceLayer = () =>
+  listMobileFiles('components/worker')
+    .filter((p) => /\.tsx?$/.test(p) && !p.replace(/\\/g, '/').includes('/__tests__/'))
+    .sort()
+    .map(read)
+    .join('\n')
+
+// The customer surface layer is customer-surfaces.tsx plus its split modules under
+// components/customer/surfaces/ (NOT the unrelated customer siblings) — C4 split.
+const readCustomerSurfaceLayer = () =>
+  [
+    read('components/customer/customer-surfaces.tsx'),
+    ...readdirSync(resolve(MOBILE_ROOT, 'components/customer/surfaces'), { withFileTypes: true })
+      .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
+      .map((entry) => `components/customer/surfaces/${entry.name}`)
+      .sort()
+      .map(read),
+  ].join('\n')
 
 describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('keeps mobile service paths on the Edge function contract, not Next /api routes', () => {
@@ -62,6 +107,52 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(api).not.toContain('await response.json()')
   })
 
+  it('uses bounded retries for transient mobile-api failures only', () => {
+    const api = read('lib/api.ts')
+
+    expect(api).toContain('const MAX_RETRIES = 2')
+    expect(api).toContain('const BASE_RETRY_DELAY_MS = 500')
+    expect(api).toContain('for (let attempt = 0; attempt <= MAX_RETRIES; attempt++)')
+    expect(api).toContain('const retryBudget = isRetrySafeRequest(method, path) ? MAX_RETRIES : 0')
+    expect(api).toContain('shouldRetryResponse(response.status)')
+    expect(api).toContain('shouldRetryError(err)')
+    expect(api).toContain('await waitForRetry(method, path, attempt,')
+    expect(api).toContain('function isRetrySafeRequest(method: string, path: string)')
+    expect(api).toContain('function shouldRetryResponse(status: number)')
+    expect(api).toContain('return status === 408 || status === 425 || status === 429 || status >= 500')
+    expect(api).toContain('function shouldRetryError(err: unknown)')
+    expect(api).not.toContain('status >= 400')
+  })
+
+  it('applies learned Kael price and complexity rules inside the deployed Edge runtime', () => {
+    const edgeKael = readRoot('supabase/functions/mobile-api/_shared/kael.ts')
+    const edgeKaelTypes = readRoot('supabase/functions/mobile-api/_shared/kael/types.ts')
+    const edgeKaelLearning = readRoot('supabase/functions/mobile-api/_shared/kael/learning.ts')
+    const edgeKaelPipeline = readRoot('supabase/functions/mobile-api/_shared/kael/pipeline.ts')
+    const edgeEnv = readRoot('supabase/functions/mobile-api/_shared/env.ts')
+
+    expect(edgeEnv).toContain('learningEnabled')
+    expect(edgeEnv).toContain('LEARNING_ENABLED')
+    expect(edgeEnv).toContain('VIETMAP_API_KEY')
+    expect(edgeEnv).toContain('getEnv("GOOGLE_MAPS_API_KEY") ?? getEnv("GOOGLE_MAP_KEY")')
+
+    expect(edgeKael).toContain('export * from "./kael/index.ts"')
+    expect(edgeKaelTypes).toContain('vietmapApiKey?: string')
+    expect(edgeKaelTypes).toContain('learningEnabled?: boolean')
+    expect(edgeKaelLearning).toContain('function applyLearnedComplexityRule')
+    expect(edgeKaelLearning).toContain('function applyLearnedPriceRule')
+    expect(edgeKaelLearning).toContain('.from("learning_rules")')
+    expect(edgeKaelLearning).toContain('.eq("rule_type", "analysis_rule")')
+    expect(edgeKaelLearning).toContain('.eq("rule_type", "price_prior_update")')
+    expect(edgeKaelPipeline).toContain('const learnedComplexity = await applyLearnedComplexityRule')
+    expect(edgeKaelPipeline).toContain('const effectiveComplexity = learnedComplexity?.newComplexity ??')
+    // Learned price is clamped against the baseline band before it feeds price synthesis.
+    expect(edgeKaelLearning).toContain('export function clampLearnedPriceToBaseline')
+    expect(edgeKaelPipeline).toContain('clampLearnedPriceToBaseline(')
+    expect(edgeKaelPipeline).toContain('await applyLearnedPriceRule(')
+    expect(edgeKaelPipeline).toContain('baselineMin: learnedPrice?.priceMin ?? baselineResult.priceMin')
+  })
+
   it('keeps mobile config publishable-only and away from hosted Next fallbacks', () => {
     const appConfig = read('app.config.ts')
     const api = read('lib/api.ts')
@@ -94,8 +185,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('keeps UI components behind the workflow provider instead of direct backend calls', () => {
     const provider = read('lib/frontend-workflow-provider.tsx')
     const bookingRoute = read('app/(customer)/booking.tsx')
-    const customer = read('components/customer/customer-surfaces.tsx')
-    const worker = read('components/worker/worker-surfaces.tsx')
+    const customer = readCustomerSurfaceLayer()
+    const worker = readWorkerSurfaceLayer()
 
     expect(provider).toContain('createRemoteJobFromDraft')
     expect(provider).toContain('confirmRemoteSearch')
@@ -119,19 +210,20 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
 
     for (const ui of [bookingRoute, customer, worker]) {
       expect(ui).not.toContain('fetch(')
-      expect(ui).not.toContain('jobService.')
+      // Chat surfaces can call jobService list/send directly because chat is dispute
+      // evidence; workflow writes still flow through actions.*.
+      expect(ui).not.toMatch(/jobService\.(?!listMessages|sendMessage|attachJobMedia|createJob|requestScopeChange|confirmSearch|updateStatus)/)
       expect(ui).not.toContain('workerService.')
       expect(ui).not.toContain('supabase.')
     }
 
     expect(bookingRoute).toContain('CustomerBookingEntrySurface')
     expect(bookingRoute).not.toContain('ClientPriceCheckFlow')
-    expect(customer).toContain('push(kaelChatPath(serviceType))')
-    expect(customer).not.toContain("dispatch({ type: 'retry_customer_search' })")
-    expect(customer).not.toContain("dispatch({ type: 'finish_local_analysis' })")
-    expect(customer).toContain('actions.customerConfirmCompletion')
+    // Inline customer scope-change decide buttons stay removed; the hard-stop modal
+    // owns the decision callsite.
+    expect(customer).not.toContain('customer-scope-change-decision')
+    expect(customer).not.toContain('actions.customerConfirmCompletion')
     expect(customer).toContain('actions.decideScopeChange')
-    expect(customer).toContain('customer-scope-change-decision')
     expect(worker).toContain('actions.workerAcceptBroadcast')
     expect(worker).toContain('actions.workerDeclineBroadcast')
     expect(worker).toContain('actions.workerUpdateStatus')
@@ -150,19 +242,26 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(mediaUpload).not.toContain("from('worker-verification').getPublicUrl")
   })
 
-  it('carries active scope-change details from job detail into customer decision UI', () => {
+  it('carries active scope-change details from job detail into Kael decision UI', () => {
     const apiTypes = read('lib/api-types.ts')
     const provider = read('lib/frontend-workflow-provider.tsx')
-    const customer = read('components/customer/customer-surfaces.tsx')
-    const worker = read('components/worker/worker-surfaces.tsx')
+    const customer = readCustomerSurfaceLayer()
+    const worker = readWorkerSurfaceLayer()
 
     expect(apiTypes).toContain('current_scope_change')
+    expect(apiTypes).toContain('kael_computed_min')
+    expect(apiTypes).toContain('kael_computed_max')
+    expect(apiTypes).toContain('evidence_photo_urls')
     expect(provider).toContain('scopeChangeFromJobDetail')
     expect(provider).toContain('data.current_scope_change')
-    expect(customer).toContain('scopeChange.requestedDescription ?? copy.history.needsConfirm')
-    expect(customer).toContain("actions.decideScopeChange(scopeChange.id, { decision })")
-    expect(worker).toContain('new_price_min: price')
-    expect(worker).toContain('new_price_max: price')
+    expect(provider).toContain('evidencePhotoUrls: scope.evidence_photo_urls')
+    expect(customer).toContain('scopeChange.requestedDescription ?? copy.history.kaelReviewing')
+    // The hard-stop modal owns the decision callsite, and workers no longer submit
+    // scope-change prices because Kael computes them server-side.
+    expect(customer).toContain("actions.decideScopeChange(scopeChange.id, { decision: 'approve' })")
+    expect(worker).not.toContain('new_price_min')
+    expect(worker).not.toContain('new_price_max')
+    expect(worker).toContain('scopeReasonDraft')
   })
 
   it('polls remote workflow state without overwriting explicit no-worker fallback', () => {
@@ -171,8 +270,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain('if (isAppForeground()) void workerRefresh()')
     expect(provider).toContain('if (isAppForeground()) void refreshCurrentJob()')
     expect(provider).toContain('AppState.currentState')
-    expect(provider).toContain('const customerBroadcastStatus = customerBroadcast?.status')
-    expect(provider).toContain("customerBroadcastStatus === 'expired'")
+    expect(provider).toContain("customerBroadcast?.status === 'expired'")
     expect(provider).toContain("broadcastState?.active_count === 0")
     expect(provider).toContain('const currentJobId = getRemoteJobId(stateRef.current)')
     expect(provider).toContain('jobs.data.jobs.find((job) => job.id === currentJobId)')
@@ -189,11 +287,38 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(operationalStatusSet).not.toContain("'paid'")
   })
 
+  it('keeps customer active hydration alive through completion and payment gates without treating paid jobs as active', () => {
+    const services = readEdgeServiceLayer()
+    const customerActiveStatusSet = services.match(/CUSTOMER_ACTIVE_JOB_STATUSES: JobStatus\[] = \[([\s\S]*?)\]/)?.[1] ?? ''
+
+    expect(customerActiveStatusSet).toContain('"completed_by_worker"')
+    expect(customerActiveStatusSet).toContain('"confirmed_by_customer"')
+    expect(customerActiveStatusSet).toContain('"payment_pending"')
+    expect(customerActiveStatusSet).not.toContain('"paid"')
+    expect(customerActiveStatusSet).not.toContain('"reviewed"')
+    expect(customerActiveStatusSet).not.toContain('"cancelled"')
+  })
+
+  it('nudges the customer to authorize unit access when the worker checks in (X-2)', () => {
+    const services = readEdgeServiceLayer()
+
+    // Helper exists and carries the actionable "Cho thợ lên" copy + its own event type.
+    expect(services).toContain('async function notifyCustomerWorkerCheckedIn(')
+    expect(services).toContain('worker_checked_in_awaiting_authorization')
+    expect(services).toContain('Cho thợ lên')
+
+    // Invoked from the worker status-update path, gated on the lobby check-in release
+    // stage (not on every status change), so the customer is prompted only when an
+    // authorize action is actually pending.
+    expect(services).toContain('notifyCustomerWorkerCheckedIn(\n      client')
+    expect(services).toContain('checked_in_awaiting_customer_authorization')
+  })
+
   it('keeps visible mobile copy away from backend and server implementation language', () => {
     const visibleSources = [
       read('app/(customer)/booking.tsx'),
       read('components/customer/customer-surfaces.tsx'),
-      read('components/worker/worker-surfaces.tsx'),
+      readWorkerSurfaceLayer(),
       read('lib/api.ts'),
       read('lib/frontend-workflow-provider.tsx'),
     ].join('\n')

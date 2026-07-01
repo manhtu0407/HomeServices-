@@ -204,17 +204,18 @@ describe('mobile local workflow state machine', () => {
     expect(selectLocalWorkflow(corrected).draftValidationMessage).toBeNull()
   })
 
-  it('moves booking to customer confirmation with remote estimate placeholder and now-only schedule', () => {
+  it('moves booking to a local broadcast with remote estimate placeholder and now-only schedule', () => {
     const state = reduce(validBookingActions)
     const selectors = selectLocalWorkflow(state)
 
-    expect(state.deal?.status).toBe('awaiting_customer_confirm')
+    expect(state.deal?.status).toBe('broadcasting')
+    expect(state.deal?.broadcast?.status).toBe('sent')
     expect(state.deal?.draft.timeChoice).toBe('now')
     expect(state.deal?.estimate?.priceRangeLabel).toBe('Chờ Kael ước tính')
     expect(state.deal?.estimate?.hasVndPrice).toBe(false)
-    expect(state.deal?.estimate?.disclaimer).toBe('Đây là ước tính dựa trên thị trường. Giá thực tế sẽ được xác nhận bởi thợ trước khi bắt đầu.')
+    expect(state.deal?.estimate?.disclaimer).toContain('Kael')
     expect(selectors.scheduleMode).toBe('now_only')
-    expect(selectors.canConfirmCustomerSearch).toBe(true)
+    expect(selectors.canConfirmCustomerSearch).toBe(false)
   })
 
   it('blocks analysis when a booking has no explicit problem chip', () => {
@@ -271,7 +272,7 @@ describe('mobile local workflow state machine', () => {
     const attempted = localWorkflowReducer(withoutEstimate, { type: 'confirm_customer_search' })
 
     expect(selectLocalWorkflow(withoutEstimate).canConfirmCustomerSearch).toBe(false)
-    expect(attempted.deal?.status).toBe('awaiting_customer_confirm')
+    expect(attempted.deal?.status).toBe('broadcasting')
     expect(attempted.lastError).toContain('ước tính')
   })
 
@@ -375,7 +376,7 @@ describe('mobile local workflow state machine', () => {
       { type: 'worker_complete_job' },
     ])
     expect(completed.deal?.status).toBe('completed_by_worker')
-    expect(selectLocalWorkflow(completed).canCustomerConfirmCompletion).toBe(true)
+    expect(selectLocalWorkflow(completed).canCustomerConfirmCompletion).toBe(false)
 
     const confirmed = localWorkflowReducer(completed, { type: 'customer_confirm_completion' })
     const selectors = selectLocalWorkflow(confirmed)
@@ -479,6 +480,8 @@ describe('mobile local workflow state machine', () => {
           priceMin: 250000,
           priceMax: 250000,
           kaelReview: null,
+          kaelProgress: null,
+          evidencePhotoUrls: [],
           createdAt: '2026-05-17T00:00:00.000Z',
         },
         finalPrice: null,
@@ -668,15 +671,15 @@ describe('mobile local workflow state machine', () => {
     expect(selectors.canCustomerCancelDeal).toBe(false)
   })
 
-  it('blocks customer cancellation after worker accepts because policy is a later backend phase', () => {
+  it('cancels a local workflow after worker accepts while expiring worker address access', () => {
     const accepted = reduce([...validBookingActions, { type: 'confirm_customer_search' }, { type: 'worker_accept_broadcast' }])
     const attempted = localWorkflowReducer(accepted, { type: 'cancel_deal' })
     const selectors = selectLocalWorkflow(attempted)
 
-    expect(attempted.deal?.status).toBe('worker_matched')
-    expect(attempted.deal?.broadcast?.status).toBe('accepted')
-    expect(attempted.lastError).toContain('Không thể hủy')
-    expect(selectors.canWorkerSeeFullAddress).toBe(true)
+    expect(attempted.deal?.status).toBe('cancelled')
+    expect(attempted.deal?.broadcast?.status).toBe('expired')
+    expect(attempted.lastError).toBeNull()
+    expect(selectors.canWorkerSeeFullAddress).toBe(false)
     expect(selectors.canCustomerCancelDeal).toBe(false)
   })
 
@@ -692,7 +695,7 @@ describe('mobile local workflow state machine', () => {
     expect(selectors.canCustomerCancelDeal).toBe(false)
   })
 
-  it('blocks cancellation after the worker has arrived or completed work', () => {
+  it('cancels active local work before completion and blocks cancellation after customer confirmation', () => {
     const arrived = reduce([
       ...validBookingActions,
       { type: 'confirm_customer_search' },
@@ -702,8 +705,8 @@ describe('mobile local workflow state machine', () => {
     ])
     const attemptedAfterArrival = localWorkflowReducer(arrived, { type: 'cancel_deal' })
 
-    expect(attemptedAfterArrival.deal?.status).toBe('arrived')
-    expect(attemptedAfterArrival.lastError).toContain('Không thể hủy')
+    expect(attemptedAfterArrival.deal?.status).toBe('cancelled')
+    expect(attemptedAfterArrival.lastError).toBeNull()
     expect(selectLocalWorkflow(attemptedAfterArrival).canCustomerCancelDeal).toBe(false)
 
     const completed = reduce([
@@ -723,7 +726,7 @@ describe('mobile local workflow state machine', () => {
     expect(attemptedAfterConfirm.lastError).toContain('Không thể hủy')
   })
 
-  it('allows a clean new home service draft after customer confirmation', () => {
+  it('blocks a clean new home service draft until the confirmed workflow is closed', () => {
     const completed = reduce([
       ...validBookingActions,
       { type: 'confirm_customer_search' },
@@ -737,10 +740,8 @@ describe('mobile local workflow state machine', () => {
     ])
     const next = localWorkflowReducer(completed, { type: 'start_home_service', serviceType: 'electrical' })
 
-    expect(next.deal?.status).toBe('draft')
-    expect(next.deal?.draft.serviceType).toBe('electrical')
-    expect(next.deal?.draft.problemChips).toEqual([])
-    expect(next.deal?.broadcast).toBeNull()
+    expect(next.deal?.status).toBe('confirmed_by_customer')
+    expect(next.lastError).toContain('yêu cầu')
     expect(next.workerGate).toBe('backend_pending')
   })
 

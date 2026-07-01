@@ -21,6 +21,7 @@ import {
   type PendingClientRequestId,
 } from '@/lib/client-request-id'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
+import { KaelChatSurface as CustomerV21KaelChatSurface } from '../v21/surfaces'
 import { inferKaelChatDistrict } from './address-district'
 import {
   KaelChatComposer,
@@ -42,6 +43,8 @@ import { takePendingKaelChatDraft } from './pending-intake'
 import { createInitialKaelChatState, kaelChatReducer, type KaelChatAction, type KaelChatState } from './state'
 import { styles } from './styles'
 import { KaelChatThread, type KaelChatVisibility } from './thread'
+
+export { CustomerV21KaelChatSurface as KaelChatSurface }
 
 const KAEL_CHAT_STACK_SCREEN_CONTRACT = 'KAEL_CHAT_STACK_SCREEN_CONTRACT: stack route uses kaelChatService only'
 const KAEL_CHAT_SERVICE_WRAPPER_ONLY = 'KAEL_CHAT_SERVICE_WRAPPER_ONLY: UI does not call Supabase, fetch, or AI directly'
@@ -373,11 +376,9 @@ function usePendingIntakeSession({
   }, [addressDistrict, addressDistrictRef, addressLabel, dispatch, language, pendingChatCreateClientRequestRef, pendingIntake, pendingIntakeRetryNonce, pendingIntakeSentRef, routeSessionId, selectedService, session, text.errorNoService, text.errorUnknown])
 }
 
-// §32.3 first-turn perceived-perf (§32.14 Step 4): the create turn has no session id
-// until the response lands, so the live poll/SSE never runs and turn 1 ends with an
-// empty stage trace. Fetch the terminal progress snapshot once the session id exists so
-// the real post-turn stepper + "Thought for {n}s" disclosure appear from the very first
-// turn. progressCleared keeps the live stepper from re-opening after the turn is done.
+// The create turn has no session id until the response lands, so live progress cannot
+// attach yet. Fetch one terminal progress snapshot once the session id exists, then
+// clear it so the live stepper does not re-open after the turn is done.
 function fetchFirstTurnProgress(sessionId: string, dispatch: Dispatch<KaelChatAction>) {
   void kaelChatProgressService
     .get(sessionId)
@@ -431,7 +432,7 @@ function isTerminalKaelProgress(progress: KaelChatProgress | null) {
   return progress.status === 'failed' && progress.progress >= 1
 }
 
-export function KaelChatSurface() {
+export function LegacyKaelChatSurface() {
   const { replace } = useRouter()
   const params = useLocalSearchParams()
   const language = useAppLanguage()
@@ -619,6 +620,8 @@ export function KaelChatSurface() {
           message: trimmed,
           problem_chips: [],
           photo_urls: [],
+          // Reuse the same request key so retries attach to the existing
+          // session instead of creating duplicates.
           client_request_id: stableClientRequestId(
             pendingChatCreateClientRequestRef,
             requestFingerprint,
