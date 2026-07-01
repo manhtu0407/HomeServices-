@@ -44,7 +44,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Security guardrail tests
         run: >
-          pnpm --filter @home-services/api exec vitest run
+          pnpm --filter @nestscout/api exec vitest run
           foundation
           route-security
           mobile-api-s2-learning-candidate-authz
