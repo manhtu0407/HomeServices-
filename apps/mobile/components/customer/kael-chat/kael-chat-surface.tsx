@@ -619,8 +619,6 @@ export function KaelChatSurface() {
           message: trimmed,
           problem_chips: [],
           photo_urls: [],
-          // X2 (Plan.md §27.5 — 2026-05-29): idempotent first-turn POST.
-          // Reuses existing session if a retry happens.
           client_request_id: stableClientRequestId(
             pendingChatCreateClientRequestRef,
             requestFingerprint,

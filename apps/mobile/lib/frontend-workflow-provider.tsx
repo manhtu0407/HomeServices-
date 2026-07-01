@@ -174,9 +174,6 @@ const initialCustomerProfileInsightsState: CustomerProfileInsightsState = {
 
 const FrontendWorkflowContext = createContext<FrontendWorkflowContextValue | null>(null)
 const isAppForeground = () => AppState.currentState === 'active'
-// Statuses during which the customer wants a live timeline (worker en route,
-// on-site, working, scope/completion review). Shared by the realtime
-// subscription (B-1) and the reduced-interval poll fallback.
 const ACTIVE_TIMELINE_STATUSES = [
   'broadcasting',
   'worker_matched',
@@ -373,10 +370,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     return hydrateJobResult(await jobService.getJob(jobId))
   }, [hydrateJobResult, setRemoteError])
 
-  // X4 (Plan.md §27.7 — 2026-05-29): F-17 — hydrate the customer's active job
-  // from the backend on cold start / refresh so a broadcasting/active deal is
-  // not silently lost (backend is the source of truth). Skips silently on
-  // failure or empty (no noisy error banner during normal "no active job").
   const hydrateCustomerActiveJob = useCallback(async () => {
     if (getRemoteJobId(stateRef.current)) return true
     const result = await jobService.listMyActiveJob()
@@ -405,9 +398,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       photo_urls: [],
       address_building: draft.addressLabel.trim() || undefined,
       address_district: districtLabel,
-      // X2 (Plan.md §27.5 — 2026-05-29): one UUID per submit handler.
-      // Re-renders / retries reuse the same key so the Edge returns the
-      // existing job instead of creating duplicates.
       client_request_id: stableClientRequestId(
         pendingJobCreateClientRequestRef,
         requestFingerprint,
@@ -961,11 +951,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }
   }, [refreshCurrentJob, workerRefresh, refreshNotifications, hydrateCustomerActiveJob])
 
-  // B-5 (Notes.md): refresh immediately when the app returns to foreground.
-  // Every poll below is gated on isAppForeground(), so without this the UI can
-  // show a stale timeline/notification for up to a full interval after reopen.
-  // The realtime channels also reconnect on their own; this just closes the gap
-  // before their next event. One-shot per role, via the latest-callback ref.
   useEffect(() => {
     if (!sessionUserId || !role) return
     const subscription = AppState.addEventListener('change', (next) => {
@@ -1005,10 +990,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }
   }, [role, sessionUserId, workerRefresh])
 
-  // B-2 (Notes.md): surface incoming broadcasts in realtime so an available
-  // worker is not blind for up to 20s of a 60s accept window. The 20s poll above
-  // stays as a fallback (it also reconciles accepted-job state, not just
-  // broadcasts). RLS scopes the channel to this worker's own rows.
   useEffect(() => {
     if (!sessionUserId || (role !== 'worker' && role !== 'admin')) return
     const handle = subscribeToWorkerBroadcasts(sessionUserId, () => {
@@ -1019,9 +1000,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     }
   }, [role, sessionUserId])
 
-  // X4 (Plan.md §27.7 — 2026-05-29): F-17 — on customer login / cold start,
-  // hydrate any active job from the backend once. The polling effect below
-  // then keeps it fresh while the deal is active.
   useEffect(() => {
     if (!sessionUserId || (role !== 'customer' && role !== 'admin')) return
     if (isAppForeground()) void hydrateCustomerActiveJob()
@@ -1048,11 +1026,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     !(customerStatus === 'broadcasting' && customerBroadcast?.status === 'expired') &&
     ACTIVE_TIMELINE_STATUSES.includes(customerStatus ?? '')
 
-  // B-1 (Notes.md): live customer timeline via realtime. Subscribes once when
-  // the job becomes active and tears down once when it leaves the active phase
-  // (keyed on the boolean, not on every intra-active status transition). The
-  // poll below is now only a dropped-socket fallback. refreshCurrentJob via the
-  // latest-callback ref so this channel never churns on callback identity.
   useEffect(() => {
     if (!customerTimelineActive || !remoteJobId) return
     const handle = subscribeToJobStatus(remoteJobId, () => {
@@ -1066,8 +1039,6 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   useEffect(() => {
     if (!customerTimelineActive) return
 
-    // Fallback poll (B-1): realtime above is the fast path, so this dropped to
-    // 30s from 15s — it only matters if the socket is down.
     const interval = setInterval(() => {
       if (isAppForeground()) void refreshCurrentJob()
     }, 30_000)
