@@ -48,10 +48,8 @@ tmp-*.log
 
 # env files
 .env*
-!.env.example
-
-# vercel
-.vercel
+!config/env/workspace.env.example
+!apps/mobile/.env.example
 
 # typescript
 *.tsbuildinfo

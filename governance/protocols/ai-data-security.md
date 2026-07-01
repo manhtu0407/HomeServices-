@@ -155,7 +155,7 @@ Use for any task involving secrets, PII, auth, logging, payment, booking, AI API
 
 1. Check secrets are server-side only.
 2. Check no secrets in code, client bundle, logs, or git-tracked examples.
-3. Check `.env.example` has names only, no values.
+3. Check `config/env/workspace.env.example` has names only, no values.
 4. Check new secrets are added to env validation and deployment config.
 5. Classify PII.
 6. Ensure logs use IDs and metadata only.

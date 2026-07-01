@@ -21,7 +21,7 @@ const ROOTS = ['apps', 'packages', 'supabase/functions']
 const EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.next', '.expo',
-  'coverage', '.turbo', '.vercel', 'ios', 'android',
+  'coverage', '.turbo', 'ios', 'android',
 ])
 
 // High-signal patterns for EPHEMERAL changelog noise. Tested against extracted
