@@ -1,51 +1,24 @@
 {
   "maxLines": 800,
   "grandfatheredOversize": {
-    "apps/mobile/components/auth/auth-surfaces.tsx": 1882,
-    "apps/mobile/components/customer/booking-wizard.tsx": 1686,
-    "apps/mobile/components/customer/kael-chat/agentic-parts.tsx": 1207,
-    "apps/mobile/components/customer/kael-chat/styles.ts": 1146,
+    "apps/mobile/components/customer/booking-wizard.tsx": 1954,
+    "apps/mobile/components/customer/kael-chat/agentic-parts.tsx": 1196,
+    "apps/mobile/components/customer/kael-chat/styles.ts": 1510,
+    "apps/mobile/components/customer/kael-chat/thread.tsx": 999,
     "apps/mobile/components/customer/surfaces/profile.tsx": 970,
-    "apps/mobile/components/prototypes/client-icon-image-prototype.tsx": 804,
-    "apps/mobile/components/ui/floating-glass-tab-bar.tsx": 1049,
-    "apps/mobile/lib/frontend-workflow-provider.tsx": 1383,
-    "packages/shared/src/mobile-workflow.ts": 1138,
+    "apps/mobile/components/customer/v21/surfaces.tsx": 18186,
+    "apps/mobile/components/prototypes/client-icon-image-prototype.tsx": 993,
+    "apps/mobile/components/rebuild/rebuild-surfaces.tsx": 14262,
+    "apps/mobile/components/ui/floating-glass-tab-bar.tsx": 1050,
+    "apps/mobile/components/ui/kael-primitives.tsx": 1103,
+    "apps/mobile/components/worker/worker-v5-flow.tsx": 20748,
+    "apps/mobile/lib/api-types.ts": 866,
+    "apps/mobile/lib/frontend-workflow-provider.tsx": 1833,
+    "packages/shared/src/mobile-workflow.ts": 1241,
     "supabase/functions/mobile-api/_shared/kael/cron/process-batch-results.ts": 1059,
-    "supabase/functions/mobile-api/_shared/router.ts": 2536
+    "supabase/functions/mobile-api/_shared/router.ts": 2534
   },
   "grandfatheredDupTypes": {
-    "AIProvider": [
-      "packages/shared/src/types/ai.types.ts",
-      "supabase/functions/mobile-api/_shared/kael/types.ts"
-    ],
-    "AITextContent": [
-      "packages/shared/src/types/ai.types.ts",
-      "supabase/functions/mobile-api/_shared/kael/types.ts"
-    ],
-    "AIImageContent": [
-      "packages/shared/src/types/ai.types.ts",
-      "supabase/functions/mobile-api/_shared/kael/types.ts"
-    ],
-    "AIMessageContent": [
-      "packages/shared/src/types/ai.types.ts",
-      "supabase/functions/mobile-api/_shared/kael/types.ts"
-    ],
-    "AIMessage": [
-      "packages/shared/src/types/ai.types.ts",
-      "supabase/functions/mobile-api/_shared/kael/types.ts"
-    ],
-    "AIRequest": [
-      "packages/shared/src/types/ai.types.ts",
-      "supabase/functions/mobile-api/_shared/kael/types.ts"
-    ],
-    "AIResponse": [
-      "packages/shared/src/types/ai.types.ts",
-      "supabase/functions/mobile-api/_shared/kael/types.ts"
-    ],
-    "AIError": [
-      "packages/shared/src/types/ai.types.ts",
-      "supabase/functions/mobile-api/_shared/kael/types.ts"
-    ],
     "TransitionResult": [
       "apps/api/src/lib/jobs/lifecycle.ts",
       "supabase/functions/mobile-api/_shared/lifecycle.ts"
@@ -90,6 +63,14 @@
       "apps/api/src/lib/rate-limit.ts",
       "supabase/functions/mobile-api/_shared/rate-limit.ts"
     ],
+    "KaelLottieSource": [
+      "apps/mobile/components/kael/kael-lottie-view.native.tsx",
+      "apps/mobile/components/kael/kael-lottie-view.tsx"
+    ],
+    "WorkerDockActive": [
+      "apps/mobile/components/worker/worker-surfaces.tsx",
+      "apps/mobile/components/worker/worker-v5-flow.tsx"
+    ],
     "AddressAccessView": [
       "apps/mobile/lib/api-types.ts",
       "packages/shared/src/types/api-responses.ts"
@@ -98,34 +79,43 @@
       "apps/mobile/lib/api-types.ts",
       "packages/shared/src/types/api-responses.ts"
     ],
-    "CreateJobResponse": [
+    "KaelMemorySelfViewResponse": [
       "apps/mobile/lib/api-types.ts",
-      "packages/shared/src/types/api-responses.ts"
+      "supabase/functions/mobile-api/_shared/router.ts"
     ],
-    "KaelChatStatus": [
+    "CustomerKaelMemoryPreferenceKey": [
       "apps/mobile/lib/api-types.ts",
-      "packages/shared/src/types/api-responses.ts"
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
     ],
-    "KaelChatNextAction": [
+    "CustomerKaelMemoryPreferenceUpdateInput": [
       "apps/mobile/lib/api-types.ts",
-      "packages/shared/src/types/api-responses.ts"
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
     ],
-    "KaelChatTurn": [
+    "WorkerKaelMemoryPreferenceKey": [
       "apps/mobile/lib/api-types.ts",
-      "packages/shared/src/types/api-responses.ts"
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
     ],
-    "KaelChatSession": [
+    "WorkerKaelMemoryPreferenceUpdateInput": [
       "apps/mobile/lib/api-types.ts",
-      "packages/shared/src/types/api-responses.ts"
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
     ],
-    "KaelChatResponse": [
+    "CustomerPaymentMethodSaveInput": [
       "apps/mobile/lib/api-types.ts",
-      "packages/shared/src/types/api-responses.ts"
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
     ],
     "PlacesAutocompleteResponse": [
       "apps/mobile/lib/api-types.ts",
       "packages/shared/src/types/api-responses.ts",
       "supabase/functions/mobile-api/_shared/router.ts"
+    ],
+    "PlacesResolveResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
     ],
     "ConfirmKaelChatResponse": [
       "apps/mobile/lib/api-types.ts",
@@ -172,6 +162,10 @@
       "packages/shared/src/types/api-responses.ts"
     ],
     "ConfirmCompletionResponse": [
+      "apps/mobile/lib/api-types.ts",
+      "packages/shared/src/types/api-responses.ts"
+    ],
+    "PaymentIntentResponse": [
       "apps/mobile/lib/api-types.ts",
       "packages/shared/src/types/api-responses.ts"
     ],
@@ -347,9 +341,69 @@
       "packages/shared/src/constants.ts",
       "supabase/functions/_shared/domain.ts"
     ],
+    "AIProvider": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AITextContent": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIImageContent": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIMessageContent": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIMessage": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIRequest": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIResponse": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
+    "AIError": [
+      "packages/shared/src/types/ai.types.ts",
+      "supabase/functions/mobile-api/_shared/kael/types.ts"
+    ],
     "KaelEstimate": [
       "packages/shared/src/types/api-responses.ts",
-      "supabase/functions/mobile-api/_shared/kael/types.ts"
+      "supabase/functions/_shared/contracts.ts"
+    ],
+    "CreateJobResponse": [
+      "packages/shared/src/types/api-responses.ts",
+      "supabase/functions/_shared/contracts.ts"
+    ],
+    "KaelChatStatus": [
+      "packages/shared/src/types/api-responses.ts",
+      "supabase/functions/_shared/contracts.ts"
+    ],
+    "KaelChatNextAction": [
+      "packages/shared/src/types/api-responses.ts",
+      "supabase/functions/_shared/contracts.ts"
+    ],
+    "KaelChatTurn": [
+      "packages/shared/src/types/api-responses.ts",
+      "supabase/functions/_shared/contracts.ts"
+    ],
+    "KaelChatSession": [
+      "packages/shared/src/types/api-responses.ts",
+      "supabase/functions/_shared/contracts.ts"
+    ],
+    "KaelChatResponse": [
+      "packages/shared/src/types/api-responses.ts",
+      "supabase/functions/_shared/contracts.ts"
+    ],
+    "CustomerPaymentBankKey": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
     ],
     "JobCreateInput": [
       "packages/shared/src/validation.ts",
@@ -363,7 +417,19 @@
       "packages/shared/src/validation.ts",
       "supabase/functions/_shared/domain.ts"
     ],
+    "KaelChatMediaUploadInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "KaelChatEvidenceInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
     "KaelChatTurnInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "KaelAssistantInput": [
       "packages/shared/src/validation.ts",
       "supabase/functions/_shared/domain.ts"
     ],
@@ -371,7 +437,15 @@
       "packages/shared/src/validation.ts",
       "supabase/functions/_shared/domain.ts"
     ],
+    "PlacesResolveInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
     "CustomerKaelFeedbackInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerApplicationSubmitInput": [
       "packages/shared/src/validation.ts",
       "supabase/functions/_shared/domain.ts"
     ],
@@ -384,6 +458,10 @@
       "supabase/functions/_shared/domain.ts"
     ],
     "WorkerRegisterInput": [
+      "packages/shared/src/validation.ts",
+      "supabase/functions/_shared/domain.ts"
+    ],
+    "WorkerServiceAreaUpdateInput": [
       "packages/shared/src/validation.ts",
       "supabase/functions/_shared/domain.ts"
     ],

@@ -1,6 +1,6 @@
 ---
 name: react-doctor
-description: Run or triage React Doctor diagnostics in the NestScout repo. Use when the user asks for React Doctor, `/doctor`, a changed React scan, a full React health scan, or cleanup based on React Doctor findings. Uses the project-local runner, not npx, so Claude Code agents can invoke it directly in this Windows/Codex workspace.
+description: Run or triage React Doctor diagnostics in the NestScout repo. Use when the user asks for React Doctor, `/doctor`, a changed React scan, a full React health scan, or cleanup based on React Doctor findings. Uses the project-local runner, not npx, so local agents can invoke it directly in this Windows/Codex workspace.
 ---
 
 # React Doctor
