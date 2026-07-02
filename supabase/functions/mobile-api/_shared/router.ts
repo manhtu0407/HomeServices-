@@ -63,6 +63,7 @@ import type {
   UserRole,
   WorkerVerificationStatus,
 } from "../../_shared/domain.ts";
+import { enforceKaelRuntimePathControl } from "./router-kael-path-control.ts";
 import type { KaelPublicCharterResponse } from "./kael/system-prompt.ts";
 import {
   priceSynthesisAbCaseSchema,
@@ -660,7 +661,6 @@ type JobDetailResponse = {
   } | null;
 };
 
-// X4 (Plan.md §27.7 — 2026-05-29): F-17 customer active-job hydration.
 type CustomerActiveJobResponse = {
   active_job: JobDetailResponse | null;
 };
@@ -740,7 +740,6 @@ export type KaelMemoryDeleteResponse = {
   deleted: true;
 };
 
-// U-5 (Notes.md 5.3): pending Kael decisions the customer must make.
 export type PendingDecisionItem = {
   kind: "scope_change";
   scope_change_id: string;
@@ -757,7 +756,6 @@ export type PendingDecisionsResponse = {
   pending_decisions: PendingDecisionItem[];
 };
 
-// U-5 (Notes.md): cross-job message inbox summary.
 export type ThreadSummary = {
   job_id: string;
   status: string;
@@ -1068,6 +1066,7 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
 
       const requestContext = requestRuntimeContext(request);
       const ctx: MobileApiContext = { ...auth, ...requestContext };
+      enforceKaelRuntimePathControl(route, ctx.role, apiFailure);
       const data = await dispatchRoute(route, request, ctx, deps.services);
       if (data instanceof Response) return data;
       return json(
@@ -1367,8 +1366,6 @@ function matchRoute(request: Request): Route | null {
     return {
       kind: "admin.kaelLearning.candidates.list",
       method: "GET",
-      // S2/F2 (§38): admin-only at the router, matching every other /admin/* route.
-      // Service layer keeps its own ctx.role !== "admin" guard as defense-in-depth.
       roles: ["admin"],
     };
   }
@@ -1385,8 +1382,6 @@ function matchRoute(request: Request): Route | null {
         : "admin.kaelLearning.candidates.reject",
       method: "POST",
       candidateId,
-      // S2/F2 (§38): admin-only at the router (was customer/worker/admin).
-      // Service layer keeps its own ctx.role !== "admin" guard as defense-in-depth.
       roles: ["admin"],
     };
   }
@@ -2319,8 +2314,6 @@ function workerStatusUpdateSchema(input: unknown): WorkerStatusUpdateInput {
   if (typeof status !== "string" || !allowed.includes(status)) {
     apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
   }
-  // Phase 2.0 (2026-05-23): worker không nhập final_price ở B7. Reject nếu
-  // worker bundle field này trong payload — Kael giữ final-price authority.
   if (record.final_price !== undefined) {
     apiFailure(
       "VALIDATION",

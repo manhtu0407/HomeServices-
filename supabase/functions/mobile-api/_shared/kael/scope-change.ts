@@ -2,8 +2,13 @@ import type { EdgeAiSecrets, ScopeChangeComputeInput, ScopeChangeEstimateBody, S
 import { PRICE_DISCLAIMER, scopeChangeEstimateSchema, scopeChangeReviewSchema } from "./types.ts";
 import { buildScopeChangeEstimateMessages, buildScopeChangeReviewMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
-import { chooseProvider } from "./routing.ts";
+import { chooseCircuitAwareProviderOrNull } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
+import {
+  buildNoProviderTrace,
+  buildProviderAttemptTrace,
+  type KaelSafeTraceEvent,
+} from "./trace.ts";
 export {
   calculateScopeChangeAnomaly,
   calculateScopeChangeMargin,
@@ -13,13 +18,21 @@ export {
 import { safeParseJSON, timed } from "./utils.ts";
 
 export const KAEL_PRICE_DISCLAIMER_V3 = PRICE_DISCLAIMER;
+const SCOPE_CHANGE_POLICY_ID = "kael.autonomy.v2.scope_change_review";
 
 export async function reviewScopeChange(
   input: ScopeChangeReviewInput,
   secrets: EdgeAiSecrets,
 ): Promise<ScopeChangeKaelReview> {
   const fallback = buildScopeChangeFallbackReview(input);
-  const route = chooseProvider("scope_change");
+  const route = chooseCircuitAwareProviderOrNull("scope_change");
+  if (!route) {
+    return {
+      ...fallback,
+      failure_reason: "NO_PROVIDER_AVAILABLE",
+      trace: [scopeChangeNoProviderTrace()],
+    };
+  }
   const provider = route.provider as "anthropic";
   const attempt = await timed(() =>
     callAI({
@@ -41,6 +54,11 @@ export async function reviewScopeChange(
       model: route.model,
       failure_reason: attempt.result.code,
       latency_ms: attempt.ms,
+      trace: [scopeChangeProviderTrace(route, "error", {
+        code: attempt.result.code,
+        latencyMs: attempt.ms,
+        fallbackUsed: true,
+      })],
     };
   }
 
@@ -54,6 +72,12 @@ export async function reviewScopeChange(
       failure_reason: "INVALID_SCHEMA",
       cost_usd: attempt.result.usage.costUsd,
       latency_ms: attempt.ms,
+      trace: [scopeChangeProviderTrace(route, "schema_invalid", {
+        code: "INVALID_SCHEMA",
+        latencyMs: attempt.ms,
+        costUsd: attempt.result.usage.costUsd,
+        fallbackUsed: true,
+      })],
     };
   }
 
@@ -66,17 +90,29 @@ export async function reviewScopeChange(
     reviewed_at: new Date().toISOString(),
     cost_usd: attempt.result.usage.costUsd,
     latency_ms: attempt.ms,
+    trace: [scopeChangeProviderTrace(route, "success", {
+      latencyMs: attempt.ms,
+      costUsd: attempt.result.usage.costUsd,
+      fallbackUsed: false,
+    })],
   };
 }
 
-// Phase 2.0 (2026-05-23): Kael computes new price estimate from worker's
+// Kael computes new price estimate from worker's
 // reported on-site scope. Worker không nhập price; Kael giữ price authority.
 export async function computeScopeChangeEstimate(
   input: ScopeChangeComputeInput,
   secrets: EdgeAiSecrets,
 ): Promise<ScopeChangeKaelEstimate> {
   const fallback = buildScopeChangeEstimateFallback(input);
-  const route = chooseProvider("scope_change");
+  const route = chooseCircuitAwareProviderOrNull("scope_change");
+  if (!route) {
+    return {
+      ...fallback,
+      failure_reason: "NO_PROVIDER_AVAILABLE",
+      trace: [scopeChangeNoProviderTrace()],
+    };
+  }
   const provider = route.provider as "anthropic";
   const attempt = await timed(() =>
     callAI({
@@ -98,6 +134,11 @@ export async function computeScopeChangeEstimate(
       model: route.model,
       failure_reason: attempt.result.code,
       latency_ms: attempt.ms,
+      trace: [scopeChangeProviderTrace(route, "error", {
+        code: attempt.result.code,
+        latencyMs: attempt.ms,
+        fallbackUsed: true,
+      })],
     };
   }
 
@@ -111,6 +152,12 @@ export async function computeScopeChangeEstimate(
       failure_reason: "INVALID_SCHEMA",
       cost_usd: attempt.result.usage.costUsd,
       latency_ms: attempt.ms,
+      trace: [scopeChangeProviderTrace(route, "schema_invalid", {
+        code: "INVALID_SCHEMA",
+        latencyMs: attempt.ms,
+        costUsd: attempt.result.usage.costUsd,
+        fallbackUsed: true,
+      })],
     };
   }
 
@@ -127,8 +174,50 @@ export async function computeScopeChangeEstimate(
     computed_at: new Date().toISOString(),
     cost_usd: attempt.result.usage.costUsd,
     latency_ms: attempt.ms,
+    trace: [scopeChangeProviderTrace(route, "success", {
+      latencyMs: attempt.ms,
+      costUsd: attempt.result.usage.costUsd,
+      fallbackUsed: false,
+    })],
     input_summary: scopeChangeInputSummary(input),
   };
+}
+
+function scopeChangeNoProviderTrace(): KaelSafeTraceEvent {
+  return buildNoProviderTrace({
+    workflowPhase: "plan_price_adjust",
+    actorRole: "worker",
+    action: "worker.request_scope_change",
+    policyId: SCOPE_CHANGE_POLICY_ID,
+    purpose: "scope_change",
+    reasonCode: "NO_PROVIDER_AVAILABLE",
+  });
+}
+
+function scopeChangeProviderTrace(
+  route: { provider: "anthropic" | "perplexity" | "deepseek"; model: string },
+  result: "success" | "error" | "schema_invalid",
+  options: {
+    readonly code?: string;
+    readonly latencyMs?: number;
+    readonly costUsd?: number;
+    readonly fallbackUsed: boolean;
+  },
+): KaelSafeTraceEvent {
+  return buildProviderAttemptTrace({
+    workflowPhase: "plan_price_adjust",
+    actorRole: "worker",
+    action: "worker.request_scope_change",
+    policyId: SCOPE_CHANGE_POLICY_ID,
+    purpose: "scope_change",
+    provider: route.provider,
+    model: route.model,
+    latencyMs: options.latencyMs,
+    costUsd: options.costUsd,
+    result,
+    code: options.code,
+    fallbackUsed: options.fallbackUsed,
+  });
 }
 
 function buildScopeChangeEstimateFallback(

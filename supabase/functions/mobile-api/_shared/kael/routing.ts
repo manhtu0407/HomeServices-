@@ -1,5 +1,6 @@
 import { KAEL_ROUTING_CONFIG, type ProviderRoute } from "./routing.config.ts";
 import { KAEL_PURPOSES, type AIProvider, type KaelPurpose } from "./types.ts";
+import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
 
 export type ProviderChoice = ProviderRoute & {
   readonly purpose: KaelPurpose;
@@ -16,6 +17,8 @@ export type ChooseProviderOptions = {
   readonly now?: Date;
   readonly isCircuitOpen?: (purpose: KaelPurpose, provider: AIProvider, now?: Date) => boolean;
 };
+
+export type CircuitAwareProviderOptions = Omit<ChooseProviderOptions, "isCircuitOpen">;
 
 export function chooseProvider(
   purposeInput: string,
@@ -74,9 +77,47 @@ export function providerCandidatesForPurpose(
     .filter((route) => !options.isCircuitOpen?.(purpose, route.provider, options.now));
 }
 
+export function chooseCircuitAwareProvider(
+  purposeInput: string,
+  options: CircuitAwareProviderOptions = {},
+): ProviderChoice {
+  return chooseProvider(purposeInput, withCircuitBreaker(options));
+}
+
+export function chooseCircuitAwareProviderOrNull(
+  purposeInput: string,
+  options: CircuitAwareProviderOptions = {},
+): ProviderChoice | null {
+  try {
+    return chooseCircuitAwareProvider(purposeInput, options);
+  } catch (error) {
+    if (error instanceof Error && /^NO_PROVIDER_AVAILABLE:/.test(error.message)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export function circuitAwareProviderCandidatesForPurpose(
+  purposeInput: string,
+  options: CircuitAwareProviderOptions = {},
+): ProviderChoice[] {
+  return providerCandidatesForPurpose(purposeInput, withCircuitBreaker(options));
+}
+
 export function parseKaelPurpose(value: string): KaelPurpose {
   if ((KAEL_PURPOSES as readonly string[]).includes(value)) {
     return value as KaelPurpose;
   }
   throw new Error(`INVALID_PURPOSE:${value}`);
+}
+
+function withCircuitBreaker(
+  options: CircuitAwareProviderOptions,
+): ChooseProviderOptions {
+  return {
+    ...options,
+    isCircuitOpen: (purpose, provider, now) =>
+      KAEL_CIRCUIT_BREAKER.isOpen(purpose, provider, now ?? options.now),
+  };
 }

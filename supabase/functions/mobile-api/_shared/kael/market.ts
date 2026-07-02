@@ -5,7 +5,7 @@ import { appendKnowledgeContextToMessages, buildPricingMessages } from "./prompt
 import { callAI } from "./provider-client.ts";
 import { readKaelOptimizationFlags } from "./cost-tracking.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
-import { providerCandidatesForPurpose } from "./routing.ts";
+import { circuitAwareProviderCandidatesForPurpose } from "./routing.ts";
 import {
   retrieveKaelKnowledgeContextIfEnabled,
   type KaelKnowledgeContext,
@@ -148,7 +148,7 @@ export async function searchMarketPrice(
     model: string;
     safeMetadata?: Record<string, unknown>;
   } | undefined;
-  for (const route of providerCandidatesForPurpose("market_lookup")) {
+  for (const route of circuitAwareProviderCandidatesForPurpose("market_lookup")) {
     const trustedConfig = route.provider === "perplexity" && sourceTrustEnabled
       ? await trustedPerplexityMarketConfigForClient({
         serviceType,

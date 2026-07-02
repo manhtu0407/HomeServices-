@@ -22,10 +22,15 @@ import {
   retrieveLegalAwareness,
   retrieveKnowledgeSemantic,
 } from "./knowledge.ts";
-import { providerCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
+import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { runKaelSelfCheckPipeline } from "./self-check.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
+import {
+  buildNoProviderTrace,
+  buildProviderAttemptTrace,
+  type KaelSafeTraceEvent,
+} from "./trace.ts";
 import { scrubSensitiveForLLM } from "./utils.ts";
 
 type AssistantClient = Parameters<typeof retrieveKaelKnowledgeContextIfEnabled>[0];
@@ -61,6 +66,7 @@ export type CustomerAssistantAnswer = {
   readonly suggested_actions: readonly CustomerAssistantSuggestedAction[];
   readonly boundary: CustomerAssistantBoundary;
   readonly fallback_used: boolean;
+  readonly trace?: readonly KaelSafeTraceEvent[];
 };
 
 type CustomerAssistantBoundary =
@@ -111,6 +117,7 @@ export async function runCustomerAssistant(
 ): Promise<CustomerAssistantAnswer> {
   const language = input.language ?? "vi";
   const surface = input.surface ?? "customer_normal";
+  const trace: KaelSafeTraceEvent[] = [];
   const cleanQuestion = scrubSensitiveForLLM(input.message).slice(0, 2000);
   const serviceType = inferAssistantServiceType(cleanQuestion, input.job);
   const topic = classifyAssistantTopic(cleanQuestion, serviceType);
@@ -130,6 +137,7 @@ export async function runCustomerAssistant(
       topic,
       "unsupported",
       true,
+      trace,
     );
   }
 
@@ -143,7 +151,11 @@ export async function runCustomerAssistant(
     topic,
   });
 
-  const routes = providerCandidatesForPurpose("educational_response");
+  const routes = circuitAwareProviderCandidatesForPurpose("educational_response");
+  if (routes.length === 0) {
+    trace.push(buildCustomerAssistantNoProviderTrace(surface));
+    return fallbackAnswer(fallbackText(language), language, topic, "fallback", true, trace);
+  }
   for (const route of routes) {
     const result = await (input.callAI ?? defaultCallAI)(
       buildAssistantRequest({
@@ -158,10 +170,24 @@ export async function runCustomerAssistant(
       }),
       input.secrets,
     );
-    if (!result.success) continue;
+    if (!result.success) {
+      trace.push(buildCustomerAssistantProviderTrace(surface, route, "error", {
+        code: result.code,
+        fallbackUsed: true,
+      }));
+      continue;
+    }
 
     const parsed = customerAssistantResponseSchema.safeParse(parseJsonObject(result.content));
-    if (!parsed.success) continue;
+    if (!parsed.success) {
+      trace.push(buildCustomerAssistantProviderTrace(surface, route, "schema_invalid", {
+        code: "INVALID_SCHEMA",
+        latencyMs: result.latencyMs,
+        costUsd: result.usage.costUsd,
+        fallbackUsed: true,
+      }));
+      continue;
+    }
 
     const checked = runKaelSelfCheckPipeline({
       text: parsed.data.answer,
@@ -171,9 +197,20 @@ export async function runCustomerAssistant(
       fallbackText: fallbackText(language),
     });
     if (checked.used_fallback || !checked.allowed) {
-      return fallbackAnswer(checked.text, language, topic, "fallback", true);
+      trace.push(buildCustomerAssistantProviderTrace(surface, route, "error", {
+        code: checked.reason ?? "SELF_CHECK_FALLBACK",
+        latencyMs: result.latencyMs,
+        costUsd: result.usage.costUsd,
+        fallbackUsed: true,
+      }));
+      return fallbackAnswer(checked.text, language, topic, "fallback", true, trace);
     }
 
+    trace.push(buildCustomerAssistantProviderTrace(surface, route, "success", {
+      latencyMs: result.latencyMs,
+      costUsd: result.usage.costUsd,
+      fallbackUsed: false,
+    }));
     return {
       answer: checked.text,
       safety_notes: normalizeSafetyNotes(parsed.data.safety_notes, language, topic),
@@ -185,10 +222,11 @@ export async function runCustomerAssistant(
       suggested_actions: normalizeActions(parsed.data.suggested_actions, surface, topic),
       boundary: parsed.data.boundary,
       fallback_used: false,
+      trace,
     };
   }
 
-  return fallbackAnswer(fallbackText(language), language, topic, "fallback", true);
+  return fallbackAnswer(fallbackText(language), language, topic, "fallback", true, trace);
 }
 
 function buildAssistantRequest(input: {
@@ -339,6 +377,7 @@ function fallbackAnswer(
   topic: KaelTopic,
   boundary: CustomerAssistantBoundary,
   fallbackUsed: boolean,
+  trace?: readonly KaelSafeTraceEvent[],
 ): CustomerAssistantAnswer {
   return {
     answer,
@@ -347,7 +386,64 @@ function fallbackAnswer(
     suggested_actions: normalizeActions([], "customer_normal", topic),
     boundary,
     fallback_used: fallbackUsed,
+    ...(trace && trace.length > 0 ? { trace } : {}),
   };
+}
+
+function customerAssistantPath(surface: CustomerAssistantSurface) {
+  return surface === "customer_case"
+    ? {
+      workflowPhase: "offer_ready",
+      action: "customer.open_case_chat",
+      policyId: "kael.path.customer_case_chat_revision.v1",
+    } as const
+    : {
+      workflowPhase: "intake",
+      action: "customer.submit_intake",
+      policyId: "kael.path.customer_intake_to_estimate.v1",
+    } as const;
+}
+
+function buildCustomerAssistantNoProviderTrace(surface: CustomerAssistantSurface) {
+  const path = customerAssistantPath(surface);
+  return buildNoProviderTrace({
+    workflowPhase: path.workflowPhase,
+    actorRole: "customer",
+    action: path.action,
+    policyId: path.policyId,
+    purpose: "educational_response",
+    reasonCode: "NO_PROVIDER_AVAILABLE",
+    safeMetadata: { surface },
+  });
+}
+
+function buildCustomerAssistantProviderTrace(
+  surface: CustomerAssistantSurface,
+  route: ProviderChoice,
+  result: "success" | "error" | "schema_invalid",
+  options: {
+    readonly code?: string;
+    readonly latencyMs?: number;
+    readonly costUsd?: number;
+    readonly fallbackUsed: boolean;
+  },
+) {
+  const path = customerAssistantPath(surface);
+  return buildProviderAttemptTrace({
+    workflowPhase: path.workflowPhase,
+    actorRole: "customer",
+    action: path.action,
+    policyId: path.policyId,
+    purpose: "educational_response",
+    provider: route.provider,
+    model: route.model,
+    latencyMs: options.latencyMs,
+    costUsd: options.costUsd,
+    result,
+    code: options.code,
+    fallbackUsed: options.fallbackUsed,
+    safeMetadata: { surface },
+  });
 }
 
 function fallbackText(language: KaelPromptLanguage) {

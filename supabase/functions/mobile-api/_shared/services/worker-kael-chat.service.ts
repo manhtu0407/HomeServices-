@@ -530,6 +530,7 @@ async function appendWorkerKaelAnswerTurn(
       fallback_used: answer.fallback_used,
       guardrail_reason: answer.guardrail_reason ?? null,
       provider_attempts: formatWorkerAssistProviderAttempts(answer.provider_attempts ?? []),
+      kael_trace: answer.trace ?? [],
       provider: answer.provider ?? null,
       model: answer.model ?? null,
       latency_ms: answer.latency_ms ?? null,
@@ -569,9 +570,12 @@ function formatWorkerAssistProviderAttempts(
     [
       attempt.role,
       attempt.provider,
+      attempt.model,
       attempt.result,
       attempt.code ?? "ok",
       `timeout=${attempt.timeout_ms}`,
+      `prompt=${attempt.prompt_version}`,
+      `schema=${attempt.schema_version}`,
       attempt.latency_ms !== undefined ? `latency=${attempt.latency_ms}` : "latency=n/a",
     ].join(":")
   );

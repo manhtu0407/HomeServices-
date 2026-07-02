@@ -16,7 +16,7 @@ vi.mock('@/lib/db/query', () => ({
 
 import { requestScopeChange, decideScopeChange } from '@/lib/jobs/scope-change'
 
-// Phase 2.0 (2026-05-23): worker không gửi price; Kael compute từ context.
+// worker không gửi price; Kael compute từ context.
 const VALID_INPUT = {
   new_description: 'Phát hiện ống chính bị hỏng, cần thay đoạn lớn hơn',
   reason: 'On-site inspection cho thấy vấn đề nghiêm trọng hơn',

@@ -4,7 +4,7 @@ import { intentResultSchema } from "./types.ts";
 import { buildIntakeDiagnosisMessages, buildIntentMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
-import { providerCandidatesForPurpose } from "./routing.ts";
+import { circuitAwareProviderCandidatesForPurpose } from "./routing.ts";
 import { hasUnsupportedRepairIntent, safeParseJSON, scrubSensitiveForLLM, timed } from "./utils.ts";
 
 export async function classifyIntent(
@@ -28,7 +28,7 @@ export async function classifyIntent(
   );
   const attempts: IntentAttemptLog[] = [];
 
-  for (const candidate of providerCandidatesForPurpose("intent_classification")) {
+  for (const candidate of circuitAwareProviderCandidatesForPurpose("intent_classification")) {
     const attempt = await classifyIntentWithProvider(
       candidate,
       messages,
@@ -116,7 +116,7 @@ async function classifyIntentWithProvider(
   };
 }
 
-// Intake-diagnosis (2026-06-04): upgraded classifier that also decides whether to
+// Intake-diagnosis upgraded classifier that also decides whether to
 // ask ONE clarification question, using recent conversation context. Same provider
 // loop + fallback contract as classifyIntent; separate function so the legacy
 // classifyIntent path stays byte-identical when the clarification flag is off.
@@ -143,7 +143,7 @@ export async function diagnoseIntake(
   );
   const attempts: IntentAttemptLog[] = [];
 
-  for (const candidate of providerCandidatesForPurpose("intent_classification")) {
+  for (const candidate of circuitAwareProviderCandidatesForPurpose("intent_classification")) {
     const attempt = await diagnoseIntakeWithProvider(candidate, messages, secrets);
     attempts.push(attempt.log);
     if (attempt.success) {

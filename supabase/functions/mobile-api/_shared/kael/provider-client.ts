@@ -30,6 +30,19 @@ export async function callAI(
     };
   }
 
+  if (request.purpose && KAEL_CIRCUIT_BREAKER.isOpen(request.purpose, request.provider)) {
+    console.warn("AI call blocked by open provider circuit", {
+      provider: request.provider,
+      purpose: request.purpose,
+    });
+    return {
+      success: false,
+      provider: request.provider,
+      code: "OPEN_CIRCUIT",
+      error: "open_circuit",
+    };
+  }
+
   const apiKey = providerKey(request.provider, secrets);
   if (!apiKey) {
     return {
