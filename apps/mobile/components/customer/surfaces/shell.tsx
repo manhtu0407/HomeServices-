@@ -88,6 +88,7 @@ export function V4Frame({
   const baseTokens = getCustomerThemeTokens(themeMode)
   const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(baseTokens) : baseTokens
   const frameWidth = Math.min(width, 430)
+  const usesNativeSafeHomeCanvas = active === 'home'
   const appleIOS26MainSection = active === 'home' || active === 'booking' || active === 'activity'
   const pulse = useSharedValue(0)
   const settle = useSharedValue(0)
@@ -103,9 +104,9 @@ export function V4Frame({
     settle.value = withDelay(60, withSpring(0, motionTokens.liquid.press))
   }, [active, pulse, reduceMotion, settle])
   const motionFieldStyle = useAnimatedStyle(() => ({
-    opacity: reduceMotion ? 0 : 0.05 + pulse.value * 0.04,
+    opacity: reduceMotion ? 0 : usesNativeSafeHomeCanvas ? 0.018 + pulse.value * 0.015 : 0.05 + pulse.value * 0.04,
     transform: [{ translateY: settle.value * 2 }, { scale: 0.98 + pulse.value * 0.025 }],
-  }))
+  }), [reduceMotion, usesNativeSafeHomeCanvas])
   const lastCustomerScrollYRef = useRef(0)
   const setCustomerDockHiddenSafely = useCallback((hidden: boolean) => {
     setCustomerDockHiddenSnapshot(hidden)
@@ -140,9 +141,15 @@ export function V4Frame({
     themeMode === 'dark'
       ? 'radial-gradient(circle at 50% 4%, rgba(190,210,205,0.060), transparent 28%), radial-gradient(circle at 50% 34%, rgba(105,222,198,0.035), transparent 34%), linear-gradient(180deg, #0E1413 0%, #111816 58%, #0B0F0E 100%)'
       : 'radial-gradient(circle at 50% -4%, rgba(255,255,255,0.98), transparent 28%), radial-gradient(circle at 50% 24%, rgba(0,200,179,0.070), transparent 34%), linear-gradient(180deg, #F7F8F8 0%, #F1F3F2 100%)'
+  const nativeSafeHomeCanvasBackgroundImage =
+    themeMode === 'dark'
+      ? 'radial-gradient(circle at 50% 4%, rgba(190,210,205,0.045), transparent 28%), radial-gradient(circle at 50% 34%, rgba(105,222,198,0.018), transparent 34%), linear-gradient(180deg, #0E1413 0%, #111816 58%, #0B0F0E 100%)'
+      : 'radial-gradient(circle at 50% -4%, rgba(255,255,255,0.92), transparent 28%), radial-gradient(circle at 50% 24%, rgba(0,200,179,0.026), transparent 34%), linear-gradient(180deg, #F7F8F8 0%, #F3F5F4 100%)'
   const experimentalBackgroundImage = active === 'profile'
     ? profileCanvasBackgroundImage
-    : appleIOS26MainSection
+    : usesNativeSafeHomeCanvas
+      ? nativeSafeHomeCanvasBackgroundImage
+      : appleIOS26MainSection
       ? appleIOS26CanvasBackgroundImage
       : defaultCanvasBackgroundImage
   const canvasLayer = {
@@ -155,7 +162,7 @@ export function V4Frame({
     <SafeAreaView style={[styles.safeArea, canvasLayer]} testID={testID}>
       <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
       <CustomerThemeContext.Provider value={tokens}>
-        {reduceTransparency ? null : <AmbientGlassField frameWidth={frameWidth} screenWidth={width} />}
+        {reduceTransparency ? null : <AmbientGlassField frameWidth={frameWidth} quiet={usesNativeSafeHomeCanvas} screenWidth={width} />}
         {reduceMotion || reduceTransparency ? null : (
           <Animated.View pointerEvents="none" style={[styles.customerMotionField, { backgroundColor: tokens.aqua }, motionFieldStyle]} testID={`customer-motion-field-${active}`} />
         )}
