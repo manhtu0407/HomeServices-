@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { View, type StyleProp, type ViewStyle } from 'react-native'
-import Svg, { Defs, Ellipse, G, Image as SvgImage, Mask, Path, Rect } from 'react-native-svg'
+import { View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
+import Svg, { Ellipse, G, Image as SvgImage, Path, Rect } from 'react-native-svg'
 
 export type KaelLottieSource = object | string | number
 
@@ -109,7 +109,7 @@ type RenderStyle = {
 }
 
 const DEFAULT_FRAME_RATE = 60
-const APPROVED_LOGO_MASK_ID = 'aurora-nest-approved-logo-mask'
+const APPROVED_LOGO_TRANSPARENT_SOURCE = require('@/assets/lottie/nestscout-aurora-nest-approved-logo-transparent.png') as ImageSourcePropType
 
 export function KaelLottieView({
   autoPlay = true,
@@ -162,41 +162,9 @@ export function KaelLottieView({
   return (
     <View style={style} testID={testID}>
       <Svg height="100%" viewBox={`0 0 ${animation.w} ${animation.h}`} width="100%">
-        <ApprovedLogoMaskDefinition />
         {animation.layers.map((layer, index) => renderLayer(layer, frame, assetById, `layer-${index}`))}
       </Svg>
     </View>
-  )
-}
-
-function ApprovedLogoMaskDefinition() {
-  return (
-    <Defs>
-      <Mask height={1184} id={APPROVED_LOGO_MASK_ID} maskUnits="userSpaceOnUse" width={1184} x={-80} y={-80}>
-        <Ellipse cx={512} cy={910} fill="#fff" fillOpacity={0.72} rx={492} ry={118} />
-        <Ellipse cx={692} cy={119} fill="#fff" fillOpacity={0.32} rx={112} ry={108} />
-        <G fill="#fff" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth={58}>
-          <Path d="M95 856 C48 525 185 205 476 68 C285 252 231 539 205 872 C169 903 126 891 95 856Z" />
-          <Path d="M228 884 C197 526 340 197 591 61 C408 254 362 521 347 865 C313 899 266 908 228 884Z" />
-          <Path d="M505 240 C722 301 835 511 825 873 C787 900 749 892 720 868 C734 602 659 396 505 240Z" />
-          <Path d="M590 242 C868 305 986 527 944 870 C909 901 868 900 838 874 C862 596 781 390 590 242Z" />
-          <Path d="M304 884 V704 L511 523 L720 704 V884 H625 V747 L511 647 L398 747 V884Z" />
-        </G>
-        <G fill="#fff" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth={24}>
-          <Rect height={50} rx={12} width={50} x={452} y={752} />
-          <Rect height={50} rx={12} width={50} x={520} y={752} />
-          <Rect height={50} rx={12} width={50} x={452} y={820} />
-          <Rect height={50} rx={12} width={50} x={520} y={820} />
-          <Path d="M692 47 L705 106 L764 119 L705 132 L692 191 L679 132 L620 119 L679 106Z" />
-        </G>
-        <G fill="#fff" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth={10}>
-          <Path d="M623 195 L629 208 L642 214 L629 220 L623 233 L617 220 L604 214 L617 208Z" />
-          <Path d="M779 195 L785 208 L798 214 L785 220 L779 233 L773 220 L760 214 L773 208Z" />
-          <Path d="M775 61 L779 70 L788 74 L779 78 L775 87 L771 78 L762 74 L771 70Z" />
-          <Ellipse cx={760} cy={247} rx={5} ry={5} />
-        </G>
-      </Mask>
-    </Defs>
   )
 }
 
@@ -210,12 +178,11 @@ function renderLayer(layer: LottieLayer, frame: number, assetById: Map<string, L
   if (layer.ty === 2 && layer.refId) {
     const asset = assetById.get(layer.refId)
     if (!asset?.p || !asset.w || !asset.h) return null
-    const image = <SvgImage height={asset.h} href={asset.p} preserveAspectRatio="xMidYMid meet" width={asset.w} x={0} y={0} />
-    const approvedLogoMask = layer.nm?.includes('Approved Logo') ? `url(#${APPROVED_LOGO_MASK_ID})` : undefined
+    const imageSource = layer.nm?.includes('Approved Logo') ? APPROVED_LOGO_TRANSPARENT_SOURCE : asset.p
 
     return (
       <G key={key} opacity={opacity} transform={transform}>
-        {approvedLogoMask ? <G mask={approvedLogoMask}>{image}</G> : image}
+        <SvgImage height={asset.h} href={imageSource} preserveAspectRatio="xMidYMid meet" width={asset.w} x={0} y={0} />
       </G>
     )
   }

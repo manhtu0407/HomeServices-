@@ -133,6 +133,17 @@ export function GlassPanel({ children, style, testID }: PropsWithChildren<{ styl
   )
 }
 
+export function NativeSafeGlassPanel({ children, style, testID }: PropsWithChildren<{ style?: StyleProp<ViewStyle>; testID?: string }>) {
+  const { reduceTransparency } = useEntryAccessibility()
+
+  return (
+    <View style={[styles.glassBase, reduceTransparency && styles.glassOpaque, style]} testID={testID}>
+      {!reduceTransparency ? <GlassHighlight /> : null}
+      {children}
+    </View>
+  )
+}
+
 function GlassHighlight() {
   return <View pointerEvents="none" style={styles.glassHighlight} />
 }

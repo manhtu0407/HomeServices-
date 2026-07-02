@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg'
 import { KaelLottieView as KaelSvgLottieView, kaelLottieRendererKind as kaelSvgLottieRendererKind } from '@/components/kael/kael-svg-lottie-view'
-import { AssetTile, GlassPanel, IconButton, KaelMascot, KaelStatus, PageAura, PrimaryButton, TextAction, useEntryAccessibility } from './components/materials'
+import { AssetTile, GlassPanel, IconButton, KaelMascot, KaelStatus, NativeSafeGlassPanel, PageAura, PrimaryButton, TextAction, useEntryAccessibility } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
 import { EntryIcon, ProviderBrandIcon, type ProviderBrand } from './components/icons'
 import { entryTheme } from './theme'
@@ -517,7 +517,7 @@ function LoginScreen(props: {
         <ScrollView bounces={false} contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <AuthTopBar onBack={props.onBack} title="Đăng nhập" />
           <FormHeader lead="Tiếp tục nơi bạn đã dừng cùng Kael." title="Chào mừng\ntrở lại." />
-          <GlassPanel style={styles.formPanel} testID="auth-login-1-4">
+          <NativeSafeGlassPanel style={styles.formPanel} testID="auth-login-1-4">
             <EntryTextField icon="mail" keyboardType="email-address" label="Email" onChangeText={props.onEmailChange} placeholder="email@example.com" testID="auth-login-email-input" textContentType="emailAddress" value={props.email} />
             <EntryTextField icon="lock" label="Mật khẩu" onChangeText={props.onPasswordChange} placeholder="Nhập mật khẩu" secureTextEntry testID="auth-login-password-input" textContentType="password" value={props.password} />
             <View style={styles.formUtils}>
@@ -537,7 +537,7 @@ function LoginScreen(props: {
               </>
             ) : null}
             {props.canRegister ? <Text style={styles.formSwitch}>Chưa có tài khoản? <Text onPress={props.onRegister} style={styles.formSwitchLink} testID="auth-client-register-email">Đăng ký</Text></Text> : null}
-          </GlassPanel>
+          </NativeSafeGlassPanel>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
@@ -566,7 +566,7 @@ function RegisterScreen(props: {
         <ScrollView bounces={false} contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <AuthTopBar onBack={props.onBack} title="Đăng ký" />
           <FormHeader lead={props.role === 'customer' ? 'Chỉ mất chưa đến một phút.' : 'Tạo tài khoản trước khi gửi hồ sơ xác thực.'} title={props.role === 'customer' ? 'Tạo tài khoản\ncủa bạn.' : 'Tạo hồ sơ\nđối tác.'} />
-          <GlassPanel style={styles.formPanel} testID="auth-register-1-5">
+          <NativeSafeGlassPanel style={styles.formPanel} testID="auth-register-1-5">
             <EntryTextField autoCapitalize="words" icon="user" label="Họ và tên" onChangeText={props.onFullNameChange} placeholder="Nguyễn Hoàng Minh" testID="auth-register-name-input" textContentType="name" value={props.fullName} />
             <EntryTextField icon="mail" keyboardType="email-address" label="Email" onChangeText={props.onEmailChange} placeholder="email@example.com" testID="auth-register-email-input" textContentType="emailAddress" value={props.email} />
             <EntryTextField icon="lock" label="Mật khẩu" onChangeText={props.onPasswordChange} placeholder="Tối thiểu 8 ký tự" secureTextEntry testID="auth-register-password-input" textContentType="newPassword" value={props.password} />
@@ -576,7 +576,7 @@ function RegisterScreen(props: {
             {props.error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{props.error}</Text> : null}
             <PrimaryButton disabled={props.busy} label={props.busy ? 'Đang xử lý…' : props.role === 'customer' ? 'Đăng ký' : 'Tạo tài khoản thợ'} onPress={props.onSubmit} testID="auth-register-submit" />
             <Text style={styles.formSwitch}>Đã có tài khoản? <Text onPress={props.onLogin} style={styles.formSwitchLink}>Đăng nhập</Text></Text>
-          </GlassPanel>
+          </NativeSafeGlassPanel>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>

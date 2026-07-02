@@ -49,18 +49,10 @@ const webTextInputNoOutline = {
   outlineWidth: 0,
 } as unknown as TextStyle
 
-export type KaelTextInputProps = TextInputProps & {
-  ref?: Ref<TextInput>
-}
+export type KaelTextInputProps = TextInputProps & { ref?: Ref<TextInput> }
 
 export function KaelTextInput({ ref, style, ...inputProps }: KaelTextInputProps) {
-  return (
-    <TextInput
-      {...inputProps}
-      ref={ref}
-      style={[webTextInputNoOutline, style]}
-    />
-  )
+  return <TextInput {...inputProps} ref={ref} style={[webTextInputNoOutline, style]} />
 }
 
 type KaelButtonProps = {
