@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg'
-import { KaelLottieView, kaelLottieRendererKind } from '@/components/kael/kael-lottie-view'
+import { KaelLottieView as KaelSvgLottieView, kaelLottieRendererKind as kaelSvgLottieRendererKind } from '@/components/kael/kael-svg-lottie-view'
 import { AssetTile, GlassPanel, IconButton, KaelMascot, KaelStatus, PageAura, PrimaryButton, TextAction, useEntryAccessibility } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
 import { EntryIcon, ProviderBrandIcon, type ProviderBrand } from './components/icons'
@@ -46,7 +46,6 @@ type LottieAsset = {
 }
 
 const auroraNestLogoLottie = require('@/assets/lottie/nestscout-aurora-nest-north-star-awakening.json') as LottieAsset
-const auroraNestLogoStatic = require('@/assets/nestscout-aurora-nest-appstore-1024.png') as ImageSourcePropType
 
 const defaultFeatures: EntryAccessFeatureFlags = {
   customerFacebook: true,
@@ -652,28 +651,19 @@ function LottieLogoMark({ size, testID }: { size: number; testID: string }) {
   const { reduceMotion } = useEntryAccessibility()
   const logoHeight = Math.round(size * (auroraNestLogoLottie.h / auroraNestLogoLottie.w))
   const duration = lottieDurationSeconds(auroraNestLogoLottie)
-  const shouldAnimate = kaelLottieRendererKind !== 'fallback' && !reduceMotion
+  const shouldAnimate = kaelSvgLottieRendererKind !== 'fallback' && !reduceMotion
   const assetLabel = `${auroraNestLogoLottie.nm ?? 'NestScout Aurora Nest'} ${auroraNestLogoLottie.w}x${auroraNestLogoLottie.h}${duration ? ` ${duration}s` : ''}`
 
   return (
     <View accessibilityLabel={assetLabel} style={[styles.logoMotion, { height: logoHeight, width: size }]} testID={testID}>
-      {shouldAnimate ? (
-        <KaelLottieView
-          autoPlay
-          loop
-          resizeMode="contain"
-          source={auroraNestLogoLottie}
-          style={styles.logoExactImage}
-          testID={`${testID}-lottie`}
-        />
-      ) : (
-        <Image
-          resizeMode="contain"
-          source={auroraNestLogoStatic}
-          style={styles.logoExactImage}
-          testID={`${testID}-static`}
-        />
-      )}
+      <KaelSvgLottieView
+        autoPlay={shouldAnimate}
+        loop={shouldAnimate}
+        resizeMode="contain"
+        source={auroraNestLogoLottie}
+        style={styles.logoExactImage}
+        testID={shouldAnimate ? `${testID}-lottie` : `${testID}-static`}
+      />
     </View>
   )
 }

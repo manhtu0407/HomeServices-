@@ -1,4 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 const mockReplace = jest.fn()
 const mockRefreshProfile = jest.fn(async () => null)
@@ -57,6 +59,7 @@ jest.mock('@/lib/app-language', () => {
 })
 
 import { LoginRoleSurface } from '../auth-surfaces'
+import { kaelLottieRendererKind as splashLogoRendererKind } from '@/components/kael/kael-svg-lottie-view'
 
 beforeEach(() => {
   jest.useFakeTimers()
@@ -71,6 +74,33 @@ afterEach(() => {
 })
 
 describe('LoginRoleSurface', () => {
+  it('keeps the splash logo on the SVG renderer that matches Preview instead of native Lottie', () => {
+    const flowSource = readFileSync(resolve(__dirname, '../entry-access/EntryBrandAccessFlow.tsx'), 'utf-8')
+
+    expect(splashLogoRendererKind).toBe('svg-lottie')
+    expect(flowSource).toContain('@/components/kael/kael-svg-lottie-view')
+    expect(flowSource).not.toContain('@/components/kael/kael-lottie-view')
+    expect(flowSource).not.toContain('nestscout-aurora-nest-appstore-1024.png')
+    expect(flowSource).not.toContain('auroraNestLogoStatic')
+  })
+
+  it('keeps login input shells wired to focus the native TextInput on iOS taps', () => {
+    const fieldSource = readFileSync(resolve(__dirname, '../entry-access/components/fields.tsx'), 'utf-8')
+    const primitiveSource = readFileSync(resolve(__dirname, '../../ui/kael-primitives.tsx'), 'utf-8')
+    mockRouteParams = { stage: '1.4' }
+
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByTestId('auth-login-email-input-shell')).toBeOnTheScreen()
+    expect(screen.getByTestId('auth-login-password-input-shell')).toBeOnTheScreen()
+    expect(fieldSource).toContain('inputRef.current?.focus()')
+    expect(fieldSource).toContain('ref={inputRef}')
+    expect(fieldSource).toContain('`${testID}-shell`')
+    expect(primitiveSource).toContain('ref?: Ref<TextInput>')
+    expect(primitiveSource).toContain('export function KaelTextInput({ ref, style, ...inputProps }: KaelTextInputProps)')
+    expect(primitiveSource).not.toContain('forwardRef')
+  })
+
   it('opens the 1.1 review link on the Lottie splash without redirecting authenticated users', () => {
     mockRouteParams = { stage: '1.1' }
     mockAuthOverride = {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Platform,
   Pressable,
@@ -7,6 +7,7 @@ import {
   View,
   type KeyboardTypeOptions,
   type TextStyle,
+  type TextInput,
   type TextInputProps,
 } from 'react-native'
 import { KaelTextInput } from '@/components/ui/kael-primitives'
@@ -36,14 +37,22 @@ export function EntryTextField({
   textContentType?: TextInputProps['textContentType']
   value: string
 }) {
+  const inputRef = useRef<TextInput>(null)
   const [focused, setFocused] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const isSecure = Boolean(secureTextEntry) && !revealed
+  const shellTestID = testID ? `${testID}-shell` : undefined
+  const focusInput = () => inputRef.current?.focus()
 
   return (
     <View style={styles.group}>
       <Text style={styles.label}>{label}</Text>
-      <View style={[styles.field, focused && styles.fieldFocused]}>
+      <Pressable
+        accessible={false}
+        onPress={focusInput}
+        style={({ pressed }: { pressed: boolean }) => [styles.field, focused && styles.fieldFocused, pressed && !focused && styles.fieldPressed]}
+        testID={shellTestID}
+      >
         <EntryIcon color={entryTheme.color.mint.mint700} name={icon} size={17} />
         <KaelTextInput
           autoCapitalize={autoCapitalize}
@@ -54,6 +63,7 @@ export function EntryTextField({
           onFocus={() => setFocused(true)}
           placeholder={placeholder}
           placeholderTextColor="#87999E"
+          ref={inputRef}
           secureTextEntry={isSecure}
           style={[styles.input, webInputFocusReset]}
           testID={testID}
@@ -65,7 +75,7 @@ export function EntryTextField({
             <EntryIcon color={entryTheme.color.text.muted} name="eye" size={18} />
           </Pressable>
         ) : null}
-      </View>
+      </Pressable>
     </View>
   )
 }
@@ -113,6 +123,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 0 },
   },
+  fieldPressed: { borderColor: 'rgba(36,179,161,0.42)' },
   group: { gap: 7, marginBottom: 12 },
   input: { color: entryTheme.color.text.primary, flex: 1, fontSize: 13, height: '100%', paddingVertical: 0 },
   label: { color: entryTheme.color.text.strong, fontSize: 12, fontWeight: '600', paddingLeft: 2 },

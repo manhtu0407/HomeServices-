@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, type Ref } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -49,12 +49,15 @@ const webTextInputNoOutline = {
   outlineWidth: 0,
 } as unknown as TextStyle
 
-export type KaelTextInputProps = TextInputProps
+export type KaelTextInputProps = TextInputProps & {
+  ref?: Ref<TextInput>
+}
 
-export function KaelTextInput({ style, ...inputProps }: KaelTextInputProps) {
+export function KaelTextInput({ ref, style, ...inputProps }: KaelTextInputProps) {
   return (
     <TextInput
       {...inputProps}
+      ref={ref}
       style={[webTextInputNoOutline, style]}
     />
   )
