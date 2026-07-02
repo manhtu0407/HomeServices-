@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const mockReplace = jest.fn()
@@ -76,12 +76,18 @@ afterEach(() => {
 describe('LoginRoleSurface', () => {
   it('keeps the splash logo on the SVG renderer that matches Preview instead of native Lottie', () => {
     const flowSource = readFileSync(resolve(__dirname, '../entry-access/EntryBrandAccessFlow.tsx'), 'utf-8')
+    const rendererSource = readFileSync(resolve(__dirname, '../../kael/kael-svg-lottie-view.tsx'), 'utf-8')
+    const nativeAdapterPath = resolve(__dirname, '../../kael/kael-lottie-view.native.tsx')
 
     expect(splashLogoRendererKind).toBe('svg-lottie')
     expect(flowSource).toContain('@/components/kael/kael-svg-lottie-view')
     expect(flowSource).not.toContain('@/components/kael/kael-lottie-view')
     expect(flowSource).not.toContain('nestscout-aurora-nest-appstore-1024.png')
     expect(flowSource).not.toContain('auroraNestLogoStatic')
+    expect(rendererSource).toContain('nestscout-aurora-nest-approved-logo-transparent.png')
+    expect(rendererSource).not.toContain('<Mask')
+    expect(rendererSource).not.toContain('mask={')
+    expect(existsSync(nativeAdapterPath)).toBe(false)
   })
 
   it('keeps login input shells wired to focus the native TextInput on iOS taps', () => {
@@ -95,10 +101,31 @@ describe('LoginRoleSurface', () => {
     expect(screen.getByTestId('auth-login-password-input-shell')).toBeOnTheScreen()
     expect(fieldSource).toContain('inputRef.current?.focus()')
     expect(fieldSource).toContain('ref={inputRef}')
+    expect(fieldSource).toContain('onPressIn={focusInput}')
     expect(fieldSource).toContain('`${testID}-shell`')
     expect(primitiveSource).toContain('ref?: Ref<TextInput>')
     expect(primitiveSource).toContain('export function KaelTextInput({ ref, style, ...inputProps }: KaelTextInputProps)')
     expect(primitiveSource).not.toContain('forwardRef')
+  })
+
+  it('keeps auth form inputs outside native glass containers on iOS', () => {
+    const flowSource = readFileSync(resolve(__dirname, '../entry-access/EntryBrandAccessFlow.tsx'), 'utf-8')
+    const materialsSource = readFileSync(resolve(__dirname, '../entry-access/components/materials.tsx'), 'utf-8')
+    const nativeSafeStart = materialsSource.indexOf('export function NativeSafeGlassPanel')
+    const nativeSafeEnd = materialsSource.indexOf('function GlassHighlight', nativeSafeStart)
+    const nativeSafePanelSource = materialsSource.slice(nativeSafeStart, nativeSafeEnd)
+    mockRouteParams = { stage: '1.4' }
+
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByTestId('auth-login-1-4')).toBeOnTheScreen()
+    expect(flowSource).toContain('<NativeSafeGlassPanel style={styles.formPanel} testID="auth-login-1-4">')
+    expect(flowSource).toContain('<NativeSafeGlassPanel style={styles.formPanel} testID="auth-register-1-5">')
+    expect(flowSource).not.toContain('<GlassPanel style={styles.formPanel} testID="auth-login-1-4">')
+    expect(flowSource).not.toContain('<GlassPanel style={styles.formPanel} testID="auth-register-1-5">')
+    expect(nativeSafePanelSource).toContain('<View')
+    expect(nativeSafePanelSource).not.toContain('<GlassView')
+    expect(nativeSafePanelSource).not.toContain('<BlurView')
   })
 
   it('opens the 1.1 review link on the Lottie splash without redirecting authenticated users', () => {

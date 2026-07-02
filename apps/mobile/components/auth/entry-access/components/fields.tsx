@@ -50,6 +50,7 @@ export function EntryTextField({
       <Pressable
         accessible={false}
         onPress={focusInput}
+        onPressIn={focusInput}
         style={({ pressed }: { pressed: boolean }) => [styles.field, focused && styles.fieldFocused, pressed && !focused && styles.fieldPressed]}
         testID={shellTestID}
       >
