@@ -989,6 +989,37 @@ describe('mobile-api Edge router contract', () => {
     )
   })
 
+  it('fails closed when an admin tries to execute a customer Kael path-control action', async () => {
+    const createKaelChat = vi.fn()
+    const handler = createMobileApiHandler({
+      authenticate: vi.fn(async () => adminAuth),
+      services: makeServices({ createKaelChat }),
+    })
+
+    const response = await handler(new Request('https://example.test/mobile-api/kael/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service_type: 'plumbing',
+        message: 'Ong nuoc duoi lavabo dang ro nuoc lien tuc',
+        problem_chips: ['Ong ro ri'],
+        photo_urls: [],
+        address_district: 'q7',
+      }),
+    }))
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      code: 'KAEL_PATH_CONTROL_DENIED',
+      reason_code: 'PATH_CONTROL_ACTOR_MISMATCH',
+      actor_role: 'admin',
+      expected_actor_role: 'customer',
+      edge_route: 'POST /kael/chat',
+      kael_purpose: 'intent_classification',
+    })
+    expect(createKaelChat).not.toHaveBeenCalled()
+  })
+
   it('routes Kael chat history reads through customer auth', async () => {
     const getKaelChat = vi.fn(async () => ({
       session: {

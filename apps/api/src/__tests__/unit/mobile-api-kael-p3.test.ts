@@ -3,14 +3,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { KAEL_PURPOSES } from '../../../../../supabase/functions/mobile-api/_shared/kael'
 import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
-import { chooseProvider } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing'
-import { createKaelCircuitBreaker } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
+import { chooseCircuitAwareProvider, chooseCircuitAwareProviderOrNull, chooseProvider } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing'
+import { createKaelCircuitBreaker, KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
 import { runKaelParallel, runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
 import { updateKaelProgress } from '../../../../../supabase/functions/mobile-api/_shared/kael/streaming'
+import { callAI } from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-client'
 
 describe('mobile-api Kael P3 routing foundation', () => {
   afterEach(() => {
     vi.useRealTimers()
+    vi.unstubAllGlobals()
+    KAEL_CIRCUIT_BREAKER.reset()
   })
 
   it('defines routable config for all 11 Kael purposes', () => {
@@ -57,6 +60,54 @@ describe('mobile-api Kael P3 routing foundation', () => {
         estimatedCostUsd: KAEL_ROUTING_CONFIG.intent_classification.costCeilingUsd + 0.001,
       }),
     ).toThrow(/COST_CEILING_EXCEEDED/)
+  })
+
+  it('uses circuit-aware provider selection for fallback and all-open no-provider cases', () => {
+    const now = new Date('2026-07-02T08:00:00.000Z')
+    KAEL_CIRCUIT_BREAKER.recordFailure({
+      purpose: 'worker_assist',
+      provider: 'deepseek',
+      errorCode: 'HTTP_402',
+      now,
+    })
+
+    expect(chooseCircuitAwareProvider('worker_assist', { now })).toMatchObject({
+      provider: 'anthropic',
+      role: 'fallback',
+    })
+
+    KAEL_CIRCUIT_BREAKER.recordFailure({
+      purpose: 'worker_assist',
+      provider: 'anthropic',
+      errorCode: 'HTTP_402',
+      now,
+    })
+    expect(chooseCircuitAwareProviderOrNull('worker_assist', { now })).toBeNull()
+  })
+
+  it('blocks direct provider calls before network when the circuit is open', async () => {
+    const now = new Date('2026-07-02T08:00:00.000Z')
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    KAEL_CIRCUIT_BREAKER.recordFailure({
+      purpose: 'worker_assist',
+      provider: 'deepseek',
+      errorCode: 'HTTP_402',
+      now,
+    })
+
+    await expect(callAI({
+      purpose: 'worker_assist',
+      provider: 'deepseek',
+      model: 'deepseek-v4-flash',
+      messages: [{ role: 'user', content: 'safe metadata only' }],
+      maxRetries: 0,
+    }, { deepseekApiKey: 'test-key' })).resolves.toMatchObject({
+      success: false,
+      provider: 'deepseek',
+      code: 'OPEN_CIRCUIT',
+    })
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })
 

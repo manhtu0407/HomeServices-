@@ -1,11 +1,12 @@
 import { readdirSync, readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   guardWorkerAssistText,
   runWorkerAssist,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/worker-assist'
 import { detectForbiddenAiDecisionText } from '../../../../../supabase/functions/mobile-api/_shared/kael/ai-boundary-contract'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
 
 const job = {
   id: 'job-1',
@@ -47,6 +48,10 @@ function readMobileApiServiceLayer() {
 }
 
 describe('mobile-api worker Kael chat sibling backend', () => {
+  afterEach(() => {
+    KAEL_CIRCUIT_BREAKER.reset()
+  })
+
   it('returns bounded worker-assist JSON without price or lifecycle mutation', async () => {
     const answer = await runWorkerAssist({
       job,
@@ -245,6 +250,77 @@ describe('mobile-api worker Kael chat sibling backend', () => {
         expect.objectContaining({ provider: 'deepseek', role: 'primary', result: 'error', code: 'TIMEOUT' }),
         expect.objectContaining({ provider: 'anthropic', role: 'fallback', result: 'success' }),
       ],
+    })
+  })
+
+  it('skips an open-circuit primary provider and selects the fallback without a network attempt', async () => {
+    const now = new Date('2026-07-02T08:00:00.000Z')
+    KAEL_CIRCUIT_BREAKER.recordFailure({
+      purpose: 'worker_assist',
+      provider: 'deepseek',
+      errorCode: 'HTTP_402',
+      now,
+    })
+    const attemptedProviders: string[] = []
+
+    const answer = await runWorkerAssist({
+      job,
+      question: 'What should I inspect first at the lavabo leak before touching any parts?',
+      language: 'en',
+      secrets: {},
+      callAI: async (request) => {
+        attemptedProviders.push(request.provider)
+        return {
+          success: true,
+          content: JSON.stringify({
+            text: 'Inspect the shutoff valve, visible pipe joints, and wet cabinet surfaces before moving any part.',
+            safety_notes: ['Keep the work inside the accepted job and document what you find.'],
+            redirect_scope_change: false,
+          }),
+          usage: { inputTokens: 120, outputTokens: 45, costUsd: 0.00042 },
+          latencyMs: 620,
+        }
+      },
+    })
+
+    expect(attemptedProviders).toEqual(['anthropic'])
+    expect(answer).toMatchObject({
+      fallback_used: false,
+      provider: 'anthropic',
+      provider_attempts: [
+        expect.objectContaining({ provider: 'anthropic', role: 'fallback', result: 'success' }),
+      ],
+    })
+  })
+
+  it('returns a safe fallback without provider calls when every worker-assist route is open circuit', async () => {
+    const now = new Date('2026-07-02T08:00:00.000Z')
+    for (const provider of ['deepseek', 'anthropic'] as const) {
+      KAEL_CIRCUIT_BREAKER.recordFailure({
+        purpose: 'worker_assist',
+        provider,
+        errorCode: 'HTTP_402',
+        now,
+      })
+    }
+    const attemptedProviders: string[] = []
+
+    const answer = await runWorkerAssist({
+      job,
+      question: 'What should I inspect first at the lavabo leak before touching any parts?',
+      language: 'en',
+      secrets: {},
+      callAI: async (request) => {
+        attemptedProviders.push(request.provider)
+        throw new Error('provider should not be called when all routes are open circuit')
+      },
+    })
+
+    expect(attemptedProviders).toEqual([])
+    expect(answer).toMatchObject({
+      fallback_used: true,
+      guardrail_reason: 'NO_PROVIDER_AVAILABLE',
+      provider_attempts: [],
     })
   })
 

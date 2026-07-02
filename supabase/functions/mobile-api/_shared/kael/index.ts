@@ -10,6 +10,9 @@ export * from "./orchestrator-facade.ts";
 export * from "./streaming.ts";
 export * from "./scope-risk.ts";
 export * from "./output-pipeline.ts";
+export * from "./trace.ts";
+export * from "./path-control.ts";
+export * from "./agentic-harness.ts";
 export * from "./artifact-contract.ts";
 export * from "./autonomy-gate.ts";
 export * from "./permission-gate.ts";
@@ -24,7 +27,7 @@ export * from "./cron/process-learning-queue.ts";
 export * from "./cron/process-batch-results.ts";
 export * from "./cron/monitor-learning-rules.ts";
 export * from "./decline-templates.ts";
-// X5 (Plan.md §27.8 — 2026-05-29): expose the PII scrubber so the Edge
+// X5 expose the PII scrubber so the Edge
 // persist layer can strip phone/CCCD/address before writing chat turns.
 export { scrubSensitiveForLLM } from "./utils.ts";
 export * from "./system-prompt.ts";

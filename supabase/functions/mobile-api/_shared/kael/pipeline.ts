@@ -22,6 +22,7 @@ import {
   type SpendGateClient,
 } from "./spend-gate.ts";
 import { checkKaelProviderBudget, recordKaelProviderSpend } from "./provider-budget.ts";
+import { buildKaelTraceEvent, buildProviderAttemptTrace } from "./trace.ts";
 
 type EstimateParallelValue =
   | { kind: "vision"; result: Awaited<ReturnType<typeof analyzeDescription>> }
@@ -30,6 +31,9 @@ type EstimateParallelValue =
     kind: "baseline";
     result: Awaited<ReturnType<typeof fetchBaselineCandidates>>;
   };
+
+const CUSTOMER_INTAKE_POLICY_ID = "kael.path.customer_intake_to_estimate.v1";
+const CUSTOMER_CASE_CHAT_POLICY_ID = "kael.path.customer_case_chat_revision.v1";
 
 export async function runKaelPipeline(
   input: PipelineInput,
@@ -70,7 +74,7 @@ export async function runKaelPipeline(
     actorId: input.actorId ?? null,
   };
 
-  // C-1 (Notes.md, main #67): independent hard daily provider-spend ceiling. No-op +
+  // independent hard daily provider-spend ceiling. No-op +
   // zero DB round-trip unless KAEL_PROVIDER_COST_CAP_ENABLED is on; fails open. Kept as
   // a complementary operator knob alongside the §38 gate; degrade honestly here, before
   // spending on the intent + parallel provider calls. (Consolidation tracked as follow-up.)
@@ -99,7 +103,7 @@ export async function runKaelPipeline(
     await recordKaelProviderSpend(supabase, spentUsd);
   };
 
-  // P-2 (Notes.md): the intermediate stage-progress writes are fire-and-forget.
+  // the intermediate stage-progress writes are fire-and-forget.
   // updateKaelProgress swallows its own errors (returns void, never throws), the
   // UI consumes stage granularity over a separate 800ms SSE poll, and each write
   // is followed by awaited stage work that keeps the isolate alive long enough
@@ -140,7 +144,7 @@ export async function runKaelPipeline(
     : intentStage.fallback;
   fallbackUsed ||= !intentStage.success;
   intentStage.attempts.forEach((attempt, index) => {
-    stageLogs.push({
+    pushStageLog(stageLogs, input, {
       stage: "intent",
       ...attempt,
       fallbackUsed: !intentStage.success &&
@@ -333,7 +337,7 @@ export async function runKaelPipeline(
   const visionSkipped = !visionResult.success && visionResult.skipped === true;
   fallbackUsed ||= !visionResult.success && !visionSkipped;
   if (!visionSkipped) {
-    stageLogs.push({
+    pushStageLog(stageLogs, input, {
       stage: "vision",
       provider: visionResult.success ? visionResult.provider : "anthropic",
       model: visionResult.success ? visionResult.model : "claude-sonnet-4-6",
@@ -385,7 +389,7 @@ export async function runKaelPipeline(
     },
     effectiveComplexity,
   );
-  stageLogs.push({
+  pushStageLog(stageLogs, input, {
     stage: "baseline",
     latencyMs: baselineStage.elapsedMs,
     success: Boolean(baselineResult?.success),
@@ -422,7 +426,7 @@ export async function runKaelPipeline(
     throw new Error(marketStage?.failureReason ?? "market stage failed");
   }
   fallbackUsed ||= !marketResult.success;
-  stageLogs.push({
+  pushStageLog(stageLogs, input, {
     stage: "market",
     provider: marketResult.provider ?? "perplexity",
     model: marketResult.model ?? "sonar",
@@ -450,7 +454,7 @@ export async function runKaelPipeline(
     status: "running",
     progress: 0.86,
   });
-  // A-1 (Notes.md): clamp the learned price against the reference baseline at
+  // clamp the learned price against the reference baseline at
   // apply time. A rule deviating beyond the allowed band is ignored here and the
   // synthesis below falls back to the baseline range.
   const learnedPrice = clampLearnedPriceToBaseline(
@@ -494,7 +498,7 @@ export async function runKaelPipeline(
   if (!synthesized) {
     throw new Error(synthesizedStage.failureReason ?? "synthesis stage failed");
   }
-  stageLogs.push({
+  pushStageLog(stageLogs, input, {
     stage: "synthesis",
     latencyMs: synthesizedStage.elapsedMs,
     success: true,
@@ -527,4 +531,86 @@ export async function runKaelPipeline(
       disclaimer: PRICE_DISCLAIMER,
     },
   };
+}
+
+function pushStageLog(
+  stageLogs: PipelineStageLog[],
+  input: PipelineInput,
+  log: PipelineStageLog,
+): void {
+  stageLogs.push({
+    ...log,
+    trace: buildPipelineStageTrace(input, log),
+  });
+}
+
+function buildPipelineStageTrace(
+  input: PipelineInput,
+  log: PipelineStageLog,
+): PipelineStageLog["trace"] {
+  const workflowPhase = input.intakeDiagnosisEnabled ? "offer_ready" : "intake";
+  const action = input.intakeDiagnosisEnabled
+    ? "customer.open_case_chat"
+    : "customer.submit_intake";
+  const policyId = input.intakeDiagnosisEnabled
+    ? CUSTOMER_CASE_CHAT_POLICY_ID
+    : CUSTOMER_INTAKE_POLICY_ID;
+  const purpose = purposeForPipelineStage(log.stage);
+  const safeMetadata = {
+    stage: log.stage,
+    ...(log.cacheStatus ? { cache_status: log.cacheStatus } : {}),
+  };
+  if (log.provider && log.model) {
+    return buildProviderAttemptTrace({
+      workflowPhase,
+      actorRole: "customer",
+      action,
+      policyId,
+      purpose,
+      provider: log.provider,
+      model: log.model,
+      latencyMs: log.latencyMs,
+      costUsd: log.costUsd,
+      result: log.success ? "success" : "error",
+      code: log.failureReason,
+      fallbackUsed: log.fallbackUsed,
+      safeMetadata,
+    });
+  }
+  return buildKaelTraceEvent({
+    workflow_phase: workflowPhase,
+    actor_role: "customer",
+    action,
+    policy_id: policyId,
+    purpose,
+    provider: null,
+    model: null,
+    latency_ms: log.latencyMs,
+    cost_usd: log.costUsd ?? null,
+    validation: {
+      status: log.success ? "pass" : "fail",
+      reason_code: log.failureReason ?? null,
+    },
+    fallback: {
+      used: log.fallbackUsed,
+      reason_code: log.fallbackUsed ? log.failureReason ?? "FALLBACK" : null,
+    },
+    confidence: null,
+    safe_metadata: safeMetadata,
+  });
+}
+
+function purposeForPipelineStage(stage: PipelineStageLog["stage"]) {
+  switch (stage) {
+    case "intent":
+      return "intent_classification";
+    case "vision":
+      return "vision_analysis";
+    case "baseline":
+      return "problem_synthesis";
+    case "market":
+      return "market_lookup";
+    case "synthesis":
+      return "price_synthesis";
+  }
 }

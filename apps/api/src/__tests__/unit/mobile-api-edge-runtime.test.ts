@@ -7,11 +7,13 @@ import {
 import { readEdgeEnv } from '../../../../../supabase/functions/mobile-api/_shared/env'
 import { requireJobAccess } from '../../../../../supabase/functions/mobile-api/_shared/access'
 import { runKaelPipeline, type SupabaseLike } from '../../../../../supabase/functions/mobile-api/_shared/kael'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
 import { sendPushToUsers } from '../../../../../supabase/functions/mobile-api/_shared/push'
 import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/services'
 
 describe('mobile-api Edge runtime helpers', () => {
   beforeEach(() => {
+    KAEL_CIRCUIT_BREAKER.reset()
     vi.stubGlobal('Deno', {
       env: {
         get: vi.fn((name: string) => name === 'KAEL_AUTONOMY_FULL_ENABLED' ? 'true' : undefined),
@@ -2600,6 +2602,20 @@ describe('mobile-api Edge runtime helpers', () => {
         }))
       }
 
+      if (target.includes('anthropic.com')) {
+        return new Response(JSON.stringify({
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              price_min: 170000,
+              price_max: 330000,
+              confidence: 0.74,
+            }),
+          }],
+          usage: { input_tokens: 80, output_tokens: 20 },
+        }))
+      }
+
       throw new Error(`unexpected provider URL ${target}`)
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -2715,7 +2731,12 @@ describe('mobile-api Edge runtime helpers', () => {
       expect(result.estimate.problem_summary).toBe('plumbing: pipe_leak')
     }
     expect(requestBodies.some((body) => body.max_tokens === 320)).toBe(false)
-    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('anthropic.com'), expect.anything())
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('anthropic.com'),
+      expect.objectContaining({
+        body: expect.stringContaining('"max_tokens":320'),
+      }),
+    )
   })
 
   it('passes customer photo URLs to Anthropic vision analysis', async () => {
@@ -2922,7 +2943,6 @@ describe('mobile-api Edge runtime helpers', () => {
 
     await expect(createEdgeServices({}).updateJobStatus(ctx, 'job-1', {
       status: 'completed_by_worker',
-      // Phase 2.0 (2026-05-23): worker không nhập final_price; Kael giữ authority.
       completion_notes: 'Đã hoàn tất',
       completion_photo_urls: ['https://example.com/after-1.jpg'],
     })).rejects.toMatchObject({
@@ -4195,8 +4215,6 @@ describe('mobile-api Edge runtime helpers', () => {
   })
 
   it('persists Kael review before notifying the customer when scope-change confidence is below auto-decision policy', async () => {
-    // Phase 2.0 (plan §22.7.B, 2026-05-23): computeScopeChangeEstimate schema
-    // returns complexity_assessment + price_min/max + problem_summary.
     const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
       const target = typeof url === 'string' ? url : url.toString()
       if (target.includes('api.anthropic.com')) {
@@ -4261,7 +4279,6 @@ describe('mobile-api Edge runtime helpers', () => {
     }
 
     await expect(createEdgeServices({ anthropicApiKey: 'test-anthropic-key' }).requestScopeChange(ctx, 'job-1', {
-      // Phase 2.0 (2026-05-23): worker không gửi price; Kael compute từ context.
       new_description: 'Add repair scope after onsite inspection',
       reason: 'Found additional damaged part that needs immediate handling',
       photo_urls: ['supabase://job-media/job-1/scope_change_evidence/a.jpg'],
@@ -4807,10 +4824,6 @@ describe('mobile-api Edge runtime helpers', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
 
-    // Phase 2.0a (plan §22.7.B.1, 2026-05-23): on approve, decideScopeChange
-    // now (a) looks up scope_change_requests.kael_computed_min/max and (b)
-    // updates jobs.final_price to the Kael-locked value before the
-    // notification flow. The sequence below adds those two DB rounds.
     const client = makeSequenceClient([
       { data: { job_id: 'job-1' }, error: null },
       { data: null, error: null },
@@ -5455,7 +5468,6 @@ describe('mobile-api Edge runtime helpers', () => {
     }
 
     await expect(createEdgeServices({}).requestScopeChange(ctx, 'job-1', {
-      // Phase 2.0 (2026-05-23): worker không gửi price; Kael compute từ context.
       new_description: 'Thêm phạm vi sửa chữa',
       reason: 'Phát hiện lỗi phụ',
       photo_urls: [],

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { EdgeAiSecrets, AIRequest, AIResponse, AIError } from "./types.ts";
 import { callAI as defaultCallAI } from "./provider-client.ts";
-import { providerCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
+import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { buildKaelSystemPrompt } from "./system-prompt.ts";
 import { evaluateKaelPermissionGate } from "./permission-gate.ts";
@@ -9,6 +9,13 @@ import { runKaelSelfCheckPipeline } from "./self-check.ts";
 import { scrubSensitiveForLLM } from "./utils.ts";
 import type { KaelPromptLanguage } from "./system-prompt.ts";
 import { detectForbiddenAiDecisionText } from "./ai-boundary-contract.ts";
+import {
+  buildNoProviderTrace,
+  buildProviderAttemptTrace,
+  promptVersionForPurpose,
+  schemaVersionForPurpose,
+  type KaelSafeTraceEvent,
+} from "./trace.ts";
 
 export type WorkerAssistJobContext = {
   readonly id: string;
@@ -27,7 +34,7 @@ export type WorkerAssistInput = {
   readonly question: string;
   readonly language?: KaelPromptLanguage;
   readonly mediaRefs?: readonly string[];
-  // W-1 (Notes.md): a short, server-side, schema-validated summary of what Kael
+  // a short, server-side, schema-validated summary of what Kael
   // actually saw in the worker's photos (problem + severity + complexity). The
   // handler runs vision and passes this; worker-assist itself never calls a
   // provider for images. Null when there were no photos or vision did not
@@ -55,15 +62,20 @@ export type WorkerAssistAnswer = {
   readonly cost_usd?: number;
   readonly guardrail_reason?: string;
   readonly provider_attempts?: readonly WorkerAssistProviderAttempt[];
+  readonly trace?: readonly KaelSafeTraceEvent[];
 };
 
 export type WorkerAssistProviderAttempt = {
   readonly provider: string;
+  readonly model: string;
   readonly role: "primary" | "fallback";
   readonly timeout_ms: number;
+  readonly prompt_version: string;
+  readonly schema_version: string;
   readonly result: "success" | "error" | "schema_invalid";
   readonly code?: string;
   readonly latency_ms?: number;
+  readonly cost_usd?: number;
 };
 
 const workerAssistResponseSchema = z.preprocess(normalizeWorkerAssistPayload, z.object({
@@ -101,18 +113,42 @@ export async function runWorkerAssist(
     return fallbackAnswer(permission.reasonCode, shouldRedirectToScopeChange(input.question), language);
   }
 
-  const routes = providerCandidatesForPurpose("worker_assist");
+  const routes = circuitAwareProviderCandidatesForPurpose("worker_assist");
   let lastProviderFailure = "AI_UNAVAILABLE";
   const providerAttempts: WorkerAssistProviderAttempt[] = [];
+  const trace: KaelSafeTraceEvent[] = [];
+
+  if (routes.length === 0) {
+    trace.push(buildNoProviderTrace({
+      workflowPhase: "in_progress",
+      actorRole: "worker",
+      action: "worker.ask_kael",
+      policyId: "kael.path.worker_assist_own_job.v1",
+      purpose: "worker_assist",
+      reasonCode: "NO_PROVIDER_AVAILABLE",
+      safeMetadata: {
+        circuit_open: true,
+      },
+    }));
+    return fallbackAnswer(
+      "NO_PROVIDER_AVAILABLE",
+      shouldRedirectToScopeChange(input.question),
+      language,
+      providerAttempts,
+      trace,
+    );
+  }
 
   for (const route of routes) {
     const request = buildWorkerAssistRequest(input, route, language);
     const result = await (input.callAI ?? defaultCallAI)(request, input.secrets);
     if (!result.success) {
       lastProviderFailure = `AI_${result.code}`;
-      providerAttempts.push(providerAttempt(route, "error", {
+      const attempt = providerAttempt(route, "error", {
         code: result.code,
-      }));
+      });
+      providerAttempts.push(attempt);
+      trace.push(traceForAttempt(attempt, "worker.ask_kael", true));
       continue;
     }
 
@@ -120,16 +156,22 @@ export async function runWorkerAssist(
     const parsed = workerAssistResponseSchema.safeParse(parsedObject);
     if (!parsed.success) {
       lastProviderFailure = "AI_RESPONSE_INVALID";
-      providerAttempts.push(providerAttempt(route, "schema_invalid", {
+      const attempt = providerAttempt(route, "schema_invalid", {
         latencyMs: result.latencyMs,
         code: describeWorkerAssistShape(parsedObject, parsed.error.issues),
-      }));
+        costUsd: result.usage.costUsd,
+      });
+      providerAttempts.push(attempt);
+      trace.push(traceForAttempt(attempt, "worker.ask_kael", true));
       continue;
     }
 
-    providerAttempts.push(providerAttempt(route, "success", {
+    const attempt = providerAttempt(route, "success", {
       latencyMs: result.latencyMs,
-    }));
+      costUsd: result.usage.costUsd,
+    });
+    providerAttempts.push(attempt);
+    trace.push(traceForAttempt(attempt, "worker.ask_kael", false));
 
     const guarded = guardWorkerAssistText(parsed.data.text);
     if (!guarded.allowed) {
@@ -138,6 +180,7 @@ export async function runWorkerAssist(
         true,
         language,
         providerAttempts,
+        trace,
       );
     }
 
@@ -154,6 +197,7 @@ export async function runWorkerAssist(
         parsed.data.redirect_scope_change,
         language,
         providerAttempts,
+        trace,
       );
     }
 
@@ -169,6 +213,7 @@ export async function runWorkerAssist(
       latency_ms: result.latencyMs,
       cost_usd: result.usage.costUsd,
       provider_attempts: providerAttempts,
+      trace,
     };
   }
 
@@ -177,6 +222,7 @@ export async function runWorkerAssist(
     shouldRedirectToScopeChange(input.question),
     language,
     providerAttempts,
+    trace,
   );
 }
 
@@ -235,6 +281,7 @@ function fallbackAnswer(
   redirectScopeChange: boolean,
   language: KaelPromptLanguage,
   providerAttempts: readonly WorkerAssistProviderAttempt[] = [],
+  trace: readonly KaelSafeTraceEvent[] = [],
 ): WorkerAssistAnswer {
   return {
     schema_version: "worker_assist_answer.v1",
@@ -244,22 +291,48 @@ function fallbackAnswer(
     fallback_used: true,
     guardrail_reason: reason,
     provider_attempts: providerAttempts,
+    trace,
   };
 }
 
 function providerAttempt(
   route: ProviderChoice,
   result: WorkerAssistProviderAttempt["result"],
-  options: { code?: string; latencyMs?: number } = {},
+  options: { code?: string; latencyMs?: number; costUsd?: number } = {},
 ): WorkerAssistProviderAttempt {
   return {
     provider: route.provider,
+    model: route.model,
     role: route.role,
     timeout_ms: route.latencyBudgetMs,
+    prompt_version: promptVersionForPurpose("worker_assist"),
+    schema_version: schemaVersionForPurpose("worker_assist"),
     result,
     ...(options.code ? { code: options.code } : {}),
     ...(options.latencyMs !== undefined ? { latency_ms: options.latencyMs } : {}),
+    ...(options.costUsd !== undefined ? { cost_usd: options.costUsd } : {}),
   };
+}
+
+function traceForAttempt(
+  attempt: WorkerAssistProviderAttempt,
+  action: "worker.ask_kael",
+  fallbackUsed: boolean,
+): KaelSafeTraceEvent {
+  return buildProviderAttemptTrace({
+    workflowPhase: "in_progress",
+    actorRole: "worker",
+    action,
+    policyId: "kael.path.worker_assist_own_job.v1",
+    purpose: "worker_assist",
+    provider: attempt.provider as "anthropic" | "perplexity" | "deepseek",
+    model: attempt.model,
+    latencyMs: attempt.latency_ms,
+    costUsd: attempt.cost_usd,
+    result: attempt.result,
+    code: attempt.code,
+    fallbackUsed,
+  });
 }
 
 function normalizeWorkerAssistPayload(value: unknown) {

@@ -5,7 +5,7 @@ import { buildVisionMessages } from "./prompts.ts";
 import { callAI } from "./provider-client.ts";
 import type { KaelSpendGate } from "./spend-gate.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
-import { chooseProvider } from "./routing.ts";
+import { chooseCircuitAwareProviderOrNull } from "./routing.ts";
 import { safeParseJSON, sanitizeVisionPhotoUrls } from "./utils.ts";
 
 const VISION_MAX_TOKENS = 320;
@@ -60,7 +60,14 @@ export async function analyzeDescription(
     };
   }
 
-  const route = chooseProvider("vision_analysis");
+  const route = chooseCircuitAwareProviderOrNull("vision_analysis");
+  if (!route) {
+    return {
+      success: false,
+      fallback: buildFallbackVision(intentContext),
+      failureReason: "NO_PROVIDER_AVAILABLE",
+    };
+  }
   const result = await callAI({
     purpose: "vision_analysis",
     provider: route.provider,

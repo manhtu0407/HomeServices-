@@ -1,12 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   runCustomerAssistant,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/customer-assistant'
+import { KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
 import type {
   AIRequest,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
 
 describe('mobile-api customer Kael assistant', () => {
+  afterEach(() => {
+    KAEL_CIRCUIT_BREAKER.reset()
+  })
+
   it('prioritizes NestScout knowledge for worker questions even without a service type', async () => {
     const { client, calls } = makeGeneralKnowledgeClient()
     const seenRequests: AIRequest[] = []
@@ -39,6 +44,17 @@ describe('mobile-api customer Kael assistant', () => {
 
     expect(result.fallback_used).toBe(false)
     expect(result.citations).toContain('platform:worker_verification')
+    expect(result.trace?.[0]).toMatchObject({
+      trace_schema_version: 'kael_trace.v1',
+      workflow_phase: 'intake',
+      actor_role: 'customer',
+      action: 'customer.submit_intake',
+      policy_id: 'kael.path.customer_intake_to_estimate.v1',
+      purpose: 'educational_response',
+      provider: 'deepseek',
+      validation: { status: 'pass' },
+      fallback: { used: false },
+    })
     expect(callAI).toHaveBeenCalledTimes(1)
     expect(JSON.stringify(seenRequests[0]?.messages)).toContain('Runtime knowledge')
     expect(JSON.stringify(seenRequests[0]?.messages)).toContain('worker onboarding')
@@ -99,6 +115,44 @@ describe('mobile-api customer Kael assistant', () => {
       kind: 'select',
       table: 'legal_awareness_patterns',
     }))
+  })
+
+  it('falls back without a provider call when every educational route is open circuit', async () => {
+    KAEL_CIRCUIT_BREAKER.recordFailure({
+      purpose: 'educational_response',
+      provider: 'deepseek',
+      errorCode: 'HTTP_402',
+    })
+    KAEL_CIRCUIT_BREAKER.recordFailure({
+      purpose: 'educational_response',
+      provider: 'anthropic',
+      errorCode: 'HTTP_402',
+    })
+    const callAI = vi.fn(async () => {
+      throw new Error('provider should not be called while all educational routes are open circuit')
+    })
+
+    const result = await runCustomerAssistant({
+      callAI,
+      language: 'vi',
+      message: 'Kael giáº£i thÃ­ch quy trÃ¬nh Ä‘áº·t lá»‹ch Ä‘iá»‡n giÃºp tÃ´i?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(true)
+    expect(result.boundary).toBe('fallback')
+    expect(result.trace?.[0]).toMatchObject({
+      workflow_phase: 'intake',
+      actor_role: 'customer',
+      action: 'customer.submit_intake',
+      policy_id: 'kael.path.customer_intake_to_estimate.v1',
+      purpose: 'educational_response',
+      provider: null,
+      validation: { status: 'skipped', reason_code: 'NO_PROVIDER_AVAILABLE' },
+      fallback: { used: true, reason_code: 'NO_PROVIDER_AVAILABLE' },
+    })
+    expect(callAI).not.toHaveBeenCalled()
   })
 })
 
