@@ -1,16 +1,23 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { isAbsolute, resolve } from 'node:path'
 import type { ExpoConfig, ConfigContext } from 'expo/config'
 import { withEntitlementsPlist, withXcodeProject, type ConfigPlugin } from 'expo/config-plugins'
 
 const configDir = __dirname
 const repoRoot = resolve(configDir, '../..')
 
+const explicitEnvFiles = (process.env.NESTSCOUT_MOBILE_ENV_FILE ?? '')
+  .split(/[;,\n]/)
+  .map((value: string) => value.trim())
+  .filter(Boolean)
+  .map((filePath: string) => (isAbsolute(filePath) ? filePath : resolve(repoRoot, filePath)))
+
 const localEnv = [
   resolve(repoRoot, '.env'),
   resolve(repoRoot, '.env.local'),
   resolve(configDir, '.env'),
   resolve(configDir, '.env.local'),
+  ...explicitEnvFiles,
 ].reduce<Record<string, string>>((env, filePath) => {
   if (!existsSync(filePath)) {
     return env

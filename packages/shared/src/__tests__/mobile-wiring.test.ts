@@ -2851,10 +2851,20 @@ describe('app.config.ts runtime config', () => {
     expect(src).not.toContain('SUPABASE_SERVICE_ROLE_KEY')
     expect(src).not.toContain('SUPABASE_SECRET_KEY')
   })
+
+  it('supports an explicit local env file for clean-worktree previews without hardcoding staging values', () => {
+    expect(src).toContain('NESTSCOUT_MOBILE_ENV_FILE')
+    expect(src).toContain('explicitEnvFiles')
+    expect(src).toContain('isAbsolute(filePath) ? filePath : resolve(repoRoot, filePath)')
+    expect(src).not.toContain("'.env.staging'")
+    expect(src).not.toContain('xyylanuyflrjzbjzhqfl')
+  })
 })
 
 describe('web preview dependencies', () => {
   const mobilePackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, 'package.json'), 'utf-8'))
+  const rootPackage = JSON.parse(readFileSync(resolve(MOBILE_ROOT, '../../package.json'), 'utf-8'))
+  const stagingPreviewScript = readSource(resolve(MOBILE_ROOT, '../../scripts/run-mobile-web-staging-preview.ps1'))
 
   it('declares react-dom for Expo web rendering', () => {
     expect(mobilePackage.dependencies['react-dom']).toBe('19.1.0')
@@ -2874,6 +2884,18 @@ describe('web preview dependencies', () => {
 
   it('declares expo-image-picker for local image/video draft media', () => {
     expect(mobilePackage.dependencies['expo-image-picker']).toBeDefined()
+  })
+
+  it('provides a staging web preview runner that loads ignored public env without printing values', () => {
+    expect(rootPackage.scripts['preview:mobile:web:staging']).toBe('scripts\\run-mobile-web-staging-preview.cmd')
+    expect(stagingPreviewScript).toContain('apps/mobile/.env.staging')
+    expect(stagingPreviewScript).toContain('NESTSCOUT_MOBILE_ENV_FILE')
+    expect(stagingPreviewScript).toContain('EXPO_NO_DOTENV')
+    expect(stagingPreviewScript).toContain('Assert-StagingRef -Value $supabaseUrl')
+    expect(stagingPreviewScript).toContain("Require-Env 'EXPO_PUBLIC_SUPABASE_URL'")
+    expect(stagingPreviewScript).toContain("Require-Env 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'")
+    expect(stagingPreviewScript).not.toMatch(/Write-(Host|Output).*publishableKey/)
+    expect(stagingPreviewScript).not.toMatch(/Write-(Host|Output).*\$value/)
   })
 })
 

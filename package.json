@@ -10,6 +10,7 @@
     "doctor": "scripts\\run-react-doctor.cmd changed",
     "doctor:react": "scripts\\run-react-doctor.cmd",
     "doctor:react:changed": "scripts\\run-react-doctor.cmd changed",
+    "preview:mobile:web:staging": "scripts\\run-mobile-web-staging-preview.cmd",
     "kael:eval": "scripts\\run-node.cmd apps/api/scripts/kael-eval.mjs",
     "lint": "scripts\\run-turbo.cmd lint",
     "lint:api": "scripts\\run-package-script.cmd @nestscout/api lint",
