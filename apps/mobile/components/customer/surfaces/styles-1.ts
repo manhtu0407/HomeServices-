@@ -228,6 +228,9 @@ export const customerStyles1 = StyleSheet.create({
     transform: [{ rotate: '-8deg' }],
     width: 218,
   },
+  ambientMintWashQuiet: {
+    opacity: 0.045,
+  },
   ambientWarmWash: {
     borderRadius: 30,
     bottom: 150,
@@ -237,6 +240,9 @@ export const customerStyles1 = StyleSheet.create({
     position: 'absolute',
     transform: [{ rotate: '12deg' }],
     width: 180,
+  },
+  ambientWarmWashQuiet: {
+    opacity: 0.035,
   },
   ambientGlassLine: {
     height: 1,

@@ -245,14 +245,14 @@ export function MotionSweep({ frameWidth, screenWidth }: { frameWidth: number; s
   return <Animated.View pointerEvents="none" style={[styles.motionSweep, { backgroundColor: tokens.glassHighlight, left }, sweepStyle]} />
 }
 
-export function AmbientGlassField({ frameWidth, screenWidth }: { frameWidth: number; screenWidth: number }) {
+export function AmbientGlassField({ frameWidth, quiet = false, screenWidth }: { frameWidth: number; quiet?: boolean; screenWidth: number }) {
   const tokens = useCustomerTokens()
   const left = Math.max((screenWidth - frameWidth) / 2, 0)
 
   return (
     <View pointerEvents="none" style={[styles.ambientGlassField, { left, width: frameWidth }]} testID="customer-section-glass-field">
-      <View style={[styles.ambientMintWash, { backgroundColor: tokens.aqua }]} />
-      <View style={[styles.ambientWarmWash, { backgroundColor: tokens.copper }]} />
+      <View style={[styles.ambientMintWash, quiet ? styles.ambientMintWashQuiet : null, { backgroundColor: tokens.aqua }]} />
+      <View style={[styles.ambientWarmWash, quiet ? styles.ambientWarmWashQuiet : null, { backgroundColor: tokens.copper }]} />
       <View style={[styles.ambientGlassLine, { backgroundColor: tokens.borderStrong }, customerAmbientLineStyle]} />
     </View>
   )
