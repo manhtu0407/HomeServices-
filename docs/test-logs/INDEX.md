@@ -4,6 +4,7 @@ Newest test reports first.
 
 | Date | Report | Result | Bugs | Notes |
 |------|--------|--------|------|-------|
+| 2026-07-02 | [Kael Phase 4 Eval](2026-07-02_kael-eval.md) | passed deterministic | 0 | 75/75 A5 pass after Phase 4 harness; B6 knowledge ON preserves safety, legal boundary, and citation coverage |
 | 2026-06-27 | [Kael Agentic Alignment Eval After Worker Scope](2026-06-27_kael-agentic-alignment-eval-after-worker-scope.md) | passed deterministic | 0 | 75/75 A5 pass; B6 knowledge ON preserves safety, legal boundary, and citation coverage |
 | 2026-06-27 | [Kael Agentic Alignment Eval After General Assistant RAG](2026-06-27_kael-agentic-alignment-eval-after-general-assistant-rag.md) | passed deterministic | 0 | 75/75 A5 pass; local fixture scoring only, no provider calls |
 | 2026-06-26 | [Kael Agentic Alignment Eval Rerun 2](2026-06-26_kael-agentic-alignment-eval-rerun-2.md) | passed deterministic | 0 | 75/75 A5 pass; confirms repeatability after alignment changes |
