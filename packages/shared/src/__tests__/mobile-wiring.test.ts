@@ -1,6 +1,6 @@
 ﻿import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync, readdirSync } from 'fs'
-import { resolve } from 'path'
+import { dirname, resolve } from 'path'
 
 const MOBILE_ROOT = resolve(__dirname, '../../../../apps/mobile')
 const readSource = (path: string) => readFileSync(path, 'utf-8').replace(/\r\n/g, '\n')
@@ -71,6 +71,52 @@ const readAuthSurfaceLayer = () =>
     .sort()
     .map(readSource)
     .join('\n')
+
+const mobileSourceExtensions = ['.ts', '.tsx', '.js', '.jsx'] as const
+
+function resolveMobileSourceModule(basePath: string) {
+  for (const extension of mobileSourceExtensions) {
+    const path = `${basePath}${extension}`
+    if (existsSync(path)) return path
+  }
+
+  for (const extension of mobileSourceExtensions) {
+    const path = resolve(basePath, `index${extension}`)
+    if (existsSync(path)) return path
+  }
+
+  return null
+}
+
+function resolveMobileImport(fromPath: string, specifier: string) {
+  if (specifier.startsWith('@/')) return resolveMobileSourceModule(resolve(MOBILE_ROOT, specifier.slice(2)))
+  if (specifier.startsWith('.')) return resolveMobileSourceModule(resolve(dirname(fromPath), specifier))
+  return null
+}
+
+function readMobileSourceGraph(entryRelativePaths: string[]) {
+  const stack = entryRelativePaths.map((entry) => resolve(MOBILE_ROOT, entry))
+  const seen = new Set<string>()
+
+  while (stack.length > 0) {
+    const path = stack.pop()
+    if (!path || seen.has(path) || !existsSync(path)) continue
+
+    seen.add(path)
+    const src = readSource(path)
+    const specifiers = [
+      ...src.matchAll(/(?:import|export)\s+(?:[^'";]+?\s+from\s+)?['"]([^'"]+)['"]/g),
+      ...src.matchAll(/require\(['"]([^'"]+)['"]\)/g),
+    ].map((match) => match[1])
+
+    for (const specifier of specifiers) {
+      const nextPath = resolveMobileImport(path, specifier)
+      if (nextPath && !seen.has(nextPath)) stack.push(nextPath)
+    }
+  }
+
+  return [...seen].sort()
+}
 
 // ===================================================================
 // Navigation skeleton - must match STRUCTURES.md exactly
@@ -212,6 +258,14 @@ describe('customer tab labels (STRUCTURES.md A1)', () => {
     expect(src).not.toContain('accessibilityLabel={accessibilityMarker}')
     expect(src).not.toContain('accessibilityLabel={CUSTOMER_DOCK')
   })
+
+  it('exposes a hidden customer runtime marker for TestFlight provenance checks', () => {
+    expect(src).toContain('mobileRuntimeConfig.runtimeBuildInfo')
+    expect(src).toContain('CustomerRuntimeBuildMarker')
+    expect(src).toContain('customer-runtime-marker-hotspot')
+    expect(src).toContain('customer-runtime-marker')
+    expect(src).toContain('NestScout customer runtime marker:')
+  })
 })
 
 // ===================================================================
@@ -241,6 +295,47 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('export function CustomerKaelSurface')
     expect(src).toContain('export function CustomerHistorySurface')
     expect(src).toContain('export function CustomerProfileSurface')
+  })
+
+  it('keeps archived customer v21 surfaces out of the active customer runtime graph', () => {
+    const runtimeFiles = [
+      ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/customer')),
+      ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'app/(customer)')),
+    ].filter((path) => {
+      const normalized = path.replace(/\\/g, '/')
+      return /\.tsx?$/.test(path) && !normalized.includes('/__tests__/') && !normalized.includes('/v21/')
+    })
+
+    for (const path of runtimeFiles) {
+      const src = readSource(path)
+      expect(src, path).not.toMatch(/from ['"].*\/?v21\/(?:surfaces|types)['"]/)
+      expect(src, path).not.toContain('CustomerV21')
+      expect(src, path).not.toContain('customer-v21-')
+    }
+  })
+
+  it('keeps customer route entrypoints unreachable from archived v21 and broad wash markers', () => {
+    const routeGraphFiles = readMobileSourceGraph([
+      'app/(customer)/_layout.tsx',
+      'app/(customer)/home.tsx',
+      'app/(customer)/booking.tsx',
+      'app/(customer)/kael.tsx',
+      'app/(customer)/kael-chat.tsx',
+      'app/(customer)/history.tsx',
+      'app/(customer)/profile.tsx',
+    ])
+    const rel = (path: string) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, '')
+    const offenders = routeGraphFiles
+      .filter((path) => {
+        const normalized = path.replace(/\\/g, '/')
+        if (normalized.includes('/components/customer/v21/')) return true
+        const src = readSource(path)
+        return /CustomerV21|customer-v21-|customer-kael-chat-liquid-wash|customer-section-glass-field|customer-motion-field/.test(src)
+      })
+      .map(rel)
+
+    expect(routeGraphFiles.map(rel)).toContain('components/customer/kael-chat/kael-chat-surface.tsx')
+    expect(offenders).toEqual([])
   })
 
   it.each(customerRoutes)('wires (customer)/%s to %s', (route, exportName) => {
@@ -654,11 +749,12 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('styles.historyHeroPanel')
     expect(src).toContain('styles.historyCheckPanel')
     expect(src).toContain('styles.historyThreadCard')
-    expect(src).toContain('styles.customerSectionLiquidWash')
+    expect(src).not.toContain('styles.customerSectionLiquidWash')
   })
 
   it('keeps the Kael dock pointed at the full-screen stack route while the stack route owns backend chat', () => {
     const src = shell()
+    const agenticSurface = read('components/customer/agentic-center-surface.tsx')
     const stack = read('components/customer/kael-chat/kael-chat-surface.tsx')
     const stackThread = read('components/customer/kael-chat/thread.tsx')
     const stackUi = `${stack}\n${stackThread}`
@@ -693,9 +789,15 @@ describe('customer frontend shell surfaces', () => {
     expect(src).not.toContain('fetch(')
     expect(src).toContain('kaelChatPath(serviceType)')
     expect(stack).toContain('KAEL_CHAT_STACK_SCREEN_CONTRACT')
+    expect(stack).toContain('export function KaelChatSurface')
+    expect(stack).not.toContain('CustomerV21KaelChatSurface')
+    expect(stack).not.toContain("from '../v21/surfaces'")
+    expect(stack).not.toContain('export { CustomerV21KaelChatSurface as KaelChatSurface }')
+    expect(agenticSurface).toContain("replace('/(customer)/kael-chat?mode=case')")
+    expect(agenticSurface).not.toContain('./v21/surfaces')
     expect(stack).toContain("replace('/(customer)/home')")
     expect(stack).toContain('customer-kael-chat-fullscreen-no-bottom-dock')
-    expect(stack).toContain('customer-kael-chat-liquid-wash')
+    expect(stack).not.toContain('customer-kael-chat-liquid-wash')
     expect(stack).toContain('customer-kael-chat-empty-ticket-summary')
     expect(stack).toContain('emptyTicketBody')
     expect(src).toContain('navigateWithLiquidDelay(openKaelChatPath)')
@@ -789,8 +891,8 @@ describe('customer frontend shell surfaces', () => {
     expect(stackStyles).toContain("textAlignVertical: 'top'")
     expect(stackStyles).toContain("inputInvisibleFocus: { backgroundColor: 'transparent', borderColor: 'transparent', borderWidth: 0")
     expect(stackStyles).toContain("outlineStyle: 'none'")
-    expect(stackStyles).toContain('chatAmbientField')
-    expect(stackStyles).toContain('chatAmbientSweep')
+    expect(stackStyles).not.toContain('chatAmbientField')
+    expect(stackStyles).not.toContain('chatAmbientSweep')
     expect(stack).toContain('reduceMotionAwarePressStyle(pressed, reduceMotion)')
     expect(stack).toContain("subtitle: 'Trợ lý phân tích và điều phối'")
     expect(stackUi).toContain('styles.emptyChatStart')
@@ -872,7 +974,7 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('Pressable')
     expect(src).toContain('numberOfLines')
     expect(src).toContain('customer-shell-motion-field')
-    expect(src).toContain('customer-section-glass-field')
+    expect(src).not.toContain('customer-section-glass-field')
     expect(src).toContain('customer-dock-glass-aura')
     expect(src).toContain('customer-dock-motion-shell')
     expect(src).toContain('customer-dock-split-toolbar')
@@ -893,9 +995,10 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-home-layered-hero')
     expect(src).toContain('SubtleGlassHighlight')
     expect(src).toContain('MotionSweep')
-    expect(src).toContain('customer-motion-field-${active}')
-    expect(src).toContain('const pulse = useSharedValue(0)')
-    expect(src).toContain('const settle = useSharedValue(0)')
+    expect(src).not.toContain('customer-motion-field-${active}')
+    expect(src).not.toContain('customerMotionField')
+    expect(src).not.toContain('const pulse = useSharedValue(0)')
+    expect(src).not.toContain('const settle = useSharedValue(0)')
     expect(src).toContain('withDelay(60, withTiming(1, { duration: 300 }))')
     expect(src).toContain('V4MapBackdrop')
     expect(src).toContain('customerMessageSurface')
@@ -918,8 +1021,8 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('react-native-reanimated')
     expect(src).toContain('useAnimatedStyle')
     expect(src).not.toContain('withRepeat')
-    expect(src).toContain('withSpring(1, motionTokens.liquid.entrance)')
-    expect(src).toContain('withDelay(60, withSpring(0, motionTokens.liquid.press))')
+    expect(src).toContain('withSpring(hidden ? 80 : 0, hidden ? motionTokens.liquid.press : motionTokens.liquid.entrance)')
+    expect(src).toContain('withSpring(hidden ? 0.97 : 1, hidden ? motionTokens.liquid.press : motionTokens.liquid.entrance)')
     expect(src).toContain("backdropFilter: reduceTransparency ? undefined : tokens.mode === 'dark' ? 'blur(22px) saturate(1.22) contrast(1.03)' : 'blur(24px) saturate(1.76) contrast(1.04)'")
     expect(src).not.toContain("filter: 'blur")
     expect(src).not.toContain('Animated.loop')

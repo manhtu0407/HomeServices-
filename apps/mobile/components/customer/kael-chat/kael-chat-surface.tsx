@@ -21,7 +21,6 @@ import {
   type PendingClientRequestId,
 } from '@/lib/client-request-id'
 import { useServiceWorkflow } from '@/lib/use-service-workflow'
-import { KaelChatSurface as CustomerV21KaelChatSurface } from '../v21/surfaces'
 import { inferKaelChatDistrict } from './address-district'
 import {
   KaelChatComposer,
@@ -43,8 +42,6 @@ import { takePendingKaelChatDraft } from './pending-intake'
 import { createInitialKaelChatState, kaelChatReducer, type KaelChatAction, type KaelChatState } from './state'
 import { styles } from './styles'
 import { KaelChatThread, type KaelChatVisibility } from './thread'
-
-export { CustomerV21KaelChatSurface as KaelChatSurface }
 
 const KAEL_CHAT_STACK_SCREEN_CONTRACT = 'KAEL_CHAT_STACK_SCREEN_CONTRACT: stack route uses kaelChatService only'
 const KAEL_CHAT_SERVICE_WRAPPER_ONLY = 'KAEL_CHAT_SERVICE_WRAPPER_ONLY: UI does not call Supabase, fetch, or AI directly'
@@ -432,7 +429,7 @@ function isTerminalKaelProgress(progress: KaelChatProgress | null) {
   return progress.status === 'failed' && progress.progress >= 1
 }
 
-export function LegacyKaelChatSurface() {
+export function KaelChatSurface() {
   const { replace } = useRouter()
   const params = useLocalSearchParams()
   const language = useAppLanguage()
@@ -704,13 +701,6 @@ export function LegacyKaelChatSurface() {
       <View style={[styles.chatFrame, { width: frameWidth }]}>
         <View style={styles.hiddenMarker} testID="customer-kael-chat-fullscreen-no-bottom-dock" />
         <View style={styles.hiddenMarker} testID="customer-kael-worker-chatbox-parity" />
-        {reduceTransparency ? null : (
-          <View pointerEvents="none" style={styles.chatAmbientField} testID="customer-kael-chat-liquid-wash">
-            <View style={[styles.chatAmbientMint, { backgroundColor: tokens.aqua }]} />
-            <View style={[styles.chatAmbientWarm, { backgroundColor: tokens.copper }]} />
-            <View style={[styles.chatAmbientSweep, { backgroundColor: tokens.glassHighlight }]} />
-          </View>
-        )}
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.keyboard, styles.chatShell]}>
           <KaelChatHeader
             archiveItems={archiveItems}
@@ -774,3 +764,5 @@ export function LegacyKaelChatSurface() {
     </SafeAreaView>
   )
 }
+
+export { KaelChatSurface as LegacyKaelChatSurface }

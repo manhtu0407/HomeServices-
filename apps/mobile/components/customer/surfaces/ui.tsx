@@ -40,8 +40,6 @@ const CUSTOMER_WORKER_TYPOGRAPHY_PARITY = 'CUSTOMER_WORKER_TYPOGRAPHY_PARITY: cu
 
 const CUSTOMER_ACTIVITY_APPLE_IOS26_SURFACE = 'CUSTOMER_ACTIVITY_APPLE_IOS26_SURFACE: Activity uses Apple-style hero material, edge highlight, status lens, and standard-material timeline rail'
 
-const CUSTOMER_DECORATIVE_MOTION_ENABLED = false
-
 void CUSTOMER_APPLE_DARK_ASSET_APPEARANCE
 
 void CUSTOMER_APPLE_IOS26_CLIENT_SECTIONS
@@ -55,11 +53,6 @@ export const openBookingPath = '/(customer)/booking'
 export const openKaelChatPath = '/(customer)/kael-chat'
 
 export const openHistoryPath = '/(customer)/history'
-
-const customerAmbientLineStyle = {
-  opacity: 0.13,
-  transform: [{ rotate: '-12deg' }],
-}
 
 export const customerHistoryTabKeys: CustomerHistoryTab[] = ['repair', 'price', 'chat', 'done']
 
@@ -243,19 +236,6 @@ export function MotionSweep({ frameWidth, screenWidth }: { frameWidth: number; s
   const left = Math.max((screenWidth - frameWidth) / 2, 0)
 
   return <Animated.View pointerEvents="none" style={[styles.motionSweep, { backgroundColor: tokens.glassHighlight, left }, sweepStyle]} />
-}
-
-export function AmbientGlassField({ frameWidth, quiet = false, screenWidth }: { frameWidth: number; quiet?: boolean; screenWidth: number }) {
-  const tokens = useCustomerTokens()
-  const left = Math.max((screenWidth - frameWidth) / 2, 0)
-
-  return (
-    <View pointerEvents="none" style={[styles.ambientGlassField, { left, width: frameWidth }]} testID="customer-section-glass-field">
-      <View style={[styles.ambientMintWash, quiet ? styles.ambientMintWashQuiet : null, { backgroundColor: tokens.aqua }]} />
-      <View style={[styles.ambientWarmWash, quiet ? styles.ambientWarmWashQuiet : null, { backgroundColor: tokens.copper }]} />
-      <View style={[styles.ambientGlassLine, { backgroundColor: tokens.borderStrong }, customerAmbientLineStyle]} />
-    </View>
-  )
 }
 
 export function V4ServiceCard({ compact = false, homeTile = false, icon, meta, onPress, selected = false, showMeta = true, testID, title, tone, water }: { compact?: boolean; homeTile?: boolean; icon: IconName; meta?: string; onPress: () => void; selected?: boolean; showMeta?: boolean; testID: string; title: string; tone?: SurfaceTone; water?: boolean }) {

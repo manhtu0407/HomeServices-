@@ -7,7 +7,7 @@ import {
   View,
   type KeyboardTypeOptions,
   type TextStyle,
-  type TextInput,
+  type TextInput as RNTextInput,
   type TextInputProps,
 } from 'react-native'
 import { KaelTextInput } from '@/components/ui/kael-primitives'
@@ -37,7 +37,7 @@ export function EntryTextField({
   textContentType?: TextInputProps['textContentType']
   value: string
 }) {
-  const inputRef = useRef<TextInput>(null)
+  const inputRef = useRef<RNTextInput>(null)
   const [focused, setFocused] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const isSecure = Boolean(secureTextEntry) && !revealed
