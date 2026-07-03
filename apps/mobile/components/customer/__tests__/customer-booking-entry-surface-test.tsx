@@ -1,10 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { PROBLEM_CHIPS, type LocalWorkflowSelectors } from '@nestscout/shared'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 let mockWorkflowValue: any
 let mockAuthValue: any
 let mockRouteParams: Record<string, string | string[] | undefined>
+const mockPush = jest.fn()
 const mockReplace = jest.fn()
 const mockCreateRemoteJobFromDraft = jest.fn()
 const mockSetPendingKaelChatDraft = jest.fn()
@@ -38,7 +40,7 @@ jest.mock('expo-audio', () => ({
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }))
 
 jest.mock('@/lib/auth-provider', () => ({
@@ -77,7 +79,21 @@ jest.mock('@/lib/app-language', () => {
   }
 })
 
-import { CustomerBookingEntrySurface } from '../customer-surfaces'
+import { CustomerBookingEntrySurface as ActiveCustomerBookingEntrySurface, CustomerKaelSurface as ActiveCustomerKaelSurface } from '../customer-surfaces'
+import { CustomerBookingEntrySurface } from '../v21/surfaces'
+
+const TEST_SAFE_AREA_METRICS = {
+  frame: { height: 844, width: 390, x: 0, y: 0 },
+  insets: { bottom: 0, left: 0, right: 0, top: 0 },
+}
+
+function renderWithSafeArea(ui: Parameters<typeof render>[0]) {
+  return render(
+    <SafeAreaProvider initialMetrics={TEST_SAFE_AREA_METRICS}>
+      {ui}
+    </SafeAreaProvider>,
+  )
+}
 
 function buildWorkflow() {
   const selectors: LocalWorkflowSelectors = {
@@ -120,6 +136,7 @@ beforeEach(() => {
     session: { user: { id: 'customer_test_1', user_metadata: {} } },
   }
   mockCreateRemoteJobFromDraft.mockClear()
+  mockPush.mockClear()
   mockReplace.mockClear()
   mockSetPendingKaelChatDraft.mockClear()
   mockSetPendingKaelChatDraft.mockResolvedValue(undefined)
@@ -151,6 +168,24 @@ beforeEach(() => {
   mockSetAudioModeAsync.mockReset()
   mockSetAudioModeAsync.mockResolvedValue(undefined)
   buildWorkflow()
+})
+
+describe('Customer booking runtime surface wiring', () => {
+  it('exports the current V4 booking entry surface instead of the legacy v21 flow', () => {
+    renderWithSafeArea(<ActiveCustomerBookingEntrySurface />)
+
+    expect(screen.getByTestId('customer-booking-entry-surface')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-booking-ios26-foundation-section')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-booking-intake-to-kael-primary')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-services')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-booking-step-card-skin')).toBeNull()
+  })
+
+  it('exports the current Kael route shim that redirects to the full-screen chat', () => {
+    render(<ActiveCustomerKaelSurface />)
+
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat')
+  })
 })
 
 describe('CustomerBookingEntrySurface v2.1', () => {

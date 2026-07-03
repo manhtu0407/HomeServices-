@@ -58,6 +58,20 @@ jest.mock('@/lib/app-language', () => {
   }
 })
 
+jest.mock('@/lib/runtime-config', () => ({
+  mobileRuntimeConfig: {
+    runtimeBuildInfo: {
+      builtAt: '2026-07-03T00:00:00.000Z',
+      easBuildId: 'build-123456',
+      easBuildPlatform: 'ios',
+      easBuildProfile: 'production',
+      gitBranch: 'codex/customer-runtime-surface-wiring',
+      gitSha: 'abc123def4567890',
+      gitShortSha: 'abc123def456',
+    },
+  },
+}))
+
 import { LoginRoleSurface } from '../auth-surfaces'
 import { kaelLottieRendererKind as splashLogoRendererKind } from '@/components/kael/kael-svg-lottie-view'
 
@@ -126,6 +140,21 @@ describe('LoginRoleSurface', () => {
     expect(nativeSafePanelSource).toContain('<View')
     expect(nativeSafePanelSource).not.toContain('<GlassView')
     expect(nativeSafePanelSource).not.toContain('<BlurView')
+  })
+
+  it('keeps the runtime build marker hidden until an intentional long press', () => {
+    mockRouteParams = { stage: '1.4' }
+
+    render(<LoginRoleSurface />)
+
+    expect(screen.queryByTestId('auth-runtime-marker')).toBeNull()
+
+    fireEvent(screen.getByTestId('auth-runtime-marker-hotspot'), 'longPress')
+
+    expect(screen.getByTestId('auth-runtime-marker')).toHaveTextContent(/abc123def456/)
+    expect(screen.getByTestId('auth-runtime-marker')).toHaveTextContent(/codex\/customer-runtime-surface-wiring/)
+    expect(screen.getByTestId('auth-runtime-marker')).toHaveTextContent(/production/)
+    expect(screen.getByTestId('auth-runtime-marker')).toHaveTextContent(/ios/)
   })
 
   it('opens the 1.1 review link on the Lottie splash without redirecting authenticated users', () => {

@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { isAbsolute, resolve } from 'node:path'
 import type { ExpoConfig, ConfigContext } from 'expo/config'
 import { withEntitlementsPlist, withXcodeProject, type ConfigPlugin } from 'expo/config-plugins'
@@ -52,11 +53,34 @@ const fromEnv = (...keys: string[]) => {
   return ''
 }
 
+const fromGit = (...args: string[]) => {
+  try {
+    return execFileSync('git', args, {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+  } catch {
+    return ''
+  }
+}
+
 const supabaseUrl = fromEnv('EXPO_PUBLIC_SUPABASE_URL')
 const supabasePublishableKey = fromEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
 const configuredApiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
 const apiBaseUrl =
   configuredApiBaseUrl || (supabaseUrl ? `${supabaseUrl.replace(/\/$/, '')}/functions/v1/mobile-api` : '')
+const buildGitSha = fromEnv('NESTSCOUT_BUILD_GIT_SHA', 'EAS_BUILD_GIT_COMMIT_HASH', 'GITHUB_SHA') || fromGit('rev-parse', 'HEAD')
+const buildGitBranch = fromEnv('NESTSCOUT_BUILD_GIT_BRANCH', 'EAS_BUILD_GIT_COMMIT_REF', 'GITHUB_REF_NAME') || fromGit('rev-parse', '--abbrev-ref', 'HEAD')
+const runtimeBuildInfo = {
+  builtAt: fromEnv('NESTSCOUT_BUILD_CREATED_AT', 'EAS_BUILD_CREATED_AT') || new Date().toISOString(),
+  easBuildId: fromEnv('EAS_BUILD_ID'),
+  easBuildPlatform: fromEnv('EAS_BUILD_PLATFORM'),
+  easBuildProfile: fromEnv('EAS_BUILD_PROFILE'),
+  gitBranch: buildGitBranch,
+  gitSha: buildGitSha,
+  gitShortSha: buildGitSha ? buildGitSha.slice(0, 12) : '',
+}
 
 const withoutIosPushEntitlement: ConfigPlugin = (expoConfig) => {
   const configWithoutEntitlement = withEntitlementsPlist(expoConfig, (config) => {
@@ -149,6 +173,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseUrl,
     supabasePublishableKey,
     apiBaseUrl,
+    runtimeBuildInfo,
     eas: {
       projectId: 'df74d6a3-f85b-4b40-85ef-fe3162023d6e',
     },

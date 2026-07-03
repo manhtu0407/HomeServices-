@@ -29,10 +29,10 @@ const CUSTOMER_TAB_COPY = {
 } as const
 
 function activeCustomerDockFromPath(pathname: string): CustomerDockActive {
-  if (pathname.includes('booking')) return 'services'
+  if (pathname.includes('booking')) return 'booking'
   if (pathname.includes('history')) return 'activity'
   if (pathname.includes('profile')) return 'profile'
-  if (pathname.includes('kael')) return 'chat'
+  if (pathname.includes('kael')) return 'kael'
   return 'home'
 }
 

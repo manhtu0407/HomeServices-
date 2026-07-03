@@ -27,7 +27,7 @@ void [CUSTOMER_DOCK_MAIN_A, CUSTOMER_DARK_DOCK_LAYER_MATCH, CUSTOMER_DARK_DOCK_L
 
 let customerDockHiddenSnapshot = false
 
-type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
+export type CustomerDockActive = 'activity' | 'booking' | 'home' | 'kael' | 'profile'
 
 let lastCustomerDockActive: CustomerDockActive = 'home'
 

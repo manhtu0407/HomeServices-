@@ -128,7 +128,8 @@ jest.mock('../customer-theme', () => {
   }
 })
 
-import { CustomerProfileSurface, CustomerV4DockOverlay } from '../customer-surfaces'
+import { CustomerProfileSurface as ActiveCustomerProfileSurface, CustomerV4DockOverlay as ActiveCustomerV4DockOverlay } from '../customer-surfaces'
+import { CustomerProfileSurface, CustomerV4DockOverlay } from '../v21/surfaces'
 
 function buildDeal(): LocalDeal {
   return {
@@ -633,6 +634,31 @@ describe('CustomerProfileSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-profile-memory')).toHaveTextContent(/Ranh giới dữ liệu/)
     expect(screen.getByTestId('customer-v21-profile-memory')).toHaveTextContent(/Không trộn trò chuyện thường vào công việc/)
     expect(screen.queryByText(/ac|máy lạnh/i)).toBeNull()
+  })
+})
+
+describe('Customer runtime profile and dock wiring', () => {
+  it('exports the current V4 profile surface instead of the legacy v21 profile', () => {
+    mockSessionMetadata = { full_name: 'Phan Mạnh Tú' }
+
+    render(<ActiveCustomerProfileSurface />)
+
+    expect(screen.getByTestId('customer-profile-surface')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-profile-hero')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-profile-hero-title')).toHaveTextContent('Phan Mạnh Tú')
+    expect(screen.queryByTestId('customer-v21-profile-name')).toBeNull()
+  })
+
+  it('exports the current V4 dock instead of the legacy v21 dock', () => {
+    render(<ActiveCustomerV4DockOverlay active="home" />)
+
+    expect(screen.getByTestId('customer-liquid-glass-dock')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v4-dock-home')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v4-dock-booking')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v4-dock-activity')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v4-dock-profile')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v4-dock-kael')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-primary-dock')).toBeNull()
   })
 })
 
