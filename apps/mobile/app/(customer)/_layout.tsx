@@ -1,9 +1,11 @@
 import { Redirect, Tabs, usePathname } from 'expo-router'
-import { ActivityIndicator, View } from 'react-native'
+import { useMemo, useState } from 'react'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { CustomerV4DockOverlay, type CustomerDockActive } from '@/components/customer/customer-surfaces'
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage } from '@/lib/app-language'
+import { mobileRuntimeConfig } from '@/lib/runtime-config'
 
 const CUSTOMER_DOCK_MAIN_A = 'CUSTOMER_DOCK_MAIN_A: app layout hosts the custom customer dock'
 const CUSTOMER_DARK_DOCK_LAYER_MATCH = 'CUSTOMER_DARK_DOCK_LAYER_MATCH: dock follows customer theme layer'
@@ -34,6 +36,50 @@ function activeCustomerDockFromPath(pathname: string): CustomerDockActive {
   if (pathname.includes('profile')) return 'profile'
   if (pathname.includes('kael')) return 'kael'
   return 'home'
+}
+
+function runtimeBuildMarkerText() {
+  const info = mobileRuntimeConfig.runtimeBuildInfo
+  const sha = info.gitShortSha || (info.gitSha ? info.gitSha.slice(0, 12) : '') || 'unknown'
+  const parts = [`SHA ${sha}`]
+
+  if (info.gitBranch) parts.push(`Branch ${info.gitBranch}`)
+  if (info.easBuildProfile) parts.push(`Profile ${info.easBuildProfile}`)
+  if (info.easBuildPlatform) parts.push(`Platform ${info.easBuildPlatform}`)
+  if (info.easBuildId) parts.push(`Build ${info.easBuildId}`)
+  if (info.builtAt) parts.push(`Built ${info.builtAt}`)
+
+  return parts.join(' | ')
+}
+
+function CustomerRuntimeBuildMarker() {
+  const [visible, setVisible] = useState(false)
+  const marker = useMemo(runtimeBuildMarkerText, [])
+
+  return (
+    <>
+      <Pressable
+        accessibilityLabel={`NestScout customer runtime marker: ${marker}`}
+        accessibilityRole="button"
+        hitSlop={6}
+        onLongPress={() => setVisible(true)}
+        onPress={() => visible && setVisible(false)}
+        style={styles.runtimeMarkerHotspot}
+        testID="customer-runtime-marker-hotspot"
+      />
+      {visible ? (
+        <View
+          pointerEvents="none"
+          style={styles.runtimeMarkerPill}
+          testID="customer-runtime-marker"
+        >
+          <Text selectable style={styles.runtimeMarkerText}>
+            {marker}
+          </Text>
+        </View>
+      ) : null}
+    </>
+  )
 }
 
 export default function CustomerLayout() {
@@ -81,6 +127,36 @@ export default function CustomerLayout() {
         <Tabs.Screen name="kael-chat" options={{ href: null, title: tabCopy.kael }} />
       </Tabs>
       {showDock ? <CustomerV4DockOverlay active={activeDock} /> : null}
+      <CustomerRuntimeBuildMarker />
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  runtimeMarkerHotspot: {
+    height: 1,
+    opacity: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: 1,
+    zIndex: 200,
+  },
+  runtimeMarkerPill: {
+    backgroundColor: 'rgba(7,26,36,0.86)',
+    borderRadius: 12,
+    left: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    zIndex: 201,
+  },
+  runtimeMarkerText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+})

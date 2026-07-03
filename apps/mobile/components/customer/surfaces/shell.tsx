@@ -13,9 +13,9 @@ import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { type ReactNode, useCallback, useEffect, useRef, useSyncExternalStore } from 'react'
 import { type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, useWindowDimensions, View } from 'react-native'
-import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { AmbientGlassField, CUSTOMER_NO_PROTOTYPE_SAMPLE_CLIENT_STATS, MappedIcon, MotionSweep, openBookingPath, openKaelChatPath, useCustomerTokens } from './ui'
+import { CUSTOMER_NO_PROTOTYPE_SAMPLE_CLIENT_STATS, MappedIcon, MotionSweep, openBookingPath, openKaelChatPath, useCustomerTokens } from './ui'
 import type { IconName } from './ui'
 
 const customerDockHiddenListeners = new Set<() => void>()
@@ -90,23 +90,6 @@ export function V4Frame({
   const frameWidth = Math.min(width, 430)
   const usesNativeSafeHomeCanvas = active === 'home'
   const appleIOS26MainSection = active === 'home' || active === 'booking' || active === 'activity'
-  const pulse = useSharedValue(0)
-  const settle = useSharedValue(0)
-  useEffect(() => {
-    pulse.value = 0
-    settle.value = 1
-    if (reduceMotion) {
-      pulse.value = withTiming(1, { duration: 120 })
-      settle.value = withTiming(0, { duration: 120 })
-      return
-    }
-    pulse.value = withSpring(1, motionTokens.liquid.entrance)
-    settle.value = withDelay(60, withSpring(0, motionTokens.liquid.press))
-  }, [active, pulse, reduceMotion, settle])
-  const motionFieldStyle = useAnimatedStyle(() => ({
-    opacity: reduceMotion ? 0 : usesNativeSafeHomeCanvas ? 0.018 + pulse.value * 0.015 : 0.05 + pulse.value * 0.04,
-    transform: [{ translateY: settle.value * 2 }, { scale: 0.98 + pulse.value * 0.025 }],
-  }), [reduceMotion, usesNativeSafeHomeCanvas])
   const lastCustomerScrollYRef = useRef(0)
   const setCustomerDockHiddenSafely = useCallback((hidden: boolean) => {
     setCustomerDockHiddenSnapshot(hidden)
@@ -162,10 +145,6 @@ export function V4Frame({
     <SafeAreaView style={[styles.safeArea, canvasLayer]} testID={testID}>
       <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
       <CustomerThemeContext.Provider value={tokens}>
-        {reduceTransparency ? null : <AmbientGlassField frameWidth={frameWidth} quiet={usesNativeSafeHomeCanvas} screenWidth={width} />}
-        {reduceMotion || reduceTransparency ? null : (
-          <Animated.View pointerEvents="none" style={[styles.customerMotionField, { backgroundColor: tokens.aqua }, motionFieldStyle]} testID={`customer-motion-field-${active}`} />
-        )}
         <ScrollView
           contentContainerStyle={[
             styles.v4Scroll,

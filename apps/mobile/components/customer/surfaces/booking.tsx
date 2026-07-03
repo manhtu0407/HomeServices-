@@ -109,7 +109,7 @@ export function CustomerBookingEntrySurface() {
       <V4Frame active="booking" testID="customer-booking-entry-surface">
         {({ tokens }) => (
           <View style={styles.bookingStack}>
-            <View pointerEvents="none" style={[styles.customerSectionLiquidWash, { backgroundColor: tokens.aqua }]} testID="customer-section-liquid-wash-booking" />
+            <View style={styles.hiddenMarker} testID="customer-section-liquid-wash-booking" />
             <View style={styles.hiddenMarker} testID="customer-booking-ios26-foundation-section" />
             <View style={styles.bookingTopRow} testID="customer-booking-title-row">
               <View style={styles.titleBlock}>
