@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg'
 import { KaelLottieView as KaelSvgLottieView, kaelLottieRendererKind as kaelSvgLottieRendererKind } from '@/components/kael/kael-svg-lottie-view'
+import { mobileRuntimeConfig } from '@/lib/runtime-config'
 import { AssetTile, GlassPanel, IconButton, KaelMascot, KaelStatus, NativeSafeGlassPanel, PageAura, PrimaryButton, TextAction, useEntryAccessibility } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
 import { EntryIcon, ProviderBrandIcon, type ProviderBrand } from './components/icons'
@@ -39,7 +40,7 @@ type LottieAsset = {
   fr?: number
   h: number
   ip?: number
-  markers?: Array<{ cm?: string; dr?: number; tm?: number }>
+  markers?: { cm?: string; dr?: number; tm?: number }[]
   nm?: string
   op?: number
   w: number
@@ -252,12 +253,51 @@ export function EntryBrandAccessFlow({
       <StatusBar style="dark" translucent />
       <PageAura />
       {content}
+      <RuntimeBuildMarker />
     </View>
   )
 }
 
 function Screen({ children }: { children: React.ReactNode }) {
   return <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>{children}</SafeAreaView>
+}
+
+function runtimeBuildMarkerText() {
+  const info = mobileRuntimeConfig.runtimeBuildInfo
+  const sha = info.gitShortSha || (info.gitSha ? info.gitSha.slice(0, 12) : '') || 'unknown'
+  const parts = [`SHA ${sha}`]
+
+  if (info.gitBranch) parts.push(`Branch ${info.gitBranch}`)
+  if (info.easBuildProfile) parts.push(`Profile ${info.easBuildProfile}`)
+  if (info.easBuildPlatform) parts.push(`Platform ${info.easBuildPlatform}`)
+  if (info.easBuildId) parts.push(`Build ${info.easBuildId}`)
+  if (info.builtAt) parts.push(`Built ${info.builtAt}`)
+
+  return parts.join(' | ')
+}
+
+function RuntimeBuildMarker() {
+  const [visible, setVisible] = useState(false)
+  const marker = useMemo(runtimeBuildMarkerText, [])
+
+  return (
+    <>
+      <Pressable
+        accessibilityLabel={`NestScout runtime marker: ${marker}`}
+        accessibilityRole="button"
+        hitSlop={6}
+        onLongPress={() => setVisible(true)}
+        onPress={() => visible && setVisible(false)}
+        style={styles.runtimeMarkerHotspot}
+        testID="auth-runtime-marker-hotspot"
+      />
+      {visible ? (
+        <View pointerEvents="none" style={styles.runtimeMarkerPill} testID="auth-runtime-marker">
+          <Text selectable style={styles.runtimeMarkerText}>{marker}</Text>
+        </View>
+      ) : null}
+    </>
+  )
 }
 
 function SplashScreen({ durationMs }: { durationMs: number }) {
@@ -735,6 +775,29 @@ const styles = StyleSheet.create({
   roleMeta: { color: entryTheme.color.text.muted, fontSize: 10, lineHeight: 14, marginTop: 7 },
   roleTitleRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   root: { backgroundColor: entryTheme.color.mint.white, flex: 1 },
+  runtimeMarkerHotspot: {
+    backgroundColor: 'transparent',
+    height: 44,
+    position: 'absolute',
+    right: 6,
+    top: 44,
+    width: 44,
+    zIndex: 30,
+  },
+  runtimeMarkerPill: {
+    backgroundColor: 'rgba(7,35,39,0.86)',
+    borderColor: 'rgba(255,255,255,0.26)',
+    borderRadius: 14,
+    borderWidth: 1,
+    bottom: 10,
+    left: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    position: 'absolute',
+    right: 12,
+    zIndex: 31,
+  },
+  runtimeMarkerText: { color: '#F7FFFB', fontSize: 10, lineHeight: 14, textAlign: 'center' },
   safe: { flex: 1 },
   screen: { flex: 1, paddingBottom: 18, paddingHorizontal: entryTheme.spacing.screenX, paddingTop: 8 },
   signatureRail: { alignItems: 'center', borderRadius: 19, flexDirection: 'row', gap: 9, marginBottom: 14, marginTop: 7, minHeight: 42, paddingHorizontal: 13, paddingVertical: 10 },
