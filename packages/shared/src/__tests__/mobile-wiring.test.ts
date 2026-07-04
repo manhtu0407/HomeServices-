@@ -429,6 +429,38 @@ describe('customer frontend shell surfaces', () => {
     expect(offenders).toEqual([])
   })
 
+  it('keeps production entry graphs free of the archived customer home implementation', () => {
+    const entryGraphFiles = readMobileSourceGraph([
+      'app/index.tsx',
+      'app/(auth)/login.tsx',
+      'app/(customer)/_layout.tsx',
+      'app/(customer)/home.tsx',
+      'app/(worker)/_layout.tsx',
+      'app/(worker)/home.tsx',
+    ])
+    const rel = (path: string) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, '')
+    const oldHomeNeedles = [
+      'CustomerV21',
+      'customer-v21-home',
+      'customer-v21-home-hero',
+      'customer-v21-home-card-skin',
+      'Kael sẵn sàng hỗ trợ, công việc vẫn do bạn kiểm soát.',
+      'Bạn cần gì hôm nay?',
+      'Công việc đang xử lý',
+    ]
+    const offenders = entryGraphFiles
+      .filter((path) => {
+        const normalized = path.replace(/\\/g, '/')
+        if (normalized.includes('/components/customer/v21/')) return true
+        const src = readSource(path)
+        return oldHomeNeedles.some((needle) => src.includes(needle))
+      })
+      .map(rel)
+
+    expect(entryGraphFiles.map(rel)).toContain('components/customer/surfaces/home.tsx')
+    expect(offenders).toEqual([])
+  })
+
   it.each(customerRoutes)('wires (customer)/%s to %s', (route, exportName) => {
     const src = read(`app/(customer)/${route}.tsx`)
     expect(src).toContain(exportName)
@@ -621,7 +653,9 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('useGlassAccessibility')
     expect(src).toContain('mode={tokens.mode}')
     expect(src).toContain('const experimentalBackgroundImage')
-    expect(src).toContain('experimental_backgroundImage: reduceTransparency ? undefined : experimentalBackgroundImage')
+    expect(src).toContain("const canUseCanvasBackgroundImage = Platform.OS === 'web' && !reduceTransparency")
+    expect(src).toContain('experimental_backgroundImage: canUseCanvasBackgroundImage ? experimentalBackgroundImage : undefined')
+    expect(src).toContain('reduceMotion || !canUseCanvasBackgroundImage ? null : <MotionSweep')
     expect(src).toContain('backgroundImage: reduceTransparency ? undefined : dark ? darkGradient : lightGradient')
     expect(theme).toContain('lightLayer')
     expect(theme).toContain('darkLayer')
@@ -629,7 +663,7 @@ describe('customer frontend shell surfaces', () => {
     expect(src).not.toContain('shadowOpacity')
   })
 
-  it('implements V4 production customer language/theme persistence and Kael 8A assets', () => {
+  it('implements V4 production customer language/theme persistence and current Kael assets', () => {
     const src = shell()
     const layout = customerLayout()
     const theme = customerTheme()
@@ -643,8 +677,8 @@ describe('customer frontend shell surfaces', () => {
     expect(src).toContain('customer-language-toggle')
     expect(src).toContain('customer-profile-sign-out')
     expect(src).toContain('customer-profile-unified-functions')
-    expect(src).toContain('kael-model-8a.png')
-    expect(src).toContain('kael-model-8a-head.png')
+    expect(src).toContain('kael-state-welcome.png')
+    expect(src).toContain('kael-emotion-focused.png')
     expect(src).toContain('Image')
     expect(layout).toContain('tabBar={() => null}')
     expect(layout).not.toContain('customer-tab-kael-mascot-8a')
@@ -1107,7 +1141,8 @@ describe('customer frontend shell surfaces', () => {
     expect(src).not.toContain('styles.kaelChatStage, glassSurface(tokens')
     expect(src).toContain('getReducedTransparencyCustomerTokens')
     expect(src).toContain('reduceTransparency ? getReducedTransparencyCustomerTokens')
-    expect(src).toContain('experimental_backgroundImage: reduceTransparency ? undefined : experimentalBackgroundImage')
+    expect(src).toContain("const canUseCanvasBackgroundImage = Platform.OS === 'web' && !reduceTransparency")
+    expect(src).toContain('experimental_backgroundImage: canUseCanvasBackgroundImage ? experimentalBackgroundImage : undefined')
     expect(src).toContain("if (tokens.glassHighlight === 'transparent') return null")
     expect(src).toContain('react-native-reanimated')
     expect(src).toContain('useAnimatedStyle')
@@ -1547,6 +1582,8 @@ describe('mobile push notification wiring', () => {
 // ===================================================================
 
 const removedPrototypeRuntimePaths = [
+  'app/client-icons-prototype.tsx',
+  'app/design-gallery.tsx',
   'app/prototype',
   'app/prototype/_layout.tsx',
   'app/prototype/client-price-check.tsx',
@@ -1556,6 +1593,7 @@ const removedPrototypeRuntimePaths = [
   'components/auth/auth-surfaces-v2.tsx',
   'components/worker/worker-surfaces-v3.tsx',
   'components/client-price-check/client-price-check-prototype.tsx',
+  'components/prototypes/client-icon-image-prototype.tsx',
   'components/customer/client-frontier-prototype.tsx',
   'components/fleets/fleets-prototype.tsx',
 ]
@@ -1604,6 +1642,36 @@ describe('prototype runtime cleanup', () => {
       expect(src).not.toContain('@/components/customer/client-frontier-prototype')
       expect(src).not.toContain('@/components/fleets/fleets-prototype')
     }
+  })
+
+  it('keeps production app route graphs free of prototype, rebuild, and archived customer implementations', () => {
+    const routeEntries = listEdgeServiceFiles(resolve(MOBILE_ROOT, 'app'))
+      .filter((path) => /\.tsx?$/.test(path))
+      .map((path) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, ''))
+    const routeGraphFiles = readMobileSourceGraph(routeEntries)
+    const rel = (path: string) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, '')
+    const blockedNeedles = [
+      'CustomerV21',
+      'customer-v21-home',
+      'customer-v21-home-hero',
+      'Kael sáºµn sÃ ng há»— trá»£, cÃ´ng viá»‡c váº«n do báº¡n kiá»ƒm soÃ¡t.',
+      'Báº¡n cáº§n gÃ¬ hÃ´m nay?',
+      'CÃ´ng viá»‡c Ä‘ang xá»­ lÃ½',
+    ]
+    const offenders = routeGraphFiles
+      .filter((path) => {
+        const normalized = path.replace(/\\/g, '/')
+        if (normalized.includes('/components/customer/v21/')) return true
+        if (normalized.includes('/components/rebuild/')) return true
+        if (normalized.includes('/components/prototypes/')) return true
+        if (normalized.endsWith('/app/client-icons-prototype.tsx')) return true
+        if (normalized.endsWith('/app/design-gallery.tsx')) return true
+        const src = readSource(path)
+        return blockedNeedles.some((needle) => src.includes(needle))
+      })
+      .map(rel)
+
+    expect(offenders).toEqual([])
   })
 })
 
@@ -1664,7 +1732,15 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
 
   it('defines the five worker shell surface exports', () => {
     const src = shell()
+    const bridge = read(shellPath)
     expect(exists(shellPath)).toBe(true)
+    expect(bridge).toContain("from './surfaces/home'")
+    expect(bridge).toContain("from './surfaces/jobs'")
+    expect(bridge).toContain("from './surfaces/chat'")
+    expect(bridge).toContain("from './surfaces/earnings'")
+    expect(bridge).toContain("from './surfaces/profile'")
+    expect(bridge).not.toContain('worker-v5-flow')
+    expect(bridge).not.toContain('components/rebuild')
     expect(src).toContain('export function WorkerHomeSurface')
     expect(src).toContain('export function WorkerJobsSurface')
     expect(src).toContain('export function WorkerChatSurface')
@@ -1696,7 +1772,8 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('getReducedTransparencyWorkerTokens')
     expect(src).toContain('reduceTransparency ? getReducedTransparencyWorkerTokens')
     expect(src).toContain('const canvasBackgroundImage')
-    expect(src).toContain('experimental_backgroundImage: reduceTransparency ? undefined : canvasBackgroundImage')
+    expect(src).toContain("const canUseCanvasBackgroundImage = Platform.OS === 'web' && !reduceTransparency")
+    expect(src).toContain('experimental_backgroundImage: canUseCanvasBackgroundImage ? canvasBackgroundImage : undefined')
     expect(src).toContain('experimental_backgroundImage: reduceTransparency ? undefined : experimentalBackgroundImage')
     expect(src).toContain('function WorkerScreenHeader')
     expect(src).toContain('worker-${active}-title-row')
@@ -1750,8 +1827,8 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('ref={routeScrollRef}')
     expect(src).toContain('scrollEnabled={!hideDock}')
     expect(src).toContain('automaticallyAdjustKeyboardInsets={!hideDock}')
-    expect(src).toContain('reduceTransparency || hideDock || liquidHome ? null : <AmbientBackdrop />')
-    expect(src).toContain('routeIsFocused && !hideDock && !liquidHome && !reduceMotion && !reduceTransparency')
+    expect(src).toContain('!canUseCanvasBackgroundImage || hideDock || liquidHome ? null : <AmbientBackdrop />')
+    expect(src).toContain('routeIsFocused && !hideDock && !liquidHome && !reduceMotion && canUseCanvasBackgroundImage')
     expect(src).toContain('const frameWidth = hideDock ? width : Math.min(width, 430)')
     expect(src).toContain('...(hideDock ? { height: frameHeight, minHeight: frameHeight, paddingBottom: 0, paddingHorizontal: 4 } : null)')
     expect(src).toContain('width: Math.max(0, hideDock ? frameWidth : frameWidth - workerFrameHorizontalPadding * 2)')
@@ -2348,7 +2425,7 @@ describe('worker client-V4/XanhSM aligned shell surfaces', () => {
     expect(src).toContain('worker-map-address-locked-before-accept')
     expect(src).toContain('worker-map-route-after-accept')
     expect(src).toContain('workerLiquidHomeCanvasBackgroundImage(mode)')
-    expect(src).toContain('!hideDock && !liquidHome && !reduceMotion && !reduceTransparency')
+    expect(src).toContain('!hideDock && !liquidHome && !reduceMotion && canUseCanvasBackgroundImage')
     expect(src).toContain('workerHomeLiquidHeroSurface(tokens)')
     expect(src).toContain("workerMapViewportSurface(tokens, 'liquid')")
     expect(src).toContain('workerHomeLiquidControlSurface(tokens)')
@@ -2922,6 +2999,8 @@ describe('auth login recovery UI', () => {
 
   it('keeps login background structural instead of decorative orb blobs', () => {
     expect(src).toContain('function PageAura')
+    expect(src).toContain("if (Platform.OS !== 'web') return null")
+    expect(src).toContain("if (reduceTransparency || Platform.OS !== 'web') return null")
     expect(src).toContain('PathWithFallback')
     expect(src).not.toContain('backdropMint')
     expect(src).not.toContain('backdropCream')

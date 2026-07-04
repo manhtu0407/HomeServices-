@@ -15,7 +15,7 @@ import { Image } from 'expo-image'
 import { usePathname, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { type NativeScrollEvent, type NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
@@ -59,6 +59,7 @@ export function WorkerFrame({
   const tokens = reduceTransparency ? getReducedTransparencyWorkerTokens(baseTokens) : baseTokens
   const frameWidth = hideDock ? width : Math.min(width, 430)
   const liquidHome = active === 'home'
+  const canUseCanvasBackgroundImage = Platform.OS === 'web' && !reduceTransparency
   const canvasBackgroundImage = liquidHome
     ? workerLiquidHomeCanvasBackgroundImage(mode)
     : mode === 'dark'
@@ -66,7 +67,7 @@ export function WorkerFrame({
       : 'radial-gradient(circle at 50% 12%, rgba(142,231,217,0.18), transparent 28%), linear-gradient(180deg, #F4FAF7 0%, #F7FBF8 100%)'
   const canvasLayer = {
     backgroundColor: tokens.canvas,
-    experimental_backgroundImage: reduceTransparency ? undefined : canvasBackgroundImage,
+    experimental_backgroundImage: canUseCanvasBackgroundImage ? canvasBackgroundImage : undefined,
   } as any
   const frameHeight = Math.max(0, height - insets.top - insets.bottom)
   const routeIsFocused =
@@ -125,8 +126,8 @@ export function WorkerFrame({
       <SafeAreaView style={[styles.safe, canvasLayer, routeIsFocused ? null : styles.inactiveRouteSurface]} testID={testID}>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
         <View style={[styles.canvas, canvasLayer, { minHeight: frameHeight }]}>
-          {reduceTransparency || hideDock || liquidHome ? null : <AmbientBackdrop />}
-          {routeIsFocused && !hideDock && !liquidHome && !reduceMotion && !reduceTransparency ? <WorkerSectionMotionField active={active} frameWidth={frameWidth} screenWidth={width} /> : null}
+          {!canUseCanvasBackgroundImage || hideDock || liquidHome ? null : <AmbientBackdrop />}
+          {routeIsFocused && !hideDock && !liquidHome && !reduceMotion && canUseCanvasBackgroundImage ? <WorkerSectionMotionField active={active} frameWidth={frameWidth} screenWidth={width} /> : null}
           <ScrollView
             ref={routeScrollRef}
             contentContainerStyle={[
