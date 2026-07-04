@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "NestScout",
-    "slug": "nestscout",
+    "slug": "home-services",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/nestscout-aurora-nest-appstore-1024.png",
@@ -9,14 +9,14 @@
     "newArchEnabled": true,
     "scheme": "nestscout",
     "splash": {
-      "image": "./assets/nestscout-aurora-nest-appstore-1024.png",
+      "image": "./assets/nestscout-aurora-nest-foreground-1024.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "1",
-      "bundleIdentifier": "com.phanmanhtu.nestscout",
+      "buildNumber": "20",
+      "bundleIdentifier": "com.phanmanhtu.homeservices",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -28,7 +28,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/nestscout-aurora-nest-appstore-1024.png",
+        "foregroundImage": "./assets/nestscout-aurora-nest-foreground-1024.png",
         "backgroundColor": "#ffffff"
       },
       "versionCode": 1,

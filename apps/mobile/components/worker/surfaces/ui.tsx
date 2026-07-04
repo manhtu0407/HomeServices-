@@ -53,7 +53,7 @@ export const workerAmbientLineWashStyle = {
   opacity: 0.12,
 }
 
-export const kaelHead = require('../../../assets/kael-model-8a-head.png')
+export const kaelHead = require('../../../assets/kael-emotions/kael-emotion-focused.png')
 
 const workerImageIcons = {
   navEarnings: require('../../../assets/worker-image-icons/nav-earnings.png'),

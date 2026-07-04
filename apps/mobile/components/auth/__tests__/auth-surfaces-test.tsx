@@ -90,12 +90,15 @@ afterEach(() => {
 describe('LoginRoleSurface', () => {
   it('keeps the splash logo on the SVG renderer that matches Preview instead of native Lottie', () => {
     const flowSource = readFileSync(resolve(__dirname, '../entry-access/EntryBrandAccessFlow.tsx'), 'utf-8')
+    const logoSource = readFileSync(resolve(__dirname, '../entry-access/lottie-logo-mark.tsx'), 'utf-8')
     const rendererSource = readFileSync(resolve(__dirname, '../../kael/kael-svg-lottie-view.tsx'), 'utf-8')
     const nativeAdapterPath = resolve(__dirname, '../../kael/kael-lottie-view.native.tsx')
 
     expect(splashLogoRendererKind).toBe('svg-lottie')
-    expect(flowSource).toContain('@/components/kael/kael-svg-lottie-view')
+    expect(flowSource).toContain('./lottie-logo-mark')
+    expect(logoSource).toContain('@/components/kael/kael-svg-lottie-view')
     expect(flowSource).not.toContain('@/components/kael/kael-lottie-view')
+    expect(logoSource).not.toContain('@/components/kael/kael-lottie-view')
     expect(flowSource).not.toContain('nestscout-aurora-nest-appstore-1024.png')
     expect(flowSource).not.toContain('auroraNestLogoStatic')
     expect(rendererSource).toContain('nestscout-aurora-nest-approved-logo-transparent.png')

@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   guardWorkerAssistText,
@@ -65,6 +65,7 @@ function readMobileApiTypesLayer() {
 
 describe('mobile-api worker Kael chat sibling backend', () => {
   afterEach(() => {
+    vi.useRealTimers()
     KAEL_CIRCUIT_BREAKER.reset()
   })
 
@@ -271,6 +272,8 @@ describe('mobile-api worker Kael chat sibling backend', () => {
 
   it('skips an open-circuit primary provider and selects the fallback without a network attempt', async () => {
     const now = new Date('2026-07-02T08:00:00.000Z')
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
     KAEL_CIRCUIT_BREAKER.recordFailure({
       purpose: 'worker_assist',
       provider: 'deepseek',
@@ -311,6 +314,8 @@ describe('mobile-api worker Kael chat sibling backend', () => {
 
   it('returns a safe fallback without provider calls when every worker-assist route is open circuit', async () => {
     const now = new Date('2026-07-02T08:00:00.000Z')
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
     for (const provider of ['deepseek', 'anthropic'] as const) {
       KAEL_CIRCUIT_BREAKER.recordFailure({
         purpose: 'worker_assist',

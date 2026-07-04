@@ -27,7 +27,7 @@ export type CustomerPrimaryTab = 'home' | 'services' | 'activity' | 'profile'
 
 export type CustomerKaelMode = 'normal' | 'case'
 
-export type CustomerDockActive = CustomerPrimaryTab | 'chat'
+export type CustomerV21DockActive = CustomerPrimaryTab | 'chat'
 
 export const customerV21ScreenOrder: CustomerV21ScreenId[] = [
   '2.1-home',

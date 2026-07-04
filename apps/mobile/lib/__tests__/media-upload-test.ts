@@ -173,7 +173,7 @@ describe('Kael chat media upload', () => {
     )
   })
 
-  it('falls back to direct kael-chat-media upload when production Edge lacks the media-upload route', async () => {
+  it('keeps kael-chat-media uploads behind the Edge signed-upload route', async () => {
     mockCreateMediaUpload.mockResolvedValueOnce({
       success: false,
       code: 'VALIDATION',
@@ -194,23 +194,11 @@ describe('Kael chat media upload', () => {
       },
     ])
 
-    expect(result.success).toBe(true)
-    if (!result.success) return
-    expect(mockGetUser).toHaveBeenCalled()
-    expect(mockUpload).toHaveBeenCalledWith(
-      expect.stringMatching(/^customer_test_1\/kael-chat\/\d+-0-pipe\.jpg$/),
-      expect.anything(),
-      expect.objectContaining({
-        contentType: 'image/jpeg',
-        upsert: false,
-      }),
-    )
-    expect(mockCreateSignedUrl).toHaveBeenCalledWith(
-      expect.stringMatching(/^customer_test_1\/kael-chat\/\d+-0-pipe\.jpg$/),
-      3600,
-    )
-    expect(result.urls).toEqual(['https://storage.example.test/signed-read-url'])
-    expect(result.mediaRefs[0]).toMatch(/^supabase:\/\/kael-chat-media\/customer_test_1\/kael-chat\/\d+-0-pipe\.jpg$/)
-    expect(result.usedDirectUpload).toBe(true)
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.code).toBe('VALIDATION')
+    expect(mockGetUser).not.toHaveBeenCalled()
+    expect(mockUpload).not.toHaveBeenCalled()
+    expect(mockCreateSignedUrl).not.toHaveBeenCalled()
   })
 })

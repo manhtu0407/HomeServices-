@@ -122,7 +122,7 @@ export async function uploadKaelChatMediaDrafts(mediaItems: LocalMediaUploadDraf
   }
 
   const uploadResults = await Promise.all(
-    mediaItems.slice(0, 5).map(async (item, index): Promise<{ success: true; mediaRef: string; signedUrl?: string; uploadMode: 'edge' | 'direct' } | MediaUploadFailure> => {
+    mediaItems.slice(0, 5).map(async (item, index): Promise<{ success: true; mediaRef: string; signedUrl?: string } | MediaUploadFailure> => {
       const mimeType = mimeTypeForUpload(item)
       const localBlob = await readLocalMediaBlob(item.uri)
       if (!localBlob.success) {
@@ -138,9 +138,6 @@ export async function uploadKaelChatMediaDrafts(mediaItems: LocalMediaUploadDraf
         ...(fileSizeBytes ? { file_size_bytes: fileSizeBytes } : {}),
       })
       if (!signedUpload.success) {
-        if (shouldUseDirectKaelChatMediaUploadFallback(signedUpload)) {
-          return uploadKaelChatMediaDirect(client, item, index, mimeType, localBlob.blob)
-        }
         return {
           success: false,
           code: signedUpload.code,
@@ -176,7 +173,6 @@ export async function uploadKaelChatMediaDrafts(mediaItems: LocalMediaUploadDraf
         success: true,
         mediaRef: signedUpload.data.media_ref,
         signedUrl: signed.error ? undefined : signed.data?.signedUrl,
-        uploadMode: 'edge',
       }
     }),
   )
@@ -184,6 +180,7 @@ export async function uploadKaelChatMediaDrafts(mediaItems: LocalMediaUploadDraf
   if (failedUpload && !failedUpload.success) {
     return {
       success: false as const,
+      code: failedUpload.code,
       error: failedUpload.error,
     }
   }
@@ -191,67 +188,9 @@ export async function uploadKaelChatMediaDrafts(mediaItems: LocalMediaUploadDraf
     success: true as const,
     urls: uploadResults.flatMap((result) => (result.success && result.signedUrl ? [result.signedUrl] : [])),
     mediaRefs: uploadResults.flatMap((result) => (result.success ? [result.mediaRef] : [])),
-    usedDirectUpload: uploadResults.some((result) => result.success && result.uploadMode === 'direct'),
   }
 }
 
-async function uploadKaelChatMediaDirect(
-  client: NonNullable<typeof supabase>,
-  item: LocalMediaUploadDraft,
-  index: number,
-  mimeType: string,
-  blob: Blob,
-): Promise<{ success: true; mediaRef: string; signedUrl: string; uploadMode: 'direct' } | MediaUploadFailure> {
-  const userResult = await client.auth.getUser()
-  const userId = userResult.data.user?.id
-  if (userResult.error || !userId) {
-    return {
-      success: false,
-      code: 'AUTH_REQUIRED',
-      error: 'Cần đăng nhập để gửi media',
-    }
-  }
-  const objectPath = `${userId}/kael-chat/${safeObjectName(item.fileName, item.uri, index, mimeType)}`
-  const storageApi = client.storage.from('kael-chat-media') as unknown as {
-    createSignedUrl: (path: string, expiresIn: number) => Promise<{ data: { signedUrl?: string } | null; error: unknown }>
-    upload: (
-      path: string,
-      fileBody: Blob,
-      fileOptions?: { contentType?: string; upsert?: boolean },
-    ) => Promise<{ error: unknown }>
-  }
-  const { error: uploadError } = await storageApi.upload(objectPath, blob, {
-    contentType: mimeType,
-    upsert: false,
-  })
-  if (uploadError) {
-    return {
-      success: false,
-      code: 'KAEL_CHAT_DIRECT_UPLOAD_FAILED',
-      error: 'Không thể tải ảnh/video lên kho media',
-    }
-  }
-  const signed = await storageApi.createSignedUrl(objectPath, 60 * 60)
-  if (signed.error || !signed.data?.signedUrl) {
-    return {
-      success: false,
-      code: 'KAEL_CHAT_DIRECT_SIGN_FAILED',
-      error: 'Không thể chuẩn bị media cho Kael',
-    }
-  }
-  return {
-    success: true,
-    mediaRef: `supabase://kael-chat-media/${objectPath}`,
-    signedUrl: signed.data.signedUrl,
-    uploadMode: 'direct',
-  }
-}
-
-function shouldUseDirectKaelChatMediaUploadFallback(result: { code?: string; status?: number }) {
-  return result.status === 404 ||
-    result.code === 'NOT_FOUND' ||
-    (result.status === 400 && result.code === 'VALIDATION')
-}
 
 export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDrafts) {
   const client = supabase
