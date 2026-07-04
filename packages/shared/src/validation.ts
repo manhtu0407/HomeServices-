@@ -209,14 +209,12 @@ export const jobMessageSendSchema = z.object({
 // Worker registration & lifecycle schemas (B0-B8)
 // =============================================================================
 
-// Validates that a "YYYY-MM-DD" string represents a real calendar date.
-// Catches invalid dates like '2026-99-99' and calendar rollovers like '2026-02-31'
-// (Date constructor silently rolls to March, ISO no longer matches input).
+// Validates that a date-only string represents a real calendar date.
+// Date silently rolls invalid month/day pairs, so compare ISO output to input.
 function isRealCalendarDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
   const d = new Date(s)
   if (Number.isNaN(d.getTime())) return false
-  // Compare ISO back to input — catches silent month-rollover (Feb 31 → Mar 3)
   return d.toISOString().slice(0, 10) === s
 }
 
