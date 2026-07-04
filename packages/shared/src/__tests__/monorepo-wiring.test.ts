@@ -15,20 +15,8 @@ const isDir = (rel: string) => {
 const sourceFileExtensions = new Set(['.js', '.jsx', '.mjs', '.ts', '.tsx', '.sql'])
 const skippedSourceDirs = new Set(['__tests__', 'assets', 'node_modules', 'prototypes'])
 const mojibakePattern = /\u00c3|\u00c2|\u00e1\u00ba|\u00e1\u00bb|\u00c4\u0090|\u00c4\u2018|\u00c6/
-const knownNativeTextInputFiles = new Set([
-  'apps/mobile/components/customer/surfaces/history-panels.tsx',
-  'apps/mobile/components/customer/surfaces/home.tsx',
-  'apps/mobile/components/customer/surfaces/profile-account.tsx',
-  'apps/mobile/components/customer/surfaces/profile.tsx',
-  'apps/mobile/components/worker/surfaces/chat-parts.tsx',
-  'apps/mobile/components/worker/surfaces/job-offer.tsx',
-  'apps/mobile/components/worker/surfaces/profile-verification.tsx',
-])
-const knownLegacyAssetFiles = new Set([
-  'apps/mobile/components/customer/surfaces/home.tsx',
-  'apps/mobile/components/customer/surfaces/ui.tsx',
-  'apps/mobile/components/worker/surfaces/ui.tsx',
-])
+const knownNativeTextInputFiles = new Set<string>()
+const knownLegacyAssetFiles = new Set<string>()
 
 function listSourceFiles(rel: string): string[] {
   const abs = resolve(REPO_ROOT, rel)
