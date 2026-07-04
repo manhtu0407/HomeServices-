@@ -1,0 +1,120 @@
+import {
+  Image,
+  Pressable,
+  Text as RNText,
+  View,
+  type ImageSourcePropType,
+  type TextProps,
+} from 'react-native'
+import type { LocalDeal, ServiceType } from '@nestscout/shared'
+
+import { MintAura } from '@/components/ui/kael-primitives'
+import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
+
+import { workerV5TimeChoiceLabel } from '../ui/labels'
+import { textByLanguage } from '../ui/format'
+import {
+  WorkerV5SourceProgressBar,
+  type WorkerV5InboxTabId,
+} from '../jobs/source-surfaces'
+import { styles } from './opportunity-styles'
+
+type WorkerV5ServiceIconMap = Partial<Record<ServiceType, ImageSourcePropType>>
+
+function Text({ style, ...props }: TextProps) {
+  return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
+}
+
+export function WorkerV5OpportunityCard({
+  deal,
+  fallbackJobIcon,
+  language,
+  onOpenOpportunity,
+  reduceTransparency,
+  serviceIcons,
+}: {
+  deal: LocalDeal
+  fallbackJobIcon: ImageSourcePropType
+  language: AppLanguage
+  onOpenOpportunity?: () => void
+  reduceTransparency: boolean
+  serviceIcons: WorkerV5ServiceIconMap
+}) {
+  const earning = deal.broadcast?.estimatedEarningLabel ?? textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning')
+  const area = deal.broadcast?.generalArea || deal.draft.districtLabel || textByLanguage(language, 'Khu vực đang ẩn', 'Area hidden')
+  const meta = `${workerV5TimeChoiceLabel(deal.draft.timeChoice, language)} · ${area}`
+  const progressLabel = textByLanguage(language, 'Phù hợp từ nguồn thật', 'Matched from real source')
+  const serviceLabel = localizedServiceLabel(deal.draft.serviceType, language)
+  const serviceIcon = deal.draft.serviceType ? serviceIcons[deal.draft.serviceType] : fallbackJobIcon
+  const distanceLabel = deal.broadcast
+    ? textByLanguage(language, 'Đã gửi tới bạn', 'Sent to you')
+    : textByLanguage(language, 'Chưa có broadcast', 'No broadcast yet')
+  return (
+    <View style={[styles.opportunityCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-opportunity-card">
+      <View style={styles.opportunityIconTile}>
+        <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
+        <Image source={serviceIcon} style={styles.opportunityIcon} />
+      </View>
+      <View style={styles.opportunityTextColumn}>
+        <Text style={styles.opportunityTitle} numberOfLines={1}>{serviceLabel}</Text>
+        <Text style={styles.opportunityMeta} numberOfLines={1}>{meta}</Text>
+        <WorkerV5SourceProgressBar active={Boolean(deal.broadcast)} label={progressLabel} />
+      </View>
+      <View style={styles.opportunityPayoutColumn}>
+        <Text style={styles.opportunityPayout} numberOfLines={2}>{earning}</Text>
+        <Text style={styles.opportunityCaption} numberOfLines={2}>{distanceLabel}</Text>
+        {onOpenOpportunity ? (
+          <Pressable
+            accessibilityLabel={textByLanguage(language, 'Mở cơ hội thật', 'Open real opportunity')}
+            accessibilityRole="button"
+            onPress={onOpenOpportunity}
+            style={({ pressed }) => [styles.opportunityOpenButton, pressed ? styles.pressed : null]}
+            testID="worker-v5-intake-open-opportunity"
+          >
+            <Text style={styles.opportunityOpenButtonText}>{textByLanguage(language, 'Mở', 'Open')}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
+export function WorkerV5OpportunityEmptyCard({
+  jobIcon,
+  language,
+  reduceTransparency,
+  tab,
+}: {
+  jobIcon: ImageSourcePropType
+  language: AppLanguage
+  reduceTransparency: boolean
+  tab: WorkerV5InboxTabId
+}) {
+  const title = tab === 'new'
+    ? textByLanguage(language, 'Chưa có cơ hội mới', 'No new opportunity yet')
+    : tab === 'saved'
+      ? textByLanguage(language, 'Chưa có cơ hội đã lưu', 'No saved opportunity yet')
+      : textByLanguage(language, 'Chưa có cơ hội phù hợp', 'No matching opportunity yet')
+  const body = tab === 'new'
+    ? textByLanguage(language, 'Cơ hội mới chỉ hiện khi NestScout gửi broadcast thật tới thợ.', 'New opportunities appear only after NestScout sends a real broadcast to the worker.')
+    : tab === 'saved'
+      ? textByLanguage(language, 'Cơ hội đã lưu sẽ hiện ở đây khi backend đồng bộ danh sách lưu thật.', 'Saved opportunities appear here after the backend syncs a real saved list.')
+      : textByLanguage(language, 'Danh sách chỉ hiện cơ hội thật NestScout đã gửi tới thợ.', 'The list only shows real NestScout opportunities sent to the worker.')
+  return (
+    <View style={[styles.opportunityCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-opportunity-empty-card">
+      <View style={styles.opportunityIconTile}>
+        <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
+        <Image source={jobIcon} style={styles.opportunityIcon} />
+      </View>
+      <View style={styles.opportunityTextColumn}>
+        <Text style={styles.opportunityTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={styles.opportunityMeta} numberOfLines={2}>
+          {body}
+        </Text>
+        <WorkerV5SourceProgressBar active={false} label={textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')} />
+      </View>
+    </View>
+  )
+}

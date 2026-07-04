@@ -25,6 +25,14 @@ const readEdgeServiceLayer = () => [
   read('supabase/functions/mobile-api/_shared/services.ts'),
   ...listEdgeServiceFiles('supabase/functions/mobile-api/_shared/services').filter((p) => p.endsWith('.ts')).sort().map(read),
 ].join('\n')
+const readEdgeRouterLayer = () => [
+  read('supabase/functions/mobile-api/_shared/router.ts'),
+  ...readFilesUnder('supabase/functions/mobile-api/_shared/router'),
+].join('\n')
+const readMobileFrontendWorkflowLayer = () => [
+  read('apps/mobile/lib/frontend-workflow-provider.tsx'),
+  ...readFilesUnder('apps/mobile/lib/frontend-workflow'),
+].join('\n')
 const readMigrations = () => {
   const dir = resolve(ROOT, 'supabase/migrations')
   return readdirSync(dir)
@@ -68,7 +76,7 @@ describe('mobile-api Edge schema compatibility', () => {
       'supabase/functions/mobile-api/_shared/router.ts',
       'supabase/functions/mobile-api/_shared/services.ts',
       'supabase/functions/_shared/domain.ts',
-    ].map(read).concat(readEdgeKaelModules()).join('\n')
+    ].map(read).concat(readEdgeKaelModules(), readFilesUnder('supabase/functions/mobile-api/_shared/router')).join('\n')
 
     expect(functionFiles).not.toContain('packages/shared')
     expect(functionFiles).toContain('jobCreateSchema')
@@ -78,6 +86,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('does not ship mojibake Vietnamese error messages from mobile-api Edge runtime', () => {
     const functionFiles = [
       'supabase/functions/mobile-api/_shared/router.ts',
+      ...listFilesUnder('supabase/functions/mobile-api/_shared/router').filter((f) => f.endsWith('.ts')),
       'supabase/functions/mobile-api/_shared/services.ts',
       ...listFilesUnder('supabase/functions/mobile-api/_shared/services').filter((f) => f.endsWith('.ts')),
     ].map(read).join('\n')
@@ -100,7 +109,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const edgeDomain = read('supabase/functions/_shared/domain.ts')
     const edgeServices = readEdgeServiceLayer()
     const nextCreateJob = read('apps/api/src/lib/jobs/create-job.ts')
-    const mobileProvider = read('apps/mobile/lib/frontend-workflow-provider.tsx')
+    const mobileProvider = readMobileFrontendWorkflowLayer()
 
     expect(edgeDomain).toContain('normalizeServiceAreaDistrict')
     expect(edgeServices).toContain('normalizeServiceAreaDistrict')
@@ -370,7 +379,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const migrations = readMigrations()
     const edgeKael = readEdgeKaelModules()
     const edgeServices = readEdgeServiceLayer()
-    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeRouter = readEdgeRouterLayer()
 
     expect(migrations).toMatch(/alter table public\.jobs[\s\S]*add column if not exists kael_estimate_card_v3 jsonb/)
     expect(migrations).toMatch(/alter table public\.jobs[\s\S]*add column if not exists kael_worker_brief_core jsonb/)
@@ -419,7 +428,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const migrations = readMigrations()
     const edgeKael = readEdgeKaelModules()
     const edgeServices = readEdgeServiceLayer()
-    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeRouter = readEdgeRouterLayer()
 
     expect(migrations).toContain('create table if not exists public.kael_memory_archive')
     expect(migrations).toContain('create or replace function public.archive_stale_kael_memory')
@@ -510,7 +519,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds P8 charter audit, prompt builder, self-check, and public charter route', () => {
     const migrations = readMigrations()
     const edgeKael = readEdgeKaelModules()
-    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeRouter = readEdgeRouterLayer()
     const edgeServices = readEdgeServiceLayer()
 
     expect(migrations).toContain('create table if not exists public.kael_charter_audit')
@@ -826,7 +835,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds Supabase boxes for media, Kael artifacts, notifications, and worker cancellation', () => {
     const migration = read('supabase/migrations/20260519090200_supabase_boxes_notifications_media_cancellation.sql')
     const edgeServices = readEdgeServiceLayer()
-    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeRouter = readEdgeRouterLayer()
 
     for (const table of [
       'public.job_media_assets',
@@ -859,7 +868,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds service-role Kael chat persistence and confirm RPC for the Kael-first workflow', () => {
     const migration = read('supabase/migrations/20260520130514_kael_chat_sessions.sql')
     const edgeServices = readEdgeServiceLayer()
-    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeRouter = readEdgeRouterLayer()
     const mobileApiTypes = read('apps/mobile/lib/api-types.ts')
     const edgeContracts = read('supabase/functions/_shared/contracts.ts')
     const sharedTypes = read('packages/shared/src/types/api-responses.ts')
@@ -927,7 +936,7 @@ describe('mobile-api Edge schema compatibility', () => {
     const migration = read('supabase/migrations/20260521120000_geo_matching_and_worker_auto_suspend.sql')
     const vietmapMigration = read('supabase/migrations/20260527090118_allow_vietmap_geo_source.sql')
     const edgeServices = readEdgeServiceLayer()
-    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeRouter = readEdgeRouterLayer()
     const mobileServices = read('apps/mobile/lib/services.ts')
 
     expect(migration).toContain('address_lat numeric(9,6)')
@@ -997,7 +1006,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds P12 customer cancellation taxonomy, after-accept RPC, and Phase 0 review controls', () => {
     const migration = readMigrationByName('kael_customer_cancel_case_p12')
     const edgeServices = readEdgeServiceLayer()
-    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeRouter = readEdgeRouterLayer()
     const edgeDomain = read('supabase/functions/_shared/domain.ts')
     const edgeKaelModules = readEdgeKaelModules()
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
@@ -1031,7 +1040,7 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds P13 dispute tables, immutable evidence snapshots, neutral helpers, and admin RPCs', () => {
     const migration = readMigrationByName('kael_dispute_case_p13')
     const edgeServices = readEdgeServiceLayer()
-    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
+    const edgeRouter = readEdgeRouterLayer()
     const edgeDomain = read('supabase/functions/_shared/domain.ts')
     const edgeKaelModules = readEdgeKaelModules()
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
@@ -1086,8 +1095,8 @@ describe('mobile-api Edge schema compatibility', () => {
   it('adds Section 32 apartment access staged release without worker-side exact unit leakage', () => {
     const migration = readMigrationByName('apartment_access_release')
     const edgeServices = readEdgeServiceLayer()
-    const edgeRouter = read('supabase/functions/mobile-api/_shared/router.ts')
-    const mobileProvider = read('apps/mobile/lib/frontend-workflow-provider.tsx')
+    const edgeRouter = readEdgeRouterLayer()
+    const mobileProvider = readMobileFrontendWorkflowLayer()
     const workerSurface = listEdgeServiceFiles('apps/mobile/components/worker')
       .filter((p) => /\.tsx?$/.test(p) && !p.includes('/__tests__/'))
       .sort()

@@ -31,6 +31,22 @@ const listMobileFiles = (relDir: string): string[] =>
   readdirSync(resolve(MOBILE_ROOT, relDir), { withFileTypes: true }).flatMap((entry) =>
     entry.isDirectory() ? listMobileFiles(`${relDir}/${entry.name}`) : [`${relDir}/${entry.name}`],
   )
+const readApiTypesLayer = () =>
+  [
+    read('lib/api-types.ts'),
+    ...listMobileFiles('lib/api-types')
+      .filter((p) => p.endsWith('.ts'))
+      .sort()
+      .map(read),
+  ].join('\n')
+const readFrontendWorkflowLayer = () =>
+  [
+    read('lib/frontend-workflow-provider.tsx'),
+    ...listMobileFiles('lib/frontend-workflow')
+      .filter((p) => /\.tsx?$/.test(p))
+      .sort()
+      .map(read),
+  ].join('\n')
 const readWorkerSurfaceLayer = () =>
   listMobileFiles('components/worker')
     .filter((p) => /\.tsx?$/.test(p) && !p.replace(/\\/g, '/').includes('/__tests__/'))
@@ -54,8 +70,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   it('keeps mobile service paths on the Edge function contract, not Next /api routes', () => {
     const services = read('lib/services.ts')
     const api = read('lib/api.ts')
-    const apiTypes = read('lib/api-types.ts')
-    const provider = read('lib/frontend-workflow-provider.tsx')
+    const apiTypes = readApiTypesLayer()
+    const provider = readFrontendWorkflowLayer()
 
     expect(services).not.toContain("'/api/")
     expect(services).not.toContain('`/api/')
@@ -157,7 +173,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     const appConfig = read('app.config.ts')
     const api = read('lib/api.ts')
     const services = read('lib/services.ts')
-    const provider = read('lib/frontend-workflow-provider.tsx')
+    const provider = readFrontendWorkflowLayer()
 
     expect(appConfig).toContain("fromEnv('EXPO_PUBLIC_SUPABASE_URL')")
     expect(appConfig).toContain("fromEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY')")
@@ -183,7 +199,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   })
 
   it('keeps UI components behind the workflow provider instead of direct backend calls', () => {
-    const provider = read('lib/frontend-workflow-provider.tsx')
+    const provider = readFrontendWorkflowLayer()
     const bookingRoute = read('app/(customer)/booking.tsx')
     const customer = readCustomerSurfaceLayer()
     const worker = readWorkerSurfaceLayer()
@@ -243,8 +259,8 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   })
 
   it('carries active scope-change details from job detail into Kael decision UI', () => {
-    const apiTypes = read('lib/api-types.ts')
-    const provider = read('lib/frontend-workflow-provider.tsx')
+    const apiTypes = readApiTypesLayer()
+    const provider = readFrontendWorkflowLayer()
     const customer = readCustomerSurfaceLayer()
     const worker = readWorkerSurfaceLayer()
 
@@ -265,7 +281,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
   })
 
   it('polls remote workflow state without overwriting explicit no-worker fallback', () => {
-    const provider = read('lib/frontend-workflow-provider.tsx')
+    const provider = readFrontendWorkflowLayer()
 
     expect(provider).toContain('if (isAppForeground()) void workerRefresh()')
     expect(provider).toContain('if (isAppForeground()) void refreshCurrentJob()')
@@ -320,7 +336,7 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
       read('components/customer/customer-surfaces.tsx'),
       readWorkerSurfaceLayer(),
       read('lib/api.ts'),
-      read('lib/frontend-workflow-provider.tsx'),
+      readFrontendWorkflowLayer(),
     ].join('\n')
 
     for (const forbidden of [

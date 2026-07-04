@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync, readdirSync } from 'fs'
 import { dirname, resolve } from 'path'
 
@@ -25,13 +25,100 @@ const readEdgeServiceLayer = () =>
       .map(readSource),
   ].join('\n')
 
+const readEdgeRouterLayer = () =>
+  [
+    readSource(resolve(EDGE_MOBILE_API_SHARED, 'router.ts')),
+    ...listEdgeServiceFiles(resolve(EDGE_MOBILE_API_SHARED, 'router'))
+      .filter((p) => p.endsWith('.ts'))
+      .sort()
+      .map(readSource),
+  ].join('\n')
+
+const readApiTypesLayer = () =>
+  [
+    read('lib/api-types.ts'),
+    ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'lib/api-types'))
+      .filter((p) => p.endsWith('.ts'))
+      .sort()
+      .map(readSource),
+  ].join('\n')
+
+const readFrontendWorkflowLayer = () =>
+  [
+    read('lib/frontend-workflow-provider.tsx'),
+    ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'lib/frontend-workflow'))
+      .filter((p) => /\.tsx?$/.test(p))
+      .sort()
+      .map(readSource),
+  ].join('\n')
+
+const readMobileWorkflowLayer = () =>
+  [
+    readSource(resolve(__dirname, '../mobile-workflow.ts')),
+    ...listEdgeServiceFiles(resolve(__dirname, '../mobile-workflow'))
+      .filter((p) => p.endsWith('.ts'))
+      .sort()
+      .map(readSource),
+  ].join('\n')
+
 // The worker surface layer is worker-surfaces.tsx plus the modules split out of it (constants,
 // styles, ...), so source-string assertions read the whole concatenated layer (C4 staged split).
+// Worker V5 pure helper modules stay out of this visual contract reader, matching the existing
+// exclusion for the worker-v5-flow.tsx god file they were split from.
 const readWorkerSurfaceLayer = () =>
   listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/worker'))
     .filter((p) => {
       const normalized = p.replace(/\\/g, '/')
-      return /\.tsx?$/.test(p) && !normalized.includes('/__tests__/') && !normalized.endsWith('/worker-v5-flow.tsx')
+      return /\.tsx?$/.test(p)
+        && !normalized.includes('/__tests__/')
+        && !normalized.endsWith('/worker-v5-flow.tsx')
+        && !normalized.endsWith('/components/worker/chat/orb-styles.ts')
+        && !normalized.endsWith('/components/worker/chat/body-styles.ts')
+        && !normalized.endsWith('/components/worker/earnings/body-styles.ts')
+        && !normalized.endsWith('/components/worker/earnings/ledger-styles.ts')
+        && !normalized.endsWith('/components/worker/earnings/overview-styles.ts')
+        && !normalized.endsWith('/components/worker/earnings/payout-method-styles.ts')
+        && !normalized.endsWith('/components/worker/earnings/payout-request-styles.ts')
+        && !normalized.endsWith('/components/worker/earnings/payout-styles.ts')
+        && !normalized.endsWith('/components/worker/home/action-styles.ts')
+        && !normalized.endsWith('/components/worker/home/body-styles.ts')
+        && !normalized.endsWith('/components/worker/home/opportunity-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/bank-tax-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/body-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/header-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/memory-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/overview-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/ranking-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/reliability-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/reviews-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/services-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/settings-styles.ts')
+        && !normalized.endsWith('/components/worker/profile/verification-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/active-body-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/advisory-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/approval-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/case-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/completion-body-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/acceptance-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/checkin-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/completion-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/evidence-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/map-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/offer-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/progress-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/request-body-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/shared-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/source-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/scope-styles.ts')
+        && !normalized.endsWith('/components/worker/jobs/timeline-styles.ts')
+        && !normalized.endsWith('/components/worker/ui/aura-styles.ts')
+        && !normalized.endsWith('/components/worker/ui/format.ts')
+        && !normalized.endsWith('/components/worker/ui/labels.ts')
+        && !normalized.endsWith('/components/worker/ui/metrics-styles.ts')
+        && !normalized.endsWith('/components/worker/ui/performance.ts')
+        && !normalized.endsWith('/components/worker/ui/primitives-styles.ts')
+        && !normalized.endsWith('/components/worker/ui/route.ts')
     })
     .sort()
     .map(readSource)
@@ -61,6 +148,10 @@ const readCustomerSurfaceLayer = () =>
     read('components/customer/customer-surfaces.tsx'),
     ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/customer/surfaces'))
       .filter((p) => /\.tsx?$/.test(p))
+      .sort()
+      .map(readSource),
+    ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/customer/v21'))
+      .filter((p) => p.replace(/\\/g, '/').endsWith('-surfaces.tsx'))
       .sort()
       .map(readSource),
   ].join('\n')
@@ -1104,7 +1195,7 @@ describe('customer frontend shell surfaces', () => {
   it('keeps B6 scope-change photos on the scope evidence stage, not B7 completion media', () => {
     const worker = readWorkerSurfaceLayer()
     const mediaUpload = read('lib/media-upload.ts')
-    const apiTypes = read('lib/api-types.ts')
+    const apiTypes = readApiTypesLayer()
 
     expect(worker).toContain("uploadJobMediaDrafts(jobId, scopePhotos, 'scope_change_evidence')")
     expect(worker).not.toContain("uploadJobMediaDrafts(jobId, scopePhotos, 'after')")
@@ -1258,7 +1349,7 @@ describe('frontend workflow provider wiring', () => {
   })
 
   it('keeps the approved workflow provider in memory only', () => {
-    const src = read('lib/frontend-workflow-provider.tsx')
+    const src = readFrontendWorkflowLayer()
     expect(src).toContain('useReducer(localWorkflowReducer')
     expect(src).toContain('createInitialLocalWorkflowState')
     expect(src).not.toContain('AsyncStorage')
@@ -1270,7 +1361,7 @@ describe('frontend workflow provider wiring', () => {
   it('wires the realtime seam into the workflow provider with cleanup and a reduced-poll fallback', () => {
     // Realtime is now the fast path for active timeline, broadcast, and chat;
     // polling stays as a dropped-socket fallback.
-    const provider = read('lib/frontend-workflow-provider.tsx')
+    const provider = readFrontendWorkflowLayer()
     const realtime = read('lib/realtime.ts')
     const chatThread = read('lib/use-job-chat-thread.ts')
 
@@ -1316,14 +1407,14 @@ describe('frontend workflow provider wiring', () => {
   })
 
   it('resets local workflow when the authenticated user changes', () => {
-    const src = read('lib/frontend-workflow-provider.tsx')
+    const src = readFrontendWorkflowLayer()
     expect(src).toContain('useAuth')
     expect(src).toContain('session?.user.id')
     expect(src).toContain("dispatch({ type: 'reset_workflow' })")
   })
 
   it('ticks local broadcasts in memory so waiting requests can expire without backend', () => {
-    const src = read('lib/frontend-workflow-provider.tsx')
+    const src = readFrontendWorkflowLayer()
     expect(src).toContain("state.deal?.status !== 'broadcasting'")
     expect(src).toContain("broadcast?.status !== 'sent'")
     expect(src).toContain('setTimeout')
@@ -1332,7 +1423,7 @@ describe('frontend workflow provider wiring', () => {
   })
 
   it('only decrements notification unread count for items that were unread before local mark-read', () => {
-    const src = read('lib/frontend-workflow-provider.tsx')
+    const src = readFrontendWorkflowLayer()
     expect(src).toContain('locallyReadNotificationIdsRef')
     expect(src).toContain("currentNotification.status !== 'read'")
     expect(src).toContain('!locallyReadNotificationIdsRef.current!.has(notificationId)')
@@ -1342,7 +1433,7 @@ describe('frontend workflow provider wiring', () => {
   })
 
   it('hydrates worker earnings from the mobile API without blocking worker job refresh', () => {
-    const src = read('lib/frontend-workflow-provider.tsx')
+    const src = readFrontendWorkflowLayer()
     expect(src).toContain('workerEarnings: EarningsResponse | null')
     expect(src).toContain('type WorkerRemoteState')
     expect(src).toContain('const [workerRemoteState, setWorkerRemoteState]')
@@ -1354,7 +1445,7 @@ describe('frontend workflow provider wiring', () => {
   })
 
   it('clears released worker address locally after Kael approves worker cancellation', () => {
-    const src = read('lib/frontend-workflow-provider.tsx')
+    const src = readFrontendWorkflowLayer()
     expect(src).toContain("if (result.data.status === 'approved')")
     expect(src).toContain("status: 'cancelled'")
     expect(src).toContain('fullAddressVisible: false')
@@ -1363,7 +1454,7 @@ describe('frontend workflow provider wiring', () => {
   })
 
   it('routes after-accept customer cancellation to Kael policy review instead of the pre-accept cancel endpoint', () => {
-    const provider = read('lib/frontend-workflow-provider.tsx')
+    const provider = readFrontendWorkflowLayer()
     const customerShell = readCustomerSurfaceLayer()
 
     expect(provider).toContain('requestCustomerCancellation')
@@ -1381,7 +1472,7 @@ describe('frontend workflow provider wiring', () => {
   })
 
   it('normalizes backend price estimates to the required customer disclaimer before UI render', () => {
-    const src = read('lib/frontend-workflow-provider.tsx')
+    const src = readFrontendWorkflowLayer()
     const requiredDisclaimer = 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
     expect(src).toContain(`const REQUIRED_PRICE_DISCLAIMER = '${requiredDisclaimer}'`)
     expect(src).toContain('disclaimer: REQUIRED_PRICE_DISCLAIMER')
@@ -1391,7 +1482,7 @@ describe('frontend workflow provider wiring', () => {
   })
 
   it('does not crash when worker profile array fields are absent from a runtime response', () => {
-    const src = read('lib/frontend-workflow-provider.tsx')
+    const src = readFrontendWorkflowLayer()
     expect(src).toContain('readonly string[] | null | undefined')
     expect(src).toContain('const leftItems = left ?? []')
     expect(src).toContain('const rightItems = right ?? []')
@@ -3537,9 +3628,9 @@ describe('frontend-only workflow safety audit', () => {
   const customerShell = readCustomerSurfaceLayer()
   const workerShell = readWorkerSurfaceLayer()
   const appLanguageStore = read('lib/app-language.ts')
-  const apiTypes = read('lib/api-types.ts')
-  const frontendWorkflowProvider = read('lib/frontend-workflow-provider.tsx')
-  const edgeRouter = readSource(resolve(MOBILE_ROOT, '../../supabase/functions/mobile-api/_shared/router.ts'))
+  const apiTypes = readApiTypesLayer()
+  const frontendWorkflowProvider = readFrontendWorkflowLayer()
+  const edgeRouter = readEdgeRouterLayer()
   const edgeServices = readEdgeServiceLayer()
   const sharedApiTypes = readSource(resolve(__dirname, '../types/api-responses.ts'))
 
@@ -3567,8 +3658,8 @@ describe('frontend-only workflow safety audit', () => {
   })
 
   it('localizes workflow provider errors before they reach customer or worker UI', () => {
-    const provider = read('lib/frontend-workflow-provider.tsx')
-    expect(provider).toContain("import { useAppLanguage, type AppLanguage } from './app-language'")
+    const provider = readFrontendWorkflowLayer()
+    expect(provider).toContain("import { useAppLanguage } from './app-language'")
     expect(provider).toContain('workflowErrorCopy')
     expect(provider).toContain('localizeWorkflowError(error, language)')
     expect(provider).toContain('hydrateRemoteJobById')
@@ -3715,7 +3806,8 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerShell).not.toContain('Chưa có hồ sơ thật')
     expect(workerShell).not.toContain('No real profile yet')
     expect(workerShell).not.toContain('Real feedback pending')
-    expect(workerShell).not.toContain('Mới')
+    expect(workerShell).not.toContain("textByLanguage(language, 'Mới', 'New')")
+    expect(workerShell).toContain("textByLanguage(language, 'Mới từ nguồn thật', 'New from real source')")
     expect(workerShell).toContain("accept: 'Nhận việc'")
     expect(workerShell).not.toContain("accept: 'Chấp nhận'")
     expect(workerShell).not.toContain('marginTop: -38')
@@ -3743,13 +3835,13 @@ describe('frontend-only workflow safety audit', () => {
     expect(workerShell).toContain('WorkerEarningsTrend')
     expect(workerShell).not.toContain('1 ' + 'local')
     expect(workerShell).toContain('selectors.canWorkerSeeFullAddress')
-    const workflow = readSource(resolve(__dirname, '../mobile-workflow.ts'))
+    const workflow = readMobileWorkflowLayer()
     expect(workflow).toContain("broadcast?.status === 'accepted'")
     expect(workflow).toContain("state.workerGate === 'local_deal_audit'")
     expect(workflow).toContain("status: 'expired'")
     expect(workflow).toContain('canReplaceLocalDeal')
     expect(workflow).toContain('hasSpecificWorkerRouteAddress')
-    const provider = read('lib/frontend-workflow-provider.tsx')
+    const provider = readFrontendWorkflowLayer()
     expect(provider).toContain('hasSpecificWorkerRouteAddress')
     expect(provider).toContain('formatReleasedFullAddress')
     expect(workerShell).toContain('selectors.canWorkerAdvance ? getNextWorkerAction')

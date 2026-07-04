@@ -4,6 +4,27 @@ import { describe, expect, it } from 'vitest'
 
 const ROOT = resolve(__dirname, '../../../../../')
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), 'utf-8').replace(/\r\n/g, '\n')
+const listFilesUnder = (relDir: string): string[] =>
+  readdirSync(resolve(ROOT, relDir), { withFileTypes: true }).flatMap((entry) => {
+    const relPath = `${relDir}/${entry.name}`
+    return entry.isDirectory() ? listFilesUnder(relPath) : [relPath]
+  })
+const readMobileApiTypesLayer = () =>
+  [
+    read('apps/mobile/lib/api-types.ts'),
+    ...listFilesUnder('apps/mobile/lib/api-types')
+      .filter((relPath) => relPath.endsWith('.ts'))
+      .sort()
+      .map(read),
+  ].join('\n')
+const readEdgeRouterLayer = () =>
+  [
+    read('supabase/functions/mobile-api/_shared/router.ts'),
+    ...listFilesUnder('supabase/functions/mobile-api/_shared/router')
+      .filter((relPath) => relPath.endsWith('.ts'))
+      .sort()
+      .map(read),
+  ].join('\n')
 const migrations = () => readdirSync(resolve(ROOT, 'supabase/migrations'))
   .filter((name) => name.endsWith('.sql'))
   .map((name) => read(`supabase/migrations/${name}`))
@@ -28,8 +49,8 @@ describe('Plan §31 B4 knowledge governance', () => {
 
   it('keeps Edge admin approval as the only writer path for knowledge candidate apply', () => {
     const services = read('supabase/functions/mobile-api/_shared/services.ts') + read('supabase/functions/mobile-api/_shared/services/admin-learning.service.ts')
-    const router = read('supabase/functions/mobile-api/_shared/router.ts')
-    const mobileTypes = read('apps/mobile/lib/api-types.ts')
+    const router = readEdgeRouterLayer()
+    const mobileTypes = readMobileApiTypesLayer()
 
     expect(services).toContain('apply_approved_learning_candidate_to_knowledge')
     expect(services).toContain('knowledge_apply')
