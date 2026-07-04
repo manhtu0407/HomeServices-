@@ -68,4 +68,4 @@ jobs:
       - name: Skills single-source check
         run: pnpm skills:check
       - name: Structure ratchet (Core Skill 6)
-        run: pnpm lint:structure
+        run: node scripts/lint-structure.mjs
