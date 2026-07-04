@@ -7,7 +7,7 @@
  * forgets its ownership guard = IDOR / money-state manipulation.
  *
  * This test DERIVES the resource-scoped route list directly from the `Route` union
- * in router.ts (the source of router dispatch) — it does NOT hand-pick. A route is
+ * in the Edge router layer — it does NOT hand-pick. A route is
  * "resource-scoped" iff its descriptor carries a resource-id field
  * (jobId/sessionId/scopeChangeId/cancellationId/disputeId/candidateId/notificationId),
  * i.e. it targets one specific owned instance.
@@ -27,16 +27,16 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const routerPath = resolve(
+const routeLayerPath = resolve(
   here,
-  '../../../../../supabase/functions/mobile-api/_shared/router.ts',
+  '../../../../../supabase/functions/mobile-api/_shared/router/routes.ts',
 )
 
 /**
  * Every resource-scoped route -> the ownership mechanism that fails closed for it.
  * Verified against audit §2 ("Verified-strong") / §4.1 (exhaustive route authz) and
  * direct source spot-checks (e.g. markNotificationRead `.eq("user_id", ctx.user.id)`;
- * getKaelChatProgress `assertKaelSessionOwnership`). Keep in lockstep with router.ts.
+ * getKaelChatProgress `assertKaelSessionOwnership`). Keep in lockstep with the router layer.
  */
 const GUARDED: Record<string, string> = {
   // job-scoped reads — requireJobAccess returns 404 (no existence leak)
@@ -84,10 +84,10 @@ const RESOURCE_ID_FIELD =
   /\b(jobId|sessionId|scopeChangeId|cancellationId|disputeId|candidateId|notificationId)\s*:/
 
 function deriveResourceScopedRoutes(): Set<string> {
-  const src = readFileSync(routerPath, 'utf8')
+  const src = readFileSync(routeLayerPath, 'utf8')
   const unionStart = src.indexOf('type Route =')
   const unionEnd = src.indexOf('function matchRoute(')
-  expect(unionStart, 'Route union must exist in router.ts').toBeGreaterThanOrEqual(0)
+  expect(unionStart, 'Route union must exist in router routes layer').toBeGreaterThanOrEqual(0)
   expect(unionEnd, 'matchRoute must follow the Route union').toBeGreaterThan(unionStart)
   const union = src.slice(unionStart, unionEnd)
 
@@ -117,7 +117,7 @@ describe('S3: every resource-scoped Edge route has a registered ownership guard'
     const missing = [...derived].filter((kind) => !(kind in GUARDED)).sort()
     expect(
       missing,
-      `Resource-scoped route(s) added to router.ts without a registered ownership ` +
+      `Resource-scoped route(s) added to the router layer without a registered ownership ` +
         `guard. Verify each enforces ownership (requireJobAccess / session preflight / ` +
         `RPC SQL owner check / admin role) and add it to GUARDED:\n  ${missing.join('\n  ')}`,
     ).toEqual([])
@@ -127,7 +127,7 @@ describe('S3: every resource-scoped Edge route has a registered ownership guard'
     const stale = Object.keys(GUARDED).filter((kind) => !derived.has(kind)).sort()
     expect(
       stale,
-      `GUARDED lists route(s) that no longer exist as resource-scoped in router.ts ` +
+      `GUARDED lists route(s) that no longer exist as resource-scoped in the router layer ` +
         `(renamed/removed?). Update GUARDED:\n  ${stale.join('\n  ')}`,
     ).toEqual([])
   })

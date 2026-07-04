@@ -1,0 +1,182 @@
+import type { ComponentType } from 'react'
+import { Text, View } from 'react-native'
+import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
+
+import type { CustomerThemeTokens } from '../customer-theme'
+import { customerV21ProfileMetricStyles as styles } from './profile-metrics-styles'
+
+type CustomerV21SourceSkin = ComponentType<{ testID?: string }>
+type CustomerV21ScoreAura = ComponentType<{ scope: string }>
+type CustomerV21ZipAura = ComponentType<{ scope: string; testID?: string }>
+
+export function ProfileCompactMintAura({
+  reduceTransparency,
+  scope,
+  testID,
+}: {
+  reduceTransparency: boolean
+  scope: string
+  testID?: string
+}) {
+  if (reduceTransparency) return null
+
+  const topId = `profileCompactMintAuraTop${scope}`
+  const edgeId = `profileCompactMintAuraEdge${scope}`
+  return (
+    <View pointerEvents="none" style={styles.profileCompactMintAura} testID={testID}>
+      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 180 92" width="100%">
+        <Defs>
+          <RadialGradient id={topId} cx="92%" cy="4%" r="76%">
+            <Stop offset="0" stopColor="rgba(82,235,213,0.30)" />
+            <Stop offset="0.42" stopColor="rgba(154,246,232,0.14)" />
+            <Stop offset="0.78" stopColor="rgba(154,246,232,0)" />
+          </RadialGradient>
+          <RadialGradient id={edgeId} cx="7%" cy="94%" r="66%">
+            <Stop offset="0" stopColor="rgba(13,174,154,0.16)" />
+            <Stop offset="0.58" stopColor="rgba(230,251,243,0.10)" />
+            <Stop offset="0.9" stopColor="rgba(230,251,243,0)" />
+          </RadialGradient>
+        </Defs>
+        <Rect fill={`url(#${topId})`} height="92" width="180" />
+        <Rect fill={`url(#${edgeId})`} height="92" width="180" />
+      </Svg>
+    </View>
+  )
+}
+
+export function ProfileStatCard({
+  label,
+  reduceTransparency,
+  sourceCardSkin: SourceCardSkin,
+  testID,
+  tokens,
+  value,
+  zipMintAura: ZipMintAura,
+}: {
+  label: string
+  reduceTransparency: boolean
+  sourceCardSkin: CustomerV21SourceSkin
+  testID?: string
+  tokens: CustomerThemeTokens
+  value: string
+  zipMintAura: CustomerV21ZipAura
+}) {
+  const compactValue = value.length > 8
+  const scope = label.replace(/[^a-zA-Z0-9]/g, '')
+  return (
+    <View style={[styles.profileStatCard, { backgroundColor: tokens.mode === 'dark' ? tokens.raised : 'rgba(255,255,255,0.80)', borderColor: tokens.mode === 'dark' ? tokens.border : 'rgba(113,225,209,0.38)' }]} testID={testID}>
+      <SourceCardSkin />
+      <ProfileCompactMintAura reduceTransparency={reduceTransparency} scope={`ProfileStatFine${scope}`} />
+      <ZipMintAura scope={`ProfileStat${scope}`} />
+      <View style={styles.profileStatContent}>
+        <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={1} style={[styles.profileStatValue, compactValue ? styles.profileStatValueCompact : null, { color: tokens.text }]}>{value}</Text>
+        <Text numberOfLines={2} style={[styles.profileStatLabel, { color: tokens.muted }]}>{label}</Text>
+      </View>
+    </View>
+  )
+}
+
+export function ProfileLiquidScore({
+  caseOverviewScoreAura: CaseOverviewScoreAura,
+  label,
+  percent,
+  reduceTransparency,
+  scope,
+  secondaryLabel,
+  size = 'regular',
+  tokens,
+  value,
+}: {
+  caseOverviewScoreAura: CustomerV21ScoreAura
+  label: string
+  percent: number
+  reduceTransparency: boolean
+  scope: string
+  secondaryLabel?: string
+  size?: 'regular' | 'large'
+  tokens: CustomerThemeTokens
+  value: string
+}) {
+  const progressId = `profileLiquidScoreProgress${scope}`
+  const ringRadius = 43
+  const circumference = 2 * Math.PI * ringRadius
+  const clampedPercent = Math.max(0, Math.min(100, percent))
+  const progressLength = (circumference * clampedPercent) / 100
+  const frameSize = size === 'large' ? 154 : 112
+  const svgSize = size === 'large' ? 132 : 102
+  const lensInset = size === 'large' ? 24 : 17
+  return (
+    <View style={[styles.profileLiquidScore, size === 'large' ? styles.profileLiquidScoreLarge : null, { height: frameSize, width: frameSize }]} testID={`customer-v21-profile-score-${scope}`}>
+      {!reduceTransparency ? <CaseOverviewScoreAura scope={`Profile${scope}`} /> : null}
+      <Svg height={svgSize} style={styles.caseOverviewScoreSvg} viewBox="0 0 100 100" width={svgSize}>
+        <Defs>
+          <LinearGradient id={progressId} x1="10" x2="88" y1="86" y2="10">
+            <Stop offset="0" stopColor="#088779" />
+            <Stop offset="0.48" stopColor="#24B3A1" />
+            <Stop offset="1" stopColor="#86EAD9" />
+          </LinearGradient>
+        </Defs>
+        <Circle cx="50" cy="50" fill="none" r={ringRadius} stroke="rgba(204,226,222,0.62)" strokeWidth={8} />
+        <Circle
+          cx="50"
+          cy="50"
+          fill="none"
+          r={ringRadius}
+          stroke={`url(#${progressId})`}
+          strokeDasharray={`${progressLength} ${circumference}`}
+          strokeLinecap="round"
+          strokeWidth={8}
+        />
+      </Svg>
+      <View
+        pointerEvents="none"
+        style={[
+          styles.profileScoreLens,
+          {
+            backgroundColor: tokens.mode === 'dark' ? tokens.glassStrong : 'rgba(246,255,252,0.82)',
+            borderColor: tokens.mode === 'dark' ? 'rgba(117,236,220,0.30)' : 'rgba(255,255,255,0.95)',
+            bottom: lensInset,
+            left: lensInset,
+            right: lensInset,
+            top: lensInset,
+          },
+        ]}
+      >
+        {!reduceTransparency ? <View style={styles.caseOverviewScoreHighlight} /> : null}
+      </View>
+      <View style={styles.caseOverviewScoreInside}>
+        <Text
+          adjustsFontSizeToFit
+          numberOfLines={1}
+          style={[
+            styles.profileScoreValue,
+            size === 'large' ? styles.profileScoreValueLarge : null,
+            { color: tokens.primary },
+          ]}
+        >
+          {value}
+        </Text>
+        <View style={[styles.profileScoreMeta, size === 'large' ? styles.profileScoreMetaLarge : null]}>
+          <Text
+            adjustsFontSizeToFit
+            minimumFontScale={secondaryLabel ? 0.62 : 0.72}
+            numberOfLines={secondaryLabel ? 1 : size === 'large' ? 2 : 1}
+            style={[styles.profileScoreLabel, size === 'large' ? styles.profileScoreLabelLarge : null, { color: tokens.muted }]}
+          >
+            {label}
+          </Text>
+          {secondaryLabel ? (
+            <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.62}
+              numberOfLines={1}
+              style={[styles.profileScoreSubLabel, size === 'large' ? styles.profileScoreSubLabelLarge : null, { color: tokens.muted }]}
+            >
+              {secondaryLabel}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  )
+}

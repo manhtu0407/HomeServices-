@@ -47,6 +47,22 @@ function readMobileApiServiceLayer() {
   ].join('\n')
 }
 
+function readMobileApiRouterLayer() {
+  const root = new URL('../../../../../supabase/functions/mobile-api/_shared/', import.meta.url)
+  return [
+    readUtf8(new URL('router.ts', root)),
+    ...listTsFiles(new URL('router/', root)).map(readUtf8),
+  ].join('\n')
+}
+
+function readMobileApiTypesLayer() {
+  const root = new URL('../../../../../apps/mobile/lib/', import.meta.url)
+  return [
+    readUtf8(new URL('api-types.ts', root)),
+    ...listTsFiles(new URL('api-types/', root)).map(readUtf8),
+  ].join('\n')
+}
+
 describe('mobile-api worker Kael chat sibling backend', () => {
   afterEach(() => {
     KAEL_CIRCUIT_BREAKER.reset()
@@ -346,10 +362,7 @@ describe('mobile-api worker Kael chat sibling backend', () => {
   })
 
   it('wires worker-owned chat routes and DB tables separately from customer Kael chat', () => {
-    const router = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/router.ts', import.meta.url),
-      'utf8',
-    )
+    const router = readMobileApiRouterLayer()
     const services = readFileSync(
       new URL('../../../../../supabase/functions/mobile-api/_shared/services.ts', import.meta.url),
       'utf8',
@@ -438,14 +451,8 @@ describe('mobile-api worker Kael chat sibling backend', () => {
   })
 
   it('keeps public worker chat DTO free of provider/cost/safe metadata', () => {
-    const router = readFileSync(
-      new URL('../../../../../supabase/functions/mobile-api/_shared/router.ts', import.meta.url),
-      'utf8',
-    )
-    const mobileTypes = readFileSync(
-      new URL('../../../../../apps/mobile/lib/api-types.ts', import.meta.url),
-      'utf8',
-    )
+    const router = readMobileApiRouterLayer()
+    const mobileTypes = readMobileApiTypesLayer()
     const services = readMobileApiServiceLayer()
     const routerPublicTypes = router.match(/type WorkerKaelChatTurnResponse[\s\S]*?type WorkerKaelFeedbackResponse/)?.[0] ?? ''
     const mobilePublicTypes = mobileTypes.match(/export type WorkerKaelChatTurn[\s\S]*?export type WorkerKaelFeedbackResponse/)?.[0] ?? ''

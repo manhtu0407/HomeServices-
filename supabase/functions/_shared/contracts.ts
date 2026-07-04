@@ -22,6 +22,7 @@ export type KaelEstimate = {
 
 export type CreateJobResponse = {
   job_id: string;
+  display_code?: string;
   status: JobStatus;
   estimate: KaelEstimate;
   estimate_card_v3?: Record<string, unknown>;
@@ -33,6 +34,7 @@ export type CreateJobResponse = {
 
 export type KaelChatStatus =
   | "active"
+  | "collecting_evidence"
   | "estimate_ready"
   | "confirmed"
   | "abandoned"
@@ -40,6 +42,7 @@ export type KaelChatStatus =
 
 export type KaelChatNextAction =
   | "await_input"
+  | "collect_evidence"
   | "ask_photo"
   | "ask_video"
   | "estimate_ready"

@@ -11,6 +11,10 @@ const readEdgeServiceLayer = () => [
   read('supabase/functions/mobile-api/_shared/services.ts'),
   ...listEdgeServiceFiles('supabase/functions/mobile-api/_shared/services').filter((p) => p.endsWith('.ts')).sort().map(read),
 ].join('\n')
+const readEdgeRouterLayer = () => [
+  read('supabase/functions/mobile-api/_shared/router.ts'),
+  ...listEdgeServiceFiles('supabase/functions/mobile-api/_shared/router').filter((p) => p.endsWith('.ts')).sort().map(read),
+].join('\n')
 const readMigrationByName = (needle: string) => {
   const dir = resolve(ROOT, 'supabase/migrations')
   const name = readdirSync(dir)
@@ -81,7 +85,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
 
   it('creates Q3 market cache schema and admin invalidate hook behind Edge', () => {
     const migration = readMigrationByName('kael_market_cache_q3')
-    const router = read('supabase/functions/mobile-api/_shared/router.ts')
+    const router = readEdgeRouterLayer()
     const services = readEdgeServiceLayer()
     const sharedTypes = read('packages/shared/src/types/database.types.ts')
 
@@ -102,7 +106,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
 
   it('creates Q4 background learning queue and batch processor hooks behind Edge', () => {
     const migration = readMigrationByName('kael_q4_background_optimization')
-    const router = read('supabase/functions/mobile-api/_shared/router.ts')
+    const router = readEdgeRouterLayer()
     const services = readEdgeServiceLayer()
     const index = read('supabase/functions/mobile-api/_shared/kael/index.ts')
 
@@ -178,7 +182,7 @@ describe('Q1 cost optimization baseline telemetry', () => {
   it('adds A4 manual learning candidate admin review schema and Edge hooks', () => {
     const statusMigration = readMigrationByName('learning_candidate_manual_review_status')
     const rpcMigration = readMigrationByName('learning_candidate_admin_review_rpc')
-    const router = read('supabase/functions/mobile-api/_shared/router.ts')
+    const router = readEdgeRouterLayer()
     const services = readEdgeServiceLayer()
     const nextAdmin = read('apps/api/src/app/admin/kael-learning/page.tsx')
     const nextHome = read('apps/api/src/app/page.tsx')

@@ -1,0 +1,80 @@
+import type { AppLanguage } from '@/lib/app-language'
+
+import { getWorkerV5Screen } from './screens'
+import type {
+  WorkerV5RouteParams,
+  WorkerV5ScreenDefinition,
+  WorkerV5ScreenId,
+  WorkerV5Section,
+} from './types'
+
+export const workerV5Routes: Record<WorkerV5Section, string> = {
+  earnings: '/(worker)/earnings',
+  home: '/(worker)/home',
+  jobs: '/(worker)/jobs',
+  kael: '/(worker)/chat',
+  profile: '/(worker)/profile',
+}
+
+export const workerV5SectionRootIds: Record<WorkerV5Section, WorkerV5ScreenId> = {
+  earnings: '4.1-earnings-overview',
+  home: '1.1-worker-home',
+  jobs: '1.2-shift-brief',
+  kael: '3.1-kael-chat-normal',
+  profile: '5.1-profile-overview',
+}
+
+export function firstRouteParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+export function routeForWorkerV5Screen(screen: WorkerV5ScreenDefinition) {
+  return `${workerV5Routes[screen.section]}?ns_worker_screen=${encodeURIComponent(screen.id)}`
+}
+
+export function resolveWorkerV5ScreenId(section: WorkerV5Section, params: WorkerV5RouteParams): WorkerV5ScreenId {
+  const explicitScreen = getWorkerV5Screen(firstRouteParam(params.ns_worker_screen))
+  if (explicitScreen?.section === section) return explicitScreen.id
+
+  if (section === 'jobs') return resolveWorkerV5JobsScreenId(params)
+  if (section === 'earnings') return resolveWorkerV5EarningsScreenId(params)
+  return workerV5SectionRootIds[section]
+}
+
+export function resolveWorkerV5JobsScreenId(params: WorkerV5RouteParams): WorkerV5ScreenId {
+  const auditSurface = firstRouteParam(params.ns_audit_surface)
+  const tab = firstRouteParam(params.tab)
+
+  if (auditSurface === 'worker_scope_change' || auditSurface === 'worker_scope_evidence_form') {
+    return '2.8-scope-change'
+  }
+
+  if (auditSurface === 'worker_completion_evidence') return '2.10-completion-evidence'
+  if (auditSurface === 'worker_job_summary' || auditSurface === 'worker_summary_report') {
+    return '2.11-completion-submitted'
+  }
+
+  if (auditSurface === 'worker_case_closed' || auditSurface === 'worker_payment_gate') {
+    return '2.12-case-closed'
+  }
+
+  if (auditSurface === 'worker_safety_checklist' || tab === 'active') return '2.7-in-progress'
+  if (tab === 'waiting') return '1.2-shift-brief'
+  if (tab === 'needs') return '2.8-scope-change'
+  return workerV5SectionRootIds.jobs
+}
+
+export function resolveWorkerV5EarningsScreenId(params: WorkerV5RouteParams): WorkerV5ScreenId {
+  const paymentStep = firstRouteParam(params.ns_payment_step)
+
+  if (paymentStep === 'withdraw') return '4.3-payout-request'
+  if (paymentStep === 'method') return '4.4-payout-method'
+  if (paymentStep === 'wallet') return '4.2-ledger-detail'
+  return workerV5SectionRootIds.earnings
+}
+
+export function resolveWorkerV5Language(params: WorkerV5RouteParams): AppLanguage {
+  const routeLanguage = firstRouteParam(params.ns_worker_lang)
+  if (routeLanguage === 'en' || routeLanguage === 'vi') return routeLanguage
+  return 'vi'
+}

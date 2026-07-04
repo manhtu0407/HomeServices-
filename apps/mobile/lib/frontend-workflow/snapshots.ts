@@ -1,0 +1,463 @@
+import {
+  HCMC_DISTRICTS,
+  buildLocalWorkerDisplayCode,
+  extractKnownDistrictLabel,
+  hasSpecificWorkerRouteAddress,
+  toLocalDealStatus,
+  type JobStatus,
+  type LocalDealDraft,
+  type LocalDealEstimate,
+  type LocalDealPayment,
+  type LocalRemoteBroadcastSnapshot,
+  type LocalRemoteJobSnapshot,
+  type LocalScopeChange,
+  type LocalWorkflowState,
+  type ServiceType,
+} from '@nestscout/shared'
+import type {
+  AddressAccessView,
+  ConfirmSearchResponse,
+  CreateJobResponse,
+  JobDetailResponse,
+  WorkerBroadcastsResponse,
+  WorkerJobListResponse,
+} from '../api-types'
+
+const REQUIRED_PRICE_DISCLAIMER = 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.'
+const vndFormatter = new Intl.NumberFormat('vi-VN')
+
+export function createJobResponseToSnapshot(data: CreateJobResponse, draft: LocalDealDraft): LocalRemoteJobSnapshot {
+  const estimate = estimateFromCreateResponse(data)
+  return {
+    id: data.job_id,
+    displayCode: data.display_code ?? null,
+    backendStatus: data.status,
+    status: toLocalDealStatus(data.status),
+    serviceType: data.estimate.service_type,
+    description: draft.description,
+    problemChips: draft.problemChips,
+    addressLabel: draft.addressLabel,
+    districtLabel: draft.districtLabel || draft.addressLabel,
+    mediaCount: draft.mediaCount,
+    estimate,
+    broadcast: data.status === 'broadcasting'
+      ? {
+          status: data.broadcast_sent === false ? 'expired' : 'sent',
+          jobId: data.job_id,
+          serviceType: data.estimate.service_type,
+          problemSummary: estimate.problemLabel,
+          generalArea: draft.districtLabel || 'Khu vực TP.HCM',
+          prebrief: [
+            estimate.problemLabel,
+            data.message ?? 'Kael đang gửi yêu cầu đến thợ phù hợp.',
+          ],
+          fullAddressVisible: false,
+          fullAddressLabel: null,
+          secondsRemaining: data.broadcast_sent === false ? 0 : null,
+        }
+      : null,
+    scopeChange: null,
+    finalPrice: data.final_price ?? null,
+  }
+}
+
+export function confirmSearchToSnapshot(data: ConfirmSearchResponse, deal: NonNullable<LocalWorkflowState['deal']>): LocalRemoteJobSnapshot {
+  const snapshot = dealToSnapshot(deal)
+  const broadcastSent = data.broadcast_sent
+  return {
+    ...snapshot,
+    backendStatus: data.status,
+    status: toLocalDealStatus(data.status),
+    workerProfile: workerProfileSummaryFromApi(data.worker),
+    broadcast: {
+      status: broadcastSent ? 'sent' : 'expired',
+      jobId: data.job_id,
+      serviceType: deal.draft.serviceType as ServiceType,
+      problemSummary: deal.estimate?.problemLabel ?? deal.draft.problemChips[0] ?? deal.draft.description,
+      generalArea: deal.draft.districtLabel || 'Khu vực TP.HCM',
+      prebrief: [
+        `${deal.estimate?.problemLabel ?? deal.draft.problemChips[0] ?? 'Yêu cầu mới'}`,
+        data.message,
+      ],
+      fullAddressVisible: false,
+      fullAddressLabel: null,
+      secondsRemaining: broadcastSent ? null : 0,
+    },
+  }
+}
+
+export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief = false): LocalRemoteJobSnapshot {
+  const job = data.job
+  const serviceType = job.service_type
+  const districtLabel = districtLabelFromValue(job.address_district)
+  const addressLabel = formatStoredJobAddress({
+    building: job.address_building,
+    floor: job.address_floor,
+    unit: job.address_unit,
+    district: job.address_district,
+  })
+  const estimate = job.kael_price_min && job.kael_price_max
+    ? {
+        problemLabel: job.kael_problem_identified ?? job.problem_chips[0] ?? 'Yêu cầu sửa chữa',
+        complexity: job.kael_complexity ?? 'unknown',
+        priceRangeLabel: formatPriceRange(job.kael_price_min, job.kael_price_max),
+        confidenceLabel: 'Kael ước tính',
+        advisory: job.kael_advisory ?? 'Kael giữ giá theo chính sách và cập nhật khi có bằng chứng phạm vi mới.',
+        disclaimer: REQUIRED_PRICE_DISCLAIMER,
+        hasVndPrice: true,
+      } satisfies LocalDealEstimate
+    : null
+  const broadcast = broadcastFromJobStatus(
+    job.status,
+    serviceType,
+    job.kael_problem_identified ?? job.problem_chips[0] ?? job.description,
+    districtLabel,
+    addressLabel,
+    data.broadcast_state,
+    job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
+    includeWorkerBrief
+      ? workerBriefLinesFromRecord(job.kael_worker_brief_guidance ?? job.kael_worker_brief_core)
+      : [],
+    job.address_access,
+  )
+
+  return {
+    id: job.id,
+    displayCode: job.display_code ?? null,
+    backendStatus: job.status,
+    status: toLocalDealStatus(job.status),
+    serviceType,
+    description: job.description,
+    problemChips: job.problem_chips,
+    addressLabel,
+    districtLabel,
+    mediaCount: job.photo_urls.length,
+    estimate,
+    broadcast,
+    scopeChange: scopeChangeFromJobDetail(data),
+    finalPrice: job.final_price,
+    payment: paymentFromJob(job),
+    completionPhotoUrls: job.completion_photo_urls,
+    completionNotes: job.completion_notes,
+    workerProfile: workerProfileSummaryFromApi(data.worker),
+    createdAt: job.created_at,
+    matchedAt: job.matched_at,
+    completedAt: job.completed_at,
+    confirmedAt: job.confirmed_at,
+    paidAt: job.paid_at,
+    reviewedAt: job.reviewed_at,
+  }
+}
+
+export function workerBroadcastToSnapshot(broadcast: WorkerBroadcastsResponse['broadcasts'][number]): LocalRemoteBroadcastSnapshot {
+  return {
+    broadcastId: broadcast.broadcast_id,
+    jobId: broadcast.job_id,
+    status: broadcast.status,
+    serviceType: broadcast.service_type,
+    problemSummary: broadcast.problem_summary ?? 'Yêu cầu sửa chữa',
+    generalArea: districtLabelFromValue(broadcast.district),
+    prebrief: workerBriefLinesFromRecord(broadcast.worker_brief_core),
+    secondsRemaining: broadcast.seconds_remaining,
+    estimatedPriceLabel: formatNullablePriceRange(broadcast.estimated_price_min, broadcast.estimated_price_max),
+    estimatedEarningLabel: formatNullablePriceRange(broadcast.estimated_earning_min, broadcast.estimated_earning_max),
+  }
+}
+
+export function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]): LocalRemoteJobSnapshot {
+  const districtLabel = districtLabelFromValue(job.district)
+  const addressLabel = formatStoredJobAddress({
+    building: job.address_building,
+    floor: job.address_floor,
+    unit: job.address_unit,
+    district: job.district,
+  })
+  const broadcast = broadcastFromJobStatus(
+    job.status,
+    job.service_type,
+    job.problem_summary ?? 'Yêu cầu sửa chữa',
+    districtLabel,
+    addressLabel || districtLabel,
+    undefined,
+    job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
+    workerBriefLinesFromRecord(job.worker_brief_guidance),
+    job.address_access,
+  )
+  return {
+    id: job.id,
+    displayCode: job.display_code ?? null,
+    backendStatus: job.status,
+    status: toLocalDealStatus(job.status),
+    serviceType: job.service_type,
+    description: job.problem_summary ?? 'Yêu cầu sửa chữa',
+    problemChips: job.problem_summary ? [job.problem_summary] : [],
+    addressLabel: addressLabel || districtLabel,
+    districtLabel,
+    estimate: null,
+    broadcast: broadcast
+      ? {
+          ...broadcast,
+          estimatedPriceLabel: formatNullableSinglePrice(job.final_price),
+          estimatedEarningLabel: formatNullableSinglePrice(job.estimated_earning),
+        }
+      : null,
+    scopeChange: null,
+    finalPrice: job.final_price,
+    payment: paymentFromJob(job),
+    completionPhotoUrls: job.completion_photo_urls,
+    completionNotes: job.completion_notes,
+    createdAt: job.created_at,
+    matchedAt: job.matched_at,
+    completedAt: job.completed_at,
+  }
+}
+
+function paymentFromJob(job: JobDetailResponse['job'] | WorkerJobListResponse['jobs'][number]): LocalDealPayment | null {
+  const paymentStatus = job.payment_status ?? paymentStatusFromJobStatus(job.status)
+  const grossAmount = numericOrNull(job.gross_amount) ?? numericOrNull(job.final_price)
+  const platformFee = numericOrNull(job.platform_fee)
+  const workerNet = numericOrNull(job.worker_net) ?? numericOrNull('estimated_earning' in job ? job.estimated_earning : null)
+  const hasPaymentData = Boolean(
+    paymentStatus
+    || grossAmount
+    || platformFee
+    || workerNet
+    || job.payment_code
+    || job.payment_transfer_content
+    || job.payment_qr_image_url
+    || job.payment_expires_at
+    || job.payment_received_at
+  )
+  if (!hasPaymentData) return null
+  return {
+    amountReceived: numericOrNull(job.payment_amount_received),
+    expiresAt: job.payment_expires_at ?? null,
+    grossAmount,
+    paymentCode: job.payment_code ?? null,
+    platformFee,
+    provider: job.payment_provider ?? 'sepay_vietqr',
+    qrImageUrl: job.payment_qr_image_url ?? null,
+    receivedAt: job.payment_received_at ?? null,
+    status: paymentStatus ?? 'not_started',
+    transferContent: job.payment_transfer_content ?? null,
+    workerNet,
+  }
+}
+
+function numericOrNull(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null
+}
+
+function paymentStatusFromJobStatus(status: JobStatus): LocalDealPayment['status'] | null {
+  if (status === 'payment_pending') return 'pending'
+  if (status === 'paid' || status === 'reviewed') return 'received'
+  return null
+}
+
+export function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): LocalRemoteJobSnapshot {
+  return {
+    id: deal.id,
+    displayCode: deal.displayCode ?? null,
+    backendStatus: deal.backendStatus,
+    status: deal.status,
+    serviceType: deal.draft.serviceType as ServiceType,
+    description: deal.draft.description,
+    problemChips: deal.draft.problemChips,
+    addressLabel: deal.draft.addressLabel,
+    districtLabel: deal.draft.districtLabel,
+    mediaCount: deal.draft.mediaCount,
+    estimate: deal.estimate,
+    broadcast: deal.broadcast,
+    scopeChange: deal.scopeChange,
+    finalPrice: deal.finalPrice ?? null,
+    payment: deal.payment ?? null,
+    completionPhotoUrls: deal.completionPhotoUrls ?? [],
+    completionNotes: deal.completionNotes ?? null,
+    workerProfile: deal.workerProfile ?? null,
+    createdAt: deal.createdAt ?? null,
+    matchedAt: deal.matchedAt ?? null,
+    completedAt: deal.completedAt ?? null,
+    confirmedAt: deal.confirmedAt ?? null,
+    paidAt: deal.paidAt ?? null,
+    reviewedAt: deal.reviewedAt ?? null,
+  }
+}
+
+function workerProfileSummaryFromApi(
+  worker: ConfirmSearchResponse['worker'] | JobDetailResponse['worker'] | null | undefined,
+): LocalRemoteJobSnapshot['workerProfile'] {
+  if (!worker) return null
+  return {
+    avatarUrl: worker.avatar_url,
+    displayCode: worker.display_code ?? buildLocalWorkerDisplayCode(worker.id),
+    fullName: worker.full_name,
+    id: worker.id,
+    rating: worker.rating,
+    reviewCount: worker.review_count ?? null,
+    totalJobs: worker.total_jobs,
+  }
+}
+
+function scopeChangeFromJobDetail(data: JobDetailResponse): LocalScopeChange | null {
+  const scope = data.current_scope_change
+  if (!scope) return null
+  return {
+    id: scope.id,
+    status: scope.status,
+    requestedDescription: scope.requested_description,
+    reason: scope.reason,
+    priceMin: scope.kael_computed_min ?? scope.price_min,
+    priceMax: scope.kael_computed_max ?? scope.price_max,
+    kaelReview: scope.kael_review,
+    kaelProgress: scope.kael_progress ?? data.job.kael_progress ?? null,
+    evidencePhotoUrls: scope.evidence_photo_urls,
+    createdAt: scope.created_at,
+  }
+}
+
+function estimateFromCreateResponse(data: CreateJobResponse): LocalDealEstimate {
+  return {
+    problemLabel: data.estimate.problem_summary || data.estimate.problem_category,
+    complexity: data.estimate.complexity,
+    priceRangeLabel: formatPriceRange(data.estimate.price_min, data.estimate.price_max),
+    confidenceLabel: `${Math.round(data.estimate.confidence * 100)}%`,
+    advisory: data.estimate.advisory ?? 'Kael giữ giá theo chính sách và cập nhật khi có bằng chứng phạm vi mới.',
+    disclaimer: REQUIRED_PRICE_DISCLAIMER,
+    hasVndPrice: true,
+    fallbackUsed: data.fallback_used,
+  }
+}
+
+function broadcastFromJobStatus(
+  status: JobStatus,
+  serviceType: ServiceType,
+  problemSummary: string,
+  districtLabel: string,
+  addressLabel: string,
+  broadcastState: JobDetailResponse['broadcast_state'] = null,
+  releasedFullAddressLabel: string | null = hasSpecificWorkerRouteAddress(addressLabel, districtLabel) ? addressLabel : null,
+  prebriefOverride: string[] = [],
+  addressAccess: AddressAccessView | null = null,
+) {
+  if (status === 'awaiting_customer_confirm' || status === 'cancelled' || status === 'reviewed') return null
+  const accepted = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'paid', 'payment_pending'].includes(status)
+  const expiredBroadcast = status === 'broadcasting' && broadcastState?.active_count === 0
+  const canRevealFullAddress = accepted && Boolean(releasedFullAddressLabel) && (addressAccess?.exact_unit_released ?? true)
+  const stagedGeneralArea = accepted && addressAccess && addressAccess.release_stage !== 'area_only'
+    ? addressLabel
+    : districtLabel
+  districtLabel = stagedGeneralArea || districtLabel
+  const prebrief = prebriefOverride.length > 0
+    ? prebriefOverride
+    : [
+        problemSummary,
+        expiredBroadcast
+          ? 'Chưa có thợ phản hồi.'
+          : accepted ? 'Yêu cầu đã được nhận.' : 'Đang chờ thợ phản hồi.',
+      ]
+  return {
+    status: expiredBroadcast ? 'expired' as const : accepted ? 'accepted' as const : 'sent' as const,
+    serviceType,
+    problemSummary,
+    generalArea: districtLabel || 'Khu vực TP.HCM',
+    prebrief,
+    fullAddressVisible: canRevealFullAddress,
+    fullAddressLabel: canRevealFullAddress ? releasedFullAddressLabel : null,
+    addressAccess,
+    secondsRemaining: expiredBroadcast ? 0 : status === 'broadcasting' ? broadcastState?.seconds_remaining ?? null : null,
+  }
+}
+
+function workerBriefLinesFromRecord(record: Record<string, unknown> | null | undefined) {
+  const brief = unwrapWorkerBriefRecord(record)
+  const sections = isRecord(brief?.sections) ? brief.sections : null
+  if (!sections) return []
+  return uniqueStrings([
+    ...stringArrayFromRecord(sections, 'guidance'),
+    ...stringArrayFromRecord(sections, 'safety'),
+    ...stringArrayFromRecord(sections, 'context'),
+  ]).slice(0, 4)
+}
+
+function unwrapWorkerBriefRecord(record: Record<string, unknown> | null | undefined) {
+  if (!record) return null
+  return isRecord(record.brief) ? record.brief : record
+}
+
+function stringArrayFromRecord(record: Record<string, unknown>, key: string) {
+  const value = record[key]
+  if (!Array.isArray(value)) return []
+  const lines: string[] = []
+  for (const item of value) {
+    if (typeof item !== 'string') continue
+    const line = item.trim()
+    if (line) lines.push(line)
+  }
+  return lines
+}
+
+function uniqueStrings(lines: string[]) {
+  const seen = new Set<string>()
+  return lines.filter((line) => {
+    const normalized = line.toLowerCase()
+    if (seen.has(normalized)) return false
+    seen.add(normalized)
+    return true
+  })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function districtLabelFromValue(value: string | null | undefined) {
+  if (!value) return 'Khu vực TP.HCM'
+  return HCMC_DISTRICTS[value as keyof typeof HCMC_DISTRICTS] ?? value
+}
+
+function formatFullAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
+  return formatStoredJobAddress(address)
+}
+
+export function formatReleasedFullAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
+  const label = formatFullAddress(address)
+  const district = address.district ? districtLabelFromValue(address.district) : ''
+  return hasSpecificWorkerRouteAddress(label, district) ? label : ''
+}
+
+export function formatStoredJobAddress(address: { building: string | null; unit: string | null; floor: string | null; district: string | null }) {
+  const district = address.district ? districtLabelFromValue(address.district) : ''
+  const baseParts = [address.building, address.floor, address.unit]
+    .flatMap((part) => {
+      const trimmed = part?.trim()
+      return trimmed ? [trimmed] : []
+    })
+  const baseLabel = baseParts.join(', ')
+  const shouldAppendDistrict = Boolean(district && !addressLabelContainsDistrict(baseLabel, district))
+  return [...baseParts, ...(shouldAppendDistrict ? [district] : [])].join(', ')
+}
+
+function addressLabelContainsDistrict(addressLabel: string, districtLabel: string) {
+  if (!addressLabel || !districtLabel) return false
+  const addressDistrict = extractKnownDistrictLabel(addressLabel)
+  const expectedDistrict = extractKnownDistrictLabel(districtLabel) || districtLabel
+  return Boolean(addressDistrict && addressDistrict === expectedDistrict)
+}
+
+function formatNullablePriceRange(min: number | null, max: number | null) {
+  if (min === null || max === null) return undefined
+  return formatPriceRange(min, max)
+}
+
+function formatNullableSinglePrice(value: number | null) {
+  if (value === null) return undefined
+  return formatVnd(value)
+}
+
+function formatPriceRange(min: number, max: number) {
+  return `${formatVnd(min)} - ${formatVnd(max)}`
+}
+
+function formatVnd(value: number) {
+  return `${vndFormatter.format(value)}đ`
+}
