@@ -2,9 +2,8 @@ import { styles } from './styles'
 import { customerProfileInputSurface, customerProfileSegmentSurface } from './surface-styles'
 import { type CustomerThemeTokens } from '@/components/customer/customer-theme'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
-import { KaelTextInput } from '@/components/ui/kael-primitives'
 import { reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, Text, TextInput, View } from 'react-native'
 
 export type CustomerProfileEditField = 'address' | 'nickname'
 
@@ -84,7 +83,7 @@ export function AccountInfoField({
       <Text style={[styles.accountInfoFieldLabel, { color: tokens.text }]} numberOfLines={1}>
         {label}
       </Text>
-      <KaelTextInput
+      <TextInput
         accessibilityLabel={label}
         autoCapitalize={autoCapitalize}
         editable={editable}

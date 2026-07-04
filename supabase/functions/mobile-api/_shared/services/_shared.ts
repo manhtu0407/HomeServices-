@@ -437,7 +437,6 @@ export function kaelNextAction(
   if (status === "confirmed") return "confirmed";
   if (status === "unsupported") return "unsupported";
   if (totalCostUsd >= KAEL_CHAT_HARD_COST_CAP_USD) return "budget_exceeded";
-  if (status === "collecting_evidence") return "collect_evidence";
   if (status === "estimate_ready") return "estimate_ready";
   if (lastContentType === "photo_request") return "ask_photo";
   if (lastContentType === "video_request") return "ask_video";

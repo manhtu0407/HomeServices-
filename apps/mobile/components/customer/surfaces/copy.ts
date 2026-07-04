@@ -212,7 +212,7 @@ export const customerProfileSectionCopy = {
 export const customerCopy = {
   vi: {
     home: {
-      title: 'NestScout',
+      title: 'Home Services',
       subtitle: 'Kael sẵn sàng phục vụ tận tình!',
       searchA11y: 'Mở Kael tạo yêu cầu',
       searchText: 'Bạn cần sửa gì?',
@@ -380,7 +380,7 @@ export const customerCopy = {
   },
   en: {
     home: {
-      title: 'NestScout',
+      title: 'Home Services',
       subtitle: 'Kael is ready to orchestrate',
       searchA11y: 'Open Kael service chat',
       searchText: 'What needs fixing?',
@@ -442,7 +442,7 @@ export const customerCopy = {
       assistantMoreDetail: 'Kael needs a little more detail before creating a ticket.',
       assistantMoreDetailHint: 'Add the room, visible symptom, impact level, or photo context in Kael chat.',
       unsupportedSummary: 'Kael cannot create a ticket for a service outside the current scope.',
-      unsupportedHint: 'NestScout currently supports electrical repair, plumbing repair, and home cleaning only.',
+      unsupportedHint: 'Home Services currently supports electrical repair, plumbing repair, and home cleaning only.',
       quickServiceA11y: (service: string) => `Start ${service} chat with Kael`,
       needDetail: 'Kael needs a clearer description before creating a ticket.',
       needService: 'Choose a service',

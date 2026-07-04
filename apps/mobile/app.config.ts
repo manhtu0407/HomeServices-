@@ -108,7 +108,7 @@ const withoutIosPushEntitlement: ConfigPlugin = (expoConfig) => {
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'NestScout',
-  slug: 'home-services',
+  slug: 'nestscout',
   version: '0.1.0',
   orientation: 'portrait',
   icon: './assets/nestscout-aurora-nest-appstore-1024.png',
@@ -116,14 +116,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   newArchEnabled: true,
   scheme: 'nestscout',
   splash: {
-    image: './assets/nestscout-aurora-nest-foreground-1024.png',
+    image: './assets/nestscout-aurora-nest-appstore-1024.png',
     resizeMode: 'contain',
     backgroundColor: '#ffffff',
   },
   ios: {
     supportsTablet: false,
-    buildNumber: '20',
-    bundleIdentifier: 'com.phanmanhtu.homeservices',
+    buildNumber: '1',
+    bundleIdentifier: 'com.phanmanhtu.nestscout',
     config: {
       usesNonExemptEncryption: false,
     },
@@ -138,7 +138,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/nestscout-aurora-nest-foreground-1024.png',
+      foregroundImage: './assets/nestscout-aurora-nest-appstore-1024.png',
       backgroundColor: '#ffffff',
     },
     versionCode: 1,

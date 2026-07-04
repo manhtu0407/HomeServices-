@@ -9,46 +9,8 @@ import { mergeApartmentAccessProfiles, sanitizeApartmentAccessProfile } from "./
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { checkKaelChatRateLimit } from "../rate-limit.ts";
 import { scrubSensitiveForLLM, type EdgeAiSecrets } from "../kael/index.ts";
-import {
-  sanitizeForLLM,
-  type KaelChatCreateInput,
-  type KaelChatEvidenceInput,
-  type KaelChatMediaUploadInput,
-  type KaelChatTurnInput,
-} from "../../../_shared/domain.ts";
+import { sanitizeForLLM, type KaelChatCreateInput, type KaelChatTurnInput } from "../../../_shared/domain.ts";
 import { advanceKaelChatEstimate, assertKaelSessionOwnership, findExistingKaelSessionByClientRequest, insertKaelTurn, maybeApplyKaelBoundaryGuard, maybeHandleDemandingCustomerKaelChatTurn, updateKaelSession } from "./kael-chat-core.ts";
-
-type SignedUploadStorage = {
-  storage?: {
-    from(bucket: string): {
-      createSignedUploadUrl(
-        path: string,
-      ): Promise<{
-        data: { signedUrl?: string; signed_url?: string; token?: string } | null;
-        error: unknown;
-      }>;
-    };
-  };
-};
-
-const KAEL_CHAT_MEDIA_BUCKET = "kael-chat-media" as const;
-const KAEL_CHAT_MEDIA_UPLOAD_EXPIRES_IN_SECONDS = 60 * 60;
-const KAEL_CHAT_ALLOWED_MIME_TYPES = new Set([
-  "audio/aac",
-  "audio/mp4",
-  "audio/mpeg",
-  "audio/wav",
-  "audio/webm",
-  "image/gif",
-  "image/heic",
-  "image/heif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-]);
 
 
 
@@ -239,40 +201,6 @@ export async function createKaelChat(
   return getKaelChat(ctx, asString(sessionResult.data.id));
 }
 
-export async function createKaelChatMediaUpload(
-  ctx: MobileApiContext,
-  input: KaelChatMediaUploadInput,
-) {
-  const mimeType = input.mime_type.trim().toLowerCase();
-  if (!KAEL_CHAT_ALLOWED_MIME_TYPES.has(mimeType)) {
-    apiFailure("UNSUPPORTED_MEDIA", "Định dạng media chưa được hỗ trợ", 400);
-  }
-  const storage = (ctx.supabase as SignedUploadStorage).storage;
-  if (!storage) {
-    apiFailure("STORAGE_NOT_CONFIGURED", "Kho media chưa được cấu hình", 500);
-  }
-
-  const objectName = safeKaelChatObjectName(input.file_name, mimeType);
-  const objectPath = `${ctx.user.id}/kael-chat/${crypto.randomUUID()}-${objectName}`;
-  const signed = await storage
-    .from(KAEL_CHAT_MEDIA_BUCKET)
-    .createSignedUploadUrl(objectPath);
-  const signedUrl = signed.data?.signedUrl ?? signed.data?.signed_url;
-  const token = signed.data?.token;
-  if (signed.error || !signedUrl || !token) {
-    apiFailure("STORAGE_ERROR", "Không thể chuẩn bị media cho Kael", 500);
-  }
-
-  return {
-    bucket_id: KAEL_CHAT_MEDIA_BUCKET,
-    object_path: objectPath,
-    media_ref: `supabase://${KAEL_CHAT_MEDIA_BUCKET}/${objectPath}`,
-    token,
-    signed_upload_url: signedUrl,
-    expires_in_seconds: KAEL_CHAT_MEDIA_UPLOAD_EXPIRES_IN_SECONDS,
-  };
-}
-
 export async function getKaelChat(ctx: MobileApiContext, sessionId: string) {
   const client = db(ctx);
   const sessionResult = await dbQuery<Record<string, unknown>>(
@@ -425,86 +353,6 @@ export async function sendKaelChatTurn(
   return getKaelChat(ctx, sessionId);
 }
 
-export async function submitKaelChatEvidence(
-  ctx: MobileApiContext,
-  sessionId: string,
-  input: KaelChatEvidenceInput,
-) {
-  const client = db(ctx);
-  const sessionResult = await dbQuery<Record<string, unknown>>(
-    client
-      .from("kael_chat_sessions")
-      .select(
-        "id, job_id, customer_id, service_type, status, total_turns, safe_metadata",
-      )
-      .eq("id", sessionId)
-      .single(),
-  );
-  if (sessionResult.error || !sessionResult.data) {
-    apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
-  }
-
-  const session = sessionResult.data;
-  assertKaelSessionOwnership(session, ctx);
-  const status = asKaelChatStatus(session.status);
-  if (
-    status === "confirmed" ||
-    status === "abandoned" ||
-    status === "unsupported"
-  ) {
-    apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận bằng chứng", 409);
-  }
-
-  const evidenceRefs = validateKaelChatEvidenceMediaRefs(
-    input.media_refs,
-    asString(session.customer_id),
-  );
-  if (input.decision === "confirmed" && evidenceRefs.length === 0) {
-    apiFailure("VALIDATION", "Cần ít nhất một media bằng chứng", 400);
-  }
-
-  const previousMetadata = asRecord(session.safe_metadata);
-  const previousTurns = asNumber(session.total_turns);
-  const message = sanitizeForLLM(
-    input.message ??
-      input.skip_reason ??
-      (input.decision === "confirmed" ? "Đã gửi bằng chứng." : "Bỏ qua bằng chứng."),
-  );
-  await insertKaelTurn(client, {
-    session_id: sessionId,
-    turn_index: previousTurns + 1,
-    role: "customer",
-    content_type: evidenceRefs.length > 0 ? "photo_attached" : "text",
-    text_content: scrubSensitiveForLLM(message),
-    media_refs: evidenceRefs,
-    safe_metadata: compactMetadata({
-      evidence_decision: input.decision,
-      skip_reason: input.skip_reason ?? null,
-    }),
-  });
-
-  const now = new Date().toISOString();
-  await updateKaelSession(client, sessionId, {
-    total_turns: previousTurns + 1,
-    status: input.decision === "confirmed" ? "collecting_evidence" : "active",
-    safe_metadata: compactMetadata({
-      ...previousMetadata,
-      evidence_decision: input.decision,
-      evidence_media_refs: mergeLimitedRefs(
-        asStringArray(previousMetadata.evidence_media_refs),
-        evidenceRefs,
-        5,
-      ),
-      evidence_updated_at: now,
-      problem_chips: input.problem_chips ??
-        asStringArray(previousMetadata.problem_chips),
-      skip_reason: input.skip_reason ?? nullableString(previousMetadata.skip_reason),
-    }),
-  });
-
-  return getKaelChat(ctx, sessionId);
-}
-
 export async function readKaelChatProgressSnapshot(
   ctx: MobileApiContext,
   sessionId: string,
@@ -526,60 +374,4 @@ export async function readKaelChatProgressSnapshot(
     session_id: sessionId,
     progress: parseKaelProgressSnapshot(sessionResult.data.kael_progress, sessionId),
   };
-}
-
-function safeKaelChatObjectName(fileName: string | undefined, mimeType: string) {
-  const extension = extensionForKaelChatMime(mimeType);
-  const rawName = (fileName?.trim() || `evidence.${extension}`)
-    .split(/[\\/]/)
-    .pop() ?? `evidence.${extension}`;
-  const withoutQuery = rawName.split(/[?#]/)[0] ?? `evidence.${extension}`;
-  const safeName = withoutQuery
-    .replace(/[^A-Za-z0-9._-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^\.+/, "")
-    .slice(0, 140);
-  const fallback = `evidence.${extension}`;
-  const normalized = safeName || fallback;
-  return /\.[A-Za-z0-9]{2,5}$/.test(normalized)
-    ? normalized
-    : `${normalized}.${extension}`;
-}
-
-function extensionForKaelChatMime(mimeType: string) {
-  if (mimeType === "image/png") return "png";
-  if (mimeType === "image/webp") return "webp";
-  if (mimeType === "image/gif") return "gif";
-  if (mimeType === "image/heic") return "heic";
-  if (mimeType === "image/heif") return "heif";
-  if (mimeType === "video/mp4") return "mp4";
-  if (mimeType === "video/quicktime") return "mov";
-  if (mimeType === "video/webm") return "webm";
-  if (mimeType === "audio/mp4") return "m4a";
-  if (mimeType === "audio/mpeg") return "mp3";
-  if (mimeType === "audio/wav") return "wav";
-  if (mimeType === "audio/aac") return "aac";
-  if (mimeType === "audio/webm") return "webm";
-  return "jpg";
-}
-
-const KAEL_CHAT_MEDIA_REF_PATTERN =
-  /^supabase:\/\/kael-chat-media\/([^/\s?#]+)\/kael-chat\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i;
-
-function validateKaelChatEvidenceMediaRefs(
-  mediaRefs: string[],
-  sessionOwnerId: string,
-) {
-  const normalizedRefs = mergeLimitedRefs(
-    [],
-    mediaRefs.map((ref) => ref.trim()).filter(Boolean),
-    5,
-  );
-  for (const mediaRef of normalizedRefs) {
-    const match = mediaRef.match(KAEL_CHAT_MEDIA_REF_PATTERN);
-    if (!match || match[1] !== sessionOwnerId) {
-      apiFailure("VALIDATION", "Media bằng chứng không hợp lệ", 400);
-    }
-  }
-  return normalizedRefs;
 }

@@ -2,14 +2,13 @@
 import { styles } from './styles'
 import { customerBookingDiagnosisSurface, customerHistoryChatBubbleSurface, customerHistoryHeroSurface, customerHistoryMapViewportSurface, customerHistoryPanelSurface, customerHistoryPriceBoxSurface, customerMintPillSurface, customerOpaqueSurface } from './surface-styles'
 import { type CustomerThemeTokens } from '@/components/customer/customer-theme'
-import { KaelTextInput } from '@/components/ui/kael-primitives'
 import { type JobMessageResponse } from '@/lib/api-types'
 import { appCopy, type AppLanguage, localizedProblemLabel, localizedServiceLabel } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useJobChatThread } from '@/lib/use-job-chat-thread'
 import { LOCAL_DEAL_ID, type LocalDeal, type LocalScopeChange, type LocalWorkflowSelectors, type WorkflowArtifactMode, workflowBlockedReasonLabel, type WorkflowPhaseContext } from '@nestscout/shared'
 import { useState } from 'react'
-import { Alert, Pressable, Text, View } from 'react-native'
+import { Alert, Pressable, Text, TextInput, View } from 'react-native'
 import { MappedIcon, PrimaryButton, SecondaryButton, SubtleLiquidLight, V4TicketCell, formatVnd, localizedCustomerAreaLabel, localizedCustomerComplexityLabel, localizedCustomerGeneratedText, useCustomerTokens } from './ui'
 
 const customerMapGlowStyle = {
@@ -669,7 +668,7 @@ export function CustomerHistoryChatPanel({
         )}
       </View>
       <View style={[styles.composer, styles.historyChatComposer, customerMintPillSurface(tokens)]} testID="customer-history-chat-composer">
-        <KaelTextInput
+        <TextInput
           accessibilityLabel={inputLabel}
           editable={chatCanSend}
           onChangeText={setDraft}

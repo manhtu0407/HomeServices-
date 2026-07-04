@@ -65,7 +65,7 @@ const clientImageIcons = {
   feedback: require('../../../assets/client-image-icons/client-feedback.png'),
   home: require('../../../assets/client-image-icons/client-home.png'),
   identity: require('../../../assets/client-image-icons/client-identity.png'),
-  kael: require('../../../assets/navigation/customer/kael.png'),
+  kael: require('../../../assets/client-image-icons/client-kael.png'),
   language: require('../../../assets/client-image-icons/client-language.png'),
   logout: require('../../../assets/client-image-icons/client-logout-v2.png'),
   password: require('../../../assets/client-image-icons/client-password.png'),

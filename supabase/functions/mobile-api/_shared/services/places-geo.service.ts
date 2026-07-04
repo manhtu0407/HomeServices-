@@ -4,28 +4,13 @@
 import { asRecord, nullableNumber, nullableString } from "./coercions.ts";
 import { dbQuery, fetchJsonWithTimeout, type DbClient } from "./db.ts";
 import { compactMetadata, districtLabel, readGoogleMapsApiKey, readVietmapApiKey } from "./_shared.ts";
-import {
-  apiFailure,
-  type MobileApiContext,
-  type PlacesAutocompleteResponse,
-} from "../router.ts";
-import {
-  normalizeServiceAreaDistrict,
-  type PlacesAutocompleteInput,
-  type PlacesResolveInput,
-} from "../../../_shared/domain.ts";
+import { apiFailure, type MobileApiContext, type PlacesAutocompleteResponse } from "../router.ts";
+import { normalizeServiceAreaDistrict, type PlacesAutocompleteInput } from "../../../_shared/domain.ts";
 import type { EdgeAiSecrets } from "../kael/index.ts";
 import { persistApartmentAccessProfileFromMetadata, sanitizeApartmentAccessProfile } from "./apartment-access.service.ts";
 
 type MapsGeoSource = "vietmap" | "google_maps";
 type GeocodeResult = { lat: number; lng: number; geoSource: MapsGeoSource };
-type PlacesResolveResponse = {
-  fallback_used: boolean;
-  label: string | null;
-  location: { lat: number; lng: number } | null;
-  place_id: string;
-  provider: "vietmap" | "google_maps" | "fallback";
-};
 
 const VIETMAP_AUTOCOMPLETE_URL = "https://maps.vietmap.vn/api/autocomplete/v4";
 const VIETMAP_SEARCH_URL = "https://maps.vietmap.vn/api/search/v4";
@@ -52,33 +37,6 @@ export async function placesAutocomplete(
   if (googleApiKey) return googlePlacesAutocomplete(input, googleApiKey);
 
   return { suggestions: [], fallback_used: true };
-}
-
-export async function placesResolve(
-  ctx: MobileApiContext,
-  input: PlacesResolveInput,
-  secrets: EdgeAiSecrets,
-): Promise<PlacesResolveResponse> {
-  void ctx;
-  const vietmapApiKey = readVietmapApiKey(secrets);
-  if (vietmapApiKey) {
-    const result = await vietmapPlacesResolve(input, vietmapApiKey);
-    if (result) return result;
-  }
-
-  const googleApiKey = readGoogleMapsApiKey(secrets);
-  if (googleApiKey) {
-    const result = await googlePlacesResolve(input, googleApiKey);
-    if (result) return result;
-  }
-
-  return {
-    fallback_used: true,
-    label: input.label ?? null,
-    location: null,
-    place_id: input.place_id,
-    provider: "fallback",
-  };
 }
 
 export async function geocodeJobAddressForMatching(
@@ -238,91 +196,6 @@ async function googlePlacesAutocomplete(
       errorName: error instanceof Error ? error.name : typeof error,
     });
     return { suggestions: [], fallback_used: true };
-  }
-}
-
-async function vietmapPlacesResolve(
-  input: PlacesResolveInput,
-  apiKey: string,
-): Promise<PlacesResolveResponse | null> {
-  try {
-    const url = buildVietmapUrl(VIETMAP_PLACE_URL, apiKey, {
-      refid: input.place_id,
-    });
-    const response = await fetchJsonWithTimeout(url, { method: "GET" });
-    if (!response.ok) {
-      console.warn("mobile-api places resolve failed", {
-        provider: "vietmap",
-        status: response.status,
-      });
-      return null;
-    }
-
-    const body = asRecord(await response.json().catch(() => ({})));
-    const lat = nullableNumber(body.lat);
-    const lng = nullableNumber(body.lng);
-    if (lat === null || lng === null) return null;
-    return {
-      fallback_used: false,
-      label: vietmapDisplayText(body) || input.label || null,
-      location: { lat, lng },
-      place_id: input.place_id,
-      provider: "vietmap",
-    };
-  } catch (error) {
-    console.warn("mobile-api places resolve threw", {
-      provider: "vietmap",
-      errorName: error instanceof Error ? error.name : typeof error,
-    });
-    return null;
-  }
-}
-
-async function googlePlacesResolve(
-  input: PlacesResolveInput,
-  apiKey: string,
-): Promise<PlacesResolveResponse | null> {
-  try {
-    const url =
-      `${GOOGLE_GEOCODING_URL}?place_id=${encodeURIComponent(input.place_id)}&region=vn&language=vi&key=${encodeURIComponent(apiKey)}`;
-    const response = await fetchJsonWithTimeout(url, { method: "GET" });
-    if (!response.ok) {
-      console.warn("mobile-api places resolve failed", {
-        provider: "google_maps",
-        status: response.status,
-      });
-      return null;
-    }
-
-    const body = await response.json().catch(() => ({})) as {
-      status?: string;
-      results?: Array<{
-        formatted_address?: string;
-        geometry?: { location?: { lat?: number; lng?: number } };
-      }>;
-    };
-    const first = body.results?.[0];
-    const location = first?.geometry?.location;
-    if (
-      body.status !== "OK" ||
-      typeof location?.lat !== "number" ||
-      typeof location.lng !== "number"
-    ) {
-      return null;
-    }
-    return {
-      fallback_used: false,
-      label: first?.formatted_address?.trim() || input.label || null,
-      location: { lat: location.lat, lng: location.lng },
-      place_id: input.place_id,
-      provider: "google_maps",
-    };
-  } catch (error) {
-    console.warn("mobile-api places resolve threw", {
-      provider: "google_maps",
-      errorName: error instanceof Error ? error.name : typeof error,
-    });
-    return null;
   }
 }
 

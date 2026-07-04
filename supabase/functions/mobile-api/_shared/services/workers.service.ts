@@ -13,18 +13,10 @@ import {
   relatedJob,
 } from "./coercions.ts";
 import { db, dbQuery, normalizeWorkerDistricts } from "./db.ts";
-import { blankWorkerProfile, clampServiceRadius, compactMetadata, mapAvailabilityError, maskBankAccount, secondsRemaining } from "./_shared.ts";
+import { blankWorkerProfile, clampServiceRadius, mapAvailabilityError, maskBankAccount, secondsRemaining } from "./_shared.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { PLATFORM_FEE_WORKER } from "../../../_shared/domain.ts";
-import type {
-  BroadcastStatus,
-  JobStatus,
-  ServiceType,
-  WorkerApplicationSubmitInput,
-  WorkerRegisterInput,
-  WorkerServiceAreaUpdateInput,
-  WorkerVerificationStatus,
-} from "../../../_shared/domain.ts";
+import type { BroadcastStatus, JobStatus, ServiceType, WorkerRegisterInput, WorkerVerificationStatus } from "../../../_shared/domain.ts";
 import { AI_SESSION_LIMIT, checkRateLimit } from "../rate-limit.ts";
 import { projectAddressAccess } from "./apartment-access.service.ts";
 import { buildWorkerBriefOutput } from "../kael/index.ts";
@@ -124,103 +116,6 @@ export async function registerWorker(
   };
 }
 
-export async function submitWorkerApplication(
-  ctx: MobileApiContext,
-  input: WorkerApplicationSubmitInput,
-) {
-  const now = new Date().toISOString();
-  const client = db(ctx);
-  if (input.client_request_id) {
-    const existing = await findExistingWorkerApplication(
-      client,
-      ctx.user.id,
-      input.source,
-      input.client_request_id,
-    );
-    if (existing) return serializeWorkerApplication(existing, now);
-  }
-
-  const result = await dbQuery<WorkerApplicationQueueRow>(
-    client
-      .from("kael_admin_queue")
-      .insert({
-        actor_id: ctx.user.id,
-        actor_role: ctx.role,
-        escalation_level: "soft",
-        priority: "medium",
-        queue_type: "worker_application_review",
-        reason_code: "worker_application_submitted",
-        response_summary: "worker_application_submitted",
-        safe_metadata: compactMetadata({
-          ...workerApplicationContactMetadata(input.contact),
-          actor_id: ctx.user.id,
-          client_request_id: input.client_request_id ?? null,
-          language: input.language,
-          source: input.source,
-        }),
-        status: "open",
-      })
-      .select(WORKER_APPLICATION_QUEUE_SELECT)
-      .single(),
-  );
-  if (result.error?.code === "23505" && input.client_request_id) {
-    const existing = await findExistingWorkerApplication(
-      client,
-      ctx.user.id,
-      input.source,
-      input.client_request_id,
-    );
-    if (existing) return serializeWorkerApplication(existing, now);
-  }
-  if (result.error || !result.data) {
-    apiFailure("DB_ERROR", "Không thể gửi hồ sơ ứng tuyển", 500);
-  }
-  return serializeWorkerApplication(result.data, now);
-}
-
-const WORKER_APPLICATION_QUEUE_SELECT = "id, status, created_at, safe_metadata";
-
-type WorkerApplicationQueueRow = {
-  id?: unknown;
-  status?: unknown;
-  created_at?: unknown;
-  safe_metadata?: unknown;
-};
-
-async function findExistingWorkerApplication(
-  client: ReturnType<typeof db>,
-  actorId: string,
-  source: WorkerApplicationSubmitInput["source"],
-  clientRequestId: string,
-) {
-  const existing = await dbQuery<WorkerApplicationQueueRow>(
-    client
-      .from("kael_admin_queue")
-      .select(WORKER_APPLICATION_QUEUE_SELECT)
-      .eq("actor_id", actorId)
-      .eq("queue_type", "worker_application_review")
-      .eq("reason_code", "worker_application_submitted")
-      .eq("safe_metadata->>source", source)
-      .eq("safe_metadata->>client_request_id", clientRequestId)
-      .maybeSingle(),
-  );
-  if (existing.error) {
-    apiFailure("DB_ERROR", "Không thể tải hồ sơ ứng tuyển", 500);
-  }
-  return existing.data ?? null;
-}
-
-function serializeWorkerApplication(
-  row: WorkerApplicationQueueRow,
-  fallbackSubmittedAt: string,
-) {
-  return {
-    application_id: asString(row.id),
-    status: "open" as const,
-    submitted_at: nullableString(row.created_at) ?? fallbackSubmittedAt,
-  };
-}
-
 export async function getWorkerProfile(ctx: MobileApiContext) {
   const result = await dbQuery<Record<string, unknown>>(
     db(ctx)
@@ -257,41 +152,6 @@ export async function getWorkerProfile(ctx: MobileApiContext) {
     has_cccd: Boolean(worker.cccd_front_url && worker.cccd_back_url),
     has_selfie: Boolean(worker.selfie_url),
   };
-}
-
-export async function updateWorkerServiceArea(
-  ctx: MobileApiContext,
-  input: WorkerServiceAreaUpdateInput,
-) {
-  const districts = normalizeWorkerDistricts(input.districts);
-  if (!districts) {
-    apiFailure("VALIDATION", "Khu vực làm việc không hợp lệ", 400);
-  }
-  const update: Record<string, unknown> = {
-    districts,
-    updated_at: new Date().toISOString(),
-  };
-  if ("home_lat" in input) update.home_lat = input.home_lat ?? null;
-  if ("home_lng" in input) update.home_lng = input.home_lng ?? null;
-  if ("service_radius_km" in input) {
-    update.service_radius_km = input.service_radius_km ?? null;
-  }
-
-  const result = await dbQuery<{ id: string }>(
-    db(ctx)
-      .from("worker_profiles")
-      .update(update)
-      .eq("id", ctx.user.id)
-      .select("id")
-      .maybeSingle(),
-  );
-  if (result.error) {
-    apiFailure("DB_ERROR", "Không thể cập nhật khu vực làm việc", 500);
-  }
-  if (!result.data) {
-    apiFailure("NOT_FOUND", "Không tìm thấy hồ sơ thợ", 404);
-  }
-  return getWorkerProfile(ctx);
 }
 
 export async function updateWorkerAvailability(
@@ -400,6 +260,7 @@ export async function getWorkerEarnings(
   const result = await dbQuery<Array<Record<string, unknown>>>(query);
   if (result.error) {
     console.warn("mobile-api earnings query failed", {
+      workerId: ctx.user.id,
       errorCode: result.error.code,
     });
     apiFailure("DB_ERROR", "Không thể tải thu nhập", 500);
@@ -494,21 +355,5 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
         completed_at: nullableString(row.completed_at),
       };
     }),
-  };
-}
-
-function workerApplicationContactMetadata(contact: string) {
-  const normalized = contact.trim().toLowerCase();
-  const digits = normalized.replace(/\D/g, "");
-  if (digits.length >= 9) {
-    return {
-      contact_suffix: digits.slice(-4),
-      contact_type: "phone",
-    };
-  }
-  const localPart = normalized.split("@")[0] ?? normalized;
-  return {
-    contact_suffix: localPart.slice(-2),
-    contact_type: "email",
   };
 }

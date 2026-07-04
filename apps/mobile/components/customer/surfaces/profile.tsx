@@ -4,14 +4,14 @@ import { customerProfileCareCardSurface, customerProfileCarePillSurface, custome
 import { setCustomerThemeMode, useCustomerThemeMode } from '@/components/customer/customer-theme'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassCard } from '@/components/ui/glass-card'
-import { KaelTextInput } from '@/components/ui/kael-primitives'
 import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { appCopy, type AppLanguage, languageDisplayName, setAppLanguage, useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { customerFeedbackService } from '@/lib/services'
 import { useCallback, useState } from 'react'
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native'
-import { AccountInfoField, AccountInfoGenderSegment, formatCustomerBirthDateInput, isValidCustomerBirthDate, normalizeCustomerGender, readCustomerProfileMetric, type CustomerAccountInfoDraft, type CustomerProfileEditField } from './profile-account'
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
+import { AccountInfoField, AccountInfoGenderSegment, formatCustomerBirthDateInput, isValidCustomerBirthDate, normalizeCustomerGender, readCustomerProfileMetric } from './profile-account'
+import type { CustomerAccountInfoDraft, CustomerProfileEditField } from './profile-account'
 import { V4Frame } from './shell'
 import { IconShell, MappedIcon, SubtleGlassHighlight, formatVnd, localizedProfileName, readCustomerMetadataString, useCustomerTokens } from './ui'
 import type { IconName } from './ui'
@@ -396,7 +396,7 @@ export function CustomerProfileSurface() {
                   <Text style={[styles.profileEditorHelper, { color: tokens.muted }]}>
                     {profileEditorConfig.helper}
                   </Text>
-                  <KaelTextInput
+                  <TextInput
                     accessibilityLabel={profileEditorConfig.title}
                     autoCapitalize="sentences"
                     editable={!profileEditorSaving}
@@ -613,7 +613,7 @@ export function CustomerProfileSurface() {
                   <Text style={[styles.profileEditorHelper, { color: tokens.muted }]}>
                     {feedbackCopy.helper}
                   </Text>
-                  <KaelTextInput
+                  <TextInput
                     accessibilityLabel={feedbackCopy.title}
                     autoCapitalize="sentences"
                     editable={!feedbackSaving}
@@ -703,7 +703,7 @@ export function CustomerProfileSurface() {
                     <Text style={[styles.passwordFieldLabel, { color: tokens.text }]} numberOfLines={1}>
                       {passwordCopy.currentLabel}
                     </Text>
-                    <KaelTextInput
+                    <TextInput
                       accessibilityLabel={passwordCopy.currentLabel}
                       autoCapitalize="none"
                       autoComplete="current-password"
@@ -734,7 +734,7 @@ export function CustomerProfileSurface() {
                     <Text style={[styles.passwordFieldLabel, { color: tokens.text }]} numberOfLines={1}>
                       {passwordCopy.passwordLabel}
                     </Text>
-                    <KaelTextInput
+                    <TextInput
                       accessibilityLabel={passwordCopy.passwordLabel}
                       autoCapitalize="none"
                       autoComplete="new-password"
@@ -765,7 +765,7 @@ export function CustomerProfileSurface() {
                     <Text style={[styles.passwordFieldLabel, { color: tokens.text }]} numberOfLines={1}>
                       {passwordCopy.confirmLabel}
                     </Text>
-                    <KaelTextInput
+                    <TextInput
                       accessibilityLabel={passwordCopy.confirmLabel}
                       autoCapitalize="none"
                       autoComplete="new-password"

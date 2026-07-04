@@ -1,4 +1,4 @@
-import { api, type ApiResult } from './api'
+import { api } from './api'
 import { streamKaelChatTurn, streamWorkerKaelChatTurn, type KaelChatStreamHandlers, type WorkerKaelChatStreamHandlers } from './kael-stream'
 import type {
   AcceptBroadcastResponse,
@@ -105,10 +105,6 @@ type WorkerAccessCheckInInput = {
   checked_in_at?: string
 }
 
-function parkedMobileApiResult<T>(code: string, error: string): Promise<ApiResult<T>> {
-  return Promise.resolve({ success: false, code, error, status: 501 })
-}
-
 export const jobService = {
   getServices() {
     return api.get<ServiceCatalogResponse>('/services')
@@ -122,23 +118,23 @@ export const jobService = {
     return api.get<JobDetailResponse>(`/jobs/${jobId}`)
   },
 
-  // Resume the customer's active job
+  // X4 (Plan.md §27.7 — 2026-05-29): F-17 — resume the customer's active job
   // from the backend after a refresh / cold start.
   listMyActiveJob() {
     return api.get<CustomerActiveJobResponse>('/me/jobs/active')
   },
 
-  // the customer's pending Kael decisions (scope-changes awaiting them).
+  // U-5 (Notes.md 5.3): the customer's pending Kael decisions (scope-changes awaiting them).
   listPendingDecisions() {
     return api.get<PendingDecisionsResponse>('/me/pending-decisions')
   },
 
-  // the customer's cross-job message inbox.
+  // U-5 (Notes.md): the customer's cross-job message inbox.
   listThreads() {
     return api.get<ThreadsResponse>('/me/threads')
   },
 
-  // edit the user-owned subset of Kael memory (language + a
+  // U-5 (Notes.md 5.4): edit the user-owned subset of Kael memory (language + a
   // PII-scrubbed preference note; Kael-computed fields stay read-only).
   updateKaelMemory(input: { language?: 'vi' | 'en'; preference_summary?: string }) {
     return api.patch<KaelMemoryResponse>('/me/kael-memory', input)
@@ -169,14 +165,14 @@ export const jobService = {
     completion_photo_urls?: string[]
     access_check_in?: WorkerAccessCheckInInput
   }) {
-    // worker không nhập final_price; Kael giữ authority.
+    // Phase 2.0 (2026-05-23): worker không nhập final_price; Kael giữ authority.
     return api.patch<StatusUpdateResponse>(`/jobs/${jobId}/status`, {
       status,
       ...extras,
     })
   },
 
-  // Customer "Cho thợ lên" releases the exact unit. Backend rejects with
+  // §32.7: customer "Cho thợ lên" — releases the exact unit. Backend rejects with
   // ACCESS_NOT_READY (409) when the worker has not checked in at the lobby yet.
   authorizeApartmentAccess(jobId: string) {
     return api.post<ApartmentAccessAuthorizeResponse>(`/jobs/${jobId}/access/authorize`)
@@ -224,8 +220,7 @@ export const jobService = {
   },
 
   createPaymentIntent(jobId: string) {
-    void jobId
-    return parkedMobileApiResult<PaymentIntentResponse>('PAYMENT_NOT_ENABLED', 'Thanh toán chưa được bật cho mobile-api')
+    return api.post<PaymentIntentResponse>(`/jobs/${jobId}/payment-intent`)
   },
 
   submitReview(jobId: string, input: Omit<ReviewInput, 'job_id'>) {
@@ -264,8 +259,7 @@ export const kaelChatService = {
 
 export const kaelAssistantService = {
   ask(input: KaelAssistantInput) {
-    void input
-    return parkedMobileApiResult<KaelAssistantResponse>('KAEL_ASSISTANT_PARKED', 'Kael assistant dùng luồng chat chính')
+    return api.post<KaelAssistantResponse>('/kael/assistant', input)
   },
 }
 
@@ -327,12 +321,11 @@ export const customerProfileService = {
   },
 
   getPaymentMethod() {
-    return parkedMobileApiResult<CustomerPaymentMethodResponse>('PAYMENT_NOT_ENABLED', 'Phương thức thanh toán chưa được bật')
+    return api.get<CustomerPaymentMethodResponse>('/me/payment-method')
   },
 
   savePaymentMethod(input: CustomerPaymentMethodSaveInput) {
-    void input
-    return parkedMobileApiResult<CustomerPaymentMethodResponse>('PAYMENT_NOT_ENABLED', 'Phương thức thanh toán chưa được bật')
+    return api.put<CustomerPaymentMethodResponse>('/me/payment-method', input)
   },
 }
 
@@ -350,7 +343,7 @@ export const kaelMemoryService = {
   },
 
   updateMyWorkerPreference(input: WorkerKaelMemoryPreferenceUpdateInput) {
-    return api.patch<KaelMemorySelfViewResponse>('/me/kael-memory', input)
+    return api.patch<KaelMemorySelfViewResponse>('/workers/me/kael-memory', input)
   },
 }
 
@@ -378,8 +371,7 @@ export const workerService = {
   },
 
   savePayoutMethod(input: WorkerPayoutMethodSaveInput) {
-    void input
-    return parkedMobileApiResult<WorkerPayoutMethodResponse>('PAYOUT_NOT_ENABLED', 'Tài khoản nhận tiền chưa được bật qua mobile-api')
+    return api.put<WorkerPayoutMethodResponse>('/workers/me/payout-method', input)
   },
 
   getPerformanceInsights() {
@@ -423,7 +415,7 @@ export const workerService = {
     completion_notes?: string
     completion_photo_urls?: string[]
   }) {
-    // worker không nhập final_price; Kael giữ authority.
+    // Phase 2.0 (2026-05-23): worker không nhập final_price; Kael giữ authority.
     return jobService.updateStatus(jobId, status, extras)
   },
 

@@ -1,10 +1,7 @@
 # Local tooling and agent workspaces
 .agents/
 .claude/
-.codex/
 .tmp/
-tmp/
-output/
 
 # Dependency and build caches
 node_modules/
@@ -18,7 +15,6 @@ dist/
 **/dist/
 build/
 coverage/
-*.log
 
 # Local secrets and machine-specific files
 .env*

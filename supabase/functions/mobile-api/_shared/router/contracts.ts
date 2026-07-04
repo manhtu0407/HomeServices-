@@ -12,16 +12,12 @@ import type {
   JobMessageSendInput,
   JobStatus,
   KaelChatCreateInput,
-  KaelChatEvidenceInput,
-  KaelChatMediaUploadInput,
   KaelChatTurnInput,
   KaelWorkerClarifyInput,
   PlacesAutocompleteInput,
-  PlacesResolveInput,
   ReviewInput,
   UpdateKaelMemoryInput,
   UserRole,
-  WorkerApplicationSubmitInput,
   WorkerCancellationDecisionInput,
   WorkerCancellationRequestInput,
   WorkerKaelChatCreateInput,
@@ -29,7 +25,6 @@ import type {
   WorkerKaelFeedbackInput,
   WorkerKaelTrainingConsentInput,
   WorkerRegisterInput,
-  WorkerServiceAreaUpdateInput,
   WorkerScopeChangeInput,
 } from "../../../_shared/domain.ts";
 import type { KaelPublicCharterResponse } from "../kael/system-prompt.ts";
@@ -47,7 +42,6 @@ import type {
   EdgeCustomerActiveJobResponse,
   EdgeCustomerCancellationResponse,
   EdgeCustomerKaelFeedbackResponse,
-  EdgeCustomerProfileInsightsResponse,
   EdgeCustomerScopeDecisionResponse,
   EdgeDeclineBroadcastResponse,
   EdgeDevicePushTokenResponse,
@@ -59,7 +53,6 @@ import type {
   EdgeJobMediaAttachResponse,
   EdgeJobMessageListResponse,
   EdgeJobMessageSendResponse,
-  EdgeKaelChatMediaUploadResponse,
   KaelBatchResultsProcessInput,
   KaelBatchResultsProcessResponse,
   EdgeKaelChatProgressResponse,
@@ -77,20 +70,17 @@ import type {
   MarketCacheInvalidateResponse,
   EdgeNotificationListResponse,
   EdgeNotificationReadResponse,
-  EdgePlacesResolveResponse,
   EdgeReviewResponse,
   EdgeServiceCatalogResponse,
   EdgeStatusUpdateResponse,
   EdgeWorkerCancellationDecisionResponse,
   EdgeWorkerCancellationResponse,
-  EdgeWorkerApplicationResponse,
   EdgeWorkerJobListResponse,
   EdgeWorkerKaelClarifyResponse,
   EdgeWorkerKaelChatListResponse,
   EdgeWorkerKaelChatResponse,
   EdgeWorkerKaelFeedbackResponse,
   EdgeWorkerKaelTrainingConsentResponse,
-  EdgeWorkerPerformanceInsightsResponse,
   EdgeWorkerProfileResponse,
   EdgeWorkerRegisterResponse,
   EdgeWorkerScopeChangeResponse,
@@ -212,10 +202,6 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: PlacesAutocompleteInput,
   ): Promise<PlacesAutocompleteResponse>;
-  placesResolve(
-    ctx: MobileApiContext,
-    input: PlacesResolveInput,
-  ): Promise<EdgePlacesResolveResponse>;
   createJob(
     ctx: MobileApiContext,
     input: JobCreateInput,
@@ -228,10 +214,6 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: KaelChatCreateInput,
   ): Promise<EdgeKaelChatResponse>;
-  createKaelChatMediaUpload(
-    ctx: MobileApiContext,
-    input: KaelChatMediaUploadInput,
-  ): Promise<EdgeKaelChatMediaUploadResponse>;
   getKaelChat(
     ctx: MobileApiContext,
     sessionId: string,
@@ -254,11 +236,6 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     sessionId: string,
   ): Promise<EdgeConfirmSearchResponse & { session_id: string }>;
-  submitKaelChatEvidence(
-    ctx: MobileApiContext,
-    sessionId: string,
-    input: KaelChatEvidenceInput,
-  ): Promise<EdgeKaelChatResponse>;
   confirmSearch(
     ctx: MobileApiContext,
     jobId: string,
@@ -394,10 +371,6 @@ export type MobileApiServices = {
     ctx: MobileApiContext,
     input: WorkerRegisterInput,
   ): Promise<EdgeWorkerRegisterResponse>;
-  submitWorkerApplication(
-    ctx: MobileApiContext,
-    input: WorkerApplicationSubmitInput,
-  ): Promise<EdgeWorkerApplicationResponse>;
   getMyKaelMemory(ctx: MobileApiContext): Promise<KaelMemorySelfViewResponse>;
   getWorkerKaelMemory(ctx: MobileApiContext): Promise<KaelMemorySelfViewResponse>;
   deleteMyKaelMemory(ctx: MobileApiContext): Promise<KaelMemoryDeleteResponse>;
@@ -407,17 +380,7 @@ export type MobileApiServices = {
   ): Promise<KaelMemorySelfViewResponse>;
   listMyPendingDecisions(ctx: MobileApiContext): Promise<PendingDecisionsResponse>;
   listMyThreads(ctx: MobileApiContext): Promise<ThreadsResponse>;
-  getCustomerProfileInsights(
-    ctx: MobileApiContext,
-  ): Promise<EdgeCustomerProfileInsightsResponse>;
   getWorkerProfile(ctx: MobileApiContext): Promise<EdgeWorkerProfileResponse>;
-  getWorkerPerformanceInsights(
-    ctx: MobileApiContext,
-  ): Promise<EdgeWorkerPerformanceInsightsResponse>;
-  updateWorkerServiceArea(
-    ctx: MobileApiContext,
-    input: WorkerServiceAreaUpdateInput,
-  ): Promise<EdgeWorkerProfileResponse>;
   updateWorkerAvailability(
     ctx: MobileApiContext,
     input: AvailabilityToggleInput,

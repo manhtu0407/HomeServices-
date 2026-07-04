@@ -13,21 +13,16 @@ import {
   jobCreateSchema,
   kaelWorkerClarifySchema,
   kaelChatCreateSchema,
-  kaelChatEvidenceSchema,
-  kaelChatMediaUploadSchema,
   kaelChatTurnSchema,
   workerKaelChatCreateSchema,
   workerKaelChatTurnSchema,
   workerKaelFeedbackSchema,
   workerKaelTrainingConsentSchema,
   placesAutocompleteSchema,
-  placesResolveSchema,
   reviewSchema,
-  workerApplicationSubmitSchema,
   workerCancellationDecisionSchema,
   workerCancellationRequestSchema,
   workerRegisterSchema,
-  workerServiceAreaUpdateSchema,
   workerScopeChangeSchema,
   LEARNING_CANDIDATE_STATUSES,
 } from "../../_shared/domain.ts";
@@ -219,11 +214,6 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.placesAutocomplete(ctx, input.data);
     }
-    case "places.resolve": {
-      const input = placesResolveSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.placesResolve(ctx, input.data);
-    }
     case "admin.marketCache.invalidate":
       return services.invalidateMarketCache(
         ctx,
@@ -276,11 +266,6 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.createKaelChat(ctx, input.data);
     }
-    case "kael.chat.mediaUpload": {
-      const input = kaelChatMediaUploadSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.createKaelChatMediaUpload(ctx, input.data);
-    }
     case "kael.chat.get":
       return services.getKaelChat(ctx, route.sessionId);
     case "kael.chat.progress":
@@ -297,11 +282,6 @@ async function dispatchRoute(
     }
     case "kael.chat.confirm":
       return services.confirmKaelChat(ctx, route.sessionId);
-    case "kael.chat.evidence": {
-      const input = kaelChatEvidenceSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.submitKaelChatEvidence(ctx, route.sessionId, input.data);
-    }
     case "jobs.get":
       return services.getJob(ctx, route.jobId);
     case "jobs.confirmSearch":
@@ -426,8 +406,6 @@ async function dispatchRoute(
     }
     case "me.pendingDecisions":
       return services.listMyPendingDecisions(ctx);
-    case "me.profileInsights":
-      return services.getCustomerProfileInsights(ctx);
     case "me.threads":
       return services.listMyThreads(ctx);
     case "workers.register": {
@@ -435,20 +413,8 @@ async function dispatchRoute(
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
       return services.registerWorker(ctx, input.data);
     }
-    case "workerApplications.submit": {
-      const input = workerApplicationSubmitSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.submitWorkerApplication(ctx, input.data);
-    }
     case "workers.me":
       return services.getWorkerProfile(ctx);
-    case "workers.performanceInsights":
-      return services.getWorkerPerformanceInsights(ctx);
-    case "workers.serviceArea": {
-      const input = workerServiceAreaUpdateSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
-      return services.updateWorkerServiceArea(ctx, input.data);
-    }
     case "workers.kaelMemory":
       return services.getWorkerKaelMemory(ctx);
     case "workers.kaelChat.create": {

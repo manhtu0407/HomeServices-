@@ -11,11 +11,6 @@ export type Route =
     roles: UserRole[];
   }
   | {
-    kind: "places.resolve";
-    method: "POST";
-    roles: UserRole[];
-  }
-  | {
     kind: "jobs.create";
     method: "POST";
     roles: UserRole[];
@@ -26,11 +21,6 @@ export type Route =
     method: "POST";
     roles: UserRole[];
     successStatus: 201;
-  }
-  | {
-    kind: "kael.chat.mediaUpload";
-    method: "POST";
-    roles: UserRole[];
   }
   | {
     kind: "kael.chat.get";
@@ -58,12 +48,6 @@ export type Route =
   }
   | {
     kind: "kael.chat.confirm";
-    method: "POST";
-    sessionId: string;
-    roles: UserRole[];
-  }
-  | {
-    kind: "kael.chat.evidence";
     method: "POST";
     sessionId: string;
     roles: UserRole[];
@@ -182,7 +166,6 @@ export type Route =
   | { kind: "me.kaelMemory.delete"; method: "DELETE"; roles: UserRole[] }
   | { kind: "me.kaelMemory.update"; method: "PATCH"; roles: UserRole[] }
   | { kind: "me.pendingDecisions"; method: "GET"; roles: UserRole[] }
-  | { kind: "me.profileInsights"; method: "GET"; roles: UserRole[] }
   | { kind: "me.threads"; method: "GET"; roles: UserRole[] }
   | {
     kind: "me.kaelFeedback";
@@ -190,16 +173,8 @@ export type Route =
     roles: UserRole[];
     successStatus: 201;
   }
-  | {
-    kind: "workerApplications.submit";
-    method: "POST";
-    roles: UserRole[];
-    successStatus: 201;
-  }
   | { kind: "me.jobs.active"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.me"; method: "GET"; roles: UserRole[] }
-  | { kind: "workers.performanceInsights"; method: "GET"; roles: UserRole[] }
-  | { kind: "workers.serviceArea"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.kaelMemory"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.kaelChat.create"; method: "POST"; roles: UserRole[]; successStatus: 201 }
   | { kind: "workers.kaelChat.list"; method: "GET"; roles: UserRole[] }
@@ -253,13 +228,6 @@ export function matchRoute(request: Request): Route | null {
   if (method === "POST" && path === "/places/autocomplete") {
     return {
       kind: "places.autocomplete",
-      method: "POST",
-      roles: ["customer", "worker", "admin"],
-    };
-  }
-  if (method === "POST" && path === "/places/resolve") {
-    return {
-      kind: "places.resolve",
       method: "POST",
       roles: ["customer", "worker", "admin"],
     };
@@ -340,9 +308,6 @@ export function matchRoute(request: Request): Route | null {
   if (method === "GET" && path === "/me/pending-decisions") {
     return { kind: "me.pendingDecisions", method: "GET", roles: ["customer", "admin"] };
   }
-  if (method === "GET" && path === "/me/profile-insights") {
-    return { kind: "me.profileInsights", method: "GET", roles: ["customer", "admin"] };
-  }
   if (method === "GET" && path === "/me/threads") {
     return { kind: "me.threads", method: "GET", roles: ["customer", "admin"] };
   }
@@ -377,13 +342,6 @@ export function matchRoute(request: Request): Route | null {
       method: "POST",
       roles: ["customer", "admin"],
       successStatus: 201,
-    };
-  }
-  if (method === "POST" && path === "/kael/chat/media-upload") {
-    return {
-      kind: "kael.chat.mediaUpload",
-      method: "POST",
-      roles: ["customer", "admin"],
     };
   }
   const kaelChat = path.match(/^\/kael\/chat\/([^/]+)(?:\/([^/]+))?$/);
@@ -431,14 +389,6 @@ export function matchRoute(request: Request): Route | null {
         roles: ["customer", "admin"],
       };
     }
-    if (action === "evidence" && method === "POST") {
-      return {
-        kind: "kael.chat.evidence",
-        method: "POST",
-        sessionId,
-        roles: ["customer", "admin"],
-      };
-    }
   }
   if (method === "GET" && path === "/notifications") {
     return {
@@ -454,14 +404,6 @@ export function matchRoute(request: Request): Route | null {
       roles: ["customer", "worker", "admin"],
     };
   }
-  if (method === "POST" && path === "/worker-applications") {
-    return {
-      kind: "workerApplications.submit",
-      method: "POST",
-      roles: ["customer", "worker", "admin"],
-      successStatus: 201,
-    };
-  }
   if (method === "POST" && path === "/workers/register") {
     return {
       kind: "workers.register",
@@ -472,12 +414,6 @@ export function matchRoute(request: Request): Route | null {
   }
   if (method === "GET" && path === "/workers/me") {
     return { kind: "workers.me", method: "GET", roles: ["worker", "admin"] };
-  }
-  if (method === "GET" && path === "/workers/me/performance-insights") {
-    return { kind: "workers.performanceInsights", method: "GET", roles: ["worker", "admin"] };
-  }
-  if (method === "PATCH" && path === "/workers/me/service-area") {
-    return { kind: "workers.serviceArea", method: "PATCH", roles: ["worker", "admin"] };
   }
   if (method === "GET" && path === "/workers/me/kael-memory") {
     return { kind: "workers.kaelMemory", method: "GET", roles: ["worker", "admin"] };

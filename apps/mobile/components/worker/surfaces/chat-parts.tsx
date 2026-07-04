@@ -3,11 +3,10 @@ import { styles } from './styles'
 import { messageBubbleSurface, workerChatModePillGlassLayer, workerChatModePillTextHighlight, workerKaelChatSurface, workerOpaqueCardSurface } from './surface-styles/glass-earnings'
 import { type WorkerBroadcastView } from './types'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
-import { KaelTextInput } from '@/components/ui/kael-primitives'
 import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { Image } from 'expo-image'
 import { type ReactNode, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, Text, TextInput, View } from 'react-native'
 import { SubtleGlassHighlight, WorkerChatMicIcon, WorkerChatPlusIcon, WorkerChatSendIcon, kaelHead, useWorkerUi } from './ui'
 
 export function WorkerChatComposerDock({
@@ -44,7 +43,7 @@ export function WorkerChatComposerDock({
       <View style={[styles.chatComposer, workerKaelChatSurface(tokens, 'composer')]} testID="worker-kael-composer-dock">
         <SubtleGlassHighlight liquid />
         <View pointerEvents="none" style={[styles.workerChatComposerKeyline, { borderColor: tokens.mode === 'dark' ? 'rgba(190,210,205,0.16)' : 'rgba(255,255,255,0.88)' }]} testID="worker-chat-reference-composer-keyline" />
-        <KaelTextInput
+        <TextInput
           accessibilityLabel={inputAccessibilityLabel}
           editable={canEdit}
           multiline
@@ -172,7 +171,7 @@ export function WorkerKaelParityPanel({
       </View>
       {feedbackOpen ? (
         <View style={styles.workerKaelFeedbackForm} testID="worker-kael-feedback-form">
-          <KaelTextInput
+          <TextInput
             accessibilityLabel={language === 'en' ? 'Kael feedback' : 'Ph\u1ea3n h\u1ed3i Kael'}
             editable={!feedbackSaving}
             multiline
