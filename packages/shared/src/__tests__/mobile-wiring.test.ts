@@ -1673,6 +1673,24 @@ describe('prototype runtime cleanup', () => {
 
     expect(offenders).toEqual([])
   })
+
+  it('keeps legacy design entrypoints as current-surface compatibility shims only', () => {
+    const legacyCustomer = read('components/customer/v21/surfaces.tsx')
+    const legacyRebuild = read('components/rebuild/rebuild-surfaces.tsx')
+    const legacyWorker = read('components/worker/worker-v5-flow.tsx')
+    const legacySources = [legacyCustomer, legacyRebuild, legacyWorker].join('\n')
+
+    expect(legacyCustomer).toContain("from '../customer-surfaces'")
+    expect(legacyRebuild).toContain("from '../customer/customer-surfaces'")
+    expect(legacyRebuild).toContain("from '../worker/worker-surfaces'")
+    expect(legacyWorker).toContain("from './worker-surfaces'")
+    expect(legacySources).not.toContain('function CustomerScreen')
+    expect(legacySources).not.toContain('function WorkerScreen')
+    expect(legacySources).not.toContain('function RebuildDock')
+    expect(legacySources).not.toContain('customer-v21-home-hero')
+    expect(legacySources).not.toContain('customer-v21-home-card-skin')
+    expect(legacySources).not.toContain('workerDeck')
+  })
 })
 
 // ===================================================================
