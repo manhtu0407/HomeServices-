@@ -87,6 +87,8 @@ describe('mobile-api Kael P3 routing foundation', () => {
 
   it('blocks direct provider calls before network when the circuit is open', async () => {
     const now = new Date('2026-07-02T08:00:00.000Z')
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)
     KAEL_CIRCUIT_BREAKER.recordFailure({

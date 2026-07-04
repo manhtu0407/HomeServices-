@@ -3,13 +3,14 @@ import { styles } from './styles'
 import { workerProfileFileButtonSurface, workerProfileInputSurface, workerProfilePanelSurface, workerProfileServiceAreaSurface } from './surface-styles/profile-map'
 import { type WorkerVerificationFileSlot } from './types'
 import { createWorkerVerificationFormState, workerVerificationFormReducer, workerVerificationServices } from './verification'
+import { KaelTextInput } from '@/components/ui/kael-primitives'
 import { localizedServiceLabel } from '@/lib/app-language'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { type LocalMediaUploadDraft, uploadWorkerVerificationDrafts } from '@/lib/media-upload'
 import { type DistrictSlug, HCMC_DISTRICTS, normalizeDistrict, type ServiceType, type WorkerRegisterInput, type WorkerVerificationStatus } from '@nestscout/shared'
 import * as ImagePicker from 'expo-image-picker'
 import { useEffect, useReducer } from 'react'
-import { Alert, Pressable, Text, TextInput, View } from 'react-native'
+import { Alert, Pressable, Text, View } from 'react-native'
 import { workerServiceAreaAnchors } from './map'
 import { PressButton, WorkerProfileMaterialChrome, WorkerUtilityIcon, localizedWorkerVerificationStatus, useWorkerUi } from './ui'
 
@@ -209,12 +210,12 @@ export function WorkerVerificationForm() {
           {localizedWorkerVerificationStatus(status, language)}
         </Text>
       </View>
-      <TextInput accessibilityLabel={verificationCopy.legalName} autoCapitalize="words" onChangeText={setLegalName} placeholder={verificationCopy.legalName} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-legal-name" value={legalName} />
+      <KaelTextInput accessibilityLabel={verificationCopy.legalName} autoCapitalize="words" onChangeText={setLegalName} placeholder={verificationCopy.legalName} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-legal-name" value={legalName} />
       <View style={styles.verificationGrid}>
-        <TextInput accessibilityLabel={verificationCopy.dateOfBirth} onChangeText={setDateOfBirth} placeholder="YYYY-MM-DD" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-date-of-birth" value={dateOfBirth} />
-        <TextInput accessibilityLabel={verificationCopy.yearsExperience} keyboardType="number-pad" onChangeText={setYearsExperience} placeholder={verificationCopy.yearsExperience} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-years" value={yearsExperience} />
+        <KaelTextInput accessibilityLabel={verificationCopy.dateOfBirth} onChangeText={setDateOfBirth} placeholder="YYYY-MM-DD" placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-date-of-birth" value={dateOfBirth} />
+        <KaelTextInput accessibilityLabel={verificationCopy.yearsExperience} keyboardType="number-pad" onChangeText={setYearsExperience} placeholder={verificationCopy.yearsExperience} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-years" value={yearsExperience} />
       </View>
-      <TextInput accessibilityLabel={verificationCopy.districts} onChangeText={setDistrictsFromText} placeholder={verificationCopy.districtsPlaceholder} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-districts" value={districts} />
+      <KaelTextInput accessibilityLabel={verificationCopy.districts} onChangeText={setDistrictsFromText} placeholder={verificationCopy.districtsPlaceholder} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-districts" value={districts} />
       <WorkerServiceAreaPicker
         onAdjustRadius={adjustServiceRadius}
         onSelectAnchor={setServiceAreaAnchor}
@@ -222,7 +223,7 @@ export function WorkerVerificationForm() {
         radiusValue={radiusValue}
         selectedDistrictSlug={selectedDistrictSlug}
       />
-      <TextInput accessibilityLabel={verificationCopy.problemSpecializations} onChangeText={setProblemSpecializations} placeholder={verificationCopy.problemSpecializations} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-problem-specializations" value={problemSpecializations} />
+      <KaelTextInput accessibilityLabel={verificationCopy.problemSpecializations} onChangeText={setProblemSpecializations} placeholder={verificationCopy.problemSpecializations} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-problem-specializations" value={problemSpecializations} />
       <View style={styles.skillWrap} testID="worker-verification-service-types">
         {workerVerificationServices.map((serviceType) => {
           const selected = serviceTypes.includes(serviceType)
@@ -246,8 +247,8 @@ export function WorkerVerificationForm() {
         })}
       </View>
       <View style={styles.verificationGrid}>
-        <TextInput accessibilityLabel={verificationCopy.bankName} onChangeText={setBankName} placeholder={verificationCopy.bankName} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-bank-name" value={bankName} />
-        <TextInput accessibilityLabel={verificationCopy.bankAccount} keyboardType="number-pad" onChangeText={setBankAccount} placeholder={verificationCopy.bankAccount} placeholderTextColor={tokens.subtle} secureTextEntry style={[styles.verificationInput, styles.verificationHalfInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-bank-account" value={bankAccount} />
+        <KaelTextInput accessibilityLabel={verificationCopy.bankName} onChangeText={setBankName} placeholder={verificationCopy.bankName} placeholderTextColor={tokens.subtle} style={[styles.verificationInput, styles.verificationHalfInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-bank-name" value={bankName} />
+        <KaelTextInput accessibilityLabel={verificationCopy.bankAccount} keyboardType="number-pad" onChangeText={setBankAccount} placeholder={verificationCopy.bankAccount} placeholderTextColor={tokens.subtle} secureTextEntry style={[styles.verificationInput, styles.verificationHalfInput, workerProfileInputSurface(tokens), { color: tokens.ink }]} testID="worker-verification-bank-account" value={bankAccount} />
       </View>
       <View style={styles.verificationFiles}>
         <VerificationFileButton file={files.cccdFront} label={verificationCopy.files.cccdFront} onPress={() => void pickVerificationFile('cccdFront')} testID="worker-verification-cccd-front" />

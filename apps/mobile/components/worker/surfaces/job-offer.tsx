@@ -6,6 +6,7 @@ import { workerHomeLiquidSheetSurface } from './surface-styles/home-jobs'
 import { type WorkerThemeTokens } from './theme'
 import { type WorkerLanguageMode } from './types'
 import { GlassModalSheet } from '@/components/ui/glass-modal-sheet'
+import { KaelTextInput } from '@/components/ui/kael-primitives'
 import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
 import { type GlassMaterial } from '@/components/ui/tokens'
 import { appCopy, localizedServiceLabel, localizedStatusLabel } from '@/lib/app-language'
@@ -16,7 +17,7 @@ import { hasLocalDealCompletionEvidence, LOCAL_WORKFLOW_PRICE_DISCLAIMER, type L
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { useCallback, useReducer, useState } from 'react'
-import { Alert, Text, TextInput, View } from 'react-native'
+import { Alert, Text, View } from 'react-native'
 import { Icon, LiquidPanelGlassOverlay, LiquidSharpKeyline, LiquidSpecularLayer, Metric, MotionSweep, PressButton, SubtleGlassHighlight, WorkerHomeMaterialDepthPlane, WorkerHomeMaterialSubstrate, getWorkerVisibleDeal, kaelHead, useWorkerUi } from './ui'
 
 function workerPhaseActionLabel(phaseContext: WorkflowPhaseContext, language: WorkerLanguageMode) {
@@ -569,7 +570,7 @@ function WorkerScopeChangeRequestBox({
 }) {
   return (
     <View style={styles.scopeRequestBox} testID="worker-scope-change-request">
-      <TextInput
+      <KaelTextInput
         accessibilityLabel={actionCopy.scopeDescription}
         onChangeText={onUpdateReason}
         placeholder={actionCopy.scopeDescription}
@@ -603,7 +604,7 @@ function WorkerCancellationRequestBox({
 }) {
   return (
     <View style={styles.scopeRequestBox} testID="worker-cancellation-request">
-      <TextInput
+      <KaelTextInput
         accessibilityLabel={actionCopy.cancelReason}
         onChangeText={onUpdateReason}
         placeholder={actionCopy.cancelPlaceholder}
@@ -633,7 +634,7 @@ function WorkerCompletionEvidenceBox({
 }) {
   return (
     <View style={styles.scopeRequestBox} testID="worker-completion-evidence-blocker">
-      <TextInput
+      <KaelTextInput
         accessibilityLabel={actionCopy.completionNote}
         onChangeText={onUpdateNote}
         placeholder={actionCopy.completionNote}

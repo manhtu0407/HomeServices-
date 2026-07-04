@@ -69,6 +69,7 @@ const GUARDED: Record<string, string> = {
   'kael.chat.stream': 'getKaelChat preflight before stream',
   'kael.chat.turn': 'getKaelChat / session ownership',
   'kael.chat.confirm': 'confirm_kael_chat_atomic p_customer_id',
+  'kael.chat.evidence': 'assertKaelSessionOwnership',
   // Kael worker chat sessions — readWorkerKaelSession ownership
   'workers.kaelChat.get': 'readWorkerKaelSession ownership',
   'workers.kaelChat.stream': 'readWorkerKaelSession ownership',
