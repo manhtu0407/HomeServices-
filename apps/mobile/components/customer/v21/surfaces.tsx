@@ -208,7 +208,7 @@ import {
 } from './payment-bank-display-model'
 import { customerV21ProfileUtilityStyles as profileUtilityStyles } from './profile-utility-styles'
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
-import { type CustomerDockActive, type CustomerKaelMode, type CustomerPrimaryTab, type CustomerV21ScreenId } from './types'
+import { type CustomerKaelMode, type CustomerPrimaryTab, type CustomerV21DockActive, type CustomerV21ScreenId } from './types'
 import {
   activityScreenParam,
   caseScreenIds,
@@ -2929,7 +2929,7 @@ export function KaelChatSurface() {
   )
 }
 
-export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive }) {
+export function CustomerV21DockOverlay({ active }: { active: CustomerV21DockActive }) {
   const language = useAppLanguage()
   const router = useRouter()
   const { width } = useWindowDimensions()

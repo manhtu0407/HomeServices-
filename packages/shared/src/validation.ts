@@ -22,7 +22,7 @@ export const jobCreateSchema = z.object({
   address_district: z.string().max(100).optional(),
   apartment_access_profile: apartmentAccessProfileSchema.optional(),
   scheduled_at: z.string().datetime().optional(),
-  // X2 (Plan.md §27.5 — 2026-05-29): mobile-generated UUID v4 per submit.
+  // Mobile-generated UUID v4 per submit.
   // Server returns the existing job on retry instead of creating duplicates.
   client_request_id: z.string().uuid().optional(),
 })
@@ -37,7 +37,7 @@ export const kaelChatCreateSchema = z.object({
   address_label: z.string().max(200).optional(),
   address_district: z.string().max(100).optional(),
   apartment_access_profile: apartmentAccessProfileSchema.optional(),
-  // X2 (Plan.md §27.5 — 2026-05-29): mobile-generated UUID v4 per submit.
+  // Mobile-generated UUID v4 per submit.
   client_request_id: z.string().uuid().optional(),
 })
 
@@ -60,10 +60,10 @@ export const kaelChatEvidenceSchema = z.object({
   media_refs: z.array(kaelChatMediaRefSchema).max(5).default([]),
   skip_reason: z.string().trim().max(500).optional(),
 }).superRefine((value, ctx) => {
-  if (value.decision === 'confirmed' && value.photo_urls.length === 0 && value.media_refs.length === 0) {
+  if (value.decision === 'confirmed' && value.media_refs.length === 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Evidence confirmation requires at least one media ref.',
+      message: 'Evidence confirmation requires at least one durable media ref.',
       path: ['media_refs'],
     })
   }
@@ -210,7 +210,7 @@ export const jobMessageSendSchema = z.object({
 // =============================================================================
 
 // Validates that a "YYYY-MM-DD" string represents a real calendar date.
-// Catches '2026-99-99' (regex passes but Date is invalid) and '2026-02-31'
+// Catches invalid dates like '2026-99-99' and calendar rollovers like '2026-02-31'
 // (Date constructor silently rolls to March, ISO no longer matches input).
 function isRealCalendarDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
@@ -240,7 +240,7 @@ export const workerRegisterSchema = z.object({
   gender: z.enum(['male', 'female', 'other']).optional(),
   service_types: z.array(serviceTypeSchema).min(1).max(3),
   years_experience: z.number().int().min(0).max(60),
-  // X3 (Plan.md §27.6 — 2026-05-29): reject inputs that don't normalize to
+  // Reject inputs that don't normalize to
   // a known HCMC district slug. Explicit hcmc_all remains valid because broad
   // city-wide worker coverage is supported by the matching path.
   districts: z.array(workerDistrictSchema).min(1).max(20),
@@ -266,7 +266,7 @@ export const availabilityToggleSchema = z.object({
   is_available: z.boolean(),
 })
 
-// Phase 2.0 (2026-05-23): worker không đề xuất giá ở B6. Kael compute new
+// worker không đề xuất giá ở B6. Kael compute new
 // estimate từ original context + worker's reported scope. Schema accept
 // description + reason + photo_urls only.
 export const workerScopeChangeSchema = z.object({

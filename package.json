@@ -32,8 +32,8 @@
     "type-check:shared": "scripts\\run-package-script.cmd @nestscout/shared type-check",
     "skills:sync": "node scripts/sync-skills.mjs",
     "skills:check": "node scripts/check-skills-sync.mjs",
-    "lint:structure": "node scripts/lint-structure.mjs",
-    "lint:comments": "node scripts/check-comment-discipline.mjs"
+    "lint:structure": "scripts\\run-node.cmd scripts/lint-structure.mjs",
+    "lint:comments": "scripts\\run-node.cmd scripts/check-comment-discipline.mjs"
   },
   "reactDoctor": {
     "blocking": "none",

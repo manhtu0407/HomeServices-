@@ -262,6 +262,7 @@ export function asMessageSender(value: unknown): MessageSender {
 export function asKaelChatStatus(value: unknown): KaelChatStatus {
   if (
     value === "active" ||
+    value === "collecting_evidence" ||
     value === "estimate_ready" ||
     value === "confirmed" ||
     value === "abandoned" ||

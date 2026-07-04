@@ -5,6 +5,7 @@ import { customerHomeActiveDealSurface, customerHomeControlSurface, customerHome
 import { type SurfaceTone } from './types'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { GlassCard } from '@/components/ui/glass-card'
+import { KaelTextInput } from '@/components/ui/kael-primitives'
 import { ReduceMotionAwareEntranceView, reduceMotionAwarePressStyle } from '@/components/ui/reduce-motion-aware-animation'
 import { type AppLanguage, localizedProblemLabel, localizedServiceLabel, useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
@@ -14,16 +15,16 @@ import { type LocalDeal, type ServiceType } from '@nestscout/shared'
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Pressable, Text, TextInput, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import { V4Frame } from './shell'
 import { IconShell, MappedIcon, SubtleGlassHighlight, V4ServiceCard, V4TicketCell, canReplaceCustomerDeal, customerVisibleStatusLabel, isTerminalCustomerDeal, kaelChatPath, localizedCustomerAreaLabel, localizedProfileName, openBookingPath, openHistoryPath, openKaelChatPath, readCustomerMetadataString, useCustomerTokens } from './ui'
 import type { IconName } from './ui'
 
 const openProfilePath = '/(customer)/profile'
 
-const kaelModel8A = require('../../../assets/kael-model-8a.png')
+const kaelMascotFull = require('../../../assets/kael-states/kael-state-welcome.png')
 
-const kaelModel8AHead = require('../../../assets/kael-model-8a-head.png')
+const kaelMascotHead = require('../../../assets/kael-emotions/kael-emotion-focused.png')
 
 function bookingWizardPath(serviceType?: ServiceType | null) {
   return serviceType ? `${openBookingPath}?serviceType=${serviceType}` : openBookingPath
@@ -194,7 +195,7 @@ export function CustomerHomeSurface() {
                       </Pressable>
                     </View>
                     <View style={[styles.homeCommandPrompt, customerHomePromptSurface(tokens)]} testID="customer-home-kael-command-prompt">
-                      <TextInput
+                      <KaelTextInput
                         accessibilityLabel={copy.home.commandTitle}
                         multiline
                         onChangeText={setHomeCommandDraft}
@@ -301,7 +302,7 @@ function customerHomeAreaDisplayLabel(deal: LocalDeal | null, defaultAddress: st
 
 function KaelMascot({ material = 'glass', size, variant }: { material?: 'glass' | 'opaque'; size: number; variant: 'head' | 'full' }) {
   const tokens = useCustomerTokens()
-  const source = variant === 'head' ? kaelModel8AHead : kaelModel8A
+  const source = variant === 'head' ? kaelMascotHead : kaelMascotFull
   const mascotSurface = material === 'glass' ? glassSurface(tokens, 'water') : customerOpaqueSurface(tokens)
   return (
     <View
@@ -314,7 +315,7 @@ function KaelMascot({ material = 'glass', size, variant }: { material?: 'glass' 
           width: size,
         },
       ]}
-      testID={variant === 'head' ? 'kael-model-8a-head.png' : 'kael-model-8a.png'}
+      testID={variant === 'head' ? 'customer-home-kael-mascot-head' : 'customer-home-kael-mascot-full'}
     >
       {material === 'glass' ? <SubtleGlassHighlight /> : null}
       <Image contentFit="contain" source={source} style={{ height: variant === 'head' ? size * 0.9 : size * 1.1, width: variant === 'head' ? size * 0.9 : size * 1.05 }} />

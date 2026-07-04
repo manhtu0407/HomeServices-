@@ -14,11 +14,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg'
-import { KaelLottieView as KaelSvgLottieView, kaelLottieRendererKind as kaelSvgLottieRendererKind } from '@/components/kael/kael-svg-lottie-view'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
 import { AssetTile, GlassPanel, IconButton, KaelMascot, KaelStatus, NativeSafeGlassPanel, PageAura, PrimaryButton, TextAction, useEntryAccessibility } from './components/materials'
 import { CheckRow, EntryTextField } from './components/fields'
 import { EntryIcon, ProviderBrandIcon, type ProviderBrand } from './components/icons'
+import { LottieLogoMark } from './lottie-logo-mark'
 import { entryTheme } from './theme'
 import type {
   EntryAccessFeatureFlags,
@@ -35,18 +35,6 @@ const assets = {
   shield: require('./assets/shield.png') as ImageSourcePropType,
   workerTools: require('./assets/worker-tools.png') as ImageSourcePropType,
 }
-
-type LottieAsset = {
-  fr?: number
-  h: number
-  ip?: number
-  markers?: { cm?: string; dr?: number; tm?: number }[]
-  nm?: string
-  op?: number
-  w: number
-}
-
-const auroraNestLogoLottie = require('@/assets/lottie/nestscout-aurora-nest-north-star-awakening.json') as LottieAsset
 
 const defaultFeatures: EntryAccessFeatureFlags = {
   customerFacebook: true,
@@ -682,32 +670,6 @@ function BenefitCard({ label, meta, source }: { label: string; meta: string; sou
   )
 }
 
-function lottieDurationSeconds(asset: LottieAsset) {
-  if (!asset.fr || asset.fr <= 0 || typeof asset.ip !== 'number' || typeof asset.op !== 'number') return null
-  return Number(((asset.op - asset.ip) / asset.fr).toFixed(1))
-}
-
-function LottieLogoMark({ size, testID }: { size: number; testID: string }) {
-  const { reduceMotion } = useEntryAccessibility()
-  const logoHeight = Math.round(size * (auroraNestLogoLottie.h / auroraNestLogoLottie.w))
-  const duration = lottieDurationSeconds(auroraNestLogoLottie)
-  const shouldAnimate = kaelSvgLottieRendererKind !== 'fallback' && !reduceMotion
-  const assetLabel = `${auroraNestLogoLottie.nm ?? 'NestScout Aurora Nest'} ${auroraNestLogoLottie.w}x${auroraNestLogoLottie.h}${duration ? ` ${duration}s` : ''}`
-
-  return (
-    <View accessibilityLabel={assetLabel} style={[styles.logoMotion, { height: logoHeight, width: size }]} testID={testID}>
-      <KaelSvgLottieView
-        autoPlay={shouldAnimate}
-        loop={shouldAnimate}
-        resizeMode="contain"
-        source={auroraNestLogoLottie}
-        style={styles.logoExactImage}
-        testID={shouldAnimate ? `${testID}-lottie` : `${testID}-static`}
-      />
-    </View>
-  )
-}
-
 const styles = StyleSheet.create({
   actionStack: { gap: 7, paddingBottom: 4 },
   benefitCard: { alignItems: 'center', borderRadius: 23, flex: 1, minHeight: 101, paddingHorizontal: 7, paddingVertical: 10 },
@@ -742,16 +704,6 @@ const styles = StyleSheet.create({
   loaderFill: { backgroundColor: entryTheme.color.mint.mint600, borderRadius: 999, bottom: 0, left: 0, overflow: 'hidden', position: 'absolute', top: 0 },
   loaderSheen: { backgroundColor: 'rgba(255,255,255,0.72)', borderRadius: 999, bottom: 0, position: 'absolute', top: 0, width: 22 },
   loaderTrack: { backgroundColor: 'rgba(13,174,154,0.12)', borderRadius: 999, height: 4, overflow: 'hidden', position: 'relative', width: SPLASH_LOADER_WIDTH },
-  logoExactImage: {
-    height: '100%',
-    width: '100%',
-  },
-  logoMotion: {
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
   onboardingBottom: { marginTop: 'auto' },
   onboardingHead: { alignItems: 'center', paddingHorizontal: 8, paddingTop: 18 },
   onboardingLead: { marginTop: 7, textAlign: 'center' },
