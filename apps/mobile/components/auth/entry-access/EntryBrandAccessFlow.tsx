@@ -368,7 +368,7 @@ function SplashLoadingBar({ durationMs }: { durationMs: number }) {
 function SplashFormulaAura() {
   const { reduceTransparency } = useEntryAccessibility()
 
-  if (reduceTransparency) return null
+  if (reduceTransparency || Platform.OS !== 'web') return null
 
   return (
     <View pointerEvents="none" style={styles.splashFormulaAura}>

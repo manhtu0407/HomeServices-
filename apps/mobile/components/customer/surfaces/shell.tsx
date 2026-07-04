@@ -12,7 +12,7 @@ import { useAppLanguage } from '@/lib/app-language'
 import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { type ReactNode, useCallback, useEffect, useRef, useSyncExternalStore } from 'react'
-import { type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, useWindowDimensions, View } from 'react-native'
+import { type NativeScrollEvent, type NativeSyntheticEvent, Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CUSTOMER_NO_PROTOTYPE_SAMPLE_CLIENT_STATS, MappedIcon, MotionSweep, openBookingPath, openKaelChatPath, useCustomerTokens } from './ui'
@@ -90,6 +90,7 @@ export function V4Frame({
   const frameWidth = Math.min(width, 430)
   const usesNativeSafeHomeCanvas = active === 'home'
   const appleIOS26MainSection = active === 'home' || active === 'booking' || active === 'activity'
+  const canUseCanvasBackgroundImage = Platform.OS === 'web' && !reduceTransparency
   const lastCustomerScrollYRef = useRef(0)
   const setCustomerDockHiddenSafely = useCallback((hidden: boolean) => {
     setCustomerDockHiddenSnapshot(hidden)
@@ -137,7 +138,7 @@ export function V4Frame({
       : defaultCanvasBackgroundImage
   const canvasLayer = {
     backgroundColor: tokens.canvas,
-    experimental_backgroundImage: reduceTransparency ? undefined : experimentalBackgroundImage,
+    experimental_backgroundImage: canUseCanvasBackgroundImage ? experimentalBackgroundImage : undefined,
   } as any
   const scrollLayer = active === 'profile' || appleIOS26MainSection ? canvasLayer : { backgroundColor: tokens.canvas }
 
@@ -183,7 +184,7 @@ export function V4Frame({
           ) : null}
           {children({ tokens, mode: themeMode })}
         </ScrollView>
-        {reduceMotion || reduceTransparency ? null : <MotionSweep frameWidth={frameWidth} screenWidth={width} />}
+        {reduceMotion || !canUseCanvasBackgroundImage ? null : <MotionSweep frameWidth={frameWidth} screenWidth={width} />}
       </CustomerThemeContext.Provider>
     </SafeAreaView>
   )

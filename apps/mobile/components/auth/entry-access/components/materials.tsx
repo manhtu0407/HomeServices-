@@ -65,6 +65,8 @@ export function useEntryAccessibility(): AccessibilityPreferences {
 }
 
 export function PageAura() {
+  if (Platform.OS !== 'web') return null
+
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <Svg width="100%" height="100%" viewBox="0 0 390 844" preserveAspectRatio="none">

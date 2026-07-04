@@ -430,13 +430,13 @@ export const component = {
 export const customerTheme = {
   lightLayer: {
     mode: 'light',
-    canvas: color.background,
-    base: color.mint.white,
+    canvas: signature.bg,
+    base: signature.surface,
     raised: color.surface.raised,
     service: color.surface.mint,
     water: color.mint.mint50,
     warm: '#FFF8EB',
-    depthSurface: color.mint.auraSoft,
+    depthSurface: '#EEF3F1',
     ghost: 'rgba(255,253,248,0.78)',
     glass: 'rgba(255,255,255,0.58)',
     glassStrong: 'rgba(255,255,255,0.74)',

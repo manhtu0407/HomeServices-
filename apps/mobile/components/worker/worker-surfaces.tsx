@@ -1,10 +1,10 @@
-export {
-  WorkerChatSurface,
-  WorkerDockLayoutProvider,
-  WorkerEarningsSurface,
-  WorkerHomeSurface,
-  WorkerJobsSurface,
-  WorkerProfileSurface,
-  WorkerRebuildDockOverlay,
-} from './worker-v5-flow'
-export type { WorkerDockActive } from './worker-v5-flow'
+import type { WorkerActiveTab } from './surfaces/types'
+
+export { WorkerChatSurface } from './surfaces/chat'
+export { WorkerEarningsSurface } from './surfaces/earnings'
+export { WorkerHomeSurface } from './surfaces/home'
+export { WorkerJobsSurface } from './surfaces/jobs'
+export { WorkerProfileSurface } from './surfaces/profile'
+export type { WorkerActiveTab } from './surfaces/types'
+
+export type WorkerDockActive = Exclude<WorkerActiveTab, 'chat'>

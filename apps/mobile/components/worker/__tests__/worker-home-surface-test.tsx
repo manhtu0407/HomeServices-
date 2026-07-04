@@ -438,67 +438,81 @@ beforeEach(() => {
 })
 
 describe('Worker runtime surface wiring', () => {
-  it('routes the public worker wrapper to the restored Worker V5 sections', () => {
+  it('routes the public worker wrapper to the split production surfaces', () => {
     buildWorkflow()
 
     const home = render(<RuntimeWorkerHomeSurface />)
-    expect(screen.getByTestId('worker-v5-screen-1.1-worker-home')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-availability-card')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-home-command-center')).toBeOnTheScreen()
-    expect(screen.queryByTestId('worker-home-scroll')).toBeNull()
+    expect(screen.getByTestId('worker-home-surface')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-flexible-map-shell')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-dock-motion-shell')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-screen-1.1-worker-home')).toBeNull()
     home.unmount()
 
     mockRouteParams = {}
+    mockPathname = '/(worker)/jobs'
     const jobs = render(<RuntimeWorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-screen-1.2-shift-brief')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-shift-page-customer-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-jobs-surface')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-jobs-waiting-liquid-section')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-screen-1.2-shift-brief')).toBeNull()
     jobs.unmount()
 
+    mockPathname = '/(worker)/chat'
     const chat = render(<RuntimeWorkerChatSurface />)
-    expect(screen.getByTestId('worker-v5-screen-3.1-kael-chat-normal')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-kael-orb-normal')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-chat-surface')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-chat-kael-relay')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-screen-3.1-kael-chat-normal')).toBeNull()
     chat.unmount()
 
+    mockPathname = '/(worker)/earnings'
     const earnings = render(<RuntimeWorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-screen-4.1-earnings-overview')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-earnings-hero')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-earnings-surface')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-earnings-summary')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-screen-4.1-earnings-overview')).toBeNull()
     earnings.unmount()
 
+    mockPathname = '/(worker)/profile'
     const profile = render(<RuntimeWorkerProfileSurface />)
-    expect(screen.getByTestId('worker-v5-screen-5.1-profile-overview')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-profile-avatar-image')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-profile-surface')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-profile-verification-card')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-screen-5.1-profile-overview')).toBeNull()
     profile.unmount()
   })
 
-  it('keeps Worker V5 route params, language params, and money-impacting screens explicit', () => {
+  it('ignores legacy Worker V5 route params while keeping current tab and money surfaces explicit', () => {
     buildWorkflow({ canWorkerAdvance: true, deal: buildRepairingDeal() })
+    mockAppLanguage = 'en'
     mockRouteParams = { ns_worker_lang: 'en' }
 
     const home = render(<RuntimeWorkerHomeSurface />)
-    expect(screen.getByTestId('worker-v5-availability-switch').props.accessibilityLabel).toBe('Toggle work availability')
+    expect(screen.getByTestId('worker-availability-toggle').props.accessibilityLabel).toBe('Go online')
+    expect(screen.queryByTestId('worker-v5-availability-switch')).toBeNull()
     home.unmount()
 
     mockRouteParams = { tab: 'active' }
+    mockPathname = '/(worker)/jobs'
 
     const active = render(<RuntimeWorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-screen-2.7-in-progress')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-in-progress-scope-action')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-jobs-active-liquid-section')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-jobs-active-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-active-next-action-pill')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-jobs-completion-evidence-route')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
+    expect(screen.queryByTestId('worker-v5-screen-2.7-in-progress')).toBeNull()
     active.unmount()
 
     mockRouteParams = { ns_audit_surface: 'worker_scope_change' }
     const scope = render(<RuntimeWorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-screen-2.8-scope-change')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-scope-change-hero')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-scope-change-send-action')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-jobs-waiting-liquid-section')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-screen-2.8-scope-change')).toBeNull()
     expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
     scope.unmount()
 
     mockRouteParams = { ns_payment_step: 'wallet' }
+    mockPathname = '/(worker)/earnings'
     const ledger = render(<RuntimeWorkerEarningsSurface />)
-    expect(screen.getByTestId('worker-v5-screen-4.2-ledger-detail')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-ledger-hero')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-ledger-breakdown')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-earnings-surface')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-earnings-ledger')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-screen-4.2-ledger-detail')).toBeNull()
     ledger.unmount()
   })
 })
