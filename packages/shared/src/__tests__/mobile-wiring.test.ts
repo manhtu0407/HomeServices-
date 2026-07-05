@@ -1084,6 +1084,22 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(workerDock).not.toContain("  { icon: 'chat', id: 'kael'")
   })
 
+  it('keeps active home canvases neutral instead of full-screen mint washes', () => {
+    const theme = read('design/theme.ts')
+    const customerAura = read('components/customer/v21/aura-surfaces.tsx')
+    const workerAura = read('components/worker/ui/aura-surfaces.tsx')
+
+    expect(customerAura).toContain("backgroundColor: '#F6F7F7'")
+    expect(customerAura).toContain('testID="customer-v21-home-canvas-aura"')
+    expect(customerAura).not.toContain('homeCanvasTopRight')
+    expect(workerAura).toContain("backgroundColor: '#F6F7F7'")
+    expect(workerAura).toContain('testID="worker-v5-page-mint-aura"')
+    expect(workerAura).not.toContain('workerV5HomeCanvasTopRight')
+    expect(workerAura).not.toContain('workerV5EarningsCanvasTopRight')
+    expect(theme).toContain("rgba(143,226,212,0.07)")
+    expect(theme).not.toContain("rgba(143,226,212,0.24)")
+  })
+
   it.each(workerRoutes)('wires (worker)/%s to %s', (route, exportName) => {
     const src = read(`app/(worker)/${route}.tsx`)
     expect(src).toContain(exportName)

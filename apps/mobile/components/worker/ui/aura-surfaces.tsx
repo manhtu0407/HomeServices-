@@ -4,6 +4,12 @@ import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect } from 'react-n
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { styles } from './aura-styles'
 
+const calmCanvasStyle = [StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]
+
+function CalmCanvas({ testID }: { testID: string }) {
+  return <View pointerEvents="none" style={calmCanvasStyle} testID={testID} />
+}
+
 export function WorkerV5CustomerCaseWideMintAura({
   scope,
   style,
@@ -252,62 +258,7 @@ export function WorkerV5CustomerMapMintAura({
 }
 
 export function WorkerV5HomeAuraBackground() {
-  return (
-    <View pointerEvents="none" style={styles.homeAuraBackground} testID="worker-v5-page-mint-aura">
-      <Svg
-        height="100%"
-        preserveAspectRatio="none"
-        testID="worker-v5-home-background-mint-aura"
-        viewBox="0 0 390 844"
-        width="100%"
-      >
-        <Defs>
-          <LinearGradient id="workerV5HomeCanvasBase" x1="0" x2="0" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F8FAFA" />
-            <Stop offset="0.42" stopColor="#F6F7F7" />
-            <Stop offset="1" stopColor="#F2F6F5" />
-          </LinearGradient>
-          <RadialGradient id="workerV5HomeCanvasTopRight" cx="102%" cy="-4%" r="74%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.12)" />
-            <Stop offset="0.58" stopColor="rgba(151,246,232,0.045)" />
-            <Stop offset="0.74" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5HomeCanvasLeft" cx="-18%" cy="38%" r="72%">
-            <Stop offset="0" stopColor="rgba(136,241,223,0.08)" />
-            <Stop offset="0.72" stopColor="rgba(136,241,223,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5HomeCanvasMidRight" cx="104%" cy="74%" r="72%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.08)" />
-            <Stop offset="0.72" stopColor="rgba(83,220,206,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5HomeCanvasBottomLeft" cx="14%" cy="104%" r="73%">
-            <Stop offset="0" stopColor="rgba(145,232,222,0.07)" />
-            <Stop offset="0.73" stopColor="rgba(145,232,222,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5HomeCanvasSoftTop" cx="16%" cy="14%" r="42%">
-            <Stop offset="0" stopColor="rgba(89,232,207,0.06)" />
-            <Stop offset="0.72" stopColor="rgba(89,232,207,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5HomeCanvasSoftMiddle" cx="82%" cy="49%" r="46%">
-            <Stop offset="0" stopColor="rgba(122,243,223,0.05)" />
-            <Stop offset="0.72" stopColor="rgba(122,243,223,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5HomeCanvasSoftBottom" cx="25%" cy="82%" r="48%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.04)" />
-            <Stop offset="0.75" stopColor="rgba(81,216,203,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#workerV5HomeCanvasBase)" height="844" width="390" />
-        <Rect fill="url(#workerV5HomeCanvasTopRight)" height="844" width="390" />
-        <Rect fill="url(#workerV5HomeCanvasLeft)" height="844" width="390" />
-        <Rect fill="url(#workerV5HomeCanvasMidRight)" height="844" width="390" />
-        <Rect fill="url(#workerV5HomeCanvasBottomLeft)" height="844" width="390" />
-        <Rect fill="url(#workerV5HomeCanvasSoftTop)" height="844" width="390" />
-        <Rect fill="url(#workerV5HomeCanvasSoftMiddle)" height="844" width="390" />
-        <Rect fill="url(#workerV5HomeCanvasSoftBottom)" height="844" width="390" />
-      </Svg>
-    </View>
-  )
+  return <CalmCanvas testID="worker-v5-page-mint-aura" />
 }
 
 export function WorkerV5HomeHeroSourceAura() {
@@ -355,62 +306,7 @@ export function WorkerV5HomeQuickActionsAura() {
 }
 
 export function WorkerV5EarningsHomeAuraBackground() {
-  return (
-    <View pointerEvents="none" style={styles.homeAuraBackground} testID="worker-v5-earnings-page-customer-mint-aura">
-      <Svg
-        height="100%"
-        preserveAspectRatio="none"
-        testID="worker-v5-earnings-background-home-formula-aura"
-        viewBox="0 0 390 844"
-        width="100%"
-      >
-        <Defs>
-          <LinearGradient id="workerV5EarningsCanvasBase" x1="0" x2="0" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F8FAFA" />
-            <Stop offset="0.42" stopColor="#F6F7F7" />
-            <Stop offset="1" stopColor="#F2F6F5" />
-          </LinearGradient>
-          <RadialGradient id="workerV5EarningsCanvasTopRight" cx="102%" cy="-4%" r="74%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.12)" />
-            <Stop offset="0.58" stopColor="rgba(151,246,232,0.045)" />
-            <Stop offset="0.74" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5EarningsCanvasLeft" cx="-18%" cy="38%" r="72%">
-            <Stop offset="0" stopColor="rgba(136,241,223,0.08)" />
-            <Stop offset="0.72" stopColor="rgba(136,241,223,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5EarningsCanvasMidRight" cx="104%" cy="74%" r="72%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.08)" />
-            <Stop offset="0.72" stopColor="rgba(83,220,206,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5EarningsCanvasBottomLeft" cx="14%" cy="104%" r="73%">
-            <Stop offset="0" stopColor="rgba(145,232,222,0.07)" />
-            <Stop offset="0.73" stopColor="rgba(145,232,222,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5EarningsCanvasSoftTop" cx="16%" cy="14%" r="42%">
-            <Stop offset="0" stopColor="rgba(89,232,207,0.06)" />
-            <Stop offset="0.72" stopColor="rgba(89,232,207,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5EarningsCanvasSoftMiddle" cx="82%" cy="49%" r="46%">
-            <Stop offset="0" stopColor="rgba(122,243,223,0.05)" />
-            <Stop offset="0.72" stopColor="rgba(122,243,223,0)" />
-          </RadialGradient>
-          <RadialGradient id="workerV5EarningsCanvasSoftBottom" cx="25%" cy="82%" r="48%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.04)" />
-            <Stop offset="0.75" stopColor="rgba(81,216,203,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#workerV5EarningsCanvasBase)" height="844" width="390" />
-        <Rect fill="url(#workerV5EarningsCanvasTopRight)" height="844" width="390" />
-        <Rect fill="url(#workerV5EarningsCanvasLeft)" height="844" width="390" />
-        <Rect fill="url(#workerV5EarningsCanvasMidRight)" height="844" width="390" />
-        <Rect fill="url(#workerV5EarningsCanvasBottomLeft)" height="844" width="390" />
-        <Rect fill="url(#workerV5EarningsCanvasSoftTop)" height="844" width="390" />
-        <Rect fill="url(#workerV5EarningsCanvasSoftMiddle)" height="844" width="390" />
-        <Rect fill="url(#workerV5EarningsCanvasSoftBottom)" height="844" width="390" />
-      </Svg>
-    </View>
-  )
+  return <CalmCanvas testID="worker-v5-earnings-page-customer-mint-aura" />
 }
 
 export function WorkerV5EarningsHomeHeroAura({ testID }: { testID: string }) {
