@@ -54,14 +54,12 @@ const readWorkerSurfaceLayer = () =>
     .map(read)
     .join('\n')
 
-// The customer surface layer is customer-surfaces.tsx plus its split modules under
-// components/customer/surfaces/ (NOT the unrelated customer siblings) — C4 split.
+// The customer surface layer is customer-surfaces.tsx plus the active PR72/V21 modules.
 const readCustomerSurfaceLayer = () =>
   [
     read('components/customer/customer-surfaces.tsx'),
-    ...readdirSync(resolve(MOBILE_ROOT, 'components/customer/surfaces'), { withFileTypes: true })
-      .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
-      .map((entry) => `components/customer/surfaces/${entry.name}`)
+    ...listMobileFiles('components/customer/v21')
+      .filter((p) => /\.tsx?$/.test(p))
       .sort()
       .map(read),
   ].join('\n')
@@ -244,10 +242,12 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(worker).toContain('actions.workerDeclineBroadcast')
     expect(worker).toContain('actions.workerUpdateStatus')
     expect(worker).toContain('actions.workerUpdateAvailability')
-    expect(worker).toContain('actions.workerSubmitRegistration')
-    expect(worker).toContain('uploadWorkerVerificationDrafts')
+    expect(provider).toContain('workerSubmitRegistration')
+    expect(worker).toContain('worker-v5-verification-hero')
+    expect(worker).toContain('worker-v5-verification-checklist')
     expect(worker).toContain('actions.requestScopeChange')
-    expect(worker).toContain('worker-scope-change-request')
+    expect(worker).toContain('worker-v5-scope-change-hero')
+    expect(worker).toContain('worker-v5-scope-change-send-action')
   })
 
   it('stores worker verification uploads as private Supabase storage refs, not public URLs', () => {
@@ -271,13 +271,15 @@ describe('React Native backend wiring targets Supabase Edge mobile-api', () => {
     expect(provider).toContain('scopeChangeFromJobDetail')
     expect(provider).toContain('data.current_scope_change')
     expect(provider).toContain('evidencePhotoUrls: scope.evidence_photo_urls')
-    expect(customer).toContain('scopeChange.requestedDescription ?? copy.history.kaelReviewing')
+    expect(customer).toContain('scopeChange?.requestedDescription ?? copy.dataPending')
     // The hard-stop modal owns the decision callsite, and workers no longer submit
     // scope-change prices because Kael computes them server-side.
-    expect(customer).toContain("actions.decideScopeChange(scopeChange.id, { decision: 'approve' })")
+    expect(customer).toContain("workflow.actions.decideScopeChange(scopeChange.id, { decision })")
     expect(worker).not.toContain('new_price_min')
     expect(worker).not.toContain('new_price_max')
-    expect(worker).toContain('scopeReasonDraft')
+    expect(worker).toContain('scopeReason')
+    expect(worker).toContain("uploadJobMediaDrafts(jobId, scopeMediaDrafts, 'scope_change_evidence')")
+    expect(worker).toContain('worker-v5-scope-change-send-action')
   })
 
   it('polls remote workflow state without overwriting explicit no-worker fallback', () => {

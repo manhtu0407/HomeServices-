@@ -1,12 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import { PROBLEM_CHIPS, type LocalWorkflowSelectors } from '@nestscout/shared'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 let mockWorkflowValue: any
 let mockAuthValue: any
 let mockRouteParams: Record<string, string | string[] | undefined>
-const mockPush = jest.fn()
 const mockReplace = jest.fn()
 const mockCreateRemoteJobFromDraft = jest.fn()
 const mockSetPendingKaelChatDraft = jest.fn()
@@ -40,7 +38,7 @@ jest.mock('expo-audio', () => ({
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
-  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace }),
 }))
 
 jest.mock('@/lib/auth-provider', () => ({
@@ -70,6 +68,7 @@ jest.mock('@/lib/services', () => {
     },
   }
 })
+
 jest.mock('@/lib/app-language', () => {
   const actual = jest.requireActual('@/lib/app-language')
   return {
@@ -78,21 +77,7 @@ jest.mock('@/lib/app-language', () => {
   }
 })
 
-import { CustomerBookingEntrySurface as ActiveCustomerBookingEntrySurface, CustomerKaelSurface as ActiveCustomerKaelSurface } from '../customer-surfaces'
-import { CustomerBookingEntrySurface } from '../v21/surfaces'
-
-const TEST_SAFE_AREA_METRICS = {
-  frame: { height: 844, width: 390, x: 0, y: 0 },
-  insets: { bottom: 0, left: 0, right: 0, top: 0 },
-}
-
-function renderWithSafeArea(ui: Parameters<typeof render>[0]) {
-  return render(
-    <SafeAreaProvider initialMetrics={TEST_SAFE_AREA_METRICS}>
-      {ui}
-    </SafeAreaProvider>,
-  )
-}
+import { CustomerBookingEntrySurface } from '../customer-surfaces'
 
 function buildWorkflow() {
   const selectors: LocalWorkflowSelectors = {
@@ -135,7 +120,6 @@ beforeEach(() => {
     session: { user: { id: 'customer_test_1', user_metadata: {} } },
   }
   mockCreateRemoteJobFromDraft.mockClear()
-  mockPush.mockClear()
   mockReplace.mockClear()
   mockSetPendingKaelChatDraft.mockClear()
   mockSetPendingKaelChatDraft.mockResolvedValue(undefined)
@@ -169,29 +153,309 @@ beforeEach(() => {
   buildWorkflow()
 })
 
-describe('Customer booking runtime surface wiring', () => {
-  it('exports the current V4 booking entry surface instead of the legacy v21 flow', () => {
-    renderWithSafeArea(<ActiveCustomerBookingEntrySurface />)
+describe('CustomerBookingEntrySurface v2.1', () => {
+  it('blocks guests before creating any pending Kael draft', () => {
+    mockAuthValue = { guestMode: true, session: null }
 
-    expect(screen.getByTestId('customer-booking-entry-surface')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-booking-ios26-foundation-section')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-booking-intake-to-kael-primary')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-services')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-booking-step-card-skin')).toBeNull()
+    render(<CustomerBookingEntrySurface />)
+
+    expect(screen.getByTestId('customer-v21-guest-gate')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('customer-v21-guest-login'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(auth)/login')
+    expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
+    expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
   })
 
-  it('keeps the legacy v21 booking import path pinned to the current V4 surface', () => {
-    renderWithSafeArea(<CustomerBookingEntrySurface />)
+  it('renders supported service intake without AC or fake priority options', () => {
+    render(<CustomerBookingEntrySurface />)
 
-    expect(screen.getByTestId('customer-booking-entry-surface')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-booking-intake-to-kael-primary')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-services')).toBeNull()
-    expect(screen.queryByTestId('customer-v21-booking-step-card-skin')).toBeNull()
+    expect(screen.getByTestId('customer-v21-service-electrical')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-service-plumbing')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-service-cleaning')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-step-card-skin')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-progress-node-1')).toHaveTextContent('1')
+    expect(screen.getByTestId('customer-v21-booking-progress-node-4')).toHaveTextContent('4')
+    expect(screen.getByTestId('customer-v21-booking-progress-line-1')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-progress-line-3')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-search-source')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-search-mint-border')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-search-icon')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-search-suggestions')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-search-suggestion-0')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-info-card-skin')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-booking-kael-context')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-booking-kael-mint-aura')).toBeNull()
+    expect(screen.getByTestId('customer-v21-booking-submit-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByText('Kael sẽ dẫn bạn theo từng bước')).toBeOnTheScreen()
+    expect(screen.queryByText(/Công việc mới/)).toBeNull()
+    expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Chưa chọn/)
+    expect(screen.queryByText('Sớm nhất có thể')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-screen-2.3-media')).toBeNull()
+    expect(screen.queryByText(/máy lạnh|AC|ưu tiên|tiêu chuẩn|linh hoạt/i)).toBeNull()
   })
 
-  it('exports the current Kael route shim that redirects to the full-screen chat', () => {
-    render(<ActiveCustomerKaelSurface />)
+  it('uses mint text for booking guidance instead of red error copy', () => {
+    render(<CustomerBookingEntrySurface />)
 
-    expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat')
+    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+    const errorStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-error').props.style)
+    expect(errorStyle.color).toBe('#24B3A1')
+  })
+
+  it('filters booking suggestions from a typed service topic', async () => {
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-search-input'), 'Nước')
+
+    const inputStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-search-input').props.style)
+    expect(inputStyle.color).toBe('#071A24')
+    expect(screen.getByTestId('customer-v21-booking-search-suggestion-0')).toHaveTextContent(/Sửa nước/)
+    expect(screen.getByTestId('customer-v21-booking-search-suggestion-1')).toHaveTextContent(PROBLEM_CHIPS.plumbing[0])
+    expect(screen.getByTestId('customer-v21-booking-search-suggestion-3')).toHaveTextContent(PROBLEM_CHIPS.plumbing[2])
+
+    fireEvent.press(screen.getByTestId('customer-v21-booking-search-suggestion-3'))
+
+    expect(screen.getByTestId('customer-v21-selected-service')).toHaveTextContent(/Sửa nước/)
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Voi nuoc trong bep bi ro va can tho kiem tra')
+    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      problemChips: [PROBLEM_CHIPS.plumbing[2]],
+      serviceType: 'plumbing',
+    }))
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
+    })
+  })
+
+  it('keeps the booking location row balanced without a fake chevron', () => {
+    render(<CustomerBookingEntrySurface />)
+
+    const rowStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-address-row').props.style)
+    const inputStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-address').props.style)
+    expect(rowStyle.paddingRight).toBe(14)
+    expect(rowStyle.minHeight).toBe(48)
+    expect(inputStyle.lineHeight).toBe(17)
+    expect(inputStyle.width).toBe('100%')
+    expect(inputStyle.overflow).toBe('hidden')
+    expect(screen.getByTestId('customer-v21-booking-address').props.multiline).toBe(false)
+    expect(screen.getByTestId('customer-v21-booking-address').props.scrollEnabled).toBe(false)
+    expect(screen.queryByTestId('customer-v21-booking-address-chevron')).toBeNull()
+
+    fireEvent.changeText(
+      screen.getByTestId('customer-v21-booking-address'),
+      'Tòa S1.07 Chung Cư Vinhomes Grand Park, Phường Long Thạnh Mỹ, Thành Phố Thủ Đức',
+    )
+
+    const longRowStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-address-row').props.style)
+    const longInputStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-address').props.style)
+    expect(longRowStyle.minHeight).toBe(72)
+    expect(longInputStyle.minHeight).toBe(54)
+    expect(longInputStyle.paddingTop).toBe(8)
+    expect(longInputStyle.paddingBottom).toBe(8)
+    expect(screen.getByTestId('customer-v21-booking-address').props.multiline).toBe(true)
+  })
+
+  it('uses the real places autocomplete service for booking address suggestions', async () => {
+    mockPlacesAutocomplete.mockResolvedValueOnce({
+      data: {
+        fallback_used: false,
+        suggestions: [
+          {
+            label: 'Tòa A, Vinhomes Grand Park, TP. Thủ Đức',
+            main_text: 'Tòa A, Vinhomes Grand Park',
+            place_id: 'google_places_toa_a',
+            secondary_text: 'TP. Thủ Đức, TP.HCM',
+          },
+        ],
+      },
+      success: true,
+    })
+
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A')
+
+    await waitFor(() => {
+      expect(mockPlacesAutocomplete).toHaveBeenCalledWith({ input: 'Toa A' })
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('customer-v21-booking-address-suggestion-0')).toHaveTextContent(/Tòa A, Vinhomes Grand Park/)
+    })
+
+    fireEvent.press(screen.getByTestId('customer-v21-booking-address-suggestion-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-service-plumbing'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-time-0'))
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Vòi nước bếp bị rò và cần thợ kiểm tra')
+    fireEvent.press(screen.getByTestId(`customer-v21-problem-${PROBLEM_CHIPS.plumbing[2]}`))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      addressLabel: 'Tòa A, Vinhomes Grand Park, TP. Thủ Đức',
+      serviceType: 'plumbing',
+    }))
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
+    })
+  })
+
+  it('hydrates the selected service passed from Stage 2.1', () => {
+    mockRouteParams = { service: 'plumbing' }
+
+    render(<CustomerBookingEntrySurface />)
+
+    expect(screen.getByTestId('customer-v21-selected-service')).toHaveTextContent(/Sửa nước/)
+    expect(screen.getByTestId('customer-v21-selected-service')).toHaveTextContent(/Rò rỉ · đường ống/)
+    expect(screen.getByTestId('customer-v21-booking-suggested-chip-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-problem-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-search-suggestions')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-search-suggestion-0')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-service-electrical')).toBeNull()
+  })
+
+  it('uses search suggestions as real booking problem shortcuts', async () => {
+    mockRouteParams = { service: 'plumbing' }
+
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.press(screen.getByTestId('customer-v21-booking-search-suggestion-0'))
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), 'Ong nuoc duoi lavabo bi ro ri rat nhieu')
+    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      problemChips: [PROBLEM_CHIPS.plumbing[0]],
+      serviceType: 'plumbing',
+    }))
+    expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
+    })
+  })
+
+  it('lets the customer choose a date and time without auto-selecting a slot', () => {
+    render(<CustomerBookingEntrySurface />)
+
+    expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Chưa chọn/)
+
+    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
+    expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Chưa chọn giờ/)
+
+    fireEvent.press(screen.getByTestId('customer-v21-booking-time-1'))
+    expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/10:00-12:00/)
+  })
+
+  it('refreshes booking dates from runtime while the screen stays open', () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date(2026, 5, 19, 23, 59, 50))
+
+    try {
+      render(<CustomerBookingEntrySurface />)
+
+      expect(screen.getByTestId('customer-v21-booking-date-0')).toHaveTextContent(/Hôm nay/)
+      expect(screen.getByTestId('customer-v21-booking-date-0')).toHaveTextContent(/19\/06/)
+
+      jest.setSystemTime(new Date(2026, 5, 20, 0, 0, 25))
+      act(() => {
+        jest.advanceTimersByTime(30_000)
+      })
+
+      expect(screen.getByTestId('customer-v21-booking-date-0')).toHaveTextContent(/Hôm nay/)
+      expect(screen.getByTestId('customer-v21-booking-date-0')).toHaveTextContent(/20\/06/)
+    } finally {
+      jest.useRealTimers()
+    }
+  })
+
+  it('blocks the legacy media intake route because evidence now lives in Kael Chat cards', async () => {
+    mockRouteParams = { screen: '2.3-media' }
+
+    render(<CustomerBookingEntrySurface />)
+
+    expect(screen.getByTestId('customer-v21-services')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-screen-2.3-media')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-media-intake')).toBeNull()
+    expect(screen.queryByTestId('customer-v21-media-voice-note')).toBeNull()
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
+    })
+    expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
+    expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
+  })
+
+  it('does not allow legacy Stage 2.3 voice recording outside the Kael Chat evidence gate', async () => {
+    mockRouteParams = { screen: '2.3-media' }
+
+    render(<CustomerBookingEntrySurface />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
+    })
+    expect(screen.queryByTestId('customer-v21-media-voice-note')).toBeNull()
+    expect(mockRequestRecordingPermissionsAsync).not.toHaveBeenCalled()
+    expect(mockSetAudioModeAsync).not.toHaveBeenCalled()
+    expect(mockAudioRecorder.prepareToRecordAsync).not.toHaveBeenCalled()
+    expect(mockAudioRecorder.record).not.toHaveBeenCalled()
+    expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
+  })
+
+  it('does not show a separate continue-to-media CTA on the service step', () => {
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-time-1'))
+    fireEvent.press(screen.getByTestId('customer-v21-service-plumbing'))
+    expect(screen.getByTestId('customer-v21-booking-selected-card-skin')).toBeOnTheScreen()
+
+    expect(screen.queryByTestId('customer-v21-booking-open-media')).toBeNull()
+    expect(screen.queryByText('Tiếp tục mô tả')).toBeNull()
+    expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
+    expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
+  })
+
+  it('creates a pending Kael draft only, then opens full-screen Kael chat after the draft is persisted', async () => {
+    let resolvePersist!: () => void
+    mockSetPendingKaelChatDraft.mockReturnValueOnce(new Promise<void>((resolve) => {
+      resolvePersist = resolve
+    }))
+    render(<CustomerBookingEntrySurface />)
+
+    const typedDescription = 'Ổ cắm phòng khách bị nóng và có mùi khét'
+    fireEvent.press(screen.getByTestId('customer-v21-service-electrical'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-date-0'))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-time-2'))
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Tòa A, Quận 7')
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-description'), typedDescription)
+    fireEvent.press(screen.getByTestId(`customer-v21-problem-${PROBLEM_CHIPS.electrical[2]}`))
+    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+    expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+      addressLabel: 'Tòa A, Quận 7',
+      clientRequestId: '11111111-1111-4111-8111-111111111111',
+      description: typedDescription,
+      locale: 'vi',
+      mediaCount: 0,
+      problemChips: ['Ổ cắm/công tắc hỏng'],
+      serviceType: 'electrical',
+      source: 'booking',
+    }))
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Dịch vụ: Sửa điện')
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Khu vực: Tòa A, Quận 7')
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('Thời gian:')
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain('14:00-16:00')
+    expect(mockSetPendingKaelChatDraft.mock.calls[0][0].message).toContain(`Mô tả: ${typedDescription}`)
+    expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
+    expect(mockReplace).not.toHaveBeenCalled()
+    await act(async () => {
+      resolvePersist()
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
+    })
   })
 })

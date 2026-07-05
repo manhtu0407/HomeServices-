@@ -1,6 +1,4 @@
-﻿import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { Alert } from 'react-native'
-import * as ImagePicker from 'expo-image-picker'
+﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import type { LocalDeal } from '@nestscout/shared'
 import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
 
@@ -9,7 +7,6 @@ let mockPathname: string
 let mockRouteParams: Record<string, string | string[] | undefined>
 const mockReplace = jest.fn()
 const mockUseJobChatThread = jest.fn()
-const mockUploadJobMediaDrafts = jest.fn()
 const pendingWorkerKaelServiceCall = () => new Promise<never>(() => undefined)
 const mockWorkerKaelChatService = {
   create: jest.fn(),
@@ -66,7 +63,7 @@ jest.mock('@/lib/use-job-chat-thread', () => ({
 }))
 
 jest.mock('@/lib/media-upload', () => ({
-  uploadJobMediaDrafts: (...args: unknown[]) => mockUploadJobMediaDrafts(...args),
+  uploadJobMediaDrafts: jest.fn(),
   uploadWorkerVerificationDrafts: jest.fn(),
 }))
 
@@ -91,7 +88,7 @@ jest.mock('@/lib/app-language', () => {
   }
 })
 
-import { WorkerJobsSurface } from '../surfaces/jobs'
+import { WorkerJobsSurface } from '../worker-surfaces'
 
 function buildWorkerProfile(): WorkerProfileResponse {
   return {
@@ -124,14 +121,14 @@ function buildOnWayDeal(): LocalDeal {
     backendStatus: 'worker_on_way',
     broadcast: {
       broadcastId: 'broadcast_test_1',
-      estimatedEarningLabel: '120.000đ - 180.000đ',
-      estimatedPriceLabel: '180.000đ - 260.000đ',
-      fullAddressLabel: 'Tòa A, Quận 1',
+      estimatedEarningLabel: '120.000d - 180.000d',
+      estimatedPriceLabel: '180.000d - 260.000d',
+      fullAddressLabel: 'Tòa A, Qu?n 1',
       fullAddressVisible: true,
-      generalArea: 'Quận 1',
+      generalArea: 'Qu?n 1',
       jobId: 'job_test_1',
-      prebrief: ['Kael đã tóm tắt phạm vi.'],
-      problemSummary: 'Ổ cắm chập chờn',
+      prebrief: ['Kael dã tóm t?t ph?m vi.'],
+      problemSummary: '? c?m ch?p ch?n',
       secondsRemaining: null,
       serviceType: 'electrical',
       status: 'accepted',
@@ -139,13 +136,13 @@ function buildOnWayDeal(): LocalDeal {
     completionNotes: null,
     completionPhotoUrls: [],
     draft: {
-      addressLabel: 'Tòa A, Quận 1',
-      description: 'Ổ cắm phòng khách chập chờn',
-      districtLabel: 'Quận 1',
+      addressLabel: 'Tòa A, Qu?n 1',
+      description: '? c?m phòng khách ch?p ch?n',
+      districtLabel: 'Qu?n 1',
       inferredProblemLabel: null,
       mediaCount: 0,
       needsServiceChoice: false,
-      problemChips: ['Ổ cắm/công tắc hỏng'],
+      problemChips: ['? c?m/công t?c h?ng'],
       serviceType: 'electrical',
       source: 'kael',
       timeChoice: 'now',
@@ -185,21 +182,11 @@ function buildWorkflow(deal: LocalDeal) {
     workerProfile: buildWorkerProfile(),
   }
 }
-
-function alertButtons(alertSpy: jest.SpyInstance, callIndex = 0) {
-  const buttons = alertSpy.mock.calls[callIndex]?.[2] as Array<{ text: string; onPress?: () => void }> | undefined
-  expect(buttons).toBeDefined()
-  return buttons as Array<{ text: string; onPress?: () => void }>
-}
-
-describe('Worker arrival lobby check-in (§32.7 Step 1)', () => {
-  let alertSpy: jest.SpyInstance
-
+describe('Worker V5 arrival check-in', () => {
   beforeEach(() => {
     mockPathname = '/(worker)/jobs'
-    mockRouteParams = { tab: 'active' }
+    mockRouteParams = { ns_worker_screen: '2.5-arrival-checkin' }
     mockReplace.mockClear()
-    mockUploadJobMediaDrafts.mockReset()
     mockUseJobChatThread.mockReturnValue({
       error: null,
       loading: false,
@@ -211,95 +198,26 @@ describe('Worker arrival lobby check-in (§32.7 Step 1)', () => {
     })
     mockWorkerKaelChatService.list.mockImplementation(pendingWorkerKaelServiceCall)
     mockWorkerKaelChatService.getTrainingConsent.mockImplementation(pendingWorkerKaelServiceCall)
-    alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
-    ;(ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true })
-    ;(ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
-      canceled: false,
-      assets: [{ uri: 'file:///lobby.jpg', fileName: 'lobby.jpg', mimeType: 'image/jpeg', fileSize: 1234 }],
-    })
     buildWorkflow(buildOnWayDeal())
   })
 
-  afterEach(() => {
-    alertSpy.mockRestore()
-  })
-
-  it('uploads a lobby photo to the access_check_in stage and sends the manual_photo check-in', async () => {
-    mockUploadJobMediaDrafts.mockResolvedValue({
-      success: true,
-      mediaRefs: ['supabase://job-media/job_test_1/access_check_in/lobby.jpg'],
-    })
-
+  it('renders the V5 arrival screen instead of the deleted split jobs surface', () => {
     render(<WorkerJobsSurface />)
 
-    fireEvent.press(screen.getByTestId('worker-jobs-next-status-action'))
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Xác nhận đã tới sảnh?',
-      expect.stringContaining('Cho thợ lên'),
-      expect.any(Array),
-    )
+    expect(screen.getByTestId('worker-v5-screen-2.5-arrival-checkin')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-checkin-hero')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-checkin-arrived-action')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-jobs-surface')).toBeNull()
+    expect(screen.queryByTestId('worker-jobs-next-status-action')).toBeNull()
+  })
 
-    const pickButton = alertButtons(alertSpy).find((button) => button.text === 'Thêm ảnh sảnh')
-    expect(pickButton).toBeDefined()
-    await act(async () => {
-      pickButton?.onPress?.()
-      await Promise.resolve()
-    })
+  it('continues to the V5 in-progress screen from the check-in primary action', async () => {
+    render(<WorkerJobsSurface />)
+
+    fireEvent.press(screen.getByTestId('worker-v5-checkin-arrived-action'))
 
     await waitFor(() => {
-      expect(mockUploadJobMediaDrafts).toHaveBeenCalledWith(
-        'job_test_1',
-        [expect.objectContaining({ uri: 'file:///lobby.jpg', type: 'image' })],
-        'access_check_in',
-      )
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
     })
-    await waitFor(() => {
-      expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('arrived', {
-        access_check_in: {
-          mode: 'manual_photo',
-          photo_urls: ['supabase://job-media/job_test_1/access_check_in/lobby.jpg'],
-        },
-      })
-    })
-  })
-
-  it('allows skipping the check-in with an explicit confirmation (plain arrived, unit stays locked)', async () => {
-    render(<WorkerJobsSurface />)
-
-    fireEvent.press(screen.getByTestId('worker-jobs-next-status-action'))
-    const skipButton = alertButtons(alertSpy).find((button) => button.text === 'Tiếp tục không check-in')
-    expect(skipButton).toBeDefined()
-    await act(async () => {
-      skipButton?.onPress?.()
-      await Promise.resolve()
-    })
-
-    const confirmButtons = alertButtons(alertSpy, 1)
-    const confirmSkip = confirmButtons.find((button) => button.text === 'Vẫn báo đã đến')
-    expect(confirmSkip).toBeDefined()
-    await act(async () => {
-      confirmSkip?.onPress?.()
-      await Promise.resolve()
-    })
-
-    expect(mockUploadJobMediaDrafts).not.toHaveBeenCalled()
-    expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('arrived')
-  })
-
-  it('does not mark arrived when the check-in photo upload fails', async () => {
-    mockUploadJobMediaDrafts.mockResolvedValue({ success: false, error: 'Không thể tải ảnh/video lên kho media' })
-
-    render(<WorkerJobsSurface />)
-
-    fireEvent.press(screen.getByTestId('worker-jobs-next-status-action'))
-    const pickButton = alertButtons(alertSpy).find((button) => button.text === 'Thêm ảnh sảnh')
-    await act(async () => {
-      pickButton?.onPress?.()
-      await Promise.resolve()
-    })
-
-    await waitFor(() => expect(mockUploadJobMediaDrafts).toHaveBeenCalled())
-    expect(mockWorkflowValue.actions.workerUpdateStatus).not.toHaveBeenCalled()
-    expect(alertSpy).toHaveBeenCalledWith('Chưa tải được ảnh check-in', 'Không thể tải ảnh/video lên kho media')
   })
 })
