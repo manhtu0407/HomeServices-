@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native'
-import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, RadialGradient, Rect } from 'react-native-svg'
 
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import type { CustomerV21ScreenId } from './types'
 import { customerV21AuraStyles as styles } from './aura-styles'

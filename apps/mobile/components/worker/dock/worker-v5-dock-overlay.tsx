@@ -1,13 +1,28 @@
-import type { ReactNode } from 'react'
-import { Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native'
+import { useRef, type ReactNode } from 'react'
+import { Image } from 'expo-image'
+import { Pressable, Text, View, useWindowDimensions, type ImageSourcePropType, type ViewStyle } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 
+import { getReducedTransparencyCustomerTokens, type CustomerThemeTokens } from '@/components/customer/customer-theme'
+import {
+  CUSTOMER_LIQUID_NAV_DOCK_HEIGHT,
+  CUSTOMER_LIQUID_NAV_GAP,
+  CUSTOMER_LIQUID_NAV_MAX_WIDTH,
+  CUSTOMER_LIQUID_NAV_ORB_SIZE,
+  CUSTOMER_LIQUID_NAV_RAIL_PADDING,
+  CUSTOMER_LIQUID_NAV_SIDE_INSET,
+  customerV21DockStyles as dockStyles,
+} from '@/components/customer/v21/dock-styles'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
-import { color, shadow } from '@/design/theme'
+import { GlassSurface } from '@/components/ui/glass-surface'
+import { motionTokens } from '@/components/ui/motion-tokens'
+import { customerTheme } from '@/design/theme'
 
-import { WorkerV5CustomerZipMintAura } from '../ui/aura-surfaces'
 import { resolveWorkerV5Language, workerV5Routes } from './routing'
 import type { WorkerDockActive, WorkerV5IconName, WorkerV5RouteParams } from './types'
+
+const workerV5DockTokens = customerTheme.lightLayer as CustomerThemeTokens
 
 const workerV5DockIcons: Record<Exclude<WorkerV5IconName, 'calendar' | 'camera' | 'chat' | 'clock' | 'document' | 'evidence' | 'map' | 'shield' | 'scope' | 'tools' | 'wallet'>, ImageSourcePropType> = {
   earnings: require('@/assets/worker-image-icons/nav-earnings.png') as ImageSourcePropType,
@@ -16,7 +31,7 @@ const workerV5DockIcons: Record<Exclude<WorkerV5IconName, 'calendar' | 'camera' 
   profile: require('@/assets/worker-image-icons/nav-profile.png') as ImageSourcePropType,
 }
 
-const workerV5DockKaelHeadIcon = require('@/assets/kael-emotions/kael-emotion-focused.png') as ImageSourcePropType
+const workerV5DockKaelNavigationIcon = require('@/assets/navigation/customer/kael.png') as ImageSourcePropType
 
 const WORKER_V5_DOCK_ROUTE_ITEMS: ReadonlyArray<{
   icon: keyof typeof workerV5DockIcons
@@ -34,7 +49,7 @@ const WORKER_V5_DOCK_KAEL_ITEM: {
   id: Extract<WorkerDockActive, 'kael'>
   label: Record<'en' | 'vi', string>
 } = {
-  icon: workerV5DockKaelHeadIcon,
+  icon: workerV5DockKaelNavigationIcon,
   id: 'kael',
   label: { en: 'Kael', vi: 'Kael' },
 }
@@ -43,186 +58,277 @@ export function WorkerDockLayoutProvider({ children }: { children: ReactNode }) 
   return <>{children}</>
 }
 
+function WorkerV5DockTabButton({
+  image,
+  label,
+  onPress,
+  selected,
+  testID,
+  tokens,
+}: {
+  image: ImageSourcePropType
+  label: string
+  onPress: () => void
+  selected: boolean
+  testID: string
+  tokens: CustomerThemeTokens
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="tab"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [dockStyles.dockItem, pressed ? dockStyles.dockItemPressed : null]}
+      testID={testID}
+    >
+      <Image contentFit="contain" source={image} style={[dockStyles.dockIcon, selected ? dockStyles.dockIconActive : null]} />
+      <Text numberOfLines={1} style={[dockStyles.dockLabel, selected ? dockStyles.dockLabelActive : null, { color: selected ? tokens.primary : tokens.muted }]}>{label}</Text>
+    </Pressable>
+  )
+}
+
 export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive }) {
   const router = useRouter()
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const language = resolveWorkerV5Language(params)
-  const { reduceTransparency } = useGlassAccessibility()
+  const { width } = useWindowDimensions()
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(workerV5DockTokens) : workerV5DockTokens
+  const activeTab = active === WORKER_V5_DOCK_KAEL_ITEM.id ? null : active
+  const liquidNavWidth = Math.min(Math.max(width - CUSTOMER_LIQUID_NAV_SIDE_INSET * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
+  const liquidDockWidth = Math.max(liquidNavWidth - CUSTOMER_LIQUID_NAV_ORB_SIZE - CUSTOMER_LIQUID_NAV_GAP, CUSTOMER_LIQUID_NAV_DOCK_HEIGHT)
+  const selectedIndex = activeTab ? WORKER_V5_DOCK_ROUTE_ITEMS.findIndex((item) => item.id === activeTab) : -1
+  const settledIndex = selectedIndex >= 0 ? selectedIndex : 0
+  const lensWidth = Math.max((liquidDockWidth - CUSTOMER_LIQUID_NAV_RAIL_PADDING * 2) / WORKER_V5_DOCK_ROUTE_ITEMS.length, 0)
+  const previousIndexRef = useRef(settledIndex)
+  const lensX = useSharedValue(settledIndex * lensWidth)
+  const lensScaleX = useSharedValue(1)
+  const lensScaleY = useSharedValue(1)
+  const lensRadius = useSharedValue(24)
+  const lensSkew = useSharedValue(0)
+  const lensSheenX = useSharedValue(-84)
+  const lensSheenOpacity = useSharedValue(0)
+  const dockShimmerX = useSharedValue((0.18 + settledIndex * 0.22) * liquidDockWidth)
+  const dockCausticX = useSharedValue(settledIndex * lensWidth)
+  const orbScale = useSharedValue(1)
+  const orbSheenX = useSharedValue(-36)
+  const orbSheenOpacity = useSharedValue(0)
+  const orbRippleScale = useSharedValue(1)
+  const orbRippleOpacity = useSharedValue(0)
+  const kaelActive = active === WORKER_V5_DOCK_KAEL_ITEM.id
+  const dockCausticWidth = Math.min(118, Math.max(lensWidth + 48, 72))
+  const dockCausticLeft = (lensWidth - dockCausticWidth) / 2
+  const liquidDockStyles = dockStyles as typeof dockStyles & Record<
+    | 'dockCaustic'
+    | 'dockCausticGlow'
+    | 'dockCausticSweep'
+    | 'dockCausticSweepBright'
+    | 'dockInnerRefraction'
+    | 'dockLens'
+    | 'dockLensBloom'
+    | 'dockLensInnerShadow'
+    | 'dockLensSheen'
+    | 'dockLensTopLight'
+    | 'dockRow'
+    | 'dockShimmer'
+    | 'kaelAccessoryBackdrop'
+    | 'kaelAccessoryCaustic'
+    | 'kaelAccessoryFrontRim'
+    | 'kaelAccessoryGlint'
+    | 'kaelAccessoryGlobeTop'
+    | 'kaelAccessoryOrbit',
+    ViewStyle
+  >
+  const liquidOrbStyles = dockStyles as typeof dockStyles & Record<
+    | 'kaelAccessoryOrbitBack'
+    | 'kaelAccessoryOrbMotion'
+    | 'kaelAccessoryPearl'
+    | 'kaelAccessoryRipple'
+    | 'kaelAccessoryStatus'
+    | 'kaelAccessoryStatusHalo'
+    | 'kaelAccessoryStatusWave',
+    ViewStyle
+  >
+  const animatedLensStyle = useAnimatedStyle(() => ({
+    borderRadius: lensRadius.value,
+    transform: [{ translateX: lensX.value }, { scaleX: lensScaleX.value }, { scaleY: lensScaleY.value }, { skewX: `${lensSkew.value}deg` }],
+    width: lensWidth,
+  }), [lensWidth])
+  const animatedLensSheenStyle = useAnimatedStyle(() => ({
+    opacity: lensSheenOpacity.value,
+    transform: [{ translateX: lensSheenX.value }, { rotate: '-12deg' }],
+  }))
+  const animatedDockShimmerStyle = useAnimatedStyle(() => ({
+    opacity: reduceTransparency ? 0 : 0.73,
+    transform: [{ translateX: dockShimmerX.value }],
+  }), [reduceTransparency])
+  const animatedDockCausticStyle = useAnimatedStyle(() => ({
+    opacity: reduceTransparency ? 0 : 1,
+    transform: [{ translateX: dockCausticX.value }],
+  }), [reduceTransparency])
+  const animatedOrbStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: orbScale.value }],
+  }))
+  const animatedOrbSheenStyle = useAnimatedStyle(() => ({
+    opacity: reduceTransparency ? 0 : orbSheenOpacity.value,
+    transform: [{ translateX: orbSheenX.value }, { rotate: '-18deg' }],
+  }), [reduceTransparency])
+  const animatedOrbRippleStyle = useAnimatedStyle(() => ({
+    opacity: reduceTransparency ? 0 : orbRippleOpacity.value,
+    transform: [{ scale: orbRippleScale.value }],
+  }), [reduceTransparency])
+
+  const animateDockSelection = (nextIndex: number) => {
+    if (nextIndex < 0) return
+
+    const targetX = nextIndex * lensWidth
+    const shimmerTarget = (0.18 + nextIndex * 0.22) * liquidDockWidth
+    const causticTarget = nextIndex * lensWidth
+    const delta = nextIndex - previousIndexRef.current
+
+    cancelAnimation(lensX)
+    cancelAnimation(lensScaleX)
+    cancelAnimation(lensScaleY)
+    cancelAnimation(lensRadius)
+    cancelAnimation(lensSkew)
+    cancelAnimation(lensSheenX)
+    cancelAnimation(lensSheenOpacity)
+    cancelAnimation(dockShimmerX)
+    cancelAnimation(dockCausticX)
+
+    if (reduceMotion || delta === 0) {
+      lensX.value = withTiming(targetX, { duration: 120 })
+      lensScaleX.value = 1
+      lensScaleY.value = 1
+      lensRadius.value = 24
+      lensSkew.value = 0
+      dockShimmerX.value = withTiming(shimmerTarget, { duration: 160 })
+      dockCausticX.value = withTiming(causticTarget, { duration: 160 })
+      previousIndexRef.current = nextIndex
+      return
+    }
+
+    const stretch = Math.min(1.21, 1.08 + Math.abs(delta) * 0.045)
+    const direction = Math.sign(delta)
+    lensX.value = withSpring(targetX, motionTokens.liquid.pill)
+    lensScaleX.value = withSequence(withTiming(stretch, { duration: 235 }), withSpring(0.965, motionTokens.liquid.press), withSpring(1, motionTokens.liquid.press))
+    lensScaleY.value = withSequence(withTiming(0.91, { duration: 235 }), withSpring(1.035, motionTokens.liquid.press), withSpring(1, motionTokens.liquid.press))
+    lensRadius.value = withSequence(withTiming(27, { duration: 235 }), withTiming(22, { duration: 190 }), withSpring(24, motionTokens.liquid.press))
+    lensSkew.value = withSequence(withTiming(direction * -2.2, { duration: 235 }), withTiming(0, { duration: 325 }))
+    lensSheenX.value = -84
+    lensSheenOpacity.value = withSequence(withTiming(0.84, { duration: 90 }), withTiming(0, { duration: 270 }))
+    lensSheenX.value = withTiming(84, { duration: 360 })
+    dockShimmerX.value = withTiming(shimmerTarget, { duration: 580 })
+    dockCausticX.value = withTiming(causticTarget, { duration: 560 })
+    previousIndexRef.current = nextIndex
+  }
+
+  const openKael = () => {
+    cancelAnimation(orbScale)
+    cancelAnimation(orbSheenX)
+    cancelAnimation(orbSheenOpacity)
+    cancelAnimation(orbRippleScale)
+    cancelAnimation(orbRippleOpacity)
+
+    if (reduceMotion) {
+      orbScale.value = 1
+      orbRippleOpacity.value = 0
+    } else {
+      orbScale.value = withSequence(withTiming(0.88, { duration: 120 }), withSpring(1.075, motionTokens.liquid.pill), withSpring(1, motionTokens.liquid.press))
+      orbSheenX.value = -36
+      orbSheenOpacity.value = withSequence(withTiming(0.76, { duration: 110 }), withTiming(0, { duration: 320 }))
+      orbSheenX.value = withTiming(36, { duration: 430 })
+      orbRippleScale.value = 1
+      orbRippleOpacity.value = 0.74
+      orbRippleScale.value = withTiming(1.75, { duration: 780 })
+      orbRippleOpacity.value = withTiming(0, { duration: 780 })
+    }
+
+    router.replace(workerV5Routes[WORKER_V5_DOCK_KAEL_ITEM.id] as never)
+  }
 
   return (
-    <View pointerEvents="box-none" style={styles.workerV5DockOverlay} testID="worker-v5-dock-overlay">
-      <View style={styles.workerV5DockRow} testID="worker-v5-dock-row">
-        <View
-          style={[styles.workerV5DockPlane, reduceTransparency ? styles.workerV5DockPlaneOpaque : null]}
-          testID="worker-v5-liquid-navigation"
+    <View pointerEvents="box-none" style={dockStyles.dockOverlay} testID="worker-v5-dock-overlay">
+      <View style={[liquidDockStyles.dockRow, { width: liquidNavWidth }]} testID="worker-v5-liquid-navigation">
+        <GlassSurface
+          backgroundColor={tokens.glass}
+          borderColor={tokens.glassBorder}
+          material="liquid"
+          mode={tokens.mode}
+          style={[dockStyles.dockPlane, { width: liquidDockWidth }]}
+          testID="worker-v5-primary-dock"
+          variant="nav"
         >
-          {WORKER_V5_DOCK_ROUTE_ITEMS.map((item) => {
-            const selected = item.id === active
-            return (
-              <Pressable
-                accessibilityLabel={item.label[language]}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                key={item.id}
-                onPress={() => router.replace(workerV5Routes[item.id] as never)}
-                style={({ pressed }) => [
-                  styles.workerV5DockItem,
-                  selected ? styles.workerV5DockItemActive : null,
-                  pressed ? styles.workerV5DockItemPressed : null,
-                ]}
-                testID={`worker-v5-dock-${item.id}`}
-              >
-                {!reduceTransparency && selected ? <WorkerV5CustomerZipMintAura scope={`WorkerV5Dock${item.id}`} style={styles.workerV5DockItemAura} /> : null}
-                <Image source={workerV5DockIcons[item.icon]} style={styles.workerV5DockIcon} />
-                <Text numberOfLines={1} style={[styles.workerV5DockLabel, selected ? styles.workerV5DockLabelActive : null]}>
-                  {item.label[language]}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </View>
+          <Animated.View pointerEvents="none" style={[liquidDockStyles.dockShimmer, { width: liquidDockWidth * 0.72 }, animatedDockShimmerStyle]} testID="worker-v5-dock-shimmer" />
+          <View pointerEvents="none" style={liquidDockStyles.dockCaustic} testID="worker-v5-dock-caustic">
+            <Animated.View pointerEvents="none" style={[liquidDockStyles.dockCausticGlow, { left: dockCausticLeft, width: dockCausticWidth }, animatedDockCausticStyle]} testID="worker-v5-dock-caustic-glow" />
+            <View pointerEvents="none" style={liquidDockStyles.dockCausticSweep} testID="worker-v5-dock-caustic-sweep" />
+            <View pointerEvents="none" style={liquidDockStyles.dockCausticSweepBright} testID="worker-v5-dock-caustic-sweep-bright" />
+          </View>
+          <View pointerEvents="none" style={liquidDockStyles.dockInnerRefraction} testID="worker-v5-dock-inner-refraction" />
+          {selectedIndex >= 0 ? (
+            <Animated.View pointerEvents="none" style={[liquidDockStyles.dockLens, animatedLensStyle]} testID="worker-v5-dock-lens">
+              <View pointerEvents="none" style={liquidDockStyles.dockLensBloom} testID="worker-v5-dock-lens-bloom" />
+              <View pointerEvents="none" style={liquidDockStyles.dockLensTopLight} testID="worker-v5-dock-lens-top-light" />
+              <Animated.View pointerEvents="none" style={[liquidDockStyles.dockLensSheen, animatedLensSheenStyle]} testID="worker-v5-dock-lens-sheen" />
+              <View pointerEvents="none" style={liquidDockStyles.dockLensInnerShadow} testID="worker-v5-dock-lens-inner-shadow" />
+            </Animated.View>
+          ) : null}
+          {WORKER_V5_DOCK_ROUTE_ITEMS.map((item, index) => (
+            <WorkerV5DockTabButton
+              image={workerV5DockIcons[item.icon]}
+              key={item.id}
+              label={item.label[language]}
+              onPress={() => {
+                animateDockSelection(index)
+                router.replace(workerV5Routes[item.id] as never)
+              }}
+              selected={activeTab === item.id}
+              testID={`worker-v5-dock-${item.id}`}
+              tokens={tokens}
+            />
+          ))}
+        </GlassSurface>
         <Pressable
           accessibilityLabel={WORKER_V5_DOCK_KAEL_ITEM.label[language]}
           accessibilityRole="button"
-          accessibilityState={{ selected: active === WORKER_V5_DOCK_KAEL_ITEM.id }}
-          onPress={() => router.replace(workerV5Routes[WORKER_V5_DOCK_KAEL_ITEM.id] as never)}
-          style={({ pressed }) => [
-            styles.workerV5DockKaelOrb,
-            active === WORKER_V5_DOCK_KAEL_ITEM.id ? styles.workerV5DockKaelOrbActive : null,
-            pressed ? styles.workerV5DockItemPressed : null,
-          ]}
+          accessibilityState={{ selected: kaelActive }}
+          onPress={openKael}
+          style={({ pressed }) => [dockStyles.kaelAccessory, kaelActive ? dockStyles.kaelAccessoryActive : null, pressed ? dockStyles.kaelAccessoryPressed : null]}
           testID="worker-v5-kael-accessory"
         >
-          {!reduceTransparency ? <WorkerV5CustomerZipMintAura scope="WorkerV5DockKaelOrb" style={styles.workerV5DockKaelOrbAura} testID="worker-v5-kael-accessory-aura" /> : null}
-          <View style={[styles.workerV5DockKaelOrbGlass, reduceTransparency ? styles.workerV5DockPlaneOpaque : null]}>
-            <Image source={WORKER_V5_DOCK_KAEL_ITEM.icon} style={styles.workerV5DockKaelOrbIcon} />
+          {!reduceTransparency ? <View pointerEvents="none" style={[dockStyles.kaelAccessoryAura, kaelActive ? dockStyles.kaelAccessoryAuraActive : null]} testID="worker-v5-kael-accessory-aura" /> : null}
+          <View pointerEvents="none" style={[liquidDockStyles.kaelAccessoryOrbit, liquidOrbStyles.kaelAccessoryOrbitBack, kaelActive ? dockStyles.kaelAccessoryOrbitActive : null]} testID="worker-v5-kael-accessory-orbit-back">
+            <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryPearl} testID="worker-v5-kael-accessory-orbit-back-pearl" />
           </View>
+          <View pointerEvents="none" style={[liquidDockStyles.kaelAccessoryOrbit, kaelActive ? dockStyles.kaelAccessoryOrbitActive : null]} testID="worker-v5-kael-accessory-orbit-front">
+            <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryPearl} testID="worker-v5-kael-accessory-orbit-front-pearl" />
+          </View>
+          <Animated.View pointerEvents="none" style={[liquidOrbStyles.kaelAccessoryRipple, animatedOrbRippleStyle]} testID="worker-v5-kael-accessory-ripple" />
+          <Animated.View style={[liquidOrbStyles.kaelAccessoryOrbMotion, animatedOrbStyle]}>
+            <GlassSurface
+              backgroundColor={tokens.glassStrong}
+              borderColor={tokens.glassBorder}
+              material="liquid"
+              mode={tokens.mode}
+              style={[dockStyles.kaelAccessoryGlass, kaelActive ? dockStyles.kaelAccessoryGlassActive : null]}
+              testID="worker-v5-kael-accessory-glass"
+              variant="control"
+            >
+              <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryBackdrop} testID="worker-v5-kael-accessory-backdrop" />
+              <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryCaustic} testID="worker-v5-kael-accessory-caustic" />
+              <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryGlobeTop} testID="worker-v5-kael-accessory-globe-top" />
+              <Image contentFit="contain" source={WORKER_V5_DOCK_KAEL_ITEM.icon} style={dockStyles.kaelAccessoryImage} />
+              <Animated.View pointerEvents="none" style={[liquidDockStyles.kaelAccessoryGlint, animatedOrbSheenStyle]} testID="worker-v5-kael-accessory-glint" />
+              <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryFrontRim} testID="worker-v5-kael-accessory-front-rim" />
+              <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryStatusHalo} testID="worker-v5-kael-accessory-status-halo" />
+              <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryStatusWave} testID="worker-v5-kael-accessory-status-wave" />
+              <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryStatus} testID="worker-v5-kael-accessory-status" />
+            </GlassSurface>
+          </Animated.View>
         </Pressable>
       </View>
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  workerV5DockIcon: {
-    height: 24,
-    width: 24,
-  },
-  workerV5DockItem: {
-    alignItems: 'center',
-    borderColor: 'transparent',
-    borderRadius: 22,
-    borderWidth: 1,
-    flex: 1,
-    gap: 3,
-    justifyContent: 'center',
-    minHeight: 54,
-    minWidth: 0,
-    overflow: 'hidden',
-    paddingHorizontal: 4,
-    paddingVertical: 6,
-    position: 'relative',
-  },
-  workerV5DockItemActive: {
-    backgroundColor: 'rgba(224,251,244,0.88)',
-    borderColor: 'rgba(127,226,215,0.8)',
-  },
-  workerV5DockItemAura: {
-    bottom: -26,
-    left: -26,
-    opacity: 0.72,
-    position: 'absolute',
-    right: -26,
-    top: -26,
-  },
-  workerV5DockItemPressed: {
-    transform: [{ scale: 0.97 }],
-  },
-  workerV5DockKaelOrb: {
-    flexShrink: 0,
-    height: 70,
-    justifyContent: 'center',
-    overflow: 'visible',
-    position: 'relative',
-    width: 70,
-  },
-  workerV5DockKaelOrbActive: {
-    transform: [{ scale: 1.015 }],
-  },
-  workerV5DockKaelOrbAura: {
-    bottom: -18,
-    left: -18,
-    opacity: 0.82,
-    position: 'absolute',
-    right: -18,
-    top: -18,
-  },
-  workerV5DockKaelOrbGlass: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.84)',
-    borderColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 35,
-    borderWidth: 1,
-    elevation: 7,
-    height: 70,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    shadowColor: '#05675D',
-    shadowOffset: { height: 15, width: 0 },
-    shadowOpacity: 0.20,
-    shadowRadius: 29,
-    width: 70,
-  },
-  workerV5DockKaelOrbIcon: {
-    height: 48,
-    width: 48,
-  },
-  workerV5DockLabel: {
-    color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
-    maxWidth: '100%',
-    textAlign: 'center',
-  },
-  workerV5DockLabelActive: {
-    color: color.brand.primaryDark,
-  },
-  workerV5DockOverlay: {
-    alignItems: 'center',
-    bottom: 16,
-    left: 0,
-    paddingHorizontal: 16,
-    position: 'absolute',
-    right: 0,
-    zIndex: 40,
-  },
-  workerV5DockPlane: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 30,
-    borderWidth: 1,
-    flex: 1,
-    flexDirection: 'row',
-    gap: 4,
-    justifyContent: 'space-between',
-    minHeight: 70,
-    minWidth: 0,
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    ...shadow.raised,
-  },
-  workerV5DockPlaneOpaque: {
-    backgroundColor: color.mint.white,
-  },
-  workerV5DockRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    maxWidth: 430,
-    width: '100%',
-  },
-})

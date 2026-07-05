@@ -1,7 +1,7 @@
 import { Redirect, Tabs, usePathname } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
 import { WorkerDockLayoutProvider, WorkerRebuildDockOverlay, type WorkerDockActive } from '@/components/worker/worker-surfaces'
-import { color } from '@/design/theme'
+import { color, signature } from '@/design/theme'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage } from '@/lib/app-language'
 
@@ -73,7 +73,7 @@ export default function WorkerLayout() {
 
   return (
     <WorkerDockLayoutProvider>
-      <View style={{ flex: 1 }}>
+      <View style={{ backgroundColor: signature.bg, flex: 1 }}>
         <Tabs tabBar={() => null} screenOptions={{ headerShown: false }}>
           <Tabs.Screen name="home" options={{ title: tabCopy.home }} />
           <Tabs.Screen name="jobs" options={{ title: tabCopy.jobs }} />

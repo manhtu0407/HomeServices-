@@ -1,7 +1,8 @@
 import { Image, Pressable, Text, View, type ImageSourcePropType } from 'react-native'
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, RadialGradient, Rect } from 'react-native-svg'
 
 import { KaelChip } from '@/components/ui/kael-primitives'
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'

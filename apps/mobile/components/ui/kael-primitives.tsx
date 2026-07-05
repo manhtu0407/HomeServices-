@@ -15,10 +15,11 @@ import {
   type ViewStyle,
   View,
 } from 'react-native'
-import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect } from 'react-native-svg'
 import { aura, color, component, glass, radius, shadow, spacing, typography } from '@/design/theme'
 import { useGlassAccessibility } from './accessibility-motion'
 import { reduceMotionAwarePressStyle } from './reduce-motion-aware-animation'
+import { AlphaStop as Stop } from './svg-alpha-stop'
 
 export type KaelButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
 export type KaelChipVariant = 'selected' | 'unselected' | 'successStatus' | 'warning' | 'error'

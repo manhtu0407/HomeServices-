@@ -1,7 +1,8 @@
 import type { ComponentType } from 'react'
 import { Text, View } from 'react-native'
-import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect } from 'react-native-svg'
 
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21ProfileMetricStyles as styles } from './profile-metrics-styles'
 

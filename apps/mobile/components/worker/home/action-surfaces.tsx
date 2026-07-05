@@ -9,9 +9,10 @@ import {
   type TextProps,
   type ViewStyle,
 } from 'react-native'
-import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, RadialGradient, Rect } from 'react-native-svg'
 
 import { MintAura } from '@/components/ui/kael-primitives'
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 
 import type { WorkerV5IconName, WorkerV5ScreenId } from '../dock/types'
 import { styles } from './action-styles'
