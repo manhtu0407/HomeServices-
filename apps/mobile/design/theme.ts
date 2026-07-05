@@ -207,24 +207,24 @@ export const aura = {
   page: {
     center: { x: 0.84, y: 0.08 },
     stops: [
-      { offset: 0, color: 'rgba(143,226,212,0.24)' },
-      { offset: 0.36, color: 'rgba(230,251,243,0.16)' },
+      { offset: 0, color: 'rgba(143,226,212,0.07)' },
+      { offset: 0.36, color: 'rgba(230,251,243,0.045)' },
       { offset: 0.7, color: 'rgba(247,255,251,0)' },
     ],
   },
   component: {
     center: { x: 0.72, y: 0.18 },
     stops: [
-      { offset: 0, color: 'rgba(143,226,212,0.30)' },
-      { offset: 0.34, color: 'rgba(230,251,243,0.18)' },
+      { offset: 0, color: 'rgba(143,226,212,0.14)' },
+      { offset: 0.34, color: 'rgba(230,251,243,0.08)' },
       { offset: 0.68, color: 'rgba(255,255,255,0)' },
     ],
   },
   iconTile: {
     center: { x: 0.5, y: 0.42 },
     stops: [
-      { offset: 0, color: 'rgba(143,226,212,0.34)' },
-      { offset: 0.46, color: 'rgba(230,251,243,0.22)' },
+      { offset: 0, color: 'rgba(143,226,212,0.16)' },
+      { offset: 0.46, color: 'rgba(230,251,243,0.10)' },
       { offset: 0.76, color: 'rgba(255,255,255,0)' },
     ],
   },

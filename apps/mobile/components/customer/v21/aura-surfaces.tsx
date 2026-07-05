@@ -10,6 +10,12 @@ type ReduceTransparencyProps = {
   reduceTransparency: boolean
 }
 
+const calmCanvasStyle = [StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]
+
+function CalmCanvas({ testID }: { testID: string }) {
+  return <View pointerEvents="none" style={calmCanvasStyle} testID={testID} />
+}
+
 export function SourceCardSkin({ testID }: { testID?: string }) {
   const { reduceTransparency } = useGlassAccessibility()
 
@@ -220,61 +226,8 @@ export function CaseWorkActionButtonAura({ scope }: { scope: string }) {
   )
 }
 
-export function HomeCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
-  if (reduceTransparency) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]} testID="customer-v21-home-canvas-aura" />
-  }
-
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill} testID="customer-v21-home-canvas-aura">
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
-        <Defs>
-          <LinearGradient id="homeCanvasBase" x1="0" x2="0" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F8FAFA" />
-            <Stop offset="0.42" stopColor="#F6F7F7" />
-            <Stop offset="1" stopColor="#F2F6F5" />
-          </LinearGradient>
-          <RadialGradient id="homeCanvasTopRight" cx="102%" cy="-4%" r="74%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.12)" />
-            <Stop offset="0.58" stopColor="rgba(151,246,232,0.045)" />
-            <Stop offset="0.74" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id="homeCanvasLeft" cx="-18%" cy="38%" r="72%">
-            <Stop offset="0" stopColor="rgba(136,241,223,0.08)" />
-            <Stop offset="0.72" stopColor="rgba(136,241,223,0)" />
-          </RadialGradient>
-          <RadialGradient id="homeCanvasMidRight" cx="104%" cy="74%" r="72%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.08)" />
-            <Stop offset="0.72" stopColor="rgba(83,220,206,0)" />
-          </RadialGradient>
-          <RadialGradient id="homeCanvasBottomLeft" cx="14%" cy="104%" r="73%">
-            <Stop offset="0" stopColor="rgba(145,232,222,0.07)" />
-            <Stop offset="0.73" stopColor="rgba(145,232,222,0)" />
-          </RadialGradient>
-          <RadialGradient id="homeCanvasSoftTop" cx="16%" cy="14%" r="42%">
-            <Stop offset="0" stopColor="rgba(89,232,207,0.06)" />
-            <Stop offset="0.72" stopColor="rgba(89,232,207,0)" />
-          </RadialGradient>
-          <RadialGradient id="homeCanvasSoftMiddle" cx="82%" cy="49%" r="46%">
-            <Stop offset="0" stopColor="rgba(122,243,223,0.05)" />
-            <Stop offset="0.72" stopColor="rgba(122,243,223,0)" />
-          </RadialGradient>
-          <RadialGradient id="homeCanvasSoftBottom" cx="25%" cy="82%" r="48%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.04)" />
-            <Stop offset="0.75" stopColor="rgba(81,216,203,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#homeCanvasBase)" height="844" width="390" />
-        <Rect fill="url(#homeCanvasTopRight)" height="844" width="390" />
-        <Rect fill="url(#homeCanvasLeft)" height="844" width="390" />
-        <Rect fill="url(#homeCanvasMidRight)" height="844" width="390" />
-        <Rect fill="url(#homeCanvasBottomLeft)" height="844" width="390" />
-        <Rect fill="url(#homeCanvasSoftTop)" height="844" width="390" />
-        <Rect fill="url(#homeCanvasSoftMiddle)" height="844" width="390" />
-        <Rect fill="url(#homeCanvasSoftBottom)" height="844" width="390" />
-      </Svg>
-    </View>
-  )
+export function HomeCanvasAura({ reduceTransparency: _reduceTransparency }: ReduceTransparencyProps) {
+  return <CalmCanvas testID="customer-v21-home-canvas-aura" />
 }
 
 export function ProfileCanvasAura({
