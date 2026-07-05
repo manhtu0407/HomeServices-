@@ -52,7 +52,7 @@ export const styles = StyleSheet.create({
   },
   homeAuraBackground: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FBFFFE',
+    backgroundColor: '#F6F7F7',
     zIndex: 0,
   },
 })

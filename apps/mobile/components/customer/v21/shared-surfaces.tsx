@@ -173,7 +173,7 @@ export function V21Screen({
   const usesProfileMintCanvas = customerV21ProfileStageIds.includes(screenId)
   const usesMintCanvas = usesHomeMintCanvas || usesLocationMintCanvas || usesFulfillmentMintCanvas || usesAgenticMintCanvas || usesProfileMintCanvas
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: usesMintCanvas ? '#F1FAF8' : tokens.canvas }]} testID={testID}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: tokens.canvas }]} testID={testID}>
       {usesHomeMintCanvas ? <HomeCanvasAura reduceTransparency={reduceTransparency} /> : null}
       {usesLocationMintCanvas ? <LocationEtaCanvasAura reduceTransparency={reduceTransparency} /> : null}
       {usesFulfillmentMintCanvas ? <FulfillmentCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} /> : null}

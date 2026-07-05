@@ -86,13 +86,13 @@ export function ChatCanvasAura({ reduceTransparency }: { reduceTransparency: boo
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
         <Defs>
           <RadialGradient id="chatCanvasTop" cx="18%" cy="0%" r="56%">
-            <Stop offset="0" stopColor="rgba(136,235,221,0.34)" />
-            <Stop offset="0.58" stopColor="rgba(136,235,221,0.10)" />
+            <Stop offset="0" stopColor="rgba(136,235,221,0.12)" />
+            <Stop offset="0.58" stopColor="rgba(136,235,221,0.035)" />
             <Stop offset="0.86" stopColor="rgba(136,235,221,0)" />
           </RadialGradient>
           <RadialGradient id="chatCanvasBottom" cx="80%" cy="92%" r="62%">
-            <Stop offset="0" stopColor="rgba(13,174,154,0.22)" />
-            <Stop offset="0.66" stopColor="rgba(13,174,154,0.06)" />
+            <Stop offset="0" stopColor="rgba(13,174,154,0.08)" />
+            <Stop offset="0.66" stopColor="rgba(13,174,154,0.025)" />
             <Stop offset="0.92" stopColor="rgba(13,174,154,0)" />
           </RadialGradient>
         </Defs>

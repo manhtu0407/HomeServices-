@@ -221,7 +221,7 @@ export function CaseWorkActionButtonAura({ scope }: { scope: string }) {
 
 export function HomeCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
   if (reduceTransparency) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F8FFFD' }]} testID="customer-v21-home-canvas-aura" />
+    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]} testID="customer-v21-home-canvas-aura" />
   }
 
   return (
@@ -229,37 +229,37 @@ export function HomeCanvasAura({ reduceTransparency }: ReduceTransparencyProps) 
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
         <Defs>
           <LinearGradient id="homeCanvasBase" x1="0" x2="0" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F9FFFD" />
-            <Stop offset="0.42" stopColor="#F3FBF9" />
-            <Stop offset="1" stopColor="#EDF9F6" />
+            <Stop offset="0" stopColor="#F8FAFA" />
+            <Stop offset="0.42" stopColor="#F6F7F7" />
+            <Stop offset="1" stopColor="#F2F6F5" />
           </LinearGradient>
           <RadialGradient id="homeCanvasTopRight" cx="102%" cy="-4%" r="74%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.34)" />
-            <Stop offset="0.58" stopColor="rgba(151,246,232,0.12)" />
+            <Stop offset="0" stopColor="rgba(80,232,210,0.12)" />
+            <Stop offset="0.58" stopColor="rgba(151,246,232,0.045)" />
             <Stop offset="0.74" stopColor="rgba(151,246,232,0)" />
           </RadialGradient>
           <RadialGradient id="homeCanvasLeft" cx="-18%" cy="38%" r="72%">
-            <Stop offset="0" stopColor="rgba(136,241,223,0.22)" />
+            <Stop offset="0" stopColor="rgba(136,241,223,0.08)" />
             <Stop offset="0.72" stopColor="rgba(136,241,223,0)" />
           </RadialGradient>
           <RadialGradient id="homeCanvasMidRight" cx="104%" cy="74%" r="72%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.24)" />
+            <Stop offset="0" stopColor="rgba(83,220,206,0.08)" />
             <Stop offset="0.72" stopColor="rgba(83,220,206,0)" />
           </RadialGradient>
           <RadialGradient id="homeCanvasBottomLeft" cx="14%" cy="104%" r="73%">
-            <Stop offset="0" stopColor="rgba(145,232,222,0.23)" />
+            <Stop offset="0" stopColor="rgba(145,232,222,0.07)" />
             <Stop offset="0.73" stopColor="rgba(145,232,222,0)" />
           </RadialGradient>
           <RadialGradient id="homeCanvasSoftTop" cx="16%" cy="14%" r="42%">
-            <Stop offset="0" stopColor="rgba(89,232,207,0.20)" />
+            <Stop offset="0" stopColor="rgba(89,232,207,0.06)" />
             <Stop offset="0.72" stopColor="rgba(89,232,207,0)" />
           </RadialGradient>
           <RadialGradient id="homeCanvasSoftMiddle" cx="82%" cy="49%" r="46%">
-            <Stop offset="0" stopColor="rgba(122,243,223,0.18)" />
+            <Stop offset="0" stopColor="rgba(122,243,223,0.05)" />
             <Stop offset="0.72" stopColor="rgba(122,243,223,0)" />
           </RadialGradient>
           <RadialGradient id="homeCanvasSoftBottom" cx="25%" cy="82%" r="48%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.15)" />
+            <Stop offset="0" stopColor="rgba(81,216,203,0.04)" />
             <Stop offset="0.75" stopColor="rgba(81,216,203,0)" />
           </RadialGradient>
         </Defs>
@@ -285,7 +285,7 @@ export function ProfileCanvasAura({
   const scope = screenId.replace(/[^a-zA-Z0-9]/g, '')
 
   if (reduceTransparency) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F8FFFD' }]} testID={`customer-v21-profile-canvas-aura-${screenId}`} />
+    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]} testID={`customer-v21-profile-canvas-aura-${screenId}`} />
   }
 
   return (
@@ -293,26 +293,26 @@ export function ProfileCanvasAura({
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
         <Defs>
           <LinearGradient id={`profileCanvasBase${scope}`} x1="0" x2="0.92" y1="0" y2="1">
-            <Stop offset="0" stopColor="#FBFFFE" />
-            <Stop offset="0.44" stopColor="#F2FBF9" />
-            <Stop offset="1" stopColor="#E6F8F3" />
+            <Stop offset="0" stopColor="#F8FAFA" />
+            <Stop offset="0.44" stopColor="#F6F7F7" />
+            <Stop offset="1" stopColor="#F2F6F5" />
           </LinearGradient>
           <RadialGradient id={`profileCanvasTop${scope}`} cx="98%" cy="1%" r="82%">
-            <Stop offset="0" stopColor="rgba(77,231,209,0.34)" />
-            <Stop offset="0.54" stopColor="rgba(151,246,232,0.13)" />
+            <Stop offset="0" stopColor="rgba(77,231,209,0.12)" />
+            <Stop offset="0.54" stopColor="rgba(151,246,232,0.045)" />
             <Stop offset="0.80" stopColor="rgba(151,246,232,0)" />
           </RadialGradient>
           <RadialGradient id={`profileCanvasHero${scope}`} cx="88%" cy="28%" r="72%">
-            <Stop offset="0" stopColor="rgba(93,235,213,0.30)" />
-            <Stop offset="0.58" stopColor="rgba(154,246,232,0.11)" />
+            <Stop offset="0" stopColor="rgba(93,235,213,0.10)" />
+            <Stop offset="0.58" stopColor="rgba(154,246,232,0.04)" />
             <Stop offset="0.82" stopColor="rgba(154,246,232,0)" />
           </RadialGradient>
           <RadialGradient id={`profileCanvasLeft${scope}`} cx="-14%" cy="42%" r="78%">
-            <Stop offset="0" stopColor="rgba(120,238,221,0.20)" />
+            <Stop offset="0" stopColor="rgba(120,238,221,0.065)" />
             <Stop offset="0.74" stopColor="rgba(120,238,221,0)" />
           </RadialGradient>
           <RadialGradient id={`profileCanvasBottom${scope}`} cx="50%" cy="106%" r="74%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.23)" />
+            <Stop offset="0" stopColor="rgba(83,220,206,0.075)" />
             <Stop offset="0.72" stopColor="rgba(83,220,206,0)" />
           </RadialGradient>
         </Defs>
@@ -335,7 +335,7 @@ export function AgenticCanvasAura({
   const scope = screenId.replace(/[^a-zA-Z0-9]/g, '')
 
   if (reduceTransparency) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F7FFFC' }]} testID={`customer-v21-agentic-canvas-aura-${screenId}`} />
+    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]} testID={`customer-v21-agentic-canvas-aura-${screenId}`} />
   }
 
   return (
@@ -343,26 +343,26 @@ export function AgenticCanvasAura({
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
         <Defs>
           <LinearGradient id={`agenticCanvasBase${scope}`} x1="0" x2="0.92" y1="0" y2="1">
-            <Stop offset="0" stopColor="#FBFFFD" />
-            <Stop offset="0.40" stopColor="#F4FCFA" />
-            <Stop offset="1" stopColor="#E9F8F4" />
+            <Stop offset="0" stopColor="#F8FAFA" />
+            <Stop offset="0.40" stopColor="#F6F7F7" />
+            <Stop offset="1" stopColor="#F2F6F5" />
           </LinearGradient>
           <RadialGradient id={`agenticCanvasTop${scope}`} cx="98%" cy="2%" r="82%">
-            <Stop offset="0" stopColor="rgba(73,232,210,0.33)" />
-            <Stop offset="0.54" stopColor="rgba(151,246,232,0.13)" />
+            <Stop offset="0" stopColor="rgba(73,232,210,0.11)" />
+            <Stop offset="0.54" stopColor="rgba(151,246,232,0.045)" />
             <Stop offset="0.80" stopColor="rgba(151,246,232,0)" />
           </RadialGradient>
           <RadialGradient id={`agenticCanvasHero${scope}`} cx="91%" cy="25%" r="70%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.27)" />
-            <Stop offset="0.58" stopColor="rgba(154,246,232,0.10)" />
+            <Stop offset="0" stopColor="rgba(83,220,206,0.09)" />
+            <Stop offset="0.58" stopColor="rgba(154,246,232,0.035)" />
             <Stop offset="0.82" stopColor="rgba(154,246,232,0)" />
           </RadialGradient>
           <RadialGradient id={`agenticCanvasLeft${scope}`} cx="-18%" cy="42%" r="76%">
-            <Stop offset="0" stopColor="rgba(132,242,223,0.20)" />
+            <Stop offset="0" stopColor="rgba(132,242,223,0.065)" />
             <Stop offset="0.76" stopColor="rgba(132,242,223,0)" />
           </RadialGradient>
           <RadialGradient id={`agenticCanvasBottom${scope}`} cx="78%" cy="104%" r="78%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.20)" />
+            <Stop offset="0" stopColor="rgba(81,216,203,0.065)" />
             <Stop offset="0.74" stopColor="rgba(81,216,203,0)" />
           </RadialGradient>
         </Defs>
@@ -378,7 +378,7 @@ export function AgenticCanvasAura({
 
 export function LocationEtaCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
   if (reduceTransparency) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6FCFA' }]} testID="customer-v21-location-canvas-aura" />
+    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]} testID="customer-v21-location-canvas-aura" />
   }
 
   return (
@@ -386,31 +386,31 @@ export function LocationEtaCanvasAura({ reduceTransparency }: ReduceTransparency
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
         <Defs>
           <LinearGradient id="locationEtaCanvasBase" x1="0" x2="0.9" y1="0" y2="1">
-            <Stop offset="0" stopColor="#FAFFFD" />
-            <Stop offset="0.45" stopColor="#F4FCFA" />
-            <Stop offset="1" stopColor="#EAF8F5" />
+            <Stop offset="0" stopColor="#F8FAFA" />
+            <Stop offset="0.45" stopColor="#F6F7F7" />
+            <Stop offset="1" stopColor="#F2F6F5" />
           </LinearGradient>
           <RadialGradient id="locationEtaCanvasTopRight" cx="98%" cy="4%" r="76%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.31)" />
-            <Stop offset="0.52" stopColor="rgba(151,246,232,0.12)" />
+            <Stop offset="0" stopColor="rgba(80,232,210,0.105)" />
+            <Stop offset="0.52" stopColor="rgba(151,246,232,0.04)" />
             <Stop offset="0.78" stopColor="rgba(151,246,232,0)" />
           </RadialGradient>
           <RadialGradient id="locationEtaCanvasHeroRight" cx="104%" cy="27%" r="66%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.25)" />
-            <Stop offset="0.60" stopColor="rgba(154,246,232,0.10)" />
+            <Stop offset="0" stopColor="rgba(83,220,206,0.08)" />
+            <Stop offset="0.60" stopColor="rgba(154,246,232,0.035)" />
             <Stop offset="0.82" stopColor="rgba(154,246,232,0)" />
           </RadialGradient>
           <RadialGradient id="locationEtaCanvasLeftWash" cx="-16%" cy="35%" r="72%">
-            <Stop offset="0" stopColor="rgba(132,242,223,0.19)" />
+            <Stop offset="0" stopColor="rgba(132,242,223,0.06)" />
             <Stop offset="0.74" stopColor="rgba(132,242,223,0)" />
           </RadialGradient>
           <RadialGradient id="locationEtaCanvasMid" cx="75%" cy="55%" r="58%">
-            <Stop offset="0" stopColor="rgba(230,251,243,0.34)" />
-            <Stop offset="0.48" stopColor="rgba(130,236,220,0.10)" />
+            <Stop offset="0" stopColor="rgba(230,251,243,0.12)" />
+            <Stop offset="0.48" stopColor="rgba(130,236,220,0.035)" />
             <Stop offset="0.80" stopColor="rgba(130,236,220,0)" />
           </RadialGradient>
           <RadialGradient id="locationEtaCanvasBottom" cx="18%" cy="105%" r="80%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.18)" />
+            <Stop offset="0" stopColor="rgba(81,216,203,0.055)" />
             <Stop offset="0.72" stopColor="rgba(81,216,203,0)" />
           </RadialGradient>
         </Defs>
@@ -434,7 +434,7 @@ export function FulfillmentCanvasAura({
   const scope = screenId.replace(/[^a-zA-Z0-9]/g, '')
 
   if (reduceTransparency) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F3FBF8' }]} testID={`customer-v21-fulfillment-canvas-aura-${screenId}`} />
+    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]} testID={`customer-v21-fulfillment-canvas-aura-${screenId}`} />
   }
 
   return (
@@ -442,26 +442,26 @@ export function FulfillmentCanvasAura({
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
         <Defs>
           <LinearGradient id={`fulfillmentCanvasBase${scope}`} x1="0" x2="0.92" y1="0" y2="1">
-            <Stop offset="0" stopColor="#FBFFFD" />
-            <Stop offset="0.42" stopColor="#F2FBF8" />
-            <Stop offset="1" stopColor="#E7F7F3" />
+            <Stop offset="0" stopColor="#F8FAFA" />
+            <Stop offset="0.42" stopColor="#F6F7F7" />
+            <Stop offset="1" stopColor="#F2F6F5" />
           </LinearGradient>
           <RadialGradient id={`fulfillmentCanvasTop${scope}`} cx="100%" cy="2%" r="82%">
-            <Stop offset="0" stopColor="rgba(73,232,210,0.33)" />
-            <Stop offset="0.54" stopColor="rgba(151,246,232,0.12)" />
+            <Stop offset="0" stopColor="rgba(73,232,210,0.11)" />
+            <Stop offset="0.54" stopColor="rgba(151,246,232,0.04)" />
             <Stop offset="0.80" stopColor="rgba(151,246,232,0)" />
           </RadialGradient>
           <RadialGradient id={`fulfillmentCanvasHero${scope}`} cx="86%" cy="26%" r="70%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.27)" />
-            <Stop offset="0.58" stopColor="rgba(154,246,232,0.10)" />
+            <Stop offset="0" stopColor="rgba(83,220,206,0.09)" />
+            <Stop offset="0.58" stopColor="rgba(154,246,232,0.035)" />
             <Stop offset="0.82" stopColor="rgba(154,246,232,0)" />
           </RadialGradient>
           <RadialGradient id={`fulfillmentCanvasLeft${scope}`} cx="-18%" cy="45%" r="76%">
-            <Stop offset="0" stopColor="rgba(132,242,223,0.21)" />
+            <Stop offset="0" stopColor="rgba(132,242,223,0.07)" />
             <Stop offset="0.76" stopColor="rgba(132,242,223,0)" />
           </RadialGradient>
           <RadialGradient id={`fulfillmentCanvasBottom${scope}`} cx="82%" cy="104%" r="78%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.20)" />
+            <Stop offset="0" stopColor="rgba(81,216,203,0.065)" />
             <Stop offset="0.74" stopColor="rgba(81,216,203,0)" />
           </RadialGradient>
         </Defs>
