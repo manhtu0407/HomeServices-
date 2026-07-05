@@ -9,9 +9,10 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, RadialGradient, Rect } from 'react-native-svg'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { useAppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { CaseWideMintAura, CaseWorkCardAura, SourceCardSkin, ZipMintAura } from './aura-surfaces'

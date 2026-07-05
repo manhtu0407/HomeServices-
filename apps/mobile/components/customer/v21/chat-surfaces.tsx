@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native'
-import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Circle, Defs, RadialGradient, Rect } from 'react-native-svg'
 
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21ChatStyles as styles } from './chat-styles'
 

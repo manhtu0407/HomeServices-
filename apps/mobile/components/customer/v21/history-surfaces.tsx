@@ -1,7 +1,8 @@
 import type { ComponentType, ReactNode } from 'react'
 import { Image, Text, View, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
-import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect } from 'react-native-svg'
 
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import type { CustomerThemeTokens } from '../customer-theme'
 import {
   customerV21CaseScopeStateDotSurface,

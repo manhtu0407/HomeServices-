@@ -1,6 +1,7 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
-import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect } from 'react-native-svg'
 
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { styles } from './aura-styles'
 
 export function WorkerV5CustomerCaseWideMintAura({
