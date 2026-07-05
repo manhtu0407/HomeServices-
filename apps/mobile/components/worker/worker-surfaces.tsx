@@ -1,10 +1,12 @@
 export {
   WorkerChatSurface,
-  WorkerDockLayoutProvider,
   WorkerEarningsSurface,
   WorkerHomeSurface,
   WorkerJobsSurface,
   WorkerProfileSurface,
-  WorkerRebuildDockOverlay,
 } from './worker-v5-flow'
-export type { WorkerDockActive } from './worker-v5-flow'
+export {
+  WorkerDockLayoutProvider,
+  WorkerRebuildDockOverlay,
+} from './dock/worker-v5-dock-overlay'
+export type { WorkerDockActive } from './dock/types'

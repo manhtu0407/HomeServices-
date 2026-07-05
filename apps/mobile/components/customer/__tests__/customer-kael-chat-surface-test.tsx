@@ -1,28 +1,39 @@
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
-const readSource = (relativePath: string) =>
+const readCustomerSource = (relativePath: string) =>
   readFileSync(resolve(__dirname, '..', relativePath), 'utf-8').replace(/\r\n/g, '\n')
+const readMobileSource = (relativePath: string) =>
+  readFileSync(resolve(__dirname, '../../..', relativePath), 'utf-8').replace(/\r\n/g, '\n')
 
 describe('active customer Kael chat surface wiring', () => {
-  it('exports the split Kael chat stack instead of the archived v21 chat surface', () => {
-    const source = readSource('kael-chat/kael-chat-surface.tsx')
+  it('routes Customer Kael through the V21 surface instead of the deleted split stack', () => {
+    const kaelRoute = readMobileSource('app/(customer)/kael.tsx')
+    const kaelChatRoute = readMobileSource('app/(customer)/kael-chat.tsx')
+    const bridge = readCustomerSource('customer-surfaces.tsx')
+    const surface = readCustomerSource('v21/surfaces.tsx')
+    const chatView = readCustomerSource('v21/chat-stateful-surfaces.tsx')
 
-    expect(source).toContain('export function KaelChatSurface')
-    expect(source).toContain('testID="customer-kael-chat-stack-screen"')
-    expect(source).toContain('KaelChatThread')
-    expect(source).not.toContain('CustomerV21KaelChatSurface')
-    expect(source).not.toContain("from '../v21/surfaces'")
-    expect(source).not.toContain('export { CustomerV21KaelChatSurface as KaelChatSurface }')
+    expect(kaelRoute).toContain('CustomerKaelSurface')
+    expect(kaelRoute).toContain('@/components/customer/customer-surfaces')
+    expect(kaelChatRoute).toContain('CustomerKaelSurface')
+    expect(kaelChatRoute).toContain('@/components/customer/customer-surfaces')
+    expect(kaelRoute).not.toContain('@/components/customer/kael-chat/kael-chat-surface')
+    expect(kaelChatRoute).not.toContain('@/components/customer/kael-chat/kael-chat-surface')
+    expect(bridge).toContain('CustomerKaelSurface')
+    expect(surface).toContain('export function KaelChatSurface')
+    expect(chatView).toContain('testID="customer-v21-kael-chat"')
+    expect(chatView).toContain('customer-v21-screen-2.4-chat-normal')
+    expect(chatView).not.toContain('customer-kael-chat-stack-screen')
   })
 
-  it('keeps full-screen green ambient washes out of the active Kael route', () => {
-    const surface = readSource('kael-chat/kael-chat-surface.tsx')
-    const styles = readSource('kael-chat/styles.ts')
+  it('keeps full-screen mint washes soft on the active V21 Kael route', () => {
+    const canvas = readCustomerSource('v21/chat-surfaces.tsx')
+    const shared = readCustomerSource('v21/shared-surfaces.tsx')
 
-    expect(surface).not.toContain('customer-kael-chat-liquid-wash')
-    expect(surface).not.toContain('styles.chatAmbientField')
-    expect(styles).not.toContain('chatAmbientMint')
-    expect(styles).not.toContain('chatAmbientSweep')
+    expect(canvas).toContain('customer-v21-chat-canvas-aura')
+    expect(canvas).not.toContain('rgba(136,235,221,0.34)')
+    expect(canvas).not.toContain('rgba(13,174,154,0.22)')
+    expect(shared).toContain('{ backgroundColor: tokens.canvas }')
   })
 })

@@ -61,26 +61,26 @@ export function WorkerV5CustomerFulfillmentCanvasAura({
       <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
         <Defs>
           <LinearGradient id={baseId} x1="0" x2="0.92" y1="0" y2="1">
-            <Stop offset="0" stopColor="#FBFFFD" />
-            <Stop offset="0.42" stopColor="#F2FBF8" />
-            <Stop offset="1" stopColor="#E7F7F3" />
+            <Stop offset="0" stopColor="#F8FAFA" />
+            <Stop offset="0.42" stopColor="#F6F7F7" />
+            <Stop offset="1" stopColor="#F2F6F5" />
           </LinearGradient>
           <RadialGradient id={topId} cx="100%" cy="2%" r="82%">
-            <Stop offset="0" stopColor="rgba(73,232,210,0.33)" />
-            <Stop offset="0.54" stopColor="rgba(151,246,232,0.12)" />
+            <Stop offset="0" stopColor="rgba(73,232,210,0.11)" />
+            <Stop offset="0.54" stopColor="rgba(151,246,232,0.04)" />
             <Stop offset="0.80" stopColor="rgba(151,246,232,0)" />
           </RadialGradient>
           <RadialGradient id={heroId} cx="86%" cy="26%" r="70%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.27)" />
-            <Stop offset="0.58" stopColor="rgba(154,246,232,0.10)" />
+            <Stop offset="0" stopColor="rgba(83,220,206,0.09)" />
+            <Stop offset="0.58" stopColor="rgba(154,246,232,0.035)" />
             <Stop offset="0.82" stopColor="rgba(154,246,232,0)" />
           </RadialGradient>
           <RadialGradient id={leftId} cx="-18%" cy="45%" r="76%">
-            <Stop offset="0" stopColor="rgba(132,242,223,0.21)" />
+            <Stop offset="0" stopColor="rgba(132,242,223,0.07)" />
             <Stop offset="0.76" stopColor="rgba(132,242,223,0)" />
           </RadialGradient>
           <RadialGradient id={bottomId} cx="82%" cy="104%" r="78%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.20)" />
+            <Stop offset="0" stopColor="rgba(81,216,203,0.065)" />
             <Stop offset="0.74" stopColor="rgba(81,216,203,0)" />
           </RadialGradient>
         </Defs>
@@ -262,37 +262,37 @@ export function WorkerV5HomeAuraBackground() {
       >
         <Defs>
           <LinearGradient id="workerV5HomeCanvasBase" x1="0" x2="0" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F9FFFD" />
-            <Stop offset="0.42" stopColor="#F3FBF9" />
-            <Stop offset="1" stopColor="#EDF9F6" />
+            <Stop offset="0" stopColor="#F8FAFA" />
+            <Stop offset="0.42" stopColor="#F6F7F7" />
+            <Stop offset="1" stopColor="#F2F6F5" />
           </LinearGradient>
           <RadialGradient id="workerV5HomeCanvasTopRight" cx="102%" cy="-4%" r="74%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.34)" />
-            <Stop offset="0.58" stopColor="rgba(151,246,232,0.12)" />
+            <Stop offset="0" stopColor="rgba(80,232,210,0.12)" />
+            <Stop offset="0.58" stopColor="rgba(151,246,232,0.045)" />
             <Stop offset="0.74" stopColor="rgba(151,246,232,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5HomeCanvasLeft" cx="-18%" cy="38%" r="72%">
-            <Stop offset="0" stopColor="rgba(136,241,223,0.22)" />
+            <Stop offset="0" stopColor="rgba(136,241,223,0.08)" />
             <Stop offset="0.72" stopColor="rgba(136,241,223,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5HomeCanvasMidRight" cx="104%" cy="74%" r="72%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.24)" />
+            <Stop offset="0" stopColor="rgba(83,220,206,0.08)" />
             <Stop offset="0.72" stopColor="rgba(83,220,206,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5HomeCanvasBottomLeft" cx="14%" cy="104%" r="73%">
-            <Stop offset="0" stopColor="rgba(145,232,222,0.23)" />
+            <Stop offset="0" stopColor="rgba(145,232,222,0.07)" />
             <Stop offset="0.73" stopColor="rgba(145,232,222,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5HomeCanvasSoftTop" cx="16%" cy="14%" r="42%">
-            <Stop offset="0" stopColor="rgba(89,232,207,0.20)" />
+            <Stop offset="0" stopColor="rgba(89,232,207,0.06)" />
             <Stop offset="0.72" stopColor="rgba(89,232,207,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5HomeCanvasSoftMiddle" cx="82%" cy="49%" r="46%">
-            <Stop offset="0" stopColor="rgba(122,243,223,0.18)" />
+            <Stop offset="0" stopColor="rgba(122,243,223,0.05)" />
             <Stop offset="0.72" stopColor="rgba(122,243,223,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5HomeCanvasSoftBottom" cx="25%" cy="82%" r="48%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.15)" />
+            <Stop offset="0" stopColor="rgba(81,216,203,0.04)" />
             <Stop offset="0.75" stopColor="rgba(81,216,203,0)" />
           </RadialGradient>
         </Defs>
@@ -365,37 +365,37 @@ export function WorkerV5EarningsHomeAuraBackground() {
       >
         <Defs>
           <LinearGradient id="workerV5EarningsCanvasBase" x1="0" x2="0" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F9FFFD" />
-            <Stop offset="0.42" stopColor="#F3FBF9" />
-            <Stop offset="1" stopColor="#EDF9F6" />
+            <Stop offset="0" stopColor="#F8FAFA" />
+            <Stop offset="0.42" stopColor="#F6F7F7" />
+            <Stop offset="1" stopColor="#F2F6F5" />
           </LinearGradient>
           <RadialGradient id="workerV5EarningsCanvasTopRight" cx="102%" cy="-4%" r="74%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.34)" />
-            <Stop offset="0.58" stopColor="rgba(151,246,232,0.12)" />
+            <Stop offset="0" stopColor="rgba(80,232,210,0.12)" />
+            <Stop offset="0.58" stopColor="rgba(151,246,232,0.045)" />
             <Stop offset="0.74" stopColor="rgba(151,246,232,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5EarningsCanvasLeft" cx="-18%" cy="38%" r="72%">
-            <Stop offset="0" stopColor="rgba(136,241,223,0.22)" />
+            <Stop offset="0" stopColor="rgba(136,241,223,0.08)" />
             <Stop offset="0.72" stopColor="rgba(136,241,223,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5EarningsCanvasMidRight" cx="104%" cy="74%" r="72%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.24)" />
+            <Stop offset="0" stopColor="rgba(83,220,206,0.08)" />
             <Stop offset="0.72" stopColor="rgba(83,220,206,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5EarningsCanvasBottomLeft" cx="14%" cy="104%" r="73%">
-            <Stop offset="0" stopColor="rgba(145,232,222,0.23)" />
+            <Stop offset="0" stopColor="rgba(145,232,222,0.07)" />
             <Stop offset="0.73" stopColor="rgba(145,232,222,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5EarningsCanvasSoftTop" cx="16%" cy="14%" r="42%">
-            <Stop offset="0" stopColor="rgba(89,232,207,0.20)" />
+            <Stop offset="0" stopColor="rgba(89,232,207,0.06)" />
             <Stop offset="0.72" stopColor="rgba(89,232,207,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5EarningsCanvasSoftMiddle" cx="82%" cy="49%" r="46%">
-            <Stop offset="0" stopColor="rgba(122,243,223,0.18)" />
+            <Stop offset="0" stopColor="rgba(122,243,223,0.05)" />
             <Stop offset="0.72" stopColor="rgba(122,243,223,0)" />
           </RadialGradient>
           <RadialGradient id="workerV5EarningsCanvasSoftBottom" cx="25%" cy="82%" r="48%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.15)" />
+            <Stop offset="0" stopColor="rgba(81,216,203,0.04)" />
             <Stop offset="0.75" stopColor="rgba(81,216,203,0)" />
           </RadialGradient>
         </Defs>

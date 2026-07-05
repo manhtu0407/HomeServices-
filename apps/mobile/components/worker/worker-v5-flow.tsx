@@ -24,7 +24,7 @@ import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, type LocalDeal, type ServiceType } fro
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { KaelButton, KaelTextField, MintAura } from '@/components/ui/kael-primitives'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
-import { color, glass, radius, shadow, typography } from '@/design/theme'
+import { color, glass, radius, shadow, signature, typography } from '@/design/theme'
 import type { KaelChatProgress, WorkerKaelChatTurn } from '@/lib/api-types'
 import { getMobileApiAuthHeaders, mobileApiUrl } from '@/lib/api'
 import { setAppLanguage, type AppLanguage, localizedServiceLabel, localizedStatusLabel } from '@/lib/app-language'
@@ -34,7 +34,6 @@ import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import { kaelMemoryService, placesService, workerKaelChatService } from '@/lib/services'
 import type {
-  WorkerDockActive,
   WorkerV5IconName,
   WorkerV5RouteParams,
   WorkerV5ScreenDefinition,
@@ -286,66 +285,6 @@ const workerV5PhoneIcon = require('@/assets/client-image-icons/client-phone-v2.p
 const WORKER_V5_PROFILE_ICON_VISUAL_BOOST = new Set<WorkerV5IconName>(['document', 'scope'])
 
 const WORKER_V5_SUPPORTED_SERVICES: readonly ServiceType[] = ['electrical', 'plumbing', 'cleaning']
-
-const WORKER_V5_DOCK_ITEMS: ReadonlyArray<{
-  icon: WorkerV5IconName
-  id: WorkerDockActive
-  label: Record<AppLanguage, string>
-}> = [
-  { icon: 'home', id: 'home', label: { en: 'Home', vi: 'Trang chủ' } },
-  { icon: 'jobs', id: 'jobs', label: { en: 'Jobs', vi: 'Công việc' } },
-  { icon: 'chat', id: 'kael', label: { en: 'Kael', vi: 'Kael' } },
-  { icon: 'earnings', id: 'earnings', label: { en: 'Earnings', vi: 'Thu nhập' } },
-  { icon: 'profile', id: 'profile', label: { en: 'Profile', vi: 'Hồ sơ' } },
-]
-
-export function WorkerDockLayoutProvider({ children }: { children: ReactNode }) {
-  return <>{children}</>
-}
-
-export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive }) {
-  const router = useRouter()
-  const params = useLocalSearchParams<WorkerV5RouteParams>()
-  const language = resolveWorkerV5Language(params)
-  const { reduceTransparency } = useGlassAccessibility()
-
-  return (
-    <View pointerEvents="box-none" style={styles.workerV5DockOverlay} testID="worker-v5-dock-overlay">
-      <View
-        style={[styles.workerV5DockPlane, reduceTransparency ? styles.workerV5DockPlaneOpaque : null]}
-        testID="worker-v5-liquid-navigation"
-      >
-        {WORKER_V5_DOCK_ITEMS.map((item) => {
-          const selected = item.id === active
-          return (
-            <Pressable
-              accessibilityLabel={item.label[language]}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              key={item.id}
-              onPress={() => router.replace(workerV5Routes[item.id] as never)}
-              style={({ pressed }) => [
-                styles.workerV5DockItem,
-                selected ? styles.workerV5DockItemActive : null,
-                pressed ? styles.workerV5DockItemPressed : null,
-              ]}
-              testID={`worker-v5-dock-${item.id}`}
-            >
-              {!reduceTransparency && selected ? <WorkerV5CustomerZipMintAura scope={`WorkerV5Dock${item.id}`} style={styles.workerV5DockItemAura} /> : null}
-              <Image source={workerV5Icons[item.icon]} style={styles.workerV5DockIcon} />
-              <Text
-                numberOfLines={1}
-                style={[styles.workerV5DockLabel, selected ? styles.workerV5DockLabelActive : null]}
-              >
-                {item.label[language]}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </View>
-    </View>
-  )
-}
 
 function useWorkerV5Screen(section: WorkerV5Section) {
   const params = useLocalSearchParams<WorkerV5RouteParams>()
@@ -4843,81 +4782,6 @@ function workerV5TravelHeaderSubtitle(deal: LocalDeal | null, language: AppLangu
 }
 
 const styles = StyleSheet.create({
-  workerV5DockOverlay: {
-    alignItems: 'center',
-    bottom: 16,
-    left: 0,
-    paddingHorizontal: 16,
-    position: 'absolute',
-    right: 0,
-    zIndex: 40,
-  },
-  workerV5DockPlane: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 30,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 4,
-    justifyContent: 'space-between',
-    maxWidth: 430,
-    minHeight: 70,
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    width: '100%',
-    ...shadow.raised,
-  },
-  workerV5DockPlaneOpaque: {
-    backgroundColor: color.mint.white,
-  },
-  workerV5DockItem: {
-    alignItems: 'center',
-    borderColor: 'transparent',
-    borderRadius: 22,
-    borderWidth: 1,
-    flex: 1,
-    gap: 3,
-    justifyContent: 'center',
-    minHeight: 54,
-    minWidth: 0,
-    overflow: 'hidden',
-    paddingHorizontal: 4,
-    paddingVertical: 6,
-    position: 'relative',
-  },
-  workerV5DockItemActive: {
-    backgroundColor: 'rgba(224,251,244,0.88)',
-    borderColor: 'rgba(127,226,215,0.8)',
-  },
-  workerV5DockItemAura: {
-    bottom: -26,
-    left: -26,
-    opacity: 0.72,
-    position: 'absolute',
-    right: -26,
-    top: -26,
-  },
-  workerV5DockItemPressed: {
-    transform: [{ scale: 0.97 }],
-  },
-  workerV5DockIcon: {
-    height: 24,
-    width: 24,
-  },
-  workerV5DockLabel: {
-    color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    lineHeight: 12,
-    maxWidth: '100%',
-    textAlign: 'center',
-  },
-  workerV5DockLabelActive: {
-    color: color.brand.primaryDark,
-  },
   workerCustomerFontText: {
     fontFamily: typography.fontFamily,
   },
@@ -6449,10 +6313,10 @@ const styles = StyleSheet.create({
     width: 8,
   },
   surfaceGlass: {
-    backgroundColor: color.mint.canvas,
+    backgroundColor: signature.bg,
   },
   surfaceSolid: {
-    backgroundColor: color.mint.white,
+    backgroundColor: color.surface.base,
   },
   timerCaption: {
     color: color.text.muted,
