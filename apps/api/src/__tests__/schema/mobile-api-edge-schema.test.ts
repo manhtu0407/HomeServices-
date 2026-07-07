@@ -1119,7 +1119,8 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeRouter).toContain('parseWorkerAccessCheckIn')
     expect(edgeRouter).toContain('mode === "manual_photo" && (!photoUrls || photoUrls.length === 0)')
     expect(mobileProvider).toContain('job.address_access.exact_unit_released && hasSpecificWorkerRouteAddress')
-    expect(workerSurface).toContain('Exact unit unlocks after lobby check-in and identity check.')
+    // V21 worker rebuild reworded the exact-unit copy; assert the current worker-facing unlock label.
+    expect(workerSurface).toContain('Đã mở căn hộ')
   })
 
   it('keeps Plan31 production advisor fixes for helper search paths and RLS initplan', () => {
