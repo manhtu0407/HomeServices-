@@ -1,0 +1,68 @@
+{
+  "regions": ["bac", "trung", "nam"],
+  "default_region": "nam",
+  "scoring": {
+    "weights": { "A": 3, "B": 2, "C": 1 },
+    "guess_threshold": 3,
+    "recognize_threshold": 5,
+    "conflict_penalty": 3,
+    "recognize_requires_tier_a_or_two_b": true
+  },
+  "tiers": {
+    "A": {
+      "description": "Strong, near-decisive markers (mostly Trung / Bac-Trung). Detect-only: NEVER mirrored back, so Kael never parrots strong dialect.",
+      "mirror_eligible": false,
+      "markers": [
+        { "term": "mô", "region": "trung", "gloss": "đâu" },
+        { "term": "rứa", "region": "trung", "gloss": "thế/vậy" },
+        { "term": "ni", "region": "trung", "gloss": "này" },
+        { "term": "nớ", "region": "trung", "gloss": "ấy" },
+        { "term": "ri", "region": "trung", "gloss": "thế này" },
+        { "term": "nỏ", "region": "trung", "gloss": "không" },
+        { "term": "mần", "region": "trung", "gloss": "làm" },
+        { "term": "hầy", "region": "trung", "gloss": "nhỉ" }
+      ]
+    },
+    "B": {
+      "description": "Lexical, medium confidence. Mirror-eligible: Kael may gently echo the customer's own everyday word choice.",
+      "mirror_eligible": true,
+      "markers": [
+        { "term": "chén", "region": "nam", "gloss": "bát ăn" },
+        { "term": "muỗng", "region": "nam", "gloss": "thìa" },
+        { "term": "quẹo", "region": "nam", "gloss": "rẽ" },
+        { "term": "hổng", "region": "nam", "gloss": "không" },
+        { "term": "hông", "region": "nam", "gloss": "không" },
+        { "term": "bát", "region": "bac", "gloss": "chén ăn" },
+        { "term": "thìa", "region": "bac", "gloss": "muỗng" },
+        { "term": "đọi", "region": "trung", "gloss": "bát/chén" },
+        { "term": "mạ", "region": "trung", "gloss": "mẹ" }
+      ]
+    },
+    "C": {
+      "description": "Weak particles and phonetic spellings. Mirror-eligible only for warm neutral particles.",
+      "mirror_eligible": true,
+      "markers": [
+        { "term": "nha", "region": "nam", "gloss": "particle", "mirror": true },
+        { "term": "nghen", "region": "nam", "gloss": "particle", "mirror": true },
+        { "term": "nghe", "region": "nam", "gloss": "particle", "mirror": true },
+        { "term": "nè", "region": "nam", "gloss": "particle", "mirror": true },
+        { "term": "hén", "region": "nam", "gloss": "particle", "mirror": true },
+        { "term": "dzô", "region": "nam", "gloss": "vô", "mirror": false },
+        { "term": "dzui", "region": "nam", "gloss": "vui", "mirror": false },
+        { "term": "nhé", "region": "bac", "gloss": "particle", "mirror": true },
+        { "term": "nhá", "region": "bac", "gloss": "particle", "mirror": true },
+        { "term": "đấy", "region": "bac", "gloss": "particle", "mirror": false },
+        { "term": "cơ", "region": "bac", "gloss": "particle", "mirror": false },
+        { "term": "hè", "region": "trung", "gloss": "particle", "mirror": false }
+      ]
+    }
+  },
+  "negative_rules": [
+    "Never state or ask the customer's region ('Bạn người miền ... à?').",
+    "Never infer ethnicity, class, hometown, or any demographic from register.",
+    "Never store region as a durable customer attribute; it is per-conversation only.",
+    "Never log the region inference together with PII (RULES #9).",
+    "Conflicting strong markers or no markers => neutral (default_region), never a guess.",
+    "Never mimic strong (tier A) dialect back to the customer; mirror-lite echoes only the customer's own everyday words and warm particles."
+  ]
+}

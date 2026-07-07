@@ -16,7 +16,6 @@ import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobil
 const repoRoot = join(__dirname, '../../../../../')
 
 type ForbiddenLanguageFile = {
-  charter_version: string
   forbidden_phrases: Record<string, string[]>
 }
 
@@ -42,7 +41,10 @@ describe('Kael Track D guardrails', () => {
     const forbidden = readForbiddenLanguage()
     const charter = getPublicKaelCharter()
 
-    expect(KAEL_CHARTER_VERSION).toBe(forbidden.charter_version)
+    const manifest = JSON.parse(
+      readFileSync(join(repoRoot, 'packages/shared/kael/charter/version.json'), 'utf8'),
+    ) as { charter_version: string }
+    expect(KAEL_CHARTER_VERSION).toBe(manifest.charter_version)
     expect([...charter.forbidden_categories].sort()).toEqual(Object.keys(forbidden.forbidden_phrases).sort())
 
     for (const [category, phrases] of Object.entries(forbidden.forbidden_phrases)) {

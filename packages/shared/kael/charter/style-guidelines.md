@@ -1,10 +1,3 @@
----
-charter_version: 2026-05-25.p8
-status: TUNABLE
-owner: Tu
-change_policy: Reviewed add-only config change
-last_modified: 2026-05-25
----
 
 # Style Guidelines
 

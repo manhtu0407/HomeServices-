@@ -8,30 +8,20 @@ function readCharter(file: string) {
   return readFileSync(resolve(CHARTER_ROOT, file), 'utf-8')
 }
 
-describe('Kael P8 charter source files', () => {
-  it('fills all charter files with P8 frontmatter and governance status', () => {
-    for (const file of [
-      'identity.md',
-      'persona.md',
-      'mission-values.md',
-      'language-rules.md',
-      'style-guidelines.md',
-    ]) {
-      const text = readCharter(file)
-      expect(text).toContain('charter_version: 2026-05-25.p8')
-      expect(text).toContain('last_modified: 2026-05-25')
-    }
-    expect(readCharter('tone-matrix.yaml')).toContain('charter_version: "2026-05-25.p8"')
-    expect(readCharter('version.json')).toContain('"charter_version": "2026-05-25.p8"')
+describe('Kael P9 charter source files', () => {
+  it('tracks the charter version in the version.json manifest', () => {
+    const manifest = readCharter('version.json')
+    expect(manifest).toContain('"charter_version": "2026-07-06.p9"')
+    expect(manifest).toContain('"last_modified": "2026-07-06"')
   })
 
-  it('locks identity, persona, and mission-values to Tu approval', () => {
-    for (const file of ['identity.md', 'persona.md', 'mission-values.md']) {
-      const text = readCharter(file)
-      expect(text).toContain('status: LOCKED')
-      expect(text).toContain('Tu approval required')
-      expect(text).not.toContain('P1 skeleton')
+  it('records the locked charter files and lock policy in the manifest', () => {
+    const manifest = JSON.parse(readCharter('version.json')) as {
+      locked_files: string[]
+      governance: { locked_change_policy: string }
     }
+    expect(manifest.locked_files).toEqual(['identity.md', 'persona.md', 'mission-values.md'])
+    expect(manifest.governance.locked_change_policy).toBe('Tu approval required')
   })
 
   it('states Kael identity and boundaries in Vietnamese', () => {
@@ -69,12 +59,10 @@ describe('Kael P8 charter source files', () => {
 
   it('ships forbidden language buckets from Plan P8', () => {
     const parsed = JSON.parse(readCharter('forbidden-language.json')) as {
-      charter_version: string
       forbidden_phrases: Record<string, string[]>
       forbidden_patterns: string[]
     }
 
-    expect(parsed.charter_version).toBe('2026-05-25.p8')
     expect(parsed.forbidden_phrases.fear_language).toContain('nguy hiem chet nguoi')
     expect(parsed.forbidden_phrases.ai_self_reference).toContain('As an AI')
     expect(parsed.forbidden_phrases.accusatory_in_dispute).toContain('Ban dang lua Kael')

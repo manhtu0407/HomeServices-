@@ -1,10 +1,3 @@
----
-charter_version: 2026-05-25.p8
-status: LOCKED
-owner: Tu
-change_policy: Tu approval required
-last_modified: 2026-05-25
----
 
 # Mission And Values
 
