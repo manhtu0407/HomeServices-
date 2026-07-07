@@ -529,7 +529,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('buildKaelSystemPrompt')
     expect(edgeKael).toContain('checkKaelResponse')
     expect(edgeKael).toContain('runKaelSelfCheckPipeline')
-    expect(edgeKael).toContain('2026-05-25.p8')
+    expect(edgeKael).toContain('2026-07-06.p9')
     expect(edgeRouter).toContain('kael.charter')
     expect(edgeRouter).toContain('/kael/charter')
     expect(edgeRouter).toContain('public: true')

@@ -8,8 +8,8 @@ function readCharter(file: string) {
   return readFileSync(resolve(CHARTER_ROOT, file), 'utf-8')
 }
 
-describe('Kael P8 charter source files', () => {
-  it('fills all charter files with P8 frontmatter and governance status', () => {
+describe('Kael P9 charter source files', () => {
+  it('fills all charter files with P9 frontmatter and governance status', () => {
     for (const file of [
       'identity.md',
       'persona.md',
@@ -18,11 +18,11 @@ describe('Kael P8 charter source files', () => {
       'style-guidelines.md',
     ]) {
       const text = readCharter(file)
-      expect(text).toContain('charter_version: 2026-05-25.p8')
-      expect(text).toContain('last_modified: 2026-05-25')
+      expect(text).toContain('charter_version: 2026-07-06.p9')
+      expect(text).toContain('last_modified: 2026-07-06')
     }
-    expect(readCharter('tone-matrix.yaml')).toContain('charter_version: "2026-05-25.p8"')
-    expect(readCharter('version.json')).toContain('"charter_version": "2026-05-25.p8"')
+    expect(readCharter('tone-matrix.yaml')).toContain('charter_version: "2026-07-06.p9"')
+    expect(readCharter('version.json')).toContain('"charter_version": "2026-07-06.p9"')
   })
 
   it('locks identity, persona, and mission-values to Tu approval', () => {
@@ -74,7 +74,7 @@ describe('Kael P8 charter source files', () => {
       forbidden_patterns: string[]
     }
 
-    expect(parsed.charter_version).toBe('2026-05-25.p8')
+    expect(parsed.charter_version).toBe('2026-07-06.p9')
     expect(parsed.forbidden_phrases.fear_language).toContain('nguy hiem chet nguoi')
     expect(parsed.forbidden_phrases.ai_self_reference).toContain('As an AI')
     expect(parsed.forbidden_phrases.accusatory_in_dispute).toContain('Ban dang lua Kael')

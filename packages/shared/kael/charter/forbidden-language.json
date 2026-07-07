@@ -1,9 +1,9 @@
 {
-  "charter_version": "2026-05-25.p8",
+  "charter_version": "2026-07-06.p9",
   "status": "TUNABLE",
   "owner": "Tu",
   "change_policy": "Reviewed add-only config change",
-  "last_modified": "2026-05-25",
+  "last_modified": "2026-07-06",
   "forbidden_phrases": {
     "fear_language": [
       "nguy hiem chet nguoi",
@@ -46,7 +46,11 @@
       "Yeu cau cua ban khong hop ly",
       "Ban dang lua Kael",
       "Khong the chap nhan",
-      "Ban can binh tinh"
+      "Ban can binh tinh",
+      "Ban dang noi doi",
+      "Ban co tinh khai sai",
+      "Ban gian lan",
+      "Ban dang lam kho Kael"
     ],
     "aggressive_response": [
       "Toi se khong tra loi",

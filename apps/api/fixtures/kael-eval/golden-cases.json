@@ -448,5 +448,41 @@
     "category": "service_mismatch",
     "input": { "service_type": "plumbing", "description": "Tổng vệ sinh căn hộ trước khi chuyển vào.", "problem_chips": ["Tổng vệ sinh"], "district": "q4" },
     "expected": { "service_type": "cleaning", "problem_slug": "deep_cleaning", "complexity": null, "price_band": null, "decline": true }
+  },
+  {
+    "id": "RG-N1",
+    "category": "plumbing",
+    "input": { "service_type": "plumbing", "description": "Ống dưới lavabo bị rò nhẹ, nước nhỏ giọt hoài nha.", "problem_chips": ["Ống rò rỉ"], "district": "q7" },
+    "expected": { "service_type": "plumbing", "problem_slug": "pipe_leak", "complexity": "small", "price_band": { "min": 120000, "max": 400000 }, "decline": false }
+  },
+  {
+    "id": "RG-N2",
+    "category": "cleaning",
+    "input": { "service_type": "cleaning", "description": "Dọn căn hộ studio gọn nhẹ, lau bụi với hút bụi cơ bản, dọn giúp nha.", "problem_chips": ["Dọn dẹp nhà"], "district": "q7" },
+    "expected": { "service_type": "cleaning", "problem_slug": "standard_home_cleaning", "complexity": "small", "price_band": { "min": 200000, "max": 500000 }, "decline": false }
+  },
+  {
+    "id": "RG-B1",
+    "category": "plumbing",
+    "input": { "service_type": "plumbing", "description": "Bồn rửa bát thoát chậm, chưa tràn nước đâu nhé.", "problem_chips": ["Tắc cống/bồn"], "district": "q3" },
+    "expected": { "service_type": "plumbing", "problem_slug": "clogged_drain_or_sink", "complexity": "small", "price_band": { "min": 120000, "max": 400000 }, "decline": false }
+  },
+  {
+    "id": "RG-B2",
+    "category": "electrical",
+    "input": { "service_type": "electrical", "description": "Một ổ cắm bị lỏng, cắm sạc điện thoại thì chập chờn nhé.", "problem_chips": ["Ổ cắm/công tắc hỏng"], "district": "bt" },
+    "expected": { "service_type": "electrical", "problem_slug": "outlet_or_switch_broken", "complexity": "small", "price_band": { "min": 100000, "max": 400000 }, "decline": false }
+  },
+  {
+    "id": "RG-T1",
+    "category": "electrical",
+    "input": { "service_type": "electrical", "description": "Cầu dao căn hộ ni hay nhảy liên tục, cần thợ kiểm tra rứa.", "problem_chips": ["Cầu dao trip"], "district": "q7" },
+    "expected": { "service_type": "electrical", "problem_slug": "breaker_trip", "complexity": "medium", "price_band": { "min": 300000, "max": 800000 }, "decline": false }
+  },
+  {
+    "id": "RG-T2",
+    "category": "cleaning",
+    "input": { "service_type": "cleaning", "description": "Dọn căn hộ ni gọn nhẹ, lau bụi với hút bụi cơ bản hè.", "problem_chips": ["Dọn dẹp nhà"], "district": "gv" },
+    "expected": { "service_type": "cleaning", "problem_slug": "standard_home_cleaning", "complexity": "small", "price_band": { "min": 200000, "max": 500000 }, "decline": false }
   }
 ]

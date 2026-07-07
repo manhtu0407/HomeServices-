@@ -26,6 +26,7 @@ import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from ".
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { runKaelSelfCheckPipeline } from "./self-check.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
+import { buildRegisterHint, detectRegionalRegister } from "./regional-register.ts";
 import {
   buildNoProviderTrace,
   buildProviderAttemptTrace,
@@ -121,6 +122,9 @@ export async function runCustomerAssistant(
   const cleanQuestion = scrubSensitiveForLLM(input.message).slice(0, 2000);
   const serviceType = inferAssistantServiceType(cleanQuestion, input.job);
   const topic = classifyAssistantTopic(cleanQuestion, serviceType);
+  // Deterministic per-conversation register (KC2): read the customer's own words
+  // to produce a mirror-lite hint. No region label, no PII, nothing logged.
+  const registerHint = buildRegisterHint(detectRegionalRegister(cleanQuestion));
   const permission = await evaluateKaelPermissionGateWithBoundaries({
     purpose: "educational_response",
     actor: "customer",
@@ -167,6 +171,7 @@ export async function runCustomerAssistant(
         topic,
         job: input.job ?? null,
         knowledgePrompt: knowledge?.promptContext ?? null,
+        registerHint,
       }),
       input.secrets,
     );
@@ -238,6 +243,7 @@ function buildAssistantRequest(input: {
   topic: KaelTopic;
   job: CustomerAssistantJobContext | null;
   knowledgePrompt: string | null;
+  registerHint: string | null;
 }): AIRequest {
   const contextSummary = JSON.stringify({
     platform_scope: "NestScout supports HCMC apartment electrical repair, plumbing repair, and home cleaning only.",
@@ -266,6 +272,7 @@ function buildAssistantRequest(input: {
           permissionSummary:
             "Answer service, worker, platform, safety, and legal-awareness questions. Do not create jobs, set prices, decide payment/scope/cancellation, or provide legal advice.",
           contextSummary: `${KAEL_BUSINESS_GUARDRAILS}\n${contextSummary}`,
+          ...(input.registerHint ? { registerHint: input.registerHint } : {}),
         }),
       },
       {

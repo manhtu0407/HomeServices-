@@ -10,7 +10,7 @@ import {
 import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
 import { createMobileApiHandler, type MobileApiServices } from '../../../../../supabase/functions/mobile-api/_shared/router'
 
-describe('Kael P8 charter, prompt, and self-check', () => {
+describe('Kael P9 charter, prompt, and self-check', () => {
   it('T8-test-2: builds deterministic system prompt under 3000 tokens', () => {
     const prompt = buildKaelSystemPrompt({
       purpose: 'scope_change',
@@ -128,7 +128,7 @@ describe('Kael P8 charter, prompt, and self-check', () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body.charter_version).toBe('2026-05-25.p8')
+    expect(body.charter_version).toBe('2026-07-06.p9')
     expect(body.locked_files).toEqual(['identity.md', 'persona.md', 'mission-values.md'])
     expect(JSON.stringify(body)).not.toContain('change_policy')
     expect(services.getKaelCharterCalls).toBe(1)
@@ -137,7 +137,7 @@ describe('Kael P8 charter, prompt, and self-check', () => {
   it('keeps public charter payload stable and sanitized', () => {
     const charter = getPublicKaelCharter()
 
-    expect(charter.charter_version).toBe('2026-05-25.p8')
+    expect(charter.charter_version).toBe('2026-07-06.p9')
     expect(charter.identity_summary).toContain('NestScout')
     expect(charter.forbidden_categories).toContain('ai_self_reference')
     expect(JSON.stringify(charter)).not.toContain('owner')

@@ -30,7 +30,7 @@ describe('Kael foundation charter and permissions', () => {
 
   it.each(charterFiles)('ships charter file %s with version metadata', (file) => {
     expect(existsSync(resolve(CHARTER_ROOT, file))).toBe(true)
-    expect(readCharter(file)).toContain('2026-05-25.p8')
+    expect(readCharter(file)).toContain('2026-07-06.p9')
   })
 
   it('keeps locked charter files explicit', () => {

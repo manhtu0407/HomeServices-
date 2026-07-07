@@ -11234,3 +11234,296 @@ v0.2 — 2026-06-14 — HARDENED qua 4 adversarial critic (completeness/logic/co
                     deliverable rõ mỗi phase; F6→S2+S5; Authority block + clause numbers; entry gate per-phase DoD;
                     per-phase commit checkpoint (D9). CHƯA execute — chờ Tu duyệt §38 one-time.
 ```
+
+---
+
+## 39. Kael Charter Upgrade — Agentic + Việt-hóa vùng miền + chuẩn phục vụ "butler-grade" — 2026-07-06
+
+> Nâng cấp tầng hội thoại của Kael (`packages/shared/kael/charter/*` + bản sao const `system-prompt.ts`) — tách khỏi tầng quyền hạn (RULES #7). Mục tiêu: Kael vừa **ấm/Việt-hóa có nhận diện vùng miền (Bắc/Trung/Nam)** vừa **chuyên nghiệp cấp quản gia — lấy CHUẨN VẬN HÀNH (đoán trước, kín đáo, không rơi việc, phán đoán), BỎ phong cách trịnh trọng châu Âu**. Bản nâng cấp nghiêng **60% Chatbot thường / 40% Agentic**. 5 delta D1–D5 (§39.0.2) chốt từ Spec v0.1 hội thoại 2026-07-06. **Executor = Claude session sau; Reviewer = session này + Tu.** CHƯA execute — chờ Tu duyệt + trả lời 5 OQ.
+
+### 39.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:         plan-kael-charter-upgrade-KC0-KC6-20260706
+Created:         2026-07-06
+Owner:           Manh Tu (manhtu0407@gmail.com)
+Branch:          claude/kael-guardrails-review (worktree exciting-jepsen-7bec6e) — branch DUY NHẤT, không nhảy branch
+File location:   Plan.md §39 (durable, canonical) + companion research docs/foundation/kael-regional-register-research.md (OQ-1).
+Status:          DESIGN — TẤT CẢ OQ RESOLVED + Tu MỞ LOCK charter files (D-UNLOCK). KC7 còn gate §36 P0 spike. Sẵn sàng execute non-stop.
+Trigger:         Tu nâng cấp Locked+Tunable của Kael Charter theo hướng Agentic AI; vừa Việt-hóa/ấm vừa "hơn quản gia".
+Scope:           charter/* (locked+tunable) + bản sao const system-prompt.ts + eval/red-team + charter test. Delta D1-D5.
+Out of scope:    RULES #7/autonomy engine, state machine, matching, pricing, migrations, gamification, map, payment.
+                 KHÔNG rebuild UI agentic (Tu đã build) — chỉ wire copy/đối chiếu.
+Charter version: hiện 2026-05-25.p8 → đề xuất 2026-07-06.p9 (chốt ở OQ-2).
+Effort:          KC0 nhỏ · KC1 trung(locked) · KC2 trung(blocked OQ-1) · KC3 trung(UI có sẵn) · KC4 trung(locked) · KC5 trung · KC6 nhỏ.
+Authority:       RULES #0,#2,#3,#4,#5,#6,#7,#8,#9 + Security Invariants; protocols/ai-data-security.md; charter lock policy.
+Skill mapping:   karpathy-guidelines (mọi phase) + kael-ai-boundary, kael-tdd, kael-frontend-test, kael-security-sweep (39.7).
+```
+
+**Mục tiêu chính (đo được, không tô hồng):**
+1. **Service Standard** (Idea 1) — mã hóa 4–5 chuẩn phục vụ kiểu quản gia vào file locked, viết **nghiêng 60% Chatbot thường / 40% Agentic**.
+2. **Register vùng miền + xưng hô** (Idea 2) — Kael nhận Bắc/Trung/Nam + chọn xưng hô, chỉnh từ vựng/register hợp văn hóa, **an toàn không stereotype/PII**.
+3. **Luồng chốt** (Idea 3) — copy confirm cẩn thận cho Agentic (cuối deal) + biến tấu nhẹ *"Kael thường có quy trình chốt cẩn thận như sau…"* cho Chatbot thường. Không rebuild UI.
+4. **Spine Ladder v2** (Idea 4) — L0→L1→L2→**L3 Kael tự thinking→confirm/bước-an-toàn** (KHÔNG đẩy admin ở L3; admin = backstop cuối ngoài thang).
+5. **Persona eval harness** (Idea 5) — golden lines + adversarial cases để "chuyên nghiệp" thành **đo được**, chống drift.
+
+**Nguyên tắc xuyên suốt:** đây là *nâng câu chữ + guardrail hội thoại + chốt bằng test* — KHÔNG đụng backend logic. Khác §38 (continuous-work), §39 **có Tu-gate thật** ở locked-phase + **OQ blocker** → KHÔNG chạy liên tục xuyên qua locked/OQ; dừng đúng chỗ.
+
+---
+
+### 39.0.0 ⚡ ROLE INCANTATION — Step 0 (BẮT BUỘC trước pre-plan; mirror §38.0.0)
+
+**Reasoning chain (viết ra) — CLAIM → SELECT → JUSTIFY → IMPLICATIONS → COMMIT — đã chốt cho §39:**
+- **CLAIM**: nâng cấp tầng persona/hội thoại của một trợ lý agentic B2C tiếng Việt, giữ giao dịch/PII, pre-revenue.
+- **SELECT**: **Principal Conversation & Agent-Persona Architect** (AI persona design + conversation design + localization đa vùng miền + trust-safety).
+- **JUSTIFY**: gap là *câu chữ/persona/nhận diện văn hóa*, KHÔNG phải feature backend → cần người thiết kế giọng + guardrail hội thoại đo được, không phải backend/security engineer.
+- **IMPLICATIONS** (3 hành vi bị ép): (1) mọi sửa charter phải giữ **sync-contract 4 bản** + **add-only tunable** + **locked-gate**; (2) persona phải **đo bằng eval**, không cảm tính; (3) Việt-hóa **không stereotype, PII-safe, default nhã nhặn**.
+- **COMMIT**: giữ vai suốt KC0–KC6; nếu task đổi lớp → recite lại từ CLAIM.
+
+**Logic gate:** chưa nội-hoá reasoning chain → không sang Step 1. (Vai này khớp yêu cầu Tu 2026-07-06 "tự chọn vai theo nhiệm vụ" — memory `auto-role-selection`.)
+
+---
+
+### 39.0.1 PRE-PLAN DEEP-READ + Authority refs — Step 1 (đọc + HIỂU, attestation chống bịa)
+
+Đọc theo thứ tự, mỗi doc viết 1 dòng *binding constraint* (trích cụm verbatim để reviewer grep):
+```
+1. CLAUDE.md      — router + LOCK NOTICE (RULES/STRUCTURES/critical/design/README/CLAUDE = KHÔNG sửa).
+2. RULES.md       — #0 boundary, #2 callAI, #3 validate output, #4 disclaimer, #5 VI-first, #6 scope 3 dịch vụ, #7 autonomy, #8 no-fake, #9 PII log.
+3. protocols/ai-data-security.md — kael-ai-boundary: structured-first, validate, no raw LLM to user.
+4. charter/* (8 file) — hiện trạng identity/persona/mission (LOCKED) + tone-matrix/language-rules/forbidden/style (TUNABLE) + version.json.
+5. system-prompt.ts — bản sao const IDENTITY/PERSONA/MISSION/ACTOR_STYLE/PURPOSE_GUIDANCE/LANGUAGE_RULES/FORBIDDEN_LANGUAGE/SECURITY_DIRECTIVES + KAEL_CHARTER_VERSION.
+6. kael-charter-p8.test.ts — test guard hard-code "2026-05-25.p8" + 12 purposes + forbidden buckets (bump version = phải sync/đổi tên).
+7. Plan.md §39 (file này) — §39.0.2 Decision Log là NGUỒN chân lý delta. §39.2 OQ là blocker.
+8. MEMORY.md      — đọc CUỐI; file:line memory có thể lệch sau đợt tách services (PR #66+) → verify path bằng Glob/Grep.
+```
+**Comprehension gate:** attestation ≤8 dòng, mỗi doc 1 dòng trích neo verbatim, TRƯỚC dòng sửa đầu tiên. Paraphrase không trích = coi như chưa đọc.
+
+---
+
+### 39.0.2 Decision Log (Tu chốt 2026-07-06 — Spec v0.1)
+
+- **D1 — Service Standard 60/40**: 4–5 chuẩn quản gia (Anticipation, Discretion, Follow-through, Judgment, Memory) viết nghiêng **60% Chatbot thường / 40% Agentic**. Lấy chuẩn vận hành, bỏ trịnh trọng "thưa ngài".
+- **D2 — Idea 2 = nhận diện vùng miền**: không chỉ xưng hô; phải nhận **Miền Nam/Trung/Bắc** → chỉnh từ vựng + cách nói + register cho cả viết lẫn giao tiếp. (Chi tiết tín hiệu/default = OQ-1.)
+- **D3 — Luồng chốt**: copy confirm = **Agentic** (cuối deal, làm rất cẩn thận); **KHÔNG** đặt vào Chatbot thường. Thêm **biến tấu nhẹ cho Chatbot thường** làm điểm mạnh nhỏ. UI đã build → **không rebuild**.
+- **D4 — L3 bỏ admin**: L3 = Kael **tự thinking (tự nhận thức tình huống) → confirm** hoặc **bước an toàn hơn**; admin = backstop cuối cùng ngoài thang, không xóa hẳn. (Bước an toàn cụ thể = OQ-5.)
+- **D5 — Eval harness giữ nguyên** như đề xuất.
+- **D-UNLOCK (Tu 2026-07-06):** Tu **MỞ LOCK** charter files (`identity.md`, `persona.md`, `mission-values.md`) cho execution run này → Executor **ghi trực tiếp**, KHÔNG dừng chờ duyệt per-diff (KC1/KC4). Locked governance docs (RULES/CLAUDE/STRUCTURES/critical/design/README) **VẪN off-limits**. Tu review diff sau ở branch.
+
+---
+
+### 39.0.3 Definition of Done — Gates (áp dụng MỌI phase)
+
+```text
+G1 — Locked-gate honored:  sửa identity/persona/mission = soạn diff → STOP → Tu APPROVED → mới ghi. Không tự ghi locked.
+G2 — Add-only tunable:     tone-matrix/language-rules/forbidden/style CHỈ thêm; không xóa 12 purposes/4 actor/forbidden buckets cũ.
+                           Sửa/xóa entry cũ = phải nêu review rõ before/after.
+G3 — Sync-contract 4 bản:  charter .md/.yaml/.json ↔ const system-prompt.ts ↔ version.json ↔ test guard — nhất quán từng chữ (39.4).
+G4 — Tests green:          charter test + system-prompt security + injection + edge-schema (+ FE nếu chạm mobile) PASS, dán output thật.
+G5 — Rules intact:         #7 (copy KHÔNG tự đổi state/tiền) + #8 no-fake + #4 disclaimer + #5 VI-first + #6 scope 3 dịch vụ còn nguyên.
+G6 — Việt-hóa an toàn:     nhận vùng miền bằng tín hiệu an toàn, KHÔNG log PII, KHÔNG stereotype, graceful default (RULES #9).
+G7 — Honest + scope-clean: git diff --stat main CHỈ chứa file trong plan; report cái CHẠY + nêu cái CHƯA test (ruthless, no-hide-gaps).
+```
+
+---
+
+### 39.1 EXECUTION PROTOCOL — steps + HARD GATES
+
+```text
+Step 0  ROLE INCANTATION (39.0.0)     → reasoning chain. Gate: chưa xong → không sang Step 1.
+Step 1  PRE-PLAN DEEP-READ (39.0.1)   → attestation trích verbatim. Gate: thiếu/bịa → không sang Step 2.
+Step 2  BUILD theo phase (39.3)       → KC0→KC6. Phase KHÔNG chạm locked & KHÔNG bị OQ chặn: chạy liên tục.
+                                        Phase locked (KC1/KC4) & OQ-blocked (KC2, phần KC3): DỪNG đúng gate.
+Step 3  VERIFY + EVAL (KC5, KC6)       → full gate G1-G7 + eval/red-team; git diff --stat scope-clean; handoff.
+```
+
+**HARD GATES — dừng khi:**
+1. Sửa **locked governance docs** (RULES/CLAUDE/STRUCTURES/critical/design/README) → **STOP**. (Charter files identity/persona/mission ĐÃ được Tu mở lock cho run này — ghi trực tiếp, xem D-UNLOCK.)
+2. **OQ chưa trả lời** cho phase bị chặn (OQ-1→KC2; OQ-4→KC3 biến tấu; OQ-5→KC4; OQ-2→bump version; OQ-3→câu chữ KC1) → **STOP**, hỏi Tu, KHÔNG đoán.
+3. Đụng **locked governance docs** (RULES/CLAUDE/STRUCTURES/critical/design/README) → **STOP**.
+4. Gate G1–G7 fail không tự sửa sau 2 lần → **STOP** báo Tu kèm evidence. **Anti-goalpost:** cấm hạ chuẩn — không xóa/skip/nới test, không tắt cờ. Đạt gate chỉ bằng làm mạnh implementation.
+5. Phát hiện thay đổi charter **phá sync-contract/test** mà cách xử version chưa chốt (OQ-2) → **STOP**.
+
+Ngoài 5 gate trên, trong phạm vi phase không-locked/không-OQ: **cứ làm, không hỏi vặt.**
+
+---
+
+### 39.2 Open Questions — trạng thái sau Tu chốt 2026-07-06
+
+**RESOLVED (Tu 2026-07-06):**
+- **OQ-2 (version):** ✅ bump `2026-07-06.p9` + cập nhật/đổi tên test guard `kael-charter-p8`→`-p9`.
+- **OQ-3 (không lộ):** ✅ Kael KHÔNG lộ là "quản gia"; ẩn dụ = chỉ mức chuyên nghiệp + tận tình, không dính xưng hô/nhân cách. → KC1.
+- **OQ-4 (biến tấu):** ✅ đúng 1 câu, khung giới thiệu NĂNG LỰC của Kael, không mô tả quy trình. → KC3.
+- **OQ-5 (L3):** ✅ bỏ admin-backstop; L3 = bước an toàn tự-chứa, vẫn có lập trường + dựa bằng chứng. → KC4.
+- **OQ-1 (nhận vùng miền):** ✅ chuyển thành research chuyên sâu → `docs/foundation/kael-regional-register-research.md` (từ text = high-precision/low-recall; lexicon 3 tầng + evidence-gate + mirror-lite; chống stereotype/PII).
+
+**RESOLVED (Tu 2026-07-06, đợt 2):**
+- **OQ-1a:** ✅ per-conversation, KHÔNG hardcode/lưu cứng; data (sanitized) có thể làm training corpus cải thiện region detection. → KC2 + KC7.
+- **OQ-1b:** ✅ mirror-lite.
+- **OQ-1c:** ✅ mở rộng scope → build **một phần** tính năng voice (STT→text) + lưu transcript vào Supabase; tradeoff + design ở research §8. → KC7 (mới).
+- **OQ-1d:** ✅ cả 3 miền, **focus miền Nam trước**. → KC2.
+
+**RESOLVED (Tu 2026-07-06, đợt 3 — KC7 hết chặn OQ, còn gate §36 spike):**
+- **OQ-2a:** ✅ **DB table** (Supabase migration, RLS per-user). KHÔNG dùng Storage bucket cho transcript text.
+- **OQ-2b:** ✅ scrub PII **mức tiêu chuẩn** + **Loop Learning** (học dần qua nhiều tương tác, tái dùng infra learning; loop đề xuất candidate, KHÔNG auto-mutate charter).
+- **OQ-2c:** ✅ **on-device, ZERO cost** (Apple/Android native STT). KHÔNG cloud ASR (tốn tiền / self-host GPU nghịch thuần-app). Region-from-voice chấp nhận yếu; bù bằng typed-text + loop-learning.
+
+_TẤT CẢ OQ §39 đã resolved → sẵn sàng execute sau khi Tu duyệt (KC7 vẫn cần §36 P0 spike qua)._
+
+---
+
+### 39.3 Phases — KC0 → KC6
+
+- **KC0 — Baseline & Guardrails (0 đổi nội dung).**
+  Provision toolchain (memory `C:/tmp/hs-toolchain` — verify còn dùng, nếu không provision lại). Chạy baseline: `packages/shared` vitest (charter test) + `apps/api` vitest (system-prompt security, injection, edge-schema, kael-eval) — ghi GREEN/RED **thật**. Grep verify path hiện tại: charter dir, `system-prompt.ts`, các test, eval/red-team fixtures, UI agentic (`apps/mobile/components/customer/v21/agentic-*.tsx`, `chat-*.tsx`). Lập bảng hiện-trạng vs sync-contract §39.4.
+  *DoD:* baseline reproducible; baseline ĐỎ sẵn → báo Tu, không xây trên nền đỏ. *Gate:* Reviewer.
+
+- **KC0.5 — Connectivity & Wiring Audit (charter/system-prompt/guardrails ↔ UI vừa rebuild). NEW — Tu 2026-07-06.**
+  *Bối cảnh:* Tu vừa **rebuild toàn bộ UI** → wiring giữa các tầng principle (Locked charter, Tunable charter, Guardrails) và UI có thể đứt. Nâng cấp charter mà không nối tới UI = vô nghĩa. Phase này **audit + nối lại**, KHÔNG rebuild UI.
+  *Chuỗi verify end-to-end:* (1) charter/* → const `system-prompt.ts` (sync §39.4); (2) `system-prompt.ts` → Edge: `buildKaelSystemPrompt` được `customer-assistant.ts`/`worker-assist.ts`/`services.ts` tiêu thụ ở MỌI purpose (không path nào bypass charter); (3) Guardrails → output: validate/refuse/disclaimer/scrub (#3,#4,#8) vẫn áp trước khi rời Edge; (4) Edge → UI rebuild: render qua contract cũ (workflow-phase-context + ui-rules; SSE stage-streaming), hiển thị disclaimer/refusal/unavailable/confirm — KHÔNG tự chế copy (đối chiếu `docs/design/rebuild-preserve-handshakes-20260613.md` + `docs/audit/kael-cross-side-handshake-audit-20260613.md`); (5) điểm hook cho charter mới (disclaimer/refusal/region-copy/confirm) để KC1-KC5 THỰC SỰ hiện ra.
+  *Steps:* discover UI hiện tại TRƯỚC (Tu vừa rebuild → path có thể đổi; Glob/Grep, không tin file:line cũ). Lập **bản đồ wiring** (mắt xích intact vs đứt). Nối mắt xích đứt nhỏ; đứt lớn (đòi UI work đáng kể) → flag Tu tách follow-up.
+  *DO-NOT-TOUCH:* KHÔNG rebuild UI; KHÔNG đổi backend logic — chỉ verify + re-wire.
+  *DoD:* bản đồ wiring 5 mắt xích, mỗi mắt xích intact-có-evidence hoặc đứt-đã-nối/đã-flag; xác nhận disclaimer (#4) + refusal (#3,#6) còn surface trên UI mới. *Gate:* Reviewer (+ Tu nếu đứt lớn).
+
+- **KC1 — Kael Service Standard (Idea 1, 60/40) — LOCKED, Tu gate.**
+  *Files EDIT:* `persona.md` và/hoặc `mission-values.md` (LOCKED) + bản sao const `PERSONA`/`MISSION` trong `system-prompt.ts`. *Không tạo file.*
+  *Steps:* soạn 4–5 chuẩn (Anticipation/Discretion/Follow-through/Judgment/Memory), mỗi chuẩn 2 facet: (a) mặt Chatbot thường ~60% câu chữ, (b) mặt Agentic ~40%. Giữ giọng calm/direct/câu-ngắn, đối chiếu `forbidden-language.json`.
+  *OQ-3 RESOLVED (không lộ):* "butler-grade" nội-hoá thành **hành vi phục vụ** (chuyên nghiệp, tận tình phục vụ chủ nhà như chủ nhân) — Kael **KHÔNG bao giờ tuyên bố mình là "quản gia"**. Ẩn dụ quản gia chỉ nói mức chuyên nghiệp, **không dính** xưng hô/nhân cách.
+  *DO-NOT-TOUCH:* boundary strings mà charter test assert ("KHÔNG phải chatbot tổng quát", 3 dịch vụ).
+  *DoD:* charter+system-prompt test xanh; sync const. *Gate:* ghi trực tiếp (Tu đã mở lock — D-UNLOCK); Tu review diff sau ở branch.
+
+- **KC2 — Regional Register & Xưng hô (Idea 2) — TUNABLE add-only. OQ-1a/1b/1d RESOLVED; research DONE.**
+  *Research nền:* `docs/foundation/kael-regional-register-research.md` (đọc TRƯỚC khi build).
+  *Files CREATE (đề xuất):* `charter/regional-lexicon.json` (bảng marker Tầng A/B/C có trọng số — data asset lõi) + `charter/address-register.md` (xưng hô) HOẶC gộp `language-rules.md`. *Files EDIT:* `language-rules.md`, có thể `tone-matrix.yaml`, + bản sao `LANGUAGE_RULES` trong `system-prompt.ts`.
+  *Design (chốt):* detection = **progressive, evidence-gated**, **per-conversation, KHÔNG lưu cứng** (OQ-1a); default unknown = trung tính nghiêng Nam; **mirror-lite KHÔNG nhại giọng** (OQ-1b); lexicon deterministic, KHÔNG để LLM tự đoán vùng; high-precision/low-recall. **Phủ cả 3 miền, tune+verify Nam trước** (OQ-1d).
+  *Steps:* build regional-lexicon + scoring + 2 ngưỡng; chốt xưng hô (anh/chị theo tín hiệu, fallback trung tính; "ạ/nhé" chừng mực; ấm không nịnh); negative rules chống stereotype; no PII log (#9). Training corpus (sanitized, opt-in) = ở KC7.
+  *DoD:* add-only (không phá 12 purposes/luật cũ); test golden 3 miền (Nam trước) + markerless→trung-tính + xung đột→trung-tính + assert "không nhại lố"; Reviewer xác nhận no stereotype/PII. *Gate:* Reviewer (+ Tu nếu chạm persona locked).
+
+- **KC3 — Agentic Closing Flow + biến tấu Chatbot thường (Idea 3).**
+  *Files CREATE (đề xuất):* `charter/closing-confirmation.md`. *Files EDIT:* `tone-matrix.yaml` (thêm rows), bản sao `PURPOSE_GUIDANCE` nếu thêm purpose; nếu chạm mobile: **chỉ wire copy** vào surface agentic đã có.
+  *DO-NOT-TOUCH:* **KHÔNG rebuild UI agentic** — đọc surface hiện có, render đúng contract (memory: agentic process đã built). *Steps:* đọc UI/luồng agentic, lập sơ đồ mốc confirm cuối deal; soạn copy confirm cẩn thận (giữ #7 — copy không tự đổi state).
+  *OQ-4 RESOLVED:* biến tấu cho Chatbot thường = **đúng 1 câu**, khung **giới thiệu NĂNG LỰC của chính Kael** (cho user thấy Kael làm được tới đâu), KHÔNG mô tả quy trình dài. Nếu chạm mobile: `kael-frontend-test` + tôn trọng Reduce Motion/Transparency.
+  *DoD:* confirm-copy không phá #7/#8; add-only tone-matrix; UI không bị rebuild; test xanh. *Gate:* Reviewer (+ Tu nếu đụng persona locked).
+
+- **KC4 — Spine Ladder v2 (Idea 4, L3 tự-xử) — chạm persona LOCKED.**
+  *Files CREATE (đề xuất):* `charter/spine-ladder.md`. *Files EDIT:* `persona.md` (mở rộng trait "Has spine" — LOCKED, Tu gate); `forbidden-language.json` (thêm cụm kết tội nếu thiếu — add-only); `tone-matrix.yaml` (dispute/scope_change); bản sao const.
+  *OQ-5 RESOLVED (bỏ admin-backstop):* thang = L0 nêu-trung-tính → L1 xin bằng chứng → L2 đưa lựa chọn → **L3 = bước an toàn tự-chứa** (Kael giữ bình tĩnh, VẪN có lập trường, dựa thông tin/bằng chứng để giao tiếp, không lặp/không kết tội). **Bỏ rung admin khỏi thang** — Kael tự xử, không đẩy người.
+  *Steps:* viết principle(locked) vs phrasing(tunable) cho 4 bậc. Giữ #7: nếu L3 đụng tiền/state vẫn qua `KaelAutonomyDecision`; "bước an toàn" không tự mutate.
+  *DoD:* không kết tội; L3 tự-chứa an toàn; #7 giữ; injection/red-team test xanh. *Gate:* ghi trực tiếp (Tu đã mở lock — D-UNLOCK) + Reviewer.
+
+- **KC5 — Persona Eval Harness (Idea 5).**
+  *Files CREATE/EDIT:* mở rộng `apps/api/fixtures/kael-eval/golden-cases.json` (golden lines purpose×actor×region?) + `apps/api/src/__tests__/security/kael-redteam/adversarial-cases.json` (giữ-vai dưới áp lực, chống injection, tránh forbidden-language, xưng hô sai). Có thể `kael-eval.mjs` nếu cần tiêu chí persona/register mới.
+  *DO-NOT-TOUCH:* case cũ (thêm, không xóa trừ khi Reviewer đồng ý). *Steps:* mỗi delta KC1-KC4 → golden line + phản-ví-dụ; adversarial: injection/lộ-system-prompt/ép-kết-tội/ép-sai-vùng-miền/ép-giá-tuyệt-đối. Chạy eval, ghi số thật, không giấu fail.
+  *DoD:* suite xanh; chứng minh test "cắn" bằng 1 case cố tình sai rồi revert. *Gate:* Reviewer.
+
+- **KC6 — Integration, Version Bump & Handoff.**
+  *Steps:* bump `charter_version` (theo OQ-2) đồng bộ **cả 4 điểm** §39.4 (gồm cập nhật/đổi tên test guard). Full gate: `packages/shared` + `apps/api` vitest (+ `apps/mobile` nếu chạm) + deno check edge nếu chạm `system-prompt.ts`. `git diff --stat main` chứng minh chỉ file trong plan bị đụng. Handoff (`kael-handoff`) + progress log (`/log`) + memory (`kael-mem`).
+  *DoD:* full gate xanh; scope sạch; version nhất quán 4 điểm; handoff xong. *Gate:* **Tu ký cuối (ship/không).**
+
+- **KC7 — Voice Transcript Capture + Supabase Store (Tu OQ-1c mở rộng 2026-07-06). GATED track — phối hợp §36; OQ-2a-2c RESOLVED, còn gate §36 P0 spike.**
+  *Bối cảnh:* UI voice đã có (chỉ ở "Kael Agentic Chatbot"), tính năng CHƯA build. Voice plan canonical = §36 (SPIKE-GATED; D1 STT on-device, audio KHÔNG rời máy). KC7 = build **một phần** (STT→text + lưu transcript), KHÔNG làm full §36 (TTS thuộc §36 P2/P3).
+  *Research nền:* `docs/foundation/kael-regional-register-research.md` §8.
+  *Chốt (OQ-2a-2c):* (a) STT = **on-device Apple/Android native, ZERO cost** — KHÔNG cloud ASR (tốn tiền / self-host nghịch thuần-app); (b) transcript lưu **DB table** Supabase (migration, RLS per-user), KHÔNG bucket; (c) scrub PII **mức tiêu chuẩn** + **Loop Learning** — corpus sanitized học dần qua nhiều tương tác, loop chỉ đề xuất candidate cải thiện lexicon, KHÔNG auto-mutate charter.
+  *Files (đề xuất):* mobile — kích hoạt STT on-device ở composer agentic (phối hợp §36 P1); Edge — scrub PII transcript + route lưu; Supabase — **migration table transcript** (RLS per-user) + (tùy chọn) table corpus loop-learning; wire transcript → KC2 region inference.
+  *DO-NOT-TOUCH / KHÔNG:* KHÔNG upload **audio** (giữ §36 D1); KHÔNG build TTS (thuộc §36); KHÔNG cloud ASR; voice chỉ ở Agentic Chatbot; KHÔNG lưu transcript chưa scrub PII (#9); loop KHÔNG tự sửa charter.
+  *Steps (sau §36 P0 spike):* transcript on-device → composer → Edge scrub PII → lưu DB table → feed region detector; sanitized corpus → loop-learning đề xuất candidate lexicon.
+  *DoD:* audio không rời máy (test); transcript scrub PII (negative test SĐT/địa chỉ → không lưu raw); RLS per-user positive+negative; region-from-voice chạy ở Agentic Chatbot (honest: yếu do STT normalize, bù bằng typed-text + loop); loop chỉ tạo candidate. *Gate:* **Tu (privacy posture)** + §36 spike gate + Reviewer. *Skills:* kael-supabase, kael-security-sweep, kael-frontend-test, kael-ai-boundary.
+
+---
+
+### 39.4 Sync Contract (⚠ điểm chết người — mọi thay đổi charter giữ 4 bản đồng bộ)
+
+```text
+1. File charter/*  — .md frontmatter (charter_version, last_modified, status), .yaml, .json.
+2. Const trong system-prompt.ts — IDENTITY, PERSONA, MISSION, ACTOR_STYLE, PURPOSE_GUIDANCE, LANGUAGE_RULES,
+                                   FORBIDDEN_LANGUAGE, SECURITY_DIRECTIVES, KAEL_CHARTER_VERSION (bản sao — KHÔNG đọc .md runtime).
+3. charter/version.json — charter_version, last_modified, locked_files[], tunable_files[].
+4. Test guard kael-charter-p8.test.ts — hard-code "2026-05-25.p8" + 12 purposes + forbidden buckets.
+   Bump version = PHẢI cập nhật/đổi tên test này (OQ-2). Kiểm mobile-api-edge-schema.test.ts có assert source string từ
+   system-prompt.ts không (memory apps_api_reads_mobile_source) — nếu có, sửa prompt phải cập nhật cả test đó.
+```
+Sai 1 trong 4 = drift → test đỏ hoặc runtime lệch charter. Mỗi phase sửa charter phải sync ngay; KC6 double-check toàn cục.
+
+---
+
+### 39.5 Risks + Locked-Doc Impact
+
+- **Bump version ripple** → nhiều test đỏ. Giảm thiểu: OQ-2 chốt cách xử test TRƯỚC; KC6 xử version tập trung.
+- **Charter .md ↔ const system-prompt.ts drift** → mỗi phase sync 2 bản; KC6 double-check (§39.4).
+- **Nhận diện vùng miền → stereotype/PII** → OQ-1 chốt tín hiệu an toàn + default; negative rules; RULES #9.
+- **Rebuild nhầm UI agentic** → KC3 đọc-trước, render contract, cấm tự chế.
+- **Đoán chỗ Tu chưa chốt** → 5 OQ là BLOCKER cứng (HARD GATE #2).
+- **Path lệch do tách services (PR #66+)** → KC0 verify path bằng Glob/Grep, không tin file:line memory.
+- **Locked-doc impact:** §39 KHÔNG sửa locked governance docs. Charter locked files (identity/persona/mission) sửa qua Tu-gate (HARD GATE #1), KHÔNG phải locked-doc-notice của CLAUDE.md.
+
+---
+
+### 39.6 Sequencing / Build Order
+
+```
+Step0 incantation → Step1 pre-plan+attestation → KC0 baseline → KC0.5 wiring audit (UI rebuild)
+  → KC1 (Tu gate) → KC2 (3 miền, Nam trước) → KC3 → KC4 (Tu gate) → KC5 eval
+  → KC6 version bump + full gate + handoff (Tu ký cuối)
+  ┄┄ KC7 voice transcript + Supabase store: GATED track (§36 P0 spike + OQ-2a-2c) — chạy sau/song song, defer được
+```
+- KC0.5 sớm (sau baseline): UI vừa rebuild → verify/nối wiring TRƯỚC khi đổ công vào nội dung charter.
+- KC1→KC5 theo thứ tự Tu khuyến nghị (#1→#2→#3→#4→#5); KC2 đã hết chặn (OQ-1a/1b/1d resolved).
+- KC7 = track riêng, phụ thuộc §36 P0 spike + OQ-2a-2c; region ship trên typed text (KC2) trước, voice-transcript bồi thêm sau.
+- Golden lines (KC5) nên **ghi dần** khi mỗi content phase KC1-KC4 land, chốt lại ở KC5.
+- Version bump (KC6) làm **một lần cuối** sau khi mọi content phase xong (tránh bump nhiều lần phá test).
+
+---
+
+### 39.7 Skills Mapping + Verification
+
+```
+karpathy-guidelines   mọi phase (surgical diff, assumptions explicit, simplicity)
+kael-ai-boundary      KC1-KC4 — charter/prompt, structured-first, validate output, no raw LLM to user, no fake
+kael-frontend-test    KC3 — nếu wire copy vào mobile (type-check + RNTL, Reduce Motion/Transparency)
+kael-security-sweep   KC4/KC5 — dispute an toàn, red-team injection, no PII
+kael-tdd              KC5/KC6 — eval/test có răng (break-cố-ý→revert), ≥2 layer
+kael-handoff          KC6 — handoff cuối
+```
+Verification: mỗi phase G1-G7 (39.0.3) + dòng Verify evidence thật. KC5 eval + KC6 full-gate + git diff --stat = verification tầng cuối.
+
+---
+
+### 39.8 Change Log
+
+```text
+v0.1 — 2026-07-06 — Tạo từ Spec v0.1 (5 idea + delta D1-D5, hội thoại 2026-07-06). Port từ draft plan.md (root, đã xóa)
+                    vào Plan.md §39 theo house format §38. Executor/Reviewer split. 7 phase KC0-KC6, sync-contract 4 bản,
+                    5 OQ blocker, Role Incantation Step 0 (vai Principal Conversation & Agent-Persona Architect).
+                    CHƯA execute — chờ Tu duyệt §39 + trả lời OQ-1..OQ-5.
+v0.2 — 2026-07-06 — Tu duyệt hướng + chốt OQ. OQ-2/3/4/5 RESOLVED (version p9; không-lộ-butler; biến tấu 1-câu
+                    capability; bỏ admin-backstop → L3 tự-chứa). OQ-1 → research DONE
+                    (docs/foundation/kael-regional-register-research.md: high-precision/low-recall, lexicon 3 tầng +
+                    evidence-gate + mirror-lite), spawn OQ-1a-1d. THÊM phase KC0.5 Connectivity & Wiring Audit
+                    (charter/prompt/guardrails ↔ UI vừa rebuild). CHƯA execute.
+v0.3 — 2026-07-06 — OQ-1a/1b/1d RESOLVED (per-conversation no-hardcode + training-corpus angle; mirror-lite; 3 miền
+                    focus Nam trước). OQ-1c mở rộng → THÊM phase KC7 (voice STT→text một phần + Supabase transcript
+                    store + wire region/corpus), phối hợp §36 (giữ D1 audio-on-device), spawn OQ-2a-2c. Research §7/§8
+                    cập nhật (voice/transcript findings: on-device STT san phẳng marker → region-from-voice yếu; lưu
+                    transcript đổi posture privacy vs §36 → cần Tu sở hữu). CHƯA execute.
+v0.4 — 2026-07-06 — OQ-2a-2c RESOLVED: transcript → DB table (RLS); scrub tiêu chuẩn + Loop Learning (candidate-only,
+                    không auto-mutate charter); STT on-device zero-cost (không cloud ASR). KC7 hết chặn OQ (còn gate §36
+                    spike). TẤT CẢ OQ §39 resolved → sẵn sàng execute sau khi Tu duyệt §39. CHƯA execute.
+v0.5 — 2026-07-06 — Tu MỞ LOCK charter files (identity/persona/mission) cho execution run (D-UNLOCK) → KC1/KC4 ghi
+                    trực tiếp, không dừng per-diff; governance locked docs vẫn off-limits. Kèm English non-stop
+                    execution prompt cho Executor session. CHƯA execute.
+v0.6 — 2026-07-06 — EXECUTED KC0–KC7 trên branch claude/kael-guardrails-review (worktree exciting-jepsen). KC0 baseline
+                    (shared 581 pass; api 1610 pass + 1 fail pre-existing = worker-surface string drift do rebuild UI, KHÔNG
+                    liên quan charter). KC0.5 wiring audit (docs/audit/kael-charter-wiring-audit-20260706.md): 5 mắt xích intact.
+                    KC1 Service Standard 60/40 (persona.md + PERSONA const, KHÔNG lộ "quản gia"). KC2 regional register
+                    (charter/regional-lexicon.json + kael/regional-register.ts detector deterministic + 9 golden test + add-only
+                    language-rules/tone-matrix/LANGUAGE_RULES); Edge runtime detector = follow-up. KC3 closing-confirmation.md +
+                    tone closing block + price/scope PURPOSE_GUIDANCE (giữ #7). KC4 spine-ladder.md + persona spine + cụm buộc tội
+                    thêm vào forbidden-language.json ↔ self-check.ts (mirror) + tone spine. KC5 +6 golden region case (eval 81
+                    case/0 fail, metrics 1.0) + 7 red-team persona/spine case (redteam green; đã chứng minh test "cắn" rồi revert).
+                    KC6 bump version 2026-05-25.p8 → 2026-07-06.p9 đủ 4 điểm sync (8 charter file + const + version.json + guard
+                    kael-charter-p8→p9); full gate xanh (deno check edge + shared tsc). KC7 server-side built: migration
+                    20260706120000_kael_voice_transcript.sql (kael_voice_transcript + kael_region_lexicon_candidate, RLS per-user,
+                    service-role writes) + Edge kael/voice-transcript.ts scrub-then-store + 5 test. FLAG: mobile on-device STT +
+                    router wiring cần §36 P0 device spike; migration CHƯA apply (chờ Tu deploy + privacy posture). Companion files
+                    (regional-lexicon/closing-confirmation/spine-ladder) versioned độc lập, KHÔNG nằm trong charter_version sync.
+```

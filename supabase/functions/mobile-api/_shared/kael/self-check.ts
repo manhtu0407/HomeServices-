@@ -103,6 +103,10 @@ const FORBIDDEN_PHRASES: Record<Exclude<KaelSelfCheckReason, "empty" | "exact_vn
     "ban dang lua kael",
     "khong the chap nhan",
     "ban can binh tinh",
+    "ban dang noi doi",
+    "ban co tinh khai sai",
+    "ban gian lan",
+    "ban dang lam kho kael",
   ],
   aggressive_response: [
     "toi se khong tra loi",
