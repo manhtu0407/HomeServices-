@@ -22,7 +22,7 @@ export type BuildKaelSystemPromptInput = {
   readonly permissionSummary?: string;
   readonly memorySummary?: string;
   readonly knowledgeSummary?: string;
-  // Deterministic per-conversation mirror-lite hint (Plan.md §39 KC2). When
+  // Deterministic per-conversation mirror-lite hint. When
   // omitted the standing neutral register from LANGUAGE_RULES applies, so prompts
   // built without it are unchanged. Never carries the region label or PII.
   readonly registerHint?: string;
