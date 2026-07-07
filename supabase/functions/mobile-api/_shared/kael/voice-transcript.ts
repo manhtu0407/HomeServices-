@@ -1,15 +1,3 @@
-// Voice transcript store (Plan.md §39 KC7). Server-side scrub-then-shape for the
-// on-device STT transcript before it is persisted to public.kael_voice_transcript.
-//
-// Invariants:
-//   - Audio never reaches the server (§36 D1). Only text arrives; STT is on-device.
-//   - Only PII-scrubbed text is ever stored (RULES #9). A residual-PII guard rejects
-//     anything that still looks like a phone/id after scrubbing, so raw PII is never
-//     persisted; a transcript that cannot be safely stored is dropped, not faked (#8).
-//
-// This is the scrub/shape layer. Wiring it behind an Edge route + mobile composer
-// (on-device STT activation) is gated on the §36 P0 device spike.
-
 import { scrubSensitiveForLLM } from "./utils.ts";
 
 export type VoiceTranscriptActor = "customer" | "worker";

@@ -1,10 +1,3 @@
----
-spec_version: 1.0.0
-status: TUNABLE
-owner: Tu
-change_policy: Reviewed add-only config change
-last_modified: 2026-07-06
----
 
 # Spine Ladder v2
 

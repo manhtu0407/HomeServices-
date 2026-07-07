@@ -1,12 +1,3 @@
-// Edge-local copy of the regional register lexicon (Plan.md §39 KC2).
-//
-// This MUST stay equivalent (markers, regions, mirror flags, weights, thresholds,
-// default) to the canonical charter data at kael/charter/regional-lexicon.json in
-// the shared workspace. The Edge runtime cannot import the shared workspace, so
-// this is the deployable copy — same pattern as forbidden-language.json <->
-// self-check.ts. The sync test (mobile-api-kael-regional-register.test.ts) fails
-// if the two ever drift.
-
 export type RegionCode = "bac" | "trung" | "nam";
 export type LexiconTier = "A" | "B" | "C";
 

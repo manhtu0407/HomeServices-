@@ -1,21 +1,3 @@
-// Regional register detector — Edge runtime copy (Plan.md §39 KC2).
-//
-// Deterministic, dependency-free, per-conversation. Turns Vietnamese chat text
-// into a high-precision / low-recall region hint plus mirror-lite guidance.
-//
-// Contract (docs/foundation/kael-regional-register-research.md):
-//   - Region is a per-conversation REGISTER HINT only: never stored, never spoken,
-//     never used to infer demographics (RULES #9). The prompt hint deliberately
-//     surfaces only the customer's OWN words to echo — never the region label and
-//     never tier-A dialect — so there is no stereotyping vector and Kael never
-//     parrots an accent.
-//   - Weighted lexicon/rule, NOT an LLM guess. Fails safe: no markers or
-//     conflicting strong markers => neutral (default_region).
-//
-// Mirrors the shared-workspace reference detector (kael/regional-register.ts).
-// The lexicon is the Edge-local copy in ./regional-lexicon.ts (kept in sync with
-// the charter JSON by test).
-
 import {
   type LexiconTier,
   REGIONAL_LEXICON,

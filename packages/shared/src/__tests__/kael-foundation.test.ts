@@ -28,16 +28,21 @@ describe('Kael foundation charter and permissions', () => {
     'version.json',
   ]
 
-  it.each(charterFiles)('ships charter file %s with version metadata', (file) => {
+  it.each(charterFiles)('ships charter file %s', (file) => {
     expect(existsSync(resolve(CHARTER_ROOT, file))).toBe(true)
-    expect(readCharter(file)).toContain('2026-07-06.p9')
   })
 
-  it('keeps locked charter files explicit', () => {
-    for (const file of ['identity.md', 'persona.md', 'mission-values.md']) {
-      expect(readCharter(file)).toContain('status: LOCKED')
-      expect(readCharter(file)).toContain('Tu approval required')
+  it('tracks the charter version in the version.json manifest', () => {
+    expect(readCharter('version.json')).toContain('2026-07-06.p9')
+  })
+
+  it('records the locked charter files in the manifest', () => {
+    const manifest = JSON.parse(readCharter('version.json')) as {
+      locked_files: string[]
+      governance: { locked_change_policy: string }
     }
+    expect(manifest.locked_files).toEqual(['identity.md', 'persona.md', 'mission-values.md'])
+    expect(manifest.governance.locked_change_policy).toBe('Tu approval required')
   })
 
   it('defines the 12 locked Kael purposes for the future permission matrix', () => {

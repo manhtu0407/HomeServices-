@@ -1,22 +1,3 @@
-// Regional register detector (Plan.md §39 KC2). Deterministic, dependency-free,
-// per-conversation. Turns Vietnamese chat text into a high-precision / low-recall
-// region hint (bac / trung / nam) plus mirror-lite adaptation guidance.
-//
-// Design contract (docs/foundation/kael-regional-register-research.md):
-//   - Region is a per-conversation REGISTER HINT only, never a stored identity
-//     attribute, never spoken aloud, never used to infer demographics (RULES #9).
-//   - The engine is a weighted lexicon/rule, NOT an LLM guess. It fails safe:
-//     no markers or conflicting strong markers => neutral (default_region).
-//   - Mirror-lite: only the customer's own everyday words and warm particles are
-//     echoable. Strong (tier A) dialect is DETECT-ONLY and never mirrored, so
-//     Kael never parrots a regional accent.
-//
-// This module is the canonical spec + reference implementation. The Edge
-// conversational runtime currently adapts register through the language-rules
-// prompt (mirror-lite led by the customer's own words); wiring this deterministic
-// detector into the Edge path is a follow-up (it needs an Edge-local copy, same
-// pattern as forbidden-language.json <-> self-check.ts).
-
 import lexicon from "./charter/regional-lexicon.json";
 
 export type RegionCode = "bac" | "trung" | "nam";

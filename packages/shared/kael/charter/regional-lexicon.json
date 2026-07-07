@@ -1,10 +1,4 @@
 {
-  "lexicon_version": "1.0.0",
-  "status": "TUNABLE",
-  "owner": "Tu",
-  "change_policy": "Reviewed add-only config change",
-  "last_modified": "2026-07-06",
-  "note": "Deterministic regional-register markers for Vietnamese (bac/trung/nam). High-precision / low-recall: most short messages score below threshold and stay neutral. Region is a per-conversation register hint only, never a stored identity attribute and never spoken aloud. Focus Nam first (HCMC). Design: docs/foundation/kael-regional-register-research.md. This file is register DATA and is versioned independently (lexicon_version), not swept by the charter_version sync-contract.",
   "regions": ["bac", "trung", "nam"],
   "default_region": "nam",
   "scoring": {
