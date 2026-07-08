@@ -11234,3 +11234,1730 @@ v0.2 — 2026-06-14 — HARDENED qua 4 adversarial critic (completeness/logic/co
                     deliverable rõ mỗi phase; F6→S2+S5; Authority block + clause numbers; entry gate per-phase DoD;
                     per-phase commit checkpoint (D9). CHƯA execute — chờ Tu duyệt §38 one-time.
 ```
+
+---
+
+## 40. Kael Harness Upgrade — Model Tiering + Source Trust & Price Defensibility — 2026-07-07
+
+> Hai workstream độc lập nhưng cùng một mục tiêu: làm **con số giá** của Kael vừa **rẻ hơn/mạnh hơn khi cần** (đúng model cho đúng việc) vừa **chứng minh được, chống đầu độc** (nguồn có bậc, giá có khóa). Đóng gói phần đã bàn + CHỐT với Tu trong session này (2026-07-06..07). **CHƯA execute — chờ Tu duyệt.** Codex build, Claude verify.
+>
+> **Đánh số:** §39 đã dành cho "Kael Charter Upgrade" trên branch khác (`claude/kael-guardrails-review`) → plan này dùng **§40** để không đụng số khi merge.
+
+### 40.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-harness-model-tiering-source-trust-20260707
+Created:        2026-07-07
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Branch:         claude/jolly-brattain-ab42dc (worktree exciting-jepsen-7bec6e)
+File location:  Plan.md §40 (durable, canonical) + companion doc (tạo ở execute)
+Status:         DESIGN LOCKED v0.1 — Tu chốt trong session 2026-07-06..07. CHƯA execute.
+Trigger:        Tu yêu cầu verify + audit Harness Kael, chỉ điểm yếu dễ bị khai thác khi Multi-LLM chạy,
+                rồi nghiên cứu cách nâng cấp. Từ đó chốt 2 nhánh: (M) mở rộng roster model theo task,
+                (S) hệ thống chấm nguồn + bảo vệ con số giá.
+Scope:          (M) provider-client per-model cost table + routing roster + escalation ladder + vision=Sonnet5.
+                (S) khóa tỉ lệ 50/50 + thang nguồn T1–T5 + lớp suy luận nhẹ + khóa giá thị trường + quorum/outlier.
+Out of scope:   3 lỗ Harness khác đã audit nhưng Tu HOÃN bàn (self-check bỏ dấu + chặn "500k";
+                permission default-deny khi topic mơ hồ; orchestrator silent-success). Ghi ở §40.1.3 để không mất,
+                bàn + plan riêng SAU khi §40 xong. KHÔNG build ở §40.
+                Cũng ngoài scope: đổi runtime boundary; sửa agentic cancel/dispute cho "sâu" hơn.
+Companion docs: docs/design/kael-source-trust-pricing-20260707.md  (tạo ở execute — per-step File/Action/Acceptance
+                + full rubric bậc nguồn + test vectors đầu độc).
+Effort:         Chưa ước lượng — chốt ở phase 0 mỗi workstream sau khi verify model IDs + schema hiện tại.
+Skill mapping:  karpathy-guidelines (mọi phase) + kael-supabase, kael-security-sweep, kael-tdd, kael-ai-boundary
+                (xem 40.8).
+```
+
+**Mục tiêu chính (đo được, không tô hồng):**
+
+1. **Đúng model cho đúng việc.** Mỗi purpose có model chính + model leo thang; vision **Sonnet 5.0 từ đầu, Opus khi khó**. Không còn "một cỡ cho tất cả".
+2. **Không vỡ kế toán chi phí.** `provider-client.ts` có **bảng giá per-model** trước khi thêm model mới — nếu không, log cost sẽ sai (hiện chỉ phân biệt Haiku).
+3. **Tỉ lệ nền 50/50 LOCKED toàn dự án** — dẹp lệch tài liệu cũ (code 60/40 vs Plan §25 70/30). Một chân lý duy nhất.
+4. **Mọi nguồn giá phải tự chứng minh mới được đụng vào tiền khách** — thang bậc T1–T5 tính từ **bằng chứng thật** bằng **rulebook cứng**, không phải LLM tự phán.
+5. **Con số bất thường không kéo được giá** — khóa giá thị trường (defense-in-depth như đường học giá đã có), quorum theo giá trị deal, đá-văng ngoại lệ.
+6. **Khách hỏi "sao giá này đúng?" trả lời được** — Kael show được: số từ mấy nguồn bậc mấy, ở HCMC, cập nhật khi nào, có khớp nhau không.
+
+**Nguyên tắc xuyên suốt (bất biến an toàn — KHÔNG được phá):** con số giá LIVE là **deterministic** (`synthesizePrice()` math), KHÔNG do LLM sinh. LLM chỉ **tìm nguồn + nhặt bằng chứng + đưa số thô**; **rulebook của mình quyết** bậc, trọng số, giá cuối. Mọi nâng cấp §40 phải giữ bất biến này (RULES.md #7).
+
+---
+
+### 40.0.1 Authority refs (đọc theo thứ tự bắt buộc trước khi execute)
+
+```
+1. RULES.md            (#0 mobile boundary; #7 KaelAutonomyDecision server-side validated — giá KHÔNG từ raw LLM;
+                        #8 no fake success / honest unavailable; #10 timeout/retry; ban hardcoded VND)
+2. critical.md         (§0 lifecycle Define→…→Ship; §3 gates; §5 preflight; §8 verify honest)
+3. STRUCTURES.md       (service taxonomy điện/nước/vệ sinh; price/state machine; backend contracts; "do not build now")
+4. governance/RULES.md #7 (Kael autonomy) + ai-boundary protocol (protocols/*)
+5. Plan.md §23 (Harness 7 sub-systems), §25 (Source Trust cũ — §40 SUPERSEDE tỉ lệ 70/30 → 50/50),
+                §31 (Kael AI core), §39 (Charter — branch khác, tránh đụng)
+6. docs/foundation/source-trust-maintenance.md  (cơ chế registry + decay hiện có — mở rộng, không đập)
+7. code source (verify tận nơi, KHÔNG tin trí nhớ):
+     supabase/functions/mobile-api/_shared/kael/synthesis.ts        (blend 60/40 hiện tại → sửa)
+     …/kael/source-trust.ts        (TIER_1 domains + registry + effectiveTrustScore + validateCitations)
+     …/kael/market.ts              (searchMarketPrice + citations + cache)
+     …/kael/routing.config.ts      (KAEL_ROUTING_CONFIG + model factories)
+     …/kael/provider-client.ts     (callAI + cost calc — thêm per-model table)
+     …/kael/learning.ts            (clampLearnedPriceToBaseline — pattern khóa để tái dùng cho market)
+     …/kael/types.ts               (marketPriceResultSchema — thêm ràng buộc + per-source shape)
+8. CLAUDE.md           (lock notice; runtime boundary; Kael identity)
+9. MEMORY.md           (last)
+```
+
+---
+
+### 40.0.2 Decision Log (Tu chốt session 2026-07-06..07 trừ khi ghi khác)
+
+**Nhóm M — Model Tiering:**
+
+- **DM1 — Escalation ladder DUYỆT.** Mỗi purpose: model **chính (rẻ/đủ)** chạy trước → **leo thang** lên model mạnh khi *độ tin thấp* hoặc *stakes cao*. (Tu duyệt.)
+- **DM2 — Vision = Sonnet 5.0 từ đầu, Opus khi khó (LOCKED).** KHÔNG dùng Haiku hay DeepSeek-flash cho vision. (Tu chốt, override đề xuất "vision rẻ" của Claude.)
+- **DM3 — DeepSeek: giữ `v4-flash` + THÊM `v4-pro`** cho task suy luận sâu/offline (vd `post_job_learning`). Flash cho path nhanh/rẻ (intent).
+- **DM4 — Anthropic: `sonnet-4-6` → `sonnet-5.0`; THÊM Haiku 4.5** (path rẻ) **+ Opus** (leo thang cho path quan trọng/agentic + vision khó).
+- **DM5 — Perplexity: `sonar` / `sonar-pro` GIỮ NGUYÊN.**
+- **DM6 — Per-model cost table là PREREQUISITE.** `provider-client.ts` hiện chỉ phân biệt Haiku (`isHaiku?0.25:3` / `?1.25:15`); thêm model mới mà không có bảng giá → log cost sai. Phải làm ở M0 TRƯỚC khi wire model mới.
+- **DM7 — Model IDs phải VERIFY lại ở M0** (official docs), KHÔNG hardcode theo trí nhớ. Env hint hiện tại: `claude-opus-4-8`, `claude-sonnet-5`, `claude-haiku-4-5-20251001`, `deepseek-v4-flash` (đã verify). **`opus-4.6/4.7` Tu nêu → M0 xác nhận ID Opus HIỆN HÀNH (nhiều khả năng `claude-opus-4-8`) và dùng bản hiện hành, không dùng ID cũ.** `deepseek-v4-pro` + `sonar-pro` cũng verify tồn tại/ID ở M0.
+
+**Nhóm S — Source Trust & Pricing:**
+
+- **DS1 — Tỉ lệ nền 50/50 baseline↔thị trường, LOCKED toàn dự án.** Lý do Tu: cân bằng — lỡ info Kael có sẵn không hợp deal, hoặc info search được không khớp cái Kael có. Thay `0.6/0.4` ở `synthesis.ts` **sau khi plan xong** (= phase S0). Dẹp lệch tài liệu (Plan §25 ghi 70/30). **50/50 là chân lý duy nhất.**
+- **DS2 — Nghi ngờ số → GIỮ 50/50, nới khoảng + bật cờ "cần xem tận nơi"** (phương án 2). KHÔNG tự bỏ nửa thị trường. Trọng số cố định, độ chắc (confidence) mới linh hoạt.
+- **DS3 — Thang nguồn 5 bậc T1–T5** + **7 dấu kiểm (A–G)** + **8 luật cứng** (chi tiết §40.4). Bậc càng cao càng đụng được vào giá.
+- **DS4 — Phân bậc TỰ ĐỘNG, nhưng tách 2 việc (Tu chốt "cho hệ thống tự đánh giá bậc").** Perplexity **đi tìm + nhặt bằng chứng** cho 7 dấu kiểm; **rulebook của mình TÍNH bậc** từ bằng chứng đó (deterministic) + tự nâng/hạ. LLM **KHÔNG** được tự nói "đây là T1". Lý do giữ tách: bậc = quyền đụng tiền; để LLM tự dán bậc thì trang lừa chỉ cần khai "tôi uy tín" là lọt.
+- **DS5 — Độ tươi:** T1 ≤ 12 tháng; còn chấp nhận đến ≤ 24 tháng (hạ bậc). Quá hạn → tự tụt bậc.
+- **DS6 — Quorum theo giá trị deal:** deal **< 1 triệu VND → cần ≥2 nguồn T1–T2** đồng thuận; **≥ 1 triệu VND → cần ≥3**. Không đủ → nửa thị trường coi là *yếu* → DS2.
+- **DS7 — Đá-văng ngoại lệ = >40%:** nguồn lệch quá 40% so với **trung vị nhóm T1–T2** thì bỏ, **kể cả nó là T1**.
+- **DS8 — Lớp suy luận nhẹ.** Sau khi có số: chạy **5 cửa logic** (so baseline, trộn đơn vị, các nguồn có sát nhau, ngày tháng, khoảng có rộng vô lý) → kết luận **hợp lý / nghi ngờ / loại + lý do**. **Luật cứng trong code QUYẾT**; Perplexity chỉ **đưa số + lý do + bằng chứng per-nguồn** (đọc-để-show, KHÔNG-để-tin). Cấm để LLM tự-chấm làm cửa cuối.
+- **DS9 — Bằng chứng thô per-nguồn (derived, bắt buộc để DS6/DS7/DS8 chạy được).** Perplexity trả **danh sách từng nguồn** `{domain, price_min, price_max, unit, date}` thay vì một số trộn sẵn; **harness tự gom** bằng trọng số tin cậy. Không có per-source thì không thể lấy trung vị / đá ngoại lệ / đếm quorum. ⇒ đây là xương sống, không phải quyết định mới.
+- **DS10 — Khóa giá thị trường (defense-in-depth).** Đường *học giá* đã có `clampLearnedPriceToBaseline` (factor 4×, `learning.ts:197`); đường *thị trường* trong `synthesis.ts` **chưa có khóa nào** → thêm khóa tương tự để một số điên (sai đơn vị/thập phân, gấp nhiều lần) không kéo giá. Ngưỡng khóa chốt ở S5 (đề xuất cùng tinh thần 4×, verify không chặn "market correction" hợp lệ).
+
+---
+
+### 40.0.3 Definition of Done — Gates (áp dụng MỌI phase)
+
+```text
+G1 — Bất biến an toàn:  giá LIVE vẫn deterministic; KHÔNG có đường nào để raw LLM output đặt giá (RULES #7). Test chứng minh.
+G2 — Cost đúng:         mọi model có giá per-model; log cost khớp token×giá cho TỪNG model (không rơi về default sai).
+G3 — Chống đầu độc:     test vector — nguồn giả/outlier/stale/trộn-đơn-vị KHÔNG kéo được giá; bị hạ bậc/đá văng đúng luật.
+G4 — 50/50 giữ đúng:    weight baseline↔market = 50/50 cố định; nghi ngờ → nới band + cần-xem-tận-nơi, KHÔNG đổi weight.
+G5 — Bậc từ bằng chứng: bậc do rulebook tính từ 7 dấu kiểm; LLM không tự dán bậc được (test: payload LLM nói "T1" bị bỏ qua).
+G6 — Honest verify:     chạy thật (deno check + test suite api/shared), report thật; ghi rõ cái CHƯA test (RULES #8).
+```
+
+---
+
+### 40.1 Current-state findings (evidence-cited — session này, 2026-07-06..07)
+
+**40.1.1 — Đường giá (điểm yếu trung tâm):**
+- `synthesis.ts:73-80`: blend `market*0.6 + baseline*0.4`, **KHÔNG có khóa trên market**. Confidence `min(0.85,(market.confidence+0.5)/2)` (`:88`).
+- `learning.ts:199` `clampLearnedPriceToBaseline` (factor 4×) — **pattern khóa ĐÃ tồn tại nhưng chỉ áp cho đường học giá, không cho market**.
+- `types.ts` `marketPriceResultSchema` — `market_range_min/max` chỉ `int().positive()`, **không trần, không cap tương-đối-baseline**.
+
+**40.1.2 — Chọn nguồn (ĐÃ có nền thật — S là NÂNG CẤP, KHÔNG greenfield):**
+- `source-trust.ts` ĐÃ chạy thật (bản `source-trust-r2-2026-05-26`), gồm:
+  - Thang bậc HIỆN TẠI = **`tier_1 | tier_2 | tier_3 | blocked`** (3 bậc + cấm), **KHÔNG phải T1–T5**. `SourceTrustTier` type (`:31`).
+  - `source_trust_registry` (DB) + fallback ~20 domain chọn tay (`TIER_1_SOURCE_TRUST_DOMAINS` `:8`); cache TTL 5 phút.
+  - `effectiveTrustScore()` (`:240`) ĐÃ **rớt điểm theo tuổi review** (90/180/365 ngày) + `effective_until` hết hạn → 0.
+  - `validateCitations()` (`:169`) ĐÃ có **quorum (mặc định 2)** + lọc trùng domain + chỉ nhận tier_1 active.
+  - `trustedPerplexityMarketConfig()` (`:117`) ĐÃ giới hạn search trong domain đã duyệt + prompt ĐÃ bảo Perplexity "remove abnormal outlier" + trả JSON **trộn sẵn** `market_range_min/max` + citations.
+- **Thiếu (đây MỚI là việc của S):** (a) **tiêu chí A–G vì sao một nguồn đáng tin** (hiện chỉ "tao chọn" + điểm tay); (b) số cuối **Perplexity trộn sẵn, mù per-source** → không tự lấy trung vị / đá ngoại lệ / đếm quorum-theo-tiền; (c) thang **3 bậc → cần remap sang T1–T5**; (d) **không có khóa giá market**.
+- ⇒ **S NÂNG CẤP các hàm đang có** (`effectiveTrustScore`/`validateCitations`/`trustedPerplexityMarketConfig` + registry), **tái dùng decay/quorum ĐÃ có**; KHÔNG viết lại từ đầu.
+
+**40.1.3 — Model roster:**
+- `routing.config.ts`: model factories cứng `deepseek-v4-flash` / `claude-sonnet-4-6` / `sonar`; `provider-client.ts:~237` cost chỉ `isHaiku?…`. Thêm model mới sẽ **sai cost** nếu không có bảng giá.
+
+**40.1.4 — HOÃN (out of scope §40, ghi để không mất — bàn + plan riêng SAU):**
+- Self-check chặn bằng **chữ KHÔNG dấu** (`self-check.ts:64`) → tiếng Việt có dấu lọt; regex giá chính xác bỏ sót "500k"/"500 nghìn".
+- Permission mở/đóng theo **`topic` do LLM dán** → nên default-deny khi độ tin phân loại thấp.
+- Orchestrator trả `success:true` khi degraded (`orchestrator.ts`) → caller dễ tưởng thành công.
+- Intent stage chưa qua spend-gate; rate-limiter "xịn" của Kael là code chết; audit bộ nhớ ghi nhầm actor_id.
+- **Cập nhật 2026-07-08:** các lỗ này + 3 lỗ **ổn-định-Multi-LLM** (breaker/limit in-memory per-isolate, cost mù model, schema-fail không vào breaker) đã được phân về **§41** (3 lỗ ổn định, đào sâu) và **§42** (4 lỗ còn lại: self-check bỏ dấu, permission default-deny, orchestrator status, memory audit id — plan SAU khi §40+§41 xong). Xem **§41**.
+
+---
+
+### 40.2 Architecture Target
+
+```text
+(M) callAI(purpose) → routing.config chọn {primary, escalation, trigger}
+      → chạy primary (rẻ) → nếu confidence thấp / stakes cao → chạy escalation (mạnh)
+      → cost log dùng PER-MODEL price table (đúng cho từng model)
+
+(S) market_lookup:
+   Perplexity (search giới hạn domain đã duyệt) → trả BẰNG CHỨNG THÔ per-nguồn
+        [{domain, price_min, price_max, unit, date, signals A–G}]
+   → RULEBOOK (deterministic, trong code):
+        1. tính BẬC mỗi nguồn từ 7 dấu kiểm (T1–T5)                    [DS3/DS4]
+        2. chuẩn hoá đơn vị → loại nguồn trộn/mờ đơn vị                  [luật 3]
+        3. đá văng nguồn lệch >40% trung vị T1–T2                        [DS7]
+        4. đếm quorum (≥2 / ≥3 nếu ≥1 triệu)                             [DS6]
+        5. gom số thị trường = trung bình có trọng số theo bậc          [DS9]
+        6. lớp suy luận nhẹ: 5 cửa → hợp lý / nghi ngờ / loại           [DS8]
+   → synthesizePrice(): blend 50/50 baseline↔market (LOCKED)            [DS1]
+        + KHÓA market (defense-in-depth)                                 [DS10]
+        + nghi ngờ → nới band + cần-xem-tận-nơi (giữ 50/50)             [DS2]
+   → EstimateCardV3 (kael_reasoning slots ĐÃ có) show "vì sao giá đúng"
+```
+
+---
+
+### 40.3 Workstream M — Model Tiering (phases)
+
+- **M0 — Prereq: verify IDs + per-model cost table (BUILD GATE cho M).** Verify official docs các model ID (DM7); dựng bảng giá `{model → inputUsdPerMTok, outputUsdPerMTok}` trong `provider-client.ts` thay `isHaiku?…` cứng; unit test cost cho từng model. *Pass:* mọi model đang-dùng + sắp-thêm có giá; test cost khớp. *(kael-tdd)*
+- **M1 — Routing roster + escalation metadata.** Mở `KAEL_ROUTING_CONFIG`: mỗi purpose có `{primary, escalation?, escalationTrigger}`; wire model mới (deepseek `v4-pro`; anthropic `sonnet-5` thay `sonnet-4-6`, thêm Haiku 4.5 + Opus). **Vision purpose: primary `sonnet-5`, escalation Opus** (DM2). *Pass:* config phản ánh DM2–DM5; test routing per purpose. *(karpathy-guidelines)*
+- **M2 — Escalation mechanism.** Trong `callAI`/pipeline: sau primary, nếu `confidence < ngưỡng` hoặc `stakes cao` (vd high-stakes autonomy ≥1M / dispute) → gọi escalation model; log cả hai lần + lý do leo. Giữ spend-gate/circuit-breaker/kill-switch. *Pass:* test leo-thang trigger đúng, không leo khi không cần. *(kael-tdd, kael-security-sweep)*
+- **M3 — Verify M.** deno check + api/shared tests; cost accounting đúng (G2); no regression routing; test log + README `/log`.
+
+---
+
+### 40.4 Workstream S — Source Trust & Pricing (spec + phases)
+
+**7 dấu kiểm chung (A–G)** — mọi nguồn soi qua:
+
+```
+A Danh tính     — có MST/địa chỉ/giấy phép công khai?
+B Loại nguồn    — tự ra giá / bán vật tư / đưa tin / listing / ẩn danh?
+C Vùng          — phục vụ HCMC? đúng quận?
+D Bảng giá thật — có số rõ + đơn vị rõ (lần/giờ/m²)?
+E Độ tươi       — ≤12 tháng (T1) / ≤24 tháng (còn nhận)?   [DS5]
+F Toàn vẹn      — trang họ tự kiểm soát, không ai bơm được?
+G Bằng chứng    — URL + ảnh chụp + ngày + ai xác minh, lưu trong sổ?
+```
+
+**Thang bậc T1–T5 (bậc = do rulebook tính từ A–G, DS4):**
+
+```
+T1 Ra giá gốc        — tiệm/chợ HCMC tự đăng bảng giá của mình.  BẮT BUỘC: A+B(tự ra giá)+C(HCMC)+D+E(≤12th)+F+G.
+                       Soi lại 6 tháng. Sức kéo giá = 1.0.
+T2 Tham chiếu chính  — hãng/vật tư, hoặc tiệm lớn ngoài HCMC.    BẮT BUỘC: A+D+E(≤12th)+F+G; B=vật tư/tự-ra-giá.
+                       Soi lại 6–12 tháng. Kéo giá: vật tư 1.0; ngoài vùng ~0.7 sau chỉnh.
+T3 Thứ cấp uy tín    — báo lớn / thư mục đưa tin giá.            BẮT BUỘC: A(pháp nhân)+B(đưa tin)+E(≤24th).
+                       Soi lại 12 tháng. Chỉ SOI/NẮN, cap ~0.3. KHÔNG tự chốt.
+T4 Yếu               — site nhỏ lạ, listing mờ, thiếu ngày/đơn vị. Phụ họa ~0.1, CẤM đứng một mình.
+T5 Cấm               — forum/FB/rao vặt/blog/SEO rác/wiki/ẩn danh. Sức kéo = 0, vào blacklist.
+```
+
+**8 luật cứng (làm nó nghiêm khắc — đụng tiền):**
+
+```
+1 Mặc định CẤM + kiểm dịch  — nguồn lạ = T5 tạm, KHÔNG đụng giá tới khi rulebook đủ bằng chứng nâng bậc (DS4 auto).
+2 Không bằng chứng, không lên bậc — T1/T2 phải có dấu G trong sổ (audit minh bạch).
+3 Chuẩn hoá đơn vị trước khi vào — quy về đơn vị chung; nguồn trộn/mờ đơn vị → rớt T4.
+4 Đá văng ngoại lệ >40%     — lệch quá 40% trung vị T1–T2 → bỏ, kể cả T1 (DS7).
+5 Quorum theo tiền          — <1tr: ≥2 T1–T2; ≥1tr: ≥3 T1–T2. Không đủ → nửa thị trường yếu → DS2 (DS6).
+6 Bậc cao thắng bậc thấp    — T1 cãi T3 → nghe T1. Các T1 tự cãi nhau → nới band + cần-xem-tận-nơi.
+7 Hết hạn tự tụt bậc        — quá kỳ soi lại chưa xác minh → tự rớt bậc (nối cơ chế decay ĐÃ có).
+8 Chống bơm giữa chừng      — domain nhảy giá bất thường giữa 2 lần kiểm → hạ bậc tạm + cờ nghi, chờ soi lại.
+```
+
+**Lớp suy luận nhẹ (DS8) — 5 cửa logic, luật cứng quyết:**
+
+```
+1 So baseline      — market trong khoảng hợp lý của baseline (vd 0.3×–3×)? Gấp 10× → nghi/loại.
+2 Trộn đơn vị      — các nguồn có cùng đơn vị không? Trộn → không cộng chung.
+3 Sát nhau         — T1–T2 lệch nhau nhiều? → hạ confidence.
+4 Ngày tháng       — số có mới không?
+5 Khoảng           — max/min rộng vô lý → nghi.
+→ kết luận: hợp lý / nghi ngờ / loại + lý do. Nghi ngờ → DS2 (giữ 50/50, nới band, cần-xem-tận-nơi).
+```
+
+**Phases S:**
+
+- **S0 — Khóa 50/50 + dọn drift (DS1).** Sửa `synthesis.ts` `0.6/0.4` → `0.5/0.5`; ghi chú single-source-of-truth; note Plan §25 bị supersede; cập nhật doc/test liên quan. *Pass:* blend = 50/50, test cập nhật, không chỗ nào còn 60/40 hay 70/30. *(kael-tdd)*
+- **S1 — Registry schema mở rộng + remap bậc.** Thêm cột bằng chứng 7-dấu-kiểm + `criteria_met`(json) + trường auto-tier vào `source_trust_registry` (migration + RLS + regen types). **Remap thang cũ `tier_1/2/3/blocked` → T1–T5** (map rõ trong migration; giữ backward-compat cho `SourceTrustTier` type + hàm đang dùng để không vỡ code hiện tại). **GIỮ decay + `effective_until` ĐÃ có**, chỉ chỉnh ngưỡng theo DS5 (≤12/≤24 tháng). *Pass:* migration + RLS test; types regen; test remap KHÔNG mất row cũ. *(kael-supabase)*
+- **S2 — Rulebook tính bậc (deterministic).** Hàm thuần: input = bằng chứng A–G per nguồn → output = bậc T1–T5 + lý do; auto nâng/hạ; luật 1/2/7/8. **LLM không đặt bậc được** (G5). *Pass:* unit test bảng-quyết-định đầy đủ + test "payload LLM tự nói T1 bị bỏ qua". *(kael-tdd, kael-ai-boundary)*
+- **S3 — Bằng chứng thô per-nguồn + gom trọng số (DS9).** Sửa `buildTrustedPerplexityMarketConfig`/prompt (`source-trust.ts:117`) + `marketPriceResultSchema` để Perplexity trả `sources[]{domain,price_min,price_max,unit,date}` **thay số trộn sẵn**; **mở rộng `validateCitations` quorum ĐÃ có** (thêm quorum-theo-tiền DS6) thay vì viết mới; harness: chuẩn hoá đơn vị (luật 3) → đá ngoại lệ 40% (luật 4) → quorum (luật 5) → gom = trung bình trọng số theo bậc. *Pass:* test vector đầu độc (outlier/stale/trộn-đơn-vị/không-đủ-quorum) cho kết quả đúng (G3). *(kael-tdd, kael-security-sweep)*
+- **S4 — Lớp suy luận nhẹ (DS8).** 5 cửa logic → verdict; nghi ngờ → set cờ `needs_inspection` + nới band, GIỮ 50/50 (DS2). Perplexity reasoning chỉ đi vào `kael_reasoning` (show, không tin). *Pass:* test verdict + test "LLM tự-chấm KHÔNG phải cửa cuối". *(kael-tdd)*
+- **S5 — Khóa giá thị trường (DS10).** Thêm clamp market trong `synthesis.ts` theo pattern `clampLearnedPriceToBaseline`; chốt ngưỡng (đề xuất 4×, verify không chặn market-correction hợp lệ); vượt ngưỡng → bỏ nửa market, log alert, fallback baseline (không block khách). *Pass:* test clamp bắt số điên, không bắt oan. *(kael-tdd)*
+- **S6 — Verify S (adversarial + honest).** Full test vector đầu độc (G3); G1 bất biến (giá deterministic); G4 (50/50 giữ); deno check + api/shared; test log + README `/log`; ghi rõ cái CHƯA test.
+
+---
+
+### 40.5 Contracts (chốt chi tiết ở companion doc)
+
+```text
+Routing (M):   RouteConfig { primary: ModelRef, escalation?: ModelRef, escalationTrigger: {minConfidence?, highStakes?} }
+Cost (M):      MODEL_PRICE_TABLE: Record<modelId, { inUsdPerMTok, outUsdPerMTok }>
+Market (S):    marketPriceResultSchema += sources: Array<{ domain, price_min:int>0, price_max:int>0, unit, date }>
+               + market clamp band (relative-to-baseline factor)
+Registry (S):  source_trust_registry += { entity_type, region, established_year|first_seen, last_price_seen_at,
+                                          price_unit, integrity_flag, tier(1-5), criteria_met(jsonb) }
+Verdict (S):   { verdict: 'reasonable'|'suspicious'|'reject', reasons[], needs_inspection: bool }
+```
+
+---
+
+### 40.6 Risks + Locked-Doc Impact
+
+- **Model ID trôi.** `opus-4.6/4.7` Tu nêu có thể đã cũ (env hint Opus hiện hành = `claude-opus-4-8`) → M0 verify, dùng bản hiện hành. Rủi ro build với ID chết.
+- **Cost table sai → đốt tiền âm thầm.** Nếu M0 bỏ sót một model → cost log lệch → spend-gate quyết sai. G2 chặn.
+- **Perplexity per-source không đáng tin 100%.** Nó có thể trả thiếu/sai domain-số. ⇒ schema + fallback + luật cứng là lá chắn; KHÔNG tin per-source mù.
+- **Bằng chứng A–G có thể bị khai gian** (năm thành lập/MST giả). ⇒ kiểm chéo rẻ vài dấu (tuổi domain, HCMC); quorum + outlier + chuẩn-đơn-vị là backstop cho nguồn bị chấm nhầm bậc.
+- **Auto-tier tự do quá → nguồn rác lên bậc.** Luật 1 (mặc định cấm + kiểm dịch) + G5 (LLM không đặt bậc) chặn.
+- **Chi phí/độ trễ tăng** (per-source + soi kỹ + bỏ cache khi source-trust bật). Cân ở S3/S6; giữ TTL cache hợp lý.
+- **Locked-doc:** KHÔNG sửa file khóa. Plan §25 (KHÔNG locked) → note supersede tỉ lệ. `RULES.md` cấm hardcoded VND → ngưỡng "1 triệu"/tỉ lệ phải qua config/env, KHÔNG hardcode. Nếu cần đổi RULES/STRUCTURES → **STOP, hỏi Tu** (chưa thấy cần).
+
+---
+
+### 40.7 Sequencing / Build Order
+
+```
+Workstream M:  M0 (BUILD GATE: IDs + cost table) → M1 → M2 → M3
+Workstream S:  S0 (khóa 50/50) → S1 → S2 → (S3 ∥ S4) → S5 → S6
+M ∥ S:         hai workstream độc lập, chạy song song được. Giao nhau ở provider-client (M0) nếu S3 gọi model mới.
+Khuyến nghị:   S0 làm SỚM (1 dòng đổi 0.6/0.4→0.5/0.5 + test) để chốt drift ngay; phần nặng là S1–S3.
+```
+
+**⚠️ Bất biến G1 (giá deterministic) kiểm ở MỌI phase đụng giá.** Codex build, Claude verify từng phase (dòng Verify ở companion doc).
+
+---
+
+### 40.8 Skills Mapping + Verification
+
+```
+karpathy-guidelines   mọi phase (surgical diff, assumptions explicit, simplicity-first)
+kael-tdd              M0/S0/S2/S3/S4/S5 — failing test first, ≥2 layer, test vector đầu độc
+kael-supabase         S1 — migration/RLS/regen types cho registry
+kael-security-sweep   M2/S3/S6 — no fake success, no PII leak, chống đầu độc, spend-gate giữ nguyên
+kael-ai-boundary      S2/S4 — bất biến "LLM không đặt giá/bậc"; raw output không mutate money-state (RULES #7)
+```
+Verification: mỗi phase G1–G6 (40.0.3) + dòng "Verify (Claude)" ở companion doc. Report honest (chạy thật deno check + jest api/shared, ghi cái CHƯA test — RULES #8).
+
+---
+
+### 40.9 Change Log
+
+```text
+v0.1 — 2026-07-07 — Tạo từ session audit Harness Kael (2026-07-06..07). Đóng gói 2 workstream Tu đã CHỐT:
+                    (M) model tiering — escalation ladder + vision Sonnet5/Opus + DeepSeek v4-pro + Anthropic
+                    Haiku4.5/Opus + per-model cost table prereq; (S) source trust & pricing — 50/50 LOCKED,
+                    thang T1–T5 + 7 dấu kiểm + 8 luật cứng, auto-tier (Perplexity nhặt bằng chứng → rulebook tính
+                    bậc), bằng chứng thô per-nguồn + gom trọng số, quorum theo tiền (≥1tr→≥3), đá ngoại lệ 40%,
+                    lớp suy luận nhẹ 5 cửa, khóa giá thị trường. 3 lỗ Harness khác (self-check bỏ dấu, permission
+                    default-deny, orchestrator silent-success) HOÃN — ghi §40.1.4, bàn+plan riêng SAU. CHƯA execute.
+v0.2 — 2026-07-08 — Sửa nhẹ (Tu yêu cầu) sau khi soi thật `source-trust.ts`: đính chính Workstream S là
+                    **NÂNG CẤP nền đã có** (tier_1/2/3/blocked + registry + effectiveTrustScore decay + validateCitations
+                    quorum + trustedPerplexityMarketConfig), KHÔNG greenfield. 40.1.2 viết lại với file:line thật; S1 thêm
+                    **remap 3-bậc→T1–T5** + giữ backward-compat; S3 nêu rõ mở rộng `validateCitations`/`buildTrustedPerplexityMarketConfig`
+                    thay vì viết mới. 40.1.4 trỏ 3 lỗ ổn-định-Multi-LLM về §41 và 4 lỗ còn lại về §42. Cost-per-model (M0)
+                    dùng chung với §41 Problem-2 — build một lần.
+```
+
+---
+
+## 41. Kael Harness Reliability — Durable Guards + Cost Truth + Output-Health Breaker — 2026-07-08
+
+> Ba lỗ **ổn định Multi-LLM** đào sâu. Chúng KHÔNG đụng con số giá (đó là §40) — chúng làm cho **lá chắn provider thật sự hoạt động** khi nhiều model chạy song song dưới tải/lỗi. Hiện các lá chắn (circuit-breaker, rate-limit) **gần như vô dụng** vì state nằm trong RAM một isolate; kế toán chi phí **mù model** nên spend-gate quyết sai; và model "sống nhưng trả rác" **không bị cắt**. Nguồn: session audit 2026-07-08, soi thật code. **Các quyết định (D-A..D-G) đã chốt 2026-07-08; CHƯA execute — chờ Tu duyệt go.** Codex build, Claude verify.
+>
+> **Vì sao tách khỏi §40:** §40 = con số giá (đúng model + nguồn chứng minh được). §41 = **hạ tầng chạy** (guard bền, cost đúng, cắt model hỏng). Giao nhau đúng 1 chỗ: **bảng giá per-model** (§40 M0 = §41 Problem-2, build một lần).
+
+### 41.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-harness-reliability-20260708
+Created:        2026-07-08
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Branch:         claude/jolly-brattain-ab42dc (worktree exciting-jepsen-7bec6e)
+File location:  Plan.md §41 (durable, canonical) + companion doc (tạo ở execute)
+Status:         DESIGN LOCKED v0.3 — 3 lỗi đào sâu; TẤT CẢ quyết định (D-A..D-G) Tu chốt 2026-07-08.
+                CHƯA execute — chờ Tu duyệt go. Codex build, Claude verify.
+Trigger:        Tu: "các phần Harness còn lại chỉ ở mức tạm được/ổn, tôi muốn tốt/xuất sắc … nghiên cứu chuyên sâu hơn."
+                Xếp hạng theo mục tiêu Multi-LLM chạy ổn → chốt §41 = 3 lỗ ổn-định nền tảng.
+Scope:          (P1) chuyển state circuit-breaker + rate-limit từ RAM per-isolate → KHO CHUNG bền (DB), fail-open.
+                (P2) bảng giá PER-MODEL trong provider-client (Anthropic per-model + DeepSeek flash/pro + Perplexity
+                     token + phí mỗi lần search) → spend-gate thấy đúng tiền. DÙNG CHUNG §40 M0.
+                (P3) lỗi schema (JSON hỏng nhưng HTTP 200) FEED vào circuit-breaker → cắt model "sống mà trả rác".
+Out of scope:   4 lỗ còn lại (permission default-deny, self-check bỏ dấu, orchestrator status, memory audit id) → §42,
+                plan SAU khi §40+§41 xong. KHÔNG đụng con số giá (đó là §40). KHÔNG đổi runtime boundary.
+Companion docs: docs/design/kael-harness-reliability-20260708.md (tạo ở execute — per-step File/Action/Acceptance +
+                schema migration circuit/rate + test vector 2-isolate + bảng giá per-model verify-tận-nơi).
+Effort:         Chưa ước lượng — chốt ở phase 0 mỗi problem sau khi verify schema + giá model hiện tại.
+Skill mapping:  karpathy-guidelines (mọi phase) + kael-supabase, kael-security-sweep, kael-tdd, kael-ai-boundary (xem 41.8).
+```
+
+**Mục tiêu chính (đo được, không tô hồng):**
+
+1. **Lá chắn provider phải thật sự chặn.** Breaker + rate-limit đọc/ghi **kho chung**, một isolate thấy lỗi thì isolate khác biết ngay — không còn "mỗi isolate đếm riêng rồi chết trước khi đủ ngưỡng".
+2. **Không mù tiền.** Mỗi model có giá riêng; spend-gate reconcile theo **cost thật của đúng model** (kể cả Opus, DeepSeek-pro, và **phí search** của Perplexity), không đội lốt Sonnet.
+3. **Cắt được model hỏng-mềm.** Provider trả HTTP 200 nhưng JSON sai bền bỉ (bad model swap / prompt regression / provider âm thầm hạ chất lượng) → breaker mở → ngừng chọn nó, nhường model khác.
+4. **Không hi sinh "Kael sống".** Mọi guard **fail-open**: kho guard chết thì Kael vẫn trả lời (degrade thật thà), guard không được tự biến thành điểm chết. (Như spend-gate ĐÃ làm.)
+5. **Không regress an toàn tiền.** §41 KHÔNG chạm `synthesizePrice`/giá LIVE; spend-gate + kill-switch + RULES #7 giữ nguyên.
+
+**Nguyên tắc xuyên suốt:** bắt chước đúng khuôn **spend-gate.ts** đã chứng minh trong §38 — **durable (DB) + atomic (RPC) + fail-open + flag-gated**. Không phát minh khuôn mới.
+
+---
+
+### 41.0.1 Authority refs (đọc theo thứ tự bắt buộc trước khi execute)
+
+```
+1. RULES.md            (#0 mobile boundary; #7 giá không từ raw LLM — §41 KHÔNG chạm giá; #8 honest unavailable /
+                        no fake success; #10 timeout/retry/bounded; #1 secret cho flag mới; ban hardcoded VND/USD)
+2. critical.md         (§0 lifecycle; §3 gates; §5 preflight; §8 verify honest)
+3. Plan.md §38         (S4/F1 spend-gate DURABLE — khuôn mẫu để nhân bản cho breaker/rate-limit)
+   Plan.md §40         (M0 per-model cost table = §41 Problem-2, build một lần; đừng làm hai lần)
+   Plan.md §23         (Harness 7 sub-systems), §27.5 (F-23 Kael chat rate-limit gốc)
+4. code source (verify tận nơi, KHÔNG tin trí nhớ):
+     …/kael/spend-gate.ts          (reserveAiSpend/finalizeAiSpend + fail-open + kill-switch = KHUÔN CHUẨN)
+     …/kael/circuit-breaker.ts      (Map RAM `:37`; FAILURE_RULES gồm `schema` `:31`; failureKindForCode `:85`)
+     …/kael/rate-limit.ts           (Map RAM `:6`; KAEL_CHAT limits `:25-35`; checkKaelChatRateLimit `:37`)
+     …/kael/provider-client.ts      (cost Anthropic isHaiku-only `:237-243`; DeepSeek/Perplexity phẳng `:301-303`;
+                                     record failure chỉ transport `:150-156`; reserve/finalize `:62-84`,`:123-166`)
+     …/kael/intent.ts               (safeParse+zod soft-fail KHÔNG vào breaker `:90-104`,`:203-217`)
+     …/kael/routing.ts              (circuitAwareProviderCandidatesForPurpose — nơi breaker được hỏi khi chọn provider)
+     …/kael/routing.config.ts       (KAEL_ROUTING_CONFIG costCeiling per purpose — nguồn estimate cho reserve)
+5. CLAUDE.md           (lock notice; runtime boundary; Kael identity)
+6. MEMORY.md           (last)
+```
+
+---
+
+### 41.0.2 Decision Log (✔ = đã chốt — TẤT CẢ D-A..D-G Tu chốt 2026-07-08; DR/DG/DH = suy ra từ khuôn §38 đã duyệt)
+
+**Chung cả 3 problem:**
+
+- **✔ DR0 — Khuôn = spend-gate.** Durable (DB) + atomic (RPC) + **fail-open** + flag-gated. Guard chết ≠ Kael chết.
+- **✔ D-A — Pure-DB (Tu CHỐT 2026-07-08: "đơn giản nhưng đúng tuyệt đối").** Kho guard = **Postgres là source-of-truth**, mỗi call provider +1 round-trip; **KHÔNG hybrid cache** vòng này. RAM Map hiện tại **bỏ** vai trò source-of-truth (chỉ giữ làm cache L1 ở vòng SAU nếu đo thấy latency cắn — không làm bây giờ). Fail-open giữ nguyên.
+- **✔ DR1 — Fail-open xác nhận.** Breaker-DB / rate-DB / cost-lookup lỗi/timeout → **cho qua** (không block Kael), log cảnh báo. Đánh đổi: lúc kho guard chết thì bảo vệ TẮT — chấp nhận (Kael-sống > bảo vệ hoàn hảo), đúng như spend-gate.
+
+**Problem 1 — Durable breaker + rate-limit:**
+
+- **✔ D-B — Breaker 2 tầng (Tu CHỐT 2026-07-08).** Tầng **provider-global** cho lỗi cấp-tài-khoản (credit HTTP 402, rate_limit 429) → cắt **MỌI purpose** ngay khi provider hết credit/bị rate. Tầng **`purpose:provider`** cho lỗi cục bộ theo việc (schema, timeout, server 5xx). `is_circuit_open` hỏi **CẢ 2 tầng** → mở nếu **bất kỳ tầng nào** mở.
+- **✔ D-C — Bảng mới (Tu chốt 2026-07-08 theo đề xuất Claude).** Tạo `kael_provider_circuit` + `kael_rate_counter` + RPC riêng, **cùng style spend-gate** (atomic, fail-open). KHÔNG nhồi vào bảng spend-gate (ngữ nghĩa khác).
+
+**Problem 2 — Cost truth per-model:**
+
+- **✔ D-E — 2 chế độ (Tu chốt 2026-07-08 theo đề xuất Claude).** Model chưa có giá: **dev/test = fail-loud** (ném lỗi, không cho model không-giá lọt), **prod = fail-safe-high** (tính theo **giá cao nhất đã biết** → over-reserve, KHÔNG BAO GIỜ under-count). Cấm rơi về default rẻ.
+- **✔ D-F — Tính phí search Perplexity (Tu chốt 2026-07-08).** Bảng giá thêm `perRequestUsd` cho Perplexity (token + **phí mỗi request search** — hiện code bỏ hẳn, `:303`). **Con số chính xác VERIFY tận nơi ở P2.0** (KHÔNG hardcode trí nhớ — giá trôi); ghi ngày verify. (Đây là việc verify, không phải lựa chọn.)
+- **✔ DG2 — Cost table dùng chung §40 M0.** Build **một lần**. §41 Problem-2 = nơi build canonical; §40 M0 tiêu thụ. Nếu §41 chạy trước → §40 M0 thành "verify bảng phủ đủ model mới".
+
+**Problem 3 — Schema-fail → breaker:**
+
+- **✔ D-G — Wrapper `callStructuredAI` (Tu chốt 2026-07-08 theo đề xuất Claude).** Gói call+parse+validate+record schema-fail; thay boilerplate parse ở intent/vision/market/advisory (**DRY**). Chấp nhận diff lớn hơn → **di trú từng caller + test riêng** (P3.2), byte-diff hành vi, giữ fallback cũ.
+- **✔ DH1 — Ngưỡng schema giữ nguyên.** `schema` rule ĐÃ có (3 lần / 10 phút → mở 10 phút, `circuit-breaker.ts:31`). One-off JSON hỏng KHÔNG mở (đúng), chỉ hỏng bền mới mở. Không cần luật mới, chỉ cần **feed** đúng.
+- **✔ DH2 — P3 phụ thuộc P1.** Nếu breaker còn RAM per-isolate thì feed schema-fail vào nó **thừa hưởng luôn cái vô dụng**. ⇒ P3 làm SAU khi breaker đã bền (P1).
+
+---
+
+### 41.0.3 Definition of Done — Gates (áp dụng MỌI phase)
+
+```text
+R-G1 Durable:        state breaker/rate sống qua nhiều isolate. Negative test "2-isolate": lỗi ghi ở client A,
+                     client B đọc thấy mở (qua DB) — không còn đếm riêng.
+R-G2 Fail-open:      kho guard (circuit/rate/cost RPC) chết/timeout → Kael VẪN trả lời (degrade thật), guard không
+                     tự thành điểm chết. Test: RPC ném lỗi → call vẫn đi + log cảnh báo.
+R-G3 Cost đúng:      mọi model có giá; unknown model = fail-loud(dev)/over-reserve(prod), KHÔNG under-count.
+                     Test cost = token×giá theo TỪNG model + phí search Perplexity.
+R-G4 Cắt model hỏng: JSON sai bền bỉ từ 1 provider → breaker mở cho provider đó → provider loop nhảy sang model khác.
+                     Test: 3 lần schema-fail/10ph mở; 1 lần không mở.
+R-G5 An toàn giữ:    spend-gate + kill-switch còn hiệu lực; RULES #7 (giá deterministic) KHÔNG bị §41 chạm; no PII log.
+R-G6 Honest verify:  chạy thật (deno check + jest api/shared), report thật, ghi rõ cái CHƯA test (RULES #8).
+```
+
+---
+
+### 41.1 Current-state findings (evidence-cited — 2026-07-08, soi thật code)
+
+**41.1.1 — Breaker + rate-limit là RAM một isolate (LỖ SỐ 1):**
+- `circuit-breaker.ts:37` `const buckets = new Map(...)` — **module-global trong 1 isolate**. `KAEL_CIRCUIT_BREAKER` (`:79`) là singleton của isolate đó.
+- `rate-limit.ts:6` `const store = new Map(...)` — y hệt. `checkKaelChatRateLimit` 5/phút + 20/giờ (`:37`, F-23) chạy trên Map này.
+- **Vì sao hỏng:** Supabase Edge chạy **nhiều isolate song song + tái chế**. `recordFailure` ở isolate A **vô hình** với isolate B. Provider trả **HTTP 402** (credit hết, ngưỡng chỉ 1 → đáng lẽ mở 60 phút) chỉ mở ở đúng isolate thấy nó; isolate khác **vẫn gọi provider chết** → đốt tiền + trễ. Rate-limit: user rải request qua N isolate → hưởng ~N× hạn mức. Ở tải thấp isolate sống ngắn, **gần như không bao giờ đủ ngưỡng** trước khi bị tái chế.
+- **Bằng chứng đã có khuôn sửa:** `spend-gate.ts` ĐÃ durable (RPC `reserveAiSpend`/`finalizeAiSpend`, fail-open) → đội đã biết cách gate bền trong Postgres. Nhân bản cho breaker + rate.
+
+**41.1.2 — Kế toán chi phí mù model:**
+- `provider-client.ts:237-243`: Anthropic cost tính **chỉ theo `isHaiku`** → **Sonnet và Opus tính giá y hệt** ($3 in / $15 out). Hôm nay "may đúng" cho Sonnet, nhưng §40 định tuyến Opus/agentic → Opus (đắt hơn nhiều) **bị ghi như Sonnet**.
+- `:301-303`: DeepSeek phẳng `0.14/0.28` (không phân flash/pro); Perplexity phẳng `$1/$1` per M token và **bỏ hẳn phí mỗi request search**.
+- **Hậu quả tiền:** `finalizeAiSpend` reconcile theo `response.usage.costUsd` (`:123-131`) = số **sai** khi không phải Haiku/Sonnet → trần global $30/ngày + $1/user tính trên **spend under-count** → thực chi **vượt trần âm thầm**. Đây là **lỗ an toàn tiền**, không phải mỹ phẩm.
+
+**41.1.3 — Breaker "schema" là code chết (chưa ai feed):**
+- `circuit-breaker.ts:31` có luật `schema` (3/10ph → mở 10ph); `failureKindForCode:85` map `SCHEMA|VALIDATION|INVALID_JSON` → kind `schema`.
+- NHƯNG `callAI` chỉ `recordFailure` với code **transport** (`HTTP_x`/`TIMEOUT`/`AI_CALL_FAILED`, `:139-156`). Lỗi **JSON hỏng / zod fail** xảy ra ở **caller** (`intent.ts:90-104` "AI intent JSON validation failed"; `:203-217`) và trả `{success:false}` mềm — **KHÔNG** gọi breaker.
+- **Hậu quả:** provider **HTTP 200 nhưng trả rác bền bỉ** (đúng kiểu Multi-LLM hỏng-mềm) **không bao giờ bị cắt**; nó vẫn "khỏe", vẫn được chọn, đốt token mỗi lần. Breaker hiện chỉ thấy **sức khỏe đường truyền**, không thấy **sức khỏe đầu ra**.
+- **Đính chính (trung thực):** provider-fallback loop CÓ chạy thật — `intent.ts:31` lặp `circuitAwareProviderCandidatesForPurpose` (DeepSeek hỏng → thử Anthropic → mới về heuristic). Nên khi breaker schema mở đúng, loop sẽ tự nhảy provider. Vấn đề chỉ là breaker **chưa được feed** để mở.
+
+---
+
+### 41.2 Architecture Target
+
+```text
+P1 — Durable guards (khuôn spend-gate):
+  callAI() / chat handler
+    → RPC is_circuit_open(purpose, provider)  [+ tầng provider-global nếu D-B]   ── fail-open ──┐
+    → (nếu chat) RPC rate_take(scope, key, cost)                                  ── fail-open ──┤
+    → gọi provider                                                                               │
+    → RPC record_circuit_(success|failure)(purpose, provider, kind)              ── best-effort ─┘
+  Source of truth = Postgres (kael_provider_circuit, kael_rate_counter). Map RAM = cache L1 tuỳ chọn (D-A).
+
+P2 — Cost truth:
+  parse(response) → costUsd = MODEL_PRICE_TABLE[request.model] applied to usage
+    Anthropic: per-model (haiku/sonnet/opus) + cacheWrite/cacheRead mult
+    DeepSeek:  flash vs pro
+    Perplexity: token + perRequestUsd (phí search)     [D-F verify số]
+  model lạ → fail-loud(dev) / over-reserve giá-cao-nhất(prod)   [D-E]
+  → finalizeAiSpend nhận cost ĐÚNG → spend-gate quyết đúng.  (Bảng = §40 M0, build một lần.)
+
+P3 — Output-health breaker (sau P1):
+  callStructuredAI<T>(request, schema)   [D-G wrapper]
+    = callAI → safeParseJSON → zod safeParse
+      → nếu fail: RPC record_circuit_failure(purpose, provider, 'schema')  → trả {success:false, code:'SCHEMA_INVALID'}
+      → nếu ok:   trả {success:true, data}
+  Thay boilerplate parse ở intent/vision/market/advisory (DRY). Ngưỡng schema giữ 3/10ph.
+```
+
+---
+
+### 41.3 Problem 1 — Durable breaker + rate-limit (phases)
+
+- **P1.0 — Prereq: chốt D-A/D-B/D-C + schema kho.** Chốt pure-DB vs hybrid; 1 tầng hay 2 tầng khóa; tên bảng/RPC. Thiết kế `kael_provider_circuit` (khóa + đếm-theo-cửa-sổ + `open_until`) và `kael_rate_counter` (fixed-window hoặc token-bucket per scope:key), **atomic trong RPC** (đếm server-side, không race). *Pass:* design doc + schema review. *(kael-supabase, karpathy-guidelines)*
+- **P1.1 — Migration + RPC (atomic, fail-open).** Tạo bảng + RLS (service-role only) + RPC `record_circuit_failure`/`is_circuit_open`/`record_circuit_success` và `rate_take`. Logic cửa-sổ + ngưỡng bê từ `FAILURE_RULES` hiện có (giữ nguyên số). *Pass:* migration + RLS test (actor không đọc được); RPC unit test atomic. *(kael-supabase, kael-tdd)*
+- **P1.2 — Wire vào callAI + chat rate.** `KAEL_CIRCUIT_BREAKER` đọc/ghi qua RPC (giữ interface `isOpen/recordFailure/recordSuccess` để call-site không đổi nhiều); `checkKaelChatRateLimit` gọi `rate_take`. **Fail-open** mọi lỗi RPC. Flag `KAEL_DURABLE_GUARDS_ENABLED` (bật/tắt, tắt = rơi về Map cũ). *Pass:* R-G1 (2-isolate negative test), R-G2 (RPC-lỗi → vẫn qua). *(kael-tdd, kael-security-sweep)*
+- **P1.3 — Verify P1.** deno check + api/shared; test log + README `/log`; đo latency thêm (1 round-trip) — ghi thật; ghi cái CHƯA test.
+
+---
+
+### 41.4 Problem 2 — Cost truth per-model (phases)  ‹dùng chung §40 M0›
+
+- **P2.0 — Verify giá + dựng bảng.** Verify **tận nơi** giá từng model (Anthropic per-model qua `claude-api` skill; DeepSeek flash/pro; Perplexity token + **phí search** D-F) — KHÔNG hardcode theo trí nhớ. Dựng `MODEL_PRICE_TABLE`. *Pass:* bảng phủ mọi model đang-dùng + sắp-thêm (§40). *(karpathy-guidelines, claude-api)*
+- **P2.1 — Thay cost calc.** `provider-client.ts` đọc bảng theo `request.model` thay `isHaiku?…`; thêm `perRequestUsd` cho Perplexity; giữ cache-mult Anthropic. Model lạ → D-E (fail-loud dev / over-reserve prod). *Pass:* R-G3 — test cost khớp token×giá cho TỪNG model + phí search. *(kael-tdd)*
+- **P2.2 — Verify P2 + đồng bộ §40.** Xác nhận `reserve/finalize` nhận cost đúng → spend-gate quyết đúng; đánh dấu §40 M0 = done (hoặc "verify phủ đủ"). deno check + tests; test log.
+
+---
+
+### 41.5 Problem 3 — Output-health breaker (phases)  ‹sau P1›
+
+- **P3.0 — Chốt D-G + liệt kê call-site.** Chốt wrapper `callStructuredAI` vs recordFailure tối thiểu; liệt kê MỌI chỗ parse+validate (intent×2, vision, market, advisory, worker-brief…). *Pass:* danh sách call-site + chữ ký wrapper. *(karpathy-guidelines)*
+- **P3.1 — Wrapper + wire breaker.** Viết `callStructuredAI<T>(request, schema, secrets, gate)`: call→parse→zod; fail → `record_circuit_failure(purpose, provider, 'schema')` (qua kho bền P1) + trả `{success:false, code:'SCHEMA_INVALID'}`. *Pass:* R-G4 — 3 schema-fail/10ph mở, 1 lần không mở; provider loop nhảy sang model khác khi mở. *(kael-tdd, kael-ai-boundary)*
+- **P3.2 — Di trú call-site (surgical, per-caller test).** Thay parse inline bằng wrapper từng caller; giữ hành vi fallback cũ (soft-fail → heuristic). Byte-diff kiểm hành vi. *Pass:* mỗi caller test pass, no regression intent/vision/market. *(kael-tdd)*
+- **P3.3 — Verify P3.** deno check + api/shared; test "model trả rác bền" bị cắt; test log + README `/log`; ghi cái CHƯA test.
+
+---
+
+### 41.6 Contracts (chốt chi tiết ở companion doc)
+
+```text
+Cost (P2, = §40 M0):
+  MODEL_PRICE_TABLE: Record<modelId, { inUsdPerMTok:number, outUsdPerMTok:number,
+                                       cacheWriteMult?:number, cacheReadMult?:number, perRequestUsd?:number }>
+Circuit (P1):
+  table kael_provider_circuit { scope: 'purpose_provider'|'provider', key:text, kind:text,
+                                window_started_at:timestamptz, failure_count:int, open_until:timestamptz }
+  rpc record_circuit_failure(scope, key, kind, now) -> { is_open:bool }
+  rpc is_circuit_open(scope, key, now) -> bool          rpc record_circuit_success(scope, key)
+Rate (P1):
+  table kael_rate_counter { scope:text, key:text, window_started_at:timestamptz, tokens:int }
+  rpc rate_take(scope, key, cost, config) -> { allowed:bool, retry_after_ms:int }
+Structured call (P3):
+  callStructuredAI<T>(request, schema, secrets, gate?) -> { success:true, data:T }
+                                                        | { success:false, code:'SCHEMA_INVALID'|<AIError code> }
+Flag:  KAEL_DURABLE_GUARDS_ENABLED (P1, default off → Map cũ; RULES #1 cho secret/flag mới)
+Bất biến: mọi RPC fail-open; §41 KHÔNG import/đụng synthesizePrice hay bất kỳ đường đặt giá nào (RULES #7).
+```
+
+---
+
+### 41.7 Risks + Locked-Doc Impact
+
+- **Latency +1 round-trip mỗi call (P1).** Tải thấp → không đáng kể; nếu cắn → hybrid cache (D-A vòng sau). Đo thật ở P1.3, report honest.
+- **Fail-open = lúc kho guard chết thì bảo vệ TẮT.** Provider có thể bị dội. Chấp nhận (Kael-sống > bảo vệ hoàn hảo), **giống hệt spend-gate**; log cảnh báo để thấy khi nó xảy ra.
+- **Bảng giá trôi.** Giá provider đổi theo thời gian → verify ở P2.0, không tin trí nhớ; ghi ngày verify trong bảng.
+- **Refactor `callStructuredAI` chạm nhiều caller (P3).** Rủi ro regress → di trú **từng caller + test riêng**, byte-diff hành vi, giữ fallback cũ.
+- **False-positive breaker schema.** Prompt bug có thể mở breaker oan cho provider tốt. Giảm nhẹ: ngưỡng 3/10ph + degrade mềm (nhảy provider → heuristic), không hard-fail. Chấp nhận.
+- **Rate-limit đổi ngữ nghĩa (in-memory → DB).** Phải giữ đúng số F-23 (5/phút, 20/giờ); test tương đương hành vi trước/sau ở tải bình thường.
+- **Locked-doc:** KHÔNG sửa file khóa. Flag mới `KAEL_DURABLE_GUARDS_ENABLED` theo RULES #1 (secret/flag). Không hardcode ngưỡng tiền/tỉ lệ (RULES ban VND/USD hardcode) → config/env. Cần đổi RULES/STRUCTURES → **STOP hỏi Tu** (chưa thấy cần).
+
+---
+
+### 41.8 Sequencing / Build Order
+
+```
+Thứ tự: P2 (cost) → P1 (durable breaker+rate) → P3 (schema→breaker bền)
+  • P2 trước: spend đúng ngay + dùng chung §40 M0 (build một lần), gỡ lỗ tiền sớm.
+  • P1 giữa: lỗ cấu trúc lớn nhất; P3 PHỤ THUỘC nó (DH2 — feed schema vào breaker RAM thì thừa hưởng cái vô dụng).
+  • P3 cuối: khi breaker đã bền, schema-fail mới persist qua isolate → mới có tác dụng thật.
+TẤT CẢ quyết định D-A..D-G đã chốt (2026-07-08). D-F còn 1 việc **verify-tận-nơi** con số phí search Perplexity ở P2.0 (không phải quyết định).
+```
+
+**⚠️ Bất biến R-G5 (không regress an toàn tiền + giá deterministic) kiểm ở MỌI phase.** Codex build, Claude verify từng phase.
+
+---
+
+### 41.9 Skills Mapping + Verification
+
+```
+karpathy-guidelines   mọi phase (surgical diff, assumptions explicit, simplicity-first)
+kael-supabase         P1.0/P1.1 — migration/RLS/RPC atomic cho circuit + rate table
+kael-tdd              mọi phase — failing test first, ≥2 layer, 2-isolate negative test, cost-per-model test
+kael-security-sweep   P1.2/P2.1/P3 — fail-open đúng, no PII log, không regress spend-gate/kill-switch, rate-limit đúng
+kael-ai-boundary      P3 — output-health không để raw output lọt; §41 không chạm đường đặt giá (RULES #7)
+claude-api            P2.0 — verify giá model Anthropic tận nơi (không trí nhớ)
+```
+Verification: mỗi phase R-G1–R-G6 (41.0.3) + dòng "Verify (Claude)" ở companion doc. Report honest (chạy thật deno check + jest api/shared, ghi cái CHƯA test — RULES #8).
+
+---
+
+### 41.10 Change Log
+
+```text
+v0.1 — 2026-07-08 — Tạo từ session audit Harness (2026-07-08), 3 lỗ ổn-định-Multi-LLM đào sâu:
+                    (P1) breaker+rate RAM per-isolate → kho chung bền (khuôn spend-gate, fail-open);
+                    (P2) cost mù model → bảng giá per-model (Anthropic per-model + DeepSeek flash/pro + Perplexity
+                    token+phí-search), dùng chung §40 M0; (P3) schema-fail (JSON hỏng/HTTP 200) feed vào breaker
+                    để cắt model hỏng-mềm — phụ thuộc P1. Thứ tự P2→P1→P3. Quyết định mở D-A..D-H chờ Tu chốt
+                    trước execute. 4 lỗ còn lại → §42 (sau §40+§41). CHƯA execute — Codex build, Claude verify.
+v0.2 — 2026-07-08 — Tu chốt 2 quyết định: D-A = **pure-DB** (đơn giản, đúng tuyệt đối, không hybrid cache vòng này);
+                    D-B = **breaker 2 tầng** (provider-global cho credit/429 + purpose:provider cho schema/timeout/5xx,
+                    is_circuit_open hỏi cả 2). Còn mở: D-C/D-E/D-F/D-G.
+v0.3 — 2026-07-08 — Tu chốt NỐT (theo đề xuất Claude): D-C = **bảng mới** (kael_provider_circuit + kael_rate_counter,
+                    style spend-gate); D-E = **2 chế độ** model lạ (dev fail-loud / prod fail-safe-high over-reserve);
+                    D-F = tính **phí search Perplexity** (`perRequestUsd`, verify tận nơi ở P2.0); D-G = **wrapper
+                    callStructuredAI** (DRY, di trú từng caller + test riêng). §41 DESIGN LOCKED — chờ Tu duyệt go.
+```
+
+---
+
+## 42. Kael Harness Hardening — Uniform Output Guards + Confidence Permission + Provider Adapter — 2026-07-08
+
+> 4 lỗ Harness còn lại + **hướng nâng cấp cấp-hệ-thống**. Cốt lõi: **Harness là chỗ ta kiểm soát được** (không sửa được đầu LLM, nhưng bọc được nó) → đầu tư ở đây đòn bẩy cao nhất. Đóng gói phần đã bàn sâu session 2026-07-08 (đã grep xác minh nối dây thật, không đoán). **Các quyết định (DH0, DH-A..DH-D) đã chốt 2026-07-08; CHƯA execute — chờ Tu duyệt go.** Codex build, Claude verify.
+>
+> **Không đụng con số giá (đó là §40) và không đụng hạ tầng guard bền (đó là §41).** §42 = **tính đồng nhất + đúng chỗ** của lớp gác: mọi text ra khách đi qua một cổng, guard không tin mù nhãn LLM, không có sub-system nằm im, và phần khác-biệt-provider gom vào một adapter mỏng để Harness an toàn ở trên giữ MỘT bản.
+
+### 42.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-harness-hardening-20260708
+Created:        2026-07-08
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Branch:         claude/jolly-brattain-ab42dc (worktree exciting-jepsen-7bec6e)
+File location:  Plan.md §42 (durable, canonical) + companion doc (tạo ở execute)
+Status:         DESIGN LOCKED v0.2 — 4 lỗ + 5 hướng; DH0 + DH-A..DH-D Tu chốt 2026-07-08. CHƯA execute — chờ Tu duyệt go.
+Trigger:        Tu: "nghiên cứu sâu hơn 4 phần Harness còn lại + đề xuất hướng nâng cấp; có cần Harness riêng
+                cho từng LLM không (trả lời thật)." → Claude phân tích + grep xác minh nối dây; Tu chọn hướng 1
+                (gói §42: 4 lỗ + 5 hướng + ProviderAdapter).
+Scope:          (W1) một CỔNG RA duy nhất + primitive chuẩn-hoá-tiếng-Việt dùng chung (đóng lỗ self-check bỏ dấu).
+                (W2) permission default-deny theo độ tin + chủ đề cấm cần tín hiệu-2 (không tin mù nhãn LLM).
+                (W3) quyết dứt sub-system bộ nhớ L1–L6 đang NẰM IM (cắm điện hoặc xoá) — không để code chết trưng bày.
+                (W4) orchestrator trả status rõ thay `success:true` (footgun, làm sau cùng).
+                (W5) hình thức hoá ProviderAdapter mỏng (per-LLM specifics) → giữ Harness an toàn provider-agnostic.
+Out of scope:   con số giá (§40); guard bền DB (§41). KHÔNG đổi runtime boundary. KHÔNG thêm LLM provider mới lúc này.
+Companion docs: docs/design/kael-harness-hardening-20260708.md (tạo ở execute — per-step File/Action/Acceptance +
+                corpus đối kháng tiếng Việt + bảng call-site emit + interface ProviderAdapter).
+Effort:         Chưa ước lượng — chốt ở phase 0 mỗi workstream sau khi chốt DH-A..DH-D + trace call-site.
+Skill mapping:  karpathy-guidelines (mọi phase) + kael-security-sweep, kael-ai-boundary, kael-tdd, kael-supabase (xem 42.9).
+```
+
+**Mục tiêu chính (đo được, không tô hồng):**
+
+1. **Không câu bậy nào lọt ra khách/thợ vì thiếu dấu.** Mọi text ra ngoài đi qua **một cổng**; guard khớp trên **bản đã chuẩn-hoá** (bỏ dấu + đơn vị + số "500k") → chặn cả một lớp bypass.
+2. **Guard không tin mù một nhãn LLM.** Permission **default-deny khi độ tin phân loại thấp**; chủ đề cấm (y tế/pháp lý) cần **tín hiệu thứ 2** deterministic.
+3. **Harness không có phần trưng bày.** Bộ nhớ L1–L6 hoặc **được cắm thật** (có test + audit đúng) hoặc **bị xoá** — không nằm im tạo ảo giác năng lực.
+4. **Lá chắn phải chứng minh có nổ.** Mỗi guard ghi telemetry khi trip + có **corpus đối kháng tiếng Việt** chạy vào nó (chống "test khớp bug → xanh giả").
+5. **Một Harness an toàn, nhiều provider.** Phần khác-biệt-LLM gom vào **ProviderAdapter** mỏng; Harness an toàn (self-check/permission/giá-deterministic/PII) giữ **MỘT bản, provider-agnostic**.
+
+**Nguyên tắc xuyên suốt:** §42 KHÔNG chạm đường đặt giá (giá LIVE vẫn deterministic — RULES #7). Đây là lớp **gác đầu ra + chính sách + provider-shape**, phải **đồng nhất** bất kể model nào đẻ ra chữ.
+
+---
+
+### 42.0.1 Authority refs (đọc theo thứ tự bắt buộc trước khi execute)
+
+```
+1. RULES.md            (#7 giá không từ raw LLM — §42 KHÔNG chạm giá; #8 honest; #1 secret/flag mới;
+                        #0 boundary; ban hardcoded VND — ngưỡng qua config)
+2. critical.md         (§0 lifecycle; §3 gates; §5 preflight; §8 verify honest)
+3. CLAUDE.md           (Core Principle 2 simplicity — "đừng xây cho scale chưa kiếm được" → trực tiếp cho DH-A memory
+                        + DH-C ProviderAdapter scope; lock notice; Kael identity)
+4. Plan.md §41         (khuôn `callStructuredAI` / one-choke-point — output-gateway W1 tái dùng tinh thần này)
+   Plan.md §39         (Charter/guardrails — self-check là một phần; §42 làm nó đồng nhất, không mâu thuẫn)
+   Plan.md §23         (Harness 7 sub-systems — memory là 1 trong 7, đang nằm im)
+   docs/audit/infra-eval-audit-20260616.md  (skills/guard CHƯA pressure-test → corpus đối kháng bắt buộc)
+5. code source (verify tận nơi — đã grep session này):
+     …/kael/self-check.ts            (checkKaelResponse literal không dấu `:140`; normalizeText `:326` chỉ ở semantic guard)
+     …/kael/permission-gate.ts       (quyết theo topic `:153`; forbiddenTopicDecision `:359`; không default-deny)
+     …/kael/autonomy-gate.ts         (evaluateKaelPermissionGate `:153` — permission trên đường tiền, sau chồng chốt cứng)
+     …/kael/memory.ts                (KaelMemory `:55`; audit actor_id=subjectId `:281`) — CHỈ test gọi (p6.test.ts)
+     …/kael/orchestrator.ts          (success:true mọi degrade `:54/:87/:120`)
+     …/kael/customer-assistant.ts    (:124 permission, :192 self-check)  …/kael/worker-assist.ts (:104, :187)
+     …/services/chat.service.ts (:245)   …/services/kael-chat-core.ts (:240)   — 4 call-site self-check SỐNG
+     …/kael/provider-client.ts       (if/else per-provider request/parse/cost — nền cho ProviderAdapter)
+     …/kael/knowledge.ts             (retrieveLegalBoundaryPattern — ứng viên tín hiệu-2 cho topic cấm)
+6. MEMORY.md           (last)
+```
+
+---
+
+### 42.0.2 Decision Log (✔ = đã chốt — DH0 + DH-A..DH-D Tu chốt 2026-07-08)
+
+- **✔ DH0 — KHÔNG Harness riêng cho từng LLM (Claude phân tích, Tu chọn hướng 1 — 2026-07-08).** Giữ **MỘT Harness an toàn provider-agnostic** + **ProviderAdapter mỏng** cho phần vốn khác nhau (capabilities/shape/cost/failure-class). Lý do THẬT: (a) an toàn phải đồng nhất — không để output model này bị gác lỏng hơn model kia; (b) bảo trì nhân 3 = nhiều lỗ hơn (self-check gọi 4 chỗ đã lệch); (c) chưa có bằng chứng sản phẩm cần ở scale này.
+- **✔ DH-A — Cách ly + ghi rõ (Tu chốt 2026-07-08 theo đề xuất Claude).** KHÔNG cắm bộ nhớ L1–L6 bây giờ (chưa feature nào cần — CLAUDE.md simplicity), KHÔNG xoá (giữ công đã xây). **Quarantine:** ghi rõ trong `memory.ts` + doc "không thuộc runtime, chỉ test", freeze; cắm lại khi có feature thật cần context continuity. ⇒ W3 đi nhánh **W3.1b**.
+- **✔ DH-B — Một cổng gom (Tu chốt 2026-07-08 theo đề xuất Claude).** Cổng ra gom self-check + semantic-guard + exact-price + PII-scrub + language — các guard đầu-ra **ĐANG có**, KHÔNG thêm guard mới. Không luồng nào phát text chưa qua cổng.
+- **✔ DH-C — Trích interface nhẹ (Tu chốt 2026-07-08 theo đề xuất Claude).** Trích `ProviderAdapter` (capabilities/buildRequest/parse/cost/classifyFailure) quanh code `provider-client` hiện có; **KHÔNG force-migrate/đại tu**, KHÔNG thêm provider mới. Đủ để lần sau thêm LLM chỉ viết 1 adapter.
+- **✔ DH-D — Tái dùng boundary patterns (Tu chốt 2026-07-08 theo đề xuất Claude).** Tín hiệu-2 = `knowledge.ts` boundary patterns (legal/medical) + danh sách từ-khoá đã canonical (qua `canonicalizeVN`), KHÔNG viết bộ mới.
+- **✔ DH1 — §42 KHÔNG chạm giá.** Không import/sửa `synthesizePrice` hay đường đặt giá (RULES #7).
+- **✔ DH2 — Corpus đối kháng bắt buộc.** Mọi guard workstream phải kèm corpus tiếng Việt độc (câu dọa/tuyệt-đối/AI-ref **có dấu**, "500k"/"triệu", trộn đơn vị) + case dương-tính-không-được-chặn. (Từ infra-eval audit.)
+
+---
+
+### 42.0.3 Definition of Done — Gates (áp dụng MỌI phase)
+
+```text
+H-G1 Một cổng ra:     mọi text ra khách/thợ đi qua OUTPUT GATEWAY; test chứng minh KHÔNG còn đường phát text chưa gác.
+H-G2 Chống bỏ dấu:    corpus đối kháng — câu cấm CÓ DẤU + "500k"/đơn-vị-trộn bị chặn; case lành KHÔNG bị chặn oan.
+H-G3 Default-deny:    intent confidence < ngưỡng → hành động an toàn (hỏi lại, không phát bừa); topic cấm cần 2 tín hiệu.
+                      Test: payload nhãn LLM sai một mình KHÔNG mở gate.
+H-G4 Không code chết: bộ nhớ L1–L6 hoặc wired-có-test hoặc removed/quarantined-ghi-rõ. Không "có mà không chạy".
+H-G5 Guard có nổ:     mỗi guard trip ghi audit/trace; test assert nó nổ đúng lúc (không im lặng).
+H-G6 An toàn giữ:     RULES #7 giá deterministic KHÔNG bị §42 chạm; no PII log; spend-gate/kill-switch/§41 nguyên vẹn.
+H-G7 Honest verify:   chạy thật deno check + jest api/shared; report thật; ghi cái CHƯA test (RULES #8).
+```
+
+---
+
+### 42.1 Current-state findings (evidence-cited — 2026-07-08, đã grep xác minh nối dây)
+
+**42.1.1 — Self-check bỏ dấu (LỖ SỐNG — cao nhất):**
+- `self-check.ts:140` `checkKaelResponse`: `lower = text.toLowerCase()` rồi `.includes(phrase)` với `FORBIDDEN_PHRASES` **không dấu** (`:64-115`). Câu dọa/tuyệt-đối **có dấu** ("nguy hiểm chết người") **lọt**. `EXACT_VND_PATTERN` (`:119`) bỏ "500k"/"500 nghìn".
+- `normalizeText` (bỏ dấu NFD, `:326`) **có** nhưng chỉ dùng trong `detectSemanticGuardSuspicion` — bị cờ `semanticGuardEnabled` + chỉ ~6 pattern.
+- **Nối dây SỐNG:** `runKaelSelfCheckPipeline` gọi ở **4 luồng ra khách/thợ**: `customer-assistant.ts:192`, `worker-assist.ts:187`, `chat.service.ts:245`, `kael-chat-core.ts:240`.
+- **Nghịch lý test:** corpus cũ dùng chuỗi **không dấu** → khớp literal bug → **xanh giả**.
+
+**42.1.2 — Permission tin mù nhãn LLM (thật, mức trung bình):**
+- `evaluateKaelPermissionGate` switch trên `request.topic` (`:153`), `forbiddenTopicDecision` (`:359`) chặn theo topic. `topic` do phân loại intent (LLM) sinh → dán sai thì mở/đóng sai. **Không default-deny** khi confidence thấp.
+- Nối dây: `autonomy-gate.ts:153` (đường tiền — NHƯNG sau chồng chốt cứng: schema/policy_id/state-transition/PII/direct-mutation/evidence → topic sai **một mình không mở được tiền**); `customer-assistant.ts:124`; `worker-assist.ts:104` (chat — tải trọng gác cao hơn).
+- **CHƯA trace** từng call-site set `topic` từ đâu (rule hay LLM) — **verify ở W2.0**, không khẳng định bừa.
+
+**42.1.3 — Bộ nhớ L1–L6 NẰM IM (phát hiện lớn hơn cái bug):**
+- `new KaelMemory` / `.getContext` **chỉ có trong test** (`apps/api/.../mobile-api-kael-p6.test.ts`); **không call-site production**. Schema-test chỉ assert class tồn tại dạng chuỗi.
+- `audit()` ghi `actor_id: subjectId` (`memory.ts:281`) — log **người bị đọc** không phải **người đọc**; nhưng **chưa chạy** → gần vô hại. Vấn đề thật = **cả sub-system chưa cắm điện**.
+
+**42.1.4 — Orchestrator success:true (footgun, thấp):**
+- Mọi degrade (deny/self-check-fail/timeout+fallback) trả `success:true` (`:54/:87/:120`). NHƯNG pipeline đọc `.success` của **giá trị bên trong** (tự mang cờ) → cờ luôn-true **bị bỏ qua ở pipeline**. Rủi ro cho caller tương lai đọc nhầm.
+
+**42.1.5 — Rải rác guard (nền cho hướng nâng cấp):**
+- Self-check gọi **4 nơi** → dễ lệch cấu hình (một luồng để `semanticGuardEnabled` khác). Không **một cổng ra**. Không telemetry "guard đã trip chưa". Per-provider request/parse/cost nằm if/else trong `provider-client.ts` (nền cho ProviderAdapter).
+
+---
+
+### 42.2 Architecture Target
+
+```text
+MỌI text ra khách/thợ (4 luồng → gom):
+  <bất kỳ luồng nào> → OUTPUT GATEWAY (một cổng, W1)
+        → canonicalizeVN(text)   [bỏ dấu NFD + quy đơn vị + đọc số "500k/triệu/nghìn"]   (primitive dùng chung)
+        → self-check(literal trên bản canonical) + semantic-guard + exact-price + PII      (đồng nhất mọi luồng)
+        → pass → emit ; fail → regenerate/fallback + GHI trip (telemetry, H-G5)
+
+PERMISSION (W2):
+  request{ topic, intentConfidence } → confidence < ngưỡng(config) → default-deny/hỏi-lại
+        topic cấm → cần TÍN HIỆU-2 (boundary pattern, W2/DH-D) ; một nhãn LLM KHÔNG đủ
+
+PROVIDER layer (W5 — per-LLM specifics, KHÔNG phải Harness):
+  ProviderAdapter { capabilities(vision/web/json/cache), buildRequest, parseResponse, cost(model), classifyFailure }
+        └─ Harness an toàn (self-check/permission/giá-deterministic/PII) ở TRÊN, provider-agnostic (DH0)
+
+MEMORY (W3): wire (audit actor_id = READER) HOẶC remove/quarantine — không nằm im (DH-A)
+ORCHESTRATOR (W4): KaelStageStatus 'ok'|'declined'|'degraded'|'failed' thay success:true
+```
+
+---
+
+### 42.3 W1 — Uniform Output + canonicalize tiếng Việt (đóng lỗ self-check bỏ dấu)
+
+- **W1.0 — Chốt DH-B + liệt kê call-site emit.** Xác định phạm vi cổng (gom guard nào) + liệt kê MỌI chỗ phát text ra khách/thợ (4 self-check + chỗ khác nếu có). *Pass:* bảng call-site + scope cổng. *(karpathy-guidelines)*
+- **W1.1 — Primitive `canonicalizeVN`.** Hàm thuần: bỏ dấu (NFD strip, tái dùng `normalizeText`) + quy đơn vị (lần/giờ/m²) + đọc số "500k"/"1 triệu"/"nghìn" → dạng chuẩn. Unit test + **corpus đối kháng** (DH2). *Pass:* corpus có dấu/đơn-vị-trộn nhận đúng; case lành không sai. *(kael-tdd, kael-security-sweep)*
+- **W1.2 — Output-gateway.** Một hàm `guardOutput({text, actor, language, surface})` gom self-check(match trên bản canonical) + semantic-guard + exact-price(nới regex "500k") + PII; ghi trip. Di trú **4 call-site** qua cổng (byte-diff hành vi, giữ regenerate/fallback cũ). *Pass:* H-G1 (không còn đường chưa gác) + H-G2. *(kael-tdd, kael-security-sweep)*
+- **W1.3 — Telemetry + verify.** Trip ghi `kael_guardrail_trip_audit` (đã có) + test assert nổ; deno check + api/shared; test log `/log`. *Pass:* H-G5.
+
+---
+
+### 42.4 W2 — Confidence-aware Permission (không tin mù nhãn LLM)
+
+- **W2.0 — Chốt DH-D + trace topic source.** Trace từng call-site: `topic`/`intentConfidence` đến từ đâu (rule hay LLM). Chốt nguồn tín hiệu-2. *Pass:* bảng nguồn topic + confidence per call-site. *(karpathy-guidelines)*
+- **W2.1 — Default-deny + tín hiệu-2.** Thêm `intentConfidence` vào `KaelPermissionGateRequest`; confidence < ngưỡng(config) → deny/hỏi-lại (KHÔNG phát bừa). Topic cấm (legal/medical/financial/exact_guaranteed_price/fear_based_upsell) cần **2 tín hiệu** (nhãn LLM **và** boundary pattern). *Pass:* H-G3 — mislabel một mình không mở. *(kael-tdd, kael-ai-boundary)*
+- **W2.2 — Verify.** Test đường tiền (autonomy-gate vẫn chặn) + chat; audit; deno check + tests; test log.
+
+---
+
+### 42.5 W3 — Quyết dứt bộ nhớ nằm im (cắm / xoá / cách ly)
+
+- **W3.0 — DH-A đã chốt = QUARANTINE (2026-07-08).** Không wire, không xoá → đi thẳng W3.1b. (W3.1a wire = N/A vòng này.)
+- **W3.1a (nếu WIRE) —** cắm `getContext` vào luồng chat (context continuity); **sửa `audit` actor_id = READER** (không phải subject); RLS + PII test; token-budget test. *Pass:* H-G4 wired + audit đúng. *(kael-supabase, kael-security-sweep)*
+- **W3.1b (nếu DELETE/QUARANTINE) —** xoá `memory.ts` + test liên quan + assertion schema-test; HOẶC cách ly + ghi rõ "không thuộc runtime" trong file + doc. *Pass:* H-G4 không còn "có mà không chạy". *(karpathy-guidelines)*
+
+---
+
+### 42.6 W5 — ProviderAdapter mỏng (giữ Harness an toàn một bản)
+
+- **W5.0 — Chốt DH-C (build-nhẹ vs spec-only).** *Pass:* scope + chữ ký interface.
+- **W5.1 — Trích interface.** `ProviderAdapter { capabilities, buildRequest, parseResponse, cost(model), classifyFailure }` quanh if/else `provider-client.ts` hiện có (anthropic/deepseek/perplexity). KHÔNG đại tu; KHÔNG thêm provider. Nếu spec-only → chỉ interface + doc, chưa migrate. *Pass:* interface rõ; no-regression call. *(karpathy-guidelines)*
+- **W5.2 — Verify.** deno check + api/shared; provider calls no-regression (byte-diff); test log.
+
+---
+
+### 42.7 W4 — Orchestrator status (footgun, làm SAU cùng)
+
+- **W4.1 — `KaelStageStatus` rõ.** `'ok'|'declined'|'degraded'|'failed'` thay `success:true` mọi nhánh; cập nhật caller đọc status thay `.success`. Giữ hành vi hiện tại (pipeline đang đọc inner .success → không đổi kết quả). *Pass:* test caller phân biệt được degrade. *(kael-tdd)*
+- **W4.2 — Verify.** deno check + api/shared; no-regression pipeline; test log.
+
+---
+
+### 42.8 Contracts (chốt chi tiết ở companion doc)
+
+```text
+Canonical (W1):   canonicalizeVN(text: string) -> string   (NFD-strip + đơn vị + số "500k/triệu/nghìn")
+Gateway (W1):     guardOutput({ text, actor, language, surface }) -> { allowed, text, reason?, trip? }
+Permission (W2):  KaelPermissionGateRequest += intentConfidence: number
+                  decision: confidence < CONF_THRESHOLD(config) → default-deny/clarify; topic cấm cần signal2
+Provider (W5):    interface ProviderAdapter {
+                    capabilities: { vision, webSearch, jsonMode, promptCache }
+                    buildRequest(req): ProviderRequestSpec
+                    parseResponse(data, latencyMs, model): AIResponse
+                    cost(model, usage): number            // dùng chung MODEL_PRICE_TABLE §41
+                    classifyFailure(httpCode|error): CircuitFailureKind
+                  }
+Orchestrator (W4): KaelStageStatus = 'ok' | 'declined' | 'degraded' | 'failed'
+Config/flag:      CONF_THRESHOLD (env/config, KHÔNG hardcode — RULES); KAEL_OUTPUT_GATEWAY_ENABLED (tuỳ W1)
+Bất biến:         §42 KHÔNG import/sửa synthesizePrice hay đường đặt giá (RULES #7).
+```
+
+---
+
+### 42.9 Risks + Locked-Doc Impact
+
+- **Di trú 4 call-site self-check → regress.** Giảm: per-caller test + byte-diff hành vi + giữ regenerate/fallback cũ.
+- **`canonicalizeVN` chuẩn-hoá quá tay → chặn oan câu lành.** Giảm: corpus có **case dương-tính-không-được-chặn**; tune trên corpus thật.
+- **Default-deny quá tay → Kael từ chối oan khách thật.** Giảm: fallback = **hỏi lại (clarify)**, không chặn cứng; ngưỡng confidence qua config, tune.
+- **DH-A xoá memory = mất công; wire = thêm bề mặt + PII/RLS.** Vì vậy cần Tu quyết (không tự ý).
+- **ProviderAdapter scope creep.** Giữ DH-C = trích interface nhẹ, không đại tu; không thêm provider.
+- **Guard telemetry lộ nội dung nhạy cảm.** Chỉ ghi reason_code + safe_metadata (đã có khuôn `auditKaelGuardrailTrip`), KHÔNG log text thô/PII.
+- **Locked-doc:** KHÔNG sửa file khóa. Flag/secret mới theo RULES #1. Ngưỡng confidence qua config, KHÔNG hardcode. Cần đổi RULES/STRUCTURES → **STOP hỏi Tu** (chưa thấy cần).
+
+---
+
+### 42.10 Sequencing / Build Order
+
+```
+Thứ tự: W1 (output uniform) → W2 (permission) → W3 (memory, sau khi Tu chốt DH-A) → W5 (ProviderAdapter) → W4 (orchestrator)
+  • W1 TRƯỚC: lỗ SỐNG duy nhất ra khách/thợ + rẻ + đóng cả lớp bypass. Ưu tiên #1.
+  • W2 kế: chặn tin-mù-nhãn-LLM (chat + phụ họa đường tiền).
+  • W3 chờ DH-A; W5 chờ DH-C; đều độc lập W1/W2.
+  • W4 CUỐI: footgun, chưa chảy máu, không vội.
+TẤT CẢ quyết định (DH0, DH-A..DH-D) đã chốt 2026-07-08. W3 đi nhánh **quarantine (W3.1b)**; W5 = trích interface nhẹ.
+```
+
+**⚠️ Bất biến H-G6 (không regress an toàn + giá deterministic §40 + guard bền §41) kiểm ở MỌI phase.** Codex build, Claude verify.
+
+---
+
+### 42.11 Skills Mapping + Verification
+
+```
+karpathy-guidelines   mọi phase (surgical diff, simplicity — trực tiếp cho DH-A/DH-C)
+kael-security-sweep   W1/W2/W3 — output guard đồng nhất, corpus đối kháng, no PII log, không regress
+kael-ai-boundary      W2/W5 — không tin mù output LLM; Harness an toàn provider-agnostic; RULES #7 không chạm
+kael-tdd              W1/W2/W4 — failing test first, corpus đối kháng (≥2 layer), per-caller di trú
+kael-supabase         W3 (nếu wire) — RLS/audit đúng READER cho bộ nhớ
+```
+Verification: mỗi phase H-G1–H-G7 (42.0.3) + dòng "Verify (Claude)" ở companion doc. Report honest (deno check + jest api/shared, ghi cái CHƯA test — RULES #8).
+
+---
+
+### 42.12 Change Log
+
+```text
+v0.1 — 2026-07-08 — Tạo từ session đào sâu 4 lỗ Harness còn lại (đã grep xác minh nối dây, không đoán):
+                    (W1) self-check bỏ dấu = LỖ SỐNG 4 luồng chat → một cổng ra + canonicalizeVN dùng chung;
+                    (W2) permission tin mù nhãn LLM → default-deny theo confidence + tín hiệu-2; (W3) bộ nhớ L1–L6
+                    NẰM IM (chỉ test gọi) → cắm/xoá/cách ly (DH-A); (W4) orchestrator success:true footgun → status rõ;
+                    (W5) DH0 KHÔNG Harness per-LLM (Tu chọn hướng 1) → ProviderAdapter mỏng, Harness an toàn một bản.
+                    5 hướng nâng cấp: cổng-ra-duy-nhất, canonical-VN dùng chung, default-deny, dọn code chết,
+                    guard-telemetry + corpus đối kháng. DH-A..DH-D chờ Tu chốt. CHƯA execute — Codex build, Claude verify.
+v0.2 — 2026-07-08 — Tu chốt HẾT (theo đề xuất Claude): DH-A = **quarantine** memory (không cắm/không xoá, ghi rõ
+                    không-thuộc-runtime); DH-B = **một cổng gom** (self-check+semantic+giá+PII+language, không guard mới);
+                    DH-C = **trích interface ProviderAdapter nhẹ** (không đại tu, không thêm provider); DH-D = tín-hiệu-2
+                    tái dùng boundary patterns knowledge.ts. §42 DESIGN LOCKED — chờ Tu duyệt go.
+```
+
+---
+
+## 43. Kael Harness Performance & Assurance — Hedged Routing + Prompt Cache + Adaptive Weighting + Vision-Honest + Eval-in-the-loop — 2026-07-08
+
+> Nâng Harness từ **đúng + ổn** (§40/§41/§42) lên **nhanh + rẻ + tự-chứng-minh + không-tối**. Tu chốt 2026-07-08 sau review Claude chấm 5.5/10 phần Multi-LLM PERFORMANCE của §40/§41/§42: ambition = **vượt trội**, nền tảng phải xong để sau này **chỉnh nhẹ / thêm-bớt provider / tiếp tục nâng cấp** — KHÔNG cần xây lại nền móng. 5 workstream đóng đúng 5 lỗ đòn bẩy Multi-LLM cao nhất. **CHƯA execute — chờ Tu duyệt go.** Codex build, Claude verify.
+>
+> **Vì sao tách khỏi §40/§41/§42:**
+> - §40 = **giá đúng** (accuracy)
+> - §41 = **guard bền** (reliability under load)
+> - §42 = **gác đầu ra đồng nhất** (uniformity)
+> - §43 = **hiệu năng + tự chứng minh** (performance & assurance) — chiều KHÁC, xây trên nền §40/§41/§42 đã đặt. Không đụng con số giá, không đụng hạ tầng guard bền, không đụng output-gateway.
+
+### 43.0 Plan Metadata + Mục tiêu
+
+```text
+Plan ID:        plan-kael-harness-performance-assurance-20260708
+Created:        2026-07-08
+Owner:          Manh Tu (manhtu0407@gmail.com)
+Branch:         claude/jolly-brattain-ab42dc (worktree exciting-jepsen-7bec6e)
+File location:  Plan.md §43 (durable, canonical) + companion doc (tạo ở execute)
+Status:         DESIGN LOCKED v0.1 — 5 workstream H/C/R/V/E. Tu chốt ambition + 5 lỗ + eval + honest-vision 2026-07-08.
+                CHƯA execute — chờ Tu duyệt go. Codex build, Claude verify.
+Trigger:        Claude review §40/§41/§42 chấm 5.5/10 phần Multi-LLM PERFORMANCE → chỉ ra 5 lỗ chặn "vượt trội":
+                (1) escalation TUẦN TỰ không HEDGE  (2) không có eval harness — schema-fail chỉ bắt JSON hỏng
+                không bắt "JSON đúng nhưng nội dung sai"  (3) prompt cache hạ tầng có nhưng KHÔNG chiến lược
+                (4) breaker BINARY thiếu adaptive weighting cho chậm-chưa-chết  (5) vision fallback KHÔNG XÁC ĐỊNH
+                khi Anthropic global-breaker mở. Tu chốt: bổ sung HẾT 5, honest vision không silent-degrade.
+Scope:          (H) Hedged Routing — HEDGED_ROUTES whitelist high-stakes purposes, Promise.race primary+escalation,
+                    AbortController cancel loser, spend-gate double-reserve.
+                (C) Prompt Cache Strategy — restructure system prompt STABLE / DYNAMIC quanh cache_control ĐÃ có sẵn ở
+                    provider-client:221, đo cache-hit rate per purpose, chỉ Anthropic-routed.
+                (R) Adaptive Weighting — EWMA p95 latency + error rate soft layer BÊN CẠNH binary breaker §41 P1,
+                    weight clamp 10-90% chống starve, RAM per-isolate + async DB snapshot.
+                (V) Vision Unavailable Honest Contract — Anthropic global-breaker §41 D-B mở → RULES #8 honest failure
+                    với retry_after_ms + fallback_advice_vi, mobile consume, KHÔNG silent-swap.
+                (E) Eval-in-the-loop — 250 case ground-truth (5 purpose × 50) Tu label một lần → CI gate cho
+                    routing/prompt PR + weekly drift alert. Chặn silent quality drift khi swap model / prompt.
+Out of scope:   Con số giá LIVE (§40); guard bền DB (§41); output-gateway/permission/memory (§42). KHÔNG đổi runtime
+                boundary. KHÔNG thêm provider mới. KHÔNG chạm synthesizePrice hay đường đặt giá (RULES #7).
+                Locked docs (CLAUDE.md/RULES.md/STRUCTURES.md/README.md/critical.md/design.md) KHÔNG sửa — §43 chỉ đụng
+                Harness code (supabase/functions/mobile-api/_shared/kael/**) + apps/api/src/__tests__/eval/** + 1 config
+                block trong routing.config.ts. Skills docs KHÔNG sửa (Tu yêu cầu tránh).
+Companion docs: docs/design/kael-harness-performance-eval-20260708.md (tạo ở execute — per-step File/Action/Acceptance +
+                HEDGED_ROUTES whitelist chi tiết + prompt STABLE/DYNAMIC table per purpose + EWMA config + eval corpus
+                schema + cost model per workstream verify-tận-nơi + Foundation Contract cheatsheet 43.0.4).
+Effort:         Chưa ước lượng — chốt ở phase 0 mỗi workstream sau khi verify hiện trạng cache-hit rate baseline +
+                p95 baseline (H0) + corpus scope (E0).
+Skill mapping:  karpathy-guidelines (mọi phase) + kael-tdd, kael-ai-boundary, kael-security-sweep, kael-supabase,
+                claude-api, kael-frontend-test (xem 43.11).
+```
+
+**Mục tiêu chính (đo được, không tô hồng):**
+
+1. **Vượt trội = nền tảng đủ lâu.** Sau §43, **thêm provider LLM mới** = viết 1 ProviderAdapter (§42 W5) + 1 row `MODEL_PRICE_TABLE` (§41 P2) + 1 dòng `KAEL_ROUTING_CONFIG`. **Đổi model** = update ID + chạy eval + check cache-hit. **Không đụng Harness core.** Chi tiết ràng buộc ở §43.0.4.
+2. **p95 giảm ≥ 30% cho high-stakes purposes** (`price_synthesis` khi ≥500k, `worker_assist` chat, `vision_analysis`) — đo trước/sau ở H4 bằng real traffic (staging + first-week prod).
+3. **Chi phí Anthropic giảm ≥ 60% cho purpose lặp cao** (`intent_classification`, `clarification`, `advisory_generation`) qua cache-hit ≥ 70% — đo qua `cacheReadInputTokens` / total input tokens (đã có sẵn ở [provider-client.ts:236](supabase/functions/mobile-api/_shared/kael/provider-client.ts:236)).
+4. **Silent quality drift bị chặn.** Mọi PR đụng `routing.config.ts` / `system-prompt.ts` / prompt files → CI chạy eval corpus, fail nếu pass-rate rớt > 3% baseline. **Trước §43 chỉ có schema-fail check §41 P3** — không thấy "JSON đúng nhưng đáp án sai".
+5. **Traffic tự né provider chậm** mà không cần breaker mở — R phân bổ mềm theo EWMA (min 10% / max 90% mỗi provider, chống starve tín hiệu recovery).
+6. **Khi Anthropic sập toàn cục** → vision purpose trả honest failure có `retry_after_ms`, mobile hiện lời khuyên "mô tả bằng lời". **KHÔNG "trả bừa"** (RULES #8).
+7. **Không regress an toàn giá/tiền/bảo mật.** §43 KHÔNG chạm `synthesizePrice` (RULES #7); spend-gate + kill-switch + §41 durable guards + §42 output-gateway giữ nguyên; hedge audit / eval corpus / cache log KHÔNG chứa PII.
+
+**Nguyên tắc xuyên suốt (bất biến — KHÔNG được phá):**
+
+- **Fail-open đồng bộ §41.** Hedge / cache / EWMA / eval-runner lỗi/timeout → Kael VẪN trả lời (degrade thật). Guard/optim KHÔNG tự thành điểm chết.
+- **Deterministic invariance §40.** Hedge trả 2 LLM output; **winner vẫn đi qua `synthesizePrice()` deterministic** — LLM không đặt giá LIVE.
+- **Config-driven, không hardcode.** HEDGED_ROUTES, CACHE_STABLE_SEGMENT, EWMA_ALPHA, EVAL_PASS_DELTA_THRESHOLD, VISION_UNAVAILABLE_ADVICE_VI, HIGH_STAKES_VND_THRESHOLD — tất cả qua env/config (RULES ban hardcode VND/USD).
+- **Foundation-first (Tu ambition).** Mỗi contract §43 = interface, provider-agnostic. Thêm LLM mới = plug adapter, KHÔNG sửa Harness. Xem §43.0.4 để biết chính xác edit-point vs core-frozen.
+
+---
+
+### 43.0.1 Authority refs (đọc theo thứ tự bắt buộc trước khi execute)
+
+```
+1. RULES.md            (#0 mobile boundary; #7 giá không từ raw LLM — §43 KHÔNG chạm giá; #8 honest unavailable
+                        — V workstream trực tiếp thi hành; #10 timeout/retry bounded — hedge phải giữ maxRetries;
+                        #1 secret/flag mới; ban hardcoded VND/USD)
+2. critical.md         (§0 lifecycle Define→…→Ship; §3 gates; §5 preflight; §8 verify honest)
+3. Plan.md §40 M0/M1   (per-model cost + routing roster — H hedge cần đúng cost để reserve; C cache cần Anthropic
+                        Sonnet 5 wired; V cần vision assignment DM2)
+   Plan.md §41 P1/P2   (durable spend-gate + per-model cost + provider-global breaker D-B — R soft weighting ĐỨNG
+                        TRÊN breaker durable; V trigger khi D-B mở cho Anthropic; H double-reserve dùng khuôn spend-gate)
+   Plan.md §42 W5      (ProviderAdapter — H/C/R/V CONSUME ProviderAdapter capabilities: cache cần biết supports promptCache;
+                        EWMA cần biết classifyFailure; hedge cần biết abort signal ok)
+   Plan.md §23         (Harness 7 sub-systems), §31 (Kael AI core), §38 (spend-gate durable khuôn)
+4. code source (verify tận nơi — đã grep session này, KHÔNG tin trí nhớ):
+     …/kael/provider-client.ts       (callAI :43 — reserve :62-84, timeout per-provider :86-90, maxRetries=2 exponential
+                                       backoff :91-102, AbortController :105, recordSuccess :121, finalizeAiSpend :123-131,
+                                       recordFailure :150-156; promptCacheEnabled đã đọc :203-204;
+                                       anthropicSystemContent(cache_control) đã đóng gói :221;
+                                       cacheCreationInputTokens×1.25 + cacheReadInputTokens×0.1 tính sẵn :234-243)
+     …/kael/routing.ts               (circuitAwareProviderCandidatesForPurpose :101-105 wrap providerCandidatesForPurpose
+                                       :46 với binary breaker filter — nơi R soft weighting cắm xuống;
+                                       CALLER: intent :31/:146, market :151, worker-assist :116, customer-assistant :154)
+     …/kael/routing.config.ts        (KAEL_ROUTING_CONFIG :35 — nơi H thêm hedge config; primary/fallback shape đã sẵn;
+                                       vision_analysis :37 hiện fallback=undefined → V codify honest failure)
+     …/kael/cost-tracking.ts         (readKaelOptimizationFlags — KAEL_OPT_PROMPT_CACHE_ENABLED đã có flag rỗng chưa strategy)
+     …/kael/circuit-breaker.ts       (§41 P1 durable — R KHÔNG thay, R BÊN CẠNH; breaker mở → R skip provider hard)
+     …/kael/spend-gate.ts            (§38 khuôn durable — H double-reserve dùng lại)
+     …/kael/types.ts                 (AIRequest + AIResponse union — mở rộng cho V VISION_UNAVAILABLE_HONEST variant +
+                                       H HedgeMetadata)
+     …/kael/system-prompt.ts         (KAEL_BUSINESS_GUARDRAILS + KAEL_RESPONSE_STYLE — C STABLE prefix candidate)
+5. Anthropic docs      (claude-api skill — prompt caching: stable prefix TRƯỚC cache_control, ephemeral 5-min TTL,
+                        cache_read = 0.1× base rate, cache_write = 1.25× base rate; verify Sonnet 5 + Opus 4.8 full ID
+                        slug hiện hành — KHÔNG shorthand)
+6. CLAUDE.md           (lock notice; runtime boundary; Kael identity) — locked, KHÔNG sửa
+7. MEMORY.md           (last)
+```
+
+---
+
+### 43.0.2 Decision Log (Tu chốt session 2026-07-08 trừ khi ghi khác)
+
+**Chung §43:**
+
+- **✔ DP0 — Ambition = vượt trội, foundation-first (Tu CHỐT 2026-07-08).** Sau §43, provider LLM mới = 1 Adapter + 1 price row + 1 config dòng. **Không đụng Harness core.** §43 là **NỀN**, không rework. Ràng buộc chính xác edit-point vs core-frozen ghi ở §43.0.4.
+- **✔ DP1 — 5 workstream H/C/R/V/E chọn HẾT (Tu chốt 2026-07-08 theo review Claude).** Không cắt gọt: mỗi workstream đóng 1 chiều Multi-LLM performance khác nhau (speed / cost / adaptive / honest / assurance) → 4 chiều cộng lại = **vượt trội**, thiếu 1 chiều = **tạm được**.
+
+**Workstream H — Hedged Routing:**
+
+- **✔ DH1 — HEDGED_ROUTES = whitelist nhỏ, config-driven (Tu chốt 2026-07-08 theo đề xuất Claude).** Không hedge tất cả (chi phí ×2). Chỉ hedge nơi p95 latency win > cost delta. **Whitelist khởi đầu:**
+  - `price_synthesis` khi `high_stakes = true` (deal ≥ 500k VND — ngưỡng `KAEL_HEDGE_HIGH_STAKES_VND_THRESHOLD` env, default 500_000).
+  - `worker_assist` (user-visible chat, luôn hedge).
+  - `vision_analysis` (long-tail latency, luôn hedge).
+  - **KHÔNG hedge:** `intent_classification` (quá rẻ, savings không xứng); `post_job_learning` (async); `worker_brief` (async); `market_lookup` (Perplexity không có escalation partner tự nhiên); `advisory_generation` (batch); `scope_change` (rare).
+- **✔ DH2 — Hedge = UNCONDITIONAL fire cả 2 (Tu chốt).** Khác escalation §40 M2 (chỉ leo khi confidence thấp). Hedge = fire primary + escalation SONG SONG lúc đầu; `Promise.race` chọn kẻ trả trước; `AbortController` hủy kẻ chậm. KHÔNG đợi confidence.
+- **✔ DH3 — Spend-gate DOUBLE-RESERVE (Tu chốt).** Reserve = `primaryCost + escalationCost` (tính từ MODEL_PRICE_TABLE §41 P2). Finalize sau race: winner cost đầy đủ + loser cost ≈ 50% (abort dở dang, Anthropic tính partial). Nếu reserve fail → **fallback về non-hedged** (callAI cũ), KHÔNG hard-fail.
+- **✔ DH4 — Kill-switch metric-driven.** `KAEL_HEDGE_ENABLED` master; per-purpose `KAEL_HEDGE_<PURPOSE>_ENABLED` fine-grained. Kill nếu 1-week window: `cost_inflation > 40%` MÀ `p95_win < 20%`.
+
+**Workstream C — Prompt Cache Strategy:**
+
+- **✔ DC1 — Restructure system prompt tách STABLE / DYNAMIC (Tu chốt 2026-07-08).**
+  - **STABLE prefix** (đặt TRƯỚC `cache_control` marker): `KAEL_BUSINESS_GUARDRAILS` + `KAEL_RESPONSE_STYLE` + service taxonomy + persona + hard guardrails. Ước lượng ~80% token của system prompt, đổi ~hàng tháng.
+  - **DYNAMIC suffix** (SAU `cache_control`): user profile snapshot, current job context, recent chat history — đổi mỗi request.
+- **✔ DC2 — TTL = ephemeral 5-min khởi đầu (Tu chốt).** Nâng lên 1-hour beta khi hit-rate STABLE ≥ 70% và có traffic đủ tail (đo qua C3). Ephemeral rẻ + an toàn cho phase đầu.
+- **✔ DC3 — Chỉ Anthropic (Tu chốt).** DeepSeek + Perplexity KHÔNG có prompt cache — không lãng phí công. Check qua `ProviderAdapter.capabilities.promptCache` (§42 W5 đã phơi).
+- **✔ DC4 — Mục tiêu cache-hit rate per purpose (Tu chốt):**
+  - `intent_classification` / `clarification` / `advisory_generation`: **≥ 70%** (system prompt lặp cao).
+  - `problem_synthesis` / `worker_brief` / `price_synthesis`: **≥ 50%** (varied context nhưng stable spine).
+  - `vision_analysis`: **≥ 30%** (mỗi ảnh khác, chỉ stable prompt cacheable).
+- **✔ DC5 — Bật `KAEL_OPT_PROMPT_CACHE_ENABLED` = ON toàn bộ Anthropic-routed sau C1 (Tu chốt).** Hiện flag có nhưng chưa strategy — C wire strategy XONG mới ON. Kill-switch nếu C4 target < 30% ở staging → tắt purpose đó.
+
+**Workstream R — Adaptive Weighting:**
+
+- **✔ DR1 — R = SOFT LAYER, BÊN CẠNH binary breaker (Tu chốt 2026-07-08).** KHÔNG thay breaker. Breaker mở → provider bị R loại luôn (weight = 0). Breaker đóng → R phân bổ mềm giữa các provider đủ điều kiện.
+- **✔ DR2 — Signal = EWMA (Exponentially Weighted Moving Average) của p95 latency + error rate per (purpose, provider) (Tu chốt).** `alpha = 0.2` (past ~5 samples nặng). Window = rolling 15 phút. Công thức: `new = alpha × sample + (1-alpha) × previous`.
+- **✔ DR3 — State = RAM per-isolate + async DB snapshot cho quan sát (Tu chốt).** Approximate acceptable — signal MỀM, không phải quyết định money. RAM per-isolate khác nhau → mỗi isolate tự học từ traffic nó xử lý; DB snapshot every 60s cho dashboard. Fail-open nếu DB fail: R vẫn chạy bằng RAM.
+- **✔ DR4 — Weight caps: min 10% / max 90% (Tu chốt).** Không starve — cần recovery signal từ provider chậm để phát hiện phục hồi. 100% single provider = CHỈ khi provider khác bị breaker mở (hard route qua binary layer).
+- **✔ DR5 — Weighted random pick (không round-robin) (Tu chốt).** Quay số theo weight per-call → traffic distribution tự cân bằng theo xác suất; đơn giản hơn round-robin có state.
+- **✔ DR6 — Cache-affinity multiplier (Tu chốt 2026-07-08 theo self-review Claude).** Purpose có Anthropic prompt-cache enabled (§43 C DC4) → weight Anthropic nhân `cache_affinity_multiplier` (env `KAEL_ROUTE_CACHE_AFFINITY_MULT`, default 1.5) TRƯỚC khi normalize. Lý do: R phân sang DeepSeek sẽ kill cache-hit → mâu thuẫn C DC4. Bonus giữ Anthropic trội hơn cho purpose lặp cao trừ khi Anthropic thực sự chậm nhiều lần (weight sau clamp vẫn giữ min 10% DeepSeek để có recovery signal).
+
+**Workstream V — Vision Unavailable Honest Contract:**
+
+- **✔ DV1 — Honest failure, KHÔNG silent-swap (Tu chốt 2026-07-08).** Anthropic global-breaker (§41 D-B) mở → `vision_analysis` trả `{success:false, code:'VISION_UNAVAILABLE_HONEST', retry_after_ms, fallback_advice_vi}`. **KHÔNG gọi DeepSeek/Perplexity làm vision** (không hỗ trợ tiếng Việt vision production-ready).
+- **✔ DV2 — UX contract:** `fallback_advice_vi = "Kael tạm không nhận ảnh được. Bạn mô tả bằng lời giúp Kael nhé — ví dụ 'ống nước bể ở gầm bồn rửa'."` (config env `KAEL_VISION_UNAVAILABLE_ADVICE_VI` có default). `retry_after_ms = open_until - now` từ breaker.
+- **✔ DV3 — Audit event `KAEL_VISION_UNAVAILABLE`** vào bảng dashboard-friendly (chọn ở V1 — có thể nối vào `kael_ai_call_ledger` hoặc bảng riêng) để đo tần suất → biết khi nào cần bàn thêm vision provider.
+- **✔ DV4 — Mobile side consume contract.** V2 phase — hiện lời khuyên + focus text input; **KHÔNG loading spinner cứng**, KHÔNG hard-fail error đỏ.
+
+**Workstream E — Eval-in-the-loop:**
+
+- **✔ DE1 — Corpus scope: 5 purpose × 50 case = 250 case (Tu chốt 2026-07-08).** Purpose: `intent_classification` (service_type + problem_slug), `problem_synthesis` (complexity + slug), `market_lookup` (verdict pass/nghi/loại — kiểm rulebook §40 S4), `price_synthesis` (accept range vs baseline), `advisory_generation` (rubric: có disclaimer + không tuyệt-đối + tone). Tu label một lần ~2-4h.
+- **✔ DE2 — Storage:** `apps/api/src/__tests__/eval/kael-eval-corpus.json` **versioned in-repo** (Tu chốt). Schema: `{id, purpose, input, expected_output_or_range, tags, difficulty:'easy'|'medium'|'hard', added_at}`.
+- **✔ DE3 — Runner: real providers, KHÔNG mock (Tu chốt).** Chạy vào **DEV/staging Supabase project** với real API keys qua env `KAEL_EVAL_API_URL`. Cost ước lượng: 250 calls × ~500 tokens × ~$3/M ≈ **$0.40/lần**. Weekly baseline + on-PR ≈ **$4-8/tháng**. Kill: `KAEL_EVAL_MAX_COST_USD` per-run cap (default 1.0).
+- **✔ DE4 — CI gate.** Trigger: PR touching `supabase/functions/mobile-api/_shared/kael/routing.config.ts` / `**/system-prompt.ts` / `**/*prompt*.ts` / `**/kael/**/*prompts.ts`. Fail nếu `pass_rate_delta > EVAL_PASS_DELTA_THRESHOLD` (default 0.03, env).
+- **✔ DE5 — Manual override.** Nếu regression là intentional (đổi prompt bảo thủ hơn) → PR body chứa `eval-override: <reason>` → CI pass với warning + audit log giữ.
+- **✔ DE6 — Weekly baseline drift.** GitHub cron Chủ nhật 21:00 UTC (= thứ Hai 04:00 GMT+7). Drift > 5% → open GitHub issue tự động (label `kael-eval-drift`, **không** block prod). Baseline update cuối tháng nếu drift chấp nhận được.
+- **✔ DE7 — Eval chạy với `KAEL_HEDGE_ENABLED=0` (Tu chốt 2026-07-08 theo self-review).** Đo baseline provider quality, KHÔNG lẫn hedge signal (hedge = optim path, không phải quality path). Nếu cần đo hedge quality riêng → suite `eval-hedge` riêng, KHÔNG nằm CI gate mặc định. Tránh eval cost bùng vì hedge ×2.
+
+**Cross-cutting:**
+
+- **✔ DPX1 — §43 KHÔNG chạm giá LIVE (RULES #7).** H hedge trả 2 output → winner đi qua `synthesizePrice()` deterministic; test khẳng định invariant.
+- **✔ DPX2 — Metric emission namespace chuẩn hoá.** `kael.hedge.*`, `kael.cache.*`, `kael.route.weight.*`, `kael.vision.unavailable.*`, `kael.eval.*` — cho dashboard sau (khuôn spend-gate style, async fire-and-forget).
+- **✔ DPX3 — Locked docs KHÔNG sửa (Tu explicit 2026-07-08).** §43 chỉ đụng: `supabase/functions/mobile-api/_shared/kael/**`, `apps/api/src/__tests__/eval/**`, `.github/workflows/kael-eval.yml`, `governance/Plan.md §43` (đang sửa), companion doc. Skills docs KHÔNG sửa; README.md/RULES.md/critical.md/STRUCTURES.md/design.md/CLAUDE.md KHÔNG sửa.
+- **✔ DPX4 — Metric emit helper (Tu chốt 2026-07-08).** Build/tái dùng 1 hàm `emitKaelMetric(namespace, event, payload)` trong `supabase/functions/mobile-api/_shared/observability.ts` (build ở H0 nếu chưa có). Mọi `kael.hedge.*`, `kael.cache.*`, `kael.route.weight.*`, `kael.vision.unavailable.*`, `kael.eval.*` đi qua helper — 1 dòng structured log JSON → Supabase log stream. KHÔNG tự sinh `console.log("metric ...")` (AR1 cấm rác).
+
+---
+
+### 43.0.3 Definition of Done — Gates (áp dụng MỌI phase)
+
+```text
+PA-G1 Foundation-durable:  Contract §43 = interface, provider-agnostic. Thêm hypothetical provider X = 1 Adapter
+                           + 1 price row + 1 config dòng, ZERO edit trong Harness core (list core file ở 43.0.4).
+                           Test: "add fake provider" dry-run compile OK không sửa core.
+PA-G2 Speed win (H+C):     p95 giảm ≥ 30% cho HEDGED_ROUTES; cache-hit rate hit target DC4 per purpose category.
+                           Đo real traffic; report honest kể cả target chưa đạt.
+PA-G3 Adaptive (R):        Chaos test — provider A p95 gấp 2× B → traffic shift ≥ 60% sang B trong ≤ 5 phút.
+                           Breaker đóng suốt (soft weighting, KHÔNG hard). Weight clamp 10-90% giữ.
+PA-G4 Honest vision (V):   Force Anthropic global-breaker → vision_analysis trả honest failure có retry_after_ms +
+                           advice_vi; mobile hiện hint đúng; KHÔNG có path nào silent-swap sang provider khác.
+                           Test negative: bình thường không trigger honest failure.
+PA-G5 Assurance (E):       Corpus 250 case chạy được; CI block khi pass-rate rớt > threshold; weekly drift alert
+                           open issue; manual override có audit log. Chi phí per-run < cap.
+PA-G6 Fail-open:           Hedge lỗi / cache miss thảm / EWMA state mất / eval runner die → Kael VẪN trả lời
+                           (degrade thật). Test negative cho TỪNG workstream.
+PA-G7 An toàn giữ:         RULES #7 giá deterministic KHÔNG bị §43 chạm; RULES #8 no fake success — V trực tiếp
+                           thi hành; spend-gate + kill-switch + §41 durable guards + §42 output-gateway nguyên vẹn;
+                           no PII leak trong hedge audit / eval corpus / cache log / R health snapshot.
+PA-G8 Honest verify:       Chạy thật deno check + jest api/shared + eval runner + chaos test R; report cái CHƯA
+                           test (RULES #8).
+```
+
+---
+
+### 43.0.4 Foundation Contract — Extension points sau §43 (Tu ambition foundation-first)
+
+> Đây là hợp đồng "sau §43 chỉ chỉnh nhẹ, không xây lại nền móng". Ghi rõ **cái được sửa** vs **cái bị đóng băng**. Nếu ai phải phá đóng băng → **STOP hỏi Tu**, foundation đã lung lay.
+
+```text
+==== ĐƯỢC SỬA (extension points) ====
+
+■ Thêm provider LLM mới (ví dụ Grok, Gemini, Mistral):
+  1. Viết 1 ProviderAdapter (implements interface §42 W5):
+     { capabilities: {vision, webSearch, jsonMode, promptCache}, buildRequest, parseResponse,
+       cost(model, usage), classifyFailure(httpCode|error) }
+  2. Thêm 1 row vào MODEL_PRICE_TABLE (§41 P2):
+     { modelId, inUsdPerMTok, outUsdPerMTok, cacheWriteMult?, cacheReadMult?, perRequestUsd? }
+  3. 1 dòng vào KAEL_ROUTING_CONFIG (§40 M1) cho purpose muốn thử.
+  4. Nếu high-stakes: thêm hedge config (DH1) + HEDGED_ROUTES entry.
+  5. Nếu Anthropic-tương-đương có prompt cache: bật cờ capabilities.promptCache = true → C tự áp dụng.
+  → Harness core (self-check/permission-gate/synthesizePrice/spend-gate/breaker/rate-limit/output-gateway/
+    R weighting/H hedge/E eval-runner) KHÔNG cần edit.
+
+■ Đổi model trong provider hiện có (ví dụ Sonnet 5 → Sonnet 6):
+  1. Update routing.config.ts model shorthand (§40 M0 verify ID full slug).
+  2. Chạy eval (§43 E) → check pass_rate delta ≤ threshold.
+  3. Update MODEL_PRICE_TABLE nếu giá đổi (§41 P2 khuôn).
+  → Không code refactor.
+
+■ Thêm purpose Kael mới:
+  1. Extend KaelPurpose enum + KAEL_ROUTING_CONFIG entry + costCeilingUsd + latencyBudgetMs + maxTokens.
+  2. Nếu high-stakes: thêm hedge config; thêm HEDGED_ROUTES entry.
+  3. Thêm ≥ 50 case vào eval corpus + baseline update.
+  → Không đụng gate/breaker/adapter core.
+
+■ Thay đổi safety guardrail / persona:
+  1. Update KAEL_BUSINESS_GUARDRAILS / KAEL_RESPONSE_STYLE trong system-prompt.ts (STABLE prefix — cache friendly).
+  2. Update corpus eval expected outputs cho case bị ảnh hưởng.
+  → Cache tự invalidate (system content thay đổi → hash cache key thay đổi).
+
+■ Đổi cost cap / rate limit / EWMA config:
+  1. Env var thay đổi (RULES: qua config, không hardcode).
+  → Zero code edit.
+
+■ Thêm/bớt HEDGED_ROUTES:
+  1. Env var KAEL_HEDGED_ROUTES thay đổi.
+  → Zero code edit.
+
+==== ĐÓNG BĂNG (core-frozen — phá phải Tu approve) ====
+
+  • synthesizePrice() logic + weight 50/50 (RULES #7, §40 DS1)
+  • output-gateway core guardOutput (§42 W1)
+  • ProviderAdapter interface shape (§42 W5) — thêm capability field OK, đổi ký shape KHÔNG
+  • circuit-breaker RPC contract (§41 P1) — thêm scope OK, đổi shape KHÔNG
+  • callAI reserve/finalize flow (§38 F1) — thêm hook OK, đổi ordering KHÔNG
+  • hedgedCall Promise.race + AbortController pattern (§43 H1) — shape đóng băng KỂ TỪ commit H1 merge; reuse OK, đổi shape SAU KHI merge KHÔNG
+  • weightedProviderPick weight formula shape (§43 R2) — tune constants OK, đổi input/output KHÔNG
+  • Eval corpus schema + runner contract (§43 E1) — thêm case OK, đổi schema KHÔNG
+
+Nếu phải phá 1 dòng ĐÓNG BĂNG → foundation đã hỏng, cần Tu review + plan revision, không tự sửa.
+```
+
+---
+
+### 43.0.5 Pre-Execution Checklist (BẮT BUỘC — chạy TRƯỚC mọi phase §43)
+
+> Trước khi Codex/Claude/agent bất kỳ chạm CODE FILE cho một phase §43, checklist dưới đây phải PASS 100%. Miss 1 item = STOP + hỏi Tu. Ghi kết quả vào companion doc (bảng: `date | phase_id | PE1..PE8 verdict | note`).
+
+```text
+PE1 — Đã đọc Plan §43 hết, ĐẶC BIỆT: 43.0.2 (decisions), 43.0.4 (foundation contract), 43.0.6 (agent rules).
+PE2 — Đã đọc TOÀN BỘ 43.0.1 authority refs theo thứ tự bắt buộc. Tối thiểu: RULES #7/#8/#10 + critical.md §5 preflight.
+PE3 — Verify prereq §40 M0+M1+DM2 DONE / §41 P1+P2 DONE / §42 W5 DONE (grep tận nơi, KHÔNG tin memory).
+      Prereq chưa xong → STOP, không được tiếp §43.
+PE4 — Drift check: mọi file:line cited trong 43.0.1 + 43.1 phải KHỚP code hiện tại (Grep verify).
+      Có drift ≥ 1 → note trong companion doc + Plan §43 v0.X bump + hỏi Tu. KHÔNG được tự "dịch line".
+PE5 — Baseline metrics (7-day trailing) collected + saved TRƯỚC bất kỳ code change:
+      • p95 latency per purpose      → baseline-metrics-<date>.json
+      • cache_hit_ratio per purpose  (nếu C prereq)
+      • cost/day per provider
+      • eval pass_rate per purpose   (nếu E1 đã có)
+      Không baseline = không đo được delta = KHÔNG claim "vượt trội".
+PE6 — Companion doc `docs/design/kael-harness-performance-eval-20260708.md` tồn tại. Cho phase sắp làm có block:
+      File / Action / Acceptance / Verify (Claude) / Rollback (mỗi mục ≤ 2 câu, không văn hoa).
+PE7 — Branch clean (`git status` empty ngoài Plan/companion). Baseline test GREEN hoặc known-quarantined:
+      `deno check` + `pnpm --filter api test` + `pnpm --filter shared test` — mọi fail phải có ID + lý do +
+      gán "pre-existing, not-my-fault" trong companion doc (per memory: hiện API có 2 pre-existing fails —
+      ghi ID vào baseline TRƯỚC khi start). Silent fail = phase FAIL.
+      Baseline `pnpm lint:comments` count ghi lại (Rule AR1 §43.0.6 ratchet).
+PE8 — Tu explicit "go" cho PHASE cụ thể (không phải cho cả §43). Mỗi phase 1 "go" riêng.
+PE9 — Execution order CHAPTER-LEVEL = §40 → §41 → §42 → §43 (Tu hard rule 2026-07-08).
+      HOÀN THÀNH toàn bộ phases của 1 chapter (mọi phase DoD PA-G1..PA-G8 verified, không phase nào skip
+      hoặc để dang dở) → agent STOP → báo Tu → chờ Tu explicit "go" chapter kế. KHÔNG auto-chain
+      chapter (kể cả trong 1 session cùng agent). Ghi chapter completion vào companion doc bảng:
+      `chapter_id | done_date | evidence_paths | Tu_ack`. Miss ack = chapter chưa done, không sang.
+```
+
+**Fail-open cho Pre-Exec = KHÔNG.** Pre-Exec là gate CỨNG — miss item = decision sai, không phải runtime lỗi. Đây là chỗ DUY NHẤT §43 không fail-open.
+
+---
+
+### 43.0.6 AI Coding Agent Rules — Execute-time (hard rules, VI PHẠM = STOP + báo Tu)
+
+> Tu chốt 2026-07-08 — 2 rule cốt lõi (AR1 no-comment, AR2 no-bloat) + 8 rule hỗ trợ. Áp dụng khi Codex/Claude/agent execute BẤT KỲ phase §43. Vi phạm 1 rule = agent STOP + báo Tu (không tự "workaround").
+>
+> **Naming note (v0.3):** rule ở đây là `AR1..AR10` (Agent Rule) để **tách rõ** khỏi Workstream R phase `R0..R5` (adaptive weighting). Khi tài liệu ghi "R2" không rõ context → mặc định = Workstream R phase 2; rule luôn có prefix `AR`.
+
+**AR1 — CẤM TUYỆT ĐỐI comment/note trong source (Tu hard rule 2026-07-08).**
+
+- **Cấm HẾT trong file code (`.ts`/`.tsx`/`.js`/`.jsx`/`.sql`/`.deno` — codebase hiện tại là TypeScript/Deno):**
+  - `// TODO | FIXME | NOTE | XXX | HACK | WARN | @author`.
+  - Comment tham chiếu plan/design: `// §43 H1`, `// per plan`, `// see companion doc`, `// added for hedge phase`.
+  - Comment "why/because": `// vì reason X`, `// tránh race Z`, `// default là 5`.
+  - Block comment nhiều dòng đầu function/class/file mô tả intent.
+  - JSDoc/docstring mô tả behavior của body function.
+  - Trailing comment sau statement: `const x = 5; // 5 là default`.
+  - Comment "removed for X" tại chỗ code đã xoá.
+  - `console.log("debug: ...")` giả comment / debug leftover.
+- **Chỗ ĐƯỢC ghi những thứ đó (chỉ tại đây):**
+  - Commit message (WHAT + WHY + link Plan §43.X).
+  - PR description (context + verification output).
+  - Companion doc `docs/design/kael-harness-performance-eval-20260708.md` (per-step File/Action/Acceptance).
+  - Plan.md §43 (design decision).
+- **Nếu agent thấy "cần comment để hiểu code" — STOP.** 2 khả năng:
+  1. Tên biến/hàm/file/type chưa self-explanatory → refactor TÊN.
+  2. Logic quá phức tạp → tách nhỏ (AR2).
+  Comment KHÔNG bao giờ là cách sửa "code khó đọc".
+- **Test file:** `it("does X when Y", ...)` — đủ. Test name PHẢI tự nói. KHÔNG thêm block comment giải thích test intent.
+- **Cho phép TỐI THIỂU (edge rất hiếm):**
+  - License/copyright header của file EXISTING đã có (không tạo mới cho file mới trừ khi convention repo yêu cầu).
+  - TypeScript type annotation (không phải comment).
+  - Một dòng JSDoc `@deprecated` cho public export bị deprecate (chỉ signature, không description).
+- **Enforce:**
+  - `pnpm lint:comments` **ratchet** (= số comment baseline chỉ được **GIẢM hoặc GIỮ NGUYÊN**, không được TĂNG) baseline count ghi ở PE7. Sau phase §43, count KHÔNG được tăng.
+  - Reviewer grep diff cho `TODO|FIXME|NOTE|XXX|HACK|WARN|@author|§43|per plan|see companion|added for` — bất kỳ hit trong file code = fail.
+  - Ratchet exclude: generated files (`.gen.ts`, auto migrations, `mobile-api-edge-schema.test.ts`), vendor dir. KHÔNG exclude Harness code §43 chạm vào.
+
+**AR2 — CẤM phức tạp không cần thiết (Tu hard rule: "hiệu quả + dễ chỉnh, không phức tạp cho sang chảnh").**
+
+- **Cấm rõ:**
+  - Abstract factory / DI framework / event bus / observer / plugin system CHO scale chưa kiếm (CLAUDE.md Core Principle 2).
+  - Generic wrapper > 3 type parameters. Cần → tách nhỏ hoặc concrete.
+  - State machine cho luồng < 5 state (dùng discriminated union `type X = 'a' | 'b' | 'c'`).
+  - "Future-proof" hook / extension slot cho requirement chưa có. KHÔNG viết `hedgedCallWithExtensionHook` khi chỉ cần `hedgedCall`.
+  - Class inheritance > 2 tầng.
+  - `any` / `unknown` để "linh hoạt" — dùng type union cụ thể.
+  - Function > 50 lines nội bộ → tách.
+  - File > 300 lines → tách theo trách nhiệm (giống §S5 C1 services.ts split đã làm).
+  - Nested `if`/`switch` > 3 tầng → tách hoặc early-return.
+- **Cho phép (phức tạp CẦN THIẾT — Tu: "phức tạp nhưng phải hiệu quả"):**
+  - 3 dòng lặp — dùng luôn, KHÔNG trừu tượng hoá (karpathy-guidelines).
+  - Complexity phát sinh từ requirement thật (hedgedCall race + abort + double-reserve) — OK, nhưng test cover từng branch.
+  - Discriminated union cho contract shape (VISION_UNAVAILABLE_HONEST variant) — đơn giản + type-safe.
+- **Test reader-friendly (Tu ambition "dễ chỉnh"):** người mới (chưa đọc plan) mở code hiểu 1 hàm làm gì trong **30 giây** qua **tên + signature + top-level structure**. KHÔNG cần đọc comment/plan/companion.
+
+**AR3 — Optimal + Correct + Easy-to-modify (mục tiêu Tu explicit).**
+
+- **Optimal:** đo qua metric target (PA-G2 speed, DC4 cache-hit, PA-G3 adaptive). KHÔNG đoán "chắc là nhanh hơn". Metric không cải thiện > target → phase FAIL, revert.
+- **Correct:** pass test + eval + gate DoD 43.0.3. Silent bug (test pass nhưng nội dung sai) = FAIL — E workstream tồn tại chính để bắt cái này.
+- **Easy-to-modify:** 1 người mới mở code hiểu **cái gì làm gì** trong 5 PHÚT — chỉ qua tên + structure + type. Practical test: 3 tháng sau Tu bảo "swap Sonnet 5 → Sonnet 6", ai đó (chưa đọc plan) hoàn thành trong ≤ 15 PHÚT qua §43.0.4 extension point. Nếu > → phase chưa xong.
+
+**AR4 — Surgical diff.**
+
+- 1 PR = 1 phase (KHÔNG gộp H1 + H2 chung 1 PR).
+- 1 phase ≤ **500 lines diff code files** (`.ts`/`.tsx`/`.js`/`.jsx`). **Data files (JSON corpus, migration SQL, vendored data, baseline snapshots) KHÔNG tính vào cap** — E0 corpus 250 case ~2500 dòng JSON được phép. Vượt code cap → tách phase nhỏ hơn (bump v0.X plan).
+- KHÔNG cleanup bên lề trong PR của phase (rename biến ngoài scope, format file khác). Cleanup = PR riêng, phase riêng.
+- Test file cùng PR với code file (KHÔNG tách).
+- Byte-diff invariant: nếu phase claim "no logic drift" (vd C1 refactor cache), test byte-diff bắt buộc chứng minh.
+
+**AR5 — Verify honest.**
+
+- Chạy thật: `deno check`, `pnpm --filter api test`, `pnpm --filter shared test`, `pnpm eval:kael` (sau E1 wire). Report output THÔ + số pass/fail thật trong PR body.
+- Ghi rõ cái CHƯA test (RULES #8). Silent gap = FAIL.
+- Metric delta report: before/after cho p95 / cost / cache-hit / eval pass_rate. KHÔNG bịa số.
+- KHÔNG claim "worked" nếu chỉ chạy 1/N test — ghi rõ N và lý do.
+
+**AR6 — Flag & config discipline.**
+
+- CẤM temporary flag trong Harness runtime code (`if (FEATURE_FLAG_HEDGE_V1_TEMP)`, `if (process.env.TESTING)`, `if (DEBUG_MODE)`).
+- **Exception:** env-driven debug flag trong dev/test tool files (`apps/api/src/__tests__/**`, `scripts/**`) OK — miễn có default kill = 0 và không leak ra runtime.
+- Flag runtime mới phải: (a) đọc từ env qua helper hiện có; (b) tên vĩnh viễn (`KAEL_HEDGE_ENABLED`, không `KAEL_HEDGE_ENABLED_V2`); (c) documented trong Plan §43.8 Contracts; (d) có kill-switch mechanism đo qua metric.
+- CẤM hardcode VND/USD/threshold (RULES.md ban). Ngưỡng qua env với default có ý nghĩa.
+
+**AR7 — Ask before diverging.**
+
+- Nếu Codex phát hiện: (a) code state khác 43.1 findings; (b) plan decision 43.0.2 xung đột reality; (c) test bắt tận nơi rằng approach không khả thi → **STOP, hỏi Tu**.
+- KHÔNG tự "sửa nhẹ" plan giữa execute. Divergence = Plan §43 v0.X bump + Tu approve.
+- KHÔNG workaround bằng hack code hoặc comment giải thích workaround (AR1 cấm comment luôn).
+
+**AR8 — Foundation contract observance (43.0.4).**
+
+- Phá 1 dòng "ĐÓNG BĂNG" trong 43.0.4 → STOP, hỏi Tu.
+- Extension point (43.0.4) = làm theo đúng shape đã spec.
+- Nếu phase §43 buộc phải phá đóng băng để đạt PA-G target → foundation đã lung lay ⇒ revisit design, KHÔNG force.
+
+**AR9 — Fail-open giữ nguyên (tránh regress §41).**
+
+- Mọi guard/optim §43 (hedge, cache, EWMA, eval, vision-contract) fail → Kael VẪN trả lời (degrade thật, RULES #8 honest).
+- Guard §43 KHÔNG được tự thành điểm chết (giống spend-gate §38 khuôn).
+- Test negative BẮT BUỘC cho mỗi workstream: mock RPC/health/DB throw → verify path chính vẫn qua.
+
+**AR11 — No auto-chain chapter (Tu hard rule 2026-07-08).**
+
+- Chapter §40 done → agent STOP + báo Tu; KHÔNG tự start §41 dù còn budget/thời gian/tools trong session.
+- Chapter §41 done → agent STOP + báo Tu; KHÔNG tự start §42.
+- Chapter §42 done → agent STOP + báo Tu; KHÔNG tự start §43.
+- "Done" = mọi phase trong chapter đó PA-G1..PA-G8 verified + evidence path ghi companion doc + Tu ack.
+- Vi phạm ("một mạch làm hết") = STOP + rollback commits vượt scope + báo Tu. Không thương lượng.
+- Trigger message khi chapter done: `"Chapter §<n> hoàn thành: <danh sách phase>. Evidence: <path>. Chờ Tu 'go' §<n+1>."`
+
+**AR10 — Commit granularity.**
+
+- 1 phase = 1 commit chính + tối đa 2 commit fix test (nếu có).
+- Commit message format: `#<PR> <phase_id> <one-line-what>` (matching branch style hiện tại như `#98 calm mobile canvas colors`).
+- Revert commit → lý do trong commit body, KHÔNG comment code (AR1).
+
+---
+
+**Rule enforcement matrix:**
+
+| Rule | Enforced by | Owner |
+|---|---|---|
+| **AR1** (no comments) | `pnpm lint:comments` ratchet + grep marker `TODO/FIXME/NOTE/XXX/HACK/§43/per plan/see companion` trong diff | Claude verify (audit diff) |
+| **AR2** (no bloat) | Code review + cyclomatic manual + size cap (func ≤50 / file ≤300) | Claude verify (audit diff) |
+| **AR3** (optimal/easy) | Metric delta report + 5-min-read test + 15-min-swap test | Codex self-check + Claude verify |
+| **AR4** (surgical) | PR size check (code files only, data files exempt) + phase-per-PR + byte-diff invariant | Claude verify + Tu final |
+| **AR5** (honest) | Test output raw trong PR body + gap listing | Codex → PR body → Tu review |
+| **AR6** (flag) | Grep temp flag markers + Plan §43.8 sync check | Claude verify (audit diff) |
+| **AR7** (diverge) | Codex STOP behavior on divergence signal | Codex self-enforce |
+| **AR8** (foundation) | Grep for edits in ĐÓNG BĂNG file list (43.0.4) | Claude verify (audit diff) |
+| **AR9** (fail-open) | Negative test coverage bắt buộc | Codex TDD |
+| **AR10** (commit) | Commit message + reviewer | Claude verify + Tu final |
+
+---
+
+### 43.1 Current-state findings (evidence-cited — 2026-07-08, verify tận nơi)
+
+**43.1.1 — Escalation TUẦN TỰ (điểm yếu speed):**
+- [routing.config.ts:35-48](supabase/functions/mobile-api/_shared/kael/routing.config.ts:35): `KAEL_ROUTING_CONFIG` có `primary` + `fallback` per purpose nhưng KHÔNG có `hedge` flag / mode.
+- [routing.ts:101-105](supabase/functions/mobile-api/_shared/kael/routing.ts:101): `circuitAwareProviderCandidatesForPurpose` trả **danh sách tuần tự**; caller (intent :31/:146, market :151, worker-assist :116, customer-assistant :154) chạy `for` loop → 1 provider xong mới thử provider kế. KHÔNG có `Promise.race` bất kỳ đâu.
+- [provider-client.ts:86-90](supabase/functions/mobile-api/_shared/kael/provider-client.ts:86): timeout Anthropic 20s. Khi Anthropic chậm/khó → user đợi ≥ 20s TRƯỚC KHI được thử escalation. Với chat + vision = mất user.
+
+**43.1.2 — Prompt Cache có hạ tầng, KHÔNG có chiến lược (điểm yếu cost + speed):**
+- [provider-client.ts:203-204](supabase/functions/mobile-api/_shared/kael/provider-client.ts:203): `KAEL_OPT_PROMPT_CACHE_ENABLED` flag ĐÃ đọc.
+- [provider-client.ts:221](supabase/functions/mobile-api/_shared/kael/provider-client.ts:221): `anthropicSystemContent(systemContent, promptCacheEnabled)` ĐÃ đóng gói `cache_control: { type: "ephemeral" }` on system content khi flag ON.
+- [provider-client.ts:234-243](supabase/functions/mobile-api/_shared/kael/provider-client.ts:234): cost ĐÃ tính `cacheCreationInputTokens × 1.25 / 1M` + `cacheReadInputTokens × 0.1 / 1M`.
+- **Thiếu:** (a) hiện `systemContent` là **1 khối duy nhất** (system prompt chưa tách STABLE/DYNAMIC) → cache-hit CHỈ khi cả system prompt giống bit-exact request trước → thực tế MISS hầu hết vì user context thay đổi mỗi request; (b) không có measurement pipeline cache-hit rate per purpose per day; (c) không có kill-switch nếu cache write cost > cache read save.
+- **Hậu quả:** Bật flag ON = có thể **đắt hơn** (cache write × 1.25 mỗi request không hit). Cần chiến lược C1/C2/C3 tách STABLE trước khi bật.
+
+**43.1.3 — Breaker BINARY, không có adaptive routing (điểm yếu resilience):**
+- [circuit-breaker.ts:37-79](supabase/functions/mobile-api/_shared/kael/circuit-breaker.ts:37): breaker chỉ isOpen/isClosed. Threshold 3-5 failures / N min → sau đó cứng openMs.
+- [routing.ts:101](supabase/functions/mobile-api/_shared/kael/routing.ts:101): `circuitAwareProviderCandidatesForPurpose` chỉ **lọc** provider bị breaker mở → thứ tự còn lại y hệt config, KHÔNG phân bổ theo sức khoẻ real-time.
+- **Hậu quả:** khi Anthropic p95 = 15s và DeepSeek p95 = 2s (Anthropic chậm nhưng chưa đủ 5 timeout trong 5 phút để mở breaker), 100% traffic vẫn đi Anthropic. Không có tín hiệu "chậm-nhưng-chưa-chết" nào ảnh hưởng routing → user chờ dài vô ích.
+
+**43.1.4 — Vision fallback KHÔNG XÁC ĐỊNH (LỖ contract):**
+- [routing.config.ts:37](supabase/functions/mobile-api/_shared/kael/routing.config.ts:37): `vision_analysis: config(..., anthropic(), undefined, ...)` — fallback = `undefined`.
+- Sau §41 P1 D-B (provider-global breaker) mở cho Anthropic → `circuitAwareProviderCandidatesForPurpose("vision_analysis")` trả list RỖNG.
+- Không handler nào trả honest failure — [customer-assistant.ts:154](supabase/functions/mobile-api/_shared/kael/customer-assistant.ts:154) và các caller khác chưa xử lý "candidates rỗng" nghĩa gì trong context vision.
+- **Hậu quả:** ở trạng thái đó vision fail thầm lặng → user thấy loading spinner mãi hoặc lỗi tiếng Anh mơ hồ. Vi phạm RULES #8.
+
+**43.1.5 — KHÔNG có eval / quality drift check (điểm yếu assurance):**
+- Test suite hiện: unit test cho helpers + integration test cho luồng (schema-level). **KHÔNG** có case-based expected-output test với real LLM.
+- Swap `sonnet-4-6` → `sonnet-5` (kế hoạch §40 M1) → không có tín hiệu nào cảnh báo nếu chất lượng rớt.
+- Prompt regression (đổi 1 dòng system prompt) → schema-fail breaker §41 P3 KHÔNG bắt nếu output vẫn valid JSON nhưng nội dung sai.
+- **Hậu quả:** silent quality drift = rủi ro cao nhất khi rolling model / prompt / provider mới. "Biết mình không biết" mà không có ánh sáng.
+
+---
+
+### 43.2 Architecture Target
+
+```text
+HEDGED CALL (H — high-stakes purposes):
+  callAI(purpose, hedge_hint) → ProviderRouter
+    → if purpose in HEDGED_ROUTES:
+         reserve = primary_cost + escalation_cost   (spend-gate double-reserve §38 khuôn)
+         controller = AbortController()
+         winner = await Promise.race([
+           callProvider(primary,     controller.signal),
+           callProvider(escalation,  controller.signal),
+         ])
+         controller.abort()   // hủy kẻ chậm
+         finalize(winner_actual_cost + loser_partial_est)
+       else:
+         callProvider(primary)   → (nếu confidence thấp §40 M2) callProvider(escalation)  [sequential]
+    → Emit: kael.hedge.{purpose}.{primary_won|escalation_won|both_failed}
+
+PROMPT CACHE (C — Anthropic):
+  system-prompt.build(actor, purpose, context)
+    → STABLE prefix   [guardrails + persona + taxonomy + response-style]   ← cache_control ephemeral here
+    → DYNAMIC suffix  [user profile snapshot + job facts + chat tail]
+  ProviderAdapter (§42 W5) uses capabilities.promptCache to decide
+  Log per-call: cacheReadInputTokens / total → hit_rate → kael_ai_call_ledger.cache_hit_ratio
+  Dashboard query: hit rate per purpose per day → C3 tune loop
+
+ADAPTIVE WEIGHTING (R — soft layer):
+  circuitAwareProviderCandidatesForPurpose(purpose)
+    → binary breaker filter (§41 P1)  → eligible = [providers not open]
+    → EWMA state (RAM per-isolate + async DB snapshot):
+         health[purpose][provider] = { ewma_p95_ms, ewma_err_rate, sample_count, updated_at }
+    → weight[p] = clamp(1 / (ewma_p95 × (1 + ewma_err_rate)), 0.1, 0.9)   normalize sum = 1
+    → weightedPick(eligible, weights)  → return [picked, ...others_sorted_by_weight]
+
+VISION HONEST (V — contract when Anthropic global-open):
+  vision_analysis handler:
+    eligible = circuitAwareProviderCandidatesForPurpose("vision_analysis")
+    breaker_scope_open = isProviderGlobalBreakerOpen("anthropic")    // §41 D-B
+    → if eligible.empty OR breaker_scope_open:
+         return { success: false,
+                  code: 'VISION_UNAVAILABLE_HONEST',
+                  retry_after_ms: breaker.open_until - now,
+                  fallback_advice_vi: env.KAEL_VISION_UNAVAILABLE_ADVICE_VI ?? DEFAULT_VI }
+         + audit event KAEL_VISION_UNAVAILABLE
+    Mobile: consume contract → hiện hint + focus text input (KHÔNG loading spinner)
+
+EVAL LOOP (E — CI gate):
+  apps/api/src/__tests__/eval/kael-eval-corpus.json (250 case, versioned)
+  runKaelEval.ts → hit staging Edge with real providers
+    → per-case: assertion helper per purpose (schema + expected)
+    → aggregate: pass_rate per purpose + total
+    → compare vs eval-baseline.json (monthly review, versioned)
+  CI trigger:
+    PR touching routing.config / system-prompt / prompt files
+    → run eval → fail if pass_rate_delta > 0.03 (env EVAL_PASS_DELTA_THRESHOLD)
+    → manual override: PR body 'eval-override: <reason>' → pass with warning + audit
+  Weekly cron:
+    Sunday 21:00 UTC → run eval → if drift > 0.05 → open GitHub issue (label kael-eval-drift)
+```
+
+---
+
+### 43.3 Workstream H — Hedged Routing (phases)
+
+**Prereq:** §40 M0 (per-model cost) + §41 P1 (durable spend-gate) + §41 P2 (cost truth per model) DONE.
+
+- **H0 — Chốt HEDGED_ROUTES + config schema.** Whitelist khởi đầu (DH1). Env `KAEL_HEDGED_ROUTES` format: `price_synthesis:high_stakes,worker_assist:always,vision_analysis:always` (parse ở H1). Extend `KaelPurposeRoutingConfig` thêm `hedge?: { escalation: ProviderRoute, mode: 'always' | 'high_stakes_only' }`. *Pass:* config schema + whitelist chốt; parse test cover 4 case (valid, invalid mode, missing purpose, empty). *(karpathy-guidelines)*
+- **H1 — `hedgedCall` wrapper.** File riêng `supabase/functions/mobile-api/_shared/kael/hedged-call.ts` (không nhồi provider-client.ts để giữ single-responsibility). Signature: `hedgedCall(primaryRequest, escalationRequest, opts): Promise<AIResponse & { hedge_metadata }>`. Nội bộ: shared `AbortController`; `Promise.race` chọn kẻ trả trước; abort kẻ chậm; log latency + cost cả hai. Wire: nếu purpose in HEDGED_ROUTES + mode phù hợp → `hedgedCall`, else callAI cũ. **Winner AIResponse trả về caller Y HỆT callAI thường — mọi guard sau đó (§42 W1 output-gateway, orchestrator selfCheck, synthesizePrice §40 deterministic) fire NGUYÊN VẸN. H1 KHÔNG bypass bất kỳ guard nào.** *Pass:* unit test race — (a) primary faster → escalation aborted; (b) escalation faster → primary aborted; (c) cả hai fail → return AI_CALL_FAILED honest; (d) 1 fail 1 success → success wins; (e) winner text ĐI QUA W1 gateway (self-check + semantic + PII scrub) như callAI thường. *(kael-tdd)*
+- **H2 — Spend-gate DOUBLE-RESERVE (DH3).** Trước hedgedCall: `reserveAiSpend(estimatedCostUsd = primary_est + escalation_est)`. Sau race: `finalizeAiSpend(winner.usage.costUsd + loser_partial)`. `loser_partial` = 50% loser_est khởi đầu (đo real ở H4 rồi tune). Nếu reserve fail → **fallback non-hedged callAI** (không hard-fail). *Pass:* test spend-gate KHÔNG under-reserve; test fallback path khi ngân sách cạn; test finalize match actual + partial. *(kael-tdd, kael-security-sweep)*
+- **H3 — Wire caller: intent/market/worker-assist/customer-assistant/vision.** Refactor caller: nếu purpose có `hedge` config → gọi `hedgedCall`. Giữ non-hedged path cho purpose KHÔNG HEDGED_ROUTES (>50% purpose). Metric emit `kael.hedge.{purpose}.{event}` với event ∈ {primary_won, escalation_won, both_failed, aborted_primary_ms, aborted_escalation_ms}. *Pass:* per-caller test + no-regression cho non-hedged purpose. *(kael-tdd)*
+- **H4 — Kill-switch + tune (DH4).** `KAEL_HEDGE_ENABLED` master; `KAEL_HEDGE_<PURPOSE>_ENABLED` fine. Đo 1 tuần staging + first-week prod: nếu `cost_inflation > 40%` MÀ `p95_win < 20%` → tắt hedge purpose đó qua env, audit lý do. *Pass:* PA-G2 speed target đạt hoặc kill-switch trip có audit + report.
+- **H5 — Verify H.** deno check + api/shared; test hedge race edges + double-reserve + fallback + kill-switch; report p95 delta + cost delta real; ghi cái CHƯA test. *(kael-tdd, kael-security-sweep)*
+
+---
+
+### 43.4 Workstream C — Prompt Cache Strategy (phases)
+
+**Prereq:** §40 M1 (Anthropic Sonnet 5 wired) + §41 P2 (cost per model đúng cache math) DONE.
+
+- **C0 — Audit + phân đoạn STABLE/DYNAMIC + verify thứ tự hiện tại.** Đọc `system-prompt.ts` per purpose, đánh dấu token STABLE vs DYNAMIC **và verify** STABLE hiện đang đứng ĐẦU hay CUỐI system content. Bảng ra companion doc: `{purpose, stable_tokens_est, dynamic_tokens_est, ratio_stable, current_order:'stable_first'|'dynamic_first'|'mixed', expected_hit_target%}`. Nếu bất kỳ purpose có `current_order != 'stable_first'` → phase **C0.5 refactor** (đặt STABLE lên đầu) TRƯỚC C1 (nếu không thì cache_control marker sai vị trí, cache MISS toàn bộ). *Pass:* bảng phủ 12 purpose; STABLE ≥ 70% total system tokens cho ≥ 5 purpose lặp cao (DC4 category 1); danh sách purpose cần C0.5 rõ. *(karpathy-guidelines, claude-api)*
+- **C0.5 — Reorder STABLE-first (chỉ nếu C0 phát hiện thứ tự sai).** Refactor system-prompt.ts đưa STABLE lên đầu system content cho purpose bị lỗi. Byte-diff: concat STABLE + DYNAMIC = content cũ (cùng token, chỉ ordering). *Pass:* 10 semantic golden output test không đổi trước/sau reorder (test bằng snapshot mocked provider). *(kael-tdd)*
+- **C1 — Refactor `anthropicSystemContent`.** Thay shape return khi cache ON: từ `string | AITextContent[]` hiện tại thành `[{ type:'text', text: STABLE, cache_control:{type:'ephemeral'} }, { type:'text', text: DYNAMIC }]`. **Byte-diff invariant:** `STABLE + DYNAMIC` concat = system prompt cũ (không logic drift). *Pass:* unit test byte-diff cho 12 purpose; test cache_control ở đúng slot 1; test cache OFF → shape cũ. *(kael-tdd)*
+- **C2 — Measurement pipeline.** Log per-call `{purpose, provider, model, cache_hit_ratio, cache_write_tokens, cache_read_tokens}` vào `kael_ai_call_ledger`. Nếu cột chưa có → migration thêm cột (nullable, backfill NULL). SQL helper: hit rate per purpose per day = SUM(cache_read) / SUM(input + cache_read + cache_write). *Pass:* migration + RLS; test SQL query; ledger row đúng schema. *(kael-supabase, kael-tdd)*
+- **C3 — Tune STABLE prefix.** Đo 1 tuần staging: nếu hit-rate < DC4 target → check nguyên nhân (phần "dynamic" lẫn vào STABLE? user preference cache line-item chưa move? guardrail bump version?). Iterate max 3 vòng. *Pass:* PA-G2 cache target đạt cho ≥ 3/6 purpose category (DC4).
+- **C4 — Bật ON toàn bộ Anthropic-routed (DC5).** `KAEL_OPT_PROMPT_CACHE_ENABLED=1` prod. Đo cost delta real 1 tuần. Kill-switch per-purpose nếu net cost tăng (cache write vượt cache save). *Pass:* Anthropic input cost giảm ≥ 60% cho purpose lặp cao (DC4 category 1); no regression cho purpose khác.
+- **C5 — Verify C.** deno check + api/shared; cost before/after report; hit-rate per purpose; ghi cái CHƯA test. *(kael-tdd, claude-api)*
+
+---
+
+### 43.5 Workstream R — Adaptive Weighting (phases)
+
+**Prereq:** §41 P1 (durable breaker) DONE — R stands BÊN CẠNH nó, không thay.
+
+- **R0 — Design health signal + state store.** EWMA config: `alpha=0.2`, `window=15min` rolling. State shape: `Map<'{purpose}:{provider}', { ewma_p95_ms:number, ewma_err_rate:number, sample_count:number, updated_at:Date }>`. Chốt: RAM per-isolate + async DB snapshot every 60s (DR3). File riêng `supabase/functions/mobile-api/_shared/kael/provider-health.ts`. *Pass:* design doc; EWMA math unit test cover cold-start / steady-state / spike. *(karpathy-guidelines, kael-tdd)*
+- **R1 — `updateProviderHealth` hook.** Gọi SAU mỗi `callAI` (success + fail): `updateProviderHealth(purpose, provider, {latency_ms, is_error})` cập nhật EWMA. Fail-open: nếu update throw → catch + skip (không đụng call return). Wire: sau `recordSuccess` (:121) và sau `recordFailure` (:151) trong provider-client. *Pass:* unit test EWMA math; test fail-open (update throw → callAI return bình thường); wire test call-site cover. *(kael-tdd)*
+- **R2 — `weightedProviderPick`.** Mở rộng `circuitAwareProviderCandidatesForPurpose` ([routing.ts:101](supabase/functions/mobile-api/_shared/kael/routing.ts:101)) — GIỮ signature (return list), thứ tự re-order theo weight. **Công thức chính xác (normalize TRƯỚC clamp, renormalize sau cap):**
+    ```
+    raw[p]     = 1 / (ewma_p95_ms × (1 + ewma_err_rate))              // health score
+    raw[p]    *= (purpose in cache_purposes && p == 'anthropic')
+                   ? cache_affinity_mult : 1                           // DR6
+    norm[p]    = raw[p] / Σraw                                         // step 1: normalize
+    cap[p]     = min(0.9, max(0.1, norm[p]))                           // step 2: floor + ceiling
+    weight[p]  = cap[p] / Σcap                                         // step 3: renormalize sau cap
+    ```
+    Steps: (1) filter provider bị breaker mở (giữ P1 logic); (2) fetch health cho eligible providers; (3) compute weight[] theo công thức trên; (4) weighted random pick theo `weight[]` → `picked`; (5) return `[picked, ...others_sorted_desc_weight]` — giữ list shape cho fallback loop tiếp.
+  Fail-open: health chưa có (cold) → `weight[p] = 1/N` uniform (round-robin fallback). *Pass:* unit test weight math + edge (all healthy uniform / 1 slow shift ≥ 60% / all breakers open passthrough / cold start uniform / cache-affinity kéo Anthropic weight lên khi tương đương ping). *(kael-tdd)*
+- **R3 — DB snapshot cho dashboard (DR3).** Migration bảng `kael_provider_health_snapshot` (columns: `purpose text, provider text, ewma_p95_ms real, ewma_err_rate real, sample_count int, snapshot_at timestamptz, primary key (purpose, provider, snapshot_at)`). Async fire-and-forget từ each isolate every 60s (best-effort, wrap try/catch, không throw). Service-role only RLS. *Pass:* migration + RLS test; query test cho dashboard aggregation. *(kael-supabase)*
+- **R4 — Chaos test R.** Simulate: mock DeepSeek delay 5s, Anthropic 2s → verify traffic shift ≥ 60% sang Anthropic trong 5 phút. Test negative: cả hai đều nhanh → weight ~50/50 (clamp giữ min 10%). *Pass:* PA-G3 target. *(kael-tdd)*
+- **R5 — Verify R.** deno check + api/shared; report weight distribution real ở staging; ghi cái CHƯA test. *(kael-tdd, kael-security-sweep)*
+
+---
+
+### 43.6 Workstream V — Vision Unavailable Honest Contract (phases)
+
+**Prereq:** §41 P1 D-B (provider-global breaker) DONE + §40 DM2 (vision assigned to Sonnet 5) DONE.
+
+- **V0 — Codify contract.** Extend `AIResponse` union trong `types.ts`: thêm variant `{success:false, code:'VISION_UNAVAILABLE_HONEST', retry_after_ms:number, fallback_advice_vi:string}`. Type test + example. *Pass:* type union đúng, no breaking change existing consumers. *(karpathy-guidelines)*
+- **V1 — Wire trong `vision_analysis` caller.** Trước gọi callAI cho `vision_analysis`: check `KAEL_CIRCUIT_BREAKER.isOpen("vision_analysis", "anthropic")` **hoặc** provider-global breaker Anthropic (§41 D-B). Nếu mở → return honest failure ngay (DV1). Emit audit `KAEL_VISION_UNAVAILABLE` event với `{purpose, breaker_scope, open_until, reason_code}` (DV3). *Pass:* test force-breaker-open path → honest failure; test success path không đụng; test audit event format. *(kael-tdd, kael-ai-boundary)*
+- **V2 — Mobile consume contract.** UI: khi nhận `code:'VISION_UNAVAILABLE_HONEST'` → hiện `fallback_advice_vi` message + focus text input + optional retry hint countdown `retry_after_ms`. **KHÔNG loading spinner cứng**, KHÔNG hard-fail error đỏ. Follow glass-liquid signature (mint accent info state). *Pass:* mobile snapshot + user flow test; RN accessibility (VoiceOver đọc advice). *(kael-frontend-test)*
+- **V3 — Verify V.** deno check + api/shared + mobile jest-expo; end-to-end force-breaker chaos test (mở breaker giả → request vision → mobile hiện hint); ghi cái CHƯA test. *(kael-tdd, kael-security-sweep)*
+
+---
+
+### 43.7 Workstream E — Eval-in-the-loop (phases)
+
+**Prereq:** KHÔNG phụ thuộc §40/§41/§42 — có thể chạy SONG SONG từ ngày 1. Result càng có nghĩa khi routing/prompt stable → **khuyên khởi động E song song với §40 M0** để có baseline TRƯỚC khi §40 M1 land (thay Sonnet 4.6 → 5).
+
+- **E0 — Corpus scope + Tu label (DE1/DE2).** Companion doc schema:
+    ```json
+    { "id": "intent_001",
+      "purpose": "intent_classification",
+      "input": { "text": "vòi nước bị rò rỉ", "locale": "vi", "actor": "customer" },
+      "expected": {
+        "assert_type": "regex_match",
+        "field_path": "service_type",
+        "value": "^plumbing$"
+      },
+      "difficulty": "easy",
+      "tags": ["plumbing", "leak", "core"],
+      "added_at": "2026-07-XX"
+    }
+    ```
+    Tu label 250 case (~50/purpose × 5 purpose). Ưu tiên distribution: 40 easy + 8 medium + 2 hard per purpose. *Pass:* corpus.json commit; schema-validated (Zod); 250/250 case có expected. *(karpathy-guidelines)*
+- **E1 — Runner (`runKaelEval.ts`).** File `apps/api/src/__tests__/eval/runKaelEval.ts`:
+    1. Load corpus.
+    2. Per case: gọi staging Edge (real Supabase + real API keys, env `KAEL_EVAL_API_URL`).
+    3. Assert per purpose (helpers `assertIntent`, `assertMarketVerdict`, `assertPriceRange`, `assertAdvisoryRubric`, `assertProblemSlug`).
+    4. Aggregate + write `eval-report-<timestamp>.json` (gitignored).
+    5. Cost cap: nếu tích luỹ vượt `KAEL_EVAL_MAX_COST_USD` (default 1.0) → abort + honest partial report.
+    *Pass:* runner chạy được với 5 case dry-run; report shape đúng; cost cap enforce. *(kael-tdd)*
+- **E2 — CI wire (DE4/DE5) — chạy với `KAEL_HEDGE_ENABLED=0` (DE7).** GitHub Action `.github/workflows/kael-eval.yml`:
+    - **Trigger paths (concrete, KHÔNG glob mờ):**
+        `supabase/functions/mobile-api/_shared/kael/routing.config.ts`
+        `supabase/functions/mobile-api/_shared/kael/system-prompt.ts`
+        `supabase/functions/mobile-api/_shared/kael/prompts/**` (nếu tồn tại)
+        `apps/api/src/__tests__/eval/kael-eval-corpus.json`
+        `apps/api/src/__tests__/eval/kael-eval-baseline.json`
+      Không dùng `**/*prompt*.ts` (bắt oan test file).
+    - **Runner env:** `KAEL_HEDGE_ENABLED=0` (DE7 baseline quality), `KAEL_EVAL_MAX_COST_USD=1.0`, `KAEL_EVAL_API_URL=<staging>`.
+    - Compare vs `kael-eval-baseline.json`. Fail nếu `pass_rate_delta > EVAL_PASS_DELTA_THRESHOLD` (default 0.03, env).
+    - Manual override: PR body chứa `eval-override: <reason>` (regex `^eval-override:\s*(.+)$` một trong body lines) → CI pass với warning comment + audit log.
+    - **Rate-limit CI:** nếu > 5 eval runs / user / day → skip run và warn (chống burn staging cost khi iterate prompt nhiều lần).
+    *Pass:* dry-run PR trigger đúng paths (concrete); delta detection đúng; override path pass với warning; rate-limit CI trigger đúng. *(kael-tdd, karpathy-guidelines)*
+- **E3 — Weekly baseline drift (DE6).** GitHub cron `0 21 * * 0` (Sunday 21:00 UTC = Monday 04:00 GMT+7). Chạy eval; so baseline; drift > 5% → `gh issue create` với label `kael-eval-drift`, body = delta report per purpose. **KHÔNG block prod**, chỉ alert. *Pass:* cron chạy staging; force fake regression → issue open đúng; no-drift → no issue. *(karpathy-guidelines)*
+- **E4 — Baseline update process.** Cuối tháng review drift trend; nếu ổn định trong ±5% band → update baseline (bump version + commit). Ghi audit trong companion doc. Process step-by-step ở companion. *Pass:* process doc + example baseline bump.
+- **E5 — Verify E.** Dry-run một PR đụng routing.config → CI eval trigger; force fake regression (mock provider giả trả sai) → CI fail đúng; override → CI pass with warning. *(kael-tdd)*
+
+---
+
+### 43.8 Contracts (chốt chi tiết ở companion doc)
+
+```text
+Hedge (H):
+  HedgeMetadata = {
+    primary_won: boolean,
+    primary_latency_ms: number,
+    escalation_latency_ms: number,
+    aborted: 'primary' | 'escalation' | 'none',
+    total_cost_usd: number    // winner_actual + loser_partial
+  }
+  HedgedResponse = AIResponse & { hedge_metadata: HedgeMetadata }
+  KaelPurposeRoutingConfig += hedge?: { escalation: ProviderRoute, mode: 'always'|'high_stakes_only' }
+  hedgedCall(primaryReq, escalationReq, opts): Promise<HedgedResponse>
+  Flags: KAEL_HEDGE_ENABLED (master), KAEL_HEDGE_<PURPOSE>_ENABLED (fine)
+  Config: KAEL_HEDGE_HIGH_STAKES_VND_THRESHOLD (default 500_000), KAEL_HEDGED_ROUTES (parse whitelist)
+
+Cache (C):
+  ProviderAdapter.capabilities.promptCache: boolean   (from §42 W5)
+  anthropicSystemContent(content, cacheEnabled) →
+    | string
+    | Array<{ type:'text', text:string, cache_control?:{type:'ephemeral'} }>
+  Log: kael_ai_call_ledger += cache_hit_ratio (0..1), cache_write_tokens int, cache_read_tokens int
+  Flags: KAEL_OPT_PROMPT_CACHE_ENABLED (đã có, ON sau C4)
+
+Adaptive (R):
+  ProviderHealth = {
+    ewma_p95_ms: number,
+    ewma_err_rate: number,
+    sample_count: number,
+    updated_at: Date
+  }
+  updateProviderHealth(purpose, provider, sample): void   (fail-open)
+  weightedProviderPick(purpose, eligible): AIProvider[]   (returns sorted list, picked first)
+  Config: KAEL_ROUTE_EWMA_ALPHA (0.2), KAEL_ROUTE_WEIGHT_MIN (0.1), KAEL_ROUTE_WEIGHT_MAX (0.9),
+          KAEL_ROUTE_WINDOW_MIN (15)
+  Table: kael_provider_health_snapshot (async DB, best-effort, service-role only RLS)
+
+Vision (V):
+  AIResponse union += {
+    success: false,
+    code: 'VISION_UNAVAILABLE_HONEST',
+    retry_after_ms: number,
+    fallback_advice_vi: string
+  }
+  Audit event: KAEL_VISION_UNAVAILABLE { purpose, breaker_scope, open_until, reason_code }
+  Config: KAEL_VISION_UNAVAILABLE_ADVICE_VI (env, có default)
+
+Eval (E):
+  Corpus:   apps/api/src/__tests__/eval/kael-eval-corpus.json
+  Runner:   apps/api/src/__tests__/eval/runKaelEval.ts
+  Baseline: apps/api/src/__tests__/eval/kael-eval-baseline.json  (versioned; monthly review)
+  Report:   apps/api/src/__tests__/eval/reports/<timestamp>.json (gitignored)
+  Assertion helpers: assertIntent, assertMarketVerdict, assertPriceRange, assertAdvisoryRubric, assertProblemSlug
+  Config: KAEL_EVAL_API_URL (staging Edge),
+          KAEL_EVAL_PASS_DELTA_THRESHOLD (0.03),
+          KAEL_EVAL_MAX_COST_USD (1.0),
+          KAEL_EVAL_DRIFT_ALERT_THRESHOLD (0.05)
+  CI: .github/workflows/kael-eval.yml (PR trigger + weekly cron)
+
+Cross-cutting:
+  Metric namespace: kael.hedge.*, kael.cache.*, kael.route.weight.*, kael.vision.unavailable.*, kael.eval.*
+  Metric helper (DPX4): emitKaelMetric(namespace: string, event: string, payload: Record<string, unknown>): void
+    File: supabase/functions/mobile-api/_shared/observability.ts  (build ở H0 nếu chưa có)
+    Impl: 1 dòng structured log JSON → Supabase log stream. Fail-open. KHÔNG được thay bằng console.log rác (AR1).
+  Cache hit ratio formula (Contract C):
+    hit_ratio = cacheReadInputTokens / (cacheReadInputTokens + cacheCreationInputTokens + inputTokens)
+    (cache write count như phần "input" chưa hit; cache read = hit; đây là formal target DC4)
+  Bất biến: mọi contract fail-open; §43 KHÔNG import/đụng synthesizePrice hay đường đặt giá (RULES #7);
+           §43 KHÔNG chạm output-gateway/permission/memory (§42) hay durable guards (§41 P1) — chỉ CONSUME.
+```
+
+---
+
+### 43.9 Risks + Locked-Doc Impact
+
+- **Hedge cost inflation.** Cost ×2 per hedged call — nếu p95 win không tương xứng → burn tiền. Giảm: H0 whitelist nhỏ (3 purpose khởi đầu, không tất cả), H4 kill-switch metric-driven, spend-gate double-reserve chặn budget overrun.
+- **Cache: write × 1.25 có thể ĐẮT HƠN nếu miss rate cao.** Nếu hit rate < ~30% → cache write cost > cache read save = net loss. Giảm: C3 tune trên staging TRƯỚC KHI C4 bật prod; per-purpose kill-switch nếu net cost tăng.
+- **EWMA RAM per-isolate = tín hiệu học chậm khi cold-start.** Isolate mới = round-robin fallback đến khi có sample (2-3 call). Chấp nhận (signal MỀM). Nếu cần nhanh hơn → tương lai hydrate từ DB snapshot ở cold-start (không làm ngay).
+- **Weighted pick ngẫu nhiên = user-level unfairness.** User X có thể vô tình luôn gặp Anthropic khi weight = 60/40. Chấp nhận (soft signal, không phải chính sách bảo mật/tiền).
+- **Vision honest = user frustration nếu Anthropic mở nhiều.** Đây là FEATURE — user thấy sự thật thay vì "loading vô hạn". UX text (DV2) mềm để giảm ma sát; V3 audit đo tần suất → biết khi nào cần bàn thêm vision provider.
+- **Eval cost tài chính.** ~$0.40/run × 10-20 run/tuần = **$4-8/tháng**. Chấp nhận (foundation cost). Kill-switch: `KAEL_EVAL_MAX_COST_USD` per-run cap.
+- **Eval false-positive.** Random provider variance → pass rate wobble ±2%. Threshold 3% tránh; nếu chạm nhiều → tăng threshold hoặc chạy N=3 average per PR (tăng cost).
+- **Eval false-negative.** Corpus 250 không phủ hết edge case. Chấp nhận — corpus là tín hiệu chính xác, không phải bảo hiểm hoàn hảo. Update corpus khi user report bug quality.
+- **Corpus label time drift.** Case Tu label 2026-07 có thể lỗi thời khi service taxonomy đổi. Giảm: E4 monthly review; tag `added_at` cho mọi case → tương lai lọc "case cũ > 12 tháng" để rescreen.
+- **CI eval hit staging real providers = staging cost accounting.** Cần đảm bảo staging Supabase project có kill-switch spend-cap riêng cho eval (`KAEL_EVAL_STAGING_DAILY_CAP_USD`) — tránh eval runaway burn tiền staging.
+- **Locked-doc impact (Tu explicit 2026-07-08):**
+  - **KHÔNG sửa:** README.md, RULES.md, CLAUDE.md, critical.md, STRUCTURES.md, design.md, skills.md, `.claude/skills/**`, `.agents/skills/**`.
+  - **Được sửa (không locked):** governance/Plan.md §43 (đang sửa), companion doc `docs/design/kael-harness-performance-eval-20260708.md` (tạo mới), Harness code trong `supabase/functions/mobile-api/_shared/kael/**`, eval files trong `apps/api/src/__tests__/eval/**`, GitHub workflow `.github/workflows/kael-eval.yml`.
+  - Flag/secret mới theo RULES #1 spirit; ngưỡng VND/USD qua env, KHÔNG hardcode. Cần đổi RULES/STRUCTURES/CLAUDE.md → **STOP hỏi Tu** (chưa thấy cần cho §43).
+
+---
+
+### 43.10 Sequencing / Build Order
+
+**Cross-chapter order (Tu 2026-07-08 hard rule — xem PE9 + AR11):** §40 → §41 → §42 → §43. Mỗi chapter hoàn thành TOÀN BỘ phases (DoD verified, no skip) → agent STOP → báo Tu → chờ "go" → chapter kế. Không auto-chain, kể cả cùng session.
+
+```
+Foundation prereq (từ §40/§41/§42):
+  Hard-prereq (MUST-DONE trước §43):
+    §40 M0 (per-model cost verify) + M1 (Sonnet 5 + Opus wire) + DM2 (vision assignment)
+    §41 P1 (durable breaker+rate với D-B provider-global) + P2 (cost truth per model)
+    §42 W1 (output-gateway — H winner đi qua đây) + W5 (ProviderAdapter capabilities)
+  Soft-prereq (khuyến khích, KHÔNG blocker):
+    §40 S0-S6 (source-trust), §41 P3 (output-health breaker), §42 W2/W3/W4 (permission/memory/orchestrator).
+    Nếu chưa xong khi §43 start → ghi rõ trong PE6 companion doc + note downstream constraint.
+
+Thứ tự trong §43:
+  E (song song với §40 — không phụ thuộc; corpus label sớm để có BASELINE TRƯỚC khi §40 M1 land, không thì
+     "baseline sau khi model đổi" = mất tín hiệu drift)
+    ↓
+  V (contract-only, nhỏ, nhanh, mở khoá vision UX ngay khi §41 D-B live)
+    ↓
+  C (cheapest big-win; cần Anthropic Sonnet 5 wired ở §40 M1)
+    ↓
+  R (cần §41 P1 durable breaker; adaptive layer đứng TRÊN nó)
+    ↓
+  H (phức tạp + rủi ro cost cao nhất; cần cost table §41 P2 + spend-gate double-reserve; hưởng lợi từ C, R,
+     Eval đã bật để đo p95/cost/quality delta chính xác)
+
+Rationale:
+  • E song song để có baseline TRƯỚC §40 M1 land — không thì "baseline sau đổi model" = mất tín hiệu drift.
+  • V trước để UX vision không "loading vô hạn" khi §41 D-B mở.
+  • C trước H vì cache-hit tối đa hoá tiết kiệm, sau đó H mới hedge trên cost đã tối ưu (cost inflation của
+    hedge sẽ nhỏ hơn nếu base cost đã rẻ).
+  • R trước H vì H hedge trong tương lai có thể dùng R health signal để chọn escalation partner mạnh nhất
+    (tương lai extension, không làm ngay).
+  • H cuối cùng để có test cost/latency real từ 4 workstream trước — đo delta hedge chính xác.
+```
+
+**⚠️ Bất biến PA-G7 (không regress RULES #7 giá deterministic + RULES #8 no fake success + §41 durable guards + §42 output-gateway + §40 50/50 blend) kiểm ở MỌI phase.** Codex build, Claude verify từng phase (dòng "Verify (Claude)" ở companion doc).
+
+---
+
+### 43.11 Skills Mapping + Verification
+
+```
+karpathy-guidelines   mọi phase (surgical diff, assumptions explicit, simplicity — foundation-first,
+                      provider-agnostic contract, mỗi Edit phải rõ WHAT + WHY + minimal blast radius)
+kael-tdd              H/C/R/V/E mọi phase — failing test first; hedge race edge cases; cache byte-diff invariant;
+                      EWMA math cold/steady/spike; vision breaker-force; eval runner determinism
+kael-ai-boundary      V (honest unavailable RULES #8 trực tiếp) + H (LLM output KHÔNG đặt giá — winner đi qua
+                      synthesizePrice deterministic; test khẳng định)
+kael-security-sweep   H/R/V/E — spend-gate double-reserve không under-reserve; no PII log trong hedge audit /
+                      eval report / EWMA snapshot / cache log; corpus không chứa PII
+kael-supabase         C2/R3 — migration cho cache_hit_ratio cột + kael_provider_health_snapshot bảng + RLS
+                      service-role only
+claude-api            C (verify prompt cache pricing math + cache_control shape Anthropic hiện hành);
+                      M0 model ID full slug hiện hành, KHÔNG shorthand
+kael-frontend-test    V2 — mobile UI consume VISION_UNAVAILABLE_HONEST contract; snapshot + user flow;
+                      accessibility (VoiceOver + Reduce Motion)
+```
+
+Verification: mỗi phase PA-G1–PA-G8 (43.0.3) + dòng "Verify (Claude)" ở companion doc. Report honest (chạy thật deno check + jest api/shared + eval runner + chaos test R, ghi cái CHƯA test — RULES #8).
+
+---
+
+### 43.12 Change Log
+
+```text
+v0.1 — 2026-07-08 — Tạo từ session review Claude §40/§41/§42 chấm 5.5/10 phần Multi-LLM PERFORMANCE. Tu chốt
+                    ambition "vượt trội, foundation không xây lại" → bổ sung HẾT 5 workstream:
+                    (H) Hedged Routing cho HEDGED_ROUTES whitelist (price_synthesis high-stakes, worker_assist,
+                        vision_analysis) — Promise.race primary+escalation + AbortController cancel loser +
+                        spend-gate double-reserve; kill-switch metric-driven cost_inflation>40% & p95_win<20%.
+                    (C) Prompt Cache Strategy — restructure system prompt STABLE/DYNAMIC quanh cache_control
+                        (hạ tầng đã có ở provider-client:221, chưa strategy); đo cache-hit rate per purpose;
+                        target ≥70% cho lặp cao; DeepSeek/Perplexity skip (capabilities.promptCache=false).
+                    (R) Adaptive Weighting — EWMA p95+err_rate soft layer BÊN CẠNH binary breaker §41 P1
+                        (không thay); RAM per-isolate + async DB snapshot 60s; weight clamp 10%-90% chống
+                        starve tín hiệu recovery; weighted random pick (không round-robin).
+                    (V) Vision Unavailable Honest Contract — Anthropic global-breaker §41 D-B mở → RULES #8
+                        honest failure với retry_after_ms + fallback_advice_vi; mobile UX consume (hint +
+                        focus text input, KHÔNG spinner cứng); audit KAEL_VISION_UNAVAILABLE event.
+                    (E) Eval-in-the-loop — 250 case Tu label 5 purpose × 50 (intent/problem/market/price/advisory);
+                        CI gate cho routing/prompt PR; weekly drift alert Sunday 21:00 UTC; baseline monthly
+                        review; runner hit real staging providers, cost cap $1/run + $8/tháng.
+                    §43.0.4 Foundation Contract — extension points (add provider = 1 adapter + 1 price row +
+                        1 config; đổi model = update ID + eval + price) vs ĐÓNG BĂNG (synthesizePrice,
+                        output-gateway, ProviderAdapter shape, breaker RPC, callAI flow, hedgedCall shape,
+                        weightedProviderPick formula, eval corpus schema) — hợp đồng "không xây lại".
+                    Metric namespace chuẩn hoá: kael.hedge.*, kael.cache.*, kael.route.weight.*,
+                        kael.vision.unavailable.*, kael.eval.*.
+                    Locked docs Tu KHÔNG cho sửa: README.md/RULES.md/CLAUDE.md/critical.md/STRUCTURES.md/
+                        design.md/skills.md/.claude/.agents skills. §43 chỉ đụng Plan.md §43 + Harness code
+                        (kael/**) + eval files (apps/api/__tests__/eval/**) + 1 GitHub workflow.
+                    CHƯA execute — chờ Tu duyệt go. Codex build, Claude verify.
+v0.2 — 2026-07-08 — Tu chốt bổ sung HAI gate quan trọng còn thiếu:
+                    (43.0.5) Pre-Execution Checklist 8 gate PE1-PE8 bắt buộc chạy TRƯỚC mọi phase §43 —
+                        đọc Plan+auth refs / verify prereq §40+§41+§42 grep tận nơi / drift check code state /
+                        baseline metrics 7-day trailing (p95+cache+cost+eval) / companion doc spec per phase /
+                        branch clean + test GREEN + lint:comments baseline count / Tu explicit "go" PER PHASE.
+                        Pre-Exec = gate CỨNG, KHÔNG fail-open (chỗ duy nhất §43 không fail-open).
+                    (43.0.6) AI Coding Agent Rules R1-R10 execute-time — 2 rule cốt lõi Tu explicit hard:
+                        R1 CẤM TUYỆT ĐỐI comment/note/annotation trong source (bất kể ngôn ngữ) — cấm TODO/FIXME/
+                            NOTE/XXX/HACK/§43-refs/JSDoc-behavior/trailing-comment; chỗ ghi = commit+PR+companion+
+                            Plan §43; enforce qua `pnpm lint:comments` ratchet không tăng + grep marker trong diff;
+                            "cần comment để hiểu" = STOP, refactor tên self-explanatory hoặc tách nhỏ (R2).
+                        R2 CẤM phức tạp không cần thiết (Tu: "hiệu quả + dễ chỉnh, không phức tạp cho sang chảnh")
+                            — cấm abstract factory/DI framework/event bus/plugin cho scale chưa kiếm, generic > 3
+                            type params, state machine < 5 state, future-proof hook cho req chưa có, class > 2 tầng,
+                            any/unknown, func > 50 lines, file > 300 lines, nested > 3 tầng; measure: 30s reader-test
+                            (mở code hiểu 1 hàm qua tên+signature+structure, không cần comment/plan).
+                        R3 optimal+correct+easy-modify (5-phút-hiểu test, 15-phút-swap-model test qua §43.0.4);
+                        R4 surgical 1 PR/phase ≤500 lines; R5 verify honest output thô + gap listing; R6 flag
+                        discipline no temp; R7 ask before diverge = STOP; R8 foundation contract observance;
+                        R9 fail-open giữ; R10 commit granularity 1 phase = 1 commit chính.
+                        Enforcement matrix mỗi rule có owner (Claude verify / Codex TDD / Reviewer).
+                    Vi phạm rule R1-R10 = agent STOP + báo Tu, KHÔNG tự workaround.
+v0.3 — 2026-07-08 — Tu chốt bulk-fix theo self-review Claude (7 blocker + 7 ambiguity + 5 nit):
+                    Rename Agent Rules R1-R10 → **AR1-AR10** để tách khỏi Workstream R phases R0-R5 (dispel số trùng).
+                    (Blocker#1 PE7) test GREEN → "GREEN hoặc known-quarantined với ID+lý do trong companion" — chấp
+                        nhận 2 pre-existing api fails; silent fail = phase FAIL.
+                    (Blocker#2 R2 workstream) weight formula math fix — normalize TRƯỚC clamp, renormalize sau cap:
+                        raw → norm(÷Σraw) → cap([0.1,0.9]) → weight = cap(÷Σcap). Công thức chính xác trong plan.
+                    (Blocker#3 DR6 mới) cache-affinity multiplier trong R để chống R kéo traffic khỏi Anthropic
+                        làm sụp cache-hit target C DC4. Default 1.5 (env `KAEL_ROUTE_CACHE_AFFINITY_MULT`).
+                    (Blocker#4 AR4) exception: data files (JSON corpus, migration SQL, vendored) KHÔNG tính vào
+                        500-line phase cap; chỉ code (.ts/.tsx/.js/.jsx) tính. E0 corpus load được phép lớn.
+                    (Blocker#5 H1) thêm "Winner AIResponse đi qua guard NGUYÊN VẸN (§42 W1 output-gateway,
+                        orchestrator selfCheck, synthesizePrice §40) — H1 KHÔNG bypass". Test (e) mới cho winner-through-W1.
+                    (Blocker#6 DE7 mới) Eval chạy với `KAEL_HEDGE_ENABLED=0` để đo baseline provider quality, không
+                        lẫn hedge signal. Suite eval-hedge riêng nếu cần. E2 wire ghi rõ env.
+                    (Blocker#7 C0+C0.5) verify thứ tự STABLE hiện tại; nếu không phải 'stable_first' → phase C0.5
+                        refactor reorder TRƯỚC C1 (không thì cache_control marker sai vị trí, cache MISS).
+                    (Ambig#8 E2) CI trigger paths concrete thay glob mờ `**/*prompt*.ts`; thêm rate-limit CI 5 runs/user/day.
+                    (Ambig#9 DPX4 mới) `emitKaelMetric(namespace, event, payload)` helper trong observability.ts —
+                        chuẩn hoá mọi kael.*.* metric. Không tự sinh console.log rác (AR1).
+                    (Ambig#10 §43.8) cache hit ratio formula tường minh: hit_ratio = cacheReadInputTokens /
+                        (cacheReadInputTokens + cacheCreationInputTokens + inputTokens).
+                    (Ambig#11 enforcement matrix) "Reviewer" → cụ thể hoá (Claude verify audit diff / Codex TDD /
+                        Tu final review) per rule.
+                    (Ambig#12 §43.10) tách hard-prereq (§40 M0/M1/DM2, §41 P1/P2, §42 W1/W5 must-DONE) vs
+                        soft-prereq (còn lại). Trước v0.3 chỉ list hard, im lặng về soft.
+                    (Ambig#13 AR6) exception: env-driven debug flag OK trong dev/test tool files
+                        (apps/api/__tests__/**, scripts/**) với default kill=0.
+                    (Ambig#14 EWMA) expand "EWMA = Exponentially Weighted Moving Average" + công thức lần đầu tại DR2.
+                    (Nits) xoá `.py` khỏi AR1 (codebase TS/Deno); định nghĩa "ratchet" inline trong AR1 enforce;
+                        sửa wording hedgedCall frozen "kể từ commit H1 merge" thay vì "reuse OK" mập mờ;
+                        thêm `mobile-api-edge-schema.test.ts` vào ratchet exclude list.
+                    §43 v0.3 CHỜ Tu duyệt go execute. Codex build, Claude verify.
+v0.4 — 2026-07-08 — Tu thêm execution order + halt-and-report rule:
+                    PE9 (Pre-Exec chapter-level halt gate) + AR11 (execute-time no-auto-chain rule) chốt
+                    thứ tự §40 → §41 → §42 → §43. Mỗi chapter DoD-complete (mọi phase PA-G1..PA-G8 verified,
+                    no skip) → agent STOP → báo Tu → chờ "go" chapter kế. §43.10 Sequencing thêm
+                    cross-chapter order line ở đầu (pointer đến PE9 + AR11).
+                    Rationale (Tu): kiểm soát progression theo chapter, không để agent tự chain multi-chapter
+                    trong 1 session — mỗi chapter là 1 khối coherent cần Tu ack trước khi mở chapter kế.
+                    Trigger message chuẩn khi chapter done ghi trong AR11.
+```
+
+---
+
