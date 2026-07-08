@@ -158,7 +158,7 @@ Use the narrowest relevant check first, then broaden when shared behavior change
 | Mobile wiring/static boundaries | `packages/shared/src/__tests__/mobile-wiring.test.ts`, `mobile-backend-wiring.test.ts`, `monorepo-wiring.test.ts` |
 | Edge/API routing and runtime | `apps/api/src/__tests__/unit/mobile-api-edge-router.test.ts`, `mobile-api-edge-runtime.test.ts`, `apps/api/src/__tests__/schema/mobile-api-edge-schema.test.ts` |
 | Kael/provider behavior | API Kael unit tests, `kael-schemas.test.ts`, `pricing.test.ts`, `ai-client.test.ts`, `apps/api/scripts/kael-eval.mjs` |
-| Kael charter and response style | `packages/shared/src/__tests__/kael-charter-p8.test.ts`, `apps/api/src/__tests__/unit/mobile-api-kael-p8.test.ts`, `mobile-api-edge-schema.test.ts`, staging `GET /kael/charter` smoke, staging advisors |
+| Kael charter and response style | `packages/shared/src/__tests__/kael-charter-p9.test.ts`, `apps/api/src/__tests__/unit/mobile-api-kael-p8.test.ts`, `mobile-api-edge-schema.test.ts`, staging `GET /kael/charter` smoke, staging advisors |
 | Kael learning skills | `apps/api/src/__tests__/unit/mobile-api-kael-p7.test.ts`, `mobile-api-edge-schema.test.ts`, `tier1-type-completeness.test.ts`, staging migration/advisor checks |
 | Kael knowledge/RAG, autonomy, guardrails | `kael-b3-knowledge-corpus.test.ts`, `kael-b4-knowledge-governance.test.ts`, `kael-b5-pgvector-rag.test.ts`, `kael-a5-eval-harness.test.ts`, `kael-c-autonomy-supabase.test.ts`, `kael-d-guardrail-audit.test.ts`, `mobile-api-kael-autonomy-gate.test.ts`, `mobile-api-kael-orchestrator-facade.test.ts`, `mobile-api-kael-guardrails-d.test.ts`, `security/kael-redteam/kael-redteam.test.ts` |
 | Auth/security/RLS | API auth/security tests, schema hardening tests, staging harness docs |

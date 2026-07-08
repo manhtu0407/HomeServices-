@@ -58,6 +58,7 @@ The early chain creates the production schema and hardens workflow tables:
 | Section 25 R5 | `20260526195300_source_trust_registry_f26.sql` | Source trust registry with Tier 1 seed domains and admin RLS. |
 | Plan 26 F7 | `20260526203000_f26_fk_performance_indexes.sql` | Covering indexes for remaining advisor-reported unindexed foreign keys. |
 | Plan 26 F7 | `20260526203100_f26_drop_unused_indexes.sql` | Drop advisor-reported zero-scan secondary indexes while retaining FK-supporting indexes. |
+| Plan 39 KC7 | `20260706120000_kael_voice_transcript.sql` | Voice transcript store (PII-scrubbed text only, per-user RLS, service-role writes) and loop-learning region-lexicon candidate table. Staging-applied 2026-07-06 (`database.types.ts` regenerated + matched, security advisors clean for these tables); production deploy still gated on Tu + the §36 on-device STT spike. |
 
 ## P14 Notes
 

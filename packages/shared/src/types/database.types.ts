@@ -222,6 +222,93 @@ export type Database = {
           },
         ]
       }
+      kael_voice_transcript: {
+        Row: {
+          actor_role: string
+          created_at: string
+          id: string
+          region_hint: string
+          safe_metadata: Json
+          scrubbed_text: string
+          session_id: string | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          actor_role?: string
+          created_at?: string
+          id?: string
+          region_hint?: string
+          safe_metadata?: Json
+          scrubbed_text: string
+          session_id?: string | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          actor_role?: string
+          created_at?: string
+          id?: string
+          region_hint?: string
+          safe_metadata?: Json
+          scrubbed_text?: string
+          session_id?: string | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_voice_transcript_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "kael_chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_voice_transcript_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_region_lexicon_candidate: {
+        Row: {
+          created_at: string
+          evidence: Json
+          id: string
+          marker: string
+          proposed_region: string
+          proposed_tier: string
+          status: string
+          support_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          evidence?: Json
+          id?: string
+          marker: string
+          proposed_region: string
+          proposed_tier: string
+          status?: string
+          support_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          evidence?: Json
+          id?: string
+          marker?: string
+          proposed_region?: string
+          proposed_tier?: string
+          status?: string
+          support_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_kael_feedback: {
         Row: {
           created_at: string
