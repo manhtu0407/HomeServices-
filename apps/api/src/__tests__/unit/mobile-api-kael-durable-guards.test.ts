@@ -41,7 +41,7 @@ describe('mobile-api Kael durable circuit adapter', () => {
     }))
   })
 
-  it('keeps timeout/schema/server failures purpose-scoped and clears both levels on success', async () => {
+  it('keeps timeout/schema/server failures purpose-scoped and clears the matching purpose on success', async () => {
     const database = makeSharedCircuitDatabase()
     await recordDurableCircuitFailure(database.clientA, {
       purpose: 'vision_analysis',
@@ -70,6 +70,27 @@ describe('mobile-api Kael durable circuit adapter', () => {
       'vision_analysis',
       'anthropic',
     )).resolves.toBe(false)
+  })
+
+  it('does not let a purpose-level success clear a provider-global circuit', async () => {
+    const database = makeSharedCircuitDatabase()
+    await recordDurableCircuitFailure(database.clientA, {
+      purpose: 'intent_classification',
+      provider: 'deepseek',
+      errorCode: 'HTTP_402',
+    })
+
+    await recordDurableCircuitSuccess(
+      database.clientB,
+      'worker_assist',
+      'deepseek',
+    )
+
+    await expect(isDurableCircuitOpen(
+      database.clientA,
+      'scope_change',
+      'deepseek',
+    )).resolves.toBe(true)
   })
 
   it('fails open when the circuit RPC errors', async () => {
@@ -226,7 +247,6 @@ function makeSharedCircuitDatabase() {
       if (fn === 'record_circuit_success') {
         const key = String(args.p_key)
         open.delete(`purpose_provider:${key}`)
-        open.delete(`provider:${key.split(':')[1]}`)
       }
       return { data: null, error: null }
     },

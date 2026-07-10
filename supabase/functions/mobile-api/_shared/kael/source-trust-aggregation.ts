@@ -1,8 +1,8 @@
 import type { MarketPriceResult, MarketSourceEvidence } from "./types.ts";
-import { classifySourceTrustTier } from "./source-tier-rulebook.ts";
 import {
   normalizeSourceTrustDomain,
   sourceTrustQuorumForMarketAmount,
+  type SourceTrustAutoTier,
   type CitationValidationResult,
 } from "./source-trust.ts";
 
@@ -87,24 +87,11 @@ export function aggregateTrustedMarketSources(input: {
       rejected.push({ domain, reason: "stale_price_evidence" });
       continue;
     }
-    const decision = classifySourceTrustTier({
-      knownSource: true,
-      blocked: registryCitation.tier === "blocked" || registryCitation.autoTier === 5,
-      identityVerified: source.signals?.identity_verified === true,
-      sourceType: source.signals?.source_type ?? "unknown",
-      hcmcRelevant: source.signals?.hcmc_relevant === true,
-      clearPriceAndUnit: source.signals?.clear_price_and_unit === true &&
-        source.unit === "per_visit",
-      priceAgeMonths: evidenceAgeMonths(source.date, now),
-      integrityVerified: source.signals?.integrity_verified === true,
-      evidenceVerified: source.signals?.evidence_verified === true,
-      reviewOverdue: source.signals?.review_overdue === true,
-      priceJumpSuspected: source.signals?.price_jump_suspected === true,
-    });
+    const autoTier = registryBackedAutoTier(registryCitation);
     eligible.push({
       source: { ...source, domain },
       domain,
-      citation: { ...registryCitation, autoTier: decision.tier },
+      citation: { ...registryCitation, autoTier },
       midpoint: (source.price_min + source.price_max) / 2,
     });
   }
@@ -164,6 +151,20 @@ export function aggregateTrustedMarketSources(input: {
       })),
     },
   };
+}
+
+function registryBackedAutoTier(citation: AcceptedCitation): SourceTrustAutoTier {
+  if (citation.tier === "blocked" || citation.autoTier === 5) return 5;
+  const criteria = citation.criteriaMet;
+  const criteriaTier: SourceTrustAutoTier = criteria.A && criteria.B && criteria.C &&
+      criteria.D && criteria.E && criteria.F && criteria.G
+    ? 1
+    : criteria.A && criteria.B && criteria.D && criteria.E && criteria.F && criteria.G
+    ? 2
+    : criteria.A && criteria.B && criteria.E
+    ? 3
+    : 4;
+  return Math.max(citation.autoTier, criteriaTier) as SourceTrustAutoTier;
 }
 
 function weightedMarketResult(sources: readonly EligibleSource[]): MarketPriceResult | null {

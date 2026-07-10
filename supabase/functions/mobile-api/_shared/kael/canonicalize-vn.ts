@@ -3,6 +3,9 @@ const MILLION = 1_000_000;
 
 export function canonicalizeVN(text: string): string {
   return normalizeVietnamese(text)
+    .replace(/\b(\d+(?:[.,]\d+)*)\s*(?:vnd|dong|d)\b/g, (_, amount: string) =>
+      canonicalVndAmount(amount, 1)
+    )
     .replace(/\b(\d+(?:[.,]\d+)?)\s*trieu\b(?!\s+chung\b)/g, (_, amount: string) =>
       canonicalVndAmount(amount, MILLION)
     )
@@ -29,7 +32,15 @@ function normalizeVietnamese(text: string): string {
 }
 
 function canonicalVndAmount(rawAmount: string, multiplier: number): string {
-  const amount = Number(rawAmount.replace(",", "."));
+  const amount = parseVietnameseNumber(rawAmount);
   if (!Number.isFinite(amount) || amount < 0) return `${rawAmount} vnd`;
   return `${Math.round(amount * multiplier)} vnd`;
+}
+
+function parseVietnameseNumber(rawAmount: string): number {
+  const compact = rawAmount.replace(/\s/g, "");
+  if (/^\d{1,3}(?:[.,]\d{3})+$/.test(compact)) {
+    return Number(compact.replace(/[.,]/g, ""));
+  }
+  return Number(compact.replace(",", "."));
 }
