@@ -111,6 +111,21 @@ describe('mobile-api Edge runtime helpers', () => {
     expect(enabledEnv.knowledgeRetrievalEnabled).toBe(true)
   })
 
+  it('keeps durable guards off by default and enables them only from the Edge flag', () => {
+    const read = (enabled?: string) => readEdgeEnv((name) => {
+      const values: Record<string, string | undefined> = {
+        SUPABASE_URL: 'https://project.supabase.co',
+        APP_SECRET_KEY: 'sb_secret_project',
+        KAEL_DURABLE_GUARDS_ENABLED: enabled,
+      }
+      return values[name]
+    })
+
+    expect(read().durableGuardsEnabled).toBe(false)
+    expect(read('true').durableGuardsEnabled).toBe(true)
+    expect(read('false').durableGuardsEnabled).toBe(false)
+  })
+
   it('accepts the Section 25 R2 source trust rollout alias at the Edge boundary', () => {
     const env = readEdgeEnv((name) => {
       const values: Record<string, string> = {
@@ -2659,7 +2674,7 @@ describe('mobile-api Edge runtime helpers', () => {
       }),
       expect.objectContaining({
         provider: 'anthropic',
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5',
         success: true,
         fallbackUsed: false,
       }),
@@ -4346,12 +4361,21 @@ describe('mobile-api Edge runtime helpers', () => {
     const apiLogCall = client.calls.find((call) => call.table === 'api_logs')
     expect(apiLogCall?.operations).toContainEqual([
       'insert',
-      [expect.objectContaining({
-        purpose: 'scope_change',
-        provider: 'anthropic',
-        model: 'claude-sonnet-4-6',
-        success: true,
-      })],
+      expect.arrayContaining([
+        expect.objectContaining({
+          purpose: 'scope_change',
+          provider: 'anthropic',
+          model: 'claude-sonnet-5',
+          success: true,
+        }),
+        expect.objectContaining({
+          purpose: 'scope_change',
+          provider: 'anthropic',
+          model: 'claude-opus-4-8',
+          success: true,
+          safe_metadata: { escalation_reason: 'low_confidence' },
+        }),
+      ]),
     ])
     expect(client.calls.findIndex((call) => call.table === 'api_logs')).toBeLessThan(notificationCallIndex)
     const notificationCall = client.calls.find((call) => call.table === 'rpc:insert_notification_atomic')

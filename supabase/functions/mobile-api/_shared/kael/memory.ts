@@ -1,3 +1,7 @@
+// QUARANTINED L1-L6 context-memory experiment; not part of the production mobile-api runtime.
+// It is intentionally excluded from kael/index.ts
+// and retained only as a tested reference until a product feature needs continuity.
+// The live self-memory CRUD service is separate and must remain backward compatible.
 import { sanitizeMemoryObject, sanitizeMemoryText } from "./memory-sanitizer.ts";
 import { isKaelKnowledgeRetrievalEnabled } from "./knowledge.ts";
 

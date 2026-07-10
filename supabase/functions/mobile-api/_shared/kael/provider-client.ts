@@ -1,7 +1,17 @@
-import type { AICacheStatus, AIMessageContent, AIProvider, AIRequest, AIResponse, AIError, EdgeAiSecrets, ProviderRequestSpec, AITextContent } from "./types.ts";
+import type { AIProvider, AIRequest, AIResponse, AIError, EdgeAiSecrets } from "./types.ts";
 import { KAEL_CIRCUIT_BREAKER } from "./circuit-breaker.ts";
-import { readKaelOptimizationFlags } from "./cost-tracking.ts";
+import {
+  isDurableCircuitOpen,
+  recordDurableCircuitFailure,
+  recordDurableCircuitSuccess,
+} from "./durable-guards.ts";
 import { KAEL_ROUTING_CONFIG } from "./routing.config.ts";
+import {
+  estimateModelRequestCostUsd,
+  resolveModelPrice,
+  runtimeUnknownModelPolicy,
+} from "./model-pricing.ts";
+import { providerAdapterFor } from "./provider-adapter.ts";
 import {
   finalizeAiSpend,
   isKaelAiKillSwitchEnabled,
@@ -9,10 +19,15 @@ import {
   reserveAiSpend,
 } from "./spend-gate.ts";
 
+export type CallAIOptions = {
+  readonly deferCircuitSuccess?: boolean;
+};
+
 export async function callAI(
   request: AIRequest,
   secrets: EdgeAiSecrets,
   gate?: KaelSpendGate,
+  options: CallAIOptions = {},
 ): Promise<AIResponse | AIError> {
   // S4/F1 (§38): global kill-switch — hard-stop ALL provider calls during an
   // incident, before any network/cost. Honest failure (no fake success, RULES #8);
@@ -30,7 +45,17 @@ export async function callAI(
     };
   }
 
-  if (request.purpose && KAEL_CIRCUIT_BREAKER.isOpen(request.purpose, request.provider)) {
+  const durableGuardsEnabled = secrets.durableGuardsEnabled === true;
+  const circuitOpen = request.purpose
+    ? durableGuardsEnabled
+      ? await isDurableCircuitOpen(
+        secrets.durableGuardClient,
+        request.purpose,
+        request.provider,
+      )
+      : KAEL_CIRCUIT_BREAKER.isOpen(request.purpose, request.provider)
+    : false;
+  if (circuitOpen) {
     console.warn("AI call blocked by open provider circuit", {
       provider: request.provider,
       purpose: request.purpose,
@@ -41,6 +66,21 @@ export async function callAI(
       code: "OPEN_CIRCUIT",
       error: "open_circuit",
     };
+  }
+
+  const pricingAt = new Date();
+  const unknownModelPolicy = runtimeUnknownModelPolicy();
+  const resolvedPrice = resolveModelPrice({
+    provider: request.provider,
+    model: request.model,
+    at: pricingAt,
+    unknownModelPolicy,
+  });
+  if (resolvedPrice.fallback) {
+    console.warn("Unknown AI model price; using safe-high registry fallback", {
+      provider: request.provider,
+      model: request.model,
+    });
   }
 
   const apiKey = providerKey(request.provider, secrets);
@@ -60,8 +100,18 @@ export async function callAI(
   // failure below. reservationId stays null on any fail-open path (nothing to reconcile).
   let reservationId: number | null = null;
   if (gate) {
-    const estimatedCostUsd = gate.estimatedCostUsd ??
+    const configuredEstimate = gate.estimatedCostUsd ??
       (request.purpose ? KAEL_ROUTING_CONFIG[request.purpose]?.costCeilingUsd ?? 0 : 0);
+    const modelEstimate = estimateModelRequestCostUsd({
+      provider: request.provider,
+      model: request.model,
+      messages: request.messages,
+      maxTokens: request.maxTokens,
+      searchContextSize: request.searchContextSize,
+      at: pricingAt,
+      unknownModelPolicy,
+    });
+    const estimatedCostUsd = Math.max(configuredEstimate, modelEstimate);
     const reservation = await reserveAiSpend(gate.client, {
       actorId: gate.actorId,
       estimatedCostUsd,
@@ -105,20 +155,39 @@ export async function callAI(
     const controller = new AbortController();
     try {
       const response = await withTimeout(
-        callProvider(request, apiKey, controller.signal),
+        callProvider(
+          request,
+          apiKey,
+          controller.signal,
+          pricingAt,
+          unknownModelPolicy,
+        ),
         timeout,
         controller,
       );
-      console.info("AI call success", {
+      console.info(
+        options.deferCircuitSuccess
+          ? "AI provider transport success; structured validation pending"
+          : "AI call success",
+        {
         provider: request.provider,
         model: request.model,
         inputTokens: response.usage.inputTokens,
         outputTokens: response.usage.outputTokens,
         costUsd: response.usage.costUsd.toFixed(6),
         latencyMs: response.latencyMs,
-      });
-      if (request.purpose) {
-        KAEL_CIRCUIT_BREAKER.recordSuccess(request.purpose, request.provider);
+        },
+      );
+      if (request.purpose && !options.deferCircuitSuccess) {
+        if (durableGuardsEnabled) {
+          await recordDurableCircuitSuccess(
+            secrets.durableGuardClient,
+            request.purpose,
+            request.provider,
+          );
+        } else {
+          KAEL_CIRCUIT_BREAKER.recordSuccess(request.purpose, request.provider);
+        }
       }
       // S4/F1 (§38): reconcile the reservation to ACTUAL cost (best-effort).
       if (gate) {
@@ -136,9 +205,13 @@ export async function callAI(
     }
   }
 
-  const code = lastError instanceof ProviderHttpError
-    ? `HTTP_${lastError.status}`
-    : isProviderTimeout(lastError)
+  const httpStatus = lastError instanceof ProviderHttpError
+    ? lastError.status
+    : undefined;
+  const timedOut = isProviderTimeout(lastError);
+  const code = typeof httpStatus === "number"
+    ? `HTTP_${httpStatus}`
+    : timedOut
     ? "TIMEOUT"
     : "AI_CALL_FAILED";
   console.error("AI call failed", {
@@ -148,11 +221,20 @@ export async function callAI(
     retriesExhausted: true,
   });
   if (request.purpose) {
-    KAEL_CIRCUIT_BREAKER.recordFailure({
+    const failure = {
       purpose: request.purpose,
       provider: request.provider,
       errorCode: code,
-    });
+      kind: providerAdapterFor(request.provider).classifyFailure({
+        httpStatus,
+        timedOut,
+      }),
+    };
+    if (durableGuardsEnabled) {
+      await recordDurableCircuitFailure(secrets.durableGuardClient, failure);
+    } else {
+      KAEL_CIRCUIT_BREAKER.recordFailure(failure);
+    }
   }
   // S4/F1 (§38) — Codex PR#68 P1: release the reservation. A failed/aborted call must
   // not permanently count against the user's or global cap (reconcile-or-release).
@@ -176,9 +258,12 @@ async function callProvider(
   request: AIRequest,
   apiKey: string,
   signal: AbortSignal,
+  pricingAt: Date,
+  unknownModelPolicy: "throw" | "safe-high",
 ): Promise<AIResponse> {
   const start = Date.now();
-  const { url, headers, body, parse } = providerRequest(request, apiKey);
+  const adapter = providerAdapterFor(request.provider);
+  const { url, headers, body } = adapter.buildRequest({ request, apiKey });
   const response = await fetch(url, {
     method: "POST",
     headers,
@@ -192,174 +277,14 @@ async function callProvider(
     throw new ProviderHttpError(response.status, text);
   }
 
-  return parse(await response.json(), latencyMs, request.model);
-}
-
-function providerRequest(
-  request: AIRequest,
-  apiKey: string,
-): ProviderRequestSpec {
-  if (request.provider === "anthropic") {
-    const promptCacheEnabled = readKaelOptimizationFlags()
-      .KAEL_OPT_PROMPT_CACHE_ENABLED;
-    const systemContent = request.messages.find((m) => m.role === "system")
-      ?.content;
-    return {
-      url: "https://api.anthropic.com/v1/messages",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: {
-        model: request.model,
-        max_tokens: request.maxTokens ?? 1024,
-        temperature: request.temperature ?? 0.7,
-        messages: request.messages
-          .filter((m) => m.role !== "system")
-          .map((m) => ({ role: m.role, content: m.content })),
-        system: anthropicSystemContent(systemContent, promptCacheEnabled),
-      },
-      parse: (
-        data: Record<string, unknown>,
-        latencyMs: number,
-        model: string,
-      ) => {
-        const content = getPath<string>(data, ["content", 0, "text"]) ?? "";
-        const inputTokens = getPath<number>(data, ["usage", "input_tokens"]) ??
-          0;
-        const outputTokens =
-          getPath<number>(data, ["usage", "output_tokens"]) ?? 0;
-        const cacheCreationInputTokens =
-          getPath<number>(data, ["usage", "cache_creation_input_tokens"]) ?? 0;
-        const cacheReadInputTokens =
-          getPath<number>(data, ["usage", "cache_read_input_tokens"]) ?? 0;
-        const isHaiku = model.includes("haiku");
-        const baseInputRate = isHaiku ? 0.25 : 3;
-        const costUsd =
-          inputTokens * (baseInputRate / 1_000_000) +
-          cacheCreationInputTokens * ((baseInputRate * 1.25) / 1_000_000) +
-          cacheReadInputTokens * ((baseInputRate * 0.1) / 1_000_000) +
-          outputTokens * ((isHaiku ? 1.25 : 15) / 1_000_000);
-        const cacheStatus = promptCacheEnabled
-          ? inferAnthropicCacheStatus(
-            cacheCreationInputTokens,
-            cacheReadInputTokens,
-          )
-          : undefined;
-        return {
-          success: true as const,
-          content,
-          usage: {
-            inputTokens,
-            outputTokens,
-            costUsd,
-            cacheCreationInputTokens,
-            cacheReadInputTokens,
-            cacheStatus,
-          },
-          latencyMs,
-        };
-      },
-    };
-  }
-
-  const openAiCompatibleUrl = request.provider === "perplexity"
-    ? "https://api.perplexity.ai/v1/sonar"
-    : "https://api.deepseek.com/chat/completions";
-  return {
-    url: openAiCompatibleUrl,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: {
-      model: request.model,
-      max_tokens: request.maxTokens ?? 1024,
-      temperature: request.temperature ?? 0.2,
-      ...(request.provider === "deepseek"
-        ? {
-          thinking: { type: "disabled" },
-          response_format: { type: "json_object" },
-        }
-        : {}),
-      ...(request.provider === "perplexity"
-        ? perplexitySearchOptions(request)
-        : {}),
-      messages: request.messages.map((m) => ({
-        role: m.role,
-        content: aiMessageContentToText(m.content),
-      })),
-    },
-    parse: (data: Record<string, unknown>, latencyMs: number) => {
-      const content =
-        getPath<string>(data, ["choices", 0, "message", "content"]) ?? "";
-      const inputTokens = getPath<number>(data, ["usage", "prompt_tokens"]) ??
-        0;
-      const outputTokens =
-        getPath<number>(data, ["usage", "completion_tokens"]) ?? 0;
-      const costUsd = request.provider === "deepseek"
-        ? inputTokens * (0.14 / 1_000_000) + outputTokens * (0.28 / 1_000_000)
-        : inputTokens * (1 / 1_000_000) + outputTokens * (1 / 1_000_000);
-      const citations = Array.isArray(data.citations)
-        ? data.citations.filter((item): item is string =>
-          typeof item === "string"
-        )
-        : undefined;
-      return {
-        success: true as const,
-        content,
-        usage: { inputTokens, outputTokens, costUsd },
-        latencyMs,
-        citations,
-      };
-    },
-  };
-}
-
-function anthropicSystemContent(
-  content: AIMessageContent | undefined,
-  promptCacheEnabled: boolean,
-): string | AITextContent[] {
-  const text = aiMessageContentToText(content);
-  if (!promptCacheEnabled || !text.trim()) return text;
-  return [{
-    type: "text",
-    text,
-    cache_control: { type: "ephemeral" },
-  }];
-}
-
-function inferAnthropicCacheStatus(
-  cacheCreationInputTokens: number,
-  cacheReadInputTokens: number,
-): AICacheStatus {
-  if (cacheReadInputTokens > 0) return "hit";
-  if (cacheCreationInputTokens > 0) return "write";
-  return "miss";
-}
-
-function perplexitySearchOptions(
-  request: AIRequest,
-): Record<string, unknown> {
-  const options: Record<string, unknown> = {};
-  const webSearchOptions: Record<string, unknown> = {};
-  if (request.searchDomainFilter?.length) {
-    options.search_domain_filter = [...request.searchDomainFilter];
-  }
-  if (request.searchRecencyFilter) {
-    options.search_recency_filter = request.searchRecencyFilter;
-  }
-  if (request.searchMode) {
-    webSearchOptions.search_mode = request.searchMode;
-  }
-  if (request.searchContextSize) {
-    webSearchOptions.search_context_size = request.searchContextSize;
-  }
-  if (Object.keys(webSearchOptions).length > 0) {
-    options.web_search_options = webSearchOptions;
-  }
-  return options;
+  return adapter.parseResponse({
+    request,
+    data: await response.json(),
+    latencyMs,
+    model: request.model,
+    pricingAt,
+    unknownModelPolicy,
+  });
 }
 
 function providerKey(
@@ -369,15 +294,6 @@ function providerKey(
   if (provider === "anthropic") return secrets.anthropicApiKey;
   if (provider === "perplexity") return secrets.perplexityApiKey;
   return secrets.deepseekApiKey;
-}
-
-function aiMessageContentToText(content: AIMessageContent | undefined): string {
-  if (!content) return "";
-  if (typeof content === "string") return content;
-  return content
-    .filter((block): block is AITextContent => block.type === "text")
-    .map((block) => block.text)
-    .join("\n");
 }
 
 async function withTimeout<T>(
@@ -415,18 +331,4 @@ class ProviderHttpError extends Error {
   constructor(public readonly status: number, body: string) {
     super(`HTTP ${status}: ${body.slice(0, 160)}`);
   }
-}
-
-function getPath<T>(obj: unknown, path: Array<string | number>): T | undefined {
-  let current = obj;
-  for (const key of path) {
-    if (typeof key === "number") {
-      if (!Array.isArray(current)) return undefined;
-      current = current[key];
-    } else {
-      if (typeof current !== "object" || current === null) return undefined;
-      current = (current as Record<string, unknown>)[key];
-    }
-  }
-  return current as T | undefined;
 }

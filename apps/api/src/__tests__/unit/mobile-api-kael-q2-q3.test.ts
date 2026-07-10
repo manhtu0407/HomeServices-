@@ -163,8 +163,8 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     expect(result.success).toBe(true)
     expect(body?.search_domain_filter).toBeUndefined()
     if (result.success) {
-      expect(result.model).toBe('sonar')
-      expect(result.safeMetadata).toBeUndefined()
+      expect(result.model).toBe('sonar-pro')
+      expect(result.safeMetadata).toMatchObject({ model_escalation_reason: 'low_confidence' })
     }
   })
 
@@ -319,7 +319,10 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
   })
 
   it('applies Section 25 R2 trusted Perplexity allowlist, recency, prompt, and safe metadata', async () => {
-    stubDenoEnv({ KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'false' })
+    stubDenoEnv({
+      KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'false',
+      KAEL_SOURCE_TRUST_HIGH_VALUE_VND: '1000000',
+    })
     let body: Record<string, unknown> | undefined
     vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
       body = JSON.parse(String((init as RequestInit).body))
@@ -327,10 +330,26 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
         choices: [{
           message: {
             content: JSON.stringify({
-              market_range_min: 150000,
-              market_range_max: 260000,
               confidence: 0.82,
               sources_summary: '2 trusted Vietnamese domains.',
+              sources: [
+                {
+                  domain: 'btaskee.com',
+                  price_min: 150000,
+                  price_max: 250000,
+                  unit: 'per_visit',
+                  date: '2026-07-09',
+                  signals: trustedMarketSignals(),
+                },
+                {
+                  domain: 'jupviec.vn',
+                  price_min: 170000,
+                  price_max: 270000,
+                  unit: 'per_visit',
+                  date: '2026-07-09',
+                  signals: trustedMarketSignals(),
+                },
+              ],
             }),
           },
         }],
@@ -351,7 +370,7 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     )
 
     expect(body).toMatchObject({
-      model: 'sonar-pro',
+      model: 'sonar',
       max_tokens: 600,
       search_domain_filter: [...TIER_1_SOURCE_TRUST_DOMAINS],
       search_recency_filter: 'month',
@@ -363,10 +382,11 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     expect(body?.search_domain_filter).toHaveLength(20)
     const messages = body?.messages as Array<Record<string, unknown>>
     expect(messages[0]?.content).toContain('trusted Vietnamese domains')
+    expect(messages[0]?.content).toContain('"sources"')
     expect(messages[0]?.content).toContain('insufficient_trusted_data')
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.model).toBe('sonar-pro')
+      expect(result.model).toBe('sonar')
       expect(result.safeMetadata).toMatchObject({
         source_trust_enabled: true,
         source_trust_version: SOURCE_TRUST_VERSION,
@@ -382,7 +402,55 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
         'https://btaskee.com/bang-gia-ve-sinh',
         'https://jupviec.vn/bang-gia',
       ])
+      expect(result.market).toMatchObject({
+        market_range_min: 160000,
+        market_range_max: 260000,
+      })
     }
+  })
+
+  it('continues to the configured fallback when the durable Perplexity circuit is open', async () => {
+    const fetchSpy = vi.fn(async (..._args: Parameters<typeof fetch>) => jsonResponse({
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          market_range_min: 150000,
+          market_range_max: 260000,
+          confidence: 0.72,
+          sources_summary: 'Anthropic fallback estimate.',
+        }),
+      }],
+      usage: { input_tokens: 40, output_tokens: 30 },
+    }))
+    vi.stubGlobal('fetch', fetchSpy)
+    const rpc = vi.fn(async (fn: string, args: Record<string, unknown> = {}) => ({
+      data: fn === 'is_circuit_open'
+        ? String(args.p_key).endsWith(':perplexity')
+        : null,
+      error: null,
+    }))
+
+    const result = await searchMarketPrice(
+      'plumbing',
+      'pipe leak',
+      'small',
+      'q7',
+      {
+        perplexityApiKey: 'pplx-test',
+        anthropicApiKey: 'anthropic-test',
+        sourceTrustPerplexityFilterEnabled: true,
+        durableGuardsEnabled: true,
+        durableGuardClient: { rpc },
+      },
+    )
+
+    expect(result).toMatchObject({
+      success: true,
+      provider: 'anthropic',
+      model: 'claude-sonnet-5',
+    })
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain('api.anthropic.com')
   })
 
   it('loads F26 source trust scores from DB rows', async () => {
@@ -457,6 +525,31 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     })
   })
 
+  it('raises the existing citation quorum to three Tier 1-2 domains for a configured high-value market result', async () => {
+    const { client } = makeSourceTrustClient([
+      registryRow('btaskee.com', 1),
+      { ...registryRow('jupviec.vn', 0.95), auto_tier: 2 },
+      { ...registryRow('tuoitre.vn', 0.9), auto_tier: 2 },
+    ])
+
+    const result = await validateCitations([
+      'https://btaskee.com/source-a',
+      'https://jupviec.vn/source-b',
+    ], client, 2, {
+      now: new Date('2026-05-26T00:00:00.000Z'),
+      maxAutoTier: 4,
+      quorumAutoTierMax: 2,
+      marketAmountVnd: 1_100_000,
+      highValueThresholdVnd: 1_000_000,
+    })
+
+    expect(result).toMatchObject({ quorum: 3, quorumMet: false })
+    expect(result.safeMetadata).toMatchObject({
+      source_trust_citation_quorum: 3,
+      source_trust_quorum_config_valid: true,
+    })
+  })
+
   it('fails safely when trusted Perplexity says data is insufficient', async () => {
     stubDenoEnv({ KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'true' })
     const fetchMock = vi.fn(async () =>
@@ -480,7 +573,7 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     if (!result.success) {
       expect(result.failureReason).toContain('insufficient_trusted_data')
       expect(result.provider).toBe('perplexity')
-      expect(result.model).toBe('sonar-pro')
+      expect(result.model).toBe('sonar')
       expect(result.safeMetadata).toMatchObject({
         source_trust_enabled: true,
         source_trust_version: SOURCE_TRUST_VERSION,
@@ -488,17 +581,78 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
     }
   })
 
-  it('persists F26 trusted citations into kael_market_artifacts metadata', async () => {
-    stubDenoEnv({ KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'true' })
+  it('rejects a trusted response that tries to provide a blended market range alongside source evidence', async () => {
+    stubDenoEnv({
+      KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'true',
+      KAEL_SOURCE_TRUST_HIGH_VALUE_VND: '1000000',
+    })
     vi.stubGlobal('fetch', vi.fn(async () =>
       jsonResponse({
         choices: [{
           message: {
             content: JSON.stringify({
-              market_range_min: 160000,
-              market_range_max: 280000,
+              market_range_min: 1,
+              market_range_max: 9_999_999,
+              sources: [{
+                domain: 'btaskee.com',
+                price_min: 160000,
+                price_max: 280000,
+                unit: 'per_visit',
+                date: '2026-07-09',
+              }],
+            }),
+          },
+        }],
+        usage: { prompt_tokens: 52, completion_tokens: 38 },
+      })
+    ))
+
+    const result = await searchMarketPrice(
+      'cleaning',
+      'standard_home_cleaning',
+      'medium',
+      'q7',
+      { perplexityApiKey: 'pplx-test', sourceTrustPerplexityFilterEnabled: true },
+    )
+
+    expect(result).toMatchObject({
+      success: false,
+      failureReason: 'perplexity:AI market JSON validation failed',
+      provider: 'perplexity',
+      model: 'sonar',
+    })
+  })
+
+  it('persists F26 trusted citations into kael_market_artifacts metadata', async () => {
+    stubDenoEnv({
+      KAEL_TRUST_PERPLEXITY_FILTER_ENABLED: 'true',
+      KAEL_SOURCE_TRUST_HIGH_VALUE_VND: '1000000',
+    })
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      jsonResponse({
+        choices: [{
+          message: {
+            content: JSON.stringify({
               confidence: 0.84,
               sources_summary: '2 trusted Vietnamese domains.',
+              sources: [
+                {
+                  domain: 'btaskee.com',
+                  price_min: 160000,
+                  price_max: 280000,
+                  unit: 'per_visit',
+                  date: '2026-07-09',
+                  signals: trustedMarketSignals(),
+                },
+                {
+                  domain: 'jupviec.vn',
+                  price_min: 180000,
+                  price_max: 300000,
+                  unit: 'per_visit',
+                  date: '2026-07-09',
+                  signals: trustedMarketSignals(),
+                },
+              ],
             }),
           },
         }],
@@ -541,7 +695,7 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
 
     expect(telemetry).toMatchObject({
       provider: 'perplexity',
-      model: 'sonar-pro',
+      model: 'sonar',
       timeoutMs: 6000,
       safeMetadata: {
         source_trust_enabled: true,
@@ -890,5 +1044,18 @@ function thenable(value: unknown) {
       onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
       onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
     ) => Promise.resolve(value).then(onfulfilled, onrejected),
+  }
+}
+
+function trustedMarketSignals() {
+  return {
+    identity_verified: true,
+    source_type: 'direct_pricing' as const,
+    hcmc_relevant: true,
+    clear_price_and_unit: true,
+    integrity_verified: true,
+    evidence_verified: true,
+    review_overdue: false,
+    price_jump_suspected: false,
   }
 }

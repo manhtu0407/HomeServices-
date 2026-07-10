@@ -48,27 +48,29 @@ import {
   getWorkerPerformanceInsights,
 } from "./services/profile-insights.service.ts";
 
-import { type MobileApiServices } from "./router.ts";
+import { type MobileApiContext, type MobileApiServices } from "./router.ts";
 
-import { type EdgeAiSecrets, getPublicKaelCharter } from "./kael/index.ts";
+import { type EdgeAiSecrets, type EdgeGuardClient, getPublicKaelCharter } from "./kael/index.ts";
 
 export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
   return {
     listServices,
     placesAutocomplete: (ctx, input) => placesAutocomplete(ctx, input, secrets),
     placesResolve: (ctx, input) => placesResolve(ctx, input, secrets),
-    createJob: (ctx, input) => createJob(ctx, input, secrets),
+    createJob: (ctx, input) => createJob(ctx, input, aiRuntime(ctx, secrets)),
     getJob,
     listCustomerActiveJobs,
-    createKaelChat: (ctx, input) => createKaelChat(ctx, input, secrets),
+    createKaelChat: (ctx, input) =>
+      createKaelChat(ctx, input, aiRuntime(ctx, secrets)),
     createKaelChatMediaUpload,
     getKaelChat,
     getKaelChatProgress,
     streamKaelChatTurn: (ctx, sessionId, input) =>
-      streamKaelChatTurn(ctx, sessionId, input, secrets),
+      streamKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     sendKaelChatTurn: (ctx, sessionId, input) =>
-      sendKaelChatTurn(ctx, sessionId, input, secrets),
-    confirmKaelChat: (ctx, sessionId) => confirmKaelChat(ctx, sessionId, secrets),
+      sendKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
+    confirmKaelChat: (ctx, sessionId) =>
+      confirmKaelChat(ctx, sessionId, aiRuntime(ctx, secrets)),
     submitKaelChatEvidence,
     confirmSearch,
     cancelJob,
@@ -77,16 +79,16 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     updateJobStatus,
     authorizeApartmentAccess,
     requestScopeChange: (ctx, jobId, input) =>
-      requestScopeChange(ctx, jobId, input, secrets),
+      requestScopeChange(ctx, jobId, input, aiRuntime(ctx, secrets)),
     askKaelForWorker,
     createWorkerKaelChat: (ctx, input) =>
-      createWorkerKaelChat(ctx, input, secrets),
+      createWorkerKaelChat(ctx, input, aiRuntime(ctx, secrets)),
     listWorkerKaelChats,
     getWorkerKaelChat,
     sendWorkerKaelChatTurn: (ctx, sessionId, input) =>
-      sendWorkerKaelChatTurn(ctx, sessionId, input, secrets),
+      sendWorkerKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     streamWorkerKaelChatTurn: (ctx, sessionId, input) =>
-      streamWorkerKaelChatTurn(ctx, sessionId, input, secrets),
+      streamWorkerKaelChatTurn(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     submitWorkerKaelFeedback,
     getWorkerKaelTrainingConsent,
     setWorkerKaelTrainingConsent,
@@ -122,11 +124,11 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     getWorkerEarnings,
     invalidateMarketCache,
     evaluatePriceSynthesisAbCase: (ctx, input) =>
-      evaluatePriceSynthesisAbCaseAdmin(ctx, input, secrets),
+      evaluatePriceSynthesisAbCaseAdmin(ctx, input, aiRuntime(ctx, secrets)),
     processKaelLearningQueue: (ctx, input) =>
-      processKaelLearningQueueAdmin(ctx, input, secrets),
+      processKaelLearningQueueAdmin(ctx, input, aiRuntime(ctx, secrets)),
     processKaelBatchResults: (ctx, input) =>
-      processKaelBatchResultsAdmin(ctx, input, secrets),
+      processKaelBatchResultsAdmin(ctx, input, aiRuntime(ctx, secrets)),
     monitorKaelLearningRules: (ctx, input) =>
       monitorKaelLearningRulesAdmin(ctx, input),
     listKaelLearningCandidates: (ctx, input) =>
@@ -143,6 +145,17 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
 
 function getKaelCharter() {
   return getPublicKaelCharter();
+}
+
+function aiRuntime(
+  ctx: MobileApiContext,
+  secrets: EdgeAiSecrets,
+): EdgeAiSecrets {
+  if (!secrets.durableGuardsEnabled) return secrets;
+  return {
+    ...secrets,
+    durableGuardClient: ctx.supabase as EdgeGuardClient,
+  };
 }
 
 export { buildCustomerProfileInsights, buildWorkerPerformanceInsights } from "./services/profile-insights.service.ts";

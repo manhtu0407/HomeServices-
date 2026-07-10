@@ -4,6 +4,11 @@ import {
   retrieveAnthropicMessageBatch,
   type AnthropicBatchResult,
 } from "../provider-batch.ts";
+import {
+  finalizeBatchItemSpend,
+  recordBatchLearningOutputHealth,
+} from "./batch-result-guards.ts";
+import { parseBatchLearningCandidate } from "./batch-learning-candidate.ts";
 import type { EdgeAiSecrets } from "../types.ts";
 import {
   type LearningQueueDbClient,
@@ -13,13 +18,14 @@ import {
   enforceLearningScopeLimits,
   evaluateLearningEvidenceGate,
   getLearningSkill,
-  learningSkillCandidateSchema,
   resolveLearningRuntimeConfig,
   transitionLearningLifecycle,
   type LearningEvidenceSnapshot,
   type LearningLifecycleState,
   type LearningSkillCandidate,
 } from "../skills/registry.ts";
+
+export { parseBatchLearningCandidate };
 
 const LEARNING_EVIDENCE_WINDOW_DAYS = 90;
 
@@ -37,6 +43,7 @@ type BatchItemRow = {
   queue_id: string | null;
   custom_id: string;
   skill_id: string;
+  request_payload?: unknown;
 };
 
 type LearningCandidateStatus =
@@ -142,8 +149,20 @@ export async function processBatchResults(
       const item = itemsByCustomId.get(result.custom_id);
       if (!item) continue;
       const queue = item.queue_id ? queuesById.get(item.queue_id) : undefined;
+      await finalizeBatchItemSpend(client, item, queue?.actor_id, result);
       if (result.result.type === "succeeded" && queue) {
-        const outcome = await processSucceededLearningResult(client, queue, result, now, evidenceCache);
+        const parsedOutput = parseBatchLearningCandidate(result.result.message);
+        await recordBatchLearningOutputHealth(
+          secrets,
+          parsedOutput.ok ? null : parsedOutput.reason,
+        );
+        const outcome = await processLearningCandidateResponse(
+          client,
+          queue,
+          result.result.message,
+          now,
+          evidenceCache,
+        );
         if (!outcome.ok) {
           await markItemProcessingError(client, item.id, result, outcome.error_code, now);
           await client.from("kael_learning_queue").update({
@@ -190,36 +209,32 @@ export async function processBatchResults(
   };
 }
 
-async function processSucceededLearningResult(
+export type LearningCandidateProcessOutcome =
+  | { ok: true; queue_state: "processed" | "manual_review" }
+  | { ok: false; queue_state: "failed" | "rejected"; error_code: string };
+export async function processLearningCandidateResponse(
   client: LearningQueueDbClient,
   queue: QueuedLearningRow,
-  result: AnthropicBatchResult,
+  message: unknown,
   now: Date,
-  evidenceCache: LearningEvidenceCache,
-): Promise<
-  | { ok: true; queue_state: "processed" | "manual_review" }
-  | { ok: false; queue_state: "failed" | "rejected"; error_code: string }
-> {
-  const parsed = parseBatchLearningCandidate(result.result.message);
+  evidenceCache: LearningEvidenceCache = new Map(),
+): Promise<LearningCandidateProcessOutcome> {
+  const parsed = parseBatchLearningCandidate(message);
   if (!parsed.ok) {
     return { ok: false, queue_state: "failed", error_code: parsed.reason };
   }
-
   const candidate = parsed.candidate;
   const runtimeConfig = resolveLearningRuntimeConfig(readRuntimeEnv, queue.actor_id ?? undefined);
   if (!runtimeConfig.write_enabled || runtimeConfig.kill_switch || !runtimeConfig.enabled_for_actor) {
     return { ok: false, queue_state: "failed", error_code: "LEARNING_WRITE_DISABLED" };
   }
-
   if (candidate.skill_id !== queue.skill_id) {
     return { ok: false, queue_state: "failed", error_code: "LEARNING_SKILL_MISMATCH" };
   }
-
   const skill = getLearningSkill(candidate.skill_id);
   if (!skill) {
     return { ok: false, queue_state: "failed", error_code: "LEARNING_SKILL_UNKNOWN" };
   }
-
   const scopeDecision = enforceLearningScopeLimits(skill, candidate);
   if (!scopeDecision.allowed) {
     const candidateId = await insertLearningCandidateRow(client, queue, candidate, {
@@ -257,19 +272,16 @@ async function processSucceededLearningResult(
     }]);
     return { ok: false, queue_state: "rejected", error_code: "LEARNING_SCOPE_REJECTED" };
   }
-
   const aggregation = await aggregateCandidateEvidence(client, queue, candidate, now, evidenceCache);
   const evidence = aggregation.evidence;
   const evaluatedCandidate = aggregation.candidate;
   const gate = evaluateLearningEvidenceGate(skill, evidence);
-
   let activeRule: PromotionResult = { promoted: false, reason: "not_requested" };
   let lifecycleState: LearningLifecycleState = gate.next_state;
   let queueState: "processed" | "manual_review" = gate.next_state === "manual_review"
     ? "manual_review"
     : "processed";
   let candidateId: string | null = null;
-
   if (gate.promote && gate.next_state === "auto_promoted") {
     activeRule = await promoteCandidateToActiveRule(client, queue, evaluatedCandidate, evidence);
     if (activeRule.promoted) {
@@ -309,96 +321,6 @@ async function processSucceededLearningResult(
     evidence_source: aggregation.source,
   }));
   return { ok: true, queue_state: queueState };
-}
-
-export function parseBatchLearningCandidate(
-  message: unknown,
-): { ok: true; candidate: LearningSkillCandidate } | { ok: false; reason: string } {
-  const direct = parseCandidateObject(readCandidateContainer(message));
-  if (direct.ok) return direct;
-
-  const text = extractBatchMessageText(message);
-  if (!text) return { ok: false, reason: "LEARNING_RESULT_EMPTY" };
-
-  const parsed = parseJsonObjectFromText(text);
-  if (!parsed.ok) return { ok: false, reason: "LEARNING_RESULT_JSON_INVALID" };
-  return parseCandidateObject(readCandidateContainer(parsed.value));
-}
-
-function parseCandidateObject(
-  value: unknown,
-): { ok: true; candidate: LearningSkillCandidate } | { ok: false; reason: string } {
-  const result = learningSkillCandidateSchema.safeParse(value);
-  return result.success
-    ? { ok: true, candidate: result.data }
-    : { ok: false, reason: "LEARNING_CANDIDATE_SCHEMA_INVALID" };
-}
-
-function readCandidateContainer(value: unknown): unknown {
-  if (!isRecord(value)) return value;
-  if (isRecord(value.candidate)) return value.candidate;
-  if (isRecord(value.learning_candidate)) return value.learning_candidate;
-  return value;
-}
-
-function extractBatchMessageText(message: unknown): string | null {
-  if (typeof message === "string") return message;
-  if (!isRecord(message)) return null;
-  if (typeof message.text === "string") return message.text;
-  if (typeof message.content === "string") return message.content;
-  if (!Array.isArray(message.content)) return null;
-  const text = message.content
-    .map((item) => isRecord(item) && typeof item.text === "string" ? item.text : "")
-    .filter(Boolean)
-    .join("\n")
-    .trim();
-  return text.length > 0 ? text : null;
-}
-
-function parseJsonObjectFromText(text: string): { ok: true; value: unknown } | { ok: false } {
-  try {
-    return { ok: true, value: JSON.parse(text) };
-  } catch {
-    // Anthropic batch outputs may wrap JSON in a short note. Walk the first
-    // balanced object instead of using lastIndexOf, so nested braces in strings
-    // do not widen the parse window.
-  }
-
-  let start = -1;
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (char === "\\") {
-      escaped = inString;
-      continue;
-    }
-    if (char === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
-    if (char === "{") {
-      if (depth === 0) start = index;
-      depth += 1;
-      continue;
-    }
-    if (char !== "}") continue;
-    depth -= 1;
-    if (depth === 0 && start >= 0) {
-      try {
-        return { ok: true, value: JSON.parse(text.slice(start, index + 1)) };
-      } catch {
-        return { ok: false };
-      }
-    }
-  }
-  return { ok: false };
 }
 
 function evidenceSnapshotFrom(
@@ -864,7 +786,7 @@ async function fetchBatchItems(
 ): Promise<BatchItemRow[]> {
   const result = await client
     .from("kael_ai_batch_items")
-    .select("id,batch_id,queue_id,custom_id,skill_id")
+    .select("id,batch_id,queue_id,custom_id,skill_id,request_payload")
     .eq("batch_id", batchId);
   return Array.isArray(result.data) ? result.data as BatchItemRow[] : [];
 }

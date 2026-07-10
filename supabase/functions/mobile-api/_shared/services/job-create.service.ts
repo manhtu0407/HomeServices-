@@ -189,9 +189,13 @@ export async function createJob(
   const estimate = pipeline.estimate;
   const estimateCardV3 = buildEstimateCardOutput({
     estimate,
-    priceSource: estimatePriceSourceFromStageLogs(pipeline.stageLogs),
+    priceSource: estimate.needs_inspection
+      ? "inspection_required"
+      : estimatePriceSourceFromStageLogs(pipeline.stageLogs),
     baselineUsed:
       `${input.service_type}:${pipeline.serviceProblemId}:${estimate.complexity}`,
+    marketSignals: estimate.market_signals ?? estimate.needs_inspection_reason,
+    needsInspectionReason: estimate.needs_inspection_reason,
   });
   const now = new Date().toISOString();
   const lockedFinalPrice = estimate.price_max;
@@ -235,6 +239,9 @@ export async function createJob(
       jobRelation: "own_customer_job",
       action: "synthesize_price",
       topic: "price_estimate",
+      intentConfidence: 1,
+      topicSource: "deterministic_rule",
+      boundarySignal: false,
       actorId: ctx.user.id,
       jobId,
     },

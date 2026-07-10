@@ -252,4 +252,24 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-active-case-problem')).not.toHaveTextContent(/plumbing: pipe_leak/)
     expect(screen.getByTestId('customer-v21-active-case-problem-mint-aura')).toBeOnTheScreen()
   })
+
+  it('does not render an unaccented Kael summary in Vietnamese mode', () => {
+    const deal = buildDeal()
+    deal.draft.serviceType = 'plumbing'
+    deal.draft.problemChips = ['Ống rò rỉ']
+    deal.draft.description = 'Lavabo trong can ho ro ri nhe, can tho kiem tra gioang va siphon.'
+    if (deal.broadcast) {
+      deal.broadcast.serviceType = 'plumbing'
+      deal.broadcast.problemSummary = 'Ro ri lavabo can kiem tra tai cho'
+    }
+    if (deal.estimate) {
+      deal.estimate.problemLabel = 'Ro ri lavabo can kiem tra tai cho'
+    }
+    buildWorkflow(deal)
+
+    render(<CustomerHomeSurface />)
+
+    expect(screen.getByTestId('customer-v21-active-case-problem')).toHaveTextContent(/Ống rò rỉ/)
+    expect(screen.getByTestId('customer-v21-active-case-problem')).not.toHaveTextContent('Ro ri lavabo')
+  })
 })

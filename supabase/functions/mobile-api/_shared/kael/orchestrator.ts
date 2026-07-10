@@ -1,6 +1,6 @@
 import type { KaelPurpose } from "./types.ts";
-import { checkKaelResponse } from "./self-check.ts";
 import type { KaelSemanticGuardClassifier } from "./self-check.ts";
+import { guardOutput } from "./output-gateway.ts";
 import type { KaelPromptActor, KaelPromptLanguage } from "./system-prompt.ts";
 
 export type KaelOrchestratorStage<T> = {
@@ -29,10 +29,12 @@ export type KaelStagePermissionDecision = {
   readonly retryAfterMs?: number;
 };
 
+export type KaelStageStatus = "ok" | "declined" | "degraded" | "failed";
+
 export type KaelStageRunResult<T> = {
   readonly label: string;
   readonly purpose: KaelPurpose;
-  readonly success: boolean;
+  readonly status: KaelStageStatus;
   readonly value?: T;
   readonly elapsedMs: number;
   readonly fallbackUsed: boolean;
@@ -54,7 +56,7 @@ export async function runKaelPurposeStage<T>(
       return {
         label: stage.label,
         purpose: stage.purpose,
-        success: true,
+        status: "declined",
         value: {
           declined: true,
           decline_template_key: permission.declineTemplateKey,
@@ -76,19 +78,20 @@ export async function runKaelPurposeStage<T>(
       timeout.promise,
     ]).finally(() => timeout.cancel());
     if (stage.selfCheck && typeof value === "string") {
-      const checked = checkKaelResponse({
+      const checked = guardOutput({
         text: value,
         actor: stage.selfCheck.actor,
         language: stage.selfCheck.language,
-        semanticGuardEnabled: stage.selfCheck.semanticGuardEnabled ?? true,
         semanticClassifier: stage.selfCheck.semanticClassifier,
+        surface: `orchestrator:${stage.label}`,
+        fallbackText: stage.selfCheck.fallbackText,
       });
       if (!checked.allowed) {
         return {
           label: stage.label,
           purpose: stage.purpose,
-          success: true,
-          value: stage.selfCheck.fallbackText as T,
+          status: "degraded",
+          value: checked.text as T,
           elapsedMs: Date.now() - started,
           fallbackUsed: true,
           failureReason: checked.reason,
@@ -97,7 +100,7 @@ export async function runKaelPurposeStage<T>(
       return {
         label: stage.label,
         purpose: stage.purpose,
-        success: true,
+        status: "ok",
         value: checked.text as T,
         elapsedMs: Date.now() - started,
         fallbackUsed: false,
@@ -106,7 +109,7 @@ export async function runKaelPurposeStage<T>(
     return {
       label: stage.label,
       purpose: stage.purpose,
-      success: true,
+      status: "ok",
       value,
       elapsedMs: Date.now() - started,
       fallbackUsed: false,
@@ -121,7 +124,7 @@ export async function runKaelPurposeStage<T>(
       return {
         label: stage.label,
         purpose: stage.purpose,
-        success: true,
+        status: "degraded",
         value: await stage.fallback(),
         elapsedMs: Date.now() - started,
         fallbackUsed: true,
@@ -131,7 +134,7 @@ export async function runKaelPurposeStage<T>(
     return {
       label: stage.label,
       purpose: stage.purpose,
-      success: false,
+      status: "failed",
       elapsedMs: Date.now() - started,
       fallbackUsed: false,
       failureReason,

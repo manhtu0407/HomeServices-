@@ -204,11 +204,23 @@ export function gateAutonomyDecision(input: KaelAutonomyGateInput): KaelAutonomy
 }
 
 export function replayAutonomyDecisionAudit(row: KaelAutonomyReplayRow): KaelAutonomyGateResult {
+  // Historical audit rows predate W2 provenance. They originate from deterministic
+  // policy routes, so preserve their semantics while recording the explicit form.
+  const authority = {
+    ...row.authority,
+    intentConfidence: Number.isFinite(row.authority.intentConfidence)
+      ? row.authority.intentConfidence
+      : 1,
+    topicSource: row.authority.topicSource === "llm"
+      ? "llm" as const
+      : "deterministic_rule" as const,
+    boundarySignal: row.authority.boundarySignal === true,
+  };
   return gateAutonomyDecision({
     decision: row.decision,
     from: row.from_status,
     to: row.to_status,
-    authority: row.authority,
+    authority,
     knownEvidenceReferences: row.evidence_refs,
     source: row.decision_source ?? "policy",
     amountVnd: row.amount_vnd ?? null,
@@ -307,6 +319,9 @@ function buildAudit(
         action: input.authority.action,
         topic: input.authority.topic,
         job_relation: input.authority.jobRelation,
+        intent_confidence: input.authority.intentConfidence,
+        topic_source: input.authority.topicSource,
+        boundary_signal: input.authority.boundarySignal,
       },
       ...metadata,
     },

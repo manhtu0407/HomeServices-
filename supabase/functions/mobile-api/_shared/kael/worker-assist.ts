@@ -1,11 +1,18 @@
 import { z } from "zod";
-import type { EdgeAiSecrets, AIRequest, AIResponse, AIError } from "./types.ts";
-import { callAI as defaultCallAI } from "./provider-client.ts";
+import type { EdgeAiSecrets, AIRequest } from "./types.ts";
+import {
+  callStructuredAI,
+  type StructuredAIInvoker,
+  type StructuredValidationIssue,
+} from "./structured-call.ts";
 import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { buildKaelSystemPrompt } from "./system-prompt.ts";
-import { evaluateKaelPermissionGate } from "./permission-gate.ts";
-import { runKaelSelfCheckPipeline } from "./self-check.ts";
+import {
+  evaluateKaelPermissionGate,
+  hasKaelForbiddenTopicBoundarySignal,
+} from "./permission-gate.ts";
+import { guardOutput } from "./output-gateway.ts";
 import { scrubSensitiveForLLM } from "./utils.ts";
 import type { KaelPromptLanguage } from "./system-prompt.ts";
 import { detectForbiddenAiDecisionText } from "./ai-boundary-contract.ts";
@@ -42,7 +49,7 @@ export type WorkerAssistInput = {
   readonly visionSummary?: string | null;
   readonly previousTurns?: readonly WorkerAssistPreviousTurn[];
   readonly secrets: EdgeAiSecrets;
-  readonly callAI?: (request: AIRequest, secrets: EdgeAiSecrets) => Promise<AIResponse | AIError>;
+  readonly callAI?: StructuredAIInvoker;
 };
 
 export type WorkerAssistPreviousTurn = {
@@ -61,6 +68,7 @@ export type WorkerAssistAnswer = {
   readonly latency_ms?: number;
   readonly cost_usd?: number;
   readonly guardrail_reason?: string;
+  readonly guardrail_source?: "boundary_guard" | "self_check" | "semantic_self_check";
   readonly provider_attempts?: readonly WorkerAssistProviderAttempt[];
   readonly trace?: readonly KaelSafeTraceEvent[];
 };
@@ -101,12 +109,16 @@ export async function runWorkerAssist(
   input: WorkerAssistInput,
 ): Promise<WorkerAssistAnswer> {
   const language = input.language ?? "vi";
+  const topic = topicForQuestion(input.question);
   const permission = evaluateKaelPermissionGate({
     purpose: "worker_assist",
     actor: "worker",
     jobRelation: "own_worker_job",
     action: "generate_advisory",
-    topic: topicForQuestion(input.question),
+    topic,
+    intentConfidence: 1,
+    topicSource: "deterministic_rule",
+    boundarySignal: hasKaelForbiddenTopicBoundarySignal(topic, input.question),
     jobId: input.job.id,
   });
   if (!permission.allowed) {
@@ -141,25 +153,34 @@ export async function runWorkerAssist(
 
   for (const route of routes) {
     const request = buildWorkerAssistRequest(input, route, language);
-    const result = await (input.callAI ?? defaultCallAI)(request, input.secrets);
+    const result = await callStructuredAI(
+      request,
+      workerAssistResponseSchema,
+      input.secrets,
+      undefined,
+      input.callAI,
+    );
     if (!result.success) {
+      const schemaResponse = result.code === "SCHEMA_INVALID"
+        ? result.response
+        : undefined;
+      if (schemaResponse) {
+        lastProviderFailure = "AI_RESPONSE_INVALID";
+        const attempt = providerAttempt(route, "schema_invalid", {
+          latencyMs: schemaResponse.latencyMs,
+          code: describeWorkerAssistShape(
+            result.parsedValue,
+            result.validationIssues ?? [],
+          ),
+          costUsd: schemaResponse.usage.costUsd,
+        });
+        providerAttempts.push(attempt);
+        trace.push(traceForAttempt(attempt, "worker.ask_kael", true));
+        continue;
+      }
       lastProviderFailure = `AI_${result.code}`;
       const attempt = providerAttempt(route, "error", {
         code: result.code,
-      });
-      providerAttempts.push(attempt);
-      trace.push(traceForAttempt(attempt, "worker.ask_kael", true));
-      continue;
-    }
-
-    const parsedObject = parseJsonObject(result.content);
-    const parsed = workerAssistResponseSchema.safeParse(parsedObject);
-    if (!parsed.success) {
-      lastProviderFailure = "AI_RESPONSE_INVALID";
-      const attempt = providerAttempt(route, "schema_invalid", {
-        latencyMs: result.latencyMs,
-        code: describeWorkerAssistShape(parsedObject, parsed.error.issues),
-        costUsd: result.usage.costUsd,
       });
       providerAttempts.push(attempt);
       trace.push(traceForAttempt(attempt, "worker.ask_kael", true));
@@ -173,7 +194,7 @@ export async function runWorkerAssist(
     providerAttempts.push(attempt);
     trace.push(traceForAttempt(attempt, "worker.ask_kael", false));
 
-    const guarded = guardWorkerAssistText(parsed.data.text);
+    const guarded = guardWorkerAssistText(result.data.text);
     if (!guarded.allowed) {
       return fallbackAnswer(
         guarded.reason ?? "WORKER_ASSIST_GUARD",
@@ -181,32 +202,34 @@ export async function runWorkerAssist(
         language,
         providerAttempts,
         trace,
+        "boundary_guard",
       );
     }
 
-    const checked = runKaelSelfCheckPipeline({
+    const checked = guardOutput({
       text: guarded.text,
       actor: "worker",
       language,
-      semanticGuardEnabled: true,
+      surface: "worker_assist",
       fallbackText: fallbackTextForLanguage(language),
     });
     if (checked.used_fallback || !checked.allowed) {
       return fallbackAnswer(
         checked.reason ?? "SELF_CHECK",
-        parsed.data.redirect_scope_change,
+        result.data.redirect_scope_change,
         language,
         providerAttempts,
         trace,
+        checked.trip?.source,
       );
     }
 
     return {
       schema_version: "worker_assist_answer.v1",
       text: checked.text,
-      safety_notes: normalizeSafetyNotes(parsed.data.safety_notes, language),
+      safety_notes: normalizeSafetyNotes(result.data.safety_notes, language),
       redirect_scope_change:
-        parsed.data.redirect_scope_change || shouldRedirectToScopeChange(input.question),
+        result.data.redirect_scope_change || shouldRedirectToScopeChange(input.question),
       fallback_used: false,
       provider: route.provider,
       model: route.model,
@@ -282,6 +305,7 @@ function fallbackAnswer(
   language: KaelPromptLanguage,
   providerAttempts: readonly WorkerAssistProviderAttempt[] = [],
   trace: readonly KaelSafeTraceEvent[] = [],
+  guardrailSource?: WorkerAssistAnswer["guardrail_source"],
 ): WorkerAssistAnswer {
   return {
     schema_version: "worker_assist_answer.v1",
@@ -290,6 +314,7 @@ function fallbackAnswer(
     redirect_scope_change: redirectScopeChange,
     fallback_used: true,
     guardrail_reason: reason,
+    ...(guardrailSource ? { guardrail_source: guardrailSource } : {}),
     provider_attempts: providerAttempts,
     trace,
   };
@@ -411,7 +436,7 @@ function firstBoolean(...values: unknown[]) {
 
 function describeWorkerAssistShape(
   value: unknown,
-  issues: readonly z.ZodIssue[],
+  issues: readonly StructuredValidationIssue[],
 ) {
   const shape = !value || typeof value !== "object"
     ? `type=${typeof value}`
@@ -439,20 +464,6 @@ function fallbackTextForLanguage(language: KaelPromptLanguage) {
 
 function safetyNotesForLanguage(language: KaelPromptLanguage) {
   return language === "en" ? DEFAULT_SAFETY_NOTES_EN : DEFAULT_SAFETY_NOTES;
-}
-
-function parseJsonObject(raw: string): unknown {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    try {
-      return JSON.parse(match[0]);
-    } catch {
-      return null;
-    }
-  }
 }
 
 function topicForQuestion(question: string) {

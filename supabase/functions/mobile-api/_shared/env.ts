@@ -37,6 +37,9 @@ export function readEdgeEnv(
       ? isStagingProjectUrl(supabaseUrl)
       : envFlag(sourceTrustFlag),
     sourceTrustPerplexityFilterExplicit: sourceTrustExplicit,
+    durableGuardsEnabled: readBooleanFlag(
+      getEnv("KAEL_DURABLE_GUARDS_ENABLED"),
+    ),
     aiKillSwitch: readBooleanFlag(getEnv("KAEL_AI_KILL_SWITCH")),
   };
 }

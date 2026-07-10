@@ -1,7 +1,7 @@
 # Source Trust Maintenance
 
-Status: F26 R5 registry live on staging.
-Plan ref: `Plan.md` §25.9 and §26.8.
+Status: F26 R5 registry live on staging; Plan §40 S1–S6 upgrade implemented locally and awaiting staging migration apply.
+Plan ref: `Plan.md` §40 (supersedes the older §25 price-weight/quorum behavior) and §26.8.
 
 ## Purpose
 
@@ -26,10 +26,16 @@ list only as a fallback when the registry cannot be loaded.
   `KAEL_TRUST_PERPLEXITY_FILTER_ENABLED=true`.
 - Production should keep the flag off until Tu approves a separate production
   source-trust rollout.
-- Citation quorum requires at least 2 accepted Tier 1 domains with effective
-  trust score >= 0.5.
-- `insufficient_trusted_data` is a safe failure; the product should continue
-  through baseline fallback instead of trusting weak market data.
+- The trusted response carries per-source price evidence plus A–G signals. The
+  deterministic rulebook computes the effective T1–T5 tier; a provider tier
+  claim is discarded.
+- Citation quorum requires at least 2 effective T1–T2 sources below the
+  server-configured high-value threshold and at least 3 at or above it.
+- One or more effective T1–T2 sources below quorum is a weak market signal:
+  keep the locked 50/50 baseline/market blend, widen the deterministic band,
+  and require an on-site inspection. Zero effective T1–T2 sources, invalid
+  configuration, stale/mixed-unit evidence, or `insufficient_trusted_data`
+  remains a safe baseline fallback.
 
 ## Verification
 

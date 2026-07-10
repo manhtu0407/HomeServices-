@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { KAEL_PURPOSES } from '../../../../../supabase/functions/mobile-api/_shared/kael'
 import { KAEL_ROUTING_CONFIG } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing.config'
-import { chooseCircuitAwareProvider, chooseCircuitAwareProviderOrNull, chooseProvider } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing'
+import { chooseCircuitAwareProvider, chooseCircuitAwareProviderOrNull, chooseProvider, providerCandidatesForPurpose } from '../../../../../supabase/functions/mobile-api/_shared/kael/routing'
 import { createKaelCircuitBreaker, KAEL_CIRCUIT_BREAKER } from '../../../../../supabase/functions/mobile-api/_shared/kael/circuit-breaker'
 import { runKaelParallel, runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
 import { updateKaelProgress } from '../../../../../supabase/functions/mobile-api/_shared/kael/streaming'
@@ -27,6 +27,43 @@ describe('mobile-api Kael P3 routing foundation', () => {
     expect(KAEL_ROUTING_CONFIG.scope_change.primary.provider).toBe('anthropic')
   })
 
+  it('uses the §40 M1 model roster while keeping escalation separate from failover', () => {
+    expect(KAEL_ROUTING_CONFIG.vision_analysis).toMatchObject({
+      primary: { provider: 'anthropic', model: 'claude-sonnet-5' },
+      escalation: { provider: 'anthropic', model: 'claude-opus-4-8' },
+      escalationTrigger: { minConfidence: 0.82 },
+    })
+    expect(KAEL_ROUTING_CONFIG.scope_change).toMatchObject({
+      primary: { provider: 'anthropic', model: 'claude-sonnet-5' },
+      escalation: { provider: 'anthropic', model: 'claude-opus-4-8' },
+      escalationTrigger: { minConfidence: 0.82, highStakes: true },
+    })
+    expect(KAEL_ROUTING_CONFIG.market_lookup).toMatchObject({
+      primary: { provider: 'perplexity', model: 'sonar' },
+      escalation: { provider: 'perplexity', model: 'sonar-pro' },
+      escalationTrigger: { minConfidence: 0.82 },
+    })
+    expect(KAEL_ROUTING_CONFIG.post_job_learning.primary).toMatchObject({
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+    })
+    expect(KAEL_ROUTING_CONFIG.clarification.fallback).toMatchObject({
+      provider: 'anthropic',
+      model: 'claude-haiku-4-5-20251001',
+    })
+    expect(KAEL_ROUTING_CONFIG.vision_analysis.fallback).toBeUndefined()
+    expect(providerCandidatesForPurpose('vision_analysis').map(({ provider, model, role }) => ({ provider, model, role }))).toEqual([
+      { provider: 'anthropic', model: 'claude-sonnet-5', role: 'primary' },
+    ])
+    const pipelineSource = readFileSync(
+      new URL('../../../../../supabase/functions/mobile-api/_shared/kael/pipeline.ts', import.meta.url),
+      'utf8',
+    )
+    expect(pipelineSource).toMatch(
+      /model: visionResult\.success\s+\? visionResult\.model\s+: KAEL_ROUTING_CONFIG\.vision_analysis\.primary\.model/,
+    )
+  })
+
   it('chooses primary provider first and Anthropic insurance when DeepSeek is unavailable', () => {
     expect(chooseProvider('intent_classification')).toMatchObject({
       provider: 'deepseek',
@@ -37,7 +74,7 @@ describe('mobile-api Kael P3 routing foundation', () => {
       blockedProviders: ['deepseek'],
     })).toMatchObject({
       provider: 'anthropic',
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-5',
       role: 'fallback',
     })
   })
@@ -210,7 +247,7 @@ describe('mobile-api Kael P3 orchestrator and streaming', () => {
     const result = await pending
 
     expect(result).toMatchObject({
-      success: true,
+      status: 'degraded',
       value: 'baseline-only',
       fallbackUsed: true,
       failureReason: 'TIMEOUT',

@@ -55,6 +55,7 @@ describe('Kael F26 price_synthesis A/B evaluator', () => {
       },
       anthropic: {
         provider: 'anthropic',
+        model: 'claude-sonnet-5',
         schema_valid: true,
         price_min: 190000,
         price_max: 360000,

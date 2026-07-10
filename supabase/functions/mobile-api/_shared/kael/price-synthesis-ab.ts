@@ -1,9 +1,8 @@
 import { z } from "zod";
 import type { AIProvider, EdgeAiSecrets } from "./types.ts";
 import { KAEL_BUSINESS_GUARDRAILS, KAEL_RESPONSE_STYLE } from "./types.ts";
-import { callAI } from "./provider-client.ts";
+import { callStructuredAI } from "./structured-call.ts";
 import { KAEL_ROUTING_CONFIG, maxTokensForPurpose } from "./routing.config.ts";
-import { safeParseJSON } from "./utils.ts";
 
 export const priceSynthesisAbCaseSchema = z.object({
   case_key: z.string().min(4).max(160),
@@ -64,9 +63,10 @@ export async function evaluatePriceSynthesisAbCase(
   input: PriceSynthesisAbCaseInput,
   secrets: EdgeAiSecrets,
 ): Promise<PriceSynthesisAbEvaluation> {
+  const route = KAEL_ROUTING_CONFIG.price_synthesis;
   const [perplexity, anthropic] = await Promise.all([
     evaluateProvider("perplexity", "sonar", input, secrets),
-    evaluateProvider("anthropic", "claude-sonnet-4-6", input, secrets),
+    evaluateProvider(route.primary.provider, route.primary.model, input, secrets),
   ]);
 
   return {
@@ -85,7 +85,7 @@ async function evaluateProvider(
   secrets: EdgeAiSecrets,
 ): Promise<ProviderEval> {
   const route = KAEL_ROUTING_CONFIG.price_synthesis;
-  const result = await callAI({
+  const result = await callStructuredAI({
     purpose: "price_synthesis",
     provider,
     model,
@@ -94,9 +94,27 @@ async function evaluateProvider(
     temperature: 0.1,
     timeoutMs: route.latencyBudgetMs,
     maxRetries: 0,
-  }, secrets);
+  }, priceSynthesisAbResultSchema, secrets);
 
   if (!result.success) {
+    const schemaResponse = result.code === "SCHEMA_INVALID"
+      ? result.response
+      : undefined;
+    if (schemaResponse) {
+      return {
+        provider,
+        model,
+        schema_valid: false,
+        price_min: null,
+        price_max: null,
+        confidence: null,
+        failure_reason: "SCHEMA_INVALID",
+        input_tokens: schemaResponse.usage.inputTokens,
+        output_tokens: schemaResponse.usage.outputTokens,
+        cost_usd: schemaResponse.usage.costUsd,
+        latency_ms: schemaResponse.latencyMs,
+      };
+    }
     return {
       provider,
       model,
@@ -112,33 +130,13 @@ async function evaluateProvider(
     };
   }
 
-  const parsed = safeParseJSON(result.content);
-  const validated = parsed
-    ? priceSynthesisAbResultSchema.safeParse(parsed)
-    : null;
-  if (!validated?.success) {
-    return {
-      provider,
-      model,
-      schema_valid: false,
-      price_min: null,
-      price_max: null,
-      confidence: null,
-      failure_reason: "SCHEMA_INVALID",
-      input_tokens: result.usage.inputTokens,
-      output_tokens: result.usage.outputTokens,
-      cost_usd: result.usage.costUsd,
-      latency_ms: result.latencyMs,
-    };
-  }
-
   return {
     provider,
     model,
     schema_valid: true,
-    price_min: validated.data.price_min,
-    price_max: validated.data.price_max,
-    confidence: validated.data.confidence,
+    price_min: result.data.price_min,
+    price_max: result.data.price_max,
+    confidence: result.data.confidence,
     failure_reason: null,
     input_tokens: result.usage.inputTokens,
     output_tokens: result.usage.outputTokens,

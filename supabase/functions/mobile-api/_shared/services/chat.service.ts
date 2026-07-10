@@ -9,7 +9,8 @@ import { notifyJobMessageRecipient } from "./notifications.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { requireJobAccess } from "../access.ts";
 import { buildDemandingCustomerResponse, detectDemandingCustomerPatterns, recordDemandingCustomerInteraction } from "../kael/index.ts";
-import { runKaelSelfCheckPipeline } from "../kael/self-check.ts";
+import { guardOutput } from "../kael/output-gateway.ts";
+import { auditGuardrailTripBestEffort } from "./audit.ts";
 import type { JobMessageSendInput, JobStatus } from "../../../_shared/domain.ts";
 
 const DEMANDING_RESPONSE_SELF_CHECK_FALLBACK =
@@ -242,14 +243,17 @@ async function recordWorkerDisintermediationRisk(
 }
 
 export function selfCheckDemandingResponseText(responseText: string): string {
-  const checked = runKaelSelfCheckPipeline({
+  return guardDemandingResponseText(responseText).text;
+}
+
+export function guardDemandingResponseText(responseText: string) {
+  return guardOutput({
     text: responseText,
     actor: "customer",
     language: "vi",
-    semanticGuardEnabled: true,
+    surface: "job_chat_demanding_response",
     fallbackText: DEMANDING_RESPONSE_SELF_CHECK_FALLBACK,
   });
-  return checked.text;
 }
 
 async function maybeHandleDemandingCustomerJobChat(
@@ -267,6 +271,18 @@ async function maybeHandleDemandingCustomerJobChat(
   if (detection.expectedNuance === "none") return;
 
   const response = buildDemandingCustomerResponse(detection);
+  const guarded = guardDemandingResponseText(response.responseText);
+  if (guarded.trip) {
+    await auditGuardrailTripBestEffort(client, {
+      jobId: asString(job.id),
+      actorId: ctx.user.id,
+      actorRole: "customer",
+      surface: guarded.trip.surface,
+      reason: guarded.trip.reason,
+      guardrailLabel: guarded.trip.guardrailLabel ?? null,
+      source: guarded.trip.source,
+    });
+  }
   await recordDemandingCustomerInteraction(client, {
     jobId: asString(job.id),
     actorId: ctx.user.id,
@@ -278,7 +294,7 @@ async function maybeHandleDemandingCustomerJobChat(
   await insertKaelJobMessage(
     client,
     asString(job.id),
-    selfCheckDemandingResponseText(response.responseText),
+    guarded.text,
   );
 }
 

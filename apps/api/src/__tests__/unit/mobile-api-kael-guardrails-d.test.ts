@@ -11,6 +11,7 @@ import {
   checkKaelResponse,
   runKaelSelfCheckPipeline,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/self-check'
+import { canonicalizeVN } from '../../../../../supabase/functions/mobile-api/_shared/kael/canonicalize-vn'
 import { evaluateMessageBoundary } from '../../../../../supabase/functions/mobile-api/_shared/kael/boundary-guard'
 
 const repoRoot = join(__dirname, '../../../../../')
@@ -74,6 +75,50 @@ describe('Kael Track D guardrails', () => {
       reason: 'semantic_guardrail',
       guardrailLabel: 'fear_language',
     })
+  })
+
+  it('blocks accented Vietnamese guard phrases and compact VND amounts without false positives', () => {
+    const blocked = [
+      ['Nguy hiểm chết người.', 'fear_language'],
+      ['Giá chốt là 500k/lần.', 'exact_vnd'],
+      ['Chi phí chính xác 500 nghìn mỗi giờ.', 'exact_vnd'],
+      ['Tổng giá là 1 triệu/m².', 'exact_vnd'],
+    ] as const
+
+    for (const [text, reason] of blocked) {
+      expect(checkKaelResponse({
+        text,
+        actor: 'customer',
+        language: 'vi',
+        semanticGuardEnabled: true,
+      })).toMatchObject({ allowed: false, reason })
+    }
+
+    expect(checkKaelResponse({
+      text: 'Kael ghi nhận 500 ký hiệu trong tài liệu, không phải báo giá.',
+      actor: 'worker',
+      language: 'vi',
+      semanticGuardEnabled: true,
+    }).allowed).toBe(true)
+    expect(checkKaelResponse({
+      text: 'Dùng khăn mềm cho bề mặt vải và đai ôm ống nước.',
+      actor: 'worker',
+      language: 'vi',
+      semanticGuardEnabled: true,
+    }).allowed).toBe(true)
+    expect(checkKaelResponse({
+      text: 'Kael ghi nhận 1 triệu chứng cần làm rõ thêm.',
+      actor: 'customer',
+      language: 'vi',
+      semanticGuardEnabled: true,
+    }).allowed).toBe(true)
+  })
+
+  it('canonicalizes Vietnamese money and supported units without changing unrelated words', () => {
+    expect(canonicalizeVN('Giá 1,5 triệu mỗi m²/giờ')).toBe(
+      'gia 1500000 vnd moi m2/gio',
+    )
+    expect(canonicalizeVN('500 ký hiệu, 2 lần')).toBe('500 ky hieu, 2 lan')
   })
 
   it('D3 bounds semantic classifier calls to suspicious text and falls back safely', () => {
@@ -189,9 +234,14 @@ describe('Kael Track D guardrails', () => {
       join(repoRoot, 'supabase/functions/mobile-api/_shared/services/worker-kael-chat.service.ts'),
       'utf8',
     )
+    const outputGateway = readFileSync(
+      join(repoRoot, 'supabase/functions/mobile-api/_shared/kael/output-gateway.ts'),
+      'utf8',
+    )
 
     expect(services).toContain('semanticInjectionClassifierEnabled: true')
-    expect(services).toContain('semanticGuardEnabled: true')
+    expect(services).toContain('guardOutput({')
+    expect(outputGateway).toContain('semanticGuardEnabled: true')
     expect(services).toContain('auditGuardrailTripBestEffort')
     expect(services).toContain('kael_chat_boundary')
     expect(services).toContain('kael_chat_clarification')

@@ -9,6 +9,7 @@ import { auditGuardrailTripBestEffort, isWorkerAssistGuardrailReason } from "./a
 import { requireJobAccess } from "../access.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { runWorkerAssist, sanitizeKaelText, scrubSensitiveForLLM, updateKaelProgress, type WorkerAssistAnswer, type WorkerAssistProviderAttempt, type EdgeAiSecrets } from "../kael/index.ts";
+import { takeDurableKaelChatRateLimit } from "../kael/durable-guards.ts";
 import { analyzeDescription } from "../kael/vision.ts";
 import { kaelChatProgressSchema, sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { JobStatus, KaelWorkerClarifyInput, WorkerKaelChatCreateInput, WorkerKaelChatTurnInput } from "../../../_shared/domain.ts";
@@ -197,7 +198,7 @@ export async function sendWorkerKaelChatTurn(
     if (existingTurn) return getWorkerKaelChat(ctx, sessionId);
   }
   if (!options.skipRateLimit) {
-    await enforceWorkerKaelChatRateLimit(client, ctx);
+    await enforceWorkerKaelChatRateLimit(client, ctx, secrets);
   }
 
   const job = options.prefetchedJob ??
@@ -309,9 +310,12 @@ export async function sendWorkerKaelChatTurn(
       surface: "worker_kael_chat",
       reason: answer.guardrail_reason,
       guardrailLabel: answer.guardrail_reason,
-      source: answer.guardrail_reason === "MONEY_OR_STATUS_MUTATION"
-        ? "boundary_guard"
-        : "semantic_self_check",
+      source: answer.guardrail_source ??
+        (answer.guardrail_reason === "MONEY_OR_STATUS_MUTATION"
+          ? "boundary_guard"
+          : answer.guardrail_reason === "semantic_guardrail"
+          ? "semantic_self_check"
+          : "self_check"),
       safeMetadata: {
         session_id: sessionId,
       },
@@ -464,7 +468,22 @@ async function findExistingWorkerKaelTurnByClientRequest(
 async function enforceWorkerKaelChatRateLimit(
   client: DbClient,
   ctx: MobileApiContext,
+  secrets: EdgeAiSecrets,
 ) {
+  if (secrets.durableGuardsEnabled) {
+    const rate = await takeDurableKaelChatRateLimit(client, ctx.user.id);
+    if (!rate.allowed) {
+      apiFailure(
+        "RATE_LIMITED",
+        rate.reason === "hour"
+          ? "Bạn đã đạt giới hạn Kael trong 1 giờ. Vui lòng thử lại sau."
+          : "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.",
+        429,
+      );
+    }
+    return;
+  }
+
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("check_kael_worker_chat_rate", { p_worker_id: ctx.user.id }),
   );

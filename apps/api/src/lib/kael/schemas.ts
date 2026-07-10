@@ -40,11 +40,35 @@ export const visionResultSchema = z.object({
 
 export type VisionResult = z.infer<typeof visionResultSchema>
 
+export const marketSourceTrustSignalsSchema = z.object({
+  identity_verified: z.boolean(),
+  source_type: z.enum(['direct_pricing', 'materials', 'reference', 'listing', 'unknown']),
+  hcmc_relevant: z.boolean(),
+  clear_price_and_unit: z.boolean(),
+  integrity_verified: z.boolean(),
+  evidence_verified: z.boolean(),
+  review_overdue: z.boolean(),
+  price_jump_suspected: z.boolean(),
+}).strict()
+
+export const marketSourceEvidenceSchema = z.object({
+  domain: z.string().min(1).max(253),
+  price_min: z.number().int().positive(),
+  price_max: z.number().int().positive(),
+  unit: z.enum(['per_visit', 'per_hour', 'per_m2']),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  signals: marketSourceTrustSignalsSchema.optional(),
+}).refine((value) => value.price_max >= value.price_min, {
+  message: 'price_max must be >= price_min',
+  path: ['price_max'],
+})
+
 export const marketPriceResultSchema = z.object({
   market_range_min: z.number().int().positive(),
   market_range_max: z.number().int().positive(),
   confidence: z.number().min(0).max(1),
   sources_summary: z.string().max(1000).optional(),
+  sources: z.array(marketSourceEvidenceSchema).max(10).optional(),
 })
 
 export type MarketPriceResult = z.infer<typeof marketPriceResultSchema>
