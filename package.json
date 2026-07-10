@@ -45,5 +45,6 @@
     "metro-runtime": "0.83.3",
     "react-doctor": "0.5.8",
     "turbo": "^2"
-  }
+  },
+  "workspaces": ["apps/*", "packages/*", "sandbox/*"]
 }
