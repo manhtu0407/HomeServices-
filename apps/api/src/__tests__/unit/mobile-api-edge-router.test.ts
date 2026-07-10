@@ -176,6 +176,10 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     updateWorkerAvailability: vi.fn(),
     listWorkerBroadcasts: vi.fn(),
     listWorkerJobs: vi.fn(),
+    getWorkerRoutePreview: vi.fn(async () => ({ distance_meters: 3200, duration_seconds: 720 })),
+    getWorkerRouteMap: vi.fn(async () => new Response('map', {
+      headers: { 'Content-Type': 'image/png' },
+    })),
     streamWorkerKaelChatTurn: vi.fn(async () => new Response(new ReadableStream(), {
       headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
     })),

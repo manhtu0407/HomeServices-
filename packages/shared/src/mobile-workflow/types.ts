@@ -63,6 +63,7 @@ export type LocalWorkerBroadcast = {
   secondsRemaining: number | null
   estimatedPriceLabel?: string
   estimatedEarningLabel?: string
+  safe_metadata?: Record<string, unknown> | null
 }
 
 export type LocalWorkerProfileSummary = {
@@ -112,6 +113,7 @@ export type LocalDeal = {
   scopeChange: LocalScopeChange | null
   finalPrice?: number | null
   payment?: LocalDealPayment | null
+  fieldEvidencePhotoUrls?: string[]
   completionPhotoUrls?: string[]
   completionNotes?: string | null
   workerProfile?: LocalWorkerProfileSummary | null
@@ -167,6 +169,7 @@ export type LocalRemoteJobSnapshot = {
   scopeChange?: LocalScopeChange | null
   finalPrice?: number | null
   payment?: LocalDealPayment | null
+  fieldEvidencePhotoUrls?: string[]
   completionPhotoUrls?: string[]
   completionNotes?: string | null
   workerProfile?: LocalWorkerProfileSummary | null

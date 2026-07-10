@@ -46,9 +46,7 @@ function workerAuditRedirectHref() {
   if (params.get('ns_audit_role') !== 'worker') return '/(worker)/home'
 
   const screen = params.get('ns_worker_screen') ?? ''
-  const path = screen === '1.2-shift-brief' || screen === '1.3-demand-map' || screen === '1.4-smart-schedule'
-    ? '/(worker)/jobs'
-    : screen.startsWith('2.')
+  const path = screen.startsWith('2.')
     ? '/(worker)/jobs'
     : screen.startsWith('3.')
       ? '/(worker)/chat'

@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, radius, shadow, typography } from '@/design/theme'
+import { color, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   completionHeroAura: {
@@ -38,27 +38,12 @@ export const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: 3,
   },
-  completionHeroPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: color.mint.mint50,
-    borderColor: color.surface.strokeStrong,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    color: color.brand.primaryDark,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
-    overflow: 'hidden',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    textTransform: 'uppercase',
-  },
   completionHeroTitle: {
     color: color.text.strong,
     fontSize: 18,
     fontWeight: '700',
     lineHeight: 23,
-    marginTop: 8,
+    marginTop: 0,
   },
   completionHeroZipAura: {
     height: 252,

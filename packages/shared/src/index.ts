@@ -2,6 +2,7 @@ export * from './types'
 export * from './constants'
 export * from './mobile-workflow'
 export * from './workflow'
+export * from './service-intake'
 export type {
   KaelEstimate,
   ServiceCatalogResponse,

@@ -134,6 +134,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         'NestScout cần quyền micro nếu bạn muốn ghi chú giọng nói cho Kael phân tích ca dịch vụ.',
       NSPhotoLibraryUsageDescription:
         'NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa hoặc gửi hồ sơ xác minh.',
+      NSLocationWhenInUseUsageDescription:
+        'NestScout cần vị trí của bạn khi mở lộ trình đến địa chỉ khách hàng.',
     },
   },
   android: {
@@ -165,6 +167,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'NestScout cần quyền chọn ảnh hoặc video để bạn mô tả tình trạng sửa chữa.',
         cameraPermission:
           'NestScout cần quyền camera nếu bạn muốn chụp hiện trạng sửa chữa.',
+      },
+    ],
+    [
+      'expo-location',
+      {
+        locationWhenInUsePermission:
+          'NestScout cần vị trí của bạn khi mở lộ trình đến địa chỉ khách hàng.',
       },
     ],
     withoutIosPushEntitlement as unknown as string,

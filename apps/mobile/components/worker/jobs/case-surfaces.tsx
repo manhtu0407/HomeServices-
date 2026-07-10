@@ -13,7 +13,6 @@ import type { LocalDeal } from '@nestscout/shared'
 import { MintAura } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 
-import type { WorkerV5IconName } from '../dock/types'
 import { formatVnd, textByLanguage } from '../ui/format'
 import { styles } from './case-styles'
 
@@ -32,8 +31,6 @@ type WorkerV5CaseCheckFill = ComponentType<{
   scope: string
   testID?: string
 }>
-
-type WorkerV5CaseIconMap = Record<WorkerV5IconName, ImageSourcePropType>
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -85,15 +82,17 @@ export function WorkerV5CaseClosedHero({
 
 export function WorkerV5CaseTrailCard({
   caseWideAura: CaseWideAura,
+  completionRecordIcon,
   deal,
-  icons,
+  incomeLedgerIcon,
   language,
   reduceTransparency,
   zipAura: ZipAura,
 }: {
   caseWideAura: WorkerV5CaseAuraComponent
+  completionRecordIcon: ImageSourcePropType
   deal: LocalDeal | null
-  icons: WorkerV5CaseIconMap
+  incomeLedgerIcon: ImageSourcePropType
   language: AppLanguage
   reduceTransparency: boolean
   zipAura: WorkerV5CaseAuraComponent
@@ -102,7 +101,7 @@ export function WorkerV5CaseTrailCard({
   const ledgerReady = Boolean(deal?.payment?.workerNet && deal.payment.workerNet > 0)
   const rows = [
     {
-      icon: 'document' as const,
+      icon: completionRecordIcon,
       meta: artifactReady
         ? textByLanguage(language, `${deal?.completionPhotoUrls?.length ?? 0} ảnh · có ghi chú`, `${deal?.completionPhotoUrls?.length ?? 0} photos · note exists`)
         : textByLanguage(language, 'Chưa có hồ sơ hoàn tất thật', 'No real completion artifact'),
@@ -110,7 +109,7 @@ export function WorkerV5CaseTrailCard({
       title: textByLanguage(language, 'Hồ sơ hoàn tất', 'Completion artifact'),
     },
     {
-      icon: 'wallet' as const,
+      icon: incomeLedgerIcon,
       meta: ledgerReady ? formatVnd(deal?.payment?.workerNet ?? 0, language) : textByLanguage(language, 'Chờ hệ thống đối soát', 'Waiting for system settlement'),
       status: ledgerReady ? textByLanguage(language, 'Đã ghi', 'Recorded') : textByLanguage(language, 'Chờ', 'Waiting'),
       title: textByLanguage(language, 'Giải ngân sổ thu nhập', 'Ledger release'),
@@ -135,8 +134,8 @@ export function WorkerV5CaseTrailCard({
             </>
           ) : null}
           <View style={styles.caseTrailIconShell}>
-            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-            <Image resizeMode="contain" source={icons[row.icon]} style={styles.caseTrailIcon} testID={`worker-v5-case-trail-icon-${index}`} />
+            {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.caseTrailIconMintAura} testID={`worker-v5-case-trail-icon-aura-${index}`} /> : null}
+            <Image resizeMode="contain" source={row.icon} style={styles.caseTrailIcon} testID={`worker-v5-case-trail-icon-${index}`} />
           </View>
           <View style={styles.caseTrailCopy}>
             <Text style={styles.caseTrailTitle} numberOfLines={2} testID={`worker-v5-case-trail-title-${index}`}>{row.title}</Text>

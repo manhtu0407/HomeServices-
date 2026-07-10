@@ -58,7 +58,6 @@ export function WorkerV5WorkProgressBoard({
     <View style={styles.workProgressBoardShell} testID="worker-v5-work-progress-board">
       <View style={styles.workProgressBoardMeta}>
         <Text style={styles.workProgressBoardTitle}>{textByLanguage(language, 'Bảng công việc', 'Work board')}</Text>
-        <Text style={styles.workProgressBoardCount}>{items.length}</Text>
       </View>
       <WorkerV5StepList
         caseWideAura={caseWideAura}

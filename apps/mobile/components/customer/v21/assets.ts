@@ -1,5 +1,5 @@
 import { type ImageSourcePropType } from 'react-native'
-import { type ServiceType } from '@nestscout/shared'
+import { type CustomerServiceId, type ServiceType } from '@nestscout/shared'
 
 export const customerV21Assets = {
   activity: require('@/assets/client-image-icons/client-activity.png') as ImageSourcePropType,
@@ -47,4 +47,13 @@ export const customerV21ServiceAssets: Record<ServiceType, ImageSourcePropType> 
   cleaning: require('@/assets/client-image-icons/client-service-cleaning.png') as ImageSourcePropType,
   electrical: require('@/assets/client-image-icons/client-service-electrical.png') as ImageSourcePropType,
   plumbing: require('@/assets/client-image-icons/client-service-plumbing.png') as ImageSourcePropType,
+}
+
+export const customerV21BookingServiceAssets: Record<CustomerServiceId, ImageSourcePropType> = {
+  electrical: customerV21ServiceAssets.electrical,
+  plumbing: customerV21ServiceAssets.plumbing,
+  home_cleaning: customerV21ServiceAssets.cleaning,
+  hvac_basic_maintenance: require('./assets/service-icons/client-service-hvac.png') as ImageSourcePropType,
+  upholstery_care: require('./assets/service-icons/client-service-upholstery-care.png') as ImageSourcePropType,
+  handyman_minor_installation: require('./assets/service-icons/client-service-handyman-installation.png') as ImageSourcePropType,
 }

@@ -442,7 +442,7 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
     db(ctx)
       .from("jobs")
       .select(
-        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, completion_notes, completion_photo_urls, created_at, matched_at, completed_at",
+        "id, status, service_type, kael_problem_identified, address_building, address_unit, address_floor, address_district, apartment_access_profile, apartment_access_state, kael_price_min, kael_price_max, kael_worker_brief_guidance, final_price, photo_urls, completion_notes, completion_photo_urls, created_at, matched_at, completed_at",
       )
       .eq("worker_id", ctx.user.id)
       .order("created_at", { ascending: false })
@@ -485,6 +485,7 @@ export async function listWorkerJobs(ctx: MobileApiContext) {
         estimated_earning: finalPrice
           ? Math.round(finalPrice * (1 - PLATFORM_FEE_WORKER))
           : null,
+        photo_urls: asStringArray(row.photo_urls),
         completion_notes: nullableString(row.completion_notes),
         completion_photo_urls: asStringArray(row.completion_photo_urls),
         worker_brief_guidance:

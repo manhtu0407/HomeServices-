@@ -167,6 +167,7 @@ export const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     lineHeight: 13,
+    paddingLeft: 7,
     width: 47,
   },
   scheduleTitle: {

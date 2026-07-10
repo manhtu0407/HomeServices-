@@ -43,6 +43,14 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 9,
   },
+  evidenceTrayAddMark: {
+    color: color.brand.primaryDark,
+    fontSize: 30,
+    fontWeight: '500',
+    lineHeight: 34,
+    position: 'relative',
+    zIndex: 1,
+  },
   evidenceTrayBadge: {
     backgroundColor: 'rgba(4,29,34,0.66)',
     borderRadius: radius.pill,

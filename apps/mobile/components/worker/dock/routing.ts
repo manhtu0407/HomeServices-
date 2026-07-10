@@ -2,6 +2,7 @@ import type { AppLanguage } from '@/lib/app-language'
 
 import { getWorkerV5Screen } from './screens'
 import type {
+  WorkerDockActive,
   WorkerV5RouteParams,
   WorkerV5ScreenDefinition,
   WorkerV5ScreenId,
@@ -19,7 +20,7 @@ export const workerV5Routes: Record<WorkerV5Section, string> = {
 export const workerV5SectionRootIds: Record<WorkerV5Section, WorkerV5ScreenId> = {
   earnings: '4.1-earnings-overview',
   home: '1.1-worker-home',
-  jobs: '1.2-shift-brief',
+  jobs: '2.1-opportunity-inbox',
   kael: '3.1-kael-chat-normal',
   profile: '5.1-profile-overview',
 }
@@ -41,6 +42,17 @@ export function resolveWorkerV5ScreenId(section: WorkerV5Section, params: Worker
   return workerV5SectionRootIds[section]
 }
 
+export function resolveWorkerV5DockActive(pathname: string, params: WorkerV5RouteParams): WorkerDockActive {
+  const explicitScreen = getWorkerV5Screen(firstRouteParam(params.ns_worker_screen))
+  if (explicitScreen) return explicitScreen.section
+
+  if (pathname.includes('earnings')) return 'earnings'
+  if (pathname.includes('profile')) return 'profile'
+  if (pathname.includes('chat')) return 'kael'
+  if (pathname.includes('jobs')) return 'jobs'
+  return 'home'
+}
+
 export function resolveWorkerV5JobsScreenId(params: WorkerV5RouteParams): WorkerV5ScreenId {
   const auditSurface = firstRouteParam(params.ns_audit_surface)
   const tab = firstRouteParam(params.tab)
@@ -59,7 +71,7 @@ export function resolveWorkerV5JobsScreenId(params: WorkerV5RouteParams): Worker
   }
 
   if (auditSurface === 'worker_safety_checklist' || tab === 'active') return '2.7-in-progress'
-  if (tab === 'waiting') return '1.2-shift-brief'
+  if (tab === 'waiting') return '2.1-opportunity-inbox'
   if (tab === 'needs') return '2.8-scope-change'
   return workerV5SectionRootIds.jobs
 }

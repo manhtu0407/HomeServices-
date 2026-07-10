@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, Text, View, type ImageSourcePropType, typ
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
-import type { ServiceType } from '@nestscout/shared'
+import type { CustomerServiceId } from '@nestscout/shared'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
@@ -18,8 +18,8 @@ import {
   type CustomerThemeTokens,
 } from '../customer-theme'
 import { CustomerScreenCanvasAura, HomeEmptySourceAura, SourceCardSkin, SourceIconAura, SourceIconTileSkin, ZipMintAura } from './aura-surfaces'
-import { customerV21ServiceAssets } from './assets'
-import { customerV21ServiceCopy } from './copy'
+import { customerV21BookingServiceAssets } from './assets'
+import { customerV21BookingServiceCopy } from './copy'
 import { customerV21SharedStyles as styles } from './shared-styles'
 import { type CustomerV21ScreenId } from './types'
 
@@ -122,11 +122,11 @@ export function ServiceTile({
   homeAura?: boolean
   onPress: () => void
   selected?: boolean
-  service: ServiceType
+  service: CustomerServiceId
 }) {
   const language = useAppLanguage()
   const { reduceMotion, tokens } = useCustomerV21SurfaceTheme()
-  const copy = customerV21ServiceCopy[language][service]
+  const copy = customerV21BookingServiceCopy[language][service]
 
   return (
     <Pressable
@@ -146,7 +146,7 @@ export function ServiceTile({
       testID={`customer-v21-service-${service}`}
     >
       {homeAura ? <SourceCardSkin /> : null}
-      <AssetTile image={customerV21ServiceAssets[service]} label={copy.label} size={homeAura ? 46 : 58} sourceAura={homeAura} style={styles.serviceIcon} />
+      <AssetTile image={customerV21BookingServiceAssets[service]} label={copy.label} size={homeAura ? 46 : 58} sourceAura={homeAura} style={styles.serviceIcon} />
       <Text numberOfLines={2} style={[styles.serviceTitle, homeAura ? styles.homeServiceTitle : null, { color: tokens.text }]}>{copy.label}</Text>
       <Text numberOfLines={2} style={[styles.serviceNote, homeAura ? styles.homeServiceNote : null, { color: tokens.muted }]}>{copy.note}</Text>
     </Pressable>

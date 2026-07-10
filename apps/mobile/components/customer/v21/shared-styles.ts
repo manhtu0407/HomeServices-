@@ -357,7 +357,7 @@ export const customerV21SharedStyles = StyleSheet.create({
     textAlign: 'center',
   },
   homeServiceGrid: {
-    flexWrap: 'nowrap',
+    flexWrap: 'wrap',
     gap: 9,
     justifyContent: 'space-between',
     marginTop: 8,

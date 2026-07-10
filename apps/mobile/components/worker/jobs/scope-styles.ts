@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import { color, component, glass, radius, shadow, typography } from '@/design/theme'
+import { color, component, glass, shadow, typography } from '@/design/theme'
 
 export const styles = StyleSheet.create({
   authorityText: {
@@ -99,93 +99,6 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     lineHeight: 16,
-  },
-  scopeHeroAura: {
-    bottom: -92,
-    height: 292,
-    left: -78,
-    opacity: 1,
-    right: -58,
-    top: -86,
-  },
-  scopeHeroCard: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(246,255,252,0.84)',
-    borderColor: 'rgba(127,226,215,0.72)',
-    borderRadius: 28,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 14,
-    minHeight: 118,
-    overflow: 'hidden',
-    padding: 16,
-    position: 'relative',
-    ...shadow.raised,
-  },
-  scopeHeroIcon: {
-    height: 42,
-    width: 42,
-  },
-  scopeHeroIconTile: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderColor: 'rgba(216,235,232,0.9)',
-    borderRadius: 25,
-    borderWidth: 1,
-    height: 70,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    position: 'relative',
-    width: 70,
-    zIndex: 1,
-  },
-  scopeHeroMeta: {
-    color: color.text.secondary,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
-    marginTop: 3,
-  },
-  scopeHeroPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFF7E6',
-    borderColor: '#F6D18B',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    color: color.text.strong,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 13,
-    overflow: 'hidden',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-  },
-  scopeHeroText: {
-    flex: 1,
-    minWidth: 0,
-    position: 'relative',
-    zIndex: 1,
-  },
-  scopeHeroTextNoPill: {
-    alignSelf: 'flex-start',
-    paddingTop: 3,
-  },
-  scopeHeroTitle: {
-    color: color.text.strong,
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 22,
-    marginTop: 8,
-  },
-  scopeHeroTitleNoPill: {
-    marginTop: 0,
-  },
-  scopeHeroZipAura: {
-    height: 252,
-    opacity: 0.84,
-    right: -96,
-    top: -82,
-    width: 336,
   },
   scopePhotoPickerButton: {
     flexBasis: 112,

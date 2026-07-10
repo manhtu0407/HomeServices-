@@ -54,6 +54,7 @@ import type {
   MobileApiContext,
   MobileApiHandlerDeps,
   MobileApiServices,
+  WorkerRouteOrigin,
   WorkerStatusUpdate,
   WorkerStatusUpdateInput,
 } from "./router/contracts.ts";
@@ -147,7 +148,7 @@ export function createMobileApiHandler(deps: MobileApiHandlerDeps) {
       const ctx: MobileApiContext = { ...auth, ...requestContext };
       enforceKaelRuntimePathControl(route, ctx.role, apiFailure);
       const data = await dispatchRoute(route, request, ctx, deps.services);
-      if (data instanceof Response) return data;
+      if (data instanceof Response) return withCorsHeaders(data);
       return json(
         data,
         ("successStatus" in route ? route.successStatus : undefined) ?? 200,
@@ -491,6 +492,18 @@ async function dispatchRoute(
       return services.listWorkerBroadcasts(ctx);
     case "workers.jobs":
       return services.listWorkerJobs(ctx);
+    case "workers.routePreview":
+      return services.getWorkerRoutePreview(
+        ctx,
+        route.jobId,
+        requiredWorkerRouteOrigin(new URL(request.url)),
+      );
+    case "workers.routeMap":
+      return services.getWorkerRouteMap(
+        ctx,
+        route.jobId,
+        optionalWorkerRouteOrigin(new URL(request.url)),
+      );
     case "workers.earnings": {
       const url = new URL(request.url);
       const from = parseIsoParam(url.searchParams.get("from"), "from");
@@ -510,6 +523,34 @@ async function dispatchRoute(
     case "notifications.read":
       return services.markNotificationRead(ctx, route.notificationId);
   }
+}
+
+function withCorsHeaders(response: Response) {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    headers.set(key, value);
+  }
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
+  });
+}
+
+function requiredWorkerRouteOrigin(url: URL): WorkerRouteOrigin {
+  const origin = optionalWorkerRouteOrigin(url);
+  if (!origin) apiFailure("VALIDATION", "Cần vị trí hiện tại để tính lộ trình", 400);
+  return origin;
+}
+
+function optionalWorkerRouteOrigin(url: URL): WorkerRouteOrigin | null {
+  const latitude = Number(url.searchParams.get("origin_lat"));
+  const longitude = Number(url.searchParams.get("origin_lng"));
+  if (Number.isNaN(latitude) && Number.isNaN(longitude)) return null;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < 10.4 || latitude > 11.2 || longitude < 106.4 || longitude > 107.1) {
+    apiFailure("VALIDATION", "Vị trí hiện tại không hợp lệ", 400);
+  }
+  return { latitude, longitude };
 }
 
 async function dispatchPublicRoute(

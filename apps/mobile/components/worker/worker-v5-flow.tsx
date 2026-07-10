@@ -1,4 +1,4 @@
-import { type ComponentType, type ReactNode, useMemo, useState } from 'react'
+import { memo, type ComponentType, type ReactNode, useMemo, useState } from 'react'
 import { useEffect, useRef } from 'react'
 import {
   Alert,
@@ -21,7 +21,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient } from 'react-native-svg'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
-import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, type LocalDeal, type ServiceType } from '@nestscout/shared'
+import { buildLocalJobDisplayCode, type LocalDeal, type ServiceType } from '@nestscout/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { KaelButton, KaelTextField, MintAura } from '@/components/ui/kael-primitives'
@@ -34,7 +34,7 @@ import { useAuth } from '@/lib/auth-provider'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { uploadJobMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
-import { kaelMemoryService, placesService, workerKaelChatService } from '@/lib/services'
+import { kaelMemoryService, workerKaelChatService, workerRouteService } from '@/lib/services'
 import type {
   WorkerV5IconName,
   WorkerV5RouteParams,
@@ -66,10 +66,6 @@ import {
   WorkerV5OpportunityEmptyCard,
 } from './home/opportunity-surfaces'
 import {
-  WorkerV5ScheduleBody,
-  WorkerV5ShiftBriefBody,
-} from './home/body-surfaces'
-import {
   WorkerV5BankTaxBody,
   WorkerV5ProfileOverviewBody,
   WorkerV5ReliabilityInsightsBody,
@@ -96,9 +92,7 @@ import {
   WorkerV5AcceptBoundaryNote,
   WorkerV5AcceptChecklistCard,
   WorkerV5AcceptCommitmentCard,
-  WorkerV5AcceptSummaryCard,
 } from './jobs/acceptance-surfaces'
-import { WorkerV5AcceptConfirmButton } from './jobs/request-bodies'
 import {
   WorkerV5ActionRail,
   WorkerV5ChatBubble,
@@ -115,14 +109,8 @@ import {
   WorkerV5CompletionEvidenceBody,
   WorkerV5CompletionSubmittedBody,
 } from './jobs/completion-bodies'
-import {
-  WorkerV5ArrivalCheckInBody,
-  WorkerV5RouteEtaBody,
-} from './jobs/active-body-surfaces'
-import {
-  WorkerV5EvidencePickerActions,
-  WorkerV5EvidenceTray,
-} from './jobs/evidence-surfaces'
+import { WorkerV5RouteEtaBody } from './jobs/active-body-surfaces'
+import { WorkerV5EvidenceTray } from './jobs/evidence-surfaces'
 import {
   WorkerV5EarningsOverviewBody,
   WorkerV5LedgerDetailBody,
@@ -146,15 +134,9 @@ import {
   buildWorkerV5OfferRequestRows,
 } from './jobs/offer'
 import { WorkerV5EtaSummaryCard } from './jobs/map-surfaces'
+import { useWorkerV5RoutePreview, type WorkerV5RoutePreviewState } from './jobs/use-worker-route-preview'
 import { WorkerV5OfferDetailEmptyCard, WorkerV5OfferDetailListCard, WorkerV5OfferDetailSummaryCard } from './jobs/offer-surfaces'
 import { WorkerV5ProgressRail, WorkerV5WorkProgressBoard } from './jobs/progress-surfaces'
-import type { WorkerV5SchedulePlan } from './jobs/schedule'
-import {
-  WorkerV5SearchPill,
-  WorkerV5SourceProgressBar,
-  type WorkerV5InboxTabId,
-  type WorkerV5PlaceSuggestion,
-} from './jobs/source-surfaces'
 import {
   WorkerV5StatusTimeline as WorkerV5StatusTimelineSurface,
   type WorkerV5StatusTimelineBaseProps,
@@ -164,10 +146,7 @@ import {
   WorkerV5KaelDraftCard,
   WorkerV5PriceLines,
 } from './jobs/shared-surfaces'
-import {
-  WorkerV5ScopeChangeHero,
-  WorkerV5ScopeEvidenceGate,
-} from './jobs/scope-surfaces'
+import { WorkerV5ScopeEvidenceGate } from './jobs/scope-surfaces'
 import {
   formatResponseSpeed,
   formatScopeEventTime,
@@ -176,20 +155,16 @@ import {
   textByLanguage,
 } from './ui/format'
 import {
-  canShowWorkerAddress,
   documentBooleanLabel,
   formatScopePriceRange,
   formatWorkerDistrict,
   getWorkerV5ChatJobId,
-  localizedWorkerBriefLines,
   normalizeServiceAreaDraftText,
   normalizeWorkerV5DistrictSelection,
   normalizeWorkerV5DistrictSelectionList,
   parseWorkerV5ServiceAreaDraft,
   paymentStatusLabel,
-  routeDestinationLabel,
   scopeChangeApprovalAmountLabel,
-  scopeChangeStatusLabel,
   workerAvailabilityLabel,
   workerDocumentSummary,
   workerPerformanceAxisLabel,
@@ -209,9 +184,8 @@ import {
   workerV5ProfileBackendSyncPercent,
 } from './ui/performance'
 import {
+  workerV5ArrivalDestinationLabel,
   workerV5KaelOpportunityMatchScore,
-  workerV5RouteMapLabelFromDeal,
-  workerV5RouteMapLocationFromDeal,
   workerV5StringFromUnknown,
   type WorkerV5MapLocation,
 } from './ui/route'
@@ -275,6 +249,11 @@ const workerV5Icons: Record<WorkerV5IconName, ImageSourcePropType> = {
   wallet: require('@/assets/worker-image-icons/utility-wallet.png') as ImageSourcePropType,
 }
 
+const workerV5CaseTrailIcons = {
+  completionRecord: require('@/assets/worker-image-icons/utility-completion-record-core.png') as ImageSourcePropType,
+  incomeLedger: require('@/assets/worker-image-icons/utility-income-ledger-core.png') as ImageSourcePropType,
+}
+
 const workerV5ServiceIcons: Record<ServiceType, ImageSourcePropType> = {
   cleaning: require('@/assets/worker-image-icons/service-cleaning.png') as ImageSourcePropType,
   electrical: require('@/assets/worker-image-icons/service-electrical.png') as ImageSourcePropType,
@@ -282,11 +261,51 @@ const workerV5ServiceIcons: Record<ServiceType, ImageSourcePropType> = {
 }
 
 const workerV5AvatarIcon = require('@/assets/worker-image-icons/profile-avatar-core.png') as ImageSourcePropType
-const workerV5KaelHeadIcon = require('@/assets/kael-emotions/kael-emotion-focused.png') as ImageSourcePropType
-const workerV5PhoneIcon = require('@/assets/client-image-icons/client-phone-v2.png') as ImageSourcePropType
 const WORKER_V5_PROFILE_ICON_VISUAL_BOOST = new Set<WorkerV5IconName>(['document', 'scope'])
 
 const WORKER_V5_SUPPORTED_SERVICES: readonly ServiceType[] = ['electrical', 'plumbing', 'cleaning']
+
+function workerV5JobsDestinationScreenId(deal: LocalDeal | null): WorkerV5ScreenId {
+  if (!deal) return '2.1-opportunity-inbox'
+  const status = deal.backendStatus ?? deal.status
+  if (deal.status === 'broadcasting' && deal.broadcast?.status === 'sent') return '2.2-offer-detail'
+  if (status === 'worker_matched' || status === 'worker_on_way') return '2.7-in-progress'
+  if (status === 'arrived' || status === 'inspecting' || status === 'repairing') return '2.7-in-progress'
+  if (status === 'scope_change_pending') return '2.9-approval-wait'
+  if (status === 'completed_by_worker') return '2.11-completion-submitted'
+  if (
+    status === 'confirmed_by_customer'
+    || status === 'reviewed'
+    || status === 'payment_pending'
+    || status === 'paid'
+  ) return '2.12-case-closed'
+  return '2.1-opportunity-inbox'
+}
+
+function canUseWorkerV5PrivateKaelChat(deal: LocalDeal | null) {
+  const status = deal?.backendStatus ?? deal?.status
+  return Boolean(status && [
+    'worker_matched',
+    'worker_on_way',
+    'arrived',
+    'inspecting',
+    'repairing',
+    'scope_change_pending',
+    'completed_by_worker',
+  ].includes(status))
+}
+
+function workerV5DisplayCode(deal: LocalDeal | null, language: AppLanguage) {
+  if (!deal) return null
+  if (deal.displayCode) return deal.displayCode
+  if (!deal.id.startsWith('local-')) {
+    return buildLocalJobDisplayCode({
+      createdAt: deal.createdAt,
+      jobId: deal.id,
+    })
+  }
+  return language === 'vi' ? 'Nháp dịch vụ' : 'Service draft'
+}
 
 function useWorkerV5Screen(section: WorkerV5Section) {
   const params = useLocalSearchParams<WorkerV5RouteParams>()
@@ -321,34 +340,39 @@ export function WorkerProfileSurface() {
 function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition }) {
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const language = resolveWorkerV5Language(params)
+  const screenId = screen.id
+  const screenPrimaryNext = screen.primaryNext
   const onDockScroll = useDockScrollHandler()
   const router = useRouter()
   const { signOut } = useAuth()
   const runtime = useFrontendWorkflow()
   const [actionBusy, setActionBusy] = useState(false)
+  const actionBusyRef = useRef(false)
   const { height } = useWindowDimensions()
   const glass = useGlassAccessibility()
   const previousScreen = useMemo(
-    () => WORKER_V5_SCREENS.find((candidate) => candidate.order === screen.order - 1) ?? null,
-    [screen.order],
+    () => {
+      const index = WORKER_V5_SCREENS.findIndex((candidate) => candidate.id === screenId)
+      return index > 0 ? WORKER_V5_SCREENS[index - 1] ?? null : null
+    },
+    [screenId],
   )
   const nextScreen = useMemo(
-    () => WORKER_V5_SCREENS.find((candidate) => candidate.id === screen.primaryNext) ?? null,
-    [screen.primaryNext],
+    () => WORKER_V5_SCREENS.find((candidate) => candidate.id === screenPrimaryNext) ?? null,
+    [screenPrimaryNext],
   )
   const title = screen.title[language]
   const minHeight = Math.max(620, Math.round(height * 0.92))
   const surfaceStyle = glass.reduceTransparency ? styles.surfaceSolid : styles.surfaceGlass
-  const usesShiftBriefHandoff = screen.id === '1.2-shift-brief'
-  const usesDemandMapHandoff = screen.id === '1.3-demand-map'
-  const usesSmartScheduleHandoff = screen.id === '1.4-smart-schedule'
   const usesOpportunityInboxHandoff = screen.id === '2.1-opportunity-inbox'
   const usesOfferDetailHandoff = screen.id === '2.2-offer-detail'
-  const usesAcceptReviewHandoff = screen.id === '2.3-accept-review'
   const usesRouteEtaHandoff = screen.id === '2.4-route-eta'
-  const usesArrivalCheckinHandoff = screen.id === '2.5-arrival-checkin'
-  const usesTravelHandoff = usesRouteEtaHandoff || usesArrivalCheckinHandoff
+  const routePreview = useWorkerV5RoutePreview(runtime.state.deal, usesRouteEtaHandoff)
+  const usesTravelHandoff = usesRouteEtaHandoff
   const usesInProgressHandoff = screen.id === '2.7-in-progress'
+  const headerBackScreen = usesRouteEtaHandoff || usesInProgressHandoff
+    ? getWorkerV5Screen('2.1-opportunity-inbox') ?? previousScreen
+    : previousScreen
   const usesScopeChangeHandoff = screen.id === '2.8-scope-change'
   const usesApprovalWaitHandoff = screen.id === '2.9-approval-wait'
   const usesCompletionEvidenceHandoff = screen.id === '2.10-completion-evidence'
@@ -363,7 +387,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.7-verification-documents' || screen.id === '5.8-bank-tax-center' || screen.id === '5.9-reviews-feedback' || screen.id === '5.10-support-settings'
   const usesProfileInfoHeaderIcon = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights'
   const usesCaseExecutionHandoff = usesInProgressHandoff || usesScopeChangeHandoff || usesApprovalWaitHandoff || usesCompletionEvidenceHandoff || usesCompletionSubmittedHandoff || usesCaseClosedHandoff
-  const usesHandoffStage = usesShiftBriefHandoff || usesDemandMapHandoff || usesSmartScheduleHandoff || usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesAcceptReviewHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesKaelOrbHandoff || usesEarningsHandoff || usesProfileHandoff
+  const usesHandoffStage = usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesKaelOrbHandoff || usesEarningsHandoff || usesProfileHandoff
   const handoffHeaderSubtitle = usesOpportunityInboxHandoff
     ? textByLanguage(language, 'Kael đã lọc theo kỹ năng, bán kính và lịch trống', 'Kael has filtered by skills, radius, and open schedule')
     : usesEarningsOverviewHandoff
@@ -392,7 +416,7 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
         ? workerV5CaseHeaderSubtitle(runtime.state.deal, language)
       : usesInProgressHandoff
         ? null
-      : usesCaseExecutionHandoff || usesOfferDetailHandoff || usesAcceptReviewHandoff
+      : usesCaseExecutionHandoff || usesOfferDetailHandoff
         ? workerV5OfferHeaderSubtitle(runtime.state.deal, language)
         : null
 
@@ -402,18 +426,12 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       ? textByLanguage(language, 'Thu nhập của bạn', 'Your earnings')
     : title
 
-  const formulaPageAuraTarget = usesDemandMapHandoff
-    ? { scope: 'DemandMapPage', testID: 'worker-v5-demand-page-customer-mint-aura' }
-    : usesOpportunityInboxHandoff
+  const formulaPageAuraTarget = usesOpportunityInboxHandoff
       ? { scope: 'OpportunityInboxPage', testID: 'worker-v5-opportunity-page-customer-mint-aura' }
     : usesOfferDetailHandoff
       ? { scope: 'OfferDetailPage', testID: 'worker-v5-offer-page-customer-mint-aura' }
-    : usesAcceptReviewHandoff
-      ? { scope: 'AcceptReviewPage', testID: 'worker-v5-accept-page-customer-mint-aura' }
     : usesRouteEtaHandoff
       ? { scope: 'RouteEtaPage', testID: 'worker-v5-route-page-customer-mint-aura' }
-    : usesArrivalCheckinHandoff
-      ? { scope: 'ArrivalCheckinPage', testID: 'worker-v5-checkin-page-customer-mint-aura' }
     : usesCompletionSubmittedHandoff
       ? { scope: 'CompletionSubmittedPage', testID: 'worker-v5-completion-submitted-background-mint-aura' }
     : usesProfileHandoff
@@ -424,10 +442,6 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       ? { scope: 'WorkerInProgressPage', testID: 'worker-v5-in-progress-canvas-aura' }
     : usesCaseExecutionHandoff
       ? { scope: 'WorkerCaseExecutionPage', testID: 'worker-v5-case-flow-page-customer-mint-aura' }
-    : usesShiftBriefHandoff
-      ? { scope: 'ShiftBriefPage', testID: 'worker-v5-shift-page-customer-mint-aura' }
-    : usesSmartScheduleHandoff
-      ? { scope: 'SmartSchedulePage', testID: 'worker-v5-schedule-page-customer-mint-aura' }
       : { scope: 'WorkerDefaultPage', testID: 'worker-v5-page-mint-aura' }
 
   const openScreen = (target: WorkerV5ScreenDefinition | null) => {
@@ -439,15 +453,55 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   }
   const openJobChat = () => router.replace('/(worker)/chat?ns_worker_screen=3.1-kael-chat-normal' as never)
   const runWorkerAction = async (action: () => Promise<boolean>) => {
+    if (actionBusyRef.current) return
+    actionBusyRef.current = true
     setActionBusy(true)
     try {
       const ok = await action()
       if (ok) openScreen(nextScreen)
     } finally {
+      actionBusyRef.current = false
+      setActionBusy(false)
+    }
+  }
+  const runRouteAction = async () => {
+    if (actionBusyRef.current) return
+    const status = runtime.state.deal?.status
+    const nextStatus = status === 'worker_matched'
+      ? 'worker_on_way'
+      : status === 'worker_on_way'
+        ? 'arrived'
+        : null
+    if (!nextStatus) {
+      openScreenById(workerV5JobsDestinationScreenId(runtime.state.deal))
+      return
+    }
+    actionBusyRef.current = true
+    setActionBusy(true)
+    try {
+      const ok = await runtime.actions.workerUpdateStatus(nextStatus)
+      if (ok) openScreenById('2.7-in-progress')
+    } finally {
+      actionBusyRef.current = false
       setActionBusy(false)
     }
   }
   const primaryAction = getWorkerV5PrimaryAction(screen, runtime, language, actionBusy, runWorkerAction, () => openScreen(nextScreen))
+  const workflowDestinationScreenId = workerV5JobsDestinationScreenId(runtime.state.deal)
+  const screenRedirectId = runtime.state.workerGate === 'backend_pending'
+    ? null
+    : usesOfferDetailHandoff && !workerV5CanAcceptOpenOffer(runtime.state.deal, runtime.state.workerGate)
+      ? workflowDestinationScreenId
+      : usesRouteEtaHandoff && workflowDestinationScreenId !== '2.4-route-eta'
+        ? workflowDestinationScreenId
+        : null
+
+  useEffect(() => {
+    if (!screenRedirectId) return
+    router.replace(routeForWorkerV5Screen(requireWorkerV5Screen(screenRedirectId)) as never)
+  }, [router, screenRedirectId])
+
+  if (screenRedirectId) return null
 
   if (usesKaelOrbHandoff) {
     return (
@@ -484,27 +538,6 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
         scope={formulaPageAuraTarget.scope}
         testID={formulaPageAuraTarget.testID}
       />
-      {usesDemandMapHandoff && !glass.reduceTransparency ? (
-        <WorkerV5CustomerZipMintAura
-          scope="DemandMapPageFine"
-          style={styles.demandMapPageZipAura}
-          testID="worker-v5-demand-page-customer-zip-mint-aura"
-        />
-      ) : null}
-      {usesSmartScheduleHandoff && !glass.reduceTransparency ? (
-        <WorkerV5CustomerZipMintAura
-          scope="SmartSchedulePageFine"
-          style={styles.smartSchedulePageZipAura}
-          testID="worker-v5-schedule-page-customer-zip-mint-aura"
-        />
-      ) : null}
-      {usesSmartScheduleHandoff && !glass.reduceTransparency ? (
-        <WorkerV5CustomerCaseWideMintAura
-          scope="SmartSchedulePageLower"
-          style={styles.smartSchedulePageLowerAura}
-          testID="worker-v5-schedule-page-lower-mint-aura"
-        />
-      ) : null}
       {usesOpportunityInboxHandoff && !glass.reduceTransparency ? (
         <WorkerV5CustomerZipMintAura
           scope="OpportunityInboxPageFine"
@@ -519,25 +552,11 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
           testID="worker-v5-offer-page-customer-zip-mint-aura"
         />
       ) : null}
-      {usesAcceptReviewHandoff && !glass.reduceTransparency ? (
-        <WorkerV5CustomerZipMintAura
-          scope="AcceptReviewPageFine"
-          style={styles.acceptReviewPageZipAura}
-          testID="worker-v5-accept-page-customer-zip-mint-aura"
-        />
-      ) : null}
       {usesRouteEtaHandoff && !glass.reduceTransparency ? (
         <WorkerV5CustomerZipMintAura
           scope="RouteEtaPageFine"
           style={styles.routeEtaPageZipAura}
           testID="worker-v5-route-page-customer-zip-mint-aura"
-        />
-      ) : null}
-      {usesArrivalCheckinHandoff && !glass.reduceTransparency ? (
-        <WorkerV5CustomerZipMintAura
-          scope="ArrivalCheckinPageFine"
-          style={styles.arrivalCheckinPageZipAura}
-          testID="worker-v5-checkin-page-customer-zip-mint-aura"
         />
       ) : null}
       {usesCaseExecutionHandoff && !usesInProgressHandoff && !glass.reduceTransparency ? (
@@ -582,13 +601,6 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
           testID="worker-v5-offer-page-lower-mint-aura"
         />
       ) : null}
-      {usesAcceptReviewHandoff && !glass.reduceTransparency ? (
-        <WorkerV5CustomerCaseWideMintAura
-          scope="AcceptReviewPageLower"
-          style={styles.acceptReviewPageLowerAura}
-          testID="worker-v5-accept-page-lower-mint-aura"
-        />
-      ) : null}
       <ScrollView
         bounces={false}
         contentContainerStyle={[styles.scrollContent, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]}
@@ -606,7 +618,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
           ) : (
             <Pressable
               accessibilityLabel={language === 'vi' ? 'Quay lại worker hiện tại' : 'Back to current worker surface'}
-              onPress={() => (usesOfferDetailHandoff || usesAcceptReviewHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff ? openScreen(previousScreen) : router.replace(workerV5Routes[screen.section] as never))}
+              accessibilityRole="button"
+              onPress={() => (usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff ? openScreen(headerBackScreen) : router.replace(workerV5Routes[screen.section] as never))}
               style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
               testID="worker-v5-back"
             >
@@ -614,15 +627,15 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
             </Pressable>
           )}
           <View style={styles.headerTextColumn}>
-            {usesCaseClosedHandoff ? null : usesKaelOrbHandoff || usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesAcceptReviewHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff || usesProfileHandoff ? (
+            {usesCaseClosedHandoff ? null : usesKaelOrbHandoff || usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesEarningsHandoff || usesProfileHandoff ? (
               <>
                 <Text style={[styles.titleText, usesKaelOrbHandoff ? styles.kaelOrbCustomerHeaderTitle : null]}>{displayTitle}</Text>
                 {handoffHeaderSubtitle ? <Text style={styles.headerSubtitleText} numberOfLines={2}>{handoffHeaderSubtitle}</Text> : null}
               </>
-            ) : !usesShiftBriefHandoff && !usesSmartScheduleHandoff ? (
+            ) : (
               <Text style={styles.phaseText}>{phaseCopy[screen.phase][language]}</Text>
-            ) : null}
-            {!usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesAcceptReviewHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff && !usesProfileHandoff ? <Text style={styles.titleText}>{title}</Text> : null}
+            )}
+            {!usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff && !usesProfileHandoff ? <Text style={styles.titleText}>{title}</Text> : null}
           </View>
           {usesOpportunityInboxHandoff ? (
             <Pressable
@@ -654,16 +667,6 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
             >
               <Text style={styles.headerMenuText}>•••</Text>
             </Pressable>
-          ) : usesAcceptReviewHandoff ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Thông tin xác nhận' : 'Acceptance information'}
-              accessibilityRole="button"
-              onPress={() => openScreen(previousScreen)}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-accept-info"
-            >
-              <Text style={styles.headerMenuText}>i</Text>
-            </Pressable>
           ) : usesRouteEtaHandoff ? (
             <Pressable
               accessibilityLabel={language === 'vi' ? 'Tùy chọn di chuyển' : 'Travel options'}
@@ -673,16 +676,6 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
               testID="worker-v5-route-menu"
             >
               <Text style={styles.headerMenuText}>•••</Text>
-            </Pressable>
-          ) : usesArrivalCheckinHandoff ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Thông tin đến điểm hẹn' : 'Arrival information'}
-              accessibilityRole="button"
-              onPress={() => openScreen(previousScreen)}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-checkin-info"
-            >
-              <Text style={styles.headerMenuText}>i</Text>
             </Pressable>
           ) : usesApprovalWaitHandoff ? (
             <Pressable
@@ -734,16 +727,6 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
             >
               <Text style={styles.headerMenuText}>•••</Text>
             </Pressable>
-          ) : usesSmartScheduleHandoff ? (
-            <Pressable
-              accessibilityLabel={language === 'vi' ? 'Tùy chỉnh lịch đề xuất' : 'Customize suggested schedule'}
-              accessibilityRole="button"
-              onPress={() => openScreen(previousScreen)}
-              style={({ pressed }) => [styles.iconButton, pressed && !glass.reduceMotion ? styles.pressed : null]}
-              testID="worker-v5-schedule-menu"
-            >
-              <Text style={styles.headerMenuText}>•••</Text>
-            </Pressable>
           ) : usesProfileInfoHeaderIcon ? (
             <View style={styles.iconBadge} testID={`worker-v5-profile-info-header-icon-${screen.id}`}>
               {!glass.reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
@@ -779,14 +762,15 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
           glass.reduceMotion,
           glass.reduceTransparency,
           () => openScreen(nextScreen),
-          () => openScreen(previousScreen),
           openScreenById,
           runWorkerAction,
+          runRouteAction,
           openJobChat,
           actionBusy,
+          routePreview,
         )}
 
-        {primaryAction && screen.id !== '5.4-reliability-insights' && screen.id !== '5.5-account-utilities' && screen.id !== '5.6-agent-memory-preferences' && screen.id !== '5.10-support-settings' && !usesSmartScheduleHandoff && !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesAcceptReviewHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff ? (
+        {primaryAction && screen.id !== '5.4-reliability-insights' && screen.id !== '5.5-account-utilities' && screen.id !== '5.6-agent-memory-preferences' && screen.id !== '5.10-support-settings' && !usesOpportunityInboxHandoff && !usesOfferDetailHandoff && !usesTravelHandoff && !usesCaseExecutionHandoff && !usesKaelOrbHandoff && !usesEarningsHandoff ? (
           <WorkerV5PrimaryActionButton
             disabled={primaryAction.disabled}
             label={primaryAction.label}
@@ -883,44 +867,30 @@ function WorkerV5HomeScreenSurface({
       title: textByLanguage(language, 'Nhận việc ngay', 'Open work'),
     },
     {
-      icon: 'map' as const,
+      icon: 'chat' as const,
+      meta: deal?.broadcast
+        ? textByLanguage(language, 'Giải thích cơ hội hiện tại', 'Explain the current opportunity')
+        : textByLanguage(language, 'Lọc theo kỹ năng & khu vực', 'Filter by skills and area'),
+      targetId: '3.2-kael-job-intake' as const,
+      title: textByLanguage(language, 'Kael nhận việc', 'Kael job intake'),
+    },
+    {
+      icon: 'tools' as const,
       meta: profile?.districts?.length
         ? textByLanguage(language, `${profile.districts.length} khu vực phục vụ`, `${profile.districts.length} service areas`)
-        : textByLanguage(language, 'Chưa có khu vực', 'No area'),
-      targetId: '1.3-demand-map' as const,
-      title: textByLanguage(language, 'Bản đồ cơ hội', 'Opportunity map'),
+        : textByLanguage(language, 'Bổ sung để tăng cơ hội phù hợp', 'Complete this for better matches'),
+      targetId: '5.3-skills-service-area' as const,
+      title: textByLanguage(language, 'Kỹ năng & khu vực', 'Skills and area'),
     },
     {
-      icon: 'calendar' as const,
-      meta: deal?.broadcast ? textByLanguage(language, 'Dựa trên cơ hội thật', 'From real opportunities') : textByLanguage(language, 'Cần cơ hội thật', 'Needs real data'),
-      targetId: '1.4-smart-schedule' as const,
-      title: textByLanguage(language, 'Tối ưu việc làm', 'Work optimization'),
-    },
-    {
-      icon: 'calendar' as const,
-      meta: deal?.displayCode ?? deal?.id ?? textByLanguage(language, 'Chưa có việc', 'No work'),
-      targetId: '2.7-in-progress' as const,
-      title: textByLanguage(language, 'Việc đang chạy', 'Active work'),
+      icon: 'earnings' as const,
+      meta: earnings?.net_earnings
+        ? formatVnd(earnings.net_earnings, language)
+        : textByLanguage(language, 'Chưa có đối soát', 'No settlement yet'),
+      targetId: '4.1-earnings-overview' as const,
+      title: textByLanguage(language, 'Thu nhập', 'Earnings'),
     },
   ]
-  const broadcast = deal?.broadcast ?? null
-  const workerBriefLines = broadcast ? localizedWorkerBriefLines(broadcast.prebrief, language) : []
-  const fullAddressLabel = broadcast?.fullAddressVisible ? broadcast.fullAddressLabel ?? null : null
-  const canRevealFullAddress = Boolean(deal?.broadcast?.fullAddressVisible && deal.broadcast.fullAddressLabel && deal && canShowWorkerAddress(deal))
-  const generalAreaLabel = broadcast?.generalArea || deal?.draft.districtLabel || textByLanguage(language, 'Khu vực đang ẩn', 'Area hidden')
-  const priceEstimateLabel = broadcast?.estimatedPriceLabel ?? textByLanguage(language, 'Chờ Kael ước tính', 'Waiting for Kael estimate')
-  const earningEstimateLabel = broadcast?.estimatedEarningLabel ?? textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning')
-  const priceDisclaimer = textByLanguage(
-    language,
-    LOCAL_WORKFLOW_PRICE_DISCLAIMER,
-    "This is Kael's estimate from current job data. Kael may update it when new scope evidence is added.",
-  )
-  const kaelTitle = textByLanguage(language, 'Kael đã chuẩn bị việc phù hợp', 'Kael prepared matching work')
-  const kaelBody = workerBriefLines[0]
-    ?? (deal
-      ? buildDealSummary(deal, language)
-      : textByLanguage(language, 'Khi có cơ hội thật, Kael sẽ tóm tắt phạm vi, khu vực và lịch trước khi bạn quyết định.', 'When real work arrives, Kael summarizes scope, area, and schedule before your decision.'))
-
   return (
     <SafeAreaView style={[styles.safeArea, surfaceStyle]} testID="worker-v5-screen-1.1-worker-home">
       <WorkerV5HomeAuraBackground reduceTransparency={glass.reduceTransparency} />
@@ -1012,54 +982,6 @@ function WorkerV5HomeScreenSurface({
           </View>
         </View>
 
-        {deal ? (
-          <View style={styles.workerHomeKaelStack} testID="worker-kael-brief">
-            <WorkerV5KaelBriefCard
-              body={kaelBody}
-              icon="chat"
-              icons={workerV5Icons}
-              reduceTransparency={glass.reduceTransparency}
-              source={workerV5KaelHeadIcon}
-              title={kaelTitle}
-            />
-            {workerBriefLines.slice(1, 3).map((line) => (
-              <Text key={line} style={styles.workerHomeKaelBriefLine}>{line}</Text>
-            ))}
-            <View style={[styles.workerHomeKaelContext, glass.reduceTransparency && styles.opaqueCard]}>
-              <View style={styles.workerHomeKaelStatusRow}>
-                <Text style={styles.workerHomeKaelStatusText} testID="worker-request-kael-analyzing">
-                  {textByLanguage(language, 'Kael đang phân tích hồ sơ việc', 'Kael is analyzing this work')}
-                </Text>
-                <Text style={styles.workerHomeKaelRiskStatus} testID="worker-v5-safety-risk-status-0">
-                  {textByLanguage(language, 'Kael', 'Kael')}
-                </Text>
-              </View>
-              <View style={styles.workerHomeKaelMetricGrid}>
-                <View style={styles.workerHomeKaelMetric}>
-                  <Text style={styles.workerHomeKaelMetricLabel}>{textByLanguage(language, 'Ước tính khách', 'Customer estimate')}</Text>
-                  <Text style={styles.workerHomeKaelMetricValue}>{priceEstimateLabel}</Text>
-                </View>
-                <View style={styles.workerHomeKaelMetric}>
-                  <Text style={styles.workerHomeKaelMetricLabel}>{textByLanguage(language, 'Tiền công', 'Earning')}</Text>
-                  <Text style={styles.workerHomeKaelMetricValue}>{earningEstimateLabel}</Text>
-                </View>
-              </View>
-              <Text style={styles.workerHomeKaelDisclaimer} testID="worker-request-price-disclaimer">
-                {priceDisclaimer}
-              </Text>
-              {canRevealFullAddress ? (
-                <Text style={styles.workerHomeKaelAddress} testID="worker-full-address-after-accept">
-                  {fullAddressLabel}
-                </Text>
-              ) : (
-                <Text style={styles.workerHomeKaelAddress} testID="worker-general-area-before-accept">
-                  {generalAreaLabel}
-                </Text>
-              )}
-            </View>
-          </View>
-        ) : null}
-
         <WorkerV5SectionHeader
           action={textByLanguage(language, 'Được cá nhân hóa', 'Personalized')}
           title={textByLanguage(language, 'Hành động nhanh', 'Quick actions')}
@@ -1086,83 +1008,47 @@ function renderWorkerV5Body(
   reduceMotion: boolean,
   reduceTransparency: boolean,
   navigateNext: () => void,
-  navigatePrevious: () => void,
   navigateToScreen: (id: WorkerV5ScreenId) => void,
   runWorkerAction: (action: () => Promise<boolean>) => void | Promise<void>,
+  runRouteAction: () => void | Promise<void>,
   navigateJobChat: () => void,
   actionBusy: boolean,
+  routePreview: WorkerV5RoutePreviewState,
 ) {
   switch (screen.id) {
     case '1.1-worker-home':
       return <WorkerV5HomeBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
-    case '1.2-shift-brief':
-      return (
-        <WorkerV5ShiftBriefBody
-          buildDealSummary={buildDealSummary}
-          icons={workerV5Icons}
-          language={language}
-          reduceTransparency={reduceTransparency}
-          runtime={runtime}
-        />
-      )
-    case '1.3-demand-map':
-      return <WorkerV5DemandMapBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
-    case '1.4-smart-schedule':
-      return (
-        <WorkerV5ScheduleBody
-          icons={workerV5Icons}
-          language={language}
-          onCustomize={navigatePrevious}
-          onUseSchedule={navigateNext}
-          primaryFill={WorkerV5PrimaryButtonFill}
-          reduceTransparency={reduceTransparency}
-          runtime={runtime}
-        />
-      )
     case '2.1-opportunity-inbox':
       return <WorkerV5OpportunityInboxBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '2.2-offer-detail':
       return <WorkerV5OfferDetailBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
-    case '2.3-accept-review':
-      return <WorkerV5AcceptReviewBody language={language} reduceTransparency={reduceTransparency} runtime={runtime} />
     case '2.4-route-eta':
       return (
         <WorkerV5RouteEtaBody
           actionBusy={actionBusy}
           caseWideAura={WorkerV5CustomerCaseWideMintAura}
           deal={runtime.state.deal}
-          etaSummaryCard={<WorkerV5EtaSummaryCard deal={runtime.state.deal} language={language} reduceTransparency={reduceTransparency} />}
+          etaSummaryComponent={WorkerV5EtaSummaryCard}
           language={language}
           navigateJobChat={navigateJobChat}
-          navigateNext={navigateNext}
+          onPrimary={() => void runRouteAction()}
+          primaryLabel={runtime.state.deal?.status === 'worker_matched'
+            ? textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel')
+            : textByLanguage(language, 'Xác nhận đã tới', 'Confirm arrival')}
           primaryFill={WorkerV5PrimaryButtonFill}
           reduceTransparency={reduceTransparency}
-          routeMapStage={<WorkerV5RouteMapStage deal={runtime.state.deal} language={language} reduceTransparency={reduceTransparency} />}
-          zipAura={WorkerV5CustomerZipMintAura}
-        />
-      )
-    case '2.5-arrival-checkin':
-      return (
-        <WorkerV5ArrivalCheckInBody
-          actionBusy={actionBusy}
-          caseWideAura={WorkerV5CustomerCaseWideMintAura}
-          chatIcon={workerV5Icons.chat}
-          deal={runtime.state.deal}
-          language={language}
-          mapIcon={workerV5Icons.map}
-          navigateJobChat={navigateJobChat}
-          navigateNext={navigateNext}
-          phoneIcon={workerV5PhoneIcon}
-          primaryFill={WorkerV5PrimaryButtonFill}
-          reduceTransparency={reduceTransparency}
+          routeMapComponent={WorkerV5RouteMapStage}
+          routePreview={routePreview}
           zipAura={WorkerV5CustomerZipMintAura}
         />
       )
     case '2.7-in-progress':
       return (
         <WorkerV5InProgressBody
+          actionBusy={actionBusy}
           language={language}
           navigateJobChat={navigateJobChat}
+          onTravelAction={() => void runRouteAction()}
           reduceTransparency={reduceTransparency}
           runtime={runtime}
         />
@@ -1207,7 +1093,8 @@ function renderWorkerV5Body(
     case '2.12-case-closed':
       return (
         <WorkerV5CaseClosedBody
-          icons={workerV5Icons}
+          completionRecordIcon={workerV5CaseTrailIcons.completionRecord}
+          incomeLedgerIcon={workerV5CaseTrailIcons.incomeLedger}
           language={language}
           navigateToEarnings={() => navigateToScreen('4.1-earnings-overview')}
           navigateToRanking={() => navigateToScreen('5.2-worker-ranking')}
@@ -1468,189 +1355,6 @@ function WorkerV5HomeBody({
   )
 }
 
-function WorkerV5DemandMapBody({
-  language,
-  reduceTransparency,
-  runtime,
-}: {
-  language: AppLanguage
-  reduceTransparency: boolean
-  runtime: WorkerV5Runtime
-}) {
-  const deal = runtime.state.deal
-  const profile = runtime.workerProfile
-  const districts = profile?.districts?.length ? profile.districts : []
-  const profileLocation = typeof profile?.home_lat === 'number' &&
-    Number.isFinite(profile.home_lat) &&
-    typeof profile.home_lng === 'number' &&
-    Number.isFinite(profile.home_lng)
-    ? { lat: profile.home_lat, lng: profile.home_lng, provider: 'vietmap' as const }
-    : null
-  const [searchValue, setSearchValue] = useState('')
-  const [searchPending, setSearchPending] = useState(false)
-  const [searchFallback, setSearchFallback] = useState(false)
-  const [suggestions, setSuggestions] = useState<WorkerV5PlaceSuggestion[]>([])
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
-  const [selectedLocation, setSelectedLocation] = useState<WorkerV5MapLocation | null>(null)
-  const resolveRequestRef = useRef(0)
-  const activeMapLocation = selectedLocation ?? profileLocation
-  const priorityAreas = districts.length
-    ? districts.map((district) => formatWorkerDistrict(district, language)).join(', ')
-    : textByLanguage(language, 'Thiết lập trong hồ sơ thợ', 'Set this in the worker profile')
-
-  useEffect(() => {
-    const trimmed = searchValue.trim()
-    if (trimmed.length < 2) {
-      setSearchPending(false)
-      setSearchFallback(false)
-      setSuggestions([])
-      return
-    }
-
-    let cancelled = false
-    setSearchPending(true)
-    const timer = setTimeout(() => {
-      void placesService.autocomplete({ input: trimmed }).then((result) => {
-        if (cancelled) return
-        if (!result.success) {
-          setSearchFallback(true)
-          setSuggestions([])
-          return
-        }
-        setSearchFallback(result.data.fallback_used)
-        setSuggestions(result.data.suggestions)
-      }).finally(() => {
-        if (!cancelled) setSearchPending(false)
-      })
-    }, 260)
-
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [searchValue])
-
-  const selectSuggestion = (suggestion: WorkerV5PlaceSuggestion) => {
-    const requestId = resolveRequestRef.current + 1
-    resolveRequestRef.current = requestId
-    setSearchValue(suggestion.label)
-    setSelectedLabel(suggestion.label)
-    setSuggestions([])
-    setSearchFallback(false)
-    setSearchPending(true)
-    void placesService.resolve({ label: suggestion.label, place_id: suggestion.place_id }).then((result) => {
-      if (resolveRequestRef.current !== requestId) return
-      if (result.success && result.data.location && result.data.provider !== 'fallback') {
-        setSelectedLocation({
-          lat: result.data.location.lat,
-          lng: result.data.location.lng,
-          provider: result.data.provider,
-        })
-        setSearchFallback(result.data.fallback_used)
-        return
-      }
-      setSelectedLocation(null)
-      setSearchFallback(true)
-    }).finally(() => {
-      if (resolveRequestRef.current === requestId) setSearchPending(false)
-    })
-  }
-
-  return (
-    <View style={styles.sectionStack}>
-      <WorkerV5SearchPill
-        fallbackUsed={searchFallback}
-        language={language}
-        onChangeText={setSearchValue}
-        onSelectSuggestion={selectSuggestion}
-        pending={searchPending}
-        placeholder={textByLanguage(language, 'Tìm khu vực, địa chỉ hoặc loại việc...', 'Search area, address, or job type...')}
-        reduceTransparency={reduceTransparency}
-        suggestions={suggestions}
-        value={searchValue}
-      />
-      <WorkerV5MapStage
-        activeLocation={activeMapLocation}
-        deal={deal}
-        language={language}
-        profile={profile}
-        reduceTransparency={reduceTransparency}
-        selectedLabel={selectedLabel}
-        testID="worker-v5-demand-map-panel"
-      />
-      <WorkerV5SectionHeader
-        action={deal ? textByLanguage(language, 'Cập nhật từ việc thật', 'Updated from real work') : textByLanguage(language, 'Chưa có tín hiệu', 'No signal yet')}
-        title={textByLanguage(language, 'Vùng ưu tiên', 'Priority areas')}
-      />
-      <InfoListCard aura="demandMap" reduceTransparency={reduceTransparency}>
-        {deal ? (
-          <WorkerV5InfoRow icon="jobs" label={localizedServiceLabel(deal.draft.serviceType, language)} value={buildDealSummary(deal, language)} />
-        ) : (
-          <WorkerV5InfoRow icon="jobs" label={textByLanguage(language, 'Cơ hội thật', 'Real opportunities')} value={textByLanguage(language, 'Chưa có cơ hội phù hợp trong trạng thái hiện tại', 'No matching opportunity in the current state')} />
-        )}
-        <WorkerV5InfoRow
-          icon="map"
-          label={textByLanguage(language, 'Vùng ưu tiên', 'Priority areas')}
-          value={priorityAreas}
-        />
-      </InfoListCard>
-    </View>
-  )
-}
-
-function WorkerV5InboxTabs({
-  activeCount,
-  language,
-  newCount,
-  onSelect,
-  reduceTransparency,
-  savedCount,
-  selectedTab,
-}: {
-  activeCount: number
-  language: AppLanguage
-  newCount: number
-  onSelect: (tab: WorkerV5InboxTabId) => void
-  reduceTransparency: boolean
-  savedCount: number
-  selectedTab: WorkerV5InboxTabId
-}) {
-  const empty = textByLanguage(language, 'Chưa có', 'None')
-  const tabs: Array<{ id: WorkerV5InboxTabId; label: string }> = [
-    {
-      id: 'matches',
-      label: `${textByLanguage(language, 'Phù hợp', 'Matches')} · ${activeCount > 0 ? activeCount : empty}`,
-    },
-    {
-      id: 'new',
-      label: `${textByLanguage(language, 'Mới', 'New')} · ${newCount > 0 ? newCount : empty}`,
-    },
-    {
-      id: 'saved',
-      label: `${textByLanguage(language, 'Đã lưu', 'Saved')} · ${savedCount > 0 ? savedCount : empty}`,
-    },
-  ]
-  return (
-    <View style={[styles.inboxTabs, reduceTransparency && styles.opaqueCard]} testID="worker-v5-inbox-tabs">
-      {tabs.map((tab) => (
-        <Pressable
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tab.id === selectedTab }}
-          key={tab.id}
-          onPress={() => onSelect(tab.id)}
-          style={({ pressed }) => [
-            tab.id === selectedTab ? styles.inboxTabActive : styles.inboxTab,
-            pressed ? styles.pressed : null,
-          ]}
-          testID={`worker-v5-inbox-tab-${tab.id}`}
-        >
-          <Text style={tab.id === selectedTab ? styles.inboxTabText : styles.inboxTabMuted} numberOfLines={1}>{tab.label}</Text>
-        </Pressable>
-      ))}
-    </View>
-  )
-}
-
 function WorkerV5OpportunityInboxBody({
   language,
   reduceTransparency,
@@ -1661,56 +1365,52 @@ function WorkerV5OpportunityInboxBody({
   runtime: WorkerV5Runtime
 }) {
   const router = useRouter()
-  const [selectedInboxTab, setSelectedInboxTab] = useState<WorkerV5InboxTabId>('matches')
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null)
   const deal = runtime.state.deal
-  const broadcast = deal?.broadcast
-  const newOpportunityDeal = broadcast?.status === 'sent' ? deal : null
-  const visibleDeal = selectedInboxTab === 'matches'
-    ? deal
-    : selectedInboxTab === 'new'
-      ? newOpportunityDeal
-      : null
-  const realOpportunityCount = deal ? 1 : 0
-  const openMap = () => router.replace('/(worker)/jobs?ns_worker_screen=1.3-demand-map' as never)
-  const openOffer = () => {
-    if (!visibleDeal) return
-    router.replace('/(worker)/jobs?ns_worker_screen=2.2-offer-detail' as never)
+  const currentDeal = workerV5JobsDestinationScreenId(deal) === '2.1-opportunity-inbox' ? null : deal
+  const isIncoming = currentDeal?.status === 'broadcasting' && currentDeal.broadcast?.status === 'sent'
+  const isCurrentMissionSelected = selectedMissionId === currentDeal?.id
+  const openCurrentWork = () => {
+    if (!currentDeal) return
+    const target = requireWorkerV5Screen(workerV5JobsDestinationScreenId(currentDeal))
+    const route = routeForWorkerV5Screen(target)
+    const shouldShowArrivalGate = currentDeal.status === 'arrived' && target.id === '2.7-in-progress'
+    router.replace((shouldShowArrivalGate ? `${route}&ns_arrival_gate=1` : route) as never)
   }
+  const openKaelIntake = () => router.replace('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake' as never)
 
   return (
     <View style={styles.opportunityInboxStack} testID="worker-v5-opportunity-inbox-handoff">
-      <WorkerV5InboxTabs
-        activeCount={realOpportunityCount}
-        language={language}
-        newCount={newOpportunityDeal ? 1 : 0}
-        onSelect={setSelectedInboxTab}
-        reduceTransparency={reduceTransparency}
-        savedCount={0}
-        selectedTab={selectedInboxTab}
-      />
-      <WorkerV5BoundaryNote
-        title={textByLanguage(language, 'Quyền quyết định', 'Decision owner')}
-        body={textByLanguage(language, 'Kael chỉ sắp xếp và giải thích. Không cơ hội nào được tự động nhận.', 'Kael only sorts and explains. No opportunity is accepted automatically.')}
-      />
       <View style={styles.opportunityList} testID="worker-v5-opportunity-list">
-        {visibleDeal ? (
-          <WorkerV5OpportunityCard deal={visibleDeal} fallbackJobIcon={workerV5Icons.jobs} language={language} reduceTransparency={reduceTransparency} serviceIcons={workerV5ServiceIcons} />
+        {currentDeal ? (
+          <WorkerV5OpportunityCard
+            deal={currentDeal}
+            fallbackJobIcon={workerV5Icons.jobs}
+            language={language}
+            onSelect={() => setSelectedMissionId(currentDeal.id)}
+            reduceTransparency={reduceTransparency}
+            selected={isCurrentMissionSelected}
+            serviceIcons={workerV5ServiceIcons}
+          />
         ) : (
-          <WorkerV5OpportunityEmptyCard jobIcon={workerV5Icons.jobs} language={language} reduceTransparency={reduceTransparency} tab={selectedInboxTab} />
+          <WorkerV5OpportunityEmptyCard jobIcon={workerV5Icons.jobs} language={language} reduceTransparency={reduceTransparency} tab="matches" />
         )}
       </View>
       <WorkerV5ActionRail
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
         primaryButtonFill={WorkerV5PrimaryButtonFill}
         zipAura={WorkerV5CustomerZipMintAura}
-        onPrimary={openOffer}
-        onSecondary={openMap}
-        primary={textByLanguage(language, 'Mở đề nghị tốt nhất', 'Open best offer')}
-        primaryDisabled={!visibleDeal}
+        onPrimary={isCurrentMissionSelected ? openCurrentWork : undefined}
+        onSecondary={openKaelIntake}
+        primary={isIncoming
+          ? textByLanguage(language, 'Xem & nhận việc', 'Review and accept')
+          : textByLanguage(language, 'Tiếp tục công việc', 'Continue work')}
+        primaryDisabled={!currentDeal || !isCurrentMissionSelected}
         primaryTestID="worker-v5-primary-action"
+        primaryVariant={isCurrentMissionSelected ? "source" : "default"}
         reduceTransparency={reduceTransparency}
-        secondary={textByLanguage(language, 'Xem bản đồ', 'View map')}
-        secondaryTestID="worker-v5-opportunity-map-action"
+        secondary={textByLanguage(language, 'Kael nhận việc', 'Kael job intake')}
+        secondaryTestID="worker-v5-opportunity-kael-action"
       />
     </View>
   )
@@ -1726,21 +1426,38 @@ function WorkerV5OfferDetailBody({
   runtime: WorkerV5Runtime
 }) {
   const router = useRouter()
+  const [acceptBusy, setAcceptBusy] = useState(false)
   const [declineBusy, setDeclineBusy] = useState(false)
+  const decisionBusyRef = useRef(false)
   const deal = runtime.state.deal
+  const profile = runtime.workerProfile
+  const checks = buildWorkerV5AcceptReviewChecks(deal, profile, language)
+  const passedCount = checks.filter((item) => item.state === 'done').length
+  const canAccept = workerV5CanAcceptOpenOffer(deal, runtime.state.workerGate)
   const canDecline = deal?.status === 'broadcasting' && deal.broadcast?.status === 'sent'
   const addressRows = buildWorkerV5OfferAddressRows(deal, language)
   const requestRows = buildWorkerV5OfferRequestRows(deal, language)
-  const openAcceptReview = () => {
-    if (!deal) return
-    router.replace('/(worker)/jobs?ns_worker_screen=2.3-accept-review' as never)
+  const confirmAccept = async () => {
+    if (!canAccept || decisionBusyRef.current) return
+    decisionBusyRef.current = true
+    setAcceptBusy(true)
+    try {
+      const ok = await runtime.actions.workerAcceptBroadcast()
+      if (ok) router.replace('/(worker)/jobs?ns_worker_screen=2.7-in-progress' as never)
+    } finally {
+      decisionBusyRef.current = false
+      setAcceptBusy(false)
+    }
   }
   const declineOffer = async () => {
-    if (!canDecline || declineBusy) return
+    if (!canDecline || decisionBusyRef.current) return
+    decisionBusyRef.current = true
     setDeclineBusy(true)
     try {
-      await runtime.actions.workerDeclineBroadcast()
+      const ok = await runtime.actions.workerDeclineBroadcast()
+      if (ok) router.replace('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox' as never)
     } finally {
+      decisionBusyRef.current = false
       setDeclineBusy(false)
     }
   }
@@ -1792,75 +1509,15 @@ function WorkerV5OfferDetailBody({
         testID="worker-v5-offer-request-list"
         zipAura={WorkerV5CustomerZipMintAura}
       />
-      <WorkerV5ActionRail
-        caseWideAura={WorkerV5CustomerCaseWideMintAura}
-        primaryButtonFill={WorkerV5PrimaryButtonFill}
-        zipAura={WorkerV5CustomerZipMintAura}
-        onPrimary={openAcceptReview}
-        onSecondary={canDecline ? () => void declineOffer() : undefined}
-        primary={textByLanguage(language, 'Tiếp tục nhận việc', 'Continue to accept')}
-        primaryDisabled={!deal}
-        primaryTestID="worker-v5-offer-continue-action"
-        reduceTransparency={reduceTransparency}
-        secondary={declineBusy ? textByLanguage(language, 'Đang từ chối', 'Declining') : textByLanguage(language, 'Từ chối', 'Decline')}
-        secondaryTestID="worker-v5-offer-decline-action"
-      />
-    </View>
-  )
-}
-
-function WorkerV5AcceptReviewBody({
-  language,
-  reduceTransparency,
-  runtime,
-}: {
-  language: AppLanguage
-  reduceTransparency: boolean
-  runtime: WorkerV5Runtime
-}) {
-  const router = useRouter()
-  const [acceptBusy, setAcceptBusy] = useState(false)
-  const deal = runtime.state.deal
-  const profile = runtime.workerProfile
-  const checks = buildWorkerV5AcceptReviewChecks(deal, profile, language)
-  const passedCount = checks.filter((item) => item.state === 'done').length
-  const canAccept = workerV5CanAcceptOpenOffer(deal, runtime.state.workerGate)
-
-  const confirmAccept = async () => {
-    if (!canAccept || acceptBusy) return
-    setAcceptBusy(true)
-    try {
-      const ok = await runtime.actions.workerAcceptBroadcast()
-      if (ok) router.replace('/(worker)/jobs?ns_worker_screen=2.4-route-eta' as never)
-    } finally {
-      setAcceptBusy(false)
-    }
-  }
-
-  return (
-    <View style={styles.acceptReviewStack} testID="worker-v5-accept-review-handoff">
-      <WorkerV5AcceptSummaryCard
-        caseWideAura={WorkerV5CustomerCaseWideMintAura}
-        deal={deal}
-        jobIcon={workerV5Icons.jobs}
-        language={language}
-        reduceTransparency={reduceTransparency}
-        serviceIcons={workerV5ServiceIcons}
-        zipAura={WorkerV5CustomerZipMintAura}
-      />
       <WorkerV5SectionHeader
         action={textByLanguage(language, `${passedCount}/${checks.length} điều kiện`, `${passedCount}/${checks.length} checks`)}
-        title={textByLanguage(language, 'Kael đã kiểm tra', 'Kael checked')}
+        title={textByLanguage(language, 'Sẵn sàng nhận việc', 'Ready to accept')}
       />
       <WorkerV5AcceptChecklistCard
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
         checks={checks}
         reduceTransparency={reduceTransparency}
         zipAura={WorkerV5CustomerZipMintAura}
-      />
-      <WorkerV5SectionHeader
-        action={textByLanguage(language, 'Bạn có thể xem lại', 'You can review')}
-        title={textByLanguage(language, 'Cam kết khi nhận việc', 'Acceptance commitment')}
       />
       <WorkerV5AcceptCommitmentCard
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
@@ -1876,99 +1533,236 @@ function WorkerV5AcceptReviewBody({
         reduceTransparency={reduceTransparency}
         zipAura={WorkerV5CustomerZipMintAura}
       />
-      <WorkerV5AcceptConfirmButton
-        disabled={!canAccept || acceptBusy}
-        label={acceptBusy ? textByLanguage(language, 'Đang xác nhận', 'Confirming') : textByLanguage(language, 'Xác nhận nhận việc', 'Confirm accept')}
-        onPress={() => void confirmAccept()}
+      {runtime.state.lastError ? (
+        <WorkerV5BoundaryNote
+          title={textByLanguage(language, 'Chưa cập nhật được', 'Could not update')}
+          body={runtime.state.lastError}
+        />
+      ) : null}
+      <WorkerV5ActionRail
+        caseWideAura={WorkerV5CustomerCaseWideMintAura}
+        primaryButtonFill={WorkerV5PrimaryButtonFill}
+        zipAura={WorkerV5CustomerZipMintAura}
+        onPrimary={canAccept ? () => void confirmAccept() : undefined}
+        onSecondary={canDecline ? () => void declineOffer() : undefined}
+        primary={acceptBusy ? textByLanguage(language, 'Đang nhận việc', 'Accepting') : textByLanguage(language, 'Nhận việc', 'Accept job')}
+        primaryDisabled={!canAccept || acceptBusy}
+        primaryTestID="worker-v5-accept-confirm-action"
         reduceTransparency={reduceTransparency}
+        secondary={declineBusy ? textByLanguage(language, 'Đang từ chối', 'Declining') : textByLanguage(language, 'Từ chối', 'Decline')}
+        secondaryTestID="worker-v5-offer-decline-action"
       />
     </View>
   )
 }
 
 function WorkerV5InProgressBody({
+  actionBusy,
   language,
   navigateJobChat,
+  onTravelAction,
   reduceTransparency,
   runtime,
 }: {
+  actionBusy: boolean
   language: AppLanguage
   navigateJobChat: () => void
+  onTravelAction: () => void
   reduceTransparency: boolean
   runtime: WorkerV5Runtime
 }) {
+  const params = useLocalSearchParams<WorkerV5RouteParams>()
   const router = useRouter()
   const deal = runtime.state.deal
+  const isArrivalGateRequested = firstRouteParam(params.ns_arrival_gate) === '1'
+  const isAwaitingArrival = Boolean(
+    deal && (
+      ['worker_matched', 'worker_on_way'].includes(deal.status)
+      || (deal.status === 'arrived' && isArrivalGateRequested)
+    ),
+  )
   const briefLines = deal?.broadcast?.prebrief?.filter(Boolean).slice(0, 5) ?? []
-  const evidenceUrls = deal?.completionPhotoUrls ?? []
-  const [fieldEvidencePhotos, setFieldEvidencePhotos] = useState<WorkerV5PrivateKaelMediaPreview[]>([])
+  const evidenceUrls = deal?.fieldEvidencePhotoUrls ?? []
+  const currentJobId = deal?.broadcast?.jobId ?? deal?.id ?? null
+  const [fieldEvidenceUrls, setFieldEvidenceUrls] = useState<Array<string | null>>([null, null, null])
   const [fieldEvidenceBusy, setFieldEvidenceBusy] = useState(false)
-  const localEvidenceUrls = fieldEvidencePhotos.map((item) => item.uri)
-  const visibleEvidenceUrls = [...evidenceUrls, ...localEvidenceUrls]
-  const evidenceCount = visibleEvidenceUrls.length
+  const [fieldEvidenceBusySlot, setFieldEvidenceBusySlot] = useState<number | null>(null)
+  const [fieldEvidenceKaelConfirmation, setFieldEvidenceKaelConfirmation] = useState<string | null>(null)
+  const fieldEvidenceSessionRef = useRef<WorkerV5PrivateKaelSession | null>(null)
+  const activeFieldEvidenceJobIdRef = useRef<string | null>(null)
+  const previousFieldEvidenceJobIdRef = useRef(currentJobId)
+  if (previousFieldEvidenceJobIdRef.current !== currentJobId) {
+    previousFieldEvidenceJobIdRef.current = currentJobId
+    setFieldEvidenceUrls([null, null, null])
+    setFieldEvidenceBusy(false)
+    setFieldEvidenceBusySlot(null)
+    setFieldEvidenceKaelConfirmation(null)
+    fieldEvidenceSessionRef.current = null
+  }
+  activeFieldEvidenceJobIdRef.current = currentJobId
+  const visibleEvidenceUrls = [0, 1, 2].map((slot) => evidenceUrls[slot] ?? fieldEvidenceUrls[slot] ?? null)
+  const evidenceCount = visibleEvidenceUrls.filter((url): url is string => Boolean(url)).length
   const progressItems = briefLines.map((line, index) => ({
     meta: index === briefLines.length - 1 ? textByLanguage(language, 'Đang kiểm', 'Active') : textByLanguage(language, 'Đã đọc', 'Read'),
     state: index === briefLines.length - 1 ? 'active' as const : 'done' as const,
     title: line,
   }))
-  const pickFieldEvidence = async (source: 'camera' | 'library') => {
+
+  const addFieldEvidence = async (source: 'camera' | 'library', slot: number) => {
     if (fieldEvidenceBusy) return
+
     const permission = source === 'camera'
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      Alert.alert('Kael', source === 'camera'
-        ? textByLanguage(language, 'Cần quyền camera để chụp bằng chứng hiện trường.', 'Camera permission is needed to capture on-site evidence.')
-        : textByLanguage(language, 'Cần quyền thư viện ảnh để chọn bằng chứng hiện trường.', 'Photo library permission is needed to choose on-site evidence.'))
+      Alert.alert(
+        'Kael',
+        textByLanguage(
+          language,
+          source === 'camera'
+            ? 'Cần quyền camera để chụp ảnh hiện trường cho Kael.'
+            : 'Cần quyền kho ảnh để gửi ảnh hiện trường cho Kael.',
+          source === 'camera'
+            ? 'Camera permission is needed to capture on-site evidence for Kael.'
+            : 'Photo-library permission is needed to send on-site evidence to Kael.',
+        ),
+      )
       return
     }
+
     const result = source === 'camera'
       ? await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.82,
-      })
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.82,
+        })
       : await ImagePicker.launchImageLibraryAsync({
-        allowsMultipleSelection: true,
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.82,
-        selectionLimit: 3,
-      })
+          allowsMultipleSelection: false,
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.82,
+        })
     if (result.canceled || result.assets.length === 0) return
-
-    const picked = result.assets.slice(0, source === 'camera' ? 1 : 3).map((asset, index) => ({
-      fileName: workerV5PrivateKaelMediaName(asset, index, language),
-      uri: asset.uri,
-    }))
-    setFieldEvidencePhotos((current) => [...current, ...picked])
-
-    const jobId = deal?.broadcast?.jobId ?? deal?.id ?? null
-    if (!jobId) return
-
-    const mediaDrafts: LocalMediaUploadDraft[] = picked.map((item) => ({
-      fileName: item.fileName,
-      type: 'image',
-      uri: item.uri,
-    }))
-    setFieldEvidenceBusy(true)
-    try {
-      const uploaded = await uploadJobMediaDrafts(jobId, mediaDrafts, 'before')
-      if (!uploaded.success) {
-        Alert.alert('Kael', uploaded.error)
-      }
-    } catch {
-      Alert.alert('Kael', textByLanguage(language, 'Chưa thể tải bằng chứng hiện trường. Vui lòng thử lại.', 'Could not upload on-site evidence yet. Please try again.'))
-    } finally {
-      setFieldEvidenceBusy(false)
+    if (!currentJobId) {
+      Alert.alert('Kael', textByLanguage(language, 'Chưa tìm thấy việc đang thực hiện để gắn ảnh.', 'No active job was found to attach this photo.'))
+      return
     }
+
+    const asset = result.assets[0]
+    setFieldEvidenceBusy(true)
+    setFieldEvidenceBusySlot(slot)
+    setFieldEvidenceKaelConfirmation(textByLanguage(language, 'Kael đang nhận ảnh hiện trường…', 'Kael is receiving the on-site photo…'))
+    try {
+      const uploaded = await uploadJobMediaDrafts(currentJobId, [{
+        fileName: workerV5PrivateKaelMediaName(asset, slot, language),
+        fileSizeBytes: asset.fileSize ?? undefined,
+        mimeType: asset.mimeType ?? undefined,
+        type: 'image',
+        uri: asset.uri,
+      }], 'before')
+      if (!uploaded.success) {
+        if (activeFieldEvidenceJobIdRef.current === currentJobId) {
+          setFieldEvidenceKaelConfirmation(textByLanguage(
+            language,
+            'Chưa thể gắn ảnh hiện trường vào việc lúc này.',
+            'The on-site photo could not be attached to the job right now.',
+          ))
+        }
+        return
+      }
+
+      if (activeFieldEvidenceJobIdRef.current !== currentJobId) return
+      setFieldEvidenceUrls((current) => current.map((url, index) => index === slot ? uploaded.mediaRefs[0] ?? asset.uri : url))
+      void runtime.actions.workerRefresh()
+
+      let sessionId = fieldEvidenceSessionRef.current?.jobId === currentJobId
+        ? fieldEvidenceSessionRef.current.sessionId
+        : null
+      if (!sessionId) {
+        const created = await workerKaelChatService.create({
+          client_request_id: generateClientRequestId(),
+          job_id: currentJobId,
+          language,
+        })
+        if (!created.success || created.data.session.job_id !== currentJobId) {
+          setFieldEvidenceKaelConfirmation(textByLanguage(language, 'Kael chưa mở được phiên xác nhận hiện trường.', 'Kael could not open the on-site confirmation session.'))
+          return
+        }
+        sessionId = created.data.session.id
+        fieldEvidenceSessionRef.current = { jobId: currentJobId, sessionId }
+      }
+
+      const confirmed = await workerKaelChatService.streamTurn(sessionId, {
+        client_request_id: generateClientRequestId(),
+        language,
+        media_refs: uploaded.mediaRefs,
+        message: textByLanguage(
+          language,
+          'Tôi đã gửi ảnh hiện trường. Hãy đối chiếu ảnh với phạm vi đang thực hiện, chỉ nêu quan sát có căn cứ và hướng dẫn báo đổi phạm vi nếu có phần phát sinh.',
+          'I uploaded an on-site photo. Compare it with the active scope, state only grounded observations, and direct me to report a scope change if extra work is present.',
+        ),
+      }, {
+        onStage: () => undefined,
+        onToken: () => undefined,
+      })
+      if (!confirmed.success) {
+        setFieldEvidenceKaelConfirmation(textByLanguage(
+          language,
+          'Ảnh đã được gắn vào việc, nhưng Kael chưa xác nhận được lúc này.',
+          'The photo was attached to the job, but Kael could not confirm it right now.',
+        ))
+        return
+      }
+      if (activeFieldEvidenceJobIdRef.current !== currentJobId) return
+      const confirmation = [...confirmed.data.turns]
+        .reverse()
+        .find((turn) => turn.role === 'kael' && turn.text_content?.trim())
+        ?.text_content
+        ?.trim()
+      setFieldEvidenceKaelConfirmation(confirmation ?? textByLanguage(
+        language,
+        'Ảnh đã được gắn vào việc. Kael chưa trả về xác nhận mới.',
+        'The photo was attached to the job. Kael has not returned a new confirmation.',
+      ))
+    } catch {
+      if (activeFieldEvidenceJobIdRef.current === currentJobId) {
+        setFieldEvidenceKaelConfirmation(textByLanguage(language, 'Kael chưa xác nhận được ảnh lúc này. Ảnh vẫn không làm thay đổi trạng thái việc.', 'Kael could not confirm this photo right now. The photo did not change the job status.'))
+      }
+    } finally {
+      if (activeFieldEvidenceJobIdRef.current === currentJobId) {
+        setFieldEvidenceBusy(false)
+        setFieldEvidenceBusySlot(null)
+      }
+    }
+  }
+
+  const chooseFieldEvidenceSource = (slot: number) => {
+    Alert.alert(
+      textByLanguage(language, 'Ảnh hiện trường', 'On-site photo'),
+      textByLanguage(language, 'Kael sẽ đối chiếu ảnh này với phạm vi công việc hiện tại.', 'Kael will compare this photo with the active work scope.'),
+      [
+        { style: 'cancel', text: textByLanguage(language, 'Hủy', 'Cancel') },
+        { onPress: () => void addFieldEvidence('library', slot), text: textByLanguage(language, 'Kho ảnh', 'Photo library') },
+        { onPress: () => void addFieldEvidence('camera', slot), text: textByLanguage(language, 'Chụp ảnh', 'Take photo') },
+      ],
+    )
+  }
+
+  if (isAwaitingArrival) {
+    return (
+      <WorkerV5InProgressTravelGate
+        actionBusy={actionBusy}
+        deal={deal}
+        language={language}
+        navigateJobChat={navigateJobChat}
+        onArrivalAcknowledged={() => router.replace('/(worker)/jobs?ns_worker_screen=2.7-in-progress' as never)}
+        onTravelAction={onTravelAction}
+        reduceTransparency={reduceTransparency}
+      />
+    )
   }
 
   return (
     <View style={styles.sectionStack}>
       <WorkerV5TimerCard deal={deal} language={language} reduceTransparency={reduceTransparency} sourceCount={progressItems.length} />
-      <WorkerV5SectionHeader
-        action={textByLanguage(language, 'Trực tiếp', 'Live')}
-        title={textByLanguage(language, 'Tiến độ công việc', 'Work progress')}
-      />
       {progressItems.length ? (
         <WorkerV5WorkProgressBoard
           caseWideAura={WorkerV5CustomerCaseWideMintAura}
@@ -1983,23 +1777,24 @@ function WorkerV5InProgressBody({
         title={textByLanguage(language, 'Bằng chứng hiện trường', 'On-site evidence')}
       />
       <WorkerV5EvidenceTray
+        addPhotoDisabled={fieldEvidenceBusy}
         emptyLabel={textByLanguage(language, 'Chưa có', 'None')}
         evidenceIcon={workerV5Icons.evidence}
         language={language}
+        onAddPhoto={chooseFieldEvidenceSource}
         reduceTransparency={reduceTransparency}
+        uploadingSlot={fieldEvidenceBusySlot}
         urls={visibleEvidenceUrls}
       />
-      <WorkerV5EvidencePickerActions
-        busy={fieldEvidenceBusy}
-        caseWideAura={WorkerV5CustomerCaseWideMintAura}
-        documentIcon={workerV5Icons.document}
-        evidenceIcon={workerV5Icons.evidence}
-        language={language}
-        onCamera={() => void pickFieldEvidence('camera')}
-        onLibrary={() => void pickFieldEvidence('library')}
-        reduceTransparency={reduceTransparency}
-        sourceCardSkin={WorkerV5SourceCardSkin}
-      />
+      {fieldEvidenceKaelConfirmation ? (
+        <Text
+          numberOfLines={3}
+          style={styles.fieldEvidenceKaelConfirmation}
+          testID="worker-v5-field-evidence-kael-confirmation"
+        >
+          {fieldEvidenceKaelConfirmation}
+        </Text>
+      ) : null}
       <WorkerV5ActionRail
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
         primaryButtonFill={WorkerV5PrimaryButtonFill}
@@ -2016,6 +1811,52 @@ function WorkerV5InProgressBody({
     </View>
   )
 }
+
+const WorkerV5InProgressTravelGate = memo(function WorkerV5InProgressTravelGate({
+  actionBusy,
+  deal,
+  language,
+  navigateJobChat,
+  onArrivalAcknowledged,
+  onTravelAction,
+  reduceTransparency,
+}: {
+  actionBusy: boolean
+  deal: LocalDeal | null
+  language: AppLanguage
+  navigateJobChat: () => void
+  onArrivalAcknowledged: () => void
+  onTravelAction: () => void
+  reduceTransparency: boolean
+}) {
+  const routePreview = useWorkerV5RoutePreview(deal, true)
+  const confirmArrivalGate = () => {
+    if (deal?.status === 'arrived') {
+      onArrivalAcknowledged()
+      return
+    }
+    onTravelAction()
+  }
+  return (
+    <WorkerV5RouteEtaBody
+      actionBusy={actionBusy}
+      caseWideAura={WorkerV5CustomerCaseWideMintAura}
+      deal={deal}
+      etaSummaryComponent={WorkerV5EtaSummaryCard}
+      language={language}
+      navigateJobChat={navigateJobChat}
+      onPrimary={confirmArrivalGate}
+      primaryLabel={deal?.status === 'worker_matched'
+        ? textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel')
+        : textByLanguage(language, 'Xác nhận đã tới', 'Confirm arrival')}
+      primaryFill={WorkerV5PrimaryButtonFill}
+      reduceTransparency={reduceTransparency}
+      routeMapComponent={WorkerV5RouteMapStage}
+      routePreview={routePreview}
+      zipAura={WorkerV5CustomerZipMintAura}
+    />
+  )
+})
 
 function WorkerV5ScopeChangeBody({
   language,
@@ -2048,7 +1889,9 @@ function WorkerV5ScopeChangeBody({
     setScopeDescription((current) => current.trim() ? current : scope.requestedDescription || '')
     setScopeReason((current) => current.trim() ? current : scope.reason || '')
   }, [scope?.id, scope?.reason, scope?.requestedDescription])
+  const fieldEvidenceUrls = deal?.fieldEvidencePhotoUrls ?? []
   const scopeEvidenceUrls = Array.from(new Set([
+    ...fieldEvidenceUrls,
     ...scopePhotos.map((item) => item.uri),
     ...(scope?.evidencePhotoUrls ?? []),
     ...scopeUploadedEvidenceRefs,
@@ -2083,7 +1926,12 @@ function WorkerV5ScopeChangeBody({
       }
       uploadedRefs = uploaded.mediaRefs
     }
-    const nextEvidenceRefs = Array.from(new Set([...(scope?.evidencePhotoUrls ?? []), ...scopeUploadedEvidenceRefs, ...uploadedRefs]))
+    const nextEvidenceRefs = Array.from(new Set([
+      ...fieldEvidenceUrls,
+      ...(scope?.evidencePhotoUrls ?? []),
+      ...scopeUploadedEvidenceRefs,
+      ...uploadedRefs,
+    ])).slice(0, 5)
     setScopeUploadedEvidenceRefs((current) => Array.from(new Set([...current, ...uploadedRefs])))
     const ok = await runtime.actions.requestScopeChange({
       new_description: scopeDescription.trim(),
@@ -2123,14 +1971,6 @@ function WorkerV5ScopeChangeBody({
   return (
     <View style={styles.sectionStack}>
       <WorkerV5ProgressRail activeStep={4} language={language} />
-      <WorkerV5ScopeChangeHero
-        caseWideAura={WorkerV5CustomerCaseWideMintAura}
-        language={language}
-        reduceTransparency={reduceTransparency}
-        scope={scope}
-        scopeIcon={workerV5Icons.scope}
-        zipAura={WorkerV5CustomerZipMintAura}
-      />
       <WorkerV5SectionHeader
         action={textByLanguage(language, 'Kael hỗ trợ soạn', 'Kael drafts')}
         title={textByLanguage(language, 'Đề xuất thay đổi', 'Change proposal')}
@@ -2251,6 +2091,24 @@ function WorkerV5KaelOrbScreenSurface({
       { rotate: '-10deg' },
     ],
   }))
+  const composer = useMemo(
+    () => mode === 'intake' && !canUseWorkerV5PrivateKaelChat(deal)
+      ? (
+          <WorkerV5KaelIntakeReadinessActions
+            language={language}
+            navigateToScreen={navigateToScreen}
+            reduceTransparency={reduceTransparency}
+          />
+        )
+      : (
+        <WorkerV5KaelOrbComposer
+          language={language}
+          mode={mode}
+          reduceTransparency={reduceTransparency}
+        />
+      ),
+    [deal, language, mode, navigateToScreen, reduceTransparency],
+  )
 
   useEffect(() => {
     if (!modeMenuOpen) return
@@ -2302,7 +2160,7 @@ function WorkerV5KaelOrbScreenSurface({
             <Pressable
               accessibilityLabel={language === 'vi' ? 'Quay lại' : 'Back'}
               accessibilityRole="button"
-              onPress={() => navigateToScreen('1.2-shift-brief')}
+              onPress={() => navigateToScreen('2.1-opportunity-inbox')}
               style={({ pressed }) => [styles.kaelOrbCustomerTopControl, pressed ? styles.pressed : null]}
               testID="worker-v5-back"
             >
@@ -2367,25 +2225,55 @@ function WorkerV5KaelOrbScreenSurface({
           ) : null}
 
           <WorkerV5KaelOrbBody
-            composer={(
-              <WorkerV5KaelOrbComposer
-                language={language}
-                mode={mode}
-                reduceTransparency={reduceTransparency}
-              />
-            )}
+            composer={composer}
             deal={deal}
             fallbackJobIcon={workerV5Icons.jobs}
             language={language}
             mode={mode}
             modeMenuOpen={modeMenuOpen}
-            onOpenOpportunity={() => navigateToScreen('2.2-offer-detail')}
+            onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
             reduceTransparency={reduceTransparency}
             serviceIcons={workerV5ServiceIcons}
           />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  )
+}
+
+function WorkerV5KaelIntakeReadinessActions({
+  language,
+  navigateToScreen,
+  reduceTransparency,
+}: {
+  language: AppLanguage
+  navigateToScreen: (id: WorkerV5ScreenId) => void
+  reduceTransparency: boolean
+}) {
+  return (
+    <View
+      style={[styles.kaelIntakeReadinessCard, reduceTransparency && styles.opaqueCard]}
+      testID="worker-v5-kael-intake-readiness"
+    >
+      <Text style={styles.kaelIntakeReadinessTitle}>
+        {textByLanguage(language, 'Tăng cơ hội phù hợp', 'Improve matching readiness')}
+      </Text>
+      <Text style={styles.kaelIntakeReadinessBody}>
+        {textByLanguage(
+          language,
+          'Kỹ năng và khu vực trong hồ sơ được dùng để lọc cơ hội. Kael chỉ tư vấn; bạn vẫn là người quyết định nhận việc.',
+          'Profile skills and service areas are used to filter opportunities. Kael advises; you still decide whether to accept.',
+        )}
+      </Text>
+      <KaelButton
+        label={textByLanguage(language, 'Cập nhật kỹ năng & khu vực', 'Update skills & area')}
+        onPress={() => navigateToScreen('5.3-skills-service-area')}
+        showPrimaryGradient={false}
+        style={styles.kaelIntakeReadinessButton}
+        testID="worker-v5-kael-optimize-profile"
+        variant="secondary"
+      />
+    </View>
   )
 }
 
@@ -2514,7 +2402,7 @@ function WorkerV5KaelChatBody({
       fallbackJobIcon={workerV5Icons.jobs}
       language={language}
       mode="normal"
-      onOpenOpportunity={() => navigateToScreen('2.2-offer-detail')}
+      onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(runtime.state.deal))}
       reduceTransparency={reduceTransparency}
       serviceIcons={workerV5ServiceIcons}
     />
@@ -2545,7 +2433,7 @@ function WorkerV5KaelJobIntakeBody({
       fallbackJobIcon={workerV5Icons.jobs}
       language={language}
       mode="intake"
-      onOpenOpportunity={() => navigateToScreen('2.2-offer-detail')}
+      onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(runtime.state.deal))}
       reduceTransparency={reduceTransparency}
       serviceIcons={workerV5ServiceIcons}
     />
@@ -3421,59 +3309,19 @@ function WorkerV5RouteMapStage({
   deal,
   language,
   reduceTransparency,
+  routePreview,
 }: {
   deal: LocalDeal | null
   language: AppLanguage
   reduceTransparency: boolean
+  routePreview: WorkerV5RoutePreviewState
 }) {
-  const metadataLocation = useMemo(() => workerV5RouteMapLocationFromDeal(deal), [deal])
-  const metadataLabel = useMemo(() => workerV5RouteMapLabelFromDeal(deal), [deal])
-  const routeLabel = deal ? routeDestinationLabel(deal, language) : null
-  const [resolvedRoute, setResolvedRoute] = useState<{ label: string; location: WorkerV5MapLocation } | null>(null)
-  const resolveRequestRef = useRef(0)
-  const activeLocation = metadataLocation ?? resolvedRoute?.location ?? null
-  const activeLabel = metadataLabel ?? resolvedRoute?.label ?? routeLabel ?? textByLanguage(language, 'Điểm đến đã đồng bộ', 'Synced destination')
-
-  useEffect(() => {
-    const input = routeLabel?.trim() ?? ''
-    const requestId = resolveRequestRef.current + 1
-    resolveRequestRef.current = requestId
-    setResolvedRoute(null)
-
-    if (!deal || metadataLocation || input.length < 2) {
-      return
-    }
-
-    let cancelled = false
-    void placesService.autocomplete({ input }).then((autocompleteResult) => {
-      if (cancelled || resolveRequestRef.current !== requestId) return
-      if (!autocompleteResult.success) {
-        return
-      }
-      const suggestion = autocompleteResult.data.suggestions[0]
-      if (!suggestion) {
-        return
-      }
-      return placesService.resolve({ label: suggestion.label, place_id: suggestion.place_id }).then((resolveResult) => {
-        if (cancelled || resolveRequestRef.current !== requestId) return
-        if (resolveResult.success && resolveResult.data.location && resolveResult.data.provider !== 'fallback') {
-          setResolvedRoute({
-            label: resolveResult.data.label ?? suggestion.label,
-            location: {
-              lat: resolveResult.data.location.lat,
-              lng: resolveResult.data.location.lng,
-              provider: resolveResult.data.provider,
-            },
-          })
-          return
-        }
-      })
-    }).catch(() => undefined)
-
-    return () => {
-      cancelled = true
-    }
-  }, [deal, metadataLocation, routeLabel])
+  const destinationLabel = workerV5ArrivalDestinationLabel(deal, language)
+  const originLabel = routePreview.locationStatus === 'ready'
+    ? textByLanguage(language, 'Vị trí của bạn đang được cập nhật', 'Your position is updating')
+    : routePreview.locationStatus === 'denied'
+      ? textByLanguage(language, 'Bật vị trí để tính quãng đường và thời gian đến', 'Enable location for distance and ETA')
+      : textByLanguage(language, 'Đang lấy vị trí của bạn', 'Getting your position')
 
   return (
     <View style={[styles.mapPanel, reduceTransparency && styles.opaqueCard]} testID="worker-v5-route-map-panel">
@@ -3484,23 +3332,121 @@ function WorkerV5RouteMapStage({
           testID="worker-v5-route-map-mint-aura"
         />
       ) : null}
-      {activeLocation ? (
-        <WorkerV5VietMapStaticPreview
-          label={activeLabel}
+      {routePreview.mapUri ? (
+        <WorkerV5AuthenticatedRouteMapPreview
+          label={destinationLabel}
           language={language}
-          location={activeLocation}
+          uri={routePreview.mapUri}
         />
       ) : (
         <View style={styles.mapUnavailable} testID="worker-v5-route-vietmap-empty-state">
           <Text style={styles.mapUnavailableTitle}>
-            {textByLanguage(language, 'Chưa có tọa độ VietMap thật', 'No real VietMap coordinates yet')}
+            {!routePreview.hasRouteDestination
+              ? textByLanguage(language, 'Địa chỉ chưa được mở cho lộ trình', 'The route address is not available yet')
+              : routePreview.locationStatus === 'denied'
+                ? textByLanguage(language, 'Cần bật vị trí để mở bản đồ', 'Enable location to open the map')
+                : routePreview.locationStatus === 'unavailable'
+                  ? textByLanguage(language, 'Chưa thể lấy vị trí hiện tại', 'Current location is unavailable')
+                  : textByLanguage(language, 'Đang lấy vị trí của bạn', 'Getting your current location')}
           </Text>
           <Text style={styles.mapUnavailableMeta}>
-            {textByLanguage(language, 'Bản đồ chỉ hiện khi backend hoặc VietMap đồng bộ điểm đến đã xác thực.', 'The map appears only after the backend or VietMap syncs a verified destination.')}
+            {routePreview.hasRouteDestination
+              ? textByLanguage(language, 'Tuyến đường chỉ dùng tọa độ tòa nhà; số căn và tầng vẫn được bảo vệ.', 'The route uses the building location only; unit and floor remain protected.')
+              : textByLanguage(language, 'Bản đồ chỉ hiện khi backend đã mở điểm đến tòa nhà cho thợ.', 'The map appears only after the backend releases the building destination to the worker.')}
           </Text>
         </View>
       )}
+      {routePreview.mapUri ? (
+        <View style={styles.routeMapCaption} testID="worker-v5-route-map-caption">
+          <Text numberOfLines={1} style={styles.routeMapCaptionTitle}>{originLabel}</Text>
+          <Text numberOfLines={2} style={styles.routeMapCaptionMeta}>{destinationLabel}</Text>
+        </View>
+      ) : null}
     </View>
+  )
+}
+
+function WorkerV5AuthenticatedRouteMapPreview({
+  label,
+  language,
+  uri,
+}: {
+  label: string
+  language: AppLanguage
+  uri: string
+}) {
+  return <WorkerV5AuthenticatedRouteMapImage key={uri} label={label} language={language} uri={uri} />
+}
+
+function WorkerV5AuthenticatedRouteMapImage({
+  label,
+  language,
+  uri,
+}: {
+  label: string
+  language: AppLanguage
+  uri: string
+}) {
+  const [headers, setHeaders] = useState<Record<string, string> | null>(null)
+  const [webUri, setWebUri] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void getMobileApiAuthHeaders().then((nextHeaders) => {
+      if (cancelled) return
+      const imageHeaders = { ...nextHeaders }
+      delete imageHeaders['Content-Type']
+      setHeaders(imageHeaders)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [uri])
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !headers) return
+    let cancelled = false
+    let objectUri: string | null = null
+    void workerRouteService.getMapImage(uri, headers).then((blob) => {
+      objectUri = URL.createObjectURL(blob)
+      if (!cancelled) setWebUri(objectUri)
+    }).catch(() => {
+      if (!cancelled) setFailed(true)
+    })
+    return () => {
+      cancelled = true
+      if (objectUri) URL.revokeObjectURL(objectUri)
+    }
+  }, [headers, uri])
+
+  if (failed) {
+    return (
+      <View style={styles.mapUnavailable} testID="worker-v5-route-map-image-error">
+        <Text style={styles.mapUnavailableTitle}>{textByLanguage(language, 'Chưa thể tải bản đồ tuyến đường', 'Route map is unavailable')}</Text>
+        <Text style={styles.mapUnavailableMeta}>{label}</Text>
+      </View>
+    )
+  }
+
+  if (!headers || (Platform.OS === 'web' && !webUri)) {
+    return (
+      <View style={styles.mapUnavailable} testID="worker-v5-route-map-image-loading">
+        <Text style={styles.mapUnavailableTitle}>{textByLanguage(language, 'Đang tải bản đồ tuyến đường', 'Loading route map')}</Text>
+        <Text style={styles.mapUnavailableMeta}>{label}</Text>
+      </View>
+    )
+  }
+
+  return (
+    <Image
+      accessibilityLabel={textByLanguage(language, `Bản đồ tuyến đường đến ${label}`, `Route map to ${label}`)}
+      onError={() => setFailed(true)}
+      resizeMode="cover"
+      source={Platform.OS === 'web' ? { uri: webUri! } : { headers, uri }}
+      style={styles.mapStaticImage}
+      testID="worker-v5-route-map-live-image"
+    />
   )
 }
 
@@ -4260,24 +4206,6 @@ function getWorkerV5PrimaryAction(
 ): WorkerV5PrimaryAction | null {
   const hasDeal = Boolean(runtime.state.deal)
   switch (screen.id) {
-    case '1.2-shift-brief':
-      return {
-        disabled: busy,
-        label: textByLanguage(language, 'Xem bản đồ cơ hội', 'View opportunity map'),
-        onPress: navigateNext,
-      }
-    case '1.3-demand-map':
-      return {
-        disabled: busy,
-        label: textByLanguage(language, 'Tối ưu việc làm', 'Optimize work'),
-        onPress: navigateNext,
-      }
-    case '1.4-smart-schedule':
-      return {
-        disabled: busy,
-        label: textByLanguage(language, 'Mở hộp thư cơ hội', 'Open opportunity inbox'),
-        onPress: navigateNext,
-      }
     case '2.1-opportunity-inbox':
       return {
         disabled: !hasDeal || busy,
@@ -4290,23 +4218,11 @@ function getWorkerV5PrimaryAction(
         label: textByLanguage(language, 'Tiếp tục nhận việc', 'Continue to accept'),
         onPress: navigateNext,
       }
-    case '2.3-accept-review':
-      return {
-        disabled: !runtime.state.deal?.broadcast || busy,
-        label: busy ? textByLanguage(language, 'Đang xác nhận', 'Confirming') : textByLanguage(language, 'Xác nhận nhận việc', 'Confirm job'),
-        onPress: () => runWorkerAction(runtime.actions.workerAcceptBroadcast),
-      }
     case '2.4-route-eta':
       return {
         disabled: !hasDeal || busy,
         label: busy ? textByLanguage(language, 'Đang cập nhật', 'Updating') : textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel'),
         onPress: () => runWorkerAction(() => runtime.actions.workerUpdateStatus('worker_on_way')),
-      }
-    case '2.5-arrival-checkin':
-      return {
-        disabled: !hasDeal || busy,
-        label: busy ? textByLanguage(language, 'Đang ghi nhận đến nơi', 'Checking in') : textByLanguage(language, 'Ghi nhận đến điểm hẹn', 'Check in on site'),
-        onPress: () => runWorkerAction(() => runtime.actions.workerUpdateStatus('arrived')),
       }
     case '2.7-in-progress':
       return {
@@ -4435,18 +4351,6 @@ function buildHeroLine(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
       return runtime.workerProfile?.legal_name
         ? textByLanguage(language, `Chào ${runtime.workerProfile.legal_name.trim()}`, `Hello ${runtime.workerProfile.legal_name.trim()}`)
         : textByLanguage(language, 'Chào bạn, giải quyết công việc đã sẵn sàng', 'Your work resolution is ready')
-    case '1.2-shift-brief':
-      return runtime.workerProfile?.is_available
-        ? textByLanguage(language, 'Bạn dang mở nhận việc', 'You are accepting jobs')
-        : textByLanguage(language, 'Bạn chua mở nhận việc', 'You are not accepting jobs')
-    case '1.3-demand-map':
-      return deal
-        ? textByLanguage(language, 'Có một việc thật trong vùng làm việc', 'One real work item is in your work area')
-        : textByLanguage(language, 'Chờ dữ liệu cơ hội thật', 'Waiting for real opportunity data')
-    case '1.4-smart-schedule':
-      return deal
-        ? textByLanguage(language, 'Kael chỉ sắp xếp dựa trên việc hiện tại', 'Kael sequences only the current work')
-        : textByLanguage(language, 'Chưa đủ dữ liệu để tối ưu lịch', 'Not enough data to optimize the schedule')
     case '2.1-opportunity-inbox':
       return deal
         ? textByLanguage(language, 'Có đề nghị hoặc việc đang cần xử lý', 'A real offer or work item needs attention')
@@ -4455,14 +4359,10 @@ function buildHeroLine(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
       return deal
         ? textByLanguage(language, 'Xem kỹ đề nghị trước khi quyết định', 'Review the offer before deciding')
         : textByLanguage(language, 'Chưa có đề nghị để mở', 'No offer to open')
-    case '2.3-accept-review':
-      return textByLanguage(language, 'Bạn là người quyết định nhận việc', 'You decide whether to accept')
     case '2.4-route-eta':
       return deal
         ? textByLanguage(language, 'Cập nhật di chuyển từ việc hiện tại', 'Travel updates use the current work')
         : textByLanguage(language, 'Chưa có việc dang di chuyển', 'No en-route work')
-    case '2.5-arrival-checkin':
-      return textByLanguage(language, 'Đến nơi tạo mốc việc chính thức', 'Check-in creates the official work milestone')
     case '2.7-in-progress':
       return deal
         ? textByLanguage(language, 'Đang xử lý việc thật', 'Working on the real work')
@@ -4539,24 +4439,6 @@ function buildHeroBody(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
         'Tổng quan dùng hồ sơ thợ, trạng thái nhận việc và việc thật đã đồng bộ.',
         'Overview uses synced worker profile, availability, and real work state.',
       )
-    case '1.2-shift-brief':
-      return textByLanguage(
-        language,
-        'Bản tin chỉ tóm tắt điều kiện đã biết: dịch vụ, khu vực, xác minh và cảnh báo bắt buộc.',
-        'The brief summarizes known readiness: services, areas, verification, and required cautions.',
-      )
-    case '1.3-demand-map':
-      return textByLanguage(
-        language,
-        'Bản đồ ưu tiên chỉ hiện nhu cầu đã xác thực; điểm việc xuất hiện khi có việc thật.',
-        'The map shows verified demand only; a job marker appears when the current state has a real job.',
-      )
-    case '1.4-smart-schedule':
-      return textByLanguage(
-        language,
-        'Lịch đề xuất giữ Kael ở vai trò tư vấn; mọi nhận việc hoặc đổi lịch vẫn cần thợ xác nhận.',
-        'The schedule keeps Kael advisory; accepting or changing work still requires the worker.',
-      )
     case '2.1-opportunity-inbox':
       return textByLanguage(
         language,
@@ -4569,23 +4451,11 @@ function buildHeroBody(screen: WorkerV5ScreenDefinition, runtime: WorkerV5Runtim
         'Chi tiết đề nghị giữ thông tin nhạy cảm theo trạng thái việc và không tự nhận việc.',
         'Offer details respect work-state privacy and never accept work on their own.',
       )
-    case '2.3-accept-review':
-      return textByLanguage(
-        language,
-        'Nút xác nhận gửi đúng hành động nhận đề nghị của thợ; Kael chỉ kiểm tra và giải thích.',
-        'The confirm button uses the worker offer-accept action; Kael only checks and explains.',
-      )
     case '2.4-route-eta':
       return textByLanguage(
         language,
         'Di chuyển cập nhật qua quy trình NestScout để khách nhận tín hiệu đúng, không tự hứa thời gian đến mới.',
         'Travel updates through NestScout so customers get accurate signals without a new ETA promise.',
-      )
-    case '2.5-arrival-checkin':
-      return textByLanguage(
-        language,
-        'Đến nơi là hành động rõ của thợ, gắn với vùng vị trí hoặc bằng chứng thủ công.',
-        'Check-in is an explicit worker action tied to geofence or manual evidence.',
       )
     case '2.7-in-progress':
       return textByLanguage(
@@ -4732,19 +4602,19 @@ function buildDealSummary(deal: LocalDeal | null, language: AppLanguage) {
 }
 
 function workerV5OfferHeaderSubtitle(deal: LocalDeal | null, language: AppLanguage) {
-  const code = deal?.displayCode || deal?.broadcast?.jobId || deal?.id
+  const code = workerV5DisplayCode(deal, language)
   if (code) return textByLanguage(language, `Mã việc ${code}`, `Work ${code}`)
   return textByLanguage(language, 'Đề nghị từ dữ liệu thật', 'Offer from real data')
 }
 
 function workerV5CaseHeaderSubtitle(deal: LocalDeal | null, language: AppLanguage) {
-  const code = deal?.displayCode || deal?.broadcast?.jobId || deal?.id
+  const code = workerV5DisplayCode(deal, language)
   if (code) return textByLanguage(language, `Case ${code}`, `Case ${code}`)
   return textByLanguage(language, 'Case chờ khách phê duyệt', 'Case waiting for customer approval')
 }
 
 function workerV5TravelHeaderSubtitle(deal: LocalDeal | null, language: AppLanguage) {
-  const code = deal?.displayCode || deal?.broadcast?.jobId || deal?.id
+  const code = workerV5DisplayCode(deal, language)
   if (code) return textByLanguage(language, `Mã việc ${code}`, `Work ${code}`)
   return null
 }
@@ -5438,87 +5308,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 16,
   },
-  workerHomeKaelAddress: {
-    color: color.text.secondary,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
-  },
-  workerHomeKaelBriefLine: {
-    color: color.text.secondary,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 16,
-    paddingHorizontal: 4,
-  },
-  workerHomeKaelContext: {
-    backgroundColor: 'rgba(247,255,252,0.9)',
-    borderColor: 'rgba(184,231,223,0.76)',
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 10,
-    padding: 12,
-  },
-  workerHomeKaelDisclaimer: {
-    color: color.text.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    lineHeight: 14,
-  },
-  workerHomeKaelMetric: {
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    borderColor: 'rgba(216,235,232,0.78)',
-    borderRadius: 14,
-    borderWidth: 1,
-    flex: 1,
-    gap: 3,
-    minHeight: 52,
-    minWidth: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  workerHomeKaelMetricGrid: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  workerHomeKaelMetricLabel: {
-    color: color.text.muted,
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0,
-    lineHeight: 12,
-    textTransform: 'uppercase',
-  },
-  workerHomeKaelMetricValue: {
-    color: color.text.strong,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
-  },
-  workerHomeKaelRiskStatus: {
-    color: color.brand.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
-    minWidth: 42,
-    textAlign: 'right',
-  },
-  workerHomeKaelStack: {
-    gap: 10,
-  },
-  workerHomeKaelStatusRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  workerHomeKaelStatusText: {
-    color: color.brand.primaryDark,
-    flex: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 15,
-  },
   kickerText: {
     color: color.brand.primaryDark,
     fontSize: 12,
@@ -5567,6 +5356,31 @@ const styles = StyleSheet.create({
     right: -10,
     top: -18,
     zIndex: 1,
+  },
+  routeMapCaption: {
+    backgroundColor: 'rgba(248,255,252,0.92)',
+    borderColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 14,
+    borderWidth: 1,
+    bottom: 12,
+    left: 12,
+    maxWidth: '82%',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    position: 'absolute',
+    zIndex: 3,
+  },
+  routeMapCaptionMeta: {
+    color: color.text.secondary,
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 15,
+  },
+  routeMapCaptionTitle: {
+    color: color.brand.primaryDark,
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 15,
   },
   mapStaticImage: {
     height: '100%',
@@ -5719,52 +5533,11 @@ const styles = StyleSheet.create({
   opaqueCard: {
     backgroundColor: color.mint.white,
   },
-  inboxTab: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 42,
-    paddingVertical: 12,
-  },
-  inboxTabActive: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderRadius: 20,
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 42,
-    paddingVertical: 12,
-  },
-  inboxTabMuted: {
-    color: color.text.muted,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  inboxTabText: {
-    color: color.brand.primaryDark,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  inboxTabs: {
-    backgroundColor: 'rgba(222,242,238,0.72)',
-    borderColor: 'rgba(255,255,255,0.88)',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    flexDirection: 'row',
-    padding: 4,
-  },
   opportunityInboxStack: {
     gap: 8,
   },
   opportunityList: {
     gap: 8,
-  },
-  demandMapPageZipAura: {
-    height: 320,
-    opacity: 0.28,
-    right: -92,
-    top: 150,
-    width: 360,
   },
   opportunityInboxPageZipAura: {
     height: 340,
@@ -5781,21 +5554,6 @@ const styles = StyleSheet.create({
     width: 390,
   },
   offerDetailPageLowerAura: {
-    bottom: 84,
-    height: 320,
-    left: -58,
-    opacity: 0.24,
-    right: -58,
-    top: 'auto',
-  },
-  acceptReviewPageZipAura: {
-    height: 340,
-    opacity: 0.24,
-    right: -92,
-    top: 120,
-    width: 390,
-  },
-  acceptReviewPageLowerAura: {
     bottom: 84,
     height: 320,
     left: -58,
@@ -6067,6 +5825,13 @@ const styles = StyleSheet.create({
   },
   sectionStack: {
     gap: 14,
+  },
+  fieldEvidenceKaelConfirmation: {
+    color: color.text.secondary,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+    paddingHorizontal: 2,
   },
   sectionHeader: {
     alignItems: 'center',
@@ -6498,6 +6263,31 @@ const styles = StyleSheet.create({
     transform: [{ translateY: 7 }],
     position: 'relative',
     zIndex: 3,
+  },
+  kaelIntakeReadinessCard: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderColor: color.mint.mint100,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 8,
+    marginTop: 10,
+    padding: 14,
+    ...shadow.soft,
+  },
+  kaelIntakeReadinessTitle: {
+    color: color.text.strong,
+    fontSize: 15,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  kaelIntakeReadinessBody: {
+    color: color.text.secondary,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  kaelIntakeReadinessButton: {
+    marginTop: 2,
   },
   kaelOrbComposerAura: {
     ...StyleSheet.absoluteFillObject,

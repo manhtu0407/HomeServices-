@@ -1,30 +1,21 @@
-import type { ComponentType, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import {
   Image,
   Pressable,
   Text as RNText,
   View,
-  type ImageSourcePropType,
-  type StyleProp,
   type TextProps,
-  type ViewStyle,
 } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
-import { KaelTextField, MintAura } from '@/components/ui/kael-primitives'
+import { KaelTextField } from '@/components/ui/kael-primitives'
 import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { WorkerV5IconName } from '../dock/types'
 import { textByLanguage } from '../ui/format'
-import { scopeChangeDeltaLabel, scopeChangeStatusLabel } from '../ui/labels'
+import { scopeChangeDeltaLabel } from '../ui/labels'
 import { styles } from './scope-styles'
-
-type WorkerV5ScopeAuraComponent = ComponentType<{
-  scope: string
-  style?: StyleProp<ViewStyle>
-  testID?: string
-}>
 
 type WorkerV5ScopeInfoRowProps = {
   icon: WorkerV5IconName
@@ -39,44 +30,6 @@ type WorkerV5ScopeMediaPreview = {
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
-}
-
-export function WorkerV5ScopeChangeHero({
-  caseWideAura: CaseWideAura,
-  language,
-  reduceTransparency,
-  scope,
-  scopeIcon,
-  zipAura: ZipAura,
-}: {
-  caseWideAura: WorkerV5ScopeAuraComponent
-  language: AppLanguage
-  reduceTransparency: boolean
-  scope: LocalDeal['scopeChange']
-  scopeIcon: ImageSourcePropType
-  zipAura: WorkerV5ScopeAuraComponent
-}) {
-  const title = scope?.requestedDescription || textByLanguage(language, 'Chưa có phát sinh thật', 'No real extra scope')
-  const reason = scope?.reason || textByLanguage(language, 'Cần thông tin trước khi gửi khách phê duyệt', 'Details are required before customer review')
-  return (
-    <View style={[styles.scopeHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-scope-change-hero">
-      {!reduceTransparency ? (
-        <>
-          <CaseWideAura scope="ScopeChangeHeroWide" style={styles.scopeHeroAura} testID="worker-v5-scope-change-mint-aura" />
-          <ZipAura scope="ScopeChangeHeroFine" style={styles.scopeHeroZipAura} testID="worker-v5-scope-change-zip-mint-aura" />
-        </>
-      ) : null}
-      <View style={styles.scopeHeroIconTile}>
-        {!reduceTransparency ? <MintAura intensity="iconTile" style={styles.iconTileMintAura} /> : null}
-        <Image source={scopeIcon} style={styles.scopeHeroIcon} />
-      </View>
-      <View style={[styles.scopeHeroText, !scope && styles.scopeHeroTextNoPill]}>
-        {scope ? <Text style={styles.scopeHeroPill} numberOfLines={1}>{scopeChangeStatusLabel(scope.status, language)}</Text> : null}
-        <Text style={[styles.scopeHeroTitle, !scope && styles.scopeHeroTitleNoPill]} numberOfLines={2}>{title}</Text>
-        <Text style={styles.scopeHeroMeta} numberOfLines={2}>{reason}</Text>
-      </View>
-    </View>
-  )
 }
 
 export function WorkerV5ScopeEvidenceGate({

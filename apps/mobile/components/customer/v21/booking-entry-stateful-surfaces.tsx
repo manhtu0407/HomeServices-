@@ -11,11 +11,11 @@ import {
 
 import { KaelButton, KaelChip, KaelTextField, KaelTextInput } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
-import { SERVICE_TYPES, type ServiceType } from '@nestscout/shared'
+import { CUSTOMER_SERVICE_IDS, type CustomerServiceId } from '@nestscout/shared'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { SourceCardSkin } from './aura-surfaces'
-import { customerV21Assets, customerV21ServiceAssets } from './assets'
+import { customerV21Assets, customerV21BookingServiceAssets } from './assets'
 import { BookingDraftButtonAura, BookingProblemChipAura, BookingSearchMintBorder, BookingSuggestedChipAura } from './aura-surfaces'
 import { customerV21BookingStyles as bookingStyles } from './booking-styles'
 import { customerV21SharedStyles as sharedStyles } from './shared-styles'
@@ -26,7 +26,7 @@ type BookingSearchSuggestionView = {
   label: string
   problem?: string
   selected: boolean
-  serviceType: ServiceType
+  serviceType: CustomerServiceId
 }
 
 type BookingAddressSuggestionView = {
@@ -112,6 +112,7 @@ export function CustomerBookingEntryView({
   onSearchSuggestionPress,
   onServiceSelect,
   onSubmit,
+  performanceIntakeNode,
   problemOptions,
   reduceTransparency,
   rootStyles,
@@ -127,6 +128,8 @@ export function CustomerBookingEntryView({
   textInputNoOutlineStyle,
   timeSlots,
   tokens,
+  usesPerformanceIntake,
+  submitDisabled = false,
 }: {
   address: string
   addressFallbackUsed: boolean
@@ -157,8 +160,9 @@ export function CustomerBookingEntryView({
   onScheduleTimeSelect: (value: string) => void
   onSearchQueryChange: (value: string) => void
   onSearchSuggestionPress: (suggestion: BookingSearchSuggestionView) => void
-  onServiceSelect: (service: ServiceType) => void
+  onServiceSelect: (service: CustomerServiceId) => void
   onSubmit: () => void
+  performanceIntakeNode?: ReactNode
   problemOptions: string[]
   reduceTransparency: boolean
   rootStyles: RootBookingStyles
@@ -168,12 +172,14 @@ export function CustomerBookingEntryView({
   selectedProblems: string[]
   selectedScheduleDate: string | null
   selectedScheduleTime: string | null
-  selectedService: ServiceType | null
+  selectedService: CustomerServiceId | null
   selectedServiceCopy: { label: string; note: string } | null
   serviceSearchQuery: string
   textInputNoOutlineStyle: StyleProp<TextStyle>
   timeSlots: readonly string[]
   tokens: CustomerThemeTokens
+  usesPerformanceIntake: boolean
+  submitDisabled?: boolean
 }) {
   return (
     <>
@@ -252,7 +258,7 @@ export function CustomerBookingEntryView({
           {selectedService && selectedServiceCopy ? (
             <V21Card style={[rootStyles.selectedServiceCard, bookingStyles.bookingSelectedServiceCard]} testID="customer-v21-selected-service">
               <SourceCardSkin testID="customer-v21-booking-selected-card-skin" />
-              <AssetTile image={customerV21ServiceAssets[selectedService]} label={selectedServiceCopy.label} size={44} sourceAura />
+              <AssetTile image={customerV21BookingServiceAssets[selectedService]} label={selectedServiceCopy.label} size={44} sourceAura />
               <View style={rootStyles.flex}>
                 <Text style={[sharedStyles.cardTitle, { color: tokens.text }]}>{selectedServiceCopy.label}</Text>
                 <Text style={[rootStyles.bodyText, { color: tokens.muted }]}>{selectedServiceCopy.note}</Text>
@@ -268,7 +274,7 @@ export function CustomerBookingEntryView({
           ) : null}
           {!selectedService ? (
             <View style={[sharedStyles.serviceGrid, bookingStyles.bookingServiceGrid]}>
-              {SERVICE_TYPES.map((service) => (
+              {CUSTOMER_SERVICE_IDS.map((service) => (
                 <ServiceTile
                   homeAura
                   key={service}
@@ -405,22 +411,24 @@ export function CustomerBookingEntryView({
                 </View>
               </View>
             </View>
-            <View style={bookingStyles.bookingField}>
-              <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Mô tả sự cố' : 'Issue description'}</Text>
-              <KaelTextField
-                inputShellStyle={[bookingStyles.bookingDescriptionInputShell, { backgroundColor: tokens.mode === 'dark' ? tokens.base : '#FFFFFF', borderColor: tokens.border }]}
-                accessibilityLabel={language === 'vi' ? 'Mô tả vấn đề' : 'Issue description'}
-                multiline
-                onChangeText={onDescriptionChange}
-                placeholder={chatPlaceholder}
-                placeholderTextColor={tokens.subtleText}
-                style={[bookingStyles.bookingDescriptionInput, textInputNoOutlineStyle, invisibleTextInputScrollbarStyle, { color: tokens.text }]}
-                testID="customer-v21-booking-description"
-                textAlignVertical="top"
-                value={description}
-              />
-            </View>
-            {selectedService ? (
+            {usesPerformanceIntake ? performanceIntakeNode : (
+              <View style={bookingStyles.bookingField}>
+                <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Mô tả sự cố' : 'Issue description'}</Text>
+                <KaelTextField
+                  inputShellStyle={[bookingStyles.bookingDescriptionInputShell, { backgroundColor: tokens.mode === 'dark' ? tokens.base : '#FFFFFF', borderColor: tokens.border }]}
+                  accessibilityLabel={language === 'vi' ? 'Mô tả vấn đề' : 'Issue description'}
+                  multiline
+                  onChangeText={onDescriptionChange}
+                  placeholder={chatPlaceholder}
+                  placeholderTextColor={tokens.subtleText}
+                  style={[bookingStyles.bookingDescriptionInput, textInputNoOutlineStyle, invisibleTextInputScrollbarStyle, { color: tokens.text }]}
+                  testID="customer-v21-booking-description"
+                  textAlignVertical="top"
+                  value={description}
+                />
+              </View>
+            )}
+            {selectedService && !usesPerformanceIntake ? (
               <View style={[bookingStyles.bookingField, bookingStyles.bookingProblemField]}>
                 <BookingProblemChipAura reduceTransparency={reduceTransparency} />
                 <Text style={[bookingStyles.bookingFieldLabel, { color: tokens.text }]}>{language === 'vi' ? 'Chi tiết' : 'Details'}</Text>
@@ -442,6 +450,7 @@ export function CustomerBookingEntryView({
           {error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-booking-error">{error}</Text> : null}
           <KaelButton
             backgroundLayer={<BookingDraftButtonAura reduceTransparency={reduceTransparency} />}
+            disabled={submitDisabled}
             label={createDraftLabel}
             onPress={onSubmit}
             style={bookingStyles.bookingDraftSubmitButton}

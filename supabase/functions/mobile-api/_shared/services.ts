@@ -19,6 +19,7 @@ import {
   getWorkerEarnings,
   listWorkerJobs,
 } from "./services/workers.service.ts";
+import { getWorkerRouteMap, getWorkerRoutePreview } from "./services/worker-route.service.ts";
 import { projectAddressAccess, authorizeApartmentAccess } from "./services/apartment-access.service.ts";
 
 import {
@@ -121,6 +122,10 @@ export function createEdgeServices(secrets: EdgeAiSecrets): MobileApiServices {
     updateWorkerAvailability,
     listWorkerBroadcasts,
     listWorkerJobs,
+    getWorkerRoutePreview: (ctx, jobId, origin) =>
+      getWorkerRoutePreview(ctx, jobId, origin, secrets),
+    getWorkerRouteMap: (ctx, jobId, origin) =>
+      getWorkerRouteMap(ctx, jobId, origin, secrets),
     getWorkerEarnings,
     invalidateMarketCache,
     evaluatePriceSynthesisAbCase: (ctx, input) =>

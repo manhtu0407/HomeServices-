@@ -581,6 +581,7 @@ export type EdgeWorkerJobListResponse = {
     address_access: EdgeAddressAccessView;
     final_price: number | null;
     estimated_earning: number | null;
+    photo_urls: string[];
     completion_notes: string | null;
     completion_photo_urls: string[];
     worker_brief_guidance?: Record<string, unknown> | null;
@@ -588,6 +589,10 @@ export type EdgeWorkerJobListResponse = {
     matched_at: string | null;
     completed_at: string | null;
   }[];
+};
+export type EdgeWorkerRoutePreviewResponse = {
+  distance_meters: number;
+  duration_seconds: number;
 };
 export type EdgeEarningsResponse = {
   worker_id: string;

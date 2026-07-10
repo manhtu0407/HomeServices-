@@ -451,6 +451,75 @@ describe('mobile-api Edge runtime helpers', () => {
     })
   })
 
+  it('calculates a worker route from the server-held building destination while the unit stays protected', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      code: 'OK',
+      paths: [{ distance: 3_200, time: 720_000 }],
+    })))
+    vi.stubGlobal('fetch', fetchMock)
+    const client = makeSequenceClient([{
+      data: {
+        id: 'job-route-1',
+        status: 'worker_matched',
+        worker_id: 'worker-1',
+        address_lat: 10.7767,
+        address_lng: 106.7009,
+        address_building: 'Tòa A',
+        address_unit: 'A1201',
+        address_floor: '12',
+        address_district: 'Bình Thạnh',
+        apartment_access_profile: {},
+        apartment_access_state: { exact_unit_released: false },
+      },
+      error: null,
+    }])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({ vietmapApiKey: 'vietmap-test-key' }).getWorkerRoutePreview(
+      ctx,
+      'job-route-1',
+      { latitude: 10.7692, longitude: 106.6819 },
+    )).resolves.toEqual({ distance_meters: 3200, duration_seconds: 720 })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses a worker route before the building destination is released', async () => {
+    const client = makeSequenceClient([{
+      data: {
+        id: 'job-route-locked',
+        status: 'broadcasting',
+        worker_id: 'worker-1',
+        address_lat: 10.7767,
+        address_lng: 106.7009,
+        address_building: 'Tòa A',
+        address_unit: 'A1201',
+        address_floor: '12',
+        address_district: 'Bình Thạnh',
+        apartment_access_profile: {},
+        apartment_access_state: { exact_unit_released: false },
+      },
+      error: null,
+    }])
+    const ctx: MobileApiContext = {
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+    }
+
+    await expect(createEdgeServices({ vietmapApiKey: 'vietmap-test-key' }).getWorkerRoutePreview(
+      ctx,
+      'job-route-locked',
+      { latitude: 10.7692, longitude: 106.6819 },
+    )).rejects.toMatchObject({ code: 'ADDRESS_PROTECTED', status: 403 })
+  })
+
   it('uses VietMap autocomplete before falling back to Google Maps', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       new Response(JSON.stringify([{
@@ -4168,6 +4237,7 @@ describe('mobile-api Edge runtime helpers', () => {
           kael_price_max: 250000,
           kael_worker_brief_guidance: null,
           final_price: null,
+          photo_urls: ['supabase://job-media/job-1/before/onsite.jpg'],
           completion_notes: null,
           completion_photo_urls: [],
           created_at: '2026-06-04T00:00:00.000Z',
@@ -4190,6 +4260,7 @@ describe('mobile-api Edge runtime helpers', () => {
         address_building: 'River Gate',
         address_unit: null,
         address_floor: null,
+        photo_urls: ['supabase://job-media/job-1/before/onsite.jpg'],
         district: 'q7',
         address_access: {
           release_stage: 'building_released',

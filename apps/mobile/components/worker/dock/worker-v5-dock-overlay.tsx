@@ -21,7 +21,7 @@ import { KaelCoreV9, type KaelCoreV9Handle } from '@/components/ui/kael-core-v9'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { customerTheme } from '@/design/theme'
 
-import { resolveWorkerV5Language, workerV5Routes } from './routing'
+import { resolveWorkerV5DockActive, resolveWorkerV5Language, workerV5Routes } from './routing'
 import type { WorkerDockActive, WorkerV5IconName, WorkerV5RouteParams } from './types'
 
 const workerV5DockTokens = customerTheme.lightLayer as CustomerThemeTokens
@@ -95,7 +95,8 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   const { collapsed, resetDockScroll } = useDockScrollState()
   const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)
   const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(workerV5DockTokens) : workerV5DockTokens
-  const activeTab = active === WORKER_V5_DOCK_KAEL_ITEM.id ? null : active
+  const resolvedActive = resolveWorkerV5DockActive(workerV5Routes[active], params)
+  const activeTab = resolvedActive === WORKER_V5_DOCK_KAEL_ITEM.id ? null : resolvedActive
   const liquidNavWidth = Math.min(Math.max(width - CUSTOMER_LIQUID_NAV_SIDE_INSET * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
   const liquidDockWidth = Math.max(liquidNavWidth - CUSTOMER_LIQUID_NAV_ORB_SIZE - CUSTOMER_LIQUID_NAV_GAP, CUSTOMER_LIQUID_NAV_DOCK_HEIGHT)
   const selectedIndex = activeTab ? WORKER_V5_DOCK_ROUTE_ITEMS.findIndex((item) => item.id === activeTab) : -1
@@ -112,7 +113,7 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   const dockShimmerX = useSharedValue((0.18 + settledIndex * 0.22) * liquidDockWidth)
   const dockCausticX = useSharedValue(settledIndex * lensWidth)
   const kaelRef = useRef<KaelCoreV9Handle>(null)
-  const kaelActive = active === WORKER_V5_DOCK_KAEL_ITEM.id
+  const kaelActive = resolvedActive === WORKER_V5_DOCK_KAEL_ITEM.id
   const dockCausticWidth = Math.min(118, Math.max(lensWidth + 48, 72))
   const dockCausticLeft = (lensWidth - dockCausticWidth) / 2
   const liquidDockStyles = dockStyles as typeof dockStyles & Record<

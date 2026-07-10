@@ -13,10 +13,10 @@ import {
   WorkerV5SuccessEmblemAura,
 } from '../ui/aura-surfaces'
 import { WorkerV5SectionHeader } from '../ui/primitives-surfaces'
-import { WorkerV5BoundaryNote, WorkerV5SuccessEmblem } from '../ui/metrics-surfaces'
+import { WorkerV5SuccessEmblem } from '../ui/metrics-surfaces'
 import { textByLanguage } from '../ui/format'
 import { workerV5ActualWorkDurationLabel } from '../ui/labels'
-import { WorkerV5InfoGrid, WorkerV5KaelDraftCard } from './shared-surfaces'
+import { WorkerV5InfoGrid } from './shared-surfaces'
 import {
   WorkerV5ActionRail,
   WorkerV5SingleSourceActionButton,
@@ -112,12 +112,6 @@ export function WorkerV5ApprovalWaitBody({
         scope={scope}
         statusTimeline={statusTimeline}
       />
-      <WorkerV5BoundaryNote
-        body={textByLanguage(language, 'Hồ sơ giữ nguyên phạm vi cũ cho tới khi khách phê duyệt trên hệ thống.', 'The case stays on the original scope until the customer approves in the system.')}
-        formulaAura
-        reduceTransparency={reduceTransparency}
-        title={textByLanguage(language, 'Không tự thực hiện phần phát sinh', 'Do not perform extra work')}
-      />
       <WorkerV5ActionRail
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
         primaryButtonFill={primaryFill}
@@ -153,7 +147,11 @@ export function WorkerV5CompletionEvidenceBody({
 }) {
   const deal = runtime.state.deal
   const notes = deal?.completionNotes?.trim()
-  const photoCount = deal?.completionPhotoUrls?.length ?? 0
+  const evidencePhotoUrls = Array.from(new Set([
+    ...(deal?.fieldEvidencePhotoUrls ?? []),
+    ...(deal?.completionPhotoUrls ?? []),
+  ]))
+  const photoCount = evidencePhotoUrls.length
   const checks = buildCompletionChecks(deal, language)
   const passedCount = checks.filter((check) => check.done).length
 
@@ -177,7 +175,7 @@ export function WorkerV5CompletionEvidenceBody({
         evidenceIcon={icons.evidence}
         language={language}
         reduceTransparency={reduceTransparency}
-        urls={deal?.completionPhotoUrls ?? []}
+        urls={evidencePhotoUrls}
       />
       <WorkerV5SectionHeader
         action={`${passedCount}/${checks.length}`}
@@ -188,16 +186,6 @@ export function WorkerV5CompletionEvidenceBody({
         checks={checks}
         formulaAura
         reduceTransparency={reduceTransparency}
-        zipAura={WorkerV5CustomerZipMintAura}
-      />
-      <WorkerV5KaelDraftCard
-        caseWideAura={WorkerV5CustomerCaseWideMintAura}
-        chatIcon={icons.chat}
-        body={textByLanguage(language, 'Kael chỉ đối chiếu phạm vi và nguồn bằng chứng; quyền gửi vẫn là hành động rõ ràng của thợ.', 'Kael only reconciles scope and evidence sources; submission remains an explicit worker action.')}
-        formulaAura
-        language={language}
-        reduceTransparency={reduceTransparency}
-        title={textByLanguage(language, 'Kael đã đối chiếu phạm vi', 'Kael checked the scope')}
         zipAura={WorkerV5CustomerZipMintAura}
       />
       <WorkerV5SingleSourceActionButton
@@ -280,7 +268,8 @@ export function WorkerV5CompletionSubmittedBody({
 }
 
 export function WorkerV5CaseClosedBody({
-  icons,
+  completionRecordIcon,
+  incomeLedgerIcon,
   language,
   navigateToEarnings,
   navigateToRanking,
@@ -288,7 +277,8 @@ export function WorkerV5CaseClosedBody({
   reduceTransparency,
   runtime,
 }: {
-  icons: WorkerV5IconMap
+  completionRecordIcon: ImageSourcePropType
+  incomeLedgerIcon: ImageSourcePropType
   language: AppLanguage
   navigateToEarnings: () => void
   navigateToRanking: () => void
@@ -320,14 +310,11 @@ export function WorkerV5CaseClosedBody({
           { label: textByLanguage(language, 'Điểm xếp hạng', 'Ranking points'), value: rankingDelta && rankingDelta > 0 ? `+${Math.round(rankingDelta)}` : textByLanguage(language, 'Chưa có', 'None') },
         ]}
       />
-      <WorkerV5SectionHeader
-        action={textByLanguage(language, 'Không thể sửa', 'Read only')}
-        title={textByLanguage(language, 'Dấu vết Case', 'Case trail')}
-      />
       <WorkerV5CaseTrailCard
         caseWideAura={WorkerV5CustomerCaseWideMintAura}
+        completionRecordIcon={completionRecordIcon}
         deal={deal}
-        icons={icons}
+        incomeLedgerIcon={incomeLedgerIcon}
         language={language}
         reduceTransparency={reduceTransparency}
         zipAura={WorkerV5CustomerZipMintAura}
