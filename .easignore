@@ -1,0 +1,35 @@
+# Local tooling and agent workspaces
+.agents/
+.claude/
+.codex/
+.tmp/
+tmp/
+output/
+
+# Dependency and build caches
+node_modules/
+**/node_modules/
+.expo/
+**/.expo/
+.turbo/
+**/.turbo/
+.next/
+dist/
+**/dist/
+build/
+coverage/
+*.log
+
+# Local secrets and machine-specific files
+.env*
+!.env.example
+**/.env*.local
+*.p8
+*.p12
+*.pem
+*.key
+*.mobileprovision
+
+# Platform/editor noise
+.DS_Store
+*.tsbuildinfo

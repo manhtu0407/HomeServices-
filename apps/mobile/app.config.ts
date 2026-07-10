@@ -122,7 +122,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   ios: {
     supportsTablet: false,
-    buildNumber: '20',
+    buildNumber: '31',
     bundleIdentifier: 'com.phanmanhtu.homeservices',
     config: {
       usesNonExemptEncryption: false,
