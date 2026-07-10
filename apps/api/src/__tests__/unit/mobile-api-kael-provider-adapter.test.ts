@@ -1,0 +1,133 @@
+import { describe, expect, it } from 'vitest'
+
+import {
+  providerAdapterFor,
+} from '../../../../../supabase/functions/mobile-api/_shared/kael/provider-adapter'
+import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/types'
+
+const pricingAt = new Date('2026-07-10T00:00:00.000Z')
+
+function requestFor(provider: AIRequest['provider']): AIRequest {
+  return {
+    provider,
+    model: provider === 'anthropic'
+      ? 'claude-sonnet-5'
+      : provider === 'deepseek'
+      ? 'deepseek-v4-flash'
+      : 'sonar-pro',
+    messages: [
+      { role: 'system', content: 'System rule.' },
+      { role: 'user', content: 'Safe provider adapter test.' },
+    ],
+    maxTokens: 64,
+    temperature: 0.1,
+    searchDomainFilter: provider === 'perplexity' ? ['example.com'] : undefined,
+    searchContextSize: provider === 'perplexity' ? 'medium' : undefined,
+  }
+}
+
+describe('mobile-api Kael provider adapters', () => {
+  it('declares the current provider capabilities without adding a provider', () => {
+    expect(providerAdapterFor('anthropic').capabilities).toEqual({
+      vision: true,
+      webSearch: false,
+      jsonMode: false,
+      promptCache: true,
+    })
+    expect(providerAdapterFor('deepseek').capabilities).toEqual({
+      vision: false,
+      webSearch: false,
+      jsonMode: true,
+      promptCache: false,
+    })
+    expect(providerAdapterFor('perplexity').capabilities).toEqual({
+      vision: false,
+      webSearch: true,
+      jsonMode: false,
+      promptCache: false,
+    })
+  })
+
+  it('preserves provider request endpoints and provider-specific payload fields', () => {
+    const anthropic = providerAdapterFor('anthropic').buildRequest({
+      request: requestFor('anthropic'),
+      apiKey: 'anthropic-key',
+    })
+    const deepseek = providerAdapterFor('deepseek').buildRequest({
+      request: requestFor('deepseek'),
+      apiKey: 'deepseek-key',
+    })
+    const perplexity = providerAdapterFor('perplexity').buildRequest({
+      request: requestFor('perplexity'),
+      apiKey: 'perplexity-key',
+    })
+
+    expect(anthropic).toMatchObject({
+      url: 'https://api.anthropic.com/v1/messages',
+      headers: { 'x-api-key': 'anthropic-key' },
+      body: { model: 'claude-sonnet-5', max_tokens: 64 },
+    })
+    expect(deepseek).toMatchObject({
+      url: 'https://api.deepseek.com/chat/completions',
+      headers: { Authorization: 'Bearer deepseek-key' },
+      body: { thinking: { type: 'disabled' }, response_format: { type: 'json_object' } },
+    })
+    expect(perplexity).toMatchObject({
+      url: 'https://api.perplexity.ai/v1/sonar',
+      headers: { Authorization: 'Bearer perplexity-key' },
+      body: { search_domain_filter: ['example.com'] },
+    })
+  })
+
+  it('omits unsupported sampling parameters from current Sonnet and Opus requests', () => {
+    const adapter = providerAdapterFor('anthropic')
+    const sonnet = adapter.buildRequest({
+      request: requestFor('anthropic'),
+      apiKey: 'anthropic-key',
+    })
+    const opus = adapter.buildRequest({
+      request: { ...requestFor('anthropic'), model: 'claude-opus-4-8' },
+      apiKey: 'anthropic-key',
+    })
+
+    expect(sonnet.body).not.toHaveProperty('temperature')
+    expect(opus.body).not.toHaveProperty('temperature')
+  })
+
+  it('parses provider responses through the model-price registry', () => {
+    const request = requestFor('perplexity')
+    const response = providerAdapterFor('perplexity').parseResponse({
+      request,
+      data: {
+        choices: [{ message: { content: '{"answer":"safe"}' } }],
+        citations: ['https://example.com/source'],
+        usage: {
+          prompt_tokens: 12,
+          completion_tokens: 7,
+          cost: { total_cost: 0.0123, request_cost: 0.01 },
+          search_context_size: 'medium',
+        },
+      },
+      latencyMs: 12,
+      model: request.model,
+      pricingAt,
+      unknownModelPolicy: 'throw',
+    })
+
+    expect(response).toMatchObject({
+      success: true,
+      content: '{"answer":"safe"}',
+      usage: { inputTokens: 12, outputTokens: 7, costUsd: 0.0123 },
+      citations: ['https://example.com/source'],
+    })
+  })
+
+  it('keeps current circuit failure classifications stable', () => {
+    const adapter = providerAdapterFor('deepseek')
+    expect(adapter.classifyFailure({ httpStatus: 402 })).toBe('credit')
+    expect(adapter.classifyFailure({ httpStatus: 429 })).toBe('rate_limit')
+    expect(adapter.classifyFailure({ httpStatus: 500 })).toBe('server')
+    expect(adapter.classifyFailure({ timedOut: true })).toBe('timeout')
+    expect(adapter.classifyFailure({ httpStatus: 400 })).toBeNull()
+  })
+})

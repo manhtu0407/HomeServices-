@@ -8,11 +8,11 @@ import { KAEL_CHAT_HARD_COST_CAP_USD, asKaelStoredSentiment, compactMetadata, es
 import type { KaelChatTurnRole } from "./_shared.ts";
 import type { KaelChatStatus } from "../../../_shared/contracts.ts";
 import { auditGuardrailTripBestEffort, logApiCalls, apiLogPurposeForPipelineStage } from "./audit.ts";
-import { selfCheckDemandingResponseText } from "./chat.service.ts";
+import { guardDemandingResponseText } from "./chat.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { buildDemandingCustomerResponse, buildEstimateCardOutput, buildKaelMissingInfoArtifactProposal, detectDemandingCustomerPatterns, recordDemandingCustomerInteraction, runKaelPipeline, updateKaelProgress, type EdgeAiSecrets, type PipelineResult } from "../kael/index.ts";
 import { evaluateMessageBoundary } from "../kael/boundary-guard.ts";
-import { runKaelSelfCheckPipeline } from "../kael/self-check.ts";
+import { guardOutput } from "../kael/output-gateway.ts";
 import { readKaelOptimizationFlags } from "../kael/cost-tracking.ts";
 import { normalizeServiceAreaDistrict, sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { KaelChatCreateInput, ServiceType } from "../../../_shared/domain.ts";
@@ -237,11 +237,11 @@ export async function advanceKaelChatEstimate(
     // missing detail. Self-check the AI question before showing it (RULES.md #3);
     // fall back to a safe template if it fails screening — never raw AI text.
     if (pipeline.code === "NEEDS_CLARIFICATION") {
-      const checked = runKaelSelfCheckPipeline({
+      const checked = guardOutput({
         text: pipeline.clarification?.question ?? "",
         actor: "customer",
         language: "vi",
-        semanticGuardEnabled: true,
+        surface: "kael_chat_clarification",
         fallbackText:
           "Bạn mô tả rõ hơn vấn đề đang gặp: vị trí, dấu hiệu và mức độ ảnh hưởng trong căn hộ.",
       });
@@ -345,9 +345,13 @@ export async function advanceKaelChatEstimate(
   const estimate = pipeline.estimate;
   const estimateCardV3 = buildEstimateCardOutput({
     estimate,
-    priceSource: estimatePriceSourceFromStageLogs(pipeline.stageLogs),
+    priceSource: estimate.needs_inspection
+      ? "inspection_required"
+      : estimatePriceSourceFromStageLogs(pipeline.stageLogs),
     baselineUsed:
       `${input.service_type}:${pipeline.serviceProblemId}:${estimate.complexity}`,
+    marketSignals: estimate.market_signals ?? estimate.needs_inspection_reason,
+    needsInspectionReason: estimate.needs_inspection_reason,
   });
   await appendKaelSystemTurn(client, sessionId, {
     contentType: "estimate",
@@ -453,6 +457,19 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
     }
     : detection;
   const response = buildDemandingCustomerResponse(effectiveDetection);
+  const guarded = guardDemandingResponseText(response.responseText);
+  if (guarded.trip) {
+    await auditGuardrailTripBestEffort(client, {
+      jobId: input.jobId,
+      actorId: input.actorId,
+      actorRole: "customer",
+      surface: guarded.trip.surface,
+      reason: guarded.trip.reason,
+      guardrailLabel: guarded.trip.guardrailLabel ?? null,
+      source: guarded.trip.source,
+      safeMetadata: { session_id: input.sessionId },
+    });
+  }
 
   await recordDemandingCustomerInteraction(client, {
     jobId: input.jobId,
@@ -464,7 +481,7 @@ export async function maybeHandleDemandingCustomerKaelChatTurn(
   });
   await appendKaelSystemTurn(client, input.sessionId, {
     contentType: "clarification",
-    text: selfCheckDemandingResponseText(response.responseText),
+    text: guarded.text,
     nextStatus: response.stopAiLoop
       ? "active"
       : input.status === "estimate_ready"

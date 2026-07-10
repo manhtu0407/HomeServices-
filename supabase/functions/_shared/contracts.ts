@@ -18,6 +18,7 @@ export type KaelEstimate = {
   needs_inspection?: boolean;
   price_source?: string | null;
   needs_inspection_reason?: string | null;
+  market_signals?: string | null;
 };
 
 export type CreateJobResponse = {

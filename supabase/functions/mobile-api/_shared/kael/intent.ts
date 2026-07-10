@@ -2,10 +2,10 @@ import { sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { AIMessage, AIProvider, EdgeAiSecrets, IntentAttemptLog, IntentResult } from "./types.ts";
 import { intentResultSchema } from "./types.ts";
 import { buildIntakeDiagnosisMessages, buildIntentMessages } from "./prompts.ts";
-import { callAI } from "./provider-client.ts";
+import { callStructuredAI } from "./structured-call.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { circuitAwareProviderCandidatesForPurpose } from "./routing.ts";
-import { hasUnsupportedRepairIntent, safeParseJSON, scrubSensitiveForLLM, timed } from "./utils.ts";
+import { hasUnsupportedRepairIntent, scrubSensitiveForLLM, timed } from "./utils.ts";
 
 export async function classifyIntent(
   serviceType: string,
@@ -59,7 +59,7 @@ async function classifyIntentWithProvider(
   | { success: false; log: IntentAttemptLog }
 > {
   const attempt = await timed(() =>
-    callAI({
+    callStructuredAI({
       purpose: "intent_classification",
       provider: route.provider,
       model: route.model,
@@ -68,7 +68,7 @@ async function classifyIntentWithProvider(
       temperature: 0.1,
       timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,
-    }, secrets)
+    }, intentResultSchema, secrets)
   );
   const baseLog = {
     provider: route.provider,
@@ -77,35 +77,31 @@ async function classifyIntentWithProvider(
   };
 
   if (!attempt.result.success) {
+    const schemaResponse = attempt.result.code === "SCHEMA_INVALID"
+      ? attempt.result.response
+      : undefined;
     return {
       success: false,
       log: {
         ...baseLog,
         success: false,
-        failureReason: `AI call failed: ${attempt.result.code}`,
-      },
-    };
-  }
-
-  const parsed = safeParseJSON(attempt.result.content);
-  const validated = parsed ? intentResultSchema.safeParse(parsed) : null;
-  if (!validated?.success) {
-    return {
-      success: false,
-      log: {
-        ...baseLog,
-        success: false,
-        failureReason: "AI intent JSON validation failed",
-        inputTokens: attempt.result.usage.inputTokens,
-        outputTokens: attempt.result.usage.outputTokens,
-        costUsd: attempt.result.usage.costUsd,
+        failureReason: schemaResponse
+          ? "AI intent JSON validation failed"
+          : `AI call failed: ${attempt.result.code}`,
+        ...(schemaResponse
+          ? {
+            inputTokens: schemaResponse.usage.inputTokens,
+            outputTokens: schemaResponse.usage.outputTokens,
+            costUsd: schemaResponse.usage.costUsd,
+          }
+          : {}),
       },
     };
   }
 
   return {
     success: true,
-    intent: validated.data,
+    intent: attempt.result.data,
     log: {
       ...baseLog,
       success: true,
@@ -172,7 +168,7 @@ async function diagnoseIntakeWithProvider(
   // Raw maxTokens (not maxTokensForPurpose) so the richer structured diagnosis JSON
   // is not truncated by the intent route's tighter output cap.
   const attempt = await timed(() =>
-    callAI({
+    callStructuredAI({
       purpose: "intent_classification",
       provider: route.provider,
       model: route.model,
@@ -181,7 +177,7 @@ async function diagnoseIntakeWithProvider(
       temperature: 0.2,
       timeoutMs: route.latencyBudgetMs,
       maxRetries: 0,
-    }, secrets)
+    }, intentResultSchema, secrets)
   );
   const baseLog = {
     provider: route.provider,
@@ -190,35 +186,31 @@ async function diagnoseIntakeWithProvider(
   };
 
   if (!attempt.result.success) {
+    const schemaResponse = attempt.result.code === "SCHEMA_INVALID"
+      ? attempt.result.response
+      : undefined;
     return {
       success: false,
       log: {
         ...baseLog,
         success: false,
-        failureReason: `AI call failed: ${attempt.result.code}`,
-      },
-    };
-  }
-
-  const parsed = safeParseJSON(attempt.result.content);
-  const validated = parsed ? intentResultSchema.safeParse(parsed) : null;
-  if (!validated?.success) {
-    return {
-      success: false,
-      log: {
-        ...baseLog,
-        success: false,
-        failureReason: "AI intake-diagnosis JSON validation failed",
-        inputTokens: attempt.result.usage.inputTokens,
-        outputTokens: attempt.result.usage.outputTokens,
-        costUsd: attempt.result.usage.costUsd,
+        failureReason: schemaResponse
+          ? "AI intake-diagnosis JSON validation failed"
+          : `AI call failed: ${attempt.result.code}`,
+        ...(schemaResponse
+          ? {
+            inputTokens: schemaResponse.usage.inputTokens,
+            outputTokens: schemaResponse.usage.outputTokens,
+            costUsd: schemaResponse.usage.costUsd,
+          }
+          : {}),
       },
     };
   }
 
   return {
     success: true,
-    intent: validated.data,
+    intent: attempt.result.data,
     log: {
       ...baseLog,
       success: true,

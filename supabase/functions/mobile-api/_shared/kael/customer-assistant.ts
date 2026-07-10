@@ -1,8 +1,6 @@
 import { z } from "zod";
 import type {
-  AIError,
   AIRequest,
-  AIResponse,
   EdgeAiSecrets,
   ServiceType,
 } from "./types.ts";
@@ -10,9 +8,13 @@ import {
   FALLBACK_PROBLEM_SLUG_BY_SERVICE,
   KAEL_BUSINESS_GUARDRAILS,
 } from "./types.ts";
-import { callAI as defaultCallAI } from "./provider-client.ts";
+import {
+  callStructuredAI,
+  type StructuredAIInvoker,
+} from "./structured-call.ts";
 import {
   evaluateKaelPermissionGateWithBoundaries,
+  hasKaelForbiddenTopicBoundarySignal,
   type KaelTopic,
 } from "./permission-gate.ts";
 import {
@@ -24,7 +26,7 @@ import {
 } from "./knowledge.ts";
 import { circuitAwareProviderCandidatesForPurpose, type ProviderChoice } from "./routing.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
-import { runKaelSelfCheckPipeline } from "./self-check.ts";
+import { guardOutput } from "./output-gateway.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
 import { buildRegisterHint, detectRegionalRegister } from "./regional-register.ts";
 import {
@@ -57,7 +59,7 @@ export type CustomerAssistantInput = {
   readonly job?: CustomerAssistantJobContext | null;
   readonly client?: AssistantClient | null;
   readonly secrets: EdgeAiSecrets;
-  readonly callAI?: (request: AIRequest, secrets: EdgeAiSecrets) => Promise<AIResponse | AIError>;
+  readonly callAI?: StructuredAIInvoker;
 };
 
 export type CustomerAssistantAnswer = {
@@ -131,6 +133,9 @@ export async function runCustomerAssistant(
     jobRelation: input.job ? "own_customer_job" : "none",
     action: input.job ? "read_context" : "generate_advisory",
     topic,
+    intentConfidence: 1,
+    topicSource: "deterministic_rule",
+    boundarySignal: hasKaelForbiddenTopicBoundarySignal(topic, cleanQuestion),
     jobId: input.job?.id ?? null,
   }, input.client ?? undefined);
 
@@ -161,7 +166,7 @@ export async function runCustomerAssistant(
     return fallbackAnswer(fallbackText(language), language, topic, "fallback", true, trace);
   }
   for (const route of routes) {
-    const result = await (input.callAI ?? defaultCallAI)(
+    const result = await callStructuredAI(
       buildAssistantRequest({
         route,
         question: cleanQuestion,
@@ -173,9 +178,24 @@ export async function runCustomerAssistant(
         knowledgePrompt: knowledge?.promptContext ?? null,
         registerHint,
       }),
+      customerAssistantResponseSchema,
       input.secrets,
+      undefined,
+      input.callAI,
     );
     if (!result.success) {
+      const schemaResponse = result.code === "SCHEMA_INVALID"
+        ? result.response
+        : undefined;
+      if (schemaResponse) {
+        trace.push(buildCustomerAssistantProviderTrace(surface, route, "schema_invalid", {
+          code: "INVALID_SCHEMA",
+          latencyMs: schemaResponse.latencyMs,
+          costUsd: schemaResponse.usage.costUsd,
+          fallbackUsed: true,
+        }));
+        continue;
+      }
       trace.push(buildCustomerAssistantProviderTrace(surface, route, "error", {
         code: result.code,
         fallbackUsed: true,
@@ -183,22 +203,11 @@ export async function runCustomerAssistant(
       continue;
     }
 
-    const parsed = customerAssistantResponseSchema.safeParse(parseJsonObject(result.content));
-    if (!parsed.success) {
-      trace.push(buildCustomerAssistantProviderTrace(surface, route, "schema_invalid", {
-        code: "INVALID_SCHEMA",
-        latencyMs: result.latencyMs,
-        costUsd: result.usage.costUsd,
-        fallbackUsed: true,
-      }));
-      continue;
-    }
-
-    const checked = runKaelSelfCheckPipeline({
-      text: parsed.data.answer,
+    const checked = guardOutput({
+      text: result.data.answer,
       actor: "customer",
       language,
-      semanticGuardEnabled: true,
+      surface,
       fallbackText: fallbackText(language),
     });
     if (checked.used_fallback || !checked.allowed) {
@@ -218,14 +227,14 @@ export async function runCustomerAssistant(
     }));
     return {
       answer: checked.text,
-      safety_notes: normalizeSafetyNotes(parsed.data.safety_notes, language, topic),
+      safety_notes: normalizeSafetyNotes(result.data.safety_notes, language, topic),
       citations: normalizeCitations([
-        ...parsed.data.citations,
+        ...result.data.citations,
         ...(knowledge?.semanticCitations ?? []),
         "NestScout platform scope",
       ]),
-      suggested_actions: normalizeActions(parsed.data.suggested_actions, surface, topic),
-      boundary: parsed.data.boundary,
+      suggested_actions: normalizeActions(result.data.suggested_actions, surface, topic),
+      boundary: result.data.boundary,
       fallback_used: false,
       trace,
     };
@@ -574,20 +583,6 @@ function firstString(...values: unknown[]) {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
   return undefined;
-}
-
-function parseJsonObject(raw: string): unknown {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    try {
-      return JSON.parse(match[0]);
-    } catch {
-      return null;
-    }
-  }
 }
 
 function normalizeText(text: string) {

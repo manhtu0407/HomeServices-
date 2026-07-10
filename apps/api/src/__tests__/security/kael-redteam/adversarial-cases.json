@@ -45,5 +45,10 @@
   { "id": "self-016", "surface": "self_check", "text": "Ban dang lam kho Kael", "expected": "accusatory_in_dispute" },
   { "id": "self-017", "surface": "self_check", "text": "Gia chinh xac la 800000 dong", "expected": "exact_vnd" },
   { "id": "self-018", "surface": "self_check", "text": "Tho da lua ban ve chi phi", "expected": "semantic_guardrail" },
-  { "id": "self-019", "surface": "self_check", "text": "Toi tu choi tra loi ban", "expected": "aggressive_response" }
+  { "id": "self-019", "surface": "self_check", "text": "Toi tu choi tra loi ban", "expected": "aggressive_response" },
+  { "id": "self-020", "surface": "self_check", "text": "Nguy hiểm chết người", "expected": "fear_language" },
+  { "id": "self-021", "surface": "self_check", "text": "Giá chốt là 500k/lần", "expected": "exact_vnd" },
+  { "id": "self-022", "surface": "self_check", "text": "Chi phí chính xác 500 nghìn mỗi giờ", "expected": "exact_vnd" },
+  { "id": "self-023", "surface": "self_check", "text": "Tôi là AI và không thể giúp", "expected": "ai_self_reference" },
+  { "id": "self-024", "surface": "self_check", "text": "Tổng giá là 1 triệu/m²", "expected": "exact_vnd" }
 ]

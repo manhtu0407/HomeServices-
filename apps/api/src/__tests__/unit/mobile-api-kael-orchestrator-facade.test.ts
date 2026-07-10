@@ -36,6 +36,9 @@ describe('Kael orchestrator facade', () => {
         jobRelation: 'own_customer_job',
         action: 'synthesize_price',
         topic: 'price_estimate',
+        intentConfidence: 1,
+        topicSource: 'deterministic_rule',
+        boundarySignal: false,
         actorId: 'customer-1',
         jobId: 'job-1',
       },
@@ -53,6 +56,7 @@ describe('Kael orchestrator facade', () => {
       gate_result: 'allow',
       reason_code: 'ALLOW_AUTONOMY_DECISION',
       stage_success: true,
+      stage_status: 'ok',
     })
     expect(result.telemetry.latency_ms).toBeGreaterThanOrEqual(0)
   })
@@ -120,6 +124,9 @@ describe('Kael orchestrator facade', () => {
         jobRelation: 'own_customer_job',
         action: 'review_scope_change',
         topic: 'job_status',
+        intentConfidence: 1,
+        topicSource: 'deterministic_rule',
+        boundarySignal: false,
         actorId: 'customer-1',
         jobId: 'job-1',
       },

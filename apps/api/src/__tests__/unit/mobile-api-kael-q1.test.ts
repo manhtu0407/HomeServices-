@@ -64,6 +64,21 @@ describe('mobile-api Kael Q1 cost tracking', () => {
       outputTokens: 100,
     })).toBe(0.0045)
 
+    expect(estimateProviderCostUsd({
+      provider: 'anthropic',
+      model: 'claude-opus-4-8',
+      inputTokens: 1000,
+      outputTokens: 100,
+    })).toBe(0.0075)
+
+    expect(estimateProviderCostUsd({
+      provider: 'perplexity',
+      model: 'sonar',
+      inputTokens: 1000,
+      outputTokens: 100,
+      searchContextSize: 'low',
+    })).toBe(0.0061)
+
     expect(calculateKaelCostProjection({
       totalCostUsd: 0.25,
       sampleJobs: 50,

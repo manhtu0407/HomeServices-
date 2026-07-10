@@ -15,6 +15,9 @@ function baseAuthority(): KaelAutonomyGateInput['authority'] {
     jobRelation: 'own_customer_job',
     action: 'synthesize_price',
     topic: 'price_estimate',
+    intentConfidence: 1,
+    topicSource: 'deterministic_rule',
+    boundarySignal: false,
     actorId: 'customer-1',
     jobId,
   }
@@ -124,6 +127,23 @@ describe('Kael autonomy invariant gate', () => {
     expect(result.result).toBe('reject')
     expect(result.audit.reason_code).toBe('AUTONOMY_FULL_FLAG_OFF')
     expect(result.audit.safe_metadata.flag).toBe('KAEL_AUTONOMY_FULL_ENABLED')
+  })
+
+  it('keeps an LLM-sourced money authority blocked when confidence policy is not configured', () => {
+    const result = gateAutonomyDecision(gateInput({
+      authority: {
+        ...baseAuthority(),
+        intentConfidence: 0.4,
+        topicSource: 'llm',
+      },
+    }))
+
+    expect(result.result).toBe('reject')
+    expect(result.audit.reason_code).toBe('AUTHORITY_DENIED')
+    expect(result.audit.safe_metadata.authority).toMatchObject({
+      topic_source: 'llm',
+      intent_confidence: 0.4,
+    })
   })
 
   it('allows C2 policy autonomy only when the full-autonomy flag is explicitly enabled', () => {

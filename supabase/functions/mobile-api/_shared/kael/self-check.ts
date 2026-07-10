@@ -1,4 +1,5 @@
 import type { KaelPromptActor, KaelPromptLanguage } from "./system-prompt.ts";
+import { canonicalizeVN } from "./canonicalize-vn.ts";
 
 export type KaelSelfCheckReason =
   | "empty"
@@ -37,6 +38,10 @@ export type KaelSelfCheckPipelineInput = KaelSelfCheckInput & {
 export type KaelSelfCheckPipelineResult = KaelSelfCheckResult & {
   readonly used_regeneration: boolean;
   readonly used_fallback: boolean;
+  readonly initial_failure?: {
+    readonly reason: KaelSelfCheckReason;
+    readonly guardrailLabel?: KaelSemanticGuardLabel;
+  };
 };
 
 export type KaelSemanticGuardLabel =
@@ -121,6 +126,10 @@ const FORBIDDEN_PHRASES: Record<Exclude<KaelSelfCheckReason, "empty" | "exact_vn
 export const KAEL_SELF_CHECK_FORBIDDEN_PHRASES = FORBIDDEN_PHRASES;
 
 const EXACT_VND_PATTERN = /\b\d+(?:[.,]\d+)*\s*(?:vnd|dong)\b/i;
+const DIACRITIC_SENSITIVE_PHRASES: Readonly<Record<string, RegExp>> = {
+  vai: /(?:^|[^\p{L}\p{N}_])(?:vai|vãi)(?=$|[^\p{L}\p{N}_])/iu,
+  om: /(?:^|[^\p{L}\p{N}_])(?:om|ờm)(?=$|[^\p{L}\p{N}_])/iu,
+};
 const CUSTOMER_SENTENCE_WORD_CAP = 20;
 const ENGLISH_SIGNAL_WORDS = [
   "this",
@@ -141,26 +150,26 @@ export function checkKaelResponse(input: KaelSelfCheckInput): KaelSelfCheckResul
     return { allowed: false, text, reason: "empty" };
   }
 
-  const lower = text.toLowerCase();
+  const canonical = canonicalizeVN(text);
   for (const [reason, phrases] of Object.entries(FORBIDDEN_PHRASES) as Array<[
     Exclude<KaelSelfCheckReason, "empty" | "exact_vnd" | "language_mismatch" | "sentence_too_long" | "semantic_guardrail">,
     readonly string[],
   ]>) {
-    if (phrases.some((phrase) => lower.includes(phrase))) {
+    if (phrases.some((phrase) => containsCanonicalPhrase(text, canonical, phrase))) {
       return { allowed: false, text, reason };
     }
   }
 
-  if (EXACT_VND_PATTERN.test(text)) {
+  if (EXACT_VND_PATTERN.test(canonical)) {
     return { allowed: false, text, reason: "exact_vnd" };
   }
 
-  if ((input.language ?? "vi") === "vi" && looksEnglishOnly(lower)) {
+  if ((input.language ?? "vi") === "vi" && looksEnglishOnly(canonical)) {
     return { allowed: false, text, reason: "language_mismatch" };
   }
 
   if (input.semanticGuardEnabled) {
-    const suspicionLabels = detectSemanticGuardSuspicion(text);
+    const suspicionLabels = detectSemanticGuardSuspicion(text, canonical);
     if (suspicionLabels.length > 0) {
       const decision = input.semanticClassifier
         ? input.semanticClassifier({
@@ -197,6 +206,7 @@ export function runKaelSelfCheckPipeline(
       ...first,
       used_regeneration: false,
       used_fallback: false,
+      initial_failure: undefined,
     };
   }
 
@@ -214,6 +224,7 @@ export function runKaelSelfCheckPipeline(
         ...regenerated,
         used_regeneration: true,
         used_fallback: false,
+        initial_failure: selfCheckFailure(first),
       };
     }
   }
@@ -224,7 +235,26 @@ export function runKaelSelfCheckPipeline(
     reason: first.reason,
     used_regeneration: Boolean(input.regenerate),
     used_fallback: true,
+    initial_failure: selfCheckFailure(first),
   };
+}
+
+function selfCheckFailure(result: KaelSelfCheckResult) {
+  return {
+    reason: result.reason ?? "empty",
+    guardrailLabel: result.guardrailLabel,
+  };
+}
+
+function containsCanonicalPhrase(
+  originalText: string,
+  canonicalText: string,
+  phrase: string,
+): boolean {
+  const diacriticSensitive = DIACRITIC_SENSITIVE_PHRASES[phrase];
+  if (diacriticSensitive) return diacriticSensitive.test(originalText.normalize("NFC"));
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|\\b)${escaped}(?:\\b|$)`, "i").test(canonicalText);
 }
 
 export async function auditKaelGuardrailTrip(
@@ -269,8 +299,10 @@ function hasSentenceOverWordCap(text: string, cap: number): boolean {
     .some((sentence) => sentence.split(/\s+/).filter(Boolean).length > cap);
 }
 
-function detectSemanticGuardSuspicion(text: string): KaelSemanticGuardLabel[] {
-  const normalized = normalizeText(text);
+function detectSemanticGuardSuspicion(
+  text: string,
+  normalized = canonicalizeVN(text),
+): KaelSemanticGuardLabel[] {
   const labels: KaelSemanticGuardLabel[] = [];
 
   if (
@@ -325,15 +357,4 @@ function defaultSemanticGuardClassifier(
     allowed: suspicionLabels.length === 0,
     label: suspicionLabels[0],
   };
-}
-
-function normalizeText(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\u0111/g, "d")
-    .replace(/\u0110/g, "D")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
 }

@@ -1,26 +1,60 @@
-import type { AICacheStatus, ComplexityLevel, EdgeAiSecrets, MarketPriceResult, ServiceType } from "./types.ts";
+import { z } from "zod";
+import type {
+  AICacheStatus,
+  ComplexityLevel,
+  EdgeAiSecrets,
+  MarketPriceResult,
+  MarketSourceEvidenceResult,
+  ServiceType,
+} from "./types.ts";
 import type { KaelSpendGate } from "./spend-gate.ts";
-import { marketPriceResultSchema } from "./types.ts";
+import {
+  marketPriceResultSchema,
+  marketSourceEvidenceResultSchema,
+} from "./types.ts";
 import { appendKnowledgeContextToMessages, buildPricingMessages } from "./prompts.ts";
-import { callAI } from "./provider-client.ts";
+import {
+  callStructuredAI,
+  hasStructuredValidationIssue,
+  type StructuredSchema,
+} from "./structured-call.ts";
 import { readKaelOptimizationFlags } from "./cost-tracking.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { circuitAwareProviderCandidatesForPurpose } from "./routing.ts";
+import { logKaelEscalation, selectKaelEscalation } from "./escalation.ts";
 import {
   retrieveKaelKnowledgeContextIfEnabled,
   type KaelKnowledgeContext,
 } from "./knowledge.ts";
 import {
   isSourceTrustPerplexityFilterEnabled,
+  sourceTrustHighValueThresholdVnd,
   trustedPerplexityMarketConfig,
   trustedPerplexityMarketConfigForClient,
   validateCitations,
   type CitationValidationResult,
   type TrustedPerplexityMarketConfig,
 } from "./source-trust.ts";
-import { safeParseJSON } from "./utils.ts";
+import { aggregateTrustedMarketSources } from "./source-trust-aggregation.ts";
 
 const MARKET_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const MARKET_RANGE_ORDER_INVALID = "MARKET_RANGE_ORDER_INVALID";
+const insufficientTrustedDataSchema = z.object({
+  error: z.literal("insufficient_trusted_data"),
+}).strict();
+const marketStructuredResponseSchema = z.union([
+  insufficientTrustedDataSchema,
+  marketPriceResultSchema.refine(
+    (value) => value.market_range_max >= value.market_range_min,
+    { path: ["market_range_max"], message: MARKET_RANGE_ORDER_INVALID },
+  ),
+]);
+const trustedMarketStructuredResponseSchema = z.union([
+  insufficientTrustedDataSchema,
+  marketSourceEvidenceResultSchema,
+]);
+type MarketProviderResponse = z.infer<typeof marketStructuredResponseSchema> |
+  z.infer<typeof trustedMarketStructuredResponseSchema>;
 
 type MarketCacheClient = {
   from(table: string): MarketCacheQuery;
@@ -166,7 +200,10 @@ export async function searchMarketPrice(
       model: trustedConfig?.model ?? route.model,
       safeMetadata: routeSafeMetadata,
     };
-    const result = await callAI({
+    const responseSchema = trustedConfig
+      ? trustedMarketStructuredResponseSchema
+      : marketStructuredResponseSchema;
+    const result = await callStructuredAI({
       purpose: "market_lookup",
       provider: route.provider,
       model: trustedConfig?.model ?? route.model,
@@ -190,19 +227,71 @@ export async function searchMarketPrice(
       searchRecencyFilter: trustedConfig?.searchRecencyFilter,
       searchMode: trustedConfig?.searchMode,
       searchContextSize: trustedConfig?.searchContextSize,
-    }, secrets, options.gate);
+    }, responseSchema as StructuredSchema<MarketProviderResponse>, secrets, options.gate);
 
     if (!result.success) {
-      const failureReason = `${route.provider}:AI call failed: ${result.code}`;
-      if (trustedConfig) {
+      const failureReason = result.code === "SCHEMA_INVALID"
+        ? hasStructuredValidationIssue(result, MARKET_RANGE_ORDER_INVALID)
+          ? `${route.provider}:market_range_max < market_range_min`
+          : `${route.provider}:AI market JSON validation failed`
+        : `${route.provider}:AI call failed: ${result.code}`;
+      if (trustedConfig && result.code !== "OPEN_CIRCUIT") {
         return trustedMarketFailure(failureReason, trustedConfig, routeSafeMetadata);
       }
       failures.push(failureReason);
       continue;
     }
 
-    const parsed = safeParseJSON(result.content);
-    if (isInsufficientTrustedData(parsed)) {
+    let selectedResult = result;
+    let selectedRoute = {
+      provider: route.provider,
+      model: trustedConfig?.model ?? route.model,
+    };
+    let escalationMetadata: Record<string, unknown> | undefined;
+    const escalation = selectKaelEscalation("market_lookup", {
+      ...selectedRoute,
+      confidence: marketConfidence(selectedResult.data),
+    });
+    if (escalation && !isInsufficientTrustedData(selectedResult.data)) {
+      logKaelEscalation("market_lookup", escalation);
+      const escalatedResult = await callStructuredAI({
+        purpose: "market_lookup",
+        provider: escalation.route.provider,
+        model: escalation.route.model,
+        messages: trustedConfig?.messages
+          ? appendKnowledgeContextToMessages(
+            trustedConfig.messages,
+            knowledgeContext?.promptContext,
+          )
+          : buildPricingMessages(
+            serviceType,
+            problem,
+            complexity,
+            district,
+            knowledgeContext?.promptContext,
+          ),
+        maxTokens: trustedConfig?.maxTokens ?? maxTokensForPurpose("market_lookup", 300),
+        temperature: 0.1,
+        timeoutMs: route.latencyBudgetMs,
+        maxRetries: 0,
+        searchDomainFilter: trustedConfig?.searchDomainFilter,
+        searchRecencyFilter: trustedConfig?.searchRecencyFilter,
+        searchMode: trustedConfig?.searchMode,
+        searchContextSize: trustedConfig?.searchContextSize,
+      }, responseSchema as StructuredSchema<MarketProviderResponse>, secrets, options.gate);
+      if (escalatedResult.success && !isInsufficientTrustedData(escalatedResult.data)) {
+        selectedResult = escalatedResult;
+        selectedRoute = escalation.route;
+        escalationMetadata = { model_escalation_reason: escalation.reason };
+        lastAttempt = {
+          provider: selectedRoute.provider,
+          model: selectedRoute.model,
+          safeMetadata: mergeMarketSafeMetadata(routeSafeMetadata, escalationMetadata),
+        };
+      }
+    }
+
+    if (isInsufficientTrustedData(selectedResult.data)) {
       const failureReason = `${route.provider}:insufficient_trusted_data`;
       if (trustedConfig) {
         return trustedMarketFailure(failureReason, trustedConfig, routeSafeMetadata);
@@ -210,60 +299,53 @@ export async function searchMarketPrice(
       failures.push(failureReason);
       continue;
     }
-    const validated = parsed ? marketPriceResultSchema.safeParse(parsed) : null;
-    if (!validated?.success) {
-      const failureReason = `${route.provider}:AI market JSON validation failed`;
-      if (trustedConfig) {
-        return trustedMarketFailure(failureReason, trustedConfig, routeSafeMetadata);
-      }
-      failures.push(failureReason);
-      continue;
-    }
-    if (validated.data.market_range_max < validated.data.market_range_min) {
-      const failureReason = `${route.provider}:market_range_max < market_range_min`;
-      if (trustedConfig) {
-        return trustedMarketFailure(failureReason, trustedConfig, routeSafeMetadata);
-      }
-      failures.push(failureReason);
-      continue;
-    }
-    const marketWithCitations = attachCitations(validated.data, result.citations);
-    const citationValidation = trustedConfig
-      ? await validateCitations(marketWithCitations.citations ?? [], cacheClient)
+    const trustedEvidence = trustedConfig
+      ? await buildTrustedEvidenceMarket({
+        data: selectedResult.data,
+        providerCitations: selectedResult.citations,
+        cacheClient,
+      })
       : null;
+    const citationValidation = trustedEvidence?.citationValidation ?? null;
     const safeMetadata = mergeMarketSafeMetadata(
       trustedConfig?.safeMetadata,
       knowledgeContext?.safeMetadata,
+      trustedEvidence?.safeMetadata,
       citationValidation?.safeMetadata,
+      escalationMetadata,
     );
-    if (trustedConfig && citationValidation && !citationValidation.quorumMet) {
-      const failureReason = `${route.provider}:insufficient_trusted_citations`;
+    if (trustedConfig && (!trustedEvidence || !trustedEvidence.success)) {
+      const failureReason = `${route.provider}:${trustedEvidence?.failureReason ?? "invalid_source_evidence"}`;
+      const evidenceCitations = trustedEvidence?.citations ?? [];
       await maybeWriteMarketArtifact(cacheClient, {
         key: cacheKey,
         serviceType,
-        provider: route.provider,
+        provider: selectedRoute.provider,
         market: null,
         failureReason,
         safeMetadata: marketArtifactMetadata(
           safeMetadata,
-          marketWithCitations.citations ?? [],
+          evidenceCitations,
           citationValidation,
         ),
       });
       return trustedMarketFailure(failureReason, trustedConfig, safeMetadata);
     }
+    const marketWithCitations = trustedEvidence?.success
+      ? trustedEvidence.market
+      : attachCitations(selectedResult.data as MarketPriceResult, selectedResult.citations);
     const cacheStatus = await maybeWriteMarketCache(
       cacheClient,
       cacheKey,
-      route.provider,
+      selectedRoute.provider,
       marketWithCitations,
-      result.content,
+      selectedResult.content,
     );
     if (trustedConfig || marketWithCitations.citations?.length) {
       await maybeWriteMarketArtifact(cacheClient, {
         key: cacheKey,
         serviceType,
-        provider: route.provider,
+        provider: selectedRoute.provider,
         market: marketWithCitations,
         failureReason: null,
         safeMetadata: marketArtifactMetadata(
@@ -276,11 +358,11 @@ export async function searchMarketPrice(
     return {
       success: true,
       market: marketWithCitations,
-      provider: route.provider,
-      model: trustedConfig?.model ?? route.model,
-      inputTokens: result.usage.inputTokens,
-      outputTokens: result.usage.outputTokens,
-      costUsd: result.usage.costUsd,
+      provider: selectedRoute.provider,
+      model: selectedRoute.model,
+      inputTokens: selectedResult.usage.inputTokens,
+      outputTokens: selectedResult.usage.outputTokens,
+      costUsd: selectedResult.usage.costUsd,
       cacheStatus,
       safeMetadata,
     };
@@ -294,9 +376,132 @@ export async function searchMarketPrice(
   };
 }
 
-function isInsufficientTrustedData(value: unknown): boolean {
+function marketConfidence(value: unknown): number | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const confidence = (value as Record<string, unknown>).confidence;
+  return typeof confidence === "number" && Number.isFinite(confidence)
+    ? confidence
+    : null;
+}
+
+function isInsufficientTrustedData(
+  value: unknown,
+): value is { error: "insufficient_trusted_data" } {
   return typeof value === "object" && value !== null &&
     (value as Record<string, unknown>).error === "insufficient_trusted_data";
+}
+
+type TrustedEvidenceMarketOutcome =
+  | {
+    success: true;
+    market: MarketPriceResult;
+    citations: string[];
+    citationValidation: CitationValidationResult;
+    safeMetadata: Record<string, unknown>;
+  }
+  | {
+    success: false;
+    failureReason: string;
+    citations: string[];
+    citationValidation: CitationValidationResult | null;
+    safeMetadata: Record<string, unknown>;
+  };
+
+async function buildTrustedEvidenceMarket(input: {
+  data: MarketProviderResponse;
+  providerCitations: readonly string[] | undefined;
+  cacheClient: MarketCacheClient | undefined;
+}): Promise<TrustedEvidenceMarketOutcome> {
+  if (!isMarketSourceEvidenceResult(input.data)) {
+    return {
+      success: false,
+      failureReason: "invalid_source_evidence",
+      citations: mergeCitations(input.providerCitations),
+      citationValidation: null,
+      safeMetadata: { source_trust_aggregation_result: "invalid_source_evidence" },
+    };
+  }
+
+  const highValueThresholdVnd = sourceTrustHighValueThresholdVnd();
+  const citations = mergeCitations(input.data.citations, input.providerCitations);
+  if (highValueThresholdVnd === null) {
+    return {
+      success: false,
+      failureReason: "source_trust_quorum_config_invalid",
+      citations,
+      citationValidation: null,
+      safeMetadata: { source_trust_aggregation_result: "source_trust_quorum_config_invalid" },
+    };
+  }
+
+  const sourceValidation = await validateCitations(citations, input.cacheClient, 0, {
+    maxAutoTier: 4,
+    quorumAutoTierMax: 2,
+  });
+  const aggregation = aggregateTrustedMarketSources({
+    sources: input.data.sources,
+    acceptedCitations: sourceValidation.accepted,
+    highValueThresholdVnd,
+  });
+  if (!aggregation.success) {
+    const evidenceMetadata = mergeMarketSafeMetadata(
+      sourceValidation.safeMetadata,
+      aggregation.safeMetadata,
+      {
+        source_trust_raw_source_count: input.data.sources.length,
+        source_trust_source_rejections: aggregation.rejected,
+      },
+    ) ?? {};
+    return {
+      success: false,
+      failureReason: aggregation.failureReason,
+      citations,
+      citationValidation: sourceValidation,
+      safeMetadata: evidenceMetadata,
+    };
+  }
+
+  const effectiveTierByDomain = new Map(
+    aggregation.effectiveTiers.map((item) => [item.domain, item.autoTier]),
+  );
+  const citationValidation: CitationValidationResult = {
+    ...sourceValidation,
+    quorumMet: aggregation.quorumMet,
+    quorum: aggregation.requiredQuorum,
+    accepted: sourceValidation.accepted.map((item) => ({
+      ...item,
+      autoTier: effectiveTierByDomain.get(item.matchedDomain) ?? item.autoTier,
+    })),
+    safeMetadata: {
+      ...sourceValidation.safeMetadata,
+      source_trust_citation_result: aggregation.quorumMet ? "passed" : "weak_quorum",
+      source_trust_citation_quorum: aggregation.requiredQuorum,
+      source_trust_quorum_eligible_citations: aggregation.tier1Tier2Count,
+      source_trust_quorum_met: aggregation.quorumMet,
+    },
+  };
+  const evidenceMetadata = mergeMarketSafeMetadata(
+    citationValidation.safeMetadata,
+    aggregation.safeMetadata,
+    {
+      source_trust_raw_source_count: input.data.sources.length,
+      source_trust_source_rejections: aggregation.rejected,
+    },
+  ) ?? {};
+
+  return {
+    success: true,
+    market: aggregation.market,
+    citations: aggregation.market.citations ?? [],
+    citationValidation,
+    safeMetadata: evidenceMetadata,
+  };
+}
+
+function isMarketSourceEvidenceResult(
+  value: MarketProviderResponse,
+): value is MarketSourceEvidenceResult {
+  return "sources" in value && !("market_range_min" in value);
 }
 
 function trustedMarketFailure(
@@ -317,12 +522,16 @@ function attachCitations(
   market: MarketPriceResult,
   providerCitations: readonly string[] | undefined,
 ): MarketPriceResult {
-  const citations = [...new Set([
-    ...(market.citations ?? []),
-    ...(providerCitations ?? []),
-  ].filter((item): item is string => typeof item === "string" && item.length > 0))]
-    .slice(0, 10);
+  const citations = mergeCitations(market.citations, providerCitations);
   return citations.length > 0 ? { ...market, citations } : market;
+}
+
+function mergeCitations(
+  ...parts: Array<readonly string[] | undefined>
+): string[] {
+  return [...new Set(parts.flatMap((part) => part ?? []).filter((item) =>
+    typeof item === "string" && item.length > 0
+  ))].slice(0, 10);
 }
 
 function mergeMarketSafeMetadata(

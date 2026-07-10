@@ -94,7 +94,7 @@ describe('Kael P9 charter, prompt, and self-check', () => {
       },
     })
 
-    expect(result.success).toBe(true)
+    expect(result.status).toBe('degraded')
     expect(result.fallbackUsed).toBe(true)
     expect(result.failureReason).toBe('ai_self_reference')
     expect(result.value).toBe('Kael tam thoi chua the tra loi noi dung nay.')
@@ -112,7 +112,7 @@ describe('Kael P9 charter, prompt, and self-check', () => {
       },
     })
 
-    expect(result.success).toBe(true)
+    expect(result.status).toBe('degraded')
     expect(result.fallbackUsed).toBe(true)
     expect(result.failureReason).toBe('semantic_guardrail')
   })

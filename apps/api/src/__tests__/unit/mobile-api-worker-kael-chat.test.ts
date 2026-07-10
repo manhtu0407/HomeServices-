@@ -445,10 +445,10 @@ describe('mobile-api worker Kael chat sibling backend', () => {
 
     const idempotencyIndex = sendHandlerBlock.indexOf('findExistingWorkerKaelTurnByClientRequest')
     const existingReturnIndex = sendHandlerBlock.indexOf('if (existingTurn) return getWorkerKaelChat(ctx, sessionId)')
-    const rateLimitIndex = sendHandlerBlock.indexOf('await enforceWorkerKaelChatRateLimit(client, ctx)')
+    const rateLimitIndex = sendHandlerBlock.indexOf('await enforceWorkerKaelChatRateLimit(client, ctx, secrets)')
     const providerIndex = sendHandlerBlock.indexOf('answer = await runWorkerAssist')
 
-    expect(countOccurrences(sendHandlerBlock, 'await enforceWorkerKaelChatRateLimit(client, ctx)')).toBe(1)
+    expect(countOccurrences(sendHandlerBlock, 'await enforceWorkerKaelChatRateLimit(client, ctx, secrets)')).toBe(1)
     expect(idempotencyIndex).toBeGreaterThan(-1)
     expect(existingReturnIndex).toBeGreaterThan(idempotencyIndex)
     expect(rateLimitIndex).toBeGreaterThan(existingReturnIndex)
@@ -491,7 +491,7 @@ describe('mobile-api worker Kael chat sibling backend', () => {
     expect(kaelReferenceStatuses).toContain('"completed_by_worker"')
   })
 
-  it('fails worker chat closed when the rate-limit RPC is unavailable', () => {
+  it('keeps the rollback limiter fail-closed while the durable flag uses the fail-open adapter', () => {
     const services = readMobileApiServiceLayer()
     const rateLimitBlock = services.match(/async function enforceWorkerKaelChatRateLimit[\s\S]*?async function insertWorkerKaelTurn/)?.[0] ?? ''
     const migration = readFileSync(
@@ -499,10 +499,11 @@ describe('mobile-api worker Kael chat sibling backend', () => {
       'utf8',
     )
 
-    expect(rateLimitBlock).toContain('apiFailure(')
+    expect(rateLimitBlock).toContain('if (secrets.durableGuardsEnabled)')
+    expect(rateLimitBlock).toContain('takeDurableKaelChatRateLimit')
     expect(rateLimitBlock).toContain('"RATE_LIMIT_UNAVAILABLE"')
     expect(rateLimitBlock).toContain('429')
-    expect(rateLimitBlock).not.toContain('return;\n  }')
+    expect(rateLimitBlock).toContain('return;\n  }')
     expect(migration).toContain('pg_advisory_xact_lock')
   })
 

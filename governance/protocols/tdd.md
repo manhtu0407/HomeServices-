@@ -18,14 +18,14 @@ Use for every feature, bugfix, behavior change, security fix, AI boundary change
 
 ### Workflow
 
-1. Identify the public behavior.
-2. Choose the correct test seam.
-3. Write one failing test first for bugfixes and feature logic.
-4. Run it and observe failure when feasible.
-5. Implement the smallest code change.
-6. Run the test and observe pass.
-7. Add additional tests one behavior at a time.
-8. Refactor only while tests are green.
+1. Identify the public behavior and the independently knowable expected result.
+2. Choose the highest viable public seam; test implementation details only when no higher seam can observe the behavior.
+3. Write one failing test first for one narrow behavior (a tracer bullet).
+4. Run it and observe the relevant red signal when feasible.
+5. Implement the smallest code change that makes that behavior pass.
+6. Run the test and observe green.
+7. Repeat for the next behavior; do not batch a horizontal suite of imagined tests before learning from the previous cycle.
+8. Refactor only while tests are green, then use `kael-review` for the maintainability pass.
 9. Run relevant broader test/build commands.
 
 UI-only small tasks may use test-after, but MUST still include verification such as visual inspection, component test, DOM check, screenshot, or explicit manual checklist.
@@ -49,10 +49,14 @@ If a layer is unavailable, report the limitation and test at the closest availab
 
 - Test count is not a quality metric.
 - Layer coverage and failure relevance are quality metrics.
+- Expected values must come from a spec, known-good example, or other independent source; a test must not recompute the implementation's answer.
+- Prefer assertions through the public behavior at the selected seam over mocks, private methods, or side-channel state.
 - Static-only coverage is insufficient for behavior or security changes.
 - Negative tests are mandatory for security changes.
 - Bugfixes MUST state where the regression test lives and how it reproduces the old bug.
 - Build failure means the task is not done.
+
+Two test layers are valuable only when they cover distinct risk. For example, a unit test plus an integration/wiring check can prove more than two tests of the same internal helper. State why each selected layer is needed.
 
 Type-only assertions, broad snapshots, or simple existence checks are allowed only if they verify something useful. They MUST NOT be used as fake confidence.
 

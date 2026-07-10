@@ -3,6 +3,9 @@ import { FALLBACK_PROBLEM_SLUG_BY_SERVICE, PROBLEM_SLUGS_BY_SERVICE } from "./ty
 import { positiveNumberFrom, withDbTimeout } from "./utils.ts";
 
 const COMPLEXITIES: ComplexityLevel[] = ["small", "medium", "large"];
+const MARKET_BLEND_WEIGHT = 0.5;
+const INSPECTION_BAND_EXPANSION_FACTOR = 0.15;
+export const MARKET_PRICE_MAX_DEVIATION_FACTOR = 4;
 
 type BaselinePrice = {
   priceMin: number;
@@ -56,11 +59,26 @@ export function synthesizePrice(input: {
   baselineMax: number;
   market: MarketPriceResult | null;
   complexityHint: ComplexityLevel;
+  needsInspection?: boolean;
 }): { price_min: number; price_max: number; confidence: number } {
-  if (!input.market) {
+  const market = clampMarketPriceToBaseline(input.market, {
+    priceMin: input.baselineMin,
+    priceMax: input.baselineMax,
+  });
+  if (input.market && !market) {
+    console.warn("market price clamp rejected source-trust market range", {
+      maxDeviationFactor: MARKET_PRICE_MAX_DEVIATION_FACTOR,
+    });
+  }
+  if (!market) {
+    const baseline = inspectionAdjustedBand(
+      input.baselineMin,
+      input.baselineMax,
+      input.needsInspection === true,
+    );
     return {
-      price_min: input.baselineMin,
-      price_max: input.baselineMax,
+      price_min: baseline.priceMin,
+      price_max: baseline.priceMax,
       confidence: 0.4,
     };
   }
@@ -71,23 +89,62 @@ export function synthesizePrice(input: {
     ? 0.85
     : 1;
   let priceMin = Math.round(
-    (input.market.market_range_min * 0.6 + input.baselineMin * 0.4) *
+    (market.market_range_min * MARKET_BLEND_WEIGHT +
+      input.baselineMin * (1 - MARKET_BLEND_WEIGHT)) *
       complexityMultiplier,
   );
   let priceMax = Math.round(
-    (input.market.market_range_max * 0.6 + input.baselineMax * 0.4) *
+    (market.market_range_max * MARKET_BLEND_WEIGHT +
+      input.baselineMax * (1 - MARKET_BLEND_WEIGHT)) *
       complexityMultiplier,
   );
 
   priceMin = Math.round(priceMin / 1000) * 1000;
   priceMax = Math.round(priceMax / 1000) * 1000;
   if (priceMax <= priceMin) priceMax = priceMin + 50_000;
+  const inspectionAdjusted = inspectionAdjustedBand(
+    priceMin,
+    priceMax,
+    input.needsInspection === true,
+  );
   return {
-    price_min: priceMin,
-    price_max: priceMax,
+    price_min: inspectionAdjusted.priceMin,
+    price_max: inspectionAdjusted.priceMax,
     confidence:
-      Math.round(Math.min(0.85, (input.market.confidence + 0.5) / 2) * 100) /
+      Math.round(
+        Math.min(
+          input.needsInspection ? 0.44 : 0.85,
+          (market.confidence + 0.5) / 2,
+        ) * 100,
+      ) /
       100,
+  };
+}
+
+export function clampMarketPriceToBaseline(
+  market: MarketPriceResult | null,
+  baseline: { priceMin: number; priceMax: number },
+): MarketPriceResult | null {
+  if (!market) return null;
+  if (!(baseline.priceMin > 0) || !(baseline.priceMax > 0)) return market;
+  const minOutOfBand =
+    market.market_range_min < baseline.priceMin / MARKET_PRICE_MAX_DEVIATION_FACTOR ||
+    market.market_range_min > baseline.priceMin * MARKET_PRICE_MAX_DEVIATION_FACTOR;
+  const maxOutOfBand =
+    market.market_range_max < baseline.priceMax / MARKET_PRICE_MAX_DEVIATION_FACTOR ||
+    market.market_range_max > baseline.priceMax * MARKET_PRICE_MAX_DEVIATION_FACTOR;
+  return minOutOfBand || maxOutOfBand ? null : market;
+}
+
+function inspectionAdjustedBand(
+  priceMin: number,
+  priceMax: number,
+  needsInspection: boolean,
+): { priceMin: number; priceMax: number } {
+  if (!needsInspection) return { priceMin, priceMax };
+  return {
+    priceMin: Math.round(priceMin * (1 - INSPECTION_BAND_EXPANSION_FACTOR) / 1000) * 1000,
+    priceMax: Math.round(priceMax * (1 + INSPECTION_BAND_EXPANSION_FACTOR) / 1000) * 1000,
   };
 }
 

@@ -44,7 +44,7 @@ describe('pricing — synthesizePrice edge cases', () => {
     expect(result.price_max).toBe(1500000)
   })
 
-  it('weighted average is 60% market / 40% baseline', () => {
+  it('weighted average is the locked 50% market / 50% baseline', () => {
     const result = synthesizePrice({
       baselineMin: 100000,
       baselineMax: 200000,
@@ -56,10 +56,8 @@ describe('pricing — synthesizePrice edge cases', () => {
       complexityHint: 'medium',
     })
 
-    // Expected min: 200000 * 0.6 + 100000 * 0.4 = 160000
-    // Expected max: 400000 * 0.6 + 200000 * 0.4 = 320000
-    expect(result.price_min).toBe(160000)
-    expect(result.price_max).toBe(320000)
+    expect(result.price_min).toBe(150000)
+    expect(result.price_max).toBe(300000)
   })
 
   it('handles very small prices', () => {

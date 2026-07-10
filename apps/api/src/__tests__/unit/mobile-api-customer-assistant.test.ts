@@ -117,6 +117,38 @@ describe('mobile-api customer Kael assistant', () => {
     }))
   })
 
+  it('keeps a deterministic unaccented legal-advice signal on the redirect path before provider invocation', async () => {
+    const { client, calls } = makeGeneralKnowledgeClient({
+      legalRows: [{
+        pattern_key: 'professional_legal_advice_redirect',
+        topic: 'legal_advice',
+        boundary_type: 'redirect_required',
+        response_guidance: 'Hãy tham vấn luật sư để được tư vấn pháp lý chuyên môn.',
+        is_enabled: true,
+      }],
+    })
+    const callAI = vi.fn(async () => {
+      throw new Error('provider must not run for legal advice')
+    })
+
+    const result = await runCustomerAssistant({
+      client,
+      callAI,
+      language: 'vi',
+      message: 'Toi muon khoi kien tho da sua nha.',
+      secrets: { knowledgeRetrievalEnabled: true },
+      surface: 'customer_normal',
+    })
+
+    expect(result.fallback_used).toBe(true)
+    expect(result.answer).toContain('luật sư')
+    expect(callAI).not.toHaveBeenCalled()
+    expect(calls).toContainEqual(expect.objectContaining({
+      kind: 'select',
+      table: 'legal_awareness_patterns',
+    }))
+  })
+
   it('falls back without a provider call when every educational route is open circuit', async () => {
     KAEL_CIRCUIT_BREAKER.recordFailure({
       purpose: 'educational_response',

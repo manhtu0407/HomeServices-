@@ -4,6 +4,8 @@ import { marketPriceResultSchema, type MarketPriceResult } from './schemas'
 import { safeParseJSON } from './parsing'
 import { sanitizeForLLM } from '@nestscout/shared'
 
+const MARKET_BLEND_WEIGHT = 0.5
+
 export type PriceSearchResult =
   | { success: true; market: MarketPriceResult; failureReason?: undefined }
   | { success: false; failureReason: string }
@@ -79,14 +81,11 @@ export function synthesizePrice(input: PriceSynthesisInput): SynthesizedPrice {
     }
   }
 
-  const MARKET_WEIGHT = 0.6
-  const BASELINE_WEIGHT = 0.4
-
   let priceMin = Math.round(
-    market.market_range_min * MARKET_WEIGHT + baselineMin * BASELINE_WEIGHT,
+    market.market_range_min * MARKET_BLEND_WEIGHT + baselineMin * (1 - MARKET_BLEND_WEIGHT),
   )
   let priceMax = Math.round(
-    market.market_range_max * MARKET_WEIGHT + baselineMax * BASELINE_WEIGHT,
+    market.market_range_max * MARKET_BLEND_WEIGHT + baselineMax * (1 - MARKET_BLEND_WEIGHT),
   )
 
   const complexityMultiplier =

@@ -13,7 +13,6 @@ export const customerV21Assets = {
   kael: require('@/assets/kael-orb-icon.png') as ImageSourcePropType,
   kaelHead: require('@/assets/kael-emotions/kael-emotion-focused.png') as ImageSourcePropType,
   kaelFull: require('@/assets/kael-states/kael-state-welcome.png') as ImageSourcePropType,
-  kaelNavigation: require('@/assets/navigation/customer/kael.png') as ImageSourcePropType,
   language: require('@/assets/client-image-icons/client-language.png') as ImageSourcePropType,
   logout: require('@/assets/client-image-icons/client-logout-v2.png') as ImageSourcePropType,
   auroraNestLogo: require('@/assets/nestscout-aurora-nest-appstore-1024.png') as ImageSourcePropType,

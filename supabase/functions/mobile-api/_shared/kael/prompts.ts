@@ -177,7 +177,7 @@ ${KAEL_RESPONSE_STYLE}
 
 Analyze a Ho Chi Minh City apartment electrical, plumbing, or cleaning issue.
 Respond only with valid JSON: problem_identified, severity_indicators, complexity_hint.
-problem_identified must be Vietnamese. complexity_hint is small, medium, or large.`,
+problem_identified must be natural Vietnamese with full diacritics. complexity_hint is small, medium, or large.`,
     },
     {
       role: "user",
