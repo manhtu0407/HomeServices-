@@ -63,4 +63,3 @@ export function performancePlaybookForBooking(serviceId: CustomerServiceId | nul
   const serviceLineId = scopeServiceLineIdForCustomerService(serviceId)
   return serviceLineId ? getServicePerformancePlaybook(serviceLineId) : null
 }
-
