@@ -113,6 +113,7 @@ import {
   WorkerProfileSurface,
 } from '../worker-surfaces'
 import { resolveWorkerV5DockActive } from '../dock/routing'
+import { WorkerRebuildDockOverlay } from '../dock/worker-v5-dock-overlay'
 import { WorkerV5ScheduleList } from '../jobs/surfaces'
 
 function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): WorkerProfileResponse {
@@ -746,6 +747,15 @@ describe('Worker runtime surface wiring', () => {
     expect(resolveWorkerV5DockActive('/jobs', { ns_worker_screen: '4.2-ledger-detail' })).toBe('earnings')
     expect(resolveWorkerV5DockActive('/jobs', { ns_worker_screen: '5.2-worker-ranking' })).toBe('profile')
     expect(resolveWorkerV5DockActive('/jobs', {})).toBe('jobs')
+  })
+
+  it('moves the dock pill to earnings when a closed-case handoff retains the prior jobs tab', () => {
+    mockRouteParams = { ns_worker_screen: '4.1-earnings-overview' }
+
+    render(<WorkerRebuildDockOverlay active="jobs" />)
+
+    expect(screen.getByTestId('worker-v5-dock-earnings').props.accessibilityState).toMatchObject({ selected: true })
+    expect(screen.getByTestId('worker-v5-dock-jobs').props.accessibilityState).toMatchObject({ selected: false })
   })
 
   it('uses net earnings copy and one full-width payout action in ledger detail', () => {
