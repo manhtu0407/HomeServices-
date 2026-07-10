@@ -10,7 +10,7 @@ Auto-trigger wrapper. Full procedure is canonical in `governance/protocols/diagn
 When this fires:
 
 1. Run `kael-preflight` (`governance/critical.md` §5) before editing; obey gates in `governance/critical.md` §3, §24, §25.
-2. Read and follow `governance/protocols/diagnose.md`: build a feedback loop, reproduce, rank 3-5 falsifiable hypotheses, add a regression test at the right seam, apply the smallest fix, rerun the original signal, remove `[DEBUG-kael-...]` instrumentation.
+2. Read and follow `governance/protocols/diagnose.md`: establish a red-capable feedback loop, minimize the repro, rank 3-5 falsifiable hypotheses, add a regression test at the right seam, apply the smallest fix, rerun the original signal, and remove `[DEBUG-kael-...]` instrumentation.
 3. No local repro → say so and verify at the closest signal. Never report "fixed" without rerunning the failing signal.
 4. Close with `kael-review` (`governance/critical.md` §8).
 

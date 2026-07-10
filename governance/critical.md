@@ -348,19 +348,26 @@ Use after every code edit and before reporting completion.
 
 ### Inputs Required
 
+- Fixed point: commit, branch, tag, or merge-base; state explicitly when reviewing uncommitted work instead.
+- Exact diff command and commits included.
 - Diff or changed files.
 - Original request.
+- Originating PRD, issue, spec, or an explicit `No spec available`.
 - Relevant rules from `RULES.md`.
 - Relevant workflow from `STRUCTURES.md`.
 - Test/build results.
 
 ### Workflow
 
-Review along three mandatory axes:
+1. Pin the review surface before reading findings: `git rev-parse <fixed-point>`, `git diff <fixed-point>...HEAD`, and `git log <fixed-point>..HEAD --oneline` when a fixed point exists.
+2. Locate the spec source from the request, linked issue/PR, commit messages, or relevant docs. If none exists, say so; do not invent requirements.
+3. Review along three mandatory axes and keep the findings separate:
 
-1. Spec Compliance: did the change solve the real task?
-2. Rules/Standards Compliance: did it obey `RULES.md`, `STRUCTURES.md`, and `critical.md`?
-3. Long-Term Maintainability: is the code local, testable, simple, and easy to modify?
+   1. Spec Compliance: did the change solve the real task?
+   2. Rules/Standards Compliance: did it obey `RULES.md`, `STRUCTURES.md`, and `critical.md`?
+   3. Long-Term Maintainability: is the code local, testable, simple, and easy to modify?
+
+For standards, repository rules outrank the smell baseline. For maintainability, consider the following only as evidence-backed heuristics, not hard violations: mysterious names, duplicated code, data clumps or primitive obsession, repeated switches, shotgun surgery, divergent change, speculative generality, message chains, middle men, and refused bequest. Skip concerns tooling already enforces.
 
 Also check:
 
@@ -376,6 +383,8 @@ Also check:
 ### Output Format
 
 ```text
+Fixed point:
+Spec source:
 Spec compliance:
 Rules/standards compliance:
 Maintainability:
