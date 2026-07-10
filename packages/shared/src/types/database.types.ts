@@ -2013,6 +2013,36 @@ export type Database = {
           },
         ]
       }
+      kael_provider_circuit: {
+        Row: {
+          failure_count: number
+          key: string
+          kind: string
+          open_until: string | null
+          scope: string
+          updated_at: string
+          window_started_at: string
+        }
+        Insert: {
+          failure_count?: number
+          key: string
+          kind: string
+          open_until?: string | null
+          scope: string
+          updated_at?: string
+          window_started_at: string
+        }
+        Update: {
+          failure_count?: number
+          key?: string
+          kind?: string
+          open_until?: string | null
+          scope?: string
+          updated_at?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       kael_provider_spend_daily: {
         Row: {
           call_count: number
@@ -2031,6 +2061,30 @@ export type Database = {
           spend_date?: string
           total_cost_usd?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      kael_rate_counter: {
+        Row: {
+          key: string
+          scope: string
+          tokens: number
+          updated_at: string
+          window_started_at: string
+        }
+        Insert: {
+          key: string
+          scope: string
+          tokens: number
+          updated_at?: string
+          window_started_at: string
+        }
+        Update: {
+          key?: string
+          scope?: string
+          tokens?: number
+          updated_at?: string
+          window_started_at?: string
         }
         Relationships: []
       }
@@ -3467,15 +3521,24 @@ export type Database = {
         Row: {
           added_at: string
           added_by: string | null
+          auto_tier: number
+          criteria_met: Json
           description: string | null
           domain: string
+          entity_type: string | null
           effective_from: string
           effective_until: string | null
+          established_year: number | null
+          first_seen_at: string | null
           id: string
+          integrity_flag: boolean
           is_active: boolean
+          last_price_seen_at: string | null
           last_reviewed_at: string | null
           last_reviewer_id: string | null
           metadata: Json
+          price_unit: string | null
+          region: string | null
           review_notes: string | null
           tier: string
           trust_score: number
@@ -3483,15 +3546,24 @@ export type Database = {
         Insert: {
           added_at?: string
           added_by?: string | null
+          auto_tier?: number
+          criteria_met?: Json
           description?: string | null
           domain: string
+          entity_type?: string | null
           effective_from?: string
           effective_until?: string | null
+          established_year?: number | null
+          first_seen_at?: string | null
           id?: string
+          integrity_flag?: boolean
           is_active?: boolean
+          last_price_seen_at?: string | null
           last_reviewed_at?: string | null
           last_reviewer_id?: string | null
           metadata?: Json
+          price_unit?: string | null
+          region?: string | null
           review_notes?: string | null
           tier: string
           trust_score: number
@@ -3499,15 +3571,24 @@ export type Database = {
         Update: {
           added_at?: string
           added_by?: string | null
+          auto_tier?: number
+          criteria_met?: Json
           description?: string | null
           domain?: string
+          entity_type?: string | null
           effective_from?: string
           effective_until?: string | null
+          established_year?: number | null
+          first_seen_at?: string | null
           id?: string
+          integrity_flag?: boolean
           is_active?: boolean
+          last_price_seen_at?: string | null
           last_reviewed_at?: string | null
           last_reviewer_id?: string | null
           metadata?: Json
+          price_unit?: string | null
+          region?: string | null
           review_notes?: string | null
           tier?: string
           trust_score?: number
@@ -4281,6 +4362,37 @@ export type Database = {
           minute_count: number
           reason: string | null
         }[]
+      }
+      is_circuit_open: {
+        Args: { p_key: string; p_now?: string; p_scope: string }
+        Returns: boolean
+      }
+      rate_take: {
+        Args: {
+          p_config: Json
+          p_cost: number
+          p_key: string
+          p_now?: string
+          p_scope: string
+        }
+        Returns: {
+          allowed: boolean
+          reason: string
+          retry_after_ms: number
+        }[]
+      }
+      record_circuit_failure: {
+        Args: {
+          p_key: string
+          p_kind: string
+          p_now?: string
+          p_scope: string
+        }
+        Returns: { is_open: boolean }[]
+      }
+      record_circuit_success: {
+        Args: { p_key: string; p_scope: string }
+        Returns: undefined
       }
       get_kael_provider_spend_today: {
         Args: Record<PropertyKey, never>

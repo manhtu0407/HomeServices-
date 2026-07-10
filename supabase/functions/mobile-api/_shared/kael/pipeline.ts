@@ -3,6 +3,11 @@ import { CLARIFICATION_CAP, PRICE_DISCLAIMER, UNSUPPORTED_SERVICE_MESSAGE } from
 import { buildFallbackIntent, classifyIntent, diagnoseIntake } from "./intent.ts";
 import { analyzeDescription } from "./vision.ts";
 import { marketLookupTelemetry, searchMarketPrice } from "./market.ts";
+import {
+  evaluateMarketVerdict,
+  marketVerdictReasonVi,
+  marketVerdictSafeMetadata,
+} from "./market-verdict.ts";
 import { fetchBaselineCandidates, normalizeProblemSlugForService, pickBaselineCandidate, synthesizePrice } from "./synthesis.ts";
 import { buildAdvisory } from "./advisory.ts";
 import {
@@ -339,8 +344,12 @@ export async function runKaelPipeline(
   if (!visionSkipped) {
     pushStageLog(stageLogs, input, {
       stage: "vision",
-      provider: visionResult.success ? visionResult.provider : "anthropic",
-      model: visionResult.success ? visionResult.model : "claude-sonnet-4-6",
+      provider: visionResult.success
+        ? visionResult.provider
+        : KAEL_ROUTING_CONFIG.vision_analysis.primary.provider,
+      model: visionResult.success
+        ? visionResult.model
+        : KAEL_ROUTING_CONFIG.vision_analysis.primary.model,
       latencyMs: visionStage.elapsedMs,
       success: visionResult.success,
       failureReason: visionResult.success
@@ -379,7 +388,7 @@ export async function runKaelPipeline(
   const baselineCandidates = baselineStage.value?.kind === "baseline"
     ? baselineStage.value.result
     : undefined;
-  if (!baselineStage.success && baselineStage.failureReason !== "TIMEOUT") {
+  if (baselineStage.status === "failed" && baselineStage.failureReason !== "TIMEOUT") {
     throw new Error(baselineStage.failureReason ?? "baseline stage failed");
   }
   const baselineResult = pickBaselineCandidate(
@@ -448,6 +457,15 @@ export async function runKaelPipeline(
     progress: 0.78,
     failureReason: marketResult.success ? undefined : marketResult.failureReason,
   });
+  const marketVerdict = marketResult.success &&
+      marketResult.safeMetadata?.source_trust_enabled === true
+    ? evaluateMarketVerdict({
+      baselineMin: baselineResult.priceMin,
+      baselineMax: baselineResult.priceMax,
+      market: marketResult.market,
+      weakEvidence: marketResult.safeMetadata?.source_trust_quorum_met === false,
+    })
+    : null;
 
   void updateKaelProgress(supabase, progressTarget, {
     stage: "price_synthesis",
@@ -490,8 +508,11 @@ export async function runKaelPipeline(
       Promise.resolve(synthesizePrice({
         baselineMin: learnedPrice?.priceMin ?? baselineResult.priceMin,
         baselineMax: learnedPrice?.priceMax ?? baselineResult.priceMax,
-        market: marketResult.success ? marketResult.market : null,
+        market: marketResult.success && marketVerdict?.verdict !== "reject"
+          ? marketResult.market
+          : null,
         complexityHint: effectiveComplexity,
+        needsInspection: marketVerdict?.needsInspection === true,
       })),
   });
   const synthesized = synthesizedStage.value;
@@ -503,6 +524,9 @@ export async function runKaelPipeline(
     latencyMs: synthesizedStage.elapsedMs,
     success: true,
     fallbackUsed: false,
+    safeMetadata: marketVerdict
+      ? marketVerdictSafeMetadata(marketVerdict)
+      : undefined,
   });
   await updateKaelProgress(supabase, progressTarget, {
     stage: "price_synthesis",
@@ -529,6 +553,14 @@ export async function runKaelPipeline(
       confidence: synthesized.confidence,
       advisory: buildAdvisory(analysis.severity_indicators, knowledgeContext.safetyGuidance),
       disclaimer: PRICE_DISCLAIMER,
+      needs_inspection: marketVerdict?.needsInspection === true,
+      price_source: marketVerdict?.needsInspection ? "inspection_required" : undefined,
+      needs_inspection_reason: marketVerdict
+        ? marketVerdictReasonVi(marketVerdict)
+        : undefined,
+      market_signals: marketResult.success
+        ? marketResult.market.sources_summary ?? null
+        : null,
     },
   };
 }

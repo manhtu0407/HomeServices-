@@ -1,7 +1,7 @@
 import type { AIMessage, ComplexityLevel, ServiceType } from "./types.ts";
 import { KAEL_BUSINESS_GUARDRAILS, KAEL_RESPONSE_STYLE } from "./types.ts";
 
-export const SOURCE_TRUST_VERSION = "source-trust-r2-2026-05-26";
+export const SOURCE_TRUST_VERSION = "source-trust-r3-2026-07-10";
 export const SOURCE_TRUST_CACHE_TTL_MS = 5 * 60 * 1000;
 export const SOURCE_TRUST_MIN_EFFECTIVE_SCORE = 0.5;
 
@@ -29,13 +29,17 @@ export const TIER_1_SOURCE_TRUST_DOMAINS = Object.freeze([
 ] as const);
 
 export type SourceTrustTier = "tier_1" | "tier_2" | "tier_3" | "blocked";
+export type SourceTrustAutoTier = 1 | 2 | 3 | 4 | 5;
 export type SourceTrustRegistryEntry = {
   domain: string;
   tier: SourceTrustTier;
+  autoTier: SourceTrustAutoTier;
   trustScore: number;
   isActive: boolean;
   lastReviewedAt: string | null;
   effectiveUntil: string | null;
+  entityType: string | null;
+  region: string | null;
 };
 
 export type SourceTrustLookupResult = {
@@ -57,8 +61,11 @@ export type CitationValidationResult = {
     domain: string;
     matchedDomain: string;
     tier: SourceTrustTier;
+    autoTier: SourceTrustAutoTier;
     trustScore: number;
     effectiveTrustScore: number;
+    entityType: string | null;
+    region: string | null;
   }>;
   rejected: Array<{
     url: string;
@@ -68,8 +75,16 @@ export type CitationValidationResult = {
   safeMetadata: Record<string, unknown>;
 };
 
+export type CitationValidationOptions = {
+  now?: Date;
+  maxAutoTier?: SourceTrustAutoTier;
+  quorumAutoTierMax?: 1 | 2;
+  marketAmountVnd?: number;
+  highValueThresholdVnd?: number;
+};
+
 export type TrustedPerplexityMarketConfig = {
-  model: "sonar-pro";
+  model: "sonar";
   maxTokens: 600;
   timeoutMs: 6_000;
   searchDomainFilter: readonly string[];
@@ -112,6 +127,21 @@ export function isSourceTrustPerplexityFilterEnabled(
     getEnv("KAEL_OPT_SOURCE_TRUST_ENABLED");
   return typeof value === "string" &&
     ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+export function sourceTrustHighValueThresholdVnd(
+  getEnv = readRuntimeEnv,
+): number | null {
+  const raw = getEnv("KAEL_SOURCE_TRUST_HIGH_VALUE_VND");
+  const parsed = raw === undefined ? Number.NaN : Number(raw);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function sourceTrustQuorumForMarketAmount(
+  marketAmountVnd: number,
+  highValueThresholdVnd: number,
+): number {
+  return marketAmountVnd >= highValueThresholdVnd ? 3 : 2;
 }
 
 export function trustedPerplexityMarketConfig(input: {
@@ -170,9 +200,24 @@ export async function validateCitations(
   citations: readonly string[],
   supabase?: unknown,
   quorum = 2,
-  options: { now?: Date } = {},
+  options: CitationValidationOptions = {},
 ): Promise<CitationValidationResult> {
   const now = options.now ?? new Date();
+  const maxAutoTier = options.maxAutoTier ?? 1;
+  const quorumAutoTierMax = options.quorumAutoTierMax ?? maxAutoTier;
+  const dynamicQuorumRequested = options.marketAmountVnd !== undefined ||
+    options.highValueThresholdVnd !== undefined;
+  const quorumConfigValid = !dynamicQuorumRequested ||
+    (Number.isSafeInteger(options.marketAmountVnd) &&
+      Number.isSafeInteger(options.highValueThresholdVnd) &&
+      (options.marketAmountVnd ?? 0) > 0 &&
+      (options.highValueThresholdVnd ?? 0) > 0);
+  const resolvedQuorum = quorumConfigValid && dynamicQuorumRequested
+    ? sourceTrustQuorumForMarketAmount(
+      options.marketAmountVnd as number,
+      options.highValueThresholdVnd as number,
+    )
+    : quorum;
   const registry = await loadSourceTrustRegistry(supabase, now);
   const accepted: CitationValidationResult["accepted"] = [];
   const rejected: CitationValidationResult["rejected"] = [];
@@ -198,9 +243,10 @@ export async function validateCitations(
 
     const score = effectiveTrustScore(matched, now);
     if (
-      matched.tier !== "tier_1" ||
       !matched.isActive ||
-      score < SOURCE_TRUST_MIN_EFFECTIVE_SCORE
+      score < SOURCE_TRUST_MIN_EFFECTIVE_SCORE ||
+      matched.autoTier > maxAutoTier ||
+      matched.autoTier === 5
     ) {
       rejected.push({ url, domain, reason: "trust_score_below_threshold" });
       continue;
@@ -211,26 +257,38 @@ export async function validateCitations(
       domain,
       matchedDomain: matched.domain,
       tier: matched.tier,
+      autoTier: matched.autoTier,
       trustScore: matched.trustScore,
       effectiveTrustScore: score,
+      entityType: matched.entityType,
+      region: matched.region,
     });
   }
 
-  const quorumMet = accepted.length >= quorum;
+  const quorumEligible = accepted.filter((item) =>
+    item.autoTier <= quorumAutoTierMax
+  );
+  const quorumMet = quorumConfigValid && quorumEligible.length >= resolvedQuorum;
   return {
     quorumMet,
-    quorum,
+    quorum: resolvedQuorum,
     source: registry.source,
     accepted,
     rejected,
     safeMetadata: {
       source_trust_citation_result: quorumMet
         ? "passed"
-        : "insufficient_trusted_citations",
+        : quorumConfigValid
+        ? "insufficient_trusted_citations"
+        : "source_trust_quorum_config_invalid",
       source_trust_registry_source: registry.source,
-      source_trust_citation_quorum: quorum,
+      source_trust_citation_quorum: resolvedQuorum,
+      source_trust_citation_quorum_tier_max: quorumAutoTierMax,
+      source_trust_citation_max_auto_tier: maxAutoTier,
+      source_trust_quorum_config_valid: quorumConfigValid,
       total_citations: citations.length,
       accepted_citations: accepted.length,
+      quorum_eligible_citations: quorumEligible.length,
       rejected_citations: rejected.length,
       accepted_domains: accepted.map((item) => item.matchedDomain),
     },
@@ -272,7 +330,7 @@ function buildTrustedPerplexityMarketConfig(
 ): TrustedPerplexityMarketConfig {
   const tier1Domains = registryRows
     .filter((row) =>
-      row.tier === "tier_1" &&
+      row.autoTier === 1 &&
       row.isActive &&
       effectiveTrustScore(row) >= SOURCE_TRUST_MIN_EFFECTIVE_SCORE
     )
@@ -282,7 +340,7 @@ function buildTrustedPerplexityMarketConfig(
     : [...TIER_1_SOURCE_TRUST_DOMAINS];
 
   return {
-    model: "sonar-pro",
+    model: "sonar",
     maxTokens: 600,
     timeoutMs: 6_000,
     searchDomainFilter: domains,
@@ -320,16 +378,34 @@ Use only the trusted Vietnamese domains configured in this request.
 
 When enough trusted evidence exists, return ONLY valid JSON:
 {
-  "market_range_min": number,
-  "market_range_max": number,
-  "confidence": number,
+  "sources": [
+    {
+      "domain": "trusted-source.example",
+      "price_min": number,
+      "price_max": number,
+      "unit": "per_visit" | "per_hour" | "per_m2",
+      "date": "YYYY-MM-DD",
+      "signals": {
+        "identity_verified": boolean,
+        "source_type": "direct_pricing" | "materials" | "reference" | "listing" | "unknown",
+        "hcmc_relevant": boolean,
+        "clear_price_and_unit": boolean,
+        "integrity_verified": boolean,
+        "evidence_verified": boolean,
+        "review_overdue": boolean,
+        "price_jump_suspected": boolean
+      }
+    }
+  ],
   "sources_summary": "short Vietnamese summary mentioning trusted source count",
   "citations": ["https://trusted-source.example/path"]
 }
 
 Rules:
 - Prefer at least 2 different trusted domains.
-- Remove abnormal outlier prices.
+- Return one entry per source. Do not return a blended market range.
+- Keep the domain, price range, unit, date, and A-G evidence signals factual to that source.
+- Do not return or claim any trust tier. NestScout's deterministic rulebook computes it.
 - Do not use Facebook groups, personal forums, personal blogs, or open classifieds.
 - Do not invent prices or citations.
 - If trusted data is insufficient, return {"error":"insufficient_trusted_data"}.`,
@@ -370,7 +446,7 @@ async function loadSourceTrustRegistry(
 
   const result = await client
     .from("source_trust_registry")
-    .select("domain,tier,trust_score,last_reviewed_at,is_active,effective_until")
+    .select("domain,tier,auto_tier,entity_type,region,trust_score,last_reviewed_at,is_active,effective_until")
     .eq("is_active", true) as {
       data?: unknown;
       error?: { code?: string; message?: string } | null;
@@ -407,9 +483,12 @@ function normalizeRegistryRow(value: unknown): SourceTrustRegistryEntry | null {
   const tier = normalizeTier(row.tier);
   const trustScore = numberOrNull(row.trust_score);
   if (!domain || !tier || trustScore === null) return null;
+  const autoTier = normalizeAutoTier(row.auto_tier, tier);
+  if (!autoTier) return null;
   return {
     domain,
     tier,
+    autoTier,
     trustScore,
     isActive: row.is_active !== false,
     lastReviewedAt: typeof row.last_reviewed_at === "string"
@@ -418,6 +497,8 @@ function normalizeRegistryRow(value: unknown): SourceTrustRegistryEntry | null {
     effectiveUntil: typeof row.effective_until === "string"
       ? row.effective_until
       : null,
+    entityType: nullableString(row.entity_type),
+    region: nullableString(row.region),
   };
 }
 
@@ -425,10 +506,13 @@ function fallbackRegistryRows(): SourceTrustRegistryEntry[] {
   return TIER_1_SOURCE_TRUST_DOMAINS.map((domain) => ({
     domain,
     tier: "tier_1",
+    autoTier: 1,
     trustScore: 1,
     isActive: true,
     lastReviewedAt: "2026-05-26T00:00:00.000Z",
     effectiveUntil: null,
+    entityType: null,
+    region: "hcmc",
   }));
 }
 
@@ -455,7 +539,7 @@ function domainFromCitation(value: string): string | null {
   }
 }
 
-function normalizeDomain(value: unknown): string | null {
+export function normalizeSourceTrustDomain(value: unknown): string | null {
   if (typeof value !== "string") return null;
   let domain = value.trim().toLowerCase();
   if (!domain) return null;
@@ -474,6 +558,10 @@ function normalizeDomain(value: unknown): string | null {
   return /^[a-z0-9.-]+$/.test(domain) ? domain : null;
 }
 
+function normalizeDomain(value: unknown): string | null {
+  return normalizeSourceTrustDomain(value);
+}
+
 function normalizeTier(value: unknown): SourceTrustTier | null {
   if (
     value === "tier_1" ||
@@ -487,6 +575,19 @@ function normalizeTier(value: unknown): SourceTrustTier | null {
   if (value === 2) return "tier_2";
   if (value === 3) return "tier_3";
   return null;
+}
+
+function normalizeAutoTier(
+  value: unknown,
+  legacyTier: SourceTrustTier,
+): SourceTrustAutoTier | null {
+  if (value === 1 || value === 2 || value === 3 || value === 4 || value === 5) {
+    return value;
+  }
+  if (legacyTier === "tier_1") return 1;
+  if (legacyTier === "tier_2") return 2;
+  if (legacyTier === "tier_3") return 3;
+  return 5;
 }
 
 function blockedTrustScore(
@@ -515,6 +616,10 @@ function asSourceTrustClient(value: unknown): SourceTrustClient | undefined {
 function numberOrNull(value: unknown): number | null {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
 function clampScore(value: number): number {

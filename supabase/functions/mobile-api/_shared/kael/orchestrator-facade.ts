@@ -7,7 +7,10 @@ import {
   type KaelAutonomyGateInput,
   type KaelAutonomyGateResult,
 } from "./autonomy-gate.ts";
-import { runKaelPurposeStage } from "./orchestrator.ts";
+import {
+  runKaelPurposeStage,
+  type KaelStageStatus,
+} from "./orchestrator.ts";
 
 export type KaelOrchestratorTelemetry = {
   label: string;
@@ -19,6 +22,7 @@ export type KaelOrchestratorTelemetry = {
   gate_result: KaelAutonomyGateResult["result"];
   reason_code: string;
   stage_success: boolean;
+  stage_status: KaelStageStatus;
 };
 
 export type KaelAutonomyOrchestratorInput = KaelAutonomyGateInput & {
@@ -84,7 +88,8 @@ export async function runKaelAutonomyOrchestrator(
       fallback_used: stage.fallbackUsed,
       gate_result: gate.result,
       reason_code: gate.audit.reason_code,
-      stage_success: stage.success,
+      stage_success: stage.status === "ok",
+      stage_status: stage.status,
     },
   };
 }

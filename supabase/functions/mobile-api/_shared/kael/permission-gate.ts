@@ -3,6 +3,7 @@ import {
   retrieveLegalBoundaryPattern,
   type LegalBoundaryType,
 } from "./knowledge.ts";
+import { canonicalizeVN } from "./canonicalize-vn.ts";
 
 export type KaelActorRole = "customer" | "worker" | "admin" | "system";
 export type KaelJobRelation = "none" | "own_customer_job" | "own_worker_job" | "admin_review";
@@ -59,7 +60,8 @@ export type DeclineTemplateKey =
   | "rate_limit_hit"
   | "cost_cap_hit"
   | "legal_advice_redirect"
-  | "emergency_redirect";
+  | "emergency_redirect"
+  | "clarification_required";
 
 export type KaelPermissionGateRequest = {
   purpose: KaelPurpose;
@@ -67,8 +69,15 @@ export type KaelPermissionGateRequest = {
   jobRelation: KaelJobRelation;
   action: KaelAction;
   topic: KaelTopic;
+  intentConfidence: number;
+  topicSource: "deterministic_rule" | "llm";
+  boundarySignal: boolean;
   actorId?: string | null;
   jobId?: string | null;
+};
+
+export type KaelPermissionGateOptions = {
+  confidenceThreshold?: number | null;
 };
 
 export type KaelPermissionGateDecision = KaelPermissionGateRequest & {
@@ -106,6 +115,8 @@ const DECLINE_TEMPLATES: Record<DeclineTemplateKey, string> = {
     "Câu hỏi này cần tư vấn pháp lý chuyên môn. Kael có thể cảnh báo về an toàn nhưng không tư vấn pháp lý. Vui lòng tham vấn luật sư.",
   emergency_redirect:
     "Kael nhận thấy tình huống này có vẻ khẩn cấp. Vui lòng gọi 113 hoặc 115 ngay lập tức.",
+  clarification_required:
+    "\u0110\u1ec3 Kael h\u1ed7 tr\u1ee3 \u0111\u00fang v\u00e0 an to\u00e0n, b\u1ea1n vui l\u00f2ng n\u00eau r\u00f5 nhu c\u1ea7u, b\u1ed1i c\u1ea3nh v\u00e0 k\u1ebft qu\u1ea3 b\u1ea1n mu\u1ed1n h\u1ecfi.",
 };
 
 const SERVICE_TOPICS: readonly KaelTopic[] = [
@@ -140,6 +151,37 @@ const ACTIONS_BY_PURPOSE: Record<KaelPurpose, readonly KaelAction[]> = {
 };
 
 export function evaluateKaelPermissionGate(
+  request: KaelPermissionGateRequest,
+  options: KaelPermissionGateOptions = {},
+): KaelPermissionGateDecision {
+  const preflight = confidenceAndBoundaryDecision(request, options);
+  if (preflight) return preflight;
+  return evaluateAllowedTopic(request);
+}
+
+export async function evaluateKaelPermissionGateWithBoundaries(
+  request: KaelPermissionGateRequest,
+  client?: BoundaryClient,
+  options: KaelPermissionGateOptions = {},
+): Promise<KaelPermissionGateDecision> {
+  const preflight = confidenceAndBoundaryDecision(request, options);
+  if (preflight) return preflight;
+
+  const forbidden = await forbiddenTopicDecisionWithBoundaries(
+    request.topic,
+    client,
+  );
+  if (forbidden) {
+    return deny(request, forbidden.reasonCode, forbidden.template, {
+      responseText: forbidden.responseText,
+      safeMetadata: forbidden.safeMetadata,
+    });
+  }
+
+  return evaluateAllowedTopic(request);
+}
+
+function evaluateAllowedTopic(
   request: KaelPermissionGateRequest,
 ): KaelPermissionGateDecision {
   if (
@@ -191,30 +233,82 @@ export function evaluateKaelPermissionGate(
     : deny(request, "DENY_ACTION_NOT_ALLOWED", "cannot_do_action");
 }
 
-export async function evaluateKaelPermissionGateWithBoundaries(
+function confidenceAndBoundaryDecision(
   request: KaelPermissionGateRequest,
-  client?: BoundaryClient,
-): Promise<KaelPermissionGateDecision> {
-  if (
-    request.actor === "worker" &&
-    request.jobRelation === "none" &&
-    (request.purpose === "worker_brief" || request.topic === "other_jobs_specific")
-  ) {
-    return deny(request, "DENY_WORKER_PRE_ACCEPT_PII", "cannot_do_action");
+  options: KaelPermissionGateOptions,
+): KaelPermissionGateDecision | null {
+  if (request.topicSource === "llm") {
+    if (!Number.isFinite(request.intentConfidence) || request.intentConfidence < 0 || request.intentConfidence > 1) {
+      return deny(request, "DENY_INTENT_CONFIDENCE_INVALID", "clarification_required");
+    }
+
+    const threshold = configuredConfidenceThreshold(options);
+    if (threshold === null) {
+      return deny(request, "DENY_INTENT_CONFIDENCE_UNCONFIGURED", "clarification_required", {
+        safeMetadata: { confidence_threshold_configured: false },
+      });
+    }
+    if (request.intentConfidence < threshold) {
+      return deny(request, "DENY_INTENT_CONFIDENCE_LOW", "clarification_required", {
+        safeMetadata: {
+          confidence_threshold: threshold,
+          confidence_threshold_configured: true,
+        },
+      });
+    }
   }
 
-  const forbidden = await forbiddenTopicDecisionWithBoundaries(
-    request.topic,
-    client,
-  );
-  if (forbidden) {
-    return deny(request, forbidden.reasonCode, forbidden.template, {
-      responseText: forbidden.responseText,
-      safeMetadata: forbidden.safeMetadata,
+  if (requiresBoundarySignal(request.topic) && !request.boundarySignal) {
+    return deny(request, "DENY_FORBIDDEN_TOPIC_UNCONFIRMED", "clarification_required", {
+      safeMetadata: { boundary_signal_confirmed: false },
     });
   }
+  return null;
+}
 
-  return evaluateKaelPermissionGate(request);
+function configuredConfidenceThreshold(
+  options: KaelPermissionGateOptions,
+): number | null {
+  const denoRuntime = (globalThis as {
+    Deno?: { env: { get(name: string): string | undefined } };
+  }).Deno;
+  const environmentValue = denoRuntime?.env.get("KAEL_PERMISSION_CONFIDENCE_THRESHOLD");
+  const configured = options.confidenceThreshold ?? environmentValue;
+  const value = typeof configured === "number"
+    ? configured
+    : typeof configured === "string" && configured.trim().length > 0
+    ? Number(configured)
+    : Number.NaN;
+  return Number.isFinite(value) && value >= 0 && value <= 1
+    ? value
+    : null;
+}
+
+function requiresBoundarySignal(topic: KaelTopic): boolean {
+  return topic === "legal_advice" ||
+    topic === "medical_advice" ||
+    topic === "financial_advice" ||
+    topic === "exact_guaranteed_price" ||
+    topic === "fear_based_upsell";
+}
+
+export function hasKaelForbiddenTopicBoundarySignal(
+  topic: KaelTopic,
+  text: string,
+): boolean {
+  const canonicalText = canonicalizeVN(text);
+  const patterns = topic === "legal_advice"
+    ? ["khoi kien", "luat su", "toa an", "don kien", "hop dong phap ly"]
+    : topic === "medical_advice"
+    ? ["y te", "tai nan", "benh", "medical", "hospital"]
+    : topic === "financial_advice"
+    ? ["ty gia"]
+    : topic === "exact_guaranteed_price"
+    ? ["gia chot dung", "tra dung so tien nay"]
+    : topic === "fear_based_upsell"
+    ? ["neu khong sua ngay", "neu khong lam ngay", "nguy hiem chet nguoi", "chay no tuc thi"]
+    : [];
+  return patterns.some((pattern) => canonicalText.includes(pattern));
 }
 
 export function renderDeclineTemplate(
@@ -245,6 +339,9 @@ export async function auditKaelPermissionDecision(
         decision: decision.decision,
         topic: decision.topic,
         action: decision.action,
+        intent_confidence: decision.intentConfidence,
+        topic_source: decision.topicSource,
+        boundary_signal: decision.boundarySignal,
         ...(decision.safeMetadata ?? {}),
       },
     });
@@ -263,6 +360,9 @@ export async function auditKaelPermissionDecision(
     safe_metadata: {
       job_relation: decision.jobRelation,
       template_key: decision.declineTemplateKey ?? null,
+      intent_confidence: decision.intentConfidence,
+      topic_source: decision.topicSource,
+      boundary_signal: decision.boundarySignal,
       ...(decision.safeMetadata ?? {}),
     },
   });

@@ -3,6 +3,7 @@ import {
   auditKaelPermissionDecision,
   evaluateKaelPermissionGate,
   evaluateKaelPermissionGateWithBoundaries,
+  hasKaelForbiddenTopicBoundarySignal,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/permission-gate'
 import { checkKaelActorRateLimit, recordKaelCostForTests, resetKaelRateLimitForTests } from '../../../../../supabase/functions/mobile-api/_shared/kael/rate-limit'
 import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/orchestrator'
@@ -12,6 +13,83 @@ describe('Kael P5 permission scope and response policy', () => {
     resetKaelRateLimitForTests()
   })
 
+  it('W2 defaults an uncertain LLM topic to clarification and requires an independent boundary signal', () => {
+    const lowConfidence = evaluateKaelPermissionGate({
+      purpose: 'educational_response',
+      actor: 'customer',
+      jobRelation: 'none',
+      topic: 'plumbing_repair',
+      action: 'generate_advisory',
+      intentConfidence: 0.59,
+      topicSource: 'llm',
+      boundarySignal: false,
+    }, { confidenceThreshold: 0.6 })
+    expect(lowConfidence).toMatchObject({
+      allowed: false,
+      reasonCode: 'DENY_INTENT_CONFIDENCE_LOW',
+      declineTemplateKey: 'clarification_required',
+    })
+
+    const unconfirmedForbidden = evaluateKaelPermissionGate({
+      purpose: 'educational_response',
+      actor: 'customer',
+      jobRelation: 'none',
+      topic: 'legal_advice',
+      action: 'generate_advisory',
+      intentConfidence: 0.91,
+      topicSource: 'llm',
+      boundarySignal: false,
+    }, { confidenceThreshold: 0.6 })
+    expect(unconfirmedForbidden).toMatchObject({
+      allowed: false,
+      reasonCode: 'DENY_FORBIDDEN_TOPIC_UNCONFIRMED',
+      declineTemplateKey: 'clarification_required',
+    })
+
+    const confirmedForbidden = evaluateKaelPermissionGate({
+      purpose: 'educational_response',
+      actor: 'customer',
+      jobRelation: 'none',
+      topic: 'legal_advice',
+      action: 'generate_advisory',
+      intentConfidence: 0.91,
+      topicSource: 'llm',
+      boundarySignal: true,
+    }, { confidenceThreshold: 0.6 })
+    expect(confirmedForbidden).toMatchObject({
+      allowed: false,
+      reasonCode: 'DENY_LEGAL_ADVICE',
+      declineTemplateKey: 'legal_advice_redirect',
+    })
+  })
+
+  it('W2 keeps unconfigured LLM confidence and unconfirmed sensitive labels away from boundary storage', async () => {
+    const client = makeSequenceClient([])
+    const decision = await evaluateKaelPermissionGateWithBoundaries({
+      purpose: 'educational_response',
+      actor: 'customer',
+      jobRelation: 'none',
+      topic: 'legal_advice',
+      action: 'generate_advisory',
+      intentConfidence: 0.91,
+      topicSource: 'llm',
+      boundarySignal: false,
+    }, client, { confidenceThreshold: Number.NaN })
+
+    expect(decision).toMatchObject({
+      allowed: false,
+      reasonCode: 'DENY_INTENT_CONFIDENCE_UNCONFIGURED',
+      declineTemplateKey: 'clarification_required',
+    })
+    expect(client.calls).toHaveLength(0)
+  })
+
+  it('W2 canonicalizes Vietnamese boundary signals without retaining the source text', () => {
+    expect(hasKaelForbiddenTopicBoundarySignal('legal_advice', 'Tôi muốn khởi kiện thợ.')).toBe(true)
+    expect(hasKaelForbiddenTopicBoundarySignal('legal_advice', 'Toi muon khoi kien tho.')).toBe(true)
+    expect(hasKaelForbiddenTopicBoundarySignal('legal_advice', 'Cho tôi biết cách sửa vòi nước.')).toBe(false)
+  })
+
   it('allows legal awareness education while declining legal advice before any LLM call', async () => {
     expect(evaluateKaelPermissionGate({
       purpose: 'educational_response',
@@ -19,6 +97,9 @@ describe('Kael P5 permission scope and response policy', () => {
       jobRelation: 'none',
       topic: 'legal_safety_awareness',
       action: 'generate_advisory',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: false,
     })).toMatchObject({
       allowed: true,
       reasonCode: 'ALLOW_EDUCATIONAL_RESPONSE',
@@ -36,6 +117,9 @@ describe('Kael P5 permission scope and response policy', () => {
           jobRelation: 'none',
           topic: 'legal_advice',
           action: 'generate_advisory',
+          intentConfidence: 1,
+          topicSource: 'deterministic_rule',
+          boundarySignal: true,
         }),
       },
       run,
@@ -43,7 +127,7 @@ describe('Kael P5 permission scope and response policy', () => {
 
     expect(run).not.toHaveBeenCalled()
     expect(result).toMatchObject({
-      success: true,
+      status: 'declined',
       fallbackUsed: true,
       failureReason: 'DENY_LEGAL_ADVICE',
       value: expect.objectContaining({
@@ -67,6 +151,9 @@ describe('Kael P5 permission scope and response policy', () => {
       jobRelation: 'none',
       topic: 'legal_advice',
       action: 'generate_advisory',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: true,
     }, client)
 
     expect(decision).toMatchObject({
@@ -104,6 +191,9 @@ describe('Kael P5 permission scope and response policy', () => {
           jobRelation: 'none',
           topic: 'legal_advice',
           action: 'generate_advisory',
+          intentConfidence: 1,
+          topicSource: 'deterministic_rule',
+          boundarySignal: true,
         }, client),
       },
       run,
@@ -129,6 +219,9 @@ describe('Kael P5 permission scope and response policy', () => {
       jobRelation: 'none',
       topic: 'legal_advice',
       action: 'generate_advisory',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: true,
     }, client)
 
     expect(decision).toMatchObject({
@@ -158,6 +251,9 @@ describe('Kael P5 permission scope and response policy', () => {
       jobRelation: 'none',
       topic: 'medical_advice',
       action: 'generate_advisory',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: true,
     }, client)).resolves.toMatchObject({
       allowed: false,
       reasonCode: 'DENY_MEDICAL_ADVICE',
@@ -176,6 +272,9 @@ describe('Kael P5 permission scope and response policy', () => {
       jobRelation: 'none',
       topic: 'out_of_scope_services_anything',
       action: 'ask_clarification',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: false,
     })
 
     expect(decision).toMatchObject({
@@ -195,6 +294,9 @@ describe('Kael P5 permission scope and response policy', () => {
       jobRelation: 'none',
       topic: 'other_jobs_specific',
       action: 'generate_worker_brief',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: false,
       jobId: 'job-1',
       actorId: 'worker-1',
     })
@@ -217,6 +319,11 @@ describe('Kael P5 permission scope and response policy', () => {
         purpose: 'worker_brief',
         decision: 'deny',
         reason_code: 'DENY_WORKER_PRE_ACCEPT_PII',
+        safe_metadata: expect.objectContaining({
+          intent_confidence: 1,
+          topic_source: 'deterministic_rule',
+          boundary_signal: false,
+        }),
       }),
     ])
   })
@@ -275,6 +382,9 @@ describe('Kael P5 permission scope and response policy', () => {
       actorId: 'customer-1',
       jobId: 'job-1',
       jobRelation: 'own_customer_job',
+      intentConfidence: 1,
+      topicSource: 'deterministic_rule',
+      boundarySignal: false,
     })
 
     expect(blocked).toMatchObject({

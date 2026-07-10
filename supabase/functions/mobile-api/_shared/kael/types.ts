@@ -46,13 +46,54 @@ export const visionResultSchema = z.object({
   complexity_hint: z.enum(["small", "medium", "large"]),
 });
 
+export const marketSourceTrustSignalsSchema = z.object({
+  identity_verified: z.boolean(),
+  source_type: z.enum(["direct_pricing", "materials", "reference", "listing", "unknown"]),
+  hcmc_relevant: z.boolean(),
+  clear_price_and_unit: z.boolean(),
+  integrity_verified: z.boolean(),
+  evidence_verified: z.boolean(),
+  review_overdue: z.boolean(),
+  price_jump_suspected: z.boolean(),
+}).strict();
+
+const marketSourceEvidenceBaseSchema = z.object({
+  domain: z.string().min(1).max(253),
+  price_min: z.number().int().positive(),
+  price_max: z.number().int().positive(),
+  unit: z.enum(["per_visit", "per_hour", "per_m2"]),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const marketSourceEvidenceSchema = marketSourceEvidenceBaseSchema.extend({
+  signals: marketSourceTrustSignalsSchema.optional(),
+}).refine((value) => value.price_max >= value.price_min, {
+  message: "price_max must be >= price_min",
+  path: ["price_max"],
+});
+
+const trustedMarketSourceEvidenceSchema = marketSourceEvidenceBaseSchema.extend({
+  signals: marketSourceTrustSignalsSchema,
+}).refine((value) => value.price_max >= value.price_min, {
+  message: "price_max must be >= price_min",
+  path: ["price_max"],
+});
+
 export const marketPriceResultSchema = z.object({
   market_range_min: z.number().int().positive(),
   market_range_max: z.number().int().positive(),
   confidence: z.number().min(0).max(1),
   sources_summary: z.string().max(1000).optional(),
   citations: z.array(z.string().url()).max(10).optional(),
+  sources: z.array(marketSourceEvidenceSchema).max(10).optional(),
 });
+
+export const marketSourceEvidenceResultSchema = z.object({
+  confidence: z.number().min(0).max(1).optional(),
+  sources_summary: z.string().max(1000).optional(),
+  citations: z.array(z.string().url()).max(10).optional(),
+  sources: z.array(trustedMarketSourceEvidenceSchema).min(1).max(10),
+}).strict();
 
 export const scopeChangeReviewSchema = z.object({
   recommendation: z.enum(["approve", "ask_worker", "reject"]),
@@ -94,6 +135,8 @@ Return the required JSON only. Any free-text field should be short Vietnamese, d
 export type IntentResult = z.infer<typeof intentResultSchema>;
 export type VisionResult = z.infer<typeof visionResultSchema>;
 export type MarketPriceResult = z.infer<typeof marketPriceResultSchema>;
+export type MarketSourceEvidence = z.infer<typeof marketSourceEvidenceSchema>;
+export type MarketSourceEvidenceResult = z.infer<typeof marketSourceEvidenceResultSchema>;
 export type ScopeChangeReviewBody = z.infer<typeof scopeChangeReviewSchema>;
 
 export const KAEL_PURPOSES = [
@@ -201,7 +244,11 @@ export type AIResponse = {
     costUsd: number;
     cacheCreationInputTokens?: number;
     cacheReadInputTokens?: number;
+    cacheHitInputTokens?: number;
+    cacheMissInputTokens?: number;
     cacheStatus?: AICacheStatus;
+    providerReportedCostUsd?: number;
+    requestCostUsd?: number;
   };
   latencyMs: number;
   citations?: string[];
@@ -211,11 +258,6 @@ export type ProviderRequestSpec = {
   url: string;
   headers: Record<string, string>;
   body: Record<string, unknown>;
-  parse(
-    data: Record<string, unknown>,
-    latencyMs: number,
-    model: string,
-  ): AIResponse;
 };
 
 export type AIError = {
@@ -223,6 +265,13 @@ export type AIError = {
   provider: AIProvider;
   code: string;
   error: string;
+};
+
+export type EdgeGuardClient = {
+  rpc?(
+    fn: string,
+    args?: Record<string, unknown>,
+  ): PromiseLike<{ data: unknown; error: unknown }>;
 };
 
 export type EdgeAiSecrets = {
@@ -236,6 +285,8 @@ export type EdgeAiSecrets = {
   knowledgeRetrievalEnabled?: boolean;
   sourceTrustPerplexityFilterEnabled?: boolean;
   sourceTrustPerplexityFilterExplicit?: boolean;
+  durableGuardsEnabled?: boolean;
+  durableGuardClient?: EdgeGuardClient;
 };
 
 export type PipelineInput = {

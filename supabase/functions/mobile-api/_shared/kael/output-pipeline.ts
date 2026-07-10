@@ -302,7 +302,7 @@ export function buildScopeChangeOutputs(input: {
 }
 
 export function sanitizeKaelText(input: string, maxLength = 500): string {
-  return stripVndPatterns(scrubPiiText(input))
+  return stripVndPatterns(scrubKaelPiiText(input))
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
     .replace(/\s+/g, " ")
     .trim()
@@ -343,7 +343,7 @@ function stripVndPatterns(input: string): string {
   );
 }
 
-function scrubPiiText(input: string): string {
+export function scrubKaelPiiText(input: string): string {
   return input
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
     .replace(/\b(?:stk|số tài khoản|so tai khoan|bank)\s*[:#-]?\s*\d{6,20}\b/gi, "[bank-account]")

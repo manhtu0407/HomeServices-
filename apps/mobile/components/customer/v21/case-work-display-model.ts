@@ -1,6 +1,6 @@
 import type { ImageSourcePropType } from 'react-native'
 
-import type { AppLanguage } from '@/lib/app-language'
+import { appCopy, localizedProblemLabel, type AppLanguage } from '@/lib/app-language'
 import {
   buildLocalJobDisplayCode,
   type LocalDeal,
@@ -293,7 +293,9 @@ export function agenticDealProblemLabel(deal: LocalDeal, language: AppLanguage) 
   for (const candidate of candidates) {
     const mapped = agenticProblemTaxonomyLabel(candidate, language)
     if (mapped) return mapped
-    if (!looksLikeRawProblemTaxonomy(candidate)) return candidate.trim()
+    if (looksLikeRawProblemTaxonomy(candidate)) continue
+    const localized = localizedProblemLabel(candidate, deal.draft.serviceType, language)
+    if (localized !== appCopy[language].common.unknown) return localized.trim()
   }
   return copy.dataPending
 }

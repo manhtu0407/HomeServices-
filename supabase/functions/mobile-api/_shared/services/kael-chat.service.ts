@@ -8,6 +8,7 @@ import { compactMetadata, mergeLimitedRefs, parseKaelProgressSnapshot, serialize
 import { mergeApartmentAccessProfiles, sanitizeApartmentAccessProfile } from "./apartment-access.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { checkKaelChatRateLimit } from "../rate-limit.ts";
+import { takeDurableKaelChatRateLimit } from "../kael/durable-guards.ts";
 import { scrubSensitiveForLLM, type EdgeAiSecrets } from "../kael/index.ts";
 import {
   sanitizeForLLM,
@@ -49,6 +50,16 @@ const KAEL_CHAT_ALLOWED_MIME_TYPES = new Set([
   "video/quicktime",
   "video/webm",
 ]);
+
+function rejectKaelChatRateLimit(reason: string | null): never {
+  apiFailure(
+    "RATE_LIMITED",
+    reason === "hour"
+      ? "Bạn đã đạt giới hạn 20 phiên Kael trong 1 giờ. Vui lòng thử lại sau."
+      : "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.",
+    429,
+  );
+}
 
 
 
@@ -92,39 +103,34 @@ export async function createKaelChat(
     }
   }
 
-  // DB-backed rate limit (5/min, 20/hour
-  // per user). The in-process token bucket would not survive Edge worker
-  // churn, so we delegate to a security-definer RPC. Closes F-23.
-  const rate = await dbQuery<Array<Record<string, unknown>>>(
-    client.rpc("check_kael_chat_rate", { p_user_id: ctx.user.id }),
-  );
-  if (!rate.error) {
-    const row = rate.data?.[0];
-    if (row && asBoolean(row.allowed) === false) {
-      const reason = nullableString(row.reason);
-      console.warn("kael_chat rate limited", {
-        userId: ctx.user.id,
-        reason,
-        minute_count: row.minute_count,
-        hour_count: row.hour_count,
-      });
-      apiFailure(
-        "RATE_LIMITED",
-        reason === "hour"
-          ? "Bạn đã đạt giới hạn 20 phiên Kael trong 1 giờ. Vui lòng thử lại sau."
-          : "Bạn đang gửi quá nhanh. Vui lòng thử lại sau ít phút.",
-        429,
-      );
-    }
+  if (secrets.durableGuardsEnabled) {
+    const rate = await takeDurableKaelChatRateLimit(client, ctx.user.id);
+    if (!rate.allowed) rejectKaelChatRateLimit(rate.reason);
   } else {
-    // Don't fail the request if the limiter itself broke — log + fall back to
-    // the in-process best-effort bucket so we still rate limit warm workers.
-    console.warn("kael_chat DB rate limit fallback", {
-      errorCode: rate.error.code,
-    });
-    const fallback = checkKaelChatRateLimit(ctx.user.id);
-    if (!fallback.allowed) {
-      apiFailure("RATE_LIMITED", "Vui lòng thử lại sau", 429);
+    // Keep the existing RPC + warm-isolate fallback as the rollback path.
+    const rate = await dbQuery<Array<Record<string, unknown>>>(
+      client.rpc("check_kael_chat_rate", { p_user_id: ctx.user.id }),
+    );
+    if (!rate.error) {
+      const row = rate.data?.[0];
+      if (row && asBoolean(row.allowed) === false) {
+        const reason = nullableString(row.reason);
+        console.warn("kael_chat rate limited", {
+          userId: ctx.user.id,
+          reason,
+          minute_count: row.minute_count,
+          hour_count: row.hour_count,
+        });
+        rejectKaelChatRateLimit(reason);
+      }
+    } else {
+      console.warn("kael_chat DB rate limit fallback", {
+        errorCode: rate.error.code,
+      });
+      const fallback = checkKaelChatRateLimit(ctx.user.id);
+      if (!fallback.allowed) {
+        apiFailure("RATE_LIMITED", "Vui lòng thử lại sau", 429);
+      }
     }
   }
 

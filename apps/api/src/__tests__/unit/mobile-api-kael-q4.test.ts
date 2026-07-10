@@ -35,15 +35,75 @@ describe('Kael Q4 background optimization', () => {
     expect(JSON.stringify(insertCall?.operations[0]?.[1])).toContain('"skill_id":"LS1"')
   })
 
-  it('submits due learning queue rows to Anthropic Message Batches behind Q4 flags', async () => {
+  it('runs due post-job learning through DeepSeek V4 Pro with structured output', async () => {
+    stubDenoEnv({
+      KAEL_OPT_BATCH_LEARNING_ENABLED: 'true',
+      KAEL_OPT_BATCH_API_ENABLED: 'true',
+      KAEL_LEARNING_READ_ENABLED: 'true',
+      KAEL_LEARNING_WRITE_ENABLED: 'true',
+      KAEL_LEARNING_KILL_SWITCH: 'false',
+      KAEL_LEARNING_AB_PERCENTAGE: '100',
+    })
+    const input = learningInput({ evidence_snapshot: gatePass() })
+    const row = queuedRow({
+      skill_id: 'LS5',
+      input_payload: input,
+      candidate_payload: createLearningSkillCandidate('LS5', input),
+    })
+    const client = makeSequenceClient([
+      { data: [row], error: null },
+      { data: { id: '33333333-3333-4333-8333-333333333333' }, error: null },
+      { data: null, error: null },
+      { data: { allowed: true, blocked_scope: null, reservation_id: 1 }, error: null },
+      { data: null, error: null },
+      { data: { id: '66666666-6666-4666-8666-666666666666' }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+    ])
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify({ candidate: row.candidate_payload }) } }],
+      usage: { prompt_tokens: 80, completion_tokens: 20 },
+    }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const summary = await processLearningQueue(client, { deepseekApiKey: 'deepseek-test' }, { limit: 1 })
+
+    expect(summary).toMatchObject({
+      selected: 1,
+      submitted: 1,
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.deepseek.com/chat/completions',
+      expect.objectContaining({ method: 'POST' }),
+    )
+    const requestInit = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1]
+    const requestBody = JSON.parse(String(requestInit.body))
+    expect(requestBody).toMatchObject({
+      model: 'deepseek-v4-pro',
+      thinking: { type: 'enabled' },
+      reasoning_effort: 'high',
+      response_format: { type: 'json_object' },
+    })
+    expect(client.calls.find((call) => call.table === 'kael_ai_batches')?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({ provider: 'deepseek', purpose: 'post_job_learning' }),
+    ])
+  })
+
+  it('falls back to the Sonnet 5 Anthropic batch when DeepSeek cannot run', async () => {
     stubDenoEnv({
       KAEL_OPT_BATCH_LEARNING_ENABLED: 'true',
       KAEL_OPT_BATCH_API_ENABLED: 'true',
     })
     const client = makeSequenceClient([
       { data: [queuedRow()], error: null },
-      { data: { id: '33333333-3333-4333-8333-333333333333' }, error: null },
+      { data: { id: '33333333-3333-4333-8333-333333333331' }, error: null },
       { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: { id: '33333333-3333-4333-8333-333333333332' }, error: null },
+      { data: { allowed: true, blocked_scope: null, reservation_id: 42 }, error: null },
       { data: null, error: null },
       { data: null, error: null },
     ])
@@ -57,29 +117,161 @@ describe('Kael Q4 background optimization', () => {
 
     const summary = await processLearningQueue(client, { anthropicApiKey: 'anthropic-test' }, { limit: 1 })
 
-    expect(summary).toMatchObject({
-      selected: 1,
-      submitted: 1,
-      provider_batch_id: 'msgbatch_123',
-    })
+    expect(summary).toMatchObject({ selected: 1, submitted: 1, provider_batch_id: 'msgbatch_123' })
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.anthropic.com/v1/messages/batches',
       expect.objectContaining({ method: 'POST' }),
     )
     const requestInit = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1]
     const requestBody = JSON.parse(String(requestInit.body))
-    expect(requestBody.requests[0].custom_id).toMatch(/^lq_/)
-    expect(requestBody.requests[0].params.max_tokens).toBe(800)
-    const userPayload = JSON.parse(requestBody.requests[0].params.messages[0].content)
-    expect(userPayload.expected_output).toMatchObject({
-      format: 'json_object',
-      root: 'candidate',
-      evidence_snapshot: expect.objectContaining({
-        evidence_count: expect.any(String),
-        completed_transaction_count: expect.any(String),
-      }),
+    expect(requestBody.requests[0].params.model).toBe('claude-sonnet-5')
+    expect(requestBody.requests[0].params).not.toHaveProperty('temperature')
+    expect(requestInit.signal).toBeInstanceOf(AbortSignal)
+    expect(client.calls.some((call) => call.table === 'rpc:reserve_kael_ai_spend')).toBe(true)
+    expect(JSON.stringify(client.calls)).toContain('"kael_spend_reservation_id":42')
+  })
+
+  it('does not bypass the spend cap through the Anthropic batch fallback', async () => {
+    stubDenoEnv({
+      KAEL_OPT_BATCH_LEARNING_ENABLED: 'true',
+      KAEL_OPT_BATCH_API_ENABLED: 'true',
     })
-    expect(userPayload.expected_output.forbidden).toContain('payment data')
+    const client = makeSequenceClient([
+      { data: [queuedRow()], error: null },
+      { data: { id: '33333333-3333-4333-8333-333333333331' }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: { id: '33333333-3333-4333-8333-333333333332' }, error: null },
+      { data: { allowed: false, blocked_scope: 'global_daily', reservation_id: null }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+    ])
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const summary = await processLearningQueue(client, {
+      anthropicApiKey: 'anthropic-test',
+    }, { limit: 1 })
+
+    expect(summary).toMatchObject({ selected: 1, submitted: 0, error_code: 'SPEND_CAP' })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(client.calls.some((call) => call.table === 'rpc:reserve_kael_ai_spend')).toBe(true)
+  })
+
+  it('does not bypass the kill switch or durable circuit through a direct Anthropic batch route', async () => {
+    stubDenoEnv({
+      KAEL_OPT_BATCH_LEARNING_ENABLED: 'true',
+      KAEL_OPT_BATCH_API_ENABLED: 'true',
+      KAEL_AI_KILL_SWITCH: 'true',
+    })
+    const killSwitchFetch = vi.fn()
+    vi.stubGlobal('fetch', killSwitchFetch)
+    const killSwitchResult = await processLearningQueue(
+      makeSequenceClient([{ data: [queuedRow()], error: null }]),
+      { anthropicApiKey: 'anthropic-test' },
+      { limit: 1, model: 'claude-sonnet-5' },
+    )
+    expect(killSwitchResult).toMatchObject({ error_code: 'AI_DISABLED', submitted: 0 })
+    expect(killSwitchFetch).not.toHaveBeenCalled()
+
+    stubDenoEnv({
+      KAEL_OPT_BATCH_LEARNING_ENABLED: 'true',
+      KAEL_OPT_BATCH_API_ENABLED: 'true',
+    })
+    const circuitFetch = vi.fn()
+    vi.stubGlobal('fetch', circuitFetch)
+    const circuitResult = await processLearningQueue(
+      makeSequenceClient([{ data: [queuedRow()], error: null }]),
+      {
+        anthropicApiKey: 'anthropic-test',
+        durableGuardsEnabled: true,
+        durableGuardClient: {
+          rpc: vi.fn(async (name: string) => ({
+            data: name === 'is_circuit_open' ? true : null,
+            error: null,
+          })),
+        },
+      },
+      { limit: 1, model: 'claude-sonnet-5' },
+    )
+    expect(circuitResult).toMatchObject({ error_code: 'OPEN_CIRCUIT', submitted: 0 })
+    expect(circuitFetch).not.toHaveBeenCalled()
+  })
+
+  it('falls back on invalid DeepSeek structured output without persisting raw provider content', async () => {
+    stubDenoEnv({
+      KAEL_OPT_BATCH_LEARNING_ENABLED: 'true',
+      KAEL_OPT_BATCH_API_ENABLED: 'true',
+    })
+    const client = makeSequenceClient([
+      { data: [queuedRow()], error: null },
+      { data: { id: '33333333-3333-4333-8333-333333333334' }, error: null },
+      { data: null, error: null },
+      { data: { allowed: true, blocked_scope: null, reservation_id: 1 }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: { id: '33333333-3333-4333-8333-333333333335' }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+    ])
+    const rawProviderContent = JSON.stringify({ unexpected_raw: 'never store this' })
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('deepseek.com')) {
+        return new Response(JSON.stringify({
+          choices: [{ message: { content: rawProviderContent } }],
+          usage: { prompt_tokens: 80, completion_tokens: 20 },
+        }), { status: 200 })
+      }
+      return new Response(JSON.stringify({
+        id: 'msgbatch_schema_fallback',
+        processing_status: 'in_progress',
+        request_counts: { processing: 1, succeeded: 0, errored: 0, canceled: 0, expired: 0 },
+      }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const summary = await processLearningQueue(client, {
+      deepseekApiKey: 'deepseek-test',
+      anthropicApiKey: 'anthropic-test',
+    }, { limit: 1 })
+
+    expect(summary).toMatchObject({ selected: 1, submitted: 1, provider_batch_id: 'msgbatch_schema_fallback' })
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      'https://api.deepseek.com/chat/completions',
+      'https://api.anthropic.com/v1/messages/batches',
+    ])
+    const storedCalls = JSON.stringify(client.calls)
+    expect(storedCalls).toContain('SCHEMA_INVALID')
+    expect(storedCalls).not.toContain('unexpected_raw')
+  })
+
+  it('does not bypass the global kill switch through the Anthropic batch fallback', async () => {
+    stubDenoEnv({
+      KAEL_OPT_BATCH_LEARNING_ENABLED: 'true',
+      KAEL_OPT_BATCH_API_ENABLED: 'true',
+      KAEL_AI_KILL_SWITCH: 'true',
+    })
+    const client = makeSequenceClient([
+      { data: [queuedRow()], error: null },
+      { data: { id: '33333333-3333-4333-8333-333333333336' }, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+      { data: null, error: null },
+    ])
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const summary = await processLearningQueue(client, {
+      deepseekApiKey: 'deepseek-test',
+      anthropicApiKey: 'anthropic-test',
+    }, { limit: 1 })
+
+    expect(summary).toMatchObject({ selected: 1, submitted: 0, error_code: 'AI_DISABLED' })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(client.calls.filter((call) => call.table === 'kael_ai_batches')).toHaveLength(2)
   })
 
   it('polls ended Anthropic batches and writes lifecycle rows from successful results', async () => {
@@ -450,6 +642,10 @@ describe('Kael Q4 background optimization', () => {
           queue_id: '11111111-1111-4111-8111-111111111111',
           custom_id: customId,
           skill_id: 'LS1',
+          request_payload: {
+            params: { model: 'claude-sonnet-5' },
+            kael_spend_reservation_id: 99,
+          },
         }],
         error: null,
       },
@@ -462,7 +658,13 @@ describe('Kael Q4 background optimization', () => {
       if (url.endsWith('/results')) {
         return new Response(`${JSON.stringify({
           custom_id: customId,
-          result: { type: 'succeeded', message: { content: [{ text: '{"ok":true}' }] } },
+          result: {
+            type: 'succeeded',
+            message: {
+              content: [{ text: '{"ok":true}' }],
+              usage: { input_tokens: 1000, output_tokens: 100 },
+            },
+          },
         })}\n`, { status: 200 })
       }
       return new Response(JSON.stringify({
@@ -474,11 +676,29 @@ describe('Kael Q4 background optimization', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const summary = await processBatchResults(client, { anthropicApiKey: 'anthropic-test' }, { limit: 1 })
+    const circuitRpc = vi.fn(async () => ({ data: null, error: null }))
+    const summary = await processBatchResults(client, {
+      anthropicApiKey: 'anthropic-test',
+      durableGuardsEnabled: true,
+      durableGuardClient: { rpc: circuitRpc },
+    }, { limit: 1 })
 
     expect(summary).toEqual({ checked: 1, ended: 1, processed_items: 0, failed_items: 1 })
     expect(client.calls.some((call) => call.table === 'learning_rules')).toBe(false)
     expect(JSON.stringify(client.calls)).toContain('LEARNING_CANDIDATE_SCHEMA_INVALID')
+    expect(client.calls).toContainEqual(expect.objectContaining({
+      table: 'rpc:finalize_kael_ai_spend',
+      operations: [[
+        'rpc',
+        'finalize_kael_ai_spend',
+        expect.objectContaining({ p_reservation_id: 99, p_actual_usd: 0.0015 }),
+      ]],
+    }))
+    expect(circuitRpc).toHaveBeenCalledWith('record_circuit_failure', expect.objectContaining({
+      p_scope: 'purpose_provider',
+      p_key: 'post_job_learning:anthropic',
+      p_kind: 'schema',
+    }))
   })
 
   it('keeps manual-review skill results out of active rules even when the evidence gate passes', async () => {

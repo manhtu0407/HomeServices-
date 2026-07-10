@@ -326,6 +326,9 @@ export async function decideScopeChange(
       jobRelation: "own_customer_job",
       action: "review_scope_change",
       topic: "scope_change",
+      intentConfidence: 1,
+      topicSource: "deterministic_rule",
+      boundarySignal: false,
       actorId: ctx.user.id,
       jobId: scopeJobId,
     },
@@ -398,6 +401,31 @@ async function logScopeChangeEstimateApiCall(
   jobId: string,
   estimate: ScopeChangeKaelEstimate,
 ) {
+  const traceRows = (estimate.trace ?? [])
+    .filter((trace) =>
+      trace.purpose === "scope_change" &&
+      trace.provider !== null &&
+      trace.model !== null
+    )
+    .map((trace) => ({
+      job_id: jobId,
+      request_id: crypto.randomUUID(),
+      purpose: "scope_change",
+      provider: trace.provider,
+      model: trace.model,
+      input_tokens: null,
+      output_tokens: null,
+      cost_usd: trace.cost_usd,
+      latency_ms: trace.latency_ms ?? 0,
+      success: trace.validation.status === "pass",
+      error_code: trace.validation.reason_code ?? null,
+      safe_metadata: trace.safe_metadata,
+    }));
+  if (traceRows.length > 0) {
+    await logApiCalls(client, traceRows);
+    return;
+  }
+
   const provider = estimate.provider;
   const model = estimate.model;
   if (!provider || !model) return;

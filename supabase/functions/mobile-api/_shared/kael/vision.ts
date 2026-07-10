@@ -2,15 +2,28 @@ import { sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { AIImageContent, EdgeAiSecrets, VisionResult } from "./types.ts";
 import { visionResultSchema } from "./types.ts";
 import { buildVisionMessages } from "./prompts.ts";
-import { callAI } from "./provider-client.ts";
+import {
+  callStructuredAI,
+  hasStructuredValidationIssue,
+  type StructuredAIResponse,
+} from "./structured-call.ts";
 import type { KaelSpendGate } from "./spend-gate.ts";
 import { maxTokensForPurpose } from "./routing.config.ts";
 import { chooseCircuitAwareProviderOrNull } from "./routing.ts";
-import { safeParseJSON, sanitizeVisionPhotoUrls } from "./utils.ts";
+import { logKaelEscalation, selectKaelEscalation } from "./escalation.ts";
+import { sanitizeVisionPhotoUrls } from "./utils.ts";
 
 const VISION_MAX_TOKENS = 320;
 const VISION_IMAGE_FETCH_TIMEOUT_MS = 5_000;
 const VISION_IMAGE_MAX_BYTES = 4_000_000;
+const VIETNAMESE_DIACRITICS_REQUIRED = "VIETNAMESE_DIACRITICS_REQUIRED";
+const visionStructuredResultSchema = visionResultSchema.refine(
+  (value) => hasVietnameseDiacritics(value.problem_identified),
+  {
+    path: ["problem_identified"],
+    message: VIETNAMESE_DIACRITICS_REQUIRED,
+  },
+);
 
 type VisionAnalysisResult =
   | {
@@ -68,7 +81,7 @@ export async function analyzeDescription(
       failureReason: "NO_PROVIDER_AVAILABLE",
     };
   }
-  const result = await callAI({
+  const primaryResult = await callStructuredAI({
     purpose: "vision_analysis",
     provider: route.provider,
     model: route.model,
@@ -81,29 +94,53 @@ export async function analyzeDescription(
     temperature: 0.2,
     timeoutMs: route.latencyBudgetMs,
     maxRetries: 0,
-  }, secrets, gate);
+  }, visionStructuredResultSchema, secrets, gate);
 
-  if (!result.success) {
+  if (!primaryResult.success) {
     return {
       success: false,
       fallback: buildFallbackVision(intentContext),
-      failureReason: `AI call failed: ${result.code}`,
+      failureReason: primaryResult.code === "SCHEMA_INVALID"
+        ? hasStructuredValidationIssue(primaryResult, VIETNAMESE_DIACRITICS_REQUIRED)
+          ? "AI vision Vietnamese validation failed"
+          : "AI vision JSON validation failed"
+        : `AI call failed: ${primaryResult.code}`,
     };
   }
 
-  const parsed = safeParseJSON(result.content);
-  const validated = parsed ? visionResultSchema.safeParse(parsed) : null;
-  if (!validated?.success) {
-    return {
-      success: false,
-      fallback: buildFallbackVision(intentContext),
-      failureReason: "AI vision JSON validation failed",
-    };
-  }
+  const escalation = selectKaelEscalation("vision_analysis", {
+    provider: route.provider,
+    model: route.model,
+    hardVision: primaryResult.data.complexity_hint === "large",
+  });
+  if (!escalation) return successfulVisionResult(primaryResult, route);
 
+  logKaelEscalation("vision_analysis", escalation);
+  const escalatedResult = await callStructuredAI({
+    purpose: "vision_analysis",
+    provider: escalation.route.provider,
+    model: escalation.route.model,
+    messages: buildVisionMessages(
+      description,
+      sanitizeForLLM(intentContext),
+      imageBlocks,
+    ),
+    maxTokens: maxTokensForPurpose("vision_analysis", VISION_MAX_TOKENS),
+    temperature: 0.2,
+    timeoutMs: route.latencyBudgetMs,
+    maxRetries: 0,
+  }, visionStructuredResultSchema, secrets, gate);
+  if (!escalatedResult.success) return successfulVisionResult(primaryResult, route);
+  return successfulVisionResult(escalatedResult, escalation.route);
+}
+
+function successfulVisionResult(
+  result: StructuredAIResponse<VisionResult>,
+  route: { provider: "anthropic" | "perplexity" | "deepseek"; model: string },
+): VisionAnalysisResult {
   return {
     success: true,
-    analysis: validated.data,
+    analysis: result.data,
     provider: route.provider,
     model: route.model,
     inputTokens: result.usage.inputTokens,
@@ -111,6 +148,10 @@ export async function analyzeDescription(
     costUsd: result.usage.costUsd,
     cacheStatus: result.usage.cacheStatus,
   };
+}
+
+function hasVietnameseDiacritics(text: string): boolean {
+  return /[\u0300-\u036f]/u.test(text.normalize("NFD")) || /[đĐ]/u.test(text);
 }
 
 async function fetchVisionImageBlocks(

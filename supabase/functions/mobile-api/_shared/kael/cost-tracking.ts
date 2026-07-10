@@ -1,4 +1,5 @@
 import type { AIProvider } from "./types.ts";
+import { calculateModelCostUsd } from "./model-pricing.ts";
 
 export const KAEL_OPTIMIZATION_FLAG_NAMES = [
   "KAEL_OPT_PROMPT_CACHE_ENABLED",
@@ -71,23 +72,19 @@ export function estimateProviderCostUsd(input: {
   readonly model?: string | null;
   readonly inputTokens?: number | null;
   readonly outputTokens?: number | null;
+  readonly searchContextSize?: "low" | "medium" | "high";
 }): number | null {
   const inputTokens = nonNegativeNumber(input.inputTokens);
   const outputTokens = nonNegativeNumber(input.outputTokens);
   if (inputTokens === null && outputTokens === null) return null;
-  const inTokens = inputTokens ?? 0;
-  const outTokens = outputTokens ?? 0;
-  if (input.provider === "deepseek") {
-    return roundUsd(inTokens * 0.14 / 1_000_000 + outTokens * 0.28 / 1_000_000);
-  }
-  if (input.provider === "perplexity") {
-    return roundUsd(inTokens * 1 / 1_000_000 + outTokens * 1 / 1_000_000);
-  }
-  const isHaiku = input.model?.includes("haiku") === true;
-  return roundUsd(
-    inTokens * (isHaiku ? 0.25 : 3) / 1_000_000 +
-      outTokens * (isHaiku ? 1.25 : 15) / 1_000_000,
-  );
+  if (!input.model?.trim()) return null;
+  return roundUsd(calculateModelCostUsd({
+    provider: input.provider,
+    model: input.model,
+    inputTokens,
+    outputTokens,
+    searchContextSize: input.searchContextSize,
+  }));
 }
 
 export function calculateKaelCostProjection(

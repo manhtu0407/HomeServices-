@@ -187,7 +187,8 @@ describe('mobile-api Edge schema compatibility', () => {
 
     expect(source).toContain('deepseek-v4-flash')
     expect(source).not.toContain('deepseek-chat')
-    expect(source).toMatch(/thinking:\s*\{\s*type:\s*["']disabled["']\s*\}/)
+    expect(source).toMatch(/thinking:\s*\{\s*type:\s*request\.model === "deepseek-v4-pro" \? "enabled" : "disabled"\s*\}/)
+    expect(source).toContain('reasoning_effort: "high"')
     expect(source).toMatch(/response_format:\s*\{\s*type:\s*["']json_object["']\s*\}/)
   })
 
@@ -424,9 +425,10 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(edgeKael).toContain('educational_response')
   })
 
-  it('adds P6 memory governance archive, routes, and sanitizer boundary', () => {
+  it('keeps self-memory CRUD live while quarantining the unused L1-L6 context engine', () => {
     const migrations = readMigrations()
-    const edgeKael = readEdgeKaelModules()
+    const edgeKaelIndex = read('supabase/functions/mobile-api/_shared/kael/index.ts')
+    const quarantinedMemory = read('supabase/functions/mobile-api/_shared/kael/memory.ts')
     const edgeServices = readEdgeServiceLayer()
     const edgeRouter = readEdgeRouterLayer()
 
@@ -435,9 +437,10 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(migrations).toContain('customer_id uuid primary key references public.profiles(id) on delete cascade')
     expect(migrations).toContain('worker_id uuid primary key references public.profiles(id) on delete cascade')
     expect(migrations).toContain('grant all on public.kael_memory_archive to service_role')
-    expect(edgeKael).toContain('class KaelMemory')
-    expect(edgeKael).toContain('sanitizeMemoryObject')
-    expect(edgeKael).toContain('options.maxTotalTokens ?? 1500')
+    expect(edgeKaelIndex).toContain('export * from "./memory-sanitizer.ts"')
+    expect(edgeKaelIndex).not.toContain('export * from "./memory.ts"')
+    expect(quarantinedMemory).toContain('QUARANTINED')
+    expect(quarantinedMemory).toContain('not part of the production mobile-api runtime')
     expect(edgeRouter).toContain('/me/kael-memory')
     expect(edgeRouter).toContain('/workers/me/kael-memory')
     expect(edgeServices).toContain('getMyKaelMemory')
@@ -1147,7 +1150,7 @@ describe('mobile-api Edge schema compatibility', () => {
     expect(boundaryContract).toContain('"penalty_or_compensation"')
     expect(workerAssist).toContain('workerAssistResponseSchema')
     expect(workerAssist).toContain('detectForbiddenAiDecisionText')
-    expect(workerAssist).toContain('runKaelSelfCheckPipeline')
+    expect(workerAssist).toContain('guardOutput')
     expect(workerAssist).toContain('fallbackAnswer')
     expect(demanding).toContain('safeDemandingResponseText')
     expect(dispute).toContain('assertNeutralDisputeLanguage')

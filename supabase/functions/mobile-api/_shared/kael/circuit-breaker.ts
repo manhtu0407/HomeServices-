@@ -4,10 +4,11 @@ export type CircuitFailure = {
   readonly purpose: KaelPurpose;
   readonly provider: AIProvider;
   readonly errorCode: string;
+  readonly kind?: FailureKind | null;
   readonly now?: Date;
 };
 
-type FailureKind = "credit" | "rate_limit" | "server" | "timeout" | "schema";
+export type FailureKind = "credit" | "rate_limit" | "server" | "timeout" | "schema";
 
 type FailureRule = {
   readonly kind: FailureKind;
@@ -53,7 +54,7 @@ export function createKaelCircuitBreaker() {
     },
 
     recordFailure(failure: CircuitFailure): void {
-      const kind = failureKindForCode(failure.errorCode);
+      const kind = failure.kind ?? failureKindForCode(failure.errorCode);
       if (!kind) return;
       const rule = FAILURE_RULES[kind];
       const nowMs = (failure.now ?? new Date()).getTime();
@@ -82,7 +83,7 @@ function circuitKey(purpose: KaelPurpose, provider: AIProvider): string {
   return `${purpose}:${provider}`;
 }
 
-function failureKindForCode(errorCode: string): FailureKind | null {
+export function failureKindForCode(errorCode: string): FailureKind | null {
   if (errorCode === "HTTP_402") return "credit";
   if (errorCode === "HTTP_429") return "rate_limit";
   if (/^HTTP_5\d\d$/.test(errorCode)) return "server";

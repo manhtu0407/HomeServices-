@@ -2,6 +2,8 @@ import type { EdgeAiSecrets } from "./types.ts";
 
 const ANTHROPIC_BATCH_URL = "https://api.anthropic.com/v1/messages/batches";
 const ANTHROPIC_VERSION = "2023-06-01";
+const ANTHROPIC_BATCH_TIMEOUT_MS = 20_000;
+const ANTHROPIC_BATCH_MAX_RETRIES = 2;
 
 export type AnthropicBatchRequest = {
   custom_id: string;
@@ -50,7 +52,7 @@ export async function createAnthropicMessageBatch(
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY missing");
   if (requests.length === 0) throw new Error("Cannot create empty Anthropic batch");
 
-  const response = await fetcher(ANTHROPIC_BATCH_URL, {
+  const response = await fetchAnthropicBatch(fetcher, ANTHROPIC_BATCH_URL, {
     method: "POST",
     headers: anthropicHeaders(apiKey),
     body: JSON.stringify({ requests }),
@@ -65,10 +67,14 @@ export async function retrieveAnthropicMessageBatch(
 ): Promise<AnthropicBatchSummary> {
   const apiKey = secrets.anthropicApiKey;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY missing");
-  const response = await fetcher(`${ANTHROPIC_BATCH_URL}/${encodeURIComponent(batchId)}`, {
+  const response = await fetchAnthropicBatch(
+    fetcher,
+    `${ANTHROPIC_BATCH_URL}/${encodeURIComponent(batchId)}`,
+    {
     method: "GET",
     headers: anthropicHeaders(apiKey),
-  });
+    },
+  );
   return parseAnthropicBatchResponse(response);
 }
 
@@ -79,10 +85,11 @@ export async function retrieveAnthropicBatchResults(
 ): Promise<AnthropicBatchResult[]> {
   const apiKey = secrets.anthropicApiKey;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY missing");
-  const response = await fetcher(`${ANTHROPIC_BATCH_URL}/${encodeURIComponent(batchId)}/results`, {
-    method: "GET",
-    headers: anthropicHeaders(apiKey),
-  });
+  const response = await fetchAnthropicBatch(
+    fetcher,
+    `${ANTHROPIC_BATCH_URL}/${encodeURIComponent(batchId)}/results`,
+    { method: "GET", headers: anthropicHeaders(apiKey) },
+  );
   const text = await response.text();
   if (!response.ok) {
     throw new Error(`Anthropic batch results failed: ${response.status} ${text.slice(0, 240)}`);
@@ -92,6 +99,47 @@ export async function retrieveAnthropicBatchResults(
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => JSON.parse(line) as AnthropicBatchResult);
+}
+
+async function fetchAnthropicBatch(
+  fetcher: FetchLike,
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= ANTHROPIC_BATCH_MAX_RETRIES; attempt += 1) {
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const timeout = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          reject(new Error("Anthropic batch request timed out"));
+        }, ANTHROPIC_BATCH_TIMEOUT_MS);
+      });
+      const response = await Promise.race([
+        fetcher(url, { ...init, signal: controller.signal }),
+        timeout,
+      ]);
+      if (!isRetryableStatus(response.status) || attempt === ANTHROPIC_BATCH_MAX_RETRIES) {
+        return response;
+      }
+      lastError = new Error(`Anthropic batch retryable HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error;
+      if (attempt === ANTHROPIC_BATCH_MAX_RETRIES) throw error;
+    } finally {
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Anthropic batch request failed");
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status >= 500;
 }
 
 function anthropicHeaders(apiKey: string): HeadersInit {

@@ -334,6 +334,37 @@ describe('Insert type requirements', () => {
     expect(rateRow.allowed).toBe(true)
   })
 
+  it('represents the durable circuit and generic rate contracts', () => {
+    const circuit = {
+      scope: 'purpose_provider',
+      key: 'vision_analysis:anthropic',
+      kind: 'timeout',
+      window_started_at: '2026-07-10T00:00:00.000Z',
+    } satisfies Database['public']['Tables']['kael_provider_circuit']['Insert']
+    const rate = {
+      scope: 'kael_chat:minute',
+      key: '00000000-0000-0000-0000-000000000001',
+      window_started_at: '2026-07-10T00:00:00.000Z',
+      tokens: 4,
+    } satisfies Database['public']['Tables']['kael_rate_counter']['Insert']
+    const failureArgs = {
+      p_scope: 'provider',
+      p_key: 'deepseek',
+      p_kind: 'credit',
+    } satisfies Database['public']['Functions']['record_circuit_failure']['Args']
+    const rateArgs = {
+      p_scope: 'kael_chat',
+      p_key: '00000000-0000-0000-0000-000000000001',
+      p_cost: 1,
+      p_config: { buckets: [] },
+    } satisfies Database['public']['Functions']['rate_take']['Args']
+
+    expect(circuit.kind).toBe('timeout')
+    expect(rate.tokens).toBe(4)
+    expect(failureArgs.p_scope).toBe('provider')
+    expect(rateArgs.p_cost).toBe(1)
+  })
+
   it('worker Kael feedback and training consent tables carry worker-owned parity data', () => {
     const workerId = '00000000-0000-0000-0000-000000000001'
     const feedback = {
