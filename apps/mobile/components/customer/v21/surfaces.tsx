@@ -22,10 +22,11 @@ import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay,
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   inferLocalDealDraftFromKael,
+  CUSTOMER_SERVICE_IDS,
   LOCAL_DEAL_ID,
   PROBLEM_CHIPS,
-  SERVICE_TYPES,
   extractKnownDistrictLabel,
+  type CustomerServiceId,
   type LocalDeal,
   type LocalDealStatus,
   type CustomerKaelMemoryPreferenceKey,
@@ -40,6 +41,7 @@ import { setAppLanguage, useAppLanguage, type AppLanguage } from '@/lib/app-lang
 import { useAuth } from '@/lib/auth-provider'
 import { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { customerProfileService, jobService, kaelAssistantService, kaelChatService, placesService } from '@/lib/services'
+import { bookingServiceIdFromRoute, productionServiceForBooking } from '@/lib/kael-performance-intake'
 import { uploadJobMediaDrafts, uploadKaelChatMediaDrafts, type LocalMediaUploadDraft } from '@/lib/media-upload'
 import type { CustomerProfileInsightsResponse, KaelAssistantResponse, KaelChatResponse, KaelChatTurn, PlacesAutocompleteResponse } from '@/lib/api-types'
 import {
@@ -64,6 +66,7 @@ import { CustomerAgenticCenterSurfaceView } from './agentic-center-stateful-surf
 import { AgenticApprovalQueuePanel, AgenticArtifactTile, AgenticChatFact, AgenticCommandCaseCardPanel, AgenticCommandTimelinePanel, AgenticHomeBackdropAura, AgenticMetricTile, AgenticProcessedApprovalRow, AgenticStageBackdropAura, AgenticStageHero, AgenticUtilityStackPanel, AgenticWorkLogCardPanel } from './agentic-surfaces'
 import { customerV21Assets, customerV21BankAssets, customerV21ServiceAssets, type CustomerV21BankKey } from './assets'
 import { CustomerBookingEntryView, CustomerBookingGuestGateView } from './booking-entry-stateful-surfaces'
+import { usePerformanceBookingIntake } from './use-performance-booking-intake'
 import { PrepRow } from './booking-surfaces'
 import { buildBookingSearchSuggestions, normalizeBookingSearchText, type BookingSearchSuggestion } from './booking-search-display-model'
 import {
@@ -143,6 +146,7 @@ import { CustomerV21DockOverlayView } from './dock-stateful-surfaces'
 import { buildKaelProcessSequence, type KaelProcessLine, type KaelProcessScenarioId } from './kael-process-lines'
 import {
   customerV21CommonCopy,
+  customerV21BookingServiceCopy,
   customerV21ScreenTitles,
   customerV21ServiceCopy,
   customerV21StatusCopy,
@@ -604,9 +608,10 @@ export function CustomerHomeSurface() {
     ? '/(customer)/booking'
     : customerCaseWorkRouteForDeal(deal)
 
-  const openService = (serviceType: ServiceType) => {
-    workflow.dispatch?.({ type: 'start_home_service', serviceType })
-    router.replace(`/(customer)/booking?service=${encodeURIComponent(serviceType)}` as never)
+  const openService = (serviceId: CustomerServiceId) => {
+    const productionServiceType = productionServiceForBooking(serviceId)
+    if (productionServiceType) workflow.dispatch?.({ type: 'start_home_service', serviceType: productionServiceType })
+    router.replace(`/(customer)/booking?service=${encodeURIComponent(serviceId)}` as never)
   }
 
   return (
@@ -650,7 +655,7 @@ export function CustomerHomeSurface() {
         title={language === 'vi' ? 'Bạn cần gì hôm nay?' : 'What do you need today?'}
       />
       <View style={[sharedStyles.serviceGrid, sharedStyles.homeServiceGrid]}>
-        {SERVICE_TYPES.map((service) => (
+        {CUSTOMER_SERVICE_IDS.map((service) => (
           <ServiceTile homeAura key={service} onPress={() => openService(service)} service={service} />
         ))}
       </View>
@@ -684,32 +689,30 @@ export function CustomerBookingEntrySurface() {
   const { guestMode, session } = useAuth()
   const { reduceTransparency, tokens } = useV21Theme()
   const copy = customerV21CommonCopy[language]
-  const initialDeal = useFrontendWorkflow().state.deal
   const rawServicesScreen = firstParam(params.screen)
   const directServicesScreen = servicesScreenParam(rawServicesScreen)
-  const directService = serviceParam(firstParam(params.service) ?? firstParam(params.serviceType))
+  const directService = bookingServiceIdFromRoute(firstParam(params.service) ?? firstParam(params.serviceType))
   const directScheduleDate = bookingScheduleDateParam(firstParam(params.date))
   const directScheduleTime = bookingScheduleTimeParam(firstParam(params.time))
   const legacyMediaScreenRequested = rawServicesScreen === '2.3-media'
   const servicesScreenId = legacyMediaScreenRequested ? '2.2-search' : directServicesScreen ?? '2.2-search'
   const isMediaScreen = false
-  const [selectedService, setSelectedService] = useState<ServiceType | null>(initialDeal?.draft.serviceType ?? directService)
+  const [selectedService, setSelectedService] = useState<CustomerServiceId | null>(directService)
   const [serviceSearchQuery, setServiceSearchQuery] = useState('')
-  const [selectedProblems, setSelectedProblems] = useState<string[]>(initialDeal?.draft.problemChips ?? [])
-  const [address, setAddress] = useState(initialDeal?.draft.addressLabel ?? '')
-  const [addressDistrictLabel, setAddressDistrictLabel] = useState<string | null>(
-    () => extractKnownDistrictLabel(initialDeal?.draft.addressLabel ?? initialDeal?.draft.districtLabel ?? '') ?? initialDeal?.draft.districtLabel ?? null,
-  )
+  const [selectedProblems, setSelectedProblems] = useState<string[]>([])
+  const [address, setAddress] = useState('')
+  const addressDistrictLabel = useRef<string | null>(null)
   const [addressLookupOpen, setAddressLookupOpen] = useState(false)
   const [addressLookupPending, setAddressLookupPending] = useState(false)
   const [addressFallbackUsed, setAddressFallbackUsed] = useState(false)
   const [addressSuggestions, setAddressSuggestions] = useState<BookingAddressSuggestion[]>([])
-  const [description, setDescription] = useState(initialDeal?.draft.description ?? '')
+  const [description, setDescription] = useState('')
   const [selectedScheduleDate, setSelectedScheduleDate] = useState<string | null>(directScheduleDate)
   const [selectedScheduleTime, setSelectedScheduleTime] = useState<string | null>(directScheduleTime)
-  const mediaCount = initialDeal?.draft.mediaCount ?? 0
+  const mediaCount = 0
   const [voiceDrafts, setVoiceDrafts] = useState<LocalMediaUploadDraft[]>([])
   const [error, setError] = useState<string | null>(null)
+  const performanceIntake = usePerformanceBookingIntake({ existingMediaCount: mediaCount, language, selectedService, setError, tokens })
   const [scheduleRuntimeNow, setScheduleRuntimeNow] = useState(() => Date.now())
   useEffect(() => {
     const intervalId = setInterval(() => setScheduleRuntimeNow(Date.now()), bookingScheduleRuntimeRefreshMs)
@@ -721,12 +724,7 @@ export function CustomerBookingEntrySurface() {
   }, [legacyMediaScreenRequested, router])
   useEffect(() => {
     const trimmed = address.trim()
-    if (!addressLookupOpen || trimmed.length < 2) {
-      setAddressLookupPending(false)
-      setAddressFallbackUsed(false)
-      setAddressSuggestions([])
-      return
-    }
+    if (!addressLookupOpen || trimmed.length < 2) return
 
     let cancelled = false
     setAddressLookupPending(true)
@@ -777,24 +775,19 @@ export function CustomerBookingEntrySurface() {
     )
   }
 
-  const problemOptions = selectedService ? [...PROBLEM_CHIPS[selectedService]] : []
+  const problemOptions = performanceIntake.productionServiceType && !performanceIntake.serviceLineId ? [...PROBLEM_CHIPS[performanceIntake.productionServiceType]] : []
   const normalizedServiceSearchQuery = normalizeBookingSearchText(serviceSearchQuery)
   const toggleProblem = (label: string) => {
     setSelectedProblems((current) =>
       current.includes(label) ? current.filter((item) => item !== label) : [...current, label],
     )
   }
-  const searchSuggestions = buildBookingSearchSuggestions({
-    language,
-    problemOptions,
-    query: normalizedServiceSearchQuery,
-    selectedProblems,
-    selectedService,
-  })
+  const searchSuggestions = buildBookingSearchSuggestions({ language, problemOptions, query: normalizedServiceSearchQuery, selectedProblems, selectedService })
   const selectSearchSuggestion = (suggestion: BookingSearchSuggestion) => {
     if (!suggestion.problem) {
       setSelectedService(suggestion.serviceType)
       setSelectedProblems([])
+      performanceIntake.reset()
       return
     }
     setSelectedService(suggestion.serviceType)
@@ -807,16 +800,40 @@ export function CustomerBookingEntrySurface() {
   }
   const updateAddress = (nextAddress: string) => {
     setAddress(nextAddress)
-    setAddressDistrictLabel(extractKnownDistrictLabel(nextAddress) || null)
+    addressDistrictLabel.current = extractKnownDistrictLabel(nextAddress) || null
+    if (nextAddress.trim().length < 2) {
+      setAddressLookupOpen(false)
+      setAddressLookupPending(false)
+      setAddressFallbackUsed(false)
+      setAddressSuggestions([])
+      return
+    }
     setAddressLookupOpen(true)
   }
   const selectAddressSuggestion = (suggestion: BookingAddressSuggestion) => {
     setAddress(suggestion.label)
-    setAddressDistrictLabel(extractKnownDistrictLabel(suggestion.label) || null)
+    addressDistrictLabel.current = extractKnownDistrictLabel(suggestion.label) || null
     setAddressLookupOpen(false)
     setAddressLookupPending(false)
     setAddressFallbackUsed(false)
     setAddressSuggestions([])
+  }
+  const resetBookingBoard = () => {
+    setSelectedService(null)
+    setServiceSearchQuery('')
+    setSelectedProblems([])
+    setAddress('')
+    addressDistrictLabel.current = null
+    setAddressLookupOpen(false)
+    setAddressLookupPending(false)
+    setAddressFallbackUsed(false)
+    setAddressSuggestions([])
+    setDescription('')
+    setSelectedScheduleDate(null)
+    setSelectedScheduleTime(null)
+    setVoiceDrafts([])
+    performanceIntake.reset()
+    setError(null)
   }
 
   const submitDraft = async () => {
@@ -824,43 +841,44 @@ export function CustomerBookingEntrySurface() {
       setError(language === 'vi' ? 'Chọn dịch vụ trước khi gửi Kael.' : 'Choose a service before sending to Kael.')
       return
     }
-    if (description.trim().length < 10) {
-      setError(language === 'vi' ? 'Mô tả cần rõ hơn trước khi gửi Kael.' : 'Add a clearer description before sending to Kael.')
-      return
-    }
+    const resolvedDraft = performanceIntake.resolveDraft({ fallbackDescription: description, fallbackProblemChips: selectedProblems })
+    if (!resolvedDraft.ok) return setError(resolvedDraft.error)
+    const { description: draftDescription, problemChips: draftProblemChips, serviceType: draftServiceType } = resolvedDraft
     if (address.trim().length < 4) {
       setError(language === 'vi' ? 'Nhập khu vực hoặc căn hộ.' : 'Enter an apartment or area.')
       return
     }
     const message = buildBookingDraftMessage({
       address,
-      description,
+      description: draftDescription,
       language,
-      problems: selectedProblems,
+      problems: draftProblemChips,
       scheduleLabel,
-      serviceType: selectedService,
+      serviceType: draftServiceType,
     })
-    const totalMediaCount = mediaCount + voiceDrafts.length
+    const pendingMediaDrafts = mergeMediaDrafts(performanceIntake.photoDrafts, voiceDrafts, Math.max(0, 5 - mediaCount))
+    const totalMediaCount = mediaCount + pendingMediaDrafts.length
     const normalizedAddress = address.trim()
-    const normalizedDistrict = addressDistrictLabel ?? extractKnownDistrictLabel(normalizedAddress) ?? normalizedAddress
+    const normalizedDistrict = addressDistrictLabel.current ?? extractKnownDistrictLabel(normalizedAddress) ?? normalizedAddress
     await setPendingKaelChatDraft({
       addressLabel: normalizedAddress,
       clientRequestId: generateClientRequestId(),
       createdAt: new Date().toISOString(),
-      description: description.trim(),
+      description: draftDescription,
       districtLabel: normalizedDistrict,
       locale: language,
       mediaCount: totalMediaCount,
       message,
-      photoDrafts: voiceDrafts.length > 0 ? voiceDrafts : undefined,
-      problemChips: selectedProblems,
-      serviceType: selectedService,
+      photoDrafts: pendingMediaDrafts.length > 0 ? pendingMediaDrafts : undefined,
+      problemChips: draftProblemChips,
+      serviceType: draftServiceType,
       source: 'booking',
     })
-    setError(null)
+    resetBookingBoard()
     router.replace(customerKaelWorkRoute as never)
   }
-  const selectedServiceCopy = selectedService ? customerV21ServiceCopy[language][selectedService] : null
+  const selectedServiceCopy = selectedService ? customerV21BookingServiceCopy[language][selectedService] : null
+  const createDraftLabel = performanceIntake.submitLabel ?? copy.createDraft
 
   return (
     <V21Screen screenId={servicesScreenId} testID="customer-v21-services">
@@ -874,7 +892,7 @@ export function CustomerBookingEntrySurface() {
         bookingSearchInputColor={bookingSearchInputTextColor}
         bookingSourceSearchShadowStyle={bookingSourceSearchWebShadow}
         chatPlaceholder={copy.chatPlaceholder}
-        createDraftLabel={copy.createDraft}
+        createDraftLabel={createDraftLabel}
         dataPendingLabel={copy.dataPending}
         description={description}
         error={error}
@@ -884,7 +902,7 @@ export function CustomerBookingEntrySurface() {
         language={language}
         mediaPanelNode={(
           <MediaIntakePanel
-            caseLabel={initialDeal ? caseDisplayCode(initialDeal, language) : (language === 'vi' ? 'Nháp' : 'Draft')}
+            caseLabel={language === 'vi' ? 'Nháp' : 'Draft'}
             description={description}
             mediaCount={mediaCount}
             onVoiceSaved={(draft) => setVoiceDrafts((current) => mergeMediaDrafts(current, [draft], Math.max(1, 5 - mediaCount)))}
@@ -902,6 +920,7 @@ export function CustomerBookingEntrySurface() {
         onResetSelectedService={() => {
           setSelectedService(null)
           setSelectedProblems([])
+          performanceIntake.reset()
           router.replace('/(customer)/booking' as never)
         }}
         onScheduleDateSelect={setSelectedScheduleDate}
@@ -911,9 +930,11 @@ export function CustomerBookingEntrySurface() {
         onServiceSelect={(service) => {
           setSelectedService(service)
           setSelectedProblems([])
+          performanceIntake.reset()
         }}
         onSubmit={submitDraft}
         problemOptions={problemOptions}
+        performanceIntakeNode={performanceIntake.panel}
         reduceTransparency={reduceTransparency}
         rootStyles={styles}
         scheduleDateOptions={scheduleDateOptions}
@@ -925,9 +946,11 @@ export function CustomerBookingEntrySurface() {
         selectedService={selectedService}
         selectedServiceCopy={selectedServiceCopy}
         serviceSearchQuery={serviceSearchQuery}
+        submitDisabled={performanceIntake.submitBlocked}
         textInputNoOutlineStyle={customerV21WebTextInputNoOutline}
         timeSlots={bookingTimeSlots}
         tokens={tokens}
+        usesPerformanceIntake={Boolean(performanceIntake.state)}
       />
     </V21Screen>
   )

@@ -1,5 +1,5 @@
 ﻿import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { Alert } from 'react-native'
+import { Alert, StyleSheet } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 import { LOCAL_WORKFLOW_PRICE_DISCLAIMER } from '@nestscout/shared'
 import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
@@ -13,6 +13,7 @@ let mockRouteParams: Record<string, string | string[] | undefined>
 let mockAppLanguage = 'vi'
 const mockReplace = jest.fn()
 const mockUseJobChatThread = jest.fn()
+const mockPlacesAutocomplete = jest.fn()
 const mockWorkerKaelChatService = {
   create: jest.fn(),
   get: jest.fn(),
@@ -42,6 +43,13 @@ jest.mock('expo-image-picker', () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
 }))
 
+jest.mock('expo-location', () => ({
+  Accuracy: { Balanced: 3 },
+  getCurrentPositionAsync: jest.fn(),
+  requestForegroundPermissionsAsync: jest.fn(() => new Promise(() => undefined)),
+  watchPositionAsync: jest.fn(),
+}), { virtual: true })
+
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockRouteParams,
   usePathname: () => mockPathname,
@@ -70,6 +78,13 @@ jest.mock('@/lib/use-job-chat-thread', () => ({
 }))
 
 jest.mock('@/lib/services', () => ({
+  placesService: {
+    autocomplete: (...args: unknown[]) => mockPlacesAutocomplete(...args),
+  },
+  workerRouteService: {
+    getMapImage: jest.fn(),
+    getPreview: jest.fn(),
+  },
   workerKaelChatService: {
     create: (...args: unknown[]) => mockWorkerKaelChatService.create(...args),
     get: (...args: unknown[]) => mockWorkerKaelChatService.get(...args),
@@ -97,6 +112,8 @@ import {
   WorkerJobsSurface,
   WorkerProfileSurface,
 } from '../worker-surfaces'
+import { resolveWorkerV5DockActive } from '../dock/routing'
+import { WorkerV5ScheduleList } from '../jobs/surfaces'
 
 function buildWorkerProfile(overrides: Partial<WorkerProfileResponse> = {}): WorkerProfileResponse {
   return {
@@ -206,6 +223,15 @@ function buildAcceptedDeal(): LocalDeal {
     ...deal,
     broadcast: deal.broadcast ? { ...deal.broadcast, status: 'accepted' } : null,
     status: 'worker_matched',
+  }
+}
+
+function buildCancelledDeal(): LocalDeal {
+  const deal = buildIncomingDeal()
+  return {
+    ...deal,
+    broadcast: deal.broadcast ? { ...deal.broadcast, status: 'cancelled' } : null,
+    status: 'cancelled',
   }
 }
 
@@ -426,6 +452,14 @@ beforeEach(() => {
   imagePicker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
   imagePicker.launchImageLibraryAsync.mockReset()
   imagePicker.launchImageLibraryAsync.mockResolvedValue({ canceled: true, assets: [] })
+  mockPlacesAutocomplete.mockReset()
+  mockPlacesAutocomplete.mockResolvedValue({
+    data: {
+      fallback_used: false,
+      suggestions: [],
+    },
+    success: true,
+  })
   mockPathname = '/(worker)/home'
   mockRouteParams = {}
   mockAppLanguage = 'vi'
@@ -433,6 +467,214 @@ beforeEach(() => {
 })
 
 describe('Worker runtime surface wiring', () => {
+  it('keeps the schedule ordinal inset from the left edge', () => {
+    render(
+      <WorkerV5ScheduleList
+        reduceTransparency={false}
+        rows={[{ aside: 'Matched', meta: 'Area', time: '01', title: 'Plumbing' }]}
+      />,
+    )
+
+    expect(StyleSheet.flatten(screen.getByText('01').props.style)).toMatchObject({ paddingLeft: 7 })
+  })
+
+  it('keeps the worker home focused on availability and quick actions without the Kael prepared-work card', () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+
+    render(<WorkerHomeSurface />)
+
+    expect(screen.queryByText('Kael đã chuẩn bị việc phù hợp')).toBeNull()
+    expect(screen.getByTestId('worker-v5-home-command-center')).toBeOnTheScreen()
+  })
+
+  it('retires the old accept-review deep link back to the work board', () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '2.3-accept-review' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-screen-2.1-opportunity-inbox')).toBeOnTheScreen()
+    expect(mockWorkflowValue.actions.workerAcceptBroadcast).not.toHaveBeenCalled()
+  })
+
+  it('keeps the work board focused on real opportunities without the workflow note card', () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockRouteParams = {}
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.queryByText('Một luồng công việc')).toBeNull()
+    expect(screen.getByTestId('worker-v5-opportunity-card')).toBeOnTheScreen()
+  })
+
+  it('requires a selected mission before enabling the continuation CTA and source formula', () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = {}
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.queryByText('Phù hợp từ nguồn thật')).toBeNull()
+    expect(screen.getByText('120.000d - 180.000d').props.numberOfLines).toBe(1)
+    expect(screen.getByTestId('worker-v5-primary-action')).toBeDisabled()
+    expect(screen.queryByTestId('worker-v5-primary-gradient')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('worker-v5-opportunity-card'))
+
+    expect(screen.getByTestId('worker-v5-opportunity-card').props.accessibilityState).toEqual({ selected: true })
+    expect(screen.getByTestId('worker-v5-primary-action')).not.toBeDisabled()
+    expect(screen.getByTestId('worker-v5-primary-gradient')).toBeOnTheScreen()
+  })
+
+  it('accepts an open offer from the unified offer decision screen', async () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockRouteParams = { ns_worker_screen: '2.2-offer-detail' }
+
+    render(<WorkerJobsSurface />)
+    expect(screen.getByTestId('worker-v5-accept-checklist-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-accept-commitment')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-accept-confirm-action'))
+
+    await waitFor(() => {
+      expect(mockWorkflowValue.actions.workerAcceptBroadcast).toHaveBeenCalledTimes(1)
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+    })
+  })
+
+  it('declines an open offer from the same decision screen and returns to the board', async () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockRouteParams = { ns_worker_screen: '2.2-offer-detail' }
+
+    render(<WorkerJobsSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-offer-decline-action'))
+
+    await waitFor(() => {
+      expect(mockWorkflowValue.actions.workerDeclineBroadcast).toHaveBeenCalledTimes(1)
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.1-opportunity-inbox')
+    })
+  })
+
+  it('does not navigate when the server rejects the accept action', async () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockWorkflowValue.actions.workerAcceptBroadcast = jest.fn(async () => false)
+    mockRouteParams = { ns_worker_screen: '2.2-offer-detail' }
+
+    render(<WorkerJobsSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-accept-confirm-action'))
+
+    await waitFor(() => {
+      expect(mockWorkflowValue.actions.workerAcceptBroadcast).toHaveBeenCalledTimes(1)
+    })
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('does not loop a cancelled deal back into the work board', () => {
+    buildWorkflow({ deal: buildCancelledDeal() })
+    mockRouteParams = {}
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.queryByTestId('worker-v5-opportunity-card')).toBeNull()
+    expect(screen.getByTestId('worker-v5-primary-action')).toBeDisabled()
+  })
+
+  it('shows the accepted destination inside the merged travel state', () => {
+    const deal = { ...buildAcceptedDeal(), createdAt: '2026-07-10T00:00:00.000Z' }
+    buildWorkflow({ deal })
+    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-route-map-panel')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-info-cell-value-2')).toHaveTextContent(deal.draft.addressLabel)
+  })
+
+  it('redirects the retired Route and ETA route into in-progress', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '2.4-route-eta' }
+
+    render(<WorkerJobsSurface />)
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+    })
+  })
+
+  it('keeps Kael job intake connected to the current workflow state', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
+
+    render(<WorkerChatSurface />)
+    expect(screen.getByText('120.000d - 180.000d')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-private-kael-chat-intake')).toBeNull()
+    expect(screen.getByTestId('worker-v5-kael-orb-composer')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-open-opportunity'))
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.7-in-progress')
+    })
+  })
+
+  it('keeps the standard Kael composer on job intake after a worker is matched', async () => {
+    buildWorkflow({ deal: buildAcceptedDeal() })
+    mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
+
+    render(<WorkerChatSurface />)
+    fireEvent.changeText(screen.getByTestId('worker-v5-kael-orb-input'), 'Tôi nên chuẩn bị dụng cụ gì?')
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-send'))
+
+    expect(screen.getByTestId('worker-v5-kael-orb-input').props.value).toBe('')
+    expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
+  })
+
+  it('opens the unified decision screen from Kael for an incoming opportunity', async () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
+
+    render(<WorkerChatSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-kael-orb-open-opportunity'))
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/jobs?ns_worker_screen=2.2-offer-detail')
+    })
+  })
+
+  it('uses profile readiness actions instead of a fake chat before acceptance', async () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockRouteParams = { ns_worker_screen: '3.2-kael-job-intake' }
+
+    render(<WorkerChatSurface />)
+    expect(screen.queryByTestId('worker-v5-kael-orb-composer')).toBeNull()
+    expect(screen.queryByTestId('worker-kael-chat-input')).toBeNull()
+    fireEvent.press(screen.getByTestId('worker-v5-kael-optimize-profile'))
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/profile?ns_worker_screen=5.3-skills-service-area')
+    })
+    expect(mockWorkerKaelChatService.create).not.toHaveBeenCalled()
+  })
+
+  it('opens Kael job intake from the work board without losing the current opportunity', async () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockRouteParams = {}
+
+    render(<WorkerJobsSurface />)
+    fireEvent.press(screen.getByTestId('worker-v5-opportunity-kael-action'))
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake')
+    })
+  })
+
+  it('retires map and schedule deep links from the mandatory jobs workflow', () => {
+    buildWorkflow({ deal: buildIncomingDeal() })
+    mockRouteParams = { ns_worker_screen: '1.4-smart-schedule' }
+
+    render(<WorkerJobsSurface />)
+
+    expect(screen.getByTestId('worker-v5-screen-2.1-opportunity-inbox')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-schedule-support-aura-group')).toBeNull()
+  })
+
   it('routes the public worker wrapper to the restored Worker V5 sections', () => {
     buildWorkflow()
 
@@ -446,8 +688,8 @@ describe('Worker runtime surface wiring', () => {
 
     mockRouteParams = {}
     const jobs = render(<WorkerJobsSurface />)
-    expect(screen.getByTestId('worker-v5-screen-1.2-shift-brief')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-shift-page-customer-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-screen-2.1-opportunity-inbox')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-opportunity-page-customer-mint-aura')).toBeOnTheScreen()
     jobs.unmount()
 
     const chat = render(<WorkerChatSurface />)
@@ -487,7 +729,7 @@ describe('Worker runtime surface wiring', () => {
     mockRouteParams = { ns_audit_surface: 'worker_scope_change' }
     const scope = render(<WorkerJobsSurface />)
     expect(screen.getByTestId('worker-v5-screen-2.8-scope-change')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-scope-change-hero')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-scope-change-hero')).toBeNull()
     expect(screen.getByTestId('worker-v5-scope-change-send-action')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-final-price-input')).toBeNull()
     scope.unmount()
@@ -498,5 +740,22 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-ledger-hero')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-ledger-breakdown')).toBeOnTheScreen()
     ledger.unmount()
+  })
+
+  it('keeps final-work handoffs on the dock section owned by their target screen', () => {
+    expect(resolveWorkerV5DockActive('/jobs', { ns_worker_screen: '4.2-ledger-detail' })).toBe('earnings')
+    expect(resolveWorkerV5DockActive('/jobs', { ns_worker_screen: '5.2-worker-ranking' })).toBe('profile')
+    expect(resolveWorkerV5DockActive('/jobs', {})).toBe('jobs')
+  })
+
+  it('uses net earnings copy and one full-width payout action in ledger detail', () => {
+    buildWorkflow({ workerEarnings: buildSettledEarnings() })
+    mockRouteParams = { ns_worker_screen: '4.2-ledger-detail' }
+
+    render(<WorkerEarningsSurface />)
+
+    expect(screen.getAllByText('Thu nhập ròng')).toHaveLength(3)
+    expect(screen.getByTestId('worker-v5-ledger-payout-action')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-ledger-back-earnings-action')).toBeNull()
   })
 })

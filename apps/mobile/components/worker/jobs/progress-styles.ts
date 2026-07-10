@@ -186,12 +186,6 @@ export const styles = StyleSheet.create({
     lineHeight: 15,
     minWidth: 0,
   },
-  workProgressBoardCount: {
-    color: color.brand.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 16,
-  },
   workProgressBoardMeta: {
     alignItems: 'center',
     flexDirection: 'row',

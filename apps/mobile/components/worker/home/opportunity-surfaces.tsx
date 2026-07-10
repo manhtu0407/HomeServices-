@@ -30,27 +30,30 @@ export function WorkerV5OpportunityCard({
   fallbackJobIcon,
   language,
   onOpenOpportunity,
+  onSelect,
   reduceTransparency,
+  selected = false,
   serviceIcons,
 }: {
   deal: LocalDeal
   fallbackJobIcon: ImageSourcePropType
   language: AppLanguage
   onOpenOpportunity?: () => void
+  onSelect?: () => void
   reduceTransparency: boolean
+  selected?: boolean
   serviceIcons: WorkerV5ServiceIconMap
 }) {
   const earning = deal.broadcast?.estimatedEarningLabel ?? textByLanguage(language, 'Chờ Kael tính tiền công', 'Waiting for Kael earning')
   const area = deal.broadcast?.generalArea || deal.draft.districtLabel || textByLanguage(language, 'Khu vực đang ẩn', 'Area hidden')
   const meta = `${workerV5TimeChoiceLabel(deal.draft.timeChoice, language)} · ${area}`
-  const progressLabel = textByLanguage(language, 'Phù hợp từ nguồn thật', 'Matched from real source')
   const serviceLabel = localizedServiceLabel(deal.draft.serviceType, language)
   const serviceIcon = deal.draft.serviceType ? serviceIcons[deal.draft.serviceType] : fallbackJobIcon
   const distanceLabel = deal.broadcast
     ? textByLanguage(language, 'Đã gửi tới bạn', 'Sent to you')
     : textByLanguage(language, 'Chưa có broadcast', 'No broadcast yet')
-  return (
-    <View style={[styles.opportunityCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-opportunity-card">
+  const content = (
+    <>
       <View style={styles.opportunityIconTile}>
         <MintAura intensity="iconTile" style={styles.iconTileMintAura} />
         <Image source={serviceIcon} style={styles.opportunityIcon} />
@@ -58,11 +61,10 @@ export function WorkerV5OpportunityCard({
       <View style={styles.opportunityTextColumn}>
         <Text style={styles.opportunityTitle} numberOfLines={1}>{serviceLabel}</Text>
         <Text style={styles.opportunityMeta} numberOfLines={1}>{meta}</Text>
-        <WorkerV5SourceProgressBar active={Boolean(deal.broadcast)} label={progressLabel} />
       </View>
       <View style={styles.opportunityPayoutColumn}>
-        <Text style={styles.opportunityPayout} numberOfLines={2}>{earning}</Text>
-        <Text style={styles.opportunityCaption} numberOfLines={2}>{distanceLabel}</Text>
+        <Text style={styles.opportunityPayout} numberOfLines={1}>{earning}</Text>
+        <Text style={styles.opportunityCaption} numberOfLines={1}>{distanceLabel}</Text>
         {onOpenOpportunity ? (
           <Pressable
             accessibilityLabel={textByLanguage(language, 'Mở cơ hội thật', 'Open real opportunity')}
@@ -75,6 +77,33 @@ export function WorkerV5OpportunityCard({
           </Pressable>
         ) : null}
       </View>
+    </>
+  )
+
+  const cardStyle = [
+    styles.opportunityCard,
+    selected && styles.opportunityCardSelected,
+    reduceTransparency && styles.opaqueCard,
+  ]
+
+  if (onSelect) {
+    return (
+      <Pressable
+        accessibilityLabel={textByLanguage(language, `Chọn công việc ${serviceLabel}`, `Select ${serviceLabel} job`)}
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        onPress={onSelect}
+        style={({ pressed }) => [cardStyle, pressed && styles.pressed]}
+        testID="worker-v5-opportunity-card"
+      >
+        {content}
+      </Pressable>
+    )
+  }
+
+  return (
+    <View style={cardStyle} testID="worker-v5-opportunity-card">
+      {content}
     </View>
   )
 }

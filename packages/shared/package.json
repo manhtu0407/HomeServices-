@@ -14,6 +14,7 @@
     "./validation": "./src/validation.ts",
     "./constants": "./src/constants.ts",
     "./workflow": "./src/workflow/index.ts",
+    "./service-intake": "./src/service-intake/index.ts",
     "./kael/permissions": "./kael/permissions.ts",
     "./kael/decline-templates": "./kael/decline-templates.ts",
     "./kael/schemas": "./kael/schemas/index.ts",

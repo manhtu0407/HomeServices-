@@ -11,6 +11,8 @@ const mockSetPendingKaelChatDraft = jest.fn()
 const mockPlacesAutocomplete = jest.fn()
 const mockRequestRecordingPermissionsAsync = jest.fn()
 const mockSetAudioModeAsync = jest.fn()
+const mockRequestMediaLibraryPermissionsAsync = jest.fn()
+const mockLaunchImageLibraryAsync = jest.fn()
 const mockAudioRecorder = {
   prepareToRecordAsync: jest.fn(),
   record: jest.fn(),
@@ -34,6 +36,11 @@ jest.mock('expo-audio', () => ({
   setAudioModeAsync: (options: unknown) => mockSetAudioModeAsync(options),
   useAudioRecorder: () => mockAudioRecorder,
   useAudioRecorderState: () => mockAudioRecorderState,
+}))
+
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: (...args: unknown[]) => mockLaunchImageLibraryAsync(...args),
+  requestMediaLibraryPermissionsAsync: () => mockRequestMediaLibraryPermissionsAsync(),
 }))
 
 jest.mock('expo-router', () => ({
@@ -150,6 +157,10 @@ beforeEach(() => {
   mockRequestRecordingPermissionsAsync.mockResolvedValue({ granted: true })
   mockSetAudioModeAsync.mockReset()
   mockSetAudioModeAsync.mockResolvedValue(undefined)
+  mockRequestMediaLibraryPermissionsAsync.mockReset()
+  mockRequestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
+  mockLaunchImageLibraryAsync.mockReset()
+  mockLaunchImageLibraryAsync.mockResolvedValue({ canceled: true })
   buildWorkflow()
 })
 
@@ -167,12 +178,34 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(mockCreateRemoteJobFromDraft).not.toHaveBeenCalled()
   })
 
-  it('renders supported service intake without AC or fake priority options', () => {
+  it('starts the services board clean instead of rehydrating a prior Kael deal', () => {
+    mockWorkflowValue.state.deal = {
+      draft: {
+        addressLabel: 'Previous apartment details',
+        description: 'Previous problem details',
+        districtLabel: 'District 1',
+        mediaCount: 1,
+        problemChips: [PROBLEM_CHIPS.plumbing[0]],
+        serviceType: 'plumbing',
+      },
+    }
+
+    render(<CustomerBookingEntrySurface />)
+
+    expect(screen.queryByTestId('customer-v21-selected-service')).toBeNull()
+    expect(screen.getByTestId('customer-v21-booking-address')).toHaveProp('value', '')
+    expect(screen.getByTestId('customer-v21-booking-description')).toHaveProp('value', '')
+  })
+
+  it('renders the six approved service paths without fake worker or priority data', () => {
     render(<CustomerBookingEntrySurface />)
 
     expect(screen.getByTestId('customer-v21-service-electrical')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-service-plumbing')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-service-cleaning')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-service-home_cleaning')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-service-hvac_basic_maintenance')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-service-upholstery_care')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-service-handyman_minor_installation')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-step-card-skin')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-booking-progress-node-1')).toHaveTextContent('1')
     expect(screen.getByTestId('customer-v21-booking-progress-node-4')).toHaveTextContent('4')
@@ -192,7 +225,92 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     expect(screen.getByTestId('customer-v21-booking-schedule-summary')).toHaveTextContent(/Chưa chọn/)
     expect(screen.queryByText('Sớm nhất có thể')).toBeNull()
     expect(screen.queryByTestId('customer-v21-screen-2.3-media')).toBeNull()
-    expect(screen.queryByText(/máy lạnh|AC|ưu tiên|tiêu chuẩn|linh hoạt/i)).toBeNull()
+    expect(screen.queryByText(/rating|4\.9|Nguyễn Văn Minh/i)).toBeNull()
+  })
+
+  it('uses AirScope guided intake and keeps beta booking blocked', () => {
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.press(screen.getByTestId('customer-v21-service-hvac_basic_maintenance'))
+
+    expect(screen.getByTestId('customer-v21-performance-intake')).toBeOnTheScreen()
+    expect(screen.getByText('Kael AirScope')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-performance-question-hvac_goal')).toBeOnTheScreen()
+
+    fireEvent.press(screen.getByTestId('customer-v21-performance-option-hvac_goal-routine_cleaning'))
+    fireEvent.press(screen.getByTestId('customer-v21-performance-number-unit_count-increment'))
+    fireEvent.press(screen.getByTestId('customer-v21-performance-option-access_level-easy'))
+
+    expect(screen.getByTestId('customer-v21-performance-scope-card')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-booking-submit').props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    )
+    expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['upholstery_care', 'Kael FabricScope', 'fabric_items'],
+    ['handyman_minor_installation', 'Kael TaskScope', 'task_bundle_type'],
+  ] as const)('renders the %s guided core', (serviceId, scopeName, firstQuestionId) => {
+    mockRouteParams = { service: serviceId }
+    render(<CustomerBookingEntrySurface />)
+
+    expect(screen.getByText(scopeName)).toBeOnTheScreen()
+    expect(screen.getByTestId(`customer-v21-performance-question-${firstQuestionId}`)).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-booking-description')).toBeNull()
+  })
+
+  it('adds real photo evidence to TaskScope confidence without creating a job', async () => {
+    mockRouteParams = { service: 'handyman_minor_installation' }
+    mockLaunchImageLibraryAsync.mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ fileName: 'wall.jpg', fileSize: 2048, mimeType: 'image/jpeg', uri: 'file://wall.jpg' }],
+    })
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.press(screen.getByTestId('customer-v21-performance-option-task_bundle_type-single'))
+    fireEvent.press(screen.getByTestId('customer-v21-performance-option-task_types-drill_shelf'))
+    fireEvent.press(screen.getByTestId('customer-v21-performance-number-task_count-increment'))
+    fireEvent.press(screen.getByTestId('customer-v21-performance-option-materials_ready-yes'))
+    fireEvent.press(screen.getByTestId('customer-v21-performance-option-requires_drilling-no'))
+
+    expect(screen.getByTestId('customer-v21-performance-status')).toHaveTextContent(/Cần ảnh/)
+    fireEvent.press(screen.getByTestId('customer-v21-performance-add-photos'))
+
+    await waitFor(() => {
+      expect(screen.getByText('1/5')).toBeOnTheScreen()
+      expect(screen.getByTestId('customer-v21-performance-status')).toHaveTextContent(/Sẵn sàng/)
+    })
+    expect(mockSetPendingKaelChatDraft).not.toHaveBeenCalled()
+  })
+
+  it('finds expansion services through the existing booking search', () => {
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-search-input'), 'điều hòa')
+
+    expect(screen.getByTestId('customer-v21-booking-search-suggestion-0')).toHaveTextContent('Điều hòa & Không khí')
+  })
+
+  it('converts a locked CleanScope into the existing cleaning Kael draft', async () => {
+    mockRouteParams = { service: 'home_cleaning' }
+    render(<CustomerBookingEntrySurface />)
+
+    fireEvent.press(screen.getByTestId('customer-v21-performance-option-cleaning_type-standard'))
+    fireEvent.press(screen.getByTestId('customer-v21-performance-option-property_layout-studio'))
+    fireEvent.press(screen.getByTestId('customer-v21-performance-number-bathroom_count-increment'))
+    fireEvent.press(screen.getByTestId('customer-v21-performance-option-condition_level-level_2'))
+    fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Tòa A, Quận 7')
+
+    expect(screen.getByTestId('customer-v21-performance-scope-card')).toBeOnTheScreen()
+    fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
+
+    await waitFor(() => {
+      expect(mockSetPendingKaelChatDraft).toHaveBeenCalledWith(expect.objectContaining({
+        description: expect.stringContaining('Kael CleanScope'),
+        serviceType: 'cleaning',
+      }))
+    })
   })
 
   it('uses mint text for booking guidance instead of red error copy', () => {
@@ -212,10 +330,10 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     const inputStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-search-input').props.style)
     expect(inputStyle.color).toBe('#071A24')
     expect(screen.getByTestId('customer-v21-booking-search-suggestion-0')).toHaveTextContent(/Sửa nước/)
-    expect(screen.getByTestId('customer-v21-booking-search-suggestion-1')).toHaveTextContent(PROBLEM_CHIPS.plumbing[0])
-    expect(screen.getByTestId('customer-v21-booking-search-suggestion-3')).toHaveTextContent(PROBLEM_CHIPS.plumbing[2])
+    expect(screen.getByText(PROBLEM_CHIPS.plumbing[0])).toBeOnTheScreen()
+    expect(screen.getByText(PROBLEM_CHIPS.plumbing[2])).toBeOnTheScreen()
 
-    fireEvent.press(screen.getByTestId('customer-v21-booking-search-suggestion-3'))
+    fireEvent.press(screen.getByLabelText(PROBLEM_CHIPS.plumbing[2]))
 
     expect(screen.getByTestId('customer-v21-selected-service')).toHaveTextContent(/Sửa nước/)
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A, Quan 7')
@@ -456,6 +574,9 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     })
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith('/(customer)/kael-chat?mode=case')
+      expect(screen.queryByTestId('customer-v21-selected-service')).toBeNull()
+      expect(screen.getByTestId('customer-v21-booking-address')).toHaveProp('value', '')
+      expect(screen.getByTestId('customer-v21-booking-description')).toHaveProp('value', '')
     })
   })
 })

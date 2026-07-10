@@ -18,7 +18,13 @@ import {
   buildWorkerV5RouteDistanceSignal,
   workerV5EtaLensValue,
 } from '../ui/route'
+import type { WorkerV5RoutePreview } from './use-worker-route-preview'
 import { styles } from './map-styles'
+
+const LIVE_DISTANCE_FORMATTERS = {
+  en: new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }),
+  vi: new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }),
+} as const
 
 function Text({ style, ...props }: TextProps) {
   return <RNText {...props} style={[styles.workerCustomerFontText, style]} />
@@ -28,13 +34,19 @@ export function WorkerV5EtaSummaryCard({
   deal,
   language,
   reduceTransparency,
+  route,
 }: {
   deal: LocalDeal | null
   language: AppLanguage
   reduceTransparency: boolean
+  route?: WorkerV5RoutePreview | null
 }) {
-  const etaSignal = buildWorkerV5AcceptEtaSignal(deal, language)
-  const distanceSignal = buildWorkerV5RouteDistanceSignal(deal, language)
+  const etaSignal = route
+    ? liveEtaSignal(route, language)
+    : buildWorkerV5AcceptEtaSignal(deal, language)
+  const distanceSignal = route
+    ? liveDistanceSignal(route, language)
+    : buildWorkerV5RouteDistanceSignal(deal, language)
   const lensValue = etaSignal.hasSignal ? workerV5EtaLensValue(etaSignal.label) : '0'
   return (
     <View style={[styles.etaSummaryCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-eta-summary-card">
@@ -63,4 +75,23 @@ export function WorkerV5EtaSummaryCard({
       </View>
     </View>
   )
+}
+
+function liveEtaSignal(route: WorkerV5RoutePreview, language: AppLanguage) {
+  const minutes = Math.max(1, Math.ceil(route.durationSeconds / 60))
+  return {
+    hasSignal: true,
+    label: textByLanguage(language, `Di chuyển trong ${minutes} phút`, `Travel in ${minutes} min`),
+  }
+}
+
+function liveDistanceSignal(route: WorkerV5RoutePreview, language: AppLanguage) {
+  const kilometers = route.distanceMeters / 1000
+  const label = kilometers >= 1
+    ? `${LIVE_DISTANCE_FORMATTERS[language].format(kilometers)} km`
+    : `${Math.max(1, Math.round(route.distanceMeters))} m`
+  return {
+    hasSignal: true,
+    meta: textByLanguage(language, `Quãng đường thật · ${label}`, `Real route distance · ${label}`),
+  }
 }

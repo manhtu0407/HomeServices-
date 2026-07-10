@@ -161,6 +161,9 @@ export function WorkerV5KaelOrbOpportunityResults({
     ? metaParts.join(' · ')
     : textByLanguage(language, 'Dữ liệu thật đang đồng bộ', 'Real data is syncing')
   const earning = deal.broadcast.estimatedEarningLabel?.trim() || textByLanguage(language, 'Chờ dữ liệu thật', 'Waiting for real data')
+  const openLabel = deal.status === 'broadcasting' && deal.broadcast.status === 'sent'
+    ? textByLanguage(language, 'Xem & nhận', 'Review')
+    : textByLanguage(language, 'Tiếp tục', 'Continue')
 
   return (
     <View style={styles.kaelOrbOpportunityList} testID="worker-v5-kael-orb-opportunities">
@@ -189,7 +192,7 @@ export function WorkerV5KaelOrbOpportunityResults({
             style={({ pressed }) => [styles.kaelOrbOpenButton, pressed ? styles.pressed : null]}
             testID="worker-v5-kael-orb-open-opportunity"
           >
-            <Text style={styles.kaelOrbOpenButtonText}>{textByLanguage(language, 'Mở', 'Open')}</Text>
+            <Text style={styles.kaelOrbOpenButtonText}>{openLabel}</Text>
           </Pressable>
         </View>
       </View>

@@ -53,6 +53,7 @@ import type {
   WorkerPayoutMethodResponse,
   WorkerPayoutMethodSaveInput,
   WorkerProfileResponse,
+  WorkerRoutePreviewResponse,
   WorkerRegisterResponse,
   WorkerCancellationDecisionInput,
   WorkerCancellationDecisionResponse,
@@ -437,6 +438,22 @@ export const workerService = {
 
   requestWorkerCancellation(jobId: string, input: WorkerCancellationRequestInput) {
     return jobService.requestWorkerCancellation(jobId, input)
+  },
+}
+
+export const workerRouteService = {
+  getPreview(jobId: string, origin: { latitude: number; longitude: number }) {
+    const query = new URLSearchParams({
+      origin_lat: origin.latitude.toFixed(6),
+      origin_lng: origin.longitude.toFixed(6),
+    })
+    return api.get<WorkerRoutePreviewResponse>(`/workers/me/jobs/${encodeURIComponent(jobId)}/route-preview?${query.toString()}`)
+  },
+
+  async getMapImage(uri: string, headers: Record<string, string>) {
+    const response = await fetch(uri, { headers })
+    if (!response.ok) throw new Error('Route map unavailable')
+    return response.blob()
   },
 }
 

@@ -103,7 +103,7 @@ export function WorkerV5EarningsOverviewBody({
         primaryTestID="worker-v5-earnings-withdraw-action"
         primaryVariant="source"
         reduceTransparency={reduceTransparency}
-        secondary={textByLanguage(language, 'Chi tiết đối soát', 'Ledger detail')}
+        secondary={textByLanguage(language, 'Thu nhập ròng', 'Net earnings')}
         secondaryTestID="worker-v5-earnings-ledger-action"
       />
     </View>
@@ -157,20 +157,13 @@ export function WorkerV5LedgerDetailBody({
         reduceTransparency={reduceTransparency}
         statusTimeline={statusTimeline}
       />
-      <WorkerV5ActionRail
-        caseWideAura={caseWideAura}
+      <WorkerV5SingleSourceActionButton
+        disabled={false}
         primaryButtonFill={primaryFill}
-        zipAura={zipAura}
-        auraTestID="worker-v5-ledger-action-rail-mint-aura"
-        formulaAura
-        onPrimary={() => navigateToScreen('4.3-payout-request')}
-        onSecondary={() => navigateToScreen('4.1-earnings-overview')}
-        primary={textByLanguage(language, 'Tạo yêu cầu rút tiền', 'Create payout request')}
-        primaryTestID="worker-v5-ledger-payout-action"
-        primaryVariant="source"
+        label={textByLanguage(language, 'Tạo yêu cầu rút tiền', 'Create payout request')}
+        onPress={() => navigateToScreen('4.3-payout-request')}
         reduceTransparency={reduceTransparency}
-        secondary={textByLanguage(language, 'Thu nhập', 'Earnings')}
-        secondaryTestID="worker-v5-ledger-back-earnings-action"
+        testID="worker-v5-ledger-payout-action"
       />
     </View>
   )

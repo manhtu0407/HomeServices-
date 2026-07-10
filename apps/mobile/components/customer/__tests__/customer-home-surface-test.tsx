@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import type { LocalDeal, LocalWorkflowSelectors } from '@nestscout/shared'
 
@@ -191,14 +193,32 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.queryByText('Kael giúp tạo yêu cầu dịch vụ an toàn.')).toBeNull()
   })
 
-  it('shows only the three supported services and no fake AC/worker/rating data', () => {
+  it('shows the six approved service paths without fake worker or rating data', () => {
     render(<CustomerHomeSurface />)
 
     expect(screen.getByText('Sửa điện')).toBeOnTheScreen()
     expect(screen.getByText('Sửa nước')).toBeOnTheScreen()
-    expect(screen.getByText('Vệ sinh nhà')).toBeOnTheScreen()
-    expect(screen.queryByText(/máy lạnh|rating|4\.9|Nguyễn Văn Minh/i)).toBeNull()
+    expect(screen.getByText('Vệ sinh nhà cửa')).toBeOnTheScreen()
+    expect(screen.getByText('Điều hòa & Không khí')).toBeOnTheScreen()
+    expect(screen.getByText('Sofa, nệm, rèm, thảm')).toBeOnTheScreen()
+    expect(screen.getByText('Sửa vặt & Lắp đặt nhỏ')).toBeOnTheScreen()
+    expect(screen.queryByText(/rating|4\.9|Nguyễn Văn Minh/i)).toBeNull()
     expect(screen.getByText('Chưa có hoạt động dịch vụ')).toBeOnTheScreen()
+  })
+
+  it('uses distinct generated icon assets for each expanded service path', () => {
+    const assetsSource = readFileSync(resolve(__dirname, '../v21/assets.ts'), 'utf8')
+
+    expect(assetsSource).toContain("hvac_basic_maintenance: require('./assets/service-icons/client-service-hvac.png')")
+    expect(assetsSource).toContain("upholstery_care: require('./assets/service-icons/client-service-upholstery-care.png')")
+    expect(assetsSource).toContain("handyman_minor_installation: require('./assets/service-icons/client-service-handyman-installation.png')")
+    expect(assetsSource).not.toContain('hvac_basic_maintenance: customerV21Assets.tools')
+    expect(assetsSource).not.toContain('upholstery_care: customerV21ServiceAssets.cleaning')
+    expect(assetsSource).not.toContain('handyman_minor_installation: customerV21Assets.tools')
+
+    expect(existsSync(resolve(__dirname, '../v21/assets/service-icons/client-service-hvac.png'))).toBe(true)
+    expect(existsSync(resolve(__dirname, '../v21/assets/service-icons/client-service-upholstery-care.png'))).toBe(true)
+    expect(existsSync(resolve(__dirname, '../v21/assets/service-icons/client-service-handyman-installation.png'))).toBe(true)
   })
 
   it('routes a service tile to Services without creating a job', () => {
@@ -209,6 +229,15 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'start_home_service', serviceType: 'electrical' })
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking?service=electrical')
     expect(mockWorkflowValue.actions.createRemoteJobFromDraft).toBeUndefined()
+  })
+
+  it('opens expansion scope preview without creating a production workflow draft', () => {
+    render(<CustomerHomeSurface />)
+
+    fireEvent.press(screen.getByTestId('customer-v21-service-hvac_basic_maintenance'))
+
+    expect(mockDispatch).not.toHaveBeenCalled()
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking?service=hvac_basic_maintenance')
   })
 
   it('renders active case fields only from real workflow state', () => {

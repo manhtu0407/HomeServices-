@@ -212,6 +212,8 @@ export type Route =
   | { kind: "workers.availability"; method: "PATCH"; roles: UserRole[] }
   | { kind: "workers.broadcasts"; method: "GET"; roles: UserRole[] }
   | { kind: "workers.jobs"; method: "GET"; roles: UserRole[] }
+  | { kind: "workers.routePreview"; method: "GET"; jobId: string; roles: UserRole[] }
+  | { kind: "workers.routeMap"; method: "GET"; jobId: string; roles: UserRole[] }
   | { kind: "workers.earnings"; method: "GET"; roles: UserRole[] }
   | { kind: "admin.marketCache.invalidate"; method: "POST"; roles: UserRole[] }
   | { kind: "admin.kaelAb.priceSynthesis"; method: "POST"; roles: UserRole[] }
@@ -547,6 +549,17 @@ export function matchRoute(request: Request): Route | null {
   }
   if (method === "GET" && path === "/workers/me/jobs") {
     return { kind: "workers.jobs", method: "GET", roles: ["worker", "admin"] };
+  }
+  const workerRoute = path.match(/^\/workers\/me\/jobs\/([^/]+)\/(route-preview|route-map)$/);
+  if (method === "GET" && workerRoute) {
+    const jobId = safeDecodePathSegment(workerRoute[1] ?? "");
+    if (!jobId) return null;
+    return {
+      kind: workerRoute[2] === "route-preview" ? "workers.routePreview" : "workers.routeMap",
+      method: "GET",
+      jobId,
+      roles: ["worker"],
+    };
   }
   if (method === "GET" && path === "/workers/me/earnings") {
     return { kind: "workers.earnings", method: "GET", roles: ["worker", "admin"] };

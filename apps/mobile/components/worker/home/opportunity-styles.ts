@@ -18,10 +18,11 @@ export const styles = StyleSheet.create({
   },
   opportunityCaption: {
     color: color.text.muted,
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
-    lineHeight: 12,
-    marginTop: 3,
+    lineHeight: 14,
+    marginTop: 2,
+    textAlign: 'right',
   },
   opportunityOpenButton: {
     alignItems: 'center',
@@ -55,6 +56,14 @@ export const styles = StyleSheet.create({
     position: 'relative',
     ...shadow.soft,
   },
+  opportunityCardSelected: {
+    backgroundColor: 'rgba(247,255,252,0.92)',
+    borderColor: 'rgba(19,203,184,0.78)',
+    borderWidth: 1.5,
+    shadowColor: '#13CBB8',
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
+  },
   opportunityIcon: {
     height: 38,
     width: 38,
@@ -80,15 +89,17 @@ export const styles = StyleSheet.create({
   },
   opportunityPayout: {
     color: color.brand.primaryDark,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    lineHeight: 15,
+    lineHeight: 14,
     textAlign: 'right',
   },
   opportunityPayoutColumn: {
     alignItems: 'flex-end',
-    maxWidth: 104,
-    minWidth: 72,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    maxWidth: 136,
+    minWidth: 114,
   },
   opportunityTextColumn: {
     flex: 1,

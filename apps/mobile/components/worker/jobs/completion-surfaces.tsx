@@ -80,7 +80,6 @@ export function WorkerV5CompletionEvidenceHero({
         </>
       ) : null}
       <View style={styles.completionHeroCopy}>
-        <Text style={styles.completionHeroPill} numberOfLines={1}>{textByLanguage(language, 'Hồ sơ hoàn tất', 'Completion artifact')}</Text>
         <Text style={styles.completionHeroTitle} numberOfLines={2}>{label}</Text>
         <Text style={styles.completionHeroMeta} numberOfLines={2}>{caption}</Text>
       </View>

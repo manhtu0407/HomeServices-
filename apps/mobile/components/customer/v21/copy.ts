@@ -1,4 +1,4 @@
-import { type ServiceType, type LocalDealStatus } from '@nestscout/shared'
+import { type CustomerServiceId, type ServiceType, type LocalDealStatus } from '@nestscout/shared'
 import { type AppLanguage } from '@/lib/app-language'
 import { type CustomerPrimaryTab, type CustomerV21ScreenId } from './types'
 
@@ -31,6 +31,25 @@ export const customerV21ServiceCopy: Localized<Record<ServiceType, { label: stri
     cleaning: { label: 'Vệ sinh nhà', note: 'Dọn nhà · bếp · phòng tắm' },
     electrical: { label: 'Sửa điện', note: 'Ổ cắm · cầu dao · đèn' },
     plumbing: { label: 'Sửa nước', note: 'Rò rỉ · đường ống' },
+  },
+}
+
+export const customerV21BookingServiceCopy: Localized<Record<CustomerServiceId, { label: string; note: string }>> = {
+  en: {
+    electrical: customerV21ServiceCopy.en.electrical,
+    plumbing: customerV21ServiceCopy.en.plumbing,
+    home_cleaning: { label: 'Home cleaning', note: 'Scope by size, condition and priority areas' },
+    hvac_basic_maintenance: { label: 'Air conditioning & air care', note: 'Cleaning, basic checks and safety review' },
+    upholstery_care: { label: 'Sofa, mattress, curtain & carpet care', note: 'Material, stain, odor and drying scope' },
+    handyman_minor_installation: { label: 'Minor repairs & installation', note: 'Small task bundles, tools and materials' },
+  },
+  vi: {
+    electrical: customerV21ServiceCopy.vi.electrical,
+    plumbing: customerV21ServiceCopy.vi.plumbing,
+    home_cleaning: { label: 'Vệ sinh nhà cửa', note: 'Phạm vi theo diện tích · hiện trạng · ưu tiên' },
+    hvac_basic_maintenance: { label: 'Điều hòa & Không khí', note: 'Vệ sinh · kiểm tra cơ bản · duyệt an toàn' },
+    upholstery_care: { label: 'Sofa, nệm, rèm, thảm', note: 'Chất liệu · vết bẩn · mùi · thời gian khô' },
+    handyman_minor_installation: { label: 'Sửa vặt & Lắp đặt nhỏ', note: 'Gom task · vật tư · dụng cụ · ranh giới' },
   },
 }
 

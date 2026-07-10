@@ -23,14 +23,9 @@ export type WorkerV5IconName =
 
 export type WorkerV5ScreenId =
   | '1.1-worker-home'
-  | '1.2-shift-brief'
-  | '1.3-demand-map'
-  | '1.4-smart-schedule'
   | '2.1-opportunity-inbox'
   | '2.2-offer-detail'
-  | '2.3-accept-review'
   | '2.4-route-eta'
-  | '2.5-arrival-checkin'
   | '2.7-in-progress'
   | '2.8-scope-change'
   | '2.9-approval-wait'
@@ -67,6 +62,7 @@ export type WorkerV5ScreenDefinition = {
 }
 
 export type WorkerV5RouteParams = {
+  ns_arrival_gate?: string | string[]
   ns_audit_surface?: string | string[]
   ns_payment_step?: string | string[]
   ns_scope_mode?: string | string[]

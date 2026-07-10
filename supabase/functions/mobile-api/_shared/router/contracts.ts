@@ -93,6 +93,7 @@ import type {
   EdgeWorkerPerformanceInsightsResponse,
   EdgeWorkerProfileResponse,
   EdgeWorkerRegisterResponse,
+  EdgeWorkerRoutePreviewResponse,
   EdgeWorkerScopeChangeResponse,
 } from "./dtos.ts";
 export type {
@@ -152,6 +153,11 @@ export type WorkerStatusUpdateInput = {
     note?: string;
     checked_in_at?: string;
   };
+};
+
+export type WorkerRouteOrigin = {
+  latitude: number;
+  longitude: number;
 };
 
 export type PlacesAutocompleteResponse = {
@@ -424,6 +430,16 @@ export type MobileApiServices = {
   ): Promise<EdgeAvailabilityToggleResponse>;
   listWorkerBroadcasts(ctx: MobileApiContext): Promise<EdgeBroadcastListResponse>;
   listWorkerJobs(ctx: MobileApiContext): Promise<EdgeWorkerJobListResponse>;
+  getWorkerRoutePreview(
+    ctx: MobileApiContext,
+    jobId: string,
+    origin: WorkerRouteOrigin,
+  ): Promise<EdgeWorkerRoutePreviewResponse>;
+  getWorkerRouteMap(
+    ctx: MobileApiContext,
+    jobId: string,
+    origin: WorkerRouteOrigin | null,
+  ): Promise<Response>;
   getWorkerEarnings(
     ctx: MobileApiContext,
     range: { from?: string; to?: string },

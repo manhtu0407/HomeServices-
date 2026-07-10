@@ -1,6 +1,8 @@
-import { Redirect, Tabs, usePathname } from 'expo-router'
+import { Redirect, Tabs, useLocalSearchParams, usePathname } from 'expo-router'
 import { ActivityIndicator, View } from 'react-native'
-import { WorkerDockLayoutProvider, WorkerRebuildDockOverlay, type WorkerDockActive } from '@/components/worker/worker-surfaces'
+import { WorkerDockLayoutProvider, WorkerRebuildDockOverlay } from '@/components/worker/worker-surfaces'
+import { resolveWorkerV5DockActive } from '@/components/worker/dock/routing'
+import type { WorkerV5RouteParams } from '@/components/worker/dock/types'
 import { color, signature } from '@/design/theme'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage } from '@/lib/app-language'
@@ -31,20 +33,13 @@ const dockTokens = {
   active: color.brand.primary,
 }
 
-function activeWorkerDockFromPath(pathname: string): WorkerDockActive {
-  if (pathname.includes('jobs')) return 'jobs'
-  if (pathname.includes('earnings')) return 'earnings'
-  if (pathname.includes('profile')) return 'profile'
-  if (pathname.includes('chat')) return 'kael'
-  return 'home'
-}
-
 export default function WorkerLayout() {
   const { loading, role, session } = useAuth()
   const language = useAppLanguage()
   const pathname = usePathname()
+  const params = useLocalSearchParams<WorkerV5RouteParams>()
   const tabCopy = WORKER_TAB_COPY[language]
-  const activeDock = activeWorkerDockFromPath(pathname)
+  const activeDock = resolveWorkerV5DockActive(pathname, params)
   const shouldShowDock = !pathname.includes('chat')
 
   if (loading) {

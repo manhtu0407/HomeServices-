@@ -163,67 +163,6 @@ export function workerV5EvidenceModeLabel(
   return textByLanguage(language, 'Chờ workflow', 'Waiting workflow')
 }
 
-export function workerV5RouteMapLocationFromDeal(deal: LocalDeal | null): WorkerV5MapLocation | null {
-  const metadata = workerV5BroadcastRouteMetadata(deal)
-  if (!metadata) return null
-
-  const directPairs = [
-    ['route_destination_lat', 'route_destination_lng'],
-    ['destination_lat', 'destination_lng'],
-    ['customer_lat', 'customer_lng'],
-    ['job_lat', 'job_lng'],
-    ['appointment_lat', 'appointment_lng'],
-    ['address_lat', 'address_lng'],
-    ['lat', 'lng'],
-  ] as const
-
-  for (const [latKey, lngKey] of directPairs) {
-    const location = workerV5MapLocationFromValues(metadata[latKey], metadata[lngKey], metadata.map_provider ?? metadata.provider)
-    if (location) return location
-  }
-
-  const nestedKeys = ['route_destination', 'destination_location', 'destination', 'customer_location', 'job_location', 'appointment_location', 'address_location', 'location', 'coordinates']
-  for (const key of nestedKeys) {
-    const location = workerV5MapLocationFromRecord(metadata[key], metadata.map_provider ?? metadata.provider)
-    if (location) return location
-  }
-
-  return null
-}
-
-export function workerV5MapLocationFromRecord(value: unknown, providerValue: unknown): WorkerV5MapLocation | null {
-  if (Array.isArray(value)) {
-    const first = workerV5FiniteNumberFromUnknown(value[0])
-    const second = workerV5FiniteNumberFromUnknown(value[1])
-    if (first != null && second != null) {
-      return Math.abs(first) <= 90 && Math.abs(second) <= 180
-        ? workerV5MapLocationFromValues(first, second, providerValue)
-        : workerV5MapLocationFromValues(second, first, providerValue)
-    }
-  }
-  if (!value || typeof value !== 'object') return null
-  const record = value as Record<string, unknown>
-  const lat = record.lat ?? record.latitude
-  const lng = record.lng ?? record.lon ?? record.long ?? record.longitude
-  return workerV5MapLocationFromValues(lat, lng, record.provider ?? providerValue)
-}
-
-export function workerV5MapLocationFromValues(latValue: unknown, lngValue: unknown, providerValue: unknown): WorkerV5MapLocation | null {
-  const lat = workerV5FiniteNumberFromUnknown(latValue)
-  const lng = workerV5FiniteNumberFromUnknown(lngValue)
-  if (lat == null || lng == null) return null
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
-  return {
-    lat,
-    lng,
-    provider: workerV5MapProviderFromUnknown(providerValue),
-  }
-}
-
-export function workerV5MapProviderFromUnknown(value: unknown): WorkerV5MapLocation['provider'] {
-  return typeof value === 'string' && value.toLowerCase().includes('google') ? 'google_maps' : 'vietmap'
-}
-
 export function buildWorkerV5AcceptEtaSignal(deal: LocalDeal | null, language: AppLanguage): WorkerV5AcceptEtaSignal {
   const syncedEtaLabel = workerV5AcceptEtaFromBroadcastMetadata(deal, language)
     ?? workerV5AcceptEtaFromPrebrief(deal?.broadcast?.prebrief, language)

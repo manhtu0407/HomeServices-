@@ -280,6 +280,7 @@ export type WorkerJobListResponse = {
     gross_amount?: number | null
     platform_fee?: number | null
     worker_net?: number | null
+    photo_urls: string[]
     completion_notes: string | null
     completion_photo_urls: string[]
     worker_brief_guidance?: Record<string, unknown> | null
@@ -287,6 +288,11 @@ export type WorkerJobListResponse = {
     matched_at: string | null
     completed_at: string | null
   }[]
+}
+
+export type WorkerRoutePreviewResponse = {
+  distance_meters: number
+  duration_seconds: number
 }
 
 export type EarningsResponse = {

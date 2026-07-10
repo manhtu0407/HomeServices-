@@ -108,6 +108,7 @@ function sameWorkerJob(
     && left.district === right.district
     && left.final_price === right.final_price
     && left.estimated_earning === right.estimated_earning
+    && sameStringArray(left.photo_urls, right.photo_urls)
     && left.completion_notes === right.completion_notes
     && left.created_at === right.created_at
     && left.matched_at === right.matched_at

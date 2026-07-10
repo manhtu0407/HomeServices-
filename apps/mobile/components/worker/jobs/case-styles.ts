@@ -6,9 +6,6 @@ export const styles = StyleSheet.create({
   workerCustomerFontText: {
     fontFamily: typography.fontFamily,
   },
-  iconTileMintAura: {
-    opacity: 0.72,
-  },
   opaqueCard: {
     backgroundColor: color.mint.white,
   },
@@ -133,22 +130,25 @@ export const styles = StyleSheet.create({
     zIndex: 1,
   },
   caseTrailIcon: {
-    height: 40,
+    height: 46,
     position: 'relative',
-    width: 40,
+    width: 46,
     zIndex: 1,
+  },
+  caseTrailIconMintAura: {
+    opacity: 0.92,
   },
   caseTrailIconShell: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.82)',
+    backgroundColor: 'rgba(255,255,255,0.88)',
     borderColor: 'rgba(216,235,232,0.9)',
     borderRadius: 21,
     borderWidth: 1,
+    flexShrink: 0,
     height: 64,
     justifyContent: 'center',
     overflow: 'hidden',
     position: 'relative',
-    flexShrink: 0,
     width: 64,
     zIndex: 1,
   },
