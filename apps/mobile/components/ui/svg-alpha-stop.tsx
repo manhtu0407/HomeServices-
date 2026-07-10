@@ -3,7 +3,16 @@ import { Stop as SvgStop } from 'react-native-svg'
 
 type SvgStopProps = ComponentProps<typeof SvgStop>
 
-const RGBA_COLOR_RE = /^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([01]?(?:\.\d+)?)\s*\)$/i
+const RGBA_COLOR_RE = /^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d*\.?\d+)\s*\)$/i
+
+function toHexChannel(value: string) {
+  const channel = Math.min(255, Math.max(0, Math.round(Number(value))))
+  return channel.toString(16).padStart(2, '0').toUpperCase()
+}
+
+function toStopOpacity(value: string) {
+  return Math.min(1, Math.max(0, Number(value)))
+}
 
 function normalizeRgbaStop(
   stopColor: SvgStopProps['stopColor'],
@@ -20,8 +29,8 @@ function normalizeRgbaStop(
 
   const [, red, green, blue, alpha] = match
   return {
-    stopColor: `rgb(${Number(red)},${Number(green)},${Number(blue)})`,
-    stopOpacity: stopOpacity ?? Number(alpha),
+    stopColor: `#${toHexChannel(red)}${toHexChannel(green)}${toHexChannel(blue)}`,
+    stopOpacity: stopOpacity ?? toStopOpacity(alpha),
   }
 }
 

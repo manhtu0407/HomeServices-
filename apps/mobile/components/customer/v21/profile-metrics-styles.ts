@@ -99,7 +99,7 @@ export const customerV21ProfileMetricStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 12,
     position: 'relative',
-    shadowColor: '#088779',
+    shadowColor: '#087D72',
     shadowOffset: { height: 10, width: 0 },
     shadowOpacity: 0.10,
     shadowRadius: 24,

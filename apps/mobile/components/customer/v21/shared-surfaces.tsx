@@ -16,11 +16,11 @@ import {
   useCustomerThemeMode,
   type CustomerThemeTokens,
 } from '../customer-theme'
-import { AgenticCanvasAura, FulfillmentCanvasAura, HomeCanvasAura, HomeEmptySourceAura, LocationEtaCanvasAura, ProfileCanvasAura, SourceCardSkin, SourceIconAura, SourceIconTileSkin, ZipMintAura } from './aura-surfaces'
+import { CustomerScreenCanvasAura, HomeEmptySourceAura, SourceCardSkin, SourceIconAura, SourceIconTileSkin, ZipMintAura } from './aura-surfaces'
 import { customerV21ServiceAssets } from './assets'
 import { customerV21ServiceCopy } from './copy'
 import { customerV21SharedStyles as styles } from './shared-styles'
-import { customerV21AgenticScreenIds, customerV21ProfileStageIds, type CustomerV21ScreenId } from './types'
+import { type CustomerV21ScreenId } from './types'
 
 export function useCustomerV21SurfaceTheme() {
   const mode = useCustomerThemeMode()
@@ -166,19 +166,9 @@ export function V21Screen({
   testID: string
 }) {
   const { reduceTransparency, tokens } = useCustomerV21SurfaceTheme()
-  const usesHomeMintCanvas = screenId === '2.1-home' || screenId === '2.2-search' || screenId === '2.3-media'
-  const usesLocationMintCanvas = screenId === '2.10-location-eta'
-  const usesFulfillmentMintCanvas = screenId === '2.11-live-alert' || screenId === '2.12-job-accepted' || screenId === '2.13-job-progress'
-  const usesAgenticMintCanvas = customerV21AgenticScreenIds.includes(screenId)
-  const usesProfileMintCanvas = customerV21ProfileStageIds.includes(screenId)
-  const usesMintCanvas = usesHomeMintCanvas || usesLocationMintCanvas || usesFulfillmentMintCanvas || usesAgenticMintCanvas || usesProfileMintCanvas
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: tokens.canvas }]} testID={testID}>
-      {usesHomeMintCanvas ? <HomeCanvasAura reduceTransparency={reduceTransparency} /> : null}
-      {usesLocationMintCanvas ? <LocationEtaCanvasAura reduceTransparency={reduceTransparency} /> : null}
-      {usesFulfillmentMintCanvas ? <FulfillmentCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} /> : null}
-      {usesAgenticMintCanvas ? <AgenticCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} /> : null}
-      {usesProfileMintCanvas ? <ProfileCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} /> : null}
+      <CustomerScreenCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
       <ScrollView
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.scrollContent}

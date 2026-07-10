@@ -8,7 +8,7 @@ export function customerV21TimelineDotSurface(state: CustomerV21TimelineState, t
   return {
     backgroundColor: state === 'pending' ? tokens.raised : tokens.primary,
     borderColor: state === 'pending' ? tokens.border : 'rgba(255,255,255,0.92)',
-    shadowColor: state === 'active' ? '#24B3A1' : 'transparent',
+    shadowColor: state === 'active' ? '#08AF9C' : 'transparent',
     shadowOffset: { height: 0, width: 0 },
     shadowOpacity: state === 'active' ? 0.18 : 0,
     shadowRadius: state === 'active' ? 12 : 0,
@@ -24,8 +24,8 @@ export function customerV21CaseScopeStepRowSurface(state: CustomerV21TimelineSta
 
 export function customerV21CaseScopeStateDotSurface(state: CustomerV21TimelineState) {
   return {
-    backgroundColor: state === 'done' ? '#E6FBF3' : state === 'active' ? '#24B3A1' : '#EDF3F2',
-    borderColor: state === 'active' ? '#24B3A1' : 'rgba(216,235,232,0.90)',
+    backgroundColor: state === 'done' ? '#E6FBF3' : state === 'active' ? '#08AF9C' : '#EDF3F2',
+    borderColor: state === 'active' ? '#08AF9C' : 'rgba(216,235,232,0.90)',
   }
 }
 
@@ -147,7 +147,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
   },
   metricAura: {
     borderColor: 'rgba(113,225,209,0.42)',
-    shadowColor: '#088779',
+    shadowColor: '#087D72',
     shadowOffset: { height: 10, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 18,
@@ -241,7 +241,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
     minHeight: 38,
     paddingHorizontal: 9,
     paddingVertical: 7,
-    shadowColor: '#24B3A1',
+    shadowColor: '#08AF9C',
     shadowOffset: { height: 5, width: 0 },
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -403,7 +403,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
   },
   caseMapPin: {
     alignItems: 'center',
-    backgroundColor: '#24B3A1',
+    backgroundColor: '#08AF9C',
     borderColor: '#FFFFFF',
     borderRadius: 16,
     borderBottomLeftRadius: 0,
@@ -411,7 +411,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
     height: 32,
     justifyContent: 'center',
     position: 'absolute',
-    shadowColor: '#088779',
+    shadowColor: '#087D72',
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 14,
@@ -464,7 +464,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
     overflow: 'hidden',
     padding: 12,
     position: 'relative',
-    shadowColor: '#24B3A1',
+    shadowColor: '#08AF9C',
     shadowOffset: { height: 10, width: 0 },
     shadowOpacity: 0.09,
     shadowRadius: 24,
@@ -676,7 +676,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
     marginTop: 2,
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#088779',
+    shadowColor: '#087D72',
     shadowOffset: { height: 22, width: 0 },
     shadowOpacity: 0.24,
     shadowRadius: 44,
@@ -689,7 +689,7 @@ export const customerV21HistoryStyles = StyleSheet.create({
     borderWidth: 3,
     height: 63,
     justifyContent: 'center',
-    shadowColor: '#088779',
+    shadowColor: '#087D72',
     shadowOffset: { height: 10, width: 0 },
     shadowOpacity: 0.28,
     shadowRadius: 18,

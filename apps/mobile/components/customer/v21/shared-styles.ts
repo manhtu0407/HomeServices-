@@ -113,7 +113,7 @@ export const customerV21SharedStyles = StyleSheet.create({
   },
   topAvatarWrap: {
     alignItems: 'center',
-    backgroundColor: '#24B3A1',
+    backgroundColor: '#08AF9C',
     borderColor: 'rgba(255,255,255,0.92)',
     borderRadius: 20,
     borderWidth: 2,
@@ -220,7 +220,7 @@ export const customerV21SharedStyles = StyleSheet.create({
     borderColor: 'rgba(85,214,195,0.36)',
   },
   matchingHandoffChipSelectedText: {
-    color: '#088779',
+    color: '#087D72',
   },
   matchingHandoffChipSuccess: {
     backgroundColor: '#EAF8EF',
@@ -248,7 +248,7 @@ export const customerV21SharedStyles = StyleSheet.create({
     width: 23,
   },
   progressNodeActive: {
-    shadowColor: '#24B3A1',
+    shadowColor: '#08AF9C',
     shadowOffset: { height: 0, width: 0 },
     shadowOpacity: 0.14,
     shadowRadius: 7,
@@ -330,7 +330,7 @@ export const customerV21SharedStyles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 11,
     position: 'relative',
-    shadowColor: '#088779',
+    shadowColor: '#087D72',
     shadowOffset: { height: 14, width: 0 },
     shadowRadius: 28,
   },
@@ -339,7 +339,7 @@ export const customerV21SharedStyles = StyleSheet.create({
     shadowOpacity: 0.16,
   },
   homeAuraServiceTileShadowLight: {
-    shadowColor: '#088779',
+    shadowColor: '#087D72',
     shadowOpacity: 0.13,
   },
   homeHero: {

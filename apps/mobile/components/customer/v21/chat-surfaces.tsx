@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native'
 import Svg, { Circle, Defs, RadialGradient, Rect } from 'react-native-svg'
 
+import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { customerV21ChatStyles as styles } from './chat-styles'
@@ -80,26 +81,11 @@ export function ChatComposerAura({ reduceTransparency }: { reduceTransparency: b
 }
 
 export function ChatCanvasAura({ reduceTransparency }: { reduceTransparency: boolean }) {
-  if (reduceTransparency) return null
-
   return (
-    <View pointerEvents="none" style={styles.chatCanvasAura} testID="customer-v21-chat-canvas-aura">
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
-        <Defs>
-          <RadialGradient id="chatCanvasTop" cx="18%" cy="0%" r="56%">
-            <Stop offset="0" stopColor="rgba(136,235,221,0.12)" />
-            <Stop offset="0.58" stopColor="rgba(136,235,221,0.035)" />
-            <Stop offset="0.86" stopColor="rgba(136,235,221,0)" />
-          </RadialGradient>
-          <RadialGradient id="chatCanvasBottom" cx="80%" cy="92%" r="62%">
-            <Stop offset="0" stopColor="rgba(13,174,154,0.08)" />
-            <Stop offset="0.66" stopColor="rgba(13,174,154,0.025)" />
-            <Stop offset="0.92" stopColor="rgba(13,174,154,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#chatCanvasTop)" height="844" width="390" />
-        <Rect fill="url(#chatCanvasBottom)" height="844" width="390" />
-      </Svg>
-    </View>
+    <FormulaMintCanvasAura
+      reduceTransparency={reduceTransparency}
+      scope="CustomerChat"
+      testID="customer-v21-chat-canvas-aura"
+    />
   )
 }

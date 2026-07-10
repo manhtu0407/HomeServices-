@@ -201,7 +201,7 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     fireEvent.press(screen.getByTestId('customer-v21-booking-submit'))
 
     const errorStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-booking-error').props.style)
-    expect(errorStyle.color).toBe('#24B3A1')
+    expect(errorStyle.color).toBe('#08AF9C')
   })
 
   it('filters booking suggestions from a typed service topic', async () => {

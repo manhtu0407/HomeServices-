@@ -174,7 +174,7 @@ export function CaseScopeStepRow({
         <Text style={[styles.caseScopeStateText, { color: state === 'active' ? '#FFFFFF' : tokens.primary }]}>{stateLabel}</Text>
       </View>
       <Text numberOfLines={1} style={[styles.caseScopeLabel, { color: tokens.text }]}>{label}</Text>
-      <Text numberOfLines={1} style={[styles.caseScopeValue, { color: state === 'active' ? '#088779' : tokens.muted }]}>{value}</Text>
+      <Text numberOfLines={1} style={[styles.caseScopeValue, { color: state === 'active' ? '#087D72' : tokens.muted }]}>{value}</Text>
     </View>
   )
 }
@@ -587,8 +587,8 @@ export function CaseOverviewLiquidScore({
       <Svg height={82} style={styles.caseOverviewScoreSvg} viewBox="0 0 100 100" width={82}>
         <Defs>
           <LinearGradient id={progressId} x1="10" x2="88" y1="86" y2="10">
-            <Stop offset="0" stopColor="#088779" />
-            <Stop offset="0.48" stopColor="#24B3A1" />
+            <Stop offset="0" stopColor="#087D72" />
+            <Stop offset="0.48" stopColor="#08AF9C" />
             <Stop offset="1" stopColor="#86EAD9" />
           </LinearGradient>
         </Defs>

@@ -153,7 +153,7 @@ export const styles = StyleSheet.create({
     minWidth: 0,
   },
   profileProgressFill: {
-    backgroundColor: '#0B9B8A',
+    backgroundColor: '#08AF9C',
     borderRadius: 999,
     height: '100%',
     minWidth: 3,

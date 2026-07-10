@@ -19,7 +19,8 @@ import {
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient } from 'react-native-svg'
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, type LocalDeal, type ServiceType } from '@nestscout/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { KaelButton, KaelTextField, MintAura } from '@/components/ui/kael-primitives'
@@ -219,12 +220,12 @@ import {
   WorkerV5CustomerFulfillmentCanvasAura,
   WorkerV5CustomerMapMintAura,
   WorkerV5CustomerZipMintAura,
-  WorkerV5EarningsHomeAuraBackground,
   WorkerV5EarningsHomeHeroAura,
   WorkerV5EarningsHomeListAura,
   WorkerV5HomeAuraBackground,
   WorkerV5HomeHeroSourceAura,
   WorkerV5HomeQuickActionsAura,
+  WorkerV5KaelChatScreenAura,
   WorkerV5SourceCardSkin,
 } from './ui/aura-surfaces'
 import {
@@ -357,11 +358,10 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
   const usesLedgerDetailHandoff = screen.id === '4.2-ledger-detail'
   const usesPayoutRequestHandoff = screen.id === '4.3-payout-request'
   const usesPayoutMethodHandoff = screen.id === '4.4-payout-method'
-  const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.10-support-settings'
+  const usesProfileHandoff = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights' || screen.id === '5.5-account-utilities' || screen.id === '5.6-agent-memory-preferences' || screen.id === '5.7-verification-documents' || screen.id === '5.8-bank-tax-center' || screen.id === '5.9-reviews-feedback' || screen.id === '5.10-support-settings'
   const usesProfileInfoHeaderIcon = screen.id === '5.1-profile-overview' || screen.id === '5.2-worker-ranking' || screen.id === '5.3-skills-service-area' || screen.id === '5.4-reliability-insights'
   const usesCaseExecutionHandoff = usesInProgressHandoff || usesScopeChangeHandoff || usesApprovalWaitHandoff || usesCompletionEvidenceHandoff || usesCompletionSubmittedHandoff || usesCaseClosedHandoff
   const usesHandoffStage = usesShiftBriefHandoff || usesDemandMapHandoff || usesSmartScheduleHandoff || usesOpportunityInboxHandoff || usesOfferDetailHandoff || usesAcceptReviewHandoff || usesTravelHandoff || usesCaseExecutionHandoff || usesKaelOrbHandoff || usesEarningsHandoff || usesProfileHandoff
-  const usesCustomerFormulaAura = usesHandoffStage
   const handoffHeaderSubtitle = usesOpportunityInboxHandoff
     ? textByLanguage(language, 'Kael đã lọc theo kỹ năng, bán kính và lịch trống', 'Kael has filtered by skills, radius, and open schedule')
     : usesEarningsOverviewHandoff
@@ -399,6 +399,34 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
     : usesEarningsOverviewHandoff
       ? textByLanguage(language, 'Thu nhập của bạn', 'Your earnings')
     : title
+
+  const formulaPageAuraTarget = usesDemandMapHandoff
+    ? { scope: 'DemandMapPage', testID: 'worker-v5-demand-page-customer-mint-aura' }
+    : usesOpportunityInboxHandoff
+      ? { scope: 'OpportunityInboxPage', testID: 'worker-v5-opportunity-page-customer-mint-aura' }
+    : usesOfferDetailHandoff
+      ? { scope: 'OfferDetailPage', testID: 'worker-v5-offer-page-customer-mint-aura' }
+    : usesAcceptReviewHandoff
+      ? { scope: 'AcceptReviewPage', testID: 'worker-v5-accept-page-customer-mint-aura' }
+    : usesRouteEtaHandoff
+      ? { scope: 'RouteEtaPage', testID: 'worker-v5-route-page-customer-mint-aura' }
+    : usesArrivalCheckinHandoff
+      ? { scope: 'ArrivalCheckinPage', testID: 'worker-v5-checkin-page-customer-mint-aura' }
+    : usesCompletionSubmittedHandoff
+      ? { scope: 'CompletionSubmittedPage', testID: 'worker-v5-completion-submitted-background-mint-aura' }
+    : usesProfileHandoff
+      ? { scope: 'WorkerProfilePage', testID: 'worker-v5-profile-page-customer-mint-aura' }
+    : usesEarningsHandoff
+      ? { scope: 'WorkerEarningsPage', testID: 'worker-v5-earnings-page-customer-mint-aura' }
+    : usesInProgressHandoff
+      ? { scope: 'WorkerInProgressPage', testID: 'worker-v5-in-progress-canvas-aura' }
+    : usesCaseExecutionHandoff
+      ? { scope: 'WorkerCaseExecutionPage', testID: 'worker-v5-case-flow-page-customer-mint-aura' }
+    : usesShiftBriefHandoff
+      ? { scope: 'ShiftBriefPage', testID: 'worker-v5-shift-page-customer-mint-aura' }
+    : usesSmartScheduleHandoff
+      ? { scope: 'SmartSchedulePage', testID: 'worker-v5-schedule-page-customer-mint-aura' }
+      : { scope: 'WorkerDefaultPage', testID: 'worker-v5-page-mint-aura' }
 
   const openScreen = (target: WorkerV5ScreenDefinition | null) => {
     if (!target) return
@@ -449,82 +477,11 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
 
   return (
     <SafeAreaView style={[styles.safeArea, surfaceStyle]} testID={`worker-v5-screen-${screen.id}`}>
-      {!glass.reduceTransparency && !usesCustomerFormulaAura ? <MintAura intensity="page" style={styles.pageMintAura} testID="worker-v5-page-mint-aura" /> : null}
-      {usesCompletionSubmittedHandoff && !glass.reduceTransparency ? (
-        <WorkerV5CustomerFulfillmentCanvasAura
-          scope="CompletionSubmittedPage"
-          testID="worker-v5-completion-submitted-background-mint-aura"
-        />
-      ) : null}
-      {usesCustomerFormulaAura && !glass.reduceTransparency ? (
-        usesDemandMapHandoff ? (
-          <WorkerV5CustomerMapMintAura
-            scope="DemandMapPage"
-            style={styles.demandMapPageAura}
-            testID="worker-v5-demand-page-customer-mint-aura"
-          />
-        ) : usesOpportunityInboxHandoff ? (
-          <WorkerV5CustomerCaseWideMintAura
-            scope="OpportunityInboxPage"
-            style={styles.opportunityInboxPageAura}
-            testID="worker-v5-opportunity-page-customer-mint-aura"
-          />
-        ) : usesOfferDetailHandoff ? (
-          <WorkerV5CustomerCaseWideMintAura
-            scope="OfferDetailPage"
-            style={styles.offerDetailPageAura}
-            testID="worker-v5-offer-page-customer-mint-aura"
-          />
-        ) : usesAcceptReviewHandoff ? (
-          <WorkerV5CustomerCaseWideMintAura
-            scope="AcceptReviewPage"
-            style={styles.acceptReviewPageAura}
-            testID="worker-v5-accept-page-customer-mint-aura"
-          />
-        ) : usesRouteEtaHandoff ? (
-          <WorkerV5CustomerMapMintAura
-            scope="RouteEtaPage"
-            style={styles.routeEtaPageAura}
-            testID="worker-v5-route-page-customer-mint-aura"
-          />
-        ) : usesArrivalCheckinHandoff ? (
-          <WorkerV5CustomerCaseWideMintAura
-            scope="ArrivalCheckinPage"
-            style={styles.arrivalCheckinPageAura}
-            testID="worker-v5-checkin-page-customer-mint-aura"
-          />
-        ) : usesEarningsOverviewHandoff || usesLedgerDetailHandoff || usesPayoutRequestHandoff || usesPayoutMethodHandoff || usesProfileHandoff ? (
-          <WorkerV5EarningsHomeAuraBackground />
-        ) : usesEarningsHandoff ? (
-          <WorkerV5CustomerCaseWideMintAura
-            scope="WorkerEarningsPage"
-            style={styles.arrivalCheckinPageAura}
-            testID="worker-v5-earnings-page-customer-mint-aura"
-          />
-        ) : usesInProgressHandoff ? (
-          <WorkerV5CustomerFulfillmentCanvasAura
-            scope="WorkerInProgressPage"
-            testID="worker-v5-in-progress-canvas-aura"
-          />
-        ) : usesKaelOrbHandoff ? (
-          <WorkerV5CustomerFulfillmentCanvasAura
-            scope="KaelOrbPage"
-            testID="worker-v5-kael-orb-background-mint-aura"
-          />
-        ) : usesCaseExecutionHandoff ? (
-          <WorkerV5CustomerCaseWideMintAura
-            scope="WorkerCaseExecutionPage"
-            style={styles.arrivalCheckinPageAura}
-            testID="worker-v5-case-flow-page-customer-mint-aura"
-          />
-        ) : (
-          <WorkerV5CustomerCaseWideMintAura
-            scope={usesShiftBriefHandoff ? 'ShiftBriefPage' : 'SmartSchedulePage'}
-            style={usesShiftBriefHandoff ? styles.shiftBriefPageAura : styles.smartSchedulePageAura}
-            testID={usesShiftBriefHandoff ? 'worker-v5-shift-page-customer-mint-aura' : 'worker-v5-schedule-page-customer-mint-aura'}
-          />
-        )
-      ) : null}
+      <WorkerV5CustomerFulfillmentCanvasAura
+        reduceTransparency={glass.reduceTransparency}
+        scope={formulaPageAuraTarget.scope}
+        testID={formulaPageAuraTarget.testID}
+      />
       {usesDemandMapHandoff && !glass.reduceTransparency ? (
         <WorkerV5CustomerZipMintAura
           scope="DemandMapPageFine"
@@ -961,7 +918,7 @@ function WorkerV5HomeScreenSurface({
 
   return (
     <SafeAreaView style={[styles.safeArea, surfaceStyle]} testID="worker-v5-screen-1.1-worker-home">
-      {!glass.reduceTransparency ? <WorkerV5HomeAuraBackground /> : null}
+      <WorkerV5HomeAuraBackground reduceTransparency={glass.reduceTransparency} />
       <ScrollView
         bounces={false}
         contentContainerStyle={[styles.homeSourceScrollContent, { minHeight }]}
@@ -2312,18 +2269,22 @@ function WorkerV5KaelOrbScreenSurface({
 
   return (
     <SafeAreaView style={[styles.safeArea, surfaceStyle, styles.kaelOrbCustomerSafeArea]} testID={`worker-v5-screen-${screen.id}`}>
+      <WorkerV5CustomerFulfillmentCanvasAura
+        reduceTransparency={reduceTransparency}
+        scope="KaelOrbCustomerPage"
+        testID="worker-v5-kael-orb-background-mint-aura"
+      />
+      <WorkerV5KaelChatScreenAura
+        reduceTransparency={reduceTransparency}
+        scope={mode === 'intake' ? 'KaelJobIntake' : 'KaelChatNormal'}
+        testID={mode === 'intake' ? 'worker-v5-kael-job-intake-screen-mint-aura' : 'worker-v5-kael-chat-screen-mint-aura'}
+      />
       {!reduceTransparency ? (
-        <>
-          <WorkerV5CustomerFulfillmentCanvasAura
-            scope="KaelOrbCustomerPage"
-            testID="worker-v5-kael-orb-background-mint-aura"
-          />
-          <WorkerV5CustomerZipMintAura
-            scope="KaelOrbCustomerPageFine"
-            style={styles.kaelOrbPageZipAura}
-            testID="worker-v5-kael-orb-page-zip-mint-aura"
-          />
-        </>
+        <WorkerV5CustomerZipMintAura
+          scope="KaelOrbCustomerPageFine"
+          style={styles.kaelOrbPageZipAura}
+          testID="worker-v5-kael-orb-page-zip-mint-aura"
+        />
       ) : null}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.kaelOrbCustomerKeyboard}>
         <View
@@ -4854,10 +4815,7 @@ const styles = StyleSheet.create({
   },
   availabilitySwitchOn: {
     backgroundColor: '#16C7B4',
-    shadowColor: '#0DAE9A',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.22,
-    shadowRadius: 16,
+    boxShadow: '0 8px 16px rgba(8,175,156,0.22)',
   },
   availabilityTitle: {
     color: color.text.strong,
@@ -5740,10 +5698,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(248,255,253,0.92)',
     borderColor: 'rgba(45,211,193,0.38)',
     overflow: 'hidden',
-    shadowColor: '#088779',
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
+    boxShadow: '0 12px 24px rgba(8,125,114,0.12)',
   },
   workerProfileLogoutCta: {
     marginTop: -2,
@@ -5797,25 +5752,6 @@ const styles = StyleSheet.create({
   opportunityList: {
     gap: 8,
   },
-  pageMintAura: {
-    opacity: 0.28,
-  },
-  shiftBriefPageAura: {
-    bottom: 'auto',
-    height: 300,
-    left: -22,
-    opacity: 0.30,
-    right: -22,
-    top: 72,
-  },
-  demandMapPageAura: {
-    bottom: 'auto',
-    height: 560,
-    left: -36,
-    opacity: 0.34,
-    right: -36,
-    top: 24,
-  },
   demandMapPageZipAura: {
     height: 320,
     opacity: 0.28,
@@ -5823,28 +5759,12 @@ const styles = StyleSheet.create({
     top: 150,
     width: 360,
   },
-  opportunityInboxPageAura: {
-    bottom: 'auto',
-    height: 560,
-    left: -44,
-    opacity: 0.32,
-    right: -44,
-    top: 20,
-  },
   opportunityInboxPageZipAura: {
     height: 340,
     opacity: 0.24,
     right: -92,
     top: 118,
     width: 390,
-  },
-  offerDetailPageAura: {
-    bottom: 'auto',
-    height: 580,
-    left: -46,
-    opacity: 0.32,
-    right: -46,
-    top: 18,
   },
   offerDetailPageZipAura: {
     height: 340,
@@ -5861,14 +5781,6 @@ const styles = StyleSheet.create({
     right: -58,
     top: 'auto',
   },
-  acceptReviewPageAura: {
-    bottom: 'auto',
-    height: 580,
-    left: -46,
-    opacity: 0.32,
-    right: -46,
-    top: 18,
-  },
   acceptReviewPageZipAura: {
     height: 340,
     opacity: 0.24,
@@ -5884,28 +5796,12 @@ const styles = StyleSheet.create({
     right: -58,
     top: 'auto',
   },
-  routeEtaPageAura: {
-    bottom: 'auto',
-    height: 580,
-    left: -46,
-    opacity: 0.32,
-    right: -46,
-    top: 18,
-  },
   routeEtaPageZipAura: {
     height: 340,
     opacity: 0.24,
     right: -92,
     top: 122,
     width: 390,
-  },
-  arrivalCheckinPageAura: {
-    bottom: 'auto',
-    height: 580,
-    left: -46,
-    opacity: 0.32,
-    right: -46,
-    top: 18,
   },
   arrivalCheckinPageZipAura: {
     height: 340,
@@ -5952,14 +5848,6 @@ const styles = StyleSheet.create({
     opacity: 0.22,
     right: -46,
     top: -48,
-  },
-  smartSchedulePageAura: {
-    bottom: 'auto',
-    height: 620,
-    left: -44,
-    opacity: 0.32,
-    right: -44,
-    top: 18,
   },
   smartSchedulePageLowerAura: {
     bottom: 72,
@@ -6221,7 +6109,7 @@ const styles = StyleSheet.create({
   },
   successCheck: {
     alignItems: 'center',
-    backgroundColor: '#0DAE9A',
+    backgroundColor: '#08AF9C',
     borderColor: 'rgba(255,255,255,0.82)',
     borderRadius: 23,
     borderWidth: 3,
@@ -6231,11 +6119,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: 63,
     zIndex: 1,
-    shadowColor: '#087F73',
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    elevation: 5,
+    boxShadow: '0 10px 18px rgba(8,125,114,0.28)',
   },
   successCheckFill: {
     ...StyleSheet.absoluteFillObject,
@@ -6260,11 +6144,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     width: 104,
-    shadowColor: '#088779',
-    shadowOffset: { height: 18, width: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 34,
-    elevation: 4,
+    boxShadow: '0 18px 34px rgba(8,125,114,0.16)',
   },
   successEmblemAura: {
     ...StyleSheet.absoluteFillObject,
@@ -6337,11 +6217,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 14,
     position: 'relative',
-    ...shadow.soft,
-    shadowColor: '#088779',
-    shadowOffset: { height: 18, width: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 38,
+    boxShadow: '0 18px 38px rgba(8,125,114,0.16)',
   },
   timerLabel: {
     color: color.text.muted,
@@ -6729,10 +6605,7 @@ const styles = StyleSheet.create({
     paddingTop: 7,
     position: 'absolute',
     right: 21,
-    shadowColor: '#088779',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
+    boxShadow: '0 8px 16px rgba(8,125,114,0.05)',
     top: 68,
     width: 172,
     zIndex: 20,

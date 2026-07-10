@@ -3,10 +3,11 @@ import {
   View,
   type TextProps,
 } from 'react-native'
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient } from 'react-native-svg'
 import type { LocalDeal } from '@nestscout/shared'
 
 import { MintAura } from '@/components/ui/kael-primitives'
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { color } from '@/design/theme'
 import { localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
 

@@ -32,10 +32,6 @@ export const customerV21ChatStyles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 0,
   },
-  chatCanvasAura: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
-  },
   chatComposer: {
     minHeight: 56,
     overflow: 'hidden',
@@ -147,7 +143,7 @@ export const customerV21ChatStyles = StyleSheet.create({
     minHeight: 46,
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#088779',
+    shadowColor: '#087D72',
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.05,
     shadowRadius: 16,
