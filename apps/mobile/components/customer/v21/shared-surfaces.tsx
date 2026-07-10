@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg'
 import type { ServiceType } from '@nestscout/shared'
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { ReduceMotionAwareEntranceView } from '@/components/ui/reduce-motion-aware-animation'
 import { KaelChip } from '@/components/ui/kael-primitives'
 import { useAppLanguage } from '@/lib/app-language'
@@ -166,6 +167,7 @@ export function V21Screen({
   testID: string
 }) {
   const { reduceTransparency, tokens } = useCustomerV21SurfaceTheme()
+  const onDockScroll = useDockScrollHandler()
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: tokens.canvas }]} testID={testID}>
       <CustomerScreenCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
@@ -173,6 +175,8 @@ export function V21Screen({
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        onScroll={onDockScroll}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         testID="customer-v21-scroll"
       >

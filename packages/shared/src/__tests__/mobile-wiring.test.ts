@@ -1167,12 +1167,13 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(workerDock).toContain('testID="worker-v5-liquid-navigation"')
     expect(workerDock).toContain('testID="worker-v5-primary-dock"')
     expect(workerDock).toContain('testID="worker-v5-kael-accessory"')
-    expect(workerDock).toContain('testID="worker-v5-kael-accessory-glass"')
+    expect(workerDock).toContain('testID="worker-v5-kael-core-v9"')
+    expect(workerDock).toContain('<KaelCoreV9')
     expect(workerDock).toContain('WorkerV5DockTabButton')
     expect(workerDock).toContain('customerV21DockStyles as dockStyles')
     expect(workerDock).toContain('GlassSurface')
     expect(workerDock).toContain('motionTokens.liquid')
-    expect(workerDock).toContain("@/assets/navigation/customer/kael.png")
+    expect(workerDock).not.toContain("@/assets/navigation/customer/kael.png")
     expect(workerDock).not.toContain('@/assets/kael-emotions/kael-emotion-focused.png')
     expect(workerDock).not.toContain('WorkerV5CustomerZipMintAura')
     expect(workerDock).not.toContain("  { icon: 'chat', id: 'kael'")
@@ -1898,6 +1899,7 @@ describe('mobile glassmorphism design system', () => {
     'components/ui/glass-search-bar.tsx',
     'components/ui/glass-modal-sheet.tsx',
     'components/ui/floating-glass-tab-bar.tsx',
+    'components/ui/kael-core-v9.tsx',
     'components/ui/reduce-motion-aware-animation.ts',
   ] as const
 
@@ -1947,6 +1949,50 @@ describe('mobile glassmorphism design system', () => {
     expect(surface).toContain('styles.webNavBackingDark')
     expect(surface).toContain("const shouldUseBlurFallback = variant !== 'nav' || Platform.OS !== 'web'")
     expect(surface).toContain('!reduceTransparency && shouldUseBlurFallback')
+  })
+
+  it('uses the inline Kael Core v9 model in both 4 + 1 docks without reviving raster orb layers', () => {
+    const core = read('components/ui/kael-core-v9.tsx')
+    const customerDock = read('components/customer/v21/dock-stateful-surfaces.tsx')
+    const workerDock = read('components/worker/dock/worker-v5-dock-overlay.tsx')
+    const dockStyles = read('components/customer/v21/dock-styles.ts')
+
+    expect(core).toContain("renderer: 'inline-svg'")
+    expect(core).toContain("motionVocabulary: ['bow']")
+    expect(core).toContain('KAEL_CORE_V9_SIZE = 68')
+    expect(core).toContain('KAEL_CORE_V9_BOW_DURATION_MS = 1220')
+    expect(core).not.toContain('styles.shadow')
+    expect(core).not.toContain('shadowOpacity')
+    expect(core).not.toContain('shadowScaleX')
+    expect(customerDock).toContain('<KaelCoreV9')
+    expect(workerDock).toContain('<KaelCoreV9')
+    expect(customerDock).toContain("kaelRef.current?.bow('pointer-press')")
+    expect(workerDock).toContain("kaelRef.current?.bow('pointer-press')")
+    expect(customerDock).not.toContain('customerV21Assets.kaelNavigation')
+    expect(workerDock).not.toContain('assets/navigation/customer/kael.png')
+    expect(dockStyles).not.toContain('kaelAccessoryAura')
+    expect(dockStyles).not.toContain('kaelAccessoryOrbit')
+    expect(dockStyles).not.toContain('kaelAccessoryStatus')
+  })
+
+  it('wires scroll direction into both dock overlays without changing their tab navigation contract', () => {
+    const customerLayout = read('app/(customer)/_layout.tsx')
+    const customerDock = read('components/customer/v21/dock-stateful-surfaces.tsx')
+    const customerOverlay = read('components/customer/v21/surfaces.tsx')
+    const customerScroll = read('components/customer/v21/shared-surfaces.tsx')
+    const workerDock = read('components/worker/dock/worker-v5-dock-overlay.tsx')
+    const workerScroll = read('components/worker/worker-v5-flow.tsx')
+
+    expect(customerLayout).toContain('<DockScrollStateProvider>')
+    expect(workerDock).toContain('<DockScrollStateProvider>')
+    expect(customerScroll).toContain('useDockScrollHandler')
+    expect(workerScroll).toContain('useDockScrollHandler')
+    expect(customerScroll).toContain('onScroll={onDockScroll}')
+    expect(workerScroll).toContain('onScroll={onDockScroll}')
+    expect(customerDock).toContain('animatedDockScrollStyle')
+    expect(workerDock).toContain('animatedDockScrollStyle')
+    expect(customerOverlay).toContain('onTabPress={(route) => router.replace(route as never)}')
+    expect(workerDock).toContain('router.replace(workerV5Routes[item.id] as never)')
   })
 
 

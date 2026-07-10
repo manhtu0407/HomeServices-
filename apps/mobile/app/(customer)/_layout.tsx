@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { CustomerDockOverlay, type CustomerDockActive } from '@/components/customer/customer-surfaces'
 import { getCustomerThemeTokens, useCustomerThemeMode } from '@/components/customer/customer-theme'
+import { DockScrollStateProvider } from '@/components/ui/dock-scroll-state'
 import { useAuth } from '@/lib/auth-provider'
 import { useAppLanguage } from '@/lib/app-language'
 import { mobileRuntimeConfig } from '@/lib/runtime-config'
@@ -117,18 +118,20 @@ export default function CustomerLayout() {
   }
 
   return (
-    <View style={{ backgroundColor: tokens.canvas, flex: 1 }}>
-      <Tabs tabBar={() => null} screenOptions={{ headerShown: false }}>
-        <Tabs.Screen name="home" options={{ title: tabCopy.home }} />
-        <Tabs.Screen name="booking" options={{ title: tabCopy.booking }} />
-        <Tabs.Screen name="history" options={{ title: tabCopy.history }} />
-        <Tabs.Screen name="profile" options={{ title: tabCopy.profile }} />
-        <Tabs.Screen name="kael" options={{ href: null, title: tabCopy.kael }} />
-        <Tabs.Screen name="kael-chat" options={{ href: null, title: tabCopy.kael }} />
-      </Tabs>
-      {showDock ? <CustomerDockOverlay active={activeDock} /> : null}
-      <CustomerRuntimeBuildMarker />
-    </View>
+    <DockScrollStateProvider>
+      <View style={{ backgroundColor: tokens.canvas, flex: 1 }}>
+        <Tabs tabBar={() => null} screenOptions={{ headerShown: false }}>
+          <Tabs.Screen name="home" options={{ title: tabCopy.home }} />
+          <Tabs.Screen name="booking" options={{ title: tabCopy.booking }} />
+          <Tabs.Screen name="history" options={{ title: tabCopy.history }} />
+          <Tabs.Screen name="profile" options={{ title: tabCopy.profile }} />
+          <Tabs.Screen name="kael" options={{ href: null, title: tabCopy.kael }} />
+          <Tabs.Screen name="kael-chat" options={{ href: null, title: tabCopy.kael }} />
+        </Tabs>
+        {showDock ? <CustomerDockOverlay active={activeDock} /> : null}
+        <CustomerRuntimeBuildMarker />
+      </View>
+    </DockScrollStateProvider>
   )
 }
 

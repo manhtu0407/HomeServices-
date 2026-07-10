@@ -1,12 +1,12 @@
-import type { ComponentProps } from 'react'
-import { Image, Pressable, View, type ImageSourcePropType, type ViewStyle } from 'react-native'
+import { useRef, type ComponentProps } from 'react'
+import { Pressable, View, type ImageSourcePropType, type ViewStyle } from 'react-native'
 import Animated from 'react-native-reanimated'
 
 import { GlassSurface } from '@/components/ui/glass-surface'
+import { KaelCoreV9, type KaelCoreV9Handle } from '@/components/ui/kael-core-v9'
 import type { AppLanguage } from '@/lib/app-language'
 
 import type { CustomerThemeTokens } from '../customer-theme'
-import { customerV21Assets } from './assets'
 import { customerV21TabCopy } from './copy'
 import { CustomerV21DockTabButton } from './dock-surfaces'
 import { customerV21DockStyles as dockStyles } from './dock-styles'
@@ -18,11 +18,9 @@ export function CustomerV21DockOverlayView({
   activeTab,
   animatedDockCausticStyle,
   animatedDockShimmerStyle,
+  animatedDockScrollStyle,
   animatedLensSheenStyle,
   animatedLensStyle,
-  animatedOrbRippleStyle,
-  animatedOrbSheenStyle,
-  animatedOrbStyle,
   dockCausticLeft,
   dockCausticWidth,
   kaelActive,
@@ -33,18 +31,16 @@ export function CustomerV21DockOverlayView({
   navItems,
   onKaelPress,
   onTabPress,
-  reduceTransparency,
+  reduceMotion,
   selectedIndex,
   tokens,
 }: {
   activeTab: CustomerPrimaryTab | null
   animatedDockCausticStyle: AnimatedViewStyle
   animatedDockShimmerStyle: AnimatedViewStyle
+  animatedDockScrollStyle: AnimatedViewStyle
   animatedLensSheenStyle: AnimatedViewStyle
   animatedLensStyle: AnimatedViewStyle
-  animatedOrbRippleStyle: AnimatedViewStyle
-  animatedOrbSheenStyle: AnimatedViewStyle
-  animatedOrbStyle: AnimatedViewStyle
   dockCausticLeft: number
   dockCausticWidth: number
   kaelActive: boolean
@@ -55,10 +51,11 @@ export function CustomerV21DockOverlayView({
   navItems: Array<{ image: ImageSourcePropType; key: CustomerPrimaryTab; route: string }>
   onKaelPress: () => void
   onTabPress: (route: string) => void
-  reduceTransparency: boolean
+  reduceMotion: boolean
   selectedIndex: number
   tokens: CustomerThemeTokens
 }) {
+  const kaelRef = useRef<KaelCoreV9Handle>(null)
   const liquidDockStyles = dockStyles as typeof dockStyles & Record<
     | 'dockCaustic'
     | 'dockCausticGlow'
@@ -71,29 +68,13 @@ export function CustomerV21DockOverlayView({
     | 'dockLensSheen'
     | 'dockLensTopLight'
     | 'dockRow'
-    | 'dockShimmer'
-    | 'kaelAccessoryBackdrop'
-    | 'kaelAccessoryCaustic'
-    | 'kaelAccessoryFrontRim'
-    | 'kaelAccessoryGlint'
-    | 'kaelAccessoryGlobeTop'
-    | 'kaelAccessoryOrbit',
-    ViewStyle
-  >
-  const liquidOrbStyles = dockStyles as typeof dockStyles & Record<
-    | 'kaelAccessoryOrbitBack'
-    | 'kaelAccessoryOrbMotion'
-    | 'kaelAccessoryPearl'
-    | 'kaelAccessoryRipple'
-    | 'kaelAccessoryStatus'
-    | 'kaelAccessoryStatusHalo'
-    | 'kaelAccessoryStatusWave',
+    | 'dockShimmer',
     ViewStyle
   >
 
   return (
     <View pointerEvents="box-none" style={dockStyles.dockOverlay} testID="customer-v21-dock-overlay">
-      <View style={[liquidDockStyles.dockRow, { width: liquidNavWidth }]} testID="customer-v21-liquid-navigation">
+      <Animated.View style={[liquidDockStyles.dockRow, { width: liquidNavWidth }, animatedDockScrollStyle]} testID="customer-v21-liquid-navigation">
       <GlassSurface
         backgroundColor={tokens.glass}
         borderColor={tokens.glassBorder}
@@ -145,41 +126,16 @@ export function CustomerV21DockOverlayView({
         accessibilityLabel={customerV21TabCopy[language].kael}
         accessibilityRole="button"
         accessibilityState={{ selected: kaelActive }}
+        onFocus={() => kaelRef.current?.bow('focus')}
+        onHoverIn={() => kaelRef.current?.bow('proximity')}
         onPress={onKaelPress}
-        style={({ pressed }) => [dockStyles.kaelAccessory, kaelActive ? dockStyles.kaelAccessoryActive : null, pressed ? dockStyles.kaelAccessoryPressed : null]}
+        onPressIn={() => kaelRef.current?.bow('pointer-press')}
+        style={[dockStyles.kaelAccessory, kaelActive ? dockStyles.kaelAccessoryActive : null]}
         testID="customer-v21-kael-accessory"
       >
-        {!reduceTransparency ? <View pointerEvents="none" style={[dockStyles.kaelAccessoryAura, kaelActive ? dockStyles.kaelAccessoryAuraActive : null]} testID="customer-v21-kael-accessory-aura" /> : null}
-        <View pointerEvents="none" style={[liquidDockStyles.kaelAccessoryOrbit, liquidOrbStyles.kaelAccessoryOrbitBack, kaelActive ? dockStyles.kaelAccessoryOrbitActive : null]} testID="customer-v21-kael-accessory-orbit-back">
-          <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryPearl} testID="customer-v21-kael-accessory-orbit-back-pearl" />
-        </View>
-        <View pointerEvents="none" style={[liquidDockStyles.kaelAccessoryOrbit, kaelActive ? dockStyles.kaelAccessoryOrbitActive : null]} testID="customer-v21-kael-accessory-orbit-front">
-          <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryPearl} testID="customer-v21-kael-accessory-orbit-front-pearl" />
-        </View>
-        <Animated.View pointerEvents="none" style={[liquidOrbStyles.kaelAccessoryRipple, animatedOrbRippleStyle]} testID="customer-v21-kael-accessory-ripple" />
-        <Animated.View style={[liquidOrbStyles.kaelAccessoryOrbMotion, animatedOrbStyle]}>
-        <GlassSurface
-          backgroundColor={tokens.glassStrong}
-          borderColor={tokens.glassBorder}
-          material="liquid"
-          mode={mode}
-          style={[dockStyles.kaelAccessoryGlass, kaelActive ? dockStyles.kaelAccessoryGlassActive : null]}
-          testID="customer-v21-kael-accessory-glass"
-          variant="control"
-        >
-          <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryBackdrop} testID="customer-v21-kael-accessory-backdrop" />
-          <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryCaustic} testID="customer-v21-kael-accessory-caustic" />
-          <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryGlobeTop} testID="customer-v21-kael-accessory-globe-top" />
-          <Image resizeMode="contain" source={customerV21Assets.kaelNavigation} style={dockStyles.kaelAccessoryImage} />
-          <Animated.View pointerEvents="none" style={[liquidDockStyles.kaelAccessoryGlint, animatedOrbSheenStyle]} testID="customer-v21-kael-accessory-glint" />
-          <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryFrontRim} testID="customer-v21-kael-accessory-front-rim" />
-          <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryStatusHalo} testID="customer-v21-kael-accessory-status-halo" />
-          <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryStatusWave} testID="customer-v21-kael-accessory-status-wave" />
-          <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryStatus} testID="customer-v21-kael-accessory-status" />
-        </GlassSurface>
-        </Animated.View>
+        <KaelCoreV9 reduceMotion={reduceMotion} ref={kaelRef} testID="customer-v21-kael-core-v9" />
       </Pressable>
-      </View>
+      </Animated.View>
     </View>
   )
 }
