@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Research"
+  short_description: "Research primary sources with evidence"
+  default_prompt: "Use $kael-research to investigate a question with primary sources and citations."

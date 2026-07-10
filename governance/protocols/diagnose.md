@@ -18,17 +18,17 @@ Use for every bug, failing test, build failure, runtime failure, performance reg
 
 ### Workflow
 
-1. Build a feedback loop before fixing.
-2. Reproduce the failure when possible.
-3. Confirm the failure matches the user's actual symptom.
+1. Build a tight feedback loop before fixing.
+2. Run it, reproduce the failure when possible, and confirm it matches the user's actual symptom.
+3. Minimize the repro until every remaining step, input, and dependency is load-bearing.
 4. Generate 3-5 ranked falsifiable hypotheses.
 5. Present hypotheses to Tu unless the change is low-risk and local.
 6. Instrument one variable at a time.
 7. Add a regression test at the correct seam before the fix when possible.
 8. Apply the smallest fix.
-9. Rerun original repro and relevant tests.
+9. Rerun the original repro and relevant tests.
 10. Remove temporary instrumentation.
-11. Report the correct hypothesis and regression coverage.
+11. Report the correct hypothesis, regression coverage, and any loop limitation.
 
 ### Feedback Loop Examples
 
@@ -39,6 +39,21 @@ Use for every bug, failing test, build failure, runtime failure, performance reg
 - Minimal UI interaction.
 - SQL query against local Supabase.
 - Loop for flaky reproduction.
+
+### Feedback Loop Gate
+
+Before testing hypotheses, record one exact command, script, or interaction that has already been run. It should be:
+
+- **Red-capable**: exercises the reported symptom, not merely a nearby code path.
+- **Deterministic**: produces the same verdict across normal reruns; for flakes, has a measured reproduction rate high enough to debug.
+- **Fast enough to iterate**: narrow the setup or assertion before moving forward when practical.
+- **Agent-runnable**: unattended unless the task is genuinely HITL.
+
+If no such loop can be built, report what was tried and use the closest available signal. Do not present code-reading alone as a reproduction.
+
+### Reproduction Minimization
+
+After the signal turns red, remove inputs, calls, configuration, and data one at a time until the smallest reproducer remains. Use that minimized case for the regression test when the test seam is valid.
 
 If a local repro is impossible, the agent may patch from code reasoning only when the final result is high-quality and verified by the closest available signal. The agent MUST clearly report the missing repro and remaining risk.
 
@@ -67,7 +82,7 @@ All debug instrumentation MUST be removed before final response.
 
 ### Performance Rule
 
-For performance regressions: measure first, fix second. Do not optimize by intuition alone.
+For performance regressions: record a baseline measurement, workload, and measurement command before changing code. Compare the same measurement after the fix; do not optimize by intuition alone.
 
 ### Output Format
 

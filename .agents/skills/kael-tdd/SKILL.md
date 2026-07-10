@@ -9,9 +9,9 @@ Auto-trigger wrapper. Full procedure is canonical in `governance/protocols/tdd.m
 
 When this fires:
 
-1. Identify the public behavior and the correct test seam.
-2. Write one failing test first (bugfix/feature logic), observe the red signal, implement the smallest change, observe green.
-3. Cover at least two relevant layers (static/unit/integration/SQL/wiring/e2e/UI/security-negative). Negative tests are mandatory for security changes.
+1. Identify the public behavior, an independently knowable expected result, and the highest viable test seam.
+2. Work one tracer bullet at a time: write a failing behavior test, observe the relevant red signal, implement the smallest change, then observe green.
+3. Cover at least two relevant layers only when they address distinct risk (static/unit/integration/SQL/wiring/e2e/UI/security-negative). Negative tests are mandatory for security changes.
 4. Test count is not a quality metric — layer coverage and failure relevance are. Build failure means not done.
 
 Direct agent commands:

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Wayfinder"
+  short_description: "Map large uncertain work safely"
+  default_prompt: "Use $kael-wayfinder to map decisions before planning a large project."
