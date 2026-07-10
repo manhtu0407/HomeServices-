@@ -33,6 +33,7 @@ import {
 } from '@nestscout/shared'
 import { KaelButton, KaelChip, KaelTextInput } from '@/components/ui/kael-primitives'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { generateClientRequestId } from '@/lib/client-request-id'
@@ -2933,6 +2934,8 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   const router = useRouter()
   const { width } = useWindowDimensions()
   const { mode, reduceMotion, reduceTransparency, tokens } = useV21Theme()
+  const { collapsed, resetDockScroll } = useDockScrollState()
+  const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)
   const activeTab = active === 'chat' ? null : active
 
   const navItems: Array<{ image: ImageSourcePropType; key: CustomerPrimaryTab; route: string }> = [
@@ -2956,11 +2959,6 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   const lensSheenOpacity = useSharedValue(0)
   const dockShimmerX = useSharedValue((0.18 + settledIndex * 0.22) * liquidDockWidth)
   const dockCausticX = useSharedValue(settledIndex * lensWidth)
-  const orbScale = useSharedValue(1)
-  const orbSheenX = useSharedValue(-36)
-  const orbSheenOpacity = useSharedValue(0)
-  const orbRippleScale = useSharedValue(1)
-  const orbRippleOpacity = useSharedValue(0)
   const kaelActive = active === 'chat'
   const dockCausticWidth = Math.min(118, Math.max(lensWidth + 48, 72))
   const dockCausticLeft = (lensWidth - dockCausticWidth) / 2
@@ -2981,17 +2979,10 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
     opacity: reduceTransparency ? 0 : 1,
     transform: [{ translateX: dockCausticX.value }],
   }), [reduceTransparency])
-  const animatedOrbStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: orbScale.value }],
-  }))
-  const animatedOrbSheenStyle = useAnimatedStyle(() => ({
-    opacity: reduceTransparency ? 0 : orbSheenOpacity.value,
-    transform: [{ translateX: orbSheenX.value }, { rotate: '-18deg' }],
-  }), [reduceTransparency])
-  const animatedOrbRippleStyle = useAnimatedStyle(() => ({
-    opacity: reduceTransparency ? 0 : orbRippleOpacity.value,
-    transform: [{ scale: orbRippleScale.value }],
-  }), [reduceTransparency])
+
+  useEffect(() => {
+    resetDockScroll()
+  }, [active, resetDockScroll])
 
   useEffect(() => {
     const targetX = settledIndex * lensWidth
@@ -3037,26 +3028,6 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
   }, [dockCausticX, dockShimmerX, lensRadius, lensScaleX, lensScaleY, lensSheenOpacity, lensSheenX, lensSkew, lensWidth, lensX, liquidDockWidth, reduceMotion, settledIndex])
 
   const openKael = () => {
-    cancelAnimation(orbScale)
-    cancelAnimation(orbSheenX)
-    cancelAnimation(orbSheenOpacity)
-    cancelAnimation(orbRippleScale)
-    cancelAnimation(orbRippleOpacity)
-
-    if (reduceMotion) {
-      orbScale.value = 1
-      orbRippleOpacity.value = 0
-    } else {
-      orbScale.value = withSequence(withTiming(0.88, { duration: 120 }), withSpring(1.075, motionTokens.liquid.pill), withSpring(1, motionTokens.liquid.press))
-      orbSheenX.value = -36
-      orbSheenOpacity.value = withSequence(withTiming(0.76, { duration: 110 }), withTiming(0, { duration: 320 }))
-      orbSheenX.value = withTiming(36, { duration: 430 })
-      orbRippleScale.value = 1
-      orbRippleOpacity.value = 0.74
-      orbRippleScale.value = withTiming(1.75, { duration: 780 })
-      orbRippleOpacity.value = withTiming(0, { duration: 780 })
-    }
-
     router.replace(customerKaelChatRoute as never)
   }
 
@@ -3065,11 +3036,9 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
       activeTab={activeTab}
       animatedDockCausticStyle={animatedDockCausticStyle}
       animatedDockShimmerStyle={animatedDockShimmerStyle}
+      animatedDockScrollStyle={animatedDockScrollStyle}
       animatedLensSheenStyle={animatedLensSheenStyle}
       animatedLensStyle={animatedLensStyle}
-      animatedOrbRippleStyle={animatedOrbRippleStyle}
-      animatedOrbSheenStyle={animatedOrbSheenStyle}
-      animatedOrbStyle={animatedOrbStyle}
       dockCausticLeft={dockCausticLeft}
       dockCausticWidth={dockCausticWidth}
       kaelActive={kaelActive}
@@ -3080,7 +3049,7 @@ export function CustomerV21DockOverlay({ active }: { active: CustomerDockActive 
       navItems={navItems}
       onKaelPress={openKael}
       onTabPress={(route) => router.replace(route as never)}
-      reduceTransparency={reduceTransparency}
+      reduceMotion={reduceMotion}
       selectedIndex={selectedIndex}
       tokens={tokens}
     />

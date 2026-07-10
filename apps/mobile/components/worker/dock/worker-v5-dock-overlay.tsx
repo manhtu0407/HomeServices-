@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Image } from 'expo-image'
 import { Pressable, Text, View, useWindowDimensions, type ImageSourcePropType, type ViewStyle } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -15,7 +15,9 @@ import {
   customerV21DockStyles as dockStyles,
 } from '@/components/customer/v21/dock-styles'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { DockScrollStateProvider, useDockScrollState, useDockScrollTransform } from '@/components/ui/dock-scroll-state'
 import { GlassSurface } from '@/components/ui/glass-surface'
+import { KaelCoreV9, type KaelCoreV9Handle } from '@/components/ui/kael-core-v9'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { customerTheme } from '@/design/theme'
 
@@ -31,8 +33,6 @@ const workerV5DockIcons: Record<Exclude<WorkerV5IconName, 'calendar' | 'camera' 
   profile: require('@/assets/worker-image-icons/nav-profile.png') as ImageSourcePropType,
 }
 
-const workerV5DockKaelNavigationIcon = require('@/assets/navigation/customer/kael.png') as ImageSourcePropType
-
 const WORKER_V5_DOCK_ROUTE_ITEMS: ReadonlyArray<{
   icon: keyof typeof workerV5DockIcons
   id: Exclude<WorkerDockActive, 'kael'>
@@ -45,17 +45,15 @@ const WORKER_V5_DOCK_ROUTE_ITEMS: ReadonlyArray<{
 ]
 
 const WORKER_V5_DOCK_KAEL_ITEM: {
-  icon: ImageSourcePropType
   id: Extract<WorkerDockActive, 'kael'>
   label: Record<'en' | 'vi', string>
 } = {
-  icon: workerV5DockKaelNavigationIcon,
   id: 'kael',
   label: { en: 'Kael', vi: 'Kael' },
 }
 
 export function WorkerDockLayoutProvider({ children }: { children: ReactNode }) {
-  return <>{children}</>
+  return <DockScrollStateProvider>{children}</DockScrollStateProvider>
 }
 
 function WorkerV5DockTabButton({
@@ -94,6 +92,8 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   const language = resolveWorkerV5Language(params)
   const { width } = useWindowDimensions()
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
+  const { collapsed, resetDockScroll } = useDockScrollState()
+  const animatedDockScrollStyle = useDockScrollTransform(collapsed, reduceMotion)
   const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(workerV5DockTokens) : workerV5DockTokens
   const activeTab = active === WORKER_V5_DOCK_KAEL_ITEM.id ? null : active
   const liquidNavWidth = Math.min(Math.max(width - CUSTOMER_LIQUID_NAV_SIDE_INSET * 2, 0), CUSTOMER_LIQUID_NAV_MAX_WIDTH)
@@ -111,11 +111,7 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   const lensSheenOpacity = useSharedValue(0)
   const dockShimmerX = useSharedValue((0.18 + settledIndex * 0.22) * liquidDockWidth)
   const dockCausticX = useSharedValue(settledIndex * lensWidth)
-  const orbScale = useSharedValue(1)
-  const orbSheenX = useSharedValue(-36)
-  const orbSheenOpacity = useSharedValue(0)
-  const orbRippleScale = useSharedValue(1)
-  const orbRippleOpacity = useSharedValue(0)
+  const kaelRef = useRef<KaelCoreV9Handle>(null)
   const kaelActive = active === WORKER_V5_DOCK_KAEL_ITEM.id
   const dockCausticWidth = Math.min(118, Math.max(lensWidth + 48, 72))
   const dockCausticLeft = (lensWidth - dockCausticWidth) / 2
@@ -131,23 +127,7 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
     | 'dockLensSheen'
     | 'dockLensTopLight'
     | 'dockRow'
-    | 'dockShimmer'
-    | 'kaelAccessoryBackdrop'
-    | 'kaelAccessoryCaustic'
-    | 'kaelAccessoryFrontRim'
-    | 'kaelAccessoryGlint'
-    | 'kaelAccessoryGlobeTop'
-    | 'kaelAccessoryOrbit',
-    ViewStyle
-  >
-  const liquidOrbStyles = dockStyles as typeof dockStyles & Record<
-    | 'kaelAccessoryOrbitBack'
-    | 'kaelAccessoryOrbMotion'
-    | 'kaelAccessoryPearl'
-    | 'kaelAccessoryRipple'
-    | 'kaelAccessoryStatus'
-    | 'kaelAccessoryStatusHalo'
-    | 'kaelAccessoryStatusWave',
+    | 'dockShimmer',
     ViewStyle
   >
   const animatedLensStyle = useAnimatedStyle(() => ({
@@ -167,17 +147,10 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
     opacity: reduceTransparency ? 0 : 1,
     transform: [{ translateX: dockCausticX.value }],
   }), [reduceTransparency])
-  const animatedOrbStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: orbScale.value }],
-  }))
-  const animatedOrbSheenStyle = useAnimatedStyle(() => ({
-    opacity: reduceTransparency ? 0 : orbSheenOpacity.value,
-    transform: [{ translateX: orbSheenX.value }, { rotate: '-18deg' }],
-  }), [reduceTransparency])
-  const animatedOrbRippleStyle = useAnimatedStyle(() => ({
-    opacity: reduceTransparency ? 0 : orbRippleOpacity.value,
-    transform: [{ scale: orbRippleScale.value }],
-  }), [reduceTransparency])
+
+  useEffect(() => {
+    resetDockScroll()
+  }, [active, resetDockScroll])
 
   const animateDockSelection = (nextIndex: number) => {
     if (nextIndex < 0) return
@@ -225,32 +198,12 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
   }
 
   const openKael = () => {
-    cancelAnimation(orbScale)
-    cancelAnimation(orbSheenX)
-    cancelAnimation(orbSheenOpacity)
-    cancelAnimation(orbRippleScale)
-    cancelAnimation(orbRippleOpacity)
-
-    if (reduceMotion) {
-      orbScale.value = 1
-      orbRippleOpacity.value = 0
-    } else {
-      orbScale.value = withSequence(withTiming(0.88, { duration: 120 }), withSpring(1.075, motionTokens.liquid.pill), withSpring(1, motionTokens.liquid.press))
-      orbSheenX.value = -36
-      orbSheenOpacity.value = withSequence(withTiming(0.76, { duration: 110 }), withTiming(0, { duration: 320 }))
-      orbSheenX.value = withTiming(36, { duration: 430 })
-      orbRippleScale.value = 1
-      orbRippleOpacity.value = 0.74
-      orbRippleScale.value = withTiming(1.75, { duration: 780 })
-      orbRippleOpacity.value = withTiming(0, { duration: 780 })
-    }
-
     router.replace(workerV5Routes[WORKER_V5_DOCK_KAEL_ITEM.id] as never)
   }
 
   return (
     <View pointerEvents="box-none" style={dockStyles.dockOverlay} testID="worker-v5-dock-overlay">
-      <View style={[liquidDockStyles.dockRow, { width: liquidNavWidth }]} testID="worker-v5-liquid-navigation">
+      <Animated.View style={[liquidDockStyles.dockRow, { width: liquidNavWidth }, animatedDockScrollStyle]} testID="worker-v5-liquid-navigation">
         <GlassSurface
           backgroundColor={tokens.glass}
           borderColor={tokens.glassBorder}
@@ -294,41 +247,16 @@ export function WorkerRebuildDockOverlay({ active }: { active: WorkerDockActive 
           accessibilityLabel={WORKER_V5_DOCK_KAEL_ITEM.label[language]}
           accessibilityRole="button"
           accessibilityState={{ selected: kaelActive }}
+          onFocus={() => kaelRef.current?.bow('focus')}
+          onHoverIn={() => kaelRef.current?.bow('proximity')}
           onPress={openKael}
-          style={({ pressed }) => [dockStyles.kaelAccessory, kaelActive ? dockStyles.kaelAccessoryActive : null, pressed ? dockStyles.kaelAccessoryPressed : null]}
+          onPressIn={() => kaelRef.current?.bow('pointer-press')}
+          style={[dockStyles.kaelAccessory, kaelActive ? dockStyles.kaelAccessoryActive : null]}
           testID="worker-v5-kael-accessory"
         >
-          {!reduceTransparency ? <View pointerEvents="none" style={[dockStyles.kaelAccessoryAura, kaelActive ? dockStyles.kaelAccessoryAuraActive : null]} testID="worker-v5-kael-accessory-aura" /> : null}
-          <View pointerEvents="none" style={[liquidDockStyles.kaelAccessoryOrbit, liquidOrbStyles.kaelAccessoryOrbitBack, kaelActive ? dockStyles.kaelAccessoryOrbitActive : null]} testID="worker-v5-kael-accessory-orbit-back">
-            <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryPearl} testID="worker-v5-kael-accessory-orbit-back-pearl" />
-          </View>
-          <View pointerEvents="none" style={[liquidDockStyles.kaelAccessoryOrbit, kaelActive ? dockStyles.kaelAccessoryOrbitActive : null]} testID="worker-v5-kael-accessory-orbit-front">
-            <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryPearl} testID="worker-v5-kael-accessory-orbit-front-pearl" />
-          </View>
-          <Animated.View pointerEvents="none" style={[liquidOrbStyles.kaelAccessoryRipple, animatedOrbRippleStyle]} testID="worker-v5-kael-accessory-ripple" />
-          <Animated.View style={[liquidOrbStyles.kaelAccessoryOrbMotion, animatedOrbStyle]}>
-            <GlassSurface
-              backgroundColor={tokens.glassStrong}
-              borderColor={tokens.glassBorder}
-              material="liquid"
-              mode={tokens.mode}
-              style={[dockStyles.kaelAccessoryGlass, kaelActive ? dockStyles.kaelAccessoryGlassActive : null]}
-              testID="worker-v5-kael-accessory-glass"
-              variant="control"
-            >
-              <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryBackdrop} testID="worker-v5-kael-accessory-backdrop" />
-              <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryCaustic} testID="worker-v5-kael-accessory-caustic" />
-              <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryGlobeTop} testID="worker-v5-kael-accessory-globe-top" />
-              <Image contentFit="contain" source={WORKER_V5_DOCK_KAEL_ITEM.icon} style={dockStyles.kaelAccessoryImage} />
-              <Animated.View pointerEvents="none" style={[liquidDockStyles.kaelAccessoryGlint, animatedOrbSheenStyle]} testID="worker-v5-kael-accessory-glint" />
-              <View pointerEvents="none" style={liquidDockStyles.kaelAccessoryFrontRim} testID="worker-v5-kael-accessory-front-rim" />
-              <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryStatusHalo} testID="worker-v5-kael-accessory-status-halo" />
-              <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryStatusWave} testID="worker-v5-kael-accessory-status-wave" />
-              <View pointerEvents="none" style={liquidOrbStyles.kaelAccessoryStatus} testID="worker-v5-kael-accessory-status" />
-            </GlassSurface>
-          </Animated.View>
+          <KaelCoreV9 reduceMotion={reduceMotion} ref={kaelRef} testID="worker-v5-kael-core-v9" />
         </Pressable>
-      </View>
+      </Animated.View>
     </View>
   )
 }

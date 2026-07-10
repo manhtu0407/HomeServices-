@@ -23,6 +23,7 @@ import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient } from 'react-n
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { LOCAL_WORKFLOW_PRICE_DISCLAIMER, type LocalDeal, type ServiceType } from '@nestscout/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
 import { KaelButton, KaelTextField, MintAura } from '@/components/ui/kael-primitives'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
 import { color, glass, radius, shadow, signature, typography } from '@/design/theme'
@@ -320,6 +321,7 @@ export function WorkerProfileSurface() {
 function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition }) {
   const params = useLocalSearchParams<WorkerV5RouteParams>()
   const language = resolveWorkerV5Language(params)
+  const onDockScroll = useDockScrollHandler()
   const router = useRouter()
   const { signOut } = useAuth()
   const runtime = useFrontendWorkflow()
@@ -590,6 +592,8 @@ function WorkerV5ScreenSurface({ screen }: { screen: WorkerV5ScreenDefinition })
       <ScrollView
         bounces={false}
         contentContainerStyle={[styles.scrollContent, usesKaelOrbHandoff ? styles.kaelOrbCustomerScrollContent : null, { minHeight }]}
+        onScroll={onDockScroll}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         testID="worker-v5-scroll"
       >
@@ -840,6 +844,7 @@ function WorkerV5HomeScreenSurface({
   runtime: WorkerV5Runtime
   surfaceStyle: StyleProp<ViewStyle>
 }) {
+  const onDockScroll = useDockScrollHandler()
   const profile = runtime.workerProfile
   const deal = runtime.state.deal
   const earnings = runtime.workerEarnings
@@ -922,6 +927,8 @@ function WorkerV5HomeScreenSurface({
       <ScrollView
         bounces={false}
         contentContainerStyle={[styles.homeSourceScrollContent, { minHeight }]}
+        onScroll={onDockScroll}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         style={styles.homeSourceScroll}
         testID="worker-v5-scroll"
