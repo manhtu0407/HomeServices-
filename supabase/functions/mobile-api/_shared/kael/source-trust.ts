@@ -30,6 +30,15 @@ export const TIER_1_SOURCE_TRUST_DOMAINS = Object.freeze([
 
 export type SourceTrustTier = "tier_1" | "tier_2" | "tier_3" | "blocked";
 export type SourceTrustAutoTier = 1 | 2 | 3 | 4 | 5;
+export type SourceTrustCriteria = Readonly<{
+  A: boolean;
+  B: boolean;
+  C: boolean;
+  D: boolean;
+  E: boolean;
+  F: boolean;
+  G: boolean;
+}>;
 export type SourceTrustRegistryEntry = {
   domain: string;
   tier: SourceTrustTier;
@@ -40,6 +49,7 @@ export type SourceTrustRegistryEntry = {
   effectiveUntil: string | null;
   entityType: string | null;
   region: string | null;
+  criteriaMet: SourceTrustCriteria;
 };
 
 export type SourceTrustLookupResult = {
@@ -66,6 +76,7 @@ export type CitationValidationResult = {
     effectiveTrustScore: number;
     entityType: string | null;
     region: string | null;
+    criteriaMet: SourceTrustCriteria;
   }>;
   rejected: Array<{
     url: string;
@@ -262,6 +273,7 @@ export async function validateCitations(
       effectiveTrustScore: score,
       entityType: matched.entityType,
       region: matched.region,
+      criteriaMet: matched.criteriaMet,
     });
   }
 
@@ -446,7 +458,7 @@ async function loadSourceTrustRegistry(
 
   const result = await client
     .from("source_trust_registry")
-    .select("domain,tier,auto_tier,entity_type,region,trust_score,last_reviewed_at,is_active,effective_until")
+    .select("domain,tier,auto_tier,entity_type,region,criteria_met,trust_score,last_reviewed_at,is_active,effective_until")
     .eq("is_active", true) as {
       data?: unknown;
       error?: { code?: string; message?: string } | null;
@@ -499,6 +511,7 @@ function normalizeRegistryRow(value: unknown): SourceTrustRegistryEntry | null {
       : null,
     entityType: nullableString(row.entity_type),
     region: nullableString(row.region),
+    criteriaMet: normalizeCriteriaMet(row.criteria_met),
   };
 }
 
@@ -513,6 +526,7 @@ function fallbackRegistryRows(): SourceTrustRegistryEntry[] {
     effectiveUntil: null,
     entityType: null,
     region: "hcmc",
+    criteriaMet: emptyCriteria(),
   }));
 }
 
@@ -588,6 +602,26 @@ function normalizeAutoTier(
   if (legacyTier === "tier_2") return 2;
   if (legacyTier === "tier_3") return 3;
   return 5;
+}
+
+function normalizeCriteriaMet(value: unknown): SourceTrustCriteria {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return emptyCriteria();
+  }
+  const criteria = value as Record<string, unknown>;
+  return {
+    A: criteria.A === true,
+    B: criteria.B === true,
+    C: criteria.C === true,
+    D: criteria.D === true,
+    E: criteria.E === true,
+    F: criteria.F === true,
+    G: criteria.G === true,
+  };
+}
+
+function emptyCriteria(): SourceTrustCriteria {
+  return { A: false, B: false, C: false, D: false, E: false, F: false, G: false };
 }
 
 function blockedTrustScore(

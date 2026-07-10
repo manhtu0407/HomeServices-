@@ -81,6 +81,7 @@ describe('Kael Track D guardrails', () => {
     const blocked = [
       ['Nguy hiểm chết người.', 'fear_language'],
       ['Giá chốt là 500k/lần.', 'exact_vnd'],
+      ['Giá chốt là 500.000đ/lần.', 'exact_vnd'],
       ['Chi phí chính xác 500 nghìn mỗi giờ.', 'exact_vnd'],
       ['Tổng giá là 1 triệu/m².', 'exact_vnd'],
     ] as const
@@ -118,6 +119,7 @@ describe('Kael Track D guardrails', () => {
     expect(canonicalizeVN('Giá 1,5 triệu mỗi m²/giờ')).toBe(
       'gia 1500000 vnd moi m2/gio',
     )
+    expect(canonicalizeVN('Giá 500.000đ/lần')).toBe('gia 500000 vnd/lan')
     expect(canonicalizeVN('500 ký hiệu, 2 lần')).toBe('500 ky hieu, 2 lan')
   })
 

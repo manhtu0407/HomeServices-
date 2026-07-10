@@ -361,25 +361,27 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
       })
     }))
 
+    const { client } = makeMarketTrustClient()
     const result = await searchMarketPrice(
       'plumbing',
       'pipe leak',
       'small',
       'q7',
       { perplexityApiKey: 'pplx-test', sourceTrustPerplexityFilterEnabled: true },
+      client,
     )
 
     expect(body).toMatchObject({
       model: 'sonar',
       max_tokens: 600,
-      search_domain_filter: [...TIER_1_SOURCE_TRUST_DOMAINS],
+      search_domain_filter: ['btaskee.com', 'jupviec.vn'],
       search_recency_filter: 'month',
       web_search_options: {
         search_mode: 'web',
         search_context_size: 'medium',
       },
     })
-    expect(body?.search_domain_filter).toHaveLength(20)
+    expect(body?.search_domain_filter).toHaveLength(2)
     const messages = body?.messages as Array<Record<string, unknown>>
     expect(messages[0]?.content).toContain('trusted Vietnamese domains')
     expect(messages[0]?.content).toContain('"sources"')
@@ -390,7 +392,7 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
       expect(result.safeMetadata).toMatchObject({
         source_trust_enabled: true,
         source_trust_version: SOURCE_TRUST_VERSION,
-        search_domain_filter_count: 20,
+        search_domain_filter_count: 2,
         search_recency_filter: 'month',
         search_mode: 'web',
         search_context_size: 'medium',
@@ -475,6 +477,7 @@ describe('mobile-api Kael Q2/Q3 cost optimization', () => {
       source: 'db',
     })
     expect(calls.filter((call) => call.table === 'source_trust_registry')).toHaveLength(1)
+    expect(JSON.stringify(calls)).toContain('criteria_met')
   })
 
   it('applies F26 trust score decay and blocks unknown domains', async () => {
@@ -810,6 +813,18 @@ function registryRow(domain: string, trustScore: number, tier = 'tier_1') {
   return {
     domain,
     tier,
+    auto_tier: tier === 'tier_1' ? 1 : tier === 'tier_2' ? 2 : tier === 'tier_3' ? 3 : 5,
+    entity_type: 'direct_pricing',
+    region: 'hcmc',
+    criteria_met: {
+      A: true,
+      B: true,
+      C: true,
+      D: true,
+      E: true,
+      F: true,
+      G: true,
+    },
     trust_score: trustScore,
     is_active: true,
     last_reviewed_at: '2026-05-26T00:00:00.000Z',

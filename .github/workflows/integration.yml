@@ -2,8 +2,8 @@
 # Runs ONLY apps/api/src/__tests__/integration/** (real-supabase, learning-real-supabase,
 # worker-flow, rls-per-actor) — the real-DB tests that hit live Supabase.
 #
-# Secrets required (Settings > Secrets and variables > Actions). Until they are set, every
-# integration `describe` self-skips and this job is GREEN-but-skipped — it does NOT block:
+# Secrets required (Settings > Secrets and variables > Actions). The workflow fails before
+# integration tests when any required secret is absent:
 #   NEXT_PUBLIC_SUPABASE_URL            -> STAGING url https://xyylanuyflrjzbjzhqfl.supabase.co
 #                                          (the tests refuse to run if this points at prod
 #                                           iwevizmsedyqozxlawwl — built-in guard)
@@ -18,7 +18,7 @@ on:
     branches: [main]
   schedule:
     # Nightly staging health check (01:00 ICT / 18:00 UTC).
-    - cron: '0 18 * * *'
+    - cron: "0 18 * * *"
 
 permissions:
   contents: read
@@ -41,9 +41,18 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Require staging integration secrets
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
       - name: Integration tests vs staging Supabase
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-        run: pnpm --filter @home-services/api exec vitest run src/__tests__/integration
+        run: pnpm --filter @nestscout/api exec vitest run src/__tests__/integration

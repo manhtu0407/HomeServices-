@@ -91,17 +91,17 @@ describe('Kael trusted per-source market evidence', () => {
     })
   })
 
-  it('derives the effective tier from A-G evidence instead of the registry or an LLM tier claim', () => {
+  it('does not let provider evidence or an LLM tier claim promote the registry tier', () => {
     const providerPayload = marketSourceEvidenceResultSchema.parse({
       sources: [{
-        ...source('btaskee.com', 100_000, 200_000),
+        ...source('weak.example', 100_000, 200_000),
         claimed_tier: 1,
-        signals: { ...trustedSignals(), identity_verified: false },
+        signals: trustedSignals(),
       }],
     })
     const result = aggregateTrustedMarketSources({
       sources: providerPayload.sources,
-      acceptedCitations: [citation('btaskee.com', 1)],
+      acceptedCitations: [citation('weak.example', 4)],
       highValueThresholdVnd: HIGH_VALUE_THRESHOLD_VND,
       now: new Date('2026-07-10T00:00:00.000Z'),
     })
@@ -147,7 +147,16 @@ function citation(domain: string, autoTier: 1 | 2 | 3 | 4) {
     autoTier,
     trustScore: 1,
     effectiveTrustScore: 1,
-    entityType: null,
+    entityType: 'direct_pricing',
     region: autoTier === 2 ? 'hcmc' : null,
+    criteriaMet: {
+      A: true,
+      B: true,
+      C: true,
+      D: true,
+      E: true,
+      F: true,
+      G: true,
+    },
   }
 }

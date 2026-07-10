@@ -44,8 +44,18 @@ begin
     'verify_durable_guard:verify_deepseek',
     '2026-07-10T00:00:30Z'
   ) into v_open;
+  if not v_open then
+    raise exception 'purpose success erased the provider-global circuit';
+  end if;
+
+  perform public.record_circuit_success('provider', 'verify_deepseek');
+  select public.is_circuit_open(
+    'purpose_provider',
+    'verify_durable_guard:verify_deepseek',
+    '2026-07-10T00:00:30Z'
+  ) into v_open;
   if v_open then
-    raise exception 'record_circuit_success did not reset both circuit levels';
+    raise exception 'provider success did not reset the provider-global circuit';
   end if;
 end;
 $$;
