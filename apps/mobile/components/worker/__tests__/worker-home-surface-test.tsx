@@ -1,5 +1,5 @@
 ﻿import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { Alert, StyleSheet } from 'react-native'
+import { Alert } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 import { LOCAL_WORKFLOW_PRICE_DISCLAIMER } from '@nestscout/shared'
 import type { EarningsResponse, WorkerProfileResponse } from '@/lib/api-types'
@@ -438,7 +438,7 @@ describe('Worker runtime surface wiring', () => {
 
     const home = render(<WorkerHomeSurface />)
     expect(screen.getByTestId('worker-v5-screen-1.1-worker-home')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-page-mint-aura').props.style)).toMatchObject({ backgroundColor: '#F6F7F7' })
+    expect(screen.getByTestId('worker-v5-page-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-availability-card')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-home-command-center')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-home-scroll')).toBeNull()
@@ -452,6 +452,8 @@ describe('Worker runtime surface wiring', () => {
 
     const chat = render(<WorkerChatSurface />)
     expect(screen.getByTestId('worker-v5-screen-3.1-kael-chat-normal')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-orb-background-mint-aura')).toBeOnTheScreen()
+    expect(screen.getByTestId('worker-v5-kael-chat-screen-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-kael-orb-normal')).toBeOnTheScreen()
     chat.unmount()
 

@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
-import { StyleSheet } from 'react-native'
 import type { LocalDeal, LocalWorkflowSelectors } from '@nestscout/shared'
 
 let mockWorkflowValue: any
@@ -177,7 +176,6 @@ describe('CustomerHomeSurface v2.1', () => {
     render(<CustomerHomeSurface />)
 
     expect(screen.getByTestId('customer-v21-home-canvas-aura')).toBeOnTheScreen()
-    expect(StyleSheet.flatten(screen.getByTestId('customer-v21-home-canvas-aura').props.style)).toMatchObject({ backgroundColor: '#F6F7F7' })
     expect(screen.getByTestId('customer-v21-home-card-skin')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-home-mint-aura')).toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-home-empty-card-skin')).toBeOnTheScreen()

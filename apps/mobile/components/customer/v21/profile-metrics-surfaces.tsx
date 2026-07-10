@@ -112,8 +112,8 @@ export function ProfileLiquidScore({
       <Svg height={svgSize} style={styles.caseOverviewScoreSvg} viewBox="0 0 100 100" width={svgSize}>
         <Defs>
           <LinearGradient id={progressId} x1="10" x2="88" y1="86" y2="10">
-            <Stop offset="0" stopColor="#088779" />
-            <Stop offset="0.48" stopColor="#24B3A1" />
+            <Stop offset="0" stopColor="#087D72" />
+            <Stop offset="0.48" stopColor="#08AF9C" />
             <Stop offset="1" stopColor="#86EAD9" />
           </LinearGradient>
         </Defs>

@@ -4,8 +4,9 @@ import {
   Text as RNText,
   type TextProps,
 } from 'react-native'
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, Rect } from 'react-native-svg'
 
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { styles } from './request-body-styles'
 
 function Text({ style, ...props }: TextProps) {
@@ -47,11 +48,9 @@ export function WorkerV5AcceptConfirmButton({
         >
           <Defs>
             <LinearGradient id="worker-v5-accept-confirm-fill" x1="0" x2="1" y1="0" y2="0">
-              <Stop offset="0" stopColor="#2DD4BF" />
-              <Stop offset="0.28" stopColor="#20CDB9" />
-              <Stop offset="0.52" stopColor="#12BCAA" />
-              <Stop offset="0.78" stopColor="#069889" />
-              <Stop offset="1" stopColor="#008579" />
+              <Stop offset="0" stopColor="#31D7C2" />
+              <Stop offset="0.48" stopColor="#09B29E" />
+              <Stop offset="1" stopColor="#077C72" />
             </LinearGradient>
           </Defs>
           <Rect x="0" y="0" width="100" height="56" rx="0" fill="url(#worker-v5-accept-confirm-fill)" />

@@ -50,9 +50,4 @@ export const styles = StyleSheet.create({
     top: -34,
     zIndex: 0,
   },
-  homeAuraBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F6F7F7',
-    zIndex: 0,
-  },
 })

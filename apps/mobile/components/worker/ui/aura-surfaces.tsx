@@ -1,14 +1,9 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect } from 'react-native-svg'
 
+import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { styles } from './aura-styles'
-
-const calmCanvasStyle = [StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]
-
-function CalmCanvas({ testID }: { testID: string }) {
-  return <View pointerEvents="none" style={calmCanvasStyle} testID={testID} />
-}
 
 export function WorkerV5CustomerCaseWideMintAura({
   scope,
@@ -50,54 +45,20 @@ export function WorkerV5CustomerCaseWideMintAura({
 }
 
 export function WorkerV5CustomerFulfillmentCanvasAura({
+  reduceTransparency = false,
   scope,
   testID,
 }: {
+  reduceTransparency?: boolean
   scope: string
   testID?: string
 }) {
-  const safeScope = scope.replace(/[^a-zA-Z0-9]/g, '')
-  const baseId = `workerV5FulfillmentCanvasBase${safeScope}`
-  const topId = `workerV5FulfillmentCanvasTop${safeScope}`
-  const heroId = `workerV5FulfillmentCanvasHero${safeScope}`
-  const leftId = `workerV5FulfillmentCanvasLeft${safeScope}`
-  const bottomId = `workerV5FulfillmentCanvasBottom${safeScope}`
-
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill} testID={testID}>
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
-        <Defs>
-          <LinearGradient id={baseId} x1="0" x2="0.92" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F8FAFA" />
-            <Stop offset="0.42" stopColor="#F6F7F7" />
-            <Stop offset="1" stopColor="#F2F6F5" />
-          </LinearGradient>
-          <RadialGradient id={topId} cx="100%" cy="2%" r="82%">
-            <Stop offset="0" stopColor="rgba(73,232,210,0.11)" />
-            <Stop offset="0.54" stopColor="rgba(151,246,232,0.04)" />
-            <Stop offset="0.80" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id={heroId} cx="86%" cy="26%" r="70%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.09)" />
-            <Stop offset="0.58" stopColor="rgba(154,246,232,0.035)" />
-            <Stop offset="0.82" stopColor="rgba(154,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id={leftId} cx="-18%" cy="45%" r="76%">
-            <Stop offset="0" stopColor="rgba(132,242,223,0.07)" />
-            <Stop offset="0.76" stopColor="rgba(132,242,223,0)" />
-          </RadialGradient>
-          <RadialGradient id={bottomId} cx="82%" cy="104%" r="78%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.065)" />
-            <Stop offset="0.74" stopColor="rgba(81,216,203,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill={`url(#${baseId})`} height="844" width="390" />
-        <Rect fill={`url(#${topId})`} height="844" width="390" />
-        <Rect fill={`url(#${heroId})`} height="844" width="390" />
-        <Rect fill={`url(#${leftId})`} height="844" width="390" />
-        <Rect fill={`url(#${bottomId})`} height="844" width="390" />
-      </Svg>
-    </View>
+    <FormulaMintCanvasAura
+      reduceTransparency={reduceTransparency}
+      scope={`WorkerV5Fulfillment${scope}`}
+      testID={testID ?? `worker-v5-fulfillment-formula-mint-aura-${scope}`}
+    />
   )
 }
 
@@ -180,6 +141,33 @@ export function WorkerV5CustomerZipMintAura({
   )
 }
 
+export function WorkerV5KaelChatScreenAura({
+  reduceTransparency = false,
+  scope,
+  testID,
+}: {
+  reduceTransparency?: boolean
+  scope: string
+  testID?: string
+}) {
+  if (reduceTransparency) return null
+
+  const fillId = `workerV5KaelChatScreenAura${scope}`
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFillObject} testID={testID}>
+      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
+        <Defs>
+          <RadialGradient cx={351} cy={84.4} gradientUnits="userSpaceOnUse" id={fillId} rx={300} ry={260}>
+            <Stop offset="0" stopColor="rgba(121,229,211,0.23)" />
+            <Stop offset="0.70" stopColor="rgba(121,229,211,0)" />
+          </RadialGradient>
+        </Defs>
+        <Rect fill={`url(#${fillId})`} height="844" width="390" />
+      </Svg>
+    </View>
+  )
+}
+
 export function WorkerV5SuccessEmblemAura({ scope, testID }: { scope: string; testID?: string }) {
   const coreId = `workerV5SuccessEmblemAuraCore${scope}`
   const edgeId = `workerV5SuccessEmblemAuraEdge${scope}`
@@ -213,7 +201,7 @@ export function WorkerV5SuccessCheckFill({ scope, testID }: { scope: string; tes
         <Defs>
           <LinearGradient id={fillId} x1="0" x2="1" y1="0" y2="1">
             <Stop offset="0" stopColor="#33D4BD" />
-            <Stop offset="1" stopColor="#087F73" />
+            <Stop offset="1" stopColor="#087D72" />
           </LinearGradient>
         </Defs>
         <Rect fill={`url(#${fillId})`} height="63" rx="23" width="63" />
@@ -257,8 +245,8 @@ export function WorkerV5CustomerMapMintAura({
   )
 }
 
-export function WorkerV5HomeAuraBackground() {
-  return <CalmCanvas testID="worker-v5-page-mint-aura" />
+export function WorkerV5HomeAuraBackground({ reduceTransparency = false }: { reduceTransparency?: boolean } = {}) {
+  return <FormulaMintCanvasAura reduceTransparency={reduceTransparency} scope="WorkerV5Home" testID="worker-v5-page-mint-aura" />
 }
 
 export function WorkerV5HomeHeroSourceAura() {
@@ -303,10 +291,6 @@ export function WorkerV5HomeQuickActionsAura() {
       </Svg>
     </View>
   )
-}
-
-export function WorkerV5EarningsHomeAuraBackground() {
-  return <CalmCanvas testID="worker-v5-earnings-page-customer-mint-aura" />
 }
 
 export function WorkerV5EarningsHomeHeroAura({ testID }: { testID: string }) {

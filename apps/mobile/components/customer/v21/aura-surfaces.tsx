@@ -3,17 +3,12 @@ import Svg, { Defs, LinearGradient, RadialGradient, Rect } from 'react-native-sv
 
 import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { FormulaMintCanvasAura } from '@/components/ui/formula-mint-canvas'
 import type { CustomerV21ScreenId } from './types'
 import { customerV21AuraStyles as styles } from './aura-styles'
 
 type ReduceTransparencyProps = {
   reduceTransparency: boolean
-}
-
-const calmCanvasStyle = [StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]
-
-function CalmCanvas({ testID }: { testID: string }) {
-  return <View pointerEvents="none" style={calmCanvasStyle} testID={testID} />
 }
 
 export function SourceCardSkin({ testID }: { testID?: string }) {
@@ -226,8 +221,14 @@ export function CaseWorkActionButtonAura({ scope }: { scope: string }) {
   )
 }
 
-export function HomeCanvasAura({ reduceTransparency: _reduceTransparency }: ReduceTransparencyProps) {
-  return <CalmCanvas testID="customer-v21-home-canvas-aura" />
+export function HomeCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
+  return (
+    <FormulaMintCanvasAura
+      reduceTransparency={reduceTransparency}
+      scope="CustomerHome"
+      testID="customer-v21-home-canvas-aura"
+    />
+  )
 }
 
 export function ProfileCanvasAura({
@@ -236,47 +237,12 @@ export function ProfileCanvasAura({
 }: ReduceTransparencyProps & {
   screenId: CustomerV21ScreenId
 }) {
-  const scope = screenId.replace(/[^a-zA-Z0-9]/g, '')
-
-  if (reduceTransparency) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]} testID={`customer-v21-profile-canvas-aura-${screenId}`} />
-  }
-
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill} testID={`customer-v21-profile-canvas-aura-${screenId}`}>
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
-        <Defs>
-          <LinearGradient id={`profileCanvasBase${scope}`} x1="0" x2="0.92" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F8FAFA" />
-            <Stop offset="0.44" stopColor="#F6F7F7" />
-            <Stop offset="1" stopColor="#F2F6F5" />
-          </LinearGradient>
-          <RadialGradient id={`profileCanvasTop${scope}`} cx="98%" cy="1%" r="82%">
-            <Stop offset="0" stopColor="rgba(77,231,209,0.12)" />
-            <Stop offset="0.54" stopColor="rgba(151,246,232,0.045)" />
-            <Stop offset="0.80" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id={`profileCanvasHero${scope}`} cx="88%" cy="28%" r="72%">
-            <Stop offset="0" stopColor="rgba(93,235,213,0.10)" />
-            <Stop offset="0.58" stopColor="rgba(154,246,232,0.04)" />
-            <Stop offset="0.82" stopColor="rgba(154,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id={`profileCanvasLeft${scope}`} cx="-14%" cy="42%" r="78%">
-            <Stop offset="0" stopColor="rgba(120,238,221,0.065)" />
-            <Stop offset="0.74" stopColor="rgba(120,238,221,0)" />
-          </RadialGradient>
-          <RadialGradient id={`profileCanvasBottom${scope}`} cx="50%" cy="106%" r="74%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.075)" />
-            <Stop offset="0.72" stopColor="rgba(83,220,206,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill={`url(#profileCanvasBase${scope})`} height="844" width="390" />
-        <Rect fill={`url(#profileCanvasTop${scope})`} height="844" width="390" />
-        <Rect fill={`url(#profileCanvasHero${scope})`} height="844" width="390" />
-        <Rect fill={`url(#profileCanvasLeft${scope})`} height="844" width="390" />
-        <Rect fill={`url(#profileCanvasBottom${scope})`} height="844" width="390" />
-      </Svg>
-    </View>
+    <FormulaMintCanvasAura
+      reduceTransparency={reduceTransparency}
+      scope={`CustomerProfile${screenId}`}
+      testID={`customer-v21-profile-canvas-aura-${screenId}`}
+    />
   )
 }
 
@@ -286,96 +252,22 @@ export function AgenticCanvasAura({
 }: ReduceTransparencyProps & {
   screenId: CustomerV21ScreenId
 }) {
-  const scope = screenId.replace(/[^a-zA-Z0-9]/g, '')
-
-  if (reduceTransparency) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]} testID={`customer-v21-agentic-canvas-aura-${screenId}`} />
-  }
-
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill} testID={`customer-v21-agentic-canvas-aura-${screenId}`}>
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
-        <Defs>
-          <LinearGradient id={`agenticCanvasBase${scope}`} x1="0" x2="0.92" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F8FAFA" />
-            <Stop offset="0.40" stopColor="#F6F7F7" />
-            <Stop offset="1" stopColor="#F2F6F5" />
-          </LinearGradient>
-          <RadialGradient id={`agenticCanvasTop${scope}`} cx="98%" cy="2%" r="82%">
-            <Stop offset="0" stopColor="rgba(73,232,210,0.11)" />
-            <Stop offset="0.54" stopColor="rgba(151,246,232,0.045)" />
-            <Stop offset="0.80" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id={`agenticCanvasHero${scope}`} cx="91%" cy="25%" r="70%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.09)" />
-            <Stop offset="0.58" stopColor="rgba(154,246,232,0.035)" />
-            <Stop offset="0.82" stopColor="rgba(154,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id={`agenticCanvasLeft${scope}`} cx="-18%" cy="42%" r="76%">
-            <Stop offset="0" stopColor="rgba(132,242,223,0.065)" />
-            <Stop offset="0.76" stopColor="rgba(132,242,223,0)" />
-          </RadialGradient>
-          <RadialGradient id={`agenticCanvasBottom${scope}`} cx="78%" cy="104%" r="78%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.065)" />
-            <Stop offset="0.74" stopColor="rgba(81,216,203,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill={`url(#agenticCanvasBase${scope})`} height="844" width="390" />
-        <Rect fill={`url(#agenticCanvasTop${scope})`} height="844" width="390" />
-        <Rect fill={`url(#agenticCanvasHero${scope})`} height="844" width="390" />
-        <Rect fill={`url(#agenticCanvasLeft${scope})`} height="844" width="390" />
-        <Rect fill={`url(#agenticCanvasBottom${scope})`} height="844" width="390" />
-      </Svg>
-    </View>
+    <FormulaMintCanvasAura
+      reduceTransparency={reduceTransparency}
+      scope={`CustomerAgentic${screenId}`}
+      testID={`customer-v21-agentic-canvas-aura-${screenId}`}
+    />
   )
 }
 
 export function LocationEtaCanvasAura({ reduceTransparency }: ReduceTransparencyProps) {
-  if (reduceTransparency) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]} testID="customer-v21-location-canvas-aura" />
-  }
-
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill} testID="customer-v21-location-canvas-aura">
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
-        <Defs>
-          <LinearGradient id="locationEtaCanvasBase" x1="0" x2="0.9" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F8FAFA" />
-            <Stop offset="0.45" stopColor="#F6F7F7" />
-            <Stop offset="1" stopColor="#F2F6F5" />
-          </LinearGradient>
-          <RadialGradient id="locationEtaCanvasTopRight" cx="98%" cy="4%" r="76%">
-            <Stop offset="0" stopColor="rgba(80,232,210,0.105)" />
-            <Stop offset="0.52" stopColor="rgba(151,246,232,0.04)" />
-            <Stop offset="0.78" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id="locationEtaCanvasHeroRight" cx="104%" cy="27%" r="66%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.08)" />
-            <Stop offset="0.60" stopColor="rgba(154,246,232,0.035)" />
-            <Stop offset="0.82" stopColor="rgba(154,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id="locationEtaCanvasLeftWash" cx="-16%" cy="35%" r="72%">
-            <Stop offset="0" stopColor="rgba(132,242,223,0.06)" />
-            <Stop offset="0.74" stopColor="rgba(132,242,223,0)" />
-          </RadialGradient>
-          <RadialGradient id="locationEtaCanvasMid" cx="75%" cy="55%" r="58%">
-            <Stop offset="0" stopColor="rgba(230,251,243,0.12)" />
-            <Stop offset="0.48" stopColor="rgba(130,236,220,0.035)" />
-            <Stop offset="0.80" stopColor="rgba(130,236,220,0)" />
-          </RadialGradient>
-          <RadialGradient id="locationEtaCanvasBottom" cx="18%" cy="105%" r="80%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.055)" />
-            <Stop offset="0.72" stopColor="rgba(81,216,203,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill="url(#locationEtaCanvasBase)" height="844" width="390" />
-        <Rect fill="url(#locationEtaCanvasTopRight)" height="844" width="390" />
-        <Rect fill="url(#locationEtaCanvasHeroRight)" height="844" width="390" />
-        <Rect fill="url(#locationEtaCanvasLeftWash)" height="844" width="390" />
-        <Rect fill="url(#locationEtaCanvasMid)" height="844" width="390" />
-        <Rect fill="url(#locationEtaCanvasBottom)" height="844" width="390" />
-      </Svg>
-    </View>
+    <FormulaMintCanvasAura
+      reduceTransparency={reduceTransparency}
+      scope="CustomerLocationEta"
+      testID="customer-v21-location-canvas-aura"
+    />
   )
 }
 
@@ -385,47 +277,39 @@ export function FulfillmentCanvasAura({
 }: ReduceTransparencyProps & {
   screenId: CustomerV21ScreenId
 }) {
-  const scope = screenId.replace(/[^a-zA-Z0-9]/g, '')
+  return (
+    <FormulaMintCanvasAura
+      reduceTransparency={reduceTransparency}
+      scope={`CustomerFulfillment${screenId}`}
+      testID={`customer-v21-fulfillment-canvas-aura-${screenId}`}
+    />
+  )
+}
 
-  if (reduceTransparency) {
-    return <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#F6F7F7' }]} testID={`customer-v21-fulfillment-canvas-aura-${screenId}`} />
+export function CustomerScreenCanvasAura({
+  reduceTransparency,
+  screenId,
+}: ReduceTransparencyProps & {
+  screenId: CustomerV21ScreenId
+}) {
+  if (screenId === '2.1-home') return <HomeCanvasAura reduceTransparency={reduceTransparency} />
+  if (screenId === '2.10-location-eta') return <LocationEtaCanvasAura reduceTransparency={reduceTransparency} />
+  if (screenId === '2.11-live-alert' || screenId === '2.12-job-accepted' || screenId === '2.13-job-progress') {
+    return <FulfillmentCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
+  }
+  if (screenId === '5.1-agentic-home' || screenId === '5.2-command-center' || screenId === '5.3-approval-queue' || screenId === '5.4-memory') {
+    return <AgenticCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
+  }
+  if (screenId === '6.1-profile-overview' || screenId === '6.2-usage-ranking' || screenId === '6.3-protect-money') {
+    return <ProfileCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />
   }
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill} testID={`customer-v21-fulfillment-canvas-aura-${screenId}`}>
-      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 390 844" width="100%">
-        <Defs>
-          <LinearGradient id={`fulfillmentCanvasBase${scope}`} x1="0" x2="0.92" y1="0" y2="1">
-            <Stop offset="0" stopColor="#F8FAFA" />
-            <Stop offset="0.42" stopColor="#F6F7F7" />
-            <Stop offset="1" stopColor="#F2F6F5" />
-          </LinearGradient>
-          <RadialGradient id={`fulfillmentCanvasTop${scope}`} cx="100%" cy="2%" r="82%">
-            <Stop offset="0" stopColor="rgba(73,232,210,0.11)" />
-            <Stop offset="0.54" stopColor="rgba(151,246,232,0.04)" />
-            <Stop offset="0.80" stopColor="rgba(151,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id={`fulfillmentCanvasHero${scope}`} cx="86%" cy="26%" r="70%">
-            <Stop offset="0" stopColor="rgba(83,220,206,0.09)" />
-            <Stop offset="0.58" stopColor="rgba(154,246,232,0.035)" />
-            <Stop offset="0.82" stopColor="rgba(154,246,232,0)" />
-          </RadialGradient>
-          <RadialGradient id={`fulfillmentCanvasLeft${scope}`} cx="-18%" cy="45%" r="76%">
-            <Stop offset="0" stopColor="rgba(132,242,223,0.07)" />
-            <Stop offset="0.76" stopColor="rgba(132,242,223,0)" />
-          </RadialGradient>
-          <RadialGradient id={`fulfillmentCanvasBottom${scope}`} cx="82%" cy="104%" r="78%">
-            <Stop offset="0" stopColor="rgba(81,216,203,0.065)" />
-            <Stop offset="0.74" stopColor="rgba(81,216,203,0)" />
-          </RadialGradient>
-        </Defs>
-        <Rect fill={`url(#fulfillmentCanvasBase${scope})`} height="844" width="390" />
-        <Rect fill={`url(#fulfillmentCanvasTop${scope})`} height="844" width="390" />
-        <Rect fill={`url(#fulfillmentCanvasHero${scope})`} height="844" width="390" />
-        <Rect fill={`url(#fulfillmentCanvasLeft${scope})`} height="844" width="390" />
-        <Rect fill={`url(#fulfillmentCanvasBottom${scope})`} height="844" width="390" />
-      </Svg>
-    </View>
+    <FormulaMintCanvasAura
+      reduceTransparency={reduceTransparency}
+      scope={`CustomerV21${screenId}`}
+      testID={`customer-v21-screen-canvas-aura-${screenId}`}
+    />
   )
 }
 

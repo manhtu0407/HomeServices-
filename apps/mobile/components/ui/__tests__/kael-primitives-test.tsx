@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
 import { Platform, StyleSheet, Text } from 'react-native'
-import Svg, { Rect } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 
 jest.mock('expo-image', () => {
   const React = require('react')
@@ -13,6 +13,8 @@ jest.mock('expo-image', () => {
 import { KAEL_CONTEXTUAL_STATES, KAEL_CORE_STATES, KAEL_EMOTIONS, getKaelMascotAssetStatus } from '@/components/kael/kael-mascot-assets'
 import { KaelMascot } from '@/components/kael/kael-mascot'
 import { component, shadow, typography } from '@/design/theme'
+import { FormulaMintCanvasAura } from '../formula-mint-canvas'
+import { AlphaStop } from '../svg-alpha-stop'
 import {
   KaelAlertBadge,
   KaelBadge,
@@ -29,15 +31,50 @@ import {
 } from '../kael-primitives'
 
 describe('Kael UI primitives', () => {
-  it('keeps the primary CTA gradient aligned with the Entry Gate colors without extra white overlays', () => {
-    expect(component.button.primary.gradient).toEqual(['#49CFC0', '#24B3A1', '#088779'])
+  it('keeps the primary CTA gradient aligned with the final mint aura colors without extra white overlays', () => {
+    expect(component.button.primary.gradient).toEqual(['#31D7C2', '#09B29E', '#077C72'])
     expect(component.button.primary.gradientStops).toEqual([0, 0.5, 1])
     expect(shadow.primary).toMatchObject({
-      shadowColor: '#088779',
+      shadowColor: '#087D72',
       shadowOffset: { height: 14, width: 0 },
       shadowOpacity: 0.24,
       shadowRadius: 16,
     })
+  })
+
+  it('normalizes rgba gradient stops into native-safe hex color plus opacity', () => {
+    const { UNSAFE_getAllByType } = render(
+      <Svg>
+        <Defs>
+          <LinearGradient id="test-gradient">
+            <AlphaStop offset="0" stopColor="rgba(80,232,210,.34)" />
+            <AlphaStop offset="1" stopColor="rgba(151,246,232,0.12)" />
+            <AlphaStop offset="1" stopColor="rgba(151,246,232,1.2)" />
+            <AlphaStop offset="1" stopColor="rgba(300,260,999,.5)" />
+            <AlphaStop offset="1" stopColor="rgba( 1 , 2 , 3 , 0.4 )" stopOpacity={0.2} />
+          </LinearGradient>
+        </Defs>
+      </Svg>,
+    )
+
+    const stops = UNSAFE_getAllByType(Stop)
+    expect(stops[0].props).toMatchObject({ stopColor: '#50E8D2', stopOpacity: 0.34 })
+    expect(stops[1].props).toMatchObject({ stopColor: '#97F6E8', stopOpacity: 0.12 })
+    expect(stops[2].props).toMatchObject({ stopColor: '#97F6E8', stopOpacity: 1 })
+    expect(stops[3].props).toMatchObject({ stopColor: '#FFFFFF', stopOpacity: 0.5 })
+    expect(stops[4].props).toMatchObject({ stopColor: '#010203', stopOpacity: 0.2 })
+  })
+
+  it('renders the formula mint canvas with native-safe gradient stops', () => {
+    const { getByTestId, UNSAFE_getAllByType } = render(
+      <FormulaMintCanvasAura reduceTransparency scope="Customer Chat Test" testID="formula-mint-canvas-test" />,
+    )
+
+    expect(getByTestId('formula-mint-canvas-test')).toBeOnTheScreen()
+    const stops = UNSAFE_getAllByType(Stop)
+    expect(stops.some((stop) => typeof stop.props.stopColor === 'string' && stop.props.stopColor.includes('rgba('))).toBe(false)
+    expect(stops.map((stop) => stop.props.stopColor)).toEqual(expect.arrayContaining(['#50E8D2', '#97F6E8', '#88F1DF', '#53DCCE', '#91E8DE']))
+    expect(stops.map((stop) => stop.props.stopOpacity)).toEqual(expect.arrayContaining([0.34, 0.12, 0.22, 0.24, 0.23, 0]))
   })
 
   it('renders the primary button and handles presses', () => {

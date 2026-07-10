@@ -17,7 +17,7 @@ import {
 } from 'react-native'
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from './customer-audio'
 import * as ImagePicker from 'expo-image-picker'
-import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect } from 'react-native-svg'
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
@@ -34,6 +34,7 @@ import {
 import { KaelButton, KaelChip, KaelTextInput } from '@/components/ui/kael-primitives'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { setAppLanguage, useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
@@ -49,9 +50,7 @@ import {
 } from '../customer-theme'
 import { clearPendingKaelChatDraft, peekPendingKaelChatDraft, readPendingKaelChatDraft, setPendingKaelChatDraft } from '../kael-chat/pending-intake'
 import { ScopeChangeHardStopModal } from '../scope-change-modal/scope-change-hard-stop-modal'
-import {
-  AgenticCasePriorityCardPanel,
-} from './agentic-case-surfaces'
+import { AgenticCasePriorityCardPanel } from './agentic-case-surfaces'
 import {
   CaseWideMintAura,
   CaseWorkCardAura,
@@ -547,8 +546,8 @@ function ProfileProgressBar({ percent, testID }: { percent: number; testID?: str
             <Defs>
               <LinearGradient id="profileProgressFillGradient" x1="0" x2="1" y1="0" y2="0">
                 <Stop offset="0" stopColor="#7BE7D6" />
-                <Stop offset="0.55" stopColor="#24B3A1" />
-                <Stop offset="1" stopColor="#088779" />
+                <Stop offset="0.55" stopColor="#08AF9C" />
+                <Stop offset="1" stopColor="#087D72" />
               </LinearGradient>
             </Defs>
             <Rect fill="url(#profileProgressFillGradient)" height="8" rx="4" width="260" />
@@ -5272,7 +5271,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   matchingBarFill: {
-    backgroundColor: '#24B3A1',
+    backgroundColor: '#08AF9C',
     borderRadius: 999,
     height: '100%',
   },
@@ -5371,10 +5370,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 13,
     position: 'relative',
-    shadowColor: '#088779',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.07,
-    shadowRadius: 18,
+    boxShadow: '0 8px 18px rgba(8,125,114,0.07)',
   },
   matchingKaelTitle: {
     fontSize: 17,
@@ -5433,9 +5429,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(113,225,209,0.46)',
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#088779',
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
+    boxShadow: '0 8px 24px rgba(8,125,114,0.12)',
   },
   sendButton: {
     alignItems: 'center',
@@ -5482,10 +5476,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 14,
     position: 'relative',
-    shadowColor: '#088779',
-    shadowOffset: { height: 15, width: 0 },
-    shadowOpacity: 0.10,
-    shadowRadius: 30,
+    boxShadow: '0 15px 30px rgba(8,125,114,0.10)',
   },
   jobProgressHeroCard: {
     borderColor: 'rgba(186,240,230,0.78)',
@@ -5532,15 +5523,12 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   stageProgressFill: {
-    backgroundColor: '#24B3A1',
+    backgroundColor: '#08AF9C',
     borderRadius: 7,
     height: '100%',
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#24B3A1',
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
+    boxShadow: '0 0 12px rgba(8,175,156,0.22)',
   },
   stageProgressFillHighlight: {
     backgroundColor: 'rgba(255,255,255,0.42)',
@@ -5589,7 +5577,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   profileMintChipText: {
-    color: '#088779',
+    color: '#087D72',
     fontWeight: '700',
   },
   profileLogoutCta: {},

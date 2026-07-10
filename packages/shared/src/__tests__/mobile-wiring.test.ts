@@ -616,8 +616,102 @@ describe('customer Kael workflow view model wiring', () => {
   it('keeps active V21 chat canvas from restoring full-screen mint flood values', () => {
     const src = v21ChatAura()
     expect(src).toContain('customer-v21-chat-canvas-aura')
+    expect(src).toContain('FormulaMintCanvasAura')
+    expect(src).toContain('scope="CustomerChat"')
     expect(src).not.toContain('rgba(136,235,221,0.34)')
     expect(src).not.toContain('rgba(13,174,154,0.22)')
+  })
+
+  it('keeps solid deep mint out of Customer and Worker screen backgrounds', () => {
+    const surfaceFiles = [
+      ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/customer/v21')),
+      ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/worker')),
+    ].filter((path) => /\.tsx?$/.test(path) && !path.includes('__tests__'))
+    const solidMintBackground = /backgroundColor:\s*['"](?:#0DAE9A|#08AF9C|#087D72|#055B54)['"]/
+    const solidMintVariableBackground = /backgroundColor:\s*(?:tokens\.primary|color\.brand\.primary(?:Dark|Deep)?|color\.primary(?:Dark)?)/
+    const screenBackgroundContext = /(?:safeArea|surfaceGlass|surfaceSolid|canvas|screen|chatFrame|kaelOrbCustomerSafeArea):\s*\{/
+    const offenders = surfaceFiles.flatMap((path) => {
+      const lines = readSource(path).split('\n')
+      return lines.flatMap((line, index) => {
+        if (!solidMintBackground.test(line) && !solidMintVariableBackground.test(line)) return []
+        const context = lines.slice(Math.max(0, index - 20), index + 1).join('\n')
+        if (!screenBackgroundContext.test(context)) return []
+        const rel = path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, '')
+        return [`${rel}:${index + 1}`]
+      })
+    })
+
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps Customer and Worker runtime on the final formula mint tokens, not the pre-final dark mint set', () => {
+    const runtimeFiles = [
+      ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/customer/v21')),
+      ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/worker')),
+      resolve(MOBILE_ROOT, 'design/theme.ts'),
+      resolve(MOBILE_ROOT, 'design/tokens.json'),
+    ].filter((path) => /\.tsx?$|\.json$/.test(path) && !path.includes('__tests__'))
+    const staleMintTokens = [
+      '#49CFC0',
+      '#24B3A1',
+      '#088779',
+      '#055F57',
+      '#0DAE9A',
+      '#0B9B8A',
+      '#087F73',
+      '#2DD4BF',
+      '#20CDB9',
+      '#12BCAA',
+      '#069889',
+      '#008579',
+    ]
+    const offenders = runtimeFiles.flatMap((path) => {
+      const src = readSource(path)
+      const rel = path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, '')
+      return staleMintTokens.filter((token) => src.includes(token)).map((token) => `${rel}:${token}`)
+    })
+    const workerPrimitives = read('components/worker/ui/primitives-surfaces.tsx')
+    const workerAcceptBody = read('components/worker/jobs/request-bodies.tsx')
+
+    expect(offenders).toEqual([])
+    expect(workerPrimitives).toContain("['#31D7C2', '#09B29E', '#077C72']")
+    expect(workerPrimitives).toContain('[0, 0.48, 1] as const')
+    expect(workerAcceptBody).toContain('<Stop offset="0" stopColor="#31D7C2" />')
+    expect(workerAcceptBody).toContain('<Stop offset="0.48" stopColor="#09B29E" />')
+    expect(workerAcceptBody).toContain('<Stop offset="1" stopColor="#077C72" />')
+  })
+
+  it('keeps rgba SVG stops routed through the native-safe alpha helper', () => {
+    const componentFiles = listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components'))
+      .filter((path) => /\.tsx?$/.test(path))
+    const productionMobileSurfaceFiles = [
+      ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/customer/v21')),
+      ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/worker')),
+      ...listEdgeServiceFiles(resolve(MOBILE_ROOT, 'components/ui')),
+    ].filter((path) => /\.tsx?$/.test(path) && !path.includes('__tests__') && !path.endsWith('svg-alpha-stop.tsx'))
+    const offenders = componentFiles
+      .filter((path) => {
+        const src = readSource(path)
+        return /<Stop[^>]*stopColor=.*rgba/.test(src) && !src.includes('AlphaStop as Stop')
+      })
+      .map((path) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, ''))
+    const directStopImports = productionMobileSurfaceFiles
+      .filter((path) => {
+        const src = readSource(path)
+        return /import Svg, \{[^\n}]*\bStop\b[^\n}]*\} from 'react-native-svg'/.test(src)
+          || /import \{[^\n}]*\bStop\b[^\n}]*\} from 'react-native-svg'/.test(src)
+      })
+      .map((path) => path.replace(/\\/g, '/').replace(MOBILE_ROOT.replace(/\\/g, '/'), '').replace(/^\//, ''))
+
+    const alphaStop = read('components/ui/svg-alpha-stop.tsx')
+    expect(offenders).toEqual([])
+    expect(directStopImports).toEqual([])
+    expect(alphaStop).toContain('toHexChannel')
+    expect(alphaStop).toContain('Math.min(255, Math.max(0, Math.round(Number(value))))')
+    expect(alphaStop).toContain('toStopOpacity')
+    expect(alphaStop).toContain('Math.min(1, Math.max(0, Number(value)))')
+    expect(alphaStop).toContain('stopOpacity: stopOpacity ?? toStopOpacity(alpha)')
+    expect(alphaStop).not.toContain('stopColor: `rgb(')
   })
 })
 
@@ -1084,20 +1178,130 @@ describe('worker V5/XanhSM aligned shell surfaces', () => {
     expect(workerDock).not.toContain("  { icon: 'chat', id: 'kael'")
   })
 
-  it('keeps active home canvases neutral instead of full-screen mint washes', () => {
+  it('keeps active home canvases on formula mint aura instead of flat or component-only page washes', () => {
     const theme = read('design/theme.ts')
+    const designTokens = read('design/tokens.json')
+    const formulaCanvas = read('components/ui/formula-mint-canvas.tsx')
     const customerAura = read('components/customer/v21/aura-surfaces.tsx')
+    const customerShared = read('components/customer/v21/shared-surfaces.tsx')
+    const customerHistoryView = read('components/customer/v21/history-surface-stateful-surfaces.tsx')
+    const customerAgenticView = read('components/customer/v21/agentic-center-stateful-surfaces.tsx')
     const workerAura = read('components/worker/ui/aura-surfaces.tsx')
+    const workerFlow = read('components/worker/worker-v5-flow.tsx')
 
-    expect(customerAura).toContain("backgroundColor: '#F6F7F7'")
+    expect(theme).toContain("bg: '#F1FAF8'")
+    expect(theme).toContain("canvas: '#F1FAF8'")
+    expect(theme).toContain("background: '#F1FAF8'")
+    expect(theme).not.toContain("canvas: '#F4FAF9'")
+    expect(theme).not.toContain("background: '#F4FAF9'")
+    expect(theme).not.toContain("bg: '#F6F7F7'")
+    expect(designTokens).toContain('"canvas": "#F1FAF8"')
+    expect(designTokens).not.toContain('"canvas": "#F4FAF9"')
+    expect(formulaCanvas).toContain('export function FormulaMintCanvasAura')
+    expect(formulaCanvas).toContain('#F9FFFD')
+    expect(formulaCanvas).toContain('#F3FBF9')
+    expect(formulaCanvas).toContain('#EDF9F6')
+    expect(formulaCanvas).not.toContain("variant?: 'customer' | 'worker'")
+    expect(formulaCanvas).not.toContain("variant === 'worker'")
+    expect(formulaCanvas).not.toContain("return <View pointerEvents=\"none\" style={formulaCanvasFallback")
+    expect(formulaCanvas).toContain('gradientUnits="userSpaceOnUse"')
+    expect(formulaCanvas).toContain('cx={397.8}')
+    expect(formulaCanvas).toContain('cy={-33.76}')
+    expect(formulaCanvas).toContain('rx={280}')
+    expect(formulaCanvas).toContain('ry={230}')
+    expect(formulaCanvas).toContain('formulaMintCanvasTopRight')
+    expect(formulaCanvas).toContain('rgba(80,232,210,0.34)')
+    expect(formulaCanvas).toContain('rgba(151,246,232,0.12)')
+    expect(formulaCanvas).toContain('cx={-70.2}')
+    expect(formulaCanvas).toContain('cy={320.72}')
+    expect(formulaCanvas).toContain('rgba(136,241,223,0.22)')
+    expect(formulaCanvas).toContain('cx={405.6}')
+    expect(formulaCanvas).toContain('cy={624.56}')
+    expect(formulaCanvas).toContain('rgba(83,220,206,0.24)')
+    expect(formulaCanvas).toContain('cx={54.6}')
+    expect(formulaCanvas).toContain('cy={877.76}')
+    expect(formulaCanvas).toContain('rgba(145,232,222,0.23)')
+    expect(formulaCanvas).toContain('formulaMintCanvasAmbientTopLeft')
+    expect(formulaCanvas).toContain('cx={8}')
+    expect(formulaCanvas).toContain('cy={60.56}')
+    expect(formulaCanvas).toContain('rgba(89,232,207,0.20)')
+    expect(formulaCanvas).toContain('formulaMintCanvasAmbientMidRight')
+    expect(formulaCanvas).toContain('cx={371}')
+    expect(formulaCanvas).toContain('cy={411.96}')
+    expect(formulaCanvas).toContain('rgba(122,243,223,0.18)')
+    expect(formulaCanvas).toContain('formulaMintCanvasAmbientBottomLeft')
+    expect(formulaCanvas).toContain('cx={57.5}')
+    expect(formulaCanvas).toContain('cy={743.28}')
+    expect(formulaCanvas).toContain('rgba(81,216,203,0.15)')
+    expect(customerAura).toContain('FormulaMintCanvasAura')
+    expect(customerAura).toContain('export function CustomerScreenCanvasAura')
+    expect(customerAura).toContain('scope="CustomerHome"')
+    expect(customerAura).toContain('scope={`CustomerV21${screenId}`}')
+    expect(customerAura).toContain('testID={`customer-v21-screen-canvas-aura-${screenId}`}')
+    expect(customerAura).toContain('scope={`CustomerProfile${screenId}`}')
+    expect(customerAura).toContain('scope={`CustomerAgentic${screenId}`}')
+    expect(customerAura).toContain('scope="CustomerLocationEta"')
+    expect(customerAura).toContain('scope={`CustomerFulfillment${screenId}`}')
     expect(customerAura).toContain('testID="customer-v21-home-canvas-aura"')
-    expect(customerAura).not.toContain('homeCanvasTopRight')
-    expect(workerAura).toContain("backgroundColor: '#F6F7F7'")
+    expect(customerAura).not.toContain('return <CalmCanvas testID="customer-v21-home-canvas-aura" />')
+    expect(customerAura).not.toContain('#F6F7F7')
+    expect(customerShared).toContain('<CustomerScreenCanvasAura reduceTransparency={reduceTransparency} screenId={screenId} />')
+    expect(customerShared).not.toContain('usesHomeMintCanvas')
+    expect(customerShared).not.toContain('usesLocationMintCanvas')
+    expect(customerShared).not.toContain('usesFulfillmentMintCanvas')
+    expect(customerShared).not.toContain('usesAgenticMintCanvas')
+    expect(customerShared).not.toContain('usesProfileMintCanvas')
+    expect(customerHistoryView).toContain('<V21Screen screenId={activeScreen} testID="customer-v21-activity">')
+    expect(customerAgenticView).toContain('<V21Screen screenId={screenId} testID={testID}>')
+    expect(workerAura).toContain('FormulaMintCanvasAura')
+    expect(workerAura).toContain('reduceTransparency?: boolean')
+    expect(workerAura).toContain('reduceTransparency={reduceTransparency}')
+    expect(workerAura).toContain('scope="WorkerV5Home"')
     expect(workerAura).toContain('testID="worker-v5-page-mint-aura"')
-    expect(workerAura).not.toContain('workerV5HomeCanvasTopRight')
-    expect(workerAura).not.toContain('workerV5EarningsCanvasTopRight')
-    expect(theme).toContain("rgba(143,226,212,0.07)")
-    expect(theme).not.toContain("rgba(143,226,212,0.24)")
+    expect(workerAura).toContain('export function WorkerV5KaelChatScreenAura')
+    expect(workerAura).toContain('if (reduceTransparency) return null')
+    expect(workerAura).toContain('cx={351}')
+    expect(workerAura).toContain('cy={84.4}')
+    expect(workerAura).toContain('rx={300}')
+    expect(workerAura).toContain('ry={260}')
+    expect(workerAura).toContain('rgba(121,229,211,0.23)')
+    expect(workerAura).not.toContain('variant="worker"')
+    expect(workerAura).not.toContain('function CalmCanvas')
+    expect(workerAura).not.toContain('WorkerV5EarningsHomeAuraBackground')
+    expect(workerFlow).toContain('formulaPageAuraTarget')
+    expect(workerFlow).toContain("testID: 'worker-v5-earnings-page-customer-mint-aura'")
+    expect(workerFlow).toContain("testID: 'worker-v5-profile-page-customer-mint-aura'")
+    expect(workerFlow).toContain("screen.id === '5.7-verification-documents'")
+    expect(workerFlow).toContain("screen.id === '5.8-bank-tax-center'")
+    expect(workerFlow).toContain("screen.id === '5.9-reviews-feedback'")
+    expect(workerFlow).toContain("scope: 'WorkerDefaultPage'")
+    expect(workerFlow).toContain('reduceTransparency={glass.reduceTransparency}')
+    expect(workerFlow).toContain('scope={formulaPageAuraTarget.scope}')
+    expect(workerFlow).toContain('testID={formulaPageAuraTarget.testID}')
+    expect(workerFlow).toContain('<WorkerV5HomeAuraBackground reduceTransparency={glass.reduceTransparency} />')
+    expect(workerFlow).toContain('scope="KaelOrbCustomerPage"')
+    expect(workerFlow).toContain('reduceTransparency={reduceTransparency}')
+    expect(workerFlow).toContain('testID="worker-v5-kael-orb-background-mint-aura"')
+    expect(workerFlow).toContain('<WorkerV5KaelChatScreenAura')
+    expect(workerFlow).toContain('reduceTransparency={reduceTransparency}')
+    expect(workerFlow).toContain("testID={mode === 'intake' ? 'worker-v5-kael-job-intake-screen-mint-aura' : 'worker-v5-kael-chat-screen-mint-aura'}")
+    expect(workerFlow).not.toContain('MintAura intensity="page"')
+    expect(workerFlow).not.toContain('pageMintAura')
+    expect(workerFlow).not.toContain('!usesCustomerFormulaAura')
+    expect(workerFlow).not.toContain('usesCustomerFormulaAura && !glass.reduceTransparency')
+    expect(workerFlow).not.toContain('!glass.reduceTransparency ? <WorkerV5HomeAuraBackground /> : null')
+    for (const stalePageAuraStyle of [
+      'shiftBriefPageAura',
+      'demandMapPageAura',
+      'opportunityInboxPageAura',
+      'offerDetailPageAura',
+      'acceptReviewPageAura',
+      'routeEtaPageAura',
+      'arrivalCheckinPageAura',
+      'smartSchedulePageAura',
+    ]) {
+      expect(workerFlow).not.toContain(stalePageAuraStyle)
+    }
   })
 
   it.each(workerRoutes)('wires (worker)/%s to %s', (route, exportName) => {

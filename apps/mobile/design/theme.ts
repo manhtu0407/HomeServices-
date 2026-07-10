@@ -3,10 +3,9 @@ import { Platform, type TextStyle } from 'react-native'
 /**
  * NestScout / Kael design theme for the Expo React Native app.
  *
- * Source: `NestScout_Apple_iOS27_System_Typography_CODE_ONLY_v1_0.zip`
- * and `nestscout-codex-handoff.zip/design/theme.ts`.
- * Rule: implementation values come from this file. Brand primary is #24B3A1;
- * the app-wide primary CTA gradient follows the Entry Gate button formula.
+ * Source: Customer v2.1 and Worker v5.0 verified design zips.
+ * Rule: implementation values come from this file. Formula mint primary is #08AF9C;
+ * the app-wide primary CTA gradient follows the final mint aura formula.
  */
 
 export const color = {
@@ -20,21 +19,21 @@ export const color = {
   },
   mint: {
     white: '#F7FFFB',
-    canvas: '#F4FAF9',
+    canvas: '#F1FAF8',
     auraSoft: '#E6F7F3',
     auraStrong: '#C8F4EA',
     mint50: '#E6FBF3',
     mint100: '#D7F6EF',
     mint300: '#8FE2D4',
-    mint500: '#40CDBE',
-    mint600: '#24B3A1',
-    mint700: '#088779',
-    mint800: '#055F57',
+    mint500: '#31D7C2',
+    mint600: '#08AF9C',
+    mint700: '#087D72',
+    mint800: '#055B54',
   },
   brand: {
-    primary: '#24B3A1',
-    primaryDark: '#088779',
-    primaryDeep: '#055F57',
+    primary: '#08AF9C',
+    primaryDark: '#087D72',
+    primaryDeep: '#055B54',
   },
   surface: {
     base: '#FFFFFF',
@@ -56,25 +55,25 @@ export const color = {
     lavender: '#8A78FA',
     gold: '#FFC857',
   },
-  primary: '#24B3A1',
-  primaryDark: '#088779',
-  background: '#F4FAF9',
+  primary: '#08AF9C',
+  primaryDark: '#087D72',
+  background: '#F1FAF8',
   textPrimary: '#071A24',
 } as const
 
 export const signature = {
-  mint: '#17A995',
-  mintDeep: '#00756A',
+  mint: color.brand.primary,
+  mintDeep: color.brand.primaryDeep,
   cover: color.brand.primary,
   coverDeep: color.brand.primaryDeep,
-  bg: '#F6F7F7',
+  bg: '#F1FAF8',
   surface: '#FFFFFF',
   text: '#14201E',
   textSecondary: '#5C6B68',
   line: '#E4E8E7',
   glassTint: 'rgba(255,255,255,0.62)',
   edgeHighlight: 'rgba(255,255,255,0.30)',
-  coverWash: 'rgba(13,174,154,0.10)',
+  coverWash: 'rgba(8,175,156,0.10)',
   coverEdge: 'rgba(255,255,255,0.62)',
   badgeBg: 'rgba(255,255,255,0.72)',
   badgeBorder: 'rgba(23,169,149,0.20)',
@@ -180,14 +179,14 @@ export const shadow = {
     elevation: 5,
   },
   primary: {
-    shadowColor: '#088779',
+    shadowColor: '#087D72',
     shadowOpacity: 0.24,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 14 },
     elevation: 7,
   },
   orb: {
-    shadowColor: '#088779',
+    shadowColor: '#087D72',
     shadowOpacity: 0.34,
     shadowRadius: 17,
     shadowOffset: { width: 0, height: 16 },
@@ -233,7 +232,7 @@ export const aura = {
 export const component = {
   button: {
     primary: {
-      gradient: ['#49CFC0', '#24B3A1', '#088779'] as const,
+      gradient: ['#31D7C2', '#09B29E', '#077C72'] as const,
       gradientStops: [0, 0.5, 1] as const,
       text: '#FFFFFF',
       border: 'rgba(255,255,255,0.72)',
@@ -242,19 +241,19 @@ export const component = {
       paddingX: 20,
     },
     primaryPressed: {
-      gradient: ['#24B3A1', '#088779'] as const,
+      gradient: ['#09B29E', '#077C72'] as const,
       gradientStops: [0, 1] as const,
     },
     secondary: {
       bg: '#F7FFFB',
-      text: '#088779',
+      text: '#087D72',
       border: '#C8EDE7',
       height: 44,
       radius: 22,
     },
     ghost: {
       bg: 'rgba(255,255,255,0.52)',
-      text: '#088779',
+      text: '#087D72',
       border: 'rgba(184,231,223,0.72)',
       radius: 22,
     },
@@ -274,7 +273,7 @@ export const component = {
     small: { height: 36 },
   },
   chip: {
-    selected: { bg: '#E6FBF3', text: '#088779', border: '#B8E7DF' },
+    selected: { bg: '#E6FBF3', text: '#087D72', border: '#B8E7DF' },
     unselected: { bg: '#FFFFFF', text: '#526B73', border: '#DCECEA' },
     successStatus: { bg: '#EAF8EF', text: '#1F9B5B', border: '#BFE8CE' },
     warning: { bg: '#FFF7E6', text: '#B87500', border: '#FFE0A6' },
@@ -286,7 +285,7 @@ export const component = {
   input: {
     bg: '#FFFFFF',
     border: '#D8EBE8',
-    focusBorder: '#24B3A1',
+    focusBorder: '#08AF9C',
     placeholder: '#7C8F94',
     height: 48,
     radius: 18,
@@ -417,13 +416,13 @@ export const component = {
     phaseRailDotSize: 10,
     phaseRailActivePillMinWidth: 52,
     cardShadow: '0 12px 26px rgba(8,95,87,0.07)',
-    primaryButtonShadow: '0 12px 22px rgba(13,174,154,0.22)',
+    primaryButtonShadow: '0 14px 28px rgba(5,159,142,0.27), 0 1px 0 rgba(255,255,255,0.56) inset',
     primaryButtonBorderDark: 'rgba(190,210,205,0.18)',
     primaryButtonBorderLight: 'rgba(255,255,255,0.62)',
     orbBorderDark: 'rgba(190,210,205,0.20)',
     orbBorderLight: 'rgba(255,255,255,0.76)',
     orbShadowDark: '0 16px 32px rgba(0,0,0,0.30)',
-    orbShadowLight: '0 16px 34px rgba(13,174,154,0.28)',
+    orbShadowLight: '0 16px 34px rgba(5,159,142,0.28)',
   },
 } as const
 

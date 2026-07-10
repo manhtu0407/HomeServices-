@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import { Pressable, Text, View, type ImageSourcePropType, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, Rect } from 'react-native-svg'
 
 import { KaelButton, KaelChip } from '@/components/ui/kael-primitives'
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { SourceCardSkin, ZipMintAura } from './aura-surfaces'
@@ -141,8 +142,8 @@ export function CustomerProfileOverviewView({
               <Defs>
                 <LinearGradient id="profileAvatarGradient" x1="0.08" x2="0.92" y1="0.08" y2="0.92">
                   <Stop offset="0" stopColor="#7EDFD2" />
-                  <Stop offset="0.62" stopColor="#24B3A1" />
-                  <Stop offset="1" stopColor="#088779" />
+                  <Stop offset="0.62" stopColor="#08AF9C" />
+                  <Stop offset="1" stopColor="#087D72" />
                 </LinearGradient>
               </Defs>
               <Rect fill="url(#profileAvatarGradient)" height="74" rx="28" width="74" />

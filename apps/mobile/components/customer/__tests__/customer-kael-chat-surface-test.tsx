@@ -32,12 +32,15 @@ describe('active customer Kael chat surface wiring', () => {
     const shared = readCustomerSource('v21/shared-surfaces.tsx')
 
     expect(canvas).toContain('customer-v21-chat-canvas-aura')
+    expect(canvas).toContain('FormulaMintCanvasAura')
+    expect(canvas).toContain('scope="CustomerChat"')
     expect(canvas).not.toContain('rgba(136,235,221,0.34)')
     expect(canvas).not.toContain('rgba(13,174,154,0.22)')
     expect(shared).toContain('{ backgroundColor: tokens.canvas }')
   })
 
   it('uses native-safe SVG stop opacity for TestFlight aura parity', () => {
+    const alphaStop = readMobileSource('components/ui/svg-alpha-stop.tsx')
     const primitiveAura = readMobileSource('components/ui/kael-primitives.tsx')
     const agenticAura = readCustomerSource('v21/agentic-surfaces.tsx')
     const customerAura = readCustomerSource('v21/aura-surfaces.tsx')
@@ -48,6 +51,12 @@ describe('active customer Kael chat surface wiring', () => {
     const workerAura = readMobileSource('components/worker/ui/aura-surfaces.tsx')
     const workerHomeActionAura = readMobileSource('components/worker/home/action-surfaces.tsx')
 
+    expect(alphaStop).toContain('toHexChannel')
+    expect(alphaStop).toContain('Math.min(255, Math.max(0, Math.round(Number(value))))')
+    expect(alphaStop).toContain('toStopOpacity')
+    expect(alphaStop).toContain('Math.min(1, Math.max(0, Number(value)))')
+    expect(alphaStop).toContain('stopOpacity: stopOpacity ?? toStopOpacity(alpha)')
+    expect(alphaStop).not.toContain('stopColor: `rgb(')
     expect(primitiveAura).toContain("from './svg-alpha-stop'")
     expect(agenticAura).toContain('AlphaStop as Stop')
     expect(bookingAura).toContain('AlphaStop as Stop')

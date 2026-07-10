@@ -7,9 +7,10 @@ import {
   type ImageSourcePropType,
   type TextProps,
 } from 'react-native'
-import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, Path, Rect } from 'react-native-svg'
 
 import { MintAura } from '@/components/ui/kael-primitives'
+import { AlphaStop as Stop } from '@/components/ui/svg-alpha-stop'
 import { color, component } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 
@@ -127,10 +128,10 @@ export function WorkerV5PrimaryButtonFill({
 }) {
   if (disabled) return null
   const gradient = variant === 'source'
-    ? ['#2DD4BF', '#20CDB9', '#12BCAA', '#069889', '#008579'] as const
+    ? ['#31D7C2', '#09B29E', '#077C72'] as const
     : component.button.primary.gradient
   const gradientStops = variant === 'source'
-    ? [0, 0.28, 0.52, 0.78, 1] as const
+    ? [0, 0.48, 1] as const
     : component.button.primary.gradientStops
   return (
     <Svg pointerEvents="none" style={StyleSheet.absoluteFill} viewBox="0 0 100 56" preserveAspectRatio="none" testID="worker-v5-primary-gradient">
