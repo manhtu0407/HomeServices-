@@ -24,8 +24,7 @@ function isHttpUrl(value: string): boolean {
 
 export function scrubSensitiveForLLM(input: string): string {
   return sanitizeForLLM(input)
-    .replace(/\b0\d{8,10}\b/g, "[phone]")
-    .replace(/\b\+?84\d{8,10}\b/g, "[phone]")
+    .replace(/(?<!\d)(?:\+?84|0)[\s().-]*(?:\d[\s().-]*){8,10}(?!\d)/g, "[phone]")
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
     .replace(/\b\d{9,12}\b/g, "[id-number]")
     .replace(/\b\d{8}\b/g, "[bank-account]")
@@ -39,15 +38,18 @@ export function scrubSensitiveForLLM(input: string): string {
       /\b(?:căn(?:\s+hộ)?|can(?:\s+ho)?|phòng|phong|block|toà|tòa|toa)\s+[A-Za-z0-9.\-_/]+/gi,
       "[unit]",
     )
-    .replace(/\b(?:số|so)\s+\d+[A-Za-z]?\b/gi, "[house-no]");
+    .replace(/\b(?:số|so)\s+\d+[A-Za-z]?\b/gi, "[house-no]")
+    .replace(
+      /(?<![\p{L}\p{N}])\d{1,5}[A-Za-z]?(?:[/-]\d{1,5}[A-Za-z]?)?(?=\s+(?:(?:đường|duong|phố|pho|hẻm|hem)\s+)?\p{Lu}[\p{L}'-]*(?:\s+\p{Lu}[\p{L}'-]*){0,3}\b)/gu,
+      "[house-no]",
+    )
+    .replace(/(?<![\p{L}\p{N}])\d{1,5}[A-Za-z]?(?:[/-]\d{1,5}[A-Za-z]?)?(?=\s+(?:đường|duong|phố|pho|hẻm|hem)\s+\p{L})/giu, "[house-no]");
 }
 
 export function hasUnsupportedRepairIntent(input: string): boolean {
   const normalized = input.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
   return [
-    "dieu hoa",
-    "may lanh",
     "tu lanh",
     "may giat",
     "internet",

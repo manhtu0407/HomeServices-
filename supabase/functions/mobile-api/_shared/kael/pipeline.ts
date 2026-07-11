@@ -1,11 +1,17 @@
 import type { EdgeAiSecrets, PipelineInput, PipelineResult, PipelineStageLog, SupabaseLike } from "./types.ts";
-import { CLARIFICATION_CAP, PRICE_DISCLAIMER, UNSUPPORTED_SERVICE_MESSAGE } from "./types.ts";
+import {
+  isSingleFocusedClarificationQuestion,
+  priceDisclaimer,
+  unsupportedServiceMessage,
+} from "./types.ts";
 import { buildFallbackIntent, classifyIntent, diagnoseIntake } from "./intent.ts";
+import { resolveProfileFactCoverage } from "./case-work-controls.ts";
+import { getKaelPerformanceProfile } from "./performance-profiles.ts";
 import { analyzeDescription } from "./vision.ts";
 import { marketLookupTelemetry, searchMarketPrice } from "./market.ts";
 import {
   evaluateMarketVerdict,
-  marketVerdictReasonVi,
+  marketVerdictReason,
   marketVerdictSafeMetadata,
 } from "./market-verdict.ts";
 import { fetchBaselineCandidates, normalizeProblemSlugForService, pickBaselineCandidate, synthesizePrice } from "./synthesis.ts";
@@ -46,6 +52,7 @@ export async function runKaelPipeline(
   secrets: EdgeAiSecrets,
 ): Promise<PipelineResult> {
   const { serviceType, district } = input;
+  const language = input.language ?? "vi";
   const problemChips = input.problemChips.map(scrubSensitiveForLLM);
   const description = scrubSensitiveForLLM(input.description);
   const photoUrls = sanitizeVisionPhotoUrls(input.photoUrls ?? []);
@@ -125,7 +132,7 @@ export async function runKaelPipeline(
     timeoutMs: KAEL_ROUTING_CONFIG.intent_classification.latencyBudgetMs,
     run: () =>
       input.intakeDiagnosisEnabled
-        ? diagnoseIntake(serviceType, problemChips, description, secrets, input.conversationContext)
+        ? diagnoseIntake(serviceType, problemChips, description, secrets, input.conversationContext, language)
         : classifyIntent(serviceType, problemChips, description, secrets),
     fallback: () => ({
       success: false as const,
@@ -167,7 +174,7 @@ export async function runKaelPipeline(
     await recordProviderSpendIfEnforced();
     return {
       success: false,
-      error: UNSUPPORTED_SERVICE_MESSAGE,
+      error: unsupportedServiceMessage(language),
       code: "UNSUPPORTED",
       stageLogs,
     };
@@ -176,32 +183,64 @@ export async function runKaelPipeline(
   // Intake-diagnosis short-circuits — only when diagnosis mode produced the signals.
   // Stop BEFORE the parallel vision/market block so a clarification/mismatch turn
   // costs no downstream AI.
+  let profileFacts: Record<string, string> | undefined;
+  let safetySignals: string[] | undefined;
   if (input.intakeDiagnosisEnabled) {
     if (intent.scope_signal === "service_mismatch") {
       await recordProviderSpendIfEnforced();
       return {
         success: false,
-        error: "Mô tả của bạn không khớp với dịch vụ đang chọn.",
+        error: language === "en"
+          ? "Your description does not match the selected service."
+          : "Mô tả của bạn không khớp với dịch vụ đang chọn.",
         code: "SERVICE_MISMATCH",
         stageLogs,
         suggestedService: intent.suggested_service ?? undefined,
       };
     }
-    if (intent.needs_clarification && (input.clarificationCount ?? 0) < CLARIFICATION_CAP) {
+    const profile = getKaelPerformanceProfile(intent.service_type);
+    const coverage = profile
+      ? resolveProfileFactCoverage(profile, intent.profile_facts ?? {})
+      : { facts: {}, missing: [] as readonly string[] };
+    const missingSlots = [...new Set([
+      ...coverage.missing,
+      ...(intent.missing_slots ?? []),
+    ])];
+    if (intent.needs_clarification || missingSlots.length > 0) {
+      const firstMissing = missingSlots[0] ?? "service_scope";
+      const proposedQuestion = intent.clarification_question ??
+        (language === "vi" ? intent.clarification_question_vi : null) ??
+        (language === "en"
+          ? `Could you tell Kael more about ${firstMissing.replaceAll("_", " ")}?`
+          : `Bạn cho Kael biết thêm về ${firstMissing.replaceAll("_", " ")} nhé?`);
+      const providerQuestion = intent.clarification_question ??
+        (language === "vi" ? intent.clarification_question_vi : null);
+      const question = providerQuestion &&
+          isSingleFocusedClarificationQuestion(proposedQuestion)
+        ? proposedQuestion.trim()
+        : buildFocusedClarificationQuestion(firstMissing, language);
       await recordProviderSpendIfEnforced();
       return {
         success: false,
-        error: intent.clarification_question_vi ??
-          "Bạn mô tả rõ hơn vấn đề đang gặp giúp Kael nhé.",
+        error: question,
         code: "NEEDS_CLARIFICATION",
         stageLogs,
         clarification: {
-          question: intent.clarification_question_vi ?? null,
-          missingSlots: intent.missing_slots ?? [],
+          question,
+          // Each turn collects one fact. Remaining profile gaps are
+          // recalculated by the server on the next turn.
+          missingSlots: [firstMissing],
           customerSentiment: intent.customer_sentiment,
         },
       };
     }
+    profileFacts = coverage.facts;
+    const allowedSafetySignals = new Set(
+      profile?.safety_capability_gates.flatMap((gate) => [...gate.trigger_signals]) ?? [],
+    );
+    safetySignals = (intent.safety_signals ?? []).filter((signal) =>
+      allowedSafetySignals.has(signal)
+    );
   }
 
   const validServiceType = intent.service_type;
@@ -270,6 +309,7 @@ export async function runKaelPipeline(
           photoUrls,
           secrets,
           spendGate,
+          language,
         ),
       }),
       fallback: () => ({
@@ -541,6 +581,8 @@ export async function runKaelPipeline(
     stageLogs,
     serviceProblemId: baselineResult.serviceProblemId,
     customerSentiment: input.intakeDiagnosisEnabled ? intent.customer_sentiment : undefined,
+    profileFacts,
+    safetySignals,
     knowledgeContext: knowledgeContext.safeMetadata ? knowledgeContext : undefined,
     learningApplications,
     estimate: {
@@ -551,12 +593,16 @@ export async function runKaelPipeline(
       price_min: synthesized.price_min,
       price_max: synthesized.price_max,
       confidence: synthesized.confidence,
-      advisory: buildAdvisory(analysis.severity_indicators, knowledgeContext.safetyGuidance),
-      disclaimer: PRICE_DISCLAIMER,
+      advisory: buildAdvisory(
+        analysis.severity_indicators,
+        knowledgeContext.safetyGuidance,
+        language,
+      ),
+      disclaimer: priceDisclaimer(language),
       needs_inspection: marketVerdict?.needsInspection === true,
       price_source: marketVerdict?.needsInspection ? "inspection_required" : undefined,
       needs_inspection_reason: marketVerdict
-        ? marketVerdictReasonVi(marketVerdict)
+        ? marketVerdictReason(marketVerdict, language)
         : undefined,
       market_signals: marketResult.success
         ? marketResult.market.sources_summary ?? null
@@ -630,6 +676,46 @@ function buildPipelineStageTrace(
     confidence: null,
     safe_metadata: safeMetadata,
   });
+}
+
+export function buildFocusedClarificationQuestion(
+  missingSlot: string,
+  language: "vi" | "en",
+) {
+  const slot = missingSlot.toLowerCase();
+  if (/(?:time|window|schedule|urgency|duration|history)/.test(slot)) {
+    return language === "en"
+      ? "When do you need this work completed?"
+      : "Bạn muốn công việc được thực hiện vào thời điểm nào?";
+  }
+  if (/(?:area|room|location|access|concealed|occupancy|height)/.test(slot)) {
+    return language === "en"
+      ? "Where exactly is the affected area in the apartment?"
+      : "Khu vực cần xử lý nằm chính xác ở đâu trong căn hộ?";
+  }
+  if (/(?:count|quantity|volume|task)/.test(slot)) {
+    return language === "en"
+      ? "How many items need to be handled?"
+      : "Có bao nhiêu hạng mục cần được xử lý?";
+  }
+  if (/(?:material|surface|fabric|pipe|fixture|device|circuit|unit_type|capacity)/.test(slot)) {
+    return language === "en"
+      ? "What type of material or device needs service?"
+      : "Loại vật liệu hoặc thiết bị cần xử lý là gì?";
+  }
+  if (/(?:part|supply|equipment|consumable|hardware|new_device)/.test(slot)) {
+    return language === "en"
+      ? "Do you already have the required part?"
+      : "Bạn đã có sẵn vật tư cần dùng chưa?";
+  }
+  if (/(?:symptom|condition|severity|damage|fault|sign|stain|odor|mold)/.test(slot)) {
+    return language === "en"
+      ? "What is the clearest symptom you can observe?"
+      : "Dấu hiệu rõ nhất bạn đang quan sát được là gì?";
+  }
+  return language === "en"
+    ? "Which specific task do you want Kael to handle?"
+    : "Bạn muốn Kael xử lý hạng mục cụ thể nào?";
 }
 
 function purposeForPipelineStage(stage: PipelineStageLog["stage"]) {

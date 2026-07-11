@@ -1,4 +1,4 @@
-import type { AppLanguage } from '@/lib/app-language'
+import { localizedProblemLabel, type AppLanguage } from '@/lib/app-language'
 import {
   CUSTOMER_SERVICE_IDS,
   PROBLEM_CHIPS,
@@ -43,6 +43,38 @@ const bookingProblemSearchKeywords: Record<ServiceType, Partial<Record<string, r
     [PROBLEM_CHIPS.plumbing[4]]: ['nuoc', 'ap nuoc', 'yeu', 'may bom'],
     [PROBLEM_CHIPS.plumbing[5]]: ['lap', 'thay', 'thiet bi', 'voi', 'bon'],
   },
+  hvac: {
+    [PROBLEM_CHIPS.hvac[0]]: ['ve sinh dieu hoa', 'bao duong', 'may lanh'],
+    [PROBLEM_CHIPS.hvac[1]]: ['lanh yeu', 'may lanh yeu'],
+    [PROBLEM_CHIPS.hvac[2]]: ['khong mat', 'khong lanh'],
+    [PROBLEM_CHIPS.hvac[3]]: ['chay nuoc', 'ro nuoc'],
+    [PROBLEM_CHIPS.hvac[4]]: ['keu', 'tieng on'],
+    [PROBLEM_CHIPS.hvac[5]]: ['ma loi', 'bao loi'],
+  },
+  upholstery: {
+    [PROBLEM_CHIPS.upholstery[0]]: ['sofa', 've sinh sofa'],
+    [PROBLEM_CHIPS.upholstery[1]]: ['nem', 've sinh nem'],
+    [PROBLEM_CHIPS.upholstery[2]]: ['rem', 've sinh rem'],
+    [PROBLEM_CHIPS.upholstery[3]]: ['tham', 've sinh tham'],
+    [PROBLEM_CHIPS.upholstery[4]]: ['vet ban', 'ban'],
+    [PROBLEM_CHIPS.upholstery[5]]: ['mui', 'am moc'],
+  },
+  handyman: {
+    [PROBLEM_CHIPS.handyman[0]]: ['khoan', 'lap ke'],
+    [PROBLEM_CHIPS.handyman[1]]: ['thanh rem', 'lap rem'],
+    [PROBLEM_CHIPS.handyman[2]]: ['lap den', 'thiet bi nho'],
+    [PROBLEM_CHIPS.handyman[3]]: ['ban le', 'tay nam'],
+    [PROBLEM_CHIPS.handyman[4]]: ['phong tam', 'thiet bi phong tam'],
+    [PROBLEM_CHIPS.handyman[5]]: ['lap tv', 'noi that', 'lap rap'],
+  },
+}
+const customerServiceIdByServiceType: Readonly<Record<ServiceType, CustomerServiceId>> = {
+  electrical: 'electrical',
+  plumbing: 'plumbing',
+  cleaning: 'home_cleaning',
+  hvac: 'hvac_basic_maintenance',
+  upholstery: 'upholstery_care',
+  handyman: 'handyman_minor_installation',
 }
 export type BookingSearchSuggestion = {
   key: string
@@ -79,9 +111,10 @@ function bookingServiceMatchesQuery(serviceType: CustomerServiceId, query: strin
 }
 
 function bookingProblemMatchesQuery(serviceType: ServiceType, problem: string, query: string, language: AppLanguage) {
-  const customerServiceId = serviceType === 'cleaning' ? 'home_cleaning' : serviceType
+  const customerServiceId = customerServiceIdByServiceType[serviceType]
   return bookingSearchMatches(query, [
     problem,
+    localizedProblemLabel(problem, serviceType, language),
     customerV21BookingServiceCopy[language][customerServiceId].label,
     ...(bookingProblemSearchKeywords[serviceType][problem] ?? []),
   ])
@@ -117,7 +150,7 @@ export function buildBookingSearchSuggestions({
     const visibleProblems = (matchedProblems.length > 0 ? matchedProblems : problemOptions).slice(0, bookingSearchProblemLimit)
     return visibleProblems.map((problem) => ({
       key: `problem-${selectedService}-${problem}`,
-      label: problem,
+      label: localizedProblemLabel(problem, productionServiceType, language),
       problem,
       selected: selectedProblems.includes(problem),
       serviceType: selectedService,
@@ -148,7 +181,7 @@ export function buildBookingSearchSuggestions({
       .slice(0, bookingSearchProblemLimit)
       .map((problem) => ({
         key: `problem-${serviceType}-${problem}`,
-        label: problem,
+        label: localizedProblemLabel(problem, productionServiceType, language),
         problem,
         selected: false,
         serviceType,

@@ -3,11 +3,13 @@ export * from './constants'
 export * from './mobile-workflow'
 export * from './workflow'
 export * from './service-intake'
+export * from './kael-case-work'
 export type {
   KaelEstimate,
   ServiceCatalogResponse,
   CreateJobResponse,
   KaelChatStatus,
+  KaelCaseWorkPhase,
   KaelChatNextAction,
   KaelChatTurn,
   KaelChatSession,
@@ -49,6 +51,8 @@ export {
   apartmentAccessProfileSchema,
   jobCreateSchema,
   kaelChatCreateSchema,
+  kaelChatMediaUploadSchema,
+  kaelChatMediaRevokeSchema,
   kaelChatEvidenceSchema,
   kaelAssistantSchema,
   kaelChatProgressSchema,
@@ -91,6 +95,8 @@ export type {
   JobCreateInput,
   ApartmentAccessProfileInput,
   KaelChatCreateInput,
+  KaelChatMediaUploadInput,
+  KaelChatMediaRevokeInput,
   KaelChatEvidenceInput,
   KaelChatTurnInput,
   KaelAssistantInput,

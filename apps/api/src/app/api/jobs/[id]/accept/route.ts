@@ -8,8 +8,8 @@ type RouteParams = { params: Promise<{ id: string }> }
  * POST /api/jobs/[id]/accept — B3 worker accept
  *
  * Worker accepts an incoming broadcast within the 60s window. Race-safe:
- * first worker to accept wins via atomic transition of job.status from
- * 'broadcasting' to 'worker_matched'. On success, returns full address (B4).
+ * first eligible worker to accept becomes a private candidate. The address
+ * stays locked until the owning customer confirms that candidate.
  */
 export async function POST(request: Request, { params }: RouteParams) {
   const auth = await authenticateRequest(request, ['worker'])
@@ -34,12 +34,15 @@ export async function POST(request: Request, { params }: RouteParams) {
     'worker_accepted',
     { id: auth.user.id, role: 'worker' },
     'broadcasting',
-    'worker_matched',
+    'worker_candidate_pending',
+    { candidate_id: result.candidateId },
   )
 
   return apiSuccess({
     job_id: result.jobId,
     status: result.status,
-    full_address: result.fullAddress,
+    candidate_id: result.candidateId,
+    awaiting_customer_confirmation: result.awaitingCustomerConfirmation,
+    already_applied: result.alreadyApplied,
   })
 }

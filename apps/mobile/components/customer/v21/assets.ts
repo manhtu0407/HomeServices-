@@ -53,7 +53,10 @@ export type CustomerV21BankKey = keyof typeof customerV21BankAssets
 export const customerV21ServiceAssets: Record<ServiceType, ImageSourcePropType> = {
   cleaning: require('@/assets/client-image-icons/client-service-cleaning.png') as ImageSourcePropType,
   electrical: require('@/assets/client-image-icons/client-service-electrical.png') as ImageSourcePropType,
+  handyman: require('./assets/service-icons/client-service-handyman-installation.png') as ImageSourcePropType,
+  hvac: require('./assets/service-icons/client-service-hvac.png') as ImageSourcePropType,
   plumbing: require('@/assets/client-image-icons/client-service-plumbing.png') as ImageSourcePropType,
+  upholstery: require('./assets/service-icons/client-service-upholstery-care.png') as ImageSourcePropType,
 }
 
 export const customerV21BookingServiceAssets: Record<CustomerServiceId, ImageSourcePropType> = {

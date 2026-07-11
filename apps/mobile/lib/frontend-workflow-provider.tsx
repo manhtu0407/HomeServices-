@@ -40,6 +40,7 @@ import type {
   WorkerPayoutMethodSaveInput,
   WorkerPerformanceInsightsResponse,
   WorkerProfileResponse,
+  WorkerCandidateView,
 } from './api-types'
 import { useAppLanguage } from './app-language'
 import {
@@ -135,6 +136,9 @@ type FrontendWorkflowActions = {
   refreshCustomerKaelMemory: () => Promise<boolean>
   updateCustomerKaelMemoryPreference: (input: CustomerKaelMemoryPreferenceUpdateInput) => Promise<boolean | CustomerKaelMemoryPreferenceUpdateResult>
   refreshCustomerProfileInsights: () => Promise<boolean>
+  refreshWorkerCandidate: (jobId?: string) => Promise<boolean>
+  decideWorkerCandidate: (decision: 'confirm' | 'reject') => Promise<boolean>
+  setWorkerCandidateFavorite: (isFavorite: boolean) => Promise<boolean>
 }
 
 type CustomerKaelMemoryStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
@@ -145,6 +149,10 @@ type FrontendWorkflowContextValue = {
   customerKaelMemory: KaelMemorySelfViewResponse['memory'] | null
   customerKaelMemoryStatus: CustomerKaelMemoryStatus
   customerProfileInsights: CustomerProfileInsightsResponse | null
+  customerWorkerCandidate: WorkerCandidateView | null
+  customerWorkerCandidateBusy: boolean
+  customerWorkerCandidateError: string | null
+  customerScopeDecisionBusyId: string | null
   workerEarnings: EarningsResponse | null
   workerJobs: WorkerJobListResponse['jobs']
   workerPerformanceInsights: WorkerPerformanceInsightsResponse | null
@@ -174,6 +182,12 @@ type CustomerProfileInsightsState = {
   sessionUserId: string | null
 }
 
+type CustomerWorkerCandidateState = {
+  candidate: WorkerCandidateView | null
+  busy: boolean
+  error: string | null
+}
+
 const initialWorkerRemoteState: WorkerRemoteState = {
   earnings: null,
   jobs: [],
@@ -191,6 +205,12 @@ const initialCustomerKaelMemoryState: CustomerKaelMemoryState = {
 const initialCustomerProfileInsightsState: CustomerProfileInsightsState = {
   insights: null,
   sessionUserId: null,
+}
+
+const initialCustomerWorkerCandidateState: CustomerWorkerCandidateState = {
+  candidate: null,
+  busy: false,
+  error: null,
 }
 
 const FrontendWorkflowContext = createContext<FrontendWorkflowContextValue | null>(null)
@@ -213,6 +233,12 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const customerKaelMemoryStatus = customerKaelMemoryState.sessionUserId === sessionUserId ? customerKaelMemoryState.status : 'idle'
   const [customerProfileInsightsState, setCustomerProfileInsightsState] = useState<CustomerProfileInsightsState>(initialCustomerProfileInsightsState)
   const customerProfileInsights = customerProfileInsightsState.sessionUserId === sessionUserId ? customerProfileInsightsState.insights : null
+  const [customerWorkerCandidateState, setCustomerWorkerCandidateState] = useState<CustomerWorkerCandidateState>(initialCustomerWorkerCandidateState)
+  const customerWorkerCandidate = customerWorkerCandidateState.candidate
+  const customerWorkerCandidateBusy = customerWorkerCandidateState.busy
+  const customerWorkerCandidateError = customerWorkerCandidateState.error
+  const [customerScopeDecisionBusyId, setCustomerScopeDecisionBusyId] = useState<string | null>(null)
+  const customerScopeDecisionBusyRef = useRef<string | null>(null)
   const [notificationState, setNotificationState] = useReducer(notificationStateReducer, initialNotificationState)
   const { notifications, unreadCount: notificationUnreadCount } = notificationState
   const notificationsRef = useRef<NotificationListResponse['notifications']>([])
@@ -261,6 +287,83 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
     return hydrateJobResult(await jobService.getJob(jobId))
   }, [hydrateJobResult, setRemoteError])
+
+  const refreshWorkerCandidate = useCallback(async (jobIdOverride?: string) => {
+    const jobId = jobIdOverride ?? getRemoteJobId(stateRef.current)
+    if (!jobId) {
+      setCustomerWorkerCandidateState({
+        busy: false,
+        candidate: null,
+        error: language === 'vi' ? 'Chưa có công việc để tải hồ sơ thợ.' : 'There is no job to load a worker profile for.',
+      })
+      return false
+    }
+    setCustomerWorkerCandidateState((current) => ({ ...current, busy: true, error: null }))
+    const result = await jobService.getWorkerCandidate(jobId)
+    if (!result.success) {
+      setCustomerWorkerCandidateState({
+        busy: false,
+        candidate: null,
+        error: localizeWorkflowError(result.error, language),
+      })
+      return false
+    }
+    setCustomerWorkerCandidateState({ busy: false, candidate: result.data.candidate, error: null })
+    return true
+  }, [language])
+
+  const decideWorkerCandidate = useCallback(async (decision: 'confirm' | 'reject') => {
+    const jobId = getRemoteJobId(stateRef.current)
+    const candidateId = customerWorkerCandidate?.candidate_id
+    if (!jobId || !candidateId || customerWorkerCandidateBusy) return false
+    setCustomerWorkerCandidateState((current) => ({ ...current, busy: true, error: null }))
+    const result = decision === 'confirm'
+      ? await jobService.confirmWorkerCandidate(jobId, candidateId)
+      : await jobService.rejectWorkerCandidate(jobId, candidateId)
+    if (!result.success) {
+      setCustomerWorkerCandidateState((current) => ({
+        ...current,
+        busy: false,
+        error: localizeWorkflowError(result.error, language),
+      }))
+      return false
+    }
+    const decidedCandidate = decision === 'confirm' ? result.data.candidate : null
+    const hydrated = await hydrateRemoteJobById(jobId)
+    setCustomerWorkerCandidateState({
+      busy: false,
+      candidate: decidedCandidate,
+      error: hydrated
+        ? null
+        : language === 'vi'
+          ? 'Đã ghi nhận quyết định nhưng chưa đồng bộ trạng thái mới.'
+          : 'Your decision was saved, but the new state has not synced yet.',
+    })
+    return true
+  }, [customerWorkerCandidate?.candidate_id, customerWorkerCandidateBusy, hydrateRemoteJobById, language])
+
+  const setWorkerCandidateFavorite = useCallback(async (isFavorite: boolean) => {
+    const workerId = customerWorkerCandidate?.worker_id
+    if (!workerId || customerWorkerCandidateBusy) return false
+    setCustomerWorkerCandidateState((current) => ({ ...current, busy: true, error: null }))
+    const result = await jobService.setFavoriteWorker(workerId, isFavorite)
+    if (!result.success) {
+      setCustomerWorkerCandidateState((current) => ({
+        ...current,
+        busy: false,
+        error: localizeWorkflowError(result.error, language),
+      }))
+      return false
+    }
+    setCustomerWorkerCandidateState((current) => ({
+      busy: false,
+      candidate: current.candidate
+        ? { ...current.candidate, is_favorite: result.data.is_favorite }
+        : null,
+      error: null,
+    }))
+    return true
+  }, [customerWorkerCandidate?.worker_id, customerWorkerCandidateBusy, language])
 
   // Hydrate the active job from the backend so refresh/cold start keeps the
   // backend as source of truth without noisy "no active job" banners.
@@ -622,10 +725,18 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   }, [setRemoteError, workerRefresh])
 
   const decideScopeChange = useCallback(async (scopeChangeId: string, input: CustomerScopeDecisionInput) => {
-    const result = await jobService.decideScopeChange(scopeChangeId, input)
-    if (!result.success) return setRemoteError(result.error)
-    await refreshCurrentJob()
-    return true
+    if (customerScopeDecisionBusyRef.current) return false
+    customerScopeDecisionBusyRef.current = scopeChangeId
+    setCustomerScopeDecisionBusyId(scopeChangeId)
+    try {
+      const result = await jobService.decideScopeChange(scopeChangeId, input)
+      if (!result.success) return setRemoteError(result.error)
+      await refreshCurrentJob()
+      return true
+    } finally {
+      customerScopeDecisionBusyRef.current = null
+      setCustomerScopeDecisionBusyId(null)
+    }
   }, [refreshCurrentJob, setRemoteError])
 
   const customerConfirmCompletion = useCallback(async () => {
@@ -795,6 +906,9 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     refreshCustomerKaelMemory,
     updateCustomerKaelMemoryPreference,
     refreshCustomerProfileInsights,
+    refreshWorkerCandidate,
+    decideWorkerCandidate,
+    setWorkerCandidateFavorite,
   }), [
     authorizeApartmentAccess,
     cancelRemoteJob,
@@ -802,11 +916,14 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     createRemoteJobFromDraft,
     customerConfirmCompletion,
     decideScopeChange,
+    decideWorkerCandidate,
+    setWorkerCandidateFavorite,
     hydrateRemoteJobById,
     refreshCurrentJob,
     refreshNotifications,
     refreshCustomerKaelMemory,
     refreshCustomerProfileInsights,
+    refreshWorkerCandidate,
     updateCustomerKaelMemoryPreference,
     markNotificationRead,
     requestScopeChange,
@@ -836,6 +953,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
 
   useEffect(() => {
     setCustomerProfileInsightsState(initialCustomerProfileInsightsState)
+  }, [sessionUserId])
+
+  useEffect(() => {
+    setCustomerWorkerCandidateState(initialCustomerWorkerCandidateState)
   }, [sessionUserId])
 
   useEffect(() => {
@@ -922,6 +1043,14 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
   const remoteJobId = getRemoteJobId(state)
   const customerStatus = state.deal?.status
 
+  useEffect(() => {
+    if (!remoteJobId || customerStatus !== 'worker_candidate_pending') {
+      setCustomerWorkerCandidateState(initialCustomerWorkerCandidateState)
+      return
+    }
+    void refreshWorkerCandidate(remoteJobId)
+  }, [customerStatus, refreshWorkerCandidate, remoteJobId])
+
   const customerTimelineActive =
     (role === 'customer' || role === 'admin') &&
     !!remoteJobId &&
@@ -967,6 +1096,10 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     customerKaelMemory,
     customerKaelMemoryStatus,
     customerProfileInsights,
+    customerWorkerCandidate,
+    customerWorkerCandidateBusy,
+    customerWorkerCandidateError,
+    customerScopeDecisionBusyId,
     workerEarnings,
     workerJobs,
     workerPerformanceInsights,

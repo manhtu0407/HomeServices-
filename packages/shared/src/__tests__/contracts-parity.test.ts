@@ -5,6 +5,20 @@ import { describe, expect, it } from 'vitest'
 const REPO_ROOT = resolve(__dirname, '../../../../')
 const read = (rel: string) => readFileSync(resolve(REPO_ROOT, rel), 'utf-8')
 
+function exportsConstant(source: string, constantName: string): boolean {
+  if (source.includes(`export const ${constantName}`)) return true
+
+  const reExports = source.matchAll(/export\s*\{([^}]+)\}/g)
+  for (const match of reExports) {
+    const names = match[1]
+      .split(',')
+      .map((value) => value.trim().split(/\s+as\s+/)[1] ?? value.trim().split(/\s+as\s+/)[0])
+    if (names.includes(constantName)) return true
+  }
+
+  return false
+}
+
 describe('shared and Edge domain contracts stay in parity', () => {
   it('exports shared workflow constants from the Edge domain boundary', () => {
     const shared = read('packages/shared/src/constants.ts')
@@ -19,8 +33,8 @@ describe('shared and Edge domain contracts stay in parity', () => {
       'PROBLEM_CHIPS',
       'REVIEW_TAGS',
     ]) {
-      expect(shared).toContain(`export const ${constantName}`)
-      expect(edge).toContain(`export const ${constantName}`)
+      expect(exportsConstant(shared, constantName)).toBe(true)
+      expect(exportsConstant(edge, constantName)).toBe(true)
     }
   })
 

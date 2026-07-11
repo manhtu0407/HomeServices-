@@ -61,14 +61,16 @@ Forbidden
 ```text
 Responsibility
 -
-|- electrical/plumbing/cleaning taxonomy
+|- exactly six active services: electrical/plumbing/cleaning/HVAC/upholstery/handyman
+|- canonical service-to-performance-profile mapping
 |- problem categories
 |- complexity hints
-|- active electrical/plumbing/cleaning service entries only
+|- service-specific quote drivers, evidence guidance, safety/capability checks, completion checks, and scope-change triggers
 
 Forbidden
 -
-|- enabling unsupported services without Tu approval
+|- enabling a seventh service without Tu approval
+|- exposing profile questions as a required client-side static questionnaire
 ```
 
 ### PriceBaselineModule
@@ -91,9 +93,10 @@ Forbidden
 ```text
 Responsibility
 -
-|- orchestrate intent, vision, price search, synthesis
+|- orchestrate Basic Intake, six-profile diagnosis/scope, privacy-safe evidence, clarification, price search, and synthesis
+|- ask one focused question per turn until the structured diagnosis/scope artifact is quote-ready
 |- validate structured output
-|- return estimate card data
+|- return diagnosis/scope plus estimate card data or an honest not-ready state
 |- compute scope-change estimate from worker reported scope (Phase 2.0 2026-05-23)
 |- own final-price authority across A7 baseline + A11 Kael-decided updates
 
@@ -101,6 +104,8 @@ Forbidden
 -
 |- raw AI output to UI
 |- client-side AI calls
+|- raw audio/video model input
+|- invented price baseline or market result
 |- unsupported service advice
 |- accepting worker-typed prices for final price decisions (Phase 2.0 2026-05-23)
 ```
@@ -111,15 +116,17 @@ Forbidden
 Responsibility
 -
 |- job state transitions
-|- customer/worker inputs, overrides, and appeals
+|- customer/worker inputs, confirmations, overrides, and appeals
 |- KaelAutonomyDecision validation
 |- worker status updates
 |- completion states
 
 Forbidden
 -
-|- booking without A7 KaelAutonomyDecision
-|- payment completion without A12 completion/payment decision
+|- matching without explicit customer offer confirmation and A7 KaelAutonomyDecision
+|- final worker assignment without customer candidate confirmation
+|- scope mutation without explicit customer scope-change confirmation
+|- payment start without explicit customer completion confirmation and A12 completion decision
 ```
 
 ### BroadcastMatchingModule
@@ -130,12 +137,14 @@ Responsibility
 |- eligible worker search
 |- job broadcast
 |- 60s accept window
+|- candidate hold and explicit customer candidate confirmation
 |- rebroadcast on expiry/decline
 
 Forbidden
 -
-|- exposing full address before worker accept
+|- exposing full address before customer confirms an accepted candidate
 |- assigning unavailable/unapproved worker
+|- assigning a worker without every required verified capability
 ```
 
 ### ChatEvidenceModule
@@ -145,12 +154,13 @@ Responsibility
 -
 |- customer-worker message relay
 |- Kael system messages
-|- media evidence
+|- private photos, editable voice transcript, extracted video frames, and private human-review video evidence
 |- dispute evidence trail
 
 Forbidden
 -
 |- logging raw sensitive messages
+|- accepting a raw-audio upload or sending raw audio/raw video to an AI provider
 |- rewriting normal human chat content
 ```
 
@@ -162,13 +172,14 @@ Responsibility
 |- worker scope-change request (description + reason + photos only; Phase 2.0 2026-05-23)
 |- delegate price re-computation to KaelPriceCheckModule (computeScopeChangeEstimate)
 |- persist Kael-computed price (kael_computed_min/max) for audit
-|- KaelAutonomyDecision decides scope from evidence/policy; customer can add evidence, appeal, cancel, or accept outcome
-|- on approved scope, lock jobs.final_price = Kael-computed max
+|- KaelAutonomyDecision validates the proposal from evidence/policy; customer can add evidence, confirm, reject, appeal, or cancel
+|- on explicit customer confirmation, lock jobs.final_price = Kael-computed max
 |- worker blocking until decision
 
 Forbidden
 -
 |- raw LLM output mutating scope status or price
+|- threshold-based scope auto-apply without customer confirmation
 |- hidden price change
 |- worker-proposed price (Phase 2.0 2026-05-23)
 ```

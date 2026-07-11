@@ -72,6 +72,7 @@ export const WORKFLOW_EVENTS = Object.freeze([
   'customer_confirmed_ticket',
   'matching_started',
   'worker_accepted',
+  'customer_confirmed_worker',
   'worker_status_advanced',
   'scope_change_requested',
   'kael_decided_scope_change',

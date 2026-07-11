@@ -1,18 +1,16 @@
 // Edge service scope-change domain (C4 6a, services/* split): worker scope-change request
-// (Kael AI re-pricing) + customer/Kael decision (autonomy-gated). getCurrentScopeChange stays in
+// (Kael AI re-pricing) + explicit customer decision. getCurrentScopeChange stays in
 // services.ts (uses the local parseKaelProgressSnapshot). Imported directly by services.ts.
 
-import { asComplexityOrNull, asServiceType, asString, nullableNumber, nullableString } from "./coercions.ts";
+import { asComplexityOrNull, asServiceType, asString, asStringArray, nullableNumber, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
 import { mapScopeDecisionError, mapScopeRequestError, readEdgeEnvNumber } from "./_shared.ts";
 import { logApiCalls, logJobEvent, queueKaelLearningEvent } from "./audit.ts";
-import { notifyCustomerScopeChangeDecided, notifyCustomerScopeChangeRequested, notifyWorkerScopeDecision } from "./notifications.service.ts";
-import { runPolicyAutonomyGate } from "./autonomy-gate.ts";
+import { notifyCustomerScopeChangeRequested, notifyWorkerScopeDecision } from "./notifications.service.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { requireJobAccess } from "../access.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
 import {
-  buildKaelAutonomyDecision,
   buildScopeChangeOutputs,
   computeScopeChangeEstimate,
   updateKaelProgress,
@@ -33,6 +31,13 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
     select:
       "id, status, customer_id, worker_id, service_type, description, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max",
   });
+  const evidencePhotoRefs = await validateScopeChangeEvidenceRefs(
+    client,
+    jobId,
+    ctx.user.id,
+    asString(job.customer_id),
+    input.photo_urls ?? [],
+  );
   const originalPriceMax = nullableNumber(job.kael_price_max);
   const transition = validateWorkflowTransition({
     event: "scope_change_requested",
@@ -82,6 +87,19 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
     status: "running",
     progress: 0.68,
   });
+  if (estimate.fallback_used || estimate.provider === null || estimate.failure_reason) {
+    await updateKaelProgress(client, jobScopeProgressTarget, {
+      stage: "scope_estimating",
+      status: "failed",
+      progress: 0.68,
+      failureReason: estimate.failure_reason ?? "scope_estimate_unavailable",
+    });
+    apiFailure(
+      "KAEL_ESTIMATE_UNAVAILABLE",
+      "Kael chưa thể tính giá phát sinh từ nguồn đã kiểm chứng. Phạm vi hiện tại vẫn được giữ nguyên để chờ thử lại hoặc hỗ trợ rà soát.",
+      503,
+    );
+  }
   if (estimate.price_max <= 0 || estimate.price_max < estimate.price_min) {
     await updateKaelProgress(client, jobScopeProgressTarget, {
       stage: "scope_estimating",
@@ -102,7 +120,7 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
     newPriceMin: estimate.price_min,
     newPriceMax: estimate.price_max,
     newComplexity: estimate.complexity_assessment,
-    hasPhotos: (input.photo_urls ?? []).length > 0,
+    hasPhotos: evidencePhotoRefs.length > 0,
     workerDescription: input.new_description,
     workerReason: input.reason,
     workerScopeChangeRate,
@@ -123,7 +141,7 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
       p_worker_id: ctx.user.id,
       p_new_description: input.new_description,
       p_reason: input.reason,
-      p_evidence_photo_urls: input.photo_urls ?? [],
+      p_evidence_photo_urls: evidencePhotoRefs,
       p_kael_computed_min: enrichedEstimate.price_min,
       p_kael_computed_max: enrichedEstimate.price_max,
       p_kael_review: enrichedEstimate,
@@ -198,33 +216,21 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
     },
   );
   const customerId = nullableString(job.customer_id);
-  const autoDecision = await tryAutoApproveScopeChange(client, ctx, {
-    customerId,
-    estimate,
+  await notifyCustomerScopeChangeRequested(
+    client,
     jobId,
+    customerId,
     scopeChangeId,
-    scopeChangeOutputs,
-  });
-  if (autoDecision) {
-    await notifyCustomerScopeChangeDecided(client, jobId, customerId, scopeChangeId, "approve");
-    await notifyWorkerScopeDecision(client, jobId, scopeChangeId, "approve");
-  } else {
-    await notifyCustomerScopeChangeRequested(
-      client,
-      jobId,
-      customerId,
-      scopeChangeId,
-    );
-    await logJobEvent(
-      client,
-      jobId,
-      "scope_change_notified",
-      ctx,
-      "scope_change_pending",
-      "scope_change_pending",
-      { scope_change_id: scopeChangeId },
-    );
-  }
+  );
+  await logJobEvent(
+    client,
+    jobId,
+    "scope_change_notified",
+    ctx,
+    "scope_change_pending",
+    "scope_change_pending",
+    { scope_change_id: scopeChangeId, customer_confirmation_required: true },
+  );
   await queueKaelLearningEvent(client, 'post-B6', {
     actor_id: ctx.user.id,
     actor_role: ctx.role,
@@ -239,7 +245,7 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
     baseline_max: originalPriceMax,
     scope_change_requested: true,
     worker_report: {
-      has_photos: (input.photo_urls ?? []).length > 0,
+      has_photos: evidencePhotoRefs.length > 0,
       reported_complexity: enrichedEstimate.complexity_assessment,
       challenge_required: scopeChangeOutputs.anti_fraud.challenge_required,
     },
@@ -247,7 +253,7 @@ export async function requestScopeChange(ctx: MobileApiContext, jobId: string, i
   return {
     scope_change_id: scopeChangeId,
     job_id: jobId,
-    status: autoDecision?.status ?? (row.scope_status as ScopeChangeStatus),
+    status: row.scope_status as ScopeChangeStatus,
     created_at: asString(row.created_at_ts),
     kael_estimate: {
       price_min: estimate.price_min,
@@ -271,72 +277,25 @@ export async function decideScopeChange(
   input: { decision: "approve" | "reject" },
 ) {
   const client = db(ctx);
-  const nextJobStatus = scopeDecisionToJobStatus(input.decision);
   const scopeRow = await dbQuery<Record<string, unknown>>(
     client
-      .from("scope_changes")
-      .select("job_id")
+      .from("scope_change_requests")
+      .select("job_id, request_timing, resume_job_status")
       .eq("id", scopeChangeId)
       .maybeSingle(),
   );
-  const scopeJobId = nullableString(scopeRow.data?.job_id);
-  const autonomyDecision = buildKaelAutonomyDecision({
-    action: "decide_scope_change",
-    policyId: `kael.autonomy.v2.scope_change_${input.decision}`,
-    evidence: [
-      {
-        kind: "artifact",
-        reference_id: scopeChangeId,
-        summary: "Scope change request submitted for atomic Kael policy decision.",
-      },
-      {
-        kind: "customer_input",
-        reference_id: scopeChangeId,
-        summary: input.decision === "approve"
-          ? "Customer accepted Kael scope decision."
-          : "Customer appealed or rejected the reported scope change.",
-      },
-      {
-        kind: "system_check",
-        reference_id: scopeJobId ?? scopeChangeId,
-        summary: "Scope-change ownership and current job transition are checked by the atomic RPC.",
-      },
-      {
-        kind: "policy",
-        reference_id: "STRUCTURES.md#A11",
-        summary: "Scope changes require Kael policy decision, evidence, and appeal path.",
-      },
-    ],
-    confidence: input.decision === "approve" ? 0.72 : 0.55,
-    reversible: true,
-    appealable: true,
-    resultingEvent: "kael_decided_scope_change",
-  });
-  const autonomyRun = await runPolicyAutonomyGate({
-    label: `scope_change_customer_${input.decision}`,
-    client,
-    ctx,
-    jobId: scopeJobId,
-    decision: autonomyDecision,
-    from: "scope_change_pending",
-    to: nextJobStatus,
-    authority: {
-      purpose: "scope_change",
-      actor: ctx.role,
-      jobRelation: "own_customer_job",
-      action: "review_scope_change",
-      topic: "scope_change",
-      intentConfidence: 1,
-      topicSource: "deterministic_rule",
-      boundarySignal: false,
-      actorId: ctx.user.id,
-      jobId: scopeJobId,
-    },
-    knownEvidenceReferences: [scopeChangeId, scopeJobId ?? scopeChangeId, "STRUCTURES.md#A11"],
-  });
-  if (autonomyRun.gate.result !== "allow") {
-    apiFailure("INVALID_STATUS", autonomyRun.gate.audit.reason_code, 409);
+  if (scopeRow.error || !scopeRow.data) {
+    apiFailure("NOT_FOUND", "Không tìm thấy yêu cầu đổi phạm vi", 404);
   }
+  const scopeJobId = nullableString(scopeRow.data?.job_id);
+  const requestTiming = nullableString(scopeRow.data?.request_timing) === "pre_arrival"
+    ? "pre_arrival"
+    : "on_site";
+  const nextJobStatus = scopeDecisionToJobStatus(
+    input.decision,
+    requestTiming,
+    nullableString(scopeRow.data?.resume_job_status),
+  );
   const result = await dbQuery<Array<Record<string, unknown>>>(
     client.rpc("decide_scope_change_atomic", {
       p_scope_change_id: scopeChangeId,
@@ -360,18 +319,20 @@ export async function decideScopeChange(
       ctx,
       "scope_change_pending",
       nextJobStatus,
-      { scope_change_id: scopeChangeId, autonomy_decision: autonomyDecision },
+      { scope_change_id: scopeChangeId, customer_confirmation: true, request_timing: requestTiming },
     );
   }
 
   await logJobEvent(
     client,
     jobId,
-    "kael_decided_scope_change",
+    input.decision === "approve"
+      ? "customer_confirmed_scope_change"
+      : "customer_rejected_scope_change",
     ctx,
     "scope_change_pending",
     nextJobStatus,
-    { scope_change_id: scopeChangeId, customer_input: input.decision, autonomy_decision: autonomyDecision },
+    { scope_change_id: scopeChangeId, customer_input: input.decision, request_timing: requestTiming },
   );
   await notifyWorkerScopeDecision(client, jobId, scopeChangeId, input.decision);
   return {
@@ -380,20 +341,6 @@ export async function decideScopeChange(
     status: row.scope_status as ScopeChangeStatus,
     decided_at: asString(row.decided_at_ts),
   };
-}
-
-async function tryAutoApproveScopeChange(
-  _client: DbClient,
-  _ctx: MobileApiContext,
-  _input: {
-    customerId: string | null;
-    estimate: ScopeChangeKaelEstimate;
-    jobId: string;
-    scopeChangeId: string;
-    scopeChangeOutputs: ReturnType<typeof buildScopeChangeOutputs>;
-  },
-): Promise<{ status: ScopeChangeStatus; decidedAt: string | null } | null> {
-  return null;
 }
 
 async function logScopeChangeEstimateApiCall(
@@ -460,8 +407,62 @@ async function getWorkerScopeChangeRate(
   return Math.max(0, Math.min(1, rate));
 }
 
-function scopeDecisionToJobStatus(decision: "approve" | "reject"): JobStatus {
-  return decision === "approve" ? "repairing" : "cancelled";
+function scopeDecisionToJobStatus(
+  decision: "approve" | "reject",
+  requestTiming: "pre_arrival" | "on_site",
+  resumeStatus: string | null,
+): JobStatus {
+  const allowedResumeStatuses = new Set<JobStatus>([
+    "worker_matched",
+    "worker_on_way",
+    "arrived",
+    "inspecting",
+    "repairing",
+  ]);
+  const safeResume = allowedResumeStatuses.has(resumeStatus as JobStatus)
+    ? resumeStatus as JobStatus
+    : "repairing";
+  return decision === "approve" && requestTiming === "on_site"
+    ? "repairing"
+    : safeResume;
+}
+
+async function validateScopeChangeEvidenceRefs(
+  client: DbClient,
+  jobId: string,
+  workerId: string,
+  _customerId: string,
+  mediaRefs: string[],
+) {
+  const normalizedRefs = [...new Set(mediaRefs.map((ref) => ref.trim()).filter(Boolean))];
+  if (normalizedRefs.length === 0) return [];
+  const result = await dbQuery<Array<Record<string, unknown>>>(
+    client.rpc("validate_scope_change_evidence_refs", {
+      p_job_id: jobId,
+      p_worker_id: workerId,
+      p_media_refs: normalizedRefs,
+    }),
+  );
+  if (result.error) {
+    apiFailure(
+      "SCOPE_MEDIA_VALIDATION_UNAVAILABLE",
+      "Chưa thể xác minh ảnh bằng chứng riêng tư. Vui lòng thử lại.",
+      503,
+    );
+  }
+  const row = result.data?.[0];
+  if (!row || row.ok !== true) {
+    apiFailure(
+      nullableString(row?.reason) ?? "INVALID_SCOPE_MEDIA_REF",
+      "Ảnh bằng chứng không thuộc công việc hoặc người tham gia hiện tại.",
+      400,
+    );
+  }
+  const validatedRefs = asStringArray(row.validated_refs);
+  if (validatedRefs.length !== normalizedRefs.length) {
+    apiFailure("INVALID_SCOPE_MEDIA_REF", "Ảnh bằng chứng chưa được xác minh đầy đủ.", 400);
+  }
+  return validatedRefs;
 }
 
 function scopeChangeRiskConfig(

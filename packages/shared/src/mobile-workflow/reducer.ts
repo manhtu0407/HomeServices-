@@ -368,8 +368,10 @@ export function canCancelLocalDeal(status: LocalDealStatus): boolean {
   return [
     'draft',
     'analyzing',
+    'estimate_ready',
     'awaiting_customer_confirm',
     'broadcasting',
+    'worker_candidate_pending',
     'worker_matched',
     'worker_on_way',
     'arrived',

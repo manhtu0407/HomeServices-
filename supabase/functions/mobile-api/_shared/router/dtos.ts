@@ -35,6 +35,7 @@ import type {
   WorkerScopeChangeInput,
   WorkerVerificationStatus,
 } from "../../../_shared/domain.ts";
+import type { EdgeKaelCaseWorkPhase } from "../../../_shared/contracts.ts";
 import type { KaelPublicCharterResponse } from "../kael/system-prompt.ts";
 import type {
   PriceSynthesisAbCaseInput,
@@ -81,6 +82,26 @@ export type EdgePlacesResolveResponse = {
   provider: "vietmap" | "google_maps" | "fallback";
 };
 
+export type EdgeKaelAssistantResponse = {
+  answer: string;
+  safety_notes: readonly string[];
+  citations: readonly string[];
+  suggested_actions: readonly (
+    | "open_booking"
+    | "check_job"
+    | "message_worker"
+    | "contact_support"
+    | "request_scope_change"
+  )[];
+  boundary:
+    | "answered"
+    | "educational_only"
+    | "redirect"
+    | "unsupported"
+    | "fallback";
+  fallback_used: boolean;
+};
+
 export type EdgeCreateJobResponse = {
   job_id: string;
   display_code?: string;
@@ -107,7 +128,9 @@ export type EdgeKaelChatNextAction =
   | "estimate_ready"
   | "unsupported"
   | "budget_exceeded"
-  | "confirmed";
+  | "confirmed"
+  | "ask_question"
+  | "request_evidence";
 export type EdgeKaelChatTurnResponse = {
   id: string;
   session_id: string;
@@ -134,6 +157,9 @@ export type EdgeKaelChatSessionResponse = {
   customer_id: string;
   service_type: ServiceType;
   status: EdgeKaelChatStatus;
+  case_phase: EdgeKaelCaseWorkPhase;
+  diagnosis_scope: Record<string, unknown> | null;
+  scheduled_at: string | null;
   estimate: EdgeKaelEstimate | null;
   started_at: string;
   estimate_ready_at: string | null;
@@ -233,16 +259,46 @@ export type EdgeAddressAccessView = {
   evidence_mode: "none" | "geofence" | "manual_photo";
   access_profile: ApartmentAccessProfileInput;
 };
+export type EdgeWorkerCandidateView = {
+  candidate_id: string;
+  worker_id: string;
+  status: "proposed" | "customer_confirmed" | "customer_declined" | "expired" | "withdrawn";
+  display_name: string | null;
+  avatar_url: string | null;
+  rating: number | null;
+  total_jobs: number;
+  years_experience: number;
+  verification_status: string;
+  is_favorite: boolean;
+  proposed_at: string;
+  expires_at: string | null;
+  customer_decided_at: string | null;
+};
+export type EdgeWorkerCandidateResponse = {
+  job_id: string;
+  status: JobStatus;
+  candidate: EdgeWorkerCandidateView | null;
+};
+export type EdgeCustomerFavoriteWorkerResponse = {
+  worker_id: string;
+  is_favorite: boolean;
+};
 export type EdgeAcceptBroadcastResponse = {
   job_id: string;
   status: JobStatus;
-  full_address: {
-    building: string | null;
-    unit: string | null;
-    floor: string | null;
-    district: string | null;
-  };
-  address_access: EdgeAddressAccessView;
+  candidate_id: string;
+  awaiting_customer_confirmation: true;
+  already_applied: boolean;
+};
+export type EdgeConfirmWorkerCandidateResponse = EdgeWorkerCandidateResponse & {
+  candidate: EdgeWorkerCandidateView;
+  already_applied: boolean;
+};
+export type EdgeRejectWorkerCandidateResponse = EdgeWorkerCandidateResponse & {
+  candidate: EdgeWorkerCandidateView;
+  already_applied: boolean;
+  broadcast_sent: boolean;
+  message: string;
 };
 export type EdgeDeclineBroadcastResponse = { job_id: string; declined: true };
 export type EdgeWorkerScopeChangeResponse = {

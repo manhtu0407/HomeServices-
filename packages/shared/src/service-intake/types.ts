@@ -16,7 +16,15 @@ export const CUSTOMER_SERVICE_IDS = Object.freeze([
 ] as const)
 
 export type CustomerServiceId = (typeof CUSTOMER_SERVICE_IDS)[number]
-export type KaelPerformanceMode = 'clean_scope' | 'air_scope' | 'fabric_scope' | 'task_scope'
+export const KAEL_PERFORMANCE_PROFILE_IDS = Object.freeze([
+  'electric_diagnose',
+  'water_diagnose',
+  'clean_scope',
+  'air_scope',
+  'fabric_scope',
+  'task_scope',
+] as const)
+export type KaelPerformanceMode = (typeof KAEL_PERFORMANCE_PROFILE_IDS)[number]
 export type ConfidenceLevel = 'low' | 'medium' | 'high'
 export type IntakeQuestionType = 'single_select' | 'multi_select' | 'number' | 'text'
 export type IntakeAnswerValue = string | number | boolean | readonly string[] | null
@@ -186,5 +194,8 @@ export function isCustomerServiceId(value: unknown): value is CustomerServiceId 
 export function productionServiceTypeForCustomerService(value: CustomerServiceId): ServiceType | null {
   if (value === 'electrical' || value === 'plumbing') return value
   if (value === 'home_cleaning') return 'cleaning'
+  if (value === 'hvac_basic_maintenance') return 'hvac'
+  if (value === 'upholstery_care') return 'upholstery'
+  if (value === 'handyman_minor_installation') return 'handyman'
   return null
 }

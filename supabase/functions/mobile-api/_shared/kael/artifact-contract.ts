@@ -1,4 +1,168 @@
 import { z } from "zod";
+import {
+  getKaelPerformanceProfile,
+  KAEL_CASE_WORK_SERVICE_TYPES,
+  KAEL_PERFORMANCE_PROFILE_IDS,
+  type KaelCaseWorkServiceType,
+} from "./performance-profiles.ts";
+
+export const KAEL_CASE_WORK_PHASES = Object.freeze([
+  "analysis",
+  "offer_review",
+  "matching",
+  "worker_candidate_review",
+  "worker_en_route",
+  "service_execution",
+  "scope_change_review",
+  "completion_review",
+  "payment",
+  "review",
+  "closed",
+] as const);
+
+const kaelCaseFactValueSchema = z.union([
+  z.string().max(2000),
+  z.number().finite(),
+  z.boolean(),
+  z.array(z.string().max(500)).max(30),
+  z.null(),
+]);
+
+export const kaelCaseEvidenceSchema = z.object({
+  kind: z.enum([
+    "photo",
+    "video_frame",
+    "video_original_private",
+    "voice_transcript",
+    "text_note",
+  ]),
+  ref: z.string().max(1000).optional(),
+  transcript: z.string().trim().min(1).max(5000).optional(),
+  summary: z.string().trim().min(1).max(1000).optional(),
+  model_eligible: z.boolean(),
+}).strict().superRefine((value, ctx) => {
+  if (
+    (value.kind === "photo" || value.kind === "video_frame" || value.kind === "video_original_private") &&
+    !value.ref
+  ) {
+    ctx.addIssue({ code: "custom", path: ["ref"], message: `${value.kind} requires a private ref` });
+  }
+  if ((value.kind === "voice_transcript" || value.kind === "text_note") && !value.transcript) {
+    ctx.addIssue({ code: "custom", path: ["transcript"], message: `${value.kind} requires reviewed text` });
+  }
+  if (value.kind === "voice_transcript" && value.ref) {
+    ctx.addIssue({ code: "custom", path: ["ref"], message: "Raw voice media must not accompany a transcript" });
+  }
+  if (value.kind === "video_original_private" && value.model_eligible) {
+    ctx.addIssue({ code: "custom", path: ["model_eligible"], message: "Original video is private human evidence only" });
+  }
+  if (
+    (value.kind === "photo" || value.kind === "video_frame") &&
+    value.ref &&
+    !/^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/model_vision\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(value.ref)
+  ) {
+    ctx.addIssue({ code: "custom", path: ["ref"], message: "Model evidence requires a private model_vision ref" });
+  }
+  if (
+    value.kind === "video_original_private" &&
+    value.ref &&
+    !/^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/private_video_original\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i.test(value.ref)
+  ) {
+    ctx.addIssue({ code: "custom", path: ["ref"], message: "Original video requires a private human-evidence ref" });
+  }
+});
+
+const kaelCaseNextActionSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("ask_question"),
+    question: z.string().trim().min(1).max(500),
+  }).strict(),
+  z.object({
+    kind: z.literal("request_evidence"),
+    evidence_kind: z.enum(["photo", "video_frame", "voice_transcript"]),
+    prompt: z.string().trim().min(1).max(500),
+  }).strict(),
+  z.object({ kind: z.literal("prepare_offer") }).strict(),
+  z.object({
+    kind: z.literal("escalate"),
+    reason: z.string().trim().min(1).max(500),
+  }).strict(),
+  z.object({ kind: z.literal("wait") }).strict(),
+]);
+
+export const kaelDiagnosisScopeArtifactSchema = z.object({
+  version: z.literal(1),
+  service_type: z.enum(KAEL_CASE_WORK_SERVICE_TYPES),
+  profile_id: z.enum(KAEL_PERFORMANCE_PROFILE_IDS),
+  case_phase: z.enum(KAEL_CASE_WORK_PHASES),
+  facts: z.record(z.string().min(1).max(120), kaelCaseFactValueSchema),
+  missing_facts: z.array(z.string().min(1).max(120)).max(64),
+  evidence: z.array(kaelCaseEvidenceSchema).max(20),
+  safety_flags: z.array(z.object({
+    code: z.string().trim().min(1).max(120),
+    severity: z.enum(["notice", "review", "stop"]),
+    customer_message: z.string().trim().min(1).max(1000).optional(),
+  }).strict()).max(20),
+  scope_summary: z.string().trim().min(1).max(3000).nullable(),
+  quote_ready: z.boolean(),
+  quote_blockers: z.array(z.string().min(1).max(200)).max(30),
+  worker_requirements: z.array(z.string().min(1).max(120)).max(30),
+  confidence: z.number().min(0).max(1),
+  next_action: kaelCaseNextActionSchema,
+  updated_at: z.string().datetime(),
+}).strict().superRefine((value, ctx) => {
+  const profile = getKaelPerformanceProfile(value.service_type);
+  if (!profile || profile.id !== value.profile_id) {
+    ctx.addIssue({ code: "custom", path: ["profile_id"], message: "Profile must match the selected service" });
+  }
+  if (Object.keys(value.facts).length > 64) {
+    ctx.addIssue({ code: "custom", path: ["facts"], message: "Case facts exceed the bounded artifact contract" });
+  }
+  if (value.quote_ready) {
+    if (value.missing_facts.length > 0 || value.quote_blockers.length > 0) {
+      ctx.addIssue({ code: "custom", path: ["quote_ready"], message: "Quote cannot be ready while blockers remain" });
+    }
+    if (!value.scope_summary) {
+      ctx.addIssue({ code: "custom", path: ["scope_summary"], message: "Quote-ready scope requires a summary" });
+    }
+    if (value.next_action.kind !== "prepare_offer" || value.case_phase !== "offer_review") {
+      ctx.addIssue({ code: "custom", path: ["next_action"], message: "Quote-ready case must enter offer review" });
+    }
+  }
+});
+
+export type KaelDiagnosisScopeArtifact = z.infer<typeof kaelDiagnosisScopeArtifactSchema>;
+
+export function buildInitialDiagnosisScopeArtifact(input: {
+  serviceType: KaelCaseWorkServiceType;
+  customerGoal: string;
+  workerRequirements?: readonly string[];
+}): KaelDiagnosisScopeArtifact {
+  const profile = getKaelPerformanceProfile(input.serviceType);
+  if (!profile) throw new Error("Unsupported Kael performance profile");
+  const missingFacts = [...profile.quote_drivers];
+  const firstDriver = missingFacts[0] ?? "service_scope";
+  return kaelDiagnosisScopeArtifactSchema.parse({
+    version: 1,
+    service_type: input.serviceType,
+    profile_id: profile.id,
+    case_phase: "analysis",
+    facts: { customer_goal: input.customerGoal.trim() },
+    missing_facts: missingFacts,
+    evidence: [],
+    safety_flags: [],
+    scope_summary: null,
+    quote_ready: false,
+    quote_blockers: missingFacts,
+    worker_requirements: input.workerRequirements ?? profile.worker_capabilities,
+    confidence: 0.2,
+    next_action: {
+      kind: "ask_question",
+      question: `Bạn cho Kael biết thêm về ${firstDriver.replaceAll("_", " ")} nhé?`,
+    },
+    updated_at: new Date().toISOString(),
+  });
+}
 
 export const kaelArtifactTypeSchema = z.enum([
   "service_request",

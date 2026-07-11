@@ -382,14 +382,18 @@ export async function notifyCustomerScopeChangeRequested(
 ) {
   if (!customerId || !scopeChangeId) return;
   const title = "Cần duyệt thay đổi phạm vi";
-  const body = "Thợ vừa gửi thay đổi phạm vi. Vui lòng xem ngay.";
+  const body = "Thợ vừa gửi thay đổi phạm vi. Phần thay đổi đang tạm dừng đến khi bạn xác nhận hoặc giữ phạm vi cũ.";
   await insertUserNotification(client, {
     userId: customerId,
     jobId,
     eventType: "scope_change_requested",
     title,
     body,
-    metadata: { scope_change_id: scopeChangeId },
+    metadata: {
+      scope_change_id: scopeChangeId,
+      actor: "worker",
+      customer_confirmation_required: true,
+    },
   });
 
   const push = await sendPushToUser(client, customerId, {
@@ -405,52 +409,6 @@ export async function notifyCustomerScopeChangeRequested(
   });
   if (push.failed > 0) {
     console.warn("mobile-api scope-change customer push delivery had failures", {
-      jobId,
-      failed: push.failed,
-    });
-  }
-}
-
-export async function notifyCustomerScopeChangeDecided(
-  client: DbClient,
-  jobId: string,
-  customerId: string | null,
-  scopeChangeId: string,
-  decision: "approve" | "reject",
-) {
-  if (!customerId || !scopeChangeId) return;
-  const approved = decision === "approve";
-  const title = approved
-    ? "Kael đã duyệt thay đổi phạm vi"
-    : "Kael đã từ chối thay đổi phạm vi";
-  const body = approved
-    ? "Kael đã cập nhật giá theo phạm vi mới. Bạn có thể xem lại hoặc khiếu nại trong Hoạt động."
-    : "Kael đã hủy phần phát sinh theo chính sách. Bạn có thể xem lại trong Hoạt động.";
-  const eventType = approved
-    ? "scope_change_auto_approved"
-    : "scope_change_auto_rejected";
-  await insertUserNotification(client, {
-    userId: customerId,
-    jobId,
-    eventType,
-    title,
-    body,
-    metadata: { scope_change_id: scopeChangeId, decision, actor: "kael_system" },
-  });
-
-  const push = await sendPushToUser(client, customerId, {
-    title,
-    body,
-    data: {
-      event_type: eventType,
-      job_id: jobId,
-      scope_change_id: scopeChangeId,
-      deep_link: `/(customer)/history?scope_change=${scopeChangeId}&job_id=${jobId}`,
-    },
-    sound: "default",
-  });
-  if (push.failed > 0) {
-    console.warn("mobile-api scope-change customer decision push delivery had failures", {
       jobId,
       failed: push.failed,
     });
@@ -559,18 +517,18 @@ export async function notifyWorkerScopeDecision(
     ? "scope_change_approved"
     : "scope_change_rejected";
   const title = approved
-    ? "Kael đã duyệt thay đổi"
-    : "Kael đã từ chối thay đổi";
+    ? "Khách đã xác nhận thay đổi"
+    : "Khách giữ phạm vi cũ";
   const body = approved
-    ? "Bạn có thể tiếp tục xử lý công việc. Khách vẫn có đường khiếu nại nếu thông tin thực tế chưa đúng."
-    : "Công việc đã được hủy theo quyết định của Kael.";
+    ? "Bạn có thể tiếp tục theo phạm vi và mức giá mới mà khách vừa xác nhận."
+    : "Công việc tiếp tục theo phạm vi đã chốt trước đó; không thực hiện phần thay đổi.";
   await insertUserNotification(client, {
     userId: workerId,
     jobId,
     eventType,
     title,
     body,
-    metadata: { scope_change_id: scopeChangeId, decision, actor: "kael_system" },
+    metadata: { scope_change_id: scopeChangeId, decision, actor: "customer" },
   });
 
   const push = await sendPushToUser(client, workerId, {

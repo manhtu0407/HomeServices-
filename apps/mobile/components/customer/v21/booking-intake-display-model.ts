@@ -1,9 +1,36 @@
-import type { AppLanguage } from '@/lib/app-language'
+import { localizedProblemLabel, type AppLanguage } from '@/lib/app-language'
 import type { ServiceType } from '@nestscout/shared'
 
 import { customerV21ServiceCopy } from './copy'
 
 export const bookingTimeSlots = ['08:00-10:00', '10:00-12:00', '14:00-16:00', '16:00-18:00'] as const
+export type BookingScheduleWindow = {
+  date: string
+  start: string
+  end: string
+  timeZone: 'Asia/Ho_Chi_Minh'
+}
+
+export function bookingScheduleDraft(
+  selectedDate: string | null,
+  selectedTime: string | null,
+): { scheduledAt?: string; scheduleWindow?: BookingScheduleWindow } {
+  if (!selectedDate || !selectedTime) return {}
+  const [start, end] = selectedTime.split('-')
+  if (!start || !end) return {}
+  const scheduledAt = new Date(`${selectedDate}T${start}:00+07:00`)
+  if (Number.isNaN(scheduledAt.getTime())) return {}
+  return {
+    scheduledAt: scheduledAt.toISOString(),
+    scheduleWindow: {
+      date: selectedDate,
+      start,
+      end,
+      timeZone: 'Asia/Ho_Chi_Minh',
+    },
+  }
+}
+
 export function buildBookingDraftMessage({
   address,
   description,
@@ -20,10 +47,11 @@ export function buildBookingDraftMessage({
   serviceType: ServiceType
 }) {
   const service = customerV21ServiceCopy[language][serviceType].label
+  const visibleProblems = problems.map((problem) => localizedProblemLabel(problem, serviceType, language))
   if (language === 'vi') {
     return [
       `Dịch vụ: ${service}`,
-      `Vấn đề: ${problems.length > 0 ? problems.join(', ') : 'Theo mô tả'}`,
+      `Vấn đề: ${visibleProblems.length > 0 ? visibleProblems.join(', ') : 'Theo mô tả'}`,
       `Khu vực: ${address.trim()}`,
       `Thời gian: ${scheduleLabel ?? 'Chưa chọn'}`,
       `Mô tả: ${description.trim()}`,
@@ -31,7 +59,7 @@ export function buildBookingDraftMessage({
   }
   return [
     `Service: ${service}`,
-    `Issue: ${problems.length > 0 ? problems.join(', ') : 'From description'}`,
+    `Issue: ${visibleProblems.length > 0 ? visibleProblems.join(', ') : 'From description'}`,
     `Area: ${address.trim()}`,
     `Time: ${scheduleLabel ?? 'Not selected'}`,
     `Description: ${description.trim()}`,

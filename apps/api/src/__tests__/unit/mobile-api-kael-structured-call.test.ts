@@ -177,7 +177,7 @@ describe('mobile-api Kael structured output health', () => {
     ]))
   })
 
-  it('preserves both scope-change fallback contracts on schema failure', async () => {
+  it('fails closed without a price when scope-change estimation schema validation fails', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => anthropicResponse('{"unexpected":true}')))
     const secrets = { anthropicApiKey: 'anthropic-test' }
 
@@ -211,10 +211,15 @@ describe('mobile-api Kael structured output health', () => {
       workerReason: 'Bằng chứng hiện trường cho thấy vết nứt',
     }, secrets)
     expect(estimate).toMatchObject({
+      outcome: 'inspection_required',
+      requires_human_inspection: true,
       fallback_used: true,
       failure_reason: 'INVALID_SCHEMA',
       provider: 'anthropic',
     })
+    expect(estimate).not.toHaveProperty('price_min')
+    expect(estimate).not.toHaveProperty('price_max')
+    expect(estimate).not.toHaveProperty('complexity_assessment')
   })
 
   it('routes every live structured Edge caller through the shared wrapper', () => {

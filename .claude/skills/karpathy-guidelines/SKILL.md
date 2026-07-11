@@ -77,7 +77,7 @@ Home Services filters:
 - Prefer plain TypeScript over clever architecture.
 - Prefer existing Expo, Next.js, Supabase, Turbo, and workspace patterns.
 - Prefer explicit data flow over magic.
-- Keep Kael scoped to Home Services: electrical repair, plumbing repair, and home cleaning/housekeeping only.
+- Keep Kael scoped to the six approved Home Services: electrical, plumbing, cleaning/housekeeping, HVAC/indoor air, upholstery care, and handyman/minor installation only.
 - Ship toward the first real transaction, not theoretical scale.
 
 ## Principle 3: Surgical Changes

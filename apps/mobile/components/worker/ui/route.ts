@@ -136,7 +136,7 @@ export function buildWorkerV5CheckInChecklistItems(deal: LocalDeal | null, langu
 }
 
 export function workerV5HasReachedArrival(deal: LocalDeal | null) {
-  return Boolean(deal && ['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'reviewed'].includes(deal.status))
+  return Boolean(deal && ['arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker', 'confirmed_by_customer', 'payment_pending', 'paid', 'reviewed'].includes(deal.status))
 }
 
 export function workerV5CustomerContacted(deal: LocalDeal | null) {

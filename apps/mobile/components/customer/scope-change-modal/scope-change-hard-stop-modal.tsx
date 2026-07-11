@@ -3,6 +3,8 @@ import { Modal, StyleSheet, Text, View } from 'react-native'
 import type { LocalScopeChange } from '@nestscout/shared'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
+import { useJobMediaPreviewUrls } from '@/lib/job-media-preview'
+import { canCustomerDecideScopeChange } from '../v21/case-work-money-display-model'
 
 type ScopeChangeModalTokens = {
   aqua: string
@@ -21,6 +23,7 @@ type ScopeChangeModalTokens = {
 }
 
 type ScopeChangeHardStopModalProps = {
+  busy?: boolean
   language: AppLanguage
   newScopeLabel: string
   originalEstimateLabel: string
@@ -32,17 +35,16 @@ type ScopeChangeHardStopModalProps = {
   visible: boolean
 }
 
-// Kael Autonomy v2: Kael owns final price authority and scope decisions. The
-// modal shows the computed decision surface while customer actions become
-// agreement/appeal inputs rather than the final authority.
+// Kael owns price computation; the customer remains the explicit authority for
+// every work- or money-impacting scope adjustment.
 const copy = {
   vi: {
-    approve: 'Đồng ý quyết định',
+    approve: 'Xác nhận thay đổi',
     currentEstimate: 'Ước tính ban đầu (Kael)',
     currentScope: 'Phạm vi ban đầu',
     explanation: 'Đánh giá của Kael',
     fallback: 'Cần kiểm tra trong ứng dụng trước khi quyết định.',
-    hardStop: 'Thợ đang chờ quyết định của Kael. Bạn có thể đồng ý hoặc khiếu nại nếu thông tin thực tế chưa đúng.',
+    hardStop: 'Phần thay đổi đang tạm dừng. Kael đã phân tích, nhưng chỉ bạn mới có thể xác nhận thay đổi hoặc giữ phạm vi cũ.',
     kaelBadge: 'Kael tự tính',
     kaelBadgeHint: 'Ước tính mới do Kael tính lại dựa trên phạm vi thợ báo cáo.',
     newEstimate: 'Ước tính mới (Kael)',
@@ -50,17 +52,20 @@ const copy = {
     pending: 'Kael đang xét',
     priceDisclaimer: 'Đây là ước tính do Kael tính theo dữ liệu hiện có. Kael có thể cập nhật khi có bằng chứng phạm vi mới.',
     reason: 'Lý do từ thợ',
-    reject: 'Khiếu nại',
+    reject: 'Giữ phạm vi cũ',
     risk: 'Lưu ý',
     title: 'Kael xét đổi phạm vi',
+    timing: 'Thời điểm điều chỉnh',
+    timingOnSite: 'Tại hiện trường',
+    timingPreArrival: 'Trước khi thợ đến',
   },
   en: {
-    approve: 'Accept decision',
+    approve: 'Confirm change',
     currentEstimate: 'Original estimate (Kael)',
     currentScope: 'Original scope',
     explanation: 'Kael review',
     fallback: 'Review this in the app before deciding.',
-    hardStop: 'The worker is waiting for Kael decision. You can accept it or appeal if the real-world information is wrong.',
+    hardStop: 'The changed work is paused. Kael has analyzed it, but only you can confirm the change or keep the original scope.',
     kaelBadge: 'Computed by Kael',
     kaelBadgeHint: 'The new estimate is recomputed by Kael based on the scope the worker reported.',
     newEstimate: 'New estimate (Kael)',
@@ -68,15 +73,19 @@ const copy = {
     pending: 'Kael reviewing',
     priceDisclaimer: 'This is a Kael estimate from the current evidence. Kael may update it when new scope evidence is added.',
     reason: 'Worker reason',
-    reject: 'Appeal',
+    reject: 'Keep original scope',
     risk: 'Notes',
     title: 'Kael scope review',
+    timing: 'Adjustment timing',
+    timingOnSite: 'On site',
+    timingPreArrival: 'Before arrival',
   },
 } satisfies Record<AppLanguage, Record<string, string>>
 
 const vndFormatter = new Intl.NumberFormat('vi-VN')
 
 export function ScopeChangeHardStopModal({
+  busy = false,
   language,
   newScopeLabel,
   originalEstimateLabel,
@@ -93,8 +102,10 @@ export function ScopeChangeHardStopModal({
   const complexity = readString(scopeChange?.kaelReview, 'complexity_assessment')
   const confidence = readNumber(scopeChange?.kaelReview, 'confidence')
   const fallbackUsed = readBoolean(scopeChange?.kaelReview, 'fallback_used')
+  const decisionEnabled = Boolean(scopeChange && canCustomerDecideScopeChange(scopeChange))
   const evidencePhotoUrls = scopeChange?.evidencePhotoUrls ?? []
-  const newEstimate = scopeChange?.priceMin && scopeChange.priceMax
+  const evidencePreviewUrls = useJobMediaPreviewUrls(evidencePhotoUrls)
+  const newEstimate = decisionEnabled && scopeChange?.priceMin && scopeChange.priceMax
     ? formatPriceRange(scopeChange.priceMin, scopeChange.priceMax)
     : text.pending
   const reason = scopeChange?.reason?.trim() || text.pending
@@ -104,6 +115,9 @@ export function ScopeChangeHardStopModal({
   const confidenceLabel = confidence !== null
     ? `${Math.round(confidence * 100)}%${fallbackUsed ? ` · ${fallbackLabel}` : ''}`
     : fallbackUsed ? fallbackLabel : text.pending
+  const timingLabel = scopeChange?.requestTiming === 'pre_arrival'
+    ? text.timingPreArrival
+    : text.timingOnSite
 
   return (
     <Modal animationType="fade" onRequestClose={() => undefined} transparent visible={visible}>
@@ -125,6 +139,7 @@ export function ScopeChangeHardStopModal({
           </View>
 
           <View style={styles.compareGrid}>
+            <InfoBlock label={text.timing} tokens={tokens} value={timingLabel} />
             <InfoBlock label={text.currentScope} tokens={tokens} value={originalScopeLabel || text.pending} />
             <InfoBlock label={text.newScope} tokens={tokens} value={newScopeLabel || text.pending} />
             <InfoBlock label={text.currentEstimate} tokens={tokens} value={originalEstimateLabel || text.pending} />
@@ -156,7 +171,7 @@ export function ScopeChangeHardStopModal({
                   {photosLabel}
                 </Text>
                 <View style={styles.evidenceRow}>
-                  {evidencePhotoUrls.slice(0, 3).map((uri) => (
+                  {evidencePreviewUrls.slice(0, 3).filter((uri): uri is string => Boolean(uri)).map((uri) => (
                     <Image
                       key={uri}
                       source={{ uri }}
@@ -170,6 +185,8 @@ export function ScopeChangeHardStopModal({
 
           <View style={styles.actionRow}>
             <KaelButton
+              accessibilityState={{ busy, disabled: busy || !decisionEnabled }}
+              disabled={busy || !decisionEnabled}
               label={text.reject}
               onPress={onReject}
               showPrimaryGradient={false}
@@ -180,6 +197,8 @@ export function ScopeChangeHardStopModal({
               variant="destructive"
             />
             <KaelButton
+              accessibilityState={{ busy, disabled: busy || !decisionEnabled }}
+              disabled={busy || !decisionEnabled}
               label={text.approve}
               onPress={onApprove}
               showPrimaryGradient={false}

@@ -130,6 +130,29 @@ describe('Kael P10 demanding customer case', () => {
     expect(unaccented.escalationLevel).toBe('hard')
   })
 
+  it('renders demanding-customer responses in English when English mode is selected', () => {
+    const detailDetection = detectDemandingCustomerPatterns({
+      message: 'Tôi muốn xem lý do tính giá và chứng chỉ của thợ.',
+      qaCount: 2,
+    })
+    const detail = buildDemandingCustomerResponse(detailDetection, {
+      workerCredentials: { completedJobs: 8, rating: 4.7 },
+      marketSource: 'governed_baseline',
+    }, 'en')
+    expect(detail.responseText).toContain('clear price explanation')
+    expect(detail.responseText).toContain('available governed pricing evidence')
+    expect(detail.responseText).not.toMatch(/[ăâđêôơưàáạảã]/iu)
+
+    const hardDetection = detectDemandingCustomerPatterns({
+      message: 'Hoàn tiền ngay không tôi sẽ khiếu nại.',
+      qaCount: 5,
+    })
+    const hard = buildDemandingCustomerResponse(hardDetection, {}, 'en')
+    expect(hard).toMatchObject({ adminQueuePriority: 'high', stopAiLoop: true })
+    expect(hard.responseText).toContain('human support review')
+    expect(hard.responseText).not.toContain('admin')
+  })
+
   it('T10-test-6: records defensive interaction logs and admin queue rows with sanitized metadata', async () => {
     const client = makeSequenceClient([
       { data: { id: 'interaction-1' }, error: null },

@@ -10,8 +10,8 @@ Claude Code, Codex, and other AI coding agents act as Tu's technical co-founder 
 
 ## Product Context
 
-- Home Services mobile app for HCMC apartment residents. Supported services: **electrical repair, plumbing repair, and home cleaning / housekeeping only**. Stage: pre-revenue, rebuilding toward the first real transaction.
-- **Kael** is the main assistant/product brand and default workflow actor (intake, diagnosis, price analysis, market check, worker brief, notification/support, orchestration). Kael changes money-impacting workflow state only through server-side validated `KaelAutonomyDecision` objects — never from raw LLM output, mobile UI, or client-side code. Full rule: `governance/RULES.md` #7.
+- Home Services mobile app for HCMC apartment residents. Supported services are exactly six: **electrical repair, plumbing repair, home cleaning / housekeeping, air conditioning and indoor air service, sofa/mattress/curtain/carpet care, and minor repair/installation**. Stage: pre-revenue, rebuilding toward the first real transaction.
+- **Kael** is the main assistant/product brand and phase-gated workflow actor. Service routes collect Basic Intake only; server-side Case Work selects one of six service profiles, asks one focused question per turn until quote-ready, and coordinates diagnosis/scope, price analysis, worker search, support, and audit. Kael stops for explicit offer, proposed-worker, scope-change, completion, and payment confirmations. Raw LLM output, mobile UI, and client-side code never cross those gates or write money-impacting state directly. Full rules: `governance/RULES.md` #6-#7.
 
 ## Routing - read the spoke for your task
 

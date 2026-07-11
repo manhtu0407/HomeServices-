@@ -56,7 +56,7 @@ export function WorkerV5CaseClosedHero({
   const status = hasIncome
     ? textByLanguage(language, 'Có thể rút tiền', 'Payout available')
     : textByLanguage(language, 'Chờ đối soát', 'Waiting settlement')
-  const closed = deal?.status === 'confirmed_by_customer' || deal?.status === 'reviewed'
+  const closed = deal?.status === 'confirmed_by_customer' || deal?.status === 'payment_pending' || deal?.status === 'paid' || deal?.status === 'reviewed'
   return (
     <View style={[styles.caseClosedHeroCard, reduceTransparency && styles.opaqueCard]} testID="worker-v5-case-closed-hero">
       {!reduceTransparency ? <MintAura intensity="component" style={styles.caseClosedHeroAura} testID="worker-v5-case-closed-mint-aura" /> : null}

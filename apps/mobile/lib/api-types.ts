@@ -2,6 +2,7 @@ export type {
   KaelEstimate,
   CreateJobResponse,
   KaelChatStatus,
+  KaelCaseWorkPhase,
   KaelChatNextAction,
   KaelChatTurn,
   KaelChatSession,

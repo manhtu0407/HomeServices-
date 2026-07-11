@@ -386,6 +386,11 @@ deno_version = 2
 # stay consistent for React Native and future web clients.
 verify_jwt = false
 
+[functions.kael-media-retention]
+# Dedicated secret authentication is enforced inside the function so pg_cron
+# can call it without exposing a customer/admin JWT.
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

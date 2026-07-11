@@ -3,12 +3,66 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildKaelAutonomyDecision,
+  buildInitialDiagnosisScopeArtifact,
   buildKaelMissingInfoArtifactProposal,
   kaelAutonomyDecisionSchema,
   kaelArtifactProposalSchema,
+  kaelDiagnosisScopeArtifactSchema,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/artifact-contract'
 
 describe('Kael artifact proposal contract', () => {
+  it('builds a durable six-profile diagnosis/scope artifact without workflow authority', () => {
+    const artifact = buildInitialDiagnosisScopeArtifact({
+      serviceType: 'hvac',
+      customerGoal: 'Máy lạnh yếu và chảy nước.',
+      workerRequirements: ['hvac_diagnosis'],
+    })
+
+    expect(kaelDiagnosisScopeArtifactSchema.parse(artifact)).toMatchObject({
+      version: 1,
+      service_type: 'hvac',
+      profile_id: 'air_scope',
+      quote_ready: false,
+      next_action: { kind: 'ask_question' },
+    })
+  })
+
+  it('rejects quote-ready artifacts while facts or quote blockers remain', () => {
+    const artifact = buildInitialDiagnosisScopeArtifact({
+      serviceType: 'plumbing',
+      customerGoal: 'Ống nước đang rò.',
+      workerRequirements: ['water_leak_diagnosis'],
+    })
+
+    expect(kaelDiagnosisScopeArtifactSchema.safeParse({
+      ...artifact,
+      case_phase: 'offer_review',
+      quote_ready: true,
+      next_action: { kind: 'prepare_offer' },
+    }).success).toBe(false)
+  })
+
+  it('keeps raw audio and original video outside model-eligible evidence', () => {
+    const artifact = buildInitialDiagnosisScopeArtifact({
+      serviceType: 'electrical',
+      customerGoal: 'Ổ cắm phát tia lửa.',
+      workerRequirements: ['electrical_fault_isolation'],
+    })
+
+    expect(kaelDiagnosisScopeArtifactSchema.safeParse({
+      ...artifact,
+      evidence: [{ kind: 'raw_audio', model_eligible: true }],
+    }).success).toBe(false)
+    expect(kaelDiagnosisScopeArtifactSchema.safeParse({
+      ...artifact,
+      evidence: [{
+        kind: 'video_original_private',
+        ref: 'supabase://kael-chat-media/customer/kael-chat/session/video.mp4',
+        model_eligible: true,
+      }],
+    }).success).toBe(false)
+  })
+
   it('accepts a partial ticket update that cannot transition workflow state', () => {
     const result = kaelArtifactProposalSchema.parse({
       artifact_type: 'process_ticket',

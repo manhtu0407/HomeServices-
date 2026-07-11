@@ -5,6 +5,7 @@ import {
   productionServiceTypeForCustomerService,
   type CustomerServiceId,
   type IntakeAnswers,
+  type KaelPerformanceMode,
   type LaunchServiceLineId,
   type ServiceScopeCard,
   type ServiceType,
@@ -57,6 +58,24 @@ export function buildExistingBookingDraftFromScope(
 
 export function productionServiceForBooking(serviceId: CustomerServiceId | null): ServiceType | null {
   return serviceId ? productionServiceTypeForCustomerService(serviceId) : null
+}
+
+const performanceProfileByService: Readonly<Record<ServiceType, KaelPerformanceMode>> = {
+  electrical: 'electric_diagnose',
+  plumbing: 'water_diagnose',
+  cleaning: 'clean_scope',
+  hvac: 'air_scope',
+  upholstery: 'fabric_scope',
+  handyman: 'task_scope',
+}
+
+export function performanceProfileForServiceType(serviceType: ServiceType): KaelPerformanceMode {
+  return performanceProfileByService[serviceType]
+}
+
+export function performanceProfileForBooking(serviceId: CustomerServiceId | null): KaelPerformanceMode | null {
+  const serviceType = productionServiceForBooking(serviceId)
+  return serviceType ? performanceProfileForServiceType(serviceType) : null
 }
 
 export function performancePlaybookForBooking(serviceId: CustomerServiceId | null) {

@@ -8,12 +8,9 @@ export type AcceptResult =
       success: true
       jobId: string
       status: JobStatus
-      fullAddress: {
-        building: string | null
-        unit: string | null
-        floor: string | null
-        district: string | null
-      }
+      candidateId: string
+      awaitingCustomerConfirmation: true
+      alreadyApplied: boolean
     }
   | { success: false; error: string; code: string; status: number }
 
@@ -129,12 +126,9 @@ export async function acceptBroadcast(
     success: true,
     jobId,
     status: row.job_status as JobStatus,
-    fullAddress: {
-      building: row.address_building,
-      unit: row.address_unit,
-      floor: row.address_floor,
-      district: row.address_district,
-    },
+    candidateId: row.candidate_id,
+    awaitingCustomerConfirmation: true,
+    alreadyApplied: row.already_applied,
   }
 }
 

@@ -1,17 +1,15 @@
-// Edge service completion-review domain (C4 6a, services/* split): customer confirm-completion
-// (autonomy-gated) + submit-review (rating -> learning + normal-transaction memory). The worker-evidence
-// builder buildKaelCompletionDecision stays in services.ts (status flow). Imported by services.ts.
+// Edge service completion-review domain (C4 6a, services/* split): explicit customer
+// confirm-completion + submit-review (rating -> learning + normal-transaction memory).
 
 import { asComplexityOrNull, asJobStatus, asServiceType, asString, asStringArray, nullableNumber, nullableRecord, nullableString } from "./coercions.ts";
 import { db, dbQuery, type DbClient } from "./db.ts";
 import { mapReviewError } from "./_shared.ts";
 import { logJobEvent, logMemoryAudit, queueKaelLearningEvent } from "./audit.ts";
 import { insertUserNotification } from "./notifications.service.ts";
-import { runPolicyAutonomyGate } from "./autonomy-gate.ts";
 import { apiFailure, type MobileApiContext } from "../router.ts";
 import { requireJobAccess } from "../access.ts";
 import { validateWorkflowTransition } from "../workflow-orchestrator.ts";
-import { buildKaelAutonomyDecision, recordLearningReviewOutcome, type KaelAutonomyDecision } from "../kael/index.ts";
+import { recordLearningReviewOutcome } from "../kael/index.ts";
 import type { JobStatus, ServiceType } from "../../../_shared/domain.ts";
 
 type NormalTransactionMemoryInput = {
@@ -45,41 +43,12 @@ export async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
       409,
     );
   }
-  const autonomyDecision = buildKaelCustomerAcceptedCompletionDecision(
-    jobId,
-    nullableNumber(job.final_price),
-    {
-      completionNotes: nullableString(job.completion_notes),
-      completionPhotoUrls: asStringArray(job.completion_photo_urls),
-      customerId: ctx.user.id,
-    },
-  );
-  const autonomyRun = await runPolicyAutonomyGate({
-    label: "customer_confirm_completion",
-    client,
-    ctx,
-    jobId,
-    decision: autonomyDecision,
+  const transition = validateWorkflowTransition({
+    event: "customer_confirmed_completion",
     from: job.status as JobStatus,
     to: "confirmed_by_customer",
-    amountVnd: nullableNumber(job.final_price),
-    authority: {
-      purpose: "scope_change",
-      actor: ctx.role,
-      jobRelation: "own_customer_job",
-      action: "review_scope_change",
-      topic: "job_status",
-      intentConfidence: 1,
-      topicSource: "deterministic_rule",
-      boundarySignal: false,
-      actorId: ctx.user.id,
-      jobId,
-    },
-    knownEvidenceReferences: [ctx.user.id, jobId, "RULES.md#rule-7"],
   });
-  if (autonomyRun.gate.result !== "allow") {
-    apiFailure("INVALID_STATUS", autonomyRun.gate.audit.reason_code, 409);
-  }
+  if (!transition.valid) apiFailure("INVALID_STATUS", transition.error, 409);
   const finalPrice = nullableNumber(job.final_price);
   // jobs.final_price là Kael-locked. Nếu null thì
   // confirmSearch chưa set baseline — chặn confirm để giữ trust.
@@ -115,11 +84,17 @@ export async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
   await logJobEvent(
     client,
     jobId,
-    "kael_confirmed_completion",
+    "customer_confirmed_completion",
     ctx,
     job.status as JobStatus,
     "confirmed_by_customer",
-    { autonomy_decision: autonomyDecision, customer_input: "accepted_completion" },
+    {
+      customer_input: "accepted_completion",
+      completion_evidence: {
+        note_present: Boolean(nullableString(job.completion_notes)),
+        photo_count: asStringArray(job.completion_photo_urls).length,
+      },
+    },
   );
   // P9 keeps review prompting in the completion surface; A14 sends the customer notification.
   // Kael Autonomy v2: notify worker that completion has been policy-confirmed.
@@ -128,10 +103,10 @@ export async function confirmCompletion(ctx: MobileApiContext, jobId: string) {
     await insertUserNotification(client, {
       userId: workerId,
       jobId,
-      eventType: "kael_confirmed_completion",
-      title: "Kael đã xác nhận hoàn tất",
-      body: "Kael đã xác nhận công việc từ bằng chứng hoàn tất. Đối soát thu nhập sẽ cập nhật.",
-      metadata: { final_price: finalPrice, autonomy_decision: autonomyDecision },
+      eventType: "customer_confirmed_completion",
+      title: "Khách đã xác nhận hoàn tất",
+      body: "Khách đã duyệt bằng chứng hoàn tất. Đối soát thu nhập sẽ cập nhật.",
+      metadata: { final_price: finalPrice },
     });
   }
   return {
@@ -256,51 +231,6 @@ export async function submitReview(ctx: MobileApiContext, jobId: string, input: 
     job_id: jobId,
     status: row.job_status as JobStatus,
   };
-}
-
-function buildKaelCustomerAcceptedCompletionDecision(
-  jobId: string,
-  finalPrice: number | null,
-  input: {
-    completionNotes: string | null;
-    completionPhotoUrls: string[];
-    customerId: string;
-  },
-): KaelAutonomyDecision {
-  const photoCount = input.completionPhotoUrls.length;
-  const noteLength = input.completionNotes?.trim().length ?? 0;
-  return buildKaelAutonomyDecision({
-    action: "confirm_completion",
-    policyId: "kael.autonomy.v2.customer_completion_acceptance",
-    evidence: [
-      {
-        kind: "customer_input",
-        reference_id: input.customerId,
-        summary: "Customer accepted completion; server treats the action as input to Kael decision.",
-      },
-      {
-        kind: "worker_evidence",
-        reference_id: jobId,
-        summary: `Worker completion evidence on record: ${photoCount} photo(s), note length ${noteLength}.`,
-      },
-      {
-        kind: "system_check",
-        reference_id: jobId,
-        summary: finalPrice && finalPrice > 0
-          ? "Final price is already Kael-locked before completion confirmation."
-          : "Final price is missing and will be rejected before persistence.",
-      },
-      {
-        kind: "policy",
-        reference_id: "RULES.md#rule-7",
-        summary: "Kael Autonomy v2 keeps completion authority server-side and appealable.",
-      },
-    ],
-    confidence: photoCount > 0 || noteLength >= 12 ? 0.88 : 0.76,
-    reversible: true,
-    appealable: true,
-    resultingEvent: "kael_confirmed_completion",
-  });
 }
 
 async function recordNormalTransactionMemory(

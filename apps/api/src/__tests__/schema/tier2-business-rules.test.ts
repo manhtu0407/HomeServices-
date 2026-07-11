@@ -3,8 +3,15 @@ import type { Database } from '@/lib/database.types'
 import { Constants } from '@/lib/database.types'
 
 describe('Rule #6: supported services are hard-scoped', () => {
-  it('contains only electrical, plumbing, and cleaning', () => {
-    expect(Constants.public.Enums.service_type).toEqual(['electrical', 'plumbing', 'cleaning'])
+  it('contains only the six launched services', () => {
+    expect(Constants.public.Enums.service_type).toEqual([
+      'electrical',
+      'plumbing',
+      'cleaning',
+      'hvac',
+      'upholstery',
+      'handyman',
+    ])
   })
 })
 
@@ -15,6 +22,7 @@ describe('Job lifecycle matches STRUCTURES.md state machine', () => {
     'estimate_ready',
     'awaiting_customer_confirm',
     'broadcasting',
+    'worker_candidate_pending',
     'worker_matched',
     'worker_on_way',
     'arrived',
@@ -29,7 +37,7 @@ describe('Job lifecycle matches STRUCTURES.md state machine', () => {
     'cancelled',
   ] as const
 
-  it('has the full 17-state workflow', () => {
+  it('has the full 18-state workflow', () => {
     expect(Constants.public.Enums.job_status).toEqual([...WORKFLOW_STATES])
   })
 

@@ -140,22 +140,9 @@ describe('validation.ts ↔ constants.ts alignment', () => {
   const constantsSrc = read('constants.ts')
 
   it('serviceTypeSchema enum matches SERVICE_TYPES values', () => {
-    // Extract enum values from schema definition
-    const schemaMatch = validationSrc.match(/z\.enum\(\[([^\]]+)\]\)/)
-    expect(schemaMatch).not.toBeNull()
-    const schemaValues = schemaMatch![1]
-      .split(',')
-      .map((s) => s.trim().replace(/^'|'$/g, ''))
-      .filter(Boolean)
-
-    // Extract values from constants
-    const constMatch = constantsSrc.match(/SERVICE_TYPES\s*=\s*Object\.freeze\(\[([^\]]+)\]/)
-    expect(constMatch).not.toBeNull()
-    const constValues = constMatch![1]
-      .split(',')
-      .map((s) => s.trim().replace(/^'|'$/g, ''))
-      .filter(Boolean)
-
-    expect(schemaValues.sort()).toEqual(constValues.sort())
+    // The schema consumes the canonical tuple directly. A generic first-z.enum
+    // regex can silently inspect an unrelated schema when validation order changes.
+    expect(validationSrc).toContain('serviceTypeSchema = z.enum(SERVICE_TYPES)')
+    expect(constantsSrc).toMatch(/SERVICE_TYPES\s*=\s*Object\.freeze\(\[/)
   })
 })

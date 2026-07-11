@@ -4,6 +4,8 @@ Status: `approved`
 Date: 2026-06-04
 Scope: electrical repair, plumbing repair, home cleaning, legal/safety boundaries for HCMC apartments.
 
+Coverage note: this approved B3 corpus currently covers the original three services only. HVAC, upholstery, and handyman use their dedicated Case Work profiles and verified pricing sources, but must not claim B3 corpus coverage until their own safety/legal rows are reviewed and approved.
+
 This file is the B3 approved corpus package. Tu approved the safety/legal rows in the 2026-06-04 Codex thread; generate the idempotent migration from this document, then review the SQL before applying. The rows are written as runtime guidance candidates for:
 
 - `worker_safety_patterns`

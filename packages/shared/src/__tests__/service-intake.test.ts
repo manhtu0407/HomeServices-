@@ -2,20 +2,47 @@ import { describe, expect, it } from 'vitest'
 
 import { SERVICE_TYPES } from '../constants'
 import {
+  CUSTOMER_SERVICE_IDS,
+  KAEL_PERFORMANCE_PROFILE_IDS,
   LAUNCH_SERVICE_LINE_IDS,
   buildServiceScopeCard,
+  productionServiceTypeForCustomerService,
   runKaelAgenticPerformanceStep,
   type ServiceIntakeState,
 } from '../service-intake'
 
 describe('Kael service scope intake', () => {
-  it('keeps production service types unchanged while exposing four scope playbooks', () => {
-    expect(SERVICE_TYPES).toEqual(['electrical', 'plumbing', 'cleaning'])
+  it('maps the six customer services to six production service types and profiles', () => {
+    expect(SERVICE_TYPES).toEqual([
+      'electrical',
+      'plumbing',
+      'cleaning',
+      'hvac',
+      'upholstery',
+      'handyman',
+    ])
     expect(LAUNCH_SERVICE_LINE_IDS).toEqual([
       'home_cleaning',
       'hvac_basic_maintenance',
       'upholstery_care',
       'handyman_minor_installation',
+    ])
+    expect(CUSTOMER_SERVICE_IDS).toHaveLength(6)
+    expect(KAEL_PERFORMANCE_PROFILE_IDS).toEqual([
+      'electric_diagnose',
+      'water_diagnose',
+      'clean_scope',
+      'air_scope',
+      'fabric_scope',
+      'task_scope',
+    ])
+    expect(CUSTOMER_SERVICE_IDS.map(productionServiceTypeForCustomerService)).toEqual([
+      'electrical',
+      'plumbing',
+      'cleaning',
+      'hvac',
+      'upholstery',
+      'handyman',
     ])
   })
 
@@ -63,7 +90,7 @@ describe('Kael service scope intake', () => {
 
     const decision = runKaelAgenticPerformanceStep({ state })
     expect(decision.kind).toBe('needs_human_review')
-    expect(buildServiceScopeCard(state).canCreateProductionJob).toBe(false)
+    expect(buildServiceScopeCard(state).canCreateProductionJob).toBe(true)
   })
 
   it('requests upholstery photos for stains before showing scope', () => {

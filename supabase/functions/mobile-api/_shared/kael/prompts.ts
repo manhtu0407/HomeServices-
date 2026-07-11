@@ -1,8 +1,37 @@
 import { sanitizeForLLM } from "../../../_shared/domain.ts";
 import type { ComplexityLevel, ServiceType } from "./types.ts";
 import type { AIImageContent, AIMessage, ScopeChangeComputeInput, ScopeChangeReviewInput } from "./types.ts";
-import { KAEL_BUSINESS_GUARDRAILS, KAEL_RESPONSE_STYLE, PROBLEM_SLUGS_BY_SERVICE } from "./types.ts";
+import {
+  KAEL_BUSINESS_GUARDRAILS,
+  KAEL_RESPONSE_STYLE,
+  kaelResponseStyle,
+  PROBLEM_SLUGS_BY_SERVICE,
+} from "./types.ts";
+import {
+  getKaelPerformanceProfile,
+  KAEL_CASE_WORK_SERVICE_TYPES,
+} from "./performance-profiles.ts";
 import { scrubSensitiveForLLM, sanitizeVisionPhotoUrls } from "./utils.ts";
+
+const SUPPORTED_SERVICE_PROFILE_CONTRACT = KAEL_CASE_WORK_SERVICE_TYPES.map((serviceType) => {
+  const profile = getKaelPerformanceProfile(serviceType);
+  const safetyGates = profile?.safety_capability_gates.map((gate) =>
+    `${gate.id}[${gate.kind} -> ${gate.required_action}; signals: ${gate.trigger_signals.join(", ")}]`
+  ).join("; ") ?? "none";
+  const evidence = profile?.evidence_suggestions.map((item) =>
+    `${item.kind}: ${item.focus}`
+  ).join("; ") ?? "none";
+  return `${serviceType}
+- profile_id: ${profile?.id ?? "missing_profile"}
+- work_modes: ${profile?.supported_work_modes.join(", ") ?? "none"}
+- problem_slug: ${PROBLEM_SLUGS_BY_SERVICE[serviceType].join(", ")}
+- quote_drivers: ${profile?.quote_drivers.join(", ") ?? "none"}
+- safety_and_capability_gates: ${safetyGates}
+- evidence_suggestions: ${evidence}
+- worker_capabilities: ${profile?.worker_capabilities.join(", ") ?? "none"}`;
+}).join("\n");
+
+const SUPPORTED_SERVICE_ENUM = KAEL_CASE_WORK_SERVICE_TYPES.map((serviceType) => `"${serviceType}"`).join(" | ");
 
 export function buildScopeChangeEstimateMessages(
   input: ScopeChangeComputeInput,
@@ -22,8 +51,8 @@ after the worker reports a different on-site scope.
 The worker does NOT propose a price; you compute it independently using the
 original Kael analysis and the worker's reported scope description + reason.
 Do not include PII, full addresses, phone numbers, or raw worker/customer text.
-Prices must be VND integers reasonable for HCMC apartment electrical / plumbing
-/ cleaning work. Confidence below 0.4 if evidence is weak.
+Prices must be VND integers grounded in supplied evidence for the selected
+supported service. Confidence below 0.4 if evidence is weak.
 
 Respond ONLY with valid JSON matching this schema:
 {
@@ -62,18 +91,10 @@ export function buildIntentMessages(
 ${KAEL_RESPONSE_STYLE}
 
 You are an intent classifier for NestScout in Ho Chi Minh City.
-Supported services: electrical, plumbing, cleaning. Nothing else.
-If the request is not about electrical repair, plumbing repair, or home cleaning, classify as "unsupported".
-Allowed electrical problem_slug values: ${
-          PROBLEM_SLUGS_BY_SERVICE.electrical.join(", ")
-        }.
-Allowed plumbing problem_slug values: ${
-          PROBLEM_SLUGS_BY_SERVICE.plumbing.join(", ")
-        }.
-Allowed cleaning problem_slug values: ${
-          PROBLEM_SLUGS_BY_SERVICE.cleaning.join(", ")
-        }.
-If the exact problem is unclear, use other_electrical, other_plumbing, or other_cleaning for the chosen service.
+Supported service profiles:
+${SUPPORTED_SERVICE_PROFILE_CONTRACT}
+If the request is not about one of these six service profiles, classify as "unsupported".
+If the exact problem is unclear, use the selected service's other_* fallback problem slug.
 Respond only with valid JSON for: service_type, problem_slug, confidence, needs_clarification.`,
     },
     {
@@ -96,51 +117,59 @@ export function buildIntakeDiagnosisMessages(
   problemChips: string[],
   description: string,
   conversationContext?: string,
+  language: "vi" | "en" = "vi",
 ): AIMessage[] {
+  const responseLanguage = language === "en" ? "English" : "Vietnamese";
+  const clarificationExamples = language === "en"
+    ? 'Good: "Does the breaker trip again immediately after you reset it?" / "Is the leak at one faucet or several locations?"'
+    : 'Good: "Cầu dao có tự nhảy lại sau khi bạn bật lên không?" / "Rò rỉ ở một vòi hay nhiều vị trí?"';
   return [
     {
       role: "system",
       content: `${KAEL_BUSINESS_GUARDRAILS}
-${KAEL_RESPONSE_STYLE}
+${kaelResponseStyle(language)}
 
 You are Kael's intake-diagnosis step for NestScout in Ho Chi Minh City.
-Supported services: electrical repair, plumbing repair, home cleaning. Nothing else.
+Supported service profiles:
+${SUPPORTED_SERVICE_PROFILE_CONTRACT}
 Understand the customer's problem from the selected service, problem chips, their
 description, and the recent conversation, then decide if you can estimate reliably
 or must ask ONE focused clarification question first.
 
 Respond ONLY with valid JSON matching this schema:
 {
-  "service_type": "electrical" | "plumbing" | "cleaning" | "unsupported",
+  "service_type": ${SUPPORTED_SERVICE_ENUM} | "unsupported",
   "problem_slug": "string (snake_case problem category)",
   "confidence": number (0-1),
   "needs_clarification": boolean,
-  "missing_slots": string[] (subset of: location, symptom, severity, duration, photo, district),
-  "clarification_question_vi": string | null,
+  "missing_slots": string[] (use the exact selected profile quote_driver keys; generic location, symptom, severity, duration, photo, district are also allowed),
+  "profile_facts": { "exact_quote_driver_key": "short fact grounded in the conversation" },
+  "safety_signals": string[] (only exact trigger_signals from the selected profile),
+  "clarification_question": string | null,
   "scope_signal": "in_scope" | "out_of_scope" | "service_mismatch",
-  "suggested_service": "electrical" | "plumbing" | "cleaning" | null,
+  "suggested_service": ${SUPPORTED_SERVICE_ENUM} | null,
   "customer_sentiment": "neutral" | "detail_oriented" | "pressure"
 }
 
 Rules:
 - needs_clarification = true ONLY when the description is too vague/empty to estimate
   reliably AND a single question would meaningfully improve it.
-- clarification_question_vi: when needs_clarification, ONE short, SPECIFIC Vietnamese
+- clarification_question: when needs_clarification, ONE short, SPECIFIC ${responseLanguage}
   question about the single most important missing slot. Max ~140 chars. Reference the
-  customer's actual problem. NEVER a generic "vui lòng cung cấp thêm thông tin".
-  Good: "Cầu dao có tự nhảy lại sau khi bạn bật lên không?" / "Rò rỉ ở một vòi hay nhiều vị trí?"
-  When needs_clarification is false, set clarification_question_vi to null.
-- missing_slots: list only genuinely missing context; empty array when enough is known.
-- scope_signal: "out_of_scope" if not electrical/plumbing/cleaning at all;
-  "service_mismatch" if it clearly belongs to a different one of the three than selected
+  customer's actual problem. NEVER use a generic request for more information.
+  ${clarificationExamples}
+  When needs_clarification is false, set clarification_question to null.
+- missing_slots: list only genuinely missing context using exact keys from the selected profile; empty array when enough is known.
+- profile_facts: include only quote-driver facts explicitly supported by the customer text, chips, media analysis, or recent conversation. Never invent a value. Every selected-profile quote_driver must have a grounded value before needs_clarification can be false.
+- safety_signals: emit every selected-profile trigger_signal supported by the current or recent customer evidence; otherwise return an empty array.
+- scope_signal: "out_of_scope" if not one of the six supported services at all;
+  "service_mismatch" if it clearly belongs to a different supported service than selected
   (set suggested_service); otherwise "in_scope".
 - customer_sentiment: "pressure" if pushy/aggressive/discount-threat, "detail_oriented" if
   asking for breakdowns/credentials/specifics, else "neutral".
 - Do not re-ask anything already answered earlier in the conversation.
 
-Allowed electrical problem_slug values: ${PROBLEM_SLUGS_BY_SERVICE.electrical.join(", ")}.
-Allowed plumbing problem_slug values: ${PROBLEM_SLUGS_BY_SERVICE.plumbing.join(", ")}.
-Allowed cleaning problem_slug values: ${PROBLEM_SLUGS_BY_SERVICE.cleaning.join(", ")}.`,
+Use only the problem_slug values in the supported service profile contract above.`,
     },
     {
       role: "user",
@@ -155,7 +184,11 @@ export function buildVisionMessages(
   description: string,
   intentContext: string,
   photoInputs: string[] | AIImageContent[] = [],
+  language: "vi" | "en" = "vi",
 ): AIMessage[] {
+  const responseLanguage = language === "en"
+    ? "natural English"
+    : "natural Vietnamese with full diacritics";
   const textContent =
     `Intent context: ${intentContext}\nCustomer description: ${description}`;
   const imageBlocks: AIImageContent[] = photoInputs.every((item) =>
@@ -173,11 +206,11 @@ export function buildVisionMessages(
     {
       role: "system",
       content: `${KAEL_BUSINESS_GUARDRAILS}
-${KAEL_RESPONSE_STYLE}
+${kaelResponseStyle(language)}
 
-Analyze a Ho Chi Minh City apartment electrical, plumbing, or cleaning issue.
+Analyze evidence for the selected NestScout six-service apartment case.
 Respond only with valid JSON: problem_identified, severity_indicators, complexity_hint.
-problem_identified must be natural Vietnamese with full diacritics. complexity_hint is small, medium, or large.`,
+problem_identified and severity_indicators must be ${responseLanguage}. complexity_hint is small, medium, or large.`,
     },
     {
       role: "user",
@@ -202,7 +235,7 @@ export function buildPricingMessages(
         `${KAEL_BUSINESS_GUARDRAILS}
 ${KAEL_RESPONSE_STYLE}
 
-Research current market prices for HCMC apartment electrical repair, plumbing repair, or home cleaning.
+Research current market prices for the selected NestScout six-service HCMC apartment case.
 Respond only with valid JSON: market_range_min, market_range_max, confidence, sources_summary.
 Prices must be VND integers. If weak evidence, use conservative estimates with confidence below 0.5.`,
     },

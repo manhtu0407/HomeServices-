@@ -12,8 +12,9 @@ Frontend and backend must share these state machines. UI states must not invent 
 draft
 -> analyzing
 -> estimate_ready
--> awaiting_customer_confirm (legacy/audit compatibility; UI treats as Kael orchestration)
+-> awaiting_customer_confirm
 -> broadcasting
+-> worker_candidate_pending
 -> worker_matched
 -> worker_on_way
 -> arrived
@@ -34,9 +35,11 @@ Hard transition rules:
 Rules
 -
 |- draft cannot broadcast
-|- matching/broadcast cannot start without validated KaelAutonomyDecision
-|- scope_change_pending blocks changed work
-|- completed_by_worker cannot become paid before A12 completion/payment decision
+|- matching/broadcast cannot start without explicit customer offer confirmation and a validated KaelAutonomyDecision
+|- worker acceptance creates a candidate; it cannot become worker_matched, receive exact address, or go on the way before customer candidate confirmation
+|- scope_change_pending blocks changed work until the customer explicitly confirms the validated Kael proposal; rejection resumes the previously agreed status and scope
+|- completed_by_worker cannot enter payment_pending before explicit customer completion confirmation and the validated A12 completion decision
+|- payment_pending cannot become paid from client assertion or an unavailable rail; require explicit pay action and verified result/callback
 |- cancelled jobs cannot resume without new job or explicit reschedule flow
 ```
 
@@ -51,6 +54,20 @@ pending
 -> reassigned
 -> cancelled
 ```
+
+An accepted broadcast creates a `job_worker_candidates` proposal and moves the job to `worker_candidate_pending`; it does not set `jobs.worker_id` or finalize the match.
+
+### Worker Candidate Status
+
+```text
+proposed
+-> customer_confirmed
+-> customer_declined
+-> expired
+-> withdrawn
+```
+
+Only `customer_confirmed` may set the final worker and move the job to `worker_matched`. Other terminal candidate outcomes return the job to the matching policy without exposing the exact address.
 
 ### Scope Change Status
 

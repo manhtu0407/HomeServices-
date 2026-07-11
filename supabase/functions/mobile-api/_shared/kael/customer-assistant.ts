@@ -29,12 +29,14 @@ import { maxTokensForPurpose } from "./routing.config.ts";
 import { guardOutput } from "./output-gateway.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "./system-prompt.ts";
 import { buildRegisterHint, detectRegionalRegister } from "./regional-register.ts";
+import { getKaelPerformanceProfile } from "./performance-profiles.ts";
 import {
   buildNoProviderTrace,
   buildProviderAttemptTrace,
   type KaelSafeTraceEvent,
 } from "./trace.ts";
 import { scrubSensitiveForLLM } from "./utils.ts";
+import type { KaelSpendGate, SpendGateClient } from "./spend-gate.ts";
 
 type AssistantClient = Parameters<typeof retrieveKaelKnowledgeContextIfEnabled>[0];
 
@@ -53,6 +55,7 @@ export type CustomerAssistantJobContext = {
 };
 
 export type CustomerAssistantInput = {
+  readonly actorId?: string | null;
   readonly message: string;
   readonly language?: KaelPromptLanguage;
   readonly surface?: CustomerAssistantSurface;
@@ -107,9 +110,9 @@ const customerAssistantResponseSchema = z.preprocess(normalizeAssistantPayload, 
 }).strip());
 
 const FALLBACK_VI =
-  "Kael có thể giải thích trong phạm vi NestScout: sửa điện, sửa nước và dọn dẹp căn hộ tại TP.HCM. Nếu câu hỏi liên quan đến công việc đang chạy, hãy mở hồ sơ công việc để Kael đọc đúng ngữ cảnh.";
+  "Kael có thể giải thích trong phạm vi sáu dịch vụ nhà ở NestScout tại TP.HCM. Nếu câu hỏi liên quan đến công việc đang chạy, hãy mở hồ sơ công việc để Kael đọc đúng ngữ cảnh.";
 const FALLBACK_EN =
-  "Kael can help within NestScout's scope: electrical repair, plumbing repair, and apartment cleaning in HCMC. If this is about an active job, open that job so Kael can use the right context.";
+  "Kael can help with NestScout's six HCMC home-service categories. If this is about an active job, open that job so Kael can use the right context.";
 const LEGAL_NOTE_VI =
   "Kael chỉ cung cấp nhận biết an toàn/pháp lý chung, không thay thế tư vấn luật sư.";
 const LEGAL_NOTE_EN =
@@ -137,6 +140,7 @@ export async function runCustomerAssistant(
     topicSource: "deterministic_rule",
     boundarySignal: hasKaelForbiddenTopicBoundarySignal(topic, cleanQuestion),
     jobId: input.job?.id ?? null,
+    language,
   }, input.client ?? undefined);
 
   if (!permission.allowed) {
@@ -165,6 +169,10 @@ export async function runCustomerAssistant(
     trace.push(buildCustomerAssistantNoProviderTrace(surface));
     return fallbackAnswer(fallbackText(language), language, topic, "fallback", true, trace);
   }
+  const spendGate: KaelSpendGate = {
+    client: input.client as SpendGateClient,
+    actorId: input.actorId ?? null,
+  };
   for (const route of routes) {
     const result = await callStructuredAI(
       buildAssistantRequest({
@@ -180,7 +188,7 @@ export async function runCustomerAssistant(
       }),
       customerAssistantResponseSchema,
       input.secrets,
-      undefined,
+      spendGate,
       input.callAI,
     );
     if (!result.success) {
@@ -227,9 +235,12 @@ export async function runCustomerAssistant(
     }));
     return {
       answer: checked.text,
-      safety_notes: normalizeSafetyNotes(result.data.safety_notes, language, topic),
+      safety_notes: deterministicSafetyNotes(language, topic),
       citations: normalizeCitations([
         ...result.data.citations,
+        ...(knowledge?.semanticCitations ?? []),
+        "NestScout platform scope",
+      ], [
         ...(knowledge?.semanticCitations ?? []),
         "NestScout platform scope",
       ]),
@@ -255,7 +266,7 @@ function buildAssistantRequest(input: {
   registerHint: string | null;
 }): AIRequest {
   const contextSummary = JSON.stringify({
-    platform_scope: "NestScout supports HCMC apartment electrical repair, plumbing repair, and home cleaning only.",
+    platform_scope: "NestScout supports six HCMC apartment services: electrical, plumbing, cleaning, HVAC, upholstery care, and minor handyman work.",
     surface: input.surface,
     topic: input.topic,
     service_type: input.serviceType,
@@ -300,7 +311,6 @@ function buildAssistantRequest(input: {
 function sanitizeAssistantJobContext(job: CustomerAssistantJobContext | null) {
   if (!job) return null;
   return {
-    id: job.id,
     status: job.status ?? null,
     service_type: job.service_type ?? null,
     district: job.address_district ?? null,
@@ -397,7 +407,7 @@ function fallbackAnswer(
 ): CustomerAssistantAnswer {
   return {
     answer,
-    safety_notes: normalizeSafetyNotes([], language, topic),
+    safety_notes: deterministicSafetyNotes(language, topic),
     citations: ["NestScout platform scope"],
     suggested_actions: normalizeActions([], "customer_normal", topic),
     boundary,
@@ -466,16 +476,10 @@ function fallbackText(language: KaelPromptLanguage) {
   return language === "en" ? FALLBACK_EN : FALLBACK_VI;
 }
 
-function normalizeSafetyNotes(
-  notes: readonly string[],
+function deterministicSafetyNotes(
   language: KaelPromptLanguage,
   topic: KaelTopic,
 ) {
-  const safe = notes
-    .map((note) => scrubSensitiveForLLM(note).slice(0, 180).trim())
-    .filter(Boolean)
-    .slice(0, 3);
-  if (safe.length > 0) return safe;
   if (topic === "legal_safety_awareness" || topic === "legal_advice") {
     return [language === "en" ? LEGAL_NOTE_EN : LEGAL_NOTE_VI];
   }
@@ -484,10 +488,16 @@ function normalizeSafetyNotes(
     : ["Hãy dùng luồng trong app NestScout cho đặt lịch, phạm vi, thanh toán và hỗ trợ."];
 }
 
-function normalizeCitations(values: readonly string[]) {
+function normalizeCitations(
+  values: readonly string[],
+  allowlistedValues: readonly string[],
+) {
+  const allowlist = new Set(allowlistedValues
+    .map((value) => assistantSafeText(value, 180))
+    .filter(Boolean));
   return Array.from(new Set(values
-    .map((value) => scrubSensitiveForLLM(value).slice(0, 180).trim())
-    .filter(Boolean)))
+    .map((value) => assistantSafeText(value, 180))
+    .filter((value) => Boolean(value) && allowlist.has(value))))
     .slice(0, 5);
 }
 
@@ -508,17 +518,25 @@ function inferAssistantServiceType(
   text: string,
   job?: CustomerAssistantJobContext | null,
 ): ServiceType | null {
-  if (job?.service_type === "electrical" || job?.service_type === "plumbing" || job?.service_type === "cleaning") {
-    return job.service_type;
-  }
+  const jobProfile = getKaelPerformanceProfile(job?.service_type ?? "");
+  if (jobProfile) return jobProfile.service_type;
   const normalized = normalizeText(text);
-  if (/\b(dien|o cam|o dien|cong tac|cau dao|aptomat|mat dien|den|chap)\b/.test(normalized)) {
+  if (/\b(dieu hoa|may lanh|dan lanh|dan nong|khong mat|lam lanh yeu|ma loi|air conditioner|air conditioning|hvac|ac unit|not cooling)\b/.test(normalized)) {
+    return "hvac";
+  }
+  if (/\b(sofa|nem|rem|tham|vai boc|giat sofa|giat nem|vet ban|mui hoi|am moc|upholstery|mattress|curtain|carpet|fabric stain)\b/.test(normalized)) {
+    return "upholstery";
+  }
+  if (/\b(khoan tuong|lap ke|lap thanh rem|ban le|tay nam|treo tv|lap tv|sua vat|handyman|mount shelf|hang tv|door hinge|cabinet handle)\b/.test(normalized)) {
+    return "handyman";
+  }
+  if (/\b(dien|o cam|o dien|cong tac|cau dao|aptomat|mat dien|den|chap|electrical|outlet|socket|circuit breaker|power outage|light switch)\b/.test(normalized)) {
     return "electrical";
   }
-  if (/\b(nuoc|ong|voi|lavabo|bon|toilet|ro|ri|tac|ap nuoc)\b/.test(normalized)) {
+  if (/\b(nuoc|ong|voi|lavabo|bon|toilet|ro|ri|tac|ap nuoc|plumbing|pipe|faucet|leak|clog|water pressure)\b/.test(normalized)) {
     return "plumbing";
   }
-  if (/\b(don dep|ve sinh|lau don|bep|phong tam|cua kinh|sau sua chua|rac|bui)\b/.test(normalized)) {
+  if (/\b(don dep|ve sinh|lau don|bep|phong tam|cua kinh|sau sua chua|rac|bui|cleaning|housekeeping|kitchen|bathroom|dust|trash)\b/.test(normalized)) {
     return "cleaning";
   }
   return null;
@@ -526,16 +544,16 @@ function inferAssistantServiceType(
 
 function classifyAssistantTopic(text: string, serviceType: ServiceType | null): KaelTopic {
   const normalized = normalizeText(text);
-  if (/\b(may lanh|dieu hoa|son nha|khoa cua|chuyen nha|diet con trung|internet|camera|tu lanh)\b/.test(normalized)) {
+  if (/\b(son nha|khoa cua|chuyen nha|diet con trung|internet|camera|tu lanh|house painting|locksmith|moving service|pest control|refrigerator)\b/.test(normalized)) {
     return "out_of_scope_services_anything";
   }
-  if (/\b(khoi kien|luat su|toa an|don kien|hop dong phap ly)\b/.test(normalized)) {
+  if (/\b(khoi kien|luat su|toa an|don kien|hop dong phap ly|legal advice|lawyer|attorney|sue|lawsuit|court filing)\b/.test(normalized)) {
     return "legal_advice";
   }
-  if (/\b(luat|phap ly|trach nhiem|bao hanh|boi thuong|hoa don|bien ban)\b/.test(normalized)) {
+  if (/\b(luat|phap ly|trach nhiem|bao hanh|boi thuong|hoa don|bien ban|legal awareness|warranty|liability|compensation|invoice)\b/.test(normalized)) {
     return "legal_safety_awareness";
   }
-  if (/\b(gia|bao nhieu|uoc tinh|phi|tien cong|bao gia)\b/.test(normalized)) {
+  if (/\b(gia|bao nhieu|uoc tinh|phi|tien cong|bao gia|price|pricing|estimate|cost|fee|quote)\b/.test(normalized)) {
     return "service_pricing_general_info";
   }
   if (/\b(tho|worker|xac minh|danh gia|tay nghe|chap nhan|huy viec)\b/.test(normalized)) {
@@ -544,6 +562,9 @@ function classifyAssistantTopic(text: string, serviceType: ServiceType | null): 
   if (serviceType === "electrical") return "electrical_repair";
   if (serviceType === "plumbing") return "plumbing_repair";
   if (serviceType === "cleaning") return "home_cleaning";
+  if (serviceType === "hvac") return "hvac_service";
+  if (serviceType === "upholstery") return "upholstery_care";
+  if (serviceType === "handyman") return "handyman_service";
   return "support_redirect";
 }
 

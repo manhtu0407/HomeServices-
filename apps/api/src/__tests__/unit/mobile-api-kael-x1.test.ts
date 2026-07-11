@@ -38,8 +38,8 @@ describe('Kael X1 boundary guard — detectPromptInjection', () => {
 
 describe('Kael X1 boundary guard — detectOutOfScope', () => {
   it.each([
-    'Máy lạnh nhà tôi không lạnh nữa, gọi thợ giúp',
     'Tủ lạnh không chạy, cần kiểm tra gấp',
+    'Tivi không lên nguồn, cần sửa gấp',
     'Máy giặt báo lỗi E03 không vắt',
     'WiFi nhà mất kết nối hoài, gọi internet',
     'Cho tôi công thức nấu phở chuẩn Hà Nội',
@@ -56,6 +56,9 @@ describe('Kael X1 boundary guard — detectOutOfScope', () => {
     'Đèn phòng khách chập chờn cần kiểm tra',
     'Vòi nước nhà tắm rò rỉ',
     'Vệ sinh kỹ phòng bếp dầu mỡ',
+    'Máy lạnh nhà tôi không lạnh nữa, gọi thợ giúp',
+    'Sofa có vết bẩn và mùi ẩm mốc',
+    'Cần khoan tường lắp kệ và thanh rèm',
   ])('keeps in-scope message clean: "%s"', (input) => {
     const result = detectOutOfScope(input)
     // Note: the first case mentions "máy giặt" — that still flags out-of-scope
@@ -112,17 +115,16 @@ describe('Kael X1 boundary guard — detectServiceMismatch', () => {
 })
 
 describe('Kael X1 boundary guard — evaluateMessageBoundary acceptance cases', () => {
-  it('F-18: AC repair message + service_type=electrical → decline out_of_scope', () => {
+  it('F-18: HVAC message + service_type=electrical → decline service_mismatch', () => {
     const result = evaluateMessageBoundary(
       'Máy lạnh nhà tôi chạy yếu, không mát, cần thợ sửa máy lạnh gấp',
       'electrical',
     )
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.reason).toBe('out_of_scope')
-      expect(result.declineText).toContain('sửa điện')
-      expect(result.declineText).toContain('sửa nước')
-      expect(result.declineText).toContain('vệ sinh')
+      expect(result.reason).toBe('service_mismatch')
+      expect(result.suggestedService).toBe('hvac')
+      expect(result.declineText).toContain('điều hòa')
       expect(result.detectedSignals.length).toBeGreaterThan(0)
     }
   })

@@ -4,7 +4,7 @@
 
 # NestScout
 
-NestScout is a mobile-first app that helps **Ho Chi Minh City apartment residents** book trustworthy **electrical repair, plumbing repair, and home cleaning** — with fair, transparent pricing. **Kael**, the in-app AI assistant, handles intake, photo-based diagnosis, market-price estimates, worker briefing, and workflow orchestration.
+NestScout is a mobile-first app that helps **Ho Chi Minh City apartment residents** book six trustworthy home-service categories: **electrical repair, plumbing repair, home cleaning, air conditioning/indoor air service, upholstery care, and minor repair/installation** — with fair, transparent pricing. **Kael**, the in-app AI assistant, handles multimodal intake, case analysis, evidence-backed estimates, worker briefing, and phase-gated workflow orchestration.
 
 The product is **pre-revenue**, rebuilding toward its first real transaction. This README is a fast on-ramp for developers and future co-founders; it intentionally stays an introduction only — the operating rules live in `governance/` (see [Working in this repo](#working-in-this-repo)).
 
@@ -77,6 +77,6 @@ This repository is built largely by AI coding agents (Claude Code, Codex) acting
 ## Conventions
 
 - User-facing copy is **Vietnamese-first** (English only via the in-app VI/EN switch); code, comments, and docs are English.
-- Supported services are **only** electrical, plumbing, and cleaning — no scope creep, no fake workers/prices/ratings.
+- Supported services are **exactly six**: electrical, plumbing, cleaning, HVAC/indoor air, upholstery care, and handyman/minor installation — no scope creep, no fake workers/prices/ratings.
 - Every change is gated: tests pass, type-check passes, review passes, with honest evidence — no false "done".
 - React Native (`apps/mobile`) is the primary product surface; Next.js (`apps/api`) is reference/admin/support only unless explicitly assigned.

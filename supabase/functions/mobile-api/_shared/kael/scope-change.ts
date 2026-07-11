@@ -18,6 +18,11 @@ export {
 } from "./scope-risk.ts";
 import { timed } from "./utils.ts";
 
+type ScopeChangeEstimateFallback = Extract<
+  ScopeChangeKaelEstimate,
+  { fallback_used: true }
+>;
+
 export const KAEL_PRICE_DISCLAIMER_V3 = PRICE_DISCLAIMER;
 const SCOPE_CHANGE_POLICY_ID = "kael.autonomy.v2.scope_change_review";
 
@@ -338,24 +343,14 @@ function scopeChangeEscalationThreshold(): number | null {
 
 function buildScopeChangeEstimateFallback(
   input: ScopeChangeComputeInput,
-): ScopeChangeKaelEstimate {
-  const originalMax = input.originalPriceMax ?? input.originalPriceMin ?? 0;
-  const fallbackMin = Math.max(
-    1,
-    Math.round((input.originalPriceMin ?? originalMax) * 1.2),
-  );
-  const fallbackMax = Math.max(
-    fallbackMin,
-    Math.round(originalMax * 1.5) || fallbackMin,
-  );
+): ScopeChangeEstimateFallback {
   return {
     schema_version: "scope_change_kael_review.v1",
     prompt_version: "scope-change-estimate.2026-05-23.v1",
     version: "scope-change-estimate.2026-05-23.v1",
-    complexity_assessment: "medium",
-    price_min: fallbackMin,
-    price_max: fallbackMax,
-    confidence: 0.3,
+    outcome: "inspection_required",
+    requires_human_inspection: true,
+    confidence: 0,
     problem_summary:
       "Kael chưa thể tính lại chính xác — vui lòng kiểm tra mô tả từ thợ.",
     advisory:
@@ -364,7 +359,7 @@ function buildScopeChangeEstimateFallback(
     provider: null,
     model: null,
     fallback_used: true,
-    failure_reason: "FALLBACK_ESTIMATE",
+    failure_reason: "SCOPE_ESTIMATE_UNAVAILABLE",
     computed_at: new Date().toISOString(),
     cost_usd: null,
     latency_ms: null,
@@ -385,17 +380,8 @@ function scopeChangeInputSummary(input: ScopeChangeComputeInput) {
 function buildScopeChangeFallbackReview(
   input: ScopeChangeReviewInput,
 ): ScopeChangeKaelReview {
-  const originalMax = input.originalPriceMax ?? input.originalPriceMin ?? 0;
-  const requestedMax = input.requestedPriceMax;
-  const increaseRatio = originalMax > 0 ? requestedMax / originalMax : 1;
-  const priceAssessment: ScopeChangeReviewBody["price_assessment"] =
-    increaseRatio >= 1.8
-      ? "high_risk"
-      : increaseRatio >= 1.25
-      ? "needs_review"
-      : "reasonable";
-  const recommendation: ScopeChangeReviewBody["recommendation"] =
-    priceAssessment === "high_risk" ? "ask_worker" : "approve";
+  const priceAssessment: ScopeChangeReviewBody["price_assessment"] = "needs_review";
+  const recommendation: ScopeChangeReviewBody["recommendation"] = "ask_worker";
   return {
     version: "scope-change-review.2026-05-20.v1",
     recommendation,
@@ -403,8 +389,8 @@ function buildScopeChangeFallbackReview(
     problem_summary:
       "Kael đã ghi nhận phạm vi thợ báo phát sinh tại hiện trường và sẽ quyết định dựa trên mô tả, lý do, mức giá mới, cùng bằng chứng liên quan.",
     advisory: null,
-    complexity_assessment: priceAssessment === "reasonable" ? "medium" : "large",
-    confidence: priceAssessment === "reasonable" ? 0.55 : 0.35,
+    complexity_assessment: input.originalComplexity ?? "medium",
+    confidence: 0,
     provider: null,
     model: null,
     fallback_used: true,

@@ -1,11 +1,22 @@
 import { z } from "zod";
-
-export const SERVICE_TYPES = Object.freeze([
-  "electrical",
-  "plumbing",
-  "cleaning",
-] as const);
-export type ServiceType = (typeof SERVICE_TYPES)[number];
+import {
+  getKaelPerformanceProfile,
+  KAEL_PERFORMANCE_PROFILE_IDS,
+} from "../mobile-api/_shared/kael/performance-profiles.ts";
+import { kaelCaseEvidenceSchema } from "../mobile-api/_shared/kael/artifact-contract.ts";
+import { SERVICE_TYPES, type ServiceType } from "./service-taxonomy.ts";
+import { kaelChatMediaRefSchema } from "./kael-chat-media-contract.ts";
+export { PROBLEM_CHIPS, SERVICE_TYPES } from "./service-taxonomy.ts";
+export type { ServiceType } from "./service-taxonomy.ts";
+export { buildJobDisplayCode, buildWorkerDisplayCode } from "./display-codes.ts";
+export {
+  kaelChatMediaRevokeSchema,
+  kaelChatMediaUploadSchema,
+} from "./kael-chat-media-contract.ts";
+export type {
+  EdgeKaelChatMediaRevokeInput,
+  EdgeKaelChatMediaUploadInput,
+} from "./kael-chat-media-contract.ts";
 
 export const JOB_STATUSES = Object.freeze(
   [
@@ -14,6 +25,7 @@ export const JOB_STATUSES = Object.freeze(
     "estimate_ready",
     "awaiting_customer_confirm",
     "broadcasting",
+    "worker_candidate_pending",
     "worker_matched",
     "worker_on_way",
     "arrived",
@@ -129,65 +141,6 @@ export type LearningRuleStatus = (typeof LEARNING_RULE_STATUSES)[number];
 export const PLATFORM_FEE_CUSTOMER = 0.075;
 export const PLATFORM_FEE_WORKER = 0.10;
 
-export function buildJobDisplayCode(input: {
-  readonly jobId: string;
-  readonly customerId?: string | null;
-  readonly createdAt?: string | null;
-}): string {
-  const year = displayCodeYear(input.createdAt);
-  const seed = `${input.jobId}:${input.customerId ?? ""}:${input.createdAt ?? ""}`;
-  return `#MOH-${year}${displayCodeHash(seed, 4)}`;
-}
-
-export function buildWorkerDisplayCode(workerId: string): string {
-  return `#CC${displayCodeHash(workerId, 4)}`;
-}
-
-function displayCodeYear(createdAt?: string | null): string {
-  const parsed = createdAt ? new Date(createdAt) : null;
-  const date = parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date();
-  return String(date.getUTCFullYear() % 100).padStart(2, "0");
-}
-
-function displayCodeHash(seed: string, length: number): string {
-  let hash = 2166136261;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash ^= seed.charCodeAt(index);
-    hash = Math.imul(hash, 16777619) >>> 0;
-  }
-  return hash.toString(36).toUpperCase().padStart(length, "0").slice(-length);
-}
-
-export const PROBLEM_CHIPS = Object.freeze({
-  electrical: Object.freeze([
-    "Mất điện một phòng",
-    "Mất điện toàn căn",
-    "Ổ cắm/công tắc hỏng",
-    "Cầu dao trip",
-    "Đèn chập chờn",
-    "Lắp thêm thiết bị",
-    "Vấn đề khác",
-  ] as const),
-  plumbing: Object.freeze([
-    "Ống rò rỉ",
-    "Tắc cống/bồn",
-    "Vòi hỏng",
-    "Toilet không xả",
-    "Áp nước yếu",
-    "Lắp/thay thiết bị",
-    "Vấn đề khác",
-  ] as const),
-  cleaning: Object.freeze([
-    "Dọn dẹp nhà",
-    "Vệ sinh bếp",
-    "Vệ sinh phòng tắm",
-    "Tổng vệ sinh",
-    "Dọn sau sửa chữa",
-    "Vệ sinh cửa kính",
-    "Vấn đề khác",
-  ] as const),
-} as const);
-
 export const REVIEW_TAGS = Object.freeze([
   "Đúng giờ",
   "Chuyên nghiệp",
@@ -282,7 +235,22 @@ export function normalizeServiceAreaDistrict(
   return canonical as Exclude<DistrictSlug, "hcmc_all">;
 }
 
-export const serviceTypeSchema = z.enum(["electrical", "plumbing", "cleaning"]);
+export const serviceTypeSchema = z.enum(SERVICE_TYPES);
+const kaelChatEvidenceItemsSchema = z.array(kaelCaseEvidenceSchema).max(20).optional();
+const kaelChatScheduleWindowSchema = z.object({
+  date: z.string().refine(isRealCalendarDate, "date must be YYYY-MM-DD"),
+  start: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "start must be HH:mm"),
+  end: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "end must be HH:mm"),
+  time_zone: z.literal("Asia/Ho_Chi_Minh"),
+}).strict().superRefine((value, ctx) => {
+  if (value.end <= value.start) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "schedule window end must be after start",
+      path: ["end"],
+    });
+  }
+});
 
 export const apartmentAccessProfileSchema = z.object({
   entry_method: z.string().max(300).optional(),
@@ -311,29 +279,34 @@ export const jobCreateSchema = z.object({
 
 export const kaelChatCreateSchema = z.object({
   service_type: serviceTypeSchema,
+  profile_id: z.enum(KAEL_PERFORMANCE_PROFILE_IDS).optional(),
   session_id: z.string().uuid().optional(),
   message: z.string().min(1).max(5000).optional(),
   problem_chips: z.array(z.string().max(100)).max(10).default([]),
   photo_urls: z.array(z.string().url()).max(5).default([]),
+  evidence_items: kaelChatEvidenceItemsSchema,
   defer_analysis: z.boolean().optional(),
+  language: z.enum(["vi", "en"]).optional(),
   address_label: z.string().max(200).optional(),
   address_district: z.string().max(100).optional(),
   apartment_access_profile: apartmentAccessProfileSchema.optional(),
+  scheduled_at: z.string().datetime().optional(),
+  schedule_window: kaelChatScheduleWindowSchema.optional(),
   // Optional UUID for idempotent session
   // creation. Same semantics as jobCreateSchema.client_request_id.
   client_request_id: z.string().uuid().optional(),
+}).superRefine((value, ctx) => {
+  if (
+    value.profile_id &&
+    getKaelPerformanceProfile(value.service_type)?.id !== value.profile_id
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "profile_id must match service_type",
+      path: ["profile_id"],
+    });
+  }
 });
-
-const kaelChatMediaRefSchema = z.string().regex(
-  /^supabase:\/\/kael-chat-media\/[^/\s?#]+\/kael-chat\/(?!.*(?:\.\.|\/\/))[^\s?#]+$/i,
-  "Kael chat media_refs must be Supabase kael-chat-media storage refs",
-);
-
-export const kaelChatMediaUploadSchema = z.object({
-  file_name: z.string().trim().min(1).max(180).optional(),
-  mime_type: z.string().trim().min(3).max(120),
-  file_size_bytes: z.number().int().positive().max(50 * 1024 * 1024).optional(),
-}).strict();
 
 export const kaelChatEvidenceSchema = z.object({
   decision: z.enum(["confirmed", "skipped"]),
@@ -341,9 +314,15 @@ export const kaelChatEvidenceSchema = z.object({
   problem_chips: z.array(z.string().max(100)).max(10).optional(),
   photo_urls: z.array(z.string().url()).max(5).default([]),
   media_refs: z.array(kaelChatMediaRefSchema).max(5).default([]),
+  evidence_items: kaelChatEvidenceItemsSchema,
+  language: z.enum(["vi", "en"]).optional(),
   skip_reason: z.string().trim().max(500).optional(),
 }).superRefine((value, ctx) => {
-  if (value.decision === "confirmed" && value.media_refs.length === 0) {
+  if (
+    value.decision === "confirmed" &&
+    value.media_refs.length === 0 &&
+    (value.evidence_items?.length ?? 0) === 0
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Evidence confirmation requires at least one durable media ref.",
@@ -356,9 +335,13 @@ export const kaelChatTurnSchema = z.object({
   message: z.string().min(1).max(5000),
   problem_chips: z.array(z.string().max(100)).max(10).optional(),
   photo_urls: z.array(z.string().url()).max(5).default([]),
+  evidence_items: kaelChatEvidenceItemsSchema,
+  language: z.enum(["vi", "en"]).optional(),
   address_label: z.string().max(200).optional(),
   address_district: z.string().max(100).optional(),
   apartment_access_profile: apartmentAccessProfileSchema.optional(),
+  scheduled_at: z.string().datetime().optional(),
+  schedule_window: kaelChatScheduleWindowSchema.optional(),
 });
 
 export const kaelAssistantSchema = z.object({
@@ -366,7 +349,15 @@ export const kaelAssistantSchema = z.object({
   language: z.enum(["vi", "en"]).default("vi"),
   job_id: z.string().uuid().optional(),
   surface: z.enum(["customer_normal", "customer_case"]).default("customer_normal"),
-}).strict();
+}).strict().superRefine((input, ctx) => {
+  if (input.surface === "customer_case" && !input.job_id) {
+    ctx.addIssue({
+      code: "custom",
+      message: "job_id is required for customer_case",
+      path: ["job_id"],
+    });
+  }
+});
 
 export const kaelChatProgressSchema = z.object({
   current_stage: z.enum([
@@ -523,7 +514,7 @@ export const workerRegisterSchema = z.object({
       "date_of_birth must be a real calendar date in YYYY-MM-DD",
     ),
   gender: z.enum(["male", "female", "other"]).optional(),
-  service_types: z.array(serviceTypeSchema).min(1).max(3),
+  service_types: z.array(serviceTypeSchema).min(1).max(SERVICE_TYPES.length),
   years_experience: z.number().int().min(0).max(60),
   // Reject inputs that don't normalize to known HCMC district slugs. Districts
   // were `z.string().min(1).max(50)` — any 1..50 char string — which let
@@ -560,7 +551,10 @@ export const availabilityToggleSchema = z.object({
 export const workerScopeChangeSchema = z.object({
   new_description: z.string().min(10).max(2000),
   reason: z.string().min(10).max(1000),
-  photo_urls: z.array(z.string().url()).max(5).default([]),
+  photo_urls: z.array(z.string().regex(
+    /^supabase:\/\/job-media\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/(?:before|kael_reference|scope_change_evidence)\/[A-Za-z0-9._-]+$/i,
+    "Scope evidence must be an attached private job-media ref",
+  )).max(5).default([]),
 });
 
 export const kaelWorkerClarifySchema = z.object({
@@ -703,7 +697,6 @@ export type ApartmentAccessProfileInput = z.infer<
   typeof apartmentAccessProfileSchema
 >;
 export type KaelChatCreateInput = z.infer<typeof kaelChatCreateSchema>;
-export type KaelChatMediaUploadInput = z.infer<typeof kaelChatMediaUploadSchema>;
 export type KaelChatEvidenceInput = z.infer<typeof kaelChatEvidenceSchema>;
 export type KaelChatTurnInput = z.infer<typeof kaelChatTurnSchema>;
 export type KaelAssistantInput = z.infer<typeof kaelAssistantSchema>;

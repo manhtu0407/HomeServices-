@@ -28,21 +28,22 @@ Customer opens app
 |- signs in with current Supabase email/password auth in Phase 0
 |- phone OTP is a later production-auth upgrade after SMS provider setup
 |- creates apartment profile
-|- selects electrical/plumbing/cleaning
-|- chooses problem chips
-|- describes issue + uploads photos
-|- Kael analyzes
-|- Kael asks clarification if needed
-|- Kael shows price estimate
-|- Kael validates an autonomy decision
-|- system broadcasts job / starts matching
-|- worker accepts
+|- selects one of the six supported services
+|- submits Basic Intake: location + desired time + short description + optional chips/media
+|- Kael analyzes with the selected service profile
+|- Kael asks one focused question per turn until quote-ready
+|- Kael shows a structured diagnosis/scope and evidence-backed price estimate
+|- customer explicitly confirms the offer
+|- Kael validates the matching decision and starts worker search
+|- worker accepts as a candidate
+|- customer explicitly confirms the proposed worker
 |- customer tracks job + chats
 |- worker reports scope change if needed
-|- Kael decides scope change from policy/evidence, with appeal path
+|- Kael explains a scope change; customer explicitly confirms before changed work continues
 |- worker completes
-|- Kael confirms completion or opens dispute from evidence
-|- payment + review
+|- customer explicitly confirms completion or opens a dispute
+|- customer explicitly pays through an implemented rail
+|- review
 ```
 
 ### A0. Auth And Profile
@@ -94,7 +95,7 @@ Tests
 Purpose
 -
 |- show active address
-|- provide entry to electrical/plumbing/cleaning booking
+|- provide entry to all six supported service routes
 |- show active booking if any
 |- show recent jobs
 
@@ -107,70 +108,80 @@ UI
 |- electrical card
 |- plumbing card
 |- cleaning card
-|- no future-service cards unless Tu explicitly approves them for the current task
+|- HVAC and indoor air card
+|- upholstery care card
+|- minor repair/installation card
+|- no additional future-service cards unless Tu explicitly approves them for the current task
 |- active booking banner
 |- recent history
 |- bottom tabs: Home / Book / Kael / History / Profile
 
 Rules
 -
-|- unsupported services must not appear as selectable real services
+|- only the six supported services appear as selectable real services
 |- user-facing text must be Vietnamese
 ```
 
-### A2. Select Service And Problem
+### A2. Select Service And Start Basic Intake
 
 ```text
 Purpose
 -
-|- capture service type and problem category
+|- capture the service and a lightweight starting signal without diagnosing on the route
 
 User input
 -
-|- service_type: electrical, plumbing, or cleaning
-|- one or more problem chips
-|- other problem free text when needed
+|- service_type: electrical, plumbing, cleaning, hvac, upholstery, or handyman
+|- optional problem/detail chips
+|- optional short free text
 
 Backend dependency
 -
-|- service taxonomy
-|- price baseline categories
+|- six-service taxonomy
+|- service-to-performance-profile mapping
 
 Validation
 -
-|- service_type must be electrical, plumbing, or cleaning
+|- service_type must be one of the six supported identifiers
+|- chips must not become required static questionnaire fields
 |- unsupported service returns polite decline
 
 Events
 -
-|- service_problem_selected
+|- basic_intake_started
 ```
 
-### A3. Describe Problem
+### A3. Submit Basic Intake
 
 ```text
 Purpose
 -
-|- collect enough context for Kael analysis
+|- collect the minimum context needed to hand the case to Kael
 
 User input
 -
-|- required description
-|- up to 5 photos
-|- video up to 60 seconds later
-|- editable apartment address
+|- required location
+|- desired date/time or honest flexible-time state
+|- short description
+|- optional photos
+|- optional editable on-device voice transcript
+|- optional 1-3 locally extracted video frames
+|- optional original video stored privately for human review only, after explicit disclosure
 
 Backend dependency
 -
 |- draft job
-|- media upload
+|- private evidence upload
 |- Kael analysis request
 
 Validation
 -
-|- description cannot be empty
+|- location, desired-time intent, and short description must be usable
 |- media type/size validation
 |- sanitize input before DB/LLM
+|- raw audio must not leave the device; raw video must never be sent to an AI provider
+|- voice transcript remains editable before submit and is scrubbed for PII
+|- locally extracted video frames are validated and scrubbed before vision analysis
 
 Events
 -
@@ -183,13 +194,16 @@ Events
 ```text
 Purpose
 -
-|- ask only what is needed to improve estimate quality
+|- ask only what is needed to make the diagnosis/scope artifact quote-ready
 
 Behavior
 -
-|- ask 0-2 specific questions
+|- ask exactly one focused question per turn when information is missing
+|- continue across as many turns as needed; there is no fixed two-question cap
 |- never ask generic "please provide more info"
 |- skip if context is already enough
+|- stay in the analysis phase until quote readiness is validated
+|- accept new text, photos, editable voice transcript, or locally extracted video frames during analysis
 
 Examples
 -
@@ -207,13 +221,16 @@ Events
 ```text
 Purpose
 -
-|- show transparent estimated market price before booking
+|- show the structured diagnosis/scope and transparent estimated market price before matching
 
 Content
 -
 |- identified problem
+|- included/excluded scope
+|- evidence and unresolved assumptions
+|- safety/capability requirements when relevant
 |- complexity: small / medium / large
-|- price range
+|- price range only when supported by real baseline/market evidence
 |- confidence if useful
 |- one optional advisory only when justified
 |- required price disclaimer
@@ -228,19 +245,21 @@ Rules
 |- never show exact guaranteed price
 |- never show raw AI output
 |- always validate structured Kael output first
+|- if quote readiness or price evidence is missing, show an honest not-ready state and continue clarification
 ```
 
-### A6. Time Selection
+### A6. Desired Time (Basic Intake Field)
 
 ```text
 Purpose
 -
-|- future scheduling surface; current primary flow is on-demand
+|- capture the customer's real desired time without turning the route into a multi-step questionnaire
 
 Options
 -
 |- now
 |- scheduled date/time slot
+|- flexible time when supported by the backend contract
 
 Validation
 -
@@ -249,12 +268,12 @@ Validation
 |- default is now during early phase
 ```
 
-### A7. Kael Starts Worker Search
+### A7. Customer Confirms Offer; Kael Starts Worker Search
 
 ```text
 Purpose
 -
-|- validated Kael autonomy decision before broadcasting job
+|- collect explicit customer confirmation of the offer, then validate the server decision before broadcasting
 
 Summary shown
 -
@@ -268,11 +287,13 @@ Summary shown
 
 Hard rule
 -
+|- no matching before the customer confirms the current offer
 |- no job broadcast from raw AI output or client-side status writes
 |- broadcast requires `KaelAutonomyDecision(actor=kael_system, action=start_matching)`
 
 Events
 -
+|- customer_offer_confirmed
 |- kael_started_matching
 |- job_ready_for_broadcast
 ```
@@ -299,12 +320,12 @@ Events
 |- no_worker_found
 ```
 
-### A9. Worker Matched
+### A9. Proposed Worker Confirmation And Final Match
 
 ```text
 Purpose
 -
-|- show trust signals after worker accepts
+|- show trust signals after worker accepts as a candidate and let the customer confirm or decline the proposal
 
 Content
 -
@@ -312,14 +333,22 @@ Content
 |- profile photo if approved
 |- rating
 |- completed job count
-|- ETA
-|- chat button
 |- Kael note: worker received the brief
+|- explicit confirm/decline actions
 
 Rules
 -
-|- full worker info shown only after accept
+|- worker acceptance alone does not finalize assignment
+|- exact address, on-the-way state, and final assignment require customer confirmation of the candidate
+|- real ETA is revealed only after final match; never fabricate it on the candidate card
+|- a declined candidate returns to matching without fabricating another option
 |- do not expose unnecessary PII
+
+Events
+-
+|- worker_candidate_proposed
+|- customer_worker_candidate_confirmed
+|- customer_worker_candidate_declined
 ```
 
 ### A10. Active Job
@@ -365,21 +394,23 @@ UI
 |- old Kael estimate vs new Kael-computed estimate (computed from worker's reported scope)
 |- reason from worker
 |- Kael explanation
-|- continue or cancel
+|- confirm change, keep the old scope, or appeal
 |- Kael badge: estimate is computed by Kael, not worker-typed (Phase 2.0 2026-05-23)
 
 Hard rule
 -
-|- worker is blocked until Kael emits a validated scope decision or an explicit admin override exists
-|- customer can add evidence, cancel, or appeal the Kael decision, but is not the default final authority
+|- changed work is blocked until Kael emits a validated scope proposal and the customer explicitly confirms it, or an explicit admin override resolves a dispute
+|- customer can add evidence, confirm the proposal, keep the old scope, or appeal
 |- no hidden price change
-|- no raw LLM auto-approval; only server-validated KaelAutonomyDecision may approve/reject scope
+|- no raw LLM, threshold-based auto-approval, or Kael autonomy decision may replace the customer's explicit scope decision
 |- worker does not propose price; Kael computes from original Kael context + worker reported scope (Phase 2.0 2026-05-23)
 
 Events
 -
 |- scope_change_requested
-|- kael_decided_scope_change
+|- customer_confirmed_scope_change
+|- customer_rejected_scope_change
+|- customer_rejected_scope_change
 |- customer_appealed_scope_change
 |- admin_overrode_scope_change
 ```
@@ -389,19 +420,25 @@ Events
 ```text
 Purpose
 -
-|- Kael confirms work from worker/customer evidence or opens dispute before payment finalization
+|- let the customer explicitly confirm completed work from worker/customer evidence or open a dispute before payment begins
 
 Content
 -
 |- worker completion note
 |- completion photos
 |- final price (Kael-locked: set at A7 autonomy baseline or latest A11 Kael-computed value)
+|- explicit customer confirm/dispute actions
 |- audit / appeal / support actions
 
 Hard rule
 -
-|- payment cannot complete before a validated completion/payment decision
+|- payment cannot begin before explicit customer completion confirmation and a validated completion decision
 |- final price source is Kael authority, not worker input (Phase 2.0 2026-05-23)
+
+Events
+-
+|- customer_confirmed_completion
+|- customer_disputed_completion
 ```
 
 ### A13. Payment
@@ -409,20 +446,27 @@ Hard rule
 ```text
 Purpose
 -
-|- collect or record payment after completion confirmation
+|- collect or record payment after explicit customer completion confirmation
 
 Methods
 -
-|- cash
-|- bank transfer
-|- MoMo later
-|- ZaloPay later
+|- render only payment methods reported as available by the server capability contract
+|- cash may appear only when the cash-receipt lifecycle is implemented and auditable
+|- digital rails may appear only when authorization/result verification is implemented
+|- do not show future provider names as selectable methods
 
 Rules
 -
-|- payment integration is phase-controlled
+|- payment UI appears only when the workflow enters the payment phase
+|- payment requires explicit customer action or a verified callback from an implemented rail
+|- an unavailable payment rail must show an honest unavailable state; never a fake success
 |- payment status must be explicit
 |- payment failure must not mark job as paid
+
+Events
+-
+|- customer_payment_authorized
+|- payment_result_verified
 ```
 
 ### A14. Review

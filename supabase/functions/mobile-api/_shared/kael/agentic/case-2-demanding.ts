@@ -48,11 +48,17 @@ export type RecordDemandingCustomerInteractionInput = {
 export function buildDemandingCustomerResponse(
   detection: DemandingCustomerDetection,
   context: DemandingCustomerResponseContext = {},
+  language: "vi" | "en" = "vi",
 ): DemandingCustomerCaseResponse {
   if (detection.escalationLevel === "hard") {
     return {
       strategyIds: ["hard_escalation", "defensive_documentation"],
-      responseText: safeDemandingResponseText(renderEmpathyTemplateV2("complaint_threat_acknowledge")),
+      responseText: safeDemandingResponseText(
+        language === "en"
+          ? "I understand that you need a clear review. Kael has paused the automatic response loop and sent the collected information for human support review."
+          : renderEmpathyTemplateV2("complaint_threat_acknowledge"),
+        language,
+      ),
       adminQueuePriority: "high",
       stopAiLoop: true,
       defensiveLogRequired: true,
@@ -63,7 +69,12 @@ export function buildDemandingCustomerResponse(
   if (detection.escalationLevel === "soft") {
     return {
       strategyIds: ["empathy_factual", "soft_escalation", "defensive_documentation"],
-      responseText: safeDemandingResponseText(renderEmpathyTemplateV2("pressure_acknowledge")),
+      responseText: safeDemandingResponseText(
+        language === "en"
+          ? "I understand that you need clearer information. Kael has recorded the concern and will keep the case in its current phase while the details are reviewed."
+          : renderEmpathyTemplateV2("pressure_acknowledge"),
+        language,
+      ),
       adminQueuePriority: "medium",
       stopAiLoop: false,
       defensiveLogRequired: true,
@@ -72,11 +83,19 @@ export function buildDemandingCustomerResponse(
   }
 
   const credentialText = context.workerCredentials
-    ? `Thợ đã hoàn tất ${context.workerCredentials.completedJobs} việc với rating ${context.workerCredentials.rating}/5.`
+    ? language === "en"
+      ? `The worker has completed ${context.workerCredentials.completedJobs} jobs with a ${context.workerCredentials.rating}/5 rating.`
+      : `Thợ đã hoàn tất ${context.workerCredentials.completedJobs} việc với rating ${context.workerCredentials.rating}/5.`
     : "";
-  const sourceText = context.marketSource ? ` Nguồn tham chiếu: ${context.marketSource}.` : "";
-  const reasoning = context.priceReasoning ??
-    "Kael dựa trên mô tả, khu vực, độ phức tạp và dữ liệu giá nền hiện có.";
+  const sourceText = context.marketSource
+    ? language === "en"
+      ? " Reference source: governed market evidence."
+      : ` Nguồn tham chiếu: ${context.marketSource}.`
+    : "";
+  const reasoning = language === "en"
+    ? "Kael uses the description, area, complexity, and available governed pricing evidence."
+    : context.priceReasoning ??
+      "Kael dựa trên mô tả, khu vực, độ phức tạp và dữ liệu giá nền hiện có.";
   const templateKey = detection.legitimateConcernSignals.includes("wait_time_concern")
     ? "wait_time_concern"
     : detection.legitimateConcernSignals.includes("service_quality_concern")
@@ -85,7 +104,9 @@ export function buildDemandingCustomerResponse(
         !detection.legitimateConcernSignals.includes("request_breakdown")
     ? "worker_concern"
     : "price_concern";
-  const responseText = templateKey === "worker_concern"
+  const responseText = language === "en"
+    ? englishDemandingResponse(templateKey, reasoning, credentialText, sourceText)
+    : templateKey === "worker_concern"
     ? renderEmpathyTemplateV2(templateKey, {
       worker_summary: credentialText || "Kael sẽ chỉ hiển thị thông tin thợ sau khi có dữ liệu phù hợp.",
     })
@@ -93,7 +114,7 @@ export function buildDemandingCustomerResponse(
       (credentialText ? ` ${credentialText}` : "");
   return {
     strategyIds: ["transparency_expansion", "empathy_factual", "defensive_documentation"],
-    responseText: safeDemandingResponseText(responseText),
+    responseText: safeDemandingResponseText(responseText, language),
     adminQueuePriority: "none",
     stopAiLoop: false,
     defensiveLogRequired: true,
@@ -101,9 +122,32 @@ export function buildDemandingCustomerResponse(
   };
 }
 
-function safeDemandingResponseText(text: string) {
+function safeDemandingResponseText(text: string, language: "vi" | "en" = "vi") {
   if (detectForbiddenAiDecisionText(text).allowed) return text;
-  return renderEmpathyTemplateV2("pressure_acknowledge");
+  return language === "en"
+    ? "I understand that you need clearer information. Kael has recorded the concern for review."
+    : renderEmpathyTemplateV2("pressure_acknowledge");
+}
+
+function englishDemandingResponse(
+  templateKey: "wait_time_concern" | "service_quality_concern" | "worker_concern" | "price_concern",
+  reasoning: string,
+  credentialText: string,
+  sourceText: string,
+) {
+  if (templateKey === "wait_time_concern") {
+    return "I understand that the arrival time matters. Kael only shows timing from the real job state and will not invent an ETA.";
+  }
+  if (templateKey === "service_quality_concern") {
+    return "I understand that service quality matters. Kael keeps the evidence and confirmed scope available for review before the workflow moves forward.";
+  }
+  if (templateKey === "worker_concern") {
+    return credentialText ||
+      "I understand that you want to review the worker. Kael will only show a real eligible worker profile when one is available.";
+  }
+  return `I understand that you want a clear price explanation. ${reasoning}${sourceText}${
+    credentialText ? ` ${credentialText}` : ""
+  }`;
 }
 
 export async function recordDemandingCustomerInteraction(

@@ -17,13 +17,7 @@ const VISION_MAX_TOKENS = 320;
 const VISION_IMAGE_FETCH_TIMEOUT_MS = 5_000;
 const VISION_IMAGE_MAX_BYTES = 4_000_000;
 const VIETNAMESE_DIACRITICS_REQUIRED = "VIETNAMESE_DIACRITICS_REQUIRED";
-const visionStructuredResultSchema = visionResultSchema.refine(
-  (value) => hasVietnameseDiacritics(value.problem_identified),
-  {
-    path: ["problem_identified"],
-    message: VIETNAMESE_DIACRITICS_REQUIRED,
-  },
-);
+const ENGLISH_OUTPUT_REQUIRED = "ENGLISH_OUTPUT_REQUIRED";
 
 type VisionAnalysisResult =
   | {
@@ -53,12 +47,14 @@ export async function analyzeDescription(
   photoUrls: string[],
   secrets: EdgeAiSecrets,
   gate?: KaelSpendGate,
+  language: "vi" | "en" = "vi",
 ): Promise<VisionAnalysisResult> {
+  const outputSchema = visionSchemaForLanguage(language);
   const safePhotoUrls = sanitizeVisionPhotoUrls(photoUrls);
   if (safePhotoUrls.length === 0) {
     return {
       success: false,
-      fallback: buildFallbackVision(intentContext),
+      fallback: buildFallbackVision(intentContext, language),
       failureReason: "NO_PHOTOS_FOR_VISION",
       skipped: true,
     };
@@ -67,7 +63,7 @@ export async function analyzeDescription(
   if (imageBlocks.length === 0) {
     return {
       success: false,
-      fallback: buildFallbackVision(intentContext),
+      fallback: buildFallbackVision(intentContext, language),
       failureReason: "NO_FETCHABLE_PHOTOS_FOR_VISION",
       skipped: true,
     };
@@ -77,7 +73,7 @@ export async function analyzeDescription(
   if (!route) {
     return {
       success: false,
-      fallback: buildFallbackVision(intentContext),
+      fallback: buildFallbackVision(intentContext, language),
       failureReason: "NO_PROVIDER_AVAILABLE",
     };
   }
@@ -89,20 +85,23 @@ export async function analyzeDescription(
       description,
       sanitizeForLLM(intentContext),
       imageBlocks,
+      language,
     ),
     maxTokens: maxTokensForPurpose("vision_analysis", VISION_MAX_TOKENS),
     temperature: 0.2,
     timeoutMs: route.latencyBudgetMs,
     maxRetries: 0,
-  }, visionStructuredResultSchema, secrets, gate);
+  }, outputSchema, secrets, gate);
 
   if (!primaryResult.success) {
     return {
       success: false,
-      fallback: buildFallbackVision(intentContext),
+      fallback: buildFallbackVision(intentContext, language),
       failureReason: primaryResult.code === "SCHEMA_INVALID"
         ? hasStructuredValidationIssue(primaryResult, VIETNAMESE_DIACRITICS_REQUIRED)
           ? "AI vision Vietnamese validation failed"
+          : hasStructuredValidationIssue(primaryResult, ENGLISH_OUTPUT_REQUIRED)
+          ? "AI vision English validation failed"
           : "AI vision JSON validation failed"
         : `AI call failed: ${primaryResult.code}`,
     };
@@ -124,12 +123,13 @@ export async function analyzeDescription(
       description,
       sanitizeForLLM(intentContext),
       imageBlocks,
+      language,
     ),
     maxTokens: maxTokensForPurpose("vision_analysis", VISION_MAX_TOKENS),
     temperature: 0.2,
     timeoutMs: route.latencyBudgetMs,
     maxRetries: 0,
-  }, visionStructuredResultSchema, secrets, gate);
+  }, outputSchema, secrets, gate);
   if (!escalatedResult.success) return successfulVisionResult(primaryResult, route);
   return successfulVisionResult(escalatedResult, escalation.route);
 }
@@ -152,6 +152,24 @@ function successfulVisionResult(
 
 function hasVietnameseDiacritics(text: string): boolean {
   return /[\u0300-\u036f]/u.test(text.normalize("NFD")) || /[đĐ]/u.test(text);
+}
+
+function visionSchemaForLanguage(language: "vi" | "en") {
+  return language === "en"
+    ? visionResultSchema.refine(
+      (value) => !hasVietnameseDiacritics([
+        value.problem_identified,
+        ...value.severity_indicators,
+      ].join(" ")),
+      { path: ["problem_identified"], message: ENGLISH_OUTPUT_REQUIRED },
+    )
+    : visionResultSchema.refine(
+      (value) => hasVietnameseDiacritics(value.problem_identified),
+      {
+        path: ["problem_identified"],
+        message: VIETNAMESE_DIACRITICS_REQUIRED,
+      },
+    );
 }
 
 async function fetchVisionImageBlocks(
@@ -240,9 +258,14 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-function buildFallbackVision(intentContext: string): VisionResult {
+function buildFallbackVision(
+  intentContext: string,
+  language: "vi" | "en" = "vi",
+): VisionResult {
   return {
-    problem_identified: intentContext || "Vấn đề cần kiểm tra trực tiếp",
+    problem_identified: intentContext || (language === "en"
+      ? "The issue requires an on-site inspection"
+      : "Vấn đề cần kiểm tra trực tiếp"),
     severity_indicators: [],
     complexity_hint: "medium",
   };

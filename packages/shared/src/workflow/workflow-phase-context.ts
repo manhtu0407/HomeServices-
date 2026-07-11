@@ -44,16 +44,20 @@ export type WorkflowPhaseBlockedReason =
   | 'waiting_for_kael_analysis'
   | 'waiting_for_kael_orchestration'
   | 'waiting_for_worker_acceptance'
+  | 'waiting_for_customer_worker_confirmation'
   | 'chat_requires_real_job'
   | 'chat_send_closed'
   | 'kael_scope_decision_required'
   | 'completion_evidence_required'
   | 'kael_completion_review_required'
+  | 'customer_completion_confirmation_required'
+  | 'payment_required'
   | 'payment_pending'
   | 'job_cancelled'
 
 export type WorkflowAllowedActionsSnapshot = Readonly<{
   confirmTicketAndEstimate: boolean
+  confirmWorker?: boolean
   confirmCompletion: boolean
   jobChatRead?: boolean
   jobChatSend?: boolean
@@ -172,6 +176,14 @@ const PHASE_CONTEXT_BY_PHASE = Object.freeze({
     blockedReason: 'waiting_for_worker_acceptance',
     nextExpectedEvent: 'worker_accepted',
   },
+  worker_candidate_review: {
+    title: text('Xác nhận thợ phù hợp', 'Confirm the proposed worker'),
+    intent: text('Thợ đã nhận lời nhưng chưa được giao việc. Khách xem hồ sơ an toàn rồi xác nhận hoặc yêu cầu tìm tiếp.', 'The worker has accepted but is not assigned yet. The customer reviews a safe profile and confirms or asks Kael to continue searching.'),
+    sourceOfTruth: 'broadcast',
+    primaryArtifact: 'provider_match',
+    blockedReason: 'waiting_for_customer_worker_confirmation',
+    nextExpectedEvent: 'customer_confirmed_worker',
+  },
   worker_matched: {
     title: text('Đã có thợ nhận việc', 'Worker accepted'),
     intent: text('Lịch đặt và tóm tắt đã có hiệu lực; địa chỉ đầy đủ chỉ mở theo quyền hệ thống.', 'Booking and brief are active; full address follows system release rules.'),
@@ -222,19 +234,19 @@ const PHASE_CONTEXT_BY_PHASE = Object.freeze({
   },
   completed_by_worker: {
     title: text('Thợ đã gửi bằng chứng hoàn tất', 'Worker submitted completion evidence'),
-    intent: text('Kael/hệ thống kiểm tra bằng chứng trước khi xác nhận hoàn tất hoặc thanh toán.', 'Kael/system reviews evidence before completion or payment confirmation.'),
+    intent: text('Khách xem bằng chứng thật rồi xác nhận hoàn tất hoặc báo vấn đề; hệ thống không tự vượt cổng này.', 'The customer reviews real evidence and confirms completion or reports an issue; the system cannot skip this gate.'),
     sourceOfTruth: 'completion_evidence',
     primaryArtifact: 'completion_evidence',
-    blockedReason: 'kael_completion_review_required',
-    nextExpectedEvent: 'kael_confirmed_completion',
+    blockedReason: 'customer_completion_confirmation_required',
+    nextExpectedEvent: 'customer_confirmed_completion',
   },
   customer_confirmed_completion: {
-    title: text('Kael đã xác nhận hoàn tất', 'Completion confirmed by Kael'),
-    intent: text('Hoàn tất đã qua cổng; thanh toán và đánh giá vẫn đi theo trạng thái đã đồng bộ cùng bộ chọn cục bộ.', 'Completion has passed the gate; payment and review still follow the synced status and the local selector.'),
+    title: text('Khách đã xác nhận hoàn tất', 'Completion confirmed by customer'),
+    intent: text('Thanh toán là giai đoạn kế tiếp; đánh giá vẫn khóa cho đến khi server xác nhận đã thanh toán.', 'Payment is the next phase; review remains locked until the server confirms payment.'),
     sourceOfTruth: 'completion_evidence',
     primaryArtifact: 'payment_decision',
-    blockedReason: null,
-    nextExpectedEvent: 'review_submitted',
+    blockedReason: 'payment_required',
+    nextExpectedEvent: 'kael_decided_payment',
   },
   payment_pending: {
     title: text('Đang chờ thanh toán', 'Payment pending'),
@@ -509,6 +521,7 @@ export function workflowEventLabel(event: WorkflowEvent, locale: WorkflowLocale)
     ai_estimate_ready: text('Ước tính sẵn sàng', 'Estimate ready'),
     kael_started_matching: text('Kael bắt đầu điều phối', 'Kael starts matching'),
     worker_accepted: text('Thợ nhận việc', 'Worker accepts'),
+    customer_confirmed_worker: text('Khách xác nhận thợ', 'Customer confirms worker'),
     worker_status_advanced: text('Cập nhật trạng thái', 'Status advances'),
     worker_completed: text('Thợ gửi hoàn tất', 'Worker completes'),
     kael_decided_scope_change: text('Kael quyết định phạm vi', 'Kael decides scope'),
@@ -526,11 +539,14 @@ export function workflowBlockedReasonLabel(reason: WorkflowPhaseBlockedReason, l
     waiting_for_kael_analysis: text('Chờ Kael phân tích', 'Waiting for Kael analysis'),
     waiting_for_kael_orchestration: text('Chờ quyết định hệ thống', 'Waiting for system decision'),
     waiting_for_worker_acceptance: text('Chờ thợ nhận việc', 'Waiting for worker acceptance'),
+    waiting_for_customer_worker_confirmation: text('Chờ khách xác nhận thợ', 'Waiting for customer worker confirmation'),
     chat_requires_real_job: text('Chat cần công việc thật', 'Chat needs a real job'),
     chat_send_closed: text('Chat chỉ còn đọc lại', 'Chat is read-only now'),
     kael_scope_decision_required: text('Kael giữ quyền phạm vi', 'Kael owns scope decision'),
     completion_evidence_required: text('Cần bằng chứng hoàn tất', 'Completion evidence required'),
     kael_completion_review_required: text('Kael rà soát hoàn tất', 'Kael reviews completion'),
+    customer_completion_confirmation_required: text('Chờ khách xác nhận hoàn tất', 'Waiting for customer completion confirmation'),
+    payment_required: text('Cần thanh toán trước khi đánh giá', 'Payment required before review'),
     payment_pending: text('Chờ thanh toán', 'Payment pending'),
     job_cancelled: text('Công việc đã hủy', 'Job cancelled'),
   }
@@ -540,6 +556,7 @@ export function workflowBlockedReasonLabel(reason: WorkflowPhaseBlockedReason, l
 export function workflowAllowedActionsLabel(actions: WorkflowAllowedActionsSnapshot, locale: WorkflowLocale): string {
   const enabled: WorkflowLocalizedText[] = []
   if (actions.confirmTicketAndEstimate) enabled.push(text('Xác nhận phiếu và ước tính', 'Confirm ticket and estimate'))
+  if (actions.confirmWorker) enabled.push(text('Xác nhận thợ', 'Confirm worker'))
   if (actions.confirmCompletion) enabled.push(text('Xác nhận hoàn tất', 'Confirm completion'))
   if (actions.jobChatSend) enabled.push(text('Nhắn trong chat công việc', 'Send job chat'))
   else if (actions.jobChatRead) enabled.push(text('Đọc lại chat công việc', 'Read job chat'))
@@ -694,7 +711,9 @@ function sectionLockedReason(
   }
 
   if (config.id === 'review' && !input.allowedActions.submitReview) {
-    return input.phase === 'payment_pending' ? 'payment_pending' : 'completion_evidence_required'
+    if (input.phase === 'payment_pending') return 'payment_pending'
+    if (input.phase === 'customer_confirmed_completion') return 'payment_required'
+    return 'completion_evidence_required'
   }
 
   return null
